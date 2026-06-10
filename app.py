@@ -977,17 +977,30 @@ st.markdown("""
 # ─────────────────────────────────────────────────────────────
 # 🎨 НАСТРОЙКИ ЗАГОЛОВКА (хэдер)
 # ─────────────────────────────────────────────────────────────
-HEADER_FONT_SIZE = "36px"        # 🔧 Меняйте здесь: "28px", "32px", "40px" и т.д.
-SUBHEADER_FONT_SIZE = "21px"     # 🔧 Размер подзаголовка
-HEADER_WEIGHT = "700"            # 🔧 Жирность: 400, 500, 600, 700, 800
+import base64
+from pathlib import Path
+
+HEADER_FONT_SIZE = "36px"
+SUBHEADER_FONT_SIZE = "21px"
+HEADER_WEIGHT = "700"
+
+# Загрузка иконки и кодирование в base64
+icon_path = Path("assets/logo_platform1.png")  # или "logo.png" в корне
+if icon_path.exists():
+    with open(icon_path, "rb") as f:
+        icon_base64 = base64.b64encode(f.read()).decode()
+    icon_html = f'<img src="data:image/png;base64,{icon_base64}" style="height: 42px; width: auto; vertical-align: middle; margin-right: 12px;"/>'
+else:
+    icon_html = '📈'  # Fallback на эмодзи
 
 st.markdown(f"""
     <div style='text-align: center; margin: -20px 0 15px 0; padding: 10px 25px;
               background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
               border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
         <h1 style='color: white; font-size: {HEADER_FONT_SIZE};
-                   font-weight: {HEADER_WEIGHT}; margin: 0; line-height: 1.2;'>
-            📈 CISStat TS Analysis
+                   font-weight: {HEADER_WEIGHT}; margin: 0; line-height: 1.2;
+                   display: flex; align-items: center; justify-content: center;'>
+            {icon_html} CISStat TS Analysis
         </h1>
         <div style='display: flex; align-items: center; justify-content: center; margin: 12px 0;'>
             <div style='flex: 1; height: 2px; background: rgba(255, 255, 255, 0.7); margin-right: -2px;'></div>
@@ -1752,13 +1765,13 @@ if df.empty:
     # 🔹 ПОДСКАЗКА ПО РАБОТЕ С ПЛАТФОРМОЙ
     with st.expander("ℹ️ Как начать работу?", expanded=False):
         st.markdown("""
-        #### Пошаговый алгоритм работы:
+        ###### Пошаговый алгоритм работы:
 
-        **○ Загрузка данных**
+        **Загрузка данных**
         - В боковой панели выберите источник: **Файл** (CSV, Excel, JSON) или **База данных** (PostgreSQL, ClickHouse)
         - Загрузите ваш датасет
 
-        **○ Настройка правил валидации**
+        **Настройка правил валидации**
         - После загрузки файла перейдите в раздел **Управление правилами** в боковой панели
         - **По умолчанию выбран шаблон "Custom (автогенерация)"** — платформа автоматически создаст правила на основе ваших метаданных
         - Или выберите готовый шаблон: **FAO Prices (CIS)**, **Macro indicators**
@@ -2903,246 +2916,260 @@ with tab_download:
         **Рекомендация:** Начните с ACF для подбора ARIMA, используйте FFT/Periodogram для поиска сезонности, примените Wavelet для сложных нестационарных рядов.
         """)
 
-    # ПОДГОТОВКА ДАННЫХ (если analysis_series не определен)
-    if "analysis_series" not in st.session_state and ct_f["num"]:
-        # Берем целевую колонку из селектора или первую числовую
-        target_col = st.session_state.get("report_col", ct_f["num"][0])
+    # ── ВЫБОР СТОЛБЦА ДЛЯ АНАЛИЗА ───────────────────────────────
+    num_cols = ct_f.get("num", [])
 
-        if ts_mode_active and target_col in df_ts.columns:
-            st.session_state.analysis_series = df_ts[target_col].resample('D').mean().dropna().astype(float)
-        else:
-            st.session_state.analysis_series = df_filtered[target_col].dropna().astype(float)
-
-    # Получаем series для анализа
-    analysis_series = st.session_state.get("analysis_series", pd.Series())
-
-    if ts_mode_active and len(analysis_series) >= 30:
-        # ── 1. ACF И PACF (Автокорреляция) ──────────────────────
-        # 🔧 ИЗМЕНЕНО: expanded=False (скрыто по умолчанию)
-        with st.expander("● Автокорреляционный анализ (ACF/PACF)", expanded=False):
-            st.markdown("""
-            **📌 Назначение:** Обнаружение сезонности через анализ корреляции ряда с его лагами.
-            **ℹ️ Алгоритм:** Расчет корреляции между наблюдениями с разными временными сдвигами.
-            **ℹ️ Влияние на модель:** Определяет параметры `p`, `q` для ARIMA и сезонность `m`.
-            """)
-
-            from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
-
-            c1, c2 = st.columns(2)
-            max_lag = min(60, len(analysis_series) // 4)
-
-            with c1:
-                st.markdown("**ACF (Autocorrelation Function)**")
-                fig_acf, ax_acf = plt.subplots(figsize=(8, 3))
-                plot_acf(analysis_series, lags=max_lag, ax=ax_acf, alpha=0.05)
-                ax_acf.set_title("Автокорреляционная функция (ACF)", fontsize=10)
-                st.pyplot(fig_acf, use_container_width=True)
-
-            with c2:
-                st.markdown("**PACF (Partial Autocorrelation Function)**")
-                fig_pacf, ax_pacf = plt.subplots(figsize=(8, 3))
-                plot_pacf(analysis_series, lags=max_lag, ax=ax_pacf, alpha=0.05)
-                ax_pacf.set_title("Частная автокорреляция (PACF)", fontsize=10)
-                st.pyplot(fig_pacf, use_container_width=True)
-
-            # Автоматическое определение сезонности из ACF
-            acf_values = acf(analysis_series, nlags=max_lag)
-            confidence = 1.96 / np.sqrt(len(analysis_series))
-            significant_lags = np.where(np.abs(acf_values) > confidence)[0][1:]  # Без lag=0
-
-            if len(significant_lags) > 0:
-                # Ищем периодические пики
-                seasonal_candidates = []
-                for i, lag in enumerate(significant_lags):
-                    if i > 0 and lag - significant_lags[i-1] < 3:
-                        continue
-                    if lag > 2:
-                        seasonal_candidates.append(lag)
-
-                if seasonal_candidates:
-                    st.success(f"✅ **Обнаружена сезонность** с периодами: {seasonal_candidates[:3]}")
-                    st.info(f"ℹ️ **Рекомендация:** Используйте SARIMA с seasonal_order=(..., m={seasonal_candidates[0]})")
+    if num_cols:
+        # 🔧 ДОБАВЛЕНО: Селектор столбца
+        target_col = st.selectbox(
+            " Выберите числовой признак для спектрального анализа:",
+            options=num_cols,
+            index=0,
+            key="spectral_analysis_target_col",
+            help="Выберите целевую переменную временного ряда для анализа частотных характеристик"
+        )
+        
+        # Подготовка данных для выбранного столбца
+        if ts_mode_active:
+            df_ts_temp = df_ts.copy()
+            if target_col in df_ts_temp.columns:
+                analysis_series = df_ts_temp[target_col].resample('D').mean().dropna().astype(float)
             else:
-                st.info("ℹ️ Явная сезонность не обнаружена")
+                analysis_series = pd.Series()
+        else:
+            if target_col in df_filtered.columns:
+                analysis_series = df_filtered[target_col].dropna().astype(float)
+            else:
+                analysis_series = pd.Series()
+        
+        # Проверка достаточности данных
+        if len(analysis_series) >= 30:
+            st.success(f"✅ **Анализируется:** `{target_col}` | **Длина ряда:** {len(analysis_series)} наблюдений")
+            
+            # ── 1. ACF И PACF (Автокорреляция) ──────────────────────
+            with st.expander("● Автокорреляционный анализ (ACF/PACF)", expanded=False):
+                st.markdown(f"**Анализируемый признак:** `{target_col}`")
+                st.markdown("""
+                **Назначение:** Обнаружение сезонности через анализ корреляции ряда с его лагами. <b>                            
+                **Алгоритм:** Расчет корреляции между наблюдениями с разными временными сдвигами. <b>                           
+                **Влияние на модель:** Определяет параметры `p`, `q` для ARIMA и сезонность `m`.
+                """)
 
-        # ── 2. FFT (Быстрое преобразование Фурье) ────────────────
-        # 🔧 ИЗМЕНЕНО: expanded=False (скрыто по умолчанию)
-        with st.expander("● Преобразование ФУРЬЕ (FFT)", expanded=False):
-            st.markdown("""
-            **📌 Назначение:** Разложение временного ряда на гармонические составляющие.
-            **ℹ️ Алгоритм:** FFT преобразует сигнал из временной области в частотную.
-            **ℹ️ Влияние на модель:** Выявляет доминирующие частоты для создания Fourier features.
-            """)
+                from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
-            # Подготовка данных
-            n = len(analysis_series)
-            y = analysis_series.values - analysis_series.mean()  # Центрируем
+                c1, c2 = st.columns(2)
+                max_lag = min(60, len(analysis_series) // 4)
 
-            # FFT
-            yf = fft(y)
-            xf = fftfreq(n, 1)[:n//2]
-            amplitude = 2.0/n * np.abs(yf[0:n//2])
+                with c1:
+                    st.markdown("**ACF (Autocorrelation Function)**")
+                    fig_acf, ax_acf = plt.subplots(figsize=(8, 3))
+                    plot_acf(analysis_series, lags=max_lag, ax=ax_acf, alpha=0.05)
+                    ax_acf.set_title(f"Автокорреляционная функция (ACF) — {target_col}", fontsize=10)
+                    st.pyplot(fig_acf, use_container_width=True)
 
-            # Поиск пиков
-            peaks, properties = find_peaks(amplitude, height=np.mean(amplitude) + np.std(amplitude))
-            dominant_periods = [1/xf[p] for p in peaks if xf[p] > 0]
+                with c2:
+                    st.markdown("**PACF (Partial Autocorrelation Function)**")
+                    fig_pacf, ax_pacf = plt.subplots(figsize=(8, 3))
+                    plot_pacf(analysis_series, lags=max_lag, ax=ax_pacf, alpha=0.05)
+                    ax_pacf.set_title(f"Частная автокорреляция (PACF) — {target_col}", fontsize=10)
+                    st.pyplot(fig_pacf, use_container_width=True)
 
-            # Визуализация
-            c1, c2 = st.columns([2, 1])
+                # Автоматическое определение сезонности из ACF
+                acf_values = acf(analysis_series, nlags=max_lag)
+                confidence = 1.96 / np.sqrt(len(analysis_series))
+                significant_lags = np.where(np.abs(acf_values) > confidence)[0][1:]  # Без lag=0
 
-            with c1:
-                fig_fft, ax_fft = plt.subplots(figsize=(10, 3))
-                ax_fft.plot(xf[:n//4], amplitude[:n//4], 'b-', linewidth=1)
-                ax_fft.plot(xf[peaks], amplitude[peaks], 'ro', markersize=5, label='Пики')
-                ax_fft.set_xlabel('Частота (циклы/единица времени)')
-                ax_fft.set_ylabel('Амплитуда')
-                ax_fft.set_title('Амплитудный спектр (FFT)')
-                ax_fft.legend()
-                ax_fft.grid(True, alpha=0.3)
-                st.pyplot(fig_fft, use_container_width=True)
+                if len(significant_lags) > 0:
+                    # Ищем периодические пики
+                    seasonal_candidates = []
+                    for i, lag in enumerate(significant_lags):
+                        if i > 0 and lag - significant_lags[i-1] < 3:
+                            continue
+                        if lag > 2:
+                            seasonal_candidates.append(int(lag))
 
-            with c2:
-                st.markdown("**Доминирующие периоды:**")
-                if dominant_periods:
-                    for i, period in enumerate(sorted(dominant_periods)[:5], 1):
-                        st.metric(f"Период {i}", f"{period:.1f}")
-
-                    st.info(f"ℹ️ **Рекомендация:** Добавьте Fourier features с периодами {sorted(dominant_periods)[:3]}")
+                    if seasonal_candidates:
+                        st.success(f"✅ **Обнаружена сезонность** с периодами: {seasonal_candidates[:3]}")
+                        st.info(f"ℹ️ **Рекомендация:** Используйте SARIMA с seasonal_order=(..., m={seasonal_candidates[0]})")
                 else:
-                    st.info("Явные периодичности не обнаружены")
+                    st.info("ℹ️ Явная сезонность не обнаружена")
 
-            # Прогноз с использованием значимых гармоник
-            if len(peaks) > 0 and st.checkbox("🔮 Показать прогноз по значимым гармоникам", key="fft_forecast"):
-                # Берем топ-5 гармоник
-                top_peaks = peaks[np.argsort(amplitude[peaks])[-5:]]
+            # ── 2. FFT (Быстрое преобразование Фурье) ────────────────
+            with st.expander("● Преобразование ФУРЬЕ (FFT)", expanded=False):
+                st.markdown(f"**📌 Анализируемый признак:** `{target_col}`")
+                st.markdown("""
+                **📌 Назначение:** Разложение временного ряда на гармонические составляющие.
+                **ℹ️ Алгоритм:** FFT преобразует сигнал из временной области в частотную.
+                **ℹ️ Влияние на модель:** Выявляет доминирующие частоты для создания Fourier features.
+                """)
 
-                # Реконструкция сигнала
-                reconstructed = np.zeros(n)
-                for p in top_peaks:
-                    if xf[p] > 0:
-                        reconstructed += (amplitude[p] * np.cos(2 * np.pi * xf[p] * np.arange(n) + np.angle(yf[p])))
+                # Подготовка данных
+                n = len(analysis_series)
+                y = analysis_series.values - analysis_series.mean()  # Центрируем
 
-                reconstructed += analysis_series.mean()
+                # FFT
+                yf = fft(y)
+                xf = fftfreq(n, 1)[:n//2]
+                amplitude = 2.0/n * np.abs(yf[0:n//2])
 
-                fig_rec, ax_rec = plt.subplots(figsize=(10, 3))
-                ax_rec.plot(analysis_series.index[:100], analysis_series.values[:100], 'b-', alpha=0.5, label='Исходный ряд')
-                ax_rec.plot(analysis_series.index[:100], reconstructed[:100], 'r-', linewidth=2, label='Прогноз (FFT)')
-                ax_rec.set_title('Реконструкция ряда по значимым гармоникам FFT')
-                ax_rec.legend()
-                st.pyplot(fig_rec, use_container_width=True)
+                # Поиск пиков
+                peaks, properties = find_peaks(amplitude, height=np.mean(amplitude) + np.std(amplitude))
+                dominant_periods = [1/xf[p] for p in peaks if xf[p] > 0]
 
-        # ── 3. ПЕРИОДОГРАММА ─────────────────────────────────────
-        # 🔧 ИЗМЕНЕНО: expanded=False (скрыто по умолчанию)
-        with st.expander("● Периодограмма (Spectral Density)", expanded=False):
-            st.markdown("""
-            **📌 Назначение:** Оценка спектральной плотности мощности.
-            **ℹ️ Алгоритм:** Метод Уэлча для сглаживания спектра.
-            **ℹ️ Влияние на модель:** Показывает мощность различных частотных компонент.
-            """)
+                # Визуализация
+                c1, c2 = st.columns([2, 1])
 
-            from scipy.signal import periodogram, welch
+                with c1:
+                    fig_fft, ax_fft = plt.subplots(figsize=(10, 3))
+                    ax_fft.plot(xf[:n//4], amplitude[:n//4], 'b-', linewidth=1)
+                    ax_fft.plot(xf[peaks], amplitude[peaks], 'ro', markersize=5, label='Пики')
+                    ax_fft.set_xlabel('Частота (циклы/единица времени)')
+                    ax_fft.set_ylabel('Амплитуда')
+                    ax_fft.set_title(f'Амплитудный спектр (FFT) — {target_col}')
+                    ax_fft.legend()
+                    ax_fft.grid(True, alpha=0.3)
+                    st.pyplot(fig_fft, use_container_width=True)
 
-            c1, c2 = st.columns(2)
+                with c2:
+                    st.markdown("**Доминирующие периоды:**")
+                    if dominant_periods:
+                        for i, period in enumerate(sorted(dominant_periods)[:5], 1):
+                            st.metric(f"Период {i}", f"{period:.1f}")
 
-            # Периодограмма
-            with c1:
-                st.markdown("**Периодограмма**")
-                freq_per, pxx_per = periodogram(analysis_series.values, fs=1.0, window='hann')
+                        st.info(f"ℹ️ **Рекомендация:** Добавьте Fourier features с периодами {sorted(dominant_periods)[:3]}")
+                    else:
+                        st.info("Явные периодичности не обнаружены")
 
-                fig_per, ax_per = plt.subplots(figsize=(8, 3))
-                ax_per.semilogy(freq_per, pxx_per)
-                ax_per.set_xlabel('Частота')
-                ax_per.set_ylabel('Спектральная плотность мощности')
-                ax_per.set_title('Периодограмма')
-                ax_per.grid(True, alpha=0.3)
-                st.pyplot(fig_per, use_container_width=True)
+                # Прогноз с использованием значимых гармоник
+                if len(peaks) > 0 and st.checkbox("🔮 Показать прогноз по значимым гармоникам", key="fft_forecast"):
+                    # Берем топ-5 гармоник
+                    top_peaks = peaks[np.argsort(amplitude[peaks])[-5:]]
 
-            # Метод Уэлча
-            with c2:
-                st.markdown("**Метод Уэлча (сглаженный)**")
-                freq_welch, pxx_welch = welch(analysis_series.values, fs=1.0, nperseg=min(256, len(analysis_series)//4))
+                    # Реконструкция сигнала
+                    reconstructed = np.zeros(n)
+                    for p in top_peaks:
+                        if xf[p] > 0:
+                            reconstructed += (amplitude[p] * np.cos(2 * np.pi * xf[p] * np.arange(n) + np.angle(yf[p])))
 
-                fig_welch, ax_welch = plt.subplots(figsize=(8, 3))
-                ax_welch.semilogy(freq_welch, pxx_welch)
-                ax_welch.set_xlabel('Частота')
-                ax_welch.set_ylabel('PSD')
-                ax_welch.set_title('Welch PSD')
-                ax_welch.grid(True, alpha=0.3)
-                st.pyplot(fig_welch, use_container_width=True)
+                    reconstructed += analysis_series.mean()
 
-            # Значимые частоты
-            peaks_welch, _ = find_peaks(pxx_welch, height=np.median(pxx_welch)*2)
+                    fig_rec, ax_rec = plt.subplots(figsize=(10, 3))
+                    ax_rec.plot(analysis_series.index[:100], analysis_series.values[:100], 'b-', alpha=0.5, label='Исходный ряд')
+                    ax_rec.plot(analysis_series.index[:100], reconstructed[:100], 'r-', linewidth=2, label='Прогноз (FFT)')
+                    ax_rec.set_title(f'Реконструкция ряда по значимым гармоникам FFT — {target_col}')
+                    ax_rec.legend()
+                    st.pyplot(fig_rec, use_container_width=True)
 
-            if len(peaks_welch) > 0:
-                significant_freqs = freq_welch[peaks_welch]
-                significant_periods = 1/significant_freqs[significant_freqs > 0]
+            # ── 3. ПЕРИОДОГРАММА ─────────────────────────────────────
+            with st.expander("● Периодограмма (Spectral Density)", expanded=False):
+                st.markdown(f"**📌 Анализируемый признак:** `{target_col}`")
+                st.markdown("""
+                **📌 Назначение:** Оценка спектральной плотности мощности.
+                **ℹ️ Алгоритм:** Метод Уэлча для сглаживания спектра.
+                **ℹ️ Влияние на модель:** Показывает мощность различных частотных компонент.
+                """)
 
-                st.success(f"✅ **Значимые периоды:** {', '.join([f'{p:.1f}' for p in sorted(significant_periods)[:5]])}")
+                from scipy.signal import periodogram, welch
 
-        # ── 4. WAVELET-ПРЕОБРАЗОВАНИЕ ────────────────────────────
-        # 🔧 ИЗМЕНЕНО: expanded=False (скрыто по умолчанию)
-        with st.expander("● Вейвлет-преобразование (Wavelet Transform)", expanded=False):
-            st.markdown("""
-            **📌 Назначение:** Анализ частот во времени для нестационарных рядов.
-            **ℹ️ Алгоритм:** Continuous Wavelet Transform (CWT) с вейвлетом Морле.
-            **ℹ️ Влияние на модель:** Показывает, КОГДА происходят циклические изменения.
-            """)
+                c1, c2 = st.columns(2)
 
-            try:
-                import pywt
-                from scipy import signal
+                # Периодограмма
+                with c1:
+                    st.markdown("**Периодограмма**")
+                    freq_per, pxx_per = periodogram(analysis_series.values, fs=1.0, window='hann')
 
-                # CWT
-                widths = np.arange(1, min(128, len(analysis_series)//4))
-                cwtmatr, freqs_cwt = pywt.cwt(analysis_series.values - analysis_series.mean(),
-                                            widths, 'morl', sampling_period=1)
+                    fig_per, ax_per = plt.subplots(figsize=(8, 3))
+                    ax_per.semilogy(freq_per, pxx_per)
+                    ax_per.set_xlabel('Частота')
+                    ax_per.set_ylabel('Спектральная плотность мощности')
+                    ax_per.set_title(f'Периодограмма — {target_col}')
+                    ax_per.grid(True, alpha=0.3)
+                    st.pyplot(fig_per, use_container_width=True)
 
-                # Усредненный спектр по времени
-                mean_power = np.mean(np.abs(cwtmatr), axis=1)
+                # Метод Уэлча
+                with c2:
+                    st.markdown("**Метод Уэлча (сглаженный)**")
+                    freq_welch, pxx_welch = welch(analysis_series.values, fs=1.0, nperseg=min(256, len(analysis_series)//4))
 
-                # ── ГОРИЗОНТАЛЬНОЕ РАСПОЛОЖЕНИЕ С ЕДИНОЙ ОСЬЮ Y ──────
-                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5),
-                                                gridspec_kw={'width_ratios': [3, 1]},
-                                                sharey=True)  # 🔑 ОБЩАЯ ОСЬ Y!
+                    fig_welch, ax_welch = plt.subplots(figsize=(8, 3))
+                    ax_welch.semilogy(freq_welch, pxx_welch)
+                    ax_welch.set_xlabel('Частота')
+                    ax_welch.set_ylabel('PSD')
+                    ax_welch.set_title(f'Welch PSD — {target_col}')
+                    ax_welch.grid(True, alpha=0.3)
+                    st.pyplot(fig_welch, use_container_width=True)
 
-                # Левый график: Вейвлет-скалограмма
-                im = ax1.imshow(np.abs(cwtmatr), extent=[0, len(analysis_series), 1, len(widths)],
-                            cmap='jet', aspect='auto', interpolation='bilinear')
-                ax1.set_xlabel('Время', fontsize=10)
-                ax1.set_ylabel('Период (масштаб)', fontsize=10)
-                ax1.set_title('Вейвлет-скалограмма', fontsize=10, fontweight='normal')
-                plt.colorbar(im, label='Мощность', ax=ax1)
+                # Значимые частоты
+                peaks_welch, _ = find_peaks(pxx_welch, height=np.median(pxx_welch)*2)
 
-                # Правый график: Усредненный спектр (ГОРИЗОНТАЛЬНЫЙ!)
-                ax2.plot(mean_power, widths, 'b-', linewidth=2)
-                ax2.set_xlabel('Средняя мощность', fontsize=10)
+                if len(peaks_welch) > 0:
+                    significant_freqs = freq_welch[peaks_welch]
+                    significant_periods = 1/significant_freqs[significant_freqs > 0]
 
-                # 🔧 ДОБАВЛЕНО: Подпись оси Y и включение цифр
-                ax2.set_ylabel('Период (масштаб)', fontsize=10)
-                ax2.tick_params(axis='y', labelleft=True)
+                    st.success(f"✅ **Значимые периоды:** {', '.join([f'{p:.1f}' for p in sorted(significant_periods)[:5]])}")
 
-                ax2.set_title('Усредненный спектр', fontsize=10, fontweight='normal')
-                ax2.grid(True, alpha=0.3)
+            # ── 4. WAVELET-ПРЕОБРАЗОВАНИЕ ────────────────────────────
+            with st.expander("● Вейвлет-преобразование (Wavelet Transform)", expanded=False):
+                st.markdown(f"**📌 Анализируемый признак:** `{target_col}`")
+                st.markdown("""
+                **📌 Назначение:** Анализ частот во времени для нестационарных рядов.
+                **ℹ️ Алгоритм:** Continuous Wavelet Transform (CWT) с вейвлетом Морле.
+                **ℹ️ Влияние на модель:** Показывает, КОГДА происходят циклические изменения.
+                """)
 
-                plt.tight_layout()
-                st.pyplot(fig, use_container_width=True)
+                try:
+                    import pywt
+                    from scipy import signal
 
-                # Пики в вейвлет-спектре
-                wavelet_peaks, _ = find_peaks(mean_power, height=np.mean(mean_power))
-                if len(wavelet_peaks) > 0:
-                    dominant_scales = widths[wavelet_peaks]
-                    st.info(f"**Доминирующие масштабы:** {dominant_scales[:5]}")
+                    # CWT
+                    widths = np.arange(1, min(128, len(analysis_series)//4))
+                    cwtmatr, freqs_cwt = pywt.cwt(analysis_series.values - analysis_series.mean(),
+                                                widths, 'morl', sampling_period=1)
 
-            except ImportError:
-                st.warning("⚠️ Установите PyWavelets: `pip install PyWavelets`")
-            except Exception as e:
-                st.error(f"Ошибка вейвлет-анализа: {e}")
+                    # Усредненный спектр по времени
+                    mean_power = np.mean(np.abs(cwtmatr), axis=1)
 
-    else:
-        if not ts_mode_active:
-            st.info("ℹ️ Для спектрального анализа необходим режим временных рядов (TS mode).")
+                    # ── ГОРИЗОНТАЛЬНОЕ РАСПОЛОЖЕНИЕ С ЕДИНОЙ ОСЬЮ Y ──────
+                    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5),
+                                                    gridspec_kw={'width_ratios': [3, 1]},
+                                                    sharey=True)  # 🔑 ОБЩАЯ ОСЬ Y!
+
+                    # Левый график: Вейвлет-скалограмма
+                    im = ax1.imshow(np.abs(cwtmatr), extent=[0, len(analysis_series), 1, len(widths)],
+                                cmap='jet', aspect='auto', interpolation='bilinear')
+                    ax1.set_xlabel('Время', fontsize=10)
+                    ax1.set_ylabel('Период (масштаб)', fontsize=10)
+                    ax1.set_title(f'Вейвлет-скалограмма — {target_col}', fontsize=10, fontweight='normal')
+                    plt.colorbar(im, label='Мощность', ax=ax1)
+
+                    # Правый график: Усредненный спектр (ГОРИЗОНТАЛЬНЫЙ!)
+                    ax2.plot(mean_power, widths, 'b-', linewidth=2)
+                    ax2.set_xlabel('Средняя мощность', fontsize=10)
+
+                    # 🔧 ДОБАВЛЕНО: Подпись оси Y и включение цифр
+                    ax2.set_ylabel('Период (масштаб)', fontsize=10)
+                    ax2.tick_params(axis='y', labelleft=True)
+
+                    ax2.set_title('Усредненный спектр', fontsize=10, fontweight='normal')
+                    ax2.grid(True, alpha=0.3)
+
+                    plt.tight_layout()
+                    st.pyplot(fig, use_container_width=True)
+
+                    # Пики в вейвлет-спектре
+                    wavelet_peaks, _ = find_peaks(mean_power, height=np.mean(mean_power))
+                    if len(wavelet_peaks) > 0:
+                        dominant_scales = widths[wavelet_peaks]
+                        st.info(f"**Доминирующие масштабы:** {dominant_scales[:5]}")
+
+                except ImportError:
+                    st.warning("⚠️ Установите PyWavelets: `pip install PyWavelets`")
+                except Exception as e:
+                    st.error(f"Ошибка вейвлет-анализа: {e}")
         else:
             st.warning(f"⚠️ Недостаточно данных для спектрального анализа: {len(analysis_series)} точек (минимум 30)")
+    else:
+        st.info("ℹ️ Для спектрального анализа необходимы числовые колонки.")
 
 
     # ────────────────────────────────────────────────────────────
@@ -8972,8 +8999,10 @@ with tab_preprocessing:
             st.markdown("**Пропущенных периодов**")
             # Красный цвет если есть пропуски, зелёный если нет
             gap_color = "#dc2626" if gap_count > 0 else "#16a34a"
-            st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: {gap_color};'>{gap_count:,}</div>", 
-                    unsafe_allow_html=True)  # Форматирование с разделителями тысяч
+            # Форматируем число с разделителями тысяч (пробел вместо запятой)
+            gap_count_formatted = f"{gap_count:,}".replace(",", " ")
+            st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: {gap_color};'>{gap_count_formatted}</div>", 
+                    unsafe_allow_html=True)
         
         with c_diag3:
             st.markdown("**Std интервалов**")
@@ -9956,7 +9985,7 @@ with tab_preprocessing:
                         peaks, _ = find_peaks(amplitude, height=np.mean(amplitude) + np.std(amplitude))
                         dominant_periods = [1/xf[p] for p in peaks if xf[p] > 0 and xf[p] < 0.5]
                         
-                        # 🔧 Форматируем периоды с разделителями тысяч
+                        #  Форматируем периоды с разделителями тысяч
                         if dominant_periods:
                             periods_formatted = ', '.join([f'{p:,.1f}'.replace(",", " ") for p in dominant_periods[:3]])
                         else:
@@ -9973,7 +10002,7 @@ with tab_preprocessing:
                         freq_per, pxx_per = periodogram(series.values, fs=1.0, window='hann')
                         spectral_energy = np.sum(pxx_per)
                         
-                        # 🔧 Форматируем спектральную энергию с разделителями тысяч
+                        #  Форматируем спектральную энергию с разделителями тысяч
                         spectral_energy_formatted = f"{spectral_energy:,.2f}".replace(",", " ")
                         
                         st.metric(" Спектральная энергия", 
@@ -10005,7 +10034,7 @@ with tab_preprocessing:
                     st.divider()
                     
                     tab_fft, tab_per, tab_wave, tab_acf = st.tabs([
-                        "🔍 FFT спектр", 
+                        " FFT спектр", 
                         " Периодограмма", 
                         " Wavelet", 
                         " ACF/PACF"
@@ -10015,7 +10044,7 @@ with tab_preprocessing:
                         fig_fft = px.line(
                             x=xf[:n//2], 
                             y=amplitude,
-                            title="🔍 FFT: Амплитудный спектр",
+                            title="FFT: Амплитудный спектр",
                             labels={'x': 'Частота', 'y': 'Амплитуда'}
                         )
                         # Отметить пики
@@ -10038,7 +10067,7 @@ with tab_preprocessing:
                         fig_per = px.line(
                             x=freq_per, 
                             y=pxx_per,
-                            title="⚡ Периодограмма (спектральная плотность мощности)",
+                            title="Периодограмма (спектральная плотность мощности)",
                             labels={'x': 'Частота', 'y': 'Мощность'}
                         )
                         fig_per.update_layout(height=400, showlegend=False)
@@ -10053,11 +10082,30 @@ with tab_preprocessing:
                             
                             fig_wave = px.imshow(
                                 np.abs(cwtmatr),
-                                title="🌊 Wavelet Scalogram (CWT)",
+                                title="Wavelet Scalogram (CWT)",
                                 labels={'x': 'Время', 'y': 'Масштаб (период)'},
-                                color_continuous_scale='Viridis'
+                                color_continuous_scale='Viridis',
+                                aspect='auto'  # Автоматическое соотношение сторон
                             )
-                            fig_wave.update_layout(height=400)
+
+                            fig_wave.update_layout(
+                                height=600,  # Увеличена высота с 400 до 600
+                                yaxis=dict(
+                                    scaleanchor='x',
+                                    scaleratio=0.3,  # Соотношение Y к X (увеличивает Y)
+                                    title='Масштаб (период)',
+                                    tickmode='linear',
+                                    tick0=0,
+                                    dtick=20  # Шаг меток по Y
+                                ),
+                                xaxis=dict(
+                                    title='Время',
+                                    tickmode='linear',
+                                    tick0=0,
+                                    dtick=1000  # Шаг меток по X (1k, 2k, 3k...)
+                                )
+                            )
+
                             st.plotly_chart(fig_wave, use_container_width=True, key="wavelet_chart")
                         except ImportError:
                             st.warning("⚠️ Установите PyWavelets: `pip install PyWavelets`")
@@ -10071,8 +10119,8 @@ with tab_preprocessing:
                         
                         fig_acf = make_subplots(
                             rows=2, cols=1,
-                            subplot_titles=(" Автокорреляционная функция (ACF)", 
-                                        " Частная автокорреляционная функция (PACF)")
+                            subplot_titles=("Автокорреляционная функция (ACF)", 
+                                        "Частная автокорреляционная функция (PACF)")
                         )
 
                         fig_acf.add_trace(
