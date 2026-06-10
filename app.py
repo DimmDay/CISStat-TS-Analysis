@@ -4345,7 +4345,7 @@ with tab_validation:
                     
         **Что мы получим на выходе?** Интерактивный Data Quality Dashboard с детальным отчетом о проблемах, рекомендацией по доступным моделям прогнозирования и 
         сравнительным паспортом свойств ряда (v1.0 до валидации vs v1.1 после). Пользователь получает обновленный датафрейм в session_state.df, готовый к передаче 
-        в блок «Моделирование».
+        в блок «Предобработка».
         """)
 
     # ── ℹ️ ИНФОРМАЦИЯ О СОХРАНЕНИИ ДАННЫХ ────────────────────────────
@@ -8060,11 +8060,14 @@ with tab_preprocessing:
         - гомоскедастичность
         - нормальность распределения и др.
                     
-        **Цель раздела**. Применить математические преобразования, чтобы удовлетворить эти требования, сохранив при этом полезный сигнал (тренд, сезонность).
+        **Цель раздела**. Применить математические преобразования, чтобы удовлетворить эти требования, сохранив при этом полезный сигнал (тренд, цикличность, сезонность).
         Предобработка решает задачу превращения данных в формат, пригодный для машинного обучения.           
         
                     
         **Что мы получим на выходе?** Применив обратные преобразования после предобработки, мы имеем трансформированный датасет, готовый к загрузке в блок «Моделирование».
+        Пользователь получает рекомендации по доступным моделям прогнозирования и сравнительные паспорта свойств ряда для анализа их изменения:
+        - v1.0 до валидации vs v1.3 после предобработки
+        - v1.2 до предобработки vs v1.3 после предобработки. 
         """)
 
 
@@ -8210,707 +8213,713 @@ with tab_preprocessing:
     missing_issues = miss["summary"]["total_missing"] > 0
     missing_result = "✅ Пропуски отсутствуют" if not missing_issues else f"⚠️ Найдено {miss['summary']['total_missing']} пропусков ({miss['summary']['missing_rate_pct']:.1f}%)"
 
-    with st.container(border=True):
-        st.markdown("#####  Проверка на пропуски")
+    st.markdown("#####  Проверка на пропуски")
+    st.caption("Пропуски нарушают `DatetimeIndex`, делают невозможной STL-декомпозицию, "
+           "искажают ACF/PACF и ломают ARIMA/SARIMA.")
 
-        # Метрики и алгоритм — всегда в экспандере
-        with st.expander("Метрики и алгоритм", expanded=missing_issues):
-            st.markdown("**◻️ Метрики:** `% NaN = nulls/total`, макс. непрерывный разрыв.  \n"
-            "**◻️ Алгоритм:** `isnull().sum()`, кумулятивная сумма разрывов, сверка с `infer_freq()`.  \n"
-            "**◻️ Влияние на TS:** Пропуски нарушают `DatetimeIndex` → невозможна STL, искажает ACF/PACF.")
+    # Метрики и алгоритм — всегда в экспандере
+    with st.expander("Метрики и алгоритм", expanded=missing_issues):
+        st.markdown("**◻️ Метрики:** `% NaN = nulls/total`, макс. непрерывный разрыв.  \n"
+        "**◻️ Алгоритм:** `isnull().sum()`, кумулятивная сумма разрывов, сверка с `infer_freq()`.  \n"
+        "**◻️ Влияние на TS:** Пропуски нарушают `DatetimeIndex` → невозможна STL, искажает ACF/PACF.")
 
-        # Краткий результат — всегда виден
-        st.markdown(missing_result)
+    # Краткий результат — всегда виден
+    st.markdown(missing_result)
 
-        # 🔽 ПОЛНЫЙ ПАЙПЛАЙН — внутри экспандера с правильной логикой
-        with st.expander(" Полный пайплайн обработки пропусков", expanded=missing_issues):
-            if not missing_issues:
-                st.info("ℹ️ Пропуски не обнаружены. Разверните секцию для детального анализа механизма пропусков или превентивной настройки стратегий.")
+    # 🔽 ПОЛНЫЙ ПАЙПЛАЙН — внутри экспандера с правильной логикой
+    with st.expander(" Полный пайплайн обработки пропусков", expanded=missing_issues):
+        if not missing_issues:
+            st.info("ℹ️ Пропуски не обнаружены. Разверните секцию для детального анализа механизма пропусков или превентивной настройки стратегий.")
 
-            st.markdown("###  Статистическая панель анализа пропусков")
+        st.markdown("###  Статистическая панель анализа пропусков")
 
-            # ── Инициализация состояний ─────────────────────────────────
-            if "df_missing_orig" not in st.session_state:
-                st.session_state.df_missing_orig = df.copy()
-            if "df_missing_work" not in st.session_state:
-                st.session_state.df_missing_work = df.copy()
-            if "missing_strategy" not in st.session_state:
-                st.session_state.missing_strategy = {}
+        # ── Инициализация состояний ─────────────────────────────────
+        if "df_missing_orig" not in st.session_state:
+            st.session_state.df_missing_orig = df.copy()
+        if "df_missing_work" not in st.session_state:
+            st.session_state.df_missing_work = df.copy()
+        if "missing_strategy" not in st.session_state:
+            st.session_state.missing_strategy = {}
 
-            df_work = st.session_state.df_missing_work
-            df_orig = st.session_state.df_missing_orig
+        df_work = st.session_state.df_missing_work
+        df_orig = st.session_state.df_missing_orig
 
-            # ── 1️⃣ СТАТИСТИКА И АНАЛИЗ МЕХАНИЗМА ───────────────────────
-            col_stats = []
-            for c in df_work.columns:
-                dtype = str(df_work[c].dtype)
-                n_miss = df_work[c].isnull().sum()
-                pct_miss = (n_miss / len(df_work) * 100) if len(df_work) > 0 else 0
-                n_uniq = df_work[c].nunique()
-                if pct_miss == 0:
-                    rec = "✅ Чисто"
-                elif pct_miss > 50:
-                    rec = "🗑️ Обработать столбец"
-                elif df_work[c].dtype in ['object', 'string', 'category']:
-                    rec = "🔄 Заполнить модой"
-                elif pct_miss < 5:
-                    rec = "🗑️ Обработать строки"
-                else:
-                    rec = "⚡ Заполнить медианой"
-                col_stats.append({"Столбец": c, "Тип": dtype[:10], "Пропуски": int(n_miss), "%": f"{pct_miss:.1f}%", "Уник.": n_uniq, "Рекомендация": rec})
+        # ── 1️⃣ СТАТИСТИКА И АНАЛИЗ МЕХАНИЗМА ───────────────────────
+        col_stats = []
+        for c in df_work.columns:
+            dtype = str(df_work[c].dtype)
+            n_miss = df_work[c].isnull().sum()
+            pct_miss = (n_miss / len(df_work) * 100) if len(df_work) > 0 else 0
+            n_uniq = df_work[c].nunique()
+            if pct_miss == 0:
+                rec = "✅ Чисто"
+            elif pct_miss > 50:
+                rec = "🗑️ Обработать столбец"
+            elif df_work[c].dtype in ['object', 'string', 'category']:
+                rec = "🔄 Заполнить модой"
+            elif pct_miss < 5:
+                rec = "🗑️ Обработать строки"
+            else:
+                rec = "⚡ Заполнить медианой"
+            col_stats.append({"Столбец": c, "Тип": dtype[:10], "Пропуски": int(n_miss), "%": f"{pct_miss:.1f}%", "Уник.": n_uniq, "Рекомендация": rec})
 
-            stats_df = pd.DataFrame(col_stats).sort_values("%", key=lambda x: x.str.replace('%','').astype(float), ascending=False)
+        stats_df = pd.DataFrame(col_stats).sort_values("%", key=lambda x: x.str.replace('%','').astype(float), ascending=False)
 
-            def color_miss(val):
-                if isinstance(val, str) and '%' in val:
-                    try:
-                        pct = float(val.replace('%',''))
-                        if pct > 20: return 'color: #dc2626; font-weight: bold;'
-                        elif pct >= 5: return 'color: #d97706; font-weight: bold;'
-                        else: return 'color: #16a34a;'
-                    except: pass
-                return ''
+        def color_miss(val):
+            if isinstance(val, str) and '%' in val:
+                try:
+                    pct = float(val.replace('%',''))
+                    if pct > 20: return 'color: #dc2626; font-weight: bold;'
+                    elif pct >= 5: return 'color: #d97706; font-weight: bold;'
+                    else: return 'color: #16a34a;'
+                except: pass
+            return ''
 
-            st.dataframe(stats_df.style.map(color_miss, subset=['%']), use_container_width=True, height=250, hide_index=True)
+        st.dataframe(stats_df.style.map(color_miss, subset=['%']), use_container_width=True, height=250, hide_index=True)
 
-            rows_with_miss = df_work.isnull().any(axis=1).sum()
-            rows_empty = df_work.isnull().all(axis=1).sum()
-            miss_per_row = df_work.isnull().sum(axis=1)
+        rows_with_miss = df_work.isnull().any(axis=1).sum()
+        rows_empty = df_work.isnull().all(axis=1).sum()
+        miss_per_row = df_work.isnull().sum(axis=1)
 
-            c1, c2 = st.columns(2)
-            with c1:
-                st.metric("📉 Строк с пропусками", f"{rows_with_miss} ({rows_with_miss/len(df_work)*100:.1f}%)")
-                st.metric("️ Полностью пустых строк", rows_empty)
-            with c2:
-                if rows_with_miss > 0:
-                    fig_hist = px.histogram(x=miss_per_row[miss_per_row>0], nbins=int(min(20, miss_per_row.max())), title="📊 Распределение пропусков по строкам", labels={'x': 'Кол-во пропусков в строке', 'y': 'Кол-во строк'})
-                    fig_hist.update_layout(margin=dict(l=20, r=20, t=30, b=20), height=200)
-                    st.plotly_chart(fig_hist, use_container_width=True)
-                else:
-                    st.info("ℹ️ Пропусков нет")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.metric("📉 Строк с пропусками", f"{rows_with_miss} ({rows_with_miss/len(df_work)*100:.1f}%)")
+            st.metric("️ Полностью пустых строк", rows_empty)
+        with c2:
+            if rows_with_miss > 0:
+                fig_hist = px.histogram(x=miss_per_row[miss_per_row>0], nbins=int(min(20, miss_per_row.max())), title="📊 Распределение пропусков по строкам", labels={'x': 'Кол-во пропусков в строке', 'y': 'Кол-во строк'})
+                fig_hist.update_layout(margin=dict(l=20, r=20, t=30, b=20), height=200)
+                st.plotly_chart(fig_hist, use_container_width=True)
+            else:
+                st.info("ℹ️ Пропусков нет")
 
-            # Анализ механизма (MCAR/MAR)
-            with st.expander(" Анализ механизма пропусков (MCAR/MAR/MNAR)", expanded=False):
-                miss_ind = df_work.isnull().astype(int)
-                if miss_ind.sum().sum() > 0:
-                    corr_miss = miss_ind.corr()
-                    fig_heat = px.imshow(corr_miss, text_auto='.2f', color_continuous_scale='Blues', title="🔥 Корреляция пропусков между столбцами (MAR-диагностика)")
-                    st.plotly_chart(fig_heat, use_container_width=True)
-                    mar_pairs = []
-                    for c1 in miss_ind.columns:
-                        for c2 in miss_ind.columns:
-                            if c1 != c2 and corr_miss.loc[c1, c2] > 0.2:
-                                mar_pairs.append(f"`{c1}` ↔ `{c2}` (ρ={corr_miss.loc[c1,c2]:.2f})")
-                    if mar_pairs:
-                        st.warning(f"⚠️ **Обнаружены признаки MAR:** {', '.join(mar_pairs[:3])}. Рекомендуется множественное восстановление или индикаторные переменные.")
-                    else:
-                        st.info("ℹ️ Сильных корреляций между пропусками нет. Возможно MCAR или MNAR. Для точного теста Литтла установите библиотеку `pingouin`.")
-                else:
-                    st.success("✅ Пропусков нет, механизм не применим")
-
-            st.divider()
-
-            # ── 2️⃣ ИНТЕРАКТИВНЫЕ ВИЗУАЛИЗАЦИИ ──────────────────────────
-            st.markdown("###  Визуализация пропусков")
-            viz_type = st.selectbox("Тип графика", ["🔲 Матрица пропусков", "🔥 Тепловая карта корреляции", "📦 Сравнение распределений (Boxplot)"], index=1, key="miss_viz_type")
-
-            if viz_type == "🔲 Матрица пропусков":
-                miss_mat = df_work.isnull().astype(int)
-                fig_mat = px.imshow(miss_mat.T, aspect='auto', color_continuous_scale=['#2563EB', '#FCA5A5'], labels=dict(x="Строка", y="Столбец", color="Пропуск"), title="🔲 Матрица пропусков (Красный = пропуск)")
-                fig_mat.update_xaxes(showticklabels=False)
-                fig_mat.update_layout(height=400, margin=dict(l=40, r=20, t=40, b=20))
-                st.plotly_chart(fig_mat, use_container_width=True)
-            elif viz_type == "🔥 Тепловая карта корреляции":
-                corr_miss = df_work.isnull().astype(int).corr()
-                fig_heat = px.imshow(corr_miss, text_auto='.2f', color_continuous_scale='RdBu_r', title="🔥 Корреляция наличия пропусков")
+        # Анализ механизма (MCAR/MAR)
+        with st.expander(" Анализ механизма пропусков (MCAR/MAR/MNAR) помогает выбрать корректную стратегию восстановления", expanded=False):
+            miss_ind = df_work.isnull().astype(int)
+            if miss_ind.sum().sum() > 0:
+                corr_miss = miss_ind.corr()
+                fig_heat = px.imshow(corr_miss, text_auto='.2f', color_continuous_scale='Blues', title="🔥 Корреляция пропусков между столбцами (MAR-диагностика)")
                 st.plotly_chart(fig_heat, use_container_width=True)
-            elif viz_type == "📦 Сравнение распределений (Boxplot)":
-                col_box = st.selectbox("Столбец для сравнения", df_work.select_dtypes(include='number').columns.tolist(), key="miss_col_box")
-                miss_col = st.selectbox("Столбец-индикатор", [c for c in df_work.columns if c != col_box], key="miss_col_ind")
-                if col_box and miss_col:
-                    df_plot = df_work.copy()
-                    df_plot['Has_Miss'] = df_plot[miss_col].isnull().map({True: "С пропуском", False: "Без пропуска"})
-                    fig_box = px.box(df_plot, x='Has_Miss', y=col_box, color='Has_Miss', color_discrete_map={"С пропуском": "#ef4444", "Без пропуска": "#94a3b8"}, title=f"📦 Влияние пропусков в `{miss_col}` на распределение `{col_box}`")
-                    st.plotly_chart(fig_box, use_container_width=True)
+                mar_pairs = []
+                for c1 in miss_ind.columns:
+                    for c2 in miss_ind.columns:
+                        if c1 != c2 and corr_miss.loc[c1, c2] > 0.2:
+                            mar_pairs.append(f"`{c1}` ↔ `{c2}` (ρ={corr_miss.loc[c1,c2]:.2f})")
+                if mar_pairs:
+                    st.warning(f"⚠️ **Обнаружены признаки MAR:** {', '.join(mar_pairs[:3])}. Рекомендуется множественное восстановление или индикаторные переменные.")
+                else:
+                    st.info("ℹ️ Сильных корреляций между пропусками нет. Возможно MCAR или MNAR. Для точного теста Литтла установите библиотеку `pingouin`.")
+            else:
+                st.success("✅ Пропусков нет, механизм не применим")
 
-            st.divider()
+        st.divider()
 
-            # ── 3️⃣ ТАБЛИЦА С МАРКИРОВКОЙ (СТАБИЛЬНАЯ ВЕРСИЯ) ───────────
-            st.markdown("###  Таблица данных с маркировкой пропусков")
+        # ── 2️⃣ ИНТЕРАКТИВНЫЕ ВИЗУАЛИЗАЦИИ ──────────────────────────
+        st.markdown("###  Визуализация пропусков")
+        viz_type = st.selectbox("Тип графика", ["🔲 Матрица пропусков", "🔥 Тепловая карта корреляции", "📦 Сравнение распределений (Boxplot)"], index=1, key="miss_viz_type")
 
-            # 🔧 ИСПРАВЛЕНИЕ: Убираем st.columns(), оставляем только radio с horizontal=True
-            show_filter = st.radio(
-                "Фильтр:",
-                ["Все", "Пропуски", "Без пропусков"],
-                horizontal=True,
-                key="miss_table_filter",
-                label_visibility="collapsed"
+        if viz_type == "🔲 Матрица пропусков":
+            miss_mat = df_work.isnull().astype(int)
+            fig_mat = px.imshow(miss_mat.T, aspect='auto', color_continuous_scale=['#2563EB', '#FCA5A5'], labels=dict(x="Строка", y="Столбец", color="Пропуск"), title="🔲 Матрица пропусков (Красный = пропуск)")
+            fig_mat.update_xaxes(showticklabels=False)
+            fig_mat.update_layout(height=400, margin=dict(l=40, r=20, t=40, b=20))
+            st.plotly_chart(fig_mat, use_container_width=True)
+        elif viz_type == "🔥 Тепловая карта корреляции":
+            corr_miss = df_work.isnull().astype(int).corr()
+            fig_heat = px.imshow(corr_miss, text_auto='.2f', color_continuous_scale='RdBu_r', title="🔥 Корреляция наличия пропусков")
+            st.plotly_chart(fig_heat, use_container_width=True)
+        elif viz_type == "📦 Сравнение распределений (Boxplot)":
+            col_box = st.selectbox("Столбец для сравнения", df_work.select_dtypes(include='number').columns.tolist(), key="miss_col_box")
+            miss_col = st.selectbox("Столбец-индикатор", [c for c in df_work.columns if c != col_box], key="miss_col_ind")
+            if col_box and miss_col:
+                df_plot = df_work.copy()
+                df_plot['Has_Miss'] = df_plot[miss_col].isnull().map({True: "С пропуском", False: "Без пропуска"})
+                fig_box = px.box(df_plot, x='Has_Miss', y=col_box, color='Has_Miss', color_discrete_map={"С пропуском": "#ef4444", "Без пропуска": "#94a3b8"}, title=f"📦 Влияние пропусков в `{miss_col}` на распределение `{col_box}`")
+                st.plotly_chart(fig_box, use_container_width=True)
+
+        st.divider()
+
+        # ── 3️⃣ ТАБЛИЦА С МАРКИРОВКОЙ (СТАБИЛЬНАЯ ВЕРСИЯ) ───────────
+        st.markdown("###  Таблица данных с маркировкой пропусков")
+
+        # 🔧 ИСПРАВЛЕНИЕ: Убираем st.columns(), оставляем только radio с horizontal=True
+        show_filter = st.radio(
+            "Фильтр:",
+            ["Все", "Пропуски", "Без пропусков"],
+            horizontal=True,
+            key="miss_table_filter",
+            label_visibility="collapsed"
+        )
+
+        # Подготовка данных
+        mask_miss = df_work.isnull().any(axis=1)
+        if show_filter == "Пропуски":
+            df_view = df_work[mask_miss].copy() if mask_miss.any() else df_work.iloc[:0].copy()
+        elif show_filter == "Без пропусков":
+            df_view = df_work[~mask_miss].copy() if (~mask_miss).any() else df_work.iloc[:0].copy()
+        else:
+            df_view = df_work.copy()
+
+        # Добавление статуса
+        df_view = df_view.copy()
+        df_view.insert(0, '_STATUS', df_view.index.map(lambda idx: "🔴 Пусто" if df_work.loc[idx].isnull().any() else "🟢 Норма"))
+
+        # 🔧 ГЛАВНЫЙ ФИКС: Таблица в контейнере с ФИКСИРОВАННОЙ высотой
+        with st.container(border=True):
+            st.markdown("""
+            <style>
+                div[data-testid="stVerticalBlock"] { gap: 0.5rem; }
+            </style>
+            """, unsafe_allow_html=True)
+
+            edited_df = st.data_editor(
+                df_view,
+                use_container_width=True,
+                height=300,
+                num_rows="dynamic",
+                disabled=['_STATUS'],
+                key="miss_editor",
+                column_config={
+                    "_STATUS": st.column_config.TextColumn("Статус", disabled=True, width="small", help="🔴 Пусто / 🟢 Норма")
+                }
             )
 
-            # Подготовка данных
-            mask_miss = df_work.isnull().any(axis=1)
-            if show_filter == "Пропуски":
-                df_view = df_work[mask_miss].copy() if mask_miss.any() else df_work.iloc[:0].copy()
-            elif show_filter == "Без пропусков":
-                df_view = df_work[~mask_miss].copy() if (~mask_miss).any() else df_work.iloc[:0].copy()
+            # Кнопка сохранения
+            c_save1, c_save2 = st.columns([4, 1])
+            with c_save1:
+                st.caption("💡 Отредактируйте вручную или используйте стратегии ниже")
+            with c_save2:
+                if st.button("💾 Сохранить", key="btn_save_manual_missing", use_container_width=True):
+                    if '_STATUS' in edited_df.columns:
+                        edited_df = edited_df.drop(columns=['_STATUS'])
+                    df_work.update(edited_df)
+                    st.session_state.df_missing_work = df_work
+                    st.session_state.df = df_work
+                    st.session_state.validation_ready = False
+                    st.toast("✅ Правки сохранены!", icon="✅")
+                    st.rerun()
+
+        st.divider()
+
+        # ── 4️⃣ ПАНЕЛЬ УПРАВЛЕНИЯ ОБРАБОТКОЙ ────────────────────────
+        st.markdown("###  Стратегии обработки пропусков")
+        c1, c2 = st.columns([2, 1])
+        with c1:
+            fill_strategy = st.radio(
+                "Выберите стратегию:",
+                [" Удалить строки", " Медиана/мода", " Среднее/мода", " Ноль/Unknown", " Интерполяция", " Индикатор"],
+                key="fill_strategy",
+                horizontal=False,
+                label_visibility="collapsed"
+            )
+            # Динамические подсказки
+            if "Удалить" in fill_strategy:
+                st.warning(f"⚠️ Будет удалено **{rows_with_miss} строк** ({rows_with_miss/len(df_work)*100:.1f}%)")
+            elif "медианой" in fill_strategy or "Медиана" in fill_strategy:
+                st.info("📊 **Медиана (числовые)/мода (категориальные)** — устойчиво к выбросам")
+            elif "средним" in fill_strategy or "Среднее" in fill_strategy:
+                st.info("📈 **Среднее** — для нормального распределения")
+            elif "нулём" in fill_strategy or "Ноль" in fill_strategy:
+                st.info("0️⃣ **Константа** — просто, но может исказать данные")
+            elif "Интерполяция" in fill_strategy:
+                st.info("↕️ **Интерполяция** — для временных рядов")
+            elif "индикатор" in fill_strategy:
+                st.info("🚩 **Индикатор** — добавит колонки miss_* с флагом 0/1")
+        with c2:
+            # 🔧 ИСПРАВЛЕНИЕ: Кнопка "Применить" удалена.
+            # Пустой блок для визуального выравнивания с другими модулями
+            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+
+        # Кнопка-триггер превью (отдельно от логики превью)
+        if st.button(" Показать прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_fill_preview"):
+            st.session_state.show_fill_preview = True
+            st.rerun()
+
+        # ── 🔍 ПРЕВЬЮ ВЛИЯНИЯ (с безопасным доступом к session_state) ────────────────────
+        # 🔧 ГЛАВНОЕ ИСПРАВЛЕНИЕ: Используем .get() вместо прямого доступа
+        show_preview = st.session_state.get("show_fill_preview", False)
+
+        if show_preview:
+            strategy = fill_strategy
+            st.markdown("#####  Прогноз влияния на статистику:")
+
+            df_preview = df_work.copy()
+            num_cols = df_preview.select_dtypes(include='number').columns.tolist()
+            cat_cols = df_preview.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
+
+            # Применение стратегии для превью
+            if "Удалить" in strategy:
+                df_preview = df_preview.dropna()
+                note = "(удаление)"
+            elif "медианой" in strategy or "Медиана" in strategy:
+                for col in num_cols:
+                    if df_preview[col].isnull().any():
+                        df_preview[col] = df_preview[col].fillna(df_preview[col].median())
+                for col in cat_cols:
+                    if df_preview[col].isnull().any():
+                        mode = df_preview[col].mode()[0] if not df_preview[col].mode().empty else "Unknown"
+                        df_preview[col] = df_preview[col].fillna(mode)
+                note = "(медиана/мода)"
+            elif "средним" in strategy or "Среднее" in strategy:
+                for col in num_cols:
+                    if df_preview[col].isnull().any():
+                        df_preview[col] = df_preview[col].fillna(df_preview[col].mean())
+                for col in cat_cols:
+                    if df_preview[col].isnull().any():
+                        mode = df_preview[col].mode()[0] if not df_preview[col].mode().empty else "Unknown"
+                        df_preview[col] = df_preview[col].fillna(mode)
+                note = "(среднее/мода)"
+            elif "нулём" in strategy or "Ноль" in fill_strategy:
+                for col in num_cols: df_preview[col] = df_preview[col].fillna(0)
+                for col in cat_cols: df_preview[col] = df_preview[col].fillna("Unknown")
+                note = "(константа)"
+            elif "Интерполяция" in strategy:
+                for col in num_cols:
+                    if df_preview[col].isnull().any():
+                        df_preview[col] = df_preview[col].interpolate(method='linear')
+                note = "(интерполяция)"
+            elif "индикатор" in strategy:
+                for col in df_preview.columns:
+                    if df_preview[col].isnull().any():
+                        df_preview[f"miss_{col}"] = df_preview[col].isnull().astype(int)
+                note = "(индикатор)"
             else:
-                df_view = df_work.copy()
+                note = "(без изменений)"
 
-            # Добавление статуса
-            df_view = df_view.copy()
-            df_view.insert(0, '_STATUS', df_view.index.map(lambda idx: "🔴 Пусто" if df_work.loc[idx].isnull().any() else "🟢 Норма"))
+            # Метрики (4 колонки)
+            c_p1, c_p2, c_p3, c_p4 = st.columns(4)
+            c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}", delta=f"{len(df_preview)-len(df_work):+}")
 
-            # 🔧 ГЛАВНЫЙ ФИКС: Таблица в контейнере с ФИКСИРОВАННОЙ высотой
-            with st.container(border=True):
-                st.markdown("""
-                <style>
-                    div[data-testid="stVerticalBlock"] { gap: 0.5rem; }
-                </style>
-                """, unsafe_allow_html=True)
+            if num_cols:
+                col = num_cols[0]
+                def safe_stat(df, c, func):
+                    return func(df[c]) if not df.empty and c in df.columns and df[c].notna().any() else 0.0
+                m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
+                m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
+                fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
+                delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
+                c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
-                edited_df = st.data_editor(
-                    df_view,
-                    use_container_width=True,
-                    height=300,
-                    num_rows="dynamic",
-                    disabled=['_STATUS'],
-                    key="miss_editor",
-                    column_config={
-                        "_STATUS": st.column_config.TextColumn("Статус", disabled=True, width="small", help="🔴 Пусто / 🟢 Норма")
-                    }
-                )
-
-                # Кнопка сохранения
-                c_save1, c_save2 = st.columns([4, 1])
-                with c_save1:
-                    st.caption("💡 Отредактируйте вручную или используйте стратегии ниже")
-                with c_save2:
-                    if st.button("💾 Сохранить", key="btn_save_manual_missing", use_container_width=True):
-                        if '_STATUS' in edited_df.columns:
-                            edited_df = edited_df.drop(columns=['_STATUS'])
-                        df_work.update(edited_df)
-                        st.session_state.df_missing_work = df_work
-                        st.session_state.df = df_work
-                        st.session_state.validation_ready = False
-                        st.toast("✅ Правки сохранены!", icon="✅")
-                        st.rerun()
-
+            # Кнопки подтверждения
             st.divider()
+            c_ok, c_cancel = st.columns(2)
+            with c_ok:
+                if st.button("💾 Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_fill"):
+                    # 🔧 СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
+                    st.session_state.df = df_preview.copy()
+                    st.session_state.validation_ready = False
+                    st.session_state.show_fill_preview = False
+                    
+                    # 🔥 Удаляем все рабочие копии - они пересоздадутся из обновлённого df
+                    work_dfs = [
+                        "df_missing_work", "df_pattern_work", "df_range_work",
+                        "df_outlier_work", "df_inclusion_work", "df_referential_work",
+                        "df_text_work", "df_consistency_work", "df_uniqueness_work",
+                        "df_regularity_work"
+                    ]
+                    for work_df_name in work_dfs:
+                        if work_df_name in st.session_state:
+                            del st.session_state[work_df_name]
+                    
+                    # Сбрасываем результаты валидации
+                    if "val_results" in st.session_state:
+                        del st.session_state.val_results
+                    
+                    st.success("✅ Стратегия применена! Перезапустите валидацию.")
+                    st.rerun()
+            with c_cancel:
+                if st.button(" Отмена", use_container_width=True, key="btn_cancel_fill"):
+                    st.session_state.show_fill_preview = False
+                    st.rerun()
 
-            # ── 4️⃣ ПАНЕЛЬ УПРАВЛЕНИЯ ОБРАБОТКОЙ ────────────────────────
-            st.markdown("###  Стратегии обработки пропусков")
-            c1, c2 = st.columns([2, 1])
-            with c1:
-                fill_strategy = st.radio(
-                    "Выберите стратегию:",
-                    [" Удалить строки", " Медиана/мода", " Среднее/мода", " Ноль/Unknown", " Интерполяция", " Индикатор"],
-                    key="fill_strategy",
-                    horizontal=False,
-                    label_visibility="collapsed"
-                )
-                # Динамические подсказки
-                if "Удалить" in fill_strategy:
-                    st.warning(f"⚠️ Будет удалено **{rows_with_miss} строк** ({rows_with_miss/len(df_work)*100:.1f}%)")
-                elif "медианой" in fill_strategy or "Медиана" in fill_strategy:
-                    st.info("📊 **Медиана (числовые)/мода (категориальные)** — устойчиво к выбросам")
-                elif "средним" in fill_strategy or "Среднее" in fill_strategy:
-                    st.info("📈 **Среднее** — для нормального распределения")
-                elif "нулём" in fill_strategy or "Ноль" in fill_strategy:
-                    st.info("0️⃣ **Константа** — просто, но может исказить данные")
-                elif "Интерполяция" in fill_strategy:
-                    st.info("↕️ **Интерполяция** — для временных рядов")
-                elif "индикатор" in fill_strategy:
-                    st.info("🚩 **Индикатор** — добавит колонки miss_* с флагом 0/1")
-            with c2:
-                # 🔧 ИСПРАВЛЕНИЕ: Кнопка "Применить" удалена.
-                # Пустой блок для визуального выравнивания с другими модулями
-                st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+    # === КОНЕЦ ПОЛНОГО ПАЙПЛАЙНА ПРОПУСКОВ ===
 
-            # Кнопка-триггер превью (отдельно от логики превью)
-            if st.button(" Показать прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_fill_preview"):
-                st.session_state.show_fill_preview = True
-                st.rerun()
-
-            # ── 🔍 ПРЕВЬЮ ВЛИЯНИЯ (с безопасным доступом к session_state) ────────────────────
-            # 🔧 ГЛАВНОЕ ИСПРАВЛЕНИЕ: Используем .get() вместо прямого доступа
-            show_preview = st.session_state.get("show_fill_preview", False)
-
-            if show_preview:
-                strategy = fill_strategy
-                st.markdown("#####  Прогноз влияния на статистику:")
-
-                df_preview = df_work.copy()
-                num_cols = df_preview.select_dtypes(include='number').columns.tolist()
-                cat_cols = df_preview.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
-
-                # Применение стратегии для превью
-                if "Удалить" in strategy:
-                    df_preview = df_preview.dropna()
-                    note = "(удаление)"
-                elif "медианой" in strategy or "Медиана" in strategy:
-                    for col in num_cols:
-                        if df_preview[col].isnull().any():
-                            df_preview[col] = df_preview[col].fillna(df_preview[col].median())
-                    for col in cat_cols:
-                        if df_preview[col].isnull().any():
-                            mode = df_preview[col].mode()[0] if not df_preview[col].mode().empty else "Unknown"
-                            df_preview[col] = df_preview[col].fillna(mode)
-                    note = "(медиана/мода)"
-                elif "средним" in strategy or "Среднее" in strategy:
-                    for col in num_cols:
-                        if df_preview[col].isnull().any():
-                            df_preview[col] = df_preview[col].fillna(df_preview[col].mean())
-                    for col in cat_cols:
-                        if df_preview[col].isnull().any():
-                            mode = df_preview[col].mode()[0] if not df_preview[col].mode().empty else "Unknown"
-                            df_preview[col] = df_preview[col].fillna(mode)
-                    note = "(среднее/мода)"
-                elif "нулём" in strategy or "Ноль" in fill_strategy:
-                    for col in num_cols: df_preview[col] = df_preview[col].fillna(0)
-                    for col in cat_cols: df_preview[col] = df_preview[col].fillna("Unknown")
-                    note = "(константа)"
-                elif "Интерполяция" in strategy:
-                    for col in num_cols:
-                        if df_preview[col].isnull().any():
-                            df_preview[col] = df_preview[col].interpolate(method='linear')
-                    note = "(интерполяция)"
-                elif "индикатор" in strategy:
-                    for col in df_preview.columns:
-                        if df_preview[col].isnull().any():
-                            df_preview[f"miss_{col}"] = df_preview[col].isnull().astype(int)
-                    note = "(индикатор)"
-                else:
-                    note = "(без изменений)"
-
-                # Метрики (4 колонки)
-                c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}", delta=f"{len(df_preview)-len(df_work):+}")
-
-                if num_cols:
-                    col = num_cols[0]
-                    def safe_stat(df, c, func):
-                        return func(df[c]) if not df.empty and c in df.columns and df[c].notna().any() else 0.0
-                    m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
-                    m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
-                    fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
-                    delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                    c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                    c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                    c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
-
-                # Кнопки подтверждения
-                st.divider()
-                c_ok, c_cancel = st.columns(2)
-                with c_ok:
-                    if st.button("💾 Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_fill"):
-                        # 🔧 СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
-                        st.session_state.df = df_preview.copy()
-                        st.session_state.validation_ready = False
-                        st.session_state.show_fill_preview = False
-                        
-                        # 🔥 Удаляем все рабочие копии - они пересоздадутся из обновлённого df
-                        work_dfs = [
-                            "df_missing_work", "df_pattern_work", "df_range_work",
-                            "df_outlier_work", "df_inclusion_work", "df_referential_work",
-                            "df_text_work", "df_consistency_work", "df_uniqueness_work",
-                            "df_regularity_work"
-                        ]
-                        for work_df_name in work_dfs:
-                            if work_df_name in st.session_state:
-                                del st.session_state[work_df_name]
-                        
-                        # Сбрасываем результаты валидации
-                        if "val_results" in st.session_state:
-                            del st.session_state.val_results
-                        
-                        st.success("✅ Стратегия применена! Перезапустите валидацию.")
-                        st.rerun()
-                with c_cancel:
-                    if st.button(" Отмена", use_container_width=True, key="btn_cancel_fill"):
-                        st.session_state.show_fill_preview = False
-                        st.rerun()
-
-        # === КОНЕЦ ПОЛНОГО ПАЙПЛАЙНА ПРОПУСКОВ ===
-
-        # 🔹 КНОПКА И ТАБЛИЦА СРАВНЕНИЯ ПОСЛЕ ПРОПУСКОВ
-        if st.button(" Пересчитать свойства после преобразования (пропуски)", type="primary", key="btn_compare_missing"):
-            target = st.session_state.get("prep_target_col")
-            if target and not st.session_state.df.empty:
-                s_after = st.session_state.df[target].dropna()
-                props_after = _calc_ts_props(s_after)
-                _show_comparison_table(st.session_state.prep_props_baseline, props_after, "Очистка пропусков")
-                st.session_state.prep_props_baseline = props_after  # Обновляем baseline для следующего этапа
+    # 🔹 КНОПКА И ТАБЛИЦА СРАВНЕНИЯ ПОСЛЕ ПРОПУСКОВ
+    if st.button(" Пересчитать свойства после преобразования (пропуски)", type="primary", key="btn_compare_missing"):
+        target = st.session_state.get("prep_target_col")
+        if target and not st.session_state.df.empty:
+            s_after = st.session_state.df[target].dropna()
+            props_after = _calc_ts_props(s_after)
+            _show_comparison_table(st.session_state.prep_props_baseline, props_after, "Очистка пропусков")
+            st.session_state.prep_props_baseline = props_after  # Обновляем baseline для следующего этапа
 
     # ═══════════════════════════════════════════════════════
     # 🔹 2. ПРОВЕРКА НА ВЫБРОСЫ
     # ═══════════════════════════════════════════════════════
-        outlier_issues = outl["summary"]["total_outliers"] > 0
-        outlier_result = "✅ Выбросы не обнаружены" if not outlier_issues else f"⚠️ Найдено {outl['summary']['total_outliers']} выбросов"
+    st.divider()
+    outlier_issues = outl["summary"]["total_outliers"] > 0
+    outlier_result = "✅ Выбросы не обнаружены" if not outlier_issues else f"⚠️ Найдено {outl['summary']['total_outliers']} выбросов"
 
-        with st.container(border=True):
-            st.markdown("#####  Проверка на выбросы")
-            with st.expander("Метрики и алгоритм", expanded=outlier_issues):
-                st.markdown("**◻️ Метрики:** Z-score (`|x-μ|/σ>3`), IQR-границы, `% outliers`.  \n"
-                "**◻️ Алгоритм:** Квантили `Q1/Q3`, стандартное отклонение, анализ остатков STL.  \n"
-                "**◻️ Влияние на TS:** Завышают дисперсию, ломают тесты стационарности (ADF/KPSS).")
-            st.markdown(outlier_result)
+    st.markdown("#####  Проверка на выбросы")
+    st.caption("Выбросы завышают дисперсию, искажают оценки тренда и ломают тесты стационарности "
+           "(ADF/KPSS).")
 
-            # ───────────────────────────────────────────────────────────
-            # 🔽 ПОЛНЫЙ ПАЙПЛАЙН ОБРАБОТКИ ВЫБРОСОВ (Унифицированная версия)
-            # ───────────────────────────────────────────────────────────
-            # CSS для уменьшения заголовков
-            st.markdown("""
-            <style>
-            .st-emotion-cache-3o718f h3 {
-                font-size: 1.25rem !important;
-                font-weight: 600;
-                padding: 0.5rem 0px 0.75rem;
-            }
-            </style>
-            """, unsafe_allow_html=True)
+    with st.expander("Метрики и алгоритм", expanded=outlier_issues):
+        st.markdown("**◻️ Метрики:** Z-score (`|x-μ|/σ>3`), IQR-границы, `% outliers`.  \n"
+        "**◻️ Алгоритм:** Квантили `Q1/Q3`, стандартное отклонение, анализ остатков STL.  \n"
+        "**◻️ Влияние на TS:** Завышают дисперсию, ломают тесты стационарности (ADF/KPSS).  \n"
+        "**◻️ Описание:** Поддерживаются 4 метода обнаружения: IQR, Z-score, Modified Z-score (MAD) и процентильный — "
+        "с автоматической рекомендацией по асимметрии и объёму выборки.")
+    st.markdown(outlier_result)
+
+    # ───────────────────────────────────────────────────────────
+    # 🔽 ПОЛНЫЙ ПАЙПЛАЙН ОБРАБОТКИ ВЫБРОСОВ (Унифицированная версия)
+    # ───────────────────────────────────────────────────────────
+    # CSS для уменьшения заголовков
+    st.markdown("""
+    <style>
+    .st-emotion-cache-3o718f h3 {
+        font-size: 1.25rem !important;
+        font-weight: 600;
+        padding: 0.5rem 0px 0.75rem;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 
-            if outlier_issues:
-                with st.expander(" Полный пайплайн обработки выбросов", expanded=True):
-                    st.markdown("###  Работа с выбросами")
+    if outlier_issues:
+        with st.expander(" Полный пайплайн обработки выбросов", expanded=True):
+            st.markdown("###  Работа с выбросами")
 
-                    # Инициализация session_state
-                    if "outlier_mask" not in st.session_state:
-                        st.session_state.outlier_mask = pd.Series([False] * len(df))
-                    if "show_outlier_preview" not in st.session_state:
-                        st.session_state.show_outlier_preview = False
+            # Инициализация session_state
+            if "outlier_mask" not in st.session_state:
+                st.session_state.outlier_mask = pd.Series([False] * len(df))
+            if "show_outlier_preview" not in st.session_state:
+                st.session_state.show_outlier_preview = False
 
-                    num_cols = df.select_dtypes(include='number').columns.tolist()
+            num_cols = df.select_dtypes(include='number').columns.tolist()
 
-                    if not num_cols:
-                        st.info("ℹ️ Нет числовых колонок для анализа выбросов.")
-                    else:
-                        # ── 1️⃣ НАСТРОЙКА ОБНАРУЖЕНИЯ ──────────────────────
-                        with st.expander(" Настройка обнаружения выбросов", expanded=True):
-                            c1, c2 = st.columns(2)
-                            with c1:
-                                selected_out_cols = st.multiselect(
-                                    "Выберите столбец для анализа",
-                                    options=num_cols,
-                                    default=[],
-                                    placeholder="Выберите столбец",
-                                    key="sel_out_cols"
-                                )
-                            with c2:
-                                skewness_vals = df[selected_out_cols].skew() if selected_out_cols else pd.Series([])
-                                avg_skewness = abs(skewness_vals.mean()) if len(skewness_vals) > 0 else 0
-                                has_extreme_skew = any(abs(s) > 2 for s in skewness_vals)
-                                small_sample = len(df) < 100
+            if not num_cols:
+                st.info("ℹ️ Нет числовых колонок для анализа выбросов.")
+            else:
+                # ── 1️⃣ НАСТРОЙКА ОБНАРУЖЕНИЯ ──────────────────────
+                with st.expander(" Настройка обнаружения выбросов", expanded=True):
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        selected_out_cols = st.multiselect(
+                            "Выберите столбец для анализа",
+                            options=num_cols,
+                            default=[],
+                            placeholder="Выберите столбец",
+                            key="sel_out_cols"
+                        )
+                    with c2:
+                        skewness_vals = df[selected_out_cols].skew() if selected_out_cols else pd.Series([])
+                        avg_skewness = abs(skewness_vals.mean()) if len(skewness_vals) > 0 else 0
+                        has_extreme_skew = any(abs(s) > 2 for s in skewness_vals)
+                        small_sample = len(df) < 100
 
-                                if has_extreme_skew:
-                                    recommended_method = "Modified Z-score (MAD)"
-                                    rec_reason = "Обнаружена сильная асимметрия распределения (skewness > 2)"
-                                elif small_sample:
-                                    recommended_method = "IQR (Межквартильный)"
-                                    rec_reason = "Малый объём выборки (< 100 записей)"
-                                else:
-                                    recommended_method = "Z-score"
-                                    rec_reason = "Распределение близко к нормальному"
+                        if has_extreme_skew:
+                            recommended_method = "Modified Z-score (MAD)"
+                            rec_reason = "Обнаружена сильная асимметрия распределения (skewness > 2)"
+                        elif small_sample:
+                            recommended_method = "IQR (Межквартильный)"
+                            rec_reason = "Малый объём выборки (< 100 записей)"
+                        else:
+                            recommended_method = "Z-score"
+                            rec_reason = "Распределение близко к нормальному"
 
-                                # ── МЕТОДЫ С ПОДСКАЗКАМИ ──────────────────────
-                                st.markdown("<h5 style='margin: 0 0 8px 0; font-size: 15px; color: #1e293b; font-weight: 600;'> Метод обнаружения</h5>", unsafe_allow_html=True)
+                        # ── МЕТОДЫ С ПОДСКАЗКАМИ ──────────────────────
+                        st.markdown("<h5 style='margin: 0 0 8px 0; font-size: 15px; color: #1e293b; font-weight: 600;'> Метод обнаружения</h5>", unsafe_allow_html=True)
 
-                                # Создаем кастомные radio-кнопки с подсказками
-                                method_options = {
-                                    "IQR (Межквартильный)": "Основан на межквартильном размахе (IQR = Q3 - Q1). Выбросы: значения за пределами [Q1 - k×IQR; Q3 + k×IQR]. Устойчив к выбросам, не требует нормальности распределения.",
-                                    "Z-score": "Классический метод стандартных отклонений. Выбросы: |Z| > k, где Z = (x - μ)/σ. Требует нормального распределения данных. Чувствителен к выбросам.",
-                                    "Modified Z-score (MAD)": "Модифицированный Z-score на основе медианы и MAD (Median Absolute Deviation). Устойчив к выбросам и асимметричным распределениям. Рекомендуется при skewness > 2.",
-                                    "Процентильный": "Основан на процентилях распределения. Выбросы: значения ниже p1 или выше p2 процентиля. Гибкий метод для любых распределений."
-                                }
+                        # Создаем кастомные radio-кнопки с подсказками
+                        method_options = {
+                            "IQR (Межквартильный)": "Основан на межквартильном размахе (IQR = Q3 - Q1). Выбросы: значения за пределами [Q1 - k×IQR; Q3 + k×IQR]. Устойчив к выбросам, не требует нормальности распределения.",
+                            "Z-score": "Классический метод стандартных отклонений. Выбросы: |Z| > k, где Z = (x - μ)/σ. Требует нормального распределения данных. Чувствителен к выбросам.",
+                            "Modified Z-score (MAD)": "Модифицированный Z-score на основе медианы и MAD (Median Absolute Deviation). Устойчив к выбросам и асимметричным распределениям. Рекомендуется при skewness > 2.",
+                            "Процентильный": "Основан на процентилях распределения. Выбросы: значения ниже p1 или выше p2 процентиля. Гибкий метод для любых распределений."
+                        }
 
-                                method = st.radio(
-                                    "Выберите метод:",
-                                    list(method_options.keys()),
-                                    key="radio_out_method",
-                                    horizontal=False,
-                                    label_visibility="collapsed"
-                                )
+                        method = st.radio(
+                            "Выберите метод:",
+                            list(method_options.keys()),
+                            key="radio_out_method",
+                            horizontal=False,
+                            label_visibility="collapsed"
+                        )
 
-                                # Отображение подсказки для выбранного метода
-                                st.markdown(
-                                    f'<div style="background: #f0f9ff; border-left: 3px solid #0284c7; padding: 8px 12px; margin: 8px 0; border-radius: 4px;">'
-                                    f'<span style="color: #0369a1; font-size: 13px;">'
-                                    f'💡 <strong>{method}:</strong> {method_options[method]}'
-                                    f'</span></div>',
-                                    unsafe_allow_html=True
-                                )
+                        # Отображение подсказки для выбранного метода
+                        st.markdown(
+                            f'<div style="background: #f0f9ff; border-left: 3px solid #0284c7; padding: 8px 12px; margin: 8px 0; border-radius: 4px;">'
+                            f'<span style="color: #0369a1; font-size: 13px;">'
+                            f'💡 <strong>{method}:</strong> {method_options[method]}'
+                            f'</span></div>',
+                            unsafe_allow_html=True
+                        )
 
-                                if method == recommended_method:
-                                    st.success(f"✅ **Рекомендовано:** {rec_reason}")
-                                else:
-                                    st.info(f"💡 **Рекомендация:** {recommended_method} ({rec_reason})")
+                        if method == recommended_method:
+                            st.success(f"✅ **Рекомендовано:** {rec_reason}")
+                        else:
+                            st.info(f"💡 **Рекомендация:** {recommended_method} ({rec_reason})")
 
-                            # Параметры метода
-                            c3, _ = st.columns(2)
-                            param_val = 1.5
-                            if method == "IQR":
-                                param_val = c3.number_input("Множитель IQR", min_value=0.1, max_value=5.0, value=1.5, step=0.1,
-                                                           key="param_iqr",
-                                                           help="Стандартное значение: 1.5 (умеренные выбросы) или 3.0 (экстремальные)")
-                            elif method == "Z-score":
-                                param_val = c3.number_input("Порог Z-score", min_value=1.0, max_value=10.0, value=3.0, step=0.5,
-                                                           key="param_z",
-                                                           help="Стандартное значение: 3.0 (99.7% данных в пределах ±3σ)")
-                            elif method == "Modified Z-score (MAD)":
-                                param_val = c3.number_input("Порог MAD", min_value=1.0, max_value=10.0, value=3.5, step=0.5,
-                                                           key="param_mad",
-                                                           help="Рекомендуемое значение: 3.5 для обнаружения выбросов")
-                            elif method == "Процентильный":
-                                p_low = c3.number_input("Нижний процентиль (%)", value=1.0, key="p_low_out",
-                                                       help="Значения ниже этого процентиля считаются выбросами")
-                                p_high = c3.number_input("Верхний процентиль (%)", value=99.0, key="p_high_out",
-                                                        help="Значения выше этого процентиля считаются выбросами")
-                                param_val = (p_low, p_high)
+                    # Параметры метода
+                    c3, _ = st.columns(2)
+                    param_val = 1.5
+                    if method == "IQR":
+                        param_val = c3.number_input("Множитель IQR", min_value=0.1, max_value=5.0, value=1.5, step=0.1,
+                                                   key="param_iqr",
+                                                   help="Стандартное значение: 1.5 (умеренные выбросы) или 3.0 (экстремальные)")
+                    elif method == "Z-score":
+                        param_val = c3.number_input("Порог Z-score", min_value=1.0, max_value=10.0, value=3.0, step=0.5,
+                                                   key="param_z",
+                                                   help="Стандартное значение: 3.0 (99.7% данных в пределах ±3σ)")
+                    elif method == "Modified Z-score (MAD)":
+                        param_val = c3.number_input("Порог MAD", min_value=1.0, max_value=10.0, value=3.5, step=0.5,
+                                                   key="param_mad",
+                                                   help="Рекомендуемое значение: 3.5 для обнаружения выбросов")
+                    elif method == "Процентильный":
+                        p_low = c3.number_input("Нижний процентиль (%)", value=1.0, key="p_low_out",
+                                               help="Значения ниже этого процентиля считаются выбросами")
+                        p_high = c3.number_input("Верхний процентиль (%)", value=99.0, key="p_high_out",
+                                                help="Значения выше этого процентиля считаются выбросами")
+                        param_val = (p_low, p_high)
 
-                            # Кнопка запуска обнаружения
-                            if st.button("🔍 Применить метод", type="primary", key="btn_apply_outlier_detect"):
-                                if selected_out_cols:
-                                    global_mask = pd.Series([False] * len(df))
-                                    for col in selected_out_cols:
-                                        col_mask = pd.Series([False] * len(df))
-                                        vals = df[col]
-                                        if method == "IQR":
-                                            Q1, Q3 = vals.quantile(0.25), vals.quantile(0.75)
-                                            IQR = Q3 - Q1
-                                            lower, upper = Q1 - param_val * IQR, Q3 + param_val * IQR
-                                            col_mask = (vals < lower) | (vals > upper)
-                                        elif method == "Z-score":
-                                            z = np.abs((vals - vals.mean()) / vals.std())
-                                            col_mask = z > param_val
-                                        elif method == "Modified Z-score (MAD)":
-                                            median = vals.median()
-                                            mad = np.median(np.abs(vals - median))
-                                            mod_z = 0.6745 * (vals - median) / mad if mad > 0 else 0
-                                            col_mask = np.abs(mod_z) > param_val
-                                        elif method == "Процентильный":
-                                            low, high = vals.quantile(param_val[0]/100), vals.quantile(param_val[1]/100)
-                                            col_mask = (vals < low) | (vals > high)
-                                        global_mask = global_mask | col_mask
-                                    st.session_state.outlier_mask = global_mask
-                                    st.rerun()
-                                else:
-                                    st.warning("Выберите хотя бы одну колонку")
+                    # Кнопка запуска обнаружения
+                    if st.button("🔍 Применить метод", type="primary", key="btn_apply_outlier_detect"):
+                        if selected_out_cols:
+                            global_mask = pd.Series([False] * len(df))
+                            for col in selected_out_cols:
+                                col_mask = pd.Series([False] * len(df))
+                                vals = df[col]
+                                if method == "IQR":
+                                    Q1, Q3 = vals.quantile(0.25), vals.quantile(0.75)
+                                    IQR = Q3 - Q1
+                                    lower, upper = Q1 - param_val * IQR, Q3 + param_val * IQR
+                                    col_mask = (vals < lower) | (vals > upper)
+                                elif method == "Z-score":
+                                    z = np.abs((vals - vals.mean()) / vals.std())
+                                    col_mask = z > param_val
+                                elif method == "Modified Z-score (MAD)":
+                                    median = vals.median()
+                                    mad = np.median(np.abs(vals - median))
+                                    mod_z = 0.6745 * (vals - median) / mad if mad > 0 else 0
+                                    col_mask = np.abs(mod_z) > param_val
+                                elif method == "Процентильный":
+                                    low, high = vals.quantile(param_val[0]/100), vals.quantile(param_val[1]/100)
+                                    col_mask = (vals < low) | (vals > high)
+                                global_mask = global_mask | col_mask
+                            st.session_state.outlier_mask = global_mask
+                            st.rerun()
+                        else:
+                            st.warning("Выберите хотя бы одну колонку")
 
-                            # 🔧 Отображение результата
-                            if st.session_state.outlier_mask.any():
-                                outlier_count = int(st.session_state.outlier_mask.sum())
-                                outlier_pct = outlier_count / len(df) * 100
-                                st.success(f"✅ Найдено **{outlier_count}** выбросов ({outlier_pct:.1f}% данных)")
-                                st.caption(f"Метод: {method} | Колонки: {', '.join(selected_out_cols)}")
-                            elif selected_out_cols and st.session_state.outlier_mask is not None:
-                                st.info("ℹ️ Выбросы не обнаружены при текущих настройках")
+                    # 🔧 Отображение результата
+                    if st.session_state.outlier_mask.any():
+                        outlier_count = int(st.session_state.outlier_mask.sum())
+                        outlier_pct = outlier_count / len(df) * 100
+                        st.success(f"✅ Найдено **{outlier_count}** выбросов ({outlier_pct:.1f}% данных)")
+                        st.caption(f"Метод: {method} | Колонки: {', '.join(selected_out_cols)}")
+                    elif selected_out_cols and st.session_state.outlier_mask is not None:
+                        st.info("ℹ️ Выбросы не обнаружены при текущих настройках")
 
-                        # ── 2️⃣ ВИЗУАЛИЗАЦИЯ (если маска есть) ───────────
-                        if st.session_state.outlier_mask.any():
-                            with st.expander("📊 Визуализация распределения", expanded=False):
-                                viz_col = st.selectbox("Столбец для графика", selected_out_cols if selected_out_cols else num_cols, key="viz_col_out")
-                                tab_v1, tab_v2 = st.tabs(["Boxplot", "Гистограмма + Плотность"])
-                                with tab_v1:
-                                    df_plot = df[[viz_col]].copy()
-                                    df_plot['Status'] = ['Выброс' if x else 'Норма' for x in st.session_state.outlier_mask]
-                                    fig_box = px.box(df_plot, y=viz_col, color='Status', color_discrete_map={'Выброс': '#ef4444', 'Норма': '#94a3b8'}, title=f"Boxplot: {viz_col}")
-                                    st.plotly_chart(fig_box, use_container_width=True)
-                                with tab_v2:
-                                    fig_hist = px.histogram(df, x=viz_col, nbins=50, marginal="box", title=f"Распределение: {viz_col}")
-                                    if method == "IQR" and viz_col in selected_out_cols:
-                                        Q1, Q3 = df[viz_col].quantile(0.25), df[viz_col].quantile(0.75)
-                                        IQR = Q3 - Q1
-                                        fig_hist.add_vline(x=Q1 - param_val*IQR, line_dash="dash", line_color="red")
-                                        fig_hist.add_vline(x=Q3 + param_val*IQR, line_dash="dash", line_color="red")
-                                    st.plotly_chart(fig_hist, use_container_width=True)
+                # ── 2️⃣ ВИЗУАЛИЗАЦИЯ (если маска есть) ───────────
+                if st.session_state.outlier_mask.any():
+                    with st.expander("📊 Визуализация распределения", expanded=False):
+                        viz_col = st.selectbox("Столбец для графика", selected_out_cols if selected_out_cols else num_cols, key="viz_col_out")
+                        tab_v1, tab_v2 = st.tabs(["Boxplot", "Гистограмма + Плотность"])
+                        with tab_v1:
+                            df_plot = df[[viz_col]].copy()
+                            df_plot['Status'] = ['Выброс' if x else 'Норма' for x in st.session_state.outlier_mask]
+                            fig_box = px.box(df_plot, y=viz_col, color='Status', color_discrete_map={'Выброс': '#ef4444', 'Норма': '#94a3b8'}, title=f"Boxplot: {viz_col}")
+                            st.plotly_chart(fig_box, use_container_width=True)
+                        with tab_v2:
+                            fig_hist = px.histogram(df, x=viz_col, nbins=50, marginal="box", title=f"Распределение: {viz_col}")
+                            if method == "IQR" and viz_col in selected_out_cols:
+                                Q1, Q3 = df[viz_col].quantile(0.25), df[viz_col].quantile(0.75)
+                                IQR = Q3 - Q1
+                                fig_hist.add_vline(x=Q1 - param_val*IQR, line_dash="dash", line_color="red")
+                                fig_hist.add_vline(x=Q3 + param_val*IQR, line_dash="dash", line_color="red")
+                            st.plotly_chart(fig_hist, use_container_width=True)
 
-                            # ── 3️⃣ ТАБЛИЦА С МАРКИРОВКОЙ (Автоматический фильтр) ──
-                            st.divider()
-                            st.markdown("###  Таблица данных с маркировкой выбросов")
+                    # ── 3️⃣ ТАБЛИЦА С МАРКИРОВКОЙ (Автоматический фильтр) ──
+                    st.divider()
+                    st.markdown("###  Таблица данных с маркировкой выбросов")
 
-                            # ✅ Автоматический фильтр (срабатывает сразу при клике)
-                            filter_mode = st.radio(
-                                "Фильтр отображения:",
-                                ["Все", "Только выбросы", "Только норма"],
-                                horizontal=True,
-                                key="filter_radio_out"
+                    # ✅ Автоматический фильтр (срабатывает сразу при клике)
+                    filter_mode = st.radio(
+                        "Фильтр отображения:",
+                        ["Все", "Только выбросы", "Только норма"],
+                        horizontal=True,
+                        key="filter_radio_out"
+                    )
+
+                    # Логика фильтрации
+                    display_df = df.copy()
+                    outlier_indices = df.index[st.session_state.outlier_mask]
+                    display_df['_IS_OUTLIER'] = display_df.index.isin(outlier_indices)
+                    display_df['_STATUS'] = np.where(display_df['_IS_OUTLIER'], "🔴 Выброс", "🟢 Норма")
+
+                    # Перемещаем статус в начало
+                    cols = ['_STATUS'] + [c for c in display_df.columns if c != '_STATUS']
+                    display_df = display_df[cols]
+
+                    # Применяем фильтр
+                    if filter_mode == "Только выбросы":
+                        display_df = display_df[display_df['_STATUS'] == "🔴 Выброс"].copy() if (display_df['_STATUS'] == "🔴 Выброс").any() else display_df.iloc[:0].copy()
+                    elif filter_mode == "Только норма":
+                        display_df = display_df[display_df['_STATUS'] == "🟢 Норма"].copy() if (display_df['_STATUS'] == "🟢 Норма").any() else display_df.iloc[:0].copy()
+
+                    # ✅ Таблица с фиксированной высотой (чтобы минимизировать скачки)
+                    edited_df = st.data_editor(
+                        display_df,
+                        use_container_width=True,
+                        height=300,
+                        num_rows="dynamic",
+                        disabled=['_STATUS'],
+                        key="outlier_editor",
+                        column_config={
+                            "_IS_OUTLIER": None,
+                            "_STATUS": st.column_config.TextColumn("Статус", disabled=True, width="small")
+                        }
+                    )
+
+                    # Кнопка сохранения (как в пропусках)
+                    c_save1, c_save2 = st.columns([4, 1])
+                    with c_save1:
+                        st.caption("💡 Отредактируйте значения вручную или выберите стратегию ниже")
+                    with c_save2:
+                        if st.button("💾 Сохранить", key="btn_save_manual_outliers", use_container_width=True):
+                            if '_STATUS' in edited_df.columns:
+                                edited_df = edited_df.drop(columns=['_STATUS'])
+                            df.update(edited_df)
+                            st.session_state.df = df
+                            st.toast("✅ Правки сохранены!", icon="✅")
+                            st.rerun()
+
+                    st.divider()
+
+                    # ── 4️⃣ СТРАТЕГИИ ОБРАБОТКИ (раскрыта по умолчанию) ──
+                    with st.expander(" Стратегии обработки выбросов (всегда анализируем природу выбросов!)", expanded=True):
+                        st.markdown("###  Стратегии обработки выбросов")
+                        c1, c2 = st.columns([2, 1])
+                        with c1:
+                            clean_strategy = st.radio(
+                                "Выберите стратегию:",
+                                [" Удаление строк", " Кэпирование", " Замена на медиану", " Только флаг"],
+                                key="radio_outlier_strategy",
+                                label_visibility="collapsed"
                             )
+                            # Компактные подсказки
+                            if "Кэпирование" in clean_strategy:
+                                st.warning("⚠️ Выбросы будут заменены на границы по правилу 1.5×IQR: нижний Q1 - 1.5×IQR, верхний Q3 + 1.5×IQR")
+                            elif "Удаление" in clean_strategy:
+                                st.warning("⚠️ Строки с выбросами будут полностью удалены.")
+                            elif "медиану" in clean_strategy or "Замена" in clean_strategy:
+                                st.warning("⚠️ Все выбросы будут заменены на медиану.")
+                        with c2:
+                            # Пустая колонка для выравнивания с пропусками
+                            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
 
-                            # Логика фильтрации
-                            display_df = df.copy()
-                            outlier_indices = df.index[st.session_state.outlier_mask]
-                            display_df['_IS_OUTLIER'] = display_df.index.isin(outlier_indices)
-                            display_df['_STATUS'] = np.where(display_df['_IS_OUTLIER'], "🔴 Выброс", "🟢 Норма")
+                        # ── 5️⃣ КНОПКА ПРОГНОЗА (унифицирована: белый фон, остаётся видимой) ──
+                        st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allow_html=True)
 
-                            # Перемещаем статус в начало
-                            cols = ['_STATUS'] + [c for c in display_df.columns if c != '_STATUS']
-                            display_df = display_df[cols]
+                        if st.button(" Показать прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_outlier_preview"):
+                            st.session_state.show_outlier_preview = True
+                            st.rerun()
 
-                            # Применяем фильтр
-                            if filter_mode == "Только выбросы":
-                                display_df = display_df[display_df['_STATUS'] == "🔴 Выброс"].copy() if (display_df['_STATUS'] == "🔴 Выброс").any() else display_df.iloc[:0].copy()
-                            elif filter_mode == "Только норма":
-                                display_df = display_df[display_df['_STATUS'] == "🟢 Норма"].copy() if (display_df['_STATUS'] == "🟢 Норма").any() else display_df.iloc[:0].copy()
+                        # ── 6️⃣ БЛОК ПРОГНОЗА (отображается при активном флаге) ──
+                        if st.session_state.show_outlier_preview:
+                            st.markdown("#####  Прогноз влияния на статистику:")
 
-                            # ✅ Таблица с фиксированной высотой (чтобы минимизировать скачки)
-                            edited_df = st.data_editor(
-                                display_df,
-                                use_container_width=True,
-                                height=300,
-                                num_rows="dynamic",
-                                disabled=['_STATUS'],
-                                key="outlier_editor",
-                                column_config={
-                                    "_IS_OUTLIER": None,
-                                    "_STATUS": st.column_config.TextColumn("Статус", disabled=True, width="small")
-                                }
-                            )
+                            df_preview = df.copy()
+                            mask = st.session_state.outlier_mask
 
-                            # Кнопка сохранения (как в пропусках)
-                            c_save1, c_save2 = st.columns([4, 1])
-                            with c_save1:
-                                st.caption("💡 Отредактируйте значения вручную или выберите стратегию ниже")
-                            with c_save2:
-                                if st.button("💾 Сохранить", key="btn_save_manual_outliers", use_container_width=True):
-                                    if '_STATUS' in edited_df.columns:
-                                        edited_df = edited_df.drop(columns=['_STATUS'])
-                                    df.update(edited_df)
-                                    st.session_state.df = df
-                                    st.toast("✅ Правки сохранены!", icon="✅")
-                                    st.rerun()
+                            if "Удаление" in clean_strategy:
+                                df_preview = df_preview[~mask].reset_index(drop=True)
+                                note = "(удаление)"
+                            elif "Кэпирование" in clean_strategy:
+                                for col in num_cols:
+                                    # 🔧 ИСПРАВЛЕНИЕ: Используем df_preview вместо df_final
+                                    df_preview[col] = df_preview[col].astype(float)
+                                    Q1, Q3 = df_preview[col].quantile(0.25), df_preview[col].quantile(0.75)
+                                    IQR = Q3 - Q1
+                                    df_preview.loc[mask, col] = df_preview.loc[mask, col].clip(Q1 - 1.5*IQR, Q3 + 1.5*IQR)
+                                note = "(кэпирование)"
+                            elif "медиану" in clean_strategy or "Замена" in clean_strategy:
+                                for col in num_cols:
+                                    df_preview[col] = df_preview[col].astype(float)
+                                    df_preview.loc[mask, col] = df_preview[col].median()
+                                note = "(медиана)"
+                            else:
+                                note = "(без изменений)"
 
+                            # Метрики (4 колонки, как в пропусках)
+                            c_p1, c_p2, c_p3, c_p4 = st.columns(4)
+                            c_p1.metric("📊 Записей", f"{len(df):,} → {len(df_preview):,}".replace(',', ' '), delta=f"{len(df_preview)-len(df):+}")
+
+                            cols_to_check = selected_out_cols if selected_out_cols else num_cols
+                            if cols_to_check:
+                                col = cols_to_check[0]
+                                def safe_stat(d, c, f):
+                                    return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
+                                m_b, s_b, d_b = safe_stat(df, col, np.mean), safe_stat(df, col, np.std), safe_stat(df, col, np.median)
+                                m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
+                                fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
+                                delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
+                                c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                                c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                                c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+
+                            # Кнопки подтверждения (унифицированы)
                             st.divider()
+                            c_ok, c_cancel = st.columns(2)
+                            with c_ok:
+                                if st.button("💾 Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_outlier"):
+                                    try:
+                                        df_final = st.session_state.df.copy()
+                                        msk = st.session_state.outlier_mask
+                                        num_cols_final = df_final.select_dtypes(include='number').columns.tolist()
 
-                            # ── 4️⃣ СТРАТЕГИИ ОБРАБОТКИ (раскрыта по умолчанию) ──
-                            with st.expander(" Стратегии обработки выбросов (всегда анализируем природу выбросов!)", expanded=True):
-                                st.markdown("###  Стратегии обработки выбросов")
-                                c1, c2 = st.columns([2, 1])
-                                with c1:
-                                    clean_strategy = st.radio(
-                                        "Выберите стратегию:",
-                                        [" Удаление строк", " Кэпирование", " Замена на медиану", " Только флаг"],
-                                        key="radio_outlier_strategy",
-                                        label_visibility="collapsed"
-                                    )
-                                    # Компактные подсказки
-                                    if "Кэпирование" in clean_strategy:
-                                        st.warning("⚠️ Выбросы будут заменены на границы по правилу 1.5×IQR: нижний Q1 - 1.5×IQR, верхний Q3 + 1.5×IQR")
-                                    elif "Удаление" in clean_strategy:
-                                        st.warning("⚠️ Строки с выбросами будут полностью удалены.")
-                                    elif "медиану" in clean_strategy or "Замена" in clean_strategy:
-                                        st.warning("⚠️ Все выбросы будут заменены на медиану.")
-                                with c2:
-                                    # Пустая колонка для выравнивания с пропусками
-                                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+                                        if "Удаление" in clean_strategy:
+                                            df_final = df_final[~msk].reset_index(drop=True)
+                                        elif "Кэпирование" in clean_strategy:
+                                            for c in num_cols_final:
+                                                df_final[c] = df_final[c].astype(float)
+                                                Q1, Q3 = df_final[c].quantile(0.25), df_final[c].quantile(0.75)
+                                                IQR = Q3 - Q1
+                                                lower_bound = Q1 - 1.5 * IQR
+                                                upper_bound = Q3 + 1.5 * IQR
+                                                df_final.loc[msk & (df_final[c] < lower_bound), c] = Q1
+                                                df_final.loc[msk & (df_final[c] > upper_bound), c] = Q3
+                                        elif "медиану" in clean_strategy or "Замена" in clean_strategy:
+                                            for c in num_cols_final:
+                                                df_final[c] = df_final[c].astype(float)
+                                                df_final.loc[msk, c] = df_final[c].median()
 
-                                # ── 5️⃣ КНОПКА ПРОГНОЗА (унифицирована: белый фон, остаётся видимой) ──
-                                st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allow_html=True)
+                                        # 🔧 СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
+                                        st.session_state.df = df_final.copy()
+                                        st.session_state.validation_ready = False
 
-                                if st.button(" Показать прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_outlier_preview"):
-                                    st.session_state.show_outlier_preview = True
+                                        # 🔥 Удаляем маску и все рабочие копии
+                                        if "outlier_mask" in st.session_state:
+                                            del st.session_state.outlier_mask
+                                        
+                                        work_dfs = [
+                                            "df_missing_work", "df_pattern_work", "df_range_work",
+                                            "df_outlier_work", "df_inclusion_work", "df_referential_work",
+                                            "df_text_work", "df_consistency_work", "df_uniqueness_work",
+                                            "df_regularity_work"
+                                        ]
+                                        for work_df_name in work_dfs:
+                                            if work_df_name in st.session_state:
+                                                del st.session_state[work_df_name]
+                                        
+                                        # Сбрасываем результаты валидации
+                                        if "val_results" in st.session_state:
+                                            del st.session_state.val_results
+
+                                        st.success("✅ Выбросы успешно обработаны! Перезапустите валидацию.")
+                                        st.rerun()
+
+                                    except Exception as e:
+                                        st.error(f"❌ Ошибка при обработке выбросов: {e}")
+                                        st.exception(e)
+                            with c_cancel:
+                                if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_outlier"):
+                                    st.session_state.show_outlier_preview = False
                                     st.rerun()
-
-                                # ── 6️⃣ БЛОК ПРОГНОЗА (отображается при активном флаге) ──
-                                if st.session_state.show_outlier_preview:
-                                    st.markdown("#####  Прогноз влияния на статистику:")
-
-                                    df_preview = df.copy()
-                                    mask = st.session_state.outlier_mask
-
-                                    if "Удаление" in clean_strategy:
-                                        df_preview = df_preview[~mask].reset_index(drop=True)
-                                        note = "(удаление)"
-                                    elif "Кэпирование" in clean_strategy:
-                                        for col in num_cols:
-                                            # 🔧 ИСПРАВЛЕНИЕ: Используем df_preview вместо df_final
-                                            df_preview[col] = df_preview[col].astype(float)
-                                            Q1, Q3 = df_preview[col].quantile(0.25), df_preview[col].quantile(0.75)
-                                            IQR = Q3 - Q1
-                                            df_preview.loc[mask, col] = df_preview.loc[mask, col].clip(Q1 - 1.5*IQR, Q3 + 1.5*IQR)
-                                        note = "(кэпирование)"
-                                    elif "медиану" in clean_strategy or "Замена" in clean_strategy:
-                                        for col in num_cols:
-                                            df_preview[col] = df_preview[col].astype(float)
-                                            df_preview.loc[mask, col] = df_preview[col].median()
-                                        note = "(медиана)"
-                                    else:
-                                        note = "(без изменений)"
-
-                                    # Метрики (4 колонки, как в пропусках)
-                                    c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                                    c_p1.metric("📊 Записей", f"{len(df):,} → {len(df_preview):,}".replace(',', ' '), delta=f"{len(df_preview)-len(df):+}")
-
-                                    cols_to_check = selected_out_cols if selected_out_cols else num_cols
-                                    if cols_to_check:
-                                        col = cols_to_check[0]
-                                        def safe_stat(d, c, f):
-                                            return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
-                                        m_b, s_b, d_b = safe_stat(df, col, np.mean), safe_stat(df, col, np.std), safe_stat(df, col, np.median)
-                                        m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
-                                        fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
-                                        delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                                        c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                                        c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                                        c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
-
-                                    # Кнопки подтверждения (унифицированы)
-                                    st.divider()
-                                    c_ok, c_cancel = st.columns(2)
-                                    with c_ok:
-                                        if st.button("💾 Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_outlier"):
-                                            try:
-                                                df_final = st.session_state.df.copy()
-                                                msk = st.session_state.outlier_mask
-                                                num_cols_final = df_final.select_dtypes(include='number').columns.tolist()
-
-                                                if "Удаление" in clean_strategy:
-                                                    df_final = df_final[~msk].reset_index(drop=True)
-                                                elif "Кэпирование" in clean_strategy:
-                                                    for c in num_cols_final:
-                                                        df_final[c] = df_final[c].astype(float)
-                                                        Q1, Q3 = df_final[c].quantile(0.25), df_final[c].quantile(0.75)
-                                                        IQR = Q3 - Q1
-                                                        lower_bound = Q1 - 1.5 * IQR
-                                                        upper_bound = Q3 + 1.5 * IQR
-                                                        df_final.loc[msk & (df_final[c] < lower_bound), c] = Q1
-                                                        df_final.loc[msk & (df_final[c] > upper_bound), c] = Q3
-                                                elif "медиану" in clean_strategy or "Замена" in clean_strategy:
-                                                    for c in num_cols_final:
-                                                        df_final[c] = df_final[c].astype(float)
-                                                        df_final.loc[msk, c] = df_final[c].median()
-
-                                                # 🔧 СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
-                                                st.session_state.df = df_final.copy()
-                                                st.session_state.validation_ready = False
-
-                                                # 🔥 Удаляем маску и все рабочие копии
-                                                if "outlier_mask" in st.session_state:
-                                                    del st.session_state.outlier_mask
-                                                
-                                                work_dfs = [
-                                                    "df_missing_work", "df_pattern_work", "df_range_work",
-                                                    "df_outlier_work", "df_inclusion_work", "df_referential_work",
-                                                    "df_text_work", "df_consistency_work", "df_uniqueness_work",
-                                                    "df_regularity_work"
-                                                ]
-                                                for work_df_name in work_dfs:
-                                                    if work_df_name in st.session_state:
-                                                        del st.session_state[work_df_name]
-                                                
-                                                # Сбрасываем результаты валидации
-                                                if "val_results" in st.session_state:
-                                                    del st.session_state.val_results
-
-                                                st.success("✅ Выбросы успешно обработаны! Перезапустите валидацию.")
-                                                st.rerun()
-
-                                            except Exception as e:
-                                                st.error(f"❌ Ошибка при обработке выбросов: {e}")
-                                                st.exception(e)
-                                    with c_cancel:
-                                        if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_outlier"):
-                                            st.session_state.show_outlier_preview = False
-                                            st.rerun()
 
         # 🔹 КНОПКА И ТАБЛИЦА СРАВНЕНИЯ ПОСЛЕ ВЫБРОСОВ
         if st.button(" Пересчитать свойства после преобразования (выбросы)", type="primary", key="btn_compare_outliers"):
@@ -8994,7 +9003,7 @@ with tab_preprocessing:
         st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
 
         # ── ТЕХНИЧЕСКАЯ СПРАВКА (ПЕРЕНЕСЕНА В НАЧАЛО) ─────────
-        with st.expander(" Техническая справка: Регулярность частоты", expanded=False):
+        with st.expander(" Цели субмодуля_Регулярность частоты", expanded=False):
             st.markdown("""
             **Зачем нужна регулярность:**
             -  **ARIMA/SARIMA:** Требуют регулярный `DatetimeIndex` для расчёта лагов
@@ -9390,7 +9399,7 @@ with tab_preprocessing:
             st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
 
             # ── ТЕХНИЧЕСКАЯ СПРАВКА ─────────────────────────────
-            with st.expander(" Техническая справка: Декомпозиция временных рядов", expanded=False):
+            with st.expander(" Цели субмодуля_Декомпозиция временных рядов", expanded=False):
                 st.markdown("""
                 **Зачем нужна декомпозиция:**
                 -  **Понимание структуры:** Разделяет ряд на компоненты (Trend, Seasonal, Cycle, Residual)
@@ -9848,6 +9857,512 @@ with tab_preprocessing:
         st.warning("⚠️ Не обнаружены колонки с датами или числовыми данными. Убедитесь, что активирован режим временных рядов.")
 
 
+    # ═══════════════════════════════════════════════════════
+    # 🔹 8. FEATURE ENGINEERING + СПЕКТРАЛЬНЫЙ АНАЛИЗ
+    # ═══════════════════════════════════════════════════════
+    st.divider()
+    st.markdown("### Feature Engineering + Спектральный анализ")
+    st.caption("Создание новых признаков: лаги, скользящие статистики, спектральные характеристики. "
+            "Ознакомительный анализ частотной структуры ряда после преобразований.")
+
+    # ── ЦЕЛИ И РЕЗУЛЬТАТЫ ────────────────────────────────
+    with st.expander("Цели субмодуля_Feature Engineering", expanded=False):
+        st.markdown("""
+        **Feature Engineering** — процесс создания новых признаков из существующих данных для улучшения качества моделей.
+        
+        **Что создаём:**
+        1. **Лаги (Lags)** — предыдущие значения ряда (t-1, t-2, ...) для ARIMA, LSTM
+        2. **Скользящие статистики** — mean, std, min, max за окно (тренды, волатильность)
+        3. **Спектральные признаки** — доминирующие частоты, спектральная энергия, энтропия
+        4. **Временные признаки** — час, день недели, месяц, квартал, год, weekend, holiday
+        5. **Разности (Differences)** — для стационарности (t - t-1)
+        6. **Процентные изменения** — для анализа динамики
+        7. **EWMA** — экспоненциально взвешенное скользящее среднее
+        8. **Отношения к скользящему среднему** — для выявления отклонений
+        
+        **Спектральный анализ (ознакомительный):**
+        - **FFT (Fast Fourier Transform)** — выявление доминирующих периодов
+        - **Periodogram** — спектральная плотность мощности
+        - **Wavelet (CWT)** — временно-частотная локализация
+        - **ACF/PACF** — автокорреляционная и частная автокорреляционная функции
+        
+        **Зачем это нужно:**
+        - ML-модели (LSTM, XGBoost, Random Forest) требуют числовых признаков
+        - Спектральный анализ помогает понять структуру ряда ДО моделирования
+        - Лаги и скользящие окна захватывают временные зависимости
+        - Спектральные признаки улучшают прогноз для сложных паттернов
+        
+        **Результат:** Расширенный датасет с новыми колонками, готовый для ML-моделей.
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ── ПРОВЕРКА ГОТОВНОСТИ ─────────────────────────────
+    if st.session_state.primary_date_col and st.session_state.col_types.get("num"):
+        date_col = st.session_state.primary_date_col
+        num_cols = st.session_state.col_types.get("num", [])
+        
+        if num_cols:
+            # Выбор целевой колонки
+            target_col = st.selectbox(
+                " Исследуемый признак:",
+                options=num_cols,
+                index=0,
+                key="fe_target_col",
+                help="Выберите числовую колонку для создания признаков"
+            )
+            
+            # Инициализация session_state
+            if "df_fe_work" not in st.session_state:
+                st.session_state.df_fe_work = st.session_state.df.copy()
+            if "fe_features_created" not in st.session_state:
+                st.session_state.fe_features_created = []
+            
+            df_work = st.session_state.df_fe_work
+            
+            # ────────────────────────────────────────────────
+            # 🔹 ЧАСТЬ 1: ОЗНАКОМИТЕЛЬНЫЙ СПЕКТРАЛЬНЫЙ АНАЛИЗ
+            # ────────────────────────────────────────────────
+            st.markdown("##### Ознакомительный спектральный анализ")
+            st.caption("Анализ частотной структуры ряда перед созданием признаков")
+            
+            # Подготовка временного ряда
+            try:
+                df_ts = df_work.copy()
+                df_ts[date_col] = pd.to_datetime(df_ts[date_col])
+                df_ts = df_ts.sort_values(date_col)
+                df_ts = df_ts.set_index(date_col)[[target_col]].dropna()
+                
+                if len(df_ts) < 30:
+                    st.warning(f"️ Недостаточно данных для спектрального анализа: {len(df_ts)} точек (минимум 30)")
+                else:
+                    # Ряд для анализа
+                    series = df_ts[target_col].astype(float)
+                    
+                    # ── БЫСТРЫЙ СПЕКТРАЛЬНЫЙ АНАЛИЗ ────────
+                    c_spec1, c_spec2, c_spec3, c_spec4 = st.columns(4)
+                    
+                    with c_spec1:
+                        # FFT
+                        from scipy.fft import fft, fftfreq
+                        from scipy.signal import find_peaks
+                        
+                        n = len(series)
+                        y = series.values - series.mean()
+                        yf = fft(y)
+                        xf = fftfreq(n, 1)[:n//2]
+                        amplitude = 2.0/n * np.abs(yf[0:n//2])
+                        
+                        # Доминирующие частоты
+                        peaks, _ = find_peaks(amplitude, height=np.mean(amplitude) + np.std(amplitude))
+                        dominant_periods = [1/xf[p] for p in peaks if xf[p] > 0 and xf[p] < 0.5]
+                        
+                        # 🔧 Форматируем периоды с разделителями тысяч
+                        if dominant_periods:
+                            periods_formatted = ', '.join([f'{p:,.1f}'.replace(",", " ") for p in dominant_periods[:3]])
+                        else:
+                            periods_formatted = "Не обнаружены"
+                        
+                        st.metric(" Доминирующие периоды (FFT)", 
+                                f"{len(dominant_periods)}",
+                                delta=periods_formatted)
+
+                    with c_spec2:
+                        # Периодограмма
+                        from scipy.signal import periodogram
+                        
+                        freq_per, pxx_per = periodogram(series.values, fs=1.0, window='hann')
+                        spectral_energy = np.sum(pxx_per)
+                        
+                        # 🔧 Форматируем спектральную энергию с разделителями тысяч
+                        spectral_energy_formatted = f"{spectral_energy:,.2f}".replace(",", " ")
+                        
+                        st.metric(" Спектральная энергия", 
+                                spectral_energy_formatted,
+                                delta="Мощный сигнал" if spectral_energy > 100 else "Слабый сигнал")
+                    
+                    with c_spec3:
+                        # Спектральная энтропия
+                        spectrum = np.abs(yf)**2
+                        spectrum_norm = spectrum / np.sum(spectrum)
+                        spectral_entropy = -np.sum(spectrum_norm * np.log(spectrum_norm + 1e-10))
+                        
+                        st.metric(" Спектральная энтропия", 
+                                f"{spectral_entropy:.3f}",
+                                delta="Сложный" if spectral_entropy > 3 else "Простой")
+                    
+                    with c_spec4:
+                        # Соотношение низких/высоких частот
+                        mid_freq = len(xf)//4
+                        low_energy = np.sum(amplitude[:mid_freq]**2)
+                        high_energy = np.sum(amplitude[mid_freq:]**2)
+                        ratio = low_energy / (high_energy + 1e-10)
+                        
+                        st.metric(" Low/High частоты", 
+                                f"{ratio:.2f}",
+                                delta="Низкочастотный" if ratio > 2 else "Высокочастотный")
+                    
+                    # ── ВИЗУАЛИЗАЦИЯ ─────────────────────
+                    st.divider()
+                    
+                    tab_fft, tab_per, tab_wave, tab_acf = st.tabs([
+                        "🔍 FFT спектр", 
+                        " Периодограмма", 
+                        " Wavelet", 
+                        " ACF/PACF"
+                    ])
+                    
+                    with tab_fft:
+                        fig_fft = px.line(
+                            x=xf[:n//2], 
+                            y=amplitude,
+                            title="🔍 FFT: Амплитудный спектр",
+                            labels={'x': 'Частота', 'y': 'Амплитуда'}
+                        )
+                        # Отметить пики
+                        for p in peaks[:5]:
+                            if xf[p] > 0:
+                                fig_fft.add_vline(x=xf[p], line_dash="dash", line_color="red")
+                                fig_fft.add_annotation(
+                                    x=xf[p], 
+                                    y=amplitude[p],
+                                    text=f"Period={1/xf[p]:.1f}",
+                                    showarrow=True,
+                                    arrowhead=2,
+                                    ax=0,
+                                    ay=-40
+                                )
+                        fig_fft.update_layout(height=400, showlegend=False)
+                        st.plotly_chart(fig_fft, use_container_width=True, key="fft_spectrum_chart")
+                    
+                    with tab_per:
+                        fig_per = px.line(
+                            x=freq_per, 
+                            y=pxx_per,
+                            title="⚡ Периодограмма (спектральная плотность мощности)",
+                            labels={'x': 'Частота', 'y': 'Мощность'}
+                        )
+                        fig_per.update_layout(height=400, showlegend=False)
+                        st.plotly_chart(fig_per, use_container_width=True, key="periodogram_chart")
+                    
+                    with tab_wave:
+                        try:
+                            import pywt
+                            
+                            widths = np.arange(1, min(128, len(series)//4))
+                            cwtmatr, _ = pywt.cwt(series.values - series.mean(), widths, 'morl', sampling_period=1)
+                            
+                            fig_wave = px.imshow(
+                                np.abs(cwtmatr),
+                                title="🌊 Wavelet Scalogram (CWT)",
+                                labels={'x': 'Время', 'y': 'Масштаб (период)'},
+                                color_continuous_scale='Viridis'
+                            )
+                            fig_wave.update_layout(height=400)
+                            st.plotly_chart(fig_wave, use_container_width=True, key="wavelet_chart")
+                        except ImportError:
+                            st.warning("⚠️ Установите PyWavelets: `pip install PyWavelets`")
+                    
+                    with tab_acf:
+                        from statsmodels.tsa.stattools import acf, pacf
+                        
+                        max_lag = min(60, len(series) // 4)
+                        acf_values = acf(series, nlags=max_lag)
+                        pacf_values = pacf(series, nlags=max_lag)
+                        
+                        fig_acf = make_subplots(
+                            rows=2, cols=1,
+                            subplot_titles=(" Автокорреляционная функция (ACF)", 
+                                        " Частная автокорреляционная функция (PACF)")
+                        )
+
+                        fig_acf.add_trace(
+                            go.Bar(x=list(range(len(acf_values))), y=acf_values, name='ACF'),
+                            row=1, col=1
+                        )
+                        fig_acf.add_trace(
+                            go.Bar(x=list(range(len(pacf_values))), y=pacf_values, name='PACF'),
+                            row=2, col=1
+                        )
+                        
+                        # Доверительный интервал
+                        conf_int = 1.96 / np.sqrt(len(series))
+                        fig_acf.add_hline(y=conf_int, line_dash="dash", line_color="red")
+                        fig_acf.add_hline(y=-conf_int, line_dash="dash", line_color="red")
+                        fig_acf.update_layout(height=600, showlegend=False)
+                        st.plotly_chart(fig_acf, use_container_width=True, key="acf_pacf_chart")
+                    
+                    # ── АВТОПОДБОР ЛАГОВ ЧЕРЕЗ ACF/PACF ─────
+                    st.divider()
+                    st.markdown("###### Автоподбор лагов через ACF/PACF")
+                    
+                    if st.button(" Автоматически определить значимые лаги", key="btn_auto_lags"):
+                        from statsmodels.tsa.stattools import acf, pacf
+                        
+                        max_lag = min(60, len(series) // 4)
+                        acf_values = acf(series, nlags=max_lag)
+                        pacf_values = pacf(series, nlags=max_lag)
+                        conf_int = 1.96 / np.sqrt(len(series))
+                        
+                        # Находим значимые лаги
+                        significant_acf = np.where(np.abs(acf_values[1:]) > conf_int)[0] + 1
+                        significant_pacf = np.where(np.abs(pacf_values[1:]) > conf_int)[0] + 1
+                        
+                        # Рекомендуемые лаги (первые 5 значимых)
+                        recommended_lags = sorted(set(significant_acf.tolist() + significant_pacf.tolist()))[:10]
+                        
+                        st.session_state.recommended_lags = recommended_lags
+                        
+                        st.success(f"✅ Обнаружено {len(recommended_lags)} значимых лагов: {recommended_lags}")
+                        st.info("💡 Эти лаги будут использованы при создании признаков")
+                    
+                    # Сохранение результатов спектрального анализа
+                    st.session_state.spectral_analysis = {
+                        'dominant_periods': dominant_periods,
+                        'spectral_energy': spectral_energy,
+                        'spectral_entropy': spectral_entropy,
+                        'low_high_ratio': ratio
+                    }
+            
+            except Exception as e:
+                st.error(f"❌ Ошибка спектрального анализа: {e}")
+            
+            st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+            
+            # ────────────────────────────────────────────────
+            # 🔹 ЧАСТЬ 2: СОЗДАНИЕ ПРИЗНАКОВ
+            # ────────────────────────────────────────────────
+            st.markdown("##### Создание признаков (Feature Engineering)")
+            
+            # ── ПАРАМЕТРЫ ─────────────────────────────────
+            st.markdown("######  Временные признаки")
+            create_time = st.checkbox("Создать временные признаки", value=True, key="fe_create_time")
+            if create_time:
+                c_t1, c_t2 = st.columns(2)
+                with c_t1:
+                    create_weekend = st.checkbox("Is_weekend (выходной)", value=True, key="fe_weekend")
+                    create_holiday = st.checkbox("Is_holiday (праздник)", value=False, key="fe_holiday")
+                with c_t2:
+                    create_dayofyear = st.checkbox("День года (1-365)", value=True, key="fe_dayofyear")
+                    create_quarter = st.checkbox("Квартал", value=True, key="fe_quarter")
+            
+            st.markdown("###### Лаговые признаки (Lag features)")
+            create_lags = st.checkbox("Создать лаги", value=True, key="fe_create_lags")
+            if create_lags:
+                # Определяем доступные опции
+                lag_options = [1, 2, 3, 5, 7, 10, 14, 21, 30, 60, 90]
+
+                # Получаем рекомендованные лаги и фильтруем только те, что есть в опциях
+                recommended_lags = st.session_state.get('recommended_lags', [])
+                default_lags = [lag for lag in recommended_lags if lag in lag_options]
+
+                # Если после фильтрации ничего не осталось — используем стандартный набор
+                if not default_lags:
+                    default_lags = [1, 7, 14, 30]
+
+                lag_periods = st.multiselect(
+                    "Периоды лагов:",
+                    options=lag_options,
+                    default=default_lags,
+                    key="lag_periods"
+                )
+            
+            st.markdown("###### Скользящие статистики (Rolling)")
+            create_rolling = st.checkbox("Скользящие статистики", value=True, key="fe_create_rolling")
+            if create_rolling:
+                c_r1, c_r2 = st.columns(2)
+                with c_r1:
+                    rolling_windows = st.multiselect(
+                        "Окна (периоды):",
+                        options=[3, 5, 7, 10, 14, 21, 30, 60, 90],
+                        default=[7, 14, 30],
+                        key="rolling_windows"
+                    )
+                    rolling_stats = st.multiselect(
+                        "Статистики:",
+                        options=['mean', 'std', 'min', 'max'],
+                        default=['mean', 'std'],
+                        key="rolling_stats"
+                    )
+                with c_r2:
+                    create_ewma = st.checkbox("EWMA (экспоненциальное скользящее)", value=True, key="fe_ewma")
+                    if create_ewma:
+                        ewma_spans = st.multiselect(
+                            "EWMA периоды (span):",
+                            options=[7, 14, 30],
+                            default=[7, 14],
+                            key="ewma_spans"
+                        )
+            
+            st.markdown("###### Производные признаки")
+            c_d1, c_d2 = st.columns(2)
+            with c_d1:
+                create_diff = st.checkbox("Разности (differencing)", value=True, key="fe_create_diff")
+                if create_diff:
+                    diff_periods = st.multiselect(
+                        "Периоды разностей:",
+                        options=[1, 7, 14, 30],
+                        default=[1, 7],
+                        key="diff_periods"
+                    )
+            with c_d2:
+                create_pct = st.checkbox("Процентные изменения (pct_change)", value=True, key="fe_create_pct")
+                if create_pct:
+                    pct_periods = st.multiselect(
+                        "Периоды pct_change:",
+                        options=[1, 7, 14, 30],
+                        default=[1, 7],
+                        key="pct_periods"
+                    )
+            
+            create_ratio = st.checkbox("Отношения к скользящему среднему", value=True, key="fe_create_ratio")
+            if create_ratio:
+                ratio_windows = st.multiselect(
+                    "Окна для отношений:",
+                    options=[7, 14, 30],
+                    default=[7, 14],
+                    key="ratio_windows"
+                )
+            
+            # ── КНОПКА ПРИМЕНЕНИЯ ────────────────────────
+            if st.button(" Создать признаки", type="primary", use_container_width=True, key="btn_create_features"):
+                try:
+                    df_fe = df_work.copy()
+                    df_fe[date_col] = pd.to_datetime(df_fe[date_col])
+                    df_fe = df_fe.sort_values(date_col)
+                    features_created = []
+                    
+                    # 1. ВРЕМЕННЫЕ ПРИЗНАКИ
+                    if create_time:
+                        if pd.api.types.is_datetime64_any_dtype(df_fe[date_col]):
+                            df_fe['year'] = df_fe[date_col].dt.year
+                            df_fe['month'] = df_fe[date_col].dt.month
+                            df_fe['day'] = df_fe[date_col].dt.day
+                            df_fe['dayofweek'] = df_fe[date_col].dt.dayofweek
+                            if create_quarter:
+                                df_fe['quarter'] = df_fe[date_col].dt.quarter
+                            if create_dayofyear:
+                                df_fe['dayofyear'] = df_fe[date_col].dt.dayofyear
+                            if create_weekend:
+                                df_fe['is_weekend'] = (df_fe[date_col].dt.dayofweek >= 5).astype(int)
+                            if create_holiday:
+                                # Упрощённая логика праздников (можно расширить)
+                                df_fe['is_holiday'] = 0  # Заглушка, требует библиотеки holidays
+                            features_created.extend(['year', 'month', 'day', 'dayofweek', 'quarter', 'dayofyear', 'is_weekend', 'is_holiday'])
+                            st.success("✅ Созданы временные признаки")
+                    
+                    # 2. ЛАГИ
+                    if create_lags and lag_periods:
+                        for lag in lag_periods:
+                            lag_col = f"{target_col}_lag_{lag}"
+                            df_fe[lag_col] = df_fe[target_col].shift(lag)
+                            features_created.append(lag_col)
+                        st.success(f"✅ Создано лагов: {len(lag_periods)}")
+                    
+                    # 3. СКОЛЬЗЯЩИЕ СТАТИСТИКИ
+                    if create_rolling and rolling_windows:
+                        for window in rolling_windows:
+                            for stat in rolling_stats:
+                                roll_col = f"{target_col}_roll_{stat}_{window}"
+                                if stat == 'mean':
+                                    df_fe[roll_col] = df_fe[target_col].rolling(window=window).mean()
+                                elif stat == 'std':
+                                    df_fe[roll_col] = df_fe[target_col].rolling(window=window).std()
+                                elif stat == 'min':
+                                    df_fe[roll_col] = df_fe[target_col].rolling(window=window).min()
+                                elif stat == 'max':
+                                    df_fe[roll_col] = df_fe[target_col].rolling(window=window).max()
+                                features_created.append(roll_col)
+                        st.success(f"✅ Создано скользящих признаков: {len(rolling_windows) * len(rolling_stats)}")
+                    
+                    # 4. EWMA
+                    if create_ewma and ewma_spans:
+                        for span in ewma_spans:
+                            ewma_col = f"{target_col}_ewma_{span}"
+                            df_fe[ewma_col] = df_fe[target_col].ewm(span=span, adjust=False).mean()
+                            features_created.append(ewma_col)
+                        st.success(f"✅ Создано EWMA признаков: {len(ewma_spans)}")
+                    
+                    # 5. РАЗНОСТИ
+                    if create_diff and diff_periods:
+                        for period in diff_periods:
+                            diff_col = f"{target_col}_diff_{period}"
+                            df_fe[diff_col] = df_fe[target_col].diff(periods=period)
+                            features_created.append(diff_col)
+                        st.success(f"✅ Создано разностей: {len(diff_periods)}")
+                    
+                    # 6. ПРОЦЕНТНЫЕ ИЗМЕНЕНИЯ
+                    if create_pct and pct_periods:
+                        for period in pct_periods:
+                            pct_col = f"{target_col}_pct_{period}"
+                            df_fe[pct_col] = df_fe[target_col].pct_change(periods=period)
+                            features_created.append(pct_col)
+                        st.success(f"✅ Создано pct_change признаков: {len(pct_periods)}")
+                    
+                    # 7. ОТНОШЕНИЯ К СКОЛЬЗЯЩЕМУ СРЕДНЕМУ
+                    if create_ratio and ratio_windows:
+                        for window in ratio_windows:
+                            ratio_col = f"{target_col}_ratio_ma_{window}"
+                            rolling_mean = df_fe[target_col].rolling(window=window).mean()
+                            df_fe[ratio_col] = df_fe[target_col] / rolling_mean
+                            features_created.append(ratio_col)
+                        st.success(f"✅ Создано отношений к MA: {len(ratio_windows)}")
+                    
+                    # 8. СПЕКТРАЛЬНЫЕ ПРИЗНАКИ (если есть анализ)
+                    if hasattr(st.session_state, 'spectral_analysis'):
+                        spec = st.session_state.spectral_analysis
+                        df_fe['spectral_energy'] = spec.get('spectral_energy', 0)
+                        df_fe['spectral_entropy'] = spec.get('spectral_entropy', 0)
+                        df_fe['low_high_freq_ratio'] = spec.get('low_high_ratio', 0)
+                        df_fe['n_dominant_periods'] = len(spec.get('dominant_periods', []))
+                        features_created.extend(['spectral_energy', 'spectral_entropy', 'low_high_freq_ratio', 'n_dominant_periods'])
+                        st.success("✅ Добавлены спектральные признаки")
+                    
+                    # Сохранение
+                    st.session_state.df_fe_work = df_fe
+                    st.session_state.fe_features_created = features_created
+                    st.session_state.df = df_fe  # Синхронизация
+                    
+                    st.divider()
+                    st.success(f"🎉 Всего создано признаков: **{len(features_created)}**")
+                    st.info("💡 Новые колонки добавлены в датасет. Перезапустите валидацию для обновления статистик.")
+                    
+                    # Показать созданные признаки
+                    with st.expander(" Список созданных признаков", expanded=True):
+                        st.write(features_created)
+                    
+                    # Кнопка экспорта
+                    st.download_button(
+                        label=" Скачать датасет с признаками (CSV)",
+                        data=df_fe.to_csv(index=False, encoding="utf-8-sig"),
+                        file_name=f"features_{target_col}.csv",
+                        mime="text/csv",
+                        key="btn_export_features"
+                    )
+                    
+                except Exception as e:
+                    st.error(f"❌ Ошибка создания признаков: {e}")
+                    import traceback
+                    st.code(traceback.format_exc(), language="python")
+            
+            # ── ПРЕДПРОСМОТР ────────────────────────────
+            if st.session_state.fe_features_created:
+                st.divider()
+                st.markdown("#### 📊 Предпросмотр датасета с признаками")
+                
+                # Показать только новые колонки
+                new_cols = [col for col in df_work.columns if col in st.session_state.fe_features_created]
+                if new_cols:
+                    st.dataframe(
+                        df_work[new_cols].head(20),
+                        use_container_width=True,
+                        height=300
+                    )
+                    st.caption(f"Показаны первые 20 строк из {len(new_cols)} новых признаков")
+        
+        else:
+            st.warning("⚠️ Нет числовых колонок для создания признаков")
+    else:
+        st.warning("⚠️ Не найдены колонки с датами или числовыми данными")
 
 # ═══════════════════════════════════════════════════════════
 #  ВКЛАДКА 4: IH-АНАЛИЗ (Information-Entropy Analysis)
