@@ -1,0 +1,27 @@
+# Секреты и пароли (НИКОГДА не коммитить)
+.streamlit/secrets.toml
+
+# Локальные конфиги сессий
+config.json
+
+# Python-кэш и байт-код
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Виртуальные окружения (не коммитятся)
+.venv/
+venv/
+env/
+ENV/
+
+# IDE и ОС
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+# Временные экспорт-файлы (если сохраняются в корне)
+export_*.xlsx

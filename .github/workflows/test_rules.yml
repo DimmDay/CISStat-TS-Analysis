@@ -1,0 +1,11 @@
+name: Test Validation Rules
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with: python-version: '3.10'
+      - run: pip install -r requirements.txt
+      - run: python -c "from validation.engine import load_rules, validate_dataframe; import pandas as pd; df=pd.read_csv('tests/sample_bad_data.csv'); res=validate_dataframe(df, load_rules()); assert not res['is_valid']"

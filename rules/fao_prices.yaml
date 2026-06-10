@@ -1,0 +1,77 @@
+# rules/fao_prices.yaml
+# Правила для датасетов FAO по ценам на продукцию в странах СНГ
+
+schema:
+  columns:
+    Country:
+      type: "string"
+      nullable: false
+    Year:
+      type: "integer"
+      min: 1990
+      max: 2030
+    Price:
+      type: "float"
+      nullable: false
+
+ranges:
+  - name: "Цена должна быть положительной"
+    keywords: ["price", "цена"]
+    min: 0
+    max: 5000  # Максимальная разумная цена в USD/tonne
+    
+  - name: "Год в разумных пределах"
+    keywords: ["year", "год"]
+    min: 1990
+    max: 2030
+
+consistency:
+  - name: "Хронология по странам"
+    type: "chronology"
+    columns: ["Year"]
+    description: "Годы должны идти по возрастанию внутри каждой страны"
+    
+  - name: "Цена не может быть отрицательной"
+    type: "negative_price"
+    columns: ["Price"]
+    description: "Отрицательная цена — ошибка данных"
+
+inclusion:
+  Country:
+    allowed_values: 
+      - "Азербайджан"
+      - "Беларусь"
+      - "Казахстан"
+      - "Кыргызстан"
+      - "Молдова"
+      - "Армения"  # На случай расширения
+      - "Узбекистан"
+      - "Таджикистан"
+      - "Туркменистан"
+      
+  Currency:
+    allowed_values: ["usd", "USD"]
+
+uniqueness:
+  composite_key: ["Country", "Year"]
+  description: "Каждая страна должна иметь одно значение за год"
+
+referential:
+  - name: "Цена только для стран СНГ"
+    child_column: "Country"
+    allowed_values: 
+      - "Азербайджан"
+      - "Беларусь"
+      - "Казахстан"
+      - "Кыргызстан"
+      - "Молдова"
+      - "Армения"
+      - "Узбекистан"
+      - "Таджикистан"
+      - "Туркменистан"
+    default_value: "Не определено"
+    
+  - name: "Валюта в справочнике ISO"
+    child_column: "usd/tonne"
+    allowed_values: ["usd", "USD", "eur", "EUR", "rub", "RUB"]
+    default_value: "usd"

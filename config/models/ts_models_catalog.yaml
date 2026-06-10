@@ -1,0 +1,771 @@
+# ══════════════════════════════════════════════════════
+# СПРАВОЧНИК МОДЕЛЕЙ ВРЕМЕННЫХ РЯДОВ CISStat v2.0
+# Расширенная версия: 20 моделей + preprocessing
+# ══════════════════════════════════════════════════════
+
+metadata:
+  version: "2.0"
+  last_updated: "2026-06-07"
+  author: "CISStat TS Analysis Team"
+  description: "Полный справочник моделей для анализа и прогнозирования временных рядов"
+
+categories:
+  - id: "benchmark"
+    name: "Бенчмарки"
+    description: "Базовые модели для сравнения"
+    priority: 1
+    
+  - id: "statistical"
+    name: "Статистические"
+    description: "Классические статистические методы"
+    priority: 2
+    
+  - id: "ml"
+    name: "Machine Learning"
+    description: "Классические ML-алгоритмы"
+    priority: 3
+    
+  - id: "deep_learning"
+    name: "Deep Learning"
+    description: "Нейросетевые архитектуры"
+    priority: 4
+    
+  - id: "ensemble"
+    name: "Ансамбли"
+    description: "Композиции моделей"
+    priority: 5
+
+# ═══════════════════════════════════════════════════════
+# ЕДИНЫЙ БЛОК МОДЕЛЕЙ (без дублирования!)
+# ═══════════════════════════════════════════════════════
+models:
+  # ── БЕНЧМАРКИ ──────────────────────────────────────
+  - id: "naive"
+    name: "Naive Forecast"
+    category: "benchmark"
+    description: "Прогноз = последнее наблюдаемое значение"
+    requirements:
+      min_observations: 2
+      stationarity: "not_needed"
+      seasonality: "not_needed"
+      exogenous: "not_supported"
+      regularity: "not_needed"
+    strengths:
+      - "Простейшая реализация"
+      - "Отправная точка для сравнения"
+      - "Не требует обучения"
+    weaknesses:
+      - "Игнорирует тренды и сезонность"
+      - "Низкая точность на реальных данных"
+    conditions:
+      when_to_use:
+        - "Как baseline для сравнения"
+        - "При полном отсутствии паттернов"
+      when_not_to_use:
+        - "При наличии тренда или сезонности"
+    libraries: ["statsmodels"]
+    complexity: "low"
+    training_time: "instant"
+
+  - id: "seasonal_naive"
+    name: "Seasonal Naive"
+    category: "benchmark"
+    description: "Прогноз = значение из предыдущего сезона"
+    requirements:
+      min_observations: 24
+      stationarity: "not_needed"
+      seasonality: "required"
+      exogenous: "not_supported"
+      regularity: "required"
+    preprocessing:  # ← ДОБАВЛЕНО
+      if_not_regular:
+        action: "resample"
+        description: "Приведите к регулярной частоте"
+        code: "series.resample('D').mean()"
+        expected_result: "Регулярный временной индекс"
+    strengths:
+      - "Учитывает сезонность"
+      - "Простая реализация"
+    weaknesses:
+      - "Не учитывает тренд"
+      - "Требует регулярный шаг"
+    conditions:
+      when_to_use:
+        - "Сильная сезонность без тренда"
+        - "Как baseline для сезонных моделей"
+      when_not_to_use:
+        - "При наличии тренда"
+    libraries: ["statsmodels"]
+    complexity: "low"
+    training_time: "instant"
+
+  - id: "drift"
+    name: "Drift Method"
+    category: "benchmark"
+    description: "Линейная экстраполяция последнего тренда"
+    requirements:
+      min_observations: 10
+      stationarity: "not_needed"
+      seasonality: "not_needed"
+      exogenous: "not_supported"
+      regularity: "required"
+    preprocessing:  # ← ДОБАВЛЕНО
+      if_not_regular:
+        action: "resample"
+        description: "Приведите к регулярной частоте"
+        code: "series.resample('D').mean()"
+        expected_result: "Регулярный временной индекс"
+    strengths:
+      - "Учитывает линейный тренд"
+      - "Простая интерпретация"
+    weaknesses:
+      - "Только линейный тренд"
+      - "Не учитывает сезонность"
+    conditions:
+      when_to_use:
+        - "Слабый линейный тренд"
+        - "Краткосрочный прогноз"
+      when_not_to_use:
+        - "Нелинейные тренды"
+        - "Долгосрочный прогноз"
+    libraries: ["statsmodels"]
+    complexity: "low"
+    training_time: "instant"
+
+  # ── СТАТИСТИЧЕСКИЕ МОДЕЛИ ──────────────────────────
+  - id: "ets"
+    name: "Exponential Smoothing (ETS)"
+    category: "statistical"
+    description: "Модели экспоненциального сглаживания с компонентами Error, Trend, Seasonality"
+    requirements:
+      min_observations: 10
+      stationarity: "not_needed"
+      seasonality: "supported"
+      exogenous: "not_supported"
+      regularity: "optional"
+    preprocessing:
+      if_not_regular:
+        action: "resample"
+        description: "Приведите к регулярной частоте"
+        code: "series.resample('D').mean()"
+        expected_result: "Регулярный временной индекс для ETS"
+    strengths:
+      - "Интерпретируемые компоненты"
+      - "Хорошо работает на малых выборках"
+      - "Автоматический подбор параметров"
+      - "Доверительные интервалы"
+    weaknesses:
+      - "Линейная структура тренда"
+      - "Не учитывает экзогенные факторы"
+    conditions:
+      when_to_use:
+        - "n < 100 наблюдений"
+        - "Нужна интерпретируемость"
+        - "Есть сезонность"
+      when_not_to_use:
+        - "Сложные нелинейные паттерны"
+        - "Много экзогенных признаков"
+    parameters:
+      error: "add | mul"
+      trend: "add | mul | None"
+      seasonal: "add | mul | None"
+      seasonal_periods: "int (7, 12, 4)"
+    libraries: ["statsmodels"]
+    complexity: "low"
+    training_time: "seconds"
+
+  - id: "arima"
+    name: "ARIMA / SARIMA"
+    category: "statistical"
+    description: "Авторегрессионная интегрированная скользящая средняя (Box-Jenkins)"
+    requirements:
+      min_observations: 50
+      stationarity: "optional"
+      seasonality: "supported"
+      exogenous: "supported"
+      regularity: "required"
+    preprocessing:
+      if_not_stationary:
+        action: "diff"
+        description: "Примените дифференцирование (d=1 или d=2)"
+        code: "series.diff().dropna()"
+        expected_result: "Ряд станет стационарным после 1-2 дифференцирований"
+      if_not_regular:
+        action: "resample"
+        description: "Приведите к регулярной частоте через resample"
+        code: "series.resample('D').mean()"
+        expected_result: "Регулярный временной индекс"
+    strengths:
+      - "Золотой стандарт TS-анализа"
+      - "Хорошая интерпретируемость"
+      - "SARIMA учитывает сезонность"
+      - "ARIMAX поддерживает экзогенные факторы"
+    weaknesses:
+      - "Требует стационарности (d≥1)"
+      - "Линейная структура"
+      - "Чувствительна к выбросам"
+      - "Требует регулярный индекс"
+    conditions:
+      when_to_use:
+        - "50 ≤ n < 1000"
+        - "Ряд стационарен или легко дифференцируется"
+        - "Нужна интерпретируемость параметров"
+      when_not_to_use:
+        - "Сложные нелинейности"
+        - "Нерегулярные данные"
+        - "Очень длинные ряды (n > 5000)"
+    parameters:
+      p: "Порядок AR (0-5)"
+      d: "Порядок дифференцирования (0-2)"
+      q: "Порядок MA (0-5)"
+      P: "Сезонный AR (0-2)"
+      D: "Сезонное дифференцирование (0-1)"
+      Q: "Сезонный MA (0-2)"
+      m: "Сезонный период (7, 12, 4)"
+    libraries: ["statsmodels", "pmdarima"]
+    complexity: "medium"
+    training_time: "seconds"
+
+  - id: "prophet"
+    name: "Prophet (Facebook)"
+    category: "statistical"
+    description: "Аддитивная модель с трендом, сезонностью и праздниками"
+    requirements:
+      min_observations: 30
+      stationarity: "not_needed"
+      seasonality: "supported"
+      exogenous: "supported"
+      regularity: "not_needed"
+    strengths:
+      - "Автоматически обрабатывает пропуски"
+      - "Учёт праздников и спецсобытий"
+      - "Робастность к выбросам"
+      - "Не требует стационарности"
+    weaknesses:
+      - "Медленнее ARIMA"
+      - "Менее интерпретируема"
+      - "Плохо экстраполирует тренды"
+    conditions:
+      when_to_use:
+        - "Данные с праздниками/событиями"
+        - "Нерегулярные наблюдения"
+        - "Быстрый прототип"
+      when_not_to_use:
+        - "Очень длинные ряды"
+        - "Сложные взаимодействия признаков"
+    libraries: ["prophet"]
+    complexity: "medium"
+    training_time: "minutes"
+
+  - id: "tbats"
+    name: "TBATS"
+    category: "statistical"
+    description: "Trigonometric, Box-Cox, ARMA, Trend, Seasonal — для сложных сезонностей"
+    requirements:
+      min_observations: 100
+      stationarity: "not_needed"
+      seasonality: "supported"
+      exogenous: "not_supported"
+      regularity: "required"
+    preprocessing:
+      if_not_regular:
+        action: "resample"
+        description: "Приведите к регулярной частоте"
+        code: "series.resample('D').mean()"
+        expected_result: "Регулярный временной индекс"
+    strengths:
+      - "Автоматический подбор параметров"
+      - "Поддержка множественных сезонностей"
+      - "Box-Cox трансформация"
+    weaknesses:
+      - "Медленное обучение"
+      - "Сложная интерпретация"
+    conditions:
+      when_to_use:
+        - "Множественные сезонности (дневная + недельная)"
+        - "Нужна автоматизация подбора параметров"
+      when_not_to_use:
+        - "Мало данных (< 100)"
+        - "Нужна быстрая итерация"
+    libraries: ["statsmodels"]
+    complexity: "medium"
+    training_time: "minutes"
+
+  - id: "theta"
+    name: "Theta Method"
+    category: "statistical"
+    description: "Метод Theta — декомпозиция ряда на две линии"
+    requirements:
+      min_observations: 30
+      stationarity: "not_needed"
+      seasonality: "supported"
+      exogenous: "not_supported"
+      regularity: "required"
+    preprocessing:  # ← ДОБАВЛЕНО
+      if_not_regular:
+        action: "resample"
+        description: "Приведите к регулярной частоте"
+        code: "series.resample('D').mean()"
+        expected_result: "Регулярный временной индекс"
+    strengths:
+      - "Простота реализации"
+      - "Хорошо работает на конкурсах M3"
+      - "Не требует стационарности"
+    weaknesses:
+      - "Ограниченная гибкость"
+      - "Не учитывает экзогенные факторы"
+    conditions:
+      when_to_use:
+        - "Краткосрочный прогноз"
+        - "Простые ряды"
+      when_not_to_use:
+        - "Сложные паттерны"
+        - "Много экзогенных признаков"
+    libraries: ["statsmodels"]
+    complexity: "low"
+    training_time: "seconds"
+
+  - id: "garch"
+    name: "GARCH"
+    category: "statistical"
+    description: "Модель волатильности для финансовых рядов"
+    requirements:
+      min_observations: 100
+      stationarity: "required"
+      seasonality: "not_needed"
+      exogenous: "supported"
+      regularity: "required"
+    preprocessing:
+      if_not_stationary:
+        action: "diff"
+        description: "Примените дифференцирование для получения стационарных доходностей"
+        code: "returns = series.diff().dropna()"
+        expected_result: "Стационарный ряд доходностей"
+      if_not_regular:
+        action: "resample"
+        description: "Приведите к регулярной частоте"
+        code: "series.resample('D').mean()"
+        expected_result: "Регулярный временной индекс"
+    strengths:
+      - "Моделирует изменяющуюся волатильность"
+      - "Стандарт для финансовых рядов"
+      - "Прогноз риска и VaR"
+    weaknesses:
+      - "Только для волатильности, не для уровня"
+      - "Требует стационарности"
+      - "Чувствительна к выбору лагов"
+    conditions:
+      when_to_use:
+        - "Финансовые данные (цены, доходности)"
+        - "Прогноз риска/волатильности"
+      when_not_to_use:
+        - "Нефинансовые данные"
+        - "Прогноз среднего уровня"
+    libraries: ["arch"]
+    complexity: "medium"
+    training_time: "seconds"
+
+  - id: "var"
+    name: "VAR / VECM"
+    category: "statistical"
+    description: "Векторная авторегрессия для многомерных рядов"
+    requirements:
+      min_observations: 100
+      stationarity: "optional"
+      seasonality: "supported"
+      exogenous: "supported"
+      regularity: "required"
+    preprocessing:
+      if_not_stationary:
+        action: "diff"
+        description: "Примените дифференцирование ко всем рядам"
+        code: "df.diff().dropna()"
+        expected_result: "Стационарные ряды"
+      if_not_regular:
+        action: "resample"
+        description: "Приведите к регулярной частоте"
+        code: "df.resample('D').mean()"
+        expected_result: "Регулярный временной индекс"
+    strengths:
+      - "Многомерный анализ"
+      - "Учитывает взаимное влияние рядов"
+      - "Impulse response functions"
+    weaknesses:
+      - "Требует много данных"
+      - "Сложная интерпретация"
+      - "Чувствительна к количеству лагов"
+    conditions:
+      when_to_use:
+        - "Несколько связанных рядов"
+        - "Анализ взаимного влияния"
+      when_not_to_use:
+        - "Одномерный ряд"
+        - "Мало данных"
+    libraries: ["statsmodels"]
+    complexity: "high"
+    training_time: "minutes"
+
+  # ── ML-МОДЕЛИ ──────────────────────────────────────
+  - id: "xgboost"
+    name: "XGBoost / LightGBM"
+    category: "ml"
+    description: "Градиентный бустинг на лагах и признаках"
+    requirements:
+      min_observations: 100
+      stationarity: "not_needed"
+      seasonality: "supported"
+      exogenous: "supported"
+      regularity: "not_needed"
+    strengths:
+      - "Отлично работает с нелинейностями"
+      - "Быстрое обучение"
+      - "Feature importance"
+      - "Устойчивость к выбросам"
+    weaknesses:
+      - "Требует feature engineering"
+      - "Не экстраполирует тренд"
+    conditions:
+      when_to_use:
+        - "100 ≤ n < 10000"
+        - "Много экзогенных признаков"
+        - "Нелинейные зависимости"
+      when_not_to_use:
+        - "Мало данных (< 100)"
+        - "Нужна строгая интерпретируемость"
+    libraries: ["xgboost", "lightgbm", "catboost"]
+    complexity: "medium"
+    training_time: "minutes"
+
+  - id: "random_forest"
+    name: "Random Forest"
+    category: "ml"
+    description: "Ансамбль деревьев решений для регрессии"
+    requirements:
+      min_observations: 100
+      stationarity: "not_needed"
+      seasonality: "supported"
+      exogenous: "supported"
+      regularity: "not_needed"
+    strengths:
+      - "Устойчив к переобучению"
+      - "Не требует масштабирования"
+      - "Feature importance"
+    weaknesses:
+      - "Медленнее бустинга"
+      - "Менее точен на сложных паттернах"
+    conditions:
+      when_to_use:
+        - "Нужна устойчивость"
+        - "Мало времени на настройку"
+      when_not_to_use:
+        - "Нужна максимальная точность"
+    libraries: ["scikit-learn"]
+    complexity: "medium"
+    training_time: "minutes"
+
+  - id: "gaussian_process"
+    name: "Gaussian Processes"
+    category: "ml"
+    description: "Байесовский подход с оценкой неопределённости"
+    requirements:
+      min_observations: 50
+      stationarity: "not_needed"
+      seasonality: "supported"
+      exogenous: "supported"
+      regularity: "not_needed"
+    strengths:
+      - "Даёт доверительные интервалы"
+      - "Работает на малых выборках"
+      - "Гибкость через ядра"
+    weaknesses:
+      - "Медленное обучение O(n³)"
+      - "Требует выбора ядра"
+    conditions:
+      when_to_use:
+        - "Мало данных"
+        - "Нужна оценка неопределённости"
+      when_not_to_use:
+        - "Большие данные (> 5000)"
+        - "Нужна быстрая итерация"
+    libraries: ["scikit-learn", "GPy"]
+    complexity: "medium"
+    training_time: "minutes"
+
+  # ── DEEP LEARNING ──────────────────────────────────
+  - id: "lstm"
+    name: "LSTM / GRU"
+    category: "deep_learning"
+    description: "Рекуррентные нейронные сети для последовательностей"
+    requirements:
+      min_observations: 1000
+      stationarity: "not_needed"
+      seasonality: "supported"
+      exogenous: "supported"
+      regularity: "optional"
+    preprocessing:
+      if_not_regular:
+        action: "resample_interpolate"
+        description: "Приведите к регулярной частоте с интерполяцией"
+        code: "series.resample('D').interpolate()"
+        expected_result: "Регулярный ряд без пропусков"
+    strengths:
+      - "Улавливает долгие зависимости"
+      - "Работает со сложными паттернами"
+      - "Масштабируемость"
+    weaknesses:
+      - "Требует много данных"
+      - "Долгое обучение"
+      - "Сложная настройка"
+      - "Требует GPU"
+    conditions:
+      when_to_use:
+        - "n > 1000"
+        - "Сложные нелинейные зависимости"
+        - "Долгие временные зависимости"
+      when_not_to_use:
+        - "Мало данных"
+        - "Нет GPU"
+        - "Нужна быстрая итерация"
+    libraries: ["tensorflow", "pytorch", "keras"]
+    complexity: "high"
+    training_time: "hours"
+
+  - id: "tft"
+    name: "Temporal Fusion Transformer"
+    category: "deep_learning"
+    description: "Transformer-архитектура для временных рядов с attention"
+    requirements:
+      min_observations: 500  # ← СНИЖЕНО с 2000 до 500
+      stationarity: "not_needed"
+      seasonality: "supported"
+      exogenous: "supported"
+      regularity: "optional"  # ← ИЗМЕНЕНО с "required" на "optional"
+    preprocessing:  # ← ДОБАВЛЕНО
+      if_not_regular:
+        action: "resample"
+        description: "Приведите к регулярной частоте через ресемплинг"
+        code: "series.resample('D').mean()"
+        expected_result: "Регулярный временной индекс"
+    strengths:
+      - "State-of-the-art точность"
+      - "Интерпретируемость через attention"
+      - "Поддержка множественных горизонтов"
+    weaknesses:
+      - "Очень требовательна к данным"
+      - "Сложная реализация"
+      - "Долгое обучение"
+    conditions:
+      when_to_use:
+        - "n ≥ 500 наблюдений"
+        - "Множественные ряды (global model)"
+        - "Промышленные масштабы"
+      when_not_to_use:
+        - "Малые выборки (< 500)"
+        - "Прототипирование"
+    libraries: ["pytorch-forecasting", "darts"]
+    complexity: "high"
+    training_time: "hours"
+
+  - id: "nbeats"
+    name: "N-BEATS"
+    category: "deep_learning"
+    description: "Нейросеть для прогнозирования с interpretable basis"
+    requirements:
+      min_observations: 500  # ← СНИЖЕНО с 1000 до 500
+      stationarity: "not_needed"
+      seasonality: "supported"
+      exogenous: "not_supported"
+      regularity: "optional"  # ← ИЗМЕНЕНО с "required" на "optional"
+    preprocessing:  # ← ДОБАВЛЕНО
+      if_not_regular:
+        action: "resample"
+        description: "Приведите к регулярной частоте"
+        code: "series.resample('D').mean()"
+        expected_result: "Регулярный временной индекс"
+    strengths:
+      - "Интерпретируемые компоненты (тренд + сезонность)"
+      - "State-of-the-art на M4"
+      - "Быстрый inference"
+    weaknesses:
+      - "Только одномерные ряды"
+      - "Требует много данных"
+    conditions:
+      when_to_use:
+        - "Одномерные ряды"
+        - "n ≥ 500 наблюдений"
+        - "Нужна интерпретируемость DL"
+      when_not_to_use:
+        - "Многомерные ряды"
+        - "Мало данных (< 500)"
+    libraries: ["darts", "nbeats-pytorch"]
+    complexity: "high"
+    training_time: "hours"
+
+  - id: "nhits"
+    name: "N-HiTS"
+    category: "deep_learning"
+    description: "Улучшенная версия N-BEATS с hierarchical interpolation"
+    requirements:
+      min_observations: 500  # ← СНИЖЕНО с 1000 до 500
+      stationarity: "not_needed"
+      seasonality: "supported"
+      exogenous: "not_supported"
+      regularity: "optional"  # ← ИЗМЕНЕНО с "required" на "optional"
+    preprocessing:  # ← ДОБАВЛЕНО
+      if_not_regular:
+        action: "resample"
+        description: "Приведите к регулярной частоте"
+        code: "series.resample('D').mean()"
+        expected_result: "Регулярный временной индекс"
+    strengths:
+      - "Быстрее N-BEATS"
+      - "Лучшая точность на долгих горизонтах"
+    weaknesses:
+      - "Только одномерные ряды"
+    conditions:
+      when_to_use:
+        - "Долгосрочный прогноз"
+        - "n ≥ 500 наблюдений"
+        - "Нужна скорость"
+      when_not_to_use:
+        - "Многомерные ряды"
+    libraries: ["darts"]
+    complexity: "high"
+    training_time: "hours"
+
+  - id: "deepar"
+    name: "DeepAR"
+    category: "deep_learning"
+    description: "Авторегрессионная модель от Amazon для множественных рядов"
+    requirements:
+      min_observations: 500  # ← СНИЖЕНО с 1000 до 500
+      stationarity: "not_needed"
+      seasonality: "supported"
+      exogenous: "supported"
+      regularity: "optional"  # ← ИЗМЕНЕНО с "required" на "optional"
+    preprocessing:  # ← ДОБАВЛЕНО
+      if_not_regular:
+        action: "resample"
+        description: "Приведите к регулярной частоте"
+        code: "series.resample('D').mean()"
+        expected_result: "Регулярный временной индекс"
+    strengths:
+      - "Глобальная модель для многих рядов"
+      - "Вероятностный прогноз"
+      - "Учёт категориальных признаков"
+    weaknesses:
+      - "Требует много рядов"
+      - "Сложная настройка"
+    conditions:
+      when_to_use:
+        - "Множество похожих рядов (SKU, регионы)"
+        - "n ≥ 500 наблюдений"
+        - "Нужен вероятностный прогноз"
+      when_not_to_use:
+        - "Один ряд"
+        - "Мало рядов"
+    libraries: ["gluonts"]
+    complexity: "high"
+    training_time: "hours"
+
+  # ── АНСАМБЛИ ───────────────────────────────────────
+  - id: "ensemble_avg"
+    name: "Ensemble Average"
+    category: "ensemble"
+    description: "Усреднение прогнозов нескольких моделей"
+    requirements:
+      min_observations: 50
+      stationarity: "not_needed"
+      seasonality: "not_needed"
+      exogenous: "not_needed"
+      regularity: "not_needed"
+    strengths:
+      - "Устойчивость к ошибкам отдельных моделей"
+      - "Простая реализация"
+    weaknesses:
+      - "Требует несколько базовых моделей"
+    conditions:
+      when_to_use:
+        - "Есть несколько хороших моделей"
+        - "Нужна устойчивость"
+      when_not_to_use:
+        - "Только одна модель"
+    libraries: ["custom"]
+    complexity: "low"
+    training_time: "seconds"
+
+  - id: "stacking"
+    name: "Stacking"
+    category: "ensemble"
+    description: "Мета-модель обучается на прогнозах базовых моделей"
+    requirements:
+      min_observations: 200
+      stationarity: "not_needed"
+      seasonality: "not_needed"
+      exogenous: "not_needed"
+      regularity: "not_needed"
+    strengths:
+      - "Максимальная точность"
+      - "Автоматический подбор весов"
+    weaknesses:
+      - "Сложная реализация"
+      - "Риск переобучения"
+    conditions:
+      when_to_use:
+        - "Нужна максимальная точность"
+        - "Достаточно данных"
+      when_not_to_use:
+        - "Мало данных"
+        - "Нужна простота"
+    libraries: ["scikit-learn", "mlxtend"]
+    complexity: "high"
+    training_time: "minutes"
+
+# ═══════════════════════════════════════════════════════
+# ПРАВИЛА РЕКОМЕНДАЦИЙ
+# ═══════════════════════════════════════════════════════
+recommendation_rules:
+  by_dq_score:
+    high:
+      - "arima"
+      - "ets"
+      - "prophet"
+      - "tbats"
+      - "xgboost"
+      - "lstm"
+      - "tft"
+      - "nbeats"
+    medium:
+      - "arima"
+      - "ets"
+      - "prophet"
+      - "xgboost"
+      - "random_forest"
+    low:
+      - "naive"
+      - "seasonal_naive"
+      - "drift"
+      - "ets"
+      
+  by_sample_size:
+    tiny:
+      models: ["naive", "drift"]
+      message: "Недостаточно данных. Используйте наивный прогноз."
+    small:
+      models: ["ets", "arima", "theta"]
+      message: "Мало данных. Используйте ETS, ARIMA или Theta."
+    medium:
+      models: ["arima", "prophet", "xgboost", "random_forest"]
+      message: "Средний объём. Доступны статистические и ML-модели."
+    large:
+      models: ["xgboost", "lstm", "tft", "nbeats", "deepar"]
+      message: "Большой объём. Рассмотрите Deep Learning."
+      
+  by_properties:
+    stationary: ["arima", "ets", "garch"]
+    non_stationary: ["prophet", "theta"]
+    seasonal: ["ets", "prophet", "tbats", "tft"]
+    white_noise: ["naive"]
+    strong_trend: ["prophet", "theta"]
+    volatile: ["garch"]
+    multivariate: ["var", "deepar", "tft"]

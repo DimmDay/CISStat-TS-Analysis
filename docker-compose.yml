@@ -1,0 +1,13 @@
+version: '3.8'
+services:
+  cisstat-validator:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./exports:/app/exports
+      - ./reports:/app/reports
+      - ./rules:/app/rules
+    environment:
+      - TZ=Europe/Moscow
+    restart: unless-stopped

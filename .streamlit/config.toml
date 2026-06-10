@@ -1,0 +1,11 @@
+[theme]
+primaryColor = "#2563EB"      # Основной синий (Tailwind Blue 600)
+backgroundColor = "#F8FAFC"   # Светлый фон
+secondaryBackgroundColor = "#FFFFFF" # Фон панелей
+textColor = "#0F172A"         # Темный текст
+font = "sans serif"
+
+[server]
+headless = true
+enableCORS = false
+enableXsrfProtection = true

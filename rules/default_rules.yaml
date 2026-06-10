@@ -1,0 +1,216 @@
+# rules/default_rules.yaml
+schema:
+  required_columns: ["id"]
+  columns:
+    id:
+      type: integer
+      nullable: false
+      unique: true
+      description: "Уникальный идентификатор записи"
+
+    value:
+      type: float
+      nullable: true
+      min: 0
+      max: 1000000
+      description: "Числовое значение, неотрицательное"
+
+    status:
+      type: string
+      nullable: true
+      allowed_values: ["active", "inactive", "pending", "archived"]
+      description: "Статус записи"
+
+    created_at:
+      type: datetime
+      nullable: false
+      check: "<= today"
+      description: "Дата создания"
+
+rules:
+  - name: "value_positive_if_active"
+    column: value
+    condition: "status == 'active'"
+    check: "> 0"
+    severity: warning
+    description: "Активные записи должны иметь положительное значение"
+
+consistency:
+  - name: "date_order"
+    condition: "end_date > start_date"
+    severity: error
+    description: "Дата окончания не может быть раньше даты начала"
+  - name: "total_match"
+    condition: "abs(price * quantity - total) < 0.01"
+    severity: warning
+    description: "Сумма должна совпадать с произведением цены и количества (допуск 0.01)"
+  - name: "temp_precip_type"
+    type: "temp_precip"
+    columns: ["temperature_celsius", "precipitation_type"]
+    description: "Несоответствие температуры и типа осадков (снег при +, дождь при -)"
+  - name: "revenue_profit"
+    type: "profit_revenue"
+    columns: ["revenue", "profit"]
+    description: "Прибыль не может превышать выручку"
+  - name: "steps_distance"
+    type: "steps_distance"
+    columns: ["steps", "distance_km"]
+    description: "Нулевые шаги при ненулевом расстоянии"
+  - name: "energy_subsystem"
+    type: "energy_subsystem"
+    columns: ["total_energy_kwh", "lighting_energy_kwh"]
+    description: "Потребление подсистемы > общего потребления"
+  - name: "speed_fuel"
+    type: "speed_fuel"
+    columns: ["speed_kmh", "fuel_consumption_lph"]
+    description: "Расход топлива > 1 л/ч при нулевой скорости"
+  - name: "chronology_check"
+    type: "chronology"
+    columns: ["timestamp"]
+    description: "Временные метки нарушают хронологический порядок"
+  - name: "battery_monotonic"
+    type: "monotonic_decrease"
+    time_column: "reading_time"
+    target_column: "battery_level_percent"
+    description: "Уровень заряда растёт без подзарядки"
+  - name: "cumulative_visits"
+    type: "monotonic_increase"
+    time_column: "date"
+    target_column: "cumulative_visits"
+    description: "Кумулятивные визиты уменьшаются со временем"
+  - name: "inventory_balance"
+    type: "inventory_balance"
+    time_column: "sale_date"
+    target_column: "inventory_after"
+    supply_column: "supply"
+    description: "Остаток на складе растёт после продажи без поставок"
+  - name: "max_temp_daytime"
+    type: "max_temp_daytime"
+    time_column: "measurement_time"
+    target_column: "temperature_celsius"
+    sunrise_col: "sunrise_time"
+    sunset_col: "sunset_time"
+    description: "Максимальная температура зафиксирована в тёмное время суток"
+  - name: "Хронологический порядок"
+    type: "chronology"
+    description: "Проверка хронологического порядка дат"
+    columns:
+      - "Year"  # или "date", в зависимости от названия колонки
+    severity: "error"
+
+  - name: "Логика цен"
+    type: "positive_prices"
+    description: "Цены должны быть положительными"
+    columns:
+      - "Price"
+    condition: "> 0"
+    severity: "warning"
+
+outliers:
+  method: "iqr"
+  iqr_multiplier: 1.5
+  zscore_threshold: 3.0
+
+missing:
+  report_only: true
+  critical_threshold: 0.1
+  critical_columns: ["id", "created_at"]
+
+formats:
+  email:
+    pattern: '^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    description: "Корректный email"
+    threshold: 95
+  phone_ru:
+    pattern: '^(\+7|7|8)?[\s\-]?\(?[489][0-9]{2}\)?[\s\-]?[0-9]{3}[\s\-]?[0-9]{2}[\s\-]?[0-9]{2}$'
+    description: "Российский номер телефона"
+    threshold: 90
+  date_iso:
+    pattern: '^\d{4}-\d{2}-\d{2}$'
+    description: "Дата YYYY-MM-DD"
+    threshold: 98
+  Year:
+    pattern: '^\d{4}$'
+    description: "Год в формате YYYY"
+    threshold: 100
+  Country:
+    pattern: '^[А-Яа-яA-Za-z\s]+$'
+    description: "Название страны (только буквы)"
+    threshold: 95
+
+ranges:
+  - keywords: ["price", "цена", "стоимость", "cost"]
+    min: 0
+    max: null
+    description: "Цена/стоимость не может быть отрицательной"
+  - keywords: ["value", "amount", "сумма", "total"]
+    min: 0
+    max: null
+  - keywords: ["vol", "volume", "объем", "quantity", "count", "количество", "вес", "weight"]
+    min: 0
+    max: null
+  - keywords: ["pct", "percent", "процент"]
+    min: 0
+    max: 100
+  - keywords: ["rate", "доля", "share"]
+    min: 0
+    max: 1
+  - keywords: ["moisture", "влажность"]
+    min: 0
+    max: 100
+  - keywords: ["sugar", "сахар", "сахаристость"]
+    min: 0
+    max: 30
+  - keywords: ["yield", "урожай", "урожайность"]
+    min: 0
+    max: null
+  # 🔽 НОВОЕ ПРАВИЛО: Возраст
+  - keywords: ["age", "возраст"]
+    min: 0
+    max: null  # Можно поставить max: 120, если нужна верхняя граница
+    description: "Возраст не может быть отрицательным"
+inclusion:
+  Country:
+    allowed_values: ["Азербайджан", "Беларусь", "Казахстан", "Кыргызстан", "Молдова"]
+  Category:
+    allowed_values: ["A", "B", "C"]
+
+inclusion_defaults:
+  Country: "Не определено"
+  Category: "Other"
+
+referential:
+  - name: "Цена только для стран СНГ"
+    child_column: "Country"
+    allowed_values: 
+      - "Азербайджан"
+      - "Беларусь"
+      - "Казахстан"
+      - "Кыргызстан"
+      - "Молдова"
+      - "Армения"
+      - "Узбекистан"
+      - "Таджикистан"
+      - "Туркменистан"
+    default_value: "Не определено"
+    
+  - name: "Валюта в справочнике ISO"
+    child_column: "usd/tonne"
+    allowed_values: ["usd", "USD", "eur", "EUR", "rub", "RUB"]
+    default_value: "usd"
+
+text_quality:
+  max_length: 200
+  min_length: 1
+  allowed_patterns:
+    Country: "^[А-Яа-яЁё\\s-]+$"  # Только кириллица
+    Category: "^[A-Za-z0-9\\s-]+$"
+  garbage_chars: ["", "\\x00", "ï¿½"]
+
+sufficiency:
+  min_obs_trend: 10           # Минимум для базового тренда
+  min_obs_seasonality: 24     # Минимум для сезонности (2 года для месячных)
+  min_obs_arima: 50           # Минимум для ARIMA
+  min_obs_ml: 100             # Минимум для ML-моделей
+  min_obs_fft: 64             # Минимум для FFT (степень 2)
+  min_seasons: 2              # Минимум полных сезонов для SARIMA
