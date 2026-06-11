@@ -1889,12 +1889,11 @@ max-width: 100% !important;  /* 🔧 Разрешаем использовать
 # ────────────────────────────────────────────────────────────
 #  СОЗДАНИЕ ВКЛАДОК
 # ────────────────────────────────────────────────────────────
-tab_download, tab_validation, tab_preprocessing, tab_exploratory, tab_feature_eng, tab_modeling, tab_forecasting, tab_taskset = st.tabs([
+tab_download, tab_validation, tab_preprocessing, tab_exploratory, tab_modeling, tab_forecasting, tab_taskset = st.tabs([
     "Загрузка",
     "Валидация",
     "Предобработка",
     "Разведочный EDA",
-    "Фичинг",
     "Моделирование",
     "Прогнозирование",
     "Задачи"
@@ -12736,22 +12735,34 @@ with tab_preprocessing:
 #  ВКЛАДКА 4: IH-АНАЛИЗ (Information-Entropy Analysis)
 # ═══════════════════════════════════════════════════════════
 with tab_exploratory:
-    st.markdown("### 📊 IH-анализ: Информационно-энтропийное исследование")
+    st.markdown("""
+    <div style="padding-left: 20px; margin: 20px 0; text-align: right;">
+        <p style="margin: 0 0 10px 0; color: #1e293b; line-height: 1.6; font-size: 18px; font-weight: 400;">
+            "Результат любого серьёзного исследования — появление двух новых вопросов там, где был всего лишь один".
+        </p>
+        <p style="margin: 0; color: #64748B; font-style: italic; font-size: 16px; line-height: 1.5;">
+            — Торстейн Веблен, американский экономист, социолог, публицист и футуролог, один из основоположников институционализма в экономической теории
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+    st.markdown("###  IH-анализ: Информационно-энтропийное исследование")
     st.caption("Оценка информативности признаков через теорию информации Шеннона. Метрика R(Y|X) = I(X;Y) / H(Y) ∈ [0;1]")
 
-    with st.expander("📘 Справка по методу", expanded=False):
+    with st.expander("Справка по методу", expanded=False):
         st.markdown("""
-        **📊 Что измеряет IH-анализ:**
+        **Что измеряет IH-анализ:**
         - **Энтропия H(X)** — мера неопределённости признака (бит)
         - **Взаимная информация I(X;Y)** — сколько знаний о Y даёт знание X
         - **Нормированная связь R(Y|X)** — доля неопределённости цели, объясняемая признаком
 
-        **✅ Параметры:**
+        **Параметры:**
         - `Sharpness` (0.1–1.0) — «резкость» дискретизации непрерывных признаков
         - `Target` — целевая переменная для оценки предсказательной силы
         - `Top-K` — количество признаков для детального анализа
 
-        **✅ Преимущества:**
+        **Преимущества:**
         - Работает с числовыми, категориальными данными и пропусками
         - Выявляет нелинейные и немонотонные зависимости
         - Оценивает синергию комбинаций признаков
@@ -12765,13 +12776,13 @@ with tab_exploratory:
         """)
 
     # ───────────────────────────────────────────────────────────
-    # 🔧 НАСТРОЙКИ IH-АНАЛИЗА
+    # НАСТРОЙКИ IH-АНАЛИЗА
     # ───────────────────────────────────────────────────────────
     if not df_filtered.empty and ct_f.get("num"):
         # Выбор целевой переменной
         target_options = ct_f["num"] + ([st.session_state.primary_date_col] if st.session_state.primary_date_col else [])
         ih_target = st.selectbox(
-            "🎯 ЦЕЛЕВАЯ ПЕРЕМЕННАЯ (Y)",
+            "ЦЕЛЕВАЯ ПЕРЕМЕННАЯ (Y)",
             options=target_options,
             index=0 if target_options else None,
             key="ih_target_select"
@@ -12780,7 +12791,7 @@ with tab_exploratory:
         # Выбор признаков для анализа
         feature_options = [c for c in ct_f["num"] + ct_f.get("cat", []) if c != ih_target]
         ih_features = st.multiselect(
-            "🔢 ПРИЗНАКИ ДЛЯ АНАЛИЗА (X)",
+            "ПРИЗНАКИ ДЛЯ АНАЛИЗА (X)",
             options=feature_options,
             default=feature_options[:5] if len(feature_options) >= 5 else feature_options,
             key="ih_features_select",
@@ -12813,7 +12824,7 @@ with tab_exploratory:
             )
 
         # Кнопка запуска анализа
-        if st.button("🚀 Запустить IH-анализ", type="primary", use_container_width=True, key="btn_run_ih"):
+        if st.button("Запустить IH-анализ", type="primary", use_container_width=True, key="btn_run_ih"):
             with st.spinner("🔢 Вычисление энтропийных метрик..."):
                 progress_bar = st.progress(0)
 
@@ -12953,7 +12964,7 @@ with tab_exploratory:
                 # ───────────────────────────────────────────────
                 # 📈 ВИЗУАЛИЗАЦИЯ 1: Рейтинг признаков по R
                 # ───────────────────────────────────────────────
-                st.markdown("#### 📊 Рейтинг признаков по информативности (R-метрика)")
+                st.markdown("#### Рейтинг признаков по информативности (R-метрика)")
 
                 top_df = df_ih.head(top_k).copy()
                 top_df["R_pct"] = (top_df["R"] * 100).round(1)
@@ -12994,7 +13005,7 @@ with tab_exploratory:
                 # ───────────────────────────────────────────────
                 # 📈 ВИЗУАЛИЗАЦИЯ 2: Тепловая карта энтропий
                 # ───────────────────────────────────────────────
-                st.markdown("#### 🔥 Тепловая карта: Энтропия признаков и взаимная информация")
+                st.markdown("######  Тепловая карта: Энтропия признаков и взаимная информация")
 
                 heatmap_data = top_df[["feature", "H_X", "MI", "R"]].copy()
                 heatmap_data = heatmap_data.set_index("feature")
@@ -13020,7 +13031,7 @@ with tab_exploratory:
                 # ───────────────────────────────────────────────
                 # 📈 ВИЗУАЛИЗАЦИЯ 3: Синергия пар признаков
                 # ───────────────────────────────────────────────
-                st.markdown("#### 🤝 Анализ синергии пар признаков")
+                st.markdown("######  Анализ синергии пар признаков")
 
                 if len(top_df) >= 2:
                     synergy_results = []
@@ -13098,7 +13109,7 @@ with tab_exploratory:
                 # ───────────────────────────────────────────────
                 # 📈 ВИЗУАЛИЗАЦИЯ 4: Детали по выбранному признаку
                 # ───────────────────────────────────────────────
-                st.markdown("#### 🔍 Детальный разбор признака")
+                st.markdown("######  Детальный разбор признака")
 
                 if not df_ih.empty:
                     selected_feat = st.selectbox(
@@ -13145,7 +13156,7 @@ with tab_exploratory:
                 # 📋 ТАБЛИЦА РЕЗУЛЬТАТОВ + ЭКСПОРТ
                 # ───────────────────────────────────────────────
                 st.divider()
-                st.markdown("#### 📋 Полная таблица результатов")
+                st.markdown("######  Полная таблица результатов")
 
                 display_cols = ["feature", "R", "MI", "H_X", "n_bins", "dtype"]
                 if "error" in df_ih.columns:
@@ -13180,7 +13191,7 @@ with tab_exploratory:
                 # ───────────────────────────────────────────────
                 # 💡 РЕКОМЕНДАЦИИ НА ОСНОВЕ РЕЗУЛЬТАТОВ
                 # ───────────────────────────────────────────────
-                st.markdown("#### 💡 Автоматические рекомендации")
+                st.markdown("###### 💡 Автоматические рекомендации")
 
                 recommendations = []
 
@@ -13220,7 +13231,7 @@ with tab_exploratory:
                     st.info("ℹ️ Явных паттернов не обнаружено — начните с признаков с наибольшим R")
 
                 # Методологическое пояснение
-                with st.expander("📚 Методология расчёта", expanded=False):
+                with st.expander("Методология расчёта", expanded=False):
                     st.markdown(f"""
                     **Параметры текущего запуска:**
                     - Целевая переменная: `{ih_target}`
@@ -13245,41 +13256,4 @@ with tab_exploratory:
 
     else:
         st.warning("⚠️ Для IH-анализа необходимы числовые данные. Загрузите датасет с метриками.")
-
-# ═══════════════════════════════════════════════════════════
-#  ВКЛАДКА 5: ФИЧИНГ (Feature Engineering)
-# ═══════════════════════════════════════════════════════════
-with tab_feature_eng:
-    st.markdown("### 🔧 Конструирование признаков")
-    st.caption("Создание новых фичей для ML-моделей: Лаги, Скользящие окна, Календарь.")
-
-    if ct['date'] and ct['num']:
-        feat_col = st.selectbox("Целевая колонка:", ct['num'], key="feat_target")
-        date_col = ct['date'][0]
-
-        st.divider()
-        st.markdown("#### 📅 Календарные признаки")
-        # Пример: Извлечение дня недели
-        if pd.api.types.is_datetime64_any_dtype(df[date_col]):
-            df_feat = df.copy()
-            df_feat['DayOfWeek'] = df_feat[date_col].dt.dayofweek
-            df_feat['Month'] = df_feat[date_col].dt.month
-
-            st.dataframe(df_feat[[date_col, 'DayOfWeek', 'Month']].head(), use_container_width=True)
-            st.success("✅ Календарные признаки созданы (DayOfWeek, Month)")
-
-        st.divider()
-        st.markdown("#### 📉 Лаги и Скользящие средние")
-        lag_val = st.slider("Размер лага (периодов)", 1, 30, 1)
-
-        if st.button("Создать признаки"):
-            df_feat = st.session_state.df_clean.copy()
-            df_feat[f"Lag_{lag_val}"] = df_feat[feat_col].shift(lag_val)
-            df_feat[f"MA_{lag_val}"] = df_feat[feat_col].rolling(window=lag_val).mean()
-
-            st.dataframe(df_feat[[feat_col, f"Lag_{lag_val}", f"MA_{lag_val}"]].head(10), use_container_width=True)
-            st.success(f"✅ Признаки Lag_{lag_val} и MA_{lag_val} добавлены")
-    else:
-        st.info("ℹ️ Требуются данные с датами.")
-
 
