@@ -2712,7 +2712,7 @@ with tab_download:
                                     trend, seasonal, residual = result.trend, result.seasonal, result.resid
                                     cyclical = trend - trend.rolling(window=min(30, len(trend)//4), center=True, min_periods=1).mean()
 
-                                    fig = make_subplots(rows=1, cols=2, subplot_titles=(" Исходный ряд", "🧩 Компоненты"), horizontal_spacing=0.1, column_widths=[0.4, 0.6])
+                                    fig = make_subplots(rows=1, cols=2, subplot_titles=(" Исходный ряд", " Компоненты"), horizontal_spacing=0.1, column_widths=[0.4, 0.6])
                                     fig.add_trace(go.Scatter(x=series.index, y=series, mode='lines', name='Исходный', line=dict(color='#2563EB', width=2)), row=1, col=1)
 
                                     colors = {'trend': '#16a34a', 'seasonal': '#dc2626', 'cyclical': '#9333ea', 'residual': '#f59e0b'}
@@ -8236,6 +8236,17 @@ with tab_preprocessing:
     outl = st.session_state.val_results.get("outl", {})
     df = st.session_state.df  # Алиас для совместимости с оригинальным кодом
 
+    st.markdown("""
+    <style>
+        .plotly .main-svg .subplot-title {
+            font-weight: normal !important;
+            fill: #6b7280 !important;
+            font-size: 13px !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+
     # ═══════════════════════════════════════════════════════
     # 🔹 1. ПРОВЕРКА НА ПРОПУСКИ
 
@@ -9197,11 +9208,12 @@ with tab_preprocessing:
                             fig = make_subplots(
                                 rows=2, cols=1,
                                 subplot_titles=(
-                                    f"✅ Исходный ряд (частота: {current_freq_display})",
-                                    f"🔄 После преобразования (частота: {new_inferred_freq or 'Нерегулярная'})"
+                                    f"Исходный ряд (частота: {current_freq_display})",
+                                    f"После преобразования (частота: {new_inferred_freq or 'Нерегулярная'})"
                                 ),
                                 vertical_spacing=0.10
                             )
+                            fig.update_annotations(font=dict(size=13, color="#6b7280"))  # Серый цвет
 
                             # Исходный ряд
                             fig.add_trace(
@@ -9316,8 +9328,8 @@ with tab_preprocessing:
                             # Показываем только исходный ряд
                             fig = px.line(x=original_series.index, y=original_series.values,
                                         labels={'x': 'Дата', 'y': target_col},
-                                        title=f"📈 Исходный временной ряд: {target_col}")
-                            fig.update_layout(height=400, margin=dict(l=40, r=20, t=40, b=20))
+                            )
+                            fig.update_layout(height=400, margin=dict(l=40, r=20, t=40, b=40))
                             st.plotly_chart(fig, use_container_width=True)
                             
                             st.info("💡 Выберите метод обработки и нажмите 'Применить преобразование' для просмотра результата.")
@@ -9650,11 +9662,11 @@ with tab_preprocessing:
                                 fig = make_subplots(
                                     rows=5, cols=1,
                                     subplot_titles=(
-                                        f"📈 Исходный ряд: {target_col}",
-                                        f"📊 Тренд (Trend)",
-                                        f"🔄 Сезонность (Seasonal)",
-                                        f"🌀 Цикличность (Cycle)",
-                                        f"🎲 Остатки (Residual)"
+                                        f" Исходный ряд: {target_col}",
+                                        f" Тренд (Trend)",
+                                        f" Сезонность (Seasonal)",
+                                        f" Цикличность (Cycle)",
+                                        f" Остатки (Residual)"
                                     ),
                                     vertical_spacing=0.06
                                 )
@@ -9759,7 +9771,6 @@ with tab_preprocessing:
                             x=original_series.index,
                             y=original_series.values,
                             labels={'x': 'Дата', 'y': target_col},
-                            title=f"📈 Исходный временной ряд: {target_col}"
                         )
                         fig.update_layout(height=400, margin=dict(l=40, r=20, t=40, b=20))
                         st.plotly_chart(fig, use_container_width=True, key="decomp_main_chart")
@@ -10243,8 +10254,8 @@ with tab_preprocessing:
                             fig = make_subplots(
                                 rows=2, cols=1,
                                 subplot_titles=(
-                                    f"📈 Исходный ряд: {target_col}",
-                                    f"🔄 После трансформации ({method_name}, λ={lambda_used:.3f})"
+                                    f" Исходный ряд: {target_col}",
+                                    f" После трансформации ({method_name}, λ={lambda_used:.3f})"
                                 ),
                                 vertical_spacing=0.12
                             )
@@ -10452,7 +10463,6 @@ with tab_preprocessing:
                             x=original_series.index,
                             y=original_series.values,
                             labels={'x': 'Дата', 'y': target_col},
-                            title=f"📈 Исходный временной ряд: {target_col}"
                         )
                         fig.update_layout(height=400, margin=dict(l=40, r=20, t=40, b=40))
                         st.plotly_chart(fig, use_container_width=True, key="variance_main_chart")
@@ -10903,8 +10913,8 @@ with tab_preprocessing:
                             fig = make_subplots(
                                 rows=2, cols=1,
                                 subplot_titles=(
-                                    f"📈 Исходный ряд: {target_col}",
-                                    f"🔄 После сглаживания ({method_name}, параметр={param_value})"
+                                    f" Исходный ряд: {target_col}",
+                                    f" После сглаживания ({method_name}, параметр={param_value})"
                                 ),
                                 vertical_spacing=0.12
                             )
@@ -11156,7 +11166,6 @@ with tab_preprocessing:
                             x=original_series.index,
                             y=original_series.values,
                             labels={'x': 'Дата', 'y': target_col},
-                            title=f"📈 Исходный временной ряд: {target_col}"
                         )
                         fig.update_layout(height=400, margin=dict(l=40, r=20, t=40, b=40))
                         st.plotly_chart(fig, use_container_width=True, key="smooth_main_chart")
@@ -11793,8 +11802,8 @@ with tab_preprocessing:
                             fig = make_subplots(
                                 rows=2, cols=1,
                                 subplot_titles=(
-                                    f"📈 Исходный ряд: {target_col}",
-                                    f"🔄 После дифференцирования ({method_name})"
+                                    f" Исходный ряд: {target_col}",
+                                    f" После дифференцирования ({method_name})"
                                 ),
                                 vertical_spacing=0.12
                             )
@@ -12088,7 +12097,6 @@ with tab_preprocessing:
                             x=original_series.index,
                             y=original_series.values,
                             labels={'x': 'Дата', 'y': target_col},
-                            title=f"📈 Исходный временной ряд: {target_col}"
                         )
                         fig.update_layout(height=400, margin=dict(l=40, r=20, t=40, b=40))
                         st.plotly_chart(fig, use_container_width=True, key="stationarity_main_chart")
