@@ -10053,7 +10053,7 @@ with tab_preprocessing:
                 """)
             
             # Отступ
-            st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height: 25px;'></div>", unsafe_allow_html=True)
 
             # ────────────────────────────────────────────────
             # 🎮 ПЕСОЧНИЦА: СТАБИЛИЗАЦИЯ ДИСПЕРСИИ
@@ -10558,18 +10558,1655 @@ with tab_preprocessing:
 
 
     # ═══════════════════════════════════════════════════════
+    # 🔹 6. СГЛАЖИВАНИЕ (SMOOTHING)
+    # ═══════════════════════════════════════════════════════
+    st.divider()
+    st.markdown("### Сглаживание временного ряда")
+    st.caption(""" Уменьшение шума и высокочастотных колебаний для выделения тренда и сезонности.
+               Опциональный шаг — применяется, если ряд слишком "шумный" для моделей.""")
+
+    # ── ДИАГНОСТИКА ТЕКУЩЕГО СОСТОЯНИЯ ──────────────────
+    if st.session_state.primary_date_col and st.session_state.col_types.get("num"):
+        date_col = st.session_state.primary_date_col
+        num_cols = st.session_state.col_types.get("num", [])
+        
+        if num_cols:
+            df_smooth = st.session_state.df.copy()
+            df_smooth[date_col] = pd.to_datetime(df_smooth[date_col])
+            df_smooth = df_smooth.sort_values(date_col)
+            df_smooth_ts = df_smooth.set_index(date_col)
+            
+            # ── ФУНКЦИЯ МЕТРИК КАЧЕСТВА СГЛАЖИВАНИЯ ───────
+            def calculate_smoothing_metrics(original: pd.Series, smoothed: pd.Series) -> dict:
+                """Расчёт метрик качества сглаживания"""
+                metrics = {}
+                
+                # 1. SNR (Signal-to-Noise Ratio)
+                signal_power = smoothed.var()
+                noise = original - smoothed
+                noise_power = noise.var()
+                metrics['snr'] = 10 * np.log10(signal_power / (noise_power + 1e-10)) if noise_power > 0 else np.inf
+                
+                # 2. Корреляция с исходным рядом
+                metrics['correlation'] = original.corr(smoothed)
+                
+                # 3. Сглаженность (smoothness) — сумма квадратов вторых разностей
+                # Чем МЕНЬШЕ, тем ГЛАЖЕ ряд
+                second_diff_orig = original.diff().diff().dropna()
+                second_diff_smooth = smoothed.diff().diff().dropna()
+                metrics['roughness_orig'] = np.sum(second_diff_orig**2)
+                metrics['roughness_smooth'] = np.sum(second_diff_smooth**2)
+                metrics['smoothness_ratio'] = (metrics['roughness_orig'] / 
+                                            (metrics['roughness_smooth'] + 1e-10))
+                
+                # 4. Сохранение тренда (R² линейного тренда)
+                from scipy.stats import linregress
+                slope_orig, _, r_orig, _, _ = linregress(range(len(original)), original)
+                slope_smooth, _, r_smooth, _, _ = linregress(range(len(smoothed)), smoothed)
+                metrics['r2_orig'] = r_orig**2
+                metrics['r2_smooth'] = r_smooth**2
+                metrics['trend_preservation'] = abs(r_smooth**2 - r_orig**2)
+                
+                # 5. Потеря информации (разница дисперсий)
+                metrics['variance_loss_pct'] = ((original.var() - smoothed.var()) / 
+                                            (original.var() + 1e-10)) * 100
+                
+                # 6. Amplitude reduction (ослабление амплитуды)
+                metrics['amplitude_reduction'] = 1 - (smoothed.std() / (original.std() + 1e-10))
+                
+                return metrics
+            
+            # ── МЕТРИКИ ТЕКУЩЕГО СОСТОЯНИЯ ─────────────────
+            c_diag1, c_diag2, c_diag3, c_diag4 = st.columns(4)
+            
+            target_col_smooth = st.session_state.get('ts_props_v10_target_col', num_cols[0])
+            series_raw = df_smooth_ts[target_col_smooth].dropna().astype(float)
+            
+            # Базовая диагностика "шумности"
+            second_diff = series_raw.diff().diff().dropna()
+            roughness = np.sum(second_diff**2)
+            noise_ratio = (series_raw.diff().std() / (series_raw.std() + 1e-10))
+            
+            with c_diag1:
+                st.markdown("**Анализ ряда**")
+                st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: #1e293b;'>`{target_col_smooth}`</div>", 
+                        unsafe_allow_html=True)
+            
+            with c_diag2:
+                st.markdown("**Шумность ряда**")
+                noise_color = "#dc2626" if noise_ratio > 0.5 else "#d97706" if noise_ratio > 0.3 else "#16a34a"
+                noise_text = "Высокая" if noise_ratio > 0.5 else "Средняя" if noise_ratio > 0.3 else "Низкая"
+                st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: {noise_color};'>"
+                        f"{noise_text} ({noise_ratio:.2f})</div>", 
+                        unsafe_allow_html=True)
+            
+            with c_diag3:
+                st.markdown("**Roughness (2-й diff)**")
+                roughness_formatted = f"{roughness:,.0f}".replace(",", " ")
+                roughness_color = "#dc2626" if roughness > 1e6 else "#d97706" if roughness > 1e5 else "#16a34a"
+                st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: {roughness_color};'>"
+                        f"{roughness_formatted}</div>", unsafe_allow_html=True)
+            
+            with c_diag4:
+                st.markdown("**Рекомендация**")
+                if noise_ratio > 0.5:
+                    rec_text, rec_color = "Нужно сглаживание", "#dc2626"
+                elif noise_ratio > 0.3:
+                    rec_text, rec_color = "Желательно", "#d97706"
+                else:
+                    rec_text, rec_color = "Не требуется", "#16a34a"
+                st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: {rec_color};'>"
+                        f"{rec_text}</div>", unsafe_allow_html=True)
+            
+            # Отступ
+            st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
+            
+            # ── ТЕХНИЧЕСКАЯ СПРАВКА ─────────────────────────
+            with st.expander("Цели субмодуля_Сглаживание временных рядов", expanded=False):
+                st.markdown("""
+                **Зачем нужно сглаживание:**
+                - **Выделение тренда** — удаление высокочастотного шума
+                - **Улучшение прогноза** — модели лучше работают на "чистом" сигнале
+                - **Стабилизация оценок** — меньше ложных срабатываний на выбросах
+                - **Подготовка для ML** — сглаженные признаки улучшают качество
+                
+                **Когда применять:**
+                - ✅ Ряд содержит значительный шум (noise_ratio > 0.3)
+                - ✅ Нужно выделить тренд для интерпретации
+                - ✅ Перед декомпозицией (если STL не справляется с шумом)
+                - ❌ **НЕ применять** перед дифференцированием (искажает стационарность)
+                - ❌ **НЕ применять** для рядов с важными краткосрочными колебаниями
+                
+                **Методы сглаживания:**
+                
+                | Метод | Формула | Параметры | Когда использовать |
+                |-------|---------|-----------|-------------------|
+                | **SMA** | (x_t + ... + x_{t-w+1})/w | window | Простое усреднение, стабильные ряды |
+                | **EMA** | α·x_t + (1-α)·s_{t-1} | span (α=2/(span+1)) | Реакция на последние изменения |
+                | **WMA** | Σ(w_i · x_{t-i}) / Σw_i | window | Больший вес свежим данным |
+                | **Медиана** | median(x_{t-w/2},...,x_{t+w/2}) | window | Устойчивость к выбросам |
+                | **LOWESS** | Локальная регрессия | frac (0.1-0.5) | Нелинейные тренды, сложная структура |
+                | **HP-filter** | min Σ(y_t-τ_t)² + λΣ(Δ²τ_t)² | λ (100-1600) | Выделение тренда/цикла (экономика) |
+                
+                **Выбор параметров:**
+                - **SMA/WMA/Медиана:** window = период сезонности (7 для дневных, 12 для месячных)
+                - **EMA:** span = 2·window - 1 (эквивалент SMA по "памяти")
+                - **LOWESS:** frac = 0.2-0.3 (меньше = гибче, больше = глаже)
+                - **HP-filter:** λ = 100 (квартальные), 1600 (годовые), 14400 (ежедневные)
+                
+                **Метрики качества сглаживания:**
+                - ✅ **SNR (Signal-to-Noise Ratio)** — чем больше, тем лучше (>10 dB хорошо)
+                - ✅ **Smoothness ratio** — во сколько раз снизилась "шероховатость"
+                - ✅ **Trend preservation** — насколько сохранён тренд (R²)
+                - ✅ **Variance loss** — сколько информации потеряно (<30% хорошо)
+                
+                **Обратимость:**
+                - 🔁 **HP-filter** — единственный обратимый метод (сохраняет trend + cycle)
+                - 🔁 Остальные методы **необратимы** — информация о шуме теряется
+                - 🔁 Рекомендуется сохранять **исходный ряд** в отдельной колонке
+                
+                **⚠️ Почитать:**
+                - Hodrick-Prescott filter: https://en.wikipedia.org/wiki/Hodrick%E2%80%93Prescott_filter
+                - LOWESS regression: https://en.wikipedia.org/wiki/Local_regression
+                - Сглаживание в TS: https://otexts.com/fpp3/moving-averages.html
+                """)
+            
+            # ────────────────────────────────────────────────
+            # 🎮 ПЕСОЧНИЦА: СГЛАЖИВАНИЕ
+            # ────────────────────────────────────────────────
+            
+            # Инициализация session_state
+            if "show_smooth_preview" not in st.session_state:
+                st.session_state.show_smooth_preview = False
+            if "smooth_transform_params" not in st.session_state:
+                st.session_state.smooth_transform_params = {}
+            
+            # ── ЛЕВАЯ КОЛОНКА: ПАНЕЛЬ УПРАВЛЕНИЯ ───────────
+            c1, c2, c3 = st.columns([27, 52, 21])
+            
+            with c1:
+                st.markdown("###### Панель управления")
+                
+                # Выбор числовой колонки
+                target_col = st.selectbox(
+                    "Исследуемый признак:",
+                    options=num_cols,
+                    index=num_cols.index(target_col_smooth) if target_col_smooth in num_cols else 0,
+                    key="smooth_target_col"
+                )
+                
+                series = df_smooth_ts[target_col].dropna().astype(float)
+                
+                # Выбор метода
+                smooth_method = st.radio(
+                    "Метод сглаживания:",
+                    ["SMA (простое скользящее среднее)",
+                    "EMA (экспоненциально взвешенное)",
+                    "WMA (взвешенное скользящее)",
+                    "Скользящая медиана (устойчиво к выбросам)",
+                    "LOWESS/LOESS (локальная регрессия)",
+                    "HP-filter (Ходрика-Прескотта)"],
+                    index=0,
+                    key="smooth_method",
+                    label_visibility="collapsed"
+                )
+                
+                # Описание метода
+                method_descriptions = {
+                    "SMA (простое скользящее среднее)": 
+                        "Равномерное усреднение последних `window` значений. Простой и интерпретируемый метод.",
+                    "EMA (экспоненциально взвешенное)": 
+                        "Больший вес последним наблюдениям. Быстрее реагирует на изменения, чем SMA.",
+                    "WMA (взвешенное скользящее)": 
+                        "Линейно возрастающие веса: свежим данным — больше внимания. Компромисс между SMA и EMA.",
+                    "Скользящая медиана (устойчиво к выбросам)": 
+                        "Медиана вместо среднего. Устойчива к выбросам, но менее гладкая.",
+                    "LOWESS/LOESS (локальная регрессия)": 
+                        "Локальная полиномиальная регрессия. Гибкий метод для нелинейных трендов.",
+                    "HP-filter (Ходрика-Прескотта)": 
+                        "Выделение тренда через минимизацию функции потерь. Стандарт в макроэкономике."
+                }
+                
+                st.markdown(
+                    f'<div style="background: #f0f9ff; border-left: 3px solid #0284c7; padding: 8px 12px; '
+                    f'margin: 8px 0; border-radius: 4px;">'
+                    f'<span style="color: #0369a1; font-size: 13px;">'
+                    f'💡 <strong>{smooth_method.split(" ")[0]}:</strong> {method_descriptions[smooth_method]}'
+                    f'</span></div>',
+                    unsafe_allow_html=True
+                )
+                
+                # Параметры метода
+                st.divider()
+                st.markdown("**Параметры:**")
+                
+                if "SMA" in smooth_method or "WMA" in smooth_method or "Медиана" in smooth_method:
+                    window = st.slider(
+                        "Окно сглаживания (window):",
+                        min_value=3,
+                        max_value=min(100, len(series) // 3),
+                        value=7,
+                        step=1,
+                        key="smooth_window",
+                        help="Чем больше окно, тем глаже ряд, но больше задержка"
+                    )
+                    param_value = window
+                    
+                elif "EMA" in smooth_method:
+                    span = st.slider(
+                        "Span (период полуспада):",
+                        min_value=3,
+                        max_value=min(100, len(series) // 3),
+                        value=14,
+                        step=1,
+                        key="smooth_span",
+                        help="α = 2/(span+1). Меньше span = больше реакция на новые данные"
+                    )
+                    param_value = span
+                    
+                elif "LOWESS" in smooth_method:
+                    frac = st.slider(
+                        "Доля данных для локальной регрессии (frac):",
+                        min_value=0.05,
+                        max_value=0.9,
+                        value=0.2,
+                        step=0.05,
+                        key="smooth_frac",
+                        help="Больше frac = глаже результат. Обычно 0.2-0.3"
+                    )
+                    param_value = frac
+                    
+                elif "HP-filter" in smooth_method:
+                    hp_lambda = st.selectbox(
+                        "Параметр λ (штраф за изменчивость тренда):",
+                        options=[100, 400, 1600, 6400, 14400],
+                        index=2,
+                        key="smooth_hp_lambda",
+                        help="100 — квартальные, 1600 — годовые, 14400 — ежедневные данные"
+                    )
+                    param_value = hp_lambda
+                    
+                    # Подсказка по λ
+                    lambda_hints = {
+                        100: "📅 Для квартальных данных",
+                        400: "📅 Для месячных данных (альтернатива)",
+                        1600: "📅 Стандарт для годовых данных (Hodrick-Prescott)",
+                        6400: "📅 Для высокочастотных данных",
+                        14400: "📅 Для ежедневных данных"
+                    }
+                    st.info(f"💡 {lambda_hints.get(hp_lambda, '')}")
+                
+                st.divider()
+                
+                # Кнопки действий
+                if st.button("▶ Применить сглаживание", type="primary", use_container_width=True, key="btn_apply_smooth"):
+                    st.session_state.show_smooth_preview = True
+                    st.rerun()
+                
+                if st.button("↶ Сбросить", use_container_width=True, key="btn_reset_smooth"):
+                    st.session_state.show_smooth_preview = False
+                    st.rerun()
+            
+            # ── ЦЕНТРАЛЬНАЯ КОЛОНКА: ВИЗУАЛИЗАЦИЯ ──────────
+            with c2:
+                st.markdown("###### Визуализация: До / После")
+                
+                if target_col in df_smooth_ts.columns:
+                    original_series = df_smooth_ts[target_col].dropna().astype(float)
+                    
+                    if st.session_state.show_smooth_preview:
+                        try:
+                            # Применяем сглаживание
+                            if "SMA" in smooth_method:
+                                smoothed = original_series.rolling(window=window, center=True, min_periods=1).mean()
+                                method_name = "SMA"
+                            
+                            elif "EMA" in smooth_method:
+                                smoothed = original_series.ewm(span=span, adjust=False).mean()
+                                method_name = "EMA"
+                            
+                            elif "WMA" in smooth_method:
+                                # Линейно-взвешенное скользящее среднее
+                                weights = np.arange(1, window + 1)
+                                smoothed = original_series.rolling(window=window).apply(
+                                    lambda x: np.dot(x, weights) / weights.sum(), raw=True
+                                )
+                                smoothed = smoothed.fillna(method='bfill')
+                                method_name = "WMA"
+                            
+                            elif "Медиана" in smooth_method:
+                                smoothed = original_series.rolling(window=window, center=True, min_periods=1).median()
+                                method_name = "Median"
+                            
+                            elif "LOWESS" in smooth_method:
+                                from statsmodels.nonparametric.smoothers_lowess import lowess
+                                
+                                x = np.arange(len(original_series))
+                                y = original_series.values
+                                
+                                # LOWESS возвращает массив [x, y_smooth]
+                                lowess_result = lowess(y, x, frac=frac, return_sorted=False)
+                                smoothed = pd.Series(lowess_result, index=original_series.index)
+                                method_name = "LOWESS"
+                            
+                            elif "HP-filter" in smooth_method:
+                                from statsmodels.tsa.filters.hp_filter import hpfilter
+                                
+                                cycle, trend = hpfilter(original_series, lamb=hp_lambda)
+                                smoothed = trend
+                                method_name = "HP-filter"
+                                
+                                # Сохраняем cycle для возможного использования
+                                st.session_state.hp_cycle = cycle
+                            
+                            # ── ГРАФИК СРАВНЕНИЯ (2 ряда) ───────
+                            fig = make_subplots(
+                                rows=2, cols=1,
+                                subplot_titles=(
+                                    f"📈 Исходный ряд: {target_col}",
+                                    f"🔄 После сглаживания ({method_name}, параметр={param_value})"
+                                ),
+                                vertical_spacing=0.12
+                            )
+                            
+                            # Исходный ряд
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=original_series.index, y=original_series.values,
+                                    mode='lines',
+                                    name='Исходные данные',
+                                    line=dict(color='#048A81', width=1, dash='dot'),
+                                    showlegend=False
+                                ),
+                                row=1, col=1
+                            )
+                            
+                            # Сглаженный ряд (на верхнем графике — наложением)
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=smoothed.index, y=smoothed.values,
+                                    mode='lines',
+                                    name='Сглаженный',
+                                    line=dict(color='#DC2626', width=2.5),
+                                    showlegend=False
+                                ),
+                                row=1, col=1
+                            )
+                            
+                            # Только сглаженный ряд (на нижнем графике)
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=smoothed.index, y=smoothed.values,
+                                    mode='lines',
+                                    name='Сглаженный',
+                                    line=dict(color='#DC2626', width=2.5),
+                                    showlegend=False
+                                ),
+                                row=2, col=1
+                            )
+                            
+                            fig.update_layout(
+                                height=600,
+                                margin=dict(l=50, r=20, t=80, b=40),
+                                hovermode='x unified',
+                            )
+                            
+                            fig.update_xaxes(title_text="Дата", row=2, col=1)
+                            fig.update_yaxes(title_text="Значение", row=1, col=1)
+                            fig.update_yaxes(title_text="Сглаженное значение", row=2, col=1)
+                            
+                            fig.update_annotations(font=dict(size=13, color="#1e293b"), yshift=10)
+                            
+                            st.plotly_chart(fig, use_container_width=True, key="smooth_main_chart")
+                            
+                            # ── ГРАФИК ОСТАТКОВ (что было "отфильтровано") ──
+                            st.markdown("##### Остатки (шум, удалённый при сглаживании)")
+                            st.caption("Если остатки похожи на белый шум — сглаживание работает корректно.")
+                            
+                            residuals = original_series - smoothed
+                            
+                            fig_resid = make_subplots(
+                                rows=2, cols=1,
+                                subplot_titles=(
+                                    "Остатки (оригинал − сглаженный)",
+                                    "ACF остатков (должны быть в пределах синей зоны)"
+                                ),
+                                vertical_spacing=0.15
+                            )
+                            
+                            # Остатки
+                            fig_resid.add_trace(
+                                go.Scatter(x=residuals.index, y=residuals.values,
+                                        mode='lines', line=dict(color='#6B7280', width=1),
+                                        name='Остатки', showlegend=False),
+                                row=1, col=1
+                            )
+                            fig_resid.add_hline(y=0, line_dash="dash", line_color="red", row=1, col=1)
+                            
+                            # ACF остатков
+                            from statsmodels.tsa.stattools import acf
+                            max_lag = min(40, len(residuals) // 4)
+                            acf_vals = acf(residuals.dropna(), nlags=max_lag)
+                            conf_int = 1.96 / np.sqrt(len(residuals))
+                            
+                            fig_resid.add_trace(
+                                go.Bar(x=list(range(len(acf_vals))), y=acf_vals,
+                                    marker_color='#2563EB', name='ACF', showlegend=False),
+                                row=2, col=1
+                            )
+                            fig_resid.add_hline(y=conf_int, line_dash="dash", line_color="red", row=2, col=1)
+                            fig_resid.add_hline(y=-conf_int, line_dash="dash", line_color="red", row=2, col=1)
+                            
+                            fig_resid.update_layout(height=500, margin=dict(l=50, r=20, t=60, b=40))
+                            st.plotly_chart(fig_resid, use_container_width=True, key="smooth_resid_chart")
+                            
+                            # ── ГИСТОГРАММЫ СРАВНЕНИЯ ───────────
+                            st.markdown("##### Распределение значений")
+                            
+                            fig_hist = make_subplots(
+                                rows=1, cols=2,
+                                subplot_titles=("Исходное распределение", "После сглаживания")
+                            )
+                            
+                            fig_hist.add_trace(
+                                go.Histogram(x=original_series.values, nbinsx=40,
+                                            marker_color='#048A81', name='До', showlegend=False),
+                                row=1, col=1
+                            )
+                            
+                            fig_hist.add_trace(
+                                go.Histogram(x=smoothed.values, nbinsx=40,
+                                            marker_color='#DC2626', name='После', showlegend=False),
+                                row=1, col=2
+                            )
+                            
+                            fig_hist.update_layout(height=300, margin=dict(l=40, r=20, t=50, b=40), barmode='overlay')
+                            st.plotly_chart(fig_hist, use_container_width=True, key="smooth_hist_chart")
+                            
+                            # ── РАСЧЁТ МЕТРИК КАЧЕСТВА ──────────
+                            metrics = calculate_smoothing_metrics(original_series, smoothed)
+                            
+                            # Сохранение результатов
+                            st.session_state.smooth_transform_result = {
+                                'method': method_name,
+                                'param': param_value,
+                                'original_series': original_series,
+                                'smoothed_series': smoothed,
+                                'target_col': target_col,
+                                'metrics': metrics
+                            }
+                            
+                            # ── HP-filter: дополнительно показываем цикл ──
+                            if "HP-filter" in smooth_method:
+                                st.markdown("##### Циклическая компонента (HP-filter)")
+                                st.caption("HP-filter разделяет ряд на тренд и цикл. Ниже — выделенный цикл.")
+                                
+                                fig_cycle = go.Figure()
+                                fig_cycle.add_trace(go.Scatter(
+                                    x=original_series.index, y=st.session_state.hp_cycle.values,
+                                    mode='lines', line=dict(color='#9333EA', width=2),
+                                    name='Цикл'
+                                ))
+                                fig_cycle.add_hline(y=0, line_dash="dash", line_color="gray")
+                                fig_cycle.update_layout(
+                                    height=250, margin=dict(l=40, r=20, t=30, b=20),
+                                    title="Циклическая компонента"
+                                )
+                                st.plotly_chart(fig_cycle, use_container_width=True, key="smooth_cycle_chart")
+                            
+                            st.divider()
+                            
+                            # Оценка качества сглаживания
+                            if metrics['snr'] > 10:
+                                st.success(f"✅ **Отличное сглаживание!** SNR = {metrics['snr']:.1f} dB")
+                            elif metrics['snr'] > 5:
+                                st.success(f"✅ **Хорошее сглаживание.** SNR = {metrics['snr']:.1f} dB")
+                            elif metrics['snr'] > 0:
+                                st.warning(f"⚠️ **Умеренное сглаживание.** SNR = {metrics['snr']:.1f} dB. Попробуйте другие параметры.")
+                            else:
+                                st.error(f"❌ **Слабое сглаживание.** SNR = {metrics['snr']:.1f} dB. Сигнал слабее шума.")
+                            
+                            # Кнопки подтверждения
+                            c_ok_smooth, c_cancel_smooth = st.columns(2)
+                            with c_ok_smooth:
+                                if st.button("✅ Применить к данным", type="primary", use_container_width=True, key="btn_confirm_smooth"):
+                                    # Применяем сглаживание к основному df
+                                    df_final_smooth = st.session_state.df.copy()
+                                    
+                                    # Сохраняем оригинальный столбец с суффиксом _original
+                                    orig_col_name = f"{target_col}_original"
+                                    if orig_col_name not in df_final_smooth.columns:
+                                        df_final_smooth[orig_col_name] = df_final_smooth[target_col]
+                                    
+                                    # Применяем сглаживание
+                                    if method_name == "SMA":
+                                        df_final_smooth[target_col] = df_final_smooth[target_col].astype(float).rolling(
+                                            window=param_value, center=True, min_periods=1).mean()
+                                    elif method_name == "EMA":
+                                        df_final_smooth[target_col] = df_final_smooth[target_col].astype(float).ewm(
+                                            span=param_value, adjust=False).mean()
+                                    elif method_name == "WMA":
+                                        weights = np.arange(1, param_value + 1)
+                                        df_final_smooth[target_col] = df_final_smooth[target_col].astype(float).rolling(
+                                            window=param_value).apply(
+                                            lambda x: np.dot(x, weights) / weights.sum(), raw=True
+                                        ).fillna(method='bfill')
+                                    elif method_name == "Median":
+                                        df_final_smooth[target_col] = df_final_smooth[target_col].astype(float).rolling(
+                                            window=param_value, center=True, min_periods=1).median()
+                                    elif method_name == "LOWESS":
+                                        from statsmodels.nonparametric.smoothers_lowess import lowess
+                                        x = np.arange(len(df_final_smooth))
+                                        y = df_final_smooth[target_col].astype(float).values
+                                        lowess_result = lowess(y, x, frac=param_value, return_sorted=False)
+                                        df_final_smooth[target_col] = lowess_result
+                                    elif method_name == "HP-filter":
+                                        from statsmodels.tsa.filters.hp_filter import hpfilter
+                                        cycle, trend = hpfilter(df_final_smooth[target_col].astype(float), lamb=param_value)
+                                        df_final_smooth[target_col] = trend
+                                    
+                                    # Сохраняем параметры
+                                    st.session_state.smooth_transform_params = {
+                                        'method': method_name,
+                                        'param': param_value,
+                                        'column': target_col,
+                                        'original_col_name': orig_col_name,
+                                        'metrics': metrics
+                                    }
+                                    
+                                    # Синхронизация
+                                    st.session_state.df = df_final_smooth.copy()
+                                    st.session_state.validation_ready = False
+                                    st.session_state.show_smooth_preview = False
+                                    
+                                    # Удаляем рабочие копии
+                                    work_dfs = [
+                                        "df_missing_work", "df_pattern_work", "df_range_work",
+                                        "df_outlier_work", "df_inclusion_work", "df_referential_work",
+                                        "df_text_work", "df_consistency_work", "df_uniqueness_work",
+                                        "df_regularity_work", "df_regular_work", "df_variance_work",
+                                        "df_smooth_work"
+                                    ]
+                                    for work_df_name in work_dfs:
+                                        if work_df_name in st.session_state:
+                                            del st.session_state[work_df_name]
+                                    
+                                    if "val_results" in st.session_state:
+                                        del st.session_state.val_results
+                                    
+                                    st.success(f"✅ Сглаживание **{method_name}** (параметр={param_value}) применено!")
+                                    st.info(f"💡 Оригинальные значения сохранены в колонке `{orig_col_name}`. "
+                                        f"Перезапустите валидацию для обновления статистик.")
+                                    st.rerun()
+                            
+                            with c_cancel_smooth:
+                                if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_smooth"):
+                                    st.session_state.show_smooth_preview = False
+                                    st.rerun()
+                        
+                        except Exception as e:
+                            st.error(f"❌ Ошибка сглаживания: {e}")
+                            import traceback
+                            with st.expander("🔍 Stack trace"):
+                                st.code(traceback.format_exc(), language="python")
+                    
+                    else:
+                        # Показываем только исходный ряд
+                        fig = px.line(
+                            x=original_series.index,
+                            y=original_series.values,
+                            labels={'x': 'Дата', 'y': target_col},
+                            title=f"📈 Исходный временной ряд: {target_col}"
+                        )
+                        fig.update_layout(height=400, margin=dict(l=40, r=20, t=40, b=40))
+                        st.plotly_chart(fig, use_container_width=True, key="smooth_main_chart")
+                        
+                        st.info("💡 Выберите метод сглаживания и нажмите **'Применить сглаживание'** для просмотра результата.")
+                else:
+                    st.warning("⚠️ Выбранная колонка не найдена в данных.")
+            
+            # ── ПРАВАЯ КОЛОНКА: МЕТРИКИ КАЧЕСТВА ───────────
+            with c3:
+                st.markdown("###### Метрики качества")
+                
+                with st.container(border=True):
+                    st.markdown("**Исходный ряд:**")
+                    st.metric("Длина ряда", f"{len(series):,}".replace(",", " "))
+                    st.metric("Среднее", f"{series.mean():.2f}")
+                    st.metric("Стд. отклонение", f"{series.std():.2f}")
+                    st.metric("Шумность (σ_diff/σ)", f"{noise_ratio:.3f}")
+                
+                # Метрики ПОСЛЕ сглаживания
+                if st.session_state.show_smooth_preview and 'smooth_transform_result' in st.session_state:
+                    metrics = st.session_state.smooth_transform_result['metrics']
+                    smoothed_series = st.session_state.smooth_transform_result['smoothed_series']
+                    
+                    with st.container(border=True):
+                        st.markdown("**После сглаживания:**")
+                        
+                        # SNR
+                        snr_color = "normal" if metrics['snr'] > 10 else "off" if metrics['snr'] > 5 else "inverse"
+                        st.metric("SNR (dB)", f"{metrics['snr']:.1f}",
+                                delta="Отлично" if metrics['snr'] > 10 else "Хорошо" if metrics['snr'] > 5 else "Слабо")
+                        
+                        # Корреляция
+                        st.metric("Корреляция с исх.", f"{metrics['correlation']:.3f}",
+                                delta="Сильная" if metrics['correlation'] > 0.9 else "Средняя")
+                        
+                        # Smoothness ratio
+                        st.metric("Smoothness ratio", f"{metrics['smoothness_ratio']:.1f}x",
+                                delta=f"В {metrics['smoothness_ratio']:.1f} раз глаже")
+                        
+                        # Trend preservation
+                        delta_trend = metrics['trend_preservation']
+                        st.metric("Δ Тренд (R²)", f"{delta_trend:+.3f}",
+                                delta="Сохранён" if abs(delta_trend) < 0.1 else "Изменён")
+                        
+                        # Variance loss
+                        st.metric("Потеря дисперсии", f"{metrics['variance_loss_pct']:.1f}%",
+                                delta="Мало" if metrics['variance_loss_pct'] < 30 else "Много")
+                        
+                        # Amplitude reduction
+                        st.metric("Ослабление ампл.", f"{metrics['amplitude_reduction']*100:.1f}%")
+                    
+                    st.divider()
+                    
+                    # Рекомендации
+                    if metrics['snr'] > 10 and metrics['correlation'] > 0.9:
+                        st.success("✅ **Отличный результат!** Шум удалён, тренд сохранён.")
+                    elif metrics['snr'] > 5:
+                        st.success("✅ **Хороший результат.** Можно применять.")
+                    elif metrics['variance_loss_pct'] > 50:
+                        st.warning("💡 **Слишком агрессивное сглаживание.** Уменьшите window/span/frac.")
+                    elif metrics['correlation'] < 0.7:
+                        st.warning("💡 **Сильное искажение.** Ряд сильно изменился. Попробуйте другой метод.")
+                    else:
+                        st.info("💡 Попробуйте другие параметры для улучшения результата.")
+                    
+                    # Информация о параметрах
+                    st.info(f"**Параметры:** {st.session_state.smooth_transform_result['method']} = {st.session_state.smooth_transform_result['param']}")
+            
+            # ── ИНФОРМАЦИЯ О СОХРАНЁННЫХ ТРАНСФОРМАЦИЯХ ────
+            if st.session_state.smooth_transform_params:
+                st.divider()
+                with st.expander("💾 Сохранённые параметры сглаживания", expanded=False):
+                    st.json(st.session_state.smooth_transform_params)
+                    st.caption("Эти параметры описывают применённое сглаживание. "
+                            "Оригинальные значения сохранены в колонке `_original`.")
+        
+        else:
+            st.warning("⚠️ В датасете нет числовых колонок для анализа.")
+    else:
+        st.warning("⚠️ Не обнаружены колонки с датами или числовыми данными. Убедитесь, что активирован режим временных рядов.")
+
+
+    # ═══════════════════════════════════════════════════════
+    # 🔹 7. ОБЕСПЕЧЕНИЕ СТАЦИОНАРНОСТИ (STATIONARITY)
+    # ═══════════════════════════════════════════════════════
+    st.divider()
+    st.markdown("### Обеспечение стационарности (дифференцирование)")
+    st.caption("Большинство TS-моделей (ARIMA, VAR, линейная регрессия) требуют стационарного ряда — "
+            "с постоянными mean, variance и autocorrelation. Дифференцирование удаляет тренд и сезонность, "
+            "делая ряд пригодным для моделирования.")
+
+    # ── ДИАГНОСТИКА ТЕКУЩЕГО СОСТОЯНИЯ ──────────────────
+    if st.session_state.primary_date_col and st.session_state.col_types.get("num"):
+        date_col = st.session_state.primary_date_col
+        num_cols = st.session_state.col_types.get("num", [])
+        
+        if num_cols:
+            df_stat = st.session_state.df.copy()
+            df_stat[date_col] = pd.to_datetime(df_stat[date_col])
+            df_stat = df_stat.sort_values(date_col)
+            df_stat_ts = df_stat.set_index(date_col)
+            
+            # ── ФУНКЦИЯ МНОЖЕСТВЕННЫХ ТЕСТОВ СТАЦИОНАРНОСТИ ──
+            def run_stationarity_tests(series: pd.Series, max_lag: int = None) -> dict:
+                """
+                Запускает 4 теста стационарности и возвращает консенсус.
+                
+                Returns:
+                    dict с ключами:
+                    - adf: {'stat': float, 'pvalue': float, 'is_stationary': bool}
+                    - kpss: {'stat': float, 'pvalue': float, 'is_stationary': bool}
+                    - pp: {'stat': float, 'pvalue': float, 'is_stationary': bool}
+                    - za: {'stat': float, 'pvalue': float, 'is_stationary': bool, 'breakpoint': int} (если доступен)
+                    - consensus: 'stationary' | 'non-stationary' | 'trend-stationary' | 'inconclusive'
+                    - recommendation: str
+                """
+                results = {}
+                n = len(series)
+                
+                if n < 30:
+                    return {'error': 'Недостаточно данных (нужно ≥ 30)'}
+                
+                try:
+                    from statsmodels.tsa.stattools import adfuller, kpss
+                    from statsmodels.tsa.stattools import PhillipsPerron
+                    
+                    # ── 1. ADF TEST ──────────────────────────
+                    # H0: ряд имеет единичный корень (нестационарен)
+                    # H1: ряд стационарен
+                    if max_lag is None:
+                        max_lag_adf = min(int(12 * (n / 100) ** 0.25), n // 3)
+                    else:
+                        max_lag_adf = max_lag
+                    
+                    adf_result = adfuller(series.dropna(), autolag='AIC', maxlag=max_lag_adf)
+                    results['adf'] = {
+                        'stat': adf_result[0],
+                        'pvalue': adf_result[1],
+                        'lags': adf_result[2],
+                        'is_stationary': adf_result[1] < 0.05,
+                        'critical_values': adf_result[4]
+                    }
+                    
+                    # ─ 2. KPSS TEST ─────────────────────────
+                    # H0: ряд стационарен (вокруг уровня или тренда)
+                    # H1: ряд нестационарен
+                    # Тестируем два варианта: level (вокруг константы) и trend (вокруг тренда)
+                    try:
+                        kpss_level = kpss(series.dropna(), regression='c', nlags='auto')
+                        kpss_trend = kpss(series.dropna(), regression='ct', nlags='auto')
+                        results['kpss'] = {
+                            'stat_level': kpss_level[0],
+                            'pvalue_level': kpss_level[1],
+                            'stat_trend': kpss_trend[0],
+                            'pvalue_trend': kpss_trend[1],
+                            'is_stationary_level': kpss_level[1] > 0.05,
+                            'is_stationary_trend': kpss_trend[1] > 0.05
+                        }
+                    except Exception as e:
+                        results['kpss'] = {'error': str(e)}
+                    
+                    # ── 3. PHILLIPS-PERRON TEST ──────────────
+                    # Альтернатива ADF, устойчива к гетероскедастичности
+                    try:
+                        pp_result = PhillipsPerron(series.dropna(), lags=max_lag_adf)
+                        results['pp'] = {
+                            'stat': pp_result.stat,
+                            'pvalue': pp_result.pvalue,
+                            'is_stationary': pp_result.pvalue < 0.05
+                        }
+                    except Exception:
+                        # Fallback: если PP недоступен, используем ADF как proxy
+                        results['pp'] = {
+                            'stat': adf_result[0],
+                            'pvalue': adf_result[1],
+                            'is_stationary': adf_result[1] < 0.05,
+                            'note': 'PP недоступен, используется ADF'
+                        }
+                    
+                    # ── 4. ZIVOT-ANDREWS TEST (опционально) ──
+                    # Учитывает структурные разрывы
+                    try:
+                        from statsmodels.tsa.stattools import zivot_andrews
+                        za_result = zivot_andrews(series.dropna(), model='c')
+                        results['za'] = {
+                            'stat': za_result[0],
+                            'pvalue': za_result[1],  # Может быть недоступен в старых версиях
+                            'breakpoint': za_result[2] if len(za_result) > 2 else None,
+                            'is_stationary': za_result[0] < -4.8  # Приблизительный критический уровень
+                        }
+                    except Exception:
+                        results['za'] = {'note': 'Тест Zivot-Andrews недоступен (statsmodels < 0.14)'}
+                    
+                    # ── 5. КОНСЕНСУС ─────────────────────────
+                    adf_stat = results['adf']['is_stationary']
+                    kpss_level_stat = results['kpss'].get('is_stationary_level', None)
+                    kpss_trend_stat = results['kpss'].get('is_stationary_trend', None)
+                    pp_stat = results['pp']['is_stationary']
+                    
+                    if adf_stat and kpss_level_stat:
+                        consensus = 'stationary'
+                        recommendation = '✅ Ряд стационарен. Дифференцирование не требуется.'
+                    elif not adf_stat and kpss_trend_stat:
+                        consensus = 'trend-stationary'
+                        recommendation = '⚠️ Ряд стационарен вокруг тренда. Достаточно удалить тренд (детренд).'
+                    elif not adf_stat and not kpss_level_stat:
+                        consensus = 'non-stationary'
+                        if pp_stat:
+                            recommendation = '⚠️ ADF и KPSS противоречат PP. Попробуйте другое дифференцирование.'
+                        else:
+                            recommendation = ' Ряд нестационарен. Требуется дифференцирование.'
+                    else:
+                        consensus = 'inconclusive'
+                        recommendation = '️ Результаты тестов противоречивы. Визуальный анализ + пробное дифференцирование.'
+                    
+                    results['consensus'] = consensus
+                    results['recommendation'] = recommendation
+                    
+                except ImportError as e:
+                    results['error'] = f'Не установлены необходимые библиотеки: {e}'
+                except Exception as e:
+                    results['error'] = str(e)
+                
+                return results
+            
+            # ── ФУНКЦИЯ ДИФФЕРЕНЦИРОВАНИЯ ───────────────────
+            def apply_differencing(series: pd.Series, method: str, d: int = 1, s: int = None, 
+                                frac_d: float = None) -> pd.Series:
+                """
+                Применяет дифференцирование к ряду.
+                
+                Args:
+                    series: исходный ряд
+                    method: 'first', 'seasonal', 'second', 'log', 'fractional', 'combined'
+                    d: порядок первого различия
+                    s: сезонный период (для seasonal/combined)
+                    frac_d: дробный порядок (для fractional, 0 < d < 1)
+                
+                Returns:
+                    дифференцированный ряд
+                """
+                s_clean = series.dropna()
+                
+                if method == 'first':
+                    return s_clean.diff(d).dropna()
+                
+                elif method == 'seasonal':
+                    if s is None:
+                        s = 12  # default
+                    return s_clean.diff(s).dropna()
+                
+                elif method == 'second':
+                    return s_clean.diff(2).dropna()
+                
+                elif method == 'log':
+                    if (s_clean <= 0).any():
+                        raise ValueError("Логарифмическое различие требует положительных значений")
+                    return np.log(s_clean).diff().dropna()
+                
+                elif method == 'fractional':
+                    if frac_d is None or not (0 < frac_d < 1):
+                        raise ValueError("Дробный порядок должен быть в диапазоне (0, 1)")
+                    # Реализация дробного дифференцирования по López de Prado
+                    # (1 - L)^d = Σ_{k=0}^{∞} (-1)^k * C(d,k) * L^k
+                    # где C(d,k) = d*(d-1)*...*(d-k+1)/k!
+                    from scipy.special import comb
+                    
+                    weights = []
+                    for k in range(len(s_clean)):
+                        weight = (-1) ** k * comb(frac_d, k)
+                        weights.append(weight)
+                        if abs(weight) < 1e-5:  # Обрезаем малые веса
+                            break
+                    
+                    weights = np.array(weights[:len(s_clean)])
+                    
+                    # Применяем свёртку
+                    result = np.zeros(len(s_clean))
+                    values = s_clean.values
+                    for i in range(len(s_clean)):
+                        for j, w in enumerate(weights):
+                            if i - j >= 0:
+                                result[i] += w * values[i - j]
+                    
+                    return pd.Series(result, index=s_clean.index).dropna()
+                
+                elif method == 'combined':
+                    # Сначала сезонное, потом первое различие
+                    if s is None:
+                        s = 12
+                    result = s_clean.diff(s).dropna()
+                    result = result.diff(d).dropna()
+                    return result
+                
+                else:
+                    raise ValueError(f"Неизвестный метод: {method}")
+            
+            # ── МЕТРИКИ ТЕКУЩЕГО СОСТОЯНИЯ ─────────────────
+            c_diag1, c_diag2, c_diag3, c_diag4 = st.columns(4)
+            
+            target_col_stat = st.session_state.get('ts_props_v10_target_col', num_cols[0])
+            series_raw = df_stat_ts[target_col_stat].dropna().astype(float)
+            
+            # Запускаем тесты
+            tests_raw = run_stationarity_tests(series_raw)
+            
+            with c_diag1:
+                st.markdown("**Анализ ряда**")
+                st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: #1e293b;'>`{target_col_stat}`</div>", 
+                        unsafe_allow_html=True)
+            
+            with c_diag2:
+                st.markdown("**ADF Test**")
+                if 'adf' in tests_raw:
+                    adf_p = tests_raw['adf']['pvalue']
+                    adf_color = "#16a34a" if adf_p < 0.05 else "#dc2626"
+                    adf_text = "Стационарен" if adf_p < 0.05 else "Нестационарен"
+                    st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: {adf_color};'>"
+                            f"{adf_text} (p={adf_p:.4f})</div>", 
+                            unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='font-size: 14px; color: #6b7280;'>N/A</div>", unsafe_allow_html=True)
+            
+            with c_diag3:
+                st.markdown("**KPSS Test**")
+                if 'kpss' in tests_raw and 'pvalue_level' in tests_raw['kpss']:
+                    kpss_p = tests_raw['kpss']['pvalue_level']
+                    kpss_color = "#16a34a" if kpss_p > 0.05 else "#dc2626"
+                    kpss_text = "Стационарен" if kpss_p > 0.05 else "Нестационарен"
+                    st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: {kpss_color};'>"
+                            f"{kpss_text} (p={kpss_p:.4f})</div>", 
+                            unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='font-size: 14px; color: #6b7280;'>N/A</div>", unsafe_allow_html=True)
+            
+            with c_diag4:
+                st.markdown("**Консенсус**")
+                consensus = tests_raw.get('consensus', 'unknown')
+                consensus_colors = {
+                    'stationary': '#16a34a',
+                    'trend-stationary': '#d97706',
+                    'non-stationary': '#dc2626',
+                    'inconclusive': '#6b7280'
+                }
+                consensus_texts = {
+                    'stationary': '✅ Стационарен',
+                    'trend-stationary': '⚠️ Тренд-стационарен',
+                    'non-stationary': '❌ Нестационарен',
+                    'inconclusive': '⚠️ Неопределённость'
+                }
+                color = consensus_colors.get(consensus, '#6b7280')
+                text = consensus_texts.get(consensus, 'Неизвестно')
+                st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: {color};'>{text}</div>", 
+                        unsafe_allow_html=True)
+            
+            # Отступ
+            st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
+            
+            # ── ТЕХНИЧЕСКАЯ СПРАВКА ─────────────────────────
+            with st.expander("Цель субмодуля_Обеспечение стационарности", expanded=False):
+                st.markdown("""
+                **Зачем нужна стационарность:**
+                -  **ARIMA/SARIMA** — требуют стационарный ряд (после дифференцирования d, D)
+                -  **VAR/VECM** — работают только со стационарными рядами
+                -  **Линейная регрессия** — предположение о стационарных остатках
+                -  **ML-модели** — стационарные признаки улучшают обобщающую способность
+                
+                **Что такое стационарность:**
+                Ряд стационарен, если его **mean**, **variance** и **autocorrelation** постоянны во времени.
+                - ✅ **Строгая стационарность** — распределение не меняется
+                - ✅ **Слабая стационарность** — постоянны mean, variance, autocovariance
+                
+                **Методы дифференцирования:**
+                
+                | Метод | Формула | Порядок | Когда использовать |
+                |-------|---------|---------|-------------------|
+                | **Первое различие** | Δy_t = y_t - y_{t-1} | d=1 | Линейный тренд (базовый) |
+                | **Сезонное различие** | Δ_s y_t = y_t - y_{t-s} | D=1, s=период | Сезонность (SARIMA) |
+                | **Второе различие** | Δ²y_t = Δ(Δy_t) | d=2 | Квадратичный тренд (редко) |
+                | **Логарифмическое** | Δln(y_t) | — | Темпы роста, экспоненциальный тренд |
+                | **Дробное (Fractional)** | (1-L)^d, d∈(0,1) | d=0.3-0.7 | Сохранение долгосрочной памяти |
+                | **Комбинированное** | Δ^d Δ_s^D y_t | d+D | Тренд + сезонность (SARIMA) |
+                
+                **Тесты стационарности (консенсус ADF + KPSS):**
+                
+                | ADF (p < 0.05) | KPSS (p < 0.05) | Вывод |
+                |----------------|-----------------|-------|
+                | ✅ Отвергает H0 | ❌ Не отвергает H0 | **Стационарен** ✅ |
+                | ❌ Не отвергает H0 | ✅ Отвергает H0 | **Нестационарен** ❌ |
+                | ✅ Отвергает H0 | ✅ Отвергает H0 | **Тренд-стационарен** ⚠️ |
+                | ❌ Не отвергает H0 | ❌ Не отвергает H0 | **Неопределённость** ⚠️ |
+                
+                **Дополнительные тесты:**
+                - ✅ **Phillips-Perron (PP)** — устойчив к гетероскедастичности, альтернатива ADF
+                - ✅ **Zivot-Andrews (ZA)** — учитывает структурные разрывы (кризисы, реформы)
+                
+                **Как выбрать порядок дифференцирования:**
+                1. Запустите ADF + KPSS на исходном ряде
+                2. Если нестационарен → примените d=1, проверьте снова
+                3. Если всё ещё нестационарен → попробуйте d=2 или fractional d=0.5
+                4. Если есть сезонность → добавьте D=1 с периодом s
+                5. **Остановитесь**, когда ряд станет стационарным (не переусложняйте!)
+                
+                **⚠️ Over-differencing (переусложнение):**
+                - Слишком много дифференцирований делает ряд нестационарным в другом смысле
+                - Увеличивает дисперсию прогноза
+                - **Признак**: ACF первого лага < -0.5 после дифференцирования
+                
+                **Обратимость:**
+                - Все методы дифференцирования **обратимы** через кумулятивную сумму (cumsum)
+                - Параметры (d, D, s, метод) сохраняются в `session_state`
+                - Прогноз в дифференцированной шкале → обратное преобразование → исходная шкала
+                
+                *⚠️ Почитать:**
+                - Dickey-Fuller test: https://en.wikipedia.org/wiki/Augmented_Dickey%E2%80%93Fuller_test
+                - Fractional differencing: López de Prado, "Advances in Financial Machine Learning" (2018), Ch. 5
+                - Stationarity in TS: https://otexts.com/fpp3/stationarity.html
+                """)
+            
+            # ────────────────────────────────────────────────
+            # 🎮 ПЕСОЧНИЦА: ОБЕСПЕЧЕНИЕ СТАЦИОНАРНОСТИ
+            # ────────────────────────────────────────────────
+            
+            # Инициализация session_state
+            if "show_stationarity_preview" not in st.session_state:
+                st.session_state.show_stationarity_preview = False
+            if "stationarity_transform_params" not in st.session_state:
+                st.session_state.stationarity_transform_params = {}
+            
+            # ── ЛЕВАЯ КОЛОНКА: ПАНЕЛЬ УПРАВЛЕНИЯ ───────────
+            c1, c2, c3 = st.columns([27, 52, 21])
+            
+            with c1:
+                st.markdown("###### Панель управления")
+                
+                # Выбор числовой колонки
+                target_col = st.selectbox(
+                    "Исследуемый признак:",
+                    options=num_cols,
+                    index=num_cols.index(target_col_stat) if target_col_stat in num_cols else 0,
+                    key="stationarity_target_col"
+                )
+                
+                series = df_stat_ts[target_col].dropna().astype(float)
+                
+                # Определение частоты для сезонного периода
+                inferred_freq = pd.infer_freq(series.index)
+                default_s = 12
+                if inferred_freq:
+                    if 'D' in inferred_freq:
+                        default_s = 7
+                    elif 'W' in inferred_freq:
+                        default_s = 52
+                    elif 'M' in inferred_freq:
+                        default_s = 12
+                    elif 'Q' in inferred_freq:
+                        default_s = 4
+                    elif 'Y' in inferred_freq:
+                        default_s = 1
+                
+                # Выбор метода
+                stationarity_method = st.radio(
+                    "Метод дифференцирования:",
+                    ["Первое различие (d=1)",
+                    "Сезонное различие (D=1, период s)",
+                    "Второе различие (d=2)",
+                    "Логарифмическое различие (темпы роста)",
+                    "Дробное дифференцирование (fractional, d∈(0,1))",
+                    "Комбинированное (d + сезонное D)"],
+                    index=0,
+                    key="stationarity_method",
+                    label_visibility="collapsed"
+                )
+                
+                # Описание метода
+                method_descriptions = {
+                    "Первое различие (d=1)": 
+                        "Базовый метод: Δy_t = y_t - y_{t-1}. Удаляет линейный тренд. Стандарт для ARIMA.",
+                    "Сезонное различие (D=1, период s)": 
+                        f"Δ_s y_t = y_t - y_{{t-s}}. Удаляет сезонность. Период s={default_s} (автоопределено).",
+                    "Второе различие (d=2)": 
+                        "Δ²y_t = Δ(Δy_t). Для квадратичного тренда. Редко используется, риск over-differencing.",
+                    "Логарифмическое различие (темпы роста)": 
+                        "Δln(y_t) = ln(y_t) - ln(y_{t-1}). Интерпретируется как % изменение. Только для y > 0.",
+                    "Дробное дифференцирование (fractional, d∈(0,1))": 
+                        "(1-L)^d, где d∈(0,1). Сохраняет долгосрочную память ряда (López de Prado, 2018).",
+                    "Комбинированное (d + сезонное D)": 
+                        f"Δ^d Δ_s^D y_t. Для SARIMA: сначала сезонное, потом первое различие. s={default_s}."
+                }
+                
+                st.markdown(
+                    f'<div style="background: #f0f9ff; border-left: 3px solid #0284c7; padding: 8px 12px; '
+                    f'margin: 8px 0; border-radius: 4px;">'
+                    f'<span style="color: #0369a1; font-size: 13px;">'
+                    f'💡 <strong>{stationarity_method.split(" ")[0]}:</strong> {method_descriptions[stationarity_method]}'
+                    f'</span></div>',
+                    unsafe_allow_html=True
+                )
+                
+                # Параметры метода
+                st.divider()
+                st.markdown("**Параметры:**")
+                
+                # Проверка на отрицательные значения (для log)
+                has_negative = (series <= 0).any()
+                if "Логарифмическое" in stationarity_method and has_negative:
+                    st.error(" Логарифмическое различие требует положительных значений. Выберите другой метод.")
+                
+                if "Первое" in stationarity_method:
+                    d_order = st.slider(
+                        "Порядок d:",
+                        min_value=1,
+                        max_value=2,
+                        value=1,
+                        step=1,
+                        key="stationarity_d",
+                        help="d=1 для линейного тренда, d=2 для квадратичного (редко)"
+                    )
+                    param_value = d_order
+                
+                elif "Сезонное" in stationarity_method:
+                    s_period = st.number_input(
+                        "Сезонный период s:",
+                        min_value=2,
+                        max_value=365,
+                        value=default_s,
+                        step=1,
+                        key="stationarity_s",
+                        help=f"Период сезонности (автоопределено: {default_s})"
+                    )
+                    param_value = s_period
+                
+                elif "Второе" in stationarity_method:
+                    param_value = 2
+                    st.info("️ Второе различие = применение первого различия дважды")
+                
+                elif "Логарифмическое" in stationarity_method:
+                    param_value = "log"
+                    st.info("ℹ️ Применяется ln(y_t) - ln(y_{t-1})")
+                
+                elif "Дробное" in stationarity_method:
+                    frac_d = st.slider(
+                        "Дробный порядок d:",
+                        min_value=0.1,
+                        max_value=0.9,
+                        value=0.5,
+                        step=0.1,
+                        key="stationarity_frac_d",
+                        help="d∈(0,1). Меньше d = больше памяти сохраняется. Обычно 0.3-0.7."
+                    )
+                    param_value = frac_d
+                    
+                    # Подсказка по d
+                    frac_hints = {
+                        0.3: " Слабое дифференцирование, сохраняется ~70% памяти",
+                        0.5: " Умеренное дифференцирование, сохраняется ~50% памяти",
+                        0.7: " Сильное дифференцирование, сохраняется ~30% памяти"
+                    }
+                    st.info(f"💡 {frac_hints.get(frac_d, '')}")
+                
+                elif "Комбинированное" in stationarity_method:
+                    c_d, c_s = st.columns(2)
+                    with c_d:
+                        d_order = st.slider(
+                            "Порядок d (первое различие):",
+                            min_value=1,
+                            max_value=2,
+                            value=1,
+                            step=1,
+                            key="stationarity_combo_d"
+                        )
+                    with c_s:
+                        s_period = st.number_input(
+                            "Сезонный период s:",
+                            min_value=2,
+                            max_value=365,
+                            value=default_s,
+                            step=1,
+                            key="stationarity_combo_s"
+                        )
+                    param_value = (d_order, s_period)
+                
+                st.divider()
+                
+                # Кнопки действий
+                if st.button("▶ Применить дифференцирование", type="primary", use_container_width=True, key="btn_apply_stationarity"):
+                    if "Логарифмическое" in stationarity_method and has_negative:
+                        st.error("❌ Нельзя применить: есть неположительные значения")
+                    else:
+                        st.session_state.show_stationarity_preview = True
+                        st.rerun()
+                
+                if st.button("↶ Сбросить", use_container_width=True, key="btn_reset_stationarity"):
+                    st.session_state.show_stationarity_preview = False
+                    st.rerun()
+            
+            # ── ЦЕНТРАЛЬНАЯ КОЛОНКА: ВИЗУАЛИЗАЦИЯ ──────────
+            with c2:
+                st.markdown("###### Визуализация: До / После")
+                
+                if target_col in df_stat_ts.columns:
+                    original_series = df_stat_ts[target_col].dropna().astype(float)
+                    
+                    if st.session_state.show_stationarity_preview:
+                        try:
+                            # Применяем дифференцирование
+                            if "Первое" in stationarity_method:
+                                differenced = apply_differencing(original_series, 'first', d=param_value)
+                                method_name = f"First Diff (d={param_value})"
+                            
+                            elif "Сезонное" in stationarity_method:
+                                differenced = apply_differencing(original_series, 'seasonal', s=param_value)
+                                method_name = f"Seasonal Diff (s={param_value})"
+                            
+                            elif "Второе" in stationarity_method:
+                                differenced = apply_differencing(original_series, 'second')
+                                method_name = "Second Diff (d=2)"
+                            
+                            elif "Логарифмическое" in stationarity_method:
+                                differenced = apply_differencing(original_series, 'log')
+                                method_name = "Log Diff"
+                            
+                            elif "Дробное" in stationarity_method:
+                                differenced = apply_differencing(original_series, 'fractional', frac_d=param_value)
+                                method_name = f"Fractional Diff (d={param_value})"
+                            
+                            elif "Комбинированное" in stationarity_method:
+                                d_order, s_period = param_value
+                                differenced = apply_differencing(original_series, 'combined', d=d_order, s=s_period)
+                                method_name = f"Combined (d={d_order}, s={s_period})"
+                            
+                            # ── ГРАФИК СРАВНЕНИЯ (2 ряда) ───────
+                            fig = make_subplots(
+                                rows=2, cols=1,
+                                subplot_titles=(
+                                    f"📈 Исходный ряд: {target_col}",
+                                    f"🔄 После дифференцирования ({method_name})"
+                                ),
+                                vertical_spacing=0.12
+                            )
+                            
+                            # Исходный ряд
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=original_series.index, y=original_series.values,
+                                    mode='lines',
+                                    name='Исходные данные',
+                                    line=dict(color='#048A81', width=2),
+                                    showlegend=False
+                                ),
+                                row=1, col=1
+                            )
+                            
+                            # Дифференцированный ряд
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=differenced.index, y=differenced.values,
+                                    mode='lines',
+                                    name='После дифференцирования',
+                                    line=dict(color='#DC2626', width=2),
+                                    showlegend=False
+                                ),
+                                row=2, col=1
+                            )
+                            
+                            fig.update_layout(
+                                height=600,
+                                margin=dict(l=50, r=20, t=80, b=40),
+                                hovermode='x unified',
+                            )
+                            
+                            fig.update_xaxes(title_text="Дата", row=2, col=1)
+                            fig.update_yaxes(title_text="Значение", row=1, col=1)
+                            fig.update_yaxes(title_text="Разность", row=2, col=1)
+                            
+                            fig.update_annotations(font=dict(size=13, color="#1e293b"), yshift=10)
+                            
+                            st.plotly_chart(fig, use_container_width=True, key="stationarity_main_chart")
+                            
+                            # ── ACF ДО/ПОСЛЕ ────────────────────
+                            st.markdown("###### Автокорреляция (ACF): До / После")
+                            st.caption("После дифференцирования ACF должна быстро затухать (все лаги в синей зоне)")
+                            
+                            from statsmodels.tsa.stattools import acf
+                            
+                            max_lag = min(40, len(original_series) // 4)
+                            acf_before = acf(original_series.dropna(), nlags=max_lag)
+                            acf_after = acf(differenced.dropna(), nlags=max_lag)
+                            
+                            fig_acf = make_subplots(
+                                rows=2, cols=1,
+                                subplot_titles=(
+                                    "ACF исходного ряда",
+                                    f"ACF после дифференцирования ({method_name})"
+                                ),
+                                vertical_spacing=0.15
+                            )
+                            
+                            # ACF до
+                            fig_acf.add_trace(
+                                go.Bar(x=list(range(len(acf_before))), y=acf_before,
+                                    marker_color='#048A81', name='ACF До', showlegend=False),
+                                row=1, col=1
+                            )
+                            conf_int = 1.96 / np.sqrt(len(original_series))
+                            fig_acf.add_hline(y=conf_int, line_dash="dash", line_color="red", row=1, col=1)
+                            fig_acf.add_hline(y=-conf_int, line_dash="dash", line_color="red", row=1, col=1)
+                            
+                            # ACF после
+                            fig_acf.add_trace(
+                                go.Bar(x=list(range(len(acf_after))), y=acf_after,
+                                    marker_color='#DC2626', name='ACF После', showlegend=False),
+                                row=2, col=1
+                            )
+                            conf_int_after = 1.96 / np.sqrt(len(differenced))
+                            fig_acf.add_hline(y=conf_int_after, line_dash="dash", line_color="red", row=2, col=1)
+                            fig_acf.add_hline(y=-conf_int_after, line_dash="dash", line_color="red", row=2, col=1)
+                            
+                            fig_acf.update_layout(height=500, margin=dict(l=50, r=20, t=60, b=40))
+                            st.plotly_chart(fig_acf, use_container_width=True, key="stationarity_acf_chart")
+                            
+                            # ── ROLLING MEAN/STD ДО/ПОСЛЕ ───────
+                            st.markdown("###### Скользящие mean и std (тест на постоянство)")
+                            st.caption("После дифференцирования rolling mean должен быть около 0, rolling std — постоянным")
+                            
+                            window = min(30, len(original_series) // 5)
+                            rolling_mean_before = original_series.rolling(window=window).mean()
+                            rolling_std_before = original_series.rolling(window=window).std()
+                            rolling_mean_after = differenced.rolling(window=window).mean()
+                            rolling_std_after = differenced.rolling(window=window).std()
+                            
+                            fig_rolling = make_subplots(
+                                rows=2, cols=2,
+                                subplot_titles=(
+                                    "Rolling Mean (До)", "Rolling Mean (После)",
+                                    "Rolling Std (До)", "Rolling Std (После)"
+                                ),
+                                vertical_spacing=0.12,
+                                horizontal_spacing=0.1
+                            )
+                            
+                            fig_rolling.add_trace(
+                                go.Scatter(x=rolling_mean_before.index, y=rolling_mean_before.values,
+                                        mode='lines', line=dict(color='#048A81', width=2), showlegend=False),
+                                row=1, col=1
+                            )
+                            fig_rolling.add_trace(
+                                go.Scatter(x=rolling_mean_after.index, y=rolling_mean_after.values,
+                                        mode='lines', line=dict(color='#DC2626', width=2), showlegend=False),
+                                row=1, col=2
+                            )
+                            fig_rolling.add_trace(
+                                go.Scatter(x=rolling_std_before.index, y=rolling_std_before.values,
+                                        mode='lines', line=dict(color='#048A81', width=2), showlegend=False),
+                                row=2, col=1
+                            )
+                            fig_rolling.add_trace(
+                                go.Scatter(x=rolling_std_after.index, y=rolling_std_after.values,
+                                        mode='lines', line=dict(color='#DC2626', width=2), showlegend=False),
+                                row=2, col=2
+                            )
+                            
+                            fig_rolling.update_layout(height=500, margin=dict(l=50, r=20, t=60, b=40))
+                            st.plotly_chart(fig_rolling, use_container_width=True, key="stationarity_rolling_chart")
+                            
+                            # ── ЗАПУСК ТЕСТОВ НА ДИФФЕРЕНЦИРОВАННОМ РЯДЕ ──
+                            tests_after = run_stationarity_tests(differenced)
+                            
+                            # Сохранение результатов
+                            st.session_state.stationarity_transform_result = {
+                                'method': method_name,
+                                'param': param_value,
+                                'original_series': original_series,
+                                'differenced_series': differenced,
+                                'target_col': target_col,
+                                'tests_before': tests_raw,
+                                'tests_after': tests_after
+                            }
+                            
+                            st.divider()
+                            
+                            # ─ СРАВНЕНИЕ ТЕСТОВ ДО/ПОСЛЕ ───────
+                            st.markdown("###### Сравнение тестов стационарности: До / После")
+                            
+                            c_test1, c_test2 = st.columns(2)
+                            
+                            with c_test1:
+                                st.markdown("**ДО дифференцирования:**")
+                                if 'adf' in tests_raw:
+                                    adf_p_before = tests_raw['adf']['pvalue']
+                                    adf_status_before = "✅ Стационарен" if adf_p_before < 0.05 else "❌ Нестационарен"
+                                    st.metric("ADF p-value", f"{adf_p_before:.4f}", 
+                                            delta=adf_status_before)
+                                if 'kpss' in tests_raw and 'pvalue_level' in tests_raw['kpss']:
+                                    kpss_p_before = tests_raw['kpss']['pvalue_level']
+                                    kpss_status_before = "✅ Стационарен" if kpss_p_before > 0.05 else "❌ Нестационарен"
+                                    st.metric("KPSS p-value (level)", f"{kpss_p_before:.4f}",
+                                            delta=kpss_status_before)
+                            
+                            with c_test2:
+                                st.markdown("**ПОСЛЕ дифференцирования:**")
+                                if 'adf' in tests_after:
+                                    adf_p_after = tests_after['adf']['pvalue']
+                                    adf_status_after = "✅ Стационарен" if adf_p_after < 0.05 else "❌ Нестационарен"
+                                    delta_adf = adf_p_after - tests_raw.get('adf', {}).get('pvalue', 0)
+                                    st.metric("ADF p-value", f"{adf_p_after:.4f}",
+                                            delta=f"{delta_adf:+.4f}")
+                                if 'kpss' in tests_after and 'pvalue_level' in tests_after['kpss']:
+                                    kpss_p_after = tests_after['kpss']['pvalue_level']
+                                    kpss_status_after = "✅ Стационарен" if kpss_p_after > 0.05 else "❌ Нестационарен"
+                                    delta_kpss = kpss_p_after - tests_raw.get('kpss', {}).get('pvalue_level', 0)
+                                    st.metric("KPSS p-value (level)", f"{kpss_p_after:.4f}",
+                                            delta=f"{delta_kpss:+.4f}")
+                            
+                            # Консенсус после
+                            consensus_after = tests_after.get('consensus', 'unknown')
+                            consensus_colors = {
+                                'stationary': '#16a34a',
+                                'trend-stationary': '#d97706',
+                                'non-stationary': '#dc2626',
+                                'inconclusive': '#6b7280'
+                            }
+                            consensus_texts = {
+                                'stationary': '✅ Стационарен',
+                                'trend-stationary': '⚠️ Тренд-стационарен',
+                                'non-stationary': '❌ Нестационарен',
+                                'inconclusive': '⚠️ Неопределённость'
+                            }
+                            color_after = consensus_colors.get(consensus_after, '#6b7280')
+                            text_after = consensus_texts.get(consensus_after, 'Неизвестно')
+                            
+                            st.markdown(f"<div style='background: {color_after}20; border-left: 4px solid {color_after}; "
+                                    f"padding: 12px; border-radius: 6px; margin: 15px 0;'>"
+                                    f"<strong>Консенсус после дифференцирования:</strong> "
+                                    f"<span style='color: {color_after}; font-weight: 600;'>{text_after}</span><br>"
+                                    f"<small>{tests_after.get('recommendation', '')}</small>"
+                                    f"</div>", unsafe_allow_html=True)
+                            
+                            # Проверка на over-differencing
+                            if len(acf_after) > 1 and acf_after[1] < -0.5:
+                                st.warning("⚠️ **Признак over-differencing:** ACF первого лага < -0.5. "
+                                        "Ряд переусложнён. Попробуйте меньший порядок d.")
+                            
+                            # Кнопки подтверждения
+                            c_ok_stat, c_cancel_stat = st.columns(2)
+                            with c_ok_stat:
+                                if st.button("✅ Применить к данным", type="primary", use_container_width=True, key="btn_confirm_stationarity"):
+                                    # Применяем дифференцирование к основному df
+                                    df_final_stat = st.session_state.df.copy()
+                                    
+                                    # Сохраняем оригинальный столбец
+                                    orig_col_name = f"{target_col}_original"
+                                    if orig_col_name not in df_final_stat.columns:
+                                        df_final_stat[orig_col_name] = df_final_stat[target_col]
+                                    
+                                    # Применяем дифференцирование
+                                    if "Первое" in stationarity_method:
+                                        df_final_stat[target_col] = df_final_stat[target_col].astype(float).diff(param_value)
+                                    elif "Сезонное" in stationarity_method:
+                                        df_final_stat[target_col] = df_final_stat[target_col].astype(float).diff(param_value)
+                                    elif "Второе" in stationarity_method:
+                                        df_final_stat[target_col] = df_final_stat[target_col].astype(float).diff(2)
+                                    elif "Логарифмическое" in stationarity_method:
+                                        df_final_stat[target_col] = np.log(df_final_stat[target_col].astype(float)).diff()
+                                    elif "Дробное" in stationarity_method:
+                                        # Для дробного — применяем к основному df
+                                        series_main = df_final_stat[target_col].astype(float).dropna()
+                                        diff_frac = apply_differencing(series_main, 'fractional', frac_d=param_value)
+                                        df_final_stat = df_final_stat.loc[diff_frac.index]
+                                        df_final_stat[target_col] = diff_frac.values
+                                    elif "Комбинированное" in stationarity_method:
+                                        d_order, s_period = param_value
+                                        df_final_stat[target_col] = df_final_stat[target_col].astype(float).diff(s_period).diff(d_order)
+                                    
+                                    # Удаляем NaN после дифференцирования
+                                    df_final_stat = df_final_stat.dropna(subset=[target_col])
+                                    
+                                    # Сохраняем параметры
+                                    st.session_state.stationarity_transform_params = {
+                                        'method': method_name,
+                                        'param': param_value,
+                                        'column': target_col,
+                                        'original_col_name': orig_col_name,
+                                        'tests_before': tests_raw,
+                                        'tests_after': tests_after
+                                    }
+                                    
+                                    # Синхронизация
+                                    st.session_state.df = df_final_stat.copy()
+                                    st.session_state.validation_ready = False
+                                    st.session_state.show_stationarity_preview = False
+                                    
+                                    # Удаляем рабочие копии
+                                    work_dfs = [
+                                        "df_missing_work", "df_pattern_work", "df_range_work",
+                                        "df_outlier_work", "df_inclusion_work", "df_referential_work",
+                                        "df_text_work", "df_consistency_work", "df_uniqueness_work",
+                                        "df_regularity_work", "df_regular_work", "df_variance_work",
+                                        "df_smooth_work", "df_stationarity_work"
+                                    ]
+                                    for work_df_name in work_dfs:
+                                        if work_df_name in st.session_state:
+                                            del st.session_state[work_df_name]
+                                    
+                                    if "val_results" in st.session_state:
+                                        del st.session_state.val_results
+                                    
+                                    st.success(f"✅ Дифференцирование **{method_name}** применено!")
+                                    st.info(f"💡 Оригинальные значения сохранены в колонке `{orig_col_name}`. "
+                                        f"Удалено {len(df_final_stat) - len(df_final_stat.dropna())} строк с NaN. "
+                                        f"Перезапустите валидацию для обновления статистик.")
+                                    st.rerun()
+                            
+                            with c_cancel_stat:
+                                if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_stationarity"):
+                                    st.session_state.show_stationarity_preview = False
+                                    st.rerun()
+                        
+                        except Exception as e:
+                            st.error(f"❌ Ошибка дифференцирования: {e}")
+                            import traceback
+                            with st.expander("🔍 Stack trace"):
+                                st.code(traceback.format_exc(), language="python")
+                    
+                    else:
+                        # Показываем только исходный ряд
+                        fig = px.line(
+                            x=original_series.index,
+                            y=original_series.values,
+                            labels={'x': 'Дата', 'y': target_col},
+                            title=f"📈 Исходный временной ряд: {target_col}"
+                        )
+                        fig.update_layout(height=400, margin=dict(l=40, r=20, t=40, b=40))
+                        st.plotly_chart(fig, use_container_width=True, key="stationarity_main_chart")
+                        
+                        st.info("💡 Выберите метод дифференцирования и нажмите **'Применить дифференцирование'** для просмотра результата.")
+                else:
+                    st.warning("⚠️ Выбранная колонка не найдена в данных.")
+            
+            # ─ ПРАВАЯ КОЛОНКА: МЕТРИКИ КАЧЕСТВА ───────────
+            with c3:
+                st.markdown("###### Метрики качества")
+                
+                with st.container(border=True):
+                    st.markdown("**До дифференцирования:**")
+                    
+                    if 'adf' in tests_raw:
+                        adf_p = tests_raw['adf']['pvalue']
+                        adf_status = "❌ Нестацион." if adf_p >= 0.05 else "✅ Стацион."
+                        st.metric("ADF p-value", f"{adf_p:.4f}", delta=adf_status)
+                    
+                    if 'kpss' in tests_raw and 'pvalue_level' in tests_raw['kpss']:
+                        kpss_p = tests_raw['kpss']['pvalue_level']
+                        kpss_status = "✅ Стацион." if kpss_p > 0.05 else "❌ Нестацион."
+                        st.metric("KPSS p-value", f"{kpss_p:.4f}", delta=kpss_status)
+                    
+                    if 'pp' in tests_raw:
+                        pp_p = tests_raw['pp']['pvalue']
+                        pp_status = "❌ Нестацион." if pp_p >= 0.05 else "✅ Стацион."
+                        st.metric("PP p-value", f"{pp_p:.4f}", delta=pp_status)
+                    
+                    st.divider()
+                    st.markdown("**Статистики ряда:**")
+                    st.metric("Длина ряда", f"{len(series):,}".replace(",", " "))
+                    st.metric("Среднее", f"{series.mean():.2f}")
+                    st.metric("Стд. отклонение", f"{series.std():.2f}")
+                
+                # Метрики ПОСЛЕ дифференцирования
+                if st.session_state.show_stationarity_preview and 'stationarity_transform_result' in st.session_state:
+                    tests_after = st.session_state.stationarity_transform_result['tests_after']
+                    differenced_series = st.session_state.stationarity_transform_result['differenced_series']
+                    
+                    with st.container(border=True):
+                        st.markdown("**После дифференцирования:**")
+                        
+                        if 'adf' in tests_after:
+                            adf_p_after = tests_after['adf']['pvalue']
+                            adf_p_before = tests_raw.get('adf', {}).get('pvalue', 0)
+                            delta_adf = adf_p_after - adf_p_before
+                            adf_status = "✅ Стацион." if adf_p_after < 0.05 else "❌ Нестацион."
+                            st.metric("ADF p-value", f"{adf_p_after:.4f}",
+                                    delta=f"{delta_adf:+.4f}")
+                        
+                        if 'kpss' in tests_after and 'pvalue_level' in tests_after['kpss']:
+                            kpss_p_after = tests_after['kpss']['pvalue_level']
+                            kpss_p_before = tests_raw.get('kpss', {}).get('pvalue_level', 0)
+                            delta_kpss = kpss_p_after - kpss_p_before
+                            kpss_status = "✅ Стацион." if kpss_p_after > 0.05 else "❌ Нестацион."
+                            st.metric("KPSS p-value", f"{kpss_p_after:.4f}",
+                                    delta=f"{delta_kpss:+.4f}")
+                        
+                        if 'pp' in tests_after:
+                            pp_p_after = tests_after['pp']['pvalue']
+                            pp_p_before = tests_raw.get('pp', {}).get('pvalue', 0)
+                            delta_pp = pp_p_after - pp_p_before
+                            pp_status = "✅ Стацион." if pp_p_after < 0.05 else " Нестацион."
+                            st.metric("PP p-value", f"{pp_p_after:.4f}",
+                                    delta=f"{delta_pp:+.4f}")
+                        
+                        st.divider()
+                        st.markdown("**Статистики ряда:**")
+                        st.metric("Длина ряда", f"{len(differenced_series):,}".replace(",", " "))
+                        st.metric("Среднее", f"{differenced_series.mean():.4f}")
+                        st.metric("Стд. отклонение", f"{differenced_series.std():.4f}")
+                    
+                    st.divider()
+                    
+                    # Рекомендации
+                    consensus_after = tests_after.get('consensus', 'unknown')
+                    if consensus_after == 'stationary':
+                        st.success("✅ **Ряд стал стационарным!** Можно применять ARIMA/VAR.")
+                    elif consensus_after == 'trend-stationary':
+                        st.warning("⚠️ **Тренд-стационарен.** Достаточно детренда (удалить линейный тренд).")
+                    elif consensus_after == 'non-stationary':
+                        st.error("❌ **Ряд всё ещё нестационарен.** Попробуйте другой метод или больший порядок.")
+                    else:
+                        st.info("⚠️ **Неопределённость.** Визуальный анализ + пробное дифференцирование.")
+                    
+                    # Информация о параметрах
+                    st.info(f"**Параметры:** {st.session_state.stationarity_transform_result['method']}")
+            
+            # ── ИНФОРМАЦИЯ О СОХРАНЁННЫХ ТРАНСФОРМАЦИЯХ ────
+            if st.session_state.stationarity_transform_params:
+                st.divider()
+                with st.expander("💾 Сохранённые параметры дифференцирования", expanded=False):
+                    st.json(st.session_state.stationarity_transform_params)
+                    st.caption("Эти параметры будут использованы для **обратного преобразования** прогноза "
+                            "в исходную шкалу (через кумулятивную сумму).")
+        
+        else:
+            st.warning("⚠️ В датасете нет числовых колонок для анализа.")
+    else:
+        st.warning("⚠️ Не обнаружены колонки с датами или числовыми данными. Убедитесь, что активирован режим временных рядов.")
+
+
+    # ═══════════════════════════════════════════════════════
     # 🔹 8. FEATURE ENGINEERING + СПЕКТРАЛЬНЫЙ АНАЛИЗ
     # ═══════════════════════════════════════════════════════
     st.divider()
     st.markdown("### Feature Engineering + Спектральный анализ")
-    st.caption("Создание новых признаков: лаги, скользящие статистики, спектральные характеристики. "
+    st.caption("Фичинг - создание новых признаков: лаги, скользящие статистики, спектральные характеристики. "
             "Ознакомительный анализ частотной структуры ряда после преобразований.")
 
     # ── ЦЕЛИ И РЕЗУЛЬТАТЫ ────────────────────────────────
     with st.expander("Цели субмодуля_Feature Engineering", expanded=False):
         st.markdown("""
         **Feature Engineering** — процесс создания новых признаков из существующих данных для улучшения качества моделей.
-        
+        Фичинг позволяет моделям ML «увидеть» временные закономерности, которые они не выучили бы сами (например, циклические эффекты, длинные лаги).
+                    
         **Что создаём:**
         1. **Лаги (Lags)** — предыдущие значения ряда (t-1, t-2, ...) для ARIMA, LSTM
         2. **Скользящие статистики** — mean, std, min, max за окно (тренды, волатильность)
@@ -11068,7 +12705,7 @@ with tab_preprocessing:
             # ── ПРЕДПРОСМОТР ────────────────────────────
             if st.session_state.fe_features_created:
                 st.divider()
-                st.markdown("#### 📊 Предпросмотр датасета с признаками")
+                st.markdown("###### Предпросмотр датасета с признаками")
                 
                 # Показать только новые колонки
                 new_cols = [col for col in df_work.columns if col in st.session_state.fe_features_created]
@@ -11084,6 +12721,8 @@ with tab_preprocessing:
             st.warning("⚠️ Нет числовых колонок для создания признаков")
     else:
         st.warning("⚠️ Не найдены колонки с датами или числовыми данными")
+
+
 
 # ═══════════════════════════════════════════════════════════
 #  ВКЛАДКА 4: IH-АНАЛИЗ (Information-Entropy Analysis)
