@@ -9889,6 +9889,675 @@ with tab_preprocessing:
 
 
     # ═══════════════════════════════════════════════════════
+    # 🔹 5. СТАБИЛИЗАЦИЯ ДИСПЕРСИИ (VARIANCE STABILIZATION)
+    # ═══════════════════════════════════════════════════════
+    st.divider()
+    st.markdown("### Стабилизация дисперсии (трансформации)")
+    st.caption("Стабилизация дисперсии временного ряда необходима для приведения ряда к стационарному виду, что упрощает выявление закономерностей и повышает точность прогнозов.")
+
+    # ── ДИАГНОСТИКА ТЕКУЩЕГО СОСТОЯНИЯ ──────────────────
+    if st.session_state.primary_date_col and st.session_state.col_types.get("num"):
+        date_col = st.session_state.primary_date_col
+        num_cols = st.session_state.col_types.get("num", [])
+        
+        if num_cols:
+            df_var = st.session_state.df.copy()
+            df_var[date_col] = pd.to_datetime(df_var[date_col])
+            df_var = df_var.sort_values(date_col)
+            df_var_ts = df_var.set_index(date_col)
+            
+            # ── ФУНКЦИЯ ТЕСТА НА ГЕТЕРОСКЕДАСТИЧНОСТЬ ─────
+            def test_heteroskedasticity(series, window=30):
+                """Тест на гетероскедастичность через скользящее std"""
+                if len(series) < window * 2:
+                    return {
+                        'bp_pvalue': None,
+                        'is_hetero': None,
+                        'rolling_std_corr': None,
+                        'amplitude_ratio': None
+                    }
+                
+                # 1. Тест Бройша-Пагана (если есть statsmodels)
+                try:
+                    from statsmodels.stats.diagnostic import het_breuschpagan
+                    import statsmodels.api as sm
+                    
+                    # Регрессия на тренд для получения остатков
+                    X = sm.add_constant(np.arange(len(series)))
+                    model = sm.OLS(series, X).fit()
+                    resid = model.resid
+                    
+                    # Тест Бройша-Пагана
+                    _, bp_pvalue, _, _ = het_breuschpagan(resid, X)
+                    is_hetero = bp_pvalue < 0.05
+                except Exception:
+                    bp_pvalue = None
+                    is_hetero = None
+                
+                # 2. Корреляция между rolling_std и rolling_mean
+                rolling_mean = series.rolling(window=window).mean()
+                rolling_std = series.rolling(window=window).std()
+                
+                valid_mask = rolling_mean.notna() & rolling_std.notna() & (rolling_std > 0)
+                if valid_mask.sum() > 10:
+                    corr = rolling_mean[valid_mask].corr(rolling_std[valid_mask])
+                else:
+                    corr = None
+                
+                # 3. Отношение амплитуд (последняя треть / первая треть)
+                n = len(series)
+                first_third = series.iloc[:n//3]
+                last_third = series.iloc[2*n//3:]
+                if len(first_third) > 0 and len(last_third) > 0:
+                    amplitude_ratio = last_third.std() / (first_third.std() + 1e-10)
+                else:
+                    amplitude_ratio = None
+                
+                return {
+                    'bp_pvalue': bp_pvalue,
+                    'is_hetero': is_hetero,
+                    'rolling_std_corr': corr,
+                    'amplitude_ratio': amplitude_ratio
+                }
+            
+            # ── МЕТРИКИ ТЕКУЩЕГО СОСТОЯНИЯ ─────────────────
+            c_diag1, c_diag2, c_diag3, c_diag4 = st.columns(4)
+            
+            target_col_var = st.session_state.get('ts_props_v10_target_col', num_cols[0])
+            series_raw = df_var_ts[target_col_var].dropna().astype(float)
+            
+            hetero_raw = test_heteroskedasticity(series_raw)
+            
+            with c_diag1:
+                st.markdown("**Анализ ряда**")
+                st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: #1e293b;'>`{target_col_var}`</div>", 
+                        unsafe_allow_html=True)
+            
+            with c_diag2:
+                st.markdown("**Тест Бройша-Пагана**")
+                if hetero_raw['bp_pvalue'] is not None:
+                    bp_color = "#dc2626" if hetero_raw['is_hetero'] else "#16a34a"
+                    bp_text = "Гетероскедастичность" if hetero_raw['is_hetero'] else "Гомоскедастичность"
+                    st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: {bp_color};'>"
+                            f"{bp_text} (p={hetero_raw['bp_pvalue']:.4f})</div>", 
+                            unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='font-size: 14px; color: #6b7280;'>Недоступно</div>", unsafe_allow_html=True)
+            
+            with c_diag3:
+                st.markdown("**Корр. std vs mean**")
+                if hetero_raw['rolling_std_corr'] is not None:
+                    corr_val = hetero_raw['rolling_std_corr']
+                    corr_color = "#dc2626" if abs(corr_val) > 0.5 else "#16a34a"
+                    st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: {corr_color};'>"
+                            f"{corr_val:.3f}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='font-size: 14px; color: #6b7280;'>N/A</div>", unsafe_allow_html=True)
+            
+            with c_diag4:
+                st.markdown("**Амплитуда (конец/начало)**")
+                if hetero_raw['amplitude_ratio'] is not None:
+                    ratio = hetero_raw['amplitude_ratio']
+                    ratio_color = "#dc2626" if ratio > 1.5 else "#16a34a"
+                    st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: {ratio_color};'>"
+                            f"{ratio:.2f}x</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='font-size: 14px; color: #6b7280;'>N/A</div>", unsafe_allow_html=True)
+            
+            # Отступ
+            st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
+            
+            # ── ТЕХНИЧЕСКАЯ СПРАВКА ─────────────────────────
+            with st.expander("Цели субмодуля_Стабилизация дисперсии", expanded=False):
+                st.markdown("""
+                **Зачем нужна стабилизация дисперсии.**
+                Если амплитуда колебаний растёт вместе с уровнем ряда (гетероскедастичность), 
+                модели ошибаются. Трансформации «сжимают» большие значения и «растягивают» маленькие, 
+                обеспечивая гомоскедастичность — ключевое допущение ARIMA/регрессии.
+                - **Гомоскедастичность** — ключевое допущение ARIMA, регрессии, Gaussian processes
+                - **Стабильность прогноза** — постоянная ширина доверительных интервалов
+                - **Корректность тестов** — ADF, Ljung-Box, Jarque-Bera требуют стабильной дисперсии
+                - **Качество ML** — LSTM, XGBoost лучше обучаются на гомоскедастичных данных
+                
+                **Диагностика гетероскедастичности:**
+                - ✅ **Тест Бройша-Пагана** (p < 0.05 → гетероскедастичность)
+                - ✅ **Корреляция rolling_std vs rolling_mean** (|r| > 0.5 → проблема)
+                - ✅ **Отношение амплитуд** (конец/начало > 1.5 → растущая дисперсия)
+                
+                **Методы трансформации:**
+                
+                | Метод | Формула | λ (Box-Cox) | Когда использовать |
+                |-------|---------|-------------|-------------------|
+                | **Box-Cox** | (y^λ - 1)/λ | Авто | Только y > 0, универсальный |
+                | **Yeo-Johnson** | piecewise | Авто | Есть y ≤ 0, расширение Box-Cox |
+                | **Log (ln)** | ln(y) | λ→0 | Экспоненциальный рост, y > 0 |
+                | **Log1p** | ln(1+y) | — | Есть нули, y ≥ 0 |
+                | **Square Root** | √y | λ=0.5 | Count data (Пуассон), y ≥ 0 |
+                | **Reciprocal** | 1/y | λ=-1 | Сильно растущие ряды, y > 0 |
+                
+                **Как выбрать метод:**
+                1. Если **все значения > 0** → Box-Cox (оптимальный λ подбирается автоматически)
+                2. Если **есть отрицательные** → Yeo-Johnson
+                3. Если **есть нули** → Log1p или Square Root
+                4. Если **данные — количество событий** → Square Root
+                5. Если **нужна интерпретируемость** → Log (коэффициенты = эластичность)
+                
+                **Обратимость:**
+                - Все трансформации обратимы — параметры сохраняются в `session_state`
+                - Перед прогнозом в исходной шкале применяется **обратное преобразование**
+                - Для Box-Cox/Yeo-Johnson сохраняется λ, для Log — база (e)
+                
+                **⚠️ Почитать:**
+                - Box-Cox transformation: https://en.wikipedia.org/wiki/Power_transform
+                - Гомоскедастичность в TS: https://otexts.com/fpp3/transformations.html
+                """)
+            
+            # Отступ
+            st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
+
+            # ────────────────────────────────────────────────
+            # 🎮 ПЕСОЧНИЦА: СТАБИЛИЗАЦИЯ ДИСПЕРСИИ
+            # ────────────────────────────────────────────────
+            
+            # Инициализация session_state
+            if "show_variance_preview" not in st.session_state:
+                st.session_state.show_variance_preview = False
+            if "variance_transform_params" not in st.session_state:
+                st.session_state.variance_transform_params = {}
+            
+            # ── ЛЕВАЯ КОЛОНКА: ПАНЕЛЬ УПРАВЛЕНИЯ ───────────
+            c1, c2, c3 = st.columns([27, 52, 21])
+            
+            with c1:
+                st.markdown("###### Панель управления")
+                
+                # Выбор числовой колонки
+                target_col = st.selectbox(
+                    "Исследуемый признак:",
+                    options=num_cols,
+                    index=num_cols.index(target_col_var) if target_col_var in num_cols else 0,
+                    key="variance_target_col"
+                )
+                
+                series = df_var_ts[target_col].dropna().astype(float)
+                
+                # Проверка на отрицательные значения
+                has_negative = (series <= 0).any()
+                has_zero = (series == 0).any()
+                
+                # Формируем список доступных методов
+                method_options = []
+                method_descriptions = {}
+                
+                if not has_negative:
+                    method_options.append("Box-Cox (авто λ)")
+                    method_descriptions["Box-Cox (авто λ)"] = "Универсальный метод, только y > 0. Автоматически подбирает оптимальный λ."
+                    
+                    method_options.append("Log (натуральный)")
+                    method_descriptions["Log (натуральный)"] = "ln(y), только y > 0. Интерпретируемый, для экспоненциального роста."
+                    
+                    method_options.append("Reciprocal (1/y)")
+                    method_descriptions["Reciprocal (1/y)"] = "1/y, только y > 0. Агрессивное сжатие больших значений."
+                
+                if not has_negative:
+                    method_options.append("Square Root")
+                    method_descriptions["Square Root"] = "√y, только y ≥ 0. Для count data (распределение Пуассона)."
+                    
+                    if has_zero:
+                        method_options.append("Log1p (ln(1+y))")
+                        method_descriptions["Log1p (ln(1+y))"] = "Безопасный логарифм для данных с нулями."
+                
+                # Yeo-Johnson всегда доступен
+                method_options.append("Yeo-Johnson (авто λ)")
+                method_descriptions["Yeo-Johnson (авто λ)"] = "Работает с любыми значениями (включая отрицательные). Расширение Box-Cox."
+                
+                # Если нет доступных методов (все отрицательные) — только Yeo-Johnson
+                if not method_options:
+                    method_options = ["Yeo-Johnson (авто λ)"]
+                    method_descriptions["Yeo-Johnson (авто λ)"] = "Единственный доступный метод для данных с отрицательными значениями."
+                
+                # Предупреждения о доступности
+                if has_negative:
+                    st.warning("⚠️ Обнаружены **отрицательные значения** — доступны только Yeo-Johnson")
+                elif has_zero:
+                    st.info("ℹ️ Обнаружены **нули** — Box-Cox/Log недоступны, используйте Log1p или Yeo-Johnson")
+                
+                # Выбор метода
+                variance_method = st.radio(
+                    "Метод трансформации:",
+                    options=method_options,
+                    index=0,
+                    key="variance_method",
+                    label_visibility="collapsed"
+                )
+                
+                # Описание выбранного метода
+                st.markdown(
+                    f'<div style="background: #f0f9ff; border-left: 3px solid #0284c7; padding: 8px 12px; '
+                    f'margin: 8px 0; border-radius: 4px;">'
+                    f'<span style="color: #0369a1; font-size: 13px;">'
+                    f'💡 <strong>{variance_method}:</strong> {method_descriptions[variance_method]}'
+                    f'</span></div>',
+                    unsafe_allow_html=True
+                )
+                
+                # Ручной подбор λ (для Box-Cox/Yeo-Johnson)
+                if "Box-Cox" in variance_method or "Yeo-Johnson" in variance_method:
+                    auto_lambda = st.checkbox("Автоматический подбор λ (MLE)", value=True, key="auto_lambda_var")
+                    if not auto_lambda:
+                        lambda_value = st.slider(
+                            "Ручной подбор λ:",
+                            min_value=-2.0,
+                            max_value=2.0,
+                            value=0.0,
+                            step=0.1,
+                            key="manual_lambda_var",
+                            help="λ=0 → логарифм, λ=0.5 → корень, λ=1 → без изменений, λ=-1 → обратное"
+                        )
+                    else:
+                        lambda_value = None
+                
+                st.divider()
+                
+                # Кнопки действий
+                if st.button("▶ Применить трансформацию", type="primary", use_container_width=True, key="btn_apply_variance"):
+                    st.session_state.show_variance_preview = True
+                    st.rerun()
+                
+                if st.button("↶ Сбросить", use_container_width=True, key="btn_reset_variance"):
+                    st.session_state.show_variance_preview = False
+                    st.rerun()
+            
+            # ── ЦЕНТРАЛЬНАЯ КОЛОНКА: ВИЗУАЛИЗАЦИЯ ──────────
+            with c2:
+                st.markdown("###### Визуализация: До / После")
+                
+                if target_col in df_var_ts.columns:
+                    original_series = df_var_ts[target_col].dropna().astype(float)
+                    
+                    if st.session_state.show_variance_preview:
+                        try:
+                            from sklearn.preprocessing import PowerTransformer
+                            from scipy import stats
+                            
+                            # Применяем трансформацию
+                            values = original_series.values.reshape(-1, 1)
+                            
+                            if "Box-Cox" in variance_method:
+                                if auto_lambda:
+                                    transformed, lambda_opt = stats.boxcox(values.flatten() + 1e-10)
+                                    transformed_series = pd.Series(transformed, index=original_series.index)
+                                    lambda_used = lambda_opt
+                                else:
+                                    transformed, _ = stats.boxcox(values.flatten() + 1e-10, lmbda=lambda_value)
+                                    transformed_series = pd.Series(transformed, index=original_series.index)
+                                    lambda_used = lambda_value
+                                method_name = "Box-Cox"
+                            
+                            elif "Yeo-Johnson" in variance_method:
+                                pt = PowerTransformer(method='yeo-johnson', standardize=False)
+                                if auto_lambda:
+                                    transformed = pt.fit_transform(values)
+                                    lambda_used = pt.lambdas_[0]
+                                else:
+                                    # Ручной λ для Yeo-Johnson — через кастомную реализацию
+                                    def yeo_johnson_manual(y, lmbda):
+                                        result = np.zeros_like(y, dtype=float)
+                                        pos = y >= 0
+                                        neg = ~pos
+                                        if lmbda != 0:
+                                            result[pos] = ((y[pos] + 1) ** lmbda - 1) / lmbda
+                                        else:
+                                            result[pos] = np.log1p(y[pos])
+                                        if lmbda != 2:
+                                            result[neg] = -((-y[neg] + 1) ** (2 - lmbda) - 1) / (2 - lmbda)
+                                        else:
+                                            result[neg] = -np.log1p(-y[neg])
+                                        return result
+                                    transformed = yeo_johnson_manual(values.flatten(), lambda_value)
+                                    lambda_used = lambda_value
+                                transformed_series = pd.Series(transformed.flatten(), index=original_series.index)
+                                method_name = "Yeo-Johnson"
+                            
+                            elif "Log (натуральный)" in variance_method:
+                                transformed_series = np.log(original_series)
+                                lambda_used = 0
+                                method_name = "Log"
+                            
+                            elif "Log1p" in variance_method:
+                                transformed_series = np.log1p(original_series)
+                                lambda_used = 0
+                                method_name = "Log1p"
+                            
+                            elif "Square Root" in variance_method:
+                                transformed_series = np.sqrt(original_series)
+                                lambda_used = 0.5
+                                method_name = "Square Root"
+                            
+                            elif "Reciprocal" in variance_method:
+                                transformed_series = 1 / original_series
+                                lambda_used = -1
+                                method_name = "Reciprocal"
+                            
+                            # ── ГРАФИК СРАВНЕНИЯ (2 ряда) ───────
+                            fig = make_subplots(
+                                rows=2, cols=1,
+                                subplot_titles=(
+                                    f"📈 Исходный ряд: {target_col}",
+                                    f"🔄 После трансформации ({method_name}, λ={lambda_used:.3f})"
+                                ),
+                                vertical_spacing=0.12
+                            )
+                            
+                            # Исходный ряд
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=original_series.index, y=original_series.values,
+                                    mode='lines',
+                                    name='Исходные данные',
+                                    line=dict(color='#048A81', width=2),
+                                    showlegend=False
+                                ),
+                                row=1, col=1
+                            )
+                            
+                            # Трансформированный ряд
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=transformed_series.index, y=transformed_series.values,
+                                    mode='lines',
+                                    name='После трансформации',
+                                    line=dict(color='#DC2626', width=2),
+                                    showlegend=False
+                                ),
+                                row=2, col=1
+                            )
+                            
+                            fig.update_layout(
+                                height=600,
+                                margin=dict(l=50, r=20, t=80, b=40),
+                                hovermode='x unified',
+                            )
+                            
+                            fig.update_xaxes(title_text="Дата", row=2, col=1)
+                            fig.update_yaxes(title_text="Значение", row=1, col=1)
+                            fig.update_yaxes(title_text="Трансформированное значение", row=2, col=1)
+                            
+                            fig.update_annotations(font=dict(size=13, color="#1e293b"), yshift=10)
+                            
+                            st.plotly_chart(fig, use_container_width=True, key="variance_main_chart")
+                            
+                            # ── ГРАФИК ROLLING STD (ключевой для гетероскедастичности) ──
+                            st.markdown("##### Скользящее стандартное отклонение (ключевой тест)")
+                            st.caption("Если линия идёт вверх → дисперсия растёт. После трансформации должна быть горизонтальной.")
+                            
+                            window = min(30, len(original_series) // 5)
+                            rolling_std_before = original_series.rolling(window=window).std()
+                            rolling_std_after = transformed_series.rolling(window=window).std()
+                            
+                            fig_rolling = make_subplots(
+                                rows=2, cols=1,
+                                subplot_titles=(
+                                    f"Rolling Std (окно={window}) — ДО",
+                                    f"Rolling Std (окно={window}) — ПОСЛЕ"
+                                ),
+                                vertical_spacing=0.12
+                            )
+                            
+                            fig_rolling.add_trace(
+                                go.Scatter(x=rolling_std_before.index, y=rolling_std_before.values,
+                                        mode='lines', line=dict(color='#DC2626', width=2),
+                                        name='Rolling Std (До)', showlegend=False),
+                                row=1, col=1
+                            )
+                            
+                            fig_rolling.add_trace(
+                                go.Scatter(x=rolling_std_after.index, y=rolling_std_after.values,
+                                        mode='lines', line=dict(color='#16a34a', width=2),
+                                        name='Rolling Std (После)', showlegend=False),
+                                row=2, col=1
+                            )
+                            
+                            fig_rolling.update_layout(height=450, margin=dict(l=50, r=20, t=60, b=40))
+                            st.plotly_chart(fig_rolling, use_container_width=True, key="variance_rolling_chart")
+                            
+                            # ── ГИСТОГРАММЫ СРАВНЕНИЯ ───────────
+                            st.markdown("##### Распределение значений")
+                            
+                            fig_hist = make_subplots(
+                                rows=1, cols=2,
+                                subplot_titles=("Исходное распределение", "После трансформации")
+                            )
+                            
+                            fig_hist.add_trace(
+                                go.Histogram(x=original_series.values, nbinsx=40,
+                                            marker_color='#048A81', name='До', showlegend=False),
+                                row=1, col=1
+                            )
+                            
+                            fig_hist.add_trace(
+                                go.Histogram(x=transformed_series.values, nbinsx=40,
+                                            marker_color='#DC2626', name='После', showlegend=False),
+                                row=1, col=2
+                            )
+                            
+                            fig_hist.update_layout(height=300, margin=dict(l=40, r=20, t=50, b=40), barmode='overlay')
+                            st.plotly_chart(fig_hist, use_container_width=True, key="variance_hist_chart")
+                            
+                            # ── СОХРАНЕНИЕ РЕЗУЛЬТАТОВ ──────────
+                            st.session_state.variance_transform_result = {
+                                'method': method_name,
+                                'lambda': lambda_used,
+                                'original_series': original_series,
+                                'transformed_series': transformed_series,
+                                'target_col': target_col
+                            }
+                            
+                            # Статус
+                            hetero_after = test_heteroskedasticity(transformed_series)
+                            
+                            st.divider()
+                            
+                            if hetero_after['bp_pvalue'] is not None:
+                                if not hetero_after['is_hetero']:
+                                    st.success(f"✅ **Гетероскедастичность устранена!** Тест Бройша-Пагана: p={hetero_after['bp_pvalue']:.4f}")
+                                else:
+                                    st.warning(f"⚠️ **Гетероскедастичность сохраняется.** Попробуйте другой метод или ручной подбор λ.")
+                            else:
+                                st.info("ℹ️ Тест Бройша-Пагана недоступен. Оцените результат визуально.")
+                            
+                            # Кнопки подтверждения
+                            c_ok_var, c_cancel_var = st.columns(2)
+                            with c_ok_var:
+                                if st.button("✅ Применить к данным", type="primary", use_container_width=True, key="btn_confirm_variance"):
+                                    # Применяем трансформацию к основному df
+                                    df_final_var = st.session_state.df.copy()
+                                    
+                                    # Сохраняем оригинальный столбец с суффиксом _original
+                                    orig_col_name = f"{target_col}_original"
+                                    if orig_col_name not in df_final_var.columns:
+                                        df_final_var[orig_col_name] = df_final_var[target_col]
+                                    
+                                    # Применяем трансформацию
+                                    if method_name == "Box-Cox":
+                                        df_final_var[target_col] = stats.boxcox(
+                                            df_final_var[target_col].astype(float).values + 1e-10, 
+                                            lmbda=lambda_used
+                                        )
+                                    elif method_name == "Yeo-Johnson":
+                                        if auto_lambda:
+                                            pt = PowerTransformer(method='yeo-johnson', standardize=False)
+                                            df_final_var[target_col] = pt.fit_transform(
+                                                df_final_var[target_col].astype(float).values.reshape(-1, 1)
+                                            ).flatten()
+                                        else:
+                                            df_final_var[target_col] = yeo_johnson_manual(
+                                                df_final_var[target_col].astype(float).values, lambda_used
+                                            )
+                                    elif method_name == "Log":
+                                        df_final_var[target_col] = np.log(df_final_var[target_col].astype(float))
+                                    elif method_name == "Log1p":
+                                        df_final_var[target_col] = np.log1p(df_final_var[target_col].astype(float))
+                                    elif method_name == "Square Root":
+                                        df_final_var[target_col] = np.sqrt(df_final_var[target_col].astype(float))
+                                    elif method_name == "Reciprocal":
+                                        df_final_var[target_col] = 1 / df_final_var[target_col].astype(float)
+                                    
+                                    # Сохраняем параметры для обратного преобразования
+                                    st.session_state.variance_transform_params = {
+                                        'method': method_name,
+                                        'lambda': lambda_used,
+                                        'column': target_col,
+                                        'original_col_name': orig_col_name
+                                    }
+                                    
+                                    # Синхронизация
+                                    st.session_state.df = df_final_var.copy()
+                                    st.session_state.validation_ready = False
+                                    st.session_state.show_variance_preview = False
+                                    
+                                    # Удаляем рабочие копии
+                                    work_dfs = [
+                                        "df_missing_work", "df_pattern_work", "df_range_work",
+                                        "df_outlier_work", "df_inclusion_work", "df_referential_work",
+                                        "df_text_work", "df_consistency_work", "df_uniqueness_work",
+                                        "df_regularity_work", "df_regular_work", "df_variance_work"
+                                    ]
+                                    for work_df_name in work_dfs:
+                                        if work_df_name in st.session_state:
+                                            del st.session_state[work_df_name]
+                                    
+                                    if "val_results" in st.session_state:
+                                        del st.session_state.val_results
+                                    
+                                    st.success(f"✅ Трансформация **{method_name}** (λ={lambda_used:.3f}) применена!")
+                                    st.info(f"💡 Оригинальные значения сохранены в колонке `{orig_col_name}`. "
+                                        f"Перезапустите валидацию для обновления статистик.")
+                                    st.rerun()
+                            
+                            with c_cancel_var:
+                                if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_variance"):
+                                    st.session_state.show_variance_preview = False
+                                    st.rerun()
+                        
+                        except Exception as e:
+                            st.error(f"❌ Ошибка трансформации: {e}")
+                            import traceback
+                            with st.expander("🔍 Stack trace"):
+                                st.code(traceback.format_exc(), language="python")
+                    
+                    else:
+                        # Показываем только исходный ряд
+                        fig = px.line(
+                            x=original_series.index,
+                            y=original_series.values,
+                            labels={'x': 'Дата', 'y': target_col},
+                            title=f"📈 Исходный временной ряд: {target_col}"
+                        )
+                        fig.update_layout(height=400, margin=dict(l=40, r=20, t=40, b=40))
+                        st.plotly_chart(fig, use_container_width=True, key="variance_main_chart")
+                        
+                        st.info("💡 Выберите метод трансформации и нажмите **'Применить трансформацию'** для просмотра результата.")
+                else:
+                    st.warning("⚠️ Выбранная колонка не найдена в данных.")
+            
+            # ── ПРАВАЯ КОЛОНКА: МЕТРИКИ КАЧЕСТВА ───────────
+            with c3:
+                st.markdown("###### Метрики качества")
+                
+                with st.container(border=True):
+                    st.markdown("**До трансформации:**")
+                    
+                    # Тест Бройша-Пагана
+                    if hetero_raw['bp_pvalue'] is not None:
+                        bp_status = "❌ Гетеро" if hetero_raw['is_hetero'] else "✅ Гомо"
+                        st.metric("Тест Бройша-Пагана", bp_status, delta=f"p={hetero_raw['bp_pvalue']:.4f}")
+                    else:
+                        st.metric("Тест Бройша-Пагана", "N/A")
+                    
+                    # Корреляция std vs mean
+                    if hetero_raw['rolling_std_corr'] is not None:
+                        st.metric("Корр. std/mean", f"{hetero_raw['rolling_std_corr']:.3f}",
+                                delta="Сильная" if abs(hetero_raw['rolling_std_corr']) > 0.5 else "Слабая")
+                    else:
+                        st.metric("Корр. std/mean", "N/A")
+                    
+                    # Отношение амплитуд
+                    if hetero_raw['amplitude_ratio'] is not None:
+                        st.metric("Амплитуда (к/н)", f"{hetero_raw['amplitude_ratio']:.2f}x",
+                                delta="Растёт" if hetero_raw['amplitude_ratio'] > 1.5 else "Стабильна")
+                    else:
+                        st.metric("Амплитуда (к/н)", "N/A")
+                    
+                    # Базовые статистики
+                    st.divider()
+                    st.markdown("**Статистики ряда:**")
+                    st.metric("Среднее", f"{series.mean():.2f}")
+                    st.metric("Стд. отклонение", f"{series.std():.2f}")
+                    st.metric("Мин / Макс", f"{series.min():.2f} / {series.max():.2f}")
+                
+                # Метрики ПОСЛЕ трансформации
+                if st.session_state.show_variance_preview and 'variance_transform_result' in st.session_state:
+                    transformed_series = st.session_state.variance_transform_result['transformed_series']
+                    hetero_after = test_heteroskedasticity(transformed_series)
+                    
+                    with st.container(border=True):
+                        st.markdown("**После трансформации:**")
+                        
+                        if hetero_after['bp_pvalue'] is not None:
+                            bp_status_after = "❌ Гетеро" if hetero_after['is_hetero'] else "✅ Гомо"
+                            delta_bp = hetero_after['bp_pvalue'] - (hetero_raw['bp_pvalue'] or 0)
+                            st.metric("Тест Бройша-Пагана", bp_status_after, 
+                                    delta=f"Δp={delta_bp:+.4f}")
+                        else:
+                            st.metric("Тест Бройша-Пагана", "N/A")
+                        
+                        if hetero_after['rolling_std_corr'] is not None:
+                            delta_corr = hetero_after['rolling_std_corr'] - (hetero_raw['rolling_std_corr'] or 0)
+                            st.metric("Корр. std/mean", f"{hetero_after['rolling_std_corr']:.3f}",
+                                    delta=f"{delta_corr:+.3f}")
+                        else:
+                            st.metric("Корр. std/mean", "N/A")
+                        
+                        if hetero_after['amplitude_ratio'] is not None:
+                            delta_ratio = hetero_after['amplitude_ratio'] - (hetero_raw['amplitude_ratio'] or 1)
+                            st.metric("Амплитуда (к/н)", f"{hetero_after['amplitude_ratio']:.2f}x",
+                                    delta=f"{delta_ratio:+.2f}x")
+                        else:
+                            st.metric("Амплитуда (к/н)", "N/A")
+                        
+                        st.divider()
+                        st.markdown("**Статистики ряда:**")
+                        st.metric("Среднее", f"{transformed_series.mean():.2f}")
+                        st.metric("Стд. отклонение", f"{transformed_series.std():.2f}")
+                        st.metric("Мин / Макс", f"{transformed_series.min():.2f} / {transformed_series.max():.2f}")
+                    
+                    st.divider()
+                    
+                    # Рекомендации
+                    if hetero_after['bp_pvalue'] is not None:
+                        if not hetero_after['is_hetero']:
+                            st.success("✅ **Ряд готов** для ARIMA, регрессии, Gaussian processes!")
+                        else:
+                            st.warning("💡 **Рекомендация:** Попробуйте другой метод или ручной подбор λ.")
+                    
+                    # Информация о параметрах
+                    st.info(f"**Параметры:** λ = {st.session_state.variance_transform_result['lambda']:.3f}")
+            
+            # ── ИНФОРМАЦИЯ О СОХРАНЁННЫХ ТРАНСФОРМАЦИЯХ ────
+            if st.session_state.variance_transform_params:
+                st.divider()
+                with st.expander("💾 Сохранённые параметры трансформации", expanded=False):
+                    st.json(st.session_state.variance_transform_params)
+                    st.caption("Эти параметры будут использованы для **обратного преобразования** прогноза в исходную шкалу.")
+        
+        else:
+            st.warning("⚠️ В датасете нет числовых колонок для анализа.")
+    else:
+        st.warning("⚠️ Не обнаружены колонки с датами или числовыми данными. Убедитесь, что активирован режим временных рядов.")
+
+
+    # ═══════════════════════════════════════════════════════
     # 🔹 8. FEATURE ENGINEERING + СПЕКТРАЛЬНЫЙ АНАЛИЗ
     # ═══════════════════════════════════════════════════════
     st.divider()
