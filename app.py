@@ -2950,8 +2950,8 @@ with tab_download:
             with st.expander("● Автокорреляционный анализ (ACF/PACF)", expanded=False):
                 st.markdown(f"**Анализируемый признак:** `{target_col}`")
                 st.markdown("""
-                **Назначение:** Обнаружение сезонности через анализ корреляции ряда с его лагами. <b>                            
-                **Алгоритм:** Расчет корреляции между наблюдениями с разными временными сдвигами. <b>                           
+                **Назначение:** Обнаружение сезонности через анализ корреляции ряда с его лагами.                            
+                **Алгоритм:** Расчет корреляции между наблюдениями с разными временными сдвигами.                           
                 **Влияние на модель:** Определяет параметры `p`, `q` для ARIMA и сезонность `m`.
                 """)
 
@@ -2996,11 +2996,11 @@ with tab_download:
 
             # ── 2. FFT (Быстрое преобразование Фурье) ────────────────
             with st.expander("● Преобразование ФУРЬЕ (FFT)", expanded=False):
-                st.markdown(f"**📌 Анализируемый признак:** `{target_col}`")
+                st.markdown(f"**Анализируемый признак:** `{target_col}`")
                 st.markdown("""
-                **📌 Назначение:** Разложение временного ряда на гармонические составляющие.
-                **ℹ️ Алгоритм:** FFT преобразует сигнал из временной области в частотную.
-                **ℹ️ Влияние на модель:** Выявляет доминирующие частоты для создания Fourier features.
+                **Назначение:** Разложение временного ряда на гармонические составляющие.                                    
+                **Алгоритм:** FFT преобразует сигнал из временной области в частотную.                                       
+                **Влияние на модель:** Выявляет доминирующие частоты для создания Fourier features.
                 """)
 
                 # Подготовка данных
@@ -3041,7 +3041,7 @@ with tab_download:
                         st.info("Явные периодичности не обнаружены")
 
                 # Прогноз с использованием значимых гармоник
-                if len(peaks) > 0 and st.checkbox("🔮 Показать прогноз по значимым гармоникам", key="fft_forecast"):
+                if len(peaks) > 0 and st.checkbox(" Показать прогноз по значимым гармоникам", key="fft_forecast"):
                     # Берем топ-5 гармоник
                     top_peaks = peaks[np.argsort(amplitude[peaks])[-5:]]
 
@@ -3053,20 +3053,22 @@ with tab_download:
 
                     reconstructed += analysis_series.mean()
 
-                    fig_rec, ax_rec = plt.subplots(figsize=(10, 3))
+                    # ИЗМЕНЕНО: figsize=(10, 2.5) вместо (10, 3) для одинаковой высоты с FFT
+                    fig_rec, ax_rec = plt.subplots(figsize=(10, 2.5))
                     ax_rec.plot(analysis_series.index[:100], analysis_series.values[:100], 'b-', alpha=0.5, label='Исходный ряд')
                     ax_rec.plot(analysis_series.index[:100], reconstructed[:100], 'r-', linewidth=2, label='Прогноз (FFT)')
-                    ax_rec.set_title(f'Реконструкция ряда по значимым гармоникам FFT — {target_col}')
-                    ax_rec.legend()
+                    ax_rec.set_title(f'Реконструкция ряда по значимым гармоникам FFT — {target_col}', fontsize=10)
+                    ax_rec.legend(fontsize=8)
+                    plt.tight_layout()  # Оптимизация отступов
                     st.pyplot(fig_rec, use_container_width=True)
 
             # ── 3. ПЕРИОДОГРАММА ─────────────────────────────────────
             with st.expander("● Периодограмма (Spectral Density)", expanded=False):
-                st.markdown(f"**📌 Анализируемый признак:** `{target_col}`")
+                st.markdown(f"**Анализируемый признак:** `{target_col}`")
                 st.markdown("""
-                **📌 Назначение:** Оценка спектральной плотности мощности.
-                **ℹ️ Алгоритм:** Метод Уэлча для сглаживания спектра.
-                **ℹ️ Влияние на модель:** Показывает мощность различных частотных компонент.
+                **Назначение:** Оценка спектральной плотности мощности.                                                    
+                **Алгоритм:** Метод Уэлча для сглаживания спектра.                                                             
+                **Влияние на модель:** Показывает мощность различных частотных компонент.
                 """)
 
                 from scipy.signal import periodogram, welch
@@ -3110,11 +3112,11 @@ with tab_download:
 
             # ── 4. WAVELET-ПРЕОБРАЗОВАНИЕ ────────────────────────────
             with st.expander("● Вейвлет-преобразование (Wavelet Transform)", expanded=False):
-                st.markdown(f"**📌 Анализируемый признак:** `{target_col}`")
+                st.markdown(f"**Анализируемый признак:** `{target_col}`")
                 st.markdown("""
-                **📌 Назначение:** Анализ частот во времени для нестационарных рядов.
-                **ℹ️ Алгоритм:** Continuous Wavelet Transform (CWT) с вейвлетом Морле.
-                **ℹ️ Влияние на модель:** Показывает, КОГДА происходят циклические изменения.
+                **Назначение:** Анализ частот во времени для нестационарных рядов.                                               
+                **Алгоритм:** Continuous Wavelet Transform (CWT) с вейвлетом Морле.                                            
+                **Влияние на модель:** Показывает, КОГДА происходят циклические изменения.
                 """)
 
                 try:
@@ -10032,14 +10034,14 @@ with tab_preprocessing:
                     
                     # ── ВИЗУАЛИЗАЦИЯ ─────────────────────
                     st.divider()
-                    
+
                     tab_fft, tab_per, tab_wave, tab_acf = st.tabs([
-                        " FFT спектр", 
-                        " Периодограмма", 
-                        " Wavelet", 
-                        " ACF/PACF"
+                        "FFT спектр", 
+                        "Периодограмма", 
+                        "Wavelet", 
+                        "ACF/PACF"
                     ])
-                    
+
                     with tab_fft:
                         fig_fft = px.line(
                             x=xf[:n//2], 
@@ -10060,9 +10062,10 @@ with tab_preprocessing:
                                     ax=0,
                                     ay=-40
                                 )
-                        fig_fft.update_layout(height=400, showlegend=False)
+                        # ИЗМЕНЕНО: height=600 (вместо 400)
+                        fig_fft.update_layout(height=600, showlegend=False)
                         st.plotly_chart(fig_fft, use_container_width=True, key="fft_spectrum_chart")
-                    
+
                     with tab_per:
                         fig_per = px.line(
                             x=freq_per, 
@@ -10070,9 +10073,10 @@ with tab_preprocessing:
                             title="Периодограмма (спектральная плотность мощности)",
                             labels={'x': 'Частота', 'y': 'Мощность'}
                         )
-                        fig_per.update_layout(height=400, showlegend=False)
+                        # 🔧 ИЗМЕНЕНО: height=600 (вместо 400)
+                        fig_per.update_layout(height=600, showlegend=False)
                         st.plotly_chart(fig_per, use_container_width=True, key="periodogram_chart")
-                    
+
                     with tab_wave:
                         try:
                             import pywt
@@ -10089,7 +10093,7 @@ with tab_preprocessing:
                             )
 
                             fig_wave.update_layout(
-                                height=600,  # Увеличена высота с 400 до 600
+                                height=600,  # ✅ Уже 600
                                 yaxis=dict(
                                     scaleanchor='x',
                                     scaleratio=0.3,  # Соотношение Y к X (увеличивает Y)
@@ -10109,7 +10113,7 @@ with tab_preprocessing:
                             st.plotly_chart(fig_wave, use_container_width=True, key="wavelet_chart")
                         except ImportError:
                             st.warning("⚠️ Установите PyWavelets: `pip install PyWavelets`")
-                    
+
                     with tab_acf:
                         from statsmodels.tsa.stattools import acf, pacf
                         
@@ -10136,7 +10140,7 @@ with tab_preprocessing:
                         conf_int = 1.96 / np.sqrt(len(series))
                         fig_acf.add_hline(y=conf_int, line_dash="dash", line_color="red")
                         fig_acf.add_hline(y=-conf_int, line_dash="dash", line_color="red")
-                        fig_acf.update_layout(height=600, showlegend=False)
+                        fig_acf.update_layout(height=600, showlegend=False)  # ✅ Уже 600
                         st.plotly_chart(fig_acf, use_container_width=True, key="acf_pacf_chart")
                     
                     # ── АВТОПОДБОР ЛАГОВ ЧЕРЕЗ ACF/PACF ─────
