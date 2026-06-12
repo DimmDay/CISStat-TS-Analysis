@@ -1,4 +1,4 @@
-﻿import time
+import time
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -12905,7 +12905,7 @@ with tab_preprocessing:
                 st.markdown("###### Панель управления")
                 
                 # Выбор числовых колонок для масштабирования
-                st.markdown("**Признаки для масштабирования:**")
+                st.markdown("**🔢 Признаки для масштабирования:**")
                 selected_cols = st.multiselect(
                     "Выберите колонки:",
                     options=num_cols,
@@ -13101,8 +13101,8 @@ with tab_preprocessing:
                             fig = make_subplots(
                                 rows=2, cols=1,
                                 subplot_titles=(
-                                    f" Исходный ряд: {target_col}",
-                                    f" После масштабирования ({method_name})"
+                                    f"📈 Исходный ряд: {target_col}",
+                                    f"🔄 После масштабирования ({method_name})"
                                 ),
                                 vertical_spacing=0.12
                             )
@@ -13146,7 +13146,7 @@ with tab_preprocessing:
                             st.plotly_chart(fig, use_container_width=True, key="scaling_main_chart")
                             
                             # ─ ГИСТОГРАММЫ СРАВНЕНИЯ ───────────
-                            st.markdown("######  Распределение значений")
+                            st.markdown("##### 📊 Распределение значений")
                             
                             fig_hist = make_subplots(
                                 rows=1, cols=2,
@@ -13169,7 +13169,7 @@ with tab_preprocessing:
                             st.plotly_chart(fig_hist, use_container_width=True, key="scaling_hist_chart")
                             
                             # ─ BOXPLOT СРАВНЕНИЕ ───────────────
-                            st.markdown("###### Boxplot: До / После")
+                            st.markdown("##### 📦 Boxplot: До / После")
                             
                             fig_box = go.Figure()
                             
@@ -13337,6 +13337,7 @@ with tab_preprocessing:
                             x=original_series.index,
                             y=original_series.values,
                             labels={'x': 'Дата', 'y': target_col},
+                            title=f"📈 Исходный временной ряд: {target_col}"
                         )
                         fig.update_layout(height=400, margin=dict(l=40, r=20, t=40, b=40))
                         st.plotly_chart(fig, use_container_width=True, key="scaling_main_chart")
@@ -13347,9 +13348,9 @@ with tab_preprocessing:
             
             # ── ПРАВАЯ КОЛОНКА: МЕТРИКИ КАЧЕСТВА ───────────
             with c3:
-                st.markdown("######  Метрики качества")
+                st.markdown("###### 📊 Метрики качества")
                 
-                # ИНИЦИАЛИЗАЦИЯ: metrics_orig всегда определён
+                # 🔧 ИНИЦИАЛИЗАЦИЯ: metrics_orig всегда определён
                 metrics_orig = None
                 
                 # 📊 ВЫЧИСЛЯЕМ БАЗОВЫЕ МЕТРИКИ ДО МАСШТАБИРОВАНИЯ (всегда доступны)
@@ -13427,8 +13428,107 @@ with tab_preprocessing:
                         st.success(f"✅ **Масштабирование {method_name} выполнено.**")
                     
                     # Информация о параметрах
-                    st.info(f" **Метод:** {method_name}")
-
+                    st.info(f"🔧 **Метод:** {method_name}")
+                
+                # Метрики ПОСЛЕ масштабирования (только если превью активно)
+                if st.session_state.show_scaling_preview and 'scaling_transform_result' in st.session_state:
+                    metrics = st.session_state.scaling_transform_result['metrics']
+                    scaled_series = st.session_state.scaling_transform_result['scaled_series']
+                    
+                    with st.container(border=True):
+                        st.markdown("**После масштабирования:**")
+                        st.metric("Диапазон", f"{metrics['range_scaled']:,.2f}".replace(",", " "),
+                                delta=f"{metrics['range_scaled'] - metrics_orig['range_orig']:+,.2f}".replace(",", " "))
+                        st.metric("Среднее", f"{metrics['mean_scaled']:.4f}",
+                                delta=f"{metrics['mean_scaled'] - metrics_orig['mean_orig']:+.4f}")
+                        st.metric("Стд. отклонение", f"{metrics['std_scaled']:.4f}",
+                                delta=f"{metrics['std_scaled'] - metrics_orig['std_orig']:+.4f}")
+                        st.metric("Выбросы (3σ)", f"{metrics['outliers_scaled']}",
+                                delta=f"{metrics['outliers_scaled'] - metrics_orig['outliers_orig']:+d}")
+                        st.metric("Асимметрия", f"{metrics['skew_scaled']:.3f}",
+                                delta=f"{metrics['skew_scaled'] - metrics_orig['skew_orig']:+.3f}")
+                    
+                    st.divider()
+                    
+                    # Рекомендации
+                    method_name = st.session_state.scaling_transform_result['method']
+                    if "Min-Max" in method_name:
+                        if metrics['range_scaled'] <= 1.01:
+                            st.success("✅ **Диапазон [0, 1] достигнут.** Готово для нейросетей.")
+                        else:
+                            st.warning("️ **Диапазон не [0, 1].** Проверьте параметры.")
+                    
+                    elif "Standardization" in method_name:
+                        if abs(metrics['mean_scaled']) < 0.01 and abs(metrics['std_scaled'] - 1.0) < 0.01:
+                            st.success("✅ **μ=0, σ=1 достигнуты.** Готово для PCA/ARIMA.")
+                        else:
+                            st.warning("⚠️ **Параметры не μ=0, σ=1.** Проверьте данные.")
+                    
+                    elif "Robust" in method_name:
+                        if metrics['outliers_scaled'] < metrics['outliers_orig']:
+                            st.success("✅ **Выбросы уменьшены.** Robust Scaling работает корректно.")
+                        else:
+                            st.info("ℹ️ **Выбросы не изменились.** Это нормально для Robust Scaling.")
+                    
+                    else:
+                        st.success(f"✅ **Масштабирование {method_name} выполнено.**")
+                    
+                    # Информация о параметрах
+                    st.info(f"🔧 **Метод:** {method_name}")
+                
+                with st.container(border=True):
+                    st.markdown("**До масштабирования:**")
+                    st.metric("Диапазон", f"{metrics['range_orig']:,.2f}".replace(",", " "))
+                    st.metric("Среднее", f"{metrics['mean_orig']:.2f}")
+                    st.metric("Стд. отклонение", f"{metrics['std_orig']:.2f}")
+                    st.metric("Выбросы (3σ)", f"{metrics['outliers_orig']}")
+                    st.metric("Асимметрия", f"{metrics['skew_orig']:.3f}")
+                
+                # Метрики ПОСЛЕ масштабирования
+                if st.session_state.show_scaling_preview and 'scaling_transform_result' in st.session_state:
+                    metrics = st.session_state.scaling_transform_result['metrics']
+                    scaled_series = st.session_state.scaling_transform_result['scaled_series']
+                    
+                    with st.container(border=True):
+                        st.markdown("**После масштабирования:**")
+                        st.metric("Диапазон", f"{metrics['range_scaled']:,.2f}".replace(",", " "),
+                                delta=f"{metrics['range_scaled'] - metrics_orig['range_orig']:+,.2f}".replace(",", " "))
+                        st.metric("Среднее", f"{metrics['mean_scaled']:.4f}",
+                                delta=f"{metrics['mean_scaled'] - metrics['mean_orig']:+.4f}")
+                        st.metric("Стд. отклонение", f"{metrics['std_scaled']:.4f}",
+                                delta=f"{metrics['std_scaled'] - metrics['std_orig']:+.4f}")
+                        st.metric("Выбросы (3σ)", f"{metrics['outliers_scaled']}",
+                                delta=f"{metrics['outliers_scaled'] - metrics['outliers_orig']:+d}")
+                        st.metric("Асимметрия", f"{metrics['skew_scaled']:.3f}",
+                                delta=f"{metrics['skew_scaled'] - metrics['skew_orig']:+.3f}")
+                    
+                    st.divider()
+                    
+                    # Рекомендации
+                    if "Min-Max" in st.session_state.scaling_transform_result['method']:
+                        if metrics['range_scaled'] <= 1.01:
+                            st.success("✅ **Диапазон [0, 1] достигнут.** Готово для нейросетей.")
+                        else:
+                            st.warning("⚠️ **Диапазон не [0, 1].** Проверьте параметры.")
+                    
+                    elif "Standardization" in st.session_state.scaling_transform_result['method']:
+                        if abs(metrics['mean_scaled']) < 0.01 and abs(metrics['std_scaled'] - 1.0) < 0.01:
+                            st.success("✅ **μ=0, σ=1 достигнуты.** Готово для PCA/ARIMA.")
+                        else:
+                            st.warning("⚠️ **Параметры не μ=0, σ=1.** Проверьте данные.")
+                    
+                    elif "Robust" in st.session_state.scaling_transform_result['method']:
+                        if metrics['outliers_scaled'] < metrics['outliers_orig']:
+                            st.success("✅ **Выбросы уменьшены.** Robust Scaling работает корректно.")
+                        else:
+                            st.info("ℹ️ **Выбросы не изменились.** Это нормально для Robust Scaling.")
+                    
+                    else:
+                        st.success(f"✅ **Масштабирование {st.session_state.scaling_transform_result['method']} выполнено.**")
+                    
+                    # Информация о параметрах
+                    st.info(f"🔧 **Метод:** {st.session_state.scaling_transform_result['method']}")
+            
             # ── ИНФОРМАЦИЯ О СОХРАНЁННЫХ ПАРАМЕТРАХ ────────
             if st.session_state.scaling_transform_params:
                 st.divider()
@@ -13436,6 +13536,11 @@ with tab_preprocessing:
                     st.json(st.session_state.scaling_transform_params)
                     st.caption("Эти параметры будут использованы для **обратного преобразования** прогноза "
                             "в исходную шкалу (через inverse_transform).")
+        
+        else:
+            st.warning("⚠️ В датасете нет числовых колонок для анализа.")
+    else:
+        st.warning("⚠️ Не обнаружены колонки с датами или числовыми данными. Убедитесь, что активирован режим временных рядов.")
 
 
 
