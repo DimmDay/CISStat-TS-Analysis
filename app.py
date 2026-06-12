@@ -1907,11 +1907,10 @@ with tab_download:
     st.markdown("""
     <div style="padding-left: 20px; margin: 20px 0; text-align: right;">
         <p style="margin: 0 0 10px 0; color: #1e293b; line-height: 1.6; font-size: 18px; font-weight: 400;">
-            "Все модели неверны, но некоторые полезны".
+            "На пути к научным открытиям нет коротких путей, но каждый шаг приближает нас к цели".
         </p>
         <p style="margin: 0; color: #64748B; font-style: italic; font-size: 16px; line-height: 1.5;">
-            — Джордж Бокс, британский статистик, внёсший вклад в такие области, как<br>
-            контроль качества, планирование эксперимента, анализ временных рядов и байесовский вывод.
+            — Георгий Николаевич Флёров, советский физик-ядерщик, академик АН СССР, один из основателей Объединённого института ядерных исследований (ОИЯИ) в Дубне. 
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -4352,7 +4351,7 @@ with tab_validation:
     st.markdown("""
     <div style="padding-left: 20px; margin: 20px 0; text-align: right;">
         <p style="margin: 0 0 10px 0; color: #1e293b; line-height: 1.6; font-size: 18px; font-weight: 400;">
-            "Garbage in, garbage out |<br>
+            "Garbage in, garbage out <br>
             Мусор на входе — мусор на выходе".
         </p>
         <p style="margin: 0; color: #64748B; font-style: italic; font-size: 16px; line-height: 1.5;">
@@ -5419,8 +5418,8 @@ with tab_validation:
 
         # 4. 🔽 ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах)
         if range_issues:
-            with st.expander("🔧 Полный пайплайн обработки нарушений диапазонов", expanded=True):
-                st.markdown("### 📋 Таблица нарушений с ручной корректировкой")
+            with st.expander("Полный пайплайн обработки нарушений диапазонов", expanded=True):
+                st.markdown("###  Таблица нарушений с ручной корректировкой")
 
                 # Инициализация состояний
                 if "df_range_work" not in st.session_state:
@@ -9044,7 +9043,7 @@ with tab_preprocessing:
         st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
 
         # ── ТЕХНИЧЕСКАЯ СПРАВКА (ПЕРЕНЕСЕНА В НАЧАЛО) ─────────
-        with st.expander(" Цели субмодуля_Регулярность частоты", expanded=False):
+        with st.expander(" Цели субмодуля ⁞ Регулярность частоты", expanded=False):
             st.markdown("""
             **Зачем нужна регулярность:**
             -  **ARIMA/SARIMA:** Требуют регулярный `DatetimeIndex` для расчёта лагов
@@ -9441,7 +9440,7 @@ with tab_preprocessing:
             st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
 
             # ── ТЕХНИЧЕСКАЯ СПРАВКА ─────────────────────────────
-            with st.expander(" Цели субмодуля_Декомпозиция временных рядов", expanded=False):
+            with st.expander(" Цели субмодуля ⁞ Декомпозиция временных рядов", expanded=False):
                 st.markdown("""
                 **Зачем нужна декомпозиция:**
                 -  **Понимание структуры:** Разделяет ряд на компоненты (Trend, Seasonal, Cycle, Residual)
@@ -9903,7 +9902,7 @@ with tab_preprocessing:
     # ═══════════════════════════════════════════════════════
     st.divider()
     st.markdown("### Стабилизация дисперсии (трансформации)")
-    st.caption("Стабилизация дисперсии временного ряда необходима для приведения ряда к стационарному виду, что упрощает выявление закономерностей и повышает точность прогнозов.")
+    st.caption("Стабилизация дисперсии временного ряда необходима для приведения ряда к стационарному виду - выравнивает затухание/усиление амплитуды колебаний.")
 
     # ── ДИАГНОСТИКА ТЕКУЩЕГО СОСТОЯНИЯ ──────────────────
     if st.session_state.primary_date_col and st.session_state.col_types.get("num"):
@@ -10018,7 +10017,7 @@ with tab_preprocessing:
             st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
             
             # ── ТЕХНИЧЕСКАЯ СПРАВКА ─────────────────────────
-            with st.expander("Цели субмодуля_Стабилизация дисперсии", expanded=False):
+            with st.expander("Цели субмодуля ⁞ Стабилизация дисперсии", expanded=False):
                 st.markdown("""
                 **Зачем нужна стабилизация дисперсии.**
                 Если амплитуда колебаний растёт вместе с уровнем ряда (гетероскедастичность), 
@@ -10671,7 +10670,7 @@ with tab_preprocessing:
             st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
             
             # ── ТЕХНИЧЕСКАЯ СПРАВКА ─────────────────────────
-            with st.expander("Цели субмодуля_Сглаживание временных рядов", expanded=False):
+            with st.expander("Цели субмодуля ⁞ Сглаживание временных рядов", expanded=False):
                 st.markdown("""
                 **Зачем нужно сглаживание:**
                 - **Выделение тренда** — удаление высокочастотного шума
@@ -11255,7 +11254,7 @@ with tab_preprocessing:
     st.markdown("### Обеспечение стационарности (дифференцирование)")
     st.caption("Большинство TS-моделей (ARIMA, VAR, линейная регрессия) требуют стационарного ряда — "
             "с постоянными mean, variance и autocorrelation. Дифференцирование удаляет тренд и сезонность, "
-            "делая ряд пригодным для моделирования.")
+            "исключая смещение положения равновесия.")
 
     # ── ДИАГНОСТИКА ТЕКУЩЕГО СОСТОЯНИЯ ──────────────────
     if st.session_state.primary_date_col and st.session_state.col_types.get("num"):
@@ -11525,7 +11524,7 @@ with tab_preprocessing:
             st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
             
             # ── ТЕХНИЧЕСКАЯ СПРАВКА ─────────────────────────
-            with st.expander("Цель субмодуля_Обеспечение стационарности", expanded=False):
+            with st.expander("Цели субмодуля ⁞ Обеспечение стационарности", expanded=False):
                 st.markdown("""
                 **Зачем нужна стационарность:**
                 -  **ARIMA/SARIMA** — требуют стационарный ряд (после дифференцирования d, D)
@@ -11579,7 +11578,7 @@ with tab_preprocessing:
                 - Параметры (d, D, s, метод) сохраняются в `session_state`
                 - Прогноз в дифференцированной шкале → обратное преобразование → исходная шкала
                 
-                *⚠️ Почитать:**
+                **⚠️ Почитать:**
                 - Dickey-Fuller test: https://en.wikipedia.org/wiki/Augmented_Dickey%E2%80%93Fuller_test
                 - Fractional differencing: López de Prado, "Advances in Financial Machine Learning" (2018), Ch. 5
                 - Stationarity in TS: https://otexts.com/fpp3/stationarity.html
@@ -12209,10 +12208,10 @@ with tab_preprocessing:
             "Ознакомительный анализ частотной структуры ряда после преобразований.")
 
     # ── ЦЕЛИ И РЕЗУЛЬТАТЫ ────────────────────────────────
-    with st.expander("Цели субмодуля_Feature Engineering", expanded=False):
+    with st.expander("Цели субмодуля ⁞ Feature Engineering", expanded=False):
         st.markdown("""
         **Feature Engineering** — процесс создания новых признаков из существующих данных для улучшения качества моделей.
-        Фичинг позволяет моделям ML «увидеть» временные закономерности, которые они не выучили бы сами (например, циклические эффекты, длинные лаги).
+        Фичинг позволяет моделям ML «увидеть» временные закономерности, которые они не распознали бы сами (например, циклические эффекты, длинные лаги).
                     
         **Что создаём:**
         1. **Лаги (Lags)** — предыдущие значения ряда (t-1, t-2, ...) для ARIMA, LSTM
@@ -12741,7 +12740,7 @@ with tab_exploratory:
             "Результат любого серьёзного исследования — появление двух новых вопросов там, где был всего лишь один".
         </p>
         <p style="margin: 0; color: #64748B; font-style: italic; font-size: 16px; line-height: 1.5;">
-            — Торстейн Веблен, американский экономист, социолог, публицист и футуролог, один из основоположников институционализма в экономической теории
+            — Торстейн Веблен, американский экономист, социолог, публицист и футуролог,<br> один из основоположников институционализма в экономической теории
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -12804,20 +12803,20 @@ with tab_exploratory:
         c1, c2, c3 = st.columns(3)
         with c1:
             sharpness = st.slider(
-                "🔢 Sharpness (резкость дискретизации)",
+                " Sharpness (резкость дискретизации)",
                 min_value=0.1, max_value=1.0, value=0.25, step=0.05,
                 key="ih_sharpness",
                 help="Меньшее значение → больше интервалов (тоньше дискретизация)"
             )
         with c2:
             top_k = st.number_input(
-                "🔢 Показать топ признаков",
+                " Показать топ признаков",
                 min_value=3, max_value=20, value=10, step=1,
                 key="ih_top_k"
             )
         with c3:
             min_samples = st.number_input(
-                "🔢 Мин. наблюдений на интервал",
+                " Мин. наблюдений на интервал",
                 min_value=5, max_value=100, value=20, step=5,
                 key="ih_min_samples",
                 help="Контроль качества дискретизации"
@@ -12897,6 +12896,12 @@ with tab_exploratory:
                     x_disc = discretize_feature(x, sharpness, min_samples)
                     y_disc = discretize_feature(y, sharpness, min_samples)
 
+                    # Проверка константных признаков
+                    if x_disc.nunique() <= 1:
+                        return {"R": 0.0, "MI": 0.0, "H_X": 0.0, "H_Y": 0.0, 
+                                "n_bins_X": 1, "n_bins_Y": y_disc.nunique(),
+                                "error": "Признак X константен"}
+                    
                     # Энтропии
                     _, counts_y = np.unique(y_disc, return_counts=True)
                     py = counts_y / counts_y.sum()
@@ -13032,6 +13037,7 @@ with tab_exploratory:
                 # 📈 ВИЗУАЛИЗАЦИЯ 3: Синергия пар признаков
                 # ───────────────────────────────────────────────
                 st.markdown("######  Анализ синергии пар признаков")
+                synergy_results = []
 
                 if len(top_df) >= 2:
                     synergy_results = []
@@ -13064,6 +13070,7 @@ with tab_exploratory:
                                     "synergy_pct": synergy * 100
                                 })
                             except:
+                                st.warning(f"⚠️ Не удалось рассчитать синергию для {f1} + {f2}: {e}")
                                 continue
 
                     if synergy_results:
@@ -13257,3 +13264,21 @@ with tab_exploratory:
     else:
         st.warning("⚠️ Для IH-анализа необходимы числовые данные. Загрузите датасет с метриками.")
 
+
+
+
+# ────────────────────────────────────────────────────────────
+#  ВКЛАДКА 5: МОДЕЛИРОВАНИЕ
+# ────────────────────────────────────────────────────────────
+with tab_modeling:
+    st.markdown("""
+    <div style="padding-left: 20px; margin: 20px 0; text-align: right;">
+        <p style="margin: 0 0 10px 0; color: #1e293b; line-height: 1.6; font-size: 18px; font-weight: 400;">
+            "Все модели неверны, но некоторые полезны".
+        </p>
+        <p style="margin: 0; color: #64748B; font-style: italic; font-size: 16px; line-height: 1.5;">
+            — Джордж Бокс, британский статистик, внёсший вклад в такие области, как<br>
+            контроль качества, планирование эксперимента, анализ временных рядов и байесовский вывод.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
