@@ -1907,7 +1907,7 @@ with tab_download:
     st.markdown("""
     <div style="padding-left: 20px; margin: 20px 0; text-align: right;">
         <p style="margin: 0 0 10px 0; color: #1e293b; line-height: 1.6; font-size: 18px; font-weight: 400;">
-            "По дороге к научным открытиям нет коротких путей, но каждый шаг приближает нас к цели".
+            "Следуя по дороге к научным открытиям, вы не найдете коротких путей, но каждый шаг приближает нас к цели".
         </p>
         <p style="margin: 0; color: #64748B; font-style: italic; font-size: 16px; line-height: 1.5;">
             — Георгий Николаевич Флёров, советский физик-ядерщик, академик АН СССР, один из основателей<br> Объединённого института ядерных исследований (ОИЯИ) в Дубне. 
@@ -12905,7 +12905,7 @@ with tab_preprocessing:
                 st.markdown("###### Панель управления")
                 
                 # Выбор числовых колонок для масштабирования
-                st.markdown("**Признаки для масштабирования:**")
+                st.markdown("Признаки для масштабирования:")
                 selected_cols = st.multiselect(
                     "Выберите колонки:",
                     options=num_cols,
