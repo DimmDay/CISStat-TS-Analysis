@@ -993,14 +993,53 @@ if icon_path.exists():
 else:
     icon_html = '📈'  # Fallback на эмодзи
 
+st.markdown("""
+<style>
+@keyframes pulse-beta {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(1.03); }
+}
+.beta-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: #78350f;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-left: 14px;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(251, 191, 36, 0.4);
+    animation: pulse-beta 2.5s ease-in-out infinite;
+    vertical-align: middle;
+}
+.dev-banner {
+    background: linear-gradient(90deg, #fef3c7 0%, #fde68a 50%, #fef3c7 100%);
+    padding: 10px 20px;
+    margin: 12px 0 15px 0;
+    border-radius: 8px;
+    text-align: center;
+    color: #78350f;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 2px 6px rgba(245, 158, 11, 0.15);
+}
+.dev-banner strong {
+    color: #92400e;
+    font-weight: 700;
+}
+</style>
+""", unsafe_allow_html=True)
+
 st.markdown(f"""
     <div style='text-align: center; margin: -20px 0 15px 0; padding: 10px 25px;
               background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
               border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>
         <h1 style='color: white; font-size: {HEADER_FONT_SIZE};
                    font-weight: {HEADER_WEIGHT}; margin: 0; line-height: 1.2;
-                   display: flex; align-items: center; justify-content: center;'>
+                   display: flex; align-items: center; justify-content: center; flex-wrap: wrap;'>
             {icon_html} CISStat TS Analysis
+            <span class='beta-badge'>Pre-release</span>
         </h1>
         <div style='display: flex; align-items: center; justify-content: center; margin: 12px 0;'>
             <div style='flex: 1; height: 2px; background: rgba(255, 255, 255, 0.7); margin-right: -2px;'></div>
@@ -1017,6 +1056,13 @@ st.markdown(f"""
                 margin: 8px 0 0 0; font-weight: 400;'>
             профессиональная платформа анализа временных рядов
         </p>
+    </div>
+    
+    <div class='dev-banner'>
+        🚧 <strong>Платформа находится в разработке.</strong> 
+        Некоторые функции могут работать нестабильно или быть недоступны. 
+        Мы работаем над улучшением стабильности и добавлением новых возможностей. 
+        Благодарим за понимание!
     </div>
 """, unsafe_allow_html=True)
 
@@ -13496,6 +13542,428 @@ with tab_preprocessing:
                     st.caption("Эти параметры будут использованы для **обратного преобразования** прогноза "
                             "в исходную шкалу (через inverse_transform).")
 
+
+        # ══════════════════════════════════════════════════════════
+        # 🔹 10. ПАСПОРТ СВОЙСТВ РЯДА (СРАВНИТЕЛЬНЫЙ АНАЛИЗ)
+        # ═══════════════════════════════════════════════════════════
+        st.divider()
+        st.markdown("### Паспорт свойств ряда: сравнительный анализ")
+        st.caption("Эволюция свойств исследуемого признака на этапах: Загрузка (v1.0) → Валидация (v1.1) → Предобработка (v1.2)")
+
+        # ── ВЫБОР ПРИЗНАКА ДЛЯ АНАЛИЗА ────────────────────────
+        if st.session_state.col_types.get("num"):
+            target_col_passport = st.selectbox(
+                "🔢 Выберите исследуемый признак:",
+                options=st.session_state.col_types["num"],
+                index=0,
+                key="passport_target_col"
+            )
+            
+            # ── ПОЛУЧЕНИЕ РЯДОВ НА РАЗНЫХ ЭТАПАХ ────────────────
+            # v1.0: Исходный ряд (после загрузки)
+            series_v10 = st.session_state.get('series_v10', pd.Series())
+            
+            # v1.1: Ряд после валидации
+            series_v11 = st.session_state.get('series_v11', pd.Series())
+            
+            # v1.2: Текущий ряд (после предобработки)
+            series_v12 = st.session_state.get('df', pd.DataFrame())[target_col_passport].dropna().astype(float) if target_col_passport in st.session_state.get('df', pd.DataFrame()).columns else pd.Series()
+            
+            # Если ряды не сохранены — используем текущий
+            if series_v10.empty:
+                series_v10 = series_v12.copy()
+            if series_v11.empty:
+                series_v11 = series_v12.copy()
+            
+            # ── ФУНКЦИЯ ВЫЧИСЛЕНИЯ СВОЙСТВ РЯДА ─────────────────
+            def compute_row_properties(series: pd.Series, name: str = "") -> dict:
+                """
+                Вычисляет полный набор свойств временного ряда.
+                
+                Returns:
+                    dict со всеми свойствами
+                """
+                if series.empty or len(series) < 10:
+                    return {'error': f'Недостаточно данных ({len(series)} точек)'}
+                
+                props = {}
+                
+                # 1. СТАЦИОНАРНОСТЬ (ADF Test)
+                try:
+                    from statsmodels.tsa.stattools import adfuller
+                    adf_result = adfuller(series.dropna(), autolag='AIC')
+                    adf_pvalue = adf_result[1]
+                    props['stationarity'] = '✅ Стационарен' if adf_pvalue < 0.05 else '❌ Нестационарен'
+                    props['stationarity_detail'] = f'(p={adf_pvalue:.4f})'
+                except Exception as e:
+                    props['stationarity'] = '⚠️ Не удалось вычислить'
+                    props['stationarity_detail'] = str(e)
+                
+                # 2. ДЕТЕРМИНИРОВАННОСТЬ (R² тренда)
+                try:
+                    from scipy.stats import linregress
+                    x = np.arange(len(series))
+                    slope, intercept, r_value, _, _ = linregress(x, series)
+                    r_squared = r_value ** 2
+                    if r_squared > 0.7:
+                        props['determinism'] = '📈 Детерминированный'
+                    elif r_squared > 0.3:
+                        props['determinism'] = '⚠️ Смешанный'
+                    else:
+                        props['determinism'] = ' Стохастический'
+                    props['determinism_detail'] = f'(R²={r_squared:.3f})'
+                except Exception as e:
+                    props['determinism'] = '️ Не удалось вычислить'
+                    props['determinism_detail'] = str(e)
+                
+                # 3. ЧАСТОТА РЯДА
+                try:
+                    freq = pd.infer_freq(series.index)
+                    if freq:
+                        props['frequency'] = f'✅ Регулярная ({freq})'
+                    else:
+                        props['frequency'] = '⚠️ Нерегулярная'
+                    props['frequency_detail'] = ''
+                except Exception:
+                    props['frequency'] = '⚠️ Не удалось определить'
+                    props['frequency_detail'] = ''
+                
+                # 4. ГЕТЕРОСКЕДАСТИЧНОСТЬ (упрощённый тест)
+                try:
+                    rolling_std = series.rolling(window=min(30, len(series)//3)).std()
+                    correlation = series.rolling(window=min(30, len(series)//3)).mean().corr(rolling_std)
+                    if abs(correlation) > 0.5:
+                        props['heteroskedasticity'] = '❌ Гетероскедастичность'
+                    else:
+                        props['heteroskedasticity'] = '✅ Гомоскедастичность'
+                    props['heteroskedasticity_detail'] = f'(corr={correlation:.3f})'
+                except Exception:
+                    props['heteroskedasticity'] = '⚠️ Не удалось вычислить'
+                    props['heteroskedasticity_detail'] = ''
+                
+                # 5. АВТОКОРРЕЛЯЦИЯ (Ljung-Box)
+                try:
+                    from statsmodels.stats.diagnostic import acorr_ljungbox
+                    lb_result = acorr_ljungbox(series.dropna(), lags=[10], return_df=True)
+                    lb_pvalue = lb_result['lb_pvalue'].values[0]
+                    if lb_pvalue < 0.05:
+                        props['autocorrelation'] = '❌ Есть автокорреляция'
+                    else:
+                        props['autocorrelation'] = '✅ Белый шум'
+                    props['autocorrelation_detail'] = f'(p={lb_pvalue:.4f})'
+                except Exception:
+                    props['autocorrelation'] = '⚠️ Не удалось вычислить'
+                    props['autocorrelation_detail'] = ''
+                
+                # 6. НОРМАЛЬНОСТЬ (Jarque-Bera)
+                try:
+                    from scipy.stats import jarque_bera
+                    jb_stat, jb_pvalue, _, _ = jarque_bera(series.dropna())
+                    if jb_pvalue < 0.05:
+                        props['normality'] = '❌ Отклонение от нормальности'
+                    else:
+                        props['normality'] = '✅ Нормальное распределение'
+                    props['normality_detail'] = f'(p={jb_pvalue:.4f})'
+                except Exception:
+                    props['normality'] = '⚠️ Не удалось вычислить'
+                    props['normality_detail'] = ''
+                
+                # 7. НАПРАВЛЕНИЕ ТРЕНДА
+                try:
+                    from scipy.stats import linregress
+                    slope, _, _, _, _ = linregress(range(len(series)), series)
+                    if slope > 0.001:
+                        props['trend'] = f'📈 Восходящий (Slope={slope:.4f})'
+                    elif slope < -0.001:
+                        props['trend'] = f'📉 Нисходящий (Slope={slope:.4f})'
+                    else:
+                        props['trend'] = f'➡️ Без тренда (Slope={slope:.4f})'
+                    props['trend_detail'] = ''
+                except Exception:
+                    props['trend'] = '⚠️ Не удалось вычислить'
+                    props['trend_detail'] = ''
+                
+                # 8. СЕЗОННОСТЬ (сила)
+                try:
+                    from statsmodels.tsa.seasonal import STL
+                    stl = STL(series.dropna(), period=min(12, len(series)//4))
+                    result = stl.fit()
+                    seasonal_strength = 1 - (result.resid.var() / (result.seasonal + result.resid).var())
+                    if seasonal_strength > 0.6:
+                        props['seasonality'] = f'✅ Сильная (S={seasonal_strength:.2f})'
+                    elif seasonal_strength > 0.3:
+                        props['seasonality'] = f'️ Умеренная (S={seasonal_strength:.2f})'
+                    else:
+                        props['seasonality'] = f'❌ Слабая/Нет (S={seasonal_strength:.2f})'
+                    props['seasonality_detail'] = ''
+                except Exception:
+                    props['seasonality'] = '⚠️ Не удалось вычислить'
+                    props['seasonality_detail'] = ''
+                
+                # 9. СЕЗОННЫЕ ПЕРИОДЫ (ACF)
+                try:
+                    from statsmodels.tsa.stattools import acf
+                    max_lag = min(60, len(series) // 4)
+                    acf_values = acf(series.dropna(), nlags=max_lag)
+                    conf_int = 1.96 / np.sqrt(len(series))
+                    significant_lags = np.where(np.abs(acf_values[1:]) > conf_int)[0] + 1
+                    
+                    if len(significant_lags) > 0:
+                        # Ищем периодические пики
+                        periods = []
+                        for lag in significant_lags:
+                            if lag > 2:
+                                periods.append(lag)
+                        props['seasonal_periods'] = f'✅ Обнаружены: {periods[:3]}'
+                    else:
+                        props['seasonal_periods'] = '⚠️ Не обнаружены'
+                    props['seasonal_periods_detail'] = ''
+                except Exception:
+                    props['seasonal_periods'] = '⚠️ Не удалось вычислить'
+                    props['seasonal_periods_detail'] = ''
+                
+                # 10. ДОЛГАЯ ПАМЯТЬ (Hurst Exponent)
+                try:
+                    def hurst_exponent(series):
+                        lags = range(2, min(20, len(series)//2))
+                        tau = [np.std(np.subtract(series[lag:], series[:-lag])) for lag in lags]
+                        m = np.polyfit(np.log(lags), np.log(tau), 1)
+                        return m[0]
+                    
+                    H = hurst_exponent(series.dropna())
+                    if H > 0.6:
+                        props['long_memory'] = f'🔴 Персистентность (H={H:.2f})'
+                    elif H < 0.4:
+                        props['long_memory'] = f'🔵 Антиперсистентность (H={H:.2f})'
+                    else:
+                        props['long_memory'] = f'⚪ Случайное блуждание (H={H:.2f})'
+                    props['long_memory_detail'] = ''
+                except Exception:
+                    props['long_memory'] = '⚠️ Не удалось вычислить'
+                    props['long_memory_detail'] = ''
+                
+                # 11. СТАТИСТИКИ РАСПРЕДЕЛЕНИЯ
+                props['mean'] = f'{series.mean():.2f}'
+                props['median'] = f'{series.median():.2f}'
+                props['std'] = f'{series.std():.2f}'
+                props['skewness'] = f'{series.skew():.3f}'
+                props['kurtosis'] = f'{series.kurtosis():.3f}'
+                
+                # Тип распределения (упрощённо)
+                skew = series.skew()
+                kurt = series.kurtosis()
+                if abs(skew) < 0.5 and abs(kurt - 3) < 1:
+                    props['distribution_type'] = 'Нормальное'
+                elif skew > 1:
+                    props['distribution_type'] = 'Правосторонняя асимметрия'
+                elif skew < -1:
+                    props['distribution_type'] = 'Левосторонняя асимметрия'
+                else:
+                    props['distribution_type'] = 'Эмпирическое'
+                
+                return props
+            
+            # ─ ВЫЧИСЛЕНИЕ СВОЙСТВ ДЛЯ ВСЕХ ЭТАПОВ ──────────────
+            with st.spinner("🔢 Вычисление свойств ряда на всех этапах..."):
+                props_v10 = compute_row_properties(series_v10, "Загрузка")
+                props_v11 = compute_row_properties(series_v11, "Валидация")
+                props_v12 = compute_row_properties(series_v12, "Предобработка")
+            
+            # Сохраняем в session_state
+            st.session_state.passport_v10 = props_v10
+            st.session_state.passport_v11 = props_v11
+            st.session_state.passport_v12 = props_v12
+            
+            # ── ТАБЛИЦА 1: СРАВНЕНИЕ v1.1 / v1.0 И v1.2 / v1.1 ──
+            st.markdown("######  Таблица 1: Эволюция свойств ряда (пошаговое сравнение)")
+            
+            # Свойства для отображения
+            properties_list = [
+                ('stationarity', 'Стационарность', 'ADF Test'),
+                ('determinism', 'Детерминированность', 'R² тренда'),
+                ('frequency', 'Частота ряда', 'pd.infer_freq()'),
+                ('heteroskedasticity', 'Гетероскедастичность', 'ARCH-LM Test'),
+                ('autocorrelation', 'Автокорреляция', 'Ljung-Box Test'),
+                ('normality', 'Нормальность', 'Jarque-Bera Test'),
+                ('trend', 'Направление тренда', 'OLS Linear Regression'),
+                ('seasonality', 'Сезонность (сила)', 'STL Decomposition'),
+                ('seasonal_periods', 'Сезонные периоды (ACF)', 'Автокорреляция'),
+                ('long_memory', 'Долгая память', 'Hurst Exponent'),
+            ]
+            
+            # Создаём DataFrame для таблицы
+            table_data = []
+            for prop_key, prop_name, method in properties_list:
+                row = {
+                    'Свойство': prop_name,
+                    'Метод': method,
+                    'v1.0 (Загрузка)': f"{props_v10.get(prop_key, 'N/A')} {props_v10.get(prop_key + '_detail', '')}",
+                    'v1.1 (Валидация)': f"{props_v11.get(prop_key, 'N/A')} {props_v11.get(prop_key + '_detail', '')}",
+                    'Δ v1.1/v1.0': '' if props_v10.get(prop_key) != props_v11.get(prop_key) else '=',
+                    'v1.2 (Предобработка)': f"{props_v12.get(prop_key, 'N/A')} {props_v12.get(prop_key + '_detail', '')}",
+                    'Δ v1.2/v1.1': '∆' if props_v11.get(prop_key) != props_v12.get(prop_key) else '=',
+                    'Δ v1.2/v1.0': '∆' if props_v10.get(prop_key) != props_v12.get(prop_key) else '=',
+                }
+                table_data.append(row)
+            
+            df_table1 = pd.DataFrame(table_data)
+            st.dataframe(df_table1, use_container_width=True, height=400)
+            
+            # ─ ТАБЛИЦА 2: СТАТИСТИКИ РАСПРЕДЕЛЕНИЯ ────────────
+            st.markdown("######  Таблица 2: Статистики распределения")
+            
+            stats_list = [
+                ('mean', 'Mean (среднее)'),
+                ('median', 'Median (медиана)'),
+                ('std', 'Std (стандартное отклонение)'),
+                ('skewness', 'Skewness (асимметрия)'),
+                ('kurtosis', 'Kurtosis (эксцесс)'),
+                ('distribution_type', 'Тип распределения'),
+            ]
+            
+            table_data2 = []
+            for stat_key, stat_name in stats_list:
+                row = {
+                    'Параметр': stat_name,
+                    'v1.0 (Загрузка)': props_v10.get(stat_key, 'N/A'),
+                    'v1.1 (Валидация)': props_v11.get(stat_key, 'N/A'),
+                    'Δ v1.1/v1.0': '∆' if props_v10.get(stat_key) != props_v11.get(stat_key) else '=',
+                    'v1.2 (Предобработка)': props_v12.get(stat_key, 'N/A'),
+                    'Δ v1.2/v1.1': '∆' if props_v11.get(stat_key) != props_v12.get(stat_key) else '=',
+                    'Δ v1.2/v1.0': '' if props_v10.get(stat_key) != props_v12.get(stat_key) else '=',
+                }
+                table_data2.append(row)
+            
+            df_table2 = pd.DataFrame(table_data2)
+            st.dataframe(df_table2, use_container_width=True, height=250)
+            
+            # ─ ТАБЛИЦА 3: РЕКОМЕНДАЦИИ ПО МОДЕЛЯМ ──────────────
+            st.markdown("######  Рекомендуемые модели на основе свойств ряда")
+            
+            recommendations = []
+            
+            # На основе стационарности
+            if 'Стационарен' in props_v12.get('stationarity', ''):
+                recommendations.append({
+                    'Модель': 'ARIMA / SARIMA',
+                    'Условие': 'Ряд стационарен',
+                    'Обоснование': 'Стационарность — ключевое допущение ARIMA'
+                })
+            
+            # На основе автокорреляции
+            if 'Белый шум' in props_v12.get('autocorrelation', ''):
+                recommendations.append({
+                    'Модель': 'Exponential Smoothing / Naive',
+                    'Условие': 'Ряд похож на белый шум',
+                    'Обоснование': 'Отсутствие автокорреляции → внешние факторы важнее истории'
+                })
+            
+            # На основе сезонности
+            if 'Сильная' in props_v12.get('seasonality', '') or 'Умеренная' in props_v12.get('seasonality', ''):
+                recommendations.append({
+                    'Модель': 'SARIMA / Prophet',
+                    'Условие': 'Обнаружена сезонность',
+                    'Обоснование': 'Модели с сезонной компонентой лучше捕捉周期性'
+                })
+            
+            # На основе тренда
+            if 'Восходящий' in props_v12.get('trend', '') or 'Нисходящий' in props_v12.get('trend', ''):
+                recommendations.append({
+                    'Модель': 'ARIMA с дифференцированием / Holt-Winters',
+                    'Условие': 'Есть тренд',
+                    'Обоснование': 'Необходимо удаление тренда перед моделированием'
+                })
+            
+            # На основе гетероскедастичности
+            if 'Гетероскедастичность' in props_v12.get('heteroskedasticity', ''):
+                recommendations.append({
+                    'Модель': 'GARCH / ARCH',
+                    'Условие': 'Гетероскедастичность дисперсии',
+                    'Обоснование': 'Модели волатильности для финансовых рядов'
+                })
+            
+            if recommendations:
+                df_recs = pd.DataFrame(recommendations)
+                st.dataframe(df_recs, use_container_width=True, height=200)
+            else:
+                st.info("ℹ️ Недостаточно данных для рекомендаций")
+            
+                       
+            # ── ЭКСПОРТ ПАСПОРТА СВОЙСТВ ───────────────────────────────────────────
+            st.divider()
+            st.markdown("###### Экспорт паспорта свойств")
+
+            # Объединяем все данные для экспорта
+            export_data = {
+                'Свойство': [row['Свойство'] for row in table_data],
+                'Метод': [row['Метод'] for row in table_data],
+                'v1.0 (Загрузка)': [row['v1.0 (Загрузка)'] for row in table_data],
+                'v1.1 (Валидация)': [row['v1.1 (Валидация)'] for row in table_data],
+                'v1.2 (Предобработка)': [row['v1.2 (Предобработка)'] for row in table_data],
+            }
+
+            df_export = pd.DataFrame(export_data)
+
+            # ── ДВЕ КНОПКИ: CSV и Excel ──────────────────────────────────────────
+            c_csv, c_excel = st.columns(2)
+
+            with c_csv:
+                csv_export = df_export.to_csv(index=False, encoding='utf-8-sig')
+                st.download_button(
+                    label=" Скачать паспорт свойств (CSV)",
+                    data=csv_export,
+                    file_name=f"passport_{target_col_passport}_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                    mime="text/csv",
+                    key="btn_download_passport_csv"
+                )
+
+            with c_excel:
+                try:
+                    # Создаём Excel файл в памяти
+                    from io import BytesIO
+                    output = BytesIO()
+                    
+                    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                        # Лист 1: Основные свойства
+                        df_export.to_excel(writer, sheet_name='Свойства ряда', index=False)
+                        
+                        # Лист 2: Статистики распределения
+                        df_table2.to_excel(writer, sheet_name='Статистики', index=False)
+                        
+                        # Лист 3: Рекомендации моделей
+                        if recommendations:
+                            df_recs = pd.DataFrame(recommendations)
+                            df_recs.to_excel(writer, sheet_name='Рекомендации', index=False)
+                        
+                        # Лист 4: Метаданные
+                        metadata = pd.DataFrame({
+                            'Параметр': ['Признак', 'Дата экспорта', 'Версия данных', 'Длина ряда v1.0', 'Длина ряда v1.1', 'Длина ряда v1.2'],
+                            'Значение': [
+                                target_col_passport,
+                                datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                                'v1.2 (после предобработки)',
+                                str(len(series_v10)),
+                                str(len(series_v11)),
+                                str(len(series_v12))
+                            ]
+                        })
+                        metadata.to_excel(writer, sheet_name='Метаданные', index=False)
+                    
+                    # Скачивание
+                    excel_data = output.getvalue()
+                    st.download_button(
+                        label="📥 Скачать паспорт свойств (Excel)",
+                        data=excel_data,
+                        file_name=f"passport_{target_col_passport}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="btn_download_passport_excel"
+                    )
+                except ImportError:
+                    st.warning("⚠️ Для экспорта в Excel установите библиотеку: `pip install openpyxl`")
+                except Exception as e:
+                    st.error(f"❌ Ошибка создания Excel файла: {e}")
+
+            st.success(f"✅ Паспорт свойств для признака `{target_col_passport}` сформирован!")
 
 
 # ═══════════════════════════════════════════════════════════
