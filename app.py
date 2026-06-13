@@ -1982,7 +1982,7 @@ with tab_download:
     # ────────────────────────────────────────────────────────────
     st.divider()
     st.markdown("### Визуализация распределения данных")
-    st.caption("Интерактивный анализ распределения числовых признаков: точечный график, гистограмма и статистические метрики для оценки формы распределения, асимметрии и выбросов.")
+    st.caption("Интерактивный анализ распределения числовых признаков: точечный график, гистограмма, KDE и статистические метрики для оценки формы распределения, асимметрии и выбросов.")
 
     # ──  СПРАВКА ПО МЕТОДУ (скрыта по умолчанию) ────────────
     with st.expander(" Справка по описательным статистикам", expanded=False):
@@ -1992,7 +1992,7 @@ with tab_download:
         **Используемые методы:**
         - **🔵 Точечный график** — показывает все наблюдения, выявляет выбросы и кластеры
         - **📊 Гистограмма** — демонстрирует распределение данных: отображает частоту их наблюдений через высоту столбцов
-        - **📊 KDE (Kernel Density Estimation)** — сглаженная оценка плотности распределения
+        - **📈 KDE (Kernel Density Estimation)** — сглаженная оценка плотности распределения (непрерывная кривая)
 
         **Статистики распределения:**
         | Метрика | Описание | Интерпретация |
@@ -2015,7 +2015,7 @@ with tab_download:
         - Асимметричное → логарифмическая трансформация, Box-Cox
         - Мультимодальное → сегментация данных, mixture models
 
-        **⚠️ Бесплатный курс "Основы статистики"от Анатолия Карпова:**
+        **⚠️ Бесплатный курс "Основы статистики" от Анатолия Карпова:**
         - часть 1: https://stepik.org/course/76/syllabus
         - часть 2: https://stepik.org/course/524/syllabus
         - часть 3: https://stepik.org/course/2152/syllabus
@@ -2051,22 +2051,23 @@ with tab_download:
                 key="dist_col_select"
             )
 
-            col1, col2 = st.columns(2)
+            # 🔧 ИЗМЕНЕНО: 3 колонки вместо 2
+            col1, col2, col3 = st.columns(3)
 
             with col1:
-                st.markdown("##### 🔵 Точечный график")
+                st.markdown("##### Точечный график")
                 fig_scatter = px.scatter(
                     df, y=selected_col, x=df.index,
                     title=f"Распределение: {selected_col}",
                     labels={"index": "Индекс", selected_col: "Значение"},
-                    height=400, opacity=0.6
+                    height=500, opacity=0.6
                 )
                 fig_scatter.update_traces(marker=dict(size=6, color='#1f77b4'))
                 st.plotly_chart(fig_scatter, use_container_width=True)
 
             with col2:
-                st.markdown("##### 📊 Гистограмма с метриками")
-
+                st.markdown("##### Гистограмма")
+                
                 mean_val = df[selected_col].mean()
                 median_val = df[selected_col].median()
                 q1_val = df[selected_col].quantile(0.25)
@@ -2075,89 +2076,148 @@ with tab_download:
                 skew_val = df[selected_col].skew()
                 kurt_val = df[selected_col].kurtosis()
 
+                # 🔧 ДОБАВЛЕНО: Гистограмма + KDE
                 fig_hist = px.histogram(
                     df, x=selected_col, nbins=30,
                     title=f"Гистограмма: {selected_col}",
                     labels={selected_col: "Значение"},
-                    height=400, opacity=0.7
+                    height=500, opacity=0.6
                 )
+                
+                # Добавляем KDE кривую
+                from scipy import stats
+                data_clean = df[selected_col].dropna()
+                kde = stats.gaussian_kde(data_clean)
+                x_kde = np.linspace(data_clean.min(), data_clean.max(), 100)
+                y_kde = kde(x_kde)
+                
+                # Нормализуем KDE для сопоставимости с гистограммой
+                y_kde_normalized = y_kde * len(data_clean) * (data_clean.max() - data_clean.min()) / 30
+                
+                fig_hist.add_trace(go.Scatter(
+                    x=x_kde,
+                    y=y_kde_normalized,
+                    mode='lines',
+                    name='KDE (плотность)',
+                    line=dict(color='#FF6B6B', width=3),
+                    opacity=0.8
+                ))
 
-                fig_hist.add_vline(x=mean_val, line_dash="dash", line_color="red", line_width=2, annotation_text="Mean", annotation_position="top right")
-                fig_hist.add_vline(x=median_val, line_dash="dash", line_color="green", line_width=2, annotation_text="Median", annotation_position="top right")
-                fig_hist.add_vline(x=q1_val, line_dash="dot", line_color="orange", line_width=2, annotation_text="Q1", annotation_position="bottom right")
-                fig_hist.add_vline(x=q3_val, line_dash="dot", line_color="purple", line_width=2, annotation_text="Q3", annotation_position="bottom right")
+                fig_hist.add_vline(x=mean_val, line_dash="dash", line_color="red", line_width=2, annotation_text="Mean")
+                fig_hist.add_vline(x=median_val, line_dash="dash", line_color="green", line_width=2, annotation_text="Median")
+                fig_hist.add_vline(x=q1_val, line_dash="dot", line_color="orange", line_width=2, annotation_text="Q1")
+                fig_hist.add_vline(x=q3_val, line_dash="dot", line_color="purple", line_width=2, annotation_text="Q3")
 
-                fig_hist.update_layout(showlegend=True, legend=dict(itemsizing='constant', title="Статистики"))
+                fig_hist.update_layout(
+                    showlegend=True, 
+                    legend=dict(itemsizing='constant', title="Статистики"),
+                    barmode='overlay'
+                )
                 st.plotly_chart(fig_hist, use_container_width=True)
 
-                st.markdown(
-                    '<span style="font-weight: bold; font-size: 16px;"> Статистики распределения</span>',
-                    unsafe_allow_html=True
+            with col3:
+                # 🔧 НОВАЯ КОЛОНКА: Отдельный KDE график
+                st.markdown("##### KDE (плотность)")
+                
+                fig_kde = go.Figure()
+                
+                # Основная KDE кривая
+                fig_kde.add_trace(go.Scatter(
+                    x=x_kde,
+                    y=y_kde,
+                    mode='lines',
+                    name='KDE',
+                    line=dict(color='#4ECDC4', width=3),
+                    fill='tozeroy',
+                    fillcolor='rgba(78, 205, 196, 0.3)',
+                    opacity=0.8
+                ))
+                
+                # Вертикальные линии статистик
+                fig_kde.add_vline(x=mean_val, line_dash="dash", line_color="red", line_width=2, annotation_text="Mean")
+                fig_kde.add_vline(x=median_val, line_dash="dash", line_color="green", line_width=2, annotation_text="Median")
+                
+                fig_kde.update_layout(
+                    title=f"KDE плотность: {selected_col}",
+                    xaxis_title="Значение",
+                    yaxis_title="Плотность вероятности",
+                    height=500,
+                    showlegend=True,
+                    hovermode='x unified'
                 )
+                
+                st.plotly_chart(fig_kde, use_container_width=True)
 
-                def detect_distribution_type(series):
-                    import numpy as np
-                    from scipy import stats
-                    data = series.dropna()
-                    if len(data) < 30: return "Недостаточно данных для определения (<30 точек)"
-                    if len(data) > 5000: data = data.sample(5000, random_state=42)
-                    is_discrete = (data == data.astype(int)).all()
-                    unique_count = data.nunique()
-                    min_val = data.min()
-                    mean_v = data.mean()
-                    var_v = data.var()
-                    skew = stats.skew(data)
-                    kurt = stats.kurtosis(data)
+            # ── СТАТИСТИКИ РАСПРЕДЕЛЕНИЯ (под графиками) ─────
+            st.divider()
+            st.markdown(
+                '<span style="font-weight: bold; font-size: 16px;">📊 Статистики распределения</span>',
+                unsafe_allow_html=True
+            )
 
-                    if is_discrete and unique_count < 100:
-                        if unique_count == 2 and min_val >= 0: return "Дискретное - Биномальное"
-                        elif min_val >= 1 and var_v > mean_v**2: return "Дискретное - Геометрическое"
-                        elif var_v > mean_v * 1.3: return "Дискретное - Отрицательное биномальное"
-                        elif abs(var_v - mean_v) < mean_v * 0.25: return "Дискретное - Пуассона"
-                        elif unique_count < len(data) * 0.4: return "Дискретное - Гипергеометрическое (оценка)"
-                        return "Дискретное - Эмпирическое"
+            def detect_distribution_type(series):
+                import numpy as np
+                from scipy import stats
+                data = series.dropna()
+                if len(data) < 30: return "Недостаточно данных для определения (<30 точек)"
+                if len(data) > 5000: data = data.sample(5000, random_state=42)
+                is_discrete = (data == data.astype(int)).all()
+                unique_count = data.nunique()
+                min_val = data.min()
+                mean_v = data.mean()
+                var_v = data.var()
+                skew = stats.skew(data)
+                kurt = stats.kurtosis(data)
 
-                    candidates = {
-                        "Нормальное": stats.norm, "Логнормальное": stats.lognorm,
-                        "Экспоненциальное": stats.expon, "Равномерное": stats.uniform,
-                        "Стьюдента": stats.t, "Хи-квадрат": stats.chi2, "Гамма": stats.gamma
-                    }
-                    best_name, best_ks = None, np.inf
-                    for name, dist in candidates.items():
-                        try:
-                            if name in ["Логнормальное", "Экспоненциальное", "Хи-квадрат"] and min_val <= 0: continue
-                            params = dist.fit(data)
-                            ks_stat, _ = stats.kstest(data, dist.name, args=params)
-                            if ks_stat < best_ks: best_ks, best_name = ks_stat, name
-                        except: continue
+                if is_discrete and unique_count < 100:
+                    if unique_count == 2 and min_val >= 0: return "Дискретное - Биномальное"
+                    elif min_val >= 1 and var_v > mean_v**2: return "Дискретное - Геометрическое"
+                    elif var_v > mean_v * 1.3: return "Дискретное - Отрицательное биномальное"
+                    elif abs(var_v - mean_v) < mean_v * 0.25: return "Дискретное - Пуассона"
+                    elif unique_count < len(data) * 0.4: return "Дискретное - Гипергеометрическое (оценка)"
+                    return "Дискретное - Эмпирическое"
 
-                    prefix = "Непрерывное - "
-                    if best_name is None:
-                        if abs(skew) < 0.5: return f"{prefix}Нормальное (по асимметрии)"
-                        if skew > 0.5: return f"{prefix}Правосторонняя асимметрия"
-                        if skew < -0.5: return f"{prefix}Левосторонняя асимметрия"
-                        return f"{prefix}Неопределённое"
-                    if best_ks < 0.06: return f"{prefix}{best_name}"
-                    elif best_ks < 0.14: return f"{prefix}{best_name} (близко)"
-                    else:
-                        if skew > 0.6: return f"{prefix}Правосторонняя асимметрия"
-                        if skew < -0.6: return f"{prefix}Левосторонняя асимметрия"
-                        return f"{prefix}Эмпирическое (сложная форма)"
+                candidates = {
+                    "Нормальное": stats.norm, "Логнормальное": stats.lognorm,
+                    "Экспоненциальное": stats.expon, "Равномерное": stats.uniform,
+                    "Стьюдента": stats.t, "Хи-квадрат": stats.chi2, "Гамма": stats.gamma
+                }
+                best_name, best_ks = None, np.inf
+                for name, dist in candidates.items():
+                    try:
+                        if name in ["Логнормальное", "Экспоненциальное", "Хи-квадрат"] and min_val <= 0: continue
+                        params = dist.fit(data)
+                        ks_stat, _ = stats.kstest(data, dist.name, args=params)
+                        if ks_stat < best_ks: best_ks, best_name = ks_stat, name
+                    except: continue
 
-                dist_type = detect_distribution_type(df[selected_col])
-                dist_emoji = "🔵" if "Нормальное" in dist_type else "🟠" if "асимметрия" in dist_type.lower() else "🟢" if "Равномерное" in dist_type else "🟣" if "Логнормальное" in dist_type else "⚪"
+                prefix = "Непрерывное - "
+                if best_name is None:
+                    if abs(skew) < 0.5: return f"{prefix}Нормальное (по асимметрии)"
+                    if skew > 0.5: return f"{prefix}Правосторонняя асимметрия"
+                    if skew < -0.5: return f"{prefix}Левосторонняя асимметрия"
+                    return f"{prefix}Неопределённое"
+                if best_ks < 0.06: return f"{prefix}{best_name}"
+                elif best_ks < 0.14: return f"{prefix}{best_name} (близко)"
+                else:
+                    if skew > 0.6: return f"{prefix}Правосторонняя асимметрия"
+                    if skew < -0.6: return f"{prefix}Левосторонняя асимметрия"
+                    return f"{prefix}Эмпирическое (сложная форма)"
 
-                st.markdown(f"""
-                - Тип распределения: `{dist_type}`
-                - Mean (среднее): `{mean_val:,.2f}`
-                - Median (медиана): `{median_val:,.2f}`
-                - Std (стандартное отклонение): `{std_val:,.2f}`
-                - Skewness (асимметрия): `{skew_val:.3f}`
-                - Kurtosis (эксцесс): `{kurt_val:.3f}`
-                - Q1 (25-й перцентиль): `{q1_val:,.2f}`
-                - Q3 (75-й перцентиль): `{q3_val:,.2f}`
-                - IQR (межквартильный размах): `{q3_val - q1_val:,.2f}`
-                """)
+            dist_type = detect_distribution_type(df[selected_col])
+            dist_emoji = "🔵" if "Нормальное" in dist_type else "🟠" if "асимметрия" in dist_type.lower() else "🟢" if "Равномерное" in dist_type else "🟣" if "Логнормальное" in dist_type else "⚪"
+
+            st.markdown(f"""
+            - Тип распределения: `{dist_emoji} {dist_type}`
+            - Mean (среднее): `{mean_val:,.2f}`
+            - Median (медиана): `{median_val:,.2f}`
+            - Std (стандартное отклонение): `{std_val:,.2f}`
+            - Skewness (асимметрия): `{skew_val:.3f}`
+            - Kurtosis (эксцесс): `{kurt_val:.3f}`
+            - Q1 (25-й перцентиль): `{q1_val:,.2f}`
+            - Q3 (75-й перцентиль): `{q3_val:,.2f}`
+            - IQR (межквартильный размах): `{q3_val - q1_val:,.2f}`
+            """)
         else:
             st.warning("⚠️ В датасете нет числовых колонок для визуализации распределения.")
 
@@ -3227,7 +3287,7 @@ with tab_download:
         - ✅ Стационарен → ARIMA(p,**0**,q), ARMA
         - ❌ Нестационарен → требуется дифференцирование (d≥1) → ARIMA(p,**d**,q)
 
-        **⚠️ Почитать**
+        **⚠️ Почитать:**
         - статья на Хабре_стационарность и ADF: https://habr.com/ru/articles/1043810/
         ---
 
@@ -4922,7 +4982,7 @@ with tab_validation:
             **Применение в платформе:**
             Каждая из 10 проверок валидации соответствует одному или нескольким измерениям DAMA DMBOK. Результаты фиксируются в Data Quality Dashboard с метриками `% valid = valid/total`.
 
-            **⚠️ Почитать**
+            **⚠️ Почитать:**
             - первоисточник: https://dama.org/
             - статья на Хабре: https://habr.com/ru/companies/rshb/articles/767440/
             ---
@@ -4989,7 +5049,7 @@ with tab_validation:
 
             ---
 
-            ###### 📊 Сводная таблица соответствия
+            ###### Сводная таблица соответствия
 
             | № | Проверка в CISStat | DAMA DMBOK | ISO 8000-61 | TDQM |
             |---|-------------------|------------|-------------|------|
@@ -5008,7 +5068,7 @@ with tab_validation:
 
             ---
 
-            ###### 🎯 Целевые показатели качества (Target DQ Levels)
+            ###### Целевые показатели качества (Target DQ Levels)
 
             Согласно ISO 8000-61 и DAMA DMBOK, платформа устанавливает следующие пороги:
 
@@ -5028,7 +5088,7 @@ with tab_validation:
 
             ---
 
-            ###### 📚 Источники и литература
+            ###### Источники и литература
 
             1. **DAMA International.** DAMA-DMBOK: Data Management Body of Knowledge, 2nd Edition. Technics Publications, 2017. ISBN: 978-1634622974
             2. **ISO/IEC 8000-61:2020.** Data quality — Part 61: Process reference model. International Organization for Standardization, 2020.
@@ -5037,8 +5097,7 @@ with tab_validation:
             5. **CISStat Internal Standard.** Стандарт качества данных для временных рядов, 2026.
 
             ---
-
-            💡 **Как использовать эту информацию:**
+            ###### 💡 Как использовать эту информацию:
             - При обнаружении нарушения смотрите, какому стандарту оно противоречит
             - Используйте целевые показатели (Target DQ Levels) для приоритизации исправлений
             - Ссылайтесь на стандарты при обосновании необходимости очистки данных перед руководством
@@ -5435,12 +5494,12 @@ with tab_validation:
                 # Фильтр отображения (автоматический, как в других блоках)
                 view_filter = st.radio(
                     "Фильтр строк:",
-                    ["⚠️ Только с нарушениями", "✅ Показать всё"],
+                    ["Только с нарушениями", "Показать всё"],
                     horizontal=True,
                     key="range_view_filter"
                 )
 
-                if view_filter == "⚠️ Только с нарушениями":
+                if view_filter == "Только с нарушениями":
                     df_view = df_work[combined_mask].copy() if combined_mask.any() else df_work.iloc[:0].copy()
                 else:
                     df_view = df_work.copy()
@@ -5480,7 +5539,7 @@ with tab_validation:
                 st.divider()
 
                 # Панель стратегий (Автоматическая обработка)
-                st.markdown("### 🧹 Стратегии обработки диапазонов")
+                st.markdown("### Стратегии обработки диапазонов")
                 c1, c2 = st.columns([2, 1])
                 with c1:
                     range_strategy = st.radio(
@@ -5509,14 +5568,14 @@ with tab_validation:
                     st.session_state.show_range_preview = False
 
                 st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allow_html=True)
-                if st.button("📊 Показать прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_range_preview"):
+                if st.button("Показать прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_range_preview"):
                     st.session_state.show_range_preview = True
                     st.rerun()
 
                 # Блок превью
                 if st.session_state.show_range_preview:
                     strategy = range_strategy
-                    st.markdown("##### 📈 Прогноз влияния на статистику:")
+                    st.markdown("##### Прогноз влияния на статистику:")
 
                     df_preview = df_work.copy()
                     cols_to_fix = list(range_rule_bounds.keys())
@@ -5564,7 +5623,7 @@ with tab_validation:
                     st.divider()
                     c_ok, c_cancel = st.columns(2)
                     with c_ok:
-                        if st.button("💾 Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_range"):
+                        if st.button("Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_range"):
                             st.session_state.df_after_fixes = df_preview.copy()
                             st.session_state.df = df_preview
                             st.session_state.validation_ready = False
@@ -8754,7 +8813,7 @@ with tab_preprocessing:
 
                 # ── 2️⃣ ВИЗУАЛИЗАЦИЯ (если маска есть) ───────────
                 if st.session_state.outlier_mask.any():
-                    with st.expander("📊 Визуализация распределения", expanded=False):
+                    with st.expander("Визуализация распределения", expanded=False):
                         viz_col = st.selectbox("Столбец для графика", selected_out_cols if selected_out_cols else num_cols, key="viz_col_out")
                         tab_v1, tab_v2 = st.tabs(["Boxplot", "Гистограмма + Плотность"])
                         with tab_v1:
