@@ -589,64 +589,88 @@ def validate_text_quality(df, rules):
 
 
 def validate_regular_step(df, rules, date_col=None):
-    """Проверка равномерности временного шага с учётом панельных данных."""
+    """
+    Проверка равномерности временного шага с учётом панельных данных.
+    """
+    if not date_col:
+        # Автоопределение временной колонки
+        for c in df.columns:
+            if any(kw in c.lower() for kw in ['date', 'дата', 'year', 'год', 'time', 'время']):
+                date_col = c
+                break
+    
     if not date_col:
         return [], {}, {}
-
+    
     results = []
     violation_masks = {}
     freq_info = {}
-
-    group_cols = [c for c in df.columns
-                  if c != date_col and df[c].dtype == 'object'
-                  and df[c].nunique() < 100]
-
-    if group_cols:
-        group_col = group_cols[0]
-        for group_value in df[group_col].unique():
-            df_group = df[df[group_col] == group_value].copy()
-            df_group = df_group.sort_values(date_col)
-            inferred_freq = pd.infer_freq(df_group[date_col].drop_duplicates().sort_values())
-            intervals = df_group[date_col].diff()
+    
+    # 🔧 Определяем группирующую колонку (для панельных данных)
+    group_col = None
+    for c in df.columns:
+        if c != date_col and df[c].dtype == 'object' and df[c].nunique() < 100:
+            group_col = c
+            break
+    
+    # Приводим дату к datetime
+    df_temp = df.copy()
+    if not pd.api.types.is_datetime64_any_dtype(df_temp[date_col]):
+        df_temp[date_col] = pd.to_datetime(df_temp[date_col], errors='coerce')
+    
+    if group_col:
+        # 🔧 ПАНЕЛЬНЫЕ ДАННЫЕ: проверяем внутри каждой группы
+        for group_name, group_df in df_temp.groupby(group_col):
+            # 🔧 КРИТИЧЕСКИ ВАЖНО: сортируем внутри группы перед diff()!
+            group_sorted = group_df.sort_values(date_col)
+            intervals = group_sorted[date_col].diff()
             modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
             gap_mask = intervals > modal_interval * 1.5
-            gap_count = gap_mask.sum()
-
+            
+            gap_count = int(gap_mask.sum())
+            inferred_freq = pd.infer_freq(group_sorted[date_col].drop_duplicates().sort_values())
+            
             results.append({
                 'Тип': 'Панельные данные',
-                'Группа': f"{group_col}={group_value}",
-                'Всего наблюдений': len(df_group),
+                'Группа': f"{group_col}={group_name}",
+                'Всего наблюдений': len(group_df),
                 'Частота': inferred_freq if inferred_freq else 'Нерегулярная',
-                'Пропусков': int(gap_count),
+                'Пропусков': gap_count,
                 'Нарушений': 1 if gap_count > 0 else 0,
                 'Статус': '✅' if gap_count == 0 else '⚠️'
             })
-
+            
             if gap_count > 0:
-                violation_masks[f"{group_col}_{group_value}"] = gap_mask
+                # Сохраняем индексы нарушений
+                violation_indices = group_sorted[gap_mask].index
+                violation_masks[f"{group_col}_{group_name}"] = group_sorted.index.isin(violation_indices)
+            
             freq_info['inferred_freq'] = inferred_freq
     else:
-        df_sorted = df.sort_values(date_col)
-        inferred_freq = pd.infer_freq(df_sorted[date_col].drop_duplicates().sort_values())
+        # Обычный временной ряд
+        df_sorted = df_temp.sort_values(date_col)
         intervals = df_sorted[date_col].diff()
         modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
         gap_mask = intervals > modal_interval * 1.5
-        gap_count = gap_mask.sum()
-
+        gap_count = int(gap_mask.sum())
+        inferred_freq = pd.infer_freq(df_sorted[date_col].drop_duplicates().sort_values())
+        
         results.append({
             'Тип': 'Временной ряд',
             'Группа': 'Весь датасет',
             'Всего наблюдений': len(df),
             'Частота': inferred_freq if inferred_freq else 'Нерегулярная',
-            'Пропусков': int(gap_count),
+            'Пропусков': gap_count,
             'Нарушений': 1 if gap_count > 0 else 0,
             'Статус': '✅' if gap_count == 0 else '⚠️'
         })
-
+        
         if gap_count > 0:
-            violation_masks['all'] = gap_mask
+            violation_indices = df_sorted[gap_mask].index
+            violation_masks['all'] = df_sorted.index.isin(violation_indices)
+        
         freq_info['inferred_freq'] = inferred_freq
-
+    
     return results, violation_masks, freq_info
 
 

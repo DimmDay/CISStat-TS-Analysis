@@ -6586,7 +6586,7 @@ with tab_validation:
                         combined_mask |= v['mask']
 
                     # ИСПРАВЛЕНИЕ: Показываем детали нарушений
-                    st.markdown("#### Детали нарушений:")
+                    st.markdown("###### Детали нарушений:")
                     for v in inclusion_violations:
                         st.warning(
                             f"**`{v['column']}`**: {v['count']} нарушений. "
@@ -6939,7 +6939,7 @@ with tab_validation:
                         combined_mask |= v['mask']
 
                     # ИСПРАВЛЕНИЕ: Показываем детали нарушений
-                    st.markdown("#### Детали нарушений:")
+                    st.markdown("###### Детали нарушений:")
                     for v in ref_violations_list:
                         st.warning(
                             f"**`{v['column']}`**: {v['count']} 'сиротских' записей. "
@@ -7269,7 +7269,7 @@ with tab_validation:
                         combined_mask |= v['mask']
 
                     # Показываем детали нарушений
-                    st.markdown("#### Детали нарушений:")
+                    st.markdown("###### Детали нарушений:")
                     for v in text_violations_list:
                         st.warning(
                             f"**`{v['column']}`**: {v['count']} нарушений "
@@ -7560,15 +7560,15 @@ with tab_validation:
         # 9. ПРОВЕРКА РАВНОМЕРНОСТИ ВРЕМЕННОГО ШАГА (regularity)
         # ───────────────────────────────────────────────────────────
 
-        # 9. Regularity Check
-        regularity_results_local = locals().get('regularity_results', [])
-        regularity_masks = locals().get('regularity_masks', {})
-        regularity_freq_info = locals().get('regularity_freq_info', {})
+        # ИСПРАВЛЕНИЕ: Используем session_state вместо locals()
+        regularity_results_local = st.session_state.val_results.get("regularity", [])
+        regularity_freq_info = st.session_state.val_results.get("regularity_freq_info", {})
 
         regularity_issues = len(regularity_results_local) > 0
-        regularity_gaps = sum(r.get('Пропусков', r.get('Всего пропусков', 0)) for r in regularity_results_local) if regularity_issues else 0
+        regularity_gaps = sum(r.get('Пропусков', r.get('Всего пропусков', 0)) 
+                            for r in regularity_results_local) if regularity_issues else 0
 
-        make_card(" Проверка равномерности временного шага (regularity)", regularity_issues,
+        make_card("Проверка равномерности временного шага (regularity)", regularity_issues,
             "**◻️ Метрики:** `inferred_freq` (определенная частота), `gap_count` (число пропусков), `interval_variance`.  \n"
             "**◻️ Алгоритм:** `pd.infer_freq()`, вычисление интервалов `diff()`, детекция аномалий (>1.5×моды).  \n"
             "**◻️ Влияние на TS:** Неравномерный шаг ломает ARIMA/SARIMA (требуют регулярный индекс), искажает FFT/спектральный анализ.  \n"
@@ -7578,234 +7578,515 @@ with tab_validation:
             "✅ Временной шаг равномерный" if not regularity_issues else f"⚠️ Обнаружено {regularity_gaps} пропусков в {len(regularity_results_local)} группах",
             "✅" if not regularity_issues else "⚠️", None)
 
-        # ── 🔧 ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
+        # ── ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
         if regularity_issues:
-            with st.expander("🔧 Полный пайплайн обработки нарушений регулярности", expanded=True):
-                st.markdown("### 📋 Таблица нарушений с ручной корректировкой")
+            with st.expander("Полный пайплайн обработки нарушений регулярности", expanded=True):
+                st.markdown("### Таблица нарушений с ручной корректировкой")
 
                 # Инициализация состояний
                 if "df_regularity_work" not in st.session_state:
                     st.session_state.df_regularity_work = df.copy()
                 df_work = st.session_state.df_regularity_work
 
-                # Формируем общую маску нарушений
-                combined_mask = pd.Series(False, index=df_work.index)
-
-                if regularity_masks:
-                    for mask in regularity_masks.values():
-                        combined_mask |= mask
-                else:
-                    # Fallback: определяем нарушения из результатов
-                    date_col = None
-                    for r in regularity_results_local:
-                        if 'Временная колонка' in r:
-                            date_col = r['Временная колонка']
-                            break
-
-                    if date_col and date_col in df_work.columns:
-                        if pd.api.types.is_datetime64_any_dtype(df_work[date_col]):
-                            ts_sorted = df_work.sort_values(date_col)
-                            intervals = ts_sorted[date_col].diff()
-                            modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
-                            combined_mask.loc[intervals[intervals > modal_interval * 1.5].index] = True
-
-                # Фильтр отображения
-                view_filter = st.radio(
-                    "Фильтр строк:",
-                    ["⚠️ Только с нарушениями (пропуски)", "✅ Показать всё"],
-                    horizontal=True,
-                    key="regularity_view_filter"
-                )
-
-                if view_filter == "⚠️ Только с нарушениями (пропуски)":
-                    df_view = df_work[combined_mask].copy() if combined_mask.any() else df_work.iloc[:0].copy()
-                else:
-                    df_view = df_work.copy()
-
-                # Добавляем статус-колонку
-                df_view = df_view.copy()
-                df_view.insert(0, '_STATUS', df_view.index.map(lambda idx: "🔴 Пропуск" if combined_mask.loc[idx] else "🟢 Норма"))
-
-                # Интерактивная таблица (Ручная правка)
-                edited_df = st.data_editor(
-                    df_view,
-                    use_container_width=True,
-                    height=300,
-                    num_rows="dynamic",
-                    disabled=['_STATUS'],
-                    key="regularity_editor",
-                    column_config={
-                        "_STATUS": st.column_config.TextColumn("Статус", disabled=True, width="small")
-                    }
-                )
-
-                # 💾 КНОПКА СОХРАНЕНИЯ
-                c_save1, c_save2 = st.columns([4, 1])
-                with c_save1:
-                    st.caption("💡 Отредактируйте значения вручную или выберите стратегию ниже")
-                with c_save2:
-                    if st.button("💾 Сохранить", key="btn_save_manual_regularity", use_container_width=True):
-                        if '_STATUS' in edited_df.columns:
-                            edited_df = edited_df.drop(columns=['_STATUS'])
-                        df_work.update(edited_df)
-                        st.session_state.df_regularity_work = df_work
-                        st.session_state.df = df_work
-                        st.session_state.validation_ready = False
-                        st.toast("✅ Правки сохранены!", icon="✅")
-                        st.rerun()
-
-                st.divider()
-
-                # Панель стратегий (Автоматическая обработка)
-                st.markdown("### 🧹 Стратегии обработки пропусков временного ряда")
-                c1, c2 = st.columns([2, 1])
-                with c1:
-                    regularity_strategy = st.radio(
-                        "Выберите стратегию:",
-                        ["Resample + Interpolate (линейная интерполяция)",
-                        "Resample + Forward Fill (последнее значение)",
-                        "Resample + Backward Fill (следующее значение)",
-                        "AsFreq (обозначить пропуски как NaN)",
-                        "Добавить фиктивные записи с нулевыми значениями",
-                        "Только отметить флагом (не менять данные)"],
-                        key="regularity_fill_strategy"
-                    )
-                    if "Interpolate" in regularity_strategy:
-                        st.info("ℹ️ Пропущенные значения будут заполнены линейной интерполяцией между соседними точками.")
-                    elif "Forward Fill" in regularity_strategy:
-                        st.info("ℹ️ Пропуски будут заполнены последним доступным значением (метод LOCF).")
-                    elif "Backward Fill" in regularity_strategy:
-                        st.info("ℹ️ Пропуски будут заполнены следующим значением (метод NOCB).")
-                    elif "AsFreq" in regularity_strategy:
-                        st.warning("⚠️ Ряд будет приведен к регулярной частоте, пропуски обозначены как NaN.")
-                    elif "фиктивные" in regularity_strategy:
-                        st.warning("⚠️ Будут добавлены строки с пропущенными датами и значениями 0/NaN.")
-                    elif "флагом" in regularity_strategy:
-                        st.info("🚩 Будет добавлена колонка `_has_gap` с отметкой о пропусках.")
-                with c2:
-                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
-
-                # Кнопка запуска превью
-                if "show_regularity_preview" not in st.session_state:
-                    st.session_state.show_regularity_preview = False
-
-                st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allow_html=True)
-                if st.button("📊 Показать прогноз влияния на статистику", type="secondary", use_container_width=True, key="btn_show_regularity_preview"):
-                    st.session_state.show_regularity_preview = True
-                    st.rerun()
-
-                # Блок превью
-                if st.session_state.show_regularity_preview:
-                    strategy = regularity_strategy
-                    st.markdown("##### 📈 Прогноз влияния на временной ряд:")
-
-                    df_preview = df_work.copy()
-
+                # ИСПРАВЛЕНИЕ: Функция для вычисления нарушений
+                def _compute_regularity_violations(df_to_check: pd.DataFrame) -> tuple:
+                    """Вычисляет нарушения регулярности временного шага."""
                     # Определяем временную колонку
                     date_col = None
-                    for r in regularity_results_local:
-                        if 'Временная колонка' in r:
-                            date_col = r['Временная колонка']
+                    for c in df_to_check.columns:
+                        if pd.api.types.is_datetime64_any_dtype(df_to_check[c]):
+                            date_col = c
                             break
-
-                    if date_col and date_col in df_preview.columns:
-                        # Определяем частоту
-                        freq = regularity_freq_info.get('inferred_freq', 'D')
-                        if not freq:
-                            freq = 'D'  # Default to daily
-
-                        num_cols = df_preview.select_dtypes(include=['number']).columns.tolist()
-
-                        if "Interpolate" in strategy:
-                            # Resample + Interpolate
-                            if len(num_cols) > 0:
-                                df_preview = df_preview.set_index(date_col)
-                                for col in num_cols:
-                                    df_preview[col] = df_preview[col].resample(freq).interpolate(method='linear')
-                                df_preview = df_preview.reset_index()
-                            note = "(resample + interpolate)"
-
-                        elif "Forward Fill" in strategy:
-                            # Resample + FFill
-                            if len(num_cols) > 0:
-                                df_preview = df_preview.set_index(date_col)
-                                for col in num_cols:
-                                    df_preview[col] = df_preview[col].resample(freq).ffill()
-                                df_preview = df_preview.reset_index()
-                            note = "(resample + ffill)"
-
-                        elif "Backward Fill" in strategy:
-                            # Resample + BFill
-                            if len(num_cols) > 0:
-                                df_preview = df_preview.set_index(date_col)
-                                for col in num_cols:
-                                    df_preview[col] = df_preview[col].resample(freq).bfill()
-                                df_preview = df_preview.reset_index()
-                            note = "(resample + bfill)"
-
-                        elif "AsFreq" in strategy:
-                            # AsFreq (просто обозначить пропуски)
-                            if len(num_cols) > 0:
-                                df_preview = df_preview.set_index(date_col)
-                                for col in num_cols:
-                                    df_preview[col] = df_preview[col].resample(freq).asfreq()
-                                df_preview = df_preview.reset_index()
-                            note = "(asfreq, NaN в пропусках)"
-
-                        elif "фиктивные" in strategy:
-                            # Добавить фиктивные записи
-                            df_preview = df_preview.set_index(date_col)
-                            full_range = pd.date_range(start=df_preview.index.min(),
-                                                      end=df_preview.index.max(),
-                                                      freq=freq)
-                            df_preview = df_preview.reindex(full_range)
-                            df_preview = df_preview.reset_index()
-                            df_preview = df_preview.rename(columns={'index': date_col})
-                            note = "(добавлены фиктивные записи)"
-                        else:
-                            note = "(без изменений)"
-
-                        # Метрики
-                        c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                        c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}",
-                                   delta=f"{len(df_preview)-len(df_work):+}")
-
-                        if num_cols:
-                            col = num_cols[0]
-                            def safe_stat(d, c, f):
-                                if c not in d.columns or d.empty or d[c].notna().sum() == 0:
-                                    return 0.0
-                                return f(d[c].dropna())
-
-                            m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
-                            m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
-
-                            fmt = lambda x: f"{x:.2f}" if pd.notnull(x) and x != 0.0 else "N/A"
-                            delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-
-                            c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                            c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                            c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
-
-                        st.caption(f"📅 Частота: {freq} | Стратегия: {note}")
-
-                        # Кнопки подтверждения
-                        st.divider()
-                        c_ok, c_cancel = st.columns(2)
-                        with c_ok:
-                            if st.button("💾 Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_regularity"):
-                                st.session_state.df_after_fixes = df_preview.copy()
-                                st.session_state.df = df_preview
-                                st.session_state.validation_ready = False
-                                st.session_state.show_regularity_preview = False
-                                st.success("✅ Стратегия применена! Перезапустите валидацию.")
-                                st.rerun()
-                        with c_cancel:
-                            if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_regularity"):
-                                st.session_state.show_regularity_preview = False
-                                st.rerun()
+                    if date_col is None:
+                        for c in df_to_check.columns:
+                            if any(kw in c.lower() for kw in ['date', 'дата', 'year', 'год', 'time', 'время']):
+                                date_col = c
+                                break
+                    
+                    if date_col is None or date_col not in df_to_check.columns:
+                        return pd.Series(False, index=df_to_check.index), None, None, None
+                    
+                    # 🔧 ИСПРАВЛЕНИЕ: Определяем группирующую колонку (для панельных данных)
+                    group_col = None
+                    for c in df_to_check.columns:
+                        if c != date_col and df_to_check[c].dtype == 'object' and df_to_check[c].nunique() < 100:
+                            group_col = c
+                            break
+                    
+                    # Приводим дату к datetime
+                    df_temp = df_to_check.copy()
+                    if not pd.api.types.is_datetime64_any_dtype(df_temp[date_col]):
+                        df_temp[date_col] = pd.to_datetime(df_temp[date_col], errors='coerce')
+                    
+                    combined_mask = pd.Series(False, index=df_temp.index)
+                    freq_info = {}
+                    
+                    if group_col:
+                        # 🔧 ПАНЕЛЬНЫЕ ДАННЫЕ: проверяем внутри каждой группы
+                        for group_name, group_df in df_temp.groupby(group_col):
+                            group_sorted = group_df.sort_values(date_col)
+                            intervals = group_sorted[date_col].diff()
+                            modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
+                            gap_mask = intervals > modal_interval * 1.5
+                            if gap_mask.any():
+                                combined_mask.loc[gap_mask[gap_mask].index] = True
+                            freq_info['inferred_freq'] = pd.infer_freq(
+                                group_sorted[date_col].drop_duplicates().sort_values()
+                            )
                     else:
-                        st.error("❌ Не найдена временная колонка для применения стратегии")
+                        # Обычный временной ряд
+                        df_sorted = df_temp.sort_values(date_col)
+                        intervals = df_sorted[date_col].diff()
+                        modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
+                        gap_mask = intervals > modal_interval * 1.5
+                        if gap_mask.any():
+                            combined_mask.loc[gap_mask[gap_mask].index] = True
+                        freq_info['inferred_freq'] = pd.infer_freq(
+                            df_sorted[date_col].drop_duplicates().sort_values()
+                        )
+                    
+                    return combined_mask, date_col, group_col, freq_info
+
+                # Пересчитываем нарушения каждый раз
+                combined_mask, date_col, group_col, computed_freq_info = _compute_regularity_violations(df_work)
+
+                if not combined_mask.any():
+                    st.success("✅ Нарушений регулярности не обнаружено")
+                else:
+                    # Показываем детали нарушений
+                    st.markdown("###### Детали нарушений:")
+                    n_gaps = int(combined_mask.sum())
+                    st.warning(
+                        f"**Обнаружено {n_gaps} пропусков** во временном ряде. "
+                        f"Временная колонка: `{date_col}`" + 
+                        (f", группирующая: `{group_col}`" if group_col else "")
+                    )
+
+                    # ИСПРАВЛЕНИЕ: Определяем частоту (с умным fallback)
+                    freq = (computed_freq_info or {}).get('inferred_freq') or \
+                        regularity_freq_info.get('inferred_freq')
+                    if not freq:
+                        # Умное определение частоты по данным
+                        if date_col and date_col in df_work.columns:
+                            df_temp = df_work.copy()
+                            if not pd.api.types.is_datetime64_any_dtype(df_temp[date_col]):
+                                df_temp[date_col] = pd.to_datetime(df_temp[date_col], errors='coerce')
+                            intervals = df_temp[date_col].sort_values().diff().dropna()
+                            if len(intervals) > 0:
+                                median_interval = intervals.median()
+                                if median_interval.days <= 1:
+                                    freq = 'D'
+                                elif median_interval.days <= 7:
+                                    freq = 'W'
+                                elif median_interval.days <= 31:
+                                    freq = 'ME'
+                                elif median_interval.days <= 92:
+                                    freq = 'QE'
+                                else:
+                                    freq = 'YE'
+                            else:
+                                freq = 'D'
+                        else:
+                            freq = 'D'
+
+                    # Показываем примеры пропусков
+                    st.markdown("###### Примеры пропущенных периодов:")
+                    gap_samples = df_work[combined_mask].head(5)
+                    if not gap_samples.empty and date_col:
+                        display_cols = [date_col]
+                        if group_col:
+                            display_cols = [group_col] + display_cols
+                        num_cols = df_work.select_dtypes(include=['number']).columns.tolist()
+                        if num_cols:
+                            display_cols.append(num_cols[0])
+                        display_cols = [c for c in display_cols if c in gap_samples.columns]
+                        st.dataframe(
+                            gap_samples[display_cols].head(5),
+                            use_container_width=True,
+                            height=200
+                        )
+
+                    # Фильтр отображения
+                    view_filter = st.radio(
+                        "Фильтр строк:",
+                        ["Только с нарушениями (пропуски)", "Показать всё"],
+                        horizontal=True,
+                        key="regularity_view_filter"
+                    )
+
+                    if view_filter == "Только с нарушениями (пропуски)":
+                        df_view = df_work[combined_mask].copy() if combined_mask.any() else df_work.iloc[:0].copy()
+                    else:
+                        df_view = df_work.copy()
+
+                    # Добавляем статус-колонку
+                    df_view = df_view.copy()
+                    df_view.insert(0, '_STATUS', df_view.index.map(
+                        lambda idx: "🔴 Пропуск" if combined_mask.loc[idx] else "🟢 Норма"
+                    ))
+
+                    # Интерактивная таблица (Ручная правка)
+                    edited_df = st.data_editor(
+                        df_view,
+                        use_container_width=True,
+                        height=300,
+                        num_rows="dynamic",
+                        disabled=['_STATUS'],
+                        key="regularity_editor",
+                        column_config={
+                            "_STATUS": st.column_config.TextColumn("Статус", disabled=True, width="small")
+                        }
+                    )
+
+                    # 💾 КНОПКА СОХРАНЕНИЯ
+                    c_save1, c_save2 = st.columns([4, 1])
+                    with c_save1:
+                        st.caption("💡 Отредактируйте значения вручную или выберите стратегию ниже")
+                    with c_save2:
+                        if st.button("💾 Сохранить", key="btn_save_manual_regularity", use_container_width=True):
+                            try:
+                                # ИСПРАВЛЕНИЕ: Корректное сохранение с учётом новых строк
+                                if '_STATUS' in edited_df.columns:
+                                    edited_df = edited_df.drop(columns=['_STATUS'])
+                                
+                                df_work_updated = df_work[~df_work.index.isin(df_view.index)].copy()
+                                if not edited_df.empty:
+                                    df_work_updated = pd.concat([df_work_updated, edited_df], ignore_index=False)
+                                
+                                st.session_state.df_regularity_work = df_work_updated
+                                st.session_state.df = df_work_updated
+                                st.session_state.validation_ready = False
+                                st.toast("✅ Правки сохранены!", icon="✅")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Ошибка сохранения: {e}")
+
+                    st.divider()
+
+                    # Панель стратегий (Автоматическая обработка)
+                    st.markdown("##### Стратегии обработки пропусков временного ряда")
+                    
+                    # ИНФОРМАЦИЯ О ТИПЕ ДАННЫХ
+                    if group_col:
+                        st.info(f"ℹ️ **Обнаружены панельные данные** (`{group_col}` × `{date_col}`). "
+                            f"Resample будет выполняться внутри каждой группы.")
+                    
+                    st.info(f"📅 **Определённая частота:** `{freq}`")
+                    
+                    c1, c2 = st.columns([2, 1])
+                    with c1:
+                        regularity_strategy = st.radio(
+                            "Выберите стратегию:",
+                            ["📈 Resample + Interpolate (линейная интерполяция)",
+                            "📊 Resample + Forward Fill (последнее значение, LOCF)",
+                            "📉 Resample + Backward Fill (следующее значение, NOCB)",
+                            "🗑️ AsFreq (обозначить пропуски как NaN)",
+                            "➕ Добавить фиктивные записи с нулевыми значениями",
+                            "🚩 Только отметить флагом (не менять данные)"],
+                            key="regularity_fill_strategy"
+                        )
+                        if "Interpolate" in regularity_strategy:
+                            st.info("ℹ️ Пропущенные значения будут заполнены линейной интерполяцией между соседними точками.")
+                        elif "Forward Fill" in regularity_strategy:
+                            st.info("ℹ️ Пропуски будут заполнены последним доступным значением (метод LOCF).")
+                        elif "Backward Fill" in regularity_strategy:
+                            st.info("ℹ️ Пропуски будут заполнены следующим значением (метод NOCB).")
+                        elif "AsFreq" in regularity_strategy:
+                            st.warning("⚠️ Ряд будет приведен к регулярной частоте, пропуски обозначены как NaN.")
+                        elif "фиктивные" in regularity_strategy:
+                            st.warning("⚠️ Будут добавлены строки с пропущенными датами и значениями 0/NaN.")
+                        elif "флагом" in regularity_strategy:
+                            st.info("🚩 Будет добавлена колонка `_has_gap` с отметкой о пропусках.")
+                    with c2:
+                        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+
+                    # Кнопка превью — отдельная, без автоматического show
+                    if st.button("Показать прогноз влияния на статистику", type="secondary", 
+                                use_container_width=True, key="btn_show_regularity_preview"):
+                        st.session_state.show_regularity_preview = True
+                        st.rerun()
+
+                    # Блок превью
+                    if st.session_state.get("show_regularity_preview", True):
+                        strategy = regularity_strategy
+                        st.markdown("##### Прогноз влияния на временной ряд:")
+
+                        try:
+                            df_preview = df_work.copy()
+                            num_cols = df_preview.select_dtypes(include=['number']).columns.tolist()
+                            cat_cols = df_preview.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
+                            cat_cols = [c for c in cat_cols if c != date_col]
+
+                            # ИСПРАВЛЕНИЕ: Единая функция применения стратегии
+                            def _apply_regularity_strategy(df_input: pd.DataFrame, strategy: str, 
+                                                        freq: str, date_col: str, group_col: str) -> pd.DataFrame:
+                                """Применяет стратегию обработки нарушений регулярности."""
+                                df_result = df_input.copy()
+                                
+                                # Приводим дату к datetime
+                                if not pd.api.types.is_datetime64_any_dtype(df_result[date_col]):
+                                    df_result[date_col] = pd.to_datetime(df_result[date_col], errors='coerce')
+                                
+                                if "Interpolate" in strategy or "Forward Fill" in strategy or \
+                                "Backward Fill" in strategy or "AsFreq" in strategy:
+                                    
+                                    # Определяем метод заполнения
+                                    if "Interpolate" in strategy:
+                                        fill_method = 'interpolate'
+                                    elif "Forward Fill" in strategy:
+                                        fill_method = 'ffill'
+                                    elif "Backward Fill" in strategy:
+                                        fill_method = 'bfill'
+                                    else:
+                                        fill_method = 'asfreq'
+                                    
+                                    # ИСПРАВЛЕНИЕ: Функция для обработки одной группы
+                                    def _process_single_group(group_df, freq, fill_method):
+                                        """Обрабатывает одну группу (или весь DataFrame для обычных рядов)."""
+                                        # Устанавливаем дату как индекс
+                                        df_temp = group_df.set_index(date_col).sort_index()
+                                        
+                                        # ИСПРАВЛЕНИЕ: Проверяем на дубликаты в индексе и агрегируем их
+                                        if df_temp.index.duplicated().any():
+                                            # Разделяем числовые и категориальные колонки
+                                            num_cols = df_temp.select_dtypes(include=['number']).columns.tolist()
+                                            cat_cols = df_temp.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
+                                            
+                                            # Агрегируем: для числовых — mean, для категориальных — first
+                                            agg_dict = {}
+                                            for col in num_cols:
+                                                agg_dict[col] = 'mean'
+                                            for col in cat_cols:
+                                                agg_dict[col] = 'first'
+                                            
+                                            df_temp = df_temp.groupby(df_temp.index).agg(agg_dict)
+                                        
+                                        # Разделяем числовые и категориальные колонки
+                                        num_cols = df_temp.select_dtypes(include=['number']).columns.tolist()
+                                        cat_cols = df_temp.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
+                                        
+                                        # Resample для числовых колонок
+                                        if num_cols:
+                                            resampled_num = df_temp[num_cols].resample(freq)
+                                            if fill_method == 'interpolate':
+                                                filled_num = resampled_num.mean().interpolate(method='linear')
+                                            elif fill_method == 'ffill':
+                                                filled_num = resampled_num.mean().ffill()
+                                            elif fill_method == 'bfill':
+                                                filled_num = resampled_num.mean().bfill()
+                                            else:  # asfreq
+                                                filled_num = resampled_num.asfreq()
+                                        else:
+                                            filled_num = pd.DataFrame()
+                                        
+                                        # Resample для категориальных колонок
+                                        if cat_cols:
+                                            resampled_cat = df_temp[cat_cols].resample(freq)
+                                            if fill_method in ['interpolate', 'ffill']:
+                                                filled_cat = resampled_cat.ffill()
+                                            elif fill_method == 'bfill':
+                                                filled_cat = resampled_cat.bfill()
+                                            else:  # asfreq
+                                                filled_cat = resampled_cat.asfreq()
+                                        else:
+                                            filled_cat = pd.DataFrame()
+                                        
+                                        # Объединяем результаты
+                                        if not filled_num.empty and not filled_cat.empty:
+                                            filled = pd.concat([filled_num, filled_cat], axis=1)
+                                        elif not filled_num.empty:
+                                            filled = filled_num
+                                        elif not filled_cat.empty:
+                                            filled = filled_cat
+                                        else:
+                                            filled = pd.DataFrame()
+                                        
+                                        return filled.reset_index()
+                                    
+                                    if group_col:
+                                        # ПАНЕЛЬНЫЕ ДАННЫЕ: groupby + обработка каждой группы отдельно
+                                        grouped_results = []
+                                        for group_name, group_df in df_result.groupby(group_col):
+                                            filled = _process_single_group(group_df, freq, fill_method)
+                                            filled[group_col] = group_name
+                                            grouped_results.append(filled)
+                                        
+                                        df_result = pd.concat(grouped_results, ignore_index=True)
+                                    else:
+                                        # ОБЫЧНЫЙ ВРЕМЕННОЙ РЯД: обрабатываем весь DataFrame
+                                        df_result = _process_single_group(df_result, freq, fill_method)
+                                
+                                elif "фиктивные" in strategy:
+                                    # Добавить фиктивные записи
+                                    def _add_fictitious_records(group_df, freq, group_col=None, group_name=None):
+                                        """Добавляет фиктивные записи для одной группы."""
+                                        df_temp = group_df.set_index(date_col).sort_index()
+                                        
+                                        # 🔧 Агрегируем дубликаты
+                                        if df_temp.index.duplicated().any():
+                                            num_cols = df_temp.select_dtypes(include=['number']).columns.tolist()
+                                            cat_cols = df_temp.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
+                                            agg_dict = {col: 'mean' for col in num_cols}
+                                            agg_dict.update({col: 'first' for col in cat_cols})
+                                            df_temp = df_temp.groupby(df_temp.index).agg(agg_dict)
+                                        
+                                        # Создаём полный диапазон дат
+                                        full_range = pd.date_range(
+                                            start=df_temp.index.min(),
+                                            end=df_temp.index.max(),
+                                            freq=freq
+                                        )
+                                        reindexed = df_temp.reindex(full_range)
+                                        
+                                        # Заполняем категориальные колонки
+                                        cat_cols = reindexed.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
+                                        for cat_col in cat_cols:
+                                            if cat_col in reindexed.columns:
+                                                reindexed[cat_col] = reindexed[cat_col].ffill().bfill()
+                                        
+                                        # Заполняем числовые нулями
+                                        num_cols = reindexed.select_dtypes(include=['number']).columns.tolist()
+                                        for num_col in num_cols:
+                                            if num_col in reindexed.columns:
+                                                reindexed[num_col] = reindexed[num_col].fillna(0)
+                                        
+                                        reindexed = reindexed.reset_index().rename(columns={'index': date_col})
+                                        
+                                        if group_col and group_name is not None:
+                                            reindexed[group_col] = group_name
+                                        
+                                        return reindexed
+                                    
+                                    if group_col:
+                                        # Для панельных данных — для каждой группы свой диапазон
+                                        grouped_results = []
+                                        for group_name, group_df in df_result.groupby(group_col):
+                                            reindexed = _add_fictitious_records(group_df, freq, group_col, group_name)
+                                            grouped_results.append(reindexed)
+                                        
+                                        df_result = pd.concat(grouped_results, ignore_index=True)
+                                    else:
+                                        df_result = _add_fictitious_records(df_result, freq)
+                                
+                                elif "флагом" in strategy:
+                                    # Реализация стратегии "только флаг"
+                                    mask, _, _, _ = _compute_regularity_violations(df_result)
+                                    df_result['_has_gap'] = mask
+                                
+                                return df_result
+
+                            # Применяем стратегию
+                            df_preview = _apply_regularity_strategy(df_preview, strategy, freq, date_col, group_col)
+
+                            # Предупреждение о потере данных при asfreq
+                            if "AsFreq" in strategy:
+                                n_new_nan = df_preview[num_cols].isna().sum().sum() if num_cols else 0
+                                if n_new_nan > 0:
+                                    st.warning(f"⚠️ После AsFreq появилось **{n_new_nan}** новых NaN. "
+                                            f"Требуется дальнейшая обработка пропусков.")
+
+                            # Предупреждение о создании новых записей
+                            n_new_rows = len(df_preview) - len(df_work)
+                            if n_new_rows > 0:
+                                st.info(f"ℹ️ Добавлено **{n_new_rows}** новых записей "
+                                    f"({len(df_work):,} → {len(df_preview):,})")
+
+                            # Метрики
+                            c_p1, c_p2, c_p3, c_p4 = st.columns(4)
+                            c_p1.metric("📊 Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
+                                    delta=f"{len(df_preview)-len(df_work):+}")
+
+                            if num_cols:
+                                col = num_cols[0]
+                                def safe_stat(d, c, f):
+                                    if c not in d.columns or d.empty or d[c].notna().sum() == 0:
+                                        return 0.0
+                                    return f(d[c].dropna())
+
+                                m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
+                                m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
+
+                                fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
+                                delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
+
+                                c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                                c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                                c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+
+                            st.caption(f"📅 Частота: {freq} | Стратегия: {strategy}")
+
+                            # Проверка регулярности после применения стратегии
+                            new_mask, _, _, new_freq_info = _compute_regularity_violations(df_preview)
+                            new_gaps = int(new_mask.sum())
+                            if new_gaps == 0:
+                                st.success(f"✅ После применения стратегии ряд стал регулярным (freq={freq})")
+                            else:
+                                st.warning(f"⚠️ После применения стратегии осталось **{new_gaps}** пропусков")
+
+                            # Кнопки подтверждения с полной синхронизацией
+                            st.divider()
+                            c_ok, c_cancel = st.columns(2)
+                            with c_ok:
+                                if st.button("💾 Подтвердить изменения", type="primary", 
+                                            use_container_width=True, key="btn_confirm_regularity"):
+                                    try:
+                                        # Применяем стратегию заново к df_work
+                                        df_final = _apply_regularity_strategy(df_work, strategy, freq, date_col, group_col)
+                                        
+                                        # СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
+                                        st.session_state.df = df_final.copy()
+                                        st.session_state.df_regularity_work = df_final.copy()
+                                        st.session_state.validation_ready = False
+                                        st.session_state.show_regularity_preview = False
+                                        
+                                        # СОХРАНЕНИЕ ПАРАМЕТРОВ ДЛЯ ОБРАТНОГО ПРЕОБРАЗОВАНИЯ
+                                        st.session_state.regularity_transform_params = {
+                                            'strategy': strategy,
+                                            'original_freq': freq,
+                                            'original_length': len(df_work),
+                                            'date_col': date_col,
+                                            'group_col': group_col,
+                                            'new_length': len(df_final)
+                                        }
+                                        
+                                        # 🔥 Удаляем рабочие копии других модулей
+                                        work_dfs = [
+                                            "df_missing_work", "df_pattern_work", "df_range_work",
+                                            "df_outlier_work", "df_inclusion_work", "df_referential_work",
+                                            "df_text_work", "df_consistency_work", "df_uniqueness_work",
+                                            "df_variance_work", "df_smooth_work", "df_stationarity_work",
+                                            "df_scaling_work"
+                                        ]
+                                        for work_df_name in work_dfs:
+                                            if work_df_name in st.session_state:
+                                                del st.session_state[work_df_name]
+                                        
+                                        # Сбрасываем результаты валидации
+                                        if "val_results" in st.session_state:
+                                            del st.session_state.val_results
+                                        
+                                        st.success(f"✅ Стратегия **{strategy}** применена! "
+                                                f"Записей: {len(df_work):,} → {len(df_final):,}. "
+                                                f"Перезапустите валидацию.")
+                                        st.rerun()
+                                        
+                                    except Exception as e:
+                                        st.error(f"❌ Ошибка применения стратегии: {e}")
+                                        import traceback
+                                        with st.expander("🔍 Stack trace"):
+                                            st.code(traceback.format_exc(), language="python")
+                            
+                            with c_cancel:
+                                if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_regularity"):
+                                    st.session_state.show_regularity_preview = False
+                                    st.rerun()
+                                    
+                        except Exception as e:
+                            st.error(f"❌ Ошибка превью: {e}")
+                            import traceback
+                            with st.expander("🔍 Stack trace"):
+                                st.code(traceback.format_exc(), language="python")
+
 
         # ───────────────────────────────────────────────────────────
         # 10. ПРОВЕРКА ДОСТАТОЧНОСТИ ЧИСЛА НАБЛЮДЕНИЙ (sufficiency)
@@ -9966,6 +10247,7 @@ with tab_preprocessing:
                 st.session_state.prep_props_baseline = props_after  # Обновляем baseline
 
     
+    
     # ═══════════════════════════════════════════════════════
     # 🔹 3. ПРОВЕРКА РЕГУЛЯРНОСТИ ЧАСТОТЫ
     # ═══════════════════════════════════════════════════════
@@ -9973,27 +10255,145 @@ with tab_preprocessing:
     st.markdown("### Регулярность временного ряда")
     st.caption("Критично для ARIMA, STL, FFT, сезонного дифференцирования. Нерегулярный шаг ломает модели.")
 
-    
     # ── ДИАГНОСТИКА ТЕКУЩЕЙ РЕГУЛЯРНОСТИ ──────────────────
     if st.session_state.primary_date_col:
         date_col = st.session_state.primary_date_col
         df_reg = st.session_state.df.copy()
-        df_reg[date_col] = pd.to_datetime(df_reg[date_col])
+        
+        # КРИТИЧЕСКАЯ ПРОВЕРКА 0: ОТСОРТИРОВАНЫ ЛИ ДАННЫЕ?
+        if not pd.api.types.is_datetime64_any_dtype(df_reg[date_col]):
+            df_reg[date_col] = pd.to_datetime(df_reg[date_col], errors='coerce')
+        
+        # Определяем группирующую колонку (для панельных данных)
+        group_col = None
+        for c in df_reg.columns:
+            if c != date_col and df_reg[c].dtype == 'object' and df_reg[c].nunique() < 100:
+                group_col = c
+                break
+        
+        # Проверяем монотонность (отсортирован ли ряд по возрастанию)
+        is_sorted = True
+        sort_issues_count = 0
+        
+        if group_col:
+            for name, group in df_reg.groupby(group_col):
+                if not group[date_col].is_monotonic_increasing:
+                    is_sorted = False
+                    sort_issues_count += int((group[date_col].diff() < pd.Timedelta(seconds=0)).sum())
+        else:
+            if not df_reg[date_col].is_monotonic_increasing:
+                is_sorted = False
+                sort_issues_count = int((df_reg[date_col].diff() < pd.Timedelta(seconds=0)).sum())
+        
+        #  ИНТЕРФЕЙС: ЕСЛИ ДАННЫЕ НЕ ОТСОРТИРОВАНЫ
+        if not is_sorted:
+            st.error(f"⚠️ **Критическое нарушение: Временной ряд не отсортирован!**")
+            st.warning(
+                f"Обнаружено **{sort_issues_count} записей**, нарушающих хронологический порядок. "
+                f"Проверка на пропуски (gaps) невозможна на неупорядоченных данных — "
+                f"алгоритм будет ложно детектировать переходы между периодами как пропуски."
+            )
+            
+            if group_col:
+                st.info(
+                    f"ℹ️ Обнаружены **панельные данные** (группировка по `{group_col}`). "
+                    f"Данные должны быть отсортированы сначала по `{group_col}`, затем по `{date_col}`."
+                )
+            
+            # КНОПКА ИСПРАВЛЕНИЯ
+            c_fix1, c_fix2 = st.columns([1, 4])
+            with c_fix1:
+                if st.button("🔧 Отсортировать по дате", type="primary", use_container_width=True, 
+                            key="btn_sort_for_regularity"):
+                    if group_col:
+                        st.session_state.df = st.session_state.df.sort_values(
+                            [group_col, date_col]
+                        ).reset_index(drop=True)
+                    else:
+                        st.session_state.df = st.session_state.df.sort_values(date_col).reset_index(drop=True)
+                    
+                    # Сбрасываем рабочие копии
+                    work_dfs = [
+                        "df_missing_work", "df_pattern_work", "df_range_work",
+                        "df_outlier_work", "df_inclusion_work", "df_referential_work",
+                        "df_text_work", "df_consistency_work", "df_uniqueness_work",
+                        "df_regularity_work", "df_regular_work"
+                    ]
+                    for work_df_name in work_dfs:
+                        if work_df_name in st.session_state:
+                            del st.session_state[work_df_name]
+                    
+                    if "val_results" in st.session_state:
+                        del st.session_state.val_results
+                    
+                    st.toast("✅ Данные отсортированы! Перезагрузка...", icon="✅")
+                    st.rerun()
+            
+            st.info(
+                "💡 **Рекомендация:** Сначала восстановите правильный порядок наблюдений, "
+                "затем проверьте регулярность. Без сортировки любые проверки временных рядов "
+                "(пропуски, лаги, сезонность) будут давать некорректные результаты."
+            )
+            st.stop()
+        
+        # ПРОВЕРКА 1: РЕГУЛЯРНОСТЬ (только если отсортировано)
         df_reg = df_reg.sort_values(date_col)
         
-        # Индексы для анализа
-        df_reg_ts = df_reg.set_index(date_col)
+        # Инициализация метрик по умолчанию
+        inferred_freq = None
+        is_regular = False
+        interval_std = 0
+        gap_count = 0
+        modal_interval = pd.Timedelta(hours=24)
         
-        # Определение частоты
-        inferred_freq = pd.infer_freq(df_reg_ts.index.drop_duplicates().sort_values())
-        is_regular = inferred_freq is not None
-        
-        # Интервалы между наблюдениями
-        intervals = df_reg_ts.index.to_series().diff().dropna()
-        intervals_seconds = intervals.dt.total_seconds()
-        interval_std = intervals_seconds.std() if len(intervals_seconds) > 1 else 0
-        modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else pd.Timedelta(hours=24)
-        gap_count = sum(1 for i in intervals if i > modal_interval * 1.5)
+        if group_col:
+            # Панельные данные: агрегируем результаты по группам
+            total_gaps = 0
+            all_inferred_freq = None
+            total_interval_std = 0
+            groups_checked = 0
+            all_intervals = []
+            
+            for group_name, group_df in df_reg.groupby(group_col):
+                group_sorted = group_df.sort_values(date_col)
+                group_ts = group_sorted.set_index(date_col)
+                
+                group_freq = pd.infer_freq(group_ts.index.drop_duplicates().sort_values())
+                if group_freq and all_inferred_freq is None:
+                    all_inferred_freq = group_freq
+                
+                intervals = group_ts.index.to_series().diff().dropna()
+                if len(intervals) > 0:
+                    all_intervals.extend(intervals.tolist())
+                    group_modal = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else pd.Timedelta(hours=24)
+                    group_gaps = sum(1 for i in intervals if i > group_modal * 1.5)
+                    total_gaps += group_gaps
+                    total_interval_std += intervals.dt.total_seconds().std() if len(intervals) > 1 else 0
+                    groups_checked += 1
+            
+            inferred_freq = all_inferred_freq
+            is_regular = inferred_freq is not None and total_gaps == 0
+            interval_std = total_interval_std / groups_checked if groups_checked > 0 else 0
+            gap_count = total_gaps
+            
+            if all_intervals:
+                modal_interval = pd.Series(all_intervals).mode().iloc[0] if len(pd.Series(all_intervals).mode()) > 0 else pd.Timedelta(hours=24)
+            
+            st.info(
+                f"ℹ️ **Панельные данные:** обнаружена группировка по `{group_col}` "
+                f"({df_reg[group_col].nunique()} групп). "
+                f"Регулярность проверяется внутри каждой группы отдельно."
+            )
+        else:
+            # Обычный временной ряд
+            df_reg_ts = df_reg.set_index(date_col)
+            inferred_freq = pd.infer_freq(df_reg_ts.index.drop_duplicates().sort_values())
+            is_regular = inferred_freq is not None
+            intervals = df_reg_ts.index.to_series().diff().dropna()
+            intervals_seconds = intervals.dt.total_seconds()
+            interval_std = intervals_seconds.std() if len(intervals_seconds) > 1 else 0
+            modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else pd.Timedelta(hours=24)
+            gap_count = sum(1 for i in intervals if i > modal_interval * 1.5)
         
         # ── ОТОБРАЖЕНИЕ МЕТРИК С УМЕНЬШЕННЫМ ШРИФТОМ ──────
         c_diag1, c_diag2, c_diag3, c_diag4 = st.columns(4)
@@ -10005,19 +10405,14 @@ with tab_preprocessing:
         
         with c_diag2:
             st.markdown("**Пропущенных периодов**")
-            # Красный цвет если есть пропуски, зелёный если нет
             gap_color = "#dc2626" if gap_count > 0 else "#16a34a"
-            # Форматируем число с разделителями тысяч (пробел вместо запятой)
             gap_count_formatted = f"{gap_count:,}".replace(",", " ")
             st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: {gap_color};'>{gap_count_formatted}</div>", 
                     unsafe_allow_html=True)
         
         with c_diag3:
             st.markdown("**Std интервалов**")
-            # Форматируем число с разделителями тысяч
             interval_std_formatted = f"{interval_std:,.0f}".replace(",", " ")
-            
-            # 🔧 Эмодзи в ту же строку, что и значение
             icon = "⚠️" if interval_std > 3600 else "✅"
             icon_color = "#dc2626" if interval_std > 3600 else "#16a34a"
             
@@ -10036,17 +10431,16 @@ with tab_preprocessing:
             st.markdown(f"<div style='font-size: 14px; font-weight: 600; color: {status_color};'>{status_text}</div>", 
                     unsafe_allow_html=True)
         
-        # Добавляем пустую строку для отступа
         st.markdown("<div style='height: 30px;'></div>", unsafe_allow_html=True)
 
-        # ── ТЕХНИЧЕСКАЯ СПРАВКА (ПЕРЕНЕСЕНА В НАЧАЛО) ─────────
-        with st.expander(" Цели субмодуля ⁞ Регулярность частоты", expanded=False):
+        # ── ТЕХНИЧЕСКАЯ СПРАВКА ─────────
+        with st.expander("Цели субмодуля ⁞ Регулярность частоты", expanded=False):
             st.markdown("""
             **Зачем нужна регулярность:**
-            -  **ARIMA/SARIMA:** Требуют регулярный `DatetimeIndex` для расчёта лагов
-            -  **STL-декомпозиция:** Не работает с пропусками во временной оси
-            -  **FFT/Спектральный анализ:** Требуют равномерную сетку частот
-            -  **Сезонное дифференцирование:** Нужен фиксированный сезонный период
+            - 🔴 **ARIMA/SARIMA:** Требуют регулярный `DatetimeIndex` для расчёта лагов
+            - 🔴 **STL-декомпозиция:** Не работает с пропусками во временной оси
+            - 🔴 **FFT/Спектральный анализ:** Требуют равномерную сетку частот
+            - 🔴 **Сезонное дифференцирование:** Нужен фиксированный сезонный период
             
             **Методы обработки:**
             
@@ -10071,10 +10465,6 @@ with tab_preprocessing:
         if is_regular and gap_count == 0:
             st.success("✅ Временной ряд имеет регулярную частоту. Преобразование не требуется.")
         else:
-            # ────────────────────────────────────────────────
-            # 🎮 ПЕСОЧНИЦА: РЕГУЛЯРНОСТЬ ЧАСТОТЫ
-            # ────────────────────────────────────────────────
-            
             # Инициализация session_state
             if "df_regular_work" not in st.session_state:
                 st.session_state.df_regular_work = df.copy()
@@ -10087,7 +10477,17 @@ with tab_preprocessing:
             c1, c2, c3 = st.columns([27, 52, 21])
             
             with c1:
-                st.markdown("######  Панель управления")
+                st.markdown("###### Панель управления")
+                
+                # Для панельных данных — выбор группы для визуализации
+                selected_group = None
+                if group_col:
+                    selected_group = st.selectbox(
+                        f"Группа для анализа ({group_col}):",
+                        options=df_reg[group_col].unique().tolist(),
+                        index=0,
+                        key="regularity_group_select"
+                    )
                 
                 # Выбор метода обработки
                 reg_method = st.radio(
@@ -10114,12 +10514,14 @@ with tab_preprocessing:
                 target_freq = st.selectbox(
                     "Целевая частота:",
                     options=list(freq_options.keys()),
-                    index=0 if inferred_freq == "D" else 2,  # По умолчанию месяц для нерегулярных
+                    index=0 if inferred_freq == "D" else 2,
                     key="regularity_target_freq"
                 )
                 freq_code = freq_options[target_freq]
                 
                 # Настройки для interpolate
+                interp_method = "linear"
+                order = 2
                 if "Interpolate" in reg_method:
                     interp_method = st.selectbox(
                         "Метод интерполяции:",
@@ -10133,7 +10535,7 @@ with tab_preprocessing:
                 st.divider()
                 
                 # Кнопки действий
-                if st.button("▶ Применить преобразование", type="primary", use_container_width=True, key="btn_apply_regularity"):
+                if st.button("▶️ Применить преобразование", type="primary", use_container_width=True, key="btn_apply_regularity"):
                     st.session_state.show_regular_preview = True
                     st.rerun()
                 
@@ -10152,9 +10554,9 @@ with tab_preprocessing:
             
             # ── ЦЕНТРАЛЬНАЯ КОЛОНКА: ВИЗУАЛИЗАЦИЯ ──────────
             with c2:
-                st.markdown("######  Визуализация: До / После")
+                st.markdown("###### Визуализация: До / После")
                 
-                # Выбор колонки для отображения
+                # 🔧 Выбор колонки для отображения
                 num_cols = st.session_state.col_types.get("num", [])
                 if num_cols:
                     target_col = st.selectbox(
@@ -10164,36 +10566,43 @@ with tab_preprocessing:
                         key="regularity_plot_col"
                     )
                     
-                    if target_col in df_reg_ts.columns:
-                        original_series = df_reg_ts[target_col].dropna()
-                        
-                        if st.session_state.show_regular_preview:
-                            # Применяем преобразование для preview
-                            df_preview_reg = df_reg.copy()
-                            df_preview_reg[date_col] = pd.to_datetime(df_preview_reg[date_col])
-                            df_preview_reg = df_preview_reg.sort_values(date_col)
-                            df_preview_reg = df_preview_reg.set_index(date_col)
-                            
+                    # Подготовка данных для визуализации
+                    if group_col and selected_group:
+                        # Для панельных данных — фильтруем по выбранной группе
+                        df_viz = df_reg[df_reg[group_col] == selected_group].copy()
+                        df_viz = df_viz.set_index(date_col).sort_index()
+                        original_series = df_viz[target_col].dropna()
+                        viz_title_prefix = f"{selected_group} — "
+                    else:
+                        # Обычный временной ряд
+                        df_viz = df_reg.set_index(date_col).sort_index()
+                        original_series = df_viz[target_col].dropna()
+                        viz_title_prefix = ""
+                    
+                    if st.session_state.show_regular_preview:
+                        # 🔧 Применяем преобразование для preview
+                        try:
                             if "Resample" in reg_method or "AsFreq" in reg_method:
                                 if "AsFreq" in reg_method:
-                                    df_resampled = df_preview_reg[target_col].resample(freq_code).mean()
+                                    df_resampled = original_series.resample(freq_code).asfreq()
                                 elif "Interpolate" in reg_method:
+                                    resampled_mean = original_series.resample(freq_code).mean()
                                     if interp_method == "linear":
-                                        df_resampled = df_preview_reg[target_col].resample(freq_code).mean().interpolate(method="linear")
+                                        df_resampled = resampled_mean.interpolate(method="linear")
                                     elif interp_method == "spline":
-                                        df_resampled = df_preview_reg[target_col].resample(freq_code).mean().interpolate(method="spline", order=order)
+                                        df_resampled = resampled_mean.interpolate(method="spline", order=order)
                                     elif interp_method == "quadratic":
-                                        df_resampled = df_preview_reg[target_col].resample(freq_code).mean().interpolate(method="polynomial", order=2)
+                                        df_resampled = resampled_mean.interpolate(method="polynomial", order=2)
                                     elif interp_method == "polynomial":
-                                        df_resampled = df_preview_reg[target_col].resample(freq_code).mean().interpolate(method="polynomial", order=order)
+                                        df_resampled = resampled_mean.interpolate(method="polynomial", order=order)
                                 elif "Forward Fill" in reg_method:
-                                    df_resampled = df_preview_reg[target_col].resample(freq_code).mean().ffill()
+                                    df_resampled = original_series.resample(freq_code).mean().ffill()
                                 elif "Backward Fill" in reg_method:
-                                    df_resampled = df_preview_reg[target_col].resample(freq_code).mean().bfill()
+                                    df_resampled = original_series.resample(freq_code).mean().bfill()
                             elif "Агрегация" in reg_method:
-                                df_resampled = df_preview_reg[target_col].resample(freq_code).mean()
+                                df_resampled = original_series.resample(freq_code).mean()
                             else:
-                                df_resampled = df_preview_reg[target_col]
+                                df_resampled = original_series
                             
                             # Метрики после преобразования
                             new_inferred_freq = pd.infer_freq(df_resampled.index.dropna())
@@ -10203,12 +10612,12 @@ with tab_preprocessing:
                             fig = make_subplots(
                                 rows=2, cols=1,
                                 subplot_titles=(
-                                    f"Исходный ряд (частота: {current_freq_display})",
-                                    f"После преобразования (частота: {new_inferred_freq or 'Нерегулярная'})"
+                                    f"{viz_title_prefix}Исходный ряд (частота: {current_freq_display})",
+                                    f"{viz_title_prefix}После преобразования (частота: {new_inferred_freq or 'Нерегулярная'})"
                                 ),
                                 vertical_spacing=0.10
                             )
-                            fig.update_annotations(font=dict(size=13, color="#6b7280"))  # Серый цвет
+                            fig.update_annotations(font=dict(size=13, color="#6b7280"))
 
                             # Исходный ряд
                             fig.add_trace(
@@ -10236,7 +10645,6 @@ with tab_preprocessing:
                                 row=2, col=1
                             )
 
-                            # LAYOUT
                             fig.update_layout(
                                 height=700,
                                 margin=dict(l=50, r=20, t=80, b=40),
@@ -10247,7 +10655,6 @@ with tab_preprocessing:
                             fig.update_yaxes(title_text="Значение", row=1, col=1)
                             fig.update_yaxes(title_text="Значение", row=2, col=1)
 
-                            # Стилизуем subplot_titles
                             fig.update_annotations(
                                 font=dict(size=14, color="#1e293b"),
                                 yshift=10
@@ -10266,114 +10673,196 @@ with tab_preprocessing:
                             c_ok_reg, c_cancel_reg = st.columns(2)
                             with c_ok_reg:
                                 if st.button("✅ Применить к данным", type="primary", use_container_width=True, key="btn_confirm_regularity"):
-                                    # Обновляем основной df
-                                    df_final_reg = df.copy()
-                                    df_final_reg[date_col] = pd.to_datetime(df_final_reg[date_col])
-                                    df_final_reg = df_final_reg.sort_values(date_col)
-                                    df_final_reg = df_final_reg.set_index(date_col)
-                                    
-                                    if "Resample" in reg_method or "AsFreq" in reg_method:
-                                        if "AsFreq" in reg_method:
-                                            df_resampled_full = df_final_reg[target_col].resample(freq_code).mean()
-                                        elif "Interpolate" in reg_method:
-                                            if interp_method == "linear":
-                                                df_resampled_full = df_final_reg[target_col].resample(freq_code).mean().interpolate(method="linear")
-                                            elif interp_method == "spline":
-                                                df_resampled_full = df_final_reg[target_col].resample(freq_code).mean().interpolate(method="spline", order=order)
-                                            elif interp_method == "quadratic":
-                                                df_resampled_full = df_final_reg[target_col].resample(freq_code).mean().interpolate(method="polynomial", order=2)
-                                            elif interp_method == "polynomial":
-                                                df_resampled_full = df_final_reg[target_col].resample(freq_code).mean().interpolate(method="polynomial", order=order)
-                                        elif "Forward Fill" in reg_method:
-                                            df_resampled_full = df_final_reg[target_col].resample(freq_code).mean().ffill()
-                                        elif "Backward Fill" in reg_method:
-                                            df_resampled_full = df_final_reg[target_col].resample(freq_code).mean().bfill()
-                                    elif "Агрегация" in reg_method:
-                                        df_resampled_full = df_final_reg[target_col].resample(freq_code).mean()
-                                    
-                                    # Возвращаем в DataFrame
-                                    df_final_reg = df_resampled_full.dropna().reset_index()
-                                    
-                                    # Синхронизация всех рабочих копий
-                                    st.session_state.df = df_final_reg.copy()
-                                    st.session_state.validation_ready = False
-                                    st.session_state.show_regular_preview = False
-                                    
-                                    work_dfs = [
-                                        "df_missing_work", "df_pattern_work", "df_range_work",
-                                        "df_outlier_work", "df_inclusion_work", "df_referential_work",
-                                        "df_text_work", "df_consistency_work", "df_uniqueness_work",
-                                        "df_regularity_work", "df_regular_work"
-                                    ]
-                                    for work_df_name in work_dfs:
-                                        if work_df_name in st.session_state:
-                                            del st.session_state[work_df_name]
-                                    
-                                    if "val_results" in st.session_state:
-                                        del st.session_state.val_results
-                                    
-                                    st.success("✅ Регулярность частоты восстановлена! Перезапустите валидацию.")
-                                    st.rerun()
+                                    try:
+                                        # Применяем преобразование ко всему датасету
+                                        df_final_reg = df_reg.copy()
+                                        
+                                        if group_col:
+                                            # Для панельных данных — применяем к каждой группе отдельно
+                                            grouped_results = []
+                                            for group_name, group_df in df_final_reg.groupby(group_col):
+                                                group_df = group_df.set_index(date_col).sort_index()
+                                                group_series = group_df[target_col]
+                                                
+                                                # Применяем ту же логику преобразования
+                                                if "Resample" in reg_method or "AsFreq" in reg_method:
+                                                    if "AsFreq" in reg_method:
+                                                        resampled = group_series.resample(freq_code).asfreq()
+                                                    elif "Interpolate" in reg_method:
+                                                        resampled_mean = group_series.resample(freq_code).mean()
+                                                        if interp_method == "linear":
+                                                            resampled = resampled_mean.interpolate(method="linear")
+                                                        elif interp_method == "spline":
+                                                            resampled = resampled_mean.interpolate(method="spline", order=order)
+                                                        elif interp_method == "quadratic":
+                                                            resampled = resampled_mean.interpolate(method="polynomial", order=2)
+                                                        elif interp_method == "polynomial":
+                                                            resampled = resampled_mean.interpolate(method="polynomial", order=order)
+                                                    elif "Forward Fill" in reg_method:
+                                                        resampled = group_series.resample(freq_code).mean().ffill()
+                                                    elif "Backward Fill" in reg_method:
+                                                        resampled = group_series.resample(freq_code).mean().bfill()
+                                                elif "Агрегация" in reg_method:
+                                                    resampled = group_series.resample(freq_code).mean()
+                                                
+                                                # Преобразуем в DataFrame и добавляем группу
+                                                group_result = resampled.dropna().reset_index()
+                                                group_result[group_col] = group_name
+                                                
+                                                # Добавляем остальные колонки (кроме date и target)
+                                                other_cols = [c for c in group_df.columns if c != target_col]
+                                                for col in other_cols:
+                                                    if col != group_col:
+                                                        # Для категориальных — берём первое значение
+                                                        if group_df[col].dtype in ['object', 'string', 'category']:
+                                                            group_result[col] = group_df[col].iloc[0] if len(group_df) > 0 else None
+                                                        else:
+                                                            # Для числовых — resample с mean
+                                                            group_result[col] = group_df[col].resample(freq_code).mean().values[:len(group_result)]
+                                                
+                                                grouped_results.append(group_result)
+                                            
+                                            df_final_reg = pd.concat(grouped_results, ignore_index=True)
+                                        else:
+                                            # Обычный временной ряд
+                                            df_final_reg = df_final_reg.set_index(date_col).sort_index()
+                                            target_series = df_final_reg[target_col]
+                                            
+                                            if "Resample" in reg_method or "AsFreq" in reg_method:
+                                                if "AsFreq" in reg_method:
+                                                    resampled = target_series.resample(freq_code).asfreq()
+                                                elif "Interpolate" in reg_method:
+                                                    resampled_mean = target_series.resample(freq_code).mean()
+                                                    if interp_method == "linear":
+                                                        resampled = resampled_mean.interpolate(method="linear")
+                                                    elif interp_method == "spline":
+                                                        resampled = resampled_mean.interpolate(method="spline", order=order)
+                                                    elif interp_method == "quadratic":
+                                                        resampled = resampled_mean.interpolate(method="polynomial", order=2)
+                                                    elif interp_method == "polynomial":
+                                                        resampled = resampled_mean.interpolate(method="polynomial", order=order)
+                                                elif "Forward Fill" in reg_method:
+                                                    resampled = target_series.resample(freq_code).mean().ffill()
+                                                elif "Backward Fill" in reg_method:
+                                                    resampled = target_series.resample(freq_code).mean().bfill()
+                                            elif "Агрегация" in reg_method:
+                                                resampled = target_series.resample(freq_code).mean()
+                                            
+                                            df_final_reg = resampled.dropna().reset_index()
+                                        
+                                        # 🔧 Сохранение параметров для обратного преобразования
+                                        st.session_state.regularity_transform_params = {
+                                            'strategy': reg_method,
+                                            'original_freq': inferred_freq,
+                                            'target_freq': freq_code,
+                                            'original_length': len(df_reg),
+                                            'date_col': date_col,
+                                            'group_col': group_col,
+                                            'new_length': len(df_final_reg),
+                                            'target_col': target_col,
+                                            'interp_method': interp_method if "Interpolate" in reg_method else None,
+                                            'order': order if interp_method in ["spline", "polynomial"] else None
+                                        }
+                                        
+                                        # Синхронизация всех рабочих копий
+                                        st.session_state.df = df_final_reg.copy()
+                                        st.session_state.validation_ready = False
+                                        st.session_state.show_regular_preview = False
+                                        
+                                        work_dfs = [
+                                            "df_missing_work", "df_pattern_work", "df_range_work",
+                                            "df_outlier_work", "df_inclusion_work", "df_referential_work",
+                                            "df_text_work", "df_consistency_work", "df_uniqueness_work",
+                                            "df_regularity_work", "df_regular_work"
+                                        ]
+                                        for work_df_name in work_dfs:
+                                            if work_df_name in st.session_state:
+                                                del st.session_state[work_df_name]
+                                        
+                                        if "val_results" in st.session_state:
+                                            del st.session_state.val_results
+                                        
+                                        st.success(f"✅ Регулярность частоты восстановлена! Записей: {len(df_reg):,} → {len(df_final_reg):,}. Перезапустите валидацию.")
+                                        st.rerun()
+                                    except Exception as e:
+                                        st.error(f"❌ Ошибка применения преобразования: {e}")
+                                        import traceback
+                                        with st.expander("🔍 Stack trace"):
+                                            st.code(traceback.format_exc(), language="python")
                             
                             with c_cancel_reg:
                                 if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_regularity"):
                                     st.session_state.show_regular_preview = False
                                     st.rerun()
-                        else:
-                            # Показываем только исходный ряд
-                            fig = px.line(x=original_series.index, y=original_series.values,
-                                        labels={'x': 'Дата', 'y': target_col},
-                            )
-                            fig.update_layout(height=400, margin=dict(l=40, r=20, t=40, b=40))
-                            st.plotly_chart(fig, use_container_width=True)
-                            
-                            st.info("💡 Выберите метод обработки и нажмите 'Применить преобразование' для просмотра результата.")
+                        except Exception as e:
+                            st.error(f"❌ Ошибка превью: {e}")
+                            import traceback
+                            with st.expander("🔍 Stack trace"):
+                                st.code(traceback.format_exc(), language="python")
+                    else:
+                        # Показываем только исходный ряд
+                        fig = px.line(x=original_series.index, y=original_series.values,
+                                    labels={'x': 'Дата', 'y': target_col},
+                        )
+                        fig.update_layout(height=400, margin=dict(l=40, r=20, t=40, b=40))
+                        st.plotly_chart(fig, use_container_width=True)
+                        
+                        st.info("💡 Выберите метод обработки и нажмите 'Применить преобразование' для просмотра результата.")
                 else:
                     st.warning("⚠️ Нет числовых колонок для анализа.")
             
             # ── ПРАВАЯ КОЛОНКА: МЕТРИКИ КАЧЕСТВА ───────────
             with c3:
-                st.markdown("######  Метрики качества")
+                st.markdown("###### Метрики качества")
                 
                 with st.container(border=True):
                     st.markdown("**До преобразования:**")
                     st.metric("Частота", current_freq_display)
                     st.metric("Пропусков в ряду", f"{gap_count:,}".replace(",", " "))
-                    # Форматируем Std с разделителем тысяч
                     interval_std_formatted = f"{interval_std:,.0f}".replace(",", " ")
                     st.metric("Std интервалов", f"{interval_std_formatted} сек")
                     st.metric("Статус", "✅ Регулярная" if is_regular else "❌ Нерегулярная",
                             delta="Исправлено" if st.session_state.get('show_regular_preview') else None)
                 
                 if st.session_state.show_regular_preview:
-                    # Метрики после преобразования
-                    new_intervals = df_resampled.index.to_series().diff().dropna()
-                    new_intervals_sec = new_intervals.dt.total_seconds()
-                    new_std = new_intervals_sec.std() if len(new_intervals_sec) > 1 else 0
-                    new_gaps = sum(1 for i in new_intervals if i > new_intervals.mode().iloc[0] * 1.5) if len(new_intervals.mode()) > 0 else 0
-                    
-                    with st.container(border=True):
-                        st.markdown("**После преобразования:**")
-                        st.metric("Частота", new_inferred_freq if new_inferred_freq else "❌ Нерегулярная")
-                        st.metric("Пропусков в ряду", f"{new_gaps:,}".replace(",", " "))
-                        # Форматируем Std с разделителем тысяч
-                        new_std_formatted = f"{new_std:,.0f}".replace(",", " ")
-                        # Форматируем delta с разделителем
-                        delta_std = new_std - interval_std
-                        if abs(delta_std) > 100:
-                            delta_formatted = f"{delta_std:+,.0f}".replace(",", " ")
+                    try:
+                        # 🔧 Метрики после преобразования
+                        new_intervals = df_resampled.index.to_series().diff().dropna()
+                        new_intervals_sec = new_intervals.dt.total_seconds()
+                        new_std = new_intervals_sec.std() if len(new_intervals_sec) > 1 else 0
+                        
+                        # Безопасное вычис моды
+                        if len(new_intervals) > 0:
+                            new_mode = new_intervals.mode()
+                            if len(new_mode) > 0:
+                                new_gaps = sum(1 for i in new_intervals if i > new_mode.iloc[0] * 1.5)
+                            else:
+                                new_gaps = 0
                         else:
-                            delta_formatted = None
-                        st.metric("Std интервалов", f"{new_std_formatted} сек", delta=delta_formatted)
-                        st.metric("Статус", "✅ Регулярная" if new_is_regular else "❌ Нерегулярная")
-                    
-                    st.divider()
-                    
-                    # Рекомендации
-                    if not new_is_regular:
-                        st.warning("💡 **Рекомендация:** Попробуйте метод 'AsFreq' или увеличьте частоту агрегации.")
-                    else:
-                        st.success("✅ **Ряд готов** для ARIMA, STL, FFT, сезонного дифференцирования!")
+                            new_gaps = 0
+                        
+                        with st.container(border=True):
+                            st.markdown("**После преобразования:**")
+                            st.metric("Частота", new_inferred_freq if new_inferred_freq else "❌ Нерегулярная")
+                            st.metric("Пропусков в ряду", f"{new_gaps:,}".replace(",", " "))
+                            new_std_formatted = f"{new_std:,.0f}".replace(",", " ")
+                            delta_std = new_std - interval_std
+                            if abs(delta_std) > 100:
+                                delta_formatted = f"{delta_std:+,.0f}".replace(",", " ")
+                            else:
+                                delta_formatted = None
+                            st.metric("Std интервалов", f"{new_std_formatted} сек", delta=delta_formatted)
+                            st.metric("Статус", "✅ Регулярная" if new_is_regular else "❌ Нерегулярная")
+                        
+                        st.divider()
+                        
+                        # Рекомендации
+                        if not new_is_regular:
+                            st.warning("💡 **Рекомендация:** Попробуйте метод 'AsFreq' или увеличьте частоту агрегации.")
+                        else:
+                            st.success("✅ **Ряд готов** для ARIMA, STL, FFT, сезонного дифференцирования!")
+                    except Exception as e:
+                        st.warning(f"⚠️ Не удалось вычислить метрики после преобразования: {e}")
                 
                 # Сохранённая конфигурация
                 if st.session_state.regularity_config:
