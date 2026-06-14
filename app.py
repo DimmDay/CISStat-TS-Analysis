@@ -6518,205 +6518,372 @@ with tab_validation:
         # 6. ПРОВЕРКА ПРИНАДЛЕЖНОСТИ К НАБОРУ (inclusion/lookup)
         # ───────────────────────────────────────────────────────────
 
-        # 6. Inclusion/Lookup
-        inclusion_results_local = locals().get('inclusion_results', [])
+        # 🔧 ИСПРАВЛЕНИЕ: Используем session_state вместо locals()
+        inclusion_results_local = st.session_state.val_results.get("inclusion", [])
         inclusion_issues = len(inclusion_results_local) > 0
         inclusion_viol_count = sum(r.get('Нарушений', 0) for r in inclusion_results_local) if inclusion_issues else 0
 
-        make_card(" Проверка принадлежности к набору (inclusion/lookup)", inclusion_issues,
+        make_card("Проверка принадлежности к набору (inclusion/lookup)", inclusion_issues,
             "**◻️ Метрики:** `% invalid = not_in_set/total`, число значений вне справочника.  \n"
             "**◻️ Алгоритм:** `df[col].isin(allowed_values)`, проверка по внешним справочникам.  \n"
             "**◻️ Влияние на TS:** Неизвестные категории ломают `groupby`, `pivot`, `resample` по категориям.  \n"
-            "**◻️ Описание:** Модуль проверяет, что значения в категориальных колонках принадлежат утверждённому справочнику (домену). Для типовых датасетов используются готовые шаблоны YAML.  \n"
-            "Для новых типов данных платформа автогенерирует базовые правила, аналитик их корректирует. Выявляются опечатки, устаревшие коды, несуществующие категории. Критично для агрегации и фильтрации данных.",
+            "**◻️ Описание:** Модуль проверяет, что значения в категориальных колонках принадлежат утверждённому справочнику (домену). "
+            "Для типовых датасетов используются готовые шаблоны YAML.  \n"
+            "Для новых типов данных платформа автогенерирует базовые правила, аналитик их корректирует. "
+            "Выявляются опечатки, устаревшие коды, несуществующие категории. Критично для агрегации и фильтрации данных.",
             "✅ Все значения соответствуют справочникам" if not inclusion_issues else f"⚠️ Найдено {inclusion_viol_count} нарушений",
             "✅" if not inclusion_issues else "⚠️", None)
 
-        # ── 🔧 ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
+        # ── ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
         if inclusion_issues:
-            with st.expander("🔧 Полный пайплайн обработки нарушений принадлежности", expanded=True):
-                st.markdown("### 📋 Таблица нарушений с ручной корректировкой")
+            with st.expander("Полный пайплайн обработки нарушений принадлежности", expanded=True):
+                st.markdown("### Таблица нарушений с ручной корректировкой")
 
                 # Инициализация состояний
                 if "df_inclusion_work" not in st.session_state:
                     st.session_state.df_inclusion_work = df.copy()
                 df_work = st.session_state.df_inclusion_work
 
+                # ИСПРАВЛЕНИЕ: Получаем inclusion_rules из session_state
+                rules = st.session_state.get("rules", {})
+                inclusion_rules = rules.get("inclusion", {})
+                inclusion_defaults = rules.get("inclusion_defaults", {})
+                
+                # ИСПРАВЛЕНИЕ: Автогенерация правил, если их нет
+                if not inclusion_rules:
+                    # Автоматически создаём справочники для категориальных колонок
+                    cat_cols = df_work.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
+                    for col in cat_cols:
+                        if 1 < df_work[col].nunique() < 50:
+                            inclusion_rules[col] = df_work[col].dropna().unique().tolist()
+
+                # Функция для вычисления нарушений
+                def _compute_inclusion_violations(df_to_check: pd.DataFrame) -> list:
+                    """Вычисляет нарушения inclusion для DataFrame."""
+                    violations = []
+                    for col, allowed_vals in inclusion_rules.items():
+                        if col in df_to_check.columns:
+                            invalid_mask = ~df_to_check[col].isin(allowed_vals) & df_to_check[col].notna()
+                            if invalid_mask.any():
+                                invalid_values = df_to_check.loc[invalid_mask, col].unique()
+                                violations.append({
+                                    'column': col,
+                                    'invalid_values': invalid_values,
+                                    'count': int(invalid_mask.sum()),
+                                    'mask': invalid_mask
+                                })
+                    return violations
+
                 # Поиск нарушений inclusion
-                inclusion_violations = []
-                for col, allowed_vals in inclusion_rules.items():  # inclusion_rules из rules.yaml
-                    if col in df_work.columns:
-                        invalid_mask = ~df_work[col].isin(allowed_vals) & df_work[col].notna()
-                        if invalid_mask.any():
-                            invalid_values = df_work.loc[invalid_mask, col].unique()
-                            inclusion_violations.append({
-                                'column': col,
-                                'invalid_values': invalid_values,
-                                'count': invalid_mask.sum(),
-                                'mask': invalid_mask
-                            })
+                inclusion_violations = _compute_inclusion_violations(df_work)
 
-                # Общая маска всех нарушений
-                combined_mask = pd.Series(False, index=df_work.index)
-                for v in inclusion_violations:
-                    combined_mask |= v['mask']
-
-                # Фильтр отображения
-                view_filter = st.radio(
-                    "Фильтр строк:",
-                    ["⚠️ Только с нарушениями", "✅ Показать всё"],
-                    horizontal=True,
-                    key="inclusion_view_filter"
-                )
-
-                if view_filter == "⚠️ Только с нарушениями":
-                    df_view = df_work[combined_mask].copy() if combined_mask.any() else df_work.iloc[:0].copy()
+                if not inclusion_violations:
+                    st.success("✅ Нарушений принадлежности не обнаружено")
                 else:
-                    df_view = df_work.copy()
+                    # Общая маска всех нарушений
+                    combined_mask = pd.Series(False, index=df_work.index)
+                    for v in inclusion_violations:
+                        combined_mask |= v['mask']
 
-                # Добавляем статус-колонку
-                df_view = df_view.copy()
-                df_view.insert(0, '_STATUS', df_view.index.map(lambda idx: "🔴 Нарушение" if combined_mask.loc[idx] else "🟢 Норма"))
+                    # ИСПРАВЛЕНИЕ: Показываем детали нарушений
+                    st.markdown("#### Детали нарушений:")
+                    for v in inclusion_violations:
+                        st.warning(
+                            f"**`{v['column']}`**: {v['count']} нарушений. "
+                            f"Недопустимые значения: `{list(v['invalid_values'][:5])}`"
+                            + ("..." if len(v['invalid_values']) > 5 else "")
+                        )
 
-                # Интерактивная таблица (Ручная правка)
-                edited_df = st.data_editor(
-                    df_view,
-                    use_container_width=True,
-                    height=300,
-                    num_rows="dynamic",
-                    disabled=['_STATUS'],
-                    key="inclusion_editor",
-                    column_config={
-                        "_STATUS": st.column_config.TextColumn("Статус", disabled=True, width="small")
-                    }
-                )
+                    # Фильтр отображения
+                    view_filter = st.radio(
+                        "Фильтр строк:",
+                        ["Только с нарушениями", "Показать всё"],
+                        horizontal=True,
+                        key="inclusion_view_filter"
+                    )
 
-                # 💾 КНОПКА СОХРАНЕНИЯ
-                c_save1, c_save2 = st.columns([4, 1])
-                with c_save1:
-                    st.caption("💡 Отредактируйте значения вручную или выберите стратегию ниже")
-                with c_save2:
-                    if st.button("💾 Сохранить", key="btn_save_manual_inclusion", use_container_width=True):
-                        if '_STATUS' in edited_df.columns:
-                            edited_df = edited_df.drop(columns=['_STATUS'])
-                        df_work.update(edited_df)
-                        st.session_state.df_inclusion_work = df_work
-                        st.session_state.df = df_work
-                        st.session_state.validation_ready = False
-                        st.toast("✅ Правки сохранены!", icon="✅")
+                    if view_filter == "Только с нарушениями":
+                        df_view = df_work[combined_mask].copy() if combined_mask.any() else df_work.iloc[:0].copy()
+                    else:
+                        df_view = df_work.copy()
+
+                    # Добавляем статус-колонку
+                    df_view = df_view.copy()
+                    df_view.insert(0, '_STATUS', df_view.index.map(
+                        lambda idx: "🔴 Нарушение" if combined_mask.loc[idx] else "🟢 Норма"
+                    ))
+
+                    # Интерактивная таблица (Ручная правка)
+                    edited_df = st.data_editor(
+                        df_view,
+                        use_container_width=True,
+                        height=300,
+                        num_rows="dynamic",
+                        disabled=['_STATUS'],
+                        key="inclusion_editor",
+                        column_config={
+                            "_STATUS": st.column_config.TextColumn("Статус", disabled=True, width="small")
+                        }
+                    )
+
+                    # 💾 КНОПКА СОХРАНЕНИЯ
+                    c_save1, c_save2 = st.columns([4, 1])
+                    with c_save1:
+                        st.caption("💡 Отредактируйте значения вручную или выберите стратегию ниже")
+                    with c_save2:
+                        if st.button("💾 Сохранить", key="btn_save_manual_inclusion", use_container_width=True):
+                            try:
+                                # 🔧 ИСПРАВЛЕНИЕ: Корректное сохранение с учётом новых строк
+                                if '_STATUS' in edited_df.columns:
+                                    edited_df = edited_df.drop(columns=['_STATUS'])
+                                
+                                # Удаляем из df_work строки, которые были в df_view
+                                df_work_updated = df_work[~df_work.index.isin(df_view.index)].copy()
+                                
+                                # Добавляем отредактированные строки
+                                if not edited_df.empty:
+                                    df_work_updated = pd.concat([df_work_updated, edited_df], ignore_index=False)
+                                
+                                st.session_state.df_inclusion_work = df_work_updated
+                                st.session_state.df = df_work_updated
+                                st.session_state.validation_ready = False
+                                st.toast("✅ Правки сохранены!", icon="✅")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Ошибка сохранения: {e}")
+
+                    st.divider()
+
+                    # Панель стратегий (Автоматическая обработка)
+                    st.markdown("### Стратегии обработки нарушений принадлежности")
+                    c1, c2 = st.columns([2, 1])
+                    with c1:
+                        inclusion_strategy = st.radio(
+                            "Выберите стратегию:",
+                            ["🔄 Заменить на наиболее частое допустимое значение (мода)",
+                            "🗑️ Заменить на NaN (удалить значения)",
+                            "🗑️ Удалить строки с нарушениями",
+                            "🔧 Заменить на значение по умолчанию (из справочника)",
+                            "🚩 Только отметить флагом (не менять данные)"],
+                            key="inclusion_fill_strategy"
+                        )
+                        if "наиболее частое" in inclusion_strategy:
+                            st.info("ℹ️ Нарушающие значения будут заменены на моду (наиболее частое допустимое значение).")
+                        elif "NaN" in inclusion_strategy:
+                            st.warning(f"⚠️ **{combined_mask.sum()} значений** будут заменены на `NaN`.")
+                        elif "Удалить" in inclusion_strategy:
+                            st.warning(f"⚠️ Будет удалено **{combined_mask.sum()} строк** ({combined_mask.sum()/len(df_work)*100:.1f}% данных).")
+                        elif "по умолчанию" in inclusion_strategy:
+                            st.info("ℹ️ Нарушения будут заменены на значение по умолчанию из справочника.")
+                        elif "флагом" in inclusion_strategy:
+                            st.info("🚩 Будут добавлены колонки `{имя}_inclusion_valid` с True/False")
+                    with c2:
+                        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+
+                    # ИСПРАВЛЕНИЕ: Кнопка превью — отдельная, без автоматического show
+                    if st.button("Прогноз влияния на статистики", type="secondary", 
+                                use_container_width=True, key="btn_show_inclusion_preview"):
+                        st.session_state.show_inclusion_preview = True
                         st.rerun()
 
-                st.divider()
+                    # Блок превью
+                    if st.session_state.get("show_inclusion_preview", False):
+                        strategy = inclusion_strategy
+                        st.markdown("##### Прогноз влияния на статистики:")
 
-                # Панель стратегий (Автоматическая обработка)
-                st.markdown("### 🧹 Стратегии обработки нарушений принадлежности")
-                c1, c2 = st.columns([2, 1])
-                with c1:
-                    inclusion_strategy = st.radio(
-                        "Выберите стратегию:",
-                        ["Заменить на наиболее частое допустимое значение",
-                        "Заменить на NaN (удалить значения)",
-                        "Удалить строки с нарушениями",
-                        "Заменить на значение по умолчанию (из справочника)",
-                        "Только отметить флагом (не менять данные)"],
-                        key="inclusion_fill_strategy"
-                    )
-                    if "наиболее частое" in inclusion_strategy:
-                        st.info("ℹ️ Нарушающие значения будут заменены на моду (наиболее частое допустимое значение).")
-                    elif "NaN" in inclusion_strategy:
-                        st.warning("⚠️ Нарушающие значения будут заменены на `NaN` (пропущенные).")
-                    elif "Удалить" in inclusion_strategy:
-                        st.warning(f"⚠️ Будет удалено **{combined_mask.sum()} строк** ({combined_mask.sum()/len(df_work)*100:.1f}% данных).")
-                    elif "по умолчанию" in inclusion_strategy:
-                        st.info("ℹ️ Нарушения будут заменены на значение по умолчанию из справочника.")
-                with c2:
-                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+                        try:
+                            df_preview = df_work.copy()
+                            
+                            # ИСПРАВЛЕНИЕ: Определяем затронутые колонки
+                            affected_cols = [v['column'] for v in inclusion_violations]
 
-                # Кнопка запуска превью
-                if "show_inclusion_preview" not in st.session_state:
-                    st.session_state.show_inclusion_preview = True
+                            if "наиболее частое" in strategy:
+                                # Для каждой колонки с нарушениями заменяем на моду
+                                for v in inclusion_violations:
+                                    col = v['column']
+                                    allowed = inclusion_rules.get(col, [])
+                                    # 🔧 ИСПРАВЛЕНИЕ: Мода считается только по ДОПУСТИМЫМ значениям
+                                    valid_values = df_preview[df_preview[col].isin(allowed)][col]
+                                    if not valid_values.empty:
+                                        mode_val = valid_values.mode()
+                                        if len(mode_val) > 0:
+                                            df_preview.loc[v['mask'], col] = mode_val[0]
+                                note = "(замена на моду)"
+                                
+                            elif "NaN" in strategy:
+                                for v in inclusion_violations:
+                                    df_preview.loc[v['mask'], v['column']] = np.nan
+                                note = "(замена на NaN)"
+                                
+                            elif "Удалить" in strategy:
+                                df_preview = df_preview[~combined_mask].reset_index(drop=True)
+                                note = "(удаление строк)"
+                                
+                            elif "по умолчанию" in strategy:
+                                for v in inclusion_violations:
+                                    col = v['column']
+                                    # ИСПРАВЛЕНИЕ: Безопасное получение default
+                                    default_val = inclusion_defaults.get(col, np.nan)
+                                    df_preview.loc[v['mask'], col] = default_val
+                                note = "(замена на default)"
+                                
+                            elif "флагом" in strategy:
+                                # ИСПРАВЛЕНИЕ: Реализация стратегии "только флаг"
+                                flags_added = []
+                                for v in inclusion_violations:
+                                    col = v['column']
+                                    flag_col = f"{col}_inclusion_valid"
+                                    df_preview[flag_col] = ~v['mask']
+                                    flags_added.append(flag_col)
+                                
+                                if flags_added:
+                                    note = f"(добавлено флагов: {len(flags_added)})"
+                                    st.info(f"🚩 Добавлены колонки: {', '.join(flags_added[:5])}")
+                                else:
+                                    note = "(без изменений)"
+                            else:
+                                note = "(без изменений)"
 
-                st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allow_html=True)
-                if st.button("Прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_inclusion_preview"):
-                    st.session_state.show_inclusion_preview = True
-                    st.rerun()
+                            # ИСПРАВЛЕНИЕ: Метрики для категориальных колонок
+                            c_p1, c_p2, c_p3, c_p4 = st.columns(4)
+                            c_p1.metric("📊 Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
+                                    delta=f"{len(df_preview)-len(df_work):+}")
+                            
+                            # ИСПРАВЛЕНИЕ: Считаем метрики по затронутым колонкам
+                            if affected_cols:
+                                col = affected_cols[0]
+                                # Для категориальных — считаем количество уникальных значений
+                                if df_work[col].dtype in ['object', 'string', 'category']:
+                                    n_unique_b = df_work[col].nunique()
+                                    n_unique_a = df_preview[col].nunique()
+                                    c_p2.metric(f"🔢 Уник. значений `{col}`", 
+                                            f"{n_unique_b} → {n_unique_a}",
+                                            delta=f"{n_unique_a - n_unique_b:+}")
+                                    
+                                    # Считаем количество нарушений
+                                    violations_before = combined_mask.sum()
+                                    violations_after = 0
+                                    for v in _compute_inclusion_violations(df_preview):
+                                        violations_after += v['count']
+                                    
+                                    c_p3.metric("❌ Нарушений", 
+                                            f"{violations_before} → {violations_after}",
+                                            delta=f"{violations_after - violations_before:+}")
+                                    
+                                    # Процент допустимых значений
+                                    pct_valid_b = (1 - violations_before / len(df_work)) * 100
+                                    pct_valid_a = (1 - violations_after / len(df_preview)) * 100 if len(df_preview) > 0 else 0
+                                    c_p4.metric("✅ % допустимых", 
+                                            f"{pct_valid_b:.1f}% → {pct_valid_a:.1f}%",
+                                            delta=f"{pct_valid_a - pct_valid_b:+.1f}%")
+                                else:
+                                    # Для числовых — стандартные метрики
+                                    def safe_stat(d, c, f):
+                                        try:
+                                            return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
+                                        except:
+                                            return 0.0
+                                    m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
+                                    m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
+                                    fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
+                                    delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
+                                    c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                                    c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                                    c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
-                # Блок превью
-                if st.session_state.show_inclusion_preview:
-                    strategy = inclusion_strategy
-                    st.markdown("##### 📈 Прогноз влияния на статистику:")
+                            # ИСПРАВЛЕНИЕ: Кнопки подтверждения с полной синхронизацией
+                            st.divider()
+                            c_ok, c_cancel = st.columns(2)
+                            with c_ok:
+                                if st.button("💾 Подтвердить изменения", type="primary", 
+                                            use_container_width=True, key="btn_confirm_inclusion"):
+                                    try:
+                                        # ИСПРАВЛЕНИЕ: Применяем стратегию заново к df_work
+                                        df_final = df_work.copy()
+                                        
+                                        if "наиболее частое" in strategy:
+                                            for v in inclusion_violations:
+                                                col = v['column']
+                                                allowed = inclusion_rules.get(col, [])
+                                                valid_values = df_final[df_final[col].isin(allowed)][col]
+                                                if not valid_values.empty:
+                                                    mode_val = valid_values.mode()
+                                                    if len(mode_val) > 0:
+                                                        df_final.loc[v['mask'], col] = mode_val[0]
+                                                        
+                                        elif "NaN" in strategy:
+                                            for v in inclusion_violations:
+                                                df_final.loc[v['mask'], v['column']] = np.nan
+                                                
+                                        elif "Удалить" in strategy:
+                                            df_final = df_final[~combined_mask].reset_index(drop=True)
+                                            
+                                        elif "по умолчанию" in strategy:
+                                            for v in inclusion_violations:
+                                                col = v['column']
+                                                default_val = inclusion_defaults.get(col, np.nan)
+                                                df_final.loc[v['mask'], col] = default_val
+                                                
+                                        elif "флагом" in strategy:
+                                            for v in inclusion_violations:
+                                                col = v['column']
+                                                flag_col = f"{col}_inclusion_valid"
+                                                df_final[flag_col] = ~v['mask']
+                                        
+                                        # СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
+                                        st.session_state.df = df_final.copy()
+                                        st.session_state.df_inclusion_work = df_final.copy()
+                                        st.session_state.validation_ready = False
+                                        st.session_state.show_inclusion_preview = False
+                                        
+                                        # 🔥 Удаляем рабочие копии других модулей
+                                        work_dfs = [
+                                            "df_missing_work", "df_pattern_work", "df_range_work",
+                                            "df_outlier_work", "df_referential_work",
+                                            "df_text_work", "df_consistency_work", "df_uniqueness_work",
+                                            "df_regularity_work", "df_regular_work", "df_variance_work",
+                                            "df_smooth_work", "df_stationarity_work", "df_scaling_work"
+                                        ]
+                                        for work_df_name in work_dfs:
+                                            if work_df_name in st.session_state:
+                                                del st.session_state[work_df_name]
+                                        
+                                        # Сбрасываем результаты валидации
+                                        if "val_results" in st.session_state:
+                                            del st.session_state.val_results
+                                        
+                                        st.success(f"✅ Стратегия **{strategy}** применена! "
+                                                f"Перезапустите валидацию.")
+                                        st.rerun()
+                                        
+                                    except Exception as e:
+                                        st.error(f"❌ Ошибка применения стратегии: {e}")
+                                        import traceback
+                                        with st.expander("🔍 Stack trace"):
+                                            st.code(traceback.format_exc(), language="python")
+                            
+                            with c_cancel:
+                                if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_inclusion"):
+                                    st.session_state.show_inclusion_preview = False
+                                    st.rerun()
+                                    
+                        except Exception as e:
+                            st.error(f"❌ Ошибка превью: {e}")
+                            import traceback
+                            with st.expander("🔍 Stack trace"):
+                                st.code(traceback.format_exc(), language="python")
 
-                    df_preview = df_work.copy()
-                    num_cols_to_check = df_preview.select_dtypes(include=['number']).columns.tolist()
-
-                    if "наиболее частое" in strategy:
-                        # Для каждой колонки с нарушениями заменяем на моду
-                        for v in inclusion_violations:
-                            col = v['column']
-                            allowed = inclusion_rules.get(col, [])
-                            mode_val = df_preview[df_preview[col].isin(allowed)][col].mode()
-                            if len(mode_val) > 0:
-                                df_preview.loc[v['mask'], col] = mode_val[0]
-                        note = "(замена на моду)"
-                    elif "NaN" in strategy:
-                        for v in inclusion_violations:
-                            df_preview.loc[v['mask'], v['column']] = np.nan
-                        note = "(замена на NaN)"
-                    elif "Удалить" in strategy:
-                        df_preview = df_preview[~combined_mask].reset_index(drop=True)
-                        note = "(удаление строк)"
-                    elif "по умолчанию" in strategy:
-                        for v in inclusion_violations:
-                            col = v['column']
-                            default_val = inclusion_defaults.get(col, np.nan)  # inclusion_defaults из конфига
-                            df_preview.loc[v['mask'], col] = default_val
-                        note = "(замена на default)"
-                    else:
-                        note = "(без изменений)"
-
-                    # Метрики (4 колонки)
-                    c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                    c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}", delta=f"{len(df_preview)-len(df_work):+}")
-
-                    if num_cols_to_check:
-                        col = num_cols_to_check[0]
-                        def safe_stat(d, c, f):
-                            return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
-                        m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
-                        m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
-                        fmt = lambda x: f"{x:.2f}" if pd.notnull(x) and x != 0.0 else "N/A"
-                        delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                        c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                        c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                        c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
-
-                    # Кнопки подтверждения
-                    st.divider()
-                    c_ok, c_cancel = st.columns(2)
-                    with c_ok:
-                        if st.button("💾 Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_inclusion"):
-                            st.session_state.df_after_fixes = df_preview.copy()
-                            st.session_state.df = df_preview
-                            st.session_state.validation_ready = False
-                            st.session_state.show_inclusion_preview = False
-                            st.success("✅ Стратегия применена! Перезапустите валидацию.")
-                            st.rerun()
-                    with c_cancel:
-                        if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_inclusion"):
-                            st.session_state.show_inclusion_preview = False
-                            st.rerun()
 
         # ───────────────────────────────────────────────────────────
         # 7. ПРОВЕРКА ССЫЛОЧНОЙ ЦЕЛОСТНОСТИ (с интерактивным пайплайном)
         # ───────────────────────────────────────────────────────────
 
-        # 7. Referential Integrity
-        ref_results_local = locals().get('ref_results', [])
-        ref_masks = locals().get('ref_masks', {})  # Маски нарушений (если есть)
+        # ИСПРАВЛЕНИЕ: Используем session_state вместо locals()
+        ref_results_local = st.session_state.val_results.get("referential", [])
         referential_issues = len(ref_results_local) > 0
         ref_violations = sum(r.get('Нарушений', 0) for r in ref_results_local) if referential_issues else 0
 
-        make_card(" Проверка ссылочной целостности (referential integrity)", referential_issues,
+        make_card("Проверка ссылочной целостности (referential integrity)", referential_issues,
             "**◻️ Метрики:** `% invalid = violations/valid`, кол-во 'сиротских' записей.  \n"
             "**◻️ Алгоритм:** Векторизованные маски `(df[A]==cond) & df[B].isna()`, проверка внешних ключей.  \n"
             "**◻️ Влияние на TS:** Нарушение связей искажает агрегацию, ломает VAR/VECM.  \n"
@@ -6727,197 +6894,352 @@ with tab_validation:
             "✅ Ссылочная целостность не нарушена" if not referential_issues else f"⚠️ Найдено {ref_violations} нарушений связей",
             "✅" if not referential_issues else "⚠️", None)
 
-        # ── 🔧 ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
+        # ── ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
         if referential_issues:
-            with st.expander("🔧 Полный пайплайн обработки нарушений ссылочной целостности", expanded=True):
-                st.markdown("### 📋 Таблица нарушений с ручной корректировкой")
+            with st.expander("Полный пайплайн обработки нарушений ссылочной целостности", expanded=True):
+                st.markdown("### Таблица нарушений с ручной корректировкой")
 
                 # Инициализация состояний
                 if "df_referential_work" not in st.session_state:
                     st.session_state.df_referential_work = df.copy()
                 df_work = st.session_state.df_referential_work
 
-                # Формируем общую маску нарушений
-                combined_mask = pd.Series(False, index=df_work.index)
-
-                # Если есть готовые маски из validate_referential()
-                if ref_masks:
-                    for mask in ref_masks.values():
-                        combined_mask |= mask
-                else:
-                    # Fallback: определяем нарушения из результатов
+                # ИСПРАВЛЕНИЕ: Функция для вычисления нарушений
+                def _compute_referential_violations(df_to_check: pd.DataFrame) -> list:
+                    """Вычисляет нарушения ссылочной целостности для DataFrame."""
+                    violations = []
                     for r in ref_results_local:
                         col = r.get('Колонка') or r.get('child_column')
                         allowed_values = r.get('allowed_values', [])
-                        if col and col in df_work.columns and allowed_values:
-                            mask = ~df_work[col].isin(allowed_values) & df_work[col].notna()
-                            combined_mask |= mask
+                        default_val = r.get('default_value', 'Unknown')
+                        
+                        if col and col in df_to_check.columns and allowed_values:
+                            mask = ~df_to_check[col].isin(allowed_values) & df_to_check[col].notna()
+                            if mask.any():
+                                invalid_values = df_to_check.loc[mask, col].unique()
+                                violations.append({
+                                    'column': col,
+                                    'allowed_values': allowed_values,
+                                    'default_value': default_val,
+                                    'invalid_values': invalid_values,
+                                    'count': int(mask.sum()),
+                                    'mask': mask
+                                })
+                    return violations
 
-                # Фильтр отображения
-                view_filter = st.radio(
-                    "Фильтр строк:",
-                    ["⚠️ Только с нарушениями", "✅ Показать всё"],
-                    horizontal=True,
-                    key="referential_view_filter"
-                )
+                # ИСПРАВЛЕНИЕ: Пересчитываем нарушения каждый раз
+                ref_violations_list = _compute_referential_violations(df_work)
 
-                if view_filter == "⚠️ Только с нарушениями":
-                    df_view = df_work[combined_mask].copy() if combined_mask.any() else df_work.iloc[:0].copy()
+                if not ref_violations_list:
+                    st.success("✅ Нарушений ссылочной целостности не обнаружено")
                 else:
-                    df_view = df_work.copy()
+                    # Формируем общую маску нарушений
+                    combined_mask = pd.Series(False, index=df_work.index)
+                    for v in ref_violations_list:
+                        combined_mask |= v['mask']
 
-                # Добавляем статус-колонку
-                df_view = df_view.copy()
-                df_view.insert(0, '_STATUS', df_view.index.map(lambda idx: "🔴 Сирота" if combined_mask.loc[idx] else "🟢 Норма"))
+                    # ИСПРАВЛЕНИЕ: Показываем детали нарушений
+                    st.markdown("#### Детали нарушений:")
+                    for v in ref_violations_list:
+                        st.warning(
+                            f"**`{v['column']}`**: {v['count']} 'сиротских' записей. "
+                            f"Недопустимые значения: `{list(v['invalid_values'][:5])}`"
+                            + ("..." if len(v['invalid_values']) > 5 else "")
+                        )
 
-                # Интерактивная таблица (Ручная правка)
-                edited_df = st.data_editor(
-                    df_view,
-                    use_container_width=True,
-                    height=300,
-                    num_rows="dynamic",
-                    disabled=['_STATUS'],
-                    key="referential_editor",
-                    column_config={
-                        "_STATUS": st.column_config.TextColumn("Статус", disabled=True, width="small")
-                    }
-                )
+                    # Фильтр отображения
+                    view_filter = st.radio(
+                        "Фильтр строк:",
+                        ["Только с нарушениями", "Показать всё"],
+                        horizontal=True,
+                        key="referential_view_filter"
+                    )
 
-                # 💾 КНОПКА СОХРАНЕНИЯ
-                c_save1, c_save2 = st.columns([4, 1])
-                with c_save1:
-                    st.caption("💡 Отредактируйте значения вручную или выберите стратегию ниже")
-                with c_save2:
-                    if st.button("💾 Сохранить", key="btn_save_manual_referential", use_container_width=True):
-                        if '_STATUS' in edited_df.columns:
-                            edited_df = edited_df.drop(columns=['_STATUS'])
-                        df_work.update(edited_df)
-                        st.session_state.df_referential_work = df_work
-                        st.session_state.df = df_work
-                        st.session_state.validation_ready = False
-                        st.toast("✅ Правки сохранены!", icon="✅")
+                    if view_filter == "Только с нарушениями":
+                        df_view = df_work[combined_mask].copy() if combined_mask.any() else df_work.iloc[:0].copy()
+                    else:
+                        df_view = df_work.copy()
+
+                    # Добавляем статус-колонку
+                    df_view = df_view.copy()
+                    df_view.insert(0, '_STATUS', df_view.index.map(
+                        lambda idx: "🔴 Сирота" if combined_mask.loc[idx] else "🟢 Норма"
+                    ))
+
+                    # Интерактивная таблица (Ручная правка)
+                    edited_df = st.data_editor(
+                        df_view,
+                        use_container_width=True,
+                        height=300,
+                        num_rows="dynamic",
+                        disabled=['_STATUS'],
+                        key="referential_editor",
+                        column_config={
+                            "_STATUS": st.column_config.TextColumn("Статус", disabled=True, width="small")
+                        }
+                    )
+
+                    # 💾 КНОПКА СОХРАНЕНИЯ
+                    c_save1, c_save2 = st.columns([4, 1])
+                    with c_save1:
+                        st.caption("💡 Отредактируйте значения вручную или выберите стратегию ниже")
+                    with c_save2:
+                        if st.button("💾 Сохранить", key="btn_save_manual_referential", use_container_width=True):
+                            try:
+                                # 🔧 ИСПРАВЛЕНИЕ: Корректное сохранение с учётом новых строк
+                                if '_STATUS' in edited_df.columns:
+                                    edited_df = edited_df.drop(columns=['_STATUS'])
+                                
+                                # Удаляем из df_work строки, которые были в df_view
+                                df_work_updated = df_work[~df_work.index.isin(df_view.index)].copy()
+                                
+                                # Добавляем отредактированные строки
+                                if not edited_df.empty:
+                                    df_work_updated = pd.concat([df_work_updated, edited_df], ignore_index=False)
+                                
+                                st.session_state.df_referential_work = df_work_updated
+                                st.session_state.df = df_work_updated
+                                st.session_state.validation_ready = False
+                                st.toast("✅ Правки сохранены!", icon="✅")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Ошибка сохранения: {e}")
+
+                    st.divider()
+
+                    # Панель стратегий (Автоматическая обработка)
+                    st.markdown("### Стратегии обработки нарушений ссылочной целостности")
+                    c1, c2 = st.columns([2, 1])
+                    with c1:
+                        ref_strategy = st.radio(
+                            "Выберите стратегию:",
+                            ["🗑️ Удалить сиротские записи",
+                            "🔧 Заменить на значение по умолчанию (из справочника)",
+                            "🔄 Заменить на наиболее частое валидное значение (мода)",
+                            "🗑️ Заменить на NaN (пометить как пропуск)",
+                            "🚩 Только отметить флагом (не менять данные)"],
+                            key="referential_fill_strategy"
+                        )
+                        if "Удалить" in ref_strategy:
+                            st.warning(f"⚠️ Будет удалено **{combined_mask.sum()} строк** ({combined_mask.sum()/len(df_work)*100:.1f}% данных).")
+                        elif "по умолчанию" in ref_strategy:
+                            st.info("ℹ️ Нарушения будут заменены на значение по умолчанию из справочника (если задано).")
+                        elif "моду" in ref_strategy:
+                            st.info("ℹ️ Нарушения будут заменены на наиболее частое валидное значение в колонке.")
+                        elif "NaN" in ref_strategy:
+                            st.warning(f"⚠️ **{combined_mask.sum()} значений** будут заменены на `NaN` (потребует дальнейшей обработки пропусков).")
+                        elif "флагом" in ref_strategy:
+                            st.info("🚩 Будут добавлены колонки `{имя}_ref_valid` с True/False")
+                    with c2:
+                        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+
+                    # 🔧 ИСПРАВЛЕНИЕ: Кнопка превью — отдельная, без автоматического show
+                    if st.button("Прогноз влияния на статистики", type="secondary", 
+                                use_container_width=True, key="btn_show_referential_preview"):
+                        st.session_state.show_referential_preview = True
                         st.rerun()
 
-                st.divider()
+                    # Блок превью
+                    if st.session_state.get("show_referential_preview", True):
+                        strategy = ref_strategy
+                        st.markdown("##### Прогноз влияния на статистики:")
 
-                # Панель стратегий (Автоматическая обработка)
-                st.markdown("### 🧹 Стратегии обработки нарушений ссылочной целостности")
-                c1, c2 = st.columns([2, 1])
-                with c1:
-                    ref_strategy = st.radio(
-                        "Выберите стратегию:",
-                        ["Удалить сиротские записи",
-                        "Заменить на значение по умолчанию (из справочника)",
-                        "Заменить на наиболее частое валидное значение (мода)",
-                        "Заменить на NaN (пометить как пропуск)",
-                        "Только отметить флагом (не менять данные)"],
-                        key="referential_fill_strategy"
-                    )
-                    if "Удалить" in ref_strategy:
-                        st.warning(f"⚠️ Будет удалено **{combined_mask.sum()} строк** ({combined_mask.sum()/len(df_work)*100:.1f}% данных).")
-                    elif "по умолчанию" in ref_strategy:
-                        st.info("ℹ️ Нарушения будут заменены на значение по умолчанию из справочника (если задано).")
-                    elif "моду" in ref_strategy:
-                        st.info("ℹ️ Нарушения будут заменены на наиболее частое валидное значение в колонке.")
-                    elif "NaN" in ref_strategy:
-                        st.warning("⚠️ Нарушения будут заменены на `NaN` (потребует дальнейшей обработки пропусков).")
-                    elif "флагом" in ref_strategy:
-                        st.info("🚩 Будет добавлена колонка `_ref_valid` с True/False.")
-                with c2:
-                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+                        try:
+                            df_preview = df_work.copy()
+                            
+                            # ИСПРАВЛЕНИЕ: Определяем затронутые колонки
+                            affected_cols = [v['column'] for v in ref_violations_list]
 
-                # Кнопка запуска превью
-                if "show_referential_preview" not in st.session_state:
-                    st.session_state.show_referential_preview = True
+                            # ИСПРАВЛЕНИЕ: Функция применения стратегии (используется и в preview, и в confirm)
+                            def _apply_referential_strategy(df_input: pd.DataFrame, strategy: str) -> pd.DataFrame:
+                                """Применяет стратегию обработки нарушений ссылочной целостности."""
+                                df_result = df_input.copy()
+                                
+                                if "Удалить" in strategy:
+                                    df_result = df_result[~combined_mask].reset_index(drop=True)
+                                    
+                                elif "по умолчанию" in strategy:
+                                    for v in ref_violations_list:
+                                        col = v['column']
+                                        default_val = v.get('default_value', 'Unknown')
+                                        if col in df_result.columns:
+                                            df_result.loc[v['mask'], col] = default_val
+                                            
+                                elif "моду" in strategy:
+                                    for v in ref_violations_list:
+                                        col = v['column']
+                                        allowed = v.get('allowed_values', [])
+                                        if col in df_result.columns and allowed:
+                                            # 🔧 ИСПРАВЛЕНИЕ: Мода считается только по ДОПУСТИМЫМ значениям
+                                            valid_data = df_result[df_result[col].isin(allowed)][col]
+                                            if not valid_data.empty:
+                                                mode_val = valid_data.mode()
+                                                if len(mode_val) > 0:
+                                                    df_result.loc[v['mask'], col] = mode_val[0]
+                                                    
+                                elif "NaN" in strategy:
+                                    for v in ref_violations_list:
+                                        col = v['column']
+                                        if col in df_result.columns:
+                                            df_result.loc[v['mask'], col] = np.nan
+                                            
+                                elif "флагом" in strategy:
+                                    # ИСПРАВЛЕНИЕ: Реализация стратегии "только флаг"
+                                    for v in ref_violations_list:
+                                        col = v['column']
+                                        flag_col = f"{col}_ref_valid"
+                                        df_result[flag_col] = ~v['mask']
+                                
+                                return df_result
 
-                st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allow_html=True)
-                if st.button("Прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_referential_preview"):
-                    st.session_state.show_referential_preview = True
-                    st.rerun()
+                            # Применяем стратегию
+                            df_preview = _apply_referential_strategy(df_preview, strategy)
 
-                # Блок превью
-                if st.session_state.show_referential_preview:
-                    strategy = ref_strategy
-                    st.markdown("##### 📈 Прогноз влияния на статистику:")
+                            # ИСПРАВЛЕНИЕ: Метрики для категориальных колонок
+                            c_p1, c_p2, c_p3, c_p4 = st.columns(4)
+                            c_p1.metric("📊 Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
+                                    delta=f"{len(df_preview)-len(df_work):+}")
+                            
+                            if affected_cols:
+                                col = affected_cols[0]
+                                # Для категориальных — считаем количество уникальных значений
+                                if df_work[col].dtype in ['object', 'string', 'category']:
+                                    n_unique_b = df_work[col].nunique()
+                                    n_unique_a = df_preview[col].nunique()
+                                    c_p2.metric(f"🔢 Уник. значений `{col}`", 
+                                            f"{n_unique_b} → {n_unique_a}",
+                                            delta=f"{n_unique_a - n_unique_b:+}")
+                                    
+                                    # Считаем количество нарушений
+                                    violations_before = combined_mask.sum()
+                                    violations_after = 0
+                                    for v in _compute_referential_violations(df_preview):
+                                        violations_after += v['count']
+                                    
+                                    c_p3.metric("❌ Сиротских записей", 
+                                            f"{violations_before} → {violations_after}",
+                                            delta=f"{violations_after - violations_before:+}")
+                                    
+                                    # Процент допустимых значений
+                                    pct_valid_b = (1 - violations_before / len(df_work)) * 100
+                                    pct_valid_a = (1 - violations_after / len(df_preview)) * 100 if len(df_preview) > 0 else 0
+                                    c_p4.metric("✅ % допустимых", 
+                                            f"{pct_valid_b:.1f}% → {pct_valid_a:.1f}%",
+                                            delta=f"{pct_valid_a - pct_valid_b:+.1f}%")
+                                else:
+                                    # Для числовых — стандартные метрики
+                                    def safe_stat(d, c, f):
+                                        try:
+                                            return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
+                                        except:
+                                            return 0.0
+                                    m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
+                                    m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
+                                    fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
+                                    delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
+                                    c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                                    c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                                    c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
-                    df_preview = df_work.copy()
-                    num_cols_to_check = df_preview.select_dtypes(include=['number']).columns.tolist()
+                            # ИСПРАВЛЕНИЕ: Кнопки подтверждения с полной синхронизацией
+                            st.divider()
+                            c_ok, c_cancel = st.columns(2)
+                            with c_ok:
+                                if st.button("💾 Подтвердить изменения", type="primary", 
+                                            use_container_width=True, key="btn_confirm_referential"):
+                                    try:
+                                        # ИСПРАВЛЕНИЕ: Применяем стратегию заново к df_work
+                                        df_final = _apply_referential_strategy(df_work, strategy)
+                                        
+                                        # СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
+                                        st.session_state.df = df_final.copy()
+                                        st.session_state.df_referential_work = df_final.copy()
+                                        st.session_state.validation_ready = False
+                                        st.session_state.show_referential_preview = False
+                                        
+                                        # 🔥 Удаляем рабочие копии других модулей
+                                        work_dfs = [
+                                            "df_missing_work", "df_pattern_work", "df_range_work",
+                                            "df_outlier_work", "df_inclusion_work",
+                                            "df_text_work", "df_consistency_work", "df_uniqueness_work",
+                                            "df_regularity_work", "df_regular_work", "df_variance_work",
+                                            "df_smooth_work", "df_stationarity_work", "df_scaling_work"
+                                        ]
+                                        for work_df_name in work_dfs:
+                                            if work_df_name in st.session_state:
+                                                del st.session_state[work_df_name]
+                                        
+                                        # Сбрасываем результаты валидации
+                                        if "val_results" in st.session_state:
+                                            del st.session_state.val_results
+                                        
+                                        st.success(f"✅ Стратегия **{strategy}** применена! "
+                                                f"Перезапустите валидацию.")
+                                        st.rerun()
+                                        
+                                    except Exception as e:
+                                        st.error(f"❌ Ошибка применения стратегии: {e}")
+                                        import traceback
+                                        with st.expander("🔍 Stack trace"):
+                                            st.code(traceback.format_exc(), language="python")
+                            
+                            with c_cancel:
+                                if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_referential"):
+                                    st.session_state.show_referential_preview = False
+                                    st.rerun()
+                                    
+                        except Exception as e:
+                            st.error(f"❌ Ошибка превью: {e}")
+                            import traceback
+                            with st.expander("🔍 Stack trace"):
+                                st.code(traceback.format_exc(), language="python")
 
-                    if "Удалить" in strategy:
-                        df_preview = df_preview[~combined_mask].reset_index(drop=True)
-                        note = "(удаление сиротских записей)"
-                    elif "по умолчанию" in strategy:
-                        # Заменяем на значение по умолчанию из правил (если задано)
-                        for r in ref_results_local:
-                            col = r.get('Колонка') or r.get('child_column')
-                            default_val = r.get('default_value', 'Unknown')
-                            if col and col in df_preview.columns:
-                                df_preview.loc[combined_mask, col] = default_val
-                        note = "(замена на default)"
-                    elif "моду" in strategy:
-                        # Заменяем на моду валидных значений
-                        for r in ref_results_local:
-                            col = r.get('Колонка') or r.get('child_column')
-                            allowed = r.get('allowed_values', [])
-                            if col and col in df_preview.columns and allowed:
-                                valid_data = df_preview[df_preview[col].isin(allowed)][col]
-                                if not valid_data.empty:
-                                    mode_val = valid_data.mode()
-                                    if len(mode_val) > 0:
-                                        df_preview.loc[combined_mask, col] = mode_val[0]
-                        note = "(замена на моду)"
-                    elif "NaN" in strategy:
-                        for r in ref_results_local:
-                            col = r.get('Колонка') or r.get('child_column')
-                            if col and col in df_preview.columns:
-                                df_preview.loc[combined_mask, col] = np.nan
-                        note = "(замена на NaN)"
-                    else:
-                        note = "(без изменений)"
-
-                    # Метрики (4 колонки)
-                    c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                    c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}", delta=f"{len(df_preview)-len(df_work):+}")
-
-                    if num_cols_to_check:
-                        col = num_cols_to_check[0]
-                        def safe_stat(d, c, f):
-                            return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
-                        m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
-                        m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
-                        fmt = lambda x: f"{x:.2f}" if pd.notnull(x) and x != 0.0 else "N/A"
-                        delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                        c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                        c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                        c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
-
-                    # Кнопки подтверждения
-                    st.divider()
-                    c_ok, c_cancel = st.columns(2)
-                    with c_ok:
-                        if st.button("💾 Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_referential"):
-                            st.session_state.df_after_fixes = df_preview.copy()
-                            st.session_state.df = df_preview
-                            st.session_state.validation_ready = False
-                            st.session_state.show_referential_preview = False
-                            st.success("✅ Стратегия применена! Перезапустите валидацию.")
-                            st.rerun()
-                    with c_cancel:
-                        if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_referential"):
-                            st.session_state.show_referential_preview = False
-                            st.rerun()
 
         # ───────────────────────────────────────────────────────────
         # 8. ПРОВЕРКА ЦЕЛОСТНОСТИ ТЕКСТА (text quality)
         # ───────────────────────────────────────────────────────────
 
-        # 8. Text Quality
-        text_results_local = locals().get('text_results', [])
-        text_masks = locals().get('text_masks', {})  # Маски нарушений (если есть)
-        text_issues = len(text_results_local) > 0
-        text_problem_cols = len([r for r in text_results_local if r.get('Нарушений', 0) > 0])
+        # ИСПРАВЛЕНИЕ: Определяем text_issues через реальную проверку данных
+        # Инициализируем df_work для проверки
+        if "df_text_work" not in st.session_state:
+            st.session_state.df_text_work = df.copy()
+        _df_text_check = st.session_state.df_text_work
 
-        make_card(" Проверка целостности текста (text quality)", text_issues,
+        # Функция для вычисления нарушений (определена ДО make_card)
+        def _compute_text_violations(df_to_check: pd.DataFrame) -> list:
+            """Вычисляет нарушения качества текста для DataFrame."""
+            violations = []
+            text_cols = df_to_check.select_dtypes(include=['object', 'string']).columns.tolist()
+            
+            for col in text_cols:
+                # ИСПРАВЛЕНИЕ: Обычная строка (не raw), чтобы \ufffd интерпретировался
+                garbage_mask = df_to_check[col].astype(str).str.contains(
+                    '[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ufffd]', na=False, regex=True
+                )
+                short_mask = df_to_check[col].astype(str).str.strip().str.len() < 1
+                long_mask = df_to_check[col].astype(str).str.len() > 500
+                combined = garbage_mask | short_mask | long_mask
+                
+                if combined.any():
+                    sample_values = df_to_check.loc[combined, col].head(3).tolist()
+                    violations.append({
+                        'column': col,
+                        'count': int(combined.sum()),
+                        'mask': combined,
+                        'garbage_count': int(garbage_mask.sum()),
+                        'short_count': int(short_mask.sum()),
+                        'long_count': int(long_mask.sum()),
+                        'sample_values': sample_values
+                    })
+            
+            return violations
+
+        # Определяем text_issues через реальную проверку
+        text_violations_check = _compute_text_violations(_df_text_check)
+        text_issues = len(text_violations_check) > 0
+        text_problem_cols = len(text_violations_check)
+
+        make_card("Проверка целостности текста (text quality)", text_issues,
             "**◻️ Метрики:** `% issues = invalid/total`, наличие 'мусорных' символов, длина строк, кодировка.  \n"
             "**◻️ Алгоритм:** `str.len()`, Regex-паттерны (спецсимволы, нечитаемые символы, mixed case).  \n"
             "**◻️ Влияние на TS:** 'Грязный' текст фрагментирует категории при `groupby`, ломает справочники.  \n"
@@ -6926,210 +7248,313 @@ with tab_validation:
             "или длинных значений, а также технических артефактов кодировки. Критично для колонок Country, Category, "
             "Name — любые искажения приводят к дублированию категорий и ошибочной агрегации.",
             "✅ Качество текста соответствует стандартам" if not text_issues else f"⚠️ Найдено {text_problem_cols} текстовых колонок с проблемами",
-            "✅" if not text_issues else "️", None)
+            "✅" if not text_issues else "⚠️", None)
 
         # ── ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
         if text_issues:
-            with st.expander("🔧 Полный пайплайн обработки текстовых нарушений", expanded=True):
-                st.markdown("### 📋 Таблица нарушений с ручной корректировкой")
+            with st.expander("Полный пайплайн обработки текстовых нарушений", expanded=True):
+                st.markdown("### Таблица нарушений с ручной корректировкой")
 
-                # Инициализация состояний
-                if "df_text_work" not in st.session_state:
-                    st.session_state.df_text_work = df.copy()
                 df_work = st.session_state.df_text_work
 
-                # Формируем общую маску нарушений
-                combined_mask = pd.Series(False, index=df_work.index)
+                # Пересчитываем нарушения для текущего df_work
+                text_violations_list = _compute_text_violations(df_work)
 
-                if text_masks:
-                    for mask in text_masks.values():
-                        combined_mask |= mask
+                if not text_violations_list:
+                    st.success("✅ Нарушений качества текста не обнаружено")
                 else:
-                    # Fallback: определяем нарушения по результатам проверки
-                    text_cols = df_work.select_dtypes(include=['object', 'string']).columns.tolist()
-                    for r in text_results_local:
-                        col = r.get('Колонка')
-                        if col and col in df_work.columns:
-                            issue_type = r.get('Тип', '').lower()
-                            if 'мусор' in issue_type or 'символ' in issue_type:
-                                # Паттерн мусорных символов
-                                mask = df_work[col].astype(str).str.contains(
-                                    r'[\x00\x01\x02ï¿½\ufffd]', na=False, regex=True
-                                )
-                            elif 'длина' in issue_type or 'len' in issue_type:
-                                # Слишком короткие или длинные значения
-                                mask = (df_work[col].astype(str).str.len() < 1) | \
-                                       (df_work[col].astype(str).str.len() > 200)
-                            elif 'регистр' in issue_type or 'case' in issue_type:
-                                # Смешанный регистр
-                                mask = df_work[col].astype(str).str.contains(
-                                    r'[A-ZА-ЯЁ]+[a-zа-яё]+[A-ZА-ЯЁ]', na=False, regex=True
-                                )
-                            else:
-                                # Общий паттерн: non-printable chars
-                                mask = df_work[col].astype(str).str.contains(
-                                    r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', na=False, regex=True
-                                )
-                            combined_mask |= mask
+                    # Формируем общую маску нарушений
+                    combined_mask = pd.Series(False, index=df_work.index)
+                    for v in text_violations_list:
+                        combined_mask |= v['mask']
 
-                # Фильтр отображения
-                view_filter = st.radio(
-                    "Фильтр строк:",
-                    ["⚠️ Только с нарушениями", "✅ Показать всё"],
-                    horizontal=True,
-                    key="text_view_filter"
-                )
+                    # Показываем детали нарушений
+                    st.markdown("#### Детали нарушений:")
+                    for v in text_violations_list:
+                        st.warning(
+                            f"**`{v['column']}`**: {v['count']} нарушений "
+                            f"(мусор: {v['garbage_count']}, пустые: {v['short_count']}, "
+                            f"длинные: {v['long_count']}). "
+                            f"Примеры: `{v['sample_values']}`"
+                        )
 
-                if view_filter == "⚠️ Только с нарушениями":
-                    df_view = df_work[combined_mask].copy() if combined_mask.any() else df_work.iloc[:0].copy()
-                else:
-                    df_view = df_work.copy()
+                    # Показываем примеры "до" нормализации
+                    st.markdown("#### Примеры значений до обработки:")
+                    sample_df = df_work[combined_mask].head(5)
+                    if not sample_df.empty:
+                        text_cols = df_work.select_dtypes(include=['object', 'string']).columns.tolist()
+                        if text_cols:
+                            col = text_cols[0]
+                            st.dataframe(
+                                sample_df[[col]].head(5),
+                                use_container_width=True,
+                                height=200
+                            )
 
-                # Добавляем статус-колонку
-                df_view = df_view.copy()
-                df_view.insert(0, '_STATUS', df_view.index.map(lambda idx: "🔴 Проблема" if combined_mask.loc[idx] else "🟢 Норма"))
+                    # Фильтр отображения
+                    view_filter = st.radio(
+                        "Фильтр строк:",
+                        ["Только с нарушениями", "Показать всё"],
+                        horizontal=True,
+                        key="text_view_filter"
+                    )
 
-                # Интерактивная таблица (Ручная правка)
-                edited_df = st.data_editor(
-                    df_view,
-                    use_container_width=True,
-                    height=300,
-                    num_rows="dynamic",
-                    disabled=['_STATUS'],
-                    key="text_editor",
-                    column_config={
-                        "_STATUS": st.column_config.TextColumn("Статус", disabled=True, width="small")
-                    }
-                )
+                    if view_filter == "Только с нарушениями":
+                        df_view = df_work[combined_mask].copy() if combined_mask.any() else df_work.iloc[:0].copy()
+                    else:
+                        df_view = df_work.copy()
 
-                # 💾 КНОПКА СОХРАНЕНИЯ
-                c_save1, c_save2 = st.columns([4, 1])
-                with c_save1:
-                    st.caption("💡 Отредактируйте значения вручную или выберите стратегию ниже")
-                with c_save2:
-                    if st.button("💾 Сохранить", key="btn_save_manual_text", use_container_width=True):
-                        if '_STATUS' in edited_df.columns:
-                            edited_df = edited_df.drop(columns=['_STATUS'])
-                        df_work.update(edited_df)
-                        st.session_state.df_text_work = df_work
-                        st.session_state.df = df_work
-                        st.session_state.validation_ready = False
-                        st.toast("✅ Правки сохранены!", icon="✅")
+                    # Добавляем статус-колонку
+                    df_view = df_view.copy()
+                    df_view.insert(0, '_STATUS', df_view.index.map(
+                        lambda idx: "🔴 Проблема" if combined_mask.loc[idx] else "🟢 Норма"
+                    ))
+
+                    # Интерактивная таблица (Ручная правка)
+                    edited_df = st.data_editor(
+                        df_view,
+                        use_container_width=True,
+                        height=300,
+                        num_rows="dynamic",
+                        disabled=['_STATUS'],
+                        key="text_editor",
+                        column_config={
+                            "_STATUS": st.column_config.TextColumn("Статус", disabled=True, width="small")
+                        }
+                    )
+
+                    # 💾 КНОПКА СОХРАНЕНИЯ
+                    c_save1, c_save2 = st.columns([4, 1])
+                    with c_save1:
+                        st.caption("💡 Отредактируйте значения вручную или выберите стратегию ниже")
+                    with c_save2:
+                        if st.button("💾 Сохранить", key="btn_save_manual_text", use_container_width=True):
+                            try:
+                                if '_STATUS' in edited_df.columns:
+                                    edited_df = edited_df.drop(columns=['_STATUS'])
+                                
+                                # 🔧 Корректное сохранение с учётом новых строк
+                                df_work_updated = df_work[~df_work.index.isin(df_view.index)].copy()
+                                if not edited_df.empty:
+                                    df_work_updated = pd.concat([df_work_updated, edited_df], ignore_index=False)
+                                
+                                st.session_state.df_text_work = df_work_updated
+                                st.session_state.df = df_work_updated
+                                st.session_state.validation_ready = False
+                                st.toast("✅ Правки сохранены!", icon="✅")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Ошибка сохранения: {e}")
+
+                    st.divider()
+
+                    # Панель стратегий (Автоматическая обработка)
+                    st.markdown("### Стратегии обработки текстовых нарушений")
+                    c1, c2 = st.columns([2, 1])
+                    with c1:
+                        text_strategy = st.radio(
+                            "Выберите стратегию:",
+                            ["🧹 Очистить спецсимволы и нормализовать (strip + lower)",
+                            "🗑️ Удалить строки с нарушениями текста",
+                            "🗑️ Заменить на NaN (пометить как пропуск)",
+                            "🔧 Заменить на 'Неизвестно' (default для категорий)",
+                            "🚩 Только отметить флагом (не менять данные)"],
+                            key="text_fill_strategy"
+                        )
+                        if "Очистить" in text_strategy:
+                            st.info("ℹ️ Будет выполнена нормализация: удаление спецсимволов, strip(), lower(). "
+                                "⚠️ **Внимание:** после нормализации могут появиться дубликаты "
+                                "(например, 'USA' и 'usa' станут 'usa').")
+                        elif "Удалить" in text_strategy:
+                            st.warning(f"⚠️ Будет удалено **{combined_mask.sum()} строк** "
+                                    f"({combined_mask.sum()/len(df_work)*100:.1f}% данных).")
+                        elif "NaN" in text_strategy:
+                            st.warning(f"⚠️ **{combined_mask.sum()} значений** будут заменены на `NaN`.")
+                        elif "Неизвестно" in text_strategy:
+                            st.info("ℹ️ Нарушения будут заменены на строку `'Неизвестно'` (для категорий).")
+                        elif "флагом" in text_strategy:
+                            st.info("🚩 Будут добавлены колонки `{имя}_text_valid` с True/False")
+                    with c2:
+                        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+
+                    # 🔧 Кнопка превью — отдельная, без автоматического show
+                    if st.button("Прогноз влияния на текст", type="secondary", 
+                                use_container_width=True, key="btn_show_text_preview"):
+                        st.session_state.show_text_preview = True
                         st.rerun()
 
-                st.divider()
+                    # 🔧 ИСПРАВЛЕНИЕ: Показываем превью только при явном запросе
+                    if st.session_state.get("show_text_preview", False):
+                        strategy = text_strategy
+                        st.markdown("##### Прогноз влияния на текстовые колонки:")
 
-                # Панель стратегий (Автоматическая обработка)
-                st.markdown("### 🧹 Стратегии обработки текстовых нарушений")
-                c1, c2 = st.columns([2, 1])
-                with c1:
-                    text_strategy = st.radio(
-                        "Выберите стратегию:",
-                        ["Очистить спецсимволы и нормализовать (strip + lower)",
-                        "Удалить строки с нарушениями текста",
-                        "Заменить на NaN (пометить как пропуск)",
-                        "Заменить на 'Неизвестно' (default для категорий)",
-                        "Только отметить флагом (не менять данные)"],
-                        key="text_fill_strategy"
-                    )
-                    if "Очистить" in text_strategy:
-                        st.info("ℹ️ Будет выполнена нормализация: удаление спецсимволов, strip(), lower().")
-                    elif "Удалить" in text_strategy:
-                        st.warning(f"⚠️ Будет удалено **{combined_mask.sum()} строк** ({combined_mask.sum()/len(df_work)*100:.1f}% данных).")
-                    elif "NaN" in text_strategy:
-                        st.warning("⚠️ Нарушения будут заменены на `NaN` (потребует дальнейшей обработки пропусков).")
-                    elif "Неизвестно" in text_strategy:
-                        st.info("ℹ️ Нарушения будут заменены на строку `'Неизвестно'` (для категорий).")
-                    elif "флагом" in text_strategy:
-                        st.info("🚩 Будет добавлена колонка `_text_valid` с True/False.")
-                with c2:
-                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+                        try:
+                            df_preview = df_work.copy()
+                            affected_cols = [v['column'] for v in text_violations_list]
 
-                # Кнопка запуска превью
-                if "show_text_preview" not in st.session_state:
-                    st.session_state.show_text_preview = False
+                            # Функция применения стратегии (единая для preview и confirm)
+                            def _apply_text_strategy(df_input: pd.DataFrame, strategy: str) -> pd.DataFrame:
+                                """Применяет стратегию обработки текстовых нарушений."""
+                                df_result = df_input.copy()
+                                
+                                if "Очистить" in strategy:
+                                    for v in text_violations_list:
+                                        col = v['column']
+                                        if col in df_result.columns:
+                                            # Упрощённый regex (без r-префикса не нужен, т.к. нет \ufffd)
+                                            df_result.loc[v['mask'], col] = (
+                                                df_result.loc[v['mask'], col]
+                                                .astype(str)
+                                                .str.strip()
+                                                .str.lower()
+                                                .str.replace(r'[^\w\s\-]', '', regex=True)
+                                                .str.replace(r'\s+', ' ', regex=True)
+                                                .str.strip()
+                                            )
+                                            
+                                            # Обрабатываем пустые строки после очистки
+                                            empty_after = df_result[col].astype(str).str.strip() == ''
+                                            if empty_after.any():
+                                                df_result.loc[empty_after, col] = np.nan
+                                                
+                                elif "Удалить" in strategy:
+                                    df_result = df_result[~combined_mask].reset_index(drop=True)
+                                    
+                                elif "NaN" in strategy:
+                                    for v in text_violations_list:
+                                        col = v['column']
+                                        if col in df_result.columns:
+                                            df_result.loc[v['mask'], col] = np.nan
+                                            
+                                elif "Неизвестно" in strategy:
+                                    for v in text_violations_list:
+                                        col = v['column']
+                                        if col in df_result.columns:
+                                            df_result.loc[v['mask'], col] = "Неизвестно"
+                                            
+                                elif "флагом" in strategy:
+                                    # Реализация стратегии "только флаг"
+                                    for v in text_violations_list:
+                                        col = v['column']
+                                        flag_col = f"{col}_text_valid"
+                                        df_result[flag_col] = ~v['mask']
+                                
+                                return df_result
 
-                st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allow_html=True)
-                if st.button(" Показать прогноз влияния на текст", type="secondary", use_container_width=True, key="btn_show_text_preview"):
-                    st.session_state.show_text_preview = True
-                    st.rerun()
+                            # Применяем стратегию
+                            df_preview = _apply_text_strategy(df_preview, strategy)
 
-                # Блок превью (специфичный для текста)
-                if st.session_state.show_text_preview:
-                    strategy = text_strategy
-                    st.markdown("##### 📈 Прогноз влияния на текстовые колонки:")
+                            # Предупреждение о дубликатах после нормализации
+                            if "Очистить" in strategy:
+                                for col in affected_cols:
+                                    if col in df_preview.columns:
+                                        n_unique_before = df_work[col].nunique()
+                                        n_unique_after = df_preview[col].nunique()
+                                        if n_unique_after < n_unique_before:
+                                            st.warning(
+                                                f"⚠️ **`{col}`**: после нормализации количество уникальных значений "
+                                                f"уменьшилось с {n_unique_before} до {n_unique_after}. "
+                                                f"Появились дубликаты (например, 'USA' и 'usa' стали 'usa')."
+                                            )
 
-                    df_preview = df_work.copy()
-                    text_cols = df_preview.select_dtypes(include=['object', 'string']).columns.tolist()
+                            # Метрики для текста
+                            c_p1, c_p2, c_p3, c_p4 = st.columns(4)
+                            c_p1.metric("📊 Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
+                                    delta=f"{len(df_preview)-len(df_work):+}")
 
-                    if "Очистить" in strategy:
-                        for col in text_cols:
-                            # Нормализация только проблемных значений
-                            df_preview.loc[combined_mask, col] = (
-                                df_preview.loc[combined_mask, col]
-                                .astype(str)
-                                .str.strip()
-                                .str.lower()
-                                .str.replace(r'[^\w\sа-яёa-z0-9\-]', '', regex=True)
-                                .str.replace(r'\s+', ' ', regex=True)
-                            )
-                        note = "(нормализация текста)"
-                    elif "Удалить" in strategy:
-                        df_preview = df_preview[~combined_mask].reset_index(drop=True)
-                        note = "(удаление строк)"
-                    elif "NaN" in strategy:
-                        for col in text_cols:
-                            df_preview.loc[combined_mask, col] = np.nan
-                        note = "(замена на NaN)"
-                    elif "Неизвестно" in strategy:
-                        for col in text_cols:
-                            df_preview.loc[combined_mask, col] = "Неизвестно"
-                        note = "(замена на 'Неизвестно')"
-                    else:
-                        note = "(без изменений)"
+                            if affected_cols:
+                                col = affected_cols[0]
+                                
+                                def safe_text_stat(d, c):
+                                    if c not in d.columns or d.empty:
+                                        return 0, 0
+                                    s = d[c].astype(str)
+                                    avg_len = s.str.len().mean()
+                                    unique = d[c].nunique()
+                                    return avg_len, unique
 
-                    # Метрики для текста (4 колонки)
-                    c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                    c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}", delta=f"{len(df_preview)-len(df_work):+}")
+                                al_b, u_b = safe_text_stat(df_work, col)
+                                al_a, u_a = safe_text_stat(df_preview, col)
 
-                    if text_cols:
-                        col = text_cols[0]
-                        # Для текста считаем другие метрики
-                        def safe_text_stat(d, c):
-                            if c not in d.columns or d.empty:
-                                return 0, 0, 0
-                            s = d[c].astype(str)
-                            avg_len = s.str.len().mean()
-                            unique = d[c].nunique()
-                            invalid = combined_mask.sum() if len(d) == len(df_work) else 0
-                            return avg_len, unique, invalid
+                                fmt = lambda x: f"{x:.1f}" if pd.notnull(x) else "N/A"
 
-                        al_b, u_b, inv_b = safe_text_stat(df_work, col)
-                        al_a, u_a, inv_a = safe_text_stat(df_preview, col)
+                                c_p2.metric("📏 Avg длина", f"{fmt(al_b)} → {fmt(al_a)}")
+                                c_p3.metric("🔢 Уникальных", f"{u_b} → {u_a}",
+                                        delta=f"{u_a - u_b:+}")
+                                
+                                # Считаем количество нарушений после применения стратегии
+                                violations_after = sum(v['count'] for v in _compute_text_violations(df_preview))
+                                violations_before = combined_mask.sum()
+                                c_p4.metric("⚠️ Нарушений", f"{violations_before} → {violations_after}",
+                                        delta=f"{violations_after - violations_before:+}")
 
-                        fmt = lambda x: f"{x:.1f}" if pd.notnull(x) else "N/A"
+                            st.caption(f"📝 Стратегия: {strategy}")
 
-                        c_p2.metric("📏 Avg длина", f"{fmt(al_b)} → {fmt(al_a)}")
-                        c_p3.metric(" Уникальных", f"{u_b} → {u_a}")
-                        c_p4.metric("⚠️ Нарушений", f"{inv_b} → {inv_a}")
+                            # Показываем примеры "после" обработки
+                            if affected_cols:
+                                col = affected_cols[0]
+                                st.markdown("#### Примеры значений после обработки:")
+                                sample_after = df_preview[combined_mask.reindex(df_preview.index, fill_value=False)].head(5)
+                                if not sample_after.empty and col in sample_after.columns:
+                                    st.dataframe(
+                                        sample_after[[col]].head(5),
+                                        use_container_width=True,
+                                        height=200
+                                    )
 
-                    st.caption(f"📝 Стратегия: {note}")
+                            # Кнопки подтверждения с полной синхронизацией
+                            st.divider()
+                            c_ok, c_cancel = st.columns(2)
+                            with c_ok:
+                                if st.button("💾 Подтвердить изменения", type="primary", 
+                                            use_container_width=True, key="btn_confirm_text"):
+                                    try:
+                                        # 🔧 Применяем стратегию заново к df_work
+                                        df_final = _apply_text_strategy(df_work, strategy)
+                                        
+                                        # 🔧 СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
+                                        st.session_state.df = df_final.copy()
+                                        st.session_state.df_text_work = df_final.copy()
+                                        st.session_state.validation_ready = False
+                                        st.session_state.show_text_preview = False
+                                        
+                                        # 🔥 Удаляем рабочие копии других модулей
+                                        work_dfs = [
+                                            "df_missing_work", "df_pattern_work", "df_range_work",
+                                            "df_outlier_work", "df_inclusion_work", "df_referential_work",
+                                            "df_consistency_work", "df_uniqueness_work",
+                                            "df_regularity_work", "df_regular_work", "df_variance_work",
+                                            "df_smooth_work", "df_stationarity_work", "df_scaling_work"
+                                        ]
+                                        for work_df_name in work_dfs:
+                                            if work_df_name in st.session_state:
+                                                del st.session_state[work_df_name]
+                                        
+                                        # Сбрасываем результаты валидации
+                                        if "val_results" in st.session_state:
+                                            del st.session_state.val_results
+                                        
+                                        st.success(f"✅ Стратегия **{strategy}** применена! "
+                                                f"Перезапустите валидацию.")
+                                        st.rerun()
+                                        
+                                    except Exception as e:
+                                        st.error(f"❌ Ошибка применения стратегии: {e}")
+                                        import traceback
+                                        with st.expander("🔍 Stack trace"):
+                                            st.code(traceback.format_exc(), language="python")
+                            
+                            with c_cancel:
+                                if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_text"):
+                                    st.session_state.show_text_preview = False
+                                    st.rerun()
+                                    
+                        except Exception as e:
+                            st.error(f"❌ Ошибка превью: {e}")
+                            import traceback
+                            with st.expander("🔍 Stack trace"):
+                                st.code(traceback.format_exc(), language="python")
 
-                    # Кнопки подтверждения
-                    st.divider()
-                    c_ok, c_cancel = st.columns(2)
-                    with c_ok:
-                        if st.button("💾 Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_text"):
-                            st.session_state.df_after_fixes = df_preview.copy()
-                            st.session_state.df = df_preview
-                            st.session_state.validation_ready = False
-                            st.session_state.show_text_preview = False
-                            st.success("✅ Стратегия применена! Перезапустите валидацию.")
-                            st.rerun()
-                    with c_cancel:
-                        if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_text"):
-                            st.session_state.show_text_preview = False
-                            st.rerun()
 
         # ───────────────────────────────────────────────────────────
         # 9. ПРОВЕРКА РАВНОМЕРНОСТИ ВРЕМЕННОГО ШАГА (regularity)
