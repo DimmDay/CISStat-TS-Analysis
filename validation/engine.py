@@ -5,19 +5,17 @@
 Не исправляет данные автоматически — только фиксирует ошибки.
 """
 
-# validation/engine.py
 import pandas as pd
 import numpy as np
 import pandera as pa
 from pandera import Check, Column, DataFrameSchema
-from pandera.errors import SchemaErrors  # ← ИСПРАВЛЕННЫЙ ИМПОРТ
+from pandera.errors import SchemaErrors
 from datetime import datetime, date
 from pathlib import Path
 import yaml
 import re
 import warnings
 import os
-
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -75,7 +73,7 @@ def _parse_check_expression(expr: str, column_series: pd.Series) -> pd.Series:
         pattern = match_regex.group(1)
         return column_series.astype(str).str.match(pattern, na=False)
 
-    # По умолчанию — всё валидно (чтобы не ломать при неизвестном выражении)
+    # По умолчанию — всё валидно
     return pd.Series([True] * len(column_series), index=column_series.index)
 
 
@@ -101,7 +99,7 @@ def build_pandera_schema(rules: dict) -> DataFrameSchema:
         # Nullable
         nullable = col_rules.get("nullable", True)
         if not nullable:
-                checks.append(Check.notna())
+            checks.append(Check.notna())
 
         # Диапазоны для чисел
         if "min" in col_rules and "max" in col_rules:
@@ -123,39 +121,33 @@ def build_pandera_schema(rules: dict) -> DataFrameSchema:
         if "pattern" in col_rules:
             checks.append(Check.str_matches(col_rules["pattern"]))
 
-        # Кастомные выражения (check: ">= 0")
-        if "check" in col_rules:
-            # Сохраняем для пост-обработки, т.к. pandera не поддерживает динамические выражения напрямую
-            pass
-
         columns[col_name] = Column(
             dtype,
             *checks,
             nullable=nullable,
             required=col_rules.get("required", False),
-            coerce=col_rules.get("coerce", True)  # Пытаться привести тип
+            coerce=col_rules.get("coerce", True)
         )
 
     return DataFrameSchema(
         columns,
         required=schema_config.get("required_columns", []),
-        strict=False,  # Разрешаем дополнительные колонки в данных
-        coerce=True    # Пытаться привести типы при валидации
+        strict=False,
+        coerce=True
     )
 
 
 def validate_dataframe(df: pd.DataFrame, rules: dict) -> dict:
     """
     Запускает полную валидацию датасета.
-
     Returns:
         dict с ключами:
         - is_valid: bool
-        - errors: list[dict] — критические ошибки
-        - warnings: list[dict] — предупреждения
-        - schema_errors: dict — ошибки схемы по типам проверок
-        - validated_df: pd.DataFrame — данные после coercion (если включено)
-        - summary: dict — сводная статистика
+        - errors: list[dict]
+        - warnings: list[dict]
+        - schema_errors: dict
+        - validated_df: pd.DataFrame
+        - summary: dict
     """
     result = {
         "is_valid": True,
@@ -171,21 +163,15 @@ def validate_dataframe(df: pd.DataFrame, rules: dict) -> dict:
         result["is_valid"] = False
         return result
 
-    # ─────────────────────────────────────
     # 1. Валидация схемы через Pandera
-    # ─────────────────────────────────────
     try:
         schema = build_pandera_schema(rules)
-        validated = schema.validate(df, lazy=True)  # lazy=True собирает ВСЕ ошибки
+        validated = schema.validate(df, lazy=True)
         result["validated_df"] = validated
-
     except SchemaErrors as e:
         result["is_valid"] = False
-        # Группируем ошибки по типу проверки
         if e.failure_cases is not None and not e.failure_cases.empty:
             result["schema_errors"] = e.failure_cases.groupby("check").size().to_dict()
-
-            # Детализируем первые 100 ошибок для отчёта
             for _, row in e.failure_cases.head(100).iterrows():
                 result["errors"].append({
                     "type": "schema",
@@ -195,14 +181,11 @@ def validate_dataframe(df: pd.DataFrame, rules: dict) -> dict:
                     "check": row.get("check"),
                     "severity": "error"
                 })
-
     except Exception as ex:
         result["errors"].append({"type": "schema_build", "message": str(ex), "severity": "error"})
         result["is_valid"] = False
 
-    # ─────────────────────────────────────
     # 2. Проверка кастомных бизнес-правил
-    # ─────────────────────────────────────
     for rule in rules.get("rules", []):
         try:
             col = rule.get("column")
@@ -213,8 +196,6 @@ def validate_dataframe(df: pd.DataFrame, rules: dict) -> dict:
             if col and col in df.columns and check_expr:
                 series = df[col]
                 mask = _parse_check_expression(check_expr, series)
-
-                # Находим невалидные значения (исключаем NaN, если поле nullable)
                 nullable = rules.get("schema", {}).get("columns", {}).get(col, {}).get("nullable", True)
                 if nullable:
                     invalid_mask = ~mask & series.notna()
@@ -235,7 +216,6 @@ def validate_dataframe(df: pd.DataFrame, rules: dict) -> dict:
                         result["is_valid"] = False
                     else:
                         result["warnings"].append(entry)
-
         except Exception as ex:
             result["errors"].append({
                 "type": "rule_execution",
@@ -245,9 +225,7 @@ def validate_dataframe(df: pd.DataFrame, rules: dict) -> dict:
             })
             result["is_valid"] = False
 
-    # ─────────────────────────────────────
     # 3. Сводная статистика
-    # ─────────────────────────────────────
     result["summary"] = {
         "total_rows": len(df),
         "total_columns": len(df.columns),
@@ -259,8 +237,8 @@ def validate_dataframe(df: pd.DataFrame, rules: dict) -> dict:
 
     return result
 
+
 # === ПРОВЕРКА ФОРМАТОВ (REGEX) ===
-# Паттерны по умолчанию (если в YAML ничего не указано)
 DEFAULT_FORMAT_PATTERNS = {
     "email": {
         "pattern": r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$",
@@ -284,25 +262,13 @@ DEFAULT_FORMAT_PATTERNS = {
     }
 }
 
+
 def validate_formats(df, rules):
-    """
-    Проверяет колонки датафрейма на соответствие регулярным выражениям.
-
-    Args:
-        df (pd.DataFrame): Исходный датафрейм.
-        rules (dict): Словарь правил, загруженный из YAML.
-
-    Returns:
-        list: Список словарей с результатами проверки для каждой колонки.
-    """
+    """Проверяет колонки датафрейма на соответствие регулярным выражениям."""
     results = []
-
-    # 1. Загружаем конфигурацию форматов.
-    # Сначала ищем в rules['formats'], если нет — берем DEFAULT_FORMAT_PATTERNS
     formats_config = rules.get("formats", DEFAULT_FORMAT_PATTERNS)
 
     for col_name, cfg in formats_config.items():
-        # Поддержка разных форматов YAML (просто строка паттерна или словарь)
         if isinstance(cfg, dict):
             pattern = cfg.get("pattern")
             threshold = cfg.get("threshold", 95)
@@ -313,24 +279,17 @@ def validate_formats(df, rules):
         if not pattern:
             continue
 
-        # 2. Проверяем, есть ли такая колонка в датафрейме
         if col_name in df.columns:
-            # Берем только непустые значения
             non_null_data = df[col_name].dropna()
             if len(non_null_data) == 0:
                 continue
 
-            # 3. Применяем Regex (полное совпадение строки)
-            # astype(str) нужен на случай, если в колонке числа, но мы проверяем их как строки
             matches = non_null_data.astype(str).str.fullmatch(pattern)
             valid_count = matches.sum()
             total_count = len(non_null_data)
-
-            # Расчет метрик
             match_pct = (valid_count / total_count) * 100 if total_count > 0 else 0
             invalid_count = int(total_count - valid_count)
 
-            # Определение статуса
             if match_pct >= threshold:
                 status = "✅ Норма"
             else:
@@ -347,23 +306,18 @@ def validate_formats(df, rules):
 
     return results
 
+
 def validate_consistency(df, rules):
-    """
-    Проверяет согласованность данных.
-    1. Хронология (Chronology): Проверяет, что время (Year/Date) не идет назад.
-       Учитывает группировку (например, по странам), чтобы не считать смену страны нарушением.
-    """
+    """Проверяет согласованность данных (хронология внутри групп)."""
     results = []
     consistency_rules = rules.get("consistency", [])
 
-    # 🔧 АВТОМАТИЧЕСКАЯ ПРОВЕРКА ХРОНОЛОГИИ (если правил нет)
+    # Автоматическая проверка хронологии
     if not consistency_rules:
-        # Ищем колонку с годом или датой
         year_cols = [c for c in df.columns if 'year' in c.lower() or 'год' in c.lower()]
         date_cols = df.select_dtypes(include=['datetime64']).columns.tolist()
 
         if year_cols:
-            # Добавляем автоматическое правило проверки хронологии
             consistency_rules.append({
                 "name": "Хронологический порядок",
                 "type": "chronology",
@@ -380,7 +334,6 @@ def validate_consistency(df, rules):
                 "severity": "error"
             })
 
-    # Обрабатываем правила
     for rule in consistency_rules:
         try:
             rule_type = rule.get("type", "unknown")
@@ -390,13 +343,9 @@ def validate_consistency(df, rules):
             violations = 0
             violation_details = []
 
-            # --- ПРОВЕРКА ХРОНОЛОГИИ ---
             if rule_type == "chronology":
                 if columns and columns[0] in df.columns:
                     time_col = columns[0]
-
-                    # 🔧 ГЛАВНОЕ ИСПРАВЛЕНИЕ: Проверяем хронологию ВНУТРИ КАЖДОЙ СТРАНЫ
-                    # Ищем строковую колонку для группировки (Country, Region и т.д.)
                     group_col = None
                     for c in df.columns:
                         if c != time_col and df[c].dtype == 'object':
@@ -404,51 +353,17 @@ def validate_consistency(df, rules):
                             break
 
                     if group_col:
-                        # Проверяем внутри каждой группы (страны)
                         for group_name, group_df in df.groupby(group_col):
-                            # Сортируем по времени
                             group_sorted = group_df.sort_values(time_col)
-
-                            # Проверяем, что время идет вперед
                             time_diff = group_sorted[time_col].diff()
-
-                            # Нарушения: где разница отрицательная (время пошло назад)
                             group_violations = (time_diff < 0).sum()
-
                             if group_violations > 0:
                                 violations += group_violations
-                                # Находим индексы нарушений
-                                violation_mask = time_diff < 0
-                                violation_indices = group_sorted[violation_mask].index.tolist()
-
-                                for idx in violation_indices[:3]:  # Первые 3 нарушения
-                                    prev_idx = group_sorted.index.get_loc(idx) - 1
-                                    if prev_idx >= 0:
-                                        prev_time = group_sorted.iloc[prev_idx][time_col]
-                                        curr_time = group_sorted.loc[idx, time_col]
-                                        violation_details.append(
-                                            f"{group_name}: {prev_time} → {curr_time} (нарушение порядка)"
-                                        )
                     else:
-                        # Если нет группирующей колонки, проверяем весь датасет
                         df_sorted = df.sort_values(time_col)
                         time_diff = df_sorted[time_col].diff()
                         violations = (time_diff < 0).sum()
 
-                        if violations > 0:
-                            violation_mask = time_diff < 0
-                            violation_indices = df_sorted[violation_mask].index.tolist()
-
-                            for idx in violation_indices[:5]:
-                                prev_idx = df_sorted.index.get_loc(idx) - 1
-                                if prev_idx >= 0:
-                                    prev_time = df_sorted.iloc[prev_idx][time_col]
-                                    curr_time = df_sorted.loc[idx, time_col]
-                                    violation_details.append(
-                                        f"{prev_time} → {curr_time} (нарушение порядка)"
-                                    )
-
-            # Формируем результат
             if violations > 0:
                 results.append({
                     "Правило": rule_name,
@@ -465,7 +380,6 @@ def validate_consistency(df, rules):
                     "Нарушений": 0,
                     "Статус": "✅ Соблюдено"
                 })
-
         except Exception as e:
             results.append({
                 "Правило": rule.get("name", "unknown"),
@@ -475,16 +389,12 @@ def validate_consistency(df, rules):
 
     return results
 
+
 def validate_ranges(df, rules):
-    """
-    Проверяет числовые колонки на соответствие допустимым диапазонам (min/max) из YAML.
-    Возвращает кортеж: (results_list, violation_masks_dict, rule_bounds_dict)
-    """
+    """Проверяет числовые колонки на соответствие допустимым диапазонам."""
     results = []
     violation_masks = {}
     rule_bounds = {}
-
-    # Получаем правила из YAML (секция 'ranges')
     range_rules = rules.get("ranges", [])
     num_cols = df.select_dtypes(include=['number']).columns.tolist()
 
@@ -492,10 +402,8 @@ def validate_ranges(df, rules):
         col_lower = col.lower()
         matched_rule = None
 
-        # Ищем правило по ключевым словам
         for rule in range_rules:
             keywords = rule.get("keywords", [])
-            # Проверяем, содержит ли имя колонки любое из ключевых слов
             if any(kw in col_lower for kw in keywords):
                 matched_rule = rule
                 break
@@ -505,7 +413,6 @@ def validate_ranges(df, rules):
             max_val = matched_rule.get("max")
             rule_bounds[col] = (min_val, max_val)
 
-            # Создаем маску нарушений
             mask = pd.Series(False, index=df.index)
             if min_val is not None:
                 mask |= (df[col] < min_val)
@@ -515,7 +422,6 @@ def validate_ranges(df, rules):
             if mask.any():
                 violation_masks[col] = mask
                 violations = mask.sum()
-
                 results.append({
                     "Колонка": col,
                     "Правило": f"{min_val if min_val is not None else '-∞'} < x < {max_val if max_val is not None else '∞'}",
@@ -527,10 +433,9 @@ def validate_ranges(df, rules):
 
     return results, violation_masks, rule_bounds
 
+
 def auto_generate_rules(df: pd.DataFrame) -> dict:
-    """
-    Автоматически генерирует базовые правила валидации на основе метаданных датасета.
-    """
+    """Автоматически генерирует базовые правила валидации."""
     rules = {
         "ranges": [],
         "inclusion": {},
@@ -541,13 +446,11 @@ def auto_generate_rules(df: pd.DataFrame) -> dict:
     if df.empty:
         return rules
 
-    # 1. Авто-диапазоны для числовых колонок
     for col in df.select_dtypes(include='number').columns:
         col_lower = col.lower()
         min_val = float(df[col].min()) if pd.notna(df[col].min()) else 0
         max_val = float(df[col].max()) if pd.notna(df[col].max()) else 1000
 
-        # Эвристики по названию
         if any(kw in col_lower for kw in ['price', 'цена', 'стоимость']):
             rules["ranges"].append({
                 "name": f"{col} — положительная цена",
@@ -570,7 +473,6 @@ def auto_generate_rules(df: pd.DataFrame) -> dict:
                 "max": 100
             })
         else:
-            # Общий диапазон с запасом
             rules["ranges"].append({
                 "name": f"{col} — авто-диапазон",
                 "keywords": [col],
@@ -578,12 +480,10 @@ def auto_generate_rules(df: pd.DataFrame) -> dict:
                 "max": max_val * 1.5
             })
 
-    # 2. Авто-справочники для категориальных колонок
     for col in df.select_dtypes(include=['object', 'string']).columns:
         if 1 < df[col].nunique() < 50:
             rules["inclusion"][col] = df[col].dropna().unique().tolist()
 
-    # 3. Авто-проверка хронологии
     date_cols = [c for c in df.columns if 'year' in c.lower() or 'date' in c.lower() or 'дата' in c.lower()]
     if date_cols:
         rules["consistency"].append({
@@ -595,11 +495,9 @@ def auto_generate_rules(df: pd.DataFrame) -> dict:
 
     return rules
 
+
 def validate_referential(df, rules):
-    """
-    Проверяет ссылочную целостность — наличие 'сиротских' записей.
-    Возвращает: (results_list, violation_masks_dict)
-    """
+    """Проверяет ссылочную целостность."""
     results = []
     violation_masks = {}
     ref_rules = rules.get("referential", [])
@@ -628,15 +526,12 @@ def validate_referential(df, rules):
 
     return results, violation_masks
 
+
 def validate_text_quality(df, rules):
-    """
-    Проверяет качество текстовых колонок.
-    Возвращает: (results_list, violation_masks_dict)
-    """
+    """Проверяет качество текстовых колонок."""
     results = []
     violation_masks = {}
     text_rules = rules.get("text_quality", [])
-
     text_cols = df.select_dtypes(include=['object', 'string']).columns.tolist()
 
     for col in text_cols:
@@ -644,7 +539,6 @@ def validate_text_quality(df, rules):
         violation_types = []
         mask = pd.Series(False, index=df.index)
 
-        # 1. Мусорные символы (только ASCII управляющие)
         try:
             garbage_mask = df[col].astype(str).str.contains(
                 r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]',
@@ -654,15 +548,10 @@ def validate_text_quality(df, rules):
         except Exception:
             garbage_mask = pd.Series(False, index=df.index)
 
-        # Проверка Unicode-артефактов через точное совпадение
         unicode_artifacts = ['', '\ufffd', '\ufeff', 'ï¿½']
         for artifact in unicode_artifacts:
             try:
-                garbage_mask |= df[col].astype(str).str.contains(
-                    artifact,
-                    na=False,
-                    regex=False
-                )
+                garbage_mask |= df[col].astype(str).str.contains(artifact, na=False, regex=False)
             except Exception:
                 pass
 
@@ -672,7 +561,6 @@ def validate_text_quality(df, rules):
             mask |= garbage_mask
             violation_types.append(f"мусор: {garbage_count}")
 
-        # 2. Слишком короткие значения (пустые строки)
         short_mask = df[col].astype(str).str.strip() == ''
         short_count = short_mask.sum()
         if short_count > 0:
@@ -680,7 +568,6 @@ def validate_text_quality(df, rules):
             mask |= short_mask
             violation_types.append(f"пустые: {short_count}")
 
-        # 3. Слишком длинные значения (возможный артефакт)
         long_mask = df[col].astype(str).str.len() > 500
         long_count = long_mask.sum()
         if long_count > 0:
@@ -700,41 +587,31 @@ def validate_text_quality(df, rules):
 
     return results, violation_masks
 
+
 def validate_regular_step(df, rules, date_col=None):
-    """
-    Проверка равномерности временного шага с учётом панельных данных.
-    """
+    """Проверка равномерности временного шага с учётом панельных данных."""
     if not date_col:
         return [], {}, {}
-    
+
     results = []
     violation_masks = {}
     freq_info = {}
-    
-    # Определяем группирующую колонку (Country, Region и т.д.)
-    group_cols = [c for c in df.columns 
-                  if c != date_col and df[c].dtype == 'object' 
+
+    group_cols = [c for c in df.columns
+                  if c != date_col and df[c].dtype == 'object'
                   and df[c].nunique() < 100]
-    
+
     if group_cols:
-        group_col = group_cols[0]  # Например, 'Country'
-        
-        # Проверяем регулярность ВНУТРИ каждой группы
+        group_col = group_cols[0]
         for group_value in df[group_col].unique():
             df_group = df[df[group_col] == group_value].copy()
             df_group = df_group.sort_values(date_col)
-            
-            # Определяем частоту
             inferred_freq = pd.infer_freq(df_group[date_col].drop_duplicates().sort_values())
-            
-            # Считаем интервалы
             intervals = df_group[date_col].diff()
             modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
-            
-            # Находим пропуски (интервалы > 1.5 × моды)
             gap_mask = intervals > modal_interval * 1.5
             gap_count = gap_mask.sum()
-            
+
             results.append({
                 'Тип': 'Панельные данные',
                 'Группа': f"{group_col}={group_value}",
@@ -744,23 +621,18 @@ def validate_regular_step(df, rules, date_col=None):
                 'Нарушений': 1 if gap_count > 0 else 0,
                 'Статус': '✅' if gap_count == 0 else '⚠️'
             })
-            
-            # Сохраняем маску нарушений
+
             if gap_count > 0:
                 violation_masks[f"{group_col}_{group_value}"] = gap_mask
-            
             freq_info['inferred_freq'] = inferred_freq
     else:
-        # Обычный временной ряд (без группировки)
         df_sorted = df.sort_values(date_col)
         inferred_freq = pd.infer_freq(df_sorted[date_col].drop_duplicates().sort_values())
-        
         intervals = df_sorted[date_col].diff()
         modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
-        
         gap_mask = intervals > modal_interval * 1.5
         gap_count = gap_mask.sum()
-        
+
         results.append({
             'Тип': 'Временной ряд',
             'Группа': 'Весь датасет',
@@ -770,86 +642,20 @@ def validate_regular_step(df, rules, date_col=None):
             'Нарушений': 1 if gap_count > 0 else 0,
             'Статус': '✅' if gap_count == 0 else '⚠️'
         })
-        
+
         if gap_count > 0:
             violation_masks['all'] = gap_mask
-        
         freq_info['inferred_freq'] = inferred_freq
-    
+
     return results, violation_masks, freq_info
 
-    # 5. Проверка для панельных или обычных данных
-    if group_col and group_col in df.columns:
-        # Панельные данные: проверяем каждую группу отдельно
-        all_violations = pd.Series(False, index=df.index)
-        total_gaps = 0
-        groups_with_issues = []
-
-        for group_name, group_df in df.groupby(group_col):
-            mask, gap_info, freq = check_group_regularity(group_df, group_name)
-            if mask is not None:
-                all_violations |= mask
-                if gap_info and gap_info['gaps_count'] > 0:
-                    total_gaps += gap_info['gaps_count']
-                    groups_with_issues.append({
-                        'group': group_name,
-                        'gaps': gap_info['gaps_count'],
-                        'expected_freq': gap_info['inferred_freq']
-                    })
-                if freq:
-                    frequency_info[group_name] = freq
-
-        violation_masks['all_groups'] = all_violations
-
-        if total_gaps > 0:
-            results.append({
-                'Тип': 'Панельные данные',
-                'Группирующая колонка': group_col,
-                'Временная колонка': date_col,
-                'Групп с нарушениями': len(groups_with_issues),
-                'Всего пропусков': total_gaps,
-                'Детали': groups_with_issues[:5],  # Первые 5 групп
-                'Статус': '⚠️ Нарушено'
-            })
-    else:
-        # Обычный временной ряд
-        mask, gap_info, freq = check_group_regularity(df, "all")
-
-        if mask is not None:
-            violation_masks['single_series'] = mask
-            frequency_info['inferred_freq'] = freq
-
-            if gap_info and gap_info['gaps_count'] > 0:
-                results.append({
-                    'Тип': 'Обычный временной ряд',
-                    'Временная колонка': date_col,
-                    'Ожидаемая частота': gap_info['inferred_freq'],
-                    'Ожидаемый интервал': str(gap_info['expected_interval']),
-                    'Пропусков': gap_info['gaps_count'],
-                    'Детали пропусков': gap_info['gap_details'][:5],
-                    'Статус': '⚠️ Нарушено'
-                })
-
-    return results, violation_masks, frequency_info
 
 def validate_sufficiency(df, rules, date_col=None, group_col=None, num_col=None):
-    """
-    Проверяет достаточность числа наблюдений для применения TS-моделей.
-
-    Args:
-        df: Исходный DataFrame
-        rules: Словарь правил валидации
-        date_col: Имя колонки с датой/годом (автоопределение если None)
-        group_col: Имя колонки для группировки (для панельных данных)
-        num_col: Имя числовой колонки для анализа
-
-    Returns:
-        tuple: (results_list, recommendations_dict)
-    """
+    """Проверяет достаточность числа наблюдений для применения TS-моделей."""
     results = []
     recommendations = {}
 
-    # 1. Автоопределение колонок
+    # Автоопределение колонок
     if date_col is None:
         date_candidates = [c for c in df.columns if 'year' in c.lower() or 'date' in c.lower() or 'дата' in c.lower()]
         if not date_candidates:
@@ -873,18 +679,17 @@ def validate_sufficiency(df, rules, date_col=None, group_col=None, num_col=None)
         if num_cols:
             num_col = num_cols[0]
 
-    # 2. Пороговые значения (из правил или по умолчанию)
+    # Пороговые значения
     sufficiency_rules = rules.get("sufficiency", {})
     thresholds = {
-        'min_obs_trend': sufficiency_rules.get('min_obs_trend', 10),        # Минимум для тренда
-        'min_obs_seasonality': sufficiency_rules.get('min_obs_seasonality', 24),  # Минимум для сезонности (2 года для месячных)
-        'min_obs_arima': sufficiency_rules.get('min_obs_arima', 50),        # Минимум для ARIMA
-        'min_obs_ml': sufficiency_rules.get('min_obs_ml', 100),             # Минимум для ML-моделей
-        'min_obs_fft': sufficiency_rules.get('min_obs_fft', 64),            # Минимум для FFT (степень 2)
-        'min_seasons': sufficiency_rules.get('min_seasons', 2),             # Минимум полных сезонов
+        'min_obs_trend': sufficiency_rules.get('min_obs_trend', 10),
+        'min_obs_seasonality': sufficiency_rules.get('min_obs_seasonality', 24),
+        'min_obs_arima': sufficiency_rules.get('min_obs_arima', 50),
+        'min_obs_ml': sufficiency_rules.get('min_obs_ml', 100),
+        'min_obs_fft': sufficiency_rules.get('min_obs_fft', 64),
+        'min_seasons': sufficiency_rules.get('min_seasons', 2),
     }
 
-    # 3. Определяем частоту данных
     def detect_frequency(dates_series):
         """Определяет частоту временного ряда"""
         if pd.api.types.is_datetime64_any_dtype(dates_series):
@@ -899,33 +704,28 @@ def validate_sufficiency(df, rules, date_col=None, group_col=None, num_col=None)
                 elif 'Y' in inferred or 'A' in inferred:
                     return 'yearly', 1
         else:
-            # Для целочисленных лет
             try:
                 years = pd.to_datetime(dates_series.astype(str), format='%Y', errors='coerce')
                 years = years.dropna()
                 if len(years) > 1:
                     intervals = years.diff().dropna()
                     avg_interval = intervals.mean()
-                    if avg_interval.days > 300:  # ~1 год
+                    if avg_interval.days > 300:
                         return 'yearly', 1
-                    elif avg_interval.days > 25:  # ~месяц
+                    elif avg_interval.days > 25:
                         return 'monthly', 12
             except:
                 pass
         return 'unknown', 1
 
-    # 4. Функция проверки для одной группы
     def check_group_sufficiency(group_df, group_name=""):
         group_results = []
         n_total = len(group_df)
-
         if n_total == 0:
             return group_results
 
-        # Определяем частоту
         freq_name, periods_per_year = detect_frequency(group_df[date_col])
 
-        # Вычисляем количество полных сезонов (лет)
         if pd.api.types.is_datetime64_any_dtype(group_df[date_col]):
             n_years = (group_df[date_col].max() - group_df[date_col].min()).days / 365.25
         else:
@@ -935,9 +735,8 @@ def validate_sufficiency(df, rules, date_col=None, group_col=None, num_col=None)
             except:
                 n_years = n_total / periods_per_year if periods_per_year > 0 else 0
 
-        n_seasons = int(n_years) if periods_per_year == 1 else int(n_years * periods_per_year / periods_per_year)
+        n_seasons = int(n_years) if periods_per_year == 1 else int(n_years)
 
-        # Проверки
         checks = [
             {
                 'name': 'Минимум для тренда',
@@ -1024,7 +823,7 @@ def validate_sufficiency(df, rules, date_col=None, group_col=None, num_col=None)
 
         return group_results
 
-    # 5. Проверка для панельных или обычных данных
+    # Проверка для панельных или обычных данных
     if group_col and group_col in df.columns:
         for group_name, group_df in df.groupby(group_col):
             results.extend(check_group_sufficiency(group_df, group_name))
@@ -1037,7 +836,6 @@ def validate_sufficiency(df, rules, date_col=None, group_col=None, num_col=None)
 def _generate_recommendations(failed_checks, n_total, freq_name):
     """Генерирует рекомендации на основе выявленных недостатков"""
     recs = []
-
     for check in failed_checks:
         deficit = check['threshold'] - check['actual']
         if 'сезон' in check.get('unit', ''):
@@ -1045,7 +843,6 @@ def _generate_recommendations(failed_checks, n_total, freq_name):
         else:
             recs.append(f"• Для {check['name']} нужно ещё {deficit} наблюдений")
 
-    # Общие рекомендации
     if n_total < 50:
         recs.append("💡 Рассмотрите сбор дополнительных данных или агрегацию по более крупным периодам")
     if n_total < 100 and freq_name == 'yearly':
@@ -1053,11 +850,11 @@ def _generate_recommendations(failed_checks, n_total, freq_name):
 
     return "\n".join(recs) if recs else "Нарушений не выявлено"
 
+
 def generate_validation_passport(df_before, val_results, df_after=None,
                                   dataset_name="Неизвестный датасет"):
     """
     Генерирует Паспорт валидации временного ряда.
-
     Returns:
         tuple: (df_passport, dq_score, metadata_dict)
     """
@@ -1066,11 +863,7 @@ def generate_validation_passport(df_before, val_results, df_after=None,
     passport = []
     n_total = len(df_before)
 
-    # ═══════════════════════════════════════════════════════
-    # 1-12. Все проверки (ваш существующий код без изменений)
-    # ══════════════════════════════════════════════════════
-
-    # ── 1. Типы данных ───────────────────────────────────
+    # 1. Типы данных
     val = val_results.get("val", {})
     n_type_errors = len([e for e in val.get("errors", []) if e.get("type") == "schema"])
     passport.append({
@@ -1082,10 +875,10 @@ def generate_validation_passport(df_before, val_results, df_after=None,
         "Значение ПОСЛЕ": "—",
         "Δ": "—",
         "Влияние на TS": "Некорректный тип ломает DatetimeIndex → ARIMA/Prophet",
-        "Статус": "❌" if n_type_errors > 0 else "✅"
+        "Статус": "" if n_type_errors > 0 else "✅"
     })
 
-    # ── 2. Форматы (Regex) ───────────────────────────────
+    # 2. Форматы (Regex)
     pattern_results = val_results.get("pattern_results", [])
     n_format_issues = len([r for r in pattern_results if "Отклонение" in r.get("Статус", "")])
     passport.append({
@@ -1099,7 +892,7 @@ def generate_validation_passport(df_before, val_results, df_after=None,
         "Статус": "❌" if n_format_issues > 0 else "✅"
     })
 
-    # ── 3. Диапазоны значений ────────────────────────────
+    # 3. Диапазоны значений
     range_results = val_results.get("range_results", [])
     n_range_violations = sum(r.get("Нарушений", 0) for r in range_results)
     passport.append({
@@ -1113,7 +906,7 @@ def generate_validation_passport(df_before, val_results, df_after=None,
         "Статус": "❌" if n_range_violations > 0 else "✅"
     })
 
-    # ─ 4. Согласованность ───────────────────────────────
+    # 4. Согласованность
     consistency_results = val_results.get("consistency", [])
     n_consistency_violations = sum(r.get("Нарушений", 0) for r in consistency_results)
     passport.append({
@@ -1127,21 +920,46 @@ def generate_validation_passport(df_before, val_results, df_after=None,
         "Статус": "❌" if n_consistency_violations > 0 else "✅"
     })
 
-    # ── 5. Уникальность ──────────────────────────────────
-    uniqueness_results = val_results.get("uniqueness", [])
-    n_dup = sum(r.get("Дубликатов", 0) for r in uniqueness_results)
+    # 5. Уникальность (с учётом панельных данных)
+    categorical_cols = df_before.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
+    date_cols = [c for c in df_before.columns if 'date' in c.lower() or 'дата' in c.lower() or
+                 'year' in c.lower() or 'год' in c.lower() or
+                 pd.api.types.is_datetime64_any_dtype(df_before[c])]
+
+    panel_candidates = []
+    for col in categorical_cols:
+        if col not in date_cols:
+            unique_ratio = df_before[col].nunique() / len(df_before)
+            if unique_ratio < 0.5 and df_before[col].nunique() > 1:
+                panel_candidates.append(col)
+
+    is_panel_data = len(panel_candidates) > 0 and len(date_cols) > 0
+
+    if is_panel_data:
+        check_cols = panel_candidates + date_cols[:1]
+        duplicates = df_before.duplicated(subset=check_cols, keep=False).sum()
+        uniqueness_status = "✅" if duplicates == 0 else "❌"
+        uniqueness_value = f"{duplicates} дубликатов по комбинации {check_cols}"
+        uniqueness_impact = f"Дубли комбинации {check_cols} ломают DatetimeIndex, resample(), STL"
+    else:
+        duplicates = df_before.duplicated(keep=False).sum()
+        uniqueness_status = "✅" if duplicates == 0 else "❌"
+        uniqueness_value = f"{duplicates} дубликатов"
+        uniqueness_impact = "Дубли дат ломают DatetimeIndex, resample(), STL"
+
     passport.append({
         "Вид проверки": "5. Уникальность",
         "Измерение DQ": "Uniqueness",
         "Метрика": "% dup = duplicated/total",
-        "Алгоритм": "df.duplicated(keep=False) / subset=[date_col]",
-        "Значение ДО": f"{n_dup} дубликатов",
-        "Значение ПОСЛЕ": "—", "Δ": "—",
-        "Влияние на TS": "Дубли дат ломают DatetimeIndex, resample(), STL",
-        "Статус": "❌" if n_dup > 0 else "✅"
+        "Алгоритм": "df.duplicated(keep=False) / subset",
+        "Значение ДО": uniqueness_value,
+        "Значение ПОСЛЕ": "—",
+        "Δ": "—",
+        "Влияние на TS": uniqueness_impact,
+        "Статус": uniqueness_status
     })
 
-    # ── 6. Справочники (Inclusion) ───────────────────────
+    # 6. Справочники (Inclusion)
     inclusion_results = val_results.get("inclusion", [])
     n_inclusion_violations = sum(r.get("Нарушений", 0) for r in inclusion_results)
     passport.append({
@@ -1155,7 +973,7 @@ def generate_validation_passport(df_before, val_results, df_after=None,
         "Статус": "❌" if n_inclusion_violations > 0 else "✅"
     })
 
-    # ── 7. Ссылочная целостность ─────────────────────────
+    # 7. Ссылочная целостность
     ref_results = val_results.get("referential", [])
     n_ref_violations = sum(r.get("Нарушений", 0) for r in ref_results)
     passport.append({
@@ -1169,19 +987,21 @@ def generate_validation_passport(df_before, val_results, df_after=None,
         "Статус": "❌" if n_ref_violations > 0 else "✅"
     })
 
-    # ── 8. Хронологический порядок ───────────────────────
+    # 8. Хронологический порядок
+    timeliness_results = val_results.get("timeliness", [])
+    n_time_reversals = sum(r.get("Нарушений", 0) for r in timeliness_results)
     passport.append({
         "Вид проверки": "8. Хронологический порядок",
         "Измерение DQ": "Timeliness",
         "Метрика": "n_time_reversals / n_total",
         "Алгоритм": "groupby(country).sort_values(date).diff() < 0",
-        "Значение ДО": f"{n_consistency_violations} нарушений порядка",
+        "Значение ДО": f"{n_time_reversals} нарушений порядка",
         "Значение ПОСЛЕ": "—", "Δ": "—",
         "Влияние на TS": "Нарушение порядка → некорректные лаги",
-        "Статус": "❌" if n_consistency_violations > 0 else "✅"
+        "Статус": "❌" if n_time_reversals > 0 else "✅"
     })
 
-    # ── 9. Равномерность шага ────────────────────────────
+    # 9. Равномерность шага
     regularity_results = val_results.get("regularity", [])
     n_gaps = sum(r.get("Пропусков", r.get("Всего пропусков", 0)) for r in regularity_results)
     freq_info = val_results.get("regularity_freq_info", {})
@@ -1197,7 +1017,7 @@ def generate_validation_passport(df_before, val_results, df_after=None,
         "Статус": "❌" if n_gaps > 0 else "✅"
     })
 
-    # ── 10. Достаточность наблюдений ─────────────────────
+    # 10. Достаточность наблюдений
     sufficiency_results = val_results.get("sufficiency", [])
     n_insufficient = len([r for r in sufficiency_results if r.get("Нарушений", 0) > 0])
     passport.append({
@@ -1211,9 +1031,16 @@ def generate_validation_passport(df_before, val_results, df_after=None,
         "Статус": "❌" if n_insufficient > 0 else "✅"
     })
 
-    # ── 11. Пропуски ─────────────────────────────────────
+    # 11. Пропуски
     miss = val_results.get("miss", {})
-    total_missing = sum(v.get("missing_count", 0) if isinstance(v, dict) else 0 for v in miss.values())
+    total_missing = 0
+    if isinstance(miss, dict):
+        if "summary" in miss:
+            total_missing = miss["summary"].get("total_missing", 0)
+        else:
+            total_missing = sum(v.get("missing_count", 0) if isinstance(v, dict) else 0
+                               for v in miss.values())
+
     missing_pct = (total_missing / (n_total * len(df_before.columns)) * 100) if n_total > 0 else 0
     passport.append({
         "Вид проверки": "11. Полнота данных (Missing)",
@@ -1223,12 +1050,19 @@ def generate_validation_passport(df_before, val_results, df_after=None,
         "Значение ДО": f"{total_missing} пропусков ({missing_pct:.1f}%)",
         "Значение ПОСЛЕ": "—", "Δ": "—",
         "Влияние на TS": "Пропуски искажают автокорреляцию",
-        "Статус": "❌" if total_missing > 0 else "✅"
+        "Статус": "" if total_missing > 0 else "✅"
     })
 
-    # ── 12. Выбросы ──────────────────────────────────────
+    # 12. Выбросы
     outl = val_results.get("outl", {})
-    n_outliers = sum(v.get("outliers_count", 0) if isinstance(v, dict) else 0 for v in outl.values())
+    n_outliers = 0
+    if isinstance(outl, dict):
+        if "summary" in outl:
+            n_outliers = outl["summary"].get("total_outliers", 0)
+        else:
+            n_outliers = sum(v.get("outliers_count", 0) if isinstance(v, dict) else 0
+                            for v in outl.values())
+
     passport.append({
         "Вид проверки": "12. Выбросы (Outliers)",
         "Измерение DQ": "Accuracy",
@@ -1240,10 +1074,10 @@ def generate_validation_passport(df_before, val_results, df_after=None,
         "Статус": "❌" if n_outliers > 0 else "✅"
     })
 
-    # ── Размер датасета (если применялись исправления) ───
+    # Итог: размер датасета
     if df_after is not None and len(df_after) > 0:
         passport.append({
-            "Вид проверки": " Итог: размер датасета",
+            "Вид проверки": "Итог: размер датасета",
             "Измерение DQ": "—",
             "Метрика": "n_rows, n_cols",
             "Алгоритм": "df.shape",
@@ -1254,15 +1088,13 @@ def generate_validation_passport(df_before, val_results, df_after=None,
             "Статус": "ℹ️"
         })
 
-    # ═══════════════════════════════════════════════════════
     # COMPOSITE DQ SCORE
-    # ══════════════════════════════════════════════════════
     checks_total = len(passport)
     checks_passed = len([p for p in passport if p["Статус"] == "✅"])
     dq_score = (checks_passed / checks_total * 100) if checks_total > 0 else 0
 
     passport.append({
-        "Вид проверки": " COMPOSITE DQ SCORE",
+        "Вид проверки": "COMPOSITE DQ SCORE",
         "Измерение DQ": "Aggregate",
         "Метрика": "DQ Score = passed/total × 100",
         "Алгоритм": "Взвешенная сумма по 6 измерениям DAMA",
@@ -1275,9 +1107,6 @@ def generate_validation_passport(df_before, val_results, df_after=None,
 
     df_passport = pd.DataFrame(passport)
 
-    # ═══════════════════════════════════════════════════════
-    # МЕТАДАННЫЕ ПАСПОРТА (для шапки/подписи)
-    # ═════════════════════════════════════════════════════
     metadata = {
         "document_title": "ПАСПОРТ ВАЛИДАЦИИ ВРЕМЕННОГО РЯДА",
         "dataset_name": dataset_name,
@@ -1294,32 +1123,14 @@ def generate_validation_passport(df_before, val_results, df_after=None,
 
     return df_passport, dq_score, metadata
 
+
 def get_model_recommendations(dq_score, val_results):
-    """
-    Формирует структурированные рекомендации по применимости моделей.
-
-    Args:
-        dq_score: Composite DQ Score (0-100)
-        val_results: dict со всеми результатами валидации
-
-    Returns:
-        dict: {
-            'available': [...],      # Доступные модели
-            'limited': [...],        # С ограничениями
-            'unavailable': [...],    # Недоступные
-            'explanation': '...',    # Пояснение
-            'primary_recommendation': '...',  # Главная рекомендация
-            'tier': 'high'|'medium'|'low',
-            'dq_score': float
-        }
-    """
-    # Анализ результатов для уточнения рекомендаций
+    """Формирует структурированные рекомендации по применимости моделей."""
     sufficiency = val_results.get("sufficiency", [])
     regularity = val_results.get("regularity", [])
     n_gaps = sum(r.get("Пропусков", r.get("Всего пропусков", 0)) for r in regularity)
     n_insufficient = len([r for r in sufficiency if r.get("Нарушений", 0) > 0])
 
-    # Базовые пороги по DQ Score
     if dq_score >= 80 and n_gaps == 0 and n_insufficient == 0:
         tier = "high"
     elif dq_score >= 50:
@@ -1379,7 +1190,6 @@ def get_model_recommendations(dq_score, val_results):
 
     rec = models.get(tier, models["low"]).copy()
 
-    # Формирование объяснения
     if tier == "high":
         explanation = (
             f"DQ Score = {dq_score:.1f}% — данные высокого качества. "

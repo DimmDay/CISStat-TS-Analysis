@@ -6161,192 +6161,358 @@ with tab_validation:
                             st.session_state.show_consistency_preview = False
                             st.rerun()
 
-        # ───────────────────────────────────────────────────────────
-        # 5. ПРОВЕРКА УНИКАЛЬНОСТИ (с интерактивным пайплайном)
-        # ───────────────────────────────────────────────────────────
+        # ═══════════════════════════════════════════════════════
+        # 🔹 ПРОВЕРКА УНИКАЛЬНОСТИ (с поддержкой панельных данных)
+        # ═══════════════════════════════════════════════════════
+        # ── ДИАГНОСТИКА ТЕКУЩЕГО СОСТОЯНИЯ ──────────────────
+        if st.session_state.primary_date_col and st.session_state.col_types.get("num"):
+            date_col = st.session_state.primary_date_col
+            df_uniq = st.session_state.df.copy()
+            df_uniq[date_col] = pd.to_datetime(df_uniq[date_col])
+            
+            # АВТОДЕТЕКЦИЯ ПАНЕЛЬНОЙ СТРУКТУРЫ
+            # Ищем колонки, которые могут быть идентификаторами сущностей
+            categorical_cols = df_uniq.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
+            
+            # Проверяем, есть ли повторяющиеся значения в категориальных колонках
+            panel_candidates = []
+            for col in categorical_cols:
+                if col != date_col:
+                    unique_ratio = df_uniq[col].nunique() / len(df_uniq)
+                    # Если уникальных значений меньше 50% от общего числа строк — возможный идентификатор
+                    if unique_ratio < 0.5 and df_uniq[col].nunique() > 1:
+                        panel_candidates.append(col)
+            
+            # Определяем, являются ли данные панельными
+            is_panel_data = len(panel_candidates) > 0
+            
+            # Определяем колонки для проверки уникальности
+            if is_panel_data:
+                check_cols = panel_candidates + [date_col]
+                duplicate_mask = df_uniq.duplicated(subset=check_cols, keep=False)
+            else:
+                # Для кросс-секционных данных проверяем все поля
+                check_cols = list(df_uniq.columns)
+                duplicate_mask = df_uniq.duplicated(keep=False)
+            
+            duplicate_indices = df_uniq[duplicate_mask].index.tolist()
+            uniqueness_issues = len(duplicate_indices) > 0
+            uniqueness_dup_count = len(duplicate_indices)
+            
+            # Карточка результата (всегда видна)
+            if uniqueness_issues:
+                make_card("Проверка уникальности (uniqueness checks)", True,
+                    "**◻️ Метрики:** `% dup = duplicated/total`, дубли временных меток.  \n"
+                    "**◻️ Алгоритм:** `df.duplicated()`, аудит `datetime.duplicated()`.  \n"
+                    "**◻️ Влияние на TS:** Дубли дат ломают `DatetimeIndex`, `resample()`, STL и ARIMA.  \n"
+                    "**◻️ Описание:** Модуль проводит проверку на двух уровнях:  \n"
+                    " 1. Полные дубликаты строк. Используется метод df.duplicated() с параметром keep=False, "
+                    "помечаются все копии дублирующихся строк, возвращает булеву маску для последующей обработки.  \n"
+                    " 2. Дубликаты по ключу времени (для TS-режима) — "
+                    "проверяет уникальность по колонке с датой (критически важно для построения DatetimeIndex). Если активен режим панели данных — проверка по (Country, Date).",
+                    f"⚠️ Найдено {uniqueness_dup_count} дубликатов",
+                    "⚠️", None)
+                
+                # ── ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
+                with st.expander("Полный пайплайн обработки дубликатов", expanded=True):
+                    st.markdown("### Таблица дубликатов с ручной корректировкой")
 
-        uniqueness_results_local = locals().get('uniqueness_results', [])
-        uniqueness_issues = len(uniqueness_results_local) > 0
-        uniqueness_dup_count = sum(r.get('Дубликатов', 0) for r in uniqueness_results_local) if uniqueness_issues else 0
+                    # Инициализация состояний
+                    if "df_uniqueness_work" not in st.session_state:
+                        st.session_state.df_uniqueness_work = df_uniq.copy()
+                    df_work = st.session_state.df_uniqueness_work
 
-        make_card(" Проверка уникальности (uniqueness checks)", uniqueness_issues,
-            "**◻️ Метрики:** `% dup = duplicated/total`, дубли временных меток.  \n"
-            "**◻️ Алгоритм:** `df.duplicated()`, аудит `datetime.duplicated()`.  \n"
-            "**◻️ Влияние на TS:** Дубли дат ломают `DatetimeIndex`, `resample()`, STL и ARIMA.  \n"
-            "**◻️ Описание:** Модуль проводит проверку на двух уровнях:  \n"
-            " 1. Полные дубликаты строк. Используется метод df.duplicated() с параметром keep=False, "
-            "помечаются все копии дублирующихся строк, возвращает булеву маску для последующей обработки.  \n"
-            " 2. Дубликаты по ключу времени (для TS-режима) — "
-            "проверяет уникальность по колонке с датой (критически важно для построения DatetimeIndex). Если активен режим панели данных — проверка по (Country, Date).",
-            "✅ Дубликаты отсутствуют" if not uniqueness_issues else f"⚠️ Найдено {uniqueness_dup_count} дубликатов",
-            "✅" if not uniqueness_issues else "⚠️", None)
+                    # Функция для вычисления маски дубликатов (пересчитывается каждый раз)
+                    def _compute_duplicate_mask(df_to_check: pd.DataFrame) -> pd.Series:
+                        """Вычисляет маску дубликатов с учётом типа данных."""
+                        if is_panel_data:
+                            return df_to_check.duplicated(subset=check_cols, keep=False)
+                        else:
+                            return df_to_check.duplicated(keep=False)
 
-        # ── 🔧 ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
-        if uniqueness_issues:
-            with st.expander("🔧 Полный пайплайн обработки дубликатов", expanded=True):
-                st.markdown("### 📋 Таблица дубликатов с ручной корректировкой")
-
-                # Инициализация состояний
-                if "df_uniqueness_work" not in st.session_state:
-                    st.session_state.df_uniqueness_work = df.copy()
-                df_work = st.session_state.df_uniqueness_work
-
-                # Поиск дубликатов
-                if st.session_state.col_types.get("date"):
-                    date_col = st.session_state.col_types["date"][0]
-                    # Для временных рядов: дубли по дате
-                    duplicate_mask = df_work.duplicated(subset=[date_col], keep=False)
+                    # Вычисляем маску (пересчитывается при каждом запуске)
+                    duplicate_mask = _compute_duplicate_mask(df_work)
                     duplicate_indices = df_work[duplicate_mask].index.tolist()
-                else:
-                    # Общий случай: полные дубликаты строк
-                    duplicate_mask = df_work.duplicated(keep=False)
-                    duplicate_indices = df_work[duplicate_mask].index.tolist()
 
-                # Фильтр отображения
-                view_filter = st.radio(
-                    "Фильтр строк:",
-                    ["⚠️ Только дубликаты", "✅ Показать всё"],
-                    horizontal=True,
-                    key="uniqueness_view_filter"
-                )
+                    # Фильтр отображения
+                    view_filter = st.radio(
+                        "Фильтр строк:",
+                        ["Только дубликаты", "Показать всё"],
+                        horizontal=True,
+                        key="uniqueness_view_filter"
+                    )
 
-                if view_filter == "⚠️ Только дубликаты":
-                    df_view = df_work.loc[duplicate_indices].copy() if duplicate_indices else df_work.iloc[:0].copy()
-                else:
-                    df_view = df_work.copy()
+                    if view_filter == "Только дубликаты":
+                        df_view = df_work.loc[duplicate_indices].copy() if duplicate_indices else df_work.iloc[:0].copy()
+                    else:
+                        df_view = df_work.copy()
 
-                # Добавляем статус-колонку
-                df_view = df_view.copy()
-                df_view.insert(0, '_STATUS', df_view.index.map(lambda idx: "🔴 Дубликат" if idx in duplicate_indices else "🟢 Уникально"))
+                    # Добавляем статус-колонку
+                    df_view = df_view.copy()
+                    df_view.insert(0, '_STATUS', df_view.index.map(
+                        lambda idx: "🔴 Дубликат" if idx in duplicate_indices else "🟢 Уникально"
+                    ))
 
-                # Интерактивная таблица (Ручная правка)
-                edited_df = st.data_editor(
-                    df_view,
-                    use_container_width=True,
-                    height=300,
-                    num_rows="dynamic",
-                    disabled=['_STATUS'],
-                    key="uniqueness_editor",
-                    column_config={
-                        "_STATUS": st.column_config.TextColumn("Статус", disabled=True, width="small")
-                    }
-                )
+                    # Интерактивная таблица (Ручная правка)
+                    edited_df = st.data_editor(
+                        df_view,
+                        use_container_width=True,
+                        height=300,
+                        num_rows="dynamic",
+                        disabled=['_STATUS'],
+                        key="uniqueness_editor",
+                        column_config={
+                            "_STATUS": st.column_config.TextColumn("Статус", disabled=True, width="small")
+                        }
+                    )
 
-                # 💾 КНОПКА СОХРАНЕНИЯ
-                c_save1, c_save2 = st.columns([4, 1])
-                with c_save1:
-                    st.caption("💡 Отредактируйте значения вручную или выберите стратегию ниже")
-                with c_save2:
-                    if st.button("💾 Сохранить", key="btn_save_manual_uniqueness", use_container_width=True):
-                        if '_STATUS' in edited_df.columns:
-                            edited_df = edited_df.drop(columns=['_STATUS'])
-                        df_work.update(edited_df)
-                        st.session_state.df_uniqueness_work = df_work
-                        st.session_state.df = df_work
-                        st.session_state.validation_ready = False
-                        st.toast("✅ Правки сохранены!", icon="✅")
+                    # 💾 КНОПКА СОХРАНЕНИЯ
+                    c_save1, c_save2 = st.columns([4, 1])
+                    with c_save1:
+                        st.caption("💡 Отредактируйте значения вручную или выберите стратегию ниже")
+                    with c_save2:
+                        if st.button("💾 Сохранить", key="btn_save_manual_uniqueness", use_container_width=True):
+                            try:
+                                # ИСПРАВЛЕНИЕ: Корректное сохранение с учётом новых строк
+                                if '_STATUS' in edited_df.columns:
+                                    edited_df = edited_df.drop(columns=['_STATUS'])
+                                
+                                # ИСПРАВЛЕНИЕ: Используем concat вместо update для поддержки новых строк
+                                # Удаляем из df_work строки, которые были в df_view (т.к. они могли измениться)
+                                df_work_updated = df_work[~df_work.index.isin(df_view.index)].copy()
+                                
+                                # Добавляем отредактированные строки
+                                if not edited_df.empty:
+                                    df_work_updated = pd.concat([df_work_updated, edited_df], ignore_index=False)
+                                
+                                # Сортируем по индексу (если возможно) или по дате
+                                if date_col in df_work_updated.columns:
+                                    df_work_updated = df_work_updated.sort_values(date_col)
+                                
+                                st.session_state.df_uniqueness_work = df_work_updated
+                                st.session_state.df = df_work_updated
+                                st.session_state.validation_ready = False
+                                st.toast("✅ Правки сохранены!", icon="✅")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"❌ Ошибка сохранения: {e}")
+
+                    st.divider()
+
+                    # Панель стратегий (Автоматическая обработка)
+                    st.markdown("### Стратегии обработки дубликатов")
+                    c1, c2 = st.columns([2, 1])
+                    with c1:
+                        uniqueness_strategy = st.radio(
+                            "Выберите стратегию:",
+                            ["🗑️ Удалить дубликаты (оставить первый)",
+                            "🗑️ Удалить дубликаты (оставить последний)",
+                            "🗑️ Удалить все дубликаты полностью",
+                            "📊 Агрегировать дубликаты (mean/sum)",
+                            "🚩 Только отметить флагом (не менять данные)"],
+                            key="uniqueness_fill_strategy"
+                        )
+                        if "Удалить дубликаты" in uniqueness_strategy:
+                            st.warning(f"⚠️ Будет удалено **{len(duplicate_indices)} строк** "
+                                    f"с дубликатами ({len(duplicate_indices)/len(df_work)*100:.1f}% данных).")
+                        elif "Агрегировать" in uniqueness_strategy:
+                            st.info("ℹ️ Дубликаты будут агрегированы через mean (числовые) / first (категории).")
+                        elif "флагом" in uniqueness_strategy:
+                            st.info("🚩 Будет добавлена колонка `_is_duplicate` с True/False. Данные не меняются.")
+                    with c2:
+                        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+
+                    # 🔧 ИСПРАВЛЕНИЕ: Кнопка превью — отдельная, без автоматического show
+                    if st.button("Прогноз влияния на статистики", type="secondary", 
+                                use_container_width=True, key="btn_show_uniqueness_preview"):
+                        st.session_state.show_uniqueness_preview = True
                         st.rerun()
 
-                st.divider()
+                    # Блок превью
+                    if st.session_state.get("show_uniqueness_preview", True):
+                        strategy = uniqueness_strategy
+                        st.markdown("##### Прогноз влияния на статистики:")
 
-                # Панель стратегий (Автоматическая обработка)
-                st.markdown("### 🧹 Стратегии обработки дубликатов")
-                c1, c2 = st.columns([2, 1])
-                with c1:
-                    uniqueness_strategy = st.radio(
-                        "Выберите стратегию:",
-                        ["Удалить дубликаты (оставить первый)",
-                        "Удалить дубликаты (оставить последний)",
-                        "Удалить все дубликаты полностью",
-                        "Агрегировать дубликаты (mean/sum)",
-                        "Только отметить флагом (не менять данные)"],
-                        key="uniqueness_fill_strategy"
-                    )
-                    if "Удалить дубликаты" in uniqueness_strategy:
-                        st.warning(f"⚠️ Будет удалено **{len(duplicate_indices)} строк** с дубликатами ({len(duplicate_indices)/len(df_work)*100:.1f}% данных).")
-                    elif "Агрегировать" in uniqueness_strategy:
-                        st.info("ℹ️ Дубликаты будут агрегированы через mean (числовые) / first (категории).")
-                    elif "флагом" in uniqueness_strategy:
-                        st.info("🚩 Будет добавлена колонка `_is_duplicate` с True/False")
-                with c2:
-                    st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+                        try:
+                            df_preview = df_work.copy()
+                            num_cols_to_check = df_preview.select_dtypes(include=['number']).columns.tolist()
+                            
+                            # Определяем колонки, участвующие в нарушениях
+                            violation_cols = check_cols if is_panel_data else list(df_preview.columns)
 
-                # Кнопка запуска превью
-                if "show_uniqueness_preview" not in st.session_state:
-                    st.session_state.show_uniqueness_preview = True
+                            # ── ПРИМЕНЕНИЕ СТРАТЕГИИ ──────────────────────
+                            if "Удалить дубликаты (оставить первый)" in strategy:
+                                df_preview = df_preview.drop_duplicates(subset=check_cols, keep='first').reset_index(drop=True)
+                                note = "(удаление, keep='first')"
+                            elif "Удалить дубликаты (оставить последний)" in strategy:
+                                df_preview = df_preview.drop_duplicates(subset=check_cols, keep='last').reset_index(drop=True)
+                                note = "(удаление, keep='last')"
+                            elif "Удалить все дубликаты полностью" in strategy:
+                                df_preview = df_preview.drop_duplicates(subset=check_cols, keep=False).reset_index(drop=True)
+                                note = "(удаление всех дубликатов)"
+                            elif "Агрегировать дубликаты" in strategy:
+                                # Агрегация: mean для числовых, first для категориальных
+                                agg_dict = {}
+                                for col in df_preview.columns:
+                                    if col in check_cols:
+                                        continue  # Ключевые поля не агрегируем
+                                    elif col in num_cols_to_check:
+                                        agg_dict[col] = 'mean'
+                                    else:
+                                        agg_dict[col] = 'first'
+                                
+                                try:
+                                    df_preview = df_preview.groupby(check_cols, as_index=False).agg(agg_dict)
+                                    note = "(агрегация)"
+                                except Exception as e:
+                                    st.warning(f"⚠️ Ошибка агрегации: {e}. Используется упрощённая агрегация.")
+                                    # Fallback: агрегируем только числовые колонки
+                                    num_cols_only = {col: 'mean' for col in num_cols_to_check if col not in check_cols}
+                                    df_preview = df_preview.groupby(check_cols, as_index=False).agg(num_cols_only)
+                            elif "флагом" in strategy:
+                                # ИСПРАВЛЕНИЕ: Добавляем колонки-флаги
+                                flag_col = f"{'_'.join(check_cols)}_is_duplicate"
+                                df_preview[flag_col] = df_preview.duplicated(subset=check_cols, keep=False)
+                                st.info(f"🚩 Добавлена колонка `{flag_col}`: "
+                                    f"{int(df_preview[flag_col].sum())} дубликатов, "
+                                    f"{int((~df_preview[flag_col]).sum())} уникальных")
+                                note = "(добавлен флаг)"
+                            else:
+                                note = "(без изменений)"
 
-                st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allow_html=True)
-                if st.button("Прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_uniqueness_preview"):
-                    st.session_state.show_uniqueness_preview = True
-                    st.rerun()
+                            # Проверка, остались ли дубликаты после агрегации
+                            if "Агрегировать" in strategy:
+                                remaining_dups = _compute_duplicate_mask(df_preview).sum()
+                                if remaining_dups > 0:
+                                    st.warning(f"⚠️ После агрегации осталось **{remaining_dups}** дубликатов. "
+                                            f"Возможно, нужны дополнительные преобразования.")
 
-                # Блок превью
-                if st.session_state.show_uniqueness_preview:
-                    strategy = uniqueness_strategy
-                    st.markdown("##### 📈 Прогноз влияния на статистику:")
+                            # ── МЕТРИКИ (4 колонки) ─────────────────────
+                            c_p1, c_p2, c_p3, c_p4 = st.columns(4)
+                            c_p1.metric("📊 Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
+                                    delta=f"{len(df_preview)-len(df_work):+}")
 
-                    df_preview = df_work.copy()
-                    num_cols_to_check = df_preview.select_dtypes(include=['number']).columns.tolist()
+                            if num_cols_to_check:
+                                col = num_cols_to_check[0]
+                                def safe_stat(d, c, f):
+                                    try:
+                                        return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
+                                    except:
+                                        return 0.0
+                                m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
+                                m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
+                                fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
+                                delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
+                                c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                                c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                                c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
-                    if "Удалить дубликаты (оставить первый)" in strategy:
-                        if st.session_state.col_types.get("date"):
-                            df_preview = df_preview.drop_duplicates(subset=[st.session_state.col_types["date"][0]], keep='first')
-                        else:
-                            df_preview = df_preview.drop_duplicates(keep='first')
-                        note = "(удаление, keep='first')"
-                    elif "Удалить дубликаты (оставить последний)" in strategy:
-                        if st.session_state.col_types.get("date"):
-                            df_preview = df_preview.drop_duplicates(subset=[st.session_state.col_types["date"][0]], keep='last')
-                        else:
-                            df_preview = df_preview.drop_duplicates(keep='last')
-                        note = "(удаление, keep='last')"
-                    elif "Удалить все дубликаты полностью" in strategy:
-                        if st.session_state.col_types.get("date"):
-                            df_preview = df_preview.drop_duplicates(subset=[st.session_state.col_types["date"][0]], keep=False)
-                        else:
-                            df_preview = df_preview.drop_duplicates(keep=False)
-                        note = "(удаление всех дубликатов)"
-                    elif "Агрегировать дубликаты" in strategy:
-                        if st.session_state.col_types.get("date"):
-                            date_col = st.session_state.col_types["date"][0]
-                            # Агрегация: mean для числовых, first для категориальных
-                            agg_dict = {col: 'mean' if col in num_cols_to_check else 'first' for col in df_preview.columns if col != date_col}
-                            df_preview = df_preview.groupby(date_col).agg(agg_dict).reset_index()
-                        note = "(агрегация)"
-                    else:
-                        note = "(без изменений)"
+                            # ИСПРАВЛЕНИЕ: Кнопки подтверждения с полной синхронизацией
+                            st.divider()
+                            c_ok, c_cancel = st.columns(2)
+                            with c_ok:
+                                if st.button("💾 Подтвердить изменения", type="primary", 
+                                            use_container_width=True, key="btn_confirm_uniqueness"):
+                                    try:
+                                        # ИСПРАВЛЕНИЕ: Применяем стратегию заново к df_work
+                                        df_final = df_work.copy()
+                                        
+                                        if "Удалить дубликаты (оставить первый)" in strategy:
+                                            df_final = df_final.drop_duplicates(subset=check_cols, keep='first').reset_index(drop=True)
+                                        elif "Удалить дубликаты (оставить последний)" in strategy:
+                                            df_final = df_final.drop_duplicates(subset=check_cols, keep='last').reset_index(drop=True)
+                                        elif "Удалить все дубликаты полностью" in strategy:
+                                            df_final = df_final.drop_duplicates(subset=check_cols, keep=False).reset_index(drop=True)
+                                        elif "Агрегировать дубликаты" in strategy:
+                                            agg_dict = {}
+                                            for col in df_final.columns:
+                                                if col in check_cols:
+                                                    continue
+                                                elif col in num_cols_to_check:
+                                                    agg_dict[col] = 'mean'
+                                                else:
+                                                    agg_dict[col] = 'first'
+                                            try:
+                                                df_final = df_final.groupby(check_cols, as_index=False).agg(agg_dict)
+                                            except:
+                                                num_cols_only = {col: 'mean' for col in num_cols_to_check if col not in check_cols}
+                                                df_final = df_final.groupby(check_cols, as_index=False).agg(num_cols_only)
+                                        elif "флагом" in strategy:
+                                            flag_col = f"{'_'.join(check_cols)}_is_duplicate"
+                                            df_final[flag_col] = df_final.duplicated(subset=check_cols, keep=False)
+                                        
+                                        # СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
+                                        st.session_state.df = df_final.copy()
+                                        st.session_state.df_uniqueness_work = df_final.copy()
+                                        st.session_state.validation_ready = False
+                                        st.session_state.show_uniqueness_preview = False
+                                        
+                                        # 🔥 Удаляем рабочие копии других модулей
+                                        work_dfs = [
+                                            "df_missing_work", "df_pattern_work", "df_range_work",
+                                            "df_outlier_work", "df_inclusion_work", "df_referential_work",
+                                            "df_text_work", "df_consistency_work", "df_regularity_work",
+                                            "df_regular_work", "df_variance_work", "df_smooth_work",
+                                            "df_stationarity_work", "df_scaling_work"
+                                        ]
+                                        for work_df_name in work_dfs:
+                                            if work_df_name in st.session_state:
+                                                del st.session_state[work_df_name]
+                                        
+                                        # Сбрасываем результаты валидации
+                                        if "val_results" in st.session_state:
+                                            del st.session_state.val_results
+                                        
+                                        st.success(f"✅ Стратегия **{strategy}** применена! "
+                                                f"Записей: {len(df_work):,} → {len(df_final):,}. "
+                                                f"Перезапустите валидацию.")
+                                        st.rerun()
+                                        
+                                    except Exception as e:
+                                        st.error(f"❌ Ошибка применения стратегии: {e}")
+                                        import traceback
+                                        with st.expander("🔍 Stack trace"):
+                                            st.code(traceback.format_exc(), language="python")
+                                            
+                            with c_cancel:
+                                if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_uniqueness"):
+                                    st.session_state.show_uniqueness_preview = False
+                                    st.rerun()
+                                    
+                        except Exception as e:
+                            st.error(f"❌ Ошибка превью: {e}")
+                            import traceback
+                            with st.expander("🔍 Stack trace"):
+                                st.code(traceback.format_exc(), language="python")
+            
+            else:
+                # Нет дубликатов — показываем карточку с зелёной галочкой
+                # Добавляем информацию о панельной структуре внутрь описания карточки
+                if is_panel_data:
+                    panel_info = f"\n\n**ℹ️ Тип данных:** Обнаружены **панельные данные**. Проверка уникальности выполняется по комбинации: `{', '.join(panel_candidates)}` + `{date_col}`"
+                else:
+                    panel_info = f"\n\n**ℹ️ Тип данных:** Кросс-секционные данные. Проверка уникальности выполняется по всем полям."
+                
+                make_card("Проверка уникальности (uniqueness checks)", False,
+                    "**◻️ Метрики:** `% dup = duplicated/total`, дубли временных меток.  \n"
+                    "**◻️ Алгоритм:** `df.duplicated()`, аудит `datetime.duplicated()`.  \n"
+                    "**◻️ Влияние на TS:** Дубли дат ломают `DatetimeIndex`, `resample()`, STL и ARIMA.  \n"
+                    "**◻️ Описание:** Модуль проводит проверку на двух уровнях:  \n"
+                    " 1. Полные дубликаты строк. Используется метод df.duplicated() с параметром keep=False, "
+                    "помечаются все копии дублирующихся строк, возвращает булеву маску для последующей обработки.  \n"
+                    " 2. Дубликаты по ключу времени (для TS-режима) — "
+                    "проверяет уникальность по колонке с датой (критически важно для построения DatetimeIndex). Если активен режим панели данных — проверка по (Country, Date)."
+                    + panel_info,  # ← Добавлено внутрь описания
+                    "✅ Дубликаты отсутствуют",
+                    "✅", None)
 
-                    # Метрики (4 колонки)
-                    c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                    c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}", delta=f"{len(df_preview)-len(df_work):+}")
-
-                    if num_cols_to_check:
-                        col = num_cols_to_check[0]
-                        def safe_stat(d, c, f):
-                            return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
-                        m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
-                        m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
-                        fmt = lambda x: f"{x:.2f}" if pd.notnull(x) and x != 0.0 else "N/A"
-                        delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                        c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                        c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                        c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
-
-                    # Кнопки подтверждения
-                    st.divider()
-                    c_ok, c_cancel = st.columns(2)
-                    with c_ok:
-                        if st.button("💾 Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_uniqueness"):
-                            st.session_state.df_after_fixes = df_preview.copy()
-                            st.session_state.df = df_preview
-                            st.session_state.validation_ready = False
-                            st.session_state.show_uniqueness_preview = False
-                            st.success("✅ Стратегия применена! Перезапустите валидацию.")
-                            st.rerun()
-                    with c_cancel:
-                        if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_uniqueness"):
-                            st.session_state.show_uniqueness_preview = False
-                            st.rerun()
+        else:
+            make_card("Проверка уникальности (uniqueness checks)", False,
+                "**◻️ Метрики:** `% dup = duplicated/total`, дубли временных меток.  \n"
+                "**◻️ Алгоритм:** `df.duplicated()`, аудит `datetime.duplicated()`.  \n"
+                "**◻️ Влияние на TS:** Дубли дат ломают `DatetimeIndex`, `resample()`, STL и ARIMA.",
+                "⚠️ Недостаточно данных для проверки",
+                "⚠️", None)
 
         # ───────────────────────────────────────────────────────────
         # 6. ПРОВЕРКА ПРИНАДЛЕЖНОСТИ К НАБОРУ (inclusion/lookup)
