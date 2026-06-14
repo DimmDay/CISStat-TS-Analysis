@@ -1054,7 +1054,7 @@ st.markdown(f"""
         </div>
         <p style='color: rgba(255,255,255,0.95); font-size: {SUBHEADER_FONT_SIZE};
                 margin: 8px 0 0 0; font-weight: 400;'>
-            профессиональная платформа анализа временных рядов
+            профессиональная платформа глубокого анализа временных рядов
         </p>
     </div>
     
@@ -4476,8 +4476,8 @@ with tab_validation:
         для оценки пригодности ряда к применению статистических моделей и машинному обучению.           
         
                     
-        **Что мы получим на выходе?** Интерактивный Data Quality Dashboard с детальным отчетом о проблемах, рекомендацией по доступным моделям прогнозирования и 
-        сравнительным паспортом свойств ряда (v1.0 до валидации vs v1.1 после). Пользователь получает обновленный датафрейм в session_state.df, готовый к передаче 
+        **Что мы получим на выходе?** Интерактивный Data Quality Dashboard с детальным отчетом о проблемах и механизмом исправления нарушений, рекомендацией по доступным моделям прогнозирования и 
+        сравнительным паспортом свойств ряда (v1.0 до валидации и v1.1 после валидации). Пользователь получает обновленный датафрейм в session_state.df, готовый к передаче 
         в блок «Предобработка».
         """)
 
@@ -5341,16 +5341,17 @@ with tab_validation:
 
                     st.divider()
 
-            # ── 🧹 СТРАТЕГИИ ОБРАБОТКИ НАРУШЕНИЙ ─────────────────────
-            with st.expander("🧹 Стратегии обработки нарушений форматов", expanded=True):
-                # Выбор стратегии
+            # ── СТРАТЕГИИ ОБРАБОТКИ НАРУШЕНИЙ ─────────────────────
+            with st.expander("Стратегии обработки нарушений форматов", expanded=True):
+                
+                # ── ВЫБОР СТРАТЕГИИ ─────────────────────────────
                 strategy = st.radio(
                     "Выберите действие:",
                     [
-                        "Заменить на NaN (удалить значения)",
-                        "Заменить на шаблонное значение (умное)",
-                        "Применить regex-замену (нормализация)",
-                        "Только отметить флагом (не менять данные)"
+                        "🗑️ Заменить на NaN (удалить значения)",
+                        "🔄 Заменить на шаблонное значение (умное)",
+                        "✏️ Применить regex-замену (нормализация)",
+                        "🚩 Только отметить флагом (не менять данные)"
                     ],
                     key="format_fix_strategy",
                     horizontal=False
@@ -5360,104 +5361,233 @@ with tab_validation:
                 if "NaN" in strategy:
                     st.warning("⚠️ Нарушающие значения будут заменены на `NaN` (пропущенные)")
                 elif "шаблонное" in strategy:
-                    st.info("🔄 **Умная замена:** email → `unknown@example.com`, телефон → `+0000000000`, остальное → `N/A`")
+                    st.info("🔄 **Умная замена:** email → `unknown@example.com`, телефон → `+0000000000`, "
+                            "числовые → медиана, остальное → `N/A`")
                 elif "regex-замену" in strategy:
-                    st.info("✏️ **Нормализация:** `strip()` + `lower()` + удаление спецсимволов")
+                    st.info("✏️ **Нормализация:** `strip()` + `lower()` + удаление спецсимволов. "
+                            "**После нормализации значения проверяются повторно на соответствие шаблону.**")
                 elif "флагом" in strategy:
                     st.info("🚩 Будет добавлена колонка `{имя}_format_valid` с True/False")
 
-                # Кнопка применения стратегии
-                if st.button("💾 Применить стратегию к данным", type="primary", key="btn_apply_format_fix"):
-                    try:
-                        import numpy as np
-                        df_work = st.session_state.df_pattern_work.copy()
-                        cols_fixed = 0
+                st.divider()
 
+                # ── КНОПКА ПРЕВЬЮ (как в других субмодулях) ─────
+                if st.button("Показать прогноз влияния", type="secondary", 
+                            use_container_width=True, key="btn_preview_format_fix"):
+                    st.session_state.show_format_preview = True
+                    st.rerun()
+
+                # ── БЛОК ПРЕВЬЮ ─────────────────────────────────
+                if st.session_state.get("show_format_preview", False):
+                    st.markdown("##### Прогноз влияния на данные")
+                    
+                    try:
+                        df_preview = st.session_state.df_pattern_work.copy()
+                        preview_stats = []
+                        
                         for v in real_violations:
                             col_name = v.get("Колонка")
                             pattern = v.get("pattern", ".*")
-
-                            if not col_name or col_name not in df_work.columns:
+                            
+                            if not col_name or col_name not in df_preview.columns:
                                 continue
-
-                            # Создаём маску нарушений для текущей колонки
-                            mask_invalid = ~df_work[col_name].astype(str).str.fullmatch(pattern, na=False)
-                            count_invalid = mask_invalid.sum()
-
-                            if count_invalid == 0:
-                                continue
-
-                            # ── ПРИМЕНЕНИЕ СТРАТЕГИИ ──────────────────
-                            if "Заменить на NaN" in strategy:
-                                df_work.loc[mask_invalid, col_name] = np.nan
-                                st.success(f"✅ `{col_name}`: **{count_invalid}** значений → `NaN`")
-
-                            elif "шаблонное значение" in strategy:
+                            
+                            mask_invalid = ~df_preview[col_name].astype(str).str.fullmatch(pattern, na=False)
+                            count_invalid = int(mask_invalid.sum())
+                            total = len(df_preview)
+                            pct = (count_invalid / total * 100) if total > 0 else 0
+                            
+                            # Определяем, что будет заменено
+                            if "NaN" in strategy:
+                                action = f"{count_invalid} → NaN"
+                            elif "шаблонное" in strategy:
                                 col_lower = col_name.lower()
-                                # Умная замена в зависимости от типа колонки
                                 if "email" in col_lower:
-                                    replacement = "unknown@example.com"
+                                    action = f"{count_invalid} → 'unknown@example.com'"
                                 elif "phone" in col_lower or "телефон" in col_lower or "tel" in col_lower:
-                                    replacement = "+0000000000"
+                                    action = f"{count_invalid} → '+0000000000'"
                                 elif "date" in col_lower or "дата" in col_lower:
-                                    replacement = pd.NaT
-                                elif df_work[col_name].dtype in ["int64", "float64"]:
-                                    replacement = df_work[col_name].median()
+                                    action = f"{count_invalid} → NaT"
+                                elif df_preview[col_name].dtype in ["int64", "float64"]:
+                                    med = df_preview.loc[~mask_invalid, col_name].median()
+                                    action = f"{count_invalid} → {med:.2f} (медиана)"
                                 else:
-                                    replacement = "N/A"
-                                df_work.loc[mask_invalid, col_name] = replacement
-                                st.success(f"✅ `{col_name}`: **{count_invalid}** значений → `{replacement}`")
-
+                                    action = f"{count_invalid} → 'N/A'"
                             elif "regex-замену" in strategy:
-                                # Нормализация ТОЛЬКО для нарушителей
-                                invalid_mask = mask_invalid & df_work[col_name].notna()
-                                if invalid_mask.any():
-                                    df_work.loc[invalid_mask, col_name] = (
-                                        df_work.loc[invalid_mask, col_name]
-                                        .astype(str)
-                                        .str.strip()                    # Убрать пробелы
-                                        .str.lower()                    # Нижний регистр
-                                        .str.replace(r"[^\w\s@.\-]", "", regex=True)  # Убрать спецсимволы
-                                        .str.replace(r"\s+", " ", regex=True)         # Убрать множ. пробелы
-                                    )
-                                    st.success(f"✅ `{col_name}`: нормализовано **{invalid_mask.sum()}** значений")
-
-                            elif "флагом" in strategy:
-                                # Добавить колонку-индикатор
-                                flag_col = f"{col_name}_format_valid"
-                                df_work[flag_col] = ~mask_invalid
-                                st.success(f"✅ `{col_name}`: добавлен флаг `{flag_col}`")
-
-                            cols_fixed += 1
-
-                        # ГЛАВНОЕ: Сохраняем изменения в session_state
-                        st.session_state.df_pattern_work = df_work
-                        st.session_state.df = df_work  # Синхронизация с основным датафреймом!
-                        st.session_state.validation_ready = False  # Сброс валидации
-                        st.session_state.pattern_results = []  # Сброс старых результатов форматов
-
-                        st.divider()
-                        st.success(f"✅ **Стратегия применена!** Обработано колонок: **{cols_fixed}**")
-                        st.info("🔄 **Следующий шаг:** Нажмите **Запустить валидацию** сверху для проверки результата")
-
-                        # Кнопка быстрого перезапуска
-                        if st.button("🔄 Перезапустить валидацию сейчас", type="secondary", key="btn_rerun_validation_fmt"):
-                            st.rerun()
-
+                                action = f"{count_invalid} → нормализация"
+                            else:
+                                action = f"{count_invalid} → флаг True/False"
+                            
+                            preview_stats.append({
+                                "Колонка": col_name,
+                                "Нарушений": count_invalid,
+                                "% от всех": f"{pct:.1f}%",
+                                "Действие": action
+                            })
+                        
+                        if preview_stats:
+                            df_stats = pd.DataFrame(preview_stats)
+                            st.dataframe(df_stats, use_container_width=True, hide_index=True, height=200)
+                            
+                            # Общая статистика
+                            total_violations = sum(s["Нарушений"] for s in preview_stats)
+                            st.info(f"📊 **Всего нарушений:** {total_violations} в {len(preview_stats)} колонках")
+                        else:
+                            st.success("✅ Нарушений не обнаружено — обработка не требуется")
+                    
                     except Exception as e:
-                        st.error(f"❌ Ошибка при применении стратегии: `{e}`")
-                        import traceback
-                        with st.expander("🔍 Stack trace (для разработчика)"):
-                            st.code(traceback.format_exc(), language="python")
+                        st.error(f"❌ Ошибка превью: {e}")
 
-                # ──  ЭКСПОРТ РЕЗУЛЬТАТА ───────────────────────────
+                # ── КНОПКИ ПРИМЕНЕНИЯ / ОТМЕНЫ ──────────────────
                 st.divider()
+                c_ok, c_cancel = st.columns(2)
+                
+                with c_ok:
+                    if st.button("💾 Применить стратегию", type="primary", 
+                                use_container_width=True, key="btn_apply_format_fix"):
+                        try:
+                            import numpy as np
+                            df_work = st.session_state.df_pattern_work.copy()
+                            cols_fixed = 0
+                            total_replaced = 0
+
+                            for v in real_violations:
+                                col_name = v.get("Колонка")
+                                pattern = v.get("pattern", ".*")
+
+                                if not col_name or col_name not in df_work.columns:
+                                    continue
+
+                                # Создаём маску нарушений
+                                mask_invalid = ~df_work[col_name].astype(str).str.fullmatch(pattern, na=False)
+                                count_invalid = int(mask_invalid.sum())
+
+                                if count_invalid == 0:
+                                    continue
+
+                                # ── ПРИМЕНЕНИЕ СТРАТЕГИИ ──────────────────
+                                if "NaN" in strategy:
+                                    df_work.loc[mask_invalid, col_name] = np.nan
+                                    st.success(f"✅ `{col_name}`: **{count_invalid}** значений → `NaN`")
+                                    total_replaced += count_invalid
+
+                                elif "шаблонное" in strategy:
+                                    col_lower = col_name.lower()
+                                    original_dtype = df_work[col_name].dtype
+                                    
+                                    # ИСПРАВЛЕНИЕ: Учитываем dtype колонки
+                                    if "email" in col_lower:
+                                        replacement = "unknown@example.com"
+                                        # Приводим к object, если была строка
+                                        if df_work[col_name].dtype != object:
+                                            df_work[col_name] = df_work[col_name].astype(object)
+                                    elif "phone" in col_lower or "телефон" in col_lower or "tel" in col_lower:
+                                        replacement = "+0000000000"
+                                        if df_work[col_name].dtype != object:
+                                            df_work[col_name] = df_work[col_name].astype(object)
+                                    elif "date" in col_lower or "дата" in col_lower:
+                                        replacement = pd.NaT
+                                        # Для datetime колонок оставляем как есть
+                                    elif df_work[col_name].dtype in ["int64", "float64"]:
+                                        # ИСПРАВЛЕНИЕ: Медиана считается по ВАЛИДНЫМ значениям
+                                        valid_values = df_work.loc[~mask_invalid, col_name]
+                                        if valid_values.notna().any():
+                                            replacement = valid_values.median()
+                                        else:
+                                            replacement = 0
+                                    else:
+                                        replacement = "N/A"
+                                        if df_work[col_name].dtype != object:
+                                            df_work[col_name] = df_work[col_name].astype(object)
+                                    
+                                    df_work.loc[mask_invalid, col_name] = replacement
+                                    st.success(f"✅ `{col_name}`: **{count_invalid}** значений → `{replacement}`")
+                                    total_replaced += count_invalid
+
+                                elif "regex-замену" in strategy:
+                                    # ИСПРАВЛЕНИЕ: Нормализация + повторная проверка
+                                    invalid_mask = mask_invalid & df_work[col_name].notna()
+                                    
+                                    if invalid_mask.any():
+                                        # 🔧 ИСПРАВЛЕНИЕ: Не ломаем числовые колонки
+                                        if df_work[col_name].dtype in ["int64", "float64"]:
+                                            st.warning(f"⚠️ `{col_name}`: числовая колонка — regex-замена пропущена")
+                                            continue
+                                        
+                                        # Сохраняем оригинальный тип
+                                        original_dtype = df_work[col_name].dtype
+                                        
+                                        # Нормализация
+                                        normalized = (
+                                            df_work.loc[invalid_mask, col_name]
+                                            .astype(str)
+                                            .str.strip()
+                                            .str.lower()
+                                            .str.replace(r"[^\w\s@.\-]", "", regex=True)
+                                            .str.replace(r"\s+", " ", regex=True)
+                                        )
+                                        
+                                        # ИСПРАВЛЕНИЕ: Повторная проверка валидности
+                                        recheck_mask = ~normalized.str.fullmatch(pattern, na=False)
+                                        still_invalid = int(recheck_mask.sum())
+                                        fixed_count = int(invalid_mask.sum()) - still_invalid
+                                        
+                                        df_work.loc[invalid_mask, col_name] = normalized
+                                        
+                                        if still_invalid > 0:
+                                            st.warning(
+                                                f"⚠️ `{col_name}`: нормализовано **{invalid_mask.sum()}**, "
+                                                f"но **{still_invalid}** всё ещё нарушают шаблон. "
+                                                f"Рекомендуется стратегия 'Заменить на NaN' для оставшихся."
+                                            )
+                                        else:
+                                            st.success(
+                                                f"✅ `{col_name}`: все **{fixed_count}** значений "
+                                                f"теперь соответствуют шаблону"
+                                            )
+                                        total_replaced += fixed_count
+
+                                elif "флагом" in strategy:
+                                    flag_col = f"{col_name}_format_valid"
+                                    df_work[flag_col] = ~mask_invalid
+                                    st.success(f"✅ `{col_name}`: добавлен флаг `{flag_col}` "
+                                            f"({int((~mask_invalid).sum())} True, {count_invalid} False)")
+
+                                cols_fixed += 1
+
+                            # Сохраняем изменения
+                            st.session_state.df_pattern_work = df_work
+                            st.session_state.df = df_work
+                            st.session_state.validation_ready = False
+                            st.session_state.pattern_results = []
+                            st.session_state.show_format_preview = False
+
+                            st.divider()
+                            st.success(f"✅ **Стратегия применена!** Обработано колонок: **{cols_fixed}**, "
+                                    f"значений: **{total_replaced}**")
+
+                        except Exception as e:
+                            st.error(f"❌ Ошибка при применении стратегии: `{e}`")
+                            import traceback
+                            with st.expander("🔍 Stack trace"):
+                                st.code(traceback.format_exc(), language="python")
+
+                with c_cancel:
+                    if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_format_fix"):
+                        st.session_state.show_format_preview = False
+                        st.rerun()
+
+                # ── ЭКСПОРТ РЕЗУЛЬТАТА (ВНЕ expander!) ──────────
+                st.divider()
+                
+                # ИСПРАВЛЕНИЕ: Безопасное получение df_work
+                df_for_export = st.session_state.get("df_pattern_work", st.session_state.df)
+                
                 st.download_button(
                     label="💾 Скачать результат (очищенные данные, CSV)",
-                    data=df_work.to_csv(index=False, encoding="utf-8-sig"),
+                    data=df_for_export.to_csv(index=False, encoding="utf-8-sig"),
                     file_name=f"format_fixed_{st.session_state.get('original_filename', 'data').rsplit('.', 1)[0]}.csv",
                     mime="text/csv",
-                    type="secondary",
                     key="btn_export_format_fixed"
                 )
 
@@ -5611,41 +5741,71 @@ with tab_validation:
 
                 # Кнопка запуска превью (унифицирована)
                 if "show_range_preview" not in st.session_state:
-                    st.session_state.show_range_preview = False
+                    st.session_state.show_range_preview = True
 
                 st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allow_html=True)
-                if st.button("Показать прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_range_preview"):
+                if st.button("Прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_range_preview"):
                     st.session_state.show_range_preview = True
                     st.rerun()
 
                 # Блок превью
                 if st.session_state.show_range_preview:
                     strategy = range_strategy
-                    st.markdown("##### Прогноз влияния на статистику:")
+                    st.markdown("##### Прогноз влияния на статистики:")
 
                     df_preview = df_work.copy()
                     cols_to_fix = list(range_rule_bounds.keys())
 
                     if "Кэпировать" in strategy:
                         for col in cols_to_fix:
-                            # 🔧 ИСПРАВЛЕНИЕ: Приводим к float перед клипированием, чтобы избежать ошибки int64
+                            # ИСПРАВЛЕНИЕ: Приводим к float перед клипированием
                             df_preview[col] = df_preview[col].astype(float)
                             min_v, max_v = range_rule_bounds.get(col, (None, None))
-                            if min_v is not None: df_preview[col] = df_preview[col].clip(lower=min_v)
-                            if max_v is not None: df_preview[col] = df_preview[col].clip(upper=max_v)
+                            if min_v is not None: 
+                                df_preview[col] = df_preview[col].clip(lower=min_v)
+                            if max_v is not None: 
+                                df_preview[col] = df_preview[col].clip(upper=max_v)
                         note = "(кэпирование по границам)"
+                        
                     elif "медиану" in strategy:
+                        # ИСПРАВЛЕНИЕ: Заменяем нарушения диапазонов, а не пропуски!
                         for col in cols_to_fix:
+                            min_v, max_v = range_rule_bounds.get(col, (None, None))
+                            mask_violation = pd.Series([False] * len(df_preview), index=df_preview.index)
+                            
+                            if min_v is not None:
+                                mask_violation = mask_violation | (df_preview[col] < min_v)
+                            if max_v is not None:
+                                mask_violation = mask_violation | (df_preview[col] > max_v)
+                            
+                            # Заменяем нарушения на медиану (только для числовых)
                             if df_preview[col].dtype in ['int64', 'float64']:
-                                df_preview[col] = df_preview[col].fillna(df_preview[col].median())
+                                median_val = df_preview.loc[~mask_violation, col].median()
+                                df_preview.loc[mask_violation, col] = median_val
+                                
                         note = "(замена медианой)"
+                        
                     elif "Удалить" in strategy:
                         df_preview = df_preview[~combined_mask].reset_index(drop=True)
                         note = "(удаление строк)"
-                    elif "0️⃣" in strategy:
+                        
+                    elif "0" in strategy or "NaN" in strategy:
+                        # ИСПРАВЛЕНИЕ: Заменяем нарушения диапазонов на 0/NaN
                         for col in cols_to_fix:
-                            df_preview[col] = df_preview[col].fillna(0)
-                        note = "(замена на 0)"
+                            min_v, max_v = range_rule_bounds.get(col, (None, None))
+                            mask_violation = pd.Series([False] * len(df_preview), index=df_preview.index)
+                            
+                            if min_v is not None:
+                                mask_violation = mask_violation | (df_preview[col] < min_v)
+                            if max_v is not None:
+                                mask_violation = mask_violation | (df_preview[col] > max_v)
+                            
+                            # Заменяем нарушения на 0 или NaN
+                            if df_preview[col].dtype in ['int64', 'float64']:
+                                df_preview.loc[mask_violation, col] = 0  # или np.nan
+                                
+                        note = "(замена на 0/NaN)"
+                        
                     else:
                         note = "(без изменений)"
 
@@ -5703,8 +5863,8 @@ with tab_validation:
 
         # ── 🔧 ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
         if consistency_issues:
-            with st.expander("🔧 Полный пайплайн обработки нарушений согласованности", expanded=consistency_violations > 0):
-                st.markdown("### 📋 Таблица нарушений с ручной корректировкой")
+            with st.expander("Полный пайплайн обработки нарушений согласованности", expanded=consistency_violations > 0):
+                st.markdown("### Таблица нарушений с ручной корректировкой")
 
                 # Инициализация состояний
                 if "df_consistency_work" not in st.session_state:
@@ -5764,96 +5924,238 @@ with tab_validation:
                 st.divider()
 
                 # Панель стратегий (Автоматическая обработка)
-                st.markdown("### 🧹 Стратегии обработки нарушений согласованности")
+                st.markdown("### Стратегии обработки нарушений согласованности")
                 c1, c2 = st.columns([2, 1])
                 with c1:
                     consistency_strategy = st.radio(
                         "Выберите стратегию:",
-                        ["Удалить строки с нарушениями",
-                        "Заменить на медиану (числовые) / моду",
-                        "Исправить хронологию (сортировка по дате)",
-                        "Заменить на 0 или NaN",
-                        "Только отметить флагом (не менять данные)"],
+                        ["🗑️ Удалить строки с нарушениями",
+                        "📊 Заменить на медиану (числовые) / моду",
+                        "📅 Исправить хронологию (сортировка по дате)",
+                        "0️⃣ Заменить на 0 или NaN",
+                        "🚩 Только отметить флагом (не менять данные)"],
                         key="consistency_fill_strategy"
                     )
                     if "Удалить" in consistency_strategy:
                         st.warning(f"⚠️ Будет удалено **{combined_mask.sum()} строк** ({combined_mask.sum()/len(df_work)*100:.1f}% данных).")
                     elif "медиану" in consistency_strategy:
-                        st.warning("⚠️ Нарушающие значения будут заменены на медиану/моду.")
+                        st.warning("⚠️ Нарушающие значения будут заменены на медиану/моду (рассчитанную по корректным значениям).")
                     elif "хронологию" in consistency_strategy:
                         st.info("ℹ️ Данные будут отсортированы по временной колонке для исправления хронологии.")
                     elif "0️⃣" in consistency_strategy:
-                        st.warning("⚠️ Все нарушения будут заменены на 0 или NaN.")
+                        st.warning("⚠️ Все нарушения будут заменены на 0 (числовые) или 'Unknown' (категориальные).")
+                    elif "флагом" in consistency_strategy:
+                        st.info("🚩 Будут добавлены колонки `{имя}_consistency_valid` с True/False")
                 with c2:
                     st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
 
                 # Кнопка запуска превью
-                if "show_consistency_preview" not in st.session_state:
-                    st.session_state.show_consistency_preview = False
-
-                st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allow_html=True)
-                if st.button("📊 Показать прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_consistency_preview"):
+                if st.button("👁️ Прогноз влияния на статистики", type="secondary", 
+                            use_container_width=True, key="btn_show_consistency_preview"):
                     st.session_state.show_consistency_preview = True
                     st.rerun()
 
                 # Блок превью
-                if st.session_state.show_consistency_preview:
+                if st.session_state.get("show_consistency_preview", False):
                     strategy = consistency_strategy
-                    st.markdown("##### 📈 Прогноз влияния на статистику:")
+                    st.markdown("##### 📊 Прогноз влияния на статистики:")
 
                     df_preview = df_work.copy()
                     num_cols_to_fix = df_preview.select_dtypes(include=['number']).columns.tolist()
+                    cat_cols_to_fix = df_preview.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
+                    
+                    # Определяем колонки, участвующие в нарушениях
+                    violation_cols = []
+                    for rule in consistency_results_local:
+                        cols = rule.get('Колонки', [])
+                        if isinstance(cols, list):
+                            violation_cols.extend(cols)
+                        elif isinstance(cols, str):
+                            violation_cols.append(cols)
+                    violation_cols = list(set(violation_cols))
+                    
+                    # Если не удалось определить — используем все числовые
+                    if not violation_cols:
+                        violation_cols = num_cols_to_fix
 
+                    # ── ПРИМЕНЕНИЕ СТРАТЕГИИ ──────────────────────
                     if "Удалить" in strategy:
                         df_preview = df_preview[~combined_mask].reset_index(drop=True)
                         note = "(удаление строк)"
+                        
                     elif "медиану" in strategy:
-                        for col in num_cols_to_fix:
-                            if df_preview[col].isnull().any() or combined_mask.any():
-                                df_preview.loc[combined_mask, col] = df_preview[col].median()
-                        note = "(замена медианой)"
+                        # 🔧 ИСПРАВЛЕНИЕ: Медиана считается по КОРЕКТНЫМ значениям
+                        for col in violation_cols:
+                            if col not in df_preview.columns:
+                                continue
+                            if df_preview[col].dtype in ['int64', 'float64']:
+                                # 🔧 ИСПРАВЛЕНИЕ: Медиана только по валидным строкам
+                                valid_values = df_preview.loc[~combined_mask, col]
+                                if valid_values.notna().any():
+                                    median_val = valid_values.median()
+                                    df_preview.loc[combined_mask, col] = median_val
+                            elif df_preview[col].dtype in ['object', 'string', 'category']:
+                                # Для категориальных — мода по корректным значениям
+                                valid_values = df_preview.loc[~combined_mask, col]
+                                if not valid_values.empty:
+                                    mode_val = valid_values.mode()
+                                    if not mode_val.empty:
+                                        df_preview.loc[combined_mask, col] = mode_val[0]
+                        note = "(замена медианой/модой)"
+                        
                     elif "хронологию" in strategy:
-                        date_cols = [c for c in df_preview.columns if 'date' in c.lower() or 'дата' in c.lower()]
+                        # 🔧 ИСПРАВЛЕНИЕ: Ищем все возможные временные колонки
+                        date_cols = [c for c in df_preview.columns 
+                                    if any(kw in c.lower() for kw in ['date', 'дата', 'time', 'время', 'timestamp'])]
+                        
+                        # Если не найдено по имени — ищем по типу
+                        if not date_cols:
+                            date_cols = df_preview.select_dtypes(include=['datetime64']).columns.tolist()
+                        
                         if date_cols:
+                            # Сортируем по первой найденной дате
                             df_preview = df_preview.sort_values(date_cols[0]).reset_index(drop=True)
                             note = f"(сортировка по {date_cols[0]})"
+                            
+                            # 🔧 ИСПРАВЛЕНИЕ: После сортировки пересчитываем маску
+                            # (нарушения хронологии могут исчезнуть)
+                            st.info(f"ℹ️ Отсортировано по `{date_cols[0]}`. "
+                                f"Проверьте, исчезли ли нарушения хронологии после перезапуска валидации.")
                         else:
-                            st.warning("⚠️ Временные колонки не найдены")
+                            st.warning("⚠️ Временные колонки не найдены. Попробуйте другую стратегию.")
                             note = "(без изменений)"
+                            
                     elif "0️⃣" in strategy:
-                        for col in num_cols_to_fix:
-                            df_preview.loc[combined_mask, col] = 0
-                        note = "(замена на 0)"
+                        # 🔧 ИСПРАВЛЕНИЕ: Обрабатываем и числовые, и категориальные
+                        for col in violation_cols:
+                            if col not in df_preview.columns:
+                                continue
+                            if df_preview[col].dtype in ['int64', 'float64']:
+                                df_preview.loc[combined_mask, col] = 0
+                            elif df_preview[col].dtype in ['object', 'string', 'category']:
+                                df_preview.loc[combined_mask, col] = "Unknown"
+                        note = "(замена на 0/Unknown)"
+                        
+                    elif "флагом" in strategy:
+                        # 🔧 ИСПРАВЛЕНИЕ: Добавляем колонки-флаги
+                        flags_added = []
+                        for col in violation_cols:
+                            if col in df_preview.columns:
+                                flag_col = f"{col}_consistency_valid"
+                                # Для каждой строки: True если нет нарушения, False если есть
+                                df_preview[flag_col] = ~combined_mask
+                                flags_added.append(flag_col)
+                        
+                        if flags_added:
+                            note = f"(добавлено флагов: {len(flags_added)})"
+                            st.info(f"🚩 Добавлены колонки: {', '.join(flags_added[:5])}")
+                        else:
+                            note = "(без изменений)"
                     else:
                         note = "(без изменений)"
 
-                    # Метрики (4 колонки)
+                    # ── МЕТРИКИ (4 колонки) ─────────────────────
                     c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                    c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}", delta=f"{len(df_preview)-len(df_work):+}")
+                    c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}", 
+                            delta=f"{len(df_preview)-len(df_work):+}")
 
-                    if num_cols_to_fix:
-                        col = num_cols_to_fix[0]
-                        def safe_stat(d, c, f):
-                            return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
-                        m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
-                        m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
-                        fmt = lambda x: f"{x:.2f}" if pd.notnull(x) and x != 0.0 else "N/A"
-                        delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                        c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                        c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                        c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                    if violation_cols:
+                        col = violation_cols[0]
+                        if col in df_preview.columns:
+                            def safe_stat(d, c, f):
+                                try:
+                                    return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
+                                except:
+                                    return 0.0
+                            m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
+                            m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
+                            fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
+                            delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
+                            c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                            c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                            c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
-                    # Кнопки подтверждения
+                    # ── КНОПКИ ПОДТВЕРЖДЕНИЯ ────────────────────
                     st.divider()
                     c_ok, c_cancel = st.columns(2)
                     with c_ok:
-                        if st.button("💾 Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_consistency"):
-                            st.session_state.df_after_fixes = df_preview.copy()
-                            st.session_state.df = df_preview
-                            st.session_state.validation_ready = False
-                            st.session_state.show_consistency_preview = False
-                            st.success("✅ Стратегия применена! Перезапустите валидацию.")
-                            st.rerun()
+                        if st.button("💾 Подтвердить изменения", type="primary", 
+                                    use_container_width=True, key="btn_confirm_consistency"):
+                            try:
+                                # 🔧 ИСПРАВЛЕНИЕ: Применяем стратегию заново к df_work (не используем df_preview)
+                                df_final = df_work.copy()
+                                
+                                if "Удалить" in strategy:
+                                    df_final = df_final[~combined_mask].reset_index(drop=True)
+                                    
+                                elif "медиану" in strategy:
+                                    for col in violation_cols:
+                                        if col not in df_final.columns:
+                                            continue
+                                        if df_final[col].dtype in ['int64', 'float64']:
+                                            valid_values = df_final.loc[~combined_mask, col]
+                                            if valid_values.notna().any():
+                                                median_val = valid_values.median()
+                                                df_final.loc[combined_mask, col] = median_val
+                                        elif df_final[col].dtype in ['object', 'string', 'category']:
+                                            valid_values = df_final.loc[~combined_mask, col]
+                                            if not valid_values.empty:
+                                                mode_val = valid_values.mode()
+                                                if not mode_val.empty:
+                                                    df_final.loc[combined_mask, col] = mode_val[0]
+                                                    
+                                elif "хронологию" in strategy:
+                                    date_cols = [c for c in df_final.columns 
+                                                if any(kw in c.lower() for kw in ['date', 'дата', 'time', 'время', 'timestamp'])]
+                                    if not date_cols:
+                                        date_cols = df_final.select_dtypes(include=['datetime64']).columns.tolist()
+                                    if date_cols:
+                                        df_final = df_final.sort_values(date_cols[0]).reset_index(drop=True)
+                                        
+                                elif "0️⃣" in strategy:
+                                    for col in violation_cols:
+                                        if col not in df_final.columns:
+                                            continue
+                                        if df_final[col].dtype in ['int64', 'float64']:
+                                            df_final.loc[combined_mask, col] = 0
+                                        elif df_final[col].dtype in ['object', 'string', 'category']:
+                                            df_final.loc[combined_mask, col] = "Unknown"
+                                            
+                                elif "флагом" in strategy:
+                                    for col in violation_cols:
+                                        if col in df_final.columns:
+                                            flag_col = f"{col}_consistency_valid"
+                                            df_final[flag_col] = ~combined_mask
+                                
+                                # 🔧 СИНХРОНИЗАЦИЯ
+                                st.session_state.df = df_final.copy()
+                                st.session_state.df_consistency_work = df_final.copy()
+                                st.session_state.validation_ready = False
+                                st.session_state.show_consistency_preview = False
+                                
+                                # Удаляем рабочие копии
+                                work_dfs = [
+                                    "df_missing_work", "df_pattern_work", "df_range_work",
+                                    "df_outlier_work", "df_inclusion_work", "df_referential_work",
+                                    "df_text_work", "df_uniqueness_work",
+                                    "df_regularity_work", "df_regular_work"
+                                ]
+                                for work_df_name in work_dfs:
+                                    if work_df_name in st.session_state:
+                                        del st.session_state[work_df_name]
+                                
+                                if "val_results" in st.session_state:
+                                    del st.session_state.val_results
+                                
+                                st.success(f"✅ Стратегия **{strategy}** применена! Перезапустите валидацию.")
+                                st.rerun()
+                                
+                            except Exception as e:
+                                st.error(f"❌ Ошибка применения стратегии: {e}")
+                                import traceback
+                                with st.expander("🔍 Stack trace"):
+                                    st.code(traceback.format_exc(), language="python")
+                                    
                     with c_cancel:
                         if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_consistency"):
                             st.session_state.show_consistency_preview = False
@@ -5971,10 +6273,10 @@ with tab_validation:
 
                 # Кнопка запуска превью
                 if "show_uniqueness_preview" not in st.session_state:
-                    st.session_state.show_uniqueness_preview = False
+                    st.session_state.show_uniqueness_preview = True
 
                 st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allow_html=True)
-                if st.button("📊 Показать прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_uniqueness_preview"):
+                if st.button("Прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_uniqueness_preview"):
                     st.session_state.show_uniqueness_preview = True
                     st.rerun()
 
@@ -6166,10 +6468,10 @@ with tab_validation:
 
                 # Кнопка запуска превью
                 if "show_inclusion_preview" not in st.session_state:
-                    st.session_state.show_inclusion_preview = False
+                    st.session_state.show_inclusion_preview = True
 
                 st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allow_html=True)
-                if st.button("📊 Показать прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_inclusion_preview"):
+                if st.button("Прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_inclusion_preview"):
                     st.session_state.show_inclusion_preview = True
                     st.rerun()
 
@@ -6360,10 +6662,10 @@ with tab_validation:
 
                 # Кнопка запуска превью
                 if "show_referential_preview" not in st.session_state:
-                    st.session_state.show_referential_preview = False
+                    st.session_state.show_referential_preview = True
 
                 st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allow_html=True)
-                if st.button("📊 Показать прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_referential_preview"):
+                if st.button("Прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_referential_preview"):
                     st.session_state.show_referential_preview = True
                     st.rerun()
 
@@ -7676,7 +7978,6 @@ with tab_validation:
         # Рассчитываем сравнение паспортов, если есть оба (v1.0 и v1.1)
         if "ts_props_v10" in st.session_state and "ts_props_v11" in st.session_state:
             if "ts_props_comparison_v10_v11" not in st.session_state:
-                from validation.engine import _compare_ts_props
                 st.session_state.ts_props_comparison_v10_v11 = _compare_ts_props(
                     st.session_state.ts_props_v10,
                     st.session_state.ts_props_v11
@@ -8574,7 +8875,7 @@ with tab_preprocessing:
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
 
         # Кнопка-триггер превью (отдельно от логики превью)
-        if st.button(" Показать прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_fill_preview"):
+        if st.button(" Прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_fill_preview"):
             st.session_state.show_fill_preview = True
             st.rerun()
 
@@ -8584,7 +8885,7 @@ with tab_preprocessing:
 
         if show_preview:
             strategy = fill_strategy
-            st.markdown("#####  Прогноз влияния на статистику:")
+            st.markdown("#####  Прогноз влияния на статистики:")
 
             df_preview = df_work.copy()
             num_cols = df_preview.select_dtypes(include='number').columns.tolist()
@@ -8958,13 +9259,13 @@ with tab_preprocessing:
                         # ── 5️⃣ КНОПКА ПРОГНОЗА (унифицирована: белый фон, остаётся видимой) ──
                         st.markdown("<div style='margin: 15px 0;'></div>", unsafe_allow_html=True)
 
-                        if st.button(" Показать прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_outlier_preview"):
+                        if st.button(" Прогноз влияния на статистики", type="secondary", use_container_width=True, key="btn_show_outlier_preview"):
                             st.session_state.show_outlier_preview = True
                             st.rerun()
 
                         # ── 6️⃣ БЛОК ПРОГНОЗА (отображается при активном флаге) ──
                         if st.session_state.show_outlier_preview:
-                            st.markdown("#####  Прогноз влияния на статистику:")
+                            st.markdown("#####  Прогноз влияния на статистики:")
 
                             df_preview = df.copy()
                             mask = st.session_state.outlier_mask
