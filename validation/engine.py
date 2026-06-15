@@ -330,16 +330,14 @@ def validate_consistency(df, rules):
             if rule_type == "chronology" and columns and columns[0] in df.columns:
                 time_col = columns[0]
                 
-                # Ищем группирующую колонку (более гибкое условие)
+                # Ищем группирующую колонку
                 group_col = None
                 for c in df.columns:
-                    if c != time_col:
-                        # Проверяем строковые/категориальные колонки с небольшим числом уникальных значений
-                        if df[c].dtype in ['object', 'string', 'category']:
-                            n_unique = df[c].nunique()
-                            if 1 < n_unique < min(100, len(df) * 0.5):
-                                group_col = c
-                                break
+                    if c != time_col and df[c].dtype in ['object', 'string', 'category']:
+                        n_unique = df[c].nunique()
+                        if 1 < n_unique < min(100, len(df) * 0.5):
+                            group_col = c
+                            break
 
                 if group_col:
                     for _, group_df in df.groupby(group_col):
@@ -349,7 +347,7 @@ def validate_consistency(df, rules):
                         else:
                             violations += (time_diff < 0).sum()
                 else:
-                    # Обычный ряд: проверяем весь DataFrame
+                    # Обычный ряд
                     time_diff = df[time_col].diff()
                     if pd.api.types.is_datetime64_any_dtype(df[time_col]):
                         violations = (time_diff < pd.Timedelta(seconds=0)).sum()
@@ -585,17 +583,14 @@ def validate_regular_step(df, rules, date_col=None):
     violation_masks = {}
     freq_info = {}
     
-    # 🔧 УЛУЧШЕННЫЙ ПОИСК группирующей колонки
+    # Поиск группирующей колонки
     group_col = None
     for c in df.columns:
-        if c != date_col:
-            # Проверяем строковые/категориальные колонки
-            if df[c].dtype in ['object', 'string', 'category']:
-                n_unique = df[c].nunique()
-                # Для панельных данных: от 2 до 100 уникальных значений
-                if 1 < n_unique < 100:
-                    group_col = c
-                    break
+        if c != date_col and df[c].dtype in ['object', 'string', 'category']:
+            n_unique = df[c].nunique()
+            if 1 < n_unique < 100:
+                group_col = c
+                break
 
     df_temp = df.copy()
     if not pd.api.types.is_datetime64_any_dtype(df_temp[date_col]):

@@ -28,6 +28,10 @@ import json
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 import hashlib
+import importlib
+import validation.engine
+importlib.reload(validation.engine)
+from validation.engine import validate_regular_step, validate_consistency
 
 # ─────────────────────────────────────────────────────────────
 # 🔧 ИМПОРТЫ МОДУЛЕЙ ВАЛИДАЦИИ
@@ -575,9 +579,13 @@ def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> T
     """
     Ищет и конвертирует даты.
     Кэшируется: результат сохраняется, пока не изменится сам DataFrame.
+    
+    🔧 ИСПРАВЛЕНИЕ: Убрана сортировка и работа с session_state из кэшированной функции.
+    Сортировка выполняется в app.py после вызова функции.
     """
     df_work = df.copy()
     original_columns = df_work.columns.tolist()
+    
     # Нормализация имён
     df_work.columns = [str(c).strip().lower().replace(' ', '_').replace('-', '_').replace('.', '_') for c in df_work.columns]
 
@@ -585,9 +593,8 @@ def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> T
     potential_date_col = None
     max_confidence = 0
 
-    # ── РАСШИРЕННЫЕ ПАТТЕРНЫ ДАТ ──────────────────────────────
+    # ─ РАСШИРЕННЫЕ ПАТТЕРНЫ ДАТ ──────────────────────────────
     DATE_PATTERNS = [
-        # ISO и стандартные
         (r'^\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}', 'iso_datetime'),
         (r'^\d{4}-\d{2}-\d{2}$', 'iso_date'),
         (r'^\d{2}\.\d{2}\.\d{4}$', 'dd.mm.yyyy'),
@@ -598,30 +605,23 @@ def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> T
         (r'^\d{2}\.\d{4}$', 'mm.yyyy'),
         (r'^\d{1,2}/\d{4}$', 'm/yyyy'),
         (r'^\d{1,2}-\d{4}$', 'm-yyyy'),
-        # Гибкие форматы (без ведущих нулей)
         (r'^\d{1,2}/\d{1,2}/\d{4}$', 'us_slash_flexible'),
         (r'^\d{1,2}-\d{1,2}-\d{4}$', 'us_dash_flexible'),
         (r'^\d{1,2}\.\d{1,2}\.\d{4}$', 'eu_dot_flexible'),
-        # Только год
         (r'^\d{4}$', 'year_only'),
-        # Unix timestamp
         (r'^\d{10}$', 'unix_s'),
         (r'^\d{13}$', 'unix_ms'),
     ]
 
     # ── РАСШИРЕННЫЕ КЛЮЧЕВЫЕ СЛОВА ───────────────────────────
     TIME_KEYWORDS = [
-        # English
         'date', 'time', 'datetime', 'timestamp', 'year', 'month', 'day', 'period',
         'quarter', 'week', 'hour', 'minute', 'second', 'start', 'end', 'begin', 'finish',
         'report_date', 'reporting', 'fiscal', 'calendar', 'observation', 'record_date',
-        # Russian
         'дата', 'время', 'год', 'месяц', 'день', 'период', 'квартал', 'неделя',
         'час', 'минута', 'секунда', 'отчетный', 'отчётный', 'начало', 'конец',
-        # Other languages / variations
         'jahr', 'année', 'ano', 'anno', 'fecha', 'data', 'datum', 'dat', 'date_',
         'year_', 'yr', 'y_', 'mon', 'm_', 'd_', 'period_', 'time_',
-        # FAO / CIS specific
         'reference_year', 'ref_year', 'report_year', 'data_year', 'observation_year'
     ]
 
@@ -635,8 +635,6 @@ def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> T
             continue
 
         col_str = str(col).lower()
-
-        # Проверка по ключевым словам
         check_col = any(kw in col_str for kw in TIME_KEYWORDS)
 
         # Первая колонка — приоритетный кандидат
@@ -669,24 +667,20 @@ def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> T
 
         # 3. Определение формата
         if is_numeric:
-            # Проверка на годы (1800-2100) — ГИБКАЯ: 80% вместо 100%
             year_like = sample_vals.between(1800, 2100) & (sample_vals % 1 == 0)
             if year_like.mean() >= 0.8 and len(sample_vals[year_like]) >= 2:
                 best_fmt = 'year_only'
                 best_match_ratio = year_like.mean()
-            # Проверка на Unix timestamp
             elif sample_vals.min() > 1e9:
                 best_fmt = 'unix_s' if sample_vals.max() < 1e12 else 'unix_ms'
                 best_match_ratio = 1.0
         else:
-            # Строковые паттерны (Regex)
             for pattern, fmt_name in DATE_PATTERNS:
                 match_ratio = sample_str.str.match(pattern, case=False).mean()
                 if match_ratio > best_match_ratio:
                     best_match_ratio = match_ratio
                     best_fmt = fmt_name
 
-            # Fallback: авто-парсинг pandas
             if best_match_ratio < min_confidence:
                 try:
                     test_parse = pd.to_datetime(sample_vals, infer_datetime_format=True, errors='coerce')
@@ -716,7 +710,6 @@ def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> T
                 success_rate = converted.notna().mean()
 
                 if success_rate >= min_confidence:
-                    # Применяем ко всему столбцу
                     if best_fmt == 'year_only':
                         df_work[col] = pd.to_datetime(df_work[col].astype(float).astype(int).astype(str), format='%Y', errors='coerce')
                     elif best_fmt in ['unix_s', 'unix_ms']:
@@ -729,7 +722,6 @@ def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> T
 
                     detected_cols.append(col)
 
-                    # Расчет уверенности
                     fill_rate = df_work[col].notna().sum() / max(len(df_work[col]), 1)
                     confidence = success_rate * fill_rate
 
@@ -738,24 +730,25 @@ def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> T
                         potential_date_col = col
 
             except Exception as e:
-                # Логирование для отладки
-                # print(f"⚠️ Ошибка конвертации {col}: {e}")
                 pass
 
     # 5. Восстановление оригинальных имён колонок
-    for i, orig_col in enumerate(original_columns):
-        current_col = df_work.columns[i]
+    rename_map = {}
+    for orig_col, current_col in zip(original_columns, df_work.columns):
         if current_col in detected_cols:
-            df_work.rename(columns={current_col: orig_col}, inplace=True)
-            detected_cols = [orig_col if c == current_col else c for c in detected_cols]
-            if potential_date_col == current_col:
-                potential_date_col = orig_col
+            rename_map[current_col] = orig_col
+    
+    if rename_map:
+        df_work = df_work.rename(columns=rename_map)
+        detected_cols = [rename_map.get(c, c) for c in detected_cols]
+        if potential_date_col in rename_map:
+            potential_date_col = rename_map[potential_date_col]
 
-    # 6. Активация TS и сортировка
+    # 🔧 ИСПРАВЛЕНИЕ: УБРАНА сортировка и работа с session_state
+    # Сортировка выполняется в app.py после вызова функции
+    
     ts_active = len(detected_cols) > 0
-    if ts_active and potential_date_col:
-        df_work = df_work.sort_values(potential_date_col).reset_index(drop=True)
-
+    
     return df_work, detected_cols, ts_active, potential_date_col
 
 # CSS для уменьшения заголовков
@@ -1338,6 +1331,28 @@ if data_source == "◉ Файл .xlsx, .xls, .csv, .json":
                     # Автодетект дат
                     df, detected_dates, ts_active, primary_date = robust_datetime_detector(df)
 
+                    # ИСПРАВЛЕНИЕ: Сортировка выполняется ПОСЛЕ вызова кэшированной функции
+                    if ts_active and primary_date:
+                        # Сохраняем несортированные данные для проверки согласованности
+                        st.session_state.df_unsorted = df.copy()
+                        
+                        # Определяем группирующую колонку для панельных данных
+                        group_col = None
+                        for c in df.columns:
+                            if c != primary_date and df[c].dtype in ['object', 'string', 'category']:
+                                n_unique = df[c].nunique()
+                                if 1 < n_unique < 100:
+                                    group_col = c
+                                    break
+                        
+                        # Сортировка с учётом группировки
+                        if group_col:
+                            df = df.sort_values([group_col, primary_date]).reset_index(drop=True)
+                            st.sidebar.info(f"📊 Обнаружены панельные данные. Сортировка: {group_col} → {primary_date}")
+                        else:
+                            df = df.sort_values(primary_date).reset_index(drop=True)
+                            st.sidebar.info(f"📈 Сортировка по {primary_date}")
+
                     # ОЧИСТКА ОТ СИСТЕМНЫХ КОЛОНОК (ВСТАВИТЬ СЮДА, ДО СОХРАНЕНИЯ В СЕССИЮ)
                     service_cols = [
                         c for c in df.columns
@@ -1385,7 +1400,7 @@ if data_source == "◉ Файл .xlsx, .xls, .csv, .json":
                         uploaded.seek(0)
 
 # ─── БАЗА ДАННЫХ (SQL) ──────────────────────────────────────
-else:  # 🔧 Этот else на одном уровне с if выше!
+else:  # Этот else на одном уровне с if выше!
     with st.sidebar.expander("⚙️ Настройки подключения", expanded=True):
         db_type = st.selectbox("● Тип БД", ["PostgreSQL", "ClickHouse"], key="db_type_sel")
 
@@ -4562,7 +4577,9 @@ with tab_validation:
 
             # 4. Проверка согласованности (логика + хронология)
             progress.progress(0.40, text="Проверка согласованности данных...")
-            consistency_results = validate_consistency(df, rules)
+            # 🔧 ИСПРАВЛЕНИЕ: Используем НЕСОРТИРОВАННЫЕ данные
+            df_for_consistency = st.session_state.get('df_unsorted', df)
+            consistency_results = validate_consistency(df_for_consistency, rules)
             consistency_masks = {}
 
             # 5. Проверка уникальности (дубликаты)
@@ -4613,12 +4630,66 @@ with tab_validation:
             progress.progress(0.80, text="Проверка качества текста...")
             text_results, text_masks = validate_text_quality(df, rules)
 
-            # 9. Проверка равномерности временного шага
+            # 🔧 ОТЛАДКА: Сохраняем в session_state (чтобы не исчезла после перезагрузки)
+            debug_info = {
+                "df_shape": df.shape,
+                "columns": list(df.columns),
+                "country_col": None,
+                "is_sorted_manual": None,
+                "violations_manual": 0,
+                "sample_data": None,
+                "violations_list": []
+            }
+
+            # Проверяем, есть ли колонка Country (в любом регистре)
+            country_col = None
+            for c in df.columns:
+                if c.lower() == 'country':
+                    country_col = c
+                    break
+
+            debug_info["country_col"] = country_col
+
+            if country_col and 'Year' in df.columns:
+                # Показываем порядок данных для первой страны
+                first_country = df[country_col].iloc[0]
+                sample = df[df[country_col] == first_country][[country_col, 'Year']].head(25)
+                debug_info["sample_data"] = sample.to_dict('records')
+                
+                # ИСПРАВЛЕННАЯ ручная проверка сортировки
+                is_sorted_manual = True
+                violations_manual = 0
+                debug_info["violations_list"] = []
+
+                if country_col and 'Year' in df.columns:
+                    for country, group in df.groupby(country_col):
+                        # ИСПРАВЛЕНИЕ: Конвертируем Year в числовой тип для корректного сравнения
+                        years = pd.to_numeric(group['Year'], errors='coerce').dropna().tolist()
+                        
+                        for i in range(1, len(years)):
+                            if years[i] < years[i-1]:
+                                is_sorted_manual = False
+                                violations_manual += 1
+                                debug_info["violations_list"].append(f"{country}: {years[i-1]} → {years[i]}")
+                    
+                    debug_info["is_sorted_manual"] = is_sorted_manual
+                    debug_info["violations_manual"] = violations_manual
+
+            # Сохраняем отладку в session_state
+            st.session_state.debug_info = debug_info
+
+            # 9. Проверка равномерности временного шага (ТОЛЬКО ОДИН ВЫЗОВ!)
             progress.progress(0.90, text="Проверка равномерности временного шага...")
-            regularity_results, regularity_masks, regularity_freq_info = validate_regular_step(
-                df, rules,
+            # 🔧 ИСПРАВЛЕНИЕ: Используем НЕСОРТИРОВАННЫЕ данные для проверки
+            df_for_validation = st.session_state.get('df_unsorted', df)
+
+            regularity_results, regularity_masks, regularity_freq_info, regularity_sort_info = validate_regular_step(
+                df_for_validation, rules,
                 date_col=st.session_state.primary_date_col if st.session_state.get('primary_date_col') else None
             )
+
+            # Сохраняем результат regularity_sort_info для отладки
+            st.session_state.debug_info["regularity_sort_info"] = regularity_sort_info
 
             # 10. Проверка достаточности числа наблюдений
             progress.progress(0.95, text="Проверка достаточности числа наблюдений...")
@@ -4687,6 +4758,7 @@ with tab_validation:
                 "regularity": regularity_results,
                 "regularity_masks": regularity_masks,
                 "regularity_freq_info": regularity_freq_info,
+                "regularity_sort_info": regularity_sort_info,
                 "sufficiency": sufficiency_results,
                 "sufficiency_recommendations": sufficiency_recommendations
             }
@@ -4695,7 +4767,7 @@ with tab_validation:
             st.success("Комплексная валидация завершена!")
             st.rerun()
 
-    
+
         # ─────────────────────────────────────────────────────────
         # 📊 СОХРАНЕНИЕ ПАСПОРТА СВОЙСТВ v1.1 (после валидации)
         # ─────────────────────────────────────────────────────────
@@ -5844,7 +5916,7 @@ with tab_validation:
         # ───────────────────────────────────────────────────────────
         # 4. ПРОВЕРКА СОГЛАСОВАННОСТИ (с интерактивным пайплайном)
         # ───────────────────────────────────────────────────────────
-
+        
         # 4. Согласованность
         consistency_results_local = st.session_state.val_results.get("consistency", [])
         #  ИСПРАВЛЕНИЕ: Считаем именно нарушения, а не просто наличие результатов проверки
@@ -5861,7 +5933,7 @@ with tab_validation:
             "✅ Все бизнес-правила соблюдены" if not consistency_issues else f"️ Найдено {consistency_violations} нарушений",
             "✅" if not consistency_issues else "⚠️", None)
 
-        # ── 🔧 ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
+        # ── ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
         if consistency_issues:
             with st.expander("Полный пайплайн обработки нарушений согласованности", expanded=consistency_violations > 0):
                 st.markdown("### Таблица нарушений с ручной корректировкой")
@@ -5870,6 +5942,9 @@ with tab_validation:
                 if "df_consistency_work" not in st.session_state:
                     st.session_state.df_consistency_work = df.copy()
                 df_work = st.session_state.df_consistency_work
+
+                # ИСПРАВЛЕНИЕ: Получаем маски из val_results
+                consistency_masks = st.session_state.val_results.get("consistency_masks", {})
 
                 # Формируем общую маску нарушений из словаря масок
                 combined_mask = pd.Series(False, index=df_work.index)
@@ -7559,38 +7634,117 @@ with tab_validation:
         # ───────────────────────────────────────────────────────────
         # 9. ПРОВЕРКА РАВНОМЕРНОСТИ ВРЕМЕННОГО ШАГА (regularity)
         # ───────────────────────────────────────────────────────────
-
-        # ИСПРАВЛЕНИЕ: Используем session_state вместо locals()
+        
+        # Получаем результаты из session_state
         regularity_results_local = st.session_state.val_results.get("regularity", [])
         regularity_freq_info = st.session_state.val_results.get("regularity_freq_info", {})
-
+        regularity_sort_info = st.session_state.val_results.get("regularity_sort_info", {})
+        
         regularity_issues = len(regularity_results_local) > 0
-        regularity_gaps = sum(r.get('Пропусков', r.get('Всего пропусков', 0)) 
-                            for r in regularity_results_local) if regularity_issues else 0
+        regularity_gaps = sum(r.get('Пропусков', 0) for r in regularity_results_local) if regularity_issues else 0
 
+        # 🔧 КРИТИЧЕСКАЯ ПРОВЕРКА: ОТСОРТИРОВАНЫ ЛИ ДАННЫЕ?
+        is_sorted = regularity_sort_info.get('is_sorted', True)
+        sort_violations = regularity_sort_info.get('sort_violations', 0)
+        sort_group_col = regularity_sort_info.get('group_col')
+        sort_date_col = regularity_sort_info.get('date_col')
+
+        if not is_sorted:
+            # ДАННЫЕ НЕ ОТСОРТИРОВАНЫ — показываем критическое предупреждение
+            st.error(f"⚠️ **Критическое нарушение: Временной ряд не отсортирован!**")
+            st.warning(
+                f"Обнаружено **{sort_violations} записей**, нарушающих хронологический порядок. "
+                f"Проверка на пропуски (gaps) невозможна на неупорядоченных данных."
+            )
+            
+            if sort_group_col:
+                st.info(
+                    f"ℹ️ Обнаружены **панельные данные** (группировка по `{sort_group_col}`). "
+                    f"Данные должны быть отсортированы сначала по `{sort_group_col}`, затем по `{sort_date_col}`."
+                )
+            
+            # КНОПКА ИСПРАВЛЕНИЯ
+            c_fix1, c_fix2 = st.columns([1, 4])
+            with c_fix1:
+                if st.button("🔧 Отсортировать по дате", type="primary", use_container_width=True,
+                            key="btn_sort_for_regularity"):
+                    if sort_group_col and sort_group_col in st.session_state.df.columns:
+                        st.session_state.df = st.session_state.df.sort_values(
+                            [sort_group_col, sort_date_col]
+                        ).reset_index(drop=True)
+                    elif sort_date_col and sort_date_col in st.session_state.df.columns:
+                        st.session_state.df = st.session_state.df.sort_values(
+                            sort_date_col
+                        ).reset_index(drop=True)
+                    
+                    # Сбрасываем рабочие копии
+                    work_dfs = [
+                        "df_missing_work", "df_pattern_work", "df_range_work",
+                        "df_outlier_work", "df_inclusion_work", "df_referential_work",
+                        "df_text_work", "df_consistency_work", "df_uniqueness_work",
+                        "df_regularity_work", "df_regular_work"
+                    ]
+                    for work_df_name in work_dfs:
+                        if work_df_name in st.session_state:
+                            del st.session_state[work_df_name]
+                    
+                    if "val_results" in st.session_state:
+                        del st.session_state.val_results
+                    
+                    st.toast("✅ Данные отсортированы! Перезапуск валидации...", icon="✅")
+                    st.rerun()
+            
+            st.info(
+                "💡 **Рекомендация:** Нажмите кнопку **'🔧 Отсортировать по дате'**, "
+                "затем перезапустите валидацию. После сортировки проверка регулярности "
+                "покажет корректные результаты."
+            )
+            st.stop()  # Прерываем выполнение
+
+        # Если данные отсортированы — продолжаем обычную проверку
         make_card("Проверка равномерности временного шага (regularity)", regularity_issues,
-            "**◻️ Метрики:** `inferred_freq` (определенная частота), `gap_count` (число пропусков), `interval_variance`.  \n"
+            "**◻️ Метрики:** `inferred_freq`, `gap_count`, `interval_variance`.  \n"
             "**◻️ Алгоритм:** `pd.infer_freq()`, вычисление интервалов `diff()`, детекция аномалий (>1.5×моды).  \n"
-            "**◻️ Влияние на TS:** Неравномерный шаг ломает ARIMA/SARIMA (требуют регулярный индекс), искажает FFT/спектральный анализ.  \n"
-            "**◻️ Описание:** Модуль проверяет, что временные метки следуют с постоянным интервалом (день, месяц, год). "
-            "Для панельных данных (страны × время) проверка выполняется внутри каждой группы. Обнаруживаются пропущенные периоды, "
-            "нерегулярные интервалы, смешанные частоты. Критично для моделей, требующих DatetimeIndex с постоянной частотой.",
+            "**◻️ Влияние на TS:** Неравномерный шаг ломает ARIMA/SARIMA, искажает FFT/спектральный анализ.  \n"
+            "**◻️ Описание:** Модуль проверяет, что временные метки следуют с постоянным интервалом. "
+            "Для панельных данных проверка выполняется внутри каждой группы.",
             "✅ Временной шаг равномерный" if not regularity_issues else f"⚠️ Обнаружено {regularity_gaps} пропусков в {len(regularity_results_local)} группах",
             "✅" if not regularity_issues else "⚠️", None)
 
-        # ── ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
+        
+        # ─ ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
         if regularity_issues:
             with st.expander("Полный пайплайн обработки нарушений регулярности", expanded=True):
                 st.markdown("### Таблица нарушений с ручной корректировкой")
+
+                # 🔧 КРИТИЧЕСКАЯ ПРОВЕРКА: ОТСОРТИРОВАНЫ ЛИ ДАННЫЕ?
+                is_sorted_pipeline = regularity_sort_info.get('is_sorted', True)
+                sort_violations_pipeline = regularity_sort_info.get('sort_violations', 0)
+                sort_group_col_pipeline = regularity_sort_info.get('group_col')
+                sort_date_col_pipeline = regularity_sort_info.get('date_col')
+
+                if not is_sorted_pipeline:
+                    st.error(f"⚠️ **Данные не отсортированы!** Обнаружено {sort_violations_pipeline} нарушений порядка.")
+                    st.warning(
+                        "Пайплайн обработки нарушений **невозможен** на неупорядоченных данных. "
+                        "Сначала нажмите кнопку **'🔧 Отсортировать по дате'** в карточке выше, "
+                        "затем перезапустите валидацию."
+                    )
+                    if sort_group_col_pipeline:
+                        st.info(f"ℹ️ Обнаружены панельные данные (группировка по `{sort_group_col_pipeline}`).")
+                    st.stop()
 
                 # Инициализация состояний
                 if "df_regularity_work" not in st.session_state:
                     st.session_state.df_regularity_work = df.copy()
                 df_work = st.session_state.df_regularity_work
 
-                # ИСПРАВЛЕНИЕ: Функция для вычисления нарушений
+                # Функция для вычисления нарушений (теперь вызывается только для отсортированных данных)
                 def _compute_regularity_violations(df_to_check: pd.DataFrame) -> tuple:
-                    """Вычисляет нарушения регулярности временного шага."""
+                    """
+                    Вычисляет нарушения регулярности временного шага.
+                    ИСПРАВЛЕНИЕ: Учитывает группировку по Country для панельных данных.
+                    """
                     # Определяем временную колонку
                     date_col = None
                     for c in df_to_check.columns:
@@ -7606,12 +7760,14 @@ with tab_validation:
                     if date_col is None or date_col not in df_to_check.columns:
                         return pd.Series(False, index=df_to_check.index), None, None, None
                     
-                    # 🔧 ИСПРАВЛЕНИЕ: Определяем группирующую колонку (для панельных данных)
+                    # 🔧 ИСПРАВЛЕНИЕ: Определяем группирующую колонку (Country)
                     group_col = None
                     for c in df_to_check.columns:
-                        if c != date_col and df_to_check[c].dtype == 'object' and df_to_check[c].nunique() < 100:
-                            group_col = c
-                            break
+                        if c != date_col and df_to_check[c].dtype in ['object', 'string', 'category']:
+                            n_unique = df_to_check[c].nunique()
+                            if 1 < n_unique < 100:
+                                group_col = c
+                                break
                     
                     # Приводим дату к datetime
                     df_temp = df_to_check.copy()
@@ -7621,8 +7777,8 @@ with tab_validation:
                     combined_mask = pd.Series(False, index=df_temp.index)
                     freq_info = {}
                     
+                    # 🔧 ИСПРАВЛЕНИЕ: Проверяем внутри каждой группы (для панельных данных)
                     if group_col:
-                        # 🔧 ПАНЕЛЬНЫЕ ДАННЫЕ: проверяем внутри каждой группы
                         for group_name, group_df in df_temp.groupby(group_col):
                             group_sorted = group_df.sort_values(date_col)
                             intervals = group_sorted[date_col].diff()
@@ -7634,7 +7790,7 @@ with tab_validation:
                                 group_sorted[date_col].drop_duplicates().sort_values()
                             )
                     else:
-                        # Обычный временной ряд
+                        # Обычный временной ряд (без группировки)
                         df_sorted = df_temp.sort_values(date_col)
                         intervals = df_sorted[date_col].diff()
                         modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
