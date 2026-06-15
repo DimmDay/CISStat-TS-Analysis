@@ -4577,10 +4577,21 @@ with tab_validation:
 
             # 4. Проверка согласованности (логика + хронология)
             progress.progress(0.40, text="Проверка согласованности данных...")
-            # 🔧 ИСПРАВЛЕНИЕ: Используем НЕСОРТИРОВАННЫЕ данные
+            # ИСПРАВЛЕНИЕ: Используем НЕСОРТИРОВАННЫЕ данные
             df_for_consistency = st.session_state.get('df_unsorted', df)
             consistency_results = validate_consistency(df_for_consistency, rules)
+
+            # ИСПРАВЛЕНИЕ: Извлекаем маски из результатов
+            # Маски жестко привязаны к индексам df_for_consistency (несортированного)
             consistency_masks = {}
+            for i, rule_result in enumerate(consistency_results):
+                if 'mask' in rule_result:
+                    mask_name = f"rule_{i}_{rule_result.get('Правило', 'unknown')}"
+                    consistency_masks[mask_name] = rule_result['mask']
+
+            #  КРИТИЧНО: Сохраняем несортированный датафрейм в сессию, 
+            # чтобы пайплайн использовал именно его (иначе индексы масок не совпадут с отсортированным df)
+            st.session_state.df_consistency_unsorted = df_for_consistency.copy()
 
             # 5. Проверка уникальности (дубликаты)
             progress.progress(0.50, text="Проверка уникальности записей...")
@@ -5938,9 +5949,9 @@ with tab_validation:
             with st.expander("Полный пайплайн обработки нарушений согласованности", expanded=consistency_violations > 0):
                 st.markdown("### Таблица нарушений с ручной корректировкой")
 
-                # Инициализация состояний
+                # 🔧 ИСПРАВЛЕНИЕ: Используем НЕСОРТИРОВАННЫЙ датафрейм для отображения
                 if "df_consistency_work" not in st.session_state:
-                    st.session_state.df_consistency_work = df.copy()
+                    st.session_state.df_consistency_work = st.session_state.get('df_consistency_unsorted', df).copy()
                 df_work = st.session_state.df_consistency_work
 
                 # ИСПРАВЛЕНИЕ: Получаем маски из val_results
@@ -5949,7 +5960,11 @@ with tab_validation:
                 # Формируем общую маску нарушений из словаря масок
                 combined_mask = pd.Series(False, index=df_work.index)
                 for mask in consistency_masks.values():
-                    combined_mask |= mask
+                    # 🔧 ВАЖНО: Маска уже создана для df_work (несортированного)
+                    if len(mask) == len(df_work):
+                        combined_mask |= mask
+                    else:
+                        st.warning(f"⚠️ Размер маски не совпадает: {len(mask)} vs {len(df_work)}")
 
                 # Фильтр отображения
                 view_filter = st.radio(
@@ -6025,15 +6040,15 @@ with tab_validation:
                     st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
 
                 # Кнопка запуска превью
-                if st.button("👁️ Прогноз влияния на статистики", type="secondary", 
+                if st.button("Прогноз влияния на статистики", type="secondary", 
                             use_container_width=True, key="btn_show_consistency_preview"):
                     st.session_state.show_consistency_preview = True
                     st.rerun()
 
                 # Блок превью
-                if st.session_state.get("show_consistency_preview", False):
+                if st.session_state.get("show_consistency_preview", True):
                     strategy = consistency_strategy
-                    st.markdown("##### 📊 Прогноз влияния на статистики:")
+                    st.markdown("##### Прогноз влияния на статистики:")
 
                     df_preview = df_work.copy()
                     num_cols_to_fix = df_preview.select_dtypes(include=['number']).columns.tolist()

@@ -308,7 +308,12 @@ def validate_formats(df, rules):
 
 
 def validate_consistency(df, rules):
-    """Проверяет согласованность данных (хронология внутри групп)."""
+    """
+    Проверяет согласованность данных (хронология внутри групп).
+    
+    🔧 ИСПРАВЛЕНИЕ: Показывает ОБЕ строки нарушения (2016 и 2015),
+    а не только ту, где diff() < 0.
+    """
     results = []
     consistency_rules = rules.get("consistency", [])
 
@@ -317,15 +322,29 @@ def validate_consistency(df, rules):
         year_cols = [c for c in df.columns if 'year' in c.lower() or 'год' in c.lower()]
         date_cols = df.select_dtypes(include=['datetime64']).columns.tolist()
         if year_cols:
-            consistency_rules.append({"name": "Хронологический порядок лет", "type": "chronology", "columns": [year_cols[0]], "severity": "error"})
+            consistency_rules.append({
+                "name": "Хронологический порядок лет",
+                "type": "chronology",
+                "description": "Проверка хронологического порядка лет внутри групп",
+                "columns": [year_cols[0]],
+                "severity": "error"
+            })
         elif date_cols:
-            consistency_rules.append({"name": "Хронологический порядок дат", "type": "chronology", "columns": [date_cols[0]], "severity": "error"})
+            consistency_rules.append({
+                "name": "Хронологический порядок дат",
+                "type": "chronology",
+                "description": "Проверка хронологического порядка дат внутри групп",
+                "columns": [date_cols[0]],
+                "severity": "error"
+            })
 
     for rule in consistency_rules:
         try:
             rule_type = rule.get("type", "unknown")
+            rule_name = rule.get("name", "Unnamed")
             columns = rule.get("columns", [])
             violations = 0
+            violation_mask = pd.Series(False, index=df.index)
 
             if rule_type == "chronology" and columns and columns[0] in df.columns:
                 time_col = columns[0]
@@ -340,28 +359,60 @@ def validate_consistency(df, rules):
                             break
 
                 if group_col:
-                    for _, group_df in df.groupby(group_col):
-                        time_diff = group_df[time_col].diff()
-                        if pd.api.types.is_datetime64_any_dtype(group_df[time_col]):
-                            violations += (time_diff < pd.Timedelta(seconds=0)).sum()
+                    # Панельные данные: проверяем внутри каждой группы
+                    for group_name, group_df in df.groupby(group_col):
+                        group_sorted = group_df.sort_index()
+                        time_values = group_sorted[time_col]
+                        
+                        # Находим нарушения: где текущий год < предыдущего
+                        time_diff = time_values.diff()
+                        if pd.api.types.is_datetime64_any_dtype(time_values):
+                            group_violations_mask = time_diff < pd.Timedelta(seconds=0)
                         else:
-                            violations += (time_diff < 0).sum()
+                            group_violations_mask = time_diff < 0
+                        
+                        violations += group_violations_mask.sum()
+                        
+                        # 🔧 ИСПРАВЛЕНИЕ: Показываем ОБЕ строки нарушения
+                        # Строка где diff() < 0 (2015)
+                        violation_mask.loc[group_sorted[group_violations_mask].index] = True
+                        
+                        # И предыдущая строка (2016) — тоже нарушение!
+                        violation_indices = group_sorted[group_violations_mask].index
+                        for idx in violation_indices:
+                            prev_idx = group_sorted.index[group_sorted.index.get_loc(idx) - 1]
+                            violation_mask.loc[prev_idx] = True
                 else:
                     # Обычный ряд
                     time_diff = df[time_col].diff()
                     if pd.api.types.is_datetime64_any_dtype(df[time_col]):
-                        violations = (time_diff < pd.Timedelta(seconds=0)).sum()
+                        violation_mask = time_diff < pd.Timedelta(seconds=0)
                     else:
-                        violations = (time_diff < 0).sum()
+                        violation_mask = time_diff < 0
+                    
+                    # Добавляем предыдущие строки
+                    violation_indices = df[violation_mask].index
+                    for idx in violation_indices:
+                        loc = df.index.get_loc(idx)
+                        if loc > 0:
+                            prev_idx = df.index[loc - 1]
+                            violation_mask.loc[prev_idx] = True
+                    
+                    violations = violation_mask.sum() // 2  # Делим на 2, т.к. каждая пара считается дважды
 
             results.append({
-                "Правило": rule.get("name", "Unnamed"),
+                "Правило": rule_name,
                 "Тип": rule_type,
                 "Нарушений": int(violations),
-                "Статус": "⚠️ Нарушено" if violations > 0 else "✅ Соблюдено"
+                "Статус": "⚠️ Нарушено" if violations > 0 else "✅ Соблюдено",
+                "mask": violation_mask
             })
         except Exception as e:
-            results.append({"Правило": rule.get("name", "unknown"), "Статус": f"❌ Ошибка: {e}"})
+            results.append({
+                "Правило": rule.get("name", "unknown"),
+                "Статус": f"❌ Ошибка: {e}",
+                "mask": pd.Series(False, index=df.index)
+            })
 
     return results
 
