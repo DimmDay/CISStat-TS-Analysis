@@ -16070,3 +16070,5 @@ with tab_modeling:
         </p>
     </div>
     """, unsafe_allow_html=True)
+
+# Пора разгрузить app.py, ребяты!!!
