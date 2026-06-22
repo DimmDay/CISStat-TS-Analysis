@@ -1,0 +1,33 @@
+# .github/workflows/test.yml
+name: CISStat TS Analysis - Tests
+
+on:
+  push:
+    branches: [ "develop", "refactor/*" ]
+  pull_request:
+    branches: [ "develop" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        # Устанавливаем все зависимости, необходимые для тестов
+        pip install pytest syrupy pytest-cov pandas numpy scipy statsmodels PyWavelets
+        
+    - name: Run tests with pytest
+      run: |
+        pytest tests/ -v
