@@ -15562,10 +15562,19 @@ with tab_exploratory:
         **⚠️ Почитать о методе:** https://habr.com/ru/articles/1040980/
         """)
 
+    
     # ───────────────────────────────────────────────────────────
     # НАСТРОЙКИ IH-АНАЛИЗА
     # ───────────────────────────────────────────────────────────
     if not df_filtered.empty and ct_f.get("num"):
+        # ✅ ИМПОРТ ИЗ ЧИСТОГО МОДУЛЯ (вместо дублирования функций)
+        from app.eda.ih_analysis import (
+            discretize_feature,
+            compute_r_metric,
+            compute_synergy,
+            generate_ih_recommendations
+        )
+
         # Выбор целевой переменной
         target_options = ct_f["num"] + ([st.session_state.primary_date_col] if st.session_state.primary_date_col else [])
         ih_target = st.selectbox(
@@ -15616,110 +15625,7 @@ with tab_exploratory:
                 progress_bar = st.progress(0)
 
                 # ───────────────────────────────────────────────
-                # 🔬 ЯДРО IH-АНАЛИЗА: ФУНКЦИИ
-                # ───────────────────────────────────────────────
-                def discretize_feature(series: pd.Series, sharpness: float, min_samples: int) -> pd.Series:
-                    """
-                    Адаптивная дискретизация с параметром sharpness.
-                    Меньший sharpness → больше интервалов.
-                    """
-                    if pd.api.types.is_categorical_dtype(series) or series.nunique() <= 10:
-                        return series.astype(str)
-
-                    # Удаление пропусков для дискретизации
-                    clean = series.dropna()
-                    if len(clean) < min_samples * 2:
-                        return series.astype(str)  # fallback
-
-                    # Оценка оптимального числа бинов через sharpness
-                    n_bins = max(2, min(50, int(1 / sharpness)))
-
-                    # Квантильная дискретизация (устойчива к выбросам)
-                    try:
-                        bins = pd.qcut(clean, q=n_bins, duplicates='drop', labels=False)
-                        # Восстановление индекса с сохранением пропусков
-                        result = pd.Series(index=series.index, dtype=object)
-                        result[clean.index] = bins.astype(str)
-                        result[series.isna()] = '_MISSING_'
-                        return result
-                    except Exception:
-                        # Fallback на равномерную дискретизацию
-                        bins = pd.cut(clean, bins=n_bins, labels=False)
-                        result = pd.Series(index=series.index, dtype=object)
-                        result[clean.index] = bins.astype(str)
-                        result[series.isna()] = '_MISSING_'
-                        return result
-
-                def shannon_entropy(probabilities: np.ndarray, base: float = 2) -> float:
-                    """Вычисление энтропии Шеннона."""
-                    probabilities = probabilities[probabilities > 0]  # убрать нули
-                    return -np.sum(probabilities * np.log(probabilities) / np.log(base))
-
-                def mutual_information(x_disc: pd.Series, y_disc: pd.Series, base: float = 2) -> float:
-                    """
-                    Оценка взаимной информации через совместное распределение.
-                    """
-                    # Совместная таблица частот
-                    joint = pd.crosstab(x_disc, y_disc)
-                    joint_prob = joint.values / joint.values.sum()
-
-                    # Маргинальные распределения
-                    px = joint_prob.sum(axis=1)
-                    py = joint_prob.sum(axis=0)
-
-                    # MI = Σ p(x,y) * log(p(x,y) / (p(x)*p(y)))
-                    mi = 0.0
-                    for i in range(joint_prob.shape[0]):
-                        for j in range(joint_prob.shape[1]):
-                            if joint_prob[i, j] > 0 and px[i] > 0 and py[j] > 0:
-                                mi += joint_prob[i, j] * np.log(joint_prob[i, j] / (px[i] * py[j]))
-                    return mi / np.log(base)  # конвертация в нужное основание
-
-                def compute_r_metric(x: pd.Series, y: pd.Series, sharpness: float, min_samples: int) -> dict:
-                    """
-                    Вычисление нормированной меры связи R(Y|X) = I(X;Y) / H(Y).
-                    Возвращает словарь с метриками.
-                    """
-                    # Дискретизация
-                    x_disc = discretize_feature(x, sharpness, min_samples)
-                    y_disc = discretize_feature(y, sharpness, min_samples)
-
-                    # Проверка константных признаков
-                    if x_disc.nunique() <= 1:
-                        return {"R": 0.0, "MI": 0.0, "H_X": 0.0, "H_Y": 0.0, 
-                                "n_bins_X": 1, "n_bins_Y": y_disc.nunique(),
-                                "error": "Признак X константен"}
-                    
-                    # Энтропии
-                    _, counts_y = np.unique(y_disc, return_counts=True)
-                    py = counts_y / counts_y.sum()
-                    h_y = shannon_entropy(py)
-
-                    if h_y < 1e-10:  # целевая переменная константа
-                        return {"R": 0.0, "MI": 0.0, "H_X": 0.0, "H_Y": 0.0, "error": "H(Y) ≈ 0"}
-
-                    # Взаимная информация
-                    mi = mutual_information(x_disc, y_disc)
-
-                    # Нормированная метрика
-                    r_value = min(1.0, mi / h_y)  # защита от численных ошибок
-
-                    # Энтропия признака
-                    _, counts_x = np.unique(x_disc, return_counts=True)
-                    px = counts_x / counts_x.sum()
-                    h_x = shannon_entropy(px)
-
-                    return {
-                        "R": r_value,
-                        "MI": mi,
-                        "H_X": h_x,
-                        "H_Y": h_y,
-                        "n_bins_X": x_disc.nunique(),
-                        "n_bins_Y": y_disc.nunique()
-                    }
-
-                # ───────────────────────────────────────────────
-                # 📊 РАСЧЁТЫ
+                # 📊 РАСЧЁТЫ (используем функции из app.eda.ih_analysis)
                 # ───────────────────────────────────────────────
                 results = []
                 y_series = df_filtered[ih_target].copy()
@@ -15729,6 +15635,7 @@ with tab_exploratory:
                     x_series = df_filtered[feat].copy()
 
                     try:
+                        # ✅ Используем compute_r_metric из модуля
                         metrics = compute_r_metric(x_series, y_series, sharpness, min_samples)
                         results.append({
                             "feature": feat,
@@ -15825,41 +15732,13 @@ with tab_exploratory:
                 # 📈 ВИЗУАЛИЗАЦИЯ 3: Синергия пар признаков
                 # ───────────────────────────────────────────────
                 st.markdown("######  Анализ синергии пар признаков")
+                
+                # ✅ Используем compute_synergy из модуля
                 synergy_results = []
-
                 if len(top_df) >= 2:
-                    synergy_results = []
                     selected_features = top_df["feature"].head(min(6, len(top_df))).tolist()
-
-                    for i in range(len(selected_features)):
-                        for j in range(i + 1, len(selected_features)):
-                            f1, f2 = selected_features[i], selected_features[j]
-                            try:
-                                # Индивидуальные R
-                                r1 = df_ih[df_ih["feature"] == f1]["R"].values[0]
-                                r2 = df_ih[df_ih["feature"] == f2]["R"].values[0]
-
-                                # Совместный анализ: создаём комбинированный признак
-                                x1_disc = discretize_feature(df_filtered[f1], sharpness, min_samples)
-                                x2_disc = discretize_feature(df_filtered[f2], sharpness, min_samples)
-                                x_combined = x1_disc.astype(str) + "||" + x2_disc.astype(str)
-
-                                r_combined = compute_r_metric(x_combined, y_series, sharpness, min_samples)["R"]
-
-                                # Синергия = R(комбо) - (R1 + R2)
-                                synergy = r_combined - (r1 + r2)
-
-                                synergy_results.append({
-                                    "pair": f"{f1} + {f2}",
-                                    "R1": r1,
-                                    "R2": r2,
-                                    "R_combined": r_combined,
-                                    "synergy": synergy,
-                                    "synergy_pct": synergy * 100
-                                })
-                            except:
-                                st.warning(f"⚠️ Не удалось рассчитать синергию для {f1} + {f2}: {e}")
-                                continue
+                    synergy_df = compute_synergy(df_filtered, ih_target, selected_features, sharpness, min_samples)
+                    synergy_results = synergy_df.to_dict('records') if not synergy_df.empty else []
 
                     if synergy_results:
                         df_syn = pd.DataFrame(synergy_results).sort_values("synergy", ascending=False)
@@ -15924,6 +15803,7 @@ with tab_exploratory:
                     c4.metric("📦 Бины", feat_row["n_bins"], f"дискретизация")
 
                     # График распределения целевой переменной по бинам признака
+                    # ✅ Используем discretize_feature из модуля
                     x_disc = discretize_feature(df_filtered[selected_feat], sharpness, min_samples)
                     y_disc = discretize_feature(df_filtered[ih_target], sharpness, min_samples)
 
@@ -15988,30 +15868,9 @@ with tab_exploratory:
                 # ───────────────────────────────────────────────
                 st.markdown("###### 💡 Автоматические рекомендации")
 
-                recommendations = []
-
-                # Высокая информативность
-                high_r = df_ih[df_ih["R"] >= 0.5]
-                if not high_r.empty:
-                    rec_list = ", ".join([f"`{r}`" for r in high_r["feature"].head(3)])
-                    recommendations.append(f"✅ **Сильные предикторы**: {rec_list} (R ≥ 0.5) → используйте как основные признаки в моделях")
-
-                # Низкая информативность
-                low_r = df_ih[df_ih["R"] < 0.1]
-                if not low_r.empty and len(low_r) > len(df_ih) * 0.3:
-                    recommendations.append("⚠️ **Много слабых признаков**: рассмотрите отбор признаков или агрегацию")
-
-                # Высокая энтропия + низкий R (шум?)
-                noisy = df_ih[(df_ih["H_X"] > df_ih["H_X"].quantile(0.75)) & (df_ih["R"] < 0.15)]
-                if not noisy.empty:
-                    rec_list = ", ".join([f"`{r}`" for r in noisy["feature"].head(3)])
-                    recommendations.append(f"⚡ **Высокая энтропия, низкая связь**: {rec_list} → возможен шум, проверьте качество данных")
-
-                # Синергия (если есть)
-                if "synergy_results" in locals() and synergy_results:
-                    best_syn = max(synergy_results, key=lambda x: x["synergy"])
-                    if best_syn["synergy"] > 0.1:
-                        recommendations.append(f"🤝 **Синергия**: пара `{best_syn['pair']}` даёт +{best_syn['synergy']*100:.1f}% информации вместе → создайте комбинированный признак")
+                # ✅ Используем generate_ih_recommendations из модуля
+                synergy_df_for_recs = pd.DataFrame(synergy_results) if synergy_results else None
+                recommendations = generate_ih_recommendations(df_ih, synergy_df_for_recs)
 
                 # Вывод рекомендаций
                 if recommendations:
