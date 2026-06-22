@@ -2520,8 +2520,8 @@ with tab_download:
         )
 
         if df_filtered.empty:
-            st.warning("⚠️ Нет данных для отображения. Измените фильтры.")
-            st.stop()
+            st.warning("⚠️ Выполнение прервано. Отсортируйте данные и перезапустите валидацию.")
+            
 
         # ───────────────────────────────────────────────────────────
         #  2. ПОДГОТОВКА МЕТРИК И TS MODE (ct_f, ts_mode_active)
@@ -7714,7 +7714,7 @@ with tab_validation:
                 "затем перезапустите валидацию. После сортировки проверка регулярности "
                 "покажет корректные результаты."
             )
-            st.stop()  # Прерываем выполнение
+            st.warning("⚠️ Выполнение прервано. Отсортируйте данные и перезапустите валидацию.")  # Прерываем выполнение
 
         # Если данные отсортированы — продолжаем обычную проверку
         make_card("Проверка равномерности временного шага (regularity)", regularity_issues,
@@ -7747,7 +7747,7 @@ with tab_validation:
                     )
                     if sort_group_col_pipeline:
                         st.info(f"ℹ️ Обнаружены панельные данные (группировка по `{sort_group_col_pipeline}`).")
-                    st.stop()
+                    st.warning("⚠️ Выполнение прервано. Отсортируйте данные и перезапустите валидацию.")
 
                 # Инициализация состояний
                 if "df_regularity_work" not in st.session_state:
@@ -8263,8 +8263,8 @@ with tab_validation:
         # 10. ПРОВЕРКА ДОСТАТОЧНОСТИ ЧИСЛА НАБЛЮДЕНИЙ (sufficiency)
         # ───────────────────────────────────────────────────────────
 
-        sufficiency_results_local = locals().get('sufficiency_results', [])
-        sufficiency_recommendations = locals().get('sufficiency_recommendations', {})
+        sufficiency_results_local = st.session_state.val_results.get("sufficiency", [])
+        sufficiency_recommendations = st.session_state.val_results.get("sufficiency_recommendations", {})
 
         sufficiency_issues = len([r for r in sufficiency_results_local if r.get('Нарушений', 0) > 0]) > 0
         sufficiency_groups_with_issues = len([r for r in sufficiency_results_local if r.get('Нарушений', 0) > 0])
@@ -10475,7 +10475,7 @@ with tab_preprocessing:
             c_fix1, c_fix2 = st.columns([1, 4])
             with c_fix1:
                 if st.button("🔧 Отсортировать по дате", type="primary", use_container_width=True, 
-                            key="btn_sort_for_regularity"):
+                            key="btn_sort_for_regularity_preprocessing"):
                     if group_col:
                         st.session_state.df = st.session_state.df.sort_values(
                             [group_col, date_col]
@@ -10505,7 +10505,7 @@ with tab_preprocessing:
                 "затем проверьте регулярность. Без сортировки любые проверки временных рядов "
                 "(пропуски, лаги, сезонность) будут давать некорректные результаты."
             )
-            st.stop()
+            st.warning("⚠️ Выполнение прервано. Отсортируйте данные и перезапустите валидацию.")
         
         # ПРОВЕРКА 1: РЕГУЛЯРНОСТЬ (только если отсортировано)
         df_reg = df_reg.sort_values(date_col)
@@ -10962,7 +10962,7 @@ with tab_preprocessing:
                                             st.code(traceback.format_exc(), language="python")
                             
                             with c_cancel_reg:
-                                if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_regularity"):
+                                if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_regularity_preprocessing"):
                                     st.session_state.show_regular_preview = False
                                     st.rerun()
                         except Exception as e:
@@ -15566,10 +15566,16 @@ with tab_exploratory:
     # ───────────────────────────────────────────────────────────
     # НАСТРОЙКИ IH-АНАЛИЗА
     # ───────────────────────────────────────────────────────────
-    if not df_filtered.empty and ct_f.get("num"):
-        # ✅ ИМПОРТ ИЗ ЧИСТОГО МОДУЛЯ (вместо дублирования функций)
+    # Принудительная перезагрузка модуля для обхода кэша Streamlit
+    import importlib
+    import sys
+    if 'app.eda.ih_analysis' in sys.modules:
+        importlib.reload(sys.modules['app.eda.ih_analysis'])
+
         from app.eda.ih_analysis import (
             discretize_feature,
+            shannon_entropy,
+            mutual_information,
             compute_r_metric,
             compute_synergy,
             generate_ih_recommendations

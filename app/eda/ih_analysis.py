@@ -7,9 +7,13 @@
 ⚠️ ВАЖНО: Этот модуль НЕ импортирует streamlit.
 Все функции принимают явные аргументы (pd.Series, pd.DataFrame).
 """
+import logging
 import numpy as np
 import pandas as pd
 from typing import Dict, Any, List
+
+logger = logging.getLogger(__name__)
+
 
 def discretize_feature(series: pd.Series, sharpness: float, min_samples: int) -> pd.Series:
     """
@@ -100,3 +104,117 @@ def compute_r_metric(x: pd.Series, y: pd.Series, sharpness: float, min_samples: 
         "n_bins_X": x_disc.nunique(),
         "n_bins_Y": y_disc.nunique()
     }
+
+
+def compute_synergy(
+    df: pd.DataFrame,
+    target_col: str,
+    features: List[str],
+    sharpness: float,
+    min_samples: int
+) -> pd.DataFrame:
+    """
+    Вычисляет синергию для всех пар признаков.
+    Синергия = R(X1+X2; Y) - [R(X1; Y) + R(X2; Y)]
+    
+    Args:
+        df: DataFrame с данными
+        target_col: имя целевой переменной
+        features: список имён признаков для анализа
+        sharpness: параметр дискретизации
+        min_samples: минимальное число наблюдений на бин
+    
+    Returns:
+        DataFrame с колонками: pair, R1, R2, R_combined, synergy, synergy_pct
+    """
+    if len(features) < 2:
+        return pd.DataFrame(columns=["pair", "R1", "R2", "R_combined", "synergy", "synergy_pct"])
+    
+    synergy_results = []
+    y_series = df[target_col].copy()
+    
+    individual_r = {}
+    for feat in features:
+        try:
+            x_series = df[feat].copy()
+            metrics = compute_r_metric(x_series, y_series, sharpness, min_samples)
+            individual_r[feat] = metrics["R"]
+        except Exception as e:
+            logger.warning(f"Failed to compute R for {feat}: {e}")
+            individual_r[feat] = 0.0
+    
+    for i in range(len(features)):
+        for j in range(i + 1, len(features)):
+            f1, f2 = features[i], features[j]
+            try:
+                r1 = individual_r[f1]
+                r2 = individual_r[f2]
+                
+                x1_disc = discretize_feature(df[f1], sharpness, min_samples)
+                x2_disc = discretize_feature(df[f2], sharpness, min_samples)
+                x_combined = x1_disc.astype(str) + "||" + x2_disc.astype(str)
+                
+                r_combined = compute_r_metric(x_combined, y_series, sharpness, min_samples)["R"]
+                
+                synergy = r_combined - (r1 + r2)
+                
+                synergy_results.append({
+                    "pair": f"{f1} + {f2}",
+                    "R1": r1,
+                    "R2": r2,
+                    "R_combined": r_combined,
+                    "synergy": synergy,
+                    "synergy_pct": synergy * 100
+                })
+            except Exception as e:
+                logger.warning(f"Failed to compute synergy for {f1} + {f2}: {e}")
+                continue
+    
+    return pd.DataFrame(synergy_results).sort_values("synergy", ascending=False).reset_index(drop=True)
+
+
+def generate_ih_recommendations(
+    df_ih: pd.DataFrame,
+    synergy_df: pd.DataFrame = None
+) -> List[str]:
+    """
+    Генерирует автоматические рекомендации на основе результатов IH-анализа.
+    
+    Args:
+        df_ih: DataFrame с результатами IH-анализа
+        synergy_df: DataFrame с результатами анализа синергии (опционально)
+    
+    Returns:
+        Список строк рекомендаций
+    """
+    recommendations = []
+    
+    if df_ih.empty:
+        return ["ℹ️ Нет данных для анализа"]
+    
+    high_r = df_ih[df_ih["R"] >= 0.5]
+    if not high_r.empty:
+        rec_list = ", ".join([f"`{r}`" for r in high_r["feature"].head(3)])
+        recommendations.append(f"✅ **Сильные предикторы**: {rec_list} (R ≥ 0.5) → используйте как основные признаки в моделях")
+    
+    low_r = df_ih[df_ih["R"] < 0.1]
+    if not low_r.empty and len(low_r) > len(df_ih) * 0.3:
+        recommendations.append("⚠️ **Много слабых признаков**: рассмотрите отбор признаков или агрегацию")
+    
+    if "H_X" in df_ih.columns:
+        noisy = df_ih[(df_ih["H_X"] > df_ih["H_X"].quantile(0.75)) & (df_ih["R"] < 0.15)]
+        if not noisy.empty:
+            rec_list = ", ".join([f"`{r}`" for r in noisy["feature"].head(3)])
+            recommendations.append(f"⚡ **Высокая энтропия, низкая связь**: {rec_list} → возможен шум, проверьте качество данных")
+    
+    if synergy_df is not None and not synergy_df.empty:
+        best_syn = synergy_df.loc[synergy_df["synergy"].idxmax()]
+        if best_syn["synergy"] > 0.1:
+            recommendations.append(
+                f"🤝 **Синергия**: пара `{best_syn['pair']}` даёт +{best_syn['synergy']*100:.1f}% информации вместе → создайте комбинированный признак"
+            )
+    
+    if not recommendations:
+        recommendations.append("ℹ️ Явных паттернов не обнаружено — начните с признаков с наибольшим R")
+    
+    return recommendations
