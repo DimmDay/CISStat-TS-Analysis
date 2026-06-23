@@ -56,6 +56,7 @@ from validation.audit import log_expert_action
 from src.catalog.recommender import CISStatRecommender
 from app.core.utils import safe_stat, safe_nunique
 from app.core.passport import _hurst_exponent as hurst_exponent, _calc_ts_props
+from app.core.passport import calculate_ts_passport
 
 
 # Инициализация рекомендателя
@@ -3546,257 +3547,164 @@ with tab_download:
                     else:
                         analysis_series = df_filtered[target_col].dropna().astype(float)
 
-                    if len(analysis_series) < 30:
-                        st.warning("⚠️ Недостаточно данных (нужно > 30 точек) для полного анализа.")
-                    else:
-                        results_data = []
-
-                        # ── 0. ЧАСТОТА РЯДА (новая метрика) ─────────────────────
-                        inferred_freq = pd.infer_freq(analysis_series.index.drop_duplicates().sort_values())
-                        freq_result = f"✅ {inferred_freq}" if inferred_freq else "⚠️ Нерегулярная"
-
-                        results_data.append({
-                            "Свойство": "Частота ряда",
-                            "Метод": "pd.infer_freq() + эвристика",
-                            "Описание": "Определяет регулярность временного интервала между наблюдениями.",
-                            "Результат": freq_result
-                        })
-
-                        # ── 1. Стационарность (ADF Test) ──────────────────────────
-                        adf_res = adfuller(analysis_series, autolag='AIC')
-                        adf_p = adf_res[1]
-                        is_stationary = adf_p < 0.05
-
-                        results_data.append({
-                            "Свойство": "Стационарность",
-                            "Метод": "ADF Test (Augmented Dickey-Fuller)",
-                            "Описание": "Проверяет наличие единичного корня (нестационарности). H₀: Ряд нестационарен.",
-                            "Результат": "✅ Стационарен" if is_stationary else "❌ Нестационарен"
-                        })
-
-                        # ── 1.1. Детерминированность (R² тренда) ──────────────────
-                        from scipy.stats import linregress
-                        slope, intercept, r_value, p_value, std_err = linregress(range(len(analysis_series)), analysis_series)
-                        r_squared = r_value**2
-                        is_deterministic = r_squared >= 0.7
-
-                        results_data.append({
-                            "Свойство": "Детерминированность",
-                            "Метод": "R² тренда + комбинация тестов",
-                            "Описание": "Доля дисперсии, объяснённая детерминированным трендом. R² ≥ 0.7 → сильный детерминированный компонент.",
-                            "Результат": f"{'✅ Детерминированный' if is_deterministic else '⚠️ Стохастический/Смешанный'} (R²={r_squared:.3f})"
-                        })
-
-                        # ── 2. Автокорреляция (Ljung-Box) ─────────────────────────
-                        from statsmodels.stats.diagnostic import acorr_ljungbox
-                        lb_res = acorr_ljungbox(analysis_series, lags=[10])
-                        if isinstance(lb_res, pd.DataFrame):
-                            lb_p = lb_res['lb_pvalue'].iloc[0]
-                        else:
-                            lb_p = lb_res[1][0]
-
-                        is_white_noise = lb_p > 0.05
-                        results_data.append({
-                            "Свойство": "Автокорреляция",
-                            "Метод": "Ljung-Box Test (Lag=10)",
-                            "Описание": "Проверяет гипотезу о том, что значения ряда независимы (белый шум). H₀: Автокорреляция равна 0.",
-                            "Результат": "✅ Белый шум (Нет АК)" if is_white_noise else "⚠️ Есть автокорреляция"
-                        })
-
-                        # ── 3. Нормальность (Jarque-Bera) ─────────────────────────
-                        from scipy import stats
-                        jb_res = stats.jarque_bera(analysis_series)
-                        jb_p = jb_res.pvalue if hasattr(jb_res, 'pvalue') else jb_res[1]
-                        is_normal = jb_p > 0.05
-
-                        results_data.append({
-                            "Свойство": "Нормальность",
-                            "Метод": "Jarque-Bera Test",
-                            "Описание": "Проверяет соответствие распределения нормальному (асимметрия и эксцесс). H₀: Распределение нормально.",
-                            "Результат": "✅ Нормально" if is_normal else "⚠️ Отклонение от нормы"
-                        })
-
-                        # ── 4. Направление тренда ─────────────────────────
-                        trend_dir = "📈 Восходящий" if slope > 0 else "📉 Нисходящий" if slope < 0 else "➡️ Горизонтальный"
-
-                        results_data.append({
-                            "Свойство": "Направление тренда",
-                            "Метод": "OLS Linear Regression (Slope)",
-                            "Описание": "Определяет угол наклона линии тренда через метод наименьших квадратов.",
-                            "Результат": f"{trend_dir} (Slope={slope:.4f})"
-                        })
-
-                        # ── 📈 КОРРЕЛЯЦИЯ ЧИСЛОВЫХ ПРИЗНАКОВ (новая метрика) ─────
-                        num_cols = ct_f.get("num", [])
-                        if len(num_cols) >= 2 and target_col in num_cols:
-                            # Рассчитываем корреляции только для числовых колонок в отфильтрованных данных
-                            corr_df = df_filtered[num_cols].corr()
-                            target_corr = corr_df[target_col].drop(target_col).sort_values(key=abs, ascending=False)
-
-                            # Формируем строку с топ-3 корреляциями
-                            top_corrs = []
-                            for col, val in target_corr.head(3).items():
-                                sign = "🟢" if val > 0.5 else ("🔴" if val < -0.5 else "🟡")
-                                top_corrs.append(f"{sign} {col} ({val:.2f})")
-
-                            corr_result = ", ".join(top_corrs) if top_corrs else "⚪ Нет сильных связей (|r|<0.5)"
-
-                            results_data.append({
-                                "Свойство": "Корреляция признаков",
-                                "Метод": "Pearson correlation matrix",
-                                "Описание": "Линейная связь целевой метрики с другими числовыми признаками. 🟢>0.5, 🔴<-0.5, 🟡 слабая",
-                                "Результат": corr_result
-                            })
-
-                        # ── 5. СЕЗОННОСТЬ (группировка: Strength + ACF периоды) ──
-                        from statsmodels.tsa.seasonal import STL
-                        period = 7 if (inferred_freq and 'D' in inferred_freq) else 12
+                    # ── 1. ВЫЗОВ ЕДИНОЙ ФУНКЦИИ РАСЧЁТА ПАСПОРТА ──────────────────
+                    if target_col and len(analysis_series) >= 30:
                         try:
-                            stl_res = STL(analysis_series, period=period, robust=True).fit()
-                            var_total = analysis_series.var()
-                            var_resid = stl_res.resid.var()
-                            var_detrended = var_total - stl_res.trend.var()
-                            strength_seasonality = max(0, 1 - var_resid / var_detrended) if var_detrended > 0 else 0
-                            is_seasonal = strength_seasonality > 0.6
-                        except:
-                            strength_seasonality = 0.0
-                            is_seasonal = False
-
-                        results_data.append({
-                            "Свойство": "Сезонность (сила)",
-                            "Метод": "STL Decomposition (Strength)",
-                            "Описание": "Доля дисперсии, объясняемая сезонной компонентой (0..1). >0.6 = сильная сезонность.",
-                            "Результат": f"{'✅ Сильная' if is_seasonal else '⚠️ Слабая/Нет'} (S={strength_seasonality:.2f})"
-                        })
-
-                        # ── 6. Сезонные периоды (из ACF) — СРАЗУ ПОСЛЕ СИЛЫ ───────
-                        from statsmodels.tsa.stattools import acf as acf_func
-                        max_lag = min(60, len(analysis_series) // 4)
-                        acf_values = acf_func(analysis_series, nlags=max_lag)
-                        confidence = 1.96 / np.sqrt(len(analysis_series))
-                        significant_lags = np.where(np.abs(acf_values) > confidence)[0][1:]
-
-                        seasonal_periods_acf = []
-                        for i, lag in enumerate(significant_lags):
-                            if i > 0 and lag - significant_lags[i-1] < 3:
-                                continue
-                            if lag > 2:
-                                seasonal_periods_acf.append(lag)
-
-                        acf_seasonality = seasonal_periods_acf[:3] if seasonal_periods_acf else []
-                        results_data.append({
-                            "Свойство": "Сезонные периоды (ACF)",
-                            "Метод": "Автокорреляционная функция + порог значимости",
-                            "Описание": "Лаги с корреляцией выше 95% доверительного интервала. Показывает периодичность ряда.",
-                            "Результат": f"{'✅ ' + ', '.join(map(str, acf_seasonality)) if acf_seasonality else '⚠️ Не обнаружены'}"
-                        })
-
-                        # ── 7. Долгая память (Hurst Exponent) ─────────────────────
-                        
-                        hurst_val = hurst_exponent(analysis_series.values)
-                        memory_type = "🔵 Антиперсистентность" if hurst_val < 0.45 else ("🔴 Устойчивый тренд" if hurst_val > 0.55 else "⚪ Случайное блуждание")
-
-                        results_data.append({
-                            "Свойство": "Долгая память",
-                            "Метод": "Hurst Exponent (R/S Analysis)",
-                            "Описание": "Характеризует персистентность ряда. H=0.5 (Random Walk), H>0.5 (Trend), H<0.5 (Mean Reverting).",
-                            "Результат": f"{memory_type} (H={hurst_val:.2f})"
-                        })
-
-                        # ═══════════════════════════════════════════════════════
-                        #  🆕 СПЕКТРАЛЬНЫЕ СВОЙСТВА (из спектрального анализа)
-                        # ═══════════════════════════════════════════════════════
-
-                        # ── 8. Доминирующие частоты (FFT) ───────────────────────
-
-                        n = len(analysis_series)
-                        y = analysis_series.values - analysis_series.mean()
-                        yf = fft(y)
-                        xf = fftfreq(n, 1)[:n//2]
-                        amplitude = 2.0/n * np.abs(yf[0:n//2])
-
-                        peaks, _ = find_peaks(amplitude, height=np.mean(amplitude) + np.std(amplitude))
-                        fft_periods = [1/xf[p] for p in peaks if xf[p] > 0 and xf[p] < 0.5]
-                        fft_dominant = sorted(fft_periods)[:3] if fft_periods else []
-
-                        results_data.append({
-                            "Свойство": "Доминирующие частоты (FFT)",
-                            "Метод": "Быстрое преобразование Фурье + поиск пиков",
-                            "Описание": "Периоды с максимальной амплитудой в частотной области. Для создания Fourier features.",
-                            "Результат": f"{'✅ ' + ', '.join([f'{p:.1f}' for p in fft_dominant]) if fft_dominant else '⚠️ Не обнаружены'}"
-                        })
-
-                        # ── 9. Спектральная плотность (Periodogram) ─────────────
-                        from scipy.signal import periodogram
-                        freq_per, pxx_per = periodogram(analysis_series.values, fs=1.0, window='hann')
-                        peaks_per, _ = find_peaks(pxx_per, height=np.median(pxx_per)*2)
-                        periodogram_periods = sorted([1/freq_per[p] for p in peaks_per if freq_per[p] > 0])[:3]
-
-                        results_data.append({
-                            "Свойство": "Значимые периоды (Периодограмма)",
-                            "Метод": "Periodogram с окном Hann + порог мощности",
-                            "Описание": "Частоты с мощностью выше медианы × 2. Показывает вклад разных циклов в дисперсию.",
-                            "Результат": f"{'✅ ' + ', '.join([f'{p:.1f}' for p in periodogram_periods]) if periodogram_periods else '⚠️ Не обнаружены'}"
-                        })
-
-                        # ── 10. Вейвлет-масштабы (опционально) ─────────────────
-                        wavelet_scales = []
-                        try:
-                            import pywt
-                            widths = np.arange(1, min(128, len(analysis_series)//4))
-                            cwtmatr, _ = pywt.cwt(analysis_series.values - analysis_series.mean(), widths, 'morl', sampling_period=1)
-                            mean_power = np.mean(np.abs(cwtmatr), axis=1)
-                            wavelet_peaks, _ = find_peaks(mean_power, height=np.mean(mean_power))
-                            wavelet_scales = widths[wavelet_peaks][:3].tolist() if len(wavelet_peaks) > 0 else []
-
-                            results_data.append({
-                                "Свойство": "Доминирующие масштабы (Wavelet)",
-                                "Метод": "Continuous Wavelet Transform (Morlet)",
-                                "Описание": "Масштабы с максимальной средней мощностью. Показывает изменение циклов во времени.",
-                                "Результат": f"{'✅ ' + ', '.join(map(str, wavelet_scales)) if wavelet_scales else '⚠️ Не обнаружены'}"
-                            })
-                        except ImportError:
-                            results_data.append({
-                                "Свойство": "Доминирующие масштабы (Wavelet)",
-                                "Метод": "Continuous Wavelet Transform (Morlet)",
-                                "Описание": "Требует библиотеку PyWavelets (`pip install PyWavelets`)",
-                                "Результат": "⚠️ Библиотека не установлена"
-                            })
-                        except:
-                            results_data.append({
-                                "Свойство": "Доминирующие масштабы (Wavelet)",
-                                "Метод": "Continuous Wavelet Transform (Morlet)",
-                                "Описание": "Анализ частот во времени для нестационарных рядов",
-                                "Результат": "⚠️ Ошибка вычисления"
-                            })
-
-                        # ── ВЫВОД ТАБЛИЦЫ ─────────────────────────────────────────
-                        df_results = pd.DataFrame(results_data)
-
-                        # 🔧 СОХРАНЕНИЕ ПАСПОРТА v1.0 В SESSION_STATE
-                        if target_col and len(analysis_series) >= 30:
                             props_v10 = calculate_ts_passport(
-                                analysis_series,
+                                analysis_series=analysis_series,
                                 df_filtered=df_filtered,
                                 ct_f=ct_f,
                                 target_col=target_col
                             )
                             props_v10['version'] = 'v1.0 (сырые данные)'
+                            
+                            # ── 2. ПРЕОБРАЗОВАНИЕ РЕЗУЛЬТАТА В ФОРМАТ ДЛЯ UI ─────────────
+                            results_data = []
+                            
+                            # Частота ряда
+                            freq = props_v10.get('frequency', 'N/A')
+                            results_data.append({
+                                "Свойство": "Частота ряда",
+                                "Метод": "pd.infer_freq()",
+                                "Описание": "Регулярность временного интервала",
+                                "Результат": f"✅ {freq}" if freq != 'N/A' else "⚠️ Нерегулярная"
+                            })
+                            
+                            # Стационарность (ADF)
+                            adf_p = props_v10.get('adf_pvalue', 1.0)
+                            is_stationary = adf_p < 0.05
+                            results_data.append({
+                                "Свойство": "Стационарность",
+                                "Метод": "ADF Test",
+                                "Описание": "H₀: Ряд нестационарен",
+                                "Результат": "✅ Стационарен" if is_stationary else "❌ Нестационарен"
+                            })
+                            
+                            # Детерминированность (R²)
+                            r_squared = props_v10.get('r_squared', 0.0)
+                            is_deterministic = r_squared >= 0.7
+                            results_data.append({
+                                "Свойство": "Детерминированность",
+                                "Метод": "R² тренда",
+                                "Описание": "R² ≥ 0.7 → сильный тренд",
+                                "Результат": f"{'✅ Детерминированный' if is_deterministic else '⚠️ Стохастический'} (R²={r_squared:.3f})"
+                            })
+                            
+                            # Автокорреляция (Ljung-Box)
+                            lb_p = props_v10.get('ljung_box_pvalue', 0.0)
+                            is_white_noise = lb_p > 0.05
+                            results_data.append({
+                                "Свойство": "Автокорреляция",
+                                "Метод": "Ljung-Box Test",
+                                "Описание": "H₀: Автокорреляция равна 0",
+                                "Результат": "✅ Белый шум" if is_white_noise else "⚠️ Есть автокорреляция"
+                            })
+                            
+                            # Нормальность (Jarque-Bera)
+                            jb_p = props_v10.get('jarque_bera_pvalue', 0.0)
+                            is_normal = jb_p > 0.05
+                            results_data.append({
+                                "Свойство": "Нормальность",
+                                "Метод": "Jarque-Bera Test",
+                                "Описание": "H₀: Распределение нормально",
+                                "Результат": "✅ Нормально" if is_normal else "⚠️ Отклонение от нормы"
+                            })
+                            
+                            # Направление тренда
+                            slope = props_v10.get('trend_slope', 0.0)
+                            trend_dir = "📈 Восходящий" if slope > 0 else "📉 Нисходящий" if slope < 0 else "➡️ Горизонтальный"
+                            results_data.append({
+                                "Свойство": "Направление тренда",
+                                "Метод": "OLS Linear Regression",
+                                "Описание": "Угол наклона линии тренда",
+                                "Результат": f"{trend_dir} (Slope={slope:.4f})"
+                            })
+                            
+                            # Корреляция признаков (если есть)
+                            if 'correlations' in props_v10:
+                                corr_result = props_v10['correlations']
+                                results_data.append({
+                                    "Свойство": "Корреляция признаков",
+                                    "Метод": "Pearson correlation",
+                                    "Описание": "Линейная связь с другими признаками",
+                                    "Результат": corr_result
+                                })
+                            
+                            # Сезонность (сила)
+                            seasonal_strength = props_v10.get('seasonal_strength', 0.0)
+                            is_seasonal = seasonal_strength > 0.6
+                            results_data.append({
+                                "Свойство": "Сезонность (сила)",
+                                "Метод": "STL Decomposition",
+                                "Описание": "S > 0.6 = сильная сезонность",
+                                "Результат": f"{'✅ Сильная' if is_seasonal else '⚠️ Слабая/Нет'} (S={seasonal_strength:.2f})"
+                            })
+                            
+                            # Сезонные периоды (ACF)
+                            acf_periods = props_v10.get('acf_periods', [])
+                            results_data.append({
+                                "Свойство": "Сезонные периоды (ACF)",
+                                "Метод": "Автокорреляционная функция",
+                                "Описание": "Лаги с корреляцией выше 95% ДИ",
+                                "Результат": f"✅ {', '.join(map(str, acf_periods))}" if acf_periods else "⚠️ Не обнаружены"
+                            })
+                            
+                            # Долгая память (Hurst)
+                            hurst_val = props_v10.get('hurst_exponent', 0.5)
+                            memory_type = "🔵 Антиперсистентность" if hurst_val < 0.45 else ("🔴 Устойчивый тренд" if hurst_val > 0.55 else "⚪ Случайное блуждание")
+                            results_data.append({
+                                "Свойство": "Долгая память",
+                                "Метод": "Hurst Exponent",
+                                "Описание": "H=0.5 (Random Walk), H>0.5 (Trend), H<0.5 (Mean Reverting)",
+                                "Результат": f"{memory_type} (H={hurst_val:.2f})"
+                            })
+                            
+                            # FFT периоды
+                            fft_periods = props_v10.get('fft_periods', [])
+                            results_data.append({
+                                "Свойство": "Доминирующие частоты (FFT)",
+                                "Метод": "Быстрое преобразование Фурье",
+                                "Описание": "Периоды с максимальной амплитудой",
+                                "Результат": f"✅ {', '.join([f'{p:.1f}' for p in fft_periods])}" if fft_periods else "⚠️ Не обнаружены"
+                            })
+                            
+                            # Periodogram периоды
+                            periodogram_periods = props_v10.get('periodogram_periods', [])
+                            results_data.append({
+                                "Свойство": "Значимые периоды (Периодограмма)",
+                                "Метод": "Periodogram + Hann window",
+                                "Описание": "Частоты с мощностью выше медианы × 2",
+                                "Результат": f"✅ {', '.join([f'{p:.1f}' for p in periodogram_periods])}" if periodogram_periods else "⚠️ Не обнаружены"
+                            })
+                            
+                            # Wavelet масштабы
+                            wavelet_scales = props_v10.get('wavelet_scales', [])
+                            results_data.append({
+                                "Свойство": "Доминирующие масштабы (Wavelet)",
+                                "Метод": "Continuous Wavelet Transform",
+                                "Описание": "Масштабы с максимальной мощностью",
+                                "Результат": f"✅ {', '.join(map(str, wavelet_scales))}" if wavelet_scales else "⚠️ Не обнаружены"
+                            })
+                            
+                            # ── 3. СОЗДАНИЕ ДАТАФРЕЙМА (ОДИН РАЗ) ────────────────────────
+                            df_results = pd.DataFrame(results_data)
+                            
+                            # ── 4. СОХРАНЕНИЕ В SESSION_STATE ────────────────────────────
                             st.session_state.ts_props_v10 = props_v10
                             st.session_state.ts_props_v10_target_col = target_col
+                            
+                        except Exception as e:
+                            st.error(f"❌ Ошибка расчёта паспорта свойств: {e}")
+                            df_results = pd.DataFrame()
+                    else:
+                        df_results = pd.DataFrame()
 
-
-                        # ── ВЫВОД ТАБЛИЦЫ ─────────────────────────────────────────
-                        df_results = pd.DataFrame(results_data)
-
-                        # Безопасный расчёт высоты (только если датафрейм не пустой)
-                        if not df_results.empty:
-                            n_rows = len(df_results)
-                            # ~40px на строку + 45px на шапку таблицы, ограничиваем диапазон 200–600px
-                            table_height = min(600, max(200, 45 + n_rows * 40))
-                        else:
-                            table_height = 200  # Дефолтная высота для пустой/ошибочной таблицы
-
+                    # ── 5. ВЫВОД ТАБЛИЦЫ ─────────────────────────────────────────
+                    if not df_results.empty:
+                        n_rows = len(df_results)
+                        # ~40px на строку + 45px на шапку таблицы, ограничиваем диапазон 200–600px
+                        table_height = min(600, max(200, 45 + n_rows * 40))
+                        
                         st.dataframe(
                             df_results,
                             use_container_width=True,
@@ -3809,6 +3717,9 @@ with tab_download:
                                 "Результат": st.column_config.TextColumn("✅ РЕЗУЛЬТАТ", width="medium")
                             }
                         )
+                    else:
+                        st.warning("⚠️ Недостаточно данных для расчёта паспорта свойств (нужно ≥ 30 точек)")
+
 
                         # ────────────────────────────────────────────────────────────
                         #  📊 ПРЕДВАРИТЕЛЬНЫЕ РЕКОМЕНДАЦИИ ПО МОДЕЛИРОВАНИЮ (Объединённый блок)
@@ -4018,14 +3929,14 @@ with tab_download:
                         st.warning("⚠️ Недостаточно данных для формирования отчета (требуется > 30 точек).")
                     else:
                         # ── 1. РАСЧЕТ МЕТОДОВ ──────────────────────────────────────
-                        # Статистики распределения
+                        # Статистики распределения (базовые, не дублируют паспорт)
                         mean_val = analysis_series.mean()
                         median_val = analysis_series.median()
                         std_val = analysis_series.std()
                         skew_val = analysis_series.skew()
                         kurt_val = analysis_series.kurtosis()
 
-                        # Авто-детект типа распределения
+                        # Авто-детект типа распределения (дополнительная метрика, не в паспорте)
                         candidates = {"Нормальное": sp_stats.norm, "Логнормальное": sp_stats.lognorm, "Экспоненциальное": sp_stats.expon}
                         best_name, best_ks = "Эмпирическое", 1.0
                         for name, dist in candidates.items():
@@ -4037,37 +3948,65 @@ with tab_download:
                             except: continue
                         dist_type = f"Непрерывное - {best_name}" if best_ks < 0.15 else "Непрерывное - Эмпирическое (сложная форма)"
 
-                        # Свойства временного ряда
-                        adf_res = adfuller(analysis_series, autolag='AIC')
-                        is_stationary = adf_res[1] < 0.05
+                        # ── ВЫЗОВ ЕДИНОЙ ФУНКЦИИ РАСЧЕТА ПАСПОРТА ──────────────────
+                        props = calculate_ts_passport(
+                            analysis_series=analysis_series,
+                            df_filtered=df_filtered,
+                            ct_f=ct_f,
+                            target_col=report_col
+                        )
 
-                        lb_res = acorr_ljungbox(analysis_series, lags=[10])
-                        lb_p = lb_res['lb_pvalue'].iloc[0] if isinstance(lb_res, pd.DataFrame) else lb_res[1][0]
-                        is_white_noise = lb_p > 0.05
-
-                        jb_res = jarque_bera(analysis_series)
-                        jb_p = jb_res.pvalue if hasattr(jb_res, 'pvalue') else jb_res[1]
-                        is_normal = jb_p > 0.05
-
-                        # Тренд и Детерминированность
-                        slope, intercept, r_value, p_value, std_err = linregress(range(len(analysis_series)), analysis_series)
-                        r_squared = r_value**2
+                        # Извлечение метрик из паспорта
+                        is_stationary = props.get('adf_pvalue', 1.0) < 0.05
+                        is_white_noise = props.get('ljung_box_pvalue', 0.0) > 0.05
+                        is_normal = props.get('jarque_bera_pvalue', 0.0) > 0.05
+                        r_squared = props.get('r_squared', 0.0)
+                        slope = props.get('trend_slope', 0.0)
                         trend_dir = "📈 Восходящий" if slope > 0 else "📉 Нисходящий" if slope < 0 else "➡️ Горизонтальный"
-
-                        inferred_freq = pd.infer_freq(analysis_series.index)
-                        period = 7 if (inferred_freq and 'D' in inferred_freq) else 12
-                        try:
-                            stl_res = STL(analysis_series, period=period, robust=True).fit()
-                            var_detrended = analysis_series.var() - stl_res.trend.var()
-                            strength_seasonality = max(0, 1 - stl_res.resid.var() / var_detrended) if var_detrended > 0 else 0
-                            is_seasonal = strength_seasonality > 0.6
-                        except:
-                            strength_seasonality, is_seasonal = 0.0, False
-                        
-                        hurst_val = hurst_exponent(analysis_series.values)
+                        inferred_freq = props.get('frequency', None)
+                        strength_seasonality = props.get('seasonal_strength', 0.0)
+                        is_seasonal = strength_seasonality > 0.6
+                        hurst_val = props.get('hurst_exponent', 0.5)
                         memory_type = "🔵 Антиперсистентность" if hurst_val < 0.45 else ("🔴 Устойчивый тренд" if hurst_val > 0.55 else "⚪ Случайное блуждание")
+                        acf_seasonality = props.get('acf_periods', [])
+                        acf_seasonality_str = ', '.join(map(str, acf_seasonality[:3])) if acf_seasonality else "Не обнаружены"
+                        fft_dominant = props.get('fft_periods', [])
+                        fft_dominant_str = ', '.join([f'{p:.1f}' for p in sorted(fft_dominant)[:3]]) if fft_dominant else "Не обнаружены"
+                        periodogram_periods = props.get('periodogram_periods', [])
+                        periodogram_str = ', '.join([f'{p:.1f}' for p in periodogram_periods]) if periodogram_periods else "Не обнаружены"
+                        wavelet_scales = props.get('wavelet_scales', [])
+                        wavelet_scales_str = ', '.join(map(str, wavelet_scales)) if wavelet_scales else "Не обнаружены"
+
+                        # Корреляция признаков (из паспорта или вычислить отдельно)
+                        target_corr_raw = props.get('correlations', "N/A")
+
+                        # Если это словарь, преобразуем в строку
+                        if isinstance(target_corr_raw, dict):
+                            # Берём топ-3 корреляции
+                            sorted_corrs = sorted(target_corr_raw.items(), key=lambda x: abs(x[1]), reverse=True)[:3]
+                            top_corrs = []
+                            for col, val in sorted_corrs:
+                                sign = "🟢" if val > 0.5 else ("🔴" if val < -0.5 else "🟡")
+                                top_corrs.append(f"{sign} {col} ({val:.2f})")
+                            target_corr_str = ", ".join(top_corrs) if top_corrs else "⚪ Нет сильных связей (|r|<0.5)"
+                        else:
+                            # Если это уже строка или "N/A"
+                            target_corr_str = str(target_corr_raw) if target_corr_raw != "N/A" else "N/A"
+
+                        # Если всё ещё "N/A", вычисляем вручную
+                        if target_corr_str == "N/A":
+                            num_cols = ct_f.get("num", [])
+                            if len(num_cols) >= 2 and report_col in num_cols:
+                                corr_df = df_filtered[num_cols].corr()
+                                target_corr = corr_df[report_col].drop(report_col).sort_values(key=abs, ascending=False)
+                                top_corrs = []
+                                for col, val in target_corr.head(3).items():
+                                    sign = "🟢" if val > 0.5 else ("🔴" if val < -0.5 else "🟡")
+                                    top_corrs.append(f"{sign} {col} ({val:.2f})")
+                                target_corr_str = ", ".join(top_corrs) if top_corrs else "⚪ Нет сильных связей (|r|<0.5)"
 
                         # ── 2. АНАЛИЗ ГЕТЕРОСКЕДАСТИЧНОСТИ (ARCH-LM) ────────────────────
+                        # Дополнительная метрика, не входит в стандартный паспорт
                         is_heteroscedastic = False
                         arch_p_val = None
                         try:
@@ -4078,63 +4017,6 @@ with tab_download:
                             is_heteroscedastic = arch_p_val < 0.05
                         except Exception:
                             pass
-
-                        # ── 📈 КОРРЕЛЯЦИЯ ЧИСЛОВЫХ ПРИЗНАКОВ ─────────────────────
-                        num_cols = ct_f.get("num", [])
-                        target_corr_str = "N/A"
-                        if len(num_cols) >= 2 and report_col in num_cols:
-                            corr_df = df_filtered[num_cols].corr()
-                            target_corr = corr_df[report_col].drop(report_col).sort_values(key=abs, ascending=False)
-                            top_corrs = []
-                            for col, val in target_corr.head(3).items():
-                                sign = "🟢" if val > 0.5 else ("🔴" if val < -0.5 else "🟡")
-                                top_corrs.append(f"{sign} {col} ({val:.2f})")
-                            target_corr_str = ", ".join(top_corrs) if top_corrs else "⚪ Нет сильных связей (|r|<0.5)"
-
-                        # ── 📅 СЕЗОННЫЕ ПЕРИОДЫ (из ACF) ────────────────────────
-                        from statsmodels.tsa.stattools import acf as acf_func
-                        max_lag = min(60, len(analysis_series) // 4)
-                        acf_values = acf_func(analysis_series, nlags=max_lag)
-                        confidence = 1.96 / np.sqrt(len(analysis_series))
-                        significant_lags = np.where(np.abs(acf_values) > confidence)[0][1:]
-
-                        seasonal_periods_acf = []
-                        for i, lag in enumerate(significant_lags):
-                            if i > 0 and lag - significant_lags[i-1] < 3:
-                                continue
-                            if lag > 2:
-                                seasonal_periods_acf.append(lag)
-                        acf_seasonality_str = ', '.join(map(str, seasonal_periods_acf[:3])) if seasonal_periods_acf else "Не обнаружены"
-
-                        # ── ⚡ ДОМИНИРУЮЩИЕ ЧАСТОТЫ (FFT) ───────────────────────
-                        n = len(analysis_series)
-                        y = analysis_series.values - analysis_series.mean()
-                        yf = fft(y)
-                        xf = fftfreq(n, 1)[:n//2]
-                        amplitude = 2.0/n * np.abs(yf[0:n//2])
-                        peaks, _ = find_peaks(amplitude, height=np.mean(amplitude) + np.std(amplitude))
-                        fft_periods = [1/xf[p] for p in peaks if xf[p] > 0 and xf[p] < 0.5]
-                        fft_dominant_str = ', '.join([f'{p:.1f}' for p in sorted(fft_periods)[:3]]) if fft_periods else "Не обнаружены"
-
-                        # ── 📊 ЗНАЧИМЫЕ ПЕРИОДЫ (Периодограмма) ─────────────
-                        from scipy.signal import periodogram
-                        freq_per, pxx_per = periodogram(analysis_series.values, fs=1.0, window='hann')
-                        peaks_per, _ = find_peaks(pxx_per, height=np.median(pxx_per)*2)
-                        periodogram_periods = sorted([1/freq_per[p] for p in peaks_per if freq_per[p] > 0])[:3]
-                        periodogram_str = ', '.join([f'{p:.1f}' for p in periodogram_periods]) if periodogram_periods else "Не обнаружены"
-
-                        # ── 🌊 ВЕЙВЛЕТ-МАСШТАБЫ ───────────────────────────────
-                        wavelet_scales_str = "N/A"
-                        try:
-                            import pywt
-                            widths = np.arange(1, min(128, len(analysis_series)//4))
-                            cwtmatr, _ = pywt.cwt(analysis_series.values - analysis_series.mean(), widths, 'morl', sampling_period=1)
-                            mean_power = np.mean(np.abs(cwtmatr), axis=1)
-                            wavelet_peaks, _ = find_peaks(mean_power, height=np.mean(mean_power))
-                            wavelet_scales = widths[wavelet_peaks][:3].tolist() if len(wavelet_peaks) > 0 else []
-                            wavelet_scales_str = ', '.join(map(str, wavelet_scales)) if wavelet_scales else "Не обнаружены"
-                        except:
-                            wavelet_scales_str = "Ошибка/Не установлено"
 
                         # ── 3. СТРУКТУРИРОВАНИЕ РЕЗУЛЬТАТОВ ────────────────────────
                         tech_info = {
@@ -4236,11 +4118,11 @@ with tab_download:
                                 start_row += 1
                             return start_row + 1
 
-                        row = write_table(tech_info, row, "🔧 Техническая информация")
-                        row = write_table(dist_stats, row, "📈 Статистики распределения")
+                        row = write_table(tech_info, row, "Техническая информация")
+                        row = write_table(dist_stats, row, "Статистики распределения")
 
                         ws.merge_cells(f"A{row}:C{row}")
-                        cell = ws.cell(row=row, column=1, value="📋 Итоговый паспорт свойств")
+                        cell = ws.cell(row=row, column=1, value="Итоговый паспорт свойств")
                         cell.font, cell.fill, cell.alignment = header_font, header_fill, Alignment(horizontal='center')
                         row += 1
 
@@ -4756,222 +4638,7 @@ with tab_validation:
                 except Exception as e:
                     st.warning(f"⚠️ Не удалось рассчитать свойства v1.1: {e}")
 
-        # ─────────────────────────────────────────────────────────────
-        # УНИВЕРСАЛЬНАЯ ФУНКЦИЯ РАСЧЁТА ПАСПОРТА СВОЙСТВ РЯДА
-        # ─────────────────────────────────────────────────────────────
-        def calculate_ts_passport(analysis_series: pd.Series,
-                                df_filtered: pd.DataFrame = None,
-                                ct_f: dict = None,
-                                target_col: str = None) -> dict:
-            """
-            Рассчитывает полный паспорт свойств временного ряда (13 метрик).
-            Структура идентична паспорту во вкладке "Загрузка".
-
-            Returns:
-                dict с ключами, соответствующими названиям свойств в таблице
-            """
-            from scipy.stats import linregress, jarque_bera
-            from scipy.signal import periodogram
-            from scipy.fft import fft, fftfreq
-            from scipy.signal import find_peaks
-            from statsmodels.tsa.stattools import adfuller, acf as acf_func
-            from statsmodels.tsa.seasonal import STL
-            from statsmodels.stats.diagnostic import acorr_ljungbox
-            import numpy as np
-
-            props = {}
-
-            if len(analysis_series) < 30:
-                return {"error": "Недостаточно данных (нужно > 30 точек)"}
-
-            try:
-                # 0. ЧАСТОТА РЯДА
-                inferred_freq = pd.infer_freq(analysis_series.index.drop_duplicates().sort_values())
-                props['freq'] = {
-                    'value': inferred_freq if inferred_freq else 'Нерегулярная',
-                    'is_ok': inferred_freq is not None
-                }
-
-                # 1. СТАЦИОНАРНОСТЬ (ADF)
-                adf_res = adfuller(analysis_series, autolag='AIC')
-                adf_p = adf_res[1]
-                is_stationary = adf_p < 0.05
-                props['stationarity'] = {
-                    'value': adf_p,
-                    'is_stationary': is_stationary,
-                    'is_ok': is_stationary
-                }
-
-                # 2. ДЕТЕРМИНИРОВАННОСТЬ (R² тренда)
-                slope, intercept, r_value, p_value, std_err = linregress(
-                    range(len(analysis_series)), analysis_series
-                )
-                r_squared = r_value**2
-                is_deterministic = r_squared >= 0.7
-                props['determinism'] = {
-                    'value': r_squared,
-                    'slope': slope,
-                    'is_deterministic': is_deterministic
-                }
-
-                # 3. АВТОКОРРЕЛЯЦИЯ (Ljung-Box)
-                lb_res = acorr_ljungbox(analysis_series, lags=[10])
-                if isinstance(lb_res, pd.DataFrame):
-                    lb_p = lb_res['lb_pvalue'].iloc[0]
-                else:
-                    lb_p = lb_res[1][0]
-                is_white_noise = lb_p > 0.05
-                props['autocorrelation'] = {
-                    'value': lb_p,
-                    'is_white_noise': is_white_noise,
-                    'is_ok': is_white_noise
-                }
-
-                # 4. НОРМАЛЬНОСТЬ (Jarque-Bera)
-                jb_res = jarque_bera(analysis_series)
-                jb_p = jb_res.pvalue if hasattr(jb_res, 'pvalue') else jb_res[1]
-                is_normal = jb_p > 0.05
-                props['normality'] = {
-                    'value': jb_p,
-                    'is_normal': is_normal,
-                    'is_ok': is_normal
-                }
-
-                # 5. НАПРАВЛЕНИЕ ТРЕНДА
-                if slope > 0:
-                    trend_dir = 'up'
-                elif slope < 0:
-                    trend_dir = 'down'
-                else:
-                    trend_dir = 'flat'
-                props['trend'] = {
-                    'slope': slope,
-                    'direction': trend_dir
-                }
-
-                # 6. КОРРЕЛЯЦИЯ ПРИЗНАКОВ (если есть другие числовые колонки)
-                props['correlations'] = {}
-                if df_filtered is not None and ct_f is not None and target_col:
-                    num_cols = ct_f.get("num", [])
-                    if len(num_cols) >= 2 and target_col in num_cols:
-                        try:
-                            corr_df = df_filtered[num_cols].corr()
-                            target_corr = corr_df[target_col].drop(target_col).sort_values(key=abs, ascending=False)
-                            top_corrs = {col: float(val) for col, val in target_corr.head(3).items()}
-                            props['correlations'] = {
-                                'top3': top_corrs,
-                                'max_abs_corr': float(target_corr.iloc[0]) if len(target_corr) > 0 else 0.0
-                            }
-                        except:
-                            pass
-
-                # 7. СЕЗОННОСТЬ (STL strength)
-                period = 7 if (inferred_freq and 'D' in inferred_freq) else 12
-                try:
-                    stl_res = STL(analysis_series, period=period, robust=True).fit()
-                    var_total = analysis_series.var()
-                    var_resid = stl_res.resid.var()
-                    var_detrended = var_total - stl_res.trend.var()
-                    strength_seasonality = max(0, 1 - var_resid / var_detrended) if var_detrended > 0 else 0
-                    is_seasonal = strength_seasonality > 0.6
-                except:
-                    strength_seasonality = 0.0
-                    is_seasonal = False
-                props['seasonality'] = {
-                    'strength': strength_seasonality,
-                    'is_seasonal': is_seasonal
-                }
-
-                # 8. СЕЗОННЫЕ ПЕРИОДЫ (ACF)
-                max_lag = min(60, len(analysis_series) // 4)
-                acf_values = acf_func(analysis_series, nlags=max_lag)
-                confidence = 1.96 / np.sqrt(len(analysis_series))
-                significant_lags = np.where(np.abs(acf_values) > confidence)[0][1:]
-
-                seasonal_periods_acf = []
-                for i, lag in enumerate(significant_lags):
-                    if i > 0 and lag - significant_lags[i-1] < 3:
-                        continue
-                    if lag > 2:
-                        seasonal_periods_acf.append(int(lag))
-
-                props['seasonal_periods'] = {
-                    'periods': seasonal_periods_acf[:3],
-                    'count': len(seasonal_periods_acf[:3])
-                }
-
-                # 9. ДОЛГАЯ ПАМЯТЬ (Hurst)
-                
-                hurst_val = hurst_exponent(analysis_series.values)
-                if hurst_val < 0.45:
-                    memory_type = 'anti_persistent'
-                elif hurst_val > 0.55:
-                    memory_type = 'persistent'
-                else:
-                    memory_type = 'random_walk'
-                props['hurst'] = {
-                    'value': hurst_val,
-                    'type': memory_type
-                }
-
-                # 10. ДОМИНИРУЮЩИЕ ЧАСТОТЫ (FFT)
-                n = len(analysis_series)
-                y = analysis_series.values - analysis_series.mean()
-                yf = fft(y)
-                xf = fftfreq(n, 1)[:n//2]
-                amplitude = 2.0/n * np.abs(yf[0:n//2])
-
-                peaks, _ = find_peaks(amplitude, height=np.mean(amplitude) + np.std(amplitude))
-                fft_periods = [1/xf[p] for p in peaks if xf[p] > 0 and xf[p] < 0.5]
-                fft_dominant = sorted(fft_periods)[:3] if fft_periods else []
-                props['fft'] = {
-                    'dominant_periods': fft_dominant,
-                    'count': len(fft_dominant)
-                }
-
-                # 11. ПЕРИОДОГРАММА
-                freq_per, pxx_per = periodogram(analysis_series.values, fs=1.0, window='hann')
-                peaks_per, _ = find_peaks(pxx_per, height=np.median(pxx_per)*2)
-                periodogram_periods = sorted([1/freq_per[p] for p in peaks_per if freq_per[p] > 0])[:3]
-                props['periodogram'] = {
-                    'periods': periodogram_periods,
-                    'count': len(periodogram_periods)
-                }
-
-                # 12. ВЕЙВЛЕТ-МАСШТАБЫ
-                try:
-                    import pywt
-                    widths = np.arange(1, min(128, len(analysis_series)//4))
-                    cwtmatr, _ = pywt.cwt(
-                        analysis_series.values - analysis_series.mean(),
-                        widths, 'morl', sampling_period=1
-                    )
-                    mean_power = np.mean(np.abs(cwtmatr), axis=1)
-                    wavelet_peaks, _ = find_peaks(mean_power, height=np.mean(mean_power))
-                    wavelet_scales = widths[wavelet_peaks][:3].tolist() if len(wavelet_peaks) > 0 else []
-                    props['wavelet'] = {
-                        'scales': wavelet_scales,
-                        'count': len(wavelet_scales)
-                    }
-                except:
-                    props['wavelet'] = {'scales': [], 'count': 0}
-
-                # 13. БАЗОВЫЕ СТАТИСТИКИ (для числового сравнения)
-                props['basic_stats'] = {
-                    'n': len(analysis_series),
-                    'mean': float(analysis_series.mean()),
-                    'std': float(analysis_series.std()),
-                    'min': float(analysis_series.min()),
-                    'max': float(analysis_series.max())
-                }
-
-                props['timestamp'] = pd.Timestamp.now().isoformat()
-
-            except Exception as e:
-                props['error'] = str(e)
-
-            return props
-
+       
     # ───────────────────────────────────────────────────────────
     # 🛡️ DATA QUALITY DASHBOARD
     # ───────────────────────────────────────────────────────────
