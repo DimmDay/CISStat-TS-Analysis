@@ -55,7 +55,8 @@ from validation.audit import log_expert_action
 
 from src.catalog.recommender import CISStatRecommender
 from app.core.utils import safe_stat, safe_nunique
-from app.core.passport import _hurst_exponent as hurst_exponent
+from app.core.passport import _hurst_exponent as hurst_exponent, _calc_ts_props
+
 
 # Инициализация рекомендателя
 if "recommender" not in st.session_state:
@@ -775,82 +776,6 @@ st.markdown("""
             }
             </style>
             """, unsafe_allow_html=True)
-
-
-# ─────────────────────────────────────────────────────────────
-# ФУНКЦИЯ РАСЧЁТА СВОЙСТВ ВРЕМЕННОГО РЯДА
-# ─────────────────────────────────────────────────────────────
-def _calc_ts_props(series: pd.Series) -> dict:
-    """
-    Рассчитывает ключевые свойства временного ряда.
-
-    Args:
-        series: pd.Series с временным рядом (index=datetime, values=numeric)
-
-    Returns:
-        dict с ключами:
-        - n: число наблюдений
-        - mean, std, min, max: базовые статистики
-        - adf_pvalue: p-value теста Дики-Фуллера (стационарность)
-        - is_stationary: True если p < 0.05
-        - has_trend: наличие тренда (через линейную регрессию)
-        - has_seasonality: наличие сезонности (через FFT)
-        - trend_strength: сила тренда (R²)
-        - seasonal_strength: сила сезонности
-    """
-    props = {
-        'n': len(series),
-        'mean': series.mean(),
-        'std': series.std(),
-        'min': series.min(),
-        'max': series.max(),
-        'adf_pvalue': None,
-        'is_stationary': None,
-        'has_trend': False,
-        'has_seasonality': False,
-        'trend_strength': 0.0,
-        'seasonal_strength': 0.0
-    }
-
-    if len(series) < 10:
-        return props
-
-    # 1. Тест Дики-Фуллера (стационарность)
-    try:
-        from statsmodels.tsa.stattools import adfuller
-        adf_result = adfuller(series.dropna(), autolag='AIC')
-        props['adf_pvalue'] = adf_result[1]
-        props['is_stationary'] = adf_result[1] < 0.05
-    except Exception:
-        pass
-
-    # 2. Проверка тренда (линейная регрессия)
-    try:
-        from scipy import stats
-        x = np.arange(len(series))
-        slope, intercept, r_value, p_value, std_err = stats.linregress(x, series.values)
-        props['has_trend'] = p_value < 0.05
-        props['trend_strength'] = r_value**2
-    except Exception:
-        pass
-
-    # 3. Проверка сезонности (FFT)
-    try:
-        from scipy.fft import fft
-        fft_vals = np.abs(fft(series.values - series.mean()))
-        fft_vals = fft_vals[1:len(fft_vals)//2]  # Убираем постоянную составляющую
-        if len(fft_vals) > 0:
-            # Ищем доминирующую частоту
-            dominant_freq_idx = np.argmax(fft_vals)
-            dominant_amplitude = fft_vals[dominant_freq_idx]
-            mean_amplitude = np.mean(fft_vals)
-            # Если амплитуда доминирующей частоты в 3+ раза выше средней — есть сезонность
-            props['has_seasonality'] = dominant_amplitude > 3 * mean_amplitude
-            props['seasonal_strength'] = dominant_amplitude / mean_amplitude if mean_amplitude > 0 else 0
-    except Exception:
-        pass
-
-    return props
 
 
 # ─────────────────────────────────────────────────────────────
@@ -9525,42 +9450,7 @@ with tab_preprocessing:
     # ───────────────────────────────────────────────────────────
     # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ СРАВНЕНИЯ СВОЙСТВ РЯДА
     # ───────────────────────────────────────────────────────────
-    def _calc_ts_props(series: pd.Series) -> dict:
-        """Быстрый расчёт ключевых метрик для сравнения До/После."""
-        props = {}
-        if len(series) < 30:
-            return {"error": "Недостаточно данных (<30 точек)"}
-        try:
-            from statsmodels.tsa.stattools import adfuller
-            from statsmodels.stats.diagnostic import acorr_ljungbox
-            from scipy import stats
-            from scipy.stats import linregress
-
-            # 1. ADF Test (стационарность)
-            adf_res = adfuller(series, autolag='AIC')
-            props['adf_p'] = adf_res[1]
-            props['adf_stat'] = "✅ Стационарен" if adf_res[1] < 0.05 else "❌ Нестационарен"
-
-            # 2. Ljung-Box Test (автокорреляция)
-            lb_res = acorr_ljungbox(series, lags=[10])
-            lb_p = lb_res['lb_pvalue'].iloc[0] if isinstance(lb_res, pd.DataFrame) else lb_res[1][0]
-            props['lb_p'] = lb_p
-            props['lb_stat'] = "✅ Белый шум" if lb_p > 0.05 else "⚠️ Есть АК"
-
-            # 3. Jarque-Bera Test (нормальность)
-            jb_res = stats.jarque_bera(series)
-            jb_p = jb_res.pvalue if hasattr(jb_res, 'pvalue') else jb_res[1]
-            props['jb_p'] = jb_p
-            props['jb_stat'] = "✅ Нормально" if jb_p > 0.05 else "⚠️ Отклонение"
-
-            # 4. R² тренда (детерминированность)
-            slope, _, r_val, _, _ = linregress(range(len(series)), series)
-            props['r2'] = r_val**2
-            props['r2_stat'] = "Детерминированный" if r_val**2 >= 0.7 else "Стохастический"
-        except Exception as e:
-            props['error'] = str(e)
-        return props
-
+    
     def _show_comparison_table(props_before: dict, props_after: dict, stage: str):
         """Отображает таблицу сравнения До/После с цветовыми индикаторами."""
         metrics = [
