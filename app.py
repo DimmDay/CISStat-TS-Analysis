@@ -55,6 +55,7 @@ from validation.audit import log_expert_action
 
 from src.catalog.recommender import CISStatRecommender
 from app.core.utils import safe_stat, safe_nunique
+from app.core.passport import _hurst_exponent as hurst_exponent
 
 # Инициализация рекомендателя
 if "recommender" not in st.session_state:
@@ -260,14 +261,7 @@ def calculate_ts_passport(analysis_series: pd.Series,
             props['seasonal_periods'] = {'periods': [], 'count': 0}
 
         # 9. ДОЛГАЯ ПАМЯТЬ (Hurst)
-        def hurst_exponent(series, max_lag=20):
-            lags = range(2, max_lag)
-            tau = [max(np.std(np.subtract(series[lag:], series[:-lag])), 1e-8) for lag in lags]
-            try:
-                return float(np.polyfit(np.log(lags), np.log(tau), 1)[0])
-            except:
-                return 0.5
-
+        
         hurst_val = hurst_exponent(analysis_series.values)
         if hurst_val < 0.45:
             memory_type = 'anti_persistent'
@@ -3773,13 +3767,7 @@ with tab_download:
                         })
 
                         # ── 7. Долгая память (Hurst Exponent) ─────────────────────
-                        def hurst_exponent(series, max_lag=20):
-                            lags = range(2, max_lag)
-                            tau = [max(np.std(np.subtract(series[lag:], series[:-lag])), 1e-8) for lag in lags]
-                            try:
-                                return np.polyfit(np.log(lags), np.log(tau), 1)[0]
-                            except: return 0.5
-
+                        
                         hurst_val = hurst_exponent(analysis_series.values)
                         memory_type = "🔵 Антиперсистентность" if hurst_val < 0.45 else ("🔴 Устойчивый тренд" if hurst_val > 0.55 else "⚪ Случайное блуждание")
 
@@ -4150,13 +4138,8 @@ with tab_download:
                             is_seasonal = strength_seasonality > 0.6
                         except:
                             strength_seasonality, is_seasonal = 0.0, False
-
-                        def calc_hurst(series, max_lag=20):
-                            lags = range(2, max_lag)
-                            tau = [max(np.std(np.subtract(series[lag:], series[:-lag])), 1e-8) for lag in lags]
-                            try: return np.polyfit(np.log(lags), np.log(tau), 1)[0]
-                            except: return 0.5
-                        hurst_val = calc_hurst(analysis_series.values)
+                        
+                        hurst_val = hurst_exponent(analysis_series.values)
                         memory_type = "🔵 Антиперсистентность" if hurst_val < 0.45 else ("🔴 Устойчивый тренд" if hurst_val > 0.55 else "⚪ Случайное блуждание")
 
                         # ── 2. АНАЛИЗ ГЕТЕРОСКЕДАСТИЧНОСТИ (ARCH-LM) ────────────────────
@@ -4993,14 +4976,7 @@ with tab_validation:
                 }
 
                 # 9. ДОЛГАЯ ПАМЯТЬ (Hurst)
-                def hurst_exponent(series, max_lag=20):
-                    lags = range(2, max_lag)
-                    tau = [max(np.std(np.subtract(series[lag:], series[:-lag])), 1e-8) for lag in lags]
-                    try:
-                        return np.polyfit(np.log(lags), np.log(tau), 1)[0]
-                    except:
-                        return 0.5
-
+                
                 hurst_val = hurst_exponent(analysis_series.values)
                 if hurst_val < 0.45:
                     memory_type = 'anti_persistent'
@@ -15273,12 +15249,7 @@ with tab_preprocessing:
                 
                 # 10. ДОЛГАЯ ПАМЯТЬ (Hurst Exponent)
                 try:
-                    def hurst_exponent(series):
-                        lags = range(2, min(20, len(series)//2))
-                        tau = [np.std(np.subtract(series[lag:], series[:-lag])) for lag in lags]
-                        m = np.polyfit(np.log(lags), np.log(tau), 1)
-                        return m[0]
-                    
+                                        
                     H = hurst_exponent(series.dropna())
                     if H > 0.6:
                         props['long_memory'] = f'🔴 Персистентность (H={H:.2f})'
