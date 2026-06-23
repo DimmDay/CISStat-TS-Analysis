@@ -54,6 +54,7 @@ from validation.reporter import save_validated_dataset, generate_correction_repo
 from validation.audit import log_expert_action
 
 from src.catalog.recommender import CISStatRecommender
+from app.core.utils import safe_stat, safe_nunique
 
 # Инициализация рекомендателя
 if "recommender" not in st.session_state:
@@ -61,6 +62,25 @@ if "recommender" not in st.session_state:
 
 # ────────────────────────────────────────────────────────────
 #  ⬤ ◉ ◎ ◌ ◍ ● ○ ◐ ◑ ◒ ◓ • ‣ ⁃ ∙ ∘ ∙ ∘ ∙ ⁝ ⁞ ⋮ ⋯ … ... ⋯ ⚫ ⚪ ⬛ ⬜ ◼️ ◻️ ◾ ◽ ▪️ ▫️ 🔴 🟠 🟡 🟢 🔵 🟣 🟤 ⚫ ⚪ ⭕
+
+# =====================================================================
+# ВСПОМОГАТЕЛЬНЫЕ UI-ФУНКЦИИ (Временно здесь, этап 6 будет рефакторинг)
+# =====================================================================
+def fmt(x):
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return "—"
+    try:
+        return f"{x:.3f}"
+    except Exception:
+        return str(x)
+
+def delta(val_before, val_after):
+    if val_before is None or val_after is None:
+        return None
+    if isinstance(val_before, float) and pd.isna(val_before): return None
+    if isinstance(val_after, float) and pd.isna(val_after): return None
+    return val_after - val_before
+
 
 # ────────────────────────────────────────────────────────────
 #  НАСТРОЙКА ШРИФТА
@@ -5898,12 +5918,10 @@ with tab_validation:
 
                     if cols_to_fix:
                         col = cols_to_fix[0]
-                        def safe_stat(d, c, f):
-                            return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
+                        
                         m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
                         m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
-                        fmt = lambda x: f"{x:.2f}" if pd.notnull(x) and x != 0.0 else "N/A"
-                        delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
+                        
                         c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
                         c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
                         c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
@@ -6145,6 +6163,7 @@ with tab_validation:
                         note = "(без изменений)"
 
                     # ── МЕТРИКИ (4 колонки) ─────────────────────
+                    
                     c_p1, c_p2, c_p3, c_p4 = st.columns(4)
                     c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}", 
                             delta=f"{len(df_preview)-len(df_work):+}")
@@ -6152,11 +6171,7 @@ with tab_validation:
                     if violation_cols:
                         col = violation_cols[0]
                         if col in df_preview.columns:
-                            def safe_stat(d, c, f):
-                                try:
-                                    return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
-                                except:
-                                    return 0.0
+                            
                             m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
                             m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                             fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
@@ -6484,11 +6499,7 @@ with tab_validation:
 
                             if num_cols_to_check:
                                 col = num_cols_to_check[0]
-                                def safe_stat(d, c, f):
-                                    try:
-                                        return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
-                                    except:
-                                        return 0.0
+                                
                                 m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
                                 m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                                 fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
@@ -6868,11 +6879,7 @@ with tab_validation:
                                             delta=f"{pct_valid_a - pct_valid_b:+.1f}%")
                                 else:
                                     # Для числовых — стандартные метрики
-                                    def safe_stat(d, c, f):
-                                        try:
-                                            return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
-                                        except:
-                                            return 0.0
+                                    
                                     m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
                                     m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                                     fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
@@ -7218,11 +7225,7 @@ with tab_validation:
                                             delta=f"{pct_valid_a - pct_valid_b:+.1f}%")
                                 else:
                                     # Для числовых — стандартные метрики
-                                    def safe_stat(d, c, f):
-                                        try:
-                                            return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
-                                        except:
-                                            return 0.0
+                                    
                                     m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
                                     m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                                     fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
@@ -8169,11 +8172,7 @@ with tab_validation:
 
                             if num_cols:
                                 col = num_cols[0]
-                                def safe_stat(d, c, f):
-                                    if c not in d.columns or d.empty or d[c].notna().sum() == 0:
-                                        return 0.0
-                                    return f(d[c].dropna())
-
+                                
                                 m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
                                 m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
 
@@ -9979,8 +9978,7 @@ with tab_preprocessing:
 
             if num_cols:
                 col = num_cols[0]
-                def safe_stat(df, c, func):
-                    return func(df[c]) if not df.empty and c in df.columns and df[c].notna().any() else 0.0
+                
                 m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
                 m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                 fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
@@ -10339,8 +10337,7 @@ with tab_preprocessing:
                             cols_to_check = selected_out_cols if selected_out_cols else num_cols
                             if cols_to_check:
                                 col = cols_to_check[0]
-                                def safe_stat(d, c, f):
-                                    return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
+                                
                                 m_b, s_b, d_b = safe_stat(df, col, np.mean), safe_stat(df, col, np.std), safe_stat(df, col, np.median)
                                 m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                                 fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
