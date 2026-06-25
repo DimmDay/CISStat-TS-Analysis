@@ -58,6 +58,7 @@ from app.core.passport import _hurst_exponent as hurst_exponent, _calc_ts_props
 from app.core.passport import calculate_ts_passport
 from app.core.passport import _compare_ts_props
 from app.core.auth import check_token
+from app.data.loader import init_db_connection as _init_db_connection_impl
 
 
 
@@ -864,56 +865,17 @@ MODE_GEN = "🔍 Общий (категории)"
 
 
 # ────────────────────────────────────────────────────────────
-# 🗄️ ФУНКЦИЯ ПОДКЛЮЧЕНИЯ К БД (С КЭШИРОВАНИЕМ РЕСУРСА)
+# 🗄️ UI-ОБЁРТКА ПОДКЛЮЧЕНИЯ К БД (С КЭШИРОВАНИЕМ РЕСУРСА)
 # ────────────────────────────────────────────────────────────
 @st.cache_resource(ttl=3600)
 def init_db_connection(db_type: str, host: str, port: int, user: str, password: str, db_name: str):
     """
-    Создаёт и кэширует подключение к базе данных.
-    Повторные вызовы с теми же параметрами вернут тот же объект.
+    UI-обёртка над бизнес-функцией init_db_connection.
+    Кэширует подключение как ресурс (согласно ARCHITECTURE.md).
+    
+    Бизнес-логика перенесена в app/data/loader.py.
     """
-    try:
-        if db_type == "PostgreSQL":
-            try:
-                import psycopg2
-            except ImportError:
-                raise ImportError("psycopg2-binary")
-
-            url = f"postgresql://{user}:{password}@{host}:{port}/{db_name}"
-            engine = create_engine(
-                url,
-                connect_args={"connect_timeout": 10, "options": "-c statement_timeout=60000"},
-                pool_pre_ping=True,
-                pool_recycle=300
-            )
-            with engine.connect() as conn:
-                conn.execute("SELECT 1")
-            return engine
-
-        elif db_type == "ClickHouse":
-            try:
-                import clickhouse_connect
-            except ImportError:
-                raise ImportError("clickhouse-connect")
-
-            client = clickhouse_connect.get_client(
-                host=host, port=port,
-                username=user, password=password,
-                database=db_name,
-                secure=False,
-                verify=False,
-                connect_timeout=10,
-                send_receive_timeout=60
-            )
-            client.ping()
-            return client
-
-    except ImportError as e:
-        raise e
-    except Exception as e:
-        add_log("ERROR", f"DB Connection failed: {db_type}@{host}:{port}/{db_name} - {e}")
-        raise ConnectionError(f"Не удалось подключиться к {db_type}")
-    # 🔧 Функция ЗАВЕРШЕНА здесь (return выше)
+    return _init_db_connection_impl(db_type, host, port, user, password, db_name)
 
 
 # ────────────────────────────────────────────────────────────
