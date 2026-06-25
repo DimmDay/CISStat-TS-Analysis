@@ -9,27 +9,27 @@
     'autocorrelation': dict({
       'is_ok': False,
       'is_white_noise': False,
-      'value': 7.848254770041773e-114,
+      'value': 6.588587753591918e-67,
     }),
     'basic_stats': dict({
-      'max': 155.8046194366494,
-      'mean': 124.79514572720772,
-      'min': 92.79936898513944,
-      'n': 108,
-      'std': 15.779703138613172,
+      'max': 159.00532123644638,
+      'mean': 124.47478038604586,
+      'min': 87.86249739826592,
+      'n': 110,
+      'std': 18.13780575171713,
     }),
     'correlations': dict({
     }),
     'determinism': dict({
-      'is_deterministic': True,
-      'slope': 0.4506916805206029,
-      'value': 0.8002587526106572,
+      'is_deterministic': False,
+      'slope': 0.4436550700998605,
+      'value': 0.6087736173219928,
     }),
     'fft': dict({
       'count': 2,
       'dominant_periods': list([
-        np.float64(12.0),
-        np.float64(108.0),
+        np.float64(12.222222222222221),
+        np.float64(110.0),
       ]),
     }),
     'freq': dict({
@@ -38,38 +38,39 @@
     }),
     'hurst': dict({
       'type': 'anti_persistent',
-      'value': -0.04816311116160248,
+      'value': -0.009956938048624984,
     }),
     'normality': dict({
       'is_normal': True,
       'is_ok': True,
-      'value': 0.12456189083885463,
+      'value': 0.21726510841300956,
     }),
     'periodogram': dict({
       'count': 3,
       'periods': list([
-        np.float64(2.297872340425532),
-        np.float64(2.769230769230769),
-        np.float64(6.0),
+        np.float64(2.291666666666667),
+        np.float64(2.75),
+        np.float64(6.111111111111111),
       ]),
     }),
     'seasonal_periods': dict({
-      'count': 0,
+      'count': 1,
       'periods': list([
+        20,
       ]),
     }),
     'seasonality': dict({
       'is_seasonal': True,
-      'strength': 0.9148811499673518,
+      'strength': 0.7717409227543119,
     }),
     'stationarity': dict({
       'is_ok': False,
       'is_stationary': False,
-      'value': 0.9796817174100312,
+      'value': 0.9749742704307862,
     }),
     'trend': dict({
       'direction': 'up',
-      'slope': 0.4506916805206029,
+      'slope': 0.4436550700998605,
     }),
     'wavelet': dict({
       'count': 1,
@@ -84,32 +85,32 @@
     'autocorrelation': dict({
       'is_ok': False,
       'is_white_noise': False,
-      'value': 7.848254770041773e-114,
+      'value': 6.588587753591918e-67,
     }),
     'basic_stats': dict({
-      'max': 155.8046194366494,
-      'mean': 124.79514572720772,
-      'min': 92.79936898513944,
-      'n': 108,
-      'std': 15.779703138613172,
+      'max': 159.00532123644638,
+      'mean': 124.47478038604586,
+      'min': 87.86249739826592,
+      'n': 110,
+      'std': 18.13780575171713,
     }),
     'correlations': dict({
-      'max_abs_corr': 0.9447482151333031,
+      'max_abs_corr': 0.9642548089880628,
       'top3': dict({
-        'covariate_1': 0.9447482151333031,
-        'covariate_2': 0.053945922828437666,
+        'covariate_1': 0.9642548089880628,
+        'covariate_2': 0.11965742550639039,
       }),
     }),
     'determinism': dict({
-      'is_deterministic': True,
-      'slope': 0.4506916805206029,
-      'value': 0.8002587526106572,
+      'is_deterministic': False,
+      'slope': 0.4436550700998605,
+      'value': 0.6087736173219928,
     }),
     'fft': dict({
       'count': 2,
       'dominant_periods': list([
-        np.float64(12.0),
-        np.float64(108.0),
+        np.float64(12.222222222222221),
+        np.float64(110.0),
       ]),
     }),
     'freq': dict({
@@ -118,38 +119,39 @@
     }),
     'hurst': dict({
       'type': 'anti_persistent',
-      'value': -0.04816311116160248,
+      'value': -0.009956938048624984,
     }),
     'normality': dict({
       'is_normal': True,
       'is_ok': True,
-      'value': 0.12456189083885463,
+      'value': 0.21726510841300956,
     }),
     'periodogram': dict({
       'count': 3,
       'periods': list([
-        np.float64(2.297872340425532),
-        np.float64(2.769230769230769),
-        np.float64(6.0),
+        np.float64(2.291666666666667),
+        np.float64(2.75),
+        np.float64(6.111111111111111),
       ]),
     }),
     'seasonal_periods': dict({
-      'count': 0,
+      'count': 1,
       'periods': list([
+        20,
       ]),
     }),
     'seasonality': dict({
       'is_seasonal': True,
-      'strength': 0.9148811499673518,
+      'strength': 0.7717409227543119,
     }),
     'stationarity': dict({
       'is_ok': False,
       'is_stationary': False,
-      'value': 0.9796817174100312,
+      'value': 0.9749742704307862,
     }),
     'trend': dict({
       'direction': 'up',
-      'slope': 0.4506916805206029,
+      'slope': 0.4436550700998605,
     }),
     'wavelet': dict({
       'count': 1,
