@@ -810,115 +810,8 @@ if data_source == "◉ Файл .xlsx, .xls, .csv, .json":
         if st.sidebar.button("Загрузить файл", type="primary", use_container_width=True, key="btn_load_main"):
             with st.spinner("⏳ Обработка данных..."):
                 try:
-                    file_name = uploaded.name or "unknown.file"
-                    ext = file_name.split('.')[-1].lower()
-
-                    if ext == "csv":
-                        df = pd.read_csv(
-                            uploaded,
-                            sep=None,
-                            engine='python',
-                            encoding='utf-8-sig',
-                            on_bad_lines='skip',
-                            parse_dates=False
-                        )
-                    elif ext in ["xlsx", "xls"]:
-                        df = pd.read_excel(uploaded, parse_dates=False)
-
-                    elif ext == "json":
-                        try:
-                            uploaded.seek(0)
-                            content = uploaded.read().decode('utf-8-sig')
-                            import json as json_lib
-                            from pandas import json_normalize
-
-                            data = json_lib.loads(content)
-
-                            # JSON-stat 2.0 обработка
-                            if isinstance(data, dict) and data.get("version") == "2.0" and "value" in data and "dimension" in data:
-                                dimensions = data.get("dimension", {})
-                                dimension_ids = data.get("id", [])
-                                sizes = data.get("size", [])
-
-                                strides = [1] * len(sizes)
-                                for j in range(len(sizes) - 2, -1, -1):
-                                    strides[j] = strides[j + 1] * sizes[j + 1]
-
-                                category_maps = {}
-                                for dim_id in dimension_ids:
-                                    dim_info = dimensions.get(dim_id, {})
-                                    category_info = dim_info.get("category", {})
-                                    index_map = category_info.get("index", {})
-                                    label_map = category_info.get("label", {})
-                                    reverse_index = {v: k for k, v in index_map.items()}
-                                    category_maps[dim_id] = {
-                                        "reverse_index": reverse_index,
-                                        "label": label_map
-                                    }
-
-                                rows = []
-                                for key_str, value in data["value"].items():
-                                    try:
-                                        linear_idx = int(key_str)
-                                        indices = []
-                                        remaining = linear_idx
-                                        for j, size in enumerate(sizes):
-                                            if j == len(sizes) - 1:
-                                                indices.append(remaining)
-                                            else:
-                                                idx = remaining // strides[j]
-                                                indices.append(idx)
-                                                remaining = remaining % strides[j]
-
-                                        row = {}
-                                        for j, dim_id in enumerate(dimension_ids):
-                                            cat_info = category_maps.get(dim_id, {})
-                                            reverse_index = cat_info.get("reverse_index", {})
-                                            label_map = cat_info.get("label", {})
-                                            cat_code = reverse_index.get(indices[j])
-                                            row[dim_id] = label_map.get(cat_code, cat_code) if cat_code else None
-                                        row["value"] = value
-                                        rows.append(row)
-                                    except (ValueError, KeyError):
-                                        continue
-
-                                if rows:
-                                    df = pd.DataFrame(rows)
-                                    st.sidebar.success(f"✅ JSON-stat 2.0 распарсен: {len(df)} записей")
-                                else:
-                                    raise ValueError("JSON-stat 2.0 не содержит валидных данных")
-
-                            # Обычный JSON
-                            elif isinstance(data, list):
-                                if len(data) > 0 and isinstance(data[0], dict):
-                                    df = json_normalize(data)
-                                elif len(data) > 0:
-                                    df = pd.DataFrame({uploaded.name.rsplit('.', 1)[0]: data})
-                                else:
-                                    df = pd.DataFrame()
-                            elif isinstance(data, dict):
-                                df = pd.DataFrame([data])
-                            else:
-                                df = pd.DataFrame([{"value": str(data)}])
-
-                            if df.empty:
-                                raise ValueError("JSON пуст")
-
-                            # Переименование колонок (не для JSON-stat)
-                            if "version" not in data or data.get("version") != "2.0":
-                                if len(df.columns) > 0 and isinstance(df.columns[0], (int, float)):
-                                    df.columns = [f'col_{i}' for i in range(len(df.columns))]
-
-                        except json.JSONDecodeError as je:
-                            raise ValueError(f"❌ Ошибка парсинга JSON: {je}")
-                        except Exception as e:
-                            raise ValueError(f"❌ Ошибка обработки JSON: {e}")
-
-                    else:
-                        raise ValueError(f"Формат .{ext} не поддерживается")
-
-                    if df.empty:
-                        raise ValueError("Файл пуст")
+                    # Чтение файла через бизнес-функцию
+                    df, ext = _read_impl(uploaded)
 
                     # Очистка имён колонок
                     df.columns = df.columns.astype(str).str.strip().str.replace(r'\s+', '_', regex=True)
@@ -932,13 +825,8 @@ if data_source == "◉ Файл .xlsx, .xls, .csv, .json":
                         st.session_state.df_unsorted = df.copy()
                         
                         # Определяем группирующую колонку для панельных данных
-                        group_col = None
-                        for c in df.columns:
-                            if c != primary_date and df[c].dtype in ['object', 'string', 'category']:
-                                n_unique = df[c].nunique()
-                                if 1 < n_unique < 100:
-                                    group_col = c
-                                    break
+                        from app.data.detectors import detect_panel_group_column
+                        group_col = detect_panel_group_column(df, primary_date)
                         
                         # Сортировка с учётом группировки
                         if group_col:
@@ -948,7 +836,7 @@ if data_source == "◉ Файл .xlsx, .xls, .csv, .json":
                             df = df.sort_values(primary_date).reset_index(drop=True)
                             st.sidebar.info(f"📈 Сортировка по {primary_date}")
 
-                    # ОЧИСТКА ОТ СИСТЕМНЫХ КОЛОНОК (ВСТАВИТЬ СЮДА, ДО СОХРАНЕНИЯ В СЕССИЮ)
+                    # ОЧИСТКА ОТ СИСТЕМНЫХ КОЛОНОК
                     service_cols = [
                         c for c in df.columns
                         if c.lower() in ['row_id', 'index', 'level_0', 'level_1', 'unnamed', 'unnamed: 0']
