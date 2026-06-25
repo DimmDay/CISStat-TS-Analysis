@@ -133,10 +133,29 @@ def read_uploaded_file(uploaded_file) -> tuple[pd.DataFrame, str]:
         if isinstance(df.columns[0], (int, float)):
             df.columns = [f'col_{i}' for i in range(len(df.columns))]
     elif ext == "json":
-        uploaded_file.seek(0)
-        content = uploaded_file.read().decode('utf-8-sig')
-        data = json.loads(content)
-        df = pd.json_normalize(data) if isinstance(data, list) else pd.DataFrame([data])
+        try:
+            uploaded_file.seek(0)
+            content = uploaded_file.read().decode('utf-8-sig')
+            data = json.loads(content)
+            
+            # Проверка на JSON-stat 2.0
+            if isinstance(data, dict) and data.get("version") == "2.0":
+                df = parse_jsonstat(data)
+            elif isinstance(data, list):
+                if len(data) > 0 and isinstance(data[0], dict):
+                    df = pd.json_normalize(data)
+                elif len(data) > 0:
+                    df = pd.DataFrame({uploaded_file.name.rsplit('.', 1)[0]: data})
+                else:
+                    df = pd.DataFrame()
+            elif isinstance(data, dict):
+                df = pd.DataFrame([data])
+            else:
+                df = pd.DataFrame([{"value": str(data)}])
+        except json.JSONDecodeError as je:
+            raise ValueError(f"❌ Ошибка парсинга JSON: {je}")
+        except Exception as e:
+            raise ValueError(f"❌ Ошибка обработки JSON: {e}")
     else:
         raise ValueError(f"Формат .{ext} не поддерживается.")
 
