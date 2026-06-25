@@ -52,12 +52,12 @@ from validation.missing import analyze_missing, get_expert_list_df
 from validation.outliers import detect_outliers, get_outliers_df
 from validation.reporter import save_validated_dataset, generate_correction_report
 from validation.audit import log_expert_action
-
 from src.catalog.recommender import CISStatRecommender
-from app.core.utils import safe_stat, safe_nunique
+from app.core.utils import safe_stat, _safe_nunique
 from app.core.passport import _hurst_exponent as hurst_exponent, _calc_ts_props
 from app.core.passport import calculate_ts_passport
 from app.core.passport import _compare_ts_props
+
 
 
 # Инициализация рекомендателя
@@ -861,29 +861,6 @@ if "passport_ready" not in st.session_state:
 # ── ГЛОБАЛЬНЫЕ КОНСТАНТЫ ДЛЯ РЕЖИМОВ ВИЗУАЛИЗАЦИИ ───────────
 MODE_TS = "⏱️ Временные ряды"
 MODE_GEN = "🔍 Общий (категории)"
-
-
-# ────────────────────────────────────────────────────────────
-# 🔧 ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ (должна быть определена ДО использования)
-# ────────────────────────────────────────────────────────────
-def _safe_nunique(series: pd.Series, min_val: int = 1, max_val: int = 100) -> bool:
-    """
-    Безопасный подсчёт уникальных значений для колонок с возможными нехэшируемыми типами.
-    Возвращает True, если количество уникальных значений в диапазоне [min_val, max_val).
-    """
-    try:
-        sample = series.dropna().head(100)
-        if len(sample) == 0:
-            return False
-        first_val = sample.iloc[0]
-        if isinstance(first_val, (dict, list, set, pd.Series, pd.DataFrame)):
-            return False
-        uniq = series.nunique()
-        return min_val < uniq < max_val
-    except TypeError:
-        return False
-    except Exception:
-        return False
 
 
 # ────────────────────────────────────────────────────────────

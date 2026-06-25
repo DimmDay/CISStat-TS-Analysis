@@ -49,33 +49,25 @@ def safe_stat(df: pd.DataFrame, col: str, func: Callable) -> float:
         return 0.0
 
 
-def safe_nunique(series: pd.Series, min_val: int = 1, max_val: int = 100) -> bool:
+
+def _safe_nunique(series: pd.Series, min_val: int = 1, max_val: int = 100) -> bool:
     """
     Безопасный подсчёт уникальных значений для колонок с возможными нехэшируемыми типами.
-    
-    Возвращает True, если количество уникальных значений в диапазоне [min_val, max_val).
-    Используется для автоклассификации категориальных колонок.
+    Возвращает True, если количество уникальных значений в диапазоне (min_val, max_val).
     
     Args:
-        series: Исходная серия
-        min_val: Минимальный порог уникальных значений (включительно)
-        max_val: Максимальный порог уникальных значений (исключительно)
+        series: pandas Series для анализа
+        min_val: нижняя граница диапазона (исключительно)
+        max_val: верхняя граница диапазона (исключительно)
     
     Returns:
-        bool: True если min_val < nunique < max_val
-    
-    Examples:
-        >>> safe_nunique(pd.Series(['A', 'B', 'C']), min_val=1, max_val=100)
-        True
-        >>> safe_nunique(pd.Series([{'a': 1}, {'b': 2}]))  # нехэшируемые типы
-        False
+        True если min_val < nunique < max_val, иначе False
     """
     try:
         sample = series.dropna().head(100)
         if len(sample) == 0:
             return False
         first_val = sample.iloc[0]
-        # Защита от нехэшируемых типов (dict, list, set, Series, DataFrame)
         if isinstance(first_val, (dict, list, set, pd.Series, pd.DataFrame)):
             return False
         uniq = series.nunique()
