@@ -811,10 +811,12 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────
-# 🔐 АВТОРИЗАЦИЯ (Безопасная версия)
+# АВТОРИЗАЦИЯ (Безопасная версия)
 # ─────────────────────────────────────────────────────────────
 
-# 🔑 Эталонный хэш токена (задаётся через переменную окружения CISSTAT_TOKEN_HASH)
+from app.core.auth import check_token
+
+#  Эталонный хэш токена (задаётся через переменную окружения CISSTAT_TOKEN_HASH)
 # Если переменная не задана, используется хэш от "123" для локальных тестов
 SECURE_TOKEN_HASH = os.environ.get(
     "CISSTAT_TOKEN_HASH",
@@ -833,9 +835,8 @@ if not st.session_state.authenticated:
     with c2:
         token_input = st.text_input("Токен доступа", type="password", placeholder="Введите пароль")
         if st.button("Войти", type="primary", use_container_width=True):
-            # 🔒 Хешируем ввод пользователя и сверяем с эталоном
-            input_hash = hashlib.sha256(token_input.encode('utf-8')).hexdigest()
-            if input_hash == SECURE_TOKEN_HASH:
+            # Вызов вынесенной функции проверки токена
+            if check_token(token_input, SECURE_TOKEN_HASH):
                 st.session_state.authenticated = True
                 st.rerun()
             else:
