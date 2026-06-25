@@ -144,3 +144,75 @@ def read_uploaded_file(uploaded_file) -> tuple[pd.DataFrame, str]:
         raise ValueError("Файл пуст или не содержит табличных данных.")
 
     return df, ext
+
+
+def parse_jsonstat(data: dict) -> pd.DataFrame:
+    """
+    Парсит JSON-stat 2.0 формат в плоский DataFrame.
+    
+    Args:
+        data: Словарь с JSON-stat 2.0 структурой
+    
+    Returns:
+        DataFrame с распарсенными данными
+    
+    Raises:
+        ValueError: Если данные не валидны или пусты
+    """
+    if not (isinstance(data, dict) and data.get("version") == "2.0" 
+            and "value" in data and "dimension" in data):
+        raise ValueError("Не является валидным JSON-stat 2.0")
+    
+    dimensions = data.get("dimension", {})
+    dimension_ids = data.get("id", [])
+    sizes = data.get("size", [])
+    
+    # Вычисление strides для линейной индексации
+    strides = [1] * len(sizes)
+    for j in range(len(sizes) - 2, -1, -1):
+        strides[j] = strides[j + 1] * sizes[j + 1]
+    
+    # Построение карт категорий
+    category_maps = {}
+    for dim_id in dimension_ids:
+        dim_info = dimensions.get(dim_id, {})
+        category_info = dim_info.get("category", {})
+        index_map = category_info.get("index", {})
+        label_map = category_info.get("label", {})
+        reverse_index = {v: k for k, v in index_map.items()}
+        category_maps[dim_id] = {
+            "reverse_index": reverse_index,
+            "label": label_map
+        }
+    
+    # Извлечение данных
+    rows = []
+    for key_str, value in data["value"].items():
+        try:
+            linear_idx = int(key_str)
+            indices = []
+            remaining = linear_idx
+            for j, size in enumerate(sizes):
+                if j == len(sizes) - 1:
+                    indices.append(remaining)
+                else:
+                    idx = remaining // strides[j]
+                    indices.append(idx)
+                    remaining = remaining % strides[j]
+            
+            row = {}
+            for j, dim_id in enumerate(dimension_ids):
+                cat_info = category_maps.get(dim_id, {})
+                reverse_index = cat_info.get("reverse_index", {})
+                label_map = cat_info.get("label", {})
+                cat_code = reverse_index.get(indices[j])
+                row[dim_id] = label_map.get(cat_code, cat_code) if cat_code else None
+            row["value"] = value
+            rows.append(row)
+        except (ValueError, KeyError):
+            continue
+    
+    if not rows:
+        raise ValueError("JSON-stat 2.0 не содержит валидных данных")
+    
+    return pd.DataFrame(rows)

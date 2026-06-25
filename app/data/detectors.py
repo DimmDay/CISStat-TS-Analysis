@@ -201,3 +201,26 @@ def detect_and_convert_datetime(
     ts_active = len(detected_cols) > 0
     
     return df_work, detected_cols, ts_active, potential_date_col
+
+
+def detect_panel_group_column(df: pd.DataFrame, date_col: str) -> Optional[str]:
+    """
+    Определяет группирующую колонку для панельных данных.
+    
+    Args:
+        df: DataFrame с данными
+        date_col: Название колонки с датами
+    
+    Returns:
+        Название группирующей колонки или None, если не найдена
+    
+    Note:
+        Критерии: колонка не является датой, имеет категориальный тип,
+        содержит от 2 до 99 уникальных значений.
+    """
+    for c in df.columns:
+        if c != date_col and df[c].dtype in ['object', 'string', 'category']:
+            n_unique = df[c].nunique()
+            if 1 < n_unique < 100:
+                return c
+    return None
