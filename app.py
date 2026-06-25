@@ -57,6 +57,7 @@ from app.core.utils import safe_stat, _safe_nunique
 from app.core.passport import _hurst_exponent as hurst_exponent, _calc_ts_props
 from app.core.passport import calculate_ts_passport
 from app.core.passport import _compare_ts_props
+from app.core.auth import check_token
 
 
 
@@ -813,8 +814,6 @@ st.markdown(f"""
 # ─────────────────────────────────────────────────────────────
 # АВТОРИЗАЦИЯ (Безопасная версия)
 # ─────────────────────────────────────────────────────────────
-
-from app.core.auth import check_token
 
 #  Эталонный хэш токена (задаётся через переменную окружения CISSTAT_TOKEN_HASH)
 # Если переменная не задана, используется хэш от "123" для локальных тестов
