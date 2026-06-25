@@ -34,7 +34,7 @@ importlib.reload(validation.engine)
 from validation.engine import validate_regular_step, validate_consistency
 
 # ─────────────────────────────────────────────────────────────
-# 🔧 ИМПОРТЫ МОДУЛЕЙ ВАЛИДАЦИИ
+# ИМПОРТЫ МОДУЛЕЙ ВАЛИДАЦИИ
 # ─────────────────────────────────────────────────────────────
 from validation.engine import (
     load_rules,
@@ -58,8 +58,10 @@ from app.core.passport import _hurst_exponent as hurst_exponent, _calc_ts_props
 from app.core.passport import calculate_ts_passport
 from app.core.passport import _compare_ts_props
 from app.core.auth import check_token
-from app.data.loader import init_db_connection as _init_db_connection_impl
-
+from app.data.file_loader import init_db_connection as _init_db_connection_impl
+import importlib
+_loader_module = importlib.import_module('app.data.file_loader')
+_read_impl = _loader_module.read_uploaded_file
 
 
 # Инициализация рекомендателя
@@ -121,7 +123,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────
-# 🔧 УНИВЕРСАЛЬНАЯ ФУНКЦИЯ РАСЧЁТА ПАСПОРТА СВОЙСТВ РЯДА
+# УНИВЕРСАЛЬНАЯ ФУНКЦИЯ РАСЧЁТА ПАСПОРТА СВОЙСТВ РЯДА
 # ─────────────────────────────────────────────────────────────
 def calculate_ts_passport(analysis_series: pd.Series,
                           df_filtered: pd.DataFrame = None,
@@ -345,63 +347,17 @@ def calculate_ts_passport(analysis_series: pd.Series,
 
 
 # ─────────────────────────────────────────────────────────────
-# 📁 ФУНКЦИЯ ЧТЕНИЯ ФАЙЛА (С КЭШИРОВАНИЕМ)
+# UI-ОБЁРТКА ЧТЕНИЯ ФАЙЛА (С КЭШИРОВАНИЕМ)
 # ─────────────────────────────────────────────────────────────
+
 @st.cache_data(show_spinner=" Чтение и парсинг файла...")
 def read_uploaded_file(uploaded_file):
-    """
-    Читает загруженный файл с автодетектом формата и заголовков.
-    Кэшируется для предотвращения повторного чтения.
-    Возвращает: pd.DataFrame, extension
-    """
-    if uploaded_file is None:
-        raise ValueError("Файл не загружен")
-
-    # 🔑 ОПРЕДЕЛЕНИЕ РАСШИРЕНИЯ (до использования!)
-    file_name = uploaded_file.name or "unknown.file"
-    ext = file_name.split('.')[-1].lower()
-
-    # Чтение файла
-    if ext == "csv":
-        df = pd.read_csv(
-            uploaded_file,
-            sep=None,
-            engine='python',
-            encoding='utf-8-sig',
-            on_bad_lines='skip',
-            header=None
-        )
-        # ... (Ваш код автодетекта заголовков без изменений) ...
-        first_col_sample = df[0].head(10).astype(str)
-        is_date_like = first_col_sample.str.contains(r'\d{4}[-/]\d{2}[-/]\d{2}', regex=True).mean() > 0.8
-        if is_date_like:
-            new_headers = ['date'] + [f'col_{i}' for i in range(1, len(df.columns))]
-            df.columns = new_headers
-        else:
-            df.columns = [f'col_{i}' for i in range(len(df.columns))]
-
-    elif ext in ["xlsx", "xls"]:
-        df = pd.read_excel(uploaded_file)
-        if isinstance(df.columns[0], (int, float)):
-            df.columns = [f'col_{i}' for i in range(len(df.columns))]
-
-    elif ext == "json":
-        # ... (Ваш код JSON без изменений) ...
-        uploaded_file.seek(0)
-        content = uploaded_file.read().decode('utf-8-sig')
-        data = json.loads(content)
-        df = pd.json_normalize(data) if isinstance(data, list) else pd.DataFrame([data])
-    else:
-        raise ValueError(f"Формат .{ext} не поддерживается.")
-
-    if df.empty:
-        raise ValueError("Файл пуст или не содержит табличных данных.")
-
-    return df, ext
+    """UI-обёртка над бизнес-функцией."""
+    return _read_impl(uploaded_file)
 
 
 # ─────────────────────────────────────────────────────────────
-# 📅 ФУНКЦИЯ ROBUST DATETIME DETECTOR (С КЭШИРОВАНИЕМ)
+# ФУНКЦИЯ ROBUST DATETIME DETECTOR (С КЭШИРОВАНИЕМ)
 # ─────────────────────────────────────────────────────────────
 @st.cache_data(show_spinner=" Анализ дат и конвертация...")
 def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> Tuple[pd.DataFrame, List[str], bool, Optional[str]]:
@@ -3812,7 +3768,7 @@ with tab_download:
 
                         # ── 4. ОТОБРАЖЕНИЕ ТАБЛИЦЫ НА ЭКРАНЕ ──
                         st.divider()
-                        st.markdown(f"#### 📄 Готовый отчет: {report_col}")
+                        st.markdown(f"#### Готовый отчет: {report_col}")
                         st.dataframe(
                             df_report,
                             use_container_width=True,
