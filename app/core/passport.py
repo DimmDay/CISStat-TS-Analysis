@@ -543,28 +543,23 @@ def _compare_ts_props(props_old: Dict[str, Any], props_new: Dict[str, Any]) -> D
 # УПРОЩЁННЫЙ ПАСПОРТ (для сравнения До/После в UI)
 # ═══════════════════════════════════════════════════════
 
-def _calc_ts_props(series: pd.Series) -> Dict[str, Any]:
+def calculate_ts_props_quick(series: pd.Series) -> Dict[str, Any]:
     """
     Быстрый расчёт ключевых метрик для сравнения До/После в UI.
-    
-    В отличие от calculate_ts_passport, возвращает плоский dict с основными
-    метриками (без вложенных структур). Используется для интерактивных
-    сравнений в вкладке "Предобработка".
-    
+
+    В отличие от calculate_ts_passport (полный паспорт с 13 метриками и вложенной структурой),
+    возвращает плоский dict с основными метриками. Используется для интерактивных
+    сравнений в вкладке "Предобработка" (кнопки "Пересчитать свойства после...").
+
+    Производительность: быстрее calculate_ts_passport, так как считает только
+    базовые метрики (n, mean, std, min, max, ADF, trend, seasonality).
+
     Args:
         series: pd.Series с временным рядом (index=datetime, values=numeric)
-    
+
     Returns:
-        dict с ключами:
-        - n: число наблюдений
-        - mean, std, min, max: базовые статистики
-        - adf_pvalue: p-value теста Дики-Фуллера
-        - is_stationary: True если p < 0.05
-        - has_trend: наличие тренда (через линейную регрессию)
-        - has_seasonality: наличие сезонности (через FFT)
-        - trend_strength: сила тренда (R²)
-        - seasonal_strength: сила сезонности
-        - error: сообщение об ошибке (если ряд < 10 точек)
+        Плоский dict с ключами: n, mean, std, min, max, adf_pvalue, is_stationary,
+        has_trend, has_seasonality, trend_strength, seasonal_strength, error
     """
     props: Dict[str, Any] = {
         'n': len(series),

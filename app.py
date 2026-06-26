@@ -54,7 +54,7 @@ from validation.reporter import save_validated_dataset, generate_correction_repo
 from validation.audit import log_expert_action
 from src.catalog.recommender import CISStatRecommender
 from app.core.utils import safe_stat, _safe_nunique
-from app.core.passport import _hurst_exponent as hurst_exponent, _calc_ts_props
+from app.core.passport import _hurst_exponent as hurst_exponent, calculate_ts_props_quick
 from app.core.passport import calculate_ts_passport
 from app.core.passport import _compare_ts_props
 from app.core.auth import check_token
@@ -8737,7 +8737,7 @@ with tab_preprocessing:
         if num_cols and not df_curr.empty:
             target = num_cols[0]
             s = df_curr[target].dropna()
-            st.session_state.prep_props_baseline = _calc_ts_props(s)
+            st.session_state.prep_props_baseline = calculate_ts_props_quick(s)
             st.session_state.prep_target_col = target
         else:
             st.session_state.prep_props_baseline = {}
@@ -9102,7 +9102,7 @@ with tab_preprocessing:
         target = st.session_state.get("prep_target_col")
         if target and not st.session_state.df.empty:
             s_after = st.session_state.df[target].dropna()
-            props_after = _calc_ts_props(s_after)
+            props_after = calculate_ts_props_quick(s_after)
             _show_comparison_table(st.session_state.prep_props_baseline, props_after, "Очистка пропусков")
             st.session_state.prep_props_baseline = props_after  # Обновляем baseline для следующего этапа
 
@@ -9486,7 +9486,7 @@ with tab_preprocessing:
             target = st.session_state.get("prep_target_col")
             if target and not st.session_state.df.empty:
                 s_after = st.session_state.df[target].dropna()
-                props_after = _calc_ts_props(s_after)
+                props_after = calculate_ts_props_quick(s_after)
                 _show_comparison_table(st.session_state.prep_props_baseline, props_after, "Очистка выбросов")
                 st.session_state.prep_props_baseline = props_after  # Обновляем baseline
 

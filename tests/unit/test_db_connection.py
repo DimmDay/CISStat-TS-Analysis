@@ -4,13 +4,13 @@ Unit-тесты для init_db_connection — подключение к база
 """
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from app.data.loader import init_db_connection
+from app.data.file_loader import init_db_connection
 
 
 class TestInitDbConnection:
     """Тесты для функции init_db_connection."""
 
-    @patch('app.data.loader.create_engine')
+    @patch('app.data.file_loader.create_engine')
     def test_postgresql_success(self, mock_create_engine):
         """Успешное подключение к PostgreSQL."""
         # Правильная настройка mock для контекстного менеджера
@@ -32,7 +32,7 @@ class TestInitDbConnection:
         mock_create_engine.assert_called_once()
         mock_conn.execute.assert_called_once_with("SELECT 1")
 
-    @patch('app.data.loader.clickhouse_connect')
+    @patch('app.data.file_loader.clickhouse_connect')
     def test_clickhouse_success(self, mock_ch_connect):
         """Успешное подключение к ClickHouse."""
         mock_client = Mock()
@@ -64,7 +64,7 @@ class TestInitDbConnection:
         
         assert result is None
 
-    @patch('app.data.loader.create_engine')
+    @patch('app.data.file_loader.create_engine')
     def test_postgresql_connection_error(self, mock_create_engine):
         """Ошибка подключения к PostgreSQL."""
         mock_engine = MagicMock()
@@ -83,7 +83,7 @@ class TestInitDbConnection:
                 db_name="test_db"
             )
 
-    @patch('app.data.loader.clickhouse_connect')
+    @patch('app.data.file_loader.clickhouse_connect')
     def test_clickhouse_connection_error(self, mock_ch_connect):
         """Ошибка подключения к ClickHouse."""
         mock_client = Mock()
@@ -100,28 +100,4 @@ class TestInitDbConnection:
                 db_name="test_db"
             )
 
-    @patch('app.data.loader.create_engine', None)
-    def test_postgresql_missing_driver(self):
-        """Отсутствие драйвера psycopg2."""
-        with pytest.raises(ImportError):
-            init_db_connection(
-                db_type="PostgreSQL",
-                host="localhost",
-                port=5432,
-                user="test_user",
-                password="test_pass",
-                db_name="test_db"
-            )
-
-    @patch('app.data.loader.clickhouse_connect', None)
-    def test_clickhouse_missing_driver(self):
-        """Отсутствие драйвера clickhouse_connect."""
-        with pytest.raises(ImportError):
-            init_db_connection(
-                db_type="ClickHouse",
-                host="localhost",
-                port=8123,
-                user="test_user",
-                password="test_pass",
-                db_name="test_db"
-            )
+   

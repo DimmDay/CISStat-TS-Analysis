@@ -7,7 +7,7 @@ import pytest
 from app.core.passport import (
     calculate_ts_passport,
     _compare_ts_props,
-    _calc_ts_props,
+    calculate_ts_props_quick,
     _hurst_exponent,
 )
 
@@ -228,7 +228,7 @@ class TestCompareTsProps:
 
 
 # ═══════════════════════════════════════════════════════
-# ТЕСТЫ: _calc_ts_props
+# ТЕСТЫ: calculate_ts_props_quick
 # ═══════════════════════════════════════════════════════
 
 class TestCalcTsProps:
@@ -236,7 +236,7 @@ class TestCalcTsProps:
     def test_short_series_returns_defaults(self):
         """Ряд < 10 точек должен вернуть дефолтные значения."""
         s = pd.Series([1, 2, 3, 4, 5])
-        result = _calc_ts_props(s)
+        result = calculate_ts_props_quick(s)
         
         assert result['n'] == 5
         assert result['adf_pvalue'] is None
@@ -246,7 +246,7 @@ class TestCalcTsProps:
     
     def test_basic_stats(self, sample_ts_series):
         """Базовые статистики должны совпадать."""
-        result = _calc_ts_props(sample_ts_series)
+        result = calculate_ts_props_quick(sample_ts_series)
         
         assert result['n'] == len(sample_ts_series)
         assert abs(result['mean'] - sample_ts_series.mean()) < 1e-9
@@ -254,21 +254,21 @@ class TestCalcTsProps:
     
     def test_stationarity_detection(self, stationary_series):
         """Белый шум должен быть распознан как стационарный."""
-        result = _calc_ts_props(stationary_series)
+        result = calculate_ts_props_quick(stationary_series)
         # Используем == True вместо is True для совместимости с numpy.bool_
         assert result['is_stationary'] == True
         assert result['adf_pvalue'] < 0.05
     
     def test_trend_detection(self, sample_ts_series):
         """Ряд с сильным трендом должен быть распознан."""
-        result = _calc_ts_props(sample_ts_series)
+        result = calculate_ts_props_quick(sample_ts_series)
         # Используем == True вместо is True для совместимости с numpy.bool_
         assert result['has_trend'] == True
         assert result['trend_strength'] > 0.5
     
     def test_returns_dict_with_expected_keys(self, sample_ts_series):
         """Результат должен содержать все ожидаемые ключи."""
-        result = _calc_ts_props(sample_ts_series)
+        result = calculate_ts_props_quick(sample_ts_series)
         
         expected_keys = [
             'n', 'mean', 'std', 'min', 'max',
