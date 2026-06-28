@@ -7582,8 +7582,8 @@ with tab_validation:
 
         # ─── ШАПКА ПАСПОРТА (с названием датасета) ─────────
         st.markdown(f"""
-        <div style='background: linear-gradient(135deg, #2E4057 0%, #048A81 100%);
-                    padding: 20px; border-radius: 12px; color: white; margin: 15px 0;'>
+        <div style='background: linear-gradient(135deg, #F2F2F2 0%, #F2F2F2 100%);
+                    padding: 20px; border-radius: 12px; color: grey; margin: 15px 0;'>
             <h3 style='margin: 0 0 10px 0;'>{metadata['document_title']}</h3>
             <p style='margin: 0; font-size: 16px;'>
                 <b>Датасет:</b> <span style='background: rgba(255,255,255,0.2);
@@ -7592,7 +7592,7 @@ with tab_validation:
             </p>
             <p style='margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;'>
                  {metadata['n_rows']} строк × {metadata['n_cols']} колонок |
-                🕐 {metadata['generated_at']}
+                 {metadata['generated_at']}
             </p>
         </div>
         """, unsafe_allow_html=True)
