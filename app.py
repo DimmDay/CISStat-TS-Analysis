@@ -62,6 +62,8 @@ from app.data.file_loader import init_db_connection as _init_db_connection_impl
 import importlib
 _loader_module = importlib.import_module('app.data.file_loader')
 _read_impl = _loader_module.read_uploaded_file
+from app.eda.distributions import detect_distribution_type
+from app.eda.correlation import find_significant_correlations
 
 
 # Инициализация рекомендателя
@@ -1699,55 +1701,6 @@ with tab_download:
                 unsafe_allow_html=True
             )
 
-            def detect_distribution_type(series):
-                import numpy as np
-                from scipy import stats
-                data = series.dropna()
-                if len(data) < 30: return "Недостаточно данных для определения (<30 точек)"
-                if len(data) > 5000: data = data.sample(5000, random_state=42)
-                is_discrete = (data == data.astype(int)).all()
-                unique_count = data.nunique()
-                min_val = data.min()
-                mean_v = data.mean()
-                var_v = data.var()
-                skew = stats.skew(data)
-                kurt = stats.kurtosis(data)
-
-                if is_discrete and unique_count < 100:
-                    if unique_count == 2 and min_val >= 0: return "Дискретное - Биномальное"
-                    elif min_val >= 1 and var_v > mean_v**2: return "Дискретное - Геометрическое"
-                    elif var_v > mean_v * 1.3: return "Дискретное - Отрицательное биномальное"
-                    elif abs(var_v - mean_v) < mean_v * 0.25: return "Дискретное - Пуассона"
-                    elif unique_count < len(data) * 0.4: return "Дискретное - Гипергеометрическое (оценка)"
-                    return "Дискретное - Эмпирическое"
-
-                candidates = {
-                    "Нормальное": stats.norm, "Логнормальное": stats.lognorm,
-                    "Экспоненциальное": stats.expon, "Равномерное": stats.uniform,
-                    "Стьюдента": stats.t, "Хи-квадрат": stats.chi2, "Гамма": stats.gamma
-                }
-                best_name, best_ks = None, np.inf
-                for name, dist in candidates.items():
-                    try:
-                        if name in ["Логнормальное", "Экспоненциальное", "Хи-квадрат"] and min_val <= 0: continue
-                        params = dist.fit(data)
-                        ks_stat, _ = stats.kstest(data, dist.name, args=params)
-                        if ks_stat < best_ks: best_ks, best_name = ks_stat, name
-                    except: continue
-
-                prefix = "Непрерывное - "
-                if best_name is None:
-                    if abs(skew) < 0.5: return f"{prefix}Нормальное (по асимметрии)"
-                    if skew > 0.5: return f"{prefix}Правосторонняя асимметрия"
-                    if skew < -0.5: return f"{prefix}Левосторонняя асимметрия"
-                    return f"{prefix}Неопределённое"
-                if best_ks < 0.06: return f"{prefix}{best_name}"
-                elif best_ks < 0.14: return f"{prefix}{best_name} (близко)"
-                else:
-                    if skew > 0.6: return f"{prefix}Правосторонняя асимметрия"
-                    if skew < -0.6: return f"{prefix}Левосторонняя асимметрия"
-                    return f"{prefix}Эмпирическое (сложная форма)"
-
             dist_type = detect_distribution_type(df[selected_col])
             dist_emoji = "🔵" if "Нормальное" in dist_type else "🟠" if "асимметрия" in dist_type.lower() else "🟢" if "Равномерное" in dist_type else "🟣" if "Логнормальное" in dist_type else "⚪"
 
@@ -1846,19 +1799,7 @@ with tab_download:
                 st.markdown("### **Пояснения к корреляциям**")
 
                 # Анализ значимых связей (r >= 0.5 или r <= -0.5)
-                significant_links = []
-                for i in range(len(corr_matrix.columns)):
-                    for j in range(i + 1, len(corr_matrix.columns)):
-                        val = corr_matrix.iloc[i, j]
-                        if abs(val) >= 0.5:  # Порог значимости
-                            col1, col2 = corr_matrix.columns[i], corr_matrix.columns[j]
-                            strength = "Сильная" if abs(val) >= 0.7 else "Умеренная"
-                            direction = "прямая (+)" if val > 0 else "обратная (-)"
-                            significant_links.append({
-                                "pair": f"{col1} ↔ {col2}",
-                                "val": val,
-                                "desc": f"{strength} {direction} связь (`r = {val:.2f}`)"
-                            })
+                significant_links = find_significant_correlations(df[num_cols], num_cols, threshold=0.5)
 
                 if significant_links:
                     st.info(f"Найдено {len(significant_links)} значимых связей (|r| ≥ 0.5):")
@@ -3369,9 +3310,10 @@ with tab_download:
                                 recommendations.append(f"• **Сильные предикторы:** {', '.join(top_feat[:3])} (|r|>0.7) → используйте как основные фичи")
                                 model_suggestions.append("Linear Regression, Random Forest, XGBoost с отбором признаков")
 
-                            if multicollinear:
-                                recommendations.append(f"• **Мультиколлинеарность:** {multicollinear[0]} (|r|>0.85) → риск нестабильности оценок")
-                                model_suggestions.append("PCA, Ridge/Lasso регуляризация, удаление одного из коррелированных признаков")
+                            # Проверка мультиколлинеарности между признаками
+                            if len(ct_f["num"]) >= 2:
+                                multicollinear_links = find_significant_correlations(df_filtered, ct_f["num"], threshold=0.85)
+                                multicollinear = [item['pair'] for item in multicollinear_links]
 
                             # Если все корреляции слабые
                             if len(strong_pos) == 0 and len(strong_neg) == 0 and len(multicollinear) == 0:
