@@ -64,6 +64,7 @@ _loader_module = importlib.import_module('app.data.file_loader')
 _read_impl = _loader_module.read_uploaded_file
 from app.eda.distributions import detect_distribution_type
 from app.eda.correlation import find_significant_correlations
+from app.classification.classifier import classify_columns
 
 
 # Инициализация рекомендателя
@@ -1835,10 +1836,14 @@ with tab_download:
     # 🔹 ЭКСПАНДЕР: заголовок виден, контент скрыт по умолчанию
     with st.expander(" Показать панель фильтров и визуализации", expanded=False):
 
+        # Классификация колонок через единую функцию
+        col_types = classify_columns(df)
+        
         # Категориальные колонки для фильтров
-        cat_cols = df.select_dtypes(include=['object', 'string']).columns.tolist()
+        cat_cols = col_types['cat']
         if not cat_cols:
-            cat_cols = [c for c in df.select_dtypes(include='number').columns if 1 < df[c].nunique() < 100]
+            # Fallback: если нет object/string колонок, берём числовые с малым количеством уникальных значений
+            cat_cols = [c for c in col_types['num'] if 1 < df[c].nunique() < 100]
 
         # Приоритетные колонки
         for p in ["Country", "Region", "Регион", "Страна", "Категория", "Product"]:
@@ -1885,9 +1890,9 @@ with tab_download:
         else:
             selected_cat2 = []
 
-        # Временная колонка
-        datetime_cols = df.select_dtypes(include=['datetime64[ns]']).columns.tolist()
-        num_year_cols = [c for c in df.select_dtypes(include='number').columns if 'year' in c.lower() or 'год' in c.lower()]
+        # Временная колонка (включает datetime + числовые с "year"/"год")
+        datetime_cols = col_types['date']
+        num_year_cols = [c for c in col_types['num'] if 'year' in c.lower() or 'год' in c.lower()]
         time_cols = datetime_cols + [c for c in num_year_cols if c not in datetime_cols]
 
         for p in ["Year", "Date", "Год", "Дата"]:
@@ -1954,11 +1959,8 @@ with tab_download:
         MODE_TS = "Временные ряды"
         MODE_GEN = "Общий (категории)"
 
-        ct_f = {
-            "num": df_filtered.select_dtypes(include='number').columns.tolist(),
-            "cat": [c for c in df_filtered.select_dtypes(include=['object', 'string']).columns if 1 < df_filtered[c].nunique() < 100],
-            "date": df_filtered.select_dtypes(include='datetime').columns.tolist()
-        }
+        # Классификация колонок для отфильтрованного DataFrame
+        ct_f = classify_columns(df_filtered)
 
         # Инициализируем ts_mode_active
         ts_mode_active = False
