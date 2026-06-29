@@ -3493,7 +3493,7 @@ with tab_download:
                             "Всего строк": f"{len(df):,}".replace(",", " "),
                             "Всего колонок": len(df.columns),
                             "Объем памяти": f"{df.memory_usage(deep=True).sum() / 1024**2:.2f} MB",
-                            "Числовых / Категорий": f"{len(ct['num'])} / {len(ct['cat'])}",
+                            "Числовых / Категорий": f"{len(ct_f['num'])} / {len(ct_f['cat'])}",
                             "Диапазон дат": f"{df_ts.index.min().date()} — {df_ts.index.max().date()}" if ts_mode_active else "N/A",
                             "Inferred частота": pd.infer_freq(df_ts.index) if ts_mode_active else "N/A"
                         }
@@ -3546,162 +3546,48 @@ with tab_download:
                         )
 
                         # ── 5. ГЕНЕРАЦИЯ EXCEL (с листом рекомендаций) ─────────────────
+                        from app.core.export import export_passport_to_excel
 
-                        wb = Workbook()
-                        ws = wb.active
-                        ws.title = "1_Паспорт свойств"
-
-                        header_font = Font(bold=True, size=12, color="FFFFFF")
-                        header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-                        title_font = Font(bold=True, size=16)
-                        footer_font = Font(bold=True, color="0369A1")
-                        footer_fill = PatternFill(start_color="E0F2FE", end_color="E0F2FE", fill_type="solid")
-                        green_fill = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
-                        yellow_fill = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
-                        red_fill = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
-                        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
-
-                        row = 1
-                        ws.merge_cells(f"A{row}:D{row}")
-                        cell = ws.cell(row=row, column=1, value=f"Предварительный отчет о свойствах признака: {report_col}")
-                        cell.font = title_font
-                        cell.alignment = Alignment(horizontal='center')
-                        row += 2
-
-                        ws.cell(row=row, column=1, value=f"Исследуемый параметр: {report_col}").font = header_font
-                        ws.cell(row=row, column=3, value=f"Дата: {dt_now.now().strftime('%d.%m.%Y %H:%M')}").font = header_font
-                        row += 2
-
-                        def write_table(data_dict, start_row, title):
-                            ws.merge_cells(f"A{start_row}:B{start_row}")
-                            cell = ws.cell(row=start_row, column=1, value=title)
-                            cell.font = header_font
-                            cell.fill = header_fill
-                            cell.alignment = Alignment(horizontal='center')
-                            start_row += 1
-                            ws.cell(row=start_row, column=1, value="Параметр").font = Font(bold=True)
-                            ws.cell(row=start_row, column=2, value="Значение").font = Font(bold=True)
-                            start_row += 1
-                            for k, v in data_dict.items():
-                                c1, c2 = ws.cell(row=start_row, column=1, value=k), ws.cell(row=start_row, column=2, value=v)
-                                c1.border, c2.border = thin_border, thin_border
-                                start_row += 1
-                            return start_row + 1
-
-                        row = write_table(tech_info, row, "Техническая информация")
-                        row = write_table(dist_stats, row, "Статистики распределения")
-
-                        ws.merge_cells(f"A{row}:C{row}")
-                        cell = ws.cell(row=row, column=1, value="Итоговый паспорт свойств")
-                        cell.font, cell.fill, cell.alignment = header_font, header_fill, Alignment(horizontal='center')
-                        row += 1
-
-                        ws.cell(row=row, column=1, value="Свойство").font = Font(bold=True)
-                        ws.cell(row=row, column=2, value="Метод").font = Font(bold=True)
-                        ws.cell(row=row, column=3, value="Результат").font = Font(bold=True)
-                        row += 1
-
-                        for item in ts_passport:
-                            c1, c2, c3 = ws.cell(row=row, column=1, value=item["property"]), ws.cell(row=row, column=2, value=item["method"]), ws.cell(row=row, column=3, value=item["result"])
-                            c1.border, c2.border, c3.border = thin_border, thin_border, thin_border
-                            if "✅" in item["result"]: c3.fill = green_fill
-                            elif "⚠️" in item["result"]: c3.fill = yellow_fill
-                            elif "❌" in item["result"]: c3.fill = red_fill
-                            row += 1
-
-                        # 🔧 НОВЫЙ ЛИСТ: РЕКОМЕНДАЦИИ ПО МОДЕЛЯМ
-                        ws_rec = wb.create_sheet("2_Рекомендации")
-                        ws_rec.title = "2_Рекомендации"
-
-                        # Заголовок листа рекомендаций
-                        row_rec = 1
-                        ws_rec.merge_cells(f"A{row_rec}:C{row_rec}")
-                        cell = ws_rec.cell(row=row_rec, column=1, value="Рекомендуемые модели и обоснование")
-                        cell.font = title_font
-                        cell.alignment = Alignment(horizontal='center')
-                        row_rec += 2
-
-                        ws_rec.cell(row=row_rec, column=1, value="Модель").font = header_font
-                        ws_rec.cell(row=row_rec, column=2, value="Условие применения").font = header_font
-                        ws_rec.cell(row=row_rec, column=3, value="Обоснование").font = header_font
-                        row_rec += 1
-
-                        # Формирование рекомендаций на основе свойств
-                        recommendations = []
-
-                        # Базовые свойства
+                        # Формируем рекомендации для Excel (переиспользуем из B.9)
+                        excel_recommendations = []
                         if is_stationary and is_white_noise:
-                            recommendations.append(("Exponential Smoothing / Naive", "Ряд похож на белый шум", "Отсутствие автокорреляции → внешние факторы важнее истории"))
+                            excel_recommendations.append(("Exponential Smoothing / Naive", "Ряд похож на белый шум", "Отсутствие автокорреляции > внешние факторы важнее истории"))
                         elif is_stationary and not is_white_noise:
-                            recommendations.append(("ARIMA(p,d,q)", "Стационарен + есть автокорреляция", "Классический выбор для стационарных рядов с АК"))
+                            excel_recommendations.append(("ARIMA(p,d,q)", "Стационарен + есть автокорреляция", "Классический выбор для стационарных рядов с АК"))
                         elif not is_stationary:
-                            recommendations.append(("ARIMA с дифференцированием / Prophet", "Нестационарный ряд", "Требуется удаление тренда (diff) или модель с трендом"))
+                            excel_recommendations.append(("ARIMA с дифференцированием / Prophet", "Нестационарный ряд", "Требуется удаление тренда (diff) или модель с трендом"))
 
                         if r_squared >= 0.7:
-                            recommendations.append(("Linear Trend + ARMA", f"Сильный детерминированный тренд (R²={r_squared:.2f})", "Явный тренд лучше моделировать отдельно"))
+                            excel_recommendations.append(("Linear Trend + ARMA", f"Сильный детерминированный тренд (R²={r_squared:.2f})", "Явный тренд лучше моделировать отдельно"))
 
-                        # Сезонность
+                        # ИСПРАВЛЕНО: используем acf_seasonality вместо seasonal_periods_acf
                         if is_seasonal or acf_seasonality_str != "Не обнаружены":
-                            m_val = seasonal_periods_acf[0] if seasonal_periods_acf else period
-                            recommendations.append((f"SARIMA(..., m={m_val}) / Prophet", "Обнаружена сезонность", "Явное моделирование сезонной компоненты улучшает точность"))
+                            m_val = acf_seasonality[0] if acf_seasonality else None
+                            if m_val:
+                                excel_recommendations.append((f"SARIMA(..., m={m_val}) / Prophet", "Обнаружена сезонность", "Явное моделирование сезонной компоненты улучшает точность"))
 
-                        # Частота
                         if inferred_freq and inferred_freq in ['D', 'H', 'T']:
-                            recommendations.append(("Prophet / LSTM", f"Высокочастотные данные ({inferred_freq})", "Учет праздников и внутридневных паттернов"))
+                            excel_recommendations.append(("Prophet / LSTM", f"Высокочастотные данные ({inferred_freq})", "Учет праздников и внутридневных паттернов"))
                         elif inferred_freq in ['W', 'M', 'Q']:
-                            recommendations.append(("SARIMA / TBATS", f"Сезонные данные ({inferred_freq})", "Классические методы для недельной/месячной сезонности"))
+                            excel_recommendations.append(("SARIMA / TBATS", f"Сезонные данные ({inferred_freq})", "Классические методы для недельной/месячной сезонности"))
 
-                        # Корреляции
                         if target_corr_str != "N/A" and "🟢" in target_corr_str:
-                            recommendations.append(("Linear Regression / XGBoost", "Есть сильные предикторы (|r|>0.7)", "Использовать коррелирующие признаки как регрессоры"))
+                            excel_recommendations.append(("Linear Regression / XGBoost", "Есть сильные предикторы (|r|>0.7)", "Использовать коррелирующие признаки как регрессоры"))
 
-                        # Спектральные особенности
                         if fft_dominant_str != "Не обнаружены":
-                            recommendations.append(("ML + Fourier features", f"Доминирующие частоты: {fft_dominant_str}", "Добавить sin/cos гармоники как признаки для улучшения прогноза"))
+                            excel_recommendations.append(("ML + Fourier features", f"Доминирующие частоты: {fft_dominant_str}", "Добавить sin/cos гармоники как признаки для улучшения прогноза"))
 
-                        # Если нет явных паттернов
-                        if not recommendations:
-                            recommendations.append(("Naive / Simple Exponential Smoothing", "Нет выраженных паттернов", "Начать с простых базовых моделей для оценки"))
+                        if not excel_recommendations:
+                            excel_recommendations.append(("Naive / Simple Exponential Smoothing", "Нет выраженных паттернов", "Начать с простых базовых моделей для оценки"))
 
-                        # Запись рекомендаций в лист
-                        for model, condition, justification in recommendations:
-                            ws_rec.cell(row=row_rec, column=1, value=model).font = Font(bold=True)
-                            ws_rec.cell(row=row_rec, column=2, value=condition)
-                            ws_rec.cell(row=row_rec, column=3, value=justification)
-                            # Применяем границы
-                            for col in range(1, 4):
-                                ws_rec.cell(row=row_rec, column=col).border = thin_border
-                            row_rec += 1
-
-                        # Методологическое пояснение в конце листа
-                        row_rec += 1
-                        ws_rec.merge_cells(f"A{row_rec}:C{row_rec}")
-                        cell = ws_rec.cell(row=row_rec, column=1, value="📚 Методология выбора моделей")
-                        cell.font = Font(bold=True, size=11, color="0369A1")
-                        cell.alignment = Alignment(horizontal='left')
-                        row_rec += 1
-                        ws_rec.cell(row=row_rec, column=1, value="• Статистические тесты (ADF, Ljung-Box) → выбор класса моделей")
-                        ws_rec.cell(row=row_rec+1, column=1, value="• Спектральный анализ (ACF, FFT) → параметры сезонности и признаки")
-                        ws_rec.cell(row=row_rec+2, column=1, value="• Корреляционный анализ → отбор признаков, борьба с мультиколлинеарностью")
-                        ws_rec.cell(row=row_rec+3, column=1, value="• Порядок действий: 1) Преобразования → 2) Признаки → 3) Подбор параметров → 4) Валидация")
-
-                        # Настройка ширины колонок
-                        ws.column_dimensions['A'].width = 35
-                        ws.column_dimensions['B'].width = 30
-                        ws.column_dimensions['C'].width = 50
-                        ws_rec.column_dimensions['A'].width = 30
-                        ws_rec.column_dimensions['B'].width = 35
-                        ws_rec.column_dimensions['C'].width = 60
-
-                        # Футер
-                        row += 1
-                        ws.merge_cells(f"A{row}:C{row}")
-                        cell = ws.cell(row=row, column=1, value=" Исследовано платформой CISStat TS Analytics | ✅ Верифицировано СтатКомитетом СНГ")
-                        cell.font, cell.fill, cell.alignment = footer_font, footer_fill, Alignment(horizontal='center')
-
-                        output = io.BytesIO()
-                        wb.save(output)
-                        output.seek(0)
+                        # Экспортируем в Excel
+                        output = export_passport_to_excel(
+                            tech_info=tech_info,
+                            dist_stats=dist_stats,
+                            ts_passport=ts_passport,
+                            recommendations=excel_recommendations,
+                            report_col=report_col
+                        )
 
                         # ── 6. КНОПКА ВЫГРУЗКИ ──────────
                         st.divider()
@@ -3716,7 +3602,8 @@ with tab_download:
 
                 except Exception as e:
                     st.error(f"❌ Ошибка при формировании отчета: {e}")
-                    st.exception(e)
+                    import traceback
+                    st.code(traceback.format_exc(), language="python")
 
         # 2️⃣ ОТОБРАЖЕНИЕ ОТЧЕТА НА ЭКРАНЕ
         if st.session_state.get("report_ready"):
@@ -3742,8 +3629,8 @@ with tab_download:
                     key="btn_final_download_excel"
                 )
                 st.session_state.report_ready = False
-    else:
-        st.warning("⚠️ Нет числовых колонок для анализа.")
+        else:
+            st.warning("⚠️ Нет числовых колонок для анализа.")
 
 # ─────────────────────────────────────────────────────────────
 #  ВКЛАДКА 2: ВАЛИДАЦИЯ

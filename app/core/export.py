@@ -210,3 +210,185 @@ def export_validation_passport_excel(
     wb.save(buffer)
     buffer.seek(0)
     return buffer
+
+
+# app/core/export.py
+"""
+Модуль для экспорта данных в Excel.
+Извлечено из app.py (пункт B.10 EXTRACTION_PLAN.md).
+"""
+import io
+from datetime import datetime as dt_now
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from typing import List, Dict, Any
+
+
+def export_passport_to_excel(
+    tech_info: Dict[str, Any],
+    dist_stats: Dict[str, Any],
+    ts_passport: List[Dict[str, str]],
+    recommendations: List[tuple],
+    report_col: str
+) -> io.BytesIO:
+    """
+    Экспортирует паспорт свойств временного ряда в Excel-файл.
+    
+    Args:
+        tech_info: Техническая информация (словарь ключ-значение)
+        dist_stats: Статистики распределения (словарь ключ-значение)
+        ts_passport: Список словарей с данными паспорта
+                    [{"property": "...", "method": "...", "result": "..."}]
+        recommendations: Список кортежей с рекомендациями
+                        [(model, condition, justification), ...]
+        report_col: Название анализируемого признака
+        
+    Returns:
+        BytesIO с Excel-файлом
+        
+    Examples:
+        >>> tech_info = {"Признак": "test_col"}
+        >>> dist_stats = {"Среднее": 10.5}
+        >>> ts_passport = [{"property": "Стационарность", "method": "ADF", "result": "✅"}]
+        >>> recommendations = [("ARIMA", "Стационарен", "Классика")]
+        >>> result = export_passport_to_excel(tech_info, dist_stats, ts_passport, recommendations, "test_col")
+        >>> isinstance(result, io.BytesIO)
+        True
+    """
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "1_Паспорт свойств"
+    
+    # Стили
+    header_font = Font(bold=True, size=12, color="FFFFFF")
+    header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+    title_font = Font(bold=True, size=16)
+    footer_font = Font(bold=True, color="0369A1")
+    footer_fill = PatternFill(start_color="E0F2FE", end_color="E0F2FE", fill_type="solid")
+    green_fill = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
+    yellow_fill = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
+    red_fill = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    # Вспомогательная функция для записи таблицы
+    def write_table(data_dict: Dict[str, Any], start_row: int, title: str) -> int:
+        ws.merge_cells(f"A{start_row}:B{start_row}")
+        cell = ws.cell(row=start_row, column=1, value=title)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal='center')
+        start_row += 1
+        ws.cell(row=start_row, column=1, value="Параметр").font = Font(bold=True)
+        ws.cell(row=start_row, column=2, value="Значение").font = Font(bold=True)
+        start_row += 1
+        for k, v in data_dict.items():
+            c1 = ws.cell(row=start_row, column=1, value=k)
+            c2 = ws.cell(row=start_row, column=2, value=v)
+            c1.border = thin_border
+            c2.border = thin_border
+            start_row += 1
+        return start_row + 1
+    
+    # Заголовок
+    row = 1
+    ws.merge_cells(f"A{row}:D{row}")
+    cell = ws.cell(row=row, column=1, value=f"Предварительный отчет о свойствах признака: {report_col}")
+    cell.font = title_font
+    cell.alignment = Alignment(horizontal='center')
+    row += 2
+    ws.cell(row=row, column=1, value=f"Исследуемый параметр: {report_col}").font = header_font
+    ws.cell(row=row, column=3, value=f"Дата: {dt_now.now().strftime('%d.%m.%Y %H:%M')}").font = header_font
+    row += 2
+    
+    # Записываем данные
+    row = write_table(tech_info, row, "Техническая информация")
+    row = write_table(dist_stats, row, "Статистики распределения")
+    
+    # Итоговый паспорт свойств
+    ws.merge_cells(f"A{row}:C{row}")
+    cell = ws.cell(row=row, column=1, value="Итоговый паспорт свойств")
+    cell.font = header_font
+    cell.fill = header_fill
+    cell.alignment = Alignment(horizontal='center')
+    row += 1
+    ws.cell(row=row, column=1, value="Свойство").font = Font(bold=True)
+    ws.cell(row=row, column=2, value="Метод").font = Font(bold=True)
+    ws.cell(row=row, column=3, value="Результат").font = Font(bold=True)
+    row += 1
+    
+    for item in ts_passport:
+        c1 = ws.cell(row=row, column=1, value=item.get("property", ""))
+        c2 = ws.cell(row=row, column=2, value=item.get("method", ""))
+        c3 = ws.cell(row=row, column=3, value=item.get("result", ""))
+        c1.border = thin_border
+        c2.border = thin_border
+        c3.border = thin_border
+        
+        result = item.get("result", "")
+        if "✅" in result:
+            c3.fill = green_fill
+        elif "⚠️" in result:
+            c3.fill = yellow_fill
+        elif "❌" in result:
+            c3.fill = red_fill
+        row += 1
+    
+    # Второй лист: Рекомендации
+    ws_rec = wb.create_sheet("2_Рекомендации")
+    row_rec = 1
+    ws_rec.merge_cells(f"A{row_rec}:C{row_rec}")
+    cell = ws_rec.cell(row=row_rec, column=1, value="Рекомендуемые модели и обоснование")
+    cell.font = title_font
+    cell.alignment = Alignment(horizontal='center')
+    row_rec += 2
+    ws_rec.cell(row=row_rec, column=1, value="Модель").font = header_font
+    ws_rec.cell(row=row_rec, column=2, value="Условие применения").font = header_font
+    ws_rec.cell(row=row_rec, column=3, value="Обоснование").font = header_font
+    row_rec += 1
+    
+    for model, condition, justification in recommendations:
+        ws_rec.cell(row=row_rec, column=1, value=model).font = Font(bold=True)
+        ws_rec.cell(row=row_rec, column=2, value=condition)
+        ws_rec.cell(row=row_rec, column=3, value=justification)
+        for col in range(1, 4):
+            ws_rec.cell(row=row_rec, column=col).border = thin_border
+        row_rec += 1
+    
+    # Методологическое пояснение
+    row_rec += 1
+    ws_rec.merge_cells(f"A{row_rec}:C{row_rec}")
+    cell = ws_rec.cell(row=row_rec, column=1, value="🔄 Методология выбора моделей")
+    cell.font = Font(bold=True, size=11, color="0369A1")
+    cell.alignment = Alignment(horizontal='left')
+    row_rec += 1
+    ws_rec.cell(row=row_rec, column=1, value="• Статистические тесты (ADF, Ljung-Box) → выбор класса моделей")
+    ws_rec.cell(row=row_rec+1, column=1, value="• Спектральный анализ (ACF, FFT) → параметры сезонности и признаки")
+    ws_rec.cell(row=row_rec+2, column=1, value="• Корреляционный анализ → отбор признаков, борьба с мультиколлинеарностью")
+    ws_rec.cell(row=row_rec+3, column=1, value="• Порядок действий: 1) Преобразования → 2) Признаки → 3) Подбор параметров → 4) Валидация")
+    
+    # Настройка ширины колонок
+    ws.column_dimensions['A'].width = 35
+    ws.column_dimensions['B'].width = 30
+    ws.column_dimensions['C'].width = 50
+    ws_rec.column_dimensions['A'].width = 30
+    ws_rec.column_dimensions['B'].width = 35
+    ws_rec.column_dimensions['C'].width = 60
+    
+    # Футер
+    row += 1
+    ws.merge_cells(f"A{row}:C{row}")
+    cell = ws.cell(row=row, column=1, value=" Исследовано платформой CISStat TS Analytics | ✅ Верифицировано СтатКомитетом СНГ")
+    cell.font = footer_font
+    cell.fill = footer_fill
+    cell.alignment = Alignment(horizontal='center')
+    
+    # Сохраняем в BytesIO
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
