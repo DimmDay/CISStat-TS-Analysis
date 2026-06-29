@@ -4632,7 +4632,7 @@ with tab_validation:
                     }
                 )
 
-                # 💾 КНОПКА СОХРАНЕНИЯ (Унифицирована с пропусками и выбросами)
+                # КНОПКА СОХРАНЕНИЯ (Унифицирована с пропусками и выбросами)
                 c_save1, c_save2 = st.columns([4, 1])
                 with c_save1:
                     st.caption("💡 Отредактируйте значения вручную или выберите стратегию ниже")
@@ -4791,7 +4791,7 @@ with tab_validation:
             "**◻️ Описание:** Модуль автоматически выявляет логические и временные противоречия в данных, " \
             "сверяя значения между связанными колонками и хронологией событий на основе заданных бизнес-правил (прибыль больше выручки, потребление на освещение больше общего потребления, записи идут не по хронологии — после 10:05:00 идёт 10:03:00 и т.д.). " \
             "При обнаружении нарушений система рассчитает долю брака и предложит стратегии по исправлению аномалий.",
-            "✅ Все бизнес-правила соблюдены" if not consistency_issues else f"️ Найдено {consistency_violations} нарушений",
+            "✅ Все бизнес-правила соблюдены" if not consistency_issues else f"️⚠️ Найдено {consistency_violations} нарушений",
             "✅" if not consistency_issues else "⚠️", None)
 
         # ── ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
@@ -4819,12 +4819,12 @@ with tab_validation:
                 # Фильтр отображения
                 view_filter = st.radio(
                     "Фильтр строк:",
-                    ["⚠️ Только с нарушениями", "✅ Показать всё"],
+                    ["Только с нарушениями", "Показать всё"],
                     horizontal=True,
                     key="consistency_view_filter"
                 )
 
-                if view_filter == "⚠️ Только с нарушениями":
+                if view_filter == "Только с нарушениями":
                     df_view = df_work[combined_mask].copy() if combined_mask.any() else df_work.iloc[:0].copy()
                 else:
                     df_view = df_work.copy()
@@ -4869,11 +4869,11 @@ with tab_validation:
                 with c1:
                     consistency_strategy = st.radio(
                         "Выберите стратегию:",
-                        ["🗑️ Удалить строки с нарушениями",
-                        "📊 Заменить на медиану (числовые) / моду",
-                        "📅 Исправить хронологию (сортировка по дате)",
-                        "0️⃣ Заменить на 0 или NaN",
-                        "🚩 Только отметить флагом (не менять данные)"],
+                        ["Удалить строки с нарушениями",
+                        "Заменить на медиану (числовые) / моду",
+                        "Исправить хронологию (сортировка по дате)",
+                        "Заменить на 0 или NaN",
+                        "Только отметить флагом (не менять данные)"],
                         key="consistency_fill_strategy"
                     )
                     if "Удалить" in consistency_strategy:
@@ -5236,11 +5236,11 @@ with tab_validation:
                     with c1:
                         uniqueness_strategy = st.radio(
                             "Выберите стратегию:",
-                            ["🗑️ Удалить дубликаты (оставить первый)",
-                            "🗑️ Удалить дубликаты (оставить последний)",
-                            "🗑️ Удалить все дубликаты полностью",
-                            "📊 Агрегировать дубликаты (mean/sum)",
-                            "🚩 Только отметить флагом (не менять данные)"],
+                            ["Удалить дубликаты (оставить первый)",
+                            "Удалить дубликаты (оставить последний)",
+                            "Удалить все дубликаты полностью",
+                            "Агрегировать дубликаты (mean/sum)",
+                            "Только отметить флагом (не менять данные)"],
                             key="uniqueness_fill_strategy"
                         )
                         if "Удалить дубликаты" in uniqueness_strategy:
@@ -5573,11 +5573,11 @@ with tab_validation:
                     with c1:
                         inclusion_strategy = st.radio(
                             "Выберите стратегию:",
-                            ["🔄 Заменить на наиболее частое допустимое значение (мода)",
-                            "🗑️ Заменить на NaN (удалить значения)",
-                            "🗑️ Удалить строки с нарушениями",
-                            "🔧 Заменить на значение по умолчанию (из справочника)",
-                            "🚩 Только отметить флагом (не менять данные)"],
+                            ["Заменить на наиболее частое допустимое значение (мода)",
+                            "Заменить на NaN (удалить значения)",
+                            "Удалить строки с нарушениями",
+                            "Заменить на значение по умолчанию (из справочника)",
+                            "Только отметить флагом (не менять данные)"],
                             key="inclusion_fill_strategy"
                         )
                         if "наиболее частое" in inclusion_strategy:
@@ -5813,31 +5813,11 @@ with tab_validation:
                     st.session_state.df_referential_work = df.copy()
                 df_work = st.session_state.df_referential_work
 
-                # ИСПРАВЛЕНИЕ: Функция для вычисления нарушений
-                def _compute_referential_violations(df_to_check: pd.DataFrame) -> list:
-                    """Вычисляет нарушения ссылочной целостности для DataFrame."""
-                    violations = []
-                    for r in ref_results_local:
-                        col = r.get('Колонка') or r.get('child_column')
-                        allowed_values = r.get('allowed_values', [])
-                        default_val = r.get('default_value', 'Unknown')
-                        
-                        if col and col in df_to_check.columns and allowed_values:
-                            mask = ~df_to_check[col].isin(allowed_values) & df_to_check[col].notna()
-                            if mask.any():
-                                invalid_values = df_to_check.loc[mask, col].unique()
-                                violations.append({
-                                    'column': col,
-                                    'allowed_values': allowed_values,
-                                    'default_value': default_val,
-                                    'invalid_values': invalid_values,
-                                    'count': int(mask.sum()),
-                                    'mask': mask
-                                })
-                    return violations
+                # Функция для вычисления нарушений
+                from validation.referential import compute_referential_violations
 
-                # ИСПРАВЛЕНИЕ: Пересчитываем нарушения каждый раз
-                ref_violations_list = _compute_referential_violations(df_work)
+                # Пересчитываем нарушения каждый раз
+                ref_violations_list = compute_referential_violations(df_work, ref_results_local)
 
                 if not ref_violations_list:
                     st.success("✅ Нарушений ссылочной целостности не обнаружено")
@@ -5922,11 +5902,11 @@ with tab_validation:
                     with c1:
                         ref_strategy = st.radio(
                             "Выберите стратегию:",
-                            ["🗑️ Удалить сиротские записи",
-                            "🔧 Заменить на значение по умолчанию (из справочника)",
-                            "🔄 Заменить на наиболее частое валидное значение (мода)",
-                            "🗑️ Заменить на NaN (пометить как пропуск)",
-                            "🚩 Только отметить флагом (не менять данные)"],
+                            ["Удалить сиротские записи",
+                            "Заменить на значение по умолчанию (из справочника)",
+                            "Заменить на наиболее частое валидное значение (мода)",
+                            "Заменить на NaN (пометить как пропуск)",
+                            "Только отметить флагом (не менять данные)"],
                             key="referential_fill_strategy"
                         )
                         if "Удалить" in ref_strategy:
@@ -6259,11 +6239,11 @@ with tab_validation:
                     with c1:
                         text_strategy = st.radio(
                             "Выберите стратегию:",
-                            ["🧹 Очистить спецсимволы и нормализовать (strip + lower)",
-                            "🗑️ Удалить строки с нарушениями текста",
-                            "🗑️ Заменить на NaN (пометить как пропуск)",
-                            "🔧 Заменить на 'Неизвестно' (default для категорий)",
-                            "🚩 Только отметить флагом (не менять данные)"],
+                            ["Очистить спецсимволы и нормализовать (strip + lower)",
+                            "Удалить строки с нарушениями текста",
+                            "Заменить на NaN (пометить как пропуск)",
+                            "Заменить на 'Неизвестно' (default для категорий)",
+                            "Только отметить флагом (не менять данные)"],
                             key="text_fill_strategy"
                         )
                         if "Очистить" in text_strategy:
@@ -6763,12 +6743,12 @@ with tab_validation:
                     with c1:
                         regularity_strategy = st.radio(
                             "Выберите стратегию:",
-                            ["📈 Resample + Interpolate (линейная интерполяция)",
-                            "📊 Resample + Forward Fill (последнее значение, LOCF)",
-                            "📉 Resample + Backward Fill (следующее значение, NOCB)",
-                            "🗑️ AsFreq (обозначить пропуски как NaN)",
-                            "➕ Добавить фиктивные записи с нулевыми значениями",
-                            "🚩 Только отметить флагом (не менять данные)"],
+                            ["Resample + Interpolate (линейная интерполяция)",
+                            "Resample + Forward Fill (последнее значение, LOCF)",
+                            "Resample + Backward Fill (следующее значение, NOCB)",
+                            "AsFreq (обозначить пропуски как NaN)",
+                            "Добавить фиктивные записи с нулевыми значениями",
+                            "Только отметить флагом (не менять данные)"],
                             key="regularity_fill_strategy"
                         )
                         if "Interpolate" in regularity_strategy:
@@ -7281,32 +7261,18 @@ with tab_validation:
             dataset_name=dataset_name
         )
 
-        # ─── ШАПКА ПАСПОРТА (с названием датасета) ─────────
-        st.markdown(f"""
-        <div style='background: linear-gradient(135deg, #F2F2F2 0%, #F2F2F2 100%);
-                    padding: 20px; border-radius: 12px; color: grey; margin: 15px 0;'>
-            <h3 style='margin: 0 0 10px 0;'>{metadata['document_title']}</h3>
-            <p style='margin: 0; font-size: 16px;'>
-                <b>Датасет:</b> <span style='background: rgba(255,255,255,0.2);
-                padding: 3px 8px; border-radius: 4px; font-family: monospace;'>
-                {metadata['dataset_name']}</span>
-            </p>
-            <p style='margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;'>
-                 {metadata['n_rows']} строк × {metadata['n_cols']} колонок |
-                 {metadata['generated_at']}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
+        # Пустой блок для визуального выравнивания с другими модулями
+        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+      
         # ── KPI-БЛОК ─────────────────────────────────────
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("ℹ️ Composite DQ Score", f"{dq_score:.1f}%",
+        c1.metric("Composite DQ Score", f"{dq_score:.1f}%",
                   delta=None if dq_score >= 80 else f"{80 - dq_score:+.1f}% до нормы")
-        c2.metric("✅ Пройдено проверок",
+        c2.metric("Пройдено проверок",
                   f"{metadata['checks_passed']}/{metadata['checks_total']}")
-        c3.metric("⚠️ Требуют внимания",
+        c3.metric("Требуют внимания",
                   len([p for p in df_passport.to_dict('records') if p['Статус'] == "⚠️"]))
-        c4.metric("❌ Критические",
+        c4.metric("Критические",
                   len([p for p in df_passport.to_dict('records') if p['Статус'] == "❌"]))
 
         # ── ТАБЛИЦА ПАСПОРТА ──────────────────────────────
@@ -7597,228 +7563,9 @@ with tab_validation:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key="btn_download_excel_passport"
                 )
-
-
-        # ══════════════════════════════════════════════════════════
-        # ТАБЛИЦА РЕКОМЕНДАЦИЙ ПО МОДЕЛЯМ (5 СТОЛБЦОВ, ВСЕ 20 МОДЕЛЕЙ)
-        # ═══════════════════════════════════════════════════════════
-        st.divider()
-        st.markdown("###  Рекомендации по выбору моделей")
-
-        # Получаем рекомендатель
-        recommender = st.session_state.get("recommender")
-
-        if recommender:
-            # ─ УРОВЕНЬ КАЧЕСТВА ДАННЫХ ──────────────────────────
-            quality_level = ""
-            if dq_score >= 80:
-                quality_level = f"✅ **Высокое качество (DQ ≥ 80%)** — все модели применимы"
-            elif dq_score >= 50:
-                quality_level = f"️ **Среднее качество (DQ 50-80%)** — рекомендована предобработка"
+                        
             else:
-                quality_level = f"❌ **Низкое качество (DQ < 50%)** — только базовые модели"
-
-            st.info(quality_level)
-
-            # ── ПОСТРОЕНИЕ ПРОФИЛЯ ДАННЫХ ────────────────────────
-            profile = recommender.build_profile_from_session_state(st.session_state)
-
-            # ── КЛАССИФИКАЦИЯ ВСЕХ 20 МОДЕЛЕЙ ────────────────────
-            available_models = []      # Все требования выполнены
-            limited_models = []        # Есть preprocessing шаги
-            unavailable_models = []    # Нет preprocessing или критические нарушения
-
-            for model in recommender.catalog.models:
-                req = model.requirements
-                issues = []
-
-                # Объём данных
-                if profile['n_observations'] < req.min_observations:
-                    issues.append(f"Нужно ≥{req.min_observations} наблюдений (есть {profile['n_observations']})")
-
-                # Стационарность
-                if req.stationarity == "required" and not profile['is_stationary']:
-                    issues.append("Требуется стационарность")
-                elif req.stationarity == "optional" and not profile['is_stationary']:
-                    issues.append("Нестационарность (можно дифференцировать)")
-
-                # Сезонность
-                if req.seasonality == "required" and not profile['has_seasonality']:
-                    issues.append("Требуется сезонность")
-
-                # Регулярность
-                if req.regularity == "required" and not profile['is_regular']:
-                    issues.append("Требуется регулярная частота")
-                elif req.regularity == "optional" and not profile['is_regular']:
-                    issues.append("Нерегулярная частота (можно ресемплинг)")
-
-                # Экзогенные признаки
-                if req.exogenous == "required" and not profile['has_exogenous']:
-                    issues.append("Требуются экзогенные признаки")
-
-                # Классификация модели
-                if not issues:
-                    available_models.append(model)
-                else:
-                    # Проверяем, есть ли preprocessing для решения проблем
-                    has_preprocessing = False
-                    preprocessing_steps = []
-
-                    if model.preprocessing:
-                        if not profile['is_stationary'] and model.preprocessing.if_not_stationary:
-                            has_preprocessing = True
-                            preprocessing_steps.append(f"Нестационарность: {model.preprocessing.if_not_stationary.description}")
-
-                        if not profile['is_regular'] and model.preprocessing.if_not_regular:
-                            has_preprocessing = True
-                            preprocessing_steps.append(f"Нерегулярность: {model.preprocessing.if_not_regular.description}")
-
-                    if has_preprocessing:
-                        limited_models.append({
-                            'model': model,
-                            'issues': issues,
-                            'preprocessing': preprocessing_steps
-                        })
-                    else:
-                        unavailable_models.append({
-                            'model': model,
-                            'issues': issues
-                        })
-
-            # Сортировка по приоритету категории
-            category_priority = {c.id: c.priority for c in recommender.catalog.categories}
-            available_models.sort(key=lambda m: category_priority.get(m.category, 99))
-            limited_models.sort(key=lambda x: category_priority.get(x['model'].category, 99))
-            unavailable_models.sort(key=lambda x: category_priority.get(x['model'].category, 99))
-
-            # ── ФОРМИРОВАНИЕ ТАБЛИЦЫ (5 СТОЛБЦОВ) ────────────────
-            table_rows = []
-            max_rows = max(len(available_models), len(limited_models), len(unavailable_models))
-
-            for i in range(max_rows):
-                row = {}
-
-                # Столбец 1: ✅ Доступные модели
-                if i < len(available_models):
-                    model = available_models[i]
-                    row['available'] = f"✅ {model.name}"
-                else:
-                    row['available'] = ""
-
-                # Столбец 2: ⚠️ С ограничениями
-                if i < len(limited_models):
-                    model = limited_models[i]['model']
-                    row['limited'] = f"⚠️ {model.name}"
-                else:
-                    row['limited'] = ""
-
-                # Столбец 3: Сделать доступными (для "С ограничениями")
-                if i < len(limited_models):
-                    steps = limited_models[i]['preprocessing']
-                    row['limited_rec'] = "; ".join(steps) if steps else "Требуется предобработка"
-                else:
-                    row['limited_rec'] = ""
-
-                # Столбец 4: ❌ Недоступные модели
-                if i < len(unavailable_models):
-                    model = unavailable_models[i]['model']
-                    row['unavailable'] = f"❌ {model.name}"
-                else:
-                    row['unavailable'] = ""
-
-                # Столбец 5: Сделать доступными (для "Недоступные")
-                if i < len(unavailable_models):
-                    issues = unavailable_models[i]['issues']
-
-                    # Формируем понятное обоснование
-                    if any("Нужно ≥" in issue for issue in issues):
-                        rec_text = "Недостаточно данных для этой модели"
-                    elif any("Требуется сезонность" in issue for issue in issues):
-                        rec_text = "Модель требует явную сезонность в данных"
-                    elif any("Требуются экзогенные" in issue for issue in issues):
-                        rec_text = "Модель требует дополнительные признаки (экзогенные переменные)"
-                    elif any("Требуется стационарность" in issue for issue in issues):
-                        rec_text = "Модель требует стационарный ряд (дифференцирование не поможет)"
-                    elif any("Требуется регулярная" in issue for issue in issues):
-                        rec_text = "Модель требует регулярный временной шаг (ресемплинг не применим)"
-                    else:
-                        rec_text = "Модель не поддерживает текущий формат данных"
-
-                    row['unavailable_rec'] = rec_text
-                else:
-                    row['unavailable_rec'] = ""
-
-                table_rows.append(row)
-
-            # Создаём DataFrame
-            df_table = pd.DataFrame(table_rows)
-
-            # Отображаем таблицу с 5 столбцами
-            st.dataframe(
-                df_table,
-                use_container_width=True,
-                hide_index=True,
-                height=500,
-                column_config={
-                    "available": st.column_config.TextColumn("✅ Доступные модели", width="medium"),
-                    "limited": st.column_config.TextColumn("⚠️ С ограничениями", width="medium"),
-                    "limited_rec": st.column_config.TextColumn("Сделать доступными:", width="large"),
-                    "unavailable": st.column_config.TextColumn("❌ Недоступные модели", width="medium"),
-                    "unavailable_rec": st.column_config.TextColumn("Сделать доступными:", width="large"),
-                }
-            )
-
-            # Сводка по количеству моделей
-            st.caption(f"📊 **Всего моделей в каталоге: 20** | "
-                    f"✅ Доступно: {len(available_models)} | "
-                    f"⚠️ С ограничениями: {len(limited_models)} | "
-                    f"❌ Недоступно: {len(unavailable_models)}")
-
-            # Легенда
-            st.markdown("""
-            <div style='background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;'>
-            <strong> Как использовать таблицу:</strong><br>
-            ◻️ <strong>Доступные модели</strong> — можно применять сразу без дополнительной предобработки<br>
-            ◻️ <strong>С ограничениями</strong> — требуют предобработки (см. колонку "Сделать доступными")<br>
-            ◻️ <strong>Недоступные</strong> — требуют значительной предобработки или не подходят для данных<br>
-            <br>
-            <strong> Рекомендации:</strong> Выполните указанные преобразования во вкладке "Предобработка",
-            затем перезапустите валидацию для обновления списка доступных моделей.
-            </div>
-            """, unsafe_allow_html=True)
-
-            # Главная рекомендация (первая доступная модель)
-            if available_models:
-                primary_model = available_models[0]
-                st.markdown(f"""
-                <div style='background: linear-gradient(135deg, #048A81 0%, #1D3557 100%);
-                            padding: 15px 20px; border-radius: 10px; color: white; margin-top: 15px;'>
-                    <p style='margin: 0; font-size: 16px;'>
-                        <b> Первичная рекомендация:</b>
-                        <span style='font-size: 18px; font-weight: bold;'>
-                        {primary_model.name}</span>
-                    </p>
-                    <p style='margin: 5px 0 0 0; font-size: 13px; opacity: 0.9;'>
-                        На основе DQ Score ({dq_score:.1f}%), регулярности шага и достаточности наблюдений
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
-
-            # ─── ПОДПИСЬ (платформа + верификация) ──────────────
-            st.divider()
-            st.markdown(f"""
-            <div style='background: #F1FAEE; border-left: 4px solid #1D3557;
-                        padding: 15px 20px; border-radius: 8px; margin: 10px 0;'>
-                <p style='margin: 0; font-size: 14px; color: #1D3557;'>
-                    <b>{metadata['platform_tagline']}.</b><br>
-                    <b>{metadata['verification']}.</b><br>
-                    Дата генерации: <i>{metadata['generated_at']}</i>
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-
-        else:
-            st.warning("⚠️ Справочник моделей не загружен. Проверьте файл `config/models/ts_models_catalog.yaml`")
+                st.warning("⚠️ Справочник моделей не загружен. Проверьте файл `config/models/ts_models_catalog.yaml`")
 
 
         # ═══════════════════════════════════════════════════════
@@ -8321,6 +8068,195 @@ with tab_validation:
                 st.warning("⚠️ В датасете нет числовых колонок для анализа")
 
 
+        # ══════════════════════════════════════════════════════════
+        # ТАБЛИЦА РЕКОМЕНДАЦИЙ ПО МОДЕЛЯМ (5 СТОЛБЦОВ, ВСЕ 20 МОДЕЛЕЙ)
+        # ═══════════════════════════════════════════════════════════
+        st.divider()
+        st.markdown("###  Рекомендации по выбору моделей")
+
+        # Получаем рекомендатель
+        recommender = st.session_state.get("recommender")
+
+        if recommender:
+            # ─ УРОВЕНЬ КАЧЕСТВА ДАННЫХ ──────────────────────────
+            quality_level = ""
+            if dq_score >= 80:
+                quality_level = f"✅ **Высокое качество (DQ ≥ 80%)** — все модели применимы"
+            elif dq_score >= 50:
+                quality_level = f"️ **Среднее качество (DQ 50-80%)** — рекомендована предобработка"
+            else:
+                quality_level = f"❌ **Низкое качество (DQ < 50%)** — только базовые модели"
+
+            st.info(quality_level)
+
+            # ── ПОСТРОЕНИЕ ПРОФИЛЯ ДАННЫХ ────────────────────────
+            profile = recommender.build_profile_from_session_state(st.session_state)
+
+            # ── КЛАССИФИКАЦИЯ ВСЕХ 20 МОДЕЛЕЙ ────────────────────
+            available_models = []      # Все требования выполнены
+            limited_models = []        # Есть preprocessing шаги
+            unavailable_models = []    # Нет preprocessing или критические нарушения
+
+            for model in recommender.catalog.models:
+                req = model.requirements
+                issues = []
+
+                # Объём данных
+                if profile['n_observations'] < req.min_observations:
+                    issues.append(f"Нужно ≥{req.min_observations} наблюдений (есть {profile['n_observations']})")
+
+                # Стационарность
+                if req.stationarity == "required" and not profile['is_stationary']:
+                    issues.append("Требуется стационарность")
+                elif req.stationarity == "optional" and not profile['is_stationary']:
+                    issues.append("Нестационарность (можно дифференцировать)")
+
+                # Сезонность
+                if req.seasonality == "required" and not profile['has_seasonality']:
+                    issues.append("Требуется сезонность")
+
+                # Регулярность
+                if req.regularity == "required" and not profile['is_regular']:
+                    issues.append("Требуется регулярная частота")
+                elif req.regularity == "optional" and not profile['is_regular']:
+                    issues.append("Нерегулярная частота (можно ресемплинг)")
+
+                # Экзогенные признаки
+                if req.exogenous == "required" and not profile['has_exogenous']:
+                    issues.append("Требуются экзогенные признаки")
+
+                # Классификация модели
+                if not issues:
+                    available_models.append(model)
+                else:
+                    # Проверяем, есть ли preprocessing для решения проблем
+                    has_preprocessing = False
+                    preprocessing_steps = []
+
+                    if model.preprocessing:
+                        if not profile['is_stationary'] and model.preprocessing.if_not_stationary:
+                            has_preprocessing = True
+                            preprocessing_steps.append(f"Нестационарность: {model.preprocessing.if_not_stationary.description}")
+
+                        if not profile['is_regular'] and model.preprocessing.if_not_regular:
+                            has_preprocessing = True
+                            preprocessing_steps.append(f"Нерегулярность: {model.preprocessing.if_not_regular.description}")
+
+                    if has_preprocessing:
+                        limited_models.append({
+                            'model': model,
+                            'issues': issues,
+                            'preprocessing': preprocessing_steps
+                        })
+                    else:
+                        unavailable_models.append({
+                            'model': model,
+                            'issues': issues
+                        })
+
+            # Сортировка по приоритету категории
+            category_priority = {c.id: c.priority for c in recommender.catalog.categories}
+            available_models.sort(key=lambda m: category_priority.get(m.category, 99))
+            limited_models.sort(key=lambda x: category_priority.get(x['model'].category, 99))
+            unavailable_models.sort(key=lambda x: category_priority.get(x['model'].category, 99))
+
+            # ── ФОРМИРОВАНИЕ ТАБЛИЦЫ (5 СТОЛБЦОВ) ────────────────
+            table_rows = []
+            max_rows = max(len(available_models), len(limited_models), len(unavailable_models))
+
+            for i in range(max_rows):
+                row = {}
+
+                # Столбец 1: ✅ Доступные модели
+                if i < len(available_models):
+                    model = available_models[i]
+                    row['available'] = f"✅ {model.name}"
+                else:
+                    row['available'] = ""
+
+                # Столбец 2: ⚠️ С ограничениями
+                if i < len(limited_models):
+                    model = limited_models[i]['model']
+                    row['limited'] = f"⚠️ {model.name}"
+                else:
+                    row['limited'] = ""
+
+                # Столбец 3: Сделать доступными (для "С ограничениями")
+                if i < len(limited_models):
+                    steps = limited_models[i]['preprocessing']
+                    row['limited_rec'] = "; ".join(steps) if steps else "Требуется предобработка"
+                else:
+                    row['limited_rec'] = ""
+
+                # Столбец 4: ❌ Недоступные модели
+                if i < len(unavailable_models):
+                    model = unavailable_models[i]['model']
+                    row['unavailable'] = f"❌ {model.name}"
+                else:
+                    row['unavailable'] = ""
+
+                # Столбец 5: Сделать доступными (для "Недоступные")
+                if i < len(unavailable_models):
+                    issues = unavailable_models[i]['issues']
+
+                    # Формируем понятное обоснование
+                    if any("Нужно ≥" in issue for issue in issues):
+                        rec_text = "Недостаточно данных для этой модели"
+                    elif any("Требуется сезонность" in issue for issue in issues):
+                        rec_text = "Модель требует явную сезонность в данных"
+                    elif any("Требуются экзогенные" in issue for issue in issues):
+                        rec_text = "Модель требует дополнительные признаки (экзогенные переменные)"
+                    elif any("Требуется стационарность" in issue for issue in issues):
+                        rec_text = "Модель требует стационарный ряд (дифференцирование не поможет)"
+                    elif any("Требуется регулярная" in issue for issue in issues):
+                        rec_text = "Модель требует регулярный временной шаг (ресемплинг не применим)"
+                    else:
+                        rec_text = "Модель не поддерживает текущий формат данных"
+
+                    row['unavailable_rec'] = rec_text
+                else:
+                    row['unavailable_rec'] = ""
+
+                table_rows.append(row)
+
+            # Создаём DataFrame
+            df_table = pd.DataFrame(table_rows)
+
+            # Отображаем таблицу с 5 столбцами
+            st.dataframe(
+                df_table,
+                use_container_width=True,
+                hide_index=True,
+                height=500,
+                column_config={
+                    "available": st.column_config.TextColumn("✅ Доступные модели", width="medium"),
+                    "limited": st.column_config.TextColumn("⚠️ С ограничениями", width="medium"),
+                    "limited_rec": st.column_config.TextColumn("Сделать доступными:", width="large"),
+                    "unavailable": st.column_config.TextColumn("❌ Недоступные модели", width="medium"),
+                    "unavailable_rec": st.column_config.TextColumn("Сделать доступными:", width="large"),
+                }
+            )
+
+            # Сводка по количеству моделей
+            st.caption(f"📊 **Всего моделей в каталоге: 20** | "
+                    f"✅ Доступно: {len(available_models)} | "
+                    f"⚠️ С ограничениями: {len(limited_models)} | "
+                    f"❌ Недоступно: {len(unavailable_models)}")
+
+            # Легенда
+            st.markdown("""
+            <div style='background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;'>
+            <strong> Как использовать таблицу:</strong><br>
+            ◻️ <strong>Доступные модели</strong> — можно применять сразу без дополнительной предобработки<br>
+            ◻️ <strong>С ограничениями</strong> — требуют предобработки (см. колонку "Сделать доступными")<br>
+            ◻️ <strong>Недоступные</strong> — требуют значительной предобработки или не подходят для данных<br>
+            <br>
+            <strong> Рекомендации:</strong> Выполните указанные преобразования во вкладке "Предобработка",
+            затем перезапустите валидацию для обновления списка доступных моделей.
+            </div>
+            """, unsafe_allow_html=True)
+
+
 # ────────────────────────────────────────────────────────────
 #  ВКЛАДКА 3: ПРЕДОБРАБОТКА
 # ────────────────────────────────────────────────────────────
@@ -8689,7 +8625,7 @@ with tab_preprocessing:
             elif "индикатор" in fill_strategy:
                 st.info("🚩 **Индикатор** — добавит колонки miss_* с флагом 0/1")
         with c2:
-            # 🔧 ИСПРАВЛЕНИЕ: Кнопка "Применить" удалена.
+            
             # Пустой блок для визуального выравнивания с другими модулями
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
 

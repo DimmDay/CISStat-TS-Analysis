@@ -355,3 +355,104 @@ class TestComputeInclusionViolations:
         assert isinstance(mask, pd.Series)
         assert len(mask) == len(df)
         assert mask.tolist() == [False, True, False]
+
+
+class TestComputeReferentialViolations:
+    """Тесты для compute_referential_violations."""
+
+    def test_no_violations(self):
+        """Все значения соответствуют ссылочной целостности."""
+        from validation.referential import compute_referential_violations
+        
+        df = pd.DataFrame({
+            'country_code': ['RU', 'US', 'CN'],
+            'value': [1, 2, 3]
+        })
+        ref_results = [
+            {'Колонка': 'country_code', 'allowed_values': ['RU', 'US', 'CN', 'DE'], 'default_value': 'Unknown'}
+        ]
+        
+        violations = compute_referential_violations(df, ref_results)
+        
+        assert len(violations) == 0
+
+    def test_with_violations(self):
+        """Есть значения, нарушающие ссылочную целостность."""
+        from validation.referential import compute_referential_violations
+        
+        df = pd.DataFrame({
+            'country_code': ['RU', 'XX', 'US'],
+            'value': [1, 2, 3]
+        })
+        ref_results = [
+            {'Колонка': 'country_code', 'allowed_values': ['RU', 'US', 'CN'], 'default_value': 'Unknown'}
+        ]
+        
+        violations = compute_referential_violations(df, ref_results)
+        
+        assert len(violations) == 1
+        assert violations[0]['column'] == 'country_code'
+        assert violations[0]['count'] == 1
+        assert 'XX' in violations[0]['invalid_values']
+
+    def test_empty_ref_results(self):
+        """Пустые правила ссылочной целостности."""
+        from validation.referential import compute_referential_violations
+        
+        df = pd.DataFrame({'a': [1, 2, 3]})
+        violations = compute_referential_violations(df, [])
+        
+        assert len(violations) == 0
+
+    def test_nan_values_ignored(self):
+        """NaN значения игнорируются."""
+        from validation.referential import compute_referential_violations
+        
+        df = pd.DataFrame({
+            'country_code': ['RU', None, 'US'],
+            'value': [1, 2, 3]
+        })
+        ref_results = [
+            {'Колонка': 'country_code', 'allowed_values': ['RU', 'US'], 'default_value': 'Unknown'}
+        ]
+        
+        violations = compute_referential_violations(df, ref_results)
+        
+        assert len(violations) == 0
+
+    def test_child_column_key(self):
+        """Поддержка ключа child_column вместо Колонка."""
+        from validation.referential import compute_referential_violations
+        
+        df = pd.DataFrame({
+            'region': ['East', 'West', 'North'],
+            'value': [1, 2, 3]
+        })
+        ref_results = [
+            {'child_column': 'region', 'allowed_values': ['East', 'West'], 'default_value': 'Unknown'}
+        ]
+        
+        violations = compute_referential_violations(df, ref_results)
+        
+        assert len(violations) == 1
+        assert violations[0]['column'] == 'region'
+
+    def test_mask_structure(self):
+        """Маска должна быть pd.Series с правильным индексом."""
+        from validation.referential import compute_referential_violations
+        
+        df = pd.DataFrame({
+            'country_code': ['RU', 'XX', 'US'],
+            'value': [1, 2, 3]
+        })
+        ref_results = [
+            {'Колонка': 'country_code', 'allowed_values': ['RU', 'US'], 'default_value': 'Unknown'}
+        ]
+        
+        violations = compute_referential_violations(df, ref_results)
+        
+        assert len(violations) == 1
+        mask = violations[0]['mask']
+        assert isinstance(mask, pd.Series)
+        assert len(mask) == len(df)
+        assert mask.tolist() == [False, True, False]
