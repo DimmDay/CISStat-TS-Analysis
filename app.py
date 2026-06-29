@@ -65,6 +65,8 @@ _read_impl = _loader_module.read_uploaded_file
 from app.eda.distributions import detect_distribution_type
 from app.eda.correlation import find_significant_correlations
 from app.classification.classifier import classify_columns
+from validation.text_quality import compute_text_violations
+from validation.text_quality import compute_text_violations, apply_text_strategy
 
 
 # Инициализация рекомендателя
@@ -6091,36 +6093,10 @@ with tab_validation:
         _df_text_check = st.session_state.df_text_work
 
         # Функция для вычисления нарушений (определена ДО make_card)
-        def _compute_text_violations(df_to_check: pd.DataFrame) -> list:
-            """Вычисляет нарушения качества текста для DataFrame."""
-            violations = []
-            text_cols = df_to_check.select_dtypes(include=['object', 'string']).columns.tolist()
-            
-            for col in text_cols:
-                # ИСПРАВЛЕНИЕ: Обычная строка (не raw), чтобы \ufffd интерпретировался
-                garbage_mask = df_to_check[col].astype(str).str.contains(
-                    '[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ufffd]', na=False, regex=True
-                )
-                short_mask = df_to_check[col].astype(str).str.strip().str.len() < 1
-                long_mask = df_to_check[col].astype(str).str.len() > 500
-                combined = garbage_mask | short_mask | long_mask
-                
-                if combined.any():
-                    sample_values = df_to_check.loc[combined, col].head(3).tolist()
-                    violations.append({
-                        'column': col,
-                        'count': int(combined.sum()),
-                        'mask': combined,
-                        'garbage_count': int(garbage_mask.sum()),
-                        'short_count': int(short_mask.sum()),
-                        'long_count': int(long_mask.sum()),
-                        'sample_values': sample_values
-                    })
-            
-            return violations
+        
 
         # Определяем text_issues через реальную проверку
-        text_violations_check = _compute_text_violations(_df_text_check)
+        text_violations_check = compute_text_violations(_df_text_check)
         text_issues = len(text_violations_check) > 0
         text_problem_cols = len(text_violations_check)
 
@@ -6143,7 +6119,7 @@ with tab_validation:
                 df_work = st.session_state.df_text_work
 
                 # Пересчитываем нарушения для текущего df_work
-                text_violations_list = _compute_text_violations(df_work)
+                text_violations_list = compute_text_violations(df_work)
 
                 if not text_violations_list:
                     st.success("✅ Нарушений качества текста не обнаружено")
@@ -6277,57 +6253,8 @@ with tab_validation:
                             df_preview = df_work.copy()
                             affected_cols = [v['column'] for v in text_violations_list]
 
-                            # Функция применения стратегии (единая для preview и confirm)
-                            def _apply_text_strategy(df_input: pd.DataFrame, strategy: str) -> pd.DataFrame:
-                                """Применяет стратегию обработки текстовых нарушений."""
-                                df_result = df_input.copy()
-                                
-                                if "Очистить" in strategy:
-                                    for v in text_violations_list:
-                                        col = v['column']
-                                        if col in df_result.columns:
-                                            # Упрощённый regex (без r-префикса не нужен, т.к. нет \ufffd)
-                                            df_result.loc[v['mask'], col] = (
-                                                df_result.loc[v['mask'], col]
-                                                .astype(str)
-                                                .str.strip()
-                                                .str.lower()
-                                                .str.replace(r'[^\w\s\-]', '', regex=True)
-                                                .str.replace(r'\s+', ' ', regex=True)
-                                                .str.strip()
-                                            )
-                                            
-                                            # Обрабатываем пустые строки после очистки
-                                            empty_after = df_result[col].astype(str).str.strip() == ''
-                                            if empty_after.any():
-                                                df_result.loc[empty_after, col] = np.nan
-                                                
-                                elif "Удалить" in strategy:
-                                    df_result = df_result[~combined_mask].reset_index(drop=True)
-                                    
-                                elif "NaN" in strategy:
-                                    for v in text_violations_list:
-                                        col = v['column']
-                                        if col in df_result.columns:
-                                            df_result.loc[v['mask'], col] = np.nan
-                                            
-                                elif "Неизвестно" in strategy:
-                                    for v in text_violations_list:
-                                        col = v['column']
-                                        if col in df_result.columns:
-                                            df_result.loc[v['mask'], col] = "Неизвестно"
-                                            
-                                elif "флагом" in strategy:
-                                    # Реализация стратегии "только флаг"
-                                    for v in text_violations_list:
-                                        col = v['column']
-                                        flag_col = f"{col}_text_valid"
-                                        df_result[flag_col] = ~v['mask']
-                                
-                                return df_result
-
                             # Применяем стратегию
-                            df_preview = _apply_text_strategy(df_preview, strategy)
+                            df_preview = apply_text_strategy(df_preview, text_violations_list, strategy)
 
                             # Предупреждение о дубликатах после нормализации
                             if "Очистить" in strategy:
@@ -6368,7 +6295,7 @@ with tab_validation:
                                         delta=f"{u_a - u_b:+}")
                                 
                                 # Считаем количество нарушений после применения стратегии
-                                violations_after = sum(v['count'] for v in _compute_text_violations(df_preview))
+                                violations_after = sum(v['count'] for v in compute_text_violations(df_preview))
                                 violations_before = combined_mask.sum()
                                 c_p4.metric("⚠️ Нарушений", f"{violations_before} → {violations_after}",
                                         delta=f"{violations_after - violations_before:+}")
@@ -6394,16 +6321,16 @@ with tab_validation:
                                 if st.button("💾 Подтвердить изменения", type="primary", 
                                             use_container_width=True, key="btn_confirm_text"):
                                     try:
-                                        # 🔧 Применяем стратегию заново к df_work
-                                        df_final = _apply_text_strategy(df_work, strategy)
+                                        # Применяем стратегию заново к df_work
+                                        df_final = apply_text_strategy(df_work, text_violations_list, strategy)
                                         
-                                        # 🔧 СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
+                                        # СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
                                         st.session_state.df = df_final.copy()
                                         st.session_state.df_text_work = df_final.copy()
                                         st.session_state.validation_ready = False
                                         st.session_state.show_text_preview = False
                                         
-                                        # 🔥 Удаляем рабочие копии других модулей
+                                        # Удаляем рабочие копии других модулей
                                         work_dfs = [
                                             "df_missing_work", "df_pattern_work", "df_range_work",
                                             "df_outlier_work", "df_inclusion_work", "df_referential_work",
