@@ -76,3 +76,33 @@ def _safe_nunique(series: pd.Series, min_val: int = 1, max_val: int = 100) -> bo
         return False
     except Exception:
         return False
+    
+
+# app/core/utils.py
+import pandas as pd
+from typing import Callable, Optional, Any
+
+def safe_stat(df: pd.DataFrame, col: str, func: Callable[[pd.Series], Any]) -> Optional[float]:
+    """
+    Безопасно вычисляет статистическую функцию для колонки DataFrame.
+    Возвращает None, если колонка отсутствует, пуста, состоит только из NaN,
+    или если вычисление вызвало исключение / вернуло NaN.
+    
+    ЗАМЕНА ДЛЯ: 8 локальных копий safe_stat / safe_text_stat из app.py.
+    """
+    if col not in df.columns:
+        return None
+        
+    series = df[col].dropna()
+    if series.empty:
+        return None
+        
+    try:
+        result = func(series)
+        if pd.isna(result):
+            return None
+        return float(result)
+    except Exception:
+        # Логирование в AppState.error_log должно происходить на уровне UI/оркестратора,
+        # здесь мы просто гарантируем, что пайплайн не упадет (Graceful Degradation).
+        return None

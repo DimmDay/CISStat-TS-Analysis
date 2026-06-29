@@ -16,15 +16,15 @@ class TestSafeStat:
     
     def test_missing_column(self):
         df = pd.DataFrame({'price': [10, 20, 30]})
-        assert safe_stat(df, 'nonexistent', np.mean) == 0.0
-    
+        assert safe_stat(df, 'nonexistent', np.mean) is None
+
     def test_empty_dataframe(self):
         df = pd.DataFrame()
-        assert safe_stat(df, 'price', np.mean) == 0.0
-    
+        assert safe_stat(df, 'price', np.mean) is None
+
     def test_all_nan_column(self):
         df = pd.DataFrame({'price': [np.nan, np.nan, np.nan]})
-        assert safe_stat(df, 'price', np.mean) == 0.0
+        assert safe_stat(df, 'price', np.mean) is None
     
     def test_with_nan_values(self):
         df = pd.DataFrame({'price': [10, np.nan, 30, np.nan, 50]})
