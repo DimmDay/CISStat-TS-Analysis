@@ -61,7 +61,7 @@
     }),
     'seasonality': dict({
       'is_seasonal': True,
-      'strength': 0.7717409227543119,
+      'strength': 0.7717409227543117,
     }),
     'stationarity': dict({
       'is_ok': False,
@@ -142,7 +142,7 @@
     }),
     'seasonality': dict({
       'is_seasonal': True,
-      'strength': 0.7717409227543119,
+      'strength': 0.7717409227543117,
     }),
     'stationarity': dict({
       'is_ok': False,
