@@ -3762,43 +3762,23 @@ with tab_validation:
 
             # 5. Проверка уникальности (дубликаты)
             progress.progress(0.50, text="Проверка уникальности записей...")
-            uniqueness_results = []
-            if st.session_state.col_types.get("date"):
-                date_col = st.session_state.col_types["date"][0]
-                dup_count = int(df.duplicated(subset=[date_col], keep=False).sum())
-            else:
-                dup_count = int(df.duplicated(keep=False).sum())
-            if dup_count > 0:
-                uniqueness_results.append({
-                    "Правило": "Уникальность записей",
-                    "Дубликатов": dup_count,
-                    "Статус": "⚠️ Нарушено"
-                })
-            else:
-                uniqueness_results.append({
-                    "Правило": "Уникальность записей",
-                    "Дубликатов": 0,
-                    "Статус": "✅ Соблюдено"
-                })
+            from validation.uniqueness import check_uniqueness
+
+            date_col = st.session_state.col_types.get("date", [None])[0]
+            uniqueness_result = check_uniqueness(df, date_col=date_col)
+
+            uniqueness_results = [{
+                "Правило": "Уникальность записей",
+                "Дубликатов": uniqueness_result['duplicate_count'],
+                "Статус": uniqueness_result['status']
+            }]
 
             # 6. Проверка принадлежности к набору (Inclusion)
             progress.progress(0.60, text="Проверка принадлежности к справочникам...")
-            inclusion_results = []
-            inclusion_masks = {}
+            from validation.inclusion import check_inclusion
+
             inclusion_rules = rules.get("inclusion", {})
-            for col, allowed_vals in inclusion_rules.items():
-                if col in df.columns and allowed_vals:
-                    invalid_mask = ~df[col].isin(allowed_vals) & df[col].notna()
-                    violations = int(invalid_mask.sum())
-                    if violations > 0:
-                        inclusion_masks[col] = invalid_mask
-                        inclusion_results.append({
-                            "Правило": f"Inclusion: {col}",
-                            "Колонка": col,
-                            "Нарушений": violations,
-                            "% брака": f"{(violations / len(df)) * 100:.2f}%",
-                            "Статус": "⚠️ Нарушено"
-                        })
+            inclusion_results, inclusion_masks = check_inclusion(df, inclusion_rules)
 
             # 7. Проверка ссылочной целостности
             progress.progress(0.70, text="Проверка ссылочной целостности...")
@@ -3807,54 +3787,6 @@ with tab_validation:
             # 8. Проверка качества текста
             progress.progress(0.80, text="Проверка качества текста...")
             text_results, text_masks = validate_text_quality(df, rules)
-
-            # 🔧 ОТЛАДКА: Сохраняем в session_state (чтобы не исчезла после перезагрузки)
-            debug_info = {
-                "df_shape": df.shape,
-                "columns": list(df.columns),
-                "country_col": None,
-                "is_sorted_manual": None,
-                "violations_manual": 0,
-                "sample_data": None,
-                "violations_list": []
-            }
-
-            # Проверяем, есть ли колонка Country (в любом регистре)
-            country_col = None
-            for c in df.columns:
-                if c.lower() == 'country':
-                    country_col = c
-                    break
-
-            debug_info["country_col"] = country_col
-
-            if country_col and 'Year' in df.columns:
-                # Показываем порядок данных для первой страны
-                first_country = df[country_col].iloc[0]
-                sample = df[df[country_col] == first_country][[country_col, 'Year']].head(25)
-                debug_info["sample_data"] = sample.to_dict('records')
-                
-                # ИСПРАВЛЕННАЯ ручная проверка сортировки
-                is_sorted_manual = True
-                violations_manual = 0
-                debug_info["violations_list"] = []
-
-                if country_col and 'Year' in df.columns:
-                    for country, group in df.groupby(country_col):
-                        # ИСПРАВЛЕНИЕ: Конвертируем Year в числовой тип для корректного сравнения
-                        years = pd.to_numeric(group['Year'], errors='coerce').dropna().tolist()
-                        
-                        for i in range(1, len(years)):
-                            if years[i] < years[i-1]:
-                                is_sorted_manual = False
-                                violations_manual += 1
-                                debug_info["violations_list"].append(f"{country}: {years[i-1]} → {years[i]}")
-                    
-                    debug_info["is_sorted_manual"] = is_sorted_manual
-                    debug_info["violations_manual"] = violations_manual
-
-            # Сохраняем отладку в session_state
-            st.session_state.debug_info = debug_info
 
             # 9. Проверка равномерности временного шага (ТОЛЬКО ОДИН ВЫЗОВ!)
             progress.progress(0.90, text="Проверка равномерности временного шага...")
@@ -3865,9 +3797,6 @@ with tab_validation:
                 df_for_validation, rules,
                 date_col=st.session_state.primary_date_col if st.session_state.get('primary_date_col') else None
             )
-
-            # Сохраняем результат regularity_sort_info для отладки
-            st.session_state.debug_info["regularity_sort_info"] = regularity_sort_info
 
             # 10. Проверка достаточности числа наблюдений
             progress.progress(0.95, text="Проверка достаточности числа наблюдений...")
@@ -3884,34 +3813,12 @@ with tab_validation:
 
             # 12. TS-специфичные проверки
             progress.progress(0.96, text="TS-специфичные проверки...")
-            ts_checks = {}
+            from validation.ts_checks import check_ts_properties
+
             if st.session_state.col_types.get("date") and st.session_state.col_types.get("num"):
                 date_col = st.session_state.col_types["date"][0]
                 num_col = st.session_state.col_types["num"][0]
-                df_ts = df.sort_values(date_col).set_index(date_col)[[num_col]].dropna()
-                if len(df_ts) >= 10:
-                    try:
-                        from statsmodels.tsa.stattools import adfuller
-                        adf_result = adfuller(df_ts[num_col].dropna())
-                        ts_checks["adf_pvalue"] = adf_result[1]
-                        ts_checks["is_stationary"] = adf_result[1] < 0.05
-                    except:
-                        ts_checks["adf_pvalue"] = None
-                        ts_checks["is_stationary"] = None
-
-                    freq = pd.infer_freq(df_ts.index)
-                    ts_checks["frequency"] = freq if freq else "Нерегулярная"
-
-                    try:
-                        if pd.api.types.is_datetime64_any_dtype(df_ts.index):
-                            gaps = df_ts.index.to_series().diff().dropna()
-                            ts_checks["max_gap"] = gaps.max() if len(gaps) > 0 else pd.Timedelta(0)
-                        else:
-                            ts_checks["max_gap"] = pd.Timedelta(0)
-                    except Exception:
-                        ts_checks["max_gap"] = pd.Timedelta(0)
-                else:
-                    ts_checks = {"error": "Недостаточно данных для TS-проверок"}
+                ts_checks = check_ts_properties(df, date_col, num_col)
             else:
                 ts_checks = {"error": "Не найдены колонки с датами и числовыми данными"}
 
