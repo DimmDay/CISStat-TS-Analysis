@@ -3035,160 +3035,151 @@ with tab_download:
 
                     # ── 1. ВЫЗОВ ЕДИНОЙ ФУНКЦИИ РАСЧЁТА ПАСПОРТА ──────────────────
                     if target_col and len(analysis_series) >= 30:
-                        try:
-                            props_v10 = calculate_ts_passport(
-                                analysis_series=analysis_series,
-                                df_filtered=df_filtered,
-                                ct_f=ct_f,
-                                target_col=target_col
-                            )
-                            props_v10['version'] = 'v1.0 (сырые данные)'
-                            
-                            # ── 2. ПРЕОБРАЗОВАНИЕ РЕЗУЛЬТАТА В ФОРМАТ ДЛЯ UI ─────────────
-                            results_data = []
-                            
-                            # Частота ряда
-                            freq = props_v10.get('frequency', 'N/A')
+                        props_v10 = calculate_ts_passport(
+                            analysis_series=analysis_series,
+                            df_filtered=df_filtered,
+                            ct_f=ct_f,
+                            target_col=target_col
+                        )
+                        props_v10['version'] = 'v1.0 (сырые данные)'
+                        
+                        # ── 2. ПРЕОБРАЗОВАНИЕ РЕЗУЛЬТАТА В ФОРМАТ ДЛЯ UI ─────────────
+                        results_data = []
+                        
+                        # Частота ряда
+                        freq = props_v10.get('frequency', 'N/A')
+                        results_data.append({
+                            "Свойство": "Частота ряда",
+                            "Метод": "pd.infer_freq()",
+                            "Описание": "Регулярность временного интервала",
+                            "Результат": f"✅ {freq}" if freq != 'N/A' else "⚠️ Нерегулярная"
+                        })
+                        
+                        # Стационарность (ADF)
+                        adf_p = props_v10.get('adf_pvalue', 1.0)
+                        is_stationary = adf_p < 0.05
+                        results_data.append({
+                            "Свойство": "Стационарность",
+                            "Метод": "ADF Test",
+                            "Описание": "H₀: Ряд нестационарен",
+                            "Результат": "✅ Стационарен" if is_stationary else "❌ Нестационарен"
+                        })
+                        
+                        # Детерминированность (R²)
+                        r_squared = props_v10.get('r_squared', 0.0)
+                        is_deterministic = r_squared >= 0.7
+                        results_data.append({
+                            "Свойство": "Детерминированность",
+                            "Метод": "R² тренда",
+                            "Описание": "R² ≥ 0.7 → сильный тренд",
+                            "Результат": f"{'✅ Детерминированный' if is_deterministic else '⚠️ Стохастический'} (R²={r_squared:.3f})"
+                        })
+                        
+                        # Автокорреляция (Ljung-Box)
+                        lb_p = props_v10.get('ljung_box_pvalue', 0.0)
+                        is_white_noise = lb_p > 0.05
+                        results_data.append({
+                            "Свойство": "Автокорреляция",
+                            "Метод": "Ljung-Box Test",
+                            "Описание": "H₀: Автокорреляция равна 0",
+                            "Результат": "✅ Белый шум" if is_white_noise else "⚠️ Есть автокорреляция"
+                        })
+                        
+                        # Нормальность (Jarque-Bera)
+                        jb_p = props_v10.get('jarque_bera_pvalue', 0.0)
+                        is_normal = jb_p > 0.05
+                        results_data.append({
+                            "Свойство": "Нормальность",
+                            "Метод": "Jarque-Bera Test",
+                            "Описание": "H₀: Распределение нормально",
+                            "Результат": "✅ Нормально" if is_normal else "⚠️ Отклонение от нормы"
+                        })
+                        
+                        # Направление тренда
+                        slope = props_v10.get('trend_slope', 0.0)
+                        trend_dir = "📈 Восходящий" if slope > 0 else "📉 Нисходящий" if slope < 0 else "➡️ Горизонтальный"
+                        results_data.append({
+                            "Свойство": "Направление тренда",
+                            "Метод": "OLS Linear Regression",
+                            "Описание": "Угол наклона линии тренда",
+                            "Результат": f"{trend_dir} (Slope={slope:.4f})"
+                        })
+                        
+                        # Корреляция признаков (если есть)
+                        if 'correlations' in props_v10:
+                            corr_result = props_v10['correlations']
                             results_data.append({
-                                "Свойство": "Частота ряда",
-                                "Метод": "pd.infer_freq()",
-                                "Описание": "Регулярность временного интервала",
-                                "Результат": f"✅ {freq}" if freq != 'N/A' else "⚠️ Нерегулярная"
+                                "Свойство": "Корреляция признаков",
+                                "Метод": "Pearson correlation",
+                                "Описание": "Линейная связь с другими признаками",
+                                "Результат": str(corr_result)
                             })
-                            
-                            # Стационарность (ADF)
-                            adf_p = props_v10.get('adf_pvalue', 1.0)
-                            is_stationary = adf_p < 0.05
-                            results_data.append({
-                                "Свойство": "Стационарность",
-                                "Метод": "ADF Test",
-                                "Описание": "H₀: Ряд нестационарен",
-                                "Результат": "✅ Стационарен" if is_stationary else "❌ Нестационарен"
-                            })
-                            
-                            # Детерминированность (R²)
-                            r_squared = props_v10.get('r_squared', 0.0)
-                            is_deterministic = r_squared >= 0.7
-                            results_data.append({
-                                "Свойство": "Детерминированность",
-                                "Метод": "R² тренда",
-                                "Описание": "R² ≥ 0.7 → сильный тренд",
-                                "Результат": f"{'✅ Детерминированный' if is_deterministic else '⚠️ Стохастический'} (R²={r_squared:.3f})"
-                            })
-                            
-                            # Автокорреляция (Ljung-Box)
-                            lb_p = props_v10.get('ljung_box_pvalue', 0.0)
-                            is_white_noise = lb_p > 0.05
-                            results_data.append({
-                                "Свойство": "Автокорреляция",
-                                "Метод": "Ljung-Box Test",
-                                "Описание": "H₀: Автокорреляция равна 0",
-                                "Результат": "✅ Белый шум" if is_white_noise else "⚠️ Есть автокорреляция"
-                            })
-                            
-                            # Нормальность (Jarque-Bera)
-                            jb_p = props_v10.get('jarque_bera_pvalue', 0.0)
-                            is_normal = jb_p > 0.05
-                            results_data.append({
-                                "Свойство": "Нормальность",
-                                "Метод": "Jarque-Bera Test",
-                                "Описание": "H₀: Распределение нормально",
-                                "Результат": "✅ Нормально" if is_normal else "⚠️ Отклонение от нормы"
-                            })
-                            
-                            # Направление тренда
-                            slope = props_v10.get('trend_slope', 0.0)
-                            trend_dir = "📈 Восходящий" if slope > 0 else "📉 Нисходящий" if slope < 0 else "➡️ Горизонтальный"
-                            results_data.append({
-                                "Свойство": "Направление тренда",
-                                "Метод": "OLS Linear Regression",
-                                "Описание": "Угол наклона линии тренда",
-                                "Результат": f"{trend_dir} (Slope={slope:.4f})"
-                            })
-                            
-                            # Корреляция признаков (если есть)
-                            if 'correlations' in props_v10:
-                                corr_result = props_v10['correlations']
-                                results_data.append({
-                                    "Свойство": "Корреляция признаков",
-                                    "Метод": "Pearson correlation",
-                                    "Описание": "Линейная связь с другими признаками",
-                                    "Результат": corr_result
-                                })
-                            
-                            # Сезонность (сила)
-                            seasonal_strength = props_v10.get('seasonal_strength', 0.0)
-                            is_seasonal = seasonal_strength > 0.6
-                            results_data.append({
-                                "Свойство": "Сезонность (сила)",
-                                "Метод": "STL Decomposition",
-                                "Описание": "S > 0.6 = сильная сезонность",
-                                "Результат": f"{'✅ Сильная' if is_seasonal else '⚠️ Слабая/Нет'} (S={seasonal_strength:.2f})"
-                            })
-                            
-                            # Сезонные периоды (ACF)
-                            acf_periods = props_v10.get('acf_periods', [])
-                            results_data.append({
-                                "Свойство": "Сезонные периоды (ACF)",
-                                "Метод": "Автокорреляционная функция",
-                                "Описание": "Лаги с корреляцией выше 95% ДИ",
-                                "Результат": f"✅ {', '.join(map(str, acf_periods))}" if acf_periods else "⚠️ Не обнаружены"
-                            })
-                            
-                            # Долгая память (Hurst)
-                            hurst_val = props_v10.get('hurst_exponent', 0.5)
-                            memory_type = "🔵 Антиперсистентность" if hurst_val < 0.45 else ("🔴 Устойчивый тренд" if hurst_val > 0.55 else "⚪ Случайное блуждание")
-                            results_data.append({
-                                "Свойство": "Долгая память",
-                                "Метод": "Hurst Exponent",
-                                "Описание": "H=0.5 (Random Walk), H>0.5 (Trend), H<0.5 (Mean Reverting)",
-                                "Результат": f"{memory_type} (H={hurst_val:.2f})"
-                            })
-                            
-                            # FFT периоды
-                            fft_periods = props_v10.get('fft_periods', [])
-                            results_data.append({
-                                "Свойство": "Доминирующие частоты (FFT)",
-                                "Метод": "Быстрое преобразование Фурье",
-                                "Описание": "Периоды с максимальной амплитудой",
-                                "Результат": f"✅ {', '.join([f'{p:.1f}' for p in fft_periods])}" if fft_periods else "⚠️ Не обнаружены"
-                            })
-                            
-                            # Periodogram периоды
-                            periodogram_periods = props_v10.get('periodogram_periods', [])
-                            results_data.append({
-                                "Свойство": "Значимые периоды (Периодограмма)",
-                                "Метод": "Periodogram + Hann window",
-                                "Описание": "Частоты с мощностью выше медианы × 2",
-                                "Результат": f"✅ {', '.join([f'{p:.1f}' for p in periodogram_periods])}" if periodogram_periods else "⚠️ Не обнаружены"
-                            })
-                            
-                            # Wavelet масштабы
-                            wavelet_scales = props_v10.get('wavelet_scales', [])
-                            results_data.append({
-                                "Свойство": "Доминирующие масштабы (Wavelet)",
-                                "Метод": "Continuous Wavelet Transform",
-                                "Описание": "Масштабы с максимальной мощностью",
-                                "Результат": f"✅ {', '.join(map(str, wavelet_scales))}" if wavelet_scales else "⚠️ Не обнаружены"
-                            })
-                            
-                            # ── 3. СОЗДАНИЕ ДАТАФРЕЙМА (ОДИН РАЗ) ────────────────────────
-                            df_results = pd.DataFrame(results_data)
-                            
-                            # ── 4. СОХРАНЕНИЕ В SESSION_STATE ────────────────────────────
-                            st.session_state.ts_props_v10 = props_v10
-                            st.session_state.ts_props_v10_target_col = target_col
-                            
-                        except Exception as e:
-                            st.error(f"❌ Ошибка расчёта паспорта свойств: {e}")
-                            df_results = pd.DataFrame()
-                    else:
-                        df_results = pd.DataFrame()
-
-                    # ── 5. ВЫВОД ТАБЛИЦЫ ─────────────────────────────────────────
-                    if not df_results.empty:
+                        
+                        # Сезонность (сила)
+                        seasonal_strength = props_v10.get('seasonal_strength', 0.0)
+                        is_seasonal = seasonal_strength > 0.6
+                        results_data.append({
+                            "Свойство": "Сезонность (сила)",
+                            "Метод": "STL Decomposition",
+                            "Описание": "S > 0.6 = сильная сезонность",
+                            "Результат": f"{'✅ Сильная' if is_seasonal else '⚠️ Слабая/Нет'} (S={seasonal_strength:.2f})"
+                        })
+                        
+                        # Сезонные периоды (ACF)
+                        acf_periods = props_v10.get('acf_periods', [])
+                        results_data.append({
+                            "Свойство": "Сезонные периоды (ACF)",
+                            "Метод": "Автокорреляционная функция",
+                            "Описание": "Лаги с корреляцией выше 95% ДИ",
+                            "Результат": f"✅ {', '.join(map(str, acf_periods))}" if acf_periods else "⚠️ Не обнаружены"
+                        })
+                        
+                        # Долгая память (Hurst)
+                        hurst_val = props_v10.get('hurst_exponent', 0.5)
+                        memory_type = "🔵 Антиперсистентность" if hurst_val < 0.45 else ("🔴 Устойчивый тренд" if hurst_val > 0.55 else "⚪ Случайное блуждание")
+                        results_data.append({
+                            "Свойство": "Долгая память",
+                            "Метод": "Hurst Exponent",
+                            "Описание": "H=0.5 (Random Walk), H>0.5 (Trend), H<0.5 (Mean Reverting)",
+                            "Результат": f"{memory_type} (H={hurst_val:.2f})"
+                        })
+                        
+                        # FFT периоды
+                        fft_periods = props_v10.get('fft_periods', [])
+                        results_data.append({
+                            "Свойство": "Доминирующие частоты (FFT)",
+                            "Метод": "Быстрое преобразование Фурье",
+                            "Описание": "Периоды с максимальной амплитудой",
+                            "Результат": f"✅ {', '.join([f'{p:.1f}' for p in fft_periods])}" if fft_periods else "⚠️ Не обнаружены"
+                        })
+                        
+                        # Periodogram периоды
+                        periodogram_periods = props_v10.get('periodogram_periods', [])
+                        results_data.append({
+                            "Свойство": "Значимые периоды (Периодограмма)",
+                            "Метод": "Periodogram + Hann window",
+                            "Описание": "Частоты с мощностью выше медианы × 2",
+                            "Результат": f"✅ {', '.join([f'{p:.1f}' for p in periodogram_periods])}" if periodogram_periods else "⚠️ Не обнаружены"
+                        })
+                        
+                        # Wavelet масштабы
+                        wavelet_scales = props_v10.get('wavelet_scales', [])
+                        results_data.append({
+                            "Свойство": "Доминирующие масштабы (Wavelet)",
+                            "Метод": "Continuous Wavelet Transform",
+                            "Описание": "Масштабы с максимальной мощностью",
+                            "Результат": f"✅ {', '.join(map(str, wavelet_scales))}" if wavelet_scales else "⚠️ Не обнаружены"
+                        })
+                        
+                        # ── 3. СОЗДАНИЕ ДАТАФРЕЙМА ────────────────────────
+                        df_results = pd.DataFrame(results_data)
+                        
+                        # ── 4. СОХРАНЕНИЕ В SESSION_STATE ────────────────────────────
+                        st.session_state.ts_props_v10 = props_v10
+                        st.session_state.ts_props_v10_target_col = target_col
+                        
+                        # ── 5. ВЫВОД ТАБЛИЦЫ ─────────────────────────────────────────
                         n_rows = len(df_results)
-                        # ~40px на строку + 45px на шапку таблицы, ограничиваем диапазон 200–600px
                         table_height = min(600, max(200, 45 + n_rows * 40))
                         
                         st.dataframe(
@@ -3203,12 +3194,9 @@ with tab_download:
                                 "Результат": st.column_config.TextColumn("✅ РЕЗУЛЬТАТ", width="medium")
                             }
                         )
-                    else:
-                        st.warning("⚠️ Недостаточно данных для расчёта паспорта свойств (нужно ≥ 30 точек)")
-
 
                         # ────────────────────────────────────────────────────────────
-                        #  📊 ПРЕДВАРИТЕЛЬНЫЕ РЕКОМЕНДАЦИИ ПО МОДЕЛИРОВАНИЮ (Объединённый блок)
+                        #  📊 ПРЕДВАРИТЕЛЬНЫЕ РЕКОМЕНДАЦИИ ПО МОДЕЛИРОВАНИЮ (B.9)
                         # ────────────────────────────────────────────────────────────
                         st.divider()
                         st.markdown("###  Предварительные рекомендации по моделированию")
@@ -3216,130 +3204,122 @@ with tab_download:
                         recommendations = []
                         model_suggestions = []
 
+                        # Явно извлекаем метрики из паспорта
+                        is_stationary = adf_p < 0.05
+                        is_white_noise = lb_p > 0.05
+                        r_squared = props_v10.get('r_squared', 0.0)
+                        is_heteroscedastic = props_v10.get('is_heteroscedastic', False)
+                        acf_seasonality = props_v10.get('acf_periods', [])
+                        fft_dominant = props_v10.get('fft_periods', [])
+                        periodogram_periods = props_v10.get('periodogram_periods', [])
+                        wavelet_scales = props_v10.get('wavelet_scales', [])
+                        is_seasonal = seasonal_strength > 0.6
+                        strength_seasonality = props_v10.get('seasonal_strength', 0.0)
+                        inferred_freq = props_v10.get('frequency', None)
+                        target_corr = props_v10.get('correlations', {}).get('top3', {})
+
                         # ═══════════════════════════════════════════════════════════
-                        #  1. БАЗОВЫЕ СВОЙСТВА (стационарность, белый шум, тренд)
+                        #  1. БАЗОВЫЕ СВОЙСТВА
                         # ═══════════════════════════════════════════════════════════
+                        if is_stationary and is_white_noise:
+                            recommendations.append("• Ряд похож на белый шум → рассмотрите внешние факторы или агрегацию")
+                            model_suggestions.append("Exponential Smoothing, Naive, External regressors")
+                        elif is_stationary and not is_white_noise:
+                            recommendations.append("• Ряд стационарен с автокорреляцией → подходит ARIMA/SARIMA")
+                            model_suggestions.append("ARIMA(p,d,q), SARIMA с подбором порядков")
+                        elif not is_stationary:
+                            recommendations.append("• Ряд нестационарен → примените дифференцирование (diff) или детрендирование")
+                            model_suggestions.append("ARIMA (с d≥1), Detrending + ARMA, Prophet")
 
-                        # Стационарность + белый шум
-                        if 'is_stationary' in locals() and 'is_white_noise' in locals():
-                            if is_stationary and is_white_noise:
-                                recommendations.append("• Ряд похож на белый шум → рассмотрите внешние факторы или агрегацию")
-                                model_suggestions.append("Exponential Smoothing, Naive, External regressors")
-                            elif is_stationary and not is_white_noise:
-                                recommendations.append("• Ряд стационарен с автокорреляцией → подходит ARIMA/SARIMA")
-                                model_suggestions.append("ARIMA(p,d,q), SARIMA с подбором порядков")
-                            elif not is_stationary:
-                                recommendations.append("• Ряд нестационарен → примените дифференцирование (diff) или детрендирование")
-                                model_suggestions.append("ARIMA (с d≥1), Detrending + ARMA, Prophet")
+                        if r_squared >= 0.7:
+                            recommendations.append(f"• Сильный детерминированный тренд (R²={r_squared:.2f}) → учтите тренд в модели")
+                            model_suggestions.append("Linear/Polynomial Trend + ARMA, Prophet with trend")
 
-                        # Детерминированность тренда
-                        if 'r_squared' in locals():
-                            if r_squared >= 0.7:
-                                recommendations.append(f"• Сильный детерминированный тренд (R²={r_squared:.2f}) → учтите тренд в модели")
-                                model_suggestions.append("Linear/Polynomial Trend + ARMA, Prophet with trend")
-
-                        # Гетероскедастичность
-                        if 'is_heteroscedastic' in locals() and is_heteroscedastic:
+                        if is_heteroscedastic:
                             recommendations.append("• Обнаружена гетероскедастичность → рассмотрите модели с изменяющейся дисперсией")
                             model_suggestions.append("GARCH, ARIMA-GARCH, Log-transform")
 
                         # ═══════════════════════════════════════════════════════════
-                        #  2. СПЕКТРАЛЬНЫЕ СВОЙСТВА (сезонность, частоты, циклы)
+                        #  2. СПЕКТРАЛЬНЫЕ СВОЙСТВА
                         # ═══════════════════════════════════════════════════════════
-
-                        # Сезонность из ACF
-                        if 'acf_seasonality' in locals() and acf_seasonality:
+                        if acf_seasonality:
                             m_val = acf_seasonality[0]
                             recommendations.append(f"• **Сезонность из ACF:** используйте SARIMA с **m={m_val}**")
                             model_suggestions.append(f"SARIMA(..., seasonal_order=(..., m={m_val}))")
 
-                        # Доминирующие частоты из FFT
-                        if 'fft_dominant' in locals() and fft_dominant:
+                        if fft_dominant:
                             periods_str = ', '.join([f'{p:.1f}' for p in fft_dominant[:3]])
                             recommendations.append(f"• **Fourier features:** добавьте гармоники с периодами [{periods_str}]")
                             model_suggestions.append(f"ML-модели с признаками: sin(2πt/P), cos(2πt/P) для P∈[{periods_str}]")
 
-                        # Дополнительные периоды из периодограммы
-                        if 'periodogram_periods' in locals() and periodogram_periods:
-                            unique_periods = [p for p in periodogram_periods if p not in (fft_dominant if 'fft_dominant' in locals() else [])]
+                        if periodogram_periods:
+                            unique_periods = [p for p in periodogram_periods if p not in fft_dominant]
                             if unique_periods:
                                 recommendations.append(f"• **Доп. периоды (Periodogram):** {unique_periods[:2]}")
 
-                        # Изменение циклов во времени (Wavelet)
-                        if 'wavelet_scales' in locals() and wavelet_scales:
+                        if wavelet_scales:
                             recommendations.append("• **Нестационарность частот:** вейвлет показал изменение циклов во времени")
                             model_suggestions.append("Time-Varying Parameter (TVP) models, State Space, Adaptive filtering")
 
-                        # Сила сезонности из STL
-                        if 'is_seasonal' in locals() and is_seasonal:
+                        if is_seasonal:
                             recommendations.append(f"• **Сильная сезонность (STL):** S={strength_seasonality:.2f} → явно моделируйте сезонную компоненту")
                             model_suggestions.append("STL decomposition + ARIMA, Prophet with seasonality")
 
                         # ── ЧАСТОТА РЯДА ────────────────────────────────────────
-                        if 'inferred_freq' in locals():
-                            if inferred_freq:
-                                freq_code = inferred_freq.split('-')[0] if '-' in inferred_freq else inferred_freq
-                                recommendations.append(f"• **Частота ряда:** {freq_code} → подходит для классических TS-моделей")
-
-                                # Специфичные рекомендации по частоте
-                                if freq_code in ['D', 'B', 'H']:  # Дневные/часовые
-                                    model_suggestions.append("Prophet (учёт праздников), LSTM для высокочастотных данных")
-                                elif freq_code in ['W', 'M', 'Q']:  # Недельные/месячные/квартальные
-                                    model_suggestions.append("SARIMA, ETS, TBATS для сезонных рядов")
-                                elif freq_code == 'Y':  # Годовые
-                                    model_suggestions.append("Простые трендовые модели, сравнение годовых значений")
-                            else:
-                                recommendations.append("• **Нерегулярная частота** → требуется ресемплинг или модели для неравномерных рядов")
-                                model_suggestions.append("Interpolation + ARIMA, Gaussian Processes, State Space Models")
+                        if inferred_freq and inferred_freq != 'N/A':
+                            freq_code = inferred_freq.split('-')[0] if '-' in inferred_freq else inferred_freq
+                            recommendations.append(f"• **Частота ряда:** {freq_code} → подходит для классических TS-моделей")
+                            if freq_code in ['D', 'B', 'H']:
+                                model_suggestions.append("Prophet (учёт праздников), LSTM для высокочастотных данных")
+                            elif freq_code in ['W', 'M', 'Q']:
+                                model_suggestions.append("SARIMA, ETS, TBATS для сезонных рядов")
+                            elif freq_code == 'Y':
+                                model_suggestions.append("Простые трендовые модели, сравнение годовых значений")
+                        else:
+                            recommendations.append("• **Нерегулярная частота** → требуется ресемплинг или модели для неравномерных рядов")
+                            model_suggestions.append("Interpolation + ARIMA, Gaussian Processes, State Space Models")
 
                         # ── КОРРЕЛЯЦИЯ ЧИСЛОВЫХ ПРИЗНАКОВ ─────────────────────
-                        if 'target_corr' in locals() and target_corr is not None:
-                            # Анализ сильных корреляций целевой метрики
-                            strong_pos = target_corr[target_corr > 0.7]
-                            strong_neg = target_corr[target_corr < -0.7]
+                        # target_corr — это dict {col_name: corr_value}
+                        if target_corr and isinstance(target_corr, dict):
+                            strong_pos = {k: v for k, v in target_corr.items() if v > 0.7}
+                            strong_neg = {k: v for k, v in target_corr.items() if v < -0.7}
                             multicollinear = []
-
-                            # Проверка мультиколлинеарности между признаками
-                            if len(ct_f["num"]) >= 2:
-                                corr_matrix = df_filtered[ct_f["num"]].corr()
-                                for i in range(len(corr_matrix.columns)):
-                                    for j in range(i+1, len(corr_matrix.columns)):
-                                        if abs(corr_matrix.iloc[i, j]) > 0.85:
-                                            multicollinear.append(f"{corr_matrix.columns[i]} ↔ {corr_matrix.columns[j]}")
-
-                            if len(strong_pos) > 0 or len(strong_neg) > 0:
-                                top_feat = list(strong_pos.index) + list(strong_neg.index)
-                                recommendations.append(f"• **Сильные предикторы:** {', '.join(top_feat[:3])} (|r|>0.7) → используйте как основные фичи")
-                                model_suggestions.append("Linear Regression, Random Forest, XGBoost с отбором признаков")
 
                             # Проверка мультиколлинеарности между признаками
                             if len(ct_f["num"]) >= 2:
                                 multicollinear_links = find_significant_correlations(df_filtered, ct_f["num"], threshold=0.85)
                                 multicollinear = [item['pair'] for item in multicollinear_links]
 
-                            # Если все корреляции слабые
-                            if len(strong_pos) == 0 and len(strong_neg) == 0 and len(multicollinear) == 0:
+                            if strong_pos or strong_neg:
+                                top_feat = list(strong_pos.keys()) + list(strong_neg.keys())
+                                recommendations.append(f"• **Сильные предикторы:** {', '.join(top_feat[:3])} (|r|>0.7) → используйте как основные фичи")
+                                model_suggestions.append("Linear Regression, Random Forest, XGBoost с отбором признаков")
+
+                            if multicollinear:
+                                recommendations.append(f"• **Мультиколлинеарность:** {multicollinear[0]} (|r|>0.85) → риск нестабильности оценок")
+                                model_suggestions.append("PCA, Ridge/Lasso регуляризация, удаление одного из коррелированных признаков")
+
+                            if not strong_pos and not strong_neg and not multicollinear:
                                 recommendations.append("• **Слабые линейные связи** → рассмотрите нелинейные модели или инженерные признаки")
                                 model_suggestions.append("Polynomial features, Interaction terms, Neural Networks, Gradient Boosting")
 
                         # ═══════════════════════════════════════════════════════════
                         #  4. ОБЪЕДИНЁННЫЙ ВЫВОД РЕКОМЕНДАЦИЙ
                         # ═══════════════════════════════════════════════════════════
-
                         if recommendations:
                             st.markdown("**Список рекомендаций:**")
                             for i, rec in enumerate(recommendations, 1):
-                                # Цветовая индикация приоритета
                                 if "Сильная" in rec or "мультиколлинеарность" in rec.lower():
-                                    st.warning(rec)  # Важные предупреждения
+                                    st.warning(rec)
                                 elif "Частота" in rec or "предикторы" in rec:
-                                    st.info(rec)  # Информационные
+                                    st.info(rec)
                                 else:
-                                    st.success(rec)  # Общие рекомендации
+                                    st.success(rec)
 
                             if model_suggestions:
                                 st.markdown("**Предлагаемые модели (по приоритету):**")
-                                unique_models = list(dict.fromkeys(model_suggestions))  # Убираем дубли
+                                unique_models = list(dict.fromkeys(model_suggestions))
                                 for i, model in enumerate(unique_models, 1):
                                     st.markdown(f"{i}. {model}")
                         else:
@@ -3347,7 +3327,7 @@ with tab_download:
                             st.info("• Exponential Smoothing (Holt-Winters)\n• Naive / Seasonal Naive\n• Linear Regression с лагами")
 
                         # ═══════════════════════════════════════════════════════════
-                        #  5. МЕТОДОЛОГИЧЕСКОЕ ПОЯСНЕНИЕ (обновлённое)
+                        #  5. МЕТОДОЛОГИЧЕСКОЕ ПОЯСНЕНИЕ
                         # ═══════════════════════════════════════════════════════════
                         st.markdown("""
                         <div style='color: #000000; font-size: 14px; background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 3px solid #3b82f6;'>
@@ -3369,12 +3349,15 @@ with tab_download:
                         </div>
                         """, unsafe_allow_html=True)
 
+                    else:
+                        st.warning("⚠️ Недостаточно данных для расчёта паспорта свойств (нужно ≥ 30 точек)")
 
                 except Exception as e:
                     st.error(f"Ошибка при анализе свойств: {e}")
-                    st.exception(e)
-    else:
-        st.warning("⚠️ Нет числовых колонок для анализа.")
+                    import traceback
+                    st.code(traceback.format_exc(), language="python")
+        else:
+            st.warning("⚠️ Нет числовых колонок для анализа.")
 
 
     # ─────────────────────────────────────────────────────────────
