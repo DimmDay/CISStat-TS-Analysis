@@ -260,3 +260,98 @@ class TestComputeDuplicateMask:
         mask = compute_duplicate_mask(df, is_panel_data=False, check_cols=None)
         
         assert len(mask) == 0
+
+
+class TestComputeInclusionViolations:
+    """Тесты для compute_inclusion_violations."""
+
+    def test_no_violations(self):
+        """Все значения в справочнике."""
+        from validation.inclusion import compute_inclusion_violations
+        
+        df = pd.DataFrame({
+            'country': ['Russia', 'USA', 'China'],
+            'value': [1, 2, 3]
+        })
+        rules = {'country': ['Russia', 'USA', 'China', 'Germany']}
+        
+        violations = compute_inclusion_violations(df, rules)
+        
+        assert len(violations) == 0
+
+    def test_with_violations(self):
+        """Есть значения вне справочника."""
+        from validation.inclusion import compute_inclusion_violations
+        
+        df = pd.DataFrame({
+            'country': ['Russia', 'USA', 'France'],
+            'value': [1, 2, 3]
+        })
+        rules = {'country': ['Russia', 'USA', 'China']}
+        
+        violations = compute_inclusion_violations(df, rules)
+        
+        assert len(violations) == 1
+        assert violations[0]['column'] == 'country'
+        assert violations[0]['count'] == 1
+        assert 'France' in violations[0]['invalid_values']
+        assert 'mask' in violations[0]
+
+    def test_multiple_columns(self):
+        """Нарушения в нескольких колонках."""
+        from validation.inclusion import compute_inclusion_violations
+        
+        df = pd.DataFrame({
+            'country': ['Russia', 'France'],
+            'status': ['Active', 'Unknown'],
+            'value': [1, 2]
+        })
+        rules = {
+            'country': ['Russia', 'USA'],
+            'status': ['Active', 'Inactive']
+        }
+        
+        violations = compute_inclusion_violations(df, rules)
+        
+        assert len(violations) == 2
+
+    def test_empty_rules(self):
+        """Пустые правила."""
+        from validation.inclusion import compute_inclusion_violations
+        
+        df = pd.DataFrame({'a': [1, 2, 3]})
+        violations = compute_inclusion_violations(df, {})
+        
+        assert len(violations) == 0
+
+    def test_nan_values_ignored(self):
+        """NaN значения игнорируются."""
+        from validation.inclusion import compute_inclusion_violations
+        
+        df = pd.DataFrame({
+            'country': ['Russia', None, 'USA'],
+            'value': [1, 2, 3]
+        })
+        rules = {'country': ['Russia', 'USA']}
+        
+        violations = compute_inclusion_violations(df, rules)
+        
+        assert len(violations) == 0  # NaN не считается нарушением
+
+    def test_mask_structure(self):
+        """Маска должна быть pd.Series с правильным индексом."""
+        from validation.inclusion import compute_inclusion_violations
+        
+        df = pd.DataFrame({
+            'country': ['Russia', 'France', 'USA'],
+            'value': [1, 2, 3]
+        })
+        rules = {'country': ['Russia', 'USA']}
+        
+        violations = compute_inclusion_violations(df, rules)
+        
+        assert len(violations) == 1
+        mask = violations[0]['mask']
+        assert isinstance(mask, pd.Series)
+        assert len(mask) == len(df)
+        assert mask.tolist() == [False, True, False]

@@ -5485,24 +5485,10 @@ with tab_validation:
                             inclusion_rules[col] = df_work[col].dropna().unique().tolist()
 
                 # Функция для вычисления нарушений
-                def _compute_inclusion_violations(df_to_check: pd.DataFrame) -> list:
-                    """Вычисляет нарушения inclusion для DataFrame."""
-                    violations = []
-                    for col, allowed_vals in inclusion_rules.items():
-                        if col in df_to_check.columns:
-                            invalid_mask = ~df_to_check[col].isin(allowed_vals) & df_to_check[col].notna()
-                            if invalid_mask.any():
-                                invalid_values = df_to_check.loc[invalid_mask, col].unique()
-                                violations.append({
-                                    'column': col,
-                                    'invalid_values': invalid_values,
-                                    'count': int(invalid_mask.sum()),
-                                    'mask': invalid_mask
-                                })
-                    return violations
+                from validation.inclusion import compute_inclusion_violations
 
                 # Поиск нарушений inclusion
-                inclusion_violations = _compute_inclusion_violations(df_work)
+                inclusion_violations = compute_inclusion_violations(df_work, inclusion_rules)
 
                 if not inclusion_violations:
                     st.success("✅ Нарушений принадлежности не обнаружено")
@@ -6510,7 +6496,7 @@ with tab_validation:
             # КНОПКА ИСПРАВЛЕНИЯ
             c_fix1, c_fix2 = st.columns([1, 4])
             with c_fix1:
-                if st.button("🔧 Отсортировать по дате", type="primary", use_container_width=True,
+                if st.button("Отсортировать по дате", type="primary", use_container_width=True,
                             key="btn_sort_for_regularity"):
                     if sort_group_col and sort_group_col in st.session_state.df.columns:
                         st.session_state.df = st.session_state.df.sort_values(
@@ -6539,7 +6525,7 @@ with tab_validation:
                     st.rerun()
             
             st.info(
-                "💡 **Рекомендация:** Нажмите кнопку **'🔧 Отсортировать по дате'**, "
+                "💡 **Рекомендация:** Нажмите кнопку **'Отсортировать по дате'**, "
                 "затем перезапустите валидацию. После сортировки проверка регулярности "
                 "покажет корректные результаты."
             )
@@ -6571,7 +6557,7 @@ with tab_validation:
                     st.error(f"⚠️ **Данные не отсортированы!** Обнаружено {sort_violations_pipeline} нарушений порядка.")
                     st.warning(
                         "Пайплайн обработки нарушений **невозможен** на неупорядоченных данных. "
-                        "Сначала нажмите кнопку **'🔧 Отсортировать по дате'** в карточке выше, "
+                        "Сначала нажмите кнопку **'Отсортировать по дате'** в карточке выше, "
                         "затем перезапустите валидацию."
                     )
                     if sort_group_col_pipeline:
@@ -9262,7 +9248,7 @@ with tab_preprocessing:
             # КНОПКА ИСПРАВЛЕНИЯ
             c_fix1, c_fix2 = st.columns([1, 4])
             with c_fix1:
-                if st.button("🔧 Отсортировать по дате", type="primary", use_container_width=True, 
+                if st.button("Отсортировать по дате", type="primary", use_container_width=True, 
                             key="btn_sort_for_regularity_preprocessing"):
                     if group_col:
                         st.session_state.df = st.session_state.df.sort_values(

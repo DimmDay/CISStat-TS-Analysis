@@ -41,3 +41,49 @@ def check_inclusion(
                 })
     
     return results, masks
+
+
+def compute_inclusion_violations(
+    df: pd.DataFrame, 
+    inclusion_rules: Dict[str, List]
+) -> List[Dict]:
+    """
+    Вычисляет нарушения принадлежности к справочникам для DataFrame.
+    
+    Args:
+        df: DataFrame для проверки
+        inclusion_rules: Словарь {колонка: [допустимые_значения]}
+        
+    Returns:
+        Список словарей с нарушениями:
+        [
+            {
+                'column': str,
+                'invalid_values': array,
+                'count': int,
+                'mask': pd.Series
+            },
+            ...
+        ]
+        
+    Examples:
+        >>> import pandas as pd
+        >>> df = pd.DataFrame({'country': ['Russia', 'France']})
+        >>> rules = {'country': ['Russia', 'USA']}
+        >>> violations = compute_inclusion_violations(df, rules)
+        >>> len(violations)
+        1
+    """
+    violations = []
+    for col, allowed_vals in inclusion_rules.items():
+        if col in df.columns:
+            invalid_mask = ~df[col].isin(allowed_vals) & df[col].notna()
+            if invalid_mask.any():
+                invalid_values = df.loc[invalid_mask, col].unique()
+                violations.append({
+                    'column': col,
+                    'invalid_values': invalid_values,
+                    'count': int(invalid_mask.sum()),
+                    'mask': invalid_mask
+                })
+    return violations
