@@ -5159,16 +5159,10 @@ with tab_validation:
                         st.session_state.df_uniqueness_work = df_uniq.copy()
                     df_work = st.session_state.df_uniqueness_work
 
-                    # Функция для вычисления маски дубликатов (пересчитывается каждый раз)
-                    def _compute_duplicate_mask(df_to_check: pd.DataFrame) -> pd.Series:
-                        """Вычисляет маску дубликатов с учётом типа данных."""
-                        if is_panel_data:
-                            return df_to_check.duplicated(subset=check_cols, keep=False)
-                        else:
-                            return df_to_check.duplicated(keep=False)
+                    from validation.uniqueness import compute_duplicate_mask
 
                     # Вычисляем маску (пересчитывается при каждом запуске)
-                    duplicate_mask = _compute_duplicate_mask(df_work)
+                    duplicate_mask = compute_duplicate_mask(df_work, is_panel_data, check_cols)
                     duplicate_indices = df_work[duplicate_mask].index.tolist()
 
                     # Фильтр отображения

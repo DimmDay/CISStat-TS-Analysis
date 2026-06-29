@@ -202,3 +202,61 @@ class TestCheckTsProperties:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+# tests/unit/test_validation_checks.py - добавить к существующим тестам
+
+class TestComputeDuplicateMask:
+    """Тесты для compute_duplicate_mask."""
+
+    def test_cross_sectional_data(self):
+        """Кросс-секционные данные (не панельные)."""
+        from validation.uniqueness import compute_duplicate_mask
+        
+        df = pd.DataFrame({
+            'a': [1, 1, 2],
+            'b': [3, 3, 4]
+        })
+        
+        mask = compute_duplicate_mask(df, is_panel_data=False, check_cols=None)
+        
+        assert mask.sum() == 2  # обе строки с дубликатами
+        assert mask.tolist() == [True, True, False]
+
+    def test_panel_data(self):
+        """Панельные данные (проверка по subset)."""
+        from validation.uniqueness import compute_duplicate_mask
+        
+        df = pd.DataFrame({
+            'country': ['Russia', 'Russia', 'USA'],
+            'year': [2020, 2020, 2020],
+            'value': [1, 2, 3]
+        })
+        
+        mask = compute_duplicate_mask(df, is_panel_data=True, check_cols=['country', 'year'])
+        
+        assert mask.sum() == 2  # обе строки Russia-2020
+        assert mask.tolist() == [True, True, False]
+
+    def test_no_duplicates(self):
+        """Нет дубликатов."""
+        from validation.uniqueness import compute_duplicate_mask
+        
+        df = pd.DataFrame({
+            'a': [1, 2, 3],
+            'b': [4, 5, 6]
+        })
+        
+        mask = compute_duplicate_mask(df, is_panel_data=False, check_cols=None)
+        
+        assert mask.sum() == 0
+        assert mask.tolist() == [False, False, False]
+
+    def test_empty_dataframe(self):
+        """Пустой DataFrame."""
+        from validation.uniqueness import compute_duplicate_mask
+        
+        df = pd.DataFrame()
+        mask = compute_duplicate_mask(df, is_panel_data=False, check_cols=None)
+        
+        assert len(mask) == 0
