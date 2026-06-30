@@ -1,0 +1,920 @@
+                        # -- 5. ГЕНЕРАЦИЯ EXCEL (с листом рекомендаций) -----------------
+
+                        wb = Workbook()
+                        ws = wb.active
+                        ws.title = "1_Паспорт свойств"
+
+                        header_font = Font(bold=True, size=12, color="FFFFFF")
+                        header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+                        title_font = Font(bold=True, size=16)
+                        footer_font = Font(bold=True, color="0369A1")
+                        footer_fill = PatternFill(start_color="E0F2FE", end_color="E0F2FE", fill_type="solid")
+                        green_fill = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
+                        yellow_fill = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
+                        red_fill = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
+                        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+
+                        row = 1
+                        ws.merge_cells(f"A{row}:D{row}")
+                        cell = ws.cell(row=row, column=1, value=f"Предварительный отчет о свойствах признака: {report_col}")
+                        cell.font = title_font
+                        cell.alignment = Alignment(horizontal='center')
+                        row += 2
+
+                        ws.cell(row=row, column=1, value=f"Исследуемый параметр: {report_col}").font = header_font
+                        ws.cell(row=row, column=3, value=f"Дата: {dt_now.now().strftime('%d.%m.%Y %H:%M')}").font = header_font
+                        row += 2
+
+                        def write_table(data_dict, start_row, title):
+                            ws.merge_cells(f"A{start_row}:B{start_row}")
+                            cell = ws.cell(row=start_row, column=1, value=title)
+                            cell.font = header_font
+                            cell.fill = header_fill
+                            cell.alignment = Alignment(horizontal='center')
+                            start_row += 1
+                            ws.cell(row=start_row, column=1, value="Параметр").font = Font(bold=True)
+                            ws.cell(row=start_row, column=2, value="Значение").font = Font(bold=True)
+                            start_row += 1
+                            for k, v in data_dict.items():
+                                c1, c2 = ws.cell(row=start_row, column=1, value=k), ws.cell(row=start_row, column=2, value=v)
+                                c1.border, c2.border = thin_border, thin_border
+                                start_row += 1
+                            return start_row + 1
+
+                        row = write_table(tech_info, row, "Техническая информация")
+                        row = write_table(dist_stats, row, "Статистики распределения")
+
+                        ws.merge_cells(f"A{row}:C{row}")
+                        cell = ws.cell(row=row, column=1, value="Итоговый паспорт свойств")
+                        cell.font, cell.fill, cell.alignment = header_font, header_fill, Alignment(horizontal='center')
+                        row += 1
+
+                        ws.cell(row=row, column=1, value="Свойство").font = Font(bold=True)
+                        ws.cell(row=row, column=2, value="Метод").font = Font(bold=True)
+                        ws.cell(row=row, column=3, value="Результат").font = Font(bold=True)
+                        row += 1
+
+                        for item in ts_passport:
+                            c1, c2, c3 = ws.cell(row=row, column=1, value=item["property"]), ws.cell(row=row, column=2, value=item["method"]), ws.cell(row=row, column=3, value=item["result"])
+                            c1.border, c2.border, c3.border = thin_border, thin_border, thin_border
+                            if "?" in item["result"]: c3.fill = green_fill
+                            elif "??" in item["result"]: c3.fill = yellow_fill
+                            elif "?" in item["result"]: c3.fill = red_fill
+                            row += 1
+
+                        # ?? НОВЫЙ ЛИСТ: РЕКОМЕНДАЦИИ ПО МОДЕЛЯМ
+                        ws_rec = wb.create_sheet("2_Рекомендации")
+                        ws_rec.title = "2_Рекомендации"
+
+                        # Заголовок листа рекомендаций
+                        row_rec = 1
+                        ws_rec.merge_cells(f"A{row_rec}:C{row_rec}")
+                        cell = ws_rec.cell(row=row_rec, column=1, value="Рекомендуемые модели и обоснование")
+                        cell.font = title_font
+                        cell.alignment = Alignment(horizontal='center')
+                        row_rec += 2
+
+                        ws_rec.cell(row=row_rec, column=1, value="Модель").font = header_font
+                        ws_rec.cell(row=row_rec, column=2, value="Условие применения").font = header_font
+                        ws_rec.cell(row=row_rec, column=3, value="Обоснование").font = header_font
+                        row_rec += 1
+
+                        # Формирование рекомендаций на основе свойств
+                        recommendations = []
+
+                        # Базовые свойства
+                        if is_stationary and is_white_noise:
+                            recommendations.append(("Exponential Smoothing / Naive", "Ряд похож на белый шум", "Отсутствие автокорреляции > внешние факторы важнее истории"))
+                        elif is_stationary and not is_white_noise:
+                            recommendations.append(("ARIMA(p,d,q)", "Стационарен + есть автокорреляция", "Классический выбор для стационарных рядов с АК"))
+                        elif not is_stationary:
+                            recommendations.append(("ARIMA с дифференцированием / Prophet", "Нестационарный ряд", "Требуется удаление тренда (diff) или модель с трендом"))
+
+                        if r_squared >= 0.7:
+                            recommendations.append(("Linear Trend + ARMA", f"Сильный детерминированный тренд (R?={r_squared:.2f})", "Явный тренд лучше моделировать отдельно"))
+
+                        # Сезонность
+                        if is_seasonal or acf_seasonality_str != "Не обнаружены":
+                            m_val = seasonal_periods_acf[0] if seasonal_periods_acf else period
+                            recommendations.append((f"SARIMA(..., m={m_val}) / Prophet", "Обнаружена сезонность", "Явное моделирование сезонной компоненты улучшает точность"))
+
+                        # Частота
+                        if inferred_freq and inferred_freq in ['D', 'H', 'T']:
+                            recommendations.append(("Prophet / LSTM", f"Высокочастотные данные ({inferred_freq})", "Учет праздников и внутридневных паттернов"))
+                        elif inferred_freq in ['W', 'M', 'Q']:
+                            recommendations.append(("SARIMA / TBATS", f"Сезонные данные ({inferred_freq})", "Классические методы для недельной/месячной сезонности"))
+
+                        # Корреляции
+                        if target_corr_str != "N/A" and "??" in target_corr_str:
+                            recommendations.append(("Linear Regression / XGBoost", "Есть сильные предикторы (|r|>0.7)", "Использовать коррелирующие признаки как регрессоры"))
+
+                        # Спектральные особенности
+                        if fft_dominant_str != "Не обнаружены":
+                            recommendations.append(("ML + Fourier features", f"Доминирующие частоты: {fft_dominant_str}", "Добавить sin/cos гармоники как признаки для улучшения прогноза"))
+
+                        # Если нет явных паттернов
+                        if not recommendations:
+                            recommendations.append(("Naive / Simple Exponential Smoothing", "Нет выраженных паттернов", "Начать с простых базовых моделей для оценки"))
+
+                        # Запись рекомендаций в лист
+                        for model, condition, justification in recommendations:
+                            ws_rec.cell(row=row_rec, column=1, value=model).font = Font(bold=True)
+                            ws_rec.cell(row=row_rec, column=2, value=condition)
+                            ws_rec.cell(row=row_rec, column=3, value=justification)
+                            # Применяем границы
+                            for col in range(1, 4):
+                                ws_rec.cell(row=row_rec, column=col).border = thin_border
+                            row_rec += 1
+
+                        # Методологическое пояснение в конце листа
+                        row_rec += 1
+                        ws_rec.merge_cells(f"A{row_rec}:C{row_rec}")
+                        cell = ws_rec.cell(row=row_rec, column=1, value="?? Методология выбора моделей")
+                        cell.font = Font(bold=True, size=11, color="0369A1")
+                        cell.alignment = Alignment(horizontal='left')
+                        row_rec += 1
+                        ws_rec.cell(row=row_rec, column=1, value="• Статистические тесты (ADF, Ljung-Box) > выбор класса моделей")
+                        ws_rec.cell(row=row_rec+1, column=1, value="• Спектральный анализ (ACF, FFT) > параметры сезонности и признаки")
+                        ws_rec.cell(row=row_rec+2, column=1, value="• Корреляционный анализ > отбор признаков, борьба с мультиколлинеарностью")
+                        ws_rec.cell(row=row_rec+3, column=1, value="• Порядок действий: 1) Преобразования > 2) Признаки > 3) Подбор параметров > 4) Валидация")
+
+                        # Настройка ширины колонок
+                        ws.column_dimensions['A'].width = 35
+                        ws.column_dimensions['B'].width = 30
+                        ws.column_dimensions['C'].width = 50
+                        ws_rec.column_dimensions['A'].width = 30
+                        ws_rec.column_dimensions['B'].width = 35
+                        ws_rec.column_dimensions['C'].width = 60
+
+                        # Футер
+                        row += 1
+                        ws.merge_cells(f"A{row}:C{row}")
+                        cell = ws.cell(row=row, column=1, value=" Исследовано платформой CISStat TS Analytics | ? Верифицировано СтатКомитетом СНГ")
+                        cell.font, cell.fill, cell.alignment = footer_font, footer_fill, Alignment(horizontal='center')
+
+                        output = io.BytesIO()
+                        wb.save(output)
+                        output.seek(0)
+
+                        # -- 6. КНОПКА ВЫГРУЗКИ ----------
+                        st.divider()
+                        st.download_button(
+                            label="?? Выгрузить отчет в Excel",
+                            data=output,
+                            file_name=f"CISStat_TS_Report_{report_col}_{dt_now.now().strftime('%Y%m%d_%H%M')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            type="secondary"
+                        )
+                        st.success("? Отчет сформирован! Включает: Паспорт свойств + Рекомендации по моделям.")
+
+                except Exception as e:
+                    st.error(f"? Ошибка при формировании отчета: {e}")
+                    st.exception(e)
+
+        # 2?? ОТОБРАЖЕНИЕ ОТЧЕТА НА ЭКРАНЕ
+        if st.session_state.get("report_ready"):
+            st.divider()
+            st.markdown(f"#### ?? Готовый отчет: {report_col}")
+            st.dataframe(
+                st.session_state.report_table,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "property": st.column_config.TextColumn("Свойство", width="small"),
+                    "method": st.column_config.TextColumn("Метод", width="medium"),
+                    "desc": st.column_config.TextColumn("Описание", width="large"),
+                    "result": st.column_config.TextColumn("Результат", width="medium")
+                }
+            )
+            if st.button("?? Выгрузить отчет в Excel", type="secondary", key="btn_download_excel_report"):
+                st.download_button(
+                    label="?? Скачать Excel-файл",
+                    data=st.session_state.report_excel_data,
+                    file_name=f"CISStat_TS_Report_{report_col}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="btn_final_download_excel"
+                )
+                st.session_state.report_ready = False
+    else:
+        st.warning("?? Нет числовых колонок для анализа.")
+
+# -------------------------------------------------------------
+#  ВКЛАДКА 2: ВАЛИДАЦИЯ
+# -------------------------------------------------------------
+with tab_validation:
+    st.markdown("""
+    <div style="padding-left: 20px; margin: 20px 0; text-align: right;">
+        <p style="margin: 0 0 10px 0; color: #1e293b; line-height: 1.6; font-size: 18px; font-weight: 400;">
+            "Garbage in, garbage out <br>
+            Мусор на входе — мусор на выходе".
+        </p>
+        <p style="margin: 0; color: #64748B; font-style: italic; font-size: 16px; line-height: 1.5;">
+            — в газетной статье 1957 года о работе математиков армии США Уильям Д. Меллин объяснял,<br>
+            что «небрежно запрограммированные» входные данные приводят к неверным выходам.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    with st.expander(" Цели модуля и результаты его прохождения", expanded=False):
+        st.markdown("""
+        ######  Цели модуля "Валидация"
+                            
+        **Цель раздела**. Модуль проводит комплексную автоматическую диагностику данных по 10 критериям: проверка форматов (regex), диапазонов значений, уникальности, 
+        логической согласованности, качества метаданных и равномерности временного шага. На основе выявленных нарушений вычисляется интегральный показатель Data Quality Score (DQ)
+        для оценки пригодности ряда к применению статистических моделей и машинному обучению.           
+        
+                    
+        **Что мы получим на выходе?** Интерактивный Data Quality Dashboard с детальным отчетом о проблемах и механизмом исправления нарушений, рекомендацией по доступным моделям прогнозирования и 
+        сравнительным паспортом свойств ряда (v1.0 до валидации и v1.1 после валидации). Пользователь получает обновленный датафрейм в session_state.df, готовый к передаче 
+        в блок «Предобработка».
+        """)
+
+    # -- ?? ИНФОРМАЦИЯ О СОХРАНЕНИИ ДАННЫХ ----------------------------
+    with st.expander("Как работает сохранение результатов?", expanded=False):
+        st.markdown("""
+        ###### Где хранятся обработанные данные?
+
+        **Все изменения сохраняются в `st.session_state.df`** — это основной датафрейм,
+        который используется во **всех вкладках** приложения.
+
+        ###### Порядок работы:
+
+        1. **Загрузите данные** > сохраняются в `session_state.df`
+        2. **Запустите валидацию** > находятся проблемы
+        3. **Примените стратегию** в любом блоке (пропуски, выбросы, форматы...)
+        > изменения сохраняются в `session_state.df`
+        4. **Запустите валидацию заново** > проверьте результат
+
+        ###### Дополнительные рабочие копии:
+
+        Каждая рабочая копия — это изолированная среда для безопасной обработки данных
+        **до подтверждения стратегии**. После применения изменений копия синхронизируется
+        с основным `session_state.df`.
+
+        | Переменная | Модуль | Что проверяет |
+        |------------|--------|---------------|
+        | `df_missing_work` | Пропуски (Missing) | NaN, пустые значения |
+        | `df_pattern_work` | Форматы (Regex) | Шаблоны email, телефон, дата |
+        | `df_range_work` | Диапазоны (Ranges) | Мин/макс значения |
+        | `df_outlier_work` | Выбросы (Outliers) | Аномальные значения |
+        | `df_consistency_work` | Согласованность (Consistency) | Логика и хронология |
+        | `df_uniqueness_work` | Уникальность (Uniqueness) | Дубликаты строк и дат |
+        | `df_inclusion_work` | Принадлежность (Inclusion) | Справочники и домены |
+        | `df_referential_work` | Ссылочная целостность (Referential) | Внешние ключи |
+        | `df_text_work` | Качество текста (Text Quality) | Мусорные символы, кодировка |
+        | `df_regularity_work` | Регулярность шага (Regularity) | Равномерность временного ряда |
+
+        ###### Служебные копии:
+        - `df_before_validation` — snapshot данных **до** валидации (для сравнения v1.0 > v1.1)
+        - `df_after_fixes` — данные **после** применения стратегии (до синхронизации)
+
+        ###### Как это работает:
+        1. При обнаружении нарушений создаётся рабочая копия (например, `df_range_work`)
+        2. Вы редактируете данные в интерактивной таблице или выбираете стратегию
+        3. Нажимаете **"Сохранить"** или **"Подтвердить изменения"**
+        4. Рабочая копия синхронизируется: `session_state.df = df_range_work`
+        5. Флаг `validation_ready` сбрасывается > нужно перезапустить валидацию
+
+        ###### Экспорт результатов:
+
+        В конце каждого блока есть кнопка **"?? Скачать результат (CSV)"** —
+        используйте её для сохранения очищенных данных.
+        """)
+
+    # Сохраняем snapshot ДО валидации (для сравнения ДО/ПОСЛЕ в паспорте)
+    if "df_before_validation" not in st.session_state:
+        st.session_state.df_before_validation = df.copy()
+
+    # -- КНОПКА ЗАПУСКА -------------------------------------
+    if st.button(" Запустить валидацию", type="primary"):
+        with st.spinner("?? Комплексный анализ данных..."):
+            progress = st.progress(0)
+
+            # 1. Базовая валидация схемы и типов
+            progress.progress(0.10, text="Загрузка правил и базовая валидация...")
+            rules = load_rules()
+            st.session_state.rules = rules
+            val = validate_dataframe(df, rules)
+
+            # 2. Проверка форматов (Regex)
+            progress.progress(0.20, text="Проверка форматов и шаблонов (Regex)...")
+            pattern_results = validate_formats(df, rules)
+            st.session_state.pattern_results = pattern_results
+
+            # 3. Проверка диапазонов значений
+            progress.progress(0.30, text="Проверка диапазонов значений...")
+            range_results, range_masks, range_bounds = validate_ranges(df, rules)
+            st.session_state.range_results = range_results
+            st.session_state.range_masks = range_masks
+            st.session_state.range_bounds = range_bounds
+
+            # 4. Проверка согласованности (логика + хронология)
+            progress.progress(0.40, text="Проверка согласованности данных...")
+            # ИСПРАВЛЕНИЕ: Используем НЕСОРТИРОВАННЫЕ данные
+            df_for_consistency = st.session_state.get('df_unsorted', df)
+            consistency_results = validate_consistency(df_for_consistency, rules)
+
+            # ИСПРАВЛЕНИЕ: Извлекаем маски из результатов
+            # Маски жестко привязаны к индексам df_for_consistency (несортированного)
+            consistency_masks = {}
+            for i, rule_result in enumerate(consistency_results):
+                if 'mask' in rule_result:
+                    mask_name = f"rule_{i}_{rule_result.get('Правило', 'unknown')}"
+                    consistency_masks[mask_name] = rule_result['mask']
+
+            #  КРИТИЧНО: Сохраняем несортированный датафрейм в сессию, 
+            # чтобы пайплайн использовал именно его (иначе индексы масок не совпадут с отсортированным df)
+            st.session_state.df_consistency_unsorted = df_for_consistency.copy()
+
+            # 5. Проверка уникальности (дубликаты)
+            progress.progress(0.50, text="Проверка уникальности записей...")
+            uniqueness_results = []
+            if st.session_state.col_types.get("date"):
+                date_col = st.session_state.col_types["date"][0]
+                dup_count = int(df.duplicated(subset=[date_col], keep=False).sum())
+            else:
+                dup_count = int(df.duplicated(keep=False).sum())
+            if dup_count > 0:
+                uniqueness_results.append({
+                    "Правило": "Уникальность записей",
+                    "Дубликатов": dup_count,
+                    "Статус": "?? Нарушено"
+                })
+            else:
+                uniqueness_results.append({
+                    "Правило": "Уникальность записей",
+                    "Дубликатов": 0,
+                    "Статус": "? Соблюдено"
+                })
+
+            # 6. Проверка принадлежности к набору (Inclusion)
+            progress.progress(0.60, text="Проверка принадлежности к справочникам...")
+            inclusion_results = []
+            inclusion_masks = {}
+            inclusion_rules = rules.get("inclusion", {})
+            for col, allowed_vals in inclusion_rules.items():
+                if col in df.columns and allowed_vals:
+                    invalid_mask = ~df[col].isin(allowed_vals) & df[col].notna()
+                    violations = int(invalid_mask.sum())
+                    if violations > 0:
+                        inclusion_masks[col] = invalid_mask
+                        inclusion_results.append({
+                            "Правило": f"Inclusion: {col}",
+                            "Колонка": col,
+                            "Нарушений": violations,
+                            "% брака": f"{(violations / len(df)) * 100:.2f}%",
+                            "Статус": "?? Нарушено"
+                        })
+
+            # 7. Проверка ссылочной целостности
+            progress.progress(0.70, text="Проверка ссылочной целостности...")
+            ref_results, ref_masks = validate_referential(df, rules)
+
+            # 8. Проверка качества текста
+            progress.progress(0.80, text="Проверка качества текста...")
+            text_results, text_masks = validate_text_quality(df, rules)
+
+            # ?? ОТЛАДКА: Сохраняем в session_state (чтобы не исчезла после перезагрузки)
+            debug_info = {
+                "df_shape": df.shape,
+                "columns": list(df.columns),
+                "country_col": None,
+                "is_sorted_manual": None,
+                "violations_manual": 0,
+                "sample_data": None,
+                "violations_list": []
+            }
+
+            # Проверяем, есть ли колонка Country (в любом регистре)
+            country_col = None
+            for c in df.columns:
+                if c.lower() == 'country':
+                    country_col = c
+                    break
+
+            debug_info["country_col"] = country_col
+
+            if country_col and 'Year' in df.columns:
+                # Показываем порядок данных для первой страны
+                first_country = df[country_col].iloc[0]
+                sample = df[df[country_col] == first_country][[country_col, 'Year']].head(25)
+                debug_info["sample_data"] = sample.to_dict('records')
+                
+                # ИСПРАВЛЕННАЯ ручная проверка сортировки
+                is_sorted_manual = True
+                violations_manual = 0
+                debug_info["violations_list"] = []
+
+                if country_col and 'Year' in df.columns:
+                    for country, group in df.groupby(country_col):
+                        # ИСПРАВЛЕНИЕ: Конвертируем Year в числовой тип для корректного сравнения
+                        years = pd.to_numeric(group['Year'], errors='coerce').dropna().tolist()
+                        
+                        for i in range(1, len(years)):
+                            if years[i] < years[i-1]:
+                                is_sorted_manual = False
+                                violations_manual += 1
+                                debug_info["violations_list"].append(f"{country}: {years[i-1]} > {years[i]}")
+                    
+                    debug_info["is_sorted_manual"] = is_sorted_manual
+                    debug_info["violations_manual"] = violations_manual
+
+            # Сохраняем отладку в session_state
+            st.session_state.debug_info = debug_info
+
+            # 9. Проверка равномерности временного шага (ТОЛЬКО ОДИН ВЫЗОВ!)
+            progress.progress(0.90, text="Проверка равномерности временного шага...")
+            # ?? ИСПРАВЛЕНИЕ: Используем НЕСОРТИРОВАННЫЕ данные для проверки
+            df_for_validation = st.session_state.get('df_unsorted', df)
+
+            regularity_results, regularity_masks, regularity_freq_info, regularity_sort_info = validate_regular_step(
+                df_for_validation, rules,
+                date_col=st.session_state.primary_date_col if st.session_state.get('primary_date_col') else None
+            )
+
+            # Сохраняем результат regularity_sort_info для отладки
+            st.session_state.debug_info["regularity_sort_info"] = regularity_sort_info
+
+            # 10. Проверка достаточности числа наблюдений
+            progress.progress(0.95, text="Проверка достаточности числа наблюдений...")
+            sufficiency_results, sufficiency_recommendations = validate_sufficiency(
+                df,
+                rules,
+                date_col=st.session_state.primary_date_col if st.session_state.get('primary_date_col') else None
+            )
+
+            # 11. Пропуски и выбросы
+            progress.progress(0.93, text="Анализ пропусков и выбросов...")
+            miss = analyze_missing(df, rules.get("missing", {}))
+            outl = detect_outliers(df, rules.get("outliers", {}))
+
+            # 12. TS-специфичные проверки
+            progress.progress(0.96, text="TS-специфичные проверки...")
+            ts_checks = {}
+            if st.session_state.col_types.get("date") and st.session_state.col_types.get("num"):
+                date_col = st.session_state.col_types["date"][0]
+                num_col = st.session_state.col_types["num"][0]
+                df_ts = df.sort_values(date_col).set_index(date_col)[[num_col]].dropna()
+                if len(df_ts) >= 10:
+                    try:
+                        from statsmodels.tsa.stattools import adfuller
+                        adf_result = adfuller(df_ts[num_col].dropna())
+                        ts_checks["adf_pvalue"] = adf_result[1]
+                        ts_checks["is_stationary"] = adf_result[1] < 0.05
+                    except:
+                        ts_checks["adf_pvalue"] = None
+                        ts_checks["is_stationary"] = None
+
+                    freq = pd.infer_freq(df_ts.index)
+                    ts_checks["frequency"] = freq if freq else "Нерегулярная"
+
+                    try:
+                        if pd.api.types.is_datetime64_any_dtype(df_ts.index):
+                            gaps = df_ts.index.to_series().diff().dropna()
+                            ts_checks["max_gap"] = gaps.max() if len(gaps) > 0 else pd.Timedelta(0)
+                        else:
+                            ts_checks["max_gap"] = pd.Timedelta(0)
+                    except Exception:
+                        ts_checks["max_gap"] = pd.Timedelta(0)
+                else:
+                    ts_checks = {"error": "Недостаточно данных для TS-проверок"}
+            else:
+                ts_checks = {"error": "Не найдены колонки с датами и числовыми данными"}
+
+            # Сохраняем всё в сессию для отрисовки дашборда
+            st.session_state.val_results = {
+                "val": val,
+                "miss": miss,
+                "outl": outl,
+                "ts": ts_checks,
+                "consistency": consistency_results,
+                "consistency_masks": consistency_masks,
+                "range_results": range_results,
+                "range_masks": range_masks,
+                "range_bounds": range_bounds,
+                "uniqueness": uniqueness_results,
+                "inclusion": inclusion_results,
+                "inclusion_masks": inclusion_masks,
+                "referential": ref_results,
+                "referential_masks": ref_masks,
+                "text": text_results,
+                "text_masks": text_masks,
+                "regularity": regularity_results,
+                "regularity_masks": regularity_masks,
+                "regularity_freq_info": regularity_freq_info,
+                "regularity_sort_info": regularity_sort_info,
+                "sufficiency": sufficiency_results,
+                "sufficiency_recommendations": sufficiency_recommendations
+            }
+            st.session_state.validation_ready = True
+            progress.progress(1.0, text="? Валидация проведена!")
+            st.success("Комплексная валидация завершена!")
+            st.rerun()
+
+
+        # ---------------------------------------------------------
+        # ?? СОХРАНЕНИЕ ПАСПОРТА СВОЙСТВ v1.1 (после валидации)
+        # ---------------------------------------------------------
+        if st.session_state.validation_ready:
+            if (st.session_state.get('primary_date_col') and
+                st.session_state.col_types.get('num')):
+
+                date_col = st.session_state.primary_date_col
+                num_col = st.session_state.col_types['num'][0]
+
+                # Используем ту же целевую колонку, что и в v1.0
+                target_col = st.session_state.get('ts_props_v10_target_col', num_col)
+
+                df_validated = st.session_state.df.copy()
+
+                # Формируем временной ряд (аналогично вкладке "Загрузка")
+                try:
+                    df_validated[date_col] = pd.to_datetime(df_validated[date_col])
+                    df_ts_validated = df_validated.set_index(date_col)
+
+                    if target_col in df_ts_validated.columns:
+                        analysis_series_v11 = (
+                            df_ts_validated[target_col]
+                            .resample('D').mean()
+                            .dropna()
+                            .astype(float)
+                        )
+
+                        if len(analysis_series_v11) >= 30:
+                            # ?? ИСПОЛЬЗУЕМ ТУ ЖЕ ФУНКЦИЮ, ЧТО И В v1.0!
+                            props_v11 = calculate_ts_passport(
+                                analysis_series_v11,
+                                df_filtered=df_validated,
+                                ct_f=st.session_state.col_types,
+                                target_col=target_col
+                            )
+                            props_v11['version'] = 'v1.1 (после валидации)'
+
+                            st.session_state.ts_props_v11 = props_v11
+
+                            # Сравниваем с v1.0
+                            if 'ts_props_v10' in st.session_state:
+                                st.session_state.ts_props_comparison_v10_v11 = _compare_ts_props(
+                                    st.session_state.ts_props_v10,
+                                    props_v11
+                                )
+                except Exception as e:
+                    st.warning(f"?? Не удалось рассчитать свойства v1.1: {e}")
+
+       
+    # -----------------------------------------------------------
+    # ??? DATA QUALITY DASHBOARD
+    # -----------------------------------------------------------
+    if st.session_state.validation_ready:
+        # Достаем правила из сессии (иначе NameError при перезапуске скрипта)
+        rules = st.session_state.get("rules", {})
+
+        # Безопасное извлечение (избегаем ValueError: too many values to unpack)
+        val = st.session_state.val_results.get("val")
+        miss = st.session_state.val_results.get("miss")
+        outl = st.session_state.val_results.get("outl")
+        ts = st.session_state.val_results.get("ts")
+        consistency_results = st.session_state.val_results.get("consistency", [])
+
+        st.divider()
+        st.markdown("###  Панель контроля качества данных (data quality)")
+        st.caption("Автоматическая проверка по стандартам. Проблемные блоки раскрываются автоматически.")
+
+        # -- ФУНКЦИЯ-ПОМОЩНИК ДЛЯ СОЗДАНИЯ КАРТОЧКИ -------------
+        def make_card(title, has_issues, methodology, result_text, result_status, fix_action=None):
+            with st.container(border=True):
+                st.markdown(f"##### {title}")
+                with st.expander("Метрики и алгоритм", expanded=has_issues):
+                    st.markdown(methodology)
+                st.markdown(result_text)
+                if fix_action and has_issues:
+                    if st.button(fix_action['label'], key=f"fix_{title}", use_container_width=True):
+                        fix_action['callback']()
+                return has_issues
+
+        # ?? СПРАВКА ПО СТАНДАРТАМ КАЧЕСТВА ДАННЫХ
+        with st.expander(" Справка по стандартам качества данных", expanded=False):
+            st.markdown("""
+            ##### ?? Международные стандарты Data Quality
+
+            Платформа CISStat TS Analysis реализует **10 измерений качества данных** в соответствии с международными стандартами:
+
+            ---
+
+            ###### 1?? **DAMA DMBOK v2** (Data Management Body of Knowledge)
+            **Организация:** DAMA International (Data Management Association)
+            **Год:** 2017 (2-е издание)
+            **Раздел:** Chapter 13 — Data Quality
+
+            **10 измерений качества данных:**
+
+            | Измерение | Описание | Пример проверки в CISStat |
+            |-----------|----------|---------------------------|
+            | **Completeness** | Полнота данных | Модуль "Пропуски (Missing)" |
+            | **Uniqueness** | Уникальность записей | Модуль "Уникальность (дубликаты)" |
+            | **Validity** | Соответствие домену/формату | Модули "Regex-форматы", "Диапазоны" |
+            | **Timeliness** | Актуальность данных | Модуль "Хронологический порядок" |
+            | **Accuracy** | Точность значений | Модуль "Выбросы (Outliers)" |
+            | **Consistency** | Согласованность между источниками | Модуль "Логическая согласованность" |
+            | **Integrity** | Целостность связей | Модули "Inclusion", "Referential" |
+            | **Conformity** | Соответствие стандартам | Модуль "Типы данных" |
+
+            **Применение в платформе:**
+            Каждая из 10 проверок валидации соответствует одному или нескольким измерениям DAMA DMBOK. Результаты фиксируются в Data Quality Dashboard с метриками `% valid = valid/total`.
+
+            **?? Почитать:**
+            - первоисточник: https://dama.org/
+            - статья на Хабре: https://habr.com/ru/companies/rshb/articles/767440/
+            ---
+
+            ###### 2?? **ISO 8000-61** (Data Quality — Part 61: Process Reference Model)
+            **Организация:** ISO/IEC JTC 1/SC 32
+            **Год:** 2020
+            **Стандарт:** ISO 8000-61:2020
+
+            **Модель процесса управления качеством данных:**
+
+            ```
+            ----------------------------------------------------------¬
+            ¦  1. SPECIFY (Спецификация требований к качеству)        ¦
+            ¦     > Правила валидации (YAML-конфиг)                   ¦
+            L----------------------------------------------------------
+                              v
+            ----------------------------------------------------------¬
+            ¦  2. MEASURE (Измерение качества)                        ¦
+            ¦     > Автоматическая проверка (10 модулей)              ¦
+            ¦     > Метрики: completeness, accuracy, consistency      ¦
+            L----------------------------------------------------------
+                              v
+            ----------------------------------------------------------¬
+            ¦  3. ANALYZE (Анализ отклонений)                         ¦
+            ¦     > Data Quality Dashboard                            ¦
+            ¦     > Выявление root cause (причины проблем)            ¦
+            L----------------------------------------------------------
+                              v
+            ----------------------------------------------------------¬
+            ¦  4. IMPROVE (Улучшение данных)                          ¦
+            ¦     > Вкладка "Предобработка" (fill, drop, transform)   ¦
+            ¦     > Стратегии исправления                             ¦
+            L----------------------------------------------------------
+            ```
+
+            **Применение в платформе:**
+            CISStat реализует полный цикл PDCA (Plan-Do-Check-Act) по ISO 8000-61:
+            - **Plan:** YAML-правила валидации
+            - **Do:** Автоматическая проверка при загрузке
+            - **Check:** Визуализация нарушений в дашборде
+            - **Act:** Интерактивные пайплайны исправления
+
+            ---
+
+            ###### 3?? **TDQM** (Total Data Quality Management)
+            **Авторы:** Richard Wang, Diane Strong (MIT, 1996)
+            **Концепция:** Расширение TQM (Total Quality Management) для данных
+
+            **4 категории качества данных по TDQM:**
+
+            | Категория | Измерения | Пример в CISStat |
+            |-----------|-----------|------------------|
+            | **Intrinsic DQ** | Accuracy, Objectivity, Believability, Reputation | Модули "Диапазоны", "Выбросы" (проверка на реалистичность) |
+            | **Contextual DQ** | Relevancy, Value-added, Timeliness, Completeness, Amount of data | Модуль "Достаточность числа наблюдений" (n ? 50 для ARIMA) |
+            | **Representational DQ** | Interpretability, Ease of understanding, Representational consistency, Concise representation | Модули "Типы данных", "Regex-форматы" |
+            | **Accessibility DQ** | Accessibility, Access security | Авторизация, логирование действий |
+
+            **Применение в платформе:**
+            TDQM подчёркивает, что качество данных **зависит от контекста использования**. В CISStat это реализовано через:
+            - **Профилирование по типу задачи:** TS-модели требуют больше наблюдений (n ? 100), чем простой тренд (n ? 10)
+            - **Адаптивные пороги:** Для финансовых данных stricter диапазоны (цена ? 0), для демографии — мягче
+            - **Обоснование методов:** Каждый вывод сопровождается ссылкой на стандарт (например, "ARIMA требует n ? 50 по TDQM Contextual DQ")
+
+            ---
+
+            ###### Сводная таблица соответствия
+
+            | № | Проверка в CISStat | DAMA DMBOK | ISO 8000-61 | TDQM |
+            |---|-------------------|------------|-------------|------|
+            | 1 | Типы данных | Conformity | SPECIFY | Representational |
+            | 2 | Regex-форматы | Validity | SPECIFY | Representational |
+            | 3 | Диапазоны значений | Validity, Accuracy | MEASURE | Intrinsic |
+            | 4 | Логическая согласованность | Consistency | MEASURE | Contextual |
+            | 5 | Уникальность | Uniqueness | MEASURE | Intrinsic |
+            | 6 | Inclusion (справочники) | Integrity | MEASURE | Contextual |
+            | 7 | Referential integrity | Integrity | MEASURE | Accessibility |
+            | 8 | Хронологический порядок | Consistency, Timeliness | MEASURE | Contextual |
+            | 9 | Равномерность шага | Consistency | MEASURE | Contextual |
+            | 10 | Достаточность наблюдений | Completeness | ANALYZE | Contextual |
+            | + | Пропуски (Missing) | Completeness | MEASURE | Contextual |
+            | + | Выбросы (Outliers) | Accuracy | ANALYZE | Intrinsic |
+
+            ---
+
+            ###### Целевые показатели качества (Target DQ Levels)
+
+            Согласно ISO 8000-61 и DAMA DMBOK, платформа устанавливает следующие пороги:
+
+            | Метрика | Отлично (?) | Хорошо (??) | Критично (?) |
+            |---------|--------------|-------------|---------------|
+            | Completeness | ? 99% | 95-99% | < 95% |
+            | Accuracy | ? 98% | 90-98% | < 90% |
+            | Consistency | ? 99% | 95-99% | < 95% |
+            | Uniqueness | 100% | 99-100% | < 99% |
+            | Validity | ? 98% | 95-98% | < 95% |
+
+            **Интерпретация для временных рядов:**
+            - **n < 50:** Недостаточно для ARIMA/SARIMA (TDQM Contextual DQ)
+            - **n < 100:** Недостаточно для ML-моделей (LSTM, XGBoost)
+            - **Пропуски > 5%:** Требуется интерполяция или удаление (ISO 8000-61 IMPROVE)
+            - **Выбросы > 3?:** Проверить на ошибки ввода (DAMA Accuracy)
+
+            ---
+
+            ###### Источники и литература
+
+            1. **DAMA International.** DAMA-DMBOK: Data Management Body of Knowledge, 2nd Edition. Technics Publications, 2017. ISBN: 978-1634622974
+            2. **ISO/IEC 8000-61:2020.** Data quality — Part 61: Process reference model. International Organization for Standardization, 2020.
+            3. **Wang, R.Y., Strong, D.M.** Beyond Accuracy: What Data Quality Means to Data Consumers. Journal of Management Information Systems, 1996, Vol. 12, No. 4, pp. 5-33.
+            4. **Redman, T.C.** Data Quality: The Field Guide. Digital Press, 2001.
+            5. **CISStat Internal Standard.** Стандарт качества данных для временных рядов, 2026.
+
+            ---
+            ###### ?? Как использовать эту информацию:
+            - При обнаружении нарушения смотрите, какому стандарту оно противоречит
+            - Используйте целевые показатели (Target DQ Levels) для приоритизации исправлений
+            - Ссылайтесь на стандарты при обосновании необходимости очистки данных перед руководством
+            """)
+
+        st.divider()
+
+        # -----------------------------------------------------
+        # -- 1. ПРОВЕРКА ТИПОВ ДАННЫХ -------------------------
+
+        if "classification_result" not in st.session_state:
+            st.session_state.classification_result = None
+
+        known_cols = set(
+            st.session_state.col_types.get("date", []) +
+            st.session_state.col_types.get("num", []) +
+            st.session_state.col_types.get("cat", [])
+        )
+        undefined_cols = [col for col in df.columns if col not in known_cols]
+        type_issues = len(undefined_cols) > 0
+
+        if type_issues:
+            cols_preview = ", ".join(f"`{c}`" for c in undefined_cols[:5])
+            if len(undefined_cols) > 5:
+                cols_preview += f" и ещё {len(undefined_cols) - 5}..."
+            type_result = f"?? Найдено **{len(undefined_cols)}** колонок с неопределённым типом:\n{cols_preview}"
+        else:
+            type_result = "? Все типы корректны"
+
+        # Функция авто-классификации
+        def auto_classify_types():
+            known_cols = set(
+                st.session_state.col_types.get("date", []) +
+                st.session_state.col_types.get("num", []) +
+                st.session_state.col_types.get("cat", [])
+            )
+            undefined_cols = [col for col in df.columns if col not in known_cols]
+
+            classified = {"date": [], "num": [], "cat": []}
+            classification_log = []
+
+            for col in undefined_cols:
+                sample = df[col].dropna()
+                if len(sample) == 0:
+                    continue
+                if df[col].dtype == 'object' or str(df[col].dtype) == 'string':
+                    try:
+                        pd.to_datetime(sample.head(100), errors='raise')
+                        classified["date"].append(col)
+                        classification_log.append(f"**`{col}`** > ?? datetime")
+                        continue
+                    except:
+                        pass
+
+                if pd.api.types.is_numeric_dtype(df[col]):
+                    if df[col].nunique() < 50:
+                        classified["cat"].append(col)
+                        classification_log.append(f"**`{col}`** > ?? categorical")
+                    else:
+                        classified["num"].append(col)
+                        classification_log.append(f"**`{col}`** > ?? numeric")
+                else:
+                    classified["cat"].append(col)
+                    classification_log.append(f"**`{col}`** > ?? categorical")
+
+            for cat, cols in classified.items():
+                st.session_state.col_types[cat].extend(cols)
+
+            if classification_log:
+                st.session_state.classification_result = {"success": True, "count": len(classification_log), "log": classification_log}
+            else:
+                st.session_state.classification_result = {"success": False, "message": "?? Не удалось классифицировать."}
+
+        make_card(
+            " Проверка типов данных (data types)",
+            has_issues=type_issues,
+            methodology=(
+                "**?? Метрики:** Фактический `dtype`, автоклассификация `numeric/datetime/categorical`.  \n"
+                "**?? Алгоритм:** `df.dtypes` > `select_dtypes()` > сверка с `detect_and_convert_year_columns`.  \n"
+                "**?? Влияние на TS:** Некорректный тип ломает `DatetimeIndex` > критично для ARIMA/Prophet.  \n"
+                "**?? Как работает авто-классификация:**  \n"
+                "| Шаг | Логика | Пример |  \n"
+                "|-----|--------|--------|  \n"
+                "| **1. Детекция дат** | Пробует `pd.to_datetime()` на первых 100 значениях. Если успешно > datetime | `Date_Column` > datetime |  \n"
+                "| **2. Числовые** | Проверяет `is_numeric_dtype()`. Если `<50` уникальных > категория, иначе > numeric | `Region_ID` > categorical (12 значений) |  \n"
+                "| **3. Строковые** | Всё остальное > категория | `Product_Name` > categorical (45 уникальных) |"
+            ),
+            result_text=type_result,
+            result_status="?" if not type_issues else "??",
+            fix_action={"label": "Авто-классифицировать типы", "callback": auto_classify_types} if type_issues else None
+        )
+
+        # Показываем результат классификации
+        if st.session_state.classification_result is not None:
+            result = st.session_state.classification_result
+            if result["success"]:
+                st.success(f"? **Авто-классификация завершена!** Распределено **{result['count']}** колонок.")
+                st.info("?? **Следующий шаг:** Нажмите **Запустить валидацию** снова.")
+                if st.button("?? Скрыть результат", key="clear_classification"):
+                    st.session_state.classification_result = None
+                    st.rerun()
+            else:
+                st.warning(result["message"])
+
+        # -----------------------------------------------------------
+        # 2. ПРОВЕРКА ФОРМАТОВ И ШАБЛОНОВ (REGEX)
+        # -----------------------------------------------------------
+
+        # Получаем результаты из session_state
+        pattern_results_local = st.session_state.get("pattern_results", [])
+
+        # ФИЛЬТРУЕМ только РЕАЛЬНЫЕ нарушения (игнорируем N/A и числовые колонки)
+        real_violations = []
+        for r in pattern_results_local:
+            invalid_count = r.get('invalid_count', 'N/A')
+            col_name = r.get('Колонка', '')
+
+            # Пропускаем если:
+            # 1. Нет данных о нарушениях (N/A)
+            # 2. Нарушений = 0
+            # 3. Колонка числовая (не должна проверяться regex)
+            if (invalid_count == 'N/A' or invalid_count is None or invalid_count == 0):
+                continue
+
+            # Дополнительная проверка: пропускаем числовые колонки
+            if col_name in df.select_dtypes(include=['int64', 'float64']).columns:
+                continue
+
+            real_violations.append(r)
+
+        pattern_issues = len(real_violations) > 0
+
+        # Сохраняем отфильтрованный список для дальнейшего использования
+        st.session_state.pattern_results_filtered = real_violations
+
+        # Формируем текст результата
+        if pattern_issues:
+            total_violations = sum(r.get('invalid_count', 0) for r in real_violations)
+            res_text = f"?? Найдено **{total_violations}** нарушений в **{len(real_violations)}** колонках"
+        else:
+            res_text = "? Все шаблоны соблюдены"
+
+        # Отображаем карточку-резюме
+        make_card(
+            " Проверка форматов и шаблонов (regex)",
+            has_issues=pattern_issues,
+            methodology=(
+                "**?? Метрики:** `% match = valid/total`, `invalid_count`.  \n"
+                "**?? Алгоритм:** `df[col].str.fullmatch(regex)`.  \n"
+                "**?? Влияние на TS:** Ошибочные ключи ломают `groupby`, `pivot`, `resample`.  \n"
+                "**?? Описание:** Модуль проверяет данные на соответствие регулярным выражениям из справочника платформы "
+                "(email, телефон, дата, код и т.д.). Значения, не проходящие валидацию, фиксируются для исправления и предлагаются стратегии их обработки."
+            ),
+            result_text=res_text,
+            result_status="?" if not pattern_issues else "??",
+            fix_action=None
+        )
+
+        # -- ?? ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при нарушениях) --
+        if pattern_issues:
+            with st.expander("?? Показать детали нарушений", expanded=True):
+                # Инициализация рабочего датафрейма для модуля форматов
+                if "df_pattern_work" not in st.session_state:
+                    st.session_state.df_pattern_work = df.copy()
+                df_work = st.session_state.df_pattern_work
+
+                for v in real_violations:
+                    col_name = v.get("Колонка")
+                    pattern = v.get("pattern", ".*")
+                    invalid_count = v.get("invalid_count", 0)
+                    invalid_pct = v.get("% invalid", "N/A")
+                    valid_count = v.get("valid_count", 0)
+                    total_count = v.get("total_count", 0)
+
+                    # Заголовок нарушения
+                    st.error(f"**?? Колонка:** `{col_name}`")
+                    st.markdown(f"- **Нарушений:** `{invalid_count}` из `{total_count}`")
+                    st.markdown(f"- **% брака:** `{invalid_pct}`")
+                    st.markdown(f"- **Соответствий:** `{valid_count}`")
+
