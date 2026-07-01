@@ -47,3 +47,70 @@ def test_regularity_graceful_degradation_on_bad_dates():
     
     # Функция должна отработать, возможно с ошибкой в словаре, но без Exception
     assert isinstance(result["mask"], pd.Series)
+
+
+# tests/unit/test_validation_regularity.py (дополнение)
+
+from app.validation.regularity import apply_regularity_strategy
+
+def test_apply_regularity_interpolate_single_series():
+    """Тест стратегии Interpolate для обычного ряда."""
+    # Убираем np.nan на 04, чтобы интерполяция шла строго между 02 и 04
+    dates = pd.to_datetime(["2020-01-01", "2020-01-02", "2020-01-04", "2020-01-05"])
+    df = pd.DataFrame({"date": dates, "value": [1.0, 2.0, 4.0, 5.0]})
+    
+    # Пропуск 3-го числа. Interpolate должен заполнить его средним между 02 (2.0) и 04 (4.0)
+    result = apply_regularity_strategy(df, strategy="Interpolate", freq="D", date_col="date")
+    
+    assert len(result) == 5  # Добавился один день (2020-01-03)
+    # Линейная интерполяция между 2.0 и 4.0 на 03 даст ровно 3.0
+    assert result.loc[result["date"] == pd.to_datetime("2020-01-03"), "value"].values[0] == 3.0
+
+def test_apply_regularity_fictitious_panel_data():
+    """Тест стратегии 'фиктивные' для Panel Data."""
+    dates_a = pd.to_datetime(["2020-01-01", "2020-01-03"])
+    dates_b = pd.to_datetime(["2020-01-02", "2020-01-03"])
+    
+    df = pd.DataFrame({
+        "country": ["A", "A", "B", "B"],
+        "date": list(dates_a) + list(dates_b),
+        "value": [10, 30, 20, 30],
+        "cat_col": ["X", "X", "Y", "Y"]
+    })
+    
+    result = apply_regularity_strategy(
+        df, strategy="фиктивные", freq="D", date_col="date", entity_col="country"
+    )
+    
+    # Функция строит диапазон от min до max ВНУТРИ каждой группы.
+    # У страны A (01, 03) добавится 02 -> 3 записи.
+    # У страны B (02, 03) диапазон и так полный -> 2 записи.
+    assert len(result) == 5  # Было 4, стало 5
+    
+    # Проверяем, что у страны A на 02-е число подставились нули и ffill для категории
+    a_missing = result[(result["country"] == "A") & (result["date"] == pd.to_datetime("2020-01-02"))]
+    assert len(a_missing) == 1
+    assert a_missing["value"].values[0] == 0
+    assert a_missing["cat_col"].values[0] == "X"
+
+def test_apply_regularity_flag_strategy():
+    """Тест стратегии 'флагом' (должна добавить колонку _has_gap)."""
+    dates = pd.date_range("2020-01-01", periods=5, freq="D").delete([2]) # gap
+    df = pd.DataFrame({"date": dates, "value": range(4)})
+    
+    result = apply_regularity_strategy(df, strategy="флагом", freq="D", date_col="date")
+    
+    assert "_has_gap" in result.columns
+    assert result["_has_gap"].sum() > 0
+
+def test_apply_regularity_graceful_degradation():
+    """Тест Правила 16: функция не должна падать при некорректной частоте."""
+    dates = pd.to_datetime(["2020-01-01", "2020-01-02"])
+    df = pd.DataFrame({"date": dates, "value": [1, 2]})
+    
+    # Передаем невалидную частоту
+    result = apply_regularity_strategy(df, strategy="Interpolate", freq="INVALID_FREQ", date_col="date")
+    
+    # Функция должна отработать без падения и вернуть DataFrame
+    assert isinstance(result, pd.DataFrame)
+    assert len(result) > 0
