@@ -33,6 +33,7 @@ import validation.engine
 importlib.reload(validation.engine)
 from validation.engine import validate_regular_step, validate_consistency
 
+
 # ─────────────────────────────────────────────────────────────
 # ИМПОРТЫ МОДУЛЕЙ ВАЛИДАЦИИ
 # ─────────────────────────────────────────────────────────────
@@ -67,6 +68,7 @@ from app.eda.correlation import find_significant_correlations
 from app.classification.classifier import classify_columns
 from validation.text_quality import compute_text_violations
 from validation.text_quality import compute_text_violations, apply_text_strategy
+from app.validation.regularity import compute_regularity_violations, apply_regularity_strategy
 
 
 # Инициализация рекомендателя
@@ -6477,71 +6479,28 @@ with tab_validation:
                 df_work = st.session_state.df_regularity_work
 
                 # Функция для вычисления нарушений (теперь вызывается только для отсортированных данных)
-                def _compute_regularity_violations(df_to_check: pd.DataFrame) -> tuple:
-                    """
-                    Вычисляет нарушения регулярности временного шага.
-                    ИСПРАВЛЕНИЕ: Учитывает группировку по Country для панельных данных.
-                    """
-                    # Определяем временную колонку
-                    date_col = None
-                    for c in df_to_check.columns:
-                        if pd.api.types.is_datetime64_any_dtype(df_to_check[c]):
-                            date_col = c
-                            break
-                    if date_col is None:
-                        for c in df_to_check.columns:
-                            if any(kw in c.lower() for kw in ['date', 'дата', 'year', 'год', 'time', 'время']):
-                                date_col = c
-                                break
-                    
-                    if date_col is None or date_col not in df_to_check.columns:
-                        return pd.Series(False, index=df_to_check.index), None, None, None
-                    
-                    # 🔧 ИСПРАВЛЕНИЕ: Определяем группирующую колонку (Country)
-                    group_col = None
-                    for c in df_to_check.columns:
-                        if c != date_col and df_to_check[c].dtype in ['object', 'string', 'category']:
-                            n_unique = df_to_check[c].nunique()
-                            if 1 < n_unique < 100:
-                                group_col = c
-                                break
-                    
-                    # Приводим дату к datetime
-                    df_temp = df_to_check.copy()
-                    if not pd.api.types.is_datetime64_any_dtype(df_temp[date_col]):
-                        df_temp[date_col] = pd.to_datetime(df_temp[date_col], errors='coerce')
-                    
-                    combined_mask = pd.Series(False, index=df_temp.index)
-                    freq_info = {}
-                    
-                    # 🔧 ИСПРАВЛЕНИЕ: Проверяем внутри каждой группы (для панельных данных)
-                    if group_col:
-                        for group_name, group_df in df_temp.groupby(group_col):
-                            group_sorted = group_df.sort_values(date_col)
-                            intervals = group_sorted[date_col].diff()
-                            modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
-                            gap_mask = intervals > modal_interval * 1.5
-                            if gap_mask.any():
-                                combined_mask.loc[gap_mask[gap_mask].index] = True
-                            freq_info['inferred_freq'] = pd.infer_freq(
-                                group_sorted[date_col].drop_duplicates().sort_values()
-                            )
-                    else:
-                        # Обычный временной ряд (без группировки)
-                        df_sorted = df_temp.sort_values(date_col)
-                        intervals = df_sorted[date_col].diff()
-                        modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
-                        gap_mask = intervals > modal_interval * 1.5
-                        if gap_mask.any():
-                            combined_mask.loc[gap_mask[gap_mask].index] = True
-                        freq_info['inferred_freq'] = pd.infer_freq(
-                            df_sorted[date_col].drop_duplicates().sort_values()
-                        )
-                    
-                    return combined_mask, date_col, group_col, freq_info
+                # Явная адресация колонок (Правило 14)
+                _current_date_col = st.session_state.get('primary_date_col', None)
+                _current_entity_col = st.session_state.get('panel_entity_col', None)
 
-                # Пересчитываем нарушения каждый раз
-                combined_mask, date_col, group_col, computed_freq_info = _compute_regularity_violations(df_work)
+                # Если date_col не определён в session_state, определяем через fallback
+                if _current_date_col is None or _current_date_col not in df_work.columns:
+                    for c in df_work.columns:
+                        if pd.api.types.is_datetime64_any_dtype(df_work[c]):
+                            _current_date_col = c
+                            break
+
+                _regularity_result = compute_regularity_violations(
+                    df=df_work,
+                    date_col=_current_date_col,
+                    entity_col=_current_entity_col
+                )
+
+                # Распаковка результата (новая функция возвращает dict)
+                combined_mask = _regularity_result["mask"]
+                date_col = _current_date_col
+                group_col = _current_entity_col
+                computed_freq_info = _regularity_result["freq_info"]
 
                 if not combined_mask.any():
                     st.success("✅ Нарушений регулярности не обнаружено")
