@@ -591,7 +591,7 @@ def generate_validation_report(df, val_results):
     return _generate_report_impl(df, val_results, original_filename)
 
 def add_log(level: str, message: str):
-    entry = {"⏱️ Время": datetime.now().strftime("%H:%M:%S"), "📊 Уровень": level, "📝 Сообщение": message}
+    entry = {"Время": datetime.now().strftime("%H:%M:%S"), "Уровень": level, "Сообщение": message}
     st.session_state.error_log.append(entry)
     if len(st.session_state.error_log) > 50: st.session_state.error_log = st.session_state.error_log[-50:]
 
@@ -1153,7 +1153,6 @@ with st.sidebar.expander("Управление правилами"):
 st.sidebar.divider()
 st.sidebar.markdown("### Лог событий")
 if st.session_state.error_log:
-    # 🔧 Исправлено: убран hide_index, добавлена обработка
     log_df = pd.DataFrame(st.session_state.error_log[-20:])  # Последние 20 записей
     st.sidebar.dataframe(
         log_df,
@@ -1163,7 +1162,7 @@ if st.session_state.error_log:
             "_index": st.column_config.Column("№", width="small")
         }
     )
-    if st.sidebar.button("🗑️ Очистить лог", use_container_width=True, key="btn_clear_log"):
+    if st.sidebar.button("Очистить лог", use_container_width=True, key="btn_clear_log"):
         st.session_state.error_log = []
         st.rerun()
 else:
@@ -1181,11 +1180,11 @@ ct_info = st.session_state.get("col_types", {"num": [], "cat": [], "date": []})
 
 if not df_info.empty:
     st.sidebar.info(f"""
-    - **📊 Записей**: `{len(df_info):,}`
-    - **📐 Колонок**: `{len(df_info.columns)}`
-    - **🔢 Числовых**: `{len(ct_info.get('num', []))}`
-    - **📋 Категорий**: `{len(ct_info.get('cat', []))}`
-    - **📅 Даты**: `{len(ct_info.get('date', []))}`
+    - **Записей**: `{len(df_info):,}`
+    - **Колонок**: `{len(df_info.columns)}`
+    - **Числовых**: `{len(ct_info.get('num', []))}`
+    - **Категорий**: `{len(ct_info.get('cat', []))}`
+    - **Даты**: `{len(ct_info.get('date', []))}`
     """)
 else:
     st.sidebar.info("ℹ️ Данные ещё не загружены")
@@ -1480,7 +1479,7 @@ with tab_download:
     preview_df = df if len(df) > 0 else pd.DataFrame()
     if not preview_df.empty:
         if len(preview_df) <= 20:
-            st.info(f"📊 Всего записей: {len(preview_df)}")
+            st.info(f"Всего записей: {len(preview_df)}")
             st.dataframe(preview_df, use_container_width=True, height=300)
         else:
             st.info(f"Показано: первые 10 и последние 10 из {len(preview_df)} записей")
@@ -1946,7 +1945,7 @@ with tab_download:
             df_filtered = df_filtered.drop(columns=['_tmp_year'])
 
         st.caption(
-            f"📊 Активно: {len(df_filtered)} записей | "
+            f"Активно: {len(df_filtered)} записей | "
             f"{len(selected_cat1)} значений (кат.1) | "
             f"{len(selected_cat2)} значений (кат.2) | "
             f"{len(selected_years)} лет"
@@ -4750,7 +4749,7 @@ with tab_validation:
 
                     # Метрики (4 колонки)
                     c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                    c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}", delta=f"{len(df_preview)-len(df_work):+}")
+                    c_p1.metric("Записей", f"{len(df_work)} → {len(df_preview)}", delta=f"{len(df_preview)-len(df_work):+}")
 
                     if cols_to_fix:
                         col = cols_to_fix[0]
@@ -4758,9 +4757,9 @@ with tab_validation:
                         m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
                         m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                         
-                        c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                        c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                        c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                        c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                        c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                        c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
                     # Кнопки подтверждения
                     st.divider()
@@ -5001,7 +5000,7 @@ with tab_validation:
                     # ── МЕТРИКИ (4 колонки) ─────────────────────
                     
                     c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                    c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}", 
+                    c_p1.metric("Записей", f"{len(df_work)} → {len(df_preview)}", 
                             delta=f"{len(df_preview)-len(df_work):+}")
 
                     if violation_cols:
@@ -5012,15 +5011,15 @@ with tab_validation:
                             m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                             fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
                             delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                            c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                            c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                            c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                            c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                            c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                            c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
                     # ── КНОПКИ ПОДТВЕРЖДЕНИЯ ────────────────────
                     st.divider()
                     c_ok, c_cancel = st.columns(2)
                     with c_ok:
-                        if st.button("💾 Подтвердить изменения", type="primary", 
+                        if st.button("Подтвердить изменения", type="primary", 
                                     use_container_width=True, key="btn_confirm_consistency"):
                             try:
                                 # 🔧 ИСПРАВЛЕНИЕ: Применяем стратегию заново к df_work (не используем df_preview)
@@ -5324,7 +5323,7 @@ with tab_validation:
 
                             # ── МЕТРИКИ (4 колонки) ─────────────────────
                             c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                            c_p1.metric("📊 Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
+                            c_p1.metric("Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
                                     delta=f"{len(df_preview)-len(df_work):+}")
 
                             if num_cols_to_check:
@@ -5334,15 +5333,15 @@ with tab_validation:
                                 m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                                 fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
                                 delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                                c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                                c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                                c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                                c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                                c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                                c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
                             # ИСПРАВЛЕНИЕ: Кнопки подтверждения с полной синхронизацией
                             st.divider()
                             c_ok, c_cancel = st.columns(2)
                             with c_ok:
-                                if st.button("💾 Подтвердить изменения", type="primary", 
+                                if st.button("Подтвердить изменения", type="primary", 
                                             use_container_width=True, key="btn_confirm_uniqueness"):
                                     try:
                                         # ИСПРАВЛЕНИЕ: Применяем стратегию заново к df_work
@@ -5663,7 +5662,7 @@ with tab_validation:
 
                             # ИСПРАВЛЕНИЕ: Метрики для категориальных колонок
                             c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                            c_p1.metric("📊 Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
+                            c_p1.metric("Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
                                     delta=f"{len(df_preview)-len(df_work):+}")
                             
                             # ИСПРАВЛЕНИЕ: Считаем метрики по затронутым колонкам
@@ -5700,15 +5699,15 @@ with tab_validation:
                                     m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                                     fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
                                     delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                                    c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                                    c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                                    c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                                    c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                                    c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                                    c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
                             # ИСПРАВЛЕНИЕ: Кнопки подтверждения с полной синхронизацией
                             st.divider()
                             c_ok, c_cancel = st.columns(2)
                             with c_ok:
-                                if st.button("💾 Подтвердить изменения", type="primary", 
+                                if st.button("Подтвердить изменения", type="primary", 
                                             use_container_width=True, key="btn_confirm_inclusion"):
                                     try:
                                         # ИСПРАВЛЕНИЕ: Применяем стратегию заново к df_work
@@ -5990,7 +5989,7 @@ with tab_validation:
 
                             # ИСПРАВЛЕНИЕ: Метрики для категориальных колонок
                             c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                            c_p1.metric("📊 Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
+                            c_p1.metric("Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
                                     delta=f"{len(df_preview)-len(df_work):+}")
                             
                             if affected_cols:
@@ -6026,15 +6025,15 @@ with tab_validation:
                                     m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                                     fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
                                     delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                                    c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                                    c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                                    c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                                    c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                                    c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                                    c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
                             # ИСПРАВЛЕНИЕ: Кнопки подтверждения с полной синхронизацией
                             st.divider()
                             c_ok, c_cancel = st.columns(2)
                             with c_ok:
-                                if st.button("💾 Подтвердить изменения", type="primary", 
+                                if st.button("Подтвердить изменения", type="primary", 
                                             use_container_width=True, key="btn_confirm_referential"):
                                     try:
                                         # ИСПРАВЛЕНИЕ: Применяем стратегию заново к df_work
@@ -6273,7 +6272,7 @@ with tab_validation:
 
                             # Метрики для текста
                             c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                            c_p1.metric("📊 Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
+                            c_p1.metric("Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
                                     delta=f"{len(df_preview)-len(df_work):+}")
 
                             if affected_cols:
@@ -6320,7 +6319,7 @@ with tab_validation:
                             st.divider()
                             c_ok, c_cancel = st.columns(2)
                             with c_ok:
-                                if st.button("💾 Подтвердить изменения", type="primary", 
+                                if st.button("Подтвердить изменения", type="primary", 
                                             use_container_width=True, key="btn_confirm_text"):
                                     try:
                                         # Применяем стратегию заново к df_work
@@ -6670,165 +6669,9 @@ with tab_validation:
                             cat_cols = [c for c in cat_cols if c != date_col]
 
                             # ИСПРАВЛЕНИЕ: Единая функция применения стратегии
-                            def _apply_regularity_strategy(df_input: pd.DataFrame, strategy: str, 
-                                                        freq: str, date_col: str, group_col: str) -> pd.DataFrame:
-                                """Применяет стратегию обработки нарушений регулярности."""
-                                df_result = df_input.copy()
-                                
-                                # Приводим дату к datetime
-                                if not pd.api.types.is_datetime64_any_dtype(df_result[date_col]):
-                                    df_result[date_col] = pd.to_datetime(df_result[date_col], errors='coerce')
-                                
-                                if "Interpolate" in strategy or "Forward Fill" in strategy or \
-                                "Backward Fill" in strategy or "AsFreq" in strategy:
-                                    
-                                    # Определяем метод заполнения
-                                    if "Interpolate" in strategy:
-                                        fill_method = 'interpolate'
-                                    elif "Forward Fill" in strategy:
-                                        fill_method = 'ffill'
-                                    elif "Backward Fill" in strategy:
-                                        fill_method = 'bfill'
-                                    else:
-                                        fill_method = 'asfreq'
-                                    
-                                    # ИСПРАВЛЕНИЕ: Функция для обработки одной группы
-                                    def _process_single_group(group_df, freq, fill_method):
-                                        """Обрабатывает одну группу (или весь DataFrame для обычных рядов)."""
-                                        # Устанавливаем дату как индекс
-                                        df_temp = group_df.set_index(date_col).sort_index()
-                                        
-                                        # ИСПРАВЛЕНИЕ: Проверяем на дубликаты в индексе и агрегируем их
-                                        if df_temp.index.duplicated().any():
-                                            # Разделяем числовые и категориальные колонки
-                                            num_cols = df_temp.select_dtypes(include=['number']).columns.tolist()
-                                            cat_cols = df_temp.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
-                                            
-                                            # Агрегируем: для числовых — mean, для категориальных — first
-                                            agg_dict = {}
-                                            for col in num_cols:
-                                                agg_dict[col] = 'mean'
-                                            for col in cat_cols:
-                                                agg_dict[col] = 'first'
-                                            
-                                            df_temp = df_temp.groupby(df_temp.index).agg(agg_dict)
-                                        
-                                        # Разделяем числовые и категориальные колонки
-                                        num_cols = df_temp.select_dtypes(include=['number']).columns.tolist()
-                                        cat_cols = df_temp.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
-                                        
-                                        # Resample для числовых колонок
-                                        if num_cols:
-                                            resampled_num = df_temp[num_cols].resample(freq)
-                                            if fill_method == 'interpolate':
-                                                filled_num = resampled_num.mean().interpolate(method='linear')
-                                            elif fill_method == 'ffill':
-                                                filled_num = resampled_num.mean().ffill()
-                                            elif fill_method == 'bfill':
-                                                filled_num = resampled_num.mean().bfill()
-                                            else:  # asfreq
-                                                filled_num = resampled_num.asfreq()
-                                        else:
-                                            filled_num = pd.DataFrame()
-                                        
-                                        # Resample для категориальных колонок
-                                        if cat_cols:
-                                            resampled_cat = df_temp[cat_cols].resample(freq)
-                                            if fill_method in ['interpolate', 'ffill']:
-                                                filled_cat = resampled_cat.ffill()
-                                            elif fill_method == 'bfill':
-                                                filled_cat = resampled_cat.bfill()
-                                            else:  # asfreq
-                                                filled_cat = resampled_cat.asfreq()
-                                        else:
-                                            filled_cat = pd.DataFrame()
-                                        
-                                        # Объединяем результаты
-                                        if not filled_num.empty and not filled_cat.empty:
-                                            filled = pd.concat([filled_num, filled_cat], axis=1)
-                                        elif not filled_num.empty:
-                                            filled = filled_num
-                                        elif not filled_cat.empty:
-                                            filled = filled_cat
-                                        else:
-                                            filled = pd.DataFrame()
-                                        
-                                        return filled.reset_index()
-                                    
-                                    if group_col:
-                                        # ПАНЕЛЬНЫЕ ДАННЫЕ: groupby + обработка каждой группы отдельно
-                                        grouped_results = []
-                                        for group_name, group_df in df_result.groupby(group_col):
-                                            filled = _process_single_group(group_df, freq, fill_method)
-                                            filled[group_col] = group_name
-                                            grouped_results.append(filled)
-                                        
-                                        df_result = pd.concat(grouped_results, ignore_index=True)
-                                    else:
-                                        # ОБЫЧНЫЙ ВРЕМЕННОЙ РЯД: обрабатываем весь DataFrame
-                                        df_result = _process_single_group(df_result, freq, fill_method)
-                                
-                                elif "фиктивные" in strategy:
-                                    # Добавить фиктивные записи
-                                    def _add_fictitious_records(group_df, freq, group_col=None, group_name=None):
-                                        """Добавляет фиктивные записи для одной группы."""
-                                        df_temp = group_df.set_index(date_col).sort_index()
-                                        
-                                        # 🔧 Агрегируем дубликаты
-                                        if df_temp.index.duplicated().any():
-                                            num_cols = df_temp.select_dtypes(include=['number']).columns.tolist()
-                                            cat_cols = df_temp.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
-                                            agg_dict = {col: 'mean' for col in num_cols}
-                                            agg_dict.update({col: 'first' for col in cat_cols})
-                                            df_temp = df_temp.groupby(df_temp.index).agg(agg_dict)
-                                        
-                                        # Создаём полный диапазон дат
-                                        full_range = pd.date_range(
-                                            start=df_temp.index.min(),
-                                            end=df_temp.index.max(),
-                                            freq=freq
-                                        )
-                                        reindexed = df_temp.reindex(full_range)
-                                        
-                                        # Заполняем категориальные колонки
-                                        cat_cols = reindexed.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
-                                        for cat_col in cat_cols:
-                                            if cat_col in reindexed.columns:
-                                                reindexed[cat_col] = reindexed[cat_col].ffill().bfill()
-                                        
-                                        # Заполняем числовые нулями
-                                        num_cols = reindexed.select_dtypes(include=['number']).columns.tolist()
-                                        for num_col in num_cols:
-                                            if num_col in reindexed.columns:
-                                                reindexed[num_col] = reindexed[num_col].fillna(0)
-                                        
-                                        reindexed = reindexed.reset_index().rename(columns={'index': date_col})
-                                        
-                                        if group_col and group_name is not None:
-                                            reindexed[group_col] = group_name
-                                        
-                                        return reindexed
-                                    
-                                    if group_col:
-                                        # Для панельных данных — для каждой группы свой диапазон
-                                        grouped_results = []
-                                        for group_name, group_df in df_result.groupby(group_col):
-                                            reindexed = _add_fictitious_records(group_df, freq, group_col, group_name)
-                                            grouped_results.append(reindexed)
-                                        
-                                        df_result = pd.concat(grouped_results, ignore_index=True)
-                                    else:
-                                        df_result = _add_fictitious_records(df_result, freq)
-                                
-                                elif "флагом" in strategy:
-                                    # Реализация стратегии "только флаг"
-                                    mask, _, _, _ = _compute_regularity_violations(df_result)
-                                    df_result['_has_gap'] = mask
-                                
-                                return df_result
 
                             # Применяем стратегию
-                            df_preview = _apply_regularity_strategy(df_preview, strategy, freq, date_col, group_col)
+                            df_preview = apply_regularity_strategy(df_preview, strategy, freq, date_col, group_col)
 
                             # Предупреждение о потере данных при asfreq
                             if "AsFreq" in strategy:
@@ -6845,7 +6688,7 @@ with tab_validation:
 
                             # Метрики
                             c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                            c_p1.metric("📊 Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
+                            c_p1.metric("Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
                                     delta=f"{len(df_preview)-len(df_work):+}")
 
                             if num_cols:
@@ -6857,14 +6700,16 @@ with tab_validation:
                                 fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
                                 delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
 
-                                c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                                c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                                c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                                c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                                c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                                c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
                             st.caption(f"📅 Частота: {freq} | Стратегия: {strategy}")
 
                             # Проверка регулярности после применения стратегии
-                            new_mask, _, _, new_freq_info = _compute_regularity_violations(df_preview)
+                            _reg_result = compute_regularity_violations(df=df_preview, date_col=date_col, entity_col=group_col)
+                            new_mask = _reg_result["mask"]
+                            new_freq_info = _reg_result["freq_info"]
                             new_gaps = int(new_mask.sum())
                             if new_gaps == 0:
                                 st.success(f"✅ После применения стратегии ряд стал регулярным (freq={freq})")
@@ -6875,11 +6720,11 @@ with tab_validation:
                             st.divider()
                             c_ok, c_cancel = st.columns(2)
                             with c_ok:
-                                if st.button("💾 Подтвердить изменения", type="primary", 
+                                if st.button("Подтвердить изменения", type="primary", 
                                             use_container_width=True, key="btn_confirm_regularity"):
                                     try:
                                         # Применяем стратегию заново к df_work
-                                        df_final = _apply_regularity_strategy(df_work, strategy, freq, date_col, group_col)
+                                        df_final = apply_regularity_strategy(df_work, strategy, freq, date_col, group_col)
                                         
                                         # СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
                                         st.session_state.df = df_final.copy()
@@ -7269,7 +7114,7 @@ with tab_validation:
         c_export1, c_export2 = st.columns(2)
 
         with c_export1:
-            if st.button("📥 Скачать паспорт (CSV)", use_container_width=True, key="btn_export_passport_csv"):
+            if st.button("Скачать паспорт (CSV)", use_container_width=True, key="btn_export_passport_csv"):
                 csv_comments = [
                     f"# {metadata['document_title']}",
                     f"# Датасет: {metadata['dataset_name']}",
@@ -7291,7 +7136,7 @@ with tab_validation:
                 )
 
         with c_export2:
-            if st.button("📊 Скачать паспорт (Excel)", use_container_width=True, key="btn_export_passport_excel"):
+            if st.button("Скачать паспорт (Excel)", use_container_width=True, key="btn_export_passport_excel"):
                 from openpyxl import Workbook
                 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
                 from openpyxl.utils import get_column_letter
@@ -8573,7 +8418,7 @@ with tab_preprocessing:
 
             # Метрики (4 колонки)
             c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-            c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}", delta=f"{len(df_preview)-len(df_work):+}")
+            c_p1.metric("Записей", f"{len(df_work)} → {len(df_preview)}", delta=f"{len(df_preview)-len(df_work):+}")
 
             if num_cols:
                 col = num_cols[0]
@@ -8582,21 +8427,21 @@ with tab_preprocessing:
                 m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                 fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
                 delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
             # Кнопки подтверждения
             st.divider()
             c_ok, c_cancel = st.columns(2)
             with c_ok:
-                if st.button("💾 Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_fill"):
-                    # 🔧 СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
+                if st.button("Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_fill"):
+                    # СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
                     st.session_state.df = df_preview.copy()
                     st.session_state.validation_ready = False
                     st.session_state.show_fill_preview = False
                     
-                    # 🔥 Удаляем все рабочие копии - они пересоздадутся из обновлённого df
+                    # Удаляем все рабочие копии - они пересоздадутся из обновлённого df
                     work_dfs = [
                         "df_missing_work", "df_pattern_work", "df_range_work",
                         "df_outlier_work", "df_inclusion_work", "df_referential_work",
@@ -8931,7 +8776,7 @@ with tab_preprocessing:
 
                             # Метрики (4 колонки, как в пропусках)
                             c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                            c_p1.metric("📊 Записей", f"{len(df):,} → {len(df_preview):,}".replace(',', ' '), delta=f"{len(df_preview)-len(df):+}")
+                            c_p1.metric("Записей", f"{len(df):,} → {len(df_preview):,}".replace(',', ' '), delta=f"{len(df_preview)-len(df):+}")
 
                             cols_to_check = selected_out_cols if selected_out_cols else num_cols
                             if cols_to_check:
@@ -8941,15 +8786,15 @@ with tab_preprocessing:
                                 m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                                 fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
                                 delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                                c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                                c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                                c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                                c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                                c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                                c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
                             # Кнопки подтверждения (унифицированы)
                             st.divider()
                             c_ok, c_cancel = st.columns(2)
                             with c_ok:
-                                if st.button("💾 Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_outlier"):
+                                if st.button("Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_outlier"):
                                     try:
                                         df_final = st.session_state.df.copy()
                                         msk = st.session_state.outlier_mask
@@ -14095,7 +13940,7 @@ with tab_preprocessing:
                     # Скачивание
                     excel_data = output.getvalue()
                     st.download_button(
-                        label="📥 Скачать паспорт свойств (Excel)",
+                        label="Скачать паспорт свойств (Excel)",
                         data=excel_data,
                         file_name=f"passport_{target_col_passport}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
