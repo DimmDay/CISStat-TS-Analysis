@@ -12,44 +12,6 @@ import numpy as np
 import pandas as pd
 
 
-def safe_stat(df: pd.DataFrame, col: str, func: Callable) -> float:
-    """
-    Безопасное применение статистической функции к колонке DataFrame.
-    
-    Возвращает 0.0, если:
-    - DataFrame пустой
-    - Колонка отсутствует
-    - Все значения в колонке — NaN
-    
-    Args:
-        df: Исходный DataFrame
-        col: Имя колонки
-        func: Статистическая функция (np.mean, np.std, np.median и т.д.)
-    
-    Returns:
-        float: Результат функции или 0.0 при ошибке/отсутствии данных
-    
-    Examples:
-        >>> safe_stat(df, 'price', np.mean)
-        42.5
-        >>> safe_stat(empty_df, 'price', np.mean)
-        0.0
-    """
-    try:
-        if df.empty or col not in df.columns:
-            return 0.0
-        series = df[col].dropna()
-        if series.empty:
-            return 0.0
-        result = func(series)
-        return float(result) if pd.notna(result) else 0.0
-    except (TypeError, ValueError, AttributeError):
-        return 0.0
-    except Exception:
-        return 0.0
-
-
-
 def _safe_nunique(series: pd.Series, min_val: int = 1, max_val: int = 100) -> bool:
     """
     Безопасный подсчёт уникальных значений для колонок с возможными нехэшируемыми типами.
@@ -79,8 +41,6 @@ def _safe_nunique(series: pd.Series, min_val: int = 1, max_val: int = 100) -> bo
     
 
 # app/core/utils.py
-import pandas as pd
-from typing import Callable, Optional, Any
 
 def safe_stat(df: pd.DataFrame, col: str, func: Callable[[pd.Series], Any]) -> Optional[float]:
     """
