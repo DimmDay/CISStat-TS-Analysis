@@ -10875,37 +10875,21 @@ with tab_preprocessing:
                     
                     if st.session_state.show_smooth_preview:
                         try:
-                            # Применяем сглаживание
+                            # Применяем сглаживание через вынесенную функцию
                             if "SMA" in smooth_method:
-                                smoothed = original_series.rolling(window=window, center=True, min_periods=1).mean()
+                                smoothed = apply_smoothing(original_series, 'SMA', window=window)
                                 method_name = "SMA"
-                            
                             elif "EMA" in smooth_method:
-                                smoothed = original_series.ewm(span=span, adjust=False).mean()
+                                smoothed = apply_smoothing(original_series, 'EMA', span=span)
                                 method_name = "EMA"
-                            
                             elif "WMA" in smooth_method:
-                                # Линейно-взвешенное скользящее среднее
-                                weights = np.arange(1, window + 1)
-                                smoothed = original_series.rolling(window=window).apply(
-                                    lambda x: np.dot(x, weights) / weights.sum(), raw=True
-                                )
-                                smoothed = smoothed.fillna(method='bfill')
+                                smoothed = apply_smoothing(original_series, 'WMA', window=window)
                                 method_name = "WMA"
-                            
                             elif "Медиана" in smooth_method:
-                                smoothed = original_series.rolling(window=window, center=True, min_periods=1).median()
+                                smoothed = apply_smoothing(original_series, 'Median', window=window)
                                 method_name = "Median"
-                            
                             elif "LOWESS" in smooth_method:
-                                from statsmodels.nonparametric.smoothers_lowess import lowess
-                                
-                                x = np.arange(len(original_series))
-                                y = original_series.values
-                                
-                                # LOWESS возвращает массив [x, y_smooth]
-                                lowess_result = lowess(y, x, frac=frac, return_sorted=False)
-                                smoothed = pd.Series(lowess_result, index=original_series.index)
+                                smoothed = apply_smoothing(original_series, 'LOWESS', frac=frac)
                                 method_name = "LOWESS"
                             
                             elif "HP-filter" in smooth_method:
@@ -11089,35 +11073,27 @@ with tab_preprocessing:
                             c_ok_smooth, c_cancel_smooth = st.columns(2)
                             with c_ok_smooth:
                                 if st.button("✅ Применить к данным", type="primary", use_container_width=True, key="btn_confirm_smooth"):
-                                    # Применяем сглаживание к основному df
-                                    df_final_smooth = st.session_state.df.copy()
-                                    
-                                    # Сохраняем оригинальный столбец с суффиксом _original
-                                    orig_col_name = f"{target_col}_original"
-                                    if orig_col_name not in df_final_smooth.columns:
-                                        df_final_smooth[orig_col_name] = df_final_smooth[target_col]
-                                    
-                                    # Применяем сглаживание
+                                    # Применяем сглаживание через вынесенную функцию
                                     if method_name == "SMA":
-                                        df_final_smooth[target_col] = df_final_smooth[target_col].astype(float).rolling(
-                                            window=param_value, center=True, min_periods=1).mean()
+                                        df_final_smooth[target_col] = apply_smoothing(
+                                            df_final_smooth[target_col].astype(float), 'SMA', window=param_value
+                                        )
                                     elif method_name == "EMA":
-                                        df_final_smooth[target_col] = df_final_smooth[target_col].astype(float).ewm(
-                                            span=param_value, adjust=False).mean()
+                                        df_final_smooth[target_col] = apply_smoothing(
+                                            df_final_smooth[target_col].astype(float), 'EMA', span=param_value
+                                        )
                                     elif method_name == "WMA":
-                                        weights = np.arange(1, param_value + 1)
-                                        df_final_smooth[target_col] = df_final_smooth[target_col].astype(float).rolling(
-                                            window=param_value).apply(
-                                            lambda x: np.dot(x, weights) / weights.sum(), raw=True
-                                        ).fillna(method='bfill')
+                                        df_final_smooth[target_col] = apply_smoothing(
+                                            df_final_smooth[target_col].astype(float), 'WMA', window=param_value
+                                        )
                                     elif method_name == "Median":
-                                        df_final_smooth[target_col] = df_final_smooth[target_col].astype(float).rolling(
-                                            window=param_value, center=True, min_periods=1).median()
+                                        df_final_smooth[target_col] = apply_smoothing(
+                                            df_final_smooth[target_col].astype(float), 'Median', window=param_value
+                                        )
                                     elif method_name == "LOWESS":
-                                        from statsmodels.nonparametric.smoothers_lowess import lowess
-                                        x = np.arange(len(df_final_smooth))
-                                        y = df_final_smooth[target_col].astype(float).values
-                                        lowess_result = lowess(y, x, frac=param_value, return_sorted=False)
+                                        df_final_smooth[target_col] = apply_smoothing(
+                                            df_final_smooth[target_col].astype(float), 'LOWESS', frac=param_value
+                                        )
                                         df_final_smooth[target_col] = lowess_result
                                     elif method_name == "HP-filter":
                                         from statsmodels.tsa.filters.hp_filter import hpfilter
@@ -12412,23 +12388,17 @@ with tab_preprocessing:
                     df_fe = df_fe.sort_values(date_col)
                     features_created = []
                     
-                    # 1. ВРЕМЕННЫЕ ПРИЗНАКИ
                     if create_time:
-                        if pd.api.types.is_datetime64_any_dtype(df_fe[date_col]):
-                            df_fe['year'] = df_fe[date_col].dt.year
-                            df_fe['month'] = df_fe[date_col].dt.month
-                            df_fe['day'] = df_fe[date_col].dt.day
-                            df_fe['dayofweek'] = df_fe[date_col].dt.dayofweek
-                            if create_quarter:
-                                df_fe['quarter'] = df_fe[date_col].dt.quarter
-                            if create_dayofyear:
-                                df_fe['dayofyear'] = df_fe[date_col].dt.dayofyear
-                            if create_weekend:
-                                df_fe['is_weekend'] = (df_fe[date_col].dt.dayofweek >= 5).astype(int)
-                            if create_holiday:
-                                # Упрощённая логика праздников (можно расширить)
-                                df_fe['is_holiday'] = 0  # Заглушка, требует библиотеки holidays
-                            features_created.extend(['year', 'month', 'day', 'dayofweek', 'quarter', 'dayofyear', 'is_weekend', 'is_holiday'])
+                        df_fe = create_temporal_features(
+                            df_fe,
+                            date_col,
+                            add_quarter=create_quarter,
+                            add_dayofyear=create_dayofyear,
+                            add_is_weekend=create_weekend,
+                            add_is_holiday=create_holiday
+                        )
+                        features_created.extend(['year', 'month', 'day', 'dayofweek', 'quarter', 'dayofyear', 'is_weekend', 'is_holiday'])
+                        st.success("✅ Созданы временные признаки")
                             st.success("✅ Созданы временные признаки")
                     
                     # 2. ЛАГИ
