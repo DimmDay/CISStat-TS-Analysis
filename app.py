@@ -69,6 +69,7 @@ from app.classification.classifier import classify_columns
 from validation.text_quality import compute_text_violations
 from validation.text_quality import compute_text_violations, apply_text_strategy
 from app.validation.regularity import compute_regularity_violations, apply_regularity_strategy
+from app.preprocessing.transforms import apply_differencing
 
 
 # Инициализация рекомендателя
@@ -11487,78 +11488,6 @@ with tab_preprocessing:
                     results['error'] = str(e)
                 
                 return results
-            
-            # ── ФУНКЦИЯ ДИФФЕРЕНЦИРОВАНИЯ ───────────────────
-            def apply_differencing(series: pd.Series, method: str, d: int = 1, s: int = None, 
-                                frac_d: float = None) -> pd.Series:
-                """
-                Применяет дифференцирование к ряду.
-                
-                Args:
-                    series: исходный ряд
-                    method: 'first', 'seasonal', 'second', 'log', 'fractional', 'combined'
-                    d: порядок первого различия
-                    s: сезонный период (для seasonal/combined)
-                    frac_d: дробный порядок (для fractional, 0 < d < 1)
-                
-                Returns:
-                    дифференцированный ряд
-                """
-                s_clean = series.dropna()
-                
-                if method == 'first':
-                    return s_clean.diff(d).dropna()
-                
-                elif method == 'seasonal':
-                    if s is None:
-                        s = 12  # default
-                    return s_clean.diff(s).dropna()
-                
-                elif method == 'second':
-                    return s_clean.diff(2).dropna()
-                
-                elif method == 'log':
-                    if (s_clean <= 0).any():
-                        raise ValueError("Логарифмическое различие требует положительных значений")
-                    return np.log(s_clean).diff().dropna()
-                
-                elif method == 'fractional':
-                    if frac_d is None or not (0 < frac_d < 1):
-                        raise ValueError("Дробный порядок должен быть в диапазоне (0, 1)")
-                    # Реализация дробного дифференцирования по López de Prado
-                    # (1 - L)^d = Σ_{k=0}^{∞} (-1)^k * C(d,k) * L^k
-                    # где C(d,k) = d*(d-1)*...*(d-k+1)/k!
-                    from scipy.special import comb
-                    
-                    weights = []
-                    for k in range(len(s_clean)):
-                        weight = (-1) ** k * comb(frac_d, k)
-                        weights.append(weight)
-                        if abs(weight) < 1e-5:  # Обрезаем малые веса
-                            break
-                    
-                    weights = np.array(weights[:len(s_clean)])
-                    
-                    # Применяем свёртку
-                    result = np.zeros(len(s_clean))
-                    values = s_clean.values
-                    for i in range(len(s_clean)):
-                        for j, w in enumerate(weights):
-                            if i - j >= 0:
-                                result[i] += w * values[i - j]
-                    
-                    return pd.Series(result, index=s_clean.index).dropna()
-                
-                elif method == 'combined':
-                    # Сначала сезонное, потом первое различие
-                    if s is None:
-                        s = 12
-                    result = s_clean.diff(s).dropna()
-                    result = result.diff(d).dropna()
-                    return result
-                
-                else:
-                    raise ValueError(f"Неизвестный метод: {method}")
             
             # ── МЕТРИКИ ТЕКУЩЕГО СОСТОЯНИЯ ─────────────────
             c_diag1, c_diag2, c_diag3, c_diag4 = st.columns(4)
