@@ -70,6 +70,7 @@ from validation.text_quality import compute_text_violations
 from validation.text_quality import compute_text_violations, apply_text_strategy
 from app.validation.regularity import compute_regularity_violations, apply_regularity_strategy
 from app.preprocessing.transforms import apply_differencing, test_heteroskedasticity, calculate_smoothing_metrics, run_stationarity_tests, calculate_scaling_metrics, compute_row_properties, yeo_johnson_manual
+from app.features.spectral import compute_all_spectral_features
 from app.preprocessing.decomposition import apply_decomposition, compute_decomposition_stats
 
 
