@@ -69,8 +69,7 @@ from app.classification.classifier import classify_columns
 from validation.text_quality import compute_text_violations
 from validation.text_quality import compute_text_violations, apply_text_strategy
 from app.validation.regularity import compute_regularity_violations, apply_regularity_strategy
-from app.preprocessing.transforms import apply_differencing, test_heteroskedasticity, calculate_smoothing_metrics, run_stationarity_tests, calculate_scaling_metrics, compute_row_properties
-from app.preprocessing.transforms import yeo_johnson_manual
+from app.preprocessing.transforms import apply_differencing, test_heteroskedasticity, calculate_smoothing_metrics, run_stationarity_tests, calculate_scaling_metrics, compute_row_properties, yeo_johnson_manual
 
 
 # Инициализация рекомендателя
