@@ -70,6 +70,7 @@ from validation.text_quality import compute_text_violations
 from validation.text_quality import compute_text_violations, apply_text_strategy
 from app.validation.regularity import compute_regularity_violations, apply_regularity_strategy
 from app.preprocessing.transforms import apply_differencing
+from app.preprocessing.transforms import yeo_johnson_manual
 
 
 # Инициализация рекомендателя

@@ -119,3 +119,21 @@ def apply_differencing_panel(
     df_result[target_col] = df.groupby(entity_col, group_keys=False)[target_col].transform(_diff_safe)
     
     return df_result
+
+def yeo_johnson_manual(y: np.ndarray, lmbda: float) -> np.ndarray:
+    """
+    Ручная реализация трансформации Yeo-Johnson.
+    Используется, когда auto_lambda=False и нужен конкретный lambda.
+    """
+    result = np.zeros_like(y, dtype=float)
+    pos = y >= 0
+    neg = ~pos
+    if lmbda != 0:
+        result[pos] = ((y[pos] + 1) ** lmbda - 1) / lmbda
+    else:
+        result[pos] = np.log1p(y[pos])
+    if lmbda != 2:
+        result[neg] = -((-y[neg] + 1) ** (2 - lmbda) - 1) / (2 - lmbda)
+    else:
+        result[neg] = -np.log1p(-y[neg])
+    return result
