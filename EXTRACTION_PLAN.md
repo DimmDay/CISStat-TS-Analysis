@@ -177,12 +177,12 @@
 
 ### Блок C. Вкладка «Валидация» (tab_validation, строки 4471–9515)
 
-| Пункт | Описание                              | Статус | Примечание                                                                               |
-|-------|---------------------------------------|--------|------------------------------------------------------------------------------------------|
-| C.1   | Оркестрация пайплайна                 | ✅     | Вынесены `check_uniqueness`, `check_inclusion`, `check_ts_properties`; удалён debug-блок |
-| C.2   | Удалить дубль `calculate_ts_passport` | ✅     | убль уже удалён ранее, единственная версия в `app/core/passport.py`                      |
-| C.3   | Data Quality Dashboard                | ✅     | app/core/utils.py (все 8 копий заменены на импорт)                                       |
-| C.4   | Паспорт валидации v1.1                | ⏭️     | В основном UI, использует уже вынесенные функции                                         |
+| Пункт | Описание                              | Статус |      Примечание                                                                   |
+|-------|---------------------------------------|--------|-----------------------------------------------------------------------------------|
+| C.1   | Оркестрация пайплайна                 | ✅     | Вынесены `check_uniqueness`, `check_inclusion`, `check_ts_properties`;debug-блок |
+| C.2   | Удалить дубль `calculate_ts_passport` | ✅     | убль уже удалён ранее, единственная версия в `app/core/passport.py`              |
+| C.3   | Data Quality Dashboard                | ✅     | app/core/utils.py (все 8 копий заменены на импорт)                               |
+| C.4   | Паспорт валидации v1.1                | ⏭️     | В основном UI, использует уже вынесенные функции                                 |
 
 **Итого Блок C: 2/4 функций извлечено (50%)** | 3/4 пунктов закрыто (75%)
 
@@ -220,6 +220,39 @@
 ---
 
 ### БЛОК D. Вкладка «Предобработка» (`tab_preprocessing`, строки 9516–15523)
+
+Пункт	             Описание	              Статус	            Примечание
+D.1 	 Удалить дубль `_calc_ts_props`	        ✅	Уже удалён ранее, единственная версия в `app/core/passport.py`
+D.2 	 Пропуски (UI-обёртка)	                ⏭️	UI-код в `app.py`, бизнес-логика в `app/validation/missing.py`
+D.3 	 Выбросы (UI-обёртка)	                ⏭️	UI-код в `app.py`, бизнес-логика в `app/validation/outliers.py`
+D.4 	 Регулярность (повторная проверка)	    ⏭️	UI-код в `app.py`, бизнес-логика в `app/validation/regularity.py`
+D.5 	 STL-декомпозиция	                    ⏭️	`app/preprocessing/decomposition.py` (создать)
+D.6 	 Стабилизация дисперсии	                ⏭️	`app/preprocessing/transforms.py` (частично есть, 5206 строк)
+D.7 	    Сглаживание	                        ⏭️	`app/preprocessing/transforms.py` (частично есть)
+D.8 	    Дифференцирование/стационарность	⏭️	`app/preprocessing/stationarity.py` (создать)
+D.9 	    Feature Eng. + Спектральный анализ	⏭️	`app/features/` (создать: temporal.py, rolling.py, spectral.py)
+D.10    	Масштабирование                 	⏭️	`app/preprocessing/transforms.py` (частично есть)
+D.11    	Сравн. паспорт + `hurst_exponent`	⏭️	Заменить вызовом `calculate_ts_passport` из `app/core/passport.py`
+
+**Итого Блок D: 0/0 функций извлечено (0%)** | 0/0 пунктов закрыто (0%)
+
+### БЛОК D. Вкладка «Предобработка» (`tab_preprocessing`, строки 7994–13960)
+
+| Пункт | Описание | Статус | Примечание |
+|---------|-------------------------------------|-----|---------------------------------------------------------------------------|
+| **D.1** | Удалить дубль `_calc_ts_props`      | ✅ | Уже удалён ранее, единственная версия в `app/core/passport.py`             |
+| **D.2** | Пропуски (UI-обёртка)               | ⏸️ | Бизнес-логика в `app/validation/missing.py`, UI-код остался в `app.py`     |
+| **D.3** | Выбросы (UI-обёртка)                | ️⏸️ | Бизнес-логика в `app/validation/outliers.py`, UI-код остался в `app.py`    |
+| **D.4** | Регулярность (повторная проверка)   | ⏸️ | Бизнес-логика в `app/validation/regularity.py`, UI-код остался в `app.py`  |
+| **D.5** | STL-декомпозиция                    | ️✅ | Создан `app/preprocessing/decomposition.py`                                |
+| **D.6** | Стабилизация дисперсии              | ✅ | Вынесена `yeo_johnson_manual` в `app/preprocessing/transforms.py`          |
+| **D.7** | Сглаживание                         | ✅ | Вынесена `calculate_smoothing_metrics` в `app/preprocessing/transforms.py` |
+| **D.8** | Дифференцирование/стационарность    | ✅ | Вынесены 3 функции в `app/preprocessing/transforms.py`                     |
+| **D.9** | Feature Eng. + Спектральный анализ  | ✅ | Созданы `app/features/spectral.py`, `temporal.py`, `rolling.py`            |
+| **D.10** | Масштабирование                    | ✅ | Вынесена `calculate_scaling_metrics` в `app/preprocessing/transforms.py`   |
+| **D.11** | Сравн. паспорт + `hurst_exponent`  | ✅ | Вынесена `compute_row_properties` в `app/preprocessing/transforms.py`      |
+
+**Итого Блок D: 11 функций извлечено** | **9/11 пунктов закрыто (82%)**
 
 **Важная архитектурная деталь:** эта вкладка физически смешивает то, что в `ARCHITECTURE.md` — два разных модуля: **Предобработка** (`app/preprocessing/`) и **Feature Store** (`app/features/`). При переносе обязательно **разделить** на два целевых модуля по смыслу, а не сохранять смешение из legacy.
 
