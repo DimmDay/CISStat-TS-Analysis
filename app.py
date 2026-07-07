@@ -52,7 +52,6 @@ from app.core.passport import calculate_ts_passport
 from app.core.passport import _compare_ts_props
 from app.core.auth import check_token
 from app.data.file_loader import init_db_connection as _init_db_connection_impl
-import importlib
 _loader_module = importlib.import_module('app.data.file_loader')
 _read_impl = _loader_module.read_uploaded_file
 from app.eda.distributions import detect_distribution_type
@@ -631,7 +630,6 @@ st.markdown("""
 # 🎨 НАСТРОЙКИ ЗАГОЛОВКА (хэдер)
 # ─────────────────────────────────────────────────────────────
 import base64
-from pathlib import Path
 
 HEADER_FONT_SIZE = "36px"
 SUBHEADER_FONT_SIZE = "21px"
