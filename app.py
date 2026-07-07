@@ -1,33 +1,27 @@
-﻿import time
-import streamlit as st
+﻿import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import io, os, re, json
-from datetime import datetime, date
+import io
+import os
+from datetime import datetime
 from pathlib import Path
-from sqlalchemy import create_engine
-import clickhouse_connect
 import numpy as np
-import re
 import seaborn as sns
 from scipy import stats
-from scipy.stats import boxcox
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.stats.diagnostic import acorr_ljungbox
 from plotly.subplots import make_subplots
 from statsmodels.tsa.seasonal import STL, seasonal_decompose
-from typing import Dict, List, Tuple, Optional
+from typing import List, Tuple, Optional
 from scipy.fft import fft, fftfreq
 from scipy.signal import find_peaks, periodogram, welch
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 import pywt
 import matplotlib.pyplot as plt
 from statsmodels.tsa.stattools import acf, adfuller
-import json
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-import hashlib
 import importlib
 import validation.engine
 importlib.reload(validation.engine)
@@ -49,10 +43,8 @@ from validation.engine import (
     validate_sufficiency,
     auto_generate_rules
 )
-from validation.missing import analyze_missing, get_expert_list_df
-from validation.outliers import detect_outliers, get_outliers_df
-from validation.reporter import save_validated_dataset, generate_correction_report
-from validation.audit import log_expert_action
+from validation.missing import analyze_missing
+from validation.outliers import detect_outliers
 from src.catalog.recommender import CISStatRecommender
 from app.core.utils import safe_stat, _safe_nunique
 from app.core.passport import _hurst_exponent as hurst_exponent, calculate_ts_props_quick
@@ -70,10 +62,8 @@ from validation.text_quality import compute_text_violations
 from validation.text_quality import compute_text_violations, apply_text_strategy
 from app.validation.regularity import compute_regularity_violations, apply_regularity_strategy
 from app.preprocessing.transforms import apply_differencing, test_heteroskedasticity, calculate_smoothing_metrics, run_stationarity_tests, calculate_scaling_metrics, compute_row_properties, yeo_johnson_manual
-from app.features.spectral import compute_all_spectral_features
 from app.features.rolling import apply_smoothing
-from app.features.temporal import create_temporal_features, create_fourier_features
-from app.preprocessing.decomposition import apply_decomposition, compute_decomposition_stats
+from app.features.temporal import create_temporal_features
 
 
 # Инициализация рекомендателя
@@ -2674,7 +2664,6 @@ with tab_download:
 
                 try:
                     import pywt
-                    from scipy import signal
 
                     # CWT
                     widths = np.arange(1, min(128, len(analysis_series)//4))
@@ -3389,7 +3378,7 @@ with tab_download:
                 try:
                     import io
                     from datetime import datetime as dt_now
-                    from scipy.stats import jarque_bera, linregress
+                    from scipy.stats import jarque_bera
                     from statsmodels.tsa.stattools import adfuller
                     try:
                         from statsmodels.tsa.stattools import acorr_ljungbox
@@ -12399,8 +12388,7 @@ with tab_preprocessing:
                         )
                         features_created.extend(['year', 'month', 'day', 'dayofweek', 'quarter', 'dayofyear', 'is_weekend', 'is_holiday'])
                         st.success("✅ Созданы временные признаки")
-                            st.success("✅ Созданы временные признаки")
-                    
+                                            
                     # 2. ЛАГИ
                     if create_lags and lag_periods:
                         for lag in lag_periods:
@@ -13481,8 +13469,6 @@ with tab_exploratory:
 
         from app.eda.ih_analysis import (
             discretize_feature,
-            shannon_entropy,
-            mutual_information,
             compute_r_metric,
             compute_synergy,
             generate_ih_recommendations
