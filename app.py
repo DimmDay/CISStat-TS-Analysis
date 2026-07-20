@@ -1,33 +1,27 @@
-﻿import time
-import streamlit as st
+﻿import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import io, os, re, json
-from datetime import datetime, date
+import io
+import os
+from datetime import datetime
 from pathlib import Path
-from sqlalchemy import create_engine
-import clickhouse_connect
 import numpy as np
-import re
 import seaborn as sns
 from scipy import stats
-from scipy.stats import boxcox
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.stats.diagnostic import acorr_ljungbox
 from plotly.subplots import make_subplots
 from statsmodels.tsa.seasonal import STL, seasonal_decompose
-from typing import Dict, List, Tuple, Optional
+from typing import List, Tuple, Optional
 from scipy.fft import fft, fftfreq
 from scipy.signal import find_peaks, periodogram, welch
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 import pywt
 import matplotlib.pyplot as plt
 from statsmodels.tsa.stattools import acf, adfuller
-import json
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-import hashlib
 import importlib
 import validation.engine
 importlib.reload(validation.engine)
@@ -49,10 +43,8 @@ from validation.engine import (
     validate_sufficiency,
     auto_generate_rules
 )
-from validation.missing import analyze_missing, get_expert_list_df
-from validation.outliers import detect_outliers, get_outliers_df
-from validation.reporter import save_validated_dataset, generate_correction_report
-from validation.audit import log_expert_action
+from validation.missing import analyze_missing
+from validation.outliers import detect_outliers
 from src.catalog.recommender import CISStatRecommender
 from app.core.utils import safe_stat, _safe_nunique
 from app.core.passport import _hurst_exponent as hurst_exponent, calculate_ts_props_quick
@@ -60,7 +52,6 @@ from app.core.passport import calculate_ts_passport
 from app.core.passport import _compare_ts_props
 from app.core.auth import check_token
 from app.data.file_loader import init_db_connection as _init_db_connection_impl
-import importlib
 _loader_module = importlib.import_module('app.data.file_loader')
 _read_impl = _loader_module.read_uploaded_file
 from app.eda.distributions import detect_distribution_type
@@ -70,10 +61,8 @@ from validation.text_quality import compute_text_violations
 from validation.text_quality import compute_text_violations, apply_text_strategy
 from app.validation.regularity import compute_regularity_violations, apply_regularity_strategy
 from app.preprocessing.transforms import apply_differencing, test_heteroskedasticity, calculate_smoothing_metrics, run_stationarity_tests, calculate_scaling_metrics, compute_row_properties, yeo_johnson_manual
-from app.features.spectral import compute_all_spectral_features
 from app.features.rolling import apply_smoothing
-from app.features.temporal import create_temporal_features, create_fourier_features
-from app.preprocessing.decomposition import apply_decomposition, compute_decomposition_stats
+from app.features.temporal import create_temporal_features
 
 
 # Инициализация рекомендателя
@@ -137,225 +126,6 @@ st.markdown(f"""
 # ─────────────────────────────────────────────────────────────
 # УНИВЕРСАЛЬНАЯ ФУНКЦИЯ РАСЧЁТА ПАСПОРТА СВОЙСТВ РЯДА
 # ─────────────────────────────────────────────────────────────
-def calculate_ts_passport(analysis_series: pd.Series,
-                          df_filtered: pd.DataFrame = None,
-                          ct_f: dict = None,
-                          target_col: str = None) -> dict:
-    """
-    Рассчитывает полный паспорт свойств временного ряда (13 метрик).
-    Структура идентична паспорту во вкладке "Загрузка".
-    """
-    from scipy.stats import linregress, jarque_bera
-    from scipy.signal import periodogram, find_peaks
-    from scipy.fft import fft, fftfreq
-    from statsmodels.tsa.stattools import adfuller, acf as acf_func
-    from statsmodels.tsa.seasonal import STL
-    from statsmodels.stats.diagnostic import acorr_ljungbox
-
-    props = {}
-
-    if len(analysis_series) < 30:
-        return {"error": "Недостаточно данных (нужно > 30 точек)"}
-
-    try:
-        # 0. ЧАСТОТА РЯДА
-        try:
-            inferred_freq = pd.infer_freq(analysis_series.index.drop_duplicates().sort_values())
-        except:
-            inferred_freq = None
-        props['freq'] = {
-            'value': inferred_freq if inferred_freq else 'Нерегулярная',
-            'is_ok': inferred_freq is not None
-        }
-
-        # 1. СТАЦИОНАРНОСТЬ (ADF)
-        adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
-        adf_p = adf_res[1]
-        is_stationary = adf_p < 0.05
-        props['stationarity'] = {
-            'value': float(adf_p),
-            'is_stationary': bool(is_stationary),
-            'is_ok': bool(is_stationary)
-        }
-
-        # 2. ДЕТЕРМИНИРОВАННОСТЬ (R² тренда)
-        slope, intercept, r_value, p_value, std_err = linregress(
-            range(len(analysis_series)), analysis_series.values
-        )
-        r_squared = float(r_value**2)
-        is_deterministic = r_squared >= 0.7
-        props['determinism'] = {
-            'value': r_squared,
-            'slope': float(slope),
-            'is_deterministic': bool(is_deterministic)
-        }
-
-        # 3. АВТОКОРРЕЛЯЦИЯ (Ljung-Box)
-        lb_res = acorr_ljungbox(analysis_series, lags=[10])
-        if isinstance(lb_res, pd.DataFrame):
-            lb_p = float(lb_res['lb_pvalue'].iloc[0])
-        else:
-            lb_p = float(lb_res[1][0])
-        is_white_noise = lb_p > 0.05
-        props['autocorrelation'] = {
-            'value': lb_p,
-            'is_white_noise': bool(is_white_noise),
-            'is_ok': bool(is_white_noise)
-        }
-
-        # 4. НОРМАЛЬНОСТЬ (Jarque-Bera)
-        jb_res = jarque_bera(analysis_series.dropna())
-        jb_p = float(jb_res.pvalue) if hasattr(jb_res, 'pvalue') else float(jb_res[1])
-        is_normal = jb_p > 0.05
-        props['normality'] = {
-            'value': jb_p,
-            'is_normal': bool(is_normal),
-            'is_ok': bool(is_normal)
-        }
-
-        # 5. НАПРАВЛЕНИЕ ТРЕНДА
-        if slope > 0:
-            trend_dir = 'up'
-        elif slope < 0:
-            trend_dir = 'down'
-        else:
-            trend_dir = 'flat'
-        props['trend'] = {
-            'slope': float(slope),
-            'direction': trend_dir
-        }
-
-        # 6. КОРРЕЛЯЦИЯ ПРИЗНАКОВ
-        props['correlations'] = {}
-        if df_filtered is not None and ct_f is not None and target_col:
-            try:
-                num_cols = ct_f.get("num", [])
-                if len(num_cols) >= 2 and target_col in num_cols:
-                    corr_df = df_filtered[num_cols].corr()
-                    target_corr = corr_df[target_col].drop(target_col).sort_values(key=abs, ascending=False)
-                    top_corrs = {col: float(val) for col, val in target_corr.head(3).items()}
-                    props['correlations'] = {
-                        'top3': top_corrs,
-                        'max_abs_corr': float(target_corr.iloc[0]) if len(target_corr) > 0 else 0.0
-                    }
-            except:
-                pass
-
-        # 7. СЕЗОННОСТЬ (STL strength)
-        period = 7 if (inferred_freq and 'D' in str(inferred_freq)) else 12
-        try:
-            stl_res = STL(analysis_series, period=period, robust=True).fit()
-            var_total = float(analysis_series.var())
-            var_resid = float(stl_res.resid.var())
-            var_detrended = var_total - float(stl_res.trend.var())
-            strength_seasonality = max(0, 1 - var_resid / var_detrended) if var_detrended > 0 else 0
-            is_seasonal = strength_seasonality > 0.6
-        except:
-            strength_seasonality = 0.0
-            is_seasonal = False
-        props['seasonality'] = {
-            'strength': float(strength_seasonality),
-            'is_seasonal': bool(is_seasonal)
-        }
-
-        # 8. СЕЗОННЫЕ ПЕРИОДЫ (ACF)
-        try:
-            max_lag = min(60, len(analysis_series) // 4)
-            acf_values = acf_func(analysis_series, nlags=max_lag)
-            confidence = 1.96 / np.sqrt(len(analysis_series))
-            significant_lags = np.where(np.abs(acf_values) > confidence)[0][1:]
-
-            seasonal_periods_acf = []
-            for i, lag in enumerate(significant_lags):
-                if i > 0 and lag - significant_lags[i-1] < 3:
-                    continue
-                if lag > 2:
-                    seasonal_periods_acf.append(int(lag))
-
-            props['seasonal_periods'] = {
-                'periods': seasonal_periods_acf[:3],
-                'count': len(seasonal_periods_acf[:3])
-            }
-        except:
-            props['seasonal_periods'] = {'periods': [], 'count': 0}
-
-        # 9. ДОЛГАЯ ПАМЯТЬ (Hurst)
-        
-        hurst_val = hurst_exponent(analysis_series.values)
-        if hurst_val < 0.45:
-            memory_type = 'anti_persistent'
-        elif hurst_val > 0.55:
-            memory_type = 'persistent'
-        else:
-            memory_type = 'random_walk'
-        props['hurst'] = {
-            'value': float(hurst_val),
-            'type': memory_type
-        }
-
-        # 10. ДОМИНИРУЮЩИЕ ЧАСТОТЫ (FFT)
-        try:
-            n = len(analysis_series)
-            y = analysis_series.values - analysis_series.mean()
-            yf = fft(y)
-            xf = fftfreq(n, 1)[:n//2]
-            amplitude = 2.0/n * np.abs(yf[0:n//2])
-
-            peaks, _ = find_peaks(amplitude, height=np.mean(amplitude) + np.std(amplitude))
-            fft_periods = [1/xf[p] for p in peaks if xf[p] > 0 and xf[p] < 0.5]
-            fft_dominant = sorted(fft_periods)[:3] if fft_periods else []
-            props['fft'] = {
-                'dominant_periods': fft_dominant,
-                'count': len(fft_dominant)
-            }
-        except:
-            props['fft'] = {'dominant_periods': [], 'count': 0}
-
-        # 11. ПЕРИОДОГРАММА
-        try:
-            freq_per, pxx_per = periodogram(analysis_series.values, fs=1.0, window='hann')
-            peaks_per, _ = find_peaks(pxx_per, height=np.median(pxx_per)*2)
-            periodogram_periods = sorted([1/freq_per[p] for p in peaks_per if freq_per[p] > 0])[:3]
-            props['periodogram'] = {
-                'periods': periodogram_periods,
-                'count': len(periodogram_periods)
-            }
-        except:
-            props['periodogram'] = {'periods': [], 'count': 0}
-
-        # 12. ВЕЙВЛЕТ-МАСШТАБЫ
-        try:
-            import pywt
-            widths = np.arange(1, min(128, len(analysis_series)//4))
-            cwtmatr, _ = pywt.cwt(
-                analysis_series.values - analysis_series.mean(),
-                widths, 'morl', sampling_period=1
-            )
-            mean_power = np.mean(np.abs(cwtmatr), axis=1)
-            wavelet_peaks, _ = find_peaks(mean_power, height=np.mean(mean_power))
-            wavelet_scales = widths[wavelet_peaks][:3].tolist() if len(wavelet_peaks) > 0 else []
-            props['wavelet'] = {
-                'scales': wavelet_scales,
-                'count': len(wavelet_scales)
-            }
-        except:
-            props['wavelet'] = {'scales': [], 'count': 0}
-
-        # 13. БАЗОВЫЕ СТАТИСТИКИ
-        props['basic_stats'] = {
-            'n': int(len(analysis_series)),
-            'mean': float(analysis_series.mean()),
-            'std': float(analysis_series.std()),
-            'min': float(analysis_series.min()),
-            'max': float(analysis_series.max())
-        }
-
-        props['timestamp'] = pd.Timestamp.now().isoformat()
-
-    except Exception as e:
-        props['error'] = str(e)
-
-    return props
 
 
 # ─────────────────────────────────────────────────────────────
@@ -641,7 +411,6 @@ st.markdown("""
 # 🎨 НАСТРОЙКИ ЗАГОЛОВКА (хэдер)
 # ─────────────────────────────────────────────────────────────
 import base64
-from pathlib import Path
 
 HEADER_FONT_SIZE = "36px"
 SUBHEADER_FONT_SIZE = "21px"
@@ -2674,7 +2443,6 @@ with tab_download:
 
                 try:
                     import pywt
-                    from scipy import signal
 
                     # CWT
                     widths = np.arange(1, min(128, len(analysis_series)//4))
@@ -3389,7 +3157,7 @@ with tab_download:
                 try:
                     import io
                     from datetime import datetime as dt_now
-                    from scipy.stats import jarque_bera, linregress
+                    from scipy.stats import jarque_bera
                     from statsmodels.tsa.stattools import adfuller
                     try:
                         from statsmodels.tsa.stattools import acorr_ljungbox
@@ -12399,8 +12167,7 @@ with tab_preprocessing:
                         )
                         features_created.extend(['year', 'month', 'day', 'dayofweek', 'quarter', 'dayofyear', 'is_weekend', 'is_holiday'])
                         st.success("✅ Созданы временные признаки")
-                            st.success("✅ Созданы временные признаки")
-                    
+                                            
                     # 2. ЛАГИ
                     if create_lags and lag_periods:
                         for lag in lag_periods:
@@ -12595,15 +12362,15 @@ with tab_preprocessing:
                 
                 **Методы масштабирования:**
                 
-                | Метод | Формула | Диапазон | Когда использовать |
-                |-------|---------|----------|-------------------|
-                | **Min-Max** | (x - min) / (max - min) | [0, 1] | Нейросети, изображения |
-                | **Standardization** | (x - μ) / σ | ~[-3, 3] | ARIMA, PCA, линейная регрессия |
-                | **Robust Scaling** | (x - median) / IQR | ~[-3, 3] | Данные с выбросами |
-                | **🆕 MaxAbs** | x / max(\|x\|) | [-1, 1] | Разреженные данные, знак важен |
-                | **🆕 Normalization (L2)** | x / \|\|x\|\|₂ | единичная сфера | Cosine similarity, SVM |
-                | **🆕 Quantile Transform** | F¹(Uniform/Normal) | [0, 1] или N(0,1) | Сильно скошенные распределения |
-                | **🆕 Log1p** | log(1 + x) | [0, ∞) | Count data с правым хвостом |
+                | Метод                      | Формула                 | Диапазон           | Когда использовать |
+                |----------------------------|-------------------------|--------------------|---------------------------|
+                | **Min-Max**                | (x - min) / (max - min) | [0, 1]             | Нейросети, изображения |
+                | **Standardization**        | (x - μ) / σ             | ~[-3, 3]           | ARIMA, PCA, линейная регрессия |
+                | **Robust Scaling**         | (x - median) / IQR      | ~[-3, 3]           | Данные с выбросами |
+                | **🆕 MaxAbs**             | x / max(|x|)             | [-1, 1]           | Разреженные данные, знак важен |
+                | **🆕 Normalization (L2)** | x / |x|₂                 | единичная сфера   | Cosine similarity, SVM |
+                | **🆕 Quantile Transform** | F¹(Uniform/Normal)       | [0, 1] или N(0,1) | Сильно скошенные распределения |
+                | **🆕 Log1p**              | log(1 + x)               | [0, ∞)            | Count data с правым хвостом |
                 
                 **⚠️ Data Leakage (утечка данных):**
                 - 🔴 **НЕЛЬЗЯ** fit на всём датасете, затем split на train/test
@@ -13481,8 +13248,6 @@ with tab_exploratory:
 
         from app.eda.ih_analysis import (
             discretize_feature,
-            shannon_entropy,
-            mutual_information,
             compute_r_metric,
             compute_synergy,
             generate_ih_recommendations
