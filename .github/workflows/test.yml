@@ -26,7 +26,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         # Основные зависимости проекта
-        pip install -r requirements.txt
+        pip install -r requirements.txt -r requirements-dev.txt
         # Тестовые зависимости (pytest, syrupy для snapshot-тестов и т.д.)
         # Без этого шага шаг "Run tests" падал с "pytest: команда не найдена" (exit 127).
         pip install -r requirements-dev.txt
@@ -36,3 +36,4 @@ jobs:
         # python -m pytest надёжнее, чем голый pytest: не зависит от PATH,
         # использует тот же интерпретатор, что и pip install выше.
         python -m pytest tests/ -v
+
