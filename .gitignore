@@ -111,3 +111,4 @@ dmypy.json~$*
 
 # Разрешить тестовые фикстуры
 !tests/fixtures/*.csv
+.venv_ci_check/
