@@ -30,6 +30,28 @@ logger = logging.getLogger(__name__)
 
 
 # ═══════════════════════════════════════════════════════
+# ДЕТЕРМИНИРОВАННОЕ ОКРУГЛЕНИЕ FLOAT-ПОЛЕЙ ПАСПОРТА
+# ═══════════════════════════════════════════════════════
+# Snapshot-тесты падали на дрейфе ~1e-15 между релизами numpy/scipy и железом.
+# Округление до 10 знаков делает снимки стабильными без потери семантической
+# точности (ADF p-value, Hurst, slope, seasonal_strength -- 1e-10 достаточно).
+_PASSPORT_FLOAT_PRECISION = 10
+
+
+def _round_floats(obj, precision: int = _PASSPORT_FLOAT_PRECISION):
+    """Рекурсивно округляет все float-значения в dict/list/tuple/np.floating."""
+    if isinstance(obj, dict):
+        return {k: _round_floats(v, precision) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_round_floats(v, precision) for v in obj]
+    if isinstance(obj, tuple):
+        return tuple(_round_floats(v, precision) for v in obj)
+    if isinstance(obj, (float, np.floating)):
+        return round(float(obj), precision)
+    return obj
+
+
+# ═══════════════════════════════════════════════════════
 # ПРИВАТНЫЕ ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 # ═══════════════════════════════════════════════════════
 
@@ -329,8 +351,9 @@ def calculate_ts_passport(
     except Exception as e:
         logger.error(f"Критическая ошибка при расчёте паспорта: {e}")
         props['error'] = str(e)
-    
-    return props
+
+    # Детерминированное округление float-полей для стабильности snapshot-тестов.
+    return _round_floats(props)
 
 
 # ═══════════════════════════════════════════════════════

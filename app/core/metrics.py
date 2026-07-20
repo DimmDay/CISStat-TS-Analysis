@@ -12,6 +12,36 @@ from statsmodels.tsa.seasonal import STL
 from statsmodels.stats.diagnostic import acorr_ljungbox
 
 
+# ─────────────────────────────────────────────────────────────
+# ДЕТЕРМИНИРОВАННОЕ ОКРУГЛЕНИЕ FLOAT-ПОЛЕЙ ПАСПОРТА
+# ─────────────────────────────────────────────────────────────
+# Snapshot-тесты (tests/unit/test_metrics.py, tests/snapshot/test_legacy_passport.py)
+# падали на дрейфе плавающей точки ~1e-15 между numpy/scipy-релизами и железом
+# (например 0.4436550700998605 vs 0.44365507009986055). Округление до 10 знаков
+# делает снимки стабильными без потери семантической точности (для ADF p-value,
+# Hurst, slope, seasonal_strength и т.п. 1e-10 -- более чем достаточно).
+_PASSPORT_FLOAT_PRECISION = 10
+
+
+def _round_floats(obj, precision: int = _PASSPORT_FLOAT_PRECISION):
+    """Рекурсивно округляет все float-значения в dict/list/np.float64.
+
+    Возвращает новую структуру; bool/int/str/None остаются как есть.
+    np.float64/np.float32 приводятся к python float и округляются.
+    """
+    if isinstance(obj, dict):
+        return {k: _round_floats(v, precision) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_round_floats(v, precision) for v in obj]
+    if isinstance(obj, tuple):
+        return tuple(_round_floats(v, precision) for v in obj)
+    if isinstance(obj, (float, np.floating)):
+        return round(float(obj), precision)
+    # int, bool, str, None, np.integer -- без изменений
+    return obj
+
+
+
 def calculate_ts_passport(
     analysis_series: pd.Series,
     df_filtered: pd.DataFrame | None = None,
@@ -258,4 +288,6 @@ def calculate_ts_passport(
         error_log.append({'stage': 'metrics', 'severity': 'critical', 'error_type': 'PassportCalculationError', 'message': str(e)})
         props['error'] = str(e)
 
-    return props
+    # Детерминированное округление float-полей для стабильности snapshot-тестов.
+    # См. _round_floats выше -- без этого дрейф ~1e-15 ломает CI.
+    return _round_floats(props)
