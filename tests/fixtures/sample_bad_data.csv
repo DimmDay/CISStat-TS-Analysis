@@ -1,0 +1,7 @@
+id,value,status,created_at
+1,100,active,2024-01-15
+2,-50,active,2024-02-20
+3,abc,inactive,2024-03-10
+4,200,active,2030-12-31
+1,300,active,2024-04-05
+6,,pending,2024-05-12

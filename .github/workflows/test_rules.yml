@@ -15,4 +15,4 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Run rules sanity check
         run: |
-          python -c "from validation.engine import load_rules, validate_dataframe; import pandas as pd; df=pd.read_csv('tests/sample_bad_data.csv'); res=validate_dataframe(df, load_rules()); assert not res['is_valid']"
+          python -c "from validation.engine import load_rules, validate_dataframe; import pandas as pd; df=pd.read_csv('tests/fixtures/sample_bad_data.csv'); res=validate_dataframe(df, load_rules()); print('is_valid =', res['is_valid']); assert not res['is_valid']"
