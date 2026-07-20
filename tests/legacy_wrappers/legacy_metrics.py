@@ -5,6 +5,27 @@ import pandas as pd
 # ─────────────────────────────────────────────────────────────
 # 🔧 УНИВЕРСАЛЬНАЯ ФУНКЦИЯ РАСЧЁТА ПАСПОРТА СВОЙСТВ РЯДА (LEGACY)
 # ─────────────────────────────────────────────────────────────
+
+
+# Локальный хелпер округления (legacy-обёртка не должна зависеть от
+# app.core.metrics -- иначе сломается сам смысл snapshot-сравнения
+# legacy vs new реализаций). См. _round_floats в app/core/metrics.py.
+_PASSPORT_FLOAT_PRECISION = 10
+
+
+def _round_floats(obj, precision: int = _PASSPORT_FLOAT_PRECISION):
+    """Рекурсивно округляет все float-значения в dict/list/tuple/np.floating."""
+    if isinstance(obj, dict):
+        return {k: _round_floats(v, precision) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_round_floats(v, precision) for v in obj]
+    if isinstance(obj, tuple):
+        return tuple(_round_floats(v, precision) for v in obj)
+    if isinstance(obj, (float, np.floating)):
+        return round(float(obj), precision)
+    return obj
+
+
 def calculate_ts_passport(analysis_series: pd.Series,
                           df_filtered: pd.DataFrame = None,
                           ct_f: dict = None,
@@ -232,4 +253,5 @@ def calculate_ts_passport(analysis_series: pd.Series,
     except Exception as e:
         props['error'] = str(e)
 
-    return props
+    # Детерминированное округление float-полей для стабильности snapshot-тестов.
+    return _round_floats(props)
