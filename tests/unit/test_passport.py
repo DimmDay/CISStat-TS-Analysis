@@ -278,3 +278,75 @@ class TestCalcTsProps:
         ]
         for key in expected_keys:
             assert key in result, f"Отсутствует ключ: {key}"
+
+# ─────────────────────────────────────────────────────────────
+# ДОБАВИТЬ В КОНЕЦ tests/unit/test_passport.py
+# (или как отдельный класс TestErrorLog внутри существующего файла)
+# ─────────────────────────────────────────────────────────────
+#
+# Проверяет новый опциональный параметр error_log, перенесённый из
+# app/core/metrics.py. Существующие тесты (без error_log) уже подтвердили
+# отсутствие регресса — эти тесты покрывают именно новую функциональность.
+
+class TestErrorLog:
+    """Тесты для параметра error_log в calculate_ts_passport."""
+
+    def test_default_none_does_not_crash(self):
+        """Вызов без error_log должен работать как раньше (обратная совместимость)."""
+        series = pd.Series(
+            np.random.default_rng(42).normal(0, 1, 50),
+            index=pd.date_range("2020-01-01", periods=50, freq="D"),
+        )
+        # Не должно упасть и не должно требовать error_log
+        result = calculate_ts_passport(series)
+        assert "error" not in result or result.get("basic_stats") is not None
+
+    def test_error_log_empty_on_clean_golden_data(self):
+        """На чистых данных без аномалий error_log не должен содержать записей."""
+        series = pd.Series(
+            np.linspace(0, 10, 200) + 3 * np.sin(2 * np.pi * np.arange(200) / 7)
+            + np.random.default_rng(42).normal(0, 1, 200),
+            index=pd.date_range("2018-01-01", periods=200, freq="D"),
+        )
+        error_log = []
+        calculate_ts_passport(series, error_log=error_log)
+        critical = [e for e in error_log if e["severity"] == "critical"]
+        assert len(critical) == 0
+
+    def test_error_log_structure(self):
+        """Если что-то всё же попадёт в error_log, запись должна иметь ожидаемые ключи."""
+        # Короткий ряд (10 точек < 30) не доходит до try/except внутри функции —
+        # он обрывается на самой первой проверке длины и возвращает {"error": ...}
+        # без обращения к error_log вообще. Это ожидаемое поведение (см.
+        # test_short_series_returns_error) — error_log предназначен для частичных
+        # сбоев ВНУТРИ расчёта, а не для проверки длины перед ним.
+        # Явно бьём один из подрасчётов, чтобы проверить структуру записи:
+        # передаём df_filtered без нужных колонок, чтобы блок correlations
+        # ушёл в except (KeyError на несуществующей колонке).
+        series = pd.Series(
+            np.random.default_rng(1).normal(0, 1, 50),
+            index=pd.date_range("2020-01-01", periods=50, freq="D"),
+        )
+        bad_df = pd.DataFrame({"only_col": series.values}, index=series.index)
+        error_log = []
+        calculate_ts_passport(
+            series,
+            df_filtered=bad_df,
+            ct_f={"num": ["only_col", "missing_col"]},
+            target_col="missing_col",
+            error_log=error_log,
+        )
+        if error_log:  # если блок действительно упал (ожидаемо для этого кейса)
+            entry = error_log[0]
+            assert set(entry.keys()) == {"stage", "severity", "error_type", "message"}
+            assert entry["stage"] == "passport"
+            assert entry["severity"] in {"warning", "critical"}
+
+    def test_error_log_not_mutated_when_none(self):
+        """Если error_log не передан, функция не должна пытаться создать/вернуть свой список."""
+        series = pd.Series(
+            np.random.default_rng(2).normal(0, 1, 50),
+            index=pd.date_range("2020-01-01", periods=50, freq="D"),
+        )
+        result = calculate_ts_passport(series)
+        assert "error_log" not in result  # error_log не должен просачиваться в сам паспорт

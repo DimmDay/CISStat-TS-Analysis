@@ -88,7 +88,8 @@ def calculate_ts_passport(
     analysis_series: pd.Series,
     df_filtered: Optional[pd.DataFrame] = None,
     ct_f: Optional[Dict[str, List[str]]] = None,
-    target_col: Optional[str] = None
+    target_col: Optional[str] = None,
+    error_log: Optional[List[Dict[str, Any]]] = None
 ) -> Dict[str, Any]:
     """
     Рассчитывает полный паспорт свойств временного ряда (13 метрик).
@@ -101,6 +102,10 @@ def calculate_ts_passport(
         df_filtered: Опциональный DataFrame для расчёта корреляций признаков
         ct_f: Опциональный dict с классификацией колонок {'num': [...], 'cat': [...], 'date': [...]}
         target_col: Опциональное имя целевой колонки для корреляционного анализа
+        error_log: Опциональный список для структурированного накопления ошибок
+            (формат: {'stage', 'severity', 'error_type', 'message'}). Если не передан,
+            ошибки по-прежнему уходят в logger.warning/logger.error, как и раньше —
+            передача error_log ничего не меняет в поведении существующих вызовов.
     
     Returns:
         dict с ключами:
@@ -122,7 +127,8 @@ def calculate_ts_passport(
         - error: сообщение об ошибке (если ряд < 30 точек или сбой)
     """
     props: Dict[str, Any] = {}
-    
+    _log = error_log if error_log is not None else None
+
     if len(analysis_series) < 30:
         return {"error": "Недостаточно данных (нужно > 30 точек)"}
     
@@ -216,6 +222,9 @@ def calculate_ts_passport(
                     }
             except Exception as e:
                 logger.warning(f"Не удалось рассчитать корреляции: {e}")
+                if _log is not None:
+                    _log.append({'stage': 'passport', 'severity': 'warning',
+                                 'error_type': 'CorrelationError', 'message': str(e)})
         
         # ── 7. СЕЗОННОСТЬ (STL strength) ─────────────
         period = 7 if (inferred_freq and 'D' in str(inferred_freq)) else 12
@@ -231,6 +240,9 @@ def calculate_ts_passport(
             is_seasonal = strength_seasonality > 0.6
         except Exception as e:
             logger.warning(f"STL-декомпозиция не удалась: {e}")
+            if _log is not None:
+                _log.append({'stage': 'passport', 'severity': 'warning',
+                             'error_type': 'STLError', 'message': str(e)})
             strength_seasonality = 0.0
             is_seasonal = False
         props['seasonality'] = {
@@ -256,6 +268,9 @@ def calculate_ts_passport(
             }
         except Exception as e:
             logger.warning(f"Не удалось рассчитать сезонные периоды: {e}")
+            if _log is not None:
+                _log.append({'stage': 'passport', 'severity': 'warning',
+                             'error_type': 'ACFError', 'message': str(e)})
             props['seasonal_periods'] = {'periods': [], 'count': 0}
         
         # ── 9. ДОЛГАЯ ПАМЯТЬ (Hurst) ─────────────────
@@ -291,6 +306,9 @@ def calculate_ts_passport(
             }
         except Exception as e:
             logger.warning(f"FFT-анализ не удался: {e}")
+            if _log is not None:
+                _log.append({'stage': 'passport', 'severity': 'warning',
+                             'error_type': 'FFTError', 'message': str(e)})
             props['fft'] = {'dominant_periods': [], 'count': 0}
         
         # ── 11. ПЕРИОДОГРАММА ────────────────────────
@@ -308,6 +326,9 @@ def calculate_ts_passport(
             }
         except Exception as e:
             logger.warning(f"Периодограмма не удалась: {e}")
+            if _log is not None:
+                _log.append({'stage': 'passport', 'severity': 'warning',
+                             'error_type': 'PeriodogramError', 'message': str(e)})
             props['periodogram'] = {'periods': [], 'count': 0}
         
         # ── 12. ВЕЙВЛЕТ-МАСШТАБЫ ─────────────────────
@@ -332,9 +353,15 @@ def calculate_ts_passport(
             }
         except ImportError:
             logger.warning("PyWavelets не установлен, wavelet-анализ пропущен")
+            if _log is not None:
+                _log.append({'stage': 'passport', 'severity': 'warning',
+                             'error_type': 'PyWTNotInstalled', 'message': 'PyWavelets not installed'})
             props['wavelet'] = {'scales': [], 'count': 0}
         except Exception as e:
             logger.warning(f"Wavelet-анализ не удался: {e}")
+            if _log is not None:
+                _log.append({'stage': 'passport', 'severity': 'warning',
+                             'error_type': 'WaveletError', 'message': str(e)})
             props['wavelet'] = {'scales': [], 'count': 0}
         
         # ── 13. БАЗОВЫЕ СТАТИСТИКИ ───────────────────
@@ -350,6 +377,9 @@ def calculate_ts_passport(
     
     except Exception as e:
         logger.error(f"Критическая ошибка при расчёте паспорта: {e}")
+        if _log is not None:
+            _log.append({'stage': 'passport', 'severity': 'critical',
+                         'error_type': 'PassportCalculationError', 'message': str(e)})
         props['error'] = str(e)
 
     # Детерминированное округление float-полей для стабильности snapshot-тестов.
@@ -635,5 +665,4 @@ def calculate_ts_props_quick(series: pd.Series) -> Dict[str, Any]:
         logger.debug(f"FFT seasonality detection failed: {e}")
     
     return props
-
 
