@@ -308,28 +308,32 @@ def validate_formats(df, rules):
 
 
 def validate_consistency(df, rules):
-    """Проверяет согласованность данных (хронология внутри групп)."""
+    """
+    Проверяет согласованность данных (хронология внутри групп).
+    
+    🔧 ИСПРАВЛЕНИЕ: Показывает ОБЕ строки нарушения (2016 и 2015),
+    а не только ту, где diff() < 0.
+    """
     results = []
     consistency_rules = rules.get("consistency", [])
 
-    # Автоматическая проверка хронологии
+    # Автогенерация правила, если пусто
     if not consistency_rules:
         year_cols = [c for c in df.columns if 'year' in c.lower() or 'год' in c.lower()]
         date_cols = df.select_dtypes(include=['datetime64']).columns.tolist()
-
         if year_cols:
             consistency_rules.append({
-                "name": "Хронологический порядок",
+                "name": "Хронологический порядок лет",
                 "type": "chronology",
-                "description": "Проверка хронологического порядка лет",
+                "description": "Проверка хронологического порядка лет внутри групп",
                 "columns": [year_cols[0]],
                 "severity": "error"
             })
         elif date_cols:
             consistency_rules.append({
-                "name": "Хронологический порядок",
+                "name": "Хронологический порядок дат",
                 "type": "chronology",
-                "description": "Проверка хронологического порядка дат",
+                "description": "Проверка хронологического порядка дат внутри групп",
                 "columns": [date_cols[0]],
                 "severity": "error"
             })
@@ -338,53 +342,76 @@ def validate_consistency(df, rules):
         try:
             rule_type = rule.get("type", "unknown")
             rule_name = rule.get("name", "Unnamed")
-            description = rule.get("description", "")
             columns = rule.get("columns", [])
             violations = 0
-            violation_details = []
+            violation_mask = pd.Series(False, index=df.index)
 
-            if rule_type == "chronology":
-                if columns and columns[0] in df.columns:
-                    time_col = columns[0]
-                    group_col = None
-                    for c in df.columns:
-                        if c != time_col and df[c].dtype == 'object':
+            if rule_type == "chronology" and columns and columns[0] in df.columns:
+                time_col = columns[0]
+                
+                # Ищем группирующую колонку
+                group_col = None
+                for c in df.columns:
+                    if c != time_col and df[c].dtype in ['object', 'string', 'category']:
+                        n_unique = df[c].nunique()
+                        if 1 < n_unique < min(100, len(df) * 0.5):
                             group_col = c
                             break
 
-                    if group_col:
-                        for group_name, group_df in df.groupby(group_col):
-                            group_sorted = group_df.sort_values(time_col)
-                            time_diff = group_sorted[time_col].diff()
-                            group_violations = (time_diff < 0).sum()
-                            if group_violations > 0:
-                                violations += group_violations
+                if group_col:
+                    # Панельные данные: проверяем внутри каждой группы
+                    for group_name, group_df in df.groupby(group_col):
+                        group_sorted = group_df.sort_index()
+                        time_values = group_sorted[time_col]
+                        
+                        # Находим нарушения: где текущий год < предыдущего
+                        time_diff = time_values.diff()
+                        if pd.api.types.is_datetime64_any_dtype(time_values):
+                            group_violations_mask = time_diff < pd.Timedelta(seconds=0)
+                        else:
+                            group_violations_mask = time_diff < 0
+                        
+                        violations += group_violations_mask.sum()
+                        
+                        # 🔧 ИСПРАВЛЕНИЕ: Показываем ОБЕ строки нарушения
+                        # Строка где diff() < 0 (2015)
+                        violation_mask.loc[group_sorted[group_violations_mask].index] = True
+                        
+                        # И предыдущая строка (2016) — тоже нарушение!
+                        violation_indices = group_sorted[group_violations_mask].index
+                        for idx in violation_indices:
+                            prev_idx = group_sorted.index[group_sorted.index.get_loc(idx) - 1]
+                            violation_mask.loc[prev_idx] = True
+                else:
+                    # Обычный ряд
+                    time_diff = df[time_col].diff()
+                    if pd.api.types.is_datetime64_any_dtype(df[time_col]):
+                        violation_mask = time_diff < pd.Timedelta(seconds=0)
                     else:
-                        df_sorted = df.sort_values(time_col)
-                        time_diff = df_sorted[time_col].diff()
-                        violations = (time_diff < 0).sum()
+                        violation_mask = time_diff < 0
+                    
+                    # Добавляем предыдущие строки
+                    violation_indices = df[violation_mask].index
+                    for idx in violation_indices:
+                        loc = df.index.get_loc(idx)
+                        if loc > 0:
+                            prev_idx = df.index[loc - 1]
+                            violation_mask.loc[prev_idx] = True
+                    
+                    violations = violation_mask.sum() // 2  # Делим на 2, т.к. каждая пара считается дважды
 
-            if violations > 0:
-                results.append({
-                    "Правило": rule_name,
-                    "Описание": description,
-                    "Тип": rule_type,
-                    "Нарушений": int(violations),
-                    "Статус": "⚠️ Нарушено"
-                })
-            else:
-                results.append({
-                    "Правило": rule_name,
-                    "Описание": description,
-                    "Тип": rule_type,
-                    "Нарушений": 0,
-                    "Статус": "✅ Соблюдено"
-                })
+            results.append({
+                "Правило": rule_name,
+                "Тип": rule_type,
+                "Нарушений": int(violations),
+                "Статус": "⚠️ Нарушено" if violations > 0 else "✅ Соблюдено",
+                "mask": violation_mask
+            })
         except Exception as e:
             results.append({
                 "Правило": rule.get("name", "unknown"),
-                "Описание": f"Ошибка проверки: {e}",
-                "Статус": "❌ Ошибка логики"
+                "Статус": f"❌ Ошибка: {e}",
+                "mask": pd.Series(False, index=df.index)
             })
 
     return results
@@ -589,89 +616,83 @@ def validate_text_quality(df, rules):
 
 
 def validate_regular_step(df, rules, date_col=None):
-    """
-    Проверка равномерности временного шага с учётом панельных данных.
-    """
+    """Проверка равномерности временного шага с учётом панельных данных."""
+    # Защита от пустых/маленьких данных
+    if df.empty or len(df) < 3:
+        return [], {}, {}, {'is_sorted': True, 'sort_violations': 0, 'group_col': None, 'date_col': date_col}
+
     if not date_col:
-        # Автоопределение временной колонки
         for c in df.columns:
             if any(kw in c.lower() for kw in ['date', 'дата', 'year', 'год', 'time', 'время']):
                 date_col = c
                 break
     
-    if not date_col:
-        return [], {}, {}
-    
+    if not date_col or date_col not in df.columns:
+        return [], {}, {}, {'is_sorted': True, 'sort_violations': 0, 'group_col': None, 'date_col': None}
+
     results = []
     violation_masks = {}
     freq_info = {}
     
-    # 🔧 Определяем группирующую колонку (для панельных данных)
+    # Поиск группирующей колонки
     group_col = None
     for c in df.columns:
-        if c != date_col and df[c].dtype == 'object' and df[c].nunique() < 100:
-            group_col = c
-            break
-    
-    # Приводим дату к datetime
+        if c != date_col and df[c].dtype in ['object', 'string', 'category']:
+            n_unique = df[c].nunique()
+            if 1 < n_unique < 100:
+                group_col = c
+                break
+
     df_temp = df.copy()
     if not pd.api.types.is_datetime64_any_dtype(df_temp[date_col]):
         df_temp[date_col] = pd.to_datetime(df_temp[date_col], errors='coerce')
+
+    # Проверка сортировки
+    is_sorted = True
+    sort_violations = 0
     
     if group_col:
-        # 🔧 ПАНЕЛЬНЫЕ ДАННЫЕ: проверяем внутри каждой группы
+        for _, group_df in df_temp.groupby(group_col):
+            if not group_df[date_col].is_monotonic_increasing:
+                is_sorted = False
+                sort_violations += int((group_df[date_col].diff() < pd.Timedelta(seconds=0)).sum())
+    else:
+        if not df_temp[date_col].is_monotonic_increasing:
+            is_sorted = False
+            sort_violations = int((df_temp[date_col].diff() < pd.Timedelta(seconds=0)).sum())
+
+    # Ранний возврат, если не отсортировано
+    if not is_sorted:
+        return [], {}, {}, {'is_sorted': False, 'sort_violations': sort_violations, 'group_col': group_col, 'date_col': date_col}
+
+    # Проверка регулярности (только если отсортировано)
+    if group_col:
         for group_name, group_df in df_temp.groupby(group_col):
-            # 🔧 КРИТИЧЕСКИ ВАЖНО: сортируем внутри группы перед diff()!
             group_sorted = group_df.sort_values(date_col)
             intervals = group_sorted[date_col].diff()
-            modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
-            gap_mask = intervals > modal_interval * 1.5
+            modal = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
+            gaps = int((intervals > modal * 1.5).sum())
+            inferred = pd.infer_freq(group_sorted[date_col].drop_duplicates().sort_values())
             
-            gap_count = int(gap_mask.sum())
-            inferred_freq = pd.infer_freq(group_sorted[date_col].drop_duplicates().sort_values())
-            
-            results.append({
-                'Тип': 'Панельные данные',
-                'Группа': f"{group_col}={group_name}",
-                'Всего наблюдений': len(group_df),
-                'Частота': inferred_freq if inferred_freq else 'Нерегулярная',
-                'Пропусков': gap_count,
-                'Нарушений': 1 if gap_count > 0 else 0,
-                'Статус': '✅' if gap_count == 0 else '⚠️'
-            })
-            
-            if gap_count > 0:
-                # Сохраняем индексы нарушений
-                violation_indices = group_sorted[gap_mask].index
-                violation_masks[f"{group_col}_{group_name}"] = group_sorted.index.isin(violation_indices)
-            
-            freq_info['inferred_freq'] = inferred_freq
+            results.append({'Тип': 'Панельные данные', 'Группа': f"{group_col}={group_name}", 'Всего наблюдений': len(group_df), 'Частота': inferred, 'Пропусков': gaps, 'Статус': '✅' if gaps == 0 else '⚠️'})
+            if gaps > 0:
+                violation_masks[f"{group_col}_{group_name}"] = group_sorted.index.isin(group_sorted[intervals > modal * 1.5].index)
+            freq_info['inferred_freq'] = inferred
     else:
-        # Обычный временной ряд
         df_sorted = df_temp.sort_values(date_col)
         intervals = df_sorted[date_col].diff()
-        modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
-        gap_mask = intervals > modal_interval * 1.5
-        gap_count = int(gap_mask.sum())
-        inferred_freq = pd.infer_freq(df_sorted[date_col].drop_duplicates().sort_values())
+        modal = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
+        gaps = int((intervals > modal * 1.5).sum())
+        inferred = pd.infer_freq(df_sorted[date_col].drop_duplicates().sort_values())
         
-        results.append({
-            'Тип': 'Временной ряд',
-            'Группа': 'Весь датасет',
-            'Всего наблюдений': len(df),
-            'Частота': inferred_freq if inferred_freq else 'Нерегулярная',
-            'Пропусков': gap_count,
-            'Нарушений': 1 if gap_count > 0 else 0,
-            'Статус': '✅' if gap_count == 0 else '⚠️'
-        })
-        
-        if gap_count > 0:
-            violation_indices = df_sorted[gap_mask].index
-            violation_masks['all'] = df_sorted.index.isin(violation_indices)
-        
-        freq_info['inferred_freq'] = inferred_freq
-    
-    return results, violation_masks, freq_info
+        results.append({'Тип': 'Временной ряд', 'Группа': 'Весь датасет', 'Всего наблюдений': len(df), 'Частота': inferred, 'Пропусков': gaps, 'Статус': '✅' if gaps == 0 else '⚠️'})
+        if gaps > 0:
+            violation_masks['all'] = df_sorted.index.isin(df_sorted[intervals > modal * 1.5].index)
+        freq_info['inferred_freq'] = inferred
+
+    # ВОЗВРАЩАЕМ РОВНО 4 ЗНАЧЕНИЯ
+    sort_info = {'is_sorted': True, 'sort_violations': 0, 'group_col': group_col, 'date_col': date_col}
+    return results, violation_masks, freq_info, sort_info
 
 
 def validate_sufficiency(df, rules, date_col=None, group_col=None, num_col=None):

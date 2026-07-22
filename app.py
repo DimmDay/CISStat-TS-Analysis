@@ -1,36 +1,33 @@
-﻿import time
-import streamlit as st
+﻿import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import io, os, re, json
-from datetime import datetime, date
+import io
+import os
+from datetime import datetime
 from pathlib import Path
-from sqlalchemy import create_engine
-import clickhouse_connect
 import numpy as np
-import re
 import seaborn as sns
 from scipy import stats
-from scipy.stats import boxcox
 from statsmodels.tsa.stattools import adfuller
 from statsmodels.stats.diagnostic import acorr_ljungbox
 from plotly.subplots import make_subplots
 from statsmodels.tsa.seasonal import STL, seasonal_decompose
-from typing import Dict, List, Tuple, Optional
+from typing import List, Tuple, Optional
 from scipy.fft import fft, fftfreq
 from scipy.signal import find_peaks, periodogram, welch
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 import pywt
 import matplotlib.pyplot as plt
 from statsmodels.tsa.stattools import acf, adfuller
-import json
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-import hashlib
+import importlib
+from validation.engine import validate_regular_step, validate_consistency
+
 
 # ─────────────────────────────────────────────────────────────
-# 🔧 ИМПОРТЫ МОДУЛЕЙ ВАЛИДАЦИИ
+# ИМПОРТЫ МОДУЛЕЙ ВАЛИДАЦИИ
 # ─────────────────────────────────────────────────────────────
 from validation.engine import (
     load_rules,
@@ -44,12 +41,27 @@ from validation.engine import (
     validate_sufficiency,
     auto_generate_rules
 )
-from validation.missing import analyze_missing, get_expert_list_df
-from validation.outliers import detect_outliers, get_outliers_df
-from validation.reporter import save_validated_dataset, generate_correction_report
-from validation.audit import log_expert_action
-
+from validation.missing import analyze_missing
+from validation.outliers import detect_outliers
 from src.catalog.recommender import CISStatRecommender
+from app.core.utils import safe_stat, _safe_nunique, drop_service_columns
+from app.core.passport import _hurst_exponent as hurst_exponent, calculate_ts_props_quick
+from app.core.passport import calculate_ts_passport
+from app.core.passport import _compare_ts_props
+from app.core.auth import check_token
+from app.data.file_loader import init_db_connection as _init_db_connection_impl
+_loader_module = importlib.import_module('app.data.file_loader')
+_read_impl = _loader_module.read_uploaded_file
+from app.eda.distributions import detect_distribution_type
+from app.eda.correlation import find_significant_correlations
+from app.classification.classifier import classify_columns
+from validation.text_quality import compute_text_violations
+from validation.text_quality import compute_text_violations, apply_text_strategy
+from app.validation.regularity import compute_regularity_violations, apply_regularity_strategy
+from app.preprocessing.transforms import apply_differencing, test_heteroskedasticity, calculate_smoothing_metrics, run_stationarity_tests, calculate_scaling_metrics, compute_row_properties, yeo_johnson_manual
+from app.features.rolling import apply_smoothing
+from app.features.temporal import create_temporal_features
+
 
 # Инициализация рекомендателя
 if "recommender" not in st.session_state:
@@ -57,6 +69,25 @@ if "recommender" not in st.session_state:
 
 # ────────────────────────────────────────────────────────────
 #  ⬤ ◉ ◎ ◌ ◍ ● ○ ◐ ◑ ◒ ◓ • ‣ ⁃ ∙ ∘ ∙ ∘ ∙ ⁝ ⁞ ⋮ ⋯ … ... ⋯ ⚫ ⚪ ⬛ ⬜ ◼️ ◻️ ◾ ◽ ▪️ ▫️ 🔴 🟠 🟡 🟢 🔵 🟣 🟤 ⚫ ⚪ ⭕
+
+# =====================================================================
+# ВСПОМОГАТЕЛЬНЫЕ UI-ФУНКЦИИ (Временно здесь, этап 6 будет рефакторинг)
+# =====================================================================
+def fmt(x):
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return "—"
+    try:
+        return f"{x:.3f}"
+    except Exception:
+        return str(x)
+
+def delta(val_before, val_after):
+    if val_before is None or val_after is None:
+        return None
+    if isinstance(val_before, float) and pd.isna(val_before): return None
+    if isinstance(val_after, float) and pd.isna(val_after): return None
+    return val_after - val_before
+
 
 # ────────────────────────────────────────────────────────────
 #  НАСТРОЙКА ШРИФТА
@@ -91,493 +122,35 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────
-# 🔧 УНИВЕРСАЛЬНАЯ ФУНКЦИЯ РАСЧЁТА ПАСПОРТА СВОЙСТВ РЯДА
+# УНИВЕРСАЛЬНАЯ ФУНКЦИЯ РАСЧЁТА ПАСПОРТА СВОЙСТВ РЯДА
 # ─────────────────────────────────────────────────────────────
-def calculate_ts_passport(analysis_series: pd.Series,
-                          df_filtered: pd.DataFrame = None,
-                          ct_f: dict = None,
-                          target_col: str = None) -> dict:
-    """
-    Рассчитывает полный паспорт свойств временного ряда (13 метрик).
-    Структура идентична паспорту во вкладке "Загрузка".
-    """
-    from scipy.stats import linregress, jarque_bera
-    from scipy.signal import periodogram, find_peaks
-    from scipy.fft import fft, fftfreq
-    from statsmodels.tsa.stattools import adfuller, acf as acf_func
-    from statsmodels.tsa.seasonal import STL
-    from statsmodels.stats.diagnostic import acorr_ljungbox
 
-    props = {}
-
-    if len(analysis_series) < 30:
-        return {"error": "Недостаточно данных (нужно > 30 точек)"}
-
-    try:
-        # 0. ЧАСТОТА РЯДА
-        try:
-            inferred_freq = pd.infer_freq(analysis_series.index.drop_duplicates().sort_values())
-        except:
-            inferred_freq = None
-        props['freq'] = {
-            'value': inferred_freq if inferred_freq else 'Нерегулярная',
-            'is_ok': inferred_freq is not None
-        }
-
-        # 1. СТАЦИОНАРНОСТЬ (ADF)
-        adf_res = adfuller(analysis_series.dropna(), autolag='AIC')
-        adf_p = adf_res[1]
-        is_stationary = adf_p < 0.05
-        props['stationarity'] = {
-            'value': float(adf_p),
-            'is_stationary': bool(is_stationary),
-            'is_ok': bool(is_stationary)
-        }
-
-        # 2. ДЕТЕРМИНИРОВАННОСТЬ (R² тренда)
-        slope, intercept, r_value, p_value, std_err = linregress(
-            range(len(analysis_series)), analysis_series.values
-        )
-        r_squared = float(r_value**2)
-        is_deterministic = r_squared >= 0.7
-        props['determinism'] = {
-            'value': r_squared,
-            'slope': float(slope),
-            'is_deterministic': bool(is_deterministic)
-        }
-
-        # 3. АВТОКОРРЕЛЯЦИЯ (Ljung-Box)
-        lb_res = acorr_ljungbox(analysis_series, lags=[10])
-        if isinstance(lb_res, pd.DataFrame):
-            lb_p = float(lb_res['lb_pvalue'].iloc[0])
-        else:
-            lb_p = float(lb_res[1][0])
-        is_white_noise = lb_p > 0.05
-        props['autocorrelation'] = {
-            'value': lb_p,
-            'is_white_noise': bool(is_white_noise),
-            'is_ok': bool(is_white_noise)
-        }
-
-        # 4. НОРМАЛЬНОСТЬ (Jarque-Bera)
-        jb_res = jarque_bera(analysis_series.dropna())
-        jb_p = float(jb_res.pvalue) if hasattr(jb_res, 'pvalue') else float(jb_res[1])
-        is_normal = jb_p > 0.05
-        props['normality'] = {
-            'value': jb_p,
-            'is_normal': bool(is_normal),
-            'is_ok': bool(is_normal)
-        }
-
-        # 5. НАПРАВЛЕНИЕ ТРЕНДА
-        if slope > 0:
-            trend_dir = 'up'
-        elif slope < 0:
-            trend_dir = 'down'
-        else:
-            trend_dir = 'flat'
-        props['trend'] = {
-            'slope': float(slope),
-            'direction': trend_dir
-        }
-
-        # 6. КОРРЕЛЯЦИЯ ПРИЗНАКОВ
-        props['correlations'] = {}
-        if df_filtered is not None and ct_f is not None and target_col:
-            try:
-                num_cols = ct_f.get("num", [])
-                if len(num_cols) >= 2 and target_col in num_cols:
-                    corr_df = df_filtered[num_cols].corr()
-                    target_corr = corr_df[target_col].drop(target_col).sort_values(key=abs, ascending=False)
-                    top_corrs = {col: float(val) for col, val in target_corr.head(3).items()}
-                    props['correlations'] = {
-                        'top3': top_corrs,
-                        'max_abs_corr': float(target_corr.iloc[0]) if len(target_corr) > 0 else 0.0
-                    }
-            except:
-                pass
-
-        # 7. СЕЗОННОСТЬ (STL strength)
-        period = 7 if (inferred_freq and 'D' in str(inferred_freq)) else 12
-        try:
-            stl_res = STL(analysis_series, period=period, robust=True).fit()
-            var_total = float(analysis_series.var())
-            var_resid = float(stl_res.resid.var())
-            var_detrended = var_total - float(stl_res.trend.var())
-            strength_seasonality = max(0, 1 - var_resid / var_detrended) if var_detrended > 0 else 0
-            is_seasonal = strength_seasonality > 0.6
-        except:
-            strength_seasonality = 0.0
-            is_seasonal = False
-        props['seasonality'] = {
-            'strength': float(strength_seasonality),
-            'is_seasonal': bool(is_seasonal)
-        }
-
-        # 8. СЕЗОННЫЕ ПЕРИОДЫ (ACF)
-        try:
-            max_lag = min(60, len(analysis_series) // 4)
-            acf_values = acf_func(analysis_series, nlags=max_lag)
-            confidence = 1.96 / np.sqrt(len(analysis_series))
-            significant_lags = np.where(np.abs(acf_values) > confidence)[0][1:]
-
-            seasonal_periods_acf = []
-            for i, lag in enumerate(significant_lags):
-                if i > 0 and lag - significant_lags[i-1] < 3:
-                    continue
-                if lag > 2:
-                    seasonal_periods_acf.append(int(lag))
-
-            props['seasonal_periods'] = {
-                'periods': seasonal_periods_acf[:3],
-                'count': len(seasonal_periods_acf[:3])
-            }
-        except:
-            props['seasonal_periods'] = {'periods': [], 'count': 0}
-
-        # 9. ДОЛГАЯ ПАМЯТЬ (Hurst)
-        def hurst_exponent(series, max_lag=20):
-            lags = range(2, max_lag)
-            tau = [max(np.std(np.subtract(series[lag:], series[:-lag])), 1e-8) for lag in lags]
-            try:
-                return float(np.polyfit(np.log(lags), np.log(tau), 1)[0])
-            except:
-                return 0.5
-
-        hurst_val = hurst_exponent(analysis_series.values)
-        if hurst_val < 0.45:
-            memory_type = 'anti_persistent'
-        elif hurst_val > 0.55:
-            memory_type = 'persistent'
-        else:
-            memory_type = 'random_walk'
-        props['hurst'] = {
-            'value': float(hurst_val),
-            'type': memory_type
-        }
-
-        # 10. ДОМИНИРУЮЩИЕ ЧАСТОТЫ (FFT)
-        try:
-            n = len(analysis_series)
-            y = analysis_series.values - analysis_series.mean()
-            yf = fft(y)
-            xf = fftfreq(n, 1)[:n//2]
-            amplitude = 2.0/n * np.abs(yf[0:n//2])
-
-            peaks, _ = find_peaks(amplitude, height=np.mean(amplitude) + np.std(amplitude))
-            fft_periods = [1/xf[p] for p in peaks if xf[p] > 0 and xf[p] < 0.5]
-            fft_dominant = sorted(fft_periods)[:3] if fft_periods else []
-            props['fft'] = {
-                'dominant_periods': fft_dominant,
-                'count': len(fft_dominant)
-            }
-        except:
-            props['fft'] = {'dominant_periods': [], 'count': 0}
-
-        # 11. ПЕРИОДОГРАММА
-        try:
-            freq_per, pxx_per = periodogram(analysis_series.values, fs=1.0, window='hann')
-            peaks_per, _ = find_peaks(pxx_per, height=np.median(pxx_per)*2)
-            periodogram_periods = sorted([1/freq_per[p] for p in peaks_per if freq_per[p] > 0])[:3]
-            props['periodogram'] = {
-                'periods': periodogram_periods,
-                'count': len(periodogram_periods)
-            }
-        except:
-            props['periodogram'] = {'periods': [], 'count': 0}
-
-        # 12. ВЕЙВЛЕТ-МАСШТАБЫ
-        try:
-            import pywt
-            widths = np.arange(1, min(128, len(analysis_series)//4))
-            cwtmatr, _ = pywt.cwt(
-                analysis_series.values - analysis_series.mean(),
-                widths, 'morl', sampling_period=1
-            )
-            mean_power = np.mean(np.abs(cwtmatr), axis=1)
-            wavelet_peaks, _ = find_peaks(mean_power, height=np.mean(mean_power))
-            wavelet_scales = widths[wavelet_peaks][:3].tolist() if len(wavelet_peaks) > 0 else []
-            props['wavelet'] = {
-                'scales': wavelet_scales,
-                'count': len(wavelet_scales)
-            }
-        except:
-            props['wavelet'] = {'scales': [], 'count': 0}
-
-        # 13. БАЗОВЫЕ СТАТИСТИКИ
-        props['basic_stats'] = {
-            'n': int(len(analysis_series)),
-            'mean': float(analysis_series.mean()),
-            'std': float(analysis_series.std()),
-            'min': float(analysis_series.min()),
-            'max': float(analysis_series.max())
-        }
-
-        props['timestamp'] = pd.Timestamp.now().isoformat()
-
-    except Exception as e:
-        props['error'] = str(e)
-
-    return props
-
-
-def _compare_ts_props(props_old: dict, props_new: dict) -> dict:
-    """
-    Сравнивает ВСЕ 13 свойств паспорта v1.0 и v1.1.
-    Поддерживает: числа, строки, списки, булевы значения, вложенные dict.
-    """
-    comparison = {
-        'metrics': {},          # Числовые метрики с delta
-        'qualitative_changes': [],  # Качественные изменения
-        'categorical_changes': {},  # Категориальные/строковые изменения
-        'list_changes': {},     # Изменения списков (FFT, wavelet, periods)
-        'boolean_changes': {},  # Изменения булевых флагов
-        'summary': ''
-    }
-
-    # ═══════════════════════════════════════════════════════
-    # 1. ЧИСЛОВЫЕ МЕТРИКИ (10 свойств)
-    # ═══════════════════════════════════════════════════════
-    numeric_comparisons = [
-        ('n', 'basic_stats', 'Число наблюдений'),
-        ('mean', 'basic_stats', 'Среднее'),
-        ('std', 'basic_stats', 'Стандартное отклонение'),
-        ('value', 'stationarity', 'ADF p-value (стационарность)'),
-        ('value', 'determinism', 'R² тренда (детерминированность)'),
-        ('value', 'autocorrelation', 'Ljung-Box p-value (автокорреляция)'),
-        ('value', 'normality', 'Jarque-Bera p-value (нормальность)'),
-        ('slope', 'trend', 'Наклон тренда'),
-        ('strength', 'seasonality', 'Сила сезонности'),
-        ('value', 'hurst', 'Показатель Хёрста'),
-    ]
-
-    for key, section, label in numeric_comparisons:
-        try:
-            old_val = props_old.get(section, {}).get(key)
-            new_val = props_new.get(section, {}).get(key)
-
-            if old_val is not None and new_val is not None:
-                if pd.notna(old_val) and pd.notna(new_val):
-                    delta = new_val - old_val
-                    # Защита от деления на ноль
-                    if abs(old_val) > 1e-10:
-                        delta_pct = (delta / abs(old_val)) * 100
-                    else:
-                        delta_pct = 0.0 if abs(delta) < 1e-10 else 100.0
-
-                    comparison['metrics'][label] = {
-                        'v_old': float(old_val),
-                        'v_new': float(new_val),
-                        'delta': float(delta),
-                        'delta_pct': float(delta_pct),
-                        'type': 'numeric'
-                    }
-        except Exception as e:
-            continue
-
-    # ═══════════════════════════════════════════════════════
-    # 2. КАТЕГОРИАЛЬНЫЕ СВОЙСТВА (3 свойства)
-    # ═══════════════════════════════════════════════════════
-    categorical_comparisons = [
-        ('value', 'freq', 'Частота ряда'),
-        ('direction', 'trend', 'Направление тренда'),
-    ]
-
-    for key, section, label in categorical_comparisons:
-        try:
-            old_val = props_old.get(section, {}).get(key)
-            new_val = props_new.get(section, {}).get(key)
-
-            if old_val is not None and new_val is not None:
-                old_str = str(old_val)
-                new_str = str(new_val)
-
-                if old_str != new_str:
-                    comparison['categorical_changes'][label] = {
-                        'v_old': old_str,
-                        'v_new': new_str,
-                        'changed': True,
-                        'type': 'categorical'
-                    }
-                else:
-                    comparison['categorical_changes'][label] = {
-                        'v_old': old_str,
-                        'v_new': new_str,
-                        'changed': False,
-                        'type': 'categorical'
-                    }
-        except Exception as e:
-            continue
-
-    # ══════════════════════════════════════════════════════
-    # 3. СПИСКИ (3 свойства: сезонные периоды, FFT, wavelet)
-    # ═══════════════════════════════════════════════════════
-    list_comparisons = [
-        ('periods', 'seasonal_periods', 'Сезонные периоды (ACF)'),
-        ('dominant_periods', 'fft', 'Доминирующие частоты (FFT)'),
-        ('scales', 'wavelet', 'Доминирующие масштабы (Wavelet)'),
-    ]
-
-    for key, section, label in list_comparisons:
-        try:
-            old_list = props_old.get(section, {}).get(key, [])
-            new_list = props_new.get(section, {}).get(key, [])
-
-            old_list = list(old_list) if old_list else []
-            new_list = list(new_list) if new_list else []
-
-            # Сравниваем содержимое
-            old_set = set(old_list)
-            new_set = set(new_list)
-
-            added = new_set - old_set
-            removed = old_set - new_set
-
-            comparison['list_changes'][label] = {
-                'v_old': old_list,
-                'v_new': new_list,
-                'added': list(added),
-                'removed': list(removed),
-                'changed': old_list != new_list,
-                'type': 'list'
-            }
-        except Exception as e:
-            continue
-
-    # ═══════════════════════════════════════════════════════
-    # 4. БУЛЕВЫ ФЛАГИ (5 свойств)
-    # ═══════════════════════════════════════════════════════
-    boolean_comparisons = [
-        ('is_stationary', 'stationarity', 'Стационарность'),
-        ('is_deterministic', 'determinism', 'Детерминированность'),
-        ('is_white_noise', 'autocorrelation', 'Белый шум (нет автокорреляции)'),
-        ('is_normal', 'normality', 'Нормальность распределения'),
-        ('is_seasonal', 'seasonality', 'Наличие сезонности'),
-    ]
-
-    for key, section, label in boolean_comparisons:
-        try:
-            old_val = props_old.get(section, {}).get(key)
-            new_val = props_new.get(section, {}).get(key)
-
-            if old_val is not None and new_val is not None:
-                comparison['boolean_changes'][label] = {
-                    'v_old': bool(old_val),
-                    'v_new': bool(new_val),
-                    'changed': old_val != new_val,
-                    'type': 'boolean'
-                }
-
-                # Добавляем в качественные изменения, если изменилось
-                if old_val != new_val:
-                    status_new = "✅ Да" if new_val else "❌ Нет"
-                    comparison['qualitative_changes'].append(
-                        f"{label}: стало {status_new} (было {'✅ Да' if old_val else '❌ Нет'})"
-                    )
-        except Exception as e:
-            continue
-
-    # ═══════════════════════════════════════════════════════
-    # 5. ИТОГОВОЕ РЕЗЮМЕ
-    # ═══════════════════════════════════════════════════════
-    n_numeric_changes = len([m for m in comparison['metrics'].values() if abs(m.get('delta_pct', 0)) > 5])
-    n_categorical_changes = len([c for c in comparison['categorical_changes'].values() if c.get('changed')])
-    n_list_changes = len([l for l in comparison['list_changes'].values() if l.get('changed')])
-    n_boolean_changes = len([b for b in comparison['boolean_changes'].values() if b.get('changed')])
-
-    total_changes = n_numeric_changes + n_categorical_changes + n_list_changes + n_boolean_changes
-
-    if total_changes > 0:
-        parts = []
-        if n_numeric_changes > 0:
-            parts.append(f"{n_numeric_changes} числовых метрик")
-        if n_categorical_changes > 0:
-            parts.append(f"{n_categorical_changes} категориальных")
-        if n_list_changes > 0:
-            parts.append(f"{n_list_changes} списков")
-        if n_boolean_changes > 0:
-            parts.append(f"{n_boolean_changes} булевых флагов")
-
-        comparison['summary'] = (
-            f"⚠️ Валидация повлияла на свойства ряда: "
-            f"изменено {total_changes} свойств ({', '.join(parts)}). "
-            f"Рекомендуется изучить различия перед выбором модели."
-        )
-    else:
-        comparison['summary'] = (
-            "✅ Валидация незначительно повлияла на свойства ряда. "
-            "Все 13 свойств стабильны."
-        )
-
-    return comparison
 
 # ─────────────────────────────────────────────────────────────
-# 📁 ФУНКЦИЯ ЧТЕНИЯ ФАЙЛА (С КЭШИРОВАНИЕМ)
+# UI-ОБЁРТКА ЧТЕНИЯ ФАЙЛА (С КЭШИРОВАНИЕМ)
 # ─────────────────────────────────────────────────────────────
+
 @st.cache_data(show_spinner=" Чтение и парсинг файла...")
 def read_uploaded_file(uploaded_file):
-    """
-    Читает загруженный файл с автодетектом формата и заголовков.
-    Кэшируется для предотвращения повторного чтения.
-    Возвращает: pd.DataFrame, extension
-    """
-    if uploaded_file is None:
-        raise ValueError("Файл не загружен")
-
-    # 🔑 ОПРЕДЕЛЕНИЕ РАСШИРЕНИЯ (до использования!)
-    file_name = uploaded_file.name or "unknown.file"
-    ext = file_name.split('.')[-1].lower()
-
-    # Чтение файла
-    if ext == "csv":
-        df = pd.read_csv(
-            uploaded_file,
-            sep=None,
-            engine='python',
-            encoding='utf-8-sig',
-            on_bad_lines='skip',
-            header=None
-        )
-        # ... (Ваш код автодетекта заголовков без изменений) ...
-        first_col_sample = df[0].head(10).astype(str)
-        is_date_like = first_col_sample.str.contains(r'\d{4}[-/]\d{2}[-/]\d{2}', regex=True).mean() > 0.8
-        if is_date_like:
-            new_headers = ['date'] + [f'col_{i}' for i in range(1, len(df.columns))]
-            df.columns = new_headers
-        else:
-            df.columns = [f'col_{i}' for i in range(len(df.columns))]
-
-    elif ext in ["xlsx", "xls"]:
-        df = pd.read_excel(uploaded_file)
-        if isinstance(df.columns[0], (int, float)):
-            df.columns = [f'col_{i}' for i in range(len(df.columns))]
-
-    elif ext == "json":
-        # ... (Ваш код JSON без изменений) ...
-        uploaded_file.seek(0)
-        content = uploaded_file.read().decode('utf-8-sig')
-        data = json.loads(content)
-        df = pd.json_normalize(data) if isinstance(data, list) else pd.DataFrame([data])
-    else:
-        raise ValueError(f"Формат .{ext} не поддерживается.")
-
-    if df.empty:
-        raise ValueError("Файл пуст или не содержит табличных данных.")
-
-    return df, ext
+    """UI-обёртка над бизнес-функцией."""
+    return _read_impl(uploaded_file)
 
 
 # ─────────────────────────────────────────────────────────────
-# 📅 ФУНКЦИЯ ROBUST DATETIME DETECTOR (С КЭШИРОВАНИЕМ)
+# ФУНКЦИЯ ROBUST DATETIME DETECTOR (С КЭШИРОВАНИЕМ)
 # ─────────────────────────────────────────────────────────────
 @st.cache_data(show_spinner=" Анализ дат и конвертация...")
 def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> Tuple[pd.DataFrame, List[str], bool, Optional[str]]:
     """
     Ищет и конвертирует даты.
     Кэшируется: результат сохраняется, пока не изменится сам DataFrame.
+    
+    🔧 ИСПРАВЛЕНИЕ: Убрана сортировка и работа с session_state из кэшированной функции.
+    Сортировка выполняется в app.py после вызова функции.
     """
     df_work = df.copy()
     original_columns = df_work.columns.tolist()
+    
     # Нормализация имён
     df_work.columns = [str(c).strip().lower().replace(' ', '_').replace('-', '_').replace('.', '_') for c in df_work.columns]
 
@@ -585,9 +158,8 @@ def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> T
     potential_date_col = None
     max_confidence = 0
 
-    # ── РАСШИРЕННЫЕ ПАТТЕРНЫ ДАТ ──────────────────────────────
+    # ─ РАСШИРЕННЫЕ ПАТТЕРНЫ ДАТ ──────────────────────────────
     DATE_PATTERNS = [
-        # ISO и стандартные
         (r'^\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}', 'iso_datetime'),
         (r'^\d{4}-\d{2}-\d{2}$', 'iso_date'),
         (r'^\d{2}\.\d{2}\.\d{4}$', 'dd.mm.yyyy'),
@@ -598,30 +170,23 @@ def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> T
         (r'^\d{2}\.\d{4}$', 'mm.yyyy'),
         (r'^\d{1,2}/\d{4}$', 'm/yyyy'),
         (r'^\d{1,2}-\d{4}$', 'm-yyyy'),
-        # Гибкие форматы (без ведущих нулей)
         (r'^\d{1,2}/\d{1,2}/\d{4}$', 'us_slash_flexible'),
         (r'^\d{1,2}-\d{1,2}-\d{4}$', 'us_dash_flexible'),
         (r'^\d{1,2}\.\d{1,2}\.\d{4}$', 'eu_dot_flexible'),
-        # Только год
         (r'^\d{4}$', 'year_only'),
-        # Unix timestamp
         (r'^\d{10}$', 'unix_s'),
         (r'^\d{13}$', 'unix_ms'),
     ]
 
     # ── РАСШИРЕННЫЕ КЛЮЧЕВЫЕ СЛОВА ───────────────────────────
     TIME_KEYWORDS = [
-        # English
         'date', 'time', 'datetime', 'timestamp', 'year', 'month', 'day', 'period',
         'quarter', 'week', 'hour', 'minute', 'second', 'start', 'end', 'begin', 'finish',
         'report_date', 'reporting', 'fiscal', 'calendar', 'observation', 'record_date',
-        # Russian
         'дата', 'время', 'год', 'месяц', 'день', 'период', 'квартал', 'неделя',
         'час', 'минута', 'секунда', 'отчетный', 'отчётный', 'начало', 'конец',
-        # Other languages / variations
         'jahr', 'année', 'ano', 'anno', 'fecha', 'data', 'datum', 'dat', 'date_',
         'year_', 'yr', 'y_', 'mon', 'm_', 'd_', 'period_', 'time_',
-        # FAO / CIS specific
         'reference_year', 'ref_year', 'report_year', 'data_year', 'observation_year'
     ]
 
@@ -635,8 +200,6 @@ def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> T
             continue
 
         col_str = str(col).lower()
-
-        # Проверка по ключевым словам
         check_col = any(kw in col_str for kw in TIME_KEYWORDS)
 
         # Первая колонка — приоритетный кандидат
@@ -669,24 +232,20 @@ def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> T
 
         # 3. Определение формата
         if is_numeric:
-            # Проверка на годы (1800-2100) — ГИБКАЯ: 80% вместо 100%
             year_like = sample_vals.between(1800, 2100) & (sample_vals % 1 == 0)
             if year_like.mean() >= 0.8 and len(sample_vals[year_like]) >= 2:
                 best_fmt = 'year_only'
                 best_match_ratio = year_like.mean()
-            # Проверка на Unix timestamp
             elif sample_vals.min() > 1e9:
                 best_fmt = 'unix_s' if sample_vals.max() < 1e12 else 'unix_ms'
                 best_match_ratio = 1.0
         else:
-            # Строковые паттерны (Regex)
             for pattern, fmt_name in DATE_PATTERNS:
                 match_ratio = sample_str.str.match(pattern, case=False).mean()
                 if match_ratio > best_match_ratio:
                     best_match_ratio = match_ratio
                     best_fmt = fmt_name
 
-            # Fallback: авто-парсинг pandas
             if best_match_ratio < min_confidence:
                 try:
                     test_parse = pd.to_datetime(sample_vals, infer_datetime_format=True, errors='coerce')
@@ -716,7 +275,6 @@ def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> T
                 success_rate = converted.notna().mean()
 
                 if success_rate >= min_confidence:
-                    # Применяем ко всему столбцу
                     if best_fmt == 'year_only':
                         df_work[col] = pd.to_datetime(df_work[col].astype(float).astype(int).astype(str), format='%Y', errors='coerce')
                     elif best_fmt in ['unix_s', 'unix_ms']:
@@ -729,7 +287,6 @@ def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> T
 
                     detected_cols.append(col)
 
-                    # Расчет уверенности
                     fill_rate = df_work[col].notna().sum() / max(len(df_work[col]), 1)
                     confidence = success_rate * fill_rate
 
@@ -738,24 +295,25 @@ def robust_datetime_detector(df: pd.DataFrame, min_confidence: float = 0.7) -> T
                         potential_date_col = col
 
             except Exception as e:
-                # Логирование для отладки
-                # print(f"⚠️ Ошибка конвертации {col}: {e}")
                 pass
 
     # 5. Восстановление оригинальных имён колонок
-    for i, orig_col in enumerate(original_columns):
-        current_col = df_work.columns[i]
+    rename_map = {}
+    for orig_col, current_col in zip(original_columns, df_work.columns):
         if current_col in detected_cols:
-            df_work.rename(columns={current_col: orig_col}, inplace=True)
-            detected_cols = [orig_col if c == current_col else c for c in detected_cols]
-            if potential_date_col == current_col:
-                potential_date_col = orig_col
+            rename_map[current_col] = orig_col
+    
+    if rename_map:
+        df_work = df_work.rename(columns=rename_map)
+        detected_cols = [rename_map.get(c, c) for c in detected_cols]
+        if potential_date_col in rename_map:
+            potential_date_col = rename_map[potential_date_col]
 
-    # 6. Активация TS и сортировка
+    # 🔧 ИСПРАВЛЕНИЕ: УБРАНА сортировка и работа с session_state
+    # Сортировка выполняется в app.py после вызова функции
+    
     ts_active = len(detected_cols) > 0
-    if ts_active and potential_date_col:
-        df_work = df_work.sort_values(potential_date_col).reset_index(drop=True)
-
+    
     return df_work, detected_cols, ts_active, potential_date_col
 
 # CSS для уменьшения заголовков
@@ -768,82 +326,6 @@ st.markdown("""
             }
             </style>
             """, unsafe_allow_html=True)
-
-
-# ─────────────────────────────────────────────────────────────
-# ФУНКЦИЯ РАСЧЁТА СВОЙСТВ ВРЕМЕННОГО РЯДА
-# ─────────────────────────────────────────────────────────────
-def _calc_ts_props(series: pd.Series) -> dict:
-    """
-    Рассчитывает ключевые свойства временного ряда.
-
-    Args:
-        series: pd.Series с временным рядом (index=datetime, values=numeric)
-
-    Returns:
-        dict с ключами:
-        - n: число наблюдений
-        - mean, std, min, max: базовые статистики
-        - adf_pvalue: p-value теста Дики-Фуллера (стационарность)
-        - is_stationary: True если p < 0.05
-        - has_trend: наличие тренда (через линейную регрессию)
-        - has_seasonality: наличие сезонности (через FFT)
-        - trend_strength: сила тренда (R²)
-        - seasonal_strength: сила сезонности
-    """
-    props = {
-        'n': len(series),
-        'mean': series.mean(),
-        'std': series.std(),
-        'min': series.min(),
-        'max': series.max(),
-        'adf_pvalue': None,
-        'is_stationary': None,
-        'has_trend': False,
-        'has_seasonality': False,
-        'trend_strength': 0.0,
-        'seasonal_strength': 0.0
-    }
-
-    if len(series) < 10:
-        return props
-
-    # 1. Тест Дики-Фуллера (стационарность)
-    try:
-        from statsmodels.tsa.stattools import adfuller
-        adf_result = adfuller(series.dropna(), autolag='AIC')
-        props['adf_pvalue'] = adf_result[1]
-        props['is_stationary'] = adf_result[1] < 0.05
-    except Exception:
-        pass
-
-    # 2. Проверка тренда (линейная регрессия)
-    try:
-        from scipy import stats
-        x = np.arange(len(series))
-        slope, intercept, r_value, p_value, std_err = stats.linregress(x, series.values)
-        props['has_trend'] = p_value < 0.05
-        props['trend_strength'] = r_value**2
-    except Exception:
-        pass
-
-    # 3. Проверка сезонности (FFT)
-    try:
-        from scipy.fft import fft
-        fft_vals = np.abs(fft(series.values - series.mean()))
-        fft_vals = fft_vals[1:len(fft_vals)//2]  # Убираем постоянную составляющую
-        if len(fft_vals) > 0:
-            # Ищем доминирующую частоту
-            dominant_freq_idx = np.argmax(fft_vals)
-            dominant_amplitude = fft_vals[dominant_freq_idx]
-            mean_amplitude = np.mean(fft_vals)
-            # Если амплитуда доминирующей частоты в 3+ раза выше средней — есть сезонность
-            props['has_seasonality'] = dominant_amplitude > 3 * mean_amplitude
-            props['seasonal_strength'] = dominant_amplitude / mean_amplitude if mean_amplitude > 0 else 0
-    except Exception:
-        pass
-
-    return props
 
 
 # ─────────────────────────────────────────────────────────────
@@ -869,71 +351,20 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────
-# 📊 ГЕНЕРАЦИЯ ОТЧЁТА ВАЛИДАЦИИ
+# 📊 UI-ОБЁРТКА ГЕНЕРАЦИИ ОТЧЁТА ВАЛИДАЦИИ
 # ─────────────────────────────────────────────────────────────
+from app.validation.reporter import generate_validation_report as _generate_report_impl
+
 def generate_validation_report(df, val_results):
-    import pandas as pd
-    import datetime
-
-    miss_summary = val_results.get('miss', {}).get('summary', {})
-    outl_summary = val_results.get('outl', {}).get('summary', {})
-    ts_data = val_results.get('ts', {})
-    total_rows = len(df)
-
-    missing_count = miss_summary.get('total_missing', 0)
-    missing_pct = miss_summary.get('missing_rate_pct', (missing_count / total_rows * 100) if total_rows > 0 else 0.0)
-    outlier_count = outl_summary.get('total_outliers', 0)
-    outlier_pct = outl_summary.get('outlier_rate_pct', (outlier_count / total_rows * 100) if total_rows > 0 else 0.0)
-
-    summary_data = {
-        "Параметр": [
-            "Название файла", "Дата анализа", "Всего записей", "Всего колонок",
-            "Найдено пропусков (шт)", "Найдено пропусков (%)",
-            "Найдено выбросов (шт)", "Найдено выбросов (%)",
-            "Стационарность ряда (ADF)", "Частота ряда (Inferred)"
-        ],
-        "Значение": [
-            st.session_state.get("original_filename", "Unknown"),
-            datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-            total_rows, len(df.columns),
-            missing_count, f"{missing_pct:.2f}%",
-            outlier_count, f"{outlier_pct:.2f}%",
-            "Да" if ts_data.get('is_stationary') else "Нет",
-            ts_data.get('frequency', 'N/A')
-        ]
-    }
-    df_summary = pd.DataFrame(summary_data)
-
-    all_issues = []
-    # ... (Сбор проблем из val_results: Пропуски, Выбросы, Диапазоны, Уникальность)
-    for col, stats in val_results.get('miss', {}).get('columns', {}).items():
-        if isinstance(stats, dict) and stats.get('count', 0) > 0:
-            all_issues.append({"Тип проверки": "Пропуски", "Колонка": col, "Проблема": f"{stats['count']} шт ({stats.get('percent', 0):.1f}%)", "Рекомендация": "Заполнить"})
-    for col, stats in val_results.get('outl', {}).get('columns', {}).items():
-        if isinstance(stats, dict) and stats.get('count', 0) > 0:
-            all_issues.append({"Тип проверки": "Выбросы", "Колонка": col, "Проблема": f"{stats['count']} шт ({stats.get('percent', 0):.1f}%)", "Рекомендация": "Кэпировать"})
-    for issue in val_results.get('range_results', []):
-        if isinstance(issue, dict):
-            all_issues.append({"Тип проверки": "Диапазоны", "Колонка": issue.get('Колонка'), "Проблема": f"{issue.get('Нарушений')} нарушений", "Рекомендация": "Кэпировать"})
-
-    df_issues = pd.DataFrame(all_issues) if all_issues else pd.DataFrame(columns=["Тип проверки", "Колонка", "Проблема", "Рекомендация"])
-
-    ts_summary = {
-        "Метрика": ["Стационарность (ADF p-value)", "Частота (Frequency)", "Макс. разрыв (Max Gap)", "Статус TS"],
-        "Значение": [ts_data.get('adf_pvalue', 'N/A'), ts_data.get('frequency', 'N/A'), str(ts_data.get('max_gap', 'N/A')), ts_data.get('error', 'Готово к анализу')]
-    }
-    df_ts = pd.DataFrame(ts_summary)
-
-    filename = f"Statcom_DQ_Report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
-    with pd.ExcelWriter(filename, engine='openpyxl') as writer:
-        df_summary.to_excel(writer, sheet_name='1_Сводка', index=False)
-        df_issues.to_excel(writer, sheet_name='2_Проблемы', index=False)
-        df_ts.to_excel(writer, sheet_name='3_TS_Props', index=False)
-
-    return filename
+    """
+    UI-обёртка над бизнес-функцией generate_validation_report.
+    Передаёт original_filename из session_state.
+    """
+    original_filename = st.session_state.get("original_filename", "Unknown")
+    return _generate_report_impl(df, val_results, original_filename)
 
 def add_log(level: str, message: str):
-    entry = {"⏱️ Время": datetime.now().strftime("%H:%M:%S"), "📊 Уровень": level, "📝 Сообщение": message}
+    entry = {"Время": datetime.now().strftime("%H:%M:%S"), "Уровень": level, "Сообщение": message}
     st.session_state.error_log.append(entry)
     if len(st.session_state.error_log) > 50: st.session_state.error_log = st.session_state.error_log[-50:]
 
@@ -978,7 +409,6 @@ st.markdown("""
 # 🎨 НАСТРОЙКИ ЗАГОЛОВКА (хэдер)
 # ─────────────────────────────────────────────────────────────
 import base64
-from pathlib import Path
 
 HEADER_FONT_SIZE = "36px"
 SUBHEADER_FONT_SIZE = "21px"
@@ -1054,12 +484,12 @@ st.markdown(f"""
         </div>
         <p style='color: rgba(255,255,255,0.95); font-size: {SUBHEADER_FONT_SIZE};
                 margin: 8px 0 0 0; font-weight: 400;'>
-            профессиональная платформа глубокого анализа временных рядов
+            платформа анализа временных рядов и принятия решений
         </p>
     </div>
     
     <div class='dev-banner'>
-        🚧 <strong>Платформа находится в разработке.</strong> 
+        ⚠️ <strong>Платформа находится в разработке.</strong> 
         Некоторые функции могут работать нестабильно или быть недоступны. 
         Мы работаем над улучшением стабильности и добавлением новых возможностей. 
         Благодарим за понимание!
@@ -1067,10 +497,10 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────
-# 🔐 АВТОРИЗАЦИЯ (Безопасная версия)
+# АВТОРИЗАЦИЯ (Безопасная версия)
 # ─────────────────────────────────────────────────────────────
 
-# 🔑 Эталонный хэш токена (задаётся через переменную окружения CISSTAT_TOKEN_HASH)
+#  Эталонный хэш токена (задаётся через переменную окружения CISSTAT_TOKEN_HASH)
 # Если переменная не задана, используется хэш от "123" для локальных тестов
 SECURE_TOKEN_HASH = os.environ.get(
     "CISSTAT_TOKEN_HASH",
@@ -1089,9 +519,8 @@ if not st.session_state.authenticated:
     with c2:
         token_input = st.text_input("Токен доступа", type="password", placeholder="Введите пароль")
         if st.button("Войти", type="primary", use_container_width=True):
-            # 🔒 Хешируем ввод пользователя и сверяем с эталоном
-            input_hash = hashlib.sha256(token_input.encode('utf-8')).hexdigest()
-            if input_hash == SECURE_TOKEN_HASH:
+            # Вызов вынесенной функции проверки токена
+            if check_token(token_input, SECURE_TOKEN_HASH):
                 st.session_state.authenticated = True
                 st.rerun()
             else:
@@ -1120,79 +549,17 @@ MODE_GEN = "🔍 Общий (категории)"
 
 
 # ────────────────────────────────────────────────────────────
-# 🔧 ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ (должна быть определена ДО использования)
-# ────────────────────────────────────────────────────────────
-def _safe_nunique(series: pd.Series, min_val: int = 1, max_val: int = 100) -> bool:
-    """
-    Безопасный подсчёт уникальных значений для колонок с возможными нехэшируемыми типами.
-    Возвращает True, если количество уникальных значений в диапазоне [min_val, max_val).
-    """
-    try:
-        sample = series.dropna().head(100)
-        if len(sample) == 0:
-            return False
-        first_val = sample.iloc[0]
-        if isinstance(first_val, (dict, list, set, pd.Series, pd.DataFrame)):
-            return False
-        uniq = series.nunique()
-        return min_val < uniq < max_val
-    except TypeError:
-        return False
-    except Exception:
-        return False
-
-
-# ────────────────────────────────────────────────────────────
-# 🗄️ ФУНКЦИЯ ПОДКЛЮЧЕНИЯ К БД (С КЭШИРОВАНИЕМ РЕСУРСА)
+# 🗄️ UI-ОБЁРТКА ПОДКЛЮЧЕНИЯ К БД (С КЭШИРОВАНИЕМ РЕСУРСА)
 # ────────────────────────────────────────────────────────────
 @st.cache_resource(ttl=3600)
 def init_db_connection(db_type: str, host: str, port: int, user: str, password: str, db_name: str):
     """
-    Создаёт и кэширует подключение к базе данных.
-    Повторные вызовы с теми же параметрами вернут тот же объект.
+    UI-обёртка над бизнес-функцией init_db_connection.
+    Кэширует подключение как ресурс (согласно ARCHITECTURE.md).
+    
+    Бизнес-логика перенесена в app/data/loader.py.
     """
-    try:
-        if db_type == "PostgreSQL":
-            try:
-                import psycopg2
-            except ImportError:
-                raise ImportError("psycopg2-binary")
-
-            url = f"postgresql://{user}:{password}@{host}:{port}/{db_name}"
-            engine = create_engine(
-                url,
-                connect_args={"connect_timeout": 10, "options": "-c statement_timeout=60000"},
-                pool_pre_ping=True,
-                pool_recycle=300
-            )
-            with engine.connect() as conn:
-                conn.execute("SELECT 1")
-            return engine
-
-        elif db_type == "ClickHouse":
-            try:
-                import clickhouse_connect
-            except ImportError:
-                raise ImportError("clickhouse-connect")
-
-            client = clickhouse_connect.get_client(
-                host=host, port=port,
-                username=user, password=password,
-                database=db_name,
-                secure=False,
-                verify=False,
-                connect_timeout=10,
-                send_receive_timeout=60
-            )
-            client.ping()
-            return client
-
-    except ImportError as e:
-        raise e
-    except Exception as e:
-        add_log("ERROR", f"DB Connection failed: {db_type}@{host}:{port}/{db_name} - {e}")
-        raise ConnectionError(f"Не удалось подключиться к {db_type}")
-    # 🔧 Функция ЗАВЕРШЕНА здесь (return выше)
+    return _init_db_connection_impl(db_type, host, port, user, password, db_name)
 
 
 # ────────────────────────────────────────────────────────────
@@ -1222,115 +589,8 @@ if data_source == "◉ Файл .xlsx, .xls, .csv, .json":
         if st.sidebar.button("Загрузить файл", type="primary", use_container_width=True, key="btn_load_main"):
             with st.spinner("⏳ Обработка данных..."):
                 try:
-                    file_name = uploaded.name or "unknown.file"
-                    ext = file_name.split('.')[-1].lower()
-
-                    if ext == "csv":
-                        df = pd.read_csv(
-                            uploaded,
-                            sep=None,
-                            engine='python',
-                            encoding='utf-8-sig',
-                            on_bad_lines='skip',
-                            parse_dates=False
-                        )
-                    elif ext in ["xlsx", "xls"]:
-                        df = pd.read_excel(uploaded, parse_dates=False)
-
-                    elif ext == "json":
-                        try:
-                            uploaded.seek(0)
-                            content = uploaded.read().decode('utf-8-sig')
-                            import json as json_lib
-                            from pandas import json_normalize
-
-                            data = json_lib.loads(content)
-
-                            # JSON-stat 2.0 обработка
-                            if isinstance(data, dict) and data.get("version") == "2.0" and "value" in data and "dimension" in data:
-                                dimensions = data.get("dimension", {})
-                                dimension_ids = data.get("id", [])
-                                sizes = data.get("size", [])
-
-                                strides = [1] * len(sizes)
-                                for j in range(len(sizes) - 2, -1, -1):
-                                    strides[j] = strides[j + 1] * sizes[j + 1]
-
-                                category_maps = {}
-                                for dim_id in dimension_ids:
-                                    dim_info = dimensions.get(dim_id, {})
-                                    category_info = dim_info.get("category", {})
-                                    index_map = category_info.get("index", {})
-                                    label_map = category_info.get("label", {})
-                                    reverse_index = {v: k for k, v in index_map.items()}
-                                    category_maps[dim_id] = {
-                                        "reverse_index": reverse_index,
-                                        "label": label_map
-                                    }
-
-                                rows = []
-                                for key_str, value in data["value"].items():
-                                    try:
-                                        linear_idx = int(key_str)
-                                        indices = []
-                                        remaining = linear_idx
-                                        for j, size in enumerate(sizes):
-                                            if j == len(sizes) - 1:
-                                                indices.append(remaining)
-                                            else:
-                                                idx = remaining // strides[j]
-                                                indices.append(idx)
-                                                remaining = remaining % strides[j]
-
-                                        row = {}
-                                        for j, dim_id in enumerate(dimension_ids):
-                                            cat_info = category_maps.get(dim_id, {})
-                                            reverse_index = cat_info.get("reverse_index", {})
-                                            label_map = cat_info.get("label", {})
-                                            cat_code = reverse_index.get(indices[j])
-                                            row[dim_id] = label_map.get(cat_code, cat_code) if cat_code else None
-                                        row["value"] = value
-                                        rows.append(row)
-                                    except (ValueError, KeyError):
-                                        continue
-
-                                if rows:
-                                    df = pd.DataFrame(rows)
-                                    st.sidebar.success(f"✅ JSON-stat 2.0 распарсен: {len(df)} записей")
-                                else:
-                                    raise ValueError("JSON-stat 2.0 не содержит валидных данных")
-
-                            # Обычный JSON
-                            elif isinstance(data, list):
-                                if len(data) > 0 and isinstance(data[0], dict):
-                                    df = json_normalize(data)
-                                elif len(data) > 0:
-                                    df = pd.DataFrame({uploaded.name.rsplit('.', 1)[0]: data})
-                                else:
-                                    df = pd.DataFrame()
-                            elif isinstance(data, dict):
-                                df = pd.DataFrame([data])
-                            else:
-                                df = pd.DataFrame([{"value": str(data)}])
-
-                            if df.empty:
-                                raise ValueError("JSON пуст")
-
-                            # Переименование колонок (не для JSON-stat)
-                            if "version" not in data or data.get("version") != "2.0":
-                                if len(df.columns) > 0 and isinstance(df.columns[0], (int, float)):
-                                    df.columns = [f'col_{i}' for i in range(len(df.columns))]
-
-                        except json.JSONDecodeError as je:
-                            raise ValueError(f"❌ Ошибка парсинга JSON: {je}")
-                        except Exception as e:
-                            raise ValueError(f"❌ Ошибка обработки JSON: {e}")
-
-                    else:
-                        raise ValueError(f"Формат .{ext} не поддерживается")
-
-                    if df.empty:
-                        raise ValueError("Файл пуст")
+                    # Чтение файла через бизнес-функцию
+                    df, ext = _read_impl(uploaded)
 
                     # Очистка имён колонок
                     df.columns = df.columns.astype(str).str.strip().str.replace(r'\s+', '_', regex=True)
@@ -1338,13 +598,26 @@ if data_source == "◉ Файл .xlsx, .xls, .csv, .json":
                     # Автодетект дат
                     df, detected_dates, ts_active, primary_date = robust_datetime_detector(df)
 
-                    # ОЧИСТКА ОТ СИСТЕМНЫХ КОЛОНОК (ВСТАВИТЬ СЮДА, ДО СОХРАНЕНИЯ В СЕССИЮ)
-                    service_cols = [
-                        c for c in df.columns
-                        if c.lower() in ['row_id', 'index', 'level_0', 'level_1', 'unnamed', 'unnamed: 0']
-                    ]
+                    # ИСПРАВЛЕНИЕ: Сортировка выполняется ПОСЛЕ вызова кэшированной функции
+                    if ts_active and primary_date:
+                        # Сохраняем несортированные данные для проверки согласованности
+                        st.session_state.df_unsorted = df.copy()
+                        
+                        # Определяем группирующую колонку для панельных данных
+                        from app.data.detectors import detect_panel_group_column
+                        group_col = detect_panel_group_column(df, primary_date)
+                        
+                        # Сортировка с учётом группировки
+                        if group_col:
+                            df = df.sort_values([group_col, primary_date]).reset_index(drop=True)
+                            st.sidebar.info(f"📊 Обнаружены панельные данные. Сортировка: {group_col} → {primary_date}")
+                        else:
+                            df = df.sort_values(primary_date).reset_index(drop=True)
+                            st.sidebar.info(f"📈 Сортировка по {primary_date}")
+
+                    # ОЧИСТКА ОТ СИСТЕМНЫХ КОЛОНОК
+                    df, service_cols = drop_service_columns(df)
                     if service_cols:
-                        df = df.drop(columns=service_cols)
                         st.sidebar.toast(f"Удалены системные колонки: {service_cols}")
 
                     # Обновление session_state (теперь уже чистого df)
@@ -1385,7 +658,7 @@ if data_source == "◉ Файл .xlsx, .xls, .csv, .json":
                         uploaded.seek(0)
 
 # ─── БАЗА ДАННЫХ (SQL) ──────────────────────────────────────
-else:  # 🔧 Этот else на одном уровне с if выше!
+else:  # Этот else на одном уровне с if выше!
     with st.sidebar.expander("⚙️ Настройки подключения", expanded=True):
         db_type = st.selectbox("● Тип БД", ["PostgreSQL", "ClickHouse"], key="db_type_sel")
 
@@ -1477,13 +750,9 @@ else:  # 🔧 Этот else на одном уровне с if выше!
                             df_db.columns = df_db.columns.astype(str).str.strip()
                             df_db, detected_dates, ts_active, primary_date = robust_datetime_detector(df_db)
 
-                            # ОЧИСТКА ОТ СИСТЕМНЫХ КОЛОНОК (ВСТАВИТЬ СЮДА, ДО СОХРАНЕНИЯ В СЕССИЮ)
-                            service_cols = [
-                                c for c in df.columns
-                                if c.lower() in ['row_id', 'index', 'level_0', 'level_1', 'unnamed', 'unnamed: 0']
-                            ]
+                            # ОЧИСТКА ОТ СИСТЕМНЫХ КОЛОНОК
+                            df_db, service_cols = drop_service_columns(df_db)
                             if service_cols:
-                                df = df.drop(columns=service_cols)
                                 st.sidebar.toast(f"Удалены системные колонки: {service_cols}")
 
                             # Обновление session_state
@@ -1648,7 +917,6 @@ with st.sidebar.expander("Управление правилами"):
 st.sidebar.divider()
 st.sidebar.markdown("### Лог событий")
 if st.session_state.error_log:
-    # 🔧 Исправлено: убран hide_index, добавлена обработка
     log_df = pd.DataFrame(st.session_state.error_log[-20:])  # Последние 20 записей
     st.sidebar.dataframe(
         log_df,
@@ -1658,7 +926,7 @@ if st.session_state.error_log:
             "_index": st.column_config.Column("№", width="small")
         }
     )
-    if st.sidebar.button("🗑️ Очистить лог", use_container_width=True, key="btn_clear_log"):
+    if st.sidebar.button("Очистить лог", use_container_width=True, key="btn_clear_log"):
         st.session_state.error_log = []
         st.rerun()
 else:
@@ -1676,11 +944,11 @@ ct_info = st.session_state.get("col_types", {"num": [], "cat": [], "date": []})
 
 if not df_info.empty:
     st.sidebar.info(f"""
-    - **📊 Записей**: `{len(df_info):,}`
-    - **📐 Колонок**: `{len(df_info.columns)}`
-    - **🔢 Числовых**: `{len(ct_info.get('num', []))}`
-    - **📋 Категорий**: `{len(ct_info.get('cat', []))}`
-    - **📅 Даты**: `{len(ct_info.get('date', []))}`
+    - **Записей**: `{len(df_info):,}`
+    - **Колонок**: `{len(df_info.columns)}`
+    - **Числовых**: `{len(ct_info.get('num', []))}`
+    - **Категорий**: `{len(ct_info.get('cat', []))}`
+    - **Даты**: `{len(ct_info.get('date', []))}`
     """)
 else:
     st.sidebar.info("ℹ️ Данные ещё не загружены")
@@ -1975,7 +1243,7 @@ with tab_download:
     preview_df = df if len(df) > 0 else pd.DataFrame()
     if not preview_df.empty:
         if len(preview_df) <= 20:
-            st.info(f"📊 Всего записей: {len(preview_df)}")
+            st.info(f"Всего записей: {len(preview_df)}")
             st.dataframe(preview_df, use_container_width=True, height=300)
         else:
             st.info(f"Показано: первые 10 и последние 10 из {len(preview_df)} записей")
@@ -2201,55 +1469,6 @@ with tab_download:
                 unsafe_allow_html=True
             )
 
-            def detect_distribution_type(series):
-                import numpy as np
-                from scipy import stats
-                data = series.dropna()
-                if len(data) < 30: return "Недостаточно данных для определения (<30 точек)"
-                if len(data) > 5000: data = data.sample(5000, random_state=42)
-                is_discrete = (data == data.astype(int)).all()
-                unique_count = data.nunique()
-                min_val = data.min()
-                mean_v = data.mean()
-                var_v = data.var()
-                skew = stats.skew(data)
-                kurt = stats.kurtosis(data)
-
-                if is_discrete and unique_count < 100:
-                    if unique_count == 2 and min_val >= 0: return "Дискретное - Биномальное"
-                    elif min_val >= 1 and var_v > mean_v**2: return "Дискретное - Геометрическое"
-                    elif var_v > mean_v * 1.3: return "Дискретное - Отрицательное биномальное"
-                    elif abs(var_v - mean_v) < mean_v * 0.25: return "Дискретное - Пуассона"
-                    elif unique_count < len(data) * 0.4: return "Дискретное - Гипергеометрическое (оценка)"
-                    return "Дискретное - Эмпирическое"
-
-                candidates = {
-                    "Нормальное": stats.norm, "Логнормальное": stats.lognorm,
-                    "Экспоненциальное": stats.expon, "Равномерное": stats.uniform,
-                    "Стьюдента": stats.t, "Хи-квадрат": stats.chi2, "Гамма": stats.gamma
-                }
-                best_name, best_ks = None, np.inf
-                for name, dist in candidates.items():
-                    try:
-                        if name in ["Логнормальное", "Экспоненциальное", "Хи-квадрат"] and min_val <= 0: continue
-                        params = dist.fit(data)
-                        ks_stat, _ = stats.kstest(data, dist.name, args=params)
-                        if ks_stat < best_ks: best_ks, best_name = ks_stat, name
-                    except: continue
-
-                prefix = "Непрерывное - "
-                if best_name is None:
-                    if abs(skew) < 0.5: return f"{prefix}Нормальное (по асимметрии)"
-                    if skew > 0.5: return f"{prefix}Правосторонняя асимметрия"
-                    if skew < -0.5: return f"{prefix}Левосторонняя асимметрия"
-                    return f"{prefix}Неопределённое"
-                if best_ks < 0.06: return f"{prefix}{best_name}"
-                elif best_ks < 0.14: return f"{prefix}{best_name} (близко)"
-                else:
-                    if skew > 0.6: return f"{prefix}Правосторонняя асимметрия"
-                    if skew < -0.6: return f"{prefix}Левосторонняя асимметрия"
-                    return f"{prefix}Эмпирическое (сложная форма)"
-
             dist_type = detect_distribution_type(df[selected_col])
             dist_emoji = "🔵" if "Нормальное" in dist_type else "🟠" if "асимметрия" in dist_type.lower() else "🟢" if "Равномерное" in dist_type else "🟣" if "Логнормальное" in dist_type else "⚪"
 
@@ -2348,19 +1567,7 @@ with tab_download:
                 st.markdown("### **Пояснения к корреляциям**")
 
                 # Анализ значимых связей (r >= 0.5 или r <= -0.5)
-                significant_links = []
-                for i in range(len(corr_matrix.columns)):
-                    for j in range(i + 1, len(corr_matrix.columns)):
-                        val = corr_matrix.iloc[i, j]
-                        if abs(val) >= 0.5:  # Порог значимости
-                            col1, col2 = corr_matrix.columns[i], corr_matrix.columns[j]
-                            strength = "Сильная" if abs(val) >= 0.7 else "Умеренная"
-                            direction = "прямая (+)" if val > 0 else "обратная (-)"
-                            significant_links.append({
-                                "pair": f"{col1} ↔ {col2}",
-                                "val": val,
-                                "desc": f"{strength} {direction} связь (`r = {val:.2f}`)"
-                            })
+                significant_links = find_significant_correlations(df[num_cols], num_cols, threshold=0.5)
 
                 if significant_links:
                     st.info(f"Найдено {len(significant_links)} значимых связей (|r| ≥ 0.5):")
@@ -2396,10 +1603,14 @@ with tab_download:
     # 🔹 ЭКСПАНДЕР: заголовок виден, контент скрыт по умолчанию
     with st.expander(" Показать панель фильтров и визуализации", expanded=False):
 
+        # Классификация колонок через единую функцию
+        col_types = classify_columns(df)
+        
         # Категориальные колонки для фильтров
-        cat_cols = df.select_dtypes(include=['object', 'string']).columns.tolist()
+        cat_cols = col_types['cat']
         if not cat_cols:
-            cat_cols = [c for c in df.select_dtypes(include='number').columns if 1 < df[c].nunique() < 100]
+            # Fallback: если нет object/string колонок, берём числовые с малым количеством уникальных значений
+            cat_cols = [c for c in col_types['num'] if 1 < df[c].nunique() < 100]
 
         # Приоритетные колонки
         for p in ["Country", "Region", "Регион", "Страна", "Категория", "Product"]:
@@ -2446,9 +1657,9 @@ with tab_download:
         else:
             selected_cat2 = []
 
-        # Временная колонка
-        datetime_cols = df.select_dtypes(include=['datetime64[ns]']).columns.tolist()
-        num_year_cols = [c for c in df.select_dtypes(include='number').columns if 'year' in c.lower() or 'год' in c.lower()]
+        # Временная колонка (включает datetime + числовые с "year"/"год")
+        datetime_cols = col_types['date']
+        num_year_cols = [c for c in col_types['num'] if 'year' in c.lower() or 'год' in c.lower()]
         time_cols = datetime_cols + [c for c in num_year_cols if c not in datetime_cols]
 
         for p in ["Year", "Date", "Год", "Дата"]:
@@ -2498,15 +1709,15 @@ with tab_download:
             df_filtered = df_filtered.drop(columns=['_tmp_year'])
 
         st.caption(
-            f"📊 Активно: {len(df_filtered)} записей | "
+            f"Активно: {len(df_filtered)} записей | "
             f"{len(selected_cat1)} значений (кат.1) | "
             f"{len(selected_cat2)} значений (кат.2) | "
             f"{len(selected_years)} лет"
         )
 
         if df_filtered.empty:
-            st.warning("⚠️ Нет данных для отображения. Измените фильтры.")
-            st.stop()
+            st.warning("⚠️ Выполнение прервано. Отсортируйте данные и перезапустите валидацию.")
+            
 
         # ───────────────────────────────────────────────────────────
         #  2. ПОДГОТОВКА МЕТРИК И TS MODE (ct_f, ts_mode_active)
@@ -2515,11 +1726,8 @@ with tab_download:
         MODE_TS = "Временные ряды"
         MODE_GEN = "Общий (категории)"
 
-        ct_f = {
-            "num": df_filtered.select_dtypes(include='number').columns.tolist(),
-            "cat": [c for c in df_filtered.select_dtypes(include=['object', 'string']).columns if 1 < df_filtered[c].nunique() < 100],
-            "date": df_filtered.select_dtypes(include='datetime').columns.tolist()
-        }
+        # Классификация колонок для отфильтрованного DataFrame
+        ct_f = classify_columns(df_filtered)
 
         # Инициализируем ts_mode_active
         ts_mode_active = False
@@ -3225,7 +2433,6 @@ with tab_download:
 
                 try:
                     import pywt
-                    from scipy import signal
 
                     # CWT
                     widths = np.arange(1, min(128, len(analysis_series)//4))
@@ -3592,263 +2799,155 @@ with tab_download:
                     else:
                         analysis_series = df_filtered[target_col].dropna().astype(float)
 
-                    if len(analysis_series) < 30:
-                        st.warning("⚠️ Недостаточно данных (нужно > 30 точек) для полного анализа.")
-                    else:
+                    # ── 1. ВЫЗОВ ЕДИНОЙ ФУНКЦИИ РАСЧЁТА ПАСПОРТА ──────────────────
+                    if target_col and len(analysis_series) >= 30:
+                        props_v10 = calculate_ts_passport(
+                            analysis_series=analysis_series,
+                            df_filtered=df_filtered,
+                            ct_f=ct_f,
+                            target_col=target_col
+                        )
+                        props_v10['version'] = 'v1.0 (сырые данные)'
+                        
+                        # ── 2. ПРЕОБРАЗОВАНИЕ РЕЗУЛЬТАТА В ФОРМАТ ДЛЯ UI ─────────────
                         results_data = []
-
-                        # ── 0. ЧАСТОТА РЯДА (новая метрика) ─────────────────────
-                        inferred_freq = pd.infer_freq(analysis_series.index.drop_duplicates().sort_values())
-                        freq_result = f"✅ {inferred_freq}" if inferred_freq else "⚠️ Нерегулярная"
-
+                        
+                        # Частота ряда
+                        freq = props_v10.get('frequency', 'N/A')
                         results_data.append({
                             "Свойство": "Частота ряда",
-                            "Метод": "pd.infer_freq() + эвристика",
-                            "Описание": "Определяет регулярность временного интервала между наблюдениями.",
-                            "Результат": freq_result
+                            "Метод": "pd.infer_freq()",
+                            "Описание": "Регулярность временного интервала",
+                            "Результат": f"✅ {freq}" if freq != 'N/A' else "⚠️ Нерегулярная"
                         })
-
-                        # ── 1. Стационарность (ADF Test) ──────────────────────────
-                        adf_res = adfuller(analysis_series, autolag='AIC')
-                        adf_p = adf_res[1]
+                        
+                        # Стационарность (ADF)
+                        adf_p = props_v10.get('adf_pvalue', 1.0)
                         is_stationary = adf_p < 0.05
-
                         results_data.append({
                             "Свойство": "Стационарность",
-                            "Метод": "ADF Test (Augmented Dickey-Fuller)",
-                            "Описание": "Проверяет наличие единичного корня (нестационарности). H₀: Ряд нестационарен.",
+                            "Метод": "ADF Test",
+                            "Описание": "H₀: Ряд нестационарен",
                             "Результат": "✅ Стационарен" if is_stationary else "❌ Нестационарен"
                         })
-
-                        # ── 1.1. Детерминированность (R² тренда) ──────────────────
-                        from scipy.stats import linregress
-                        slope, intercept, r_value, p_value, std_err = linregress(range(len(analysis_series)), analysis_series)
-                        r_squared = r_value**2
+                        
+                        # Детерминированность (R²)
+                        r_squared = props_v10.get('r_squared', 0.0)
                         is_deterministic = r_squared >= 0.7
-
                         results_data.append({
                             "Свойство": "Детерминированность",
-                            "Метод": "R² тренда + комбинация тестов",
-                            "Описание": "Доля дисперсии, объяснённая детерминированным трендом. R² ≥ 0.7 → сильный детерминированный компонент.",
-                            "Результат": f"{'✅ Детерминированный' if is_deterministic else '⚠️ Стохастический/Смешанный'} (R²={r_squared:.3f})"
+                            "Метод": "R² тренда",
+                            "Описание": "R² ≥ 0.7 → сильный тренд",
+                            "Результат": f"{'✅ Детерминированный' if is_deterministic else '⚠️ Стохастический'} (R²={r_squared:.3f})"
                         })
-
-                        # ── 2. Автокорреляция (Ljung-Box) ─────────────────────────
-                        from statsmodels.stats.diagnostic import acorr_ljungbox
-                        lb_res = acorr_ljungbox(analysis_series, lags=[10])
-                        if isinstance(lb_res, pd.DataFrame):
-                            lb_p = lb_res['lb_pvalue'].iloc[0]
-                        else:
-                            lb_p = lb_res[1][0]
-
+                        
+                        # Автокорреляция (Ljung-Box)
+                        lb_p = props_v10.get('ljung_box_pvalue', 0.0)
                         is_white_noise = lb_p > 0.05
                         results_data.append({
                             "Свойство": "Автокорреляция",
-                            "Метод": "Ljung-Box Test (Lag=10)",
-                            "Описание": "Проверяет гипотезу о том, что значения ряда независимы (белый шум). H₀: Автокорреляция равна 0.",
-                            "Результат": "✅ Белый шум (Нет АК)" if is_white_noise else "⚠️ Есть автокорреляция"
+                            "Метод": "Ljung-Box Test",
+                            "Описание": "H₀: Автокорреляция равна 0",
+                            "Результат": "✅ Белый шум" if is_white_noise else "⚠️ Есть автокорреляция"
                         })
-
-                        # ── 3. Нормальность (Jarque-Bera) ─────────────────────────
-                        from scipy import stats
-                        jb_res = stats.jarque_bera(analysis_series)
-                        jb_p = jb_res.pvalue if hasattr(jb_res, 'pvalue') else jb_res[1]
+                        
+                        # Нормальность (Jarque-Bera)
+                        jb_p = props_v10.get('jarque_bera_pvalue', 0.0)
                         is_normal = jb_p > 0.05
-
                         results_data.append({
                             "Свойство": "Нормальность",
                             "Метод": "Jarque-Bera Test",
-                            "Описание": "Проверяет соответствие распределения нормальному (асимметрия и эксцесс). H₀: Распределение нормально.",
+                            "Описание": "H₀: Распределение нормально",
                             "Результат": "✅ Нормально" if is_normal else "⚠️ Отклонение от нормы"
                         })
-
-                        # ── 4. Направление тренда ─────────────────────────
+                        
+                        # Направление тренда
+                        slope = props_v10.get('trend_slope', 0.0)
                         trend_dir = "📈 Восходящий" if slope > 0 else "📉 Нисходящий" if slope < 0 else "➡️ Горизонтальный"
-
                         results_data.append({
                             "Свойство": "Направление тренда",
-                            "Метод": "OLS Linear Regression (Slope)",
-                            "Описание": "Определяет угол наклона линии тренда через метод наименьших квадратов.",
+                            "Метод": "OLS Linear Regression",
+                            "Описание": "Угол наклона линии тренда",
                             "Результат": f"{trend_dir} (Slope={slope:.4f})"
                         })
-
-                        # ── 📈 КОРРЕЛЯЦИЯ ЧИСЛОВЫХ ПРИЗНАКОВ (новая метрика) ─────
-                        num_cols = ct_f.get("num", [])
-                        if len(num_cols) >= 2 and target_col in num_cols:
-                            # Рассчитываем корреляции только для числовых колонок в отфильтрованных данных
-                            corr_df = df_filtered[num_cols].corr()
-                            target_corr = corr_df[target_col].drop(target_col).sort_values(key=abs, ascending=False)
-
-                            # Формируем строку с топ-3 корреляциями
-                            top_corrs = []
-                            for col, val in target_corr.head(3).items():
-                                sign = "🟢" if val > 0.5 else ("🔴" if val < -0.5 else "🟡")
-                                top_corrs.append(f"{sign} {col} ({val:.2f})")
-
-                            corr_result = ", ".join(top_corrs) if top_corrs else "⚪ Нет сильных связей (|r|<0.5)"
-
+                        
+                        # Корреляция признаков (если есть)
+                        if 'correlations' in props_v10:
+                            corr_result = props_v10['correlations']
                             results_data.append({
                                 "Свойство": "Корреляция признаков",
-                                "Метод": "Pearson correlation matrix",
-                                "Описание": "Линейная связь целевой метрики с другими числовыми признаками. 🟢>0.5, 🔴<-0.5, 🟡 слабая",
-                                "Результат": corr_result
+                                "Метод": "Pearson correlation",
+                                "Описание": "Линейная связь с другими признаками",
+                                "Результат": str(corr_result)
                             })
-
-                        # ── 5. СЕЗОННОСТЬ (группировка: Strength + ACF периоды) ──
-                        from statsmodels.tsa.seasonal import STL
-                        period = 7 if (inferred_freq and 'D' in inferred_freq) else 12
-                        try:
-                            stl_res = STL(analysis_series, period=period, robust=True).fit()
-                            var_total = analysis_series.var()
-                            var_resid = stl_res.resid.var()
-                            var_detrended = var_total - stl_res.trend.var()
-                            strength_seasonality = max(0, 1 - var_resid / var_detrended) if var_detrended > 0 else 0
-                            is_seasonal = strength_seasonality > 0.6
-                        except:
-                            strength_seasonality = 0.0
-                            is_seasonal = False
-
+                        
+                        # Сезонность (сила)
+                        seasonal_strength = props_v10.get('seasonal_strength', 0.0)
+                        is_seasonal = seasonal_strength > 0.6
                         results_data.append({
                             "Свойство": "Сезонность (сила)",
-                            "Метод": "STL Decomposition (Strength)",
-                            "Описание": "Доля дисперсии, объясняемая сезонной компонентой (0..1). >0.6 = сильная сезонность.",
-                            "Результат": f"{'✅ Сильная' if is_seasonal else '⚠️ Слабая/Нет'} (S={strength_seasonality:.2f})"
+                            "Метод": "STL Decomposition",
+                            "Описание": "S > 0.6 = сильная сезонность",
+                            "Результат": f"{'✅ Сильная' if is_seasonal else '⚠️ Слабая/Нет'} (S={seasonal_strength:.2f})"
                         })
-
-                        # ── 6. Сезонные периоды (из ACF) — СРАЗУ ПОСЛЕ СИЛЫ ───────
-                        from statsmodels.tsa.stattools import acf as acf_func
-                        max_lag = min(60, len(analysis_series) // 4)
-                        acf_values = acf_func(analysis_series, nlags=max_lag)
-                        confidence = 1.96 / np.sqrt(len(analysis_series))
-                        significant_lags = np.where(np.abs(acf_values) > confidence)[0][1:]
-
-                        seasonal_periods_acf = []
-                        for i, lag in enumerate(significant_lags):
-                            if i > 0 and lag - significant_lags[i-1] < 3:
-                                continue
-                            if lag > 2:
-                                seasonal_periods_acf.append(lag)
-
-                        acf_seasonality = seasonal_periods_acf[:3] if seasonal_periods_acf else []
+                        
+                        # Сезонные периоды (ACF)
+                        acf_periods = props_v10.get('acf_periods', [])
                         results_data.append({
                             "Свойство": "Сезонные периоды (ACF)",
-                            "Метод": "Автокорреляционная функция + порог значимости",
-                            "Описание": "Лаги с корреляцией выше 95% доверительного интервала. Показывает периодичность ряда.",
-                            "Результат": f"{'✅ ' + ', '.join(map(str, acf_seasonality)) if acf_seasonality else '⚠️ Не обнаружены'}"
+                            "Метод": "Автокорреляционная функция",
+                            "Описание": "Лаги с корреляцией выше 95% ДИ",
+                            "Результат": f"✅ {', '.join(map(str, acf_periods))}" if acf_periods else "⚠️ Не обнаружены"
                         })
-
-                        # ── 7. Долгая память (Hurst Exponent) ─────────────────────
-                        def hurst_exponent(series, max_lag=20):
-                            lags = range(2, max_lag)
-                            tau = [max(np.std(np.subtract(series[lag:], series[:-lag])), 1e-8) for lag in lags]
-                            try:
-                                return np.polyfit(np.log(lags), np.log(tau), 1)[0]
-                            except: return 0.5
-
-                        hurst_val = hurst_exponent(analysis_series.values)
+                        
+                        # Долгая память (Hurst)
+                        hurst_val = props_v10.get('hurst_exponent', 0.5)
                         memory_type = "🔵 Антиперсистентность" if hurst_val < 0.45 else ("🔴 Устойчивый тренд" if hurst_val > 0.55 else "⚪ Случайное блуждание")
-
                         results_data.append({
                             "Свойство": "Долгая память",
-                            "Метод": "Hurst Exponent (R/S Analysis)",
-                            "Описание": "Характеризует персистентность ряда. H=0.5 (Random Walk), H>0.5 (Trend), H<0.5 (Mean Reverting).",
+                            "Метод": "Hurst Exponent",
+                            "Описание": "H=0.5 (Random Walk), H>0.5 (Trend), H<0.5 (Mean Reverting)",
                             "Результат": f"{memory_type} (H={hurst_val:.2f})"
                         })
-
-                        # ═══════════════════════════════════════════════════════
-                        #  🆕 СПЕКТРАЛЬНЫЕ СВОЙСТВА (из спектрального анализа)
-                        # ═══════════════════════════════════════════════════════
-
-                        # ── 8. Доминирующие частоты (FFT) ───────────────────────
-
-                        n = len(analysis_series)
-                        y = analysis_series.values - analysis_series.mean()
-                        yf = fft(y)
-                        xf = fftfreq(n, 1)[:n//2]
-                        amplitude = 2.0/n * np.abs(yf[0:n//2])
-
-                        peaks, _ = find_peaks(amplitude, height=np.mean(amplitude) + np.std(amplitude))
-                        fft_periods = [1/xf[p] for p in peaks if xf[p] > 0 and xf[p] < 0.5]
-                        fft_dominant = sorted(fft_periods)[:3] if fft_periods else []
-
+                        
+                        # FFT периоды
+                        fft_periods = props_v10.get('fft_periods', [])
                         results_data.append({
                             "Свойство": "Доминирующие частоты (FFT)",
-                            "Метод": "Быстрое преобразование Фурье + поиск пиков",
-                            "Описание": "Периоды с максимальной амплитудой в частотной области. Для создания Fourier features.",
-                            "Результат": f"{'✅ ' + ', '.join([f'{p:.1f}' for p in fft_dominant]) if fft_dominant else '⚠️ Не обнаружены'}"
+                            "Метод": "Быстрое преобразование Фурье",
+                            "Описание": "Периоды с максимальной амплитудой",
+                            "Результат": f"✅ {', '.join([f'{p:.1f}' for p in fft_periods])}" if fft_periods else "⚠️ Не обнаружены"
                         })
-
-                        # ── 9. Спектральная плотность (Periodogram) ─────────────
-                        from scipy.signal import periodogram
-                        freq_per, pxx_per = periodogram(analysis_series.values, fs=1.0, window='hann')
-                        peaks_per, _ = find_peaks(pxx_per, height=np.median(pxx_per)*2)
-                        periodogram_periods = sorted([1/freq_per[p] for p in peaks_per if freq_per[p] > 0])[:3]
-
+                        
+                        # Periodogram периоды
+                        periodogram_periods = props_v10.get('periodogram_periods', [])
                         results_data.append({
                             "Свойство": "Значимые периоды (Периодограмма)",
-                            "Метод": "Periodogram с окном Hann + порог мощности",
-                            "Описание": "Частоты с мощностью выше медианы × 2. Показывает вклад разных циклов в дисперсию.",
-                            "Результат": f"{'✅ ' + ', '.join([f'{p:.1f}' for p in periodogram_periods]) if periodogram_periods else '⚠️ Не обнаружены'}"
+                            "Метод": "Periodogram + Hann window",
+                            "Описание": "Частоты с мощностью выше медианы × 2",
+                            "Результат": f"✅ {', '.join([f'{p:.1f}' for p in periodogram_periods])}" if periodogram_periods else "⚠️ Не обнаружены"
                         })
-
-                        # ── 10. Вейвлет-масштабы (опционально) ─────────────────
-                        wavelet_scales = []
-                        try:
-                            import pywt
-                            widths = np.arange(1, min(128, len(analysis_series)//4))
-                            cwtmatr, _ = pywt.cwt(analysis_series.values - analysis_series.mean(), widths, 'morl', sampling_period=1)
-                            mean_power = np.mean(np.abs(cwtmatr), axis=1)
-                            wavelet_peaks, _ = find_peaks(mean_power, height=np.mean(mean_power))
-                            wavelet_scales = widths[wavelet_peaks][:3].tolist() if len(wavelet_peaks) > 0 else []
-
-                            results_data.append({
-                                "Свойство": "Доминирующие масштабы (Wavelet)",
-                                "Метод": "Continuous Wavelet Transform (Morlet)",
-                                "Описание": "Масштабы с максимальной средней мощностью. Показывает изменение циклов во времени.",
-                                "Результат": f"{'✅ ' + ', '.join(map(str, wavelet_scales)) if wavelet_scales else '⚠️ Не обнаружены'}"
-                            })
-                        except ImportError:
-                            results_data.append({
-                                "Свойство": "Доминирующие масштабы (Wavelet)",
-                                "Метод": "Continuous Wavelet Transform (Morlet)",
-                                "Описание": "Требует библиотеку PyWavelets (`pip install PyWavelets`)",
-                                "Результат": "⚠️ Библиотека не установлена"
-                            })
-                        except:
-                            results_data.append({
-                                "Свойство": "Доминирующие масштабы (Wavelet)",
-                                "Метод": "Continuous Wavelet Transform (Morlet)",
-                                "Описание": "Анализ частот во времени для нестационарных рядов",
-                                "Результат": "⚠️ Ошибка вычисления"
-                            })
-
-                        # ── ВЫВОД ТАБЛИЦЫ ─────────────────────────────────────────
+                        
+                        # Wavelet масштабы
+                        wavelet_scales = props_v10.get('wavelet_scales', [])
+                        results_data.append({
+                            "Свойство": "Доминирующие масштабы (Wavelet)",
+                            "Метод": "Continuous Wavelet Transform",
+                            "Описание": "Масштабы с максимальной мощностью",
+                            "Результат": f"✅ {', '.join(map(str, wavelet_scales))}" if wavelet_scales else "⚠️ Не обнаружены"
+                        })
+                        
+                        # ── 3. СОЗДАНИЕ ДАТАФРЕЙМА ────────────────────────
                         df_results = pd.DataFrame(results_data)
-
-                        # 🔧 СОХРАНЕНИЕ ПАСПОРТА v1.0 В SESSION_STATE
-                        if target_col and len(analysis_series) >= 30:
-                            props_v10 = calculate_ts_passport(
-                                analysis_series,
-                                df_filtered=df_filtered,
-                                ct_f=ct_f,
-                                target_col=target_col
-                            )
-                            props_v10['version'] = 'v1.0 (сырые данные)'
-                            st.session_state.ts_props_v10 = props_v10
-                            st.session_state.ts_props_v10_target_col = target_col
-
-
-                        # ── ВЫВОД ТАБЛИЦЫ ─────────────────────────────────────────
-                        df_results = pd.DataFrame(results_data)
-
-                        # Безопасный расчёт высоты (только если датафрейм не пустой)
-                        if not df_results.empty:
-                            n_rows = len(df_results)
-                            # ~40px на строку + 45px на шапку таблицы, ограничиваем диапазон 200–600px
-                            table_height = min(600, max(200, 45 + n_rows * 40))
-                        else:
-                            table_height = 200  # Дефолтная высота для пустой/ошибочной таблицы
-
+                        
+                        # ── 4. СОХРАНЕНИЕ В SESSION_STATE ────────────────────────────
+                        st.session_state.ts_props_v10 = props_v10
+                        st.session_state.ts_props_v10_target_col = target_col
+                        
+                        # ── 5. ВЫВОД ТАБЛИЦЫ ─────────────────────────────────────────
+                        n_rows = len(df_results)
+                        table_height = min(600, max(200, 45 + n_rows * 40))
+                        
                         st.dataframe(
                             df_results,
                             use_container_width=True,
@@ -3863,7 +2962,7 @@ with tab_download:
                         )
 
                         # ────────────────────────────────────────────────────────────
-                        #  📊 ПРЕДВАРИТЕЛЬНЫЕ РЕКОМЕНДАЦИИ ПО МОДЕЛИРОВАНИЮ (Объединённый блок)
+                        #  📊 ПРЕДВАРИТЕЛЬНЫЕ РЕКОМЕНДАЦИИ ПО МОДЕЛИРОВАНИЮ (B.9)
                         # ────────────────────────────────────────────────────────────
                         st.divider()
                         st.markdown("###  Предварительные рекомендации по моделированию")
@@ -3871,99 +2970,95 @@ with tab_download:
                         recommendations = []
                         model_suggestions = []
 
+                        # Явно извлекаем метрики из паспорта
+                        is_stationary = adf_p < 0.05
+                        is_white_noise = lb_p > 0.05
+                        r_squared = props_v10.get('r_squared', 0.0)
+                        is_heteroscedastic = props_v10.get('is_heteroscedastic', False)
+                        acf_seasonality = props_v10.get('acf_periods', [])
+                        fft_dominant = props_v10.get('fft_periods', [])
+                        periodogram_periods = props_v10.get('periodogram_periods', [])
+                        wavelet_scales = props_v10.get('wavelet_scales', [])
+                        is_seasonal = seasonal_strength > 0.6
+                        strength_seasonality = props_v10.get('seasonal_strength', 0.0)
+                        inferred_freq = props_v10.get('frequency', None)
+                        target_corr = props_v10.get('correlations', {}).get('top3', {})
+
                         # ═══════════════════════════════════════════════════════════
-                        #  1. БАЗОВЫЕ СВОЙСТВА (стационарность, белый шум, тренд)
+                        #  1. БАЗОВЫЕ СВОЙСТВА
                         # ═══════════════════════════════════════════════════════════
+                        if is_stationary and is_white_noise:
+                            recommendations.append("• Ряд похож на белый шум → рассмотрите внешние факторы или агрегацию")
+                            model_suggestions.append("Exponential Smoothing, Naive, External regressors")
+                        elif is_stationary and not is_white_noise:
+                            recommendations.append("• Ряд стационарен с автокорреляцией → подходит ARIMA/SARIMA")
+                            model_suggestions.append("ARIMA(p,d,q), SARIMA с подбором порядков")
+                        elif not is_stationary:
+                            recommendations.append("• Ряд нестационарен → примените дифференцирование (diff) или детрендирование")
+                            model_suggestions.append("ARIMA (с d≥1), Detrending + ARMA, Prophet")
 
-                        # Стационарность + белый шум
-                        if 'is_stationary' in locals() and 'is_white_noise' in locals():
-                            if is_stationary and is_white_noise:
-                                recommendations.append("• Ряд похож на белый шум → рассмотрите внешние факторы или агрегацию")
-                                model_suggestions.append("Exponential Smoothing, Naive, External regressors")
-                            elif is_stationary and not is_white_noise:
-                                recommendations.append("• Ряд стационарен с автокорреляцией → подходит ARIMA/SARIMA")
-                                model_suggestions.append("ARIMA(p,d,q), SARIMA с подбором порядков")
-                            elif not is_stationary:
-                                recommendations.append("• Ряд нестационарен → примените дифференцирование (diff) или детрендирование")
-                                model_suggestions.append("ARIMA (с d≥1), Detrending + ARMA, Prophet")
+                        if r_squared >= 0.7:
+                            recommendations.append(f"• Сильный детерминированный тренд (R²={r_squared:.2f}) → учтите тренд в модели")
+                            model_suggestions.append("Linear/Polynomial Trend + ARMA, Prophet with trend")
 
-                        # Детерминированность тренда
-                        if 'r_squared' in locals():
-                            if r_squared >= 0.7:
-                                recommendations.append(f"• Сильный детерминированный тренд (R²={r_squared:.2f}) → учтите тренд в модели")
-                                model_suggestions.append("Linear/Polynomial Trend + ARMA, Prophet with trend")
-
-                        # Гетероскедастичность
-                        if 'is_heteroscedastic' in locals() and is_heteroscedastic:
+                        if is_heteroscedastic:
                             recommendations.append("• Обнаружена гетероскедастичность → рассмотрите модели с изменяющейся дисперсией")
                             model_suggestions.append("GARCH, ARIMA-GARCH, Log-transform")
 
                         # ═══════════════════════════════════════════════════════════
-                        #  2. СПЕКТРАЛЬНЫЕ СВОЙСТВА (сезонность, частоты, циклы)
+                        #  2. СПЕКТРАЛЬНЫЕ СВОЙСТВА
                         # ═══════════════════════════════════════════════════════════
-
-                        # Сезонность из ACF
-                        if 'acf_seasonality' in locals() and acf_seasonality:
+                        if acf_seasonality:
                             m_val = acf_seasonality[0]
                             recommendations.append(f"• **Сезонность из ACF:** используйте SARIMA с **m={m_val}**")
                             model_suggestions.append(f"SARIMA(..., seasonal_order=(..., m={m_val}))")
 
-                        # Доминирующие частоты из FFT
-                        if 'fft_dominant' in locals() and fft_dominant:
+                        if fft_dominant:
                             periods_str = ', '.join([f'{p:.1f}' for p in fft_dominant[:3]])
                             recommendations.append(f"• **Fourier features:** добавьте гармоники с периодами [{periods_str}]")
                             model_suggestions.append(f"ML-модели с признаками: sin(2πt/P), cos(2πt/P) для P∈[{periods_str}]")
 
-                        # Дополнительные периоды из периодограммы
-                        if 'periodogram_periods' in locals() and periodogram_periods:
-                            unique_periods = [p for p in periodogram_periods if p not in (fft_dominant if 'fft_dominant' in locals() else [])]
+                        if periodogram_periods:
+                            unique_periods = [p for p in periodogram_periods if p not in fft_dominant]
                             if unique_periods:
                                 recommendations.append(f"• **Доп. периоды (Periodogram):** {unique_periods[:2]}")
 
-                        # Изменение циклов во времени (Wavelet)
-                        if 'wavelet_scales' in locals() and wavelet_scales:
+                        if wavelet_scales:
                             recommendations.append("• **Нестационарность частот:** вейвлет показал изменение циклов во времени")
                             model_suggestions.append("Time-Varying Parameter (TVP) models, State Space, Adaptive filtering")
 
-                        # Сила сезонности из STL
-                        if 'is_seasonal' in locals() and is_seasonal:
+                        if is_seasonal:
                             recommendations.append(f"• **Сильная сезонность (STL):** S={strength_seasonality:.2f} → явно моделируйте сезонную компоненту")
                             model_suggestions.append("STL decomposition + ARIMA, Prophet with seasonality")
 
                         # ── ЧАСТОТА РЯДА ────────────────────────────────────────
-                        if 'inferred_freq' in locals():
-                            if inferred_freq:
-                                freq_code = inferred_freq.split('-')[0] if '-' in inferred_freq else inferred_freq
-                                recommendations.append(f"• **Частота ряда:** {freq_code} → подходит для классических TS-моделей")
-
-                                # Специфичные рекомендации по частоте
-                                if freq_code in ['D', 'B', 'H']:  # Дневные/часовые
-                                    model_suggestions.append("Prophet (учёт праздников), LSTM для высокочастотных данных")
-                                elif freq_code in ['W', 'M', 'Q']:  # Недельные/месячные/квартальные
-                                    model_suggestions.append("SARIMA, ETS, TBATS для сезонных рядов")
-                                elif freq_code == 'Y':  # Годовые
-                                    model_suggestions.append("Простые трендовые модели, сравнение годовых значений")
-                            else:
-                                recommendations.append("• **Нерегулярная частота** → требуется ресемплинг или модели для неравномерных рядов")
-                                model_suggestions.append("Interpolation + ARIMA, Gaussian Processes, State Space Models")
+                        if inferred_freq and inferred_freq != 'N/A':
+                            freq_code = inferred_freq.split('-')[0] if '-' in inferred_freq else inferred_freq
+                            recommendations.append(f"• **Частота ряда:** {freq_code} → подходит для классических TS-моделей")
+                            if freq_code in ['D', 'B', 'H']:
+                                model_suggestions.append("Prophet (учёт праздников), LSTM для высокочастотных данных")
+                            elif freq_code in ['W', 'M', 'Q']:
+                                model_suggestions.append("SARIMA, ETS, TBATS для сезонных рядов")
+                            elif freq_code == 'Y':
+                                model_suggestions.append("Простые трендовые модели, сравнение годовых значений")
+                        else:
+                            recommendations.append("• **Нерегулярная частота** → требуется ресемплинг или модели для неравномерных рядов")
+                            model_suggestions.append("Interpolation + ARIMA, Gaussian Processes, State Space Models")
 
                         # ── КОРРЕЛЯЦИЯ ЧИСЛОВЫХ ПРИЗНАКОВ ─────────────────────
-                        if 'target_corr' in locals() and target_corr is not None:
-                            # Анализ сильных корреляций целевой метрики
-                            strong_pos = target_corr[target_corr > 0.7]
-                            strong_neg = target_corr[target_corr < -0.7]
+                        # target_corr — это dict {col_name: corr_value}
+                        if target_corr and isinstance(target_corr, dict):
+                            strong_pos = {k: v for k, v in target_corr.items() if v > 0.7}
+                            strong_neg = {k: v for k, v in target_corr.items() if v < -0.7}
                             multicollinear = []
 
                             # Проверка мультиколлинеарности между признаками
                             if len(ct_f["num"]) >= 2:
-                                corr_matrix = df_filtered[ct_f["num"]].corr()
-                                for i in range(len(corr_matrix.columns)):
-                                    for j in range(i+1, len(corr_matrix.columns)):
-                                        if abs(corr_matrix.iloc[i, j]) > 0.85:
-                                            multicollinear.append(f"{corr_matrix.columns[i]} ↔ {corr_matrix.columns[j]}")
+                                multicollinear_links = find_significant_correlations(df_filtered, ct_f["num"], threshold=0.85)
+                                multicollinear = [item['pair'] for item in multicollinear_links]
 
-                            if len(strong_pos) > 0 or len(strong_neg) > 0:
-                                top_feat = list(strong_pos.index) + list(strong_neg.index)
+                            if strong_pos or strong_neg:
+                                top_feat = list(strong_pos.keys()) + list(strong_neg.keys())
                                 recommendations.append(f"• **Сильные предикторы:** {', '.join(top_feat[:3])} (|r|>0.7) → используйте как основные фичи")
                                 model_suggestions.append("Linear Regression, Random Forest, XGBoost с отбором признаков")
 
@@ -3971,29 +3066,26 @@ with tab_download:
                                 recommendations.append(f"• **Мультиколлинеарность:** {multicollinear[0]} (|r|>0.85) → риск нестабильности оценок")
                                 model_suggestions.append("PCA, Ridge/Lasso регуляризация, удаление одного из коррелированных признаков")
 
-                            # Если все корреляции слабые
-                            if len(strong_pos) == 0 and len(strong_neg) == 0 and len(multicollinear) == 0:
+                            if not strong_pos and not strong_neg and not multicollinear:
                                 recommendations.append("• **Слабые линейные связи** → рассмотрите нелинейные модели или инженерные признаки")
                                 model_suggestions.append("Polynomial features, Interaction terms, Neural Networks, Gradient Boosting")
 
                         # ═══════════════════════════════════════════════════════════
                         #  4. ОБЪЕДИНЁННЫЙ ВЫВОД РЕКОМЕНДАЦИЙ
                         # ═══════════════════════════════════════════════════════════
-
                         if recommendations:
                             st.markdown("**Список рекомендаций:**")
                             for i, rec in enumerate(recommendations, 1):
-                                # Цветовая индикация приоритета
                                 if "Сильная" in rec or "мультиколлинеарность" in rec.lower():
-                                    st.warning(rec)  # Важные предупреждения
+                                    st.warning(rec)
                                 elif "Частота" in rec or "предикторы" in rec:
-                                    st.info(rec)  # Информационные
+                                    st.info(rec)
                                 else:
-                                    st.success(rec)  # Общие рекомендации
+                                    st.success(rec)
 
                             if model_suggestions:
                                 st.markdown("**Предлагаемые модели (по приоритету):**")
-                                unique_models = list(dict.fromkeys(model_suggestions))  # Убираем дубли
+                                unique_models = list(dict.fromkeys(model_suggestions))
                                 for i, model in enumerate(unique_models, 1):
                                     st.markdown(f"{i}. {model}")
                         else:
@@ -4001,7 +3093,7 @@ with tab_download:
                             st.info("• Exponential Smoothing (Holt-Winters)\n• Naive / Seasonal Naive\n• Linear Regression с лагами")
 
                         # ═══════════════════════════════════════════════════════════
-                        #  5. МЕТОДОЛОГИЧЕСКОЕ ПОЯСНЕНИЕ (обновлённое)
+                        #  5. МЕТОДОЛОГИЧЕСКОЕ ПОЯСНЕНИЕ
                         # ═══════════════════════════════════════════════════════════
                         st.markdown("""
                         <div style='color: #000000; font-size: 14px; background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 3px solid #3b82f6;'>
@@ -4023,12 +3115,15 @@ with tab_download:
                         </div>
                         """, unsafe_allow_html=True)
 
+                    else:
+                        st.warning("⚠️ Недостаточно данных для расчёта паспорта свойств (нужно ≥ 30 точек)")
 
                 except Exception as e:
                     st.error(f"Ошибка при анализе свойств: {e}")
-                    st.exception(e)
-    else:
-        st.warning("⚠️ Нет числовых колонок для анализа.")
+                    import traceback
+                    st.code(traceback.format_exc(), language="python")
+        else:
+            st.warning("⚠️ Нет числовых колонок для анализа.")
 
 
     # ─────────────────────────────────────────────────────────────
@@ -4052,7 +3147,7 @@ with tab_download:
                 try:
                     import io
                     from datetime import datetime as dt_now
-                    from scipy.stats import jarque_bera, linregress
+                    from scipy.stats import jarque_bera
                     from statsmodels.tsa.stattools import adfuller
                     try:
                         from statsmodels.tsa.stattools import acorr_ljungbox
@@ -4070,14 +3165,14 @@ with tab_download:
                         st.warning("⚠️ Недостаточно данных для формирования отчета (требуется > 30 точек).")
                     else:
                         # ── 1. РАСЧЕТ МЕТОДОВ ──────────────────────────────────────
-                        # Статистики распределения
+                        # Статистики распределения (базовые, не дублируют паспорт)
                         mean_val = analysis_series.mean()
                         median_val = analysis_series.median()
                         std_val = analysis_series.std()
                         skew_val = analysis_series.skew()
                         kurt_val = analysis_series.kurtosis()
 
-                        # Авто-детект типа распределения
+                        # Авто-детект типа распределения (дополнительная метрика, не в паспорте)
                         candidates = {"Нормальное": sp_stats.norm, "Логнормальное": sp_stats.lognorm, "Экспоненциальное": sp_stats.expon}
                         best_name, best_ks = "Эмпирическое", 1.0
                         for name, dist in candidates.items():
@@ -4089,42 +3184,65 @@ with tab_download:
                             except: continue
                         dist_type = f"Непрерывное - {best_name}" if best_ks < 0.15 else "Непрерывное - Эмпирическое (сложная форма)"
 
-                        # Свойства временного ряда
-                        adf_res = adfuller(analysis_series, autolag='AIC')
-                        is_stationary = adf_res[1] < 0.05
+                        # ── ВЫЗОВ ЕДИНОЙ ФУНКЦИИ РАСЧЕТА ПАСПОРТА ──────────────────
+                        props = calculate_ts_passport(
+                            analysis_series=analysis_series,
+                            df_filtered=df_filtered,
+                            ct_f=ct_f,
+                            target_col=report_col
+                        )
 
-                        lb_res = acorr_ljungbox(analysis_series, lags=[10])
-                        lb_p = lb_res['lb_pvalue'].iloc[0] if isinstance(lb_res, pd.DataFrame) else lb_res[1][0]
-                        is_white_noise = lb_p > 0.05
-
-                        jb_res = jarque_bera(analysis_series)
-                        jb_p = jb_res.pvalue if hasattr(jb_res, 'pvalue') else jb_res[1]
-                        is_normal = jb_p > 0.05
-
-                        # Тренд и Детерминированность
-                        slope, intercept, r_value, p_value, std_err = linregress(range(len(analysis_series)), analysis_series)
-                        r_squared = r_value**2
+                        # Извлечение метрик из паспорта
+                        is_stationary = props.get('adf_pvalue', 1.0) < 0.05
+                        is_white_noise = props.get('ljung_box_pvalue', 0.0) > 0.05
+                        is_normal = props.get('jarque_bera_pvalue', 0.0) > 0.05
+                        r_squared = props.get('r_squared', 0.0)
+                        slope = props.get('trend_slope', 0.0)
                         trend_dir = "📈 Восходящий" if slope > 0 else "📉 Нисходящий" if slope < 0 else "➡️ Горизонтальный"
-
-                        inferred_freq = pd.infer_freq(analysis_series.index)
-                        period = 7 if (inferred_freq and 'D' in inferred_freq) else 12
-                        try:
-                            stl_res = STL(analysis_series, period=period, robust=True).fit()
-                            var_detrended = analysis_series.var() - stl_res.trend.var()
-                            strength_seasonality = max(0, 1 - stl_res.resid.var() / var_detrended) if var_detrended > 0 else 0
-                            is_seasonal = strength_seasonality > 0.6
-                        except:
-                            strength_seasonality, is_seasonal = 0.0, False
-
-                        def calc_hurst(series, max_lag=20):
-                            lags = range(2, max_lag)
-                            tau = [max(np.std(np.subtract(series[lag:], series[:-lag])), 1e-8) for lag in lags]
-                            try: return np.polyfit(np.log(lags), np.log(tau), 1)[0]
-                            except: return 0.5
-                        hurst_val = calc_hurst(analysis_series.values)
+                        inferred_freq = props.get('frequency', None)
+                        strength_seasonality = props.get('seasonal_strength', 0.0)
+                        is_seasonal = strength_seasonality > 0.6
+                        hurst_val = props.get('hurst_exponent', 0.5)
                         memory_type = "🔵 Антиперсистентность" if hurst_val < 0.45 else ("🔴 Устойчивый тренд" if hurst_val > 0.55 else "⚪ Случайное блуждание")
+                        acf_seasonality = props.get('acf_periods', [])
+                        acf_seasonality_str = ', '.join(map(str, acf_seasonality[:3])) if acf_seasonality else "Не обнаружены"
+                        fft_dominant = props.get('fft_periods', [])
+                        fft_dominant_str = ', '.join([f'{p:.1f}' for p in sorted(fft_dominant)[:3]]) if fft_dominant else "Не обнаружены"
+                        periodogram_periods = props.get('periodogram_periods', [])
+                        periodogram_str = ', '.join([f'{p:.1f}' for p in periodogram_periods]) if periodogram_periods else "Не обнаружены"
+                        wavelet_scales = props.get('wavelet_scales', [])
+                        wavelet_scales_str = ', '.join(map(str, wavelet_scales)) if wavelet_scales else "Не обнаружены"
+
+                        # Корреляция признаков (из паспорта или вычислить отдельно)
+                        target_corr_raw = props.get('correlations', "N/A")
+
+                        # Если это словарь, преобразуем в строку
+                        if isinstance(target_corr_raw, dict):
+                            # Берём топ-3 корреляции
+                            sorted_corrs = sorted(target_corr_raw.items(), key=lambda x: abs(x[1]), reverse=True)[:3]
+                            top_corrs = []
+                            for col, val in sorted_corrs:
+                                sign = "🟢" if val > 0.5 else ("🔴" if val < -0.5 else "🟡")
+                                top_corrs.append(f"{sign} {col} ({val:.2f})")
+                            target_corr_str = ", ".join(top_corrs) if top_corrs else "⚪ Нет сильных связей (|r|<0.5)"
+                        else:
+                            # Если это уже строка или "N/A"
+                            target_corr_str = str(target_corr_raw) if target_corr_raw != "N/A" else "N/A"
+
+                        # Если всё ещё "N/A", вычисляем вручную
+                        if target_corr_str == "N/A":
+                            num_cols = ct_f.get("num", [])
+                            if len(num_cols) >= 2 and report_col in num_cols:
+                                corr_df = df_filtered[num_cols].corr()
+                                target_corr = corr_df[report_col].drop(report_col).sort_values(key=abs, ascending=False)
+                                top_corrs = []
+                                for col, val in target_corr.head(3).items():
+                                    sign = "🟢" if val > 0.5 else ("🔴" if val < -0.5 else "🟡")
+                                    top_corrs.append(f"{sign} {col} ({val:.2f})")
+                                target_corr_str = ", ".join(top_corrs) if top_corrs else "⚪ Нет сильных связей (|r|<0.5)"
 
                         # ── 2. АНАЛИЗ ГЕТЕРОСКЕДАСТИЧНОСТИ (ARCH-LM) ────────────────────
+                        # Дополнительная метрика, не входит в стандартный паспорт
                         is_heteroscedastic = False
                         arch_p_val = None
                         try:
@@ -4136,69 +3254,12 @@ with tab_download:
                         except Exception:
                             pass
 
-                        # ── 📈 КОРРЕЛЯЦИЯ ЧИСЛОВЫХ ПРИЗНАКОВ ─────────────────────
-                        num_cols = ct_f.get("num", [])
-                        target_corr_str = "N/A"
-                        if len(num_cols) >= 2 and report_col in num_cols:
-                            corr_df = df_filtered[num_cols].corr()
-                            target_corr = corr_df[report_col].drop(report_col).sort_values(key=abs, ascending=False)
-                            top_corrs = []
-                            for col, val in target_corr.head(3).items():
-                                sign = "🟢" if val > 0.5 else ("🔴" if val < -0.5 else "🟡")
-                                top_corrs.append(f"{sign} {col} ({val:.2f})")
-                            target_corr_str = ", ".join(top_corrs) if top_corrs else "⚪ Нет сильных связей (|r|<0.5)"
-
-                        # ── 📅 СЕЗОННЫЕ ПЕРИОДЫ (из ACF) ────────────────────────
-                        from statsmodels.tsa.stattools import acf as acf_func
-                        max_lag = min(60, len(analysis_series) // 4)
-                        acf_values = acf_func(analysis_series, nlags=max_lag)
-                        confidence = 1.96 / np.sqrt(len(analysis_series))
-                        significant_lags = np.where(np.abs(acf_values) > confidence)[0][1:]
-
-                        seasonal_periods_acf = []
-                        for i, lag in enumerate(significant_lags):
-                            if i > 0 and lag - significant_lags[i-1] < 3:
-                                continue
-                            if lag > 2:
-                                seasonal_periods_acf.append(lag)
-                        acf_seasonality_str = ', '.join(map(str, seasonal_periods_acf[:3])) if seasonal_periods_acf else "Не обнаружены"
-
-                        # ── ⚡ ДОМИНИРУЮЩИЕ ЧАСТОТЫ (FFT) ───────────────────────
-                        n = len(analysis_series)
-                        y = analysis_series.values - analysis_series.mean()
-                        yf = fft(y)
-                        xf = fftfreq(n, 1)[:n//2]
-                        amplitude = 2.0/n * np.abs(yf[0:n//2])
-                        peaks, _ = find_peaks(amplitude, height=np.mean(amplitude) + np.std(amplitude))
-                        fft_periods = [1/xf[p] for p in peaks if xf[p] > 0 and xf[p] < 0.5]
-                        fft_dominant_str = ', '.join([f'{p:.1f}' for p in sorted(fft_periods)[:3]]) if fft_periods else "Не обнаружены"
-
-                        # ── 📊 ЗНАЧИМЫЕ ПЕРИОДЫ (Периодограмма) ─────────────
-                        from scipy.signal import periodogram
-                        freq_per, pxx_per = periodogram(analysis_series.values, fs=1.0, window='hann')
-                        peaks_per, _ = find_peaks(pxx_per, height=np.median(pxx_per)*2)
-                        periodogram_periods = sorted([1/freq_per[p] for p in peaks_per if freq_per[p] > 0])[:3]
-                        periodogram_str = ', '.join([f'{p:.1f}' for p in periodogram_periods]) if periodogram_periods else "Не обнаружены"
-
-                        # ── 🌊 ВЕЙВЛЕТ-МАСШТАБЫ ───────────────────────────────
-                        wavelet_scales_str = "N/A"
-                        try:
-                            import pywt
-                            widths = np.arange(1, min(128, len(analysis_series)//4))
-                            cwtmatr, _ = pywt.cwt(analysis_series.values - analysis_series.mean(), widths, 'morl', sampling_period=1)
-                            mean_power = np.mean(np.abs(cwtmatr), axis=1)
-                            wavelet_peaks, _ = find_peaks(mean_power, height=np.mean(mean_power))
-                            wavelet_scales = widths[wavelet_peaks][:3].tolist() if len(wavelet_peaks) > 0 else []
-                            wavelet_scales_str = ', '.join(map(str, wavelet_scales)) if wavelet_scales else "Не обнаружены"
-                        except:
-                            wavelet_scales_str = "Ошибка/Не установлено"
-
                         # ── 3. СТРУКТУРИРОВАНИЕ РЕЗУЛЬТАТОВ ────────────────────────
                         tech_info = {
                             "Всего строк": f"{len(df):,}".replace(",", " "),
                             "Всего колонок": len(df.columns),
                             "Объем памяти": f"{df.memory_usage(deep=True).sum() / 1024**2:.2f} MB",
-                            "Числовых / Категорий": f"{len(ct['num'])} / {len(ct['cat'])}",
+                            "Числовых / Категорий": f"{len(ct_f['num'])} / {len(ct_f['cat'])}",
                             "Диапазон дат": f"{df_ts.index.min().date()} — {df_ts.index.max().date()}" if ts_mode_active else "N/A",
                             "Inferred частота": pd.infer_freq(df_ts.index) if ts_mode_active else "N/A"
                         }
@@ -4237,7 +3298,7 @@ with tab_download:
 
                         # ── 4. ОТОБРАЖЕНИЕ ТАБЛИЦЫ НА ЭКРАНЕ ──
                         st.divider()
-                        st.markdown(f"#### 📄 Готовый отчет: {report_col}")
+                        st.markdown(f"#### Готовый отчет: {report_col}")
                         st.dataframe(
                             df_report,
                             use_container_width=True,
@@ -4251,162 +3312,48 @@ with tab_download:
                         )
 
                         # ── 5. ГЕНЕРАЦИЯ EXCEL (с листом рекомендаций) ─────────────────
+                        from app.core.export import export_passport_to_excel
 
-                        wb = Workbook()
-                        ws = wb.active
-                        ws.title = "1_Паспорт свойств"
-
-                        header_font = Font(bold=True, size=12, color="FFFFFF")
-                        header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-                        title_font = Font(bold=True, size=16)
-                        footer_font = Font(bold=True, color="0369A1")
-                        footer_fill = PatternFill(start_color="E0F2FE", end_color="E0F2FE", fill_type="solid")
-                        green_fill = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
-                        yellow_fill = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
-                        red_fill = PatternFill(start_color="FEE2E2", end_color="FEE2E2", fill_type="solid")
-                        thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
-
-                        row = 1
-                        ws.merge_cells(f"A{row}:D{row}")
-                        cell = ws.cell(row=row, column=1, value=f"Предварительный отчет о свойствах признака: {report_col}")
-                        cell.font = title_font
-                        cell.alignment = Alignment(horizontal='center')
-                        row += 2
-
-                        ws.cell(row=row, column=1, value=f"Исследуемый параметр: {report_col}").font = header_font
-                        ws.cell(row=row, column=3, value=f"Дата: {dt_now.now().strftime('%d.%m.%Y %H:%M')}").font = header_font
-                        row += 2
-
-                        def write_table(data_dict, start_row, title):
-                            ws.merge_cells(f"A{start_row}:B{start_row}")
-                            cell = ws.cell(row=start_row, column=1, value=title)
-                            cell.font = header_font
-                            cell.fill = header_fill
-                            cell.alignment = Alignment(horizontal='center')
-                            start_row += 1
-                            ws.cell(row=start_row, column=1, value="Параметр").font = Font(bold=True)
-                            ws.cell(row=start_row, column=2, value="Значение").font = Font(bold=True)
-                            start_row += 1
-                            for k, v in data_dict.items():
-                                c1, c2 = ws.cell(row=start_row, column=1, value=k), ws.cell(row=start_row, column=2, value=v)
-                                c1.border, c2.border = thin_border, thin_border
-                                start_row += 1
-                            return start_row + 1
-
-                        row = write_table(tech_info, row, "🔧 Техническая информация")
-                        row = write_table(dist_stats, row, "📈 Статистики распределения")
-
-                        ws.merge_cells(f"A{row}:C{row}")
-                        cell = ws.cell(row=row, column=1, value="📋 Итоговый паспорт свойств")
-                        cell.font, cell.fill, cell.alignment = header_font, header_fill, Alignment(horizontal='center')
-                        row += 1
-
-                        ws.cell(row=row, column=1, value="Свойство").font = Font(bold=True)
-                        ws.cell(row=row, column=2, value="Метод").font = Font(bold=True)
-                        ws.cell(row=row, column=3, value="Результат").font = Font(bold=True)
-                        row += 1
-
-                        for item in ts_passport:
-                            c1, c2, c3 = ws.cell(row=row, column=1, value=item["property"]), ws.cell(row=row, column=2, value=item["method"]), ws.cell(row=row, column=3, value=item["result"])
-                            c1.border, c2.border, c3.border = thin_border, thin_border, thin_border
-                            if "✅" in item["result"]: c3.fill = green_fill
-                            elif "⚠️" in item["result"]: c3.fill = yellow_fill
-                            elif "❌" in item["result"]: c3.fill = red_fill
-                            row += 1
-
-                        # 🔧 НОВЫЙ ЛИСТ: РЕКОМЕНДАЦИИ ПО МОДЕЛЯМ
-                        ws_rec = wb.create_sheet("2_Рекомендации")
-                        ws_rec.title = "2_Рекомендации"
-
-                        # Заголовок листа рекомендаций
-                        row_rec = 1
-                        ws_rec.merge_cells(f"A{row_rec}:C{row_rec}")
-                        cell = ws_rec.cell(row=row_rec, column=1, value="Рекомендуемые модели и обоснование")
-                        cell.font = title_font
-                        cell.alignment = Alignment(horizontal='center')
-                        row_rec += 2
-
-                        ws_rec.cell(row=row_rec, column=1, value="Модель").font = header_font
-                        ws_rec.cell(row=row_rec, column=2, value="Условие применения").font = header_font
-                        ws_rec.cell(row=row_rec, column=3, value="Обоснование").font = header_font
-                        row_rec += 1
-
-                        # Формирование рекомендаций на основе свойств
-                        recommendations = []
-
-                        # Базовые свойства
+                        # Формируем рекомендации для Excel (переиспользуем из B.9)
+                        excel_recommendations = []
                         if is_stationary and is_white_noise:
-                            recommendations.append(("Exponential Smoothing / Naive", "Ряд похож на белый шум", "Отсутствие автокорреляции → внешние факторы важнее истории"))
+                            excel_recommendations.append(("Exponential Smoothing / Naive", "Ряд похож на белый шум", "Отсутствие автокорреляции > внешние факторы важнее истории"))
                         elif is_stationary and not is_white_noise:
-                            recommendations.append(("ARIMA(p,d,q)", "Стационарен + есть автокорреляция", "Классический выбор для стационарных рядов с АК"))
+                            excel_recommendations.append(("ARIMA(p,d,q)", "Стационарен + есть автокорреляция", "Классический выбор для стационарных рядов с АК"))
                         elif not is_stationary:
-                            recommendations.append(("ARIMA с дифференцированием / Prophet", "Нестационарный ряд", "Требуется удаление тренда (diff) или модель с трендом"))
+                            excel_recommendations.append(("ARIMA с дифференцированием / Prophet", "Нестационарный ряд", "Требуется удаление тренда (diff) или модель с трендом"))
 
                         if r_squared >= 0.7:
-                            recommendations.append(("Linear Trend + ARMA", f"Сильный детерминированный тренд (R²={r_squared:.2f})", "Явный тренд лучше моделировать отдельно"))
+                            excel_recommendations.append(("Linear Trend + ARMA", f"Сильный детерминированный тренд (R²={r_squared:.2f})", "Явный тренд лучше моделировать отдельно"))
 
-                        # Сезонность
+                        # ИСПРАВЛЕНО: используем acf_seasonality вместо seasonal_periods_acf
                         if is_seasonal or acf_seasonality_str != "Не обнаружены":
-                            m_val = seasonal_periods_acf[0] if seasonal_periods_acf else period
-                            recommendations.append((f"SARIMA(..., m={m_val}) / Prophet", "Обнаружена сезонность", "Явное моделирование сезонной компоненты улучшает точность"))
+                            m_val = acf_seasonality[0] if acf_seasonality else None
+                            if m_val:
+                                excel_recommendations.append((f"SARIMA(..., m={m_val}) / Prophet", "Обнаружена сезонность", "Явное моделирование сезонной компоненты улучшает точность"))
 
-                        # Частота
                         if inferred_freq and inferred_freq in ['D', 'H', 'T']:
-                            recommendations.append(("Prophet / LSTM", f"Высокочастотные данные ({inferred_freq})", "Учет праздников и внутридневных паттернов"))
+                            excel_recommendations.append(("Prophet / LSTM", f"Высокочастотные данные ({inferred_freq})", "Учет праздников и внутридневных паттернов"))
                         elif inferred_freq in ['W', 'M', 'Q']:
-                            recommendations.append(("SARIMA / TBATS", f"Сезонные данные ({inferred_freq})", "Классические методы для недельной/месячной сезонности"))
+                            excel_recommendations.append(("SARIMA / TBATS", f"Сезонные данные ({inferred_freq})", "Классические методы для недельной/месячной сезонности"))
 
-                        # Корреляции
                         if target_corr_str != "N/A" and "🟢" in target_corr_str:
-                            recommendations.append(("Linear Regression / XGBoost", "Есть сильные предикторы (|r|>0.7)", "Использовать коррелирующие признаки как регрессоры"))
+                            excel_recommendations.append(("Linear Regression / XGBoost", "Есть сильные предикторы (|r|>0.7)", "Использовать коррелирующие признаки как регрессоры"))
 
-                        # Спектральные особенности
                         if fft_dominant_str != "Не обнаружены":
-                            recommendations.append(("ML + Fourier features", f"Доминирующие частоты: {fft_dominant_str}", "Добавить sin/cos гармоники как признаки для улучшения прогноза"))
+                            excel_recommendations.append(("ML + Fourier features", f"Доминирующие частоты: {fft_dominant_str}", "Добавить sin/cos гармоники как признаки для улучшения прогноза"))
 
-                        # Если нет явных паттернов
-                        if not recommendations:
-                            recommendations.append(("Naive / Simple Exponential Smoothing", "Нет выраженных паттернов", "Начать с простых базовых моделей для оценки"))
+                        if not excel_recommendations:
+                            excel_recommendations.append(("Naive / Simple Exponential Smoothing", "Нет выраженных паттернов", "Начать с простых базовых моделей для оценки"))
 
-                        # Запись рекомендаций в лист
-                        for model, condition, justification in recommendations:
-                            ws_rec.cell(row=row_rec, column=1, value=model).font = Font(bold=True)
-                            ws_rec.cell(row=row_rec, column=2, value=condition)
-                            ws_rec.cell(row=row_rec, column=3, value=justification)
-                            # Применяем границы
-                            for col in range(1, 4):
-                                ws_rec.cell(row=row_rec, column=col).border = thin_border
-                            row_rec += 1
-
-                        # Методологическое пояснение в конце листа
-                        row_rec += 1
-                        ws_rec.merge_cells(f"A{row_rec}:C{row_rec}")
-                        cell = ws_rec.cell(row=row_rec, column=1, value="📚 Методология выбора моделей")
-                        cell.font = Font(bold=True, size=11, color="0369A1")
-                        cell.alignment = Alignment(horizontal='left')
-                        row_rec += 1
-                        ws_rec.cell(row=row_rec, column=1, value="• Статистические тесты (ADF, Ljung-Box) → выбор класса моделей")
-                        ws_rec.cell(row=row_rec+1, column=1, value="• Спектральный анализ (ACF, FFT) → параметры сезонности и признаки")
-                        ws_rec.cell(row=row_rec+2, column=1, value="• Корреляционный анализ → отбор признаков, борьба с мультиколлинеарностью")
-                        ws_rec.cell(row=row_rec+3, column=1, value="• Порядок действий: 1) Преобразования → 2) Признаки → 3) Подбор параметров → 4) Валидация")
-
-                        # Настройка ширины колонок
-                        ws.column_dimensions['A'].width = 35
-                        ws.column_dimensions['B'].width = 30
-                        ws.column_dimensions['C'].width = 50
-                        ws_rec.column_dimensions['A'].width = 30
-                        ws_rec.column_dimensions['B'].width = 35
-                        ws_rec.column_dimensions['C'].width = 60
-
-                        # Футер
-                        row += 1
-                        ws.merge_cells(f"A{row}:C{row}")
-                        cell = ws.cell(row=row, column=1, value=" Исследовано платформой CISStat TS Analytics | ✅ Верифицировано СтатКомитетом СНГ")
-                        cell.font, cell.fill, cell.alignment = footer_font, footer_fill, Alignment(horizontal='center')
-
-                        output = io.BytesIO()
-                        wb.save(output)
-                        output.seek(0)
+                        # Экспортируем в Excel
+                        output = export_passport_to_excel(
+                            tech_info=tech_info,
+                            dist_stats=dist_stats,
+                            ts_passport=ts_passport,
+                            recommendations=excel_recommendations,
+                            report_col=report_col
+                        )
 
                         # ── 6. КНОПКА ВЫГРУЗКИ ──────────
                         st.divider()
@@ -4421,7 +3368,8 @@ with tab_download:
 
                 except Exception as e:
                     st.error(f"❌ Ошибка при формировании отчета: {e}")
-                    st.exception(e)
+                    import traceback
+                    st.code(traceback.format_exc(), language="python")
 
         # 2️⃣ ОТОБРАЖЕНИЕ ОТЧЕТА НА ЭКРАНЕ
         if st.session_state.get("report_ready"):
@@ -4447,8 +3395,8 @@ with tab_download:
                     key="btn_final_download_excel"
                 )
                 st.session_state.report_ready = False
-    else:
-        st.warning("⚠️ Нет числовых колонок для анализа.")
+        else:
+            st.warning("⚠️ Нет числовых колонок для анализа.")
 
 # ─────────────────────────────────────────────────────────────
 #  ВКЛАДКА 2: ВАЛИДАЦИЯ
@@ -4562,48 +3510,41 @@ with tab_validation:
 
             # 4. Проверка согласованности (логика + хронология)
             progress.progress(0.40, text="Проверка согласованности данных...")
-            consistency_results = validate_consistency(df, rules)
+            # ИСПРАВЛЕНИЕ: Используем НЕСОРТИРОВАННЫЕ данные
+            df_for_consistency = st.session_state.get('df_unsorted', df)
+            consistency_results = validate_consistency(df_for_consistency, rules)
+
+            # ИСПРАВЛЕНИЕ: Извлекаем маски из результатов
+            # Маски жестко привязаны к индексам df_for_consistency (несортированного)
             consistency_masks = {}
+            for i, rule_result in enumerate(consistency_results):
+                if 'mask' in rule_result:
+                    mask_name = f"rule_{i}_{rule_result.get('Правило', 'unknown')}"
+                    consistency_masks[mask_name] = rule_result['mask']
+
+            #  КРИТИЧНО: Сохраняем несортированный датафрейм в сессию, 
+            # чтобы пайплайн использовал именно его (иначе индексы масок не совпадут с отсортированным df)
+            st.session_state.df_consistency_unsorted = df_for_consistency.copy()
 
             # 5. Проверка уникальности (дубликаты)
             progress.progress(0.50, text="Проверка уникальности записей...")
-            uniqueness_results = []
-            if st.session_state.col_types.get("date"):
-                date_col = st.session_state.col_types["date"][0]
-                dup_count = int(df.duplicated(subset=[date_col], keep=False).sum())
-            else:
-                dup_count = int(df.duplicated(keep=False).sum())
-            if dup_count > 0:
-                uniqueness_results.append({
-                    "Правило": "Уникальность записей",
-                    "Дубликатов": dup_count,
-                    "Статус": "⚠️ Нарушено"
-                })
-            else:
-                uniqueness_results.append({
-                    "Правило": "Уникальность записей",
-                    "Дубликатов": 0,
-                    "Статус": "✅ Соблюдено"
-                })
+            from validation.uniqueness import check_uniqueness
+
+            date_col = st.session_state.col_types.get("date", [None])[0]
+            uniqueness_result = check_uniqueness(df, date_col=date_col)
+
+            uniqueness_results = [{
+                "Правило": "Уникальность записей",
+                "Дубликатов": uniqueness_result['duplicate_count'],
+                "Статус": uniqueness_result['status']
+            }]
 
             # 6. Проверка принадлежности к набору (Inclusion)
             progress.progress(0.60, text="Проверка принадлежности к справочникам...")
-            inclusion_results = []
-            inclusion_masks = {}
+            from validation.inclusion import check_inclusion
+
             inclusion_rules = rules.get("inclusion", {})
-            for col, allowed_vals in inclusion_rules.items():
-                if col in df.columns and allowed_vals:
-                    invalid_mask = ~df[col].isin(allowed_vals) & df[col].notna()
-                    violations = int(invalid_mask.sum())
-                    if violations > 0:
-                        inclusion_masks[col] = invalid_mask
-                        inclusion_results.append({
-                            "Правило": f"Inclusion: {col}",
-                            "Колонка": col,
-                            "Нарушений": violations,
-                            "% брака": f"{(violations / len(df)) * 100:.2f}%",
-                            "Статус": "⚠️ Нарушено"
-                        })
+            inclusion_results, inclusion_masks = check_inclusion(df, inclusion_rules)
 
             # 7. Проверка ссылочной целостности
             progress.progress(0.70, text="Проверка ссылочной целостности...")
@@ -4613,10 +3554,13 @@ with tab_validation:
             progress.progress(0.80, text="Проверка качества текста...")
             text_results, text_masks = validate_text_quality(df, rules)
 
-            # 9. Проверка равномерности временного шага
+            # 9. Проверка равномерности временного шага (ТОЛЬКО ОДИН ВЫЗОВ!)
             progress.progress(0.90, text="Проверка равномерности временного шага...")
-            regularity_results, regularity_masks, regularity_freq_info = validate_regular_step(
-                df, rules,
+            # 🔧 ИСПРАВЛЕНИЕ: Используем НЕСОРТИРОВАННЫЕ данные для проверки
+            df_for_validation = st.session_state.get('df_unsorted', df)
+
+            regularity_results, regularity_masks, regularity_freq_info, regularity_sort_info = validate_regular_step(
+                df_for_validation, rules,
                 date_col=st.session_state.primary_date_col if st.session_state.get('primary_date_col') else None
             )
 
@@ -4635,34 +3579,12 @@ with tab_validation:
 
             # 12. TS-специфичные проверки
             progress.progress(0.96, text="TS-специфичные проверки...")
-            ts_checks = {}
+            from validation.ts_checks import check_ts_properties
+
             if st.session_state.col_types.get("date") and st.session_state.col_types.get("num"):
                 date_col = st.session_state.col_types["date"][0]
                 num_col = st.session_state.col_types["num"][0]
-                df_ts = df.sort_values(date_col).set_index(date_col)[[num_col]].dropna()
-                if len(df_ts) >= 10:
-                    try:
-                        from statsmodels.tsa.stattools import adfuller
-                        adf_result = adfuller(df_ts[num_col].dropna())
-                        ts_checks["adf_pvalue"] = adf_result[1]
-                        ts_checks["is_stationary"] = adf_result[1] < 0.05
-                    except:
-                        ts_checks["adf_pvalue"] = None
-                        ts_checks["is_stationary"] = None
-
-                    freq = pd.infer_freq(df_ts.index)
-                    ts_checks["frequency"] = freq if freq else "Нерегулярная"
-
-                    try:
-                        if pd.api.types.is_datetime64_any_dtype(df_ts.index):
-                            gaps = df_ts.index.to_series().diff().dropna()
-                            ts_checks["max_gap"] = gaps.max() if len(gaps) > 0 else pd.Timedelta(0)
-                        else:
-                            ts_checks["max_gap"] = pd.Timedelta(0)
-                    except Exception:
-                        ts_checks["max_gap"] = pd.Timedelta(0)
-                else:
-                    ts_checks = {"error": "Недостаточно данных для TS-проверок"}
+                ts_checks = check_ts_properties(df, date_col, num_col)
             else:
                 ts_checks = {"error": "Не найдены колонки с датами и числовыми данными"}
 
@@ -4687,6 +3609,7 @@ with tab_validation:
                 "regularity": regularity_results,
                 "regularity_masks": regularity_masks,
                 "regularity_freq_info": regularity_freq_info,
+                "regularity_sort_info": regularity_sort_info,
                 "sufficiency": sufficiency_results,
                 "sufficiency_recommendations": sufficiency_recommendations
             }
@@ -4695,7 +3618,7 @@ with tab_validation:
             st.success("Комплексная валидация завершена!")
             st.rerun()
 
-    
+
         # ─────────────────────────────────────────────────────────
         # 📊 СОХРАНЕНИЕ ПАСПОРТА СВОЙСТВ v1.1 (после валидации)
         # ─────────────────────────────────────────────────────────
@@ -4745,229 +3668,7 @@ with tab_validation:
                 except Exception as e:
                     st.warning(f"⚠️ Не удалось рассчитать свойства v1.1: {e}")
 
-        # ─────────────────────────────────────────────────────────────
-        # УНИВЕРСАЛЬНАЯ ФУНКЦИЯ РАСЧЁТА ПАСПОРТА СВОЙСТВ РЯДА
-        # ─────────────────────────────────────────────────────────────
-        def calculate_ts_passport(analysis_series: pd.Series,
-                                df_filtered: pd.DataFrame = None,
-                                ct_f: dict = None,
-                                target_col: str = None) -> dict:
-            """
-            Рассчитывает полный паспорт свойств временного ряда (13 метрик).
-            Структура идентична паспорту во вкладке "Загрузка".
-
-            Returns:
-                dict с ключами, соответствующими названиям свойств в таблице
-            """
-            from scipy.stats import linregress, jarque_bera
-            from scipy.signal import periodogram
-            from scipy.fft import fft, fftfreq
-            from scipy.signal import find_peaks
-            from statsmodels.tsa.stattools import adfuller, acf as acf_func
-            from statsmodels.tsa.seasonal import STL
-            from statsmodels.stats.diagnostic import acorr_ljungbox
-            import numpy as np
-
-            props = {}
-
-            if len(analysis_series) < 30:
-                return {"error": "Недостаточно данных (нужно > 30 точек)"}
-
-            try:
-                # 0. ЧАСТОТА РЯДА
-                inferred_freq = pd.infer_freq(analysis_series.index.drop_duplicates().sort_values())
-                props['freq'] = {
-                    'value': inferred_freq if inferred_freq else 'Нерегулярная',
-                    'is_ok': inferred_freq is not None
-                }
-
-                # 1. СТАЦИОНАРНОСТЬ (ADF)
-                adf_res = adfuller(analysis_series, autolag='AIC')
-                adf_p = adf_res[1]
-                is_stationary = adf_p < 0.05
-                props['stationarity'] = {
-                    'value': adf_p,
-                    'is_stationary': is_stationary,
-                    'is_ok': is_stationary
-                }
-
-                # 2. ДЕТЕРМИНИРОВАННОСТЬ (R² тренда)
-                slope, intercept, r_value, p_value, std_err = linregress(
-                    range(len(analysis_series)), analysis_series
-                )
-                r_squared = r_value**2
-                is_deterministic = r_squared >= 0.7
-                props['determinism'] = {
-                    'value': r_squared,
-                    'slope': slope,
-                    'is_deterministic': is_deterministic
-                }
-
-                # 3. АВТОКОРРЕЛЯЦИЯ (Ljung-Box)
-                lb_res = acorr_ljungbox(analysis_series, lags=[10])
-                if isinstance(lb_res, pd.DataFrame):
-                    lb_p = lb_res['lb_pvalue'].iloc[0]
-                else:
-                    lb_p = lb_res[1][0]
-                is_white_noise = lb_p > 0.05
-                props['autocorrelation'] = {
-                    'value': lb_p,
-                    'is_white_noise': is_white_noise,
-                    'is_ok': is_white_noise
-                }
-
-                # 4. НОРМАЛЬНОСТЬ (Jarque-Bera)
-                jb_res = jarque_bera(analysis_series)
-                jb_p = jb_res.pvalue if hasattr(jb_res, 'pvalue') else jb_res[1]
-                is_normal = jb_p > 0.05
-                props['normality'] = {
-                    'value': jb_p,
-                    'is_normal': is_normal,
-                    'is_ok': is_normal
-                }
-
-                # 5. НАПРАВЛЕНИЕ ТРЕНДА
-                if slope > 0:
-                    trend_dir = 'up'
-                elif slope < 0:
-                    trend_dir = 'down'
-                else:
-                    trend_dir = 'flat'
-                props['trend'] = {
-                    'slope': slope,
-                    'direction': trend_dir
-                }
-
-                # 6. КОРРЕЛЯЦИЯ ПРИЗНАКОВ (если есть другие числовые колонки)
-                props['correlations'] = {}
-                if df_filtered is not None and ct_f is not None and target_col:
-                    num_cols = ct_f.get("num", [])
-                    if len(num_cols) >= 2 and target_col in num_cols:
-                        try:
-                            corr_df = df_filtered[num_cols].corr()
-                            target_corr = corr_df[target_col].drop(target_col).sort_values(key=abs, ascending=False)
-                            top_corrs = {col: float(val) for col, val in target_corr.head(3).items()}
-                            props['correlations'] = {
-                                'top3': top_corrs,
-                                'max_abs_corr': float(target_corr.iloc[0]) if len(target_corr) > 0 else 0.0
-                            }
-                        except:
-                            pass
-
-                # 7. СЕЗОННОСТЬ (STL strength)
-                period = 7 if (inferred_freq and 'D' in inferred_freq) else 12
-                try:
-                    stl_res = STL(analysis_series, period=period, robust=True).fit()
-                    var_total = analysis_series.var()
-                    var_resid = stl_res.resid.var()
-                    var_detrended = var_total - stl_res.trend.var()
-                    strength_seasonality = max(0, 1 - var_resid / var_detrended) if var_detrended > 0 else 0
-                    is_seasonal = strength_seasonality > 0.6
-                except:
-                    strength_seasonality = 0.0
-                    is_seasonal = False
-                props['seasonality'] = {
-                    'strength': strength_seasonality,
-                    'is_seasonal': is_seasonal
-                }
-
-                # 8. СЕЗОННЫЕ ПЕРИОДЫ (ACF)
-                max_lag = min(60, len(analysis_series) // 4)
-                acf_values = acf_func(analysis_series, nlags=max_lag)
-                confidence = 1.96 / np.sqrt(len(analysis_series))
-                significant_lags = np.where(np.abs(acf_values) > confidence)[0][1:]
-
-                seasonal_periods_acf = []
-                for i, lag in enumerate(significant_lags):
-                    if i > 0 and lag - significant_lags[i-1] < 3:
-                        continue
-                    if lag > 2:
-                        seasonal_periods_acf.append(int(lag))
-
-                props['seasonal_periods'] = {
-                    'periods': seasonal_periods_acf[:3],
-                    'count': len(seasonal_periods_acf[:3])
-                }
-
-                # 9. ДОЛГАЯ ПАМЯТЬ (Hurst)
-                def hurst_exponent(series, max_lag=20):
-                    lags = range(2, max_lag)
-                    tau = [max(np.std(np.subtract(series[lag:], series[:-lag])), 1e-8) for lag in lags]
-                    try:
-                        return np.polyfit(np.log(lags), np.log(tau), 1)[0]
-                    except:
-                        return 0.5
-
-                hurst_val = hurst_exponent(analysis_series.values)
-                if hurst_val < 0.45:
-                    memory_type = 'anti_persistent'
-                elif hurst_val > 0.55:
-                    memory_type = 'persistent'
-                else:
-                    memory_type = 'random_walk'
-                props['hurst'] = {
-                    'value': hurst_val,
-                    'type': memory_type
-                }
-
-                # 10. ДОМИНИРУЮЩИЕ ЧАСТОТЫ (FFT)
-                n = len(analysis_series)
-                y = analysis_series.values - analysis_series.mean()
-                yf = fft(y)
-                xf = fftfreq(n, 1)[:n//2]
-                amplitude = 2.0/n * np.abs(yf[0:n//2])
-
-                peaks, _ = find_peaks(amplitude, height=np.mean(amplitude) + np.std(amplitude))
-                fft_periods = [1/xf[p] for p in peaks if xf[p] > 0 and xf[p] < 0.5]
-                fft_dominant = sorted(fft_periods)[:3] if fft_periods else []
-                props['fft'] = {
-                    'dominant_periods': fft_dominant,
-                    'count': len(fft_dominant)
-                }
-
-                # 11. ПЕРИОДОГРАММА
-                freq_per, pxx_per = periodogram(analysis_series.values, fs=1.0, window='hann')
-                peaks_per, _ = find_peaks(pxx_per, height=np.median(pxx_per)*2)
-                periodogram_periods = sorted([1/freq_per[p] for p in peaks_per if freq_per[p] > 0])[:3]
-                props['periodogram'] = {
-                    'periods': periodogram_periods,
-                    'count': len(periodogram_periods)
-                }
-
-                # 12. ВЕЙВЛЕТ-МАСШТАБЫ
-                try:
-                    import pywt
-                    widths = np.arange(1, min(128, len(analysis_series)//4))
-                    cwtmatr, _ = pywt.cwt(
-                        analysis_series.values - analysis_series.mean(),
-                        widths, 'morl', sampling_period=1
-                    )
-                    mean_power = np.mean(np.abs(cwtmatr), axis=1)
-                    wavelet_peaks, _ = find_peaks(mean_power, height=np.mean(mean_power))
-                    wavelet_scales = widths[wavelet_peaks][:3].tolist() if len(wavelet_peaks) > 0 else []
-                    props['wavelet'] = {
-                        'scales': wavelet_scales,
-                        'count': len(wavelet_scales)
-                    }
-                except:
-                    props['wavelet'] = {'scales': [], 'count': 0}
-
-                # 13. БАЗОВЫЕ СТАТИСТИКИ (для числового сравнения)
-                props['basic_stats'] = {
-                    'n': len(analysis_series),
-                    'mean': float(analysis_series.mean()),
-                    'std': float(analysis_series.std()),
-                    'min': float(analysis_series.min()),
-                    'max': float(analysis_series.max())
-                }
-
-                props['timestamp'] = pd.Timestamp.now().isoformat()
-
-            except Exception as e:
-                props['error'] = str(e)
-
-            return props
-
+       
     # ───────────────────────────────────────────────────────────
     # 🛡️ DATA QUALITY DASHBOARD
     # ───────────────────────────────────────────────────────────
@@ -5697,7 +4398,7 @@ with tab_validation:
                     }
                 )
 
-                # 💾 КНОПКА СОХРАНЕНИЯ (Унифицирована с пропусками и выбросами)
+                # КНОПКА СОХРАНЕНИЯ (Унифицирована с пропусками и выбросами)
                 c_save1, c_save2 = st.columns([4, 1])
                 with c_save1:
                     st.caption("💡 Отредактируйте значения вручную или выберите стратегию ниже")
@@ -5811,19 +4512,17 @@ with tab_validation:
 
                     # Метрики (4 колонки)
                     c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                    c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}", delta=f"{len(df_preview)-len(df_work):+}")
+                    c_p1.metric("Записей", f"{len(df_work)} → {len(df_preview)}", delta=f"{len(df_preview)-len(df_work):+}")
 
                     if cols_to_fix:
                         col = cols_to_fix[0]
-                        def safe_stat(d, c, f):
-                            return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
+                        
                         m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
                         m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
-                        fmt = lambda x: f"{x:.2f}" if pd.notnull(x) and x != 0.0 else "N/A"
-                        delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                        c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                        c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                        c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                        
+                        c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                        c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                        c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
                     # Кнопки подтверждения
                     st.divider()
@@ -5844,7 +4543,7 @@ with tab_validation:
         # ───────────────────────────────────────────────────────────
         # 4. ПРОВЕРКА СОГЛАСОВАННОСТИ (с интерактивным пайплайном)
         # ───────────────────────────────────────────────────────────
-
+        
         # 4. Согласованность
         consistency_results_local = st.session_state.val_results.get("consistency", [])
         #  ИСПРАВЛЕНИЕ: Считаем именно нарушения, а не просто наличие результатов проверки
@@ -5858,33 +4557,40 @@ with tab_validation:
             "**◻️ Описание:** Модуль автоматически выявляет логические и временные противоречия в данных, " \
             "сверяя значения между связанными колонками и хронологией событий на основе заданных бизнес-правил (прибыль больше выручки, потребление на освещение больше общего потребления, записи идут не по хронологии — после 10:05:00 идёт 10:03:00 и т.д.). " \
             "При обнаружении нарушений система рассчитает долю брака и предложит стратегии по исправлению аномалий.",
-            "✅ Все бизнес-правила соблюдены" if not consistency_issues else f"️ Найдено {consistency_violations} нарушений",
+            "✅ Все бизнес-правила соблюдены" if not consistency_issues else f"️⚠️ Найдено {consistency_violations} нарушений",
             "✅" if not consistency_issues else "⚠️", None)
 
-        # ── 🔧 ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
+        # ── ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
         if consistency_issues:
             with st.expander("Полный пайплайн обработки нарушений согласованности", expanded=consistency_violations > 0):
                 st.markdown("### Таблица нарушений с ручной корректировкой")
 
-                # Инициализация состояний
+                # 🔧 ИСПРАВЛЕНИЕ: Используем НЕСОРТИРОВАННЫЙ датафрейм для отображения
                 if "df_consistency_work" not in st.session_state:
-                    st.session_state.df_consistency_work = df.copy()
+                    st.session_state.df_consistency_work = st.session_state.get('df_consistency_unsorted', df).copy()
                 df_work = st.session_state.df_consistency_work
+
+                # ИСПРАВЛЕНИЕ: Получаем маски из val_results
+                consistency_masks = st.session_state.val_results.get("consistency_masks", {})
 
                 # Формируем общую маску нарушений из словаря масок
                 combined_mask = pd.Series(False, index=df_work.index)
                 for mask in consistency_masks.values():
-                    combined_mask |= mask
+                    # 🔧 ВАЖНО: Маска уже создана для df_work (несортированного)
+                    if len(mask) == len(df_work):
+                        combined_mask |= mask
+                    else:
+                        st.warning(f"⚠️ Размер маски не совпадает: {len(mask)} vs {len(df_work)}")
 
                 # Фильтр отображения
                 view_filter = st.radio(
                     "Фильтр строк:",
-                    ["⚠️ Только с нарушениями", "✅ Показать всё"],
+                    ["Только с нарушениями", "Показать всё"],
                     horizontal=True,
                     key="consistency_view_filter"
                 )
 
-                if view_filter == "⚠️ Только с нарушениями":
+                if view_filter == "Только с нарушениями":
                     df_view = df_work[combined_mask].copy() if combined_mask.any() else df_work.iloc[:0].copy()
                 else:
                     df_view = df_work.copy()
@@ -5929,11 +4635,11 @@ with tab_validation:
                 with c1:
                     consistency_strategy = st.radio(
                         "Выберите стратегию:",
-                        ["🗑️ Удалить строки с нарушениями",
-                        "📊 Заменить на медиану (числовые) / моду",
-                        "📅 Исправить хронологию (сортировка по дате)",
-                        "0️⃣ Заменить на 0 или NaN",
-                        "🚩 Только отметить флагом (не менять данные)"],
+                        ["Удалить строки с нарушениями",
+                        "Заменить на медиану (числовые) / моду",
+                        "Исправить хронологию (сортировка по дате)",
+                        "Заменить на 0 или NaN",
+                        "Только отметить флагом (не менять данные)"],
                         key="consistency_fill_strategy"
                     )
                     if "Удалить" in consistency_strategy:
@@ -5950,15 +4656,15 @@ with tab_validation:
                     st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
 
                 # Кнопка запуска превью
-                if st.button("👁️ Прогноз влияния на статистики", type="secondary", 
+                if st.button("Прогноз влияния на статистики", type="secondary", 
                             use_container_width=True, key="btn_show_consistency_preview"):
                     st.session_state.show_consistency_preview = True
                     st.rerun()
 
                 # Блок превью
-                if st.session_state.get("show_consistency_preview", False):
+                if st.session_state.get("show_consistency_preview", True):
                     strategy = consistency_strategy
-                    st.markdown("##### 📊 Прогноз влияния на статистики:")
+                    st.markdown("##### Прогноз влияния на статистики:")
 
                     df_preview = df_work.copy()
                     num_cols_to_fix = df_preview.select_dtypes(include=['number']).columns.tolist()
@@ -6055,31 +4761,28 @@ with tab_validation:
                         note = "(без изменений)"
 
                     # ── МЕТРИКИ (4 колонки) ─────────────────────
+                    
                     c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                    c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}", 
+                    c_p1.metric("Записей", f"{len(df_work)} → {len(df_preview)}", 
                             delta=f"{len(df_preview)-len(df_work):+}")
 
                     if violation_cols:
                         col = violation_cols[0]
                         if col in df_preview.columns:
-                            def safe_stat(d, c, f):
-                                try:
-                                    return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
-                                except:
-                                    return 0.0
+                            
                             m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
                             m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                             fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
                             delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                            c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                            c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                            c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                            c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                            c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                            c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
                     # ── КНОПКИ ПОДТВЕРЖДЕНИЯ ────────────────────
                     st.divider()
                     c_ok, c_cancel = st.columns(2)
                     with c_ok:
-                        if st.button("💾 Подтвердить изменения", type="primary", 
+                        if st.button("Подтвердить изменения", type="primary", 
                                     use_container_width=True, key="btn_confirm_consistency"):
                             try:
                                 # 🔧 ИСПРАВЛЕНИЕ: Применяем стратегию заново к df_work (не используем df_preview)
@@ -6222,16 +4925,10 @@ with tab_validation:
                         st.session_state.df_uniqueness_work = df_uniq.copy()
                     df_work = st.session_state.df_uniqueness_work
 
-                    # Функция для вычисления маски дубликатов (пересчитывается каждый раз)
-                    def _compute_duplicate_mask(df_to_check: pd.DataFrame) -> pd.Series:
-                        """Вычисляет маску дубликатов с учётом типа данных."""
-                        if is_panel_data:
-                            return df_to_check.duplicated(subset=check_cols, keep=False)
-                        else:
-                            return df_to_check.duplicated(keep=False)
+                    from validation.uniqueness import compute_duplicate_mask
 
                     # Вычисляем маску (пересчитывается при каждом запуске)
-                    duplicate_mask = _compute_duplicate_mask(df_work)
+                    duplicate_mask = compute_duplicate_mask(df_work, is_panel_data, check_cols)
                     duplicate_indices = df_work[duplicate_mask].index.tolist()
 
                     # Фильтр отображения
@@ -6305,11 +5002,11 @@ with tab_validation:
                     with c1:
                         uniqueness_strategy = st.radio(
                             "Выберите стратегию:",
-                            ["🗑️ Удалить дубликаты (оставить первый)",
-                            "🗑️ Удалить дубликаты (оставить последний)",
-                            "🗑️ Удалить все дубликаты полностью",
-                            "📊 Агрегировать дубликаты (mean/sum)",
-                            "🚩 Только отметить флагом (не менять данные)"],
+                            ["Удалить дубликаты (оставить первый)",
+                            "Удалить дубликаты (оставить последний)",
+                            "Удалить все дубликаты полностью",
+                            "Агрегировать дубликаты (mean/sum)",
+                            "Только отметить флагом (не менять данные)"],
                             key="uniqueness_fill_strategy"
                         )
                         if "Удалить дубликаты" in uniqueness_strategy:
@@ -6389,29 +5086,25 @@ with tab_validation:
 
                             # ── МЕТРИКИ (4 колонки) ─────────────────────
                             c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                            c_p1.metric("📊 Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
+                            c_p1.metric("Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
                                     delta=f"{len(df_preview)-len(df_work):+}")
 
                             if num_cols_to_check:
                                 col = num_cols_to_check[0]
-                                def safe_stat(d, c, f):
-                                    try:
-                                        return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
-                                    except:
-                                        return 0.0
+                                
                                 m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
                                 m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                                 fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
                                 delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                                c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                                c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                                c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                                c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                                c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                                c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
                             # ИСПРАВЛЕНИЕ: Кнопки подтверждения с полной синхронизацией
                             st.divider()
                             c_ok, c_cancel = st.columns(2)
                             with c_ok:
-                                if st.button("💾 Подтвердить изменения", type="primary", 
+                                if st.button("Подтвердить изменения", type="primary", 
                                             use_container_width=True, key="btn_confirm_uniqueness"):
                                     try:
                                         # ИСПРАВЛЕНИЕ: Применяем стратегию заново к df_work
@@ -6558,24 +5251,10 @@ with tab_validation:
                             inclusion_rules[col] = df_work[col].dropna().unique().tolist()
 
                 # Функция для вычисления нарушений
-                def _compute_inclusion_violations(df_to_check: pd.DataFrame) -> list:
-                    """Вычисляет нарушения inclusion для DataFrame."""
-                    violations = []
-                    for col, allowed_vals in inclusion_rules.items():
-                        if col in df_to_check.columns:
-                            invalid_mask = ~df_to_check[col].isin(allowed_vals) & df_to_check[col].notna()
-                            if invalid_mask.any():
-                                invalid_values = df_to_check.loc[invalid_mask, col].unique()
-                                violations.append({
-                                    'column': col,
-                                    'invalid_values': invalid_values,
-                                    'count': int(invalid_mask.sum()),
-                                    'mask': invalid_mask
-                                })
-                    return violations
+                from validation.inclusion import compute_inclusion_violations
 
                 # Поиск нарушений inclusion
-                inclusion_violations = _compute_inclusion_violations(df_work)
+                inclusion_violations = compute_inclusion_violations(df_work, inclusion_rules)
 
                 if not inclusion_violations:
                     st.success("✅ Нарушений принадлежности не обнаружено")
@@ -6660,11 +5339,11 @@ with tab_validation:
                     with c1:
                         inclusion_strategy = st.radio(
                             "Выберите стратегию:",
-                            ["🔄 Заменить на наиболее частое допустимое значение (мода)",
-                            "🗑️ Заменить на NaN (удалить значения)",
-                            "🗑️ Удалить строки с нарушениями",
-                            "🔧 Заменить на значение по умолчанию (из справочника)",
-                            "🚩 Только отметить флагом (не менять данные)"],
+                            ["Заменить на наиболее частое допустимое значение (мода)",
+                            "Заменить на NaN (удалить значения)",
+                            "Удалить строки с нарушениями",
+                            "Заменить на значение по умолчанию (из справочника)",
+                            "Только отметить флагом (не менять данные)"],
                             key="inclusion_fill_strategy"
                         )
                         if "наиболее частое" in inclusion_strategy:
@@ -6746,7 +5425,7 @@ with tab_validation:
 
                             # ИСПРАВЛЕНИЕ: Метрики для категориальных колонок
                             c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                            c_p1.metric("📊 Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
+                            c_p1.metric("Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
                                     delta=f"{len(df_preview)-len(df_work):+}")
                             
                             # ИСПРАВЛЕНИЕ: Считаем метрики по затронутым колонкам
@@ -6778,24 +5457,20 @@ with tab_validation:
                                             delta=f"{pct_valid_a - pct_valid_b:+.1f}%")
                                 else:
                                     # Для числовых — стандартные метрики
-                                    def safe_stat(d, c, f):
-                                        try:
-                                            return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
-                                        except:
-                                            return 0.0
+                                    
                                     m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
                                     m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                                     fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
                                     delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                                    c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                                    c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                                    c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                                    c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                                    c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                                    c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
                             # ИСПРАВЛЕНИЕ: Кнопки подтверждения с полной синхронизацией
                             st.divider()
                             c_ok, c_cancel = st.columns(2)
                             with c_ok:
-                                if st.button("💾 Подтвердить изменения", type="primary", 
+                                if st.button("Подтвердить изменения", type="primary", 
                                             use_container_width=True, key="btn_confirm_inclusion"):
                                     try:
                                         # ИСПРАВЛЕНИЕ: Применяем стратегию заново к df_work
@@ -6904,31 +5579,11 @@ with tab_validation:
                     st.session_state.df_referential_work = df.copy()
                 df_work = st.session_state.df_referential_work
 
-                # ИСПРАВЛЕНИЕ: Функция для вычисления нарушений
-                def _compute_referential_violations(df_to_check: pd.DataFrame) -> list:
-                    """Вычисляет нарушения ссылочной целостности для DataFrame."""
-                    violations = []
-                    for r in ref_results_local:
-                        col = r.get('Колонка') or r.get('child_column')
-                        allowed_values = r.get('allowed_values', [])
-                        default_val = r.get('default_value', 'Unknown')
-                        
-                        if col and col in df_to_check.columns and allowed_values:
-                            mask = ~df_to_check[col].isin(allowed_values) & df_to_check[col].notna()
-                            if mask.any():
-                                invalid_values = df_to_check.loc[mask, col].unique()
-                                violations.append({
-                                    'column': col,
-                                    'allowed_values': allowed_values,
-                                    'default_value': default_val,
-                                    'invalid_values': invalid_values,
-                                    'count': int(mask.sum()),
-                                    'mask': mask
-                                })
-                    return violations
+                # Функция для вычисления нарушений
+                from validation.referential import compute_referential_violations
 
-                # ИСПРАВЛЕНИЕ: Пересчитываем нарушения каждый раз
-                ref_violations_list = _compute_referential_violations(df_work)
+                # Пересчитываем нарушения каждый раз
+                ref_violations_list = compute_referential_violations(df_work, ref_results_local)
 
                 if not ref_violations_list:
                     st.success("✅ Нарушений ссылочной целостности не обнаружено")
@@ -7013,11 +5668,11 @@ with tab_validation:
                     with c1:
                         ref_strategy = st.radio(
                             "Выберите стратегию:",
-                            ["🗑️ Удалить сиротские записи",
-                            "🔧 Заменить на значение по умолчанию (из справочника)",
-                            "🔄 Заменить на наиболее частое валидное значение (мода)",
-                            "🗑️ Заменить на NaN (пометить как пропуск)",
-                            "🚩 Только отметить флагом (не менять данные)"],
+                            ["Удалить сиротские записи",
+                            "Заменить на значение по умолчанию (из справочника)",
+                            "Заменить на наиболее частое валидное значение (мода)",
+                            "Заменить на NaN (пометить как пропуск)",
+                            "Только отметить флагом (не менять данные)"],
                             key="referential_fill_strategy"
                         )
                         if "Удалить" in ref_strategy:
@@ -7097,7 +5752,7 @@ with tab_validation:
 
                             # ИСПРАВЛЕНИЕ: Метрики для категориальных колонок
                             c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                            c_p1.metric("📊 Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
+                            c_p1.metric("Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
                                     delta=f"{len(df_preview)-len(df_work):+}")
                             
                             if affected_cols:
@@ -7128,24 +5783,20 @@ with tab_validation:
                                             delta=f"{pct_valid_a - pct_valid_b:+.1f}%")
                                 else:
                                     # Для числовых — стандартные метрики
-                                    def safe_stat(d, c, f):
-                                        try:
-                                            return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
-                                        except:
-                                            return 0.0
+                                    
                                     m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
                                     m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                                     fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
                                     delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                                    c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                                    c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                                    c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                                    c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                                    c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                                    c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
                             # ИСПРАВЛЕНИЕ: Кнопки подтверждения с полной синхронизацией
                             st.divider()
                             c_ok, c_cancel = st.columns(2)
                             with c_ok:
-                                if st.button("💾 Подтвердить изменения", type="primary", 
+                                if st.button("Подтвердить изменения", type="primary", 
                                             use_container_width=True, key="btn_confirm_referential"):
                                     try:
                                         # ИСПРАВЛЕНИЕ: Применяем стратегию заново к df_work
@@ -7206,36 +5857,10 @@ with tab_validation:
         _df_text_check = st.session_state.df_text_work
 
         # Функция для вычисления нарушений (определена ДО make_card)
-        def _compute_text_violations(df_to_check: pd.DataFrame) -> list:
-            """Вычисляет нарушения качества текста для DataFrame."""
-            violations = []
-            text_cols = df_to_check.select_dtypes(include=['object', 'string']).columns.tolist()
-            
-            for col in text_cols:
-                # ИСПРАВЛЕНИЕ: Обычная строка (не raw), чтобы \ufffd интерпретировался
-                garbage_mask = df_to_check[col].astype(str).str.contains(
-                    '[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ufffd]', na=False, regex=True
-                )
-                short_mask = df_to_check[col].astype(str).str.strip().str.len() < 1
-                long_mask = df_to_check[col].astype(str).str.len() > 500
-                combined = garbage_mask | short_mask | long_mask
-                
-                if combined.any():
-                    sample_values = df_to_check.loc[combined, col].head(3).tolist()
-                    violations.append({
-                        'column': col,
-                        'count': int(combined.sum()),
-                        'mask': combined,
-                        'garbage_count': int(garbage_mask.sum()),
-                        'short_count': int(short_mask.sum()),
-                        'long_count': int(long_mask.sum()),
-                        'sample_values': sample_values
-                    })
-            
-            return violations
+        
 
         # Определяем text_issues через реальную проверку
-        text_violations_check = _compute_text_violations(_df_text_check)
+        text_violations_check = compute_text_violations(_df_text_check)
         text_issues = len(text_violations_check) > 0
         text_problem_cols = len(text_violations_check)
 
@@ -7258,7 +5883,7 @@ with tab_validation:
                 df_work = st.session_state.df_text_work
 
                 # Пересчитываем нарушения для текущего df_work
-                text_violations_list = _compute_text_violations(df_work)
+                text_violations_list = compute_text_violations(df_work)
 
                 if not text_violations_list:
                     st.success("✅ Нарушений качества текста не обнаружено")
@@ -7354,11 +5979,11 @@ with tab_validation:
                     with c1:
                         text_strategy = st.radio(
                             "Выберите стратегию:",
-                            ["🧹 Очистить спецсимволы и нормализовать (strip + lower)",
-                            "🗑️ Удалить строки с нарушениями текста",
-                            "🗑️ Заменить на NaN (пометить как пропуск)",
-                            "🔧 Заменить на 'Неизвестно' (default для категорий)",
-                            "🚩 Только отметить флагом (не менять данные)"],
+                            ["Очистить спецсимволы и нормализовать (strip + lower)",
+                            "Удалить строки с нарушениями текста",
+                            "Заменить на NaN (пометить как пропуск)",
+                            "Заменить на 'Неизвестно' (default для категорий)",
+                            "Только отметить флагом (не менять данные)"],
                             key="text_fill_strategy"
                         )
                         if "Очистить" in text_strategy:
@@ -7392,57 +6017,8 @@ with tab_validation:
                             df_preview = df_work.copy()
                             affected_cols = [v['column'] for v in text_violations_list]
 
-                            # Функция применения стратегии (единая для preview и confirm)
-                            def _apply_text_strategy(df_input: pd.DataFrame, strategy: str) -> pd.DataFrame:
-                                """Применяет стратегию обработки текстовых нарушений."""
-                                df_result = df_input.copy()
-                                
-                                if "Очистить" in strategy:
-                                    for v in text_violations_list:
-                                        col = v['column']
-                                        if col in df_result.columns:
-                                            # Упрощённый regex (без r-префикса не нужен, т.к. нет \ufffd)
-                                            df_result.loc[v['mask'], col] = (
-                                                df_result.loc[v['mask'], col]
-                                                .astype(str)
-                                                .str.strip()
-                                                .str.lower()
-                                                .str.replace(r'[^\w\s\-]', '', regex=True)
-                                                .str.replace(r'\s+', ' ', regex=True)
-                                                .str.strip()
-                                            )
-                                            
-                                            # Обрабатываем пустые строки после очистки
-                                            empty_after = df_result[col].astype(str).str.strip() == ''
-                                            if empty_after.any():
-                                                df_result.loc[empty_after, col] = np.nan
-                                                
-                                elif "Удалить" in strategy:
-                                    df_result = df_result[~combined_mask].reset_index(drop=True)
-                                    
-                                elif "NaN" in strategy:
-                                    for v in text_violations_list:
-                                        col = v['column']
-                                        if col in df_result.columns:
-                                            df_result.loc[v['mask'], col] = np.nan
-                                            
-                                elif "Неизвестно" in strategy:
-                                    for v in text_violations_list:
-                                        col = v['column']
-                                        if col in df_result.columns:
-                                            df_result.loc[v['mask'], col] = "Неизвестно"
-                                            
-                                elif "флагом" in strategy:
-                                    # Реализация стратегии "только флаг"
-                                    for v in text_violations_list:
-                                        col = v['column']
-                                        flag_col = f"{col}_text_valid"
-                                        df_result[flag_col] = ~v['mask']
-                                
-                                return df_result
-
                             # Применяем стратегию
-                            df_preview = _apply_text_strategy(df_preview, strategy)
+                            df_preview = apply_text_strategy(df_preview, text_violations_list, strategy)
 
                             # Предупреждение о дубликатах после нормализации
                             if "Очистить" in strategy:
@@ -7459,7 +6035,7 @@ with tab_validation:
 
                             # Метрики для текста
                             c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                            c_p1.metric("📊 Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
+                            c_p1.metric("Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
                                     delta=f"{len(df_preview)-len(df_work):+}")
 
                             if affected_cols:
@@ -7483,7 +6059,7 @@ with tab_validation:
                                         delta=f"{u_a - u_b:+}")
                                 
                                 # Считаем количество нарушений после применения стратегии
-                                violations_after = sum(v['count'] for v in _compute_text_violations(df_preview))
+                                violations_after = sum(v['count'] for v in compute_text_violations(df_preview))
                                 violations_before = combined_mask.sum()
                                 c_p4.metric("⚠️ Нарушений", f"{violations_before} → {violations_after}",
                                         delta=f"{violations_after - violations_before:+}")
@@ -7506,19 +6082,19 @@ with tab_validation:
                             st.divider()
                             c_ok, c_cancel = st.columns(2)
                             with c_ok:
-                                if st.button("💾 Подтвердить изменения", type="primary", 
+                                if st.button("Подтвердить изменения", type="primary", 
                                             use_container_width=True, key="btn_confirm_text"):
                                     try:
-                                        # 🔧 Применяем стратегию заново к df_work
-                                        df_final = _apply_text_strategy(df_work, strategy)
+                                        # Применяем стратегию заново к df_work
+                                        df_final = apply_text_strategy(df_work, text_violations_list, strategy)
                                         
-                                        # 🔧 СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
+                                        # СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
                                         st.session_state.df = df_final.copy()
                                         st.session_state.df_text_work = df_final.copy()
                                         st.session_state.validation_ready = False
                                         st.session_state.show_text_preview = False
                                         
-                                        # 🔥 Удаляем рабочие копии других модулей
+                                        # Удаляем рабочие копии других модулей
                                         work_dfs = [
                                             "df_missing_work", "df_pattern_work", "df_range_work",
                                             "df_outlier_work", "df_inclusion_work", "df_referential_work",
@@ -7559,96 +6135,134 @@ with tab_validation:
         # ───────────────────────────────────────────────────────────
         # 9. ПРОВЕРКА РАВНОМЕРНОСТИ ВРЕМЕННОГО ШАГА (regularity)
         # ───────────────────────────────────────────────────────────
-
-        # ИСПРАВЛЕНИЕ: Используем session_state вместо locals()
+        
+        # Получаем результаты из session_state
         regularity_results_local = st.session_state.val_results.get("regularity", [])
         regularity_freq_info = st.session_state.val_results.get("regularity_freq_info", {})
-
+        regularity_sort_info = st.session_state.val_results.get("regularity_sort_info", {})
+        
         regularity_issues = len(regularity_results_local) > 0
-        regularity_gaps = sum(r.get('Пропусков', r.get('Всего пропусков', 0)) 
-                            for r in regularity_results_local) if regularity_issues else 0
+        regularity_gaps = sum(r.get('Пропусков', 0) for r in regularity_results_local) if regularity_issues else 0
 
+        # 🔧 КРИТИЧЕСКАЯ ПРОВЕРКА: ОТСОРТИРОВАНЫ ЛИ ДАННЫЕ?
+        is_sorted = regularity_sort_info.get('is_sorted', True)
+        sort_violations = regularity_sort_info.get('sort_violations', 0)
+        sort_group_col = regularity_sort_info.get('group_col')
+        sort_date_col = regularity_sort_info.get('date_col')
+
+        if not is_sorted:
+            # ДАННЫЕ НЕ ОТСОРТИРОВАНЫ — показываем критическое предупреждение
+            st.error(f"⚠️ **Критическое нарушение: Временной ряд не отсортирован!**")
+            st.warning(
+                f"Обнаружено **{sort_violations} записей**, нарушающих хронологический порядок. "
+                f"Проверка на пропуски (gaps) невозможна на неупорядоченных данных."
+            )
+            
+            if sort_group_col:
+                st.info(
+                    f"ℹ️ Обнаружены **панельные данные** (группировка по `{sort_group_col}`). "
+                    f"Данные должны быть отсортированы сначала по `{sort_group_col}`, затем по `{sort_date_col}`."
+                )
+            
+            # КНОПКА ИСПРАВЛЕНИЯ
+            c_fix1, c_fix2 = st.columns([1, 4])
+            with c_fix1:
+                if st.button("Отсортировать по дате", type="primary", use_container_width=True,
+                            key="btn_sort_for_regularity"):
+                    if sort_group_col and sort_group_col in st.session_state.df.columns:
+                        st.session_state.df = st.session_state.df.sort_values(
+                            [sort_group_col, sort_date_col]
+                        ).reset_index(drop=True)
+                    elif sort_date_col and sort_date_col in st.session_state.df.columns:
+                        st.session_state.df = st.session_state.df.sort_values(
+                            sort_date_col
+                        ).reset_index(drop=True)
+                    
+                    # Сбрасываем рабочие копии
+                    work_dfs = [
+                        "df_missing_work", "df_pattern_work", "df_range_work",
+                        "df_outlier_work", "df_inclusion_work", "df_referential_work",
+                        "df_text_work", "df_consistency_work", "df_uniqueness_work",
+                        "df_regularity_work", "df_regular_work"
+                    ]
+                    for work_df_name in work_dfs:
+                        if work_df_name in st.session_state:
+                            del st.session_state[work_df_name]
+                    
+                    if "val_results" in st.session_state:
+                        del st.session_state.val_results
+                    
+                    st.toast("✅ Данные отсортированы! Перезапуск валидации...", icon="✅")
+                    st.rerun()
+            
+            st.info(
+                "💡 **Рекомендация:** Нажмите кнопку **'Отсортировать по дате'**, "
+                "затем перезапустите валидацию. После сортировки проверка регулярности "
+                "покажет корректные результаты."
+            )
+            st.warning("⚠️ Выполнение прервано. Отсортируйте данные и перезапустите валидацию.")  # Прерываем выполнение
+
+        # Если данные отсортированы — продолжаем обычную проверку
         make_card("Проверка равномерности временного шага (regularity)", regularity_issues,
-            "**◻️ Метрики:** `inferred_freq` (определенная частота), `gap_count` (число пропусков), `interval_variance`.  \n"
+            "**◻️ Метрики:** `inferred_freq`, `gap_count`, `interval_variance`.  \n"
             "**◻️ Алгоритм:** `pd.infer_freq()`, вычисление интервалов `diff()`, детекция аномалий (>1.5×моды).  \n"
-            "**◻️ Влияние на TS:** Неравномерный шаг ломает ARIMA/SARIMA (требуют регулярный индекс), искажает FFT/спектральный анализ.  \n"
-            "**◻️ Описание:** Модуль проверяет, что временные метки следуют с постоянным интервалом (день, месяц, год). "
-            "Для панельных данных (страны × время) проверка выполняется внутри каждой группы. Обнаруживаются пропущенные периоды, "
-            "нерегулярные интервалы, смешанные частоты. Критично для моделей, требующих DatetimeIndex с постоянной частотой.",
+            "**◻️ Влияние на TS:** Неравномерный шаг ломает ARIMA/SARIMA, искажает FFT/спектральный анализ.  \n"
+            "**◻️ Описание:** Модуль проверяет, что временные метки следуют с постоянным интервалом. "
+            "Для панельных данных проверка выполняется внутри каждой группы.",
             "✅ Временной шаг равномерный" if not regularity_issues else f"⚠️ Обнаружено {regularity_gaps} пропусков в {len(regularity_results_local)} группах",
             "✅" if not regularity_issues else "⚠️", None)
 
-        # ── ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
+        
+        # ─ ИНТЕРАКТИВНЫЙ ПАЙПЛАЙН ОБРАБОТКИ (раскрывается при проблемах) ──
         if regularity_issues:
             with st.expander("Полный пайплайн обработки нарушений регулярности", expanded=True):
                 st.markdown("### Таблица нарушений с ручной корректировкой")
+
+                # 🔧 КРИТИЧЕСКАЯ ПРОВЕРКА: ОТСОРТИРОВАНЫ ЛИ ДАННЫЕ?
+                is_sorted_pipeline = regularity_sort_info.get('is_sorted', True)
+                sort_violations_pipeline = regularity_sort_info.get('sort_violations', 0)
+                sort_group_col_pipeline = regularity_sort_info.get('group_col')
+                sort_date_col_pipeline = regularity_sort_info.get('date_col')
+
+                if not is_sorted_pipeline:
+                    st.error(f"⚠️ **Данные не отсортированы!** Обнаружено {sort_violations_pipeline} нарушений порядка.")
+                    st.warning(
+                        "Пайплайн обработки нарушений **невозможен** на неупорядоченных данных. "
+                        "Сначала нажмите кнопку **'Отсортировать по дате'** в карточке выше, "
+                        "затем перезапустите валидацию."
+                    )
+                    if sort_group_col_pipeline:
+                        st.info(f"ℹ️ Обнаружены панельные данные (группировка по `{sort_group_col_pipeline}`).")
+                    st.warning("⚠️ Выполнение прервано. Отсортируйте данные и перезапустите валидацию.")
 
                 # Инициализация состояний
                 if "df_regularity_work" not in st.session_state:
                     st.session_state.df_regularity_work = df.copy()
                 df_work = st.session_state.df_regularity_work
 
-                # ИСПРАВЛЕНИЕ: Функция для вычисления нарушений
-                def _compute_regularity_violations(df_to_check: pd.DataFrame) -> tuple:
-                    """Вычисляет нарушения регулярности временного шага."""
-                    # Определяем временную колонку
-                    date_col = None
-                    for c in df_to_check.columns:
-                        if pd.api.types.is_datetime64_any_dtype(df_to_check[c]):
-                            date_col = c
-                            break
-                    if date_col is None:
-                        for c in df_to_check.columns:
-                            if any(kw in c.lower() for kw in ['date', 'дата', 'year', 'год', 'time', 'время']):
-                                date_col = c
-                                break
-                    
-                    if date_col is None or date_col not in df_to_check.columns:
-                        return pd.Series(False, index=df_to_check.index), None, None, None
-                    
-                    # 🔧 ИСПРАВЛЕНИЕ: Определяем группирующую колонку (для панельных данных)
-                    group_col = None
-                    for c in df_to_check.columns:
-                        if c != date_col and df_to_check[c].dtype == 'object' and df_to_check[c].nunique() < 100:
-                            group_col = c
-                            break
-                    
-                    # Приводим дату к datetime
-                    df_temp = df_to_check.copy()
-                    if not pd.api.types.is_datetime64_any_dtype(df_temp[date_col]):
-                        df_temp[date_col] = pd.to_datetime(df_temp[date_col], errors='coerce')
-                    
-                    combined_mask = pd.Series(False, index=df_temp.index)
-                    freq_info = {}
-                    
-                    if group_col:
-                        # 🔧 ПАНЕЛЬНЫЕ ДАННЫЕ: проверяем внутри каждой группы
-                        for group_name, group_df in df_temp.groupby(group_col):
-                            group_sorted = group_df.sort_values(date_col)
-                            intervals = group_sorted[date_col].diff()
-                            modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
-                            gap_mask = intervals > modal_interval * 1.5
-                            if gap_mask.any():
-                                combined_mask.loc[gap_mask[gap_mask].index] = True
-                            freq_info['inferred_freq'] = pd.infer_freq(
-                                group_sorted[date_col].drop_duplicates().sort_values()
-                            )
-                    else:
-                        # Обычный временной ряд
-                        df_sorted = df_temp.sort_values(date_col)
-                        intervals = df_sorted[date_col].diff()
-                        modal_interval = intervals.mode().iloc[0] if len(intervals.mode()) > 0 else intervals.median()
-                        gap_mask = intervals > modal_interval * 1.5
-                        if gap_mask.any():
-                            combined_mask.loc[gap_mask[gap_mask].index] = True
-                        freq_info['inferred_freq'] = pd.infer_freq(
-                            df_sorted[date_col].drop_duplicates().sort_values()
-                        )
-                    
-                    return combined_mask, date_col, group_col, freq_info
+                # Функция для вычисления нарушений (теперь вызывается только для отсортированных данных)
+                # Явная адресация колонок (Правило 14)
+                _current_date_col = st.session_state.get('primary_date_col', None)
+                _current_entity_col = st.session_state.get('panel_entity_col', None)
 
-                # Пересчитываем нарушения каждый раз
-                combined_mask, date_col, group_col, computed_freq_info = _compute_regularity_violations(df_work)
+                # Если date_col не определён в session_state, определяем через fallback
+                if _current_date_col is None or _current_date_col not in df_work.columns:
+                    for c in df_work.columns:
+                        if pd.api.types.is_datetime64_any_dtype(df_work[c]):
+                            _current_date_col = c
+                            break
+
+                _regularity_result = compute_regularity_violations(
+                    df=df_work,
+                    date_col=_current_date_col,
+                    entity_col=_current_entity_col
+                )
+
+                # Распаковка результата (новая функция возвращает dict)
+                combined_mask = _regularity_result["mask"]
+                date_col = _current_date_col
+                group_col = _current_entity_col
+                computed_freq_info = _regularity_result["freq_info"]
 
                 if not combined_mask.any():
                     st.success("✅ Нарушений регулярности не обнаружено")
@@ -7777,12 +6391,12 @@ with tab_validation:
                     with c1:
                         regularity_strategy = st.radio(
                             "Выберите стратегию:",
-                            ["📈 Resample + Interpolate (линейная интерполяция)",
-                            "📊 Resample + Forward Fill (последнее значение, LOCF)",
-                            "📉 Resample + Backward Fill (следующее значение, NOCB)",
-                            "🗑️ AsFreq (обозначить пропуски как NaN)",
-                            "➕ Добавить фиктивные записи с нулевыми значениями",
-                            "🚩 Только отметить флагом (не менять данные)"],
+                            ["Resample + Interpolate (линейная интерполяция)",
+                            "Resample + Forward Fill (последнее значение, LOCF)",
+                            "Resample + Backward Fill (следующее значение, NOCB)",
+                            "AsFreq (обозначить пропуски как NaN)",
+                            "Добавить фиктивные записи с нулевыми значениями",
+                            "Только отметить флагом (не менять данные)"],
                             key="regularity_fill_strategy"
                         )
                         if "Interpolate" in regularity_strategy:
@@ -7818,165 +6432,9 @@ with tab_validation:
                             cat_cols = [c for c in cat_cols if c != date_col]
 
                             # ИСПРАВЛЕНИЕ: Единая функция применения стратегии
-                            def _apply_regularity_strategy(df_input: pd.DataFrame, strategy: str, 
-                                                        freq: str, date_col: str, group_col: str) -> pd.DataFrame:
-                                """Применяет стратегию обработки нарушений регулярности."""
-                                df_result = df_input.copy()
-                                
-                                # Приводим дату к datetime
-                                if not pd.api.types.is_datetime64_any_dtype(df_result[date_col]):
-                                    df_result[date_col] = pd.to_datetime(df_result[date_col], errors='coerce')
-                                
-                                if "Interpolate" in strategy or "Forward Fill" in strategy or \
-                                "Backward Fill" in strategy or "AsFreq" in strategy:
-                                    
-                                    # Определяем метод заполнения
-                                    if "Interpolate" in strategy:
-                                        fill_method = 'interpolate'
-                                    elif "Forward Fill" in strategy:
-                                        fill_method = 'ffill'
-                                    elif "Backward Fill" in strategy:
-                                        fill_method = 'bfill'
-                                    else:
-                                        fill_method = 'asfreq'
-                                    
-                                    # ИСПРАВЛЕНИЕ: Функция для обработки одной группы
-                                    def _process_single_group(group_df, freq, fill_method):
-                                        """Обрабатывает одну группу (или весь DataFrame для обычных рядов)."""
-                                        # Устанавливаем дату как индекс
-                                        df_temp = group_df.set_index(date_col).sort_index()
-                                        
-                                        # ИСПРАВЛЕНИЕ: Проверяем на дубликаты в индексе и агрегируем их
-                                        if df_temp.index.duplicated().any():
-                                            # Разделяем числовые и категориальные колонки
-                                            num_cols = df_temp.select_dtypes(include=['number']).columns.tolist()
-                                            cat_cols = df_temp.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
-                                            
-                                            # Агрегируем: для числовых — mean, для категориальных — first
-                                            agg_dict = {}
-                                            for col in num_cols:
-                                                agg_dict[col] = 'mean'
-                                            for col in cat_cols:
-                                                agg_dict[col] = 'first'
-                                            
-                                            df_temp = df_temp.groupby(df_temp.index).agg(agg_dict)
-                                        
-                                        # Разделяем числовые и категориальные колонки
-                                        num_cols = df_temp.select_dtypes(include=['number']).columns.tolist()
-                                        cat_cols = df_temp.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
-                                        
-                                        # Resample для числовых колонок
-                                        if num_cols:
-                                            resampled_num = df_temp[num_cols].resample(freq)
-                                            if fill_method == 'interpolate':
-                                                filled_num = resampled_num.mean().interpolate(method='linear')
-                                            elif fill_method == 'ffill':
-                                                filled_num = resampled_num.mean().ffill()
-                                            elif fill_method == 'bfill':
-                                                filled_num = resampled_num.mean().bfill()
-                                            else:  # asfreq
-                                                filled_num = resampled_num.asfreq()
-                                        else:
-                                            filled_num = pd.DataFrame()
-                                        
-                                        # Resample для категориальных колонок
-                                        if cat_cols:
-                                            resampled_cat = df_temp[cat_cols].resample(freq)
-                                            if fill_method in ['interpolate', 'ffill']:
-                                                filled_cat = resampled_cat.ffill()
-                                            elif fill_method == 'bfill':
-                                                filled_cat = resampled_cat.bfill()
-                                            else:  # asfreq
-                                                filled_cat = resampled_cat.asfreq()
-                                        else:
-                                            filled_cat = pd.DataFrame()
-                                        
-                                        # Объединяем результаты
-                                        if not filled_num.empty and not filled_cat.empty:
-                                            filled = pd.concat([filled_num, filled_cat], axis=1)
-                                        elif not filled_num.empty:
-                                            filled = filled_num
-                                        elif not filled_cat.empty:
-                                            filled = filled_cat
-                                        else:
-                                            filled = pd.DataFrame()
-                                        
-                                        return filled.reset_index()
-                                    
-                                    if group_col:
-                                        # ПАНЕЛЬНЫЕ ДАННЫЕ: groupby + обработка каждой группы отдельно
-                                        grouped_results = []
-                                        for group_name, group_df in df_result.groupby(group_col):
-                                            filled = _process_single_group(group_df, freq, fill_method)
-                                            filled[group_col] = group_name
-                                            grouped_results.append(filled)
-                                        
-                                        df_result = pd.concat(grouped_results, ignore_index=True)
-                                    else:
-                                        # ОБЫЧНЫЙ ВРЕМЕННОЙ РЯД: обрабатываем весь DataFrame
-                                        df_result = _process_single_group(df_result, freq, fill_method)
-                                
-                                elif "фиктивные" in strategy:
-                                    # Добавить фиктивные записи
-                                    def _add_fictitious_records(group_df, freq, group_col=None, group_name=None):
-                                        """Добавляет фиктивные записи для одной группы."""
-                                        df_temp = group_df.set_index(date_col).sort_index()
-                                        
-                                        # 🔧 Агрегируем дубликаты
-                                        if df_temp.index.duplicated().any():
-                                            num_cols = df_temp.select_dtypes(include=['number']).columns.tolist()
-                                            cat_cols = df_temp.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
-                                            agg_dict = {col: 'mean' for col in num_cols}
-                                            agg_dict.update({col: 'first' for col in cat_cols})
-                                            df_temp = df_temp.groupby(df_temp.index).agg(agg_dict)
-                                        
-                                        # Создаём полный диапазон дат
-                                        full_range = pd.date_range(
-                                            start=df_temp.index.min(),
-                                            end=df_temp.index.max(),
-                                            freq=freq
-                                        )
-                                        reindexed = df_temp.reindex(full_range)
-                                        
-                                        # Заполняем категориальные колонки
-                                        cat_cols = reindexed.select_dtypes(include=['object', 'string', 'category']).columns.tolist()
-                                        for cat_col in cat_cols:
-                                            if cat_col in reindexed.columns:
-                                                reindexed[cat_col] = reindexed[cat_col].ffill().bfill()
-                                        
-                                        # Заполняем числовые нулями
-                                        num_cols = reindexed.select_dtypes(include=['number']).columns.tolist()
-                                        for num_col in num_cols:
-                                            if num_col in reindexed.columns:
-                                                reindexed[num_col] = reindexed[num_col].fillna(0)
-                                        
-                                        reindexed = reindexed.reset_index().rename(columns={'index': date_col})
-                                        
-                                        if group_col and group_name is not None:
-                                            reindexed[group_col] = group_name
-                                        
-                                        return reindexed
-                                    
-                                    if group_col:
-                                        # Для панельных данных — для каждой группы свой диапазон
-                                        grouped_results = []
-                                        for group_name, group_df in df_result.groupby(group_col):
-                                            reindexed = _add_fictitious_records(group_df, freq, group_col, group_name)
-                                            grouped_results.append(reindexed)
-                                        
-                                        df_result = pd.concat(grouped_results, ignore_index=True)
-                                    else:
-                                        df_result = _add_fictitious_records(df_result, freq)
-                                
-                                elif "флагом" in strategy:
-                                    # Реализация стратегии "только флаг"
-                                    mask, _, _, _ = _compute_regularity_violations(df_result)
-                                    df_result['_has_gap'] = mask
-                                
-                                return df_result
 
                             # Применяем стратегию
-                            df_preview = _apply_regularity_strategy(df_preview, strategy, freq, date_col, group_col)
+                            df_preview = apply_regularity_strategy(df_preview, strategy, freq, date_col, group_col)
 
                             # Предупреждение о потере данных при asfreq
                             if "AsFreq" in strategy:
@@ -7993,30 +6451,28 @@ with tab_validation:
 
                             # Метрики
                             c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                            c_p1.metric("📊 Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
+                            c_p1.metric("Записей", f"{len(df_work):,} → {len(df_preview):,}".replace(',', ' '), 
                                     delta=f"{len(df_preview)-len(df_work):+}")
 
                             if num_cols:
                                 col = num_cols[0]
-                                def safe_stat(d, c, f):
-                                    if c not in d.columns or d.empty or d[c].notna().sum() == 0:
-                                        return 0.0
-                                    return f(d[c].dropna())
-
+                                
                                 m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
                                 m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
 
                                 fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
                                 delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
 
-                                c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                                c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                                c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                                c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                                c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                                c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
                             st.caption(f"📅 Частота: {freq} | Стратегия: {strategy}")
 
                             # Проверка регулярности после применения стратегии
-                            new_mask, _, _, new_freq_info = _compute_regularity_violations(df_preview)
+                            _reg_result = compute_regularity_violations(df=df_preview, date_col=date_col, entity_col=group_col)
+                            new_mask = _reg_result["mask"]
+                            new_freq_info = _reg_result["freq_info"]
                             new_gaps = int(new_mask.sum())
                             if new_gaps == 0:
                                 st.success(f"✅ После применения стратегии ряд стал регулярным (freq={freq})")
@@ -8027,11 +6483,11 @@ with tab_validation:
                             st.divider()
                             c_ok, c_cancel = st.columns(2)
                             with c_ok:
-                                if st.button("💾 Подтвердить изменения", type="primary", 
+                                if st.button("Подтвердить изменения", type="primary", 
                                             use_container_width=True, key="btn_confirm_regularity"):
                                     try:
                                         # Применяем стратегию заново к df_work
-                                        df_final = _apply_regularity_strategy(df_work, strategy, freq, date_col, group_col)
+                                        df_final = apply_regularity_strategy(df_work, strategy, freq, date_col, group_col)
                                         
                                         # СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
                                         st.session_state.df = df_final.copy()
@@ -8092,8 +6548,8 @@ with tab_validation:
         # 10. ПРОВЕРКА ДОСТАТОЧНОСТИ ЧИСЛА НАБЛЮДЕНИЙ (sufficiency)
         # ───────────────────────────────────────────────────────────
 
-        sufficiency_results_local = locals().get('sufficiency_results', [])
-        sufficiency_recommendations = locals().get('sufficiency_recommendations', {})
+        sufficiency_results_local = st.session_state.val_results.get("sufficiency", [])
+        sufficiency_recommendations = st.session_state.val_results.get("sufficiency_recommendations", {})
 
         sufficiency_issues = len([r for r in sufficiency_results_local if r.get('Нарушений', 0) > 0]) > 0
         sufficiency_groups_with_issues = len([r for r in sufficiency_results_local if r.get('Нарушений', 0) > 0])
@@ -8299,32 +6755,18 @@ with tab_validation:
             dataset_name=dataset_name
         )
 
-        # ─── ШАПКА ПАСПОРТА (с названием датасета) ─────────
-        st.markdown(f"""
-        <div style='background: linear-gradient(135deg, #2E4057 0%, #048A81 100%);
-                    padding: 20px; border-radius: 12px; color: white; margin: 15px 0;'>
-            <h3 style='margin: 0 0 10px 0;'>{metadata['document_title']}</h3>
-            <p style='margin: 0; font-size: 16px;'>
-                <b>Датасет:</b> <span style='background: rgba(255,255,255,0.2);
-                padding: 3px 8px; border-radius: 4px; font-family: monospace;'>
-                {metadata['dataset_name']}</span>
-            </p>
-            <p style='margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;'>
-                 {metadata['n_rows']} строк × {metadata['n_cols']} колонок |
-                🕐 {metadata['generated_at']}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
+        # Пустой блок для визуального выравнивания с другими модулями
+        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
+      
         # ── KPI-БЛОК ─────────────────────────────────────
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("ℹ️ Composite DQ Score", f"{dq_score:.1f}%",
+        c1.metric("Composite DQ Score", f"{dq_score:.1f}%",
                   delta=None if dq_score >= 80 else f"{80 - dq_score:+.1f}% до нормы")
-        c2.metric("✅ Пройдено проверок",
+        c2.metric("Пройдено проверок",
                   f"{metadata['checks_passed']}/{metadata['checks_total']}")
-        c3.metric("⚠️ Требуют внимания",
+        c3.metric("Требуют внимания",
                   len([p for p in df_passport.to_dict('records') if p['Статус'] == "⚠️"]))
-        c4.metric("❌ Критические",
+        c4.metric("Критические",
                   len([p for p in df_passport.to_dict('records') if p['Статус'] == "❌"]))
 
         # ── ТАБЛИЦА ПАСПОРТА ──────────────────────────────
@@ -8435,7 +6877,7 @@ with tab_validation:
         c_export1, c_export2 = st.columns(2)
 
         with c_export1:
-            if st.button("📥 Скачать паспорт (CSV)", use_container_width=True, key="btn_export_passport_csv"):
+            if st.button("Скачать паспорт (CSV)", use_container_width=True, key="btn_export_passport_csv"):
                 csv_comments = [
                     f"# {metadata['document_title']}",
                     f"# Датасет: {metadata['dataset_name']}",
@@ -8457,7 +6899,7 @@ with tab_validation:
                 )
 
         with c_export2:
-            if st.button("📊 Скачать паспорт (Excel)", use_container_width=True, key="btn_export_passport_excel"):
+            if st.button("Скачать паспорт (Excel)", use_container_width=True, key="btn_export_passport_excel"):
                 from openpyxl import Workbook
                 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
                 from openpyxl.utils import get_column_letter
@@ -8615,228 +7057,9 @@ with tab_validation:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key="btn_download_excel_passport"
                 )
-
-
-        # ══════════════════════════════════════════════════════════
-        # ТАБЛИЦА РЕКОМЕНДАЦИЙ ПО МОДЕЛЯМ (5 СТОЛБЦОВ, ВСЕ 20 МОДЕЛЕЙ)
-        # ═══════════════════════════════════════════════════════════
-        st.divider()
-        st.markdown("###  Рекомендации по выбору моделей")
-
-        # Получаем рекомендатель
-        recommender = st.session_state.get("recommender")
-
-        if recommender:
-            # ─ УРОВЕНЬ КАЧЕСТВА ДАННЫХ ──────────────────────────
-            quality_level = ""
-            if dq_score >= 80:
-                quality_level = f"✅ **Высокое качество (DQ ≥ 80%)** — все модели применимы"
-            elif dq_score >= 50:
-                quality_level = f"️ **Среднее качество (DQ 50-80%)** — рекомендована предобработка"
+                        
             else:
-                quality_level = f"❌ **Низкое качество (DQ < 50%)** — только базовые модели"
-
-            st.info(quality_level)
-
-            # ── ПОСТРОЕНИЕ ПРОФИЛЯ ДАННЫХ ────────────────────────
-            profile = recommender.build_profile_from_session_state(st.session_state)
-
-            # ── КЛАССИФИКАЦИЯ ВСЕХ 20 МОДЕЛЕЙ ────────────────────
-            available_models = []      # Все требования выполнены
-            limited_models = []        # Есть preprocessing шаги
-            unavailable_models = []    # Нет preprocessing или критические нарушения
-
-            for model in recommender.catalog.models:
-                req = model.requirements
-                issues = []
-
-                # Объём данных
-                if profile['n_observations'] < req.min_observations:
-                    issues.append(f"Нужно ≥{req.min_observations} наблюдений (есть {profile['n_observations']})")
-
-                # Стационарность
-                if req.stationarity == "required" and not profile['is_stationary']:
-                    issues.append("Требуется стационарность")
-                elif req.stationarity == "optional" and not profile['is_stationary']:
-                    issues.append("Нестационарность (можно дифференцировать)")
-
-                # Сезонность
-                if req.seasonality == "required" and not profile['has_seasonality']:
-                    issues.append("Требуется сезонность")
-
-                # Регулярность
-                if req.regularity == "required" and not profile['is_regular']:
-                    issues.append("Требуется регулярная частота")
-                elif req.regularity == "optional" and not profile['is_regular']:
-                    issues.append("Нерегулярная частота (можно ресемплинг)")
-
-                # Экзогенные признаки
-                if req.exogenous == "required" and not profile['has_exogenous']:
-                    issues.append("Требуются экзогенные признаки")
-
-                # Классификация модели
-                if not issues:
-                    available_models.append(model)
-                else:
-                    # Проверяем, есть ли preprocessing для решения проблем
-                    has_preprocessing = False
-                    preprocessing_steps = []
-
-                    if model.preprocessing:
-                        if not profile['is_stationary'] and model.preprocessing.if_not_stationary:
-                            has_preprocessing = True
-                            preprocessing_steps.append(f"Нестационарность: {model.preprocessing.if_not_stationary.description}")
-
-                        if not profile['is_regular'] and model.preprocessing.if_not_regular:
-                            has_preprocessing = True
-                            preprocessing_steps.append(f"Нерегулярность: {model.preprocessing.if_not_regular.description}")
-
-                    if has_preprocessing:
-                        limited_models.append({
-                            'model': model,
-                            'issues': issues,
-                            'preprocessing': preprocessing_steps
-                        })
-                    else:
-                        unavailable_models.append({
-                            'model': model,
-                            'issues': issues
-                        })
-
-            # Сортировка по приоритету категории
-            category_priority = {c.id: c.priority for c in recommender.catalog.categories}
-            available_models.sort(key=lambda m: category_priority.get(m.category, 99))
-            limited_models.sort(key=lambda x: category_priority.get(x['model'].category, 99))
-            unavailable_models.sort(key=lambda x: category_priority.get(x['model'].category, 99))
-
-            # ── ФОРМИРОВАНИЕ ТАБЛИЦЫ (5 СТОЛБЦОВ) ────────────────
-            table_rows = []
-            max_rows = max(len(available_models), len(limited_models), len(unavailable_models))
-
-            for i in range(max_rows):
-                row = {}
-
-                # Столбец 1: ✅ Доступные модели
-                if i < len(available_models):
-                    model = available_models[i]
-                    row['available'] = f"✅ {model.name}"
-                else:
-                    row['available'] = ""
-
-                # Столбец 2: ⚠️ С ограничениями
-                if i < len(limited_models):
-                    model = limited_models[i]['model']
-                    row['limited'] = f"⚠️ {model.name}"
-                else:
-                    row['limited'] = ""
-
-                # Столбец 3: Сделать доступными (для "С ограничениями")
-                if i < len(limited_models):
-                    steps = limited_models[i]['preprocessing']
-                    row['limited_rec'] = "; ".join(steps) if steps else "Требуется предобработка"
-                else:
-                    row['limited_rec'] = ""
-
-                # Столбец 4: ❌ Недоступные модели
-                if i < len(unavailable_models):
-                    model = unavailable_models[i]['model']
-                    row['unavailable'] = f"❌ {model.name}"
-                else:
-                    row['unavailable'] = ""
-
-                # Столбец 5: Сделать доступными (для "Недоступные")
-                if i < len(unavailable_models):
-                    issues = unavailable_models[i]['issues']
-
-                    # Формируем понятное обоснование
-                    if any("Нужно ≥" in issue for issue in issues):
-                        rec_text = "Недостаточно данных для этой модели"
-                    elif any("Требуется сезонность" in issue for issue in issues):
-                        rec_text = "Модель требует явную сезонность в данных"
-                    elif any("Требуются экзогенные" in issue for issue in issues):
-                        rec_text = "Модель требует дополнительные признаки (экзогенные переменные)"
-                    elif any("Требуется стационарность" in issue for issue in issues):
-                        rec_text = "Модель требует стационарный ряд (дифференцирование не поможет)"
-                    elif any("Требуется регулярная" in issue for issue in issues):
-                        rec_text = "Модель требует регулярный временной шаг (ресемплинг не применим)"
-                    else:
-                        rec_text = "Модель не поддерживает текущий формат данных"
-
-                    row['unavailable_rec'] = rec_text
-                else:
-                    row['unavailable_rec'] = ""
-
-                table_rows.append(row)
-
-            # Создаём DataFrame
-            df_table = pd.DataFrame(table_rows)
-
-            # Отображаем таблицу с 5 столбцами
-            st.dataframe(
-                df_table,
-                use_container_width=True,
-                hide_index=True,
-                height=500,
-                column_config={
-                    "available": st.column_config.TextColumn("✅ Доступные модели", width="medium"),
-                    "limited": st.column_config.TextColumn("⚠️ С ограничениями", width="medium"),
-                    "limited_rec": st.column_config.TextColumn("Сделать доступными:", width="large"),
-                    "unavailable": st.column_config.TextColumn("❌ Недоступные модели", width="medium"),
-                    "unavailable_rec": st.column_config.TextColumn("Сделать доступными:", width="large"),
-                }
-            )
-
-            # Сводка по количеству моделей
-            st.caption(f"📊 **Всего моделей в каталоге: 20** | "
-                    f"✅ Доступно: {len(available_models)} | "
-                    f"⚠️ С ограничениями: {len(limited_models)} | "
-                    f"❌ Недоступно: {len(unavailable_models)}")
-
-            # Легенда
-            st.markdown("""
-            <div style='background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;'>
-            <strong> Как использовать таблицу:</strong><br>
-            ◻️ <strong>Доступные модели</strong> — можно применять сразу без дополнительной предобработки<br>
-            ◻️ <strong>С ограничениями</strong> — требуют предобработки (см. колонку "Сделать доступными")<br>
-            ◻️ <strong>Недоступные</strong> — требуют значительной предобработки или не подходят для данных<br>
-            <br>
-            <strong> Рекомендации:</strong> Выполните указанные преобразования во вкладке "Предобработка",
-            затем перезапустите валидацию для обновления списка доступных моделей.
-            </div>
-            """, unsafe_allow_html=True)
-
-            # Главная рекомендация (первая доступная модель)
-            if available_models:
-                primary_model = available_models[0]
-                st.markdown(f"""
-                <div style='background: linear-gradient(135deg, #048A81 0%, #1D3557 100%);
-                            padding: 15px 20px; border-radius: 10px; color: white; margin-top: 15px;'>
-                    <p style='margin: 0; font-size: 16px;'>
-                        <b> Первичная рекомендация:</b>
-                        <span style='font-size: 18px; font-weight: bold;'>
-                        {primary_model.name}</span>
-                    </p>
-                    <p style='margin: 5px 0 0 0; font-size: 13px; opacity: 0.9;'>
-                        На основе DQ Score ({dq_score:.1f}%), регулярности шага и достаточности наблюдений
-                    </p>
-                </div>
-                """, unsafe_allow_html=True)
-
-            # ─── ПОДПИСЬ (платформа + верификация) ──────────────
-            st.divider()
-            st.markdown(f"""
-            <div style='background: #F1FAEE; border-left: 4px solid #1D3557;
-                        padding: 15px 20px; border-radius: 8px; margin: 10px 0;'>
-                <p style='margin: 0; font-size: 14px; color: #1D3557;'>
-                    <b>{metadata['platform_tagline']}.</b><br>
-                    <b>{metadata['verification']}.</b><br>
-                    Дата генерации: <i>{metadata['generated_at']}</i>
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-
-        else:
-            st.warning("⚠️ Справочник моделей не загружен. Проверьте файл `config/models/ts_models_catalog.yaml`")
+                st.warning("⚠️ Справочник моделей не загружен. Проверьте файл `config/models/ts_models_catalog.yaml`")
 
 
         # ═══════════════════════════════════════════════════════
@@ -9339,6 +7562,195 @@ with tab_validation:
                 st.warning("⚠️ В датасете нет числовых колонок для анализа")
 
 
+        # ══════════════════════════════════════════════════════════
+        # ТАБЛИЦА РЕКОМЕНДАЦИЙ ПО МОДЕЛЯМ (5 СТОЛБЦОВ, ВСЕ 20 МОДЕЛЕЙ)
+        # ═══════════════════════════════════════════════════════════
+        st.divider()
+        st.markdown("###  Рекомендации по выбору моделей")
+
+        # Получаем рекомендатель
+        recommender = st.session_state.get("recommender")
+
+        if recommender:
+            # ─ УРОВЕНЬ КАЧЕСТВА ДАННЫХ ──────────────────────────
+            quality_level = ""
+            if dq_score >= 80:
+                quality_level = f"✅ **Высокое качество (DQ ≥ 80%)** — все модели применимы"
+            elif dq_score >= 50:
+                quality_level = f"️ **Среднее качество (DQ 50-80%)** — рекомендована предобработка"
+            else:
+                quality_level = f"❌ **Низкое качество (DQ < 50%)** — только базовые модели"
+
+            st.info(quality_level)
+
+            # ── ПОСТРОЕНИЕ ПРОФИЛЯ ДАННЫХ ────────────────────────
+            profile = recommender.build_profile_from_session_state(st.session_state)
+
+            # ── КЛАССИФИКАЦИЯ ВСЕХ 20 МОДЕЛЕЙ ────────────────────
+            available_models = []      # Все требования выполнены
+            limited_models = []        # Есть preprocessing шаги
+            unavailable_models = []    # Нет preprocessing или критические нарушения
+
+            for model in recommender.catalog.models:
+                req = model.requirements
+                issues = []
+
+                # Объём данных
+                if profile['n_observations'] < req.min_observations:
+                    issues.append(f"Нужно ≥{req.min_observations} наблюдений (есть {profile['n_observations']})")
+
+                # Стационарность
+                if req.stationarity == "required" and not profile['is_stationary']:
+                    issues.append("Требуется стационарность")
+                elif req.stationarity == "optional" and not profile['is_stationary']:
+                    issues.append("Нестационарность (можно дифференцировать)")
+
+                # Сезонность
+                if req.seasonality == "required" and not profile['has_seasonality']:
+                    issues.append("Требуется сезонность")
+
+                # Регулярность
+                if req.regularity == "required" and not profile['is_regular']:
+                    issues.append("Требуется регулярная частота")
+                elif req.regularity == "optional" and not profile['is_regular']:
+                    issues.append("Нерегулярная частота (можно ресемплинг)")
+
+                # Экзогенные признаки
+                if req.exogenous == "required" and not profile['has_exogenous']:
+                    issues.append("Требуются экзогенные признаки")
+
+                # Классификация модели
+                if not issues:
+                    available_models.append(model)
+                else:
+                    # Проверяем, есть ли preprocessing для решения проблем
+                    has_preprocessing = False
+                    preprocessing_steps = []
+
+                    if model.preprocessing:
+                        if not profile['is_stationary'] and model.preprocessing.if_not_stationary:
+                            has_preprocessing = True
+                            preprocessing_steps.append(f"Нестационарность: {model.preprocessing.if_not_stationary.description}")
+
+                        if not profile['is_regular'] and model.preprocessing.if_not_regular:
+                            has_preprocessing = True
+                            preprocessing_steps.append(f"Нерегулярность: {model.preprocessing.if_not_regular.description}")
+
+                    if has_preprocessing:
+                        limited_models.append({
+                            'model': model,
+                            'issues': issues,
+                            'preprocessing': preprocessing_steps
+                        })
+                    else:
+                        unavailable_models.append({
+                            'model': model,
+                            'issues': issues
+                        })
+
+            # Сортировка по приоритету категории
+            category_priority = {c.id: c.priority for c in recommender.catalog.categories}
+            available_models.sort(key=lambda m: category_priority.get(m.category, 99))
+            limited_models.sort(key=lambda x: category_priority.get(x['model'].category, 99))
+            unavailable_models.sort(key=lambda x: category_priority.get(x['model'].category, 99))
+
+            # ── ФОРМИРОВАНИЕ ТАБЛИЦЫ (5 СТОЛБЦОВ) ────────────────
+            table_rows = []
+            max_rows = max(len(available_models), len(limited_models), len(unavailable_models))
+
+            for i in range(max_rows):
+                row = {}
+
+                # Столбец 1: ✅ Доступные модели
+                if i < len(available_models):
+                    model = available_models[i]
+                    row['available'] = f"✅ {model.name}"
+                else:
+                    row['available'] = ""
+
+                # Столбец 2: ⚠️ С ограничениями
+                if i < len(limited_models):
+                    model = limited_models[i]['model']
+                    row['limited'] = f"⚠️ {model.name}"
+                else:
+                    row['limited'] = ""
+
+                # Столбец 3: Сделать доступными (для "С ограничениями")
+                if i < len(limited_models):
+                    steps = limited_models[i]['preprocessing']
+                    row['limited_rec'] = "; ".join(steps) if steps else "Требуется предобработка"
+                else:
+                    row['limited_rec'] = ""
+
+                # Столбец 4: ❌ Недоступные модели
+                if i < len(unavailable_models):
+                    model = unavailable_models[i]['model']
+                    row['unavailable'] = f"❌ {model.name}"
+                else:
+                    row['unavailable'] = ""
+
+                # Столбец 5: Сделать доступными (для "Недоступные")
+                if i < len(unavailable_models):
+                    issues = unavailable_models[i]['issues']
+
+                    # Формируем понятное обоснование
+                    if any("Нужно ≥" in issue for issue in issues):
+                        rec_text = "Недостаточно данных для этой модели"
+                    elif any("Требуется сезонность" in issue for issue in issues):
+                        rec_text = "Модель требует явную сезонность в данных"
+                    elif any("Требуются экзогенные" in issue for issue in issues):
+                        rec_text = "Модель требует дополнительные признаки (экзогенные переменные)"
+                    elif any("Требуется стационарность" in issue for issue in issues):
+                        rec_text = "Модель требует стационарный ряд (дифференцирование не поможет)"
+                    elif any("Требуется регулярная" in issue for issue in issues):
+                        rec_text = "Модель требует регулярный временной шаг (ресемплинг не применим)"
+                    else:
+                        rec_text = "Модель не поддерживает текущий формат данных"
+
+                    row['unavailable_rec'] = rec_text
+                else:
+                    row['unavailable_rec'] = ""
+
+                table_rows.append(row)
+
+            # Создаём DataFrame
+            df_table = pd.DataFrame(table_rows)
+
+            # Отображаем таблицу с 5 столбцами
+            st.dataframe(
+                df_table,
+                use_container_width=True,
+                hide_index=True,
+                height=500,
+                column_config={
+                    "available": st.column_config.TextColumn("✅ Доступные модели", width="medium"),
+                    "limited": st.column_config.TextColumn("⚠️ С ограничениями", width="medium"),
+                    "limited_rec": st.column_config.TextColumn("Сделать доступными:", width="large"),
+                    "unavailable": st.column_config.TextColumn("❌ Недоступные модели", width="medium"),
+                    "unavailable_rec": st.column_config.TextColumn("Сделать доступными:", width="large"),
+                }
+            )
+
+            # Сводка по количеству моделей
+            st.caption(f"📊 **Всего моделей в каталоге: 20** | "
+                    f"✅ Доступно: {len(available_models)} | "
+                    f"⚠️ С ограничениями: {len(limited_models)} | "
+                    f"❌ Недоступно: {len(unavailable_models)}")
+
+            # Легенда
+            st.markdown("""
+            <div style='background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;'>
+            <strong> Как использовать таблицу:</strong><br>
+            ◻️ <strong>Доступные модели</strong> — можно применять сразу без дополнительной предобработки<br>
+            ◻️ <strong>С ограничениями</strong> — требуют предобработки (см. колонку "Сделать доступными")<br>
+            ◻️ <strong>Недоступные</strong> — требуют значительной предобработки или не подходят для данных<br>
+            <br>
+            <strong> Рекомендации:</strong> Выполните указанные преобразования во вкладке "Предобработка",
+            затем перезапустите валидацию для обновления списка доступных моделей.
+            </div>
+            """, unsafe_allow_html=True)
+
+
 # ────────────────────────────────────────────────────────────
 #  ВКЛАДКА 3: ПРЕДОБРАБОТКА
 # ────────────────────────────────────────────────────────────
@@ -9379,42 +7791,7 @@ with tab_preprocessing:
     # ───────────────────────────────────────────────────────────
     # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ СРАВНЕНИЯ СВОЙСТВ РЯДА
     # ───────────────────────────────────────────────────────────
-    def _calc_ts_props(series: pd.Series) -> dict:
-        """Быстрый расчёт ключевых метрик для сравнения До/После."""
-        props = {}
-        if len(series) < 30:
-            return {"error": "Недостаточно данных (<30 точек)"}
-        try:
-            from statsmodels.tsa.stattools import adfuller
-            from statsmodels.stats.diagnostic import acorr_ljungbox
-            from scipy import stats
-            from scipy.stats import linregress
-
-            # 1. ADF Test (стационарность)
-            adf_res = adfuller(series, autolag='AIC')
-            props['adf_p'] = adf_res[1]
-            props['adf_stat'] = "✅ Стационарен" if adf_res[1] < 0.05 else "❌ Нестационарен"
-
-            # 2. Ljung-Box Test (автокорреляция)
-            lb_res = acorr_ljungbox(series, lags=[10])
-            lb_p = lb_res['lb_pvalue'].iloc[0] if isinstance(lb_res, pd.DataFrame) else lb_res[1][0]
-            props['lb_p'] = lb_p
-            props['lb_stat'] = "✅ Белый шум" if lb_p > 0.05 else "⚠️ Есть АК"
-
-            # 3. Jarque-Bera Test (нормальность)
-            jb_res = stats.jarque_bera(series)
-            jb_p = jb_res.pvalue if hasattr(jb_res, 'pvalue') else jb_res[1]
-            props['jb_p'] = jb_p
-            props['jb_stat'] = "✅ Нормально" if jb_p > 0.05 else "⚠️ Отклонение"
-
-            # 4. R² тренда (детерминированность)
-            slope, _, r_val, _, _ = linregress(range(len(series)), series)
-            props['r2'] = r_val**2
-            props['r2_stat'] = "Детерминированный" if r_val**2 >= 0.7 else "Стохастический"
-        except Exception as e:
-            props['error'] = str(e)
-        return props
-
+    
     def _show_comparison_table(props_before: dict, props_after: dict, stage: str):
         """Отображает таблицу сравнения До/После с цветовыми индикаторами."""
         metrics = [
@@ -9491,7 +7868,7 @@ with tab_preprocessing:
         if num_cols and not df_curr.empty:
             target = num_cols[0]
             s = df_curr[target].dropna()
-            st.session_state.prep_props_baseline = _calc_ts_props(s)
+            st.session_state.prep_props_baseline = calculate_ts_props_quick(s)
             st.session_state.prep_target_col = target
         else:
             st.session_state.prep_props_baseline = {}
@@ -9742,7 +8119,7 @@ with tab_preprocessing:
             elif "индикатор" in fill_strategy:
                 st.info("🚩 **Индикатор** — добавит колонки miss_* с флагом 0/1")
         with c2:
-            # 🔧 ИСПРАВЛЕНИЕ: Кнопка "Применить" удалена.
+            
             # Пустой блок для визуального выравнивания с другими модулями
             st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True)
 
@@ -9804,31 +8181,30 @@ with tab_preprocessing:
 
             # Метрики (4 колонки)
             c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-            c_p1.metric("📊 Записей", f"{len(df_work)} → {len(df_preview)}", delta=f"{len(df_preview)-len(df_work):+}")
+            c_p1.metric("Записей", f"{len(df_work)} → {len(df_preview)}", delta=f"{len(df_preview)-len(df_work):+}")
 
             if num_cols:
                 col = num_cols[0]
-                def safe_stat(df, c, func):
-                    return func(df[c]) if not df.empty and c in df.columns and df[c].notna().any() else 0.0
+                
                 m_b, s_b, d_b = safe_stat(df_work, col, np.mean), safe_stat(df_work, col, np.std), safe_stat(df_work, col, np.median)
                 m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                 fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
                 delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
             # Кнопки подтверждения
             st.divider()
             c_ok, c_cancel = st.columns(2)
             with c_ok:
-                if st.button("💾 Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_fill"):
-                    # 🔧 СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
+                if st.button("Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_fill"):
+                    # СИНХРОНИЗАЦИЯ ВСЕХ РАБОЧИХ КОПИЙ
                     st.session_state.df = df_preview.copy()
                     st.session_state.validation_ready = False
                     st.session_state.show_fill_preview = False
                     
-                    # 🔥 Удаляем все рабочие копии - они пересоздадутся из обновлённого df
+                    # Удаляем все рабочие копии - они пересоздадутся из обновлённого df
                     work_dfs = [
                         "df_missing_work", "df_pattern_work", "df_range_work",
                         "df_outlier_work", "df_inclusion_work", "df_referential_work",
@@ -9857,7 +8233,7 @@ with tab_preprocessing:
         target = st.session_state.get("prep_target_col")
         if target and not st.session_state.df.empty:
             s_after = st.session_state.df[target].dropna()
-            props_after = _calc_ts_props(s_after)
+            props_after = calculate_ts_props_quick(s_after)
             _show_comparison_table(st.session_state.prep_props_baseline, props_after, "Очистка пропусков")
             st.session_state.prep_props_baseline = props_after  # Обновляем baseline для следующего этапа
 
@@ -10163,26 +8539,25 @@ with tab_preprocessing:
 
                             # Метрики (4 колонки, как в пропусках)
                             c_p1, c_p2, c_p3, c_p4 = st.columns(4)
-                            c_p1.metric("📊 Записей", f"{len(df):,} → {len(df_preview):,}".replace(',', ' '), delta=f"{len(df_preview)-len(df):+}")
+                            c_p1.metric("Записей", f"{len(df):,} → {len(df_preview):,}".replace(',', ' '), delta=f"{len(df_preview)-len(df):+}")
 
                             cols_to_check = selected_out_cols if selected_out_cols else num_cols
                             if cols_to_check:
                                 col = cols_to_check[0]
-                                def safe_stat(d, c, f):
-                                    return f(d[c]) if not d.empty and c in d.columns and d[c].notna().any() else 0.0
+                                
                                 m_b, s_b, d_b = safe_stat(df, col, np.mean), safe_stat(df, col, np.std), safe_stat(df, col, np.median)
                                 m_a, s_a, d_a = safe_stat(df_preview, col, np.mean), safe_stat(df_preview, col, np.std), safe_stat(df_preview, col, np.median)
                                 fmt = lambda x: f"{x:,.2f}".replace(',', ' ') if pd.notnull(x) and x != 0.0 else "N/A"
                                 delta = lambda b, a: f"{((a-b)/abs(b)*100):+.1f}%" if b != 0 and pd.notnull(b) else "0%"
-                                c_p2.metric("📈 Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
-                                c_p3.metric("📉 Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
-                                c_p4.metric("📊 Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
+                                c_p2.metric("Mean", f"{fmt(m_b)} → {fmt(m_a)}", delta=delta(m_b, m_a))
+                                c_p3.metric("Std", f"{fmt(s_b)} → {fmt(s_a)}", delta=delta(s_b, s_a))
+                                c_p4.metric("Median", f"{fmt(d_b)} → {fmt(d_a)}", delta=delta(d_b, d_a))
 
                             # Кнопки подтверждения (унифицированы)
                             st.divider()
                             c_ok, c_cancel = st.columns(2)
                             with c_ok:
-                                if st.button("💾 Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_outlier"):
+                                if st.button("Подтвердить изменения", type="primary", use_container_width=True, key="btn_confirm_outlier"):
                                     try:
                                         df_final = st.session_state.df.copy()
                                         msk = st.session_state.outlier_mask
@@ -10242,7 +8617,7 @@ with tab_preprocessing:
             target = st.session_state.get("prep_target_col")
             if target and not st.session_state.df.empty:
                 s_after = st.session_state.df[target].dropna()
-                props_after = _calc_ts_props(s_after)
+                props_after = calculate_ts_props_quick(s_after)
                 _show_comparison_table(st.session_state.prep_props_baseline, props_after, "Очистка выбросов")
                 st.session_state.prep_props_baseline = props_after  # Обновляем baseline
 
@@ -10303,8 +8678,8 @@ with tab_preprocessing:
             # КНОПКА ИСПРАВЛЕНИЯ
             c_fix1, c_fix2 = st.columns([1, 4])
             with c_fix1:
-                if st.button("🔧 Отсортировать по дате", type="primary", use_container_width=True, 
-                            key="btn_sort_for_regularity"):
+                if st.button("Отсортировать по дате", type="primary", use_container_width=True, 
+                            key="btn_sort_for_regularity_preprocessing"):
                     if group_col:
                         st.session_state.df = st.session_state.df.sort_values(
                             [group_col, date_col]
@@ -10334,7 +8709,7 @@ with tab_preprocessing:
                 "затем проверьте регулярность. Без сортировки любые проверки временных рядов "
                 "(пропуски, лаги, сезонность) будут давать некорректные результаты."
             )
-            st.stop()
+            st.warning("⚠️ Выполнение прервано. Отсортируйте данные и перезапустите валидацию.")
         
         # ПРОВЕРКА 1: РЕГУЛЯРНОСТЬ (только если отсортировано)
         df_reg = df_reg.sort_values(date_col)
@@ -10358,7 +8733,10 @@ with tab_preprocessing:
                 group_sorted = group_df.sort_values(date_col)
                 group_ts = group_sorted.set_index(date_col)
                 
-                group_freq = pd.infer_freq(group_ts.index.drop_duplicates().sort_values())
+                try:
+                    group_freq = pd.infer_freq(group_ts.index.drop_duplicates().sort_values())
+                except (ValueError, TypeError):
+                    group_freq = None
                 if group_freq and all_inferred_freq is None:
                     all_inferred_freq = group_freq
                 
@@ -10791,7 +9169,7 @@ with tab_preprocessing:
                                             st.code(traceback.format_exc(), language="python")
                             
                             with c_cancel_reg:
-                                if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_regularity"):
+                                if st.button("❌ Отмена", use_container_width=True, key="btn_cancel_regularity_preprocessing"):
                                     st.session_state.show_regular_preview = False
                                     st.rerun()
                         except Exception as e:
@@ -11402,59 +9780,6 @@ with tab_preprocessing:
             df_var_ts = df_var.set_index(date_col)
             
             # ── ФУНКЦИЯ ТЕСТА НА ГЕТЕРОСКЕДАСТИЧНОСТЬ ─────
-            def test_heteroskedasticity(series, window=30):
-                """Тест на гетероскедастичность через скользящее std"""
-                if len(series) < window * 2:
-                    return {
-                        'bp_pvalue': None,
-                        'is_hetero': None,
-                        'rolling_std_corr': None,
-                        'amplitude_ratio': None
-                    }
-                
-                # 1. Тест Бройша-Пагана (если есть statsmodels)
-                try:
-                    from statsmodels.stats.diagnostic import het_breuschpagan
-                    import statsmodels.api as sm
-                    
-                    # Регрессия на тренд для получения остатков
-                    X = sm.add_constant(np.arange(len(series)))
-                    model = sm.OLS(series, X).fit()
-                    resid = model.resid
-                    
-                    # Тест Бройша-Пагана
-                    _, bp_pvalue, _, _ = het_breuschpagan(resid, X)
-                    is_hetero = bp_pvalue < 0.05
-                except Exception:
-                    bp_pvalue = None
-                    is_hetero = None
-                
-                # 2. Корреляция между rolling_std и rolling_mean
-                rolling_mean = series.rolling(window=window).mean()
-                rolling_std = series.rolling(window=window).std()
-                
-                valid_mask = rolling_mean.notna() & rolling_std.notna() & (rolling_std > 0)
-                if valid_mask.sum() > 10:
-                    corr = rolling_mean[valid_mask].corr(rolling_std[valid_mask])
-                else:
-                    corr = None
-                
-                # 3. Отношение амплитуд (последняя треть / первая треть)
-                n = len(series)
-                first_third = series.iloc[:n//3]
-                last_third = series.iloc[2*n//3:]
-                if len(first_third) > 0 and len(last_third) > 0:
-                    amplitude_ratio = last_third.std() / (first_third.std() + 1e-10)
-                else:
-                    amplitude_ratio = None
-                
-                return {
-                    'bp_pvalue': bp_pvalue,
-                    'is_hetero': is_hetero,
-                    'rolling_std_corr': corr,
-                    'amplitude_ratio': amplitude_ratio
-                }
-            
             # ── МЕТРИКИ ТЕКУЩЕГО СОСТОЯНИЯ ─────────────────
             c_diag1, c_diag2, c_diag3, c_diag4 = st.columns(4)
             
@@ -12071,45 +10396,6 @@ with tab_preprocessing:
             df_smooth_ts = df_smooth.set_index(date_col)
             
             # ── ФУНКЦИЯ МЕТРИК КАЧЕСТВА СГЛАЖИВАНИЯ ───────
-            def calculate_smoothing_metrics(original: pd.Series, smoothed: pd.Series) -> dict:
-                """Расчёт метрик качества сглаживания"""
-                metrics = {}
-                
-                # 1. SNR (Signal-to-Noise Ratio)
-                signal_power = smoothed.var()
-                noise = original - smoothed
-                noise_power = noise.var()
-                metrics['snr'] = 10 * np.log10(signal_power / (noise_power + 1e-10)) if noise_power > 0 else np.inf
-                
-                # 2. Корреляция с исходным рядом
-                metrics['correlation'] = original.corr(smoothed)
-                
-                # 3. Сглаженность (smoothness) — сумма квадратов вторых разностей
-                # Чем МЕНЬШЕ, тем ГЛАЖЕ ряд
-                second_diff_orig = original.diff().diff().dropna()
-                second_diff_smooth = smoothed.diff().diff().dropna()
-                metrics['roughness_orig'] = np.sum(second_diff_orig**2)
-                metrics['roughness_smooth'] = np.sum(second_diff_smooth**2)
-                metrics['smoothness_ratio'] = (metrics['roughness_orig'] / 
-                                            (metrics['roughness_smooth'] + 1e-10))
-                
-                # 4. Сохранение тренда (R² линейного тренда)
-                from scipy.stats import linregress
-                slope_orig, _, r_orig, _, _ = linregress(range(len(original)), original)
-                slope_smooth, _, r_smooth, _, _ = linregress(range(len(smoothed)), smoothed)
-                metrics['r2_orig'] = r_orig**2
-                metrics['r2_smooth'] = r_smooth**2
-                metrics['trend_preservation'] = abs(r_smooth**2 - r_orig**2)
-                
-                # 5. Потеря информации (разница дисперсий)
-                metrics['variance_loss_pct'] = ((original.var() - smoothed.var()) / 
-                                            (original.var() + 1e-10)) * 100
-                
-                # 6. Amplitude reduction (ослабление амплитуды)
-                metrics['amplitude_reduction'] = 1 - (smoothed.std() / (original.std() + 1e-10))
-                
-                return metrics
-            
             # ── МЕТРИКИ ТЕКУЩЕГО СОСТОЯНИЯ ─────────────────
             c_diag1, c_diag2, c_diag3, c_diag4 = st.columns(4)
             
@@ -12350,37 +10636,21 @@ with tab_preprocessing:
                     
                     if st.session_state.show_smooth_preview:
                         try:
-                            # Применяем сглаживание
+                            # Применяем сглаживание через вынесенную функцию
                             if "SMA" in smooth_method:
-                                smoothed = original_series.rolling(window=window, center=True, min_periods=1).mean()
+                                smoothed = apply_smoothing(original_series, 'SMA', window=window)
                                 method_name = "SMA"
-                            
                             elif "EMA" in smooth_method:
-                                smoothed = original_series.ewm(span=span, adjust=False).mean()
+                                smoothed = apply_smoothing(original_series, 'EMA', span=span)
                                 method_name = "EMA"
-                            
                             elif "WMA" in smooth_method:
-                                # Линейно-взвешенное скользящее среднее
-                                weights = np.arange(1, window + 1)
-                                smoothed = original_series.rolling(window=window).apply(
-                                    lambda x: np.dot(x, weights) / weights.sum(), raw=True
-                                )
-                                smoothed = smoothed.fillna(method='bfill')
+                                smoothed = apply_smoothing(original_series, 'WMA', window=window)
                                 method_name = "WMA"
-                            
                             elif "Медиана" in smooth_method:
-                                smoothed = original_series.rolling(window=window, center=True, min_periods=1).median()
+                                smoothed = apply_smoothing(original_series, 'Median', window=window)
                                 method_name = "Median"
-                            
                             elif "LOWESS" in smooth_method:
-                                from statsmodels.nonparametric.smoothers_lowess import lowess
-                                
-                                x = np.arange(len(original_series))
-                                y = original_series.values
-                                
-                                # LOWESS возвращает массив [x, y_smooth]
-                                lowess_result = lowess(y, x, frac=frac, return_sorted=False)
-                                smoothed = pd.Series(lowess_result, index=original_series.index)
+                                smoothed = apply_smoothing(original_series, 'LOWESS', frac=frac)
                                 method_name = "LOWESS"
                             
                             elif "HP-filter" in smooth_method:
@@ -12564,35 +10834,27 @@ with tab_preprocessing:
                             c_ok_smooth, c_cancel_smooth = st.columns(2)
                             with c_ok_smooth:
                                 if st.button("✅ Применить к данным", type="primary", use_container_width=True, key="btn_confirm_smooth"):
-                                    # Применяем сглаживание к основному df
-                                    df_final_smooth = st.session_state.df.copy()
-                                    
-                                    # Сохраняем оригинальный столбец с суффиксом _original
-                                    orig_col_name = f"{target_col}_original"
-                                    if orig_col_name not in df_final_smooth.columns:
-                                        df_final_smooth[orig_col_name] = df_final_smooth[target_col]
-                                    
-                                    # Применяем сглаживание
+                                    # Применяем сглаживание через вынесенную функцию
                                     if method_name == "SMA":
-                                        df_final_smooth[target_col] = df_final_smooth[target_col].astype(float).rolling(
-                                            window=param_value, center=True, min_periods=1).mean()
+                                        df_final_smooth[target_col] = apply_smoothing(
+                                            df_final_smooth[target_col].astype(float), 'SMA', window=param_value
+                                        )
                                     elif method_name == "EMA":
-                                        df_final_smooth[target_col] = df_final_smooth[target_col].astype(float).ewm(
-                                            span=param_value, adjust=False).mean()
+                                        df_final_smooth[target_col] = apply_smoothing(
+                                            df_final_smooth[target_col].astype(float), 'EMA', span=param_value
+                                        )
                                     elif method_name == "WMA":
-                                        weights = np.arange(1, param_value + 1)
-                                        df_final_smooth[target_col] = df_final_smooth[target_col].astype(float).rolling(
-                                            window=param_value).apply(
-                                            lambda x: np.dot(x, weights) / weights.sum(), raw=True
-                                        ).fillna(method='bfill')
+                                        df_final_smooth[target_col] = apply_smoothing(
+                                            df_final_smooth[target_col].astype(float), 'WMA', window=param_value
+                                        )
                                     elif method_name == "Median":
-                                        df_final_smooth[target_col] = df_final_smooth[target_col].astype(float).rolling(
-                                            window=param_value, center=True, min_periods=1).median()
+                                        df_final_smooth[target_col] = apply_smoothing(
+                                            df_final_smooth[target_col].astype(float), 'Median', window=param_value
+                                        )
                                     elif method_name == "LOWESS":
-                                        from statsmodels.nonparametric.smoothers_lowess import lowess
-                                        x = np.arange(len(df_final_smooth))
-                                        y = df_final_smooth[target_col].astype(float).values
-                                        lowess_result = lowess(y, x, frac=param_value, return_sorted=False)
+                                        df_final_smooth[target_col] = apply_smoothing(
+                                            df_final_smooth[target_col].astype(float), 'LOWESS', frac=param_value
+                                        )
                                         df_final_smooth[target_col] = lowess_result
                                     elif method_name == "HP-filter":
                                         from statsmodels.tsa.filters.hp_filter import hpfilter
@@ -12754,200 +11016,6 @@ with tab_preprocessing:
             df_stat_ts = df_stat.set_index(date_col)
             
             # ── ФУНКЦИЯ МНОЖЕСТВЕННЫХ ТЕСТОВ СТАЦИОНАРНОСТИ ──
-            def run_stationarity_tests(series: pd.Series, max_lag: int = None) -> dict:
-                """
-                Запускает 4 теста стационарности и возвращает консенсус.
-                
-                Returns:
-                    dict с ключами:
-                    - adf: {'stat': float, 'pvalue': float, 'is_stationary': bool}
-                    - kpss: {'stat': float, 'pvalue': float, 'is_stationary': bool}
-                    - pp: {'stat': float, 'pvalue': float, 'is_stationary': bool}
-                    - za: {'stat': float, 'pvalue': float, 'is_stationary': bool, 'breakpoint': int} (если доступен)
-                    - consensus: 'stationary' | 'non-stationary' | 'trend-stationary' | 'inconclusive'
-                    - recommendation: str
-                """
-                results = {}
-                n = len(series)
-                
-                if n < 30:
-                    return {'error': 'Недостаточно данных (нужно ≥ 30)'}
-                
-                try:
-                    from statsmodels.tsa.stattools import adfuller, kpss
-                    from statsmodels.tsa.stattools import PhillipsPerron
-                    
-                    # ── 1. ADF TEST ──────────────────────────
-                    # H0: ряд имеет единичный корень (нестационарен)
-                    # H1: ряд стационарен
-                    if max_lag is None:
-                        max_lag_adf = min(int(12 * (n / 100) ** 0.25), n // 3)
-                    else:
-                        max_lag_adf = max_lag
-                    
-                    adf_result = adfuller(series.dropna(), autolag='AIC', maxlag=max_lag_adf)
-                    results['adf'] = {
-                        'stat': adf_result[0],
-                        'pvalue': adf_result[1],
-                        'lags': adf_result[2],
-                        'is_stationary': adf_result[1] < 0.05,
-                        'critical_values': adf_result[4]
-                    }
-                    
-                    # ─ 2. KPSS TEST ─────────────────────────
-                    # H0: ряд стационарен (вокруг уровня или тренда)
-                    # H1: ряд нестационарен
-                    # Тестируем два варианта: level (вокруг константы) и trend (вокруг тренда)
-                    try:
-                        kpss_level = kpss(series.dropna(), regression='c', nlags='auto')
-                        kpss_trend = kpss(series.dropna(), regression='ct', nlags='auto')
-                        results['kpss'] = {
-                            'stat_level': kpss_level[0],
-                            'pvalue_level': kpss_level[1],
-                            'stat_trend': kpss_trend[0],
-                            'pvalue_trend': kpss_trend[1],
-                            'is_stationary_level': kpss_level[1] > 0.05,
-                            'is_stationary_trend': kpss_trend[1] > 0.05
-                        }
-                    except Exception as e:
-                        results['kpss'] = {'error': str(e)}
-                    
-                    # ── 3. PHILLIPS-PERRON TEST ──────────────
-                    # Альтернатива ADF, устойчива к гетероскедастичности
-                    try:
-                        pp_result = PhillipsPerron(series.dropna(), lags=max_lag_adf)
-                        results['pp'] = {
-                            'stat': pp_result.stat,
-                            'pvalue': pp_result.pvalue,
-                            'is_stationary': pp_result.pvalue < 0.05
-                        }
-                    except Exception:
-                        # Fallback: если PP недоступен, используем ADF как proxy
-                        results['pp'] = {
-                            'stat': adf_result[0],
-                            'pvalue': adf_result[1],
-                            'is_stationary': adf_result[1] < 0.05,
-                            'note': 'PP недоступен, используется ADF'
-                        }
-                    
-                    # ── 4. ZIVOT-ANDREWS TEST (опционально) ──
-                    # Учитывает структурные разрывы
-                    try:
-                        from statsmodels.tsa.stattools import zivot_andrews
-                        za_result = zivot_andrews(series.dropna(), model='c')
-                        results['za'] = {
-                            'stat': za_result[0],
-                            'pvalue': za_result[1],  # Может быть недоступен в старых версиях
-                            'breakpoint': za_result[2] if len(za_result) > 2 else None,
-                            'is_stationary': za_result[0] < -4.8  # Приблизительный критический уровень
-                        }
-                    except Exception:
-                        results['za'] = {'note': 'Тест Zivot-Andrews недоступен (statsmodels < 0.14)'}
-                    
-                    # ── 5. КОНСЕНСУС ─────────────────────────
-                    adf_stat = results['adf']['is_stationary']
-                    kpss_level_stat = results['kpss'].get('is_stationary_level', None)
-                    kpss_trend_stat = results['kpss'].get('is_stationary_trend', None)
-                    pp_stat = results['pp']['is_stationary']
-                    
-                    if adf_stat and kpss_level_stat:
-                        consensus = 'stationary'
-                        recommendation = '✅ Ряд стационарен. Дифференцирование не требуется.'
-                    elif not adf_stat and kpss_trend_stat:
-                        consensus = 'trend-stationary'
-                        recommendation = '⚠️ Ряд стационарен вокруг тренда. Достаточно удалить тренд (детренд).'
-                    elif not adf_stat and not kpss_level_stat:
-                        consensus = 'non-stationary'
-                        if pp_stat:
-                            recommendation = '⚠️ ADF и KPSS противоречат PP. Попробуйте другое дифференцирование.'
-                        else:
-                            recommendation = ' Ряд нестационарен. Требуется дифференцирование.'
-                    else:
-                        consensus = 'inconclusive'
-                        recommendation = '️ Результаты тестов противоречивы. Визуальный анализ + пробное дифференцирование.'
-                    
-                    results['consensus'] = consensus
-                    results['recommendation'] = recommendation
-                    
-                except ImportError as e:
-                    results['error'] = f'Не установлены необходимые библиотеки: {e}'
-                except Exception as e:
-                    results['error'] = str(e)
-                
-                return results
-            
-            # ── ФУНКЦИЯ ДИФФЕРЕНЦИРОВАНИЯ ───────────────────
-            def apply_differencing(series: pd.Series, method: str, d: int = 1, s: int = None, 
-                                frac_d: float = None) -> pd.Series:
-                """
-                Применяет дифференцирование к ряду.
-                
-                Args:
-                    series: исходный ряд
-                    method: 'first', 'seasonal', 'second', 'log', 'fractional', 'combined'
-                    d: порядок первого различия
-                    s: сезонный период (для seasonal/combined)
-                    frac_d: дробный порядок (для fractional, 0 < d < 1)
-                
-                Returns:
-                    дифференцированный ряд
-                """
-                s_clean = series.dropna()
-                
-                if method == 'first':
-                    return s_clean.diff(d).dropna()
-                
-                elif method == 'seasonal':
-                    if s is None:
-                        s = 12  # default
-                    return s_clean.diff(s).dropna()
-                
-                elif method == 'second':
-                    return s_clean.diff(2).dropna()
-                
-                elif method == 'log':
-                    if (s_clean <= 0).any():
-                        raise ValueError("Логарифмическое различие требует положительных значений")
-                    return np.log(s_clean).diff().dropna()
-                
-                elif method == 'fractional':
-                    if frac_d is None or not (0 < frac_d < 1):
-                        raise ValueError("Дробный порядок должен быть в диапазоне (0, 1)")
-                    # Реализация дробного дифференцирования по López de Prado
-                    # (1 - L)^d = Σ_{k=0}^{∞} (-1)^k * C(d,k) * L^k
-                    # где C(d,k) = d*(d-1)*...*(d-k+1)/k!
-                    from scipy.special import comb
-                    
-                    weights = []
-                    for k in range(len(s_clean)):
-                        weight = (-1) ** k * comb(frac_d, k)
-                        weights.append(weight)
-                        if abs(weight) < 1e-5:  # Обрезаем малые веса
-                            break
-                    
-                    weights = np.array(weights[:len(s_clean)])
-                    
-                    # Применяем свёртку
-                    result = np.zeros(len(s_clean))
-                    values = s_clean.values
-                    for i in range(len(s_clean)):
-                        for j, w in enumerate(weights):
-                            if i - j >= 0:
-                                result[i] += w * values[i - j]
-                    
-                    return pd.Series(result, index=s_clean.index).dropna()
-                
-                elif method == 'combined':
-                    # Сначала сезонное, потом первое различие
-                    if s is None:
-                        s = 12
-                    result = s_clean.diff(s).dropna()
-                    result = result.diff(d).dropna()
-                    return result
-                
-                else:
-                    raise ValueError(f"Неизвестный метод: {method}")
-            
             # ── МЕТРИКИ ТЕКУЩЕГО СОСТОЯНИЯ ─────────────────
             c_diag1, c_diag2, c_diag3, c_diag4 = st.columns(4)
             
@@ -14081,25 +12149,18 @@ with tab_preprocessing:
                     df_fe = df_fe.sort_values(date_col)
                     features_created = []
                     
-                    # 1. ВРЕМЕННЫЕ ПРИЗНАКИ
                     if create_time:
-                        if pd.api.types.is_datetime64_any_dtype(df_fe[date_col]):
-                            df_fe['year'] = df_fe[date_col].dt.year
-                            df_fe['month'] = df_fe[date_col].dt.month
-                            df_fe['day'] = df_fe[date_col].dt.day
-                            df_fe['dayofweek'] = df_fe[date_col].dt.dayofweek
-                            if create_quarter:
-                                df_fe['quarter'] = df_fe[date_col].dt.quarter
-                            if create_dayofyear:
-                                df_fe['dayofyear'] = df_fe[date_col].dt.dayofyear
-                            if create_weekend:
-                                df_fe['is_weekend'] = (df_fe[date_col].dt.dayofweek >= 5).astype(int)
-                            if create_holiday:
-                                # Упрощённая логика праздников (можно расширить)
-                                df_fe['is_holiday'] = 0  # Заглушка, требует библиотеки holidays
-                            features_created.extend(['year', 'month', 'day', 'dayofweek', 'quarter', 'dayofyear', 'is_weekend', 'is_holiday'])
-                            st.success("✅ Созданы временные признаки")
-                    
+                        df_fe = create_temporal_features(
+                            df_fe,
+                            date_col,
+                            add_quarter=create_quarter,
+                            add_dayofyear=create_dayofyear,
+                            add_is_weekend=create_weekend,
+                            add_is_holiday=create_holiday
+                        )
+                        features_created.extend(['year', 'month', 'day', 'dayofweek', 'quarter', 'dayofyear', 'is_weekend', 'is_holiday'])
+                        st.success("✅ Созданы временные признаки")
+                                            
                     # 2. ЛАГИ
                     if create_lags and lag_periods:
                         for lag in lag_periods:
@@ -14235,42 +12296,6 @@ with tab_preprocessing:
             df_scale_ts = df_scale.set_index(date_col)
             
             # ── ФУНКЦИЯ МЕТРИК МАСШТАБИРОВАНИЯ ─────────────
-            def calculate_scaling_metrics(original: pd.Series, scaled: pd.Series) -> dict:
-                """Расчёт метрик качества масштабирования"""
-                metrics = {}
-                
-                # 1. Диапазон
-                metrics['range_orig'] = original.max() - original.min()
-                metrics['range_scaled'] = scaled.max() - scaled.min()
-                
-                # 2. Среднее и стандартное отклонение
-                metrics['mean_orig'] = original.mean()
-                metrics['mean_scaled'] = scaled.mean()
-                metrics['std_orig'] = original.std()
-                metrics['std_scaled'] = scaled.std()
-                
-                # 3. Выбросы (по правилу 3σ)
-                def count_outliers(series):
-                    mean, std = series.mean(), series.std()
-                    return ((series < mean - 3*std) | (series > mean + 3*std)).sum()
-                
-                metrics['outliers_orig'] = count_outliers(original)
-                metrics['outliers_scaled'] = count_outliers(scaled)
-                
-                # 4. Асимметрия (skewness)
-                metrics['skew_orig'] = original.skew()
-                metrics['skew_scaled'] = scaled.skew()
-                
-                # 5. Эксцесс (kurtosis)
-                metrics['kurt_orig'] = original.kurtosis()
-                metrics['kurt_scaled'] = scaled.kurtosis()
-                
-                # 6. Коэффициент вариации
-                metrics['cv_orig'] = original.std() / (abs(original.mean()) + 1e-10)
-                metrics['cv_scaled'] = scaled.std() / (abs(scaled.mean()) + 1e-10)
-                
-                return metrics
-            
             # ── МЕТРИКИ ТЕКУЩЕГО СОСТОЯНИЯ ─────────────────
             c_diag1, c_diag2, c_diag3, c_diag4 = st.columns(4)
             
@@ -14330,15 +12355,15 @@ with tab_preprocessing:
                 
                 **Методы масштабирования:**
                 
-                | Метод | Формула | Диапазон | Когда использовать |
-                |-------|---------|----------|-------------------|
-                | **Min-Max** | (x - min) / (max - min) | [0, 1] | Нейросети, изображения |
-                | **Standardization** | (x - μ) / σ | ~[-3, 3] | ARIMA, PCA, линейная регрессия |
-                | **Robust Scaling** | (x - median) / IQR | ~[-3, 3] | Данные с выбросами |
-                | **🆕 MaxAbs** | x / max(\|x\|) | [-1, 1] | Разреженные данные, знак важен |
-                | **🆕 Normalization (L2)** | x / \|\|x\|\|₂ | единичная сфера | Cosine similarity, SVM |
-                | **🆕 Quantile Transform** | F¹(Uniform/Normal) | [0, 1] или N(0,1) | Сильно скошенные распределения |
-                | **🆕 Log1p** | log(1 + x) | [0, ∞) | Count data с правым хвостом |
+                | Метод                      | Формула                 | Диапазон           | Когда использовать |
+                |----------------------------|-------------------------|--------------------|---------------------------|
+                | **Min-Max**                | (x - min) / (max - min) | [0, 1]             | Нейросети, изображения |
+                | **Standardization**        | (x - μ) / σ             | ~[-3, 3]           | ARIMA, PCA, линейная регрессия |
+                | **Robust Scaling**         | (x - median) / IQR      | ~[-3, 3]           | Данные с выбросами |
+                | **🆕 MaxAbs**             | x / max(|x|)             | [-1, 1]           | Разреженные данные, знак важен |
+                | **🆕 Normalization (L2)** | x / |x|₂                 | единичная сфера   | Cosine similarity, SVM |
+                | **🆕 Quantile Transform** | F¹(Uniform/Normal)       | [0, 1] или N(0,1) | Сильно скошенные распределения |
+                | **🆕 Log1p**              | log(1 + x)               | [0, ∞)            | Count data с правым хвостом |
                 
                 **⚠️ Data Leakage (утечка данных):**
                 - 🔴 **НЕЛЬЗЯ** fit на всём датасете, затем split на train/test
@@ -14957,193 +12982,6 @@ with tab_preprocessing:
                 series_v11 = series_v12.copy()
             
             # ── ФУНКЦИЯ ВЫЧИСЛЕНИЯ СВОЙСТВ РЯДА ─────────────────
-            def compute_row_properties(series: pd.Series, name: str = "") -> dict:
-                """
-                Вычисляет полный набор свойств временного ряда.
-                
-                Returns:
-                    dict со всеми свойствами
-                """
-                if series.empty or len(series) < 10:
-                    return {'error': f'Недостаточно данных ({len(series)} точек)'}
-                
-                props = {}
-                
-                # 1. СТАЦИОНАРНОСТЬ (ADF Test)
-                try:
-                    from statsmodels.tsa.stattools import adfuller
-                    adf_result = adfuller(series.dropna(), autolag='AIC')
-                    adf_pvalue = adf_result[1]
-                    props['stationarity'] = '✅ Стационарен' if adf_pvalue < 0.05 else '❌ Нестационарен'
-                    props['stationarity_detail'] = f'(p={adf_pvalue:.4f})'
-                except Exception as e:
-                    props['stationarity'] = '⚠️ Не удалось вычислить'
-                    props['stationarity_detail'] = str(e)
-                
-                # 2. ДЕТЕРМИНИРОВАННОСТЬ (R² тренда)
-                try:
-                    from scipy.stats import linregress
-                    x = np.arange(len(series))
-                    slope, intercept, r_value, _, _ = linregress(x, series)
-                    r_squared = r_value ** 2
-                    if r_squared > 0.7:
-                        props['determinism'] = '📈 Детерминированный'
-                    elif r_squared > 0.3:
-                        props['determinism'] = '⚠️ Смешанный'
-                    else:
-                        props['determinism'] = ' Стохастический'
-                    props['determinism_detail'] = f'(R²={r_squared:.3f})'
-                except Exception as e:
-                    props['determinism'] = '️ Не удалось вычислить'
-                    props['determinism_detail'] = str(e)
-                
-                # 3. ЧАСТОТА РЯДА
-                try:
-                    freq = pd.infer_freq(series.index)
-                    if freq:
-                        props['frequency'] = f'✅ Регулярная ({freq})'
-                    else:
-                        props['frequency'] = '⚠️ Нерегулярная'
-                    props['frequency_detail'] = ''
-                except Exception:
-                    props['frequency'] = '⚠️ Не удалось определить'
-                    props['frequency_detail'] = ''
-                
-                # 4. ГЕТЕРОСКЕДАСТИЧНОСТЬ (упрощённый тест)
-                try:
-                    rolling_std = series.rolling(window=min(30, len(series)//3)).std()
-                    correlation = series.rolling(window=min(30, len(series)//3)).mean().corr(rolling_std)
-                    if abs(correlation) > 0.5:
-                        props['heteroskedasticity'] = '❌ Гетероскедастичность'
-                    else:
-                        props['heteroskedasticity'] = '✅ Гомоскедастичность'
-                    props['heteroskedasticity_detail'] = f'(corr={correlation:.3f})'
-                except Exception:
-                    props['heteroskedasticity'] = '⚠️ Не удалось вычислить'
-                    props['heteroskedasticity_detail'] = ''
-                
-                # 5. АВТОКОРРЕЛЯЦИЯ (Ljung-Box)
-                try:
-                    from statsmodels.stats.diagnostic import acorr_ljungbox
-                    lb_result = acorr_ljungbox(series.dropna(), lags=[10], return_df=True)
-                    lb_pvalue = lb_result['lb_pvalue'].values[0]
-                    if lb_pvalue < 0.05:
-                        props['autocorrelation'] = '❌ Есть автокорреляция'
-                    else:
-                        props['autocorrelation'] = '✅ Белый шум'
-                    props['autocorrelation_detail'] = f'(p={lb_pvalue:.4f})'
-                except Exception:
-                    props['autocorrelation'] = '⚠️ Не удалось вычислить'
-                    props['autocorrelation_detail'] = ''
-                
-                # 6. НОРМАЛЬНОСТЬ (Jarque-Bera)
-                try:
-                    from scipy.stats import jarque_bera
-                    jb_stat, jb_pvalue, _, _ = jarque_bera(series.dropna())
-                    if jb_pvalue < 0.05:
-                        props['normality'] = '❌ Отклонение от нормальности'
-                    else:
-                        props['normality'] = '✅ Нормальное распределение'
-                    props['normality_detail'] = f'(p={jb_pvalue:.4f})'
-                except Exception:
-                    props['normality'] = '⚠️ Не удалось вычислить'
-                    props['normality_detail'] = ''
-                
-                # 7. НАПРАВЛЕНИЕ ТРЕНДА
-                try:
-                    from scipy.stats import linregress
-                    slope, _, _, _, _ = linregress(range(len(series)), series)
-                    if slope > 0.001:
-                        props['trend'] = f'📈 Восходящий (Slope={slope:.4f})'
-                    elif slope < -0.001:
-                        props['trend'] = f'📉 Нисходящий (Slope={slope:.4f})'
-                    else:
-                        props['trend'] = f'➡️ Без тренда (Slope={slope:.4f})'
-                    props['trend_detail'] = ''
-                except Exception:
-                    props['trend'] = '⚠️ Не удалось вычислить'
-                    props['trend_detail'] = ''
-                
-                # 8. СЕЗОННОСТЬ (сила)
-                try:
-                    from statsmodels.tsa.seasonal import STL
-                    stl = STL(series.dropna(), period=min(12, len(series)//4))
-                    result = stl.fit()
-                    seasonal_strength = 1 - (result.resid.var() / (result.seasonal + result.resid).var())
-                    if seasonal_strength > 0.6:
-                        props['seasonality'] = f'✅ Сильная (S={seasonal_strength:.2f})'
-                    elif seasonal_strength > 0.3:
-                        props['seasonality'] = f'️ Умеренная (S={seasonal_strength:.2f})'
-                    else:
-                        props['seasonality'] = f'❌ Слабая/Нет (S={seasonal_strength:.2f})'
-                    props['seasonality_detail'] = ''
-                except Exception:
-                    props['seasonality'] = '⚠️ Не удалось вычислить'
-                    props['seasonality_detail'] = ''
-                
-                # 9. СЕЗОННЫЕ ПЕРИОДЫ (ACF)
-                try:
-                    from statsmodels.tsa.stattools import acf
-                    max_lag = min(60, len(series) // 4)
-                    acf_values = acf(series.dropna(), nlags=max_lag)
-                    conf_int = 1.96 / np.sqrt(len(series))
-                    significant_lags = np.where(np.abs(acf_values[1:]) > conf_int)[0] + 1
-                    
-                    if len(significant_lags) > 0:
-                        # Ищем периодические пики
-                        periods = []
-                        for lag in significant_lags:
-                            if lag > 2:
-                                periods.append(lag)
-                        props['seasonal_periods'] = f'✅ Обнаружены: {periods[:3]}'
-                    else:
-                        props['seasonal_periods'] = '⚠️ Не обнаружены'
-                    props['seasonal_periods_detail'] = ''
-                except Exception:
-                    props['seasonal_periods'] = '⚠️ Не удалось вычислить'
-                    props['seasonal_periods_detail'] = ''
-                
-                # 10. ДОЛГАЯ ПАМЯТЬ (Hurst Exponent)
-                try:
-                    def hurst_exponent(series):
-                        lags = range(2, min(20, len(series)//2))
-                        tau = [np.std(np.subtract(series[lag:], series[:-lag])) for lag in lags]
-                        m = np.polyfit(np.log(lags), np.log(tau), 1)
-                        return m[0]
-                    
-                    H = hurst_exponent(series.dropna())
-                    if H > 0.6:
-                        props['long_memory'] = f'🔴 Персистентность (H={H:.2f})'
-                    elif H < 0.4:
-                        props['long_memory'] = f'🔵 Антиперсистентность (H={H:.2f})'
-                    else:
-                        props['long_memory'] = f'⚪ Случайное блуждание (H={H:.2f})'
-                    props['long_memory_detail'] = ''
-                except Exception:
-                    props['long_memory'] = '⚠️ Не удалось вычислить'
-                    props['long_memory_detail'] = ''
-                
-                # 11. СТАТИСТИКИ РАСПРЕДЕЛЕНИЯ
-                props['mean'] = f'{series.mean():.2f}'
-                props['median'] = f'{series.median():.2f}'
-                props['std'] = f'{series.std():.2f}'
-                props['skewness'] = f'{series.skew():.3f}'
-                props['kurtosis'] = f'{series.kurtosis():.3f}'
-                
-                # Тип распределения (упрощённо)
-                skew = series.skew()
-                kurt = series.kurtosis()
-                if abs(skew) < 0.5 and abs(kurt - 3) < 1:
-                    props['distribution_type'] = 'Нормальное'
-                elif skew > 1:
-                    props['distribution_type'] = 'Правосторонняя асимметрия'
-                elif skew < -1:
-                    props['distribution_type'] = 'Левосторонняя асимметрия'
-                else:
-                    props['distribution_type'] = 'Эмпирическое'
-                
-                return props
-            
             # ─ ВЫЧИСЛЕНИЕ СВОЙСТВ ДЛЯ ВСЕХ ЭТАПОВ ──────────────
             with st.spinner("🔢 Вычисление свойств ряда на всех этапах..."):
                 props_v10 = compute_row_properties(series_v10, "Загрузка")
@@ -15333,7 +13171,7 @@ with tab_preprocessing:
                     # Скачивание
                     excel_data = output.getvalue()
                     st.download_button(
-                        label="📥 Скачать паспорт свойств (Excel)",
+                        label="Скачать паспорт свойств (Excel)",
                         data=excel_data,
                         file_name=f"passport_{target_col_passport}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -15391,10 +13229,23 @@ with tab_exploratory:
         **⚠️ Почитать о методе:** https://habr.com/ru/articles/1040980/
         """)
 
+    
     # ───────────────────────────────────────────────────────────
     # НАСТРОЙКИ IH-АНАЛИЗА
     # ───────────────────────────────────────────────────────────
-    if not df_filtered.empty and ct_f.get("num"):
+    # Принудительная перезагрузка модуля для обхода кэша Streamlit
+    import importlib
+    import sys
+    if 'app.eda.ih_analysis' in sys.modules:
+        importlib.reload(sys.modules['app.eda.ih_analysis'])
+
+        from app.eda.ih_analysis import (
+            discretize_feature,
+            compute_r_metric,
+            compute_synergy,
+            generate_ih_recommendations
+        )
+
         # Выбор целевой переменной
         target_options = ct_f["num"] + ([st.session_state.primary_date_col] if st.session_state.primary_date_col else [])
         ih_target = st.selectbox(
@@ -15445,110 +13296,7 @@ with tab_exploratory:
                 progress_bar = st.progress(0)
 
                 # ───────────────────────────────────────────────
-                # 🔬 ЯДРО IH-АНАЛИЗА: ФУНКЦИИ
-                # ───────────────────────────────────────────────
-                def discretize_feature(series: pd.Series, sharpness: float, min_samples: int) -> pd.Series:
-                    """
-                    Адаптивная дискретизация с параметром sharpness.
-                    Меньший sharpness → больше интервалов.
-                    """
-                    if pd.api.types.is_categorical_dtype(series) or series.nunique() <= 10:
-                        return series.astype(str)
-
-                    # Удаление пропусков для дискретизации
-                    clean = series.dropna()
-                    if len(clean) < min_samples * 2:
-                        return series.astype(str)  # fallback
-
-                    # Оценка оптимального числа бинов через sharpness
-                    n_bins = max(2, min(50, int(1 / sharpness)))
-
-                    # Квантильная дискретизация (устойчива к выбросам)
-                    try:
-                        bins = pd.qcut(clean, q=n_bins, duplicates='drop', labels=False)
-                        # Восстановление индекса с сохранением пропусков
-                        result = pd.Series(index=series.index, dtype=object)
-                        result[clean.index] = bins.astype(str)
-                        result[series.isna()] = '_MISSING_'
-                        return result
-                    except Exception:
-                        # Fallback на равномерную дискретизацию
-                        bins = pd.cut(clean, bins=n_bins, labels=False)
-                        result = pd.Series(index=series.index, dtype=object)
-                        result[clean.index] = bins.astype(str)
-                        result[series.isna()] = '_MISSING_'
-                        return result
-
-                def shannon_entropy(probabilities: np.ndarray, base: float = 2) -> float:
-                    """Вычисление энтропии Шеннона."""
-                    probabilities = probabilities[probabilities > 0]  # убрать нули
-                    return -np.sum(probabilities * np.log(probabilities) / np.log(base))
-
-                def mutual_information(x_disc: pd.Series, y_disc: pd.Series, base: float = 2) -> float:
-                    """
-                    Оценка взаимной информации через совместное распределение.
-                    """
-                    # Совместная таблица частот
-                    joint = pd.crosstab(x_disc, y_disc)
-                    joint_prob = joint.values / joint.values.sum()
-
-                    # Маргинальные распределения
-                    px = joint_prob.sum(axis=1)
-                    py = joint_prob.sum(axis=0)
-
-                    # MI = Σ p(x,y) * log(p(x,y) / (p(x)*p(y)))
-                    mi = 0.0
-                    for i in range(joint_prob.shape[0]):
-                        for j in range(joint_prob.shape[1]):
-                            if joint_prob[i, j] > 0 and px[i] > 0 and py[j] > 0:
-                                mi += joint_prob[i, j] * np.log(joint_prob[i, j] / (px[i] * py[j]))
-                    return mi / np.log(base)  # конвертация в нужное основание
-
-                def compute_r_metric(x: pd.Series, y: pd.Series, sharpness: float, min_samples: int) -> dict:
-                    """
-                    Вычисление нормированной меры связи R(Y|X) = I(X;Y) / H(Y).
-                    Возвращает словарь с метриками.
-                    """
-                    # Дискретизация
-                    x_disc = discretize_feature(x, sharpness, min_samples)
-                    y_disc = discretize_feature(y, sharpness, min_samples)
-
-                    # Проверка константных признаков
-                    if x_disc.nunique() <= 1:
-                        return {"R": 0.0, "MI": 0.0, "H_X": 0.0, "H_Y": 0.0, 
-                                "n_bins_X": 1, "n_bins_Y": y_disc.nunique(),
-                                "error": "Признак X константен"}
-                    
-                    # Энтропии
-                    _, counts_y = np.unique(y_disc, return_counts=True)
-                    py = counts_y / counts_y.sum()
-                    h_y = shannon_entropy(py)
-
-                    if h_y < 1e-10:  # целевая переменная константа
-                        return {"R": 0.0, "MI": 0.0, "H_X": 0.0, "H_Y": 0.0, "error": "H(Y) ≈ 0"}
-
-                    # Взаимная информация
-                    mi = mutual_information(x_disc, y_disc)
-
-                    # Нормированная метрика
-                    r_value = min(1.0, mi / h_y)  # защита от численных ошибок
-
-                    # Энтропия признака
-                    _, counts_x = np.unique(x_disc, return_counts=True)
-                    px = counts_x / counts_x.sum()
-                    h_x = shannon_entropy(px)
-
-                    return {
-                        "R": r_value,
-                        "MI": mi,
-                        "H_X": h_x,
-                        "H_Y": h_y,
-                        "n_bins_X": x_disc.nunique(),
-                        "n_bins_Y": y_disc.nunique()
-                    }
-
-                # ───────────────────────────────────────────────
-                # 📊 РАСЧЁТЫ
+                # 📊 РАСЧЁТЫ (используем функции из app.eda.ih_analysis)
                 # ───────────────────────────────────────────────
                 results = []
                 y_series = df_filtered[ih_target].copy()
@@ -15558,6 +13306,7 @@ with tab_exploratory:
                     x_series = df_filtered[feat].copy()
 
                     try:
+                        # ✅ Используем compute_r_metric из модуля
                         metrics = compute_r_metric(x_series, y_series, sharpness, min_samples)
                         results.append({
                             "feature": feat,
@@ -15654,41 +13403,13 @@ with tab_exploratory:
                 # 📈 ВИЗУАЛИЗАЦИЯ 3: Синергия пар признаков
                 # ───────────────────────────────────────────────
                 st.markdown("######  Анализ синергии пар признаков")
+                
+                # ✅ Используем compute_synergy из модуля
                 synergy_results = []
-
                 if len(top_df) >= 2:
-                    synergy_results = []
                     selected_features = top_df["feature"].head(min(6, len(top_df))).tolist()
-
-                    for i in range(len(selected_features)):
-                        for j in range(i + 1, len(selected_features)):
-                            f1, f2 = selected_features[i], selected_features[j]
-                            try:
-                                # Индивидуальные R
-                                r1 = df_ih[df_ih["feature"] == f1]["R"].values[0]
-                                r2 = df_ih[df_ih["feature"] == f2]["R"].values[0]
-
-                                # Совместный анализ: создаём комбинированный признак
-                                x1_disc = discretize_feature(df_filtered[f1], sharpness, min_samples)
-                                x2_disc = discretize_feature(df_filtered[f2], sharpness, min_samples)
-                                x_combined = x1_disc.astype(str) + "||" + x2_disc.astype(str)
-
-                                r_combined = compute_r_metric(x_combined, y_series, sharpness, min_samples)["R"]
-
-                                # Синергия = R(комбо) - (R1 + R2)
-                                synergy = r_combined - (r1 + r2)
-
-                                synergy_results.append({
-                                    "pair": f"{f1} + {f2}",
-                                    "R1": r1,
-                                    "R2": r2,
-                                    "R_combined": r_combined,
-                                    "synergy": synergy,
-                                    "synergy_pct": synergy * 100
-                                })
-                            except:
-                                st.warning(f"⚠️ Не удалось рассчитать синергию для {f1} + {f2}: {e}")
-                                continue
+                    synergy_df = compute_synergy(df_filtered, ih_target, selected_features, sharpness, min_samples)
+                    synergy_results = synergy_df.to_dict('records') if not synergy_df.empty else []
 
                     if synergy_results:
                         df_syn = pd.DataFrame(synergy_results).sort_values("synergy", ascending=False)
@@ -15753,6 +13474,7 @@ with tab_exploratory:
                     c4.metric("📦 Бины", feat_row["n_bins"], f"дискретизация")
 
                     # График распределения целевой переменной по бинам признака
+                    # ✅ Используем discretize_feature из модуля
                     x_disc = discretize_feature(df_filtered[selected_feat], sharpness, min_samples)
                     y_disc = discretize_feature(df_filtered[ih_target], sharpness, min_samples)
 
@@ -15817,30 +13539,9 @@ with tab_exploratory:
                 # ───────────────────────────────────────────────
                 st.markdown("###### 💡 Автоматические рекомендации")
 
-                recommendations = []
-
-                # Высокая информативность
-                high_r = df_ih[df_ih["R"] >= 0.5]
-                if not high_r.empty:
-                    rec_list = ", ".join([f"`{r}`" for r in high_r["feature"].head(3)])
-                    recommendations.append(f"✅ **Сильные предикторы**: {rec_list} (R ≥ 0.5) → используйте как основные признаки в моделях")
-
-                # Низкая информативность
-                low_r = df_ih[df_ih["R"] < 0.1]
-                if not low_r.empty and len(low_r) > len(df_ih) * 0.3:
-                    recommendations.append("⚠️ **Много слабых признаков**: рассмотрите отбор признаков или агрегацию")
-
-                # Высокая энтропия + низкий R (шум?)
-                noisy = df_ih[(df_ih["H_X"] > df_ih["H_X"].quantile(0.75)) & (df_ih["R"] < 0.15)]
-                if not noisy.empty:
-                    rec_list = ", ".join([f"`{r}`" for r in noisy["feature"].head(3)])
-                    recommendations.append(f"⚡ **Высокая энтропия, низкая связь**: {rec_list} → возможен шум, проверьте качество данных")
-
-                # Синергия (если есть)
-                if "synergy_results" in locals() and synergy_results:
-                    best_syn = max(synergy_results, key=lambda x: x["synergy"])
-                    if best_syn["synergy"] > 0.1:
-                        recommendations.append(f"🤝 **Синергия**: пара `{best_syn['pair']}` даёт +{best_syn['synergy']*100:.1f}% информации вместе → создайте комбинированный признак")
+                # ✅ Используем generate_ih_recommendations из модуля
+                synergy_df_for_recs = pd.DataFrame(synergy_results) if synergy_results else None
+                recommendations = generate_ih_recommendations(df_ih, synergy_df_for_recs)
 
                 # Вывод рекомендаций
                 if recommendations:
@@ -15899,3 +13600,9 @@ with tab_modeling:
         </p>
     </div>
     """, unsafe_allow_html=True)
+
+# Пора разгрузить app.py, ребяты!!!
+
+
+
+

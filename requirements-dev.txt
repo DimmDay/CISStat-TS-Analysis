@@ -1,0 +1,8 @@
+# === Тестовые зависимости ===
+# Ставятся поверх requirements.txt только в CI и при локальном запуске тестов.
+# См. .github/workflows/test.yml — без pytest CI падает с "pytest: команда не найдена" (exit 127).
+
+pytest>=8.0.0
+pytest-cov>=4.1.0
+pytest-xdist>=3.5.0       # опционально: ускоряет прогон через -n auto
+syrupy>=4.6.0             # snapshot-тесты (tests/**/__snapshots__/*.ambr)

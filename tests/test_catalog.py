@@ -16,10 +16,10 @@ def test_catalog_loads():
 
 
 def test_model_filtering():
-    """Тест фильтрации моделей"""
+    """Тест фильтрации моделей по профилю данных"""
     catalog = ModelsCatalog.from_yaml("config/models/ts_models_catalog.yaml")
     
-    # Профиль: мало данных
+    # Профиль: мало данных, нестационарный, без сезонности, нерегулярный
     profile = {
         'n_observations': 20,
         'is_stationary': False,
@@ -30,8 +30,13 @@ def test_model_filtering():
     }
     
     suitable = catalog.filter_by_requirements(profile)
-    # Должны остаться только бенчмарки
-    assert all(m.category == "benchmark" for m in suitable)
+    
+    # Должны пройти: naive (benchmark, min_obs=2) и ets (statistical, min_obs=10)
+    # ets проходит, потому что у неё stationarity="not_needed", 
+    # seasonality="supported", regularity="optional"
+    assert len(suitable) == 2
+    model_ids = {m.id for m in suitable}
+    assert model_ids == {'naive', 'ets'}
 
 
 def test_recommendations():

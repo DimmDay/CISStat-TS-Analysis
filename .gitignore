@@ -18,6 +18,7 @@ config.json
 *.npy
 *.npz
 !sample_data.csv
+!tests/fixtures/*.csv
 !example.xlsx
 
 # ═══════════════════════════════════════════════════════
@@ -105,4 +106,9 @@ htmlcov/
 # ═══════════════════════════════════════════════════════
 .mypy_cache/
 .dmypy.json
-dmypy.json
+dmypy.json~$*
+*.tmp
+
+# Разрешить тестовые фикстуры
+!tests/fixtures/*.csv
+.venv_ci_check/
