@@ -113,21 +113,63 @@ def read_uploaded_file(uploaded_file) -> tuple[pd.DataFrame, str]:
     ext = file_name.split('.')[-1].lower()
 
     if ext == "csv":
-        df = pd.read_csv(
+        # Сначала подглядываем первую строку без парсинга, чтобы понять,
+        # заголовок это (текстовые лейблы) или уже данные (числа/даты) --
+        # некоторые CIS-Stat экспорты идут вообще без заголовка.
+        uploaded_file.seek(0)
+        peek_df = pd.read_csv(
             uploaded_file,
             sep=None,
             engine='python',
             encoding='utf-8-sig',
             on_bad_lines='skip',
-            header=None
+            header=None,
+            nrows=2,
         )
-        first_col_sample = df[0].head(10).astype(str)
-        is_date_like = first_col_sample.str.contains(r'\d{4}[-/]\d{2}[-/]\d{2}', regex=True).mean() > 0.8
-        if is_date_like:
-            new_headers = ['date'] + [f'col_{i}' for i in range(1, len(df.columns))]
-            df.columns = new_headers
+        uploaded_file.seek(0)
+
+        if len(peek_df) == 0:
+            raise ValueError("Файл пуст или не содержит табличных данных.")
+
+        first_row = peek_df.iloc[0].astype(str)
+        numeric_like = pd.to_numeric(first_row, errors='coerce').notna().mean()
+        date_like = first_row.str.contains(
+            r'\d{4}[-/.]\d{2}[-/.]\d{2}|\d{2}[-/.]\d{2}[-/.]\d{4}', regex=True
+        ).mean()
+        looks_like_header = (numeric_like < 0.5) and (date_like < 0.5)
+
+        if looks_like_header:
+            # У файла есть настоящий заголовок -- используем его как имена
+            # колонок (ИСПРАВЛЕНО: раньше header=None стоял безусловно, и
+            # заголовок попадал в данные как строка значений, портя dtype
+            # всех колонок на object/str -- см. tools/debug_ct_f.py).
+            df = pd.read_csv(
+                uploaded_file,
+                sep=None,
+                engine='python',
+                encoding='utf-8-sig',
+                on_bad_lines='skip',
+                header=0,
+            )
         else:
-            df.columns = [f'col_{i}' for i in range(len(df.columns))]
+            # Файл без заголовка (первая строка уже данные) -- прежнее
+            # поведение: синтетические имена col_0, col_1, ... плюс
+            # эвристика для даты в первой колонке.
+            df = pd.read_csv(
+                uploaded_file,
+                sep=None,
+                engine='python',
+                encoding='utf-8-sig',
+                on_bad_lines='skip',
+                header=None,
+            )
+            first_col_sample = df[0].head(10).astype(str)
+            is_date_like = first_col_sample.str.contains(r'\d{4}[-/]\d{2}[-/]\d{2}', regex=True).mean() > 0.8
+            if is_date_like:
+                new_headers = ['date'] + [f'col_{i}' for i in range(1, len(df.columns))]
+                df.columns = new_headers
+            else:
+                df.columns = [f'col_{i}' for i in range(len(df.columns))]
     elif ext in ["xlsx", "xls"]:
         df = pd.read_excel(uploaded_file)
         if isinstance(df.columns[0], (int, float)):

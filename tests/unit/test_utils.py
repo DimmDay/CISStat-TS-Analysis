@@ -196,3 +196,64 @@ class TestSafeNunique:
         # Не должно зависнуть
         result = _safe_nunique(series)
         assert isinstance(result, bool)
+
+# ─────────────────────────────────────────────────────────────
+# ДОБАВИТЬ В КОНЕЦ tests/unit/test_utils.py
+# ─────────────────────────────────────────────────────────────
+#
+# Тесты для drop_service_columns -- функция, вынесенная из двух независимых
+# инлайн-копий в app.py (ветка загрузки файла и ветка загрузки из БД).
+# Вторая копия ссылалась на неверную переменную (df вместо df_db), что
+# приводило к NameError при первой в сессии загрузке данных из БД.
+
+from app.core.utils import drop_service_columns  # noqa: E402 (добавить к существующим импортам вверху файла)
+
+
+class TestDropServiceColumns:
+    """Тесты для drop_service_columns."""
+
+    def test_drops_known_service_columns(self):
+        df = pd.DataFrame({
+            "row_id": [1, 2, 3],
+            "value": [10.0, 20.0, 30.0],
+            "index": [0, 1, 2],
+        })
+        result, dropped = drop_service_columns(df)
+        assert list(result.columns) == ["value"]
+        assert set(dropped) == {"row_id", "index"}
+
+    def test_case_insensitive_matching(self):
+        df = pd.DataFrame({
+            "Row_ID": [1, 2],
+            "Value": [10.0, 20.0],
+            "Unnamed: 0": [0, 1],
+        })
+        result, dropped = drop_service_columns(df)
+        assert list(result.columns) == ["Value"]
+        assert set(dropped) == {"Row_ID", "Unnamed: 0"}
+
+    def test_no_service_columns_present(self):
+        df = pd.DataFrame({"value": [1, 2, 3], "category": ["a", "b", "c"]})
+        result, dropped = drop_service_columns(df)
+        assert list(result.columns) == ["value", "category"]
+        assert dropped == []
+        # Функция не должна ничего портить, если удалять нечего
+        pd.testing.assert_frame_equal(result, df)
+
+    def test_custom_service_names(self):
+        df = pd.DataFrame({"my_index": [1, 2], "value": [10.0, 20.0]})
+        result, dropped = drop_service_columns(df, service_names=["my_index"])
+        assert list(result.columns) == ["value"]
+        assert dropped == ["my_index"]
+
+    def test_empty_dataframe(self):
+        df = pd.DataFrame()
+        result, dropped = drop_service_columns(df)
+        assert result.empty
+        assert dropped == []
+
+    def test_original_dataframe_not_mutated(self):
+        df = pd.DataFrame({"row_id": [1, 2], "value": [10.0, 20.0]})
+        original_columns = list(df.columns)
+        drop_service_columns(df)
+        assert list(df.columns) == original_columns  # исходный df не тронут

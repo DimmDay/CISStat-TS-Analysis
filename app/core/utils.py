@@ -6,7 +6,7 @@
 ⚠️ ВАЖНО: Этот модуль НЕ импортирует streamlit.
 Все функции — stateless, с явными аргументами (Правило 14).
 """
-from typing import Callable, Optional, Any
+from typing import Callable, Optional, Any, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -66,3 +66,44 @@ def safe_stat(df: pd.DataFrame, col: str, func: Callable[[pd.Series], Any]) -> O
         # Логирование в AppState.error_log должно происходить на уровне UI/оркестратора,
         # здесь мы просто гарантируем, что пайплайн не упадет (Graceful Degradation).
         return None
+
+
+# Дефолтный список служебных/системных колонок, которые обычно попадают
+# в данные как побочный эффект экспорта/парсинга (индексы, авто-нумерация и т.п.),
+# а не как реальные признаки для анализа.
+DEFAULT_SERVICE_COLUMN_NAMES = [
+    'row_id', 'index', 'level_0', 'level_1', 'unnamed', 'unnamed: 0'
+]
+
+
+def drop_service_columns(
+    df: pd.DataFrame,
+    service_names: Optional[List[str]] = None
+) -> Tuple[pd.DataFrame, List[str]]:
+    """
+    Удаляет служебные/системные колонки (row_id, index, unnamed и т.п.).
+    Сравнение имён регистронезависимое.
+
+    ЗАМЕНА ДЛЯ: 2 независимые инлайн-копии этой логики в app.py (ветка
+    загрузки файла и ветка загрузки из БД) -- вторая копия ссылалась на
+    неверную переменную (df вместо df_db), что приводило к NameError при
+    первой загрузке из БД в новой сессии.
+
+    Args:
+        df: DataFrame для очистки
+        service_names: список имён служебных колонок (регистронезависимо).
+            Если не передан, используется DEFAULT_SERVICE_COLUMN_NAMES.
+
+    Returns:
+        Tuple (df_cleaned, dropped_column_names): очищенный DataFrame и
+        список реально удалённых колонок (в исходном написании).
+    """
+    names_to_match = service_names if service_names is not None else DEFAULT_SERVICE_COLUMN_NAMES
+    names_lower = {str(n).lower() for n in names_to_match}
+
+    cols_to_drop = [c for c in df.columns if str(c).lower() in names_lower]
+
+    if not cols_to_drop:
+        return df, []
+
+    return df.drop(columns=cols_to_drop), cols_to_drop

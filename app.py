@@ -23,8 +23,6 @@ from statsmodels.tsa.stattools import acf, adfuller
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 import importlib
-import validation.engine
-importlib.reload(validation.engine)
 from validation.engine import validate_regular_step, validate_consistency
 
 
@@ -46,7 +44,7 @@ from validation.engine import (
 from validation.missing import analyze_missing
 from validation.outliers import detect_outliers
 from src.catalog.recommender import CISStatRecommender
-from app.core.utils import safe_stat, _safe_nunique
+from app.core.utils import safe_stat, _safe_nunique, drop_service_columns
 from app.core.passport import _hurst_exponent as hurst_exponent, calculate_ts_props_quick
 from app.core.passport import calculate_ts_passport
 from app.core.passport import _compare_ts_props
@@ -618,12 +616,8 @@ if data_source == "◉ Файл .xlsx, .xls, .csv, .json":
                             st.sidebar.info(f"📈 Сортировка по {primary_date}")
 
                     # ОЧИСТКА ОТ СИСТЕМНЫХ КОЛОНОК
-                    service_cols = [
-                        c for c in df.columns
-                        if c.lower() in ['row_id', 'index', 'level_0', 'level_1', 'unnamed', 'unnamed: 0']
-                    ]
+                    df, service_cols = drop_service_columns(df)
                     if service_cols:
-                        df = df.drop(columns=service_cols)
                         st.sidebar.toast(f"Удалены системные колонки: {service_cols}")
 
                     # Обновление session_state (теперь уже чистого df)
@@ -756,13 +750,9 @@ else:  # Этот else на одном уровне с if выше!
                             df_db.columns = df_db.columns.astype(str).str.strip()
                             df_db, detected_dates, ts_active, primary_date = robust_datetime_detector(df_db)
 
-                            # ОЧИСТКА ОТ СИСТЕМНЫХ КОЛОНОК (ВСТАВИТЬ СЮДА, ДО СОХРАНЕНИЯ В СЕССИЮ)
-                            service_cols = [
-                                c for c in df.columns
-                                if c.lower() in ['row_id', 'index', 'level_0', 'level_1', 'unnamed', 'unnamed: 0']
-                            ]
+                            # ОЧИСТКА ОТ СИСТЕМНЫХ КОЛОНОК
+                            df_db, service_cols = drop_service_columns(df_db)
                             if service_cols:
-                                df = df.drop(columns=service_cols)
                                 st.sidebar.toast(f"Удалены системные колонки: {service_cols}")
 
                             # Обновление session_state
@@ -8743,7 +8733,10 @@ with tab_preprocessing:
                 group_sorted = group_df.sort_values(date_col)
                 group_ts = group_sorted.set_index(date_col)
                 
-                group_freq = pd.infer_freq(group_ts.index.drop_duplicates().sort_values())
+                try:
+                    group_freq = pd.infer_freq(group_ts.index.drop_duplicates().sort_values())
+                except (ValueError, TypeError):
+                    group_freq = None
                 if group_freq and all_inferred_freq is None:
                     all_inferred_freq = group_freq
                 
@@ -13609,3 +13602,7 @@ with tab_modeling:
     """, unsafe_allow_html=True)
 
 # Пора разгрузить app.py, ребяты!!!
+
+
+
+
