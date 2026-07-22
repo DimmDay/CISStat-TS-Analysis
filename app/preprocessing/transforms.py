@@ -1,7 +1,9 @@
-# app/preprocessing/transforms.py
+﻿# app/preprocessing/transforms.py
 import numpy as np
 import pandas as pd
 from typing import Optional, Literal
+
+from app.core.passport import _hurst_exponent as hurst_exponent
 
 # Типизация для методов дифференцирования
 DiffMethod = Literal['first', 'seasonal', 'second', 'log', 'fractional', 'combined']
@@ -547,7 +549,7 @@ def compute_row_properties(series: pd.Series, name: str = "") -> dict:
     # 10. ДОЛГАЯ ПАМЯТЬ (Hurst Exponent)
     try:
 
-        H = hurst_exponent(series.dropna())
+        H = hurst_exponent(series.dropna().values)
         if H > 0.6:
             props['long_memory'] = f'🔴 Персистентность (H={H:.2f})'
         elif H < 0.4:
@@ -579,5 +581,7 @@ def compute_row_properties(series: pd.Series, name: str = "") -> dict:
         props['distribution_type'] = 'Эмпирическое'
 
     return props
+
+
 
 
