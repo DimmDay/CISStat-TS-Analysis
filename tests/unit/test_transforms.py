@@ -1,4 +1,4 @@
-# tests/unit/test_transforms.py
+﻿# tests/unit/test_transforms.py
 """
 Unit-тесты для app/preprocessing/transforms.py::compute_row_properties.
  
@@ -68,4 +68,82 @@ class TestComputeRowPropertiesLongMemory:
         series = pd.Series([1.0, 2.0, 3.0])
         props = compute_row_properties(series)
         assert "error" in props
+
+# tests/unit/test_transforms.py (добавить в существующий файл рядом с TestComputeRowPropertiesLongMemory)
+"""
+Тесты для run_stationarity_tests.
+ 
+Обнаруженный баг: `from statsmodels.tsa.stattools import PhillipsPerron`
+стоял в общем try/except вместе с adfuller/kpss. PhillipsPerron не
+существует в statsmodels (это класс из библиотеки `arch.unitroot`) --
+импорт ВСЕГДА кидал ImportError, который ловился внешним
+`except ImportError` и обрушивал ВСЮ функцию до {'error': ...},
+даже не доходя до ADF/KPSS/консенсуса.
+ 
+Уже существующий fallback для PP ('если PP недоступен, используем ADF
+как proxy') был написан правильно, но не мог сработать, потому что
+импорт был вынесен за пределы своего локального try/except -- ровно
+как уже сделано для Zivot-Andrews.
+"""
+import numpy as np
+import pandas as pd
+ 
+from app.preprocessing.transforms import run_stationarity_tests
+ 
+ 
+class TestRunStationarityTests:
+ 
+    def test_does_not_return_top_level_error_for_valid_series(self):
+        """
+        КРИТЕРИЙ ПРИЁМКИ ФИКСА: функция должна доходить до ADF/KPSS/консенсуса,
+        а не обрываться на {'error': 'Не установлены необходимые библиотеки: ...'}
+        из-за некорректного импорта PhillipsPerron.
+        """
+        rng = np.random.default_rng(42)
+        white_noise = pd.Series(rng.normal(0, 1, 200))
+        results = run_stationarity_tests(white_noise)
+ 
+        assert "error" not in results, f"Функция обрушилась целиком: {results.get('error')}"
+        assert "adf" in results
+        assert "kpss" in results
+        assert "pp" in results
+        assert "consensus" in results
+        assert "recommendation" in results
+ 
+    def test_white_noise_detected_as_stationary(self):
+        """Белый шум должен быть распознан как стационарный (ADF + KPSS согласны)."""
+        rng = np.random.default_rng(1)
+        white_noise = pd.Series(rng.normal(0, 1, 300))
+        results = run_stationarity_tests(white_noise)
+ 
+        assert bool(results["adf"]["is_stationary"]) is True
+        assert results["consensus"] in ("stationary", "trend-stationary")
+ 
+    def test_pp_result_has_expected_keys_regardless_of_arch_availability(self):
+        """
+        pp должен иметь валидную структуру независимо от того, установлен ли
+        пакет arch: либо реальный расчёт (stat/pvalue/is_stationary), либо
+        fallback на ADF (тоже stat/pvalue/is_stationary + note).
+        """
+        rng = np.random.default_rng(2)
+        series = pd.Series(rng.normal(0, 1, 150))
+        results = run_stationarity_tests(series)
+ 
+        assert "pp" in results
+        assert "stat" in results["pp"]
+        assert "pvalue" in results["pp"]
+        assert "is_stationary" in results["pp"]
+ 
+    def test_za_present_with_fallback_note_or_real_result(self):
+        """Zivot-Andrews (уже был защищён локальным try) должен быть на месте, как и раньше."""
+        rng = np.random.default_rng(3)
+        series = pd.Series(rng.normal(0, 1, 150))
+        results = run_stationarity_tests(series)
+        assert "za" in results
+ 
+    def test_short_series_returns_error(self):
+        """Ряд короче 30 точек -- это осознанная валидация, а не баг: error ожидаем."""
+        series = pd.Series(np.arange(10.0))
+        results = run_stationarity_tests(series)
+        assert "error" in results
  

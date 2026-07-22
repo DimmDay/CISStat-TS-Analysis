@@ -258,7 +258,6 @@ def run_stationarity_tests(series: pd.Series, max_lag: int = None) -> dict:
 
     try:
         from statsmodels.tsa.stattools import adfuller, kpss
-        from statsmodels.tsa.stattools import PhillipsPerron
 
         # ── 1. ADF TEST ──────────────────────────
         # H0: ряд имеет единичный корень (нестационарен)
@@ -298,6 +297,7 @@ def run_stationarity_tests(series: pd.Series, max_lag: int = None) -> dict:
         # ── 3. PHILLIPS-PERRON TEST ──────────────
         # Альтернатива ADF, устойчива к гетероскедастичности
         try:
+            from arch.unitroot import PhillipsPerron
             pp_result = PhillipsPerron(series.dropna(), lags=max_lag_adf)
             results['pp'] = {
                 'stat': pp_result.stat,
