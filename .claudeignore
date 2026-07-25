@@ -1,0 +1,41 @@
+﻿# Virtual environments
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Node modules
+node_modules/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.next/
+*.min.js
+*.min.css
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+
+# Logs and cache
+*.log
+.cache/
+.pytest_cache/
+
+# Data files (usually large)
+*.csv
+*.xlsx
+*.parquet
+*.sqlite
+*.db
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
