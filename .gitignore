@@ -112,3 +112,14 @@ dmypy.json~$*
 # Разрешить тестовые фикстуры
 !tests/fixtures/*.csv
 .venv_ci_check/
+
+
+node_modules/
+.next/
+out/
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
+__pycache__/
+*.pyc
+
