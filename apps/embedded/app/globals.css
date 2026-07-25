@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Общие токены/утилиты дизайн-системы -- физически в packages/ui/globals.css.
+   Если сборка не резолвит @import из другого workspace-пакета "из коробки",
+   настройте postcss-import, либо временно скопируйте содержимое файла сюда. */
+@import "@cisstat/ui/globals.css";

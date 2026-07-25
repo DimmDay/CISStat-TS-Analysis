@@ -1,0 +1,15 @@
+{
+  "name": "cisstat-ts-analysis-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/embedded",
+    "apps/standalone"
+  ],
+  "scripts": {
+    "dev:embedded": "npm run dev --workspace=@cisstat/ts-analysis-embedded",
+    "dev:standalone": "npm run dev --workspace=@cisstat/ts-analysis-standalone",
+    "build:all": "npm run build --workspace=@cisstat/ts-analysis-embedded && npm run build --workspace=@cisstat/ts-analysis-standalone",
+    "typecheck:all": "npm run typecheck --workspace=@cisstat/ts-analysis-embedded && npm run typecheck --workspace=@cisstat/ts-analysis-standalone"
+  }
+}
