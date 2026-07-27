@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ProductHeader } from "@/components/ProductHeader";
+import { AppShellProvider, DatasetContextBar } from "@cisstat/ui";
 
 const inter = Inter({ subsets: ["latin", "cyrillic"], variable: "--font-sans" });
 
@@ -15,7 +16,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ru" className={inter.variable}>
       <body>
         <ProductHeader />
-        <main className="max-w-[1600px] mx-auto px-6 py-6">{children}</main>
+        <AppShellProvider>
+          <DatasetContextBar />
+          <main className="max-w-[1600px] mx-auto px-6 py-6">{children}</main>
+        </AppShellProvider>
       </body>
     </html>
   );

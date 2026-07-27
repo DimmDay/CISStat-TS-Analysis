@@ -57,35 +57,32 @@ export function TsAnalysisPreprocessing() {
 
   return (
     <div className="flex gap-6">
-      <aside className="w-64 shrink-0">
-        <h2 className="font-semibold mb-2">Прогресс: Предобработка</h2>
-
-        <div className="w-full bg-neutral-200 rounded-full h-2 mb-1">
-          <div className="bg-brand h-2 rounded-full transition-all" style={{ width: `${progressPct}%` }} />
-        </div>
-        <p className="text-xs text-neutral-500 mb-4">{doneCount} из {CHECKS.length} проверок пройдено</p>
-
-        <div className="grid grid-cols-5 gap-1">
-          {CHECKS.map((check) => (
-            <button
-              key={check.id}
-              title={check.label}
-              onClick={() => setActiveCheckId(check.id)}
-              className={`rounded p-2 text-lg transition-colors ${
-                check.id === activeCheckId ? "bg-brand text-white" : "bg-brand-light hover:bg-brand-light/70"
-              }`}
-            >
-              <StatusIcon status={check.status} />
-            </button>
-          ))}
-        </div>
-        <p className="text-xs text-neutral-500 mt-2">
-          Текущая: <strong>{activeCheck.label}</strong>
+      {/* Степпер: узкая вертикальная колонка иконок вместо широкой сетки --
+          освобождает пространство для графика (см. правку по фидбэку). */}
+      <aside className="w-14 shrink-0 flex flex-col items-center gap-1.5 pt-1">
+        <p className="text-[10px] text-neutral-500 text-center leading-tight mb-0.5">
+          {doneCount}/{CHECKS.length}
         </p>
+        <div className="w-full bg-neutral-200 rounded-full h-1 mb-1">
+          <div className="bg-brand h-1 rounded-full transition-all" style={{ width: `${progressPct}%` }} />
+        </div>
+        {CHECKS.map((check) => (
+          <button
+            key={check.id}
+            title={`${check.label}${check.count ? ` (${check.count})` : ""}`}
+            onClick={() => setActiveCheckId(check.id)}
+            className={`w-10 h-10 rounded flex items-center justify-center text-base shrink-0 transition-colors ${
+              check.id === activeCheckId ? "bg-brand text-white" : "bg-brand-light hover:bg-brand-light/70"
+            }`}
+          >
+            <StatusIcon status={check.status} />
+          </button>
+        ))}
       </aside>
 
-      <section className="flex-[2] min-w-0">
-        <div className="max-h-[640px] overflow-y-auto pr-2 space-y-6 feed-scroll">
+      {/* Список проверок: сужен (flex-1), уступает место графику справа. */}
+      <section className="flex-1 min-w-0">
+        <div className="max-h-[720px] overflow-y-auto pr-2 space-y-6 feed-scroll">
           {orderedChecks.map((check) => (
             <article
               key={check.id}
@@ -127,16 +124,18 @@ export function TsAnalysisPreprocessing() {
         </div>
       </section>
 
-      <aside className="flex-1 min-w-[280px]">
+      {/* График: теперь доминирующая по ширине и высоте колонка --
+          графики "один из верхних приоритетов" (правка по фидбэку). */}
+      <aside className="flex-[2] min-w-[420px]">
         <div className="sticky top-6">
           <h3 className="font-semibold mb-1">Обзор: {activeCheck.label}</h3>
           <p className="text-xs text-neutral-500 mb-3">Меняется автоматически под активную проверку.</p>
 
-          <div className="bg-brand-light rounded-lg h-[320px] flex items-center justify-center text-sm text-neutral-500">
+          <div className="bg-brand-light rounded-lg h-[520px] flex items-center justify-center text-sm text-neutral-500">
             [ график для «{activeCheck.label}» ]
           </div>
 
-          <div className="grid grid-cols-2 gap-3 mt-4">
+          <div className="grid grid-cols-4 gap-3 mt-4">
             <Metric label="Строк" value="200" />
             <Metric label="Пропусков" value="11" />
             <Metric label="Выбросов" value="3" />
