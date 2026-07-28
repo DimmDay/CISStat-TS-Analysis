@@ -1,6 +1,8 @@
 // apps/embedded/app/analytics/ts-analysis/page.tsx
-import { TsAnalysisPreprocessing } from "@cisstat/ui";
+// Старый путь -- оставлен как редирект на унифицированный /preprocessing,
+// чтобы не сломать уже существующие ссылки/закладки.
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <TsAnalysisPreprocessing />;
+  redirect("/preprocessing");
 }

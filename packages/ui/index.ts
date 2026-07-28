@@ -7,10 +7,13 @@ export type { CheckStatus } from "./components/StatusIcon";
 export { TsAnalysisPreprocessing } from "./components/TsAnalysisPreprocessing";
 export { default as tailwindPreset } from "./tailwind-preset";
 
-// Глобальный shell: активный датасет + лог событий (см. решение по
-// фидбэку -- убрали постоянную боковую панель, оставили лёгкий контекст-бар).
+// Глобальный shell: активный датасет + лог событий.
 export { AppShellProvider, useAppShell } from "./context/AppShellContext";
 export type { LogEntry, ActiveDataset } from "./context/AppShellContext";
 export { DatasetContextBar } from "./components/DatasetContextBar";
 export { EventsLogDrawer } from "./components/EventsLogDrawer";
 export { DataUploadForm } from "./components/DataUploadForm";
+
+// Навигация между модулями анализа (Загрузка/Валидация/Предобработка/...).
+export { ModuleNav } from "./components/ModuleNav";
+export { ModulePlaceholder } from "./components/ModulePlaceholder";

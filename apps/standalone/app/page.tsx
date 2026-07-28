@@ -9,7 +9,7 @@ export default function Home() {
         для интеграции в сторонние ИТ-системы.
       </p>
       <div className="flex gap-3">
-        <Link href="/dashboard/ts-analysis" className="bg-brand text-white rounded px-4 py-2 text-sm">
+        <Link href="/preprocessing" className="bg-brand text-white rounded px-4 py-2 text-sm">
           Открыть в браузере →
         </Link>
         <Link href="/docs" className="border border-neutral-300 rounded px-4 py-2 text-sm">
