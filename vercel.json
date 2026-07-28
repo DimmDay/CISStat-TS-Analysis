@@ -1,0 +1,1 @@
+{"framework":"nextjs","buildCommand":"npx next build apps/standalone","outputDirectory":"apps/standalone/.next","installCommand":"npm install"}
