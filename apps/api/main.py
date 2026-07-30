@@ -12,13 +12,15 @@ apps/api рядом с app.py в том же репозитории, а не в 
 Два семейства роутов:
 - /v1/public/*   -- для внешних покупателей, авторизация по API-ключу
 - /v1/internal/* -- для embedded-режима (доверяет сессии портала)
+- /v1/models/*   -- ПРИМЕР эндпоинта, защищённого по ВОЗМОЖНОСТИ
+                     (require_capability("can_train_models")), см. plans.py
 
 Запуск (для разработки): uvicorn main:app --reload --port 8000
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import public, internal
+from routers import public, internal, models
 
 app = FastAPI(
     title="CISStat TS Analysis API",
@@ -38,6 +40,7 @@ app.add_middleware(
 
 app.include_router(public.router, prefix="/v1/public", tags=["public"])
 app.include_router(internal.router, prefix="/v1/internal", tags=["internal"])
+app.include_router(models.router, prefix="/v1/models", tags=["models"])
 
 
 @app.get("/health")
