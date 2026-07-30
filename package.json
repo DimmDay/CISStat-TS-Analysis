@@ -6,6 +6,10 @@
     "apps/embedded",
     "apps/standalone"
   ],
+  "dependencies": {
+    "react-dropzone": "^14.2.3",
+    "sonner": "^1.4.0"
+  },
   "scripts": {
     "dev:embedded": "npm run dev --workspace=@cisstat/ts-analysis-embedded",
     "dev:standalone": "npm run dev --workspace=@cisstat/ts-analysis-standalone",
