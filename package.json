@@ -11,5 +11,9 @@
     "dev:standalone": "npm run dev --workspace=@cisstat/ts-analysis-standalone",
     "build:all": "npm run build --workspace=@cisstat/ts-analysis-embedded && npm run build --workspace=@cisstat/ts-analysis-standalone",
     "typecheck:all": "npm run typecheck --workspace=@cisstat/ts-analysis-embedded && npm run typecheck --workspace=@cisstat/ts-analysis-standalone"
+  },
+  "dependencies": {
+    "react-dropzone": "^19.1.1",
+    "sonner": "^2.0.7"
   }
 }
