@@ -4,6 +4,12 @@
   "private": true,
   "main": "./index.ts",
   "types": "./index.ts",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "lucide-react": "^1.27.0"
   },
