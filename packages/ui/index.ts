@@ -23,3 +23,4 @@ export { ModulePlaceholder } from "./components/ModulePlaceholder";
 export { getCapabilities, PLAN_DEFINITIONS } from "./lib/plans";
 export type { Role, PlanName, Capabilities } from "./lib/plans";
 export { TrainModelButton } from "./components/TrainModelButton";
+export * from "./DataUploadForm";
