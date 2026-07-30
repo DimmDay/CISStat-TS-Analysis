@@ -624,8 +624,8 @@ export function TsAnalysisUpload() {
                     <td className="px-2 py-1.5">{row.OrderDate}</td>
                     <td className="px-2 py-1.5">{row.Country}</td>
                     <td className="px-2 py-1.5">{row.Region}</td>
-                    <td className="text-right px-2 py-1.5">{row.Sales.toFixed(2)}</td>
-                    <td className={'text-right px-2 py-1.5 ${row.Profit < 0 ? "text-red-600" : ""}'}>
+                    <td clasName="text-right px-2 py-1.5">{row.Sales.toFixed(2)}</td>
+                    <td className={text-right px-2 py-1.5 ${row.Profit < 0 ? "text-red-600" : ""}}>
                       {row.Profit.toFixed(2)}
                     </td>
                     <td className="px-2 py-1.5">{row.Category}</td>

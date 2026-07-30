@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "apps/standalone/package.json",
+      "use": "@vercel/next",
+      "config": { "installCommand": "npm install" }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "apps/standalone"
+    }
+  ]
+}

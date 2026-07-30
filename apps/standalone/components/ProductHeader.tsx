@@ -12,7 +12,7 @@
 // продукт под общим брендом)?
 
 import Link from "next/link";
-import { LuUser } from "react-icons/lu";
+import { User } from "lucide-react";
 
 const NAV_ITEMS = [
   { label: "Продукт", href: "/product" },
@@ -41,7 +41,7 @@ export function ProductHeader() {
           aria-label="Личный кабинет"
           className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-200 hover:bg-neutral-300"
         >
-          <LuUser size={14} aria-hidden="true" />
+          <User size={14} aria-hidden="true" />
         </button>
       </div>
     </div>

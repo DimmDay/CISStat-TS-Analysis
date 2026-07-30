@@ -17,3 +17,10 @@ export { DataUploadForm } from "./components/DataUploadForm";
 // Навигация между модулями анализа (Загрузка/Валидация/Предобработка/...).
 export { ModuleNav } from "./components/ModuleNav";
 export { ModulePlaceholder } from "./components/ModulePlaceholder";
+
+// Контракт Роль/План/Возможности (зеркало apps/api/plans.py) -- только для UX,
+// реальная защита на бэкенде.
+export { getCapabilities, PLAN_DEFINITIONS } from "./lib/plans";
+export type { Role, PlanName, Capabilities } from "./lib/plans";
+export { TrainModelButton } from "./components/TrainModelButton";
+export * from "./DataUploadForm";
