@@ -12,7 +12,7 @@ export { AppShellProvider, useAppShell } from "./context/AppShellContext";
 export type { LogEntry, ActiveDataset } from "./context/AppShellContext";
 export { DatasetContextBar } from "./components/DatasetContextBar";
 export { EventsLogDrawer } from "./components/EventsLogDrawer";
-export { DataUploadForm } from "./components/DataUploadForm";
+export { DataUploadForm } from "./components/DataUploadForm";  // ← Оставляем только этот экспорт
 
 // Навигация между модулями анализа (Загрузка/Валидация/Предобработка/...).
 export { ModuleNav } from "./components/ModuleNav";
@@ -23,4 +23,3 @@ export { ModulePlaceholder } from "./components/ModulePlaceholder";
 export { getCapabilities, PLAN_DEFINITIONS } from "./lib/plans";
 export type { Role, PlanName, Capabilities } from "./lib/plans";
 export { TrainModelButton } from "./components/TrainModelButton";
-export * from "./DataUploadForm";
