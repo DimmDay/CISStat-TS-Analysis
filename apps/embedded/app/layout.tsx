@@ -1,29 +1,31 @@
+// apps/embedded/app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { PortalNavBar, AppShellProvider, DatasetContextBar, ModuleNav } from "@cisstat/ui";
+import { AppShellProvider } from "@cisstat/ui";
+import { PortalNavBar, ModuleNav } from "@cisstat/ui";
+import { Toaster } from "sonner";
 
-const inter = Inter({ subsets: ["latin", "cyrillic"], variable: "--font-sans" });
+const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
 export const metadata: Metadata = {
-  title: "CISStat — Анализ временных рядов",
-  description: "Платформа анализа временных рядов, встроенная в портал CISStat",
+  title: "CISStat TS Analysis (Embedded)",
+  description: "Анализ временных рядов — встроенный модуль портала CISStat",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="ru" className={inter.variable}>
-      <body>
-        {/* ЗАМЕНИТЬ: логотип-шапка + поисковая строка с ИИ-агентом портала --
-            это отдельные компоненты, ещё не присланные (см. README).
-            PortalNavBar -- только вторая строка (ссылки разделов портала). */}
-        <PortalNavBar />
+    <html lang="ru">
+      <body className={inter.className}>
         <AppShellProvider>
-          {/* Лёгкий контекст-бар: активный датасет + лог по клику. */}
-          <DatasetContextBar />
-          {/* Навигация МЕЖДУ МОДУЛЯМИ анализа -- аналог st.tabs() в Streamlit. */}
+          <PortalNavBar />
           <ModuleNav />
-          <main className="max-w-[1600px] mx-auto px-6 py-6">{children}</main>
+          <main className="p-4">{children}</main>
+          <Toaster />
         </AppShellProvider>
       </body>
     </html>

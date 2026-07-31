@@ -1,25 +1,31 @@
+// apps/standalone/app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { ProductHeader } from "@/components/ProductHeader";
-import { AppShellProvider, DatasetContextBar, ModuleNav } from "@cisstat/ui";
+import { AppShellProvider } from "@cisstat/ui";
+import { ProductHeader, ModuleNav } from "@cisstat/ui";
+import { Toaster } from "sonner";
 
-const inter = Inter({ subsets: ["latin", "cyrillic"], variable: "--font-sans" });
+const inter = Inter({ subsets: ["latin", "cyrillic"] });
 
 export const metadata: Metadata = {
-  title: "CISStat TS Analysis",
-  description: "Платформа анализа временных рядов — самостоятельный продукт: веб и API",
+  title: "CISStat TS Analysis (Standalone)",
+  description: "Автономная платформа для анализа временных рядов",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="ru" className={inter.variable}>
-      <body>
-        <ProductHeader />
+    <html lang="ru">
+      <body className={inter.className}>
         <AppShellProvider>
-          <DatasetContextBar />
+          <ProductHeader />
           <ModuleNav />
-          <main className="max-w-[1600px] mx-auto px-6 py-6">{children}</main>
+          <main className="p-4">{children}</main>
+          <Toaster />
         </AppShellProvider>
       </body>
     </html>

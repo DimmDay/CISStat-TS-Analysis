@@ -17,10 +17,13 @@ apps/api рядом с app.py в том же репозитории, а не в 
 
 Запуск (для разработки): uvicorn main:app --reload --port 8000
 """
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import public, internal, models
+from apps.api.routers import public, internal, models
 
 app = FastAPI(
     title="CISStat TS Analysis API",
