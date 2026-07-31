@@ -12,7 +12,7 @@ export { AppShellProvider, useAppShell } from "./context/AppShellContext";
 export type { LogEntry, ActiveDataset } from "./context/AppShellContext";
 export { DatasetContextBar } from "./components/DatasetContextBar";
 export { EventsLogDrawer } from "./components/EventsLogDrawer";
-export { DataUploadForm } from "./components/DataUploadForm";  // ← Оставляем только этот экспорт
+export { DataUploadForm } from "./components/DataUploadForm";
 
 // Навигация между модулями анализа (Загрузка/Валидация/Предобработка/...).
 export { ModuleNav } from "./components/ModuleNav";

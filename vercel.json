@@ -1,16 +1,6 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "apps/standalone/package.json",
-      "use": "@vercel/next",
-      "config": { "installCommand": "npm install" }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "apps/standalone"
-    }
-  ]
+  "framework": "nextjs",
+  "buildCommand": "npm run build --workspace=@cisstat/ts-analysis-standalone",
+  "outputDirectory": "apps/standalone/.next",
+  "installCommand": "npm install"
 }

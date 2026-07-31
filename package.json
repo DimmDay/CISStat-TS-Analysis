@@ -6,15 +6,16 @@
     "apps/embedded",
     "apps/standalone"
   ],
-  "dependencies": {
-    "react-dropzone": "^19.1.1",
-    "sonner": "^2.0.7"
-  },
   "scripts": {
     "dev:embedded": "npm run dev --workspace=@cisstat/ts-analysis-embedded",
     "dev:standalone": "npm run dev --workspace=@cisstat/ts-analysis-standalone",
+    "build": "npm run build --workspace=@cisstat/ts-analysis-standalone",
     "build:all": "npm run build --workspace=@cisstat/ts-analysis-embedded && npm run build --workspace=@cisstat/ts-analysis-standalone",
     "typecheck:all": "npm run typecheck --workspace=@cisstat/ts-analysis-embedded && npm run typecheck --workspace=@cisstat/ts-analysis-standalone"
+  },
+  "overrides": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.0",
