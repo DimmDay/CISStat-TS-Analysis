@@ -16,7 +16,7 @@
     "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./*"],
-      "@cisstat/ui": ["../../packages/ui/index_fixed.ts"],
+      "@cisstat/ui": ["../../packages/ui/index.ts"],
       "@cisstat/ui/*": ["../../packages/ui/*"]
     }
   },
