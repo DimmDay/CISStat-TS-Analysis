@@ -212,7 +212,7 @@ export function TsAnalysisPreprocessing() {
               )}
               {check.status === "done" && (
                 <p className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
-                  Проверка пройдена, нарушений не найдено
+                  Проверка пройдена, нарушений нет
                 </p>
               )}
 
