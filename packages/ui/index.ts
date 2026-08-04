@@ -5,7 +5,7 @@ export { Metric } from "./components/Metric";
 export { StatusIcon, STATUS_ICON } from "./components/StatusIcon";
 export type { CheckStatus } from "./components/StatusIcon";
 export { TsAnalysisPreprocessing } from "./components/TsAnalysisPreprocessing";
-export { TsAnalysisUpload } from "./components/TsAnalysisUpload";
+export { TsAnalysisValidation } from "./components/TsAnalysisValidation";
 export { default as tailwindPreset } from "./tailwind-preset";
 
 // Глобальный shell: активный датасет + лог событий.
