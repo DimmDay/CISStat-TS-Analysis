@@ -84,3 +84,54 @@ class TestReadUploadedFileCsvHeader:
         assert pd.api.types.is_numeric_dtype(df["col_0"])
         assert pd.api.types.is_numeric_dtype(df["col_1"])
  
+ class MockUploadedFile:
+    """Mock для UploadFile (FastAPI)."""
+    def __init__(self, content, filename):
+        self.file = io.StringIO(content) if isinstance(content, str) else io.BytesIO(content)
+        self.name = filename
+        self.content_type = "text/csv" if filename.endswith(".csv") else "application/json"
+
+    def seek(self, pos):
+        self.file.seek(pos)
+
+    def read(self):
+        return self.file.read()
+
+def test_read_uploaded_file_csv_with_header():
+    """Тест чтения CSV с заголовком."""
+    csv_content = "date,value\n2023-01-01,10\n2023-01-02,20"
+    mock_file = MockUploadedFile(csv_content, "test.csv")
+    df, ext = read_uploaded_file(mock_file)
+    assert ext == "csv"
+    assert len(df) == 2
+    assert list(df.columns) == ["date", "value"]
+
+def test_read_uploaded_file_csv_without_header():
+    """Тест чтения CSV без заголовка."""
+    csv_content = "2023-01-01,10\n2023-01-02,20"
+    mock_file = MockUploadedFile(csv_content, "test.csv")
+    df, ext = read_uploaded_file(mock_file)
+    assert ext == "csv"
+    assert len(df) == 2
+    assert df.columns[0] == "col_0"  # Автоматически добавленный заголовок
+
+def test_read_uploaded_file_json():
+    """Тест чтения JSON-файла."""
+    json_content = '[{"date": "2023-01-01", "value": 10}, {"date": "2023-01-02", "value": 20}]'
+    mock_file = MockUploadedFile(json_content, "test.json")
+    df, ext = read_uploaded_file(mock_file)
+    assert ext == "json"
+    assert len(df) == 2
+    assert "date" in df.columns
+
+def test_read_uploaded_file_empty():
+    """Тест загрузки пустого файла."""
+    mock_file = MockUploadedFile("", "empty.csv")
+    with pytest.raises(ValueError, match="пуст"):
+        read_uploaded_file(mock_file)
+
+def test_read_uploaded_file_unsupported_format():
+    """Тест загрузки файла неверного формата."""
+    mock_file = MockUploadedFile("plain text", "test.txt")
+    with pytest.raises(ValueError, match="не поддерживается"):
+        read_uploaded_file(mock_file)

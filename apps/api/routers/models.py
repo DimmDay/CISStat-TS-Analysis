@@ -9,8 +9,8 @@
 """
 from fastapi import APIRouter, Depends
 
-from auth import require_capability, get_current_principal
-from plans import AuthenticatedPrincipal
+from apps.api.auth import require_capability, get_current_principal
+from apps.api.plans import AuthenticatedPrincipal
 
 router = APIRouter()
 

@@ -9,7 +9,21 @@
   "scripts": {
     "dev:embedded": "npm run dev --workspace=@cisstat/ts-analysis-embedded",
     "dev:standalone": "npm run dev --workspace=@cisstat/ts-analysis-standalone",
+    "build": "npm run build --workspace=@cisstat/ts-analysis-standalone",
     "build:all": "npm run build --workspace=@cisstat/ts-analysis-embedded && npm run build --workspace=@cisstat/ts-analysis-standalone",
     "typecheck:all": "npm run typecheck --workspace=@cisstat/ts-analysis-embedded && npm run typecheck --workspace=@cisstat/ts-analysis-standalone"
+  },
+  "overrides": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@types/jest": "^30.0.0",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "jest": "^30.4.2",
+    "ts-jest": "^29.4.12"
   }
 }

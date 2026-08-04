@@ -5,7 +5,6 @@ Pydantic-схемы запросов/ответов. Форма ответов �
 (мы её проверяли построчно за этот разговор) -- не выдумана заново.
 """
 from typing import Any, Dict, List, Optional
-
 from pydantic import BaseModel, Field
 
 
@@ -47,3 +46,18 @@ class RegularityResponse(BaseModel):
     gaps_count: int
     freq_info: Dict[str, Any]
     error: Optional[str] = None
+
+
+class PreviewData(BaseModel):
+    """Предпросмотр данных: первые и последние 5 строк."""
+    head: List[List[str]] = Field(..., description="Первые 5 строк (включая заголовки)")
+    tail: List[List[str]] = Field(..., description="Последние 5 строк")
+
+class UploadResponse(BaseModel):
+    """Ответ на загрузку файла."""
+    dataset_id: str = Field(..., description="Уникальный идентификатор датасета")
+    name: str = Field(..., description="Имя файла")
+    rows: int = Field(..., description="Количество строк")
+    columns: int = Field(..., description="Количество колонок")
+    preview: PreviewData = Field(..., description="Предпросмотр данных")
+    error: Optional[str] = Field(None, description="Ошибка при загрузке")

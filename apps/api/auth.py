@@ -19,7 +19,7 @@ import os
 
 from fastapi import Depends, Header, HTTPException, status
 
-from plans import AuthenticatedPrincipal, Capabilities, PlanName, Role
+from apps.api.plans import AuthenticatedPrincipal, Capabilities, PlanName, Role
 
 
 def _parse_key_registry() -> dict[str, AuthenticatedPrincipal]:
