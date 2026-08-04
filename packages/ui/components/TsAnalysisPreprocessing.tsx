@@ -67,7 +67,7 @@ const NUMERIC_FEATURES = [
 export function TsAnalysisPreprocessing() {
   const [activeCheckId, setActiveCheckId] = useState(CHECKS[0].id);
   const [activeFeature, setActiveFeature] = useState(NUMERIC_FEATURES[0]);
-  const [metricsText, setMetricsText] = useState("");
+  const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | null>(null);
 
   const doneCount = CHECKS.filter((c) => c.status === "done").length;
   const progressPct = Math.round((doneCount / CHECKS.length) * 100);
@@ -77,18 +77,20 @@ export function TsAnalysisPreprocessing() {
     a.id === activeCheckId ? -1 : b.id === activeCheckId ? 1 : 0
   );
 
-  // Populates the metrics text field when user clicks an accordion
-  const handleMetricsClick = (check: Check) => {
-    setMetricsText(
-      `Метрики и алгоритм: ${check.label}\n\n(содержимое — только текст, без графиков)`
-    );
+  // Переключение секции описания в центральном текстовом поле
+  const handleDescriptionClick = (check: Check, section: "metrics" | "pipeline") => {
+    setActiveCheckId(check.id);
+    setDescriptionSection(section);
   };
 
-  const handlePipelineClick = (check: Check) => {
-    setMetricsText(
-      `Полный пайплайн: ${check.label.toLowerCase()}\n\n(содержимое — только текст, без графиков)`
-    );
-  };
+  // Текст описания для центрального поля — вычисляется из активной проверки и секции
+  const descriptionContent = (() => {
+    if (!descriptionSection) return null;
+    if (descriptionSection === "metrics") {
+      return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
+    }
+    return `Полный пайплайн: ${activeCheck.label.toLowerCase()}\n\n1. Обнаружение → 2. Диагностика → 3. Преобразование → 4. Верификация\n\n${activeCheck.description}`;
+  })();
 
   return (
     <div className="flex gap-6">
@@ -146,18 +148,21 @@ export function TsAnalysisPreprocessing() {
 
       {/* ── ЦЕНТРАЛЬНАЯ КОЛОНКА: метрики-текст + график + метрики-карточки ── */}
       <section className="flex-1 min-w-0">
-        {/* Блок «Метрики и алгоритм» — текстовое поле над графиком */}
+        {/* Блок «Описание» — текстовое поле над графиком */}
         <div className="mb-5">
           <h3 className="font-semibold mb-1">
-            Метрики и алгоритм: {activeCheck.label}
+            Описание
           </h3>
           <p className="text-xs text-neutral-500 mb-2">
-            поле заполняется при нажатии в боковой панели
+            {descriptionSection
+              ? (descriptionSection === "metrics" ? "Метрики и алгоритм" : "Полный пайплайн") + ` — ${activeCheck.label}`
+              : "Выберите раздел в боковой панели"
+            }
           </p>
           <div className="rounded-lg bg-brand-light/50 border border-neutral-200 px-4 py-3 min-h-[120px] text-sm text-neutral-600 whitespace-pre-wrap">
-            {metricsText || (
+            {descriptionContent || (
               <span className="text-neutral-400 italic">
-                [текстовое поле для кнопок — Метрики и алгоритм / Справка по методу / Полный пайплайн]
+                Нажмите «Метрики и алгоритм» или «Полный пайплайн» в правой панели
               </span>
             )}
           </div>
@@ -205,31 +210,35 @@ export function TsAnalysisPreprocessing() {
               )}
               {check.status === "done" && (
                 <p className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
-                  Проверка пройдена, нарушений нет
+                  Проверка пройдена, нарушений не найдено
                 </p>
               )}
 
-              <p className="text-xs text-neutral-600 mb-2">{check.description}</p>
+              <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
 
-              <details
-                className="mb-2 rounded bg-brand-light px-3 py-2 text-sm"
-                open={check.id === activeCheckId}
-                onClick={() => handleMetricsClick(check)}
+              {/* Кнопка «Метрики и алгоритм» — активирует контент в центральном поле */}
+              <button
+                onClick={() => handleDescriptionClick(check, "metrics")}
+                className={`w-full mb-2 rounded px-3 py-2 text-sm text-left font-medium transition-colors ${
+                  check.id === activeCheckId && descriptionSection === "metrics"
+                    ? "bg-brand text-white"
+                    : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
+                }`}
               >
-                <summary className="cursor-pointer font-medium">Метрики и алгоритм</summary>
-                <p className="mt-2 text-neutral-600">(содержимое — только текст, без графиков)</p>
-              </details>
+                Метрики и алгоритм
+              </button>
 
-              <details
-                className="mb-3 rounded bg-brand-light px-3 py-2 text-sm"
-                open={check.id === activeCheckId}
-                onClick={() => handlePipelineClick(check)}
+              {/* Кнопка «Полный пайплайн» — активирует контент в центральном поле */}
+              <button
+                onClick={() => handleDescriptionClick(check, "pipeline")}
+                className={`w-full mb-3 rounded px-3 py-2 text-sm text-left font-medium transition-colors ${
+                  check.id === activeCheckId && descriptionSection === "pipeline"
+                    ? "bg-brand text-white"
+                    : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
+                }`}
               >
-                <summary className="cursor-pointer font-medium">
-                  Полный пайплайн: {check.label.toLowerCase()}
-                </summary>
-                <p className="mt-2 text-neutral-600">(содержимое — только текст, без графиков)</p>
-              </details>
+                Полный пайплайн
+              </button>
 
               <Button>Пересчитать свойства после преобразования ({check.label.toLowerCase()})</Button>
             </article>
