@@ -41,12 +41,12 @@ export function DatasetContextBar() {
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
-          className="relative flex items-center gap-1 text-brand hover:underline font-medium"
+          className="relative flex items-center gap-1 text-brand hover:underline font-normal"
           aria-label="Логи событий"
         >
           Логи событий
           {log.length > 0 && (
-            <span className="rounded-full bg-brand text-white text-[10px] px-1.5 py-0.5 leading-none">
+            <span className="rounded-full bg-brand text-white text-[9px] px-1.5 py-0.5 leading-none">
               {log.length}
             </span>
           )}

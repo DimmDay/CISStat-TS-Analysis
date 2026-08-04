@@ -205,11 +205,11 @@ export function TsAnalysisPreprocessing() {
               )}
               {check.status === "done" && (
                 <p className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
-                  Проверка пройдена, нарушений не найдено
+                  Проверка пройдена, нарушений нет
                 </p>
               )}
 
-              <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
+              <p className="text-xs text-neutral-600 mb-2">{check.description}</p>
 
               <details
                 className="mb-2 rounded bg-brand-light px-3 py-2 text-sm"
