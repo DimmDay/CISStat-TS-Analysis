@@ -159,7 +159,7 @@ export function TsAnalysisPreprocessing() {
               : "Выберите раздел в боковой панели"
             }
           </p>
-          <div className="rounded-lg bg-brand-light/50 border border-neutral-200 px-4 py-3 min-h-[120px] text-sm text-neutral-600 whitespace-pre-wrap">
+          <div className="rounded-lg bg-brand-light/50 border border-neutral-200 px-4 py-3 min-h-[170px] max-h-[170px] overflow-y-auto text-sm text-neutral-600 whitespace-pre-wrap">
             {descriptionContent || (
               <span className="text-neutral-400 italic">
                 Нажмите «Метрики и алгоритм» или «Полный пайплайн» в правой панели
@@ -190,7 +190,7 @@ export function TsAnalysisPreprocessing() {
 
       {/* ── ПРАВАЯ КОЛОНКА: список проверок (бывший центр) ── */}
       <aside className="w-80 shrink-0">
-        <div className="max-h-[720px] overflow-y-auto pr-2 space-y-5 feed-scroll">
+        <div className="max-h-[770px] overflow-y-auto pr-2 space-y-5 feed-scroll">
           {orderedChecks.map((check) => (
             <article
               key={check.id}
@@ -202,7 +202,9 @@ export function TsAnalysisPreprocessing() {
                 <StatusIcon status={check.status} /> Проверка: {check.label}
               </h3>
 
-              {/* Бейдж результата — сразу под заголовком */}
+              <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
+
+              {/* Бейдж результата — после описания */}
               {check.count !== null && check.count > 0 && (
                 <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
                   ⚠️ Найдено {check.count} нарушений
@@ -213,8 +215,6 @@ export function TsAnalysisPreprocessing() {
                   Проверка пройдена, нарушений не найдено
                 </p>
               )}
-
-              <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
 
               {/* Кнопка «Метрики и алгоритм» — активирует контент в центральном поле */}
               <button
