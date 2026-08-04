@@ -202,7 +202,7 @@ export function TsAnalysisPreprocessing() {
                 <StatusIcon status={check.status} /> Проверка: {check.label}
               </h3>
 
-              <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
+              <p className="text-xs text-neutral-600 mb-2">{check.description}</p>
 
               {/* Бейдж результата — после описания */}
               {check.count !== null && check.count > 0 && (
