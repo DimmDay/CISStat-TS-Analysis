@@ -62,12 +62,36 @@ const NUMERIC_FEATURES = [
   "price", "volume", "open", "high", "low", "close", "adj_close",
 ];
 
+// ── Справка по целям модуля «Предобработка» (из app.py) ───────────
+
+const PREPROCESSING_HELP = `Цели модуля "Предобработка"
+
+Большинство классических моделей временных рядов и нейросетей предъявляют строгие требования к данным:
+- отсутствие пропусков
+- стационарность
+- гомоскедастичность
+- нормальность распределения и др.
+
+Цель раздела. Применить математические преобразования, чтобы удовлетворить эти требования, сохранив при этом полезный сигнал (тренд, цикличность, сезонность). Предобработка решает задачу превращения данных в формат, пригодный для машинного обучения.
+
+Что мы получим на выходе? Применив обратные преобразования после предобработки, мы имеем трансформированный датасет, готовый к загрузке в блок «Моделирование». Пользователь получает рекомендации по доступным моделям прогнозирования и сравнительные паспорта свойств ряда для анализа их изменения:
+- v1.0 до валидации vs v1.3 после предобработки
+- v1.2 до предобработки vs v1.3 после предобработки
+
+Доступные преобразования:
+- Заполнение пропусков (interpolation, forward-fill, mean)
+- Удаление выбросов (IQR, Z-score, isolation forest)
+- Логарифмирование (log, log1p) — для гетероскедастичности
+- Дифференцирование (1-й, 2-й порядок) — для стационарности
+- Box-Cox / Yeo-Johnson — для нормальности
+- STL-декомпозиция — для удаления сезонности`;
+
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisPreprocessing() {
   const [activeCheckId, setActiveCheckId] = useState(CHECKS[0].id);
   const [activeFeature, setActiveFeature] = useState(NUMERIC_FEATURES[0]);
-  const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | null>(null);
+  const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | null>(null);
 
   const doneCount = CHECKS.filter((c) => c.status === "done").length;
   const progressPct = Math.round((doneCount / CHECKS.length) * 100);
@@ -83,8 +107,14 @@ export function TsAnalysisPreprocessing() {
     setDescriptionSection(section);
   };
 
+  // Показать/скрыть справку по целям модуля
+  const handleHelpClick = () => {
+    setDescriptionSection((prev) => prev === "help" ? null : "help");
+  };
+
   // Текст описания для центрального поля — вычисляется из активной проверки и секции
   const descriptionContent = (() => {
+    if (descriptionSection === "help") return PREPROCESSING_HELP;
     if (!descriptionSection) return null;
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
@@ -92,10 +122,40 @@ export function TsAnalysisPreprocessing() {
     return `Полный пайплайн: ${activeCheck.label.toLowerCase()}\n\n1. Обнаружение → 2. Диагностика → 3. Преобразование → 4. Верификация\n\n${activeCheck.description}`;
   })();
 
+  // Подзаголовок центрального поля
+  const descriptionSubtitle = (() => {
+    if (descriptionSection === "help") return "Справка — Цели модуля и результаты прохождения";
+    if (!descriptionSection) return "Выберите раздел в боковой панели";
+    if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
+    return `Полный пайплайн — ${activeCheck.label}`;
+  })();
+
   return (
     <div className="flex gap-6">
       {/* ── ЛЕВАЯ КОЛОНКА: селектор признака + прогресс + степпер ── */}
       <aside className="w-60 shrink-0 flex flex-col gap-3 pt-1">
+        {/* Заголовок модуля + справка */}
+        <div className="mb-1">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-neutral-800">
+              Preprocessing
+            </h2>
+            <button
+              onClick={handleHelpClick}
+              className={`text-xs px-2 py-1 rounded transition-colors ${
+                descriptionSection === "help"
+                  ? "bg-brand text-white"
+                  : "bg-brand-light text-neutral-700 hover:bg-brand-light/80"
+              }`}
+            >
+              Справка
+            </button>
+          </div>
+          <p className="text-[11px] text-neutral-500 mt-0.5">
+            Математические преобразования данных
+          </p>
+        </div>
+
         {/* Селектор числового признака */}
         <div>
           <label className="text-[11px] text-neutral-500 block mb-1">
@@ -130,7 +190,10 @@ export function TsAnalysisPreprocessing() {
           {CHECKS.map((check) => (
             <button
               key={check.id}
-              onClick={() => setActiveCheckId(check.id)}
+              onClick={() => {
+                setActiveCheckId(check.id);
+                if (descriptionSection === "help") setDescriptionSection(null);
+              }}
               className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors ${
                 check.id === activeCheckId
                   ? "bg-brand text-white border-brand"
@@ -154,15 +217,12 @@ export function TsAnalysisPreprocessing() {
             Описание
           </h3>
           <p className="text-xs text-neutral-500 mb-2">
-            {descriptionSection
-              ? (descriptionSection === "metrics" ? "Метрики и алгоритм" : "Полный пайплайн") + ` — ${activeCheck.label}`
-              : "Выберите раздел в боковой панели"
-            }
+            {descriptionSubtitle}
           </p>
           <div className="rounded-lg bg-brand-light/50 border border-neutral-200 px-4 py-3 min-h-[170px] max-h-[170px] overflow-y-auto text-sm text-neutral-600 whitespace-pre-wrap">
             {descriptionContent || (
               <span className="text-neutral-400 italic">
-                Нажмите «Метрики и алгоритм» или «Полный пайплайн» в правой панели
+                Нажмите «Метрики и алгоритм», «Полный пайплайн» или «Справка»
               </span>
             )}
           </div>
@@ -202,7 +262,7 @@ export function TsAnalysisPreprocessing() {
                 <StatusIcon status={check.status} /> Проверка: {check.label}
               </h3>
 
-              <p className="text-xs text-neutral-600 mb-2">{check.description}</p>
+              <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
 
               {/* Бейдж результата — после описания */}
               {check.count !== null && check.count > 0 && (
@@ -212,7 +272,7 @@ export function TsAnalysisPreprocessing() {
               )}
               {check.status === "done" && (
                 <p className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
-                  Проверка пройдена, нарушений нет
+                  Проверка пройдена, нарушений не найдено
                 </p>
               )}
 
