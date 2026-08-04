@@ -155,7 +155,7 @@ export function TsAnalysisValidation() {
         {/* Заголовок модуля + справка */}
         <div className="mb-1">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-neutral-800">
+            <h2 className="text-lg font-semibold text-neutral-800">
               Data Quality
             </h2>
             <button
