@@ -4,7 +4,7 @@
 //
 // Лёгкая, глобальная строка контекста -- НЕ полноразмерная боковая
 // панель. Показывает, какой датасет сейчас активен (нужно на любой
-// странице), и кнопку-колокольчик для лога событий (открывает
+// странице), и ссылку «Логи событий» для лога (открывает
 // выдвижную панель по клику, не занимает место постоянно).
 
 import { useState } from "react";
@@ -41,10 +41,10 @@ export function DatasetContextBar() {
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
-          className="relative flex items-center gap-1 text-neutral-600 hover:text-neutral-900"
-          aria-label="Лог событий"
+          className="relative flex items-center gap-1 text-brand hover:underline font-medium"
+          aria-label="Логи событий"
         >
-          🔔
+          Логи событий
           {log.length > 0 && (
             <span className="rounded-full bg-brand text-white text-[10px] px-1.5 py-0.5 leading-none">
               {log.length}

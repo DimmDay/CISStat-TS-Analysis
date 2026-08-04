@@ -11,8 +11,8 @@
 // Компоновка v2 (по макету «Компоновка2 вкладки_Предобработка»):
 //   [Левая ~240px]     [Центр flex-1]         [Правая ~320px]
 //   ▼ Признак: price   Метрики и алгоритм     Проверка: ...
-//   3/10 ████░░         [текстовое поле]       описание
-//   ┌─Пропуски──⚠─┐    Обзор: Пропуски        ⚠ 11 наруш.
+//   3/10 ████░░         [текстовое поле]       [бейдж результата]
+//   ┌─Пропуски──⚠─┐    Обзор: Пропуски        описание
 //   ├─Выбросы───⚠─┤    [график]               ▼ Метрики
 //   └─────────────┘    [Строк][Проп][Выбр]    ▼ Пайплайн
 //                                                [Пересчитать]
@@ -196,17 +196,8 @@ export function TsAnalysisPreprocessing() {
               <h3 className="font-semibold mb-1">
                 <StatusIcon status={check.status} /> Проверка: {check.label}
               </h3>
-              <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
 
-              <details
-                className="mb-2 rounded bg-brand-light px-3 py-2 text-sm"
-                open={check.id === activeCheckId}
-                onClick={() => handleMetricsClick(check)}
-              >
-                <summary className="cursor-pointer font-medium">Метрики и алгоритм</summary>
-                <p className="mt-2 text-neutral-600">(содержимое — только текст, без графиков)</p>
-              </details>
-
+              {/* Бейдж результата — сразу под заголовком */}
               {check.count !== null && check.count > 0 && (
                 <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
                   ⚠️ Найдено {check.count} нарушений
@@ -217,6 +208,17 @@ export function TsAnalysisPreprocessing() {
                   Проверка пройдена, нарушений не найдено
                 </p>
               )}
+
+              <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
+
+              <details
+                className="mb-2 rounded bg-brand-light px-3 py-2 text-sm"
+                open={check.id === activeCheckId}
+                onClick={() => handleMetricsClick(check)}
+              >
+                <summary className="cursor-pointer font-medium">Метрики и алгоритм</summary>
+                <p className="mt-2 text-neutral-600">(содержимое — только текст, без графиков)</p>
+              </details>
 
               <details
                 className="mb-3 rounded bg-brand-light px-3 py-2 text-sm"
