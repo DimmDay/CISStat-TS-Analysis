@@ -36,25 +36,27 @@ interface Check {
 
 const CHECKS: Check[] = [
   { id: "missing", label: "Пропуски", status: "warning", count: 11,
-    description: "Пропуски нарушают DatetimeIndex, делают невозможной STL-декомпозицию, искажают ACF/PACF и ломают ARIMA/SARIMA." },
+    description: "Пропуски нарушают DatetimeIndex, делают невозможной STL-декомпозицию, искажают ACF/PACF и ломают ARIMA/SARIMA. Стратегии: интерполяция, forward-fill, mean, drop." },
   { id: "outliers", label: "Выбросы", status: "warning", count: 1145,
-    description: "Выбросы завышают дисперсию, искажают оценки тренда и ломают тесты стационарности (ADF/KPSS)." },
-  { id: "duplicates", label: "Дубликаты", status: "done", count: 0,
-    description: "Дублирующиеся временные метки ломают уникальность индекса." },
-  { id: "regularity", label: "Регулярность шага", status: "pending", count: null,
-    description: "Нерегулярный шаг мешает корректной декомпозиции и прогнозированию." },
-  { id: "text_quality", label: "Качество текста", status: "pending", count: null,
-    description: "Мусорные символы и пустые строки искажают категориальный анализ." },
-  { id: "ranges", label: "Диапазоны значений", status: "done", count: 0,
-    description: "Значения вне допустимого диапазона искажают статистику." },
-  { id: "referential", label: "Ссылочная целостность", status: "pending", count: null,
-    description: "Нарушение ссылочной целостности между справочниками." },
-  { id: "formats", label: "Форматы", status: "warning", count: 3,
-    description: "Несогласованные форматы дат/чисел ломают парсинг." },
-  { id: "consistency", label: "Согласованность", status: "done", count: 0,
-    description: "Нарушение хронологии внутри групп панельных данных." },
-  { id: "ts_properties", label: "Свойства ряда", status: "pending", count: null,
-    description: "Базовые свойства ряда для выбора модели прогнозирования." },
+    description: "Выбросы завышают дисперсию, искажают оценки тренда и ломают тесты стационарности (ADF/KPSS). Методы: IQR, Z-score, MAD, Isolation Forest, LOF." },
+  { id: "regularity", label: "Регулярность ряда", status: "pending", count: null,
+    description: "Нерегулярный временной шаг мешает декомпозиции (STL), спектральному анализу (FFT) и моделям ARIMA. Решение: интерполяция gaps, ресемплирование к фиксированной частоте." },
+  { id: "decomposition", label: "Декомпозиция ряда", status: "pending", count: null,
+    description: "Разложение на Trend + Seasonal + Cycle + Residual методами STL, Classical, SEATS или X13. Диагностика остатков на нормальность и автокорреляцию." },
+  { id: "variance_stab", label: "Стабилизация дисперсии", status: "pending", count: null,
+    description: "Гетероскедастичность ломает доверительные интервалы и тесты. Трансформации: Box-Cox, Yeo-Johnson, log, sqrt. Параметры сохраняются для обратного преобразования." },
+  { id: "smoothing", label: "Сглаживание ряда", status: "pending", count: null,
+    description: "Удаление высокочастотного шума методами SMA, EMA, Holt-Winters, HP-filter, Savitzky-Golay или фильтром Калмана. Опциональный шаг для зашумлённых рядов." },
+  { id: "stationarity", label: "Обеспечение стационарности", status: "pending", count: null,
+    description: "Нестационарность ломает ACF/PACF и идентификацию ARIMA. Дифференцирование порядка d и сезонное D с контролем ADF/KPSS/PP. Порядок сохраняется для обратного преобразования." },
+  { id: "spectral", label: "Спектральный анализ", status: "pending", count: null,
+    description: "Разведочный анализ частотного состава ряда: FFT, periodogram, вейвлет-преобразование. Определяет доминантные частоты и сезонные периоды для генерации лаговых признаков." },
+  { id: "feature_eng", label: "Генерация признаков", status: "pending", count: null,
+    description: "Создание временных (hour, day, month), лаговых, скользящих статистик (rolling mean/std) и производных признаков. Структура лагов определяется результатами спектрального анализа." },
+  { id: "scaling", label: "Масштабирование признаков", status: "pending", count: null,
+    description: "Нормализация признаков методами StandardScaler, MinMaxScaler, RobustScaler, QuantileTransformer или PowerTransformer. Критично для NN, SVM, k-NN." },
+  { id: "passport", label: "Паспорт свойств ряда", status: "pending", count: null,
+    description: "Сравнительный анализ свойств ряда: v1.0 (загрузка) → v1.1 (после валидации) → v1.2 (после предобработки). Метрики: ADF, Ljung-Box, Jarque-Bera, R². Экспорт в Excel." },
 ];
 
 // Моковый список числовых признаков (заменить на activeDataset.columns)
@@ -78,13 +80,18 @@ const PREPROCESSING_HELP = `Цели модуля "Предобработка"
 - v1.0 до валидации vs v1.3 после предобработки
 - v1.2 до предобработки vs v1.3 после предобработки
 
-Доступные преобразования:
-- Заполнение пропусков (interpolation, forward-fill, mean)
-- Удаление выбросов (IQR, Z-score, isolation forest)
-- Логарифмирование (log, log1p) — для гетероскедастичности
-- Дифференцирование (1-й, 2-й порядок) — для стационарности
-- Box-Cox / Yeo-Johnson — для нормальности
-- STL-декомпозиция — для удаления сезонности`;
+Пайплайн предобработки (11 шагов):
+1. Пропуски — интерполяция, forward-fill, mean, drop
+2. Выбросы — IQR, Z-score, MAD, Isolation Forest, LOF
+3. Регулярность ряда — интерполяция gaps, ресемплирование
+4. Декомпозиция — STL / Classical / SEATS / X13
+5. Стабилизация дисперсии — Box-Cox, Yeo-Johnson, log, sqrt
+6. Сглаживание — SMA, EMA, Holt-Winters, HP-filter, Kalman
+7. Стационарность — дифференцирование d/D, контроль ADF/KPSS/PP
+8. Спектральный анализ — FFT, periodogram, вейвлет
+9. Генерация признаков — время, лаги, rolling, производные
+10. Масштабирование — Standard, MinMax, Robust, Quantile, Power
+11. Паспорт свойств ряда — сравнение v1.0 → v1.1 → v1.2`;
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -137,7 +144,7 @@ export function TsAnalysisPreprocessing() {
         {/* Заголовок модуля + справка */}
         <div className="mb-1">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-neutral-800">
+            <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0">
               Preprocessing
             </h2>
             <button
@@ -242,7 +249,8 @@ export function TsAnalysisPreprocessing() {
           <div className="grid grid-cols-4 gap-3 mt-4">
             <Metric label="Строк" value="200" />
             <Metric label="Пропусков" value="11" />
-            <Metric label="Выбросов" value="3" />
+            <Metric label="Выбросов" value="1145" />
+            <Metric label="ADF p" value="0.03" />
             <Metric label="Частота" value="D" />
           </div>
         </div>
