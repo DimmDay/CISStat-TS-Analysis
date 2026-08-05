@@ -237,7 +237,7 @@ export function TsAnalysisValidation() {
           <p className="text-xs text-neutral-500 mb-2">
             {descriptionSubtitle}
           </p>
-          <div className="rounded-lg bg-brand-light/50 border border-neutral-200 px-4 py-3 min-h-[170px] max-h-[170px] overflow-y-auto text-sm text-neutral-600 whitespace-pre-wrap">
+          <div className="rounded-lg bg-brand-light/50 border border-neutral-200 px-4 py-3 min-h-[220px] max-h-[220px] overflow-y-auto text-sm text-neutral-600 whitespace-pre-wrap">
             {descriptionContent || (
               <span className="text-neutral-400 italic">
                 Нажмите «Метрики и алгоритм», «Полный пайплайн» или «Справка»
@@ -268,7 +268,7 @@ export function TsAnalysisValidation() {
 
       {/* ── ПРАВАЯ КОЛОНКА: список проверок ── */}
       <aside className="w-80 shrink-0">
-        <div className="max-h-[770px] overflow-y-auto pr-2 space-y-5 feed-scroll">
+        <div className="max-h-[830px] overflow-y-auto pr-2 space-y-5 feed-scroll">
           {orderedChecks.map((check) => (
             <article
               key={check.id}
