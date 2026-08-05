@@ -19,8 +19,8 @@
 // Справка по стандартам DQ раскрывается в центральном текстовом окне
 // при нажатии кнопки «Справка» в заголовке модуля.
 
-import { useState } from "react";
-import { Settings } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Settings, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "./Button";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
@@ -112,6 +112,27 @@ export function TsAnalysisValidation() {
   const [activeCheckId, setActiveCheckId] = useState(CHECKS[0].id);
   const [activeFeature, setActiveFeature] = useState(NUMERIC_FEATURES[0]);
   const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | "rules" | null>(null);
+  const [descriptionExpanded, setDescriptionExpanded] = useState(false);
+  const [hasOverflow, setHasOverflow] = useState(false);
+  const descRef = useRef<HTMLDivElement>(null);
+
+  // Сворачиваем при смене секции
+  useEffect(() => {
+    setDescriptionExpanded(false);
+  }, [descriptionSection]);
+
+  // Click-outside: сворачиваем при клике вне description box
+  const handleOutsideClick = useCallback((e: MouseEvent) => {
+    if (descRef.current && !descRef.current.contains(e.target as Node)) {
+      setDescriptionExpanded(false);
+    }
+  }, []);
+  useEffect(() => {
+    if (descriptionExpanded) {
+      document.addEventListener("mousedown", handleOutsideClick);
+      return () => document.removeEventListener("mousedown", handleOutsideClick);
+    }
+  }, [descriptionExpanded, handleOutsideClick]);
 
   const doneCount = CHECKS.filter((c) => c.status === "done").length;
   const progressPct = Math.round((doneCount / CHECKS.length) * 100);
@@ -136,6 +157,19 @@ export function TsAnalysisValidation() {
   const handleRulesClick = () => {
     setDescriptionSection((prev) => prev === "rules" ? null : "rules");
   };
+
+  // ── Overflow detection для expandable description ──
+  useEffect(() => {
+    const el = descRef.current;
+    if (!el) return;
+    const checkOverflow = () => {
+      setHasOverflow(el.scrollHeight > el.clientHeight + 2);
+    };
+    checkOverflow();
+    const observer = new ResizeObserver(checkOverflow);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [descriptionSection]); // ResizeObserver отслеживает контент
 
   // Текст описания для центрального поля
   const descriptionContent = (() => {
@@ -264,15 +298,50 @@ export function TsAnalysisValidation() {
           <p className="text-xs text-neutral-500 mb-2">
             {descriptionSubtitle}
           </p>
-          <div className="rounded-lg bg-brand-light/50 border border-neutral-200 px-4 py-3 min-h-[220px] max-h-[220px] overflow-y-auto text-sm text-neutral-600 whitespace-pre-wrap">
-            {descriptionSection === "rules" ? (
-              <RulesManagementPanel />
-            ) : descriptionContent ? (
-              descriptionContent
-            ) : (
-              <span className="text-neutral-400 italic">
-                Нажмите «Метрики и алгоритм», «Полный пайплайн», «Справка» или «Управление правилами»
-              </span>
+          {/* ── Expandable Description Box ──
+              collapsed: min-h=220px, max-h=220px, scroll
+              expanded: overlay, max-h=calc(100vh - 180px), scroll if still overflows
+              chevron: shown only when hasOverflow
+          */}
+          <div className="relative">
+            <div
+              ref={descRef}
+              className={`rounded-lg bg-brand-light/50 border border-neutral-200 px-4 py-3 min-h-[220px] overflow-y-auto text-sm text-neutral-600 whitespace-pre-wrap transition-[max-height] duration-300 ease-in-out ${
+                descriptionExpanded
+                  ? "max-h-[calc(100vh-180px)] z-20 shadow-lg border-brand/30"
+                  : "max-h-[220px]"
+              }`}
+            >
+              {descriptionSection === "rules" ? (
+                <RulesManagementPanel />
+              ) : descriptionContent ? (
+                descriptionContent
+              ) : (
+                <span className="text-neutral-400 italic">
+                  Нажмите «Метрики и алгоритм», «Полный пайплайн», «Справка» или «Управление правилами»
+                </span>
+              )}
+            </div>
+            {/* Chevron toggle — только при overflow */}
+            {hasOverflow && !descriptionExpanded && (
+              <button
+                onClick={() => setDescriptionExpanded(true)}
+                className="absolute bottom-1 left-1/2 -translate-x-1/2 flex items-center justify-center w-8 h-5 rounded-t bg-brand/10 hover:bg-brand/20 text-brand transition-colors"
+                aria-label="Развернуть описание"
+                data-testid="desc-expand-btn"
+              >
+                <ChevronDown size={14} />
+              </button>
+            )}
+            {descriptionExpanded && (
+              <button
+                onClick={() => setDescriptionExpanded(false)}
+                className="absolute bottom-1 left-1/2 -translate-x-1/2 flex items-center justify-center w-8 h-5 rounded-t bg-brand/10 hover:bg-brand/20 text-brand transition-colors"
+                aria-label="Свернуть описание"
+                data-testid="desc-collapse-btn"
+              >
+                <ChevronUp size={14} />
+              </button>
             )}
           </div>
         </div>
