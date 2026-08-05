@@ -47,13 +47,13 @@ const CHECKS: Check[] = [
     description: "Гетероскедастичность ломает доверительные интервалы и тесты. Трансформации: Box-Cox, Yeo-Johnson, log, sqrt. Параметры сохраняются для обратного преобразования." },
   { id: "smoothing", label: "Сглаживание ряда", status: "pending", count: null,
     description: "Удаление высокочастотного шума методами SMA, EMA, Holt-Winters, HP-filter, Savitzky-Golay или фильтром Калмана. Опциональный шаг для зашумлённых рядов." },
-  { id: "stationarity", label: "Обеспечение стационарности", status: "pending", count: null,
+  { id: "stationarity", label: "Стационарность ряда", status: "pending", count: null,
     description: "Нестационарность ломает ACF/PACF и идентификацию ARIMA. Дифференцирование порядка d и сезонное D с контролем ADF/KPSS/PP. Порядок сохраняется для обратного преобразования." },
   { id: "spectral", label: "Спектральный анализ", status: "pending", count: null,
     description: "Разведочный анализ частотного состава ряда: FFT, periodogram, вейвлет-преобразование. Определяет доминантные частоты и сезонные периоды для генерации лаговых признаков." },
   { id: "feature_eng", label: "Генерация признаков", status: "pending", count: null,
     description: "Создание временных (hour, day, month), лаговых, скользящих статистик (rolling mean/std) и производных признаков. Структура лагов определяется результатами спектрального анализа." },
-  { id: "scaling", label: "Масштабирование признаков", status: "pending", count: null,
+  { id: "scaling", label: "Масштабирование", status: "pending", count: null,
     description: "Нормализация признаков методами StandardScaler, MinMaxScaler, RobustScaler, QuantileTransformer или PowerTransformer. Критично для NN, SVM, k-NN." },
   { id: "passport", label: "Паспорт свойств ряда", status: "pending", count: null,
     description: "Сравнительный анализ свойств ряда: v1.0 (загрузка) → v1.1 (после валидации) → v1.2 (после предобработки). Метрики: ADF, Ljung-Box, Jarque-Bera, R². Экспорт в Excel." },
@@ -159,7 +159,7 @@ export function TsAnalysisPreprocessing() {
             </button>
           </div>
           <p className="text-[11px] text-neutral-500 mt-0.5">
-            Математические преобразования данных
+            Математические преобразования
           </p>
         </div>
 
