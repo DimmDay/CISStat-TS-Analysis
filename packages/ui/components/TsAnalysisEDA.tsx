@@ -145,7 +145,7 @@ export function TsAnalysisEDA() {
         <div className="mb-1">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-neutral-800 truncate min-w-0">
-              EDA
+              Разведочный EDA
             </h2>
             <button
               onClick={handleHelpClick}
@@ -159,7 +159,7 @@ export function TsAnalysisEDA() {
             </button>
           </div>
           <p className="text-[11px] text-neutral-500 mt-0.5">
-            Разведочный анализ данных
+            Финал перед моделированием
           </p>
         </div>
 
