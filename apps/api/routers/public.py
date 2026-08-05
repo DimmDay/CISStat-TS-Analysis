@@ -12,14 +12,17 @@ from apps.api.schemas import (
     PassportRequest, PassportResponse,
     RegularityRequest, RegularityResponse,
     UploadResponse,
+    RulesTemplate, RulesTemplatesResponse,
+    RulesLoadResponse, RulesContent, RangeRule,
+    ValidateWithRulesRequest, ValidateWithRulesResponse, ValidateSummary,
+    RulesUpdateRequest, RulesUpdateResponse,
 )
-from apps.api.auth import require_api_key
-
 # ЗАМЕНИТЬ путь импорта на реальный, в зависимости от того, куда положите
 # этот сервис относительно репозитория CISStat-TS-Analysis:
 from app.core.passport import calculate_ts_passport
 from app.validation.regularity import compute_regularity_violations
 from app.data.file_loader import read_uploaded_file
+from validation.engine import load_rules, validate_dataframe
 
 router = APIRouter(dependencies=[Depends(require_api_key)])
 
@@ -58,37 +61,121 @@ def get_regularity(payload: RegularityRequest):
         "error": result.get("error"),
     }
 
-# Добавить в конец файла apps/api/routers/public.py
-@router.post("/upload", response_model=UploadResponse)
-async def upload_file(file: UploadFile = File(...)):
-    """
-    Загрузка файла для анализа (публичный режим).
-    Требует API-ключ (проверяется через require_api_key).
-    """
-    try:
-        # Читаем файл в память
-        df, ext = read_uploaded_file(file.file)
+# ── Управление правилами ────────────────────────────────────
 
-        # Генерируем preview
-        head = df.head(5).values.tolist()
-        tail = df.tail(5).values.tolist()
-        # Добавляем заголовки к head
-        head = [df.columns.tolist()] + head
+# In-memory хранилище переопределённых диапазонов (действует до перезапуска)
+_rules_override: dict[str, list] = {}
 
-        return UploadResponse(
-            dataset_id=str(uuid.uuid4()),
-            name=file.filename,
-            rows=len(df),
-            columns=len(df.columns),
-            preview={"head": head, "tail": tail},
-            error=None
+# Доступные шаблоны (id = имя YAML-файла без .yaml)
+_AVAILABLE_TEMPLATES = [
+    RulesTemplate(id="custom", label="Custom (автогенерация)",
+                  description="Автоматическая генерация правил на основе загруженных данных"),
+    RulesTemplate(id="default", label="Default (общий)",
+                  description="Базовый набор правил для типичных датасетов"),
+    RulesTemplate(id="fao_prices", label="FAO Prices (CIS)",
+                  description="Правила для цен на продукцию ФАО в странах СНГ"),
+    RulesTemplate(id="macro", label="Macro indicators",
+                  description="Правила для макроэкономических индикаторов"),
+]
+
+
+def _load_rules_by_template(template_id: str) -> dict:
+    """Загружает YAML-файл по template_id с учётом in-memory overrides."""
+    if template_id == "custom":
+        return {}  # автогенерация — нужна DataFrame, обрабатывается отдельно
+    # Маппинг template_id → имя YAML-файла (не всегда совпадает с id)
+    _TEMPLATE_YAML_MAP = {
+        "default": "default_rules.yaml",
+        "fao_prices": "fao_prices.yaml",
+        "macro": "macro.yaml",
+    }
+    yaml_name = _TEMPLATE_YAML_MAP.get(template_id, f"{template_id}.yaml")
+    rules = load_rules(f"rules/{yaml_name}")
+    # Применяем in-memory override для ranges, если есть
+    if template_id in _rules_override:
+        rules["ranges"] = _rules_override[template_id]
+    return rules
+
+
+@router.get("/rules/templates", response_model=RulesTemplatesResponse)
+def get_rules_templates():
+    """Список доступных шаблонов правил."""
+    return RulesTemplatesResponse(templates=_AVAILABLE_TEMPLATES)
+
+
+@router.get("/rules/load/{template_id}", response_model=RulesLoadResponse)
+def load_rules_template(template_id: str):
+    """Загрузить правила из указанного шаблона."""
+    if template_id == "custom":
+        # Custom — автогенерация, для неё нужен датасет; возвращаем пустую структуру
+        return RulesLoadResponse(template_id="custom", rules=RulesContent())
+    rules = _load_rules_by_template(template_id)
+    if not rules:
+        raise HTTPException(status_code=404, detail=f"Шаблон '{template_id}' не найден")
+    # Маппим ranges → List[RangeRule]
+    ranges_raw = rules.get("ranges", [])
+    ranges = [
+        RangeRule(
+            name=r.get("name"),
+            keywords=r.get("keywords", []),
+            min=r.get("min"),
+            max=r.get("max"),
+            description=r.get("description"),
         )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка сервера: {str(e)}")
+        for r in ranges_raw
+    ]
+    content = RulesContent(
+        ranges=ranges,
+        inclusion=rules.get("inclusion"),
+        consistency=rules.get("consistency"),
+        formats=rules.get("formats"),
+        referential=rules.get("referential"),
+        outliers=rules.get("outliers"),
+        sufficiency=rules.get("sufficiency"),
+    )
+    return RulesLoadResponse(template_id=template_id, rules=content)
 
-# Временная отладка
+
+@router.post("/rules/validate", response_model=ValidateWithRulesResponse)
+def validate_with_rules(payload: ValidateWithRulesRequest):
+    """Запустить валидацию данных по выбранному шаблону правил."""
+    rules = _load_rules_by_template(payload.template_id)
+    if not rules:
+        raise HTTPException(status_code=404, detail=f"Шаблон '{payload.template_id}' не найден")
+    # Собираем DataFrame из series
+    df = pd.DataFrame({
+        "date": [p.date for p in payload.series],
+        "value": [p.value for p in payload.series],
+    })
+    result = validate_dataframe(df, rules)
+    return ValidateWithRulesResponse(
+        is_valid=result.get("is_valid", False),
+        summary=ValidateSummary(
+            total_errors=len(result.get("errors", [])),
+            total_warnings=len(result.get("warnings", [])),
+            checks_run=len(result.get("summary", {})),
+        ),
+        errors=result.get("errors", []),
+        warnings=result.get("warnings", []),
+    )
+
+
+@router.patch("/rules/update", response_model=RulesUpdateResponse)
+def update_rules(payload: RulesUpdateRequest):
+    """Обновить диапазоны правил in-memory (не записывает в YAML-файл).
+    Обновлённые правила действуют до перезапуска сервера."""
+    template_id = payload.template_id
+    # Проверяем, что шаблон существует
+    valid_ids = [t.id for t in _AVAILABLE_TEMPLATES]
+    if template_id not in valid_ids:
+        raise HTTPException(status_code=404, detail=f"Шаблон '{template_id}' не найден")
+    _rules_override[template_id] = [r.dict() for r in payload.ranges]
+    return RulesUpdateResponse(
+        template_id=template_id,
+        updated_ranges_count=len(payload.ranges),
+    )
+
+
 @router.post("/upload", response_model=UploadResponse)
 async def upload_file(file: UploadFile = File(...)):
     try:

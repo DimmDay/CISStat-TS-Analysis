@@ -24,6 +24,7 @@ import { Settings } from "lucide-react";
 import { Button } from "./Button";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
+import { RulesManagementPanel } from "./RulesManagementPanel";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -105,44 +106,6 @@ const DQ_STANDARDS_HELP = `Стандарты качества данных (Dat
 - ISO 8000 — Data Quality Standard
 - Практика Data Quality в финансовой аналитике (CBR, MOEX)`;
 
-// ── Управление правилами (из Streamlit app.py, строки 640–744) ──
-
-const RULES_MANAGEMENT_HELP = `Управление правилами валидации
-
-Модуль позволяет выбрать и настроить набор правил, по которым будет выполняться проверка качества данных. Правила хранятся в YAML-файлах и определяют:
-
-• Диапазоны допустимых значений (ranges)
-• Форматы и шаблоны (formats) — regex-проверки
-• Правила логической согласованности (consistency)
-• Допустимые справочные значения (inclusion, referential)
-• Параметры поиска выбросов (outliers)
-• Критерии достаточности наблюдений (sufficiency)
-
-Доступные шаблоны правил:
-
-1. Custom (автогенерация)
-   Автоматический анализ загруженного датасета и создание персональных правил на основе распределения данных. Рекомендуется для初次ного анализа неизвестных данных.
-
-2. FAO Prices (CIS)
-   Преднастроенный набор для цен на продукцию ФАО в странах СНГ. Включает:
-   — Цена должна быть положительной (0–5000 USD/tonne)
-   — Год в пределах 1990–2030
-   — Хронология по странам (годы по возрастанию)
-   — Страны только из справочника СНГ
-   — Композитный ключ (Country + Year)
-
-3. Macro indicators
-   Преднастроенный набор для макроэкономических индикаторов. Включает проверки диапазонов, форматов и ссылочной целостности для типичных макро-показателей.
-
-Редактор диапазонов позволяет изменить min/max для каждого правила. После редактирования нажмите «Применить правила» — валидация будет перезапущена с обновлёнными параметрами.
-
-Файлы правил расположены в директории rules/:
-  • rules/default_rules.yaml — базовый набор
-  • rules/fao_prices.yaml — шаблон FAO Prices (CIS)
-  • rules/macro.yaml — шаблон Macro indicators (при наличии)
-
-При отсутствии файла шаблона система автоматически откатывается на автогенерацию.`;
-
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisValidation() {
@@ -177,7 +140,7 @@ export function TsAnalysisValidation() {
   // Текст описания для центрального поля
   const descriptionContent = (() => {
     if (descriptionSection === "help") return DQ_STANDARDS_HELP;
-    if (descriptionSection === "rules") return RULES_MANAGEMENT_HELP;
+    if (descriptionSection === "rules") return null; // RulesManagementPanel рендерится отдельно
     if (!descriptionSection) return null;
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
@@ -302,9 +265,13 @@ export function TsAnalysisValidation() {
             {descriptionSubtitle}
           </p>
           <div className="rounded-lg bg-brand-light/50 border border-neutral-200 px-4 py-3 min-h-[220px] max-h-[220px] overflow-y-auto text-sm text-neutral-600 whitespace-pre-wrap">
-            {descriptionContent || (
+            {descriptionSection === "rules" ? (
+              <RulesManagementPanel />
+            ) : descriptionContent ? (
+              descriptionContent
+            ) : (
               <span className="text-neutral-400 italic">
-                Нажмите «Метрики и алгоритм», «Полный пайплайн» или «Справка»
+                Нажмите «Метрики и алгоритм», «Полный пайплайн», «Справка» или «Управление правилами»
               </span>
             )}
           </div>

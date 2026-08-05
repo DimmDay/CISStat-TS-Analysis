@@ -1,0 +1,147 @@
+# rules/macro.yaml
+# Правила для макроэкономических индикаторов (ВВП, инфляция, безработица,
+# торговый баланс и т.д.) в странах СНГ.
+#
+# Шаблон «Macro indicators» — используется при анализе данных Росстата,
+# МВФ (WEO), Всемирного банка и национальных статистических служб.
+
+schema:
+  columns:
+    Country:
+      type: "string"
+      nullable: false
+    Year:
+      type: "integer"
+      min: 1990
+      max: 2035
+    Value:
+      type: "float"
+      nullable: true
+
+ranges:
+  - name: "ВВП на душу населения (USD)"
+    keywords: ["gdp_per_capita", "gdp", "ввп", "ВВП"]
+    min: 100
+    max: 200000
+    description: "ВВП на душу населения в USD: от 100 (беднейшие) до 200 000"
+
+  - name: "Инфляция (%, годовая)"
+    keywords: ["inflation", "cpi", "инфляция", "ИПЦ"]
+    min: -20
+    max: 1000
+    description: "Годовая инфляция: от -20% (дефляция) до 1000% (гиперинфляция)"
+
+  - name: "Безработица (%)"
+    keywords: ["unemployment", "безработица"]
+    min: 0
+    max: 50
+    description: "Уровень безработицы: 0–50%"
+
+  - name: "Государственный долг (% ВВП)"
+    keywords: ["debt", "gov_debt", "долг"]
+    min: 0
+    max: 350
+    description: "Госдолг к ВВП: 0–350% (Япония >250% — исторический максимум)"
+
+  - name: "Торговый баланс (% ВВП)"
+    keywords: ["trade_balance", "торговый_баланс"]
+    min: -60
+    max: 60
+    description: "Торговый баланс к ВВП: от -60% до +60%"
+
+  - name: "Процентная ставка (%)"
+    keywords: ["interest_rate", "ключевая_ставка", "ставка"]
+    min: -1
+    max: 100
+    description: "Ключевая/процентная ставка ЦБ: от -1% до 100%"
+
+  - name: "Объём экспорта (млн USD)"
+    keywords: ["exports", "экспорт"]
+    min: 0
+    max: null
+    description: "Экспорт в млн USD: неотрицательный"
+
+  - name: "Объём импорта (млн USD)"
+    keywords: ["imports", "импорт"]
+    min: 0
+    max: null
+    description: "Импорт в млн USD: неотрицательный"
+
+  - name: "Население (млн чел.)"
+    keywords: ["population", "население"]
+    min: 0
+    max: 1500
+    description: "Население: 0–1.5 млрд (крупнейшие страны)"
+
+consistency:
+  - name: "Хронология по странам"
+    type: "chronology"
+    columns: ["Year"]
+    description: "Годы должны идти по возрастанию внутри каждой страны"
+
+  - name: "Безработица не может быть отрицательной"
+    type: "negative_price"
+    columns: ["Value"]
+    description: "Макроиндикатор не может быть отрицательным для перечисленных диапазонов"
+
+inclusion:
+  Country:
+    allowed_values:
+      - "Азербайджан"
+      - "Беларусь"
+      - "Казахстан"
+      - "Кыргызстан"
+      - "Молдова"
+      - "Армения"
+      - "Узбекистан"
+      - "Таджикистан"
+      - "Туркменистан"
+      - "Россия"
+      - "Украина"
+
+  Indicator:
+    allowed_values:
+      - "GDP"
+      - "GDP_per_capita"
+      - "Inflation"
+      - "Unemployment"
+      - "Gov_Debt"
+      - "Trade_Balance"
+      - "Interest_Rate"
+      - "Exports"
+      - "Imports"
+      - "Population"
+
+uniqueness:
+  composite_key: ["Country", "Year", "Indicator"]
+  description: "Каждая страна + год + индикатор — уникальная комбинация"
+
+referential:
+  - name: "Страна из списка СНГ+"
+    child_column: "Country"
+    allowed_values:
+      - "Азербайджан"
+      - "Беларусь"
+      - "Казахстан"
+      - "Кыргызстан"
+      - "Молдова"
+      - "Армения"
+      - "Узбекистан"
+      - "Таджикистан"
+      - "Туркменистан"
+      - "Россия"
+      - "Украина"
+    default_value: "Не определено"
+
+outliers:
+  method: "iqr"
+  iqr_multiplier: 2.0
+  zscore_threshold: 3.5
+
+sufficiency:
+  min_obs_trend: 10
+  min_obs_seasonality: 24
+  min_obs_arima: 50
+  min_obs_ml: 100
+  min_obs_fft: 64
+  min_seasons: 2

@@ -61,3 +61,79 @@ class UploadResponse(BaseModel):
     columns: int = Field(..., description="Количество колонок")
     preview: PreviewData = Field(..., description="Предпросмотр данных")
     error: Optional[str] = Field(None, description="Ошибка при загрузке")
+
+
+# ── Управление правилами валидации ──
+
+class RulesTemplate(BaseModel):
+    """Один доступный шаблон правил."""
+    id: str = Field(..., description="Идентификатор шаблона (совпадает с именем YAML без расширения)")
+    label: str = Field(..., description="Человекочитаемое название")
+    description: Optional[str] = Field(None, description="Краткое описание шаблона")
+
+
+class RulesTemplatesResponse(BaseModel):
+    """Ответ: список доступных шаблонов."""
+    templates: List[RulesTemplate]
+
+
+class RangeRule(BaseModel):
+    """Одно правило диапазона (ranges[] из YAML)."""
+    name: Optional[str] = None
+    keywords: List[str] = Field(default_factory=list)
+    min: Optional[float] = None
+    max: Optional[float] = None
+    description: Optional[str] = None
+
+
+class RulesContent(BaseModel):
+    """Содержимое загруженного шаблона правил."""
+    ranges: List[RangeRule] = Field(default_factory=list)
+    inclusion: Optional[Dict[str, Any]] = None
+    consistency: Optional[List[Dict[str, Any]]] = None
+    formats: Optional[Dict[str, Any]] = None
+    referential: Optional[List[Dict[str, Any]]] = None
+    outliers: Optional[Dict[str, Any]] = None
+    sufficiency: Optional[Dict[str, Any]] = None
+
+
+class RulesLoadResponse(BaseModel):
+    """Ответ: загруженные правила из шаблона."""
+    template_id: str
+    rules: RulesContent
+
+
+class ValidateWithRulesRequest(BaseModel):
+    """Запрос: запустить валидацию по шаблону правил."""
+    template_id: str = Field(..., description="Идентификатор шаблона")
+    series: List[SeriesPoint] = Field(..., min_length=1)
+
+
+class ValidateSummary(BaseModel):
+    """Сводка результатов валидации."""
+    total_errors: int = 0
+    total_warnings: int = 0
+    checks_run: int = 0
+
+
+class ValidateWithRulesResponse(BaseModel):
+    """Ответ: результаты валидации."""
+    is_valid: bool
+    summary: ValidateSummary
+    errors: List[Dict[str, Any]] = Field(default_factory=list)
+    warnings: List[Dict[str, Any]] = Field(default_factory=list)
+
+
+# ── Обновление правил in-memory ──
+
+class RulesUpdateRequest(BaseModel):
+    """Запрос: обновить диапазоны правил для шаблона (in-memory, не файл)."""
+    template_id: str = Field(..., description="Идентификатор шаблона")
+    ranges: List[RangeRule] = Field(..., description="Обновлённый список диапазонов")
+
+
+class RulesUpdateResponse(BaseModel):
+    """Ответ: подтверждение обновления правил."""
+    template_id: str
+    updated_ranges_count: int
+    message: str = "Правила обновлены in-memory. Перезапустите валидацию."
