@@ -20,6 +20,7 @@
 // при нажатии кнопки «Справка» в заголовке модуля.
 
 import { useState } from "react";
+import { Settings } from "lucide-react";
 import { Button } from "./Button";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
@@ -104,12 +105,50 @@ const DQ_STANDARDS_HELP = `Стандарты качества данных (Dat
 - ISO 8000 — Data Quality Standard
 - Практика Data Quality в финансовой аналитике (CBR, MOEX)`;
 
+// ── Управление правилами (из Streamlit app.py, строки 640–744) ──
+
+const RULES_MANAGEMENT_HELP = `Управление правилами валидации
+
+Модуль позволяет выбрать и настроить набор правил, по которым будет выполняться проверка качества данных. Правила хранятся в YAML-файлах и определяют:
+
+• Диапазоны допустимых значений (ranges)
+• Форматы и шаблоны (formats) — regex-проверки
+• Правила логической согласованности (consistency)
+• Допустимые справочные значения (inclusion, referential)
+• Параметры поиска выбросов (outliers)
+• Критерии достаточности наблюдений (sufficiency)
+
+Доступные шаблоны правил:
+
+1. Custom (автогенерация)
+   Автоматический анализ загруженного датасета и создание персональных правил на основе распределения данных. Рекомендуется для初次ного анализа неизвестных данных.
+
+2. FAO Prices (CIS)
+   Преднастроенный набор для цен на продукцию ФАО в странах СНГ. Включает:
+   — Цена должна быть положительной (0–5000 USD/tonne)
+   — Год в пределах 1990–2030
+   — Хронология по странам (годы по возрастанию)
+   — Страны только из справочника СНГ
+   — Композитный ключ (Country + Year)
+
+3. Macro indicators
+   Преднастроенный набор для макроэкономических индикаторов. Включает проверки диапазонов, форматов и ссылочной целостности для типичных макро-показателей.
+
+Редактор диапазонов позволяет изменить min/max для каждого правила. После редактирования нажмите «Применить правила» — валидация будет перезапущена с обновлёнными параметрами.
+
+Файлы правил расположены в директории rules/:
+  • rules/default_rules.yaml — базовый набор
+  • rules/fao_prices.yaml — шаблон FAO Prices (CIS)
+  • rules/macro.yaml — шаблон Macro indicators (при наличии)
+
+При отсутствии файла шаблона система автоматически откатывается на автогенерацию.`;
+
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisValidation() {
   const [activeCheckId, setActiveCheckId] = useState(CHECKS[0].id);
   const [activeFeature, setActiveFeature] = useState(NUMERIC_FEATURES[0]);
-  const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | null>(null);
+  const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | "rules" | null>(null);
 
   const doneCount = CHECKS.filter((c) => c.status === "done").length;
   const progressPct = Math.round((doneCount / CHECKS.length) * 100);
@@ -130,9 +169,15 @@ export function TsAnalysisValidation() {
     setDescriptionSection((prev) => prev === "help" ? null : "help");
   };
 
+  // Показать/скрыть «Управление правилами»
+  const handleRulesClick = () => {
+    setDescriptionSection((prev) => prev === "rules" ? null : "rules");
+  };
+
   // Текст описания для центрального поля
   const descriptionContent = (() => {
     if (descriptionSection === "help") return DQ_STANDARDS_HELP;
+    if (descriptionSection === "rules") return RULES_MANAGEMENT_HELP;
     if (!descriptionSection) return null;
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
@@ -143,6 +188,7 @@ export function TsAnalysisValidation() {
   // Подзаголовок центрального поля
   const descriptionSubtitle = (() => {
     if (descriptionSection === "help") return "Справка по стандартам качества данных";
+    if (descriptionSection === "rules") return "Управление правилами валидации";
     if (!descriptionSection) return "Выберите раздел в боковой панели";
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
@@ -210,7 +256,7 @@ export function TsAnalysisValidation() {
               key={check.id}
               onClick={() => {
                 setActiveCheckId(check.id);
-                if (descriptionSection === "help") setDescriptionSection(null);
+                if (descriptionSection === "help" || descriptionSection === "rules") setDescriptionSection(null);
               }}
               className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors ${
                 check.id === activeCheckId
@@ -224,6 +270,24 @@ export function TsAnalysisValidation() {
               </span>
             </button>
           ))}
+        </div>
+
+        {/* ── Кнопка «Управление правилами» — внизу степпера ── */}
+        {/* Визуально отличается от степпер-бейджей: dashed border, */}
+        {/* brand-colored text, Settings icon — не заливка, а outline-стиль */}
+        <div className="mt-3 pt-3 border-t border-neutral-200">
+          <button
+            onClick={handleRulesClick}
+            data-testid="rules-management-btn"
+            className={`w-full flex items-center justify-center gap-2 rounded-md border-2 border-dashed px-3 py-2.5 text-sm font-medium transition-colors ${
+              descriptionSection === "rules"
+                ? "border-brand bg-brand/10 text-brand"
+                : "border-brand/40 text-brand hover:border-brand hover:bg-brand/5"
+            }`}
+          >
+            <Settings size={16} />
+            Управление правилами
+          </button>
         </div>
       </aside>
 
