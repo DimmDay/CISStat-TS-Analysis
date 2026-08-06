@@ -306,10 +306,10 @@ export function TsAnalysisValidation() {
           <div className="relative min-h-[220px]">
             <div
               ref={descRef}
-              className={`rounded-lg bg-brand-light border border-neutral-200 px-4 py-3 overflow-y-auto text-sm text-neutral-600 whitespace-pre-wrap ${
+              className={`rounded-lg border border-neutral-200 px-4 py-3 overflow-y-auto text-sm text-neutral-600 whitespace-pre-wrap ${
                 descriptionExpanded
-                  ? "absolute top-0 left-0 right-0 z-20 max-h-[calc(100vh-180px)] shadow-lg border-brand/30 min-h-[220px]"
-                  : "max-h-[220px] min-h-[220px]"
+                  ? "absolute top-0 left-0 right-0 z-20 max-h-[calc(100vh-180px)] shadow-lg border-brand/30 min-h-[220px] bg-brand-light"
+                  : "max-h-[220px] min-h-[220px] bg-brand-light/50"
               }`}
             >
               {descriptionSection === "rules" ? (
@@ -321,8 +321,21 @@ export function TsAnalysisValidation() {
                   Нажмите «Метрики и алгоритм», «Полный пайплайн», «Справка» или «Управление правилами»
                 </span>
               )}
+              {/* Collapse chevron — sticky прилипает к низу scroll-области */}
+              {descriptionExpanded && (
+                <div className="sticky bottom-0 flex justify-center py-1 bg-brand-light rounded-b-lg">
+                  <button
+                    onClick={() => setDescriptionExpanded(false)}
+                    className="flex items-center justify-center w-8 h-5 rounded-t bg-brand/10 hover:bg-brand/20 text-brand transition-colors"
+                    aria-label="Свернуть описание"
+                    data-testid="desc-collapse-btn"
+                  >
+                    <ChevronUp size={14} />
+                  </button>
+                </div>
+              )}
             </div>
-            {/* Chevron toggle — только при overflow */}
+            {/* Expand chevron — только при overflow, collapsed */}
             {hasOverflow && !descriptionExpanded && (
               <button
                 onClick={() => setDescriptionExpanded(true)}
@@ -331,16 +344,6 @@ export function TsAnalysisValidation() {
                 data-testid="desc-expand-btn"
               >
                 <ChevronDown size={14} />
-              </button>
-            )}
-            {descriptionExpanded && (
-              <button
-                onClick={() => setDescriptionExpanded(false)}
-                className="absolute bottom-1 left-1/2 -translate-x-1/2 flex items-center justify-center w-8 h-5 rounded-t bg-brand/10 hover:bg-brand/20 text-brand transition-colors"
-                aria-label="Свернуть описание"
-                data-testid="desc-collapse-btn"
-              >
-                <ChevronUp size={14} />
               </button>
             )}
           </div>
