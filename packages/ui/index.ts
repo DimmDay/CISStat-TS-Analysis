@@ -7,6 +7,7 @@ export type { CheckStatus } from "./components/StatusIcon";
 export { TsAnalysisPreprocessing } from "./components/TsAnalysisPreprocessing";
 export { TsAnalysisValidation } from "./components/TsAnalysisValidation";
 export { TsAnalysisEDA } from "./components/TsAnalysisEDA";
+export { TsAnalysisModeling } from "./components/TsAnalysisModeling";
 export { default as tailwindPreset } from "./tailwind-preset";
 
 // Глобальный shell: активный датасет + лог событий.
@@ -25,3 +26,28 @@ export { ModulePlaceholder } from "./components/ModulePlaceholder";
 export { getCapabilities, PLAN_DEFINITIONS } from "./lib/plans";
 export type { Role, PlanName, Capabilities } from "./lib/plans";
 export { TrainModelButton } from "./components/TrainModelButton";
+
+// Типы моделирования (зеркало apps/api/schemas.py).
+export type {
+  DataProfile,
+  ModelCandidate,
+  CandidatesRequest,
+  CandidatesResponse,
+  CandidatesStatistics,
+  ApplicabilityLevel,
+  PipelineStage,
+  ModelFamily,
+} from "./lib/modeling";
+export {
+  APPLICABILITY_RANK,
+  APPLICABILITY_LABEL,
+  APPLICABILITY_BADGE,
+  MODEL_FAMILIES,
+  PIPELINE_STAGES,
+  DEFAULT_PROFILE,
+  DOMAINS,
+  FREQUENCIES,
+} from "./lib/modeling";
+
+// Панель «Управление правилами» — рендерится внутри TsAnalysisValidation.
+export { RulesManagementPanel } from "./components/RulesManagementPanel";

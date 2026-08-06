@@ -100,3 +100,38 @@ Stage Summary:
 - Ленивый кэш спецификации (ModelingSpec загружается один раз)
 - 19 тестов ✅ (auth×4, structure×4, applicability×4, profiles×2, validation×3, options×2)
 - Пример: макро-профиль n=120 → 10 RECOMMENDED кандидатов (baselines + ETS + ARIMA + Prophet)
+
+---
+Task ID: 5
+Agent: main
+Task: UI компонент TsAnalysisModeling.tsx — визуализация пула кандидатов с бейджами применимости
+
+Work Log:
+- Изучена структура packages/ui: 3-колоночный лейаут (TsAnalysisEDA, TsAnalysisPreprocessing, TsAnalysisValidation)
+- Изучены паттерны: fetch() для API, Tailwind для стилизации, StatusIcon/Metric/Button как shared-компоненты
+- Изучены существующие типы: lib/plans.ts (Role/Plan/Capabilities), StatusIcon (CheckStatus)
+- Изучен API-контракт: POST /v1/models/candidates → CandidatesResponse (из apps/api/schemas.py)
+- Обнаружены оба page.tsx (embedded + standalone) с ModulePlaceholder — требуют замены
+- Создан packages/ui/lib/modeling.ts — TypeScript-типы: DataProfile, ModelCandidate, ApplicabilityLevel, CandidatesRequest/Response/Statistics, APPLICABILITY_BADGE/LABEL/RANK, MODEL_FAMILIES, PIPELINE_STAGES, DEFAULT_PROFILE, DOMAINS, FREQUENCIES
+- Создан packages/ui/components/TsAnalysisModeling.tsx — 3-колоночный компонент:
+  - Левая: профиль данных (n_observations, n_series, frequency, domain, сезонность, GPU), 11 стадий пайплайна, кнопка «Загрузить пул»
+  - Центр: expandable description, таблица кандидатов по семействам с бейджами применимости, фильтр по уровню, метрики-сводка
+  - Правая: детальная карточка кандидата с бейджем, сообщением движка, кнопками «Метрики и алгоритм» / «Полный пайплайн» / «Запустить бэктест»
+- Создан packages/ui/components/TsAnalysisModeling.test.tsx — 23 теста:
+  - Рендер модуля (2), 11 стадий пайплайна (1), Справка (3), Description box (2), Профиль данных (4), Fetch (4), Ошибка API (1), Фильтрация (1), Выбор кандидата (1), Бейджи (1), Метрики и алгоритм (1)
+- Обновлён packages/ui/index.ts — добавлены экспорты TsAnalysisModeling + типы моделирования
+- Обновлены apps/embedded/app/modeling/page.tsx и apps/standalone/app/modeling/page.tsx — заменён ModulePlaceholder на TsAnalysisModeling
+- Создан jest.config.js с ts-jest (до этого Babel не парсил TSX)
+- Установлен jest-environment-jsdom
+- Все 23 теста PASS
+- Typecheck ✅, Build ✅ (/modeling → 240 B, 143 kB First Load)
+
+Stage Summary:
+- Создан TsAnalysisModeling.tsx — полноценная вкладка «Моделирование» с 3-колоночным лейаутом
+- Визуализация пула кандидатов: 8 семейств, 24 модели, 4 уровня применимости с цветовыми бейджами
+- Форма профиля данных: n_observations, n_series, frequency, domain, сезонность, GPU
+- POST /v1/models/candidates → таблица кандидатов по семействам с фильтром по уровню
+- 11 стадий пайплайна моделирования в степпере
+- Детальная карточка кандидата: бейдж, правило, сообщение, кнопки действий
+- Jest + ts-jest сконфигурирован для monorepo
+- 23 теста ✅, Typecheck ✅, Build ✅
