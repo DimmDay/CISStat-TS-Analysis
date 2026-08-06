@@ -306,7 +306,7 @@ export function TsAnalysisValidation() {
           <div className="relative min-h-[220px]">
             <div
               ref={descRef}
-              className={`rounded-lg bg-brand-light/50 border border-neutral-200 px-4 py-3 overflow-y-auto text-sm text-neutral-600 whitespace-pre-wrap ${
+              className={`rounded-lg bg-brand-light border border-neutral-200 px-4 py-3 overflow-y-auto text-sm text-neutral-600 whitespace-pre-wrap ${
                 descriptionExpanded
                   ? "absolute top-0 left-0 right-0 z-20 max-h-[calc(100vh-180px)] shadow-lg border-brand/30 min-h-[220px]"
                   : "max-h-[220px] min-h-[220px]"
