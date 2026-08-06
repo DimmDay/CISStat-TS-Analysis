@@ -38,6 +38,7 @@ import {
   DOMAINS,
   FREQUENCIES,
 } from "../lib/modeling";
+import { useAppShell } from "../context/AppShellContext";
 
 // ── Константы ──────────────────────────────────────────────────
 
@@ -76,6 +77,9 @@ const MODELING_HELP = `Цели модуля "Моделирование"
 // ── Компонент ──────────────────────────────────────────────────
 
 export function TsAnalysisModeling() {
+  // ── Контекст: активный датасет ──
+  const { activeDataset } = useAppShell();
+
   // ── Состояние ──
   const [profile, setProfile] = useState<DataProfile>(DEFAULT_PROFILE);
   const [candidates, setCandidates] = useState<ModelCandidate[]>([]);
@@ -102,6 +106,16 @@ export function TsAnalysisModeling() {
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
+
+  // ── Автозаполнение профиля из activeDataset ──
+  useEffect(() => {
+    if (activeDataset) {
+      setProfile((prev) => ({
+        ...prev,
+        n_observations: activeDataset.rows || prev.n_observations,
+      }));
+    }
+  }, [activeDataset]);
 
   // ── Fetch кандидатов ──
   const fetchCandidates = useCallback(async () => {
@@ -744,13 +758,30 @@ export function TsAnalysisModeling() {
               </article>
             ))}
 
-          {/* Placeholder при отсутствии данных */}
+          {/* Placeholder при отсутствии данных (нет ошибки) */}
           {!hasFetched && !isLoading && !error && (
             <article className="pb-5">
               <h3 className="font-semibold mb-1">Пул кандидатов</h3>
               <p className="text-sm text-neutral-500">
                 Настройте профиль данных слева и нажмите «Загрузить пул» для
                 получения списка моделей-кандидатов с оценкой применимости.
+              </p>
+            </article>
+          )}
+
+          {/* Fallback при ошибке API — показываем инструкцию в правой колонке */}
+          {error && !isLoading && (
+            <article className="pb-5">
+              <h3 className="font-semibold mb-1">Пул кандидатов</h3>
+              <p className="text-sm text-red-600 mb-2">
+                Не удалось загрузить пул: {error}
+              </p>
+              <p className="text-sm text-neutral-500">
+                Убедитесь, что API-сервер запущен (
+                <code className="text-xs bg-neutral-100 px-1 rounded">
+                          NEXT_PUBLIC_API_URL
+                </code>
+                ) и повторите попытку кнопкой «Загрузить пул».
               </p>
             </article>
           )}

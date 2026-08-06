@@ -135,3 +135,19 @@ Stage Summary:
 - Детальная карточка кандидата: бейдж, правило, сообщение, кнопки действий
 - Jest + ts-jest сконфигурирован для monorepo
 - 23 теста ✅, Typecheck ✅, Build ✅
+
+Task ID: 5b
+Agent: main
+Task: Исправление бага: пустая правая колонка при ошибке API + автозаполнение профиля из activeDataset
+
+Work Log:
+- Обнаружен баг: при ошибке API правая колонка была пустой — условие `!error` в placeholder блокировало показ
+- Добавлен fallback-блок в правую колонку: при ошибке показывает «Не удалось загрузить пул: {error}» + инструкцию по API
+- Подключён useAppShell() — activeDataset.rows автозаполняет n_observations в профиле
+- Обновлён тест error message: getAllByText вместо getByText (ошибка теперь в 2 местах)
+- Все 23 теста PASS, Typecheck ✅, Build ✅
+
+Stage Summary:
+- Баг исправлен: правая колонка показывает инструкцию при ошибке API
+- activeDataset подключён для автозаполнения профиля данных
+- 4 состояния правой колонки: activeCandidate → candidatesByFamily → error → loading
