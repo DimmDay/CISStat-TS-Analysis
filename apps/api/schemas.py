@@ -137,3 +137,60 @@ class RulesUpdateResponse(BaseModel):
     template_id: str
     updated_ranges_count: int
     message: str = "Правила обновлены in-memory. Перезапустите валидацию."
+
+
+# ── Моделирование: пул кандидатов ──
+
+class DataProfileRequest(BaseModel):
+    """Профиль данных — вход движка применимости."""
+    n_observations: int = Field(..., ge=1, description="Число наблюдений")
+    n_series: int = Field(1, ge=1, description="Число временных рядов")
+    n_exogenous: int = Field(0, ge=0, description="Число экзогенных признаков")
+    is_regular: bool = Field(True, description="Регулярность временного индекса")
+    frequency: str = Field("M", description="Частота ряда (D/W/M/Q/Y)")
+    has_seasonality: bool = Field(False, description="Наличие сезонности")
+    seasonal_periods: List[int] = Field(default_factory=list, description="Сезонные периоды")
+    is_stationary_or_diffable: bool = Field(True, description="Стационарность или дифференцируемость")
+    is_cointegrated: bool = Field(False, description="Коинтеграция (для многомерных)")
+    has_negative_values: bool = Field(False, description="Наличие отрицательных значений")
+    has_volatility_clustering: bool = Field(False, description="Кластеризация волатильности")
+    domain: str = Field("other", description="Предметная область (financial/macro/price/other)")
+    missing_ratio: float = Field(0.0, ge=0.0, le=1.0, description="Доля пропусков")
+    outlier_ratio: float = Field(0.0, ge=0.0, le=1.0, description="Доля выбросов")
+    has_holidays: bool = Field(False, description="Наличие праздничных эффектов")
+    gpu_available: bool = Field(False, description="Доступность GPU")
+    feature_engineering_applied: bool = Field(False, description="Feature engineering выполнен")
+
+
+class ModelCandidate(BaseModel):
+    """Один кандидат в пуле моделирования."""
+    model_id: str
+    model_name: str
+    family_id: str
+    level: str = Field(..., description="Уровень применимости")
+    rule_id: Optional[str] = Field(None, description="ID правила, определившего уровень")
+    message: str = Field("", description="Пояснение уровня применимости")
+    rank: int = Field(1, ge=1, description="Ранг уровня (1=RECOMMENDED)")
+
+
+class CandidatesRequest(BaseModel):
+    """Запрос: получить пул кандидатов для моделирования."""
+    profile: DataProfileRequest
+    min_level: Optional[str] = Field(
+        "CONDITIONALLY_APPLICABLE",
+        description="Минимальный уровень применимости для включения в пул",
+    )
+
+
+class CandidatesStatistics(BaseModel):
+    """Статистика по пулу кандидатов."""
+    total_candidates: int
+    by_level: Dict[str, int] = Field(default_factory=dict)
+    total_models_in_spec: int = Field(0, description="Общее число моделей в спецификации")
+
+
+class CandidatesResponse(BaseModel):
+    """Ответ: пул кандидатов для моделирования."""
+    candidates: List[ModelCandidate]
+    statistics: CandidatesStatistics
+    spec_version: str = Field("", description="Версия спецификации modeling.yaml")

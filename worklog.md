@@ -53,3 +53,50 @@ Stage Summary:
 - Ансамбль: 4 стратегии (simple_avg, weighted_avg, median, stacking) + auto-trigger
 - Prediction Intervals: методы для всех 8 семейств
 - Валидация ✅ (0 ошибок, 0 предупреждений)
+
+---
+Task ID: 3
+Agent: main
+Task: Python-загрузчик modeling_spec_loader.py — Pydantic v2 модели + движок применимости + тесты
+
+Work Log:
+- Изучена структура src/catalog/: models_catalog.py (Pydantic v2, field_validator, model_dump)
+- Pydantic v2.12.5 подтверждён; pytest 9.0.2
+- Спроектирована иерархия из 15+ Pydantic-моделей: Metadata → Family → FamilyModel → ApplicabilityLevel → ApplicabilityEngine → ApplicabilityRule → Pipeline → PipelineStage → MetricsConfig → MetricDef → RankingFormula → PredictionIntervalsConfig → ModelCardTemplate → LifecycleSeparation → EnsembleConfig → PreprocessingRule → UIConfig → DataProfile → ApplicabilityResult → ModelingSpec
+- Написаны тесты (TDD): 62 теста в 13 классах — загрузка, структура, уровни применимости, движок (F01-F05, D01-D06, C01-C05, P01-P07), пайплайн, метрики, PI, Model Card, жизненные циклы, ансамбли, предобработка, UI, массовая оценка, целостность
+- Реализован modeling_spec_loader.py: from_yaml(), to_yaml(), resolve_applicability(), resolve_all_applicability(), get_candidate_pool(), validate_integrity()
+- Движок применимости: 23 предопределённых handler'а + fallback eval
+- Исправлены 3 конфликта правил в тестах: F01 vs F05 (DeepAR), F04 vs C01 (ARIMA boundary), F03 (VECM exogenous)
+- Все 62 теста PASS, существующие test_catalog.py (3 теста) PASS
+- Целостность спецификации validate_integrity() → PASS (0 issues)
+
+Stage Summary:
+- Создан src/catalog/modeling_spec_loader.py (15+ Pydantic моделей, ~500 строк)
+- Создан tests/test_modeling_spec.py (62 теста, 13 классов)
+- Движок применимости: 23 правила с 4 приоритетами (forbidden → discouraged → conditional → preferred)
+- Ключевые методы: resolve_applicability(), resolve_all_applicability(), get_candidate_pool()
+- Массовая оценка для макро-профиля (n=120, M): 10 RECOMMENDED, 5 NOT_RECOMMENDED, 9 NOT_APPLICABLE
+- Все тесты ✅ (62 passed)
+
+---
+Task ID: 4
+Agent: main
+Task: API-эндпоинт POST /v1/models/candidates — exposes get_candidate_pool() для фронтенда
+
+Work Log:
+- Изучена структура API: routers/models.py (заглушка train), schemas.py, auth.py (require_capability), plans.py (capabilities)
+- Изучен паттерн тестов API: tests/api/test_rules.py (TestClient, API-ключи через env)
+- Спроектированы схемы: DataProfileRequest, ModelCandidate, CandidatesRequest, CandidatesStatistics, CandidatesResponse
+- Добавлены схемы в schemas.py (без изменения существующих)
+- Переписан routers/models.py: добавлен POST /candidates с require_capability("can_train_models"), ленивый кэш спецификации
+- Написаны тесты: 19 тестов в 6 классах — авторизация (demo→403, pro→200, admin→200), структура ответа, логика применимости (baselines, GARCH, сортировка), разные профили (financial, tiny), валидация (422), опции (min_level)
+- Установлен pandera (зависимость validation/engine, не была в venv)
+- Все 19 API-тестов PASSED; все 72 связанных тестов PASSED
+
+Stage Summary:
+- POST /v1/models/candidates — полный эндпоинт с авторизацией, валидацией, движком применимости
+- Схемы: DataProfileRequest → CandidatesRequest → CandidatesResponse (с ModelCandidate[], statistics, spec_version)
+- Авторизация: require_capability("can_train_models") — professional/enterprise/admin
+- Ленивый кэш спецификации (ModelingSpec загружается один раз)
+- 19 тестов ✅ (auth×4, structure×4, applicability×4, profiles×2, validation×3, options×2)
+- Пример: макро-профиль n=120 → 10 RECOMMENDED кандидатов (baselines + ETS + ARIMA + Prophet)
