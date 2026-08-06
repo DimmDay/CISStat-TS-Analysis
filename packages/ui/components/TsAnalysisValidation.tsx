@@ -299,17 +299,17 @@ export function TsAnalysisValidation() {
             {descriptionSubtitle}
           </p>
           {/* ── Expandable Description Box ──
-              collapsed: min-h=220px, max-h=220px, scroll
-              expanded: overlay, max-h=calc(100vh - 180px), scroll if still overflows
+              collapsed: min-h=220px, max-h=220px, scroll (in-flow)
+              expanded: position:absolute overlay over graph, max-h=calc(100vh-180px)
               chevron: shown only when hasOverflow
           */}
-          <div className="relative">
+          <div className="relative min-h-[220px]">
             <div
               ref={descRef}
-              className={`rounded-lg bg-brand-light/50 border border-neutral-200 px-4 py-3 min-h-[220px] overflow-y-auto text-sm text-neutral-600 whitespace-pre-wrap transition-[max-height] duration-300 ease-in-out ${
+              className={`rounded-lg bg-brand-light/50 border border-neutral-200 px-4 py-3 overflow-y-auto text-sm text-neutral-600 whitespace-pre-wrap ${
                 descriptionExpanded
-                  ? "max-h-[calc(100vh-180px)] z-20 shadow-lg border-brand/30"
-                  : "max-h-[220px]"
+                  ? "absolute top-0 left-0 right-0 z-20 max-h-[calc(100vh-180px)] shadow-lg border-brand/30 min-h-[220px]"
+                  : "max-h-[220px] min-h-[220px]"
               }`}
             >
               {descriptionSection === "rules" ? (
