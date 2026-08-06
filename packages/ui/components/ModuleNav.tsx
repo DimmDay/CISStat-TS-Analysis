@@ -31,24 +31,26 @@ export function ModuleNav() {
   return (
     <nav
       aria-label="Навигация по модулям анализа"
-      className="flex items-center gap-1 border-b border-neutral-200 bg-white px-6 overflow-x-auto"
+      className="border-b border-neutral-200 bg-white"
     >
-      {MODULES.map((mod) => {
-        const isActive = pathname === mod.href || pathname.startsWith(mod.href + "/");
-        return (
-          <Link
-            key={mod.href}
-            href={mod.href}
-            className={`whitespace-nowrap px-4 py-3 text-sm border-b-2 transition-colors ${
-              isActive
-                ? "border-brand text-brand font-medium"
-                : "border-transparent text-neutral-600 hover:text-neutral-900 hover:border-neutral-300"
-            }`}
-          >
-            {mod.label}
-          </Link>
-        );
-      })}
+      <div className="max-w-[1600px] mx-auto px-6 flex items-center gap-1 overflow-x-auto">
+        {MODULES.map((mod) => {
+          const isActive = pathname === mod.href || pathname.startsWith(mod.href + "/");
+          return (
+            <Link
+              key={mod.href}
+              href={mod.href}
+              className={`whitespace-nowrap px-4 py-3 text-sm border-b-2 transition-colors ${
+                isActive
+                  ? "border-brand text-brand font-medium"
+                  : "border-transparent text-neutral-600 hover:text-neutral-900 hover:border-neutral-300"
+              }`}
+            >
+              {mod.label}
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }

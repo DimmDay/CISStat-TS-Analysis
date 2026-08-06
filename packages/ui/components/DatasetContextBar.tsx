@@ -18,39 +18,41 @@ export function DatasetContextBar() {
 
   return (
     <>
-      <div className="flex items-center justify-between border-b border-neutral-100 bg-neutral-50 px-6 py-2 text-sm">
-        <div className="flex items-center gap-2 text-neutral-600">
-          {activeDataset ? (
-            <>
-              <span className="font-medium text-neutral-900">📄 {activeDataset.name}</span>
-              <span className="text-neutral-400">·</span>
-              <span>{activeDataset.rows.toLocaleString("ru-RU")} строк</span>
-              <span className="text-neutral-400">·</span>
-              <span>{activeDataset.sizeLabel}</span>
-              <Link href="/data/upload" className="ml-2 text-brand hover:underline">
-                Изменить
+      <div className="border-b border-neutral-100 bg-neutral-50">
+        <div className="max-w-[1600px] mx-auto px-6 flex items-center justify-between py-2 text-sm">
+          <div className="flex items-center gap-2 text-neutral-600">
+            {activeDataset ? (
+              <>
+                <span className="font-medium text-neutral-900">📄 {activeDataset.name}</span>
+                <span className="text-neutral-400">·</span>
+                <span>{activeDataset.rows.toLocaleString("ru-RU")} строк</span>
+                <span className="text-neutral-400">·</span>
+                <span>{activeDataset.sizeLabel}</span>
+                <Link href="/data/upload" className="ml-2 text-brand hover:underline">
+                  Изменить
+                </Link>
+              </>
+            ) : (
+              <Link href="/data/upload" className="text-brand hover:underline">
+                Загрузить датасет →
               </Link>
-            </>
-          ) : (
-            <Link href="/data/upload" className="text-brand hover:underline">
-              Загрузить датасет →
-            </Link>
-          )}
-        </div>
+            )}
+          </div>
 
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          className="relative flex items-center gap-1 text-brand hover:underline font-normal"
-          aria-label="Логи событий"
-        >
-          Логи событий
-          {log.length > 0 && (
-            <span className="rounded-full bg-brand text-white text-[9px] px-1.5 py-0.5 leading-none">
-              {log.length}
-            </span>
-          )}
-        </button>
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            className="relative flex items-center gap-1 text-brand hover:underline font-normal"
+            aria-label="Логи событий"
+          >
+            Логи событий
+            {log.length > 0 && (
+              <span className="rounded-full bg-brand text-white text-[9px] px-1.5 py-0.5 leading-none">
+                {log.length}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       <EventsLogDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
