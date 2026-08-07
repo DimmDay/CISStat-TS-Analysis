@@ -1,0 +1,3961 @@
+diff --git a/.gitignore b/.gitignore
+index 23514c2..2f4f287 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -18,6 +18,7 @@ config.json
+ *.npy
+ *.npz
+ !sample_data.csv
++!apps/api/demo_data/*.csv
+ !tests/fixtures/*.csv
+ !example.xlsx
+ 
+diff --git a/apps/api/demo_data/sales_demo.csv b/apps/api/demo_data/sales_demo.csv
+new file mode 100644
+index 0000000..f43977f
+--- /dev/null
++++ b/apps/api/demo_data/sales_demo.csv
+@@ -0,0 +1,73 @@
++date,country,category,sales,profit
++2023-01-01,Russia,Textiles,14326.67,1181.97
++2023-02-01,Russia,Machinery,11689.27,1196.06
++2023-03-01,Russia,Food,12944.56,1911.52
++2023-04-01,Russia,Textiles,13458.88,1193.72
++2023-05-01,Russia,Machinery,12403.24,1029.22
++2023-06-01,Russia,Food,12004.22,1566.98
++2023-07-01,Russia,Textiles,11624.14,1161.06
++2023-08-01,Russia,Machinery,13348.5,1795.3
++2023-09-01,Russia,Food,12348.67,1715.56
++2023-10-01,Russia,Textiles,14016.9,1130.46
++2023-11-01,Russia,Machinery,16254.91,2435.21
++2023-12-01,Russia,Food,13010.59,1243.14
++2024-01-01,Russia,Textiles,17019.96,1934.48
++2024-02-01,Russia,Machinery,12565.75,1126.79
++2024-03-01,Russia,Food,14759.08,2071.77
++2024-04-01,Russia,Textiles,14775.05,2260.19
++2024-05-01,Russia,Machinery,14141.73,2507.49
++2024-06-01,Russia,Food,13816.01,1867.98
++2024-07-01,Russia,Textiles,15220.78,2159.1
++2024-08-01,Russia,Machinery,15441.72,2126.87
++2024-09-01,Russia,Food,15114.08,1278.39
++2024-10-01,Russia,Textiles,13843.29,1508.07
++2024-11-01,Russia,Machinery,15547.48,1605.73
++2024-12-01,Russia,Food,13692.58,1476.02
++2023-01-01,Kazakhstan,Machinery,7158.12,833.8
++2023-02-01,Kazakhstan,Food,5961.1,601.78
++2023-03-01,Kazakhstan,Textiles,5891.98,1023.23
++2023-04-01,Kazakhstan,Machinery,6424.75,905.33
++2023-05-01,Kazakhstan,Food,5885.63,899.99
++2023-06-01,Kazakhstan,Textiles,5931.85,699.64
++2023-07-01,Kazakhstan,Machinery,7048.55,1014.99
++2023-08-01,Kazakhstan,Food,6553.81,972.99
++2023-09-01,Kazakhstan,Textiles,6988.45,1101.38
++2023-10-01,Kazakhstan,Machinery,6242.34,519.43
++2023-11-01,Kazakhstan,Food,7376.31,787.6
++2023-12-01,Kazakhstan,Textiles,6331.56,1103.53
++2024-01-01,Kazakhstan,Machinery,8383.91,934.54
++2024-02-01,Kazakhstan,Food,7052.64,843.24
++2024-03-01,Kazakhstan,Textiles,7472.08,940.62
++2024-04-01,Kazakhstan,Machinery,6632.71,694.2
++2024-05-01,Kazakhstan,Food,7106.16,755.2
++2024-06-01,Kazakhstan,Textiles,7199.77,1222.39
++2024-07-01,Kazakhstan,Machinery,6996.34,713.15
++2024-08-01,Kazakhstan,Food,7916.45,1036.68
++2024-09-01,Kazakhstan,Textiles,6666.0,564.69
++2024-10-01,Kazakhstan,Machinery,6748.53,963.32
++2024-11-01,Kazakhstan,Food,8982.78,1097.84
++2024-12-01,Kazakhstan,Textiles,6790.53,802.38
++2023-01-01,Belarus,Food,5107.0,678.78
++2023-02-01,Belarus,Textiles,4464.4,741.44
++2023-03-01,Belarus,Machinery,3717.46,565.32
++2023-04-01,Belarus,Food,4311.18,576.39
++2023-05-01,Belarus,Textiles,4004.13,576.98
++2023-06-01,Belarus,Machinery,3910.6,482.87
++2023-07-01,Belarus,Food,4240.39,743.69
++2023-08-01,Belarus,Textiles,4644.74,493.92
++2023-09-01,Belarus,Machinery,4360.51,426.74
++2023-10-01,Belarus,Food,4763.11,795.69
++2023-11-01,Belarus,Textiles,4900.17,705.11
++2023-12-01,Belarus,Machinery,4577.64,436.18
++2024-01-01,Belarus,Food,5470.91,732.76
++2024-02-01,Belarus,Textiles,4814.11,640.45
++2024-03-01,Belarus,Machinery,4140.53,465.46
++2024-04-01,Belarus,Food,4194.07,725.2
++2024-05-01,Belarus,Textiles,5034.48,821.46
++2024-06-01,Belarus,Machinery,4538.29,389.35
++2024-07-01,Belarus,Food,5119.87,894.42
++2024-08-01,Belarus,Textiles,4402.23,566.12
++2024-09-01,Belarus,Machinery,4423.0,690.25
++2024-10-01,Belarus,Food,5139.45,477.14
++2024-11-01,Belarus,Textiles,5630.03,759.94
++2024-12-01,Belarus,Machinery,4726.94,790.55
+diff --git a/apps/api/main.py b/apps/api/main.py
+index d9fd7b8..7a25a94 100644
+--- a/apps/api/main.py
++++ b/apps/api/main.py
+@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
+ from fastapi import FastAPI
+ from fastapi.middleware.cors import CORSMiddleware
+ 
+-from apps.api.routers import public, internal, models
++from apps.api.routers import public, internal, models, session
+ 
+ app = FastAPI(
+     title="CISStat TS Analysis API",
+@@ -44,6 +44,9 @@ app.add_middleware(
+ app.include_router(public.router, prefix="/v1/public", tags=["public"])
+ app.include_router(internal.router, prefix="/v1/internal", tags=["internal"])
+ app.include_router(models.router, prefix="/v1/models", tags=["models"])
++# /v1/session -- НЕ под public/internal: сессия (AnalysisSession) общая
++# для embedded и standalone, см. docstring apps/api/routers/session.py.
++app.include_router(session.router, prefix="/v1/session", tags=["session"])
+ 
+ 
+ @app.get("/health")
+diff --git a/apps/api/routers/internal.py b/apps/api/routers/internal.py
+index 73454d9..bcb818a 100644
+--- a/apps/api/routers/internal.py
++++ b/apps/api/routers/internal.py
+@@ -11,10 +11,10 @@
+ Логика идентична public.py -- сознательно не дублируем формулы, только
+ роутинг разный (без require_api_key, другой префикс).
+ """
+-from fastapi import APIRouter, UploadFile, File, HTTPException
++from fastapi import APIRouter, UploadFile, File, HTTPException, Request, Response
+ import pandas as pd
+-import uuid
+ 
++from apps.api.upload_common import handle_upload
+ from apps.api.schemas import (
+     PassportRequest, PassportResponse,
+     RegularityRequest, RegularityResponse,
+@@ -27,7 +27,6 @@ from apps.api.schemas import (
+ from app.core.passport import calculate_ts_passport
+ from app.validation.regularity import compute_regularity_violations
+ from apps.api.routers.public import _series_from_points
+-from app.data.file_loader import read_uploaded_file
+ from validation.engine import load_rules, validate_dataframe
+ 
+ router = APIRouter()
+@@ -59,40 +58,10 @@ def get_regularity(payload: RegularityRequest):
+         "error": result.get("error"),
+     }
+ 
+-# Добавить в конец файла apps/api/routers/internal.py
+ @router.post("/upload", response_model=UploadResponse)
+-async def upload_file(file: UploadFile = File(...)):
+-    try:
+-        # Читаем содержимое файла
+-        contents = await file.read()
+-        file.file.seek(0)  # Сбрасываем указатель
+-
+-        # Создаём BytesIO для передачи в file_loader
+-        from io import BytesIO
+-        file_like = BytesIO(contents)
+-        file_like.name = file.filename
+-
+-        df, ext = read_uploaded_file(file_like)
+-
+-        # Генерируем preview (все значения конвертируем в строки)
+-        head_rows = df.head(5).values.tolist()
+-        tail_rows = df.tail(5).values.tolist()
+-        # Конвертируем все значения в строки
+-        head = [[str(cell) for cell in row] for row in head_rows]
+-        tail = [[str(cell) for cell in row] for row in tail_rows]
+-        # Добавляем заголовки
+-        head = [[str(col) for col in df.columns.tolist()]] + head
+-
+-        return UploadResponse(
+-            dataset_id=str(uuid.uuid4()),
+-            name=file.filename,
+-            rows=len(df),
+-            columns=len(df.columns),
+-            preview={"head": head, "tail": tail},
+-            error=None
+-        )
+-    except Exception as e:
+-        raise HTTPException(status_code=400, detail=str(e))
++async def upload_file(request: Request, response: Response, file: UploadFile = File(...)):
++    # Логика — в upload_common.py (общая с public.py, не дублируем).
++    return await handle_upload(file, request, response)
+ 
+ 
+ # ── Управление правилами (зеркало public без API-ключа) ──────
+diff --git a/apps/api/routers/public.py b/apps/api/routers/public.py
+index 0e4f03d..9fbe8dc 100644
+--- a/apps/api/routers/public.py
++++ b/apps/api/routers/public.py
+@@ -3,11 +3,11 @@
+ Публичные эндпоинты -- для внешних покупателей (веб-клиент standalone
+ и прямая интеграция в сторонние ИТ-системы). Авторизация по API-ключу.
+ """
+-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
++from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request, Response
+ import pandas as pd
+-import uuid
+ 
+ from apps.api.auth import require_api_key
++from apps.api.upload_common import handle_upload
+ from apps.api.schemas import (
+     PassportRequest, PassportResponse,
+     RegularityRequest, RegularityResponse,
+@@ -21,7 +21,6 @@ from apps.api.schemas import (
+ # этот сервис относительно репозитория CISStat-TS-Analysis:
+ from app.core.passport import calculate_ts_passport
+ from app.validation.regularity import compute_regularity_violations
+-from app.data.file_loader import read_uploaded_file
+ from validation.engine import load_rules, validate_dataframe
+ 
+ router = APIRouter(dependencies=[Depends(require_api_key)])
+@@ -177,35 +176,8 @@ def update_rules(payload: RulesUpdateRequest):
+ 
+ 
+ @router.post("/upload", response_model=UploadResponse)
+-async def upload_file(file: UploadFile = File(...)):
+-    try:
+-        # Читаем содержимое файла
+-        contents = await file.read()
+-        file.file.seek(0)  # Сбрасываем указатель
+-
+-        # Создаём BytesIO для передачи в file_loader
+-        from io import BytesIO
+-        file_like = BytesIO(contents)
+-        file_like.name = file.filename
+-
+-        df, ext = read_uploaded_file(file_like)
+-
+-        # Генерируем preview (все значения конвертируем в строки)
+-        head_rows = df.head(5).values.tolist()
+-        tail_rows = df.tail(5).values.tolist()
+-        # Конвертируем все значения в строки
+-        head = [[str(cell) for cell in row] for row in head_rows]
+-        tail = [[str(cell) for cell in row] for row in tail_rows]
+-        # Добавляем заголовки
+-        head = [[str(col) for col in df.columns.tolist()]] + head
+-
+-        return UploadResponse(
+-            dataset_id=str(uuid.uuid4()),
+-            name=file.filename,
+-            rows=len(df),
+-            columns=len(df.columns),
+-            preview={"head": head, "tail": tail},
+-            error=None
+-        )
+-    except Exception as e:
+-        raise HTTPException(status_code=400, detail=str(e))
+\ No newline at end of file
++async def upload_file(request: Request, response: Response, file: UploadFile = File(...)):
++    # Логика — в upload_common.py (общая с internal.py, не дублируем).
++    # Обновляет AnalysisSession (session_store.py) через cookie сессии,
++    # чтобы Home page знала об активном датасете после F5.
++    return await handle_upload(file, request, response)
+\ No newline at end of file
+diff --git a/apps/api/routers/session.py b/apps/api/routers/session.py
+new file mode 100644
+index 0000000..dc23cda
+--- /dev/null
++++ b/apps/api/routers/session.py
+@@ -0,0 +1,142 @@
++# apps/api/routers/session.py
++"""
++Сессия анализа (AnalysisSession) -- ОБЩИЙ роутер, НЕ дублируется под
++/v1/public и /v1/internal. Причина: сессия идентифицируется cookie
++браузера, а не API-ключом -- нужна одинаково embedded- и
++standalone-фронтенду, включая неавторизованного посетителя standalone,
++у которого никакого API-ключа ещё нет. Дублировать под двумя
++префиксами означало бы наступить на те же грабли "N копий одной
++функции", о которых предупреждает docs/MIGRATION_ARCHITECTURE.md §7.2.
++
++Используется Home page (packages/ui/components/EmbeddedHome.tsx,
++apps/standalone/components/StandaloneHome.tsx) для sessions-aware
++логики "рабочий стол vs онбординг/маркетинг".
++"""
++from pathlib import Path
++
++import pandas as pd
++from fastapi import APIRouter, HTTPException, Request, Response
++
++from apps.api.schemas import DatasetSummaryOut, SessionStateResponse, UploadResponse
++from apps.api.session_store import (
++    AnalysisSession,
++    DatasetInfo,
++    format_size_label,
++    get_or_create_session_id,
++    get_session_store,
++)
++from apps.api.upload_common import _compute_column_info, _compute_quality_teaser
++
++router = APIRouter()
++
++DEMO_DATASET_PATH = Path(__file__).resolve().parent.parent / "demo_data" / "sales_demo.csv"
++
++
++def _to_response(session: AnalysisSession) -> SessionStateResponse:
++    dataset = None
++    if session.dataset:
++        dataset = DatasetSummaryOut(
++            dataset_id=session.dataset.dataset_id,
++            name=session.dataset.name,
++            rows=session.dataset.rows,
++            columns=session.dataset.columns,
++            size_label=session.dataset.size_label,
++        )
++    return SessionStateResponse(
++        has_active_dataset=session.dataset is not None,
++        dataset=dataset,
++        stages=session.stages,
++        last_active_stage=session.last_active_stage,
++        updated_at=session.updated_at,
++    )
++
++
++@router.get("/current", response_model=SessionStateResponse)
++def get_current_session(request: Request, response: Response):
++    """Вызывается Home page при монтировании -- решает "рабочий стол vs
++    онбординг/маркетинг" по has_active_dataset. Создаёт cookie сессии
++    при первом визите, если её ещё нет (пустая сессия, всё pending)."""
++    session_id = get_or_create_session_id(request, response)
++    session = get_session_store().get_or_create(session_id)
++    return _to_response(session)
++
++
++@router.post("/demo", response_model=SessionStateResponse)
++def load_demo_dataset(request: Request, response: Response):
++    """«Попробовать на демо-данных» -- кнопка на Home (embedded онбординг,
++    по решению тимлида: снимает барьер "нет своего файла под рукой")."""
++    if not DEMO_DATASET_PATH.exists():
++        raise HTTPException(status_code=500, detail="Демо-датасет не найден на сервере")
++
++    df = pd.read_csv(DEMO_DATASET_PATH)
++    session_id = get_or_create_session_id(request, response)
++    session = get_session_store().get_or_create(session_id)
++
++    session.set_dataset(
++        DatasetInfo(
++            dataset_id="demo-sales",
++            name="demo_sales.csv (демо-датасет)",
++            rows=len(df),
++            columns=len(df.columns),
++            size_label=format_size_label(DEMO_DATASET_PATH.stat().st_size),
++        ),
++        df,
++    )
++    return _to_response(session)
++
++
++@router.get("/dataset", response_model=UploadResponse)
++def get_session_dataset(request: Request, response: Response):
++    """
++    Восстанавливает превью/техинфо/качество для уже загруженного в сессию
++    датасета -- нужно, когда пользователь попадает на «Загрузку» не через
++    сам аплоад, а по кнопке «Продолжить» с Home при уже активном датасете
++    в сессии (см. WorkbenchSummary). Пересчитывает из session.dataframe --
++    тот же DataFrame, что видел исходный upload, не запрашивает файл заново.
++    """
++    session_id = get_or_create_session_id(request, response)
++    session = get_session_store().get_or_create(session_id)
++    if session.dataset is None or session.dataframe is None:
++        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
++
++    df = session.dataframe
++    head_rows = df.head(5).values.tolist()
++    tail_rows = df.tail(5).values.tolist()
++    head = [[str(cell) for cell in row] for row in head_rows]
++    tail = [[str(cell) for cell in row] for row in tail_rows]
++    head = [[str(col) for col in df.columns.tolist()]] + head
++
++    return UploadResponse(
++        dataset_id=session.dataset.dataset_id,
++        name=session.dataset.name,
++        rows=session.dataset.rows,
++        columns=session.dataset.columns,
++        preview={"head": head, "tail": tail},
++        columns_info=_compute_column_info(df),
++        quality=_compute_quality_teaser(df),
++        size_label=session.dataset.size_label,
++        error=None,
++    )
++
++
++@router.post("/stage/{stage}", response_model=SessionStateResponse)
++def set_stage(stage: str, status: str, request: Request, response: Response):
++    """
++    Отмечает этап пайплайна как in_progress/done.
++
++    ОХВАТ ЭТОЙ ЗАДАЧИ: сейчас этот эндпоинт вызывается только неявно,
++    через set_dataset() внутри upload_common.py (upload автоматически
++    ставит stages.upload = "done"). Остальные модули (Валидация,
++    Предобработка, EDA, Моделирование, Прогнозирование) ЕЩЁ НЕ вызывают
++    его явно при переходе пользователя на страницу -- подключить по
++    мере того, как каждый из них перестаёт быть ModulePlaceholder
++    (см. README.md, таблицу "что доделать"). До этого момента
++    lastActiveStage на Home всегда будет "upload", пока пользователь не
++    дойдёт до готового модуля дальше по пайплайну.
++    """
++    session_id = get_or_create_session_id(request, response)
++    session = get_session_store().get_or_create(session_id)
++    if status not in ("pending", "in_progress", "done"):
++        raise HTTPException(status_code=422, detail="status должен быть pending|in_progress|done")
++    session.set_stage(stage, status)
++    return _to_response(session)
+diff --git a/apps/api/schemas.py b/apps/api/schemas.py
+index 9d1950a..03ece1e 100644
+--- a/apps/api/schemas.py
++++ b/apps/api/schemas.py
+@@ -53,6 +53,28 @@ class PreviewData(BaseModel):
+     head: List[List[str]] = Field(..., description="Первые 5 строк (включая заголовки)")
+     tail: List[List[str]] = Field(..., description="Последние 5 строк")
+ 
++class ColumnInfoOut(BaseModel):
++    """Техническая информация по колонке -- секция «Техническая информация»
++    контракта вкладки «Загрузка» (см. TsAnalysisUpload.tsx)."""
++    name: str
++    dtype: str
++    type_icon: str = Field(..., description="numeric | datetime | categorical | text")
++    non_null: int
++    nulls: int
++    unique: int
++
++
++class QualityTeaserOut(BaseModel):
++    """Только счётчики -- содержательный анализ проблем качества живёт в
++    модуле «Валидация», не здесь (по контракту вкладки «Загрузка")."""
++    cols_with_missing: int
++    cols_with_outliers: int
++    rows_total: int
++    duplicates: int
++    missing_cols: List[str]
++    outlier_cols: List[str]
++
++
+ class UploadResponse(BaseModel):
+     """Ответ на загрузку файла."""
+     dataset_id: str = Field(..., description="Уникальный идентификатор датасета")
+@@ -60,9 +82,36 @@ class UploadResponse(BaseModel):
+     rows: int = Field(..., description="Количество строк")
+     columns: int = Field(..., description="Количество колонок")
+     preview: PreviewData = Field(..., description="Предпросмотр данных")
++    columns_info: Optional[List[ColumnInfoOut]] = Field(
++        None, description="Тех. информация по каждой колонке (dtype/nulls/unique)"
++    )
++    quality: Optional[QualityTeaserOut] = Field(
++        None, description="Предварительная оценка качества (только счётчики)"
++    )
++    size_label: Optional[str] = Field(None, description="Размер файла (KB/MB) — для UI")
+     error: Optional[str] = Field(None, description="Ошибка при загрузке")
+ 
+ 
++class DatasetSummaryOut(BaseModel):
++    """Сводка по активному датасету сессии -- для Home page ("Рабочий стол")."""
++    dataset_id: str
++    name: str
++    rows: int
++    columns: int
++    size_label: str
++
++
++class SessionStateResponse(BaseModel):
++    """Состояние AnalysisSession -- см. apps/api/session_store.py.
++    Sessions-aware Home page решает "рабочий стол vs онбординг/маркетинг"
++    по полю has_active_dataset."""
++    has_active_dataset: bool
++    dataset: Optional[DatasetSummaryOut] = None
++    stages: Dict[str, str]
++    last_active_stage: Optional[str] = None
++    updated_at: Optional[str] = None
++
++
+ # ── Управление правилами валидации ──
+ 
+ class RulesTemplate(BaseModel):
+diff --git a/apps/api/session_store.py b/apps/api/session_store.py
+new file mode 100644
+index 0000000..c181cda
+--- /dev/null
++++ b/apps/api/session_store.py
+@@ -0,0 +1,142 @@
++# apps/api/session_store.py
++"""
++Серверное хранилище сессии анализа (AnalysisSession).
++
++Введено по решению тимлида (обсуждение Home page): activeDataset и
++прогресс по этапам должны переживать F5, а не жить только в React
++Context. Идентификация -- httponly cookie, а не API-ключ, потому что
++сессия нужна ОДИНАКОВО embedded- и standalone-фронтенду, включая
++неавторизованного посетителя standalone (у него ещё нет API-ключа).
++
++ЗАГЛУШКА ПО ХРАНЕНИЮ: in-memory dict, как и остальные прототипные
++хранилища в этом API (_rules_override в public.py/internal.py). Не
++переживает рестарт процесса и не работает при нескольких воркерах/
++подах -- заменить на Redis+TTL в продакшене (см.
++docs/MIGRATION_ARCHITECTURE.md, раздел 8, "Открытые вопросы").
++
++ЗАГЛУШКА ПО COOKIE: SameSite=Lax подходит для localhost (embedded и
++standalone на разных портах одного хоста -- same-site). Если в
++продакшене embedded/standalone/api окажутся на РАЗНЫХ доменах (не
++поддоменах одного site) -- потребуется SameSite=None; Secure=True и
++HTTPS везде. Не решать сейчас, пометить при реальном деплое.
++"""
++from __future__ import annotations
++
++import uuid
++from dataclasses import dataclass, field
++from datetime import datetime, timezone
++from typing import Optional
++
++import pandas as pd
++from fastapi import Request, Response
++
++SESSION_COOKIE_NAME = "cisstat_session_id"
++
++
++def format_size_label(size_bytes: int) -> str:
++    """Общий формат для size_label -- KB для маленьких файлов (демо-датасет
++    ~3KB показывал бы "0.00 MB" в MB-only формате), MB для остальных."""
++    size_mb = size_bytes / (1024 * 1024)
++    if size_mb < 0.1:
++        return f"{size_bytes / 1024:.1f} KB"
++    return f"{size_mb:.2f} MB"
++
++# Порядок и состав совпадают с ModuleNav (packages/ui/components/ModuleNav.tsx)
++# и с "шестью этапами анализа" из docs/MIGRATION_ARCHITECTURE.md §1.1.
++# "Задачи" сознательно НЕ включены -- по контракту вкладки «Загрузка»
++# (см. комментарий в TsAnalysisUpload.tsx) это отдельная сущность
++# (What-if/iDSS), не шаг основного пайплайна.
++STAGES = ["upload", "validation", "preprocessing", "eda", "modeling", "forecasting"]
++
++StageStatus = str  # "pending" | "in_progress" | "done"
++
++
++@dataclass
++class DatasetInfo:
++    dataset_id: str
++    name: str
++    rows: int
++    columns: int
++    size_label: str
++
++
++@dataclass
++class AnalysisSession:
++    session_id: str
++    dataset: Optional[DatasetInfo] = None
++    # Сырой DataFrame НЕ отдаётся клиенту напрямую -- нужен будущим
++    # эндпоинтам (quality-teaser в деталях, column-mapping override и
++    # т.п.), чтобы читать те же данные, что видел Upload, не запрашивая
++    # файл заново у пользователя.
++    dataframe: Optional[pd.DataFrame] = None
++    stages: dict[str, StageStatus] = field(default_factory=lambda: {s: "pending" for s in STAGES})
++    last_active_stage: Optional[str] = None
++    updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
++
++    def touch(self) -> None:
++        self.updated_at = datetime.now(timezone.utc).isoformat()
++
++    def set_dataset(self, dataset: DatasetInfo, dataframe: Optional[pd.DataFrame]) -> None:
++        """Новый датасет -- сбрасывает прогресс по этапам (новый анализ)."""
++        self.dataset = dataset
++        self.dataframe = dataframe
++        self.stages = {s: "pending" for s in STAGES}
++        self.stages["upload"] = "done"
++        self.last_active_stage = "upload"
++        self.touch()
++
++    def set_stage(self, stage: str, status: StageStatus) -> None:
++        if stage not in self.stages:
++            return
++        self.stages[stage] = status
++        if status in ("in_progress", "done"):
++            self.last_active_stage = stage
++        self.touch()
++
++
++class SessionStore:
++    """Реестр сессий одного процесса uvicorn. ЗАМЕНИТЬ на Redis при
++    переходе на несколько воркеров/подов (см. docstring модуля)."""
++
++    def __init__(self) -> None:
++        self._sessions: dict[str, AnalysisSession] = {}
++
++    def get(self, session_id: str) -> Optional[AnalysisSession]:
++        return self._sessions.get(session_id)
++
++    def get_or_create(self, session_id: str) -> AnalysisSession:
++        session = self._sessions.get(session_id)
++        if session is None:
++            session = AnalysisSession(session_id=session_id)
++            self._sessions[session_id] = session
++        return session
++
++
++_store = SessionStore()
++
++
++def get_session_store() -> SessionStore:
++    return _store
++
++
++def get_or_create_session_id(request: Request, response: Response) -> str:
++    """
++    Читает cookie `cisstat_session_id`; если её нет -- создаёт новую и
++    выставляет httponly-cookie в ответ. Используется во ВСЕХ роутерах,
++    читающих/пишущих AnalysisSession (session.py, а также upload в
++    public.py/internal.py через upload_common.py) -- сессия НЕ
++    различается по /v1/public vs /v1/internal, один и тот же
++    браузер = одна сессия независимо от того, каким фронтендом
++    (embedded/standalone) он сейчас пользуется.
++    """
++    session_id = request.cookies.get(SESSION_COOKIE_NAME)
++    if not session_id:
++        session_id = uuid.uuid4().hex
++        response.set_cookie(
++            key=SESSION_COOKIE_NAME,
++            value=session_id,
++            httponly=True,
++            samesite="lax",
++            max_age=60 * 60 * 24 * 30,  # 30 дней
++        )
++    return session_id
+diff --git a/apps/api/upload_common.py b/apps/api/upload_common.py
+new file mode 100644
+index 0000000..aa7779f
+--- /dev/null
++++ b/apps/api/upload_common.py
+@@ -0,0 +1,136 @@
++# apps/api/upload_common.py
++"""
++Общая логика обработки загрузки файла -- используется И public.py,
++И internal.py. Раньше (до этого изменения) обработчик /upload был
++буквально продублирован в обоих роутерах -- ровно та же ошибка, о
++которой предупреждает docs/MIGRATION_ARCHITECTURE.md §7.2 ("4 копии
++calculate_ts_passport" в старом Streamlit-коде). Вынесено сюда, чтобы
++не завести пятую.
++
++Дополнительно к предпросмотру (как было раньше) обработчик теперь:
++  1. Реально считает columns_info и quality-teaser из загруженного
++     DataFrame (не моки) -- закрывает соответствующие пункты контракта
++     вкладки «Загрузка» из TsAnalysisUpload.tsx.
++  2. Сохраняет DataFrame и метаданные в AnalysisSession (session_store.py),
++     чтобы Home page знала об активном датасете после F5, а будущие
++     эндпоинты (детекция структуры, column-mapping) могли переиспользовать
++     тот же DataFrame.
++
++НЕ реализовано здесь (сознательно, вне охвата этой задачи): подтверждение
++автоопределения (дата/группировка/частота) с confidence и кандидатами --
++на фронтенде это пока моковые данные (см. комментарий в
++TsAnalysisUpload.tsx). В app/data/detectors.py уже есть протестированная
++`detect_and_convert_datetime`, но она не возвращает форму {selected,
++confidence, candidates: [{name, score}]}, которую ожидает фронтенд --
++это отдельная по объёму задача (адаптер/скоринг), не подмешивать сюда.
++"""
++from io import BytesIO
++import uuid
++
++import pandas as pd
++from fastapi import HTTPException, Request, Response, UploadFile
++
++from apps.api.schemas import ColumnInfoOut, QualityTeaserOut, UploadResponse
++from apps.api.session_store import DatasetInfo, format_size_label, get_or_create_session_id, get_session_store
++from app.data.file_loader import read_uploaded_file
++
++
++def _compute_column_info(df: pd.DataFrame) -> list[ColumnInfoOut]:
++    columns_info: list[ColumnInfoOut] = []
++    for col in df.columns:
++        series = df[col]
++        if pd.api.types.is_datetime64_any_dtype(series):
++            type_icon = "datetime"
++        elif pd.api.types.is_numeric_dtype(series):
++            type_icon = "numeric"
++        elif series.nunique(dropna=True) <= 50:
++            type_icon = "categorical"
++        else:
++            type_icon = "text"
++        columns_info.append(
++            ColumnInfoOut(
++                name=str(col),
++                dtype=str(series.dtype),
++                type_icon=type_icon,
++                non_null=int(series.notna().sum()),
++                nulls=int(series.isna().sum()),
++                unique=int(series.nunique(dropna=True)),
++            )
++        )
++    return columns_info
++
++
++def _compute_quality_teaser(df: pd.DataFrame) -> QualityTeaserOut:
++    """Только счётчики -- см. docstring модуля / контракт вкладки «Загрузка»."""
++    missing_cols = [str(c) for c in df.columns if df[c].isna().any()]
++
++    outlier_cols: list[str] = []
++    for col in df.select_dtypes(include="number").columns:
++        series = df[col].dropna()
++        if len(series) < 4:
++            continue
++        q1, q3 = series.quantile(0.25), series.quantile(0.75)
++        iqr = q3 - q1
++        if iqr == 0:
++            continue
++        lower, upper = q1 - 1.5 * iqr, q3 + 1.5 * iqr
++        if ((series < lower) | (series > upper)).any():
++            outlier_cols.append(str(col))
++
++    return QualityTeaserOut(
++        cols_with_missing=len(missing_cols),
++        cols_with_outliers=len(outlier_cols),
++        rows_total=len(df),
++        duplicates=int(df.duplicated().sum()),
++        missing_cols=missing_cols,
++        outlier_cols=outlier_cols,
++    )
++
++
++async def handle_upload(file: UploadFile, request: Request, response: Response) -> UploadResponse:
++    try:
++        contents = await file.read()
++        file.file.seek(0)  # на случай, если вызывающий код тоже читает file
++
++        file_like = BytesIO(contents)
++        file_like.name = file.filename
++
++        df, _ext = read_uploaded_file(file_like)
++
++        head_rows = df.head(5).values.tolist()
++        tail_rows = df.tail(5).values.tolist()
++        head = [[str(cell) for cell in row] for row in head_rows]
++        tail = [[str(cell) for cell in row] for row in tail_rows]
++        head = [[str(col) for col in df.columns.tolist()]] + head
++
++        size_label = format_size_label(len(contents))
++        dataset_id = str(uuid.uuid4())
++
++        session_id = get_or_create_session_id(request, response)
++        session = get_session_store().get_or_create(session_id)
++        session.set_dataset(
++            DatasetInfo(
++                dataset_id=dataset_id,
++                name=file.filename,
++                rows=len(df),
++                columns=len(df.columns),
++                size_label=size_label,
++            ),
++            df,
++        )
++
++        return UploadResponse(
++            dataset_id=dataset_id,
++            name=file.filename,
++            rows=len(df),
++            columns=len(df.columns),
++            preview={"head": head, "tail": tail},
++            columns_info=_compute_column_info(df),
++            quality=_compute_quality_teaser(df),
++            size_label=size_label,
++            error=None,
++        )
++    except HTTPException:
++        raise
++    except Exception as e:
++        raise HTTPException(status_code=400, detail=str(e))
+diff --git a/apps/embedded/app/data/upload/page.tsx b/apps/embedded/app/data/upload/page.tsx
+index 8405a3e..96e3bd4 100644
+--- a/apps/embedded/app/data/upload/page.tsx
++++ b/apps/embedded/app/data/upload/page.tsx
+@@ -1,11 +1,6 @@
+ // apps/embedded/app/data/upload/page.tsx
+-import { DataUploadForm } from "@cisstat/ui";
++import { TsAnalysisUpload } from "@cisstat/ui";
+ 
+ export default function Page() {
+-  return (
+-    <div>
+-      <h1 className="text-xl font-semibold mb-4">Загрузка</h1>
+-      <DataUploadForm />
+-    </div>
+-  );
++  return <TsAnalysisUpload />;
+ }
+diff --git a/apps/embedded/app/page.tsx b/apps/embedded/app/page.tsx
+index 0867f50..76babf3 100644
+--- a/apps/embedded/app/page.tsx
++++ b/apps/embedded/app/page.tsx
+@@ -1,13 +1,6 @@
+-import Link from "next/link";
++// apps/embedded/app/page.tsx
++import { EmbeddedHome } from "@cisstat/ui";
+ 
+-export default function Home() {
+-  return (
+-    <div>
+-      <h1 className="text-xl font-semibold mb-2">CISStat TS Analysis</h1>
+-      <p className="text-neutral-600 mb-4">Раздел портала: анализ временных рядов.</p>
+-      <Link href="/preprocessing" className="inline-block bg-brand text-white rounded px-4 py-2">
+-        Перейти к анализу →
+-      </Link>
+-    </div>
+-  );
++export default function Page() {
++  return <EmbeddedHome />;
+ }
+diff --git a/apps/embedded/next.config.mjs b/apps/embedded/next.config.mjs
+index a0a7923..8bba237 100644
+--- a/apps/embedded/next.config.mjs
++++ b/apps/embedded/next.config.mjs
+@@ -4,6 +4,12 @@ const nextConfig = {
+   // См. apps/standalone/next.config.mjs -- та же причина: packages/ui
+   // тянет собственные сторонние зависимости (react-dropzone, sonner).
+   transpilePackages: ["@cisstat/ui"],
++  // Режим API для packages/ui/lib/apiClient.ts -- embedded всегда ходит
++  // на /v1/internal/* (сессия портала, без API-ключа). См. решение
++  // тимлида про Home page: не различать режим по window.location.pathname.
++  env: {
++    NEXT_PUBLIC_API_MODE: "internal",
++  },
+ };
+ 
+ export default nextConfig;
+diff --git a/apps/standalone/app/data/upload/page.tsx b/apps/standalone/app/data/upload/page.tsx
+index 35ea2fd..23247cf 100644
+--- a/apps/standalone/app/data/upload/page.tsx
++++ b/apps/standalone/app/data/upload/page.tsx
+@@ -1,11 +1,6 @@
+ // apps/standalone/app/data/upload/page.tsx
+-import { DataUploadForm } from "@cisstat/ui";
++import { TsAnalysisUpload } from "@cisstat/ui";
+ 
+ export default function Page() {
+-  return (
+-    <div>
+-      <h1 className="text-xl font-semibold mb-4">Загрузка</h1>
+-      <DataUploadForm />
+-    </div>
+-  );
++  return <TsAnalysisUpload />;
+ }
+diff --git a/apps/standalone/app/page.tsx b/apps/standalone/app/page.tsx
+index 0654ae8..2de3a28 100644
+--- a/apps/standalone/app/page.tsx
++++ b/apps/standalone/app/page.tsx
+@@ -1,21 +1,6 @@
+-import Link from "next/link";
++// apps/standalone/app/page.tsx
++import { StandaloneHome } from "../components/StandaloneHome";
+ 
+-export default function Home() {
+-  return (
+-    <div>
+-      <h1 className="text-2xl font-semibold mb-2">CISStat TS Analysis</h1>
+-      <p className="text-neutral-600 mb-4 max-w-xl">
+-        Платформа анализа временных рядов — доступна как веб-приложение и через API
+-        для интеграции в сторонние ИТ-системы.
+-      </p>
+-      <div className="flex gap-3">
+-        <Link href="/preprocessing" className="bg-brand text-white rounded px-4 py-2 text-sm">
+-          Открыть в браузере →
+-        </Link>
+-        <Link href="/docs" className="border border-neutral-300 rounded px-4 py-2 text-sm">
+-          Документация API
+-        </Link>
+-      </div>
+-    </div>
+-  );
++export default function Page() {
++  return <StandaloneHome />;
+ }
+diff --git a/apps/standalone/components/ProductJourneyGuide.tsx b/apps/standalone/components/ProductJourneyGuide.tsx
+new file mode 100644
+index 0000000..07e0ddf
+--- /dev/null
++++ b/apps/standalone/components/ProductJourneyGuide.tsx
+@@ -0,0 +1,283 @@
++"use client";
++
++// apps/standalone/components/ProductJourneyGuide.tsx
++//
++// "Путеводитель" для НЕавторизованного посетителя standalone (маркетинг,
++// см. MarketingHome в StandaloneHome.tsx) -- по образцу JourneyGuide на
++// главной портала (https://cis-stat-portal-k9tu.vercel.app/,
++// components/JourneyGuide.tsx в репозитории CISStat_PORTAL): слева
++// вертикальный маршрут с "остановками", справа сетка карточек-функций
++// активной остановки, цветокодировано.
++//
++// ОТЛИЧИЕ ОТ ПОРТАЛА: остановки здесь -- НЕ произвольные категории
++// контента, а РЕАЛЬНЫЕ 6 ЭТАПОВ пайплайна (ключи 1:1 с
++// packages/ui/lib/stages.ts / apps/api/session_store.py STAGES) --
++// путеводитель одновременно и продаёт, и быстро ориентирует в структуре
++// продукта: посетитель за один взгляд видит весь путь от загрузки файла
++// до прогноза и что происходит на каждом шаге.
++//
++// Фичи внутри остановок взяты из РЕАЛЬНОГО кода модулей (label-массивы
++// в TsAnalysisValidation.tsx/TsAnalysisPreprocessing.tsx/TsAnalysisEDA.tsx,
++// контракт в шапке TsAnalysisUpload.tsx, docs/ARCHITECTURE.md для
++// Modeling/Forecasting) -- не выдуманы для красоты.
++//
++// Клик по карточке ведёт на страницу модуля -- ровно то же поведение,
++// что у существующей кнопки "Открыть в браузере" (роуты пока не защищены
++// авторизацией на уровне страницы, см. TODO в lib/useAuth.ts).
++
++import { useState } from "react";
++import Link from "next/link";
++import {
++  Upload,
++  ShieldCheck,
++  Wrench,
++  BarChart3,
++  Brain,
++  TrendingUp,
++  FileText,
++  Calendar,
++  Database,
++  Scale,
++  Fingerprint,
++  Clock,
++  AlertTriangle,
++  Layers,
++  Activity,
++  Waves,
++  FileDown,
++  RefreshCw,
++  Code,
++  MapPin,
++  ChevronRight,
++  type LucideIcon,
++} from "lucide-react";
++
++interface GuideItem {
++  title: string;
++  description: string;
++  icon: LucideIcon;
++}
++
++interface StopColors {
++  bg: string;
++  dark: string;
++}
++
++interface GuideStop {
++  id: string;
++  href: string;
++  label: string;
++  subtitle: string;
++  icon: LucideIcon;
++  colors: StopColors;
++  items: GuideItem[];
++}
++
++const STOPS: GuideStop[] = [
++  {
++    id: "upload",
++    href: "/data/upload",
++    label: "ЗАГРУЗКА",
++    subtitle: "файл → структура за секунды",
++    icon: Upload,
++    colors: { bg: "#dbeeff", dark: "#1a5490" },
++    items: [
++      { title: "Автопревью и типы колонок", description: "Первые/последние строки, dtype, пропуски, уникальные значения — сразу после загрузки", icon: FileText },
++      { title: "Подтверждение автоопределения", description: "Дата, группирующая колонка, частота ряда — определяются автоматически, можно поправить", icon: Calendar },
++      { title: "Teaser качества", description: "Пропуски, дубликаты, потенциальные выбросы — счётчиками, до перехода к Валидации", icon: ShieldCheck },
++      { title: "Форматы и объём", description: ".csv, .xlsx, .xls, .json — drag-and-drop, до 50MB", icon: Database },
++    ],
++  },
++  {
++    id: "validation",
++    href: "/validation",
++    label: "ВАЛИДАЦИЯ",
++    subtitle: "10 критериев Data Quality",
++    icon: ShieldCheck,
++    colors: { bg: "#fdeddb", dark: "#7a4b0a" },
++    items: [
++      { title: "Типы данных и форматы", description: "Автопроверка соответствия типов и текстовых шаблонов по колонкам", icon: Scale },
++      { title: "Диапазоны и хронология", description: "Допустимые значения и логическая согласованность дат", icon: Clock },
++      { title: "Уникальность и целостность", description: "Дубликаты, принадлежность к набору, ссылочная целостность", icon: Fingerprint },
++      { title: "Равномерность и достаточность", description: "Регулярность шага ряда и минимально необходимое число наблюдений", icon: AlertTriangle },
++    ],
++  },
++  {
++    id: "preprocessing",
++    href: "/preprocessing",
++    label: "ПРЕДОБРАБОТКА",
++    subtitle: "11 операций подготовки ряда",
++    icon: Wrench,
++    colors: { bg: "#E0F4F1", dark: "#0b686b" },
++    items: [
++      { title: "Пропуски и выбросы", description: "Методы заполнения пропусков и обработки аномальных значений", icon: AlertTriangle },
++      { title: "Декомпозиция ряда", description: "Разложение на тренд, сезонность и остаток", icon: Layers },
++      { title: "Стабилизация и сглаживание", description: "Стабилизация дисперсии, сглаживание, приведение к стационарности", icon: Activity },
++      { title: "Признаки и масштабирование", description: "Генерация признаков, масштабирование перед моделированием", icon: Wrench },
++    ],
++  },
++  {
++    id: "eda",
++    href: "/eda",
++    label: "EDA",
++    subtitle: "11 методов разведочного анализа",
++    icon: BarChart3,
++    colors: { bg: "#ece5fc", dark: "#4b2e92" },
++    items: [
++      { title: "Описательные статистики", description: "Распределение, форма, асимметрия и эксцесс", icon: BarChart3 },
++      { title: "Корреляция, ACF/PACF", description: "Автокорреляция и частная автокорреляция для подбора модели", icon: Activity },
++      { title: "Спектральный анализ", description: "FFT, периодограмма, вейвлет — поиск скрытой периодичности", icon: Waves },
++      { title: "Сезонность и структурные сдвиги", description: "Верификация стационарности, поиск точек излома ряда", icon: Layers },
++    ],
++  },
++  {
++    id: "modeling",
++    href: "/modeling",
++    label: "МОДЕЛИРОВАНИЕ",
++    subtitle: "паспорт из 13 метрик",
++    icon: Brain,
++    colors: { bg: "#FCE8F0", dark: "#6e173b" },
++    items: [
++      { title: "Полный паспорт ряда", description: "ADF/KPSS, Hurst, сезонность, спектр — 13 метрик одним вызовом API", icon: FileText },
++      { title: "Каталог моделей", description: "Кросс-валидация и сравнение кандидатов по метрикам качества", icon: Layers },
++      { title: "KS-тест распределений", description: "Фиттинг и сравнение трёх кандидатных распределений", icon: Scale },
++      { title: "Excel-отчёт", description: "Итоги паспорта и рекомендации — выгрузка одним файлом", icon: FileDown },
++    ],
++  },
++  {
++    id: "forecasting",
++    href: "/forecasting",
++    label: "ПРОГНОЗ",
++    subtitle: "горизонт + доверительные интервалы",
++    icon: TrendingUp,
++    colors: { bg: "#e6f5ea", dark: "#1e531f" },
++    items: [
++      { title: "Прогноз на горизонт h", description: "Применение лучшей модели из Моделирования к будущим точкам", icon: TrendingUp },
++      { title: "Переобучение на всех данных", description: "Дообучение на Train ∪ Test для максимизации истории перед прогнозом", icon: RefreshCw },
++      { title: "Доверительные интервалы", description: "Границы неопределённости прогноза, не только точечная оценка", icon: Activity },
++      { title: "API для интеграции", description: "Тот же прогноз — программно, в вашу ИТ-систему", icon: Code },
++    ],
++  },
++];
++
++export function ProductJourneyGuide() {
++  const [activeId, setActiveId] = useState(STOPS[0].id);
++  const active = STOPS.find((s) => s.id === activeId)!;
++  const { bg, dark } = active.colors;
++
++  return (
++    <div className="bg-white rounded-lg border border-neutral-200 overflow-hidden">
++      <div className="flex flex-col md:flex-row">
++        {/* ── Мобильная версия: горизонтальная лента остановок ── */}
++        <div className="flex md:hidden gap-2 overflow-x-auto p-4 border-b border-neutral-200">
++          {STOPS.map((stop) => {
++            const Icon = stop.icon;
++            const isActive = stop.id === activeId;
++            return (
++              <button
++                key={stop.id}
++                type="button"
++                onClick={() => setActiveId(stop.id)}
++                style={isActive ? { backgroundColor: stop.colors.dark, color: "#fff" } : undefined}
++                className={`shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors ${
++                  isActive ? "border-transparent" : "border-neutral-200 text-neutral-600"
++                }`}
++              >
++                <Icon size={13} aria-hidden="true" />
++                {stop.label}
++              </button>
++            );
++          })}
++        </div>
++
++        {/* ── Десктоп: вертикальный маршрут слева ── */}
++        <div className="hidden md:block w-[220px] shrink-0 border-r border-neutral-200 py-5 pl-5 pr-3">
++          <div className="mb-4 flex items-center gap-2">
++            <MapPin size={14} className="text-brand" aria-hidden="true" />
++            <h2 className="text-[13px] font-semibold text-neutral-800">Путеводитель по анализу</h2>
++          </div>
++
++          <div className="relative">
++            <div className="absolute left-[5px] top-2 bottom-2 w-0 border-l-2 border-dashed border-neutral-200" />
++            <div className="flex flex-col gap-0.5">
++              {STOPS.map((stop) => {
++                const Icon = stop.icon;
++                const isActive = stop.id === activeId;
++                const c = stop.colors;
++                return (
++                  <button
++                    key={stop.id}
++                    type="button"
++                    onClick={() => setActiveId(stop.id)}
++                    onMouseEnter={() => setActiveId(stop.id)}
++                    style={isActive ? { backgroundColor: `${c.bg}99` } : undefined}
++                    className={`relative flex items-center gap-2.5 rounded-lg px-1.5 py-2 w-full text-left transition-colors ${
++                      !isActive ? "hover:bg-neutral-50" : ""
++                    }`}
++                  >
++                    <div
++                      className="relative z-10 h-3 w-3 shrink-0 rounded-full border-2 transition-colors"
++                      style={isActive ? { borderColor: c.dark, backgroundColor: c.dark } : { borderColor: "#D4D4D4", backgroundColor: "#fff" }}
++                    />
++                    <div
++                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded transition-colors"
++                      style={isActive ? { backgroundColor: c.dark, color: "#fff" } : { backgroundColor: "#F5F5F5", color: "#A3A3A3" }}
++                    >
++                      <Icon size={14} aria-hidden="true" />
++                    </div>
++                    <div className="min-w-0">
++                      <div className="text-[12px] font-semibold leading-none transition-colors" style={{ color: isActive ? c.dark : "#404040" }}>
++                        {stop.label}
++                      </div>
++                      <div className="text-[10px] text-neutral-400 mt-0.5 leading-tight">{stop.subtitle}</div>
++                    </div>
++                  </button>
++                );
++              })}
++            </div>
++          </div>
++        </div>
++
++        {/* ── Правая часть: карточки функций активного этапа ── */}
++        <div className="flex-1 p-4 md:p-5">
++          <div className="flex items-center justify-between mb-3 md:hidden">
++            <p className="text-xs text-neutral-500">{active.subtitle}</p>
++          </div>
++          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
++            {active.items.map((item, idx) => {
++              const ItemIcon = item.icon;
++              return (
++                <Link
++                  key={`${activeId}-${idx}`}
++                  href={active.href}
++                  className="group flex flex-col overflow-hidden rounded-xl border transition-colors"
++                  style={{ borderColor: `${dark}30` }}
++                >
++                  <div className="flex items-center gap-3 px-3.5 py-2.5 text-left" style={{ backgroundColor: bg }}>
++                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white" style={{ color: dark }}>
++                      <ItemIcon size={15} aria-hidden="true" />
++                    </div>
++                    <span className="min-w-0 flex-1 text-[13px] font-semibold leading-snug" style={{ color: dark }}>
++                      {item.title}
++                    </span>
++                    <ChevronRight size={14} className="shrink-0 opacity-40 group-hover:opacity-100 transition-opacity" style={{ color: dark }} aria-hidden="true" />
++                  </div>
++                  <div className="px-3.5 py-2 bg-white">
++                    <p className="text-[11px] text-neutral-500 leading-relaxed">{item.description}</p>
++                  </div>
++                </Link>
++              );
++            })}
++          </div>
++          <Link
++            href={active.href}
++            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium hover:underline"
++            style={{ color: dark }}
++          >
++            Открыть «{active.label.charAt(0) + active.label.slice(1).toLowerCase()}» <ChevronRight size={14} aria-hidden="true" />
++          </Link>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/apps/standalone/components/StandaloneHome.tsx b/apps/standalone/components/StandaloneHome.tsx
+new file mode 100644
+index 0000000..17e853b
+--- /dev/null
++++ b/apps/standalone/components/StandaloneHome.tsx
+@@ -0,0 +1,185 @@
++"use client";
++
++// apps/standalone/components/StandaloneHome.tsx
++//
++// Двойная жизнь Home в standalone, по решению тимлида:
++//   - неавторизован -> маркетинговая посадочная страница (ценностное
++//     предложение, тарифы, ссылка на документацию) -- инструмент не
++//     продаст себя сам.
++//   - авторизован, нет активного датасета -> "Рабочий стол" (список
++//     прошлых анализов, расход API) -- НЕ та же маркетинговая страница,
++//     иначе платящий клиент каждый раз видит рекламу самому себе.
++//   - авторизован, есть активный датасет -> WorkbenchSummary (общий с
++//     embedded компонент, см. packages/ui/components/WorkbenchSummary.tsx).
++//
++// auth.isAuthenticated -- ЗАГЛУШКА (см. lib/useAuth.ts), реальной
++// авторизации ещё нет. "Список прошлых анализов" и "расход API за
++// период" ниже -- тоже честно помечены как нереализованный бэкенд
++// (нет истории датасетов, только текущая сессия), а не выдуманы.
++
++import Link from "next/link";
++import { useAppShell, WorkbenchSummary, PLAN_DEFINITIONS } from "@cisstat/ui";
++import { Loader2, Check, Minus, ArrowRight } from "lucide-react";
++import { useAuth } from "../lib/useAuth";
++import { ProductJourneyGuide } from "./ProductJourneyGuide";
++
++function DevAuthToggle() {
++  const { isAuthenticated, setDevAuthOverride } = useAuth();
++  // TODO: убрать этот блок или спрятать за флагом окружения, когда
++  // появится реальная авторизация (см. lib/useAuth.ts).
++  return (
++    <div className="mt-10 border-t border-dashed border-neutral-300 pt-4 text-xs text-neutral-400">
++      <span className="mr-2">Режим разработки (заглушка авторизации):</span>
++      <button
++        type="button"
++        onClick={() => setDevAuthOverride(!isAuthenticated)}
++        className="underline hover:text-neutral-600"
++      >
++        {isAuthenticated ? "Выйти (смотреть как гость)" : "Войти (смотреть как клиент)"}
++      </button>
++    </div>
++  );
++}
++
++function MarketingHome() {
++  return (
++    <div className="space-y-10">
++      {/* ── Hero ── */}
++      <div>
++        <h1 className="text-3xl font-semibold mb-3 text-neutral-900">
++          Анализ временных рядов — от файла до прогноза
++        </h1>
++        <p className="text-neutral-600 mb-5 max-w-2xl text-base">
++          Загрузите датасет — платформа сама определит структуру, проверит качество, подготовит
++          ряд и построит прогноз с доверительными интервалами. Тот же анализ доступен как REST API
++          для интеграции в вашу ИТ-систему.
++        </p>
++        <div className="flex flex-wrap gap-3">
++          <Link
++            href="/data/upload"
++            className="inline-flex items-center gap-2 bg-brand text-white rounded px-5 py-2.5 text-sm font-medium hover:bg-brand/90 transition-colors"
++          >
++            Загрузить датасет и начать <ArrowRight size={16} aria-hidden="true" />
++          </Link>
++          <Link
++            href="/docs"
++            className="inline-flex items-center gap-2 border border-neutral-300 rounded px-5 py-2.5 text-sm hover:bg-neutral-50 transition-colors"
++          >
++            Документация API
++          </Link>
++        </div>
++      </div>
++
++      {/* ── Путеводитель: продающая витрина + быстрая ориентация по всем 6 этапам ── */}
++      <div>
++        <h2 className="font-semibold text-neutral-900 mb-1">Как устроен анализ</h2>
++        <p className="text-sm text-neutral-500 mb-3">
++          Шесть этапов пайплайна — наведите или нажмите на этап, чтобы увидеть, что он умеет.
++        </p>
++        <ProductJourneyGuide />
++      </div>
++
++      <div>
++        <h2 className="font-semibold text-neutral-900 mb-3">Тарифы</h2>
++        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
++          {(Object.keys(PLAN_DEFINITIONS) as Array<keyof typeof PLAN_DEFINITIONS>).map((planName) => {
++            const plan = PLAN_DEFINITIONS[planName];
++            return (
++              <div key={planName} className="border border-neutral-200 rounded-lg p-4 bg-white">
++                <h3 className="font-medium text-neutral-900 capitalize mb-1">{planName}</h3>
++                {/* Цены -- уточнить у коммерческой команды, не выдумывать числа */}
++                <p className="text-xs text-neutral-400 mb-3">цена уточняется</p>
++                <ul className="text-xs text-neutral-600 space-y-1">
++                  <li className="flex items-center gap-1.5">
++                    {plan.canUseApi ? (
++                      <Check size={12} className="text-green-600" aria-hidden="true" />
++                    ) : (
++                      <Minus size={12} className="text-neutral-300" aria-hidden="true" />
++                    )}
++                    Доступ к API
++                  </li>
++                  <li className="flex items-center gap-1.5">
++                    {plan.canTrainModels ? (
++                      <Check size={12} className="text-green-600" aria-hidden="true" />
++                    ) : (
++                      <Minus size={12} className="text-neutral-300" aria-hidden="true" />
++                    )}
++                    Обучение моделей
++                  </li>
++                  <li className="text-neutral-500">
++                    {plan.maxDatasetRows ? `до ${plan.maxDatasetRows.toLocaleString("ru-RU")} строк` : "без лимита строк"}
++                  </li>
++                </ul>
++              </div>
++            );
++          })}
++        </div>
++      </div>
++
++      <DevAuthToggle />
++    </div>
++  );
++}
++
++function AuthenticatedWorkbenchHome() {
++  const { activeDataset, stages, lastActiveStage } = useAppShell();
++
++  if (activeDataset) {
++    return (
++      <div className="space-y-6">
++        <h1 className="text-2xl font-semibold text-neutral-900">CISStat TS Analysis</h1>
++        <WorkbenchSummary dataset={activeDataset} stages={stages} lastActiveStage={lastActiveStage} />
++        <DevAuthToggle />
++      </div>
++    );
++  }
++
++  return (
++    <div className="space-y-6">
++      <h1 className="text-2xl font-semibold text-neutral-900">Рабочий стол</h1>
++
++      <div className="bg-white rounded-lg border border-neutral-200 p-5">
++        <h2 className="font-medium text-neutral-900 text-sm mb-2">Прошлые анализы</h2>
++        {/* TODO: нет бэкенд-эндпоинта истории датасетов (только текущая
++            сессия) -- честный пустой стейт вместо выдуманных данных. */}
++        <p className="text-sm text-neutral-500">
++          История прошлых анализов появится здесь, когда будет реализовано постоянное хранилище
++          датасетов (сейчас платформа хранит только текущую сессию).
++        </p>
++      </div>
++
++      <div className="bg-white rounded-lg border border-neutral-200 p-5">
++        <h2 className="font-medium text-neutral-900 text-sm mb-2">Использование API за период</h2>
++        {/* TODO: нет бэкенд-учёта вызовов API по клиенту (apps/api/plans.py
++            хранит только лимиты, без счётчика использования). */}
++        <p className="text-sm text-neutral-500">
++          Учёт расхода API пока не реализован — см. apps/api/plans.py, раздел лимитов.
++        </p>
++      </div>
++
++      <Link
++        href="/data/upload"
++        className="inline-block bg-brand text-white rounded px-4 py-2 text-sm font-medium hover:bg-brand/90 transition-colors"
++      >
++        Загрузить датасет →
++      </Link>
++
++      <DevAuthToggle />
++    </div>
++  );
++}
++
++export function StandaloneHome() {
++  const { isAuthenticated, ready } = useAuth();
++  const { sessionLoading } = useAppShell();
++
++  if (!ready || sessionLoading) {
++    return (
++      <div className="flex items-center gap-2 text-neutral-500 text-sm py-10">
++        <Loader2 size={16} className="animate-spin" aria-hidden="true" /> Загрузка…
++      </div>
++    );
++  }
++
++  return isAuthenticated ? <AuthenticatedWorkbenchHome /> : <MarketingHome />;
++}
+diff --git a/apps/standalone/lib/useAuth.ts b/apps/standalone/lib/useAuth.ts
+new file mode 100644
+index 0000000..fc14893
+--- /dev/null
++++ b/apps/standalone/lib/useAuth.ts
+@@ -0,0 +1,43 @@
++"use client";
++
++// apps/standalone/lib/useAuth.ts
++//
++// ЗАГЛУШКА -- реальной авторизации standalone-продукта ещё нет (см.
++// docs/ROLES_AND_PLANS_SPEC.md §7.1: "хранилище клиентов/ключей" не
++// реализовано, есть только статичный API-ключ в env). По решению
++// тимлида, чтобы не блокировать вёрстку sessions-aware Home на
++// отсутствующем бэкенде авторизации, используется ручной переключатель
++// поверх localStorage.
++//
++// ЖИВЁТ В apps/standalone, НЕ в packages/ui -- это концепция, специфичная
++// для продаваемого продукта (у embedded такого разделения нет, см.
++// EmbeddedHome.tsx).
++//
++// ЗАМЕНИТЬ: когда появится реальная авторизация пользователя (сессия
++// клиента / JWT / OAuth) -- эта функция должна читать её вместо
++// localStorage-переключателя, а сам переключатель (DevAuthToggle) убрать
++// из продакшен-сборки.
++
++import { useCallback, useEffect, useState } from "react";
++
++const DEV_AUTH_KEY = "cisstat_dev_auth_override";
++
++export function useAuth() {
++  const [isAuthenticated, setIsAuthenticated] = useState(false);
++  const [ready, setReady] = useState(false);
++
++  useEffect(() => {
++    try {
++      setIsAuthenticated(window.localStorage.getItem(DEV_AUTH_KEY) === "1");
++    } finally {
++      setReady(true);
++    }
++  }, []);
++
++  const setDevAuthOverride = useCallback((value: boolean) => {
++    window.localStorage.setItem(DEV_AUTH_KEY, value ? "1" : "0");
++    setIsAuthenticated(value);
++  }, []);
++
++  return { isAuthenticated, ready, setDevAuthOverride };
++}
+diff --git a/apps/standalone/next.config.mjs b/apps/standalone/next.config.mjs
+index fdbc890..eaaccb7 100644
+--- a/apps/standalone/next.config.mjs
++++ b/apps/standalone/next.config.mjs
+@@ -7,6 +7,12 @@ const nextConfig = {
+   // физически лежащих вне apps/standalone (см. официальную документацию
+   // Next.js по монорепозиториям).
+   transpilePackages: ["@cisstat/ui"],
++  // Режим API для packages/ui/lib/apiClient.ts -- standalone всегда ходит
++  // на /v1/public/* (требует API-ключ на бэкенде). См. решение тимлида
++  // про Home page: не различать режим по window.location.pathname.
++  env: {
++    NEXT_PUBLIC_API_MODE: "public",
++  },
+ };
+ 
+ export default nextConfig;
+diff --git a/packages/ui/components/DataUploadForm.test.tsx b/packages/ui/components/DataUploadForm.test.tsx
+deleted file mode 100644
+index 04a26eb..0000000
+--- a/packages/ui/components/DataUploadForm.test.tsx
++++ /dev/null
+@@ -1,149 +0,0 @@
+-// packages/ui/components/DataUploadForm.test.tsx
+-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+-import { DataUploadForm } from "./DataUploadForm";
+-import { AppShellProvider } from "../context/AppShellContext";
+-import { toast } from "sonner";
+-
+-// Mock fetch
+-global.fetch = jest.fn(() =>
+-  Promise.resolve({
+-    ok: true,
+-    json: () => Promise.resolve({
+-      dataset_id: "123",
+-      name: "test.csv",
+-      rows: 10,
+-      columns: 2,
+-      preview: {
+-        head: [["date", "value"], ["2023-01-01", "10"], ["2023-01-02", "20"]],
+-        tail: [["2023-01-09", "90"], ["2023-01-10", "100"]],
+-      },
+-    }),
+-  })
+-) as jest.Mock;
+-
+-describe("DataUploadForm", () => {
+-  beforeEach(() => {
+-    jest.clearAllMocks();
+-  });
+-
+-  it("should render upload form", () => {
+-    render(
+-      <AppShellProvider>
+-        <DataUploadForm />
+-      </AppShellProvider>
+-    );
+-    expect(screen.getByText(/Загрузка данных/)).toBeInTheDocument();
+-    expect(screen.getByText(/Перетащите файл сюда/)).toBeInTheDocument();
+-  });
+-
+-  it("should show file name after selection", async () => {
+-    render(
+-      <AppShellProvider>
+-        <DataUploadForm />
+-      </AppShellProvider>
+-    );
+-
+-    const file = new File(["a,b\n1,2"], "test.csv", { type: "text/csv" });
+-    const input = screen.getByTestId("dropzone-input");
+-
+-    fireEvent.drop(input, {
+-      dataTransfer: { files: [file] },
+-    });
+-
+-    await waitFor(() => {
+-      expect(screen.getByText(/Выбран: test.csv/)).toBeInTheDocument();
+-    });
+-  });
+-
+-  it("should show preview after successful upload", async () => {
+-    render(
+-      <AppShellProvider>
+-        <DataUploadForm />
+-      </AppShellProvider>
+-    );
+-
+-    const file = new File(["date,value\n2023-01-01,10\n2023-01-02,20"], "test.csv", {
+-      type: "text/csv",
+-    });
+-    const input = screen.getByTestId("dropzone-input");
+-
+-    fireEvent.drop(input, {
+-      dataTransfer: { files: [file] },
+-    });
+-
+-    await waitFor(() => {
+-      expect(screen.getByText(/Предпросмотр данных/)).toBeInTheDocument();
+-      expect(screen.getByText("date")).toBeInTheDocument();
+-      expect(screen.getByText("value")).toBeInTheDocument();
+-    });
+-  });
+-
+-  it("should reject files > 50MB", async () => {
+-    const largeFile = new File([new ArrayBuffer(51 * 1024 * 1024)], "large.csv", {
+-      type: "text/csv",
+-    });
+-    render(
+-      <AppShellProvider>
+-        <DataUploadForm />
+-      </AppShellProvider>
+-    );
+-
+-    const input = screen.getByTestId("dropzone-input");
+-    fireEvent.drop(input, {
+-      dataTransfer: { files: [largeFile] },
+-    });
+-
+-    await waitFor(() => {
+-      expect(screen.getByText(/Файл слишком большой/)).toBeInTheDocument();
+-    });
+-  });
+-
+-  it("should reject unsupported file formats", async () => {
+-    const txtFile = new File(["plain text"], "test.txt", {
+-      type: "text/plain",
+-    });
+-    render(
+-      <AppShellProvider>
+-        <DataUploadForm />
+-      </AppShellProvider>
+-    );
+-
+-    const input = screen.getByTestId("dropzone-input");
+-    fireEvent.drop(input, {
+-      dataTransfer: { files: [txtFile] },
+-    });
+-
+-    await waitFor(() => {
+-      expect(screen.getByText(/Неподдерживаемый формат/)).toBeInTheDocument();
+-    });
+-  });
+-
+-  it("should show error toast on upload failure", async () => {
+-    // Mock fetch с ошибкой
+-    global.fetch = jest.fn(() =>
+-      Promise.resolve({
+-        ok: false,
+-        json: () => Promise.resolve({ detail: "Ошибка сервера" }),
+-      })
+-    ) as jest.Mock;
+-
+-    render(
+-      <AppShellProvider>
+-        <DataUploadForm />
+-      </AppShellProvider>
+-    );
+-
+-    const file = new File(["a,b\n1,2"], "test.csv", { type: "text/csv" });
+-    const input = screen.getByTestId("dropzone-input");
+-
+-    fireEvent.drop(input, {
+-      dataTransfer: { files: [file] },
+-    });
+-
+-    await waitFor(() => {
+-      expect(toast.error).toHaveBeenCalledWith(
+-        expect.stringContaining("Ошибка сервера")
+-      );
+-    });
+-  });
+-});
+\ No newline at end of file
+diff --git a/packages/ui/components/DataUploadForm.tsx b/packages/ui/components/DataUploadForm.tsx
+deleted file mode 100644
+index 1d0da7d..0000000
+--- a/packages/ui/components/DataUploadForm.tsx
++++ /dev/null
+@@ -1,222 +0,0 @@
+-"use client";
+-
+-import { useState, useCallback } from "react";
+-import { useDropzone } from "react-dropzone";
+-import { toast } from "sonner";
+-import { useAppShell } from "../context/AppShellContext";
+-import { Button } from "./Button";
+-
+-type PreviewData = {
+-  head: string[][];
+-  tail: string[][];
+-};
+-
+-export function DataUploadForm() {
+-  const { setActiveDataset, addLogEntry } = useAppShell();
+-  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
+-  const [isLoading, setIsLoading] = useState(false);
+-  const [fileName, setFileName] = useState<string | null>(null);
+-
+-  // Определяем URL API в зависимости от окружения
+-  const apiUrl = typeof window !== "undefined"
+-    ? (window.location.pathname.startsWith("/embedded")
+-        ? "/v1/internal/upload"
+-        : "/v1/public/upload")
+-    : "/v1/internal/upload";
+-
+-  const onDrop = useCallback(
+-    async (acceptedFiles: File[]) => {
+-      if (acceptedFiles.length === 0) return;
+-      const file = acceptedFiles[0];
+-      setFileName(file.name);
+-      await handleUpload(file);
+-    },
+-    []
+-  );
+-
+-  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
+-    accept: {
+-      "text/csv": [".csv"],
+-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+-      "application/vnd.ms-excel": [".xls"],
+-      "application/json": [".json"],
+-    },
+-    maxSize: 50 * 1024 * 1024, // 50MB
+-    onDrop,
+-    multiple: false,
+-  });
+-
+-  const handleUpload = async (file: File) => {
+-    setIsLoading(true);
+-    setPreviewData(null);
+-    const formData = new FormData();
+-    formData.append("file", file);
+-
+-    try {
+-      const response = await fetch(apiUrl, {
+-        method: "POST",
+-        body: formData,
+-      });
+-
+-      if (!response.ok) {
+-        const errorData = await response.json().catch(() => ({ detail: "Неизвестная ошибка" }));
+-        throw new Error(errorData.detail || "Ошибка загрузки файла");
+-      }
+-
+-      const data = await response.json();
+-      // Обновляем контекст
+-      setActiveDataset({
+-        name: data.name,
+-        rows: data.rows,
+-        sizeLabel: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+-      });
+-      addLogEntry("INFO", `Файл '${data.name}' загружен: ${data.rows} строк`);
+-
+-      // Сохраняем предпросмотр
+-      setPreviewData({
+-        head: data.preview.head,
+-        tail: data.preview.tail,
+-      });
+-      toast.success("Файл загружен успешно!");
+-    } catch (error) {
+-      const message = error instanceof Error ? error.message : "Неизвестная ошибка";
+-      toast.error(`Ошибка: ${message}`);
+-      addLogEntry("ERROR", `Ошибка загрузки файла: ${message}`);
+-    } finally {
+-      setIsLoading(false);
+-    }
+-  };
+-
+-  // Обработка отклонённых файлов (неверный формат/размер)
+-  const rejectedFiles = fileRejections.map(({ file, errors }) => ({
+-    file,
+-    errors: errors.map((e) => {
+-      if (e.code === "file-too-large") return "Файл слишком большой (макс. 50MB)";
+-      if (e.code === "file-invalid-type") return "Неподдерживаемый формат";
+-      return e.message;
+-    }),
+-  }));
+-
+-  return (
+-    <div className="max-w-4xl w-full">
+-      <h2 className="font-semibold mb-4 text-lg">Загрузка данных</h2>
+-
+-      {/* Зона Drag & Drop */}
+-      <div
+-        {...getRootProps()}
+-        className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+-          isDragActive ? "border-blue-500 bg-blue-50" : "border-neutral-300"
+-        }`}
+-      >
+-        <input {...getInputProps()} data-testid="dropzone-input" />
+-        <p className="text-neutral-600 mb-2">
+-          {isDragActive
+-            ? "Отпустите файл здесь"
+-            : "Перетащите файл сюда или кликните для выбора"}
+-        </p>
+-        <p className="text-sm text-neutral-500">
+-          Поддерживаемые форматы: .csv, .xlsx, .xls, .json (макс. 50MB)
+-        </p>
+-        {fileName && !isLoading && (
+-          <p className="mt-2 text-sm text-green-600">Выбран: {fileName}</p>
+-        )}
+-      </div>
+-
+-      {/* Ошибки валидации */}
+-      {rejectedFiles.length > 0 && (
+-        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+-          <h3 className="font-medium text-red-700 mb-2">Ошибки:</h3>
+-          <ul className="list-disc list-inside text-sm text-red-600">
+-            {rejectedFiles.map(({ file, errors }) => (
+-              <li key={file.name}>
+-                {file.name}: {errors.join(", ")}
+-              </li>
+-            ))}
+-          </ul>
+-        </div>
+-      )}
+-
+-      {/* Кнопка загрузки (альтернатива Drag & Drop) */}
+-      <div className="mt-4">
+-        <input
+-          type="file"
+-          id="file-upload"
+-          className="hidden"
+-          accept=".csv,.xlsx,.xls,.json"
+-          onChange={(e) => {
+-            const file = e.target.files?.[0];
+-            if (file) {
+-              setFileName(file.name);
+-              handleUpload(file);
+-            }
+-          }}
+-        />
+-        <Button
+-          onClick={() => document.getElementById("file-upload")?.click()}
+-          disabled={isLoading}
+-        >
+-          {isLoading ? "Загрузка..." : "Выбрать файл"}
+-        </Button>
+-      </div>
+-
+-      {/* Предпросмотр данных */}
+-      {previewData && (
+-        <div className="mt-6">
+-          <h3 className="font-medium mb-3">Предпросмотр данных</h3>
+-          <div className="overflow-x-auto">
+-            <div className="mb-4">
+-              <h4 className="text-sm font-medium mb-2">Первые 5 строк:</h4>
+-              <table className="min-w-full border border-neutral-200 rounded-lg overflow-hidden">
+-                <thead className="bg-neutral-50">
+-                  <tr>
+-                    {previewData.head[0]?.map((header, i) => (
+-                      <th key={i} className="px-4 py-2 text-left text-sm border-b">
+-                        {header}
+-                      </th>
+-                    ))}
+-                  </tr>
+-                </thead>
+-                <tbody>
+-                  {previewData.head.slice(1).map((row, rowIndex) => (
+-                    <tr key={rowIndex} className="hover:bg-neutral-50">
+-                      {row.map((cell, cellIndex) => (
+-                        <td key={cellIndex} className="px-4 py-2 text-sm border-b">
+-                          {cell}
+-                        </td>
+-                      ))}
+-                    </tr>
+-                  ))}
+-                </tbody>
+-              </table>
+-            </div>
+-            <div>
+-              <h4 className="text-sm font-medium mb-2">Последние 5 строк:</h4>
+-              <table className="min-w-full border border-neutral-200 rounded-lg overflow-hidden">
+-                <thead className="bg-neutral-50">
+-                  <tr>
+-                    {previewData.tail[0]?.map((header, i) => (
+-                      <th key={i} className="px-4 py-2 text-left text-sm border-b">
+-                        {header}
+-                      </th>
+-                    ))}
+-                  </tr>
+-                </thead>
+-                <tbody>
+-                  {previewData.tail.slice(1).map((row, rowIndex) => (
+-                    <tr key={rowIndex} className="hover:bg-neutral-50">
+-                      {row.map((cell, cellIndex) => (
+-                        <td key={cellIndex} className="px-4 py-2 text-sm border-b">
+-                          {cell}
+-                        </td>
+-                      ))}
+-                    </tr>
+-                  ))}
+-                </tbody>
+-              </table>
+-            </div>
+-          </div>
+-        </div>
+-      )}
+-    </div>
+-  );
+-}
+\ No newline at end of file
+diff --git a/packages/ui/components/EmbeddedHome.tsx b/packages/ui/components/EmbeddedHome.tsx
+new file mode 100644
+index 0000000..cb925bb
+--- /dev/null
++++ b/packages/ui/components/EmbeddedHome.tsx
+@@ -0,0 +1,102 @@
++"use client";
++
++// packages/ui/components/EmbeddedHome.tsx
++//
++// Sessions-aware стартовая страница embedded-режима. Задача -- ориентация
++// и продолжение, НЕ продажа (пользователь уже внутри портала, по решению
++// тимлида). Если в сессии есть активный датасет -- сразу "Рабочий стол"
++// (WorkbenchSummary); если нет -- онбординг: превью шести этапов
++// (некликабельно, мини-версия ModuleNav) + "Загрузить датасет" +
++// "Попробовать на демо-данных" (снимает барьер "нет файла под рукой,
++// чтобы оценить инструмент").
++//
++// Не содержит auth-логики -- в embedded-режиме пользователь уже внутри
++// портала (сотрудник CISStat), доступ регулируется на уровне портала,
++// не здесь (см. ROLES_AND_PLANS_SPEC.md).
++
++import { useState } from "react";
++import Link from "next/link";
++import { Loader2 } from "lucide-react";
++import { useAppShell } from "../context/AppShellContext";
++import { STAGE_DEFS } from "../lib/stages";
++import { sessionApiUrl } from "../lib/apiClient";
++import { WorkbenchSummary } from "./WorkbenchSummary";
++import { Button } from "./Button";
++
++export function EmbeddedHome() {
++  const { activeDataset, stages, lastActiveStage, sessionLoading, refreshSession } = useAppShell();
++  const [loadingDemo, setLoadingDemo] = useState(false);
++  const [demoError, setDemoError] = useState<string | null>(null);
++
++  const handleTryDemo = async () => {
++    setLoadingDemo(true);
++    setDemoError(null);
++    try {
++      const resp = await fetch(sessionApiUrl("/demo"), { method: "POST", credentials: "include" });
++      if (!resp.ok) {
++        throw new Error("Не удалось загрузить демо-датасет");
++      }
++      await refreshSession();
++    } catch (e) {
++      setDemoError(e instanceof Error ? e.message : "Неизвестная ошибка");
++    } finally {
++      setLoadingDemo(false);
++    }
++  };
++
++  if (sessionLoading) {
++    return (
++      <div className="flex items-center gap-2 text-neutral-500 text-sm py-10">
++        <Loader2 size={16} className="animate-spin" aria-hidden="true" /> Загрузка сессии…
++      </div>
++    );
++  }
++
++  if (activeDataset) {
++    return (
++      <div className="space-y-6">
++        <div>
++          <h1 className="text-xl font-semibold text-neutral-900">CISStat TS Analysis</h1>
++          <p className="text-neutral-600 text-sm mt-1">Раздел портала: анализ временных рядов.</p>
++        </div>
++        <WorkbenchSummary dataset={activeDataset} stages={stages} lastActiveStage={lastActiveStage} />
++      </div>
++    );
++  }
++
++  return (
++    <div className="space-y-6">
++      <div>
++        <h1 className="text-xl font-semibold text-neutral-900">CISStat TS Analysis</h1>
++        <p className="text-neutral-600 text-sm mt-1 max-w-xl">
++          Анализ временных рядов в шесть этапов — от загрузки данных до прогноза.
++        </p>
++      </div>
++
++      {/* Превью этапов -- некликабельно, только ориентация, не навигация */}
++      <ol className="flex flex-wrap items-center gap-2" aria-label="Этапы анализа (превью)">
++        {STAGE_DEFS.map((stage, i) => (
++          <li key={stage.key} className="flex items-center gap-2">
++            <span className="inline-flex items-center rounded-full border border-neutral-200 bg-white px-3 py-1 text-xs text-neutral-600">
++              {i + 1}. {stage.label}
++            </span>
++            {i < STAGE_DEFS.length - 1 && <span className="text-neutral-300">→</span>}
++          </li>
++        ))}
++      </ol>
++
++      <div className="flex flex-wrap items-center gap-3">
++        <Link
++          href="/data/upload"
++          className="inline-block bg-brand text-white rounded px-4 py-2 text-sm font-medium hover:bg-brand/90 transition-colors"
++        >
++          Загрузить датасет →
++        </Link>
++        <Button onClick={handleTryDemo} disabled={loadingDemo} variant="secondary">
++          {loadingDemo ? "Загружаем демо…" : "Попробовать на демо-данных"}
++        </Button>
++      </div>
++      {demoError && <p className="text-sm text-red-600">{demoError}</p>}
++    </div>
++  );
++}
+diff --git a/packages/ui/components/TsAnalysisUpload.test.tsx b/packages/ui/components/TsAnalysisUpload.test.tsx
+new file mode 100644
+index 0000000..853ff3e
+--- /dev/null
++++ b/packages/ui/components/TsAnalysisUpload.test.tsx
+@@ -0,0 +1,175 @@
++// packages/ui/components/TsAnalysisUpload.test.tsx
++//
++// ПЕРЕНЕСЕНО из DataUploadForm.test.tsx (компонент поглощён --
++// см. шапку TsAnalysisUpload.tsx). Тексты ассертов обновлены под новую
++// вёрстку ("Превью датасета" вместо "Предпросмотр данных" и т.п.).
++//
++// ⚠️ ВАЖНО, обнаружено при переносе: тестовой инфраструктуры (jest,
++// @testing-library/react, @testing-library/jest-dom) НЕТ ни в одном
++// package.json репозитория и нет jest.config -- у ИСХОДНОГО файла
++// DataUploadForm.test.tsx тоже не было, эти тесты никогда реально не
++// запускались. Этот файл написан в готовности к тому, что тестовая
++// инфраструктура появится (см. TODO в EXTRACTION_PLAN.md / README.md),
++// но прямо сейчас `npm test` для этого файла не существует как команда.
++// Реальная проверка в рамках ЭТОЙ задачи — `npm run build` (см. чат).
++
++import { render, screen, fireEvent, waitFor } from "@testing-library/react";
++import { TsAnalysisUpload } from "./TsAnalysisUpload";
++import { AppShellProvider } from "../context/AppShellContext";
++import { toast } from "sonner";
++
++const okUploadResponse = {
++  dataset_id: "123",
++  name: "test.csv",
++  rows: 10,
++  columns: 2,
++  size_label: "0.01 MB",
++  preview: {
++    head: [
++      ["date", "value"],
++      ["2023-01-01", "10"],
++      ["2023-01-02", "20"],
++    ],
++    tail: [["2023-01-09", "90"], ["2023-01-10", "100"]],
++  },
++  columns_info: [
++    { name: "date", dtype: "object", type_icon: "categorical", non_null: 10, nulls: 0, unique: 10 },
++    { name: "value", dtype: "int64", type_icon: "numeric", non_null: 10, nulls: 0, unique: 10 },
++  ],
++  quality: {
++    cols_with_missing: 0,
++    cols_with_outliers: 0,
++    rows_total: 10,
++    duplicates: 0,
++    missing_cols: [],
++    outlier_cols: [],
++  },
++};
++
++// AppShellProvider гидрируется с /v1/session/current при монтировании --
++// мокаем fetch на "пустую сессию" по умолчанию, конкретные тесты
++// переопределяют мок под свой сценарий загрузки.
++function mockFetchSequence(uploadResult: unknown, uploadOk = true) {
++  global.fetch = jest.fn((url: string) => {
++    if (typeof url === "string" && url.includes("/session/current")) {
++      return Promise.resolve({
++        ok: true,
++        json: () =>
++          Promise.resolve({
++            has_active_dataset: false,
++            dataset: null,
++            stages: {},
++            last_active_stage: null,
++            updated_at: null,
++          }),
++      });
++    }
++    if (typeof url === "string" && url.includes("/upload")) {
++      return Promise.resolve({ ok: uploadOk, json: () => Promise.resolve(uploadResult) });
++    }
++    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
++  }) as jest.Mock;
++}
++
++describe("TsAnalysisUpload", () => {
++  beforeEach(() => {
++    jest.clearAllMocks();
++    mockFetchSequence(okUploadResponse);
++  });
++
++  it("should render upload form", () => {
++    render(
++      <AppShellProvider>
++        <TsAnalysisUpload />
++      </AppShellProvider>
++    );
++    expect(screen.getByText(/Загрузка данных/)).toBeInTheDocument();
++    expect(screen.getByText(/Перетащите файл сюда/)).toBeInTheDocument();
++  });
++
++  it("should show file name after selection", async () => {
++    render(
++      <AppShellProvider>
++        <TsAnalysisUpload />
++      </AppShellProvider>
++    );
++
++    const file = new File(["a,b\n1,2"], "test.csv", { type: "text/csv" });
++    const input = screen.getByTestId("dropzone-input");
++
++    fireEvent.drop(input, { dataTransfer: { files: [file] } });
++
++    await waitFor(() => {
++      expect(screen.getByText(/Выбран:/)).toBeInTheDocument();
++    });
++  });
++
++  it("should show preview and quality teaser after successful upload", async () => {
++    render(
++      <AppShellProvider>
++        <TsAnalysisUpload />
++      </AppShellProvider>
++    );
++
++    const file = new File(["date,value\n2023-01-01,10\n2023-01-02,20"], "test.csv", { type: "text/csv" });
++    const input = screen.getByTestId("dropzone-input");
++
++    fireEvent.drop(input, { dataTransfer: { files: [file] } });
++
++    await waitFor(() => {
++      expect(screen.getByText(/Превью датасета/)).toBeInTheDocument();
++      expect(screen.getByText(/Предварительная оценка качества/)).toBeInTheDocument();
++    });
++  });
++
++  it("should reject files > 50MB", async () => {
++    const largeFile = new File([new ArrayBuffer(51 * 1024 * 1024)], "large.csv", { type: "text/csv" });
++    render(
++      <AppShellProvider>
++        <TsAnalysisUpload />
++      </AppShellProvider>
++    );
++
++    const input = screen.getByTestId("dropzone-input");
++    fireEvent.drop(input, { dataTransfer: { files: [largeFile] } });
++
++    await waitFor(() => {
++      expect(screen.getByText(/Файл слишком большой/)).toBeInTheDocument();
++    });
++  });
++
++  it("should reject unsupported file formats", async () => {
++    const txtFile = new File(["plain text"], "test.txt", { type: "text/plain" });
++    render(
++      <AppShellProvider>
++        <TsAnalysisUpload />
++      </AppShellProvider>
++    );
++
++    const input = screen.getByTestId("dropzone-input");
++    fireEvent.drop(input, { dataTransfer: { files: [txtFile] } });
++
++    await waitFor(() => {
++      expect(screen.getByText(/Неподдерживаемый формат/)).toBeInTheDocument();
++    });
++  });
++
++  it("should show error toast on upload failure (FastAPI {detail: ...} shape)", async () => {
++    mockFetchSequence({ detail: "Ошибка сервера" }, false);
++
++    render(
++      <AppShellProvider>
++        <TsAnalysisUpload />
++      </AppShellProvider>
++    );
++
++    const file = new File(["a,b\n1,2"], "test.csv", { type: "text/csv" });
++    const input = screen.getByTestId("dropzone-input");
++
++    fireEvent.drop(input, { dataTransfer: { files: [file] } });
++
++    await waitFor(() => {
++      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("Ошибка сервера"));
++    });
++  });
++});
+diff --git a/packages/ui/components/TsAnalysisUpload.tsx b/packages/ui/components/TsAnalysisUpload.tsx
+index b0cc18a..03aa7d9 100644
+--- a/packages/ui/components/TsAnalysisUpload.tsx
++++ b/packages/ui/components/TsAnalysisUpload.tsx
+@@ -3,24 +3,33 @@
+ // packages/ui/components/TsAnalysisUpload.tsx
+ //
+ // ОБЩИЙ компонент фичи "Загрузка" -- используется И embedded-,
+-// И standalone-приложением (см. архитектурный принцип: одна UI-логика,
+-// разные обёртки -- урок от 4 копий calculate_ts_passport учтён).
++// И standalone-приложением (одна UI-логика, разные обёртки).
+ //
+ // Контракт вкладки "Загрузка" (по решению тимлида):
+-//   ✅ Превью датасета
+-//   ✅ Техническая информация (строки/колонки/память/типы)
+-//   ✅ Визуализация распределения (точечный + гистограмма+KDE + KDE + статистики) -- БЕЗ СОКРАЩЕНИЙ
+-//   ✅ Подтверждение автоопределения (дата/группировка/частота) с override
+-//   ✅ Teaser качества (только счётчики → Валидация)
+-//   ✅ Предупреждения парсинга (явные флаг, если что-то пошло не так)
++//   ✅ Превью датасета -- РЕАЛЬНЫЙ (POST /v1/{public|internal}/upload)
++//   ✅ Техническая информация (строки/колонки/память/типы) -- РЕАЛЬНАЯ
++//   ✅ Teaser качества (только счётчики → Валидация) -- РЕАЛЬНЫЙ
++//   🟡 Подтверждение автоопределения (дата/группировка/частота) --
++//      клиентская эвристика по реальным columns_info (см.
++//      buildDetectionFromColumns ниже). НЕ настоящий бэкенд-детектор --
++//      app/data/detectors.py уже умеет определять дату, но не отдаёт
++//      форму {selected, confidence, candidates: [{name, score}]}, которую
++//      ожидает этот UI. Адаптер -- отдельная задача, не в этом охвате.
++//   🟡 Визуализация распределения -- placeholder-макет (Plotly не
++//      подключён, реальных статистик по колонке нет backend-эндпоинта).
++//      Селектор колонки уже реальный (из columns_info).
++//   ⚪ Предупреждения парсинга -- пока не приходят от бэкенда (backend
++//      кидает HTTP 400 при ошибке чтения вместо warnings-массива).
+ //   ❌ Корреляция, STL, ACF/PACF, FFT, периодограмма, вейвлет -- уехали в EDA
+ //   ❌ Полный паспорт 13 свойств -- уехал в Modeling
+ //
+-// Состояние: ПРОТОТИП. Данные -- моковые, как и в TsAnalysisPreprocessing.
+-// Когда бэкенд /v1/internal/ingest, /detect-structure, /upload-summary,
+-// /quality-teaser будут готовы -- заменить моки на реальные вызовы.
++// ЭТО СЛИЯНИЕ ДВУХ ПРЕЖНИХ КОМПОНЕНТОВ: TsAnalysisUpload.tsx (богатый
++// UI-контракт, был не подключён никуда) + DataUploadForm.tsx (реальный,
++// но минимальный dropzone). DataUploadForm.tsx удалён -- см. git history.
+ 
+-import { useState } from "react";
++import { useCallback, useEffect, useState } from "react";
++import { useDropzone } from "react-dropzone";
++import { toast } from "sonner";
+ import Link from "next/link";
+ import {
+   Upload,
+@@ -41,26 +50,46 @@ import {
+   Info,
+   RefreshCw,
+   Check,
++  Loader2,
+ } from "lucide-react";
+ import { Button } from "./Button";
+ import { useAppShell } from "../context/AppShellContext";
++import { apiUrl, sessionApiUrl } from "../lib/apiClient";
+ 
+ // ──────────────────────────────────────────────────────────────────────
+-// МОКОВЫЕ ДАННЫЕ (заменить на ответы API о Фазе 1)
++// ТИПЫ (зеркало apps/api/schemas.py: ColumnInfoOut / QualityTeaserOut /
++// UploadResponse -- поля намеренно snake_case, как отдаёт API, без
++// промежуточного camelCase-слоя)
+ // ──────────────────────────────────────────────────────────────────────
+ 
+-interface ColumnInfo {
++interface ColumnInfoOut {
+   name: string;
+   dtype: string;
+-  typeIcon: "numeric" | "datetime" | "categorical" | "text";
+-  nonNull: number;
++  type_icon: "numeric" | "datetime" | "categorical" | "text";
++  non_null: number;
+   nulls: number;
+   unique: number;
+ }
+ 
+-interface ParseWarning {
+-  type: "encoding" | "header" | "delimiter";
+-  message: string;
++interface QualityTeaserOut {
++  cols_with_missing: number;
++  cols_with_outliers: number;
++  rows_total: number;
++  duplicates: number;
++  missing_cols: string[];
++  outlier_cols: string[];
++}
++
++interface UploadApiResponse {
++  dataset_id: string;
++  name: string;
++  rows: number;
++  columns: number;
++  preview: { head: string[][]; tail: string[][] };
++  columns_info: ColumnInfoOut[] | null;
++  quality: QualityTeaserOut | null;
++  size_label: string | null;
++  error?: string | null;
+ }
+ 
+ interface DetectionCandidate {
+@@ -74,116 +103,20 @@ interface StructureDetection {
+   freq: { selected: string; confidence: number; options: string[] };
+ }
+ 
+-interface DistStats {
+-  type: string;
+-  mean: number;
+-  median: number;
+-  std: number;
+-  skew: number;
+-  kurt: number;
+-  q1: number;
+-  q3: number;
+-  iqr: number;
+-}
+-
+-interface QualityTeaser {
+-  colsWithMissing: number;
+-  colsWithOutliers: number;
+-  rowsTotal: number;
+-  duplicates: number;
+-  missingCols: string[];
+-  outlierCols: string[];
+-}
+-
+-const MOCK_COLUMNS: ColumnInfo[] = [
+-  { name: "Order Date", dtype: "datetime64[ns]", typeIcon: "datetime", nonNull: 9800, nulls: 0, unique: 1234 },
+-  { name: "Ship Date", dtype: "datetime64[ns]", typeIcon: "datetime", nonNull: 9800, nulls: 0, unique: 1320 },
+-  { name: "Sales", dtype: "float64", typeIcon: "numeric", nonNull: 9789, nulls: 11, unique: 5678 },
+-  { name: "Profit", dtype: "float64", typeIcon: "numeric", nonNull: 9700, nulls: 100, unique: 3456 },
+-  { name: "Quantity", dtype: "int64", typeIcon: "numeric", nonNull: 9800, nulls: 0, unique: 14 },
+-  { name: "Discount", dtype: "float64", typeIcon: "numeric", nonNull: 9750, nulls: 50, unique: 12 },
+-  { name: "Country", dtype: "object", typeIcon: "categorical", nonNull: 9800, nulls: 0, unique: 14 },
+-  { name: "Region", dtype: "object", typeIcon: "categorical", nonNull: 9800, nulls: 0, unique: 52 },
+-  { name: "Category", dtype: "object", typeIcon: "categorical", nonNull: 9800, nulls: 0, unique: 3 },
+-  { name: "Product Name", dtype: "object", typeIcon: "text", nonNull: 9800, nulls: 0, unique: 1845 },
+-];
+-
+-const MOCK_PARSE_WARNINGS: ParseWarning[] = [
+-  {
+-    type: "encoding",
+-    message:
+-      "Колонка «Order Date» распознана как текст, потребовалась конвертация (encoding=windows-1251 определён автоматически).",
+-  },
+-];
+-
+-const MOCK_DETECTION: StructureDetection = {
+-  dateCol: {
+-    selected: "Order Date",
+-    confidence: 92,
+-    candidates: [
+-      { name: "Order Date", score: 0.92 },
+-      { name: "Ship Date", score: 0.71 },
+-      { name: "Row ID", score: 0.05 },
+-    ],
+-  },
+-  entityCol: {
+-    selected: "Country",
+-    confidence: 88,
+-    candidates: [
+-      { name: "Country", score: 0.88 },
+-      { name: "Region", score: 0.64 },
+-      { name: "Category", score: 0.41 },
+-    ],
+-  },
+-  freq: {
+-    selected: "D — ежедневная",
+-    confidence: 76,
+-    options: [
+-      "D — ежедневная",
+-      "W — недельная",
+-      "M — месячная",
+-      "Q — квартальная",
+-      "(авто, не получилось)",
+-    ],
+-  },
+-};
+-
+-const MOCK_DIST_STATS: DistStats = {
+-  type: "🟠 Непрерывное — Логнормальное",
+-  mean: 229.86,
+-  median: 54.49,
+-  std: 623.25,
+-  skew: 12.973,
+-  kurt: 305.318,
+-  q1: 17.28,
+-  q3: 209.94,
+-  iqr: 192.66,
+-};
+-
+-const MOCK_QUALITY: QualityTeaser = {
+-  colsWithMissing: 3,
+-  colsWithOutliers: 1,
+-  rowsTotal: 9800,
+-  duplicates: 0,
+-  missingCols: ["Sales", "Profit", "Discount"],
+-  outlierCols: ["Profit"],
+-};
+-
+-const NUMERIC_COLS = ["Sales", "Profit", "Quantity", "Discount"];
+-const PREVIEW_ROWS = [
+-  { OrderDate: "2023-01-04", Country: "Russia", Region: "Central", Sales: 261.96, Profit: 41.91, Category: "Furniture" },
+-  { OrderDate: "2023-01-04", Country: "Russia", Region: "Central", Sales: 731.94, Profit: 219.58, Category: "Furniture" },
+-  { OrderDate: "2023-01-05", Country: "Kazakhstan", Region: "North", Sales: 957.58, Profit: -343.93, Category: "Office Supplies" },
+-  { OrderDate: "2023-01-06", Country: "Belarus", Region: "West", Sales: 124.55, Profit: 14.12, Category: "Technology" },
+-  { OrderDate: "2023-01-07", Country: "Russia", Region: "East", Sales: 542.10, Profit: 88.45, Category: "Office Supplies" },
+-];
+-
+-const TYPE_ICON = {
++const TYPE_ICON: Record<ColumnInfoOut["type_icon"], string> = {
+   numeric: "N",
+   datetime: "D",
+   categorical: "C",
+   text: "T",
+-} as const;
++};
++
++const FREQ_OPTIONS = [
++  "D — ежедневная",
++  "W — недельная",
++  "M — месячная",
++  "Q — квартальная",
++  "(авто, не получилось)",
++];
+ 
+ // ──────────────────────────────────────────────────────────────────────
+ // ВСПОМОГАТЕЛЬНЫЕ
+@@ -199,40 +132,185 @@ function formatNum(n: number): string {
+   return n.toLocaleString("ru-RU").replace(/,/g, " ");
+ }
+ 
++/**
++ * Клиентская ЭВРИСТИКА подтверждения структуры -- ЗАМЕНИТЬ на реальный
++ * бэкенд-детектор (см. app/data/detectors.py:detect_and_convert_datetime),
++ * когда появится адаптер, отдающий confidence/candidates per column.
++ * Пока: колонки с type_icon="datetime" -- кандидаты в дату, "categorical"
++ * -- кандидаты в группировку. Уверенность условная (не статистическая).
++ */
++function buildDetectionFromColumns(columnsInfo: ColumnInfoOut[]): StructureDetection {
++  const dateCandidates = columnsInfo.filter((c) => c.type_icon === "datetime");
++  const categoricalCandidates = columnsInfo.filter((c) => c.type_icon === "categorical");
++  const dateFallback = dateCandidates.length > 0 ? dateCandidates : columnsInfo.slice(0, 3);
++  const entityFallback = categoricalCandidates.length > 0 ? categoricalCandidates : columnsInfo.slice(0, 3);
++
++  return {
++    dateCol: {
++      selected: dateFallback[0]?.name ?? "(не использовать)",
++      confidence: dateCandidates.length > 0 ? 80 : 25,
++      candidates: dateFallback.map((c, i) => ({ name: c.name, score: Math.max(0.9 - i * 0.2, 0.1) })),
++    },
++    entityCol: {
++      selected: entityFallback[0]?.name ?? "(нет)",
++      confidence: categoricalCandidates.length > 0 ? 70 : 25,
++      candidates: entityFallback.map((c, i) => ({ name: c.name, score: Math.max(0.85 - i * 0.2, 0.1) })),
++    },
++    freq: {
++      selected: dateCandidates.length > 0 ? "D — ежедневная" : "(авто, не получилось)",
++      confidence: dateCandidates.length > 0 ? 60 : 15,
++      options: FREQ_OPTIONS,
++    },
++  };
++}
++
+ // ──────────────────────────────────────────────────────────────────────
+ // ГЛАВНЫЙ КОМПОНЕНТ
+ // ──────────────────────────────────────────────────────────────────────
+ 
+ export function TsAnalysisUpload() {
+-  const { setActiveDataset } = useAppShell();
+-  const [selectedDistCol, setSelectedDistCol] = useState(NUMERIC_COLS[0]);
+-  const [fileName, setFileName] = useState<string | null>("train.csv");
++  const { activeDataset, setActiveDataset, refreshSession, addLogEntry } = useAppShell();
++
+   const [source, setSource] = useState<"file" | "db">("file");
+-  const [isUploaded, setIsUploaded] = useState(true); // мок: файл уже загружен
+-  const [detection, setDetection] = useState<StructureDetection>(MOCK_DETECTION);
+-
+-  const totalRows = 9800;
+-  const totalCols = MOCK_COLUMNS.length;
+-  const memoryMb = 2.42;
+-  const numericCount = MOCK_COLUMNS.filter((c) => c.typeIcon === "numeric").length;
+-  const textCount = MOCK_COLUMNS.filter((c) => c.typeIcon !== "numeric").length;
+-
+-  const handleMockUpload = () => {
+-    const name = fileName ?? "train.csv";
+-    setActiveDataset({ name, rows: totalRows, sizeLabel: `${memoryMb} MB` });
+-    setIsUploaded(true);
++  const [fileName, setFileName] = useState<string | null>(null);
++  const [uploading, setUploading] = useState(false);
++  const [uploadError, setUploadError] = useState<string | null>(null);
++  const [uploadData, setUploadData] = useState<UploadApiResponse | null>(null);
++  const [hydrating, setHydrating] = useState(false);
++  const [detection, setDetection] = useState<StructureDetection | null>(null);
++  const [selectedDistCol, setSelectedDistCol] = useState<string | null>(null);
++
++  const isUploaded = uploadData !== null;
++  const columnsInfo = uploadData?.columns_info ?? [];
++  const numericCols = columnsInfo.filter((c) => c.type_icon === "numeric").map((c) => c.name);
++  const numericCount = columnsInfo.filter((c) => c.type_icon === "numeric").length;
++  const textCount = columnsInfo.length - numericCount;
++
++  // Если в сессии уже есть активный датасет (пользователь пришёл сюда по
++  // кнопке "Продолжить" с Home, а не через сам аплоад в этом рендере) --
++  // подтягиваем превью/техинфо/качество заново с бэкенда, чтобы не
++  // заставлять грузить файл повторно.
++  useEffect(() => {
++    if (!activeDataset || uploadData) return;
++    let cancelled = false;
++    setHydrating(true);
++    fetch(sessionApiUrl("/dataset"), { credentials: "include" })
++      .then((r) => (r.ok ? r.json() : null))
++      .then((data: UploadApiResponse | null) => {
++        if (cancelled || !data) return;
++        setUploadData(data);
++        if (data.columns_info) {
++          setDetection(buildDetectionFromColumns(data.columns_info));
++          const firstNumeric = data.columns_info.find((c) => c.type_icon === "numeric");
++          setSelectedDistCol(firstNumeric?.name ?? null);
++        }
++      })
++      .catch(() => {
++        // Молча остаёмся в состоянии "нет данных для превью" -- у
++        // пользователя всё равно есть activeDataset.name/rows на Home.
++      })
++      .finally(() => {
++        if (!cancelled) setHydrating(false);
++      });
++    return () => {
++      cancelled = true;
++    };
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [activeDataset]);
++
++  const doUpload = useCallback(
++    async (file: File) => {
++      setUploading(true);
++      setUploadError(null);
++      try {
++        const formData = new FormData();
++        formData.append("file", file);
++        const resp = await fetch(apiUrl("/upload"), {
++          method: "POST",
++          body: formData,
++          credentials: "include", // несёт cookie сессии -- сервер обновит AnalysisSession
++        });
++        const data: UploadApiResponse & { detail?: string } = await resp.json();
++        if (!resp.ok) {
++          throw new Error(data.detail || data.error || "Не удалось загрузить файл");
++        }
++        setUploadData(data);
++        if (data.columns_info) {
++          setDetection(buildDetectionFromColumns(data.columns_info));
++          const firstNumeric = data.columns_info.find((c) => c.type_icon === "numeric");
++          setSelectedDistCol(firstNumeric?.name ?? null);
++        }
++        setActiveDataset({
++          name: data.name,
++          rows: data.rows,
++          sizeLabel: data.size_label ?? "—",
++        });
++        // Сервер уже обновил сессию внутри /upload (upload_common.py) --
++        // синхронизируем клиентский стейт stages/lastActiveStage тоже.
++        await refreshSession();
++        toast.success("Файл загружен успешно!");
++      } catch (e) {
++        const message = e instanceof Error ? e.message : "Неизвестная ошибка загрузки";
++        setUploadError(message);
++        toast.error(`Ошибка: ${message}`);
++        addLogEntry("ERROR", `Ошибка загрузки файла: ${message}`);
++      } finally {
++        setUploading(false);
++      }
++    },
++    [setActiveDataset, refreshSession, addLogEntry]
++  );
++
++  const onDrop = useCallback(
++    (acceptedFiles: File[]) => {
++      const file = acceptedFiles[0];
++      if (!file) return;
++      setFileName(file.name);
++      doUpload(file);
++    },
++    [doUpload]
++  );
++
++  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
++    onDrop,
++    multiple: false,
++    maxSize: 50 * 1024 * 1024, // 50MB — как в прежнем DataUploadForm.tsx
++    accept: {
++      "text/csv": [".csv"],
++      "application/vnd.ms-excel": [".xls"],
++      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
++      "application/json": [".json"],
++    },
++  });
++
++  const rejectedFiles = fileRejections.map(({ file, errors }) => ({
++    file,
++    errors: errors.map((e) => {
++      if (e.code === "file-too-large") return "Файл слишком большой (макс. 50MB)";
++      if (e.code === "file-invalid-type") return "Неподдерживаемый формат";
++      return e.message;
++    }),
++  }));
++
++  const handleReset = () => {
++    setUploadData(null);
++    setUploadError(null);
++    setDetection(null);
++    setFileName(null);
+   };
+ 
+   const handleApplyOverride = () => {
+-    // ЗАМЕНИТЬ: PATCH /v1/internal/datasets/{id}/column-mapping
+-    // Пока -- просто перерисовка с теми же данными.
+-    setDetection({ ...detection });
++    // ЗАМЕНИТЬ: PATCH /v1/internal/datasets/{id}/column-mapping -- эндпоинт
++    // ещё не реализован на бэкенде (см. комментарий в шапке файла).
++    // Пока -- локальное подтверждение выбора, без вызова API.
++    if (detection) setDetection({ ...detection });
++    addLogEntry("INFO", "Подтверждение структуры сохранено (пока только локально — см. TODO в коде)");
+   };
+ 
+   return (
+     <div className="space-y-6">
+       {/* Заголовок страницы */}
+-      <header className="flex items-end justify-between">
++      <header className="flex items-end justify-between flex-wrap gap-2">
+         <div>
+           <h1 className="text-2xl font-semibold text-neutral-900">Загрузка данных</h1>
+           <p className="text-sm text-neutral-600 mt-1 max-w-3xl">
+@@ -247,6 +325,10 @@ export function TsAnalysisUpload() {
+             <span className="text-green-600 inline-flex items-center gap-1">
+               <Check size={12} aria-hidden="true" /> Файл загружен
+             </span>
++          ) : hydrating ? (
++            <span className="text-neutral-400 inline-flex items-center gap-1">
++              <Loader2 size={12} className="animate-spin" aria-hidden="true" /> Восстанавливаем сессию…
++            </span>
+           ) : (
+             <span className="text-neutral-400">Ожидание файла</span>
+           )}
+@@ -263,7 +345,7 @@ export function TsAnalysisUpload() {
+           {isUploaded && (
+             <button
+               type="button"
+-              onClick={() => setIsUploaded(false)}
++              onClick={handleReset}
+               className="text-xs text-neutral-500 hover:text-neutral-700 inline-flex items-center gap-1"
+             >
+               <RefreshCw size={12} aria-hidden="true" /> Сменить файл
+@@ -295,26 +377,38 @@ export function TsAnalysisUpload() {
+             </div>
+ 
+             {source === "file" ? (
+-              <div className="mt-4 border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center bg-neutral-50">
+-                <input
+-                  type="file"
+-                  id="file-upload-input"
+-                  className="hidden"
+-                  onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
+-                />
+-                <label
+-                  htmlFor="file-upload-input"
+-                  className="cursor-pointer text-sm text-neutral-600 inline-flex flex-col items-center gap-2"
+-                >
+-                  <Upload size={24} className="text-neutral-400" aria-hidden="true" />
+-                  {fileName ? (
+-                    <span>
+-                      Выбрао: <strong className="text-neutral-900">{fileName}</strong>
+-                    </span>
++              <div
++                {...getRootProps()}
++                className={`mt-4 border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
++                  isDragActive ? "border-brand bg-brand-light" : "border-neutral-300 bg-neutral-50"
++                }`}
++              >
++                <input {...getInputProps()} data-testid="dropzone-input" />
++                <div className="text-sm text-neutral-600 inline-flex flex-col items-center gap-2">
++                  {uploading ? (
++                    <>
++                      <Loader2 size={24} className="text-brand animate-spin" aria-hidden="true" />
++                      <span>Загружаем и анализируем файл…</span>
++                    </>
+                   ) : (
+-                    <span>Перетащите файл сюда или нажмите для выбора</span>
++                    <>
++                      <Upload size={24} className="text-neutral-400" aria-hidden="true" />
++                      <span>
++                        {isDragActive
++                          ? "Отпустите файл здесь…"
++                          : "Перетащите файл сюда или нажмите для выбора"}
++                      </span>
++                      <span className="text-xs text-neutral-500">
++                        Поддерживаемые форматы: .csv, .xlsx, .xls, .json (макс. 50MB)
++                      </span>
++                      {fileName && (
++                        <span className="text-green-600">
++                          Выбран: <strong>{fileName}</strong>
++                        </span>
++                      )}
++                    </>
+                   )}
+-                </label>
++                </div>
+               </div>
+             ) : (
+               <p className="text-sm text-neutral-500 mb-4 mt-4 bg-neutral-50 rounded p-4">
+@@ -322,591 +416,497 @@ export function TsAnalysisUpload() {
+               </p>
+             )}
+ 
+-            <Button onClick={handleMockUpload} className="mt-4">
+-              Загрузить файл
+-            </Button>
++            {rejectedFiles.length > 0 && (
++              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
++                <h3 className="font-medium text-red-700 mb-1 text-sm">Ошибки:</h3>
++                <ul className="list-disc list-inside text-sm text-red-600">
++                  {rejectedFiles.map(({ file, errors }) => (
++                    <li key={file.name}>
++                      {file.name}: {errors.join(", ")}
++                    </li>
++                  ))}
++                </ul>
++              </div>
++            )}
++
++            {uploadError && (
++              <div className="mt-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 flex items-start gap-2">
++                <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
++                <span>{uploadError}</span>
++              </div>
++            )}
+           </>
+         ) : (
+           <div className="mt-4 border border-neutral-200 rounded-lg p-4 text-sm bg-neutral-50">
+-            <div className="flex items-center gap-2 text-neutral-700">
++            <div className="flex items-center gap-2 text-neutral-700 flex-wrap">
+               <FileText size={16} className="text-brand" aria-hidden="true" />
+-              <strong className="text-neutral-900">{fileName}</strong>
++              <strong className="text-neutral-900">{uploadData!.name}</strong>
+               <span className="text-neutral-400">·</span>
+-              <span>{memoryMb} MB</span>
++              <span>{uploadData!.size_label ?? "—"}</span>
+               <span className="text-neutral-400">·</span>
+               <span>загружен успешно</span>
+               <span className="text-neutral-400">·</span>
+-              <span>{formatNum(totalRows)} строк</span>
++              <span>{formatNum(uploadData!.rows)} строк</span>
+               <span className="text-neutral-400">·</span>
+-              <span>{totalCols} колонок</span>
++              <span>{uploadData!.columns} колонок</span>
+             </div>
+           </div>
+         )}
+-
+-        {/* Предупреждения парсинга */}
+-        {isUploaded && MOCK_PARSE_WARNINGS.length > 0 && (
+-          <div className="mt-3 space-y-2">
+-            {MOCK_PARSE_WARNINGS.map((w, i) => (
+-              <div
+-                key={i}
+-                className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 flex items-start gap-2"
+-              >
+-                <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
+-                <span>
+-                  <strong>Предупреждение парсинга:</strong> {w.message}
+-                </span>
+-              </div>
+-            ))}
+-          </div>
+-        )}
+       </section>
+ 
+-      {/* ════════ Секция 2: Подтверждение автоопределения (новое) ════════ */}
+-      <section className="bg-white rounded-lg border border-neutral-200 p-5">
+-        <div className="flex items-center justify-between mb-4">
+-          <div>
+-            <h2 className="font-semibold text-neutral-900">Подтверждение автоопределения</h2>
+-            <p className="text-xs text-neutral-500 mt-0.5 max-w-2xl">
+-              Эвристики определили структуру датасета. Проверьте и поправьте, если ошиблись —
+-              это определит весь дальнейший анализ.
+-            </p>
+-          </div>
+-          <span className="text-xs bg-brand-light text-brand px-2 py-1 rounded font-mono hidden md:inline-block">
+-            PATCH /v1/internal/datasets/{"{id}"}/column-mapping
+-          </span>
+-        </div>
+-
+-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+-          {/* Колонка даты */}
+-          <div className="border border-neutral-200 rounded-lg p-4">
+-            <div className="flex items-center justify-between mb-2">
+-              <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide inline-flex items-center gap-1.5">
+-                <Calendar size={12} aria-hidden="true" /> Колонка даты
+-              </span>
+-              <span className={`text-xs px-2 py-0.5 rounded ${confidenceColor(detection.dateCol.confidence)}`}>
+-                {detection.dateCol.confidence}%
+-              </span>
+-            </div>
+-            <select
+-              value={detection.dateCol.selected}
+-              onChange={(e) =>
+-                setDetection({
+-                  ...detection,
+-                  dateCol: { ...detection.dateCol, selected: e.target.value },
+-                })
+-              }
+-              className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
+-            >
+-              {detection.dateCol.candidates.map((c) => (
+-                <option key={c.name} value={c.name}>
+-                  {c.name}
+-                </option>
+-              ))}
+-              <option value="(не использовать)">(не использовать)</option>
+-            </select>
+-            <details className="mt-2 text-xs text-neutral-500">
+-              <summary className="cursor-pointer inline-flex items-center gap-1">
+-                <ChevronDown size={10} aria-hidden="true" /> кандидаты ({detection.dateCol.candidates.length})
+-              </summary>
+-              <ul className="mt-1 space-y-0.5">
+-                {detection.dateCol.candidates.map((c) => (
+-                  <li key={c.name}>
+-                    • {c.name} — score {c.score.toFixed(2)}
+-                  </li>
+-                ))}
+-              </ul>
+-            </details>
+-          </div>
+-
+-          {/* Группирующая колонка */}
+-          <div className="border border-neutral-200 rounded-lg p-4">
+-            <div className="flex items-center justify-between mb-2">
+-              <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide inline-flex items-center gap-1.5">
+-                <Tag size={12} aria-hidden="true" /> Группирующая колонка
+-              </span>
+-              <span className={`text-xs px-2 py-0.5 rounded ${confidenceColor(detection.entityCol.confidence)}`}>
+-                {detection.entityCol.confidence}%
+-              </span>
+-            </div>
+-            <select
+-              value={detection.entityCol.selected}
+-              onChange={(e) =>
+-                setDetection({
+-                  ...detection,
+-                  entityCol: { ...detection.entityCol, selected: e.target.value },
+-                })
+-              }
+-              className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
+-            >
+-              {detection.entityCol.candidates.map((c) => (
+-                <option key={c.name} value={c.name}>
+-                  {c.name}
+-                </option>
+-              ))}
+-              <option value="(нет)">(нет)</option>
+-            </select>
+-            <details className="mt-2 text-xs text-neutral-500">
+-              <summary className="cursor-pointer inline-flex items-center gap-1">
+-                <ChevronDown size={10} aria-hidden="true" /> кандидаты ({detection.entityCol.candidates.length})
+-              </summary>
+-              <ul className="mt-1 space-y-0.5">
+-                {detection.entityCol.candidates.map((c) => (
+-                  <li key={c.name}>
+-                    • {c.name} — score {c.score.toFixed(2)}
+-                  </li>
+-                ))}
+-              </ul>
+-            </details>
+-          </div>
+-
+-          {/* Частота */}
+-          <div className="border border-neutral-200 rounded-lg p-4">
+-            <div className="flex items-center justify-between mb-2">
+-              <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide inline-flex items-center gap-1.5">
+-                <Clock size={12} aria-hidden="true" /> Частота ряда
+-              </span>
+-              <span className={`text-xs px-2 py-0.5 rounded ${confidenceColor(detection.freq.confidence)}`}>
+-                {detection.freq.confidence}%
++      {isUploaded && detection && (
++        <>
++          {/* ════════ Секция 2: Подтверждение автоопределения ════════ */}
++          <section className="bg-white rounded-lg border border-neutral-200 p-5">
++            <div className="flex items-center justify-between mb-4">
++              <div>
++                <h2 className="font-semibold text-neutral-900">Подтверждение автоопределения</h2>
++                <p className="text-xs text-neutral-500 mt-0.5 max-w-2xl">
++                  Эвристика определила структуру датасета по типам колонок. Проверьте и поправьте,
++                  если ошиблась — это определит весь дальнейший анализ.
++                </p>
++              </div>
++              <span className="text-xs bg-neutral-100 text-neutral-500 px-2 py-1 rounded font-mono hidden md:inline-block">
++                клиентская эвристика · бэкенд-детектор — TODO
+               </span>
+             </div>
+-            <select
+-              value={detection.freq.selected}
+-              onChange={(e) =>
+-                setDetection({
+-                  ...detection,
+-                  freq: { ...detection.freq, selected: e.target.value },
+-                })
+-              }
+-              className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
+-            >
+-              {detection.freq.options.map((opt) => (
+-                <option key={opt} value={opt}>
+-                  {opt}
+-                </option>
+-              ))}
+-            </select>
+-            <p className="mt-2 text-xs text-neutral-500">
+-              Определено по {formatNum(totalRows)} точкам.{" "}
+-              <a href="#" className="underline">
+-                показать первые 5 наблюдений →
+-              </a>
+-            </p>
+-          </div>
+-        </div>
+ 
+-        <div className="mt-4 flex items-center justify-between flex-wrap gap-3">
+-          <p className="text-xs text-neutral-500 max-w-2xl">
+-            Override сохраняется серверно (in-memory на этапе прототипа, Redis+TTL в продакшене) —
+-            переживёт F5 и доступен через API.
+-          </p>
+-          <Button onClick={handleApplyOverride}>Применить и пересчитать превью</Button>
+-        </div>
+-      </section>
+-
+-      {/* ════════ Секция 3: Техническая информация ════════ */}
+-      <section className="bg-white rounded-lg border border-neutral-200 p-5">
+-        <details open>
+-          <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
+-            <span className="inline-flex items-center gap-2">
+-              <Database size={18} className="text-brand" aria-hidden="true" />
+-              Техническая информация о датасете
+-            </span>
+-            <span className="text-xs text-neutral-500 font-normal">4 метрики + таблица колонок</span>
+-          </summary>
+-
+-          {/* 4 KPI */}
+-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+-            <div className="border border-neutral-200 rounded-lg p-3">
+-              <div className="text-xs text-neutral-500">Всего строк</div>
+-              <div className="text-xl font-semibold text-neutral-900">{formatNum(totalRows)}</div>
+-            </div>
+-            <div className="border border-neutral-200 rounded-lg p-3">
+-              <div className="text-xs text-neutral-500">Всего колонок</div>
+-              <div className="text-xl font-semibold text-neutral-900">{totalCols}</div>
+-            </div>
+-            <div className="border border-neutral-200 rounded-lg p-3">
+-              <div className="text-xs text-neutral-500">Память</div>
+-              <div className="text-xl font-semibold text-neutral-900">{memoryMb.toFixed(2)} MB</div>
+-            </div>
+-            <div className="border border-neutral-200 rounded-lg p-3">
+-              <div className="text-xs text-neutral-500">Числовых / Текстовых</div>
+-              <div className="text-xl font-semibold text-neutral-900">
+-                {numericCount} / {textCount}
++            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
++              {/* Колонка даты */}
++              <div className="border border-neutral-200 rounded-lg p-4">
++                <div className="flex items-center justify-between mb-2">
++                  <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide inline-flex items-center gap-1.5">
++                    <Calendar size={12} aria-hidden="true" /> Колонка даты
++                  </span>
++                  <span className={`text-xs px-2 py-0.5 rounded ${confidenceColor(detection.dateCol.confidence)}`}>
++                    {detection.dateCol.confidence}%
++                  </span>
++                </div>
++                <select
++                  value={detection.dateCol.selected}
++                  onChange={(e) =>
++                    setDetection({ ...detection, dateCol: { ...detection.dateCol, selected: e.target.value } })
++                  }
++                  className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
++                >
++                  {detection.dateCol.candidates.map((c) => (
++                    <option key={c.name} value={c.name}>
++                      {c.name}
++                    </option>
++                  ))}
++                  <option value="(не использовать)">(не использовать)</option>
++                </select>
++                <details className="mt-2 text-xs text-neutral-500">
++                  <summary className="cursor-pointer inline-flex items-center gap-1">
++                    <ChevronDown size={10} aria-hidden="true" /> кандидаты ({detection.dateCol.candidates.length})
++                  </summary>
++                  <ul className="mt-1 space-y-0.5">
++                    {detection.dateCol.candidates.map((c) => (
++                      <li key={c.name}>
++                        • {c.name} — score {c.score.toFixed(2)}
++                      </li>
++                    ))}
++                  </ul>
++                </details>
+               </div>
+-            </div>
+-          </div>
+-
+-          {/* Таблица колонок */}
+-          <div className="mt-4 overflow-x-auto">
+-            <table className="w-full text-sm">
+-              <thead className="bg-neutral-50 text-xs text-neutral-500 uppercase">
+-                <tr>
+-                  <th className="text-left px-3 py-2 font-medium">Колонка</th>
+-                  <th className="text-left px-3 py-2 font-medium">Тип</th>
+-                  <th className="text-right px-3 py-2 font-medium">Не пусто</th>
+-                  <th className="text-left px-3 py-2 font-medium">Пропуски</th>
+-                  <th className="text-right px-3 py-2 font-medium">Уникальных</th>
+-                </tr>
+-              </thead>
+-              <tbody className="divide-y divide-neutral-100">
+-                {MOCK_COLUMNS.map((col) => (
+-                  <tr key={col.name}>
+-                    <td className="px-3 py-2 font-medium">{col.name}</td>
+-                    <td className="px-3 py-2 text-neutral-600">
+-                      <span className="inline-flex items-center gap-1.5">
+-                        <span
+-                          className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold ${
+-                            col.typeIcon === "numeric"
+-                              ? "bg-blue-100 text-blue-700"
+-                              : col.typeIcon === "datetime"
+-                              ? "bg-purple-100 text-purple-700"
+-                              : col.typeIcon === "categorical"
+-                              ? "bg-green-100 text-green-700"
+-                              : "bg-neutral-200 text-neutral-600"
+-                          }`}
+-                        >
+-                          {TYPE_ICON[col.typeIcon]}
+-                        </span>
+-                        {col.dtype}
+-                      </span>
+-                    </td>
+-                    <td className="text-right px-3 py-2">{formatNum(col.nonNull)}</td>
+-                    <td className="px-3 py-2">
+-                      {col.nulls > 0 ? (
+-                        <div className="flex items-center gap-2">
+-                          <div className="w-24 bg-neutral-200 rounded-full h-1.5">
+-                            <div
+-                              className="bg-amber-500 h-1.5 rounded-full"
+-                              style={{ width: `${(col.nulls / totalRows) * 100}%` }}
+-                            />
+-                          </div>
+-                          <span className="text-xs text-neutral-600">{formatNum(col.nulls)}</span>
+-                        </div>
+-                      ) : (
+-                        <span className="text-neutral-400">—</span>
+-                      )}
+-                    </td>
+-                    <td className="text-right px-3 py-2">{formatNum(col.unique)}</td>
+-                  </tr>
+-                ))}
+-              </tbody>
+-            </table>
+-          </div>
+-          <p className="mt-3 text-xs text-neutral-500">Датасет загружен: {fileName}</p>
+-        </details>
+-      </section>
+-
+-      {/* ════════ Секция 4: Превью датасета ════════ */}
+-      <section className="bg-white rounded-lg border border-neutral-200 p-5">
+-        <details>
+-          <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
+-            <span className="inline-flex items-center gap-2">
+-              <Eye size={18} className="text-brand" aria-hidden="true" />
+-              Превью датасета
+-            </span>
+-            <span className="text-xs text-neutral-500 font-normal">первые 10 строк</span>
+-          </summary>
+-          <div className="mt-4 overflow-x-auto">
+-            <table className="w-full text-xs">
+-              <thead className="bg-neutral-50 text-neutral-500 uppercase">
+-                <tr>
+-                  <th className="text-left px-2 py-1.5">Order Date</th>
+-                  <th className="text-left px-2 py-1.5">Country</th>
+-                  <th className="text-left px-2 py-1.5">Region</th>
+-                  <th className="text-right px-2 py-1.5">Sales</th>
+-                  <th className="text-right px-2 py-1.5">Profit</th>
+-                  <th className="text-left px-2 py-1.5">Category</th>
+-                </tr>
+-              </thead>
+-              <tbody className="divide-y divide-neutral-100">
+-                {PREVIEW_ROWS.map((row, i) => (
+-                  <tr key={i}>
+-                    <td className="px-2 py-1.5">{row.OrderDate}</td>
+-                    <td className="px-2 py-1.5">{row.Country}</td>
+-                    <td className="px-2 py-1.5">{row.Region}</td>
+-                    <td className="text-right px-2 py-1.5">{row.Sales.toFixed(2)}</td>
+-                    <td className={'text-right px-2 py-1.5 ${row.Profit < 0 ? "text-red-600" : ""}'}>
+-                      {row.Profit.toFixed(2)}
+-                    </td>
+-                    <td className="px-2 py-1.5">{row.Category}</td>
+-                  </tr>
+-                ))}
+-                <tr className="text-neutral-400">
+-                  <td colSpan={6} className="px-2 py-1.5 text-center">
+-                    ... ещё 5 строк
+-                  </td>
+-                </tr>
+-              </tbody>
+-            </table>
+-          </div>
+-        </details>
+-      </section>
+-
+-      {/* ════════ Секция 5: Визуализация распределения (БЕЗ СОКРАЩЕНИЙ) ════════ */}
+-      <section className="bg-white rounded-lg border border-neutral-200 p-5">
+-        <details open>
+-          <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
+-            <span className="inline-flex items-center gap-2">
+-              <BarChart3 size={18} className="text-brand" aria-hidden="true" />
+-              Визуализация распределения данных
+-            </span>
+-            <span className="text-xs text-neutral-500 font-normal hidden md:inline">
+-              точечный · гистограмма+KDE » KDE-плотность · статистики
+-            </span>
+-          </summary>
+-          <p className="text-sm text-neutral-600 mt-2 max-w-3xl">
+-            Интерактивный анализ распределения числовых признаков: точечный график, гистограмма, KDE
+-            и статистические метрики для оценки формы распределения, асимметрии и выбросов.
+-          </p>
+ 
+-          {/* Селектор колонки */}
+-          <div className="mt-4 flex items-center gap-3">
+-            <label className="text-sm text-neutral-700">Выберите числовую колонку:</label>
+-            <select
+-              value={selectedDistCol}
+-              onChange={(e) => setSelectedDistCol(e.target.value)}
+-              className="border border-neutral-300 rounded px-3 py-1.5 text-sm font-medium"
+-            >
+-              {NUMERIC_COLS.map((c) => (
+-                <option key={c} value={c}>
+-                  {c}
+-                </option>
+-              ))}
+-            </select>
+-          </div>
+-
+-          {/* 3 колонки графиков */}
+-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+-            {/* col1: Точечный график */}
+-            <div>
+-              <h4 className="text-sm font-semibold mb-2 inline-flex items-center gap-1.5">
+-                <ScatterChart size={14} className="text-neutral-500" aria-hidden="true" />
+-                Точечный график
+-              </h4>
+-              <div className="h-[400px] border border-neutral-200 rounded flex items-center justify-center text-xs text-neutral-500 bg-neutral-50">
+-                [ Plotly scatter: x=index, y={selectedDistCol}, opacity=0.6, marker_size=6 ]
++              {/* Группирующая колонка */}
++              <div className="border border-neutral-200 rounded-lg p-4">
++                <div className="flex items-center justify-between mb-2">
++                  <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide inline-flex items-center gap-1.5">
++                    <Tag size={12} aria-hidden="true" /> Группирующая колонка
++                  </span>
++                  <span className={`text-xs px-2 py-0.5 rounded ${confidenceColor(detection.entityCol.confidence)}`}>
++                    {detection.entityCol.confidence}%
++                  </span>
++                </div>
++                <select
++                  value={detection.entityCol.selected}
++                  onChange={(e) =>
++                    setDetection({ ...detection, entityCol: { ...detection.entityCol, selected: e.target.value } })
++                  }
++                  className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
++                >
++                  {detection.entityCol.candidates.map((c) => (
++                    <option key={c.name} value={c.name}>
++                      {c.name}
++                    </option>
++                  ))}
++                  <option value="(нет)">(нет)</option>
++                </select>
++                <details className="mt-2 text-xs text-neutral-500">
++                  <summary className="cursor-pointer inline-flex items-center gap-1">
++                    <ChevronDown size={10} aria-hidden="true" /> кандидаты ({detection.entityCol.candidates.length})
++                  </summary>
++                  <ul className="mt-1 space-y-0.5">
++                    {detection.entityCol.candidates.map((c) => (
++                      <li key={c.name}>
++                        • {c.name} — score {c.score.toFixed(2)}
++                      </li>
++                    ))}
++                  </ul>
++                </details>
+               </div>
+-            </div>
+ 
+-            {/* col2: Гистограмма + KDE + vlines */}
+-            <div>
+-              <h4 className="text-sm font-semibold mb-2 inline-flex items-center gap-1.5">
+-                <BarChart3 size={14} className="text-neutral-500" aria-hidden="true" />
+-                Гистограмма
+-              </h4>
+-              <div className="h-[400px] border border-neutral-200 rounded flex flex-col items-center justify-center text-xs text-neutral-500 gap-1 bg-neutral-50">
+-                [ Plotly histogram, nbins=30 ]
+-                <span className="text-neutral-400">+ KDE (красный) + vlines: Mean / Median / Q1 / Q3</span>
++              {/* Частота */}
++              <div className="border border-neutral-200 rounded-lg p-4">
++                <div className="flex items-center justify-between mb-2">
++                  <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide inline-flex items-center gap-1.5">
++                    <Clock size={12} aria-hidden="true" /> Частота ряда
++                  </span>
++                  <span className={`text-xs px-2 py-0.5 rounded ${confidenceColor(detection.freq.confidence)}`}>
++                    {detection.freq.confidence}%
++                  </span>
++                </div>
++                <select
++                  value={detection.freq.selected}
++                  onChange={(e) => setDetection({ ...detection, freq: { ...detection.freq, selected: e.target.value } })}
++                  className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
++                >
++                  {detection.freq.options.map((opt) => (
++                    <option key={opt} value={opt}>
++                      {opt}
++                    </option>
++                  ))}
++                </select>
++                <p className="mt-2 text-xs text-neutral-500">Оценено по {formatNum(uploadData!.rows)} строкам.</p>
+               </div>
+             </div>
+ 
+-            {/* col3: KDE-плотность */}
+-            <div>
+-              <h4 className="text-sm font-semibold mb-2 inline-flex items-center gap-1.5">
+-                <Activity size={14} className="text-neutral-500" aria-hidden="true" />
+-                KDE (плотность)
+-              </h4>
+-              <div className="h-[400px] border border-neutral-200 rounded flex flex-col items-center justify-center text-xs text-neutral-500 gap-1 bg-neutral-50">
+-                [ Plotly scatter: KDE curve, fill=tozeroy ]
+-                <span className="text-neutral-400">+ vlines: Mean / Median</span>
+-              </div>
++            <div className="mt-4 flex items-center justify-between flex-wrap gap-3">
++              <p className="text-xs text-neutral-500 max-w-2xl">
++                Override сохраняется серверно (in-memory на этапе прототипа, Redis+TTL в продакшене) —
++                переживёт F5 и доступен через API. Применение override-эндпоинта — TODO (см. шапку файла).
++              </p>
++              <Button onClick={handleApplyOverride}>Применить и пересчитать превью</Button>
+             </div>
+-          </div>
++          </section>
++
++          {/* ════════ Секция 3: Техническая информация ════════ */}
++          <section className="bg-white rounded-lg border border-neutral-200 p-5">
++            <details open>
++              <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
++                <span className="inline-flex items-center gap-2">
++                  <Database size={18} className="text-brand" aria-hidden="true" />
++                  Техническая информация о датасете
++                </span>
++                <span className="text-xs text-neutral-500 font-normal">4 метрики + таблица колонок</span>
++              </summary>
+ 
+-          {/* Статистики распределения */}
+-          <div className="mt-5 border-t border-neutral-100 pt-4">
+-            <h4 className="font-semibold text-neutral-900 mb-3">Статистики распределения</h4>
+-            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1 text-sm">
+-              <div className="flex justify-between">
+-                <span className="text-neutral-600">Тип распределения:</span>
+-                <span className="font-mono text-xs">{MOCK_DIST_STATS.type}</span>
++              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
++                <div className="border border-neutral-200 rounded-lg p-3">
++                  <div className="text-xs text-neutral-500">Всего строк</div>
++                  <div className="text-xl font-semibold text-neutral-900">{formatNum(uploadData!.rows)}</div>
++                </div>
++                <div className="border border-neutral-200 rounded-lg p-3">
++                  <div className="text-xs text-neutral-500">Всего колонок</div>
++                  <div className="text-xl font-semibold text-neutral-900">{uploadData!.columns}</div>
++                </div>
++                <div className="border border-neutral-200 rounded-lg p-3">
++                  <div className="text-xs text-neutral-500">Размер файла</div>
++                  <div className="text-xl font-semibold text-neutral-900">{uploadData!.size_label ?? "—"}</div>
++                </div>
++                <div className="border border-neutral-200 rounded-lg p-3">
++                  <div className="text-xs text-neutral-500">Числовых / Прочих</div>
++                  <div className="text-xl font-semibold text-neutral-900">
++                    {numericCount} / {textCount}
++                  </div>
++                </div>
+               </div>
+-              <div className="flex justify-between">
+-                <span className="text-neutral-600">Mean (среднее):</span>
+-                <span className="font-mono">{MOCK_DIST_STATS.mean.toFixed(2)}</span>
+-              </div>
+-              <div className="flex justify-between">
+-                <span className="text-neutral-600">Median (медиана):</span>
+-                <span className="font-mono">{MOCK_DIST_STATS.median.toFixed(2)}</span>
+-              </div>
+-              <div className="flex justify-between">
+-                <span className="text-neutral-600">Std (отклонение):</span>
+-                <span className="font-mono">{MOCK_DIST_STATS.std.toFixed(2)}</span>
+-              </div>
+-              <div className="flex justify-between">
+-                <span className="text-neutral-600">Skewness (асимметрия):</span>
+-                <span className="font-mono">{MOCK_DIST_STATS.skew.toFixed(3)}</span>
+-              </div>
+-              <div className="flex justify-between">
+-                <span className="text-neutral-600">Kurtosis (эксцесс):</span>
+-                <span className="font-mono">{MOCK_DIST_STATS.kurt.toFixed(3)}</span>
+-              </div>
+-              <div className="flex justify-between">
+-                <span className="text-neutral-600">Q1 (25-й перцентиль):</span>
+-                <span className="font-mono">{MOCK_DIST_STATS.q1.toFixed(2)}</span>
+-              </div>
+-              <div className="flex justify-between">
+-                <span className="text-neutral-600">Q3 (75-й перцентиль):</span>
+-                <span className="font-mono">{MOCK_DIST_STATS.q3.toFixed(2)}</span>
++
++              <div className="mt-4 overflow-x-auto">
++                <table className="w-full text-sm">
++                  <thead className="bg-neutral-50 text-xs text-neutral-500 uppercase">
++                    <tr>
++                      <th className="text-left px-3 py-2 font-medium">Колонка</th>
++                      <th className="text-left px-3 py-2 font-medium">Тип</th>
++                      <th className="text-right px-3 py-2 font-medium">Не пусто</th>
++                      <th className="text-left px-3 py-2 font-medium">Пропуски</th>
++                      <th className="text-right px-3 py-2 font-medium">Уникальных</th>
++                    </tr>
++                  </thead>
++                  <tbody className="divide-y divide-neutral-100">
++                    {columnsInfo.map((col) => (
++                      <tr key={col.name}>
++                        <td className="px-3 py-2 font-medium">{col.name}</td>
++                        <td className="px-3 py-2 text-neutral-600">
++                          <span className="inline-flex items-center gap-1.5">
++                            <span
++                              className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold ${
++                                col.type_icon === "numeric"
++                                  ? "bg-blue-100 text-blue-700"
++                                  : col.type_icon === "datetime"
++                                  ? "bg-purple-100 text-purple-700"
++                                  : col.type_icon === "categorical"
++                                  ? "bg-green-100 text-green-700"
++                                  : "bg-neutral-200 text-neutral-600"
++                              }`}
++                            >
++                              {TYPE_ICON[col.type_icon]}
++                            </span>
++                            {col.dtype}
++                          </span>
++                        </td>
++                        <td className="text-right px-3 py-2">{formatNum(col.non_null)}</td>
++                        <td className="px-3 py-2">
++                          {col.nulls > 0 ? (
++                            <div className="flex items-center gap-2">
++                              <div className="w-24 bg-neutral-200 rounded-full h-1.5">
++                                <div
++                                  className="bg-amber-500 h-1.5 rounded-full"
++                                  style={{ width: `${(col.nulls / uploadData!.rows) * 100}%` }}
++                                />
++                              </div>
++                              <span className="text-xs text-neutral-600">{formatNum(col.nulls)}</span>
++                            </div>
++                          ) : (
++                            <span className="text-neutral-400">—</span>
++                          )}
++                        </td>
++                        <td className="text-right px-3 py-2">{formatNum(col.unique)}</td>
++                      </tr>
++                    ))}
++                  </tbody>
++                </table>
+               </div>
+-              <div className="flex justify-between">
+-                <span className="text-neutral-600">IQR (межквартильный):</span>
+-                <span className="font-mono">{MOCK_DIST_STATS.iqr.toFixed(2)}</span>
++              <p className="mt-3 text-xs text-neutral-500">Датасет загружен: {uploadData!.name}</p>
++            </details>
++          </section>
++
++          {/* ════════ Секция 4: Превью датасета ════════ */}
++          <section className="bg-white rounded-lg border border-neutral-200 p-5">
++            <details>
++              <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
++                <span className="inline-flex items-center gap-2">
++                  <Eye size={18} className="text-brand" aria-hidden="true" />
++                  Превью датасета
++                </span>
++                <span className="text-xs text-neutral-500 font-normal">первые и последние 5 строк</span>
++              </summary>
++              <div className="mt-4 overflow-x-auto">
++                <table className="w-full text-xs">
++                  <thead className="bg-neutral-50 text-neutral-500 uppercase">
++                    <tr>
++                      {uploadData!.preview.head[0]?.map((colName, i) => (
++                        <th key={i} className="text-left px-2 py-1.5">
++                          {colName}
++                        </th>
++                      ))}
++                    </tr>
++                  </thead>
++                  <tbody className="divide-y divide-neutral-100">
++                    {uploadData!.preview.head.slice(1).map((row, i) => (
++                      <tr key={`head-${i}`}>
++                        {row.map((cell, j) => (
++                          <td key={j} className="px-2 py-1.5">
++                            {cell}
++                          </td>
++                        ))}
++                      </tr>
++                    ))}
++                    <tr className="text-neutral-400">
++                      <td colSpan={uploadData!.preview.head[0]?.length ?? 1} className="px-2 py-1.5 text-center">
++                        …
++                      </td>
++                    </tr>
++                    {uploadData!.preview.tail.map((row, i) => (
++                      <tr key={`tail-${i}`}>
++                        {row.map((cell, j) => (
++                          <td key={j} className="px-2 py-1.5">
++                            {cell}
++                          </td>
++                        ))}
++                      </tr>
++                    ))}
++                  </tbody>
++                </table>
+               </div>
+-            </div>
+-          </div>
++            </details>
++          </section>
++
++          {/* ════════ Секция 5: Визуализация распределения ════════ */}
++          {numericCols.length > 0 && (
++            <section className="bg-white rounded-lg border border-neutral-200 p-5">
++              <details open>
++                <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
++                  <span className="inline-flex items-center gap-2">
++                    <BarChart3 size={18} className="text-brand" aria-hidden="true" />
++                    Визуализация распределения данных
++                  </span>
++                  <span className="text-xs text-neutral-500 font-normal hidden md:inline">
++                    макет — реальный чартинг ещё не подключён
++                  </span>
++                </summary>
++                <p className="text-sm text-neutral-600 mt-2 max-w-3xl">
++                  Интерактивный анализ распределения числовых признаков: точечный график, гистограмма, KDE
++                  и статистические метрики для оценки формы распределения, асимметрии и выбросов.
++                </p>
++
++                <div className="mt-4 flex items-center gap-3">
++                  <label className="text-sm text-neutral-700">Выберите числовую колонку:</label>
++                  <select
++                    value={selectedDistCol ?? numericCols[0]}
++                    onChange={(e) => setSelectedDistCol(e.target.value)}
++                    className="border border-neutral-300 rounded px-3 py-1.5 text-sm font-medium"
++                  >
++                    {numericCols.map((c) => (
++                      <option key={c} value={c}>
++                        {c}
++                      </option>
++                    ))}
++                  </select>
++                </div>
++
++                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
++                  <div>
++                    <h4 className="text-sm font-semibold mb-2 inline-flex items-center gap-1.5">
++                      <ScatterChart size={14} className="text-neutral-500" aria-hidden="true" />
++                      Точечный график
++                    </h4>
++                    <div className="h-[300px] border border-neutral-200 rounded flex items-center justify-center text-xs text-neutral-500 bg-neutral-50">
++                      [ Plotly scatter: x=index, y={selectedDistCol}, opacity=0.6 ]
++                    </div>
++                  </div>
++                  <div>
++                    <h4 className="text-sm font-semibold mb-2 inline-flex items-center gap-1.5">
++                      <BarChart3 size={14} className="text-neutral-500" aria-hidden="true" />
++                      Гистограмма
++                    </h4>
++                    <div className="h-[300px] border border-neutral-200 rounded flex flex-col items-center justify-center text-xs text-neutral-500 gap-1 bg-neutral-50">
++                      [ Plotly histogram, nbins=30 ]
++                      <span className="text-neutral-400">+ KDE + vlines: Mean / Median / Q1 / Q3</span>
++                    </div>
++                  </div>
++                  <div>
++                    <h4 className="text-sm font-semibold mb-2 inline-flex items-center gap-1.5">
++                      <Activity size={14} className="text-neutral-500" aria-hidden="true" />
++                      KDE (плотность)
++                    </h4>
++                    <div className="h-[300px] border border-neutral-200 rounded flex flex-col items-center justify-center text-xs text-neutral-500 gap-1 bg-neutral-50">
++                      [ Plotly scatter: KDE curve, fill=tozeroy ]
++                    </div>
++                  </div>
++                </div>
++
++                <p className="mt-4 text-xs text-neutral-500 bg-neutral-50 rounded p-3">
++                  Реальные статистики распределения (mean/median/skew/kurtosis/IQR) и графики требуют
++                  отдельного backend-эндпоинта — сейчас на бэкенде считаются только счётчики качества
++                  (missing/outliers/duplicates), не полное описание распределения. TODO.
++                </p>
++              </details>
++            </section>
++          )}
+ 
+-          {/* Справка по методу */}
+-          <details className="mt-4">
+-            <summary className="text-sm text-brand cursor-pointer inline-flex items-center gap-1">
+-              <Info size={14} aria-hidden="true" /> Справка по описательным статистикам
+-            </summary>
+-            <div className="mt-2 text-xs text-neutral-600 bg-neutral-50 rounded p-3 space-y-2">
+-              <p>
+-                <strong>Назначение:</strong> Визуальная и статистическая оценка распределения данных.
+-              </p>
+-              <p>
+-                <strong>Методы:</strong> точечный график » гистограмма · KDE (гауссовская оценка плотности)
++          {/* ════════ Секция 6: Контекст активных фильтров ════════ */}
++          <section className="bg-white rounded-lg border border-neutral-200 p-5">
++            <details>
++              <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
++                <span className="inline-flex items-center gap-2">
++                  <Filter size={18} className="text-brand" aria-hidden="true" />
++                  Контекст активных фильтров
++                </span>
++                <span className="text-xs text-neutral-500 font-normal hidden md:inline">
++                  лёгкая строка, без построителя графиков
++                </span>
++              </summary>
++              <p className="mt-3 text-sm text-neutral-600 bg-brand-light rounded px-3 py-2">
++                Активно: <strong>{formatNum(uploadData!.rows)}</strong> записей · без фильтров
+               </p>
+-              <p>
+-                <strong>Интерпретация:</strong> Skewness → 0 = симметрия. Kurtosis → 3 = нормальность.
+-                IQR — устойчивая мера разброса.
++              <p className="mt-2 text-xs text-neutral-500">
++                Построитель 8 типов графиков (Bar/Line/Area/Scatter/Box/Hist/Hist+KDE/Funnel) и
++                переключатель режима «Временные ряды vs Общий» перенесены в модуль{" "}
++                <Link href="/eda" className="text-brand underline">
++                  Разведочный EDA
++                </Link>{" "}
++                — это содержательный анализ, не проверка загрузки.
+               </p>
+-            </div>
+-          </details>
+-        </details>
+-      </section>
+-
+-      {/* ════════ Секция 6: Контекст активных фильтров ════════ */}
+-      <section className="bg-white rounded-lg border border-neutral-200 p-5">
+-        <details>
+-          <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
+-            <span className="inline-flex items-center gap-2">
+-              <Filter size={18} className="text-brand" aria-hidden="true" />
+-              Контекст активных фильтров
+-            </span>
+-            <span className="text-xs text-neutral-500 font-normal hidden md:inline">
+-              лёгкая строка, без построителя графиков
+-            </span>
+-          </summary>
+-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+-            <div>
+-              <label className="text-xs text-neutral-500 uppercase">Категория 1</label>
+-              <select className="w-full mt-1 border border-neutral-300 rounded px-2 py-1.5 text-sm">
+-                <option>Country</option>
+-                <option>(нет)</option>
+-              </select>
+-            </div>
+-            <div>
+-              <label className="text-xs text-neutral-500 uppercase">Категория 2</label>
+-              <select className="w-full mt-1 border border-neutral-300 rounded px-2 py-1.5 text-sm">
+-                <option>Region</option>
+-                <option>(нет)</option>
+-              </select>
+-            </div>
+-            <div>
+-              <label className="text-xs text-neutral-500 uppercase">Года</label>
+-              <select className="w-full mt-1 border border-neutral-300 rounded px-2 py-1.5 text-sm">
+-                <option>Все</option>
+-                <option>2023</option>
+-                <option>2024</option>
+-              </select>
+-            </div>
+-          </div>
+-          <p className="mt-3 text-sm text-neutral-600 bg-brand-light rounded px-3 py-2">
+-            Активно: <strong>{formatNum(totalRows)}</strong> записей · 1 значение (кат.1) · 1 значение
+-            (кат.2) · Все года
+-          </p>
+-          <p className="mt-2 text-xs text-neutral-500">
+-            Построитель 8 типов графиков (Bar/Line/Area/Scatter/Box/Hist/Hist+KDE/Funnel) и
+-            переключатель режима «Временные ряды vs Общий» перенесены о модуль{" "}
+-            <Link href="/eda" className="text-brand underline">
+-              Разведочный EDA
+-            </Link>{" "}
+-            — это содержательный анализ, не проверка загрузки.
+-          </p>
+-        </details>
+-      </section>
+-
+-      {/* ════════ Секция 7: Предварительная оценка качества (teaser) ════════ */}
+-      <section className="bg-white rounded-lg border border-neutral-200 p-5">
+-        <div className="flex items-center justify-between mb-4">
+-          <div>
+-            <h2 className="font-semibold text-neutral-900">Предварительная оценка качества</h2>
+-            <p className="text-xs text-neutral-500 mt-0.5">
+-              Только счётчики. Содержательный анализ проблем — о модуле «Валидация».
+-            </p>
+-          </div>
+-          <span className="text-xs bg-neutral-100 text-neutral-600 px-2 py-1 rounded font-mono hidden md:inline-block">
+-            POST /v1/internal/quality-teaser » &lt; 1s
+-          </span>
+-        </div>
++            </details>
++          </section>
++
++          {/* ════════ Секция 7: Предварительная оценка качества (teaser) ════════ */}
++          {uploadData!.quality && (
++            <section className="bg-white rounded-lg border border-neutral-200 p-5">
++              <div className="flex items-center justify-between mb-4">
++                <div>
++                  <h2 className="font-semibold text-neutral-900">Предварительная оценка качества</h2>
++                  <p className="text-xs text-neutral-500 mt-0.5">
++                    Только счётчики. Содержательный анализ проблем — в модуле «Валидация».
++                  </p>
++                </div>
++              </div>
+ 
+-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+-          <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
+-            <div className="text-xs text-amber-700 uppercase">Колонок с пропусками</div>
+-            <div className="text-2xl font-semibold text-amber-900 mt-1">{MOCK_QUALITY.colsWithMissing}</div>
+-            <div className="text-xs text-amber-700 mt-1">{MOCK_QUALITY.missingCols.join(", ")}</div>
+-          </div>
+-          <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
+-            <div className="text-xs text-amber-700 uppercase">Колонок с потенц. выбросами</div>
+-            <div className="text-28l font-semibold text-amber-900 mt-1">{MOCK_QUALITY.colsWithOutliers}</div>
+-            <div className="text-xs text-amber-700 mt-1">{MOCK_QUALITY.outlierCols.join(", ")}</div>
+-          </div>
+-          <div className="border border-neutral-200 rounded-lg p-4">
+-            <div className="text-xs text-neutral-500 uppercase">Всего строк</div>
+-            <div className="text-2xl font-semibold text-neutral-900 mt-1">
+-              {formatNum(MOCK_QUALITY.rowsTotal)}
+-            </div>
+-          </div>
+-          <div className="border border-neutral-200 rounded-lg p-4">
+-            <div className="text-xs text-neutral-500 uppercase">Дубликатов</div>
+-            <div className="text-2xl font-semibold text-green-700 mt-1">{MOCK_QUALITY.duplicates}</div>
+-          </div>
+-        </div>
++              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
++                <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
++                  <div className="text-xs text-amber-700 uppercase">Колонок с пропусками</div>
++                  <div className="text-2xl font-semibold text-amber-900 mt-1">
++                    {uploadData!.quality.cols_with_missing}
++                  </div>
++                  <div className="text-xs text-amber-700 mt-1">{uploadData!.quality.missing_cols.join(", ")}</div>
++                </div>
++                <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
++                  <div className="text-xs text-amber-700 uppercase">Колонок с потенц. выбросами</div>
++                  <div className="text-2xl font-semibold text-amber-900 mt-1">
++                    {uploadData!.quality.cols_with_outliers}
++                  </div>
++                  <div className="text-xs text-amber-700 mt-1">{uploadData!.quality.outlier_cols.join(", ")}</div>
++                </div>
++                <div className="border border-neutral-200 rounded-lg p-4">
++                  <div className="text-xs text-neutral-500 uppercase">Всего строк</div>
++                  <div className="text-2xl font-semibold text-neutral-900 mt-1">
++                    {formatNum(uploadData!.quality.rows_total)}
++                  </div>
++                </div>
++                <div className="border border-neutral-200 rounded-lg p-4">
++                  <div className="text-xs text-neutral-500 uppercase">Дубликатов</div>
++                  <div className="text-2xl font-semibold text-green-700 mt-1">{uploadData!.quality.duplicates}</div>
++                </div>
++              </div>
+ 
+-        <Link
+-          href="/validation"
+-          className="mt-4 inline-flex items-center gap-2 bg-brand text-white rounded px-4 py-2 text-sm font-medium hover:bg-brand-dark transition-colors"
+-        >
+-          Перейти к Валидации <ArrowRight size={16} aria-hidden="true" />
+-        </Link>
+-      </section>
++              <Link
++                href="/validation"
++                className="mt-4 inline-flex items-center gap-2 bg-brand text-white rounded px-4 py-2 text-sm font-medium hover:bg-brand/90 transition-colors"
++              >
++                Перейти к Валидации <ArrowRight size={16} aria-hidden="true" />
++              </Link>
++            </section>
++          )}
+ 
+-      {/* ════════ Секция 8: Памятка ════════ */}
+-      <section className="bg-brand-light rounded-lg p-5 border border-brand/20">
+-        <h2 className="font-semibold text-brand mb-3 inline-flex items-center gap-2">
+-          <Info size={18} aria-hidden="true" />
+-          Что считается о следующих модулях
+-        </h2>
+-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-neutral-700">
+-          <div className="bg-white rounded p-3">
+-            <div className="font-medium inline-flex items-center gap-1.5">
+-              <TableIcon size={14} className="text-brand" aria-hidden="true" />
+-              Разведочный EDA
+-            </div>
+-            <ul className="text-xs text-neutral-600 mt-1 space-y-0.5 list-disc list-inside">
+-              <li>Корреляция Пирсона + heatmap</li>
+-              <li>STL-декомпозиция (после предобработки)</li>
+-              <li>ACF / PACF</li>
+-              <li>FFT, Периодограмма, Вейвлет</li>
+-              <li>Построитель 8 типов графиков</li>
+-            </ul>
+-          </div>
+-          <div className="bg-white rounded p-3">
+-            <div className="font-medium inline-flex items-center gap-1.5">
+-              <TableIcon size={14} className="text-brand" aria-hidden="true" />
+-              Моделирование
++          {/* ════════ Секция 8: Памятка ════════ */}
++          <section className="bg-brand-light rounded-lg p-5 border border-brand/20">
++            <h2 className="font-semibold text-brand mb-3 inline-flex items-center gap-2">
++              <Info size={18} aria-hidden="true" />
++              Что считается в следующих модулях
++            </h2>
++            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-neutral-700">
++              <div className="bg-white rounded p-3">
++                <div className="font-medium inline-flex items-center gap-1.5">
++                  <TableIcon size={14} className="text-brand" aria-hidden="true" />
++                  Разведочный EDA
++                </div>
++                <ul className="text-xs text-neutral-600 mt-1 space-y-0.5 list-disc list-inside">
++                  <li>Корреляция Пирсона + heatmap</li>
++                  <li>STL-декомпозиция (после предобработки)</li>
++                  <li>ACF / PACF</li>
++                  <li>FFT, Периодограмма, Вейвлет</li>
++                  <li>Построитель 8 типов графиков</li>
++                </ul>
++              </div>
++              <div className="bg-white rounded p-3">
++                <div className="font-medium inline-flex items-center gap-1.5">
++                  <TableIcon size={14} className="text-brand" aria-hidden="true" />
++                  Моделирование
++                </div>
++                <ul className="text-xs text-neutral-600 mt-1 space-y-0.5 list-disc list-inside">
++                  <li>Полный паспорт (13 свойств: ADF/KPSS/Hurst/сезонность/спектр)</li>
++                  <li>Предварительные рекомендации по моделям</li>
++                  <li>KS-тест с фиттингом 3 распределений</li>
++                  <li>Excel-отчёт</li>
++                </ul>
++              </div>
+             </div>
+-            <ul className="text-xs text-neutral-600 mt-1 space-y-0.5 list-disc list-inside">
+-              <li>Полный паспорт (13 свойств: ADF/KPSS/Hurst/сезонность/спектр)</li>
+-              <li>Предварительные рекомендации по моделям</li>
+-              <li>KS-тест с фиттингом 3 распределений</li>
+-              <li>Excel-отчёт</li>
+-            </ul>
+-          </div>
+-        </div>
+-      </section>
++          </section>
++        </>
++      )}
+     </div>
+   );
+ }
+diff --git a/packages/ui/components/WorkbenchSummary.tsx b/packages/ui/components/WorkbenchSummary.tsx
+new file mode 100644
+index 0000000..b116ea6
+--- /dev/null
++++ b/packages/ui/components/WorkbenchSummary.tsx
+@@ -0,0 +1,69 @@
++"use client";
++
++// packages/ui/components/WorkbenchSummary.tsx
++//
++// Общий блок "С возвращением" -- рендерится на Home ОБОИХ приложений,
++// когда в сессии есть активный датасет (sessions-aware Home, по решению
++// тимлида: "если activeDataset существует -> Рабочий стол: где я
++// остановился, какой этап, кнопка Продолжить"). Не копируется между
++// embedded/standalone -- один компонент, разное обрамление в каждом
++// приложении (см. EmbeddedHome.tsx и apps/standalone/components/StandaloneHome.tsx).
++
++import Link from "next/link";
++import { Check, Circle, ArrowRight } from "lucide-react";
++import { STAGE_DEFS, StageStatus } from "../lib/stages";
++import type { ActiveDataset } from "../context/AppShellContext";
++
++interface WorkbenchSummaryProps {
++  dataset: ActiveDataset;
++  stages: Record<string, StageStatus>;
++  lastActiveStage: string | null;
++}
++
++export function WorkbenchSummary({ dataset, stages, lastActiveStage }: WorkbenchSummaryProps) {
++  const continueStage = STAGE_DEFS.find((s) => s.key === lastActiveStage) ?? STAGE_DEFS[0];
++
++  return (
++    <div className="bg-white rounded-lg border border-neutral-200 p-6">
++      <p className="text-xs uppercase tracking-wide text-neutral-500 mb-1">С возвращением</p>
++      <h2 className="text-lg font-semibold text-neutral-900 mb-4">
++        📄 {dataset.name} · {dataset.rows.toLocaleString("ru-RU")} строк · {dataset.sizeLabel}
++      </h2>
++
++      <ol className="flex items-center gap-2 mb-5 flex-wrap">
++        {STAGE_DEFS.map((stage, i) => {
++          const status = stages[stage.key] ?? "pending";
++          return (
++            <li key={stage.key} className="flex items-center gap-2">
++              <Link
++                href={stage.href}
++                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs border transition-colors ${
++                  status === "done"
++                    ? "bg-green-50 border-green-200 text-green-700"
++                    : status === "in_progress"
++                    ? "bg-brand-light border-brand text-brand font-medium"
++                    : "bg-neutral-50 border-neutral-200 text-neutral-500 hover:border-neutral-300"
++                }`}
++              >
++                {status === "done" ? (
++                  <Check size={12} aria-hidden="true" />
++                ) : (
++                  <Circle size={10} aria-hidden="true" />
++                )}
++                {stage.label}
++              </Link>
++              {i < STAGE_DEFS.length - 1 && <span className="text-neutral-300">→</span>}
++            </li>
++          );
++        })}
++      </ol>
++
++      <Link
++        href={continueStage.href}
++        className="inline-flex items-center gap-2 bg-brand text-white rounded px-4 py-2 text-sm font-medium hover:bg-brand/90 transition-colors"
++      >
++        Продолжить с «{continueStage.label}» <ArrowRight size={16} aria-hidden="true" />
++      </Link>
++    </div>
++  );
++}
+diff --git a/packages/ui/context/AppShellContext.tsx b/packages/ui/context/AppShellContext.tsx
+index 6975e42..331ecb8 100644
+--- a/packages/ui/context/AppShellContext.tsx
++++ b/packages/ui/context/AppShellContext.tsx
+@@ -2,16 +2,23 @@
+ 
+ // packages/ui/context/AppShellContext.tsx
+ //
+-// Глобальное состояние, нужное на ЛЮБОЙ странице (в отличие от формы
+-// загрузки, которая нужна только на странице "Загрузка"):
+-// - какой датасет сейчас активен (контекст, не действие)
++// Глобальное состояние, нужное на ЛЮБОЙ странице:
++// - какой датасет сейчас активен + на каком этапе остановился пользователь
+ // - лог событий (сквозной, накопительный)
+ //
+-// Живёт в React Context, а не в самой форме загрузки, потому что форма
+-// загрузки -- это одноразовое ДЕЙСТВИЕ, а знание "какой датасет активен"
+-// нужно постоянно, независимо от вкладки/страницы.
++// ИЗМЕНЕНИЕ (сессионная Home page, по решению тимлида): activeDataset
++// раньше был чисто клиентским useState, который обнулялся на F5. Теперь
++// при монтировании провайдер гидрируется с бэкенда (GET
++// /v1/session/current) -- источник истины сервер (session_store.py),
++// клиентский стейт -- только кэш для рендера. setActiveDataset остаётся
++// как ОПТИМИСТИЧНОЕ обновление сразу после успешного upload (чтобы не
++// ждать лишний round-trip), но сервер уже обновлён тем же вызовом
++// upload (см. upload_common.py) -- refreshSession() при необходимости
++// синхронизирует состояние заново.
+ 
+-import { createContext, useCallback, useContext, useState, ReactNode } from "react";
++import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
++import { sessionApiUrl } from "../lib/apiClient";
++import { STAGE_DEFS, StageStatus } from "../lib/stages";
+ 
+ export interface LogEntry {
+   id: number;
+@@ -26,9 +33,25 @@ export interface ActiveDataset {
+   sizeLabel: string;
+ }
+ 
++type StagesMap = Record<string, StageStatus>;
++
++const EMPTY_STAGES: StagesMap = Object.fromEntries(STAGE_DEFS.map((s) => [s.key, "pending" as StageStatus]));
++
++interface SessionCurrentResponse {
++  has_active_dataset: boolean;
++  dataset: { dataset_id: string; name: string; rows: number; columns: number; size_label: string } | null;
++  stages: StagesMap;
++  last_active_stage: string | null;
++  updated_at: string | null;
++}
++
+ interface AppShellContextValue {
+   activeDataset: ActiveDataset | null;
+   setActiveDataset: (dataset: ActiveDataset) => void;
++  stages: StagesMap;
++  lastActiveStage: string | null;
++  sessionLoading: boolean;
++  refreshSession: () => Promise<void>;
+   log: LogEntry[];
+   addLogEntry: (level: LogEntry["level"], message: string) => void;
+   clearLog: () => void;
+@@ -38,6 +61,9 @@ const AppShellContext = createContext<AppShellContextValue | null>(null);
+ 
+ export function AppShellProvider({ children }: { children: ReactNode }) {
+   const [activeDataset, setActiveDatasetState] = useState<ActiveDataset | null>(null);
++  const [stages, setStages] = useState<StagesMap>(EMPTY_STAGES);
++  const [lastActiveStage, setLastActiveStage] = useState<string | null>(null);
++  const [sessionLoading, setSessionLoading] = useState(true);
+   const [log, setLog] = useState<LogEntry[]>([]);
+ 
+   const addLogEntry = useCallback((level: LogEntry["level"], message: string) => {
+@@ -47,6 +73,39 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
+     ]);
+   }, []);
+ 
++  const applySessionResponse = useCallback((data: SessionCurrentResponse) => {
++    if (data.has_active_dataset && data.dataset) {
++      setActiveDatasetState({
++        name: data.dataset.name,
++        rows: data.dataset.rows,
++        sizeLabel: data.dataset.size_label,
++      });
++    } else {
++      setActiveDatasetState(null);
++    }
++    setStages(data.stages ?? EMPTY_STAGES);
++    setLastActiveStage(data.last_active_stage ?? null);
++  }, []);
++
++  const refreshSession = useCallback(async () => {
++    try {
++      const resp = await fetch(sessionApiUrl("/current"), { credentials: "include" });
++      if (resp.ok) {
++        applySessionResponse(await resp.json());
++      }
++    } catch {
++      // Бэкенд недоступен -- Home page остаётся в состоянии онбординга
++      // (activeDataset уже null по умолчанию), без сессии ничего не рушим.
++    } finally {
++      setSessionLoading(false);
++    }
++  }, [applySessionResponse]);
++
++  useEffect(() => {
++    refreshSession();
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, []);
++
+   const setActiveDataset = useCallback(
+     (dataset: ActiveDataset) => {
+       setActiveDatasetState(dataset);
+@@ -58,7 +117,19 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
+   const clearLog = useCallback(() => setLog([]), []);
+ 
+   return (
+-    <AppShellContext.Provider value={{ activeDataset, setActiveDataset, log, addLogEntry, clearLog }}>
++    <AppShellContext.Provider
++      value={{
++        activeDataset,
++        setActiveDataset,
++        stages,
++        lastActiveStage,
++        sessionLoading,
++        refreshSession,
++        log,
++        addLogEntry,
++        clearLog,
++      }}
++    >
+       {children}
+     </AppShellContext.Provider>
+   );
+diff --git a/packages/ui/index.ts b/packages/ui/index.ts
+index 53fcfe0..1c295a6 100644
+--- a/packages/ui/index.ts
++++ b/packages/ui/index.ts
+@@ -7,14 +7,25 @@ export type { CheckStatus } from "./components/StatusIcon";
+ export { TsAnalysisPreprocessing } from "./components/TsAnalysisPreprocessing";
+ export { TsAnalysisValidation } from "./components/TsAnalysisValidation";
+ export { TsAnalysisEDA } from "./components/TsAnalysisEDA";
++export { TsAnalysisUpload } from "./components/TsAnalysisUpload";
+ export { default as tailwindPreset } from "./tailwind-preset";
+ 
+-// Глобальный shell: активный датасет + лог событий.
++// Глобальный shell: активный датасет (гидрируется с сервера, см.
++// apps/api/session_store.py) + прогресс по этапам + лог событий.
+ export { AppShellProvider, useAppShell } from "./context/AppShellContext";
+ export type { LogEntry, ActiveDataset } from "./context/AppShellContext";
+ export { DatasetContextBar } from "./components/DatasetContextBar";
+ export { EventsLogDrawer } from "./components/EventsLogDrawer";
+-export { DataUploadForm } from "./components/DataUploadForm";
++
++// Sessions-aware Home: общий "Рабочий стол" + embedded-онбординг.
++// Standalone-версия (с auth-веткой) живёт в apps/standalone/components --
++// см. обсуждение с тимлидом про разные ответственности embedded/standalone.
++export { WorkbenchSummary } from "./components/WorkbenchSummary";
++export { EmbeddedHome } from "./components/EmbeddedHome";
++export { STAGE_DEFS } from "./lib/stages";
++export type { StageDef, StageStatus } from "./lib/stages";
++export { apiUrl, sessionApiUrl, getApiBase, getApiMode } from "./lib/apiClient";
++export type { ApiMode } from "./lib/apiClient";
+ 
+ // Навигация между модулями анализа (Загрузка/Валидация/Предобработка/...).
+ export { ModuleNav } from "./components/ModuleNav";
+diff --git a/packages/ui/lib/apiClient.ts b/packages/ui/lib/apiClient.ts
+new file mode 100644
+index 0000000..ef67d63
+--- /dev/null
++++ b/packages/ui/lib/apiClient.ts
+@@ -0,0 +1,41 @@
++// packages/ui/lib/apiClient.ts
++//
++// Единая точка выбора API-базы и префикса (public/internal). ЗАМЕНЯЕТ
++// прежнюю логику в DataUploadForm.tsx (`window.location.pathname.
++// startsWith("/embedded")`), которая не соответствовала реальности --
++// ни один из apps/* не монтируется под путём /embedded, оба -- корневые
++// Next.js-приложения на разных портах. Та логика к тому же строила
++// ОТНОСИТЕЛЬНЫЙ URL ("/v1/internal/upload"), который бьёт в сам
++// Next.js-сервер (порт 3000/3001), а не в FastAPI-бэкенд (порт 8000) --
++// без прокси/rewrite в next.config.mjs запрос не мог дойти до API.
++//
++// Правильный сигнал режима -- переменная окружения, задаваемая на
++// уровне next.config.mjs КАЖДОГО приложения (см. env в
++// apps/embedded/next.config.mjs и apps/standalone/next.config.mjs),
++// а не путь в браузере.
++
++export type ApiMode = "internal" | "public";
++
++export function getApiBase(): string {
++  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
++}
++
++export function getApiMode(): ApiMode {
++  const mode = process.env.NEXT_PUBLIC_API_MODE;
++  // "internal" -- безопасный дефолт для локальной разработки без .env
++  return mode === "public" ? "public" : "internal";
++}
++
++/** URL для /v1/public/* или /v1/internal/* в зависимости от приложения. */
++export function apiUrl(path: string): string {
++  return `${getApiBase()}/v1/${getApiMode()}${path}`;
++}
++
++/**
++ * Сессия (AnalysisSession) НЕ разделена на public/internal -- один и тот
++ * же браузер = одна сессия, независимо от того, embedded или standalone
++ * сейчас открыт (см. apps/api/routers/session.py, docstring модуля).
++ */
++export function sessionApiUrl(path: string): string {
++  return `${getApiBase()}/v1/session${path}`;
++}
+diff --git a/packages/ui/lib/stages.ts b/packages/ui/lib/stages.ts
+new file mode 100644
+index 0000000..8b690d5
+--- /dev/null
++++ b/packages/ui/lib/stages.ts
+@@ -0,0 +1,23 @@
++// packages/ui/lib/stages.ts
++//
++// Шесть этапов анализа (см. docs/MIGRATION_ARCHITECTURE.md §1.1 и
++// STAGES в apps/api/session_store.py -- ключи должны совпадать 1:1,
++// это контракт между фронтендом и сессией). "Задачи" сознательно НЕ
++// включены -- отдельная сущность (What-if/iDSS), не шаг пайплайна.
++
++export interface StageDef {
++  key: string;
++  label: string;
++  href: string;
++}
++
++export const STAGE_DEFS: StageDef[] = [
++  { key: "upload", label: "Загрузка", href: "/data/upload" },
++  { key: "validation", label: "Валидация", href: "/validation" },
++  { key: "preprocessing", label: "Предобработка", href: "/preprocessing" },
++  { key: "eda", label: "Разведочный EDA", href: "/eda" },
++  { key: "modeling", label: "Моделирование", href: "/modeling" },
++  { key: "forecasting", label: "Прогнозирование", href: "/forecasting" },
++];
++
++export type StageStatus = "pending" | "in_progress" | "done";
