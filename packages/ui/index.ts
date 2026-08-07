@@ -37,6 +37,9 @@ export type {
   ApplicabilityLevel,
   PipelineStage,
   ModelFamily,
+  BacktestRequest,
+  BacktestMetrics,
+  BacktestResponse,
 } from "./lib/modeling";
 export {
   APPLICABILITY_RANK,
@@ -47,6 +50,7 @@ export {
   DEFAULT_PROFILE,
   DOMAINS,
   FREQUENCIES,
+  BACKTEST_WEIGHTS,
 } from "./lib/modeling";
 
 // Панель «Управление правилами» — рендерится внутри TsAnalysisValidation.

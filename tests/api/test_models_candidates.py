@@ -1,7 +1,8 @@
 # tests/api/test_models_candidates.py
 """
-Тесты для API-эндпоинта модуля «Моделирование»:
+Тесты для API-эндпоинтов модуля «Моделирование»:
   POST /v1/models/candidates
+  POST /v1/models/backtest
 """
 import pytest
 from fastapi.testclient import TestClient
@@ -333,3 +334,183 @@ class TestCandidatesOptions:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+# ═══════════════════════════════════════════════════════════
+# BACKTEST: POST /v1/models/backtest
+# ═══════════════════════════════════════════════════════════
+
+class TestBacktestAuth:
+    """Проверка авторизации бэктеста."""
+
+    def test_no_api_key_returns_401_or_422(self):
+        resp = client.post("/v1/models/backtest", json={
+            "model_id": "naive", "profile": MACRO_PROFILE,
+        })
+        assert resp.status_code in (401, 422, 403)
+
+    def test_demo_plan_forbidden(self):
+        resp = client.post(
+            "/v1/models/backtest",
+            json={"model_id": "naive", "profile": MACRO_PROFILE},
+            headers=DEMO_HEADERS,
+        )
+        assert resp.status_code == 403
+
+    def test_professional_plan_allowed(self):
+        resp = client.post(
+            "/v1/models/backtest",
+            json={"model_id": "naive", "profile": MACRO_PROFILE},
+            headers=PRO_HEADERS,
+        )
+        assert resp.status_code == 200
+
+
+class TestBacktestNaive:
+    """Бэктест для Naive — реальный расчёт."""
+
+    def test_naive_returns_metrics(self):
+        resp = client.post(
+            "/v1/models/backtest",
+            json={"model_id": "naive", "profile": MACRO_PROFILE},
+            headers=PRO_HEADERS,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["model_id"] == "naive"
+        assert "metrics" in data
+        m = data["metrics"]
+        for key in ("mae", "rmse", "mape", "mase", "weighted_score"):
+            assert key in m, f"Missing metric: {key}"
+            assert m[key] >= 0, f"{key} should be non-negative"
+
+    def test_naive_metrics_reasonable_range(self):
+        """Naive на синтетике с трендом должен давать MAE > 0 и < 100."""
+        resp = client.post(
+            "/v1/models/backtest",
+            json={"model_id": "naive", "profile": MACRO_PROFILE},
+            headers=PRO_HEADERS,
+        )
+        m = resp.json()["metrics"]
+        assert 0 < m["mae"] < 100
+        assert 0 < m["rmse"] < 100
+        assert m["mape"] >= 0  # MAPE может быть 0 если все y_true одинаковые
+        assert m["mase"] >= 0
+        assert 0 <= m["weighted_score"] <= 1
+
+    def test_naive_response_has_split_info(self):
+        resp = client.post(
+            "/v1/models/backtest",
+            json={"model_id": "naive", "profile": MACRO_PROFILE},
+            headers=PRO_HEADERS,
+        )
+        data = resp.json()
+        assert data["n_train"] > 0
+        assert data["n_test"] > 0
+        assert data["n_train"] + data["n_test"] == MACRO_PROFILE["n_observations"]
+        assert data["train_ratio"] == 0.8
+        assert data["duration_ms"] >= 0
+
+    def test_naive_model_info(self):
+        resp = client.post(
+            "/v1/models/backtest",
+            json={"model_id": "naive", "profile": MACRO_PROFILE},
+            headers=PRO_HEADERS,
+        )
+        data = resp.json()
+        assert data["model_name"] == "Naive"
+        assert data["family_id"] == "baselines"
+
+
+class TestBacktestOtherBaselines:
+    """Бэктест для других baseline-моделей (реальный расчёт)."""
+
+    @pytest.mark.parametrize("model_id", ["seasonal_naive", "drift", "mean"])
+    def test_baseline_returns_valid_metrics(self, model_id):
+        resp = client.post(
+            "/v1/models/backtest",
+            json={"model_id": model_id, "profile": MACRO_PROFILE},
+            headers=PRO_HEADERS,
+        )
+        assert resp.status_code == 200
+        m = resp.json()["metrics"]
+        assert m["mae"] > 0
+        assert m["rmse"] >= m["mae"]  # RMSE >= MAE всегда
+
+
+class TestBacktestNonBaseline:
+    """Бэктест для нереализованных моделей — заглушка."""
+
+    def test_ets_returns_approx_metrics(self):
+        resp = client.post(
+            "/v1/models/backtest",
+            json={"model_id": "ets", "profile": MACRO_PROFILE},
+            headers=PRO_HEADERS,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["model_id"] == "ets"
+        assert data["model_name"] == "ETS (Auto)"
+        assert data["metrics"]["mae"] > 0
+
+    def test_arima_auto_returns_approx_metrics(self):
+        resp = client.post(
+            "/v1/models/backtest",
+            json={"model_id": "arima_auto", "profile": MACRO_PROFILE},
+            headers=PRO_HEADERS,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["metrics"]["mae"] > 0
+
+
+class TestBacktestValidation:
+    """Валидация запроса бэктеста."""
+
+    def test_unknown_model_returns_404(self):
+        resp = client.post(
+            "/v1/models/backtest",
+            json={"model_id": "nonexistent_model", "profile": MACRO_PROFILE},
+            headers=PRO_HEADERS,
+        )
+        assert resp.status_code == 404
+
+    def test_missing_model_id_returns_422(self):
+        resp = client.post(
+            "/v1/models/backtest",
+            json={"profile": MACRO_PROFILE},
+            headers=PRO_HEADERS,
+        )
+        assert resp.status_code == 422
+
+    def test_invalid_train_ratio_returns_422(self):
+        """train_ratio > 0.95 → 422."""
+        resp = client.post(
+            "/v1/models/backtest",
+            json={"model_id": "naive", "profile": MACRO_PROFILE, "train_ratio": 0.99},
+            headers=PRO_HEADERS,
+        )
+        assert resp.status_code == 422
+
+
+class TestBacktestCustomTrainRatio:
+    """Разные train_ratio."""
+
+    def test_train_ratio_0_5(self):
+        resp = client.post(
+            "/v1/models/backtest",
+            json={"model_id": "naive", "profile": MACRO_PROFILE, "train_ratio": 0.5},
+            headers=PRO_HEADERS,
+        )
+        data = resp.json()
+        assert data["n_train"] == 60
+        assert data["n_test"] == 60
+
+    def test_train_ratio_0_95(self):
+        resp = client.post(
+            "/v1/models/backtest",
+            json={"model_id": "naive", "profile": MACRO_PROFILE, "train_ratio": 0.95},
+            headers=PRO_HEADERS,
+        )
+        data = resp.json()
+        assert data["n_train"] == 114
+        assert data["n_test"] == 6

@@ -194,3 +194,38 @@ class CandidatesResponse(BaseModel):
     candidates: List[ModelCandidate]
     statistics: CandidatesStatistics
     spec_version: str = Field("", description="Версия спецификации modeling.yaml")
+
+
+# ── Моделирование: бэктест ──
+
+class BacktestRequest(BaseModel):
+    """Запрос: запустить бэктест для одной модели."""
+    model_id: str = Field(..., description="Идентификатор модели (из пула кандидатов)")
+    profile: DataProfileRequest
+    train_ratio: float = Field(
+        0.8, ge=0.5, le=0.95,
+        description="Доля обучающей выборки (остальное — тест)",
+    )
+
+
+class BacktestMetrics(BaseModel):
+    """Метрики бэктеста."""
+    mae: float = Field(..., description="Mean Absolute Error")
+    rmse: float = Field(..., description="Root Mean Squared Error")
+    mape: float = Field(..., description="Mean Absolute Percentage Error (%)")
+    mase: float = Field(..., description="Mean Absolute Scaled Error")
+    weighted_score: float = Field(
+        ..., description="Взвешенный итог: 0.35*MAE_n + 0.25*RMSE_n + 0.20*MAPE_n + 0.20*MASE_n"
+    )
+
+
+class BacktestResponse(BaseModel):
+    """Ответ: результаты бэктеста модели."""
+    model_id: str
+    model_name: str
+    family_id: str
+    metrics: BacktestMetrics
+    n_train: int = Field(..., description="Число точек обучающей выборки")
+    n_test: int = Field(..., description="Число точек тестовой выборки")
+    train_ratio: float
+    duration_ms: float = Field(..., description="Время расчёта (мс)")

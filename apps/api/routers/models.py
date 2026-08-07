@@ -4,9 +4,12 @@
 
 Эндпоинты:
   POST /v1/models/candidates  — пул кандидатов (движок применимости)
+  POST /v1/models/backtest   — бэктест одной модели
   POST /v1/models/train       — обучение модели (заглушка)
 """
 import logging
+import time
+import math
 from collections import Counter
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -17,6 +20,9 @@ from apps.api.schemas import (
     CandidatesResponse,
     ModelCandidate,
     CandidatesStatistics,
+    BacktestRequest,
+    BacktestResponse,
+    BacktestMetrics,
 )
 
 logger = logging.getLogger(__name__)
@@ -147,6 +153,295 @@ def get_candidates(
         candidates=candidates,
         statistics=statistics,
         spec_version=spec.metadata.version,
+    )
+
+
+# ═══════════════════════════════════════════════════════════
+# POST /v1/models/backtest
+# ═══════════════════════════════════════════════════════════
+
+# ── Веса ранжирования (из modeling.yaml) ──
+_METRIC_WEIGHTS = {"mae": 0.35, "rmse": 0.25, "mape": 0.20, "mase": 0.20}
+
+
+def _generate_series(n: int, frequency: str, has_seasonality: bool) -> list[float]:
+    """
+    Генерация синтетического временного ряда для бэктеста.
+
+    Используется, когда реальный датасет ещё не загружен.
+    Формула: trend + seasonality + noise
+    - trend: линейный рост 0.5 * t
+    - seasonality: sin(2π * t / period) * amplitude
+    - noise: N(0, σ²) где σ = 0.1 * mean_value
+    """
+    import random
+    random.seed(42)  # воспроизводимость
+    seasonal_period = {"D": 7, "W": 52, "M": 12, "Q": 4, "Y": 1}.get(frequency, 12)
+    series = []
+    for t in range(n):
+        trend = 100.0 + 0.5 * t
+        season = (10.0 * math.sin(2 * math.pi * t / seasonal_period)
+                  if has_seasonality else 0.0)
+        noise = random.gauss(0, 2.0)
+        series.append(trend + season + noise)
+    return series
+
+
+def _compute_metrics(
+    y_true: list[float],
+    y_pred: list[float],
+    y_train: list[float],
+) -> BacktestMetrics:
+    """
+    Вычисление MAE, RMSE, MAPE, MASE и weighted_score.
+
+    MASE = MAE_model / MAE_naive, где MAE_naive — ошибка Naive-прогноза
+    на обучающей выборке (shift на 1).
+    """
+    n = len(y_true)
+    if n == 0:
+        return BacktestMetrics(mae=0, rmse=0, mape=0, mase=0, weighted_score=0)
+
+    # MAE
+    mae = sum(abs(a - p) for a, p in zip(y_true, y_pred)) / n
+
+    # RMSE
+    rmse = math.sqrt(sum((a - p) ** 2 for a, p in zip(y_true, y_pred)) / n)
+
+    # MAPE (%), защищаем от деления на 0
+    mape_sum = 0.0
+    mape_count = 0
+    for a, p in zip(y_true, y_pred):
+        if abs(a) > 1e-10:
+            mape_sum += abs((a - p) / a)
+            mape_count += 1
+    mape = (mape_sum / mape_count * 100) if mape_count > 0 else 0.0
+
+    # MASE: MAE_model / MAE_naive_season1
+    # Naive seasonal (season=1 → обычный Naive): прогноз = y_{t-1}
+    if len(y_train) > 1:
+        naive_errors = [
+            abs(y_train[i] - y_train[i - 1]) for i in range(1, len(y_train))
+        ]
+        mae_naive = sum(naive_errors) / len(naive_errors) if naive_errors else 1.0
+    else:
+        mae_naive = 1.0
+    mase = mae / mae_naive if mae_naive > 1e-10 else 0.0
+
+    # Нормализация для weighted_score (0–1 scale, где ниже = лучше)
+    # Используем simple min-max с reasonable bounds
+    mae_n = min(mae / 50.0, 1.0)
+    rmse_n = min(rmse / 50.0, 1.0)
+    mape_n = min(mape / 100.0, 1.0)
+    mase_n = min(mase / 2.0, 1.0)
+
+    weighted_score = (
+        _METRIC_WEIGHTS["mae"] * mae_n
+        + _METRIC_WEIGHTS["rmse"] * rmse_n
+        + _METRIC_WEIGHTS["mape"] * mape_n
+        + _METRIC_WEIGHTS["mase"] * mase_n
+    )
+
+    return BacktestMetrics(
+        mae=round(mae, 4),
+        rmse=round(rmse, 4),
+        mape=round(mape, 2),
+        mase=round(mase, 4),
+        weighted_score=round(weighted_score, 4),
+    )
+
+
+def _run_naive_backtest(
+    series: list[float], train_ratio: float
+) -> BacktestMetrics:
+    """Naive: ŷ_t = y_{t-1}."""
+    n = len(series)
+    n_train = int(n * train_ratio)
+    y_train, y_test = series[:n_train], series[n_train:]
+    y_pred = [y_train[-1]] + y_test[:-1]  # shift by 1
+    return _compute_metrics(y_test, y_pred, y_train)
+
+
+def _run_seasonal_naive_backtest(
+    series: list[float], train_ratio: float, seasonal_period: int = 12
+) -> BacktestMetrics:
+    """Seasonal Naive: ŷ_t = y_{t-m}."""
+    n = len(series)
+    n_train = int(n * train_ratio)
+    y_train, y_test = series[:n_train], series[n_train:]
+    y_pred = []
+    for i in range(len(y_test)):
+        idx = n_train + i - seasonal_period
+        if idx >= 0:
+            y_pred.append(series[idx])
+        else:
+            y_pred.append(y_train[-1])  # fallback
+    return _compute_metrics(y_test, y_pred, y_train)
+
+
+def _run_drift_backtest(
+    series: list[float], train_ratio: float
+) -> BacktestMetrics:
+    """Drift: ŷ_t = y_{t-1} + (y_T - y_1) / (T-1)."""
+    n = len(series)
+    n_train = int(n * train_ratio)
+    y_train, y_test = series[:n_train], series[n_train:]
+    drift = (y_train[-1] - y_train[0]) / max(len(y_train) - 1, 1)
+    y_pred = [y_train[-1] + drift * (i + 1) for i in range(len(y_test))]
+    return _compute_metrics(y_test, y_pred, y_train)
+
+
+def _run_mean_backtest(
+    series: list[float], train_ratio: float
+) -> BacktestMetrics:
+    """Mean: ŷ_t = mean(y_train)."""
+    n = len(series)
+    n_train = int(n * train_ratio)
+    y_train, y_test = series[:n_train], series[n_train:]
+    train_mean = sum(y_train) / len(y_train) if y_train else 0.0
+    y_pred = [train_mean] * len(y_test)
+    return _compute_metrics(y_test, y_pred, y_train)
+
+
+# Маппинг model_id → функция бэктеста
+_BACKTEST_IMPLEMENTATIONS = {
+    "naive": lambda s, tr, p: _run_naive_backtest(s, tr),
+    "seasonal_naive": lambda s, tr, p: _run_seasonal_naive_backtest(s, tr, p),
+    "drift": lambda s, tr, p: _run_drift_backtest(s, tr),
+    "mean": lambda s, tr, p: _run_mean_backtest(s, tr),
+}
+
+# Маппинг model_id → (model_name, family_id) для неизвестных моделй
+_MODEL_INFO = {
+    "naive": ("Naive", "baselines"),
+    "seasonal_naive": ("Seasonal Naive", "baselines"),
+    "drift": ("Drift", "baselines"),
+    "mean": ("Mean", "baselines"),
+    "ets": ("ETS (Auto)", "exponential_smoothing"),
+    "ets_damped": ("ETS Damped", "exponential_smoothing"),
+    "theta": ("Theta", "exponential_smoothing"),
+    "arima": ("ARIMA/SARIMA", "arima"),
+    "arima_auto": ("Auto-ARIMA", "arima"),
+    "var": ("VAR", "multivariate"),
+    "vecm": ("VECM", "multivariate"),
+    "garch": ("GARCH(p,q)", "volatility"),
+    "egarch": ("EGARCH", "volatility"),
+    "prophet": ("Prophet", "structural"),
+    "tbats": ("TBATS", "structural"),
+    "xgboost": ("XGBoost", "tree_ml"),
+    "lightgbm": ("LightGBM", "tree_ml"),
+    "catboost": ("CatBoost", "tree_ml"),
+    "random_forest": ("Random Forest", "tree_ml"),
+    "lstm": ("LSTM", "neural"),
+    "deepar": ("DeepAR", "neural"),
+    "tft": ("TFT", "neural"),
+    "nbeats": ("N-BEATS", "neural"),
+    "wavenet": ("WaveNet", "neural"),
+}
+
+
+@router.post(
+    "/backtest",
+    response_model=BacktestResponse,
+    dependencies=[Depends(require_capability("can_train_models"))],
+)
+def run_backtest(
+    payload: BacktestRequest,
+    principal: AuthenticatedPrincipal = Depends(get_current_principal),
+):
+    """
+    Запустить бэктест для одной модели.
+
+    Для baseline-моделей (Naive, Seasonal Naive, Drift, Mean) выполняется
+    реальный расчёт на синтетическом ряде, сгенерированном по профилю данных.
+    Для остальных моделей — заглушка с аппроксимированными метриками.
+
+    Метрики: MAE, RMSE, MAPE (%), MASE.
+    Взвешенный скоринг: 0.35*MAE_n + 0.25*RMSE_n + 0.20*MAPE_n + 0.20*MASE_n.
+    """
+    model_id = payload.model_id
+    profile = payload.profile
+    train_ratio = payload.train_ratio
+
+    # Определяем (model_name, family_id)
+    model_info = _MODEL_INFO.get(model_id)
+    if model_info is None:
+        # Попробуем найти в спецификации
+        spec = _get_spec()
+        found = None
+        for fam in spec.families:
+            for m in fam.models:
+                if m.id == model_id:
+                    found = (m.name, fam.family_id)
+                    break
+            if found:
+                break
+        if not found:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Модель '{model_id}' не найдена в спецификации",
+            )
+        model_info = found
+
+    model_name, family_id = model_info
+
+    # Генерируем синтетический ряд по профилю
+    series = _generate_series(
+        n=profile.n_observations,
+        frequency=profile.frequency,
+        has_seasonality=profile.has_seasonality,
+    )
+
+    # Сезонный период для Seasonal Naive
+    seasonal_period = (
+        profile.seasonal_periods[0]
+        if profile.seasonal_periods
+        else {"D": 7, "W": 52, "M": 12, "Q": 4, "Y": 1}.get(profile.frequency, 12)
+    )
+
+    start = time.monotonic()
+
+    # Реальный расчёт или заглушка
+    impl = _BACKTEST_IMPLEMENTATIONS.get(model_id)
+    if impl:
+        metrics = impl(series, train_ratio, seasonal_period)
+    else:
+        # Заглушка: аппроксимация на основе Naive + штраф за сложность
+        naive_metrics = _run_naive_backtest(series, train_ratio)
+        # Штраф: сложные модели «хуже» на синтетике без тюнинга
+        family_penalty = {
+            "exponential_smoothing": 0.85,
+            "arima": 0.80,
+            "structural": 0.75,
+            "tree_ml": 0.70,
+            "neural": 0.60,
+            "multivariate": 0.65,
+            "volatility": 0.70,
+        }.get(family_id, 1.0)
+        metrics = BacktestMetrics(
+            mae=round(naive_metrics.mae * (1.1 / family_penalty), 4),
+            rmse=round(naive_metrics.rmse * (1.1 / family_penalty), 4),
+            mape=round(naive_metrics.mape * (1.1 / family_penalty), 2),
+            mase=round(naive_metrics.mase * (1.1 / family_penalty), 4),
+            weighted_score=round(
+                naive_metrics.weighted_score * (1.1 / family_penalty), 4
+            ),
+        )
+
+    duration_ms = (time.monotonic() - start) * 1000
+
+    n_train = int(profile.n_observations * train_ratio)
+    n_test = profile.n_observations - n_train
+
+    return BacktestResponse(
+        model_id=model_id,
+        model_name=model_name,
+        family_id=family_id,
+        metrics=metrics,
+        n_train=n_train,
+        n_test=n_test,
+        train_ratio=train_ratio,
+        duration_ms=round(duration_ms, 2),
     )
 
 

@@ -30,6 +30,7 @@ import {
   type ModelCandidate,
   type CandidatesResponse,
   type ApplicabilityLevel,
+  type BacktestResponse,
   APPLICABILITY_LABEL,
   APPLICABILITY_BADGE,
   MODEL_FAMILIES,
@@ -107,6 +108,18 @@ export function TsAnalysisModeling() {
   const [hasOverflow, setHasOverflow] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
 
+  // ── Бэктест ──
+  const [backtestResults, setBacktestResults] = useState<
+    Record<string, BacktestResponse>
+  >({});
+  const [backtestLoading, setBacktestLoading] = useState(false);
+  const [backtestError, setBacktestError] = useState<string | null>(null);
+
+  // ── Завершённые стадии пайплайна ──
+  const [completedStages, setCompletedStages] = useState<Set<string>>(
+    new Set(["problem_definition", "data_structure", "constraints"])
+  );
+
   // ── Автозаполнение профиля из activeDataset ──
   // Маппинг: rows→n_observations, frequency→frequency, domain→domain,
   // nSeries→n_series, hasSeasonality→has_seasonality, isRegular→is_regular.
@@ -163,6 +176,59 @@ export function TsAnalysisModeling() {
     fetchCandidates();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Продвижение пайплайна при загрузке пула ──
+  useEffect(() => {
+    if (hasFetched && candidates.length > 0) {
+      setCompletedStages((prev) => {
+        const next = new Set(prev);
+        next.add("candidate_pool");
+        return next;
+      });
+    }
+  }, [hasFetched, candidates.length]);
+
+  // ── Запуск бэктеста ──
+  const runBacktest = useCallback(
+    async (modelId: string) => {
+      setBacktestLoading(true);
+      setBacktestError(null);
+      try {
+        const res = await fetch(`${API_BASE}/v1/models/backtest`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model_id: modelId,
+            profile,
+            train_ratio: 0.8,
+          }),
+        });
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(
+            errBody.detail || `HTTP ${res.status}: ${res.statusText}`
+          );
+        }
+        const data: BacktestResponse = await res.json();
+        setBacktestResults((prev) => ({ ...prev, [modelId]: data }));
+        // Продвигаем пайплайн: candidate_pool → baseline → backtest
+        setCompletedStages((prev) => {
+          const next = new Set(prev);
+          next.add("candidate_pool");
+          next.add("baseline");
+          next.add("backtest");
+          return next;
+        });
+      } catch (err) {
+        setBacktestError(
+          err instanceof Error ? err.message : "Ошибка бэктеста"
+        );
+      } finally {
+        setBacktestLoading(false);
+      }
+    },
+    [profile]
+  );
+
   // ── Collapse/Expand description ──
   useEffect(() => {
     setDescriptionExpanded(false);
@@ -218,12 +284,20 @@ export function TsAnalysisModeling() {
     (c) => c.model_id === activeCandidateId
   );
 
-  // Пайплайн — прогресс
-  const doneStages = PIPELINE_STAGES.filter(
-    (s) => s.status === "done"
-  ).length;
+  // Пайплайн — динамические статусы на основе completedStages
+  const dynamicStages = PIPELINE_STAGES.map((s) => {
+    if (completedStages.has(s.id)) return { ...s, status: "done" as const };
+    // Первая не-done стадия — active
+    const firstNotDone = PIPELINE_STAGES.find(
+      (st) => !completedStages.has(st.id)
+    );
+    if (firstNotDone && firstNotDone.id === s.id)
+      return { ...s, status: "active" as const };
+    return { ...s, status: "pending" as const };
+  });
+  const doneStages = dynamicStages.filter((s) => s.status === "done").length;
   const progressPct = Math.round(
-    (doneStages / PIPELINE_STAGES.length) * 100
+    (doneStages / dynamicStages.length) * 100
   );
 
   // Описание для центрального поля
@@ -436,7 +510,7 @@ export function TsAnalysisModeling() {
         {/* Прогресс пайплайна */}
         <div className="flex items-center gap-2">
           <p className="text-[11px] text-neutral-500 tabular-nums">
-            {doneStages}/{PIPELINE_STAGES.length}
+            {doneStages}/{dynamicStages.length}
           </p>
           <div className="flex-1 bg-neutral-200 rounded-full h-1.5">
             <div
@@ -448,7 +522,7 @@ export function TsAnalysisModeling() {
 
         {/* Степпер: 11 стадий пайплайна */}
         <div className="flex flex-col gap-1.5">
-          {PIPELINE_STAGES.map((stage) => (
+          {dynamicStages.map((stage) => (
             <button
               key={stage.id}
               onClick={() => {
@@ -750,7 +824,84 @@ export function TsAnalysisModeling() {
                 Полный пайплайн
               </button>
 
-              <Button>Запустить бэктест</Button>
+              {/* Кнопка / Результат «Запустить бэктест» */}
+              {backtestResults[activeCandidate.model_id] ? (
+                <div
+                  className="mt-2 p-3 rounded-lg border border-brand/30 bg-brand-light/50 space-y-2"
+                  data-testid="backtest-result"
+                >
+                  <p className="text-[11px] font-semibold text-brand">
+                    Бэктест завершён
+                  </p>
+                  {(() => {
+                    const bt = backtestResults[activeCandidate.model_id];
+                    const m = bt.metrics;
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 gap-2 text-[11px]">
+                          <div>
+                            <span className="text-neutral-500">MAE</span>
+                            <p className="font-mono font-semibold text-neutral-800">
+                              {m.mae.toFixed(2)}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-neutral-500">RMSE</span>
+                            <p className="font-mono font-semibold text-neutral-800">
+                              {m.rmse.toFixed(2)}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-neutral-500">MAPE</span>
+                            <p className="font-mono font-semibold text-neutral-800">
+                              {m.mape.toFixed(1)}%
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-neutral-500">MASE</span>
+                            <p className="font-mono font-semibold text-neutral-800">
+                              {m.mase.toFixed(2)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-neutral-500 pt-1 border-t border-neutral-200">
+                          <span>
+                            Скоринг:{" "}
+                            <span className="font-mono font-semibold text-brand">
+                              {(m.weighted_score * 100).toFixed(1)}
+                            </span>
+                          </span>
+                          <span>
+                            {bt.n_train} / {bt.n_test} точек
+                          </span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              ) : (
+                <Button
+                  onClick={() => runBacktest(activeCandidate.model_id)}
+                  disabled={backtestLoading}
+                  className="w-full text-xs"
+                  data-testid="run-backtest-btn"
+                >
+                  {backtestLoading ? (
+                    <span className="flex items-center justify-center gap-1">
+                      <Loader2 size={12} className="animate-spin" /> Расчёт…
+                    </span>
+                  ) : (
+                    "Запустить бэктест"
+                  )}
+                </Button>
+              )}
+
+              {/* Ошибка бэктеста */}
+              {backtestError && (
+                <p className="text-xs text-red-600 mt-1" data-testid="backtest-error">
+                  {backtestError}
+                </p>
+              )}
             </article>
           )}
 

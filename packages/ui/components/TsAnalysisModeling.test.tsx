@@ -538,3 +538,171 @@ describe("TsAnalysisModeling — activeDataset integration", () => {
     expect(nSeriesInput.value).toBe("1");
   });
 });
+
+// ═══════════════════════════════════════════════════════════
+// 14. Бэктест: кнопка «Запустить бэктест» + результаты
+// ═══════════════════════════════════════════════════════════
+
+const MOCK_BACKTEST_RESPONSE = {
+  model_id: "naive",
+  model_name: "Naive",
+  family_id: "baselines",
+  metrics: {
+    mae: 3.45,
+    rmse: 4.12,
+    mape: 2.1,
+    mase: 0.87,
+    weighted_score: 0.065,
+  },
+  n_train: 96,
+  n_test: 24,
+  train_ratio: 0.8,
+  duration_ms: 12.3,
+};
+
+describe("TsAnalysisModeling — backtest", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockActiveDataset = null;
+    // По умолчанию: candidates-запрос → success
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("/v1/models/backtest")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_BACKTEST_RESPONSE),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
+      });
+    });
+  });
+
+  it("renders 'Запустить бэктест' button when candidate is selected", async () => {
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      expect(screen.getByTestId("candidate-pool")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("family-header-baselines"));
+    fireEvent.click(screen.getByTestId("candidate-naive"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("active-candidate-detail")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("run-backtest-btn")).toBeInTheDocument();
+  });
+
+  it("clicking 'Запустить бэктест' triggers backtest API call", async () => {
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      expect(screen.getByTestId("candidate-pool")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("family-header-baselines"));
+    fireEvent.click(screen.getByTestId("candidate-naive"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("run-backtest-btn")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("run-backtest-btn"));
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/v1/models/backtest"),
+        expect.objectContaining({ method: "POST" })
+      );
+    });
+  });
+
+  it("shows backtest results after successful API call", async () => {
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      expect(screen.getByTestId("candidate-pool")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("family-header-baselines"));
+    fireEvent.click(screen.getByTestId("candidate-naive"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("run-backtest-btn")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("run-backtest-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("backtest-result")).toBeInTheDocument();
+    });
+
+    // Проверяем отображение метрик
+    expect(screen.getByText(/Бэктест завершён/i)).toBeInTheDocument();
+    expect(screen.getByText("3.45")).toBeInTheDocument(); // MAE
+    expect(screen.getByText("4.12")).toBeInTheDocument(); // RMSE
+    expect(screen.getByText("2.1%")).toBeInTheDocument(); // MAPE
+  });
+
+  it("shows backtest error on API failure", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("/v1/models/backtest")) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+          statusText: "Internal Server Error",
+          json: () => Promise.resolve({ detail: "Сервер недоступен" }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
+      });
+    });
+
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      expect(screen.getByTestId("candidate-pool")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("family-header-baselines"));
+    fireEvent.click(screen.getByTestId("candidate-naive"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("run-backtest-btn")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("run-backtest-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("backtest-error")).toBeInTheDocument();
+    });
+  });
+
+  it("pipeline progresses after successful backtest", async () => {
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      expect(screen.getByTestId("candidate-pool")).toBeInTheDocument();
+    });
+
+    // После загрузки пула: stages 1-4 done, 5 active
+    // Кликаем backtest
+    fireEvent.click(screen.getByTestId("family-header-baselines"));
+    fireEvent.click(screen.getByTestId("candidate-naive"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("run-backtest-btn")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("run-backtest-btn"));
+
+    // После бэктеста: стадии candidate_pool, baseline, backtest — done
+    await waitFor(() => {
+      expect(screen.getByTestId("backtest-result")).toBeInTheDocument();
+    });
+
+    // Стадия 7 (Тюнинг) должна быть активной
+    const tuningBtn = screen.getAllByText("Тюнинг")[0];
+    expect(tuningBtn).toBeInTheDocument();
+  });
+});

@@ -165,6 +165,41 @@ export const PIPELINE_STAGES: PipelineStage[] = [
   { id: "model_card", label: "Model Card", status: "pending" },
 ];
 
+// ── Бэктест ────────────────────────────────────────────────────
+
+export interface BacktestRequest {
+  model_id: string;
+  profile: DataProfile;
+  train_ratio?: number; // default 0.8, range [0.5, 0.95]
+}
+
+export interface BacktestMetrics {
+  mae: number;
+  rmse: number;
+  mape: number; // в процентах
+  mase: number;
+  weighted_score: number; // 0–1, ниже = лучше
+}
+
+export interface BacktestResponse {
+  model_id: string;
+  model_name: string;
+  family_id: string;
+  metrics: BacktestMetrics;
+  n_train: number;
+  n_test: number;
+  train_ratio: number;
+  duration_ms: number;
+}
+
+// Веса ранжирования (из modeling.yaml)
+export const BACKTEST_WEIGHTS = {
+  mae: 0.35,
+  rmse: 0.25,
+  mape: 0.20,
+  mase: 0.20,
+} as const;
+
 // ── Дефолтный профиль данных ───────────────────────────────────
 
 export const DEFAULT_PROFILE: DataProfile = {
