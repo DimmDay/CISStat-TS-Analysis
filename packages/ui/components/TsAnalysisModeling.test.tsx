@@ -9,10 +9,12 @@
 // 6. Фильтрация по уровню
 // 7. Выбор кандидата → детальная карточка
 // 8. Обработка ошибок API
+// 9. activeDataset → автозаполнение профиля
 
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { TsAnalysisModeling } from "./TsAnalysisModeling";
+import type { ActiveDataset } from "../context/AppShellContext";
 
 // ── Polyfill: ResizeObserver не определён в jsdom ──
 global.ResizeObserver = class ResizeObserver {
@@ -26,10 +28,12 @@ jest.mock("next/navigation", () => ({
   usePathname: () => "/modeling",
 }));
 
-// ── Mock AppShellContext ──
+// ── Mock AppShellContext (динамический — позволяет задать activeDataset) ──
+let mockActiveDataset: ActiveDataset | null = null;
+
 jest.mock("../context/AppShellContext", () => ({
   useAppShell: () => ({
-    activeDataset: null,
+    activeDataset: mockActiveDataset,
     log: [],
   }),
 }));
@@ -150,6 +154,7 @@ global.fetch = mockFetch;
 describe("TsAnalysisModeling", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockActiveDataset = null; // ← по умолчанию без датасета
     // Восстановим mock по умолчанию (success)
     mockFetch.mockImplementation(() =>
       Promise.resolve({
@@ -303,7 +308,9 @@ describe("TsAnalysisModeling", () => {
     await waitFor(() => {
       expect(screen.getByTestId("api-error")).toBeInTheDocument();
     });
-    expect(screen.getByText(/Сервер недоступен/i)).toBeInTheDocument();
+    // Ошибка появляется в центральном баннере и в правой колонке — проверяем наличие
+    const errorMatches = screen.getAllByText(/Сервер недоступен/i);
+    expect(errorMatches.length).toBeGreaterThanOrEqual(1);
   });
 
   // ── 8. Кнопка «Загрузить пул» ──
@@ -409,5 +416,125 @@ describe("TsAnalysisModeling", () => {
     await waitFor(() => {
       expect(screen.getByText(/Метрики и алгоритм — Naive/i)).toBeInTheDocument();
     });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// 13. activeDataset → автозаполнение профиля
+// ═══════════════════════════════════════════════════════════
+
+describe("TsAnalysisModeling — activeDataset integration", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockFetch.mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
+      })
+    );
+  });
+
+  it("auto-fills n_observations from activeDataset.rows", () => {
+    mockActiveDataset = {
+      name: "test.csv",
+      rows: 500,
+      sizeLabel: "2.5 MB",
+    };
+    render(<TsAnalysisModeling />);
+    const input = screen.getByTestId("profile-n-observations") as HTMLInputElement;
+    expect(input.value).toBe("500");
+  });
+
+  it("auto-fills frequency from activeDataset.frequency", () => {
+    mockActiveDataset = {
+      name: "test.csv",
+      rows: 200,
+      sizeLabel: "1.0 MB",
+      frequency: "D",
+    };
+    render(<TsAnalysisModeling />);
+    const select = screen.getByTestId("profile-frequency") as HTMLSelectElement;
+    expect(select.value).toBe("D");
+  });
+
+  it("auto-fills domain from activeDataset.domain", () => {
+    mockActiveDataset = {
+      name: "test.csv",
+      rows: 200,
+      sizeLabel: "1.0 MB",
+      domain: "financial",
+    };
+    render(<TsAnalysisModeling />);
+    const select = screen.getByTestId("profile-domain") as HTMLSelectElement;
+    expect(select.value).toBe("financial");
+  });
+
+  it("auto-fills n_series from activeDataset.nSeries", () => {
+    mockActiveDataset = {
+      name: "test.csv",
+      rows: 200,
+      sizeLabel: "1.0 MB",
+      nSeries: 3,
+    };
+    render(<TsAnalysisModeling />);
+    const input = screen.getByTestId("profile-n-series") as HTMLInputElement;
+    expect(input.value).toBe("3");
+  });
+
+  it("auto-fills has_seasonality from activeDataset.hasSeasonality", () => {
+    mockActiveDataset = {
+      name: "test.csv",
+      rows: 200,
+      sizeLabel: "1.0 MB",
+      hasSeasonality: true,
+    };
+    render(<TsAnalysisModeling />);
+    const checkbox = screen.getByTestId("profile-has-seasonality") as HTMLInputElement;
+    expect(checkbox.checked).toBe(true);
+  });
+
+  it("auto-fills is_regular from activeDataset.isRegular", () => {
+    mockActiveDataset = {
+      name: "test.csv",
+      rows: 200,
+      sizeLabel: "1.0 MB",
+      isRegular: false,
+    };
+    render(<TsAnalysisModeling />);
+    const checkbox = screen.getByTestId("profile-is-regular") as HTMLInputElement;
+    expect(checkbox.checked).toBe(false);
+  });
+
+  it("shows auto-fill indicator when activeDataset is present", () => {
+    mockActiveDataset = {
+      name: "test.csv",
+      rows: 500,
+      sizeLabel: "2.5 MB",
+    };
+    render(<TsAnalysisModeling />);
+    expect(screen.getByTestId("autofill-indicator")).toBeInTheDocument();
+  });
+
+  it("does not show auto-fill indicator when no activeDataset", () => {
+    mockActiveDataset = null;
+    render(<TsAnalysisModeling />);
+    expect(screen.queryByTestId("autofill-indicator")).not.toBeInTheDocument();
+  });
+
+  it("keeps DEFAULT_PROFILE values when activeDataset has no optional fields", () => {
+    mockActiveDataset = {
+      name: "test.csv",
+      rows: 100,
+      sizeLabel: "0.5 MB",
+      // frequency, domain, nSeries — отсутствуют
+    };
+    render(<TsAnalysisModeling />);
+    const freqSelect = screen.getByTestId("profile-frequency") as HTMLSelectElement;
+    const domainSelect = screen.getByTestId("profile-domain") as HTMLSelectElement;
+    const nSeriesInput = screen.getByTestId("profile-n-series") as HTMLInputElement;
+    // DEFAULT_PROFILE: frequency="M", domain="macro", n_series=1
+    expect(freqSelect.value).toBe("M");
+    expect(domainSelect.value).toBe("macro");
+    expect(nSeriesInput.value).toBe("1");
   });
 });

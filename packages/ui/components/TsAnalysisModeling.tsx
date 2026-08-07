@@ -108,11 +108,19 @@ export function TsAnalysisModeling() {
   const descRef = useRef<HTMLDivElement>(null);
 
   // ── Автозаполнение профиля из activeDataset ──
+  // Маппинг: rows→n_observations, frequency→frequency, domain→domain,
+  // nSeries→n_series, hasSeasonality→has_seasonality, isRegular→is_regular.
+  // Поля опциональны: если activeDataset их не содержит, сохраняем текущее.
   useEffect(() => {
     if (activeDataset) {
       setProfile((prev) => ({
         ...prev,
         n_observations: activeDataset.rows || prev.n_observations,
+        ...(activeDataset.frequency != null && { frequency: activeDataset.frequency }),
+        ...(activeDataset.domain != null && { domain: activeDataset.domain }),
+        ...(activeDataset.nSeries != null && { n_series: activeDataset.nSeries }),
+        ...(activeDataset.hasSeasonality != null && { has_seasonality: activeDataset.hasSeasonality }),
+        ...(activeDataset.isRegular != null && { is_regular: activeDataset.isRegular }),
       }));
     }
   }, [activeDataset]);
@@ -275,9 +283,19 @@ export function TsAnalysisModeling() {
 
         {/* ── Компактная форма профиля данных ── */}
         <div className="space-y-2">
-          <p className="text-[11px] text-neutral-500 font-medium">
-            Профиль данных
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-neutral-500 font-medium">
+              Профиль данных
+            </p>
+            {activeDataset && (
+              <span
+                className="text-[9px] text-brand font-medium bg-brand-light px-1.5 py-0.5 rounded"
+                data-testid="autofill-indicator"
+              >
+                из датасета
+              </span>
+            )}
+          </div>
 
           {/* n_observations */}
           <div>
@@ -367,8 +385,21 @@ export function TsAnalysisModeling() {
                   handleProfileChange("has_seasonality", e.target.checked)
                 }
                 className="rounded border-neutral-300"
+                data-testid="profile-has-seasonality"
               />
               Сезонность
+            </label>
+            <label className="flex items-center gap-1 text-[10px] text-neutral-600">
+              <input
+                type="checkbox"
+                checked={profile.is_regular}
+                onChange={(e) =>
+                  handleProfileChange("is_regular", e.target.checked)
+                }
+                className="rounded border-neutral-300"
+                data-testid="profile-is-regular"
+              />
+              Регулярность
             </label>
             <label className="flex items-center gap-1 text-[10px] text-neutral-600">
               <input

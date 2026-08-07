@@ -24,6 +24,13 @@ export interface ActiveDataset {
   name: string;
   rows: number;
   sizeLabel: string;
+  // Опциональные поля для автозаполнения DataProfile в модуле «Моделирование».
+  // Добавляются при наличии в ответе API загрузки (passport / structure-detection).
+  frequency?: string;       // "D" | "W" | "M" | "Q" | "Y"
+  domain?: string;          // "financial" | "macro" | "price" | "other"
+  nSeries?: number;         // число временных рядов (≥ 1)
+  hasSeasonality?: boolean; // обнаружена сезонность
+  isRegular?: boolean;      // регулярность временного индекса
 }
 
 interface AppShellContextValue {

@@ -151,3 +151,19 @@ Stage Summary:
 - Баг исправлен: правая колонка показывает инструкцию при ошибке API
 - activeDataset подключён для автозаполнения профиля данных
 - 4 состояния правой колонки: activeCandidate → candidatesByFamily → error → loading
+
+Task ID: 6
+Agent: main
+Task: Подключить activeDataset из AppShellContext для автозаполнения DataProfile в TsAnalysisModeling
+
+Work Log:
+- Изучил структуру ActiveDataset (name, rows, sizeLabel) и DataProfile (16 полей)
+- Нашёл частичную интеграцию: useEffect маппил только rows→n_observations
+- Расширил ActiveDataset: добавлены опциональные поля frequency, domain, nSeries, hasSeasonality, isRegular
+- Обновил useEffect в TsAnalysisModeling: полный маппинг 6 полей с fallback на текущие значения
+...
+Stage Summary:
+- ActiveDataset расширен 5 опциональными полями (backward-compatible)
+- Полный маппинг activeDataset → DataProfile при автозаполнении
+- Индикатор «из датасета» появляется при наличии activeDataset
+- Файлы: AppShellContext.tsx, TsAnalysisModeling.tsx, TsAnalysisModeling.test.tsx, DataUploadForm.tsx, TsAnalysisUpload.tsx

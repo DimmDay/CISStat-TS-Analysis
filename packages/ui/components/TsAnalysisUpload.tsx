@@ -219,7 +219,15 @@ export function TsAnalysisUpload() {
 
   const handleMockUpload = () => {
     const name = fileName ?? "train.csv";
-    setActiveDataset({ name, rows: totalRows, sizeLabel: `${memoryMb} MB` });
+    // Извлекаем код частоты из detection (например, "D — ежедневная" → "D")
+    const freqCode = detection.freq.selected.split(" ")[0] || undefined;
+    setActiveDataset({
+      name,
+      rows: totalRows,
+      sizeLabel: `${memoryMb} MB`,
+      frequency: freqCode,
+      domain: "financial", // мок: Superstore → финансовые данные
+    });
     setIsUploaded(true);
   };
 
