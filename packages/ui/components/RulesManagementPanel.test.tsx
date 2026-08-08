@@ -9,6 +9,7 @@
 // 6. Нажатие «Применить» вызывает PATCH /rules/update
 // 7. Нажатие «Сбросить» возвращает исходные значения
 
+import "@testing-library/jest-dom";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { RulesManagementPanel } from "./RulesManagementPanel";
 

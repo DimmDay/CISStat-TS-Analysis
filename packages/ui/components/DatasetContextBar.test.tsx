@@ -2,6 +2,7 @@
 //
 // Тесты для DatasetContextBar — проверка выравнивания контента
 
+import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import { DatasetContextBar } from "./DatasetContextBar";
 

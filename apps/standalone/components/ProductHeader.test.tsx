@@ -3,6 +3,7 @@
 // Тесты для ProductHeader — проверка выравнивания контента
 // по контейнеру max-w-[1600px] mx-auto px-6
 
+import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import { ProductHeader } from "./ProductHeader";
 

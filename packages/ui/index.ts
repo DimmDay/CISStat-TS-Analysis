@@ -7,15 +7,25 @@ export type { CheckStatus } from "./components/StatusIcon";
 export { TsAnalysisPreprocessing } from "./components/TsAnalysisPreprocessing";
 export { TsAnalysisValidation } from "./components/TsAnalysisValidation";
 export { TsAnalysisEDA } from "./components/TsAnalysisEDA";
-export { TsAnalysisModeling } from "./components/TsAnalysisModeling";
+export { TsAnalysisUpload } from "./components/TsAnalysisUpload";
 export { default as tailwindPreset } from "./tailwind-preset";
 
-// Глобальный shell: активный датасет + лог событий.
+// Глобальный shell: активный датасет (гидрируется с сервера, см.
+// apps/api/session_store.py) + прогресс по этапам + лог событий.
 export { AppShellProvider, useAppShell } from "./context/AppShellContext";
 export type { LogEntry, ActiveDataset } from "./context/AppShellContext";
 export { DatasetContextBar } from "./components/DatasetContextBar";
 export { EventsLogDrawer } from "./components/EventsLogDrawer";
-export { DataUploadForm } from "./components/DataUploadForm";
+
+// Sessions-aware Home: общий "Рабочий стол" + embedded-онбординг.
+// Standalone-версия (с auth-веткой) живёт в apps/standalone/components --
+// см. обсуждение с тимлидом про разные ответственности embedded/standalone.
+export { WorkbenchSummary } from "./components/WorkbenchSummary";
+export { EmbeddedHome } from "./components/EmbeddedHome";
+export { STAGE_DEFS } from "./lib/stages";
+export type { StageDef, StageStatus } from "./lib/stages";
+export { apiUrl, sessionApiUrl, getApiBase, getApiMode } from "./lib/apiClient";
+export type { ApiMode } from "./lib/apiClient";
 
 // Навигация между модулями анализа (Загрузка/Валидация/Предобработка/...).
 export { ModuleNav } from "./components/ModuleNav";
@@ -26,6 +36,10 @@ export { ModulePlaceholder } from "./components/ModulePlaceholder";
 export { getCapabilities, PLAN_DEFINITIONS } from "./lib/plans";
 export type { Role, PlanName, Capabilities } from "./lib/plans";
 export { TrainModelButton } from "./components/TrainModelButton";
+
+// ── Ниже: перенесено без изменений из origin/main (команда, "Моделирование") ──
+
+export { TsAnalysisModeling } from "./components/TsAnalysisModeling";
 
 // Типы моделирования (зеркало apps/api/schemas.py).
 export type {

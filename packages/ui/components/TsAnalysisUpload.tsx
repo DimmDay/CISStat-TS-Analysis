@@ -3,24 +3,33 @@
 // packages/ui/components/TsAnalysisUpload.tsx
 //
 // ОБЩИЙ компонент фичи "Загрузка" -- используется И embedded-,
-// И standalone-приложением (см. архитектурный принцип: одна UI-логика,
-// разные обёртки -- урок от 4 копий calculate_ts_passport учтён).
+// И standalone-приложением (одна UI-логика, разные обёртки).
 //
 // Контракт вкладки "Загрузка" (по решению тимлида):
-//   ✅ Превью датасета
-//   ✅ Техническая информация (строки/колонки/память/типы)
-//   ✅ Визуализация распределения (точечный + гистограмма+KDE + KDE + статистики) -- БЕЗ СОКРАЩЕНИЙ
-//   ✅ Подтверждение автоопределения (дата/группировка/частота) с override
-//   ✅ Teaser качества (только счётчики → Валидация)
-//   ✅ Предупреждения парсинга (явные флаг, если что-то пошло не так)
+//   ✅ Превью датасета -- РЕАЛЬНЫЙ (POST /v1/{public|internal}/upload)
+//   ✅ Техническая информация (строки/колонки/память/типы) -- РЕАЛЬНАЯ
+//   ✅ Teaser качества (только счётчики → Валидация) -- РЕАЛЬНЫЙ
+//   🟡 Подтверждение автоопределения (дата/группировка/частота) --
+//      клиентская эвристика по реальным columns_info (см.
+//      buildDetectionFromColumns ниже). НЕ настоящий бэкенд-детектор --
+//      app/data/detectors.py уже умеет определять дату, но не отдаёт
+//      форму {selected, confidence, candidates: [{name, score}]}, которую
+//      ожидает этот UI. Адаптер -- отдельная задача, не в этом охвате.
+//   🟡 Визуализация распределения -- placeholder-макет (Plotly не
+//      подключён, реальных статистик по колонке нет backend-эндпоинта).
+//      Селектор колонки уже реальный (из columns_info).
+//   ⚪ Предупреждения парсинга -- пока не приходят от бэкенда (backend
+//      кидает HTTP 400 при ошибке чтения вместо warnings-массива).
 //   ❌ Корреляция, STL, ACF/PACF, FFT, периодограмма, вейвлет -- уехали в EDA
 //   ❌ Полный паспорт 13 свойств -- уехал в Modeling
 //
-// Состояние: ПРОТОТИП. Данные -- моковые, как и в TsAnalysisPreprocessing.
-// Когда бэкенд /v1/internal/ingest, /detect-structure, /upload-summary,
-// /quality-teaser будут готовы -- заменить моки на реальные вызовы.
+// ЭТО СЛИЯНИЕ ДВУХ ПРЕЖНИХ КОМПОНЕНТОВ: TsAnalysisUpload.tsx (богатый
+// UI-контракт, был не подключён никуда) + DataUploadForm.tsx (реальный,
+// но минимальный dropzone). DataUploadForm.tsx удалён -- см. git history.
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import { toast } from "sonner";
 import Link from "next/link";
 import {
   Upload,
@@ -41,26 +50,54 @@ import {
   Info,
   RefreshCw,
   Check,
+  Loader2,
 } from "lucide-react";
 import { Button } from "./Button";
 import { useAppShell } from "../context/AppShellContext";
+import { apiUrl, sessionApiUrl } from "../lib/apiClient";
 
 // ──────────────────────────────────────────────────────────────────────
-// МОКОВЫЕ ДАННЫЕ (заменить на ответы API о Фазе 1)
+// ТИПЫ (зеркало apps/api/schemas.py: ColumnInfoOut / QualityTeaserOut /
+// UploadResponse -- поля намеренно snake_case, как отдаёт API, без
+// промежуточного camelCase-слоя)
 // ──────────────────────────────────────────────────────────────────────
 
-interface ColumnInfo {
+interface ColumnInfoOut {
   name: string;
   dtype: string;
-  typeIcon: "numeric" | "datetime" | "categorical" | "text";
-  nonNull: number;
+  type_icon: "numeric" | "datetime" | "categorical" | "text";
+  non_null: number;
   nulls: number;
   unique: number;
 }
 
-interface ParseWarning {
-  type: "encoding" | "header" | "delimiter";
-  message: string;
+interface QualityTeaserOut {
+  cols_with_missing: number;
+  cols_with_outliers: number;
+  rows_total: number;
+  duplicates: number;
+  missing_cols: string[];
+  outlier_cols: string[];
+}
+
+interface UploadApiResponse {
+  dataset_id: string;
+  name: string;
+  rows: number;
+  columns: number;
+  preview: { head: string[][]; tail: string[][] };
+  columns_info: ColumnInfoOut[] | null;
+  quality: QualityTeaserOut | null;
+  size_label: string | null;
+  error?: string | null;
+  // Опциональные поля для автозаполнения профиля в «Моделировании» --
+  // бэкенд их пока не возвращает (см. TODO про structure-detection
+  // адаптер в шапке файла), но тип готов принять их, когда появятся.
+  frequency?: string;
+  domain?: string;
+  n_series?: number;
+  has_seasonality?: boolean;
+  is_regular?: boolean;
 }
 
 interface DetectionCandidate {
@@ -74,116 +111,20 @@ interface StructureDetection {
   freq: { selected: string; confidence: number; options: string[] };
 }
 
-interface DistStats {
-  type: string;
-  mean: number;
-  median: number;
-  std: number;
-  skew: number;
-  kurt: number;
-  q1: number;
-  q3: number;
-  iqr: number;
-}
-
-interface QualityTeaser {
-  colsWithMissing: number;
-  colsWithOutliers: number;
-  rowsTotal: number;
-  duplicates: number;
-  missingCols: string[];
-  outlierCols: string[];
-}
-
-const MOCK_COLUMNS: ColumnInfo[] = [
-  { name: "Order Date", dtype: "datetime64[ns]", typeIcon: "datetime", nonNull: 9800, nulls: 0, unique: 1234 },
-  { name: "Ship Date", dtype: "datetime64[ns]", typeIcon: "datetime", nonNull: 9800, nulls: 0, unique: 1320 },
-  { name: "Sales", dtype: "float64", typeIcon: "numeric", nonNull: 9789, nulls: 11, unique: 5678 },
-  { name: "Profit", dtype: "float64", typeIcon: "numeric", nonNull: 9700, nulls: 100, unique: 3456 },
-  { name: "Quantity", dtype: "int64", typeIcon: "numeric", nonNull: 9800, nulls: 0, unique: 14 },
-  { name: "Discount", dtype: "float64", typeIcon: "numeric", nonNull: 9750, nulls: 50, unique: 12 },
-  { name: "Country", dtype: "object", typeIcon: "categorical", nonNull: 9800, nulls: 0, unique: 14 },
-  { name: "Region", dtype: "object", typeIcon: "categorical", nonNull: 9800, nulls: 0, unique: 52 },
-  { name: "Category", dtype: "object", typeIcon: "categorical", nonNull: 9800, nulls: 0, unique: 3 },
-  { name: "Product Name", dtype: "object", typeIcon: "text", nonNull: 9800, nulls: 0, unique: 1845 },
-];
-
-const MOCK_PARSE_WARNINGS: ParseWarning[] = [
-  {
-    type: "encoding",
-    message:
-      "Колонка «Order Date» распознана как текст, потребовалась конвертация (encoding=windows-1251 определён автоматически).",
-  },
-];
-
-const MOCK_DETECTION: StructureDetection = {
-  dateCol: {
-    selected: "Order Date",
-    confidence: 92,
-    candidates: [
-      { name: "Order Date", score: 0.92 },
-      { name: "Ship Date", score: 0.71 },
-      { name: "Row ID", score: 0.05 },
-    ],
-  },
-  entityCol: {
-    selected: "Country",
-    confidence: 88,
-    candidates: [
-      { name: "Country", score: 0.88 },
-      { name: "Region", score: 0.64 },
-      { name: "Category", score: 0.41 },
-    ],
-  },
-  freq: {
-    selected: "D — ежедневная",
-    confidence: 76,
-    options: [
-      "D — ежедневная",
-      "W — недельная",
-      "M — месячная",
-      "Q — квартальная",
-      "(авто, не получилось)",
-    ],
-  },
-};
-
-const MOCK_DIST_STATS: DistStats = {
-  type: "🟠 Непрерывное — Логнормальное",
-  mean: 229.86,
-  median: 54.49,
-  std: 623.25,
-  skew: 12.973,
-  kurt: 305.318,
-  q1: 17.28,
-  q3: 209.94,
-  iqr: 192.66,
-};
-
-const MOCK_QUALITY: QualityTeaser = {
-  colsWithMissing: 3,
-  colsWithOutliers: 1,
-  rowsTotal: 9800,
-  duplicates: 0,
-  missingCols: ["Sales", "Profit", "Discount"],
-  outlierCols: ["Profit"],
-};
-
-const NUMERIC_COLS = ["Sales", "Profit", "Quantity", "Discount"];
-const PREVIEW_ROWS = [
-  { OrderDate: "2023-01-04", Country: "Russia", Region: "Central", Sales: 261.96, Profit: 41.91, Category: "Furniture" },
-  { OrderDate: "2023-01-04", Country: "Russia", Region: "Central", Sales: 731.94, Profit: 219.58, Category: "Furniture" },
-  { OrderDate: "2023-01-05", Country: "Kazakhstan", Region: "North", Sales: 957.58, Profit: -343.93, Category: "Office Supplies" },
-  { OrderDate: "2023-01-06", Country: "Belarus", Region: "West", Sales: 124.55, Profit: 14.12, Category: "Technology" },
-  { OrderDate: "2023-01-07", Country: "Russia", Region: "East", Sales: 542.10, Profit: 88.45, Category: "Office Supplies" },
-];
-
-const TYPE_ICON = {
+const TYPE_ICON: Record<ColumnInfoOut["type_icon"], string> = {
   numeric: "N",
   datetime: "D",
   categorical: "C",
   text: "T",
-} as const;
+};
+
+const FREQ_OPTIONS = [
+  "D — ежедневная",
+  "W — недельная",
+  "M — месячная",
+  "Q — квартальная",
+  "(авто, не получилось)",
+];
 
 // ──────────────────────────────────────────────────────────────────────
 // ВСПОМОГАТЕЛЬНЫЕ
@@ -199,48 +140,203 @@ function formatNum(n: number): string {
   return n.toLocaleString("ru-RU").replace(/,/g, " ");
 }
 
+/**
+ * Клиентская ЭВРИСТИКА подтверждения структуры -- ЗАМЕНИТЬ на реальный
+ * бэкенд-детектор (см. app/data/detectors.py:detect_and_convert_datetime),
+ * когда появится адаптер, отдающий confidence/candidates per column.
+ * Пока: колонки с type_icon="datetime" -- кандидаты в дату, "categorical"
+ * -- кандидаты в группировку. Уверенность условная (не статистическая).
+ */
+function buildDetectionFromColumns(columnsInfo: ColumnInfoOut[]): StructureDetection {
+  const dateCandidates = columnsInfo.filter((c) => c.type_icon === "datetime");
+  const categoricalCandidates = columnsInfo.filter((c) => c.type_icon === "categorical");
+  const dateFallback = dateCandidates.length > 0 ? dateCandidates : columnsInfo.slice(0, 3);
+  const entityFallback = categoricalCandidates.length > 0 ? categoricalCandidates : columnsInfo.slice(0, 3);
+
+  return {
+    dateCol: {
+      selected: dateFallback[0]?.name ?? "(не использовать)",
+      confidence: dateCandidates.length > 0 ? 80 : 25,
+      candidates: dateFallback.map((c, i) => ({ name: c.name, score: Math.max(0.9 - i * 0.2, 0.1) })),
+    },
+    entityCol: {
+      selected: entityFallback[0]?.name ?? "(нет)",
+      confidence: categoricalCandidates.length > 0 ? 70 : 25,
+      candidates: entityFallback.map((c, i) => ({ name: c.name, score: Math.max(0.85 - i * 0.2, 0.1) })),
+    },
+    freq: {
+      selected: dateCandidates.length > 0 ? "D — ежедневная" : "(авто, не получилось)",
+      confidence: dateCandidates.length > 0 ? 60 : 15,
+      options: FREQ_OPTIONS,
+    },
+  };
+}
+
 // ──────────────────────────────────────────────────────────────────────
 // ГЛАВНЫЙ КОМПОНЕНТ
 // ──────────────────────────────────────────────────────────────────────
 
 export function TsAnalysisUpload() {
-  const { setActiveDataset } = useAppShell();
-  const [selectedDistCol, setSelectedDistCol] = useState(NUMERIC_COLS[0]);
-  const [fileName, setFileName] = useState<string | null>("train.csv");
+  const { activeDataset, setActiveDataset, refreshSession, addLogEntry } = useAppShell();
+
   const [source, setSource] = useState<"file" | "db">("file");
-  const [isUploaded, setIsUploaded] = useState(true); // мок: файл уже загружен
-  const [detection, setDetection] = useState<StructureDetection>(MOCK_DETECTION);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadData, setUploadData] = useState<UploadApiResponse | null>(null);
+  const [hydrating, setHydrating] = useState(false);
+  const [detection, setDetection] = useState<StructureDetection | null>(null);
+  const [selectedDistCol, setSelectedDistCol] = useState<string | null>(null);
 
-  const totalRows = 9800;
-  const totalCols = MOCK_COLUMNS.length;
-  const memoryMb = 2.42;
-  const numericCount = MOCK_COLUMNS.filter((c) => c.typeIcon === "numeric").length;
-  const textCount = MOCK_COLUMNS.filter((c) => c.typeIcon !== "numeric").length;
+  const isUploaded = uploadData !== null;
+  const columnsInfo = uploadData?.columns_info ?? [];
+  const numericCols = columnsInfo.filter((c) => c.type_icon === "numeric").map((c) => c.name);
+  const numericCount = columnsInfo.filter((c) => c.type_icon === "numeric").length;
+  const textCount = columnsInfo.length - numericCount;
 
-  const handleMockUpload = () => {
-    const name = fileName ?? "train.csv";
-    // Извлекаем код частоты из detection (например, "D — ежедневная" → "D")
-    const freqCode = detection.freq.selected.split(" ")[0] || undefined;
-    setActiveDataset({
-      name,
-      rows: totalRows,
-      sizeLabel: `${memoryMb} MB`,
-      frequency: freqCode,
-      domain: "financial", // мок: Superstore → финансовые данные
-    });
-    setIsUploaded(true);
+  // Если в сессии уже есть активный датасет (пользователь пришёл сюда по
+  // кнопке "Продолжить" с Home, а не через сам аплоад в этом рендере) --
+  // подтягиваем превью/техинфо/качество заново с бэкенда, чтобы не
+  // заставлять грузить файл повторно.
+  useEffect(() => {
+    if (!activeDataset || uploadData) return;
+    let cancelled = false;
+    setHydrating(true);
+    fetch(sessionApiUrl("/dataset"), { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: UploadApiResponse | null) => {
+        if (cancelled || !data) return;
+        setUploadData(data);
+        if (data.columns_info) {
+          setDetection(buildDetectionFromColumns(data.columns_info));
+          const firstNumeric = data.columns_info.find((c) => c.type_icon === "numeric");
+          setSelectedDistCol(firstNumeric?.name ?? null);
+        }
+      })
+      .catch(() => {
+        // Молча остаёмся в состоянии "нет данных для превью" -- у
+        // пользователя всё равно есть activeDataset.name/rows на Home.
+      })
+      .finally(() => {
+        if (!cancelled) setHydrating(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDataset]);
+
+  const doUpload = useCallback(
+    async (file: File) => {
+      setUploading(true);
+      setUploadError(null);
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const resp = await fetch(apiUrl("/upload"), {
+          method: "POST",
+          body: formData,
+          credentials: "include", // несёт cookie сессии -- сервер обновит AnalysisSession
+        });
+        const data: UploadApiResponse & { detail?: string } = await resp.json();
+        if (!resp.ok) {
+          throw new Error(data.detail || data.error || "Не удалось загрузить файл");
+        }
+        setUploadData(data);
+        let localDetection: StructureDetection | null = null;
+        if (data.columns_info) {
+          localDetection = buildDetectionFromColumns(data.columns_info);
+          setDetection(localDetection);
+          const firstNumeric = data.columns_info.find((c) => c.type_icon === "numeric");
+          setSelectedDistCol(firstNumeric?.name ?? null);
+        }
+        // Автозаполнение профиля для модуля «Моделирование» -- перенесено
+        // из packages/ui/components/DataUploadForm.test.tsx на origin/main
+        // (Task 6, worklog.md), где эта логика оказалась по ошибке — сам
+        // функционал реальный и рабочий, просто не в том файле. Поля из
+        // ответа API (когда бэкенд их вернёт -- пока не реализовано, см.
+        // TODO в handle_upload) имеют приоритет; freqCode -- fallback на
+        // клиентскую эвристику детекции, которая у нас уже есть прямо
+        // сейчас, в отличие от исходной версии, где поля брались только
+        // из мок-ответа.
+        const freqCode = localDetection?.freq.selected.split(" ")[0];
+        setActiveDataset({
+          name: data.name,
+          rows: data.rows,
+          sizeLabel: data.size_label ?? "—",
+          ...(data.frequency && { frequency: data.frequency }),
+          ...(!data.frequency && freqCode && { frequency: freqCode }),
+          ...(data.domain && { domain: data.domain }),
+          ...(data.n_series != null && { nSeries: data.n_series }),
+          ...(data.has_seasonality != null && { hasSeasonality: data.has_seasonality }),
+          ...(data.is_regular != null && { isRegular: data.is_regular }),
+        });
+        // Сервер уже обновил сессию внутри /upload (upload_common.py) --
+        // синхронизируем клиентский стейт stages/lastActiveStage тоже.
+        await refreshSession();
+        toast.success("Файл загружен успешно!");
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Неизвестная ошибка загрузки";
+        setUploadError(message);
+        toast.error(`Ошибка: ${message}`);
+        addLogEntry("ERROR", `Ошибка загрузки файла: ${message}`);
+      } finally {
+        setUploading(false);
+      }
+    },
+    [setActiveDataset, refreshSession, addLogEntry]
+  );
+
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const file = acceptedFiles[0];
+      if (!file) return;
+      setFileName(file.name);
+      doUpload(file);
+    },
+    [doUpload]
+  );
+
+  const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
+    onDrop,
+    multiple: false,
+    maxSize: 50 * 1024 * 1024, // 50MB — как в прежнем DataUploadForm.tsx
+    accept: {
+      "text/csv": [".csv"],
+      "application/vnd.ms-excel": [".xls"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+      "application/json": [".json"],
+    },
+  });
+
+  const rejectedFiles = fileRejections.map(({ file, errors }) => ({
+    file,
+    errors: errors.map((e) => {
+      if (e.code === "file-too-large") return "Файл слишком большой (макс. 50MB)";
+      if (e.code === "file-invalid-type") return "Неподдерживаемый формат";
+      return e.message;
+    }),
+  }));
+
+  const handleReset = () => {
+    setUploadData(null);
+    setUploadError(null);
+    setDetection(null);
+    setFileName(null);
   };
 
   const handleApplyOverride = () => {
-    // ЗАМЕНИТЬ: PATCH /v1/internal/datasets/{id}/column-mapping
-    // Пока -- просто перерисовка с теми же данными.
-    setDetection({ ...detection });
+    // ЗАМЕНИТЬ: PATCH /v1/internal/datasets/{id}/column-mapping -- эндпоинт
+    // ещё не реализован на бэкенде (см. комментарий в шапке файла).
+    // Пока -- локальное подтверждение выбора, без вызова API.
+    if (detection) setDetection({ ...detection });
+    addLogEntry("INFO", "Подтверждение структуры сохранено (пока только локально — см. TODO в коде)");
   };
 
   return (
     <div className="space-y-6">
       {/* Заголовок страницы */}
-      <header className="flex items-end justify-between">
+      <header className="flex items-end justify-between flex-wrap gap-2">
         <div>
           <h1 className="text-2xl font-semibold text-neutral-900">Загрузка данных</h1>
           <p className="text-sm text-neutral-600 mt-1 max-w-3xl">
@@ -254,6 +350,10 @@ export function TsAnalysisUpload() {
           {isUploaded ? (
             <span className="text-green-600 inline-flex items-center gap-1">
               <Check size={12} aria-hidden="true" /> Файл загружен
+            </span>
+          ) : hydrating ? (
+            <span className="text-neutral-400 inline-flex items-center gap-1">
+              <Loader2 size={12} className="animate-spin" aria-hidden="true" /> Восстанавливаем сессию…
             </span>
           ) : (
             <span className="text-neutral-400">Ожидание файла</span>
@@ -271,7 +371,7 @@ export function TsAnalysisUpload() {
           {isUploaded && (
             <button
               type="button"
-              onClick={() => setIsUploaded(false)}
+              onClick={handleReset}
               className="text-xs text-neutral-500 hover:text-neutral-700 inline-flex items-center gap-1"
             >
               <RefreshCw size={12} aria-hidden="true" /> Сменить файл
@@ -303,26 +403,38 @@ export function TsAnalysisUpload() {
             </div>
 
             {source === "file" ? (
-              <div className="mt-4 border-2 border-dashed border-neutral-300 rounded-lg p-6 text-center bg-neutral-50">
-                <input
-                  type="file"
-                  id="file-upload-input"
-                  className="hidden"
-                  onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)}
-                />
-                <label
-                  htmlFor="file-upload-input"
-                  className="cursor-pointer text-sm text-neutral-600 inline-flex flex-col items-center gap-2"
-                >
-                  <Upload size={24} className="text-neutral-400" aria-hidden="true" />
-                  {fileName ? (
-                    <span>
-                      Выбрао: <strong className="text-neutral-900">{fileName}</strong>
-                    </span>
+              <div
+                {...getRootProps()}
+                className={`mt-4 border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+                  isDragActive ? "border-brand bg-brand-light" : "border-neutral-300 bg-neutral-50"
+                }`}
+              >
+                <input {...getInputProps()} data-testid="dropzone-input" />
+                <div className="text-sm text-neutral-600 inline-flex flex-col items-center gap-2">
+                  {uploading ? (
+                    <>
+                      <Loader2 size={24} className="text-brand animate-spin" aria-hidden="true" />
+                      <span>Загружаем и анализируем файл…</span>
+                    </>
                   ) : (
-                    <span>Перетащите файл сюда или нажмите для выбора</span>
+                    <>
+                      <Upload size={24} className="text-neutral-400" aria-hidden="true" />
+                      <span>
+                        {isDragActive
+                          ? "Отпустите файл здесь…"
+                          : "Перетащите файл сюда или нажмите для выбора"}
+                      </span>
+                      <span className="text-xs text-neutral-500">
+                        Поддерживаемые форматы: .csv, .xlsx, .xls, .json (макс. 50MB)
+                      </span>
+                      {fileName && (
+                        <span className="text-green-600">
+                          Выбран: <strong>{fileName}</strong>
+                        </span>
+                      )}
+                    </>
                   )}
-                </label>
+                </div>
               </div>
             ) : (
               <p className="text-sm text-neutral-500 mb-4 mt-4 bg-neutral-50 rounded p-4">
@@ -330,591 +442,497 @@ export function TsAnalysisUpload() {
               </p>
             )}
 
-            <Button onClick={handleMockUpload} className="mt-4">
-              Загрузить файл
-            </Button>
+            {rejectedFiles.length > 0 && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <h3 className="font-medium text-red-700 mb-1 text-sm">Ошибки:</h3>
+                <ul className="list-disc list-inside text-sm text-red-600">
+                  {rejectedFiles.map(({ file, errors }) => (
+                    <li key={file.name}>
+                      {file.name}: {errors.join(", ")}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {uploadError && (
+              <div className="mt-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-800 flex items-start gap-2">
+                <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
+                <span>{uploadError}</span>
+              </div>
+            )}
           </>
         ) : (
           <div className="mt-4 border border-neutral-200 rounded-lg p-4 text-sm bg-neutral-50">
-            <div className="flex items-center gap-2 text-neutral-700">
+            <div className="flex items-center gap-2 text-neutral-700 flex-wrap">
               <FileText size={16} className="text-brand" aria-hidden="true" />
-              <strong className="text-neutral-900">{fileName}</strong>
+              <strong className="text-neutral-900">{uploadData!.name}</strong>
               <span className="text-neutral-400">·</span>
-              <span>{memoryMb} MB</span>
+              <span>{uploadData!.size_label ?? "—"}</span>
               <span className="text-neutral-400">·</span>
               <span>загружен успешно</span>
               <span className="text-neutral-400">·</span>
-              <span>{formatNum(totalRows)} строк</span>
+              <span>{formatNum(uploadData!.rows)} строк</span>
               <span className="text-neutral-400">·</span>
-              <span>{totalCols} колонок</span>
+              <span>{uploadData!.columns} колонок</span>
             </div>
           </div>
         )}
+      </section>
 
-        {/* Предупреждения парсинга */}
-        {isUploaded && MOCK_PARSE_WARNINGS.length > 0 && (
-          <div className="mt-3 space-y-2">
-            {MOCK_PARSE_WARNINGS.map((w, i) => (
-              <div
-                key={i}
-                className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 flex items-start gap-2"
-              >
-                <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
-                <span>
-                  <strong>Предупреждение парсинга:</strong> {w.message}
+      {isUploaded && detection && (
+        <>
+          {/* ════════ Секция 2: Подтверждение автоопределения ════════ */}
+          <section className="bg-white rounded-lg border border-neutral-200 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="font-semibold text-neutral-900">Подтверждение автоопределения</h2>
+                <p className="text-xs text-neutral-500 mt-0.5 max-w-2xl">
+                  Эвристика определила структуру датасета по типам колонок. Проверьте и поправьте,
+                  если ошиблась — это определит весь дальнейший анализ.
+                </p>
+              </div>
+              <span className="text-xs bg-neutral-100 text-neutral-500 px-2 py-1 rounded font-mono hidden md:inline-block">
+                клиентская эвристика · бэкенд-детектор — TODO
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Колонка даты */}
+              <div className="border border-neutral-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide inline-flex items-center gap-1.5">
+                    <Calendar size={12} aria-hidden="true" /> Колонка даты
+                  </span>
+                  <span className={`text-xs px-2 py-0.5 rounded ${confidenceColor(detection.dateCol.confidence)}`}>
+                    {detection.dateCol.confidence}%
+                  </span>
+                </div>
+                <select
+                  value={detection.dateCol.selected}
+                  onChange={(e) =>
+                    setDetection({ ...detection, dateCol: { ...detection.dateCol, selected: e.target.value } })
+                  }
+                  className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
+                >
+                  {detection.dateCol.candidates.map((c) => (
+                    <option key={c.name} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                  <option value="(не использовать)">(не использовать)</option>
+                </select>
+                <details className="mt-2 text-xs text-neutral-500">
+                  <summary className="cursor-pointer inline-flex items-center gap-1">
+                    <ChevronDown size={10} aria-hidden="true" /> кандидаты ({detection.dateCol.candidates.length})
+                  </summary>
+                  <ul className="mt-1 space-y-0.5">
+                    {detection.dateCol.candidates.map((c) => (
+                      <li key={c.name}>
+                        • {c.name} — score {c.score.toFixed(2)}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </div>
+
+              {/* Группирующая колонка */}
+              <div className="border border-neutral-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide inline-flex items-center gap-1.5">
+                    <Tag size={12} aria-hidden="true" /> Группирующая колонка
+                  </span>
+                  <span className={`text-xs px-2 py-0.5 rounded ${confidenceColor(detection.entityCol.confidence)}`}>
+                    {detection.entityCol.confidence}%
+                  </span>
+                </div>
+                <select
+                  value={detection.entityCol.selected}
+                  onChange={(e) =>
+                    setDetection({ ...detection, entityCol: { ...detection.entityCol, selected: e.target.value } })
+                  }
+                  className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
+                >
+                  {detection.entityCol.candidates.map((c) => (
+                    <option key={c.name} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                  <option value="(нет)">(нет)</option>
+                </select>
+                <details className="mt-2 text-xs text-neutral-500">
+                  <summary className="cursor-pointer inline-flex items-center gap-1">
+                    <ChevronDown size={10} aria-hidden="true" /> кандидаты ({detection.entityCol.candidates.length})
+                  </summary>
+                  <ul className="mt-1 space-y-0.5">
+                    {detection.entityCol.candidates.map((c) => (
+                      <li key={c.name}>
+                        • {c.name} — score {c.score.toFixed(2)}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </div>
+
+              {/* Частота */}
+              <div className="border border-neutral-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide inline-flex items-center gap-1.5">
+                    <Clock size={12} aria-hidden="true" /> Частота ряда
+                  </span>
+                  <span className={`text-xs px-2 py-0.5 rounded ${confidenceColor(detection.freq.confidence)}`}>
+                    {detection.freq.confidence}%
+                  </span>
+                </div>
+                <select
+                  value={detection.freq.selected}
+                  onChange={(e) => setDetection({ ...detection, freq: { ...detection.freq, selected: e.target.value } })}
+                  className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
+                >
+                  {detection.freq.options.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs text-neutral-500">Оценено по {formatNum(uploadData!.rows)} строкам.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between flex-wrap gap-3">
+              <p className="text-xs text-neutral-500 max-w-2xl">
+                Override сохраняется серверно (in-memory на этапе прототипа, Redis+TTL в продакшене) —
+                переживёт F5 и доступен через API. Применение override-эндпоинта — TODO (см. шапку файла).
+              </p>
+              <Button onClick={handleApplyOverride}>Применить и пересчитать превью</Button>
+            </div>
+          </section>
+
+          {/* ════════ Секция 3: Техническая информация ════════ */}
+          <section className="bg-white rounded-lg border border-neutral-200 p-5">
+            <details open>
+              <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
+                <span className="inline-flex items-center gap-2">
+                  <Database size={18} className="text-brand" aria-hidden="true" />
+                  Техническая информация о датасете
                 </span>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* ════════ Секция 2: Подтверждение автоопределения (новое) ════════ */}
-      <section className="bg-white rounded-lg border border-neutral-200 p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="font-semibold text-neutral-900">Подтверждение автоопределения</h2>
-            <p className="text-xs text-neutral-500 mt-0.5 max-w-2xl">
-              Эвристики определили структуру датасета. Проверьте и поправьте, если ошиблись —
-              это определит весь дальнейший анализ.
-            </p>
-          </div>
-          <span className="text-xs bg-brand-light text-brand px-2 py-1 rounded font-mono hidden md:inline-block">
-            PATCH /v1/internal/datasets/{"{id}"}/column-mapping
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Колонка даты */}
-          <div className="border border-neutral-200 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide inline-flex items-center gap-1.5">
-                <Calendar size={12} aria-hidden="true" /> Колонка даты
-              </span>
-              <span className={`text-xs px-2 py-0.5 rounded ${confidenceColor(detection.dateCol.confidence)}`}>
-                {detection.dateCol.confidence}%
-              </span>
-            </div>
-            <select
-              value={detection.dateCol.selected}
-              onChange={(e) =>
-                setDetection({
-                  ...detection,
-                  dateCol: { ...detection.dateCol, selected: e.target.value },
-                })
-              }
-              className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
-            >
-              {detection.dateCol.candidates.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-              <option value="(не использовать)">(не использовать)</option>
-            </select>
-            <details className="mt-2 text-xs text-neutral-500">
-              <summary className="cursor-pointer inline-flex items-center gap-1">
-                <ChevronDown size={10} aria-hidden="true" /> кандидаты ({detection.dateCol.candidates.length})
+                <span className="text-xs text-neutral-500 font-normal">4 метрики + таблица колонок</span>
               </summary>
-              <ul className="mt-1 space-y-0.5">
-                {detection.dateCol.candidates.map((c) => (
-                  <li key={c.name}>
-                    • {c.name} — score {c.score.toFixed(2)}
-                  </li>
-                ))}
-              </ul>
-            </details>
-          </div>
 
-          {/* Группирующая колонка */}
-          <div className="border border-neutral-200 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide inline-flex items-center gap-1.5">
-                <Tag size={12} aria-hidden="true" /> Группирующая колонка
-              </span>
-              <span className={`text-xs px-2 py-0.5 rounded ${confidenceColor(detection.entityCol.confidence)}`}>
-                {detection.entityCol.confidence}%
-              </span>
-            </div>
-            <select
-              value={detection.entityCol.selected}
-              onChange={(e) =>
-                setDetection({
-                  ...detection,
-                  entityCol: { ...detection.entityCol, selected: e.target.value },
-                })
-              }
-              className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
-            >
-              {detection.entityCol.candidates.map((c) => (
-                <option key={c.name} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
-              <option value="(нет)">(нет)</option>
-            </select>
-            <details className="mt-2 text-xs text-neutral-500">
-              <summary className="cursor-pointer inline-flex items-center gap-1">
-                <ChevronDown size={10} aria-hidden="true" /> кандидаты ({detection.entityCol.candidates.length})
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                <div className="border border-neutral-200 rounded-lg p-3">
+                  <div className="text-xs text-neutral-500">Всего строк</div>
+                  <div className="text-xl font-semibold text-neutral-900">{formatNum(uploadData!.rows)}</div>
+                </div>
+                <div className="border border-neutral-200 rounded-lg p-3">
+                  <div className="text-xs text-neutral-500">Всего колонок</div>
+                  <div className="text-xl font-semibold text-neutral-900">{uploadData!.columns}</div>
+                </div>
+                <div className="border border-neutral-200 rounded-lg p-3">
+                  <div className="text-xs text-neutral-500">Размер файла</div>
+                  <div className="text-xl font-semibold text-neutral-900">{uploadData!.size_label ?? "—"}</div>
+                </div>
+                <div className="border border-neutral-200 rounded-lg p-3">
+                  <div className="text-xs text-neutral-500">Числовых / Прочих</div>
+                  <div className="text-xl font-semibold text-neutral-900">
+                    {numericCount} / {textCount}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-neutral-50 text-xs text-neutral-500 uppercase">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-medium">Колонка</th>
+                      <th className="text-left px-3 py-2 font-medium">Тип</th>
+                      <th className="text-right px-3 py-2 font-medium">Не пусто</th>
+                      <th className="text-left px-3 py-2 font-medium">Пропуски</th>
+                      <th className="text-right px-3 py-2 font-medium">Уникальных</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100">
+                    {columnsInfo.map((col) => (
+                      <tr key={col.name}>
+                        <td className="px-3 py-2 font-medium">{col.name}</td>
+                        <td className="px-3 py-2 text-neutral-600">
+                          <span className="inline-flex items-center gap-1.5">
+                            <span
+                              className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold ${
+                                col.type_icon === "numeric"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : col.type_icon === "datetime"
+                                  ? "bg-purple-100 text-purple-700"
+                                  : col.type_icon === "categorical"
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-neutral-200 text-neutral-600"
+                              }`}
+                            >
+                              {TYPE_ICON[col.type_icon]}
+                            </span>
+                            {col.dtype}
+                          </span>
+                        </td>
+                        <td className="text-right px-3 py-2">{formatNum(col.non_null)}</td>
+                        <td className="px-3 py-2">
+                          {col.nulls > 0 ? (
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 bg-neutral-200 rounded-full h-1.5">
+                                <div
+                                  className="bg-amber-500 h-1.5 rounded-full"
+                                  style={{ width: `${(col.nulls / uploadData!.rows) * 100}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-neutral-600">{formatNum(col.nulls)}</span>
+                            </div>
+                          ) : (
+                            <span className="text-neutral-400">—</span>
+                          )}
+                        </td>
+                        <td className="text-right px-3 py-2">{formatNum(col.unique)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-3 text-xs text-neutral-500">Датасет загружен: {uploadData!.name}</p>
+            </details>
+          </section>
+
+          {/* ════════ Секция 4: Превью датасета ════════ */}
+          <section className="bg-white rounded-lg border border-neutral-200 p-5">
+            <details>
+              <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
+                <span className="inline-flex items-center gap-2">
+                  <Eye size={18} className="text-brand" aria-hidden="true" />
+                  Превью датасета
+                </span>
+                <span className="text-xs text-neutral-500 font-normal">первые и последние 5 строк</span>
               </summary>
-              <ul className="mt-1 space-y-0.5">
-                {detection.entityCol.candidates.map((c) => (
-                  <li key={c.name}>
-                    • {c.name} — score {c.score.toFixed(2)}
-                  </li>
-                ))}
-              </ul>
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-neutral-50 text-neutral-500 uppercase">
+                    <tr>
+                      {uploadData!.preview.head[0]?.map((colName, i) => (
+                        <th key={i} className="text-left px-2 py-1.5">
+                          {colName}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-100">
+                    {uploadData!.preview.head.slice(1).map((row, i) => (
+                      <tr key={`head-${i}`}>
+                        {row.map((cell, j) => (
+                          <td key={j} className="px-2 py-1.5">
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                    <tr className="text-neutral-400">
+                      <td colSpan={uploadData!.preview.head[0]?.length ?? 1} className="px-2 py-1.5 text-center">
+                        …
+                      </td>
+                    </tr>
+                    {uploadData!.preview.tail.map((row, i) => (
+                      <tr key={`tail-${i}`}>
+                        {row.map((cell, j) => (
+                          <td key={j} className="px-2 py-1.5">
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </details>
-          </div>
+          </section>
 
-          {/* Частота */}
-          <div className="border border-neutral-200 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-neutral-500 uppercase tracking-wide inline-flex items-center gap-1.5">
-                <Clock size={12} aria-hidden="true" /> Частота ряда
-              </span>
-              <span className={`text-xs px-2 py-0.5 rounded ${confidenceColor(detection.freq.confidence)}`}>
-                {detection.freq.confidence}%
-              </span>
-            </div>
-            <select
-              value={detection.freq.selected}
-              onChange={(e) =>
-                setDetection({
-                  ...detection,
-                  freq: { ...detection.freq, selected: e.target.value },
-                })
-              }
-              className="w-full border border-neutral-300 rounded px-2 py-1.5 text-sm font-medium"
-            >
-              {detection.freq.options.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
-            <p className="mt-2 text-xs text-neutral-500">
-              Определено по {formatNum(totalRows)} точкам.{" "}
-              <a href="#" className="underline">
-                показать первые 5 наблюдений →
-              </a>
-            </p>
-          </div>
-        </div>
+          {/* ════════ Секция 5: Визуализация распределения ════════ */}
+          {numericCols.length > 0 && (
+            <section className="bg-white rounded-lg border border-neutral-200 p-5">
+              <details open>
+                <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
+                  <span className="inline-flex items-center gap-2">
+                    <BarChart3 size={18} className="text-brand" aria-hidden="true" />
+                    Визуализация распределения данных
+                  </span>
+                  <span className="text-xs text-neutral-500 font-normal hidden md:inline">
+                    макет — реальный чартинг ещё не подключён
+                  </span>
+                </summary>
+                <p className="text-sm text-neutral-600 mt-2 max-w-3xl">
+                  Интерактивный анализ распределения числовых признаков: точечный график, гистограмма, KDE
+                  и статистические метрики для оценки формы распределения, асимметрии и выбросов.
+                </p>
 
-        <div className="mt-4 flex items-center justify-between flex-wrap gap-3">
-          <p className="text-xs text-neutral-500 max-w-2xl">
-            Override сохраняется серверно (in-memory на этапе прототипа, Redis+TTL в продакшене) —
-            переживёт F5 и доступен через API.
-          </p>
-          <Button onClick={handleApplyOverride}>Применить и пересчитать превью</Button>
-        </div>
-      </section>
+                <div className="mt-4 flex items-center gap-3">
+                  <label className="text-sm text-neutral-700">Выберите числовую колонку:</label>
+                  <select
+                    value={selectedDistCol ?? numericCols[0]}
+                    onChange={(e) => setSelectedDistCol(e.target.value)}
+                    className="border border-neutral-300 rounded px-3 py-1.5 text-sm font-medium"
+                  >
+                    {numericCols.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-      {/* ════════ Секция 3: Техническая информация ════════ */}
-      <section className="bg-white rounded-lg border border-neutral-200 p-5">
-        <details open>
-          <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
-            <span className="inline-flex items-center gap-2">
-              <Database size={18} className="text-brand" aria-hidden="true" />
-              Техническая информация о датасете
-            </span>
-            <span className="text-xs text-neutral-500 font-normal">4 метрики + таблица колонок</span>
-          </summary>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2 inline-flex items-center gap-1.5">
+                      <ScatterChart size={14} className="text-neutral-500" aria-hidden="true" />
+                      Точечный график
+                    </h4>
+                    <div className="h-[300px] border border-neutral-200 rounded flex items-center justify-center text-xs text-neutral-500 bg-neutral-50">
+                      [ Plotly scatter: x=index, y={selectedDistCol}, opacity=0.6 ]
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2 inline-flex items-center gap-1.5">
+                      <BarChart3 size={14} className="text-neutral-500" aria-hidden="true" />
+                      Гистограмма
+                    </h4>
+                    <div className="h-[300px] border border-neutral-200 rounded flex flex-col items-center justify-center text-xs text-neutral-500 gap-1 bg-neutral-50">
+                      [ Plotly histogram, nbins=30 ]
+                      <span className="text-neutral-400">+ KDE + vlines: Mean / Median / Q1 / Q3</span>
+                    </div>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold mb-2 inline-flex items-center gap-1.5">
+                      <Activity size={14} className="text-neutral-500" aria-hidden="true" />
+                      KDE (плотность)
+                    </h4>
+                    <div className="h-[300px] border border-neutral-200 rounded flex flex-col items-center justify-center text-xs text-neutral-500 gap-1 bg-neutral-50">
+                      [ Plotly scatter: KDE curve, fill=tozeroy ]
+                    </div>
+                  </div>
+                </div>
 
-          {/* 4 KPI */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-            <div className="border border-neutral-200 rounded-lg p-3">
-              <div className="text-xs text-neutral-500">Всего строк</div>
-              <div className="text-xl font-semibold text-neutral-900">{formatNum(totalRows)}</div>
-            </div>
-            <div className="border border-neutral-200 rounded-lg p-3">
-              <div className="text-xs text-neutral-500">Всего колонок</div>
-              <div className="text-xl font-semibold text-neutral-900">{totalCols}</div>
-            </div>
-            <div className="border border-neutral-200 rounded-lg p-3">
-              <div className="text-xs text-neutral-500">Память</div>
-              <div className="text-xl font-semibold text-neutral-900">{memoryMb.toFixed(2)} MB</div>
-            </div>
-            <div className="border border-neutral-200 rounded-lg p-3">
-              <div className="text-xs text-neutral-500">Числовых / Текстовых</div>
-              <div className="text-xl font-semibold text-neutral-900">
-                {numericCount} / {textCount}
-              </div>
-            </div>
-          </div>
+                <p className="mt-4 text-xs text-neutral-500 bg-neutral-50 rounded p-3">
+                  Реальные статистики распределения (mean/median/skew/kurtosis/IQR) и графики требуют
+                  отдельного backend-эндпоинта — сейчас на бэкенде считаются только счётчики качества
+                  (missing/outliers/duplicates), не полное описание распределения. TODO.
+                </p>
+              </details>
+            </section>
+          )}
 
-          {/* Таблица колонок */}
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-neutral-50 text-xs text-neutral-500 uppercase">
-                <tr>
-                  <th className="text-left px-3 py-2 font-medium">Колонка</th>
-                  <th className="text-left px-3 py-2 font-medium">Тип</th>
-                  <th className="text-right px-3 py-2 font-medium">Не пусто</th>
-                  <th className="text-left px-3 py-2 font-medium">Пропуски</th>
-                  <th className="text-right px-3 py-2 font-medium">Уникальных</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {MOCK_COLUMNS.map((col) => (
-                  <tr key={col.name}>
-                    <td className="px-3 py-2 font-medium">{col.name}</td>
-                    <td className="px-3 py-2 text-neutral-600">
-                      <span className="inline-flex items-center gap-1.5">
-                        <span
-                          className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold ${
-                            col.typeIcon === "numeric"
-                              ? "bg-blue-100 text-blue-700"
-                              : col.typeIcon === "datetime"
-                              ? "bg-purple-100 text-purple-700"
-                              : col.typeIcon === "categorical"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-neutral-200 text-neutral-600"
-                          }`}
-                        >
-                          {TYPE_ICON[col.typeIcon]}
-                        </span>
-                        {col.dtype}
-                      </span>
-                    </td>
-                    <td className="text-right px-3 py-2">{formatNum(col.nonNull)}</td>
-                    <td className="px-3 py-2">
-                      {col.nulls > 0 ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-24 bg-neutral-200 rounded-full h-1.5">
-                            <div
-                              className="bg-amber-500 h-1.5 rounded-full"
-                              style={{ width: `${(col.nulls / totalRows) * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-neutral-600">{formatNum(col.nulls)}</span>
-                        </div>
-                      ) : (
-                        <span className="text-neutral-400">—</span>
-                      )}
-                    </td>
-                    <td className="text-right px-3 py-2">{formatNum(col.unique)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="mt-3 text-xs text-neutral-500">Датасет загружен: {fileName}</p>
-        </details>
-      </section>
-
-      {/* ════════ Секция 4: Превью датасета ════════ */}
-      <section className="bg-white rounded-lg border border-neutral-200 p-5">
-        <details>
-          <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
-            <span className="inline-flex items-center gap-2">
-              <Eye size={18} className="text-brand" aria-hidden="true" />
-              Превью датасета
-            </span>
-            <span className="text-xs text-neutral-500 font-normal">первые 10 строк</span>
-          </summary>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-neutral-50 text-neutral-500 uppercase">
-                <tr>
-                  <th className="text-left px-2 py-1.5">Order Date</th>
-                  <th className="text-left px-2 py-1.5">Country</th>
-                  <th className="text-left px-2 py-1.5">Region</th>
-                  <th className="text-right px-2 py-1.5">Sales</th>
-                  <th className="text-right px-2 py-1.5">Profit</th>
-                  <th className="text-left px-2 py-1.5">Category</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-neutral-100">
-                {PREVIEW_ROWS.map((row, i) => (
-                  <tr key={i}>
-                    <td className="px-2 py-1.5">{row.OrderDate}</td>
-                    <td className="px-2 py-1.5">{row.Country}</td>
-                    <td className="px-2 py-1.5">{row.Region}</td>
-                    <td className="text-right px-2 py-1.5">{row.Sales.toFixed(2)}</td>
-                    <td className={'text-right px-2 py-1.5 ${row.Profit < 0 ? "text-red-600" : ""}'}>
-                      {row.Profit.toFixed(2)}
-                    </td>
-                    <td className="px-2 py-1.5">{row.Category}</td>
-                  </tr>
-                ))}
-                <tr className="text-neutral-400">
-                  <td colSpan={6} className="px-2 py-1.5 text-center">
-                    ... ещё 5 строк
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </details>
-      </section>
-
-      {/* ════════ Секция 5: Визуализация распределения (БЕЗ СОКРАЩЕНИЙ) ════════ */}
-      <section className="bg-white rounded-lg border border-neutral-200 p-5">
-        <details open>
-          <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
-            <span className="inline-flex items-center gap-2">
-              <BarChart3 size={18} className="text-brand" aria-hidden="true" />
-              Визуализация распределения данных
-            </span>
-            <span className="text-xs text-neutral-500 font-normal hidden md:inline">
-              точечный · гистограмма+KDE » KDE-плотность · статистики
-            </span>
-          </summary>
-          <p className="text-sm text-neutral-600 mt-2 max-w-3xl">
-            Интерактивный анализ распределения числовых признаков: точечный график, гистограмма, KDE
-            и статистические метрики для оценки формы распределения, асимметрии и выбросов.
-          </p>
-
-          {/* Селектор колонки */}
-          <div className="mt-4 flex items-center gap-3">
-            <label className="text-sm text-neutral-700">Выберите числовую колонку:</label>
-            <select
-              value={selectedDistCol}
-              onChange={(e) => setSelectedDistCol(e.target.value)}
-              className="border border-neutral-300 rounded px-3 py-1.5 text-sm font-medium"
-            >
-              {NUMERIC_COLS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* 3 колонки графиков */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            {/* col1: Точечный график */}
-            <div>
-              <h4 className="text-sm font-semibold mb-2 inline-flex items-center gap-1.5">
-                <ScatterChart size={14} className="text-neutral-500" aria-hidden="true" />
-                Точечный график
-              </h4>
-              <div className="h-[400px] border border-neutral-200 rounded flex items-center justify-center text-xs text-neutral-500 bg-neutral-50">
-                [ Plotly scatter: x=index, y={selectedDistCol}, opacity=0.6, marker_size=6 ]
-              </div>
-            </div>
-
-            {/* col2: Гистограмма + KDE + vlines */}
-            <div>
-              <h4 className="text-sm font-semibold mb-2 inline-flex items-center gap-1.5">
-                <BarChart3 size={14} className="text-neutral-500" aria-hidden="true" />
-                Гистограмма
-              </h4>
-              <div className="h-[400px] border border-neutral-200 rounded flex flex-col items-center justify-center text-xs text-neutral-500 gap-1 bg-neutral-50">
-                [ Plotly histogram, nbins=30 ]
-                <span className="text-neutral-400">+ KDE (красный) + vlines: Mean / Median / Q1 / Q3</span>
-              </div>
-            </div>
-
-            {/* col3: KDE-плотность */}
-            <div>
-              <h4 className="text-sm font-semibold mb-2 inline-flex items-center gap-1.5">
-                <Activity size={14} className="text-neutral-500" aria-hidden="true" />
-                KDE (плотность)
-              </h4>
-              <div className="h-[400px] border border-neutral-200 rounded flex flex-col items-center justify-center text-xs text-neutral-500 gap-1 bg-neutral-50">
-                [ Plotly scatter: KDE curve, fill=tozeroy ]
-                <span className="text-neutral-400">+ vlines: Mean / Median</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Статистики распределения */}
-          <div className="mt-5 border-t border-neutral-100 pt-4">
-            <h4 className="font-semibold text-neutral-900 mb-3">Статистики распределения</h4>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-neutral-600">Тип распределения:</span>
-                <span className="font-mono text-xs">{MOCK_DIST_STATS.type}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-600">Mean (среднее):</span>
-                <span className="font-mono">{MOCK_DIST_STATS.mean.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-600">Median (медиана):</span>
-                <span className="font-mono">{MOCK_DIST_STATS.median.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-600">Std (отклонение):</span>
-                <span className="font-mono">{MOCK_DIST_STATS.std.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-600">Skewness (асимметрия):</span>
-                <span className="font-mono">{MOCK_DIST_STATS.skew.toFixed(3)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-600">Kurtosis (эксцесс):</span>
-                <span className="font-mono">{MOCK_DIST_STATS.kurt.toFixed(3)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-600">Q1 (25-й перцентиль):</span>
-                <span className="font-mono">{MOCK_DIST_STATS.q1.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-600">Q3 (75-й перцентиль):</span>
-                <span className="font-mono">{MOCK_DIST_STATS.q3.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-600">IQR (межквартильный):</span>
-                <span className="font-mono">{MOCK_DIST_STATS.iqr.toFixed(2)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Справка по методу */}
-          <details className="mt-4">
-            <summary className="text-sm text-brand cursor-pointer inline-flex items-center gap-1">
-              <Info size={14} aria-hidden="true" /> Справка по описательным статистикам
-            </summary>
-            <div className="mt-2 text-xs text-neutral-600 bg-neutral-50 rounded p-3 space-y-2">
-              <p>
-                <strong>Назначение:</strong> Визуальная и статистическая оценка распределения данных.
+          {/* ════════ Секция 6: Контекст активных фильтров ════════ */}
+          <section className="bg-white rounded-lg border border-neutral-200 p-5">
+            <details>
+              <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
+                <span className="inline-flex items-center gap-2">
+                  <Filter size={18} className="text-brand" aria-hidden="true" />
+                  Контекст активных фильтров
+                </span>
+                <span className="text-xs text-neutral-500 font-normal hidden md:inline">
+                  лёгкая строка, без построителя графиков
+                </span>
+              </summary>
+              <p className="mt-3 text-sm text-neutral-600 bg-brand-light rounded px-3 py-2">
+                Активно: <strong>{formatNum(uploadData!.rows)}</strong> записей · без фильтров
               </p>
-              <p>
-                <strong>Методы:</strong> точечный график » гистограмма · KDE (гауссовская оценка плотности)
+              <p className="mt-2 text-xs text-neutral-500">
+                Построитель 8 типов графиков (Bar/Line/Area/Scatter/Box/Hist/Hist+KDE/Funnel) и
+                переключатель режима «Временные ряды vs Общий» перенесены в модуль{" "}
+                <Link href="/eda" className="text-brand underline">
+                  Разведочный EDA
+                </Link>{" "}
+                — это содержательный анализ, не проверка загрузки.
               </p>
-              <p>
-                <strong>Интерпретация:</strong> Skewness → 0 = симметрия. Kurtosis → 3 = нормальность.
-                IQR — устойчивая мера разброса.
-              </p>
-            </div>
-          </details>
-        </details>
-      </section>
+            </details>
+          </section>
 
-      {/* ════════ Секция 6: Контекст активных фильтров ════════ */}
-      <section className="bg-white rounded-lg border border-neutral-200 p-5">
-        <details>
-          <summary className="font-semibold text-neutral-900 cursor-pointer flex items-center justify-between">
-            <span className="inline-flex items-center gap-2">
-              <Filter size={18} className="text-brand" aria-hidden="true" />
-              Контекст активных фильтров
-            </span>
-            <span className="text-xs text-neutral-500 font-normal hidden md:inline">
-              лёгкая строка, без построителя графиков
-            </span>
-          </summary>
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-xs text-neutral-500 uppercase">Категория 1</label>
-              <select className="w-full mt-1 border border-neutral-300 rounded px-2 py-1.5 text-sm">
-                <option>Country</option>
-                <option>(нет)</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-neutral-500 uppercase">Категория 2</label>
-              <select className="w-full mt-1 border border-neutral-300 rounded px-2 py-1.5 text-sm">
-                <option>Region</option>
-                <option>(нет)</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-neutral-500 uppercase">Года</label>
-              <select className="w-full mt-1 border border-neutral-300 rounded px-2 py-1.5 text-sm">
-                <option>Все</option>
-                <option>2023</option>
-                <option>2024</option>
-              </select>
-            </div>
-          </div>
-          <p className="mt-3 text-sm text-neutral-600 bg-brand-light rounded px-3 py-2">
-            Активно: <strong>{formatNum(totalRows)}</strong> записей · 1 значение (кат.1) · 1 значение
-            (кат.2) · Все года
-          </p>
-          <p className="mt-2 text-xs text-neutral-500">
-            Построитель 8 типов графиков (Bar/Line/Area/Scatter/Box/Hist/Hist+KDE/Funnel) и
-            переключатель режима «Временные ряды vs Общий» перенесены о модуль{" "}
-            <Link href="/eda" className="text-brand underline">
-              Разведочный EDA
-            </Link>{" "}
-            — это содержательный анализ, не проверка загрузки.
-          </p>
-        </details>
-      </section>
+          {/* ════════ Секция 7: Предварительная оценка качества (teaser) ════════ */}
+          {uploadData!.quality && (
+            <section className="bg-white rounded-lg border border-neutral-200 p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="font-semibold text-neutral-900">Предварительная оценка качества</h2>
+                  <p className="text-xs text-neutral-500 mt-0.5">
+                    Только счётчики. Содержательный анализ проблем — в модуле «Валидация».
+                  </p>
+                </div>
+              </div>
 
-      {/* ════════ Секция 7: Предварительная оценка качества (teaser) ════════ */}
-      <section className="bg-white rounded-lg border border-neutral-200 p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="font-semibold text-neutral-900">Предварительная оценка качества</h2>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              Только счётчики. Содержательный анализ проблем — о модуле «Валидация».
-            </p>
-          </div>
-          <span className="text-xs bg-neutral-100 text-neutral-600 px-2 py-1 rounded font-mono hidden md:inline-block">
-            POST /v1/internal/quality-teaser » &lt; 1s
-          </span>
-        </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
+                  <div className="text-xs text-amber-700 uppercase">Колонок с пропусками</div>
+                  <div className="text-2xl font-semibold text-amber-900 mt-1">
+                    {uploadData!.quality.cols_with_missing}
+                  </div>
+                  <div className="text-xs text-amber-700 mt-1">{uploadData!.quality.missing_cols.join(", ")}</div>
+                </div>
+                <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
+                  <div className="text-xs text-amber-700 uppercase">Колонок с потенц. выбросами</div>
+                  <div className="text-2xl font-semibold text-amber-900 mt-1">
+                    {uploadData!.quality.cols_with_outliers}
+                  </div>
+                  <div className="text-xs text-amber-700 mt-1">{uploadData!.quality.outlier_cols.join(", ")}</div>
+                </div>
+                <div className="border border-neutral-200 rounded-lg p-4">
+                  <div className="text-xs text-neutral-500 uppercase">Всего строк</div>
+                  <div className="text-2xl font-semibold text-neutral-900 mt-1">
+                    {formatNum(uploadData!.quality.rows_total)}
+                  </div>
+                </div>
+                <div className="border border-neutral-200 rounded-lg p-4">
+                  <div className="text-xs text-neutral-500 uppercase">Дубликатов</div>
+                  <div className="text-2xl font-semibold text-green-700 mt-1">{uploadData!.quality.duplicates}</div>
+                </div>
+              </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
-            <div className="text-xs text-amber-700 uppercase">Колонок с пропусками</div>
-            <div className="text-2xl font-semibold text-amber-900 mt-1">{MOCK_QUALITY.colsWithMissing}</div>
-            <div className="text-xs text-amber-700 mt-1">{MOCK_QUALITY.missingCols.join(", ")}</div>
-          </div>
-          <div className="border border-amber-200 bg-amber-50 rounded-lg p-4">
-            <div className="text-xs text-amber-700 uppercase">Колонок с потенц. выбросами</div>
-            <div className="text-28l font-semibold text-amber-900 mt-1">{MOCK_QUALITY.colsWithOutliers}</div>
-            <div className="text-xs text-amber-700 mt-1">{MOCK_QUALITY.outlierCols.join(", ")}</div>
-          </div>
-          <div className="border border-neutral-200 rounded-lg p-4">
-            <div className="text-xs text-neutral-500 uppercase">Всего строк</div>
-            <div className="text-2xl font-semibold text-neutral-900 mt-1">
-              {formatNum(MOCK_QUALITY.rowsTotal)}
-            </div>
-          </div>
-          <div className="border border-neutral-200 rounded-lg p-4">
-            <div className="text-xs text-neutral-500 uppercase">Дубликатов</div>
-            <div className="text-2xl font-semibold text-green-700 mt-1">{MOCK_QUALITY.duplicates}</div>
-          </div>
-        </div>
+              <Link
+                href="/validation"
+                className="mt-4 inline-flex items-center gap-2 bg-brand text-white rounded px-4 py-2 text-sm font-medium hover:bg-brand/90 transition-colors"
+              >
+                Перейти к Валидации <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+            </section>
+          )}
 
-        <Link
-          href="/validation"
-          className="mt-4 inline-flex items-center gap-2 bg-brand text-white rounded px-4 py-2 text-sm font-medium hover:bg-brand-dark transition-colors"
-        >
-          Перейти к Валидации <ArrowRight size={16} aria-hidden="true" />
-        </Link>
-      </section>
-
-      {/* ════════ Секция 8: Памятка ════════ */}
-      <section className="bg-brand-light rounded-lg p-5 border border-brand/20">
-        <h2 className="font-semibold text-brand mb-3 inline-flex items-center gap-2">
-          <Info size={18} aria-hidden="true" />
-          Что считается о следующих модулях
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-neutral-700">
-          <div className="bg-white rounded p-3">
-            <div className="font-medium inline-flex items-center gap-1.5">
-              <TableIcon size={14} className="text-brand" aria-hidden="true" />
-              Разведочный EDA
+          {/* ════════ Секция 8: Памятка ════════ */}
+          <section className="bg-brand-light rounded-lg p-5 border border-brand/20">
+            <h2 className="font-semibold text-brand mb-3 inline-flex items-center gap-2">
+              <Info size={18} aria-hidden="true" />
+              Что считается в следующих модулях
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-neutral-700">
+              <div className="bg-white rounded p-3">
+                <div className="font-medium inline-flex items-center gap-1.5">
+                  <TableIcon size={14} className="text-brand" aria-hidden="true" />
+                  Разведочный EDA
+                </div>
+                <ul className="text-xs text-neutral-600 mt-1 space-y-0.5 list-disc list-inside">
+                  <li>Корреляция Пирсона + heatmap</li>
+                  <li>STL-декомпозиция (после предобработки)</li>
+                  <li>ACF / PACF</li>
+                  <li>FFT, Периодограмма, Вейвлет</li>
+                  <li>Построитель 8 типов графиков</li>
+                </ul>
+              </div>
+              <div className="bg-white rounded p-3">
+                <div className="font-medium inline-flex items-center gap-1.5">
+                  <TableIcon size={14} className="text-brand" aria-hidden="true" />
+                  Моделирование
+                </div>
+                <ul className="text-xs text-neutral-600 mt-1 space-y-0.5 list-disc list-inside">
+                  <li>Полный паспорт (13 свойств: ADF/KPSS/Hurst/сезонность/спектр)</li>
+                  <li>Предварительные рекомендации по моделям</li>
+                  <li>KS-тест с фиттингом 3 распределений</li>
+                  <li>Excel-отчёт</li>
+                </ul>
+              </div>
             </div>
-            <ul className="text-xs text-neutral-600 mt-1 space-y-0.5 list-disc list-inside">
-              <li>Корреляция Пирсона + heatmap</li>
-              <li>STL-декомпозиция (после предобработки)</li>
-              <li>ACF / PACF</li>
-              <li>FFT, Периодограмма, Вейвлет</li>
-              <li>Построитель 8 типов графиков</li>
-            </ul>
-          </div>
-          <div className="bg-white rounded p-3">
-            <div className="font-medium inline-flex items-center gap-1.5">
-              <TableIcon size={14} className="text-brand" aria-hidden="true" />
-              Моделирование
-            </div>
-            <ul className="text-xs text-neutral-600 mt-1 space-y-0.5 list-disc list-inside">
-              <li>Полный паспорт (13 свойств: ADF/KPSS/Hurst/сезонность/спектр)</li>
-              <li>Предварительные рекомендации по моделям</li>
-              <li>KS-тест с фиттингом 3 распределений</li>
-              <li>Excel-отчёт</li>
-            </ul>
-          </div>
-        </div>
-      </section>
+          </section>
+        </>
+      )}
     </div>
   );
 }

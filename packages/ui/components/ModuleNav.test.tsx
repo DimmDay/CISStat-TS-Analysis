@@ -2,6 +2,7 @@
 //
 // Тесты для ModuleNav — проверка навигации и выравнивания
 
+import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import { ModuleNav } from "./ModuleNav";
 

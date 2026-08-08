@@ -5,6 +5,7 @@
 // 2. Кнопка «Справка» переключает секцию
 // 3. Expandable description box: chevron, overlay, collapse
 
+import "@testing-library/jest-dom";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { TsAnalysisEDA } from "./TsAnalysisEDA";
 

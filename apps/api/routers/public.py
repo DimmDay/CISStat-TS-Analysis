@@ -3,11 +3,11 @@
 Публичные эндпоинты -- для внешних покупателей (веб-клиент standalone
 и прямая интеграция в сторонние ИТ-системы). Авторизация по API-ключу.
 """
-from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Request, Response
 import pandas as pd
-import uuid
 
 from apps.api.auth import require_api_key
+from apps.api.upload_common import handle_upload
 from apps.api.schemas import (
     PassportRequest, PassportResponse,
     RegularityRequest, RegularityResponse,
@@ -21,7 +21,6 @@ from apps.api.schemas import (
 # этот сервис относительно репозитория CISStat-TS-Analysis:
 from app.core.passport import calculate_ts_passport
 from app.validation.regularity import compute_regularity_violations
-from app.data.file_loader import read_uploaded_file
 from validation.engine import load_rules, validate_dataframe
 
 router = APIRouter(dependencies=[Depends(require_api_key)])
@@ -177,35 +176,8 @@ def update_rules(payload: RulesUpdateRequest):
 
 
 @router.post("/upload", response_model=UploadResponse)
-async def upload_file(file: UploadFile = File(...)):
-    try:
-        # Читаем содержимое файла
-        contents = await file.read()
-        file.file.seek(0)  # Сбрасываем указатель
-
-        # Создаём BytesIO для передачи в file_loader
-        from io import BytesIO
-        file_like = BytesIO(contents)
-        file_like.name = file.filename
-
-        df, ext = read_uploaded_file(file_like)
-
-        # Генерируем preview (все значения конвертируем в строки)
-        head_rows = df.head(5).values.tolist()
-        tail_rows = df.tail(5).values.tolist()
-        # Конвертируем все значения в строки
-        head = [[str(cell) for cell in row] for row in head_rows]
-        tail = [[str(cell) for cell in row] for row in tail_rows]
-        # Добавляем заголовки
-        head = [[str(col) for col in df.columns.tolist()]] + head
-
-        return UploadResponse(
-            dataset_id=str(uuid.uuid4()),
-            name=file.filename,
-            rows=len(df),
-            columns=len(df.columns),
-            preview={"head": head, "tail": tail},
-            error=None
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+async def upload_file(request: Request, response: Response, file: UploadFile = File(...)):
+    # Логика — в upload_common.py (общая с internal.py, не дублируем).
+    # Обновляет AnalysisSession (session_store.py) через cookie сессии,
+    # чтобы Home page знала об активном датасете после F5.
+    return await handle_upload(file, request, response)

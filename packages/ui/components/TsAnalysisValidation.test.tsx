@@ -8,6 +8,7 @@
 // 5. Expandable description: chevron appears on overflow
 // 6. Expand/collapse toggle
 
+import "@testing-library/jest-dom";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { TsAnalysisValidation } from "./TsAnalysisValidation";
 

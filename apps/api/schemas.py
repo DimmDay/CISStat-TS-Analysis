@@ -53,6 +53,28 @@ class PreviewData(BaseModel):
     head: List[List[str]] = Field(..., description="Первые 5 строк (включая заголовки)")
     tail: List[List[str]] = Field(..., description="Последние 5 строк")
 
+class ColumnInfoOut(BaseModel):
+    """Техническая информация по колонке -- секция «Техническая информация»
+    контракта вкладки «Загрузка» (см. TsAnalysisUpload.tsx)."""
+    name: str
+    dtype: str
+    type_icon: str = Field(..., description="numeric | datetime | categorical | text")
+    non_null: int
+    nulls: int
+    unique: int
+
+
+class QualityTeaserOut(BaseModel):
+    """Только счётчики -- содержательный анализ проблем качества живёт в
+    модуле «Валидация», не здесь (по контракту вкладки «Загрузка")."""
+    cols_with_missing: int
+    cols_with_outliers: int
+    rows_total: int
+    duplicates: int
+    missing_cols: List[str]
+    outlier_cols: List[str]
+
+
 class UploadResponse(BaseModel):
     """Ответ на загрузку файла."""
     dataset_id: str = Field(..., description="Уникальный идентификатор датасета")
@@ -60,7 +82,34 @@ class UploadResponse(BaseModel):
     rows: int = Field(..., description="Количество строк")
     columns: int = Field(..., description="Количество колонок")
     preview: PreviewData = Field(..., description="Предпросмотр данных")
+    columns_info: Optional[List[ColumnInfoOut]] = Field(
+        None, description="Тех. информация по каждой колонке (dtype/nulls/unique)"
+    )
+    quality: Optional[QualityTeaserOut] = Field(
+        None, description="Предварительная оценка качества (только счётчики)"
+    )
+    size_label: Optional[str] = Field(None, description="Размер файла (KB/MB) — для UI")
     error: Optional[str] = Field(None, description="Ошибка при загрузке")
+
+
+class DatasetSummaryOut(BaseModel):
+    """Сводка по активному датасету сессии -- для Home page ("Рабочий стол")."""
+    dataset_id: str
+    name: str
+    rows: int
+    columns: int
+    size_label: str
+
+
+class SessionStateResponse(BaseModel):
+    """Состояние AnalysisSession -- см. apps/api/session_store.py.
+    Sessions-aware Home page решает "рабочий стол vs онбординг/маркетинг"
+    по полю has_active_dataset."""
+    has_active_dataset: bool
+    dataset: Optional[DatasetSummaryOut] = None
+    stages: Dict[str, str]
+    last_active_stage: Optional[str] = None
+    updated_at: Optional[str] = None
 
 
 # ── Управление правилами валидации ──
@@ -133,6 +182,10 @@ class RulesUpdateRequest(BaseModel):
 
 
 class RulesUpdateResponse(BaseModel):
+    """Ответ: подтверждение обновления правил."""
+    template_id: str
+    updated_ranges_count: int
+    message: str = "Правила обновлены in-memory. Перезапустите валидацию."
     """Ответ: подтверждение обновления правил."""
     template_id: str
     updated_ranges_count: int
