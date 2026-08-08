@@ -167,3 +167,34 @@ Stage Summary:
 - Полный маппинг activeDataset → DataProfile при автозаполнении
 - Индикатор «из датасета» появляется при наличии activeDataset
 - Файлы: AppShellContext.tsx, TsAnalysisModeling.tsx, TsAnalysisModeling.test.tsx, DataUploadForm.tsx, TsAnalysisUpload.tsx
+
+Task ID: 7
+Agent: main
+Task: Вариант 1: «Запустить бэктест» — API endpoint + UI handler + pipeline progression
+
+Work Log:
+
+Спроектирован API-контракт: BacktestRequest (model_id, profile, train_ratio), BacktestMetrics (mae, rmse, mape, mase, weighted_score), BacktestResponse
+Добавлены схемы в apps/api/schemas.py: BacktestRequest, BacktestMetrics, BacktestResponse
+Реализован POST /v1/models/backtest в routers/models.py:
+Реальный расчёт для 4 baseline-моделей (Naive, Seasonal Naive, Drift, Mean)
+Синтетический ряд: trend(100+0.5t) + seasonality(10sin) + noise(N(0,4))
+Метрики: MAE, RMSE, MAPE(%), MASE (= MAE_model / MAE_naive)
+Weighted score: 0.35MAE_n + 0.25RMSE_n + 0.20MAPE_n + 0.20MASE_n
+Заглушка для нереализованных моделей (ETS, ARIMA, Prophet и др.) с family-penalty
+model_id валидация: _MODEL_INFO dict + fallback на спецификацию, 404 если не найден
+Добавлены типы в modeling.ts: BacktestRequest, BacktestMetrics, BacktestResponse, BACKTEST_WEIGHTS
+Обновлён TsAnalysisModeling.tsx:
+backtestResults/backtestLoading/backtestError — новый стейт
+completedStages: Set<string> — динамическое продвижение пайплайна
+runBacktest(modelId) — fetch POST /v1/models/backtest
+Кнопка «Запустить бэктест» → loading spinner → результат (MAE/RMSE/MAPE/MASE/скоринг)
+Pipeline progression: candidate_pool (auto) → baseline (auto) → backtest (on click) → tuning (active)
+dynamicStages: useMemo на основе completedStages вместо статического PIPELINE_STAGES
+Обновлён packages/ui/index.ts: экспорт BacktestRequest/Metrics/Response, BACKTEST_WEIGHTS
+API-тесты: 17 новых тестов (36 total), все PASS
+TestBacktestAuth (3), TestBacktestNaive (4), TestBacktestOtherBaselines (3 parametrized),
+TestBacktestNonBaseline (2), TestBacktestValidation (3), TestBacktestCustomTrainRatio (2)
+UI-тесты: 5 новых тестов (37 total), все PASS
+Кнопка рендерится, API вызывается, результат отображается, ошибка показывается, пайплайн продвигается
+Build standalone ✅
