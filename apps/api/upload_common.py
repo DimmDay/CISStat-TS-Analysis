@@ -87,6 +87,39 @@ def _compute_quality_teaser(df: pd.DataFrame) -> QualityTeaserOut:
     )
 
 
+def _compute_parse_warnings(df: pd.DataFrame) -> list[str]:
+    """
+    Технические флаги парсинга -- пункт 7 контракта вкладки «Загрузка».
+    Не содержательная валидация (это дело модуля «Валидация»), а именно
+    технические сигналы, что чтение файла могло пойти не так:
+      - "Unnamed: N" колонки -- pandas подставляет их сам, когда не смог
+        определить строку заголовка (типичный признак смещённого header).
+      - Символ замены U+FFFD ("�") в именах колонок или в сэмпле текстовых
+        значений -- верный признак неверно определённой кодировки файла.
+    """
+    warnings: list[str] = []
+
+    unnamed_cols = [str(c) for c in df.columns if str(c).startswith("Unnamed:")]
+    if unnamed_cols:
+        warnings.append(
+            f"Заголовок мог быть определён неверно — {len(unnamed_cols)} колонок без названия "
+            f"({', '.join(unnamed_cols[:3])}{'…' if len(unnamed_cols) > 3 else ''})"
+        )
+
+    encoding_suspect = any("\ufffd" in str(c) for c in df.columns)
+    if not encoding_suspect:
+        text_cols = df.select_dtypes(include="object").columns[:10]  # сэмплируем, не весь датасет
+        for col in text_cols:
+            sample = df[col].dropna().astype(str).head(50)
+            if sample.str.contains("\ufffd", regex=False).any():
+                encoding_suspect = True
+                break
+    if encoding_suspect:
+        warnings.append("Возможна проблема с кодировкой файла — обнаружены нечитаемые символы (�)")
+
+    return warnings
+
+
 async def handle_upload(file: UploadFile, request: Request, response: Response) -> UploadResponse:
     try:
         contents = await file.read()
@@ -128,6 +161,7 @@ async def handle_upload(file: UploadFile, request: Request, response: Response) 
             columns_info=_compute_column_info(df),
             quality=_compute_quality_teaser(df),
             size_label=size_label,
+            parse_warnings=_compute_parse_warnings(df),
             error=None,
         )
     except HTTPException:

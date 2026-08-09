@@ -1,18 +1,11 @@
 // packages/ui/components/TsAnalysisUpload.test.tsx
 //
-// ПЕРЕНЕСЕНО из DataUploadForm.test.tsx (компонент поглощён --
-// см. шапку TsAnalysisUpload.tsx). Тексты ассертов обновлены под новую
-// вёрстку ("Превью датасета" вместо "Предпросмотр данных" и т.п.).
-//
-// ОБНОВЛЕНИЕ: на момент первой версии этого файла jest в репозитории не
-// было (см. git-историю) -- тесты были написаны "на будущее" и не
-// запускались. Команда параллельно подключила jest+ts-jest
-// (jest.config.js в корне) -- этот файл реально прогнан против неё:
-// добавлен импорт "@testing-library/jest-dom" (по конвенции проекта,
-// см. TsAnalysisModeling.test.tsx -- setupFilesAfterEach не настроен,
-// каждый файл подключает матчеры сам) и исправлен мок dataTransfer:
-// react-dropzone читает event.dataTransfer.items/types внутри своего
-// обработчика, одного files[] недостаточно для fireEvent.drop.
+// Обновлено под редизайн вкладки «Загрузка» на общий 3-колоночный
+// паттерн платформы (степпер слева / Описание+Обзор по центру /
+// управление справа) -- см. шапку TsAnalysisUpload.tsx. По умолчанию
+// после загрузки активна остановка "Обзор"; тесты на "Распределение"/
+// "Структура"/"Качество" сначала кликают по соответствующей кнопке
+// степпера.
 
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
@@ -20,11 +13,8 @@ import { TsAnalysisUpload } from "./TsAnalysisUpload";
 import { AppShellProvider } from "../context/AppShellContext";
 import { toast } from "sonner";
 
-// sonner не мокается автоматически -- никто в репозитории пока этого не
-// делал (первый тест, использующий toast). Без мока toast.error/success
-// это реальные DOM-побочные эффекты библиотеки, не jest.fn().
 jest.mock("sonner", () => ({
-  toast: { success: jest.fn(), error: jest.fn() },
+  toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() },
 }));
 
 // react-dropzone проверяет dataTransfer.items/types, не только files --
@@ -46,6 +36,7 @@ const okUploadResponse = {
   rows: 10,
   columns: 2,
   size_label: "0.01 MB",
+  parse_warnings: [] as string[],
   preview: {
     head: [
       ["date", "value"],
@@ -59,18 +50,35 @@ const okUploadResponse = {
     { name: "value", dtype: "int64", type_icon: "numeric", non_null: 10, nulls: 0, unique: 10 },
   ],
   quality: {
-    cols_with_missing: 0,
+    cols_with_missing: 1,
     cols_with_outliers: 0,
     rows_total: 10,
     duplicates: 0,
-    missing_cols: [],
+    missing_cols: ["value"],
     outlier_cols: [],
   },
 };
 
-// AppShellProvider гидрируется с /v1/session/current при монтировании --
-// мокаем fetch на "пустую сессию" по умолчанию, конкретные тесты
-// переопределяют мок под свой сценарий загрузки.
+const okStatsResponse = {
+  columns: [
+    {
+      name: "value",
+      mean: 55.5,
+      median: 54,
+      std: 30.1,
+      skewness: 0.1,
+      kurtosis: -1.2,
+      q1: 32.5,
+      q3: 77.5,
+      iqr: 45,
+      distribution_hint: "Близко к нормальному",
+    },
+  ],
+};
+
+// AppShellProvider гидрируется с /v1/session/current при монтировании,
+// а после успешного upload компонент сам запрашивает /dataset/stats --
+// мокаем обе ручки; конкретные тесты переопределяют /upload под свой сценарий.
 function mockFetchSequence(uploadResult: unknown, uploadOk = true) {
   global.fetch = jest.fn((url: string) => {
     if (typeof url === "string" && url.includes("/session/current")) {
@@ -86,6 +94,9 @@ function mockFetchSequence(uploadResult: unknown, uploadOk = true) {
           }),
       });
     }
+    if (typeof url === "string" && url.includes("/dataset/stats")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(okStatsResponse) });
+    }
     if (typeof url === "string" && url.includes("/upload")) {
       return Promise.resolve({ ok: uploadOk, json: () => Promise.resolve(uploadResult) });
     }
@@ -99,13 +110,13 @@ describe("TsAnalysisUpload", () => {
     mockFetchSequence(okUploadResponse);
   });
 
-  it("should render upload form", () => {
+  it("should render the upload dropzone before any file is uploaded", () => {
     render(
       <AppShellProvider>
         <TsAnalysisUpload />
       </AppShellProvider>
     );
-    expect(screen.getByText(/Загрузка данных/)).toBeInTheDocument();
+    expect(screen.getByText(/Источник данных/)).toBeInTheDocument();
     expect(screen.getByText(/Перетащите файл сюда/)).toBeInTheDocument();
   });
 
@@ -117,63 +128,122 @@ describe("TsAnalysisUpload", () => {
     );
 
     const file = new File(["a,b\n1,2"], "test.csv", { type: "text/csv" });
-    const input = screen.getByTestId("dropzone-input");
+    dropFiles(screen.getByTestId("dropzone-input"), [file]);
 
-    dropFiles(input, [file]);
-
-    // Мок fetch разрешается почти мгновенно -- транзитное "Выбран:" можно
-    // не успеть поймать, поэтому проверяем финальное состояние (карточка
-    // "источник данных" после успешной загрузки содержит имя файла).
     await waitFor(() => {
       expect(screen.getByText("test.csv")).toBeInTheDocument();
     });
   });
 
-  it("should show preview and quality teaser after successful upload", async () => {
+  it("should show the 3-column layout with stepper stops after upload (default: Обзор)", async () => {
     render(
       <AppShellProvider>
         <TsAnalysisUpload />
       </AppShellProvider>
     );
 
-    const file = new File(["date,value\n2023-01-01,10\n2023-01-02,20"], "test.csv", { type: "text/csv" });
-    const input = screen.getByTestId("dropzone-input");
-
-    dropFiles(input, [file]);
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
 
     await waitFor(() => {
-      expect(screen.getByText(/Превью датасета/)).toBeInTheDocument();
-      expect(screen.getByText(/Предварительная оценка качества/)).toBeInTheDocument();
+      // Степпер: все 4 остановки
+      expect(screen.getByText("Обзор")).toBeInTheDocument();
+      expect(screen.getByText("Распределение")).toBeInTheDocument();
+      expect(screen.getByText("Структура")).toBeInTheDocument();
+      expect(screen.getByText("Качество")).toBeInTheDocument();
+      // По умолчанию активна "Обзор" -- превью-таблица видна сразу
+      expect(screen.getByText("date")).toBeInTheDocument();
+    });
+  });
+
+  it("should show real descriptive statistics on the Распределение stop", async () => {
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("Распределение")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText("Распределение"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Близко к нормальному")).toBeInTheDocument();
+      expect(screen.getByText("55,5")).toBeInTheDocument(); // toLocaleString("ru-RU") -> запятая
+    });
+  });
+
+  it("should show structure detection and structural class on the Структура stop", async () => {
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("Структура")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText("Структура"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Колонка даты")).toBeInTheDocument();
+      expect(screen.getByText("Группирующая колонка")).toBeInTheDocument();
+      expect(screen.getByText("Структурный класс данных")).toBeInTheDocument();
+    });
+  });
+
+  it("should show quality teaser with a one-line summary on the Качество stop", async () => {
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("Качество")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText("Качество"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/см\. Валидация/)).toBeInTheDocument();
+    });
+  });
+
+  it("should show a technical parse-warning banner when the backend reports one", async () => {
+    mockFetchSequence({ ...okUploadResponse, parse_warnings: ["Возможна проблема с кодировкой файла — обнаружены нечитаемые символы (�)"] });
+
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+
+    await waitFor(() => {
+      expect(screen.getByText(/проблема с кодировкой/)).toBeInTheDocument();
     });
   });
 
   it("should reject files > 50MB", async () => {
-    const largeFile = new File([new ArrayBuffer(51 * 1024 * 1024)], "large.csv", { type: "text/csv" });
     render(
       <AppShellProvider>
         <TsAnalysisUpload />
       </AppShellProvider>
     );
-
-    const input = screen.getByTestId("dropzone-input");
-    dropFiles(input, [largeFile]);
-
+    dropFiles(screen.getByTestId("dropzone-input"), [new File([new ArrayBuffer(51 * 1024 * 1024)], "large.csv", { type: "text/csv" })]);
     await waitFor(() => {
       expect(screen.getByText(/Файл слишком большой/)).toBeInTheDocument();
     });
   });
 
   it("should reject unsupported file formats", async () => {
-    const txtFile = new File(["plain text"], "test.txt", { type: "text/plain" });
     render(
       <AppShellProvider>
         <TsAnalysisUpload />
       </AppShellProvider>
     );
-
-    const input = screen.getByTestId("dropzone-input");
-    dropFiles(input, [txtFile]);
-
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["plain text"], "test.txt", { type: "text/plain" })]);
     await waitFor(() => {
       expect(screen.getByText(/Неподдерживаемый формат/)).toBeInTheDocument();
     });
@@ -188,10 +258,7 @@ describe("TsAnalysisUpload", () => {
       </AppShellProvider>
     );
 
-    const file = new File(["a,b\n1,2"], "test.csv", { type: "text/csv" });
-    const input = screen.getByTestId("dropzone-input");
-
-    dropFiles(input, [file]);
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("Ошибка сервера"));

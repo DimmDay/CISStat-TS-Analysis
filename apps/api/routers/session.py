@@ -17,7 +17,13 @@ from pathlib import Path
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request, Response
 
-from apps.api.schemas import DatasetSummaryOut, SessionStateResponse, UploadResponse
+from apps.api.schemas import (
+    ColumnStatsOut,
+    DatasetStatsResponse,
+    DatasetSummaryOut,
+    SessionStateResponse,
+    UploadResponse,
+)
 from apps.api.session_store import (
     AnalysisSession,
     DatasetInfo,
@@ -25,7 +31,7 @@ from apps.api.session_store import (
     get_or_create_session_id,
     get_session_store,
 )
-from apps.api.upload_common import _compute_column_info, _compute_quality_teaser
+from apps.api.upload_common import _compute_column_info, _compute_parse_warnings, _compute_quality_teaser
 
 router = APIRouter()
 
@@ -115,8 +121,63 @@ def get_session_dataset(request: Request, response: Response):
         columns_info=_compute_column_info(df),
         quality=_compute_quality_teaser(df),
         size_label=session.dataset.size_label,
+        parse_warnings=_compute_parse_warnings(df),
         error=None,
     )
+
+
+def _distribution_hint(skew: float, kurtosis: float) -> str:
+    """Грубая эвристика по форме распределения -- ориентир для аналитика
+    на вкладке «Загрузка», НЕ замена KS-теста с фиттингом распределений
+    в «Моделировании» (тот делает содержательный статистический вывод)."""
+    if abs(skew) < 0.5 and abs(kurtosis) < 1:
+        return "Близко к нормальному"
+    if skew >= 0.5:
+        return "Правосторонняя асимметрия (длинный правый хвост)"
+    if skew <= -0.5:
+        return "Левосторонняя асимметрия (длинный левый хвост)"
+    if kurtosis >= 1:
+        return "Островершинное (тяжёлые хвосты)"
+    return "Плосковершинное"
+
+
+@router.get("/dataset/stats", response_model=DatasetStatsResponse)
+def get_dataset_stats(request: Request, response: Response):
+    """
+    Описательная статистика по числовым колонкам -- пункт 4 контракта
+    вкладки «Загрузка» (Mean/Median/Std/Skewness/Kurtosis/Q1/Q3/IQR).
+    Считается по ПОЛНОМУ столбцу из session.dataframe, не по превью
+    (5+5 строк недостаточно для содержательной статистики).
+    """
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    df = session.dataframe
+    columns_out: list[ColumnStatsOut] = []
+    for col in df.select_dtypes(include="number").columns:
+        series = df[col].dropna()
+        if len(series) < 2:
+            continue
+        q1, q3 = float(series.quantile(0.25)), float(series.quantile(0.75))
+        skew = float(series.skew())
+        kurt = float(series.kurt())  # pandas: excess kurtosis (0 = нормальное)
+        columns_out.append(
+            ColumnStatsOut(
+                name=str(col),
+                mean=float(series.mean()),
+                median=float(series.median()),
+                std=float(series.std()) if len(series) > 1 else 0.0,
+                skewness=skew,
+                kurtosis=kurt,
+                q1=q1,
+                q3=q3,
+                iqr=q3 - q1,
+                distribution_hint=_distribution_hint(skew, kurt),
+            )
+        )
+    return DatasetStatsResponse(columns=columns_out)
 
 
 @router.post("/stage/{stage}", response_model=SessionStateResponse)

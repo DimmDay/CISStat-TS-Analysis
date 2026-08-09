@@ -89,7 +89,33 @@ class UploadResponse(BaseModel):
         None, description="Предварительная оценка качества (только счётчики)"
     )
     size_label: Optional[str] = Field(None, description="Размер файла (KB/MB) — для UI")
+    parse_warnings: List[str] = Field(
+        default_factory=list,
+        description="Технические флаги парсинга (кодировка, неверно определённый заголовок) -- пункт 7 контракта вкладки «Загрузка»",
+    )
     error: Optional[str] = Field(None, description="Ошибка при загрузке")
+
+
+class ColumnStatsOut(BaseModel):
+    """Описательная статистика по числовой колонке -- пункт 4 контракта
+    вкладки «Загрузка». Реальный расчёт (pandas/scipy) над полным
+    столбцом, хранящимся в AnalysisSession, а не над превью."""
+    name: str
+    mean: float
+    median: float
+    std: float
+    skewness: float
+    kurtosis: float
+    q1: float
+    q3: float
+    iqr: float
+    distribution_hint: str = Field(
+        ..., description="Грубая эвристика по skew/kurtosis (не замена KS-теста в «Моделировании»)"
+    )
+
+
+class DatasetStatsResponse(BaseModel):
+    columns: List[ColumnStatsOut]
 
 
 class DatasetSummaryOut(BaseModel):
