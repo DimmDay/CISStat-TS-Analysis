@@ -11,11 +11,17 @@ jest.mock("next/navigation", () => ({
   usePathname: () => "/validation",
 }));
 
+// ModuleNav теперь показывает "Логи событий" (перенесено из удалённого
+// DatasetContextBar.tsx, см. комментарий в ModuleNav.tsx) -- нужен log.
+jest.mock("../context/AppShellContext", () => ({
+  useAppShell: () => ({ log: [] }),
+}));
+
 describe("ModuleNav", () => {
   it("renders all module tabs", () => {
     render(<ModuleNav />);
     const tabs = [
-      "Загрузка", "Валидация", "Предобработка", "Разведочный EDA",
+      "Навигатор", "Загрузка", "Валидация", "Предобработка", "Разведочный EDA",
       "Моделирование", "Прогнозирование", "Задачи",
     ];
     tabs.forEach((label) => {

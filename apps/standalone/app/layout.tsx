@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { AppShellProvider, ModuleNav, DatasetContextBar } from "@cisstat/ui";
+import { AppShellProvider, ModuleNav } from "@cisstat/ui";
 import { ProductHeader } from "@/components/ProductHeader";
 import { Toaster } from "sonner";
 
@@ -18,7 +18,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ProductHeader />
         <AppShellProvider>
-          <DatasetContextBar />
           <ModuleNav />
           <main className="max-w-[1600px] mx-auto px-6 py-6">{children}</main>
           <Toaster />

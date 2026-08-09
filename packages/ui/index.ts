@@ -14,7 +14,6 @@ export { default as tailwindPreset } from "./tailwind-preset";
 // apps/api/session_store.py) + прогресс по этапам + лог событий.
 export { AppShellProvider, useAppShell } from "./context/AppShellContext";
 export type { LogEntry, ActiveDataset } from "./context/AppShellContext";
-export { DatasetContextBar } from "./components/DatasetContextBar";
 export { EventsLogDrawer } from "./components/EventsLogDrawer";
 
 // Sessions-aware Home: общий "Рабочий стол" + embedded-онбординг.
