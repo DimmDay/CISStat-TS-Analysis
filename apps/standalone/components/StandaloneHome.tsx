@@ -56,7 +56,7 @@ function MarketingHome() {
         </p>
         <div className="flex flex-wrap gap-3">
           <Link
-            href="/data/upload"
+            href="/upload"
             className="inline-flex items-center gap-2 bg-brand text-white rounded px-5 py-2.5 text-sm font-medium hover:bg-brand/90 transition-colors"
           >
             Загрузить датасет и начать <ArrowRight size={16} aria-hidden="true" />
@@ -158,7 +158,7 @@ function AuthenticatedWorkbenchHome() {
       </div>
 
       <Link
-        href="/data/upload"
+        href="/upload"
         className="inline-block bg-brand text-white rounded px-4 py-2 text-sm font-medium hover:bg-brand/90 transition-colors"
       >
         Загрузить датасет →

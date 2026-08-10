@@ -32,7 +32,7 @@ interface ModuleLink {
 
 const MODULES: ModuleLink[] = [
   { label: "Навигатор", href: "/", icon: Compass },
-  { label: "Загрузка", href: "/data/upload" },
+  { label: "Загрузка", href: "/upload" },
   { label: "Валидация", href: "/validation" },
   { label: "Предобработка", href: "/preprocessing" },
   { label: "Разведочный EDA", href: "/eda" },

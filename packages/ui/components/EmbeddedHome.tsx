@@ -87,7 +87,7 @@ export function EmbeddedHome() {
 
       <div className="flex flex-wrap items-center gap-3">
         <Link
-          href="/data/upload"
+          href="/upload"
           className="inline-block bg-brand text-white rounded px-4 py-2 text-sm font-medium hover:bg-brand/90 transition-colors"
         >
           Загрузить датасет →

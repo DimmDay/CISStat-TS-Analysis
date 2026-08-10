@@ -93,7 +93,7 @@ interface GuideStop {
 const STOPS: GuideStop[] = [
   {
     id: "upload",
-    href: "/data/upload",
+    href: "/upload",
     label: "ЗАГРУЗКА",
     subtitle: "файл → структура за секунды",
     icon: Upload,

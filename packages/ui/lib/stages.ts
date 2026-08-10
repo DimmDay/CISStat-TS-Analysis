@@ -12,7 +12,7 @@ export interface StageDef {
 }
 
 export const STAGE_DEFS: StageDef[] = [
-  { key: "upload", label: "Загрузка", href: "/data/upload" },
+  { key: "upload", label: "Загрузка", href: "/upload" },
   { key: "validation", label: "Валидация", href: "/validation" },
   { key: "preprocessing", label: "Предобработка", href: "/preprocessing" },
   { key: "eda", label: "Разведочный EDA", href: "/eda" },
