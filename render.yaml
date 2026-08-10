@@ -1,0 +1,33 @@
+# render.yaml
+#
+# Render Blueprint для деплоя FastAPI-бэкенда (apps/api). НЕ описывает
+# фронтенды (apps/embedded, apps/standalone) -- те уже задеплоены на
+# Vercel отдельно, см. vercel.json.
+#
+# Применить: в Render Dashboard -> New -> Blueprint -> указать этот
+# репозиторий. Render сам найдёт этот файл и предложит создать сервис
+# ниже. Free-тир доступен, но "засыпает" при простое (первый запрос
+# после простоя -- заметная задержка холодного старта); на выбор autoprovision.
+#
+# После создания сервиса задайте ОДНУ переменную вручную в Render
+# Dashboard (значения ниже -- placeholder, впишите свой реальный
+# Vercel-домен standalone; если добавите embedded -- через запятую):
+#   ALLOWED_ORIGINS = https://ts-standalone.vercel.app
+#
+# Затем на Vercel (Project Settings -> Environment Variables) для
+# apps/standalone пропишите:
+#   NEXT_PUBLIC_API_URL = https://<имя-сервиса>.onrender.com
+# и NEXT_PUBLIC_API_MODE уже задан в apps/standalone/next.config.mjs
+# (public) -- трогать не нужно.
+
+services:
+  - type: web
+    name: cisstat-ts-analysis-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ALLOWED_ORIGINS
+        sync: false  # вписать вручную в Dashboard -- см. комментарий выше

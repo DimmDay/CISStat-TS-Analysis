@@ -22,6 +22,7 @@ HTTPS везде. Не решать сейчас, пометить при реа
 """
 from __future__ import annotations
 
+import os
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -128,7 +129,19 @@ def get_or_create_session_id(request: Request, response: Response) -> str:
     различается по /v1/public vs /v1/internal, один и тот же
     браузер = одна сессия независимо от того, каким фронтендом
     (embedded/standalone) он сейчас пользуется.
+
+    SameSite/Secure зависят от топологии деплоя: локально фронтенд и
+    бэкенд на одном хосте (localhost, разные порты) -- это same-site,
+    подходит Lax без Secure (работает по HTTP). В продакшене фронтенд
+    (Vercel) и бэкенд (Render/...) -- РАЗНЫЕ домены, это cross-site;
+    браузер не отправит Lax-cookie на fetch()-запрос с чужого домена --
+    нужны SameSite=None + Secure=True (обязательно вместе, того требует
+    спецификация, благо оба сервиса всё равно на HTTPS). Переключатель --
+    по наличию ALLOWED_ORIGINS (тот же сигнал "мы в продакшене", что и
+    для CORS в main.py, не заводим отдельную переменную).
     """
+    is_production = bool(os.environ.get("ALLOWED_ORIGINS"))
+
     session_id = request.cookies.get(SESSION_COOKIE_NAME)
     if not session_id:
         session_id = uuid.uuid4().hex
@@ -136,7 +149,8 @@ def get_or_create_session_id(request: Request, response: Response) -> str:
             key=SESSION_COOKIE_NAME,
             value=session_id,
             httponly=True,
-            samesite="lax",
+            samesite="none" if is_production else "lax",
+            secure=is_production,
             max_age=60 * 60 * 24 * 30,  # 30 дней
         )
     return session_id

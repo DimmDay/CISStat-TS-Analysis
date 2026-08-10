@@ -18,6 +18,8 @@ apps/api рядом с app.py в том же репозитории, а не в 
 Запуск (для разработки): uvicorn main:app --reload --port 8000
 """
 import logging
+import os
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 from fastapi import FastAPI
@@ -32,10 +34,20 @@ app = FastAPI(
                  "валидация, предобработка, признаки.",
 )
 
-# ЗАМЕНИТЬ: точные origins для продакшена (домены embedded/standalone фронтендов).
+# CORS origins -- через переменную окружения ALLOWED_ORIGINS (список через
+# запятую), задаётся на хостинге бэкенда (Render/Railway/...). Localhost
+# для локальной разработки добавлен всегда, чтобы не сломать её при
+# отсутствии переменной. allow_origin_regex дополнительно разрешает ЛЮБОЙ
+# *.vercel.app -- иначе каждый preview-деплой (PR/ветка) получает новый
+# поддомен и ловит CORS-ошибку, пока вручную не пропишешь его в
+# ALLOWED_ORIGINS.
+_env_origins = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+_default_dev_origins = ["http://localhost:3000", "http://localhost:3001"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=_default_dev_origins + _env_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
