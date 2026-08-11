@@ -109,7 +109,7 @@ interface UploadApiResponse {
   size_label: string | null;
   parse_warnings: string[];
   error?: string | null;
-  detail?: string; // FastAPI HTTPException shape {"detail": "..."}
+  detail?: string | { loc: (string | number)[]; msg: string; type: string }[]; // FastAPI: строка (HTTPException) ИЛИ массив (422 validation error)
   frequency?: string;
   domain?: string;
   n_series?: number;
@@ -200,6 +200,23 @@ function formatNum(n: number): string {
 
 function fmtStat(n: number): string {
   return n.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+}
+
+/**
+ * FastAPI отдаёт ошибки в ДВУХ разных формах: {"detail": "строка"} для
+ * ручных HTTPException, {"detail": [{"loc":..,"msg":..,"type":..}, ...]}
+ * для автоматической 422-валидации запроса (например, не пришёл
+ * обязательный заголовок). Раньше `new Error(data.detail)` на втором
+ * случае превращался в "[object Object]" -- Error coerces non-string
+ * аргумент через String(), а String() массива объектов даёт именно это.
+ */
+function extractErrorMessage(data: UploadApiResponse): string | null {
+  if (typeof data.detail === "string") return data.detail;
+  if (Array.isArray(data.detail) && data.detail.length > 0) {
+    return data.detail.map((e) => e.msg).join("; ");
+  }
+  if (data.error) return data.error;
+  return null;
 }
 
 /**
@@ -319,7 +336,7 @@ export function TsAnalysisUpload() {
         });
         const data: UploadApiResponse = await resp.json();
         if (!resp.ok) {
-          throw new Error(data.detail || data.error || "Не удалось загрузить файл");
+          throw new Error(extractErrorMessage(data) || "Не удалось загрузить файл");
         }
         setUploadData(data);
         setActiveStop("overview");

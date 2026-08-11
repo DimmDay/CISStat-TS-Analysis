@@ -264,4 +264,27 @@ describe("TsAnalysisUpload", () => {
       expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("Ошибка сервера"));
     });
   });
+
+  it("should show a readable message (not [object Object]) on FastAPI 422 structured validation errors", async () => {
+    // Регрессия: require_api_key на /v1/public/* отдаёт 422 с detail в
+    // виде массива {loc,msg,type}, а не строкой -- раньше это превращалось
+    // в "[object Object]" (см. чат: реальный баг на проде).
+    mockFetchSequence(
+      { detail: [{ loc: ["header", "x-api-key"], msg: "field required", type: "value_error.missing" }] },
+      false
+    );
+
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("field required"));
+      expect(toast.error).not.toHaveBeenCalledWith(expect.stringContaining("[object Object]"));
+    });
+  });
 });
