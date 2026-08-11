@@ -225,13 +225,13 @@ describe("TsAnalysisUpload", () => {
     });
   });
 
-  it("should reject files > 50MB", async () => {
+  it("should reject files > 4MB", async () => {
     render(
       <AppShellProvider>
         <TsAnalysisUpload />
       </AppShellProvider>
     );
-    dropFiles(screen.getByTestId("dropzone-input"), [new File([new ArrayBuffer(51 * 1024 * 1024)], "large.csv", { type: "text/csv" })]);
+    dropFiles(screen.getByTestId("dropzone-input"), [new File([new ArrayBuffer(5 * 1024 * 1024)], "large.csv", { type: "text/csv" })]);
     await waitFor(() => {
       expect(screen.getByText(/Файл слишком большой/)).toBeInTheDocument();
     });

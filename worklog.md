@@ -324,3 +324,24 @@ Build: FastAPI app boots, end-to-end upload→session flow работает, pro
 Ключевой контракт: после любой мутации AnalysisSession вызывающий код ОБЯЗАН вызвать store.save(). Контракт одинаковый для Memory и Redis — без save() Redis теряет изменения.
 
 Артефакты в /home/z/my-project/download/phase_0_session_store/
+
+---
+
+Task ID: 11 — Phase 0 fix #3: third-party cookie blocking (session loss after tab switch)
+
+What changed:• packages/ui/lib/apiClient.ts — getApiBase() в проде (NODE_ENV=production, browser) возвращает ОТНОСИТЕЛЬНЫЙ путь "/api" вместо абсолютного NEXT_PUBLIC_API_URL. Браузер ходит на тот же origin (Vercel), Next.js rewrite проксирует на бэкенд.• apps/standalone/next.config.mjs — добавлен async rewrites(): /api/v1/:path* → ${apiUrl}/v1/:path* (apiUrl из API_URL || NEXT_PUBLIC_API_URL || localhost:8000).• apps/embedded/next.config.mjs — то же rewrite для embedded (если задеплоится отдельно — нужен тот же фикс).• packages/ui/components/RulesManagementPanel.tsx — заменён прямой NEXT_PUBLIC_API_URL на getApiBase() (иначе обходил прокси и снова ловил third-party cookie blocking).• packages/ui/components/TsAnalysisModeling.tsx — то же: getApiBase() вместо прямого env var.• packages/ui/components/TsAnalysisUpload.tsx — maxSize снижен с 50 MB до 4 MB (Vercel Serverless Function body limit 4.5 MB через rewrite-прокси; POST-0: pre-signed S3 для больших файлов).• packages/ui/components/TsAnalysisUpload.test.tsx — тест "should reject files > 50MB" → "> 4MB".• render.yaml — обновлена инструкция: на Vercel ставить API_URL (server-side only), а не NEXT_PUBLIC_API_URL.
+
+Root cause:Браузер на ts-standalone.vercel.app ходил НАПРЯМУЮ на cisstat-ts-analysis.onrender.com (cross-origin). Cookie cisstat_session_id с SameSite=None; Secure классифицировалась как third-party и БЛОКИРОВАЛАСЬ Chrome 120+ (также Safari ITP, Firefox ETP). Бэкенд сохранял сессию в Redis корректно (Python-клиент проходит 7/7 шагов), но браузер не отправлял cookie на следующий fetch — сервер создавал новую пустую сессию, /dataset/stats возвращал 404, UI показывал "загрузите заново".
+
+Verification:
+
+/home/z/my-project/scripts/diag_session_loss.py — Python-клиент (httpx, сохраняет cookie как браузер) проходит все 7 шагов против prod, включая паузу 5с (симуляция "ушёл на другую вкладку"). Бэкенд НЕ воспроизводит баг.
+Backend tests: 42/42 PASS (test_session_store.py)
+Frontend tests: 48/48 PASS (TsAnalysisUpload 11 + TsAnalysisModeling 37). RulesManagementPanel: 5 тестов падали ДО изменения (pre-existing), не регрессия.
+Deploy checklist (after merge):
+
+Vercel Project Settings → Environment Variables:
+ADD: API_URL = https://cisstat-ts-analysis.onrender.com (server-side only, NO NEXT_PUBLIC_ prefix)
+REMOVE (optional): NEXT_PUBLIC_API_URL (больше не нужен в проде; в dev остаётся в .env.local)
+Trigger new Vercel deploy (rewrite() применяется при сборке)
+Verify в браузере: загрузить CSV → переключить вкладку → вернуться → датасет должен сохраниться

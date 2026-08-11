@@ -17,6 +17,23 @@
 export type ApiMode = "internal" | "public";
 
 export function getApiBase(): string {
+  // В проде (deployed to Vercel) используем ОТНОСИТЕЛЬНЫЙ путь "/api" --
+  // Next.js rewrite (apps/standalone/next.config.mjs, apps/embedded/...)
+  // проксирует запросы на бэкенд, и cisstat_session_id cookie становится
+  // FIRST-PARTY для домена фронтенда. Это критично: в противном случае
+  // cookie с SameSite=None; Secure (нужна для cross-origin credentialed
+  // fetch) классифицируется браузером как third-party и БЛОКИРУЕТСЯ
+  // (Chrome 120+ third-party cookie blocking, Safari ITP, Firefox ETP).
+  // Симптом бага: "загружаю датасет → ухожу на другую вкладку → возвращаюсь
+  // → сессия упала, загрузка нужна заново" (бэкенд сохраняет сессию в
+  // Redis корректно, но браузер не отдаёт cookie на следующий fetch).
+  //
+  // В dev / тестах -- по-прежнему можно дёрнуть бэкенд напрямую через
+  // NEXT_PUBLIC_API_URL (http://localhost:8000). typeof window отличает
+  // браузер (нужен /api) от SSR/тестов (нужен абсолютный URL).
+  if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
+    return "/api";
+  }
   return process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 }
 

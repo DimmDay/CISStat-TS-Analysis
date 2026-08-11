@@ -40,11 +40,14 @@ import {
   FREQUENCIES,
 } from "../lib/modeling";
 import { useAppShell } from "../context/AppShellContext";
+import { getApiBase } from "../lib/apiClient";
 
 // ── Константы ──────────────────────────────────────────────────
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// В проде -- ОТНОСИТЕЛЬНЫЙ путь "/api" (Next.js rewrite проксирует на
+// бэкенд). НЕ дёргаем NEXT_PUBLIC_API_URL напрямую -- иначе обойдём
+// прокси и потеряем first-party cookie (см. lib/apiClient.ts::getApiBase).
+const API_BASE = getApiBase();
 
 // ── Справка по целям модуля «Моделирование» ────────────────────
 
@@ -959,11 +962,11 @@ export function TsAnalysisModeling() {
                 Не удалось загрузить пул: {error}
               </p>
               <p className="text-sm text-neutral-500">
-                Убедитесь, что API-сервер запущен (
+                Убедитесь, что API-сервер запущен (переменная
                 <code className="text-xs bg-neutral-100 px-1 rounded">
-                          NEXT_PUBLIC_API_URL
+                          API_URL
                 </code>
-                ) и повторите попытку кнопкой «Загрузить пул».
+                на Vercel) и повторите попытку кнопкой «Загрузить пул».
               </p>
             </article>
           )}

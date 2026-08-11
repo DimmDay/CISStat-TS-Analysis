@@ -16,8 +16,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { Settings, Check, RotateCcw, AlertCircle, Loader2 } from "lucide-react";
 
-// ── API-базовый URL (standalone:3001 / embedded:3000 → backend:8000) ──
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// ── API-базовый URL ──
+// В проде -- ОТНОСИТЕЛЬНЫЙ путь "/api" (Next.js rewrite проксирует на
+// бэкенд, см. apps/standalone/next.config.mjs). НЕ дёргаем NEXT_PUBLIC_API_URL
+// напрямую -- иначе обойдём прокси и потеряем first-party cookie
+// (см. packages/ui/lib/apiClient.ts::getApiBase для контекста).
+import { getApiBase } from "../lib/apiClient";
+const API_BASE = getApiBase();
 
 // ── Типы ──────────────────────────────────────────────────────
 
