@@ -28,7 +28,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY apps/api/requirements.txt ./apps/api/requirements.txt
-RUN pip install --no-cache-dir -r apps/api/requirements.txt
+RUN pip install --no-cache-dir -r apps/api/requirements.txt \
+    && python -c "import redis; print('redis OK:', redis.__version__)" \
+    && python -c "import fastapi, pandas, pydantic; print('core deps OK')"
 
 # Копируем ТОЛЬКО то, что реально импортируется бэкендом (проверено
 # статическим AST-разбором, см. apps/api/requirements.txt) -- не весь
