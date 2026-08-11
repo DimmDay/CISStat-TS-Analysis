@@ -198,3 +198,129 @@ TestBacktestNonBaseline (2), TestBacktestValidation (3), TestBacktestCustomTrain
 UI-тесты: 5 новых тестов (37 total), все PASS
 Кнопка рендерится, API вызывается, результат отображается, ошибка показывается, пайплайн продвигается
 Build standalone ✅
+
+---
+Task ID: 8
+Agent: main
+Task: Зафиксировать решения по плану Phase 0 → Phase 5 + PRE-0 smoke-тест продакшн-деплоя
+
+Work Log:
+- Прочитана и проанализирована инструкция тимлида (docs/MIGRATION_ARCHITECTURE.md)
+- Изучен контекст: worklog.md Task ID 1–7, apps/api (routers, schemas, session_store, upload_common, auth, plans)
+- Найден URL продакшн-бэкенда: https://cisstat-ts-analysis.onrender.com
+  (через agent-browser: открыл https://ts-standalone.vercel.app/, отловил XHR к /v1/session/current)
+- Спроектирован и зафиксирован план развития модуля «Моделирование» (см. Stage Summary)
+- Спроектирован PRE-0 smoke-тест: 7 кейсов от /health до /v1/models/candidates без API-ключа
+- Оценены риски: cold start render free tier, cookie cross-domain, CORS preflight, 422 на /v1/models без ключа
+- Создан /home/z/my-project/scripts/pre_0_smoke.py (httpx + assertions, 7 кейсов)
+- Smoke-тест запущен против продакшн-URL: 7/7 PASS
+- Артефакты в /home/z/my-project/download/pre_0_smoke/:
+  • pre_0_smoke.py — воспроизводимый тест
+  • report.md — человекочитаемый отчёт
+  • report.json — структурированный отчёт
+
+Результаты PRE-0 (7/7 PASS):
+1. ✅ GET /health → 200, body.status=ok (524 ms)
+2. ✅ OPTIONS /v1/session/current (CORS preflight)
+   → ACAO=https://ts-standalone.vercel.app, ACAC=true (точный Origin, не *)
+3. ✅ GET /v1/session/current → Set-Cookie: cisstat_session_id;
+   HttpOnly; SameSite=none; Secure (корректно для cross-domain credentialed)
+4. ✅ Round-trip с cookie → повторный запрос НЕ создаёт новую сессию
+5. ✅ POST /v1/internal/upload → 200, dataset_id=861e57f9…, rows=72, columns=5, 3.1 KB
+6. ✅ GET /v1/session/current после upload → has_active_dataset=true,
+   stages.upload=done (SessionStore корректно переживает upload)
+7. ✅ POST /v1/models/candidates без X-Api-Key → 422 "Field required: x-api-key"
+   (auth-цепочка работает; ожидаемое поведение)
+
+ВАЖНОЕ НАБЛЮДЕНИЕ (блокер для Phase 0):
+- /v1/models/candidates и /v1/models/backtest защищены require_capability("can_train_models"),
+  который требует X-Api-Key header
+- Standalone UI (браузер посетителя без API-ключа) НЕ может вызвать /v1/models/* напрямую
+- Workaround уже существует для /upload и /rules: зеркала в /v1/internal/* без auth
+- В Phase 0 нужно: либо зеркало /v1/internal/models/*, либо principal extraction из сессии
+  для /v1/models/* (тогда capability check работает по данным сессии, не по ключу)
+
+Stage Summary:
+- Решения тимлида зафиксированы по 5 открытым вопросам:
+  1. Phase 6-P0 (4 модели) сначала → затем Phase 1–5
+  2. param_space в modeling.yaml + строгая валидация
+  3. CV: expanding window + абстракция CVStrategy (RollingWindowCV позже)
+  4. SessionStore abstraction в MVP; Redis/Valkey для production MVP
+     (промежуточный вариант — Upstash Redis free tier)
+  5. Model Card: JSON в MVP; PDF post-MVP
+
+- Финальная последовательность:
+  PRE-0 (1ч) → Phase 0+0.5 (8ч) → Phase 6-P0 (10ч) → Phase 1 (7ч) →
+  Phase 2 (6ч) → Phase 3 (7ч) → Phase 4 (5ч) → Phase 5 (5ч)
+  MVP total: ~49 ч
+
+- PRE-0 завершён: продакшн-деплой работоспособен, можно переходить к Phase 0.
+- Следующий шаг: Phase 0 — SessionStore abstraction + мост Upload → Backtest + зеркало /v1/internal/models/*
+
+---
+Task ID: 9
+Agent: main
+Task: Перенос PRE-0 артефактов в репозиторий + параметризация скрипта + README
+
+Work Log:
+- Спроектирован перенос артефактов PRE-0 из /home/z/my-project/download/ в репо:
+  • pre_0_smoke.py → scripts/smoke/pre_0_smoke.py (переиспользуемый тест)
+  • report.md/json — НЕ коммитить (runtime-данные: dataset_id, session_id)
+- Параметризован скрипт (раньше были хардкоды):
+  • API_BASE — через env CISSTAT_API_URL или --api-base
+  • FRONTEND_ORIGIN — через env CISSTAT_FRONTEND_ORIGIN или --frontend-origin
+  • DEMO_CSV_PATH — вычисляется относительно расположения скрипта
+    (_REPO_ROOT = Path(__file__).resolve().parents[2])
+  • OUTPUT_DIR — через --output-dir (default: ./pre_0_smoke_output)
+  • Добавлен argparse с --help
+- Добавлены глобальные переменные FRONTEND_ORIGIN/DEMO_CSV_PATH на уровне модуля
+  с инициализацией из DEFAULT_* (для pytest-style импорта в будущем)
+- Перенесён в репо: scripts/smoke/pre_0_smoke.py
+- Написан scripts/smoke/README.md (~250 строк):
+  • Назначение smoke-тестов vs unit-тестов
+  • Когда запускать (4 ситуации)
+  • Структура папки + конвенция именования phase_N_smoke.py
+  • Требования (Python 3.10+, httpx)
+  • Запуск: прод / локал / CLI / отчёты
+  • Подробное описание 7 кейсов с критериями PASS/FAIL и интерпретацией
+  • Что НЕ проверяет PRE-0
+  • Связанные документы
+  • Шаблон для новых smoke-тестов
+- В .gitignore добавлена секция "SMOKE-ТЕСТЫ: отчёты" —
+  паттерн scripts/smoke/*_output/ (regenerate on each run)
+- Проверка запуска из нового расположения: 7/7 PASS
+  (cold-start 31с на /health, остальные ~150-340ms)
+- CLI --help работает корректно
+- Артефакты обновлены в /home/z/my-project/download/pre_0_smoke/:
+  • pre_0_smoke.py (параметризованная версия)
+  • README.md (копия из scripts/smoke/)
+  • report.md, report.json (последний прогон)
+
+Stage Summary:
+- Скрипт сделан переносимым: запускается у любого разработчика
+  из репо одной командой `python scripts/smoke/pre_0_smoke.py`
+- README описывает 7 кейсов с критериями PASS/FAIL + интерпретацию
+- Конвенция для будущих фаз: phase_N_smoke.py с переиспользованием
+  CheckResult / write_reports из PRE-0
+- .gitignore обновлён — отчёты не коммитятся
+- Готов переход к Phase 0: продакшн-фундамент доказан работоспособным,
+  smoke-тест воспроизводим любым членом команды
+
+---
+
+Task ID: 10 — Phase 0: SessionStore abstraction (Memory + Redis)
+
+What changed:
+• apps/api/session_store.py — полная переработка: SessionStore ABC + MemorySessionStore + RedisSessionStore + factory + reset_for_testing
+• apps/api/upload_common.py — добавлен store.save(session) после set_dataset
+• apps/api/routers/session.py — добавлен store.save(session) в 2 местах (demo, set_stage)
+• apps/api/requirements.txt — +redis>=5.0.0
+• requirements-dev.txt — +fakeredis>=2.20.0
+• tests/api/test_session_store.py — 42 новых теста
+
+Tests: 83/83 API PASS + 75/75 связанных PASS (158 всего)
+Build: FastAPI app boots, end-to-end upload→session flow работает, prod-like Redis flow работает через fakeredis
+
+Ключевой контракт: после любой мутации AnalysisSession вызывающий код ОБЯЗАН вызвать store.save(). Контракт одинаковый для Memory и Redis — без save() Redis теряет изменения.
+
+Артефакты в /home/z/my-project/download/phase_0_session_store/

@@ -140,7 +140,8 @@ async def handle_upload(file: UploadFile, request: Request, response: Response) 
         dataset_id = str(uuid.uuid4())
 
         session_id = get_or_create_session_id(request, response)
-        session = get_session_store().get_or_create(session_id)
+        store = get_session_store()
+        session = store.get_or_create(session_id)
         session.set_dataset(
             DatasetInfo(
                 dataset_id=dataset_id,
@@ -151,6 +152,10 @@ async def handle_upload(file: UploadFile, request: Request, response: Response) 
             ),
             df,
         )
+        # КОНТРАКТ SessionStore: после мутации -- обязательно save().
+        # В Memory save() -- no-op (алиасинг), но без него Redis-бэкенд
+        # потеряет изменения при следующем get().
+        store.save(session)
 
         return UploadResponse(
             dataset_id=dataset_id,

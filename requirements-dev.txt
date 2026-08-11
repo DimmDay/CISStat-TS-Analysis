@@ -6,3 +6,8 @@ pytest>=8.0.0
 pytest-cov>=4.1.0
 pytest-xdist>=3.5.0       # опционально: ускоряет прогон через -n auto
 syrupy>=4.6.0             # snapshot-тесты (tests/**/__snapshots__/*.ambr)
+
+# SessionStore — Phase 0. fakeredis используется ТОЛЬКО в тестах
+# (tests/api/test_session_store.py) для проверки RedisSessionStore без
+# живого Redis. В runtime не нужен.
+fakeredis>=2.20.0

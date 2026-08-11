@@ -76,7 +76,8 @@ def load_demo_dataset(request: Request, response: Response):
 
     df = pd.read_csv(DEMO_DATASET_PATH)
     session_id = get_or_create_session_id(request, response)
-    session = get_session_store().get_or_create(session_id)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
 
     session.set_dataset(
         DatasetInfo(
@@ -88,6 +89,8 @@ def load_demo_dataset(request: Request, response: Response):
         ),
         df,
     )
+    # КОНТРАКТ SessionStore: мутация -- обязательно save().
+    store.save(session)
     return _to_response(session)
 
 
@@ -196,8 +199,12 @@ def set_stage(stage: str, status: str, request: Request, response: Response):
     дойдёт до готового модуля дальше по пайплайну.
     """
     session_id = get_or_create_session_id(request, response)
-    session = get_session_store().get_or_create(session_id)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
     if status not in ("pending", "in_progress", "done"):
         raise HTTPException(status_code=422, detail="status должен быть pending|in_progress|done")
     session.set_stage(stage, status)
+    # КОНТРАКТ SessionStore: мутация -- обязательно save().
+    store.save(session)
     return _to_response(session)
+    
