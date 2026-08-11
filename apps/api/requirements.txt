@@ -19,3 +19,12 @@ holidays>=0.40                # apps/api/routers/models.py, schemas.py
 matplotlib>=3.7.0             # apps/api/routers/models.py, schemas.py
 missingno>=0.5.0              # apps/api/routers/models.py, schemas.py
 plotly>=5.18.0                # apps/api/routers/models.py, schemas.py
+
+# SessionStore -- Phase 0. RedisSessionStore используется ТОЛЬКО при
+# наличии REDIS_URL env (см. apps/api/session_store.py get_session_store()).
+# MemorySessionStore -- default, не требует redis. Импорт ленивый
+# (внутри from_env()), поэтому для dev/тестов без Redis библиотека
+# формально не нужна -- но добавлена в requirements, чтобы при деплое
+# на Render с REDIS_URL=rediss://... библиотека была доступна.
+redis>=5.0.0                  # apps/api/session_store.py RedisSessionStore
+
