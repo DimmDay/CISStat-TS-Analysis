@@ -28,6 +28,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY apps/api/requirements.txt ./apps/api/requirements.txt
+# Флаг --no-cache-dir + явная проверка импорта критичных зависимостей.
+# Если pip не установит redis (например, из-за кэша слоя), сборка упадёт
+# здесь с явной ошибкой, а не в runtime через fallback на Memory.
 RUN pip install --no-cache-dir -r apps/api/requirements.txt \
     && python -c "import redis; print('redis OK:', redis.__version__)" \
     && python -c "import fastapi, pandas, pydantic; print('core deps OK')"
@@ -40,8 +43,22 @@ COPY app/ ./app/
 COPY validation/ ./validation/
 COPY src/ ./src/
 COPY apps/api/ ./apps/api/
+# rules/ -- каталог YAML-спецификаций: modeling.yaml (для /candidates),
+# default_rules.yaml, fao_prices.yaml, macro.yaml (для /rules/load/*).
+# БЕЗ этого слоя бэкенд в проде возвращает 500 «Спецификация
+# моделирования не найдена: rules/modeling.yaml» при первом вызове
+# /v1/internal/models/candidates (после upload'а датасета).
+COPY rules/ ./rules/
 
 RUN touch apps/__init__.py
+
+# Защита от регрессии: если на этапе сборки catalog/spec-файлы
+# отсутствуют или битые -- образ не должен собраться (раньше баг
+# всплывал только в runtime через 500-ю ошибку). Проверяем, что
+# ModelingSpec.from_yaml() парсится без исключений.
+RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; \
+               spec = ModelingSpec.from_yaml('rules/modeling.yaml'); \
+               print('modeling.yaml OK, models:', spec.total_model_count())"
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000

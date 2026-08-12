@@ -5,9 +5,10 @@ PRE-1 Frontend smoke-тест продакшн-деплоя CISStat TS Analysis 
 включая Next.js rewrite (/api/v1/* → backend), cookie round-trip и Phase 0.5
 мост Upload → Backtest (target_column).
 
-Проверяет (8 кейсов):
+Проверяет (9 кейсов):
   1. GET  /                                   — Vercel-фронтенд жив, отдаёт HTML
-  2. GET  /api/v1/health (через rewrite)     — прокси на backend работает
+  2. GET  /api/v1/internal/rules/templates (через rewrite)
+                                              — прокси на backend работает
   3. GET  /api/v1/session/current (без cookie)
                                               — Set-Cookie cisstat_session_id
                                                 через Vercel-proxy
@@ -18,7 +19,12 @@ PRE-1 Frontend smoke-тест продакшн-деплоя CISStat TS Analysis 
   6. GET  /api/v1/session/target-column       — Phase 0.5 мост: has_dataset=true,
                                                 available_columns содержит sales/profit
   7. POST /api/v1/session/target-column       — выбираем колонку "sales"
-  8. POST /api/v1/internal/models/backtest    — data_source="session" (РЕАЛЬНЫЙ ряд)
+  8. POST /api/v1/internal/models/candidates — пул кандидатов грузится
+                                                (нужен rules/modeling.yaml в образе;
+                                                регрессия: дофикса Dockerfile тут
+                                                была 500 «Спецификация моделирования
+                                                не найдена: rules/modeling.yaml»)
+  9. POST /api/v1/internal/models/backtest    — data_source="session" (РЕАЛЬНЫЙ ряд)
                                                 → в UI будет зелёный badge «Реальные данные»
 
 Запуск:
@@ -430,8 +436,106 @@ def check_target_column_post(client: httpx.Client) -> CheckResult:
         )
 
 
+def check_candidates_pool(client: httpx.Client) -> CheckResult:
+    """8. POST /api/v1/internal/models/candidates — пул кандидатов грузится.
+
+    Регрессия: до фикса Dockerfile (Task 14 bugfix) образ НЕ содержал
+    rules/modeling.yaml → _get_spec() поднимал FileNotFoundError →
+    backend возвращал 500 «Спецификация моделирования не найдена:
+    rules/modeling.yaml». UI выводил это как ошибку, бэктест-кнопка
+    оставалась disabled (activeCandidate=null).
+
+    После фикса: COPY rules/ ./rules/ в apps/api/Dockerfile + build-time
+    проверка ModelingSpec.from_yaml('rules/modeling.yaml').
+    """
+    t0 = time.monotonic()
+    try:
+        # Минимальный профиль, чтобы движок применимости что-то вернул.
+        # real-series не нужен — /candidates работает только по profile.
+        payload = {
+            "profile": {
+                "n_observations": 72,
+                "n_series": 1,
+                "n_exogenous": 0,
+                "is_regular": True,
+                "frequency": "M",
+                "has_seasonality": True,
+                "seasonal_periods": [12],
+                "is_stationary_or_diffable": True,
+                "is_cointegrated": False,
+                "has_negative_values": False,
+                "has_volatility_clustering": False,
+                "domain": "sales",
+                "missing_ratio": 0.0,
+                "outlier_ratio": 0.0,
+                "has_holidays": False,
+                "gpu_available": False,
+                "feature_engineering_applied": False,
+            },
+            "min_level": "CONDITIONALLY_APPLICABLE",
+        }
+        r = client.post(
+            "/api/v1/internal/models/candidates",
+            json=payload,
+            headers={"Content-Type": "application/json"},
+            timeout=WARM_TIMEOUT,
+        )
+        dt = (time.monotonic() - t0) * 1000
+        if r.status_code == 200:
+            body = r.json()
+            candidates = body.get("candidates", [])
+            statistics = body.get("statistics", {})
+            spec_version = body.get("spec_version")
+            # Ожидаем: candidates непустой (24 модели в spec, минимум
+            # baseline-семейство из 4 моделей), statistics.total_models_in_spec=24.
+            ok = (
+                r.status_code == 200
+                and len(candidates) > 0
+                and statistics.get("total_models_in_spec") == 24
+            )
+            detail = (
+                f"status={r.status_code}, candidates={len(candidates)}, "
+                f"total_in_spec={statistics.get('total_models_in_spec')}, "
+                f"spec_version={spec_version}. "
+                f"{'✓ modeling.yaml найдена и распарсена' if ok else '✗ candidates пустой или spec не 24 модели!'}"
+            )
+        else:
+            ok = False
+            body = r.text[:500]
+            detail = (
+                f"status={r.status_code}, body={body}. "
+                f"Если 500 «Спецификация моделирования не найдена» — образ НЕ содержит "
+                f"rules/modeling.yaml (см. COPY rules/ в apps/api/Dockerfile)."
+            )
+        return CheckResult(
+            name="8. POST /api/v1/internal/models/candidates (пул кандидатов грузится)",
+            passed=ok,
+            duration_ms=dt,
+            detail=detail,
+            request={
+                "method": "POST",
+                "path": "/api/v1/internal/models/candidates",
+                "min_level": "CONDITIONALLY_APPLICABLE",
+            },
+            response={
+                "status": r.status_code,
+                "candidates_count": len(candidates) if r.status_code == 200 else None,
+                "total_models_in_spec": statistics.get("total_models_in_spec") if r.status_code == 200 else None,
+                "spec_version": spec_version if r.status_code == 200 else None,
+            },
+        )
+    except Exception as e:
+        dt = (time.monotonic() - t0) * 1000
+        return CheckResult(
+            name="8. POST /api/v1/internal/models/candidates (пул кандидатов грузится)",
+            passed=False,
+            duration_ms=dt,
+            detail=f"exception: {e!r}",
+        )
+
+
 def check_backtest_real_data(client: httpx.Client) -> CheckResult:
-    """8. POST /api/v1/internal/models/backtest — data_source="session" (РЕАЛЬНЫЙ ряд)."""
+    """9. POST /api/v1/internal/models/backtest — data_source="session" (РЕАЛЬНЫЙ ряд)."""
     t0 = time.monotonic()
     try:
         # Минимальный профиль для бэктеста (модель на реальном ряде sales_demo.csv)
@@ -481,7 +585,7 @@ def check_backtest_real_data(client: httpx.Client) -> CheckResult:
             body = r.text[:500]
             detail = f"status={r.status_code}, body={body}"
         return CheckResult(
-            name="8. POST /api/v1/internal/models/backtest (data_source=session → зелёный badge)",
+            name="9. POST /api/v1/internal/models/backtest (data_source=session → зелёный badge)",
             passed=ok,
             duration_ms=dt,
             detail=detail,
@@ -503,7 +607,7 @@ def check_backtest_real_data(client: httpx.Client) -> CheckResult:
     except Exception as e:
         dt = (time.monotonic() - t0) * 1000
         return CheckResult(
-            name="8. POST /api/v1/internal/models/backtest (data_source=session → зелёный badge)",
+            name="9. POST /api/v1/internal/models/backtest (data_source=session → зелёный badge)",
             passed=False,
             duration_ms=dt,
             detail=f"exception: {e!r}",
@@ -584,7 +688,11 @@ def main() -> int:
         results.append(check_target_column_post(client))
         print(f"[{'PASS' if results[-1].passed else 'FAIL'}] {results[-1].name} ({results[-1].duration_ms:.0f}ms)")
 
-        # 8. Backtest → data_source=session
+        # 8. POST /candidates — пул моделей грузится (rules/modeling.yaml в образе)
+        results.append(check_candidates_pool(client))
+        print(f"[{'PASS' if results[-1].passed else 'FAIL'}] {results[-1].name} ({results[-1].duration_ms:.0f}ms)")
+
+        # 9. Backtest → data_source=session
         results.append(check_backtest_real_data(client))
         print(f"[{'PASS' if results[-1].passed else 'FAIL'}] {results[-1].name} ({results[-1].duration_ms:.0f}ms)")
 

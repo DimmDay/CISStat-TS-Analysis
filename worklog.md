@@ -636,3 +636,52 @@ Deploy checklist (after merge):
 
 Phase 6-P0 готов к старту ПОСЛЕ этого фикса (без него бэктест-кнопка в проде не работала).
 
+---
+
+Task ID: 16 — Phase 2 production bugfix: «Спецификация моделирования не найдена: rules/modeling.yaml»
+
+Symptom (production, after Task 15 fix was deployed):
+
+User uploads CSV → target_column selector appears (✓)
+BUT «Загрузить пул» auto-fires → 500 error: «Спецификация моделирования не найдена: rules/modeling.yaml»
+Backtest button stays disabled (no candidates → activeCandidate=null)
+Root cause:
+
+apps/api/Dockerfile copies app/, validation/, src/, apps/api/ into the image — but NOT rules/.
+/v1/internal/models/candidates → _compute_candidates() → _get_spec() → ModelingSpec.from_yaml("rules/modeling.yaml") → FileNotFoundError → HTTP 500.
+The four YAML files in rules/ (modeling.yaml, default_rules.yaml, fao_prices.yaml, macro.yaml) all exist in the repo, just never make it into the Docker image.
+/v1/internal/rules/load/{template_id} and /v1/internal/rules/validate would have hit the same bug for any non-"custom" template_id.
+Why the Task 14 smoke test (pre_1_frontend_smoke.py, 8/8 PASS) missed this:
+
+Check #2 (proxy-alive) uses /v1/internal/rules/templates — this endpoint returns a HARDCODED list (_AVAILABLE_TEMPLATES_INTERNAL in internal.py), it never reads YAML.
+Check #8 (backtest) uses model_id="naive" → _MODEL_INFO dict lookup, never touches modeling.yaml.
+/candidates (which auto-fires on mount in TsAnalysisModeling.tsx via fetchCandidates) was NOT in the smoke test.
+Fix applied:
+
+apps/api/Dockerfile:
+• Added COPY rules/ ./rules/ after the other COPY lines — bundles all 4 YAML files into the image.
+• Added a build-time regression guard: RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; spec = ModelingSpec.from_yaml('rules/modeling.yaml'); print('modeling.yaml OK, models:', spec.total_model_count())" — if the YAML is missing or broken, image build FAILS (instead of letting the bug surface only at runtime as HTTP 500).
+scripts/pre_1_frontend_smoke.py: expanded from 8 → 9 checks:
+• NEW check #8: POST /v1/internal/models/candidates with a minimal profile. Verifies status=200, candidates array non-empty, and statistics.total_models_in_spec=24. This would have caught the Task 16 bug.
+• Old check #8 (backtest → data_source=session) renumbered to #9.
+• Updated docstring (8 → 9 checks), inline comments document the regression.
+Local verification:
+
+python -c "from src.catalog.modeling_spec_loader import ModelingSpec; spec = ModelingSpec.from_yaml('rules/modeling.yaml')" → OK, 24 models, 8 families, 23 rules.
+python -c "import ast; ast.parse(open('scripts/pre_1_frontend_smoke.py').read())" → Syntax OK.
+Deploy steps for the user:
+
+git push apps/api/Dockerfile (Render auto-redeploys backend — image rebuild will include rules/ + build-time guard will fail loudly if YAML is broken).
+After backend is up (Render Dashboard shows "Live"), re-run pre_1_frontend_smoke.py from project root: python /home/z/my-project/scripts/pre_1_frontend_smoke.py — expect 9/9 PASS now (was 8/8 before; check #8 /candidates is the new one).
+Manual UI verification on https://ts-standalone.vercel.app/modeling:
+Upload CSV → target_column selector appears ✓
+Select column → "Загрузить пул" succeeds (no «Спецификация моделирования не найдена» error)
+Family headers render (Baselines, Exponential smoothing, ARIMA, ...)
+Click model → backtest button becomes active → click → green badge «Реальные данные» (data_source=session)
+After 9/9 PASS and green badge confirmed → ready for Phase 6-P0.
+Stage Summary:
+
+Root cause: missing COPY rules/ ./rules/ in apps/api/Dockerfile (production-only bug — local dev works because CWD has rules/ on disk).
+Fix: Dockerfile + build-time guard + smoke-test regression coverage.
+Files changed: apps/api/Dockerfile, scripts/pre_1_frontend_smoke.py.
+No code changes in apps/api/routers/ or packages/ui/ — Task 15 fix was correct, it just couldn't run because the spec file wasn't shipped.
