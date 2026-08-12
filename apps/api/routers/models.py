@@ -74,27 +74,18 @@ def _reset_spec_cache():
 
 
 # ═══════════════════════════════════════════════════════════
-# POST /v1/models/candidates
+# POST /v1/models/candidates — бизнес-логика (переиспользуется зеркалом)
 # ═══════════════════════════════════════════════════════════
 
-@router.post(
-    "/candidates",
-    response_model=CandidatesResponse,
-    dependencies=[Depends(require_capability("can_train_models"))],
-)
-def get_candidates(
-    payload: CandidatesRequest,
-    principal: AuthenticatedPrincipal = Depends(get_current_principal),
-):
-    """
-    Получить пул кандидатов для моделирования на основе профиля данных.
 
-    Применяет движок применимости (23 правила, 4 уровня) ко всем 24 моделям
-    из 8 семейств. Возвращает модели с уровнем ≥ min_level, исключая
-    NOT_APPLICABLE. Baseline-модели включаются всегда.
+def _compute_candidates(payload: CandidatesRequest) -> CandidatesResponse:
+    """Чистая бизнес-логика: применить движок применимости к 24 моделям.
 
-    Доступно только принципалам с can_train_models=True
-    (professional, enterprise, admin, internal_analyst).
+    Вынесена из get_candidates, чтобы её мог переиспользовать зеркальный
+    эндпоинт /v1/internal/models/candidates (Phase 1 follow-up: см.
+    routers/internal.py). Логика идентична — разница только в auth:
+    защищённый требует require_capability("can_train_models"),
+    зеркало не требует (браузер standalone без API-ключа).
     """
     spec = _get_spec()
 
@@ -161,6 +152,31 @@ def get_candidates(
         statistics=statistics,
         spec_version=spec.metadata.version,
     )
+
+
+@router.post(
+    "/candidates",
+    response_model=CandidatesResponse,
+    dependencies=[Depends(require_capability("can_train_models"))],
+)
+def get_candidates(
+    payload: CandidatesRequest,
+    principal: AuthenticatedPrincipal = Depends(get_current_principal),
+):
+    """
+    Получить пул кандидатов для моделирования на основе профиля данных.
+
+    Применяет движок применимости (23 правила, 4 уровня) ко всем 24 моделям
+    из 8 семейств. Возвращает модели с уровнем ≥ min_level, исключая
+    NOT_APPLICABLE. Baseline-модели включаются всегда.
+
+    Доступно только принципалам с can_train_models=True
+    (professional, enterprise, admin, internal_analyst).
+
+    Браузер visitior'а standalone НЕ имеет API-ключа — для него
+    есть зеркало /v1/internal/models/candidates (без auth).
+    """
+    return _compute_candidates(payload)
 
 
 # ═══════════════════════════════════════════════════════════

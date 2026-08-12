@@ -1,0 +1,302 @@
+{
+  "frontend_base": "https://ts-standalone.vercel.app",
+  "timestamp": "2026-08-12T13:55:39+0000",
+  "total": 8,
+  "passed": 8,
+  "failed": 0,
+  "results": [
+    {
+      "name": "1. GET / (Vercel frontend homepage)",
+      "passed": true,
+      "duration_ms": 44.031293999978516,
+      "detail": "status=200, content-type='text/html; charset=utf-8', html_size=11690 bytes, has_body_tag=True. Если 404 — Vercel-проект не привязан к git branch; если не HTML — routing/layout сломан.",
+      "request": {
+        "method": "GET",
+        "path": "/"
+      },
+      "response": {
+        "status": 200,
+        "content-type": "text/html; charset=utf-8",
+        "html_size_bytes": 11690,
+        "has_body_tag": true
+      }
+    },
+    {
+      "name": "2. GET /api/v1/internal/rules/templates (Next.js rewrite → Render)",
+      "passed": true,
+      "duration_ms": 535.3996450003251,
+      "detail": "status=200, templates_count=4, first_template_id=custom. Если 404 — Next.js rewrite не настроен (см. next.config.mjs rewrites). Если 502/504 — Render backend спит или недоступен.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/internal/rules/templates"
+      },
+      "response": {
+        "status": 200,
+        "templates_count": 4,
+        "first_template_id": "custom"
+      }
+    },
+    {
+      "name": "3. GET /api/v1/session/current (Set-Cookie через Vercel-proxy)",
+      "passed": true,
+      "duration_ms": 524.8890760003633,
+      "detail": "status=200, cookie_set=True, samesite_none=True, secure=True, httponly=True. Through Vercel-proxy cookie становится first-party (что и было нужно в Task 11).",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/session/current"
+      },
+      "response": {
+        "status": 200,
+        "set_cookie": "cisstat_session_id=0a3df3f6263b4241ba1ffc3e55d75c96; HttpOnly; Max-Age=2592000; Path=/; SameSite=none; Secure",
+        "cookie_attrs": {
+          "set": true,
+          "samesite_none": true,
+          "secure": true,
+          "httponly": true
+        },
+        "has_active_dataset": false
+      }
+    },
+    {
+      "name": "4. GET /api/v1/session/current (round-trip с cookie через Vercel)",
+      "passed": true,
+      "duration_ms": 188.3708840005056,
+      "detail": "status=200, new_set_cookie=нет (ожидаемо). Если new cookie = session потерялась (cookie не дошла через Vercel-proxy или не сохранилась в Redis).",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/session/current",
+        "with_cookie": true
+      },
+      "response": {
+        "status": 200,
+        "new_set_cookie": null,
+        "has_active_dataset": false
+      }
+    },
+    {
+      "name": "5. POST /api/v1/internal/upload (CSV через Vercel-proxy)",
+      "passed": true,
+      "duration_ms": 198.61428000058368,
+      "detail": "status=200, dataset_id=abe052a0..., rows=72, columns=5, size=3.1 KB",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/internal/upload",
+        "file": "sales_demo.csv"
+      },
+      "response": {
+        "status": 200,
+        "body": {
+          "dataset_id": "abe052a0-ff0f-4fd9-a571-2095abff968c",
+          "name": "sales_demo.csv",
+          "rows": 72,
+          "columns": 5,
+          "preview": {
+            "head": [
+              [
+                "date",
+                "country",
+                "category",
+                "sales",
+                "profit"
+              ],
+              [
+                "2023-01-01",
+                "Russia",
+                "Textiles",
+                "14326.67",
+                "1181.97"
+              ],
+              [
+                "2023-02-01",
+                "Russia",
+                "Machinery",
+                "11689.27",
+                "1196.06"
+              ],
+              [
+                "2023-03-01",
+                "Russia",
+                "Food",
+                "12944.56",
+                "1911.52"
+              ],
+              [
+                "2023-04-01",
+                "Russia",
+                "Textiles",
+                "13458.88",
+                "1193.72"
+              ],
+              [
+                "2023-05-01",
+                "Russia",
+                "Machinery",
+                "12403.24",
+                "1029.22"
+              ]
+            ],
+            "tail": [
+              [
+                "2024-08-01",
+                "Belarus",
+                "Textiles",
+                "4402.23",
+                "566.12"
+              ],
+              [
+                "2024-09-01",
+                "Belarus",
+                "Machinery",
+                "4423.0",
+                "690.25"
+              ],
+              [
+                "2024-10-01",
+                "Belarus",
+                "Food",
+                "5139.45",
+                "477.14"
+              ],
+              [
+                "2024-11-01",
+                "Belarus",
+                "Textiles",
+                "5630.03",
+                "759.94"
+              ],
+              [
+                "2024-12-01",
+                "Belarus",
+                "Machinery",
+                "4726.94",
+                "790.55"
+              ]
+            ]
+          },
+          "columns_info": [
+            {
+              "name": "date",
+              "dtype": "object",
+              "type_icon": "categorical",
+              "non_null": 72,
+              "nulls": 0,
+              "unique": 24
+            },
+            {
+              "name": "country",
+              "dtype": "object",
+              "type_icon": "categorical",
+              "non_null": 72,
+              "nulls": 0,
+              "unique": 3
+            },
+            {
+              "name": "category",
+              "dtype": "object",
+              "type_icon": "categorical",
+              "non_null": 72,
+              "nulls": 0,
+              "unique": 3
+            },
+            {
+              "name": "sales",
+              "dtype": "float64",
+              "type_icon": "numeric",
+              "non_null": 72,
+              "nulls": 0,
+              "unique": 72
+            },
+            {
+              "name": "profit",
+              "dtype": "float64",
+              "type_icon": "numeric",
+              "non_null": 72,
+              "nulls": 0,
+              "unique": 72
+            }
+          ],
+          "quality": {
+            "cols_with_missing": 0,
+            "cols_with_outliers": 1,
+            "rows_total": 72,
+            "duplicates": 0,
+            "missing_cols": [],
+            "outlier_cols": [
+              "profit"
+            ]
+          },
+          "size_label": "3.1 KB",
+          "parse_warnings": [],
+          "error": null
+        }
+      }
+    },
+    {
+      "name": "6. GET /api/v1/session/target-column (Phase 0.5 bridge: has_dataset=true)",
+      "passed": true,
+      "duration_ms": 188.10204100009287,
+      "detail": "status=200, has_dataset=True, available_columns=['sales', 'profit'], target_column=None. Ожидаем: has_dataset=true, sales и profit в available_columns, target_column=None.",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/session/target-column"
+      },
+      "response": {
+        "status": 200,
+        "has_dataset": true,
+        "available_columns": [
+          "sales",
+          "profit"
+        ],
+        "target_column": null
+      }
+    },
+    {
+      "name": "7. POST /api/v1/session/target-column (выбираем 'sales')",
+      "passed": true,
+      "duration_ms": 196.70187900010205,
+      "detail": "status=200, target_column=sales, has_dataset=True, available_columns=['sales', 'profit']. После этого шага session.target_column сохранён в Redis (через Vercel-proxy).",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/session/target-column",
+        "body": {
+          "column": "sales"
+        }
+      },
+      "response": {
+        "status": 200,
+        "target_column": "sales",
+        "has_dataset": true,
+        "available_columns": [
+          "sales",
+          "profit"
+        ]
+      }
+    },
+    {
+      "name": "8. POST /api/v1/internal/models/backtest (data_source=session → зелёный badge)",
+      "passed": true,
+      "duration_ms": 191.37414900069416,
+      "detail": "status=200, data_source='session', model=naive, n_train=57, n_test=15, duration_ms=0.08. ✓ ЗЕЛЁНЫЙ БЭДЖ «Реальные данные» будет показан",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/internal/models/backtest",
+        "model_id": "naive",
+        "train_ratio": 0.8
+      },
+      "response": {
+        "status": 200,
+        "data_source": "session",
+        "model_id": "naive",
+        "n_train": 57,
+        "n_test": 15,
+        "metrics_keys": [
+          "mae",
+          "rmse",
+          "mape",
+          "mase",
+          "weighted_score"
+        ]
+      }
+    }
+  ]
+}

@@ -50,6 +50,50 @@ import { getApiBase } from "../lib/apiClient";
 // прокси и потеряем first-party cookie (см. lib/apiClient.ts::getApiBase).
 const API_BASE = getApiBase();
 
+// ── Утилита для рендера detail ошибок (Task 14 fix) ──────────────
+// FastAPI/Pydantic v2 возвращает ошибки ДВУХ форм:
+//   1. HTTPException(detail="строка") → detail = "строка" → просто вернуть
+//   2. Pydantic validation error → detail = [{loc:[...], msg:..., type:...}, ...]
+//      → если просто сделать String(arr), получим "[object Object],[object Object]"
+//      (это и было причиной бага в UI до Task 14 fix).
+//   3. Массив строк (редкий случай) — джойним.
+//
+// Эта функция нормализует все три случая в человекочитаемую строку.
+function formatErrorDetail(detail: unknown): string | null {
+  if (detail == null) return null;
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    // Каждый элемент — объект с полями {loc, msg, type} (Pydantic v2)
+    const parts = detail.map((item) => {
+      if (typeof item === "string") return item;
+      if (item && typeof item === "object") {
+        const itemObj = item as Record<string, unknown>;
+        const rawLoc = itemObj.loc;
+        const locArr = Array.isArray(rawLoc)
+          ? (rawLoc as unknown[]).map((x) => String(x))
+          : null;
+        const msg = itemObj.msg;
+        if (locArr && typeof msg === "string") {
+          return `${locArr.join(".")}: ${msg}`;
+        }
+        if (typeof msg === "string") return msg;
+      }
+      try {
+        return JSON.stringify(item);
+      } catch {
+        return String(item);
+      }
+    });
+    return parts.filter(Boolean).join("; ");
+  }
+  // Неожиданный тип (число, объект без array) — stringify
+  try {
+    return JSON.stringify(detail);
+  } catch {
+    return String(detail);
+  }
+}
+
 // ── Справка по целям модуля «Моделирование» ────────────────────
 
 const MODELING_HELP = `Цели модуля "Моделирование"
@@ -173,7 +217,7 @@ export function TsAnalysisModeling() {
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}));
         throw new Error(
-          errBody.detail || `HTTP ${res.status}: ${res.statusText}`
+          formatErrorDetail(errBody.detail) || `HTTP ${res.status}: ${res.statusText}`
         );
       }
       const data: TargetColumnResponse = await res.json();
@@ -220,7 +264,7 @@ export function TsAnalysisModeling() {
         if (!res.ok) {
           const errBody = await res.json().catch(() => ({}));
           throw new Error(
-            errBody.detail || `HTTP ${res.status}: ${res.statusText}`
+            formatErrorDetail(errBody.detail) || `HTTP ${res.status}: ${res.statusText}`
           );
         }
         const data: TargetColumnResponse = await res.json();
@@ -256,11 +300,20 @@ export function TsAnalysisModeling() {
   }, [activeDatasetName, fetchTargetColumn]);
 
   // ── Fetch кандидатов ──
+  // Task 14 fix: используем /v1/internal/models/candidates (БЕЗ auth) —
+  // зеркало /v1/models/candidates (см. apps/api/routers/internal.py).
+  // Раньше вызывали /v1/models/candidates, который защищён
+  // require_capability("can_train_models") → требует X-Api-Key.
+  // Браузер visitior'а standalone НЕ имеет API-ключа → 422 (missing header),
+  // в UI выводилось "Ошибка: [object Object],[object Object]" (массив
+  // Pydantic-ошибок [{...},{...}], приведённый к строке через String()).
+  // Из-за этого candidates=[] → activeCandidate=null → кнопка бэктеста
+  // не отрисовывалась → пользователь видел «бэктест не активный».
   const fetchCandidates = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/v1/models/candidates`, {
+      const res = await fetch(`${API_BASE}/v1/internal/models/candidates`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -271,7 +324,7 @@ export function TsAnalysisModeling() {
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}));
         throw new Error(
-          errBody.detail || `HTTP ${res.status}: ${res.statusText}`
+          formatErrorDetail(errBody.detail) || `HTTP ${res.status}: ${res.statusText}`
         );
       }
       const data: CandidatesResponse = await res.json();
@@ -329,7 +382,7 @@ export function TsAnalysisModeling() {
         if (!res.ok) {
           const errBody = await res.json().catch(() => ({}));
           throw new Error(
-            errBody.detail || `HTTP ${res.status}: ${res.statusText}`
+            formatErrorDetail(errBody.detail) || `HTTP ${res.status}: ${res.statusText}`
           );
         }
         const data: BacktestResponse = await res.json();

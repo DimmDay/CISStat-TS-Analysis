@@ -139,7 +139,7 @@ const MOCK_CANDIDATES_RESPONSE = {
 // ── Mock fetch (на уровне модуля, как DataUploadForm.test.tsx) ──
 // Маршрутизация по URL:
 //   • GET  /v1/session/target-column → MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET
-//   • POST /v1/models/candidates     → MOCK_CANDIDATES_RESPONSE
+//   • POST /v1/internal/models/candidates → MOCK_CANDIDATES_RESPONSE  (Task 14 fix: mirror without auth)
 //   • POST /v1/internal/models/backtest → MOCK_BACKTEST_RESPONSE
 // Это позволяет компоненту на маунте вызвать ДВА fetch (target-column + candidates)
 // без падения тестов.
@@ -296,12 +296,12 @@ describe("TsAnalysisModeling", () => {
     // Phase 1: на маунте ДВА fetch — target-column (GET) + candidates (POST)
     await waitFor(() => {
       const candidatesCalls = mockFetch.mock.calls.filter(
-        ([u]: [string]) => typeof u === "string" && u.includes("/v1/models/candidates")
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/internal/models/candidates")
       );
       expect(candidatesCalls.length).toBe(1);
     });
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("/v1/models/candidates"),
+      expect.stringContaining("/v1/internal/models/candidates"),
       expect.objectContaining({ method: "POST" })
     );
   });
@@ -363,6 +363,54 @@ describe("TsAnalysisModeling", () => {
     expect(errorMatches.length).toBeGreaterThanOrEqual(1);
   });
 
+  it("Task 14 fix: renders array-shape detail as readable string, NOT '[object Object]'", async () => {
+    // Regression: раньше при ошибке 422 с массивом Pydantic-ошибок
+    // [{loc,msg,type},...] JS делал String(arr) → "[object Object],[object Object]".
+    // Теперь formatErrorDetail() нормализует массив в "loc.join('.'): msg; ...".
+    const pydanticArrayDetail = [
+      { type: "missing", loc: ["header", "x-api-key"], msg: "Field required", input: null },
+      { type: "missing", loc: ["header", "x-api-key"], msg: "Field required", input: null },
+    ];
+    mockFetch.mockImplementation(() =>
+      Promise.resolve({
+        ok: false,
+        status: 422,
+        statusText: "Unprocessable Entity",
+        json: () => Promise.resolve({ detail: pydanticArrayDetail }),
+      })
+    );
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      expect(screen.getByTestId("api-error")).toBeInTheDocument();
+    });
+    // КРИТИЧНО: НЕ должно быть [object Object]
+    const errorEls = screen.getAllByText(/header\.x-api-key/i);
+    expect(errorEls.length).toBeGreaterThanOrEqual(1);
+    // Явная проверка отсутствия старого симптома
+    const objectStringEls = screen.queryAllByText(/\[object Object\]/i);
+    expect(objectStringEls).toHaveLength(0);
+  });
+
+  it("Task 14 fix: uses /v1/internal/models/candidates (NOT /v1/models/candidates)", async () => {
+    // Regression test: раньше UI ходил на /v1/models/candidates (требует X-Api-Key),
+    // теперь — на зеркало /v1/internal/models/candidates (без auth).
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      const internalCalls = mockFetch.mock.calls.filter(
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/internal/models/candidates")
+      );
+      expect(internalCalls.length).toBeGreaterThanOrEqual(1);
+    });
+    // Контрольная: НЕ должно быть запросов на старый защищённый эндпоинт
+    const oldCalls = mockFetch.mock.calls.filter(
+      ([u]: [string]) =>
+        typeof u === "string" &&
+        u.includes("/v1/models/candidates") &&
+        !u.includes("/v1/internal/models/candidates")
+    );
+    expect(oldCalls).toHaveLength(0);
+  });
+
   // ── 8. Кнопка «Загрузить пул» ──
 
   it("renders the 'Загрузить пул' button", () => {
@@ -376,7 +424,7 @@ describe("TsAnalysisModeling", () => {
     // Phase 1: на маунте ДВА fetch — target-column + candidates
     await waitFor(() => {
       const candidatesCalls = mockFetch.mock.calls.filter(
-        ([u]: [string]) => typeof u === "string" && u.includes("/v1/models/candidates")
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/internal/models/candidates")
       );
       expect(candidatesCalls.length).toBe(1);
     });
@@ -385,7 +433,7 @@ describe("TsAnalysisModeling", () => {
     fireEvent.click(btn);
     await waitFor(() => {
       const candidatesCalls = mockFetch.mock.calls.filter(
-        ([u]: [string]) => typeof u === "string" && u.includes("/v1/models/candidates")
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/internal/models/candidates")
       );
       expect(candidatesCalls.length).toBe(2);
     });

@@ -24,6 +24,7 @@ from apps.api.schemas import (
     ValidateWithRulesRequest, ValidateWithRulesResponse, ValidateSummary,
     RulesUpdateRequest, RulesUpdateResponse,
     BacktestRequest, BacktestResponse,
+    CandidatesRequest, CandidatesResponse,
 )
 from apps.api.session_store import get_or_create_session_id, get_session_store
 from apps.api.routers.models import (
@@ -31,6 +32,7 @@ from apps.api.routers.models import (
     _resolve_seasonal_period,
     _run_backtest_with_series,
     _generate_series,
+    _compute_candidates,
 )
 from app.core.passport import calculate_ts_passport
 from app.validation.regularity import compute_regularity_violations
@@ -286,3 +288,37 @@ def run_backtest_internal(
         duration_ms=round(duration_ms, 2),
         data_source=data_source,
     )
+
+
+# ────────────────────────────────────────────────────────────────────
+# Phase 1 follow-up (Task 14 fix): зеркало /v1/internal/models/candidates
+# ────────────────────────────────────────────────────────────────────
+#
+# ЗАЧЕМ: /v1/models/candidates защищён require_capability("can_train_models"),
+# который требует X-Api-Key header. Браузер visitior'а standalone НЕ имеет
+# API-ключа → запрос падал с 422 (missing X-Api-Key). Симптом в UI:
+# "Ошибка: [object Object],[object Object]" — это массив Pydantic-ошибок
+# [{...},{...}], приведённый к строке через String() в JS.
+#
+# Из-за этого candidates=[] → activeCandidate=null → кнопка «Запустить
+# бэктест» не отрисовывалась → пользователь видел «бэктест не активный».
+#
+# Зеркало здесь переиспользует ту же бизнес-логику (_compute_candidates),
+# что и защищённый эндпоинт — без auth, по аналогии с /v1/internal/upload
+# и /v1/internal/models/backtest.
+#
+# АВТОРИЗАЦИЯ ПО CAPABILITY НЕ ДЕЛАЕТСЯ по той же причине, что и в зеркале
+# backtest: standalone — публичный демо-режим, посетитель не аутентифицирован.
+
+
+@router.post("/models/candidates", response_model=CandidatesResponse)
+def get_candidates_internal(payload: CandidatesRequest):
+    """Пул кандидатов — зеркало /v1/models/candidates без auth.
+
+    Возвращает ТОТ ЖЕ CandidatesResponse (candidates + statistics +
+    spec_version), что и защищённый эндпоинт, поскольку вызывает ту же
+    бизнес-логику _compute_candidates(). Это позволяет UI работать с
+    обоими эндпоинтами взаимозаменяемо (мы переключились на internal,
+    но поля ответа идентичны).
+    """
+    return _compute_candidates(payload)
