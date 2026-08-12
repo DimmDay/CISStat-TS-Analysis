@@ -137,13 +137,39 @@ const MOCK_CANDIDATES_RESPONSE = {
 };
 
 // ── Mock fetch (на уровне модуля, как DataUploadForm.test.tsx) ──
+// Маршрутизация по URL:
+//   • GET  /v1/session/target-column → MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET
+//   • POST /v1/models/candidates     → MOCK_CANDIDATES_RESPONSE
+//   • POST /v1/internal/models/backtest → MOCK_BACKTEST_RESPONSE
+// Это позволяет компоненту на маунте вызвать ДВА fetch (target-column + candidates)
+// без падения тестов.
+const MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET = {
+  target_column: null,
+  available_columns: [],
+  has_dataset: false,
+};
+
+const MOCK_TARGET_COLUMN_RESPONSE_WITH_DATASET = {
+  target_column: null,
+  available_columns: ["value", "gdp", "inflation"],
+  has_dataset: true,
+};
+
 // @ts-ignore — mock fetch с частичным Response
-const mockFetch: any = jest.fn(() =>
-  Promise.resolve({
+const mockFetch: any = jest.fn((url: string) => {
+  // GET target-column (без body в mock — components не передаёт method для GET)
+  if (typeof url === "string" && url.includes("/v1/session/target-column")) {
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET),
+    });
+  }
+  // candidates по умолчанию
+  return Promise.resolve({
     ok: true,
     json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
-  })
-);
+  });
+});
 // @ts-ignore
 global.fetch = mockFetch;
 
@@ -155,13 +181,19 @@ describe("TsAnalysisModeling", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockActiveDataset = null; // ← по умолчанию без датасета
-    // Восстановим mock по умолчанию (success)
-    mockFetch.mockImplementation(() =>
-      Promise.resolve({
+    // Восстановим mock по умолчанию (success + маршрутизация по URL)
+    mockFetch.mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/v1/session/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET),
+        });
+      }
+      return Promise.resolve({
         ok: true,
         json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
-      })
-    );
+      });
+    });
   });
 
   // ── 1. Рендер модуля ──
@@ -261,12 +293,30 @@ describe("TsAnalysisModeling", () => {
 
   it("fetches candidates on mount", async () => {
     render(<TsAnalysisModeling />);
+    // Phase 1: на маунте ДВА fetch — target-column (GET) + candidates (POST)
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const candidatesCalls = mockFetch.mock.calls.filter(
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/models/candidates")
+      );
+      expect(candidatesCalls.length).toBe(1);
     });
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining("/v1/models/candidates"),
       expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  it("fetches target-column on mount (Phase 1)", async () => {
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      const tcCalls = mockFetch.mock.calls.filter(
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/session/target-column")
+      );
+      expect(tcCalls.length).toBe(1);
+    });
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/session/target-column"),
+      expect.objectContaining({ credentials: "include" })
     );
   });
 
@@ -323,15 +373,21 @@ describe("TsAnalysisModeling", () => {
 
   it("clicking 'Загрузить пул' triggers fetch", async () => {
     render(<TsAnalysisModeling />);
-    // Первый fetch уже был при маунте
+    // Phase 1: на маунте ДВА fetch — target-column + candidates
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const candidatesCalls = mockFetch.mock.calls.filter(
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/models/candidates")
+      );
+      expect(candidatesCalls.length).toBe(1);
     });
-    // Кликаем кнопку
+    // Кликаем кнопку — должен быть ещё один candidates-запрос
     const btn = screen.getByTestId("fetch-candidates-btn");
     fireEvent.click(btn);
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      const candidatesCalls = mockFetch.mock.calls.filter(
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/models/candidates")
+      );
+      expect(candidatesCalls.length).toBe(2);
     });
   });
 
@@ -426,12 +482,18 @@ describe("TsAnalysisModeling", () => {
 describe("TsAnalysisModeling — activeDataset integration", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockFetch.mockImplementation(() =>
-      Promise.resolve({
+    mockFetch.mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/v1/session/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET),
+        });
+      }
+      return Promise.resolve({
         ok: true,
         json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
-      })
-    );
+      });
+    });
   });
 
   it("auto-fills n_observations from activeDataset.rows", () => {
@@ -558,15 +620,33 @@ const MOCK_BACKTEST_RESPONSE = {
   n_test: 24,
   train_ratio: 0.8,
   duration_ms: 12.3,
+  // Phase 1: data_source — показывает, реальный ряд или синтетика.
+  // "session" — реальный ряд из session.dataframe[target_column].
+  // "synthetic" — fallback на синтетический ряд (target_column не задан).
+  data_source: "synthetic",
+};
+
+const MOCK_BACKTEST_RESPONSE_REAL_DATA = {
+  ...MOCK_BACKTEST_RESPONSE,
+  data_source: "session",
+  n_train: 7,
+  n_test: 3,
 };
 
 describe("TsAnalysisModeling — backtest", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockActiveDataset = null;
-    // По умолчанию: candidates-запрос → success
+    // Маршрутизация: target-column → no-dataset, candidates → success,
+    // backtest → MOCK_BACKTEST_RESPONSE (data_source=synthetic по умолчанию).
     mockFetch.mockImplementation((url: string) => {
-      if (url.includes("/v1/models/backtest")) {
+      if (typeof url === "string" && url.includes("/v1/session/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET),
+        });
+      }
+      if (typeof url === "string" && url.includes("/v1/internal/models/backtest")) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(MOCK_BACKTEST_RESPONSE),
@@ -595,7 +675,7 @@ describe("TsAnalysisModeling — backtest", () => {
     expect(screen.getByTestId("run-backtest-btn")).toBeInTheDocument();
   });
 
-  it("clicking 'Запустить бэктест' triggers backtest API call", async () => {
+  it("clicking 'Запустить бэктест' triggers backtest API call to /v1/internal/models/backtest (Phase 1)", async () => {
     render(<TsAnalysisModeling />);
     await waitFor(() => {
       expect(screen.getByTestId("candidate-pool")).toBeInTheDocument();
@@ -610,10 +690,15 @@ describe("TsAnalysisModeling — backtest", () => {
 
     fireEvent.click(screen.getByTestId("run-backtest-btn"));
 
+    // Phase 1: switched from /v1/models/backtest (requires X-Api-Key, doesn't
+    // read session) to /v1/internal/models/backtest (no auth, uses session bridge).
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("/v1/models/backtest"),
-        expect.objectContaining({ method: "POST" })
+        expect.stringContaining("/v1/internal/models/backtest"),
+        expect.objectContaining({
+          method: "POST",
+          credentials: "include", // cookie сессии обязателен для internal-зеркала
+        })
       );
     });
   });
@@ -644,9 +729,81 @@ describe("TsAnalysisModeling — backtest", () => {
     expect(screen.getByText("2.1%")).toBeInTheDocument(); // MAPE
   });
 
+  it("shows 'Синтетический ряд' badge when data_source=synthetic (Phase 1)", async () => {
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      expect(screen.getByTestId("candidate-pool")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("family-header-baselines"));
+    fireEvent.click(screen.getByTestId("candidate-naive"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("run-backtest-btn")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("run-backtest-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("backtest-result")).toBeInTheDocument();
+    });
+
+    // Badge «Синтетический ряд» — индикатор источника данных
+    expect(screen.getByTestId("data-source-badge")).toBeInTheDocument();
+    expect(screen.getByTestId("data-source-badge").textContent).toContain("Синтетический ряд");
+  });
+
+  it("shows 'Реальные данные' badge when data_source=session (Phase 1)", async () => {
+    // Переопределяем mock: backtest возвращает data_source=session
+    mockFetch.mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/v1/session/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET),
+        });
+      }
+      if (typeof url === "string" && url.includes("/v1/internal/models/backtest")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_BACKTEST_RESPONSE_REAL_DATA),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
+      });
+    });
+
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      expect(screen.getByTestId("candidate-pool")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("family-header-baselines"));
+    fireEvent.click(screen.getByTestId("candidate-naive"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("run-backtest-btn")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("run-backtest-btn"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("backtest-result")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("data-source-badge").textContent).toContain("Реальные данные");
+  });
+
   it("shows backtest error on API failure", async () => {
     mockFetch.mockImplementation((url: string) => {
-      if (url.includes("/v1/models/backtest")) {
+      if (typeof url === "string" && url.includes("/v1/session/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET),
+        });
+      }
+      if (typeof url === "string" && url.includes("/v1/internal/models/backtest")) {
         return Promise.resolve({
           ok: false,
           status: 500,
@@ -704,5 +861,250 @@ describe("TsAnalysisModeling — backtest", () => {
     // Стадия 7 (Тюнинг) должна быть активной
     const tuningBtn = screen.getAllByText("Тюнинг")[0];
     expect(tuningBtn).toBeInTheDocument();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// 15. Phase 1: target_column selector
+// ═══════════════════════════════════════════════════════════
+
+describe("TsAnalysisModeling — target_column selector (Phase 1)", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockActiveDataset = null;
+    // По умолчанию: нет датасета (has_dataset=false → селектор disabled)
+    mockFetch.mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/v1/session/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET),
+        });
+      }
+      if (typeof url === "string" && url.includes("/v1/internal/models/backtest")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_BACKTEST_RESPONSE),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
+      });
+    });
+  });
+
+  it("renders the target_column selector block in left column", async () => {
+    render(<TsAnalysisModeling />);
+    expect(screen.getByTestId("target-column-block")).toBeInTheDocument();
+  });
+
+  it("renders 'Загрузите датасет' hint when has_dataset=false", async () => {
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      expect(screen.getByTestId("target-column-no-dataset")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("target-column-no-dataset").textContent).toContain("Загрузите датасет");
+  });
+
+  it("renders disabled select placeholder when no dataset", async () => {
+    render(<TsAnalysisModeling />);
+    // Select присутствует, но disabled (нет колонок для выбора)
+    const select = screen.queryByTestId("target-column-select");
+    // Либо select disabled, либо нет вовсе (показан hint вместо select)
+    if (select) {
+      expect(select).toBeDisabled();
+    } else {
+      // hint показан, select скрыт — это валидное состояние
+      expect(screen.getByTestId("target-column-no-dataset")).toBeInTheDocument();
+    }
+  });
+
+  it("renders enabled select with available columns when has_dataset=true", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/v1/session/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_WITH_DATASET),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
+      });
+    });
+
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      expect(screen.getByTestId("target-column-select")).not.toBeDisabled();
+    });
+
+    // Проверяем, что в селекте есть все 3 колонки из мока
+    const select = screen.getByTestId("target-column-select") as HTMLSelectElement;
+    const optionValues = Array.from(select.options).map((o) => o.value);
+    expect(optionValues).toContain("value");
+    expect(optionValues).toContain("gdp");
+    expect(optionValues).toContain("inflation");
+  });
+
+  it("selecting a column triggers POST to /v1/session/target-column with credentials", async () => {
+    mockFetch.mockImplementation((url: string, options: any = {}) => {
+      if (typeof url === "string" && url.includes("/v1/session/target-column")) {
+        // POST: возвращаем обновлённый target_column
+        if (options?.method === "POST") {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              target_column: "value",
+              available_columns: ["value", "gdp", "inflation"],
+              has_dataset: true,
+            }),
+          });
+        }
+        // GET
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_WITH_DATASET),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
+      });
+    });
+
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      expect(screen.getByTestId("target-column-select")).not.toBeDisabled();
+    });
+
+    // Выбираем колонку "value"
+    fireEvent.change(screen.getByTestId("target-column-select"), {
+      target: { value: "value" },
+    });
+
+    await waitFor(() => {
+      const postCalls = mockFetch.mock.calls.filter(
+        ([u, opts]: [string, any]) =>
+          typeof u === "string" &&
+          u.includes("/v1/session/target-column") &&
+          opts?.method === "POST"
+      );
+      expect(postCalls.length).toBe(1);
+    });
+
+    // Тело запроса должно содержать column: "value"
+    const postCall = mockFetch.mock.calls.find(
+      ([u, opts]: [string, any]) =>
+        typeof u === "string" &&
+        u.includes("/v1/session/target-column") &&
+        opts?.method === "POST"
+    );
+    expect(postCall).toBeDefined();
+    const body = JSON.parse(postCall![1].body);
+    expect(body.column).toBe("value");
+
+    // Cookie обязателен
+    expect(postCall![1].credentials).toBe("include");
+  });
+
+  it("refetches target-column when activeDataset changes (e.g. after upload)", async () => {
+    // Сначала без датасета
+    mockActiveDataset = null;
+    const { rerender } = render(<TsAnalysisModeling />);
+
+    await waitFor(() => {
+      const tcCalls = mockFetch.mock.calls.filter(
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/session/target-column")
+      );
+      expect(tcCalls.length).toBe(1);
+    });
+
+    // Пользователь загрузил новый датасет → activeDataset сменился
+    mockActiveDataset = {
+      name: "new_dataset.csv",
+      rows: 500,
+      sizeLabel: "2.5 MB",
+    };
+    rerender(<TsAnalysisModeling />);
+
+    // Должен произойти повторный fetch target-column (теперь их 2)
+    await waitFor(() => {
+      const tcCalls = mockFetch.mock.calls.filter(
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/session/target-column")
+      );
+      expect(tcCalls.length).toBe(2);
+    });
+  });
+
+  it("shows target_column error when POST fails", async () => {
+    mockFetch.mockImplementation((url: string, options: any = {}) => {
+      if (typeof url === "string" && url.includes("/v1/session/target-column")) {
+        if (options?.method === "POST") {
+          return Promise.resolve({
+            ok: false,
+            status: 422,
+            statusText: "Unprocessable Entity",
+            json: () => Promise.resolve({ detail: "Колонка 'foo' не числовая" }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_WITH_DATASET),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
+      });
+    });
+
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      expect(screen.getByTestId("target-column-select")).not.toBeDisabled();
+    });
+
+    fireEvent.change(screen.getByTestId("target-column-select"), {
+      target: { value: "value" },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("target-column-error")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("target-column-error").textContent).toContain("не числовая");
+  });
+
+  it("does NOT call /v1/models/backtest (old endpoint, replaced by /v1/internal/models/backtest)", async () => {
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      expect(screen.getByTestId("candidate-pool")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("family-header-baselines"));
+    fireEvent.click(screen.getByTestId("candidate-naive"));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("run-backtest-btn")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("run-backtest-btn"));
+
+    await waitFor(() => {
+      // Должен быть вызов к internal-зеркалу
+      const internalCalls = mockFetch.mock.calls.filter(
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/internal/models/backtest")
+      );
+      expect(internalCalls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    // И НЕ должно быть вызовов к старому /v1/models/backtest
+    // (который требует X-Api-Key и не использует session bridge).
+    // ВАЖНО: фильтр "/v1/models/backtest" НЕ матчит "/v1/internal/models/backtest"
+    // (контрольная проверка: indexOf("/v1/models/backtest") по строке
+    // "/v1/internal/models/backtest" возвращает -1).
+    const oldEndpointCalls = mockFetch.mock.calls.filter(([u]: [string]) => {
+      if (typeof u !== "string") return false;
+      return u.includes("/v1/models/backtest") && !u.includes("/v1/internal/");
+    });
+    expect(oldEndpointCalls.length).toBe(0);
   });
 });

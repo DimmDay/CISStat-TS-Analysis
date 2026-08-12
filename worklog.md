@@ -404,3 +404,92 @@ Deploy checklist (after merge):
 2. Smoke-test в проде: `python scripts/smoke/pre_0_smoke.py` (7/7 PASS expected — target_column обратно совместим)
 3. Опционально: добавить UI-селектор target_column в TsAnalysisModeling (Phase 1 — следующий шаг)
 4. Опционально: переключить frontend на /v1/internal/models/backtest (вместо /v1/models/backtest) для standalone-режима
+
+---
+
+Task ID: 13 — Phase 1: UI селектор target_column в TsAnalysisModeling.tsx
+
+What changed:
+• packages/ui/lib/modeling.ts — добавлены типы TargetColumnRequest { column: string } и TargetColumnResponse { target_column: string | null; available_columns: string[]; has_dataset: boolean } (зеркало apps/api/schemas.py Phase 0.5). В BacktestResponse добавлено опциональное поле data_source?: "session" | "synthetic" — показывает источник ряда для бэктеста. Опциональность сохраняет backward-compat для старого /v1/models/backtest (без bridge).
+
+• packages/ui/index.ts — добавлены экспорты TargetColumnRequest, TargetColumnResponse (для переиспользования другими приложениями монорепо).
+
+• packages/ui/components/TsAnalysisModeling.tsx — главные изменения:
+
+Новый стейт: targetColumn, availableColumns, hasDataset, targetColumnLoading, targetColumnError (5 useState).
+fetchTargetColumn() — GET /v1/session/target-column с credentials:"include" (cookie сессии обязателен — мост Phase 0.5).
+handleTargetColumnChange() — POST /v1/session/target-column с credentials:"include" и телом { column }. Сервер валидирует колонку (404/422 при ошибке), обновляет AnalysisSession.target_column, возвращает новое состояние.
+useEffect на маунте → fetchTargetColumn. useEffect на activeDataset?.name → повторный fetchTargetColumn при смене/загрузке датасета (симптом: пользователь загрузил CSV, вернулся на Modeling — список колонок актуализируется).
+runBacktest() переключён с /v1/models/backtest (требует X-Api-Key, не работает в standalone, не использует session) на /v1/internal/models/backtest (зеркало без auth, читает cookie, использует target_column если задан — иначе fallback на синтетику). Добавлен credentials:"include".
+UI селектора в левой колонке (после формы профиля, перед «Загрузить пул»):
+has_dataset=true → <select> с options из availableColumns + «— не выбрано —» (сброс к синтетике)
+has_dataset=false → hint «Загрузите датасет, чтобы выбрать колонку»
+targetColumnLoading → spinner рядом с лейблом + disabled <select>
+targetColumn выбран → подсказка «Бэктест будет на реальном ряде»
+targetColumnError → красный текст ошибки (не блокирует остальной UI)
+Badge data_source в карточке результата бэктеста:
+data_source="session" → зелёный badge «Реальные данные»
+data_source="synthetic" → серый badge «Синтетический ряд»
+поле отсутствует → badge не показывается (backward-compat для старого эндпоинта)
+• packages/ui/components/TsAnalysisModeling.test.tsx — обновлён и расширен:
+
+Mock fetch теперь маршрутизирует по URL: /v1/session/target-column → MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET/WITH_DATASET, /v1/internal/models/backtest → MOCK_BACKTEST_RESPONSE с data_source.
+Обновлены существующие тесты (R1 mitigation):
+• "fetches candidates on mount" — assertions переписаны на filter по URL (раньше total call count = 1, теперь их 2: target-column + candidates)
+• "clicking 'Загрузить пул' triggers fetch" — переписан на filter по URL
+• Backtest-тесты переключены на /v1/internal/models/backtest (вместо /v1/models/backtest)
+• Добавлен assertion на credentials:"include" для backtest-запроса
+11 новых тестов:
+• "fetches target-column on mount (Phase 1)" — GET на маунте с credentials
+• "shows 'Синтетический ряд' badge when data_source=synthetic"
+• "shows 'Реальные данные' badge when data_source=session"
+• "renders the target_column selector block in left column"
+• "renders 'Загрузите датасет' hint when has_dataset=false"
+• "renders disabled select placeholder when no dataset"
+• "renders enabled select with available columns when has_dataset=true"
+• "selecting a column triggers POST to /v1/session/target-column with credentials"
+• "refetches target-column when activeDataset changes (e.g. after upload)"
+• "shows target_column error when POST fails"
+• "does NOT call /v1/models/backtest (old endpoint, replaced by /v1/internal/models/backtest)" — контрольный тест на отсутствие вызовов к старому эндпоинту
+Root cause и обоснование решений:
+
+Почему переключили эндпоинт бэктеста на /v1/internal/models/backtest?
+/v1/models/backtest требует require_capability("can_train_models") → X-Api-Key header (Task 8 worklog). Браузер посетителя standalone НЕ имеет API-ключа → не может вызвать /v1/models/backtest.
+Зеркало /v1/internal/models/backtest БЕЗ auth (как /v1/internal/upload), читает сессию по cookie, при наличии target_column в сессии выполняет расчёт на РЕАЛЬНОМ ряде из session.dataframe[target_column] (data_source="session"), иначе fallback на синтетику (data_source="synthetic"). Это и есть «мост Upload → Backtest» Phase 0.5 — теперь UI его использует.
+Без переключения эндпоинта селектор target_column не имел бы эффекта: пользователь выбрал бы колонку, но бэктест продолжал бы считаться на синтетике. Это противоречит требованию «мост готов, но не используется UI» → Phase 1 его использует.
+Почему GET на маунте + useEffect на activeDataset.name?
+GET на маунте: селектор должен показать выбранную колонку, если пользователь уже выбирал её ранее (сессия хранится в Redis, может пережить перезагрузку страницы).
+useEffect на activeDataset.name: при загрузке нового датасета список доступных колонок меняется (старая target_column сбрасывается сервером в Phase 0.5 → set_dataset_resets_target_column). Рефетч обновляет UI.
+Почему target_column error — это локальный блок под селектором, а не красный баннер?
+target_column опционален. Если GET упал (бэкенд недоступен), компонент должен продолжать работать — пользователь может запускать бэктест на синтетике. Красный баннер в верхней части вёл бы к блокировке UI.
+Почему data_source badge опциональный (|| null)?
+Старый эндпоинт /v1/models/backtest не возвращает data_source. Опциональность поля в TS-типе + null-check в JSX сохраняют backward-compat: если когда-то вернёмся к старому эндпоинту, badge просто не покажется.
+Tests:
+
+48/48 PASS в TsAnalysisModeling.test.tsx (37 существующих + 11 новых)
+77/77 PASS в Phase 0.5 бэкенд-тестах (test_session_store.py + test_target_column.py + test_internal_backtest.py) — без регрессий
+Pre-existing failures НЕ тронуты: 32 теста в 4 файлах (RulesManagementPanel, TsAnalysisValidation, TsAnalysisEDA, TsAnalysisPreprocessing) падали ДО Phase 1 — подтверждено через git stash + повторный прогон
+Verification:
+
+Typecheck (tsc --noEmit -p packages/ui/tsconfig.json): только deprecation warnings, 0 type errors
+Jest: 48/48 PASS
+Next.js build (apps/standalone): ✓ Compiled successfully, /modeling → 242 B, 154 kB First Load (как до Phase 1 — бандл не раздут)
+Backward-compat доказан: старый мок fetch (без target-column endpoint) проходил бы по умолчанию через candidates — но это уже не нужно, т.к. Phase 0.5 endpoint задеплоен.
+Артефакты в /home/z/my-project/download/phase_1_target_column_ui/:
+
+modeling.ts (типы TargetColumnRequest/Response + data_source в BacktestResponse)
+index.ts (экспорт новых типов)
+TsAnalysisModeling.tsx (селектор + переключение эндпоинта + data_source badge)
+TsAnalysisModeling.test.tsx (48 тестов)
+Deploy checklist (after merge):
+
+Frontend deploy (Vercel) — без новых env vars (API_URL уже настроен в Task ID 11, rewrite /api/v1/internal/models/backtest → backend уже работает для /v1/internal/*)
+Backend уже задеплоен в Task ID 12 (Phase 0.5) — без новых env vars
+Smoke-test в проде:
+Открыть /modeling → должен появиться селектор «Целевая колонка» (пока disabled с hint «Загрузите датасет»)
+Перейти на /upload → загрузить CSV → вернуться на /modeling → селектор должен показать список числовых колонок
+Выбрать колонку → под селектором надпись «Бэктест будет на реальном ряде»
+Нажать «Запустить бэктест» → в карточке результата должен появиться зелёный badge «Реальные данные»
+Сбросить селектор (выбрать «— не выбрано —») → повторить бэктест → badge должен стать серым «Синтетический ряд»
+Опционально: после Phase 1 можно убрать /v1/models/backtest (старый эндпоинт) из backend, т.к. UI больше его не использует — но оставить для backward-compat других клиентов (если есть)
+

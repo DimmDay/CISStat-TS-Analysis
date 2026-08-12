@@ -31,6 +31,7 @@ import {
   type CandidatesResponse,
   type ApplicabilityLevel,
   type BacktestResponse,
+  type TargetColumnResponse,
   APPLICABILITY_LABEL,
   APPLICABILITY_BADGE,
   MODEL_FAMILIES,
@@ -118,6 +119,21 @@ export function TsAnalysisModeling() {
   const [backtestLoading, setBacktestLoading] = useState(false);
   const [backtestError, setBacktestError] = useState<string | null>(null);
 
+  // ── Phase 1: target_column (мост Upload → Backtest) ──
+  // Селектор читает GET /v1/session/target-column (колонки доступны только
+  // если в сессии есть загруженный датасет). Запись — POST того же URL с
+  // телом { column: string }. Бэктест (см. ниже runBacktest) использует
+  // /v1/internal/models/backtest — зеркало /v1/models/backtest без auth,
+  // которое при наличии target_column в сессии выполняет расчёт на РЕАЛЬНОМ
+  // ряде (data_source="session"), иначе fallback на синтетику.
+  const [targetColumn, setTargetColumn] = useState<string | null>(null);
+  const [availableColumns, setAvailableColumns] = useState<string[]>([]);
+  const [hasDataset, setHasDataset] = useState(false);
+  const [targetColumnLoading, setTargetColumnLoading] = useState(false);
+  const [targetColumnError, setTargetColumnError] = useState<string | null>(
+    null
+  );
+
   // ── Завершённые стадии пайплайна ──
   const [completedStages, setCompletedStages] = useState<Set<string>>(
     new Set(["problem_definition", "data_structure", "constraints"])
@@ -140,6 +156,104 @@ export function TsAnalysisModeling() {
       }));
     }
   }, [activeDataset]);
+
+  // ── Phase 1: fetch target_column из сессии ──
+  // На маунте + при смене activeDataset.name (пользователь загрузил новый
+  // датасет → нужно обновить список доступных колонок). GET, не требует
+  // body; cookie сессии передаётся через credentials:"include" (мост
+  // Phase 0.5: AnalysisSession.target_column хранится в Redis по session_id).
+  const fetchTargetColumn = useCallback(async () => {
+    setTargetColumnLoading(true);
+    setTargetColumnError(null);
+    try {
+      const res = await fetch(`${API_BASE}/v1/session/target-column`, {
+        method: "GET",
+        credentials: "include", // cookie сессии обязателен (см. apiClient.ts)
+      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(
+          errBody.detail || `HTTP ${res.status}: ${res.statusText}`
+        );
+      }
+      const data: TargetColumnResponse = await res.json();
+      setTargetColumn(data.target_column);
+      setAvailableColumns(data.available_columns);
+      setHasDataset(data.has_dataset);
+    } catch (err) {
+      // Не показываем красный баннер — target_column опционален. Логируем
+      // в отдельное поле, но компонент продолжает работать (бэктест выполнится
+      // на синтетике). Это важно: GET может упасть, если бэкенд недоступен,
+      // но candidates-запрос ниже должен всё равно пройти.
+      setTargetColumnError(
+        err instanceof Error ? err.message : "Не удалось получить колонки"
+      );
+    } finally {
+      setTargetColumnLoading(false);
+    }
+  }, []);
+
+  // ── Phase 1: установить target_column (POST) ──
+  // Вызывается при выборе колонки в селекторе. Сервер валидирует: колонка
+  // должна существовать и быть числовой (иначе 404/422). После успеха —
+  // обновляем локальный стейт (response = новое состояние сессии).
+  const handleTargetColumnChange = useCallback(
+    async (e: ChangeEvent<HTMLSelectElement>) => {
+      const column = e.target.value;
+      if (!column) {
+        // Пустой выбор = сброс (target_column = null). Сервер принимает
+        // пустую строку как сигнал «убрать target_column». На UI это
+        // позволяет вернуться к синтетике без перезагрузки.
+        setTargetColumn(null);
+        // TODO: добавить POST с пустой колонкой, если потребуется persisted reset.
+        return;
+      }
+      setTargetColumnLoading(true);
+      setTargetColumnError(null);
+      try {
+        const res = await fetch(`${API_BASE}/v1/session/target-column`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include", // cookie сессии — для записи в AnalysisSession
+          body: JSON.stringify({ column }),
+        });
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(
+            errBody.detail || `HTTP ${res.status}: ${res.statusText}`
+          );
+        }
+        const data: TargetColumnResponse = await res.json();
+        setTargetColumn(data.target_column);
+        setAvailableColumns(data.available_columns);
+        setHasDataset(data.has_dataset);
+      } catch (err) {
+        setTargetColumnError(
+          err instanceof Error ? err.message : "Не удалось выбрать колонку"
+        );
+      } finally {
+        setTargetColumnLoading(false);
+      }
+    },
+    []
+  );
+
+  // ── Fetch target_column на маунте ──
+  useEffect(() => {
+    fetchTargetColumn();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Refetch target_column при смене активного датасета ──
+  // Симптом: пользователь загрузил новый CSV на вкладке «Загрузка», вернулся
+  // на «Моделирование» — список доступных колонок устарел. Рефетчим.
+  // Зависимость — activeDataset?.name (имя файла меняется при re-upload,
+  // что является надёжным сигналом изменения состояния сессии).
+  const activeDatasetName = activeDataset?.name;
+  useEffect(() => {
+    if (activeDatasetName) {
+      fetchTargetColumn();
+    }
+  }, [activeDatasetName, fetchTargetColumn]);
 
   // ── Fetch кандидатов ──
   const fetchCandidates = useCallback(async () => {
@@ -191,14 +305,21 @@ export function TsAnalysisModeling() {
   }, [hasFetched, candidates.length]);
 
   // ── Запуск бэктеста ──
+  // Phase 1: переключили с /v1/models/backtest (требует X-Api-Key, не работает
+  // в standalone-режиме без ключа, не использует session) на зеркало
+  // /v1/internal/models/backtest (без auth, читает cookie сессии, выполняет
+  // расчёт на РЕАЛЬНОМ ряде из session.dataframe[target_column] если target
+  // задан, иначе fallback на синтетику). Поле data_source в ответе показывает,
+  // какой путь сработал.
   const runBacktest = useCallback(
     async (modelId: string) => {
       setBacktestLoading(true);
       setBacktestError(null);
       try {
-        const res = await fetch(`${API_BASE}/v1/models/backtest`, {
+        const res = await fetch(`${API_BASE}/v1/internal/models/backtest`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include", // cookie сессии — для чтения target_column
           body: JSON.stringify({
             model_id: modelId,
             profile,
@@ -489,6 +610,67 @@ export function TsAnalysisModeling() {
               />
               GPU
             </label>
+          </div>
+
+          {/* ── Phase 1: селектор target_column ── */}
+          {/* Мост Upload → Backtest: читает доступные числовые колонки из
+              сессии (загруженный датасет). После выбора — POST в сессию,
+              бэктест выполняется на реальном ряде (data_source="session"). */}
+          <div
+            className="pt-2 border-t border-neutral-100 mt-1"
+            data-testid="target-column-block"
+          >
+            <div className="flex items-center justify-between mb-0.5">
+              <label className="text-[10px] text-neutral-500 font-medium">
+                Целевая колонка
+              </label>
+              {targetColumnLoading && (
+                <Loader2
+                  size={10}
+                  className="animate-spin text-neutral-400"
+                  data-testid="target-column-loading"
+                />
+              )}
+            </div>
+
+            {hasDataset ? (
+              <select
+                value={targetColumn ?? ""}
+                onChange={handleTargetColumnChange}
+                disabled={targetColumnLoading}
+                className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand disabled:bg-neutral-50 disabled:text-neutral-400"
+                data-testid="target-column-select"
+              >
+                <option value="">— не выбрано —</option>
+                {availableColumns.map((col) => (
+                  <option key={col} value={col}>
+                    {col}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p
+                className="text-[10px] text-neutral-400 italic py-1"
+                data-testid="target-column-no-dataset"
+              >
+                Загрузите датасет, чтобы выбрать колонку
+              </p>
+            )}
+
+            {targetColumn && (
+              <p className="text-[10px] text-brand mt-0.5">
+                Бэктест будет на реальном ряде
+              </p>
+            )}
+
+            {targetColumnError && (
+              <p
+                className="text-[10px] text-red-600 mt-0.5"
+                data-testid="target-column-error"
+              >
+                {targetColumnError}
+              </p>
+            )}
           </div>
 
           {/* Кнопка «Загрузить пул» */}
@@ -839,8 +1021,31 @@ export function TsAnalysisModeling() {
                   {(() => {
                     const bt = backtestResults[activeCandidate.model_id];
                     const m = bt.metrics;
+                    // Phase 1: data_source badge — показывает, реальный ряд
+                    // (из session.dataframe[target_column]) или синтетический.
+                    // Если поле отсутствует (старый эндпоинт без bridge) — не
+                    // показываем ничего (backward-compat).
+                    const dataSource = bt.data_source;
+                    const dataSourceLabel =
+                      dataSource === "session"
+                        ? "Реальные данные"
+                        : dataSource === "synthetic"
+                        ? "Синтетический ряд"
+                        : null;
+                    const dataSourceClass =
+                      dataSource === "session"
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : "bg-neutral-100 text-neutral-500 border-neutral-200";
                     return (
                       <>
+                        {dataSourceLabel && (
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${dataSourceClass}`}
+                            data-testid="data-source-badge"
+                          >
+                            {dataSourceLabel}
+                          </span>
+                        )}
                         <div className="grid grid-cols-2 gap-2 text-[11px]">
                           <div>
                             <span className="text-neutral-500">MAE</span>

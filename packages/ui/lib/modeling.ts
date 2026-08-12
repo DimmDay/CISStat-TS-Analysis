@@ -190,6 +190,28 @@ export interface BacktestResponse {
   n_test: number;
   train_ratio: number;
   duration_ms: number;
+  /**
+   * Phase 0.5: источник ряда для бэктеста.
+   * "session" — реальный ряд из session.dataframe[target_column].
+   * "synthetic" — fallback на синтетический ряд из профиля.
+   * Опционально для backward-compat со старым /v1/models/backtest (без bridge).
+   */
+  data_source?: "session" | "synthetic";
+}
+
+// ── target_column (Phase 0.5 мост Upload → Backtest) ───────────
+//
+// Серверная схема: apps/api/schemas.py → TargetColumnRequest / TargetColumnResponse.
+// Эндпоинты: GET/POST /v1/session/target-column (без auth, cookie-based).
+
+export interface TargetColumnRequest {
+  column: string;
+}
+
+export interface TargetColumnResponse {
+  target_column: string | null;
+  available_columns: string[];
+  has_dataset: boolean;
 }
 
 // Веса ранжирования (из modeling.yaml)

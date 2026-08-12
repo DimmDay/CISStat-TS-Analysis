@@ -8,9 +8,6 @@ export { TsAnalysisPreprocessing } from "./components/TsAnalysisPreprocessing";
 export { TsAnalysisValidation } from "./components/TsAnalysisValidation";
 export { TsAnalysisEDA } from "./components/TsAnalysisEDA";
 export { TsAnalysisUpload } from "./components/TsAnalysisUpload";
-export { StructuralClassSchema } from "./components/StructuralClassSchema";
-export { classifyStructure } from "./lib/structuralClass";
-export type { StructuralClass, StructuralClassResult, PanelBalance } from "./lib/structuralClass";
 export { default as tailwindPreset } from "./tailwind-preset";
 
 // Глобальный shell: активный датасет (гидрируется с сервера, см.
@@ -56,6 +53,8 @@ export type {
   BacktestRequest,
   BacktestMetrics,
   BacktestResponse,
+  TargetColumnRequest,
+  TargetColumnResponse,
 } from "./lib/modeling";
 export {
   APPLICABILITY_RANK,
