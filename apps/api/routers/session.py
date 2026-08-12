@@ -19,11 +19,11 @@ from fastapi import APIRouter, HTTPException, Request, Response
 
 from apps.api.schemas import (
     ColumnStatsOut,
-    ColumnStatsValues,
     DatasetStatsResponse,
     DatasetSummaryOut,
-    PanelBalanceResponse,
     SessionStateResponse,
+    TargetColumnRequest,
+    TargetColumnResponse,
     UploadResponse,
 )
 from apps.api.session_store import (
@@ -55,6 +55,7 @@ def _to_response(session: AnalysisSession) -> SessionStateResponse:
         dataset=dataset,
         stages=session.stages,
         last_active_stage=session.last_active_stage,
+        target_column=session.target_column,
         updated_at=session.updated_at,
     )
 
@@ -153,15 +154,6 @@ def get_dataset_stats(request: Request, response: Response):
     вкладки «Загрузка» (Mean/Median/Std/Skewness/Kurtosis/Q1/Q3/IQR).
     Считается по ПОЛНОМУ столбцу из session.dataframe, не по превью
     (5+5 строк недостаточно для содержательной статистики).
-
-    ИСПРАВЛЕНО: раньше колонки с <2 непустых значений молча пропадали
-    из ответа без объяснения ("Статистика недоступна для этой колонки" --
-    неинформативно на реальных разреженных данных, см. чат). Теперь
-    колонка ВСЕГДА присутствует в ответе, с честным non_null_count;
-    stats=None только когда значений действительно недостаточно.
-
-    Read-only -- не мутирует AnalysisSession, save() не требуется
-    (контракт SessionStore касается только мутаций set_dataset/set_stage).
     """
     session_id = get_or_create_session_id(request, response)
     session = get_session_store().get_or_create(session_id)
@@ -169,17 +161,134 @@ def get_dataset_stats(request: Request, response: Response):
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
     df = session.dataframe
-    if date_col not in df.columns or entity_col not in df.columns:
-        raise HTTPException(status_code=422, detail="Указанная колонка отсутствует в датасете")
+    columns_out: list[ColumnStatsOut] = []
+    for col in df.select_dtypes(include="number").columns:
+        series = df[col].dropna()
+        if len(series) < 2:
+            continue
+        q1, q3 = float(series.quantile(0.25)), float(series.quantile(0.75))
+        skew = float(series.skew())
+        kurt = float(series.kurt())  # pandas: excess kurtosis (0 = нормальное)
+        columns_out.append(
+            ColumnStatsOut(
+                name=str(col),
+                mean=float(series.mean()),
+                median=float(series.median()),
+                std=float(series.std()) if len(series) > 1 else 0.0,
+                skewness=skew,
+                kurtosis=kurt,
+                q1=q1,
+                q3=q3,
+                iqr=q3 - q1,
+                distribution_hint=_distribution_hint(skew, kurt),
+            )
+        )
+    return DatasetStatsResponse(columns=columns_out)
 
-    date_sets = df.groupby(entity_col)[date_col].apply(lambda s: frozenset(s.dropna()))
-    n_entities = len(date_sets)
-    n_distinct_date_sets = date_sets.nunique() if n_entities > 0 else 0
 
-    return PanelBalanceResponse(
-        balanced=n_distinct_date_sets <= 1,
-        n_entities=n_entities,
-        n_distinct_date_sets=int(n_distinct_date_sets),
+# ────────────────────────────────────────────────────────────────────
+# Phase 0.5: target column (мост Upload → Backtest)
+# ────────────────────────────────────────────────────────────────────
+
+
+def _get_numeric_columns(df: pd.DataFrame) -> list[str]:
+    """Возвращает имена числовых колонок DataFrame.
+
+    Целевая (target) колонка для TS-прогноза обязана быть числовой --
+    прогнозировать категориальную величину baseline-модели не умеют.
+    Сюда попадают int*, float* и bool (pandas treat bool как numeric).
+    """
+    return [str(c) for c in df.select_dtypes(include="number").columns]
+
+
+@router.get("/target-column", response_model=TargetColumnResponse)
+def get_target_column(request: Request, response: Response):
+    """Получить текущую target_column + список доступных числовых колонок.
+
+    Используется UI для:
+      1. Отрисовать селектор с доступными колонками
+      2. Подсветить текущий выбор (target_column из сессии)
+      3. Решить, показывать ли селектор вообще (has_dataset=False → скрыть)
+
+    Не возвращает 404 при отсутствии датасета -- UI должен уметь
+    обрабатывать состояние "датасета нет, выбор невозможен". Возврат
+    target_column=None, available_columns=[], has_dataset=False.
+    """
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+
+    if session.dataframe is None:
+        return TargetColumnResponse(
+            target_column=None,
+            available_columns=[],
+            has_dataset=False,
+        )
+
+    return TargetColumnResponse(
+        target_column=session.target_column,
+        available_columns=_get_numeric_columns(session.dataframe),
+        has_dataset=True,
+    )
+
+
+@router.post("/target-column", response_model=TargetColumnResponse)
+def set_target_column(
+    payload: TargetColumnRequest,
+    request: Request,
+    response: Response,
+):
+    """Установить выбранную пользователем прогнозируемую колонку.
+
+    Это мост Upload → Backtest: после выбора target_column зеркальный
+    эндпоинт /v1/internal/models/backtest будет использовать РЕАЛЬНЫЙ ряд
+    из session.dataframe[target_column] вместо синтетического.
+
+    ВАЛИДАЦИЯ:
+      1. Датасет должен быть загружен -- иначе 400 (нечего выбирать)
+      2. Колонка должна существовать в df -- иначе 404
+      3. Колонка должна быть числовой -- иначе 422 (TS-target обязан быть numeric)
+
+    После валидации мутирует session.target_column и ОБЯЗАТЕЛЬНО
+    вызывает store.save() (контракт SessionStore, см. session_store.py).
+    """
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+
+    if session.dataframe is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Сначала загрузите датасет — целевую колонку нельзя выбрать без активного датасета",
+        )
+
+    df = session.dataframe
+    column = payload.column
+
+    # 2. Существование колонки
+    if column not in [str(c) for c in df.columns]:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Колонка '{column}' не найдена в датасете. "
+            f"Доступные колонки: {list(df.columns)}",
+        )
+
+    # 3. Числовой тип (TS-target обязан быть numeric)
+    if not pd.api.types.is_numeric_dtype(df[column]):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Колонка '{column}' не является числовой (тип: {df[column].dtype}). "
+            f"Целевая колонка для прогноза обязана быть числовой. "
+            f"Доступные числовые колонки: {_get_numeric_columns(df)}",
+        )
+
+    session.set_target_column(column)
+    # КОНТРАКТ SessionStore: мутация -- обязательно save().
+    store.save(session)
+
+    return TargetColumnResponse(
+        target_column=session.target_column,
+        available_columns=_get_numeric_columns(df),
+        has_dataset=True,
     )
 
 

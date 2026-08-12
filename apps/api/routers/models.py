@@ -4,13 +4,20 @@
 
 Эндпоинты:
   POST /v1/models/candidates  — пул кандидатов (движок применимости)
-  POST /v1/models/backtest   — бэктест одной модели
-  POST /v1/models/train       — обучение модели (заглушка)
+  POST /v1/models/backtest    — бэктест одной модели (auth-protected,
+                                 синтетический ряд — legacy Phase 0)
+  POST /v1/models/train        — обучение модели (заглушка)
+
+Phase 0.5: логика бэктеста вынесена в _run_backtest_with_series(), чтобы
+её мог переиспользовать зеркальный эндпоинт /v1/internal/models/backtest
+(в routers/internal.py) — он использует РЕАЛЬНЫЙ ряд из сессии когда
+target_column задан.
 """
 import logging
 import time
 import math
 from collections import Counter
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 
 from apps.api.auth import require_capability, get_current_principal
@@ -350,11 +357,11 @@ def run_backtest(
     principal: AuthenticatedPrincipal = Depends(get_current_principal),
 ):
     """
-    Запустить бэктест для одной модели.
+    Запустить бэктест для одной модели (auth-protected, /v1/models/backtest).
 
-    Для baseline-моделей (Naive, Seasonal Naive, Drift, Mean) выполняется
-    реальный расчёт на синтетическом ряде, сгенерированном по профилю данных.
-    Для остальных моделей — заглушка с аппроксимированными метриками.
+    Историческое поведение (Phase 0): всегда использует синтетический ряд,
+    сгенерированный по профилю данных. Без API-ключа сюда не дойти --
+    браузер посетителя standalone использует зеркало /v1/internal/models/backtest.
 
     Метрики: MAE, RMSE, MAPE (%), MASE.
     Взвешенный скоринг: 0.35*MAE_n + 0.25*RMSE_n + 0.20*MAPE_n + 0.20*MASE_n.
@@ -364,9 +371,55 @@ def run_backtest(
     train_ratio = payload.train_ratio
 
     # Определяем (model_name, family_id)
+    model_info = _resolve_model_info(model_id)
+
+    # Генерируем синтетический ряд по профилю
+    series = _generate_series(
+        n=profile.n_observations,
+        frequency=profile.frequency,
+        has_seasonality=profile.has_seasonality,
+    )
+
+    # Сезонный период для Seasonal Naive
+    seasonal_period = _resolve_seasonal_period(profile)
+
+    metrics, duration_ms = _run_backtest_with_series(
+        model_id=model_id,
+        model_info=model_info,
+        series=series,
+        train_ratio=train_ratio,
+        seasonal_period=seasonal_period,
+    )
+
+    n_train = int(profile.n_observations * train_ratio)
+    n_test = profile.n_observations - n_train
+
+    return BacktestResponse(
+        model_id=model_id,
+        model_name=model_info[0],
+        family_id=model_info[1],
+        metrics=metrics,
+        n_train=n_train,
+        n_test=n_test,
+        train_ratio=train_ratio,
+        duration_ms=round(duration_ms, 2),
+        data_source="synthetic",  # legacy path: всегда синтетика
+    )
+
+
+# ═══════════════════════════════════════════════════════════
+# Phase 0.5: переиспользуемые функции для зеркала /v1/internal/models/backtest
+# ═══════════════════════════════════════════════════════════
+
+
+def _resolve_model_info(model_id: str) -> tuple[str, str]:
+    """Найти (model_name, family_id) по model_id.
+
+    Сначала в _MODEL_INFO dict, потом в спецификации modeling.yaml.
+    Поднимает HTTPException(404) если модель не найдена.
+    """
     model_info = _MODEL_INFO.get(model_id)
     if model_info is None:
-        # Попробуем найти в спецификации
         spec = _get_spec()
         found = None
         for fam in spec.families:
@@ -382,33 +435,41 @@ def run_backtest(
                 detail=f"Модель '{model_id}' не найдена в спецификации",
             )
         model_info = found
+    return model_info
 
+
+def _resolve_seasonal_period(profile) -> int:
+    """Сезонный период для Seasonal Naive — из profile.seasonal_periods
+    или из дефолтного маппинга frequency → period.
+    """
+    if profile.seasonal_periods:
+        return profile.seasonal_periods[0]
+    return {"D": 7, "W": 52, "M": 12, "Q": 4, "Y": 1}.get(profile.frequency, 12)
+
+
+def _run_backtest_with_series(
+    model_id: str,
+    model_info: tuple[str, str],
+    series: list[float],
+    train_ratio: float,
+    seasonal_period: int,
+) -> tuple[BacktestMetrics, float]:
+    """Выполнить бэктест на ЗАДАННОМ ряде (синтетическом или реальном).
+
+    Возвращает (metrics, duration_ms). Не знает о сессии — просто считает
+    метрики по ряду, который ей передали. Это позволяет переиспользовать
+    её и для /v1/models/backtest (синтетический ряд), и для
+    /v1/internal/models/backtest (реальный ряд из session.dataframe).
+    """
     model_name, family_id = model_info
-
-    # Генерируем синтетический ряд по профилю
-    series = _generate_series(
-        n=profile.n_observations,
-        frequency=profile.frequency,
-        has_seasonality=profile.has_seasonality,
-    )
-
-    # Сезонный период для Seasonal Naive
-    seasonal_period = (
-        profile.seasonal_periods[0]
-        if profile.seasonal_periods
-        else {"D": 7, "W": 52, "M": 12, "Q": 4, "Y": 1}.get(profile.frequency, 12)
-    )
-
     start = time.monotonic()
 
-    # Реальный расчёт или заглушка
     impl = _BACKTEST_IMPLEMENTATIONS.get(model_id)
     if impl:
         metrics = impl(series, train_ratio, seasonal_period)
     else:
         # Заглушка: аппроксимация на основе Naive + штраф за сложность
         naive_metrics = _run_naive_backtest(series, train_ratio)
-        # Штраф: сложные модели «хуже» на синтетике без тюнинга
         family_penalty = {
             "exponential_smoothing": 0.85,
             "arima": 0.80,
@@ -429,20 +490,7 @@ def run_backtest(
         )
 
     duration_ms = (time.monotonic() - start) * 1000
-
-    n_train = int(profile.n_observations * train_ratio)
-    n_test = profile.n_observations - n_train
-
-    return BacktestResponse(
-        model_id=model_id,
-        model_name=model_name,
-        family_id=family_id,
-        metrics=metrics,
-        n_train=n_train,
-        n_test=n_test,
-        train_ratio=train_ratio,
-        duration_ms=round(duration_ms, 2),
-    )
+    return metrics, duration_ms
 
 
 # ═══════════════════════════════════════════════════════════

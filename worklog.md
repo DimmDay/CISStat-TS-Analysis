@@ -345,3 +345,62 @@ ADD: API_URL = https://cisstat-ts-analysis.onrender.com (server-side only, NO NE
 REMOVE (optional): NEXT_PUBLIC_API_URL (больше не нужен в проде; в dev остаётся в .env.local)
 Trigger new Vercel deploy (rewrite() применяется при сборке)
 Verify в браузере: загрузить CSV → переключить вкладку → вернуться → датасет должен сохраниться
+
+---
+
+Task ID: 12 — Phase 0.5: мост Upload → Backtest (target_column в AnalysisSession)
+
+What changed:
+• apps/api/session_store.py — добавлено поле `target_column: Optional[str]` в `AnalysisSession` + метод `set_target_column(name)`. Обновлены `session_to_dict`/`session_from_dict` для сериализации (с backcompat: старые записи в Redis без этого поля десериализуются с target_column=None — rolling-deploy не ломает существующие сессии). `set_dataset()` сбрасывает target_column в None (новый датасет = новый анализ; старая колонка может не существовать).
+
+• apps/api/schemas.py — добавлено поле `target_column: Optional[str] = None` в `SessionStateResponse`. Новые схемы `TargetColumnRequest(column: str)` и `TargetColumnResponse(target_column, available_columns, has_dataset)`. Добавлено поле `data_source: Optional[str]` в `BacktestResponse` ("session" | "synthetic" — показывает источник ряда).
+
+• apps/api/routers/session.py — новые эндпоинты:
+  - `GET /v1/session/target-column` — получить текущую target + список доступных числовых колонок (без 404 при отсутствии датасета — UI должен уметь обрабатывать состояние "нет датасета")
+  - `POST /v1/session/target-column` — установить target_column с валидацией: 400 если нет датасета, 404 если колонки нет, 422 если колонка не числовая. После валидации — store.save() (контракт SessionStore).
+  - Обновлён `_to_response()` для включения target_column в SessionStateResponse.
+
+• apps/api/routers/models.py — рефакторинг: вынесены 3 переиспользуемые функции:
+  - `_resolve_model_info(model_id)` — найти (model_name, family_id) по model_id
+  - `_resolve_seasonal_period(profile)` — сезонный период из profile или frequency
+  - `_run_backtest_with_series(model_id, model_info, series, train_ratio, seasonal_period)` — расчёт метрик на ЗАДАННОМ ряде (синтетическом или реальном)
+  - `run_backtest` (/v1/models/backtest) использует их с синтетическим рядом, помечает `data_source="synthetic"`
+
+• apps/api/routers/internal.py — добавлено зеркало:
+  - `POST /v1/internal/models/backtest` — БЕЗ auth (как /v1/internal/upload), читает сессию по cookie
+  - КЛЮЧЕВОЙ КОНТРАКТ: если session.dataframe + session.target_column заданы → бэктест выполняется на РЕАЛЬНОМ ряде (data_source="session"), иначе fallback на синтетику (data_source="synthetic")
+  - NaN в target_column обрабатываются через dropna()
+  - Использует ту же `_run_backtest_with_series()` — метрики идентичны /v1/models/backtest
+
+Root cause и обоснование решений:
+1. Почему target_column в AnalysisSession, а не в DataProfileRequest?
+   - target_column — это UI-выбор пользователя, не свойство файла. Живёт в сессии (cookie-based), доступен без API-ключа (как и upload).
+   - При re-upload нового датасета target_column автоматически сбрасывается — нет риска оставить устаревшую колонку.
+2. Почему /v1/internal/models/backtest без auth?
+   - /v1/models/backtest требует require_capability("can_train_models") → X-Api-Key header (см. Task ID 8). Браузер посетителя standalone без API-ключа не может вызвать /v1/models/backtest. Зеркало /v1/internal/* без auth — устоявшийся паттерн (upload, rules уже так работают).
+3. Почему fallback на синтетику если target_column не задан?
+   - Сохраняет обратную совместимость для UI, который ещё не подключил выбор target_column. Backtest не падает, а работает как раньше (синтетика по профилю).
+4. Почему data_source в ответе?
+   - UI должен показывать пользователю, используются ли реальные данные или синтетика. Без этого поля — невозможно отличить (n_observations могут случайно совпасть).
+
+Tests:
+- tests/api/test_session_store.py — расширено 5 новыми тестами (для Memory + Redis, итого +10): target_column=None по умолчанию, set_target_column_persists, set_dataset_resets_target_column, target_column_survives_roundtrip_serialization, target_column_backcompat_legacy_dict_without_field
+- tests/api/test_target_column.py — новый файл, 15 тестов: GET без датасета, set валидной/несуществующей/нечисловой колонки, re-upload сбрасывает target, available_columns только числовые, cookie persistence
+- tests/api/test_internal_backtest.py — новый файл, 10 тестов: no-auth, unknown model 404, data_source=session/synthetic/no_dataset, real vs synthetic metrics differ, response shape, 4 baseline models parametrized, NaN handling
+
+Verification:
+- All 118 API tests PASS (77 новых + 41 существующий, без регрессий)
+- 453 tests PASS в полном наборе (3 pre-existing errors в test_preprocessing.py — отсутствует pytest-snapshot fixture, не связано с нашими изменениями)
+- Smoke-test end-to-end: upload (10 rows) → set target=value → backtest с data_source=session (n_train=7, n_test=3, реальный MAE=9.8); без target → data_source=synthetic
+- Backward compat доказан: старые сессии в Redis (без target_column) десериализуются корректно
+
+Артефакты в /home/z/my-project/download/phase_0_5_target_column/:
+- session_store.py, schemas.py, routers_session.py, routers_models.py, routers_internal.py
+- test_session_store.py, test_target_column.py, test_internal_backtest.py
+- worklog.md (обновлённый)
+
+Deploy checklist (after merge):
+1. Backend deploy (Render) — без новых env vars (REDIS_URL уже настроен в Task ID 10)
+2. Smoke-test в проде: `python scripts/smoke/pre_0_smoke.py` (7/7 PASS expected — target_column обратно совместим)
+3. Опционально: добавить UI-селектор target_column в TsAnalysisModeling (Phase 1 — следующий шаг)
+4. Опционально: переключить frontend на /v1/internal/models/backtest (вместо /v1/models/backtest) для standalone-режима

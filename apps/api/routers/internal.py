@@ -23,6 +23,14 @@ from apps.api.schemas import (
     RulesLoadResponse, RulesContent, RangeRule,
     ValidateWithRulesRequest, ValidateWithRulesResponse, ValidateSummary,
     RulesUpdateRequest, RulesUpdateResponse,
+    BacktestRequest, BacktestResponse,
+)
+from apps.api.session_store import get_or_create_session_id, get_session_store
+from apps.api.routers.models import (
+    _resolve_model_info,
+    _resolve_seasonal_period,
+    _run_backtest_with_series,
+    _generate_series,
 )
 from app.core.passport import calculate_ts_passport
 from app.validation.regularity import compute_regularity_violations
@@ -165,4 +173,116 @@ def update_rules(payload: RulesUpdateRequest):
     return RulesUpdateResponse(
         template_id=template_id,
         updated_ranges_count=len(payload.ranges),
+    )
+
+
+# ────────────────────────────────────────────────────────────────────
+# Phase 0.5: зеркало /v1/internal/models/backtest
+# ────────────────────────────────────────────────────────────────────
+#
+# ЗАЧЕМ: /v1/models/backtest защищён require_capability("can_train_models"),
+# который требует X-Api-Key header (см. Task ID 8 в worklog). Браузер
+# посетителя standalone НЕ имеет API-ключа → не может вызвать
+# /v1/models/backtest. Зеркало здесь -- БЕЗ auth, читает сессию по cookie
+# (как /v1/internal/upload и /v1/internal/rules/*).
+#
+# КЛЮЧЕВОЙ КОНТРАКТ Phase 0.5 (мост Upload → Backtest):
+# Если в сессии есть загруженный датасет И выбран target_column -- бэктест
+# выполняется на РЕАЛЬНОМ ряде из session.dataframe[target_column].
+# Иначе -- fallback на синтетический ряд (как в /v1/models/backtest).
+# Поле data_source в ответе показывает, какой путь сработал.
+#
+# АВТОРИЗАЦИЯ ПО CAPABILITY НЕ ДЕЛАЕТСЯ сознательно:
+# standalone -- публичный демо-режим, посетитель не аутентифицирован.
+# Реальная защита -- на уровне сети (CORS: только vercel.app) и rate-limit
+# (пока не реализован, пост-MVP). Для embedded режим доверяет порталу.
+
+
+@router.post("/models/backtest", response_model=BacktestResponse)
+def run_backtest_internal(
+    payload: BacktestRequest,
+    request: Request,
+    response: Response,
+):
+    """Бэктест одной модели -- зеркало /v1/models/backtest без auth.
+
+    ПРИОРИТЕТ источника ряда:
+      1. session.dataframe + session.target_column → РЕАЛЬНЫЙ ряд
+         (data_source="session")
+      2. Иначе → синтетический ряд из профиля (data_source="synthetic")
+
+    В обоих случаях используется та же логика расчёта метрик
+    (_run_backtest_with_series) -- разница только в том, какой ряд подан
+    на вход.
+    """
+    model_id = payload.model_id
+    profile = payload.profile
+    train_ratio = payload.train_ratio
+
+    model_info = _resolve_model_info(model_id)
+    model_name, family_id = model_info
+
+    # Пытаемся взять реальный ряд из сессии
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+
+    real_series = None
+    if (
+        session.dataframe is not None
+        and session.target_column is not None
+        and session.target_column in [str(c) for c in session.dataframe.columns]
+    ):
+        col_data = session.dataframe[session.target_column]
+        if pd.api.types.is_numeric_dtype(col_data):
+            # dropna -- NaN в target-колонке не должны ломать бэктест
+            real_series = col_data.dropna().astype(float).tolist()
+
+    if real_series is not None and len(real_series) >= 2:
+        # РЕАЛЬНЫЙ ряд: используем его, переопределяя n_observations
+        # из профиля (реальная длина важнее для n_train/n_test в ответе).
+        n_actual = len(real_series)
+        seasonal_period = _resolve_seasonal_period(profile)
+
+        metrics, duration_ms = _run_backtest_with_series(
+            model_id=model_id,
+            model_info=model_info,
+            series=real_series,
+            train_ratio=train_ratio,
+            seasonal_period=seasonal_period,
+        )
+
+        n_train = int(n_actual * train_ratio)
+        n_test = n_actual - n_train
+        data_source = "session"
+    else:
+        # Fallback на синтетику (поведение /v1/models/backtest)
+        series = _generate_series(
+            n=profile.n_observations,
+            frequency=profile.frequency,
+            has_seasonality=profile.has_seasonality,
+        )
+        seasonal_period = _resolve_seasonal_period(profile)
+
+        metrics, duration_ms = _run_backtest_with_series(
+            model_id=model_id,
+            model_info=model_info,
+            series=series,
+            train_ratio=train_ratio,
+            seasonal_period=seasonal_period,
+        )
+
+        n_train = int(profile.n_observations * train_ratio)
+        n_test = profile.n_observations - n_train
+        data_source = "synthetic"
+
+    return BacktestResponse(
+        model_id=model_id,
+        model_name=model_name,
+        family_id=family_id,
+        metrics=metrics,
+        n_train=n_train,
+        n_test=n_test,
+        train_ratio=train_ratio,
+        duration_ms=round(duration_ms, 2),
+        data_source=data_source,
     )

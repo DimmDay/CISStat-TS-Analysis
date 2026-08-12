@@ -102,11 +102,16 @@ class DatasetInfo:
 class AnalysisSession:
     """Состояние одной сессии анализа.
 
-    ВАЖНО: мутации (set_dataset, set_stage) НЕ персистятся автоматически.
-    После любой мутации вызывающий код ДОЛЖЕН вызвать store.save(session),
-    иначе изменения потеряются при следующем get() в Redis-режиме. В
-    Memory-режиме save() -- no-op по сути (алиасинг), но ВЫЗЫВАТЬ ВСЁ
-    РАВНО НАДО -- иначе код несовместим с Redis.
+    ВАЖНО: мутации (set_dataset, set_stage, set_target_column) НЕ
+    персистятся автоматически. После любой мутации вызывающий код ДОЛЖЕН
+    вызвать store.save(session), иначе изменения потеряются при следующем
+    get() в Redis-режиме. В Memory-режиме save() -- no-op по сути
+    (алиасинг), но ВЫЗЫВАТЬ ВСЁ РАВНО НАДО -- иначе код несовместим с Redis.
+
+    Phase 0.5: target_column -- выбранная пользователем прогнозируемая
+    колонка (для моста Upload → Backtest). Сбрасывается в None при
+    set_dataset() -- новый датасет = новый анализ, старая колонка может
+    не существовать. См. контракт в routers/session.py::set_target_column.
     """
     session_id: str
     dataset: Optional[DatasetInfo] = None
@@ -117,18 +122,42 @@ class AnalysisSession:
     dataframe: Optional[pd.DataFrame] = None
     stages: dict[str, StageStatus] = field(default_factory=lambda: {s: "pending" for s in STAGES})
     last_active_stage: Optional[str] = None
+    # Phase 0.5: имя выбранной числовой колонки для прогнозирования.
+    # None = пользователь ещё не выбрал target → backtest fallback на синтетику.
+    target_column: Optional[str] = None
     updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def touch(self) -> None:
         self.updated_at = datetime.now(timezone.utc).isoformat()
 
     def set_dataset(self, dataset: DatasetInfo, dataframe: Optional[pd.DataFrame]) -> None:
-        """Новый датасет -- сбрасывает прогресс по этапам (новый анализ)."""
+        """Новый датасет -- сбрасывает прогресс по этапам (новый анализ).
+
+        Также сбрасывает target_column: новый датасет может не содержать
+        старую колонку, оставлять её устаревшей небезопасно (приведёт к
+        ошибке в backtest).
+        """
         self.dataset = dataset
         self.dataframe = dataframe
         self.stages = {s: "pending" for s in STAGES}
         self.stages["upload"] = "done"
         self.last_active_stage = "upload"
+        self.target_column = None
+        self.touch()
+
+    def set_target_column(self, column_name: str) -> None:
+        """Установить выбранную прогнозируемую колонку.
+
+        ВАЖНО: валидация существования колонки и её числового типа
+        выполняется на уровне API-роутера (где есть доступ к DataFrame и
+        можно вернуть осмысленную ошибку 404/422). Здесь -- только мутация
+        поля, без проверки, чтобы не тащить pandas-логику в dataclass.
+        Вызывающий роутер ОБЯЗАН проверить:
+          1) session.dataframe is not None
+          2) column_name in df.columns
+          3) df[column_name] числовая
+        """
+        self.target_column = column_name
         self.touch()
 
     def set_stage(self, stage: str, status: StageStatus) -> None:
@@ -195,12 +224,19 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "dataframe_json": _dataframe_to_json(session.dataframe) if session.dataframe is not None else None,
         "stages": dict(session.stages),
         "last_active_stage": session.last_active_stage,
+        "target_column": session.target_column,
         "updated_at": session.updated_at,
     }
 
 
 def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
-    """Десериализация AnalysisSession из dict."""
+    """Десериализация AnalysisSession из dict.
+
+    BACKCOMPAT (Phase 0.5): старые записи в Redis, сохранённые ДО
+    появления поля target_column, не содержат этого ключа. d.get(...) с
+    дефолтом None -- корректно восстанавливает такие сессии без ошибок.
+    Без этого rolling-deploy Phase 0.5 сломал бы все существующие сессии.
+    """
     dataset = _dataset_from_dict(d["dataset"]) if d.get("dataset") else None
     df = _dataframe_from_json(d["dataframe_json"]) if d.get("dataframe_json") is not None else None
     return AnalysisSession(
@@ -209,6 +245,7 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         dataframe=df,
         stages=dict(d.get("stages", {})),
         last_active_stage=d.get("last_active_stage"),
+        target_column=d.get("target_column"),  # None для старых записей
         updated_at=d.get("updated_at", datetime.now(timezone.utc).isoformat()),
     )
 

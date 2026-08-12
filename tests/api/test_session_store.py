@@ -288,6 +288,82 @@ class _SessionStoreContract:
         assert recreated.dataframe is None
         assert recreated.stages["upload"] == "pending"
 
+    # ── 5. target_column (Phase 0.5) ──
+
+    def test_target_column_defaults_to_none(self):
+        """Новая сессия: target_column=None."""
+        session = self.store.get_or_create("tc-default-020")
+        assert session.target_column is None
+
+    def test_set_target_column_persists(self, sample_dataset_info, sample_dataframe):
+        """set_target_column + save() → следующий get() возвращает то же значение."""
+        sid = "tc-set-021"
+        session = self.store.get_or_create(sid)
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        session.set_target_column("value")
+        self.store.save(session)
+
+        fetched = self.store.get(sid)
+        assert fetched is not None
+        assert fetched.target_column == "value"
+
+    def test_set_dataset_resets_target_column(self, sample_dataset_info, sample_dataframe):
+        """set_dataset (re-upload) → target_column сбрасывается в None.
+
+        Причина: новый датасет может не содержать старую колонку.
+        """
+        sid = "tc-reset-022"
+        session = self.store.get_or_create(sid)
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        session.set_target_column("value")
+        self.store.save(session)
+
+        # «Загружаем новый датасет» — тот же df для простоты, но это новый set_dataset
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        self.store.save(session)
+
+        fetched = self.store.get(sid)
+        assert fetched.target_column is None  # сброшен!
+
+    def test_target_column_survives_roundtrip_serialization(
+        self, sample_dataset_info, sample_dataframe
+    ):
+        """target_column должен переживать JSON-сериализацию (Redis path)."""
+        from apps.api.session_store import session_to_dict, session_from_dict
+
+        sid = "tc-roundtrip-023"
+        session = self.store.get_or_create(sid)
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        session.set_target_column("value")
+        self.store.save(session)
+
+        # Сериализуем → десериализуем (это и происходит в Redis)
+        d = session_to_dict(self.store.get(sid))
+        restored = session_from_dict(d)
+        assert restored.target_column == "value"
+
+    def test_target_column_backcompat_legacy_dict_without_field(self):
+        """Старые сессии в Redis (без поля target_column) должны
+        десериализоваться с target_column=None, а не падать.
+
+        Это важно для rolling-deploy: существующие в проде сессии не должны
+        сломаться после деплоя Phase 0.5.
+        """
+        from apps.api.session_store import session_from_dict
+
+        legacy_dict = {
+            "session_id": "legacy-024",
+            "dataset": None,
+            "dataframe_json": None,
+            "stages": {"upload": "pending"},
+            "last_active_stage": None,
+            "updated_at": "2026-01-01T00:00:00+00:00",
+            # НЕТ поля "target_column" — старый формат
+        }
+        session = session_from_dict(legacy_dict)
+        assert session.target_column is None
+        assert session.session_id == "legacy-024"
+
 
 # ────────────────────────────────────────────────────────────────────
 # MemorySessionStore -- конкретные тесты
