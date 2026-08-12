@@ -46,7 +46,7 @@ const okUploadResponse = {
     tail: [["2023-01-09", "90"], ["2023-01-10", "100"]],
   },
   columns_info: [
-    { name: "date", dtype: "object", type_icon: "categorical", non_null: 10, nulls: 0, unique: 10 },
+    { name: "date", dtype: "object", type_icon: "datetime", non_null: 10, nulls: 0, unique: 10 },
     { name: "value", dtype: "int64", type_icon: "numeric", non_null: 10, nulls: 0, unique: 10 },
   ],
   quality: {
@@ -63,17 +63,21 @@ const okStatsResponse = {
   columns: [
     {
       name: "value",
-      mean: 55.5,
-      median: 54,
-      std: 30.1,
-      skewness: 0.1,
-      kurtosis: -1.2,
-      q1: 32.5,
-      q3: 77.5,
-      iqr: 45,
-      distribution_hint: "Близко к нормальному",
+      non_null_count: 10,
+      stats: {
+        mean: 55.5,
+        median: 54,
+        std: 30.1,
+        skewness: 0.1,
+        kurtosis: -1.2,
+        q1: 32.5,
+        q3: 77.5,
+        iqr: 45,
+        distribution_hint: "Близко к нормальному",
+      },
     },
   ],
+  min_non_null_for_stats: 2,
 };
 
 // AppShellProvider гидрируется с /v1/session/current при монтировании,
@@ -96,6 +100,11 @@ function mockFetchSequence(uploadResult: unknown, uploadOk = true) {
     }
     if (typeof url === "string" && url.includes("/dataset/stats")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(okStatsResponse) });
+    }
+    if (typeof url === "string" && url.includes("/dataset/panel-balance")) {
+      // В тестовых моках нет реальной группирующей колонки -- фиксируем
+      // ответ явно, чтобы не зависеть от generic-фолбэка ниже.
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ balanced: false, n_entities: 0, n_distinct_date_sets: 0 }) });
     }
     if (typeof url === "string" && url.includes("/upload")) {
       return Promise.resolve({ ok: uploadOk, json: () => Promise.resolve(uploadResult) });
@@ -189,6 +198,29 @@ describe("TsAnalysisUpload", () => {
       expect(screen.getByText("Колонка даты")).toBeInTheDocument();
       expect(screen.getByText("Группирующая колонка")).toBeInTheDocument();
       expect(screen.getByText("Структурный класс данных")).toBeInTheDocument();
+    });
+  });
+
+  it("should show the structural class decision schema (visual reference) on the Структура stop", async () => {
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("Структура")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Структура"));
+
+    await waitFor(() => {
+      // Заголовок и хотя бы несколько правил дерева решений реально в DOM
+      expect(screen.getByText("Определение структуры данных")).toBeInTheDocument();
+      expect(screen.getByText("Нет даты И нет группировки")).toBeInTheDocument();
+      expect(screen.getByText("Cross-Sectional")).toBeInTheDocument();
+      expect(screen.getByText("Balanced")).toBeInTheDocument();
+      expect(screen.getByText("Unbalanced")).toBeInTheDocument();
+      expect(screen.getByText("Spatio-Temporal")).toBeInTheDocument();
+      expect(screen.getByText("Event Time Series")).toBeInTheDocument();
     });
   });
 

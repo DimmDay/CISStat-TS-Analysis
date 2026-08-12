@@ -71,9 +71,10 @@ import {
 import { Button } from "./Button";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
+import { StructuralClassSchema } from "./StructuralClassSchema";
 import { useAppShell } from "../context/AppShellContext";
 import { apiUrl, sessionApiUrl } from "../lib/apiClient";
-import { classifyStructure, type StructuralClassResult } from "../lib/structuralClass";
+import { classifyStructure, type PanelBalance, type StructuralClassResult } from "../lib/structuralClass";
 
 // ──────────────────────────────────────────────────────────────────────
 // ТИПЫ (зеркало apps/api/schemas.py -- поля намеренно snake_case, как
@@ -117,17 +118,22 @@ interface UploadApiResponse {
   is_regular?: boolean;
 }
 
-interface ColumnStatsOut {
-  name: string;
+interface ColumnStatsValues {
   mean: number;
   median: number;
   std: number;
-  skewness: number;
-  kurtosis: number;
+  skewness: number | null; // NaN на бэкенде сериализуется в null (слишком мало точек)
+  kurtosis: number | null;
   q1: number;
   q3: number;
   iqr: number;
   distribution_hint: string;
+}
+
+interface ColumnStatsOut {
+  name: string;
+  non_null_count: number;
+  stats: ColumnStatsValues | null; // null -- недостаточно значений, см. non_null_count
 }
 
 interface DetectionCandidate {
@@ -198,7 +204,8 @@ function formatNum(n: number): string {
   return n.toLocaleString("ru-RU").replace(/,/g, " ");
 }
 
-function fmtStat(n: number): string {
+function fmtStat(n: number | null): string {
+  if (n === null || Number.isNaN(n)) return "—";
   return n.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
 }
 
@@ -400,7 +407,12 @@ export function TsAnalysisUpload() {
   const { getRootProps, getInputProps, isDragActive, fileRejections } = useDropzone({
     onDrop,
     multiple: false,
-    maxSize: 50 * 1024 * 1024,
+    // 4MB, не 50MB -- Vercel Serverless Function ограничивает тело запроса
+    // 4.5MB, а с новым server-side rewrite-прокси (apps/standalone/
+    // next.config.mjs, нужен для first-party cookie) запрос идёт именно
+    // через эту функцию. Прежний лимит 50MB физически не мог пройти на
+    // проде через прокси -- команда поймала это независимо, см. worklog.
+    maxSize: 4 * 1024 * 1024,
     accept: {
       "text/csv": [".csv"],
       "application/vnd.ms-excel": [".xls"],
@@ -412,7 +424,7 @@ export function TsAnalysisUpload() {
   const rejectedFiles = fileRejections.map(({ file, errors }) => ({
     file,
     errors: errors.map((e) => {
-      if (e.code === "file-too-large") return "Файл слишком большой (макс. 50MB)";
+      if (e.code === "file-too-large") return "Файл слишком большой (макс. 4MB)";
       if (e.code === "file-invalid-type") return "Неподдерживаемый формат";
       return e.message;
     }),
@@ -435,16 +447,54 @@ export function TsAnalysisUpload() {
   };
 
   // ── Структурный класс (пункт 8) -- вычисляется из detection + columnsInfo ──
+  const [panelBalance, setPanelBalance] = useState<PanelBalance>("unknown");
+  const entityColInfoForClass = detection ? columnsInfo.find((c) => c.name === detection.entityCol.selected) : null;
+  const isPanelCandidate =
+    !!detection &&
+    detection.dateCol.selected !== "(не использовать)" &&
+    detection.entityCol.selected !== "(нет)" &&
+    (entityColInfoForClass?.unique ?? 0) > 1;
+
+  // Balanced/Unbalanced требует полных данных (сравнение множеств дат по
+  // группам) -- реальный запрос к бэкенду, не клиентская эвристика, см.
+  // apps/api/routers/session.py::get_panel_balance. Перезапрашивается при
+  // смене выбранных колонок даты/группировки (override пользователя).
+  useEffect(() => {
+    if (!isPanelCandidate || !detection) {
+      setPanelBalance("unknown");
+      return;
+    }
+    let cancelled = false;
+    setPanelBalance("unknown");
+    const params = new URLSearchParams({ date_col: detection.dateCol.selected, entity_col: detection.entityCol.selected });
+    fetch(sessionApiUrl(`/dataset/panel-balance?${params}`), { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { balanced: boolean } | null) => {
+        if (cancelled || !data) return;
+        setPanelBalance(data.balanced ? "balanced" : "unbalanced");
+      })
+      .catch(() => {
+        // Молча остаёмся "unknown" -- карточка структурного класса покажет
+        // "Panel Data" без уточнения баланса, ничего не ломается.
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPanelCandidate, detection?.dateCol.selected, detection?.entityCol.selected]);
+
   const structuralClass: StructuralClassResult | null = useMemo(() => {
     if (!detection || columnsInfo.length === 0) return null;
-    const entityColInfo = columnsInfo.find((c) => c.name === detection.entityCol.selected);
     return classifyStructure({
       hasDateColumn: detection.dateCol.selected !== "(не использовать)",
       hasEntityColumn: detection.entityCol.selected !== "(нет)",
-      entityUniqueCount: entityColInfo?.unique ?? null,
+      entityUniqueCount: entityColInfoForClass?.unique ?? null,
       isRegularFrequency: detection.freq.selected !== "(авто, не получилось)",
+      columnsInfo,
+      panelBalance,
     });
-  }, [detection, columnsInfo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detection, columnsInfo, panelBalance]);
 
   // ── Статусы остановок степпера (реальные, не моки) ──
   const stopStatus: Record<StopId, CheckStatus> = {
@@ -514,7 +564,7 @@ export function TsAnalysisUpload() {
                     <>
                       <Upload size={24} className="text-neutral-400" aria-hidden="true" />
                       <span>{isDragActive ? "Отпустите файл здесь…" : "Перетащите файл сюда или нажмите для выбора"}</span>
-                      <span className="text-xs text-neutral-500">Поддерживаемые форматы: .csv, .xlsx, .xls, .json (макс. 50MB)</span>
+                      <span className="text-xs text-neutral-500">Поддерживаемые форматы: .csv, .xlsx, .xls, .json (макс. 4MB)</span>
                       {fileName && (
                         <span className="text-green-600">
                           Выбран: <strong>{fileName}</strong>
@@ -781,23 +831,29 @@ export function TsAnalysisUpload() {
                         <p className="text-sm text-neutral-500 inline-flex items-center gap-2">
                           <Loader2 size={14} className="animate-spin" aria-hidden="true" /> Считаем статистику…
                         </p>
-                      ) : selectedStats ? (
+                      ) : selectedStats?.stats ? (
                         <>
                           <p className="text-sm mb-3">
                             <span className="text-neutral-500">Тип распределения: </span>
-                            <strong className="text-neutral-900">{selectedStats.distribution_hint}</strong>
+                            <strong className="text-neutral-900">{selectedStats.stats.distribution_hint}</strong>
                           </p>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <Metric label="Mean (среднее)" value={fmtStat(selectedStats.mean)} />
-                            <Metric label="Median (медиана)" value={fmtStat(selectedStats.median)} />
-                            <Metric label="Std (стандартное отклонение)" value={fmtStat(selectedStats.std)} />
-                            <Metric label="Skewness (асимметрия)" value={fmtStat(selectedStats.skewness)} />
-                            <Metric label="Kurtosis (эксцесс)" value={fmtStat(selectedStats.kurtosis)} />
-                            <Metric label="Q1 (1 квартиль)" value={fmtStat(selectedStats.q1)} />
-                            <Metric label="Q3 (3 квартиль)" value={fmtStat(selectedStats.q3)} />
-                            <Metric label="IQR (межквартильный размах)" value={fmtStat(selectedStats.iqr)} />
+                            <Metric label="Mean (среднее)" value={fmtStat(selectedStats.stats.mean)} />
+                            <Metric label="Median (медиана)" value={fmtStat(selectedStats.stats.median)} />
+                            <Metric label="Std (стандартное отклонение)" value={fmtStat(selectedStats.stats.std)} />
+                            <Metric label="Skewness (асимметрия)" value={fmtStat(selectedStats.stats.skewness)} />
+                            <Metric label="Kurtosis (эксцесс)" value={fmtStat(selectedStats.stats.kurtosis)} />
+                            <Metric label="Q1 (1 квартиль)" value={fmtStat(selectedStats.stats.q1)} />
+                            <Metric label="Q3 (3 квартиль)" value={fmtStat(selectedStats.stats.q3)} />
+                            <Metric label="IQR (межквартильный размах)" value={fmtStat(selectedStats.stats.iqr)} />
                           </div>
                         </>
+                      ) : selectedStats ? (
+                        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                          Недостаточно значений для расчёта статистики: непустых {selectedStats.non_null_count}{" "}
+                          {selectedStats.non_null_count === 1 ? "значение" : "значения"} из {formatNum(uploadData!.rows)} строк
+                          — данные слишком разрежены по этой колонке.
+                        </p>
                       ) : (
                         <p className="text-sm text-neutral-500">Статистика недоступна для этой колонки.</p>
                       )}
@@ -907,6 +963,10 @@ export function TsAnalysisUpload() {
                       <p className="text-xs text-neutral-500 mt-2">{structuralClass.routingHint}</p>
                     </div>
                   )}
+
+                  <div className="md:col-span-3">
+                    <StructuralClassSchema activeClassId={structuralClass?.id ?? null} />
+                  </div>
                 </div>
               )}
 
@@ -960,9 +1020,9 @@ export function TsAnalysisUpload() {
                   Асимметрия и эксцесс подсказывают, какие модели и трансформации будут уместны позже: сильная асимметрия обычно требует
                   стабилизации дисперсии в «Предобработке» до того, как переходить к ARIMA/SARIMA.
                 </p>
-                {selectedStats && (
+                {selectedStats?.stats && (
                   <p className="text-sm bg-brand-light/60 rounded px-3 py-2 text-neutral-700">
-                    <strong>{selectedFeature}</strong>: {selectedStats.distribution_hint.toLowerCase()}
+                    <strong>{selectedFeature}</strong>: {selectedStats.stats.distribution_hint.toLowerCase()}
                   </p>
                 )}
               </article>

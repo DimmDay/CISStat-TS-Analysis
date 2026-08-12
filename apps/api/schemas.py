@@ -96,11 +96,7 @@ class UploadResponse(BaseModel):
     error: Optional[str] = Field(None, description="Ошибка при загрузке")
 
 
-class ColumnStatsOut(BaseModel):
-    """Описательная статистика по числовой колонке -- пункт 4 контракта
-    вкладки «Загрузка». Реальный расчёт (pandas/scipy) над полным
-    столбцом, хранящимся в AnalysisSession, а не над превью."""
-    name: str
+class ColumnStatsValues(BaseModel):
     mean: float
     median: float
     std: float
@@ -114,8 +110,33 @@ class ColumnStatsOut(BaseModel):
     )
 
 
+class ColumnStatsOut(BaseModel):
+    """Описательная статистика по числовой колонке -- пункт 4 контракта
+    вкладки «Загрузка». Реальный расчёт (pandas/scipy) над полным
+    столбцом, хранящимся в AnalysisSession, а не над превью.
+
+    Колонка МОЖЕТ не иметь статистики (реальные данные часто разрежены --
+    например, панельные цены ФАО по странам/годам) -- в этом случае
+    stats=None, а non_null_count честно объясняет почему, вместо того
+    чтобы колонка тихо пропадала из ответа без объяснения."""
+    name: str
+    non_null_count: int
+    stats: Optional[ColumnStatsValues] = None
+
+
 class DatasetStatsResponse(BaseModel):
     columns: List[ColumnStatsOut]
+    min_non_null_for_stats: int = Field(2, description="Порог непустых значений, ниже которого статистика не считается")
+
+
+class PanelBalanceResponse(BaseModel):
+    """Реальная проверка Balanced/Unbalanced для панельных данных --
+    пункт 8 контракта (структурный класс), визуальная схема на
+    остановке «Структура». Требует ПОЛНЫЙ датасет (не превью): нужно
+    сравнить множества дат у каждой группы, 5+5 строк для этого мало."""
+    balanced: bool
+    n_entities: int
+    n_distinct_date_sets: int
 
 
 class DatasetSummaryOut(BaseModel):
