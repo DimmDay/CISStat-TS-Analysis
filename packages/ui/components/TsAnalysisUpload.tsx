@@ -788,14 +788,14 @@ export function TsAnalysisUpload() {
                             <strong className="text-neutral-900">{selectedStats.distribution_hint}</strong>
                           </p>
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <Metric label="Mean" value={fmtStat(selectedStats.mean)} />
-                            <Metric label="Median" value={fmtStat(selectedStats.median)} />
-                            <Metric label="Std" value={fmtStat(selectedStats.std)} />
-                            <Metric label="Skewness" value={fmtStat(selectedStats.skewness)} />
-                            <Metric label="Kurtosis" value={fmtStat(selectedStats.kurtosis)} />
-                            <Metric label="Q1" value={fmtStat(selectedStats.q1)} />
-                            <Metric label="Q3" value={fmtStat(selectedStats.q3)} />
-                            <Metric label="IQR" value={fmtStat(selectedStats.iqr)} />
+                            <Metric label="Mean (среднее)" value={fmtStat(selectedStats.mean)} />
+                            <Metric label="Median (медиана)" value={fmtStat(selectedStats.median)} />
+                            <Metric label="Std (стандартное отклонение)" value={fmtStat(selectedStats.std)} />
+                            <Metric label="Skewness (асимметрия)" value={fmtStat(selectedStats.skewness)} />
+                            <Metric label="Kurtosis (эксцесс)" value={fmtStat(selectedStats.kurtosis)} />
+                            <Metric label="Q1 (1 квартиль)" value={fmtStat(selectedStats.q1)} />
+                            <Metric label="Q3 (3 квартиль)" value={fmtStat(selectedStats.q3)} />
+                            <Metric label="IQR (межквартильный размах)" value={fmtStat(selectedStats.iqr)} />
                           </div>
                         </>
                       ) : (
