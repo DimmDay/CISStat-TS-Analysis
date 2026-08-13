@@ -59,7 +59,19 @@ def _make_csv() -> str:
 CSV_BYTES = _make_csv().encode("utf-8")
 
 COLD_START_TIMEOUT = 120.0
-WARM_TIMEOUT = 90.0  # Auto-ARIMA grid (18 fits) может занять ~5-10 сек на проде
+WARM_TIMEOUT = 90.0  # ets/ets_damped/theta/arima — типично <10s каждый
+
+# Per-model timeout: arima_auto делает grid search из 8 fits, каждый
+# ~7s на Render Free Tier = 56s + overhead. Дefault WARM_TIMEOUT=90s
+# его рвёт. Ставим 180s — с запасом на cold-start variance и медленный CPU.
+# Если превысит 180s — что-то не так (statsmodels loop, deadlock, etc.).
+PER_MODEL_TIMEOUT: dict[str, float] = {
+    "ets": WARM_TIMEOUT,
+    "ets_damped": WARM_TIMEOUT,
+    "theta": WARM_TIMEOUT,
+    "arima": WARM_TIMEOUT,
+    "arima_auto": 180.0,  # grid search 8 fits × ~7s = ~60s + buffer
+}
 
 REPORT_DIR = Path("/home/z/my-project/download/phase_6_p0_smoke")
 REPORT_JSON = REPORT_DIR / "report.json"
@@ -163,6 +175,8 @@ def check_set_target_column(client: httpx.Client) -> CheckResult:
 def check_backtest_model(client: httpx.Client, model_id: str) -> CheckResult:
     """3-7. POST /api/v1/internal/models/backtest — одна модель."""
     t0 = time.monotonic()
+    # Per-model timeout: arima_auto требует больше из-за grid search.
+    timeout = PER_MODEL_TIMEOUT.get(model_id, WARM_TIMEOUT)
     try:
         payload = {
             "model_id": model_id,
@@ -175,7 +189,7 @@ def check_backtest_model(client: httpx.Client, model_id: str) -> CheckResult:
             "train_ratio": 0.8,
         }
         r = client.post("/api/v1/internal/models/backtest", json=payload,
-                        headers={"Content-Type": "application/json"}, timeout=WARM_TIMEOUT)
+                        headers={"Content-Type": "application/json"}, timeout=timeout)
         dt = (time.monotonic() - t0) * 1000
         if r.status_code == 200:
             body = r.json()
@@ -253,6 +267,13 @@ def check_models_distinct(client: httpx.Client, model_results: list[CheckResult]
 # ────────────────────────────────────────────────────────────────────
 
 def write_reports(results: list[CheckResult]) -> None:
+    """Записать отчёты в JSON и Markdown.
+
+    ВАЖНО: используется encoding='utf-8' явно. На Windows Path.write_text()
+    по умолчанию использует cp1251, в котором нет символов ≥, ✓, ✗ и т.д.
+    Это вызывало UnicodeEncodeError на Windows при первой попытке записать
+    отчёт с символом ≥ (U+2265) в названии проверки.
+    """
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
     data = {
@@ -263,7 +284,10 @@ def write_reports(results: list[CheckResult]) -> None:
         "failed": sum(1 for r in results if not r.passed),
         "results": [asdict(r) for r in results],
     }
-    REPORT_JSON.write_text(json.dumps(data, ensure_ascii=False, indent=2, default=str))
+    REPORT_JSON.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
 
     md = [
         "# PHASE-6-P0 Smoke-тест: реальные ETS / ETS Damped / Theta / ARIMA / Auto-ARIMA",
@@ -280,7 +304,7 @@ def write_reports(results: list[CheckResult]) -> None:
     for r in results:
         md.append(r.to_markdown())
         md.append("")
-    REPORT_MD.write_text("\n".join(md))
+    REPORT_MD.write_text("\n".join(md), encoding="utf-8")
 
 
 def main() -> int:
@@ -312,14 +336,20 @@ def main() -> int:
         results.append(check_models_distinct(client, model_results))
         print(f"[{'PASS' if results[-1].passed else 'FAIL'}] {results[-1].name}")
 
-    write_reports(results)
-
     passed = sum(1 for r in results if r.passed)
     failed = sum(1 for r in results if not r.passed)
     print("=" * 70)
     print(f"TOTAL: {passed}/{len(results)} passed, {failed} failed")
-    print(f"Report: {REPORT_JSON}")
-    print(f"Report: {REPORT_MD}")
+
+    # Защита от crash при записи отчёта: даже если write_reports упадёт
+    # (Windows encoding, permission denied, диск полный), пользователь
+    # уже видел результаты в stdout выше. Скрипт не должен падать здесь.
+    try:
+        write_reports(results)
+        print(f"Report: {REPORT_JSON}")
+        print(f"Report: {REPORT_MD}")
+    except Exception as e:
+        print(f"WARNING: failed to write reports ({e!r}) — results printed above")
     print()
     if failed == 0:
         print("✓ ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ. 5 моделей реально обучаются в проде.")

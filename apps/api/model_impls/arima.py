@@ -7,7 +7,7 @@ ARIMA и Auto-ARIMA — авторегрессия + интеграция + ск
   «обычный» ARIMA, разумный дефолт для большинства бизнес-рядов.
 - run_auto_arima_backtest: grid search по (p, d, q) с AIC-критерием.
   Реализован через statsmodels (НЕ pmdarima) — grid over
-  p in {0,1,2}, d in {0,1}, q in {0,1,2} = 18 моделей. Выбираем
+  p in {0,1}, d in {0,1}, q in {0,1} = 8 моделей. Выбираем
   модель с минимальным AIC, затем forecast.
 
 Контракт: на входе list[float], на выходе BacktestMetrics.
@@ -33,14 +33,20 @@ logger = logging.getLogger(__name__)
 DEFAULT_ARIMA_ORDER: Tuple[int, int, int] = (1, 1, 1)
 
 
-# Grid для Auto-ARIMA: 18 комбинаций (3 * 2 * 3). Большая часть рядов
-# даёт сходимость за 1-2 секунды на 20-50 точках. Если ряд короче —
-# часть порядков упадёт с ValueError, что нормально (пропускаем).
+# Grid для Auto-ARIMA: 8 комбинаций (2 * 2 * 2). Раньше был grid
+# 3*2*3=18 fits, но на Render Free Tier (shared CPU, 512MB RAM) каждый
+# ARIMA fit занимает ~7 секунд, что давало 18*7=126 sec — больше 100s
+# request timeout Render. Grid 8 fits: 8*7=56 sec — вписываемся в 90s
+# smoke-timeout и 100s Render request timeout.
+# Качество выбора чуть хуже (пропускаем p=2, q=2), но для Phase 6-P0
+# (демонстрация реальной ARIMA-модели) — достаточно.
+# Для Phase 6-P1+: расширить grid обратно до 18 или использовать pmdarima
+# (он использует stepwise selection вместо полного перебора — быстрее).
 AUTO_ARIMA_GRID: List[Tuple[int, int, int]] = [
     (p, d, q)
-    for p in (0, 1, 2)
+    for p in (0, 1)
     for d in (0, 1)
-    for q in (0, 1, 2)
+    for q in (0, 1)
 ]
 
 
@@ -53,6 +59,11 @@ def _arima_fit_predict(
 
     Использует statsmodels.tsa.arima.model.ARIMA (новый API с 0.12+,
     заменяет statsmodels.tsa.arima_model.ARMA — deprecated).
+
+    Примечание про производительность: в statsmodels 0.14+ ARIMA.fit()
+    НЕ принимает аргумент maxiter (как SARIMAX). Дефолт=250 итераций
+    L-BFGS-B. Для контроля времени используем сокращённый grid в
+    AUTO_ARIMA_GRID (8 fits вместо 18), а не ограничение итераций.
     """
     from statsmodels.tsa.arima.model import ARIMA
 
@@ -171,16 +182,19 @@ def run_auto_arima_backtest(
     train_ratio: float,
     seasonal_period: int,
 ) -> BacktestMetrics:
-    """Auto-ARIMA: grid search по (p,d,q) ∈ {0,1,2} × {0,1} × {0,1,2} = 18 моделей.
+    """Auto-ARIMA: grid search по (p,d,q) ∈ {0,1} × {0,1} × {0,1} = 8 моделей.
 
     Использует AIC для выбора лучшего порядка. Реализован через statsmodels
     (НЕ pmdarima), чтобы не добавлять тяжёлую зависимость в Docker образ.
     По качеству — уступает pmdarima на сложных рядах, но для Phase 6-P0
     (демонстрация реальной ARIMA-модели) — достаточно.
 
-    Время: ~1-2 сек на 24-72 точках (18 fit'ов). На больших рядах grid
-    search может занять 10+ секунд — для Phase 6-P1+ оптимизация: skip
-    не-стационарных порядков, parallel fit, etc.
+    Время: ~50-60 сек на 24 точках на Render Free Tier (8 fits × ~7 сек
+    на fit). Раньше был grid 18 fits (~126 сек) — не вписывался в 100s
+    Render request timeout. С grid 8 fits — вписываемся.
+
+    Для Phase 6-P1+: расширить grid до 18 или перейти на pmdarima
+    (использует stepwise selection, быстрее полного перебора).
     """
     return safe_backtest(
         _auto_arima_backtest_impl,
