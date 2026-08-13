@@ -36,6 +36,24 @@ class FamilyModel(BaseModel):
     libraries: List[str] = Field(default_factory=list)
     training_time: str = "seconds"
 
+    # ── Phase 1-A: пространство параметров для тюнинга ──
+    #
+    # Опциональный dict: имя_параметра → список кандидат-значений.
+    # Декартово произведение всех списков даёт grid для POST /v1/models/tune.
+    #
+    # None (по умолчанию) = модель не поддерживает тюнинг (baseline-модели
+    # naive/drift/mean, или модели без публичных гиперпараметров).
+    #
+    # Значения в списках могут быть str/int/float/bool/None. None — валидное
+    # значение (например, seasonal=None отключает сезонность в ETS).
+    #
+    # Контракт для дальнейших Phase 1-подзадач:
+    #   - POST /v1/models/tune читает param_space через get_model(model_id)
+    #   - max_trials защита: product(len(v) for v in param_space.values())
+    #     не должен превышать MAX_TRIALS (64). Если превышает — grid
+    #     обрезается random-сэмплированием.
+    param_space: Optional[Dict[str, List[Any]]] = None
+
     @field_validator("id")
     @classmethod
     def validate_id(cls, v: str) -> str:

@@ -688,6 +688,143 @@ No code changes in apps/api/routers/ or packages/ui/ — Task 15 fix was correct
 
 ---
 
+Task ID: 18
+
+Исправляет два бага, выявленных первым прогоном `phase_6_p0_smoke.py` в проде:
+
+| # | Баг | Симптом | Файл |
+|---|-----|---------|------|
+| 1 | `arima_auto` grid 18 fits × ~7s = 126s на Render Free Tier → timeout 90s | `[FAIL] 3-7. POST /backtest (arima_auto) (90016ms)` | `apps/api/model_impls/arima.py` |
+| 2 | `Path.write_text()` на Windows по умолчанию cp1251, не содержит ≥ (U+2265) | `UnicodeEncodeError: 'charmap' codec can't encode character '\u2265'` | `scripts/smoke/phase_6_p0_smoke.py` |
+
+## Что меняется
+
+### `apps/api/model_impls/arima.py`
+- `AUTO_ARIMA_GRID` сокращён с **18 → 8 fits**:
+  - было: `p ∈ {0,1,2} × d ∈ {0,1} × q ∈ {0,1,2}` = 18
+  - стало: `p ∈ {0,1} × d ∈ {0,1} × q ∈ {0,1}` = 8
+- Расчёт: 8 × 7s = **56 sec** (вписывается в 90s Render request timeout)
+- Качество выбора чуть хуже (пропускаем p=2, q=2), но для Phase 6-P0 достаточно
+- Для Phase 6-P1+: расширить grid обратно или перейти на pmdarima
+
+### `scripts/smoke/phase_6_p0_smoke.py`
+- Добавлен `PER_MODEL_TIMEOUT` dict: `arima_auto=180s`, остальные 4 модели = 90s
+- `check_backtest_model()` использует per-model timeout вместо общего `WARM_TIMEOUT`
+- `write_reports()`: явно `encoding='utf-8'` для `Path.write_text()` — фикс Windows
+- `main()`: `write_reports` обёрнут в `try/except` — даже при ошибке записи скрипт не падает, пользователь видит результаты в stdout
+
+## Применение (2 способа)
+
+### Способ 1: просто скопировать файлы (проще)
+
+Скачай и распакуй архив, потом скопируй 2 файла с заменой:
+
+```powershell
+# PowerShell — подставь свой реальный путь к распакованному пакету
+$src = "C:\Users\User\Downloads\phase_6_p0_hotfix"
+$dst = "C:\Users\User\CISStat-TS-Analysis"
+
+Copy-Item "$src\apps\api\model_impls\arima.py" "$dst\apps\api\model_impls\arima.py" -Force
+Copy-Item "$src\scripts\smoke\phase_6_p0_smoke.py" "$dst\scripts\smoke\phase_6_p0_smoke.py" -Force
+
+# Проверка
+(Get-Content "$dst\apps\api\model_impls\arima.py" | Select-String "for p in").Line
+# Ожидаем: '    for p in (0, 1)'
+
+git -C $dst status --short
+# Ожидаем: 2 modified файла
+```
+
+### Способ 2: применить патч через `git apply` (чище)
+
+```powershell
+cd C:\Users\User\CISStat-TS-Analysis
+
+# Скачай phase_6_p0_hotfix.patch в текущую папку, потом:
+git apply --check phase_6_p0_hotfix.patch    # dry-run
+git apply phase_6_p0_hotfix.patch             # применить
+
+# Проверка
+git diff --stat
+# Ожидаем:
+#  apps/api/model_impls/arima.py        | 26 +++++++++-----
+#  scripts/smoke/phase_6_p0_smoke.py    | 30 +++++++++++++++--
+```
+
+### Обновление worklog.md
+
+Worklog уже содержит Task 18 entry в конце. Скопируй файл из пакета:
+
+```powershell
+Copy-Item "$src\worklog.md" "$dst\worklog.md" -Force
+```
+
+## После применения — commit + push + deploy
+
+```powershell
+cd C:\Users\User\CISStat-TS-Analysis
+
+git add apps/api/model_impls/arima.py `
+        scripts/smoke/phase_6_p0_smoke.py `
+        worklog.md
+
+git commit -m "Task 18 (Phase 6-P0 hotfix): arima_auto grid 18→8 fits, UTF-8 encoding for Windows
+
+Two bugs from first prod smoke run:
+1. arima_auto timed out at 90s — grid of 18 ARIMA fits × ~7s each on Render
+   Free Tier = 126s, exceeding both 90s smoke-timeout and 100s Render request
+   timeout. Reduced grid from {0,1,2}×{0,1}×{0,1,2}=18 to {0,1}×{0,1}×{0,1}=8
+   fits. New estimate: 8×7s=56s, fits within 90s.
+2. phase_6_p0_smoke.py crashed with UnicodeEncodeError on Windows when writing
+   report.json — Path.write_text() defaults to cp1251 on Windows, which lacks
+   the ≥ character (U+2265). Fixed by explicit encoding='utf-8' in write_reports.
+
+Files:
+- apps/api/model_impls/arima.py: AUTO_ARIMA_GRID 18→8, updated docstrings
+- scripts/smoke/phase_6_p0_smoke.py: PER_MODEL_TIMEOUT dict (arima_auto=180s),
+  check_backtest_model uses per-model timeout, write_reports uses utf-8,
+  write_reports wrapped in try/except so script never crashes on report writing
+- worklog.md: Task 18 entry
+
+Notes:
+- maxiter=100 attempt was reverted — ARIMA.fit() in statsmodels 0.14+ doesn't
+  accept maxiter (SARIMAX-only). Grid reduction alone is sufficient.
+- 0 new dependencies, 0 contract changes, 0 UI changes.
+- Existing 21 tests in test_models_backtest_real.py remain valid."
+
+git push origin main
+```
+
+## После деплоя (Render Dashboard → "Live")
+
+```powershell
+python scripts/smoke/phase_6_p0_smoke.py
+```
+
+Ожидаемый результат:
+
+```
+[PASS] 1. POST /upload (24-month CSV) (~30s cold start)
+[PASS] 2. POST /session/target-column (value) (~1s)
+[PASS] 3-3. POST /backtest (ets) (~2s)
+[PASS] 3-4. POST /backtest (ets_damped) (~2s)
+[PASS] 3-5. POST /backtest (theta) (~1s)
+[PASS] 3-6. POST /backtest (arima) (~7s)
+[PASS] 3-7. POST /backtest (arima_auto) (~50-60s — было 90s+ timeout, теперь вписывается)
+[PASS] 8. 5 models produce ≥3 distinct MAE
+======================================================================
+TOTAL: 8/8 passed, 0 failed
+Report: .../phase_6_p0_smoke/report.json
+Report: .../phase_6_p0_smoke/report.md
+
+✓ ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ. 5 моделей реально обучаются в проде.
+  → Phase 6-P0 завершён. Готов к Phase 6-P1 (Prophet/TBATS) или Phase 1.
+```
+
+Если `arima_auto` снова FAIL по timeout — присылай вывод, сократим grid ещё (до 4 fits) или добавим early-termination.
+
+---
+
 Task ID: 17 — Phase 6-P0: реальные ETS / ETS Damped / Theta / ARIMA / Auto-ARIMA
 
 Цель Phase 6-P0 (по решению тимлида Task ID 8: «Phase 6-P0 (4 модели) сначала → затем Phase 1–5»):
@@ -855,3 +992,54 @@ Stage Summary:
 0 изменений в контракте BacktestResponse/BacktestMetrics.
 21 новый тест покрывает: корректность, edge cases, регрессию, прямые вызовы.
 Build-time guard в Dockerfile ловит битые импорты до деплоя.
+
+---
+
+Task ID: 19-A — Phase 1-A: param_space в modeling.yaml + Pydantic поле
+
+Task:
+• Расширить спецификацию modeling.yaml, чтобы каждая модель могла нести
+  своё пространство параметров для тюнинга (param_space).
+• Расширить Pydantic-схему FamilyModel полем param_space.
+• Опциональное поле (None по умолчанию) — обратная совместимость.
+• Написать тесты: загрузка YAML, схема, baseline skip, roundtrip.
+
+Work Log:
+- Прочитан текущий modeling.yaml (1407 строк) и modeling_spec_loader.py (838 строк).
+- Спроектирован формат param_space: Optional[Dict[str, List[Any]]],
+  где ключ = имя параметра, значение = список кандидат-значений.
+  Декартово произведение даёт grid для tune-ендпоинта.
+- Оценены риски:
+  R1 — регрессия test_modeling_spec.py → param_space optional, default None.
+  R2 — Any в List[Any] → Pydantic v2 принимает str/int/float/bool/None.
+  R3 — None как значение в списке → Pydantic v2 List[Any] поддерживает.
+- TDD: сначала написан tests/api/test_param_space.py (14 тестов, 4 класса):
+  • TestParamSpaceSchema (5 тестов) — поле есть, default None, dict/None/mixed.
+  • TestParamSpaceYamlLoading (3 теста) — YAML парсится, ets/arima имеют param_space.
+  • TestBaselineNoParamSpace (4 теста) — naive/seasonal_naive/drift/mean без param_space.
+  • TestParamSpaceRoundtrip (2 теста) — model_dump и model_dump_json сохраняют данные.
+- Запуск тестов до изменений: 1-й тест падает ("'param_space' in fields" → AssertionError).
+- Расширение FamilyModel: добавлено поле param_space с комментарием-контрактом
+  для Phase 1-B/C (POST /v1/models/tune, max_trials защита).
+- Заполнен rules/modeling.yaml для 3 моделей Phase 6-P0:
+  • ets:        trend[2] × seasonal[3] × seasonal_periods[1] × damped_trend[2] = 12 trials
+  • ets_damped: trend[2] × seasonal[3] × seasonal_periods[1]               =  6 trials
+  • arima:      p[3] × d[2] × q[3]                                          = 18 trials
+- baseline-модели (naive/seasonal_naive/drift/mean) сознательно БЕЗ param_space —
+  контрактом предусмотрено, что они не требуют тюнинга.
+- theta и arima_auto оставлены без param_space: у theta параметров нет
+  (формула фиксирована), у arima_auto grid уже зашит в самой модели.
+- Запуск тестов: 14/14 PASS.
+- Регрессия test_modeling_spec.py: 62/62 PASS (всего 76/76).
+- Sanity-check спецификации: 24 модели, 3 имеют param_space, 21 без него.
+  Все grid sizes ≤ MAX_TRIALS=64 (максимальный = 18 у ARIMA).
+
+Stage Summary:
+- Изменено 3 файла:
+  • src/catalog/modeling_spec_loader.py — FamilyModel.param_space (15 строк с комментарием)
+  • rules/modeling.yaml — param_space для ets/ets_damped/arima (~30 строк)
+  • tests/api/test_param_space.py — новый файл, 14 тестов (190 строк)
+- Все тесты PASS, регрессии нет.
+- Готов фундамент для Phase 1-B (CVStrategy / ExpandingWindowCV):
+  POST /v1/models/tune сможет читать param_space через spec.get_model(model_id).
+- Артефакты в /home/z/my-project/download/phase_1_a_param_space/
