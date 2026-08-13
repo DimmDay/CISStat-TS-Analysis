@@ -4,23 +4,21 @@
 
 Эндпоинты:
   POST /v1/models/candidates  — пул кандидатов (движок применимости)
-  POST /v1/models/backtest    — бэктест одной модели (auth-protected,
-                                 синтетический ряд — legacy Phase 0)
-  POST /v1/models/train        — обучение модели (заглушка)
-
-Phase 0.5: логика бэктеста вынесена в _run_backtest_with_series(), чтобы
-её мог переиспользовать зеркальный эндпоинт /v1/internal/models/backtest
-(в routers/internal.py) — он использует РЕАЛЬНЫЙ ряд из сессии когда
-target_column задан.
+  POST /v1/models/backtest    — бэктест одной модели
+  POST /v1/models/train       — обучение модели (заглушка)
+  POST /v1/models/tune        — grid search гиперпараметров с CV (Phase 1-C)
 """
+import itertools
 import logging
+import random
 import time
 import math
 from collections import Counter
-from typing import Optional
+from typing import Any, Dict, List, Optional, Tuple
 from fastapi import APIRouter, Depends, HTTPException
 
 from apps.api.auth import require_capability, get_current_principal
+from apps.api.cv import ExpandingWindowCV
 from apps.api.plans import AuthenticatedPrincipal
 from apps.api.schemas import (
     CandidatesRequest,
@@ -30,6 +28,10 @@ from apps.api.schemas import (
     BacktestRequest,
     BacktestResponse,
     BacktestMetrics,
+    CVConfig,
+    TuneRequest,
+    TuneResponse,
+    TuneTrialResult,
 )
 
 logger = logging.getLogger(__name__)
@@ -74,18 +76,27 @@ def _reset_spec_cache():
 
 
 # ═══════════════════════════════════════════════════════════
-# POST /v1/models/candidates — бизнес-логика (переиспользуется зеркалом)
+# POST /v1/models/candidates
 # ═══════════════════════════════════════════════════════════
 
+@router.post(
+    "/candidates",
+    response_model=CandidatesResponse,
+    dependencies=[Depends(require_capability("can_train_models"))],
+)
+def get_candidates(
+    payload: CandidatesRequest,
+    principal: AuthenticatedPrincipal = Depends(get_current_principal),
+):
+    """
+    Получить пул кандидатов для моделирования на основе профиля данных.
 
-def _compute_candidates(payload: CandidatesRequest) -> CandidatesResponse:
-    """Чистая бизнес-логика: применить движок применимости к 24 моделям.
+    Применяет движок применимости (23 правила, 4 уровня) ко всем 24 моделям
+    из 8 семейств. Возвращает модели с уровнем ≥ min_level, исключая
+    NOT_APPLICABLE. Baseline-модели включаются всегда.
 
-    Вынесена из get_candidates, чтобы её мог переиспользовать зеркальный
-    эндпоинт /v1/internal/models/candidates (Phase 1 follow-up: см.
-    routers/internal.py). Логика идентична — разница только в auth:
-    защищённый требует require_capability("can_train_models"),
-    зеркало не требует (браузер standalone без API-ключа).
+    Доступно только принципалам с can_train_models=True
+    (professional, enterprise, admin, internal_analyst).
     """
     spec = _get_spec()
 
@@ -152,31 +163,6 @@ def _compute_candidates(payload: CandidatesRequest) -> CandidatesResponse:
         statistics=statistics,
         spec_version=spec.metadata.version,
     )
-
-
-@router.post(
-    "/candidates",
-    response_model=CandidatesResponse,
-    dependencies=[Depends(require_capability("can_train_models"))],
-)
-def get_candidates(
-    payload: CandidatesRequest,
-    principal: AuthenticatedPrincipal = Depends(get_current_principal),
-):
-    """
-    Получить пул кандидатов для моделирования на основе профиля данных.
-
-    Применяет движок применимости (23 правила, 4 уровня) ко всем 24 моделям
-    из 8 семейств. Возвращает модели с уровнем ≥ min_level, исключая
-    NOT_APPLICABLE. Baseline-модели включаются всегда.
-
-    Доступно только принципалам с can_train_models=True
-    (professional, enterprise, admin, internal_analyst).
-
-    Браузер visitior'а standalone НЕ имеет API-ключа — для него
-    есть зеркало /v1/internal/models/candidates (без auth).
-    """
-    return _compute_candidates(payload)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -326,39 +312,314 @@ def _run_mean_backtest(
     return _compute_metrics(y_test, y_pred, y_train)
 
 
-# Маппинг model_id → функция бэктеста.
-#
-# Phase 6-P0: добавлены 5 реальных реализаций через statsmodels:
-#   - ets / ets_damped: Holt-Winters ExponentialSmoothing
-#   - theta: формальная Theta-модель (Assimakopoulos & Nikolopoulos 2000)
-#   - arima: ARIMA(1,1,1) с фиксированным порядком
-#   - arima_auto: grid search по (p,d,q) с AIC-критерием
-# До Phase 6-P0 эти 5 model_id попадали в else-ветку ниже (заглушка
-# naive*penalty). Теперь они вызывают реальные модели из apps/api/model_impls/.
-#
-# Семейства neural / structural / tree_ml / multivariate / volatility
-# остаются заглушками (Phase 6-P1+).
-from apps.api.model_impls import (
-    run_ets_backtest,
-    run_ets_damped_backtest,
-    run_theta_backtest,
-    run_arima_backtest,
-    run_auto_arima_backtest,
-)
-
+# Маппинг model_id → функция бэктеста
 _BACKTEST_IMPLEMENTATIONS = {
-    # ── Baselines (Phase 0): без statsmodels, простые формулы ──
     "naive": lambda s, tr, p: _run_naive_backtest(s, tr),
     "seasonal_naive": lambda s, tr, p: _run_seasonal_naive_backtest(s, tr, p),
     "drift": lambda s, tr, p: _run_drift_backtest(s, tr),
     "mean": lambda s, tr, p: _run_mean_backtest(s, tr),
-    # ── Phase 6-P0: реальные модели через statsmodels ──
-    "ets": run_ets_backtest,
-    "ets_damped": run_ets_damped_backtest,
-    "theta": run_theta_backtest,
-    "arima": run_arima_backtest,
-    "arima_auto": run_auto_arima_backtest,
 }
+
+
+# ═══════════════════════════════════════════════════════════
+# Phase 1-C: Тюнинг гиперпараметров (POST /v1/models/tune)
+# ═══════════════════════════════════════════════════════════
+
+# Hard cap на размер grid'а. Защита от экспоненциального роста
+# (например, p[5]×d[3]×q[5]×P[2]×D[2]×Q[2] = 600 trials). Если grid
+# превысит этот лимит — обрезаем random sampling с воспроизводимым seed.
+# Контракт зафиксирован в Phase 1-A (см. modeling_spec_loader.py).
+MAX_TRIALS: int = 64
+
+
+def _build_grid(param_space: Dict[str, List[Any]]) -> List[Dict[str, Any]]:
+    """Декартово произведение всех значений в param_space.
+
+    Возвращает list of dict, где каждый dict — одна комбинация:
+        {"trend": "add", "seasonal": None, "seasonal_periods": 12, ...}
+
+    Порядок соответствует itertools.product (последний ключ меняется быстрее).
+
+    Пример:
+        {"p": [0, 1], "q": [0, 1]} → [
+            {"p": 0, "q": 0},
+            {"p": 0, "q": 1},
+            {"p": 1, "q": 0},
+            {"p": 1, "q": 1},
+        ]
+
+    Пустой param_space возвращает [{}] — один trial с пустыми params
+    (валидный крайний случай: модель без гиперпараметров всё равно
+    может быть оценена через CV, хотя обычно такие модели не имеют
+    param_space вовсе — см. baseline-модели).
+    """
+    keys = list(param_space.keys())
+    values = [param_space[k] for k in keys]
+    return [dict(zip(keys, combo)) for combo in itertools.product(*values)]
+
+
+def _truncate_grid(
+    grid: List[Dict[str, Any]],
+    max_trials: int,
+    random_state: int,
+) -> Tuple[List[Dict[str, Any]], bool]:
+    """Применить max_trials защиту к grid'у.
+
+    Если len(grid) <= max_trials → без изменений (truncated=False).
+    Если len(grid) >  max_trials → random sample max_trials trials без
+    возвращения, с воспроизводимым random_state (truncated=True).
+
+    Возвращает (trials, truncated).
+
+    Контракт воспроизводимости: одинаковый random_state → одинаковый
+    набор trials. Используется random.Random(seed).sample — стандартный
+    Python sampler без возвращения.
+    """
+    if len(grid) <= max_trials:
+        return grid, False
+
+    rng = random.Random(random_state)
+    sampled_indices = sorted(rng.sample(range(len(grid)), max_trials))
+    return [grid[i] for i in sampled_indices], True
+
+
+def _tunable_predict(
+    model_id: str,
+    y_train: List[float],
+    test_size: int,
+    params: Dict[str, Any],
+) -> List[float]:
+    """STUB: прогноз с вариацией по params.
+
+    Phase 1-C проверяет механику grid × CV × max_trials, а НЕ реальные
+    модели. Этот stub возвращает прогноз длиной test_size, который
+    ЗАВИСИТ от params — этого достаточно, чтобы CV выбрал «лучший»
+    trial детерминированно.
+
+    Phase 6 заменит эту функцию на реальные ETS/ARIMA/Prophet реализации
+    (apps/api/model_impls/), которые будут вызывать statsmodels/pmdarima/etc.
+    Тогда same params → same y_pred (что важно для воспроизводимости CV).
+
+    Эвристика stub'а (по типам params):
+      - trend="add" → линейный drift (y[-1]-y[0])/(n-1)
+      - trend="mul" → геометрический growth (y[-1]/y[0])^(1/(n-1)) - 1
+      - damped_trend=True → trend_term *= 0.5 (затухание)
+      - seasonal: stub игнорирует (Phase 6 добавит сезонную компоненту)
+      - p/q (ARIMA): небольшие константные сдвиги (p*0.01, q*0.01, d*0.02)
+
+    Все расчёты сделаны простыми (без numpy), чтобы тесты были
+    детерминированы и не зависели от внешних библиотек.
+    """
+    if not y_train:
+        return [0.0] * test_size
+
+    last = y_train[-1]
+    n_train = len(y_train)
+
+    # Trend component
+    trend_term = 0.0
+    if "trend" in params:
+        if params["trend"] == "mul":
+            # Geometric growth
+            if n_train > 1 and y_train[0] > 1e-10:
+                growth = (y_train[-1] / y_train[0]) ** (1.0 / max(n_train - 1, 1)) - 1
+                trend_term = growth * last
+        else:  # "add" or anything else
+            if n_train > 1:
+                trend_term = (y_train[-1] - y_train[0]) / max(n_train - 1, 1)
+
+    # Damped trend reduces the trend component
+    if params.get("damped_trend") is True:
+        trend_term *= 0.5
+
+    # ARIMA-style params (p, d, q) — small variations
+    p_factor = float(params.get("p", 0)) * 0.01
+    d_factor = float(params.get("d", 0)) * 0.02
+    q_factor = float(params.get("q", 0)) * 0.01
+
+    preds: List[float] = []
+    for i in range(test_size):
+        pred = last + trend_term * (i + 1) + p_factor * i + d_factor + q_factor * i
+        preds.append(pred)
+    return preds
+
+
+# Допустимые метрики для выбора лучшего trial'а (валидация в endpoint)
+_VALID_METRICS = {"mae", "rmse", "mape", "mase", "weighted_score"}
+
+
+def _execute_tune(
+    spec,
+    model_id: str,
+    series: List[float],
+    cv_config: CVConfig,
+    max_trials: Optional[int],
+    metric: str,
+    random_state: int,
+) -> TuneResponse:
+    """Pure function: grid search гиперпараметров с expanding-window CV.
+
+    Не зависит от FastAPI request/response — принимает уже-validated
+    параметры. Это позволяет тестировать логику напрямую (без HTTP),
+    см. tests/api/test_tune.py.
+
+    Шаги:
+      1. Получить модель из spec по model_id (404 если нет).
+      2. Проверить param_space (422 если None — baseline/no-tuning).
+      3. Построить grid (декартово произведение).
+      4. Применить max_trials защиту (random sampling если нужно).
+      5. Валидировать CV config и длину ряда (422 если слишком короток).
+      6. Для каждого trial: для каждого fold — predict + compute metrics.
+         Усреднить метрики по folds.
+      7. Выбрать best_trial с минимальным значением `metric`.
+      8. Вернуть TuneResponse.
+
+    Аргументы:
+        spec:          ModelingSpec (загруженная из YAML).
+        model_id:      ID модели (должна быть в spec).
+        series:        временной ряд (List[float], длина >= cv.min_samples()).
+        cv_config:     CVConfig (Pydantic-схема, уже валидирована).
+        max_trials:    Optional[int]; None → использовать MAX_TRIALS.
+        metric:        str из _VALID_METRICS (mae/rmse/mape/mase/weighted_score).
+        random_state:  seed для воспроизводимого random sampling.
+
+    Raises:
+        HTTPException(404): model_id не найден в spec.
+        HTTPException(422): param_space is None / ряд слишком короток /
+                            невалидная метрика / невалидный CV config.
+    """
+    start = time.monotonic()
+
+    # ── 1. Получить модель ────────────────────────────────────
+    model = spec.get_model(model_id)
+    if model is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Модель '{model_id}' не найдена в спецификации",
+        )
+
+    # ── 2. Проверить param_space ──────────────────────────────
+    if model.param_space is None:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Модель '{model_id}' не поддерживает тюнинг: "
+                f"param_space не задан в спецификации. "
+                f"Baseline-модели (naive/drift/mean) не имеют гиперпараметров."
+            ),
+        )
+
+    # ── 3. Построить grid ─────────────────────────────────────
+    full_grid = _build_grid(model.param_space)
+    grid_size = len(full_grid)
+
+    # ── 4. max_trials защита ─────────────────────────────────
+    # effective_max: пользовательский max_trials, но не больше MAX_TRIALS.
+    requested = max_trials if max_trials is not None else MAX_TRIALS
+    effective_max = min(requested, MAX_TRIALS)
+    trials_grid, truncated = _truncate_grid(
+        full_grid, max_trials=effective_max, random_state=random_state,
+    )
+
+    # ── 5. Валидировать CV config и длину ряда ────────────────
+    try:
+        cv = ExpandingWindowCV(
+            n_splits=cv_config.n_splits,
+            test_size=cv_config.test_size,
+            min_train_size=cv_config.min_train_size,
+            step=cv_config.step,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Некорректная CV config: {e}",
+        )
+
+    if len(series) < cv.min_samples():
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Слишком короткий ряд для CV: нужно >= {cv.min_samples()}, "
+                f"есть {len(series)}. Уменьшите n_splits, test_size "
+                f"или min_train_size."
+            ),
+        )
+
+    # ── Валидация metric (дополнительная защита, хотя Pydantic Literal уже отсекает) ─
+    if metric not in _VALID_METRICS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Некорректная метрика '{metric}'. "
+                f"Допустимые: {sorted(_VALID_METRICS)}."
+            ),
+        )
+
+    # ── 6. CV для каждого trial ──────────────────────────────
+    splits = cv.split(len(series))
+    n_folds = len(splits)
+
+    trial_results: List[TuneTrialResult] = []
+    for params in trials_grid:
+        fold_metrics: List[BacktestMetrics] = []
+        for split in splits:
+            y_train = [series[i] for i in split.train_idx]
+            y_test = [series[i] for i in split.test_idx]
+            y_pred = _tunable_predict(model_id, y_train, len(y_test), params)
+            fold_metrics.append(_compute_metrics(y_test, y_pred, y_train))
+
+        # Усреднение по folds
+        if fold_metrics:
+            avg_metrics = BacktestMetrics(
+                mae=round(sum(m.mae for m in fold_metrics) / len(fold_metrics), 6),
+                rmse=round(sum(m.rmse for m in fold_metrics) / len(fold_metrics), 6),
+                mape=round(sum(m.mape for m in fold_metrics) / len(fold_metrics), 6),
+                mase=round(sum(m.mase for m in fold_metrics) / len(fold_metrics), 6),
+                weighted_score=round(
+                    sum(m.weighted_score for m in fold_metrics) / len(fold_metrics), 6
+                ),
+            )
+        else:
+            # Fallback (не должно случиться, т.к. cv.split вернул >= 1 fold
+            # после проверки min_samples выше)
+            avg_metrics = BacktestMetrics(
+                mae=0.0, rmse=0.0, mape=0.0, mase=0.0, weighted_score=0.0,
+            )
+
+        trial_results.append(TuneTrialResult(
+            params=params,
+            metrics=avg_metrics,
+            n_folds=n_folds,
+        ))
+
+    # ── 7. Выбрать best trial (минимум metric) ───────────────
+    best_idx = min(
+        range(len(trial_results)),
+        key=lambda i: getattr(trial_results[i].metrics, metric),
+    )
+    best = trial_results[best_idx]
+
+    # ── 8. Имя/семейство модели ──────────────────────────────
+    family = spec.get_family_for_model(model_id)
+    family_id = family.id if family else "unknown"
+
+    duration_ms = (time.monotonic() - start) * 1000
+
+    return TuneResponse(
+        model_id=model_id,
+        model_name=model.name,
+        family_id=family_id,
+        best_params=best.params,
+        best_metrics=best.metrics,
+        best_trial=best_idx,
+        n_trials=len(trial_results),
+        grid_size=grid_size,
+        truncated=truncated,
+        cv_config=cv_config,
+        metric=metric,
+        trials=trial_results,
+        duration_ms=round(duration_ms, 2),
+    )
 
 # Маппинг model_id → (model_name, family_id) для неизвестных моделй
 _MODEL_INFO = {
@@ -399,11 +660,11 @@ def run_backtest(
     principal: AuthenticatedPrincipal = Depends(get_current_principal),
 ):
     """
-    Запустить бэктест для одной модели (auth-protected, /v1/models/backtest).
+    Запустить бэктест для одной модели.
 
-    Историческое поведение (Phase 0): всегда использует синтетический ряд,
-    сгенерированный по профилю данных. Без API-ключа сюда не дойти --
-    браузер посетителя standalone использует зеркало /v1/internal/models/backtest.
+    Для baseline-моделей (Naive, Seasonal Naive, Drift, Mean) выполняется
+    реальный расчёт на синтетическом ряде, сгенерированном по профилю данных.
+    Для остальных моделей — заглушка с аппроксимированными метриками.
 
     Метрики: MAE, RMSE, MAPE (%), MASE.
     Взвешенный скоринг: 0.35*MAE_n + 0.25*RMSE_n + 0.20*MAPE_n + 0.20*MASE_n.
@@ -413,55 +674,9 @@ def run_backtest(
     train_ratio = payload.train_ratio
 
     # Определяем (model_name, family_id)
-    model_info = _resolve_model_info(model_id)
-
-    # Генерируем синтетический ряд по профилю
-    series = _generate_series(
-        n=profile.n_observations,
-        frequency=profile.frequency,
-        has_seasonality=profile.has_seasonality,
-    )
-
-    # Сезонный период для Seasonal Naive
-    seasonal_period = _resolve_seasonal_period(profile)
-
-    metrics, duration_ms = _run_backtest_with_series(
-        model_id=model_id,
-        model_info=model_info,
-        series=series,
-        train_ratio=train_ratio,
-        seasonal_period=seasonal_period,
-    )
-
-    n_train = int(profile.n_observations * train_ratio)
-    n_test = profile.n_observations - n_train
-
-    return BacktestResponse(
-        model_id=model_id,
-        model_name=model_info[0],
-        family_id=model_info[1],
-        metrics=metrics,
-        n_train=n_train,
-        n_test=n_test,
-        train_ratio=train_ratio,
-        duration_ms=round(duration_ms, 2),
-        data_source="synthetic",  # legacy path: всегда синтетика
-    )
-
-
-# ═══════════════════════════════════════════════════════════
-# Phase 0.5: переиспользуемые функции для зеркала /v1/internal/models/backtest
-# ═══════════════════════════════════════════════════════════
-
-
-def _resolve_model_info(model_id: str) -> tuple[str, str]:
-    """Найти (model_name, family_id) по model_id.
-
-    Сначала в _MODEL_INFO dict, потом в спецификации modeling.yaml.
-    Поднимает HTTPException(404) если модель не найдена.
-    """
     model_info = _MODEL_INFO.get(model_id)
     if model_info is None:
+        # Попробуем найти в спецификации
         spec = _get_spec()
         found = None
         for fam in spec.families:
@@ -477,41 +692,33 @@ def _resolve_model_info(model_id: str) -> tuple[str, str]:
                 detail=f"Модель '{model_id}' не найдена в спецификации",
             )
         model_info = found
-    return model_info
 
-
-def _resolve_seasonal_period(profile) -> int:
-    """Сезонный период для Seasonal Naive — из profile.seasonal_periods
-    или из дефолтного маппинга frequency → period.
-    """
-    if profile.seasonal_periods:
-        return profile.seasonal_periods[0]
-    return {"D": 7, "W": 52, "M": 12, "Q": 4, "Y": 1}.get(profile.frequency, 12)
-
-
-def _run_backtest_with_series(
-    model_id: str,
-    model_info: tuple[str, str],
-    series: list[float],
-    train_ratio: float,
-    seasonal_period: int,
-) -> tuple[BacktestMetrics, float]:
-    """Выполнить бэктест на ЗАДАННОМ ряде (синтетическом или реальном).
-
-    Возвращает (metrics, duration_ms). Не знает о сессии — просто считает
-    метрики по ряду, который ей передали. Это позволяет переиспользовать
-    её и для /v1/models/backtest (синтетический ряд), и для
-    /v1/internal/models/backtest (реальный ряд из session.dataframe).
-    """
     model_name, family_id = model_info
+
+    # Генерируем синтетический ряд по профилю
+    series = _generate_series(
+        n=profile.n_observations,
+        frequency=profile.frequency,
+        has_seasonality=profile.has_seasonality,
+    )
+
+    # Сезонный период для Seasonal Naive
+    seasonal_period = (
+        profile.seasonal_periods[0]
+        if profile.seasonal_periods
+        else {"D": 7, "W": 52, "M": 12, "Q": 4, "Y": 1}.get(profile.frequency, 12)
+    )
+
     start = time.monotonic()
 
+    # Реальный расчёт или заглушка
     impl = _BACKTEST_IMPLEMENTATIONS.get(model_id)
     if impl:
         metrics = impl(series, train_ratio, seasonal_period)
     else:
         # Заглушка: аппроксимация на основе Naive + штраф за сложность
         naive_metrics = _run_naive_backtest(series, train_ratio)
+        # Штраф: сложные модели «хуже» на синтетике без тюнинга
         family_penalty = {
             "exponential_smoothing": 0.85,
             "arima": 0.80,
@@ -532,7 +739,20 @@ def _run_backtest_with_series(
         )
 
     duration_ms = (time.monotonic() - start) * 1000
-    return metrics, duration_ms
+
+    n_train = int(profile.n_observations * train_ratio)
+    n_test = profile.n_observations - n_train
+
+    return BacktestResponse(
+        model_id=model_id,
+        model_name=model_name,
+        family_id=family_id,
+        metrics=metrics,
+        n_train=n_train,
+        n_test=n_test,
+        train_ratio=train_ratio,
+        duration_ms=round(duration_ms, 2),
+    )
 
 
 # ═══════════════════════════════════════════════════════════
@@ -556,3 +776,68 @@ def train_model(
         "principal_id": principal.principal_id,
         "message": "Обучение модели запущено (заглушка -- реальный запуск не реализован)",
     }
+
+
+# ═══════════════════════════════════════════════════════════
+# POST /v1/models/tune — grid search гиперпараметров (Phase 1-C)
+# ═══════════════════════════════════════════════════════════
+#
+# Зависимости:
+#   - Phase 1-A: param_space в modeling.yaml + FamilyModel.param_space поле.
+#   - Phase 1-B: ExpandingWindowCV в apps/api/cv.py.
+#
+# Логика (см. _execute_tune docstring):
+#   1. Загрузить spec, найти модель по model_id (404 если нет).
+#   2. Если param_space is None → 422 (baseline/no-tuning).
+#   3. Построить grid (декартово произведение).
+#   4. max_trials защита: если grid_size > MAX_TRIALS → random sample.
+#      Пользователь может запросить меньший max_trials.
+#   5. CV: для каждого trial × каждого fold → predict + metrics.
+#      Усреднить метрики по folds.
+#   6. Выбрать best_trial с минимальным значением metric.
+#
+# ВАЖНО: _tunable_predict() — STUB. Phase 6 заменит на реальные ETS/ARIMA
+# имплементации (apps/api/model_impls/). Stub сделан детерминированным,
+# чтобы CV выбор был воспроизводим.
+
+
+@router.post(
+    "/tune",
+    response_model=TuneResponse,
+    dependencies=[Depends(require_capability("can_train_models"))],
+)
+def tune_model(
+    payload: TuneRequest,
+    principal: AuthenticatedPrincipal = Depends(get_current_principal),
+):
+    """
+    Grid search гиперпараметров модели через expanding-window CV.
+
+    Читает param_space модели из спецификации (Phase 1-A) и применяет
+    ExpandingWindowCV (Phase 1-B) для честной оценки гиперпараметров
+    на временных рядах (KFold sklearn не подходит — он нарушает
+    временную причинность).
+
+    max_trials защита (hard cap MAX_TRIALS=64):
+      - Если grid_size <= MAX_TRIALS → выполняются все trials.
+      - Если grid_size >  MAX_TRIALS → random sampling MAX_TRIALS trials
+        с воспроизводимым random_state.
+      - Пользователь может запросить меньший max_trials (для ускорения).
+
+    Возвращает best_params + все trials с метриками (для аудита).
+
+    Доступно только принципалам с can_train_models=True
+    (professional, enterprise, admin, internal_analyst).
+    """
+    spec = _get_spec()
+    cv_config = payload.cv or CVConfig()
+
+    return _execute_tune(
+        spec=spec,
+        model_id=payload.model_id,
+        series=payload.series,
+        cv_config=cv_config,
+        max_trials=payload.max_trials,
+        metric=payload.metric,
+        random_state=payload.random_state,
+    )

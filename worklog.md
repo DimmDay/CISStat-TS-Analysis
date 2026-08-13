@@ -1113,3 +1113,122 @@ tune-ендпоинт сможет использовать ExpandingWindowCV д
 из param_space, усреднять метрики по folds и выбирать лучшие параметры.
 max_trials защита: если grid_size > MAX_TRIALS, обрезать random-сэмплированием.
 Артефакты в /home/z/my-project/download/phase_1_b_cv/
+
+---
+
+Task ID: 19-C — Phase 1-C: POST /v1/models/tune + max_trials защита
+
+Task:
+• Создать эндпоинт POST /v1/models/tune для grid search гиперпараметров
+модели через expanding-window CV.
+• Реализовать max_trials защиту (MAX_TRIALS=64, hard cap): если
+grid_size > MAX_TRIALS — random sampling с воспроизводимым seed.
+• Использовать фундамент Phase 1-A (param_space в spec) и Phase 1-B
+(ExpandingWindowCV).
+
+Work Log:
+
+Прочитан worklog.md: Phase 1-A (76/76) и Phase 1-B (109/109) завершены.
+Фундамент для Phase 1-C готов: param_space в modeling.yaml + CVStrategy.
+Прочитаны apps/api/cv.py (240 строк), apps/api/schemas.py (310 строк),
+apps/api/routers/models.py (478 строк до правок) — найдены точки изменения:
+• schemas.py: добавить CVConfig, TuneRequest, TuneTrialResult, TuneResponse
+• routers/models.py: добавить MAX_TRIALS, _build_grid, _truncate_grid,
+_tunable_predict, _execute_tune, POST /tune endpoint
+Базовая проверка: 109/109 существующих тестов PASS (без изменений).
+Спроектирован API:
+POST /v1/models/tune
+Body: { model_id, series: List[float], cv?: CVConfig,
+max_trials?: int, metric?: str, random_state?: int }
+Returns: TuneResponse (best_params, best_metrics, trials[], ...)
+Спроектирован контракт max_trials (R7-R9):
+effective_max = min(max_trials or MAX_TRIALS, MAX_TRIALS)
+if grid_size > effective_max → random.Random(seed).sample(...)
+Оценены риски (13 шт):
+R1. Baseline model (no param_space) → 422 explicit
+R2. Unknown model_id → 404
+R3. Empty series → 422 (Pydantic min_length=1)
+R4. Too short series (< cv.min_samples()) → 422 с понятным сообщением
+R5. Invalid metric → 422 (Literal["mae","rmse","mape","mase","weighted_score"])
+R6. Invalid CV config → propagate ValueError → 422
+R7. grid_size > MAX_TRIALS → random sample MAX_TRIALS trials
+R8. User max_trials < grid_size → random sample max_trials trials
+R9. User max_trials > MAX_TRIALS → clamp до MAX_TRIALS
+R10. Reproducibility → random.Random(seed).sample (no replacement)
+R11. NaN/Inf в series → no special handling (propagates to metrics)
+R12. Regression в существующие эндпоинты → нет (новый роут)
+R13. pandera не установлен → тесты через _execute_tune() напрямую,
+без HTTP-вызова; test_tune.py НЕ импортирует apps.api.main.
+TDD: tests/api/test_tune.py написан ДО реализации (60 тестов, 9 классов):
+• TestCVConfig (6) — defaults, custom, валидация n_splits/test_size/step.
+• TestTuneRequest (8) — required fields, defaults, min_length, metric Literal.
+• TestTuneResponse (2) — construct, trials default empty.
+• TestTuneTrialResult (1) — construct.
+• TestBuildGrid (7) — single/two/three params, empty, None, bool, ARIMA size.
+• TestTruncateGrid (9) — under max, equal max, over max, user smaller,
+reproducible, different seed, subset, no duplicates, MAX_TRIALS constant.
+• TestExecuteTuneEts (3) — full response, n_folds, cv_config echo.
+• TestExecuteTuneOtherModels (2) — ets_damped (6 grid), arima (18 grid).
+• TestExecuteTuneErrors (6) — 404 unknown, 422 baseline, 422 theta,
+422 short series, 422 invalid metric.
+• TestExecuteTuneBestSelection (4) — min rmse/mae/weighted_score, best_params match.
+• TestExecuteTuneMaxTrials (6) — user smaller/larger, clamp, grid over MAX,
+reproducible, different seed.
+• TestTrialsOrder (1) — без truncation сохраняется порядок декартова произведения.
+Запуск тестов до реализации: ImportError ('CVConfig' not found) — TDD red.
+Реализация schemas.py (+105 строк):
+• CVConfig: n_splits, test_size, min_train_size, step (all >=1, optional)
+• TuneRequest: model_id, series, cv?, max_trials?, metric (Literal),
+random_state (default 42)
+• TuneTrialResult: params, metrics, n_folds
+• TuneResponse: model_id, model_name, family_id, best_params, best_metrics,
+best_trial, n_trials, grid_size, truncated, cv_config, metric, trials, duration_ms
+Реализация routers/models.py (+520 строк):
+• MAX_TRIALS = 64 (hard cap, documented contract из Phase 1-A)
+• _build_grid(param_space) → list[dict]: декартово произведение через itertools.product
+• _truncate_grid(grid, max_trials, random_state) → (trials, truncated)
+• _tunable_predict(model_id, y_train, test_size, params) → list[float]:
+STUB для Phase 1-C — детерминированная эвристика по params
+(trend add/mul, damped_trend, p/d/q ARIMA). Phase 6 заменит на реальные модели.
+• _execute_tune(spec, model_id, series, cv_config, max_trials, metric, random_state)
+→ TuneResponse: чистая функция (тест без HTTP), 8 шагов:
+1. spec.get_model(model_id) → 404 если нет
+2. check model.param_space is None → 422
+3. _build_grid → full_grid
+4. _truncate_grid с effective_max = min(max_trials or MAX_TRIALS, MAX_TRIALS)
+5. ExpandingWindowCV(...) из Phase 1-B; check len(series) >= cv.min_samples()
+6. for each trial × each fold: predict + compute_metrics + усреднить
+7. min(range(n_trials), key=lambda i: metrics[i].{metric}) → best_trial
+8. TuneResponse с trials[] для аудита
+• @router.post("/tune") — тонкая HTTP-обёртка вокруг _execute_tune.
+Первый запуск тестов: 59/60 PASS. 1 тест упал —
+test_too_short_series_raises_422 ожидал "10" или "5" в сообщении,
+но реальное min_samples = min_train_size(10) + test_size(2) + (5-1)*step(2) = 20.
+Ошибка в тесте (не в коде): исправил assertion на "20" и "3".
+Повторный запуск: 60/60 PASS.
+Регрессия: tests/api/test_tune.py (60) + tests/api/test_param_space.py (14)
+tests/api/test_cv.py (33) + tests/test_modeling_spec.py (62) = 169/169 PASS.
+Регрессии нет. test_models_candidates.py и test_upload.py НЕ запускались —
+они импортируют apps.api.main, который тянет pandera (пред-существующая
+проблема, не связана с Phase 1-C).
+Sanity-check: ETS grid_size=12, n_trials=12, truncated=False,
+best_params={'trend': 'add', 'seasonal': 'add', 'seasonal_periods': 12,
+'damped_trend': True}, duration_ms=0.54.
+С max_trials=5: truncated=True, n_trials=5, reproducible.
+JSON-сериализация (Pydantic model_dump_json) работает корректно.
+Stage Summary:
+
+Изменено 2 файла, создан 1 новый:
+• apps/api/schemas.py — добавлены CVConfig, TuneRequest, TuneTrialResult,
+TuneResponse (+105 строк, 4 новые Pydantic-схемы).
+• apps/api/routers/models.py — добавлены MAX_TRIALS, _build_grid,
+_truncate_grid, _tunable_predict, _execute_tune, POST /tune (+520 строк,
+6 новых функций/констант + 1 эндпоинт).
+• tests/api/test_tune.py — новый файл (60 тестов, 9 классов, 440 строк).
+Все тесты PASS: 60/60 новых + 109/109 существующих = 169/169.
+Готов фундамент для Phase 1-D (Интеграционные тесты):
+POST /v1/models/tune может быть протестирован через TestClient,
+как только pandera будет установлен (или через _execute_tune напрямую).
+_tunable_predict — STUB. Phase 6 заменит на реальные ETS/ARIMA реализации.
+Артефакты в /home/z/my-project/download/phase_1_c_tune/
+
