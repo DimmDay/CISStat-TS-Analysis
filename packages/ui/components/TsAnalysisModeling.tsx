@@ -894,7 +894,7 @@ export function TsAnalysisModeling() {
                       activeFamilyId === fam.id ? null : fam.id
                     )
                   }
-                  className="w-full flex items-center justify-between rounded border border-neutral-800 bg-white px-2 py-1.5 mb-2 hover:bg-neutral-50 transition-colors"
+                  className="w-full flex items-center justify-between rounded border border-neutral-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand"
                   data-testid={`family-header-${fam.id}`}
                 >
                   <h4 className="text-sm font-semibold text-neutral-800">
