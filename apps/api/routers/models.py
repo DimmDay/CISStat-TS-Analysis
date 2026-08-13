@@ -326,12 +326,38 @@ def _run_mean_backtest(
     return _compute_metrics(y_test, y_pred, y_train)
 
 
-# Маппинг model_id → функция бэктеста
+# Маппинг model_id → функция бэктеста.
+#
+# Phase 6-P0: добавлены 5 реальных реализаций через statsmodels:
+#   - ets / ets_damped: Holt-Winters ExponentialSmoothing
+#   - theta: формальная Theta-модель (Assimakopoulos & Nikolopoulos 2000)
+#   - arima: ARIMA(1,1,1) с фиксированным порядком
+#   - arima_auto: grid search по (p,d,q) с AIC-критерием
+# До Phase 6-P0 эти 5 model_id попадали в else-ветку ниже (заглушка
+# naive*penalty). Теперь они вызывают реальные модели из apps/api/model_impls/.
+#
+# Семейства neural / structural / tree_ml / multivariate / volatility
+# остаются заглушками (Phase 6-P1+).
+from apps.api.model_impls import (
+    run_ets_backtest,
+    run_ets_damped_backtest,
+    run_theta_backtest,
+    run_arima_backtest,
+    run_auto_arima_backtest,
+)
+
 _BACKTEST_IMPLEMENTATIONS = {
+    # ── Baselines (Phase 0): без statsmodels, простые формулы ──
     "naive": lambda s, tr, p: _run_naive_backtest(s, tr),
     "seasonal_naive": lambda s, tr, p: _run_seasonal_naive_backtest(s, tr, p),
     "drift": lambda s, tr, p: _run_drift_backtest(s, tr),
     "mean": lambda s, tr, p: _run_mean_backtest(s, tr),
+    # ── Phase 6-P0: реальные модели через statsmodels ──
+    "ets": run_ets_backtest,
+    "ets_damped": run_ets_damped_backtest,
+    "theta": run_theta_backtest,
+    "arima": run_arima_backtest,
+    "arima_auto": run_auto_arima_backtest,
 }
 
 # Маппинг model_id → (model_name, family_id) для неизвестных моделй

@@ -56,9 +56,20 @@ RUN touch apps/__init__.py
 # отсутствуют или битые -- образ не должен собраться (раньше баг
 # всплывал только в runtime через 500-ю ошибку). Проверяем, что
 # ModelingSpec.from_yaml() парсится без исключений.
+#
+# Phase 6-P0: добавлена проверка импортов model_impls (ETS/Theta/ARIMA).
+# Если statsmodels не установится в образ -- сборка упадёт здесь, а не в
+# runtime при первом вызове /v1/internal/models/backtest с model_id=ets.
 RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; \
                spec = ModelingSpec.from_yaml('rules/modeling.yaml'); \
-               print('modeling.yaml OK, models:', spec.total_model_count())"
+               print('modeling.yaml OK, models:', spec.total_model_count())" \
+    && python -c "import statsmodels; from statsmodels.tsa.holtwinters import ExponentialSmoothing; \
+                  from statsmodels.tsa.arima.model import ARIMA; \
+                  from statsmodels.tsa.forecasting.theta import ThetaModel; \
+                  print('statsmodels OK:', statsmodels.__version__)" \
+    && python -c "from apps.api.model_impls import run_ets_backtest, run_ets_damped_backtest, \
+                  run_theta_backtest, run_arima_backtest, run_auto_arima_backtest; \
+                  print('model_impls OK: 5 implementations importable')"
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000

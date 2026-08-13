@@ -24,8 +24,27 @@ scripts/smoke/
 
 - `pre_0_smoke.py` — базовая связка /health, CORS, session, upload, /v1/models (без auth)
 - `phase_0_smoke.py` — SessionStore abstraction, мост Upload → Backtest (появится в Phase 0)
-- `phase_6_p0_smoke.py` — реальные ETS/ARIMA/Auto-ARIMA/Theta (появится в Phase 6-P0)
+- `phase_6_p0_smoke.py` — реальные ETS/ETS Damped/Theta/ARIMA/Auto-ARIMA в проде
 - и т.д.
+
+### Что проверяет `phase_6_p0_smoke.py`
+
+Запускается против Vercel-фронта (`https://ts-standalone.vercel.app`), все запросы
+через Next.js rewrite → Render backend. Использует ту же cookie/session что и
+реальный пользователь:
+
+1. **POST /api/v1/internal/upload** — загрузить 24-месячный CSV (тренд + сезонность)
+2. **POST /api/v1/session/target-column** — выбрать колонку "value"
+3–7. **POST /api/v1/internal/models/backtest** для каждой из 5 моделей:
+   - `ets`, `ets_damped`, `theta`, `arima`, `arima_auto`
+   - Проверка: `data_source === "session"` (РЕАЛЬНЫЙ ряд), `mae > 0`,
+     `weighted_score ∈ [0, 1]`, `n_train + n_test === 24`
+8. **≥3 уникальных MAE из 5 моделей** — доказательство, что это НЕ заглушка
+   `naive*penalty` (там бы 3 exponential_smoothing модели дали одинаковое
+   значение). Если 5 моделей дают только 2 уникальных MAE — заглушка активна.
+
+**Критерий PASS Phase 6-P0**: 8/8 (1 upload + 1 target-column + 5 backtest + 1 distinct-MAE).
+
 
 ## Требования
 

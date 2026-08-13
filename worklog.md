@@ -685,3 +685,173 @@ Root cause: missing COPY rules/ ./rules/ in apps/api/Dockerfile (production-only
 Fix: Dockerfile + build-time guard + smoke-test regression coverage.
 Files changed: apps/api/Dockerfile, scripts/pre_1_frontend_smoke.py.
 No code changes in apps/api/routers/ or packages/ui/ — Task 15 fix was correct, it just couldn't run because the spec file wasn't shipped.
+
+---
+
+Task ID: 17 — Phase 6-P0: реальные ETS / ETS Damped / Theta / ARIMA / Auto-ARIMA
+
+Цель Phase 6-P0 (по решению тимлида Task ID 8: «Phase 6-P0 (4 модели) сначала → затем Phase 1–5»):
+заменить заглушку naive*penalty для 5 моделей на реальные реализации через statsmodels.
+
+ДО Phase 6-P0 (состояние после Tasks 13–16):
+
+_BACKTEST_IMPLEMENTATIONS содержал только 4 baseline (naive, seasonal_naive, drift, mean).
+5 model_id (ets, ets_damped, theta, arima, arima_auto) попадали в else-ветку
+_run_backtest_with_series, где им возвращались naive_metrics * (1.1 / family_penalty).
+Это значило: 3 exponential_smoothing модели (ets, ets_damped, theta) возвращали
+ОДИНАКОВЫЕ метрики (penalty=0.85 для всех), а 2 arima модели — тоже одинаковые
+(penalty=0.80). В UI числа выглядели разными, но за ними не было реальных моделей.
+ПОСЛЕ Phase 6-P0 (что сделано в Task 17):
+
+Что changed:
+
+• apps/api/model_impls/ — НОВАЯ папка (6 файлов, 659 строк):
+• init.py — экспортирует 5 функций (run_ets_backtest, run_ets_damped_backtest,
+run_theta_backtest, run_arima_backtest, run_auto_arima_backtest).
+• _metrics.py — compute_metrics(y_true, y_pred, y_train) → BacktestMetrics.
+Скопировано из routers/models.py::_compute_metrics БЕЗ изменений формул.
+Причина копирования: избежать циклического импорта model_impls ↔ routers.models.
+Роутер импортирует model_impls, model_impls импортирует _metrics — без цикла.
+• _common.py — общие хелперы:
+• train_test_split(series, train_ratio) → (y_train, y_test)
+• safe_backtest(fn, series, train_ratio, seasonal_period, model_name) → BacktestMetrics
+Обёртка try/except: если statsmodels упадёт на проблемных данных
+(короткий ряд, zero variance, NaN) — откат на Naive-метрики, НЕ 500.
+• ets.py — ExponentialSmoothing (Holt-Winters):
+• trend='add', seasonal='add' (если len(y_train) >= 2*seasonal_period)
+• initialization_method='estimated'
+• damped_trend=True/False в зависимости от модели
+• Edge case: fit() не принимает disp=False (это аргумент SARIMAX, не Holt-Winters).
+• theta.py — ThetaModel (Assimakopoulos & Nikolopoulos 2000):
+• method='auto', deseasonalize=True если сезонность есть
+• Edge case: константный ряд → NaN forecast (variance=0 ломает лин. регрессию).
+Возвращаем [y_train[-1]] * n_test (Naive forecast = сама константа).
+• arima.py — ARIMA(1,1,1) + Auto-ARIMA:
+• Фиксированный порядок (1,1,1) для arima.
+• Grid search по (p,d,q) ∈ {0,1,2} × {0,1} × {0,1,2} = 18 моделей для arima_auto.
+• Критерий: минимальный AIC. ~1-2 сек на 24-72 точках.
+• Реализовано через statsmodels, НЕ pmdarima (без новой тяжёлой зависимости).
+
+• apps/api/routers/models.py — расширение _BACKTEST_IMPLEMENTATIONS:
+добавлены 5 ключей: 'ets', 'ets_damped', 'theta', 'arima', 'arima_auto'.
+Импорт: from apps.api.model_impls import (run_ets_backtest, ...).
+Остальная логика роутера НЕ изменена: _resolve_model_info, _resolve_seasonal_period,
+_run_backtest_with_series, else-ветка для семейств neural/structural/tree_ml и т.д.
+else-ветка остаётся как fallback для будущих Phase 6-P1+ моделей.
+
+• apps/api/Dockerfile — расширение build-time guard:
+была проверка: ModelingSpec.from_yaml('rules/modeling.yaml') OK.
+добавлены: import statsmodels + ExponentialSmoothing + ARIMA + ThetaModel +
+5 функций model_impls. Если statsmodels не установится или model_impls
+битый — сборка падает здесь, а не в runtime при первом /backtest с model_id=ets.
+
+• tests/api/test_models_backtest_real.py — НОВЫЙ файл, 21 тест:
+• TestRealModelsBasicAvailability (5): каждый model_id возвращает 200 + data_source=session.
+• TestRealModelsAreNotNaivePenaltyStub (5): метрики на реальном ряду ≠ синтетике.
+Ключевой regression-тест: доказывает, что модель реально обучается на данных.
+• TestRealModelsAreDistinctFromEachOther (1): ≥3 уникальных MAE из 5 моделей.
+До фикса: 2 уникальных (3 exp.smoothing давали одно значение + 2 arima одно).
+После: 5 уникальных — модели реально разные.
+• TestModelImplsModuleDirectly (2): прямой вызов функций без HTTP,
+чтобы изолировать баги statsmodels от багов роутера.
+• TestRealModelsHandleEdgeCases (2): short series (8 точек) и constant series.
+Все модели не падают с 500, edge cases обрабатываются safe_backtest.
+• TestBaselineModelsStillWork (4): регрессия — 4 baseline не сломались.
+• TestBacktestImplementationsRegistry (2): реестр содержит ровно 9 ключей
+(4 baseline + 5 новых), заглушка не активируется для новых моделей.
+
+• scripts/smoke/phase_6_p0_smoke.py — НОВЫЙ файл, 8 проверок в проде:
+
+POST /upload (24-month CSV с трендом + сезонностью)
+POST /session/target-column (выбрать value)
+3-7. POST /internal/models/backtest для 5 моделей по очереди
+≥3 уникальных MAE (доказательство, что это не заглушка)
+Запуск: python /home/z/my-project/repo/CISStat-TS-Analysis/scripts/smoke/phase_6_p0_smoke.py
+• scripts/smoke/README.md — добавлена секция «Что проверяет phase_6_p0_smoke.py».
+
+Архитектурные решения (почему так, а не иначе):
+
+Почему statsmodels, а НЕ pmdarima?
+pmdarima — стандарт для Auto-ARIMA, но это тяжёлая зависимость:
+требует компилятор на Render free tier, имеет конфликты с numpy/scipy
+на некоторых платформах. statsmodels уже установлен (для ADF/KPSS в
+app/core/passport.py), стабилен, и его ARIMA достаточно для grid search.
+Решение: использовать statsmodels, grid (p,d,q) ∈ {0,1,2} × {0,1} × {0,1,2}.
+По качеству — уступает pmdarima на сложных рядах, но для Phase 6-P0
+(демонстрация реальной ARIMA-модели) — достаточно.
+Почему _metrics.py — копия, а не импорт из routers.models?
+Циклический импорт: routers.models импортирует model_impls (чтобы
+зарегистрировать в _BACKTEST_IMPLEMENTATIONS), а model_impls для
+compute_metrics импортировал бы routers.models. Python такие циклы
+разруливает лениво, но это хрупко — при рефакторинге можно поймать
+«partially initialized module». Решение: выделить _metrics.py в
+model_impls, оба модуля импортируют оттуда. Дублирование тривиальной
+функции (~30 строк) — приемлемая цена за отсутствие цикла.
+Почему safe_backtest откатывается на Naive, а не возвращает 500?
+Контракт UI/UX: бэктест ВСЕГДА возвращает метрики, никогда — 500.
+Если statsmodels не смог обучиться (короткий ряд, константа, NaN),
+пользователь видит Naive-метрики + WARNING в логе. Это лучше, чем
+«internal server error»: пользователь понимает, что модель формально
+сработала, и может сравнивать с другими моделями.
+Почему (1,1,1) для фиксированной ARIMA?
+Стандартный «обычный» ARIMA: 1 авторегрессионный член (p=1), 1 differencing
+(d=1 — снимает линейный тренд), 1 скользящее среднее (q=1 — ловит остаточную
+автокорреляцию). Подходит для большинства бизнес-рядов с трендом и слабой
+автокорреляцией остатков. Если ряд явно сезонный — ARIMA(1,1,1) проиграет
+Seasonal Naive, но это валидный baseline для P0. SARIMA — Phase 6-P1+.
+Tests:
+
+146/146 PASS в tests/api/* (125 существующих + 21 новых)
+Локальный smoke: 8/8 PASS (upload → target-column → 5 backtests → distinct MAE)
+Next.js build: ✓ Compiled successfully, /modeling → 245 B + 157 kB First Load
+(без изменений от предыдущей версии — бандл не раздут)
+Pre-existing jest failures (32 failed в RulesManagementPanel/Validation/EDA/
+Preprocessing) НЕ связаны с Phase 6-P0 — проверено git stash + rerun.
+Verification (локально, на TestClient):
+
+5 моделей дают 5 различных MAE: ets=27.07, ets_damped=22.31, theta=8.76,
+arima=23.07, arima_auto=9.30.
+Auto-ARIMA выбрал (2,1,2) с AIC=38.48 — корректный выбор для ряда
+с трендом и сезонностью.
+data_source="session" для всех 5 моделей при установленном target_column.
+weighted_score ∈ [0, 1] для всех моделей (контракт _compute_metrics).
+На константном ряде все 5 моделей возвращают MAE ≈ 0 (Naive на константе).
+Deploy steps (для пользователя):
+
+git push apps/api/model_impls/ apps/api/routers/models.py apps/api/Dockerfile
+tests/api/test_models_backtest_real.py scripts/smoke/phase_6_p0_smoke.py
+scripts/smoke/README.md
+Render auto-redeploys backend. В логах сборки увидеть:
+"modeling.yaml OK, models: 24"
+"statsmodels OK: 0.14.x"
+"model_impls OK: 5 implementations importable"
+После деплоя: python scripts/smoke/phase_6_p0_smoke.py — ожидаем 8/8 PASS.
+Ручная проверка на /modeling:
+Upload CSV → select column → "Загрузить пул" → клик по ETS/Theta/ARIMA/Auto-ARIMA
+Метрики в правой панели: РАЗНЫЕ для разных моделей (раньше были линейно связаны)
+data_source = "session" → зелёный badge «Реальные данные»
+Acceptance criteria Phase 6-P0:
+✓ 21/21 новых тестов PASS (test_models_backtest_real.py)
+✓ 125/125 существующих API-тестов PASS (без регрессий)
+✓ Next.js build успешен (без изменений в UI — бандл не вырос)
+✓ Локальный smoke: 5 моделей дают 5 уникальных MAE
+✓ Auto-ARIMA выбирает оптимальный порядок по AIC
+
+Что НЕ сделано в Phase 6-P0 (оставлено на Phase 6-P1+):
+
+SARIMA (сезонная ARIMA) — нужна SARIMAX с seasonal order (P,D,Q,s).
+Prophet, TBATS — структурные модели (нужны prophet/tbats пакеты).
+XGBoost, LightGBM, CatBoost — tree_ml (нужны xgboost/lightgbm/catboost).
+LSTM, DeepAR, TFT, N-BEATS, WaveNet — neural (нужны pytorch/tensorflow).
+VAR, VECM — multivariate (нужна стационарность нескольких рядов).
+GARCH, EGARCH — volatility (нужен arch пакет).
+Hyperparameter tuning (param_space в modeling.yaml) — Phase 1.
+Расширение BacktestResponse (residuals, fitted_values, forecast) — Phase 1.
+Stage Summary:
+
+5 моделей переведены с заглушки naive*penalty на реальные statsmodels-реализации.
+0 новых зависимостей (statsmodels уже был установлен для passport.py).
+0 изменений в UI — фронтенд работает без правок.
+0 изменений в контракте BacktestResponse/BacktestMetrics.
+21 новый тест покрывает: корректность, edge cases, регрессию, прямые вызовы.
+Build-time guard в Dockerfile ловит битые импорты до деплоя.
