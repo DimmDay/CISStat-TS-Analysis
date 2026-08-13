@@ -3,7 +3,7 @@
 // Обновлено под редизайн вкладки «Загрузка» на общий 3-колоночный
 // паттерн платформы (степпер слева / Описание+Обзор по центру /
 // управление справа) -- см. шапку TsAnalysisUpload.tsx. По умолчанию
-// после загрузки активна остановка "Обзор"; тесты на "Распределение"/
+// после загрузки активна остановка "Превью датасета"; тесты на "Распределение"/
 // "Структура"/"Качество" сначала кликают по соответствующей кнопке
 // степпера.
 
@@ -152,14 +152,13 @@ describe("TsAnalysisUpload", () => {
     );
 
     dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
-
     await waitFor(() => {
-      // Степпер: все 4 остановки
-      expect(screen.getByText("Обзор")).toBeInTheDocument();
+      // Степпер: все 4 остановки (labels — см. STOPS в TsAnalysisUpload.tsx)
+      expect(screen.getByText("Превью датасета")).toBeInTheDocument();
       expect(screen.getByText("Распределение")).toBeInTheDocument();
       expect(screen.getByText("Структура")).toBeInTheDocument();
       expect(screen.getByText("Качество")).toBeInTheDocument();
-      // По умолчанию активна "Обзор" -- превью-таблица видна сразу
+      // По умолчанию активна первая остановка -- превью-таблица видна сразу
       expect(screen.getByText("date")).toBeInTheDocument();
     });
   });
