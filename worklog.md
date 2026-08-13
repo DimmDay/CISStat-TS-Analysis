@@ -1043,3 +1043,73 @@ Stage Summary:
 - Готов фундамент для Phase 1-B (CVStrategy / ExpandingWindowCV):
   POST /v1/models/tune сможет читать param_space через spec.get_model(model_id).
 - Артефакты в /home/z/my-project/download/phase_1_a_param_space/
+
+---
+
+Task ID: 19-B — Phase 1-B: CVStrategy / ExpandingWindowCV
+
+Task:
+• Создать модуль apps/api/cv.py с абстракцией CVStrategy (ABC) и
+конкретной реализацией ExpandingWindowCV — expanding-window cross-
+validation для временных рядов (train растёт, test фиксирован).
+• Не использует данные из будущего (в отличие от KFold sklearn).
+• Фундамент для POST /v1/models/tune (Phase 1-C).
+
+Work Log:
+
+Прочитан apps/api/session_store.py — референс-паттерн ABC в проекте
+(SessionStore ABC + MemorySessionStore + RedisSessionStore). Новый
+модуль следует той же конвенции: ABC в начале, реализации ниже.
+Спроектирован формат:
+• CVSplit (dataclass): fold, train_idx, test_idx
+• CVStrategy (ABC): split(n) → list[CVSplit], min_samples() → int
+• ExpandingWindowCV: n_splits, test_size, min_train_size=None, step=None
+Формула min_samples:
+min_train_size + test_size + (n_splits - 1) * step
+Где первое слагаемое — первый train, второе — первый test,
+третье — сдвиг для оставшихся (n_splits - 1) folds.
+Оценены риски (7 шт):
+R1 — короткий ряд → ValueError до генерации splits.
+R2 — n_splits=0/test_size=0 → валидация в init (>=1).
+R3 — step > test_size → документировано как легальный режим.
+R4 — step < test_size (overlap) → легальный CV-режим.
+R5 — min_train_size None → default = test_size.
+R6 — последний fold test_end > n → ValueError (не truncation).
+Дизайн-решение: явное лучше молчаливого. Изначально хотел
+truncation, тест упал — пересмотрел. Объяснил в тесте.
+R7 — регрессия → новый модуль, не импортируется существующим кодом.
+TDD: tests/api/test_cv.py (33 теста, 7 классов):
+• TestCVSplit (3) — структура, equality, inequality.
+• TestCVStrategyABC (3) — нельзя инстанцировать, подкласс без методов не работает.
+• TestExpandingWindowCVConstructor (10) — валидация 4 параметров + defaults.
+• TestMinSamples (4) — формула для разных сценариев.
+• TestSplitCorrectness (4) — basic 3 folds, expanding train, no leakage, non-overlap.
+• TestEdgeCases (6) — n_splits=1, короткий ряд, exact min, overflow→raise, step>test, step<test.
+• TestListIntegration (1) — индексы работают с list[float].
+Запуск тестов до реализации: ModuleNotFoundError (TDD-старт).
+Реализация apps/api/cv.py (~210 строк, ~50% — docstrings с примерами):
+• CVSplit dataclass.
+• CVStrategy ABC с 2 абстрактными методами.
+• ExpandingWindowCV с init валидацией, min_samples(), split().
+• defensive break в split() даже после валидации (если валидация
+пропустит, break спасёт от выхода за пределы списка).
+Первый запуск: 32/33 PASS. 1 тест упал — test_last_fold_overflow_truncates
+ожидал truncation (вернуть 4 folds вместо 5), а реализация бросает
+ValueError. После анализа изменил тест: явная ошибка лучше молчаливого
+truncation (пользователь должен знать, что 5 folds не влезли).
+Повторный запуск: 33/33 PASS.
+Регрессия: tests/test_modeling_spec.py (62) + tests/api/test_param_space.py (14)
+tests/api/test_cv.py (33) = 109/109 PASS.
+Sanity-check: ExpandingWindowCV(n_splits=3, test_size=2, min_train_size=3, step=2).split(9)
+→ 3 folds, индексы корректные, train расширяется. ABC enforcement работает.
+Stage Summary:
+
+Создано 2 файла:
+• apps/api/cv.py — новый модуль (210 строк, 3 класса: CVSplit, CVStrategy, ExpandingWindowCV)
+• tests/api/test_cv.py — новый тестовый файл (33 теста, 7 классов, 280 строк)
+Все тесты PASS, регрессии нет.
+Готов фундамент для Phase 1-C (POST /v1/models/tune):
+tune-ендпоинт сможет использовать ExpandingWindowCV для каждого trial
+из param_space, усреднять метрики по folds и выбирать лучшие параметры.
+max_trials защита: если grid_size > MAX_TRIALS, обрезать random-сэмплированием.
+Артефакты в /home/z/my-project/download/phase_1_b_cv/
