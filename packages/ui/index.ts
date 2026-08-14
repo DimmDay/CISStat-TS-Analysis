@@ -39,6 +39,19 @@ export { getCapabilities, PLAN_DEFINITIONS } from "./lib/plans";
 export type { Role, PlanName, Capabilities } from "./lib/plans";
 export { TrainModelButton } from "./components/TrainModelButton";
 
+// Графики распределения (Recharts) -- пункт 3 контракта «Загрузки»,
+// первая точка подключения на платформе. Экспортируется отдельно,
+// чтобы переиспользовать на EDA/Preprocessing после одобрения
+// стейкхолдерами (см. договорённость с тимлидом, следующий шаг --
+// масштабирование за пределы «Загрузки»).
+export {
+  ScatterDistributionChart,
+  HistogramDistributionChart,
+  KdeDistributionChart,
+  SamplingBadge,
+} from "./components/DistributionCharts";
+export type { DistributionChartData, ScatterPoint, HistogramBin, KdePoint } from "./components/DistributionCharts";
+
 // ── Ниже: перенесено без изменений из origin/main (команда, "Моделирование") ──
 
 export { TsAnalysisModeling } from "./components/TsAnalysisModeling";

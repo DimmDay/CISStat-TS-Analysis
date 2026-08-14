@@ -27,7 +27,9 @@
 //                  2. Техническая информация (строки/колонки/память/типы)
 //                  7. Флаг проблем парсинга (кодировка/заголовок) -- РЕАЛЬНЫЙ,
 //                     apps/api/upload_common.py::_compute_parse_warnings
-//   Распределение: 3. Визуализация распределения (точечный/гистограмма/KDE)
+//   Распределение: 3. Визуализация распределения (точечный/гистограмма/KDE) --
+//                     РЕАЛЬНАЯ (Recharts + GET /dataset/distribution),
+//                     см. пометку 🟢 ниже
 //                  4. Описательные статистики -- РЕАЛЬНЫЕ (не моки),
 //                     apps/api/routers/session.py::get_dataset_stats
 //                     (mean/median/std/skew/kurtosis/Q1/Q3/IQR по scipy/pandas
@@ -39,9 +41,15 @@
 //                     здесь только сигнал)
 //   Качество:      6. Teaser качества (только счётчики → Валидация)
 //
-// 🟡 Визуализация распределения -- placeholder-макет (как [график] во
-//    ВСЕХ остальных модулях платформы -- Preprocessing/Validation/EDA
-//    тоже не рисуют реальные графики, единый паттерн, не костыль).
+// 🟢 Визуализация распределения -- РЕАЛЬНЫЕ графики (Recharts), первая
+//    точка подключения на платформе (2026-08-14, по решению тимлида).
+//    Данные -- GET /v1/session/dataset/distribution, см.
+//    apps/api/chart_data.py (LTTB-сэмплинг scatter выше ~3000 точек,
+//    гистограмма/KDE всегда по полному столбцу). Компоненты --
+//    packages/ui/components/DistributionCharts.tsx, переиспользуемые.
+//    Остальные модули (Preprocessing/Validation/EDA) пока НЕ подключены --
+//    ждём одобрения визуального представления стейкхолдерами, затем
+//    масштабируем по той же схеме (см. договорённость с тимлидом).
 // 🟡 Подтверждение автоопределения -- клиентская эвристика по
 //    columns_info (см. buildDetectionFromColumns ниже), не настоящий
 //    бэкенд-детектор (см. TODO там же).
@@ -70,6 +78,13 @@ import {
 } from "lucide-react";
 import { Button } from "./Button";
 import { Metric } from "./Metric";
+import {
+  DistributionChartData,
+  HistogramDistributionChart,
+  KdeDistributionChart,
+  SamplingBadge,
+  ScatterDistributionChart,
+} from "./DistributionCharts";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { StructuralClassSchema } from "./StructuralClassSchema";
 import { useAppShell } from "../context/AppShellContext";
@@ -274,6 +289,8 @@ export function TsAnalysisUpload() {
   const [detection, setDetection] = useState<StructureDetection | null>(null);
   const [stats, setStats] = useState<ColumnStatsOut[] | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [distribution, setDistribution] = useState<DistributionChartData | null>(null);
+  const [distributionLoading, setDistributionLoading] = useState(false);
   const [selectedFeature, setSelectedFeature] = useState<string | null>(null);
   const [overviewTab, setOverviewTab] = useState<"preview" | "columns">("preview");
 
@@ -296,6 +313,38 @@ export function TsAnalysisUpload() {
       setStatsLoading(false);
     }
   }, []);
+
+  // ── Загрузка данных для графиков распределения (эндпоинт per-column,
+  // не часть общего /dataset/stats -- считать scatter/histogram/KDE для
+  // ВСЕХ числовых колонок сразу было бы избыточно, запрашиваем только
+  // выбранный признак). apps/api/routers/session.py::get_dataset_distribution ──
+  useEffect(() => {
+    if (!selectedFeature || !isUploaded) {
+      setDistribution(null);
+      return;
+    }
+    let cancelled = false;
+    setDistributionLoading(true);
+    fetch(sessionApiUrl(`/dataset/distribution?column=${encodeURIComponent(selectedFeature)}`), {
+      credentials: "include",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: DistributionChartData | null) => {
+        // Защита от гонки: пока запрос летел, пользователь мог уже
+        // переключить признак -- не затираем более свежий выбор устаревшим ответом.
+        if (!cancelled) setDistribution(data);
+      })
+      .catch(() => {
+        if (!cancelled) setDistribution(null);
+      })
+      .finally(() => {
+        if (!cancelled) setDistributionLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFeature, isUploaded]);
 
   // Если в сессии уже есть активный датасет (пользователь пришёл сюда по
   // кнопке "Продолжить" с Home), подтягиваем превью/техинфо/качество +
@@ -805,25 +854,40 @@ export function TsAnalysisUpload() {
                           <h4 className="text-xs font-semibold mb-2 inline-flex items-center gap-1.5 text-neutral-600">
                             <ScatterChart size={13} aria-hidden="true" /> Точечный график
                           </h4>
-                          <div className="h-[200px] border border-neutral-200 rounded flex items-center justify-center text-xs text-neutral-500 bg-neutral-50">
-                            [ x=index, y={selectedFeature} ]
-                          </div>
+                          {distributionLoading && !distribution ? (
+                            <div className="h-[200px] border border-neutral-200 rounded flex items-center justify-center text-xs text-neutral-500 bg-neutral-50">
+                              <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                            </div>
+                          ) : (
+                            <>
+                              <ScatterDistributionChart data={distribution} />
+                              <SamplingBadge data={distribution} />
+                            </>
+                          )}
                         </div>
                         <div>
                           <h4 className="text-xs font-semibold mb-2 inline-flex items-center gap-1.5 text-neutral-600">
                             <BarChart3 size={13} aria-hidden="true" /> Гистограмма
                           </h4>
-                          <div className="h-[200px] border border-neutral-200 rounded flex items-center justify-center text-xs text-neutral-500 bg-neutral-50">
-                            [ histogram, nbins=30 ]
-                          </div>
+                          {distributionLoading && !distribution ? (
+                            <div className="h-[200px] border border-neutral-200 rounded flex items-center justify-center text-xs text-neutral-500 bg-neutral-50">
+                              <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                            </div>
+                          ) : (
+                            <HistogramDistributionChart data={distribution} />
+                          )}
                         </div>
                         <div>
                           <h4 className="text-xs font-semibold mb-2 inline-flex items-center gap-1.5 text-neutral-600">
                             <Activity size={13} aria-hidden="true" /> KDE (плотность)
                           </h4>
-                          <div className="h-[200px] border border-neutral-200 rounded flex items-center justify-center text-xs text-neutral-500 bg-neutral-50">
-                            [ KDE curve ]
-                          </div>
+                          {distributionLoading && !distribution ? (
+                            <div className="h-[200px] border border-neutral-200 rounded flex items-center justify-center text-xs text-neutral-500 bg-neutral-50">
+                              <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                            </div>
+                          ) : (
+                            <KdeDistributionChart data={distribution} />
+                          )}
                         </div>
                       </div>
 

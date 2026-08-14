@@ -97,6 +97,20 @@ def get_candidates(
 
     Доступно только принципалам с can_train_models=True
     (professional, enterprise, admin, internal_analyst).
+
+    Браузер visitor'а standalone НЕ имеет API-ключа — для него есть
+    зеркало /v1/internal/models/candidates (без auth).
+    """
+    return _compute_candidates(payload)
+
+
+def _compute_candidates(payload: CandidatesRequest) -> CandidatesResponse:
+    """Чистая бизнес-логика: применить движок применимости к 24 моделям.
+
+    Вынесена из get_candidates, чтобы её мог переиспользовать зеркальный
+    эндпоинт /v1/internal/models/candidates (routers/internal.py). Логика
+    идентична — разница только в auth. Восстановлено (утрачено в Task 19-C,
+    см. worklog: коммит ветвился от устаревшей базы models.py).
     """
     spec = _get_spec()
 
@@ -313,11 +327,39 @@ def _run_mean_backtest(
 
 
 # Маппинг model_id → функция бэктеста
+# Phase 6-P0: добавлены 5 реальных реализаций через statsmodels:
+#   - ets / ets_damped: Holt-Winters ExponentialSmoothing
+#   - theta: формальная Theta-модель (Assimakopoulos & Nikolopoulos 2000)
+#   - arima: ARIMA(1,1,1) с фиксированным порядком
+#   - arima_auto: grid search по (p,d,q) с AIC-критерием
+# До Phase 6-P0 эти 5 model_id попадали в else-ветку ниже (заглушка
+# naive*penalty). Теперь они вызывают реальные модели из apps/api/model_impls/.
+# Восстановлено (было утрачено в Task 19-C, ветвившемся от устаревшей базы
+# models.py — код в apps/api/model_impls/ физически присутствовал на диске,
+# но не был подключён сюда).
+#
+# Семейства neural / structural / tree_ml / multivariate / volatility
+# остаются заглушками (Phase 6-P1+).
+from apps.api.model_impls import (
+    run_ets_backtest,
+    run_ets_damped_backtest,
+    run_theta_backtest,
+    run_arima_backtest,
+    run_auto_arima_backtest,
+)
+
 _BACKTEST_IMPLEMENTATIONS = {
+    # ── Baselines (Phase 0): без statsmodels, простые формулы ──
     "naive": lambda s, tr, p: _run_naive_backtest(s, tr),
     "seasonal_naive": lambda s, tr, p: _run_seasonal_naive_backtest(s, tr, p),
     "drift": lambda s, tr, p: _run_drift_backtest(s, tr),
     "mean": lambda s, tr, p: _run_mean_backtest(s, tr),
+    # ── Phase 6-P0: реальные модели через statsmodels ──
+    "ets": run_ets_backtest,
+    "ets_damped": run_ets_damped_backtest,
+    "theta": run_theta_backtest,
+    "arima": run_arima_backtest,
+    "arima_auto": run_auto_arima_backtest,
 }
 
 
@@ -650,6 +692,38 @@ _MODEL_INFO = {
 }
 
 
+def _resolve_model_info(model_id: str) -> tuple[str, str]:
+    """Найти (model_name, family_id) по model_id.
+
+    Сначала в _MODEL_INFO dict, потом в спецификации modeling.yaml.
+    Поднимает HTTPException(404) если модель не найдена.
+
+    Восстановлено как отдельная функция (была утрачена при коммите
+    Task 19-C, ветвившемся от устаревшей базы models.py -- см. worklog).
+    apps/api/routers/internal.py импортирует эту функцию напрямую;
+    инлайновая копия в run_backtest ниже была тем самым дублированием,
+    против которого предостерегает docs/MIGRATION_ARCHITECTURE.md §7.2.
+    """
+    model_info = _MODEL_INFO.get(model_id)
+    if model_info is None:
+        spec = _get_spec()
+        found = None
+        for fam in spec.families:
+            for m in fam.models:
+                if m.id == model_id:
+                    found = (m.name, fam.family_id)
+                    break
+            if found:
+                break
+        if not found:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Модель '{model_id}' не найдена в спецификации",
+            )
+        model_info = found
+    return model_info
+
+
 @router.post(
     "/backtest",
     response_model=BacktestResponse,
@@ -673,27 +747,7 @@ def run_backtest(
     profile = payload.profile
     train_ratio = payload.train_ratio
 
-    # Определяем (model_name, family_id)
-    model_info = _MODEL_INFO.get(model_id)
-    if model_info is None:
-        # Попробуем найти в спецификации
-        spec = _get_spec()
-        found = None
-        for fam in spec.families:
-            for m in fam.models:
-                if m.id == model_id:
-                    found = (m.name, fam.family_id)
-                    break
-            if found:
-                break
-        if not found:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Модель '{model_id}' не найдена в спецификации",
-            )
-        model_info = found
-
-    model_name, family_id = model_info
+    model_info = _resolve_model_info(model_id)
 
     # Генерируем синтетический ряд по профилю
     series = _generate_series(
@@ -703,22 +757,76 @@ def run_backtest(
     )
 
     # Сезонный период для Seasonal Naive
-    seasonal_period = (
-        profile.seasonal_periods[0]
-        if profile.seasonal_periods
-        else {"D": 7, "W": 52, "M": 12, "Q": 4, "Y": 1}.get(profile.frequency, 12)
+    seasonal_period = _resolve_seasonal_period(profile)
+
+    metrics, duration_ms = _run_backtest_with_series(
+        model_id=model_id,
+        model_info=model_info,
+        series=series,
+        train_ratio=train_ratio,
+        seasonal_period=seasonal_period,
     )
 
+    n_train = int(profile.n_observations * train_ratio)
+    n_test = profile.n_observations - n_train
+
+    return BacktestResponse(
+        model_id=model_id,
+        model_name=model_info[0],
+        family_id=model_info[1],
+        metrics=metrics,
+        n_train=n_train,
+        n_test=n_test,
+        train_ratio=train_ratio,
+        duration_ms=round(duration_ms, 2),
+        data_source="synthetic",  # legacy path: всегда синтетика
+    )
+
+
+# ═══════════════════════════════════════════════════════════
+# Phase 0.5: переиспользуемые функции для зеркала /v1/internal/models/backtest
+#
+# Восстановлено (утрачено в Task 19-C, коммит ветвился от устаревшей базы
+# models.py — см. worklog "fix: restore session/target_column/panel-balance
+# schemas lost in Task 19-C base merge"). apps/api/routers/internal.py
+# импортирует _resolve_seasonal_period и _run_backtest_with_series напрямую
+# для зеркального эндпоинта /v1/internal/models/backtest (реальный ряд из
+# session.dataframe, а не синтетика).
+# ═══════════════════════════════════════════════════════════
+
+
+def _resolve_seasonal_period(profile) -> int:
+    """Сезонный период для Seasonal Naive — из profile.seasonal_periods
+    или из дефолтного маппинга frequency → period.
+    """
+    if profile.seasonal_periods:
+        return profile.seasonal_periods[0]
+    return {"D": 7, "W": 52, "M": 12, "Q": 4, "Y": 1}.get(profile.frequency, 12)
+
+
+def _run_backtest_with_series(
+    model_id: str,
+    model_info: tuple[str, str],
+    series: list[float],
+    train_ratio: float,
+    seasonal_period: int,
+) -> tuple[BacktestMetrics, float]:
+    """Выполнить бэктест на ЗАДАННОМ ряде (синтетическом или реальном).
+
+    Возвращает (metrics, duration_ms). Не знает о сессии — просто считает
+    метрики по ряду, который ей передали. Это позволяет переиспользовать
+    её и для /v1/models/backtest (синтетический ряд), и для
+    /v1/internal/models/backtest (реальный ряд из session.dataframe).
+    """
+    model_name, family_id = model_info
     start = time.monotonic()
 
-    # Реальный расчёт или заглушка
     impl = _BACKTEST_IMPLEMENTATIONS.get(model_id)
     if impl:
         metrics = impl(series, train_ratio, seasonal_period)
     else:
         # Заглушка: аппроксимация на основе Naive + штраф за сложность
         naive_metrics = _run_naive_backtest(series, train_ratio)
-        # Штраф: сложные модели «хуже» на синтетике без тюнинга
         family_penalty = {
             "exponential_smoothing": 0.85,
             "arima": 0.80,
@@ -739,20 +847,7 @@ def run_backtest(
         )
 
     duration_ms = (time.monotonic() - start) * 1000
-
-    n_train = int(profile.n_observations * train_ratio)
-    n_test = profile.n_observations - n_train
-
-    return BacktestResponse(
-        model_id=model_id,
-        model_name=model_name,
-        family_id=family_id,
-        metrics=metrics,
-        n_train=n_train,
-        n_test=n_test,
-        train_ratio=train_ratio,
-        duration_ms=round(duration_ms, 2),
-    )
+    return metrics, duration_ms
 
 
 # ═══════════════════════════════════════════════════════════

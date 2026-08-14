@@ -96,11 +96,7 @@ class UploadResponse(BaseModel):
     error: Optional[str] = Field(None, description="Ошибка при загрузке")
 
 
-class ColumnStatsOut(BaseModel):
-    """Описательная статистика по числовой колонке -- пункт 4 контракта
-    вкладки «Загрузка». Реальный расчёт (pandas/scipy) над полным
-    столбцом, хранящимся в AnalysisSession, а не над превью."""
-    name: str
+class ColumnStatsValues(BaseModel):
     mean: float
     median: float
     std: float
@@ -114,8 +110,68 @@ class ColumnStatsOut(BaseModel):
     )
 
 
+class ColumnStatsOut(BaseModel):
+    """Описательная статистика по числовой колонке -- пункт 4 контракта
+    вкладки «Загрузка». Реальный расчёт (pandas/scipy) над полным
+    столбцом, хранящимся в AnalysisSession, а не над превью.
+
+    Колонка МОЖЕТ не иметь статистики (реальные данные часто разрежены --
+    например, панельные цены ФАО по странам/годам) -- в этом случае
+    stats=None, а non_null_count честно объясняет почему, вместо того
+    чтобы колонка тихо пропадала из ответа без объяснения."""
+    name: str
+    non_null_count: int
+    stats: Optional[ColumnStatsValues] = None
+
+
 class DatasetStatsResponse(BaseModel):
     columns: List[ColumnStatsOut]
+    min_non_null_for_stats: int = Field(2, description="Порог непустых значений, ниже которого статистика не считается")
+
+
+class PanelBalanceResponse(BaseModel):
+    """Реальная проверка Balanced/Unbalanced для панельных данных --
+    пункт 8 контракта (структурный класс), визуальная схема на
+    остановке «Структура». Требует ПОЛНЫЙ датасет (не превью): нужно
+    сравнить множества дат у каждой группы, 5+5 строк для этого мало."""
+    balanced: bool
+    n_entities: int
+    n_distinct_date_sets: int
+
+
+# ── Графики распределения (пункт 3 контракта, apps/api/chart_data.py) ──
+
+class ScatterPoint(BaseModel):
+    x: int = Field(..., description="Позиция в очищенном от NaN столбце (0-based)")
+    y: float
+
+
+class HistogramBin(BaseModel):
+    x0: float
+    x1: float
+    count: int
+
+
+class KdePoint(BaseModel):
+    x: float
+    y: float
+
+
+class DistributionChartResponse(BaseModel):
+    """Данные для трёх графиков остановки «Распределение» вкладки
+    «Загрузка» -- точечный график, гистограмма, KDE. Реальный расчёт
+    (numpy/scipy) над ПОЛНЫМ столбцом сессии, не превью -- тот же
+    принцип, что и в ColumnStatsOut."""
+    column: str
+    non_null_count: int
+    min: Optional[float] = None
+    max: Optional[float] = None
+    scatter: List[ScatterPoint]
+    scatter_sampled: bool = Field(..., description="True, если scatter прошёл через LTTB-сэмплинг")
+    scatter_sampling_method: Optional[str] = Field(None, description="'lttb' | None (не сэмплировано)")
+    scatter_original_count: int = Field(..., description="Число точек ДО сэмплинга")
+    histogram: List[HistogramBin]
+    kde: Optional[List[KdePoint]] = Field(None, description="None -- KDE не определена (<2 значений или нулевая дисперсия)")
 
 
 class DatasetSummaryOut(BaseModel):
@@ -130,12 +186,40 @@ class DatasetSummaryOut(BaseModel):
 class SessionStateResponse(BaseModel):
     """Состояние AnalysisSession -- см. apps/api/session_store.py.
     Sessions-aware Home page решает "рабочий стол vs онбординг/маркетинг"
-    по полю has_active_dataset."""
+    по полю has_active_dataset.
+
+    Phase 0.5: target_column -- выбранная прогнозируемая колонка (мост
+    Upload → Backtest). None, если пользователь ещё не выбрал.
+    """
     has_active_dataset: bool
     dataset: Optional[DatasetSummaryOut] = None
     stages: Dict[str, str]
     last_active_stage: Optional[str] = None
+    target_column: Optional[str] = None
     updated_at: Optional[str] = None
+
+
+# ── Target column (Phase 0.5) ──
+
+class TargetColumnRequest(BaseModel):
+    """Запрос: установить выбранную прогнозируемую колонку."""
+    column: str = Field(..., description="Имя колонки в загруженном датасете")
+
+
+class TargetColumnResponse(BaseModel):
+    """Ответ: текущая target_column + список доступных числовых колонок.
+
+    available_columns нужен UI для отрисовки селектора. Содержит ТОЛЬКО
+    числовые колонки -- target для TS-прогноза должен быть числовым.
+    """
+    target_column: Optional[str] = None
+    available_columns: List[str] = Field(
+        default_factory=list,
+        description="Числовые колонки, доступные для выбора как target",
+    )
+    has_dataset: bool = Field(
+        False, description="Загружен ли датасет (если нет -- выбор target невозможен)"
+    )
 
 
 # ── Управление правилами валидации ──
@@ -299,7 +383,14 @@ class BacktestMetrics(BaseModel):
 
 
 class BacktestResponse(BaseModel):
-    """Ответ: результаты бэктеста модели."""
+    """Ответ: результаты бэктеста модели.
+
+    Phase 0.5: data_source показывает, откуда взят ряд для бэктеста:
+      - "synthetic" -- синтетический ряд (поведение до Phase 0.5; /v1/models/backtest)
+      - "session"   -- реальный ряд из session.dataframe[target_column]
+                        (мост Upload → Backtest; /v1/internal/models/backtest)
+    Поле опциональное для backcompat -- старый клиент игнорирует его.
+    """
     model_id: str
     model_name: str
     family_id: str
@@ -308,6 +399,10 @@ class BacktestResponse(BaseModel):
     n_test: int = Field(..., description="Число точек тестовой выборки")
     train_ratio: float
     duration_ms: float = Field(..., description="Время расчёта (мс)")
+    data_source: Optional[str] = Field(
+        None,
+        description="Источник ряда: 'session' (реальный из датасета) | 'synthetic' (синтетический)",
+    )
 
 
 # ── Моделирование: тюнинг гиперпараметров (Phase 1-C) ───────────────────

@@ -17,12 +17,17 @@ from pathlib import Path
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request, Response
 
+from apps.api.chart_data import MAX_ZOOM_POINTS, build_histogram, build_kde, build_scatter_series
 from apps.api.schemas import (
     ColumnStatsOut,
     ColumnStatsValues,
     DatasetStatsResponse,
     DatasetSummaryOut,
+    DistributionChartResponse,
+    HistogramBin,
+    KdePoint,
     PanelBalanceResponse,
+    ScatterPoint,
     SessionStateResponse,
     TargetColumnRequest,
     TargetColumnResponse,
@@ -228,6 +233,93 @@ def get_panel_balance(date_col: str, entity_col: str, request: Request, response
         balanced=n_distinct_date_sets <= 1,
         n_entities=n_entities,
         n_distinct_date_sets=int(n_distinct_date_sets),
+    )
+
+
+@router.get("/dataset/distribution", response_model=DistributionChartResponse)
+def get_dataset_distribution(
+    column: str,
+    request: Request,
+    response: Response,
+    start: int | None = None,
+    end: int | None = None,
+):
+    """
+    Данные для трёх графиков остановки «Распределение» вкладки «Загрузка»
+    (точечный/гистограмма/KDE) -- пункт 3 контракта, ранее placeholder
+    (см. TsAnalysisUpload.tsx). Реальный расчёт (numpy/scipy) над ПОЛНЫМ
+    столбцом сессии -- тот же принцип, что и в get_dataset_stats.
+
+    start/end (опционально) -- позиции в очищенном от NaN столбце (0-based,
+    полуоткрытый интервал [start, end)). Нужны для zoom: когда пользователь
+    приближает часть точечного графика на фронтенде, запрашивается более
+    узкий диапазон с полным разрешением (без LTTB-сэмплинга, либо с более
+    мягким порогом), а не тот же общий сэмплированный набор точек.
+
+    Гистограмма и KDE ВСЕГДА считаются по полному столбцу (или по диапазону
+    start/end, если он задан) -- сэмплинг применяется только к scatter,
+    иначе форма распределения на гистограмме/KDE была бы искажена самим
+    фактом прореживания точек для scatter.
+    """
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    df = session.dataframe
+    if column not in df.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(df[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая -- график распределения недоступен")
+
+    series = df[column].dropna()
+    non_null_count = len(series)
+
+    if start is not None or end is not None:
+        range_start = max(0, start or 0)
+        range_end = min(non_null_count, end if end is not None else non_null_count)
+        if range_start >= range_end:
+            raise HTTPException(status_code=422, detail="Некорректный диапазон start/end")
+        zoomed = series.iloc[range_start:range_end]
+        # Диапазон уже узкий (пользователь приблизил область на фронтенде) --
+        # полное разрешение имеет смысл вплоть до MAX_ZOOM_POINTS, не
+        # TARGET_SAMPLED_POINTS общего обзора.
+        scatter = build_scatter_series(
+            zoomed, max_points=MAX_ZOOM_POINTS, full_threshold=MAX_ZOOM_POINTS
+        )
+        # x в scatter должен остаться в координатах ПОЛНОГО ряда, а не
+        # локального среза -- иначе точки "поплывут" при сравнении с
+        # предыдущим (не увеличенным) графиком.
+        for p in scatter["points"]:
+            p["x"] += range_start
+        stats_series = zoomed
+    else:
+        scatter = build_scatter_series(series)
+        stats_series = series
+
+    if non_null_count == 0:
+        return DistributionChartResponse(
+            column=column,
+            non_null_count=0,
+            scatter=[],
+            scatter_sampled=False,
+            scatter_sampling_method=None,
+            scatter_original_count=0,
+            histogram=[],
+            kde=None,
+        )
+
+    return DistributionChartResponse(
+        column=column,
+        non_null_count=non_null_count,
+        min=float(stats_series.min()),
+        max=float(stats_series.max()),
+        scatter=[ScatterPoint(**p) for p in scatter["points"]],
+        scatter_sampled=scatter["sampled"],
+        scatter_sampling_method=scatter["sampling_method"],
+        scatter_original_count=scatter["original_count"],
+        histogram=[HistogramBin(**b) for b in build_histogram(stats_series)],
+        kde=[KdePoint(**p) for p in kde_points] if (kde_points := build_kde(stats_series)) is not None else None,
     )
 
 
