@@ -1,4 +1,3 @@
-# apps/api/model_impls/arima.py
 """
 ARIMA и Auto-ARIMA — авторегрессия + интеграция + скользящее среднее.
 
@@ -17,6 +16,7 @@ from __future__ import annotations
 import logging
 from typing import List, Optional, Tuple
 
+import numpy as np
 import pandas as pd
 
 from apps.api.schemas import BacktestMetrics
@@ -27,21 +27,8 @@ from apps.api.model_impls._metrics import compute_metrics
 logger = logging.getLogger(__name__)
 
 
-# Дефолтный порядок ARIMA — (p=1, d=1, q=1). Стандартный «обычный» ARIMA:
-# 1 авторегрессионный член, 1 differencing, 1 скользящее среднее. Подходит
-# для большинства бизнес-рядов с трендом и слабой автокорреляцией остатков.
 DEFAULT_ARIMA_ORDER: Tuple[int, int, int] = (1, 1, 1)
 
-
-# Grid для Auto-ARIMA: 8 комбинаций (2 * 2 * 2). Раньше был grid
-# 3*2*3=18 fits, но на Render Free Tier (shared CPU, 512MB RAM) каждый
-# ARIMA fit занимает ~7 секунд, что давало 18*7=126 sec — больше 100s
-# request timeout Render. Grid 8 fits: 8*7=56 sec — вписываемся в 90s
-# smoke-timeout и 100s Render request timeout.
-# Качество выбора чуть хуже (пропускаем p=2, q=2), но для Phase 6-P0
-# (демонстрация реальной ARIMA-модели) — достаточно.
-# Для Phase 6-P1+: расширить grid обратно до 18 или использовать pmdarima
-# (он использует stepwise selection вместо полного перебора — быстрее).
 AUTO_ARIMA_GRID: List[Tuple[int, int, int]] = [
     (p, d, q)
     for p in (0, 1)
@@ -55,36 +42,31 @@ def _arima_fit_predict(
     n_test: int,
     order: Tuple[int, int, int],
 ) -> List[float]:
-    """Обучить ARIMA(y_train, order=order), forecast n_test шагов.
-
-    Использует statsmodels.tsa.arima.model.ARIMA (новый API с 0.12+,
-    заменяет statsmodels.tsa.arima_model.ARMA — deprecated).
-
-    Примечание про производительность: в statsmodels 0.14+ ARIMA.fit()
-    НЕ принимает аргумент maxiter (как SARIMAX). Дефолт=250 итераций
-    L-BFGS-B. Для контроля времени используем сокращённый grid в
-    AUTO_ARIMA_GRID (8 fits вместо 18), а не ограничение итераций.
-    """
+    """Обучить ARIMA(y_train, order=order), forecast n_test шагов."""
     from statsmodels.tsa.arima.model import ARIMA
 
-    # ARIMA требует индекс с частотой. Создаём RangeIndex — ARIMA его примет.
-    idx = pd.RangeIndex(start=0, stop=len(y_train))
-    train = pd.Series(y_train, index=idx)
+    train = np.asarray(y_train, dtype=np.float64).reshape(-1)
+    if train.size == 0:
+        raise ValueError("ARIMA requires at least one training observation")
+    if not np.isfinite(train).all():
+        raise ValueError("ARIMA requires finite numeric observations")
 
+    # Explicit 1-D ndarray avoids a statsmodels 0-D endog edge case seen on
+    # Windows/Python 3.13 for short CV folds when a pandas scalar-like input
+    # reaches SARIMAX conditional-sum-of-squares initialization.
     model = ARIMA(train, order=order)
     fitted = model.fit()
-    forecast = fitted.forecast(steps=n_test)
-    return list(forecast)
+    forecast = np.asarray(fitted.forecast(steps=n_test), dtype=np.float64).reshape(-1)
+    return forecast.tolist()
 
 
 def _arima_backtest_impl(
     series: List[float],
     train_ratio: float,
-    seasonal_period: int,  # ignored for non-seasonal ARIMA
+    seasonal_period: int,
     order: Tuple[int, int, int] = DEFAULT_ARIMA_ORDER,
 ) -> BacktestMetrics:
-    """Чистая реализация ARIMA. seasonal_period игнорируется
-    (для SARIMA нужна statsmodels.tsa.statespace.SARIMAX — Phase 6-P1)."""
+    """Чистая реализация ARIMA. seasonal_period игнорируется."""
     y_train, y_test = train_test_split(series, train_ratio)
     if not y_train or not y_test:
         return BacktestMetrics(mae=0, rmse=0, mape=0, mase=0, weighted_score=0)
@@ -100,21 +82,12 @@ def _arima_backtest_impl(
 def _auto_arima_select_order(
     y_train: List[float],
 ) -> Tuple[int, int, int]:
-    """Выбрать оптимальный (p, d, q) по AIC.
-
-    Перебирает AUTO_ARIMA_GRID, обучает ARIMA для каждого порядка,
-    берёт с минимальным AIC. Если ВСЕ порядки упали (короткий ряд,
-    константные данные) — fallback на DEFAULT_ARIMA_ORDER.
-
-    Логирует выбранный порядок для отладки (DEBUG level).
-    """
+    """Выбрать оптимальный (p, d, q) по AIC."""
     from statsmodels.tsa.arima.model import ARIMA
 
     best_aic: Optional[float] = None
     best_order: Tuple[int, int, int] = DEFAULT_ARIMA_ORDER
-
-    idx = pd.RangeIndex(start=0, stop=len(y_train))
-    train = pd.Series(y_train, index=idx)
+    train = np.asarray(y_train, dtype=np.float64).reshape(-1)
 
     for order in AUTO_ARIMA_GRID:
         try:
@@ -125,13 +98,18 @@ def _auto_arima_select_order(
                 best_aic = aic
                 best_order = order
         except Exception as exc:
-            # Этот порядок не сошёлся — пропускаем, пробуем следующий.
-            logger.debug("ARIMA order %s failed (%s), skipping", order, exc.__class__.__name__)
+            logger.debug(
+                "ARIMA order %s failed (%s), skipping",
+                order,
+                exc.__class__.__name__,
+            )
             continue
 
     logger.debug(
         "Auto-ARIMA selected order %s (AIC=%s, train_len=%d)",
-        best_order, best_aic, len(y_train),
+        best_order,
+        best_aic,
+        len(y_train),
     )
     return best_order
 
@@ -139,7 +117,7 @@ def _auto_arima_select_order(
 def _auto_arima_backtest_impl(
     series: List[float],
     train_ratio: float,
-    seasonal_period: int,  # ignored — non-seasonal Auto-ARIMA
+    seasonal_period: int,
 ) -> BacktestMetrics:
     """Чистая реализация Auto-ARIMA: grid search по (p,d,q) с AIC."""
     y_train, y_test = train_test_split(series, train_ratio)
@@ -160,17 +138,7 @@ def run_arima_backtest(
     train_ratio: float,
     seasonal_period: int,
 ) -> BacktestMetrics:
-    """ARIMA(1,1,1): фиксированный порядок.
-
-    Сезонность НЕ учитывается (это SARIMA — Phase 6-P1). Если ряд
-    явным образом сезонный, ARIMA(1,1,1) будет работать хуже Seasonal
-    Naive, но это валидный baseline для P0.
-
-    Edge cases, обрабатываемые safe_backtest:
-    - Ряд с длиной <= order[1] (после differencing не остаётся точек) →
-      ValueError → Naive fallback.
-    - Константный ряд → LinAlgError → Naive fallback.
-    """
+    """ARIMA(1,1,1): фиксированный порядок."""
     return safe_backtest(
         _arima_backtest_impl,
         series, train_ratio, seasonal_period, "arima",
@@ -182,20 +150,7 @@ def run_auto_arima_backtest(
     train_ratio: float,
     seasonal_period: int,
 ) -> BacktestMetrics:
-    """Auto-ARIMA: grid search по (p,d,q) ∈ {0,1} × {0,1} × {0,1} = 8 моделей.
-
-    Использует AIC для выбора лучшего порядка. Реализован через statsmodels
-    (НЕ pmdarima), чтобы не добавлять тяжёлую зависимость в Docker образ.
-    По качеству — уступает pmdarima на сложных рядах, но для Phase 6-P0
-    (демонстрация реальной ARIMA-модели) — достаточно.
-
-    Время: ~50-60 сек на 24 точках на Render Free Tier (8 fits × ~7 сек
-    на fit). Раньше был grid 18 fits (~126 сек) — не вписывался в 100s
-    Render request timeout. С grid 8 fits — вписываемся.
-
-    Для Phase 6-P1+: расширить grid до 18 или перейти на pmdarima
-    (использует stepwise selection, быстрее полного перебора).
-    """
+    """Auto-ARIMA: grid search по (p,d,q) ∈ {0,1} × {0,1} × {0,1} = 8 моделей."""
     return safe_backtest(
         _auto_arima_backtest_impl,
         series, train_ratio, seasonal_period, "arima_auto",

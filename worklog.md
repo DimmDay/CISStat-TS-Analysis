@@ -1276,3 +1276,73 @@ tests/api/test_tune_real_models.py — единственный тестовый
 
 Важно: эта задача не объявляет замену production _tunable_predict на dispatch. Если требуется перевести сам POST /v1/models/tune на dispatch production model, это отдельное изменение apps/api/routers/models.py + API реализации модели, которое должно пройти отдельный полный регрессионный тест.
 
+---
+
+Task ID: 19-E — Production-разрыв Tune → реальные ETS/ARIMA
+
+Цель: закрыть production-разрыв между Phase 1-C tuning engine и Phase 6-P0 real model implementations. POST /v1/models/tune больше не должен использовать детерминированный stub для ETS/ARIMA.
+
+Процесс решения:
+
+Синхронизирована отдельная ветка от актуального main, чтобы не перетирать параллельные изменения команды.
+Проверены точки интеграции: apps/api/routers/models.py, real model implementations в apps/api/model_impls/{ets,arima}.py, rules/modeling.yaml, Phase 1-D tests.
+Выбран единый production dispatch через маленький модуль apps/api/model_impls/tuning.py, который переиспользует реальные statsmodels fit/predict функции.
+Production _tunable_predict оставлен как API-level dispatch, а не как вторая реализация моделей.
+Изменения:
+
+apps/api/model_impls/ets.py • _ets_fit_predict получил опциональные trend/seasonal параметры. • Старый Phase 6-P0 backtest контракт сохранён (defaults). • Мультипликативные варианты требуют строго положительные данные. • Сезонность при недостатке двух полных периодов не ломает CV, а выполняется без seasonal component явно.
+apps/api/model_impls/tuning.py • tune_ets_predict(): передаёт параметры текущего grid trial в реальный ExponentialSmoothing. • tune_arima_predict(): передаёт p,d,q текущего trial в реальный ARIMA.
+apps/api/routers/models.py • _tunable_predict заменён production dispatch: ets / ets_damped → tune_ets_predict arima → tune_arima_predict Остальные модели не получают ложный stub; возвращают явный 422. • Ошибочный trial (ValueError/RuntimeError/ArithmeticError) пропускается с warning; если ни один trial не завершился, endpoint возвращает 422. • Existing grid/CV/max_trials контракт сохранён.
+tests/api/test_tune_real_models.py • Убрана проверка «реальный прогноз отличается от legacy stub» — stub больше не является production contract. • Оставлена проверка реального statsmodels fit/predict.
+tests/api/test_tune_production_dispatch.py • Новый regression suite: production dispatch ETS/ARIMA, количество реальных вызовов = trials × folds, параметры реально передаются, unsupported model не получает fake forecast, mul ETS не silently fallback.
+worklog.md • Добавлена текущая запись Task 19-E.
+Риски и меры:
+
+R1: двойная реализация моделей → tuning.py использует существующие Phase 6-P0 функции, новый statsmodels fit не создаётся.
+R2: ETS grid-параметры теряются → regression spy проверяет trend/seasonal/ damped параметры на каждом вызове.
+R3: mul ETS на отрицательных данных → явный ValueError, trial пропускается, а не замена на additive model.
+R4: одна невалидная комбинация ломает весь tuning → trial-level isolation.
+R5: все trials невалидны → явный HTTP 422 вместо ложного best trial.
+R6: baseline/no-param model → существующий 422 contract сохраняется.
+R7: параллельные изменения команды → отдельная ветка от актуального main; изменены только файлы текущей задачи.
+Тесты/сборка:
+
+В этой runtime-среде полноценный pytest/build не выполнен: доступ к локальному checkout ограничен сетевым DNS. Поэтому PASS полного набора намеренно НЕ заявляется.
+Тестовый код рассчитан на существующие зависимости statsmodels из Phase 6-P0.
+Перед merge требуется выполнить: python -m pytest tests/api/test_tune.py tests/api/test_tune_real_models.py tests/api/test_tune_production_dispatch.py -q затем полный API regression suite и Next.js build.
+Статус:
+
+Production dispatch реализован в отдельной ветке.
+Phase 1-D теперь имеет production wiring к реальным ETS/ARIMA.
+После CI/Render smoke PASS Phase 1 tuning можно считать закрытым и переходить к Phase 2 — диагностике остатков.
+
+---
+
+Task 19-E-Fix — production Tune → real ETS/ARIMA
+Диагностика локального прогона
+Команда пользователя: python -m pytest tests/api/test_tune.py tests/api/test_tune_real_models.py tests/api/test_tune_production_dispatch.py -q
+
+Результат: 69 passed, 5 failed.
+
+Production failure
+ARIMA падал внутри statsmodels на коротких expanding-CV folds: IndexError: too many indices for array: array is 0-dimensional.
+
+Причина — statsmodels получает неоднозначное представление training endog на Windows/Python 3.13 в процессе conditional-sum-of-squares initialization.
+
+Test-only failures
+Два max_trials теста создавали синтетическую модель test_model. До production dispatch они проходили благодаря STUB _tunable_predict; после удаления STUB такая модель закономерно получает HTTP 422. Это устаревшая зависимость теста от заглушки, а не production defect.
+
+Исправления
+apps/api/model_impls/tuning.py
+ARIMA tuning adapter нормализует training input в 1-D float64 NumPy array перед передачей в model implementation.
+apps/api/model_impls/arima.py
+_arima_fit_predict() и Auto-ARIMA fit нормализуют endog в 1-D numeric NumPy array;
+добавлена проверка пустого/нечислового ряда;
+forecast также нормализуется в 1-D numeric array.
+Проверка
+Отдельный smoke-test statsmodels 0.14.6 / Python 3.13 с коротким ARIMA training window после нормализации успешно выполняет fit/forecast.
+
+Полный пользовательский pytest после этих изменений ещё требует запуска в Windows checkout. Два устаревших test_model max_trials теста необходимо перевести на реальный model-id либо изолировать через test-local predictor; production STUB возвращать нельзя.
+
+Статус
+Production ARIMA hardening выполнен. Phase 1 production dispatch ещё не объявляется полностью PASS до повторного полного targeted pytest и исправления двух тестов, зависящих от удалённого STUB.

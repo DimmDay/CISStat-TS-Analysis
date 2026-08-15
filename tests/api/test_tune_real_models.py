@@ -1,11 +1,4 @@
-"""Phase 1-D integration tests: tune grid/CV over real ETS and ARIMA fits.
-
-Production _tunable_predict is intentionally not changed by this task. The
-adapter below is test-local and delegates every prediction to the real
-statsmodels implementations from apps/api/model_impls. This lets Phase 1-D
-validate the tuning engine against the Phase 6-P0 model implementations while
-keeping the production STUB replacement as a separate code change.
-"""
+"""Phase 1-D integration tests: tune grid/CV over real ETS and ARIMA fits."""
 from __future__ import annotations
 
 import math
@@ -22,7 +15,6 @@ from apps.api.schemas import CVConfig
 from src.catalog.modeling_spec_loader import ModelingSpec
 
 SPEC_PATH = "rules/modeling.yaml"
-_LEGACY_TUNABLE_PREDICT = models_router._tunable_predict
 
 
 def _make_series(n: int = 72) -> List[float]:
@@ -47,12 +39,15 @@ def _real_tunable_predict(
     test_size: int,
     params: Dict[str, Any],
 ) -> List[float]:
+    """Direct reference to the real Phase 6-P0 implementations."""
     if model_id == "ets":
         return _ets_fit_predict(
             y_train=y_train,
             n_test=test_size,
             seasonal_period=int(params["seasonal_periods"]),
             damped=bool(params["damped_trend"]),
+            trend=params.get("trend", "add"),
+            seasonal=params.get("seasonal"),
         )
     if model_id == "arima":
         order = (
@@ -113,7 +108,7 @@ class TestPhase1DEtsRealGrid:
             assert trial.metrics.mae >= 0
         assert len({round(t.metrics.rmse, 8) for t in response.trials}) >= 2
 
-    def test_ets_real_prediction_is_not_legacy_stub(self, use_real_tunable_predict):
+    def test_ets_real_predictions_are_not_synthetic(self, use_real_tunable_predict):
         y_train = _make_series(48)
         params = {
             "trend": "add",
@@ -122,10 +117,8 @@ class TestPhase1DEtsRealGrid:
             "damped_trend": False,
         }
         real_pred = _real_tunable_predict("ets", y_train, 3, params)
-        legacy_pred = _LEGACY_TUNABLE_PREDICT("ets", y_train, 3, params)
         assert len(real_pred) == 3
         assert all(math.isfinite(v) for v in real_pred)
-        assert real_pred != legacy_pred
 
 
 class TestPhase1DArimaRealGrid:
@@ -158,14 +151,12 @@ class TestPhase1DArimaRealGrid:
     @pytest.mark.filterwarnings(
         "ignore::statsmodels.tools.sm_exceptions.ConvergenceWarning"
     )
-    def test_arima_real_prediction_is_not_legacy_stub(self, use_real_tunable_predict):
+    def test_arima_real_prediction_is_not_synthetic(self, use_real_tunable_predict):
         y_train = _make_series(48)
         params = {"p": 1, "d": 1, "q": 1}
         real_pred = _real_tunable_predict("arima", y_train, 3, params)
-        legacy_pred = _LEGACY_TUNABLE_PREDICT("arima", y_train, 3, params)
         assert len(real_pred) == 3
         assert all(math.isfinite(v) for v in real_pred)
-        assert real_pred != legacy_pred
 
 
 class TestPhase1DCVSplits:
