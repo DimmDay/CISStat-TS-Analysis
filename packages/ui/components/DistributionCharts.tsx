@@ -97,7 +97,10 @@ function EmptyFrame({ label }: { label: string }) {
 // ── Точечный график (x = позиция в очищенном от NaN ряде, y = значение) ──
 
 export function ScatterDistributionChart({ data }: { data: DistributionChartData | null }) {
-  if (!data || data.scatter.length === 0) return <EmptyFrame label="Нет данных" />;
+  // data.scatter может отсутствовать не только при data===null: неполный/
+  // устаревший ответ (например, старый кэш или замоканный в тесте fetch без
+  // этого поля) не должен ронять всю страницу -- деградируем до EmptyFrame.
+  if (!data || !data.scatter || data.scatter.length === 0) return <EmptyFrame label="Нет данных" />;
 
   // Экстремумы уже гарантированно есть среди точек (сервер их сохраняет
   // поверх LTTB) -- находим их здесь же, чтобы визуально выделить, а не
@@ -127,7 +130,7 @@ export function ScatterDistributionChart({ data }: { data: DistributionChartData
 // ── Гистограмма ──
 
 export function HistogramDistributionChart({ data }: { data: DistributionChartData | null }) {
-  if (!data || data.histogram.length === 0) return <EmptyFrame label="Нет данных" />;
+  if (!data || !data.histogram || data.histogram.length === 0) return <EmptyFrame label="Нет данных" />;
 
   const chartData = data.histogram.map((b) => ({
     ...b,

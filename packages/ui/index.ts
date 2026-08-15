@@ -52,6 +52,11 @@ export {
 } from "./components/DistributionCharts";
 export type { DistributionChartData, ScatterPoint, HistogramBin, KdePoint } from "./components/DistributionCharts";
 
+// График сравнения бэктестов (Recharts) -- вкладка «Моделирование»,
+// второе подключение после «Загрузки» (2026-08-14). Данные -- уже
+// накопленный backtestResults компонента, не новый запрос.
+export { BacktestComparisonChart } from "./components/BacktestComparisonChart";
+
 // ── Ниже: перенесено без изменений из origin/main (команда, "Моделирование") ──
 
 export { TsAnalysisModeling } from "./components/TsAnalysisModeling";

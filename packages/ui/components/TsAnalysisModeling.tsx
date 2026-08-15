@@ -24,6 +24,7 @@ import {
 import { ChevronDown, ChevronUp, RefreshCw, Filter, Loader2 } from "lucide-react";
 import { Button } from "./Button";
 import { Metric } from "./Metric";
+import { BacktestComparisonChart } from "./BacktestComparisonChart";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import {
   type DataProfile,
@@ -977,6 +978,16 @@ export function TsAnalysisModeling() {
             />
           </div>
         )}
+
+        {/* ── Сравнение бэктестов (Recharts) ──
+            Реальные данные -- backtestResults, накопленный компонентом
+            при клике «Запустить бэктест» (справа). Не новый запрос к API.
+            Показывается всегда (не только при statistics), т.к. не зависит
+            от пула кандидатов -- от факта хотя бы одного бэктеста. */}
+        <div className="mt-4">
+          <h3 className="text-sm font-semibold text-neutral-800 mb-1">Сравнение бэктестов</h3>
+          <BacktestComparisonChart backtestResults={backtestResults} />
+        </div>
 
         {/* ── Спецификация ── */}
         {specVersion && (

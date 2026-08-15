@@ -17,6 +17,15 @@ jest.mock("sonner", () => ({
   toast: { success: jest.fn(), error: jest.fn(), warning: jest.fn() },
 }));
 
+// Polyfill: ResizeObserver не определён в jsdom, но нужен Recharts
+// ResponsiveContainer (DistributionCharts) -- тот же паттерн, что и в
+// TsAnalysisModeling.test.tsx.
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 // react-dropzone проверяет dataTransfer.items/types, не только files --
 // без этого внутренний фильтр падает на "Array.prototype.some called on
 // null or undefined".
@@ -80,6 +89,25 @@ const okStatsResponse = {
   min_non_null_for_stats: 2,
 };
 
+// Реалистичный ответ GET /dataset/distribution (apps/api/chart_data.py) --
+// без него ScatterDistributionChart/HistogramDistributionChart раньше
+// падали на data.scatter===undefined (generic-фолбэк ниже отдаёт {}).
+const okDistributionResponse = {
+  column: "value",
+  non_null_count: 10,
+  min: 10,
+  max: 100,
+  scatter: Array.from({ length: 10 }, (_, i) => ({ x: i, y: 10 + i * 10 })),
+  scatter_sampled: false,
+  scatter_sampling_method: null,
+  scatter_original_count: 10,
+  histogram: [
+    { x0: 10, x1: 55, count: 5 },
+    { x0: 55, x1: 100, count: 5 },
+  ],
+  kde: Array.from({ length: 5 }, (_, i) => ({ x: 10 + i * 20, y: 0.01 * (i + 1) })),
+};
+
 // AppShellProvider гидрируется с /v1/session/current при монтировании,
 // а после успешного upload компонент сам запрашивает /dataset/stats --
 // мокаем обе ручки; конкретные тесты переопределяют /upload под свой сценарий.
@@ -100,6 +128,9 @@ function mockFetchSequence(uploadResult: unknown, uploadOk = true) {
     }
     if (typeof url === "string" && url.includes("/dataset/stats")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(okStatsResponse) });
+    }
+    if (typeof url === "string" && url.includes("/dataset/distribution")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(okDistributionResponse) });
     }
     if (typeof url === "string" && url.includes("/dataset/panel-balance")) {
       // В тестовых моках нет реальной группирующей колонки -- фиксируем
@@ -178,6 +209,26 @@ describe("TsAnalysisUpload", () => {
     await waitFor(() => {
       expect(screen.getByText("Близко к нормальному")).toBeInTheDocument();
       expect(screen.getByText("55,5")).toBeInTheDocument(); // toLocaleString("ru-RU") -> запятая
+    });
+  });
+
+  it("should render real Recharts charts (not placeholders) on the Распределение stop", async () => {
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("Распределение")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Распределение"));
+
+    await waitFor(() => {
+      // Плейсхолдер-тексты (см. историю: "[ x=index, y=... ]" и т.п.) не
+      // должны присутствовать -- реальные графики их заменили.
+      expect(screen.queryByText(/\[ x=index/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/nbins=30/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/KDE curve/)).not.toBeInTheDocument();
     });
   });
 
