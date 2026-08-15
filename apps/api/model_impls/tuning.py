@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
+import numpy as np
+
 from apps.api.model_impls.arima import _arima_fit_predict
 from apps.api.model_impls.ets import _ets_fit_predict
 
@@ -46,4 +48,10 @@ def tune_arima_predict(
         int(params["d"]),
         int(params["q"]),
     )
-    return _arima_fit_predict(y_train, n_test, order)
+    # statsmodels ARIMA is sensitive to the representation of very small
+    # pandas inputs on some Windows/Python combinations. Normalize once at
+    # the adapter boundary to a 1-D numeric array.
+    train = np.asarray(y_train, dtype=np.float64).reshape(-1)
+    if train.size == 0:
+        raise ValueError("ARIMA requires at least one training observation")
+    return _arima_fit_predict(train.tolist(), n_test, order)
