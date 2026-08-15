@@ -18,7 +18,7 @@ ExponentialSmoothing классическая, быстрее и стабиль�
 from __future__ import annotations
 
 import logging
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 import pandas as pd
@@ -36,51 +36,48 @@ def _ets_fit_predict(
     n_test: int,
     seasonal_period: int,
     damped: bool,
+    trend: str = "add",
+    seasonal: Optional[str] = "add",
 ) -> List[float]:
     """Обучить ETS на y_train, предсказать n_test точек.
 
-    Использует ExponentialSmoothing с:
-    - trend: 'add' (аддитивный тренд) — разумный дефолт для бизнес-рядов
-      (продажи/цены/макро). 'mul' здесь НЕ подходит — падает на рядах с
-      нулевыми или отрицательными значениями (а мы не знаем заранее).
-    - seasonal: 'add' если seasonal_period > 1 и len(y_train) >= 2 * seasonal_period
-      (иначе statsmodels падает с «Cannot compute initial seasonals ... with
-      less than two full seasonal cycles»).
-    - damped_trend: True/False в зависимости от параметра damped
-    - initialization_method: 'estimated' (default в statsmodels 0.12+).
-      'heuristic' тоже работает, но 'estimated' стабильнее на коротких рядах.
-
-    Возвращает list[float] длины n_test.
+    ``trend`` и ``seasonal`` опциональны для backward compatibility с
+    Phase 6-P0 backtest; tuning передаёт их явно из param_space.
+    Мультипликативные варианты требуют строго положительный ряд.
     """
     from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
-    # Минимальные требования statsmodels: для сезонности нужно >= 2 полных
-    # периода наблюдений в train. Иначе falling back на trend-only модель.
+    if trend not in {"add", "mul", None}:
+        raise ValueError(f"Unsupported ETS trend: {trend!r}")
+    if seasonal not in {"add", "mul", None}:
+        raise ValueError(f"Unsupported ETS seasonal: {seasonal!r}")
+    if trend == "mul" and any(value <= 0 for value in y_train):
+        raise ValueError("multiplicative ETS trend requires strictly positive data")
+    if seasonal == "mul" and any(value <= 0 for value in y_train):
+        raise ValueError("multiplicative ETS seasonality requires strictly positive data")
+
+    # Для сезонности нужно >= 2 полных периода. Иначе trial без сезонности
+    # выполняется явно, вместо падения statsmodels.
     use_seasonal = (
-        seasonal_period > 1
+        seasonal is not None
+        and seasonal_period > 1
         and len(y_train) >= 2 * seasonal_period
     )
 
-    # pandas Series с целочисленным индексом (частота не нужна для fit).
-    # RangeIndex работает с ExponentialSmoothing: statsmodels internally
-    # не требует DatetimeIndex для Holt-Winters (в отличие от ARIMA).
     train = pd.Series(
         y_train, index=pd.RangeIndex(start=0, stop=len(y_train))
     )
 
     kwargs = dict(
-        trend="add",
+        trend=trend,
         damped_trend=damped,
-        seasonal="add" if use_seasonal else None,
+        seasonal=seasonal if use_seasonal else None,
         seasonal_periods=seasonal_period if use_seasonal else None,
         initialization_method="estimated",
     )
-    # Убираем None-значения, чтобы не путать statsmodels
     kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
     model = ExponentialSmoothing(train, **kwargs)
-    # ВАЖНО: ExponentialSmoothing.fit() НЕ принимает disp=False (это аргумент
-    # SARIMAX.fit). Holt-Winters.fit() без аргументов работает корректно.
     fitted = model.fit()
     forecast = fitted.forecast(steps=n_test)
     return list(forecast)
@@ -127,14 +124,7 @@ def run_ets_damped_backtest(
     train_ratio: float,
     seasonal_period: int,
 ) -> BacktestMetrics:
-    """ETS Damped: то же, но damped_trend=True.
-
-    Затухание тренда полезно для рядов с насыщающимся ростом (S-кривая)
-    или когда тренд не должен экстраполироваться линейно далеко вперёд.
-    На коротком тестовом окне обычно даёт MAE чуть хуже, чем обычный ETS
-    (т.к. тренд слабее extrapolируется), но на длинных горизонтах —
-    стабильно лучше.
-    """
+    """ETS Damped: то же, но damped_trend=True (затухающий тренд)."""
     return safe_backtest(
         lambda s, tr, p: _ets_backtest_impl(s, tr, p, damped=True),
         series, train_ratio, seasonal_period, "ets_damped",
