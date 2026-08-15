@@ -25,6 +25,9 @@ import { Button } from "./Button";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { RulesManagementPanel } from "./RulesManagementPanel";
+import { ValidationCheckChart, type ValidationCheckData } from "./ValidationCheckChart";
+import { useAppShell } from "../context/AppShellContext";
+import { sessionApiUrl } from "../lib/apiClient";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -36,28 +39,40 @@ interface Check {
   description: string;
 }
 
-// ── 10 критериев Data Quality (маппинг на Streamlit app.py, шаги 1-10) ──
+interface CheckMeta {
+  id: string;
+  label: string;
+  description: string;
+}
 
-const CHECKS: Check[] = [
-  { id: "data_types", label: "Типы данных", status: "warning", count: 4,
+// ── 10 критериев Data Quality (маппинг на Streamlit app.py, шаги 1-10) ──
+//
+// ТОЛЬКО label/description -- документационный текст, не данные. Реальные
+// status/count/items приходят из GET /v1/session/dataset/validate (см.
+// apps/api/routers/session.py::get_dataset_validate,
+// validation/engine.py::_run_all_checks) -- подключено 2026-08-14,
+// раньше весь массив (включая status/count) был статическим моком.
+
+const CHECK_META: CheckMeta[] = [
+  { id: "data_types", label: "Типы данных",
     description: "Несоответствие типов данных схеме (строка вместо числа, object вместо datetime) ломает парсинг и агрегации. Pandera-схема валидирует dtypes по каждому столбцу." },
-  { id: "formats", label: "Форматы и шаблоны", status: "warning", count: 3,
+  { id: "formats", label: "Форматы и шаблоны",
     description: "Значения, не прошедшие regex-проверку (email, телефон, ИНН, дата), не могут быть использованы в автоматическом пайплайне. Проверка validate_formats выявляет все нарушения по шаблонам из rules.yaml." },
-  { id: "ranges", label: "Диапазоны значений", status: "done", count: 0,
+  { id: "ranges", label: "Диапазоны значений",
     description: "Выход за допустимые min/max (отрицательная цена, дата вне горизонта, процент > 100) искажает статистику и ломает модели. validate_ranges проверяет границы из rules.yaml." },
-  { id: "consistency", label: "Логика и хронология", status: "warning", count: 7,
+  { id: "consistency", label: "Логика и хронология",
     description: "Нарушение бизнес-правил (close < open для цен, хронология дат, монотонность индекса) делает данные внутренне противоречивыми. validate_consistency проверяет логику и хронологию." },
-  { id: "uniqueness", label: "Уникальность", status: "done", count: 0,
+  { id: "uniqueness", label: "Уникальность",
     description: "Дублирующиеся строки и временные метки ломают уникальность индекса и искажают агрегации. check_uniqueness выявляет полные и частичные дубликаты." },
-  { id: "inclusion", label: "Принадлежность к набору", status: "pending", count: null,
+  { id: "inclusion", label: "Принадлежность к набору",
     description: "Значения, не входящие в допустимый справочник (код региона, категория, единица измерения), не могут быть интерпретированы. check_inclusion проверяет membership по словарям из rules.yaml." },
-  { id: "referential", label: "Ссылочная целостность", status: "pending", count: null,
-    description: "Внешние ключи, ссылающиеся на несуществующие записи в связанных таблицах, ломают JOIN-операции. validate_referential проверяет все FK-связи." },
-  { id: "text_quality", label: "Целостность текста", status: "warning", count: 12,
+  { id: "referential", label: "Ссылочная целостность",
+    description: "Внешние ключи, ссылающиеся на несуществующие записи в связанных таблицах, ломают JOIN-операции. validate_referential проверяет все FK-связи. Без явного шаблона правил всегда «pending» -- нечего проверять." },
+  { id: "text_quality", label: "Целостность текста",
     description: "Мусорные символы, некорректная кодировка, пустые строки и дубликаты пробелов искажают категориальный анализ и полнотекстовый поиск. validate_text_quality выявляет все нарушения." },
-  { id: "regularity", label: "Равномерность шага", status: "pending", count: null,
+  { id: "regularity", label: "Равномерность шага",
     description: "Нерегулярный временной шаг (пропуски дат, дублирование, сбой частоты) мешает STL-декомпозиции, ACF/PACF и моделям ARIMA/SARIMA. validate_regular_step проверяет частоту и gaps." },
-  { id: "sufficiency", label: "Достаточность наблюдений", status: "pending", count: null,
+  { id: "sufficiency", label: "Достаточность наблюдений",
     description: "Недостаточное число наблюдений для идентификации параметров модели (минимум 2×сезонный_период для SARIMA, 30+ для ADF). validate_sufficiency оценивает длину ряда и выдаёт рекомендации." },
 ];
 
@@ -109,12 +124,58 @@ const DQ_STANDARDS_HELP = `Стандарты качества данных (Dat
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisValidation() {
-  const [activeCheckId, setActiveCheckId] = useState(CHECKS[0].id);
+  const { activeDataset } = useAppShell();
+  const [activeCheckId, setActiveCheckId] = useState(CHECK_META[0].id);
   const [activeFeature, setActiveFeature] = useState(NUMERIC_FEATURES[0]);
   const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | "rules" | null>(null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
+
+  // ── Реальная валидация датасета сессии (GET /dataset/validate) ──
+  // Заменяет статический мок -- см. apps/api/routers/session.py::get_dataset_validate,
+  // validation/engine.py::_run_all_checks (подключено 2026-08-14).
+  const [checksData, setChecksData] = useState<Record<string, ValidationCheckData> | null>(null);
+  const [checksLoading, setChecksLoading] = useState(false);
+  const [datasetSummary, setDatasetSummary] = useState<{ totalRows: number; totalColumns: number } | null>(null);
+
+  useEffect(() => {
+    if (!activeDataset) {
+      setChecksData(null);
+      setDatasetSummary(null);
+      return;
+    }
+    let cancelled = false;
+    setChecksLoading(true);
+    fetch(sessionApiUrl("/dataset/validate"), { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setChecksData(data.checks);
+        setDatasetSummary({ totalRows: data.total_rows, totalColumns: data.total_columns });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setChecksData(null);
+          setDatasetSummary(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setChecksLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeDataset]);
+
+  // Реальные status/count поверх статических label/description. Пока
+  // датасет не загружен или проверка ещё не пришла -- честное "pending",
+  // не фейковый 0.
+  const CHECKS: Check[] = CHECK_META.map((meta) => ({
+    ...meta,
+    status: checksData?.[meta.id]?.status ?? "pending",
+    count: checksData?.[meta.id]?.count ?? null,
+  }));
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -135,6 +196,12 @@ export function TsAnalysisValidation() {
   }, [descriptionExpanded, handleOutsideClick]);
 
   const doneCount = CHECKS.filter((c) => c.status === "done").length;
+  // DQ Score -- доля пройденных проверок СРЕДИ ПРИМЕНИМЫХ (исключая
+  // "pending": для этого датасета нет нужной колонки/справочника --
+  // не участвует ни в числителе, ни в знаменателе, честнее, чем считать
+  // pending как "не пройдено").
+  const applicableChecks = CHECKS.filter((c) => c.status !== "pending");
+  const dqScore = applicableChecks.length > 0 ? doneCount / applicableChecks.length : null;
   const progressPct = Math.round((doneCount / CHECKS.length) * 100);
   const activeCheck = CHECKS.find((c) => c.id === activeCheckId)!;
 
@@ -356,15 +423,17 @@ export function TsAnalysisValidation() {
             Визуализация результатов проверки по активному критерию.
           </p>
 
-          <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
-            [ график для «{activeCheck.label}» ]
-          </div>
+          <ValidationCheckChart
+            checkLabel={activeCheck.label}
+            data={checksData?.[activeCheckId] ?? null}
+            loading={checksLoading}
+          />
 
           <div className="grid grid-cols-4 gap-3 mt-4">
-            <Metric label="Строк" value="200" />
-            <Metric label="Нарушений" value="26" />
-            <Metric label="DQ Score" value="0.74" />
-            <Metric label="Частота" value="D" />
+            <Metric label="Строк" value={datasetSummary ? String(datasetSummary.totalRows) : "—"} />
+            <Metric label="Нарушений" value={activeCheck.count !== null ? String(activeCheck.count) : "—"} />
+            <Metric label="DQ Score" value={dqScore !== null ? dqScore.toFixed(2) : "—"} />
+            <Metric label="Колонок" value={datasetSummary ? String(datasetSummary.totalColumns) : "—"} />
           </div>
         </div>
       </section>

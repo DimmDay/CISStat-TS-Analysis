@@ -57,6 +57,11 @@ export type { DistributionChartData, ScatterPoint, HistogramBin, KdePoint } from
 // накопленный backtestResults компонента, не новый запрос.
 export { BacktestComparisonChart } from "./components/BacktestComparisonChart";
 
+// График детализации проверки (Recharts) -- вкладка «Валидация», третье
+// подключение после «Загрузки» и «Моделирования» (2026-08-14).
+export { ValidationCheckChart } from "./components/ValidationCheckChart";
+export type { ValidationCheckData, ValidationCheckItem } from "./components/ValidationCheckChart";
+
 // ── Ниже: перенесено без изменений из origin/main (команда, "Моделирование") ──
 
 export { TsAnalysisModeling } from "./components/TsAnalysisModeling";
