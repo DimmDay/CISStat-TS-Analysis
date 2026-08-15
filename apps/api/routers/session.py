@@ -23,6 +23,7 @@ from apps.api.schemas import (
     ColumnStatsValues,
     DatasetStatsResponse,
     DatasetSummaryOut,
+    DatasetValidateResponse,
     DistributionChartResponse,
     HistogramBin,
     KdePoint,
@@ -32,7 +33,10 @@ from apps.api.schemas import (
     TargetColumnRequest,
     TargetColumnResponse,
     UploadResponse,
+    ValidationCheckItem,
+    ValidationCheckResult,
 )
+from validation.engine import auto_generate_rules, validate_dataframe
 from apps.api.session_store import (
     AnalysisSession,
     DatasetInfo,
@@ -320,6 +324,52 @@ def get_dataset_distribution(
         scatter_original_count=scatter["original_count"],
         histogram=[HistogramBin(**b) for b in build_histogram(stats_series)],
         kde=[KdePoint(**p) for p in kde_points] if (kde_points := build_kde(stats_series)) is not None else None,
+    )
+
+
+@router.get("/dataset/validate", response_model=DatasetValidateResponse)
+def get_dataset_validate(request: Request, response: Response):
+    """
+    Реальная валидация активного датасета сессии по 10 проверкам вкладки
+    «Валидация» (см. TsAnalysisValidation.tsx::CHECKS) -- ранее ВСЕ 10
+    были статическим моком (захардкоженный массив, ни одного fetch).
+
+    Правила -- auto_generate_rules(df) (validation/engine.py): диапазоны/
+    inclusion/consistency/formats выводятся из имён и значений колонок
+    без явного шаблона -- тот же принцип "без конфига", что и в Upload.
+    Явный выбор шаблона (RulesManagementPanel) -- отдельная задача,
+    пока панель не подключена к сессии (rules_source в ответе всегда
+    "auto" на этом этапе, чтобы фронт мог честно это показать).
+
+    referential ВСЕГДА "pending" при auto-правилах: auto_generate_rules
+    не умеет придумать справочник для сверки -- это не 0 нарушений,
+    а "нечего проверять" (см. validation/engine.py::_run_all_checks).
+    """
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    df = session.dataframe
+    rules = auto_generate_rules(df)
+    result = validate_dataframe(df, rules)
+
+    checks = {
+        check_id: ValidationCheckResult(
+            status=raw["status"],
+            count=raw["count"],
+            items=[ValidationCheckItem(**item) for item in raw["items"]],
+            error=raw.get("error"),
+        )
+        for check_id, raw in result["checks"].items()
+    }
+
+    return DatasetValidateResponse(
+        is_valid=result["is_valid"],
+        rules_source="auto",
+        total_rows=result["summary"]["total_rows"],
+        total_columns=result["summary"]["total_columns"],
+        checks=checks,
     )
 
 

@@ -174,6 +174,37 @@ class DistributionChartResponse(BaseModel):
     kde: Optional[List[KdePoint]] = Field(None, description="None -- KDE не определена (<2 значений или нулевая дисперсия)")
 
 
+# ── Валидация (10 проверок вкладки «Валидация», validation/engine.py::_run_all_checks) ──
+
+class ValidationCheckItem(BaseModel):
+    label: str = Field(..., description="Колонка/правило/группа, к которой относится нарушение")
+    count: int = Field(..., description="Число нарушений по этой строке детализации")
+
+
+class ValidationCheckResult(BaseModel):
+    """Один из 10 пунктов CHECKS (TsAnalysisValidation.tsx). status --
+    'done' (0 нарушений) | 'warning' (>0) | 'pending' (проверка неприменима:
+    нет нужной колонки/справочника для этого датасета -- см. StatusIcon.tsx,
+    набор значений НЕ менять без синхронизации с фронтом)."""
+    status: str = Field(..., description="'done' | 'warning' | 'pending'")
+    count: Optional[int] = Field(None, description="Суммарное число нарушений; None при status='pending'")
+    items: List[ValidationCheckItem] = Field(default_factory=list, description="Детализация для графика")
+    error: Optional[str] = Field(None, description="Текст исключения, если sub-check упал (см. _safe в engine.py)")
+
+
+class DatasetValidateResponse(BaseModel):
+    """Ответ GET /dataset/validate -- реальная валидация session.dataframe
+    по всем 10 проверкам. rules_source сообщает фронту, откуда взяты
+    правила: 'auto' (auto_generate_rules по именам колонок, без явного
+    шаблона) -- до появления UI выбора шаблона (см. RulesManagementPanel,
+    пока не подключена к сессии)."""
+    is_valid: bool
+    rules_source: str = Field("auto", description="'auto' -- rules сгенерированы автоматически по колонкам")
+    total_rows: int
+    total_columns: int
+    checks: Dict[str, ValidationCheckResult]
+
+
 class DatasetSummaryOut(BaseModel):
     """Сводка по активному датасету сессии -- для Home page ("Рабочий стол")."""
     dataset_id: str

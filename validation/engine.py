@@ -17,7 +17,20 @@ import re
 import warnings
 import os
 
+from validation.uniqueness import check_uniqueness
+from validation.inclusion import check_inclusion
+
 warnings.filterwarnings("ignore", category=UserWarning)
+
+# ── Валидация вкладки «Валидация» (10 проверок из TsAnalysisValidation.tsx)
+# ── Синхронизация с тимлидом 2026-08-14: validate_dataframe расширена,
+# ── чтобы сама вызывать все 9 sub-check функций (formats/ranges/consistency/
+# ── uniqueness/inclusion/referential/text_quality/regularity/sufficiency) +
+# ── pandera-схему (data_types) -- вместо ранее НЕподключенного состояния,
+# ── где эти функции существовали, но /rules/validate их не вызывал.
+#
+# CheckStatus ("done"|"warning"|"pending") -- см. packages/ui/components/
+# StatusIcon.tsx, НЕ менять набор значений без синхронизации с фронтом.
 
 
 def load_rules(config_path: str = "rules/default_rules.yaml") -> dict:
@@ -137,6 +150,143 @@ def build_pandera_schema(rules: dict) -> DataFrameSchema:
     )
 
 
+def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict) -> dict:
+    """Запускает все 9 sub-check функций + агрегирует pandera schema_errors
+    (data_types) в единый словарь {check_id: {status, count, items}},
+    ключи check_id -- те же 10 id, что в CHECKS (TsAnalysisValidation.tsx):
+    data_types, formats, ranges, consistency, uniqueness, inclusion,
+    referential, text_quality, regularity, sufficiency.
+
+    status: "done" (0 нарушений) | "warning" (>0 нарушений) |
+            "pending" (проверка неприменима -- нет данных для неё:
+            например referential без справочника или нет date-колонки).
+    items: [{label, count}] -- для графика детализации на фронте
+    (BacktestComparisonChart -- прецедент того же паттерна в Моделировании).
+
+    Не бросает исключений наружу -- одна упавшая sub-check-функция не
+    должна ронять всю страницу «Валидация» (try/except на каждую,
+    статус "pending" + count=None при ошибке, ошибка не проглатывается
+    молча -- пишется в 'error' поле для отладки).
+    """
+    checks: dict = {}
+
+    def _status(count: int | None) -> str:
+        if count is None:
+            return "pending"
+        return "done" if count == 0 else "warning"
+
+    def _safe(check_id: str, fn):
+        try:
+            checks[check_id] = fn()
+        except Exception as ex:  # noqa: BLE001 -- см. докстринг: изоляция сбоя одной проверки
+            checks[check_id] = {"status": "pending", "count": None, "items": [], "error": str(ex)}
+
+    # ── data_types (pandera-схема, уже посчитана выше в validate_dataframe) ──
+    def _data_types():
+        count = sum(schema_errors.values()) if schema_errors else 0
+        items = [{"label": str(k), "count": int(v)} for k, v in schema_errors.items()]
+        return {"status": _status(count), "count": count, "items": items}
+    _safe("data_types", _data_types)
+
+    # ── formats ──
+    def _formats():
+        raw = validate_formats(df, rules)
+        items = [{"label": r["Колонка"], "count": r["Нарушений"]} for r in raw if r["Нарушений"] > 0]
+        count = sum(i["count"] for i in items) if raw else None
+        return {"status": _status(count), "count": count, "items": items}
+    _safe("formats", _formats)
+
+    # ── ranges ──
+    def _ranges():
+        raw, _masks, _bounds = validate_ranges(df, rules)
+        items = [{"label": r["Колонка"], "count": r["Нарушений"]} for r in raw]
+        count = sum(i["count"] for i in items)
+        return {"status": _status(count), "count": count, "items": items}
+    _safe("ranges", _ranges)
+
+    # ── consistency ──
+    def _consistency():
+        raw = validate_consistency(df, rules)
+        items = [{"label": r["Правило"], "count": r.get("Нарушений", 0)} for r in raw if "Нарушений" in r]
+        count = sum(i["count"] for i in items) if items else None
+        return {"status": _status(count), "count": count, "items": items}
+    _safe("consistency", _consistency)
+
+    # ── uniqueness ──
+    def _uniqueness():
+        date_col = None
+        for c in df.columns:
+            if any(kw in c.lower() for kw in ["date", "дата", "year", "год"]):
+                date_col = c
+                break
+        raw = check_uniqueness(df, date_col=date_col)
+        count = raw["duplicate_count"]
+        items = [{"label": "Дублирующиеся строки", "count": count}] if count > 0 else []
+        return {"status": _status(count), "count": count, "items": items}
+    _safe("uniqueness", _uniqueness)
+
+    # ── inclusion ──
+    def _inclusion():
+        inclusion_rules = rules.get("inclusion", {})
+        if not inclusion_rules:
+            return {"status": "pending", "count": None, "items": []}
+        raw, _masks = check_inclusion(df, inclusion_rules)
+        items = [{"label": r["Колонка"], "count": r["Нарушений"]} for r in raw]
+        count = sum(i["count"] for i in items)
+        return {"status": _status(count), "count": count, "items": items}
+    _safe("inclusion", _inclusion)
+
+    # ── referential (auto_generate_rules НЕ умеет генерировать FK-справочники
+    # -- без явного шаблона правил всегда "pending", это ЧЕСТНО отражает
+    # реальность: у нас нет родительской таблицы для сверки) ──
+    def _referential():
+        ref_rules = rules.get("referential", [])
+        if not ref_rules:
+            return {"status": "pending", "count": None, "items": []}
+        raw, _masks = validate_referential(df, rules)
+        items = [{"label": r["Колонка"], "count": r["Нарушений"]} for r in raw]
+        count = sum(i["count"] for i in items)
+        return {"status": _status(count), "count": count, "items": items}
+    _safe("referential", _referential)
+
+    # ── text_quality ──
+    def _text_quality():
+        raw, _masks = validate_text_quality(df, rules)
+        items = [{"label": r["Колонка"], "count": r["Нарушений"]} for r in raw]
+        count = sum(i["count"] for i in items)
+        return {"status": _status(count), "count": count, "items": items}
+    _safe("text_quality", _text_quality)
+
+    # ── regularity ──
+    def _regularity():
+        raw, _masks, _freq_info, sort_info = validate_regular_step(df, rules)
+        if sort_info.get("date_col") is None:
+            return {"status": "pending", "count": None, "items": []}
+        if not sort_info.get("is_sorted", True):
+            n = sort_info.get("sort_violations", 0)
+            return {
+                "status": _status(n),
+                "count": n,
+                "items": [{"label": "Нарушение хронологии", "count": n}],
+            }
+        items = [{"label": r.get("Группа", "?"), "count": r.get("Пропусков", 0)} for r in raw]
+        count = sum(i["count"] for i in items)
+        return {"status": _status(count), "count": count, "items": items}
+    _safe("regularity", _regularity)
+
+    # ── sufficiency ──
+    def _sufficiency():
+        raw, _recs = validate_sufficiency(df, rules)
+        if raw and raw[0].get("Тип") == "Нет временной колонки":
+            return {"status": "pending", "count": None, "items": []}
+        items = [{"label": r.get("Группа", "?"), "count": r.get("Нарушений", 0)} for r in raw]
+        count = sum(i["count"] for i in items)
+        return {"status": _status(count), "count": count, "items": items}
+    _safe("sufficiency", _sufficiency)
+
+    return checks
+
+
 def validate_dataframe(df: pd.DataFrame, rules: dict) -> dict:
     """
     Запускает полную валидацию датасета.
@@ -155,7 +305,8 @@ def validate_dataframe(df: pd.DataFrame, rules: dict) -> dict:
         "warnings": [],
         "schema_errors": {},
         "validated_df": df.copy(),
-        "summary": {}
+        "summary": {},
+        "checks": {},
     }
 
     if df.empty:
@@ -234,6 +385,12 @@ def validate_dataframe(df: pd.DataFrame, rules: dict) -> dict:
         "schema_error_types": result["schema_errors"],
         "validation_timestamp": datetime.now().isoformat()
     }
+
+    # 4. Пер-чек агрегация для вкладки «Валидация» (10 карточек слева,
+    # см. _run_all_checks) -- добавлено 2026-08-14, аддитивно к уже
+    # существующему контракту result (errors/warnings/summary не менялись,
+    # /rules/validate в public.py/internal.py их не читают и не сломаются).
+    result["checks"] = _run_all_checks(df, rules, result["schema_errors"])
 
     return result
 
@@ -575,7 +732,15 @@ def validate_text_quality(df, rules):
         except Exception:
             garbage_mask = pd.Series(False, index=df.index)
 
-        unicode_artifacts = ['', '\ufffd', '\ufeff', 'ï¿½']
+        # БАГ (найден 2026-08-14 при первом реальном подключении этой
+        # функции к API -- до этого validate_text_quality нигде не
+        # вызывалась продакшен-кодом кроме app.py, поэтому не проявлялась):
+        # unicode_artifacts содержал '' (пустую строку) первым элементом.
+        # str.contains('', regex=False) истинно для ЛЮБОЙ строки (пустая
+        # подстрока входит в любую строку) -- каждая текстовая колонка
+        # целиком помечалась как "мусор". Реальные мусорные маркеры --
+        # только replacement character/BOM/mojibake-последовательность.
+        unicode_artifacts = ['\ufffd', '\ufeff', 'ï¿½']
         for artifact in unicode_artifacts:
             try:
                 garbage_mask |= df[col].astype(str).str.contains(artifact, na=False, regex=False)
@@ -774,11 +939,26 @@ def validate_sufficiency(df, rules, date_col=None, group_col=None, num_col=None)
         if pd.api.types.is_datetime64_any_dtype(group_df[date_col]):
             n_years = (group_df[date_col].max() - group_df[date_col].min()).days / 365.25
         else:
-            try:
+            # БАГ (найдено 2026-08-14, первое реальное подключение к API):
+            # date_col часто хранится как ISO-строка ("2020-01-01"), ещё
+            # не приведённая к datetime64 (валидация вызывается ДО стадии
+            # «Предобработка»). Старый код сразу пытался pd.to_numeric --
+            # на ISO-строке это молча даёт NaN для ВСЕХ значений (не
+            # исключение), затем years.max()-years.min() на пустой Series
+            # тоже молча даёт NaN (не исключение) -- except ниже никогда
+            # не срабатывал, и NaN долетал до int(n_years) => ValueError,
+            # роняя всю проверку "sufficiency" (перехватывалось _safe() в
+            # _run_all_checks, но пользователь просто не видел результат).
+            # Фикс: сначала пробуем как дату, потом как голый год.
+            parsed_dates = pd.to_datetime(group_df[date_col], errors='coerce').dropna()
+            if len(parsed_dates) >= 2:
+                n_years = (parsed_dates.max() - parsed_dates.min()).days / 365.25
+            else:
                 years = pd.to_numeric(group_df[date_col], errors='coerce').dropna()
-                n_years = years.max() - years.min()
-            except:
-                n_years = n_total / periods_per_year if periods_per_year > 0 else 0
+                if len(years) >= 2:
+                    n_years = float(years.max() - years.min())
+                else:
+                    n_years = n_total / periods_per_year if periods_per_year > 0 else 0
 
         n_seasons = int(n_years) if periods_per_year == 1 else int(n_years)
 
