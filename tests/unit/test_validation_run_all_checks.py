@@ -53,7 +53,7 @@ def test_pending_checks_have_none_count_and_empty_items():
     (у нас физически нет справочника для сверки, это не 0 нарушений)."""
     df = pd.DataFrame({"value": [1, 2, 3]})
     result = validate_dataframe(df, {})
-    assert result["checks"]["referential"] == {"status": "pending", "count": None, "items": []}
+    assert result["checks"]["referential"] == {"status": "pending", "count": None, "items": [], "scope": "column"}
 
 
 def test_ranges_violation_detected_via_auto_generated_rules():
@@ -80,7 +80,7 @@ def test_uniqueness_detects_full_row_duplicates():
 def test_regularity_pending_without_date_column():
     df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
     result = validate_dataframe(df, {})
-    assert result["checks"]["regularity"] == {"status": "pending", "count": None, "items": []}
+    assert result["checks"]["regularity"] == {"status": "pending", "count": None, "items": [], "scope": "dataset"}
 
 
 def test_regularity_detects_gap():
@@ -96,7 +96,7 @@ def test_regularity_detects_gap():
 def test_sufficiency_pending_without_date_column():
     df = pd.DataFrame({"a": [1, 2, 3]})
     result = validate_dataframe(df, {})
-    assert result["checks"]["sufficiency"] == {"status": "pending", "count": None, "items": []}
+    assert result["checks"]["sufficiency"] == {"status": "pending", "count": None, "items": [], "scope": "column"}
 
 
 def test_data_types_reflects_schema_errors_count():
@@ -151,3 +151,102 @@ class TestSufficiencyIsoDateStringRegression:
         assert suff.get("error") is None, f"sufficiency упала: {suff.get('error')}"
         assert suff["status"] == "warning"  # 10 наблюдений на группу < всех порогов
         assert suff["count"] == 10  # 2 группы (RU, US) × 5 непройденных порогов каждая
+
+
+class TestPerColumnScoping:
+    """target_column (2026-08-14) -- часть проверок скоупится до одной
+    колонки, часть принципиально остаётся dataset-wide (см. докстринг
+    _run_all_checks). scope в ответе честно показывает, что есть что."""
+
+    def test_ranges_scoped_to_target_column_only(self):
+        df = pd.DataFrame({
+            "price": [10.0, 20.0, -999.0, 30.0],  # 1 нарушение
+            "score": [1000.0, 2000.0, -50000.0, 1500.0],  # тоже нарушение, но НЕ target
+        })
+        rules = auto_generate_rules(df)
+        result = validate_dataframe(df, rules, target_column="price")
+        ranges = result["checks"]["ranges"]
+        assert ranges["scope"] == "column"
+        assert ranges["items"] == [{"label": "price", "count": 1}]  # НЕ score
+
+    def test_ranges_without_target_column_shows_all_columns(self):
+        """Без target_column поведение НЕ меняется -- backward compatible
+        (public.py/internal.py вызывают validate_dataframe(df, rules) без
+        target_column, дефолт None).
+
+        Обе колонки содержат 'price' в имени -- auto_generate_rules даёт
+        каждой СВОЁ домен-правило (min=0, см. auto_generate_rules), у
+        generic (не price/year) колонок авто-диапазон вычисляется ИЗ
+        min/max самой колонки и поэтому математически не может быть
+        нарушен -- для честного теста с двумя нарушениями нужны именно
+        price-подобные имена."""
+        df = pd.DataFrame({
+            "price": [10.0, 20.0, -999.0, 30.0],
+            "avg_price": [100.0, 200.0, -500.0, 150.0],
+        })
+        rules = auto_generate_rules(df)
+        result = validate_dataframe(df, rules)  # target_column не передан
+        ranges = result["checks"]["ranges"]
+        labels = {i["label"] for i in ranges["items"]}
+        assert labels == {"price", "avg_price"}
+
+    def test_ranges_pending_when_target_column_has_no_rule_violations_but_other_does(self):
+        """target_column='price' задан, но у price нет нарушений (только
+        у 'other') -- pending с count=None, а не 0 (0 означало бы 'проверено,
+        нарушений нет', а не 'к этой колонке правило вообще не привязано')."""
+        df = pd.DataFrame({
+            "price": [10.0, 20.0, 30.0],  # без нарушений
+            "other": [1000.0, 2000.0, -99999.0],  # нарушение, но не в target
+        })
+        rules = auto_generate_rules(df)
+        result = validate_dataframe(df, rules, target_column="price")
+        ranges = result["checks"]["ranges"]
+        assert ranges["scope"] == "column"
+        # price прошёл (0 нарушений) -- validate_ranges всё равно вернёт
+        # запись для price с Нарушений=0, значит статус "done", не "pending"
+        assert ranges["status"] == "done"
+        assert ranges["count"] == 0
+
+    def test_sufficiency_scoped_via_num_col_directly(self):
+        df = pd.DataFrame({
+            "date": pd.date_range("2020-01-01", periods=10, freq="D").astype(str),
+            "price": range(10),
+            "volume": range(10, 20),
+        })
+        result_price = validate_dataframe(df, {}, target_column="price")
+        result_volume = validate_dataframe(df, {}, target_column="volume")
+        # Разные target_column могут дать разные Группа-детали (validate_sufficiency
+        # использует num_col для отчёта) -- главное, что оба реально приняты,
+        # без ошибок, и scope="column".
+        assert result_price["checks"]["sufficiency"]["scope"] == "column"
+        assert result_volume["checks"]["sufficiency"]["scope"] == "column"
+        assert result_price["checks"]["sufficiency"].get("error") is None
+        assert result_volume["checks"]["sufficiency"].get("error") is None
+
+    def test_consistency_uniqueness_regularity_ignore_target_column(self):
+        """Эти 3 проверки принципиально dataset-wide -- target_column не
+        должен менять их результат (межколоночные правила / дубли строк /
+        ось времени -- см. докстринг _run_all_checks)."""
+        df = pd.DataFrame({
+            "date": pd.date_range("2020-01-01", periods=10, freq="D").astype(str),
+            "price": range(10),
+            "volume": range(10, 20),
+        })
+        result_none = validate_dataframe(df, {}, target_column=None)
+        result_price = validate_dataframe(df, {}, target_column="price")
+        for check_id in ("consistency", "uniqueness", "regularity"):
+            assert result_none["checks"][check_id]["scope"] == "dataset"
+            assert result_price["checks"][check_id]["scope"] == "dataset"
+            assert result_none["checks"][check_id]["count"] == result_price["checks"][check_id]["count"]
+
+    def test_text_quality_scoped_to_numeric_target_is_pending(self):
+        """target_column всегда числовой (контракт Phase 0.5) --
+        validate_text_quality работает только с текстовыми колонками,
+        поэтому для числового target честный результат -- pending, не
+        ошибка и не 0 (0 подразумевало бы, что проверка была применена)."""
+        df = pd.DataFrame({"price": [1.0, 2.0, 3.0], "label": ["clean", "text", "here"]})
+        result = validate_dataframe(df, {}, target_column="price")
+        tq = result["checks"]["text_quality"]
+        assert tq["scope"] == "column"
+        assert tq["status"] == "pending"
+        assert tq["count"] is None

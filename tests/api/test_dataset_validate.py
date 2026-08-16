@@ -93,7 +93,7 @@ def test_referential_is_always_pending_without_explicit_template():
     resp = client.get("/v1/session/dataset/validate")
     body = resp.json()
     assert body["checks"]["referential"] == {
-        "status": "pending", "count": None, "items": [], "error": None
+        "status": "pending", "count": None, "items": [], "scope": "column", "error": None
     }
 
 
@@ -130,3 +130,46 @@ def test_no_check_returns_500_on_realistic_dirty_dataset():
     body = resp.json()
     for check_id, check in body["checks"].items():
         assert check.get("error") is None, f"{check_id} упала: {check.get('error')}"
+
+
+# ── column query-параметр (2026-08-14, единый "исследуемый признак") ──
+
+def test_column_param_scopes_ranges_to_that_column_only():
+    df = pd.DataFrame({
+        "price": [10.0, 20.0, -999.0, 30.0],
+        "avg_price": [100.0, 200.0, -500.0, 150.0],
+    })
+    _upload_df(df)
+    resp = client.get("/v1/session/dataset/validate", params={"column": "price"})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["column"] == "price"
+    ranges = body["checks"]["ranges"]
+    assert ranges["scope"] == "column"
+    assert ranges["items"] == [{"label": "price", "count": 1}]  # НЕ avg_price
+
+
+def test_column_param_missing_column_returns_404():
+    df = pd.DataFrame({"price": [10.0, 20.0], "label": ["a", "b"]})
+    _upload_df(df)
+    resp = client.get("/v1/session/dataset/validate", params={"column": "does_not_exist"})
+    assert resp.status_code == 404
+
+
+def test_without_column_param_response_column_is_null():
+    df = pd.DataFrame({"price": [10.0, 20.0], "label": ["a", "b"]})
+    _upload_df(df)
+    resp = client.get("/v1/session/dataset/validate")
+    assert resp.json()["column"] is None
+
+
+def test_dataset_wide_checks_report_scope_dataset_regardless_of_column_param():
+    df = pd.DataFrame({
+        "date": pd.date_range("2020-01-01", periods=10, freq="D").astype(str),
+        "price": range(10),
+    })
+    _upload_df(df)
+    resp = client.get("/v1/session/dataset/validate", params={"column": "price"})
+    body = resp.json()
+    for check_id in ("data_types", "consistency", "uniqueness", "regularity"):
+        assert body["checks"][check_id]["scope"] == "dataset", check_id

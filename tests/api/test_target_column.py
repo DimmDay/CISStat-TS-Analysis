@@ -271,3 +271,73 @@ class TestTargetColumnCookiePersistence:
 
         resp3 = client.get("/v1/session/current")
         assert resp3.json()["target_column"] == "value"
+
+
+# ────────────────────────────────────────────────────────────────────
+# suggested_column (2026-08-14) -- эвристический дефолт "первая числовая,
+# исключая date/year-похожие имена", единый источник для всех фронтендов
+# (Загрузка/Валидация), а не независимая логика в каждом компоненте.
+# ────────────────────────────────────────────────────────────────────
+
+
+class TestSuggestedColumnHeuristic:
+    def test_suggests_price_not_year_for_fao_style_dataset(self):
+        """Ровно кейс, из-за которого завели эту эвристику: колонки
+        Country/Year/Price -- наивная 'первая числовая' выбрала бы Year."""
+        df = pd.DataFrame({
+            "Country": ["RU", "US", "DE"],
+            "Year": [2020, 2021, 2022],
+            "Price": [65.9, 30.7, 85.3],
+        })
+        buf = io.BytesIO()
+        df.to_csv(buf, index=False)
+        buf.seek(0)
+        client.post("/v1/internal/upload", files={"file": ("data.csv", buf, "text/csv")})
+
+        resp = client.get("/v1/session/target-column")
+        assert resp.status_code == 200
+        assert resp.json()["suggested_column"] == "Price"
+
+    def test_suggested_column_does_not_mutate_actual_target_column(self):
+        """suggested_column -- подсказка для UI, не побочный эффект.
+        target_column остаётся None, пока фронт явно не POST-нет выбор."""
+        df = pd.DataFrame({"Year": [2020, 2021], "Price": [10.0, 20.0]})
+        buf = io.BytesIO()
+        df.to_csv(buf, index=False)
+        buf.seek(0)
+        client.post("/v1/internal/upload", files={"file": ("data.csv", buf, "text/csv")})
+
+        resp = client.get("/v1/session/target-column")
+        body = resp.json()
+        assert body["suggested_column"] == "Price"
+        assert body["target_column"] is None  # НЕ выбран автоматически на бэкенде
+
+    def test_suggested_column_null_when_no_dataset(self):
+        resp = client.get("/v1/session/target-column")
+        assert resp.json()["suggested_column"] is None
+
+    def test_suggested_column_falls_back_to_first_when_all_columns_date_like(self):
+        """Редкий случай: ВСЕ числовые колонки похожи на дату/год --
+        честно возвращаем первую как есть, а не None."""
+        df = pd.DataFrame({"Year": [2020, 2021], "Period": [1, 2], "label": ["a", "b"]})
+        buf = io.BytesIO()
+        df.to_csv(buf, index=False)
+        buf.seek(0)
+        client.post("/v1/internal/upload", files={"file": ("data.csv", buf, "text/csv")})
+
+        resp = client.get("/v1/session/target-column")
+        assert resp.json()["suggested_column"] == "Year"
+
+    def test_suggested_column_present_in_post_response_too(self):
+        df = pd.DataFrame({"Year": [2020, 2021], "Price": [10.0, 20.0]})
+        buf = io.BytesIO()
+        df.to_csv(buf, index=False)
+        buf.seek(0)
+        client.post("/v1/internal/upload", files={"file": ("data.csv", buf, "text/csv")})
+
+        resp = client.post("/v1/session/target-column", json={"column": "Year"})
+        # Пользователь ЯВНО выбрал Year (нетипично, но валидно) -- suggested_column
+        # всё равно честно показывает Price как рекомендацию, не подстраивается
+        # под фактический выбор.
+        assert resp.json()["target_column"] == "Year"
+        assert resp.json()["suggested_column"] == "Price"

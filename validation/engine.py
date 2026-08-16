@@ -150,9 +150,9 @@ def build_pandera_schema(rules: dict) -> DataFrameSchema:
     )
 
 
-def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict) -> dict:
+def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict, target_column: str | None = None) -> dict:
     """Запускает все 9 sub-check функций + агрегирует pandera schema_errors
-    (data_types) в единый словарь {check_id: {status, count, items}},
+    (data_types) в единый словарь {check_id: {status, count, items, scope}},
     ключи check_id -- те же 10 id, что в CHECKS (TsAnalysisValidation.tsx):
     data_types, formats, ranges, consistency, uniqueness, inclusion,
     referential, text_quality, regularity, sufficiency.
@@ -162,6 +162,22 @@ def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict) -> dict:
             например referential без справочника или нет date-колонки).
     items: [{label, count}] -- для графика детализации на фронте
     (BacktestComparisonChart -- прецедент того же паттерна в Моделировании).
+
+    target_column (2026-08-14, per-column скоуп): если задан, часть
+    проверок фильтруется до ЭТОЙ колонки -- ranges/formats/inclusion/
+    referential/text_quality (per-column по своей природе, items уже
+    имеют label=имя колонки) и sufficiency (validate_sufficiency
+    принимает num_col напрямую). Остальные (data_types, consistency,
+    uniqueness, regularity) ПРИНЦИПИАЛЬНО не скоупятся до одной колонки
+    -- это либо строковый уровень (дубли строк), либо межколоночные
+    правила (close>=open), либо ось времени (не значение), либо schema
+    errors без надёжной привязки к одной колонке -- остаются
+    dataset-wide вне зависимости от target_column, что отражено в
+    scope="dataset" (честно показать на фронте, а не молча не менять
+    поведение при выборе колонки).
+
+    scope в ответе: "column" -- проверка учитывает target_column (если
+    он задан), "dataset" -- всегда весь датасет, target_column не влияет.
 
     Не бросает исключений наружу -- одна упавшая sub-check-функция не
     должна ронять всю страницу «Валидация» (try/except на каждую,
@@ -179,40 +195,62 @@ def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict) -> dict:
         try:
             checks[check_id] = fn()
         except Exception as ex:  # noqa: BLE001 -- см. докстринг: изоляция сбоя одной проверки
-            checks[check_id] = {"status": "pending", "count": None, "items": [], "error": str(ex)}
+            checks[check_id] = {"status": "pending", "count": None, "items": [], "scope": "dataset", "error": str(ex)}
 
-    # ── data_types (pandera-схема, уже посчитана выше в validate_dataframe) ──
+    # ── data_types (pandera-схема) -- dataset-wide, см. докстринг ──
     def _data_types():
         count = sum(schema_errors.values()) if schema_errors else 0
         items = [{"label": str(k), "count": int(v)} for k, v in schema_errors.items()]
-        return {"status": _status(count), "count": count, "items": items}
+        return {"status": _status(count), "count": count, "items": items, "scope": "dataset"}
     _safe("data_types", _data_types)
 
-    # ── formats ──
+    # ── formats (per-column) ──
     def _formats():
-        raw = validate_formats(df, rules)
+        raw = validate_formats(df, rules)  # validate_formats эмитит запись
+        # ДАЖЕ для колонок без нарушений (Нарушений=0) -- в отличие от
+        # ranges/inclusion/referential/text_quality (см. докстринг модуля).
+        # Поэтому raw как есть -- надёжный сигнал применимости "правило
+        # matched эту колонку", даже с 0 нарушений.
+        if target_column is not None:
+            matched = next((r for r in raw if r["Колонка"] == target_column), None)
+            if matched is None:
+                return {"status": "pending", "count": None, "items": [], "scope": "column"}
+            count = matched["Нарушений"]
+            items = [{"label": target_column, "count": count}] if count > 0 else []
+            return {"status": _status(count), "count": count, "items": items, "scope": "column"}
         items = [{"label": r["Колонка"], "count": r["Нарушений"]} for r in raw if r["Нарушений"] > 0]
         count = sum(i["count"] for i in items) if raw else None
-        return {"status": _status(count), "count": count, "items": items}
+        return {"status": _status(count), "count": count, "items": items, "scope": "column"}
     _safe("formats", _formats)
 
-    # ── ranges ──
+    # ── ranges (per-column) ──
     def _ranges():
-        raw, _masks, _bounds = validate_ranges(df, rules)
+        raw, _masks, bounds = validate_ranges(df, rules)
+        # bounds (не raw!) -- надёжный сигнал применимости: validate_ranges
+        # заполняет rule_bounds[col] для КАЖДОЙ matched колонки, но
+        # добавляет запись в raw ТОЛЬКО если есть нарушения (см. докстринг
+        # модуля) -- по одному raw нельзя отличить "правило есть, 0
+        # нарушений" от "правила нет вообще".
+        if target_column is not None:
+            if target_column not in bounds:
+                return {"status": "pending", "count": None, "items": [], "scope": "column"}
+            count = sum(r["Нарушений"] for r in raw if r["Колонка"] == target_column)
+            items = [{"label": target_column, "count": count}] if count > 0 else []
+            return {"status": _status(count), "count": count, "items": items, "scope": "column"}
         items = [{"label": r["Колонка"], "count": r["Нарушений"]} for r in raw]
         count = sum(i["count"] for i in items)
-        return {"status": _status(count), "count": count, "items": items}
+        return {"status": _status(count), "count": count, "items": items, "scope": "column"}
     _safe("ranges", _ranges)
 
-    # ── consistency ──
+    # ── consistency (межколоночные правила) -- dataset-wide, см. докстринг ──
     def _consistency():
         raw = validate_consistency(df, rules)
         items = [{"label": r["Правило"], "count": r.get("Нарушений", 0)} for r in raw if "Нарушений" in r]
         count = sum(i["count"] for i in items) if items else None
-        return {"status": _status(count), "count": count, "items": items}
+        return {"status": _status(count), "count": count, "items": items, "scope": "dataset"}
     _safe("consistency", _consistency)
 
-    # ── uniqueness ──
+    # ── uniqueness (строковый уровень) -- dataset-wide, см. докстринг ──
     def _uniqueness():
         date_col = None
         for c in df.columns:
@@ -222,72 +260,104 @@ def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict) -> dict:
         raw = check_uniqueness(df, date_col=date_col)
         count = raw["duplicate_count"]
         items = [{"label": "Дублирующиеся строки", "count": count}] if count > 0 else []
-        return {"status": _status(count), "count": count, "items": items}
+        return {"status": _status(count), "count": count, "items": items, "scope": "dataset"}
     _safe("uniqueness", _uniqueness)
 
-    # ── inclusion ──
+    # ── inclusion (per-column) ──
     def _inclusion():
         inclusion_rules = rules.get("inclusion", {})
-        if not inclusion_rules:
-            return {"status": "pending", "count": None, "items": []}
+        if not inclusion_rules or (target_column is not None and target_column not in inclusion_rules):
+            return {"status": "pending", "count": None, "items": [], "scope": "column"}
         raw, _masks = check_inclusion(df, inclusion_rules)
+        # check_inclusion (в отличие от validate_formats) НЕ эмитит запись
+        # для колонки без нарушений -- применимость уже подтверждена выше
+        # (target_column in inclusion_rules), поэтому отсутствие записи в
+        # raw здесь значит "0 нарушений", а не "pending".
+        if target_column is not None:
+            count = sum(r["Нарушений"] for r in raw if r["Колонка"] == target_column)
+            items = [{"label": target_column, "count": count}] if count > 0 else []
+            return {"status": _status(count), "count": count, "items": items, "scope": "column"}
         items = [{"label": r["Колонка"], "count": r["Нарушений"]} for r in raw]
         count = sum(i["count"] for i in items)
-        return {"status": _status(count), "count": count, "items": items}
+        return {"status": _status(count), "count": count, "items": items, "scope": "column"}
     _safe("inclusion", _inclusion)
 
-    # ── referential (auto_generate_rules НЕ умеет генерировать FK-справочники
-    # -- без явного шаблона правил всегда "pending", это ЧЕСТНО отражает
-    # реальность: у нас нет родительской таблицы для сверки) ──
+    # ── referential (per-column, auto_generate_rules НЕ умеет генерировать
+    # FK-справочники -- без явного шаблона правил всегда "pending", это
+    # ЧЕСТНО отражает реальность: у нас нет родительской таблицы для сверки) ──
     def _referential():
         ref_rules = rules.get("referential", [])
         if not ref_rules:
-            return {"status": "pending", "count": None, "items": []}
+            return {"status": "pending", "count": None, "items": [], "scope": "column"}
+        ref_columns = {r.get("column") for r in ref_rules}
+        if target_column is not None and target_column not in ref_columns:
+            return {"status": "pending", "count": None, "items": [], "scope": "column"}
         raw, _masks = validate_referential(df, rules)
+        # Та же асимметрия, что и в inclusion -- отсутствие записи при
+        # подтверждённой применимости значит 0 нарушений, не pending.
+        if target_column is not None:
+            count = sum(r["Нарушений"] for r in raw if r["Колонка"] == target_column)
+            items = [{"label": target_column, "count": count}] if count > 0 else []
+            return {"status": _status(count), "count": count, "items": items, "scope": "column"}
         items = [{"label": r["Колонка"], "count": r["Нарушений"]} for r in raw]
         count = sum(i["count"] for i in items)
-        return {"status": _status(count), "count": count, "items": items}
+        return {"status": _status(count), "count": count, "items": items, "scope": "column"}
     _safe("referential", _referential)
 
-    # ── text_quality ──
+    # ── text_quality (per-column, только текстовые колонки -- target_column
+    # по контракту Phase 0.5 всегда числовой, поэтому со скоупом почти
+    # всегда честно "pending", это ожидаемо, не баг) ──
     def _text_quality():
+        if target_column is not None and target_column not in df.select_dtypes(include=["object", "string"]).columns:
+            # validate_text_quality сканирует только текстовые колонки --
+            # применимость определяем по dtype НАПРЯМУЮ, а не по наличию
+            # записи в raw (validate_text_quality тоже не эмитит запись
+            # для чистой колонки -- по raw нельзя отличить "не текстовая"
+            # от "текстовая, но без мусора").
+            return {"status": "pending", "count": None, "items": [], "scope": "column"}
         raw, _masks = validate_text_quality(df, rules)
+        if target_column is not None:
+            count = sum(r["Нарушений"] for r in raw if r["Колонка"] == target_column)
+            items = [{"label": target_column, "count": count}] if count > 0 else []
+            return {"status": _status(count), "count": count, "items": items, "scope": "column"}
         items = [{"label": r["Колонка"], "count": r["Нарушений"]} for r in raw]
         count = sum(i["count"] for i in items)
-        return {"status": _status(count), "count": count, "items": items}
+        return {"status": _status(count), "count": count, "items": items, "scope": "column"}
     _safe("text_quality", _text_quality)
 
-    # ── regularity ──
+    # ── regularity (ось времени, не значение) -- dataset-wide, см. докстринг ──
     def _regularity():
         raw, _masks, _freq_info, sort_info = validate_regular_step(df, rules)
         if sort_info.get("date_col") is None:
-            return {"status": "pending", "count": None, "items": []}
+            return {"status": "pending", "count": None, "items": [], "scope": "dataset"}
         if not sort_info.get("is_sorted", True):
             n = sort_info.get("sort_violations", 0)
             return {
                 "status": _status(n),
                 "count": n,
                 "items": [{"label": "Нарушение хронологии", "count": n}],
+                "scope": "dataset",
             }
         items = [{"label": r.get("Группа", "?"), "count": r.get("Пропусков", 0)} for r in raw]
         count = sum(i["count"] for i in items)
-        return {"status": _status(count), "count": count, "items": items}
+        return {"status": _status(count), "count": count, "items": items, "scope": "dataset"}
     _safe("regularity", _regularity)
 
-    # ── sufficiency ──
+    # ── sufficiency (per-column -- validate_sufficiency принимает num_col
+    # НАПРЯМУЮ, самый прямой случай скоупинга из всех 10) ──
     def _sufficiency():
-        raw, _recs = validate_sufficiency(df, rules)
+        raw, _recs = validate_sufficiency(df, rules, num_col=target_column)
         if raw and raw[0].get("Тип") == "Нет временной колонки":
-            return {"status": "pending", "count": None, "items": []}
+            return {"status": "pending", "count": None, "items": [], "scope": "column"}
         items = [{"label": r.get("Группа", "?"), "count": r.get("Нарушений", 0)} for r in raw]
         count = sum(i["count"] for i in items)
-        return {"status": _status(count), "count": count, "items": items}
+        return {"status": _status(count), "count": count, "items": items, "scope": "column"}
     _safe("sufficiency", _sufficiency)
 
     return checks
 
 
-def validate_dataframe(df: pd.DataFrame, rules: dict) -> dict:
+def validate_dataframe(df: pd.DataFrame, rules: dict, target_column: str | None = None) -> dict:
     """
     Запускает полную валидацию датасета.
     Returns:
@@ -390,7 +460,7 @@ def validate_dataframe(df: pd.DataFrame, rules: dict) -> dict:
     # см. _run_all_checks) -- добавлено 2026-08-14, аддитивно к уже
     # существующему контракту result (errors/warnings/summary не менялись,
     # /rules/validate в public.py/internal.py их не читают и не сломаются).
-    result["checks"] = _run_all_checks(df, rules, result["schema_errors"])
+    result["checks"] = _run_all_checks(df, rules, result["schema_errors"], target_column=target_column)
 
     return result
 

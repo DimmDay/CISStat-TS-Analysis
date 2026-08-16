@@ -328,7 +328,7 @@ def get_dataset_distribution(
 
 
 @router.get("/dataset/validate", response_model=DatasetValidateResponse)
-def get_dataset_validate(request: Request, response: Response):
+def get_dataset_validate(request: Request, response: Response, column: str | None = None):
     """
     Реальная валидация активного датасета сессии по 10 проверкам вкладки
     «Валидация» (см. TsAnalysisValidation.tsx::CHECKS) -- ранее ВСЕ 10
@@ -344,6 +344,15 @@ def get_dataset_validate(request: Request, response: Response):
     referential ВСЕГДА "pending" при auto-правилах: auto_generate_rules
     не умеет придумать справочник для сверки -- это не 0 нарушений,
     а "нечего проверять" (см. validation/engine.py::_run_all_checks).
+
+    column (2026-08-14) -- опциональный per-column скоуп, тот же
+    target_column, что и в Моделировании (см. GET/POST /target-column) --
+    единый "исследуемый признак" для всей платформы. Часть проверок
+    учитывают column (ranges/formats/inclusion/referential/text_quality/
+    sufficiency), часть принципиально dataset-wide (data_types/
+    consistency/uniqueness/regularity) -- см. ValidationCheckResult.scope
+    в ответе и докстринг _run_all_checks. Несуществующая колонка -- 404,
+    не молчаливый игнор параметра.
     """
     session_id = get_or_create_session_id(request, response)
     session = get_session_store().get_or_create(session_id)
@@ -351,14 +360,18 @@ def get_dataset_validate(request: Request, response: Response):
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
     df = session.dataframe
+    if column is not None and column not in df.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
+
     rules = auto_generate_rules(df)
-    result = validate_dataframe(df, rules)
+    result = validate_dataframe(df, rules, target_column=column)
 
     checks = {
         check_id: ValidationCheckResult(
             status=raw["status"],
             count=raw["count"],
             items=[ValidationCheckItem(**item) for item in raw["items"]],
+            scope=raw.get("scope", "dataset"),
             error=raw.get("error"),
         )
         for check_id, raw in result["checks"].items()
@@ -367,6 +380,7 @@ def get_dataset_validate(request: Request, response: Response):
     return DatasetValidateResponse(
         is_valid=result["is_valid"],
         rules_source="auto",
+        column=column,
         total_rows=result["summary"]["total_rows"],
         total_columns=result["summary"]["total_columns"],
         checks=checks,
@@ -388,6 +402,33 @@ def _get_numeric_columns(df: pd.DataFrame) -> list[str]:
     return [str(c) for c in df.select_dtypes(include="number").columns]
 
 
+_DATE_LIKE_KEYWORDS = ("date", "дата", "year", "год", "period", "период")
+
+
+def _suggest_target_column(numeric_columns: list[str]) -> str | None:
+    """Эвристический дефолт для target_column: первая числовая колонка,
+    ИСКЛЮЧАЯ похожие на дату/год по имени -- те же ключевые слова, что
+    уже используются для автодетекта date_col в validation/engine.py
+    (_run_all_checks::_uniqueness, validate_sufficiency) -- единая
+    эвристика, не две разные копипасты.
+
+    Год/дата технически числовые (int64), но семантически это ИНДЕКС
+    временной оси, а не аналитическая величина -- плохой дефолт для
+    target_column (см. пример: FAO price dataset, колонки Country/Year/
+    Price -- наивная 'первая числовая' выбрала бы Year, а не Price).
+
+    Если ВСЕ числовые колонки похожи на дату (редкий случай) -- честно
+    возвращаем первую как есть, лучше чем None.
+    """
+    if not numeric_columns:
+        return None
+    non_date_like = [
+        c for c in numeric_columns
+        if not any(kw in c.lower() for kw in _DATE_LIKE_KEYWORDS)
+    ]
+    return non_date_like[0] if non_date_like else numeric_columns[0]
+
+
 @router.get("/target-column", response_model=TargetColumnResponse)
 def get_target_column(request: Request, response: Response):
     """Получить текущую target_column + список доступных числовых колонок.
@@ -407,13 +448,16 @@ def get_target_column(request: Request, response: Response):
     if session.dataframe is None:
         return TargetColumnResponse(
             target_column=None,
+            suggested_column=None,
             available_columns=[],
             has_dataset=False,
         )
 
+    numeric_columns = _get_numeric_columns(session.dataframe)
     return TargetColumnResponse(
         target_column=session.target_column,
-        available_columns=_get_numeric_columns(session.dataframe),
+        suggested_column=_suggest_target_column(numeric_columns),
+        available_columns=numeric_columns,
         has_dataset=True,
     )
 
@@ -472,9 +516,11 @@ def set_target_column(
     # КОНТРАКТ SessionStore: мутация -- обязательно save().
     store.save(session)
 
+    numeric_columns = _get_numeric_columns(df)
     return TargetColumnResponse(
         target_column=session.target_column,
-        available_columns=_get_numeric_columns(df),
+        suggested_column=_suggest_target_column(numeric_columns),
+        available_columns=numeric_columns,
         has_dataset=True,
     )
 

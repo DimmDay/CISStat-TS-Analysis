@@ -189,6 +189,7 @@ class ValidationCheckResult(BaseModel):
     status: str = Field(..., description="'done' | 'warning' | 'pending'")
     count: Optional[int] = Field(None, description="Суммарное число нарушений; None при status='pending'")
     items: List[ValidationCheckItem] = Field(default_factory=list, description="Детализация для графика")
+    scope: str = Field("dataset", description="'column' -- учитывает выбранную колонку, 'dataset' -- всегда весь датасет")
     error: Optional[str] = Field(None, description="Текст исключения, если sub-check упал (см. _safe в engine.py)")
 
 
@@ -197,9 +198,16 @@ class DatasetValidateResponse(BaseModel):
     по всем 10 проверкам. rules_source сообщает фронту, откуда взяты
     правила: 'auto' (auto_generate_rules по именам колонок, без явного
     шаблона) -- до появления UI выбора шаблона (см. RulesManagementPanel,
-    пока не подключена к сессии)."""
+    пока не подключена к сессии).
+
+    column (2026-08-14) -- эхо переданного query-параметра column, если
+    был задан. None значит "весь датасет" (старое поведение, backward
+    compatible). Часть проверок (см. ValidationCheckResult.scope) учитывают
+    column, часть принципиально нет -- см. validation/engine.py::_run_all_checks.
+    """
     is_valid: bool
     rules_source: str = Field("auto", description="'auto' -- rules сгенерированы автоматически по колонкам")
+    column: Optional[str] = Field(None, description="Колонка, до которой скоупились применимые проверки; None -- весь датасет")
     total_rows: int
     total_columns: int
     checks: Dict[str, ValidationCheckResult]
@@ -242,8 +250,19 @@ class TargetColumnResponse(BaseModel):
 
     available_columns нужен UI для отрисовки селектора. Содержит ТОЛЬКО
     числовые колонки -- target для TS-прогноза должен быть числовым.
+
+    suggested_column -- эвристический дефолт для UI, когда target_column
+    ещё не выбран пользователем (свежий датасет): первая числовая колонка,
+    ИСКЛЮЧАЯ похожие на дату/год по имени (см. _suggest_target_column).
+    Раньше каждая вкладка (Загрузка/Валидация) считала свой дефолт
+    независимо (просто первая числовая колонка без исключений) -- отсюда
+    несогласованность между вкладками и выбор 'Year' вместо 'Price' на
+    датасетах вида FAO (Country, Year, Price, ...). Единая эвристика на
+    бэкенде -- единственный источник истины для ВСЕХ фронтендов.
+    None только если available_columns пуст (нет числовых колонок вообще).
     """
     target_column: Optional[str] = None
+    suggested_column: Optional[str] = None
     available_columns: List[str] = Field(
         default_factory=list,
         description="Числовые колонки, доступные для выбора как target",
