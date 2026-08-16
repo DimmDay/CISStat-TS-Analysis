@@ -28,6 +28,7 @@ import { RulesManagementPanel } from "./RulesManagementPanel";
 import { ValidationCheckChart, type ValidationCheckData } from "./ValidationCheckChart";
 import { useAppShell } from "../context/AppShellContext";
 import { sessionApiUrl } from "../lib/apiClient";
+import { useTargetColumn } from "../hooks/useTargetColumn";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -76,10 +77,11 @@ const CHECK_META: CheckMeta[] = [
     description: "Недостаточное число наблюдений для идентификации параметров модели (минимум 2×сезонный_период для SARIMA, 30+ для ADF). validate_sufficiency оценивает длину ряда и выдаёт рекомендации." },
 ];
 
-// Моковый список числовых признаков (заменить на activeDataset.columns)
-const NUMERIC_FEATURES = [
-  "price", "volume", "open", "high", "low", "close", "adj_close",
-];
+// NUMERIC_FEATURES-мок убран (2026-08-14) -- реальные колонки приходят
+// из useTargetColumn().availableColumns (тот же GET /target-column, что
+// и в Загрузке/Моделировании). Раньше "Price" в этом селекторе было
+// совпадением: мок-список тикеров содержал 'price' первым, никак не
+// связано с реальным выбором пользователя на Загрузке.
 
 // ── Справка по стандартам качества данных ────────────────────
 
@@ -126,15 +128,28 @@ const DQ_STANDARDS_HELP = `Стандарты качества данных (Dat
 export function TsAnalysisValidation() {
   const { activeDataset } = useAppShell();
   const [activeCheckId, setActiveCheckId] = useState(CHECK_META[0].id);
-  const [activeFeature, setActiveFeature] = useState(NUMERIC_FEATURES[0]);
   const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | "rules" | null>(null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
 
+  // ── Единый "исследуемый признак" (target_column) для всей платформы
+  // (2026-08-14) -- тот же хук, что и в Загрузке. Раньше activeFeature
+  // был отдельным useState(NUMERIC_FEATURES[0]) -- мок-список тикеров,
+  // никак не связанный с реальным выбором пользователя на Загрузке.
+  const {
+    targetColumn: activeFeature,
+    availableColumns: numericFeatures,
+    setColumn: setActiveFeature,
+  } = useTargetColumn(activeDataset?.name);
+
   // ── Реальная валидация датасета сессии (GET /dataset/validate) ──
   // Заменяет статический мок -- см. apps/api/routers/session.py::get_dataset_validate,
   // validation/engine.py::_run_all_checks (подключено 2026-08-14).
+  // column=activeFeature (2026-08-14) -- часть проверок (ranges/formats/
+  // inclusion/referential/text_quality/sufficiency) скоупятся до
+  // выбранного признака, часть принципиально dataset-wide -- см.
+  // ValidationCheckData.scope и докстринг _run_all_checks.
   const [checksData, setChecksData] = useState<Record<string, ValidationCheckData> | null>(null);
   const [checksLoading, setChecksLoading] = useState(false);
   const [datasetSummary, setDatasetSummary] = useState<{ totalRows: number; totalColumns: number } | null>(null);
@@ -147,7 +162,10 @@ export function TsAnalysisValidation() {
     }
     let cancelled = false;
     setChecksLoading(true);
-    fetch(sessionApiUrl("/dataset/validate"), { credentials: "include" })
+    const url = activeFeature
+      ? sessionApiUrl(`/dataset/validate?column=${encodeURIComponent(activeFeature)}`)
+      : sessionApiUrl("/dataset/validate");
+    fetch(url, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (cancelled || !data) return;
@@ -166,7 +184,7 @@ export function TsAnalysisValidation() {
     return () => {
       cancelled = true;
     };
-  }, [activeDataset]);
+  }, [activeDataset, activeFeature]);
 
   // Реальные status/count поверх статических label/description. Пока
   // датасет не загружен или проверка ещё не пришла -- честное "pending",
@@ -285,20 +303,22 @@ export function TsAnalysisValidation() {
         </div>
 
         {/* Селектор числового признака */}
-        <div>
-          <label className="text-[11px] text-neutral-500 block mb-1">
-            Исследуемый признак:
-          </label>
-          <select
-            value={activeFeature}
-            onChange={(e) => setActiveFeature(e.target.value)}
-            className="w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
-          >
-            {NUMERIC_FEATURES.map((f) => (
-              <option key={f} value={f}>{f}</option>
-            ))}
-          </select>
-        </div>
+        {numericFeatures.length > 0 && (
+          <div>
+            <label className="text-[11px] text-neutral-500 block mb-1">
+              Исследуемый признак:
+            </label>
+            <select
+              value={activeFeature ?? numericFeatures[0]}
+              onChange={(e) => setActiveFeature(e.target.value)}
+              className="w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
+            >
+              {numericFeatures.map((f) => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Прогресс */}
         <div className="flex items-center gap-2">
@@ -427,6 +447,7 @@ export function TsAnalysisValidation() {
             checkLabel={activeCheck.label}
             data={checksData?.[activeCheckId] ?? null}
             loading={checksLoading}
+            selectedColumn={activeFeature}
           />
 
           <div className="grid grid-cols-4 gap-3 mt-4">

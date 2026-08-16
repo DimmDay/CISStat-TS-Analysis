@@ -19,6 +19,11 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { TsAnalysisValidation } from "./TsAnalysisValidation";
 import { AppShellProvider } from "../context/AppShellContext";
 
+const EXPECTED_CHECK_IDS_ARR = [
+  "data_types", "formats", "ranges", "consistency", "uniqueness",
+  "inclusion", "referential", "text_quality", "regularity", "sufficiency",
+];
+
 // Polyfill: ResizeObserver не определён в jsdom -- нужен и checkOverflow()
 // (existing), и Recharts ResponsiveContainer (ValidationCheckChart, новое).
 global.ResizeObserver = class ResizeObserver {
@@ -198,6 +203,66 @@ describe("TsAnalysisValidation", () => {
     await waitFor(() => {
       // total_rows=50 из реального ответа, не старый мок "200"
       expect(screen.getByText("50")).toBeInTheDocument();
+    });
+  });
+
+  it("shows real numeric columns in the feature selector and passes column= to /dataset/validate (not the old mock ticker list)", async () => {
+    const validateCalls: string[] = [];
+    global.fetch = jest.fn((url: string) => {
+      if (typeof url === "string" && url.includes("/session/current")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              has_active_dataset: true,
+              dataset: { dataset_id: "d1", name: "fao.csv", rows: 30, columns: 3, size_label: "1 KB" },
+              stages: {},
+              last_active_stage: null,
+            }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              target_column: "Price",
+              suggested_column: "Price",
+              available_columns: ["Year", "Price"],
+              has_dataset: true,
+            }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/dataset/validate")) {
+        validateCalls.push(url);
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              is_valid: true,
+              rules_source: "auto",
+              column: "Price",
+              total_rows: 30,
+              total_columns: 3,
+              checks: Object.fromEntries(
+                EXPECTED_CHECK_IDS_ARR.map((id) => [id, { status: "pending", count: null, items: [], scope: "column" }])
+              ),
+            }),
+        });
+      }
+      return Promise.resolve({ ok: false, json: () => Promise.resolve(null) });
+    }) as unknown as typeof fetch;
+
+    renderValidation();
+
+    // Реальные колонки FAO-датасета -- НЕ старый мок-список тикеров
+    // (price/volume/open/high/low/close/adj_close).
+    await waitFor(() => expect(screen.getByDisplayValue("Price")).toBeInTheDocument());
+    expect(screen.queryByText("volume")).not.toBeInTheDocument();
+    expect(screen.queryByText("adj_close")).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(validateCalls.some((u) => u.includes("column=Price"))).toBe(true);
     });
   });
 });

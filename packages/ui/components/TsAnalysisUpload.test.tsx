@@ -126,6 +126,21 @@ function mockFetchSequence(uploadResult: unknown, uploadOk = true) {
           }),
       });
     }
+    if (typeof url === "string" && url.includes("/target-column")) {
+      // GET и POST -- одинаковый ответ достаточен для теста: значение
+      // уже выбрано (value), useTargetColumn не должен пытаться
+      // авто-POST-ить suggested_column поверх реального выбора.
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            target_column: "value",
+            suggested_column: "value",
+            available_columns: ["value"],
+            has_dataset: true,
+          }),
+      });
+    }
     if (typeof url === "string" && url.includes("/dataset/stats")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(okStatsResponse) });
     }
@@ -367,6 +382,145 @@ describe("TsAnalysisUpload", () => {
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("field required"));
       expect(toast.error).not.toHaveBeenCalledWith(expect.stringContaining("[object Object]"));
+    });
+  });
+
+  // ── useTargetColumn: единый "исследуемый признак" (2026-08-14) ──
+  // Регрессия на реальный баг: FAO-датасет (Country/Year/Price) показывал
+  // Year в селекторе вместо Price при возврате на вкладку.
+
+  it("auto-selects suggested_column (not first-in-dataframe) when target_column is not yet set, and shows the auto-selected hint", async () => {
+    const targetColumnCalls: string[] = [];
+    global.fetch = jest.fn((url: string, init?: RequestInit) => {
+      if (typeof url === "string" && url.includes("/session/current")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ has_active_dataset: false, dataset: null, stages: {}, last_active_stage: null, updated_at: null }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/target-column")) {
+        targetColumnCalls.push(init?.method ?? "GET");
+        if (init?.method === "POST") {
+          // Сервер подтверждает: suggested_column ("Price") зафиксирован как target_column
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ target_column: "Price", suggested_column: "Price", available_columns: ["Year", "Price"], has_dataset: true }),
+          });
+        }
+        // GET: ровно баговый кейс -- Year идёт первым в датафрейме, но
+        // suggested_column честно рекомендует Price (исключая date/year-имена)
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ target_column: null, suggested_column: "Price", available_columns: ["Year", "Price"], has_dataset: true }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/upload")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ...okUploadResponse,
+              columns_info: [
+                { name: "Year", dtype: "int64", type_icon: "numeric", non_null: 10, nulls: 0, unique: 10 },
+                { name: "Price", dtype: "float64", type_icon: "numeric", non_null: 10, nulls: 0, unique: 10 },
+              ],
+            }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }) as unknown as typeof fetch;
+
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["Year,Price\n2020,65.9"], "fao.csv", { type: "text/csv" })]);
+
+    await waitFor(() => {
+      // НЕ Year (первая числовая по порядку) -- Price (suggested_column)
+      expect(screen.getByDisplayValue("Price")).toBeInTheDocument();
+    });
+    expect(screen.getByTestId("auto-selected-hint")).toBeInTheDocument();
+    expect(targetColumnCalls).toContain("POST"); // авто-выбор реально ПЕРСИСТИТСЯ, не только отображается
+  });
+
+  it("shows a warning toast when a previously selected column is reset by uploading a new dataset", async () => {
+    let uploadCount = 0;
+    global.fetch = jest.fn((url: string, init?: RequestInit) => {
+      if (typeof url === "string" && url.includes("/session/current")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ has_active_dataset: false, dataset: null, stages: {}, last_active_stage: null, updated_at: null }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/target-column")) {
+        if (init?.method === "POST") {
+          const body = JSON.parse((init.body as string) ?? "{}");
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ target_column: body.column, suggested_column: body.column, available_columns: ["Volume"], has_dataset: true }),
+          });
+        }
+        // До первой загрузки -- нет датасета вообще.
+        if (uploadCount === 0) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ target_column: null, suggested_column: null, available_columns: [], has_dataset: false }),
+          });
+        }
+        // После первой загрузки -- Price уже выбран (реалистично: POST
+        // уже случился при первой загрузке, GET отражает сохранённое состояние).
+        if (uploadCount === 1) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ target_column: "Price", suggested_column: "Price", available_columns: ["Year", "Price"], has_dataset: true }),
+          });
+        }
+        // После второй загрузки (другой датасет) -- backend сбросил
+        // target_column (Price отсутствует в новом файле).
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ target_column: null, suggested_column: "Volume", available_columns: ["Volume"], has_dataset: true }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/upload")) {
+        uploadCount += 1;
+        const columnsInfo =
+          uploadCount === 1
+            ? [
+                { name: "Year", dtype: "int64", type_icon: "numeric", non_null: 10, nulls: 0, unique: 10 },
+                { name: "Price", dtype: "float64", type_icon: "numeric", non_null: 10, nulls: 0, unique: 10 },
+              ]
+            : [{ name: "Volume", dtype: "float64", type_icon: "numeric", non_null: 10, nulls: 0, unique: 10 }];
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ...okUploadResponse, name: `dataset-${uploadCount}.csv`, columns_info: columnsInfo }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }) as unknown as typeof fetch;
+
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    // Первая загрузка -- Price устанавливается
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a"], "fao.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByDisplayValue("Price")).toBeInTheDocument());
+
+    // Dropzone скрыт после успешной загрузки (3-колоночный layout результата) --
+    // "Сменить файл" возвращает к форме загрузки (handleReset).
+    fireEvent.click(screen.getAllByText("Сменить файл")[0]);
+    await waitFor(() => expect(screen.getByTestId("dropzone-input")).toBeInTheDocument());
+
+    // Вторая загрузка -- другой датасет, Price отсутствует
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a"], "other.csv", { type: "text/csv" })]);
+
+    await waitFor(() => {
+      expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining("Price"));
     });
   });
 });

@@ -210,6 +210,7 @@ export interface TargetColumnRequest {
 
 export interface TargetColumnResponse {
   target_column: string | null;
+  suggested_column: string | null;
   available_columns: string[];
   has_dataset: boolean;
 }

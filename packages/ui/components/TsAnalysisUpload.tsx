@@ -90,6 +90,7 @@ import { StructuralClassSchema } from "./StructuralClassSchema";
 import { useAppShell } from "../context/AppShellContext";
 import { apiUrl, sessionApiUrl } from "../lib/apiClient";
 import { classifyStructure, type PanelBalance, type StructuralClassResult } from "../lib/structuralClass";
+import { useTargetColumn } from "../hooks/useTargetColumn";
 
 // ──────────────────────────────────────────────────────────────────────
 // ТИПЫ (зеркало apps/api/schemas.py -- поля намеренно snake_case, как
@@ -291,10 +292,37 @@ export function TsAnalysisUpload() {
   const [statsLoading, setStatsLoading] = useState(false);
   const [distribution, setDistribution] = useState<DistributionChartData | null>(null);
   const [distributionLoading, setDistributionLoading] = useState(false);
-  const [selectedFeature, setSelectedFeature] = useState<string | null>(null);
   const [overviewTab, setOverviewTab] = useState<"preview" | "columns">("preview");
 
+  // ── Единый "исследуемый признак" (target_column) для всей платформы
+  // (2026-08-14) -- заменяет прежний локальный useState<string|null>,
+  // который сбрасывался при каждом уходе с вкладки и откатывался к
+  // numericCols[0] (первой числовой колонке ПО ПОРЯДКУ В ДАТАФРЕЙМЕ --
+  // для Country/Year/Price это был Year, не Price). См. packages/ui/hooks/useTargetColumn.ts.
+  const {
+    targetColumn: selectedFeature,
+    wasAutoSelected,
+    columnResetNotice,
+    dismissColumnResetNotice,
+    setColumn: setSelectedFeature,
+    refetch: refetchTargetColumn,
+  } = useTargetColumn(activeDataset?.name);
+
   const isUploaded = uploadData !== null;
+
+  // ── Уведомление о смене признака при загрузке нового датасета ──
+  // (2026-08-14, согласовано с тимлидом: "и то, и другое" -- toast И
+  // инлайн-бейдж). columnResetNotice приходит из useTargetColumn, когда
+  // РАНЕЕ выбранная колонка (например Price) отсутствует в новом
+  // датасете -- backend сам сбрасывает target_column при set_dataset().
+  useEffect(() => {
+    if (columnResetNotice) {
+      toast.warning(
+        `Признак «${columnResetNotice.previousColumn}» недоступен в новом датасете — выбран «${columnResetNotice.newColumn}»`
+      );
+      dismissColumnResetNotice();
+    }
+  }, [columnResetNotice, dismissColumnResetNotice]);
   const columnsInfo = uploadData?.columns_info ?? [];
   const numericCols = columnsInfo.filter((c) => c.type_icon === "numeric").map((c) => c.name);
 
@@ -360,8 +388,11 @@ export function TsAnalysisUpload() {
         setUploadData(data);
         if (data.columns_info) {
           setDetection(buildDetectionFromColumns(data.columns_info));
-          const firstNumeric = data.columns_info.find((c) => c.type_icon === "numeric");
-          setSelectedFeature(firstNumeric?.name ?? null);
+          // Больше НЕ выбираем "первую числовую" вручную (это и было
+          // причиной бага -- откатывалось на Year вместо Price). Сервер
+          // уже сбросил target_column при этой загрузке (upload_common.py::set_dataset)
+          // -- рефетчим, useTargetColumn сам применит suggested_column-эвристику и запишет её.
+          refetchTargetColumn();
         }
         fetchStats();
       })
@@ -401,8 +432,7 @@ export function TsAnalysisUpload() {
         if (data.columns_info) {
           localDetection = buildDetectionFromColumns(data.columns_info);
           setDetection(localDetection);
-          const firstNumeric = data.columns_info.find((c) => c.type_icon === "numeric");
-          setSelectedFeature(firstNumeric?.name ?? null);
+          refetchTargetColumn();
         }
         fetchStats();
 
@@ -689,6 +719,11 @@ export function TsAnalysisUpload() {
                     </option>
                   ))}
                 </select>
+                {wasAutoSelected && selectedFeature && (
+                  <p className="text-[10px] text-neutral-400 mt-1" data-testid="auto-selected-hint">
+                    Выбрано автоматически — можно изменить
+                  </p>
+                )}
               </div>
             )}
 

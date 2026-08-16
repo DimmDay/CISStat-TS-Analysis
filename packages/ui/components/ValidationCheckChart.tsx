@@ -39,6 +39,12 @@ export interface ValidationCheckData {
   status: "done" | "warning" | "pending";
   count: number | null;
   items: ValidationCheckItem[];
+  /** "column" -- проверка учитывает выбранный target_column (см.
+   * useTargetColumn); "dataset" -- принципиально весь датасет, выбор
+   * признака слева НЕ меняет результат этой конкретной проверки
+   * (межколоночные правила / дубли строк / ось времени -- см.
+   * validation/engine.py::_run_all_checks). */
+  scope?: "column" | "dataset";
   error?: string | null;
 }
 
@@ -60,14 +66,30 @@ function InfoFrame({ tone, children }: { tone: "neutral" | "positive" | "error";
   );
 }
 
+function ScopeCaption({ scope, selectedColumn }: { scope?: "column" | "dataset"; selectedColumn: string | null }) {
+  if (!selectedColumn) return null;
+  return (
+    <p className="text-[11px] text-neutral-400 mb-1.5">
+      {scope === "dataset"
+        ? `По всему датасету — не зависит от выбранного признака «${selectedColumn}»`
+        : `По признаку «${selectedColumn}»`}
+    </p>
+  );
+}
+
 export function ValidationCheckChart({
   checkLabel,
   data,
   loading,
+  selectedColumn = null,
 }: {
   checkLabel: string;
   data: ValidationCheckData | null;
   loading: boolean;
+  /** Текущий выбранный признак (target_column) -- только для честной
+   * подписи над графиком ("по всему датасету" vs "по признаку X"), см.
+   * ScopeCaption. Не обязателен -- используется только когда data.scope известен. */
+  selectedColumn?: string | null;
 }) {
   if (loading) {
     return <InfoFrame tone="neutral">Загрузка результатов проверки…</InfoFrame>;
@@ -87,19 +109,29 @@ export function ValidationCheckChart({
 
   if (data.status === "pending") {
     return (
-      <InfoFrame tone="neutral">
-        Проверка «{checkLabel}» неприменима к текущему датасету -- не найдено нужных колонок или справочника для
-        сверки
-      </InfoFrame>
+      <div>
+        <ScopeCaption scope={data.scope} selectedColumn={selectedColumn} />
+        <InfoFrame tone="neutral">
+          Проверка «{checkLabel}» неприменима к текущему датасету -- не найдено нужных колонок или справочника для
+          сверки
+        </InfoFrame>
+      </div>
     );
   }
 
   if (data.status === "done" || data.items.length === 0) {
-    return <InfoFrame tone="positive">✅ Проверка «{checkLabel}» пройдена, нарушений не найдено</InfoFrame>;
+    return (
+      <div>
+        <ScopeCaption scope={data.scope} selectedColumn={selectedColumn} />
+        <InfoFrame tone="positive">✅ Проверка «{checkLabel}» пройдена, нарушений не найдено</InfoFrame>
+      </div>
+    );
   }
 
   return (
-    <div className="h-[420px] border border-neutral-200 rounded-lg bg-white px-2 pt-4 pb-2">
+    <div>
+      <ScopeCaption scope={data.scope} selectedColumn={selectedColumn} />
+      <div className="h-[420px] border border-neutral-200 rounded-lg bg-white px-2 pt-4 pb-2">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data.items} margin={{ top: 4, right: 12, bottom: 24, left: -12 }}>
           <CartesianGrid stroke="#F0F0F0" vertical={false} />
@@ -130,6 +162,7 @@ export function ValidationCheckChart({
           <Bar dataKey="count" fill={BRAND} radius={[2, 2, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }
