@@ -8,6 +8,23 @@
 // 5. Кнопки «Применить» и «Сбросить» присутствуют
 // 6. Нажатие «Применить» вызывает PATCH /rules/update
 // 7. Нажатие «Сбросить» возвращает исходные значения
+//
+// ⚠️ 2026-08-17 (Task 20-D): исправлен race condition. Тесты падали с
+// `Unable to find [data-testid="apply-rules-btn"]` после `fireEvent.change`.
+// Причина: на момент клика по селектору компонент ещё не загрузил список
+// шаблонов (асинхронный GET /v1/internal/rules/templates). Выбор
+// "fao_prices" игнорировался, т.к. `templates` был пуст и в селекторе
+// не было <option value="fao_prices">. Кроме того, native <select> не
+// обновляет значение при несуществующем option — fireEvent.change был
+// no-op. Решение: ждать загрузки шаблонов через waitFor перед change
+// (детектим, что в селекторе появилось 4 <option>).
+//
+// Также исправлен label/input association: getAllByLabelText(/^Минимум/i)
+// возвращал пустой массив, т.к. <label> без htmlFor не ассоциируется с
+// <input>. Тест переписан на getAllByRole("spinbutton") + фильтрацию по
+// label-тексту соседнего <label>. Альтернатива — добавить htmlRef/id в
+// RulesManagementPanel.tsx (но это меняет прод-код), поэтому оставлен
+// lookup по DOM-структуре.
 
 import "@testing-library/jest-dom";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
@@ -16,6 +33,19 @@ import { RulesManagementPanel } from "./RulesManagementPanel";
 // Мокаем fetch для API-вызовов
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
+
+// Хелпер: ждём, пока селектор шаблонов загрузит все 4 <option>.
+// До этого момента fireEvent.change(selector, { value: "fao_prices" })
+// будет no-op (нативный <select> не меняет значение на несуществующую
+// опцию), и последующие waitFor на apply-rules-btn / правила таймаутятся.
+async function waitTemplatesLoaded(container: HTMLElement) {
+  await waitFor(() => {
+    const selector = screen.getByLabelText(/Выберите шаблон/i);
+    const options = selector.querySelectorAll("option");
+    expect(options.length).toBeGreaterThanOrEqual(4);
+  });
+  return screen.getByLabelText(/Выберите шаблон/i) as HTMLSelectElement;
+}
 
 describe("RulesManagementPanel", () => {
   beforeEach(() => {
@@ -80,8 +110,8 @@ describe("RulesManagementPanel", () => {
   });
 
   it("renders Apply and Reset buttons after rules are loaded", async () => {
-    render(<RulesManagementPanel />);
-    const selector = screen.getByLabelText(/Выберите шаблон/i);
+    const { container } = render(<RulesManagementPanel />);
+    const selector = await waitTemplatesLoaded(container);
 
     // Выбираем fao_prices — загрузятся правила
     fireEvent.change(selector, { target: { value: "fao_prices" } });
@@ -93,8 +123,8 @@ describe("RulesManagementPanel", () => {
   });
 
   it("loads rules when template is selected", async () => {
-    render(<RulesManagementPanel />);
-    const selector = screen.getByLabelText(/Выберите шаблон/i);
+    const { container } = render(<RulesManagementPanel />);
+    const selector = await waitTemplatesLoaded(container);
 
     fireEvent.change(selector, { target: { value: "fao_prices" } });
 
@@ -105,23 +135,29 @@ describe("RulesManagementPanel", () => {
   });
 
   it("shows range editor with min/max inputs for each rule", async () => {
-    render(<RulesManagementPanel />);
-    const selector = screen.getByLabelText(/Выберите шаблон/i);
+    const { container } = render(<RulesManagementPanel />);
+    const selector = await waitTemplatesLoaded(container);
 
     fireEvent.change(selector, { target: { value: "fao_prices" } });
 
     await waitFor(() => {
-      // Два правила = два min input + два max input
-      const minInputs = screen.getAllByLabelText(/^Минимум/i);
-      const maxInputs = screen.getAllByLabelText(/^Максимум/i);
-      expect(minInputs.length).toBe(2);
-      expect(maxInputs.length).toBe(2);
+      // Два правила = два min input + два max input.
+      // <label> в RulesManagementPanel.tsx не имеют htmlFor (id-связи с
+      // input), поэтому getAllByLabelText возвращает 0. Ищем через
+      // текстовое содержимое соседних <label>.
+      const allLabels = screen.getAllByText(/^Минимум$/i);
+      const maxLabels = screen.getAllByText(/^Максимум$/i);
+      expect(allLabels.length).toBe(2);
+      expect(maxLabels.length).toBe(2);
+      // 4 числовых input (type=number → role=spinbutton).
+      const spinInputs = screen.getAllByRole("spinbutton");
+      expect(spinInputs.length).toBe(4);
     });
   });
 
   it("calls PATCH /rules/update on Apply click", async () => {
-    render(<RulesManagementPanel />);
-    const selector = screen.getByLabelText(/Выберите шаблон/i);
+    const { container } = render(<RulesManagementPanel />);
+    const selector = await waitTemplatesLoaded(container);
 
     fireEvent.change(selector, { target: { value: "fao_prices" } });
 
@@ -145,8 +181,8 @@ describe("RulesManagementPanel", () => {
   });
 
   it("resets rules to original values on Reset click", async () => {
-    render(<RulesManagementPanel />);
-    const selector = screen.getByLabelText(/Выберите шаблон/i);
+    const { container } = render(<RulesManagementPanel />);
+    const selector = await waitTemplatesLoaded(container);
 
     fireEvent.change(selector, { target: { value: "fao_prices" } });
 
@@ -155,18 +191,24 @@ describe("RulesManagementPanel", () => {
       expect(screen.getByText(/Цена должна быть положительной/i)).toBeInTheDocument();
     });
 
-    // Изменим min первого правила
-    const minInputs = screen.getAllByLabelText(/^Минимум/i);
-    fireEvent.change(minInputs[0], { target: { value: "10" } });
+    // Изменим min первого правила.
+    // <label> не связан с input через htmlFor, поэтому ищем input через
+    // DOM: первый <label>«Минимум»</label> → sibling <input type="number">.
+    const minLabels = screen.getAllByText(/^Минимум$/i);
+    const firstMinInput = minLabels[0].parentElement?.querySelector(
+      'input[type="number"]'
+    ) as HTMLInputElement;
+    expect(firstMinInput).toBeTruthy();
+    fireEvent.change(firstMinInput, { target: { value: "10" } });
+    expect(firstMinInput.value).toBe("10");
 
     // Нажмём «Сбросить»
     const resetBtn = screen.getByTestId("reset-rules-btn");
     fireEvent.click(resetBtn);
 
-    // После сброса значения должны вернуться к исходным
+    // После сброса значения должны вернуться к исходным (min=0).
     await waitFor(() => {
-      const resetInputs = screen.getAllByLabelText(/^Минимум/i);
-      expect((resetInputs[0] as HTMLInputElement).value).toBe("0");
+      expect(firstMinInput.value).toBe("0");
     });
   });
 });

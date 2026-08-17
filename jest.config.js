@@ -25,4 +25,7 @@ module.exports = {
   },
   testMatch: ["**/*.test.{ts,tsx}"],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],
+  // Polyfills для jsdom: ResizeObserver (Preprocessing/EDA), IntersectionObserver
+  // (recharts ResponsiveContainer), matchMedia. Подробности — в jest.setup.js.
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.js"],
 };

@@ -46,8 +46,11 @@ describe("TsAnalysisEDA", () => {
     // Клик
     fireEvent.click(helpButton);
 
-    // После клика — появляется справка
-    expect(screen.getByText(/Цели модуля/i)).toBeInTheDocument();
+    // После клика — появляется справка. Используем getAllByText, т.к.
+    // regex /Цели модуля/i матчит ДВА элемента: подзаголовок «Справка — Цели
+    // модуля и результаты EDA» и сам контент «Цели модуля "EDA"».
+    const matches = screen.getAllByText(/Цели модуля/i);
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
   it("clicking 'Справка' toggles content off on second click", () => {
@@ -92,7 +95,9 @@ describe("TsAnalysisEDA", () => {
     const helpButton = screen.getByRole("button", { name: /Справка/i });
     fireEvent.click(helpButton);
 
-    // После загрузки контента — компонент стабилен
-    expect(screen.getByText(/Цели модуля/i)).toBeInTheDocument();
+    // После загрузки контента — компонент стабилен.
+    // getAllByText, т.к. regex матчит и подзаголовок, и контент (см. выше).
+    const matches = screen.getAllByText(/Цели модуля/i);
+    expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 });

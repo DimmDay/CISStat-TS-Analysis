@@ -99,10 +99,10 @@ export type { ValidationCheckData, ValidationCheckItem } from "./components/Vali
 //      - GET /v1/session/dataset/decomposition
 //    (см. apps/api/routers/session.py).
 //
-// export { TimeSeriesLineChart } from "./components/TimeSeriesLineChart";
-// export type { TimeSeriesPoint, TimeSeriesChartData } from "./components/TimeSeriesLineChart";
-// export { DecompositionBadges } from "./components/DecompositionBadges";
-// export type { DecompositionData } from "./components/DecompositionBadges";
+export { TimeSeriesLineChart } from "./components/TimeSeriesLineChart";
+export type { TimeSeriesPoint, TimeSeriesChartData } from "./components/TimeSeriesLineChart";
+export { DecompositionBadges } from "./components/DecompositionBadges";
+export type { DecompositionData } from "./components/DecompositionBadges";
 
 // ── Ниже: перенесено без изменений из origin/main (команда, "Моделирование") ──
 
