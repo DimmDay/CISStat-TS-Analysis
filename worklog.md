@@ -1346,3 +1346,42 @@ forecast также нормализуется в 1-D numeric array.
 
 Статус
 Production ARIMA hardening выполнен. Phase 1 production dispatch ещё не объявляется полностью PASS до повторного полного targeted pytest и исправления двух тестов, зависящих от удалённого STUB.
+
+---
+Task ID: 20-A
+Agent: main (super-z)
+Task: Перекомпоновка вкладки "Навигатор" в CISStat TS Analysis под новый макет Навигатор_NEW.png (standalone + embedded)
+
+Work Log:
+- Склонировал репозиторий https://github.com/DimmDay/CISStat-TS-Analysis.git (ветка main).
+- Изучил MIGRATION_ARCHITECTURE.md, AGENTS.md, CLAUDE.md, текущее состояние кода: StandaloneHome, ProductJourneyGuide, TsAnalysisPreprocessing/Validation/EDA, ModuleNav, AppShellContext, lib/stages/modeling/plans.
+- Получил макет Навигатор_NEW.png — проанализирован через VLM (z-ai vision), разбит на 6 полос для детального изучения.
+- Согласовал с тимлидом 8 открытых вопросов (см. ниже "Решения тимлида").
+- Создал 3 новых файла (lib/navigator-stops.ts, components/NavigatorHero.tsx, components/TsAnalysisNavigator.tsx) + 2 теста.
+- Изменил 3 файла (packages/ui/index.ts, apps/standalone/app/page.tsx, apps/embedded/app/page.tsx).
+- typecheck:all — PASS. build:all — PASS (12/12 страниц в каждом app).
+- 19/19 новых тестов PASS. 3 пред-существующих падения (ResizeObserver polyfill в jsdom) НЕ связаны с задачей.
+
+Решения тимлида (по 8 вопросам):
+1. (a) Навигатор показывается всегда. WorkbenchSummary → /dashboard (отдельная задача).
+2. 4 будущих остановки только в Путеводителе. В ModuleNav — внутри «Задачи» (отдельная задача).
+3. Правая панель — превью пунктов, кнопка «Запустить» неактивна.
+4. Гибрид: активный датасет → реальные показатели, иначе пример с пометкой «пример».
+5. Тарифы — декоративный STUB (отдельная задача по интеграции).
+6. Светло-серые полосы — простые разделители.
+7. Тексты 2 полубейджей утверждены явно.
+8. Делаем и в apps/embedded.
+
+Stage Summary:
+- Навигатор реализован в обоих apps/* по новому макету: H1 + 6 числовых бейджей + «Для кого/Для чего» с разделителями + 2 полубейджа + 3-колоночный Путеводитель (степпер 10 остановок + Тарифы слева / Описание+Обзор по центру / превью пунктов справа).
+- 10 остановок: 6 существующих (Загрузка, Валидация, Предобработка, EDA, Моделирование, Прогнозирование) + 4 будущих (Сценарный/Причинный анализ, Принятие решений, Мониторинг) с пометкой «Soon».
+- NAVIGATOR_STOPS — отдельный массив, STAGE_DEFS (контракт с session_store.py) не тронут.
+- Артефакты: /home/z/my-project/download/navigator_relayout/ — 8 файлов.
+- Worklog в репо: worklog.md (Task ID: 20-A, ~80 строк).
+- Готов к визуальной проверке на https://ts-standalone.vercel.app/ после merge.
+
+Открыто для следующих задач:
+- Перенос WorkbenchSummary на /dashboard.
+- 4 будущих остановки во вкладке «Задачи» ModuleNav.
+- Подключение реальных графиков в окно «Обзор».
+- Реальная авторизация и интеграция выбора тарифа.

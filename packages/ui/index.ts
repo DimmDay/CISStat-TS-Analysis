@@ -1,5 +1,25 @@
 // packages/ui/index.ts
 export { PortalNavBar } from "./components/PortalNavBar";
+
+// Навигатор (главная страница в обоих apps/*) — герой-секция + Путеводитель.
+export { NavigatorHero } from "./components/NavigatorHero";
+export { TsAnalysisNavigator } from "./components/TsAnalysisNavigator";
+export {
+  NAVIGATOR_STOPS,
+  NAVIGATOR_BADGES,
+  AUDIENCE_TEXT,
+  PURPOSE_TEXT,
+  AUDIENCE_LABEL,
+  PURPOSE_LABEL,
+  OVERVIEW_EXAMPLE_METRICS,
+} from "./lib/navigator-stops";
+export type {
+  NavigatorStop,
+  NavigatorStopItem,
+  NumberedBadge,
+  OverviewExampleMetric,
+} from "./lib/navigator-stops";
+
 export { Button } from "./components/Button";
 export { Metric } from "./components/Metric";
 export { StatusIcon, STATUS_ICON } from "./components/StatusIcon";
