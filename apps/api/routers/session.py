@@ -17,13 +17,15 @@ from pathlib import Path
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request, Response
 
-from apps.api.chart_data import MAX_ZOOM_POINTS, build_histogram, build_kde, build_scatter_series
+from apps.api.chart_data import MAX_ZOOM_POINTS, build_histogram, build_kde, build_scatter_series, build_timeseries_points
+from apps.api.decomposition_data import build_decomposition
 from apps.api.schemas import (
     ColumnStatsOut,
     ColumnStatsValues,
     DatasetStatsResponse,
     DatasetSummaryOut,
     DatasetValidateResponse,
+    DecompositionResponse,
     DistributionChartResponse,
     HistogramBin,
     KdePoint,
@@ -32,6 +34,8 @@ from apps.api.schemas import (
     SessionStateResponse,
     TargetColumnRequest,
     TargetColumnResponse,
+    TimeSeriesPoint,
+    TimeSeriesResponse,
     UploadResponse,
     ValidationCheckItem,
     ValidationCheckResult,
@@ -325,6 +329,75 @@ def get_dataset_distribution(
         histogram=[HistogramBin(**b) for b in build_histogram(stats_series)],
         kde=[KdePoint(**p) for p in kde_points] if (kde_points := build_kde(stats_series)) is not None else None,
     )
+
+
+@router.get("/dataset/timeseries", response_model=TimeSeriesResponse)
+def get_dataset_timeseries(column: str, date_column: str, request: Request, response: Response):
+    """
+    Линейный график исследуемого признака с РЕАЛЬНЫМИ датами на оси X --
+    остановка «График» вкладки «Загрузка» (между «Превью датасета» и
+    «Распределение», согласовано с тимлидом 2026-08-14).
+
+    date_column -- ОБЯЗАТЕЛЬНЫЙ параметр (в отличие от /dataset/distribution,
+    где x=позиция): фронт передаёт detection.dateCol.selected, уже
+    вычисленный на остановке «Структура» (та же эвристика переиспользуется,
+    не задваивается). Если фронт не уверен в date-колонке -- пусть покажет
+    честное состояние "нет обнаруженной даты", не шлёт запрос вслепую.
+    """
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    df = session.dataframe
+    if column not in df.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
+    if date_column not in df.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{date_column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(df[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая -- график недоступен")
+
+    result = build_timeseries_points(df[date_column], df[column])
+    return TimeSeriesResponse(
+        column=column,
+        date_column=date_column,
+        points=[TimeSeriesPoint(**p) for p in result["points"]],
+        sampled=result["sampled"],
+        sampling_method=result["sampling_method"],
+        original_count=result["original_count"],
+        was_resorted=result["was_resorted"],
+    )
+
+
+@router.get("/dataset/decomposition", response_model=DecompositionResponse)
+def get_dataset_decomposition(column: str, date_column: str, request: Request, response: Response):
+    """
+    Бейджи декомпозиции Тренд/Сезонность/Цикличность/Остаток -- "уровень
+    шума в данных" на старте анализа, под графиком остановки «График»
+    (согласовано с тимлидом 2026-08-14). Считается ПО КНОПКЕ на фронте
+    (не авто при заходе на остановку) -- STL не мгновенная на statsmodels.
+
+    Реального ValueError изнутри statsmodels здесь быть не должно --
+    apps/api/decomposition_data.py::build_decomposition сам гейтит частоту/
+    число точек/панельные дубли ДО вызова STL и возвращает applicable=False
+    с honest reason вместо пробрасывания исключения наружу. Если что-то
+    всё же случится -- это баг build_decomposition, а не ожидаемый путь.
+    """
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    df = session.dataframe
+    if column not in df.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
+    if date_column not in df.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{date_column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(df[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая -- декомпозиция недоступна")
+
+    result = build_decomposition(df[date_column], df[column], column)
+    return DecompositionResponse(**result)
 
 
 @router.get("/dataset/validate", response_model=DatasetValidateResponse)

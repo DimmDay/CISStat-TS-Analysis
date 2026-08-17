@@ -109,6 +109,68 @@ def _iqr_outlier_positions(y: np.ndarray) -> np.ndarray:
     return np.where((y < lower) | (y > upper))[0]
 
 
+def build_timeseries_points(
+    dates: pd.Series,
+    values: pd.Series,
+    max_points: int = TARGET_SAMPLED_POINTS,
+    full_threshold: int = FULL_POINTS_THRESHOLD,
+) -> dict:
+    """Точки для линейного графика исследуемого признака (x = реальная
+    дата, не позиция) -- остановка «График» вкладки «Загрузка», между
+    «Превью датасета» и «Распределение» (согласовано с тимлидом
+    2026-08-14). В отличие от build_scatter_series (x=позиция в
+    очищенном ряде -- для точечного графика распределения), здесь x --
+    подлинная временная ось, обязательная для честного line chart.
+
+    dates/values -- ОДИНАКОВОЙ длины, выровненные по позиции (строки с
+    NaN в любой из двух серий отбрасываются вместе). Сортирует по дате
+    для отображения хронологии слева направо -- если исходный порядок
+    строк в файле уже был не хронологическим, was_resorted=True в
+    ответе (честно сообщить фронту/аналитику, а не молча переставить).
+
+    Дубли дат (например, панельные данные: несколько стран на один год)
+    НЕ агрегируются здесь -- см. докстринг build_decomposition в этом же
+    модуле: агрегация/выбор сущности -- отдельное решение, не для
+    line chart «сырых» точек (сырые точки валидны и для панельных
+    данных -- просто несколько точек на одну дату по вертикали)."""
+    df = pd.DataFrame({"date": pd.to_datetime(dates, errors="coerce"), "value": pd.to_numeric(values, errors="coerce")})
+    df = df.dropna(subset=["date", "value"])
+    n = len(df)
+
+    if n == 0:
+        return {
+            "points": [], "sampled": False, "sampling_method": None,
+            "original_count": 0, "was_resorted": False,
+        }
+
+    was_resorted = not df["date"].is_monotonic_increasing
+    df = df.sort_values("date").reset_index(drop=True)
+
+    if n <= full_threshold:
+        points = [{"x": d.isoformat(), "y": float(v)} for d, v in zip(df["date"], df["value"])]
+        return {
+            "points": points, "sampled": False, "sampling_method": None,
+            "original_count": n, "was_resorted": was_resorted,
+        }
+
+    # Тот же LTTB + сохранение экстремумов/выбросов, что и в
+    # build_scatter_series, только x -- наносекундные timestamp (число,
+    # нужное _lttb_indices), не позиция.
+    x_numeric = df["date"].to_numpy(dtype="datetime64[ns]").astype("int64").astype(float)
+    y = df["value"].to_numpy(dtype=float)
+
+    kept = _lttb_indices(x_numeric, y, max_points)
+    extra = {int(np.argmin(y)), int(np.argmax(y))}
+    extra.update(int(i) for i in _iqr_outlier_positions(y))
+    all_indices = np.union1d(kept, np.array(sorted(extra), dtype=np.int64))
+
+    points = [{"x": df["date"].iloc[i].isoformat(), "y": float(y[i])} for i in all_indices]
+    return {
+        "points": points, "sampled": True, "sampling_method": "lttb",
+        "original_count": n, "was_resorted": was_resorted,
+    }
+
+
 def build_scatter_series(
     series: pd.Series,
     max_points: int = TARGET_SAMPLED_POINTS,

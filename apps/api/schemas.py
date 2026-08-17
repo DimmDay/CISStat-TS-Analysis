@@ -174,6 +174,51 @@ class DistributionChartResponse(BaseModel):
     kde: Optional[List[KdePoint]] = Field(None, description="None -- KDE не определена (<2 значений или нулевая дисперсия)")
 
 
+# ── График (пункт из чата 2026-08-14: остановка «График» между «Превью
+# датасета» и «Распределение», линейный график + бейджи декомпозиции) ──
+
+class TimeSeriesPoint(BaseModel):
+    x: str = Field(..., description="ISO-дата точки")
+    y: float
+
+
+class TimeSeriesResponse(BaseModel):
+    """Ответ GET /dataset/timeseries -- линейный график исследуемого
+    признака с РЕАЛЬНЫМИ датами на оси X (в отличие от /dataset/distribution,
+    где x -- позиция в очищенном ряде). was_resorted=True, если исходный
+    порядок строк в файле был не хронологическим -- график всегда рисует
+    слева направо по возрастанию даты, честно предупреждая об этом."""
+    column: str
+    date_column: str
+    points: List[TimeSeriesPoint]
+    sampled: bool
+    sampling_method: Optional[str] = None
+    original_count: int
+    was_resorted: bool = Field(..., description="Исходный порядок строк был не хронологическим")
+
+
+class DecompositionResponse(BaseModel):
+    """Ответ GET /dataset/decomposition -- бейджи Тренд/Сезонность/
+    Цикличность/Остаток (доли дисперсии, ~100% суммарно). applicable=False
+    -- ЧЕСТНЫЙ отказ (не 0%!), когда декомпозиция технически неприменима:
+    годовая/нерегулярная частота (нет внутригодового цикла), панельные
+    дубли дат (несколько сущностей на дату), недостаточно точек или
+    константный ряд -- reason объясняет причину. См. apps/api/decomposition_data.py.
+    cyclical_pct -- ОЦЕНОЧНАЯ эвристика (не строгий метод, как STL для
+    trend/seasonal/resid)."""
+    applicable: bool
+    reason: Optional[str] = None
+    frequency: Optional[str] = Field(None, description="pandas-код определённой частоты, например 'MS'")
+    frequency_label: Optional[str] = None
+    period_used: Optional[int] = None
+    n_points: int
+    method: Optional[str] = None
+    trend_pct: Optional[float] = None
+    seasonal_pct: Optional[float] = None
+    cyclical_pct: Optional[float] = Field(None, description="Оценочная эвристика, не строгий метод")
+    resid_pct: Optional[float] = None
+
+
 # ── Валидация (10 проверок вкладки «Валидация», validation/engine.py::_run_all_checks) ──
 
 class ValidationCheckItem(BaseModel):
