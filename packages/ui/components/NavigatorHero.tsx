@@ -22,7 +22,7 @@ export function NavigatorHero() {
   return (
     <div className="space-y-6">
       {/* ── 3. Заголовок ── */}
-      <h1 className="font-sans text-2xl font-semibold text-neutral-900">
+      <h1 className="font-sans text-2xl font-semibold text-[#1e3a8a]">
         Анализ временных рядов — от файла до прогноза
       </h1>
 
