@@ -1,4 +1,4 @@
-# app/features/rolling.py
+﻿# app/features/rolling.py
 """
 Модуль скользящих статистик и сглаживания временных рядов.
 Поддерживает SMA, EMA, WMA, Median, LOWESS.
@@ -65,7 +65,7 @@ def apply_wma(
     smoothed = series.rolling(window=window).apply(
         lambda x: np.dot(x, weights) / weights.sum(), raw=True
     )
-    return smoothed.fillna(method='bfill')
+    return smoothed.bfill()
 
 
 def apply_median_smoothing(

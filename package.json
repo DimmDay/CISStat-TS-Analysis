@@ -1,0 +1,31 @@
+{
+  "name": "cisstat-ts-analysis-monorepo",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/embedded",
+    "apps/standalone"
+  ],
+  "scripts": {
+    "dev:embedded": "npm run dev --workspace=@cisstat/ts-analysis-embedded",
+    "dev:standalone": "npm run dev --workspace=@cisstat/ts-analysis-standalone",
+    "build": "npm run build --workspace=@cisstat/ts-analysis-standalone",
+    "build:all": "npm run build --workspace=@cisstat/ts-analysis-embedded && npm run build --workspace=@cisstat/ts-analysis-standalone",
+    "typecheck:clean": "node -e \"const f=require('fs');['apps/embedded/.next','apps/standalone/.next'].forEach(p=>f.rmSync(p,{recursive:true,force:true}))\"",
+    "typecheck:all": "npm run typecheck:clean && npm run typecheck --workspace=@cisstat/ts-analysis-embedded && npm run typecheck --workspace=@cisstat/ts-analysis-standalone"
+  },
+  "overrides": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@types/jest": "^30.0.0",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
+    "ts-jest": "^29.4.12"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "npm run build --workspace=@cisstat/ts-analysis-standalone",
+  "outputDirectory": ".next",
+  "installCommand": "npm install"
+}

@@ -1,0 +1,30 @@
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.0.0
+pandas>=2.0.0,<3.0.0
+python-multipart  # Для поддержки UploadFile
+
+# Ниже -- реально импортируются в app/, validation/, src/, apps/api/
+# (проверено статическим AST-разбором всех .py файлов этих директорий,
+# не только "что вроде используется"). Без них контейнер падает на
+# ModuleNotFoundError при первом же импорте роутеров.
+numpy>=1.24.0
+scipy>=1.10.0
+statsmodels>=0.14.0          # app/core/passport.py -- ADF/KPSS/ACF
+scikit-learn>=1.3.0           # apps/api/routers/models.py, schemas.py
+pandera>=0.18.0               # validation/engine.py
+openpyxl>=3.1.0               # app/data/file_loader.py -- чтение .xlsx
+PyYAML>=6.0                   # apps/api/routers/models.py -- modeling.yaml
+holidays>=0.40                # apps/api/routers/models.py, schemas.py
+matplotlib>=3.7.0             # apps/api/routers/models.py, schemas.py
+missingno>=0.5.0              # apps/api/routers/models.py, schemas.py
+plotly>=5.18.0                # apps/api/routers/models.py, schemas.py
+
+# SessionStore -- Phase 0. RedisSessionStore используется ТОЛЬКО при
+# наличии REDIS_URL env (см. apps/api/session_store.py get_session_store()).
+# MemorySessionStore -- default, не требует redis. Импорт ленивый
+# (внутри from_env()), поэтому для dev/тестов без Redis библиотека
+# формально не нужна -- но добавлена в requirements, чтобы при деплое
+# на Render с REDIS_URL=rediss://... библиотека была доступна.
+redis>=5.0.0                  # apps/api/session_store.py RedisSessionStore
+

@@ -104,105 +104,78 @@ def init_db_connection(
     
 def read_uploaded_file(uploaded_file) -> tuple[pd.DataFrame, str]:
     """
-    Читает загруженный файл с автодетектом формата и заголовков.
+    Читает загруженный файл (поддерживает UploadFile из FastAPI, BytesIO, StringIO и обычные файлы).
+    Возвращает: (DataFrame, расширение файла)
     """
-    if uploaded_file is None:
-        raise ValueError("Файл не загружен")
+    # --- Обработка UploadFile (FastAPI) ---
+    if hasattr(uploaded_file, 'filename') and hasattr(uploaded_file, 'file'):
+        file_name = uploaded_file.filename
+        ext = file_name.split('.')[-1].lower() if '.' in file_name else 'csv'  # Default to CSV
+        file_content = uploaded_file.file.read()
+        uploaded_file.file.seek(0)  # Сбрасываем указатель
+        from io import BytesIO
+        uploaded_file = BytesIO(file_content)
+        uploaded_file.name = file_name
+    else:
+        # --- Обработка BytesIO/StringIO/обычных файлов ---
+        file_name = getattr(uploaded_file, 'name', 'unknown.file')
+        ext = file_name.split('.')[-1].lower() if '.' in file_name else 'csv'
 
-    file_name = uploaded_file.name or "unknown.file"
-    ext = file_name.split('.')[-1].lower()
+    # --- Проверка на пустой файл ---
+    if hasattr(uploaded_file, 'read'):
+        uploaded_file.seek(0)
+        first_bytes = uploaded_file.read(1024)  # Читаем первые 1KB для проверки
+        uploaded_file.seek(0)
+        if not first_bytes:
+            raise ValueError("Файл пуст или не содержит данных.")
 
+    # --- Чтение файла в зависимости от расширения ---
     if ext == "csv":
-        # Сначала подглядываем первую строку без парсинга, чтобы понять,
-        # заголовок это (текстовые лейблы) или уже данные (числа/даты) --
-        # некоторые CIS-Stat экспорты идут вообще без заголовка.
         uploaded_file.seek(0)
-        peek_df = pd.read_csv(
-            uploaded_file,
-            sep=None,
-            engine='python',
-            encoding='utf-8-sig',
-            on_bad_lines='skip',
-            header=None,
-            nrows=2,
-        )
-        uploaded_file.seek(0)
-
-        if len(peek_df) == 0:
-            raise ValueError("Файл пуст или не содержит табличных данных.")
-
-        first_row = peek_df.iloc[0].astype(str)
-        numeric_like = pd.to_numeric(first_row, errors='coerce').notna().mean()
-        date_like = first_row.str.contains(
-            r'\d{4}[-/.]\d{2}[-/.]\d{2}|\d{2}[-/.]\d{2}[-/.]\d{4}', regex=True
-        ).mean()
-        looks_like_header = (numeric_like < 0.5) and (date_like < 0.5)
-
-        if looks_like_header:
-            # У файла есть настоящий заголовок -- используем его как имена
-            # колонок (ИСПРАВЛЕНО: раньше header=None стоял безусловно, и
-            # заголовок попадал в данные как строка значений, портя dtype
-            # всех колонок на object/str -- см. tools/debug_ct_f.py).
+        try:
             df = pd.read_csv(
                 uploaded_file,
                 sep=None,
                 engine='python',
                 encoding='utf-8-sig',
                 on_bad_lines='skip',
-                header=0,
             )
-        else:
-            # Файл без заголовка (первая строка уже данные) -- прежнее
-            # поведение: синтетические имена col_0, col_1, ... плюс
-            # эвристика для даты в первой колонке.
-            df = pd.read_csv(
-                uploaded_file,
-                sep=None,
-                engine='python',
-                encoding='utf-8-sig',
-                on_bad_lines='skip',
-                header=None,
-            )
-            first_col_sample = df[0].head(10).astype(str)
-            is_date_like = first_col_sample.str.contains(r'\d{4}[-/]\d{2}[-/]\d{2}', regex=True).mean() > 0.8
-            if is_date_like:
-                new_headers = ['date'] + [f'col_{i}' for i in range(1, len(df.columns))]
-                df.columns = new_headers
-            else:
-                df.columns = [f'col_{i}' for i in range(len(df.columns))]
+        except Exception as e:
+            raise ValueError(f"Ошибка чтения CSV: {str(e)}")
     elif ext in ["xlsx", "xls"]:
-        df = pd.read_excel(uploaded_file)
-        if isinstance(df.columns[0], (int, float)):
-            df.columns = [f'col_{i}' for i in range(len(df.columns))]
+        try:
+            df = pd.read_excel(uploaded_file)
+            if isinstance(df.columns[0], (int, float)):
+                df.columns = [f'col_{i}' for i in range(len(df.columns))]
+        except Exception as e:
+            raise ValueError(f"Ошибка чтения Excel: {str(e)}")
     elif ext == "json":
         try:
             uploaded_file.seek(0)
-            content = uploaded_file.read().decode('utf-8-sig')
+            content = uploaded_file.read()
+            if isinstance(content, bytes):
+                content = content.decode('utf-8-sig')
             data = json.loads(content)
-            
-            # Проверка на JSON-stat 2.0
             if isinstance(data, dict) and data.get("version") == "2.0":
                 df = parse_jsonstat(data)
             elif isinstance(data, list):
                 if len(data) > 0 and isinstance(data[0], dict):
                     df = pd.json_normalize(data)
-                elif len(data) > 0:
-                    df = pd.DataFrame({uploaded_file.name.rsplit('.', 1)[0]: data})
                 else:
-                    df = pd.DataFrame()
+                    df = pd.DataFrame({file_name: data})
             elif isinstance(data, dict):
                 df = pd.DataFrame([data])
             else:
                 df = pd.DataFrame([{"value": str(data)}])
         except json.JSONDecodeError as je:
-            raise ValueError(f"❌ Ошибка парсинга JSON: {je}")
+            raise ValueError(f"Ошибка парсинга JSON: {str(je)}")
         except Exception as e:
-            raise ValueError(f"❌ Ошибка обработки JSON: {e}")
+            raise ValueError(f"Ошибка обработки JSON: {str(e)}")
     else:
         raise ValueError(f"Формат .{ext} не поддерживается.")
 
     if df.empty:
-        raise ValueError("Файл пуст или не содержит табличных данных.")
+        raise ValueError("Файл пуст или не содержит табличные данные.")
 
     return df, ext
 

@@ -18,6 +18,7 @@ config.json
 *.npy
 *.npz
 !sample_data.csv
+!apps/api/demo_data/*.csv
 !tests/fixtures/*.csv
 !example.xlsx
 
@@ -112,3 +113,15 @@ dmypy.json~$*
 # Разрешить тестовые фикстуры
 !tests/fixtures/*.csv
 .venv_ci_check/
+
+
+node_modules/
+.next/
+out/
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
+__pycache__/
+*.pyc
+.ps1
+
