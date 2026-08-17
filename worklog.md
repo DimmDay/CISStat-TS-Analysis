@@ -1418,3 +1418,37 @@ Stage Summary:
 - Перенос WorkbenchSummary на /dashboard.
 - 4 будущих остановки во вкладке «Задачи» ModuleNav.
 - Подключение реальных графиков в окно «Обзор» Навигатора.
+
+---
+
+Task ID: 20-C
+Agent: main (super-z)
+Task: Добавить новую остановку «График» в правую боковую панель Навигатора (в пункты остановки «Загрузка»). Тимлид добавил эту остановку в TsAnalysisUpload.tsx (commit 9d3c4b7 "Stop Schedule in Stepper") — теперь нужно отразить её в превью Навигатора, чтобы правая панель зеркалила внутренние остановки модуля Загрузки.
+
+Work Log:
+- Подтянул свежий origin/main — обнаружил новый коммит 9d3c4b7: тимлид добавил внутреннюю остановку "chart" в STOPS массив TsAnalysisUpload.tsx (id="chart", label="График", позиция между overview и distribution), а также создал файлы TimeSeriesLineChart.tsx и DecompositionBadges.tsx (экспорты в index.ts всё ещё закомментированы — это отдельная задача).
+- Изучил текущее состояние NAVIGATOR_STOPS[0].items (id="upload") — 8 пунктов без "График": preview, structure_confirm, quality_teaser, tech_info, preview_5_5, distribution, formats, source.
+- Согласовал с тимлидом 2 вопроса: (a) позиция — между "preview" и "distribution"; (b) текст пункта — "Линейный график исследуемого признака по реальной временной оси — первый визуальный взгляд на форму ряда до статистики + декомпозиция Тренд/Сезонность/Цикличность/Остаток."
+- Вставил новый item в navigator-stops.ts: id="chart", title="График", description=текст тимлида дословно. Позиция: сразу после "preview" (индекс 1 в массиве) — это совпадает с порядком TsAnalysisUpload STOPS (overview → chart → ...) и логикой анализа (видим датасет → график ряда → распределение).
+- Обновил TsAnalysisNavigator.test.tsx:
+  * Комментарий "8 пунктов" → "9 пунктов (включая «График»)".
+  * Добавил новый тест renders the new 'График' item between 'preview' and 'distribution' in Загрузка — проверяет, что chart идёт после preview и до distribution по индексу, и что title "График" рендерится в правой панели.
+  * Комментарий "Второй пункт" → "третий в items Загрузки" (structure_confirm сместился на 3-ю позицию после добавления chart).
+  * Комментарий "8 для Загрузки" → "9 для Загрузки, включая «График»".
+- typecheck:all — PASS (embedded + standalone).
+- npx jest TsAnalysisNavigator + NavigatorHero + TsAnalysisUpload — 38/38 PASS (включая новый тест позиции «График»). Предупреждение ResizeObserver в TsAnalysisUpload.test.tsx — пред-существующее, не связано.
+- npm run build:all — PASS (12/12 страниц в каждом app).
+- Артефакты: /home/z/my-project/download/navigator_chart_stop/ (navigator-stops.ts, TsAnalysisNavigator.test.tsx).
+
+Stage Summary:
+- В правой боковой панели Навигатора для остановки «Загрузка» теперь 9 пунктов (было 8) — добавлен «График» между «Автопревью и типы колонок» и «Подтверждение автоопределения».
+- id нового item — "chart", совпадает с StopId в TsAnalysisUpload.tsx (id="chart") — сохранена консистентность идентификаторов между Навигатором и модулем.
+- Текст пункта (description) — дословно от тимлида, длина ~165 символов, вписывается в стиль других пунктов правой панели.
+- Изменены 2 файла: navigator-stops.ts (1 новый item), TsAnalysisNavigator.test.tsx (1 новый тест + 3 обновлённых комментария).
+- WorkbenchSummary → /dashboard, 4 будущих остановки во вкладке «Задачи», подключение реальных графиков в окно «Обзор», раскомментирование экспортов TimeSeriesLineChart/DecompositionBadges — отложены (тимлид будет отдельно проектировать).
+
+Открыто для следующих задач:
+- Раскомментировать экспорты TimeSeriesLineChart/DecompositionBadges в packages/ui/index.ts (файлы уже созданы тимлидом в 9d3c4b7, экспорт закомментирован в 20-B до их создания).
+- Перенос WorkbenchSummary на /dashboard (отдельная задача, auth отдельно).
+- 4 будущих остановки во вкладке «Задачи» ModuleNav.
+- Подключение реальных графиков в окно «Обзор» Навигатора.

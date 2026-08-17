@@ -116,16 +116,30 @@ describe("TsAnalysisNavigator", () => {
 
   it("renders preview items in the right panel for active stop", () => {
     renderNavigator();
-    // Первая остановка = Загрузка, 8 пунктов.
+    // Первая остановка = Загрузка, 9 пунктов (включая «График» —
+    // добавлен после «preview», см. lib/navigator-stops.ts).
     const uploadStop = NAVIGATOR_STOPS[0];
     uploadStop.items.forEach((item) => {
       expect(screen.getByText(item.title)).toBeInTheDocument();
     });
   });
 
+  it("renders the new 'График' item between 'preview' and 'distribution' in Загрузка", () => {
+    renderNavigator();
+    const uploadStop = NAVIGATOR_STOPS[0];
+    const previewIdx = uploadStop.items.findIndex((it) => it.id === "preview");
+    const chartIdx = uploadStop.items.findIndex((it) => it.id === "chart");
+    const distributionIdx = uploadStop.items.findIndex((it) => it.id === "distribution");
+    expect(chartIdx).toBeGreaterThan(previewIdx);
+    expect(chartIdx).toBeLessThan(distributionIdx);
+    // Сам элемент с правильным title рендерится в правой панели
+    expect(screen.getByText("График")).toBeInTheDocument();
+  });
+
   it("clicking an item in the right panel updates center 'Обзор:' title", () => {
     renderNavigator();
-    // Второй пункт первой остановки: "Подтверждение автоопределения".
+    // Пункт «Подтверждение автоопределения» (id=structure_confirm) —
+    // после добавления «Графика» стал третьим в items Загрузки.
     const itemTitle = "Подтверждение автоопределения";
     fireEvent.click(screen.getByText(itemTitle));
     expect(screen.getByText(`Обзор: ${itemTitle}`)).toBeInTheDocument();
@@ -136,7 +150,8 @@ describe("TsAnalysisNavigator", () => {
     // Текст кнопки — "Запустить анализ". Карточка-обёртка <article role="button">
     // не имеет этого текста, поэтому query по name отфильтрует её.
     const buttons = screen.getAllByRole("button", { name: /Запустить анализ/i });
-    // Не менее одного — по числу пунктов активной остановки (8 для Загрузки).
+    // Не менее одного — по числу пунктов активной остановки (9 для Загрузки,
+    // включая «График»).
     expect(buttons.length).toBeGreaterThanOrEqual(1);
     buttons.forEach((btn) => expect(btn).toBeDisabled());
   });
