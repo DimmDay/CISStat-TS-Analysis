@@ -288,7 +288,7 @@ export function TsAnalysisNavigator() {
                 key={item.id}
                 className={`rounded-lg border p-3 transition-colors cursor-pointer ${
                   isActive
-                    ? "border-brand bg-brand-light border-l-4 border-l-brand"
+                    ? "border-brand bg-brand-light"
                     : "border-neutral-200 bg-white hover:bg-neutral-50"
                 }`}
                 onClick={() => setActiveItemId(item.id)}
