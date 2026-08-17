@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "./Button";
 import { getApiBase } from "../lib/apiClient";
@@ -87,9 +87,9 @@ export function ResidualDiagnosticsPanel({
     }
   }, [modelId, params]);
 
-  if (autoRun && !result && !loading && !error) {
-    void runDiagnostics();
-  }
+  useEffect(() => {
+    if (autoRun) void runDiagnostics();
+  }, [autoRun, runDiagnostics]);
 
   return (
     <section className="mt-3 rounded-lg border border-neutral-200 bg-white p-3" data-testid="residual-diagnostics-panel">
