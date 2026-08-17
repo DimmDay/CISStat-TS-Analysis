@@ -1512,3 +1512,41 @@ schemas.py и routers/models.py намеренно не затронуты.
 UI Phase 2 пока не реализован.
 Residuals для Phase 2 fit повторяет параметры реальной модели; следующий этап должен унифицировать fit-result/residual contract перед Phase 3, чтобы исключить drift между tuning и diagnostics.
 Полный pytest/build в текущей среде не запускались; перед merge требуется локальный targeted suite и полный CI.
+
+---
+
+Task 20 — Phase 2 residual diagnostics UI
+
+Scope
+Finish the standalone/embedded UI path for Phase 2 without overwriting parallel work in TsAnalysisModeling.tsx, schemas.py, or models.py.
+
+Design
+Браузер вызывает /v1/internal/models/diagnostics с учетными данными: include.
+Необработанные данные наблюдений из браузера не отправляются.
+Бэкенд определяет текущую AnalysisSession, выбранный target_column и DataFrame из cookie сессии.
+Бэкенд повторно использует функции подгонки остатков реальной модели и диагностики из apps/api/routers/diagnostics.py на этапе 2.
+Пользовательский интерфейс отображает Ljung–Box, Jarque–Bera, ARCH-LM и Durbin–Watson.
+Условные тесты отображают N/A и reason/applicable_if, когда неприменимо.
+Контроль рисков
+packages/ui/components/TsAnalysisModeling.tsx был намеренно НЕ изменен, поскольку это большой общий компонент, и текущий основной компонент не предоставляет сохраняемый контракт Tune best_params. Прямое подключение Diagnostics к параметрам модели по умолчанию создало бы ложную связь между Tune и Diagnostics.
+
+Таким образом, пользовательский интерфейс был предоставлен в виде изолированной, многократно используемой панели ResidualDiagnosticsPanel. Ее можно смонтировать после синхронизации текущего пользовательского интерфейса/состояния настройки. Это позволяет избежать перезаписи параллельно выполняемой работы и диагностики конфигурации модели, отличной от настроенной.
+
+Измененные файлы:
+apps/api/routers/diagnostics_internal.py — новый внутренний конечный пункт, использующий сессию.
+apps/api/main.py — регистрирует внутренний маршрутизатор диагностики.
+packages/ui/components/ResidualDiagnosticsPanel.tsx — новая многоразовая панель диагностики.
+packages/ui/components/ResidualDiagnosticsPanel.test.tsx — тесты пользовательского интерфейса.
+tests/api/test_diagnostics_internal.py — тесты маршрутизации сессий плюс реальная диагностика остаточных ошибок ETS.
+
+Приемочное покрытие:
+Столбец «Цель сессии» обязателен.
+Отсутствующий набор данных/цель отклоняется.
+Нечисловая цель отклоняется.
+Реальные остаточные ошибки ETS достигают всех четырех диагностических показателей.
+Пользовательский интерфейс отображает названия тестов, статус, статистику, p-значение, применимость/причину.
+Пользовательский интерфейс отправляет cookie сессии.
+
+Next step
+Mount ResidualDiagnosticsPanel from the current TsAnalysisModeling after the parallel Tune UI exposes its persisted best_params. Pass those exact parameters; do not silently use {} for a tuned model.
+
