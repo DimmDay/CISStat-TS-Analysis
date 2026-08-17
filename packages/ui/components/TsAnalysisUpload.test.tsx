@@ -523,4 +523,185 @@ describe("TsAnalysisUpload", () => {
       expect(toast.warning).toHaveBeenCalledWith(expect.stringContaining("Price"));
     });
   });
+
+  // ── Остановка «График» (2026-08-14) ──
+
+  it("shows the Chart stop between Превью and Распределение with a real line chart when date column is confident", async () => {
+    global.fetch = jest.fn((url: string) => {
+      if (typeof url === "string" && url.includes("/session/current")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ has_active_dataset: false, dataset: null, stages: {}, last_active_stage: null, updated_at: null }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ target_column: "value", suggested_column: "value", available_columns: ["value"], has_dataset: true }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/dataset/timeseries")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              column: "value",
+              date_column: "date",
+              points: [
+                { x: "2023-01-01T00:00:00", y: 10 },
+                { x: "2023-01-02T00:00:00", y: 20 },
+              ],
+              sampled: false,
+              sampling_method: null,
+              original_count: 2,
+              was_resorted: false,
+            }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/upload")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(okUploadResponse) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }) as unknown as typeof fetch;
+
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["date,value\n2023-01-01,10"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("График")).toBeInTheDocument());
+
+    // "График" стоит между "Превью датасета" и "Распределение" в степпере
+    const stepperButtons = screen.getAllByRole("button").map((b) => b.textContent);
+    const chartIdx = stepperButtons.findIndex((t) => t?.includes("График"));
+    const overviewIdx = stepperButtons.findIndex((t) => t?.includes("Превью датасета"));
+    const distributionIdx = stepperButtons.findIndex((t) => t?.includes("Распределение"));
+    expect(chartIdx).toBeGreaterThan(overviewIdx);
+    expect(chartIdx).toBeLessThan(distributionIdx);
+
+    fireEvent.click(screen.getByText("График"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/2 точек/)).toBeInTheDocument();
+    });
+    // Плейсхолдер "нет уверенной даты" НЕ должен показываться -- date
+    // колонка в okUploadResponse имеет type_icon="datetime" (confidence=80)
+    expect(screen.queryByText(/Дата не определена уверенно/)).not.toBeInTheDocument();
+  });
+
+  it("shows 'no confident date' message instead of chart when no datetime column detected", async () => {
+    global.fetch = jest.fn((url: string) => {
+      if (typeof url === "string" && url.includes("/session/current")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ has_active_dataset: false, dataset: null, stages: {}, last_active_stage: null, updated_at: null }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ target_column: "value", suggested_column: "value", available_columns: ["value"], has_dataset: true }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/upload")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ...okUploadResponse,
+              // Ни одной datetime-колонки -- низкая уверенность (25)
+              columns_info: [
+                { name: "a", dtype: "int64", type_icon: "numeric", non_null: 10, nulls: 0, unique: 10 },
+                { name: "value", dtype: "int64", type_icon: "numeric", non_null: 10, nulls: 0, unique: 10 },
+              ],
+            }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }) as unknown as typeof fetch;
+
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,value\n1,10"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("График")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("График"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Дата не определена уверенно/)).toBeInTheDocument();
+    });
+  });
+
+  it("decomposition is lazy: computed only after clicking 'Считать декомпозицию', shows honest applicable=false state", async () => {
+    global.fetch = jest.fn((url: string) => {
+      if (typeof url === "string" && url.includes("/session/current")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ has_active_dataset: false, dataset: null, stages: {}, last_active_stage: null, updated_at: null }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ target_column: "value", suggested_column: "value", available_columns: ["value"], has_dataset: true }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/dataset/timeseries")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({ column: "value", date_column: "date", points: [{ x: "2023-01-01T00:00:00", y: 1 }], sampled: false, sampling_method: null, original_count: 1, was_resorted: false }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/dataset/decomposition")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              applicable: false,
+              reason: "Частота данных (YS-JAN) не поддерживает внутрипериодную сезонность",
+              frequency: "YS-JAN",
+              frequency_label: null,
+              period_used: null,
+              n_points: 0,
+              method: null,
+              trend_pct: null,
+              seasonal_pct: null,
+              cyclical_pct: null,
+              resid_pct: null,
+            }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/upload")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(okUploadResponse) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }) as unknown as typeof fetch;
+
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["date,value\n2023-01-01,10"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("График")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("График"));
+
+    // До клика -- кнопка есть, бейджей нет (ленивый расчёт)
+    const computeBtn = await screen.findByText("Считать декомпозицию");
+    expect(screen.queryByText("Тренд")).not.toBeInTheDocument();
+
+    fireEvent.click(computeBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Декомпозиция неприменима/)).toBeInTheDocument();
+      expect(screen.getByText(/внутрипериодную сезонность/)).toBeInTheDocument();
+    });
+  });
 });

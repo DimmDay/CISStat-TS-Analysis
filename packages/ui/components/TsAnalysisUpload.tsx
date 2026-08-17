@@ -85,6 +85,8 @@ import {
   SamplingBadge,
   ScatterDistributionChart,
 } from "./DistributionCharts";
+import { TimeSeriesLineChart, type TimeSeriesChartData } from "./TimeSeriesLineChart";
+import { DecompositionBadges, type DecompositionData } from "./DecompositionBadges";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { StructuralClassSchema } from "./StructuralClassSchema";
 import { useAppShell } from "../context/AppShellContext";
@@ -163,7 +165,7 @@ interface StructureDetection {
   freq: { selected: string; confidence: number; options: string[] };
 }
 
-type StopId = "overview" | "distribution" | "structure" | "quality";
+type StopId = "overview" | "chart" | "distribution" | "structure" | "quality";
 
 interface Stop {
   id: StopId;
@@ -177,6 +179,12 @@ const STOPS: Stop[] = [
     label: "Превью датасета",
     description:
       "Проверка, что файл прочитан правильно: предпросмотр строк, типы колонок, объём. Если при чтении что-то пошло не так технически (кодировка, сдвинутый заголовок) — флаг появится здесь же.",
+  },
+  {
+    id: "chart",
+    label: "График",
+    description:
+      "Линейный график исследуемого признака по реальной временной оси — первый визуальный взгляд на форму ряда до статистики. Ниже — бейджи декомпозиции (Тренд/Сезонность/Цикличность/Остаток) как индикатор уровня шума в данных на старте анализа.",
   },
   {
     id: "distribution",
@@ -292,6 +300,12 @@ export function TsAnalysisUpload() {
   const [statsLoading, setStatsLoading] = useState(false);
   const [distribution, setDistribution] = useState<DistributionChartData | null>(null);
   const [distributionLoading, setDistributionLoading] = useState(false);
+  // ── Остановка «График» (2026-08-14): линейный график + декомпозиция ──
+  const [timeseries, setTimeseries] = useState<TimeSeriesChartData | null>(null);
+  const [timeseriesLoading, setTimeseriesLoading] = useState(false);
+  const [decomposition, setDecomposition] = useState<DecompositionData | null>(null);
+  const [decompositionLoading, setDecompositionLoading] = useState(false);
+  const [decompositionRequested, setDecompositionRequested] = useState(false);
   const [overviewTab, setOverviewTab] = useState<"preview" | "columns">("preview");
 
   // ── Единый "исследуемый признак" (target_column) для всей платформы
@@ -373,6 +387,72 @@ export function TsAnalysisUpload() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFeature, isUploaded]);
+
+  // Уверенно определённая date-колонка (порог 70 -- тот же, что уже
+  // используется для статуса остановки «Структура», см. stopStatus ниже)
+  // -- без неё линейный график и декомпозиция технически бессмысленны
+  // (дата "(не использовать)"/угаданная с confidence=25 дала бы кривую
+  // ось X или неверный частотный гейт декомпозиции).
+  const confidentDateCol = detection && detection.dateCol.confidence >= 70 ? detection.dateCol.selected : null;
+
+  // ── Линейный график (остановка «График», авто при заходе -- в отличие
+  // от декомпозиции ниже, LTTB-сэмплинг быстрый, не требует STL) ──
+  // apps/api/routers/session.py::get_dataset_timeseries
+  useEffect(() => {
+    if (!selectedFeature || !confidentDateCol || !isUploaded) {
+      setTimeseries(null);
+      return;
+    }
+    let cancelled = false;
+    setTimeseriesLoading(true);
+    fetch(
+      sessionApiUrl(
+        `/dataset/timeseries?column=${encodeURIComponent(selectedFeature)}&date_column=${encodeURIComponent(confidentDateCol)}`
+      ),
+      { credentials: "include" }
+    )
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: TimeSeriesChartData | null) => {
+        if (!cancelled) setTimeseries(data);
+      })
+      .catch(() => {
+        if (!cancelled) setTimeseries(null);
+      })
+      .finally(() => {
+        if (!cancelled) setTimeseriesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFeature, confidentDateCol, isUploaded]);
+
+  // Сбрасываем декомпозицию при смене признака -- старый результат для
+  // другой колонки не должен "залипать" под новым выбором (пользователь
+  // должен нажать кнопку заново -- по решению тимлида, ленивый расчёт).
+  useEffect(() => {
+    setDecomposition(null);
+    setDecompositionRequested(false);
+  }, [selectedFeature, confidentDateCol]);
+
+  // ── Декомпозиция (остановка «График», ПО КНОПКЕ -- STL на statsmodels
+  // не мгновенная, см. согласование с тимлидом 2026-08-14) ──
+  // apps/api/routers/session.py::get_dataset_decomposition
+  const fetchDecomposition = useCallback(() => {
+    if (!selectedFeature || !confidentDateCol) return;
+    setDecompositionRequested(true);
+    setDecompositionLoading(true);
+    fetch(
+      sessionApiUrl(
+        `/dataset/decomposition?column=${encodeURIComponent(selectedFeature)}&date_column=${encodeURIComponent(confidentDateCol)}`
+      ),
+      { credentials: "include" }
+    )
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: DecompositionData | null) => setDecomposition(data))
+      .catch(() => setDecomposition(null))
+      .finally(() => setDecompositionLoading(false));
+  }, [selectedFeature, confidentDateCol]);
 
   // Если в сессии уже есть активный датасет (пользователь пришёл сюда по
   // кнопке "Продолжить" с Home), подтягиваем превью/техинфо/качество +
@@ -578,6 +658,7 @@ export function TsAnalysisUpload() {
   // ── Статусы остановок степпера (реальные, не моки) ──
   const stopStatus: Record<StopId, CheckStatus> = {
     overview: !isUploaded ? "pending" : (uploadData?.parse_warnings.length ?? 0) > 0 ? "warning" : "done",
+    chart: !isUploaded ? "pending" : !detection || detection.dateCol.confidence < 70 ? "warning" : "done",
     distribution: !isUploaded ? "pending" : numericCols.length === 0 ? "pending" : "done",
     structure: !detection ? "pending" : detection.dateCol.confidence < 70 || detection.entityCol.confidence < 70 ? "warning" : "done",
     quality:
@@ -877,6 +958,31 @@ export function TsAnalysisUpload() {
                 </>
               )}
 
+              {/* ── График ── */}
+              {activeStop === "chart" && (
+                <>
+                  {!confidentDateCol ? (
+                    <p className="text-sm text-neutral-500 bg-neutral-50 rounded-lg p-4">
+                      Дата не определена уверенно (см. остановку «Структура») — линейный график и декомпозиция
+                      недоступны без надёжной временной оси.
+                    </p>
+                  ) : (
+                    <>
+                      <TimeSeriesLineChart data={timeseries} loading={timeseriesLoading} />
+                      <div className="mt-4">
+                        <h4 className="text-xs font-semibold mb-2 text-neutral-600">Декомпозиция</h4>
+                        <DecompositionBadges
+                          data={decomposition}
+                          loading={decompositionLoading}
+                          onCompute={fetchDecomposition}
+                          hasComputed={decompositionRequested}
+                        />
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+
               {/* ── Распределение ── */}
               {activeStop === "distribution" && (
                 <>
@@ -1109,6 +1215,22 @@ export function TsAnalysisUpload() {
                 <Button onClick={handleReset} variant="secondary" className="w-full">
                   Сменить файл
                 </Button>
+              </article>
+            )}
+
+            {activeStop === "chart" && (
+              <article>
+                <h3 className="font-semibold mb-2">Зачем это здесь</h3>
+                <p className="text-sm text-neutral-600 mb-3">
+                  Форма ряда на глаз (тренд, разрывы, аномальные всплески) — до того, как погружаться в статистику
+                  распределения. Декомпозиция показывает, сколько в ряде объясняется трендом/сезонностью, а сколько
+                  остаётся шумом — ориентир сложности задачи прогнозирования.
+                </p>
+                {!confidentDateCol && (
+                  <p className="text-sm bg-amber-50 border border-amber-200 rounded px-3 py-2 text-amber-800">
+                    Уверенная дата не найдена — перейдите на «Структуру» и подтвердите/скорректируйте date-колонку.
+                  </p>
+                )}
               </article>
             )}
 

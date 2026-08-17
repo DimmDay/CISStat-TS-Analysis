@@ -1,7 +1,9 @@
 // packages/ui/index.ts
-export { PortalNavBar } from "./components/PortalNavBar";
 
 // Навигатор (главная страница в обоих apps/*) — герой-секция + Путеводитель.
+// Перенесено в начало файла: Навигатор — это точка входа в продукт, без него
+// непонятно, как читать остальные экспорты. По решению тимлида (вопрос 1a,
+// 2026-08-17) — показывается всегда, без auth-ветвления.
 export { NavigatorHero } from "./components/NavigatorHero";
 export { TsAnalysisNavigator } from "./components/TsAnalysisNavigator";
 export {
@@ -20,6 +22,7 @@ export type {
   OverviewExampleMetric,
 } from "./lib/navigator-stops";
 
+export { PortalNavBar } from "./components/PortalNavBar";
 export { Button } from "./components/Button";
 export { Metric } from "./components/Metric";
 export { StatusIcon, STATUS_ICON } from "./components/StatusIcon";
@@ -81,6 +84,25 @@ export { BacktestComparisonChart } from "./components/BacktestComparisonChart";
 // подключение после «Загрузки» и «Моделирования» (2026-08-14).
 export { ValidationCheckChart } from "./components/ValidationCheckChart";
 export type { ValidationCheckData, ValidationCheckItem } from "./components/ValidationCheckChart";
+
+// Линейный график + бейджи декомпозиции (Recharts) -- остановка «График»
+// вкладки «Загрузка», между «Превью датасета» и «Распределение»
+// (2026-08-14).
+//
+// ⚠️ TODO: компоненты TimeSeriesLineChart.tsx и DecompositionBadges.tsx
+//    физически отсутствуют в packages/ui/components/ на момент ремонта
+//    этого файла. Экспорты закомментированы до их создания — иначе tsc
+//    падает с "Cannot find module". Запланированы в задаче подключения
+//    реальных графиков в окно «Обзор» Навигатора и в остановку «График»
+//    вкладки «Загрузка». Бэкенд-эндпоинты уже готовы:
+//      - GET /v1/session/dataset/timeseries
+//      - GET /v1/session/dataset/decomposition
+//    (см. apps/api/routers/session.py).
+//
+// export { TimeSeriesLineChart } from "./components/TimeSeriesLineChart";
+// export type { TimeSeriesPoint, TimeSeriesChartData } from "./components/TimeSeriesLineChart";
+// export { DecompositionBadges } from "./components/DecompositionBadges";
+// export type { DecompositionData } from "./components/DecompositionBadges";
 
 // ── Ниже: перенесено без изменений из origin/main (команда, "Моделирование") ──
 

@@ -1385,3 +1385,36 @@ Stage Summary:
 - 4 будущих остановки во вкладке «Задачи» ModuleNav.
 - Подключение реальных графиков в окно «Обзор».
 - Реальная авторизация и интеграция выбора тарифа.
+
+---
+
+Task ID: 20-B
+Agent: main (super-z)
+Task: «Ремонт» packages/ui/index.ts — объединение редакции тимлида (полная версия origin/main с TimeSeriesLineChart/DecompositionBadges/BacktestComparison/ValidationCheck) с моей редакцией (Навигатор: NavigatorHero/TsAnalysisNavigator/navigator-stops).
+
+Work Log:
+- Склонировал свежий репозиторий (sandbox пересоздан, локальная копия пропала).
+- Изучил текущее состояние packages/ui/index.ts (коммит 2bddad2 — уже содержит Навигатор + BacktestComparison + ValidationCheck).
+- Сравнил с присланой тимлидом редакцией: diff показал 2 расхождения:
+  1. В репо нет блока экспортов TimeSeriesLineChart + DecompositionBadges (4 строки export + 2 типа).
+  2. В редакции тимлида нет блока Навигатора (NavigatorHero + TsAnalysisNavigator + 8 экспортов/типов из navigator-stops).
+- Проверил физическое наличие компонентов: ls packages/ui/components/ показал, что TimeSeriesLineChart.tsx и DecompositionBadges.tsx ОТСУТСТВУЮТ в файловой системе. grep -rn по всему коду подтвердил: эти имена нигде не импортируются и не используются.
+- Вывод: редакция тимлида — это целевое состояние с опережением реализации. Если раскомментировать экспорты — tsc упадёт с "Cannot find module './components/TimeSeriesLineChart'".
+- Бэкенд-эндпоинты для этих компонентов уже готовы: GET /v1/session/dataset/timeseries и /dataset/decomposition (см. apps/api/routers/session.py L334-399).
+- Решение: взял редакцию тимлида целиком + добавил блок Навигатора (мой) в начало файла (после PortalNavBar не стал — поставил в самое начало, т.к. Навигатор — точка входа в продукт). Экспорты TimeSeries/Decomposition ЗАКОММЕНТИРОВАЛ с TODO-комментарием, объясняющим причину и ссылающимся на готовые бэкенд-эндпоинты.
+- typecheck:all — PASS (embedded + standalone).
+- npx jest NavigatorHero + TsAnalysisNavigator + ModuleNav — 22/22 PASS.
+- npm run build:all — PASS (12/12 страниц в каждом app).
+- Артефакт: /home/z/my-project/download/index_repair/index.ts.
+
+Stage Summary:
+- packages/ui/index.ts «отремонтирован»: объединены обе редакции (тимлида + моя), с явной пометкой TODO на 2 отсутствующих компонента.
+- Экспортный контракт @cisstat/ui теперь включает: NavigatorHero, TsAnalysisNavigator, NAVIGATOR_STOPS/BADGES/AUDIENCE/PURPOSE/OVERVIEW_EXAMPLE_METRICS + типы; весь origin/main (DistributionCharts, BacktestComparisonChart, ValidationCheckChart, TsAnalysisModeling, Modeling types, RulesManagementPanel, AppShell, ModuleNav, Plans).
+- TimeSeriesLineChart/DecompositionBadges — закомментированы с TODO, ждут создания файлов в отдельной задаче (бэкенд готов).
+- Готов к коммиту и push. Не пушу — тимлид пушит сам.
+
+Открыто для следующих задач:
+- Создание компонентов TimeSeriesLineChart.tsx и DecompositionBadges.tsx (подключение к готовым бэкенд-эндпоинтам).
+- Перенос WorkbenchSummary на /dashboard.
+- 4 будущих остановки во вкладке «Задачи» ModuleNav.
+- Подключение реальных графиков в окно «Обзор» Навигатора.
