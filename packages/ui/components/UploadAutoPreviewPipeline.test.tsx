@@ -4,12 +4,14 @@
 // «Пайплайн автопревью» для окна «Обзор» Навигатора (только при активной
 // остановке «Загрузка» + пункте «Автопревью и типы колонок»).
 //
-// Проверяем:
+// После Phase 2 (refactor to snake layout) проверяем:
 //   - корневой role="img" + aria-label (a11y-контракт)
-//   - рендерит все 7 основных шагов пайплайна (заголовки)
+//   - рендерит все 9 шагов пайплайна (заголовки)
 //   - рендерит расширяющую ноду classify_columns с 4 подтипами
-//   - рендерит стрелки между шагами (chevron down)
+//   - рендерит горизонтальные стрелки (ChevronRight/ChevronLeft) между нодами
+//   - рендерит вертикальные стрелки (ChevronDown) между строками
 //   - упоминание поддерживаемых форматов (.csv, .xlsx, .xls, .json)
+//   - компоновка «змейка»: 5 строк, чётные LTR, нечётные RTL
 
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -22,7 +24,7 @@ describe("UploadAutoPreviewPipeline", () => {
     expect(root).toBeInTheDocument();
   });
 
-  it("renders all main pipeline step titles", () => {
+  it("renders all 9 pipeline step titles", () => {
     render(<UploadAutoPreviewPipeline />);
     // 9 шагов: 7 из примера тимлида + parse_warnings + done.
     expect(PIPELINE_STEPS).toHaveLength(9);
@@ -33,9 +35,8 @@ describe("UploadAutoPreviewPipeline", () => {
 
   it("renders subtitles with extra backend context", () => {
     render(<UploadAutoPreviewPipeline />);
-    // Проверяем ключевые подзаголовки, отражающие реальный бэкенд:
-    expect(screen.getByText(/engine='python', encoding='utf-8-sig'/i)).toBeInTheDocument();
-    expect(screen.getByText(/pd\.read_csv/i)).toBeInTheDocument();
+    expect(screen.getByText(/utf-8-sig/i)).toBeInTheDocument();
+    expect(screen.getByText(/read_csv/i)).toBeInTheDocument();
   });
 
   it("renders 4 classify_columns subtypes (numeric / categorical / datetime / text)", () => {
@@ -46,16 +47,14 @@ describe("UploadAutoPreviewPipeline", () => {
     expect(screen.getByText("text")).toBeInTheDocument();
   });
 
-  it("renders arrow separators between steps", () => {
+  it("renders vertical arrow separators (chevron down) between rows", () => {
     render(<UploadAutoPreviewPipeline />);
-    // ChevronDown иконки как aria-label="chevron down"
+    // 5 строк → 4 стрелки вниз между ними.
     const chevrons = screen.getAllByLabelText("chevron down");
-    // Между 7 шагами — минимум 6 стрелок (фактически больше: до classify,
-    // внутри classify-блока, после)
-    expect(chevrons.length).toBeGreaterThanOrEqual(6);
+    expect(chevrons).toHaveLength(4);
   });
 
-  it("mentions all 4 supported file formats", () => {
+  it("mentions all 4 supported file formats in Файл subtitle", () => {
     render(<UploadAutoPreviewPipeline />);
     expect(screen.getByText(/\.csv/i)).toBeInTheDocument();
     expect(screen.getByText(/\.xlsx/i)).toBeInTheDocument();
@@ -87,8 +86,27 @@ describe("UploadAutoPreviewPipeline", () => {
       "parse_warnings",
       "done",
     ]);
-    // 9 = 7 из примера тимлида + parse_warnings (Предупреждения парсинга)
-    // + done (Готово → SessionStore). См. PIPELINE_STEPS в компоненте.
     expect(PIPELINE_STEPS).toHaveLength(9);
+  });
+
+  // ── Phase 2: snake layout ───────────────────────────────────
+
+  it("compacts the pipeline into 5 rows (snake layout)", () => {
+    // ROW_INDICES = [[0,1], [2,3], [4,5], [6,7], [8]] — 5 строк.
+    // Косвенная проверка через количество вертикальных стрелок:
+    // 5 строк → 4 chevron-down между ними. Это уже покрыто тестом выше,
+    // но дублируем явным assertion, чтобы зафиксировать контракт змейки.
+    render(<UploadAutoPreviewPipeline />);
+    const chevrons = screen.getAllByLabelText("chevron down");
+    expect(chevrons).toHaveLength(4);
+    // Если строк станет не 5 — тест упадёт, и разработчик вспомнит, что
+    // змейка должна быть компактной (минимальный скролл).
+  });
+
+  it("renders the last row with a single node «Готово → SessionStore»", () => {
+    // Последняя (5-я) строка содержит 1 ноду, без горизонтальной
+    // стрелки справа. Проверяем, что заголовок присутствует ровно 1 раз.
+    render(<UploadAutoPreviewPipeline />);
+    expect(screen.getAllByText(/Готово → SessionStore/i)).toHaveLength(1);
   });
 });

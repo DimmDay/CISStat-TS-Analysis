@@ -15,20 +15,40 @@
 //   - app/classification/classifier.py: classify_columns
 //   - apps/api/session_store.py: DatasetInfo / session.set_dataset
 //
+// ── Компоновка «змейка» (Task 22 — Phase 2) ──────────────────────
+//
+// Первая итерация была вертикальным списком из 9 строк — высота ~720px,
+// что ломает философию минимального скролла платформы. Переделано в
+// змейку 5 строк × 2 ноды (последняя — 1 нода):
+//
+//   Строка 1 (LTR):  [Файл] > [Детект кодировки]
+//                                                ↓
+//   Строка 2 (RTL):  [Детект типов] < [Парсинг]
+//   ↓
+//   Строка 3 (LTR):  [classify_columns + 4 чипа] > [Подсчёт пропусков]
+//                                                                     ↓
+//   Строка 4 (RTL):  [Подсчёт уникальных] < [Предупреждения парсинга]
+//   ↓
+//   Строка 5 (LTR):  [Готово → SessionStore]
+//
+// Чётные строки (1, 3) идут слева-направо (LTR), нечётные (2, 4) —
+// справа-налево (RTL). Зритель читает змейкой: вниз-влево-вниз-вправо-...
+// Между нодами в строке — ChevronRight (LTR) или ChevronLeft (RTL).
+// Между строками — ChevronDown с той стороны, где закончилась строка.
+//
 // Архитектурно — ближайший родственник StructuralClassSchema.tsx (статичная
-// информационная схема с подсветкой активного варианта), но вместо дерева
-// решений — последовательность шагов с ветвлением на classify_columns.
-// Паттерн «чистый презентационный компонент + типизированный массив шагов»
-// тот же.
+// информационная схема), но с горизонтально-вертикальной змейкой вместо
+// дерева решений.
 //
 // a11y-контракт:
 //   - Корень имеет role="img" + aria-label — скринридер читает весь
 //     пайплайн как одно изображение с описанием последовательности.
 //   - Внутренние иконки/стрелки — aria-hidden="true", т.к. дублируют
 //     текстовую информацию (названия шагов).
-//   - ChevronDown между шагами имеет aria-label="chevron down" (как в
+//   - ChevronDown между строками имеет aria-label="chevron down" (как в
 //     NavigatorHero.tsx — единый паттерн для всех chevron-иконок в проекте).
 
+import { Fragment } from "react";
 import {
   FileUp,
   Binary,
@@ -40,7 +60,8 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronDown,
-  ArrowRight,
+  ChevronRight,
+  ChevronLeft,
   type LucideIcon,
 } from "lucide-react";
 
@@ -55,8 +76,6 @@ export interface PipelineStep {
   subtitle?: string;
   /** Иконка из lucide-react. */
   icon: LucideIcon;
-  /** Доп. подпись к иконке/ноде — для первой ноды (форматы). */
-  badge?: string;
 }
 
 // ── 9 шагов пайплайна ─────────────────────────────────────────
@@ -66,46 +85,42 @@ export interface PipelineStep {
 //   4. Детект типов → 5. classify_columns (с 4 подтипами) →
 //   6. Подсчёт пропусков → 7. Подсчёт уникальных →
 //   8. Предупреждения парсинга → 9. Готово → SessionStore
-//
-// 7 основных (как в примере тимлида) + 2 уточняющих (parse_warnings и
-// done), без которых схема была бы неполной относительно бэкенда.
 
 export const PIPELINE_STEPS: PipelineStep[] = [
   {
     id: "file",
     title: "Файл",
-    subtitle: ".csv / .xlsx / .xls / .json — drag-and-drop, до 50MB",
+    subtitle: ".csv / .xlsx / .xls / .json",
     icon: FileUp,
-    badge: "UploadFile",
   },
   {
     id: "detect_encoding",
     title: "Детект кодировки/разделителя",
-    subtitle: "engine='python', encoding='utf-8-sig', sep=None (auto)",
+    subtitle: "engine='python', utf-8-sig, sep=None",
     icon: Binary,
   },
   {
     id: "parsing",
     title: "Парсинг",
-    subtitle: "pd.read_csv / read_excel / json_normalize / parse_jsonstat",
+    subtitle: "read_csv / read_excel / json",
     icon: Braces,
   },
   {
     id: "detect_types",
     title: "Детект типов",
-    subtitle: "datetime64 / numeric / object / string",
+    subtitle: "datetime64 / numeric / object",
     icon: Type,
   },
   {
     id: "classify_columns",
     title: "classify_columns",
-    subtitle: "классификация колонок по 4 типам",
+    subtitle: "4 типа колонок",
     icon: Boxes,
   },
   {
     id: "count_missing",
     title: "Подсчёт пропусков",
-    subtitle: "cols_with_missing, nulls per column",
+    subtitle: "cols_with_missing, nulls",
     icon: CircleDot,
   },
   {
@@ -117,13 +132,13 @@ export const PIPELINE_STEPS: PipelineStep[] = [
   {
     id: "parse_warnings",
     title: "Предупреждения парсинга",
-    subtitle: "Unnamed: N (сдвиг header), U+FFFD «�» (неверная кодировка)",
+    subtitle: "Unnamed: N, U+FFFD «�»",
     icon: AlertTriangle,
   },
   {
     id: "done",
     title: "Готово → SessionStore",
-    subtitle: "DataFrame + DatasetInfo сохранены в сессии",
+    subtitle: "DataFrame + DatasetInfo сохранены",
     icon: CheckCircle2,
   },
 ];
@@ -137,61 +152,70 @@ export const PIPELINE_STEPS: PipelineStep[] = [
 interface ClassifySubtype {
   id: string;
   label: string;
-  hint: string;
 }
 
 const CLASSIFY_SUBTYPES: ClassifySubtype[] = [
-  { id: "numeric", label: "numeric", hint: "select_dtypes(include='number')" },
-  { id: "categorical", label: "categorical", hint: "object, 1 < nunique < 100" },
-  { id: "datetime", label: "datetime", hint: "datetime64[ns]" },
-  { id: "text", label: "text", hint: "object/string, fallback" },
+  { id: "numeric", label: "numeric" },
+  { id: "categorical", label: "categorical" },
+  { id: "datetime", label: "datetime" },
+  { id: "text", label: "text" },
 ];
 
-// ── Вспомогательный: одна нода пайплайна ───────────────────────
+// ── Компоновка «змейка»: 5 строк ──────────────────────────────
+//
+// rows[] — массив строк. Каждая строка — массив из 1 или 2 шагов.
+// Чётные индексы (0, 2, 4) — LTR, нечётные (1, 3) — RTL.
+// При рендере RTL-строки мы НЕ переставляем шаги местами в данных
+// (порядок остаётся [3, 4], [7, 8] по PIPELINE_STEPS), а только
+// инвертируем направление потока через flex-row-reverse — визуально
+// [4] < [3], что и есть змейка.
+
+const ROW_INDICES: number[][] = [
+  [0, 1], // Строка 1 (LTR): Файл, Детект кодировки
+  [2, 3], // Строка 2 (RTL): Парсинг, Детект типов (визуально [Детект типов] < [Парсинг])
+  [4, 5], // Строка 3 (LTR): classify_columns, Подсчёт пропусков
+  [6, 7], // Строка 4 (RTL): Подсчёт уникальных, Предупреждения парсинга
+  [8],    // Строка 5 (LTR): Готово
+];
+
+// ── Вспомогательный: одна компактная нода ─────────────────────
+//
+// Минимальная высота — иконка 16px + title 12px + subtitle 10px = ~44px
+// с padding. Это позволяет уложить 5 строк + 4 стрелки вниз в ~280-300px.
 
 function PipelineNode({ step }: { step: PipelineStep }) {
   const Icon = step.icon;
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-brand/30 bg-white px-4 py-3 shadow-sm">
+    <div className="flex items-center gap-2 rounded-md border border-brand/30 bg-white px-2.5 py-1.5 min-w-0 flex-1">
       <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-brand-light text-brand"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-brand-light text-brand"
         aria-hidden="true"
       >
-        <Icon size={18} />
+        <Icon size={14} />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-semibold text-neutral-900 leading-tight">
+        <div className="text-[12px] font-semibold text-neutral-900 leading-tight truncate">
           {step.title}
         </div>
         {step.subtitle && (
-          <div className="text-[11px] text-neutral-500 mt-0.5 leading-tight break-words">
+          <div className="text-[10px] text-neutral-500 leading-tight truncate font-mono">
             {step.subtitle}
           </div>
         )}
+        {/* 4 подтипа внутри classify_columns — компактные чипы в 1 ряд */}
+        {step.id === "classify_columns" && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {CLASSIFY_SUBTYPES.map((sub) => (
+              <span
+                key={sub.id}
+                className="inline-flex items-center rounded bg-neutral-100 px-1.5 py-0.5 text-[9px] font-semibold text-neutral-600"
+              >
+                {sub.label}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
-      {step.badge && (
-        <span
-          className="shrink-0 rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-mono text-neutral-500"
-          aria-hidden="true"
-        >
-          {step.badge}
-        </span>
-      )}
-    </div>
-  );
-}
-
-// ── Вспомогательный: вертикальная стрелка ────────────────────
-
-function ChevronSeparator() {
-  return (
-    <div className="flex justify-center py-1" aria-hidden="true">
-      <ChevronDown
-        size={18}
-        className="text-neutral-400"
-        aria-label="chevron down"
-        role="img"
-      />
     </div>
   );
 }
@@ -206,66 +230,78 @@ export function UploadAutoPreviewPipeline() {
     " → ",
   )}`;
 
-  // Первый шаг (Файл) и последний (Готово) — с акцентом: FileUp зелёный,
-  // CheckCircle2 тоже зелёный, но с зелёной рамкой. Средние шаги — нейтральные.
-  // Делаем это через условные классы на обёртке PipelineNode.
   return (
     <div
       role="img"
       aria-label={ariaLabel}
-      className="rounded-lg border border-neutral-200 bg-white p-4 min-h-[280px]"
+      className="rounded-lg border border-neutral-200 bg-white p-3"
     >
-      <div className="flex flex-col gap-0">
-        {PIPELINE_STEPS.map((step, idx) => {
-          const isLast = idx === PIPELINE_STEPS.length - 1;
-          const isFirst = idx === 0;
+      <div className="flex flex-col gap-1">
+        {ROW_INDICES.map((rowIndices, rowIdx) => {
+          const isRTL = rowIdx % 2 === 1; // нечётные строки — справа налево
+          const isLast = rowIdx === ROW_INDICES.length - 1;
+          const stepsInRow = rowIndices.map((i) => PIPELINE_STEPS[i]);
+
           return (
-            <div key={step.id}>
-              <PipelineNode step={step} />
-
-              {/* Развёртка 4 подтипов после classify_columns */}
-              {step.id === "classify_columns" && (
-                <div className="mt-2 ml-6 border-l-2 border-dashed border-neutral-200 pl-3">
-                  <div className="text-[11px] text-neutral-500 mb-1.5">
-                    4 типа колонок:
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    {CLASSIFY_SUBTYPES.map((sub) => (
-                      <div
-                        key={sub.id}
-                        className="flex items-center gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1.5"
-                      >
-                        <ArrowRight
-                          size={12}
-                          className="shrink-0 text-neutral-400"
-                          aria-hidden="true"
-                        />
-                        <div className="min-w-0">
-                          <div className="text-xs font-semibold text-neutral-800">
-                            {sub.label}
-                          </div>
-                          <div className="text-[10px] text-neutral-500 font-mono leading-tight">
-                            {sub.hint}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+            <Fragment key={rowIdx}>
+              {/* Строка нод: LTR или RTL через flex-row-reverse.
+                  В RTL-строке шаги в данных идут [a, b] (по PIPELINE_STEPS),
+                  но визуально [b] < [a] — змейка. */}
+              <div
+                className={`flex items-stretch gap-1.5 ${
+                  isRTL ? "flex-row-reverse" : ""
+                }`}
+              >
+                {stepsInRow.map((step, i) => (
+                  <Fragment key={step.id}>
+                    <PipelineNode step={step} />
+                    {/* Стрелка между нодами в строке (не после последней) */}
+                    {i < stepsInRow.length - 1 && (
+                      <ChevronSeparator
+                        direction={isRTL ? "left" : "right"}
+                      />
+                    )}
+                  </Fragment>
+                ))}
+              </div>
+              {/* Стрелка вниз между строками — с той стороны, где
+                  закончилась предыдущая строка:
+                    - LTR-строка закончилась справа → ↓ справа
+                    - RTL-строка закончилась слева → ↓ слева
+                  Последняя строка — без ↓. */}
+              {!isLast && (
+                <div
+                  className={`flex ${
+                    isRTL ? "justify-start pl-3" : "justify-end pr-3"
+                  }`}
+                  aria-hidden="true"
+                >
+                  <ChevronDown
+                    size={16}
+                    className="text-neutral-400"
+                    aria-label="chevron down"
+                    role="img"
+                  />
                 </div>
               )}
-
-              {/* Стрелка между шагами (кроме последнего) */}
-              {!isLast && <ChevronSeparator />}
-              {/* Подсказка под первым шагом — какие форматы поддерживаются */}
-              {isFirst && (
-                <div className="text-[11px] text-neutral-400 mb-1 ml-1">
-                  4 формата на входе
-                </div>
-              )}
-            </div>
+            </Fragment>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ── Вспомогательный: горизонтальная стрелка между нодами ─────
+
+function ChevronSeparator({ direction }: { direction: "left" | "right" }) {
+  const Icon = direction === "left" ? ChevronLeft : ChevronRight;
+  return (
+    <div
+      className="flex shrink-0 items-center justify-center"
+      aria-hidden="true"
+    >
+      <Icon size={14} className="text-neutral-400" />
     </div>
   );
 }
