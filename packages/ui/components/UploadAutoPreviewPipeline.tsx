@@ -113,7 +113,7 @@ export const PIPELINE_STEPS: PipelineStep[] = [
   },
   {
     id: "classify_columns",
-    title: "classify_columns",
+    title: "Классификация столбцов",
     subtitle: "4 типа колонок",
     icon: Boxes,
   },
