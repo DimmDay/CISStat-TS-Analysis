@@ -5,13 +5,22 @@
 //   - 10 остановок степпера (6 существующих + 4 будущих с пометкой Soon)
 //   - кнопка "Начать анализ" ведёт на /upload (для существующих) /
 //     "Скоро" с Lock-иконкой (для будущих)
-//   - правая панель показывает превью пунктов активной остановки
-//   - клик по пункту меняет заголовок центрального окна "Обзор"
-//   - кнопка "Запустить анализ" в правой панели — disabled
+//   - панель "Этапы модуля" показывает превью пунктов активной остановки
+//   - клик по пункту меняет заголовок окна "Обзор"
+//   - кнопка "Запустить анализ" в панели этапов — disabled
 //   - "Тарифы" — декоративный STUB, выбор radio меняет активный план
+//
+// ── Task 23: перекомпоновка колонок ─────────────────────────────────
+// Новая последовательность слева направо:
+//   1. Степпер + Тарифы (w-60)   ← левая колонка (без изменений)
+//   2. Этапы модуля (w-80)      ← бывшая правая, теперь средняя
+//   3. Описание + Обзор (flex-1) ← бывший центр, теперь правая
+//
+// Тесты с within() проверяют, что элементы находятся в правильной колонке
+// (а не просто присутствуют в DOM — это не гарантирует порядок).
 
 import "@testing-library/jest-dom";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { TsAnalysisNavigator } from "./TsAnalysisNavigator";
 import { AppShellProvider } from "../context/AppShellContext";
 import { NAVIGATOR_STOPS } from "../lib/navigator-stops";
@@ -72,9 +81,12 @@ describe("TsAnalysisNavigator", () => {
     expect(screen.getByText("Скоро")).toBeInTheDocument();
   });
 
-  it("renders 'Путеводитель' and 'Тарифы' headings in the left column", () => {
+  it("renders 'Маршрут исследования' and 'Тарифы' headings in the left column", () => {
+    // NOTE: заголовок левой колонки ранее назывался «Путеводитель», но
+    // в коммите c29a503 тимлид переименовал его в «Маршрут исследования».
+    // Тест был сломан до Task 23; зафиксирован здесь как попутный фикс.
     renderNavigator();
-    expect(screen.getByText("Путеводитель")).toBeInTheDocument();
+    expect(screen.getByText("Маршрут исследования")).toBeInTheDocument();
     expect(screen.getByText("Тарифы")).toBeInTheDocument();
   });
 
@@ -132,14 +144,16 @@ describe("TsAnalysisNavigator", () => {
     const distributionIdx = uploadStop.items.findIndex((it) => it.id === "distribution");
     expect(chartIdx).toBeGreaterThan(previewIdx);
     expect(chartIdx).toBeLessThan(distributionIdx);
-    // Сам элемент с правильным title рендерится в правой панели
+    // Сам элемент с правильным title рендерится в средней колонке (Task 23)
     expect(screen.getByText("График")).toBeInTheDocument();
   });
 
-  it("clicking an item in the right panel updates center 'Обзор:' title", () => {
+  it("clicking an item in the middle column updates right 'Обзор:' title", () => {
     renderNavigator();
     // Пункт «Подтверждение автоопределения» (id=structure_confirm) —
     // после добавления «Графика» стал третьим в items Загрузки.
+    // После Task 23: панель «Этапы модуля» — средняя колонка (между
+    // степпером и окном «Описание + Обзор»).
     const itemTitle = "Подтверждение автоопределения";
     fireEvent.click(screen.getByText(itemTitle));
     expect(screen.getByText(`Обзор: ${itemTitle}`)).toBeInTheDocument();
@@ -213,5 +227,89 @@ describe("TsAnalysisNavigator", () => {
     fireEvent.click(screen.getByLabelText("ЗАГРУЗКА"));
     const pipeline = screen.getByRole("img", { name: /пайплайн автопревью/i });
     expect(pipeline).toBeInTheDocument();
+  });
+
+  // ── Task 23: перекомпоновка колонок ────────────────────────────────
+  //
+  // Новая последовательность слева направо:
+  //   1. Степпер + Тарифы (левая колонка, без изменений)
+  //   2. Этапы модуля (бывшая правая → теперь средняя)
+  //   3. Описание + Обзор (бывший центр → теперь правая)
+  //
+  // Проверяем через within() — это единственный надёжный способ
+  // верифицировать порядок в DOM. Тесты getByText проходят и при старом
+  // порядке (текст всё равно где-то в DOM), а within() ловит перестановку.
+
+  it("renders 3 top-level columns in the new order: stepper | stages | description+overview", () => {
+    renderNavigator();
+    // Корневой <div className="flex gap-6 mt-8"> содержит 3 прямых ребёнка:
+    // <aside> (степпер), <aside> (этапы), <section> (описание+обзор).
+    // Селектор .flex.gap-6.mt-8 — единственный элемент с такой комбинацией
+    // классов (внутренние div используют другие классы).
+    const rootFlex = screen.getByText("Маршрут исследования").closest(".flex.gap-6.mt-8");
+    expect(rootFlex).not.toBeNull();
+    const directChildren = Array.from(rootFlex!.children);
+    expect(directChildren).toHaveLength(3);
+
+    const [col1, col2, col3] = directChildren;
+
+    // Колонка 1: степпер + тарифы (заголовок «Маршрут исследования»)
+    expect(within(col1 as HTMLElement).getByText("Маршрут исследования")).toBeInTheDocument();
+    expect(within(col1 as HTMLElement).getByText("Тарифы")).toBeInTheDocument();
+    // Внутри степпера — 10 кнопок остановок, например ЗАГРУЗКА.
+    expect(within(col1 as HTMLElement).getByLabelText("ЗАГРУЗКА")).toBeInTheDocument();
+
+    // Колонка 2: Этапы модуля (после Task 23 — средняя)
+    expect(within(col2 as HTMLElement).getByText(/Этапы модуля:/)).toBeInTheDocument();
+    // Здесь же — пункты активной остановки (Загрузка по умолчанию).
+    expect(within(col2 as HTMLElement).getByText("Автопревью и типы колонок")).toBeInTheDocument();
+    // Здесь же — disabled-кнопка «Запустить анализ»
+    expect(within(col2 as HTMLElement).getAllByRole("button", { name: /Запустить анализ/i }).length).toBeGreaterThan(0);
+
+    // Колонка 3: Описание + Обзор (после Task 23 — правая)
+    expect(within(col3 as HTMLElement).getByText("Описание")).toBeInTheDocument();
+    expect(within(col3 as HTMLElement).getByText(/Обзор:/)).toBeInTheDocument();
+    // Здесь же — метрики (примеры без активного датасета)
+    expect(within(col3 as HTMLElement).getByText("пример")).toBeInTheDocument();
+  });
+
+  it("does NOT render 'Этапы модуля' in the right (3rd) column after Task 23", () => {
+    // Регрессионный тест: до Task 23 «Этапы модуля» были в правой колонке.
+    // Если кто-то вернёт старый порядок — этот тест должен упасть.
+    renderNavigator();
+    const rootFlex = screen.getByText("Маршрут исследования").closest(".flex.gap-6.mt-8");
+    const directChildren = Array.from(rootFlex!.children);
+    expect(directChildren).toHaveLength(3);
+    const col3 = directChildren[2] as HTMLElement;
+    // «Этапы модуля: ЗАГРУЗКА» НЕ должно быть в третьей (правой) колонке.
+    expect(within(col3).queryByText(/Этапы модуля:/)).toBeNull();
+  });
+
+  it("does NOT render 'Описание' in the middle (2nd) column after Task 23", () => {
+    // Регрессионный тест симметричный предыдущему: до Task 23 «Описание»
+    // было в центре. После — в правой колонке.
+    renderNavigator();
+    const rootFlex = screen.getByText("Маршрут исследования").closest(".flex.gap-6.mt-8");
+    const directChildren = Array.from(rootFlex!.children);
+    expect(directChildren).toHaveLength(3);
+    const col2 = directChildren[1] as HTMLElement;
+    expect(within(col2).queryByText("Описание")).toBeNull();
+  });
+
+  it("preserves widths: w-60 for stepper, w-80 for stages, flex-1 for description+overview", () => {
+    // Контракт ширин колонок сохранён из предыдущей реализации.
+    renderNavigator();
+    const rootFlex = screen.getByText("Маршрут исследования").closest(".flex.gap-6.mt-8");
+    const [col1, col2, col3] = Array.from(rootFlex!.children);
+
+    // Колонка 1: w-60 (степпер + тарифы)
+    expect((col1 as HTMLElement).className).toContain("w-60");
+    expect((col1 as HTMLElement).className).toContain("shrink-0");
+    // Колонка 2: w-80 (этапы модуля)
+    expect((col2 as HTMLElement).className).toContain("w-80");
+    expect((col2 as HTMLElement).className).toContain("shrink-0");
+    // Колонка 3: flex-1 (описание + обзор) — растягивается на остаток
+    expect((col3 as HTMLElement).className).toContain("flex-1");
+    expect((col3 as HTMLElement).className).toContain("min-w-0");
   });
 });

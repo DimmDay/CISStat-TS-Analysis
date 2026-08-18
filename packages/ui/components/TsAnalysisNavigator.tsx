@@ -7,36 +7,39 @@
 // apps/* — тот же урок, что с TsAnalysisPreprocessing/Validation/EDA
 // (см. MIGRATION_ARCHITECTURE.md §2.1).
 //
-// Компоновка (по макету «Навигатор_NEW.png», см. upload/Навигатор_NEW.png):
+// Компоновка (Task 23 — перекомпоновка колонок):
 //
-//   [Левая ~240px]         [Центр flex-1]              [Правая ~320px]
-//   Путеводитель           Описание                    {превью пунктов
-//   ┌─Загрузка──●─┐        [текстовое окно]             активной
-//   ├─Валидация─○─┤        Обзор: <пункт>               остановки,
-//   ├─Предобр.──○─┤        [область графика]            radio-список,
-//   ├─EDA──────○─┤        [Metric-карточки]            кнопка
-//   ├─Моделир.──○─┤                                    "Запустить..."
-//   ├─Прогноз───○─┤        ─ серая черта ─              неактивна}
-//   ├─Сценарный─○Soon    Синяя кнопка
-//   ├─Причинный─○Soon    "Начать анализ" → /upload
-//   ├─Принятие──○Soon
-//   └─Мониторинг○Soon    Субмодуль "Тарифы"
-//                          radio: demo/starter/
-//                          professional/enterprise
+//   [Левая w-60]           [Средняя w-80]               [Правая flex-1]
+//   Маршрут исследования   Этапы модуля: <стоп>          Описание
+//   ┌─Загрузка──●─┐       ┌─ Автопревью ────┐          [текстовое окно]
+//   ├─Валидация─○─┤       │  График         │          Обзор: <пункт>
+//   ├─Предобр.──○─┤       │  Подтверждение │          [область графика]
+//   ├─EDA──────○─┤       │  ...           │          [Metric-карточки]
+//   ├─Моделир.──○─┤       └────────────────┘
+//   ├─Прогноз───○─┤       кнопка "Запустить..."         ─ серая черта ─
+//   ├─Сценарный─○Soon                                    (нет)
+//   ├─Причинный─○Soon    Синяя кнопка                   Субмодуль "Тарифы"
+//   ├─Принятие──○Soon    "Начать анализ" → /upload      (в левой колонке)
+//   └─Мониторинг○Soon
+//
+// Новая последовательность слева направо (Task 23):
+//   1. Степпер + Тарифы (w-60)     ← левая колонка
+//   2. Этапы модуля (w-80)          ← бывшая правая → теперь средняя
+//   3. Описание + Обзор (flex-1)    ← бывший центр → теперь правая
 //
 // Поведение:
-//   - Клик по остановке степпера → меняет активный пункт (правая панель
-//     и центральное окно).
-//   - Клик по пункту в правой панели → меняет содержимое центрального
+//   - Клик по остановке степпера → меняет активный пункт (средняя панель
+//     и правое окно "Обзор").
+//   - Клик по пункту в средней панели → меняет содержимое правого
 //     окна "Обзор" (заголовок + описание) и таблицы метрик.
-//   - Кнопка "Запустить..." в правой панели — disabled (по решению
+//   - Кнопка "Запустить..." в средней панели — disabled (по решению
 //     тимлида, вопрос 3: превью без возможности запуска).
-//   - Для 4 будущих остановок (soon=true) правая панель показывает
+//   - Для 4 будущих остановок (soon=true) средняя панель показывает
 //     заглушку "Скоро", кнопка "Начать анализ" скрыта.
 //   - "Тарифы" — декоративный STUB (выбор radio ни к чему не ведёт,
 //     отдельная задача — см. lib/plans.ts и будущий work по биллингу).
 //
-// Центральное окно "Обзор": если в сессии есть активный датасет —
+// Правое окно "Обзор": если в сессии есть активный датасет —
 // реальные показатели из activeDataset; иначе статичный пример-иллюстрация
 // с пометкой «пример» (решение тимлида, вопрос 4: гибрид (c)+(a)).
 
@@ -94,7 +97,9 @@ export function TsAnalysisNavigator() {
 
   return (
     <div className="flex gap-6 mt-8">
-      {/* ── ЛЕВАЯ КОЛОНКА: Путеводитель (степпер + Тарифы) ── */}
+      {/* ── ЛЕВАЯ КОЛОНКА: Маршрут исследования (степпер + Тарифы) ──
+          Task 23: левая колонка остаётся на месте.
+          Порядок слева направо: степпер | этапы модуля | описание+обзор. */}
       <aside className="w-60 shrink-0 flex flex-col gap-4">
         {/* Заголовок */}
         <div className="flex items-center gap-2">
@@ -219,69 +224,9 @@ export function TsAnalysisNavigator() {
         </div>
       </aside>
 
-      {/* ── ЦЕНТРАЛЬНАЯ КОЛОНКА: Описание + Обзор ── */}
-      <section className="flex-1 min-w-0 flex flex-col gap-5">
-        {/* Окно "Описание" */}
-        <div>
-          <h3 className="font-semibold text-neutral-900 mb-1">Описание</h3>
-          <p className="text-xs text-neutral-500 mb-2">
-            {!activeStop.soon
-              ? `${activeStop.label} — ${activeStop.subtitle}`
-              : `${activeStop.label} — модуль в разработке`}
-          </p>
-          <div className="rounded-lg border border-neutral-200 bg-brand-light/50 px-4 py-3 min-h-[160px] max-h-[200px] overflow-y-auto">
-            <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">
-              {activeStop.description}
-            </p>
-          </div>
-        </div>
-
-        {/* Окно "Обзор" */}
-        <div>
-          <h3 className="font-semibold text-neutral-900 mb-1">
-            Обзор: {activeItem.title}
-          </h3>
-          <p className="text-xs text-neutral-500 mb-2">
-            {!activeStop.soon
-              ? "Превью пункта активной остановки"
-              : "Превью будущего функционала"}
-            {!hasRealDataset && (
-              <span className="ml-2 inline-flex items-center rounded bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] text-amber-700 uppercase tracking-wide">
-                пример
-              </span>
-            )}
-          </p>
-
-          {/* Область визуализации — зависит от пункта активной остановки.
-              Task 22: для пары «Загрузка» + «Автопревью и типы колонок»
-              (id="upload" + id="preview") рендерим блок-схему «Пайплайн
-              автопревью» (UploadAutoPreviewPipeline) — статичную
-              информационную схему последовательности шагов, которые
-              бэкенд выполняет сразу после загрузки файла. Для остальных
-              пунктов — текстовая заглушка (своя визуализация для каждого
-              пункта в будущих задачах). */}
-          {activeStopId === "upload" && activeItemId === "preview" ? (
-            <UploadAutoPreviewPipeline />
-          ) : (
-            <div
-              className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"
-              role="img"
-              aria-label={`Область визуализации для «${activeItem.title}»`}
-            >
-              [ область графика/таблицы/блок-схемы для «{activeItem.title}» ]
-            </div>
-          )}
-
-          {/* Метрики: реальные (если есть датасет) или пример */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-            {overviewMetrics.map((m) => (
-              <Metric key={m.label} label={m.label} value={m.value} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── ПРАВАЯ КОЛОНКА: превью пунктов активной остановки ── */}
+      {/* ── СРЕДНЯЯ КОЛОНКА: Этапы модуля (превью пунктов активной остановки) ──
+          Task 23: перекомпоновка. Бывшая правая колонка теперь средняя.
+          Порядок слева направо: степпер | этапы модуля | описание+обзор. */}
       <aside className="w-80 shrink-0">
         <div className="max-h-[820px] overflow-y-auto pr-1 space-y-3">
           <h3 className="text-sm font-semibold text-neutral-800 mb-1">
@@ -342,6 +287,69 @@ export function TsAnalysisNavigator() {
           })}
         </div>
       </aside>
+
+      {/* ── ПРАВАЯ КОЛОНКА: Описание + Обзор ──
+          Task 23: перекомпоновка. Бывшая центральная колонка теперь правая. */}
+      <section className="flex-1 min-w-0 flex flex-col gap-5">
+        {/* Окно "Описание" */}
+        <div>
+          <h3 className="font-semibold text-neutral-900 mb-1">Описание</h3>
+          <p className="text-xs text-neutral-500 mb-2">
+            {!activeStop.soon
+              ? `${activeStop.label} — ${activeStop.subtitle}`
+              : `${activeStop.label} — модуль в разработке`}
+          </p>
+          <div className="rounded-lg border border-neutral-200 bg-brand-light/50 px-4 py-3 min-h-[160px] max-h-[200px] overflow-y-auto">
+            <p className="text-sm text-neutral-700 leading-relaxed whitespace-pre-wrap">
+              {activeStop.description}
+            </p>
+          </div>
+        </div>
+
+        {/* Окно "Обзор" */}
+        <div>
+          <h3 className="font-semibold text-neutral-900 mb-1">
+            Обзор: {activeItem.title}
+          </h3>
+          <p className="text-xs text-neutral-500 mb-2">
+            {!activeStop.soon
+              ? "Превью пункта активной остановки"
+              : "Превью будущего функционала"}
+            {!hasRealDataset && (
+              <span className="ml-2 inline-flex items-center rounded bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[10px] text-amber-700 uppercase tracking-wide">
+                пример
+              </span>
+            )}
+          </p>
+
+          {/* Область визуализации — зависит от пункта активной остановки.
+              Task 22: для пары «Загрузка» + «Автопревью и типы колонок»
+              (id="upload" + id="preview") рендерим блок-схему «Пайплайн
+              автопревью» (UploadAutoPreviewPipeline) — статичную
+              информационную схему последовательности шагов, которые
+              бэкенд выполняет сразу после загрузки файла. Для остальных
+              пунктов — текстовая заглушка (своя визуализация для каждого
+              пункта в будущих задачах). */}
+          {activeStopId === "upload" && activeItemId === "preview" ? (
+            <UploadAutoPreviewPipeline />
+          ) : (
+            <div
+              className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"
+              role="img"
+              aria-label={`Область визуализации для «${activeItem.title}»`}
+            >
+              [ область графика/таблицы/блок-схемы для «{activeItem.title}» ]
+            </div>
+          )}
+
+          {/* Метрики: реальные (если есть датасет) или пример */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+            {overviewMetrics.map((m) => (
+              <Metric key={m.label} label={m.label} value={m.value} />
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
