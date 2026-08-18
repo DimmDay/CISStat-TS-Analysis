@@ -138,3 +138,12 @@ export {
 
 // Панель «Управление правилами» — рендерится внутри TsAnalysisValidation.
 export { RulesManagementPanel } from "./components/RulesManagementPanel";
+
+// Блок-схема «Пайплайн автопревью» (Task 22) — статичная информационная
+// схема последовательности шагов автопревью в окне «Обзор» Навигатора.
+// Рендерится только при активной паре «Загрузка» + «Автопревью и типы
+// колонок» (см. TsAnalysisNavigator.tsx). Чисто презентационная, без
+// состояния — данные о шагах вынесены в PIPELINE_STEPS для потенциального
+// переиспользования в документации/onboarding-туре.
+export { UploadAutoPreviewPipeline, PIPELINE_STEPS } from "./components/UploadAutoPreviewPipeline";
+export type { PipelineStep } from "./components/UploadAutoPreviewPipeline";

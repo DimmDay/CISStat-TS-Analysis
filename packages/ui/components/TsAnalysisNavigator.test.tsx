@@ -170,4 +170,48 @@ describe("TsAnalysisNavigator", () => {
     renderNavigator();
     expect(screen.getByText("пример")).toBeInTheDocument();
   });
+
+  // ── Task 22: блок-схема «Пайплайн автопревью» ──────────────────────
+  //
+  // По умолчанию активная остановка — «Загрузка», активный пункт — первый
+  // (id="preview", title="Автопревью и типы колонок"). Именно для этой
+  // пары в окне «Обзор» должен рендериться UploadAutoPreviewPipeline
+  // вместо текстовой заглушки.
+
+  it("renders UploadAutoPreviewPipeline when Загрузка + preview item are active", () => {
+    renderNavigator();
+    const pipeline = screen.getByRole("img", { name: /пайплайн автопревью/i });
+    expect(pipeline).toBeInTheDocument();
+  });
+
+  it("replaces pipeline with placeholder when switching to another item in Загрузка", () => {
+    renderNavigator();
+    // Переключаемся на пункт «График» (id="chart") — должен вернуться
+    // стандартный текст-заглушки.
+    fireEvent.click(screen.getByText("График"));
+    expect(
+      screen.queryByRole("img", { name: /пайплайн автопревью/i }),
+    ).toBeNull();
+  });
+
+  it("does not render pipeline when switching to another stop (Валидация)", () => {
+    renderNavigator();
+    fireEvent.click(screen.getByLabelText("ВАЛИДАЦИЯ"));
+    expect(
+      screen.queryByRole("img", { name: /пайплайн автопревью/i }),
+    ).toBeNull();
+  });
+
+  it("renders pipeline again after navigating away and back to Загрузка+preview", () => {
+    renderNavigator();
+    // Уходим на Валидацию
+    fireEvent.click(screen.getByLabelText("ВАЛИДАЦИЯ"));
+    expect(
+      screen.queryByRole("img", { name: /пайплайн автопревью/i }),
+    ).toBeNull();
+    // Возвращаемся на Загрузку (handleStopClick сбрасывает item на первый)
+    fireEvent.click(screen.getByLabelText("ЗАГРУЗКА"));
+    const pipeline = screen.getByRole("img", { name: /пайплайн автопревью/i });
+    expect(pipeline).toBeInTheDocument();
+  });
 });

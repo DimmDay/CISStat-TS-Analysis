@@ -1607,3 +1607,76 @@ git push origin main — Vercel auto-redeploy frontend (изменения то�
 Backend (Render) трогать НЕ нужно — изменения чисто фронтенд.
 Smoke-проверка в проде: открыть https://ts-standalone.vercel.app/ → убедиться, что «Для кого» и «Для чего» показывают только заголовок → кликнуть на чеврон → текст раскрывается → кликнуть повторно → сворачивается → открыть оба независимо → работает.
 a11y-проверка: Tab-навигация доходит до триггеров, Enter/Space переключает состояние, aria-expanded корректно анонсируется скринридером.
+
+---
+
+Task ID: 22
+
+Agent: main
+Task: Вкладка «Навигатор», остановка степпера «Загрузка». Отрисовать в окне «Обзор» блок-схему «Пайплайн автопревью» (информационную). Показывает последовательность шагов, которые платформа выполняет сразу после загрузки файла. Состав: Файл → Детект кодировки/разделителя → Парсинг → Детект типов → classify_columns (4 подтипа: numeric/categorical/datetime/text) → Подсчёт пропусков → Подсчёт уникальных → Предупреждения парсинга → Готово → SessionStore.
+
+Work Log:
+Синхронизирован с origin/main (commit 33b34b8 «Both half-badges For whom / For what in the Navigator tab are made expandable»). Working tree clean до старта.
+Изучена текущая структура окна «Обзор» в TsAnalysisNavigator.tsx (строки 238-269): заголовок «Обзор: {item.title}», подзаголовок + бейдж «пример» (если нет активного датасета), заглушка <div role="img">[ область графика/таблицы/блок-схемы для «…» ] высотой h-[280px], метрики 2×4 снизу.
+Изучен реальный бэкенд пайплайна автопревью, чтобы шаги блок-схемы соответствовали коду, а не выдумывались:
+apps/api/upload_common.py: handle_upload, _compute_column_info, _compute_quality_teaser, _compute_parse_warnings — реальная последовательность.
+app/data/file_loader.py: read_uploaded_file — pd.read_csv с engine='python', encoding='utf-8-sig', sep=None (auto), а также read_excel / json_normalize / parse_jsonstat.
+app/classification/classifier.py: classify_columns — numeric (select_dtypes number), date (datetime64), cat (object/string с 1<nunique<100), text (fallback).
+apps/api/session_store.py: DatasetInfo / session.set_dataset + store.save() — финальная точка пайплайна.
+Изучен ближайший архитектурный родственник — StructuralClassSchema.tsx: статичная информационная схема с подсветкой активной строки, паттерн «чистый презентационный компонент + типизированный массив правил». UploadAutoPreviewPipeline следует тому же паттерну, но вместо дерева решений — последовательность шагов с одним ветвлением на classify_columns.
+Согласование с тимлидом (в чате, до реализации):
+Область показа — только для пункта preview «Автопревью и типы колонок». Для остальных пунктов текущая заглушка остаётся (своя визуализация для каждого пункта в будущих задачах).
+Состав шагов — 7 из примера + «Предупреждения парсинга» (переименовано из «Парсинг-варнинги») + «Готово → SessionStore». Итого 9 шагов.
+Иконки — lucide-react (уже в проекте).
+TDD: сначала написан UploadAutoPreviewPipeline.test.tsx (9 тестов) + апдейт TsAnalysisNavigator.test.tsx (+4 новых теста на условный рендер).
+Реализован UploadAutoPreviewPipeline.tsx:
+PIPELINE_STEPS — типизированный массив из 9 шагов (id, title, subtitle, icon: LucideIcon, badge?). Порядок повторяет handle_upload.
+CLASSIFY_SUBTYPES — 4 подтипа classify_columns (numeric/categorical/datetime/text) с подсказками по реальным pandas-вызовам.
+PipelineNode — одна нода пайплайна (иконка в бренд-кружке + заголовок + технический subtitle + опц. badge).
+ChevronSeparator — вертикальная стрелка ChevronDown между шагами (aria-label="chevron down" — единый паттерн с NavigatorHero.tsx).
+Корневой role="img" + aria-label со всем пайплайном одной строкой — скринридер читает как одно изображение.
+min-h-[280px] на корневом div — чтобы блок-схема не обрезалась, но и не падала ниже текущей высоты заглушки (визуальная консистентность окна «Обзор»).
+Ветвление classify_columns — отдельный блок с border-l-2 border-dashed border-neutral-200 (тот же стиль, что в StructuralClassSchema для sub-rules), 4 чипа разворачиваются в колонку на mobile и в ряд на sm+.
+Реализован условный рендер в TsAnalysisNavigator.tsx (строки 255-273): при activeStopId==="upload" && activeItemId==="preview" рендерится <UploadAutoPreviewPipeline/>, иначе — текущая текстовая заглушка. Импорт добавлен в начало файла.
+Реэкспорт в packages/ui/index.ts: UploadAutoPreviewPipeline + PIPELINE_STEPS (значение) + PipelineStep (тип) — для потенциального переиспользования в onboarding-туре или документации.
+Первый прогон тестов UploadAutoPreviewPipeline.test.tsx: 1 FAIL (тест ожидал 7 шагов, реально 9 — противоречие в самом тесте, исправил). Повторный прогон: 9/9 PASS.
+Полный прогон jest: 13/13 suites PASS, 160/160 tests PASS. Существующие 19 тестов TsAnalysisNavigator не сломаны (+4 новых = 23 всего). Реакс-предупреждения ResponsiveContainer в BacktestComparisonChart — известный шум (упомянут в jest.setup.js), к задаче не относится.
+Typecheck:all PASS (embedded + standalone, 0 errors).
+Build:all PASS: embedded — 12/12 страниц, standalone — 12/12 страниц. Бандл не раздут (root route = 289 B / 278 kB First Load — тот же, что до изменений; компонент статичный, без JS-зависимостей кроме lucide-иконок).
+Проектирование:
+Точки изменения (только по текущей задаче, 5 файлов):
+
+packages/ui/components/UploadAutoPreviewPipeline.tsx — НОВЫЙ (компонент + PIPELINE_STEPS + CLASSIFY_SUBTYPES).
+packages/ui/components/UploadAutoPreviewPipeline.test.tsx — НОВЫЙ (9 тестов).
+packages/ui/components/TsAnalysisNavigator.tsx — правка (импорт + условный рендер в окне «Обзор», ~17 строк нетто).
+packages/ui/components/TsAnalysisNavigator.test.tsx — правка (+4 теста на условный рендер пайплайна).
+packages/ui/index.ts — правка (реэкспорт компонента + типа).
+Риски и меры (9 шт, все закрыты):
+
+#
+Риск
+Мера
+R1	Высота пайплайна > 280px текущей заглушки	Заменил h-[280px] на min-h-[280px] на корневом div компонента, контейнер растёт по содержимому. Тестов на жёсткую высоту в репо нет (проверил).
+R2	Регрессия существующих тестов Навигатора (19 шт)	Проверил: ни один не проверяет текст заглушки [ область графика... (только заголовок «Обзор: ...», метрики, кнопки). Полный прогон подтвердил 0 регрессий.
+R3	Условие показа слишком узкое/широкое	Согласовано с тимлидом: только upload+preview (см. чат). Легко расширить до всей остановки «Загрузка» одной правкой, если потребуется.
+R4	Мобильная вёрстка 4 чипов classify_columns	flex-col на < sm, flex-row на sm+. На 320px помещается вертикально.
+R5	Дублирование с StructuralClassSchema	Разные схемы: Structural — дерево решений (статичные rules), Pipeline — последовательность шагов (sequence). Обе информационные, обе нужны. Паттерн один — но не дубликат.
+R6	Сборка standalone/embedded	Компонент в packages/ui, импорт в существующий TsAnalysisNavigator (уже используется обоими apps) → автоматически попадает в оба. Build:all подтвердил.
+R7	a11y	Корневой role="img" + aria-label со всей последовательностью шагов одной строкой. Иконки и стрелки внутри — aria-hidden="true" (дублируют текст). ChevronDown с role="img" + aria-label="chevron down" (как в NavigatorHero.tsx).
+R8	Параллельная работа тимлида	Синхронизирован с origin/main до старта, после сборки конфликтов нет (новый файл + точечные правки в существующих, не пересекаются с другими активными задачами).
+R9	TypeScript-несовместимость типа иконок lucide-react с React.ComponentType<{size?: number}> (size: string|number в LucideProps)	Использован type LucideIcon из lucide-react (тот же паттерн, что в StatusIcon.tsx). Typecheck чистый.
+
+Stage Summary:
+Изменено 5 файлов: 2 новых (UploadAutoPreviewPipeline.tsx + .test.tsx, ~250+95 строк), 3 правки (TsAnalysisNavigator.tsx +17 строк, TsAnalysisNavigator.test.tsx +44 строки, index.ts +8 строк).
+UploadAutoPreviewPipeline — чисто презентационный, без state, без effects. PIPELINE_STEPS вынесен в экспорт для переиспользования.
+9 шагов пайплайна соответствуют реальному бэкенду: Файл (.csv/.xlsx/.xls/.json) → Детект кодировки/разделителя (engine='python', encoding='utf-8-sig', sep=None) → Парсинг (pd.read_csv/read_excel/json_normalize/parse_jsonstat) → Детект типов (datetime64/numeric/object/string) → classify_columns (4 подтипа) → Подсчёт пропусков (cols_with_missing, nulls) → Подсчёт уникальных (nunique) → Предупреждения парсинга (Unnamed: N, U+FFFD «�») → Готово → SessionStore.
+Условный рендер: только при активной паре «Загрузка» + «Автопревью и типы колонок» (id="upload" + id="preview"). Для остальных пунктов — текущая текстовая заглушка.
+a11y: role="img" + aria-label со всем пайплайном одной строкой, иконки и chevron-ы aria-hidden/role=img.
+160/160 тестов PASS (13/13 suites), 0 регрессий. +13 новых тестов (9 в UploadAutoPreviewPipeline, 4 в TsAnalysisNavigator).
+Typecheck:all PASS, Build:all PASS (12/12 страниц в каждом app, бандл не раздут).
+Артефакты: /home/z/my-project/download/task22-navigator-pipeline/ (5 файлов + worklog.md).
+Deploy checklist (after merge):
+git push origin main — Vercel auto-redeploy frontend (изменения только в packages/ui).
+Backend (Render) трогать НЕ нужно — изменения чисто фронтенд.
+Smoke-проверка в проде: открыть https://ts-standalone.vercel.app/ → по умолчанию активная остановка «Загрузка» + пункт «Автопревью и типы колонок» → в окне «Обзор» должна появиться блок-схема пайплайна с 9 шагами и 4 подтипами classify_columns → кликнуть другой пункт (например «График») → пайплайн исчезает, возвращается текстовая заглушка → кликнуть обратно на «Автопревью и типы колонок» → пайплайн снова виден → кликнуть на «ВАЛИДАЦИЯ» в степпере → пайплайн исчезает → кликнуть на «ЗАГРУЗКА» → пайплайн снова виден (handleStopClick сбрасывает item на первый).
+a11y-проверка: скринридер читает весь пайплайн как одно изображение с описанием «Пайплайн автопревью: Файл → Детект кодировки/разделителя → Парсинг → ...».

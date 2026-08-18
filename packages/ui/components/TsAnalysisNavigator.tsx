@@ -51,6 +51,7 @@ import {
   OVERVIEW_EXAMPLE_METRICS,
   type NavigatorStop,
 } from "../lib/navigator-stops";
+import { UploadAutoPreviewPipeline } from "./UploadAutoPreviewPipeline";
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -251,14 +252,25 @@ export function TsAnalysisNavigator() {
             )}
           </p>
 
-          {/* Область графика — заглушка, реальный график зависит от пункта */}
-          <div
-            className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"
-            role="img"
-            aria-label={`Область визуализации для «${activeItem.title}»`}
-          >
-            [ область графика/таблицы/блок-схемы для «{activeItem.title}» ]
-          </div>
+          {/* Область визуализации — зависит от пункта активной остановки.
+              Task 22: для пары «Загрузка» + «Автопревью и типы колонок»
+              (id="upload" + id="preview") рендерим блок-схему «Пайплайн
+              автопревью» (UploadAutoPreviewPipeline) — статичную
+              информационную схему последовательности шагов, которые
+              бэкенд выполняет сразу после загрузки файла. Для остальных
+              пунктов — текстовая заглушка (своя визуализация для каждого
+              пункта в будущих задачах). */}
+          {activeStopId === "upload" && activeItemId === "preview" ? (
+            <UploadAutoPreviewPipeline />
+          ) : (
+            <div
+              className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"
+              role="img"
+              aria-label={`Область визуализации для «${activeItem.title}»`}
+            >
+              [ область графика/таблицы/блок-схемы для «{activeItem.title}» ]
+            </div>
+          )}
 
           {/* Метрики: реальные (если есть датасет) или пример */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
@@ -273,7 +285,7 @@ export function TsAnalysisNavigator() {
       <aside className="w-80 shrink-0">
         <div className="max-h-[820px] overflow-y-auto pr-1 space-y-3">
           <h3 className="text-sm font-semibold text-neutral-800 mb-1">
-            Этапы модуля: {activeStop.label}
+            Пункты: {activeStop.label}
           </h3>
           <p className="text-[11px] text-neutral-500 mb-3">
             {!activeStop.soon
