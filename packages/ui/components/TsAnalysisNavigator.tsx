@@ -99,7 +99,7 @@ export function TsAnalysisNavigator() {
         {/* Заголовок */}
         <div className="flex items-center gap-2">
           <MapPin size={16} className="text-brand" aria-hidden="true" />
-          <h2 className="text-base font-semibold text-neutral-800">Путеводитель</h2>
+          <h2 className="text-base font-semibold text-neutral-800">Маршрут исследования</h2>
         </div>
 
         {/* Степпер: 10 остановок с пунктирной линией */}
