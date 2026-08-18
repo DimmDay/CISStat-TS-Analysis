@@ -1550,3 +1550,60 @@ tests/api/test_diagnostics_internal.py — тесты маршрутизации
 Next step
 Mount ResidualDiagnosticsPanel from the current TsAnalysisModeling after the parallel Tune UI exposes its persisted best_params. Pass those exact parameters; do not silently use {} for a tuned model.
 
+---
+
+Task ID: 21
+Agent: main (super-z)
+Task: Вкладка «Навигатор», ряд «Для кого / Для чего» — сделать оба полубейджа раскрывающимися по типу селектора: в закрытом состоянии виден только заголовок «ДЛЯ КОГО», при клике на чеврон справа — раскрывается текст.
+
+Work Log:
+
+Синхронизирован с origin/main (commit 1b80893 «Navigator-stops_label loading»). Working tree clean.
+Изучена текущая структура:
+• NavigatorHero.tsx — чисто презентационный (без useState), 2 статичных полубейджа «Для кого» / «Для чего» с чек-иконкой + текстом видимым всегда.
+• AUDIENCE_LABEL / AUDIENCE_TEXT / PURPOSE_LABEL / PURPOSE_TEXT — в lib/navigator-stops.ts, утверждены тимлидом 2026-08-17.
+• Тесты NavigatorHero.test.tsx — 5 штук, проходят.
+Спроектирован процесс решения (см. ниже «Проектирование»): точки изменения, 7 рисков с мерами, 13 тестов (5 обновлены + 8 новых).
+TDD: сначала написан NavigatorHero.test.tsx с новыми ожиданиями (collapsed-by-default, toggle, aria-expanded, aria-controls, chevron direction, independence).
+Первый прогон тестов до реализации: 10/13 FAIL (TDD red), 3 PASS (H1, 6 numbered badges, labels exist).
+Реализован NavigatorHero.tsx:
+• Добавлен "use client" (раньше не было — компонент был без состояния).
+• Импорты: useState (react), Check + ChevronDown + ChevronUp (lucide-react).
+• Вынесен внутренний компонент CollapsibleHalfBadge (label, text, isOpen, onToggle) — чтобы не плодить копию разметки для двух экземпляров (урок MIGRATION_ARCHITECTURE.md §2.1 «одна копия каждой фичи»).
+• Контролируемое состояние isOpen/onToggle — родитель хранит 2 независимых useState (audienceOpen, purposeOpen), НЕ accordion «один открыт».
+• a11y: <button> с aria-expanded (false/true) + aria-controls; панель с текстом получает id, совпадающий с aria-controls.
+• Иконка чеврона: role="img" + aria-label ("chevron down" / "chevron up") для скринридеров; ChevronDown когда свёрнут, ChevronUp когда раскрыт.
+• Стабильный id панели генерируется из label через sanitize: navigator-badge-{sanitize(label)}-panel — совпадает между рендерами (React не пересоздаёт id).
+• Стили сохранены: border-brand/20, bg-brand-light/40, hover-bg-brand-light/70 на триггере, focus-visible ring.
+• overflow-hidden на корневом div бейджа — чтобы скруглённые углы не «протекали» при hover.
+Повторный прогон тестов: 13/13 PASS (TDD green).
+Регрессия: полный набор jest 12/12 suites PASS, 147/147 tests PASS — без изменений в существующих тестах, кроме NavigatorHero (где 2 обновлены под новое поведение, остальные 146 не тронуты).
+Typecheck:all PASS (embedded + standalone, 0 errors).
+Build:all PASS (12/12 страниц в каждом app, 0 errors; / → 289 B, 275 kB First Load — бандл не раздут).
+Файлы выложены в /home/z/my-project/download/navigator_collapsible_badges/.
+Проектирование:
+
+Точки изменения: только packages/ui/components/NavigatorHero.tsx и .test.tsx. navigator-stops.ts НЕ тронут (контракт с данными сохранён). TsAnalysisNavigator.tsx НЕ тронут. index.ts НЕ тронут (NavigatorHero уже экспортируется).
+Риски и меры (7 шт, все закрыты):
+R1 Регрессия старых тестов «text visible» → обновил 2 существующих теста под новое поведение (collapsed by default).
+R2 a11y → <button> с aria-expanded + aria-controls, id панели.
+R3 SSR/hydration → добавлен "use client".
+R4 Независимость 2 бейджей → 2 отдельных useState, НЕ accordion.
+R5 Чеврон меняется (down→up) → ChevronDown/ChevronUp из lucide-react с role="img" + aria-label.
+R6 Визуальная консистентность с макетом → сохранены border-brand/20 bg-brand-light/40, добавлен hover и focus-visible ring.
+R7 Параллельная работа тимлида → синхронизирован с origin/main до старта, после сборки — конфликта нет (не тронуты файлы тимлида).
+Stage Summary:
+
+Изменено 2 файла: NavigatorHero.tsx (+55 строк нетто, добавлен useState/use client/CollapsibleHalfBadge/ChevronUp/ChevronDown/aria), NavigatorHero.test.tsx (+135 строк, 5 обновлённых + 8 новых тестов).
+Поведение «по типу селектора»: закрыто по умолчанию (только заголовок + чеврон ↓), клик раскрывает текст и меняет чеврон на ↑.
+2 полубейджа независимы: можно открыть оба, можно закрыть оба, состояние каждого не зависит от другого.
+a11y-контракт: <button aria-expanded aria-controls> + панель с id, чеврон с role="img" + aria-label.
+147/147 тестов PASS (включая 13/13 в NavigatorHero), 0 регрессий.
+Typecheck:all PASS, Build:all PASS (12/12 страниц в каждом app, бандл не раздут).
+Артефакты: /home/z/my-project/download/navigator_collapsible_badges/ (2 файла).
+Deploy checklist (after merge):
+
+git push origin main — Vercel auto-redeploy frontend (изменения только в packages/ui).
+Backend (Render) трогать НЕ нужно — изменения чисто фронтенд.
+Smoke-проверка в проде: открыть https://ts-standalone.vercel.app/ → убедиться, что «Для кого» и «Для чего» показывают только заголовок → кликнуть на чеврон → текст раскрывается → кликнуть повторно → сворачивается → открыть оба независимо → работает.
+a11y-проверка: Tab-навигация доходит до триггеров, Enter/Space переключает состояние, aria-expanded корректно анонсируется скринридером.
