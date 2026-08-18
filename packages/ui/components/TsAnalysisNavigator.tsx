@@ -273,7 +273,7 @@ export function TsAnalysisNavigator() {
       <aside className="w-80 shrink-0">
         <div className="max-h-[820px] overflow-y-auto pr-1 space-y-3">
           <h3 className="text-sm font-semibold text-neutral-800 mb-1">
-            Пункты: {activeStop.label}
+            Этапы модуля: {activeStop.label}
           </h3>
           <p className="text-[11px] text-neutral-500 mb-3">
             {!activeStop.soon
