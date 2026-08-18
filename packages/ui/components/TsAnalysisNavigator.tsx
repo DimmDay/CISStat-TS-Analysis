@@ -96,7 +96,7 @@ export function TsAnalysisNavigator() {
     : OVERVIEW_EXAMPLE_METRICS;
 
   return (
-    <div className="flex gap-6 mt-8">
+    <div className="flex gap-[49px] mt-8">
       {/* ── ЛЕВАЯ КОЛОНКА: Маршрут исследования (степпер + Тарифы) ──
           Task 23: левая колонка остаётся на месте.
           Порядок слева направо: степпер | этапы модуля | описание+обзор. */}
