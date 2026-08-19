@@ -149,21 +149,27 @@ export function NavigatorHero() {
         className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-y-2"
         aria-label="Этапы анализа"
       >
-        {NAVIGATOR_BADGES.flatMap((badge) => [
-          <ChevronArrow key={`arrow-${badge.num}`} num={badge.num} />,
-          <p
-            key={`title-${badge.num}`}
-            className="pt-1 text-sm font-semibold text-neutral-800"
-          >
-            {badge.num}. {badge.label}
-          </p>,
-          <p
-            key={`sub-${badge.num}`}
-            className="text-xs text-neutral-500 leading-relaxed"
-          >
-            {badge.subtitle}
-          </p>,
-        ])}
+        {[
+          ...NAVIGATOR_BADGES.map((b) => (
+            <ChevronArrow key={`arrow-${b.num}`} num={b.num} />
+          )),
+          ...NAVIGATOR_BADGES.map((b) => (
+            <p
+              key={`title-${b.num}`}
+              className="pt-1 text-sm font-semibold text-neutral-800"
+            >
+              {b.num}. {b.label}
+            </p>
+          )),
+          ...NAVIGATOR_BADGES.map((b) => (
+            <p
+              key={`sub-${b.num}`}
+              className="text-xs text-neutral-500 leading-relaxed"
+            >
+              {b.subtitle}
+            </p>
+          )),
+        ]}
       </div>
 
       {/* ── 4. Два раскрывающихся полубейджа (Task 21, без изменений) ── */}
