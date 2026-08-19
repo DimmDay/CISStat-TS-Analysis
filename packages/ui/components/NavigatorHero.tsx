@@ -138,31 +138,27 @@ export function NavigatorHero() {
         Ключевые этапы исследования временного ряда
       </h1>
 
-      {/* ── 2. Ряд из 6 chevron-стрелок (Task 26) ── */}
+      {/* ── 2. Chevron-стрелки + текст (Task 26) ──
+          Единая сетка 3 колонки: каждая ячейка = стрелка + заголовок + подзаголовок.
+          Без горизонтального gap стрелки визуально соединяются в ряд.
+          На мобильных — 1 колонка, все 6 последовательно. */}
       <div
-        className="flex flex-col sm:flex-row"
+        className="grid grid-cols-1 sm:grid-cols-3 gap-y-5"
         aria-label="Этапы анализа"
       >
         {NAVIGATOR_BADGES.map((badge) => (
-          <ChevronArrow key={badge.num} num={badge.num} />
-        ))}
-      </div>
-
-      {/* ── 3. Текстовые блоки: заголовок + поддерживающий текст ──
-          3 колонки: каждая колонка = 2 текстовых блока (1+4, 2+5, 3+6),
-          чтобы заголовок был визуально «под своей стрелкой».
-          На мобильных — 1 колонка, все 6 последовательно. */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4">
-        {NAVIGATOR_BADGES.map((badge) => (
           <div key={badge.num}>
-            <p className="text-sm font-semibold text-neutral-800">
-              {badge.num}. {badge.label}
-            </p>
-            {badge.subtitle && (
-              <p className="mt-0.5 text-xs text-neutral-500 leading-relaxed">
-                {badge.subtitle}
+            <ChevronArrow num={badge.num} />
+            <div className="sm:px-2 pt-2">
+              <p className="text-sm font-semibold text-neutral-800">
+                {badge.num}. {badge.label}
               </p>
-            )}
+              {badge.subtitle && (
+                <p className="mt-0.5 text-xs text-neutral-500 leading-relaxed">
+                  {badge.subtitle}
+                </p>
+              )}
+            </div>
           </div>
         ))}
       </div>
