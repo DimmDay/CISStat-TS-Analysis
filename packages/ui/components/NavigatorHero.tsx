@@ -5,7 +5,7 @@
 // Верхняя часть страницы «Навигатор» в обоих apps/* (standalone и embedded).
 // Презентационный компонент с локальной интерактивностью:
 //   - H1 «Ключевые этапы исследования временного ряда»
-//   - 6 chevron-стрелок в ряд (белый фон, серая рамка, зелёная цифра)
+//   - 6 chevron-стрелок в ряд (светло-серый фон, зелёная цифра)
 //   - Под каждой стрелкой — заголовок (пронумерованный) + поддерживающий текст
 //   - 2 раскрывающихся полубейджа «Для кого» / «Для чего» (Task 21)
 //   - декоративный разделитель
@@ -27,14 +27,14 @@ import {
 
 // ── Chevron-стрелка ──────────────────────────────────────────────
 //
-// Двухслойный рендер: внешний div (clip-path + bg-neutral-300 = рамка),
-// внутренний div (clip-path inset 1px + bg-white = заливка).
+// Однослойный рендер: clip-path + bg-neutral-100 (светло-серый фон),
+// зелёная цифра в кружочке внутри.
 // Полигон: шестиугольная стрелка, указывающая вправо.
 // Константа INDENT — размер среза слева/справа в пикселях.
 
 const INDENT_PX = 14;
 
-/** Clip-path polygon для внешнего слоя (рамка). */
+/** Clip-path polygon для стрелки. */
 const arrowClip = `polygon(
   0 0,
   calc(100% - ${INDENT_PX}px) 0,
@@ -44,31 +44,16 @@ const arrowClip = `polygon(
   ${INDENT_PX}px 50%
 )`;
 
-/** Clip-path polygon для внутреннего слоя (заливка, inset 1px). */
-const arrowClipFill = `polygon(
-  1px 1px,
-  calc(100% - ${INDENT_PX + 1}px) 1px,
-  calc(100% - 1px) 50%,
-  calc(100% - ${INDENT_PX + 1}px) calc(100% - 1px),
-  1px calc(100% - 1px),
-  ${INDENT_PX + 1}px 50%
-)`;
-
 function ChevronArrow({ num }: { num: number }) {
-   return (
+  return (
     <div
-      className="relative h-11 flex-1 min-w-0"
-      style={{ clipPath: arrowClip, background: "#d4d4d4" }}
+      className="relative h-11 flex-1 min-w-0 flex items-center justify-center bg-neutral-100"
+      style={{ clipPath: arrowClip }}
       aria-hidden="true"
     >
-      <div
-        className="relative h-full flex items-center justify-center bg-white"
-        style={{ clipPath: arrowClipFill }}
-      >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-700 text-sm font-semibold">
-          {num}
-        </span>
-      </div>
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-700 text-sm font-semibold">
+        {num}
+      </span>
     </div>
   );
 }
@@ -155,7 +140,7 @@ export function NavigatorHero() {
 
       {/* ── 2. Ряд из 6 chevron-стрелок (Task 26) ── */}
       <div
-        className="flex flex-col sm:flex-row gap-y-2"
+        className="flex flex-col sm:flex-row"
         aria-label="Этапы анализа"
       >
         {NAVIGATOR_BADGES.map((badge) => (
@@ -163,8 +148,11 @@ export function NavigatorHero() {
         ))}
       </div>
 
-      {/* ── 3. Текстовые блоки: заголовок + поддерживающий текст ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
+      {/* ── 3. Текстовые блоки: заголовок + поддерживающий текст ──
+          3 колонки: каждая колонка = 2 текстовых блока (1+4, 2+5, 3+6),
+          чтобы заголовок был визуально «под своей стрелкой».
+          На мобильных — 1 колонка, все 6 последовательно. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-6 gap-y-4">
         {NAVIGATOR_BADGES.map((badge) => (
           <div key={badge.num}>
             <p className="text-sm font-semibold text-neutral-800">
