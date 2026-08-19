@@ -121,8 +121,8 @@ export function NavigatorHero() {
   return (
     <div className="space-y-6">
       {/* ── 3. Заголовок ── */}
-      <h1 className="font-sans text-2xl font-semibold tracking-tight text-[#1e3a8a]">
-        Анализ временных рядов — от файла до прогноза
+      <h1 className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a]">
+        Ключевые этапы исследования временного ряда
       </h1>
 
       {/* ── 4. Ряд из 6 числовых бейджей ── */}
