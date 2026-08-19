@@ -7,9 +7,7 @@
 // аналог верхних вкладок (st.tabs) в Streamlit-версии.
 //
 // «О платформе» ведёт на «/» (Task 25). Hover-аккордеон с 5 ссылками
-// из HOME_ROUTES. JS-based hover (onMouseEnter/Leave), потому что
-// CSS group-hover не пробивает overflow-x-auto на родительском flex-
-// контейнере — absolute-панель обрезалась (Task 25-fix).
+// из HOME_ROUTES. JS-based hover (onMouseEnter/Leave).
 // Справа — "Логи событий".
 // Один общий компонент -- используется в standalone и embedded.
 //
@@ -18,7 +16,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useCallback } from "react";
-import { Compass, ChevronDown, ScrollText } from "lucide-react";
+import { ChevronDown, ScrollText } from "lucide-react";
 import { useAppShell } from "../context/AppShellContext";
 import { EventsLogDrawer } from "./EventsLogDrawer";
 import { HOME_ROUTES } from "../lib/home-stops";
@@ -32,7 +30,6 @@ const PLATFORM_SUBMENU = HOME_ROUTES.slice(0, 5);
 interface ModuleLink {
   label: string;
   href: string;
-  icon?: typeof Compass;
 }
 
 const MODULES: ModuleLink[] = [
@@ -72,9 +69,7 @@ export function ModuleNav() {
         className="border-b border-neutral-200 bg-white"
       >
         <div className="max-w-[1600px] mx-auto px-6 flex items-center justify-between gap-2">
-          {/* overflow-x-auto только когда дропдаун закрыт — при открытом
-              switching на overflow-visible, иначе absolute-панель обрезается. */}
-          <div className={`flex items-center gap-1 ${dropdownOpen ? "overflow-visible" : "overflow-x-auto"}`}>
+          <div className="flex items-center gap-1 overflow-visible">
             {/* ── «О платформе» с hover-аккордеоном ── */}
             <div
               className="relative"
@@ -91,7 +86,6 @@ export function ModuleNav() {
                     : "border-transparent text-neutral-600 hover:text-neutral-900 hover:border-neutral-300"
                 }`}
               >
-                <Compass size={14} aria-hidden="true" />
                 О платформе
                 <ChevronDown
                   size={14}
