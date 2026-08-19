@@ -219,6 +219,33 @@ class DecompositionResponse(BaseModel):
     resid_pct: Optional[float] = None
 
 
+# ── Структурная детекция (2026-08-14, найден реальный баг: фронт
+# показывал позиционную заглушку "первые 3 колонки файла" вместо
+# реального контентного скоринга -- см. app/data/detectors.py) ──
+
+class DetectionCandidateOut(BaseModel):
+    name: str
+    score: float = Field(..., description="0..1, реальный контентный скоринг (не позиция в файле)")
+
+
+class ColumnDetectionOut(BaseModel):
+    selected: str = Field(..., description="Лучший кандидат, либо '(не использовать)'/'(нет)', если ни одного")
+    confidence: int = Field(..., description="round(top_score * 100), 0..100")
+    candidates: List[DetectionCandidateOut] = Field(..., description="Отсортировано по score убыв., включает нулевые (фронт решает порог отсечения)")
+
+
+class StructureDetectionResponse(BaseModel):
+    """Ответ GET /dataset/structure-detection -- РЕАЛЬНАЯ (не клиентская
+    позиционная) детекция даты и группирующей колонки. См.
+    app/data/detectors.py::score_all_columns_as_date /
+    score_all_columns_as_entity_group -- уже существовавшая, протестированная
+    (tests/unit/test_detectors.py), но НЕ подключённая к API логика
+    (см. историю: комментарий в apps/api/upload_common.py признавал
+    этот пробел явно)."""
+    date_col: ColumnDetectionOut
+    entity_col: ColumnDetectionOut
+
+
 # ── Валидация (10 проверок вкладки «Валидация», validation/engine.py::_run_all_checks) ──
 
 class ValidationCheckItem(BaseModel):

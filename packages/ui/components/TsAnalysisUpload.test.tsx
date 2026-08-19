@@ -141,6 +141,20 @@ function mockFetchSequence(uploadResult: unknown, uploadOk = true) {
           }),
       });
     }
+    if (typeof url === "string" && url.includes("/dataset/structure-detection")) {
+      // Реальный контентный скоринг с бэкенда (2026-08-14, заменил
+      // клиентскую эвристику buildDetectionFromColumns) -- окружение
+      // теста мокает как раз то, что раньше вычислялось синхронно
+      // на клиенте: date-колонка "date" (datetime dtype в okUploadResponse).
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            date_col: { selected: "date", confidence: 95, candidates: [{ name: "date", score: 0.95 }, { name: "value", score: 0.0 }] },
+            entity_col: { selected: "(нет)", confidence: 0, candidates: [{ name: "date", score: 0.0 }, { name: "value", score: 0.0 }] },
+          }),
+      });
+    }
     if (typeof url === "string" && url.includes("/dataset/stats")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(okStatsResponse) });
     }
@@ -540,6 +554,16 @@ describe("TsAnalysisUpload", () => {
           json: () => Promise.resolve({ target_column: "value", suggested_column: "value", available_columns: ["value"], has_dataset: true }),
         });
       }
+      if (typeof url === "string" && url.includes("/dataset/structure-detection")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              date_col: { selected: "date", confidence: 95, candidates: [{ name: "date", score: 0.95 }] },
+              entity_col: { selected: "(нет)", confidence: 0, candidates: [] },
+            }),
+        });
+      }
       if (typeof url === "string" && url.includes("/dataset/timeseries")) {
         return Promise.resolve({
           ok: true,
@@ -651,6 +675,16 @@ describe("TsAnalysisUpload", () => {
           json: () => Promise.resolve({ target_column: "value", suggested_column: "value", available_columns: ["value"], has_dataset: true }),
         });
       }
+      if (typeof url === "string" && url.includes("/dataset/structure-detection")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              date_col: { selected: "date", confidence: 95, candidates: [{ name: "date", score: 0.95 }] },
+              entity_col: { selected: "(нет)", confidence: 0, candidates: [] },
+            }),
+        });
+      }
       if (typeof url === "string" && url.includes("/dataset/timeseries")) {
         return Promise.resolve({
           ok: true,
@@ -702,6 +736,111 @@ describe("TsAnalysisUpload", () => {
     await waitFor(() => {
       expect(screen.getByText(/Декомпозиция неприменима/)).toBeInTheDocument();
       expect(screen.getByText(/внутрипериодную сезонность/)).toBeInTheDocument();
+    });
+  });
+
+  it("real FAO-style dataset (Country/Year/Price): Year is auto-detected as date, chart works WITHOUT manual correction on Структура", async () => {
+    // Регресс на реальный сценарий из чата: раньше Country/Price
+    // получали абсурдные score (0.90/0.50) от позиционной клиентской
+    // эвристики, Year не определялся уверенно вообще, и даже после
+    // ручной коррекции на «Структуре» остановка «График» не менялась
+    // (баг confidence, не пересчитываемого при onChange). Оба бага
+    // исправлены -- этот тест проверяет, что теперь ничего чинить
+    // руками не нужно: реальный backend-скоринг сразу даёт Year.
+    global.fetch = jest.fn((url: string) => {
+      if (typeof url === "string" && url.includes("/session/current")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ has_active_dataset: false, dataset: null, stages: {}, last_active_stage: null, updated_at: null }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ target_column: "Price", suggested_column: "Price", available_columns: ["Year", "Price"], has_dataset: true }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/dataset/structure-detection")) {
+        // Реальный контентный скоринг с бэкенда (app/data/detectors.py::
+        // score_all_columns_as_date) -- Country/Price честно 0.0, Year высокий.
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              date_col: {
+                selected: "Year",
+                confidence: 100,
+                candidates: [
+                  { name: "Year", score: 1.0 },
+                  { name: "Country", score: 0.0 },
+                  { name: "Price", score: 0.0 },
+                ],
+              },
+              entity_col: {
+                selected: "Country",
+                confidence: 100,
+                candidates: [
+                  { name: "Country", score: 1.0 },
+                  { name: "Price", score: 0.0 },
+                ],
+              },
+            }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/dataset/timeseries")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              column: "Price", date_column: "Year",
+              points: [{ x: "1994-01-01T00:00:00", y: 65.9 }, { x: "1995-01-01T00:00:00", y: 70.1 }],
+              sampled: false, sampling_method: null, original_count: 2, was_resorted: false,
+            }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/dataset/panel-balance")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ balanced: true, n_entities: 3, n_distinct_date_sets: 1 }) });
+      }
+      if (typeof url === "string" && url.includes("/upload")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ...okUploadResponse,
+              columns_info: [
+                { name: "Country", dtype: "object", type_icon: "categorical", non_null: 30, nulls: 0, unique: 3 },
+                { name: "Year", dtype: "int64", type_icon: "numeric", non_null: 30, nulls: 0, unique: 30 },
+                { name: "Price", dtype: "float64", type_icon: "numeric", non_null: 30, nulls: 0, unique: 30 },
+              ],
+            }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }) as unknown as typeof fetch;
+
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["Country,Year,Price\nRU,1994,65.9"], "fao.csv", { type: "text/csv" })]);
+
+    // Остановка «Структура»: НЕ Country (0.90 в старом баге), НЕ Price
+    // (0.50) -- Year с высокой уверенностью, без единого ручного клика.
+    await waitFor(() => expect(screen.getByText("Структура")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Структура"));
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Year")).toBeInTheDocument();
+    });
+
+    // Остановка «График»: работает СРАЗУ, без захода на «Структуру» и
+    // ручной коррекции (старый баг: confidence не обновлялся при onChange,
+    // "ничего не меняется" после ручного выбора Year).
+    fireEvent.click(screen.getByText("График"));
+    await waitFor(() => {
+      expect(screen.queryByText(/Дата не определена уверенно/)).not.toBeInTheDocument();
+      expect(screen.getByText(/2 точек/)).toBeInTheDocument();
     });
   });
 });

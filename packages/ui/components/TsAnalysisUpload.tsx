@@ -253,29 +253,63 @@ function extractErrorMessage(data: UploadApiResponse): string | null {
 /**
  * Клиентская ЭВРИСТИКА подтверждения структуры -- см. TODO в шапке файла.
  */
-function buildDetectionFromColumns(columnsInfo: ColumnInfoOut[]): StructureDetection {
-  const dateCandidates = columnsInfo.filter((c) => c.type_icon === "datetime");
-  const categoricalCandidates = columnsInfo.filter((c) => c.type_icon === "categorical");
-  const dateFallback = dateCandidates.length > 0 ? dateCandidates : columnsInfo.slice(0, 3);
-  const entityFallback = categoricalCandidates.length > 0 ? categoricalCandidates : columnsInfo.slice(0, 3);
+/**
+ * БАГ (найден пользователем 2026-08-14 на реальном датасете
+ * TEST_dataset_FAO: Country/Year/Price): buildDetectionFromColumns
+ * (клиентская ЭВРИСТИКА) при отсутствии pandas-datetime-типизированной
+ * колонки (что для "голых" числовых лет вроде Year НИКОГДА не так)
+ * откатывалась на ПЕРВЫЕ 3 КОЛОНКИ ФАЙЛА с искусственно убывающим score
+ * (0.9/0.7/0.5) -- отсюда абсурдные кандидаты Country/Price.
+ *
+ * Заменено на fetchStructureDetection ниже -- реальный контентный
+ * скоринг с бэкенда (GET /dataset/structure-detection, см.
+ * app/data/detectors.py::score_all_columns_as_date). Функция оставлена
+ * НЕиспользуемой в файле намеренно закомментированной -- как
+ * исторический референс бага, легко удалить позже.
+ */
+// function buildDetectionFromColumns(columnsInfo: ColumnInfoOut[]): StructureDetection { ... } -- УДАЛЕНО, см. fetchStructureDetection
 
-  return {
-    dateCol: {
-      selected: dateFallback[0]?.name ?? "(не использовать)",
-      confidence: dateCandidates.length > 0 ? 80 : 25,
-      candidates: dateFallback.map((c, i) => ({ name: c.name, score: Math.max(0.9 - i * 0.2, 0.1) })),
-    },
-    entityCol: {
-      selected: entityFallback[0]?.name ?? "(нет)",
-      confidence: categoricalCandidates.length > 0 ? 70 : 25,
-      candidates: entityFallback.map((c, i) => ({ name: c.name, score: Math.max(0.85 - i * 0.2, 0.1) })),
-    },
-    freq: {
-      selected: dateCandidates.length > 0 ? "D — ежедневная" : "(авто, не получилось)",
-      confidence: dateCandidates.length > 0 ? 60 : 15,
-      options: FREQ_OPTIONS,
-    },
-  };
+/** Топ-кандидаты с ненулевым score; если ВСЕ нулевые (нет ни одного
+ * правдоподобного кандидата) -- всё равно показываем несколько первых
+ * для ручного override в селекторе, но НЕ подделываем их score. */
+function topCandidates(candidates: DetectionCandidate[], max = 8): DetectionCandidate[] {
+  const nonZero = candidates.filter((c) => c.score > 0);
+  return (nonZero.length > 0 ? nonZero : candidates).slice(0, max);
+}
+
+async function fetchStructureDetection(): Promise<StructureDetection | null> {
+  try {
+    const res = await fetch(sessionApiUrl("/dataset/structure-detection"), { credentials: "include" });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const dateCandidates = topCandidates(data.date_col.candidates);
+    const entityCandidates = topCandidates(data.entity_col.candidates);
+    return {
+      dateCol: {
+        selected: data.date_col.selected,
+        confidence: data.date_col.confidence,
+        candidates: dateCandidates,
+      },
+      entityCol: {
+        selected: data.entity_col.selected,
+        confidence: data.entity_col.confidence,
+        candidates: entityCandidates,
+      },
+      // Частота -- пока НЕ покрыта реальным content-based детектором
+      // (score_all_columns_as_date отвечает только за то, ЧТО является
+      // датой, не за ЧАСТОТУ её значений) -- грубая эвристика "есть
+      // уверенная дата -> предполагаем дневную" остаётся до отдельной
+      // задачи (pd.infer_freq уже используется в apps/api/decomposition_data.py,
+      // но не выведен в отдельный API для «Структуры»).
+      freq: {
+        selected: data.date_col.confidence > 0 ? "D — ежедневная" : "(авто, не получилось)",
+        confidence: data.date_col.confidence,
+        options: FREQ_OPTIONS,
+      },
+    };
+  } catch {
+    return null;
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────────
@@ -393,7 +427,17 @@ export function TsAnalysisUpload() {
   // -- без неё линейный график и декомпозиция технически бессмысленны
   // (дата "(не использовать)"/угаданная с confidence=25 дала бы кривую
   // ось X или неверный частотный гейт декомпозиции).
-  const confidentDateCol = detection && detection.dateCol.confidence >= 70 ? detection.dateCol.selected : null;
+  // БАГ (найдено 2026-08-14, сообщено пользователем): confidence -- это
+  // статическая оценка АВТО-детекта, которая НЕ пересчитывается при
+  // ручном выборе колонки в селекторе на «Структуре» (onChange меняет
+  // только dateCol.selected, не confidence) -- поэтому гейт "confidence
+  // >= 70" продолжал блокировать «График» даже ПОСЛЕ того, как
+  // пользователь явно выбрал Year. Правильный гейт: доверяем любому
+  // осознанному выбору (не placeholder), confidence -- только для
+  // решения, нужно ли ПРЕДУПРЕДИТЬ о низкой уверенности АВТО-детекта,
+  // а не для блокировки функциональности после ручной коррекции.
+  const confidentDateCol =
+    detection && detection.dateCol.selected !== "(не использовать)" ? detection.dateCol.selected : null;
 
   // ── Линейный график (остановка «График», авто при заходе -- в отличие
   // от декомпозиции ниже, LTTB-сэмплинг быстрый, не требует STL) ──
@@ -467,7 +511,7 @@ export function TsAnalysisUpload() {
         if (cancelled || !data) return;
         setUploadData(data);
         if (data.columns_info) {
-          setDetection(buildDetectionFromColumns(data.columns_info));
+          fetchStructureDetection().then((d) => setDetection(d));
           // Больше НЕ выбираем "первую числовую" вручную (это и было
           // причиной бага -- откатывалось на Year вместо Price). Сервер
           // уже сбросил target_column при этой загрузке (upload_common.py::set_dataset)
@@ -508,24 +552,24 @@ export function TsAnalysisUpload() {
         setUploadData(data);
         setActiveStop("overview");
         setOverviewTab("preview");
-        let localDetection: StructureDetection | null = null;
         if (data.columns_info) {
-          localDetection = buildDetectionFromColumns(data.columns_info);
-          setDetection(localDetection);
+          fetchStructureDetection().then((d) => setDetection(d));
           refetchTargetColumn();
         }
         fetchStats();
 
         // Автозаполнение профиля для «Моделирования» -- поля из ответа API
-        // имеют приоритет (когда бэкенд их вернёт -- пока не реализовано),
-        // freqCode -- fallback на клиентскую эвристику детекции.
-        const freqCode = localDetection?.freq.selected.split(" ")[0];
+        // имеют приоритет. Раньше был fallback на freqCode из клиентской
+        // эвристики детекции (buildDetectionFromColumns) -- убран вместе
+        // с самой эвристикой (2026-08-14, см. fetchStructureDetection):
+        // детекция теперь асинхронная (реальный запрос к бэкенду), не
+        // может быть готова синхронно в этой точке. Без data.frequency
+        // с бэкенда поле просто остаётся неопределённым, а не подделывается.
         setActiveDataset({
           name: data.name,
           rows: data.rows,
           sizeLabel: data.size_label ?? "—",
           ...(data.frequency && { frequency: data.frequency }),
-          ...(!data.frequency && freqCode && { frequency: freqCode }),
           ...(data.domain && { domain: data.domain }),
           ...(data.n_series != null && { nSeries: data.n_series }),
           ...(data.has_seasonality != null && { hasSeasonality: data.has_seasonality }),
@@ -775,7 +819,15 @@ export function TsAnalysisUpload() {
       </section>
 
       {/* ════════ 3-колоночный блок (общий паттерн платформы) ════════ */}
-      {isUploaded && detection && (
+      {/* detection теперь ЗАГРУЖАЕТСЯ АСИНХРОННО (GET /dataset/structure-detection,
+          см. fetchStructureDetection выше, 2026-08-14) -- раньше была
+          синхронная клиентская эвристика (buildDetectionFromColumns),
+          поэтому detection был готов мгновенно и гейтить весь layout
+          на detection было безопасно. Теперь так делать нельзя: весь
+          layout (степпер, графики, метрики) не должен ждать сетевого
+          запроса детекции -- только содержимое остановки «Структура»
+          ждёт detection (см. loading-state внутри неё ниже). */}
+      {isUploaded && (
         <div className="flex gap-6">
           {/* ── ЛЕВАЯ КОЛОНКА: заголовок + признак + прогресс + степпер ── */}
           <aside className="w-60 shrink-0 flex flex-col gap-3 pt-1">
@@ -1068,7 +1120,12 @@ export function TsAnalysisUpload() {
               )}
 
               {/* ── Структура ── */}
-              {activeStop === "structure" && (
+              {activeStop === "structure" && !detection && (
+                <p className="text-sm text-neutral-500 bg-neutral-50 rounded-lg p-4">
+                  Определяем колонку даты и группировки…
+                </p>
+              )}
+              {activeStop === "structure" && detection && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="border border-neutral-200 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
