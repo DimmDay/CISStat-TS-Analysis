@@ -41,13 +41,13 @@ export const HOME_ROUTES: HomeRoute[] = [
   },
   {
     title: "Обучение и база знаний",
-    description: "освоить методы, термины и лучшие практики",
+    description: "освоить методы, термины и лучшие аналитические практики",
     icon: BookOpen,
     href: "/docs",
   },
   {
     title: "Отраслевые исследования",
-    description: "изучать прикладные сценарии и контекст рынков",
+    description: "ознакомиться с прикладными сценариями и отраслевым контекстом",
     icon: BarChart3,
     href: "/research",
   },
