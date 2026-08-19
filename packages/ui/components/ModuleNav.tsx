@@ -6,8 +6,10 @@
 // Предобработка → EDA → Моделирование → Прогнозирование → Задачи) --
 // аналог верхних вкладок (st.tabs) в Streamlit-версии.
 //
-// «О платформе» ведёт на «/» (Task 25: renamed from "Навигатор",
-// добавлен hover-аккордеон с 5 ссылками из HOME_ROUTES).
+// «О платформе» ведёт на «/» (Task 25). Hover-аккордеон с 5 ссылками
+// из HOME_ROUTES. JS-based hover (onMouseEnter/Leave), потому что
+// CSS group-hover не пробивает overflow-x-auto на родительском flex-
+// контейнере — absolute-панель обрезалась (Task 25-fix).
 // Справа — "Логи событий".
 // Один общий компонент -- используется в standalone и embedded.
 //
@@ -15,7 +17,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Compass, ChevronDown, ScrollText } from "lucide-react";
 import { useAppShell } from "../context/AppShellContext";
 import { EventsLogDrawer } from "./EventsLogDrawer";
@@ -49,12 +51,19 @@ export function ModuleNav() {
   const pathname = usePathname();
   const { log } = useAppShell();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // «О платформе» активна, если pathname === "/" ИЛИ pathname совпадает
   // с одним из href подменю.
   const isPlatformActive =
     pathname === "/" ||
     PLATFORM_SUBMENU.some((r) => pathname === r.href);
+
+  // JS-based hover: onMouseEnter/Leave на wrapper (включает триггер + панель).
+  // При открытом дропдауне — overflow-visible на родительском flex,
+  // чтобы absolute-панель не обрезалась.
+  const handleDropdownEnter = useCallback(() => setDropdownOpen(true), []);
+  const handleDropdownLeave = useCallback(() => setDropdownOpen(false), []);
 
   return (
     <>
@@ -63,13 +72,19 @@ export function ModuleNav() {
         className="border-b border-neutral-200 bg-white"
       >
         <div className="max-w-[1600px] mx-auto px-6 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1 overflow-x-auto">
+          {/* overflow-x-auto только когда дропдаун закрыт — при открытом
+              switching на overflow-visible, иначе absolute-панель обрезается. */}
+          <div className={`flex items-center gap-1 ${dropdownOpen ? "overflow-visible" : "overflow-x-auto"}`}>
             {/* ── «О платформе» с hover-аккордеоном ── */}
-            <div className="relative group">
+            <div
+              className="relative"
+              onMouseEnter={handleDropdownEnter}
+              onMouseLeave={handleDropdownLeave}
+            >
               <Link
                 href="/"
                 aria-haspopup="menu"
-                aria-expanded="false"
+                aria-expanded={dropdownOpen}
                 className={`whitespace-nowrap inline-flex items-center gap-1.5 px-4 py-3 text-sm border-b-2 transition-colors ${
                   isPlatformActive
                     ? "border-brand text-brand font-medium"
@@ -81,20 +96,19 @@ export function ModuleNav() {
                 <ChevronDown
                   size={14}
                   aria-hidden="true"
-                  className="transition-transform group-hover:rotate-180"
+                  className={`transition-transform ${dropdownOpen ? "rotate-180" : ""}`}
                 />
               </Link>
 
-              {/* Hover-панель — скрыта по умолчанию, появляется при наведении.
-                  group/group-hover — Tailwind-механизм: hover на .group-родителе
-                  открывает панель. Панель позиционируется абсолютно, выходя
-                  за overflow-x-auto родительского flex (R3: overflow-visible
-                  на самом relative-контейнере, а overflow-x-auto — на дедушке,
-                  absolute-элементы не обрезаются relative-предком). */}
+              {/* Панель — видна только при dropdownOpen (JS-state). */}
               <div
                 role="menu"
                 aria-label="О платформе"
-                className="invisible opacity-0 group-hover:visible group-hover:opacity-100 absolute top-full left-0 z-50 pt-1 transition-all duration-150"
+                className={`absolute top-full left-0 z-50 pt-1 transition-all duration-150 ${
+                  dropdownOpen
+                    ? "visible opacity-100"
+                    : "invisible opacity-0"
+                }`}
               >
                 <div className="bg-white rounded-lg border border-neutral-200 shadow-lg py-1 min-w-[220px]">
                   {PLATFORM_SUBMENU.map((route) => {

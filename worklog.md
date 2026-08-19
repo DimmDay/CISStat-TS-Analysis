@@ -1762,3 +1762,14 @@ Agent: main (super-z) Task: ModuleNav — переименовать «Нави�
 Проектирование: Точки изменения (2 файла): 1. packages/ui/components/ModuleNav.tsx — правка (переименование + аккордеон). 2. packages/ui/components/ModuleNav.test.tsx — правка (3 апдейта + 8 новых). Риски и меры (5 шт, все закрыты): R1 isActive для "/" — спец-кейс pathname === "/" ИЛИ совпадение с подменю-href. R2 group-hover не работает в jsdom — тесты проверяют DOM-структуру, не hover. R3 Аккордеон обрезается overflow-x-auto — relative на триггере, absolute на панели, overflow-x-auto на дедушке. R4 Gap между триггером и панелью — pt-1 на панели (прилегает вплотную). R5 3 теста сломаются — обновлены: «Навигатор» → «О платформе». 
 Stage Summary: Изменено 2 файла: ModuleNav.tsx (полная перезапись: +hover-аккордеон, -Compass из MODULES, +ChevronDown, +HOME_ROUTES импорт), ModuleNav.test.tsx (3 апдейта + 8 новых). «Навигатор» → «О платформе» (href="/"), hover-аккордеон с 5 ссылками (Знакомство, Обучение, Исследования, Тарифы, API). 169/169 тестов PASS (14/14 suites), 0 регрессий. +8 новых. Typecheck:all PASS, Build:all PASS (13/13 страниц). Артефакты: /home/z/my-project/download/task25-module-nav-accordion/ (2 файла). Deploy checklist (after merge): git push origin main — Vercel auto-redeploy. Backend не трогать. 
 Smoke: навести на «О платформе» → выпадает панель с 5 пунктами → клик на «Знакомство» → /navigator → «О платформе» подсвечена. WORKLOG_EOF
+
+--- 
+
+Task ID: 25-fix
+Agent: main (super-z) Task: Исправление hover-аккордеона «О платформе» — не раскрывался + лишний скролл. Work Log: 
+- Диагностика: overflow-x-auto на родительском flex-контейнере обрезает absolute-панель. CSS group-hover не пробивает clipped overflow — это фундаментальное ограничение CSS. 
+- Решение: заменить CSS group-hover на JS-based hover (onMouseEnter/Leave + useState dropdownOpen). При dropdownOpen=true — overflow-visible на flex-контейнере, панель становится visible/opacity-100. - aria-expanded теперь динамическое (dropdownOpen), а не захардкоженное false. 
+- ChevronDown: rotate-180 по условию dropdownOpen вместо group-hover. - Лишний скролл: overflow-x-auto переключается на overflow-visible при открытом дропдауне — скролл-бар исчезает. 
+- 11/11 тестов PASS, 169/169 общий набор PASS. 
+Typecheck clean. Build 13/13. Stage Summary: Изменён 1 файл: ModuleNav.tsx (JS-based hover вместо CSS group-hover, динамический overflow-visible, динамический aria-expanded). 
+Корневая причина: overflow-x-auto на flex-родителе обрезает absolute-дочерние элементы. CSS group-hover не может это обойти. 169/169 тестов, 0 регрессий. Артефакты: /home/z/my-project/download/task25-fix-module-nav-accordion/ (2 файла). WORKLOG_EOF
