@@ -1,14 +1,14 @@
 // packages/ui/components/NavigatorHero.test.tsx
 //
 // Тесты для NavigatorHero — верхняя часть страницы «Навигатор».
-// Task 26: 6 бейджей трансформированы в chevron-стрелки (белый фон, серая
-// рамка, зелёная цифра) + текст ниже (заголовок + поддерживающий текст).
+// Task 26: 6 бейджей трансформированы в chevron-стрелки (светло-серый фон,
+// зелёная цифра) + текст ниже (заголовок без нумерации + поддерживающий текст).
 // CollapsibleHalfBadge «Для кого»/«Для чего» — без изменений.
 //
 // Поведение:
 //   - Заголовок H1 — статичный
 //   - 6 chevron-стрелок — статичные, в каждой зелёная цифра в кружочке
-//   - 6 текстовых блоков ниже стрелок: заголовок + subtitle
+//   - 6 текстовых блоков ниже стрелок: заголовок (БЕЗ номера) + subtitle
 //   - 2 полубейджа «Для кого» / «Для чего» — раскрывающиеся (collapsed default)
 //   - Состояние каждого полубейджа НЕЗАВИСИМО (не accordion)
 //   - a11y: button с aria-expanded, aria-controls на контейнер с текстом
@@ -48,15 +48,17 @@ describe("NavigatorHero", () => {
     });
   });
 
-  it("renders new badge titles below the chevron row", () => {
+  // ── Заголовки БЕЗ нумерации (Task 26, обновлено) ─────────────────
+
+  it("renders badge titles below the chevron row WITHOUT numbering", () => {
     render(<NavigatorHero />);
-    // Новые заголовки (короткие, без глагола)
-    expect(screen.getByText("1. Структура данных", { selector: "p" })).toBeInTheDocument();
-    expect(screen.getByText("2. Качество данных", { selector: "p" })).toBeInTheDocument();
-    expect(screen.getByText("3. Подготовка к исследованию", { selector: "p" })).toBeInTheDocument();
-    expect(screen.getByText("4. Свойства ряда", { selector: "p" })).toBeInTheDocument();
-    expect(screen.getByText("5. Семейство моделей", { selector: "p" })).toBeInTheDocument();
-    expect(screen.getByText("6. Строим прогноз", { selector: "p" })).toBeInTheDocument();
+    // Заголовки без «N. » — только текст label
+    expect(screen.getByText("Структура данных", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("Качество данных", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("Подготовка к исследованию", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("Свойства ряда", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("Семейство моделей", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("Строим прогноз", { selector: "p" })).toBeInTheDocument();
   });
 
   it("renders subtitle text below each badge title", () => {
@@ -74,6 +76,17 @@ describe("NavigatorHero", () => {
     expect(screen.queryByText("Определяем структуру данных")).toBeNull();
     expect(screen.queryByText("Проверяем качество данных")).toBeNull();
     expect(screen.queryByText("Осуществляем подготовку данных к исследованию")).toBeNull();
+  });
+
+  it("does NOT render numbered titles (e.g. '1. Структура данных')", () => {
+    // Регрессионный тест: нумерация убрана из заголовков
+    render(<NavigatorHero />);
+    expect(screen.queryByText("1. Структура данных")).toBeNull();
+    expect(screen.queryByText("2. Качество данных")).toBeNull();
+    expect(screen.queryByText("3. Подготовка к исследованию")).toBeNull();
+    expect(screen.queryByText("4. Свойства ряда")).toBeNull();
+    expect(screen.queryByText("5. Семейство моделей")).toBeNull();
+    expect(screen.queryByText("6. Строим прогноз")).toBeNull();
   });
 
   // ── CollapsibleHalfBadge «Для кого» / «Для чего» (без изменений) ─
