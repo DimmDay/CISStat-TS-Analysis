@@ -156,7 +156,7 @@ export function NavigatorHero() {
           ...NAVIGATOR_BADGES.map((b) => (
             <p
               key={`title-${b.num}`}
-              className="pt-1 text-sm font-semibold text-neutral-800"
+              className="w-full text-center pt-1 text-sm font-semibold text-neutral-800"
             >
               {b.num}. {b.label}
             </p>
