@@ -164,7 +164,7 @@ export function NavigatorHero() {
           ...NAVIGATOR_BADGES.map((b) => (
             <p
               key={`sub-${b.num}`}
-              className="px-2 text-xs text-neutral-500 leading-relaxed"
+              className="px-2.5 text-xs text-neutral-500 leading-relaxed"
             >
               {b.subtitle}
             </p>
