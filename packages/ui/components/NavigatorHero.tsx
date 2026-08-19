@@ -139,28 +139,31 @@ export function NavigatorHero() {
       </h1>
 
       {/* ── 2. Chevron-стрелки + текст (Task 26) ──
-          Единая сетка 3 колонки: каждая ячейка = стрелка + заголовок + подзаголовок.
-          Без горизонтального gap стрелки визуально соединяются в ряд.
-          На мобильных — 1 колонка, все 6 последовательно. */}
+          Сетка 6 колонок × 3 строки:
+            строка 1 — 6 chevron-стрелок,
+            строка 2 — 6 заголовков,
+            строка 3 — 6 поддерживающих текстов.
+          На мобильных — 2 колонки, на sm — 3, на md — 6.
+          Без горизонтального gap стрелки соединяются визуально. */}
       <div
-        className="grid grid-cols-1 sm:grid-cols-3 gap-y-5"
+        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-y-2"
         aria-label="Этапы анализа"
       >
-        {NAVIGATOR_BADGES.map((badge) => (
-          <div key={badge.num}>
-            <ChevronArrow num={badge.num} />
-            <div className="sm:px-2 pt-2">
-              <p className="text-sm font-semibold text-neutral-800">
-                {badge.num}. {badge.label}
-              </p>
-              {badge.subtitle && (
-                <p className="mt-0.5 text-xs text-neutral-500 leading-relaxed">
-                  {badge.subtitle}
-                </p>
-              )}
-            </div>
-          </div>
-        ))}
+        {NAVIGATOR_BADGES.flatMap((badge) => [
+          <ChevronArrow key={`arrow-${badge.num}`} num={badge.num} />,
+          <p
+            key={`title-${badge.num}`}
+            className="pt-1 text-sm font-semibold text-neutral-800"
+          >
+            {badge.num}. {badge.label}
+          </p>,
+          <p
+            key={`sub-${badge.num}`}
+            className="text-xs text-neutral-500 leading-relaxed"
+          >
+            {badge.subtitle}
+          </p>,
+        ])}
       </div>
 
       {/* ── 4. Два раскрывающихся полубейджа (Task 21, без изменений) ── */}
