@@ -2,22 +2,18 @@
 
 // packages/ui/components/NavigatorHero.tsx
 //
-// Верхняя часть главной страницы "Навигатор" в обоих apps/* (standalone и
-// embedded). Презентационный компонент с локальной интерактивностью:
-//   - H1 "Анализ временных рядов — от файла до прогноза"
-//   - ряд из 6 числовых бейджей (соответствуют 6 этапам пайплайна 1:1)
-//   - 2 полубейджа на 1/2 ширины каждый: «Для кого» и «Для чего» —
-//     РАСКРЫВАЮЩИЕСЯ по типу селектора (Task 21):
-//       • закрытое состояние (по умолчанию): виден только заголовок + чеврон ↓
-//       • клик по триггеру → под заголовком раскрывается текст, чеврон ↑
-//       • состояния двух бейджей НЕЗАВИСИМЫ (не accordion)
-//   - декоративный разделитель после hero-секции (отделяет от Путеводителя)
+// Верхняя часть страницы «Навигатор» в обоих apps/* (standalone и embedded).
+// Презентационный компонент с локальной интерактивностью:
+//   - H1 «Ключевые этапы исследования временного ряда»
+//   - 6 chevron-стрелок в ряд (белый фон, серая рамка, зелёная цифра)
+//   - Под каждой стрелкой — заголовок (пронумерованный) + поддерживающий текст
+//   - 2 раскрывающихся полубейджа «Для кого» / «Для чего» (Task 21)
+//   - декоративный разделитель
 //
 // a11y-контракт:
-//   - Триггер — <button> с aria-expanded (false/true) и aria-controls
-//     (указывает на id текстовой панели).
-//   - Текстовая панель получает id, совпадающий с aria-controls триггера.
-//   - Иконка чеврона имеет role="img" и aria-label для скринридеров.
+//   - Chevron-ряд — aria-label="Этапы анализа", цифры aria-hidden
+//   - Текстовые блоки — semantic <p>, видны всем
+//   - CollapsibleHalfBadge триггеры — <button> с aria-expanded/aria-controls
 
 import { useState } from "react";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
@@ -29,21 +25,60 @@ import {
   PURPOSE_TEXT,
 } from "../lib/navigator-stops";
 
-// ── Вспомогательный компонент: раскрывающийся полубейдж ──────────────
+// ── Chevron-стрелка ──────────────────────────────────────────────
 //
-// Вынесен, чтобы не плодить копию разметки для двух экземпляров (урок
-// MIGRATION_ARCHITECTURE.md §2.1 — «одна копия каждой фичи»).
-// Контролируемое состояние (isOpen/onToggle) живёт в родителе — это даёт
-// независимость двух бейджей (родитель хранит 2 отдельных useState).
+// Двухслойный рендер: внешний div (clip-path + bg-neutral-300 = рамка),
+// внутренний div (clip-path inset 1px + bg-white = заливка).
+// Полигон: шестиугольная стрелка, указывающая вправо.
+// Константа INDENT — размер среза слева/справа в пикселях.
+
+const INDENT_PX = 14;
+
+/** Clip-path polygon для внешнего слоя (рамка). */
+const arrowClip = `polygon(
+  0 0,
+  calc(100% - ${INDENT_PX}px) 0,
+  100% 50%,
+  calc(100% - ${INDENT_PX}px) 100%,
+  0 100%,
+  ${INDENT_PX}px 50%
+)`;
+
+/** Clip-path polygon для внутреннего слоя (заливка, inset 1px). */
+const arrowClipFill = `polygon(
+  1px 1px,
+  calc(100% - ${INDENT_PX + 1}px) 1px,
+  calc(100% - 1px) 50%,
+  calc(100% - ${INDENT_PX + 1}px) calc(100% - 1px),
+  1px calc(100% - 1px),
+  ${INDENT_PX + 1}px 50%
+)`;
+
+function ChevronArrow({ num }: { num: number }) {
+   return (
+    <div
+      className="relative h-11 flex-1 min-w-0"
+      style={{ clipPath: arrowClip, background: "#d4d4d4" }}
+      aria-hidden="true"
+    >
+      <div
+        className="relative h-full flex items-center justify-center bg-white"
+        style={{ clipPath: arrowClipFill }}
+      >
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-700 text-sm font-semibold">
+          {num}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Вспомогательный компонент: раскрывающийся полубейдж ──────────────
 
 interface CollapsibleHalfBadgeProps {
-  /** Заголовок бейджа (например, "Для кого:"). Виден ВСЕГДА. */
   label: string;
-  /** Текст, который раскрывается при клике. */
   text: string;
-  /** Текущее состояние: true = раскрыт, false = свёрнут. */
   isOpen: boolean;
-  /** Колбэк переключения состояния. */
   onToggle: () => void;
 }
 
@@ -53,9 +88,6 @@ function CollapsibleHalfBadge({
   isOpen,
   onToggle,
 }: CollapsibleHalfBadgeProps) {
-  // Стабильный id для aria-controls — генерируется из label, чтобы
-  // совпадать между рендерами (React не должен пересоздавать id).
-  // Используем transliteration-agnostic sanitize: только буквы/цифры/дефис.
   const panelId = `navigator-badge-${label
     .toLowerCase()
     .replace(/[^a-zа-я0-9]+/gi, "-")
@@ -111,47 +143,43 @@ function CollapsibleHalfBadge({
 // ── Основной компонент ───────────────────────────────────────────────
 
 export function NavigatorHero() {
-  // Независимые состояния двух полубейджей (не accordion: можно открыть
-  // оба, можно закрыть оба, поведение каждого не зависит от другого).
-  // По умолчанию оба СВОРНУТЫ — «по типу селектора»: закрыто, пока не
-  // кликнули (требование Task 21).
   const [audienceOpen, setAudienceOpen] = useState(false);
   const [purposeOpen, setPurposeOpen] = useState(false);
 
   return (
     <div className="space-y-6">
-      {/* ── 3. Заголовок ── */}
+      {/* ── 1. Заголовок ── */}
       <h1 className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a]">
         Ключевые этапы исследования временного ряда
       </h1>
 
-      {/* ── 4. Ряд из 6 числовых бейджей ── */}
-      <ol
-        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3"
+      {/* ── 2. Ряд из 6 chevron-стрелок (Task 26) ── */}
+      <div
+        className="flex flex-col sm:flex-row gap-y-2"
         aria-label="Этапы анализа"
       >
         {NAVIGATOR_BADGES.map((badge) => (
-          <li
-            key={badge.num}
-            className="flex items-start gap-3 rounded-lg border border-neutral-200 bg-white px-3.5 py-3"
-          >
-            <span
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-700 text-sm font-semibold"
-              aria-hidden="true"
-            >
-              {badge.num}
-            </span>
-            <span className="text-sm text-neutral-700 leading-snug">
-              {badge.label}
-            </span>
-          </li>
+          <ChevronArrow key={badge.num} num={badge.num} />
         ))}
-      </ol>
+      </div>
 
-      {/* ── 5–6. Два раскрывающихся полубейджа на 1/2 ширины ──
-          Task 21: полубейджи делаем раскрывающимися по типу селектора —
-          закрытое состояние показывает только заголовок «ДЛЯ КОГО» /
-          «ДЛЯ ЧЕГО» + чеврон справа, клик по триггеру раскрывает текст. */}
+      {/* ── 3. Текстовые блоки: заголовок + поддерживающий текст ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-3">
+        {NAVIGATOR_BADGES.map((badge) => (
+          <div key={badge.num}>
+            <p className="text-sm font-semibold text-neutral-800">
+              {badge.num}. {badge.label}
+            </p>
+            {badge.subtitle && (
+              <p className="mt-0.5 text-xs text-neutral-500 leading-relaxed">
+                {badge.subtitle}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* ── 4. Два раскрывающихся полубейджа (Task 21, без изменений) ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <CollapsibleHalfBadge
           label={AUDIENCE_LABEL}
@@ -167,12 +195,7 @@ export function NavigatorHero() {
         />
       </div>
 
-      {/* ── 7. Декоративный разделитель ──
-          Тонкая светло-серая черта на всю ширину контейнера, отделяет
-          hero-секцию (заголовок + бейджи + Для кого/Для чего) от
-          функционального блока «Путеводитель» ниже. space-y-6 на корневом
-          контейнере уже даёт вертикальный отступ сверху (24px), поэтому
-          дополнительных my-* не добавляем — иначе отступ задвоится. */}
+      {/* ── 5. Декоративный разделитель ── */}
       <div className="h-px w-full bg-neutral-200" aria-hidden="true" />
     </div>
   );

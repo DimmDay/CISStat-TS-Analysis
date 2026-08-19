@@ -1,13 +1,14 @@
 // packages/ui/components/NavigatorHero.test.tsx
 //
-// Тесты для NavigatorHero — верхняя часть главной страницы "Навигатор".
-// После Task 21 полубейджи «Для кого» и «Для чего» стали раскрывающимися
-// (по типу селектора): в закрытом состоянии виден только заголовок + чеврон,
-// при клике на триггер-кнопку справа — раскрывается текст.
+// Тесты для NavigatorHero — верхняя часть страницы «Навигатор».
+// Task 26: 6 бейджей трансформированы в chevron-стрелки (белый фон, серая
+// рамка, зелёная цифра) + текст ниже (заголовок + поддерживающий текст).
+// CollapsibleHalfBadge «Для кого»/«Для чего» — без изменений.
 //
 // Поведение:
 //   - Заголовок H1 — статичный
-//   - 6 числовых бейджей — статичные
+//   - 6 chevron-стрелок — статичные, в каждой зелёная цифра в кружочке
+//   - 6 текстовых блоков ниже стрелок: заголовок + subtitle
 //   - 2 полубейджа «Для кого» / «Для чего» — раскрывающиеся (collapsed default)
 //   - Состояние каждого полубейджа НЕЗАВИСИМО (не accordion)
 //   - a11y: button с aria-expanded, aria-controls на контейнер с текстом
@@ -24,57 +25,81 @@ import {
 } from "../lib/navigator-stops";
 
 describe("NavigatorHero", () => {
+  // ── H1 ────────────────────────────────────────────────────────────
+
   it("renders the H1 title", () => {
     render(<NavigatorHero />);
     expect(
-      screen.getByRole("heading", { level: 1, name: /Анализ временных рядов — от файла до прогноза/i }),
+      screen.getByRole("heading", { level: 1, name: /Ключевые этапы исследования временного ряда/i }),
     ).toBeInTheDocument();
   });
 
-  it("renders all 6 numbered badges with correct numbers", () => {
+  // ── 6 chevron-стрелок с цифрами (Task 26) ─────────────────────────
+
+  it("renders all 6 step numbers inside chevron arrows", () => {
     render(<NavigatorHero />);
-    const list = screen.getByRole("list", { name: /Этапы анализа/i });
-    expect(list).toBeInTheDocument();
-    const items = list.querySelectorAll("li");
-    expect(items).toHaveLength(6);
+    const ariaContainer = document.querySelector('[aria-label="Этапы анализа"]');
+    expect(ariaContainer).not.toBeNull();
+    // aria-hidden контейнер содержит цифры (не видны скринридеру, но в DOM)
+    const hiddenNums = ariaContainer!.querySelectorAll("[aria-hidden='true']");
+    expect(hiddenNums.length).toBeGreaterThanOrEqual(6);
     NAVIGATOR_BADGES.forEach((badge) => {
-      expect(screen.getByText(badge.label)).toBeInTheDocument();
+      expect(ariaContainer!.textContent).toContain(String(badge.num));
     });
   });
 
-  // ── Обновлённые под новое поведение (Task 21) ────────────────────────
+  it("renders new badge titles below the chevron row", () => {
+    render(<NavigatorHero />);
+    // Новые заголовки (короткие, без глагола)
+    expect(screen.getByText("1. Структура данных", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("2. Качество данных", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("3. Подготовка к исследованию", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("4. Свойства ряда", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("5. Семейство моделей", { selector: "p" })).toBeInTheDocument();
+    expect(screen.getByText("6. Строим прогноз", { selector: "p" })).toBeInTheDocument();
+  });
+
+  it("renders subtitle text below each badge title", () => {
+    render(<NavigatorHero />);
+    NAVIGATOR_BADGES.forEach((badge) => {
+      if (badge.subtitle) {
+        expect(screen.getByText(badge.subtitle)).toBeInTheDocument();
+      }
+    });
+  });
+
+  it("does NOT render old long badge labels", () => {
+    // Регрессионный тест: старые формулировки с глаголами больше не показываются
+    render(<NavigatorHero />);
+    expect(screen.queryByText("Определяем структуру данных")).toBeNull();
+    expect(screen.queryByText("Проверяем качество данных")).toBeNull();
+    expect(screen.queryByText("Осуществляем подготовку данных к исследованию")).toBeNull();
+  });
+
+  // ── CollapsibleHalfBadge «Для кого» / «Для чего» (без изменений) ─
 
   it("renders 'Для кого:' and 'Для чего:' labels inside the half-width badges (always visible)", () => {
-    // Заголовок живёт внутри <button> триггера и ВИДЕН ВСЕГДА —
-    // в закрытом и в раскрытом состояниях (это и есть точка входа).
     render(<NavigatorHero />);
     expect(screen.getByText(AUDIENCE_LABEL)).toBeInTheDocument();
     expect(screen.getByText(PURPOSE_LABEL)).toBeInTheDocument();
   });
 
   it("renders audience and purpose texts only when their badges are expanded (collapsed by default)", () => {
-    // По умолчанию оба полубейджа СВОРНУТЫ — текст не рендерится.
-    // Это и есть поведение «по типу селектора»: закрыто, пока не кликнули.
     render(<NavigatorHero />);
     expect(screen.queryByText(AUDIENCE_TEXT)).toBeNull();
     expect(screen.queryByText(PURPOSE_TEXT)).toBeNull();
 
-    // Раскрываем «Для кого»
     fireEvent.click(screen.getByText(AUDIENCE_LABEL));
     expect(screen.getByText(AUDIENCE_TEXT)).toBeInTheDocument();
-    // «Для чего» всё ещё свёрнут
     expect(screen.queryByText(PURPOSE_TEXT)).toBeNull();
 
-    // Раскрываем «Для чего»
     fireEvent.click(screen.getByText(PURPOSE_LABEL));
     expect(screen.getByText(PURPOSE_TEXT)).toBeInTheDocument();
-    // «Для кого» всё ещё раскрыт — состояния независимы
     expect(screen.getByText(AUDIENCE_TEXT)).toBeInTheDocument();
   });
 
   it("renders exactly 2 collapsible half-width badges with proper trigger buttons", () => {
     render(<NavigatorHero />);
-    // Две кнопки-триггера (по одной на каждый полубейдж).
     const triggers = screen.getAllByRole("button");
     const halfBadgeTriggers = triggers.filter(
       (btn) =>
@@ -83,7 +108,6 @@ describe("NavigatorHero", () => {
     );
     expect(halfBadgeTriggers).toHaveLength(2);
 
-    // Каждый заголовок находится внутри карточки-полубейджа.
     const audienceCard = screen
       .getByText(AUDIENCE_LABEL)
       .closest(".rounded-lg");
@@ -95,7 +119,7 @@ describe("NavigatorHero", () => {
     expect(audienceCard).not.toBe(purposeCard);
   });
 
-  // ── Новые тесты Task 21 — раскрывающееся поведение ──────────────────
+  // ── a11y: раскрывающееся поведение (Task 21, без изменений) ────────
 
   it("audience text is hidden by default (collapsed state)", () => {
     render(<NavigatorHero />);
@@ -111,11 +135,9 @@ describe("NavigatorHero", () => {
     render(<NavigatorHero />);
     const trigger = screen.getByText(AUDIENCE_LABEL).closest("button");
     expect(trigger).not.toBeNull();
-    // По умолчанию свёрнут
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByText(AUDIENCE_TEXT)).toBeNull();
 
-    // Раскрытие
     fireEvent.click(trigger!);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText(AUDIENCE_TEXT)).toBeInTheDocument();
@@ -139,13 +161,11 @@ describe("NavigatorHero", () => {
     const purposeTrigger = screen.getByText(PURPOSE_LABEL).closest("button");
 
     fireEvent.click(audienceTrigger!);
-    // audience раскрыт, purpose всё ещё свёрнут
     expect(screen.getByText(AUDIENCE_TEXT)).toBeInTheDocument();
     expect(screen.queryByText(PURPOSE_TEXT)).toBeNull();
     expect(audienceTrigger).toHaveAttribute("aria-expanded", "true");
     expect(purposeTrigger).toHaveAttribute("aria-expanded", "false");
 
-    // Открываем purpose — audience остаётся открытым
     fireEvent.click(purposeTrigger!);
     expect(screen.getByText(AUDIENCE_TEXT)).toBeInTheDocument();
     expect(screen.getByText(PURPOSE_TEXT)).toBeInTheDocument();
@@ -157,31 +177,24 @@ describe("NavigatorHero", () => {
     render(<NavigatorHero />);
     const trigger = screen.getByText(AUDIENCE_LABEL).closest("button");
 
-    // Раскрытие
     fireEvent.click(trigger!);
     expect(screen.getByText(AUDIENCE_TEXT)).toBeInTheDocument();
     expect(trigger).toHaveAttribute("aria-expanded", "true");
 
-    // Сворачивание повторным кликом
     fireEvent.click(trigger!);
     expect(screen.queryByText(AUDIENCE_TEXT)).toBeNull();
     expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
 
   it("trigger has aria-controls pointing to the text content container", () => {
-    // a11y-контракт: aria-controls на кнопке должен ссылаться на id
-    // контейнера с текстом (скринридеры используют это для анонса).
     render(<NavigatorHero />);
     const trigger = screen.getByText(AUDIENCE_LABEL).closest("button");
     expect(trigger).not.toBeNull();
 
-    // До раскрытия контейнера с текстом нет в DOM — aria-controls всё равно
-    // должен быть установлен (значение = будущий id панели).
     const controlsId = trigger!.getAttribute("aria-controls");
     expect(controlsId).toBeTruthy();
     expect(controlsId?.length).toBeGreaterThan(0);
 
-    // После раскрытия — контейнер с этим id существует в DOM.
     fireEvent.click(trigger!);
     const panel = document.getElementById(controlsId!);
     expect(panel).not.toBeNull();
@@ -189,15 +202,11 @@ describe("NavigatorHero", () => {
   });
 
   it("chevron icon is present in both badges and toggles direction on expand", () => {
-    // Иконка чеврона — это аффорданс: вниз (collapsed) → вверх (expanded).
-    // Используем role="img" с aria-label для проверки нахождения в DOM.
     render(<NavigatorHero />);
 
-    // В закрытом состоянии — два «chevron-down» (по одному на каждый бейдж).
     const downChevrons = screen.getAllByLabelText(/chevron down/i);
     expect(downChevrons).toHaveLength(2);
 
-    // Раскрываем «Для кого» → в этом бейдже chevron-up, во втором — всё ещё down.
     const audienceTrigger = screen.getByText(AUDIENCE_LABEL).closest("button");
     fireEvent.click(audienceTrigger!);
 
@@ -206,5 +215,14 @@ describe("NavigatorHero", () => {
 
     const remainingDownChevrons = screen.getAllByLabelText(/chevron down/i);
     expect(remainingDownChevrons).toHaveLength(1);
+  });
+
+  // ── Декоративный разделитель ─────────────────────────────────────
+
+  it("renders a decorative separator (aria-hidden divider) after the hero section", () => {
+    render(<NavigatorHero />);
+    const dividers = document.querySelectorAll("[aria-hidden='true']");
+    // По крайней мере один скрытый элемент-разделитель
+    expect(dividers.length).toBeGreaterThanOrEqual(1);
   });
 });

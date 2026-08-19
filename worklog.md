@@ -1773,3 +1773,33 @@ Agent: main (super-z) Task: Исправление hover-аккордеона «
 - 11/11 тестов PASS, 169/169 общий набор PASS. 
 Typecheck clean. Build 13/13. Stage Summary: Изменён 1 файл: ModuleNav.tsx (JS-based hover вместо CSS group-hover, динамический overflow-visible, динамический aria-expanded). 
 Корневая причина: overflow-x-auto на flex-родителе обрезает absolute-дочерние элементы. CSS group-hover не может это обойти. 169/169 тестов, 0 регрессий. Артефакты: /home/z/my-project/download/task25-fix-module-nav-accordion/ (2 файла). WORKLOG_EOF
+
+---
+
+Task ID: 26
+Agent: main (super-z)
+Task: Трансформация 6 бейджей NavigatorHero в chevron-стрелки + текст ниже
+
+Work Log:
+- Изучен скриншот (VLM): горизонтальный ряд из 3 chevron-стрелок (светло-серый, пентагон с правым срезом), под каждой — заголовок + поддерживающий текст.
+- Изучены текущие файлы: NavigatorHero.tsx (6 бейджей в grid + 2 collapsible half-badge), navigator-stops.ts (NumberedBadge {num, label}), NavigatorHero.test.tsx (13 тестов).
+- Проверка потребителей: NAVIGATOR_BADGES/NumberedBadge используются только в NavigatorHero.tsx, NavigatorHero.test.tsx, index.ts (реэкспорт). Никаких других потребителей — расширение интерфейса безопасно.
+- Спроектирован процесс: 3 файла, 6 рисков (все закрыты).
+- Обновлён navigator-stops.ts: NumberedBadge.subtitle (опциональное, backward-compatible), 6 новых записей с короткими заголовками + поддерживающим текстом (по 1 предложению).
+- TDD RED: переписаны 4 теста под новую структуру (chevron-цифры, новые заголовки «N. Title», subtitles, регрессия старых labels). 2 FAIL, 15 PASS.
+- Реализован NavigatorHero.tsx: ChevronArrow — двухслойный clip-path (внешний bg-neutral-300 = рамка, внутренний bg-white = заливка, inset 1px). Полигон: 6-угольная стрелка вправо (INDENT_PX=14). Поддерживающие тексты в responsive grid (1/2/3 колонки). CollapsibleHalfBadge — без изменений.
+- TDD-баг: тест `getByText("1", { selector: "[aria-hidden='true']" })` упал — число внутри вложенного span, а aria-hidden на внешнем div. Исправлен на querySelector по aria-label контейнера + проверка textContent.
+- TDD GREEN: 17/17 PASS.
+- Полный прогон jest: 174/174 PASS (14/14 suites), 0 регрессий. +4 новых теста (итого 17 в NavigatorHero).
+- Typecheck:all PASS (embedded + standalone, 0 errors).
+- Build:all PASS: embedded — 13/13 страниц, standalone — 13/13 страниц. Бандл /navigator = 295 B / 279 kB — не вырос.
+
+Артефакты: /home/z/my-project/download/task26-navigator-hero-chevrons/ (3 файла).
+Deploy checklist (after merge):
+git push origin main — Vercel auto-redeploy frontend (изменения только в packages/ui).
+Backend (Render) трогать НЕ нужно — изменения чисто фронтенд.
+Smoke-проверка в проде: открыть https://ts-standalone.vercel.app/navigator → в верхней секции:
+- Горизонтальный ряд из 6 chevron-стрелок (белый фон, серая рамка, зелёная цифра 1–6 в светло-зелёном кружочке).
+- Под стрелками — 3 колонки на десктопе (2 на планшете, 1 на мобильном) с заголовками «1. Структура данных» … «6. Строим прогноз» и поддерживающим текстом серым шрифтом.
+- Полубейджи «Для кого» / «Для чего» — без изменений, раскрываются по клику.
+WORKLOG_EOF
