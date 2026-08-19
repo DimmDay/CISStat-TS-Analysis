@@ -6,14 +6,10 @@
 // Предобработка → EDA → Моделирование → Прогнозирование → Задачи) --
 // аналог верхних вкладок (st.tabs) в Streamlit-версии.
 //
-// ИЗМЕНЕНИЕ (по решению тимлида): "Навигатор" добавлен первым пунктом --
-// ведёт на "/" (sessions-aware Home / путеводитель, см.
-// EmbeddedHome.tsx и StandaloneHome.tsx). Справа добавлены "Логи
-// событий" -- перенесены сюда из DatasetContextBar.tsx (компонент
-// удалён: строка "Загрузить датасет" потеряла актуальность теперь,
-// когда Home сама показывает "Рабочий стол"/онбординг). Один общий
-// компонент -- поэтому "Логи событий" отражаются одинаково и в
-// standalone, и в embedded, без дублирования кода.
+// "Навигатор" ведёт на "/navigator" (Task 24: главная / стала
+// исследовательской картой, Навигатор переезжает на отдельный URL).
+// Справа — "Логи событий" (перенесены из удалённого DatasetContextBar.tsx).
+// Один общий компонент -- используется в standalone и embedded.
 //
 // Общий для embedded и standalone -- пути одинаковые в обоих приложениях.
 
@@ -31,7 +27,7 @@ interface ModuleLink {
 }
 
 const MODULES: ModuleLink[] = [
-  { label: "Навигатор", href: "/", icon: Compass },
+  { label: "Навигатор", href: "/navigator", icon: Compass },
   { label: "Загрузка", href: "/upload" },
   { label: "Валидация", href: "/validation" },
   { label: "Предобработка", href: "/preprocessing" },
@@ -55,10 +51,10 @@ export function ModuleNav() {
         <div className="max-w-[1600px] mx-auto px-6 flex items-center justify-between gap-2">
           <div className="flex items-center gap-1 overflow-x-auto">
             {MODULES.map((mod) => {
-              // "Навигатор" (/) активен только на самой главной, иначе
-              // "/" — префикс всех путей и подсветит вкладку постоянно.
+              // Все пути теперь не-корневые — стандартное сравнение
+              // pathname === href | startsWith(href + "/").
               const isActive =
-                mod.href === "/" ? pathname === "/" : pathname === mod.href || pathname.startsWith(mod.href + "/");
+                pathname === mod.href || pathname.startsWith(mod.href + "/");
               const Icon = mod.icon;
               return (
                 <Link
