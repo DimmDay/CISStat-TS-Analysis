@@ -56,12 +56,12 @@ describe("HomeCapabilities", () => {
     expect(dts.length).toBe(4);
   });
 
-  it("uses light-grey background for stat cells (bg-neutral-50)", () => {
+  it("uses darker grey background for stat cells (bg-neutral-100)", () => {
     const { container } = render(<HomeCapabilities />);
     const dl = container.querySelector("dl");
     expect(dl).not.toBeNull();
-    // 4 ячейки <div class="bg-neutral-50 ...">
-    const cells = dl!.querySelectorAll(".bg-neutral-50");
+    // 4 ячейки <div class="bg-neutral-100 ...">
+    const cells = dl!.querySelectorAll(".bg-neutral-100");
     expect(cells.length).toBe(4);
   });
 
@@ -76,14 +76,19 @@ describe("HomeCapabilities", () => {
 
   // ── Заголовок секции (без section tag) ──────────────────────
 
-  it("renders the H2 title", () => {
+  it("renders the H2 title with the same font weight as HomeHero H1", () => {
     render(<HomeCapabilities />);
-    expect(
-      screen.getByRole("heading", {
-        level: 2,
-        name: CAPABILITIES_TITLE,
-      }),
-    ).toBeInTheDocument();
+    const h2 = screen.getByRole("heading", {
+      level: 2,
+      name: CAPABILITIES_TITLE,
+    });
+    expect(h2).toBeInTheDocument();
+    // Тот же класс, что в HomeHero.tsx H1:
+    // font-sans text-2xl font-semibold tracking-tight text-[#1e3a8a]
+    expect(h2.className).toContain("text-2xl");
+    expect(h2.className).toContain("font-semibold");
+    expect(h2.className).toContain("tracking-tight");
+    expect(h2.className).toContain("text-[#1e3a8a]");
   });
 
   it("renders the subtitle text", () => {
@@ -188,5 +193,20 @@ describe("HomeCapabilities", () => {
     // Раньше был <blockquote> с manifesto
     expect(container.querySelector("blockquote")).not.toBeInTheDocument();
     expect(container.querySelector("cite")).not.toBeInTheDocument();
+  });
+
+  // ── Декоративная черта под Block B (правка 2 от 2026-08-20) ──
+
+  it("renders a full-width divider <div> after Block B", () => {
+    const { container } = render(<HomeCapabilities />);
+    const section = container.querySelector("section")!;
+    const children = Array.from(section.children);
+    // Последний ребёнок <section> — <div class="h-px w-full bg-neutral-200" aria-hidden>
+    const lastChild = children[children.length - 1];
+    expect(lastChild.tagName).toBe("DIV");
+    expect(lastChild.className).toContain("h-px");
+    expect(lastChild.className).toContain("w-full");
+    expect(lastChild.className).toContain("bg-neutral-200");
+    expect(lastChild).toHaveAttribute("aria-hidden", "true");
   });
 });

@@ -20,9 +20,12 @@
 //
 // Правка от 2026-08-20: убраны section tag (моноширинный лейбл над H2)
 // и Block C (manifesto-цитата). Block A перенесён над заголовком секции,
-// шрифт счётчиков уменьшен (text-3xl → text-xl), фон сделан светло-серым
-// (bg-white → bg-neutral-50, ячейки — bg-neutral-50 вместо bg-white,
-// граница остаётся neutral-200).
+// шрифт счётчиков уменьшен (text-3xl → text-xl), фон сделан светло-серым.
+//
+// Правка 2 от 2026-08-20: фон Block A затемнён (bg-neutral-50 →
+// bg-neutral-100); шрифт H2 приведён к H1 (font-normal → font-semibold,
+// теперь полностью совпадает с HomeHero); под Block B добавлена
+// светло-серая черта на ширину страницы (h-px w-full bg-neutral-200).
 //
 // a11y-контракт:
 //   - <section aria-labelledby="capabilities-heading"> оборачивает всё
@@ -45,7 +48,7 @@ import {
 
 function StatCell({ value, label }: { value: string; label: string }) {
   return (
-    <div className="bg-neutral-50 px-4 py-4 text-center">
+    <div className="bg-neutral-100 px-4 py-4 text-center">
       <dd className="text-xl font-semibold text-brand leading-none tracking-tight">
         {value}
       </dd>
@@ -114,7 +117,7 @@ export function HomeCapabilities() {
       <div>
         <h2
           id="capabilities-heading"
-          className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a]"
+          className="font-sans text-2xl font-semibold tracking-tight text-[#1e3a8a]"
         >
           {CAPABILITIES_TITLE}
         </h2>
@@ -139,6 +142,10 @@ export function HomeCapabilities() {
           </div>
         ))}
       </div>
+
+      {/* ── Декоративная светло-серая черта на ширину страницы ──
+          (по образцу NavigatorHero.tsx — завершающий разделитель секции) */}
+      <div className="h-px w-full bg-neutral-200" aria-hidden="true" />
     </section>
   );
 }
