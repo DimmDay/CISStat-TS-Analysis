@@ -70,35 +70,41 @@ def _make_series(n: int = 60) -> List[float]:
     return [100.0 + 0.5 * t + 5.0 * math.sin(2 * math.pi * t / 12) for t in range(n)]
 
 
-def _make_huge_grid_spec(grid_size: int = 100) -> ModelingSpec:
-    """Синтетический spec с моделью, у которой param_space > MAX_TRIALS.
+def _make_huge_grid_spec(grid_size: int = 128) -> ModelingSpec:
+    """Синтетический spec с реальной ETS-моделью и grid_size > MAX_TRIALS.
 
-    Используется для теста реальной truncation через _execute_tune.
-    4 параметра × 4 значения × 2 × 2 × 2 = 128 ( > MAX_TRIALS=64).
+    Дополнительные knobs намеренно игнорируются production ETS adapter'ом;
+    они нужны только для построения большого param_space. Сам model_id остаётся
+    production model_id='ets', поэтому _execute_tune проходит через реальный
+    statsmodels-based predictor, а не через удалённый test-only STUB.
     """
     param_space = {
-        "p": list(range(4)),       # 4
-        "d": list(range(4)),       # 4
-        "q": list(range(2)),       # 2
-        "r": list(range(2)),       # 2
-        "s": list(range(2)),       # 2  → 4*4*2*2*2 = 128
+        "trend": ["add"],
+        "seasonal": [None],
+        "seasonal_periods": [12],
+        "damped_trend": [False],
+        "_grid_a": [0, 1],
+        "_grid_b": [0, 1],
+        "_grid_c": [0, 1],
+        "_grid_d": [0, 1],
+        "_grid_e": [0, 1],
+        "_grid_f": [0, 1],
+        "_grid_g": [0, 1],
     }
-    assert (
-        4 * 4 * 2 * 2 * 2 == grid_size
-    ), f"Expected grid_size={grid_size}, got {4*4*2*2*2}"
+    assert 2 ** 7 == grid_size
     return ModelingSpec(
         metadata=Metadata(version="test"),
         families=[
             Family(
-                id="test_family",
-                name="Test",
-                priority=1,
+                id="exponential_smoothing",
+                name="Экспоненциальное сглаживание / State Space",
+                priority=2,
                 models=[
                     FamilyModel(
-                        id="test_model",
-                        name="Test Model",
-                        description="for truncation test",
-                        min_observations=1,
+                        id="ets",
+                        name="ETS",
+                        description="real-model max_trials test",
+                        min_observations=10,
                         param_space=param_space,
                     )
                 ],
@@ -122,8 +128,8 @@ class TestCVConfig:
         c = CVConfig()
         assert c.n_splits == 5
         assert c.test_size == 1
-        assert c.min_train_size is None  # None → default = test_size в cv.py
-        assert c.step is None             # None → default = test_size в cv.py
+        assert c.min_train_size is None
+        assert c.step is None
 
     def test_custom_values(self):
         c = CVConfig(n_splits=3, test_size=2, min_train_size=10, step=2)
@@ -157,7 +163,6 @@ class TestTuneRequest:
     """TuneRequest — запрос к POST /v1/models/tune."""
 
     def test_required_fields(self):
-        """Без model_id и series — ValidationError."""
         with pytest.raises(ValidationError):
             TuneRequest()
 
@@ -185,7 +190,6 @@ class TestTuneRequest:
         assert r.random_state == 99
 
     def test_series_cannot_be_empty(self):
-        """series: min_length=1 → пустой список недопустим."""
         with pytest.raises(ValidationError):
             TuneRequest(model_id="ets", series=[])
 
@@ -196,16 +200,12 @@ class TestTuneRequest:
             TuneRequest(model_id="ets", series=[1.0], max_trials=-5)
 
     def test_metric_must_be_in_allowed_set(self):
-        """metric — Literal, не любое значение."""
         with pytest.raises(ValidationError):
             TuneRequest(model_id="ets", series=[1.0], metric="invalid")
         with pytest.raises(ValidationError):
-            TuneRequest(model_id="ets", series=[1.0], metric="RMSE")  # case-sensitive
+            TuneRequest(model_id="ets", series=[1.0], metric="RMSE")
 
-    @pytest.mark.parametrize(
-        "metric",
-        ["mae", "rmse", "mape", "mase", "weighted_score"],
-    )
+    @pytest.mark.parametrize("metric", ["mae", "rmse", "mape", "mase", "weighted_score"])
     def test_all_metrics_accepted(self, metric):
         r = TuneRequest(model_id="ets", series=[1.0], metric=metric)
         assert r.metric == metric
@@ -287,21 +287,18 @@ class TestBuildGrid:
         assert {"p": 1, "q": 1} in grid
 
     def test_three_params_ets(self):
-        """ETS param_space: trend×seasonal×seasonal_periods = 6 combos."""
         grid = _build_grid({
             "trend": ["add", "mul"],
             "seasonal": ["add", "mul", None],
             "seasonal_periods": [12],
         })
-        assert len(grid) == 6  # 2 × 3 × 1
+        assert len(grid) == 6
 
     def test_empty_param_space(self):
-        """Пустой dict → один trial с пустыми params (нулевая grid)."""
         grid = _build_grid({})
         assert grid == [{}]
 
     def test_none_in_values(self):
-        """None — валидное значение (например, seasonal=None отключает сезонность)."""
         grid = _build_grid({"seasonal": ["add", None]})
         assert len(grid) == 2
         assert {"seasonal": None} in grid
@@ -314,7 +311,6 @@ class TestBuildGrid:
         assert {"damped": True} in grid
 
     def test_arima_grid_size(self, spec):
-        """ARIMA param_space: p(3) × d(2) × q(3) = 18 combos."""
         arima = spec.get_model("arima")
         assert arima.param_space is not None
         grid = _build_grid(arima.param_space)
@@ -326,14 +322,6 @@ class TestBuildGrid:
 # ═══════════════════════════════════════════════════════════
 
 class TestTruncateGrid:
-    """_truncate_grid(grid, max_trials, random_state) → (trials, truncated).
-
-    Контракт:
-      - len(grid) <= max_trials → без изменений, truncated=False
-      - len(grid) > max_trials → random sample max_trials trials, truncated=True
-      - random_state → воспроизводимость
-    """
-
     def test_grid_under_max_no_truncation(self):
         grid = [{"p": i} for i in range(10)]
         trials, truncated = _truncate_grid(grid, max_trials=64, random_state=42)
@@ -342,7 +330,6 @@ class TestTruncateGrid:
         assert len(trials) == 10
 
     def test_grid_equal_max_no_truncation(self):
-        """Граница: grid_size == max_trials — не truncation."""
         grid = [{"p": i} for i in range(64)]
         trials, truncated = _truncate_grid(grid, max_trials=64, random_state=42)
         assert truncated is False
@@ -355,21 +342,18 @@ class TestTruncateGrid:
         assert len(trials) == 64
 
     def test_user_smaller_max_trials_truncates(self):
-        """User просит max_trials=5 < grid_size=12 → truncated=True, n=5."""
         grid = [{"p": i} for i in range(12)]
         trials, truncated = _truncate_grid(grid, max_trials=5, random_state=42)
         assert truncated is True
         assert len(trials) == 5
 
     def test_reproducible_with_same_seed(self):
-        """Тот же random_state → тот же sampled набор."""
         grid = [{"p": i} for i in range(100)]
         t1, _ = _truncate_grid(grid, max_trials=10, random_state=42)
         t2, _ = _truncate_grid(grid, max_trials=10, random_state=42)
         assert t1 == t2
 
     def test_different_seed_different_sample(self):
-        """Разный random_state → (почти наверняка) разный sampled набор."""
         grid = [{"p": i} for i in range(100)]
         t1, _ = _truncate_grid(grid, max_trials=10, random_state=42)
         t2, _ = _truncate_grid(grid, max_trials=10, random_state=99)
@@ -382,13 +366,11 @@ class TestTruncateGrid:
             assert t in grid
 
     def test_no_duplicates_in_sample(self):
-        """Random.sample без возвращения — каждый trial уникален."""
         grid = [{"p": i} for i in range(100)]
         trials, _ = _truncate_grid(grid, max_trials=10, random_state=42)
         assert len(set(tuple(sorted(t.items())) for t in trials)) == 10
 
     def test_max_trials_constant(self):
-        """MAX_TRIALS = 64 — хардкод-контракт из Phase 1-A."""
         assert MAX_TRIALS == 64
 
 
@@ -397,8 +379,6 @@ class TestTruncateGrid:
 # ═══════════════════════════════════════════════════════════
 
 class TestExecuteTuneEts:
-    """Интеграционные тесты _execute_tune для ETS."""
-
     def test_ets_returns_valid_response(self, spec):
         series = _make_series(60)
         resp = _execute_tune(
@@ -407,7 +387,7 @@ class TestExecuteTuneEts:
             max_trials=None, metric="rmse", random_state=42,
         )
         assert resp.model_id == "ets"
-        assert resp.model_name  # non-empty
+        assert resp.model_name
         assert resp.family_id == "exponential_smoothing"
         assert resp.grid_size == 12
         assert resp.n_trials == 12
@@ -418,7 +398,6 @@ class TestExecuteTuneEts:
         assert resp.duration_ms >= 0
 
     def test_ets_trials_all_have_correct_n_folds(self, spec):
-        """n_folds в trials = cv.n_splits (если ряд не слишком короток)."""
         series = _make_series(60)
         resp = _execute_tune(
             spec=spec, model_id="ets", series=series,
@@ -443,8 +422,6 @@ class TestExecuteTuneEts:
 
 
 class TestExecuteTuneOtherModels:
-    """ets_damped и arima — другие модели с param_space."""
-
     def test_ets_damped_grid(self, spec):
         series = _make_series(60)
         resp = _execute_tune(
@@ -452,7 +429,7 @@ class TestExecuteTuneOtherModels:
             cv_config=CVConfig(n_splits=3, test_size=2),
             max_trials=None, metric="rmse", random_state=42,
         )
-        assert resp.grid_size == 6  # 2×3×1
+        assert resp.grid_size == 6
         assert resp.n_trials == 6
         assert resp.truncated is False
         assert resp.family_id == "exponential_smoothing"
@@ -464,15 +441,13 @@ class TestExecuteTuneOtherModels:
             cv_config=CVConfig(n_splits=3, test_size=2),
             max_trials=None, metric="rmse", random_state=42,
         )
-        assert resp.grid_size == 18  # 3×2×3
+        assert resp.grid_size == 18
         assert resp.n_trials == 18
         assert resp.truncated is False
         assert resp.family_id == "arima"
 
 
 class TestExecuteTuneErrors:
-    """Ошибка-кейсы: 404, 422, 422 (validation)."""
-
     def test_unknown_model_raises_404(self, spec):
         series = _make_series(60)
         with pytest.raises(HTTPException) as exc_info:
@@ -486,7 +461,6 @@ class TestExecuteTuneErrors:
 
     @pytest.mark.parametrize("model_id", ["naive", "seasonal_naive", "drift", "mean"])
     def test_baseline_model_raises_422(self, spec, model_id):
-        """Baseline-модели не имеют param_space → 422."""
         series = _make_series(60)
         with pytest.raises(HTTPException) as exc_info:
             _execute_tune(
@@ -498,7 +472,6 @@ class TestExecuteTuneErrors:
         assert "param_space" in exc_info.value.detail or "тюнинг" in exc_info.value.detail.lower()
 
     def test_theta_no_param_space_raises_422(self, spec):
-        """theta не имеет param_space (формула фиксирована) → 422."""
         series = _make_series(60)
         with pytest.raises(HTTPException) as exc_info:
             _execute_tune(
@@ -509,12 +482,7 @@ class TestExecuteTuneErrors:
         assert exc_info.value.status_code == 422
 
     def test_too_short_series_raises_422(self, spec):
-        """Ряд короче cv.min_samples() → 422.
-
-        min_samples = min_train_size + test_size + (n_splits-1)*step
-                    = 10 + 2 + (5-1)*2 = 20
-        """
-        series = [1.0, 2.0, 3.0]  # 3 точки — мало для 5 folds
+        series = [1.0, 2.0, 3.0]
         with pytest.raises(HTTPException) as exc_info:
             _execute_tune(
                 spec=spec, model_id="ets", series=series,
@@ -522,12 +490,10 @@ class TestExecuteTuneErrors:
                 max_trials=None, metric="rmse", random_state=42,
             )
         assert exc_info.value.status_code == 422
-        # В сообщении есть минимально требуемая длина (20) и фактическая (3)
         assert "20" in str(exc_info.value.detail)
         assert "3" in str(exc_info.value.detail)
 
     def test_invalid_metric_raises_422(self, spec):
-        """Несуществующая метрика → 422 (не падает с KeyError)."""
         series = _make_series(60)
         with pytest.raises(HTTPException) as exc_info:
             _execute_tune(
@@ -540,8 +506,6 @@ class TestExecuteTuneErrors:
 
 
 class TestExecuteTuneBestSelection:
-    """best_trial — выбор trial'а с минимальным metric."""
-
     def test_best_trial_has_min_rmse(self, spec):
         series = _make_series(60)
         resp = _execute_tune(
@@ -576,7 +540,6 @@ class TestExecuteTuneBestSelection:
         assert best_ws == min(all_ws)
 
     def test_best_params_match_best_trial(self, spec):
-        """best_params === trials[best_trial].params."""
         series = _make_series(60)
         resp = _execute_tune(
             spec=spec, model_id="ets", series=series,
@@ -591,10 +554,7 @@ class TestExecuteTuneBestSelection:
 # ═══════════════════════════════════════════════════════════
 
 class TestExecuteTuneMaxTrials:
-    """max_trials параметр — клиентское ограничение + MAX_TRIALS hard cap."""
-
     def test_user_max_trials_smaller_than_grid(self, spec):
-        """User просит max_trials=5, grid_size=12 → truncated=True, n_trials=5."""
         series = _make_series(60)
         resp = _execute_tune(
             spec=spec, model_id="ets", series=series,
@@ -606,7 +566,6 @@ class TestExecuteTuneMaxTrials:
         assert resp.grid_size == 12
 
     def test_user_max_trials_larger_than_grid(self, spec):
-        """User просит max_trials=100, grid_size=12 → нет truncation, n_trials=12."""
         series = _make_series(60)
         resp = _execute_tune(
             spec=spec, model_id="ets", series=series,
@@ -616,39 +575,37 @@ class TestExecuteTuneMaxTrials:
         assert resp.truncated is False
         assert resp.n_trials == 12
 
-    def test_user_max_trials_clamped_to_max_trials_constant(self, spec):
-        """User просит max_trials=1000 (> MAX_TRIALS) → clamp to MAX_TRIALS.
-
-        Если grid_size тоже > MAX_TRIALS, truncated=True, n_trials=MAX_TRIALS.
-        """
+    def test_user_max_trials_clamped_to_max_trials_constant(self):
+        """Clamp user max_trials to MAX_TRIALS using a real ETS model-id."""
         huge_spec = _make_huge_grid_spec(grid_size=128)
         series = _make_series(60)
         resp = _execute_tune(
-            spec=huge_spec, model_id="test_model", series=series,
-            cv_config=CVConfig(n_splits=3, test_size=2),
-            max_trials=1000,  # requested > MAX_TRIALS → clamp
-            metric="rmse", random_state=42,
-        )
-        assert resp.truncated is True
-        assert resp.n_trials == MAX_TRIALS  # clamped, not 1000
-        assert resp.grid_size == 128
-
-    def test_grid_over_max_trials_truncates_to_max(self):
-        """grid_size=128 > MAX_TRIALS=64 → truncated=True, n_trials=64."""
-        huge_spec = _make_huge_grid_spec(grid_size=128)
-        series = _make_series(60)
-        resp = _execute_tune(
-            spec=huge_spec, model_id="test_model", series=series,
-            cv_config=CVConfig(n_splits=3, test_size=2),
-            max_trials=None,  # по умолчанию → MAX_TRIALS
+            spec=huge_spec, model_id="ets", series=series,
+            cv_config=CVConfig(n_splits=1, test_size=2, min_train_size=20),
+            max_trials=1000,
             metric="rmse", random_state=42,
         )
         assert resp.truncated is True
         assert resp.n_trials == MAX_TRIALS
         assert resp.grid_size == 128
+        assert all(trial.n_folds == 1 for trial in resp.trials)
+
+    def test_grid_over_max_trials_truncates_to_max(self):
+        """Grid > MAX_TRIALS uses the real ETS predictor and truncates to 64."""
+        huge_spec = _make_huge_grid_spec(grid_size=128)
+        series = _make_series(60)
+        resp = _execute_tune(
+            spec=huge_spec, model_id="ets", series=series,
+            cv_config=CVConfig(n_splits=1, test_size=2, min_train_size=20),
+            max_trials=None,
+            metric="rmse", random_state=42,
+        )
+        assert resp.truncated is True
+        assert resp.n_trials == MAX_TRIALS
+        assert resp.grid_size == 128
+        assert all(trial.n_folds == 1 for trial in resp.trials)
 
     def test_reproducible_random_state_in_execute_tune(self, spec):
-        """Тот же random_state → тот же набор trials (воспроизводимость)."""
         series = _make_series(60)
         kwargs = dict(
             spec=spec, model_id="ets", series=series,
@@ -660,7 +617,6 @@ class TestExecuteTuneMaxTrials:
         assert [t.params for t in resp1.trials] == [t.params for t in resp2.trials]
 
     def test_different_random_state_changes_trials(self, spec):
-        """Разный random_state → (почти наверняка) разный набор trials."""
         series = _make_series(60)
         resp1 = _execute_tune(
             spec=spec, model_id="ets", series=series,
@@ -680,8 +636,6 @@ class TestExecuteTuneMaxTrials:
 # ═══════════════════════════════════════════════════════════
 
 class TestTrialsOrder:
-    """Без truncation trials идут в порядке декартова произведения param_space."""
-
     def test_ets_trials_no_truncation_preserves_grid_order(self, spec):
         series = _make_series(60)
         resp = _execute_tune(
@@ -696,3 +650,4 @@ class TestTrialsOrder:
         assert actual_params == expected_grid, (
             "Без truncation trials должны идти в порядке декартова произведения"
         )
+        
