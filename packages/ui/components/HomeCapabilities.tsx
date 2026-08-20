@@ -135,7 +135,7 @@ export function HomeCapabilities() {
       <div>
         <h2
           id="capabilities-heading"
-          className="font-sans text-xl font-semibold tracking-tight text-neutral-700"
+          className="font-sans text-xl font-semibold tracking-tight text-neutral-500"
         >
           {CAPABILITIES_TITLE}
         </h2>
