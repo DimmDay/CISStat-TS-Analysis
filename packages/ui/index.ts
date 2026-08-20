@@ -6,19 +6,17 @@ export { HomeHero } from "./components/HomeHero";
 export { HOME_ROUTES } from "./lib/home-stops";
 export type { HomeRoute } from "./lib/home-stops";
 
-// Главная страница (/) — секция «Возможности» (Task 27).
-// HomeCapabilities: Block A (4 stat) + Block B (3×2 карточек) +
-// Block C (manifesto). Подключается ТОЛЬКО в standalone — в embedded
+// Главная страница (/) — секция «Возможности» (Task 27, правка 2026-08-20).
+// HomeCapabilities: Block A (4 stat НАД заголовком) + заголовок H2 +
+// Block B (3×2 карточек). Block C (manifesto) и section tag убраны по
+// решению тимлида. Подключается ТОЛЬКО в standalone — в embedded
 // пользователь уже внутри портала, маркетинговый контекст не нужен.
 export { HomeCapabilities } from "./components/HomeCapabilities";
 export {
   CAPABILITIES_TITLE,
   CAPABILITIES_SUBTITLE,
-  CAPABILITIES_TAG,
   CAPABILITY_STATS,
   CAPABILITIES,
-  MANIFESTO_HEADLINE,
-  MANIFESTO_BODY,
 } from "./lib/capabilities";
 export type { CapabilityStat, Capability } from "./lib/capabilities";
 

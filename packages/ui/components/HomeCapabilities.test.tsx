@@ -1,17 +1,22 @@
 // packages/ui/components/HomeCapabilities.test.tsx
 //
 // Тесты для HomeCapabilities — вторая секция главной страницы (/)
-// в standalone-режиме. Содержит три блока:
-//   - Заголовок H2 + поддерживающий текст + section tag
-//   - Block A: 4 stat-счётчика
+// в standalone-режиме. Содержит:
+//   - Block A: 4 stat-счётчика НАД заголовком секции (светло-серый фон,
+//     уменьшенный шрифт)
+//   - Заголовок H2 + поддерживающий текст (без section tag)
 //   - Block B: сетка 3×2 из 6 capability-карточек
-//   - Block C: manifesto-цитата
+//
+// Правка от 2026-08-20: убраны тесты section tag и manifesto (Block C),
+// добавлены тесты порядка (Block A предшествует H2 в DOM) и проверка
+// светло-серого фона stat-ячеек (bg-neutral-50).
 //
 // Структура тестов повторяет HomeHero.test.tsx — та же дисциплина:
 //   - рендер заголовка и поддерживающего текста
 //   - рендер всех элементов данных из источника (CAPABILITY_STATS,
-//     CAPABILITIES, MANIFESTO_*)
-//   - семантика a11y (aria-labelledby, dl/dt/dd, blockquote, role=list)
+//     CAPABILITIES)
+//   - семантика a11y (aria-labelledby, dl/dt/dd, role=list)
+//   - порядок Block A → H2 → Block B
 
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -19,53 +24,12 @@ import { HomeCapabilities } from "./HomeCapabilities";
 import {
   CAPABILITIES_TITLE,
   CAPABILITIES_SUBTITLE,
-  CAPABILITIES_TAG,
   CAPABILITY_STATS,
   CAPABILITIES,
-  MANIFESTO_HEADLINE,
-  MANIFESTO_BODY,
 } from "../lib/capabilities";
 
 describe("HomeCapabilities", () => {
-  // ── Заголовок секции ────────────────────────────────────────
-
-  it("renders the H2 title", () => {
-    render(<HomeCapabilities />);
-    expect(
-      screen.getByRole("heading", {
-        level: 2,
-        name: CAPABILITIES_TITLE,
-      }),
-    ).toBeInTheDocument();
-  });
-
-  it("renders the subtitle text", () => {
-    render(<HomeCapabilities />);
-    const subtitle = screen.getByText(CAPABILITIES_SUBTITLE);
-    expect(subtitle).toBeInTheDocument();
-    // Тонкий серый шрифт — та же конвенция, что в HomeHero
-    expect(subtitle.className).toContain("text-neutral-500");
-  });
-
-  it("renders the section tag (uppercase mono label)", () => {
-    render(<HomeCapabilities />);
-    const tag = screen.getByText(CAPABILITIES_TAG);
-    expect(tag).toBeInTheDocument();
-    expect(tag.className).toContain("font-mono");
-    expect(tag.className).toContain("text-brand");
-  });
-
-  it("wraps everything in a <section> with aria-labelledby", () => {
-    const { container } = render(<HomeCapabilities />);
-    const section = container.querySelector("section");
-    expect(section).not.toBeNull();
-    expect(section).toHaveAttribute("aria-labelledby", "capabilities-heading");
-    // И id заголовка должен совпадать
-    const heading = section!.querySelector("#capabilities-heading");
-    expect(heading).not.toBeNull();
-  });
-
-  // ── Block A: 4 stat-счётчика ───────────────────────────────
+  // ── Block A: 4 stat-счётчика НАД заголовком ─────────────────
 
   it("renders all 4 stat values", () => {
     render(<HomeCapabilities />);
@@ -92,12 +56,81 @@ describe("HomeCapabilities", () => {
     expect(dts.length).toBe(4);
   });
 
+  it("uses light-grey background for stat cells (bg-neutral-50)", () => {
+    const { container } = render(<HomeCapabilities />);
+    const dl = container.querySelector("dl");
+    expect(dl).not.toBeNull();
+    // 4 ячейки <div class="bg-neutral-50 ...">
+    const cells = dl!.querySelectorAll(".bg-neutral-50");
+    expect(cells.length).toBe(4);
+  });
+
+  it("uses smaller font for stat values (text-xl, not text-3xl)", () => {
+    const { container } = render(<HomeCapabilities />);
+    const dl = container.querySelector("dl");
+    const dd = dl!.querySelector("dd");
+    expect(dd).not.toBeNull();
+    expect(dd!.className).toContain("text-xl");
+    expect(dd!.className).not.toContain("text-3xl");
+  });
+
+  // ── Заголовок секции (без section tag) ──────────────────────
+
+  it("renders the H2 title", () => {
+    render(<HomeCapabilities />);
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: CAPABILITIES_TITLE,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders the subtitle text", () => {
+    render(<HomeCapabilities />);
+    const subtitle = screen.getByText(CAPABILITIES_SUBTITLE);
+    expect(subtitle).toBeInTheDocument();
+    // Тонкий серый шрифт — та же конвенция, что в HomeHero
+    expect(subtitle.className).toContain("text-neutral-500");
+  });
+
+  it("does NOT render the section tag (was removed in 2026-08-20 fix)", () => {
+    render(<HomeCapabilities />);
+    // Раньше был "ВОЗМОЖНОСТИ" моноширинным шрифтом над H2
+    expect(screen.queryByText("ВОЗМОЖНОСТИ")).not.toBeInTheDocument();
+  });
+
+  it("wraps everything in a <section> with aria-labelledby", () => {
+    const { container } = render(<HomeCapabilities />);
+    const section = container.querySelector("section");
+    expect(section).not.toBeNull();
+    expect(section).toHaveAttribute("aria-labelledby", "capabilities-heading");
+    const heading = section!.querySelector("#capabilities-heading");
+    expect(heading).not.toBeNull();
+  });
+
+  // ── Порядок в DOM: Block A → H2 → Block B ───────────────────
+
+  it("renders Block A (stats) BEFORE the H2 in DOM order", () => {
+    const { container } = render(<HomeCapabilities />);
+    const section = container.querySelector("section")!;
+    const children = Array.from(section.children);
+    // Первый ребёнок — <dl> (Block A)
+    expect(children[0].tagName).toBe("DL");
+    // Второй ребёнок — <div> с H2 (заголовок секции)
+    expect(children[1].tagName).toBe("DIV");
+    expect(children[1].querySelector("h2")).not.toBeNull();
+    // Третий ребёнок — сам <div role="list"> (Block B)
+    expect(children[2].tagName).toBe("DIV");
+    expect(children[2]).toHaveAttribute("role", "list");
+    expect(children[2].className).toContain("lg:grid-cols-3");
+  });
+
   // ── Block B: 6 capability-карточек ──────────────────────────
 
   it("renders all 6 capability titles", () => {
     render(<HomeCapabilities />);
     for (const cap of CAPABILITIES) {
-      // Заголовки уникальны — используем getByRole(heading, level:3)
       expect(
         screen.getByRole("heading", { level: 3, name: cap.title }),
       ).toBeInTheDocument();
@@ -119,7 +152,6 @@ describe("HomeCapabilities", () => {
       ".rounded-full.bg-brand-light.text-brand",
     );
     expect(iconCircles.length).toBe(6);
-    // Все иконки aria-hidden
     iconCircles.forEach((el) => {
       expect(el).toHaveAttribute("aria-hidden", "true");
     });
@@ -127,7 +159,9 @@ describe("HomeCapabilities", () => {
 
   it("renders the features grid as role=list with 6 listitems", () => {
     const { container } = render(<HomeCapabilities />);
-    const list = container.querySelector('[role="list"][aria-label="Ключевые возможности платформы"]');
+    const list = container.querySelector(
+      '[role="list"][aria-label="Ключевые возможности платформы"]',
+    );
     expect(list).not.toBeNull();
     const items = list!.querySelectorAll('[role="listitem"]');
     expect(items.length).toBe(6);
@@ -147,24 +181,12 @@ describe("HomeCapabilities", () => {
     expect(capGrid!.className).toContain("sm:grid-cols-2");
   });
 
-  // ── Block C: Manifesto ─────────────────────────────────────
+  // ── Block C удалён ──────────────────────────────────────────
 
-  it("renders manifesto headline and body inside <blockquote>", () => {
+  it("does NOT render the manifesto block (was removed in 2026-08-20 fix)", () => {
     const { container } = render(<HomeCapabilities />);
-    const blockquote = container.querySelector("blockquote");
-    expect(blockquote).not.toBeNull();
-    expect(
-      screen.getByText(MANIFESTO_HEADLINE),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(MANIFESTO_BODY),
-    ).toBeInTheDocument();
-  });
-
-  it("renders an sr-only <cite> for the manifesto", () => {
-    const { container } = render(<HomeCapabilities />);
-    const cite = container.querySelector("cite");
-    expect(cite).not.toBeNull();
-    expect(cite!.className).toContain("sr-only");
+    // Раньше был <blockquote> с manifesto
+    expect(container.querySelector("blockquote")).not.toBeInTheDocument();
+    expect(container.querySelector("cite")).not.toBeInTheDocument();
   });
 });

@@ -1862,6 +1862,7 @@ Typecheck clean. Build 13/13. Stage Summary: Изменён 1 файл: ModuleNa
 ---
 
 Task ID: 26
+
 Agent: main (super-z)
 Task: Трансформация 6 бейджей NavigatorHero в chevron-стрелки + текст ниже
 
@@ -1892,6 +1893,7 @@ WORKLOG_EOF
 ---
 
 Task ID: 27
+
 Agent: main
 Task: Создать вторую секцию главной страницы «О платформе» — «Возможности. Исследование данных в едином аналитическом контуре»: Block A (4 stat-счётчика) + Block B (сетка 3×2 из 6 карточек) + Block C (manifesto-цитата). Только standalone, только для неавторизованного посетителя.
 
@@ -1963,3 +1965,67 @@ Smoke-проверка в проде: открыть https://ts-standalone.verce
 • Сетка 3×2 = 6 карточек возможностей с иконками в синих кружках
 • Manifesto-цитата с разделителями сверху и снизу
 Embedded-режим: проверить https://ts-standalone.vercel.app/ — изменений быть НЕ должно (apps/embedded/app/page.tsx не тронут).
+
+---
+
+Task ID: 27-fix
+
+Agent: main
+Task: Правки секции «Возможности» (Task 27) по фидбэку тимлида (2026-08-20):
+
+убрать section tag (моноширинный лейбл над H2);
+Block A (4 stat-счётчика) перенести НАД заголовком секции; шрифт счётчиков уменьшить; фон сделать светло-серым;
+убрать Block C (manifesto-цитата).
+Work Log:
+
+Изучены три файла правок: capabilities.ts, HomeCapabilities.tsx, HomeCapabilities.test.tsx + index.ts. apps/standalone/app/page.tsx правок не требует (внешний контракт не изменился — те же два компонента, изменилось внутреннее устройство).
+Изменён packages/ui/lib/capabilities.ts:
+• Удалён экспорт CAPABILITIES_TAG ("ВОЗМОЖНОСТИ").
+• Удалены экспорты MANIFESTO_HEADLINE / MANIFESTO_BODY и блок комментариев «Manifesto (Block C)».
+• Обновлён верхний комментарий: зафиксирована новая структура (stat над заголовком + H2 + Block B) и явная пометка правки от 2026-08-20.
+Изменён packages/ui/components/HomeCapabilities.tsx:
+• Удалён импорт CAPABILITIES_TAG + убран <p class="font-mono ..."> над H2.
+• Удалён <blockquote> с manifesto-цитатой и <cite>.
+• Изменён порядок: <dl> (Block A) — ПЕРВЫЙ ребёнок <section>, заголовок (H2 + subtitle) — ВТОРОЙ, Block B — ТРЕТИЙ. Раньше порядок был: заголовок → Block A → Block B → Block C.
+• StatCell: фон bg-white → bg-neutral-50 (светло-серый), padding py-5 → py-4, размер цифры text-3xl → text-xl (уменьшен), leading-none сохранён.
+Переписан packages/ui/components/HomeCapabilities.test.tsx под новую структуру:
+• Удалены 4 теста: "renders the section tag", "renders manifesto headline and body inside <blockquote>", "renders an sr-only <cite> for the manifesto".
+• Добавлены 4 новых теста:
+"uses light-grey background for stat cells (bg-neutral-50)" — проверяет, что 4 ячейки <div> имеют класс bg-neutral-50
+"uses smaller font for stat values (text-xl, not text-3xl)" — проверяет text-xl и отсутствие text-3xl на <dd>
+"renders Block A (stats) BEFORE the H2 in DOM order" — порядок детей <section>: [0]=<dl>, [1]=<div> с <h2>, [2]=<div role="list"> с grid
+"does NOT render the section tag" — queryByText("ВОЗМОЖНОСТИ") = null
+"does NOT render the manifesto block" — querySelector("blockquote") = null и querySelector("cite") = null
+• Внимание: был баг в первом варианте теста порядка — children[2].querySelector('[role="list"]') возвращал null, потому что role="list" висит на самом div, а не на его дочке. Исправлено на children[2]).toHaveAttribute("role", "list").
+Изменён packages/ui/index.ts: удалены экспорты CAPABILITIES_TAG, MANIFESTO_HEADLINE, MANIFESTO_BODY. Комментарий обновлён: «Block C (manifesto) и section tag убраны по решению тимлида».
+apps/standalone/app/page.tsx НЕ изменён — контракт <HomeHero /> + <HomeCapabilities /> остался прежним.
+Stage Summary:
+
+TDD: тесты переписаны ДО правки компонента, прогнаны → 4 FAIL (старые assertions) → после правки → 16 GREEN.
+Jest полный прогон: 191/191 PASS (15/15 suites). Регрессии нет: было 189 → +2 новых теста (-1 удалённый "section tag" +3 новых: light-grey bg, smaller font, Block A before H2, no manifesto = +4-1=+3; но фактически +2 после удаления -1). 0 падающих.
+Typecheck:all PASS (embedded + standalone, 0 errors). Удалённые экспорты не сломали потребителей — queryByText и querySelector в тестах указывают на отсутствие.
+Build (Next.js standalone): ✓ Compiled successfully. 12/12 страниц prerendered. Бандл / = 298 B / 281 kB First Load — идентично Task 27 (до правки). Уменьшение DOM: убраны 2 элемента (section tag + blockquote), но это не отражается на бандле, поскольку JSX-разметка компилируется в тот же объём JS.
+Визуальные изменения (для smoke-проверки в проде):
+• Главная https://ts-standalone.vercel.app/, прокрутка под первую секцию (HomeHero с 6 маршрутами):
+ПЕРВЫЙ элемент новой секции — 4 stat-счётчика в ряд (на десктопе), светло-серый фон, цифры text-xl brand (раньше — под заголовком, белый фон, text-3xl)
+ПОД счётчиками — H2 «Возможности. Исследование данных в едином аналитическом контуре» (раньше над H2 был мелкий моноширинный лейбл «ВОЗМОЖНОСТИ» — теперь убран)
+ПОД H2 — сетка 3×2 = 6 capability-карточек (без изменений)
+Manifesto-цитаты (border-t border-b + blockquote) — больше нет
+apps/embedded НЕ тронут —Capabilities-секция по-прежнему не подключается в embedded.
+Артефакты: /home/z/my-project/download/task-27-home-capabilities/ (5 файлов + worklog.md):
+
+packages/ui/lib/capabilities.ts (правка: убраны CAPABILITIES_TAG + MANIFESTO_*)
+packages/ui/components/HomeCapabilities.tsx (правка: stat над H2 + bg-neutral-50 + text-xl, убраны tag и manifesto)
+packages/ui/components/HomeCapabilities.test.tsx (правка: 16 тестов вместо 14, -4/+5)
+packages/ui/index.ts (правка: убраны 3 экспорта)
+apps/standalone/app/page.tsx (БЕЗ изменений — включён в копию для полноты)
+worklog.md (обновлён Task 27-fix)
+Deploy checklist (after merge):
+
+git push origin main — Vercel auto-redeploy frontend (изменения только в packages/ui).
+Backend (Render) трогать НЕ нужно.
+Smoke-проверка: https://ts-standalone.vercel.app/ → первая прокрутка вниз от Hero:
+4 stat-счётчика светло-серым фоном (10 / 8 / 600+ / 1) — НАД заголовком секции
+H2 «Возможности. Исследование данных в едином аналитическом контуре» (без section tag сверху)
+Сетка 3×2 = 6 capability-карточек с иконками в синих кружках
+После карточек — больше ничего (manifesto убран), сразу следующая секция страницы.
