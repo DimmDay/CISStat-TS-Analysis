@@ -28,6 +28,7 @@ interface ResidualDiagnosticsPanelProps {
   modelId: string;
   params?: Record<string, unknown>;
   autoRun?: boolean;
+  onComplete?: (result: ResidualDiagnosticsResponse) => void;
 }
 
 const API_BASE = getApiBase();
@@ -59,6 +60,7 @@ export function ResidualDiagnosticsPanel({
   modelId,
   params = {},
   autoRun = false,
+  onComplete,
 }: ResidualDiagnosticsPanelProps) {
   const [result, setResult] = useState<ResidualDiagnosticsResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -79,13 +81,15 @@ export function ResidualDiagnosticsPanel({
         const detail = typeof body.detail === "string" ? body.detail : `HTTP ${response.status}`;
         throw new Error(detail);
       }
-      setResult(body as ResidualDiagnosticsResponse);
+      const diagnostics = body as ResidualDiagnosticsResponse;
+      setResult(diagnostics);
+      onComplete?.(diagnostics);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ошибка диагностики остатков");
     } finally {
       setLoading(false);
     }
-  }, [modelId, params]);
+  }, [modelId, params, onComplete]);
 
   useEffect(() => {
     if (autoRun) void runDiagnostics();
