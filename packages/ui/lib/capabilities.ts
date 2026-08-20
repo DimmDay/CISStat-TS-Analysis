@@ -80,7 +80,7 @@ export interface Capability {
 
 export const CAPABILITIES: Capability[] = [
   {
-    title: "Единое аналитическое пространство",
+    title: "Общее аналитическое пространство",
     description:
       "Все 10 модулей — в одной сессии с сохранением прогресса по 6 этапам. Без переключения инструментов и потери контекста.",
     icon: Layers,
