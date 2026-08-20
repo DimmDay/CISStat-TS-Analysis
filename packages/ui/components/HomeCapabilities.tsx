@@ -28,6 +28,14 @@
 // рамку border-neutral-200 и скругление rounded-xl, между ними gap-3.
 // Семантика <dl>/<dt>/<dd> сохранена (a11y).
 //
+// Правка 4 (Task 30) от 2026-08-21: между Block A и H2 добавлена
+// светло-серая черта на всю ширину страницы (h-px w-full bg-neutral-200);
+// H2 уменьшен (text-2xl → text-xl) с сохранением font-semibold, цвет шрифта
+// изменён с брендового тёмно-синего (#1e3a8a) на серый (text-neutral-700);
+// убран hover-эффект с CapabilityCard в Block B (раньше рамка темнела до
+// brand/30, фон уходил в brand-light/30, иконка переходила в bg-brand).
+// Теперь Block B — полностью статичные карточки.
+//
 // a11y-контракт:
 //   - <section aria-labelledby="capabilities-heading"> оборачивает всё
 //   - Stat-счётчики — semantic <dl>/<dt>/<dd>
@@ -63,8 +71,9 @@ function StatCell({ value, label }: { value: string; label: string }) {
 // ── Block B: Capability-карточка ─────────────────────────────
 //
 // По образцу RouteCard в HomeHero.tsx — иконка в брендовом кружке +
-// заголовок + описание. Hover-эффект: рамка темнеет до brand/30,
-// фон уходит в brand-light/30.
+// заголовок + описание. Task 30 (2026-08-21): hover-эффект убран —
+// карточка полностью статичная (раньше рамка темнела до brand/30,
+// фон уходил в brand-light/30, иконка переходила в bg-brand text-white).
 
 function CapabilityCard({
   title,
@@ -76,9 +85,9 @@ function CapabilityCard({
   icon: (typeof CAPABILITIES)[number]["icon"];
 }) {
   return (
-    <div className="group flex items-start gap-4 rounded-xl border border-neutral-200 bg-white p-6 transition-colors hover:border-brand/30 hover:bg-brand-light/30">
+    <div className="flex items-start gap-4 rounded-xl border border-neutral-200 bg-white p-6">
       <span
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-light text-brand transition-colors group-hover:bg-brand group-hover:text-white"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-light text-brand"
         aria-hidden="true"
       >
         <Icon size={20} />
@@ -116,11 +125,17 @@ export function HomeCapabilities() {
         ))}
       </dl>
 
-      {/* ── Заголовок секции ── */}
+      {/* ── Декоративная светло-серая черта между Block A и заголовком ──
+          Task 30 (2026-08-21): разделяет 4 stat-бейджа и H2 визуально. */}
+      <div className="h-px w-full bg-neutral-200" aria-hidden="true" />
+
+      {/* ── Заголовок секции ──
+          Task 30 (2026-08-21): text-2xl → text-xl, font-semibold сохранён,
+          цвет brand[#1e3a8a] → text-neutral-700 (серый). */}
       <div>
         <h2
           id="capabilities-heading"
-          className="font-sans text-2xl font-semibold tracking-tight text-[#1e3a8a]"
+          className="font-sans text-xl font-semibold tracking-tight text-neutral-700"
         >
           {CAPABILITIES_TITLE}
         </h2>
