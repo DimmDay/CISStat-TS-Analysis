@@ -24,7 +24,7 @@ function RouteCard({
   return (
     <Link
       href={href}
-      className="group flex items-start gap-4 rounded-xl border border-brand/30 bg-brand-light/30 p-6 transition-colors hover:border-brand/60 hover:bg-brand-light/60"
+      className="group flex items-start gap-4 rounded-xl border border-brand/40 bg-brand-light/40 p-6 transition-colors hover:border-brand/60 hover:bg-brand-light/60"
     >
       {/* Иконка в брендовом кружке */}
       <span
