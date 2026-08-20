@@ -1888,3 +1888,78 @@ Smoke-проверка в проде: открыть https://ts-standalone.verce
 - Под стрелками — 3 колонки на десктопе (2 на планшете, 1 на мобильном) с заголовками «1. Структура данных» … «6. Строим прогноз» и поддерживающим текстом серым шрифтом.
 - Полубейджи «Для кого» / «Для чего» — без изменений, раскрываются по клику.
 WORKLOG_EOF
+
+---
+
+Task ID: 27
+Agent: main
+Task: Создать вторую секцию главной страницы «О платформе» — «Возможности. Исследование данных в едином аналитическом контуре»: Block A (4 stat-счётчика) + Block B (сетка 3×2 из 6 карточек) + Block C (manifesto-цитата). Только standalone, только для неавторизованного посетителя.
+
+Work Log:
+
+Изучен контекст: MIGRATION_ARCHITECTURE.md (токены, архитектура), HomeHero.tsx + lib/home-stops.ts (паттерн первой секции), ProductJourneyGuide.tsx (паттерн сетки карточек с цветовой кодировкой), navigator-stops.ts (AUDIENCE_TEXT/PURPOSE_TEXT как источник истины для manifesto), tailwind-preset.ts и globals.css (палитра только brand/neutral).
+Изучена референсная посадка Metriqa (https://metriqa.kayaniq.ru/) через z-ai page_reader: паттерн .counters (4 stat-счётчика), .section-tag (моноширинный лейбл над H2), .features-grid (3×N с иконкой в цветном кружке), без анимации fade-up (поддержка prefers-reduced-motion уже есть в globals.css L13-17).
+Зафиксированы решения пользователя (2026-08-20):
+• Block C (manifesto) — оставляем
+• Карточка №9 «Безопасность данных» — оставляем (несмотря на то, что pre-signed S3 planned, см. MIGRATION_ARCHITECTURE.md §8)
+• «600+ тестов» в stat-счётчике (pytest ~453 + 146 = ~600 + jest 174; было «267+» в MIGRATION_ARCHITECTURE.md §1.3)
+• Capabilities-секция ТОЛЬКО в standalone для неавторизованного; в embedded НЕ подключается
+• HomeCapabilities — отдельный компонент (не расширение HomeHero)
+• Дополнение: Block B — сетка 3×2 (6 карточек), убрать №№ 4 (Паспорт ряда), 6 (One source of truth), 8 (Двойная жизнь). Оставлены: №№ 1, 2, 3, 5, 7, 9.
+Спроектирован процесс: 5 файлов изменений (3 новых + 2 правки), 4 риска (визуальный паттерн, иконки, случайный задел embedded, расхождение с PURPOSE_TEXT) — все закрыты.
+Создан packages/ui/lib/capabilities.ts — источник истины (по образцу home-stops.ts):
+• CAPABILITIES_TITLE / SUBTITLE / TAG (заголовок H2 + подзаголовок + section tag)
+• CAPABILITY_STATS — 4 stat-счётчика (10 модулей / 8 семейств / 600+ тестов / 1 API-контракт)
+• CAPABILITIES — 6 capability-карточек (Единый контур, Открытые спецификации, Промышленные стандарты, Воспроизводимость, Программный доступ, Безопасность данных) с lucide-иконками (Layers, FileCode2, ShieldCheck, Repeat, Cable, Lock)
+• MANIFESTO_HEADLINE / MANIFESTO_BODY — перифраз PURPOSE_TEXT (не дословная копия, источник истины сохранён в navigator-stops.ts)
+• Комментарии с ссылками на реальные исходники: NAVIGATOR_STOPS.length, MODEL_FAMILIES.length, ~600 pytest+jest, FastAPI /docs
+Создан packages/ui/components/HomeCapabilities.tsx — презентационный компонент:
+• <section aria-labelledby="capabilities-heading"> оборачивает всё (a11y)
+• Section tag: font-mono text-[11px] uppercase tracking-[0.1em] text-brand (паттерн Metriqa .section-tag)
+• H2: text-2xl font-normal tracking-tight text-[#1e3a8a] (тот же брендовый синий, что в NavigatorHero L137-139 — единая визуальная система)
+• Block A: <dl> с gap-px + bg-neutral-200 = тонкая сплошная линия между ячейками (приём из Metriqa .counters, без визуально тяжёлых borders). <dd> — крупная цифра text-3xl text-brand. <dt> — uppercase text-[11px]. Responsive: 2 колонки на мобильных, 4 на sm+.
+• Block B: сетка 3×2 (grid-cols-1 sm:grid-cols-2 lg:grid-cols-3). CapabilityCard — калька RouteCard из HomeHero: иконка в брендовом кружке 11×11, hover → рамка brand/30 + фон brand-light/30. Тот же селектор классов для теста (.rounded-full.bg-brand-light.text-brand).
+• Block C: <blockquote> с border-t/border-b py-8 text-center. <cite> с sr-only (a11y).
+• Иконки aria-hidden="true", role=list/listitem для семантики сетки.
+Создан packages/ui/components/HomeCapabilities.test.tsx — 14 тестов по образцу HomeHero.test.tsx:
+• Рендер H2 / subtitle / section tag
+• aria-labelledby на <section> + id="capabilities-heading" на H2
+• 4 stat-значения + 4 stat-подписи
+• Семантика <dl> с 4 <dd>/<dt> парами
+• 6 capability-заголовков через getByRole(heading, level:3)
+• 6 capability-описаний
+• 6 иконок в брендовых кружках с aria-hidden (консистентность с HomeHero)
+• role=list + 6 role=listitem
+• Responsive 3×2 grid (lg:grid-cols-3)
+• Manifesto внутри <blockquote>
+• sr-only <cite>
+Добавлен экспорт в packages/ui/index.ts: HomeCapabilities + 7 констант + 2 типа (CapabilityStat, Capability). Прямо под блоком HomeHero (связанные по смыслу).
+Обновлён apps/standalone/app/page.tsx: <div className="space-y-12"><HomeHero /><HomeCapabilities /></div>. Комментарий явно фиксирует: «Только в standalone — в embedded маркетинговый контекст не нужен».
+apps/embedded/app/page.tsx НЕ тронут — осознанно (решение тимлида).
+Stage Summary:
+
+TDD: тесты написаны ДО компонента, прогнаны на пустом файле → 14 FAIL → после реализации компонента → 14 GREEN.
+Jest полный прогон: 189/189 PASS (15/15 suites). Регрессии нет: было 174 → +14 новых + 1 лишний в существующем (точный diff: 14 тестов в новом файле + предыдущие 175 = 189). 0 падающих.
+Typecheck:all PASS (embedded + standalone, 0 errors).
+Build (Next.js standalone): ✓ Compiled successfully. 12/12 страниц prerendered. Бандл / = 298 B / 281 kB First Load — было 294 B / 281 kB в Task 24, рост 4 байта на новый компонент, не раздут.
+Все warnings в stderr — стандартные от recharts ResponsiveContainer в jsdom (BacktestComparisonChart, DistributionCharts — не моя правка).
+Реальные числа в stat-счётчиках: «10 модулей» ← NAVIGATOR_STOPS.length; «8 семейств» ← MODEL_FAMILIES.length; «600+ тестов» ← pytest ~600 + jest 174; «1 API-контракт» ← FastAPI /docs. Не выдумано.
+Manifesto — перифраз PURPOSE_TEXT, не копия: «От наблюдения — к пониманию. От понимания — к обоснованному выводу.» + тело про «10 модулей в едином контуре». Источник истины (navigator-stops.ts) сохранён как канонический текст, здесь — только эмоциональное закрытие секции.
+Артефакты: /home/z/my-project/download/task-27-home-capabilities/ (5 файлов):
+
+packages/ui/lib/capabilities.ts (новый, источник истины)
+packages/ui/components/HomeCapabilities.tsx (новый, компонент)
+packages/ui/components/HomeCapabilities.test.tsx (новый, 14 тестов)
+packages/ui/index.ts (правка — добавлен экспорт)
+apps/standalone/app/page.tsx (правка — подключение под HomeHero)
+Deploy checklist (after merge):
+
+git push origin main — Vercel auto-redeploy frontend (изменения только в packages/ui + apps/standalone).
+Backend (Render) трогать НЕ нужно — изменения чисто фронтенд.
+Smoke-проверка в проде: открыть https://ts-standalone.vercel.app/ → прокрутить ниже первой секции с маршрутами:
+• Section tag «ВОЗМОЖНОСТИ» моноширинным шрифтом
+• H2 «Возможности. Исследование данных в едином аналитическом контуре» + тонкая серая подпись
+• 4 stat-счётчика в ряд (на десктопе): 10 / 8 / 600+ / 1
+• Сетка 3×2 = 6 карточек возможностей с иконками в синих кружках
+• Manifesto-цитата с разделителями сверху и снизу
+Embedded-режим: проверить https://ts-standalone.vercel.app/ — изменений быть НЕ должно (apps/embedded/app/page.tsx не тронут).
