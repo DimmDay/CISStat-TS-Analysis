@@ -40,7 +40,7 @@ export const CAPABILITIES_SUBTITLE =
   "от наблюдения данных — к их глубокому пониманию и обоснованным выводам";
 
 // Section tag — мелкий моноширинный лейбл над H2 (паттерн из Metriqa).
-export const CAPABILITIES_TAG = "ВОЗМОЖНОСТИ";
+// export const CAPABILITIES_TAG = "ВОЗМОЖНОСТИ";
 
 // ── Stat-счётчики (Block A) ───────────────────────────────────
 
@@ -94,7 +94,7 @@ export const CAPABILITIES: Capability[] = [
   {
     title: "Промышленные стандарты качества",
     description:
-      "Критерии валидации — по DAMA DMBOK. CV — expanding-window без заглядывания в будущее. Модели — statsmodels.",
+      "Критерии валидации по международным стандартам DAMA DMBOK. CV — expanding-window без заглядывания в будущее. Модели — statsmodels.",
     icon: ShieldCheck,
   },
   {
@@ -112,7 +112,7 @@ export const CAPABILITIES: Capability[] = [
   {
     title: "Безопасность данных",
     description:
-      "Данные не покидают контур: cookie-сессия в браузере, Redis на бэке. Pre-signed S3 для больших файлов (planned).",
+      "Данные не покидают контур: cookie-сессия в браузере, Redis кэширует на бэкенде. Pre-signed S3 для больших файлов (planned).",
     icon: Lock,
   },
 ];
