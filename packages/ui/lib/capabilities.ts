@@ -52,10 +52,10 @@ export interface CapabilityStat {
 }
 
 export const CAPABILITY_STATS: CapabilityStat[] = [
-  { value: "10", label: "модулей глубоких исследований" },
+  { value: "10", label: "модулей глубокого анализа" },
   { value: "8", label: "семейств прогностических моделей" },
   { value: "600+", label: "автотестов покрывают бизнес-логику" },
-  { value: "1", label: "API-контракт — REST + Swagger из коробки" },
+  { value: "1", label: "единая исследовательская среда" },
 ];
 
 // ── Capability-карточки (Block B, 6 штук, сетка 3×2) ─────────
