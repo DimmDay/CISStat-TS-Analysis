@@ -207,10 +207,12 @@ const STOPS: Stop[] = [
 ];
 
 const FREQ_OPTIONS = [
+  "H — почасовая",
   "D — ежедневная",
   "W — недельная",
   "M — месячная",
   "Q — квартальная",
+  "Y — годовая",
   "(авто, не получилось)",
 ];
 
@@ -295,16 +297,26 @@ async function fetchStructureDetection(): Promise<StructureDetection | null> {
         confidence: data.entity_col.confidence,
         candidates: entityCandidates,
       },
-      // Частота -- пока НЕ покрыта реальным content-based детектором
-      // (score_all_columns_as_date отвечает только за то, ЧТО является
-      // датой, не за ЧАСТОТУ её значений) -- грубая эвристика "есть
-      // уверенная дата -> предполагаем дневную" остаётся до отдельной
-      // задачи (pd.infer_freq уже используется в apps/api/decomposition_data.py,
-      // но не выведен в отдельный API для «Структуры»).
+      // Частота (2026-08-14): РЕАЛЬНОЕ значение с бэкенда
+      // (app/data/detectors.py::detect_column_frequency, pd.infer_freq
+      // на уникальных отсортированных датах). Раньше здесь была
+      // захардкоженная заглушка "D — ежедневная" при confidence>0 --
+      // пользователь поймал баг: годовой FAO-датасет показывал
+      // "ежедневная". data.frequency===null, если date_col не
+      // определена уверенно (нет уверенной даты -- нечего анализировать).
       freq: {
-        selected: data.date_col.confidence > 0 ? "D — ежедневная" : "(авто, не получилось)",
-        confidence: data.date_col.confidence,
-        options: FREQ_OPTIONS,
+        selected: data.frequency?.selected ?? "(авто, не получилось)",
+        confidence: data.frequency?.confidence ?? 0,
+        // Реальная формулировка с бэкенда (detect_column_frequency)
+        // может отличаться от статического списка FREQ_OPTIONS
+        // (например, "Y — годовая (начало года)" vs "Y — годовая",
+        // или неучтённый код вроде "H — почасовая") -- гарантируем,
+        // что <select> всегда может отобразить РЕАЛЬНОЕ значение, а
+        // не молча показать первую опцию списка из-за несовпадения
+        // (ровно так проявлялся баг с частотой -- см. регресс-тест).
+        options: data.frequency?.selected && !FREQ_OPTIONS.includes(data.frequency.selected)
+          ? [data.frequency.selected, ...FREQ_OPTIONS]
+          : FREQ_OPTIONS,
       },
     };
   } catch {

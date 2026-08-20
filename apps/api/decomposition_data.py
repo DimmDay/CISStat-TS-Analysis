@@ -28,6 +28,7 @@ import numpy as np
 import pandas as pd
 
 from app.preprocessing.decomposition import compute_decomposition_stats
+from app.data.detectors import smart_to_datetime
 
 # Частота -> (period для STL, человекочитаемое имя, минимум периодов для
 # осмысленной декомпозиции -- 2 полных цикла, как и в apply_decomposition,
@@ -74,7 +75,7 @@ def build_decomposition(dates: pd.Series, values: pd.Series, column: str) -> dic
         cyclical_pct -- ОЦЕНОЧНАЯ эвристика (тренд минус скользящее среднее
         тренда), не строгий метод -- см. докстринг compute_decomposition_stats.
     """
-    df = pd.DataFrame({"date": pd.to_datetime(dates, errors="coerce"), "value": pd.to_numeric(values, errors="coerce")})
+    df = pd.DataFrame({"date": smart_to_datetime(dates), "value": pd.to_numeric(values, errors="coerce")})
     df = df.dropna(subset=["date", "value"])
 
     if len(df) == 0:

@@ -234,6 +234,16 @@ class ColumnDetectionOut(BaseModel):
     candidates: List[DetectionCandidateOut] = Field(..., description="Отсортировано по score убыв., включает нулевые (фронт решает порог отсечения)")
 
 
+class FrequencyDetectionOut(BaseModel):
+    """Реальная частота date-колонки (pd.infer_freq на уникальных
+    отсортированных датах) -- заменяет захардкоженную заглушку
+    "D — ежедневная" на фронте (найдено пользователем 2026-08-14 на
+    годовом FAO-датасете, см. app/data/detectors.py::detect_column_frequency)."""
+    selected: str = Field(..., description="Человекочитаемая метка, '(не определена)' если нерегулярно")
+    code: Optional[str] = Field(None, description="Код pandas-частоты, например 'YS-JAN'")
+    confidence: int = Field(..., description="100, если pd.infer_freq определил частоту, иначе 0")
+
+
 class StructureDetectionResponse(BaseModel):
     """Ответ GET /dataset/structure-detection -- РЕАЛЬНАЯ (не клиентская
     позиционная) детекция даты и группирующей колонки. См.
@@ -241,9 +251,13 @@ class StructureDetectionResponse(BaseModel):
     score_all_columns_as_entity_group -- уже существовавшая, протестированная
     (tests/unit/test_detectors.py), но НЕ подключённая к API логика
     (см. историю: комментарий в apps/api/upload_common.py признавал
-    этот пробел явно)."""
+    этот пробел явно).
+
+    frequency (2026-08-14) -- реальная частота ВЫБРАННОЙ date-колонки
+    (date_col.selected), None если date_col не определена уверенно."""
     date_col: ColumnDetectionOut
     entity_col: ColumnDetectionOut
+    frequency: Optional[FrequencyDetectionOut] = None
 
 
 # ── Валидация (10 проверок вкладки «Валидация», validation/engine.py::_run_all_checks) ──

@@ -23,6 +23,8 @@ import numpy as np
 import pandas as pd
 from scipy import stats as scipy_stats
 
+from app.data.detectors import smart_to_datetime
+
 # ── Константы адаптивного сэмплинга (согласовано с тимлидом) ──
 FULL_POINTS_THRESHOLD = 3000  # до этого числа точек -- рисуем все, без сэмплинга
 TARGET_SAMPLED_POINTS = 1500  # целевое число точек после LTTB
@@ -132,8 +134,15 @@ def build_timeseries_points(
     НЕ агрегируются здесь -- см. докстринг build_decomposition в этом же
     модуле: агрегация/выбор сущности -- отдельное решение, не для
     line chart «сырых» точек (сырые точки валидны и для панельных
-    данных -- просто несколько точек на одну дату по вертикали)."""
-    df = pd.DataFrame({"date": pd.to_datetime(dates, errors="coerce"), "value": pd.to_numeric(values, errors="coerce")})
+    данных -- просто несколько точек на одну дату по вертикали).
+
+    smart_to_datetime (не голый pd.to_datetime) -- РЕГРЕСС-БАГ (найден
+    пользователем 2026-08-14): голый pd.to_datetime(1994) без format
+    трактует число как наносекунды с эпохи Unix -- для "годовых" колонок
+    (int64, напр. Year: 1994..2023) ВСЕ точки схлопывались в 01.01.1970
+    на линейном графике. smart_to_datetime определяет реальный формат
+    (year_only/unix_s/...) и конвертирует правильно."""
+    df = pd.DataFrame({"date": smart_to_datetime(dates), "value": pd.to_numeric(values, errors="coerce")})
     df = df.dropna(subset=["date", "value"])
     n = len(df)
 

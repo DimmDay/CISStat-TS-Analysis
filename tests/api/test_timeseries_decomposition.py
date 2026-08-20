@@ -89,6 +89,29 @@ def test_timeseries_unsorted_rows_flagged_and_resorted():
     assert [p["y"] for p in body["points"]] == [1.0, 2.0, 3.0]
 
 
+def test_timeseries_raw_year_column_not_collapsed_to_1970():
+    """Регресс на реальный баг, сообщённый пользователем 2026-08-14 на
+    датасете TEST_dataset_FAO: колонка Year -- ГОЛЫЕ ЦЕЛЫЕ ЧИСЛА
+    (1994..2023, int64 после чтения CSV), не ISO-строка и не datetime.
+    Раньше линейный график показывал ОДНУ дату (01.01.1970) для ВСЕХ
+    точек -- pd.to_datetime(1994) без format трактует число как
+    наносекунды с эпохи Unix."""
+    df = pd.DataFrame({
+        "Country": ["RU", "US", "DE"] * 10,
+        "Year": list(range(1994, 2024)),
+        "Price": [65.9 + i for i in range(30)],
+    })
+    _upload_df(df)
+    resp = client.get("/v1/session/dataset/timeseries", params={"column": "Price", "date_column": "Year"})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    xs = [p["x"] for p in body["points"]]
+    assert all(not x.startswith("1970") for x in xs), f"регресс: точки схлопнулись в эпоху Unix: {xs[:5]}"
+    assert "1994-01-01T00:00:00" in xs
+    assert "2023-01-01T00:00:00" in xs
+
+
 # ── /dataset/decomposition ──
 
 def test_decomposition_annual_data_not_applicable():

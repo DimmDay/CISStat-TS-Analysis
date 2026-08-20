@@ -154,6 +154,131 @@ def score_all_columns_as_date(df: pd.DataFrame) -> list[dict]:
     return results
 
 
+def convert_series_to_datetime(series: pd.Series, fmt: str) -> pd.Series:
+    """Конвертирует series в datetime, используя УЖЕ ОПРЕДЕЛЁННЫЙ формат
+    fmt (см. _score_column_as_date) -- та же логика конвертации, что и в
+    detect_and_convert_datetime, шаг 4, вынесена отдельно для
+    переиспользования там, где date-колонка уже известна и нужно просто
+    её сконвертировать (apps/api/chart_data.py, apps/api/decomposition_data.py) --
+    не полный повторный прогон детекции.
+
+    В отличие от полноколоночной мутации в detect_and_convert_datetime
+    (df_work[col] = ...astype(int)...), здесь используется nullable
+    Int64 для year_only -- пропускает NaN как NaT, а не падает
+    ValueError'ом (см. регресс: полная колонка Year с пропусками ломала
+    бы .astype(int) -- предсуществующий скрытый баг в
+    detect_and_convert_datetime, не воспроизводится здесь намеренно)."""
+    if fmt == 'year_only':
+        return pd.to_datetime(series.astype('Int64').astype(str), format='%Y', errors='coerce')
+    elif fmt in ('unix_s', 'unix_ms'):
+        unit = 's' if fmt == 'unix_s' else 'ms'
+        return pd.to_datetime(series, unit=unit, errors='coerce')
+    elif fmt == 'auto_infer':
+        return pd.to_datetime(series, infer_datetime_format=True, errors='coerce')
+    else:
+        return pd.to_datetime(series, format='mixed', errors='coerce')
+
+
+def smart_to_datetime(series: pd.Series) -> pd.Series:
+    """Универсальная 'умная' конвертация ОДНОЙ уже выбранной date-колонки
+    в datetime64 -- определяет РЕАЛЬНЫЙ формат (через _score_column_as_date)
+    и применяет правильную конвертацию для него, вместо наивного
+    pd.to_datetime(series).
+
+    РЕГРЕСС-БАГ (найден пользователем 2026-08-14 на реальном FAO-датасете,
+    колонка Year со значениями 1994..2023): голый pd.to_datetime(1994)
+    без format интерпретирует число как НАНОСЕКУНДЫ с эпохи Unix --
+    pd.to_datetime(1994) == Timestamp('1970-01-01 00:00:00.000001994').
+    Для любого "голого года" (int64, не datetime dtype) ВСЕ точки
+    схлопывались в 01.01.1970 на линейном графике «Загрузки» --
+    визуально "единая дата для всех наблюдений".
+
+    Используется в apps/api/chart_data.py::build_timeseries_points и
+    apps/api/decomposition_data.py::build_decomposition вместо прямого
+    pd.to_datetime(dates, errors='coerce')."""
+    if pd.api.types.is_datetime64_any_dtype(series):
+        return series
+
+    _fmt, _score = _score_column_as_date(0, "__selected_date_column__", series)
+    if _fmt is None:
+        # _score_column_as_date не смогла определить формат (редкий
+        # случай -- например, колонка выбрана пользователем вручную и
+        # не проходит внутренний keyword/pattern фильтр). Честный
+        # fallback: если это похоже на год по диапазону значений --
+        # year_only, иначе -- auto_infer. НИКОГДА не даём голым числам
+        # молча стать unix-наносекундами (см. регресс выше).
+        numeric = pd.to_numeric(series, errors='coerce')
+        if numeric.notna().any() and numeric.dropna().between(1800, 2100).mean() > 0.8:
+            _fmt = 'year_only'
+        else:
+            _fmt = 'auto_infer'
+
+    return convert_series_to_datetime(series, _fmt)
+
+
+# Код pandas-частоты (pd.infer_freq) -> человекочитаемая метка (рус).
+# Ключи -- БАЗОВЫЙ код без множителя/якоря (см. _strip_freq_code) --
+# "3D" и "D" дают одну и ту же метку "дневная", множитель не влияет на
+# то, ЧТО это за частота (только на то, что не каждый день есть точка).
+_FREQ_LABELS: dict[str, str] = {
+    "D": "D — ежедневная",
+    "B": "B — по рабочим дням",
+    "W": "W — недельная",
+    "M": "M — месячная",
+    "MS": "MS — месячная (начало месяца)",
+    "Q": "Q — квартальная",
+    "QS": "QS — квартальная (начало квартала)",
+    "Y": "Y — годовая",
+    "A": "Y — годовая",
+    "YS": "Y — годовая (начало года)",
+    "AS": "Y — годовая (начало года)",
+    "H": "H — почасовая",
+    "T": "min — поминутная",
+    "min": "min — поминутная",
+    "S": "S — посекундная",
+}
+
+
+def _strip_freq_code(freq: str) -> str:
+    """'3D' -> 'D', 'YS-JAN' -> 'YS' -- базовый код без множителя и якоря
+    (anchor), достаточный для маппинга в человекочитаемую метку."""
+    return "".join(ch for ch in freq if not ch.isdigit()).split("-")[0]
+
+
+def detect_column_frequency(series: pd.Series) -> dict:
+    """РЕАЛЬНОЕ определение частоты уже известной date-колонки --
+    заменяет захардкоженную заглушку "D — ежедневная" на фронте
+    (TsAnalysisUpload.tsx::fetchStructureDetection), которую пользователь
+    поймал на годовом FAO-датасете (2026-08-14): показывало "ежедневная"
+    для данных, где на самом деле 1 наблюдение в год.
+
+    Использует pd.infer_freq на ОТСОРТИРОВАННЫХ уникальных датах (не
+    сырые дублирующиеся значения -- панельные данные с несколькими
+    строками на одну дату иначе портят infer_freq). Возвращает
+    {selected, code, confidence}:
+      - code=None, confidence=0, если pd.infer_freq не смог определить
+        регулярную частоту (нерегулярные интервалы, <3 уникальных дат)
+        -- честно "не определена", а не угаданная по умолчанию.
+    """
+    series = smart_to_datetime(series)
+    unique_dates = pd.Series(series.dropna().unique())
+    if len(unique_dates) < 3:
+        return {"selected": "(не определена)", "code": None, "confidence": 0}
+
+    unique_dates = unique_dates.sort_values().reset_index(drop=True)
+    try:
+        code = pd.infer_freq(pd.DatetimeIndex(unique_dates))
+    except (ValueError, TypeError):
+        code = None
+
+    if code is None:
+        return {"selected": "(не определена)", "code": None, "confidence": 0}
+
+    base = _strip_freq_code(code)
+    label = _FREQ_LABELS.get(base, f"{code} — нестандартная частота")
+    return {"selected": label, "code": code, "confidence": 100}
+
+
 def detect_and_convert_datetime(
     df: pd.DataFrame, 
     min_confidence: float = 0.7
@@ -207,34 +332,20 @@ def detect_and_convert_datetime(
         sample = df_work[col].dropna()
         sample_vals = sample.head(min(500, len(sample)))
 
-        # 4. Конвертация
+        # 4. Конвертация -- convert_series_to_datetime (общая с
+        # smart_to_datetime, apps/api/chart_data.py). Побочный бонус:
+        # раньше df_work[col].astype(float).astype(int) падал ValueError
+        # на NaN в full-column year_only-конвертации (sample-конвертация
+        # была safe, т.к. sample уже .dropna(), а вот полная колонка --
+        # нет) -- convert_series_to_datetime использует nullable Int64,
+        # NaN корректно становится NaT, не крашится.
         if best_fmt and best_match_ratio >= min_confidence:
             try:
-                converted = None
-
-                if best_fmt == 'year_only':
-                    converted = pd.to_datetime(sample_vals.astype(int).astype(str), format='%Y', errors='coerce')
-                elif best_fmt == 'unix_s':
-                    converted = pd.to_datetime(sample_vals, unit='s', errors='coerce')
-                elif best_fmt == 'unix_ms':
-                    converted = pd.to_datetime(sample_vals, unit='ms', errors='coerce')
-                elif best_fmt == 'auto_infer':
-                    converted = pd.to_datetime(sample_vals, infer_datetime_format=True, errors='coerce')
-                else:
-                    converted = pd.to_datetime(sample_vals, format='mixed', errors='coerce')
-
+                converted = convert_series_to_datetime(sample_vals, best_fmt)
                 success_rate = converted.notna().mean()
 
                 if success_rate >= min_confidence:
-                    if best_fmt == 'year_only':
-                        df_work[col] = pd.to_datetime(df_work[col].astype(float).astype(int).astype(str), format='%Y', errors='coerce')
-                    elif best_fmt in ['unix_s', 'unix_ms']:
-                        unit = 's' if best_fmt == 'unix_s' else 'ms'
-                        df_work[col] = pd.to_datetime(df_work[col], unit=unit, errors='coerce')
-                    elif best_fmt == 'auto_infer':
-                        df_work[col] = pd.to_datetime(df_work[col], infer_datetime_format=True, errors='coerce')
-                    else:
-                        df_work[col] = pd.to_datetime(df_work[col], format='mixed', errors='coerce')
+                    df_work[col] = convert_series_to_datetime(df_work[col], best_fmt)
 
                     detected_cols.append(col)
 

@@ -87,6 +87,46 @@ def test_large_series_sampled_preserves_outlier_with_real_date():
     assert outlier_date in [p["x"] for p in r["points"]]
 
 
+class TestRawYearColumnRegression:
+    """Регресс-тест на реальный баг, сообщённый пользователем 2026-08-14
+    на датасете TEST_dataset_FAO: колонка Year хранится как ГОЛЫЕ ЦЕЛЫЕ
+    ЧИСЛА (1994, 1995, ..., int64), НЕ как datetime и НЕ как ISO-строка.
+    Голый pd.to_datetime(1994) без format интерпретирует число как
+    НАНОСЕКУНДЫ с эпохи Unix -- Timestamp('1970-01-01 00:00:00.000001994'),
+    из-за чего ВСЕ точки схлопывались в 01.01.1970 на линейном графике.
+
+    Ни один из тестов выше НЕ ловил этот баг -- все использовали уже
+    готовые pd.date_range()/ISO-строки, а не голые числа-годы."""
+
+    def test_raw_year_integers_produce_real_years_not_1970(self):
+        dates = pd.Series(list(range(1994, 2024)))  # int64, НЕ datetime
+        values = pd.Series([65.9 + i for i in range(30)])
+        r = build_timeseries_points(dates, values)
+        assert r["points"][0]["x"] == "1994-01-01T00:00:00"
+        assert r["points"][-1]["x"] == "2023-01-01T00:00:00"
+        # Ключевая проверка регресса: НИ ОДНА точка не должна попасть в 1970
+        assert all(not p["x"].startswith("1970") for p in r["points"])
+
+    def test_raw_year_floats_also_handled(self):
+        """dtype колонки после чтения CSV может быть float64 (1994.0), не int64."""
+        dates = pd.Series([1994.0, 1995.0, 1996.0])
+        values = pd.Series([10.0, 20.0, 30.0])
+        r = build_timeseries_points(dates, values)
+        xs = [p["x"] for p in r["points"]]
+        assert xs == ["1994-01-01T00:00:00", "1995-01-01T00:00:00", "1996-01-01T00:00:00"]
+
+    def test_raw_year_with_missing_values_no_crash(self):
+        """Пропуски в годовой колонке не должны падать (предсуществующий
+        скрытый краш в detect_and_convert_datetime на full-column
+        astype(int) с NaN -- smart_to_datetime использует nullable Int64)."""
+        dates = pd.Series([1994, 1995, None, 1997])
+        values = pd.Series([10.0, 20.0, 30.0, 40.0])
+        r = build_timeseries_points(dates, values)
+        assert r["original_count"] == 3  # строка с NaN год отброшена
+        xs = [p["x"] for p in r["points"]]
+        assert "1970-01-01T00:00:00" not in xs
+
+
 # ── build_decomposition: частотный гейт (главная защита от фейковых цифр) ──
 
 def test_annual_data_not_applicable_no_fake_seasonality():

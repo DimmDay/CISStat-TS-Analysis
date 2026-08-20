@@ -93,3 +93,28 @@ def test_candidates_include_all_columns_not_just_top():
     body = resp.json()
     names = {c["name"] for c in body["date_col"]["candidates"]}
     assert names == {"date", "value", "label"}
+
+
+def test_fao_dataset_frequency_is_yearly_not_daily():
+    """Регресс на реальный баг, сообщённый пользователем 2026-08-14:
+    частота показывала 'D — ежедневная' (захардкоженная заглушка на
+    фронте) для годового FAO-датасета."""
+    df = pd.DataFrame({
+        "Country": ["RU", "US", "DE"] * 10,
+        "Year": list(range(1994, 2024)),
+        "Price": [65.9 + i for i in range(30)],
+    })
+    _upload_df(df)
+    resp = client.get("/v1/session/dataset/structure-detection")
+    body = resp.json()
+    assert body["frequency"] is not None
+    assert "год" in body["frequency"]["selected"].lower()
+    assert "ежедневн" not in body["frequency"]["selected"].lower()
+
+
+def test_frequency_none_when_no_date_column_found():
+    df = pd.DataFrame({"a": ["x", "y", "z"] * 5, "b": [1.1, 2.2, 3.3] * 5})
+    _upload_df(df)
+    resp = client.get("/v1/session/dataset/structure-detection")
+    body = resp.json()
+    assert body["frequency"] is None

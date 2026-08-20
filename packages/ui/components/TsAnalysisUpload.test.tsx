@@ -843,4 +843,64 @@ describe("TsAnalysisUpload", () => {
       expect(screen.getByText(/2 точек/)).toBeInTheDocument();
     });
   });
+
+  it("shows real frequency from backend on Структура (not hardcoded 'D — ежедневная')", async () => {
+    // Регресс на реальный баг: годовой FAO-датасет показывал
+    // "D — ежедневная" (захардкоженная заглушка на фронте, убрана
+    // 2026-08-14) вместо реальной "Y — годовая".
+    global.fetch = jest.fn((url: string) => {
+      if (typeof url === "string" && url.includes("/session/current")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ has_active_dataset: false, dataset: null, stages: {}, last_active_stage: null, updated_at: null }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ target_column: "Price", suggested_column: "Price", available_columns: ["Year", "Price"], has_dataset: true }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/dataset/structure-detection")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              date_col: { selected: "Year", confidence: 100, candidates: [{ name: "Year", score: 1.0 }] },
+              entity_col: { selected: "(нет)", confidence: 0, candidates: [] },
+              frequency: { selected: "Y — годовая (начало года)", code: "YS-JAN", confidence: 100 },
+            }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/upload")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ...okUploadResponse,
+              columns_info: [
+                { name: "Year", dtype: "int64", type_icon: "numeric", non_null: 30, nulls: 0, unique: 30 },
+                { name: "Price", dtype: "float64", type_icon: "numeric", non_null: 30, nulls: 0, unique: 30 },
+              ],
+            }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }) as unknown as typeof fetch;
+
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["Year,Price\n1994,65.9"], "fao.csv", { type: "text/csv" })]);
+
+    await waitFor(() => expect(screen.getByText("Структура")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("Структура"));
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue(/Y — годовая/)).toBeInTheDocument();
+    });
+    expect(screen.queryByDisplayValue(/D — ежедневная/)).not.toBeInTheDocument();
+  });
 });
