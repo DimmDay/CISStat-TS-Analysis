@@ -6,26 +6,27 @@
 // информационная. Расположена ПОД HomeHero (см. apps/standalone/app/page.tsx).
 //
 // Содержит:
-//   - Block A — 4 stat-счётчика в ряд НАД заголовком секции. Светло-серый
-//               фон, уменьшенный шрифт — служит визуальным якорем до
-//               того, как пользователь вчитывается в заголовок.
+//   - Block A — 4 stat-бейджа в ряд НАД заголовком секции. Каждый бейдж —
+//               отдельная карточка со своей рамкой и скруглением (Task 29,
+//               2026-08-21: раньше был «слитый монолит» с 1px-линиями
+//               между ячейками через gap-px + bg-neutral-200 на родителе).
+//               Светло-серый фон, уменьшенный шрифт.
 //   - Заголовок H2 + поддерживающий текст.
 //   - Block B — сетка 3×2 из 6 capability-карточек: ключевые
 //               возможности и принципы платформы.
 //
-// Чисто презентационный, без состояния. Данные — в lib/capabilities.ts,
-// чтобы переиспользовать в будущем (например, в marketing-landings или
-// в /about). Не подключается в embedded — там пользователь уже внутри
-// портала, маркетинговый контекст не нужен (решение тимлида 2026-08-20).
-//
-// Правка от 2026-08-20: убраны section tag (моноширинный лейбл над H2)
-// и Block C (manifesto-цитата). Block A перенесён над заголовком секции,
-// шрифт счётчиков уменьшен (text-3xl → text-xl), фон сделан светло-серым.
+// Чисто презентационный, без состояния. Данные — в lib/capabilities.ts.
+// Не подключается в embedded — там пользователь уже внутри портала.
 //
 // Правка 2 от 2026-08-20: фон Block A затемнён (bg-neutral-50 →
-// bg-neutral-100); шрифт H2 приведён к H1 (font-normal → font-semibold,
-// теперь полностью совпадает с HomeHero); под Block B добавлена
-// светло-серая черта на ширину страницы (h-px w-full bg-neutral-200).
+// bg-neutral-100); шрифт H2 приведён к H1 (font-normal → font-semibold);
+// под Block B добавлена светло-серая черта (h-px w-full bg-neutral-200).
+//
+// Правка 3 (Task 29) от 2026-08-21: Block A переделан из «слитого монолита»
+// (один общий <dl> с border + rounded-xl + overflow-hidden, ячейки прижаты
+// через gap-px) в 4 отдельных бейджа — каждый StatCell имеет собственную
+// рамку border-neutral-200 и скругление rounded-xl, между ними gap-3.
+// Семантика <dl>/<dt>/<dd> сохранена (a11y).
 //
 // a11y-контракт:
 //   - <section aria-labelledby="capabilities-heading"> оборачивает всё
@@ -39,16 +40,16 @@ import {
   CAPABILITIES,
 } from "../lib/capabilities";
 
-// ── Block A: Stat-счётчик ─────────────────────────────────────
+// ── Block A: Stat-бейдж ──────────────────────────────────────
 //
-// Карточка счётчика: значение + короткая подпись. Светло-серый фон,
-// уменьшенный шрифт (text-xl вместо text-3xl). Разделители между
-// ячейками — через gap-px + bg-neutral-200 на родителе grid.
-// На мобильных — 2 колонки, на sm+ — 4.
+// Отдельный бейдж-карточка: собственная рамка border-neutral-200,
+// скругление rounded-xl, светло-серый фон bg-neutral-100, уменьшенный
+// шрифт (text-xl вместо text-3xl). На мобильных — 2 колонки, на sm+ — 4.
+// Между бейджами — gap-3 (раньше был gap-px с общей рамкой).
 
 function StatCell({ value, label }: { value: string; label: string }) {
   return (
-    <div className="bg-neutral-100 px-4 py-4 text-center">
+    <div className="bg-neutral-100 px-4 py-4 text-center rounded-xl border border-neutral-200">
       <dd className="text-xl font-semibold text-brand leading-none tracking-tight">
         {value}
       </dd>
@@ -63,8 +64,7 @@ function StatCell({ value, label }: { value: string; label: string }) {
 //
 // По образцу RouteCard в HomeHero.tsx — иконка в брендовом кружке +
 // заголовок + описание. Hover-эффект: рамка темнеет до brand/30,
-// фон уходит в brand-light/30. Та же логика, что в RouteCard, чтобы
-// визуально связать две секции главной страницы.
+// фон уходит в brand-light/30.
 
 function CapabilityCard({
   title,
@@ -103,9 +103,12 @@ export function HomeCapabilities() {
       aria-labelledby="capabilities-heading"
       className="space-y-8 pt-4"
     >
-      {/* ── Block A: 4 stat-счётчика НАД заголовком секции ── */}
+      {/* ── Block A: 4 stat-бейджа НАД заголовком секции ──
+          Task 29 (2026-08-21): 4 отдельных бейджа вместо слитого монолита.
+          Каждый StatCell — самостоятельная карточка со своей рамкой
+          и скруглением. <dl> без общей рамки, только grid + gap-3. */}
       <dl
-        className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-neutral-200 rounded-xl overflow-hidden border border-neutral-200"
+        className="grid grid-cols-2 sm:grid-cols-4 gap-3"
         aria-label="Метрики платформы"
       >
         {CAPABILITY_STATS.map((stat) => (
@@ -143,8 +146,7 @@ export function HomeCapabilities() {
         ))}
       </div>
 
-      {/* ── Декоративная светло-серая черта на ширину страницы ──
-          (по образцу NavigatorHero.tsx — завершающий разделитель секции) */}
+      {/* ── Декоративная светло-серая черта на ширину страницы ── */}
       <div className="h-px w-full bg-neutral-200" aria-hidden="true" />
     </section>
   );
