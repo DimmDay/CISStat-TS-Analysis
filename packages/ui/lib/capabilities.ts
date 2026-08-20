@@ -52,7 +52,7 @@ export interface CapabilityStat {
 }
 
 export const CAPABILITY_STATS: CapabilityStat[] = [
-  { value: "10", label: "модулей в едином контуре" },
+  { value: "10", label: "модулей глубоких исследований" },
   { value: "8", label: "семейств прогностических моделей" },
   { value: "600+", label: "автотестов покрывают бизнес-логику" },
   { value: "1", label: "API-контракт — REST + Swagger из коробки" },
