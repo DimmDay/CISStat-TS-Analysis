@@ -132,14 +132,14 @@ export function HomeCapabilities() {
       {/* ── Заголовок секции ──
           Task 30 (2026-08-21): text-2xl → text-xl, font-semibold сохранён,
           цвет brand[#1e3a8a] → text-neutral-700 (серый). */}
-      <div>
+      <div className="text-center">
         <h2
           id="capabilities-heading"
-          className="font-sans text-xl font-semibold tracking-tight text-neutral-500"
+          className="font-sans text-xl font-semibold tracking-tight text-neutral-600"
         >
           {CAPABILITIES_TITLE}
         </h2>
-        <p className="mt-2 text-sm text-neutral-500">
+        <p className="mt-2 text-base text-neutral-500">
           {CAPABILITIES_SUBTITLE}
         </p>
       </div>
