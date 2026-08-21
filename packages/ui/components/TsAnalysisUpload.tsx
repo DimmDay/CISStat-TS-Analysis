@@ -87,6 +87,7 @@ import {
 } from "./DistributionCharts";
 import { TimeSeriesLineChart, type TimeSeriesChartData } from "./TimeSeriesLineChart";
 import { DecompositionBadges, type DecompositionData } from "./DecompositionBadges";
+import { DecompositionSeriesChart, type DecompositionSeriesData } from "./DecompositionSeriesChart";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { StructuralClassSchema } from "./StructuralClassSchema";
 import { useAppShell } from "../context/AppShellContext";
@@ -351,6 +352,7 @@ export function TsAnalysisUpload() {
   const [timeseries, setTimeseries] = useState<TimeSeriesChartData | null>(null);
   const [timeseriesLoading, setTimeseriesLoading] = useState(false);
   const [decomposition, setDecomposition] = useState<DecompositionData | null>(null);
+  const [decompositionSeries, setDecompositionSeries] = useState<DecompositionSeriesData | null>(null);
   const [decompositionLoading, setDecompositionLoading] = useState(false);
   const [decompositionRequested, setDecompositionRequested] = useState(false);
   const [overviewTab, setOverviewTab] = useState<"preview" | "columns">("preview");
@@ -489,25 +491,39 @@ export function TsAnalysisUpload() {
   // должен нажать кнопку заново -- по решению тимлида, ленивый расчёт).
   useEffect(() => {
     setDecomposition(null);
+    setDecompositionSeries(null);
     setDecompositionRequested(false);
   }, [selectedFeature, confidentDateCol]);
 
   // ── Декомпозиция (остановка «График», ПО КНОПКЕ -- STL на statsmodels
   // не мгновенная, см. согласование с тимлидом 2026-08-14) ──
-  // apps/api/routers/session.py::get_dataset_decomposition
+  // apps/api/routers/session.py::get_dataset_decomposition +
+  // get_dataset_decomposition_series (2026-08-19, "визуализировать
+  // данный декомпозированный ряд на дополнительном графике") -- один
+  // клик по кнопке запускает ОБА запроса параллельно (бейджи + график
+  // компонент), не два отдельных действия пользователя.
   const fetchDecomposition = useCallback(() => {
     if (!selectedFeature || !confidentDateCol) return;
     setDecompositionRequested(true);
     setDecompositionLoading(true);
-    fetch(
-      sessionApiUrl(
-        `/dataset/decomposition?column=${encodeURIComponent(selectedFeature)}&date_column=${encodeURIComponent(confidentDateCol)}`
-      ),
-      { credentials: "include" }
-    )
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: DecompositionData | null) => setDecomposition(data))
-      .catch(() => setDecomposition(null))
+    const badgesUrl = sessionApiUrl(
+      `/dataset/decomposition?column=${encodeURIComponent(selectedFeature)}&date_column=${encodeURIComponent(confidentDateCol)}`
+    );
+    const seriesUrl = sessionApiUrl(
+      `/dataset/decomposition-series?column=${encodeURIComponent(selectedFeature)}&date_column=${encodeURIComponent(confidentDateCol)}`
+    );
+    Promise.all([
+      fetch(badgesUrl, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)),
+      fetch(seriesUrl, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([badges, series]: [DecompositionData | null, DecompositionSeriesData | null]) => {
+        setDecomposition(badges);
+        setDecompositionSeries(series);
+      })
+      .catch(() => {
+        setDecomposition(null);
+        setDecompositionSeries(null);
+      })
       .finally(() => setDecompositionLoading(false));
   }, [selectedFeature, confidentDateCol]);
 
@@ -1079,6 +1095,11 @@ export function TsAnalysisUpload() {
                           onCompute={fetchDecomposition}
                           hasComputed={decompositionRequested}
                         />
+                        {decompositionRequested && (
+                          <div className="mt-3">
+                            <DecompositionSeriesChart data={decompositionSeries} loading={decompositionLoading} />
+                          </div>
+                        )}
                       </div>
                     </>
                   )}

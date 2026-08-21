@@ -124,6 +124,11 @@ export type { TimeSeriesPoint, TimeSeriesChartData } from "./components/TimeSeri
 export { DecompositionBadges } from "./components/DecompositionBadges";
 export type { DecompositionData } from "./components/DecompositionBadges";
 
+// График разложенного ряда (Тренд/Сезонность/Цикличность/Остаток) --
+// дополнительный график под бейджами декомпозиции (2026-08-19).
+export { DecompositionSeriesChart } from "./components/DecompositionSeriesChart";
+export type { DecompositionSeriesData, DecompositionSeriesPoint } from "./components/DecompositionSeriesChart";
+
 // ── Ниже: перенесено без изменений из origin/main (команда, "Моделирование") ──
 
 export { TsAnalysisModeling } from "./components/TsAnalysisModeling";
