@@ -16,13 +16,13 @@ describe("HomeHero", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the subtitle text in grey", () => {
+  it("renders the current subtitle text in brand color", () => {
     render(<HomeHero />);
     const subtitle = screen.getByText(
-      "пространство для исследования, обучения и проверки гипотез",
+      "пространство для • исследования • обучения • проверки гипотез • аргументированных выводов • принятия решений",
     );
     expect(subtitle).toBeInTheDocument();
-    expect(subtitle.className).toContain("text-neutral-500");
+    expect(subtitle.className).toContain("text-[#1e3a8a]");
   });
 
   it("renders all 6 route cards", () => {
@@ -54,10 +54,10 @@ describe("HomeHero", () => {
     expect(links.length).toBe(6);
 
     links.forEach((link) => {
-      expect(link.className).toContain("border-brand/30");
-      expect(link.className).toContain("bg-brand-light/30");
-      expect(link.className).toContain("hover:border-brand/60");
-      expect(link.className).toContain("hover:bg-brand-light/60");
+      expect(link.className).toContain("border-brand/60");
+      expect(link.className).toContain("bg-brand-light/60");
+      expect(link.className).toContain("hover:border-brand/90");
+      expect(link.className).toContain("hover:bg-brand-light/90");
     });
   });
 

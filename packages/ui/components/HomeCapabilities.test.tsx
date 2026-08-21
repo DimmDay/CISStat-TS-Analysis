@@ -113,12 +113,12 @@ describe("HomeCapabilities", () => {
     });
     expect(h2).toBeInTheDocument();
     // Task 30 (2026-08-21): text-2xl → text-xl, font-semibold сохранён,
-    // цвет brand[#1e3a8a] → text-neutral-700 (серый).
+    // Текущий UI-контракт: серый text-neutral-600.
     expect(h2.className).toContain("text-xl");
     expect(h2.className).not.toContain("text-2xl");
     expect(h2.className).toContain("font-semibold");
     expect(h2.className).toContain("tracking-tight");
-    expect(h2.className).toContain("text-neutral-700");
+    expect(h2.className).toContain("text-neutral-600");
     expect(h2.className).not.toContain("text-[#1e3a8a]");
   });
 
