@@ -94,7 +94,7 @@ export const CAPABILITIES: Capability[] = [
   {
     title: "Промышленные стандарты качества",
     description:
-      "Критерии валидации по международным стандартам DAMA DMBOK. CV — expanding-window без заглядывания в будущее. Модели — statsmodels.",
+      "Критерии валидации по международным стандартам DAMA DMBOK. Метод 'расширяющегося окна' без заглядывания в будущее. Модели — statsmodels.",
     icon: ShieldCheck,
   },
   {
@@ -106,7 +106,7 @@ export const CAPABILITIES: Capability[] = [
   {
     title: "Программный доступ",
     description:
-      "Тот же прогноз и валидация — через REST API с OpenAPI-документацией. Два семейства роутов: /v1/public и /v1/internal.",
+      "Та же валидация, предобработка и прогноз — через REST API с OpenAPI-документацией. Два семейства роутов: /v1/public и /v1/internal.",
     icon: Cable,
   },
   {
