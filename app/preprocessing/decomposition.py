@@ -48,13 +48,22 @@ def apply_decomposition(
             period = 12  # default
     
     if method == 'STL':
-        stl = STL(
-            series,
-            period=period,
-            seasonal=seasonal_window,
-            trend=trend_window,
-            robust=robust
-        )
+        # БАГ (найден 2026-08-19 при первом реальном вызове этой функции --
+        # ни одного теста на apply_decomposition не было, ни одного
+        # продакшен-вызова с её собственными дефолтами seasonal_window=None/
+        # trend_window=None): statsmodels.tsa.seasonal.STL падает
+        # ValueError'ом на ЯВНО переданном seasonal=None/trend=None
+        # ("seasonal must be an odd positive integer >= 3"), хотя при
+        # ПОЛНОСТЬЮ ОПУЩЕННОМ параметре использует свой собственный
+        # разумный дефолт без ошибок (см. compute_decomposition_stats
+        # ниже -- она НЕ передаёт seasonal=/trend= вовсе и работает).
+        # Собираем kwargs условно, чтобы None не долетал до STL().
+        stl_kwargs = {"period": period, "robust": robust}
+        if seasonal_window is not None:
+            stl_kwargs["seasonal"] = seasonal_window
+        if trend_window is not None:
+            stl_kwargs["trend"] = trend_window
+        stl = STL(series, **stl_kwargs)
         result = stl.fit()
         return {
             'observed': series,

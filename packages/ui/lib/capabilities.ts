@@ -112,7 +112,7 @@ export const CAPABILITIES: Capability[] = [
   {
     title: "Безопасность данных",
     description:
-      "Данные не покидают контур: cookie-сессия в браузере, Redis кэширует на бэкенде. Pre-signed S3 для больших файлов (planned).",
+      "Данные не покидают контур: cookie-сессия в браузере, Redis кэширует на бэкенде. Pre-signed и LTTB-сэмплинг для больших файлов.",
     icon: Lock,
   },
 ];

@@ -18,7 +18,7 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException, Request, Response
 
 from apps.api.chart_data import MAX_ZOOM_POINTS, build_histogram, build_kde, build_scatter_series, build_timeseries_points
-from apps.api.decomposition_data import build_decomposition
+from apps.api.decomposition_data import build_decomposition, build_decomposition_series
 from apps.api.schemas import (
     ColumnDetectionOut,
     ColumnStatsOut,
@@ -27,6 +27,8 @@ from apps.api.schemas import (
     DatasetSummaryOut,
     DatasetValidateResponse,
     DecompositionResponse,
+    DecompositionSeriesPoint,
+    DecompositionSeriesResponse,
     DetectionCandidateOut,
     DistributionChartResponse,
     HistogramBin,
@@ -458,6 +460,43 @@ def get_dataset_decomposition(column: str, date_column: str, request: Request, r
 
     result = build_decomposition(df[date_column], df[column], column)
     return DecompositionResponse(**result)
+
+
+@router.get("/dataset/decomposition-series", response_model=DecompositionSeriesResponse)
+def get_dataset_decomposition_series(column: str, date_column: str, request: Request, response: Response):
+    """
+    Реальные ряды компонент декомпозиции (Тренд/Сезонность/Цикличность/
+    Остаток) для графика под бейджами -- согласовано с тимлидом
+    2026-08-19: "визуализировать данный декомпозированный ряд на
+    дополнительном графике... каждый своим цветом, легенда: цвет —
+    составляющая". Исходный линейный график (/dataset/timeseries)
+    остаётся без изменений, это ДОПОЛНИТЕЛЬНЫЙ график.
+
+    Переиспользует app/preprocessing/decomposition.py::apply_decomposition
+    (существующая функция -- ДО этой задачи вызывалась только косвенно
+    через compute_decomposition_stats, сами ряды trend/seasonal/resid
+    нигде наружу не отдавались). Тот же гейт применимости, что и в
+    /dataset/decomposition (общий _prepare_decomposable_series) --
+    бейджи и график согласованно говорят "неприменимо" на одних данных.
+
+    Считается ПО ТОЙ ЖЕ КНОПКЕ «Считать декомпозицию» на фронте, что и
+    бейджи (один клик -- оба результата), не отдельный запрос по требованию.
+    """
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    df = session.dataframe
+    if column not in df.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
+    if date_column not in df.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{date_column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(df[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая -- декомпозиция недоступна")
+
+    result = build_decomposition_series(df[date_column], df[column], column)
+    return DecompositionSeriesResponse(**result)
 
 
 @router.get("/dataset/validate", response_model=DatasetValidateResponse)

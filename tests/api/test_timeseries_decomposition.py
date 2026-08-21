@@ -188,3 +188,82 @@ def test_decomposition_never_returns_500_on_insufficient_data():
     resp = client.get("/v1/session/dataset/decomposition", params={"column": "price", "date_column": "date"})
     assert resp.status_code == 200, resp.text
     assert resp.json()["applicable"] is False
+
+
+# ── /dataset/decomposition-series (2026-08-19, "визуализировать данный
+# декомпозированный ряд на дополнительном графике") ──
+
+def test_decomposition_series_monthly_data_returns_all_four_components():
+    n = 48
+    dates = pd.date_range("2018-01-01", periods=n, freq="MS")
+    seasonal = 10 * np.sin(np.arange(n) * 2 * np.pi / 12)
+    rng = np.random.default_rng(2)
+    df = pd.DataFrame({
+        "date": dates.astype(str),
+        "price": 100 + np.arange(n) * 0.5 + seasonal + rng.normal(size=n),
+    })
+    _upload_df(df)
+    resp = client.get("/v1/session/dataset/decomposition-series", params={"column": "price", "date_column": "date"})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["applicable"] is True
+    assert body["method"] == "STL"
+    assert len(body["points"]) == 48
+    for p in body["points"]:
+        assert set(p.keys()) == {"x", "trend", "seasonal", "cyclical", "resid"}
+
+
+def test_decomposition_series_annual_data_not_applicable_same_as_badges():
+    """Регресс на воспроизведённый вручную баг: годовые данные не должны
+    давать фейковую сезонность -- ни в бейджах, ни в графике компонент."""
+    n = 30
+    df = pd.DataFrame({
+        "date": pd.date_range("1994-01-01", periods=n, freq="YS").astype(str),
+        "price": 65.9 + np.arange(n) * 2.0,
+    })
+    _upload_df(df)
+    badges = client.get("/v1/session/dataset/decomposition", params={"column": "price", "date_column": "date"})
+    series = client.get("/v1/session/dataset/decomposition-series", params={"column": "price", "date_column": "date"})
+    assert badges.json()["applicable"] is False
+    assert series.json()["applicable"] is False
+    assert series.json()["points"] == []
+
+
+def test_decomposition_series_missing_column_404():
+    df = pd.DataFrame({"date": pd.date_range("2020-01-01", periods=30, freq="MS").astype(str), "price": range(30)})
+    _upload_df(df)
+    resp = client.get("/v1/session/dataset/decomposition-series", params={"column": "does_not_exist", "date_column": "date"})
+    assert resp.status_code == 404
+
+
+def test_decomposition_series_no_active_dataset_404():
+    resp = client.get("/v1/session/dataset/decomposition-series", params={"column": "price", "date_column": "date"})
+    assert resp.status_code == 404
+
+
+def test_decomposition_series_never_returns_500_on_constant_data():
+    df = pd.DataFrame({
+        "date": pd.date_range("2020-01-01", periods=30, freq="MS").astype(str),
+        "price": [5.0] * 30,
+    })
+    _upload_df(df)
+    resp = client.get("/v1/session/dataset/decomposition-series", params={"column": "price", "date_column": "date"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["applicable"] is False
+
+
+def test_decomposition_series_large_dataset_is_sampled():
+    n = 3500
+    dates = pd.date_range("2015-01-01", periods=n, freq="D")
+    rng = np.random.default_rng(3)
+    df = pd.DataFrame({
+        "date": dates.astype(str),
+        "price": 100 + np.arange(n) * 0.02 + 5 * np.sin(np.arange(n) * 2 * np.pi / 365) + rng.normal(size=n),
+    })
+    _upload_df(df)
+    resp = client.get("/v1/session/dataset/decomposition-series", params={"column": "price", "date_column": "date"})
+    body = resp.json()
+    assert body["applicable"] is True
+    assert body["sampled"] is True
+    assert body["original_count"] == n
+    assert 0 < len(body["points"]) < n

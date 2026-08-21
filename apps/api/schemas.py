@@ -219,6 +219,35 @@ class DecompositionResponse(BaseModel):
     resid_pct: Optional[float] = None
 
 
+class DecompositionSeriesPoint(BaseModel):
+    x: str = Field(..., description="ISO-дата точки")
+    trend: float
+    seasonal: float
+    cyclical: float
+    resid: float
+
+
+class DecompositionSeriesResponse(BaseModel):
+    """Ответ GET /dataset/decomposition-series -- РЕАЛЬНЫЕ ряды компонент
+    декомпозиции (Тренд/Сезонность/Цикличность/Остаток) для графика под
+    бейджами (согласовано с тимлидом 2026-08-19: "визуализировать данный
+    декомпозированный ряд на дополнительном графике"). См.
+    apps/api/decomposition_data.py::build_decomposition_series --
+    переиспользует app/preprocessing/decomposition.py::apply_decomposition
+    (реальные ряды, не только дисперсии, как в /dataset/decomposition).
+
+    applicable/reason -- ТОТ ЖЕ гейт (частота/панельные дубли/точки/
+    константа), что и в /dataset/decomposition -- не должны расходиться
+    на одном и том же датасете."""
+    applicable: bool
+    reason: Optional[str] = None
+    method: Optional[str] = None
+    sampled: bool = False
+    sampling_method: Optional[str] = None
+    original_count: int = 0
+    points: List[DecompositionSeriesPoint] = Field(default_factory=list)
+
+
 # ── Структурная детекция (2026-08-14, найден реальный баг: фронт
 # показывал позиционную заглушку "первые 3 колонки файла" вместо
 # реального контентного скоринга -- см. app/data/detectors.py) ──
