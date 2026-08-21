@@ -55,7 +55,7 @@ export function HomeHero() {
         <h1 className="font-sans text-2xl font-semibold tracking-tight text-[#1e3a8a]">
           Анализ временных рядов — от файла до прогноза
         </h1>
-        <p className="mt-3 text-lg text-neutral-600">
+        <p className="mt-3 text-lg text-[#1e3a8a]">
           пространство для • исследования • обучения • проверки гипотез • аргументированных выводов • принятия решений
         </p>
       </div>
