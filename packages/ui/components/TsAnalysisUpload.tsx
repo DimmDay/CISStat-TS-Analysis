@@ -93,6 +93,7 @@ import { useAppShell } from "../context/AppShellContext";
 import { apiUrl, sessionApiUrl } from "../lib/apiClient";
 import { classifyStructure, type PanelBalance, type StructuralClassResult } from "../lib/structuralClass";
 import { useTargetColumn } from "../hooks/useTargetColumn";
+import { DEMO_DATASETS, demoDatasetToFile } from "../lib/demoDatasets";
 
 // ──────────────────────────────────────────────────────────────────────
 // ТИПЫ (зеркало apps/api/schemas.py -- поля намеренно snake_case, как
@@ -792,6 +793,43 @@ export function TsAnalysisUpload() {
               </div>
             ) : (
               <p className="text-sm text-neutral-500 mb-4 mt-4 bg-neutral-50 rounded p-4">(форма подключения к БД — заглушка)</p>
+            )}
+
+            {/* ── Демо-датасеты (2026-08-19, согласовано с тимлидом) ──
+                Для знакомства с платформой без своего файла -- 3 готовых
+                синтетических датасета, каждый другой структурный класс
+                и отрасль. Идут через ТОТ ЖЕ doUpload(file), что и
+                drag-and-drop -- реальный пайплайн парсинга/детекции/
+                валидации, не имитация (см. packages/ui/lib/demoDatasets.ts). */}
+            {!uploading && !hydrating && (
+              <div className="mt-5 pt-4 border-t border-neutral-200">
+                <p className="text-xs text-neutral-500 mb-2">
+                  Нет своего датасета под рукой? Загрузите один из демо-наборов, чтобы познакомиться с платформой:
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {DEMO_DATASETS.map((ds) => (
+                    <button
+                      key={ds.id}
+                      type="button"
+                      data-testid={`demo-dataset-${ds.id}`}
+                      onClick={() => {
+                        const file = demoDatasetToFile(ds);
+                        setFileName(file.name);
+                        doUpload(file);
+                      }}
+                      className="text-left border border-neutral-200 rounded-lg p-3 hover:border-brand hover:bg-brand-light transition-colors"
+                    >
+                      <span className="text-[10px] uppercase tracking-wide text-neutral-400">{ds.industry}</span>
+                      <p className="text-sm font-medium text-neutral-800 mt-0.5">{ds.name}</p>
+                      <span className="inline-block text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 text-neutral-600 mt-1">
+                        {ds.structuralClassLabel}
+                      </span>
+                      <p className="text-[11px] text-neutral-500 mt-1.5">{ds.description}</p>
+                      <p className="text-[10px] text-neutral-400 mt-1">{ds.rowsLabel}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
 
             {rejectedFiles.length > 0 && (

@@ -189,6 +189,40 @@ describe("TsAnalysisUpload", () => {
     expect(screen.getByText(/Перетащите файл сюда/)).toBeInTheDocument();
   });
 
+  it("shows 3 demo datasets below the dropzone, each with a distinct industry and structural class", () => {
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+    expect(screen.getByTestId("demo-dataset-retail_revenue")).toBeInTheDocument();
+    expect(screen.getByTestId("demo-dataset-energy_consumption")).toBeInTheDocument();
+    expect(screen.getByTestId("demo-dataset-finance_ohlcv")).toBeInTheDocument();
+
+    expect(screen.getByText("Univariate TS")).toBeInTheDocument();
+    expect(screen.getByText("Panel Data — Balanced")).toBeInTheDocument();
+    expect(screen.getByText("Multivariate TS")).toBeInTheDocument();
+  });
+
+  it("clicking a demo dataset card uploads it through the real doUpload pipeline", async () => {
+    mockFetchSequence(okUploadResponse);
+
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    fireEvent.click(screen.getByTestId("demo-dataset-retail_revenue"));
+
+    // Тот же индикатор загрузки и та же итоговая карточка, что и при
+    // обычной drag-and-drop загрузке -- demo-режим не имитация, а
+    // реальный doUpload(file) с сгенерированным CSV.
+    await waitFor(() => {
+      expect(screen.getByText(/test\.csv/)).toBeInTheDocument();
+    });
+  });
+
   it("should show uploaded file name in the success summary", async () => {
     render(
       <AppShellProvider>
