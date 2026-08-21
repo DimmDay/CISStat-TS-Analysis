@@ -51,7 +51,7 @@ export function HomeHero() {
   return (
     <div className="space-y-10">
       {/* ── Заголовок + поддерживающий текст ── */}
-      <div>
+      <div className="text-center">
         <h1 className="font-sans text-2xl font-semibold tracking-tight text-[#1e3a8a]">
           Анализ временных рядов — от файла до прогноза
         </h1>
