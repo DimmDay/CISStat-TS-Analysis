@@ -773,86 +773,95 @@ describe("TsAnalysisUpload", () => {
     });
   });
 
+// Общий мок для тестов, где декомпозиция реально применима (STL,
+// оба эндпоинта -- бейджи и график компонент -- возвращают согласованные
+// applicable=true данные на 24 месячных точках). Вынесен в helper,
+// т.к. используется несколькими тестами (применимая декомпозиция +
+// чекбоксы выбора компонент).
+function mockApplicableDecompositionFetch() {
+  global.fetch = jest.fn((url: string) => {
+    if (typeof url === "string" && url.includes("/session/current")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ has_active_dataset: false, dataset: null, stages: {}, last_active_stage: null, updated_at: null }),
+      });
+    }
+    if (typeof url === "string" && url.includes("/target-column")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ target_column: "value", suggested_column: "value", available_columns: ["value"], has_dataset: true }),
+      });
+    }
+    if (typeof url === "string" && url.includes("/dataset/structure-detection")) {
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            date_col: { selected: "date", confidence: 95, candidates: [{ name: "date", score: 0.95 }] },
+            entity_col: { selected: "(нет)", confidence: 0, candidates: [] },
+          }),
+      });
+    }
+    if (typeof url === "string" && url.includes("/dataset/timeseries")) {
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            column: "value", date_column: "date",
+            points: [{ x: "2018-01-01T00:00:00", y: 1 }, { x: "2018-02-01T00:00:00", y: 2 }],
+            sampled: false, sampling_method: null, original_count: 2, was_resorted: false,
+          }),
+      });
+    }
+    // ВАЖНО: /dataset/decomposition-series -- более специфичный путь,
+    // должен проверяться ПЕРЕД /dataset/decomposition (иначе includes()
+    // ложно поймает series-запрос в ветку бейджей).
+    if (typeof url === "string" && url.includes("/dataset/decomposition-series")) {
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            applicable: true,
+            reason: null,
+            method: "STL",
+            sampled: false,
+            sampling_method: null,
+            original_count: 24,
+            points: [
+              { x: "2018-01-01T00:00:00", trend: 100.1, seasonal: -0.5, cyclical: 0.0, resid: 0.2 },
+              { x: "2018-02-01T00:00:00", trend: 100.6, seasonal: 1.2, cyclical: 0.1, resid: -0.1 },
+            ],
+          }),
+      });
+    }
+    if (typeof url === "string" && url.includes("/dataset/decomposition")) {
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            applicable: true,
+            reason: null,
+            frequency: "MS",
+            frequency_label: "месячная (годовая сезонность)",
+            period_used: 12,
+            n_points: 24,
+            method: "STL",
+            trend_pct: 46.5,
+            seasonal_pct: 46.8,
+            cyclical_pct: 5.9,
+            resid_pct: 0.8,
+          }),
+      });
+    }
+    if (typeof url === "string" && url.includes("/upload")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(okUploadResponse) });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+  }) as unknown as typeof fetch;
+}
+
   it("clicking 'Считать декомпозицию' shows the additional decomposed-series chart with legend (Тренд/Сезонность/Цикличность/Остаток), original chart untouched", async () => {
-    global.fetch = jest.fn((url: string) => {
-      if (typeof url === "string" && url.includes("/session/current")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ has_active_dataset: false, dataset: null, stages: {}, last_active_stage: null, updated_at: null }),
-        });
-      }
-      if (typeof url === "string" && url.includes("/target-column")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ target_column: "value", suggested_column: "value", available_columns: ["value"], has_dataset: true }),
-        });
-      }
-      if (typeof url === "string" && url.includes("/dataset/structure-detection")) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              date_col: { selected: "date", confidence: 95, candidates: [{ name: "date", score: 0.95 }] },
-              entity_col: { selected: "(нет)", confidence: 0, candidates: [] },
-            }),
-        });
-      }
-      if (typeof url === "string" && url.includes("/dataset/timeseries")) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              column: "value", date_column: "date",
-              points: [{ x: "2018-01-01T00:00:00", y: 1 }, { x: "2018-02-01T00:00:00", y: 2 }],
-              sampled: false, sampling_method: null, original_count: 2, was_resorted: false,
-            }),
-        });
-      }
-      // ВАЖНО: /dataset/decomposition-series -- более специфичный путь,
-      // должен проверяться ПЕРЕД /dataset/decomposition (иначе includes()
-      // ложно поймает series-запрос в ветку бейджей).
-      if (typeof url === "string" && url.includes("/dataset/decomposition-series")) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              applicable: true,
-              reason: null,
-              method: "STL",
-              sampled: false,
-              sampling_method: null,
-              original_count: 24,
-              points: [
-                { x: "2018-01-01T00:00:00", trend: 100.1, seasonal: -0.5, cyclical: 0.0, resid: 0.2 },
-                { x: "2018-02-01T00:00:00", trend: 100.6, seasonal: 1.2, cyclical: 0.1, resid: -0.1 },
-              ],
-            }),
-        });
-      }
-      if (typeof url === "string" && url.includes("/dataset/decomposition")) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              applicable: true,
-              reason: null,
-              frequency: "MS",
-              frequency_label: "месячная (годовая сезонность)",
-              period_used: 12,
-              n_points: 24,
-              method: "STL",
-              trend_pct: 46.5,
-              seasonal_pct: 46.8,
-              cyclical_pct: 5.9,
-              resid_pct: 0.8,
-            }),
-        });
-      }
-      if (typeof url === "string" && url.includes("/upload")) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve(okUploadResponse) });
-      }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-    }) as unknown as typeof fetch;
+    mockApplicableDecompositionFetch();
 
     render(
       <AppShellProvider>
@@ -887,6 +896,56 @@ describe("TsAnalysisUpload", () => {
     // (тоже "2 точек" в его подписи, я замокал 2 точки series) -- оба
     // на месте одновременно, исходный график НЕ пропал.
     expect(screen.getAllByText(/2 точек/).length).toBe(2);
+  });
+
+  it("component visibility checkboxes default to Trend+Seasonal ON, Cyclical+Residual OFF (same as legacy Streamlit)", async () => {
+    mockApplicableDecompositionFetch();
+
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["date,value\n2023-01-01,10"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("График")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("График"));
+
+    const computeBtn = await screen.findByText("Считать декомпозицию");
+    fireEvent.click(computeBtn);
+
+    await waitFor(() => expect(screen.getByTestId("decomposition-toggle-trend")).toBeInTheDocument());
+
+    expect(screen.getByTestId("decomposition-toggle-trend")).toBeChecked();
+    expect(screen.getByTestId("decomposition-toggle-seasonal")).toBeChecked();
+    expect(screen.getByTestId("decomposition-toggle-cyclical")).not.toBeChecked();
+    expect(screen.getByTestId("decomposition-toggle-resid")).not.toBeChecked();
+  });
+
+  it("unchecking a component checkbox toggles it (user controls which components to compare)", async () => {
+    mockApplicableDecompositionFetch();
+
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["date,value\n2023-01-01,10"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("График")).toBeInTheDocument());
+    fireEvent.click(screen.getByText("График"));
+    fireEvent.click(await screen.findByText("Считать декомпозицию"));
+
+    const trendToggle = await screen.findByTestId("decomposition-toggle-trend");
+    const cyclicalToggle = screen.getByTestId("decomposition-toggle-cyclical");
+
+    expect(trendToggle).toBeChecked();
+    fireEvent.click(trendToggle);
+    expect(trendToggle).not.toBeChecked();
+
+    expect(cyclicalToggle).not.toBeChecked();
+    fireEvent.click(cyclicalToggle);
+    expect(cyclicalToggle).toBeChecked();
   });
 
   it("real FAO-style dataset (Country/Year/Price): Year is auto-detected as date, chart works WITHOUT manual correction on Структура", async () => {
