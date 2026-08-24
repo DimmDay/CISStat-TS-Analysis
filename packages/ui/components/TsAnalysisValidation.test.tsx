@@ -63,6 +63,23 @@ describe("TsAnalysisValidation", () => {
     await waitFor(() => expect(screen.getByText("Data Quality")).toBeInTheDocument());
   });
 
+  it("renders the control panel title with the same typography and top offset as Data Quality", async () => {
+    renderValidation();
+
+    const stepperTitle = await screen.findByRole("heading", {
+      level: 2,
+      name: "Data Quality",
+    });
+    const controlPanelTitle = screen.getByRole("heading", {
+      level: 2,
+      name: "Панель управления",
+    });
+
+    expect(controlPanelTitle.className).toBe(stepperTitle.className);
+    expect(stepperTitle.closest("aside")).toHaveClass("pt-1");
+    expect(controlPanelTitle.closest("aside")).toHaveClass("pt-1");
+  });
+
   it("renders all 10 DQ checks in the stepper", async () => {
     renderValidation();
     const checkLabels = [
