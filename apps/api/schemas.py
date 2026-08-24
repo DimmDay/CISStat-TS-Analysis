@@ -313,15 +313,17 @@ class ValidationCheckResult(BaseModel):
     items: List[ValidationCheckItem] = Field(default_factory=list, description="Детализация для графика")
     scope: str = Field("dataset", description="'column' -- учитывает выбранную колонку, 'dataset' -- всегда весь датасет")
     error: Optional[str] = Field(None, description="Текст исключения, если sub-check упал (см. _safe в engine.py)")
+    rule_source: Literal["system", "template", "session", "not_applicable"] = Field(
+        "system",
+        description="Источник эталона именно этой проверки",
+    )
 
 
 class DatasetValidateResponse(BaseModel):
     """Ответ GET /dataset/validate -- реальная валидация session.dataframe
-    по всем 10 проверкам. rules_source сообщает фронту, откуда взяты
-    правила: 'auto' (auto_generate_rules по именам колонок, без явного
-    шаблона типов) либо 'session' (автоправила дополнены сохранённым
-    пользователем эталоном типов). Общая RulesManagementPanel пока не
-    подключена к сессии.
+    по всем 10 проверкам. rules_source сообщает сводный источник правил:
+    system, template либо session; у каждой проверки есть отдельный
+    rule_source с учётом неприменимости к конкретному датасету.
 
     column (2026-08-14) -- эхо переданного query-параметра column, если
     был задан. None значит "весь датасет" (старое поведение, backward
@@ -329,10 +331,11 @@ class DatasetValidateResponse(BaseModel):
     column, часть принципиально нет -- см. validation/engine.py::_run_all_checks.
     """
     is_valid: bool
-    rules_source: str = Field(
-        "auto",
-        description="'auto' -- автоправила; 'session' -- добавлен пользовательский эталон типов",
+    rules_source: Literal["system", "template", "session"] = Field(
+        "system",
+        description="Сводный источник: system | template | session",
     )
+    validation_template_id: str = Field("system", description="Активный шаблон правил текущей сессии")
     column: Optional[str] = Field(None, description="Колонка, до которой скоупились применимые проверки; None -- весь датасет")
     total_rows: int
     total_columns: int
@@ -365,6 +368,16 @@ class DatasetTypeSchemaRequest(BaseModel):
 class DatasetTypeSchemaResponse(BaseModel):
     saved: bool = True
     columns: List[TypeConversionSpec]
+
+
+class DatasetValidationRulesRequest(BaseModel):
+    template_id: Literal["system", "default", "fao_prices", "macro"] = "system"
+    overrides: Dict[str, Any] = Field(default_factory=dict)
+
+
+class DatasetValidationRulesResponse(BaseModel):
+    template_id: str
+    overrides: Dict[str, Any] = Field(default_factory=dict)
 
 
 class TypeConversionResultOut(BaseModel):

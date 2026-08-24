@@ -6,7 +6,7 @@
 // 3. Загрузка шаблона при выборе
 // 4. Редактор диапазонов отображает min/max для каждого правила
 // 5. Кнопки «Применить» и «Сбросить» присутствуют
-// 6. Нажатие «Применить» вызывает PATCH /rules/update
+// 6. Нажатие «Применить» сохраняет шаблон и overrides в текущей сессии
 // 7. Нажатие «Сбросить» возвращает исходные значения
 //
 // ⚠️ 2026-08-17 (Task 20-D): исправлен race condition. Тесты падали с
@@ -51,7 +51,7 @@ describe("RulesManagementPanel", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Дефолтный мок: GET /rules/templates
-    mockFetch.mockImplementation((url: string) => {
+    mockFetch.mockImplementation((url: string, options?: RequestInit) => {
       if (url.includes("/rules/templates")) {
         return Promise.resolve({
           ok: true,
@@ -79,7 +79,13 @@ describe("RulesManagementPanel", () => {
           }),
         });
       }
-      if (url.includes("/rules/update")) {
+      if (url.includes("/session/dataset/validation-rules")) {
+        if (!options?.method) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ template_id: "system", overrides: {} }),
+          });
+        }
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({
@@ -96,6 +102,8 @@ describe("RulesManagementPanel", () => {
   it("renders the panel header", () => {
     render(<RulesManagementPanel />);
     expect(screen.getByText(/Управление правилами/i)).toBeInTheDocument();
+    expect(screen.getByText(/Встроенная логика:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Правила предметной области:/i)).toBeInTheDocument();
   });
 
   it("renders template selector with 4 options", async () => {
@@ -155,7 +163,7 @@ describe("RulesManagementPanel", () => {
     });
   });
 
-  it("calls PATCH /rules/update on Apply click", async () => {
+  it("saves the selected template without duplicating unchanged ranges as overrides", async () => {
     const { container } = render(<RulesManagementPanel />);
     const selector = await waitTemplatesLoaded(container);
 
@@ -170,13 +178,41 @@ describe("RulesManagementPanel", () => {
 
     await waitFor(() => {
       // Проверяем, что fetch был вызван с PATCH
-      const patchCalls = mockFetch.mock.calls.filter(
-        (call: [string, unknown]) => call[0]?.includes?.("/rules/update")
+      const sessionCalls = mockFetch.mock.calls.filter(
+        (call: [string, unknown]) => call[0]?.includes?.("/session/dataset/validation-rules")
       );
-      expect(patchCalls.length).toBeGreaterThan(0);
+      expect(sessionCalls.length).toBeGreaterThan(0);
       const lastCall = mockFetch.mock.calls[mockFetch.mock.calls.length - 1];
       const options = lastCall[1] as Record<string, unknown>;
-      expect(options.method).toBe("PATCH");
+      expect(options.method).toBe("PUT");
+      expect(JSON.parse(options.body as string)).toEqual({
+        template_id: "fao_prices",
+        overrides: {},
+      });
+    });
+  });
+
+  it("saves edited ranges as session overrides", async () => {
+    const { container } = render(<RulesManagementPanel />);
+    const selector = await waitTemplatesLoaded(container);
+    fireEvent.change(selector, { target: { value: "fao_prices" } });
+    await waitFor(() => expect(screen.getByTestId("apply-rules-btn")).toBeInTheDocument());
+
+    const firstMinInput = screen.getAllByText(/^Минимум$/i)[0].parentElement?.querySelector(
+      'input[type="number"]'
+    ) as HTMLInputElement;
+    fireEvent.change(firstMinInput, { target: { value: "10" } });
+    fireEvent.click(screen.getByTestId("apply-rules-btn"));
+
+    await waitFor(() => {
+      const putCall = mockFetch.mock.calls.find(
+        (call: [string, RequestInit?]) =>
+          call[0].includes("/session/dataset/validation-rules") && call[1]?.method === "PUT"
+      );
+      expect(putCall).toBeDefined();
+      const payload = JSON.parse((putCall?.[1]?.body ?? "{}") as string);
+      expect(payload.template_id).toBe("fao_prices");
+      expect(payload.overrides.ranges[0].min).toBe(10);
     });
   });
 

@@ -64,9 +64,10 @@ def test_reupload_clears_saved_type_schema():
 
     _upload_df(pd.DataFrame({"Amount": [1.0, 2.0]}))
     body = client.get("/v1/session/dataset/validate").json()
-    assert body["rules_source"] == "auto"
-    assert body["type_validation_mode"] == "profile"
-    assert body["checks"]["data_types"]["status"] == "pending"
+    assert body["rules_source"] == "system"
+    assert body["type_validation_mode"] == "schema"
+    assert body["checks"]["data_types"]["status"] == "done"
+    assert body["checks"]["data_types"]["rule_source"] == "system"
 
 
 def test_type_schema_rejects_unknown_column_and_missing_dataset():

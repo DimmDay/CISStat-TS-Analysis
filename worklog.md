@@ -2249,3 +2249,128 @@ packages/ui/components/TsAnalysisValidation.tsx
 packages/ui/components/TsAnalysisValidation.test.tsx
 packages/ui/index.ts
 worklog.md
+
+---
+
+Task ID: 35 — «Полный пайплайн» исправления типов данных
+
+Date: 2026-08-24
+
+Задача
+Полностью реализовать действие «Полный пайплайн» для первой остановки степпера «Типы данных»: дать короткую пошаговую справку в окне «Описание», а в окне «Обзор» предоставить интерактивный алгоритм исправления dtype с безопасным предпросмотром и подтверждённым применением к активному датасету.
+
+Синхронизация
+Перед началом локальные неопубликованные изменения предыдущей работы сохранены в stash codex-pre-sync-task-35, после чего main синхронизирован fast-forward до опубликованного Task 34 (ba5f9d5). После реализации повторно выполнен git fetch origin main: origin/main остаётся на ba5f9d5, пересечений с параллельной работой нет.
+
+Проектирование и риски
+Преобразование реализовано как двухфазная транзакция preview/apply. Предпросмотр всегда выполняется на глубокой копии DataFrame и не изменяет сессию. Применение требует отдельного пользовательского подтверждения; политика reject атомарно отменяет весь пакет при любой ошибке, политика coerce заменяет только неприводимые значения на pandas NA/NaT.
+
+Поддерживаются целевые типы integer, float, datetime, string и boolean. Для datetime переиспользуется существующий app.data.detectors.smart_to_datetime, включая корректную обработку числовых годов без ошибочного преобразования в наносекунды 1970 года. Boolean-конверсия использует явный словарь true/false-токенов, а не Python truthiness строк.
+
+Исследуемый признак в UI разрешено преобразовывать только в числовой тип, чтобы не разрушить контракт временного ряда. Backend дополнительно защищает инвариант: если другой API-клиент всё же преобразует target_column в нечисловой тип, target_column сбрасывается, сохраняется вместе с DataFrame и frontend повторно получает актуальный выбор через общий useTargetColumn.
+
+Реализация frontend
+В «Описание» добавлена короткая справка из пяти шагов: выбор колонок, выбор целевых типов и политики ошибок, preview без мутации, проверка отчёта, явное подтверждение и применение.
+Добавлен ValidationTypePipeline с четырьмя интерактивными блоками:
+- чекбоксы выбора колонок с фактическим dtype;
+- select целевого типа для каждой колонки и select политики ошибок;
+- активная кнопка предпросмотра с отчётом «исходный тип → новый тип / преобразовано / ошибки / примеры»;
+- checkbox явного подтверждения и кнопка применения.
+
+Пайплайн отображается только для пары «Типы данных» + «Полный пайплайн». «Метрики и алгоритм» сохраняет матрицу типов Task 34, а остальные девять остановок продолжают использовать ValidationCheckChart. После успешного apply профиль и результаты всех проверок запрашиваются повторно.
+
+Реализация backend
+Добавлен POST /v1/session/dataset/convert-types с аддитивным Pydantic-контрактом conversions / invalid_policy / apply. Эндпоинт возвращает отчёт по каждой колонке, общее число неприводимых значений, новый type_profile и признак сброса target_column. Мутация AnalysisSession выполняется только при apply=true и обязательно сохраняется через SessionStore.save, поэтому контракт одинаков для Memory- и Redis-хранилища.
+
+TDD
+RED frontend: новый ValidationTypePipeline отсутствовал, а «Полный пайплайн» продолжал показывать общую справку и матрицу типов — 2 suites failed, 2 tests failed, 14 passed. Отдельный RED-тест воспроизвёл неполный payload, если профиль колонок приходил после первого mount компонента.
+
+GREEN frontend: focused Jest — 2/2 suites, 20/20 tests PASS. Тесты проверяют четыре шага, доступность контролов, блокировки preview/apply, точный request payload, показ ошибок backend, явное подтверждение, callback успешного применения, переключение обзоров и асинхронное появление профиля.
+
+Добавлены backend-тесты:
+- unit: числовое преобразование и отсутствие мутации source, дробное значение для integer, переиспользование smart year-to-datetime, явные boolean-токены;
+- API: preview без мутации сессии, атомарный reject, coerce с персистентным Float64/NA и 404 без датасета.
+
+Проверка
+Full Jest: 18/18 suites PASS, 227/227 tests PASS, 0 snapshots.
+TypeScript typecheck: PASS для embedded и standalone. Для установленного TypeScript 6.0.3 временно добавлялись декларации side-effect CSS imports; после проверки удалены и в изменения не входят.
+Next.js production build embedded: PASS, 13/13 статических страниц. Next.js production build standalone: PASS, 13/13 статических страниц. Временный memory shim для известной ошибки Node runtime uv_resident_set_memory удалён после сборки. Существующее предупреждение Tailwind о шаблоне ../../packages/ui/**/*.ts остаётся, обе сборки проходят.
+Python compileall: PASS. Дополнительно прямыми assertions проверены float/integer/datetime/boolean-преобразования, подсчёт неприводимых значений и отсутствие мутации source при preview. Запуск pytest в текущем контейнере недоступен: в runtime отсутствует pytest; тесты подготовлены для штатного проектного .venv/CI.
+
+Изменённые и новые файлы
+apps/api/type_conversion.py
+apps/api/schemas.py
+apps/api/routers/session.py
+packages/ui/components/ValidationTypePipeline.tsx
+packages/ui/components/ValidationTypePipeline.test.tsx
+packages/ui/components/TsAnalysisValidation.tsx
+packages/ui/components/TsAnalysisValidation.test.tsx
+packages/ui/index.ts
+tests/unit/test_type_conversion.py
+tests/api/test_dataset_type_conversion.py
+
+---
+
+Task ID: 36 — Единый запуск валидации и разрешение правил
+
+Date: 2026-08-24
+
+Задача
+Восстановить логику Streamlit-вкладки «Валидация»: одна кнопка «Запустить валидацию» выполняет все 10 проверок степпера, система назначает безопасные эталоны там, где пользователь или шаблон их не задали, а каждая остановка получает понятный статус и источник правила.
+
+Синхронизация
+Перед реализацией незавершённые локальные изменения сохранены в безопасный stash `codex-pre-sync-global-validation-20260824`, затем main синхронизирован fast-forward с origin/main до `04380ec`. После реализации повторно выполнен `git fetch origin main`: origin/main остался на `04380ec`, пересечений с параллельной работой нет. Сохранённые stashes не применялись и не смешивались с Task 36.
+
+Проектирование
+Реализован единый resolver с фиксированным приоритетом: `схема/переопределения сессии > выбранный YAML-шаблон > системные правила > неприменимо`. Выбор шаблона и локальные overrides хранятся в AnalysisSession, поддерживают Memory/Redis roundtrip, восстанавливаются в UI и сбрасываются при загрузке нового датасета.
+
+Встроенной логике оставлены только воспроизводимые проверки: типы по dtype + приводимости + семантике названия, уникальность, целостность текста, регулярность, достаточность и базовая хронология. Форматы, предметные диапазоны, бизнес-логика, допустимые наборы и ссылочная целостность могут уточняться через «Управление правилами». Система не объявляет наблюдавшиеся категории допустимым справочником и не строит произвольные min/max из фактического диапазона: это создавало бы круговую проверку, которая всегда проходит.
+
+Backend
+- Добавлен `validation/rule_resolver.py`, объединяющий системный слой, `default`/`fao_prices`/`macro` и session overrides с фиксацией `rule_source` для каждой из 10 проверок.
+- `auto_generate_rules` теперь строит безопасную исходную схему типов, семантические regex/range-правила и не генерирует inclusion или неизвестные диапазоны из самих данных.
+- Проверка уникальности использует composite_key шаблона, а без шаблона распознаёт панельный ключ «сущность + время». Это устраняет ложные дубликаты FAO, когда одинаковый Year у разных стран раньше считался нарушением.
+- Проверка диапазонов возвращает pending, если ни одно правило не применилось, вместо ложного done=0; числовой датасет без текстовых колонок аналогично получает честный pending для text_quality.
+- Исправлено определение колонки в referential-правилах (`child_column` с обратной совместимостью для `column`).
+- Добавлены GET/PUT `/v1/session/dataset/validation-rules`; PUT проверяет разделы и их базовую структуру, нормализует пустые overrides и сохраняет изменения только в текущей сессии.
+- Ответ `/v1/session/dataset/validate` дополнен `validation_template_id` и per-check `rule_source`; системная схема позволяет первому запуску типов вернуть done либо warning без ручного эталона.
+
+Frontend
+- Удалён автоматический запрос при открытии вкладки и 10 дублирующих кнопок отдельных проверок. В левой колонке добавлена одна dataset-wide кнопка «Запустить валидацию».
+- До первого запуска все карточки явно показывают «Проверка не запускалась»; во время запроса — «Проверка выполняется»; после него — «Проверка пройдена», «Найдены проблемы», «Не применимо» либо «Ошибка выполнения».
+- Каждая карточка показывает источник эталона: системное правило, шаблон, правило сессии или отсутствие применимого правила.
+- «Управление правилами» теперь сохраняет шаблон/изменённые диапазоны в AnalysisSession, восстанавливает текущий выбор при повторном открытии и автоматически запускает общую валидацию после применения.
+- В панели правил отдельно объяснено, какие остановки обслуживаются встроенной логикой, а какие требуют предметных правил.
+- Матрица типов до первого запуска заменена инструкцией; после общего запуска получает системные ожидаемые типы и итоговый статус.
+
+TDD
+RED: до реализации 2 focused suites завершились неуспешно — отсутствовала единая кнопка, а RulesManagementPanel продолжала писать в старый process-local `/rules/update`. Добавлены unit/API-контракты resolver, приоритета правил, персистентности и сброса сессии, системной схемы, неприменимости диапазонов/текста и панельной уникальности FAO.
+
+GREEN: focused Jest — 2/2 suites, 28/28 tests PASS. Полный Jest — 18/18 suites, 233/233 tests PASS, 0 snapshots.
+
+Проверка
+- `npm run typecheck:all`: PASS для embedded и standalone.
+- Next.js production build embedded: PASS, 13/13 статических страниц.
+- Next.js production build standalone: PASS, 13/13 статических страниц.
+- `python -m compileall`: PASS для изменённых backend-файлов и тестов.
+- Полный pytest в текущем контейнере не запускался: отсутствуют pytest, FastAPI, Pandera и fakeredis. Backend-тесты подготовлены для штатного проектного `.venv`/CI.
+- Для сборок использовались временные локальные mock Google Font и memory shim из-за сетевого ограничения среды и известного `uv_resident_set_memory`; оба файла удалены и не входят в изменения.
+- Остаётся существующее предупреждение Tailwind о шаблоне `../../packages/ui/**/*.ts`; обе production-сборки проходят.
+
+Изменённые и новые файлы
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- apps/api/session_store.py
+- packages/ui/components/RulesManagementPanel.tsx
+- packages/ui/components/RulesManagementPanel.test.tsx
+- packages/ui/components/TsAnalysisValidation.tsx
+- packages/ui/components/TsAnalysisValidation.test.tsx
+- packages/ui/components/ValidationCheckChart.tsx
+- validation/engine.py
+- validation/rule_resolver.py
+- tests/api/test_dataset_type_schema.py
+- tests/api/test_dataset_validate.py
+- tests/api/test_dataset_validation_rules.py
+- tests/api/test_session_store.py
+- tests/unit/test_validation_rule_resolver.py
+- tests/unit/test_validation_run_all_checks.py

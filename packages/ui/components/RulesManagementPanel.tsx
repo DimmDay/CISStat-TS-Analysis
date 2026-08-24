@@ -52,7 +52,7 @@ interface RulesContent {
 
 // ── Компонент ─────────────────────────────────────────────────
 
-export function RulesManagementPanel() {
+export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onRulesApplied?: () => void }) {
   // ── Состояние ──
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
@@ -62,18 +62,29 @@ export function RulesManagementPanel() {
   const [error, setError] = useState<string | null>(null);
   const [applied, setApplied] = useState(false);
 
-  // ── Загрузка списка шаблонов при маунте ──
+  // ── Загрузка списка шаблонов и текущего выбора сессии при маунте ──
   useEffect(() => {
-    fetch(`${API_BASE}/v1/internal/rules/templates`)
-      .then((r) => r.json())
-      .then((data) => {
-        setTemplates(data.templates || []);
-        if (data.templates?.length > 0) {
-          setSelectedTemplate(data.templates[0].id);
-        }
-      })
-      .catch(() => {
-        // Fallback: hardcoded templates если API недоступен
+    let cancelled = false;
+    const hydrate = async () => {
+      try {
+        const [templatesResponse, sessionResponse] = await Promise.all([
+          fetch(`${API_BASE}/v1/internal/rules/templates`),
+          fetch(`${API_BASE}/v1/session/dataset/validation-rules`, { credentials: "include" }),
+        ]);
+        if (!templatesResponse.ok) throw new Error("templates");
+        const templatesData = await templatesResponse.json();
+        const sessionData = sessionResponse.ok ? await sessionResponse.json() : { template_id: "system" };
+        if (cancelled) return;
+        const nextTemplates: Template[] = templatesData.templates || [];
+        setTemplates(nextTemplates);
+        const storedTemplate = sessionData.template_id === "system" ? "custom" : sessionData.template_id;
+        setSelectedTemplate(
+          nextTemplates.some((template) => template.id === storedTemplate)
+            ? storedTemplate
+            : nextTemplates[0]?.id || "custom"
+        );
+      } catch {
+        if (cancelled) return;
         setTemplates([
           { id: "custom", label: "Custom (автогенерация)" },
           { id: "default", label: "Default (общий)" },
@@ -81,7 +92,10 @@ export function RulesManagementPanel() {
           { id: "macro", label: "Macro indicators" },
         ]);
         setSelectedTemplate("custom");
-      });
+      }
+    };
+    void hydrate();
+    return () => { cancelled = true; };
   }, []);
 
   // ── Загрузка правил по шаблону ──
@@ -146,12 +160,15 @@ export function RulesManagementPanel() {
     setApplyLoading(true);
     setError(null);
     try {
-      const resp = await fetch(`${API_BASE}/v1/internal/rules/update`, {
-        method: "PATCH",
+      const resp = await fetch(`${API_BASE}/v1/session/dataset/validation-rules`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
-          template_id: selectedTemplate,
-          ranges: rules.ranges,
+          template_id: selectedTemplate === "custom" ? "system" : selectedTemplate,
+          overrides: JSON.stringify(rules.ranges) === JSON.stringify(originalRules?.ranges ?? [])
+            ? {}
+            : { ranges: rules.ranges },
         }),
       });
       if (!resp.ok) {
@@ -160,6 +177,7 @@ export function RulesManagementPanel() {
         return;
       }
       setApplied(true);
+      onRulesApplied();
       setTimeout(() => setApplied(false), 3000);
     } catch {
       setError("Сервер недоступен. Не удалось применить правила.");
@@ -207,6 +225,17 @@ export function RulesManagementPanel() {
         )}
       </div>
 
+      <div className="grid gap-2 text-xs text-neutral-600 sm:grid-cols-2">
+        <div className="rounded border border-neutral-200 bg-neutral-50 px-3 py-2">
+          <span className="font-medium text-neutral-800">Встроенная логика:</span>{" "}
+          типы, уникальность, текст, регулярность, достаточность и базовая хронология.
+        </div>
+        <div className="rounded border border-neutral-200 bg-neutral-50 px-3 py-2">
+          <span className="font-medium text-neutral-800">Правила предметной области:</span>{" "}
+          форматы, диапазоны, бизнес-логика, допустимые наборы и ссылки.
+        </div>
+      </div>
+
       {/* Индикатор загрузки */}
       {loading && (
         <div className="flex items-center gap-2 text-sm text-neutral-500">
@@ -225,10 +254,21 @@ export function RulesManagementPanel() {
 
       {/* Custom-плейсхолдер */}
       {selectedTemplate === "custom" && !loading && (
-        <div className="text-sm text-neutral-500 bg-brand-light/50 rounded px-3 py-2">
-          Custom (автогенерация) анализирует загруженный датасет и создаёт
-          персональные правила на основе распределения данных.
-          Для генерации необходим загруженный датасет.
+        <div className="space-y-3">
+          <div className="text-sm text-neutral-500 bg-brand-light/50 rounded px-3 py-2">
+            Системные правила определяют типы, структуру временного ряда и
+            безопасные семантические ограничения. Справочники и предметные
+            границы из фактических значений не генерируются.
+          </div>
+          <button
+            onClick={handleApply}
+            disabled={applyLoading}
+            data-testid="apply-system-rules-btn"
+            className="w-full flex items-center justify-center gap-1.5 rounded px-4 py-2 text-sm font-medium bg-brand text-white hover:bg-brand/90 transition-colors disabled:opacity-50"
+          >
+            {applyLoading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+            {applyLoading ? "Применение..." : "Применить системные правила"}
+          </button>
         </div>
       )}
 
@@ -307,7 +347,7 @@ export function RulesManagementPanel() {
           {/* Статус применения */}
           {applied && (
             <p className="text-xs text-green-600 mt-2">
-              Правила обновлены. Перезапустите валидацию для проверки с новыми параметрами.
+              Правила сессии обновлены, валидация запущена повторно.
             </p>
           )}
         </div>

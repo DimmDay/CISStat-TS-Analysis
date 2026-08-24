@@ -102,7 +102,7 @@ class DatasetInfo:
 class AnalysisSession:
     """Состояние одной сессии анализа.
 
-    ВАЖНО: мутации (set_dataset, set_stage, set_target_column, type_schema) НЕ
+    ВАЖНО: мутации (set_dataset, set_stage, set_target_column, правила) НЕ
     персистятся автоматически. После любой мутации вызывающий код ДОЛЖЕН
     вызвать store.save(session), иначе изменения потеряются при следующем
     get() в Redis-режиме. В Memory-режиме save() -- no-op по сути
@@ -130,6 +130,11 @@ class AnalysisSession:
     # Не выводится автоматически из фактических dtype, иначе проверка
     # всегда была бы круговой. Новый датасет сбрасывает этот контракт.
     type_schema: dict[str, str] = field(default_factory=dict)
+    # Выбранный набор правил валидации. "system" означает встроенный
+    # resolver; overrides принадлежат только этой сессии и не затрагивают
+    # других пользователей/процессы Render.
+    validation_template_id: str = "system"
+    validation_rule_overrides: dict[str, Any] = field(default_factory=dict)
     updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def touch(self) -> None:
@@ -149,6 +154,8 @@ class AnalysisSession:
         self.last_active_stage = "upload"
         self.target_column = None
         self.type_schema = {}
+        self.validation_template_id = "system"
+        self.validation_rule_overrides = {}
         self.touch()
 
     def set_target_column(self, column_name: str) -> None:
@@ -232,6 +239,8 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "last_active_stage": session.last_active_stage,
         "target_column": session.target_column,
         "type_schema": dict(session.type_schema),
+        "validation_template_id": session.validation_template_id,
+        "validation_rule_overrides": dict(session.validation_rule_overrides),
         "updated_at": session.updated_at,
     }
 
@@ -240,7 +249,7 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
     """Десериализация AnalysisSession из dict.
 
     BACKCOMPAT: старые записи в Redis могут не содержать target_column
-    и type_schema. d.get(...) корректно восстанавливает такие сессии с
+    type_schema и validation_*. d.get(...) восстанавливает такие сессии с
     безопасными дефолтами, поэтому rolling deploy не ломает активные сессии.
     """
     dataset = _dataset_from_dict(d["dataset"]) if d.get("dataset") else None
@@ -253,6 +262,8 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         last_active_stage=d.get("last_active_stage"),
         target_column=d.get("target_column"),  # None для старых записей
         type_schema=dict(d.get("type_schema", {})),  # {} для старых записей
+        validation_template_id=d.get("validation_template_id", "system"),
+        validation_rule_overrides=dict(d.get("validation_rule_overrides", {})),
         updated_at=d.get("updated_at", datetime.now(timezone.utc).isoformat()),
     )
 

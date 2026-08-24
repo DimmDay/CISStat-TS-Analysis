@@ -14,7 +14,7 @@
 //   ┌─Типы данных──⚠─┐  Обзор: Типы данных    [бейдж нарушения]
 //   ├─Форматы────⚠─┤   [график]               [Метрики и алгоритм]
 //   └────────────────┘  [Строк][Проп][Выбр]    [Полный пайплайн]
-//                                                [Запустить проверку]
+//   [Запустить валидацию]                         [действия этапа]
 //
 // Справка по стандартам DQ раскрывается в центральном текстовом окне
 // при нажатии кнопки «Справка» в заголовке модуля.
@@ -44,6 +44,7 @@ interface Check {
   status: CheckStatus;
   count: number | null;
   description: string;
+  ruleSource: "system" | "template" | "session" | "not_applicable";
 }
 
 interface CheckMeta {
@@ -62,7 +63,7 @@ interface CheckMeta {
 
 const CHECK_META: CheckMeta[] = [
   { id: "data_types", label: "Типы данных",
-    description: "Фактический профиль фиксирует dtype и семантический класс каждой колонки. При подключённой Pandera-схеме проверка выявляет несовместимые значения (строка вместо числа, object вместо datetime); без ожидаемой схемы результат остаётся pending, а не превращается в ложные 0 нарушений." },
+    description: "Фактический профиль фиксирует dtype и семантический класс каждой колонки. Система строит безопасный эталон типов по dtype, приводимости значений и семантике названия; сохранённая схема сессии или выбранный шаблон имеет более высокий приоритет." },
   { id: "formats", label: "Форматы и шаблоны",
     description: "Значения, не прошедшие regex-проверку (email, телефон, ИНН, дата), не могут быть использованы в автоматическом пайплайне. Проверка validate_formats выявляет все нарушения по шаблонам из rules.yaml." },
   { id: "ranges", label: "Диапазоны значений",
@@ -82,6 +83,13 @@ const CHECK_META: CheckMeta[] = [
   { id: "sufficiency", label: "Достаточность наблюдений",
     description: "Недостаточное число наблюдений для идентификации параметров модели (минимум 2×сезонный_период для SARIMA, 30+ для ADF). validate_sufficiency оценивает длину ряда и выдаёт рекомендации." },
 ];
+
+const RULE_SOURCE_LABELS: Record<Check["ruleSource"], string> = {
+  system: "Системное правило",
+  template: "Шаблон правил",
+  session: "Правило сессии",
+  not_applicable: "Правило не задано",
+};
 
 // NUMERIC_FEATURES-мок убран (2026-08-14) -- реальные колонки приходят
 // из useTargetColumn().availableColumns (тот же GET /target-column, что
@@ -146,8 +154,8 @@ const DATA_TYPES_METRICS_DESCRIPTION = `Метрики и алгоритм: Ти
 3. Если задана Pandera-схема, backend строит DataFrameSchema, выполняет lazy-валидацию с разрешённым правилами приведением типов и агрегирует failure cases.
 4. status = done означает, что схема задана и нарушений нет; warning — найдены нарушения; pending — фактический профиль построен, но ожидаемая схема не выбрана, поэтому подтвердить соответствие типов нельзя.
 
-Текущий автоматический режим
-Автоправила безопасно определяют диапазоны и некоторые домены, но не придумывают ожидаемые типы из фактических данных. До сохранения эталона API возвращает type_validation_mode = profile и status = pending. Эталон задаётся в «Мастере исправления типов», сохраняется в текущей сессии и переводит проверку в режим schema.`;
+Источники правил
+Если аналитик не сохранил собственную схему и не выбрал шаблон, backend строит безопасный системный эталон по dtype, приводимости значений и семантике названия колонки. Приоритет разрешения правил: схема и переопределения сессии → выбранный шаблон → системные правила. Поэтому после общего запуска проверка типов всегда получает однозначный статус: «Проверка пройдена» либо «Найдены проблемы».`;
 
 const DATA_TYPES_PIPELINE_DESCRIPTION = `Мастер исправления типов
 
@@ -191,6 +199,7 @@ export function TsAnalysisValidation() {
   const [typeProfile, setTypeProfile] = useState<ValidationTypeProfileItem[]>([]);
   const [typeValidationMode, setTypeValidationMode] = useState<TypeValidationMode>("profile");
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [validationHasRun, setValidationHasRun] = useState(false);
   const validationRequestId = useRef(0);
 
   const fetchValidation = useCallback(async () => {
@@ -200,15 +209,14 @@ export function TsAnalysisValidation() {
       setTypeProfile([]);
       setTypeValidationMode("profile");
       setValidationError(null);
+      setValidationHasRun(false);
       setChecksLoading(false);
       return;
     }
     const requestId = ++validationRequestId.current;
     setChecksLoading(true);
     setValidationError(null);
-    const url = activeFeature
-      ? sessionApiUrl(`/dataset/validate?column=${encodeURIComponent(activeFeature)}`)
-      : sessionApiUrl("/dataset/validate");
+    const url = sessionApiUrl("/dataset/validate");
     try {
       const response = await fetch(url, { credentials: "include" });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -218,6 +226,7 @@ export function TsAnalysisValidation() {
       setDatasetSummary({ totalRows: data.total_rows, totalColumns: data.total_columns });
       setTypeProfile(Array.isArray(data.type_profile) ? data.type_profile : []);
       setTypeValidationMode(data.type_validation_mode === "schema" ? "schema" : "profile");
+      setValidationHasRun(true);
     } catch {
       if (requestId !== validationRequestId.current) return;
       setChecksData(null);
@@ -225,17 +234,25 @@ export function TsAnalysisValidation() {
       setTypeProfile([]);
       setTypeValidationMode("profile");
       setValidationError("Не удалось выполнить проверку");
+      setValidationHasRun(true);
     } finally {
       if (requestId === validationRequestId.current) setChecksLoading(false);
     }
-  }, [activeDataset, activeFeature]);
+  }, [activeDataset]);
 
   useEffect(() => {
-    void fetchValidation();
+    validationRequestId.current += 1;
+    setChecksData(null);
+    setDatasetSummary(null);
+    setTypeProfile([]);
+    setTypeValidationMode("profile");
+    setValidationError(null);
+    setValidationHasRun(false);
+    setChecksLoading(false);
     return () => {
       validationRequestId.current += 1;
     };
-  }, [fetchValidation]);
+  }, [activeDataset?.name]);
 
   // Реальные status/count поверх статических label/description. Пока
   // датасет не загружен или проверка ещё не пришла -- честное "pending",
@@ -244,6 +261,7 @@ export function TsAnalysisValidation() {
     ...meta,
     status: checksData?.[meta.id]?.status ?? "pending",
     count: checksData?.[meta.id]?.count ?? null,
+    ruleSource: checksData?.[meta.id]?.rule_source ?? "not_applicable",
   }));
 
   // Сворачиваем при смене секции
@@ -379,6 +397,14 @@ export function TsAnalysisValidation() {
           </div>
         )}
 
+        <Button
+          disabled={!activeDataset || checksLoading}
+          onClick={runValidation}
+          className="w-full disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {checksLoading ? "Валидация выполняется…" : "Запустить валидацию"}
+        </Button>
+
         {/* Прогресс */}
         <div className="flex items-center gap-2">
           <p className="text-[11px] text-neutral-500 tabular-nums">
@@ -459,7 +485,7 @@ export function TsAnalysisValidation() {
               }`}
             >
               {descriptionSection === "rules" ? (
-                <RulesManagementPanel />
+                <RulesManagementPanel onRulesApplied={runValidation} />
               ) : descriptionContent ? (
                 descriptionContent
               ) : (
@@ -522,12 +548,18 @@ export function TsAnalysisValidation() {
               onSchemaSaved={runValidation}
             />
           ) : activeCheckId === "data_types" ? (
-            <ValidationTypeMatrix
-              profile={typeProfile}
-              mode={typeValidationMode}
-              loading={checksLoading}
-              hasDataset={Boolean(activeDataset)}
-            />
+            validationHasRun || checksLoading ? (
+              <ValidationTypeMatrix
+                profile={typeProfile}
+                mode={typeValidationMode}
+                loading={checksLoading}
+                hasDataset={Boolean(activeDataset)}
+              />
+            ) : (
+              <div className="rounded-lg h-[420px] flex items-center justify-center bg-brand-light px-8 text-center text-sm text-neutral-500">
+                Запустите валидацию, чтобы построить матрицу типов и получить статусы проверок.
+              </div>
+            )
           ) : (
             <ValidationCheckChart
               checkLabel={activeCheck.label}
@@ -567,42 +599,40 @@ export function TsAnalysisValidation() {
 
               <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
 
-              {/* Пользовательские состояния проверки типов */}
-              {check.id === "data_types" && checksLoading && (
+              {checksLoading && (
                 <p role="status" className="text-sm text-brand bg-brand-light rounded px-3 py-2 mb-2">
                   Проверка выполняется
                 </p>
               )}
-              {check.id === "data_types" && !checksLoading && (validationError || checksData?.data_types?.error) && (
+              {!checksLoading && validationHasRun && (validationError || checksData?.[check.id]?.error) && (
                 <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">
                   Ошибка выполнения
                 </p>
               )}
-              {check.id === "data_types" && !checksLoading && !validationError && !checksData?.data_types?.error && typeValidationMode === "profile" && (
+              {!checksLoading && !validationHasRun && (
                 <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
-                  Эталон типов не задан
+                  Проверка не запускалась
                 </p>
               )}
-              {check.id === "data_types" && !checksLoading && !validationError && typeValidationMode === "schema" && check.status === "warning" && (
+              {!checksLoading && validationHasRun && !validationError && !checksData?.[check.id]?.error && check.status === "warning" && (
                 <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
                   Найдены проблемы: {check.count ?? 0}
                 </p>
               )}
-              {check.id === "data_types" && !checksLoading && !validationError && typeValidationMode === "schema" && check.status === "done" && (
+              {!checksLoading && validationHasRun && !validationError && !checksData?.[check.id]?.error && check.status === "done" && (
                 <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
                   Проверка пройдена
                 </p>
               )}
-
-              {/* Бейджи остальных критериев — после описания */}
-              {check.id !== "data_types" && check.count !== null && check.count > 0 && (
-                <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
-                  ⚠️ Найдено {check.count} нарушений
+              {!checksLoading && validationHasRun && !validationError && !checksData?.[check.id]?.error && check.status === "pending" && (
+                <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                  Не применимо: правило или необходимые данные отсутствуют
                 </p>
               )}
-              {check.id !== "data_types" && check.status === "done" && (
-                <p className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
-                  Проверка пройдена, нарушений нет
+
+              {validationHasRun && !checksLoading && (
+                <p className="mb-2 text-[11px] font-medium text-neutral-500">
+                  {RULE_SOURCE_LABELS[check.ruleSource]}
                 </p>
               )}
 
@@ -630,13 +660,6 @@ export function TsAnalysisValidation() {
                 {check.id === "data_types" ? "Исправить типы данных" : "Полный пайплайн"}
               </button>
 
-              <Button
-                disabled={!activeDataset || checksLoading}
-                onClick={runValidation}
-                className="disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {checksLoading ? "Проверка выполняется…" : `Запустить проверку (${check.label.toLowerCase()})`}
-              </Button>
             </article>
           ))}
         </div>

@@ -5,12 +5,11 @@
 Покрывает:
   1. Нет активного датасета в сессии -- 404.
   2. Ответ содержит все 10 check_id, форма {status, count, items}.
-  3. rules_source == "auto" (пока нет UI выбора шаблона).
+  3. Без ручной настройки используется системный набор правил.
   4. Реальное нарушение диапазона (auto_generate_rules) видно в ranges.
   5. referential всегда "pending" без явного шаблона (честно, не "done").
   6. Дубликаты строк отражаются в uniqueness.
-  7. Автоматический режим честно возвращает pending для schema-сверки,
-     но всегда отдаёт фактический профиль типов колонок.
+  7. Системный режим назначает исходную схему типов и возвращает профиль.
   8. Ни одна из 10 проверок не падает с 500 на реалистичном "грязном" датасете
      (регресс на баги text_quality/sufficiency, найденные и исправленные
      2026-08-14 при первом реальном подключении этих функций к API).
@@ -67,7 +66,7 @@ def test_response_has_all_10_checks_with_correct_shape():
     body = resp.json()
 
     assert set(body["checks"].keys()) == EXPECTED_CHECK_IDS
-    assert body["rules_source"] == "auto"
+    assert body["rules_source"] == "system"
     assert body["total_rows"] == 15
     assert body["total_columns"] == 3
     for check_id, check in body["checks"].items():
@@ -95,14 +94,14 @@ def test_referential_is_always_pending_without_explicit_template():
     resp = client.get("/v1/session/dataset/validate")
     body = resp.json()
     assert body["checks"]["referential"] == {
-        "status": "pending", "count": None, "items": [], "scope": "column", "error": None
+        "status": "pending", "count": None, "items": [], "scope": "column", "error": None,
+        "rule_source": "not_applicable",
     }
 
 
-def test_auto_data_types_is_pending_but_returns_actual_type_profile():
-    """Auto rules не содержат ожидаемой схемы: зелёный статус был бы
-    круговой проверкой. При этом API переиспользует профиль загрузки,
-    чтобы UI мог показать фактические dtype и семантические классы."""
+def test_system_data_types_passes_without_manual_schema_and_returns_profile():
+    """Первый общий запуск использует системную схему типов, поэтому
+    корректный датасет получает явный зелёный результат без мастера."""
     df = pd.DataFrame({
         "Country": ["RU", "BY", "KZ"],
         "Year": [2022, 2023, 2024],
@@ -115,26 +114,41 @@ def test_auto_data_types_is_pending_but_returns_actual_type_profile():
     body = resp.json()
 
     assert body["checks"]["data_types"] == {
-        "status": "pending", "count": None, "items": [], "scope": "dataset", "error": None
+        "status": "done", "count": 0, "items": [], "scope": "dataset",
+        "error": None, "rule_source": "system",
     }
-    assert body["type_validation_mode"] == "profile"
+    assert body["type_validation_mode"] == "schema"
     assert body["type_profile"] == [
         {
             "name": "Country", "dtype": "object", "type_icon": "categorical",
             "non_null": 3, "nulls": 0, "unique": 3,
-            "expected_type": None, "validation_status": "profile", "violations": None,
+            "expected_type": "string", "validation_status": "matched", "violations": 0,
         },
         {
             "name": "Year", "dtype": "int64", "type_icon": "numeric",
             "non_null": 3, "nulls": 0, "unique": 3,
-            "expected_type": None, "validation_status": "profile", "violations": None,
+            "expected_type": "integer", "validation_status": "matched", "violations": 0,
         },
         {
             "name": "Price", "dtype": "float64", "type_icon": "numeric",
             "non_null": 3, "nulls": 0, "unique": 3,
-            "expected_type": None, "validation_status": "profile", "violations": None,
+            "expected_type": "float", "validation_status": "matched", "violations": 0,
         },
     ]
+
+
+def test_system_rules_use_panel_entity_and_time_as_uniqueness_key():
+    df = pd.DataFrame({
+        "Country": ["Азербайджан", "Беларусь", "Казахстан"] * 2,
+        "Year": [2023, 2023, 2023, 2024, 2024, 2024],
+        "Price": [10.0, 20.0, 30.0, 11.0, 21.0, 31.0],
+    })
+    _upload_df(df)
+
+    body = client.get("/v1/session/dataset/validate").json()
+    assert body["checks"]["uniqueness"]["status"] == "done"
+    assert body["checks"]["uniqueness"]["count"] == 0
+    assert body["checks"]["uniqueness"]["rule_source"] == "system"
 
 
 def test_duplicate_rows_visible_in_uniqueness():

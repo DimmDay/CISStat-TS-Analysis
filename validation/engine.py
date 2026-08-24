@@ -17,7 +17,6 @@ import re
 import warnings
 import os
 
-from validation.uniqueness import check_uniqueness
 from validation.inclusion import check_inclusion
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -199,11 +198,8 @@ def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict, target_c
 
     # ── data_types (pandera-схема) -- dataset-wide, см. докстринг ──
     def _data_types():
-        # auto_generate_rules намеренно не выводит ожидаемую схему из
-        # фактических dtype: такая круговая проверка всегда дала бы ложный
-        # status="done". Без явной schema профиль типов всё равно доступен
-        # через DatasetValidateResponse.type_profile, но соответствие
-        # эталону проверить нельзя -- честный pending.
+        # Ожидаемая схема приходит из resolver: пользовательская схема,
+        # шаблон либо безопасный системный вывод по dtype/приводимости.
         schema_columns = rules.get("schema", {}).get("columns", {})
         if not schema_columns:
             return {"status": "pending", "count": None, "items": [], "scope": "dataset"}
@@ -245,6 +241,8 @@ def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict, target_c
             count = sum(r["Нарушений"] for r in raw if r["Колонка"] == target_column)
             items = [{"label": target_column, "count": count}] if count > 0 else []
             return {"status": _status(count), "count": count, "items": items, "scope": "column"}
+        if not bounds:
+            return {"status": "pending", "count": None, "items": [], "scope": "column"}
         items = [{"label": r["Колонка"], "count": r["Нарушений"]} for r in raw]
         count = sum(i["count"] for i in items)
         return {"status": _status(count), "count": count, "items": items, "scope": "column"}
@@ -260,14 +258,30 @@ def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict, target_c
 
     # ── uniqueness (строковый уровень) -- dataset-wide, см. докстринг ──
     def _uniqueness():
-        date_col = None
-        for c in df.columns:
-            if any(kw in c.lower() for kw in ["date", "дата", "year", "год"]):
-                date_col = c
-                break
-        raw = check_uniqueness(df, date_col=date_col)
-        count = raw["duplicate_count"]
-        items = [{"label": "Дублирующиеся строки", "count": count}] if count > 0 else []
+        configured_key = rules.get("uniqueness", {}).get("composite_key", [])
+        check_columns = [column for column in configured_key if column in df.columns]
+
+        if not check_columns:
+            date_columns = [
+                column for column in df.columns
+                if any(kw in str(column).lower() for kw in ["date", "дата", "year", "год", "time", "время"])
+                or pd.api.types.is_datetime64_any_dtype(df[column])
+            ]
+            entity_columns = [
+                column for column in df.select_dtypes(include=["object", "string", "category"]).columns
+                if df[column].nunique(dropna=True) > 0
+                and any(kw in str(column).lower() for kw in ["country", "стра", "region", "регион", "entity", "group"])
+            ]
+            if date_columns:
+                check_columns = entity_columns[:1] + date_columns[:1]
+
+        if check_columns:
+            count = int(df.duplicated(subset=check_columns, keep=False).sum())
+            label = f"Дубли по ключу {' + '.join(map(str, check_columns))}"
+        else:
+            count = int(df.duplicated(keep=False).sum())
+            label = "Полные дубликаты строк"
+        items = [{"label": label, "count": count}] if count > 0 else []
         return {"status": _status(count), "count": count, "items": items, "scope": "dataset"}
     _safe("uniqueness", _uniqueness)
 
@@ -297,7 +311,7 @@ def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict, target_c
         ref_rules = rules.get("referential", [])
         if not ref_rules:
             return {"status": "pending", "count": None, "items": [], "scope": "column"}
-        ref_columns = {r.get("column") for r in ref_rules}
+        ref_columns = {r.get("child_column") or r.get("column") for r in ref_rules}
         if target_column is not None and target_column not in ref_columns:
             return {"status": "pending", "count": None, "items": [], "scope": "column"}
         raw, _masks = validate_referential(df, rules)
@@ -316,12 +330,15 @@ def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict, target_c
     # по контракту Phase 0.5 всегда числовой, поэтому со скоупом почти
     # всегда честно "pending", это ожидаемо, не баг) ──
     def _text_quality():
-        if target_column is not None and target_column not in df.select_dtypes(include=["object", "string"]).columns:
+        text_columns = df.select_dtypes(include=["object", "string"]).columns
+        if target_column is not None and target_column not in text_columns:
             # validate_text_quality сканирует только текстовые колонки --
             # применимость определяем по dtype НАПРЯМУЮ, а не по наличию
             # записи в raw (validate_text_quality тоже не эмитит запись
             # для чистой колонки -- по raw нельзя отличить "не текстовая"
             # от "текстовая, но без мусора").
+            return {"status": "pending", "count": None, "items": [], "scope": "column"}
+        if target_column is None and len(text_columns) == 0:
             return {"status": "pending", "count": None, "items": [], "scope": "column"}
         raw, _masks = validate_text_quality(df, rules)
         if target_column is not None:
@@ -667,7 +684,7 @@ def validate_ranges(df, rules):
     num_cols = df.select_dtypes(include=['number']).columns.tolist()
 
     for col in num_cols:
-        col_lower = col.lower()
+        col_lower = str(col).lower()
         matched_rule = None
 
         for rule in range_rules:
@@ -702,57 +719,121 @@ def validate_ranges(df, rules):
     return results, violation_masks, rule_bounds
 
 
+def infer_system_type_schema(df: pd.DataFrame) -> dict:
+    """Строит стартовую схему по dtype, приводимости значений и имени.
+
+    Для object-колонок учитывается приводимость отдельных значений.
+    Поэтому смешанная Price=[10, 20, "ошибка"] остаётся ожидаемо числовой
+    и выявляет ошибку, а не объявляется строковой целиком.
+    """
+    numeric_name_tokens = (
+        "price", "цена", "cost", "value", "amount", "сумм", "volume",
+        "объем", "quantity", "count", "rate", "percent", "pct", "share",
+    )
+    date_name_tokens = ("date", "дата", "time", "время", "timestamp")
+    year_name_tokens = ("year", "год")
+    columns: dict[str, dict] = {}
+    for column in df.columns:
+        series = df[column]
+        name = str(column).lower()
+        expected = "string"
+
+        if pd.api.types.is_bool_dtype(series):
+            expected = "boolean"
+        elif pd.api.types.is_integer_dtype(series):
+            expected = "integer"
+        elif pd.api.types.is_float_dtype(series):
+            expected = "float"
+        elif pd.api.types.is_datetime64_any_dtype(series):
+            expected = "datetime"
+        else:
+            values = series.dropna()
+            text_values = values.astype(str).str.strip()
+            numeric = pd.to_numeric(text_values, errors="coerce")
+            numeric_ratio = float(numeric.notna().mean()) if len(values) else 0.0
+            if any(token in name for token in year_name_tokens) and numeric_ratio >= 0.5:
+                expected = "integer"
+            elif any(token in name for token in numeric_name_tokens) and numeric_ratio >= 0.5:
+                finite = numeric.dropna()
+                expected = "integer" if len(finite) and np.allclose(finite % 1, 0) else "float"
+            elif numeric_ratio >= 0.9:
+                finite = numeric.dropna()
+                expected = "integer" if len(finite) and np.allclose(finite % 1, 0) else "float"
+            elif any(token in name for token in date_name_tokens):
+                parsed = pd.to_datetime(text_values, errors="coerce")
+                if len(values) and float(parsed.notna().mean()) >= 0.8:
+                    expected = "datetime"
+
+        columns[str(column)] = {
+            "type": expected,
+            "nullable": True,
+            "coerce": True,
+        }
+    return {"columns": columns}
+
+
+def _system_format_rules(df: pd.DataFrame) -> dict:
+    rules: dict[str, dict] = {}
+    for column in df.select_dtypes(include=["object", "string"]).columns:
+        name = str(column).lower()
+        if "email" in name or "e-mail" in name:
+            rules[str(column)] = {"pattern": DEFAULT_FORMAT_PATTERNS["email"]["pattern"], "threshold": 95}
+        elif any(token in name for token in ("phone", "телефон", "mobile")):
+            rules[str(column)] = {"pattern": DEFAULT_FORMAT_PATTERNS["phone_ru"]["pattern"], "threshold": 90}
+        elif any(token in name for token in ("date", "дата")):
+            rules[str(column)] = {"pattern": DEFAULT_FORMAT_PATTERNS["date_iso"]["pattern"], "threshold": 98}
+        elif any(token in name for token in ("currency", "валюта", "currency_code")):
+            rules[str(column)] = {"pattern": r"^[A-Za-z]{3}$", "threshold": 100}
+    return rules
+
+
 def auto_generate_rules(df: pd.DataFrame) -> dict:
-    """Автоматически генерирует базовые правила валидации."""
+    """Генерирует системные правила без круговых доменов и диапазонов."""
     rules = {
+        "schema": {"columns": {}},
         "ranges": [],
         "inclusion": {},
         "consistency": [],
-        "formats": {}
+        "formats": {},
+        "uniqueness": {},
     }
 
     if df.empty:
         return rules
 
+    rules["schema"] = infer_system_type_schema(df)
+    rules["formats"] = _system_format_rules(df)
+
     for col in df.select_dtypes(include='number').columns:
         col_lower = col.lower()
-        min_val = float(df[col].min()) if pd.notna(df[col].min()) else 0
-        max_val = float(df[col].max()) if pd.notna(df[col].max()) else 1000
-
         if any(kw in col_lower for kw in ['price', 'цена', 'стоимость']):
             rules["ranges"].append({
                 "name": f"{col} — положительная цена",
-                "keywords": [col],
+                "keywords": [str(col)],
                 "min": 0,
-                "max": max_val * 3
+                "max": None
             })
         elif any(kw in col_lower for kw in ['year', 'год']):
             rules["ranges"].append({
                 "name": f"{col} — разумный год",
-                "keywords": [col],
+                "keywords": [str(col)],
                 "min": 1900,
                 "max": 2100
             })
         elif any(kw in col_lower for kw in ['percent', '%', 'доля']):
             rules["ranges"].append({
                 "name": f"{col} — процент (0-100)",
-                "keywords": [col],
+                "keywords": [str(col)],
                 "min": 0,
                 "max": 100
             })
-        else:
-            rules["ranges"].append({
-                "name": f"{col} — авто-диапазон",
-                "keywords": [col],
-                "min": min_val - abs(min_val) * 0.1 if min_val < 0 else 0,
-                "max": max_val * 1.5
-            })
+        # Неизвестной числовой семантике диапазон не назначается из
+        # фактических min/max: это гарантировало бы ложное прохождение.
 
-    for col in df.select_dtypes(include=['object', 'string']).columns:
-        if 1 < df[col].nunique() < 50:
-            rules["inclusion"][col] = df[col].dropna().unique().tolist()
-
-    date_cols = [c for c in df.columns if 'year' in c.lower() or 'date' in c.lower() or 'дата' in c.lower()]
+    date_cols = [
+        c for c in df.columns
+        if 'year' in str(c).lower() or 'date' in str(c).lower() or 'дата' in str(c).lower()
+    ]
     if date_cols:
         rules["consistency"].append({
             "name": "Хронологический порядок",

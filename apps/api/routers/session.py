@@ -29,6 +29,8 @@ from apps.api.schemas import (
     DatasetTypeConversionResponse,
     DatasetTypeSchemaRequest,
     DatasetTypeSchemaResponse,
+    DatasetValidationRulesRequest,
+    DatasetValidationRulesResponse,
     DatasetValidateResponse,
     DecompositionResponse,
     DecompositionSeriesPoint,
@@ -53,7 +55,8 @@ from apps.api.schemas import (
     ValidationTypeProfileOut,
 )
 from app.data.detectors import score_all_columns_as_date, score_all_columns_as_entity_group, detect_column_frequency
-from validation.engine import auto_generate_rules, validate_dataframe
+from validation.engine import validate_dataframe
+from validation.rule_resolver import resolve_validation_rules
 from apps.api.type_conversion import preview_type_conversions
 from apps.api.session_store import (
     AnalysisSession,
@@ -506,17 +509,14 @@ def get_dataset_decomposition_series(column: str, date_column: str, request: Req
     return DecompositionSeriesResponse(**result)
 
 
-def _session_validation_rules(session: AnalysisSession) -> dict:
-    """Автоправила + явно выбранный пользователем эталон типов."""
-    rules = auto_generate_rules(session.dataframe)
-    if session.type_schema:
-        rules["schema"] = {
-            "columns": {
-                column: {"type": target_type, "nullable": True, "coerce": True}
-                for column, target_type in session.type_schema.items()
-            }
-        }
-    return rules
+def _session_validation_rules(session: AnalysisSession) -> tuple[dict, dict]:
+    """Разрешает session > template > system для всех 10 проверок."""
+    return resolve_validation_rules(
+        session.dataframe,
+        template_id=session.validation_template_id,
+        session_overrides=session.validation_rule_overrides,
+        type_schema=session.type_schema,
+    )
 
 
 def _validation_type_profile(
@@ -552,24 +552,21 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
     «Валидация» (см. TsAnalysisValidation.tsx::CHECKS) -- ранее ВСЕ 10
     были статическим моком (захардкоженный массив, ни одного fetch).
 
-    Базовые правила -- auto_generate_rules(df) (validation/engine.py):
-    диапазоны/inclusion/consistency/formats выводятся из имён и значений
-    колонок. Эталон типов задаётся пользователем в мастере и хранится в
-    AnalysisSession.type_schema; при его наличии rules_source="session".
-    Общая RulesManagementPanel по-прежнему не подключена к сессии.
+    Resolver объединяет правила в фиксированном порядке: session overrides
+    > выбранный YAML-шаблон > безопасные системные правила. Системная схема
+    типов использует dtype, приводимость значений и семантику имени; она
+    позволяет первому общему запуску вернуть явный pass/fail без ручной
+    настройки. Профиль переиспользует ту же _compute_column_info, что и
+    ответ загрузки.
 
-    data_types в auto-режиме тоже "pending": фактический профиль dtype
-    возвращается в type_profile, но ожидаемой schema нет, поэтому заявлять
-    ложное «0 нарушений» нельзя. Профиль переиспользует ту же
-    _compute_column_info, что и ответ загрузки.
-
-    referential ВСЕГДА "pending" при auto-правилах: auto_generate_rules
+    referential ВСЕГДА "pending" при системных правилах: resolver
     не умеет придумать справочник для сверки -- это не 0 нарушений,
     а "нечего проверять" (см. validation/engine.py::_run_all_checks).
 
-    column (2026-08-14) -- опциональный per-column скоуп, тот же
-    target_column, что и в Моделировании (см. GET/POST /target-column) --
-    единый "исследуемый признак" для всей платформы. Часть проверок
+    column сохранён для обратной совместимости как опциональный per-column
+    скоуп выбранного target_column (см. GET/POST /target-column). Общая
+    кнопка UI не передаёт column и всегда проверяет весь датасет. Часть
+    проверок при прямом вызове API
     учитывают column (ranges/formats/inclusion/referential/text_quality/
     sufficiency), часть принципиально dataset-wide (data_types/
     consistency/uniqueness/regularity) -- см. ValidationCheckResult.scope
@@ -585,7 +582,7 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
     if column is not None and column not in df.columns:
         raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
 
-    rules = _session_validation_rules(session)
+    rules, rule_sources = _session_validation_rules(session)
     result = validate_dataframe(df, rules, target_column=column)
 
     checks = {
@@ -595,21 +592,106 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
             items=[ValidationCheckItem(**item) for item in raw["items"]],
             scope=raw.get("scope", "dataset"),
             error=raw.get("error"),
+            rule_source=rule_sources.get(check_id, "not_applicable"),
         )
         for check_id, raw in result["checks"].items()
     }
 
     return DatasetValidateResponse(
         is_valid=result["is_valid"],
-        rules_source="session" if session.type_schema else "auto",
+        rules_source=(
+            "session" if session.type_schema or session.validation_rule_overrides
+            else "template" if session.validation_template_id != "system"
+            else "system"
+        ),
+        validation_template_id=session.validation_template_id,
         column=column,
         total_rows=result["summary"]["total_rows"],
         total_columns=result["summary"]["total_columns"],
         type_validation_mode=(
             "schema" if rules.get("schema", {}).get("columns") else "profile"
         ),
-        type_profile=_validation_type_profile(df, session.type_schema, result),
+        type_profile=_validation_type_profile(
+            df,
+            {
+                name: spec.get("type")
+                for name, spec in rules.get("schema", {}).get("columns", {}).items()
+                if isinstance(spec, dict) and spec.get("type")
+            },
+            result,
+        ),
         checks=checks,
+    )
+
+
+@router.get("/dataset/validation-rules", response_model=DatasetValidationRulesResponse)
+def get_dataset_validation_rules(request: Request, response: Response):
+    """Возвращает выбранный шаблон и локальные overrides сессии."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    return DatasetValidationRulesResponse(
+        template_id=session.validation_template_id,
+        overrides=session.validation_rule_overrides,
+    )
+
+
+@router.put("/dataset/validation-rules", response_model=DatasetValidationRulesResponse)
+def save_dataset_validation_rules(
+    payload: DatasetValidationRulesRequest,
+    request: Request,
+    response: Response,
+):
+    """Сохраняет выбор правил только в текущей AnalysisSession."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    allowed_sections = {
+        "schema", "formats", "ranges", "consistency", "uniqueness",
+        "inclusion", "referential", "text_quality", "regularity", "sufficiency",
+    }
+    unknown = sorted(set(payload.overrides) - allowed_sections)
+    if unknown:
+        raise HTTPException(status_code=422, detail=f"Неизвестные разделы правил: {', '.join(unknown)}")
+
+    list_sections = {"ranges", "consistency", "referential"}
+    dict_sections = allowed_sections - list_sections
+    malformed = [
+        section for section, value in payload.overrides.items()
+        if (section in list_sections and not isinstance(value, list))
+        or (section in dict_sections and not isinstance(value, dict))
+        or (section in list_sections and any(not isinstance(item, dict) for item in value))
+    ]
+    if malformed:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Некорректная структура разделов правил: {', '.join(sorted(malformed))}",
+        )
+
+    # Пустой раздел не считается переопределением: иначе, например,
+    # ranges=[] маскировал бы шаблон и одновременно ошибочно помечал
+    # сводный источник как session.
+    normalized_overrides = {
+        section: value for section, value in payload.overrides.items() if value
+    }
+
+    # Вызов resolver одновременно валидирует template_id и структуру,
+    # прежде чем состояние сессии будет изменено.
+    resolve_validation_rules(
+        session.dataframe,
+        template_id=payload.template_id,
+        session_overrides=normalized_overrides,
+        type_schema=session.type_schema,
+    )
+    session.validation_template_id = payload.template_id
+    session.validation_rule_overrides = normalized_overrides
+    session.touch()
+    store.save(session)
+    return DatasetValidationRulesResponse(
+        template_id=session.validation_template_id,
+        overrides=session.validation_rule_overrides,
     )
 
 

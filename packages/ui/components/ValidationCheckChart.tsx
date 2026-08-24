@@ -46,6 +46,7 @@ export interface ValidationCheckData {
    * validation/engine.py::_run_all_checks). */
   scope?: "column" | "dataset";
   error?: string | null;
+  rule_source?: "system" | "template" | "session" | "not_applicable";
 }
 
 function truncateLabel(label: string, max = 16): string {

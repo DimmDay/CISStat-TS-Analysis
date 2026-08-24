@@ -402,6 +402,49 @@ class _SessionStoreContract:
         legacy.pop("type_schema")
         assert session_from_dict(legacy).type_schema == {}
 
+    # ── 7. validation rules ──
+
+    def test_validation_rules_persist_and_reset_with_new_dataset(
+        self, sample_dataset_info, sample_dataframe
+    ):
+        session = self.store.get_or_create("validation-rules-028")
+        assert session.validation_template_id == "system"
+        assert session.validation_rule_overrides == {}
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        session.validation_template_id = "fao_prices"
+        session.validation_rule_overrides = {"ranges": [{"keywords": ["value"], "min": 0}]}
+        self.store.save(session)
+
+        fetched = self.store.get("validation-rules-028")
+        assert fetched.validation_template_id == "fao_prices"
+        assert fetched.validation_rule_overrides["ranges"][0]["min"] == 0
+
+        fetched.set_dataset(sample_dataset_info, sample_dataframe)
+        self.store.save(fetched)
+        reset = self.store.get("validation-rules-028")
+        assert reset.validation_template_id == "system"
+        assert reset.validation_rule_overrides == {}
+
+    def test_validation_rules_roundtrip_is_backward_compatible(
+        self, sample_dataset_info, sample_dataframe
+    ):
+        from apps.api.session_store import session_from_dict, session_to_dict
+
+        session = AnalysisSession(session_id="validation-rules-roundtrip-029")
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        session.validation_template_id = "macro"
+        session.validation_rule_overrides = {"sufficiency": {"min_obs_trend": 20}}
+        serialized = session_to_dict(session)
+        restored = session_from_dict(serialized)
+        assert restored.validation_template_id == "macro"
+        assert restored.validation_rule_overrides == session.validation_rule_overrides
+
+        serialized.pop("validation_template_id")
+        serialized.pop("validation_rule_overrides")
+        legacy = session_from_dict(serialized)
+        assert legacy.validation_template_id == "system"
+        assert legacy.validation_rule_overrides == {}
+
 
 # ────────────────────────────────────────────────────────────────────
 # MemorySessionStore -- конкретные тесты

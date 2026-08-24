@@ -66,7 +66,8 @@ function validationResponse(
 ) {
   return {
     is_valid: typeStatus !== "warning",
-    rules_source: mode === "schema" ? "session" : "auto",
+    rules_source: "system",
+    validation_template_id: "system",
     total_rows: 3,
     total_columns: 1,
     type_validation_mode: mode,
@@ -89,6 +90,7 @@ function validationResponse(
         count: id === "data_types" ? count : null,
         items: [],
         scope: "dataset",
+        rule_source: "system",
       }])
     ),
   };
@@ -119,6 +121,38 @@ function mockActiveValidation(validateResponse: () => Promise<unknown>) {
 }
 
 describe("TsAnalysisValidation", () => {
+  it("waits for the global validation action and then updates all check statuses", async () => {
+    let validateCalls = 0;
+    mockActiveValidation(() => {
+      validateCalls += 1;
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          ...validationResponse("done", "schema", 0),
+          rules_source: "system",
+          checks: Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, {
+            status: "done",
+            count: 0,
+            items: [],
+            scope: "dataset",
+            rule_source: "system",
+          }])),
+        }),
+      });
+    });
+
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    expect(validateCalls).toBe(0);
+
+    fireEvent.click(runButton);
+    await waitFor(() => expect(validateCalls).toBe(1));
+    expect(await screen.findAllByText("Проверка пройдена")).toHaveLength(10);
+    expect(screen.getAllByText("Системное правило")).toHaveLength(10);
+    expect(screen.queryByRole("button", { name: /Запустить проверку \(/i })).not.toBeInTheDocument();
+  });
+
   it("renders the module title", async () => {
     renderValidation();
     await waitFor(() => expect(screen.getByText("Data Quality")).toBeInTheDocument());
@@ -168,7 +202,7 @@ describe("TsAnalysisValidation", () => {
     expect(screen.getByText(/Фактический профиль типов/i)).toBeInTheDocument();
     expect(screen.getByText(/N_type = Σ n_i/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Pandera-схема/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/status = pending/i)).toBeInTheDocument();
+    expect(screen.getByText(/схема и переопределения сессии → выбранный шаблон → системные правила/i)).toBeInTheDocument();
     expect(screen.getByText(/GET \/v1\/session\/dataset\/validate/i)).toBeInTheDocument();
   });
 
@@ -264,7 +298,7 @@ describe("TsAnalysisValidation", () => {
     });
   });
 
-  it("fetches and displays real check results when a dataset is active", async () => {
+  it("fetches and displays real check results after the global action", async () => {
     global.fetch = jest.fn((url: string) => {
       if (typeof url === "string" && url.includes("/session/current")) {
         return Promise.resolve({
@@ -284,7 +318,7 @@ describe("TsAnalysisValidation", () => {
           json: () =>
             Promise.resolve({
               is_valid: false,
-              rules_source: "auto",
+              rules_source: "system",
               total_rows: 50,
               total_columns: 3,
               checks: {
@@ -306,6 +340,9 @@ describe("TsAnalysisValidation", () => {
     }) as unknown as typeof fetch;
 
     renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
 
     await waitFor(() => {
       // total_rows=50 из реального ответа, не старый мок "200"
@@ -331,7 +368,7 @@ describe("TsAnalysisValidation", () => {
           ok: true,
           json: () => Promise.resolve({
             is_valid: true,
-            rules_source: "auto",
+            rules_source: "system",
             total_rows: 3,
             total_columns: 3,
             type_validation_mode: "profile",
@@ -351,12 +388,15 @@ describe("TsAnalysisValidation", () => {
 
     renderValidation();
 
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+
     expect(await screen.findByRole("table", { name: "Матрица типов колонок" })).toBeInTheDocument();
     expect(screen.getByText("Country")).toBeInTheDocument();
     expect(screen.getByText("float64")).toBeInTheDocument();
     expect(screen.queryByText(/Проверка «Типы данных» неприменима/i)).not.toBeInTheDocument();
 
-    expect(screen.getByText("Эталон типов не задан")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Исправить типы данных" }));
     expect(screen.getByRole("region", { name: "Мастер исправления типов" })).toBeInTheDocument();
     expect(screen.queryByRole("table", { name: "Матрица типов колонок" })).not.toBeInTheDocument();
@@ -366,38 +406,23 @@ describe("TsAnalysisValidation", () => {
     expect(screen.getByText(/Проверка «Форматы и шаблоны» неприменима/i)).toBeInTheDocument();
   });
 
-  it("reruns type validation and shows running then problems status", async () => {
-    let validateCall = 0;
+  it("runs global validation and shows running then problems status", async () => {
     let resolveManual: ((value: unknown) => void) | undefined;
     mockActiveValidation(() => {
-      validateCall += 1;
-      if (validateCall === 1) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(validationResponse("pending", "profile", null)),
-        });
-      }
       return new Promise((resolve) => { resolveManual = resolve; });
     });
 
     renderValidation();
-    expect(await screen.findByText("Эталон типов не задан")).toBeInTheDocument();
-    expect(await screen.findByText("Amount")).toBeInTheDocument();
-    expect(validateCall).toBe(1);
-
-    await waitFor(() => expect(
-      screen.getByRole("button", { name: "Запустить проверку (типы данных)" })
-    ).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: "Запустить проверку (типы данных)" }));
-    await waitFor(() => expect(validateCall).toBe(2));
-    expect(await screen.findByText("Проверка выполняется")).toBeInTheDocument();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    expect((await screen.findAllByText("Проверка выполняется")).length).toBeGreaterThan(0);
     resolveManual?.({
       ok: true,
       json: () => Promise.resolve(validationResponse("warning", "schema", 2)),
     });
 
     expect(await screen.findByText("Найдены проблемы: 2")).toBeInTheDocument();
-    expect(validateCall).toBe(2);
   });
 
   it("shows passed status when the saved type schema has no violations", async () => {
@@ -407,32 +432,28 @@ describe("TsAnalysisValidation", () => {
     }));
 
     renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
     expect(await screen.findByText("Проверка пройдена")).toBeInTheDocument();
   });
 
-  it("shows an execution error when manual type validation fails", async () => {
-    let validateCall = 0;
-    mockActiveValidation(() => {
-      validateCall += 1;
-      return Promise.resolve(validateCall === 1
-        ? { ok: true, json: () => Promise.resolve(validationResponse("pending", "profile", null)) }
-        : { ok: false, status: 500, json: () => Promise.resolve({ detail: "boom" }) });
-    });
+  it("shows an execution error when global validation fails", async () => {
+    mockActiveValidation(() => Promise.resolve({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ detail: "boom" }),
+    }));
 
     renderValidation();
-    expect(await screen.findByText("Эталон типов не задан")).toBeInTheDocument();
-    expect(await screen.findByText("Amount")).toBeInTheDocument();
-    expect(validateCall).toBe(1);
-    await waitFor(() => expect(
-      screen.getByRole("button", { name: "Запустить проверку (типы данных)" })
-    ).toBeEnabled());
-    fireEvent.click(screen.getByRole("button", { name: "Запустить проверку (типы данных)" }));
-    await waitFor(() => expect(validateCall).toBe(2));
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
 
-    expect(await screen.findByText("Ошибка выполнения")).toBeInTheDocument();
+    expect(await screen.findAllByText("Ошибка выполнения")).toHaveLength(10);
   });
 
-  it("shows real numeric columns in the feature selector and passes column= to /dataset/validate (not the old mock ticker list)", async () => {
+  it("shows real numeric columns and runs dataset-wide validation", async () => {
     const validateCalls: string[] = [];
     global.fetch = jest.fn((url: string) => {
       if (typeof url === "string" && url.includes("/session/current")) {
@@ -466,8 +487,7 @@ describe("TsAnalysisValidation", () => {
           json: () =>
             Promise.resolve({
               is_valid: true,
-              rules_source: "auto",
-              column: "Price",
+              rules_source: "system",
               total_rows: 30,
               total_columns: 3,
               checks: Object.fromEntries(
@@ -487,8 +507,12 @@ describe("TsAnalysisValidation", () => {
     expect(screen.queryByText("volume")).not.toBeInTheDocument();
     expect(screen.queryByText("adj_close")).not.toBeInTheDocument();
 
+    const runButton = screen.getByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
     await waitFor(() => {
-      expect(validateCalls.some((u) => u.includes("column=Price"))).toBe(true);
+      expect(validateCalls).toHaveLength(1);
+      expect(validateCalls[0]).not.toContain("column=");
     });
   });
 });

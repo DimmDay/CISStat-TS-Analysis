@@ -58,7 +58,7 @@ def test_pending_checks_have_none_count_and_empty_items():
 
 def test_ranges_violation_detected_via_auto_generated_rules():
     df = pd.DataFrame({
-        "price": [10.0, 20.0, -5.0, 30.0],  # -5 должно нарушить авто-диапазон [0, max*1.5]
+        "price": [10.0, 20.0, -5.0, 30.0],  # -5 нарушает семантическое правило price >= 0
     })
     rules = auto_generate_rules(df)
     result = validate_dataframe(df, rules)
@@ -109,6 +109,32 @@ def test_data_types_is_pending_without_explicit_schema():
     result = validate_dataframe(df, {})
     dt = result["checks"]["data_types"]
     assert dt == {"status": "pending", "count": None, "items": [], "scope": "dataset"}
+
+
+def test_system_rules_make_data_types_check_actionable():
+    """Resolver вызывает auto_generate_rules: системная схема должна
+    давать содержательный pass/fail, а не бесконечный pending."""
+    df = pd.DataFrame({"Country": ["RU", "BY"], "Year": [2020, 2021], "Price": [10.5, 20.0]})
+    result = validate_dataframe(df, auto_generate_rules(df))
+    assert result["checks"]["data_types"] == {
+        "status": "done", "count": 0, "items": [], "scope": "dataset"
+    }
+
+
+def test_ranges_are_pending_when_no_semantic_rule_applies():
+    df = pd.DataFrame({"measurement": [1.0, 2.0, 3.0]})
+    result = validate_dataframe(df, auto_generate_rules(df))
+    assert result["checks"]["ranges"] == {
+        "status": "pending", "count": None, "items": [], "scope": "column"
+    }
+
+
+def test_text_quality_is_pending_for_numeric_only_dataset():
+    df = pd.DataFrame({"measurement": [1.0, 2.0, 3.0]})
+    result = validate_dataframe(df, auto_generate_rules(df))
+    assert result["checks"]["text_quality"] == {
+        "status": "pending", "count": None, "items": [], "scope": "column"
+    }
 
 
 def test_data_types_is_done_when_explicit_schema_matches():
