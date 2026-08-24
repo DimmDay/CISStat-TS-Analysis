@@ -104,6 +104,12 @@ export { BacktestComparisonChart } from "./components/BacktestComparisonChart";
 // подключение после «Загрузки» и «Моделирования» (2026-08-14).
 export { ValidationCheckChart } from "./components/ValidationCheckChart";
 export type { ValidationCheckData, ValidationCheckItem } from "./components/ValidationCheckChart";
+export { ValidationTypeMatrix } from "./components/ValidationTypeMatrix";
+export type {
+  TypeValidationMode,
+  ValidationSemanticType,
+  ValidationTypeProfileItem,
+} from "./components/ValidationTypeMatrix";
 
 // Линейный график + бейджи декомпозиции (Recharts) -- остановка «График»
 // вкладки «Загрузка», между «Превью датасета» и «Распределение»

@@ -2196,3 +2196,56 @@ apps/api/routers/session.py
 tests/unit/test_validation_run_all_checks.py
 tests/api/test_dataset_validate.py
 worlog.md
+
+---
+
+Task ID: 34 — Матрица типов в «Обзоре» остановки «Типы данных»
+
+Date: 2026-08-24
+
+Задача
+Заменить общий pending-плейсхолдер «Проверка “Типы данных” неприменима…» на предложенный в Task 33 содержательный визуал: горизонтальный stacked bar по семантическим классам и таблицу «Колонка / dtype / Ожидаемый тип / Статус / Нарушения».
+
+Синхронизация
+Перед началом выполнен git fetch origin main. Обнаружен опубликованный параллельной работой commit 399e08a с Task 33 и новым API-контрактом type_profile. Локальный вариант Task 33 сохранён в stash codex-pre-sync-task-34, после чего main синхронизирован fast-forward до 399e08a. Task 34 реализован поверх опубликованного контракта без повторной backend-логики.
+
+Проектирование и риски
+Новый обзор специализирован только для activeCheckId="data_types". Остальные девять остановок продолжают использовать ValidationCheckChart без изменения поведения.
+
+В auto-режиме ожидаемая схема отсутствует, поэтому визуал не подменяет неизвестные значения нулями: «Ожидаемый тип» = «Не задан», «Статус» = «Профиль», «Нарушения» = «—». Информационная плашка объясняет, что фактические типы построены, но нарушения без эталонной схемы не рассчитываются.
+
+Backend не изменялся: полностью переиспользованы type_validation_mode и type_profile из GET /v1/session/dataset/validate, добавленные Task 33. При отсутствии датасета, загрузке или пустом профиле компонент показывает отдельные корректные состояния.
+
+Реализация
+Добавлен packages/ui/components/ValidationTypeMatrix.tsx:
+- горизонтальный stacked bar с пропорциями numeric/datetime/categorical/text;
+- легенда четырёх классов с точными счётчиками, включая нулевые;
+- прокручиваемая таблица со sticky header;
+- фактический pandas dtype и человекочитаемый семантический класс в одной ячейке;
+- режимы profile/schema и опциональные поля expected_type, validation_status, violations для будущего расширения схемы;
+- доступные role="img"/aria-label и aria-label таблицы для screen reader и тестов;
+- фиксированная высота 420px, совпадающая с существующим ValidationCheckChart.
+
+TsAnalysisValidation.tsx теперь сохраняет type_profile/type_validation_mode из ответа API, сбрасывает их при потере датасета или ошибке запроса и выбирает ValidationTypeMatrix только для первой остановки. Подпись «Обзора» для «Типы данных» уточнена до распределения фактических типов и построчной матрицы.
+
+Компонент и его типы экспортированы через packages/ui/index.ts для симметричного использования embedded и standalone приложениями.
+
+TDD
+RED: два focused suites завершились неуспешно — новый unit suite не находил ещё не созданный ValidationTypeMatrix, а интеграционный тест видел старый pending-плейсхолдер. Существующие 14 тестов TsAnalysisValidation при этом проходили.
+
+GREEN: focused Jest — 2/2 suites, 18/18 tests PASS. Тесты проверяют пропорции 50/25/25%, нулевой datetime в легенде, пять требуемых колонок таблицы, честные profile-значения, поясняющую плашку, замену плейсхолдера и сохранение старого обзора после перехода на «Форматы и шаблоны».
+
+Проверка
+Full Jest: 17/17 suites PASS, 222/222 tests PASS, 0 snapshots.
+
+TypeScript typecheck: PASS для embedded и standalone. Из-за установленного TypeScript 6.0.3 для проверки временно добавлялись декларации side-effect CSS imports; после проверки удалены и в изменения не входят.
+
+Next.js production build embedded: PASS, 13/13 статических страниц. Next.js production build standalone: PASS, 13/13 статических страниц. Временный memory shim для известной ошибки Node runtime uv_resident_set_memory удалён после сборки. Существующее предупреждение Tailwind о шаблоне ../../packages/ui/**/*.ts остаётся, обе сборки проходят.
+
+Изменённые и новые файлы
+packages/ui/components/ValidationTypeMatrix.tsx
+packages/ui/components/ValidationTypeMatrix.test.tsx
+packages/ui/components/TsAnalysisValidation.tsx
+packages/ui/components/TsAnalysisValidation.test.tsx
+packages/ui/index.ts
+worklog.md

@@ -26,6 +26,11 @@ import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { RulesManagementPanel } from "./RulesManagementPanel";
 import { ValidationCheckChart, type ValidationCheckData } from "./ValidationCheckChart";
+import {
+  ValidationTypeMatrix,
+  type TypeValidationMode,
+  type ValidationTypeProfileItem,
+} from "./ValidationTypeMatrix";
 import { useAppShell } from "../context/AppShellContext";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
@@ -173,11 +178,15 @@ export function TsAnalysisValidation() {
   const [checksData, setChecksData] = useState<Record<string, ValidationCheckData> | null>(null);
   const [checksLoading, setChecksLoading] = useState(false);
   const [datasetSummary, setDatasetSummary] = useState<{ totalRows: number; totalColumns: number } | null>(null);
+  const [typeProfile, setTypeProfile] = useState<ValidationTypeProfileItem[]>([]);
+  const [typeValidationMode, setTypeValidationMode] = useState<TypeValidationMode>("profile");
 
   useEffect(() => {
     if (!activeDataset) {
       setChecksData(null);
       setDatasetSummary(null);
+      setTypeProfile([]);
+      setTypeValidationMode("profile");
       return;
     }
     let cancelled = false;
@@ -191,11 +200,15 @@ export function TsAnalysisValidation() {
         if (cancelled || !data) return;
         setChecksData(data.checks);
         setDatasetSummary({ totalRows: data.total_rows, totalColumns: data.total_columns });
+        setTypeProfile(Array.isArray(data.type_profile) ? data.type_profile : []);
+        setTypeValidationMode(data.type_validation_mode === "schema" ? "schema" : "profile");
       })
       .catch(() => {
         if (!cancelled) {
           setChecksData(null);
           setDatasetSummary(null);
+          setTypeProfile([]);
+          setTypeValidationMode("profile");
         }
       })
       .finally(() => {
@@ -461,15 +474,26 @@ export function TsAnalysisValidation() {
         <div>
           <h3 className="font-semibold mb-1">Обзор: {activeCheck.label}</h3>
           <p className="text-xs text-neutral-500 mb-3">
-            Визуализация результатов проверки по активному критерию.
+            {activeCheckId === "data_types"
+              ? "Распределение фактических типов и построчная матрица колонок."
+              : "Визуализация результатов проверки по активному критерию."}
           </p>
 
-          <ValidationCheckChart
-            checkLabel={activeCheck.label}
-            data={checksData?.[activeCheckId] ?? null}
-            loading={checksLoading}
-            selectedColumn={activeFeature}
-          />
+          {activeCheckId === "data_types" ? (
+            <ValidationTypeMatrix
+              profile={typeProfile}
+              mode={typeValidationMode}
+              loading={checksLoading}
+              hasDataset={Boolean(activeDataset)}
+            />
+          ) : (
+            <ValidationCheckChart
+              checkLabel={activeCheck.label}
+              data={checksData?.[activeCheckId] ?? null}
+              loading={checksLoading}
+              selectedColumn={activeFeature}
+            />
+          )}
 
           <div className="grid grid-cols-4 gap-3 mt-4">
             <Metric label="Строк" value={datasetSummary ? String(datasetSummary.totalRows) : "—"} />

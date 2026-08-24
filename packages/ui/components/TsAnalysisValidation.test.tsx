@@ -241,6 +241,54 @@ describe("TsAnalysisValidation", () => {
     });
   });
 
+  it("renders the type matrix instead of the generic pending placeholder", async () => {
+    global.fetch = jest.fn((url: string) => {
+      if (typeof url === "string" && url.includes("/session/current")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            has_active_dataset: true,
+            dataset: { dataset_id: "d1", name: "types.csv", rows: 3, columns: 3, size_label: "1 KB" },
+            stages: {},
+            last_active_stage: null,
+          }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/dataset/validate")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            is_valid: true,
+            rules_source: "auto",
+            total_rows: 3,
+            total_columns: 3,
+            type_validation_mode: "profile",
+            type_profile: [
+              { name: "Country", dtype: "object", type_icon: "categorical", non_null: 3, nulls: 0, unique: 3 },
+              { name: "Year", dtype: "int64", type_icon: "numeric", non_null: 3, nulls: 0, unique: 3 },
+              { name: "Price", dtype: "float64", type_icon: "numeric", non_null: 3, nulls: 0, unique: 3 },
+            ],
+            checks: Object.fromEntries(
+              EXPECTED_CHECK_IDS_ARR.map((id) => [id, { status: "pending", count: null, items: [], scope: "dataset" }])
+            ),
+          }),
+        });
+      }
+      return Promise.resolve({ ok: false, json: () => Promise.resolve(null) });
+    }) as unknown as typeof fetch;
+
+    renderValidation();
+
+    expect(await screen.findByRole("table", { name: "Матрица типов колонок" })).toBeInTheDocument();
+    expect(screen.getByText("Country")).toBeInTheDocument();
+    expect(screen.getByText("float64")).toBeInTheDocument();
+    expect(screen.queryByText(/Проверка «Типы данных» неприменима/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Форматы и шаблоны" }));
+    expect(screen.queryByRole("table", { name: "Матрица типов колонок" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Проверка «Форматы и шаблоны» неприменима/i)).toBeInTheDocument();
+  });
+
   it("shows real numeric columns in the feature selector and passes column= to /dataset/validate (not the old mock ticker list)", async () => {
     const validateCalls: string[] = [];
     global.fetch = jest.fn((url: string) => {
