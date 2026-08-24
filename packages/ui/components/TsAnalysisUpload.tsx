@@ -1088,7 +1088,10 @@ export function TsAnalysisUpload() {
                     <>
                       <TimeSeriesLineChart data={timeseries} loading={timeseriesLoading} />
                       <div className="mt-4">
-                        <h4 className="text-xs font-semibold mb-2 text-neutral-600">Декомпозиция</h4>
+                        <h4 className="text-xs font-semibold mb-1 text-neutral-600">Декомпозиция</h4>
+                        <p className="text-[11px] text-neutral-500 mb-2">
+                          Доля дисперсии ряда, объяснимая каждой компонентой (Тренд/Сезонность/Цикличность/Остаток) — не абсолютные величины, а вклад в % от общей изменчивости.
+                        </p>
                         <DecompositionBadges
                           data={decomposition}
                           loading={decompositionLoading}

@@ -71,13 +71,14 @@ type ComponentKey = "trend" | "seasonal" | "cyclical" | "resid";
 
 // "Выберите компоненты для отображения" -- переиспользован UX из legacy
 // Streamlit (app.py, chk_trend/chk_seasonal/chk_cyclical/chk_residual):
-// ТЕ ЖЕ дефолты (value=True/True/False/False) и эмодзи в подписях --
-// узнаваемо для тех, кто уже пользовался старым инструментом.
-const COMPONENT_CHECKBOXES: { key: ComponentKey; emoji: string; defaultChecked: boolean; hint: string }[] = [
-  { key: "trend", emoji: "📈", defaultChecked: true, hint: "Долгосрочная направленность ряда" },
-  { key: "seasonal", emoji: "🔄", defaultChecked: true, hint: "Регулярные календарные циклы" },
-  { key: "cyclical", emoji: "🔁", defaultChecked: false, hint: "Среднесрочные колебания (оценочная эвристика)" },
-  { key: "resid", emoji: "🔢", defaultChecked: false, hint: "Случайная компонента (шум)" },
+// ТЕ ЖЕ дефолты (value=True/True/False/False). Эмодзи в подписях НЕ
+// переносим (согласовано с тимлидом 2026-08-19: эмодзи только для
+// редких статусных случаев -- ✅/⚠️/❌ -- не для декоративной разметки).
+const COMPONENT_CHECKBOXES: { key: ComponentKey; defaultChecked: boolean; hint: string }[] = [
+  { key: "trend", defaultChecked: true, hint: "Долгосрочная направленность ряда" },
+  { key: "seasonal", defaultChecked: true, hint: "Регулярные календарные циклы" },
+  { key: "cyclical", defaultChecked: false, hint: "Среднесрочные колебания (оценочная эвристика)" },
+  { key: "resid", defaultChecked: false, hint: "Случайная компонента (шум)" },
 ];
 
 export function DecompositionSeriesChart({
@@ -133,9 +134,7 @@ export function DecompositionSeriesChart({
               className="accent-brand"
               data-testid={`decomposition-toggle-${c.key}`}
             />
-            <span>
-              {c.emoji} {COMPONENT_LABELS[c.key]}
-            </span>
+            <span>{COMPONENT_LABELS[c.key]}</span>
           </label>
         ))}
       </div>

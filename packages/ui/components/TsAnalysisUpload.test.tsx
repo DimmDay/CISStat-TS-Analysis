@@ -880,9 +880,12 @@ function mockApplicableDecompositionFetch() {
     const computeBtn = await screen.findByText("Считать декомпозицию");
     fireEvent.click(computeBtn);
 
-    // Бейджи (уже было) + НОВЫЙ график компонент под ними.
+    // Бейджи (уже было) + НОВЫЙ график компонент под ними. "Тренд" теперь
+    // легитимно встречается 2 раза (бейдж + подпись чекбокса выбора
+    // компонент, без эмодзи-разметки после правки 2026-08-19) --
+    // getAllByText, не getByText.
     await waitFor(() => {
-      expect(screen.getByText("Тренд")).toBeInTheDocument(); // бейдж
+      expect(screen.getAllByText("Тренд").length).toBeGreaterThanOrEqual(1);
     });
     // Recharts Legend/оси -- внутренний SVG, зависящий от реального layout
     // контейнера (ResponsiveContainer получает 0x0 в jsdom, см. warning
