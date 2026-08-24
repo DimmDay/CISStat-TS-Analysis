@@ -113,6 +113,18 @@ describe("TsAnalysisValidation", () => {
     expect(screen.getByText(/GET \/v1\/session\/dataset\/validate/i)).toBeInTheDocument();
   });
 
+  it("shows concise correction guidance for the data-types full pipeline", async () => {
+    renderValidation();
+
+    const pipelineButtons = await screen.findAllByRole("button", { name: "Полный пайплайн" });
+    fireEvent.click(pipelineButtons[0]);
+
+    expect(screen.getByText("Полный пайплайн — Типы данных")).toBeInTheDocument();
+    expect(screen.getByText(/Отметьте проблемные колонки/i)).toBeInTheDocument();
+    expect(screen.getByText(/Предпросмотр не изменяет датасет/i)).toBeInTheDocument();
+    expect(screen.getByText(/Подтвердите применение/i)).toBeInTheDocument();
+  });
+
   // ── Кнопка «Управление правилами» ──
 
   it("renders the 'Управление правилами' button at the bottom of the stepper", async () => {
@@ -283,6 +295,10 @@ describe("TsAnalysisValidation", () => {
     expect(screen.getByText("Country")).toBeInTheDocument();
     expect(screen.getByText("float64")).toBeInTheDocument();
     expect(screen.queryByText(/Проверка «Типы данных» неприменима/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Полный пайплайн" })[0]);
+    expect(screen.getByRole("region", { name: "Алгоритм исправления типов" })).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Матрица типов колонок" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Форматы и шаблоны" }));
     expect(screen.queryByRole("table", { name: "Матрица типов колонок" })).not.toBeInTheDocument();

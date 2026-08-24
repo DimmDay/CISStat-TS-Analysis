@@ -336,6 +336,35 @@ class DatasetValidateResponse(BaseModel):
     checks: Dict[str, ValidationCheckResult]
 
 
+class TypeConversionSpec(BaseModel):
+    column: str = Field(..., min_length=1)
+    target_type: Literal["integer", "float", "datetime", "string", "boolean"]
+
+
+class DatasetTypeConversionRequest(BaseModel):
+    conversions: List[TypeConversionSpec] = Field(..., min_length=1, max_length=100)
+    invalid_policy: Literal["reject", "coerce"] = "reject"
+    apply: bool = Field(False, description="False -- preview без мутации; True -- применить к session.dataframe")
+
+
+class TypeConversionResultOut(BaseModel):
+    column: str
+    from_dtype: str
+    to_dtype: str
+    converted_count: int
+    invalid_count: int
+    invalid_examples: List[str] = Field(default_factory=list)
+
+
+class DatasetTypeConversionResponse(BaseModel):
+    applied: bool
+    invalid_policy: Literal["reject", "coerce"]
+    total_invalid: int
+    target_column_reset: bool = False
+    columns: List[TypeConversionResultOut]
+    type_profile: List[ColumnInfoOut]
+
+
 class DatasetSummaryOut(BaseModel):
     """Сводка по активному датасету сессии -- для Home page ("Рабочий стол")."""
     dataset_id: str

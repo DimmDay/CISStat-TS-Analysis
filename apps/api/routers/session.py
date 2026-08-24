@@ -25,6 +25,8 @@ from apps.api.schemas import (
     ColumnStatsValues,
     DatasetStatsResponse,
     DatasetSummaryOut,
+    DatasetTypeConversionRequest,
+    DatasetTypeConversionResponse,
     DatasetValidateResponse,
     DecompositionResponse,
     DecompositionSeriesPoint,
@@ -42,12 +44,14 @@ from apps.api.schemas import (
     TargetColumnResponse,
     TimeSeriesPoint,
     TimeSeriesResponse,
+    TypeConversionResultOut,
     UploadResponse,
     ValidationCheckItem,
     ValidationCheckResult,
 )
 from app.data.detectors import score_all_columns_as_date, score_all_columns_as_entity_group, detect_column_frequency
 from validation.engine import auto_generate_rules, validate_dataframe
+from apps.api.type_conversion import preview_type_conversions
 from apps.api.session_store import (
     AnalysisSession,
     DatasetInfo,
@@ -565,6 +569,64 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
         ),
         type_profile=_compute_column_info(df),
         checks=checks,
+    )
+
+
+@router.post("/dataset/convert-types", response_model=DatasetTypeConversionResponse)
+def convert_dataset_types(
+    payload: DatasetTypeConversionRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply преобразований dtype для активного датасета.
+
+    Preview (apply=False) всегда работает на глубокой копии и не сохраняет
+    сессию. Apply транзакционен: при invalid_policy="reject" хотя бы одно
+    неприводимое значение отменяет ВСЕ операции; coerce заменяет только
+    такие значения на NA/NaT. datetime использует smart_to_datetime из
+    app.data.detectors, поэтому числовые годы не превращаются в 1970 год.
+    """
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    try:
+        converted_df, raw_results = preview_type_conversions(
+            session.dataframe,
+            [item.model_dump() for item in payload.conversions],
+        )
+    except ValueError as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
+
+    total_invalid = sum(item["invalid_count"] for item in raw_results)
+    if payload.apply and payload.invalid_policy == "reject" and total_invalid > 0:
+        failed = [item for item in raw_results if item["invalid_count"] > 0]
+        summary = "; ".join(
+            f"Колонка '{item['column']}': {item['invalid_count']} значений не удалось преобразовать"
+            for item in failed
+        )
+        raise HTTPException(status_code=422, detail=summary)
+
+    target_column_reset = False
+    if payload.apply:
+        session.dataframe = converted_df
+        if session.target_column is not None and not pd.api.types.is_numeric_dtype(
+            converted_df[session.target_column]
+        ):
+            session.target_column = None
+            target_column_reset = True
+        session.touch()
+        store.save(session)
+
+    return DatasetTypeConversionResponse(
+        applied=payload.apply,
+        invalid_policy=payload.invalid_policy,
+        total_invalid=total_invalid,
+        target_column_reset=target_column_reset,
+        columns=[TypeConversionResultOut(**item) for item in raw_results],
+        type_profile=_compute_column_info(converted_df),
     )
 
 

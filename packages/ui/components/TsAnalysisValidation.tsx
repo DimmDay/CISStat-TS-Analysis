@@ -31,6 +31,7 @@ import {
   type TypeValidationMode,
   type ValidationTypeProfileItem,
 } from "./ValidationTypeMatrix";
+import { ValidationTypePipeline } from "./ValidationTypePipeline";
 import { useAppShell } from "../context/AppShellContext";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
@@ -148,6 +149,14 @@ const DATA_TYPES_METRICS_DESCRIPTION = `Метрики и алгоритм: Ти
 Текущий автоматический режим
 Автоправила безопасно определяют диапазоны и некоторые домены, но не придумывают ожидаемые типы из фактических данных. Поэтому API возвращает type_validation_mode = profile, профиль всех колонок и честный status = pending до подключения явного шаблона правил.`;
 
+const DATA_TYPES_PIPELINE_DESCRIPTION = `Полный пайплайн: Типы данных
+
+1. Отметьте проблемные колонки и задайте для каждой целевой тип.
+2. Выберите политику ошибок: отклонить весь набор либо заменить неприводимые значения пропусками.
+3. Запустите предпросмотр. Предпросмотр не изменяет датасет и показывает последствия преобразования.
+4. Проверьте число успешно преобразованных значений и примеры ошибок.
+5. Подтвердите применение. Изменения сохраняются атомарно, после чего проверка типов запускается повторно.`;
+
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisValidation() {
@@ -166,6 +175,7 @@ export function TsAnalysisValidation() {
     targetColumn: activeFeature,
     availableColumns: numericFeatures,
     setColumn: setActiveFeature,
+    refetch: refetchTargetColumn,
   } = useTargetColumn(activeDataset?.name);
 
   // ── Реальная валидация датасета сессии (GET /dataset/validate) ──
@@ -180,6 +190,7 @@ export function TsAnalysisValidation() {
   const [datasetSummary, setDatasetSummary] = useState<{ totalRows: number; totalColumns: number } | null>(null);
   const [typeProfile, setTypeProfile] = useState<ValidationTypeProfileItem[]>([]);
   const [typeValidationMode, setTypeValidationMode] = useState<TypeValidationMode>("profile");
+  const [validationRevision, setValidationRevision] = useState(0);
 
   useEffect(() => {
     if (!activeDataset) {
@@ -217,7 +228,7 @@ export function TsAnalysisValidation() {
     return () => {
       cancelled = true;
     };
-  }, [activeDataset, activeFeature]);
+  }, [activeDataset, activeFeature, validationRevision]);
 
   // Реальные status/count поверх статических label/description. Пока
   // датасет не загружен или проверка ещё не пришла -- честное "pending",
@@ -298,6 +309,7 @@ export function TsAnalysisValidation() {
       if (activeCheck.id === "data_types") return DATA_TYPES_METRICS_DESCRIPTION;
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
+    if (activeCheck.id === "data_types") return DATA_TYPES_PIPELINE_DESCRIPTION;
     return `Полный пайплайн: ${activeCheck.label.toLowerCase()}\n\n1. Обнаружение → 2. Диагностика → 3. Преобразование → 4. Верификация\n\n${activeCheck.description}`;
   })();
 
@@ -474,12 +486,24 @@ export function TsAnalysisValidation() {
         <div>
           <h3 className="font-semibold mb-1">Обзор: {activeCheck.label}</h3>
           <p className="text-xs text-neutral-500 mb-3">
-            {activeCheckId === "data_types"
+            {activeCheckId === "data_types" && descriptionSection === "pipeline"
+              ? "Выберите преобразования, проверьте последствия и примените их к активному датасету."
+              : activeCheckId === "data_types"
               ? "Распределение фактических типов и построчная матрица колонок."
               : "Визуализация результатов проверки по активному критерию."}
           </p>
 
-          {activeCheckId === "data_types" ? (
+          {activeCheckId === "data_types" && descriptionSection === "pipeline" ? (
+            <ValidationTypePipeline
+              profile={typeProfile}
+              activeTargetColumn={activeFeature}
+              onApplied={(nextProfile, targetColumnReset) => {
+                setTypeProfile(nextProfile);
+                setValidationRevision((revision) => revision + 1);
+                if (targetColumnReset) void refetchTargetColumn();
+              }}
+            />
+          ) : activeCheckId === "data_types" ? (
             <ValidationTypeMatrix
               profile={typeProfile}
               mode={typeValidationMode}
