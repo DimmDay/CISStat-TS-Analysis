@@ -133,8 +133,8 @@ export function NavigatorHero() {
 
   return (
     <div className="space-y-6">
-      {/* ── 1. Заголовок ── */}
-      <h1 className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a]">
+      {/* ── 1. Заголовок (Task 31: добавлен text-center) ── */}
+      <h1 className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a] text-center">
         Ключевые этапы исследования временного ряда
       </h1>
 

@@ -34,6 +34,15 @@ describe("NavigatorHero", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders the H1 title centered (Task 31)", () => {
+    render(<NavigatorHero />);
+    const h1 = screen.getByRole("heading", {
+      level: 1,
+      name: /Ключевые этапы исследования временного ряда/i,
+    });
+    expect(h1.className).toContain("text-center");
+  });
+
   // ── 6 chevron-стрелок с цифрами (Task 26) ─────────────────────────
 
   it("renders all 6 step numbers inside chevron arrows", () => {
