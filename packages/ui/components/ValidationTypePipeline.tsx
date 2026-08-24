@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
 import type { ValidationTypeProfileItem } from "./ValidationTypeMatrix";
 
@@ -29,6 +29,7 @@ interface ValidationTypePipelineProps {
   profile: ValidationTypeProfileItem[];
   activeTargetColumn?: string | null;
   onApplied: (profile: ValidationTypeProfileItem[], targetColumnReset: boolean) => void;
+  onSchemaSaved?: () => void;
 }
 
 const TARGET_LABELS: Record<TargetType, string> = {
@@ -64,6 +65,7 @@ export function ValidationTypePipeline({
   profile,
   activeTargetColumn = null,
   onApplied,
+  onSchemaSaved = () => undefined,
 }: ValidationTypePipelineProps) {
   const suggestedTargets = useMemo(
     () => Object.fromEntries(profile.map((item) => [item.name, suggestedTarget(item)])) as Record<string, TargetType>,
@@ -74,9 +76,28 @@ export function ValidationTypePipeline({
   const [invalidPolicy, setInvalidPolicy] = useState<InvalidPolicy>("reject");
   const [preview, setPreview] = useState<ConversionResponse | null>(null);
   const [confirmed, setConfirmed] = useState(false);
-  const [busy, setBusy] = useState<"preview" | "apply" | null>(null);
+  const [busy, setBusy] = useState<"schema" | "preview" | "apply" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const hydratedSchema = useRef("");
+
+  const schemaSignature = useMemo(
+    () => JSON.stringify(profile
+      .filter((item) => item.expected_type)
+      .map((item) => [item.name, item.expected_type])),
+    [profile]
+  );
+
+  useEffect(() => {
+    if (schemaSignature === "[]" || schemaSignature === hydratedSchema.current) return;
+    const schemaColumns = profile.filter((item) => item.expected_type);
+    setSelected(schemaColumns.map((item) => item.name));
+    setTargets((current) => ({
+      ...current,
+      ...Object.fromEntries(schemaColumns.map((item) => [item.name, item.expected_type as TargetType])),
+    }));
+    hydratedSchema.current = schemaSignature;
+  }, [profile, schemaSignature]);
 
   const invalidatePreview = () => {
     setPreview(null);
@@ -131,12 +152,39 @@ export function ValidationTypePipeline({
     }
   };
 
+  const saveSchema = async () => {
+    setBusy("schema");
+    setError(null);
+    setSuccess(null);
+    try {
+      const response = await fetch(sessionApiUrl("/dataset/type-schema"), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          columns: selected.map((column) => ({
+            column,
+            target_type: targets[column] ?? suggestedTargets[column],
+          })),
+        }),
+      });
+      if (!response.ok) throw new Error(await responseDetail(response));
+      await response.json();
+      setSuccess("Эталон типов сохранён, проверка запущена");
+      onSchemaSaved();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Не удалось сохранить эталон типов");
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const applyBlockedByReject = invalidPolicy === "reject" && (preview?.total_invalid ?? 0) > 0;
 
   return (
     <section
       role="region"
-      aria-label="Алгоритм исправления типов"
+      aria-label="Мастер исправления типов"
       className="h-[420px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 feed-scroll"
     >
       <div className="grid gap-4 lg:grid-cols-2">
@@ -163,8 +211,8 @@ export function ValidationTypePipeline({
         </div>
 
         <div className="rounded-md border border-neutral-200 p-3">
-          <h4 className="font-semibold text-sm text-neutral-800">2. Целевые типы</h4>
-          <p className="mt-1 text-xs text-neutral-500">Выберите тип назначения и поведение для неприводимых значений.</p>
+          <h4 className="font-semibold text-sm text-neutral-800">2. Ожидаемые типы</h4>
+          <p className="mt-1 text-xs text-neutral-500">Задайте эталон сессии и поведение для неприводимых значений.</p>
           <div className="mt-3 space-y-2">
             {profile.map((item) => (
               <div key={item.name} className="grid grid-cols-[minmax(0,1fr)_minmax(130px,1fr)] items-center gap-2">
@@ -209,6 +257,14 @@ export function ValidationTypePipeline({
                 Исследуемый признак «{activeTargetColumn}» можно преобразовать только в числовой тип.
               </p>
             )}
+            <button
+              type="button"
+              disabled={selected.length === 0 || busy !== null}
+              onClick={saveSchema}
+              className="w-full rounded border border-brand px-3 py-2 text-sm font-medium text-brand transition-opacity hover:bg-brand-light/50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {busy === "schema" ? "Сохранение…" : "Сохранить эталон и проверить"}
+            </button>
           </div>
         </div>
 

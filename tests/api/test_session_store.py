@@ -364,6 +364,44 @@ class _SessionStoreContract:
         assert session.target_column is None
         assert session.session_id == "legacy-024"
 
+    # ── 6. type_schema (Task 36) ──
+
+    def test_type_schema_defaults_to_empty_and_persists(self, sample_dataset_info, sample_dataframe):
+        session = self.store.get_or_create("type-schema-025")
+        assert session.type_schema == {}
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        session.type_schema = {"value": "float", "date": "datetime"}
+        session.touch()
+        self.store.save(session)
+
+        assert self.store.get("type-schema-025").type_schema == {
+            "value": "float", "date": "datetime"
+        }
+
+    def test_new_dataset_resets_type_schema(self, sample_dataset_info, sample_dataframe):
+        session = self.store.get_or_create("type-schema-reset-026")
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        session.type_schema = {"value": "float"}
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        self.store.save(session)
+
+        assert self.store.get("type-schema-reset-026").type_schema == {}
+
+    def test_type_schema_survives_roundtrip_and_is_backward_compatible(
+        self, sample_dataset_info, sample_dataframe
+    ):
+        from apps.api.session_store import session_from_dict, session_to_dict
+
+        session = AnalysisSession(session_id="type-schema-roundtrip-027")
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        session.type_schema = {"value": "float"}
+        restored = session_from_dict(session_to_dict(session))
+        assert restored.type_schema == {"value": "float"}
+
+        legacy = session_to_dict(session)
+        legacy.pop("type_schema")
+        assert session_from_dict(legacy).type_schema == {}
+
 
 # ────────────────────────────────────────────────────────────────────
 # MemorySessionStore -- конкретные тесты

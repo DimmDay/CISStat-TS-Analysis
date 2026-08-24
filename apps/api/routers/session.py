@@ -27,6 +27,8 @@ from apps.api.schemas import (
     DatasetSummaryOut,
     DatasetTypeConversionRequest,
     DatasetTypeConversionResponse,
+    DatasetTypeSchemaRequest,
+    DatasetTypeSchemaResponse,
     DatasetValidateResponse,
     DecompositionResponse,
     DecompositionSeriesPoint,
@@ -48,6 +50,7 @@ from apps.api.schemas import (
     UploadResponse,
     ValidationCheckItem,
     ValidationCheckResult,
+    ValidationTypeProfileOut,
 )
 from app.data.detectors import score_all_columns_as_date, score_all_columns_as_entity_group, detect_column_frequency
 from validation.engine import auto_generate_rules, validate_dataframe
@@ -503,6 +506,45 @@ def get_dataset_decomposition_series(column: str, date_column: str, request: Req
     return DecompositionSeriesResponse(**result)
 
 
+def _session_validation_rules(session: AnalysisSession) -> dict:
+    """Автоправила + явно выбранный пользователем эталон типов."""
+    rules = auto_generate_rules(session.dataframe)
+    if session.type_schema:
+        rules["schema"] = {
+            "columns": {
+                column: {"type": target_type, "nullable": True, "coerce": True}
+                for column, target_type in session.type_schema.items()
+            }
+        }
+    return rules
+
+
+def _validation_type_profile(
+    df: pd.DataFrame,
+    type_schema: dict[str, str],
+    validation_result: dict,
+) -> list[ValidationTypeProfileOut]:
+    violations_by_column = {
+        str(column): int(count)
+        for column, count in validation_result.get("schema_errors_by_column", {}).items()
+    }
+
+    profile: list[ValidationTypeProfileOut] = []
+    for item in _compute_column_info(df):
+        expected_type = type_schema.get(item.name)
+        violations = violations_by_column.get(item.name, 0) if expected_type is not None else None
+        profile.append(ValidationTypeProfileOut(
+            **item.model_dump(),
+            expected_type=expected_type,
+            validation_status=(
+                "profile" if expected_type is None
+                else "mismatch" if violations else "matched"
+            ),
+            violations=violations,
+        ))
+    return profile
+
+
 @router.get("/dataset/validate", response_model=DatasetValidateResponse)
 def get_dataset_validate(request: Request, response: Response, column: str | None = None):
     """
@@ -510,12 +552,11 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
     «Валидация» (см. TsAnalysisValidation.tsx::CHECKS) -- ранее ВСЕ 10
     были статическим моком (захардкоженный массив, ни одного fetch).
 
-    Правила -- auto_generate_rules(df) (validation/engine.py): диапазоны/
-    inclusion/consistency/formats выводятся из имён и значений колонок
-    без явного шаблона -- тот же принцип "без конфига", что и в Upload.
-    Явный выбор шаблона (RulesManagementPanel) -- отдельная задача,
-    пока панель не подключена к сессии (rules_source в ответе всегда
-    "auto" на этом этапе, чтобы фронт мог честно это показать).
+    Базовые правила -- auto_generate_rules(df) (validation/engine.py):
+    диапазоны/inclusion/consistency/formats выводятся из имён и значений
+    колонок. Эталон типов задаётся пользователем в мастере и хранится в
+    AnalysisSession.type_schema; при его наличии rules_source="session".
+    Общая RulesManagementPanel по-прежнему не подключена к сессии.
 
     data_types в auto-режиме тоже "pending": фактический профиль dtype
     возвращается в type_profile, но ожидаемой schema нет, поэтому заявлять
@@ -544,7 +585,7 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
     if column is not None and column not in df.columns:
         raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
 
-    rules = auto_generate_rules(df)
+    rules = _session_validation_rules(session)
     result = validate_dataframe(df, rules, target_column=column)
 
     checks = {
@@ -560,16 +601,45 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
 
     return DatasetValidateResponse(
         is_valid=result["is_valid"],
-        rules_source="auto",
+        rules_source="session" if session.type_schema else "auto",
         column=column,
         total_rows=result["summary"]["total_rows"],
         total_columns=result["summary"]["total_columns"],
         type_validation_mode=(
             "schema" if rules.get("schema", {}).get("columns") else "profile"
         ),
-        type_profile=_compute_column_info(df),
+        type_profile=_validation_type_profile(df, session.type_schema, result),
         checks=checks,
     )
+
+
+@router.put("/dataset/type-schema", response_model=DatasetTypeSchemaResponse)
+def save_dataset_type_schema(
+    payload: DatasetTypeSchemaRequest,
+    request: Request,
+    response: Response,
+):
+    """Сохраняет явно выбранные ожидаемые типы в текущей сессии."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    columns = [item.column for item in payload.columns]
+    if len(columns) != len(set(columns)):
+        raise HTTPException(status_code=422, detail="Одна колонка не может повторяться в схеме")
+    missing = [column for column in columns if column not in session.dataframe.columns]
+    if missing:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Колонки отсутствуют в датасете: {', '.join(missing)}",
+        )
+
+    session.type_schema = {item.column: item.target_type for item in payload.columns}
+    session.touch()
+    store.save(session)
+    return DatasetTypeSchemaResponse(columns=payload.columns)
 
 
 @router.post("/dataset/convert-types", response_model=DatasetTypeConversionResponse)
@@ -612,6 +682,9 @@ def convert_dataset_types(
     target_column_reset = False
     if payload.apply:
         session.dataframe = converted_df
+        session.type_schema.update({
+            item.column: item.target_type for item in payload.conversions
+        })
         if session.target_column is not None and not pd.api.types.is_numeric_dtype(
             converted_df[session.target_column]
         ):
@@ -626,7 +699,10 @@ def convert_dataset_types(
         total_invalid=total_invalid,
         target_column_reset=target_column_reset,
         columns=[TypeConversionResultOut(**item) for item in raw_results],
-        type_profile=_compute_column_info(converted_df),
+        type_profile=[
+            ValidationTypeProfileOut(**item.model_dump())
+            for item in _compute_column_info(converted_df)
+        ],
     )
 
 

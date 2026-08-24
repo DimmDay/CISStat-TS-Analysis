@@ -141,6 +141,7 @@ def test_data_types_warns_when_value_cannot_be_coerced_to_schema_type():
     assert data_types["status"] == "warning"
     assert data_types["count"] > 0
     assert data_types["items"]
+    assert result["schema_errors_by_column"]["value"] > 0
 
 
 class TestTextQualityEmptyStringRegressio:

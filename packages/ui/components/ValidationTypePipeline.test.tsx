@@ -35,15 +35,53 @@ describe("ValidationTypePipeline", () => {
   it("renders the four-step correction algorithm with active controls", () => {
     render(<ValidationTypePipeline profile={PROFILE} onApplied={jest.fn()} />);
 
-    expect(screen.getByRole("region", { name: "Алгоритм исправления типов" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Мастер исправления типов" })).toBeInTheDocument();
     expect(screen.getByText("1. Выбор колонок")).toBeInTheDocument();
-    expect(screen.getByText("2. Целевые типы")).toBeInTheDocument();
+    expect(screen.getByText("2. Ожидаемые типы")).toBeInTheDocument();
     expect(screen.getByText("3. Предпросмотр")).toBeInTheDocument();
     expect(screen.getByText("4. Применение")).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Выбрать колонку Price" })).toBeEnabled();
     expect(screen.getByRole("combobox", { name: "Целевой тип для Price" })).toBeEnabled();
     expect(screen.getByRole("combobox", { name: "Политика ошибок" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Сохранить эталон и проверить" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Предпросмотр изменений" })).toBeDisabled();
+  });
+
+  it("saves selected expected types as the session schema", async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        saved: true,
+        columns: [{ column: "Price", target_type: "float" }],
+      }),
+    });
+    const onSchemaSaved = jest.fn();
+    render(
+      <ValidationTypePipeline
+        profile={PROFILE}
+        onApplied={jest.fn()}
+        onSchemaSaved={onSchemaSaved}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Выбрать колонку Price" }));
+    fireEvent.change(screen.getByRole("combobox", { name: "Целевой тип для Price" }), {
+      target: { value: "float" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить эталон и проверить" }));
+
+    await waitFor(() => expect(onSchemaSaved).toHaveBeenCalledTimes(1));
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/session/dataset/type-schema"),
+      expect.objectContaining({
+        method: "PUT",
+        credentials: "include",
+        body: JSON.stringify({
+          columns: [{ column: "Price", target_type: "float" }],
+        }),
+      })
+    );
+    expect(screen.getByText("Эталон типов сохранён, проверка запущена")).toBeInTheDocument();
   });
 
   it("previews selected conversions and applies only after explicit confirmation", async () => {

@@ -64,6 +64,13 @@ class ColumnInfoOut(BaseModel):
     unique: int
 
 
+class ValidationTypeProfileOut(ColumnInfoOut):
+    """Профиль dtype с результатом сверки с пользовательским эталоном."""
+    expected_type: Optional[str] = None
+    validation_status: Literal["matched", "mismatch", "profile"] = "profile"
+    violations: Optional[int] = None
+
+
 class QualityTeaserOut(BaseModel):
     """Только счётчики -- содержательный анализ проблем качества живёт в
     модуле «Валидация», не здесь (по контракту вкладки «Загрузка")."""
@@ -312,8 +319,9 @@ class DatasetValidateResponse(BaseModel):
     """Ответ GET /dataset/validate -- реальная валидация session.dataframe
     по всем 10 проверкам. rules_source сообщает фронту, откуда взяты
     правила: 'auto' (auto_generate_rules по именам колонок, без явного
-    шаблона) -- до появления UI выбора шаблона (см. RulesManagementPanel,
-    пока не подключена к сессии).
+    шаблона типов) либо 'session' (автоправила дополнены сохранённым
+    пользователем эталоном типов). Общая RulesManagementPanel пока не
+    подключена к сессии.
 
     column (2026-08-14) -- эхо переданного query-параметра column, если
     был задан. None значит "весь датасет" (старое поведение, backward
@@ -321,7 +329,10 @@ class DatasetValidateResponse(BaseModel):
     column, часть принципиально нет -- см. validation/engine.py::_run_all_checks.
     """
     is_valid: bool
-    rules_source: str = Field("auto", description="'auto' -- rules сгенерированы автоматически по колонкам")
+    rules_source: str = Field(
+        "auto",
+        description="'auto' -- автоправила; 'session' -- добавлен пользовательский эталон типов",
+    )
     column: Optional[str] = Field(None, description="Колонка, до которой скоупились применимые проверки; None -- весь датасет")
     total_rows: int
     total_columns: int
@@ -329,7 +340,7 @@ class DatasetValidateResponse(BaseModel):
         "profile",
         description="'profile' -- только фактические типы; 'schema' -- выполнена сверка с ожидаемой Pandera-схемой",
     )
-    type_profile: List[ColumnInfoOut] = Field(
+    type_profile: List[ValidationTypeProfileOut] = Field(
         default_factory=list,
         description="Фактический профиль типов колонок; переиспользует контракт columns_info вкладки «Загрузка»",
     )
@@ -347,6 +358,15 @@ class DatasetTypeConversionRequest(BaseModel):
     apply: bool = Field(False, description="False -- preview без мутации; True -- применить к session.dataframe")
 
 
+class DatasetTypeSchemaRequest(BaseModel):
+    columns: List[TypeConversionSpec] = Field(..., min_length=1, max_length=100)
+
+
+class DatasetTypeSchemaResponse(BaseModel):
+    saved: bool = True
+    columns: List[TypeConversionSpec]
+
+
 class TypeConversionResultOut(BaseModel):
     column: str
     from_dtype: str
@@ -362,7 +382,7 @@ class DatasetTypeConversionResponse(BaseModel):
     total_invalid: int
     target_column_reset: bool = False
     columns: List[TypeConversionResultOut]
-    type_profile: List[ColumnInfoOut]
+    type_profile: List[ValidationTypeProfileOut]
 
 
 class DatasetSummaryOut(BaseModel):

@@ -78,6 +78,13 @@ def test_coerce_policy_applies_conversion_and_persists_new_profile():
     assert persisted[0]["dtype"] == "Float64"
     assert persisted[0]["nulls"] == 1
 
+    validation = client.get("/v1/session/dataset/validate").json()
+    assert validation["rules_source"] == "session"
+    assert validation["type_validation_mode"] == "schema"
+    assert validation["checks"]["data_types"]["status"] == "done"
+    assert validation["type_profile"][0]["expected_type"] == "float"
+    assert validation["type_profile"][0]["validation_status"] == "matched"
+
 
 def test_missing_dataset_returns_404():
     response = client.post("/v1/session/dataset/convert-types", json=_payload(apply=False))

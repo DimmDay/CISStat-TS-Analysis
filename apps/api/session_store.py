@@ -102,7 +102,7 @@ class DatasetInfo:
 class AnalysisSession:
     """Состояние одной сессии анализа.
 
-    ВАЖНО: мутации (set_dataset, set_stage, set_target_column) НЕ
+    ВАЖНО: мутации (set_dataset, set_stage, set_target_column, type_schema) НЕ
     персистятся автоматически. После любой мутации вызывающий код ДОЛЖЕН
     вызвать store.save(session), иначе изменения потеряются при следующем
     get() в Redis-режиме. В Memory-режиме save() -- no-op по сути
@@ -125,6 +125,11 @@ class AnalysisSession:
     # Phase 0.5: имя выбранной числовой колонки для прогнозирования.
     # None = пользователь ещё не выбрал target → backtest fallback на синтетику.
     target_column: Optional[str] = None
+    # Пользовательский эталон типов для вкладки «Валидация».
+    # Формат: {column_name: integer|float|datetime|string|boolean}.
+    # Не выводится автоматически из фактических dtype, иначе проверка
+    # всегда была бы круговой. Новый датасет сбрасывает этот контракт.
+    type_schema: dict[str, str] = field(default_factory=dict)
     updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def touch(self) -> None:
@@ -143,6 +148,7 @@ class AnalysisSession:
         self.stages["upload"] = "done"
         self.last_active_stage = "upload"
         self.target_column = None
+        self.type_schema = {}
         self.touch()
 
     def set_target_column(self, column_name: str) -> None:
@@ -225,6 +231,7 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "stages": dict(session.stages),
         "last_active_stage": session.last_active_stage,
         "target_column": session.target_column,
+        "type_schema": dict(session.type_schema),
         "updated_at": session.updated_at,
     }
 
@@ -232,10 +239,9 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
 def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
     """Десериализация AnalysisSession из dict.
 
-    BACKCOMPAT (Phase 0.5): старые записи в Redis, сохранённые ДО
-    появления поля target_column, не содержат этого ключа. d.get(...) с
-    дефолтом None -- корректно восстанавливает такие сессии без ошибок.
-    Без этого rolling-deploy Phase 0.5 сломал бы все существующие сессии.
+    BACKCOMPAT: старые записи в Redis могут не содержать target_column
+    и type_schema. d.get(...) корректно восстанавливает такие сессии с
+    безопасными дефолтами, поэтому rolling deploy не ломает активные сессии.
     """
     dataset = _dataset_from_dict(d["dataset"]) if d.get("dataset") else None
     df = _dataframe_from_json(d["dataframe_json"]) if d.get("dataframe_json") is not None else None
@@ -246,6 +252,7 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         stages=dict(d.get("stages", {})),
         last_active_stage=d.get("last_active_stage"),
         target_column=d.get("target_column"),  # None для старых записей
+        type_schema=dict(d.get("type_schema", {})),  # {} для старых записей
         updated_at=d.get("updated_at", datetime.now(timezone.utc).isoformat()),
     )
 

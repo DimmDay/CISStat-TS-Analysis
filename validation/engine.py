@@ -382,6 +382,7 @@ def validate_dataframe(df: pd.DataFrame, rules: dict, target_column: str | None 
         "errors": [],
         "warnings": [],
         "schema_errors": {},
+        "schema_errors_by_column": {},
         "validated_df": df.copy(),
         "summary": {},
         "checks": {},
@@ -401,6 +402,11 @@ def validate_dataframe(df: pd.DataFrame, rules: dict, target_column: str | None 
         result["is_valid"] = False
         if e.failure_cases is not None and not e.failure_cases.empty:
             result["schema_errors"] = e.failure_cases.groupby("check").size().to_dict()
+            column_cases = e.failure_cases.dropna(subset=["column"])
+            result["schema_errors_by_column"] = {
+                str(column): int(count)
+                for column, count in column_cases.groupby("column").size().items()
+            }
             for _, row in e.failure_cases.head(100).iterrows():
                 result["errors"].append({
                     "type": "schema",

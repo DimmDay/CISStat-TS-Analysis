@@ -147,14 +147,14 @@ const DATA_TYPES_METRICS_DESCRIPTION = `Метрики и алгоритм: Ти
 4. status = done означает, что схема задана и нарушений нет; warning — найдены нарушения; pending — фактический профиль построен, но ожидаемая схема не выбрана, поэтому подтвердить соответствие типов нельзя.
 
 Текущий автоматический режим
-Автоправила безопасно определяют диапазоны и некоторые домены, но не придумывают ожидаемые типы из фактических данных. Поэтому API возвращает type_validation_mode = profile, профиль всех колонок и честный status = pending до подключения явного шаблона правил.`;
+Автоправила безопасно определяют диапазоны и некоторые домены, но не придумывают ожидаемые типы из фактических данных. До сохранения эталона API возвращает type_validation_mode = profile и status = pending. Эталон задаётся в «Мастере исправления типов», сохраняется в текущей сессии и переводит проверку в режим schema.`;
 
-const DATA_TYPES_PIPELINE_DESCRIPTION = `Полный пайплайн: Типы данных
+const DATA_TYPES_PIPELINE_DESCRIPTION = `Мастер исправления типов
 
-1. Отметьте проблемные колонки и задайте для каждой целевой тип.
-2. Выберите политику ошибок: отклонить весь набор либо заменить неприводимые значения пропусками.
-3. Запустите предпросмотр. Предпросмотр не изменяет датасет и показывает последствия преобразования.
-4. Проверьте число успешно преобразованных значений и примеры ошибок.
+1. Отметьте проблемные колонки и задайте для каждой ожидаемый тип.
+2. Сохраните эталон и проверьте датасет относительно него.
+3. Выберите политику ошибок: отклонить весь набор либо заменить неприводимые значения пропусками.
+4. Запустите предпросмотр. Предпросмотр не изменяет датасет и показывает последствия преобразования.
 5. Подтвердите применение. Изменения сохраняются атомарно, после чего проверка типов запускается повторно.`;
 
 // ── Компонент ─────────────────────────────────────────────────
@@ -190,45 +190,52 @@ export function TsAnalysisValidation() {
   const [datasetSummary, setDatasetSummary] = useState<{ totalRows: number; totalColumns: number } | null>(null);
   const [typeProfile, setTypeProfile] = useState<ValidationTypeProfileItem[]>([]);
   const [typeValidationMode, setTypeValidationMode] = useState<TypeValidationMode>("profile");
-  const [validationRevision, setValidationRevision] = useState(0);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const validationRequestId = useRef(0);
 
-  useEffect(() => {
+  const fetchValidation = useCallback(async () => {
     if (!activeDataset) {
       setChecksData(null);
       setDatasetSummary(null);
       setTypeProfile([]);
       setTypeValidationMode("profile");
+      setValidationError(null);
+      setChecksLoading(false);
       return;
     }
-    let cancelled = false;
+    const requestId = ++validationRequestId.current;
     setChecksLoading(true);
+    setValidationError(null);
     const url = activeFeature
       ? sessionApiUrl(`/dataset/validate?column=${encodeURIComponent(activeFeature)}`)
       : sessionApiUrl("/dataset/validate");
-    fetch(url, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (cancelled || !data) return;
-        setChecksData(data.checks);
-        setDatasetSummary({ totalRows: data.total_rows, totalColumns: data.total_columns });
-        setTypeProfile(Array.isArray(data.type_profile) ? data.type_profile : []);
-        setTypeValidationMode(data.type_validation_mode === "schema" ? "schema" : "profile");
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setChecksData(null);
-          setDatasetSummary(null);
-          setTypeProfile([]);
-          setTypeValidationMode("profile");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setChecksLoading(false);
-      });
+    try {
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (requestId !== validationRequestId.current || !data) return;
+      setChecksData(data.checks);
+      setDatasetSummary({ totalRows: data.total_rows, totalColumns: data.total_columns });
+      setTypeProfile(Array.isArray(data.type_profile) ? data.type_profile : []);
+      setTypeValidationMode(data.type_validation_mode === "schema" ? "schema" : "profile");
+    } catch {
+      if (requestId !== validationRequestId.current) return;
+      setChecksData(null);
+      setDatasetSummary(null);
+      setTypeProfile([]);
+      setTypeValidationMode("profile");
+      setValidationError("Не удалось выполнить проверку");
+    } finally {
+      if (requestId === validationRequestId.current) setChecksLoading(false);
+    }
+  }, [activeDataset, activeFeature]);
+
+  useEffect(() => {
+    void fetchValidation();
     return () => {
-      cancelled = true;
+      validationRequestId.current += 1;
     };
-  }, [activeDataset, activeFeature, validationRevision]);
+  }, [fetchValidation]);
 
   // Реальные status/count поверх статических label/description. Пока
   // датасет не загружен или проверка ещё не пришла -- честное "pending",
@@ -277,6 +284,11 @@ export function TsAnalysisValidation() {
     setDescriptionSection(section);
   };
 
+  const runValidation = () => {
+    if (!activeDataset) return;
+    void fetchValidation();
+  };
+
   // Показать справку по стандартам DQ
   const handleHelpClick = () => {
     setDescriptionSection((prev) => prev === "help" ? null : "help");
@@ -319,6 +331,7 @@ export function TsAnalysisValidation() {
     if (descriptionSection === "rules") return "Управление правилами валидации";
     if (!descriptionSection) return "Выберите раздел в боковой панели";
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
+    if (activeCheck.id === "data_types") return "Мастер исправления типов";
     return `Полный пайплайн — ${activeCheck.label}`;
   })();
 
@@ -451,7 +464,7 @@ export function TsAnalysisValidation() {
                 descriptionContent
               ) : (
                 <span className="text-neutral-400 italic">
-                  Нажмите «Метрики и алгоритм», «Полный пайплайн», «Справка» или «Управление правилами»
+                  Нажмите «Метрики и алгоритм», «Исправить типы данных», «Справка» или «Управление правилами»
                 </span>
               )}
               {/* Collapse chevron — sticky прилипает к низу scroll-области */}
@@ -484,7 +497,11 @@ export function TsAnalysisValidation() {
 
         {/* График */}
         <div>
-          <h3 className="font-semibold mb-1">Обзор: {activeCheck.label}</h3>
+          <h3 className="font-semibold mb-1">
+            {activeCheckId === "data_types" && descriptionSection === "pipeline"
+              ? "Мастер исправления типов"
+              : `Обзор: ${activeCheck.label}`}
+          </h3>
           <p className="text-xs text-neutral-500 mb-3">
             {activeCheckId === "data_types" && descriptionSection === "pipeline"
               ? "Выберите преобразования, проверьте последствия и примените их к активному датасету."
@@ -499,9 +516,10 @@ export function TsAnalysisValidation() {
               activeTargetColumn={activeFeature}
               onApplied={(nextProfile, targetColumnReset) => {
                 setTypeProfile(nextProfile);
-                setValidationRevision((revision) => revision + 1);
+                runValidation();
                 if (targetColumnReset) void refetchTargetColumn();
               }}
+              onSchemaSaved={runValidation}
             />
           ) : activeCheckId === "data_types" ? (
             <ValidationTypeMatrix
@@ -549,13 +567,40 @@ export function TsAnalysisValidation() {
 
               <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
 
-              {/* Бейдж результата — после описания */}
-              {check.count !== null && check.count > 0 && (
+              {/* Пользовательские состояния проверки типов */}
+              {check.id === "data_types" && checksLoading && (
+                <p role="status" className="text-sm text-brand bg-brand-light rounded px-3 py-2 mb-2">
+                  Проверка выполняется
+                </p>
+              )}
+              {check.id === "data_types" && !checksLoading && (validationError || checksData?.data_types?.error) && (
+                <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">
+                  Ошибка выполнения
+                </p>
+              )}
+              {check.id === "data_types" && !checksLoading && !validationError && !checksData?.data_types?.error && typeValidationMode === "profile" && (
+                <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                  Эталон типов не задан
+                </p>
+              )}
+              {check.id === "data_types" && !checksLoading && !validationError && typeValidationMode === "schema" && check.status === "warning" && (
+                <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
+                  Найдены проблемы: {check.count ?? 0}
+                </p>
+              )}
+              {check.id === "data_types" && !checksLoading && !validationError && typeValidationMode === "schema" && check.status === "done" && (
+                <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
+                  Проверка пройдена
+                </p>
+              )}
+
+              {/* Бейджи остальных критериев — после описания */}
+              {check.id !== "data_types" && check.count !== null && check.count > 0 && (
                 <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
                   ⚠️ Найдено {check.count} нарушений
                 </p>
               )}
-              {check.status === "done" && (
+              {check.id !== "data_types" && check.status === "done" && (
                 <p className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
                   Проверка пройдена, нарушений нет
                 </p>
@@ -573,7 +618,7 @@ export function TsAnalysisValidation() {
                 Метрики и алгоритм
               </button>
 
-              {/* Кнопка «Полный пайплайн» — активирует контент в центральном поле */}
+              {/* Для типов открывается мастер; остальные критерии сохраняют общий pipeline. */}
               <button
                 onClick={() => handleDescriptionClick(check, "pipeline")}
                 className={`w-full mb-3 rounded px-3 py-2 text-sm text-left font-medium transition-colors ${
@@ -582,10 +627,16 @@ export function TsAnalysisValidation() {
                     : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
                 }`}
               >
-                Полный пайплайн
+                {check.id === "data_types" ? "Исправить типы данных" : "Полный пайплайн"}
               </button>
 
-              <Button>Запустить проверку ({check.label.toLowerCase()})</Button>
+              <Button
+                disabled={!activeDataset || checksLoading}
+                onClick={runValidation}
+                className="disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {checksLoading ? "Проверка выполняется…" : `Запустить проверку (${check.label.toLowerCase()})`}
+              </Button>
             </article>
           ))}
         </div>

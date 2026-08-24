@@ -59,6 +59,65 @@ function renderValidation() {
   );
 }
 
+function validationResponse(
+  typeStatus: "done" | "warning" | "pending",
+  mode: "profile" | "schema",
+  count: number | null
+) {
+  return {
+    is_valid: typeStatus !== "warning",
+    rules_source: mode === "schema" ? "session" : "auto",
+    total_rows: 3,
+    total_columns: 1,
+    type_validation_mode: mode,
+    type_profile: [
+      {
+        name: "Amount",
+        dtype: "object",
+        type_icon: "categorical",
+        non_null: 3,
+        nulls: 0,
+        unique: 3,
+        expected_type: mode === "schema" ? "float" : null,
+        validation_status: mode === "schema" ? (typeStatus === "warning" ? "mismatch" : "matched") : "profile",
+        violations: mode === "schema" ? count : null,
+      },
+    ],
+    checks: Object.fromEntries(
+      EXPECTED_CHECK_IDS_ARR.map((id) => [id, {
+        status: id === "data_types" ? typeStatus : "pending",
+        count: id === "data_types" ? count : null,
+        items: [],
+        scope: "dataset",
+      }])
+    ),
+  };
+}
+
+function mockActiveValidation(validateResponse: () => Promise<unknown>) {
+  global.fetch = jest.fn((url: string) => {
+    if (url.includes("/session/current")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          has_active_dataset: true,
+          dataset: { dataset_id: "d1", name: "types.csv", rows: 3, columns: 1, size_label: "1 KB" },
+          stages: {},
+          last_active_stage: null,
+        }),
+      });
+    }
+    if (url.includes("/target-column")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ target_column: null, suggested_column: null, available_columns: [], has_dataset: true }),
+      });
+    }
+    if (url.includes("/dataset/validate")) return validateResponse();
+    return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
+  }) as unknown as typeof fetch;
+}
+
 describe("TsAnalysisValidation", () => {
   it("renders the module title", async () => {
     renderValidation();
@@ -113,13 +172,14 @@ describe("TsAnalysisValidation", () => {
     expect(screen.getByText(/GET \/v1\/session\/dataset\/validate/i)).toBeInTheDocument();
   });
 
-  it("shows concise correction guidance for the data-types full pipeline", async () => {
+  it("renames the data-types correction action and opens the named wizard", async () => {
     renderValidation();
 
-    const pipelineButtons = await screen.findAllByRole("button", { name: "Полный пайплайн" });
-    fireEvent.click(pipelineButtons[0]);
+    const correctionButton = await screen.findByRole("button", { name: "Исправить типы данных" });
+    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(9);
+    fireEvent.click(correctionButton);
 
-    expect(screen.getByText("Полный пайплайн — Типы данных")).toBeInTheDocument();
+    expect(screen.getAllByText("Мастер исправления типов").length).toBeGreaterThan(0);
     expect(screen.getByText(/Отметьте проблемные колонки/i)).toBeInTheDocument();
     expect(screen.getByText(/Предпросмотр не изменяет датасет/i)).toBeInTheDocument();
     expect(screen.getByText(/Подтвердите применение/i)).toBeInTheDocument();
@@ -296,13 +356,80 @@ describe("TsAnalysisValidation", () => {
     expect(screen.getByText("float64")).toBeInTheDocument();
     expect(screen.queryByText(/Проверка «Типы данных» неприменима/i)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Полный пайплайн" })[0]);
-    expect(screen.getByRole("region", { name: "Алгоритм исправления типов" })).toBeInTheDocument();
+    expect(screen.getByText("Эталон типов не задан")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Исправить типы данных" }));
+    expect(screen.getByRole("region", { name: "Мастер исправления типов" })).toBeInTheDocument();
     expect(screen.queryByRole("table", { name: "Матрица типов колонок" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Форматы и шаблоны" }));
     expect(screen.queryByRole("table", { name: "Матрица типов колонок" })).not.toBeInTheDocument();
     expect(screen.getByText(/Проверка «Форматы и шаблоны» неприменима/i)).toBeInTheDocument();
+  });
+
+  it("reruns type validation and shows running then problems status", async () => {
+    let validateCall = 0;
+    let resolveManual: ((value: unknown) => void) | undefined;
+    mockActiveValidation(() => {
+      validateCall += 1;
+      if (validateCall === 1) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(validationResponse("pending", "profile", null)),
+        });
+      }
+      return new Promise((resolve) => { resolveManual = resolve; });
+    });
+
+    renderValidation();
+    expect(await screen.findByText("Эталон типов не задан")).toBeInTheDocument();
+    expect(await screen.findByText("Amount")).toBeInTheDocument();
+    expect(validateCall).toBe(1);
+
+    await waitFor(() => expect(
+      screen.getByRole("button", { name: "Запустить проверку (типы данных)" })
+    ).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Запустить проверку (типы данных)" }));
+    await waitFor(() => expect(validateCall).toBe(2));
+    expect(await screen.findByText("Проверка выполняется")).toBeInTheDocument();
+    resolveManual?.({
+      ok: true,
+      json: () => Promise.resolve(validationResponse("warning", "schema", 2)),
+    });
+
+    expect(await screen.findByText("Найдены проблемы: 2")).toBeInTheDocument();
+    expect(validateCall).toBe(2);
+  });
+
+  it("shows passed status when the saved type schema has no violations", async () => {
+    mockActiveValidation(() => Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve(validationResponse("done", "schema", 0)),
+    }));
+
+    renderValidation();
+    expect(await screen.findByText("Проверка пройдена")).toBeInTheDocument();
+  });
+
+  it("shows an execution error when manual type validation fails", async () => {
+    let validateCall = 0;
+    mockActiveValidation(() => {
+      validateCall += 1;
+      return Promise.resolve(validateCall === 1
+        ? { ok: true, json: () => Promise.resolve(validationResponse("pending", "profile", null)) }
+        : { ok: false, status: 500, json: () => Promise.resolve({ detail: "boom" }) });
+    });
+
+    renderValidation();
+    expect(await screen.findByText("Эталон типов не задан")).toBeInTheDocument();
+    expect(await screen.findByText("Amount")).toBeInTheDocument();
+    expect(validateCall).toBe(1);
+    await waitFor(() => expect(
+      screen.getByRole("button", { name: "Запустить проверку (типы данных)" })
+    ).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Запустить проверку (типы данных)" }));
+    await waitFor(() => expect(validateCall).toBe(2));
+
+    expect(await screen.findByText("Ошибка выполнения")).toBeInTheDocument();
   });
 
   it("shows real numeric columns in the feature selector and passes column= to /dataset/validate (not the old mock ticker list)", async () => {

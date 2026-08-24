@@ -122,14 +122,17 @@ def test_auto_data_types_is_pending_but_returns_actual_type_profile():
         {
             "name": "Country", "dtype": "object", "type_icon": "categorical",
             "non_null": 3, "nulls": 0, "unique": 3,
+            "expected_type": None, "validation_status": "profile", "violations": None,
         },
         {
             "name": "Year", "dtype": "int64", "type_icon": "numeric",
             "non_null": 3, "nulls": 0, "unique": 3,
+            "expected_type": None, "validation_status": "profile", "violations": None,
         },
         {
             "name": "Price", "dtype": "float64", "type_icon": "numeric",
             "non_null": 3, "nulls": 0, "unique": 3,
+            "expected_type": None, "validation_status": "profile", "violations": None,
         },
     ]
 
