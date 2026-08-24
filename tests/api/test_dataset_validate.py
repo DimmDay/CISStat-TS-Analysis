@@ -9,7 +9,9 @@
   4. Реальное нарушение диапазона (auto_generate_rules) видно в ranges.
   5. referential всегда "pending" без явного шаблона (честно, не "done").
   6. Дубликаты строк отражаются в uniqueness.
-  7. Ни одна из 10 проверок не падает с 500 на реалистичном "грязном" датасете
+  7. Автоматический режим честно возвращает pending для schema-сверки,
+     но всегда отдаёт фактический профиль типов колонок.
+  8. Ни одна из 10 проверок не падает с 500 на реалистичном "грязном" датасете
      (регресс на баги text_quality/sufficiency, найденные и исправленные
      2026-08-14 при первом реальном подключении этих функций к API).
 """
@@ -95,6 +97,41 @@ def test_referential_is_always_pending_without_explicit_template():
     assert body["checks"]["referential"] == {
         "status": "pending", "count": None, "items": [], "scope": "column", "error": None
     }
+
+
+def test_auto_data_types_is_pending_but_returns_actual_type_profile():
+    """Auto rules не содержат ожидаемой схемы: зелёный статус был бы
+    круговой проверкой. При этом API переиспользует профиль загрузки,
+    чтобы UI мог показать фактические dtype и семантические классы."""
+    df = pd.DataFrame({
+        "Country": ["RU", "BY", "KZ"],
+        "Year": [2022, 2023, 2024],
+        "Price": [10.5, 11.0, 12.25],
+    })
+    _upload_df(df)
+
+    resp = client.get("/v1/session/dataset/validate")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    assert body["checks"]["data_types"] == {
+        "status": "pending", "count": None, "items": [], "scope": "dataset", "error": None
+    }
+    assert body["type_validation_mode"] == "profile"
+    assert body["type_profile"] == [
+        {
+            "name": "Country", "dtype": "object", "type_icon": "categorical",
+            "non_null": 3, "nulls": 0, "unique": 3,
+        },
+        {
+            "name": "Year", "dtype": "int64", "type_icon": "numeric",
+            "non_null": 3, "nulls": 0, "unique": 3,
+        },
+        {
+            "name": "Price", "dtype": "float64", "type_icon": "numeric",
+            "non_null": 3, "nulls": 0, "unique": 3,
+        },
+    ]
 
 
 def test_duplicate_rows_visible_in_uniqueness():

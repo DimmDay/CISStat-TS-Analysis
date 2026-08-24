@@ -199,6 +199,14 @@ def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict, target_c
 
     # ── data_types (pandera-схема) -- dataset-wide, см. докстринг ──
     def _data_types():
+        # auto_generate_rules намеренно не выводит ожидаемую схему из
+        # фактических dtype: такая круговая проверка всегда дала бы ложный
+        # status="done". Без явной schema профиль типов всё равно доступен
+        # через DatasetValidateResponse.type_profile, но соответствие
+        # эталону проверить нельзя -- честный pending.
+        schema_columns = rules.get("schema", {}).get("columns", {})
+        if not schema_columns:
+            return {"status": "pending", "count": None, "items": [], "scope": "dataset"}
         count = sum(schema_errors.values()) if schema_errors else 0
         items = [{"label": str(k), "count": int(v)} for k, v in schema_errors.items()]
         return {"status": _status(count), "count": count, "items": items, "scope": "dataset"}

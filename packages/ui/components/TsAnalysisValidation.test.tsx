@@ -7,6 +7,8 @@
 // 4. Повторный клик скрывает контент (toggle)
 // 5. Expandable description: chevron appears on overflow
 // 6. Expand/collapse toggle
+// 7. «Метрики и алгоритм» для «Типы данных» раскрывает полный контракт
+//    метрик, алгоритма и честных backend-статусов.
 //
 // Обновлено 2026-08-14: компонент подключён к реальному
 // GET /v1/session/dataset/validate (через useAppShell/AppShellProvider) --
@@ -93,6 +95,22 @@ describe("TsAnalysisValidation", () => {
         expect(screen.getByText(label)).toBeInTheDocument();
       });
     });
+  });
+
+  it("shows detailed metrics and backend algorithm for the data-types stop", async () => {
+    renderValidation();
+
+    const metricsButtons = await screen.findAllByRole("button", {
+      name: "Метрики и алгоритм",
+    });
+    fireEvent.click(metricsButtons[0]);
+
+    expect(screen.getByText("Метрики и алгоритм — Типы данных")).toBeInTheDocument();
+    expect(screen.getByText(/Фактический профиль типов/i)).toBeInTheDocument();
+    expect(screen.getByText(/N_type = Σ n_i/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Pandera-схема/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/status = pending/i)).toBeInTheDocument();
+    expect(screen.getByText(/GET \/v1\/session\/dataset\/validate/i)).toBeInTheDocument();
   });
 
   // ── Кнопка «Управление правилами» ──

@@ -325,6 +325,14 @@ class DatasetValidateResponse(BaseModel):
     column: Optional[str] = Field(None, description="Колонка, до которой скоупились применимые проверки; None -- весь датасет")
     total_rows: int
     total_columns: int
+    type_validation_mode: Literal["profile", "schema"] = Field(
+        "profile",
+        description="'profile' -- только фактические типы; 'schema' -- выполнена сверка с ожидаемой Pandera-схемой",
+    )
+    type_profile: List[ColumnInfoOut] = Field(
+        default_factory=list,
+        description="Фактический профиль типов колонок; переиспользует контракт columns_info вкладки «Загрузка»",
+    )
     checks: Dict[str, ValidationCheckResult]
 
 

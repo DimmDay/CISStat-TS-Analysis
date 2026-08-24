@@ -513,6 +513,11 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
     пока панель не подключена к сессии (rules_source в ответе всегда
     "auto" на этом этапе, чтобы фронт мог честно это показать).
 
+    data_types в auto-режиме тоже "pending": фактический профиль dtype
+    возвращается в type_profile, но ожидаемой schema нет, поэтому заявлять
+    ложное «0 нарушений» нельзя. Профиль переиспользует ту же
+    _compute_column_info, что и ответ загрузки.
+
     referential ВСЕГДА "pending" при auto-правилах: auto_generate_rules
     не умеет придумать справочник для сверки -- это не 0 нарушений,
     а "нечего проверять" (см. validation/engine.py::_run_all_checks).
@@ -555,6 +560,10 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
         column=column,
         total_rows=result["summary"]["total_rows"],
         total_columns=result["summary"]["total_columns"],
+        type_validation_mode=(
+            "schema" if rules.get("schema", {}).get("columns") else "profile"
+        ),
+        type_profile=_compute_column_info(df),
         checks=checks,
     )
 
@@ -721,4 +730,3 @@ def set_stage(stage: str, status: str, request: Request, response: Response):
     # КОНТРАКТ SessionStore: мутация -- обязательно save().
     store.save(session)
     return _to_response(session)
-    

@@ -2140,3 +2140,59 @@ Next.js production build standalone: PASS, 13/13 статических стра
 В focused Jest остаются существующие предупреждения React act(...) из RulesManagementPanel; тесты проходят, текущая задача этот компонент не меняет.
 
 В production build остаётся существующее предупреждение Tailwind о шаблоне ../../packages/ui/**/*.ts; сборка проходит, конфигурация в рамках задачи не менялась.
+
+---
+
+Task ID: 33 — «Метрики и алгоритм» для остановки «Типы данных»
+
+Date: 2026-08-24
+Задача
+Полностью реализовать информационное действие «Метрики и алгоритм» для первой остановки степпера «Типы данных»: детализировать центральное окно «Описание», проверить фактическую backend-реализацию проверки и предложить содержательный визуал для окна «Обзор».
+
+Синхронизация
+Перед реализацией локальные изменения Task 32 сохранены в безопасный stash, ветка main синхронизирована fast-forward с origin/main до bccc974 (Task 32 уже опубликован параллельной работой). После реализации повторно выполнен git fetch origin main: origin/main остаётся на bccc974, пересечений с файлами Task 33 нет.
+
+Найденная первопричина backend-проблемы
+GET /v1/session/dataset/validate вызывает auto_generate_rules(df), но автоматические правила не содержат rules.schema.columns. Ранее build_pandera_schema создавал пустую схему, и data_types возвращал status="done", count=0 для любого датасета. Это была круговая/пустая проверка: backend заявлял успешное соответствие типам, хотя ожидаемые типы не были заданы.
+
+Проектирование и риски
+Фактический профиль и проверка соответствия схеме разделены семантически. Профиль pandas dtype/семантических классов доступен всегда; status done/warning допустим только при наличии явной Pandera-схемы. В auto-режиме data_types теперь честно возвращает pending и не участвует в DQ Score как якобы пройденная проверка.
+
+Не добавлялась эвристическая «ожидаемая схема» из фактических dtype: такой эталон всегда совпадает сам с собой и скрывает ошибки. API расширен только аддитивными полями, поэтому существующие клиенты, читающие checks/total_rows/total_columns, не ломаются.
+
+Реализация frontend
+Для «Типы данных» добавлено отдельное подробное описание кнопки «Метрики и алгоритм»: цель проверки, фактический профиль типов, N_type, r_type, покрытие схемой, четыре шага backend-алгоритма, расшифровка done/warning/pending и честное описание текущего auto-режима. Краткое описание карточки также синхронизировано: без ожидаемой схемы отображается pending, а не ложный ноль.
+
+Реализация backend
+validation/engine.py::_run_all_checks теперь проверяет наличие rules.schema.columns. Без схемы data_types возвращает {status: "pending", count: null, items: [], scope: "dataset"}; с явной схемой сохраняется реальная Pandera-валидация и агрегация failure cases.
+
+DatasetValidateResponse дополнен type_validation_mode (profile | schema) и type_profile. Профиль строится переиспользуемой apps/api/upload_common.py::_compute_column_info — той же функцией, которая уже формирует columns_info вкладки «Загрузка»; дублирование классификации типов не добавлялось.
+
+Предложение для окна «Обзор»
+Рекомендуемый визуал — «Матрица типов колонок»: компактная горизонтальная stacked-bar сводка по numeric/datetime/categorical/text сверху и таблица строками «Колонка | Фактический dtype | Семантический класс | Ожидаемый тип | Статус | Нарушения» снизу. Такой обзор полезен даже при нуле нарушений и прямо поддерживается новым type_profile; generic bar chart только по нарушениям в зелёном состоянии информации о структуре датасета не даёт. В рамках Task 33 визуал не реализовывался — пользователь запросил предложение.
+
+TDD
+Frontend RED: 1 новый тест упал, 13 прошли — подробный текст отсутствовал. GREEN: focused Jest 14/14 tests PASS.
+Добавлены backend-тесты:
+unit: без явной schema data_types имеет pending;
+unit: совпадающая явная schema даёт done;
+unit: неприводимое к типу значение даёт warning;
+API: auto-режим возвращает pending, type_validation_mode="profile" и реальный профиль Country/Year/Price.
+
+Проверка
+Full Jest: 16/16 suites PASS, 218/218 tests PASS, 0 snapshots.
+TypeScript typecheck: PASS для embedded и standalone. Установленный TypeScript 6.0.3 требует декларацию side-effect CSS import, поэтому для проверки использовались временные css-test-shim.d.ts; после проверки они удалены и в изменения не входят.
+
+Next.js production build embedded: PASS, 13/13 статических страниц. Next.js production build standalone: PASS, 13/13 статических страниц. Из-за известной ошибки Node runtime uv_resident_set_memory использовался временный локальный memory shim; после сборок удалён и в изменения не входит. Существующее предупреждение Tailwind о ../../packages/ui/**/*.ts остаётся, сборки проходят.
+
+Python compileall: PASS для изменённых backend-файлов и тестов. Pydantic-контракт DatasetValidateResponse импортирован, новые поля зарегистрированы. Запуск pytest в текущем контейнере недоступен: в runtime отсутствуют pytest и pandera, локального wheel-кэша нет; тестовые файлы подготовлены для штатного проектного .venv/CI.
+
+Изменённые файлы
+packages/ui/components/TsAnalysisValidation.tsx
+packages/ui/components/TsAnalysisValidation.test.tsx
+validation/engine.py
+apps/api/schemas.py
+apps/api/routers/session.py
+tests/unit/test_validation_run_all_checks.py
+tests/api/test_dataset_validate.py
+worlog.md

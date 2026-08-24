@@ -99,14 +99,48 @@ def test_sufficiency_pending_without_date_column():
     assert result["checks"]["sufficiency"] == {"status": "pending", "count": None, "items": [], "scope": "column"}
 
 
-def test_data_types_reflects_schema_errors_count():
-    """data_types.count должен совпадать с суммой schema_errors (не
-    задваивать и не терять числа -- прямое зеркало уже существующего
-    result['schema_errors'])."""
+def test_data_types_is_pending_without_explicit_schema():
+    """Фактический dtype нельзя считать эталоном для самого себя.
+
+    Без rules['schema']['columns'] backend строит профиль типов, но не
+    заявляет ложное «0 нарушений»: сравнивать фактические типы не с чем.
+    """
     df = pd.DataFrame({"value": [1, 2, 3]})
     result = validate_dataframe(df, {})
     dt = result["checks"]["data_types"]
-    assert dt["count"] == sum(result["schema_errors"].values())
+    assert dt == {"status": "pending", "count": None, "items": [], "scope": "dataset"}
+
+
+def test_data_types_is_done_when_explicit_schema_matches():
+    df = pd.DataFrame({"value": [1, 2, 3]})
+    rules = {
+        "schema": {
+            "columns": {
+                "value": {"type": "integer", "required": True, "coerce": True},
+            }
+        }
+    }
+    result = validate_dataframe(df, rules)
+    assert result["checks"]["data_types"] == {
+        "status": "done", "count": 0, "items": [], "scope": "dataset"
+    }
+
+
+def test_data_types_warns_when_value_cannot_be_coerced_to_schema_type():
+    df = pd.DataFrame({"value": ["1", "not-a-number", "3"]})
+    rules = {
+        "schema": {
+            "columns": {
+                "value": {"type": "integer", "required": True, "coerce": True},
+            }
+        }
+    }
+    result = validate_dataframe(df, rules)
+    data_types = result["checks"]["data_types"]
+
+    assert data_types["status"] == "warning"
+    assert data_types["count"] > 0
+    assert data_types["items"]
 
 
 class TestTextQualityEmptyStringRegressio:
