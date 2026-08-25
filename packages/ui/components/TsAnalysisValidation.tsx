@@ -32,6 +32,7 @@ import {
   type ValidationTypeProfileItem,
 } from "./ValidationTypeMatrix";
 import { ValidationTypePipeline } from "./ValidationTypePipeline";
+import { ValidationFormatPipeline } from "./ValidationFormatPipeline";
 import { useAppShell } from "../context/AppShellContext";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
@@ -164,6 +165,30 @@ const DATA_TYPES_PIPELINE_DESCRIPTION = `Мастер исправления т�
 3. Выберите политику ошибок: отклонить весь набор либо заменить неприводимые значения пропусками.
 4. Запустите предпросмотр. Предпросмотр не изменяет датасет и показывает последствия преобразования.
 5. Подтвердите применение. Изменения сохраняются атомарно, после чего проверка типов запускается повторно.`;
+
+const FORMATS_METRICS_DESCRIPTION = `Метрики и алгоритм: Форматы и шаблоны
+
+Цель
+Проверка находит непустые значения, которые не дают полное совпадение регулярному выражению из активных правил валидации. Пропуски обрабатываются отдельным критерием качества и здесь нарушениями не считаются.
+
+Метрики
+1. N_format — число значений, не совпавших с regex.
+2. % match = N_valid / N_non_null × 100 — доля корректных непустых значений.
+3. Порог соответствия берётся из правила колонки; примеры нарушений ограничиваются пятью уникальными значениями.
+
+Алгоритм backend
+1. Resolver выбирает правила в порядке: переопределения сессии → шаблон → системные правила.
+2. Для каждой существующей колонки выполняется pandas.Series.str.fullmatch(pattern), то есть проверяется всё значение, а не отдельный фрагмент.
+3. GET /v1/session/dataset/format-profile возвращает полный regex, метрики и примеры; общая валидация использует ту же функцию профилирования.
+4. Нет применимого правила — статус «Не применимо»; 0 нарушений — «Проверка пройдена»; нарушения — «Найдены проблемы».`;
+
+const FORMATS_PIPELINE_DESCRIPTION = `Мастер исправления форматов и шаблонов
+
+1. Выберите проблемные колонки и стратегию исправления.
+2. Используйте правила текущей сессии: браузер не подменяет регулярные выражения.
+3. Выберите одно из действий Streamlit: заменить нарушения пропусками, выполнить безопасную подстановку, нормализовать строки либо добавить флаг валидности.
+4. Запустите предпросмотр на копии датасета и оцените, сколько нарушений останется.
+5. Подтвердите применение. Изменения сохраняются атомарно, после чего общая валидация запускается повторно.`;
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -337,9 +362,11 @@ export function TsAnalysisValidation() {
     if (!descriptionSection) return null;
     if (descriptionSection === "metrics") {
       if (activeCheck.id === "data_types") return DATA_TYPES_METRICS_DESCRIPTION;
+      if (activeCheck.id === "formats") return FORMATS_METRICS_DESCRIPTION;
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
     if (activeCheck.id === "data_types") return DATA_TYPES_PIPELINE_DESCRIPTION;
+    if (activeCheck.id === "formats") return FORMATS_PIPELINE_DESCRIPTION;
     return `Полный пайплайн: ${activeCheck.label.toLowerCase()}\n\n1. Обнаружение → 2. Диагностика → 3. Преобразование → 4. Верификация\n\n${activeCheck.description}`;
   })();
 
@@ -350,6 +377,7 @@ export function TsAnalysisValidation() {
     if (!descriptionSection) return "Выберите раздел в боковой панели";
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     if (activeCheck.id === "data_types") return "Мастер исправления типов";
+    if (activeCheck.id === "formats") return "Мастер исправления форматов и шаблонов";
     return `Полный пайплайн — ${activeCheck.label}`;
   })();
 
@@ -425,7 +453,7 @@ export function TsAnalysisValidation() {
               key={check.id}
               onClick={() => {
                 setActiveCheckId(check.id);
-                if (descriptionSection === "help" || descriptionSection === "rules") setDescriptionSection(null);
+                if (check.id !== activeCheckId) setDescriptionSection(null);
               }}
               className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors ${
                 check.id === activeCheckId
@@ -526,11 +554,15 @@ export function TsAnalysisValidation() {
           <h3 className="font-semibold mb-1">
             {activeCheckId === "data_types" && descriptionSection === "pipeline"
               ? "Мастер исправления типов"
+              : activeCheckId === "formats" && descriptionSection === "pipeline"
+              ? "Мастер исправления форматов и шаблонов"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
             {activeCheckId === "data_types" && descriptionSection === "pipeline"
               ? "Выберите преобразования, проверьте последствия и примените их к активному датасету."
+              : activeCheckId === "formats" && descriptionSection === "pipeline"
+              ? "Выберите правила и стратегию, проверьте последствия и примените исправления к активному датасету."
               : activeCheckId === "data_types"
               ? "Распределение фактических типов и построчная матрица колонок."
               : "Визуализация результатов проверки по активному критерию."}
@@ -547,6 +579,8 @@ export function TsAnalysisValidation() {
               }}
               onSchemaSaved={runValidation}
             />
+          ) : activeCheckId === "formats" && descriptionSection === "pipeline" ? (
+            <ValidationFormatPipeline onApplied={runValidation} />
           ) : activeCheckId === "data_types" ? (
             validationHasRun || checksLoading ? (
               <ValidationTypeMatrix
@@ -648,7 +682,7 @@ export function TsAnalysisValidation() {
                 Метрики и алгоритм
               </button>
 
-              {/* Для типов открывается мастер; остальные критерии сохраняют общий pipeline. */}
+              {/* Для типов и форматов открываются специализированные мастера. */}
               <button
                 onClick={() => handleDescriptionClick(check, "pipeline")}
                 className={`w-full mb-3 rounded px-3 py-2 text-sm text-left font-medium transition-colors ${
@@ -657,7 +691,11 @@ export function TsAnalysisValidation() {
                     : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
                 }`}
               >
-                {check.id === "data_types" ? "Исправить типы данных" : "Полный пайплайн"}
+                {check.id === "data_types"
+                  ? "Исправить типы данных"
+                  : check.id === "formats"
+                  ? "Исправить форматы и шаблоны"
+                  : "Полный пайплайн"}
               </button>
 
             </article>

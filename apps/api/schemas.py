@@ -398,6 +398,48 @@ class DatasetTypeConversionResponse(BaseModel):
     type_profile: List[ValidationTypeProfileOut]
 
 
+class FormatProfileItemOut(BaseModel):
+    column: str
+    pattern: str
+    threshold: float
+    total_count: int
+    valid_count: int
+    invalid_count: int
+    match_pct: Optional[float] = None
+    invalid_examples: List[str] = Field(default_factory=list)
+
+
+class DatasetFormatProfileResponse(BaseModel):
+    rule_source: Literal["system", "template", "session", "not_applicable"]
+    columns: List[FormatProfileItemOut] = Field(default_factory=list)
+
+
+class DatasetFormatCorrectionRequest(BaseModel):
+    columns: List[str] = Field(..., min_length=1, max_length=100)
+    strategy: Literal["replace_null", "smart_replace", "normalize", "flag"] = "flag"
+    apply: bool = Field(False, description="False -- preview; True -- сохранить в сессии")
+
+
+class FormatCorrectionResultOut(BaseModel):
+    column: str
+    invalid_count: int
+    changed_count: int
+    still_invalid: int
+    invalid_examples: List[str] = Field(default_factory=list)
+    flag_column: Optional[str] = None
+
+
+class DatasetFormatCorrectionResponse(BaseModel):
+    applied: bool
+    strategy: Literal["replace_null", "smart_replace", "normalize", "flag"]
+    total_violations: int
+    total_changed: int
+    total_still_invalid: int
+    added_columns: List[str] = Field(default_factory=list)
+    columns: List[FormatCorrectionResultOut]
+    profile: List[FormatProfileItemOut]
+
+
 class DatasetSummaryOut(BaseModel):
     """Сводка по активному датасету сессии -- для Home page ("Рабочий стол")."""
     dataset_id: str

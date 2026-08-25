@@ -521,9 +521,15 @@ DEFAULT_FORMAT_PATTERNS = {
 }
 
 
-def validate_formats(df, rules):
-    """Проверяет колонки датафрейма на соответствие регулярным выражениям."""
-    results = []
+def format_invalid_mask(series: pd.Series, pattern: str) -> pd.Series:
+    """Единая маска regex-нарушений; пропуски не считаются нарушениями."""
+    re.compile(pattern)
+    return series.notna() & ~series.astype("string").str.fullmatch(pattern, na=False)
+
+
+def profile_formats(df: pd.DataFrame, rules: dict) -> list[dict]:
+    """Полный профиль применимых правил для проверки и мастера исправлений."""
+    profiles = []
     formats_config = rules.get("formats", DEFAULT_FORMAT_PATTERNS)
 
     for col_name, cfg in formats_config.items():
@@ -537,30 +543,47 @@ def validate_formats(df, rules):
         if not pattern:
             continue
 
-        if col_name in df.columns:
-            non_null_data = df[col_name].dropna()
-            if len(non_null_data) == 0:
-                continue
+        if col_name not in df.columns:
+            continue
 
-            matches = non_null_data.astype(str).str.fullmatch(pattern)
-            valid_count = matches.sum()
-            total_count = len(non_null_data)
-            match_pct = (valid_count / total_count) * 100 if total_count > 0 else 0
-            invalid_count = int(total_count - valid_count)
+        series = df[col_name]
+        invalid_mask = format_invalid_mask(series, pattern)
+        total_count = int(series.notna().sum())
+        invalid_count = int(invalid_mask.sum())
+        valid_count = total_count - invalid_count
+        match_pct = (valid_count / total_count) * 100 if total_count else None
+        profiles.append({
+            "column": col_name,
+            "pattern": pattern,
+            "threshold": float(threshold),
+            "total_count": total_count,
+            "valid_count": valid_count,
+            "invalid_count": invalid_count,
+            "match_pct": round(match_pct, 2) if match_pct is not None else None,
+            "invalid_examples": [
+                str(value) for value in series[invalid_mask].drop_duplicates().head(5).tolist()
+            ],
+        })
 
-            if match_pct >= threshold:
-                status = "✅ Норма"
-            else:
-                status = "⚠️ Отклонение"
+    return profiles
 
-            results.append({
-                "Колонка": col_name,
-                "Шаблон": pattern[:30] + "..." if len(pattern) > 30 else pattern,
-                "Всего записей": total_count,
-                "Нарушений": invalid_count,
-                "% match": f"{match_pct:.1f}%",
-                "Статус": status
-            })
+
+def validate_formats(df, rules):
+    """Проверяет колонки датафрейма на соответствие регулярным выражениям."""
+    results = []
+    for item in profile_formats(df, rules):
+        # Сохраняем прежний контракт: пустая колонка не делала проверку применимой.
+        if item["total_count"] == 0:
+            continue
+        match_pct = item["match_pct"] or 0
+        results.append({
+            "Колонка": item["column"],
+            "Шаблон": item["pattern"][:30] + "..." if len(item["pattern"]) > 30 else item["pattern"],
+            "Всего записей": item["total_count"],
+            "Нарушений": item["invalid_count"],
+            "% match": f"{match_pct:.1f}%",
+            "Статус": "✅ Норма" if match_pct >= item["threshold"] else "⚠️ Отклонение",
+        })
 
     return results
 

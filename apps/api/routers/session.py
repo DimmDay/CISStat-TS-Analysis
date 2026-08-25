@@ -12,6 +12,7 @@ standalone-фронтенду, включая неавторизованного
 apps/standalone/components/StandaloneHome.tsx) для sessions-aware
 логики "рабочий стол vs онбординг/маркетинг".
 """
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -25,6 +26,9 @@ from apps.api.schemas import (
     ColumnStatsValues,
     DatasetStatsResponse,
     DatasetSummaryOut,
+    DatasetFormatCorrectionRequest,
+    DatasetFormatCorrectionResponse,
+    DatasetFormatProfileResponse,
     DatasetTypeConversionRequest,
     DatasetTypeConversionResponse,
     DatasetTypeSchemaRequest,
@@ -44,6 +48,8 @@ from apps.api.schemas import (
     SessionStateResponse,
     StructureDetectionResponse,
     FrequencyDetectionOut,
+    FormatCorrectionResultOut,
+    FormatProfileItemOut,
     TargetColumnRequest,
     TargetColumnResponse,
     TimeSeriesPoint,
@@ -55,8 +61,9 @@ from apps.api.schemas import (
     ValidationTypeProfileOut,
 )
 from app.data.detectors import score_all_columns_as_date, score_all_columns_as_entity_group, detect_column_frequency
-from validation.engine import validate_dataframe
+from validation.engine import profile_formats, validate_dataframe
 from validation.rule_resolver import resolve_validation_rules
+from apps.api.format_correction import preview_format_corrections
 from apps.api.type_conversion import preview_type_conversions
 from apps.api.session_store import (
     AnalysisSession,
@@ -632,6 +639,68 @@ def get_dataset_validation_rules(request: Request, response: Response):
     return DatasetValidationRulesResponse(
         template_id=session.validation_template_id,
         overrides=session.validation_rule_overrides,
+    )
+
+
+@router.get("/dataset/format-profile", response_model=DatasetFormatProfileResponse)
+def get_dataset_format_profile(request: Request, response: Response):
+    """Профиль regex-проверок из активных правил текущей сессии."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, rule_sources = _session_validation_rules(session)
+    try:
+        columns = profile_formats(session.dataframe, rules)
+    except (ValueError, TypeError, re.error) as ex:
+        raise HTTPException(status_code=422, detail=f"Некорректное правило формата: {ex}") from ex
+    return DatasetFormatProfileResponse(
+        rule_source=rule_sources.get("formats", "not_applicable") if columns else "not_applicable",
+        columns=[FormatProfileItemOut(**item) for item in columns],
+    )
+
+
+@router.post("/dataset/format-corrections", response_model=DatasetFormatCorrectionResponse)
+def correct_dataset_formats(
+    payload: DatasetFormatCorrectionRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply четырёх стратегий исправления из Streamlit.
+
+    Preview не мутирует сессию. Apply сохраняет полностью подготовленную
+    копию атомарно; regex всегда берётся из resolved rules, а не из клиента.
+    """
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, _rule_sources = _session_validation_rules(session)
+    try:
+        corrected_df, raw_results = preview_format_corrections(
+            session.dataframe, rules, payload.columns, payload.strategy
+        )
+        next_profile = profile_formats(corrected_df, rules)
+    except (ValueError, TypeError, re.error) as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        session.touch()
+        store.save(session)
+
+    return DatasetFormatCorrectionResponse(
+        applied=payload.apply,
+        strategy=payload.strategy,
+        total_violations=sum(item["invalid_count"] for item in raw_results),
+        total_changed=sum(item["changed_count"] for item in raw_results),
+        total_still_invalid=sum(item["still_invalid"] for item in raw_results),
+        added_columns=[item["flag_column"] for item in raw_results if item["flag_column"]],
+        columns=[FormatCorrectionResultOut(**item) for item in raw_results],
+        profile=[FormatProfileItemOut(**item) for item in next_profile],
     )
 
 

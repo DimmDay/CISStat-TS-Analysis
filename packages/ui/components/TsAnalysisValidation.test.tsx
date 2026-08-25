@@ -210,13 +210,27 @@ describe("TsAnalysisValidation", () => {
     renderValidation();
 
     const correctionButton = await screen.findByRole("button", { name: "Исправить типы данных" });
-    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(9);
+    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(8);
     fireEvent.click(correctionButton);
 
     expect(screen.getAllByText("Мастер исправления типов").length).toBeGreaterThan(0);
     expect(screen.getByText(/Отметьте проблемные колонки/i)).toBeInTheDocument();
     expect(screen.getByText(/Предпросмотр не изменяет датасет/i)).toBeInTheDocument();
     expect(screen.getByText(/Подтвердите применение/i)).toBeInTheDocument();
+  });
+
+  it("uses the formats correction naming and opens its specialized wizard", async () => {
+    renderValidation();
+
+    const metricsButtons = await screen.findAllByRole("button", { name: "Метрики и алгоритм" });
+    fireEvent.click(metricsButtons[1]);
+    expect(screen.getByText("Метрики и алгоритм — Форматы и шаблоны")).toBeInTheDocument();
+    expect(screen.getByText(/полное совпадение регулярному выражению/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Исправить форматы и шаблоны" }));
+    expect(screen.getAllByText("Мастер исправления форматов и шаблонов").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Выберите проблемные колонки и стратегию/i)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Мастер исправления форматов и шаблонов" })).toBeInTheDocument();
   });
 
   // ── Кнопка «Управление правилами» ──

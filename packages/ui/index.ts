@@ -106,6 +106,7 @@ export { ValidationCheckChart } from "./components/ValidationCheckChart";
 export type { ValidationCheckData, ValidationCheckItem } from "./components/ValidationCheckChart";
 export { ValidationTypeMatrix } from "./components/ValidationTypeMatrix";
 export { ValidationTypePipeline } from "./components/ValidationTypePipeline";
+export { ValidationFormatPipeline } from "./components/ValidationFormatPipeline";
 export type {
   TypeValidationMode,
   ValidationSemanticType,
