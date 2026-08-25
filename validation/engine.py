@@ -17,7 +17,7 @@ import re
 import warnings
 import os
 
-from validation.inclusion import check_inclusion
+from validation.inclusion import inclusion_invalid_mask, normalize_inclusion_rule
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -273,20 +273,16 @@ def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict, target_c
 
     # ── inclusion (per-column) ──
     def _inclusion():
-        inclusion_rules = rules.get("inclusion", {})
-        if not inclusion_rules or (target_column is not None and target_column not in inclusion_rules):
-            return {"status": "pending", "count": None, "items": [], "scope": "column"}
-        raw, _masks = check_inclusion(df, inclusion_rules)
-        # check_inclusion (в отличие от validate_formats) НЕ эмитит запись
-        # для колонки без нарушений -- применимость уже подтверждена выше
-        # (target_column in inclusion_rules), поэтому отсутствие записи в
-        # raw здесь значит "0 нарушений", а не "pending".
+        profiles = profile_inclusion(df, rules)
         if target_column is not None:
-            count = sum(r["Нарушений"] for r in raw if r["Колонка"] == target_column)
-            items = [{"label": target_column, "count": count}] if count > 0 else []
-            return {"status": _status(count), "count": count, "items": items, "scope": "column"}
-        items = [{"label": r["Колонка"], "count": r["Нарушений"]} for r in raw]
-        count = sum(i["count"] for i in items)
+            profiles = [item for item in profiles if item["column"] == target_column]
+        if not profiles:
+            return {"status": "pending", "count": None, "items": [], "scope": "column"}
+        items = [
+            {"label": item["column"], "count": item["invalid_count"]}
+            for item in profiles if item["invalid_count"] > 0
+        ]
+        count = sum(item["invalid_count"] for item in profiles)
         return {"status": _status(count), "count": count, "items": items, "scope": "column"}
     _safe("inclusion", _inclusion)
 
@@ -572,6 +568,63 @@ def validate_formats(df, rules):
         })
 
     return results
+
+
+def _inclusion_value_label(value) -> str:
+    if value is None or pd.isna(value):
+        return "—"
+    return str(value)
+
+
+def profile_inclusion(df: pd.DataFrame, rules: dict) -> list[dict]:
+    """Profile explicit allowed-value domains without inferring a reference.
+
+    Inclusion is a domain rule: deriving the allowed set from the same dataset
+    would make every observed value valid by construction.  Consequently only
+    non-empty rules for columns that actually exist are applicable.
+    """
+    profiles = []
+    defaults = rules.get("inclusion_defaults", {})
+    for column, config in rules.get("inclusion", {}).items():
+        if column not in df.columns:
+            continue
+        allowed_values, default_value = normalize_inclusion_rule(
+            config, defaults.get(column)
+        )
+        if not allowed_values:
+            continue
+
+        series = df[column]
+        invalid_mask = inclusion_invalid_mask(series, allowed_values)
+        total_count = int(series.notna().sum())
+        invalid_count = int(invalid_mask.sum())
+        valid_count = total_count - invalid_count
+        invalid_pct = (invalid_count / total_count) * 100 if total_count else None
+        invalid_values = [
+            {"value": _inclusion_value_label(value), "count": int(count)}
+            for value, count in series[invalid_mask].value_counts(dropna=False).head(10).items()
+        ]
+        valid_observed = series[series.notna() & series.isin(allowed_values)]
+        default_valid = default_value is not None and default_value in allowed_values
+        supported_actions = ["replace_null", "drop_rows", "flag"]
+        if not valid_observed.empty:
+            supported_actions.insert(0, "mode")
+        if default_valid:
+            supported_actions.insert(-1, "replace_default")
+        profiles.append({
+            "column": str(column),
+            "allowed_values": allowed_values,
+            "allowed_count": len(allowed_values),
+            "total_count": total_count,
+            "valid_count": valid_count,
+            "invalid_count": invalid_count,
+            "invalid_pct": round(invalid_pct, 2) if invalid_pct is not None else None,
+            "invalid_values": invalid_values,
+            "default_value": default_value,
+            "default_valid": default_valid,
+            "supported_actions": supported_actions,
+        })
+    return profiles
 
 
 _CONSISTENCY_OPERATORS = {

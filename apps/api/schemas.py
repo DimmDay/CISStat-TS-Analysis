@@ -486,6 +486,57 @@ class DatasetRangeCorrectionResponse(BaseModel):
     profile: List[RangeProfileItemOut]
 
 
+class InclusionInvalidValueOut(BaseModel):
+    value: str
+    count: int
+
+
+class InclusionProfileItemOut(BaseModel):
+    column: str
+    allowed_values: List[Any] = Field(default_factory=list)
+    allowed_count: int
+    total_count: int
+    valid_count: int
+    invalid_count: int
+    invalid_pct: Optional[float] = None
+    invalid_values: List[InclusionInvalidValueOut] = Field(default_factory=list)
+    default_value: Optional[Any] = None
+    default_valid: bool = False
+    supported_actions: List[str] = Field(default_factory=list)
+
+
+class DatasetInclusionProfileResponse(BaseModel):
+    rule_source: Literal["system", "template", "session", "not_applicable"]
+    columns: List[InclusionProfileItemOut] = Field(default_factory=list)
+
+
+class DatasetInclusionCorrectionRequest(BaseModel):
+    columns: List[str] = Field(..., min_length=1, max_length=100)
+    strategy: Literal["mode", "replace_null", "drop_rows", "replace_default", "flag"] = "mode"
+    apply: bool = Field(False, description="False -- preview; True -- сохранить в сессии")
+
+
+class InclusionCorrectionResultOut(BaseModel):
+    column: str
+    invalid_count: int
+    changed_count: int
+    still_invalid: int
+    replacement_value: Optional[Any] = None
+    flag_column: Optional[str] = None
+
+
+class DatasetInclusionCorrectionResponse(BaseModel):
+    applied: bool
+    strategy: Literal["mode", "replace_null", "drop_rows", "replace_default", "flag"]
+    total_violations: int
+    total_changed: int
+    total_still_invalid: int
+    rows_removed: int = 0
+    added_columns: List[str] = Field(default_factory=list)
+    columns: List[InclusionCorrectionResultOut]
+    profile: List[InclusionProfileItemOut]
+
+
 class ConsistencyProfileItemOut(BaseModel):
     rule_index: int
     rule_name: str

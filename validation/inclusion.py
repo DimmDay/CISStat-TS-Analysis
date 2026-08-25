@@ -3,12 +3,34 @@
 Проверка принадлежности значений к справочникам (Inclusion).
 """
 import pandas as pd
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
+
+
+def normalize_inclusion_rule(config: Any, fallback_default: Any = None) -> tuple[list, Any]:
+    """Return ``(allowed_values, default)`` for current and legacy rules.
+
+    Rule templates use ``{allowed_values: [...], default_value: ...}``, while
+    early user rules stored the list directly.  Keeping the normalization here
+    prevents validators and correction tools from interpreting mapping keys as
+    allowed dataset values.
+    """
+    if isinstance(config, dict):
+        allowed = config.get("allowed_values", [])
+        default = config.get("default_value", fallback_default)
+    else:
+        allowed = config
+        default = fallback_default
+    return (list(allowed) if isinstance(allowed, (list, tuple, set)) else []), default
+
+
+def inclusion_invalid_mask(series: pd.Series, allowed_values: list) -> pd.Series:
+    """Build the shared membership-violation mask; nulls are checked elsewhere."""
+    return series.notna() & ~series.isin(allowed_values)
 
 
 def check_inclusion(
     df: pd.DataFrame, 
-    inclusion_rules: Dict[str, List]
+    inclusion_rules: Dict[str, Any]
 ) -> Tuple[List[Dict], Dict[str, pd.Series]]:
     """
     Проверяет принадлежность значений к справочникам.
@@ -25,9 +47,10 @@ def check_inclusion(
     results = []
     masks = {}
     
-    for col, allowed_vals in inclusion_rules.items():
+    for col, config in inclusion_rules.items():
+        allowed_vals, _default = normalize_inclusion_rule(config)
         if col in df.columns and allowed_vals:
-            invalid_mask = ~df[col].isin(allowed_vals) & df[col].notna()
+            invalid_mask = inclusion_invalid_mask(df[col], allowed_vals)
             violations = int(invalid_mask.sum())
             
             if violations > 0:
@@ -45,7 +68,7 @@ def check_inclusion(
 
 def compute_inclusion_violations(
     df: pd.DataFrame, 
-    inclusion_rules: Dict[str, List]
+    inclusion_rules: Dict[str, Any]
 ) -> List[Dict]:
     """
     Вычисляет нарушения принадлежности к справочникам для DataFrame.
@@ -75,9 +98,10 @@ def compute_inclusion_violations(
         1
     """
     violations = []
-    for col, allowed_vals in inclusion_rules.items():
-        if col in df.columns:
-            invalid_mask = ~df[col].isin(allowed_vals) & df[col].notna()
+    for col, config in inclusion_rules.items():
+        allowed_vals, _default = normalize_inclusion_rule(config)
+        if col in df.columns and allowed_vals:
+            invalid_mask = inclusion_invalid_mask(df[col], allowed_vals)
             if invalid_mask.any():
                 invalid_values = df.loc[invalid_mask, col].unique()
                 violations.append({

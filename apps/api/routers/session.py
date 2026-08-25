@@ -34,6 +34,9 @@ from apps.api.schemas import (
     DatasetFormatCorrectionRequest,
     DatasetFormatCorrectionResponse,
     DatasetFormatProfileResponse,
+    DatasetInclusionCorrectionRequest,
+    DatasetInclusionCorrectionResponse,
+    DatasetInclusionProfileResponse,
     DatasetRangeCorrectionRequest,
     DatasetRangeCorrectionResponse,
     DatasetRangeProfileResponse,
@@ -61,6 +64,8 @@ from apps.api.schemas import (
     FrequencyDetectionOut,
     FormatCorrectionResultOut,
     FormatProfileItemOut,
+    InclusionCorrectionResultOut,
+    InclusionProfileItemOut,
     RangeCorrectionResultOut,
     RangeProfileItemOut,
     TargetColumnRequest,
@@ -75,10 +80,11 @@ from apps.api.schemas import (
     ValidationTypeProfileOut,
 )
 from app.data.detectors import score_all_columns_as_date, score_all_columns_as_entity_group, detect_column_frequency
-from validation.engine import profile_consistency, profile_formats, profile_ranges, profile_uniqueness, validate_dataframe
+from validation.engine import profile_consistency, profile_formats, profile_inclusion, profile_ranges, profile_uniqueness, validate_dataframe
 from validation.rule_resolver import resolve_validation_rules
 from apps.api.consistency_correction import preview_consistency_corrections
 from apps.api.format_correction import preview_format_corrections
+from apps.api.inclusion_correction import preview_inclusion_corrections
 from apps.api.range_correction import preview_range_corrections
 from apps.api.type_conversion import preview_type_conversions
 from apps.api.uniqueness_correction import preview_uniqueness_correction
@@ -790,6 +796,68 @@ def correct_dataset_ranges(
     )
 
 
+@router.get("/dataset/inclusion-profile", response_model=DatasetInclusionProfileResponse)
+def get_dataset_inclusion_profile(request: Request, response: Response):
+    """Профиль явных допустимых наборов активной сессии."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, rule_sources = _session_validation_rules(session)
+    columns = profile_inclusion(session.dataframe, rules)
+    return DatasetInclusionProfileResponse(
+        rule_source=rule_sources.get("inclusion", "not_applicable") if columns else "not_applicable",
+        columns=[InclusionProfileItemOut(**item) for item in columns],
+    )
+
+
+@router.post(
+    "/dataset/inclusion-corrections",
+    response_model=DatasetInclusionCorrectionResponse,
+)
+def correct_dataset_inclusion(
+    payload: DatasetInclusionCorrectionRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply стратегий исправления значений вне допустимого набора."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, _rule_sources = _session_validation_rules(session)
+    try:
+        corrected_df, raw_results, rows_removed = preview_inclusion_corrections(
+            session.dataframe, rules, payload.columns, payload.strategy
+        )
+        next_profile = profile_inclusion(corrected_df, rules)
+    except (ValueError, TypeError) as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
+        session.touch()
+        store.save(session)
+
+    return DatasetInclusionCorrectionResponse(
+        applied=payload.apply,
+        strategy=payload.strategy,
+        total_violations=sum(item["invalid_count"] for item in raw_results),
+        total_changed=sum(item["changed_count"] for item in raw_results),
+        total_still_invalid=sum(item["still_invalid"] for item in raw_results),
+        rows_removed=rows_removed,
+        added_columns=[item["flag_column"] for item in raw_results if item["flag_column"]],
+        columns=[InclusionCorrectionResultOut(**item) for item in raw_results],
+        profile=[InclusionProfileItemOut(**item) for item in next_profile],
+    )
+
+
 @router.get("/dataset/consistency-profile", response_model=DatasetConsistencyProfileResponse)
 def get_dataset_consistency_profile(request: Request, response: Response):
     """Профиль хронологических и предметных правил активной сессии."""
@@ -1057,6 +1125,36 @@ def save_dataset_validation_rules(
                 status_code=422,
                 detail=f"Колонка '{missing_columns[0]}' отсутствует в датасете",
             )
+
+    for column, config in normalized_overrides.get("inclusion", {}).items():
+        if column not in session.dataframe.columns:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Колонка '{column}' отсутствует в датасете",
+            )
+        allowed_values = config.get("allowed_values") if isinstance(config, dict) else config
+        if not isinstance(allowed_values, list) or not allowed_values:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Для колонки '{column}' задайте непустой список допустимых значений",
+            )
+        if any(value is None or type(value) not in {str, int, float, bool} for value in allowed_values):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Допустимый набор колонки '{column}' содержит неподдерживаемое значение",
+            )
+        if len({(type(value).__name__, str(value)) for value in allowed_values}) != len(allowed_values):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Допустимый набор колонки '{column}' содержит повторы",
+            )
+        if isinstance(config, dict) and "default_value" in config and config["default_value"] is not None:
+            default_value = config["default_value"]
+            if not any(type(default_value) is type(value) and default_value == value for value in allowed_values):
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Значение по умолчанию колонки '{column}' должно входить в допустимый набор",
+                )
 
     # Regex из редактора правил валидируется до изменения сессии. Клиент
     # может выбирать только реальные колонки активного DataFrame.

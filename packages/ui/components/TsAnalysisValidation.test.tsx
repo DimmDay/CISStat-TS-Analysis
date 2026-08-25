@@ -127,6 +127,12 @@ function mockActiveValidation(validateResponse: () => Promise<unknown>) {
         json: () => Promise.resolve({ rule_source: "not_applicable", rules: [] }),
       });
     }
+    if (url.includes("/dataset/inclusion-profile")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ rule_source: "not_applicable", columns: [] }),
+      });
+    }
     if (url.includes("/dataset/validate")) return validateResponse();
     return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
   }) as unknown as typeof fetch;
@@ -222,7 +228,7 @@ describe("TsAnalysisValidation", () => {
     renderValidation();
 
     const correctionButton = await screen.findByRole("button", { name: "Исправить типы данных" });
-    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(5);
+    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(4);
     fireEvent.click(correctionButton);
 
     expect(screen.getAllByText("Мастер исправления типов").length).toBeGreaterThan(0);
@@ -255,6 +261,20 @@ describe("TsAnalysisValidation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Исправить уникальность" }));
     expect(screen.getAllByText("Мастер исправления уникальности").length).toBeGreaterThan(0);
+  });
+
+  it("opens the specialized inclusion metrics and correction master", async () => {
+    renderValidation();
+
+    const inclusionStop = (await screen.findAllByRole("button", { name: /Принадлежность к набору/ }))[0];
+    fireEvent.click(inclusionStop);
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/N_inclusion/i)).toBeInTheDocument();
+    expect(screen.getByText(/profile_inclusion/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Исправить принадлежность к набору" }));
+    expect(screen.getAllByText("Мастер исправления принадлежности к набору").length).toBeGreaterThan(0);
+    expect(screen.getByRole("region", { name: "Мастер исправления принадлежности к набору" })).toBeInTheDocument();
   });
 
   it("uses the formats correction naming and opens its specialized wizard", async () => {

@@ -83,6 +83,9 @@ describe("RulesManagementPanel", () => {
                 "usd/tonne": { pattern: "^(usd|USD)$", threshold: 100 },
               },
               uniqueness: { composite_key: ["Country", "Year"] },
+              inclusion: {
+                Country: { allowed_values: ["A", "B"], default_value: "A" },
+              },
             },
           }),
         });
@@ -149,6 +152,7 @@ describe("RulesManagementPanel", () => {
       expect(screen.getByText(/Год в разумных пределах/i)).toBeInTheDocument();
       expect(screen.getByText("Форматы: 3 правила")).toBeInTheDocument();
       expect(screen.getByLabelText(/Составной ключ/i)).toHaveValue("Country, Year");
+      expect(screen.getByLabelText("Допустимые значения для Country")).toHaveValue("A, B");
     });
   });
 
@@ -266,6 +270,33 @@ describe("RulesManagementPanel", () => {
     fireEvent.change(columnInput, { target: { value: "Code" } });
     expect(document.activeElement).toBe(columnInput);
     expect(columnInput).toHaveValue("Code");
+  });
+
+  it("lets a custom session add and save an inclusion domain", async () => {
+    render(<RulesManagementPanel />);
+    await waitFor(() => expect(screen.getByTestId("apply-system-rules-btn")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Добавить допустимый набор" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Колонка правила набора 1" }), {
+      target: { value: "Country" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Допустимые значения правила набора 1" }), {
+      target: { value: "A, B" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Значение по умолчанию правила набора 1" }), {
+      target: { value: "A" },
+    });
+    fireEvent.click(screen.getByTestId("apply-system-rules-btn"));
+
+    await waitFor(() => {
+      const putCall = mockFetch.mock.calls.find(
+        (call: [string, RequestInit?]) => call[0].includes("/session/dataset/validation-rules") && call[1]?.method === "PUT"
+      );
+      const payload = JSON.parse((putCall?.[1]?.body ?? "{}") as string);
+      expect(payload.overrides.inclusion).toEqual({
+        Country: { allowed_values: ["A", "B"], default_value: "A" },
+      });
+    });
   });
 
   it("restores saved custom format rules when the panel is reopened", async () => {

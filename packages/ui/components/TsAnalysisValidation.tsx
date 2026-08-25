@@ -39,6 +39,8 @@ import { ValidationConsistencyOverview } from "./ValidationConsistencyOverview";
 import { ValidationConsistencyPipeline } from "./ValidationConsistencyPipeline";
 import { ValidationUniquenessOverview } from "./ValidationUniquenessOverview";
 import { ValidationUniquenessPipeline } from "./ValidationUniquenessPipeline";
+import { ValidationInclusionOverview } from "./ValidationInclusionOverview";
+import { ValidationInclusionPipeline } from "./ValidationInclusionPipeline";
 import { useAppShell } from "../context/AppShellContext";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
@@ -280,6 +282,32 @@ const UNIQUENESS_PIPELINE_DESCRIPTION = `Мастер исправления у�
 
 Агрегация доступна только для ключевой проверки: числовые неключевые значения усредняются, категориальные сохраняют первое значение. При проверке полных строк эта стратегия не имеет смысла и скрыта.`;
 
+const INCLUSION_METRICS_DESCRIPTION = `Метрики и алгоритм: Принадлежность к набору
+
+Цель
+Проверка сопоставляет каждое непустое значение с явным предметным справочником. Допустимый набор нельзя выводить из того же датасета: такой круговой эталон по определению пропустил бы все наблюдаемые ошибки.
+
+Метрики
+1. N_inclusion — число непустых значений вне допустимого набора.
+2. r_inclusion = N_inclusion / N_non_null × 100 — доля нарушений среди проверенных значений.
+3. Покрытие — число существующих колонок с непустым правилом набора.
+4. Частоты недопустимых значений помогают отличить единичную опечатку от системного нового кода.
+
+Алгоритм backend
+1. Resolver выбирает правило в порядке: override сессии → выбранный шаблон; системный слой не выдумывает предметный справочник.
+2. profile_inclusion нормализует новый YAML-формат allowed_values и прежний формат списка.
+3. Единая векторная маска membership используется общей валидацией, обзором и мастером исправления.
+4. Нет применимого правила — «Эталон допустимых наборов не задан»; 0 нарушений — «Проверка пройдена»; нарушения — «Найдены проблемы».`;
+
+const INCLUSION_PIPELINE_DESCRIPTION = `Мастер исправления принадлежности к набору
+
+1. Проверьте активный допустимый набор и отметьте колонки с нарушениями.
+2. Выберите стратегию: мода среди корректных значений, явное значение по умолчанию, пропуск, удаление строк либо флаг валидности.
+3. Запустите предпросмотр на глубокой копии и оцените число изменений, оставшихся нарушений и удаляемых строк.
+4. Подтвердите применение. Копия сохраняется атомарно, после чего общая валидация запускается повторно.
+
+Значение по умолчанию разрешено только когда оно явно входит в справочник. Мода вычисляется только по уже допустимым наблюдениям.`;
+
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisValidation() {
@@ -459,6 +487,7 @@ export function TsAnalysisValidation() {
       if (activeCheck.id === "ranges") return RANGES_METRICS_DESCRIPTION;
       if (activeCheck.id === "consistency") return CONSISTENCY_METRICS_DESCRIPTION;
       if (activeCheck.id === "uniqueness") return UNIQUENESS_METRICS_DESCRIPTION;
+      if (activeCheck.id === "inclusion") return INCLUSION_METRICS_DESCRIPTION;
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
     if (activeCheck.id === "data_types") return DATA_TYPES_PIPELINE_DESCRIPTION;
@@ -466,6 +495,7 @@ export function TsAnalysisValidation() {
     if (activeCheck.id === "ranges") return RANGES_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "consistency") return CONSISTENCY_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "uniqueness") return UNIQUENESS_PIPELINE_DESCRIPTION;
+    if (activeCheck.id === "inclusion") return INCLUSION_PIPELINE_DESCRIPTION;
     return `Полный пайплайн: ${activeCheck.label.toLowerCase()}\n\n1. Обнаружение → 2. Диагностика → 3. Преобразование → 4. Верификация\n\n${activeCheck.description}`;
   })();
 
@@ -480,6 +510,7 @@ export function TsAnalysisValidation() {
     if (activeCheck.id === "ranges") return "Мастер исправления диапазонов";
     if (activeCheck.id === "consistency") return "Мастер исправления логики и хронологии";
     if (activeCheck.id === "uniqueness") return "Мастер исправления уникальности";
+    if (activeCheck.id === "inclusion") return "Мастер исправления принадлежности к набору";
     return `Полный пайплайн — ${activeCheck.label}`;
   })();
 
@@ -565,7 +596,7 @@ export function TsAnalysisValidation() {
             >
               <span className="truncate">{check.label}</span>
               <span className="ml-2 shrink-0">
-                {validationHasRun && ["formats", "ranges", "consistency", "uniqueness"].includes(check.id) && check.status === "pending" && check.ruleSource === "not_applicable" ? (
+                {validationHasRun && ["formats", "ranges", "consistency", "uniqueness", "inclusion"].includes(check.id) && check.status === "pending" && check.ruleSource === "not_applicable" ? (
                   <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
                     check.id === activeCheckId ? "bg-white/20 text-white" : "bg-amber-50 text-amber-700"
                   }`}>
@@ -672,6 +703,8 @@ export function TsAnalysisValidation() {
               ? "Мастер исправления логики и хронологии"
               : activeCheckId === "uniqueness" && descriptionSection === "pipeline"
               ? "Мастер исправления уникальности"
+              : activeCheckId === "inclusion" && descriptionSection === "pipeline"
+              ? "Мастер исправления принадлежности к набору"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -685,6 +718,8 @@ export function TsAnalysisValidation() {
               ? "Выберите нарушенные правила и совместимую стратегию, проверьте последствия и примените исправления."
               : activeCheckId === "uniqueness" && descriptionSection === "pipeline"
               ? "Проверьте ключ, выберите стратегию, оцените точное число удаляемых строк и примените исправление."
+              : activeCheckId === "inclusion" && descriptionSection === "pipeline"
+              ? "Проверьте справочник, выберите стратегию, оцените последствия и примените исправления."
               : activeCheckId === "data_types"
               ? "Распределение фактических типов и построчная матрица колонок."
               : activeCheckId === "ranges"
@@ -693,6 +728,8 @@ export function TsAnalysisValidation() {
               ? "Соблюдение хронологических и предметных правил, затронутые строки и примеры конфликтов."
               : activeCheckId === "uniqueness"
               ? "Распределение строк и группы повторов по активному составному или системному ключу."
+              : activeCheckId === "inclusion"
+              ? "Соотношение допустимых и недопустимых значений и матрица активных справочников."
               : "Визуализация результатов проверки по активному критерию."}
           </p>
 
@@ -724,6 +761,11 @@ export function TsAnalysisValidation() {
             />
           ) : activeCheckId === "uniqueness" && descriptionSection === "pipeline" ? (
             <ValidationUniquenessPipeline onApplied={runValidation} />
+          ) : activeCheckId === "inclusion" && descriptionSection === "pipeline" ? (
+            <ValidationInclusionPipeline
+              onApplied={runValidation}
+              onOpenRules={() => setDescriptionSection("rules")}
+            />
           ) : activeCheckId === "data_types" ? (
             validationHasRun || checksLoading ? (
               <ValidationTypeMatrix
@@ -759,6 +801,14 @@ export function TsAnalysisValidation() {
             ) : (
               <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы построить профиль уникальности и получить статус проверки.
+              </div>
+            )
+          ) : activeCheckId === "inclusion" ? (
+            validationHasRun ? (
+              <ValidationInclusionOverview refreshKey={validationVersion} />
+            ) : (
+              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+                Запустите валидацию, чтобы проверить принадлежность значениям предметных справочников.
               </div>
             )
           ) : (
@@ -835,6 +885,8 @@ export function TsAnalysisValidation() {
                     ? "Эталон логики и хронологии не задан"
                     : check.id === "uniqueness" && check.ruleSource === "not_applicable"
                     ? "Ключ уникальности неприменим"
+                    : check.id === "inclusion" && check.ruleSource === "not_applicable"
+                    ? "Эталон допустимых наборов не задан"
                     : "Не применимо: правило или необходимые данные отсутствуют"}
                 </p>
               )}
@@ -876,6 +928,8 @@ export function TsAnalysisValidation() {
                   ? "Исправить логику и хронологию"
                   : check.id === "uniqueness"
                   ? "Исправить уникальность"
+                  : check.id === "inclusion"
+                  ? "Исправить принадлежность к набору"
                   : "Полный пайплайн"}
               </button>
 

@@ -123,6 +123,12 @@ export type {
   UniquenessProfile,
   UniquenessProfileResponse,
 } from "./components/ValidationUniquenessOverview";
+export { ValidationInclusionOverview } from "./components/ValidationInclusionOverview";
+export { ValidationInclusionPipeline } from "./components/ValidationInclusionPipeline";
+export type {
+  InclusionProfileItem,
+  InclusionProfileResponse,
+} from "./components/ValidationInclusionOverview";
 export type {
   TypeValidationMode,
   ValidationSemanticType,

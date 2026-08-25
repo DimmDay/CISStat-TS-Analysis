@@ -61,9 +61,17 @@ interface ConsistencyRule {
   [key: string]: unknown;
 }
 
+interface InclusionRule {
+  allowed_values: Array<string | number | boolean>;
+  default_value?: string | number | boolean;
+  draft?: boolean;
+  editorId?: string;
+  allowedDraft?: string;
+}
+
 interface RulesContent {
   ranges: RangeRule[];
-  inclusion?: Record<string, unknown>;
+  inclusion?: Record<string, InclusionRule>;
   consistency?: ConsistencyRule[];
   uniqueness?: { composite_key?: string[]; description?: string };
   formats?: Record<string, FormatRule>;
@@ -88,7 +96,20 @@ const normalizeFormats = (formats: Record<string, unknown> = {}): Record<string,
     }];
   }));
 
+const normalizeInclusion = (inclusion: Record<string, unknown> = {}): Record<string, InclusionRule> =>
+  Object.fromEntries(Object.entries(inclusion).map(([column, value]) => {
+    const normalized: InclusionRule = Array.isArray(value)
+      ? { allowed_values: value }
+      : { ...(value as InclusionRule), allowed_values: Array.isArray((value as InclusionRule)?.allowed_values) ? (value as InclusionRule).allowed_values : [] };
+    return [column, {
+      ...normalized,
+      editorId: normalized.editorId || `inclusion:${column}`,
+      allowedDraft: normalized.allowed_values.map(String).join(", "),
+    }];
+  }));
+
 let formatDraftSequence = 0;
+let inclusionDraftSequence = 0;
 
 const rulesCountLabel = (count: number) => {
   const mod100 = count % 100;
@@ -179,6 +200,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         ...rawContent,
         ranges: Array.isArray(rawContent.ranges) ? rawContent.ranges : [],
         formats: normalizeFormats(rawContent.formats || {}),
+        inclusion: normalizeInclusion(rawContent.inclusion || {}),
         consistency: Array.isArray(rawContent.consistency) ? rawContent.consistency : [],
         uniqueness: rawContent.uniqueness || {},
       };
@@ -200,6 +222,10 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         formats: {
           ...(templateContent.formats || {}),
           ...normalizeFormats((activeOverrides.formats || {}) as Record<string, unknown>),
+        },
+        inclusion: {
+          ...(templateContent.inclusion || {}),
+          ...normalizeInclusion((activeOverrides.inclusion || {}) as Record<string, unknown>),
         },
       };
       setRules(content);
@@ -228,6 +254,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         ...activeOverrides,
         ranges: Array.isArray(activeOverrides.ranges) ? activeOverrides.ranges : [],
         formats: normalizeFormats((activeOverrides.formats || {}) as Record<string, unknown>),
+        inclusion: normalizeInclusion((activeOverrides.inclusion || {}) as Record<string, unknown>),
         consistency: Array.isArray(activeOverrides.consistency)
           ? activeOverrides.consistency as ConsistencyRule[]
           : [],
@@ -235,7 +262,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       };
       setRules(content);
       setUniquenessKeyDraft(content.uniqueness?.composite_key?.join(", ") || "");
-      setOriginalRules({ ranges: [], formats: {}, consistency: [], uniqueness: {} });
+      setOriginalRules({ ranges: [], formats: {}, consistency: [], uniqueness: {}, inclusion: {} });
       setError(null);
     }
   }, [selectedTemplate, loadTemplate, sessionSelection]);
@@ -372,6 +399,45 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     });
   };
 
+  const updateInclusionRule = (column: string, patch: Partial<InclusionRule>) => {
+    if (!rules) return;
+    setRules({
+      ...rules,
+      inclusion: {
+        ...(rules.inclusion || {}),
+        [column]: { ...(rules.inclusion?.[column] || { allowed_values: [] }), ...patch },
+      },
+    });
+  };
+
+  const renameInclusionRule = (oldColumn: string, newColumn: string) => {
+    if (!rules) return;
+    const inclusion = { ...(rules.inclusion || {}) };
+    const rule = inclusion[oldColumn];
+    delete inclusion[oldColumn];
+    inclusion[newColumn || oldColumn] = rule;
+    setRules({ ...rules, inclusion });
+  };
+
+  const addInclusionRule = () => {
+    if (!rules) return;
+    const inclusion = { ...(rules.inclusion || {}) };
+    let index = 1;
+    while (inclusion[`__new_${index}`]) index += 1;
+    inclusion[`__new_${index}`] = {
+      allowed_values: [], allowedDraft: "", draft: true,
+      editorId: `inclusion-draft:${++inclusionDraftSequence}`,
+    };
+    setRules({ ...rules, inclusion });
+  };
+
+  const removeInclusionRule = (column: string) => {
+    if (!rules) return;
+    const inclusion = { ...(rules.inclusion || {}) };
+    delete inclusion[column];
+    setRules({ ...rules, inclusion });
+  };
+
   const serializableFormats = (formats: Record<string, FormatRule> = {}) => Object.fromEntries(
     Object.entries(formats)
       .filter(([column]) => column.trim() && !column.startsWith("__new_"))
@@ -389,6 +455,17 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     max: rule.max,
     ...(rule.description ? { description: rule.description } : {}),
   }));
+
+  const serializableInclusion = (inclusion: Record<string, InclusionRule> = {}) => Object.fromEntries(
+    Object.entries(inclusion)
+      .filter(([column]) => column.trim() && !column.startsWith("__new_"))
+      .map(([column, rule]) => [column, {
+        allowed_values: rule.allowed_values,
+        ...(rule.default_value !== undefined && String(rule.default_value).trim() !== ""
+          ? { default_value: rule.default_value }
+          : {}),
+      }])
+  );
 
   const serializableConsistency = (consistency: ConsistencyRule[] = []) => consistency.map((rule) => {
     const { draft: _draft, ...serialized } = rule;
@@ -418,6 +495,8 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       const originalRanges = serializableRanges(originalRules?.ranges);
       const currentConsistency = serializableConsistency(rules.consistency);
       const originalConsistency = serializableConsistency(originalRules?.consistency);
+      const currentInclusion = serializableInclusion(rules.inclusion);
+      const originalInclusion = serializableInclusion(originalRules?.inclusion);
       const normalizedUniquenessKey = uniquenessKeyDraft
         .split(",")
         .map((column) => column.trim())
@@ -454,6 +533,14 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         setError("Заполните название, тип и колонки во всех правилах логики");
         return;
       }
+      const incompleteInclusion = Object.entries(rules.inclusion || {}).find(
+        ([column, rule]) => !column.trim() || column.startsWith("__new_") || rule.allowed_values.length === 0
+          || (rule.default_value !== undefined && String(rule.default_value).trim() !== "" && !rule.allowed_values.some((value) => String(value) === String(rule.default_value)))
+      );
+      if (incompleteInclusion) {
+        setError("Для каждого набора задайте колонку, допустимые значения и корректное значение по умолчанию");
+        return;
+      }
       const overrides: Record<string, unknown> = {};
       if (JSON.stringify(currentRanges) !== JSON.stringify(originalRanges)) {
         overrides.ranges = currentRanges;
@@ -466,6 +553,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       }
       if (JSON.stringify(currentUniqueness) !== JSON.stringify(originalUniqueness)) {
         overrides.uniqueness = currentUniqueness;
+      }
+      if (JSON.stringify(currentInclusion) !== JSON.stringify(originalInclusion)) {
+        overrides.inclusion = currentInclusion;
       }
       const resp = await fetch(`${API_BASE}/v1/session/dataset/validation-rules`, {
         method: "PUT",
@@ -484,6 +574,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       setRules((current) => current ? {
         ...current,
         uniqueness: currentUniqueness,
+        inclusion: normalizeInclusion(currentInclusion),
       } : current);
       setApplied(true);
       onRulesApplied();
@@ -572,7 +663,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       )}
 
       {rules && !loading && (
-        <div className="grid grid-cols-4 gap-2 text-xs">
+        <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-5">
           <span className="rounded bg-neutral-50 px-2 py-1 text-neutral-600">
             Диапазоны: {rulesCountLabel(rules.ranges.length)}
           </span>
@@ -603,6 +694,15 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
               ? rules.uniqueness.composite_key.join(" + ")
               : "системный ключ"}
           </span>
+          <span className={`rounded px-2 py-1 ${
+            Object.keys(rules.inclusion || {}).length
+              ? "bg-green-50 text-green-700"
+              : "bg-amber-50 text-amber-700"
+          }`}>
+            Наборы: {Object.keys(rules.inclusion || {}).length
+              ? rulesCountLabel(Object.keys(rules.inclusion || {}).length)
+              : "не заданы"}
+          </span>
         </div>
       )}
 
@@ -625,6 +725,62 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
             <p className="mt-1 text-[11px] text-neutral-500">
               Пустое поле включает системный выбор: сущность + время, а при отсутствии времени — полные строки.
             </p>
+          </div>
+        </div>
+      )}
+
+      {rules && !loading && (
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h4 className="text-sm font-medium">Редактор допустимых наборов ({Object.keys(rules.inclusion || {}).length} правил)</h4>
+            <button type="button" onClick={addInclusionRule} className="flex items-center gap-1 rounded border border-brand/40 px-2 py-1 text-xs font-medium text-brand hover:bg-brand/5">
+              <Plus size={13} /> Добавить допустимый набор
+            </button>
+          </div>
+          {Object.keys(rules.inclusion || {}).length === 0 && (
+            <p className="mb-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Эталон допустимых наборов не задан. Добавьте колонку и значения предметного справочника.
+            </p>
+          )}
+          <div className="space-y-2">
+            {Object.entries(rules.inclusion || {}).map(([column, rule], index) => {
+              const isDraft = Boolean(rule.draft);
+              return (
+                <div key={rule.editorId || column} className="rounded-md border border-neutral-200 bg-white px-3 py-2">
+                  <div className="grid gap-2 sm:grid-cols-[minmax(110px,0.8fr)_minmax(180px,1.8fr)_minmax(120px,0.8fr)_auto]">
+                    <input
+                      type="text"
+                      value={column.startsWith("__new_") ? "" : column}
+                      onChange={(event) => renameInclusionRule(column, event.target.value)}
+                      readOnly={selectedTemplate !== "custom" && !isDraft}
+                      aria-label={isDraft ? `Колонка правила набора ${index + 1}` : `Колонка набора ${column}`}
+                      placeholder="Колонка"
+                      className="min-w-0 rounded border border-neutral-300 px-2 py-1 text-sm read-only:bg-neutral-50 read-only:text-neutral-500"
+                    />
+                    <input
+                      type="text"
+                      value={rule.allowedDraft ?? rule.allowed_values.map(String).join(", ")}
+                      onChange={(event) => updateInclusionRule(column, {
+                        allowedDraft: event.target.value,
+                        allowed_values: event.target.value.split(",").map((value) => value.trim()).filter(Boolean),
+                      })}
+                      aria-label={isDraft ? `Допустимые значения правила набора ${index + 1}` : `Допустимые значения для ${column}`}
+                      placeholder="Значения через запятую"
+                      className="min-w-0 rounded border border-neutral-300 px-2 py-1 text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={rule.default_value === undefined ? "" : String(rule.default_value)}
+                      onChange={(event) => updateInclusionRule(column, { default_value: event.target.value })}
+                      aria-label={isDraft ? `Значение по умолчанию правила набора ${index + 1}` : `Значение по умолчанию для ${column}`}
+                      placeholder="По умолчанию"
+                      className="min-w-0 rounded border border-neutral-300 px-2 py-1 text-sm"
+                    />
+                    {(selectedTemplate === "custom" || isDraft) && <button type="button" onClick={() => removeInclusionRule(column)} aria-label={`Удалить допустимый набор ${index + 1}`} className="rounded p-1.5 text-red-600 hover:bg-red-50"><Trash2 size={15} /></button>}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

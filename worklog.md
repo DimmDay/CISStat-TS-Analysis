@@ -2799,3 +2799,67 @@ TDD и проверка
 Изменённые файлы
 - packages/ui/components/RulesManagementPanel.tsx
 - packages/ui/components/RulesManagementPanel.test.tsx
+
+---
+
+Task ID: 45 — Профиль и мастер исправления принадлежности к набору
+
+Date: 2026-08-25
+
+Задача
+Применить к остановке «Принадлежность к набору» утверждённый паттерн предыдущих остановок: специализированные описание и обзор, однозначный статус общей валидации, управление предметными справочниками и транзакционный мастер исправления с повторной проверкой.
+
+Синхронизация
+На старте локальная рабочая копия находилась на `155163a` и содержала незакоммиченный Task 44. Опубликованный `origin/main` уже был обновлён до `097cfbe`; локальный набор сохранён в защитный stash `codex-pre-sync-task45-20260825`, затем выполнен fast-forward до актуального `main`. Task 45 реализован поверх чистого опубликованного `097cfbe`; финальный `git fetch` подтвердил, что новых параллельных коммитов нет.
+
+Исследование и причина ошибки
+Streamlit предлагал пять стратегий: мода среди допустимых наблюдений, пропуск, удаление строк, явно настроенное значение по умолчанию и флаг валидности. При отсутствии правила он строил набор из категорий текущего датасета; в web-версии это не переиспользовано, поскольку такой круговой эталон автоматически признаёт корректной любую наблюдаемую ошибку.
+
+Найдена критическая несовместимость backend с реальными YAML-шаблонами. `check_inclusion` ожидал `{column: [values]}`, тогда как FAO, Default и Macro используют `{column: {allowed_values: [...]}}`. Pandas получал весь dict и сравнивал значения колонки с его ключами (`allowed_values`), поэтому корректные значения могли массово считаться нарушениями. Добавлена единая нормализация нового dict- и legacy list-форматов.
+
+Backend
+- Добавлены `normalize_inclusion_rule`, общая `inclusion_invalid_mask` и `profile_inclusion`; один профиль теперь используется общей валидацией, обзором и исправлениями.
+- Профиль возвращает существующие колонки с непустым явным правилом, допустимый набор, число проверенных/корректных/нарушающих значений, долю нарушений, частоты недопустимых значений, валидность default и поддерживаемые действия.
+- Системный слой не выводит допустимые значения из исследуемого датасета. Без шаблона или правила сессии статус остаётся честным `pending`: «Эталон допустимых наборов не задан».
+- Добавлены `GET /v1/session/dataset/inclusion-profile` и `POST /v1/session/dataset/inclusion-corrections`.
+- Реализованы стратегии Streamlit: замена модой только среди уже допустимых значений, перенос в пропуск, удаление объединения строк, замена явным допустимым default и флаг `{column}_inclusion_valid`.
+- Preview работает на глубокой копии. Apply атомарно сохраняет DataFrame, обновляет rows/columns сессии; frontend затем повторно запускает общую валидацию.
+- PUT правил сессии проверяет существование колонки, непустой список примитивных значений, отсутствие дублей и вхождение default в допустимый набор до изменения состояния.
+
+Frontend
+- Кнопка остановки называется «Исправить принадлежность к набору», центральный workflow — «Мастер исправления принадлежности к набору».
+- «Метрики и алгоритм» объясняет `N_inclusion`, долю нарушений, покрытие, частоты недопустимых значений, приоритет resolver и запрет кругового эталона.
+- Новый обзор показывает stacked bar «допустимые / нарушения» и таблицу «Колонка / допустимый набор / недопустимые значения / статус / нарушения».
+- Нулевой результат с активным правилом отображается как успешное соответствие; отсутствие справочника — отдельным объяснением, а не плейсхолдером неприменимости.
+- Мастер содержит четыре шага: выбор проблемных колонок, совместимая стратегия, немутирующий preview и подтверждённый apply. Недоступные стратегии блокируются, если нет наблюдаемого допустимого значения или корректного default.
+- `RulesManagementPanel` получил редактор допустимых наборов для custom и шаблонных сессий: стабильный ключ строки, ввод значений через запятую, optional default, добавление и удаление правил, восстановление и сохранение override.
+
+TDD и проверка
+- RED: 4/4 focused frontend suites падали из-за отсутствующих компонентов, специализированной остановки и редактора набора; backend-тесты ссылались на отсутствующие профиль и correction-модуль.
+- GREEN: focused Jest — 4/4 suites, 51/51 tests PASS. Полный Jest — 27/27 suites, 279/279 tests PASS, 0 snapshots.
+- `py_compile` изменённых backend-файлов и новых Python-тестов: PASS.
+- Изолированные backend assertions на pandas проверили dict/list-нормализацию, профили, замены, flag и статусы `warning/done/pending`: PASS.
+- Полный pytest в текущем runtime недоступен: модуль `pytest` не установлен; также отсутствуют штатные `pandera` и `fastapi`. Unit/API-тесты добавлены для запуска в проектном `.venv` и CI.
+- Next.js production build embedded: PASS, 13/13 статических страниц.
+- Next.js production build standalone: PASS, 13/13 статических страниц.
+- Обе production-сборки выполнили lint и встроенную проверку типов. Временные font/memory shims удалены и в изменения не входят.
+- Прямой `tsc` вне Next.js останавливается на существующем отсутствии декларации side-effect import `globals.css`; штатные production-сборки типизацию проходят.
+- `git diff --check`: PASS. Существующее предупреждение Tailwind о `../../packages/ui/**/*.ts` остаётся; обе сборки успешны.
+
+Изменённые и новые файлы
+- apps/api/inclusion_correction.py
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- validation/engine.py
+- validation/inclusion.py
+- packages/ui/components/ValidationInclusionOverview.tsx
+- packages/ui/components/ValidationInclusionOverview.test.tsx
+- packages/ui/components/ValidationInclusionPipeline.tsx
+- packages/ui/components/ValidationInclusionPipeline.test.tsx
+- packages/ui/components/RulesManagementPanel.tsx
+- packages/ui/components/RulesManagementPanel.test.tsx
+- packages/ui/components/TsAnalysisValidation.tsx
+- packages/ui/components/TsAnalysisValidation.test.tsx
+- packages/ui/index.ts
+- tests/api/test_dataset_inclusion_correction.py
+- tests/unit/test_inclusion_correction.py
