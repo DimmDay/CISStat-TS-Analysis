@@ -526,7 +526,7 @@ export function TsAnalysisValidation() {
                 descriptionContent
               ) : (
                 <span className="text-neutral-400 italic">
-                  Нажмите «Метрики и алгоритм», «Исправить типы данных», «Справка» или «Управление правилами»
+                  Нажмите «Метрики и алгоритм», «Исправить этап проверки», «Справка» или «Управление правилами»
                 </span>
               )}
               {/* Collapse chevron — sticky прилипает к низу scroll-области */}
