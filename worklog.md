@@ -2735,3 +2735,67 @@ GREEN: focused Jest — 4/4 suites, 48/48 tests PASS. Полный Jest — 25/2
 - packages/ui/index.ts
 - tests/api/test_dataset_uniqueness_correction.py
 - tests/unit/test_uniqueness_correction.py
+
+---
+
+Task ID: 43 — Исправление ввода составного ключа уникальности
+
+Date: 2026-08-25
+
+Задача
+Исправить поле «Составной ключ» в «Управлении правилами»: в шаблоне `Default (общий)` пользователь мог вводить латинские буквы, но запятая и следующий за ней пробел немедленно исчезали.
+
+Причина
+Контролируемый input был напрямую связан с `rules.uniqueness.composite_key`. Каждый `onChange` сразу выполнял `split(",")`, `trim()` и `filter(Boolean)`, после чего значение заново собиралось через `join(", ")`. Промежуточный ввод `Country,` превращался в массив `["Country"]` и рендерился обратно как `Country`; аналогично удалялся пробел до ввода следующего имени.
+
+Исправление
+- Добавлено отдельное строковое состояние `uniquenessKeyDraft`, сохраняющее ввод пользователя без преобразований.
+- Запятая, пробел и незавершённая следующая часть остаются в поле во время печати.
+- Разбиение, обрезка пробелов и удаление пустых элементов выполняются один раз при «Применить правила» перед формированием API payload.
+- Черновик синхронизируется при загрузке/смене шаблона и при сбросе правил.
+- После успешного сохранения нормализованный ключ записывается в локальное состояние правил; backend-контракт не изменён.
+
+TDD и проверка
+- RED: регрессионный тест показал `Country` вместо введённого `Country,`.
+- GREEN: focused `RulesManagementPanel.test.tsx` — 18/18 tests PASS.
+- Полный Jest — 25/25 suites, 271/271 tests PASS, 0 snapshots.
+- Next.js production build standalone: PASS, 13/13 статических страниц.
+- Next.js production build embedded: PASS, 13/13 статических страниц.
+- Обе сборки выполнили lint и проверку типов; временные font/memory shims удалены.
+- `git diff --check`: PASS.
+
+Изменённые файлы
+- packages/ui/components/RulesManagementPanel.tsx
+- packages/ui/components/RulesManagementPanel.test.tsx
+
+---
+
+Task ID: 44 — Сохранение фокуса в редакторе форматов
+
+Date: 2026-08-25
+
+Задача
+Исправить потерю фокуса при посимвольном вводе названия колонки нового правила в секции «Редактор форматов» для любого шаблона правил.
+
+Причина
+Строка format-правила использовала изменяемое имя колонки как React key: `<div key={column}>`. Обработчик `renameFormatRule` после каждого символа менял ключ объекта (`__new_1 → C → Co → Code`). React считал строку новым элементом, размонтировал прежний input и создавал новый; фокус переходил на `body`, поэтому для каждого следующего символа требовался повторный клик.
+
+Исправление
+- В `FormatRule` добавлен внутренний UI-only `editorId`.
+- Загруженные правила получают детерминированный стабильный ID, новые правила — отдельный уникальный draft-ID.
+- Контейнер строки использует `rule.editorId`, который не меняется при переименовании колонки.
+- `editorId` не попадает в API: существующий `serializableFormats` по-прежнему явно формирует только `pattern`, `threshold` и `description`.
+- Логика переименования, удаления, проверки и сохранения правил не изменена.
+
+TDD и проверка
+- RED: после ввода первого символа тест фиксировал `document.activeElement === body`, исходный input был размонтирован.
+- GREEN: focused `RulesManagementPanel.test.tsx` — 19/19 tests PASS; проверен непрерывный ввод `C → Co → Code` в одном DOM-элементе.
+- Полный Jest — 25/25 suites, 272/272 tests PASS, 0 snapshots.
+- Next.js production build standalone: PASS, 13/13 статических страниц.
+- Next.js production build embedded: PASS, 13/13 статических страниц.
+- Обе сборки выполнили lint и проверку типов; временные font/memory shims удалены.
+- `git diff --check`: PASS.
+
+Изменённые файлы
+- packages/ui/components/RulesManagementPanel.tsx
+- packages/ui/components/RulesManagementPanel.test.tsx

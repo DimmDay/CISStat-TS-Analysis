@@ -248,6 +248,26 @@ describe("RulesManagementPanel", () => {
     });
   });
 
+  it("keeps focus while a new format-rule column is typed character by character", async () => {
+    const { container } = render(<RulesManagementPanel />);
+    const selector = await waitTemplatesLoaded(container);
+    fireEvent.change(selector, { target: { value: "default" } });
+    await screen.findByText("Форматы: 3 правила");
+
+    fireEvent.click(screen.getByRole("button", { name: "Добавить правило формата" }));
+    const inputs = screen.getAllByPlaceholderText("Колонка");
+    const columnInput = inputs[inputs.length - 1] as HTMLInputElement;
+    columnInput.focus();
+
+    fireEvent.change(columnInput, { target: { value: "C" } });
+    expect(document.activeElement).toBe(columnInput);
+    fireEvent.change(columnInput, { target: { value: "Co" } });
+    expect(document.activeElement).toBe(columnInput);
+    fireEvent.change(columnInput, { target: { value: "Code" } });
+    expect(document.activeElement).toBe(columnInput);
+    expect(columnInput).toHaveValue("Code");
+  });
+
   it("restores saved custom format rules when the panel is reopened", async () => {
     sessionRulesResponse = {
       template_id: "system",

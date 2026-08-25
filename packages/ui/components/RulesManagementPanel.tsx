@@ -46,6 +46,7 @@ interface FormatRule {
   threshold: number;
   description?: string;
   draft?: boolean;
+  editorId?: string;
 }
 
 interface ConsistencyRule {
@@ -77,14 +78,17 @@ interface SessionRulesSelection {
 }
 
 const normalizeFormats = (formats: Record<string, unknown> = {}): Record<string, FormatRule> =>
-  Object.fromEntries(
-    Object.entries(formats).map(([column, value]) => [
-      column,
-      typeof value === "string"
+  Object.fromEntries(Object.entries(formats).map(([column, value]) => {
+    const normalized: FormatRule = typeof value === "string"
         ? { pattern: value, threshold: 95 }
-        : { ...(value as FormatRule), threshold: (value as FormatRule).threshold ?? 95 },
-    ])
-  );
+        : { ...(value as FormatRule), threshold: (value as FormatRule).threshold ?? 95 };
+    return [column, {
+      ...normalized,
+      editorId: normalized.editorId || `format:${column}`,
+    }];
+  }));
+
+let formatDraftSequence = 0;
 
 const rulesCountLabel = (count: number) => {
   const mod100 = count % 100;
@@ -306,7 +310,12 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     const formats = { ...(rules.formats || {}) };
     let index = 1;
     while (formats[`__new_${index}`]) index += 1;
-    formats[`__new_${index}`] = { pattern: "", threshold: 100, draft: true };
+    formats[`__new_${index}`] = {
+      pattern: "",
+      threshold: 100,
+      draft: true,
+      editorId: `format-draft:${++formatDraftSequence}`,
+    };
     setRules({ ...rules, formats });
   };
 
@@ -849,7 +858,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
             {Object.entries(rules.formats || {}).map(([column, rule], index) => {
               const isDraft = Boolean(rule.draft);
               return (
-                <div key={column} className="rounded-md border border-neutral-200 bg-white px-3 py-2">
+                <div key={rule.editorId || column} className="rounded-md border border-neutral-200 bg-white px-3 py-2">
                   <div className="grid gap-2 sm:grid-cols-[minmax(110px,0.7fr)_minmax(180px,1.6fr)_90px_auto]">
                     <input
                       type="text"
