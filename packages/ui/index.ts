@@ -110,6 +110,12 @@ export { ValidationFormatPipeline } from "./components/ValidationFormatPipeline"
 export { ValidationRangeOverview } from "./components/ValidationRangeOverview";
 export { ValidationRangePipeline } from "./components/ValidationRangePipeline";
 export type { RangeProfileItem, RangeProfileResponse } from "./components/ValidationRangeOverview";
+export { ValidationConsistencyOverview } from "./components/ValidationConsistencyOverview";
+export { ValidationConsistencyPipeline } from "./components/ValidationConsistencyPipeline";
+export type {
+  ConsistencyProfileItem,
+  ConsistencyProfileResponse,
+} from "./components/ValidationConsistencyOverview";
 export type {
   TypeValidationMode,
   ValidationSemanticType,

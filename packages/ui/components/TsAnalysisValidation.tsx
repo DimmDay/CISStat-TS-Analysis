@@ -35,6 +35,8 @@ import { ValidationTypePipeline } from "./ValidationTypePipeline";
 import { ValidationFormatPipeline } from "./ValidationFormatPipeline";
 import { ValidationRangeOverview } from "./ValidationRangeOverview";
 import { ValidationRangePipeline } from "./ValidationRangePipeline";
+import { ValidationConsistencyOverview } from "./ValidationConsistencyOverview";
+import { ValidationConsistencyPipeline } from "./ValidationConsistencyPipeline";
 import { useAppShell } from "../context/AppShellContext";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
@@ -220,6 +222,34 @@ const RANGES_PIPELINE_DESCRIPTION = `Мастер исправления диа�
 
 Неоднозначная Streamlit-стратегия «0 или NaN» разделена: веб-мастер использует безопасный пропуск, потому что 0 сам может нарушать положительную нижнюю границу.`;
 
+const CONSISTENCY_METRICS_DESCRIPTION = `Метрики и алгоритм: Логика и хронология
+
+Цель
+Проверка выявляет два класса внутренних противоречий: нарушение порядка времени внутри ряда или панели и несоблюдение явно заданных связей между колонками. Предметные связи не выводятся из наблюдаемых значений, поскольку это создавало бы круговой эталон.
+
+Метрики
+1. N_logic — число нарушенных сравнений: временных переходов либо строк, не удовлетворяющих бизнес-правилу.
+2. r_logic = N_logic / N_checked × 100 — доля нарушений среди реально сопоставимых переходов или строк.
+3. Affected rows — число строк, участвующих в нарушениях; для одного обратного временного перехода отмечаются обе соседние строки.
+4. Покрытие — число применимых правил относительно всех настроенных правил.
+
+Алгоритм backend
+1. Resolver выбирает правила в порядке: переопределения сессии → шаблон → безопасная системная хронология.
+2. Единый профилировщик правил строит маски для общей валидации, обзора и мастера исправления.
+3. Хронология проверяется в исходном порядке отдельно внутри каждой группы. Бизнес-правила используют ограниченный набор типизированных сравнений без eval() и выполнения произвольного кода.
+4. Несопоставившееся или неподдерживаемое правило получает «Не применимо» и не может дать ложный статус «Проверка пройдена».
+
+Система автоматически задаёт только базовую хронологию при уверенно распознанной колонке года/даты. Сравнения выручки и прибыли, начала и окончания периода и другие предметные связи задаются через «Управление правилами».`;
+
+const CONSISTENCY_PIPELINE_DESCRIPTION = `Мастер исправления логики и хронологии
+
+1. Выберите применимые правила с найденными нарушениями и изучите примеры конфликтов.
+2. Выберите совместимую стратегию: групповая сортировка для хронологии, удаление затронутых строк, перенос конфликтующего значения в пропуск или добавление флага.
+3. Запустите предпросмотр на глубокой копии датасета. Он показывает нарушения до и после, число изменённых значений, удаляемых строк и новые колонки.
+4. Подтвердите применение. Копия сохраняется атомарно, метаданные сессии обновляются, затем общая валидация запускается повторно.
+
+Небезопасная Streamlit-замена медианой/модой исключена: она не гарантирует соблюдение связи между колонками. Сортировка учитывает группирующую колонку правила и сохраняет порядок групп.`;
+
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisValidation() {
@@ -397,11 +427,13 @@ export function TsAnalysisValidation() {
       if (activeCheck.id === "data_types") return DATA_TYPES_METRICS_DESCRIPTION;
       if (activeCheck.id === "formats") return FORMATS_METRICS_DESCRIPTION;
       if (activeCheck.id === "ranges") return RANGES_METRICS_DESCRIPTION;
+      if (activeCheck.id === "consistency") return CONSISTENCY_METRICS_DESCRIPTION;
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
     if (activeCheck.id === "data_types") return DATA_TYPES_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "formats") return FORMATS_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "ranges") return RANGES_PIPELINE_DESCRIPTION;
+    if (activeCheck.id === "consistency") return CONSISTENCY_PIPELINE_DESCRIPTION;
     return `Полный пайплайн: ${activeCheck.label.toLowerCase()}\n\n1. Обнаружение → 2. Диагностика → 3. Преобразование → 4. Верификация\n\n${activeCheck.description}`;
   })();
 
@@ -414,6 +446,7 @@ export function TsAnalysisValidation() {
     if (activeCheck.id === "data_types") return "Мастер исправления типов";
     if (activeCheck.id === "formats") return "Мастер исправления форматов и шаблонов";
     if (activeCheck.id === "ranges") return "Мастер исправления диапазонов";
+    if (activeCheck.id === "consistency") return "Мастер исправления логики и хронологии";
     return `Полный пайплайн — ${activeCheck.label}`;
   })();
 
@@ -499,7 +532,7 @@ export function TsAnalysisValidation() {
             >
               <span className="truncate">{check.label}</span>
               <span className="ml-2 shrink-0">
-                {validationHasRun && (check.id === "formats" || check.id === "ranges") && check.status === "pending" && check.ruleSource === "not_applicable" ? (
+                {validationHasRun && ["formats", "ranges", "consistency"].includes(check.id) && check.status === "pending" && check.ruleSource === "not_applicable" ? (
                   <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
                     check.id === activeCheckId ? "bg-white/20 text-white" : "bg-amber-50 text-amber-700"
                   }`}>
@@ -602,6 +635,8 @@ export function TsAnalysisValidation() {
               ? "Мастер исправления форматов и шаблонов"
               : activeCheckId === "ranges" && descriptionSection === "pipeline"
               ? "Мастер исправления диапазонов"
+              : activeCheckId === "consistency" && descriptionSection === "pipeline"
+              ? "Мастер исправления логики и хронологии"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -611,10 +646,14 @@ export function TsAnalysisValidation() {
               ? "Выберите правила и стратегию, проверьте последствия и примените исправления к активному датасету."
               : activeCheckId === "ranges" && descriptionSection === "pipeline"
               ? "Выберите проблемные колонки и стратегию, оцените последствия и примените исправления."
+              : activeCheckId === "consistency" && descriptionSection === "pipeline"
+              ? "Выберите нарушенные правила и совместимую стратегию, проверьте последствия и примените исправления."
               : activeCheckId === "data_types"
               ? "Распределение фактических типов и построчная матрица колонок."
               : activeCheckId === "ranges"
               ? "Соотношение корректных и нарушающих значения, фактические и допустимые границы."
+              : activeCheckId === "consistency"
+              ? "Соблюдение хронологических и предметных правил, затронутые строки и примеры конфликтов."
               : "Визуализация результатов проверки по активному критерию."}
           </p>
 
@@ -639,6 +678,11 @@ export function TsAnalysisValidation() {
               onApplied={runValidation}
               onOpenRules={() => setDescriptionSection("rules")}
             />
+          ) : activeCheckId === "consistency" && descriptionSection === "pipeline" ? (
+            <ValidationConsistencyPipeline
+              onApplied={runValidation}
+              onOpenRules={() => setDescriptionSection("rules")}
+            />
           ) : activeCheckId === "data_types" ? (
             validationHasRun || checksLoading ? (
               <ValidationTypeMatrix
@@ -658,6 +702,14 @@ export function TsAnalysisValidation() {
             ) : (
               <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы построить профиль диапазонов и получить статус проверки.
+              </div>
+            )
+          ) : activeCheckId === "consistency" ? (
+            validationHasRun ? (
+              <ValidationConsistencyOverview refreshKey={validationVersion} />
+            ) : (
+              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+                Запустите валидацию, чтобы построить профиль логики и хронологии и получить статус проверки.
               </div>
             )
           ) : (
@@ -729,7 +781,9 @@ export function TsAnalysisValidation() {
                   {check.id === "formats" && check.ruleSource === "not_applicable"
                     ? "Эталон форматов не задан"
                     : check.id === "ranges" && check.ruleSource === "not_applicable"
-                    ? "Эталон диапазонов не задан"
+                  ? "Эталон диапазонов не задан"
+                    : check.id === "consistency" && check.ruleSource === "not_applicable"
+                    ? "Эталон логики и хронологии не задан"
                     : "Не применимо: правило или необходимые данные отсутствуют"}
                 </p>
               )}
@@ -752,7 +806,7 @@ export function TsAnalysisValidation() {
                 Метрики и алгоритм
               </button>
 
-              {/* Для типов и форматов открываются специализированные мастера. */}
+              {/* Для реализованных остановок открываются специализированные мастера. */}
               <button
                 onClick={() => handleDescriptionClick(check, "pipeline")}
                 className={`w-full mb-3 rounded px-3 py-2 text-sm text-left font-medium transition-colors ${
@@ -767,6 +821,8 @@ export function TsAnalysisValidation() {
                   ? "Исправить форматы и шаблоны"
                   : check.id === "ranges"
                   ? "Исправить диапазоны значений"
+                  : check.id === "consistency"
+                  ? "Исправить логику и хронологию"
                   : "Полный пайплайн"}
               </button>
 

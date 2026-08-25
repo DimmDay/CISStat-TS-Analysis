@@ -588,113 +588,293 @@ def validate_formats(df, rules):
     return results
 
 
-def validate_consistency(df, rules):
-    """
-    Проверяет согласованность данных (хронология внутри групп).
-    
-    🔧 ИСПРАВЛЕНИЕ: Показывает ОБЕ строки нарушения (2016 и 2015),
-    а не только ту, где diff() < 0.
-    """
-    results = []
-    consistency_rules = rules.get("consistency", [])
+_CONSISTENCY_OPERATORS = {
+    "<": lambda left, right: left < right,
+    "<=": lambda left, right: left <= right,
+    ">": lambda left, right: left > right,
+    ">=": lambda left, right: left >= right,
+    "==": lambda left, right: left == right,
+    "!=": lambda left, right: left != right,
+}
 
-    # Автогенерация правила, если пусто
-    if not consistency_rules:
-        year_cols = [c for c in df.columns if 'year' in c.lower() or 'год' in c.lower()]
-        date_cols = df.select_dtypes(include=['datetime64']).columns.tolist()
-        if year_cols:
-            consistency_rules.append({
-                "name": "Хронологический порядок лет",
-                "type": "chronology",
-                "description": "Проверка хронологического порядка лет внутри групп",
-                "columns": [year_cols[0]],
-                "severity": "error"
-            })
-        elif date_cols:
-            consistency_rules.append({
-                "name": "Хронологический порядок дат",
-                "type": "chronology",
-                "description": "Проверка хронологического порядка дат внутри групп",
-                "columns": [date_cols[0]],
-                "severity": "error"
-            })
 
-    for rule in consistency_rules:
+def _consistency_group_column(df: pd.DataFrame, time_column: str, rule: dict) -> str | None:
+    explicit = rule.get("group_column")
+    if explicit:
+        return explicit if explicit in df.columns and explicit != time_column else None
+    for column in df.select_dtypes(include=["object", "string", "category"]).columns:
+        if column == time_column:
+            continue
+        unique = df[column].nunique(dropna=True)
+        if 1 < unique <= min(100, max(2, len(df) * 0.5)):
+            return str(column)
+    return None
+
+
+def _coerce_consistency_time(series: pd.Series) -> pd.Series:
+    if pd.api.types.is_numeric_dtype(series) or pd.api.types.is_datetime64_any_dtype(series):
+        return series
+    return pd.to_datetime(series, errors="coerce")
+
+
+def _chronology_evaluation(df: pd.DataFrame, rule: dict) -> dict:
+    columns = [str(column) for column in rule.get("columns", [])]
+    if not columns or columns[0] not in df.columns:
+        missing = columns[0] if columns else "временная колонка"
+        return {"applicable": False, "message": f"Колонка '{missing}' отсутствует"}
+
+    time_column = columns[0]
+    explicit_group = rule.get("group_column")
+    if explicit_group and explicit_group not in df.columns:
+        return {"applicable": False, "message": f"Колонка '{explicit_group}' отсутствует"}
+    group_column = _consistency_group_column(df, time_column, rule)
+    violation_mask = pd.Series(False, index=df.index)
+    checked_count = 0
+    invalid_count = 0
+    examples: list[str] = []
+
+    groups = df.groupby(group_column, sort=False, dropna=False) if group_column else [(None, df)]
+    for group_name, group_df in groups:
+        values = _coerce_consistency_time(group_df[time_column])
+        previous = values.shift(1)
+        comparable = values.notna() & previous.notna()
+        reversals = comparable & (values < previous)
+        checked_count += int(comparable.sum())
+        invalid_count += int(reversals.sum())
+        for index in group_df.index[reversals]:
+            position = group_df.index.get_loc(index)
+            previous_index = group_df.index[position - 1]
+            violation_mask.loc[[previous_index, index]] = True
+            if len(examples) < 5:
+                prefix = f"{group_column}={group_name}: " if group_column else ""
+                examples.append(
+                    f"{prefix}{group_df.loc[previous_index, time_column]} → {group_df.loc[index, time_column]}"
+                )
+
+    return {
+        "applicable": True,
+        "mask": violation_mask,
+        "checked_count": checked_count,
+        "invalid_count": invalid_count,
+        "examples": examples,
+        "columns": [time_column],
+        "time_column": time_column,
+        "group_column": group_column,
+        "correction_columns": [time_column],
+        "supported_actions": ["sort_chronology", "drop_rows", "replace_null", "flag"],
+    }
+
+
+def _comparison_evaluation(
+    df: pd.DataFrame,
+    *,
+    columns: list[str],
+    operator: str,
+    rule_type: str,
+) -> dict:
+    missing = [column for column in columns if column not in df.columns]
+    if missing:
+        return {"applicable": False, "message": f"Колонка '{missing[0]}' отсутствует"}
+    if len(columns) != 2 or operator not in _CONSISTENCY_OPERATORS:
+        return {"applicable": False, "message": "Правило сравнения задано некорректно"}
+
+    left = df[columns[0]]
+    right = df[columns[1]]
+    comparable = left.notna() & right.notna()
+    try:
+        valid = _CONSISTENCY_OPERATORS[operator](left, right)
+    except (TypeError, ValueError):
+        return {"applicable": False, "message": "Типы колонок нельзя сравнить"}
+    invalid = comparable & ~valid.fillna(False)
+    return {
+        "applicable": True,
+        "mask": invalid,
+        "checked_count": int(comparable.sum()),
+        "invalid_count": int(invalid.sum()),
+        "examples": [
+            f"{columns[0]}={row[columns[0]]}; {columns[1]}={row[columns[1]]}"
+            for _, row in df.loc[invalid, columns].head(5).iterrows()
+        ],
+        "columns": columns,
+        "time_column": None,
+        "group_column": None,
+        "correction_columns": [columns[0]],
+        "supported_actions": ["drop_rows", "replace_null", "flag"],
+        "rule_type": rule_type,
+    }
+
+
+def _single_column_evaluation(
+    df: pd.DataFrame,
+    *,
+    column: str,
+    valid_mask: pd.Series,
+) -> dict:
+    comparable = df[column].notna()
+    invalid = comparable & ~valid_mask.fillna(False)
+    return {
+        "applicable": True,
+        "mask": invalid,
+        "checked_count": int(comparable.sum()),
+        "invalid_count": int(invalid.sum()),
+        "examples": [f"{column}={value}" for value in df.loc[invalid, column].head(5).tolist()],
+        "columns": [column],
+        "time_column": None,
+        "group_column": None,
+        "correction_columns": [column],
+        "supported_actions": ["drop_rows", "replace_null", "flag"],
+    }
+
+
+def _condition_evaluation(df: pd.DataFrame, rule: dict) -> dict | None:
+    """Безопасно поддерживает только явное сравнение колонок без eval()."""
+    condition = str(rule.get("condition", "")).strip()
+    match = re.fullmatch(r"([A-Za-z_][\w.]*)\s*(<=|>=|==|!=|<|>)\s*([A-Za-z_][\w.]*)", condition)
+    if not match:
+        return None
+    left, operator, right = match.groups()
+    result = _comparison_evaluation(
+        df, columns=[left, right], operator=operator, rule_type="comparison"
+    )
+    result["condition"] = condition
+    return result
+
+
+def _evaluate_consistency_rule(df: pd.DataFrame, rule: dict) -> dict:
+    rule_type = str(rule.get("type", "condition" if rule.get("condition") else "unknown"))
+    columns = [str(column) for column in rule.get("columns", [])]
+
+    if rule_type == "chronology":
+        return _chronology_evaluation(df, rule)
+    if rule_type == "comparison":
+        return _comparison_evaluation(
+            df,
+            columns=columns,
+            operator=str(rule.get("operator", "")),
+            rule_type=rule_type,
+        )
+    if rule_type in {"negative_price", "positive_prices"}:
+        if not columns or columns[0] not in df.columns:
+            missing = columns[0] if columns else "целевая колонка"
+            return {"applicable": False, "message": f"Колонка '{missing}' отсутствует"}
+        numeric = pd.to_numeric(df[columns[0]], errors="coerce")
+        valid = numeric >= 0 if rule_type == "negative_price" else numeric > 0
+        return _single_column_evaluation(df, column=columns[0], valid_mask=valid)
+    if rule_type == "profit_revenue":
+        if len(columns) != 2:
+            return {"applicable": False, "message": "Нужны колонки выручки и прибыли"}
+        return _comparison_evaluation(
+            df, columns=[columns[1], columns[0]], operator="<=", rule_type=rule_type
+        )
+    if rule_type == "energy_subsystem":
+        if len(columns) != 2:
+            return {"applicable": False, "message": "Нужны колонки общего и подсистемного потребления"}
+        return _comparison_evaluation(
+            df, columns=[columns[1], columns[0]], operator="<=", rule_type=rule_type
+        )
+    if rule_type == "steps_distance":
+        if len(columns) != 2 or any(column not in df.columns for column in columns):
+            return {"applicable": False, "message": "Нужны колонки шагов и расстояния"}
+        comparable = df[columns].notna().all(axis=1)
+        invalid = comparable & (df[columns[0]] == 0) & (df[columns[1]] > 0)
+    elif rule_type == "speed_fuel":
+        if len(columns) != 2 or any(column not in df.columns for column in columns):
+            return {"applicable": False, "message": "Нужны колонки скорости и расхода топлива"}
+        comparable = df[columns].notna().all(axis=1)
+        invalid = comparable & (df[columns[0]] == 0) & (df[columns[1]] > 1)
+    elif rule_type == "temp_precip":
+        if len(columns) != 2 or any(column not in df.columns for column in columns):
+            return {"applicable": False, "message": "Нужны колонки температуры и типа осадков"}
+        comparable = df[columns].notna().all(axis=1)
+        precipitation = df[columns[1]].astype(str).str.lower()
+        snow = precipitation.str.contains(r"снег|snow", regex=True)
+        rain = precipitation.str.contains(r"дожд|rain", regex=True)
+        invalid = comparable & ((snow & (df[columns[0]] > 0)) | (rain & (df[columns[0]] < 0)))
+    else:
+        condition_result = _condition_evaluation(df, rule)
+        if condition_result is not None:
+            return condition_result
+        return {"applicable": False, "message": f"Тип правила '{rule_type}' не поддерживается"}
+
+    return {
+        "applicable": True,
+        "mask": invalid,
+        "checked_count": int(comparable.sum()),
+        "invalid_count": int(invalid.sum()),
+        "examples": [
+            "; ".join(f"{column}={row[column]}" for column in columns)
+            for _, row in df.loc[invalid, columns].head(5).iterrows()
+        ],
+        "columns": columns,
+        "time_column": None,
+        "group_column": None,
+        "correction_columns": [columns[-1]],
+        "supported_actions": ["drop_rows", "replace_null", "flag"],
+    }
+
+
+def evaluate_consistency_rules(df: pd.DataFrame, rules: dict) -> list[dict]:
+    """Единый источник масок для общей проверки, обзора и исправлений."""
+    configured = list(rules.get("consistency", []) or [])
+    if not configured:
+        configured = list(auto_generate_rules(df).get("consistency", []))
+
+    evaluations: list[dict] = []
+    for index, rule in enumerate(configured):
         try:
-            rule_type = rule.get("type", "unknown")
-            rule_name = rule.get("name", "Unnamed")
-            columns = rule.get("columns", [])
-            violations = 0
-            violation_mask = pd.Series(False, index=df.index)
+            raw = _evaluate_consistency_rule(df, rule)
+        except Exception as ex:  # изолируем ошибку одного предметного правила
+            raw = {"applicable": False, "message": f"Ошибка правила: {ex}"}
+        applicable = bool(raw.get("applicable"))
+        invalid_count = int(raw.get("invalid_count", 0)) if applicable else None
+        checked_count = int(raw.get("checked_count", 0)) if applicable else 0
+        mask = raw.get("mask", pd.Series(False, index=df.index))
+        evaluations.append({
+            "rule_index": index,
+            "rule_name": str(rule.get("name", f"Правило {index + 1}")),
+            "rule_type": str(rule.get("type", "condition" if rule.get("condition") else "unknown")),
+            "description": rule.get("description"),
+            "columns": raw.get("columns", [str(column) for column in rule.get("columns", [])]),
+            "time_column": raw.get("time_column"),
+            "group_column": raw.get("group_column"),
+            "applicable": applicable,
+            "applicability_message": None if applicable else raw.get("message", "Правило неприменимо"),
+            "checked_count": checked_count,
+            "valid_count": checked_count - invalid_count if applicable else 0,
+            "invalid_count": invalid_count,
+            "affected_rows": int(mask.sum()) if applicable else 0,
+            "invalid_examples": raw.get("examples", []),
+            "supported_actions": raw.get("supported_actions", []),
+            "correction_columns": raw.get("correction_columns", []),
+            "mask": mask,
+        })
+    return evaluations
 
-            if rule_type == "chronology" and columns and columns[0] in df.columns:
-                time_col = columns[0]
-                
-                # Ищем группирующую колонку
-                group_col = None
-                for c in df.columns:
-                    if c != time_col and df[c].dtype in ['object', 'string', 'category']:
-                        n_unique = df[c].nunique()
-                        if 1 < n_unique < min(100, len(df) * 0.5):
-                            group_col = c
-                            break
 
-                if group_col:
-                    # Панельные данные: проверяем внутри каждой группы
-                    for group_name, group_df in df.groupby(group_col):
-                        group_sorted = group_df.sort_index()
-                        time_values = group_sorted[time_col]
-                        
-                        # Находим нарушения: где текущий год < предыдущего
-                        time_diff = time_values.diff()
-                        if pd.api.types.is_datetime64_any_dtype(time_values):
-                            group_violations_mask = time_diff < pd.Timedelta(seconds=0)
-                        else:
-                            group_violations_mask = time_diff < 0
-                        
-                        violations += group_violations_mask.sum()
-                        
-                        # 🔧 ИСПРАВЛЕНИЕ: Показываем ОБЕ строки нарушения
-                        # Строка где diff() < 0 (2015)
-                        violation_mask.loc[group_sorted[group_violations_mask].index] = True
-                        
-                        # И предыдущая строка (2016) — тоже нарушение!
-                        violation_indices = group_sorted[group_violations_mask].index
-                        for idx in violation_indices:
-                            prev_idx = group_sorted.index[group_sorted.index.get_loc(idx) - 1]
-                            violation_mask.loc[prev_idx] = True
-                else:
-                    # Обычный ряд
-                    time_diff = df[time_col].diff()
-                    if pd.api.types.is_datetime64_any_dtype(df[time_col]):
-                        violation_mask = time_diff < pd.Timedelta(seconds=0)
-                    else:
-                        violation_mask = time_diff < 0
-                    
-                    # Добавляем предыдущие строки
-                    violation_indices = df[violation_mask].index
-                    for idx in violation_indices:
-                        loc = df.index.get_loc(idx)
-                        if loc > 0:
-                            prev_idx = df.index[loc - 1]
-                            violation_mask.loc[prev_idx] = True
-                    
-                    violations = violation_mask.sum() // 2  # Делим на 2, т.к. каждая пара считается дважды
+def profile_consistency(df: pd.DataFrame, rules: dict) -> list[dict]:
+    """Полный профиль настроенных правил, включая pass и неприменимость."""
+    return [
+        {key: value for key, value in item.items() if key not in {"mask", "correction_columns"}}
+        for item in evaluate_consistency_rules(df, rules)
+    ]
 
-            results.append({
-                "Правило": rule_name,
-                "Тип": rule_type,
-                "Нарушений": int(violations),
-                "Статус": "⚠️ Нарушено" if violations > 0 else "✅ Соблюдено",
-                "mask": violation_mask
-            })
-        except Exception as e:
-            results.append({
-                "Правило": rule.get("name", "unknown"),
-                "Статус": f"❌ Ошибка: {e}",
-                "mask": pd.Series(False, index=df.index)
-            })
 
+def validate_consistency(df, rules):
+    """Legacy-контракт поверх единого профилировщика согласованности."""
+    results = []
+    for item in evaluate_consistency_rules(df, rules):
+        if not item["applicable"]:
+            continue
+        violations = int(item["invalid_count"] or 0)
+        results.append({
+            "Правило": item["rule_name"],
+            "Тип": item["rule_type"],
+            "Колонки": item["columns"],
+            "Нарушений": violations,
+            "Затронуто строк": item["affected_rows"],
+            "Статус": "⚠️ Нарушено" if violations > 0 else "✅ Соблюдено",
+            "mask": item["mask"],
+        })
     return results
 
 
@@ -907,7 +1087,10 @@ def auto_generate_rules(df: pd.DataFrame) -> dict:
 
     date_cols = [
         c for c in df.columns
-        if 'year' in str(c).lower() or 'date' in str(c).lower() or 'дата' in str(c).lower()
+        if pd.api.types.is_datetime64_any_dtype(df[c])
+        or any(token in str(c).lower() for token in (
+            'year', 'год', 'date', 'дата', 'time', 'время', 'timestamp', 'period', 'период'
+        ))
     ]
     if date_cols:
         rules["consistency"].append({

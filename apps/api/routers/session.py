@@ -24,6 +24,11 @@ from apps.api.schemas import (
     ColumnDetectionOut,
     ColumnStatsOut,
     ColumnStatsValues,
+    ConsistencyCorrectionResultOut,
+    ConsistencyProfileItemOut,
+    DatasetConsistencyCorrectionRequest,
+    DatasetConsistencyCorrectionResponse,
+    DatasetConsistencyProfileResponse,
     DatasetStatsResponse,
     DatasetSummaryOut,
     DatasetFormatCorrectionRequest,
@@ -66,8 +71,9 @@ from apps.api.schemas import (
     ValidationTypeProfileOut,
 )
 from app.data.detectors import score_all_columns_as_date, score_all_columns_as_entity_group, detect_column_frequency
-from validation.engine import profile_formats, profile_ranges, validate_dataframe
+from validation.engine import profile_consistency, profile_formats, profile_ranges, validate_dataframe
 from validation.rule_resolver import resolve_validation_rules
+from apps.api.consistency_correction import preview_consistency_corrections
 from apps.api.format_correction import preview_format_corrections
 from apps.api.range_correction import preview_range_corrections
 from apps.api.type_conversion import preview_type_conversions
@@ -779,6 +785,72 @@ def correct_dataset_ranges(
     )
 
 
+@router.get("/dataset/consistency-profile", response_model=DatasetConsistencyProfileResponse)
+def get_dataset_consistency_profile(request: Request, response: Response):
+    """Профиль хронологических и предметных правил активной сессии."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, rule_sources = _session_validation_rules(session)
+    profile = profile_consistency(session.dataframe, rules)
+    applicable = [item for item in profile if item["applicable"]]
+    return DatasetConsistencyProfileResponse(
+        rule_source=(
+            rule_sources.get("consistency", "not_applicable")
+            if applicable else "not_applicable"
+        ),
+        rules=[ConsistencyProfileItemOut(**item) for item in profile],
+    )
+
+
+@router.post(
+    "/dataset/consistency-corrections",
+    response_model=DatasetConsistencyCorrectionResponse,
+)
+def correct_dataset_consistency(
+    payload: DatasetConsistencyCorrectionRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply безопасных стратегий логики и хронологии."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, _rule_sources = _session_validation_rules(session)
+    try:
+        corrected_df, raw_results, rows_removed = preview_consistency_corrections(
+            session.dataframe, rules, payload.rule_indices, payload.strategy
+        )
+        next_profile = profile_consistency(corrected_df, rules)
+    except (ValueError, TypeError) as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
+        session.touch()
+        store.save(session)
+
+    return DatasetConsistencyCorrectionResponse(
+        applied=payload.apply,
+        strategy=payload.strategy,
+        total_violations=sum(item["invalid_count"] for item in raw_results),
+        total_changed=sum(item["changed_count"] for item in raw_results),
+        total_still_invalid=sum(item["still_invalid"] for item in raw_results),
+        rows_removed=rows_removed,
+        added_columns=[item["flag_column"] for item in raw_results if item["flag_column"]],
+        rules=[ConsistencyCorrectionResultOut(**item) for item in raw_results],
+        profile=[ConsistencyProfileItemOut(**item) for item in next_profile],
+    )
+
+
 @router.put("/dataset/validation-rules", response_model=DatasetValidationRulesResponse)
 def save_dataset_validation_rules(
     payload: DatasetValidationRulesRequest,
@@ -849,6 +921,54 @@ def save_dataset_validation_rules(
             raise HTTPException(
                 status_code=422,
                 detail=f"В правиле диапазона {index} минимум не может превышать максимум",
+            )
+
+    allowed_consistency_types = {"chronology", "comparison"}
+    allowed_comparison_operators = {"<", "<=", ">", ">=", "==", "!="}
+    for index, rule in enumerate(normalized_overrides.get("consistency", []), start=1):
+        name = rule.get("name")
+        rule_type = rule.get("type")
+        columns = rule.get("columns")
+        if not isinstance(name, str) or not name.strip():
+            raise HTTPException(
+                status_code=422,
+                detail=f"Для правила логики {index} задайте название",
+            )
+        if rule_type not in allowed_consistency_types:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Тип правила логики {index} не поддерживается",
+            )
+        expected_columns = 1 if rule_type == "chronology" else 2
+        if not isinstance(columns, list) or len(columns) != expected_columns or any(
+            not isinstance(column, str) or not column.strip() for column in columns
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"Для правила логики {index} задайте "
+                    f"{expected_columns} {'колонку' if expected_columns == 1 else 'колонки'}"
+                ),
+            )
+        missing_columns = [column for column in columns if column not in session.dataframe.columns]
+        group_column = rule.get("group_column")
+        if group_column is not None:
+            if rule_type != "chronology" or not isinstance(group_column, str) or not group_column.strip():
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Некорректная группирующая колонка правила логики {index}",
+                )
+            if group_column not in session.dataframe.columns:
+                missing_columns.append(group_column)
+        if missing_columns:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Колонка '{missing_columns[0]}' отсутствует в датасете",
+            )
+        if rule_type == "comparison" and rule.get("operator") not in allowed_comparison_operators:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Задайте допустимый оператор правила логики {index}",
             )
 
     # Regex из редактора правил валидируется до изменения сессии. Клиент

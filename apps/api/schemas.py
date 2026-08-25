@@ -486,6 +486,57 @@ class DatasetRangeCorrectionResponse(BaseModel):
     profile: List[RangeProfileItemOut]
 
 
+class ConsistencyProfileItemOut(BaseModel):
+    rule_index: int
+    rule_name: str
+    rule_type: str
+    description: Optional[str] = None
+    columns: List[str] = Field(default_factory=list)
+    time_column: Optional[str] = None
+    group_column: Optional[str] = None
+    applicable: bool
+    applicability_message: Optional[str] = None
+    checked_count: int = 0
+    valid_count: int = 0
+    invalid_count: Optional[int] = None
+    affected_rows: int = 0
+    invalid_examples: List[str] = Field(default_factory=list)
+    supported_actions: List[str] = Field(default_factory=list)
+
+
+class DatasetConsistencyProfileResponse(BaseModel):
+    rule_source: Literal["system", "template", "session", "not_applicable"]
+    rules: List[ConsistencyProfileItemOut] = Field(default_factory=list)
+
+
+class DatasetConsistencyCorrectionRequest(BaseModel):
+    rule_indices: List[int] = Field(..., min_length=1, max_length=100)
+    strategy: Literal["sort_chronology", "drop_rows", "replace_null", "flag"] = "flag"
+    apply: bool = Field(False, description="False -- preview; True -- сохранить в сессии")
+
+
+class ConsistencyCorrectionResultOut(BaseModel):
+    rule_index: int
+    rule_name: str
+    invalid_count: int
+    affected_rows: int
+    changed_count: int
+    still_invalid: int
+    flag_column: Optional[str] = None
+
+
+class DatasetConsistencyCorrectionResponse(BaseModel):
+    applied: bool
+    strategy: Literal["sort_chronology", "drop_rows", "replace_null", "flag"]
+    total_violations: int
+    total_changed: int
+    total_still_invalid: int
+    rows_removed: int = 0
+    added_columns: List[str] = Field(default_factory=list)
+    rules: List[ConsistencyCorrectionResultOut]
+    profile: List[ConsistencyProfileItemOut]
+
+
 class DatasetSummaryOut(BaseModel):
     """Сводка по активному датасету сессии -- для Home page ("Рабочий стол")."""
     dataset_id: str

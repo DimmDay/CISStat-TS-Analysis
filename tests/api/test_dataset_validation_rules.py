@@ -80,6 +80,13 @@ def test_selected_template_is_saved_and_used_by_global_validation():
     ]
     assert all(item["invalid_count"] == 0 for item in profile.json()["columns"])
 
+    consistency_profile = client.get("/v1/session/dataset/consistency-profile")
+    assert consistency_profile.status_code == 200, consistency_profile.text
+    consistency_rules = consistency_profile.json()["rules"]
+    assert consistency_profile.json()["rule_source"] == "template"
+    assert consistency_rules[0]["group_column"] == "Country"
+    assert [item["invalid_count"] for item in consistency_rules] == [0, 0]
+
 
 def test_session_override_has_priority_over_template():
     _upload(_fao_df())

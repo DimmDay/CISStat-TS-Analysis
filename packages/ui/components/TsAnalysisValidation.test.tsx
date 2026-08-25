@@ -121,6 +121,12 @@ function mockActiveValidation(validateResponse: () => Promise<unknown>) {
         json: () => Promise.resolve({ rule_source: "not_applicable", columns: [] }),
       });
     }
+    if (url.includes("/dataset/consistency-profile")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ rule_source: "not_applicable", rules: [] }),
+      });
+    }
     if (url.includes("/dataset/validate")) return validateResponse();
     return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
   }) as unknown as typeof fetch;
@@ -216,7 +222,7 @@ describe("TsAnalysisValidation", () => {
     renderValidation();
 
     const correctionButton = await screen.findByRole("button", { name: "Исправить типы данных" });
-    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(7);
+    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(6);
     fireEvent.click(correctionButton);
 
     expect(screen.getAllByText("Мастер исправления типов").length).toBeGreaterThan(0);
@@ -423,6 +429,41 @@ describe("TsAnalysisValidation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Исправить диапазоны значений" }));
     expect(screen.getAllByText("Мастер исправления диапазонов").length).toBeGreaterThan(0);
+  });
+
+  it("uses the consistency status, overview and correction-master contract", async () => {
+    mockActiveValidation(() => Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        ...validationResponse("done", "schema", 0),
+        checks: Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, {
+          status: id === "consistency" ? "pending" : "done",
+          count: id === "consistency" ? null : 0,
+          items: [],
+          scope: "dataset",
+          rule_source: id === "consistency" ? "not_applicable" : "system",
+        }])),
+      }),
+    }));
+
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+
+    expect(await screen.findByText("Эталон логики и хронологии не задан")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Логика и хронология/ }));
+    expect(await screen.findByText(/Эталон логики и хронологии не задан/i)).toBeInTheDocument();
+
+    const metricsButtons = screen.getAllByRole("button", { name: "Метрики и алгоритм" });
+    fireEvent.click(metricsButtons[0]);
+    expect(screen.getByText(/N_logic/i)).toBeInTheDocument();
+    expect(screen.getByText(/единый профилировщик правил/i)).toBeInTheDocument();
+
+    const correction = screen.getByRole("button", { name: "Исправить логику и хронологию" });
+    fireEvent.click(correction);
+    expect(screen.getAllByText("Мастер исправления логики и хронологии").length).toBeGreaterThan(0);
+    expect(screen.getByRole("region", { name: "Мастер исправления логики и хронологии" })).toBeInTheDocument();
   });
 
   it("renders the type matrix instead of the generic pending placeholder", async () => {

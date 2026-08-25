@@ -9,7 +9,7 @@
 //
 // Содержит:
 //   • Селектор шаблона (Custom / Default / FAO Prices / Macro)
-//   • Редакторы диапазонов и regex-форматов
+//   • Редакторы диапазонов, regex-форматов и типизированной логики
 //   • Кнопки «Применить правила» / «Сбросить к исходным»
 //   • Статус загрузки / ошибки
 
@@ -48,10 +48,22 @@ interface FormatRule {
   draft?: boolean;
 }
 
+interface ConsistencyRule {
+  name?: string;
+  type?: string;
+  columns?: string[];
+  operator?: string;
+  group_column?: string;
+  description?: string;
+  condition?: string;
+  draft?: boolean;
+  [key: string]: unknown;
+}
+
 interface RulesContent {
   ranges: RangeRule[];
   inclusion?: Record<string, unknown>;
-  consistency?: unknown[];
+  consistency?: ConsistencyRule[];
   formats?: Record<string, FormatRule>;
   referential?: unknown[];
   outliers?: Record<string, unknown>;
@@ -159,6 +171,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         ...rawContent,
         ranges: Array.isArray(rawContent.ranges) ? rawContent.ranges : [],
         formats: normalizeFormats(rawContent.formats || {}),
+        consistency: Array.isArray(rawContent.consistency) ? rawContent.consistency : [],
       };
       const activeOverrides = sessionSelection?.templateId === templateId
         ? sessionSelection.overrides
@@ -169,6 +182,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         ranges: Array.isArray(activeOverrides.ranges)
           ? activeOverrides.ranges
           : templateContent.ranges,
+        consistency: Array.isArray(activeOverrides.consistency)
+          ? activeOverrides.consistency as ConsistencyRule[]
+          : templateContent.consistency,
         formats: {
           ...(templateContent.formats || {}),
           ...normalizeFormats((activeOverrides.formats || {}) as Record<string, unknown>),
@@ -199,8 +215,11 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         ...activeOverrides,
         ranges: Array.isArray(activeOverrides.ranges) ? activeOverrides.ranges : [],
         formats: normalizeFormats((activeOverrides.formats || {}) as Record<string, unknown>),
+        consistency: Array.isArray(activeOverrides.consistency)
+          ? activeOverrides.consistency as ConsistencyRule[]
+          : [],
       });
-      setOriginalRules({ ranges: [], formats: {} });
+      setOriginalRules({ ranges: [], formats: {}, consistency: [] });
       setError(null);
     }
   }, [selectedTemplate, loadTemplate, sessionSelection]);
@@ -286,6 +305,52 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     setRules({ ...rules, formats });
   };
 
+  const addConsistencyRule = () => {
+    if (!rules) return;
+    setRules({
+      ...rules,
+      consistency: [
+        ...(rules.consistency || []),
+        { name: "", type: "chronology", columns: [""], group_column: "", draft: true },
+      ],
+    });
+  };
+
+  const updateConsistencyRule = (index: number, patch: Partial<ConsistencyRule>) => {
+    if (!rules) return;
+    const next = [...(rules.consistency || [])];
+    const current = next[index];
+    const nextType = patch.type || current.type;
+    next[index] = {
+      ...current,
+      ...patch,
+      ...(patch.type ? {
+        columns: nextType === "chronology"
+          ? [current.columns?.[0] || ""]
+          : [current.columns?.[0] || "", current.columns?.[1] || ""],
+        ...(nextType === "chronology" ? { operator: undefined } : { group_column: undefined, operator: current.operator || "<=" }),
+      } : {}),
+    };
+    setRules({ ...rules, consistency: next });
+  };
+
+  const updateConsistencyColumn = (index: number, columnIndex: number, value: string) => {
+    if (!rules) return;
+    const current = rules.consistency?.[index];
+    if (!current) return;
+    const columns = [...(current.columns || [])];
+    columns[columnIndex] = value;
+    updateConsistencyRule(index, { columns });
+  };
+
+  const removeConsistencyRule = (index: number) => {
+    if (!rules) return;
+    setRules({
+      ...rules,
+      consistency: (rules.consistency || []).filter((_rule, ruleIndex) => ruleIndex !== index),
+    });
+  };
+
   const serializableFormats = (formats: Record<string, FormatRule> = {}) => Object.fromEntries(
     Object.entries(formats)
       .filter(([column]) => column.trim() && !column.startsWith("__new_"))
@@ -304,6 +369,21 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     ...(rule.description ? { description: rule.description } : {}),
   }));
 
+  const serializableConsistency = (consistency: ConsistencyRule[] = []) => consistency.map((rule) => {
+    const { draft: _draft, ...serialized } = rule;
+    const columns = (rule.columns || []).map((column) => column.trim()).filter(Boolean);
+    return {
+      ...serialized,
+      name: rule.name?.trim(),
+      type: rule.type,
+      columns,
+      ...(rule.type === "chronology"
+        ? { ...(rule.group_column?.trim() ? { group_column: rule.group_column.trim() } : {}) }
+        : {}),
+      ...(rule.type === "comparison" ? { operator: rule.operator || "<=" } : {}),
+    };
+  });
+
   const [applyLoading, setApplyLoading] = useState(false);
 
   const handleApply = async () => {
@@ -315,6 +395,8 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       const originalFormats = serializableFormats(originalRules?.formats);
       const currentRanges = serializableRanges(rules.ranges);
       const originalRanges = serializableRanges(originalRules?.ranges);
+      const currentConsistency = serializableConsistency(rules.consistency);
+      const originalConsistency = serializableConsistency(originalRules?.consistency);
       const incompleteRange = currentRanges.find(
         (rule) => rule.keywords.length === 0
           || (rule.min === null && rule.max === null)
@@ -331,12 +413,25 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         setError("Заполните название колонки и regex во всех правилах форматов");
         return;
       }
+      const incompleteConsistency = currentConsistency.find((rule) =>
+        !rule.name
+        || !rule.type
+        || (rule.type === "chronology" && rule.columns.length !== 1)
+        || (rule.type === "comparison" && (rule.columns.length !== 2 || !rule.operator))
+      );
+      if (incompleteConsistency) {
+        setError("Заполните название, тип и колонки во всех правилах логики");
+        return;
+      }
       const overrides: Record<string, unknown> = {};
       if (JSON.stringify(currentRanges) !== JSON.stringify(originalRanges)) {
         overrides.ranges = currentRanges;
       }
       if (JSON.stringify(currentFormats) !== JSON.stringify(originalFormats)) {
         overrides.formats = currentFormats;
+      }
+      if (JSON.stringify(currentConsistency) !== JSON.stringify(originalConsistency)) {
+        overrides.consistency = currentConsistency;
       }
       const resp = await fetch(`${API_BASE}/v1/session/dataset/validation-rules`, {
         method: "PUT",
@@ -432,13 +527,13 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
           может добавить их ниже и сохранить как override сессии. */}
       {selectedTemplate === "custom" && !loading && (
         <div className="text-sm text-neutral-500 bg-brand-light/50 rounded px-3 py-2">
-          Система распознаёт типы и безопасные диапазоны для цены, года и процентов.
-          Другие предметные границы и regex не выводятся из самих значений: добавьте их в редакторах ниже.
+          Система распознаёт типы, безопасные диапазоны и базовую хронологию по временной колонке.
+          Предметные границы, regex и связи между колонками не выводятся из самих значений: добавьте их в редакторах ниже.
         </div>
       )}
 
       {rules && !loading && (
-        <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="grid grid-cols-3 gap-2 text-xs">
           <span className="rounded bg-neutral-50 px-2 py-1 text-neutral-600">
             Диапазоны: {rulesCountLabel(rules.ranges.length)}
           </span>
@@ -450,6 +545,15 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
             Форматы: {Object.keys(rules.formats || {}).length > 0
               ? rulesCountLabel(Object.keys(rules.formats || {}).length)
               : "не заданы"}
+          </span>
+          <span className={`rounded px-2 py-1 ${
+            (rules.consistency || []).length > 0
+              ? "bg-green-50 text-green-700"
+              : "bg-amber-50 text-amber-700"
+          }`}>
+            Логика: {(rules.consistency || []).length > 0
+              ? rulesCountLabel((rules.consistency || []).length)
+              : "не задана"}
           </span>
         </div>
       )}
@@ -530,6 +634,130 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
                   </div>
                 </div>
               </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Базовая хронология определяется системой, предметные сравнения
+          задаются только явно. Шаблонные legacy-правила показываем
+          read-only; пользовательский редактор поддерживает безопасные
+          chronology/comparison без выполнения произвольного кода. */}
+      {rules && !loading && (
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h4 className="text-sm font-medium">Редактор логики ({(rules.consistency || []).length} правил)</h4>
+            {selectedTemplate === "custom" && (
+              <button
+                type="button"
+                onClick={addConsistencyRule}
+                className="flex items-center gap-1 rounded border border-brand/40 px-2 py-1 text-xs font-medium text-brand hover:bg-brand/5"
+              >
+                <Plus size={13} /> Добавить правило логики
+              </button>
+            )}
+          </div>
+          {(rules.consistency || []).length === 0 && (
+            <p className="mb-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Предметные правила не заданы. Система проверит базовую хронологию, если распознает временную колонку.
+            </p>
+          )}
+          <div className="space-y-2">
+            {(rules.consistency || []).map((rule, index) => {
+              const editable = selectedTemplate === "custom";
+              const ruleNumber = index + 1;
+              if (!editable) {
+                return (
+                  <div key={index} className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-neutral-800">{rule.name || `Правило ${ruleNumber}`}</span>
+                      <span className="font-mono text-[10px]">{rule.type || "condition"}</span>
+                    </div>
+                    <p className="mt-1">{rule.columns?.join(" ↔ ") || rule.condition || "Колонки определяются шаблоном"}</p>
+                  </div>
+                );
+              }
+              const chronology = rule.type !== "comparison";
+              return (
+                <div key={index} className="rounded-md border border-neutral-200 bg-white px-3 py-2">
+                  <div className="grid gap-2 sm:grid-cols-[minmax(170px,1fr)_145px_auto]">
+                    <input
+                      type="text"
+                      value={rule.name || ""}
+                      onChange={(event) => updateConsistencyRule(index, { name: event.target.value })}
+                      aria-label={`Название правила логики ${ruleNumber}`}
+                      placeholder="Название правила"
+                      className="min-w-0 rounded border border-neutral-300 px-2 py-1 text-sm"
+                    />
+                    <select
+                      value={chronology ? "chronology" : "comparison"}
+                      onChange={(event) => updateConsistencyRule(index, { type: event.target.value })}
+                      aria-label={`Тип правила логики ${ruleNumber}`}
+                      className="rounded border border-neutral-300 bg-white px-2 py-1 text-sm"
+                    >
+                      <option value="chronology">Хронология</option>
+                      <option value="comparison">Сравнение колонок</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => removeConsistencyRule(index)}
+                      aria-label={`Удалить правило логики ${ruleNumber}`}
+                      className="rounded p-1.5 text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                  {chronology ? (
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={rule.columns?.[0] || ""}
+                        onChange={(event) => updateConsistencyColumn(index, 0, event.target.value)}
+                        aria-label={`Временная колонка правила логики ${ruleNumber}`}
+                        placeholder="Временная колонка"
+                        className="rounded border border-neutral-300 px-2 py-1 text-sm"
+                      />
+                      <input
+                        type="text"
+                        value={rule.group_column || ""}
+                        onChange={(event) => updateConsistencyRule(index, { group_column: event.target.value })}
+                        aria-label={`Группирующая колонка правила логики ${ruleNumber}`}
+                        placeholder="Группа (необязательно)"
+                        className="rounded border border-neutral-300 px-2 py-1 text-sm"
+                      />
+                    </div>
+                  ) : (
+                    <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_80px_1fr]">
+                      <input
+                        type="text"
+                        value={rule.columns?.[0] || ""}
+                        onChange={(event) => updateConsistencyColumn(index, 0, event.target.value)}
+                        aria-label={`Левая колонка правила логики ${ruleNumber}`}
+                        placeholder="Левая колонка"
+                        className="rounded border border-neutral-300 px-2 py-1 text-sm"
+                      />
+                      <select
+                        value={rule.operator || "<="}
+                        onChange={(event) => updateConsistencyRule(index, { operator: event.target.value })}
+                        aria-label={`Оператор правила логики ${ruleNumber}`}
+                        className="rounded border border-neutral-300 bg-white px-2 py-1 text-sm"
+                      >
+                        {["<", "<=", ">", ">=", "==", "!="].map((operator) => (
+                          <option key={operator} value={operator}>{operator}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={rule.columns?.[1] || ""}
+                        onChange={(event) => updateConsistencyColumn(index, 1, event.target.value)}
+                        aria-label={`Правая колонка правила логики ${ruleNumber}`}
+                        placeholder="Правая колонка"
+                        className="rounded border border-neutral-300 px-2 py-1 text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
               );
             })}
           </div>

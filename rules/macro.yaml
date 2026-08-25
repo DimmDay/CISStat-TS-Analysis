@@ -77,6 +77,7 @@ consistency:
   - name: "Хронология по странам"
     type: "chronology"
     columns: ["Year"]
+    group_column: "Country"
     description: "Годы должны идти по возрастанию внутри каждой страны"
 
   - name: "Безработица не может быть отрицательной"

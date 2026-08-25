@@ -256,6 +256,58 @@ describe("RulesManagementPanel", () => {
     expect(screen.getByRole("spinbutton", { name: "Максимум Score" })).toHaveValue(100);
   });
 
+  it("lets a custom session add a grouped chronology rule", async () => {
+    render(<RulesManagementPanel />);
+    await waitFor(() => expect(screen.getByTestId("apply-system-rules-btn")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Добавить правило логики" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Название правила логики 1" }), {
+      target: { value: "Хронология по странам" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Временная колонка правила логики 1" }), {
+      target: { value: "Year" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Группирующая колонка правила логики 1" }), {
+      target: { value: "Country" },
+    });
+    fireEvent.click(screen.getByTestId("apply-system-rules-btn"));
+
+    await waitFor(() => {
+      const putCall = mockFetch.mock.calls.find(
+        (call: [string, RequestInit?]) =>
+          call[0].includes("/session/dataset/validation-rules") && call[1]?.method === "PUT"
+      );
+      const payload = JSON.parse((putCall?.[1]?.body ?? "{}") as string);
+      expect(payload.overrides.consistency).toEqual([{
+        name: "Хронология по странам",
+        type: "chronology",
+        columns: ["Year"],
+        group_column: "Country",
+      }]);
+    });
+  });
+
+  it("restores a saved custom comparison rule", async () => {
+    sessionRulesResponse = {
+      template_id: "system",
+      overrides: {
+        consistency: [{
+          name: "Прибыль не выше выручки",
+          type: "comparison",
+          columns: ["Profit", "Revenue"],
+          operator: "<=",
+        }],
+      },
+    };
+
+    render(<RulesManagementPanel />);
+
+    expect(await screen.findByRole("textbox", { name: "Название правила логики 1" })).toHaveValue("Прибыль не выше выручки");
+    expect(screen.getByRole("textbox", { name: "Левая колонка правила логики 1" })).toHaveValue("Profit");
+    expect(screen.getByRole("textbox", { name: "Правая колонка правила логики 1" })).toHaveValue("Revenue");
+    expect(screen.getByRole("combobox", { name: "Оператор правила логики 1" })).toHaveValue("<=");
+  });
+
   it("shows range editor with min/max inputs for each rule", async () => {
     const { container } = render(<RulesManagementPanel />);
     const selector = await waitTemplatesLoaded(container);
