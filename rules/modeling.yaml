@@ -1,34 +1,45 @@
 # ══════════════════════════════════════════════════════════════════════════════
 # СПЕЦИФИКАЦИЯ МОДУЛЯ «МОДЕЛИРОВАНИЕ»  CISStat-TS-Analysis
 # Версия: 1.0.0-draft
-# Дата:   2026-08-25
+# Дата:   2026-08-07
 # ══════════════════════════════════════════════════════════════════════════════
 #
-# PHASE 2 contract: residual diagnostics are Ljung-Box, Jarque-Bera,
-# ARCH-LM and Durbin-Watson. The diagnostics stage below is the formal
-# specification consumed by regression tests and must stay aligned with
-# apps/api/routers/diagnostics.py.
+# Архитектура: 8 семейств моделей → движок применимости → пайплайн моделирования
 #
-# NOTE: The remainder of this file is unchanged from the current main
-# specification; only metadata date and the Stage 8 diagnostics contract
-# are synchronized in this patch.
+# Ключевые принципы:
+#   1. Моделирование ≠ Прогнозирование (разные жизненные циклы)
+#   2. 4 уровня применимости вместо бинарного Yes/No
+#   3. Baseline-модели обязательны для любого моделирования
+#   4. Метрики конфигурируемы, R² не участвует в ранжировании
+#   5. Нет жёстких порогов для DL-моделей — только мягкие рекомендации
+#   6. Model Card — обязательный артефакт результата
+#
 # ══════════════════════════════════════════════════════════════════════════════
 
 metadata:
   version: "1.0.0-draft"
-  last_updated: "2026-08-25"
+  last_updated: "2026-08-07"
   author: "CISStat TS Analysis Team"
   description: >-
     Формальная спецификация модуля «Моделирование»:
     семейства моделей, условия применимости, пайплайн, метрики,
     диагностика, правила выбора, Model Card.
 
+# ══════════════════════════════════════════════════════════════════════════════
+# 1. СЕМЕЙСТВА МОДЕЛЕЙ
+# ══════════════════════════════════════════════════════════════════════════════
+# Каждое семейство — расширяемый контейнер. Новые модели добавляются
+# внутри семейства без изменения структуры спецификации.
+
 families:
 
+  # ── 1. BASELINES ────────────────────────────────────────────────────────────
+  # Обязательны для любого моделирования. Не требуют обучения.
+  # Служат lower bound: если модель не бьёт baseline — она бесполезна.
   - id: "baselines"
     name: "Базовые модели (Baselines)"
     priority: 1
-    required: true
+    required: true               # ← Baseline-семейство обязательно
     description: >-
       Простейшие модели-заглушки. Не требуют подбора гиперпараметров.
       Обязательны как lower bound для любого моделирования:
@@ -39,110 +50,159 @@ families:
         description: "Ÿ_{t+h} = y_t. Прогноз = последнее наблюдение."
         min_observations: 2
         training_time: "instant"
+
       - id: "seasonal_naive"
         name: "Seasonal Naive"
         description: "Ÿ_{t+h} = y_{t+h-m}. Прогноз = значение из предыдущего сезона."
         min_observations: 24
         requires_seasonality: true
         training_time: "instant"
+
       - id: "drift"
         name: "Drift"
         description: "Ÿ_{t+h} = y_t + h · (y_t − y_1)/(t − 1). Линейная экстраполяция."
         min_observations: 10
         training_time: "instant"
+
       - id: "mean"
         name: "Mean"
         description: "Ÿ_{t+h} = ȳ. Прогноз = среднее всех наблюдений."
         min_observations: 3
         training_time: "instant"
 
+  # ── 2. EXPONENTIAL / STATE SPACE ────────────────────────────────────────────
   - id: "exponential_smoothing"
     name: "Экспоненциальное сглаживание / State Space"
     priority: 2
     required: false
-    description: "Модели экспоненциального сглаживания (ETS) и их расширения."
+    description: >-
+      Модели экспоненциального сглаживания (ETS) и их расширения.
+      Интерпретируемые компоненты Error-Trend-Seasonality.
+      Хорошо работают на малых выборках (n < 100).
     models:
       - id: "ets"
         name: "ETS (Auto)"
-        description: "Автоматический подбор ETS по AIC."
+        description: >-
+          Автоматический подбор (E,T,S) ∈ {A,M,N}³ по AIC.
+          Покрывает 30 моделей: от Simple Exp. Smoothing до Holt-Winters.
         min_observations: 10
         supports_exogenous: false
         supports_prediction_intervals: true
         libraries: ["statsmodels"]
         training_time: "seconds"
+        # ── Phase 1-A: пространство параметров для тюнинга ──
+        # Декартово произведение: 2 × 3 × 1 × 2 = 12 trials (≤ MAX_TRIALS=64).
+        # trend: аддитивный или мультипликативный (последний — только если
+        # ряд строго положительный; tune-ендпоинт отбрасывает mul при отрицательных).
+        # seasonal: add / mul / None (None = без сезонности).
+        # seasonal_periods: фиксировано 12 (для месячных) — расширяется
+        #   на основе профиля данных (D→7, W→52, M→12, Q→4, Y→1).
+        # damped_trend: false / true.
         param_space:
           trend: ["add", "mul"]
           seasonal: ["add", "mul", null]
           seasonal_periods: [12]
           damped_trend: [false, true]
+
       - id: "ets_damped"
         name: "ETS Damped Trend"
-        description: "ETS с затухающим трендом."
+        description: >-
+          ETS с затухающим трендом (damped trend).
+          Робастнее на длинных горизонтах, чем ETS без затухания.
         min_observations: 10
         supports_exogenous: false
         supports_prediction_intervals: true
         libraries: ["statsmodels"]
         training_time: "seconds"
+        # ── Phase 1-A: как у ETS, но damped_trend всегда true ──
+        # Декартово произведение: 2 × 3 × 1 = 6 trials.
         param_space:
           trend: ["add", "mul"]
           seasonal: ["add", "mul", null]
           seasonal_periods: [12]
+
       - id: "theta"
         name: "Theta Method"
-        description: "Theta Method."
+        description: >-
+          Декомпозиция Assimakopoulos & Nikolopoulos на две theta-линии.
+          Победитель M3 Competition.
         min_observations: 20
         supports_exogenous: false
         supports_prediction_intervals: true
         libraries: ["statsmodels", "darts"]
         training_time: "seconds"
 
+  # ── 3. ARIMA FAMILY ────────────────────────────────────────────────────────
   - id: "arima"
     name: "Семейство ARIMA"
     priority: 3
     required: false
-    description: "Авторегрессионные модели Бокса-Дженкинса и их расширения."
+    description: >-
+      Авторегрессионные модели Бокса-Дженкинса и их расширения:
+      ARIMA, SARIMA, ARIMAX, SARIMAX, auto-ARIMA.
+      Золотой стандарт для одномерных рядов средней длины.
     models:
       - id: "arima"
         name: "ARIMA / SARIMA"
-        description: "(p,d,q)×(P,D,Q)_m."
+        description: >-
+          (p,d,q)×(P,D,Q)_m. Ручной или auto-ARIMA (stepwise / parallel).
         min_observations: 50
-        supports_exogenous: true
+        supports_exogenous: true      # ARIMAX / SARIMAX
         supports_seasonality: true
-        requires_stationarity: "optional"
+        requires_stationarity: "optional"  # d подбирается автоматически
         supports_prediction_intervals: true
         libraries: ["statsmodels", "pmdarima"]
         training_time: "seconds"
+        # ── Phase 1-A: пространство параметров для тюнинга ──
+        # Декартово произведение: 3 × 2 × 3 = 18 trials (≤ MAX_TRIALS=64).
+        # Сознательно меньше чем у Auto-ARIMA grid (8 в hotfix) — здесь
+        # каждая комбинация выполняется с CV, а не один fit, поэтому 18
+        # trials × 5 CV folds = 90 fits было бы слишком долго.
+        # P/D/Q (сезонные) здесь НЕ настраиваются — для сезонных рядов
+        # используйте модель 'arima_auto' (P,D,Q grid там separate).
         param_space:
           p: [0, 1, 2]
           d: [0, 1]
           q: [0, 1, 2]
+
       - id: "arima_auto"
         name: "Auto-ARIMA"
-        description: "Автоматический подбор порядка ARIMA по AICc."
+        description: >-
+          Автоматический подбор (p,d,q)(P,D,Q) по AICc с stepwise search.
+          Обёртка pmdarima.auto_arima.
         min_observations: 30
         supports_exogenous: true
         supports_prediction_intervals: true
         libraries: ["pmdarima"]
         training_time: "seconds_to_minutes"
 
+  # ── 4. MULTIVARIATE STATISTICAL ─────────────────────────────────────────────
   - id: "multivariate"
     name: "Многомерные статистические модели"
     priority: 4
     required: false
-    description: "Модели для совместного анализа нескольких временных рядов."
+    description: >-
+      Модели для совместного анализа нескольких связанных временных рядов.
+      VAR — стационарные системы; VECM — коинтегрированные.
     models:
       - id: "var"
         name: "VAR"
-        description: "Векторная авторегрессия."
+        description: >-
+          Векторная авторегрессия. Моделирует взаимное влияние K рядов.
+          Требует стационарности всех компонент.
         min_observations: 100
         min_series: 2
         supports_exogenous: true
         supports_prediction_intervals: true
         libraries: ["statsmodels"]
         training_time: "seconds_to_minutes"
+
       - id: "vecm"
         name: "VECM"
-        description: "Vector Error Correction Model."
+        description: >-
+          Vector Error Correction Model. Для коинтегрированных рядов
+          (долгосрочные равновесия при I(1)). Ранг коинтеграции r
+          подбирается по критерию Йохансена.
         min_observations: 100
         min_series: 2
         supports_exogenous: false
@@ -150,255 +210,697 @@ families:
         libraries: ["statsmodels"]
         training_time: "seconds_to_minutes"
 
+  # ── 5. VOLATILITY ──────────────────────────────────────────────────────────
   - id: "volatility"
     name: "Модели волатильности"
     priority: 5
     required: false
-    description: "Модели условной дисперсии."
+    description: >-
+      Модели условной дисперсии для финансовых/ценовых рядов.
+      Прогнозируют волатильность, а не средний уровень.
+      GARCH — стандарт для оценки риска и VaR.
     models:
       - id: "garch"
         name: "GARCH(p,q)"
-        description: "Generalized ARCH."
+        description: >-
+          Generalized ARCH. Моделирует кластеризацию волатильности.
+          Применяется к стационарным доходностям (log-returns).
         min_observations: 100
-        domain: "financial"
+        domain: "financial"          # ← ограничение предметной области
         supports_exogenous: true
         supports_prediction_intervals: true
         libraries: ["arch"]
         training_time: "seconds"
+
       - id: "egarch"
         name: "EGARCH(p,q)"
-        description: "Exponential GARCH."
+        description: >-
+          Exponential GARCH. Учитывает асимметрию (leverage effect):
+          негативные шоки сильнее влияют на волатильность.
         min_observations: 100
         domain: "financial"
         supports_prediction_intervals: true
         libraries: ["arch"]
         training_time: "seconds"
 
+  # ── 6. STRUCTURAL / DECOMPOSABLE ───────────────────────────────────────────
   - id: "structural"
     name: "Структурные / декомпозируемые модели"
     priority: 6
     required: false
-    description: "Аддитивные модели с разделяемыми компонентами."
+    description: >-
+      Аддитивные модели с явно разделяемыми компонентами
+      (тренд + сезонность + праздники + шум).
+      Prophet — наиболее гибкий представитель.
     models:
       - id: "prophet"
         name: "Prophet"
-        description: "Тренд + сезонность + праздники + шум."
+        description: >-
+          y(t) = g(t) + s(t) + h(t) + ε(t).
+          Facebook Prophet: тренд (linear/logistic) + Fourier-сезонность
+          + эффекты праздников. Робастен к пропускам и выбросам.
         min_observations: 30
-        supports_exogenous: true
+        supports_exogenous: true      # extra regressors
         supports_seasonality: true
         supports_prediction_intervals: true
         libraries: ["prophet"]
         training_time: "seconds_to_minutes"
+
       - id: "tbats"
         name: "TBATS"
-        description: "Trigonometric seasonality + Box-Cox + ARMA errors + Trend + Seasonal."
+        description: >-
+          Trigonometric seasonality + Box-Cox + ARMA errors + Trend + Seasonal.
+          Автоматический подбор множественных сезонностей (дневная + недельная + годовая).
         min_observations: 100
         supports_exogenous: false
         supports_prediction_intervals: true
         libraries: ["statsmodels"]
         training_time: "minutes"
 
+  # ── 7. TREE-BASED ML ───────────────────────────────────────────────────────
   - id: "tree_ml"
     name: "Деревья и бустинг (ML)"
     priority: 7
     required: false
-    description: "ML-модели для временных рядов с feature engineering."
+    description: >-
+      Градиентный бустинг и ансамбли деревьев на лаговых признаках.
+      Требуют feature engineering (лаги, календарные признаки, rolling stats).
+      Не экстраполируют тренд — нужна детрендизация.
     models:
       - id: "xgboost"
         name: "XGBoost"
-        description: "Gradient boosting trees."
+        description: >-
+          Gradient Boosted Trees на lag-фичах. Быстрое обучение,
+          feature importance, устойчивость к выбросам.
         min_observations: 100
         supports_exogenous: true
         requires_feature_engineering: true
-        supports_prediction_intervals: true
+        supports_prediction_intervals: true   # через quantile regression
         libraries: ["xgboost"]
         training_time: "seconds_to_minutes"
+
       - id: "lightgbm"
         name: "LightGBM"
-        description: "Gradient boosting trees."
+        description: >-
+          Leaf-wise gradient boosting. Быстрее XGBoost на больших выборках,
+          эффективнее по памяти. Histogram-based splits.
         min_observations: 100
         supports_exogenous: true
         requires_feature_engineering: true
         supports_prediction_intervals: true
         libraries: ["lightgbm"]
         training_time: "seconds_to_minutes"
+
       - id: "catboost"
         name: "CatBoost"
-        description: "Gradient boosting with categorical feature support."
+        description: >-
+          Ordered gradient boosting. Естественная обработка категориальных
+          признаков, сниженный overfitting.
         min_observations: 100
         supports_exogenous: true
         requires_feature_engineering: true
         supports_prediction_intervals: true
         libraries: ["catboost"]
         training_time: "minutes"
+
       - id: "random_forest"
         name: "Random Forest"
-        description: "Bagging деревьев."
+        description: >-
+          Bagging деревьев. Устойчив к переобучению, не требует масштабирования.
+          Менее точен, чем бустинг, но лучше как baseline ML.
         min_observations: 100
         supports_exogenous: true
         requires_feature_engineering: true
-        supports_prediction_intervals: true
+        supports_prediction_intervals: true    # через quantile
         libraries: ["scikit-learn"]
         training_time: "seconds_to_minutes"
 
+  # ── 8. NEURAL / DEEP TS ────────────────────────────────────────────────────
   - id: "neural"
     name: "Нейросетевые модели (Deep TS)"
     priority: 8
     required: false
-    description: "Глубокие архитектуры для временных рядов."
+    description: >-
+      Глубокие архитектуры для временных рядов.
+      Нет жёстких порогов по n — только мягкие рекомендации.
+      Требуют GPU для обучения на больших выборках.
     models:
       - id: "lstm"
         name: "LSTM / GRU"
-        description: "Рекуррентные сети для последовательностей."
-        min_observations: 200
+        description: >-
+          Рекуррентные сети для последовательностей.
+          LSTM — долгие зависимости; GRU — легковесная альтернатива.
+        min_observations: 200          # мягкая рекомендация, не жёсткий порог
         supports_exogenous: true
-        supports_prediction_intervals: true
+        supports_prediction_intervals: true   # MC Dropout / deep ensembles
         libraries: ["pytorch", "darts"]
         training_time: "minutes_to_hours"
-        requires_gpu: false
+        requires_gpu: false            # возможно на CPU, но медленно
+
       - id: "tft"
         name: "Temporal Fusion Transformer"
-        description: "Attention-based архитектура для многомерных рядов."
+        description: >-
+          Attention-based архитектура (Google). Интерпретируемость через
+          attention weights. Поддержка множественных горизонтов и экзогенных.
         min_observations: 200
         supports_exogenous: true
-        supports_prediction_intervals: true
+        supports_prediction_intervals: true   # quantile outputs
         libraries: ["pytorch-forecasting", "darts"]
         training_time: "minutes_to_hours"
         requires_gpu: true
+
       - id: "nbeats"
         name: "N-BEATS"
-        description: "Basis expansion network."
+        description: >-
+          Basis expansion network. Интерпретируемая декомпозиция
+          (тренд + сезонность) через архитектуру сети.
         min_observations: 200
         supports_exogenous: false
         supports_prediction_intervals: true
         libraries: ["darts", "nbeats-pytorch"]
         training_time: "minutes_to_hours"
         requires_gpu: true
+
       - id: "nhits"
         name: "N-HiTS"
-        description: "Hierarchical interpolation N-BEATS."
+        description: >-
+          Hierarchical interpolation N-BEATS. Быстрее и точнее
+          на долгих горизонтах прогнозирования.
         min_observations: 200
         supports_exogenous: false
         supports_prediction_intervals: true
         libraries: ["darts"]
         training_time: "minutes_to_hours"
         requires_gpu: true
+
       - id: "deepar"
         name: "DeepAR"
-        description: "Авторегрессионная глобальная вероятностная модель."
+        description: >-
+          Авторегрессионная сеть (Amazon). Глобальная модель для множества
+          рядов. Вероятностный прогноз (parametric distribution head).
         min_observations: 200
-        min_series: 5
+        min_series: 5                # ← DeepAR требует множество рядов
         supports_exogenous: true
         supports_prediction_intervals: true
         libraries: ["gluonts", "pytorch-forecasting"]
         training_time: "minutes_to_hours"
         requires_gpu: true
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 2. УРОВНИ ПРИМЕНИМОСТИ
+# ══════════════════════════════════════════════════════════════════════════════
+# Вместо бинарного «применима / не применима» — 4 уровня,
+# отражающие степень соответствия модели условиям задачи.
+
 applicability_levels:
   - id: "RECOMMENDED"
     name: "Рекомендована"
-    color: "#16A34A"
+    color: "#16A34A"              # green-600
     rank: 1
-    description: "Модель полностью соответствует условиям."
-    ui_badge: "default"
+    description: >-
+      Модель полностью соответствует условиям: данные достаточны,
+      предпосылки выполнены, ожидается корректный результат.
+    ui_badge: "default"           # активная модель, выбор по умолчанию
+
   - id: "CONDITIONALLY_APPLICABLE"
     name: "Условно применима"
-    color: "#CA8A04"
+    color: "#CA8A04"              # yellow-600
     rank: 2
-    description: "Модель может быть использована, но с оговорками."
-    ui_badge: "warning"
+    description: >-
+      Модель может быть использована, но с оговорками:
+      нарушены отдельные предпосылки, данных на нижней границе,
+      требуется осторожная интерпретация.
+    ui_badge: "warning"           # показать предупреждение
+
   - id: "NOT_RECOMMENDED"
     name: "Не рекомендована"
-    color: "#EA580C"
+    color: "#EA580C"              # orange-600
     rank: 3
-    description: "Модель технически может быть запущена, но результаты ненадёжны."
-    ui_badge: "danger"
+    description: >-
+      Модель технически может быть запущена, но результаты
+      ненадёжны: грубое нарушение предпосылок, данных критически мало.
+    ui_badge: "danger"            # показать сильное предупреждение
+
   - id: "NOT_APPLICABLE"
     name: "Неприменима"
-    color: "#DC2626"
+    color: "#DC2626"              # red-600
     rank: 4
-    description: "Модель не может быть запущена."
-    ui_badge: "disabled"
+    description: >-
+      Модель не может быть запущена: структурное противоречие
+      (одномерная модель для многомерных данных, финансовая модель
+      для натуральных показателей и т.д.).
+    ui_badge: "disabled"          # заблокировать запуск
 
-# Existing applicability engine is intentionally preserved by the runtime;
-# its formal rules are loaded from this document in the catalog layer.
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 3. ДВИЖОК ПРИМЕНИМОСТИ — правила определения уровня
+# ══════════════════════════════════════════════════════════════════════════════
+# Правила проверяются последовательно. Первое совпадение определяет уровень.
+# Порядок: NOT_APPLICABLE → NOT_RECOMMENDED → CONDITIONALLY_APPLICABLE → RECOMMENDED.
+
 applicability_engine:
-  forbidden: []
-  discouraged: []
-  conditional: []
-  preferred: []
+
+  # ── 3.1. ЗАПРЕЩАЮЩИЕ УСЛОВИЯ → NOT_APPLICABLE ─────────────────────────────
+  # Структурные противоречия: модель НЕ МОЖЕТ быть запущена.
+  forbidden:
+    - id: "F01"
+      description: "Многомерная модель (VAR/VECM/DeepAR) при одном ряде"
+      condition: "n_series == 1 AND model.requires_multiple_series"
+      result: "NOT_APPLICABLE"
+      message: "Модель {model.name} требует минимум {model.min_series} рядов"
+
+    - id: "F02"
+      description: "Финансовая модель для не-финансовых данных"
+      condition: "model.domain == 'financial' AND data.domain != 'financial'"
+      result: "NOT_APPLICABLE"
+      message: >-
+        {model.name} предназначена для финансовых/ценовых рядов.
+        Для данного типа данных она неприменима.
+
+    - id: "F03"
+      description: "Модель с экзогенными признаками, но экзогенных нет в данных"
+      condition: "model.supports_exogenous == false AND n_exogenous > 0"
+      result: "NOT_APPLICABLE"
+      message: >-
+        {model.name} не поддерживает экзогенные признаки.
+        Уберите экзогенные переменные или выберите другую модель.
+
+    - id: "F04"
+      description: "Данных меньше абсолютного минимума модели"
+      condition: "n_observations < model.min_observations"
+      result: "NOT_APPLICABLE"
+      message: >-
+        Недостаточно данных: {n_observations} < {model.min_observations}
+        (требуется {model.name})
+
+    - id: "F05"
+      description: "DeepAR при недостаточном количестве рядов"
+      condition: "model.id == 'deepar' AND n_series < model.min_series"
+      result: "NOT_APPLICABLE"
+      message: "DeepAR требует минимум {model.min_series} рядов для глобальной модели"
+
+  # ── 3.2. НЕЖЕЛАТЕЛЬНЫЕ УСЛОВИЯ → NOT_RECOMMENDED ──────────────────────────
+  # Модель МОЖЕТ быть запущена, но результаты ненадёжны.
+  discouraged:
+    - id: "D01"
+      description: "ARIMA при очень длинном ряде (n > 5000)"
+      condition: "model.family == 'arima' AND n_observations > 5000"
+      result: "NOT_RECOMMENDED"
+      message: >-
+        ARIMA на длинных рядах (>5000) медленна и часто неустойчива.
+        Рассмотрите Prophet, XGBoost или нейросетевые модели.
+
+    - id: "D02"
+      description: "DL-модель при малой выборке (n < 300)"
+      condition: "model.family == 'neural' AND n_observations < 300"
+      result: "NOT_RECOMMENDED"
+      message: >-
+        Нейросетевые модели при n < 300 склонны к переобучению.
+        Рекомендуются ETS, ARIMA или Prophet.
+
+    - id: "D03"
+      description: "Деревья/бустинг без feature engineering"
+      condition: >-
+        model.family == 'tree_ml' AND feature_engineering_applied == false
+      result: "NOT_RECOMMENDED"
+      message: >-
+        ML-модели требуют feature engineering (лаги, календарные признаки).
+        Без них результат будет тривиальным.
+
+    - id: "D04"
+      description: "GARCH для не-финансовых рядов (мягкое предупреждение)"
+      condition: >-
+        model.family == 'volatility' AND data.domain != 'financial'
+      result: "NOT_RECOMMENDED"
+      message: >-
+        GARCH-модели обычно применяются к финансовым данным.
+        Для прочих рядов убедитесь в кластеризации дисперсии.
+
+    - id: "D05"
+      description: "TBATS при недостатке данных для множественных сезонностей"
+      condition: "model.id == 'tbats' AND n_observations < 200"
+      result: "NOT_RECOMMENDED"
+      message: >-
+        TBATS при n < 200 может не выявить множественные сезонности.
+        Рассмотрите ETS как более простой вариант.
+
+    - id: "D06"
+      description: "DL-модель без GPU"
+      condition: "model.requires_gpu == true AND gpu_available == false"
+      result: "NOT_RECOMMENDED"
+      message: >-
+        {model.name} требует GPU для приемлемого времени обучения.
+        На CPU обучение может занять часы.
+
+  # ── 3.3. ОГОВОРКИ → CONDITIONALLY_APPLICABLE ───────────────────────────────
+  # Модель применима, но с нюансами.
+  conditional:
+    - id: "C01"
+      description: "ARIMA при граничном n (30–50)"
+      condition: >-
+        model.family == 'arima' AND
+        30 <= n_observations < 50
+      result: "CONDITIONALLY_APPLICABLE"
+      message: >-
+        ARIMA при n < 50: подбор (p,d,q) может быть нестабилен.
+        Рекомендуется auto-ARIMA с консервативными границами.
+
+    - id: "C02"
+      description: "ETS с мультипликативной сезонностью при отрицательных значениях"
+      condition: >-
+        model.family == 'exponential_smoothing' AND
+        data.has_negative_values == true AND
+        proposed_error_type == 'mul'
+      result: "CONDITIONALLY_APPLICABLE"
+      message: >-
+        Мультипликативная сезонность требует положительных значений.
+        Используйте аддитивную модель или лог-трансформацию.
+
+    - id: "C03"
+      description: "VAR при высоком K (много рядов)"
+      condition: "model.id == 'var' AND n_series > 5"
+      result: "CONDITIONALLY_APPLICABLE"
+      message: >-
+        VAR при K > 5: число параметров растёт как O(K²p).
+        Рассмотрите VECM (если есть коинтеграция) или регуляризацию.
+
+    - id: "C04"
+      description: "DL-модель при умеренном n (300–500)"
+      condition: >-
+        model.family == 'neural' AND
+        300 <= n_observations < 500
+      result: "CONDITIONALLY_APPLICABLE"
+      message: >-
+        Нейросетевая модель при n ∈ [300, 500): результат зависит
+        от архитектуры и регуляризации. Увеличьте число эпох и мониторьте val_loss.
+
+    - id: "C05"
+      description: "Prophet при коротком горизонте (h ≤ 3)"
+      condition: "model.id == 'prophet' AND forecast_horizon <= 3"
+      result: "CONDITIONALLY_APPLICABLE"
+      message: >-
+        Prophet на коротких горизонтах (h ≤ 3) избыточен.
+        ETS или ARIMA могут быть точнее и быстрее.
+
+  # ── 3.4. ПРЕДПОЧТИТЕЛЬНЫЕ УСЛОВИЯ → RECOMMENDED ──────────────────────────
+  # Если ни одно из правил выше не сработало — проверяем предпочтения.
+  preferred:
+    - id: "P01"
+      description: "ETS при малой выборке с сезонностью"
+      condition: >-
+        model.family == 'exponential_smoothing' AND
+        n_observations < 100 AND
+        data.has_seasonality == true
+      result: "RECOMMENDED"
+
+    - id: "P02"
+      description: "ARIMA для стационарных/дифференцируемых рядов 50–1000"
+      condition: >-
+        model.family == 'arima' AND
+        50 <= n_observations <= 1000 AND
+        data.is_stationary_or_diffable == true
+      result: "RECOMMENDED"
+
+    - id: "P03"
+      description: "Prophet для нерегулярных данных с праздниками"
+      condition: >-
+        model.id == 'prophet' AND
+        data.is_regular == false AND
+        data.has_holidays == true
+      result: "RECOMMENDED"
+
+    - id: "P04"
+      description: "GARCH для финансовых рядов с кластеризацией волатильности"
+      condition: >-
+        model.family == 'volatility' AND
+        data.domain == 'financial' AND
+        data.has_volatility_clustering == true
+      result: "RECOMMENDED"
+
+    - id: "P05"
+      description: "VAR/VECM для коинтегрированных рядов"
+      condition: >-
+        model.id == 'vecm' AND
+        data.is_cointegrated == true
+      result: "RECOMMENDED"
+
+    - id: "P06"
+      description: "XGBoost/LightGBM при n ≥ 200 с экзогенными признаками"
+      condition: >-
+        model.family == 'tree_ml' AND
+        n_observations >= 200 AND
+        n_exogenous >= 1 AND
+        feature_engineering_applied == true
+      result: "RECOMMENDED"
+
+    - id: "P07"
+      description: "TFT для множественных рядов с экзогенными (n ≥ 500)"
+      condition: >-
+        model.id == 'tft' AND
+        n_series >= 2 AND
+        n_exogenous >= 1 AND
+        n_observations >= 500
+      result: "RECOMMENDED"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 4. ПАЙПЛАЙН МОДЕЛИРОВАНИЯ
+# ══════════════════════════════════════════════════════════════════════════════
+# Моделирование ≠ Прогнозирование. Пайплайн моделирования фокусируется
+# на подборе, диагностике и валидации модели, а не на генерации прогноза.
 
 pipeline:
   id: "modeling_pipeline"
   version: "1.0"
+
   stages:
+    # ── Stage 1: Problem Definition ──────────────────────────────────────────
+    - id: "problem_definition"
+      name: "Определение задачи"
+      order: 1
+      description: >-
+        Формализация: тип моделирования, горизонт, целевая перемен,
+        ограничения, предметная область.
+      inputs:
+        - "target_column"
+        - "forecast_horizon"
+        - "confidence_level"          # для prediction intervals
+        - "domain"                    # financial / macro / price / other
+        - "modeling_purpose"          # inference / forecasting / volatility
+      outputs:
+        - "problem_statement"
+
+    # ── Stage 2: Data Structure Analysis ─────────────────────────────────────
+    - id: "data_structure"
+      name: "Анализ структуры данных"
+      order: 2
+      description: >-
+        Извлечение свойств ряда: длина, регулярность, сезонность,
+        стационарность, многомерность, пропуски, выбросы.
+      inputs:
+        - "dataset"
+        - "problem_statement"
+      outputs:
+        - "data_profile"
+      properties_extracted:
+        - "n_observations"
+        - "n_series"
+        - "n_exogenous"
+        - "is_regular"
+        - "frequency"                 # D, W, M, Q, Y
+        - "has_seasonality"
+        - "seasonal_periods"
+        - "is_stationary_or_diffable"
+        - "is_cointegrated"
+        - "has_negative_values"
+        - "has_volatility_clustering"
+        - "missing_ratio"
+        - "outlier_ratio"
+
+    # ── Stage 3: Constraint Mapping ──────────────────────────────────────────
+    - id: "constraint_mapping"
+      name: "Отображение ограничений"
+      order: 3
+      description: >-
+        Проверка ограничений: доступные библиотеки, GPU, время,
+        интерпретируемость, вычислительные ресурсы.
+      inputs:
+        - "data_profile"
+        - "problem_statement"
+      outputs:
+        - "constraints"
+      checks:
+        - "gpu_available"
+        - "libraries_installed"
+        - "max_training_time"
+        - "interpretability_required"
+        - "max_memory_mb"
+
+    # ── Stage 4: Candidate Pool Generation ──────────────────────────────────
+    - id: "candidate_generation"
+      name: "Генерация пула кандидатов"
+      order: 4
+      description: >-
+        Применение движка применимости ко всем моделям из 8 семейств.
+        Каждая модель получает уровень применимости.
+        Baseline-модели добавляются ВСЕГДА.
+      inputs:
+        - "data_profile"
+        - "constraints"
+        - "families"                  # все 8 семейств из секции 1
+      outputs:
+        - "candidate_pool"            # List[ModelCandidate]
+      rules:
+        always_include_baselines: true
+        filter_out: "NOT_APPLICABLE"  # убрать неприменимые
+        sort_by: "applicability_level.rank"  # RECOMMENDED первыми
+
+    # ── Stage 5: Baseline Estimation ────────────────────────────────────────
+    - id: "baseline_estimation"
+      name: "Оценка baseline-моделей"
+      order: 5
+      description: >-
+        Обязательный этап. Обучение всех 4 baseline-моделей
+        на train-выборке, оценка на validation.
+        Если продвинутая модель не бьёт лучший baseline — она отбрасывается.
+      inputs:
+        - "candidate_pool"
+        - "train_data"
+        - "validation_data"
+      outputs:
+        - "baseline_scores"           # {naive, snaive, drift, mean} → metrics
+      required: true
+      failure_action: "abort"         # нельзя продолжать без baseline
+
+    # ── Stage 6: Backtest (Cross-Validation) ────────────────────────────────
+    - id: "backtest"
+      name: "Бэктест / кросс-валидация"
+      order: 6
+      description: >-
+        Оценка моделей на исторических данных через rolling-origin
+        или expanding-window кросс-валидацию.
+      inputs:
+        - "candidate_pool"            # только RECOMMENDED + CONDITIONALLY_APPLICABLE
+        - "data_profile"
+      outputs:
+        - "cv_scores"                 # {model_id → {metric → [fold_scores]}}
+      strategy:
+        default: "expanding_window"
+        alternatives: ["rolling_window", "blocked_cv"]
+      params:
+        n_splits: 5
+        min_train_size: null          # auto = max(model.min_observations) across candidates
+        step_size: null               # auto = forecast_horizon
+        max_train_size: null          # null = использовать весь доступный ряд
+
+    # ── Stage 7: Hyperparameter Tuning ──────────────────────────────────────
+    - id: "tuning"
+      name: "Подбор гиперпараметров"
+      order: 7
+      description: >-
+        Оптимизация гиперпараметров для моделей, прошедших backtest.
+        Стратегия зависит от семейства.
+      inputs:
+        - "cv_scores"
+        - "candidate_pool"
+        - "data_profile"
+      outputs:
+        - "tuned_models"
+      strategy_by_family:
+        baselines:
+          method: "none"              # нет гиперпараметров
+        exponential_smoothing:
+          method: "grid_search"
+          params: ["error", "trend", "seasonal", "damped"]
+          criterion: "aic"
+        arima:
+          method: "stepwise"          # pmdarima auto_arima
+          params: ["p", "d", "q", "P", "D", "Q"]
+          criterion: "aicc"
+          max_p: 5
+          max_q: 5
+          max_P: 2
+          max_Q: 2
+        multivariate:
+          method: "information_criterion"
+          params: ["lag_order"]
+          criterion: "bic"            # BIC для VAR/VECM (штраф за сложность)
+        volatility:
+          method: "grid_search"
+          params: ["p", "q"]
+          criterion: "bic"
+          max_p: 3
+          max_q: 3
+        structural:
+          method: "bayesian_optimization"  # Prophet changepoint_prior_scale
+          params: ["changepoint_prior_scale", "seasonality_prior_scale"]
+          n_trials: 20
+          criterion: "mae_val"
+        tree_ml:
+          method: "optuna"
+          params: ["n_estimators", "max_depth", "learning_rate", "min_child_weight"]
+          n_trials: 50
+          criterion: "mae_val"
+        neural:
+          method: "optuna"
+          params: ["hidden_size", "num_layers", "dropout", "learning_rate", "batch_size"]
+          n_trials: 30
+          criterion: "val_loss"
+
+    # ── Stage 8: Diagnostics ────────────────────────────────────────────────
     - id: "diagnostics"
       name: "Диагностика остатков"
       order: 8
       description: >-
         Проверка предпосылок модели через анализ остатков.
-        Диагностика не блокирует модель автоматически: результат каждого
-        теста содержит applicable, applicable_if, statistic, p_value, status
-        и optional reason.
+        Модель не проходит диагностику → понижение уровня применимости.
       inputs:
         - "tuned_models"
         - "train_data"
       outputs:
-        - "diagnostic_reports"
+        - "diagnostic_reports"        # {model_id → DiagnosticReport}
       checks:
-        - id: "ljung_box"
+        - id: "residual_normality"
+          name: "Нормальность остатков (Ljung-Box)"
+          null_hypothesis: "Остатки — белый шум"
+          alpha: 0.05
+          severity_if_failed: "warning"    # не блокирует, но предупреждает
+
+        - id: "residual_autocorrelation"
           name: "Автокорреляция остатков (Ljung-Box)"
-          description: >-
-            Проверяет нулевую гипотезу об отсутствии автокорреляции
-            в остатках на заданном числе лагов.
           null_hypothesis: "Нет автокорреляции в остатках"
-          applicable_if: "n_observations > lags"
           lags: 10
           alpha: 0.05
-          result_fields: ["statistic", "p_value", "status"]
-          severity_if_failed: "error"
-        - id: "jarque_bera"
-          name: "Нормальность остатков (Jarque-Bera)"
-          description: >-
-            Проверяет нулевую гипотезу о нормальности распределения
-            остатков по асимметрии и эксцессу.
-          null_hypothesis: "Остатки имеют нормальное распределение"
-          applicable_if: "n_observations >= 8"
+          severity_if_failed: "error"      # серьёзная проблема
+
+        - id: "residual_homoscedasticity"
+          name: "Гомоскедастичность (ARCH-LM)"
+          null_hypothesis: "Дисперсия остатков постоянна"
           alpha: 0.05
-          result_fields: ["statistic", "p_value", "status"]
-          severity_if_failed: "warning"
-        - id: "arch_lm"
-          name: "Условная гетероскедастичность (ARCH-LM)"
-          description: >-
-            Проверяет наличие ARCH-эффектов в остатках. Тест неприменим
-            при недостатке наблюдений или практически нулевой дисперсии.
-          null_hypothesis: "Условная дисперсия остатков постоянна"
-          applicable_if: "n_observations > arch_lags + 1 and residual variance > 0"
-          lags: 10
-          alpha: 0.05
-          result_fields: ["statistic", "p_value", "status"]
-          severity_if_failed: "warning"
-        - id: "durbin_watson"
-          name: "Статистика Дарбина-Уотсона (Durbin-Watson)"
-          description: >-
-            Оценивает серийную корреляцию остатков по статистике
-            Durbin-Watson; p-value тест не вычисляется.
-          null_hypothesis: "Нет серийной корреляции в остатках"
-          applicable_if: "finite residuals with at least 2 observations"
-          result_fields: ["statistic", "status"]
           severity_if_failed: "warning"
 
-      regression_contract:
-        runtime_module: "apps.api.routers.diagnostics"
-        exact_test_ids: true
-        applicable_if_required: true
-        p_value_required_for: ["ljung_box", "jarque_bera", "arch_lm"]
-        p_value_not_required_for: ["durbin_watson"]
+        - id: "residual_stationarity"
+          name: "Стационарность остатков (ADF)"
+          null_hypothesis: "Остатки стационарны"
+          alpha: 0.05
+          severity_if_failed: "warning"
 
+        - id: "prediction_interval_coverage"
+          name: "Покрытие доверительных интервалов"
+          description: >-
+            Фактическая доля наблюдений внутри PI должна быть ≈ номинальному уровню.
+          nominal_level: 0.95
+          tolerance: 0.05             # допустимое отклонение
+          severity_if_failed: "warning"
+
+    # ── Stage 9: Comparison & Ranking ───────────────────────────────────────
     - id: "comparison"
       name: "Сравнение и ранжирование"
       order: 9
-      description: "Ранжирование моделей по метрикам на validation-выборке."
+      description: >-
+        Ранжирование моделей по метрикам на validation-выборке.
+        Модель, не побеждающая лучший baseline, исключается.
       inputs:
         - "tuned_models"
         - "cv_scores"
@@ -406,22 +908,529 @@ pipeline:
         - "diagnostic_reports"
       outputs:
         - "ranked_models"
+      rules:
+        exclude_if_worse_than_baseline: true
+        baseline_threshold: "best_baseline_score * 1.05"  # допуск 5%
+        rank_by: "weighted_score"     # см. секцию metrics
+        diagnostics_bonus: 0.1        # +10% к score если все диагностики пройдены
 
+    # ── Stage 10: Selection ──────────────────────────────────────────────────
     - id: "selection"
       name: "Выбор модели"
       order: 10
-      description: "Финальный выбор модели или ансамбля."
+      description: >-
+        Финальный выбор модели (или ансамбля) на основе ранжирования,
+        диагностики и пользовательских предпочтений.
       inputs:
         - "ranked_models"
-        - "user_preferences"
+        - "user_preferences"          # интерпретируемость, скорость, и т.д.
       outputs:
         - "selected_model"
+      rules:
+        auto_select: true             # автоматически — top-1
+        allow_user_override: true     # пользователь может выбрать другую
+        allow_ensemble: true          # предложить ансамбль top-K
 
+    # ── Stage 11: Model Card ─────────────────────────────────────────────────
     - id: "model_card"
-      name: "Model Card"
+      name: "Генерация Model Card"
       order: 11
-      description: "Формирование обязательного артефакта результата."
+      description: >-
+        Обязательный артефакт: полное описание выбранной модели,
+        её характеристик, ограничений и результатов.
       inputs:
         - "selected_model"
+        - "data_profile"
+        - "diagnostic_reports"
+        - "cv_scores"
+        - "baseline_scores"
       outputs:
-        - "model_card"
+        - "model_card"                # см. секцию model_card_template
+      required: true
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 5. МЕТРИКИ
+# ══════════════════════════════════════════════════════════════════════════════
+# Метрики конфигурируемы. R² НЕ входит в стандартный набор ранжирования
+# (нечувствителен к смещению, не подходит для TS).
+
+metrics:
+  # ── 5.1. Основные метрики (входят в weighted_score) ───────────────────────
+  primary:
+    - id: "mae"
+      name: "MAE (Mean Absolute Error)"
+      formula: "(1/n) Σ|y_i − ŷ_i|"
+      scale_dependent: true
+      robust_to_outliers: true        # по сравнению с RMSE
+      direction: "minimize"
+      weight_in_ranking: 0.35
+
+    - id: "rmse"
+      name: "RMSE (Root Mean Squared Error)"
+      formula: "√[(1/n) Σ(y_i − ŷ_i)²]"
+      scale_dependent: true
+      robust_to_outliers: false
+      direction: "minimize"
+      weight_in_ranking: 0.25
+
+    - id: "mape"
+      name: "MAPE (Mean Absolute Percentage Error)"
+      formula: "(100/n) Σ|y_i − ŷ_i|/|y_i|"
+      scale_dependent: false
+      undefined_when: "y_i = 0"
+      direction: "minimize"
+      weight_in_ranking: 0.20
+      caveat: >-
+        Не определена при y=0. Для рядов с нулевыми значениями
+        используйте sMAPE или MASE.
+
+    - id: "mase"
+      name: "MASE (Mean Absolute Scaled Error)"
+      formula: "MAE_model / MAE_naive"
+      scale_dependent: false
+      direction: "minimize"
+      weight_in_ranking: 0.20
+      interpretation: >-
+        MASE < 1: модель лучше Naive.
+        MASE = 1: равна Naive.
+        MASE > 1: хуже Naive — модель непригодна.
+
+  # ── 5.2. Дополнительные метрики (отчётность, не ранжирование) ──────────────
+  secondary:
+    - id: "smape"
+      name: "sMAPE (Symmetric MAPE)"
+      formula: "(200/n) Σ|y_i − ŷ_i| / (|y_i| + |ŷ_i|)"
+      scale_dependent: false
+      direction: "minimize"
+      use_in_ranking: false
+
+    - id: "rmsse"
+      name: "RMSSE (Root Mean Squared Scaled Error)"
+      formula: "RMSE_model / RMSE_naive"
+      scale_dependent: false
+      direction: "minimize"
+      use_in_ranking: false
+
+    - id: "r_squared"
+      name: "R² (Coefficient of Determination)"
+      formula: "1 − SS_res / SS_tot"
+      scale_dependent: false
+      direction: "maximize"
+      use_in_ranking: false           # ← НЕ входит в ранжирование
+      caveat: >-
+        R² не подходит для ранжирования TS-моделей:
+        нечувствителен к систематическому смещению,
+        может быть высоким при плохом прогнозе с правильной дисперсией.
+
+  # ── 5.3. Метрики для доверительных интервалов ─────────────────────────────
+  prediction_interval:
+    - id: "coverage"
+      name: "PI Coverage"
+      formula: "(1/n) Σ 1[y_i ∈ (L_i, U_i)]"
+      direction: "target"             # цель = nominal_level (обычно 0.95)
+      target: 0.95
+
+    - id: "width"
+      name: "PI Width"
+      formula: "(1/n) Σ (U_i − L_i)"
+      direction: "minimize"           # при условии coverage ≥ target
+      caveat: "Узкие интервалы при недостаточном coverage бессмысленны."
+
+    - id: "winkler"
+      name: "Winkler Score"
+      formula: >-
+        (U − L) + (2/α)(L − y)·1[y < L] + (2/α)(y − U)·1[y > U]
+      direction: "minimize"
+      description: >-
+        Комбинирует ширину интервала и штраф за непокрытие.
+        Стандартная метрика для сравнения PI.
+
+  # ── 5.4. Весовая формула ранжирования ─────────────────────────────────────
+  ranking_formula:
+    description: >-
+      weighted_score = 0.35·norm(MAE) + 0.25·norm(RMSE) +
+                       0.20·norm(MAPE) + 0.20·norm(MASE)
+      где norm — min-max нормализация по пулу кандидатов.
+      Модели с MASE > 1.05 (хуже baseline + допуск) исключаются.
+    weights:
+      mae: 0.35
+      rmse: 0.25
+      mape: 0.20
+      mase: 0.20
+    normalization: "min_max"         # нормализация по пулу кандидатов
+    baseline_filter_threshold: 1.05  # MASE > 1.05 → exclude
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 6. ДОВЕРИТЕЛЬНЫЕ ИНТЕРВАЛЫ (PREDICTION INTERVALS)
+# ══════════════════════════════════════════════════════════════════════════════
+
+prediction_intervals:
+  description: >-
+    Доверительные интервалы прогноза — обязательный элемент результата.
+    Метод генерации зависит от семейства модели.
+
+  default_confidence_level: 0.95
+  available_levels: [0.80, 0.90, 0.95, 0.99]
+
+  methods_by_family:
+    baselines:
+      method: "analytical"
+      description: >-
+        Naive/Drift: ± z_α · σ_ε · √h.
+        Seasonal Naive: ± z_α · σ_ε · √⌈h/m⌉.
+        Mean: ± z_α · s · √(1 + 1/n).
+
+    exponential_smoothing:
+      method: "analytical"
+      description: >-
+        Prediction intervals из state space representation.
+        statsmodels HoltWintersResults.simulate для бутстрэпа.
+
+    arima:
+      method: "analytical"
+      description: >-
+        Аналитические PI из ARIMA representation.
+        statsmodels ARIMAResults.get_forecast(conf_alpha).
+
+    multivariate:
+      method: "analytical"
+      description: >-
+        VAR/VECM: PI из многомерного нормального распределения
+        оценённых остатков.
+
+    volatility:
+      method: "analytical"
+      description: >-
+        GARCH: conditional variance forecast → VaR.
+
+    structural:
+      method: "bayesian_sampling"
+      description: >-
+        Prophet: MCMC sampling из posterior predictive.
+        TBATS: бутстреп остатков.
+
+    tree_ml:
+      method: "quantile_regression"
+      description: >-
+        XGBoost/LightGBM: quantile loss для α/2 и 1−α/2.
+        Random Forest: quantile of leaf values.
+
+    neural:
+      method: "monte_carlo_dropout"
+      description: >-
+        MC Dropout (Gal & Ghahramani, 2016): T forward passes
+        с включённым dropout → эмпирические квантили.
+        Альтернатива: deep ensemble (N моделей с разными init).
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 7. MODEL CARD — шаблон
+# ══════════════════════════════════════════════════════════════════════════════
+# Model Card — обязательный артефакт результата моделирования.
+# Аналог Model Cards (Mitchell et al., 2019) для TS.
+
+model_card_template:
+  required_fields:
+    - path: "model_info.model_id"
+      type: "string"
+      description: "Идентификатор модели (из справочника семейств)"
+
+    - path: "model_info.family"
+      type: "string"
+      description: "Семейство модели"
+
+    - path: "model_info.applicability_level"
+      type: "enum"
+      values: ["RECOMMENDED", "CONDITIONALLY_APPLICABLE", "NOT_RECOMMENDED", "NOT_APPLICABLE"]
+
+    - path: "model_info.description"
+      type: "string"
+      description: "Человекочитаемое описание модели"
+
+    - path: "data_summary.n_observations"
+      type: "integer"
+      description: "Число наблюдений в обучающей выборке"
+
+    - path: "data_summary.n_series"
+      type: "integer"
+      description: "Число временных рядов"
+
+    - path: "data_summary.frequency"
+      type: "string"
+      description: "Частота ряда (D/W/M/Q/Y)"
+
+    - path: "data_summary.domain"
+      type: "string"
+      description: "Предметная область данных"
+
+    - path: "hyperparameters"
+      type: "dict"
+      description: "Финальные гиперпараметры модели"
+
+    - path: "training.train_start"
+      type: "datetime"
+      description: "Начало обучающей выборки"
+
+    - path: "training.train_end"
+      type: "datetime"
+      description: "Конец обучающей выборки"
+
+    - path: "training.validation_method"
+      type: "string"
+      description: "Метод валидации (expanding_window / rolling_window)"
+
+    - path: "training.n_folds"
+      type: "integer"
+      description: "Число фолдов кросс-валидации"
+
+    - path: "performance.cv_metrics"
+      type: "dict"
+      description: "Метрики CV: {mae, rmse, mape, mase, …} → mean ± std"
+
+    - path: "performance.baseline_comparison"
+      type: "dict"
+      description: >-
+        Сравнение с baseline: {naive, snaive, drift, mean} → MASE_ratio.
+        MASE_ratio < 1 → модель лучше baseline.
+
+    - path: "performance.prediction_interval_coverage"
+      type: "float"
+      description: "Фактическое покрытие доверительных интервалов"
+
+    - path: "diagnostics.passed"
+      type: "list[string]"
+      description: "Список пройденных диагностик"
+
+    - path: "diagnostics.failed"
+      type: "list[dict]"
+      description: >-
+        Список непройденных диагностик: [{check_id, p_value, message}]
+
+    - path: "limitations"
+      type: "list[string]"
+      description: >-
+        Ограничения модели: нарушение предпосылок, малый объём данных,
+        чувствительность к выбросам и т.д.
+
+    - path: "recommendations"
+      type: "list[string]"
+      description: >-
+        Рекомендации по использованию: горизонты, частота обновления,
+        мониторинг качества и т.д.
+
+  optional_fields:
+    - path: "model_info.version"
+      type: "string"
+      description: "Версия реализации модели"
+
+    - path: "model_info.library_versions"
+      type: "dict"
+      description: "Версии используемых библиотек"
+
+    - path: "training.training_time_seconds"
+      type: "float"
+      description: "Время обучения в секундах"
+
+    - path: "training.gpu_used"
+      type: "boolean"
+
+    - path: "performance.winkler_score"
+      type: "float"
+      description: "Winkler Score для доверительных интервалов"
+
+    - path: "feature_importance"
+      type: "dict"
+      description: >-
+        Feature importance (для tree_ml и neural с attention).
+        {feature_name → importance_score}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 8. МОДЕЛИРОВАНИЕ ≠ ПРОГНОЗИРОВАНИЕ
+# ══════════════════════════════════════════════════════════════════════════════
+# Разделение жизненных циклов: моделирование — однократный акт
+# подбора и валидации модели; прогнозирование — периодический акт
+# генерации прогноза на основе уже выбранной модели.
+
+lifecycle_separation:
+  modeling:
+    description: >-
+      Акт подбора, оценки и выбора модели. Выполняется редко
+      (при появлении новых данных, изменении паттерна, плановом пересмотре).
+    trigger: "manual_or_scheduled"
+    frequency: "monthly_to_quarterly"
+    outputs:
+      - "selected_model"
+      - "model_card"
+      - "hyperparameters"
+    stages: "pipeline.stages[1..11]"  # все 11 стадий
+
+  forecasting:
+    description: >-
+      Акт генерации прогноза на основе ранее выбранной модели.
+      Выполняется регулярно (ежедневно, еженедельно).
+    trigger: "scheduled_or_api_call"
+    frequency: "daily_to_weekly"
+    inputs:
+      - "selected_model"
+      - "latest_data"
+      - "hyperparameters"
+    outputs:
+      - "point_forecast"
+      - "prediction_intervals"
+      - "forecast_timestamp"
+    monitoring:
+      - "track_actual_vs_forecast"
+      - "alert_if_mase_exceeds_threshold"
+      - "trigger_remodeling_if_drift_detected"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 9. АНСАМБЛИРОВАНИЕ
+# ══════════════════════════════════════════════════════════════════════════════
+
+ensemble:
+  description: >-
+    Опциональный этап: комбинация top-K моделей для повышения
+    устойчивости. Предлагается автоматически если несколько моделей
+    показывают сопоставимое качество.
+
+  strategies:
+    - id: "simple_average"
+      name: "Простое усреднение"
+      formula: "Ÿ_ens = (1/K) Σ ŷ_k"
+      applicability: "K ≥ 2"
+      weights: "equal"
+
+    - id: "weighted_average"
+      name: "Взвешенное усреднение"
+      formula: "Ÿ_ens = Σ w_k · ŷ_k,  Σw_k = 1"
+      applicability: "K ≥ 2"
+      weights: "inverse_mae"         # w_k ∝ 1/MAE_k
+      description: >-
+        Веса обратно пропорциональны MAE на validation.
+
+    - id: "median"
+      name: "Медианный ансамбль"
+      formula: "Ÿ_ens = median(ŷ_1, …, ŷ_K)"
+      applicability: "K ≥ 3"
+      description: >-
+        Робастен к выбросам среди прогнозов моделей.
+
+    - id: "stacking"
+      name: "Stacking (мета-модель)"
+      formula: "Ÿ_ens = f(ŷ_1, …, ŷ_K)"
+      applicability: "K ≥ 2 AND n_observations >= 200"
+      meta_learner: "ridge"          # простая линейная мета-модель
+      description: >-
+        Мета-модель обучается на прогнозах base-моделей.
+        Риск переобучения — нужен отдельный validation fold.
+
+  auto_ensemble_trigger:
+    description: >-
+      Ансамбль предлагается автоматически если:
+      1. ≥ 2 модели имеют MASE < 1 (лучше baseline)
+      2. Разница в weighted_score между top-1 и top-2 < 0.05
+      3. Корреляция ошибок top-2 < 0.8 (модели диверсифицированы)
+    conditions:
+      min_models_with_mase_below_1: 2
+      max_score_gap: 0.05
+      max_error_correlation: 0.8
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 10. ПРЕДОБРАБОТКА ПЕРЕД МОДЕЛИРОВАНИЕМ
+# ══════════════════════════════════════════════════════════════════════════════
+# Автоматические преобразования, применяемые перед обучением модели.
+# Определяются свойствами ряда и требованиями модели.
+
+preprocessing_rules:
+  - trigger: "model.requires_regularity == 'required' AND data.is_regular == false"
+    action: "resample"
+    description: "Ресемплирование к регулярной частоте"
+    code: "series.resample(freq).mean()"
+    fallback: "interpolate"          # если mean создаёт NaN
+
+  - trigger: "model.requires_stationarity == 'required' AND data.is_stationary == false"
+    action: "difference"
+    description: "Дифференцирование ряда (d=1 или d=2)"
+    code: "series.diff(d).dropna()"
+    note: "Порядок d определяется ADF-тестом"
+
+  - trigger: "data.has_negative_values AND model.requires_positive == true"
+    action: "log_transform_after_shift"
+    description: >-
+      Сдвиг ряда на min + 1 с последующим логарифмированием:
+      log(y - min(y) + 1)
+    code: "np.log(series - series.min() + 1)"
+
+  - trigger: "model.requires_feature_engineering == true"
+    action: "create_lag_features"
+    description: "Генерация лаговых и календарных признаков"
+    features:
+      - "lag_1, lag_2, …, lag_p"    # p = auto или задано
+      - "rolling_mean_7, rolling_std_7"
+      - "rolling_mean_30, rolling_std_30"
+      - "month, day_of_week, is_weekend"
+      - "fourier_sin_k, fourier_cos_k"  # k = 1..n_fourier
+
+  - trigger: "model.family == 'neural'"
+    action: "scale"
+    description: "Масштабирование в [0, 1] или [-1, 1] для нейросетей"
+    method: "min_max"                # или "standard" (z-score)
+    code: "(series - min) / (max - min)"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 11. КОНФИГУРАЦИЯ ПОЛЬЗОВАТЕЛЬСКОГО ИНТЕРФЕЙСА
+# ══════════════════════════════════════════════════════════════════════════════
+
+ui_config:
+  # Отображение моделей в UI
+  model_card_display:
+    show_applicability_badge: true    # цветной бейдж уровня
+    show_mase_vs_baseline: true       # MASE относительно Naive
+    show_prediction_intervals: true
+    show_diagnostics_summary: true    # ✅/⚠️/❌ для каждой проверки
+    show_feature_importance: true     # если доступно
+
+  # Таблица сравнения моделей
+  comparison_table:
+    primary_sort: "weighted_score"
+    columns:
+      - "model_name"
+      - "family"
+      - "applicability_level"
+      - "MAE"
+      - "RMSE"
+      - "MAPE"
+      - "MASE"
+      - "PI_coverage"
+      - "diagnostics_passed"
+      - "weighted_score"
+      - "training_time"
+
+  # Фильтры
+  filters:
+    - id: "by_applicability"
+      label: "Применимость"
+      options: ["RECOMMENDED", "CONDITIONALLY_APPLICABLE", "NOT_RECOMMENDED"]
+
+    - id: "by_family"
+      label: "Семейство"
+      options: ["baselines", "exponential_smoothing", "arima",
+                "multivariate", "volatility", "structural",
+                "tree_ml", "neural"]
+
+    - id: "by_training_time"
+      label: "Время обучения"
+      options: ["instant", "seconds", "minutes", "hours"]
+
+  # Настройки прогнозирования (после моделирования)
+  forecasting_panel:
+    default_horizon: null             # auto = 1 сезон или 12 шагов
+    max_horizon_warning: 0.5          # warn if h > 0.5 * n_train
+    confidence_levels: [0.80, 0.90, 0.95, 0.99]
+    default_confidence: 0.95
