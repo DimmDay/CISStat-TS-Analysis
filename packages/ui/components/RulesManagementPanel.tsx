@@ -108,6 +108,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
   const [rules, setRules] = useState<RulesContent | null>(null);
   const [originalRules, setOriginalRules] = useState<RulesContent | null>(null);
   const [sessionSelection, setSessionSelection] = useState<SessionRulesSelection | null>(null);
+  // Храним пользовательский ввод отдельно от нормализованного массива:
+  // иначе промежуточные "," и пробел исчезают при каждом onChange.
+  const [uniquenessKeyDraft, setUniquenessKeyDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [applied, setApplied] = useState(false);
@@ -196,6 +199,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         },
       };
       setRules(content);
+      setUniquenessKeyDraft(content.uniqueness?.composite_key?.join(", ") || "");
       // Сравниваем изменения с базовым шаблоном: уже сохранённые overrides
       // должны повторно уйти на сервер, иначе простое «Применить» их сотрёт.
       setOriginalRules(JSON.parse(JSON.stringify(templateContent))); // deep copy
@@ -216,7 +220,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       const activeOverrides = sessionSelection?.templateId === "custom"
         ? sessionSelection.overrides
         : {};
-      setRules({
+      const content: RulesContent = {
         ...activeOverrides,
         ranges: Array.isArray(activeOverrides.ranges) ? activeOverrides.ranges : [],
         formats: normalizeFormats((activeOverrides.formats || {}) as Record<string, unknown>),
@@ -224,7 +228,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
           ? activeOverrides.consistency as ConsistencyRule[]
           : [],
         uniqueness: activeOverrides.uniqueness as RulesContent["uniqueness"] || {},
-      });
+      };
+      setRules(content);
+      setUniquenessKeyDraft(content.uniqueness?.composite_key?.join(", ") || "");
       setOriginalRules({ ranges: [], formats: {}, consistency: [], uniqueness: {} });
       setError(null);
     }
@@ -357,17 +363,6 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     });
   };
 
-  const updateUniquenessKey = (value: string) => {
-    if (!rules) return;
-    setRules({
-      ...rules,
-      uniqueness: {
-        ...(rules.uniqueness || {}),
-        composite_key: value.split(",").map((column) => column.trim()).filter(Boolean),
-      },
-    });
-  };
-
   const serializableFormats = (formats: Record<string, FormatRule> = {}) => Object.fromEntries(
     Object.entries(formats)
       .filter(([column]) => column.trim() && !column.startsWith("__new_"))
@@ -414,8 +409,12 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       const originalRanges = serializableRanges(originalRules?.ranges);
       const currentConsistency = serializableConsistency(rules.consistency);
       const originalConsistency = serializableConsistency(originalRules?.consistency);
-      const currentUniqueness = rules.uniqueness && "composite_key" in rules.uniqueness
-        ? { ...rules.uniqueness, composite_key: (rules.uniqueness.composite_key || []).map((column) => column.trim()).filter(Boolean) }
+      const normalizedUniquenessKey = uniquenessKeyDraft
+        .split(",")
+        .map((column) => column.trim())
+        .filter(Boolean);
+      const currentUniqueness = uniquenessKeyDraft.trim() || (rules.uniqueness && "composite_key" in rules.uniqueness)
+        ? { ...rules.uniqueness, composite_key: normalizedUniquenessKey }
         : {};
       const originalUniqueness = originalRules?.uniqueness?.composite_key?.length
         ? { ...originalRules.uniqueness, composite_key: originalRules.uniqueness.composite_key.map((column) => column.trim()).filter(Boolean) }
@@ -473,6 +472,10 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         setError(err.detail || "Ошибка обновления правил");
         return;
       }
+      setRules((current) => current ? {
+        ...current,
+        uniqueness: currentUniqueness,
+      } : current);
       setApplied(true);
       onRulesApplied();
       setTimeout(() => setApplied(false), 3000);
@@ -486,6 +489,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
   const handleReset = () => {
     if (originalRules) {
       setRules(JSON.parse(JSON.stringify(originalRules)));
+      setUniquenessKeyDraft(originalRules.uniqueness?.composite_key?.join(", ") || "");
       setApplied(false);
     }
   };
@@ -604,8 +608,8 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
             <input
               id="uniqueness-composite-key"
               type="text"
-              value={rules.uniqueness?.composite_key?.join(", ") || ""}
-              onChange={(event) => updateUniquenessKey(event.target.value)}
+              value={uniquenessKeyDraft}
+              onChange={(event) => setUniquenessKeyDraft(event.target.value)}
               placeholder="Например: Country, Year"
               className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
             />

@@ -170,6 +170,20 @@ describe("RulesManagementPanel", () => {
     });
   });
 
+  it("preserves comma and space while the uniqueness key is being typed", async () => {
+    const { container } = render(<RulesManagementPanel />);
+    const selector = await waitTemplatesLoaded(container);
+    fireEvent.change(selector, { target: { value: "default" } });
+
+    const key = await screen.findByLabelText(/Составной ключ/i);
+    fireEvent.change(key, { target: { value: "Country," } });
+    expect(key).toHaveValue("Country,");
+    fireEvent.change(key, { target: { value: "Country, " } });
+    expect(key).toHaveValue("Country, ");
+    fireEvent.change(key, { target: { value: "Country, Year" } });
+    expect(key).toHaveValue("Country, Year");
+  });
+
   it("can clear a template key to request the system fallback", async () => {
     const { container } = render(<RulesManagementPanel />);
     const selector = await waitTemplatesLoaded(container);
