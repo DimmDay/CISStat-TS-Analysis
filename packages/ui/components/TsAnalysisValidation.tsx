@@ -37,6 +37,8 @@ import { ValidationRangeOverview } from "./ValidationRangeOverview";
 import { ValidationRangePipeline } from "./ValidationRangePipeline";
 import { ValidationConsistencyOverview } from "./ValidationConsistencyOverview";
 import { ValidationConsistencyPipeline } from "./ValidationConsistencyPipeline";
+import { ValidationUniquenessOverview } from "./ValidationUniquenessOverview";
+import { ValidationUniquenessPipeline } from "./ValidationUniquenessPipeline";
 import { useAppShell } from "../context/AppShellContext";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
@@ -250,6 +252,34 @@ const CONSISTENCY_PIPELINE_DESCRIPTION = `Мастер исправления л
 
 Небезопасная Streamlit-замена медианой/модой исключена: она не гарантирует соблюдение связи между колонками. Сортировка учитывает группирующую колонку правила и сохраняет порядок групп.`;
 
+const UNIQUENESS_METRICS_DESCRIPTION = `Метрики и алгоритм: Уникальность
+
+Цель
+Проверка выявляет повторяющиеся записи по предметному составному ключу или по безопасному системному ключу. Для временных рядов дубли ключа «сущность + время» создают неоднозначный индекс и искажают агрегации, resample, STL и прогнозирование.
+
+Метрики
+1. Duplicate rows — все строки, входящие в группы с одинаковым ключом; соответствует duplicated(keep=False).
+2. Duplicate groups — число различных значений ключа, повторившихся более одного раза.
+3. Redundant rows — число реально лишних копий после сохранения одной строки каждой группы.
+4. r_dup = Duplicate rows / N_rows × 100 — доля строк в группах дублей.
+
+Алгоритм backend
+1. Resolver выбирает ключ в порядке: правило сессии → шаблон → системная логика.
+2. Система ищет уверенно распознанные колонки сущности и времени; если времени нет, проверяет полные строки.
+3. Единый profile_uniqueness используется общей валидацией, обзором и мастером — счётчики не расходятся.
+4. Явный ключ применяется только целиком. Отсутствующая колонка делает правило неприменимым, а не сокращает ключ и не создаёт ложное «Проверка пройдена».
+
+Составной ключ можно изменить в «Управлении правилами». Для FAO шаблон задаёт Country + Year.`;
+
+const UNIQUENESS_PIPELINE_DESCRIPTION = `Мастер исправления уникальности
+
+1. Проверьте активный ключ и группы повторов. Различайте все строки в дублях и реально лишние копии.
+2. Выберите стратегию Streamlit: оставить первую или последнюю строку, удалить всю группу, агрегировать mean/first либо добавить флаг.
+3. Запустите предпросмотр на глубокой копии. Он показывает точное число удаляемых строк и оставшихся дублей без изменения датасета.
+4. Подтвердите применение. Копия сохраняется атомарно, метаданные сессии обновляются, затем общая валидация запускается повторно.
+
+Агрегация доступна только для ключевой проверки: числовые неключевые значения усредняются, категориальные сохраняют первое значение. При проверке полных строк эта стратегия не имеет смысла и скрыта.`;
+
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisValidation() {
@@ -428,12 +458,14 @@ export function TsAnalysisValidation() {
       if (activeCheck.id === "formats") return FORMATS_METRICS_DESCRIPTION;
       if (activeCheck.id === "ranges") return RANGES_METRICS_DESCRIPTION;
       if (activeCheck.id === "consistency") return CONSISTENCY_METRICS_DESCRIPTION;
+      if (activeCheck.id === "uniqueness") return UNIQUENESS_METRICS_DESCRIPTION;
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
     if (activeCheck.id === "data_types") return DATA_TYPES_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "formats") return FORMATS_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "ranges") return RANGES_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "consistency") return CONSISTENCY_PIPELINE_DESCRIPTION;
+    if (activeCheck.id === "uniqueness") return UNIQUENESS_PIPELINE_DESCRIPTION;
     return `Полный пайплайн: ${activeCheck.label.toLowerCase()}\n\n1. Обнаружение → 2. Диагностика → 3. Преобразование → 4. Верификация\n\n${activeCheck.description}`;
   })();
 
@@ -447,6 +479,7 @@ export function TsAnalysisValidation() {
     if (activeCheck.id === "formats") return "Мастер исправления форматов и шаблонов";
     if (activeCheck.id === "ranges") return "Мастер исправления диапазонов";
     if (activeCheck.id === "consistency") return "Мастер исправления логики и хронологии";
+    if (activeCheck.id === "uniqueness") return "Мастер исправления уникальности";
     return `Полный пайплайн — ${activeCheck.label}`;
   })();
 
@@ -532,7 +565,7 @@ export function TsAnalysisValidation() {
             >
               <span className="truncate">{check.label}</span>
               <span className="ml-2 shrink-0">
-                {validationHasRun && ["formats", "ranges", "consistency"].includes(check.id) && check.status === "pending" && check.ruleSource === "not_applicable" ? (
+                {validationHasRun && ["formats", "ranges", "consistency", "uniqueness"].includes(check.id) && check.status === "pending" && check.ruleSource === "not_applicable" ? (
                   <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
                     check.id === activeCheckId ? "bg-white/20 text-white" : "bg-amber-50 text-amber-700"
                   }`}>
@@ -637,6 +670,8 @@ export function TsAnalysisValidation() {
               ? "Мастер исправления диапазонов"
               : activeCheckId === "consistency" && descriptionSection === "pipeline"
               ? "Мастер исправления логики и хронологии"
+              : activeCheckId === "uniqueness" && descriptionSection === "pipeline"
+              ? "Мастер исправления уникальности"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -648,12 +683,16 @@ export function TsAnalysisValidation() {
               ? "Выберите проблемные колонки и стратегию, оцените последствия и примените исправления."
               : activeCheckId === "consistency" && descriptionSection === "pipeline"
               ? "Выберите нарушенные правила и совместимую стратегию, проверьте последствия и примените исправления."
+              : activeCheckId === "uniqueness" && descriptionSection === "pipeline"
+              ? "Проверьте ключ, выберите стратегию, оцените точное число удаляемых строк и примените исправление."
               : activeCheckId === "data_types"
               ? "Распределение фактических типов и построчная матрица колонок."
               : activeCheckId === "ranges"
               ? "Соотношение корректных и нарушающих значения, фактические и допустимые границы."
               : activeCheckId === "consistency"
               ? "Соблюдение хронологических и предметных правил, затронутые строки и примеры конфликтов."
+              : activeCheckId === "uniqueness"
+              ? "Распределение строк и группы повторов по активному составному или системному ключу."
               : "Визуализация результатов проверки по активному критерию."}
           </p>
 
@@ -683,6 +722,8 @@ export function TsAnalysisValidation() {
               onApplied={runValidation}
               onOpenRules={() => setDescriptionSection("rules")}
             />
+          ) : activeCheckId === "uniqueness" && descriptionSection === "pipeline" ? (
+            <ValidationUniquenessPipeline onApplied={runValidation} />
           ) : activeCheckId === "data_types" ? (
             validationHasRun || checksLoading ? (
               <ValidationTypeMatrix
@@ -710,6 +751,14 @@ export function TsAnalysisValidation() {
             ) : (
               <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы построить профиль логики и хронологии и получить статус проверки.
+              </div>
+            )
+          ) : activeCheckId === "uniqueness" ? (
+            validationHasRun ? (
+              <ValidationUniquenessOverview refreshKey={validationVersion} />
+            ) : (
+              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+                Запустите валидацию, чтобы построить профиль уникальности и получить статус проверки.
               </div>
             )
           ) : (
@@ -784,6 +833,8 @@ export function TsAnalysisValidation() {
                   ? "Эталон диапазонов не задан"
                     : check.id === "consistency" && check.ruleSource === "not_applicable"
                     ? "Эталон логики и хронологии не задан"
+                    : check.id === "uniqueness" && check.ruleSource === "not_applicable"
+                    ? "Ключ уникальности неприменим"
                     : "Не применимо: правило или необходимые данные отсутствуют"}
                 </p>
               )}
@@ -823,6 +874,8 @@ export function TsAnalysisValidation() {
                   ? "Исправить диапазоны значений"
                   : check.id === "consistency"
                   ? "Исправить логику и хронологию"
+                  : check.id === "uniqueness"
+                  ? "Исправить уникальность"
                   : "Полный пайплайн"}
               </button>
 

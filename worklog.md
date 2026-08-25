@@ -2596,3 +2596,142 @@ GREEN: focused Jest — 4/4 suites, 42/42 tests PASS. Full Jest после си�
 - tests/api/test_dataset_range_correction.py
 - tests/api/test_dataset_validation_rules.py
 - tests/unit/test_range_correction.py
+
+---
+
+Task ID: 41 — Профиль и мастер исправления логики и хронологии
+
+Date: 2026-08-25
+
+Задача
+Применить к остановке «Логика и хронология» утверждённый паттерн «Типы данных / Форматы и шаблоны / Диапазоны значений»: специализированные описание и обзор, однозначные статусы, редактор правил и транзакционный мастер исправления с повторной общей валидацией.
+
+Синхронизация
+Работа начата при наличии локальной копии Task 40 поверх `38e90c5`. После `git fetch` опубликованный Task 40 обнаружен в `origin/main` как `548db60`; локальная копия сохранена в защитный stash, затем ветка синхронизирована fast-forward. Task 41 выполнен поверх чистого опубликованного `548db60`. Финальная проверка origin не выявила новых параллельных коммитов: `HEAD` и `origin/main` совпадают.
+
+Исследование и риски
+В Streamlit существовали таблица ручной правки и пять общих стратегий, но сортировка выполнялась по первой угаданной временной колонке без гарантированной группировки. Web/backend имел только `validate_consistency`: фактически он обрабатывал chronology, а правила `negative_price`, `profit_revenue`, `temp_precip`, `steps_distance`, `energy_subsystem`, `speed_fuel` и другие молча возвращали 0 нарушений. Это создавало критический ложный PASS для настроенного, но не выполненного бизнес-правила.
+
+Новая архитектура использует единый профилировщик масок для общей валидации, обзора и мастера. Неподдерживаемое либо несопоставившееся правило помечается неприменимым и не участвует в успешном статусе. Произвольный `eval()` исключён: пользовательский редактор создаёт только типизированную хронологию или сравнение двух колонок с разрешённым оператором.
+
+Backend
+- В `validation.engine` добавлены `evaluate_consistency_rules` и `profile_consistency`; исторический `validate_consistency` сохранён как совместимый адаптер поверх них.
+- Хронология считается по соседним сопоставимым переходам в исходном порядке. Для одной инверсии маска отмечает обе строки; панельные данные проверяются внутри явной или безопасно распознанной группы.
+- Системное правило хронологии теперь распознаёт year/date/time/timestamp/period и datetime dtype. В шаблонах FAO и Macro группировка `Country` задана явно.
+- Реализованы типизированные проверки отрицательных/положительных значений, прибыль/выручка, подсистема/итог, шаги/расстояние, скорость/топливо, температура/осадки, безопасное сравнение колонок и простое legacy-условие `column OP column`.
+- Добавлены `GET /v1/session/dataset/consistency-profile` и `POST /v1/session/dataset/consistency-corrections`.
+- Стратегии исправления: стабильная сортировка внутри групп, удаление объединения затронутых строк, перенос конфликтующего значения в пропуск и отдельный флаг соблюдения каждого правила.
+- Preview всегда работает на глубокой копии. Apply атомарно сохраняет DataFrame, обновляет rows/columns сессии и позволяет UI повторно запустить общую валидацию.
+- PUT правил сессии проверяет название, поддерживаемый тип, точное число существующих колонок, группировку и допустимый оператор до изменения состояния.
+
+Frontend
+- Кнопка переименована в «Исправить логику и хронологию», центральный workflow — «Мастер исправления логики и хронологии».
+- «Метрики и алгоритм» описывает `N_logic`, долю нарушений, affected rows, покрытие и приоритет resolver.
+- Новый обзор содержит stacked bar «соблюдено / нарушения» и матрицу «Правило / тип / колонки / статус / нарушения», включая причины неприменимости.
+- Для отсутствующего эталона степпер показывает «Нет эталона», панель — «Эталон логики и хронологии не задан», обзор и мастер дают прямой переход в «Управление правилами».
+- Мастер содержит четыре шага: выбор нарушенных правил, совместимая стратегия, немутирующий preview и подтверждённый apply. Нулевой сценарий завершён состоянием «Исправление не требуется».
+- `RulesManagementPanel` показывает покрытие логикой и позволяет custom-сессии создавать, удалять и восстанавливать правила chronology/comparison. Шаблонные legacy-правила отображаются read-only.
+
+Проверка на FAO
+На приложенном `TEST_dataset_FAO...xlsx` профиль выявил 5 инверсий `2016 → 2015` — по одной в каждой стране, затронуто 10 строк. Правило отрицательной цены дополнительно выявило 2 строки. Поэтому исходный датасет ожидаемо получает по остановке 7 нарушений; group-aware preview сортировки устраняет все 5 хронологических инверсий, не меняет число строк и не смешивает страны.
+
+TDD
+RED: 4/4 focused frontend suites не прошли — отсутствовали два новых компонента, специализированные статус/названия и редактор правил. Добавлены unit/API-контракты единого профиля, ложного PASS, групповой сортировки, union-delete, flag, немутирующего preview, atomic apply и серверной валидации overrides.
+
+GREEN: focused Jest — 4/4 suites, 45/45 tests PASS. Full Jest — 23/23 suites, 262/262 tests PASS, 0 snapshots.
+
+Проверка
+- `npm run typecheck:all`: PASS для embedded и standalone.
+- Next.js production build embedded: PASS, 13/13 статических страниц.
+- Next.js production build standalone: PASS, 13/13 статических страниц.
+- Обе production-сборки выполнили lint и встроенную проверку типов.
+- `py_compile` изменённых backend-файлов и новых Python-тестов: PASS.
+- Прямые Python assertions покрыли legacy-маски, безопасное условие, системную хронологию, четыре стратегии и реальный FAO-профиль: PASS.
+- Полный pytest в текущем runtime недоступен: модуль `pytest` не установлен; Pandera также отсутствует. Тесты подготовлены для штатного `.venv`/CI.
+- Временные font/memory shims удалены и в изменения не входят. Существующее предупреждение Tailwind о `../../packages/ui/**/*.ts` остаётся; обе сборки проходят.
+
+Изменённые и новые файлы
+- apps/api/consistency_correction.py
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- validation/engine.py
+- packages/ui/components/ValidationConsistencyOverview.tsx
+- packages/ui/components/ValidationConsistencyOverview.test.tsx
+- packages/ui/components/ValidationConsistencyPipeline.tsx
+- packages/ui/components/ValidationConsistencyPipeline.test.tsx
+- packages/ui/components/RulesManagementPanel.tsx
+- packages/ui/components/RulesManagementPanel.test.tsx
+- packages/ui/components/TsAnalysisValidation.tsx
+- packages/ui/components/TsAnalysisValidation.test.tsx
+- packages/ui/index.ts
+- rules/fao_prices.yaml
+- rules/macro.yaml
+- tests/api/test_dataset_consistency_correction.py
+- tests/api/test_dataset_validation_rules.py
+- tests/unit/test_consistency_correction.py
+
+---
+
+Task ID: 42 — Профиль и мастер исправления уникальности
+
+Date: 2026-08-25
+
+Задача
+Применить к остановке «Уникальность» утверждённый паттерн «Типы данных / Форматы и шаблоны / Диапазоны значений / Логика и хронология»: специализированные описание и обзор, однозначный статус общей валидации, полноценный мастер исправления и управление составным ключом сессии.
+
+Синхронизация
+На старте локальная рабочая копия находилась на `548db60` и содержала незакоммиченный Task 41. Опубликованный `origin/main` уже был обновлён до `631bca2`; локальный набор Task 41 сохранён в stash `codex-pre-sync-task42-20260825`, после чего выполнен fast-forward до актуального `main`. Task 42 реализован поверх чистого `631bca2`; файлы предыдущей остановки в набор не включены.
+
+Исследование Streamlit и проектирование
+Streamlit определял панельный ключ эвристикой и предлагал пять действий: оставить первый или последний экземпляр, удалить все строки групп дублей, агрегировать `mean/first` или добавить флаг. При этом вычисления были продублированы между диагностикой, preview и apply, а предупреждение для keep first/last показывало число всех строк в группах, хотя реально удаляются только лишние копии.
+
+До Task 42 web/backend имел только агрегированный счётчик в общей валидации. Отсутствовали профиль ключа и групп, специализированный обзор, preview/apply API, мастер и редактор составного ключа. Backend также молча отбрасывал отсутствующие колонки явного ключа и продолжал проверку по оставшейся части, что могло дать ложное прохождение.
+
+Backend
+- Добавлен единый `profile_uniqueness`, который используется общей валидацией, обзором и мастером. Профиль различает строки вне групп дублей, все строки в группах, число групп и реально лишние копии.
+- Приоритет ключа: явный составной ключ правил → системный ключ `сущность + время` → полное совпадение строк. Явный ключ применяется только целиком; отсутствующая колонка возвращает неприменимость вместо частичного fallback.
+- Добавлена единая `uniqueness_duplicate_mask` с семантикой pandas `keep=False / first / last`.
+- Добавлены `GET /v1/session/dataset/uniqueness-profile` и `POST /v1/session/dataset/uniqueness-corrections`.
+- Реализованы стратегии Streamlit: `keep_first`, `keep_last`, `drop_all`, `aggregate` (`mean` для числовых неключевых полей, `first` для остальных) и `flag` (`uniqueness_valid`). Агрегация скрыта для режима полных строк и корректно работает, если ключ содержит все колонки.
+- Preview всегда работает на глубокой копии. Apply атомарно сохраняет DataFrame, обновляет `DatasetInfo.rows/columns`; UI затем запускает общую валидацию повторно.
+- PUT правил валидирует тип, уникальность и наличие колонок составного ключа. Пустой ключ может явно переключить шаблон на системный fallback.
+
+Frontend
+- Кнопка остановки называется «Исправить уникальность», центральный workflow — «Мастер исправления уникальности».
+- «Метрики и алгоритм» объясняет `Duplicate rows`, `Duplicate groups`, `Redundant rows`, долю дублей, порядок resolver и риск частичного ключа.
+- Новый обзор показывает stacked bar «вне групп дублей / в группах дублей», активный ключ, число лишних копий и таблицу «значения ключа / повторов / лишних / номера строк». Нулевой результат отображается зелёным состоянием «Дубликаты не найдены», а не плейсхолдером.
+- Мастер содержит четыре шага: ключ и группы, стратегия, немутирующий preview, подтверждённый apply. Для удаления показывается точное число удаляемых строк.
+- `RulesManagementPanel` загружает, отображает, изменяет и восстанавливает составной ключ шаблона/сессии; пустое поле включает системный выбор ключа.
+- Неприменимый явный ключ получает понятный статус «Ключ уникальности неприменим» и не отображается как успешная проверка.
+
+TDD
+RED: новые frontend suites не компилировались из-за отсутствующих компонентов; backend-контракты ссылались на отсутствующие профиль и correction-модуль.
+
+GREEN: focused Jest — 4/4 suites, 48/48 tests PASS. Полный Jest — 25/25 suites, 270/270 tests PASS, 0 snapshots. Добавлены unit/API-контракты трёх режимов ключа, неприменимого явного ключа, различения групп/строк/лишних копий, пяти стратегий, немутирующего preview, atomic apply, повторной валидации, метаданных и серверной валидации ключа.
+
+Проверка
+- Next.js production build standalone: PASS, 13/13 статических страниц.
+- Next.js production build embedded: PASS, 13/13 статических страниц.
+- Обе сборки выполнили lint и проверку типов. Временные font/memory shims удалены и в изменения не входят.
+- `py_compile` всех изменённых backend-файлов и новых Python-тестов: PASS.
+- Изолированный прогон backend-инвариантов профиля и пяти стратегий на реальном pandas: PASS.
+- Полный pytest в текущем runtime недоступен: отсутствуют `pytest`, `pandera` и `fastapi`; тесты подготовлены для штатного `.venv`/CI.
+- Прямой TypeScript 6 typecheck вне Next.js упирается в существующие deprecation-настройки и отсутствие декларации side-effect import `globals.css`; обе штатные Next.js-сборки проходят type validation.
+- Существующее предупреждение Tailwind о шаблоне `../../packages/ui/**/*.ts` остаётся; сборки успешны.
+
+Изменённые и новые файлы
+- apps/api/uniqueness_correction.py
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- validation/engine.py
+- packages/ui/components/ValidationUniquenessOverview.tsx
+- packages/ui/components/ValidationUniquenessOverview.test.tsx
+- packages/ui/components/ValidationUniquenessPipeline.tsx
+- packages/ui/components/ValidationUniquenessPipeline.test.tsx
+- packages/ui/components/RulesManagementPanel.tsx
+- packages/ui/components/RulesManagementPanel.test.tsx
+- packages/ui/components/TsAnalysisValidation.tsx
+- packages/ui/components/TsAnalysisValidation.test.tsx
+- packages/ui/index.ts
+- tests/api/test_dataset_uniqueness_correction.py
+- tests/unit/test_uniqueness_correction.py

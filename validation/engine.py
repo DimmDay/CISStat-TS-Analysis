@@ -258,29 +258,15 @@ def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict, target_c
 
     # ── uniqueness (строковый уровень) -- dataset-wide, см. докстринг ──
     def _uniqueness():
-        configured_key = rules.get("uniqueness", {}).get("composite_key", [])
-        check_columns = [column for column in configured_key if column in df.columns]
-
-        if not check_columns:
-            date_columns = [
-                column for column in df.columns
-                if any(kw in str(column).lower() for kw in ["date", "дата", "year", "год", "time", "время"])
-                or pd.api.types.is_datetime64_any_dtype(df[column])
-            ]
-            entity_columns = [
-                column for column in df.select_dtypes(include=["object", "string", "category"]).columns
-                if df[column].nunique(dropna=True) > 0
-                and any(kw in str(column).lower() for kw in ["country", "стра", "region", "регион", "entity", "group"])
-            ]
-            if date_columns:
-                check_columns = entity_columns[:1] + date_columns[:1]
-
-        if check_columns:
-            count = int(df.duplicated(subset=check_columns, keep=False).sum())
-            label = f"Дубли по ключу {' + '.join(map(str, check_columns))}"
-        else:
-            count = int(df.duplicated(keep=False).sum())
-            label = "Полные дубликаты строк"
+        profile = profile_uniqueness(df, rules)
+        if not profile["applicable"]:
+            return {"status": "pending", "count": None, "items": [], "scope": "dataset"}
+        count = int(profile["duplicate_rows"] or 0)
+        label = (
+            f"Дубли по ключу {' + '.join(profile['key_columns'])}"
+            if profile["mode"] != "full_row"
+            else "Полные дубликаты строк"
+        )
         items = [{"label": label, "count": count}] if count > 0 else []
         return {"status": _status(count), "count": count, "items": items, "scope": "dataset"}
     _safe("uniqueness", _uniqueness)
@@ -876,6 +862,102 @@ def validate_consistency(df, rules):
             "mask": item["mask"],
         })
     return results
+
+
+_UNIQUENESS_TIME_TOKENS = ("date", "дата", "year", "год", "time", "время", "period", "период")
+_UNIQUENESS_ENTITY_TOKENS = ("country", "стра", "region", "регион", "entity", "group", "организац")
+
+
+def _uniqueness_key(df: pd.DataFrame, rules: dict) -> tuple[bool, str, list[str], str | None]:
+    """Разрешает явный, системный или полнострочный ключ без частичного fallback."""
+    configured = rules.get("uniqueness", {}).get("composite_key", [])
+    if configured:
+        columns = [str(column) for column in configured]
+        missing = [column for column in columns if column not in df.columns]
+        if missing:
+            return False, "composite_key", columns, f"Колонки ключа отсутствуют: {', '.join(missing)}"
+        return True, "composite_key", columns, None
+
+    time_columns = [
+        str(column) for column in df.columns
+        if pd.api.types.is_datetime64_any_dtype(df[column])
+        or any(token in str(column).lower() for token in _UNIQUENESS_TIME_TOKENS)
+    ]
+    entity_columns = [
+        str(column) for column in df.select_dtypes(include=["object", "string", "category"]).columns
+        if df[column].nunique(dropna=True) > 0
+        and any(token in str(column).lower() for token in _UNIQUENESS_ENTITY_TOKENS)
+    ]
+    if time_columns:
+        return True, "inferred_key", entity_columns[:1] + time_columns[:1], None
+    return True, "full_row", [str(column) for column in df.columns], None
+
+
+def uniqueness_duplicate_mask(df: pd.DataFrame, rules: dict, *, keep=False) -> pd.Series:
+    """Единая маска дубликатов для общей проверки, обзора и исправлений."""
+    applicable, _mode, columns, message = _uniqueness_key(df, rules)
+    if not applicable:
+        raise ValueError(message or "Правило уникальности неприменимо")
+    if not columns:
+        return pd.Series(False, index=df.index, dtype=bool)
+    return df.duplicated(subset=columns, keep=keep)
+
+
+def _uniqueness_display_value(value) -> str:
+    if value is None or pd.isna(value):
+        return "∅"
+    return str(value.item() if isinstance(value, np.generic) else value)
+
+
+def profile_uniqueness(df: pd.DataFrame, rules: dict) -> dict:
+    """Профиль ключа и групп дублей с раздельными бизнес-метриками."""
+    applicable, mode, key_columns, message = _uniqueness_key(df, rules)
+    supported = ["keep_first", "keep_last", "drop_all", "flag"]
+    if mode != "full_row":
+        supported.insert(3, "aggregate")
+    base = {
+        "applicable": applicable,
+        "applicability_message": message,
+        "mode": mode,
+        "key_columns": key_columns,
+        "total_rows": len(df),
+        "valid_rows": 0,
+        "duplicate_rows": None,
+        "duplicate_groups": None,
+        "redundant_rows": None,
+        "duplicate_pct": None,
+        "groups": [],
+        "supported_actions": supported,
+    }
+    if not applicable:
+        return base
+
+    duplicate_mask = uniqueness_duplicate_mask(df, rules, keep=False)
+    duplicate_rows = int(duplicate_mask.sum())
+    groups: list[dict] = []
+    if duplicate_rows:
+        grouped = df.loc[duplicate_mask].groupby(key_columns, sort=False, dropna=False)
+        for key, group in grouped:
+            values = key if isinstance(key, tuple) else (key,)
+            groups.append({
+                "key_values": {
+                    column: _uniqueness_display_value(value)
+                    for column, value in zip(key_columns, values)
+                },
+                "occurrences": len(group),
+                "redundant_rows": len(group) - 1,
+                "row_numbers": [int(df.index.get_loc(index)) + 1 for index in group.index],
+            })
+    redundant_rows = sum(group["redundant_rows"] for group in groups)
+    base.update({
+        "valid_rows": len(df) - duplicate_rows,
+        "duplicate_rows": duplicate_rows,
+        "duplicate_groups": len(groups),
+        "redundant_rows": redundant_rows,
+        "duplicate_pct": round((duplicate_rows / len(df)) * 100, 2) if len(df) else 0.0,
+        "groups": groups[:100],
+    })
+    return base
 
 
 def range_invalid_mask(series: pd.Series, min_value, max_value) -> pd.Series:

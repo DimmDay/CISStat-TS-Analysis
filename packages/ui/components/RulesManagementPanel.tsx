@@ -64,6 +64,7 @@ interface RulesContent {
   ranges: RangeRule[];
   inclusion?: Record<string, unknown>;
   consistency?: ConsistencyRule[];
+  uniqueness?: { composite_key?: string[]; description?: string };
   formats?: Record<string, FormatRule>;
   referential?: unknown[];
   outliers?: Record<string, unknown>;
@@ -172,6 +173,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         ranges: Array.isArray(rawContent.ranges) ? rawContent.ranges : [],
         formats: normalizeFormats(rawContent.formats || {}),
         consistency: Array.isArray(rawContent.consistency) ? rawContent.consistency : [],
+        uniqueness: rawContent.uniqueness || {},
       };
       const activeOverrides = sessionSelection?.templateId === templateId
         ? sessionSelection.overrides
@@ -185,6 +187,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         consistency: Array.isArray(activeOverrides.consistency)
           ? activeOverrides.consistency as ConsistencyRule[]
           : templateContent.consistency,
+        uniqueness: activeOverrides.uniqueness
+          ? activeOverrides.uniqueness as RulesContent["uniqueness"]
+          : templateContent.uniqueness,
         formats: {
           ...(templateContent.formats || {}),
           ...normalizeFormats((activeOverrides.formats || {}) as Record<string, unknown>),
@@ -218,8 +223,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         consistency: Array.isArray(activeOverrides.consistency)
           ? activeOverrides.consistency as ConsistencyRule[]
           : [],
+        uniqueness: activeOverrides.uniqueness as RulesContent["uniqueness"] || {},
       });
-      setOriginalRules({ ranges: [], formats: {}, consistency: [] });
+      setOriginalRules({ ranges: [], formats: {}, consistency: [], uniqueness: {} });
       setError(null);
     }
   }, [selectedTemplate, loadTemplate, sessionSelection]);
@@ -351,6 +357,17 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     });
   };
 
+  const updateUniquenessKey = (value: string) => {
+    if (!rules) return;
+    setRules({
+      ...rules,
+      uniqueness: {
+        ...(rules.uniqueness || {}),
+        composite_key: value.split(",").map((column) => column.trim()).filter(Boolean),
+      },
+    });
+  };
+
   const serializableFormats = (formats: Record<string, FormatRule> = {}) => Object.fromEntries(
     Object.entries(formats)
       .filter(([column]) => column.trim() && !column.startsWith("__new_"))
@@ -397,6 +414,12 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       const originalRanges = serializableRanges(originalRules?.ranges);
       const currentConsistency = serializableConsistency(rules.consistency);
       const originalConsistency = serializableConsistency(originalRules?.consistency);
+      const currentUniqueness = rules.uniqueness && "composite_key" in rules.uniqueness
+        ? { ...rules.uniqueness, composite_key: (rules.uniqueness.composite_key || []).map((column) => column.trim()).filter(Boolean) }
+        : {};
+      const originalUniqueness = originalRules?.uniqueness?.composite_key?.length
+        ? { ...originalRules.uniqueness, composite_key: originalRules.uniqueness.composite_key.map((column) => column.trim()).filter(Boolean) }
+        : {};
       const incompleteRange = currentRanges.find(
         (rule) => rule.keywords.length === 0
           || (rule.min === null && rule.max === null)
@@ -432,6 +455,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       }
       if (JSON.stringify(currentConsistency) !== JSON.stringify(originalConsistency)) {
         overrides.consistency = currentConsistency;
+      }
+      if (JSON.stringify(currentUniqueness) !== JSON.stringify(originalUniqueness)) {
+        overrides.uniqueness = currentUniqueness;
       }
       const resp = await fetch(`${API_BASE}/v1/session/dataset/validation-rules`, {
         method: "PUT",
@@ -533,7 +559,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       )}
 
       {rules && !loading && (
-        <div className="grid grid-cols-3 gap-2 text-xs">
+        <div className="grid grid-cols-4 gap-2 text-xs">
           <span className="rounded bg-neutral-50 px-2 py-1 text-neutral-600">
             Диапазоны: {rulesCountLabel(rules.ranges.length)}
           </span>
@@ -555,10 +581,41 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
               ? rulesCountLabel((rules.consistency || []).length)
               : "не задана"}
           </span>
+          <span className={`rounded px-2 py-1 ${
+            rules.uniqueness?.composite_key?.length
+              ? "bg-green-50 text-green-700"
+              : "bg-neutral-50 text-neutral-600"
+          }`}>
+            Уникальность: {rules.uniqueness?.composite_key?.length
+              ? rules.uniqueness.composite_key.join(" + ")
+              : "системный ключ"}
+          </span>
         </div>
       )}
 
       {/* Редактор диапазонов доступен и для шаблона, и для custom-сессии. */}
+      {rules && !loading && (
+        <div>
+          <h4 className="mb-2 text-sm font-medium">Редактор уникальности</h4>
+          <div className="rounded-md border border-neutral-200 bg-white px-3 py-2">
+            <label className="mb-1 block text-[11px] text-neutral-500" htmlFor="uniqueness-composite-key">
+              Составной ключ (колонки через запятую)
+            </label>
+            <input
+              id="uniqueness-composite-key"
+              type="text"
+              value={rules.uniqueness?.composite_key?.join(", ") || ""}
+              onChange={(event) => updateUniquenessKey(event.target.value)}
+              placeholder="Например: Country, Year"
+              className="w-full rounded border border-neutral-300 px-2 py-1 text-sm"
+            />
+            <p className="mt-1 text-[11px] text-neutral-500">
+              Пустое поле включает системный выбор: сущность + время, а при отсутствии времени — полные строки.
+            </p>
+          </div>
+        </div>
+      )}
+
       {rules && !loading && (
         <div>
           <div className="mb-2 flex items-center justify-between gap-2">

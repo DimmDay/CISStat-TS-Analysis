@@ -537,6 +537,50 @@ class DatasetConsistencyCorrectionResponse(BaseModel):
     profile: List[ConsistencyProfileItemOut]
 
 
+class UniquenessGroupOut(BaseModel):
+    key_values: Dict[str, str] = Field(default_factory=dict)
+    occurrences: int
+    redundant_rows: int
+    row_numbers: List[int] = Field(default_factory=list)
+
+
+class UniquenessProfileOut(BaseModel):
+    applicable: bool
+    applicability_message: Optional[str] = None
+    mode: Literal["composite_key", "inferred_key", "full_row"]
+    key_columns: List[str] = Field(default_factory=list)
+    total_rows: int
+    valid_rows: int
+    duplicate_rows: Optional[int] = None
+    duplicate_groups: Optional[int] = None
+    redundant_rows: Optional[int] = None
+    duplicate_pct: Optional[float] = None
+    groups: List[UniquenessGroupOut] = Field(default_factory=list)
+    supported_actions: List[str] = Field(default_factory=list)
+
+
+class DatasetUniquenessProfileResponse(BaseModel):
+    rule_source: Literal["system", "template", "session", "not_applicable"]
+    profile: UniquenessProfileOut
+
+
+class DatasetUniquenessCorrectionRequest(BaseModel):
+    strategy: Literal["keep_first", "keep_last", "drop_all", "aggregate", "flag"] = "keep_first"
+    apply: bool = Field(False, description="False -- preview; True -- сохранить в сессии")
+
+
+class DatasetUniquenessCorrectionResponse(BaseModel):
+    applied: bool
+    strategy: Literal["keep_first", "keep_last", "drop_all", "aggregate", "flag"]
+    duplicate_rows: int
+    redundant_rows: int
+    rows_changed: int
+    rows_removed: int
+    still_duplicate_rows: int
+    added_columns: List[str] = Field(default_factory=list)
+    profile: UniquenessProfileOut
+
+
 class DatasetSummaryOut(BaseModel):
     """Сводка по активному датасету сессии -- для Home page ("Рабочий стол")."""
     dataset_id: str
@@ -624,6 +668,7 @@ class RulesContent(BaseModel):
     ranges: List[RangeRule] = Field(default_factory=list)
     inclusion: Optional[Dict[str, Any]] = None
     consistency: Optional[List[Dict[str, Any]]] = None
+    uniqueness: Optional[Dict[str, Any]] = None
     formats: Optional[Dict[str, Any]] = None
     referential: Optional[List[Dict[str, Any]]] = None
     outliers: Optional[Dict[str, Any]] = None

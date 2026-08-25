@@ -41,6 +41,9 @@ from apps.api.schemas import (
     DatasetTypeConversionResponse,
     DatasetTypeSchemaRequest,
     DatasetTypeSchemaResponse,
+    DatasetUniquenessCorrectionRequest,
+    DatasetUniquenessCorrectionResponse,
+    DatasetUniquenessProfileResponse,
     DatasetValidationRulesRequest,
     DatasetValidationRulesResponse,
     DatasetValidateResponse,
@@ -65,18 +68,20 @@ from apps.api.schemas import (
     TimeSeriesPoint,
     TimeSeriesResponse,
     TypeConversionResultOut,
+    UniquenessProfileOut,
     UploadResponse,
     ValidationCheckItem,
     ValidationCheckResult,
     ValidationTypeProfileOut,
 )
 from app.data.detectors import score_all_columns_as_date, score_all_columns_as_entity_group, detect_column_frequency
-from validation.engine import profile_consistency, profile_formats, profile_ranges, validate_dataframe
+from validation.engine import profile_consistency, profile_formats, profile_ranges, profile_uniqueness, validate_dataframe
 from validation.rule_resolver import resolve_validation_rules
 from apps.api.consistency_correction import preview_consistency_corrections
 from apps.api.format_correction import preview_format_corrections
 from apps.api.range_correction import preview_range_corrections
 from apps.api.type_conversion import preview_type_conversions
+from apps.api.uniqueness_correction import preview_uniqueness_correction
 from apps.api.session_store import (
     AnalysisSession,
     DatasetInfo,
@@ -851,6 +856,66 @@ def correct_dataset_consistency(
     )
 
 
+@router.get("/dataset/uniqueness-profile", response_model=DatasetUniquenessProfileResponse)
+def get_dataset_uniqueness_profile(request: Request, response: Response):
+    """Ключ, метрики и группы дубликатов активного датасета."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, rule_sources = _session_validation_rules(session)
+    profile = profile_uniqueness(session.dataframe, rules)
+    return DatasetUniquenessProfileResponse(
+        rule_source=(
+            rule_sources.get("uniqueness", "not_applicable")
+            if profile["applicable"] else "not_applicable"
+        ),
+        profile=UniquenessProfileOut(**profile),
+    )
+
+
+@router.post(
+    "/dataset/uniqueness-corrections",
+    response_model=DatasetUniquenessCorrectionResponse,
+)
+def correct_dataset_uniqueness(
+    payload: DatasetUniquenessCorrectionRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply стратегий устранения дубликатов из Streamlit."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, _rule_sources = _session_validation_rules(session)
+    try:
+        corrected_df, summary = preview_uniqueness_correction(
+            session.dataframe, rules, payload.strategy
+        )
+        next_profile = profile_uniqueness(corrected_df, rules)
+    except (ValueError, TypeError) as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
+        session.touch()
+        store.save(session)
+
+    return DatasetUniquenessCorrectionResponse(
+        applied=payload.apply,
+        strategy=payload.strategy,
+        profile=UniquenessProfileOut(**next_profile),
+        **summary,
+    )
+
+
 @router.put("/dataset/validation-rules", response_model=DatasetValidationRulesResponse)
 def save_dataset_validation_rules(
     payload: DatasetValidationRulesRequest,
@@ -969,6 +1034,28 @@ def save_dataset_validation_rules(
             raise HTTPException(
                 status_code=422,
                 detail=f"Задайте допустимый оператор правила логики {index}",
+            )
+
+    uniqueness = normalized_overrides.get("uniqueness")
+    if uniqueness is not None:
+        key_columns = uniqueness.get("composite_key")
+        if not isinstance(key_columns, list) or any(
+            not isinstance(column, str) or not column.strip() for column in key_columns
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="Колонки составного ключа должны быть непустыми строками",
+            )
+        if len(key_columns) != len(set(key_columns)):
+            raise HTTPException(
+                status_code=422,
+                detail="Колонки составного ключа не могут повторяться",
+            )
+        missing_columns = [column for column in key_columns if column not in session.dataframe.columns]
+        if missing_columns:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Колонка '{missing_columns[0]}' отсутствует в датасете",
             )
 
     # Regex из редактора правил валидируется до изменения сессии. Клиент

@@ -222,13 +222,39 @@ describe("TsAnalysisValidation", () => {
     renderValidation();
 
     const correctionButton = await screen.findByRole("button", { name: "Исправить типы данных" });
-    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(6);
+    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(5);
     fireEvent.click(correctionButton);
 
     expect(screen.getAllByText("Мастер исправления типов").length).toBeGreaterThan(0);
     expect(screen.getByText(/Отметьте проблемные колонки/i)).toBeInTheDocument();
     expect(screen.getByText(/Предпросмотр не изменяет датасет/i)).toBeInTheDocument();
     expect(screen.getByText(/Подтвердите применение/i)).toBeInTheDocument();
+  });
+
+  it("opens the specialized uniqueness metrics, overview and correction master", async () => {
+    mockActiveValidation(() => Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        ...validationResponse("done", "schema", 0),
+        checks: Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, {
+          status: "done", count: 0, items: [], scope: "dataset", rule_source: "system",
+        }])),
+      }),
+    }));
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    await screen.findAllByText("Проверка пройдена");
+
+    const uniquenessStop = screen.getAllByRole("button", { name: /Уникальность/ })[0];
+    fireEvent.click(uniquenessStop);
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/Duplicate groups/i)).toBeInTheDocument();
+    expect(screen.getByText(/profile_uniqueness/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Исправить уникальность" }));
+    expect(screen.getAllByText("Мастер исправления уникальности").length).toBeGreaterThan(0);
   });
 
   it("uses the formats correction naming and opens its specialized wizard", async () => {

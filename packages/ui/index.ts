@@ -116,6 +116,13 @@ export type {
   ConsistencyProfileItem,
   ConsistencyProfileResponse,
 } from "./components/ValidationConsistencyOverview";
+export { ValidationUniquenessOverview } from "./components/ValidationUniquenessOverview";
+export { ValidationUniquenessPipeline } from "./components/ValidationUniquenessPipeline";
+export type {
+  UniquenessGroup,
+  UniquenessProfile,
+  UniquenessProfileResponse,
+} from "./components/ValidationUniquenessOverview";
 export type {
   TypeValidationMode,
   ValidationSemanticType,

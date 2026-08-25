@@ -82,6 +82,7 @@ describe("RulesManagementPanel", () => {
                 Year: { pattern: "^\\d{4}$", threshold: 100 },
                 "usd/tonne": { pattern: "^(usd|USD)$", threshold: 100 },
               },
+              uniqueness: { composite_key: ["Country", "Year"] },
             },
           }),
         });
@@ -147,6 +148,43 @@ describe("RulesManagementPanel", () => {
       expect(screen.getByText(/Цена должна быть положительной/i)).toBeInTheDocument();
       expect(screen.getByText(/Год в разумных пределах/i)).toBeInTheDocument();
       expect(screen.getByText("Форматы: 3 правила")).toBeInTheDocument();
+      expect(screen.getByLabelText(/Составной ключ/i)).toHaveValue("Country, Year");
+    });
+  });
+
+  it("saves a changed uniqueness key as a session override", async () => {
+    const { container } = render(<RulesManagementPanel />);
+    const selector = await waitTemplatesLoaded(container);
+    fireEvent.change(selector, { target: { value: "fao_prices" } });
+
+    const key = await screen.findByLabelText(/Составной ключ/i);
+    fireEvent.change(key, { target: { value: "Country, Year, Price" } });
+    fireEvent.click(screen.getByTestId("apply-rules-btn"));
+
+    await waitFor(() => {
+      const putCall = mockFetch.mock.calls.find(
+        (call: [string, RequestInit?]) => call[0].includes("/session/dataset/validation-rules") && call[1]?.method === "PUT"
+      );
+      const payload = JSON.parse((putCall?.[1]?.body ?? "{}") as string);
+      expect(payload.overrides.uniqueness.composite_key).toEqual(["Country", "Year", "Price"]);
+    });
+  });
+
+  it("can clear a template key to request the system fallback", async () => {
+    const { container } = render(<RulesManagementPanel />);
+    const selector = await waitTemplatesLoaded(container);
+    fireEvent.change(selector, { target: { value: "fao_prices" } });
+
+    const key = await screen.findByLabelText(/Составной ключ/i);
+    fireEvent.change(key, { target: { value: "" } });
+    fireEvent.click(screen.getByTestId("apply-rules-btn"));
+
+    await waitFor(() => {
+      const putCall = mockFetch.mock.calls.find(
+        (call: [string, RequestInit?]) => call[0].includes("/session/dataset/validation-rules") && call[1]?.method === "PUT"
+      );
+      const payload = JSON.parse((putCall?.[1]?.body ?? "{}") as string);
+      expect(payload.overrides.uniqueness).toEqual({ composite_key: [] });
     });
   });
 
