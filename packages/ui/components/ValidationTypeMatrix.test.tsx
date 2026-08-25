@@ -33,6 +33,31 @@ describe("ValidationTypeMatrix", () => {
     expect(screen.getByTestId("type-count-text")).toHaveTextContent("1");
   });
 
+  it("keeps every legend count next to its own class label", () => {
+    render(
+      <ValidationTypeMatrix
+        profile={PROFILE}
+        mode="profile"
+        loading={false}
+        hasDataset
+      />
+    );
+
+    const expectedCounts = {
+      numeric: ["Числовые", "2"],
+      datetime: ["Дата/время", "0"],
+      categorical: ["Категориальные", "1"],
+      text: ["Текстовые", "1"],
+    } as const;
+
+    for (const [type, [label, count]] of Object.entries(expectedCounts)) {
+      const legendItem = screen.getByTestId(`type-legend-${type}`);
+      expect(legendItem).toHaveAccessibleName(`${label}: ${count}`);
+      expect(legendItem).toHaveTextContent(`${label}—${count}`);
+      expect(screen.getByTestId(`type-count-${type}`)).not.toHaveClass("ml-auto");
+    }
+  });
+
   it("renders the requested type matrix with honest profile-mode values", () => {
     render(
       <ValidationTypeMatrix

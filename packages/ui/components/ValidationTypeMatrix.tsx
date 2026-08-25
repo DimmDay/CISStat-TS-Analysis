@@ -116,12 +116,18 @@ export function ValidationTypeMatrix({
           })}
         </div>
 
-        <div className="mt-2 grid grid-cols-4 gap-2">
+        <div className="mt-2 grid grid-cols-2 gap-x-5 gap-y-1 sm:grid-cols-4">
           {TYPE_CONFIG.map(({ id, label, dotClass }) => (
-            <div key={id} className="flex min-w-0 items-center gap-1.5 text-[11px] text-neutral-600">
-              <span className={`h-2 w-2 shrink-0 rounded-full ${dotClass}`} />
+            <div
+              key={id}
+              data-testid={`type-legend-${id}`}
+              aria-label={`${label}: ${counts[id]}`}
+              className="flex min-w-0 items-center gap-1.5 text-[11px] text-neutral-600"
+            >
+              <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${dotClass}`} />
               <span className="truncate">{label}</span>
-              <span data-testid={`type-count-${id}`} className="ml-auto font-mono font-semibold text-neutral-800">
+              <span aria-hidden="true" className="shrink-0 text-neutral-400">—</span>
+              <span data-testid={`type-count-${id}`} className="shrink-0 font-mono font-semibold text-neutral-800">
                 {counts[id]}
               </span>
             </div>
