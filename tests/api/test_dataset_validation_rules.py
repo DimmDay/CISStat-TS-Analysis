@@ -169,3 +169,40 @@ def test_format_overrides_require_an_existing_column_and_valid_regex():
     )
     assert invalid_regex.status_code == 422
     assert "Некорректный regex" in invalid_regex.json()["detail"]
+
+
+def test_range_overrides_require_keywords_and_consistent_bounds():
+    _upload(_fao_df())
+
+    missing_keywords = client.put(
+        "/v1/session/dataset/validation-rules",
+        json={
+            "template_id": "system",
+            "overrides": {"ranges": [{"keywords": [], "min": 0, "max": 100}]},
+        },
+    )
+    assert missing_keywords.status_code == 422
+    assert "ключевое слово" in missing_keywords.json()["detail"]
+
+    inverted = client.put(
+        "/v1/session/dataset/validation-rules",
+        json={
+            "template_id": "system",
+            "overrides": {"ranges": [{"keywords": ["Price"], "min": 100, "max": 0}]},
+        },
+    )
+    assert inverted.status_code == 422
+    assert "минимум не может превышать максимум" in inverted.json()["detail"]
+
+
+def test_unmatched_template_range_is_reported_as_no_applicable_reference():
+    _upload(pd.DataFrame({"Metric": [1.0, 2.0, 3.0]}))
+    assert client.put(
+        "/v1/session/dataset/validation-rules",
+        json={"template_id": "fao_prices", "overrides": {}},
+    ).status_code == 200
+
+    ranges = client.get("/v1/session/dataset/validate").json()["checks"]["ranges"]
+    assert ranges["status"] == "pending"
+    assert ranges["count"] is None
+    assert ranges["rule_source"] == "not_applicable"

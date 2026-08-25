@@ -38,6 +38,7 @@ interface RangeRule {
   min: number | null;
   max: number | null;
   description?: string;
+  draft?: boolean;
 }
 
 interface FormatRule {
@@ -206,18 +207,47 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
 
   // ── Обработчики редактора ──
 
-  const updateRangeMin = (index: number, value: number) => {
+  const updateRangeMin = (index: number, value: number | null) => {
     if (!rules) return;
     const newRanges = [...rules.ranges];
     newRanges[index] = { ...newRanges[index], min: value };
     setRules({ ...rules, ranges: newRanges });
   };
 
-  const updateRangeMax = (index: number, value: number) => {
+  const updateRangeMax = (index: number, value: number | null) => {
     if (!rules) return;
     const newRanges = [...rules.ranges];
     newRanges[index] = { ...newRanges[index], max: value };
     setRules({ ...rules, ranges: newRanges });
+  };
+
+  const updateRangeKeyword = (index: number, value: string) => {
+    if (!rules) return;
+    const newRanges = [...rules.ranges];
+    const current = newRanges[index];
+    const keywords = value.split(",").map((item) => item.trim()).filter(Boolean);
+    newRanges[index] = {
+      ...current,
+      keywords: keywords.length > 0 ? keywords : [""],
+      ...(current.draft ? { name: value.trim() ? `${value.trim()} — пользовательский диапазон` : "" } : {}),
+    };
+    setRules({ ...rules, ranges: newRanges });
+  };
+
+  const addRangeRule = () => {
+    if (!rules) return;
+    setRules({
+      ...rules,
+      ranges: [
+        ...rules.ranges,
+        { name: "", keywords: [""], min: null, max: null, draft: true },
+      ],
+    });
+  };
+
+  const removeRangeRule = (index: number) => {
+    if (!rules) return;
+    setRules({ ...rules, ranges: rules.ranges.filter((_rule, ruleIndex) => ruleIndex !== index) });
   };
 
   const updateFormatRule = (column: string, patch: Partial<FormatRule>) => {
@@ -266,6 +296,14 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       }])
   );
 
+  const serializableRanges = (ranges: RangeRule[] = []) => ranges.map((rule) => ({
+    ...(rule.name ? { name: rule.name } : {}),
+    keywords: rule.keywords.map((keyword) => keyword.trim()).filter(Boolean),
+    min: rule.min,
+    max: rule.max,
+    ...(rule.description ? { description: rule.description } : {}),
+  }));
+
   const [applyLoading, setApplyLoading] = useState(false);
 
   const handleApply = async () => {
@@ -275,6 +313,17 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     try {
       const currentFormats = serializableFormats(rules.formats);
       const originalFormats = serializableFormats(originalRules?.formats);
+      const currentRanges = serializableRanges(rules.ranges);
+      const originalRanges = serializableRanges(originalRules?.ranges);
+      const incompleteRange = currentRanges.find(
+        (rule) => rule.keywords.length === 0
+          || (rule.min === null && rule.max === null)
+          || (rule.min !== null && rule.max !== null && rule.min > rule.max)
+      );
+      if (incompleteRange) {
+        setError("Для каждого диапазона задайте колонку и корректные min/max");
+        return;
+      }
       const incompleteRule = Object.entries(rules.formats || {}).find(
         ([column, rule]) => !column.trim() || column.startsWith("__new_") || !rule.pattern.trim()
       );
@@ -283,8 +332,8 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         return;
       }
       const overrides: Record<string, unknown> = {};
-      if (JSON.stringify(rules.ranges) !== JSON.stringify(originalRules?.ranges ?? [])) {
-        overrides.ranges = rules.ranges;
+      if (JSON.stringify(currentRanges) !== JSON.stringify(originalRanges)) {
+        overrides.ranges = currentRanges;
       }
       if (JSON.stringify(currentFormats) !== JSON.stringify(originalFormats)) {
         overrides.formats = currentFormats;
@@ -383,8 +432,8 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
           может добавить их ниже и сохранить как override сессии. */}
       {selectedTemplate === "custom" && !loading && (
         <div className="text-sm text-neutral-500 bg-brand-light/50 rounded px-3 py-2">
-          Системные правила определяют типы и структуру временного ряда.
-          Предметные regex не выводятся из самих значений: добавьте их в редакторе форматов.
+          Система распознаёт типы и безопасные диапазоны для цены, года и процентов.
+          Другие предметные границы и regex не выводятся из самих значений: добавьте их в редакторах ниже.
         </div>
       )}
 
@@ -405,59 +454,85 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         </div>
       )}
 
-      {/* Редактор диапазонов */}
-      {rules && rules.ranges.length > 0 && !loading && (
+      {/* Редактор диапазонов доступен и для шаблона, и для custom-сессии. */}
+      {rules && !loading && (
         <div>
-          <h4 className="font-medium text-sm mb-2">Редактор диапазонов ({rules.ranges.length} правил)</h4>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h4 className="text-sm font-medium">Редактор диапазонов ({rules.ranges.length} правил)</h4>
+            <button
+              type="button"
+              onClick={addRangeRule}
+              className="flex items-center gap-1 rounded border border-brand/40 px-2 py-1 text-xs font-medium text-brand hover:bg-brand/5"
+            >
+              <Plus size={13} /> Добавить правило диапазона
+            </button>
+          </div>
+          {rules.ranges.length === 0 && (
+            <p className="mb-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Эталон диапазонов не задан. Добавьте числовую колонку и хотя бы одну границу.
+            </p>
+          )}
           <div className="space-y-2">
-            {rules.ranges.map((rule, i) => (
-              <div
-                key={i}
-                className="border border-neutral-200 rounded-md px-3 py-2 bg-white"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-neutral-800">
-                    {rule.name || `Правило ${i + 1}`}
-                  </span>
-                  <span className="text-[11px] text-neutral-400">
-                    {rule.keywords.length > 0 ? rule.keywords[0] : "—"}
-                  </span>
-                </div>
-                {rule.description && (
-                  <p className="text-[11px] text-neutral-500 mb-1.5">{rule.description}</p>
-                )}
-                <div className="grid grid-cols-2 gap-3">
+            {rules.ranges.map((rule, i) => {
+              const isDraft = Boolean(rule.draft);
+              const ariaSuffix = isDraft ? `правила диапазона ${i + 1}` : (rule.name || String(i + 1));
+              return (
+                <div key={i} className="rounded-md border border-neutral-200 bg-white px-3 py-2">
+                  <div className="mb-2 grid gap-2 sm:grid-cols-[minmax(180px,1fr)_auto]">
+                    <input
+                      type="text"
+                      value={rule.keywords.join(", ")}
+                      onChange={(event) => updateRangeKeyword(i, event.target.value)}
+                      readOnly={selectedTemplate !== "custom" && !isDraft}
+                      aria-label={isDraft ? `Колонка правила диапазона ${i + 1}` : `Ключевые слова ${rule.name || i + 1}`}
+                      placeholder="Колонка или ключевые слова"
+                      className="min-w-0 rounded border border-neutral-300 px-2 py-1 text-sm read-only:bg-neutral-50 read-only:text-neutral-500"
+                    />
+                    {(selectedTemplate === "custom" || isDraft) && (
+                      <button
+                        type="button"
+                        onClick={() => removeRangeRule(i)}
+                        aria-label={`Удалить правило диапазона ${i + 1}`}
+                        className="rounded p-1.5 text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
+                  {rule.name && <p className="mb-1 text-xs font-medium text-neutral-700">{rule.name}</p>}
+                  {rule.description && <p className="mb-1.5 text-[11px] text-neutral-500">{rule.description}</p>}
+                  <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[11px] text-neutral-500 block">
+                    <label className="block text-[11px] text-neutral-500">
                       Минимум
                     </label>
                     <input
                       type="number"
-                      aria-label={`Минимум ${rule.name || i + 1}`}
+                      aria-label={`Минимум ${ariaSuffix}`}
                       value={rule.min ?? ""}
-                      onChange={(e) => updateRangeMin(i, parseFloat(e.target.value) || 0)}
+                      onChange={(event) => updateRangeMin(i, event.target.value === "" ? null : Number(event.target.value))}
                       step="0.01"
                       className="w-full rounded border border-neutral-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] text-neutral-500 block">
+                    <label className="block text-[11px] text-neutral-500">
                       Максимум
                     </label>
                     <input
                       type="number"
-                      aria-label={`Максимум ${rule.name || i + 1}`}
+                      aria-label={`Максимум ${ariaSuffix}`}
                       value={rule.max ?? ""}
-                      onChange={(e) => updateRangeMax(i, parseFloat(e.target.value) || 0)}
+                      onChange={(event) => updateRangeMax(i, event.target.value === "" ? null : Number(event.target.value))}
                       step="0.01"
                       className="w-full rounded border border-neutral-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
                     />
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
-
         </div>
       )}
 

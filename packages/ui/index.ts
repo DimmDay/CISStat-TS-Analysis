@@ -107,6 +107,9 @@ export type { ValidationCheckData, ValidationCheckItem } from "./components/Vali
 export { ValidationTypeMatrix } from "./components/ValidationTypeMatrix";
 export { ValidationTypePipeline } from "./components/ValidationTypePipeline";
 export { ValidationFormatPipeline } from "./components/ValidationFormatPipeline";
+export { ValidationRangeOverview } from "./components/ValidationRangeOverview";
+export { ValidationRangePipeline } from "./components/ValidationRangePipeline";
+export type { RangeProfileItem, RangeProfileResponse } from "./components/ValidationRangeOverview";
 export type {
   TypeValidationMode,
   ValidationSemanticType,

@@ -33,6 +33,8 @@ import {
 } from "./ValidationTypeMatrix";
 import { ValidationTypePipeline } from "./ValidationTypePipeline";
 import { ValidationFormatPipeline } from "./ValidationFormatPipeline";
+import { ValidationRangeOverview } from "./ValidationRangeOverview";
+import { ValidationRangePipeline } from "./ValidationRangePipeline";
 import { useAppShell } from "../context/AppShellContext";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
@@ -190,6 +192,34 @@ const FORMATS_PIPELINE_DESCRIPTION = `Мастер исправления фор
 4. Запустите предпросмотр на копии датасета и оцените, сколько нарушений останется.
 5. Подтвердите применение. Изменения сохраняются атомарно, после чего общая валидация запускается повторно.`;
 
+const RANGES_METRICS_DESCRIPTION = `Метрики и алгоритм: Диапазоны значений
+
+Цель
+Проверка сопоставляет числовые значения с предметными нижней и верхней границами. Пропуски здесь не считаются нарушениями: для них предназначена отдельная проверка полноты.
+
+Метрики
+1. N_range — количество непустых значений, для которых x < min или x > max.
+2. r_range = N_range / N_non_null × 100 — доля нарушений среди непустых значений.
+3. Фактические min/max показывают охват наблюдаемых данных, допустимые min/max — активный эталон.
+4. Покрытие = число числовых колонок с применимым правилом / общее число числовых колонок.
+
+Алгоритм backend
+1. Resolver выбирает правила в порядке: переопределения сессии → шаблон → безопасная системная семантика.
+2. Правило сопоставляется с числовой колонкой по ключевым словам без учёта регистра.
+3. Единая векторная маска отмечает значения ниже min и выше max; она используется общей валидацией, профилем и мастером исправления.
+4. Нет применимого правила — «Эталон диапазонов не задан»; 0 нарушений — «Проверка пройдена»; нарушения — «Найдены проблемы».
+
+Система назначает встроенные границы только для однозначной семантики: цена неотрицательна, год 1900–2100, процент 0–100. Для неизвестной числовой колонки границы из её фактических min/max не выводятся, поскольку такая круговая проверка всегда проходила бы.`;
+
+const RANGES_PIPELINE_DESCRIPTION = `Мастер исправления диапазонов
+
+1. Выберите колонки с нарушениями и проверьте активные min/max.
+2. Выберите стратегию Streamlit: кэпирование, медиана корректных значений, пропуск, удаление строк либо флаг валидности.
+3. Запустите предпросмотр на глубокой копии датасета. Он показывает число изменённых значений, оставшихся нарушений и удаляемых строк.
+4. Подтвердите применение. Подготовленная копия сохраняется атомарно, после чего общая валидация запускается повторно.
+
+Неоднозначная Streamlit-стратегия «0 или NaN» разделена: веб-мастер использует безопасный пропуск, потому что 0 сам может нарушать положительную нижнюю границу.`;
+
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisValidation() {
@@ -225,6 +255,7 @@ export function TsAnalysisValidation() {
   const [typeValidationMode, setTypeValidationMode] = useState<TypeValidationMode>("profile");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [validationHasRun, setValidationHasRun] = useState(false);
+  const [validationVersion, setValidationVersion] = useState(0);
   const validationRequestId = useRef(0);
 
   const fetchValidation = useCallback(async () => {
@@ -252,6 +283,7 @@ export function TsAnalysisValidation() {
       setTypeProfile(Array.isArray(data.type_profile) ? data.type_profile : []);
       setTypeValidationMode(data.type_validation_mode === "schema" ? "schema" : "profile");
       setValidationHasRun(true);
+      setValidationVersion((current) => current + 1);
     } catch {
       if (requestId !== validationRequestId.current) return;
       setChecksData(null);
@@ -273,6 +305,7 @@ export function TsAnalysisValidation() {
     setTypeValidationMode("profile");
     setValidationError(null);
     setValidationHasRun(false);
+    setValidationVersion(0);
     setChecksLoading(false);
     return () => {
       validationRequestId.current += 1;
@@ -363,10 +396,12 @@ export function TsAnalysisValidation() {
     if (descriptionSection === "metrics") {
       if (activeCheck.id === "data_types") return DATA_TYPES_METRICS_DESCRIPTION;
       if (activeCheck.id === "formats") return FORMATS_METRICS_DESCRIPTION;
+      if (activeCheck.id === "ranges") return RANGES_METRICS_DESCRIPTION;
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
     if (activeCheck.id === "data_types") return DATA_TYPES_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "formats") return FORMATS_PIPELINE_DESCRIPTION;
+    if (activeCheck.id === "ranges") return RANGES_PIPELINE_DESCRIPTION;
     return `Полный пайплайн: ${activeCheck.label.toLowerCase()}\n\n1. Обнаружение → 2. Диагностика → 3. Преобразование → 4. Верификация\n\n${activeCheck.description}`;
   })();
 
@@ -378,6 +413,7 @@ export function TsAnalysisValidation() {
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     if (activeCheck.id === "data_types") return "Мастер исправления типов";
     if (activeCheck.id === "formats") return "Мастер исправления форматов и шаблонов";
+    if (activeCheck.id === "ranges") return "Мастер исправления диапазонов";
     return `Полный пайплайн — ${activeCheck.label}`;
   })();
 
@@ -463,7 +499,7 @@ export function TsAnalysisValidation() {
             >
               <span className="truncate">{check.label}</span>
               <span className="ml-2 shrink-0">
-                {validationHasRun && check.id === "formats" && check.status === "pending" && check.ruleSource === "not_applicable" ? (
+                {validationHasRun && (check.id === "formats" || check.id === "ranges") && check.status === "pending" && check.ruleSource === "not_applicable" ? (
                   <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
                     check.id === activeCheckId ? "bg-white/20 text-white" : "bg-amber-50 text-amber-700"
                   }`}>
@@ -564,6 +600,8 @@ export function TsAnalysisValidation() {
               ? "Мастер исправления типов"
               : activeCheckId === "formats" && descriptionSection === "pipeline"
               ? "Мастер исправления форматов и шаблонов"
+              : activeCheckId === "ranges" && descriptionSection === "pipeline"
+              ? "Мастер исправления диапазонов"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -571,8 +609,12 @@ export function TsAnalysisValidation() {
               ? "Выберите преобразования, проверьте последствия и примените их к активному датасету."
               : activeCheckId === "formats" && descriptionSection === "pipeline"
               ? "Выберите правила и стратегию, проверьте последствия и примените исправления к активному датасету."
+              : activeCheckId === "ranges" && descriptionSection === "pipeline"
+              ? "Выберите проблемные колонки и стратегию, оцените последствия и примените исправления."
               : activeCheckId === "data_types"
               ? "Распределение фактических типов и построчная матрица колонок."
+              : activeCheckId === "ranges"
+              ? "Соотношение корректных и нарушающих значения, фактические и допустимые границы."
               : "Визуализация результатов проверки по активному критерию."}
           </p>
 
@@ -592,6 +634,11 @@ export function TsAnalysisValidation() {
               onApplied={runValidation}
               onOpenRules={() => setDescriptionSection("rules")}
             />
+          ) : activeCheckId === "ranges" && descriptionSection === "pipeline" ? (
+            <ValidationRangePipeline
+              onApplied={runValidation}
+              onOpenRules={() => setDescriptionSection("rules")}
+            />
           ) : activeCheckId === "data_types" ? (
             validationHasRun || checksLoading ? (
               <ValidationTypeMatrix
@@ -603,6 +650,14 @@ export function TsAnalysisValidation() {
             ) : (
               <div className="rounded-lg h-[420px] flex items-center justify-center bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы построить матрицу типов и получить статусы проверок.
+              </div>
+            )
+          ) : activeCheckId === "ranges" ? (
+            validationHasRun ? (
+              <ValidationRangeOverview refreshKey={validationVersion} />
+            ) : (
+              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+                Запустите валидацию, чтобы построить профиль диапазонов и получить статус проверки.
               </div>
             )
           ) : (
@@ -673,6 +728,8 @@ export function TsAnalysisValidation() {
                 <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
                   {check.id === "formats" && check.ruleSource === "not_applicable"
                     ? "Эталон форматов не задан"
+                    : check.id === "ranges" && check.ruleSource === "not_applicable"
+                    ? "Эталон диапазонов не задан"
                     : "Не применимо: правило или необходимые данные отсутствуют"}
                 </p>
               )}
@@ -708,6 +765,8 @@ export function TsAnalysisValidation() {
                   ? "Исправить типы данных"
                   : check.id === "formats"
                   ? "Исправить форматы и шаблоны"
+                  : check.id === "ranges"
+                  ? "Исправить диапазоны значений"
                   : "Полный пайплайн"}
               </button>
 

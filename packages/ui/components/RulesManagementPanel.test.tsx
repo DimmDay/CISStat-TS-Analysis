@@ -210,6 +210,52 @@ describe("RulesManagementPanel", () => {
     expect(screen.getByText("Форматы: 1 правило")).toBeInTheDocument();
   });
 
+  it("lets a custom session add an exact range rule for an arbitrary numeric column", async () => {
+    render(<RulesManagementPanel />);
+    await waitFor(() => expect(screen.getByTestId("apply-system-rules-btn")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Добавить правило диапазона" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Колонка правила диапазона 1" }), {
+      target: { value: "Score" },
+    });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Минимум правила диапазона 1" }), {
+      target: { value: "0" },
+    });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Максимум правила диапазона 1" }), {
+      target: { value: "100" },
+    });
+    fireEvent.click(screen.getByTestId("apply-system-rules-btn"));
+
+    await waitFor(() => {
+      const putCall = mockFetch.mock.calls.find(
+        (call: [string, RequestInit?]) =>
+          call[0].includes("/session/dataset/validation-rules") && call[1]?.method === "PUT"
+      );
+      const payload = JSON.parse((putCall?.[1]?.body ?? "{}") as string);
+      expect(payload).toEqual({
+        template_id: "system",
+        overrides: {
+          ranges: [{ name: "Score — пользовательский диапазон", keywords: ["Score"], min: 0, max: 100 }],
+        },
+      });
+    });
+  });
+
+  it("restores saved custom range rules when the panel is reopened", async () => {
+    sessionRulesResponse = {
+      template_id: "system",
+      overrides: {
+        ranges: [{ name: "Score", keywords: ["Score"], min: 0, max: 100 }],
+      },
+    };
+
+    render(<RulesManagementPanel />);
+
+    expect(await screen.findByRole("textbox", { name: "Ключевые слова Score" })).toHaveValue("Score");
+    expect(screen.getByRole("spinbutton", { name: "Минимум Score" })).toHaveValue(0);
+    expect(screen.getByRole("spinbutton", { name: "Максимум Score" })).toHaveValue(100);
+  });
+
   it("shows range editor with min/max inputs for each rule", async () => {
     const { container } = render(<RulesManagementPanel />);
     const selector = await waitTemplatesLoaded(container);

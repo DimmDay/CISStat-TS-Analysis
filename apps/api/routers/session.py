@@ -29,6 +29,9 @@ from apps.api.schemas import (
     DatasetFormatCorrectionRequest,
     DatasetFormatCorrectionResponse,
     DatasetFormatProfileResponse,
+    DatasetRangeCorrectionRequest,
+    DatasetRangeCorrectionResponse,
+    DatasetRangeProfileResponse,
     DatasetTypeConversionRequest,
     DatasetTypeConversionResponse,
     DatasetTypeSchemaRequest,
@@ -50,6 +53,8 @@ from apps.api.schemas import (
     FrequencyDetectionOut,
     FormatCorrectionResultOut,
     FormatProfileItemOut,
+    RangeCorrectionResultOut,
+    RangeProfileItemOut,
     TargetColumnRequest,
     TargetColumnResponse,
     TimeSeriesPoint,
@@ -61,9 +66,10 @@ from apps.api.schemas import (
     ValidationTypeProfileOut,
 )
 from app.data.detectors import score_all_columns_as_date, score_all_columns_as_entity_group, detect_column_frequency
-from validation.engine import profile_formats, validate_dataframe
+from validation.engine import profile_formats, profile_ranges, validate_dataframe
 from validation.rule_resolver import resolve_validation_rules
 from apps.api.format_correction import preview_format_corrections
+from apps.api.range_correction import preview_range_corrections
 from apps.api.type_conversion import preview_type_conversions
 from apps.api.session_store import (
     AnalysisSession,
@@ -599,7 +605,11 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
             items=[ValidationCheckItem(**item) for item in raw["items"]],
             scope=raw.get("scope", "dataset"),
             error=raw.get("error"),
-            rule_source=rule_sources.get(check_id, "not_applicable"),
+            rule_source=(
+                "not_applicable"
+                if raw["status"] == "pending" and not raw.get("error")
+                else rule_sources.get(check_id, "not_applicable")
+            ),
         )
         for check_id, raw in result["checks"].items()
     }
@@ -689,6 +699,9 @@ def correct_dataset_formats(
 
     if payload.apply:
         session.dataframe = corrected_df
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
 
@@ -701,6 +714,68 @@ def correct_dataset_formats(
         added_columns=[item["flag_column"] for item in raw_results if item["flag_column"]],
         columns=[FormatCorrectionResultOut(**item) for item in raw_results],
         profile=[FormatProfileItemOut(**item) for item in next_profile],
+    )
+
+
+@router.get("/dataset/range-profile", response_model=DatasetRangeProfileResponse)
+def get_dataset_range_profile(request: Request, response: Response):
+    """Полный профиль применимых min/max-правил активной сессии."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, rule_sources = _session_validation_rules(session)
+    try:
+        columns = profile_ranges(session.dataframe, rules)
+    except (ValueError, TypeError) as ex:
+        raise HTTPException(status_code=422, detail=f"Некорректное правило диапазона: {ex}") from ex
+    return DatasetRangeProfileResponse(
+        rule_source=rule_sources.get("ranges", "not_applicable") if columns else "not_applicable",
+        columns=[RangeProfileItemOut(**item) for item in columns],
+    )
+
+
+@router.post("/dataset/range-corrections", response_model=DatasetRangeCorrectionResponse)
+def correct_dataset_ranges(
+    payload: DatasetRangeCorrectionRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply безопасных стратегий исправления диапазонов."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, _rule_sources = _session_validation_rules(session)
+    try:
+        corrected_df, raw_results, rows_removed = preview_range_corrections(
+            session.dataframe, rules, payload.columns, payload.strategy
+        )
+        next_profile = profile_ranges(corrected_df, rules)
+    except (ValueError, TypeError) as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
+        session.touch()
+        store.save(session)
+
+    return DatasetRangeCorrectionResponse(
+        applied=payload.apply,
+        strategy=payload.strategy,
+        total_violations=sum(item["invalid_count"] for item in raw_results),
+        total_changed=sum(item["changed_count"] for item in raw_results),
+        total_still_invalid=sum(item["still_invalid"] for item in raw_results),
+        rows_removed=rows_removed,
+        added_columns=[item["flag_column"] for item in raw_results if item["flag_column"]],
+        columns=[RangeCorrectionResultOut(**item) for item in raw_results],
+        profile=[RangeProfileItemOut(**item) for item in next_profile],
     )
 
 
@@ -745,6 +820,36 @@ def save_dataset_validation_rules(
     normalized_overrides = {
         section: value for section, value in payload.overrides.items() if value
     }
+
+    for index, rule in enumerate(normalized_overrides.get("ranges", []), start=1):
+        keywords = rule.get("keywords")
+        min_value = rule.get("min")
+        max_value = rule.get("max")
+        if not isinstance(keywords, list) or not keywords or any(
+            not isinstance(keyword, str) or not keyword.strip() for keyword in keywords
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Для правила диапазона {index} задайте хотя бы одно ключевое слово",
+            )
+        for label, value in (("минимум", min_value), ("максимум", max_value)):
+            if value is not None and (
+                not isinstance(value, (int, float)) or isinstance(value, bool)
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"{label.capitalize()} правила диапазона {index} должен быть числом",
+                )
+        if min_value is None and max_value is None:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Для правила диапазона {index} задайте минимум или максимум",
+            )
+        if min_value is not None and max_value is not None and min_value > max_value:
+            raise HTTPException(
+                status_code=422,
+                detail=f"В правиле диапазона {index} минимум не может превышать максимум",
+            )
 
     # Regex из редактора правил валидируется до изменения сессии. Клиент
     # может выбирать только реальные колонки активного DataFrame.

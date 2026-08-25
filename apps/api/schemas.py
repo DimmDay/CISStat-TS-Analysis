@@ -440,6 +440,52 @@ class DatasetFormatCorrectionResponse(BaseModel):
     profile: List[FormatProfileItemOut]
 
 
+class RangeProfileItemOut(BaseModel):
+    column: str
+    rule_name: str
+    min_allowed: Optional[float] = None
+    max_allowed: Optional[float] = None
+    actual_min: Optional[float] = None
+    actual_max: Optional[float] = None
+    total_count: int
+    valid_count: int
+    invalid_count: int
+    invalid_pct: Optional[float] = None
+    invalid_examples: List[float] = Field(default_factory=list)
+
+
+class DatasetRangeProfileResponse(BaseModel):
+    rule_source: Literal["system", "template", "session", "not_applicable"]
+    columns: List[RangeProfileItemOut] = Field(default_factory=list)
+
+
+class DatasetRangeCorrectionRequest(BaseModel):
+    columns: List[str] = Field(..., min_length=1, max_length=100)
+    strategy: Literal["clip", "median", "replace_null", "drop_rows", "flag"] = "clip"
+    apply: bool = Field(False, description="False -- preview; True -- сохранить в сессии")
+
+
+class RangeCorrectionResultOut(BaseModel):
+    column: str
+    invalid_count: int
+    changed_count: int
+    still_invalid: int
+    invalid_examples: List[float] = Field(default_factory=list)
+    flag_column: Optional[str] = None
+
+
+class DatasetRangeCorrectionResponse(BaseModel):
+    applied: bool
+    strategy: Literal["clip", "median", "replace_null", "drop_rows", "flag"]
+    total_violations: int
+    total_changed: int
+    total_still_invalid: int
+    rows_removed: int = 0
+    added_columns: List[str] = Field(default_factory=list)
+    columns: List[RangeCorrectionResultOut]
+    profile: List[RangeProfileItemOut]
+
+
 class DatasetSummaryOut(BaseModel):
     """Сводка по активному датасету сессии -- для Home page ("Рабочий стол")."""
     dataset_id: str

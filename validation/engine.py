@@ -698,46 +698,98 @@ def validate_consistency(df, rules):
     return results
 
 
+def range_invalid_mask(series: pd.Series, min_value, max_value) -> pd.Series:
+    """Единая маска нарушений диапазона; пропуски проверяются отдельно."""
+    mask = pd.Series(False, index=series.index)
+    if min_value is not None:
+        mask |= series.notna() & (series < min_value)
+    if max_value is not None:
+        mask |= series.notna() & (series > max_value)
+    return mask
+
+
+def _range_rule_for_column(column: str, range_rules: list[dict]):
+    column_lower = str(column).lower()
+    for rule in range_rules:
+        keywords = rule.get("keywords", [])
+        if any(str(keyword).lower() in column_lower for keyword in keywords):
+            return rule
+    return None
+
+
+def _python_number(value):
+    if value is None or pd.isna(value):
+        return None
+    return value.item() if isinstance(value, np.generic) else value
+
+
+def profile_ranges(df: pd.DataFrame, rules: dict) -> list[dict]:
+    """Полный профиль всех применимых min/max-правил, включая 0 нарушений."""
+    profiles = []
+    range_rules = rules.get("ranges", [])
+    for column in df.select_dtypes(include=["number"]).columns:
+        rule = _range_rule_for_column(str(column), range_rules)
+        if not rule:
+            continue
+        min_value = rule.get("min")
+        max_value = rule.get("max")
+        if min_value is None and max_value is None:
+            continue
+
+        series = df[column]
+        invalid_mask = range_invalid_mask(series, min_value, max_value)
+        total_count = int(series.notna().sum())
+        invalid_count = int(invalid_mask.sum())
+        valid_count = total_count - invalid_count
+        invalid_pct = (invalid_count / total_count) * 100 if total_count else None
+        finite = series.dropna()
+        profiles.append({
+            "column": str(column),
+            "rule_name": (
+                rule.get("name")
+                or rule.get("description")
+                or f"{column} — допустимый диапазон"
+            ),
+            "min_allowed": min_value,
+            "max_allowed": max_value,
+            "actual_min": _python_number(finite.min()) if not finite.empty else None,
+            "actual_max": _python_number(finite.max()) if not finite.empty else None,
+            "total_count": total_count,
+            "valid_count": valid_count,
+            "invalid_count": invalid_count,
+            "invalid_pct": round(invalid_pct, 2) if invalid_pct is not None else None,
+            "invalid_examples": [
+                _python_number(value)
+                for value in series[invalid_mask].drop_duplicates().head(5).tolist()
+            ],
+        })
+    return profiles
+
+
 def validate_ranges(df, rules):
     """Проверяет числовые колонки на соответствие допустимым диапазонам."""
     results = []
     violation_masks = {}
     rule_bounds = {}
-    range_rules = rules.get("ranges", [])
-    num_cols = df.select_dtypes(include=['number']).columns.tolist()
 
-    for col in num_cols:
-        col_lower = str(col).lower()
-        matched_rule = None
-
-        for rule in range_rules:
-            keywords = rule.get("keywords", [])
-            if any(kw in col_lower for kw in keywords):
-                matched_rule = rule
-                break
-
-        if matched_rule:
-            min_val = matched_rule.get("min")
-            max_val = matched_rule.get("max")
-            rule_bounds[col] = (min_val, max_val)
-
-            mask = pd.Series(False, index=df.index)
-            if min_val is not None:
-                mask |= (df[col] < min_val)
-            if max_val is not None:
-                mask |= (df[col] > max_val)
-
-            if mask.any():
-                violation_masks[col] = mask
-                violations = mask.sum()
-                results.append({
-                    "Колонка": col,
-                    "Правило": f"{min_val if min_val is not None else '-∞'} < x < {max_val if max_val is not None else '∞'}",
-                    "Нарушений": int(violations),
-                    "% брака": f"{(violations / len(df) * 100):.2f}%",
-                    "Min факт": df[col].min(),
-                    "Max факт": df[col].max()
-                })
+    for item in profile_ranges(df, rules):
+        column = item["column"]
+        min_value = item["min_allowed"]
+        max_value = item["max_allowed"]
+        rule_bounds[column] = (min_value, max_value)
+        if item["invalid_count"] > 0:
+            violation_masks[column] = range_invalid_mask(df[column], min_value, max_value)
+            results.append({
+                "Колонка": column,
+                "Правило": (
+                    f"{min_value if min_value is not None else '-∞'} ≤ x ≤ "
+                    f"{max_value if max_value is not None else '∞'}"
+                ),
+                "Нарушений": item["invalid_count"],
+                "% брака": f"{item['invalid_pct']:.2f}%",
+                "Min факт": item["actual_min"],
+                "Max факт": item["actual_max"],
+            })
 
     return results, violation_masks, rule_bounds
 
