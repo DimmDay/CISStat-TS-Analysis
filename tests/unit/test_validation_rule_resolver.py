@@ -37,6 +37,8 @@ def test_template_overrides_system_rules_but_keeps_missing_system_defaults():
     assert rules["uniqueness"]["composite_key"] == ["Country", "Year"]
     assert sources["data_types"] == "template"
     assert sources["uniqueness"] == "template"
+    assert sources["formats"] == "template"
+    assert set(rules["formats"]) == {"Country", "Year", "usd/tonne"}
     assert sources["text_quality"] == "system"
 
 
@@ -49,4 +51,3 @@ def test_session_type_schema_has_highest_priority():
 
     assert rules["schema"]["columns"]["Price"]["type"] == "integer"
     assert sources["data_types"] == "session"
-

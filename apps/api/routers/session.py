@@ -746,6 +746,31 @@ def save_dataset_validation_rules(
         section: value for section, value in payload.overrides.items() if value
     }
 
+    # Regex из редактора правил валидируется до изменения сессии. Клиент
+    # может выбирать только реальные колонки активного DataFrame.
+    for column, config in normalized_overrides.get("formats", {}).items():
+        if column not in session.dataframe.columns:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Колонка '{column}' отсутствует в датасете",
+            )
+        pattern = config.get("pattern") if isinstance(config, dict) else config
+        threshold = config.get("threshold", 95) if isinstance(config, dict) else 95
+        if not isinstance(pattern, str) or not pattern.strip():
+            raise HTTPException(status_code=422, detail=f"Для колонки '{column}' не задан regex")
+        try:
+            re.compile(pattern)
+        except re.error as ex:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Некорректный regex для колонки '{column}': {ex}",
+            ) from ex
+        if not isinstance(threshold, (int, float)) or isinstance(threshold, bool) or not 0 <= threshold <= 100:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Порог для колонки '{column}' должен быть от 0 до 100",
+            )
+
     # Вызов resolver одновременно валидирует template_id и структуру,
     # прежде чем состояние сессии будет изменено.
     resolve_validation_rules(

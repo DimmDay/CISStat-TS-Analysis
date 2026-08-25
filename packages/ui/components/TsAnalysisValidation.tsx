@@ -180,7 +180,7 @@ const FORMATS_METRICS_DESCRIPTION = `Метрики и алгоритм: Фор�
 1. Resolver выбирает правила в порядке: переопределения сессии → шаблон → системные правила.
 2. Для каждой существующей колонки выполняется pandas.Series.str.fullmatch(pattern), то есть проверяется всё значение, а не отдельный фрагмент.
 3. GET /v1/session/dataset/format-profile возвращает полный regex, метрики и примеры; общая валидация использует ту же функцию профилирования.
-4. Нет применимого правила — статус «Не применимо»; 0 нарушений — «Проверка пройдена»; нарушения — «Найдены проблемы».`;
+4. Нет применимого правила — статус «Эталон форматов не задан»; 0 нарушений — «Проверка пройдена»; нарушения — «Найдены проблемы».`;
 
 const FORMATS_PIPELINE_DESCRIPTION = `Мастер исправления форматов и шаблонов
 
@@ -463,7 +463,15 @@ export function TsAnalysisValidation() {
             >
               <span className="truncate">{check.label}</span>
               <span className="ml-2 shrink-0">
-                <StatusIcon status={check.status} />
+                {validationHasRun && check.id === "formats" && check.status === "pending" && check.ruleSource === "not_applicable" ? (
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                    check.id === activeCheckId ? "bg-white/20 text-white" : "bg-amber-50 text-amber-700"
+                  }`}>
+                    Нет эталона
+                  </span>
+                ) : (
+                  <StatusIcon status={check.status} />
+                )}
               </span>
             </button>
           ))}
@@ -580,7 +588,10 @@ export function TsAnalysisValidation() {
               onSchemaSaved={runValidation}
             />
           ) : activeCheckId === "formats" && descriptionSection === "pipeline" ? (
-            <ValidationFormatPipeline onApplied={runValidation} />
+            <ValidationFormatPipeline
+              onApplied={runValidation}
+              onOpenRules={() => setDescriptionSection("rules")}
+            />
           ) : activeCheckId === "data_types" ? (
             validationHasRun || checksLoading ? (
               <ValidationTypeMatrix
@@ -660,7 +671,9 @@ export function TsAnalysisValidation() {
               )}
               {!checksLoading && validationHasRun && !validationError && !checksData?.[check.id]?.error && check.status === "pending" && (
                 <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
-                  Не применимо: правило или необходимые данные отсутствуют
+                  {check.id === "formats" && check.ruleSource === "not_applicable"
+                    ? "Эталон форматов не задан"
+                    : "Не применимо: правило или необходимые данные отсутствуют"}
                 </p>
               )}
 

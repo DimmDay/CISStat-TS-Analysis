@@ -33,6 +33,7 @@ import { RulesManagementPanel } from "./RulesManagementPanel";
 // Мокаем fetch для API-вызовов
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
+let sessionRulesResponse: { template_id: string; overrides: Record<string, unknown> };
 
 // Хелпер: ждём, пока селектор шаблонов загрузит все 4 <option>.
 // До этого момента fireEvent.change(selector, { value: "fao_prices" })
@@ -50,6 +51,7 @@ async function waitTemplatesLoaded(container: HTMLElement) {
 describe("RulesManagementPanel", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    sessionRulesResponse = { template_id: "system", overrides: {} };
     // Дефолтный мок: GET /rules/templates
     mockFetch.mockImplementation((url: string, options?: RequestInit) => {
       if (url.includes("/rules/templates")) {
@@ -75,6 +77,11 @@ describe("RulesManagementPanel", () => {
                 { name: "Цена должна быть положительной", keywords: ["price"], min: 0, max: 5000 },
                 { name: "Год в разумных пределах", keywords: ["year"], min: 1990, max: 2030 },
               ],
+              formats: {
+                Country: { pattern: "^[А-Яа-яЁёA-Za-z\\s\\-]+$", threshold: 100 },
+                Year: { pattern: "^\\d{4}$", threshold: 100 },
+                "usd/tonne": { pattern: "^(usd|USD)$", threshold: 100 },
+              },
             },
           }),
         });
@@ -83,7 +90,7 @@ describe("RulesManagementPanel", () => {
         if (!options?.method) {
           return Promise.resolve({
             ok: true,
-            json: () => Promise.resolve({ template_id: "system", overrides: {} }),
+            json: () => Promise.resolve(sessionRulesResponse),
           });
         }
         return Promise.resolve({
@@ -139,7 +146,68 @@ describe("RulesManagementPanel", () => {
     await waitFor(() => {
       expect(screen.getByText(/Цена должна быть положительной/i)).toBeInTheDocument();
       expect(screen.getByText(/Год в разумных пределах/i)).toBeInTheDocument();
+      expect(screen.getByText("Форматы: 3 правила")).toBeInTheDocument();
     });
+  });
+
+  it("renders editable format rules and saves a changed regex as a session override", async () => {
+    const { container } = render(<RulesManagementPanel />);
+    const selector = await waitTemplatesLoaded(container);
+    fireEvent.change(selector, { target: { value: "fao_prices" } });
+
+    const countryPattern = await screen.findByRole("textbox", { name: "Regex для Country" });
+    fireEvent.change(countryPattern, { target: { value: "^[A-Za-z]+$" } });
+    fireEvent.click(screen.getByTestId("apply-rules-btn"));
+
+    await waitFor(() => {
+      const putCall = mockFetch.mock.calls.find(
+        (call: [string, RequestInit?]) =>
+          call[0].includes("/session/dataset/validation-rules") && call[1]?.method === "PUT"
+      );
+      const payload = JSON.parse((putCall?.[1]?.body ?? "{}") as string);
+      expect(payload.overrides.formats.Country.pattern).toBe("^[A-Za-z]+$");
+      expect(payload.overrides.ranges).toBeUndefined();
+    });
+  });
+
+  it("lets a custom template add a format rule for an arbitrary column", async () => {
+    render(<RulesManagementPanel />);
+    await waitFor(() => expect(screen.getByTestId("apply-system-rules-btn")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Добавить правило формата" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Колонка правила 1" }), {
+      target: { value: "Code" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Regex правила 1" }), {
+      target: { value: "^[A-Z]{3}$" },
+    });
+    fireEvent.click(screen.getByTestId("apply-system-rules-btn"));
+
+    await waitFor(() => {
+      const putCall = mockFetch.mock.calls.find(
+        (call: [string, RequestInit?]) =>
+          call[0].includes("/session/dataset/validation-rules") && call[1]?.method === "PUT"
+      );
+      const payload = JSON.parse((putCall?.[1]?.body ?? "{}") as string);
+      expect(payload).toEqual({
+        template_id: "system",
+        overrides: { formats: { Code: { pattern: "^[A-Z]{3}$", threshold: 100 } } },
+      });
+    });
+  });
+
+  it("restores saved custom format rules when the panel is reopened", async () => {
+    sessionRulesResponse = {
+      template_id: "system",
+      overrides: {
+        formats: { Code: { pattern: "^[A-Z]{3}$", threshold: 100 } },
+      },
+    };
+
+    render(<RulesManagementPanel />);
+
+    expect(await screen.findByRole("textbox", { name: "Regex для Code" })).toHaveValue("^[A-Z]{3}$");
+    expect(screen.getByText("Форматы: 1 правило")).toBeInTheDocument();
   });
 
   it("shows range editor with min/max inputs for each rule", async () => {
@@ -158,7 +226,7 @@ describe("RulesManagementPanel", () => {
       expect(allLabels.length).toBe(2);
       expect(maxLabels.length).toBe(2);
       // 4 числовых input (type=number → role=spinbutton).
-      const spinInputs = screen.getAllByRole("spinbutton");
+      const spinInputs = screen.getAllByRole("spinbutton", { name: /^(Минимум|Максимум)/i });
       expect(spinInputs.length).toBe(4);
     });
   });

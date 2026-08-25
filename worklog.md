@@ -2413,3 +2413,117 @@ GREEN: focused Jest — 1/1 suite, 4/4 tests PASS. Новый тест пров�
 Изменённые файлы
 - packages/ui/components/ValidationTypeMatrix.tsx
 - packages/ui/components/ValidationTypeMatrix.test.tsx
+
+---
+
+Task ID: 38 — Мастер исправления форматов и шаблонов
+
+Date: 2026-08-25
+
+Задача
+Для остановки «Форматы и шаблоны» заменить общее действие на «Исправить форматы и шаблоны», назвать центральный workflow «Мастер исправления форматов и шаблонов» и перенести бизнес-логику Streamlit в sessions-aware frontend/backend-контур по образцу остановки «Типы данных».
+
+Синхронизация и проектирование
+Перед реализацией локальная копия синхронизирована fast-forward с опубликованным Task 37 (`e6bc03a`). Перед финальной проверкой повторно выполнен `git fetch origin main`: HEAD и origin/main совпадают, пересечений с параллельной работой нет.
+
+Исправление построено как двухфазная операция preview/apply. Предпросмотр всегда выполняется на глубокой копии DataFrame; применение требует отдельного подтверждения и сохраняет подготовленную копию атомарно через SessionStore. Клиент не передаёт regex: backend использует только resolved rules текущей сессии с приоритетом `session → template → system`, что исключает подмену правил из UI.
+
+Backend
+- В `validation.engine` выделены общие `format_invalid_mask` и `profile_formats`; историческая `validate_formats` переиспользует их, поэтому общая проверка и мастер больше не расходятся в подсчётах.
+- Профиль возвращает полный шаблон, порог, число проверенных/корректных/некорректных значений, `% match` и до пяти уникальных примеров. Пропуски, как и в Streamlit, не считаются нарушениями формата.
+- Добавлены `GET /v1/session/dataset/format-profile` и `POST /v1/session/dataset/format-corrections` с Pydantic-контрактами.
+- Переиспользованы четыре стратегии Streamlit: замена нарушений пропусками, безопасная подстановка, строковая нормализация с повторной regex-проверкой и добавление `{column}_format_valid` без изменения исходных значений.
+- Для числовых колонок безопасная подстановка использует медиану корректных значений с сохранением целого dtype; строковая нормализация явно отклоняется. Повторное имя flag-колонки также отклоняется до мутации сессии.
+
+Frontend
+- Кнопка переименована в «Исправить форматы и шаблоны»; общий «Полный пайплайн» остался у восьми ещё не специализированных остановок.
+- Добавлены отдельные подробные тексты «Метрики и алгоритм» и краткая пятишаговая справка мастера.
+- Новый `ValidationFormatPipeline` содержит четыре блока: активные правила и проблемные колонки, выбор стратегии, немутирующий предпросмотр и подтверждённое применение.
+- Чистые колонки видны, но не выбираются; проблемные выбираются автоматически. При отсутствии применимых правил UI направляет аналитика в «Управление правилами».
+- После успешного применения мастер автоматически запускает общую валидацию; переход на другую остановку степпера закрывает контекст ранее открытого мастера.
+
+TDD
+RED: 2/2 focused suites завершились неуспешно — отсутствовали компонент и специализированные тексты/названия; существующее число кнопок «Полный пайплайн» оставалось равным девяти.
+
+GREEN: focused Jest — 2/2 suites, 24/24 tests PASS. Добавлены backend unit/API-тесты немутирующего preview, атомарного apply, профиля по правилам сессии, повторной валидации, четырёх стратегий, числовой медианы и защитных ошибок.
+
+Проверка
+- Full Jest: 19/19 suites, 239/239 tests PASS, 0 snapshots.
+- `npm run typecheck:all`: PASS для embedded и standalone.
+- Next.js production build embedded: PASS, 13/13 статических страниц.
+- Next.js production build standalone: PASS, 13/13 статических страниц.
+- `python -m compileall`: PASS для изменённых backend-файлов и новых тестов.
+- Полный pytest в текущем контейнере недоступен: отсутствуют pytest и Pandera; тесты подготовлены для штатного проектного `.venv`/CI.
+- Для production build применялись временные локальные font/memory/worker shims из-за сетевого ограничения Google Fonts и недоступного `/proc/meminfo`; после проверки они удалены и в изменения не входят.
+- Существующее предупреждение Tailwind о `../../packages/ui/**/*.ts` остаётся; обе сборки проходят.
+
+Изменённые и новые файлы
+- apps/api/format_correction.py
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- packages/ui/components/ValidationFormatPipeline.tsx
+- packages/ui/components/ValidationFormatPipeline.test.tsx
+- packages/ui/components/TsAnalysisValidation.tsx
+- packages/ui/components/TsAnalysisValidation.test.tsx
+- packages/ui/index.ts
+- validation/engine.py
+- tests/unit/test_format_correction.py
+- tests/api/test_dataset_format_correction.py
+
+---
+
+Task ID: 39 — Эталон форматов, статусы и редактор regex-правил
+
+Date: 2026-08-25
+
+Задача
+Устранить неопределённое состояние остановки «Форматы и шаблоны» после общей валидации FAO: добавить реальный эталон шаблона, заменить общий статус «Не применимо» на понятный результат, завершить нулевой сценарий мастера и дать аналитику возможность создавать и изменять regex-правила для произвольного датасета.
+
+Синхронизация
+Перед реализацией локальная ветка синхронизирована fast-forward с опубликованным Task 38 (`df103a9`). После реализации повторно выполнен `git fetch origin main`: `HEAD` и `origin/main` остаются на `df103a9`, пересечений с параллельной работой нет.
+
+Первопричина и проектирование
+В `fao_prices.yaml` отсутствовал раздел `formats`, а встроенная эвристика назначает regex только семантически распознаваемым email/phone/date/currency-колонкам. Поэтому для фактических колонок FAO `Country`, `Year`, `Price`, `usd/tonne` resolver честно возвращал `pending/not_applicable`, степпер оставался с пустым кружком, а мастер получал пустой профиль и только неактивные действия.
+
+Форматные правила оставлены предметным слоем с приоритетом `session > template > system`: система не выдумывает regex из наблюдаемых значений. Для FAO шаблон содержит воспроизводимые regex для `Country`, четырёхзначного `Year` и единицы `usd/tonne`; числовой `Price` по-прежнему проверяется схемой и диапазоном без дублирующего строкового regex.
+
+Реализация backend и правил
+- В `rules/fao_prices.yaml` добавлены три форматных правила с порогом 100% и пояснениями.
+- PUT `/v1/session/dataset/validation-rules` теперь до мутации сессии проверяет существование колонки, непустой и компилируемый regex и порог 0–100; ошибки возвращаются как HTTP 422.
+- API- и unit-тесты фиксируют источник `template`, итог `done/count=0`, нулевой format-profile FAO и отклонение неизвестной колонки/некорректного regex.
+
+Реализация frontend
+- Для `pending + rule_source=not_applicable` остановка показывает бейдж «Нет эталона», а панель — статус «Эталон форматов не задан».
+- Обзор объясняет, что нужно задать regex в «Управлении правилами», вместо общего сообщения о неприменимости.
+- Мастер при нулевых нарушениях показывает терминальное зелёное состояние «Все значения соответствуют… / Исправление не требуется»; при отсутствии правил показывает причину и активную CTA «Открыть управление правилами».
+- Панель правил показывает покрытие диапазонами и форматами, позволяет редактировать regex/порог существующих правил и добавлять правила для реальных колонок произвольного датасета.
+- Сохранённые custom-format overrides восстанавливаются при повторном открытии панели. Колонки базового шаблона защищены от ложного переименования, а новые/custom-правила можно удалить до применения.
+- После применения сохраняется прежний контракт: правила записываются в сессию и общая валидация запускается повторно.
+
+TDD
+RED: 3 focused Jest suites завершились неуспешно, 4 теста зафиксировали отсутствующие контракты статуса, CTA, покрытия и regex-редактора. Добавлены backend-тесты шаблона FAO и серверной валидации overrides.
+
+GREEN: focused suites `ValidationFormatPipeline`, `RulesManagementPanel` и `TsAnalysisValidation` проходят; редактор правил содержит 11 успешных сценариев, интеграция вкладки — 22.
+
+Проверка
+- Full Jest: 19/19 suites PASS, 244/244 tests PASS, 0 snapshots.
+- Next.js production build embedded: PASS, 13/13 статических страниц.
+- Next.js production build standalone: PASS, 13/13 статических страниц.
+- Обе production-сборки выполнили встроенную проверку типов. Прямой TypeScript 6.0.3 typecheck вне Next.js упирается в известное отсутствие деклараций side-effect import `globals.css`, не связанное с этой задачей.
+- `py_compile` изменённых backend-файлов и тестов: PASS. Полный `pytest` в текущем runtime недоступен, поскольку модуль `pytest` не установлен.
+- Полный `compileall` репозитория дополнительно обнаруживает существующий в `main` посторонний `IndentationError` в `tests/unit/test_file_loader.py:87`; файл не изменялся и в пакет Task 39 не включён.
+- На приложенном FAO XLSX реальные правила дали `Country 155/155`, `Year 155/155`, `usd/tonne 155/155`, по каждой колонке 0 нарушений.
+- Временные font/memory shims для ограничений среды удалены и в изменения не входят. Существующее предупреждение Tailwind о `../../packages/ui/**/*.ts` остаётся; обе сборки проходят.
+
+Изменённые файлы
+- apps/api/routers/session.py
+- packages/ui/components/RulesManagementPanel.tsx
+- packages/ui/components/RulesManagementPanel.test.tsx
+- packages/ui/components/TsAnalysisValidation.tsx
+- packages/ui/components/TsAnalysisValidation.test.tsx
+- packages/ui/components/ValidationCheckChart.tsx
+- packages/ui/components/ValidationFormatPipeline.tsx
+- packages/ui/components/ValidationFormatPipeline.test.tsx
+- rules/fao_prices.yaml
+- tests/api/test_dataset_validation_rules.py
+- tests/unit/test_validation_rule_resolver.py

@@ -109,12 +109,14 @@ export function ValidationCheckChart({
   }
 
   if (data.status === "pending") {
+    const isFormats = checkLabel === "Форматы и шаблоны";
     return (
       <div>
         <ScopeCaption scope={data.scope} selectedColumn={selectedColumn} />
         <InfoFrame tone="neutral">
-          Проверка «{checkLabel}» неприменима к текущему датасету -- не найдено нужных колонок или справочника для
-          сверки
+          {isFormats
+            ? "Эталон форматов не задан. Задайте regex-правила в «Управлении правилами» и запустите валидацию повторно."
+            : `Проверка «${checkLabel}» неприменима к текущему датасету -- не найдено нужных колонок или справочника для сверки`}
         </InfoFrame>
       </div>
     );

@@ -9,12 +9,12 @@
 //
 // Содержит:
 //   • Селектор шаблона (Custom / Default / FAO Prices / Macro)
-//   • Редактор диапазонов (min/max для каждого правила)
+//   • Редакторы диапазонов и regex-форматов
 //   • Кнопки «Применить правила» / «Сбросить к исходным»
 //   • Статус загрузки / ошибки
 
 import { useState, useEffect, useCallback } from "react";
-import { Settings, Check, RotateCcw, AlertCircle, Loader2 } from "lucide-react";
+import { Settings, Check, RotateCcw, AlertCircle, Loader2, Plus, Trash2 } from "lucide-react";
 
 // ── API-базовый URL ──
 // В проде -- ОТНОСИТЕЛЬНЫЙ путь "/api" (Next.js rewrite проксирует на
@@ -40,15 +40,50 @@ interface RangeRule {
   description?: string;
 }
 
+interface FormatRule {
+  pattern: string;
+  threshold: number;
+  description?: string;
+  draft?: boolean;
+}
+
 interface RulesContent {
   ranges: RangeRule[];
   inclusion?: Record<string, unknown>;
   consistency?: unknown[];
-  formats?: Record<string, unknown>;
+  formats?: Record<string, FormatRule>;
   referential?: unknown[];
   outliers?: Record<string, unknown>;
   sufficiency?: Record<string, unknown>;
 }
+
+interface SessionRulesSelection {
+  templateId: string;
+  overrides: Partial<RulesContent>;
+}
+
+const normalizeFormats = (formats: Record<string, unknown> = {}): Record<string, FormatRule> =>
+  Object.fromEntries(
+    Object.entries(formats).map(([column, value]) => [
+      column,
+      typeof value === "string"
+        ? { pattern: value, threshold: 95 }
+        : { ...(value as FormatRule), threshold: (value as FormatRule).threshold ?? 95 },
+    ])
+  );
+
+const rulesCountLabel = (count: number) => {
+  const mod100 = count % 100;
+  const mod10 = count % 10;
+  const noun = mod100 >= 11 && mod100 <= 14
+    ? "правил"
+    : mod10 === 1
+      ? "правило"
+      : mod10 >= 2 && mod10 <= 4
+        ? "правила"
+        : "правил";
+  return `${count} ${noun}`;
+};
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -58,6 +93,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [rules, setRules] = useState<RulesContent | null>(null);
   const [originalRules, setOriginalRules] = useState<RulesContent | null>(null);
+  const [sessionSelection, setSessionSelection] = useState<SessionRulesSelection | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [applied, setApplied] = useState(false);
@@ -78,6 +114,10 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         const nextTemplates: Template[] = templatesData.templates || [];
         setTemplates(nextTemplates);
         const storedTemplate = sessionData.template_id === "system" ? "custom" : sessionData.template_id;
+        setSessionSelection({
+          templateId: storedTemplate,
+          overrides: sessionData.overrides || {},
+        });
         setSelectedTemplate(
           nextTemplates.some((template) => template.id === storedTemplate)
             ? storedTemplate
@@ -113,9 +153,30 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         return;
       }
       const data = await resp.json();
-      const content: RulesContent = data.rules || { ranges: [] };
+      const rawContent = data.rules || {};
+      const templateContent: RulesContent = {
+        ...rawContent,
+        ranges: Array.isArray(rawContent.ranges) ? rawContent.ranges : [],
+        formats: normalizeFormats(rawContent.formats || {}),
+      };
+      const activeOverrides = sessionSelection?.templateId === templateId
+        ? sessionSelection.overrides
+        : {};
+      const content: RulesContent = {
+        ...templateContent,
+        ...activeOverrides,
+        ranges: Array.isArray(activeOverrides.ranges)
+          ? activeOverrides.ranges
+          : templateContent.ranges,
+        formats: {
+          ...(templateContent.formats || {}),
+          ...normalizeFormats((activeOverrides.formats || {}) as Record<string, unknown>),
+        },
+      };
       setRules(content);
-      setOriginalRules(JSON.parse(JSON.stringify(content))); // deep copy
+      // Сравниваем изменения с базовым шаблоном: уже сохранённые overrides
+      // должны повторно уйти на сервер, иначе простое «Применить» их сотрёт.
+      setOriginalRules(JSON.parse(JSON.stringify(templateContent))); // deep copy
     } catch (e) {
       setError("Сервер недоступен. Проверьте подключение к API.");
       setRules(null);
@@ -123,19 +184,25 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [sessionSelection]);
 
   // Автозагрузка при смене шаблона
   useEffect(() => {
     if (selectedTemplate && selectedTemplate !== "custom") {
       loadTemplate(selectedTemplate);
     } else if (selectedTemplate === "custom") {
-      // Custom — нужна автогенерация по датасету; пока показываем плейсхолдер
-      setRules({ ranges: [] });
-      setOriginalRules({ ranges: [] });
+      const activeOverrides = sessionSelection?.templateId === "custom"
+        ? sessionSelection.overrides
+        : {};
+      setRules({
+        ...activeOverrides,
+        ranges: Array.isArray(activeOverrides.ranges) ? activeOverrides.ranges : [],
+        formats: normalizeFormats((activeOverrides.formats || {}) as Record<string, unknown>),
+      });
+      setOriginalRules({ ranges: [], formats: {} });
       setError(null);
     }
-  }, [selectedTemplate, loadTemplate]);
+  }, [selectedTemplate, loadTemplate, sessionSelection]);
 
   // ── Обработчики редактора ──
 
@@ -153,6 +220,52 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     setRules({ ...rules, ranges: newRanges });
   };
 
+  const updateFormatRule = (column: string, patch: Partial<FormatRule>) => {
+    if (!rules) return;
+    setRules({
+      ...rules,
+      formats: {
+        ...(rules.formats || {}),
+        [column]: { ...(rules.formats?.[column] || { pattern: "", threshold: 100 }), ...patch },
+      },
+    });
+  };
+
+  const renameFormatRule = (oldColumn: string, newColumn: string) => {
+    if (!rules) return;
+    const formats = { ...(rules.formats || {}) };
+    const rule = formats[oldColumn];
+    delete formats[oldColumn];
+    formats[newColumn || oldColumn] = rule;
+    setRules({ ...rules, formats });
+  };
+
+  const addFormatRule = () => {
+    if (!rules) return;
+    const formats = { ...(rules.formats || {}) };
+    let index = 1;
+    while (formats[`__new_${index}`]) index += 1;
+    formats[`__new_${index}`] = { pattern: "", threshold: 100, draft: true };
+    setRules({ ...rules, formats });
+  };
+
+  const removeFormatRule = (column: string) => {
+    if (!rules) return;
+    const formats = { ...(rules.formats || {}) };
+    delete formats[column];
+    setRules({ ...rules, formats });
+  };
+
+  const serializableFormats = (formats: Record<string, FormatRule> = {}) => Object.fromEntries(
+    Object.entries(formats)
+      .filter(([column]) => column.trim() && !column.startsWith("__new_"))
+      .map(([column, rule]) => [column, {
+        pattern: rule.pattern,
+        threshold: rule.threshold,
+        ...(rule.description ? { description: rule.description } : {}),
+      }])
+  );
+
   const [applyLoading, setApplyLoading] = useState(false);
 
   const handleApply = async () => {
@@ -160,15 +273,29 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     setApplyLoading(true);
     setError(null);
     try {
+      const currentFormats = serializableFormats(rules.formats);
+      const originalFormats = serializableFormats(originalRules?.formats);
+      const incompleteRule = Object.entries(rules.formats || {}).find(
+        ([column, rule]) => !column.trim() || column.startsWith("__new_") || !rule.pattern.trim()
+      );
+      if (incompleteRule) {
+        setError("Заполните название колонки и regex во всех правилах форматов");
+        return;
+      }
+      const overrides: Record<string, unknown> = {};
+      if (JSON.stringify(rules.ranges) !== JSON.stringify(originalRules?.ranges ?? [])) {
+        overrides.ranges = rules.ranges;
+      }
+      if (JSON.stringify(currentFormats) !== JSON.stringify(originalFormats)) {
+        overrides.formats = currentFormats;
+      }
       const resp = await fetch(`${API_BASE}/v1/session/dataset/validation-rules`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           template_id: selectedTemplate === "custom" ? "system" : selectedTemplate,
-          overrides: JSON.stringify(rules.ranges) === JSON.stringify(originalRules?.ranges ?? [])
-            ? {}
-            : { ranges: rules.ranges },
+          overrides,
         }),
       });
       if (!resp.ok) {
@@ -252,23 +379,29 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         </div>
       )}
 
-      {/* Custom-плейсхолдер */}
+      {/* Системный слой не выдумывает предметные regex, но пользователь
+          может добавить их ниже и сохранить как override сессии. */}
       {selectedTemplate === "custom" && !loading && (
-        <div className="space-y-3">
-          <div className="text-sm text-neutral-500 bg-brand-light/50 rounded px-3 py-2">
-            Системные правила определяют типы, структуру временного ряда и
-            безопасные семантические ограничения. Справочники и предметные
-            границы из фактических значений не генерируются.
-          </div>
-          <button
-            onClick={handleApply}
-            disabled={applyLoading}
-            data-testid="apply-system-rules-btn"
-            className="w-full flex items-center justify-center gap-1.5 rounded px-4 py-2 text-sm font-medium bg-brand text-white hover:bg-brand/90 transition-colors disabled:opacity-50"
-          >
-            {applyLoading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-            {applyLoading ? "Применение..." : "Применить системные правила"}
-          </button>
+        <div className="text-sm text-neutral-500 bg-brand-light/50 rounded px-3 py-2">
+          Системные правила определяют типы и структуру временного ряда.
+          Предметные regex не выводятся из самих значений: добавьте их в редакторе форматов.
+        </div>
+      )}
+
+      {rules && !loading && (
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <span className="rounded bg-neutral-50 px-2 py-1 text-neutral-600">
+            Диапазоны: {rulesCountLabel(rules.ranges.length)}
+          </span>
+          <span className={`rounded px-2 py-1 ${
+            Object.keys(rules.formats || {}).length > 0
+              ? "bg-green-50 text-green-700"
+              : "bg-amber-50 text-amber-700"
+          }`}>
+            Форматы: {Object.keys(rules.formats || {}).length > 0
+              ? rulesCountLabel(Object.keys(rules.formats || {}).length)
+              : "не заданы"}
+          </span>
         </div>
       )}
 
@@ -300,6 +433,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
                     </label>
                     <input
                       type="number"
+                      aria-label={`Минимум ${rule.name || i + 1}`}
                       value={rule.min ?? ""}
                       onChange={(e) => updateRangeMin(i, parseFloat(e.target.value) || 0)}
                       step="0.01"
@@ -312,6 +446,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
                     </label>
                     <input
                       type="number"
+                      aria-label={`Максимум ${rule.name || i + 1}`}
                       value={rule.max ?? ""}
                       onChange={(e) => updateRangeMax(i, parseFloat(e.target.value) || 0)}
                       step="0.01"
@@ -323,13 +458,90 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
             ))}
           </div>
 
-          {/* Кнопки управления */}
-          <div className="flex gap-3 mt-4">
+        </div>
+      )}
+
+      {/* Редактор форматов доступен и для шаблона, и для custom-сессии. */}
+      {rules && !loading && (
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h4 className="font-medium text-sm">
+              Редактор форматов ({Object.keys(rules.formats || {}).length} правил)
+            </h4>
+            <button
+              type="button"
+              onClick={addFormatRule}
+              className="flex items-center gap-1 rounded border border-brand/40 px-2 py-1 text-xs font-medium text-brand hover:bg-brand/5"
+            >
+              <Plus size={13} /> Добавить правило формата
+            </button>
+          </div>
+          {Object.keys(rules.formats || {}).length === 0 && (
+            <p className="rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Эталон форматов не задан. Добавьте колонку, regex и порог соответствия.
+            </p>
+          )}
+          <div className="space-y-2">
+            {Object.entries(rules.formats || {}).map(([column, rule], index) => {
+              const isDraft = Boolean(rule.draft);
+              return (
+                <div key={column} className="rounded-md border border-neutral-200 bg-white px-3 py-2">
+                  <div className="grid gap-2 sm:grid-cols-[minmax(110px,0.7fr)_minmax(180px,1.6fr)_90px_auto]">
+                    <input
+                      type="text"
+                      value={column.startsWith("__new_") ? "" : column}
+                      onChange={(event) => renameFormatRule(column, event.target.value)}
+                      readOnly={selectedTemplate !== "custom" && !isDraft}
+                      aria-label={isDraft ? `Колонка правила ${index + 1}` : `Колонка ${column}`}
+                      placeholder="Колонка"
+                      className="min-w-0 rounded border border-neutral-300 px-2 py-1 text-sm read-only:bg-neutral-50 read-only:text-neutral-500"
+                    />
+                    <input
+                      type="text"
+                      value={rule.pattern}
+                      onChange={(event) => updateFormatRule(column, { pattern: event.target.value })}
+                      aria-label={isDraft ? `Regex правила ${index + 1}` : `Regex для ${column}`}
+                      placeholder="Регулярное выражение"
+                      className="min-w-0 rounded border border-neutral-300 px-2 py-1 font-mono text-xs"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={rule.threshold}
+                      onChange={(event) => updateFormatRule(column, {
+                        threshold: Math.min(100, Math.max(0, Number(event.target.value))),
+                      })}
+                      aria-label={`Порог для ${column.startsWith("__new_") ? `правила ${index + 1}` : column}`}
+                      className="rounded border border-neutral-300 px-2 py-1 text-sm"
+                    />
+                    {(selectedTemplate === "custom" || isDraft) && (
+                      <button
+                        type="button"
+                        onClick={() => removeFormatRule(column)}
+                        aria-label={`Удалить правило ${column.startsWith("__new_") ? index + 1 : column}`}
+                        className="rounded p-1.5 text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )}
+                  </div>
+                  {rule.description && <p className="mt-1 text-[11px] text-neutral-500">{rule.description}</p>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {rules && !loading && (
+        <div>
+          <div className="flex gap-3">
             <button
               onClick={handleApply}
               disabled={applyLoading}
-              data-testid="apply-rules-btn"
-              className="flex-1 flex items-center justify-center gap-1.5 rounded px-4 py-2 text-sm font-medium bg-brand text-white hover:bg-brand/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              data-testid={selectedTemplate === "custom" ? "apply-system-rules-btn" : "apply-rules-btn"}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand/90 disabled:opacity-50"
             >
               {applyLoading ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
               {applyLoading ? "Применение..." : applied ? "Применено!" : "Применить правила"}
@@ -337,27 +549,17 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
             <button
               onClick={handleReset}
               data-testid="reset-rules-btn"
-              className="flex-1 flex items-center justify-center gap-1.5 rounded px-4 py-2 text-sm font-medium border border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 transition-colors"
+              className="flex-1 flex items-center justify-center gap-1.5 rounded border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
             >
-              <RotateCcw size={14} />
-              Сбросить к исходным
+              <RotateCcw size={14} /> Сбросить к исходным
             </button>
           </div>
-
-          {/* Статус применения */}
           {applied && (
-            <p className="text-xs text-green-600 mt-2">
+            <p className="mt-2 text-xs text-green-600">
               Правила сессии обновлены, валидация запущена повторно.
             </p>
           )}
         </div>
-      )}
-
-      {/* Нет правил */}
-      {rules && rules.ranges.length === 0 && !loading && selectedTemplate !== "custom" && !error && (
-        <p className="text-sm text-neutral-500 italic">
-          Нет доступных правил диапазонов в этом шаблоне.
-        </p>
       )}
     </div>
   );

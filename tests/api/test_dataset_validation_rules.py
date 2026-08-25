@@ -36,6 +36,7 @@ def _fao_df() -> pd.DataFrame:
         "Country": ["Беларусь", "Беларусь", "Казахстан", "Казахстан"],
         "Year": [2020, 2021, 2020, 2021],
         "Price": [100.0, 110.0, 120.0, 130.0],
+        "usd/tonne": ["usd", "usd", "usd", "usd"],
     })
 
 
@@ -59,9 +60,25 @@ def test_selected_template_is_saved_and_used_by_global_validation():
     body = validation.json()
     assert body["rules_source"] == "template"
     assert body["validation_template_id"] == "fao_prices"
-    for check_id in ("data_types", "ranges", "consistency", "uniqueness", "inclusion", "referential"):
+    for check_id in ("data_types", "formats", "ranges", "consistency", "uniqueness", "inclusion", "referential"):
         assert body["checks"][check_id]["rule_source"] == "template"
     assert body["checks"]["uniqueness"]["status"] == "done"
+    assert body["checks"]["formats"] == {
+        "status": "done",
+        "count": 0,
+        "items": [],
+        "scope": "column",
+        "error": None,
+        "rule_source": "template",
+    }
+
+    profile = client.get("/v1/session/dataset/format-profile")
+    assert profile.status_code == 200, profile.text
+    assert profile.json()["rule_source"] == "template"
+    assert [item["column"] for item in profile.json()["columns"]] == [
+        "Country", "Year", "usd/tonne"
+    ]
+    assert all(item["invalid_count"] == 0 for item in profile.json()["columns"])
 
 
 def test_session_override_has_priority_over_template():
@@ -128,3 +145,27 @@ def test_empty_override_sections_are_normalized_away():
     assert response.status_code == 200
     assert response.json() == {"template_id": "fao_prices", "overrides": {}}
     assert client.get("/v1/session/dataset/validate").json()["rules_source"] == "template"
+
+
+def test_format_overrides_require_an_existing_column_and_valid_regex():
+    _upload(_fao_df())
+
+    missing_column = client.put(
+        "/v1/session/dataset/validation-rules",
+        json={
+            "template_id": "system",
+            "overrides": {"formats": {"Unknown": {"pattern": "^[A-Z]+$", "threshold": 100}}},
+        },
+    )
+    assert missing_column.status_code == 422
+    assert "отсутствует в датасете" in missing_column.json()["detail"]
+
+    invalid_regex = client.put(
+        "/v1/session/dataset/validation-rules",
+        json={
+            "template_id": "system",
+            "overrides": {"formats": {"Country": {"pattern": "[", "threshold": 100}}},
+        },
+    )
+    assert invalid_regex.status_code == 422
+    assert "Некорректный regex" in invalid_regex.json()["detail"]

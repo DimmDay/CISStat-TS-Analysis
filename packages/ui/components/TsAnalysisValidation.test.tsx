@@ -364,6 +364,32 @@ describe("TsAnalysisValidation", () => {
     });
   });
 
+  it("explains an unconfigured formats check instead of generic not-applicable", async () => {
+    mockActiveValidation(() => Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        ...validationResponse("done", "schema", 0),
+        checks: Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, {
+          status: id === "formats" ? "pending" : "done",
+          count: id === "formats" ? null : 0,
+          items: [],
+          scope: id === "formats" ? "column" : "dataset",
+          rule_source: id === "formats" ? "not_applicable" : "system",
+        }])),
+      }),
+    }));
+
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+
+    expect(await screen.findByText("Эталон форматов не задан")).toBeInTheDocument();
+    expect(screen.getByText("Нет эталона")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Форматы и шаблоны/ }));
+    expect(screen.getByText(/Задайте regex-правила в «Управлении правилами»/i)).toBeInTheDocument();
+  });
+
   it("renders the type matrix instead of the generic pending placeholder", async () => {
     global.fetch = jest.fn((url: string) => {
       if (typeof url === "string" && url.includes("/session/current")) {
@@ -415,9 +441,9 @@ describe("TsAnalysisValidation", () => {
     expect(screen.getByRole("region", { name: "Мастер исправления типов" })).toBeInTheDocument();
     expect(screen.queryByRole("table", { name: "Матрица типов колонок" })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Форматы и шаблоны" }));
+    fireEvent.click(screen.getByRole("button", { name: /Форматы и шаблоны/ }));
     expect(screen.queryByRole("table", { name: "Матрица типов колонок" })).not.toBeInTheDocument();
-    expect(screen.getByText(/Проверка «Форматы и шаблоны» неприменима/i)).toBeInTheDocument();
+    expect(screen.getByText(/Эталон форматов не задан\. Задайте regex-правила/i)).toBeInTheDocument();
   });
 
   it("runs global validation and shows running then problems status", async () => {

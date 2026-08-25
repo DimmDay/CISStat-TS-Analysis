@@ -68,7 +68,13 @@ async function responseDetail(response: Response): Promise<string> {
   return `Не удалось выполнить операцию (HTTP ${response.status})`;
 }
 
-export function ValidationFormatPipeline({ onApplied }: { onApplied: () => void }) {
+export function ValidationFormatPipeline({
+  onApplied,
+  onOpenRules = () => undefined,
+}: {
+  onApplied: () => void;
+  onOpenRules?: () => void;
+}) {
   const [profile, setProfile] = useState<FormatProfileResponse | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
   const [strategy, setStrategy] = useState<Strategy>("flag");
@@ -77,6 +83,8 @@ export function ValidationFormatPipeline({ onApplied }: { onApplied: () => void 
   const [busy, setBusy] = useState<"load" | "preview" | "apply" | null>("load");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const hasApplicableRules = (profile?.columns.length ?? 0) > 0;
+  const allRulesPassed = hasApplicableRules && profile!.columns.every((item) => item.invalid_count === 0);
 
   useEffect(() => {
     let active = true;
@@ -138,6 +146,12 @@ export function ValidationFormatPipeline({ onApplied }: { onApplied: () => void 
       aria-label="Мастер исправления форматов и шаблонов"
       className="h-[420px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 feed-scroll"
     >
+      {allRulesPassed && (
+        <div role="status" className="mb-4 rounded bg-green-50 px-3 py-2 text-sm text-green-700">
+          <p className="font-medium">Все значения соответствуют активным правилам форматов.</p>
+          <p className="mt-0.5 text-xs">Исправление не требуется.</p>
+        </div>
+      )}
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-md border border-neutral-200 p-3">
           <h4 className="font-semibold text-sm text-neutral-800">1. Правила и колонки</h4>
@@ -145,7 +159,17 @@ export function ValidationFormatPipeline({ onApplied }: { onApplied: () => void 
           <div className="mt-3 space-y-2">
             {busy === "load" && <p className="text-sm text-neutral-400">Загрузка правил…</p>}
             {profile && profile.columns.length === 0 && (
-              <p className="text-sm text-neutral-500">Нет активных правил форматов. Добавьте их в «Управлении правилами».</p>
+              <div className="rounded bg-amber-50 p-2 text-sm text-amber-800">
+                <p className="font-medium">Эталон форматов не задан.</p>
+                <p className="mt-1 text-xs">Выберите предметный шаблон или добавьте regex для нужных колонок.</p>
+                <button
+                  type="button"
+                  onClick={onOpenRules}
+                  className="mt-2 rounded border border-amber-300 bg-white px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+                >
+                  Открыть управление правилами
+                </button>
+              </div>
             )}
             {profile?.columns.map((item) => (
               <label key={item.column} className="block rounded bg-neutral-50 p-2 text-sm text-neutral-700">

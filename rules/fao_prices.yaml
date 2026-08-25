@@ -14,6 +14,23 @@ schema:
       type: "float"
       nullable: false
 
+# Форматы, специфичные для фактической структуры FAO Prices. Price здесь
+# не дублируется: числовой dtype и допустимый диапазон проверяются schema/
+# ranges, а regex нужен строковым представлениям и календарному году.
+formats:
+  Country:
+    pattern: '^[А-Яа-яЁёA-Za-z\s\-]+$'
+    description: "Название страны: буквы, пробелы и дефисы"
+    threshold: 100
+  Year:
+    pattern: '^\d{4}$'
+    description: "Год в четырёхзначном формате"
+    threshold: 100
+  usd/tonne:
+    pattern: '^(usd|USD)$'
+    description: "Единица цены в долларах США за тонну"
+    threshold: 100
+
 ranges:
   - name: "Цена должна быть положительной"
     keywords: ["price", "цена"]

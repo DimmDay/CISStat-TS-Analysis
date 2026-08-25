@@ -100,8 +100,32 @@ describe("ValidationFormatPipeline", () => {
       ok: true,
       json: () => Promise.resolve({ rule_source: "not_applicable", columns: [] }),
     });
+    const onOpenRules = jest.fn();
+    render(<ValidationFormatPipeline onApplied={jest.fn()} onOpenRules={onOpenRules} />);
+
+    expect(await screen.findByText(/Эталон форматов не задан/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Открыть управление правилами" }));
+    expect(onOpenRules).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a positive terminal state when every active format rule passes", async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        rule_source: "template",
+        columns: PROFILE.columns.map((item) => ({
+          ...item,
+          valid_count: item.total_count,
+          invalid_count: 0,
+          match_pct: 100,
+          invalid_examples: [],
+        })),
+      }),
+    });
     render(<ValidationFormatPipeline onApplied={jest.fn()} />);
 
-    expect(await screen.findByText(/Нет активных правил форматов/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Все значения соответствуют активным правилам форматов/i)).toBeInTheDocument();
+    expect(screen.getByText(/Исправление не требуется/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Предпросмотр изменений" })).toBeDisabled();
   });
 });
