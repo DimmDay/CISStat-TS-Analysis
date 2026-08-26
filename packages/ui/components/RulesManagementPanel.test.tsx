@@ -156,6 +156,32 @@ describe("RulesManagementPanel", () => {
     });
   });
 
+  it("edits text-quality limits and preserves comma-separated garbage markers", async () => {
+    const { container } = render(<RulesManagementPanel />);
+    const selector = await waitTemplatesLoaded(container);
+    fireEvent.change(selector, { target: { value: "fao_prices" } });
+
+    const maxLength = await screen.findByRole("spinbutton", { name: "Максимальная длина текста" });
+    const garbage = screen.getByRole("textbox", { name: "Мусорные маркеры текста" });
+    fireEvent.change(maxLength, { target: { value: "240" } });
+    fireEvent.change(garbage, { target: { value: "\\x00," } });
+    expect(garbage).toHaveValue("\\x00,");
+    fireEvent.change(garbage, { target: { value: "\\x00, ï¿½" } });
+    expect(garbage).toHaveValue("\\x00, ï¿½");
+    fireEvent.click(screen.getByTestId("apply-rules-btn"));
+
+    await waitFor(() => {
+      const putCall = mockFetch.mock.calls.find(
+        (call: [string, RequestInit?]) => call[0].includes("/session/dataset/validation-rules") && call[1]?.method === "PUT"
+      );
+      const payload = JSON.parse((putCall?.[1]?.body ?? "{}") as string);
+      expect(payload.overrides.text_quality).toEqual({
+        max_length: 240,
+        garbage_chars: ["\\x00", "ï¿½"],
+      });
+    });
+  });
+
   it("saves a changed uniqueness key as a session override", async () => {
     const { container } = render(<RulesManagementPanel />);
     const selector = await waitTemplatesLoaded(container);

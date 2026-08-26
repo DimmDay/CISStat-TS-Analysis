@@ -49,6 +49,9 @@ from apps.api.schemas import (
     DatasetReferentialCorrectionRequest,
     DatasetReferentialCorrectionResponse,
     DatasetReferentialProfileResponse,
+    DatasetTextQualityCorrectionRequest,
+    DatasetTextQualityCorrectionResponse,
+    DatasetTextQualityProfileResponse,
     DatasetTypeConversionRequest,
     DatasetTypeConversionResponse,
     DatasetTypeSchemaRequest,
@@ -84,6 +87,8 @@ from apps.api.schemas import (
     RangeProfileItemOut,
     ReferentialCorrectionResultOut,
     ReferentialProfileItemOut,
+    TextQualityCorrectionResultOut,
+    TextQualityProfileItemOut,
     TargetColumnRequest,
     TargetColumnResponse,
     TimeSeriesPoint,
@@ -99,6 +104,7 @@ from app.data.detectors import score_all_columns_as_date, score_all_columns_as_e
 from validation.engine import profile_consistency, profile_formats, profile_inclusion, profile_ranges, profile_uniqueness, validate_dataframe
 from validation.inclusion import coerce_inclusion_rule_to_series
 from validation.referential import profile_referential
+from validation.text_quality import profile_text_quality
 from validation.rule_resolver import CHECK_IDS, resolve_validation_rules
 from apps.api.consistency_correction import preview_consistency_corrections
 from apps.api.format_correction import preview_format_corrections
@@ -107,6 +113,7 @@ from apps.api.missing_correction import preview_missing_corrections
 from app.preprocessing.missing import missing_per_row_histogram, missing_summary, profile_missing
 from apps.api.range_correction import preview_range_corrections
 from apps.api.referential_correction import preview_referential_corrections
+from apps.api.text_quality_correction import preview_text_quality_corrections
 from apps.api.type_conversion import preview_type_conversions
 from apps.api.uniqueness_correction import preview_uniqueness_correction
 from apps.api.session_store import (
@@ -1224,6 +1231,74 @@ def correct_dataset_referential(
     )
 
 
+@router.get(
+    "/dataset/text-quality-profile",
+    response_model=DatasetTextQualityProfileResponse,
+)
+def get_dataset_text_quality_profile(request: Request, response: Response):
+    """Полный профиль целостности всех текстовых колонок сессии."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, rule_sources = _session_validation_rules(session)
+    columns = profile_text_quality(session.dataframe, rules)
+    return DatasetTextQualityProfileResponse(
+        rule_source=(
+            rule_sources.get("text_quality", "not_applicable")
+            if columns else "not_applicable"
+        ),
+        columns=[TextQualityProfileItemOut(**item) for item in columns],
+    )
+
+
+@router.post(
+    "/dataset/text-quality-corrections",
+    response_model=DatasetTextQualityCorrectionResponse,
+)
+def correct_dataset_text_quality(
+    payload: DatasetTextQualityCorrectionRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply пяти стратегий очистки текста из Streamlit."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, _rule_sources = _session_validation_rules(session)
+    try:
+        corrected_df, raw_results, rows_removed = preview_text_quality_corrections(
+            session.dataframe, rules, payload.columns, payload.strategy
+        )
+        next_profile = profile_text_quality(corrected_df, rules)
+    except (ValueError, TypeError) as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
+        session.touch()
+        store.save(session)
+
+    return DatasetTextQualityCorrectionResponse(
+        applied=payload.apply,
+        strategy=payload.strategy,
+        total_violations=sum(item["invalid_count"] for item in raw_results),
+        total_changed=sum(item["changed_count"] for item in raw_results),
+        total_still_invalid=sum(item["still_invalid"] for item in raw_results),
+        rows_removed=rows_removed,
+        added_columns=[item["flag_column"] for item in raw_results if item["flag_column"]],
+        columns=[TextQualityCorrectionResultOut(**item) for item in raw_results],
+        profile=[TextQualityProfileItemOut(**item) for item in next_profile],
+    )
+
+
 @router.get("/dataset/consistency-profile", response_model=DatasetConsistencyProfileResponse)
 def get_dataset_consistency_profile(request: Request, response: Response):
     """Профиль хронологических и предметных правил активной сессии."""
@@ -1597,6 +1672,50 @@ def save_dataset_validation_rules(
                 status_code=422,
                 detail=f"Порог для колонки '{column}' должен быть от 0 до 100",
             )
+
+    text_quality = normalized_overrides.get("text_quality")
+    if text_quality is not None:
+        min_length = text_quality.get("min_length", 1)
+        max_length = text_quality.get("max_length", 500)
+        if not isinstance(min_length, int) or isinstance(min_length, bool) or min_length < 0:
+            raise HTTPException(
+                status_code=422,
+                detail="Минимальная длина текста должна быть неотрицательным целым числом",
+            )
+        if not isinstance(max_length, int) or isinstance(max_length, bool) or max_length < 1:
+            raise HTTPException(
+                status_code=422,
+                detail="Максимальная длина текста должна быть положительным целым числом",
+            )
+        if min_length > max_length:
+            raise HTTPException(
+                status_code=422,
+                detail="Минимальная длина текста не может превышать максимальную",
+            )
+        garbage_chars = text_quality.get("garbage_chars", [])
+        if not isinstance(garbage_chars, list) or any(not isinstance(value, str) for value in garbage_chars):
+            raise HTTPException(
+                status_code=422,
+                detail="Мусорные маркеры должны быть списком строк",
+            )
+        allowed_patterns = text_quality.get("allowed_patterns", {})
+        if not isinstance(allowed_patterns, dict):
+            raise HTTPException(status_code=422, detail="Шаблоны текста должны быть объектом колонка → regex")
+        for column, pattern in allowed_patterns.items():
+            if column not in session.dataframe.columns:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Колонка '{column}' отсутствует в датасете",
+                )
+            if not isinstance(pattern, str) or not pattern.strip():
+                raise HTTPException(status_code=422, detail=f"Для колонки '{column}' не задан regex")
+            try:
+                re.compile(pattern)
+            except re.error as ex:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Некорректный regex для колонки '{column}': {ex}",
+                ) from ex
 
     # Вызов resolver одновременно валидирует template_id и структуру,
     # прежде чем состояние сессии будет изменено.

@@ -79,6 +79,14 @@ interface ReferentialRule {
   allowedDraft?: string;
 }
 
+interface TextQualityRule {
+  min_length?: number;
+  max_length?: number;
+  garbage_chars?: string[];
+  allowed_patterns?: Record<string, string>;
+  garbageDraft?: string;
+}
+
 interface RulesContent {
   ranges: RangeRule[];
   inclusion?: Record<string, InclusionRule>;
@@ -86,6 +94,7 @@ interface RulesContent {
   uniqueness?: { composite_key?: string[]; description?: string };
   formats?: Record<string, FormatRule>;
   referential?: ReferentialRule[];
+  text_quality?: TextQualityRule;
   outliers?: Record<string, unknown>;
   sufficiency?: Record<string, unknown>;
 }
@@ -132,6 +141,17 @@ const normalizeReferential = (referential: unknown[] = []): ReferentialRule[] =>
       allowedDraft: allowedValues.map(String).join(", "),
     };
   });
+
+const normalizeTextQuality = (value: unknown): TextQualityRule => {
+  const raw = value && typeof value === "object" ? value as TextQualityRule : {};
+  const garbageChars = Array.isArray(raw.garbage_chars) ? raw.garbage_chars.map(String) : [];
+  return {
+    ...raw,
+    garbage_chars: garbageChars,
+    allowed_patterns: raw.allowed_patterns && typeof raw.allowed_patterns === "object" ? raw.allowed_patterns : {},
+    garbageDraft: garbageChars.join(", "),
+  };
+};
 
 let formatDraftSequence = 0;
 let inclusionDraftSequence = 0;
@@ -228,6 +248,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         formats: normalizeFormats(rawContent.formats || {}),
         inclusion: normalizeInclusion(rawContent.inclusion || {}),
         referential: normalizeReferential(rawContent.referential || []),
+        text_quality: normalizeTextQuality(rawContent.text_quality),
         consistency: Array.isArray(rawContent.consistency) ? rawContent.consistency : [],
         uniqueness: rawContent.uniqueness || {},
       };
@@ -257,6 +278,16 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         referential: Array.isArray(activeOverrides.referential)
           ? normalizeReferential(activeOverrides.referential)
           : templateContent.referential,
+        text_quality: activeOverrides.text_quality
+          ? normalizeTextQuality({
+              ...(templateContent.text_quality || {}),
+              ...(activeOverrides.text_quality as TextQualityRule),
+              allowed_patterns: {
+                ...(templateContent.text_quality?.allowed_patterns || {}),
+                ...((activeOverrides.text_quality as TextQualityRule).allowed_patterns || {}),
+              },
+            })
+          : templateContent.text_quality,
       };
       setRules(content);
       setUniquenessKeyDraft(content.uniqueness?.composite_key?.join(", ") || "");
@@ -286,6 +317,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         formats: normalizeFormats((activeOverrides.formats || {}) as Record<string, unknown>),
         inclusion: normalizeInclusion((activeOverrides.inclusion || {}) as Record<string, unknown>),
         referential: normalizeReferential(Array.isArray(activeOverrides.referential) ? activeOverrides.referential : []),
+        text_quality: activeOverrides.text_quality
+          ? normalizeTextQuality(activeOverrides.text_quality)
+          : undefined,
         consistency: Array.isArray(activeOverrides.consistency)
           ? activeOverrides.consistency as ConsistencyRule[]
           : [],
@@ -293,7 +327,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       };
       setRules(content);
       setUniquenessKeyDraft(content.uniqueness?.composite_key?.join(", ") || "");
-      setOriginalRules({ ranges: [], formats: {}, consistency: [], uniqueness: {}, inclusion: {}, referential: [] });
+      setOriginalRules({ ranges: [], formats: {}, consistency: [], uniqueness: {}, inclusion: {}, referential: [], text_quality: undefined });
       setError(null);
     }
   }, [selectedTemplate, loadTemplate, sessionSelection]);
@@ -502,6 +536,11 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     });
   };
 
+  const updateTextQuality = (patch: Partial<TextQualityRule>) => {
+    if (!rules) return;
+    setRules({ ...rules, text_quality: { ...(rules.text_quality || {}), ...patch } });
+  };
+
   const serializableFormats = (formats: Record<string, FormatRule> = {}) => Object.fromEntries(
     Object.entries(formats)
       .filter(([column]) => column.trim() && !column.startsWith("__new_"))
@@ -540,6 +579,18 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       : {}),
   }));
 
+  const serializableTextQuality = (rule?: TextQualityRule) => {
+    if (!rule) return {};
+    return {
+      ...(rule.min_length !== undefined ? { min_length: rule.min_length } : {}),
+      ...(rule.max_length !== undefined ? { max_length: rule.max_length } : {}),
+      ...(rule.garbage_chars !== undefined ? { garbage_chars: rule.garbage_chars } : {}),
+      ...(rule.allowed_patterns && Object.keys(rule.allowed_patterns).length > 0
+        ? { allowed_patterns: rule.allowed_patterns }
+        : {}),
+    };
+  };
+
   const serializableConsistency = (consistency: ConsistencyRule[] = []) => consistency.map((rule) => {
     const { draft: _draft, ...serialized } = rule;
     const columns = (rule.columns || []).map((column) => column.trim()).filter(Boolean);
@@ -572,6 +623,8 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       const originalInclusion = serializableInclusion(originalRules?.inclusion);
       const currentReferential = serializableReferential(rules.referential);
       const originalReferential = serializableReferential(originalRules?.referential);
+      const currentTextQuality = serializableTextQuality(rules.text_quality);
+      const originalTextQuality = serializableTextQuality(originalRules?.text_quality);
       const normalizedUniquenessKey = uniquenessKeyDraft
         .split(",")
         .map((column) => column.trim())
@@ -649,6 +702,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       if (referentialChanged) {
         overrides.referential = currentReferential;
       }
+      if (JSON.stringify(currentTextQuality) !== JSON.stringify(originalTextQuality)) {
+        overrides.text_quality = currentTextQuality;
+      }
       const resp = await fetch(`${API_BASE}/v1/session/dataset/validation-rules`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -668,6 +724,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         uniqueness: currentUniqueness,
         inclusion: normalizeInclusion(currentInclusion),
         referential: normalizeReferential(currentReferential),
+        text_quality: Object.keys(currentTextQuality).length > 0
+          ? normalizeTextQuality(currentTextQuality)
+          : undefined,
       } : current);
       setApplied(true);
       onRulesApplied();
@@ -948,6 +1007,58 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {rules && !loading && (
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h4 className="text-sm font-medium">Редактор целостности текста</h4>
+            <span className="text-[11px] text-neutral-500">Системная проверка активна автоматически</span>
+          </div>
+          <div className="rounded-md border border-neutral-200 bg-white px-3 py-2">
+            <div className="grid gap-2 sm:grid-cols-[120px_120px_minmax(220px,1fr)]">
+              <label className="text-[11px] text-neutral-500">
+                Мин. длина
+                <input
+                  type="number"
+                  min={0}
+                  aria-label="Минимальная длина текста"
+                  value={rules.text_quality?.min_length ?? 1}
+                  onChange={(event) => updateTextQuality({ min_length: Number(event.target.value) })}
+                  className="mt-1 w-full rounded border border-neutral-300 px-2 py-1 text-sm text-neutral-800"
+                />
+              </label>
+              <label className="text-[11px] text-neutral-500">
+                Макс. длина
+                <input
+                  type="number"
+                  min={1}
+                  aria-label="Максимальная длина текста"
+                  value={rules.text_quality?.max_length ?? 500}
+                  onChange={(event) => updateTextQuality({ max_length: Number(event.target.value) })}
+                  className="mt-1 w-full rounded border border-neutral-300 px-2 py-1 text-sm text-neutral-800"
+                />
+              </label>
+              <label className="text-[11px] text-neutral-500">
+                Дополнительные мусорные маркеры
+                <input
+                  type="text"
+                  aria-label="Мусорные маркеры текста"
+                  value={rules.text_quality?.garbageDraft ?? rules.text_quality?.garbage_chars?.join(", ") ?? ""}
+                  onChange={(event) => updateTextQuality({
+                    garbageDraft: event.target.value,
+                    garbage_chars: event.target.value.split(",").map((value) => value.trim()).filter(Boolean),
+                  })}
+                  placeholder="\\x00, ï¿½"
+                  className="mt-1 w-full rounded border border-neutral-300 px-2 py-1 text-sm text-neutral-800"
+                />
+              </label>
+            </div>
+            <p className="mt-2 text-[11px] text-neutral-500">
+              Управляющие символы, U+FFFD/BOM, пустые строки и лишние пробелы проверяются системой всегда. Шаблоны отдельных колонок наследуются из выбранного шаблона.
+            </p>
           </div>
         </div>
       )}

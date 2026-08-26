@@ -680,6 +680,59 @@ class DatasetReferentialCorrectionResponse(BaseModel):
     profile: List[ReferentialProfileItemOut]
 
 
+class TextQualityIssueCountsOut(BaseModel):
+    garbage: int = 0
+    empty: int = 0
+    too_short: int = 0
+    too_long: int = 0
+    whitespace: int = 0
+    pattern: int = 0
+
+
+class TextQualityProfileItemOut(BaseModel):
+    column: str
+    total_count: int
+    valid_count: int
+    invalid_count: int
+    invalid_pct: Optional[float] = None
+    min_length: int
+    max_length: int
+    issue_counts: TextQualityIssueCountsOut
+    invalid_examples: List[str] = Field(default_factory=list)
+    supported_actions: List[str] = Field(default_factory=list)
+
+
+class DatasetTextQualityProfileResponse(BaseModel):
+    rule_source: Literal["system", "template", "session", "not_applicable"]
+    columns: List[TextQualityProfileItemOut] = Field(default_factory=list)
+
+
+class DatasetTextQualityCorrectionRequest(BaseModel):
+    columns: List[str] = Field(..., min_length=1, max_length=100)
+    strategy: Literal["normalize", "replace_null", "drop_rows", "replace_unknown", "flag"] = "normalize"
+    apply: bool = Field(False, description="False -- preview; True -- сохранить в сессии")
+
+
+class TextQualityCorrectionResultOut(BaseModel):
+    column: str
+    invalid_count: int
+    changed_count: int
+    still_invalid: int
+    flag_column: Optional[str] = None
+
+
+class DatasetTextQualityCorrectionResponse(BaseModel):
+    applied: bool
+    strategy: Literal["normalize", "replace_null", "drop_rows", "replace_unknown", "flag"]
+    total_violations: int
+    total_changed: int
+    total_still_invalid: int
+    rows_removed: int = 0
+    added_columns: List[str] = Field(default_factory=list)
+    columns: List[TextQualityCorrectionResultOut]
+    profile: List[TextQualityProfileItemOut]
+
+
 class ConsistencyProfileItemOut(BaseModel):
     rule_index: int
     rule_name: str

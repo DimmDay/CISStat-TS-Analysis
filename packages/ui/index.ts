@@ -131,10 +131,17 @@ export type {
 } from "./components/ValidationInclusionOverview";
 export { ValidationReferentialOverview } from "./components/ValidationReferentialOverview";
 export { ValidationReferentialPipeline } from "./components/ValidationReferentialPipeline";
+export { ValidationTextQualityOverview } from "./components/ValidationTextQualityOverview";
+export { ValidationTextQualityPipeline } from "./components/ValidationTextQualityPipeline";
 export type {
   ReferentialProfileItem,
   ReferentialProfileResponse,
 } from "./components/ValidationReferentialOverview";
+export type {
+  TextQualityIssueCounts,
+  TextQualityProfileItem,
+  TextQualityProfileResponse,
+} from "./components/ValidationTextQualityOverview";
 export type {
   TypeValidationMode,
   ValidationSemanticType,

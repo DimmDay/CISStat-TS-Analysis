@@ -3085,3 +3085,67 @@ TDD и проверка
 - packages/ui/index.ts
 - tests/unit/test_referential_correction.py
 - tests/api/test_dataset_referential_correction.py
+
+---
+
+Task ID: 50 — Профиль и мастер исправления целостности текста
+
+Date: 2026-08-26
+
+Задача
+Применить к остановке «Целостность текста» утверждённый паттерн вкладки «Валидация»: специализированные «Метрики и алгоритм», «Обзор», «Мастер исправления», управление правилами, безопасный preview/apply и автоматический повтор общей валидации. Исследовать и переиспользовать бизнес-логику Streamlit и существующий backend, при необходимости оптимизировать её.
+
+Состояние репозитория
+Task 50 выполнена поверх локальной незакоммиченной Task 49 (`HEAD aa4eb83`), поскольку предыдущая поставка ещё не опубликована в `main` и является прямой зависимостью общего паттерна остановок. Новая синхронизация не выполнялась: в текущем запросе отсутствовало прямое указание, обязательное по `AGENTS.md`.
+
+Исследование и проектное решение
+- Streamlit уже поддерживал пять стратегий: очистить/нормализовать, удалить строки, заменить на `NaN`, заменить на «Неизвестно», добавить флаг. Однако `validation/text_quality.py` содержал две конфликтующие пары одноимённых функций, включая недостижимые `NotImplementedError`, а `validation/engine.py` дублировал упрощённую проверку с жёстким лимитом 500.
+- Правила `text_quality` из YAML почти не участвовали в фактической проверке: `min_length`, `max_length`, `allowed_patterns` и дополнительные мусорные маркеры игнорировались либо обрабатывались частично.
+- Создан единый чистый профиль и набор векторных масок. Общая валидация, API обзора, preview/apply и legacy-контракт Streamlit теперь используют одну бизнес-логику.
+- Системная проверка автоматически применима ко всем `object/string`-колонкам и не требует ручного эталона. Если текстовых колонок нет, режим `Авто` честно возвращает нейтральное «Не требуется»; `Включена/Отключена` переиспользуют общую политику Task 47.
+- Пропуски исключены из нарушений целостности текста и остаются ответственностью отдельной остановки «Пропуски» предобработки.
+
+Backend
+- `validation/text_quality.py` переписан как единый модуль: `text_quality_masks`, `profile_text_quality`, backward-compatible `compute_text_violations` и `apply_text_strategy`.
+- Проверяются управляющие символы, U+FFFD/BOM/mojibake и дополнительные маркеры, пустые строки, min/max длина, пробелы по краям и повторные пробелы, optional per-column regex. Пустой маркер из legacy YAML отфильтровывается и больше не может пометить каждую строку как нарушение.
+- `invalid_count` считается по объединённой маске строк, поэтому строка с несколькими причинами не суммируется повторно и счётчик не превышает число проверенных значений.
+- Добавлены `GET /v1/session/dataset/text-quality-profile` и `POST /v1/session/dataset/text-quality-corrections`.
+- Реализованы пять стратегий: `normalize`, `replace_null`, `replace_unknown`, `drop_rows`, `flag` (`{column}_text_valid`). Preview работает на глубокой копии; apply атомарно сохраняет DataFrame и обновляет метаданные сессии.
+- PUT правил валидирует целочисленные min/max, их порядок, список мусорных маркеров, существование колонок и компилируемость regex до изменения сессии.
+
+Frontend
+- Кнопка остановки названа «Исправить целостность текста», центральный workflow — «Мастер исправления целостности текста».
+- «Метрики и алгоритм» объясняет `N_text`, долю нарушений, разбиение причин, правила применимости и единый серверный профиль.
+- Новый обзор показывает stacked bar «чистые / нарушения» и таблицу «Колонка / правило длины / типы нарушений / примеры / статус / нарушения»; чистые текстовые колонки также присутствуют в матрице.
+- Мастер содержит четыре шага: выбор проблемных колонок, стратегия Streamlit, немутирующий preview, подтверждённый apply с автоматическим повтором общей валидации.
+- `RulesManagementPanel` получил редактор min/max длины и дополнительных мусорных маркеров. Строковый draft сохраняет запятые и пробелы во время ввода, не повторяя ранее исправленные ошибки потери фокуса/промежуточных символов.
+
+TDD и проверка
+- RED: новые frontend suites не компилировались из-за отсутствующих overview/pipeline-компонентов; backend-тесты ссылались на отсутствующие профиль, correction-модуль и API.
+- GREEN: focused Jest — 4/4 suites, 57/57 tests PASS.
+- Полный Jest — 34/34 suites, 318/318 tests PASS, 0 snapshots.
+- `npm run typecheck:all` — PASS для embedded и standalone.
+- Next.js production build embedded — PASS, 13/13 статических страниц.
+- Next.js production build standalone — PASS, 13/13 статических страниц.
+- Обе сборки выполнили lint и проверку типов; временные font/memory shims удалены и в изменения не входят.
+- `python -m compileall` изменённых backend-файлов — PASS; дополнительный smoke нового профиля/пяти стратегий через штатный pandas — PASS.
+- Полный pytest в текущем runtime недоступен: модуль `pytest` не установлен, а импорт полного validation package дополнительно требует `pandera`; новые unit/API-тесты подготовлены для штатного `.venv` и CI.
+- `git diff --check` — PASS. Существующее предупреждение Tailwind о пустом app-level `content` остаётся; обе сборки успешны.
+
+Изменённые и новые файлы текущей задачи
+- apps/api/text_quality_correction.py
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- validation/engine.py
+- validation/text_quality.py
+- packages/ui/components/ValidationTextQualityOverview.tsx
+- packages/ui/components/ValidationTextQualityOverview.test.tsx
+- packages/ui/components/ValidationTextQualityPipeline.tsx
+- packages/ui/components/ValidationTextQualityPipeline.test.tsx
+- packages/ui/components/RulesManagementPanel.tsx
+- packages/ui/components/RulesManagementPanel.test.tsx
+- packages/ui/components/TsAnalysisValidation.tsx
+- packages/ui/components/TsAnalysisValidation.test.tsx
+- packages/ui/index.ts
+- tests/unit/test_text_quality_correction.py
+- tests/api/test_dataset_text_quality_correction.py

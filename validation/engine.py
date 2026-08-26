@@ -23,6 +23,7 @@ from validation.inclusion import (
     normalize_inclusion_rule,
 )
 from validation.referential import profile_referential, referential_invalid_mask
+from validation.text_quality import profile_text_quality
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -322,12 +323,16 @@ def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict, target_c
             return {"status": "pending", "count": None, "items": [], "scope": "column"}
         if target_column is None and len(text_columns) == 0:
             return {"status": "pending", "count": None, "items": [], "scope": "column"}
-        raw, _masks = validate_text_quality(df, rules)
+        profile = profile_text_quality(df, rules)
         if target_column is not None:
-            count = sum(r["Нарушений"] for r in raw if r["Колонка"] == target_column)
+            item = next((entry for entry in profile if entry["column"] == target_column), None)
+            count = int(item["invalid_count"]) if item is not None else 0
             items = [{"label": target_column, "count": count}] if count > 0 else []
             return {"status": _status(count), "count": count, "items": items, "scope": "column"}
-        items = [{"label": r["Колонка"], "count": r["Нарушений"]} for r in raw]
+        items = [
+            {"label": item["column"], "count": item["invalid_count"]}
+            for item in profile if item["invalid_count"] > 0
+        ]
         count = sum(i["count"] for i in items)
         return {"status": _status(count), "count": count, "items": items, "scope": "column"}
     _safe("text_quality", _text_quality)
@@ -1265,68 +1270,34 @@ def validate_referential(df, rules):
 
 
 def validate_text_quality(df, rules):
-    """Проверяет качество текстовых колонок."""
+    """Legacy-контракт поверх единого профиля ``validation.text_quality``."""
     results = []
     violation_masks = {}
-    text_rules = rules.get("text_quality", [])
-    text_cols = df.select_dtypes(include=['object', 'string']).columns.tolist()
+    from validation.text_quality import text_quality_masks
 
-    for col in text_cols:
-        violations = 0
-        violation_types = []
-        mask = pd.Series(False, index=df.index)
-
-        try:
-            garbage_mask = df[col].astype(str).str.contains(
-                r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]',
-                na=False,
-                regex=True
-            )
-        except Exception:
-            garbage_mask = pd.Series(False, index=df.index)
-
-        # БАГ (найден 2026-08-14 при первом реальном подключении этой
-        # функции к API -- до этого validate_text_quality нигде не
-        # вызывалась продакшен-кодом кроме app.py, поэтому не проявлялась):
-        # unicode_artifacts содержал '' (пустую строку) первым элементом.
-        # str.contains('', regex=False) истинно для ЛЮБОЙ строки (пустая
-        # подстрока входит в любую строку) -- каждая текстовая колонка
-        # целиком помечалась как "мусор". Реальные мусорные маркеры --
-        # только replacement character/BOM/mojibake-последовательность.
-        unicode_artifacts = ['\ufffd', '\ufeff', 'ï¿½']
-        for artifact in unicode_artifacts:
-            try:
-                garbage_mask |= df[col].astype(str).str.contains(artifact, na=False, regex=False)
-            except Exception:
-                pass
-
-        garbage_count = garbage_mask.sum()
-        if garbage_count > 0:
-            violations += garbage_count
-            mask |= garbage_mask
-            violation_types.append(f"мусор: {garbage_count}")
-
-        short_mask = df[col].astype(str).str.strip() == ''
-        short_count = short_mask.sum()
-        if short_count > 0:
-            violations += short_count
-            mask |= short_mask
-            violation_types.append(f"пустые: {short_count}")
-
-        long_mask = df[col].astype(str).str.len() > 500
-        long_count = long_mask.sum()
-        if long_count > 0:
-            violations += long_count
-            mask |= long_mask
-            violation_types.append(f"длинные: {long_count}")
-
+    issue_labels = {
+        "garbage": "мусор",
+        "empty": "пустые",
+        "too_short": "короткие",
+        "too_long": "длинные",
+        "whitespace": "пробелы",
+        "pattern": "шаблон",
+    }
+    for item in profile_text_quality(df, rules):
+        violations = int(item["invalid_count"])
         if violations > 0:
+            col = item["column"]
+            mask = text_quality_masks(df[col], rules, column=col)["combined"]
             violation_masks[col] = mask
+            violation_types = [
+                f"{issue_labels[name]}: {count}"
+                for name, count in item["issue_counts"].items() if count > 0
+            ]
             results.append({
                 "Колонка": col,
                 "Тип": ", ".join(violation_types),
-                "Нарушений": int(violations),
-                "% брака": f"{(violations / len(df)) * 100:.2f}%",
+                "Нарушений": violations,
+                "% брака": f"{item['invalid_pct']:.2f}%" if item["invalid_pct"] is not None else "N/A",
                 "Статус": "️ Нарушено"
             })
 

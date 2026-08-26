@@ -229,7 +229,7 @@ describe("TsAnalysisValidation", () => {
     renderValidation();
 
     const correctionButton = await screen.findByRole("button", { name: "Исправить типы данных" });
-    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(3);
+    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(2);
     fireEvent.click(correctionButton);
 
     expect(screen.getAllByText("Мастер исправления типов").length).toBeGreaterThan(0);
@@ -276,6 +276,20 @@ describe("TsAnalysisValidation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Исправить принадлежность к набору" }));
     expect(screen.getAllByText("Мастер исправления принадлежности к набору").length).toBeGreaterThan(0);
     expect(screen.getByRole("region", { name: "Мастер исправления принадлежности к набору" })).toBeInTheDocument();
+  });
+
+  it("opens the specialized text-quality metrics and correction master", async () => {
+    renderValidation();
+
+    const textStop = (await screen.findAllByRole("button", { name: /Целостность текста/ }))[0];
+    fireEvent.click(textStop);
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/N_text/i)).toBeInTheDocument();
+    expect(screen.getByText(/profile_text_quality/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Исправить целостность текста" }));
+    expect(screen.getAllByText("Мастер исправления целостности текста").length).toBeGreaterThan(0);
+    expect(screen.getByRole("region", { name: "Мастер исправления целостности текста" })).toBeInTheDocument();
   });
 
   it("uses the formats correction naming and opens its specialized wizard", async () => {

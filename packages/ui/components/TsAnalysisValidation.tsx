@@ -43,6 +43,8 @@ import { ValidationInclusionOverview } from "./ValidationInclusionOverview";
 import { ValidationInclusionPipeline } from "./ValidationInclusionPipeline";
 import { ValidationReferentialOverview } from "./ValidationReferentialOverview";
 import { ValidationReferentialPipeline } from "./ValidationReferentialPipeline";
+import { ValidationTextQualityOverview } from "./ValidationTextQualityOverview";
+import { ValidationTextQualityPipeline } from "./ValidationTextQualityPipeline";
 import { useAppShell } from "../context/AppShellContext";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
@@ -347,6 +349,32 @@ const REFERENTIAL_PIPELINE_DESCRIPTION = `Мастер исправления с
 
 Default разрешён только когда он входит в родительский справочник; мода вычисляется только по уже связанным наблюдениям.`;
 
+const TEXT_QUALITY_METRICS_DESCRIPTION = `Метрики и алгоритм: Целостность текста
+
+Цель
+Проверка находит скрытые управляющие символы и артефакты кодировки, пустые строки, слишком короткие и длинные значения, пробелы по краям и повторяющиеся пробелы. Если для колонки явно задан разрешённый regex, он также участвует в проверке.
+
+Метрики
+1. N_text — число строк хотя бы с одним нарушением; одна строка не суммируется повторно при нескольких причинах.
+2. r_text = N_text / N_non_null × 100 — доля проблемных непустых значений.
+3. Разбивка по причинам: мусор, пустые, длина, пробелы и шаблон.
+4. Примеры ограничены пятью уникальными значениями и помогают оценить стратегию очистки.
+
+Алгоритм backend
+1. Системная проверка автоматически применяется ко всем object/string-колонкам; ручной эталон для старта не требуется.
+2. Общая функция profile_text_quality строит отдельные векторные маски причин и их объединение.
+3. Те же маски используют общая валидация, обзор и мастер исправления — расхождение счётчиков исключено.
+4. Пропуски не считаются нарушением текста: их обрабатывает отдельная остановка предобработки. Нет текстовых колонок — «Не требуется»; 0 нарушений — «Проверка пройдена»; нарушения — «Найдены проблемы».`;
+
+const TEXT_QUALITY_PIPELINE_DESCRIPTION = `Мастер исправления целостности текста
+
+1. Отметьте текстовые колонки с найденными нарушениями.
+2. Выберите стратегию Streamlit: очистка и нормализация, замена пропуском, замена на «Неизвестно», удаление строк либо флаг валидности.
+3. Выполните предпросмотр на глубокой копии и проверьте число изменений, оставшихся нарушений, удаляемых строк и новых колонок.
+4. Подтвердите применение. Копия сохраняется атомарно, после чего общая валидация запускается повторно.
+
+Нормализация удаляет управляющие и повреждённые символы, обрезает края, сжимает пробелы и приводит текст к нижнему регистру. Она может объединить ранее разные категории, поэтому результат обязательно показывается до применения.`;
+
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisValidation() {
@@ -597,6 +625,7 @@ export function TsAnalysisValidation() {
       if (activeCheck.id === "uniqueness") return UNIQUENESS_METRICS_DESCRIPTION;
       if (activeCheck.id === "inclusion") return INCLUSION_METRICS_DESCRIPTION;
       if (activeCheck.id === "referential") return REFERENTIAL_METRICS_DESCRIPTION;
+      if (activeCheck.id === "text_quality") return TEXT_QUALITY_METRICS_DESCRIPTION;
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
     if (activeCheck.id === "data_types") return DATA_TYPES_PIPELINE_DESCRIPTION;
@@ -606,6 +635,7 @@ export function TsAnalysisValidation() {
     if (activeCheck.id === "uniqueness") return UNIQUENESS_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "inclusion") return INCLUSION_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "referential") return REFERENTIAL_PIPELINE_DESCRIPTION;
+    if (activeCheck.id === "text_quality") return TEXT_QUALITY_PIPELINE_DESCRIPTION;
     return `Полный пайплайн: ${activeCheck.label.toLowerCase()}\n\n1. Обнаружение → 2. Диагностика → 3. Преобразование → 4. Верификация\n\n${activeCheck.description}`;
   })();
 
@@ -622,6 +652,7 @@ export function TsAnalysisValidation() {
     if (activeCheck.id === "uniqueness") return "Мастер исправления уникальности";
     if (activeCheck.id === "inclusion") return "Мастер исправления принадлежности к набору";
     if (activeCheck.id === "referential") return "Мастер исправления ссылочной целостности";
+    if (activeCheck.id === "text_quality") return "Мастер исправления целостности текста";
     return `Полный пайплайн — ${activeCheck.label}`;
   })();
 
@@ -830,6 +861,8 @@ export function TsAnalysisValidation() {
               ? "Мастер исправления принадлежности к набору"
               : activeCheckId === "referential" && descriptionSection === "pipeline"
               ? "Мастер исправления ссылочной целостности"
+              : activeCheckId === "text_quality" && descriptionSection === "pipeline"
+              ? "Мастер исправления целостности текста"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -847,6 +880,8 @@ export function TsAnalysisValidation() {
               ? "Проверьте справочник, выберите стратегию, оцените последствия и примените исправления."
               : activeCheckId === "referential" && descriptionSection === "pipeline"
               ? "Проверьте связи, выберите стратегию, оцените последствия и устраните сиротские ключи."
+              : activeCheckId === "text_quality" && descriptionSection === "pipeline"
+              ? "Выберите колонки и стратегию, оцените последствия очистки и примените исправления."
               : activeCheckId === "data_types"
               ? "Распределение фактических типов и построчная матрица колонок."
               : activeCheckId === "ranges"
@@ -859,6 +894,8 @@ export function TsAnalysisValidation() {
               ? "Соотношение допустимых и недопустимых значений и матрица активных справочников."
               : activeCheckId === "referential"
               ? "Соотношение связанных и сиротских записей и матрица активных внешних ключей."
+              : activeCheckId === "text_quality"
+              ? "Соотношение чистых и проблемных значений и матрица причин по текстовым колонкам."
               : "Визуализация результатов проверки по активному критерию."}
           </p>
 
@@ -900,6 +937,8 @@ export function TsAnalysisValidation() {
               onApplied={runValidation}
               onOpenRules={() => setDescriptionSection("rules")}
             />
+          ) : activeCheckId === "text_quality" && descriptionSection === "pipeline" ? (
+            <ValidationTextQualityPipeline onApplied={runValidation} />
           ) : validationHasRun && activeCheck.status === "skipped" ? (
             <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
               {activeCheck.statusReason === "disabled"
@@ -957,6 +996,14 @@ export function TsAnalysisValidation() {
             ) : (
               <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы проверить внешние ключи относительно предметных справочников.
+              </div>
+            )
+          ) : activeCheckId === "text_quality" ? (
+            validationHasRun ? (
+              <ValidationTextQualityOverview refreshKey={validationVersion} />
+            ) : (
+              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+                Запустите валидацию, чтобы построить профиль целостности текстовых колонок.
               </div>
             )
           ) : (
@@ -1112,6 +1159,8 @@ export function TsAnalysisValidation() {
                   ? "Исправить принадлежность к набору"
                   : check.id === "referential"
                   ? "Исправить ссылочную целостность"
+                  : check.id === "text_quality"
+                  ? "Исправить целостность текста"
                   : "Полный пайплайн"}
               </button>
 

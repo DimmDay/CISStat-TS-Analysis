@@ -1,194 +1,211 @@
-# validation/text_quality.py
-import pandas as pd
-from typing import Dict, Any, Tuple, List
+"""Единая бизнес-логика проверки и исправления качества текста.
 
-def compute_text_violations(
-    df: pd.DataFrame, 
-    col: str, 
-    rules: Dict[str, Any]
-) -> Tuple[pd.Series, Dict[str, Any]]:
-    """
-    Вычисляет нарушения качества текста (длина, спецсимволы, паттерны).
-    
-    Args:
-        df: Исходный DataFrame.
-        col: Имя текстовой колонки.
-        rules: Словарь правил (например, {'max_length': 100, 'allow_special_chars': False}).
-        
-    Returns:
-        Tuple из (mask_violations, dict с деталями нарушений).
-    """
-    # TODO: Перенести тело из legacy _compute_text_violations (строки ~7299-7485)
-    # ВАЖНО: Использовать safe_stat из app.core.utils, если там считается средняя длина и т.д.
-    raise NotImplementedError("Ожидается перенос из app.py")
-
-
-def apply_text_strategy(
-    df: pd.DataFrame, 
-    col: str, 
-    strategy: str, 
-    params: Dict[str, Any] = None
-) -> pd.DataFrame:
-    """
-    Применяет стратегию очистки текста (lowercase, strip, remove_special_chars и т.д.).
-    
-    Args:
-        df: DataFrame с нарушениями.
-        col: Имя колонки.
-        strategy: Название стратегии.
-        params: Доп. параметры стратегии.
-        
-    Returns:
-        DataFrame с примененной стратегией (копия, оригинал не мутируется).
-    """
-    # TODO: Перенести тело из legacy _apply_text_strategy (строки ~7486-7557)
-    raise NotImplementedError("Ожидается перенос из app.py")
-
-
-# validation/text_quality.py
+Функции этого модуля не зависят от Streamlit/FastAPI и используются
+общей валидацией, обзором остановки и preview/apply мастером исправления.
 """
-Модуль для проверки качества текстовых данных.
-Часть Data Quality Dashboard (C.3 в EXTRACTION_PLAN.md).
-"""
+from __future__ import annotations
+
+from typing import Any
+
 import pandas as pd
-from typing import List, Dict, Any
 
 
-def compute_text_violations(df_to_check: pd.DataFrame) -> List[Dict[str, Any]]:
+DEFAULT_MIN_LENGTH = 1
+DEFAULT_MAX_LENGTH = 500
+DEFAULT_GARBAGE_CHARS = ("\ufffd", "\ufeff", "ï¿½")
+SUPPORTED_ACTIONS = ("normalize", "replace_null", "drop_rows", "replace_unknown", "flag")
+CONTROL_PATTERN = r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]"
+
+
+def _config(rules: dict[str, Any] | None) -> dict[str, Any]:
+    raw = (rules or {}).get("text_quality", {})
+    return raw if isinstance(raw, dict) else {}
+
+
+def _decode_garbage_token(value: Any) -> str:
+    token = str(value)
+    if not token:
+        return ""
+    if token.startswith("\\x") and len(token) == 4:
+        try:
+            return chr(int(token[2:], 16))
+        except ValueError:
+            return token
+    if token.startswith("\\u") and len(token) == 6:
+        try:
+            return chr(int(token[2:], 16))
+        except ValueError:
+            return token
+    return token
+
+
+def _garbage_tokens(config: dict[str, Any]) -> list[str]:
+    configured = config.get("garbage_chars", [])
+    values = configured if isinstance(configured, list) else []
+    # Пустая строка принципиально исключается: Series.str.contains("")
+    # истинно для каждого значения и ранее давала 100% ложных нарушений.
+    return list(dict.fromkeys(
+        token
+        for token in (*DEFAULT_GARBAGE_CHARS, *(_decode_garbage_token(v) for v in values))
+        if token
+    ))
+
+
+def text_quality_masks(
+    series: pd.Series,
+    rules: dict[str, Any] | None = None,
+    *,
+    column: str | None = None,
+) -> dict[str, pd.Series]:
+    """Возвращает маски отдельных причин и объединённую маску строк.
+
+    Пропуски не являются нарушением целостности текста: их обрабатывает
+    отдельная проверка полноты. Все остальные маски считаются только по
+    непустым исходным значениям и имеют индекс исходной Series.
     """
-    Вычисляет нарушения качества текста для DataFrame.
-    
-    Проверяет три типа нарушений:
-    1. Garbage — управляющие символы и Unicode replacement character
-    2. Short — пустые строки после strip()
-    3. Long — строки длиннее 500 символов
-    
-    Args:
-        df_to_check: DataFrame для проверки
-        
-    Returns:
-        Список словарей с информацией о нарушениях для каждой текстовой колонки.
-        Каждый словарь содержит:
-        - column: имя колонки
-        - count: общее количество нарушений
-        - mask: pandas Series с булевой маской нарушений
-        - garbage_count: количество мусорных символов
-        - short_count: количество пустых строк
-        - long_count: количество длинных строк
-        - sample_values: первые 3 примера нарушений
-        
-    Architectural invariants:
-        - Явная адресация данных: принимает df явно через аргумент
-        - Нет st.* вызовов (чистая бизнес-логика)
-        - Нет побочных эффектов
-    """
-    violations = []
-    text_cols = df_to_check.select_dtypes(include=['object', 'string']).columns.tolist()
-    
-    for col in text_cols:
-        # ИСПРАВЛЕНИЕ: Обычная строка (не raw), чтобы \ufffd интерпретировался
-        garbage_mask = df_to_check[col].astype(str).str.contains(
-            '[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\ufffd]', na=False, regex=True
+    config = _config(rules)
+    min_length = int(config.get("min_length", DEFAULT_MIN_LENGTH))
+    max_length = int(config.get("max_length", DEFAULT_MAX_LENGTH))
+    present = series.notna()
+    text = series.astype("string")
+    stripped = text.str.strip()
+    stripped_lengths = stripped.str.len()
+    raw_lengths = text.str.len()
+
+    garbage = pd.Series(False, index=series.index, dtype=bool)
+    garbage |= present & text.str.contains(CONTROL_PATTERN, na=False, regex=True)
+    for token in _garbage_tokens(config):
+        garbage |= present & text.str.contains(token, na=False, regex=False)
+
+    empty = present & stripped.eq("").fillna(False)
+    too_short = present & stripped_lengths.lt(min_length).fillna(False)
+    too_long = present & raw_lengths.gt(max_length).fillna(False)
+    whitespace = present & (
+        text.ne(stripped).fillna(False)
+        | text.str.contains(r"\s{2,}", na=False, regex=True)
+    )
+
+    pattern = pd.Series(False, index=series.index, dtype=bool)
+    allowed_patterns = config.get("allowed_patterns", {})
+    expected_pattern = (
+        allowed_patterns.get(column)
+        if isinstance(allowed_patterns, dict) and column is not None
+        else None
+    )
+    if expected_pattern:
+        pattern = present & ~text.str.fullmatch(str(expected_pattern), na=False)
+
+    combined = garbage | empty | too_short | too_long | whitespace | pattern
+    return {
+        "garbage": garbage.astype(bool),
+        "empty": empty.astype(bool),
+        "too_short": too_short.astype(bool),
+        "too_long": too_long.astype(bool),
+        "whitespace": whitespace.astype(bool),
+        "pattern": pattern.astype(bool),
+        "combined": combined.astype(bool),
+    }
+
+
+def profile_text_quality(df: pd.DataFrame, rules: dict[str, Any] | None = None) -> list[dict[str, Any]]:
+    """Строит полный профиль всех текстовых колонок, включая чистые."""
+    config = _config(rules)
+    min_length = int(config.get("min_length", DEFAULT_MIN_LENGTH))
+    max_length = int(config.get("max_length", DEFAULT_MAX_LENGTH))
+    text_columns = df.select_dtypes(include=["object", "string"]).columns.tolist()
+    profile: list[dict[str, Any]] = []
+
+    for column in text_columns:
+        masks = text_quality_masks(df[column], rules, column=column)
+        present = df[column].notna()
+        invalid_count = int(masks["combined"].sum())
+        total_count = int(present.sum())
+        examples = (
+            df.loc[masks["combined"], column]
+            .astype(str)
+            .drop_duplicates()
+            .head(5)
+            .tolist()
         )
-        short_mask = df_to_check[col].astype(str).str.strip().str.len() < 1
-        long_mask = df_to_check[col].astype(str).str.len() > 500
-        combined = garbage_mask | short_mask | long_mask
-        
-        if combined.any():
-            sample_values = df_to_check.loc[combined, col].head(3).tolist()
-            violations.append({
-                'column': col,
-                'count': int(combined.sum()),
-                'mask': combined,
-                'garbage_count': int(garbage_mask.sum()),
-                'short_count': int(short_mask.sum()),
-                'long_count': int(long_mask.sum()),
-                'sample_values': sample_values
-            })
-    
+        profile.append({
+            "column": str(column),
+            "total_count": total_count,
+            "valid_count": total_count - invalid_count,
+            "invalid_count": invalid_count,
+            "invalid_pct": round(invalid_count / total_count * 100, 2) if total_count else None,
+            "min_length": min_length,
+            "max_length": max_length,
+            "issue_counts": {
+                name: int(masks[name].sum())
+                for name in ("garbage", "empty", "too_short", "too_long", "whitespace", "pattern")
+            },
+            "invalid_examples": examples,
+            "supported_actions": list(SUPPORTED_ACTIONS),
+        })
+    return profile
+
+
+def compute_text_violations(df_to_check: pd.DataFrame) -> list[dict[str, Any]]:
+    """Backward-compatible контракт Streamlit поверх единого профиля."""
+    violations: list[dict[str, Any]] = []
+    for item in profile_text_quality(df_to_check):
+        if not item["invalid_count"]:
+            continue
+        column = item["column"]
+        masks = text_quality_masks(df_to_check[column], column=column)
+        violations.append({
+            "column": column,
+            "count": item["invalid_count"],
+            "mask": masks["combined"],
+            "garbage_count": item["issue_counts"]["garbage"],
+            "short_count": item["issue_counts"]["empty"],
+            "long_count": item["issue_counts"]["too_long"],
+            "sample_values": df_to_check.loc[masks["combined"], column].head(3).tolist(),
+        })
     return violations
 
 
-# validation/text_quality.py (дополнение)
-import pandas as pd
-import numpy as np
-from typing import List, Dict, Any
+def _normalize_values(series: pd.Series) -> pd.Series:
+    """Legacy-стратегия Streamlit: strip/lower/очистка/сжатие пробелов."""
+    result = (
+        series.astype("string")
+        .str.replace(CONTROL_PATTERN, "", regex=True)
+        .str.replace("\ufffd", "", regex=False)
+        .str.replace("\ufeff", "", regex=False)
+        .str.replace("ï¿½", "", regex=False)
+        .str.strip()
+        .str.lower()
+        .str.replace(r"[^\w\s\-]", "", regex=True)
+        .str.replace(r"\s+", " ", regex=True)
+        .str.strip()
+    )
+    return result.mask(result.eq(""), pd.NA)
 
 
 def apply_text_strategy(
     df_input: pd.DataFrame,
-    text_violations: List[Dict[str, Any]],
-    strategy: str
+    text_violations: list[dict[str, Any]],
+    strategy: str,
 ) -> pd.DataFrame:
-    """
-    Применяет стратегию обработки текстовых нарушений.
-    
-    Args:
-        df_input: Исходный DataFrame.
-        text_violations: Список нарушений от compute_text_violations.
-        strategy: Название стратегии:
-            - "Очистить" — lowercase, strip, удаление спецсимволов
-            - "Удалить" — удаление строк с нарушениями
-            - "NaN" — замена нарушений на NaN
-            - "Неизвестно" — замена нарушений на строку "Неизвестно"
-            - "флагом" — добавление колонки с булевой маской
-        
-    Returns:
-        DataFrame с применённой стратегией (копия, оригинал не мутируется).
-        
-    Architectural invariants:
-        - Явная адресация данных: принимает df и violations явно через аргументы
-        - Нет st.* вызовов (чистая бизнес-логика)
-        - Нет побочных эффектов (оригинал не мутируется)
-    """
-    df_result = df_input.copy()
-    
-    if "Очистить" in strategy:
-        for v in text_violations:
-            col = v['column']
-            if col in df_result.columns:
-                # Упрощённый regex (без r-префикса не нужен, т.к. нет \ufffd)
-                df_result.loc[v['mask'], col] = (
-                    df_result.loc[v['mask'], col]
-                    .astype(str)
-                    .str.strip()
-                    .str.lower()
-                    .str.replace(r'[^\w\s\-]', '', regex=True)
-                    .str.replace(r'\s+', ' ', regex=True)
-                    .str.strip()
-                )
-                
-                # Обрабатываем пустые строки после очистки
-                empty_after = df_result[col].astype(str).str.strip() == ''
-                if empty_after.any():
-                    df_result.loc[empty_after, col] = np.nan
-                    
-    elif "Удалить" in strategy:
-        # Объединяем маски всех нарушений
-        combined_mask = pd.Series(False, index=df_result.index)
-        for v in text_violations:
-            if v['column'] in df_result.columns:
-                combined_mask = combined_mask | v['mask']
-        df_result = df_result[~combined_mask].reset_index(drop=True)
-        
-    elif "NaN" in strategy:
-        for v in text_violations:
-            col = v['column']
-            if col in df_result.columns:
-                df_result.loc[v['mask'], col] = np.nan
-                
-    elif "Неизвестно" in strategy:
-        for v in text_violations:
-            col = v['column']
-            if col in df_result.columns:
-                df_result.loc[v['mask'], col] = "Неизвестно"
-                
-    elif "флагом" in strategy:
-        # Реализация стратегии "только флаг"
-        for v in text_violations:
-            col = v['column']
-            if col in df_result.columns:
-                flag_col = f"{col}_text_valid"
-                df_result[flag_col] = ~v['mask']
-    
-    return df_result
+    """Backward-compatible применение пяти стратегий Streamlit к копии."""
+    result = df_input.copy(deep=True)
+    if "Удалить" in strategy:
+        combined = pd.Series(False, index=result.index, dtype=bool)
+        for violation in text_violations:
+            combined |= violation["mask"].reindex(result.index, fill_value=False)
+        return result.loc[~combined].reset_index(drop=True)
+
+    for violation in text_violations:
+        column = violation["column"]
+        if column not in result.columns:
+            continue
+        mask = violation["mask"].reindex(result.index, fill_value=False)
+        if "Очистить" in strategy:
+            result.loc[mask, column] = _normalize_values(result.loc[mask, column])
+        elif "NaN" in strategy:
+            result.loc[mask, column] = pd.NA
+        elif "Неизвестно" in strategy:
+            result.loc[mask, column] = "Неизвестно"
+        elif "флагом" in strategy:
+            result[f"{column}_text_valid"] = ~mask
+    return result
