@@ -23,6 +23,60 @@ def normalize_inclusion_rule(config: Any, fallback_default: Any = None) -> tuple
     return (list(allowed) if isinstance(allowed, (list, tuple, set)) else []), default
 
 
+def coerce_inclusion_rule_to_series(
+    series: pd.Series,
+    allowed_values: list,
+    default_value: Any = None,
+) -> tuple[list, Any]:
+    """Align text-editor rule values with the actual column scalar type.
+
+    HTML inputs produce strings even for a numeric dataset column.  Membership
+    comparison is type-sensitive, so ``"723774"`` must become ``723774`` for
+    an integer column.  Conversion is driven by the series (not by the token)
+    so string identifiers such as ``"001"`` retain their leading zeroes.
+    Values that cannot be safely converted are kept unchanged and simply can
+    never match that typed column.
+    """
+    non_null = series.dropna()
+    inferred = pd.api.types.infer_dtype(non_null, skipna=True) if not non_null.empty else "empty"
+    numeric_target = (
+        pd.api.types.is_numeric_dtype(series.dtype)
+        and not pd.api.types.is_bool_dtype(series.dtype)
+    ) or inferred in {"integer", "floating", "mixed-integer-float", "decimal"}
+    integer_target = pd.api.types.is_integer_dtype(series.dtype) or inferred == "integer"
+    boolean_target = pd.api.types.is_bool_dtype(series.dtype) or inferred == "boolean"
+    string_target = (
+        pd.api.types.is_string_dtype(series.dtype)
+        and not pd.api.types.is_object_dtype(series.dtype)
+        and not numeric_target
+        and not boolean_target
+    ) or inferred in {"string", "unicode", "bytes"}
+
+    def convert(value: Any) -> Any:
+        if value is None:
+            return None
+        if numeric_target and not isinstance(value, bool):
+            try:
+                converted = pd.to_numeric(value, errors="raise")
+                converted = converted.item() if hasattr(converted, "item") else converted
+                if integer_target and float(converted).is_integer():
+                    return int(converted)
+                return converted
+            except (TypeError, ValueError, OverflowError):
+                return value
+        if boolean_target and isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"true", "1"}:
+                return True
+            if normalized in {"false", "0"}:
+                return False
+        if string_target and not isinstance(value, str):
+            return str(value)
+        return value
+
+    return [convert(value) for value in allowed_values], convert(default_value)
+
+
 def inclusion_invalid_mask(series: pd.Series, allowed_values: list) -> pd.Series:
     """Build the shared membership-violation mask; nulls are checked elsewhere."""
     return series.notna() & ~series.isin(allowed_values)
@@ -50,6 +104,9 @@ def check_inclusion(
     for col, config in inclusion_rules.items():
         allowed_vals, _default = normalize_inclusion_rule(config)
         if col in df.columns and allowed_vals:
+            allowed_vals, _default = coerce_inclusion_rule_to_series(
+                df[col], allowed_vals, _default
+            )
             invalid_mask = inclusion_invalid_mask(df[col], allowed_vals)
             violations = int(invalid_mask.sum())
             
@@ -101,6 +158,9 @@ def compute_inclusion_violations(
     for col, config in inclusion_rules.items():
         allowed_vals, _default = normalize_inclusion_rule(config)
         if col in df.columns and allowed_vals:
+            allowed_vals, _default = coerce_inclusion_rule_to_series(
+                df[col], allowed_vals, _default
+            )
             invalid_mask = inclusion_invalid_mask(df[col], allowed_vals)
             if invalid_mask.any():
                 invalid_values = df.loc[invalid_mask, col].unique()

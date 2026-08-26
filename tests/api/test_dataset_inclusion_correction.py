@@ -88,3 +88,31 @@ def test_rule_validation_rejects_unknown_columns_empty_domains_and_bad_defaults(
 def test_missing_dataset_returns_404():
     assert client.get("/v1/session/dataset/inclusion-profile").status_code == 404
 
+
+def test_numeric_column_matches_values_entered_as_text_in_rules_editor():
+    buffer = io.BytesIO()
+    pd.DataFrame({"volume": [723774, 530678, 628125]}).to_csv(buffer, index=False)
+    buffer.seek(0)
+    upload = client.post(
+        "/v1/internal/upload",
+        files={"file": ("volume.csv", buffer, "text/csv")},
+    )
+    assert upload.status_code == 200, upload.text
+
+    saved = client.put(
+        "/v1/session/dataset/validation-rules",
+        json={"template_id": "system", "overrides": {"inclusion": {
+            "volume": {
+                "allowed_values": ["723774", "530678", "628125"],
+                "default_value": "723774",
+            }
+        }}},
+    )
+    assert saved.status_code == 200, saved.text
+
+    profile = client.get("/v1/session/dataset/inclusion-profile")
+    assert profile.status_code == 200, profile.text
+    assert profile.json()["columns"][0]["allowed_values"] == [723774, 530678, 628125]
+    assert profile.json()["columns"][0]["invalid_count"] == 0
+    validation = client.get("/v1/session/dataset/validate").json()
+    assert validation["checks"]["inclusion"]["status"] == "done"

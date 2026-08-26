@@ -17,7 +17,11 @@ import re
 import warnings
 import os
 
-from validation.inclusion import inclusion_invalid_mask, normalize_inclusion_rule
+from validation.inclusion import (
+    coerce_inclusion_rule_to_series,
+    inclusion_invalid_mask,
+    normalize_inclusion_rule,
+)
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -595,6 +599,9 @@ def profile_inclusion(df: pd.DataFrame, rules: dict) -> list[dict]:
             continue
 
         series = df[column]
+        allowed_values, default_value = coerce_inclusion_rule_to_series(
+            series, allowed_values, default_value
+        )
         invalid_mask = inclusion_invalid_mask(series, allowed_values)
         total_count = int(series.notna().sum())
         invalid_count = int(invalid_mask.sum())

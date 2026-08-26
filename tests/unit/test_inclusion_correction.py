@@ -46,6 +46,32 @@ def test_profile_does_not_infer_a_domain_from_observed_values():
     }) == []
 
 
+def test_profile_coerces_text_editor_values_to_numeric_column_dtype():
+    source = pd.DataFrame({"volume": [723774, 530678, 628125]})
+    rules = {"inclusion": {"volume": {
+        "allowed_values": ["723774", "530678", "628125"],
+        "default_value": "723774",
+    }}}
+
+    profile = profile_inclusion(source, rules)
+
+    assert profile[0]["allowed_values"] == [723774, 530678, 628125]
+    assert profile[0]["default_value"] == 723774
+    assert profile[0]["default_valid"] is True
+    assert profile[0]["invalid_count"] == 0
+
+
+def test_string_identifiers_keep_leading_zeroes():
+    source = pd.DataFrame({"Code": pd.Series(["001", "002"], dtype="string")})
+    profile = profile_inclusion(
+        source,
+        {"inclusion": {"Code": {"allowed_values": ["001", "002"]}}},
+    )
+
+    assert profile[0]["allowed_values"] == ["001", "002"]
+    assert profile[0]["invalid_count"] == 0
+
+
 @pytest.mark.parametrize("strategy", ["mode", "replace_null", "replace_default"])
 def test_value_replacement_strategies_remove_selected_violations(strategy):
     corrected, results, rows_removed = preview_inclusion_corrections(
