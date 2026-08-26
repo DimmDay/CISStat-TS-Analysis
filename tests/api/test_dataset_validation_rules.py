@@ -46,6 +46,78 @@ def test_rules_endpoint_defaults_to_system():
     assert response.json() == {"template_id": "system", "overrides": {}}
 
 
+def test_check_modes_default_to_auto_and_auto_skips_non_applicable_check():
+    _upload(pd.DataFrame({
+        "timestamp": pd.date_range("2025-01-01", periods=3),
+        "open": [100.0, 101.0, 102.0],
+        "high": [102.0, 103.0, 104.0],
+        "low": [99.0, 100.0, 101.0],
+        "close": [101.0, 102.0, 103.0],
+        "volume": [1000, 1200, 900],
+    }))
+
+    modes = client.get("/v1/session/dataset/validation-check-modes")
+    assert modes.status_code == 200
+    assert modes.json()["modes"]["inclusion"] == "auto"
+
+    inclusion = client.get("/v1/session/dataset/validate").json()["checks"]["inclusion"]
+    assert inclusion["status"] == "skipped"
+    assert inclusion["mode"] == "auto"
+    assert inclusion["status_reason"] == "not_required"
+    assert inclusion["count"] is None
+
+
+def test_disabled_check_is_skipped_and_enabled_check_requires_configuration():
+    _upload(pd.DataFrame({"Code": ["A", "X"]}))
+    assert client.put(
+        "/v1/session/dataset/validation-rules",
+        json={"template_id": "system", "overrides": {
+            "inclusion": {"Code": {"allowed_values": ["A"]}},
+        }},
+    ).status_code == 200
+
+    disabled = client.put(
+        "/v1/session/dataset/validation-check-modes",
+        json={"modes": {"inclusion": "disabled"}},
+    )
+    assert disabled.status_code == 200
+    assert disabled.json()["modes"]["inclusion"] == "disabled"
+    check = client.get("/v1/session/dataset/validate").json()["checks"]["inclusion"]
+    assert check["status"] == "skipped"
+    assert check["status_reason"] == "disabled"
+    assert check["count"] is None
+
+    assert client.put(
+        "/v1/session/dataset/validation-rules",
+        json={"template_id": "system", "overrides": {}},
+    ).status_code == 200
+    enabled = client.put(
+        "/v1/session/dataset/validation-check-modes",
+        json={"modes": {"inclusion": "enabled"}},
+    )
+    assert enabled.status_code == 200
+    check = client.get("/v1/session/dataset/validate").json()["checks"]["inclusion"]
+    assert check["status"] == "pending"
+    assert check["mode"] == "enabled"
+    assert check["status_reason"] == "needs_rule"
+
+
+def test_check_modes_reject_unknown_checks_and_reset_with_new_dataset():
+    _upload(_fao_df())
+    invalid = client.put(
+        "/v1/session/dataset/validation-check-modes",
+        json={"modes": {"unknown": "disabled"}},
+    )
+    assert invalid.status_code == 422
+
+    assert client.put(
+        "/v1/session/dataset/validation-check-modes",
+        json={"modes": {"inclusion": "disabled"}},
+    ).status_code == 200
+    _upload(_fao_df())
+    assert client.get("/v1/session/dataset/validation-check-modes").json()["modes"]["inclusion"] == "auto"
+
+
 def test_selected_template_is_saved_and_used_by_global_validation():
     _upload(_fao_df())
     saved = client.put(
@@ -70,6 +142,8 @@ def test_selected_template_is_saved_and_used_by_global_validation():
         "scope": "column",
         "error": None,
         "rule_source": "template",
+        "mode": "auto",
+        "status_reason": None,
     }
 
     profile = client.get("/v1/session/dataset/format-profile")
@@ -210,6 +284,8 @@ def test_unmatched_template_range_is_reported_as_no_applicable_reference():
     ).status_code == 200
 
     ranges = client.get("/v1/session/dataset/validate").json()["checks"]["ranges"]
-    assert ranges["status"] == "pending"
+    assert ranges["status"] == "skipped"
     assert ranges["count"] is None
     assert ranges["rule_source"] == "not_applicable"
+    assert ranges["mode"] == "auto"
+    assert ranges["status_reason"] == "not_required"

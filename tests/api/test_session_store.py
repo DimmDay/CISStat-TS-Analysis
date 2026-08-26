@@ -445,6 +445,24 @@ class _SessionStoreContract:
         assert legacy.validation_template_id == "system"
         assert legacy.validation_rule_overrides == {}
 
+    def test_validation_check_modes_roundtrip_reset_and_legacy_default(
+        self, sample_dataset_info, sample_dataframe
+    ):
+        from apps.api.session_store import session_from_dict, session_to_dict
+
+        session = AnalysisSession(session_id="validation-check-modes-030")
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        session.validation_check_modes = {"inclusion": "disabled", "ranges": "enabled"}
+        restored = session_from_dict(session_to_dict(session))
+        assert restored.validation_check_modes == session.validation_check_modes
+
+        restored.set_dataset(sample_dataset_info, sample_dataframe)
+        assert restored.validation_check_modes == {}
+
+        legacy = session_to_dict(session)
+        legacy.pop("validation_check_modes")
+        assert session_from_dict(legacy).validation_check_modes == {}
+
 
 # ────────────────────────────────────────────────────────────────────
 # MemorySessionStore -- конкретные тесты

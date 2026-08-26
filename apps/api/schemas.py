@@ -304,12 +304,16 @@ class ValidationCheckItem(BaseModel):
 
 
 class ValidationCheckResult(BaseModel):
-    """Один из 10 пунктов CHECKS (TsAnalysisValidation.tsx). status --
-    'done' (0 нарушений) | 'warning' (>0) | 'pending' (проверка неприменима:
-    нет нужной колонки/справочника для этого датасета -- см. StatusIcon.tsx,
-    набор значений НЕ менять без синхронизации с фронтом)."""
-    status: str = Field(..., description="'done' | 'warning' | 'pending'")
-    count: Optional[int] = Field(None, description="Суммарное число нарушений; None при status='pending'")
+    """Один из 10 пунктов CHECKS (TsAnalysisValidation.tsx).
+
+    ``pending`` означает, что принудительно включённой проверке нужна
+    настройка; ``skipped`` -- нейтральный пропуск в режиме auto либо
+    явное отключение аналитиком. Набор значений синхронизирован с UI.
+    """
+    status: Literal["done", "warning", "pending", "skipped"] = Field(
+        ..., description="Результат проверки либо нейтральный пропуск"
+    )
+    count: Optional[int] = Field(None, description="Суммарное число нарушений; None при pending/skipped")
     items: List[ValidationCheckItem] = Field(default_factory=list, description="Детализация для графика")
     scope: str = Field("dataset", description="'column' -- учитывает выбранную колонку, 'dataset' -- всегда весь датасет")
     error: Optional[str] = Field(None, description="Текст исключения, если sub-check упал (см. _safe в engine.py)")
@@ -317,6 +321,8 @@ class ValidationCheckResult(BaseModel):
         "system",
         description="Источник эталона именно этой проверки",
     )
+    mode: Literal["auto", "enabled", "disabled"] = "auto"
+    status_reason: Optional[Literal["not_required", "disabled", "needs_rule"]] = None
 
 
 class DatasetValidateResponse(BaseModel):
@@ -378,6 +384,14 @@ class DatasetValidationRulesRequest(BaseModel):
 class DatasetValidationRulesResponse(BaseModel):
     template_id: str
     overrides: Dict[str, Any] = Field(default_factory=dict)
+
+
+class DatasetValidationCheckModesRequest(BaseModel):
+    modes: Dict[str, Literal["auto", "enabled", "disabled"]] = Field(default_factory=dict)
+
+
+class DatasetValidationCheckModesResponse(BaseModel):
+    modes: Dict[str, Literal["auto", "enabled", "disabled"]]
 
 
 class TypeConversionResultOut(BaseModel):

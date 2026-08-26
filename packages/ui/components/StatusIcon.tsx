@@ -6,20 +6,22 @@
 // фона), как требует единая стиль-система портала. Цвет наследуется от
 // currentColor -- родительский элемент задаёт text-* класс.
 
-import { CheckCircle, AlertTriangle, Circle, type LucideIcon } from "lucide-react";
+import { CheckCircle, AlertTriangle, Circle, CircleMinus, type LucideIcon } from "lucide-react";
 
-export type CheckStatus = "done" | "warning" | "pending";
+export type CheckStatus = "done" | "warning" | "pending" | "skipped";
 
 const STATUS_ICON: Record<CheckStatus, LucideIcon> = {
   done: CheckCircle,
   warning: AlertTriangle,
   pending: Circle,
+  skipped: CircleMinus,
 };
 
 const STATUS_COLOR: Record<CheckStatus, string> = {
   done: "text-green-600",
   warning: "text-amber-600",
   pending: "text-neutral-400",
+  skipped: "text-neutral-400",
 };
 
 export function StatusIcon({

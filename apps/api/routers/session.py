@@ -49,6 +49,8 @@ from apps.api.schemas import (
     DatasetUniquenessProfileResponse,
     DatasetValidationRulesRequest,
     DatasetValidationRulesResponse,
+    DatasetValidationCheckModesRequest,
+    DatasetValidationCheckModesResponse,
     DatasetValidateResponse,
     DecompositionResponse,
     DecompositionSeriesPoint,
@@ -81,7 +83,7 @@ from apps.api.schemas import (
 )
 from app.data.detectors import score_all_columns_as_date, score_all_columns_as_entity_group, detect_column_frequency
 from validation.engine import profile_consistency, profile_formats, profile_inclusion, profile_ranges, profile_uniqueness, validate_dataframe
-from validation.rule_resolver import resolve_validation_rules
+from validation.rule_resolver import CHECK_IDS, resolve_validation_rules
 from apps.api.consistency_correction import preview_consistency_corrections
 from apps.api.format_correction import preview_format_corrections
 from apps.api.inclusion_correction import preview_inclusion_corrections
@@ -100,6 +102,19 @@ from apps.api.upload_common import _compute_column_info, _compute_parse_warnings
 router = APIRouter()
 
 DEMO_DATASET_PATH = Path(__file__).resolve().parent.parent / "demo_data" / "sales_demo.csv"
+
+
+def _effective_validation_check_modes(session: AnalysisSession) -> dict[str, str]:
+    """Return all check modes; missing persisted values are backward-compatible auto."""
+    allowed_modes = {"auto", "enabled", "disabled"}
+    return {
+        check_id: (
+            session.validation_check_modes.get(check_id, "auto")
+            if session.validation_check_modes.get(check_id, "auto") in allowed_modes
+            else "auto"
+        )
+        for check_id in CHECK_IDS
+    }
 
 
 def _to_response(session: AnalysisSession) -> SessionStateResponse:
@@ -589,9 +604,9 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
     настройки. Профиль переиспользует ту же _compute_column_info, что и
     ответ загрузки.
 
-    referential ВСЕГДА "pending" при системных правилах: resolver
-    не умеет придумать справочник для сверки -- это не 0 нарушений,
-    а "нечего проверять" (см. validation/engine.py::_run_all_checks).
+    Если resolver не может воспроизводимо определить правило, режим auto
+    возвращает нейтральный ``skipped``. Режим enabled оставляет ``pending``
+    и требует настройки, а disabled исключает остановку из оценки.
 
     column сохранён для обратной совместимости как опциональный per-column
     скоуп выбранного target_column (см. GET/POST /target-column). Общая
@@ -615,24 +630,53 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
     rules, rule_sources = _session_validation_rules(session)
     result = validate_dataframe(df, rules, target_column=column)
 
-    checks = {
-        check_id: ValidationCheckResult(
-            status=raw["status"],
-            count=raw["count"],
-            items=[ValidationCheckItem(**item) for item in raw["items"]],
+    modes = _effective_validation_check_modes(session)
+    checks: dict[str, ValidationCheckResult] = {}
+    for check_id, raw in result["checks"].items():
+        mode = modes[check_id]
+        status = raw["status"]
+        count = raw["count"]
+        items = raw["items"]
+        status_reason = None
+        error = raw.get("error")
+
+        if mode == "disabled":
+            status = "skipped"
+            count = None
+            items = []
+            error = None
+            status_reason = "disabled"
+        elif status == "pending" and not error:
+            if mode == "auto":
+                status = "skipped"
+                status_reason = "not_required"
+            else:
+                status_reason = "needs_rule"
+
+        checks[check_id] = ValidationCheckResult(
+            status=status,
+            count=count,
+            items=[ValidationCheckItem(**item) for item in items],
             scope=raw.get("scope", "dataset"),
-            error=raw.get("error"),
+            error=error,
             rule_source=(
                 "not_applicable"
-                if raw["status"] == "pending" and not raw.get("error")
+                if status in {"pending", "skipped"} and not error
                 else rule_sources.get(check_id, "not_applicable")
             ),
+            mode=mode,
+            status_reason=status_reason,
         )
-        for check_id, raw in result["checks"].items()
-    }
+
+    policy_is_valid = all(
+        check.status not in {"warning"}
+        and check.error is None
+        and not (check.status == "pending" and check.status_reason == "needs_rule")
+        for check in checks.values()
+    )
 
     return DatasetValidateResponse(
-        is_valid=result["is_valid"],
+        is_valid=policy_is_valid,
         rules_source=(
             "session" if session.type_schema or session.validation_rule_overrides
             else "template" if session.validation_template_id != "system"
@@ -666,6 +710,57 @@ def get_dataset_validation_rules(request: Request, response: Response):
     return DatasetValidationRulesResponse(
         template_id=session.validation_template_id,
         overrides=session.validation_rule_overrides,
+    )
+
+
+@router.get(
+    "/dataset/validation-check-modes",
+    response_model=DatasetValidationCheckModesResponse,
+)
+def get_dataset_validation_check_modes(request: Request, response: Response):
+    """Возвращает эффективный режим каждой остановки текущей сессии."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    return DatasetValidationCheckModesResponse(
+        modes=_effective_validation_check_modes(session)
+    )
+
+
+@router.put(
+    "/dataset/validation-check-modes",
+    response_model=DatasetValidationCheckModesResponse,
+)
+def save_dataset_validation_check_modes(
+    payload: DatasetValidationCheckModesRequest,
+    request: Request,
+    response: Response,
+):
+    """Сохраняет partial-обновление режимов; auto удаляет явный override."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    unknown = sorted(set(payload.modes) - set(CHECK_IDS))
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Неизвестные проверки: {', '.join(unknown)}",
+        )
+    next_modes = dict(session.validation_check_modes)
+    for check_id, mode in payload.modes.items():
+        if mode == "auto":
+            next_modes.pop(check_id, None)
+        else:
+            next_modes[check_id] = mode
+    session.validation_check_modes = next_modes
+    session.touch()
+    store.save(session)
+    return DatasetValidationCheckModesResponse(
+        modes=_effective_validation_check_modes(session)
     )
 
 

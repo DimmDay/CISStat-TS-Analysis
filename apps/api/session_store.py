@@ -135,6 +135,10 @@ class AnalysisSession:
     # других пользователей/процессы Render.
     validation_template_id: str = "system"
     validation_rule_overrides: dict[str, Any] = field(default_factory=dict)
+    # Режимы остановок валидации. Отсутствующий ключ означает "auto";
+    # сохраняем только явные enabled/disabled, чтобы старые Redis-сессии
+    # и новый датасет получали безопасное автоматическое поведение.
+    validation_check_modes: dict[str, str] = field(default_factory=dict)
     updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def touch(self) -> None:
@@ -156,6 +160,7 @@ class AnalysisSession:
         self.type_schema = {}
         self.validation_template_id = "system"
         self.validation_rule_overrides = {}
+        self.validation_check_modes = {}
         self.touch()
 
     def set_target_column(self, column_name: str) -> None:
@@ -241,6 +246,7 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "type_schema": dict(session.type_schema),
         "validation_template_id": session.validation_template_id,
         "validation_rule_overrides": dict(session.validation_rule_overrides),
+        "validation_check_modes": dict(session.validation_check_modes),
         "updated_at": session.updated_at,
     }
 
@@ -264,6 +270,7 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         type_schema=dict(d.get("type_schema", {})),  # {} для старых записей
         validation_template_id=d.get("validation_template_id", "system"),
         validation_rule_overrides=dict(d.get("validation_rule_overrides", {})),
+        validation_check_modes=dict(d.get("validation_check_modes", {})),
         updated_at=d.get("updated_at", datetime.now(timezone.utc).isoformat()),
     )
 

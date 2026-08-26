@@ -9,9 +9,9 @@
 //
 // Данные -- items: [{label, count}] из GET /v1/session/dataset/validate,
 // см. apps/api/routers/session.py::get_dataset_validate и
-// validation/engine.py::_run_all_checks. Три честных состояния:
-//   - status="pending": проверка неприменима к этому датасету (нет нужной
-//     колонки/справочника) -- НЕ "0 нарушений", явно другое сообщение.
+// validation/engine.py::_run_all_checks. Четыре честных состояния:
+//   - status="pending": включённой проверке требуется настройка правила.
+//   - status="skipped": проверка отключена либо не требуется в режиме auto.
 //   - status="done": 0 нарушений -- позитивное сообщение, не пустой график.
 //   - status="warning": bar chart по items (нарушения по колонке/группе/правилу).
 // error -- sub-check упал на бэкенде (см. _safe() в engine.py) -- честно
@@ -36,7 +36,7 @@ export interface ValidationCheckItem {
 }
 
 export interface ValidationCheckData {
-  status: "done" | "warning" | "pending";
+  status: "done" | "warning" | "pending" | "skipped";
   count: number | null;
   items: ValidationCheckItem[];
   /** "column" -- проверка учитывает выбранный target_column (см.
@@ -47,6 +47,8 @@ export interface ValidationCheckData {
   scope?: "column" | "dataset";
   error?: string | null;
   rule_source?: "system" | "template" | "session" | "not_applicable";
+  mode?: "auto" | "enabled" | "disabled";
+  status_reason?: "not_required" | "disabled" | "needs_rule" | null;
 }
 
 function truncateLabel(label: string, max = 16): string {
@@ -117,6 +119,19 @@ export function ValidationCheckChart({
           {isFormats
             ? "Эталон форматов не задан. Задайте regex-правила в «Управлении правилами» и запустите валидацию повторно."
             : `Проверка «${checkLabel}» неприменима к текущему датасету -- не найдено нужных колонок или справочника для сверки`}
+        </InfoFrame>
+      </div>
+    );
+  }
+
+  if (data.status === "skipped") {
+    return (
+      <div>
+        <ScopeCaption scope={data.scope} selectedColumn={selectedColumn} />
+        <InfoFrame tone="neutral">
+          {data.status_reason === "disabled"
+            ? `Проверка «${checkLabel}» отключена аналитиком и не участвует в DQ Score`
+            : `Проверка «${checkLabel}» не требуется для текущего датасета в режиме «Авто»`}
         </InfoFrame>
       </div>
     );

@@ -54,7 +54,12 @@ interface Check {
   count: number | null;
   description: string;
   ruleSource: "system" | "template" | "session" | "not_applicable";
+  mode: CheckMode;
+  statusReason: CheckStatusReason;
 }
+
+type CheckMode = "auto" | "enabled" | "disabled";
+type CheckStatusReason = "not_required" | "disabled" | "needs_rule" | null;
 
 interface CheckMeta {
   id: string;
@@ -84,7 +89,7 @@ const CHECK_META: CheckMeta[] = [
   { id: "inclusion", label: "Принадлежность к набору",
     description: "Значения, не входящие в допустимый справочник (код региона, категория, единица измерения), не могут быть интерпретированы. check_inclusion проверяет membership по словарям из rules.yaml." },
   { id: "referential", label: "Ссылочная целостность",
-    description: "Внешние ключи, ссылающиеся на несуществующие записи в связанных таблицах, ломают JOIN-операции. validate_referential проверяет все FK-связи. Без явного шаблона правил всегда «pending» -- нечего проверять." },
+    description: "Внешние ключи, ссылающиеся на несуществующие записи в связанных таблицах, ломают JOIN-операции. validate_referential проверяет все FK-связи. Без явного правила режим «Авто» помечает остановку как «Не требуется»; режим «Включена» запрашивает настройку." },
   { id: "text_quality", label: "Целостность текста",
     description: "Мусорные символы, некорректная кодировка, пустые строки и дубликаты пробелов искажают категориальный анализ и полнотекстовый поиск. validate_text_quality выявляет все нарушения." },
   { id: "regularity", label: "Равномерность шага",
@@ -92,6 +97,10 @@ const CHECK_META: CheckMeta[] = [
   { id: "sufficiency", label: "Достаточность наблюдений",
     description: "Недостаточное число наблюдений для идентификации параметров модели (минимум 2×сезонный_период для SARIMA, 30+ для ADF). validate_sufficiency оценивает длину ряда и выдаёт рекомендации." },
 ];
+
+const DEFAULT_CHECK_MODES: Record<string, CheckMode> = Object.fromEntries(
+  CHECK_META.map(({ id }) => [id, "auto"])
+);
 
 const RULE_SOURCE_LABELS: Record<Check["ruleSource"], string> = {
   system: "Системное правило",
@@ -139,7 +148,7 @@ const DQ_STANDARDS_HELP = `Стандарты качества данных (Dat
 7. Достаточность (Sufficiency)
    - Минимальное число наблюдений для идентификации модели (2×сезонный_период для SARIMA, 30+ для ADF).
 
-Интегральный показатель Data Quality Score (DQ) вычисляется как взвешенное среднее по всем 10 критериям. Порог DQ >= 0.8 считается достаточным для передачи данных в модуль «Предобработка».
+Интегральный Data Quality Score (DQ) равен доле успешно пройденных среди фактически выполненных применимых проверок. Остановки «Не требуется», «Отключено» и ещё не настроенные проверки не входят в знаменатель. Порог DQ >= 0.8 считается достаточным для передачи данных в модуль «Предобработка».
 
 Ссылки:
 - DAMA DMBOK, 2nd Edition, Chapter 13: Data Quality
@@ -161,7 +170,7 @@ const DATA_TYPES_METRICS_DESCRIPTION = `Метрики и алгоритм: Ти
 1. GET /v1/session/dataset/validate получает полный DataFrame активной сессии.
 2. Общая функция профилирования, уже используемая вкладкой «Загрузка», вычисляет фактические dtype и семантические классы без повторной реализации.
 3. Если задана Pandera-схема, backend строит DataFrameSchema, выполняет lazy-валидацию с разрешённым правилами приведением типов и агрегирует failure cases.
-4. status = done означает, что схема задана и нарушений нет; warning — найдены нарушения; pending — фактический профиль построен, но ожидаемая схема не выбрана, поэтому подтвердить соответствие типов нельзя.
+4. status = done означает, что схема задана и нарушений нет; warning — найдены нарушения; pending используется, когда аналитик принудительно включил проверку, но её эталон ещё не настроен; skipped — нейтральный пропуск.
 
 Источники правил
 Если аналитик не сохранил собственную схему и не выбрал шаблон, backend строит безопасный системный эталон по dtype, приводимости значений и семантике названия колонки. Приоритет разрешения правил: схема и переопределения сессии → выбранный шаблон → системные правила. Поэтому после общего запуска проверка типов всегда получает однозначный статус: «Проверка пройдена» либо «Найдены проблемы».`;
@@ -344,6 +353,9 @@ export function TsAnalysisValidation() {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [validationHasRun, setValidationHasRun] = useState(false);
   const [validationVersion, setValidationVersion] = useState(0);
+  const [checkModes, setCheckModes] = useState<Record<string, CheckMode>>(DEFAULT_CHECK_MODES);
+  const [modeSaving, setModeSaving] = useState<string | null>(null);
+  const [modeError, setModeError] = useState<{ checkId: string; message: string } | null>(null);
   const validationRequestId = useRef(0);
 
   const fetchValidation = useCallback(async () => {
@@ -367,6 +379,14 @@ export function TsAnalysisValidation() {
       const data = await response.json();
       if (requestId !== validationRequestId.current || !data) return;
       setChecksData(data.checks);
+      setCheckModes((current) => ({
+        ...current,
+        ...Object.fromEntries(
+          Object.entries(data.checks ?? {})
+            .filter(([, value]) => Boolean((value as ValidationCheckData).mode))
+            .map(([id, value]) => [id, (value as ValidationCheckData).mode as CheckMode])
+        ),
+      }));
       setDatasetSummary({ totalRows: data.total_rows, totalColumns: data.total_columns });
       setTypeProfile(Array.isArray(data.type_profile) ? data.type_profile : []);
       setTypeValidationMode(data.type_validation_mode === "schema" ? "schema" : "profile");
@@ -394,9 +414,35 @@ export function TsAnalysisValidation() {
     setValidationError(null);
     setValidationHasRun(false);
     setValidationVersion(0);
+    setCheckModes(DEFAULT_CHECK_MODES);
+    setModeSaving(null);
+    setModeError(null);
     setChecksLoading(false);
     return () => {
       validationRequestId.current += 1;
+    };
+  }, [activeDataset?.name]);
+
+  useEffect(() => {
+    if (!activeDataset) return;
+    let cancelled = false;
+    const fetchModes = async () => {
+      try {
+        const response = await fetch(sessionApiUrl("/dataset/validation-check-modes"), {
+          credentials: "include",
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!cancelled && data?.modes) {
+          setCheckModes({ ...DEFAULT_CHECK_MODES, ...data.modes });
+        }
+      } catch {
+        // Старый API не блокирует основную валидацию: остаётся режим «Авто».
+      }
+    };
+    void fetchModes();
+    return () => {
+      cancelled = true;
     };
   }, [activeDataset?.name]);
 
@@ -408,6 +454,8 @@ export function TsAnalysisValidation() {
     status: checksData?.[meta.id]?.status ?? "pending",
     count: checksData?.[meta.id]?.count ?? null,
     ruleSource: checksData?.[meta.id]?.rule_source ?? "not_applicable",
+    mode: checksData?.[meta.id]?.mode ?? checkModes[meta.id] ?? "auto",
+    statusReason: checksData?.[meta.id]?.status_reason ?? null,
   }));
 
   // Сворачиваем при смене секции
@@ -428,19 +476,24 @@ export function TsAnalysisValidation() {
     }
   }, [descriptionExpanded, handleOutsideClick]);
 
-  const doneCount = CHECKS.filter((c) => c.status === "done").length;
-  // DQ Score -- доля пройденных проверок СРЕДИ ПРИМЕНИМЫХ (исключая
-  // "pending": для этого датасета нет нужной колонки/справочника --
-  // не участвует ни в числителе, ни в знаменателе, честнее, чем считать
-  // pending как "не пройдено").
-  const applicableChecks = CHECKS.filter((c) => c.status !== "pending");
-  const dqScore = applicableChecks.length > 0 ? doneCount / applicableChecks.length : null;
-  const progressPct = Math.round((doneCount / CHECKS.length) * 100);
+  // Отключённые и автоматически неприменимые остановки нейтральны: они
+  // исключаются из DQ Score и знаменателя прогресса. Pending означает,
+  // что включённая аналитиком проверка ещё требует настройки.
+  const applicableChecks = CHECKS.filter((c) => c.status !== "skipped");
+  const evaluatedChecks = applicableChecks.filter((c) => c.status === "done" || c.status === "warning");
+  const doneCount = evaluatedChecks.filter((c) => c.status === "done").length;
+  const dqScore = evaluatedChecks.length > 0 ? doneCount / evaluatedChecks.length : null;
+  const progressPct = applicableChecks.length > 0
+    ? Math.round((evaluatedChecks.length / applicableChecks.length) * 100)
+    : 100;
   const activeCheck = CHECKS.find((c) => c.id === activeCheckId)!;
 
   const orderedChecks = [...CHECKS].sort((a, b) =>
     a.id === activeCheckId ? -1 : b.id === activeCheckId ? 1 : 0
   );
+
+  const displayedStatus = (check: Check): CheckStatus =>
+    check.status === "pending" && check.statusReason === "needs_rule" ? "warning" : check.status;
 
   // Переключение секции описания в центральном текстовом поле
   const handleDescriptionClick = (check: Check, section: "metrics" | "pipeline") => {
@@ -451,6 +504,31 @@ export function TsAnalysisValidation() {
   const runValidation = () => {
     if (!activeDataset) return;
     void fetchValidation();
+  };
+
+  const handleCheckModeChange = async (checkId: string, mode: CheckMode) => {
+    if (!activeDataset || modeSaving) return;
+    const previousModes = checkModes;
+    setCheckModes((current) => ({ ...current, [checkId]: mode }));
+    setModeSaving(checkId);
+    setModeError(null);
+    try {
+      const response = await fetch(sessionApiUrl("/dataset/validation-check-modes"), {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modes: { [checkId]: mode } }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (data?.modes) setCheckModes({ ...DEFAULT_CHECK_MODES, ...data.modes });
+      if (validationHasRun) await fetchValidation();
+    } catch {
+      setCheckModes(previousModes);
+      setModeError({ checkId, message: "Не удалось сохранить режим проверки" });
+    } finally {
+      setModeSaving(null);
+    }
   };
 
   // Показать справку по стандартам DQ
@@ -569,7 +647,7 @@ export function TsAnalysisValidation() {
         {/* Прогресс */}
         <div className="flex items-center gap-2">
           <p className="text-[11px] text-neutral-500 tabular-nums">
-            {doneCount}/{CHECKS.length}
+            {evaluatedChecks.length}/{applicableChecks.length}
           </p>
           <div className="flex-1 bg-neutral-200 rounded-full h-1.5">
             <div
@@ -596,14 +674,26 @@ export function TsAnalysisValidation() {
             >
               <span className="truncate">{check.label}</span>
               <span className="ml-2 shrink-0">
-                {validationHasRun && ["formats", "ranges", "consistency", "uniqueness", "inclusion"].includes(check.id) && check.status === "pending" && check.ruleSource === "not_applicable" ? (
+                {validationHasRun && check.status === "skipped" ? (
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                    check.id === activeCheckId ? "bg-white/20 text-white" : "bg-neutral-100 text-neutral-600"
+                  }`}>
+                    {check.statusReason === "disabled" ? "Отключено" : "Не требуется"}
+                  </span>
+                ) : validationHasRun && check.status === "pending" && check.statusReason === "needs_rule" ? (
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                    check.id === activeCheckId ? "bg-white/20 text-white" : "bg-amber-50 text-amber-700"
+                  }`}>
+                    Настроить
+                  </span>
+                ) : validationHasRun && ["formats", "ranges", "consistency", "uniqueness", "inclusion"].includes(check.id) && check.status === "pending" && check.ruleSource === "not_applicable" ? (
                   <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
                     check.id === activeCheckId ? "bg-white/20 text-white" : "bg-amber-50 text-amber-700"
                   }`}>
                     Нет эталона
                   </span>
                 ) : (
-                  <StatusIcon status={check.status} />
+                  <StatusIcon status={displayedStatus(check)} />
                 )}
               </span>
             </button>
@@ -766,6 +856,12 @@ export function TsAnalysisValidation() {
               onApplied={runValidation}
               onOpenRules={() => setDescriptionSection("rules")}
             />
+          ) : validationHasRun && activeCheck.status === "skipped" ? (
+            <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+              {activeCheck.statusReason === "disabled"
+                ? `Проверка «${activeCheck.label}» отключена аналитиком и не участвует в DQ Score.`
+                : `Проверка «${activeCheck.label}» не требуется для текущего датасета в режиме «Авто».`}
+            </div>
           ) : activeCheckId === "data_types" ? (
             validationHasRun || checksLoading ? (
               <ValidationTypeMatrix
@@ -845,10 +941,31 @@ export function TsAnalysisValidation() {
               }`}
             >
               <h3 className="font-semibold mb-1">
-                <StatusIcon status={check.status} /> Проверка: {check.label}
+                <StatusIcon status={displayedStatus(check)} /> Проверка: {check.label}
               </h3>
 
               <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
+
+              <label className="mb-2 block text-[11px] font-medium text-neutral-600">
+                Режим проверки
+                <select
+                  aria-label={`Режим проверки ${check.label}`}
+                  value={checkModes[check.id] ?? check.mode}
+                  disabled={!activeDataset || modeSaving !== null}
+                  onChange={(event) => void handleCheckModeChange(check.id, event.target.value as CheckMode)}
+                  className="mt-1 w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm font-normal text-neutral-800 focus:outline-none focus:ring-1 focus:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="auto">Авто</option>
+                  <option value="enabled">Включена</option>
+                  <option value="disabled">Отключена</option>
+                </select>
+              </label>
+              {modeSaving === check.id && (
+                <p role="status" className="mb-2 text-[11px] text-brand">Сохранение режима…</p>
+              )}
+              {modeError?.checkId === check.id && (
+                <p role="alert" className="mb-2 text-[11px] text-red-700">{modeError.message}</p>
+              )}
 
               {checksLoading && (
                 <p role="status" className="text-sm text-brand bg-brand-light rounded px-3 py-2 mb-2">
@@ -875,9 +992,20 @@ export function TsAnalysisValidation() {
                   Проверка пройдена
                 </p>
               )}
-              {!checksLoading && validationHasRun && !validationError && !checksData?.[check.id]?.error && check.status === "pending" && (
+              {!checksLoading && validationHasRun && !validationError && !checksData?.[check.id]?.error && check.status === "skipped" && (
                 <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
-                  {check.id === "formats" && check.ruleSource === "not_applicable"
+                  {check.statusReason === "disabled" ? "Отключено" : "Не требуется"}
+                </p>
+              )}
+              {!checksLoading && validationHasRun && !validationError && !checksData?.[check.id]?.error && check.status === "pending" && (
+                <p role="status" className={`text-sm rounded px-3 py-2 mb-2 ${
+                  check.statusReason === "needs_rule"
+                    ? "text-amber-700 bg-amber-50"
+                    : "text-neutral-600 bg-neutral-50"
+                }`}>
+                  {check.statusReason === "needs_rule"
+                    ? "Требуется настройка"
+                    : check.id === "formats" && check.ruleSource === "not_applicable"
                     ? "Эталон форматов не задан"
                     : check.id === "ranges" && check.ruleSource === "not_applicable"
                   ? "Эталон диапазонов не задан"
@@ -891,7 +1019,7 @@ export function TsAnalysisValidation() {
                 </p>
               )}
 
-              {validationHasRun && !checksLoading && (
+              {validationHasRun && !checksLoading && check.status !== "skipped" && (
                 <p className="mb-2 text-[11px] font-medium text-neutral-500">
                   {RULE_SOURCE_LABELS[check.ruleSource]}
                 </p>

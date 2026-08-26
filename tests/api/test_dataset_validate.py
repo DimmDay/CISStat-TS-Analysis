@@ -7,7 +7,7 @@
   2. Ответ содержит все 10 check_id, форма {status, count, items}.
   3. Без ручной настройки используется системный набор правил.
   4. Реальное нарушение диапазона (auto_generate_rules) видно в ranges.
-  5. referential всегда "pending" без явного шаблона (честно, не "done").
+  5. referential в режиме «Авто» нейтрально пропускается без явного шаблона.
   6. Дубликаты строк отражаются в uniqueness.
   7. Системный режим назначает исходную схему типов и возвращает профиль.
   8. Ни одна из 10 проверок не падает с 500 на реалистичном "грязном" датасете
@@ -70,9 +70,10 @@ def test_response_has_all_10_checks_with_correct_shape():
     assert body["total_rows"] == 15
     assert body["total_columns"] == 3
     for check_id, check in body["checks"].items():
-        assert check["status"] in ("done", "warning", "pending"), check_id
+        assert check["status"] in ("done", "warning", "pending", "skipped"), check_id
         assert "count" in check
         assert "items" in check
+        assert check["mode"] == "auto"
 
 
 def test_range_violation_visible_via_auto_generated_rules():
@@ -86,16 +87,16 @@ def test_range_violation_visible_via_auto_generated_rules():
     assert ranges["items"] == [{"label": "price", "count": 1}]
 
 
-def test_referential_is_always_pending_without_explicit_template():
+def test_referential_is_skipped_in_auto_mode_without_explicit_template():
     """auto_generate_rules не умеет придумать справочник для сверки --
-    честное 'pending' (не 'done'), т.к. физически нечего проверять."""
+    честное нейтральное состояние, а не ложная ошибка или успех."""
     df = pd.DataFrame({"value": [1, 2, 3], "label": ["x", "y", "z"]})
     _upload_df(df)
     resp = client.get("/v1/session/dataset/validate")
     body = resp.json()
     assert body["checks"]["referential"] == {
-        "status": "pending", "count": None, "items": [], "scope": "column", "error": None,
-        "rule_source": "not_applicable",
+        "status": "skipped", "count": None, "items": [], "scope": "column", "error": None,
+        "rule_source": "not_applicable", "mode": "auto", "status_reason": "not_required",
     }
 
 
@@ -115,7 +116,7 @@ def test_system_data_types_passes_without_manual_schema_and_returns_profile():
 
     assert body["checks"]["data_types"] == {
         "status": "done", "count": 0, "items": [], "scope": "dataset",
-        "error": None, "rule_source": "system",
+        "error": None, "rule_source": "system", "mode": "auto", "status_reason": None,
     }
     assert body["type_validation_mode"] == "schema"
     assert body["type_profile"] == [

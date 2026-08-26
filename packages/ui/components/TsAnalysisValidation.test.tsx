@@ -448,6 +448,70 @@ describe("TsAnalysisValidation", () => {
     expect(screen.getByText(/Задайте regex-правила в «Управлении правилами»/i)).toBeInTheDocument();
   });
 
+  it("shows auto non-applicable and manually disabled checks as neutral states", async () => {
+    mockActiveValidation(() => Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        ...validationResponse("done", "schema", 0),
+        checks: Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, {
+          status: id === "inclusion" || id === "referential" ? "skipped" : "done",
+          count: 0,
+          items: [],
+          scope: "dataset",
+          rule_source: "not_applicable",
+          mode: id === "referential" ? "disabled" : "auto",
+          status_reason: id === "referential" ? "disabled" : id === "inclusion" ? "not_required" : null,
+        }])),
+      }),
+    }));
+
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+
+    expect(await screen.findAllByText("Не требуется")).not.toHaveLength(0);
+    expect(screen.getAllByText("Отключено")).not.toHaveLength(0);
+    expect(screen.getByText("8/8")).toBeInTheDocument();
+    expect(screen.getByText("1.00")).toBeInTheDocument();
+  });
+
+  it("changes a check mode from the control panel and reruns validation", async () => {
+    let validateCalls = 0;
+    global.fetch = jest.fn((url: string, options?: RequestInit) => {
+      if (url.includes("/session/current")) return Promise.resolve({ ok: true, json: () => Promise.resolve({
+        has_active_dataset: true,
+        dataset: { dataset_id: "d1", name: "ohlcv.csv", rows: 3, columns: 6, size_label: "1 KB" },
+        stages: {}, last_active_stage: null,
+      }) });
+      if (url.includes("/target-column")) return Promise.resolve({ ok: true, json: () => Promise.resolve({ target_column: null, suggested_column: null, available_columns: [], has_dataset: true }) });
+      if (url.includes("/validation-check-modes")) {
+        if (options?.method === "PUT") return Promise.resolve({ ok: true, json: () => Promise.resolve({ modes: { inclusion: "disabled" } }) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ modes: { inclusion: "auto" } }) });
+      }
+      if (url.includes("/dataset/validate")) {
+        validateCalls += 1;
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(validationResponse("done", "schema", 0)) });
+      }
+      return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
+    }) as unknown as typeof fetch;
+
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    await waitFor(() => expect(validateCalls).toBe(1));
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Режим проверки Принадлежность к набору" }), {
+      target: { value: "disabled" },
+    });
+    await waitFor(() => expect(validateCalls).toBe(2));
+    const putCall = (global.fetch as jest.Mock).mock.calls.find(
+      (call: [string, RequestInit?]) => call[0].includes("/validation-check-modes") && call[1]?.method === "PUT"
+    );
+    expect(JSON.parse(putCall[1].body as string)).toEqual({ modes: { inclusion: "disabled" } });
+  });
+
   it("uses the ranges status, overview and correction-master contract", async () => {
     mockActiveValidation(() => Promise.resolve({
       ok: true,
