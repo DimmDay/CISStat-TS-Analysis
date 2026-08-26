@@ -16,16 +16,46 @@
    (как preview_range_corrections), а не df.dropna() по всему датасету --
    иначе удаление строк из-за пропуска в непроверяемой колонке было бы
    неожиданным побочным эффектом.
+
+Прогноз влияния на статистики -- перенос блока app.py "Прогноз влияния на
+статистики" (~строки 7959-8025, кнопка btn_show_fill_preview): для каждой
+ЧИСЛОВОЙ выбранной колонки считаются mean/std/median ДО и ПОСЛЕ применения
+стратегии на копии. Легаси показывал это только для первого числового
+столбца среди всех колонок датасета; здесь -- для каждой выбранной числовой
+колонки отдельно, без произвольного ограничения "первая колонка".
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable, Optional
 
 import pandas as pd
 
 from app.preprocessing.missing import profile_missing
 
 STRATEGIES = {"drop_rows", "median_mode", "mean_mode", "constant", "interpolate", "flag"}
+
+
+def _safe_stat(series: pd.Series, func: Callable[[pd.Series], Any]) -> Optional[float]:
+    """Как safe_stat() из app.py: не падает на пустой/всецело-пропущенной
+    серии, возвращает None вместо NaN/исключения (JSON не кодирует NaN)."""
+    valid = series.dropna()
+    if valid.empty:
+        return None
+    try:
+        value = func(valid)
+    except Exception:
+        return None
+    return float(value) if pd.notnull(value) else None
+
+
+def _column_stats(series: pd.Series) -> dict[str, Optional[float]]:
+    return {
+        "mean": _safe_stat(series, lambda s: s.mean()),
+        "std": _safe_stat(series, lambda s: s.std()),
+        "median": _safe_stat(series, lambda s: s.median()),
+    }
+
+
 
 
 def preview_missing_corrections(
@@ -119,6 +149,17 @@ def preview_missing_corrections(
         else:
             still_missing = int(result_df[column].isnull().sum())
             changed_count = missing_count - still_missing
+
+        # Прогноз влияния на статистики -- только для числовых колонок
+        # (как в app.py); для drop_rows "after" считается по оставшимся
+        # строкам, поэтому уменьшение выборки видно и в std/median, а не
+        # только в счётчике удалённых строк.
+        stats_before = None
+        stats_after = None
+        if pd.api.types.is_numeric_dtype(df[column]):
+            stats_before = _column_stats(df[column])
+            stats_after = _column_stats(result_df[column]) if column in result_df.columns else None
+
         results.append({
             "column": column,
             "missing_count": missing_count,
@@ -128,6 +169,8 @@ def preview_missing_corrections(
                 int(i) for i in df.index[masks[column]][:5].tolist()
             ],
             "flag_column": added_columns[column],
+            "stats_before": stats_before,
+            "stats_after": stats_after,
         })
 
     return result_df, results, rows_removed

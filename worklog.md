@@ -3282,3 +3282,46 @@ TDD и проверка
 - packages/ui/index.ts
 - tests/unit/test_sufficiency.py
 - tests/api/test_dataset_sufficiency_plan.py
+
+---
+
+Task ID: 53 — UI-полировка остановки «Пропуски» + прогноз влияния на статистики
+
+Date: 2026-08-26
+
+Задача (4 пункта от тимлида)
+1. Заголовок «Панель управления» над правой боковой панелью — по аналогии с «Валидацией».
+2. Кнопка «Метрики и алгоритм» — реальное описание по логике «Валидации» (Цель / Метрики / Алгоритм backend + семантический блок).
+3. Кнопка «Исправить пропуски» — пошаговая инструкция прохождения мастера в окне «Описание».
+4. Подзаголовок мастера «оцените последствия на копии» — сделать утверждение правдивым: переиспользовать существующий backend-функционал прогноза влияния стратегии на статистики ряда (аналитик не может оценить последствия «на глаз»).
+
+Синхронизация (перед началом работы)
+Локальный WIP (Task 48 + начатая полировка) сохранён в защитный stash, выполнен fast-forward до `origin/main` (`4c876d7`). Origin уже содержал Task 48 целиком (закоммичен тимлидом as-is) плюс Tasks 49–52 (Validation: ссылочная целостность, качество текста, регулярность шага, достаточность наблюдений). Два тривиальных конфликта при возврате stash — `session_store.py` и `worklog.md` (обе стороны независимо дописывали в конец/добавляли поле `sufficiency_plan`), разрешены в пользу upstream без потери истории (проверено: записи Task 48–52 в `worklog.md` все на месте). Контрольный прогон подтвердил чистоту синхронизации: 38/38 Jest-suites, 822 backend-теста (29 preexisting failures без изменений).
+
+Реализация
+
+Пункт 1 (заголовок). `TsAnalysisPreprocessing.tsx`: `<aside className="w-80 shrink-0">` → `<aside className="w-80 shrink-0 pt-1">` + `<div className="mb-4"><h2>Панель управления</h2></div>` — один в один как в `TsAnalysisValidation.tsx`.
+
+Пункты 2–3 (реальные описания). Добавлены константы `MISSING_METRICS_DESCRIPTION` и `MISSING_PIPELINE_DESCRIPTION` по формату, установленному в `TsAnalysisValidation.tsx` (`RANGES_METRICS_DESCRIPTION` и т.п.): Цель → Метрики (нумерованный список) → Алгоритм backend (нумерованный список со ссылкой на реальные функции `profile_missing`/`missing_summary`/`missing_per_row_histogram`) → смысловой блок. Смысловой блок — механизм пропусков MCAR/MAR/MNAR: перенесена суть легаси-диагностики app.py (тепловая карта корреляции индикаторов пропуска между колонками, ~строка 7823 `" Анализ механизма пропусков (MCAR/MAR/MNAR)"`), с честной оговоркой, что сама визуализация механизма в веб-версии пока не реализована (только сырые данные `missing_per_row_histogram` для неё уже готовы) — чтобы не создавать ложное впечатление о несуществующей функциональности. `descriptionContent`/`descriptionSubtitle` в `TsAnalysisPreprocessing.tsx` дополнены веткой `activeCheckId === "missing"`, использующей эти константы вместо универсального шаблона; остальные 10 моковых остановок используют прежний шаблон без изменений.
+
+Пункт 4 (прогноз влияния на статистики) — перенос легаси-функционала, а не текстовая правка. Источник — app.py, блок «Прогноз влияния на статистики» (кнопка `btn_show_fill_preview`, ~строки 7959-8025): для числовой колонки считает mean/std/median ДО и ПОСЛЕ применения стратегии на копии. Легаси показывал это только для ПЕРВОЙ числовой колонки во всём датасете; веб-версия обобщена на каждую выбранную числовую колонку отдельно.
+- `apps/api/missing_correction.py`: добавлены `_safe_stat`/`_column_stats` (перенос `safe_stat()` из app.py — не падает на пустой/полностью-пропущенной серии, возвращает `None` вместо NaN/исключения). `preview_missing_corrections` считает `stats_before`/`stats_after` для каждой числовой колонки из выбранных; для `drop_rows` "after" считается по уже отфильтрованным строкам (сужение выборки видно и в std/median, не только в счётчике удалённых строк); для `flag` "before" == "after" (значения не меняются — честный сигнал "без эффекта").
+- `apps/api/schemas.py`: новая `MissingColumnStatsOut` (mean/std/median, все поля `Optional[float]` по отдельности — так различаем "не числовая колонка" (`stats_before is None` целиком) от "числовая колонка без единого валидного значения" (объект есть, поля `None`)); добавлена в `MissingCorrectionResultOut`.
+- `packages/ui/components/PreprocessingMissingPipeline.tsx`: блок «Прогноз влияния на статистики» в шаге 3 (предпросмотр) — таблица mean/median/std «до → после» с дельтой в % (подавляется, когда до==после, чтобы не показывать обманчивое «+0.0%» для неизменных величин) и предупреждением о риске избыточного сглаживания. Подписи и структура — под шаг 4 инструкции мастера (пункт 3 задачи).
+
+TDD и проверка
+- Backend: 5 новых unit-тестов на `_safe_stat`/статистики (числовая/нечисловая колонка, `drop_rows`, `flag`, полностью пустая числовая колонка) + 1 API-тест на присутствие `stats_before`/`stats_after` в ответе — все зелёные (16/16 unit, 12/12 API).
+- Frontend: 1 новый тест на отображение прогноза (mean не меняется, std падает — с реальным form-factor чисел через `toLocaleString("ru-RU")`), 3 новых интеграционных теста в `TsAnalysisPreprocessing.test.tsx` (заголовок «Панель управления», реальный текст Цель/Метрики/Алгоритм backend с упоминанием MCAR/MAR/MNAR, пошаговая инструкция мастера с упоминанием «Прогноз влияния на статистики»).
+- Полный Jest — 38/38 suites, 333/333 tests PASS.
+- Полный pytest (без `test_file_loader.py`) — 827 passed, 29 failed (preexisting, без изменений от Task 48), 1 skipped.
+- `npm run typecheck:all` — PASS для embedded и standalone.
+
+Изменённые файлы
+- apps/api/missing_correction.py
+- apps/api/schemas.py
+- packages/ui/components/TsAnalysisPreprocessing.tsx
+- packages/ui/components/TsAnalysisPreprocessing.test.tsx
+- packages/ui/components/PreprocessingMissingPipeline.tsx
+- packages/ui/components/PreprocessingMissingPipeline.test.tsx
+- tests/unit/test_missing_correction.py
+- tests/api/test_dataset_missing_correction.py

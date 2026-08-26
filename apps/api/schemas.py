@@ -548,6 +548,17 @@ class DatasetMissingCorrectionRequest(BaseModel):
     apply: bool = Field(False, description="False -- preview; True -- сохранить в сессии")
 
 
+class MissingColumnStatsOut(BaseModel):
+    """Mean/std/median одной колонки -- используется и для "before", и для
+    "after" в прогнозе влияния стратегии на статистики (перенос app.py
+    "Прогноз влияния на статистики"). Поля Optional по отдельности (не
+    весь объект), чтобы отличать "числовая колонка без валидных значений"
+    (объект есть, поля None) от "колонка не числовая" (stats_* is None)."""
+    mean: Optional[float] = None
+    std: Optional[float] = None
+    median: Optional[float] = None
+
+
 class MissingCorrectionResultOut(BaseModel):
     column: str
     missing_count: int
@@ -555,6 +566,8 @@ class MissingCorrectionResultOut(BaseModel):
     still_missing: int
     missing_examples: List[int] = Field(default_factory=list)
     flag_column: Optional[str] = None
+    stats_before: Optional[MissingColumnStatsOut] = None
+    stats_after: Optional[MissingColumnStatsOut] = None
 
 
 class DatasetMissingCorrectionResponse(BaseModel):

@@ -41,6 +41,8 @@ const PREVIEW = {
   columns: [{
     column: "Price", missing_count: 2, changed_count: 2,
     still_missing: 0, missing_examples: [1, 3], flag_column: null,
+    stats_before: { mean: 30, median: 28, std: 14.14 },
+    stats_after: { mean: 30, median: 27, std: 11.55 },
   }],
   profile: [
     { ...PROFILE.columns[0], missing_count: 0, missing_pct: 0, missing_examples: [] },
@@ -97,6 +99,20 @@ describe("PreprocessingMissingPipeline", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: /Подтверждаю изменение активного датасета/i }));
     fireEvent.click(apply);
     await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
+  });
+
+  it("shows the before/after impact forecast for numeric columns", async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(PROFILE) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(PREVIEW) });
+    render(<PreprocessingMissingPipeline onApplied={jest.fn()} />);
+
+    await screen.findByText("Price");
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр изменений" }));
+
+    expect(await screen.findByText("Прогноз влияния на статистики")).toBeInTheDocument();
+    expect(screen.getByText("30 → 30")).toBeInTheDocument(); // mean не меняется
+    expect(screen.getByText(/14,14 → 11,55/)).toBeInTheDocument(); // std падает
   });
 
   it("shows a positive terminal state when there are no missing values", async () => {

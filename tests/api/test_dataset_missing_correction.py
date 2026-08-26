@@ -80,6 +80,9 @@ def test_apply_persists_correction_and_profile_reflects_it():
     )
     assert applied.status_code == 200, applied.text
     assert applied.json()["profile"][0]["missing_count"] == 0
+    stats = applied.json()["columns"][0]
+    assert stats["stats_before"]["mean"] == pytest.approx(20.0)  # mean(10, 30)
+    assert stats["stats_after"]["mean"] == pytest.approx(20.0)  # медиана=20 не меняет mean
 
     profile = client.get("/v1/session/dataset/missing-profile").json()
     assert profile["columns"][0]["missing_count"] == 0

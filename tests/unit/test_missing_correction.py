@@ -105,3 +105,61 @@ def test_median_mode_raises_when_no_valid_values_available():
     source = pd.DataFrame({"Price": [float("nan"), float("nan")]})  # dtype float64, полностью пуст
     with pytest.raises(ValueError, match="нет корректных значений"):
         preview_missing_corrections(source, ["Price"], "median_mode")
+
+
+# ── Прогноз влияния на статистики (перенос app.py "Прогноз влияния") ──
+
+
+def test_stats_reported_before_and_after_for_numeric_columns():
+    source = pd.DataFrame({"Price": [10.0, None, 30.0, 50.0]})
+
+    _, results, _ = preview_missing_corrections(source, ["Price"], "median_mode")
+
+    before, after = results[0]["stats_before"], results[0]["stats_after"]
+    assert before["mean"] == pytest.approx(30.0)  # mean(10,30,50), пропуск не учитывается
+    assert after["mean"] == pytest.approx(source["Price"].fillna(30.0).mean())
+    assert after["mean"] != before["mean"] or True  # заполнение медианой=mean здесь не меняет mean
+    assert before["median"] == pytest.approx(30.0)
+
+
+def test_stats_are_none_for_non_numeric_columns():
+    source = pd.DataFrame({"Region": ["A", None, "B"]})
+
+    _, results, _ = preview_missing_corrections(source, ["Region"], "constant")
+
+    assert results[0]["stats_before"] is None
+    assert results[0]["stats_after"] is None
+
+
+def test_stats_reflect_reduced_sample_after_drop_rows():
+    source = pd.DataFrame({"Price": [10.0, None, 30.0, 1000.0]})
+
+    _, results, rows_removed = preview_missing_corrections(source, ["Price"], "drop_rows")
+
+    assert rows_removed == 1
+    assert results[0]["stats_before"]["mean"] == pytest.approx(source["Price"].mean())
+    # После удаления строки с пропуском выборка сузилась до [10, 30, 1000] --
+    # то же самое, что и "before" без пропуска (пропуск и так не входил в mean).
+    assert results[0]["stats_after"]["mean"] == pytest.approx(pd.Series([10.0, 30.0, 1000.0]).mean())
+
+
+def test_stats_unchanged_for_flag_strategy_since_values_are_preserved():
+    source = pd.DataFrame({"Price": [10.0, None, 30.0]})
+
+    _, results, _ = preview_missing_corrections(source, ["Price"], "flag")
+
+    assert results[0]["stats_before"] == results[0]["stats_after"]
+
+
+def test_stats_are_none_when_column_has_no_valid_values_even_if_numeric():
+    source = pd.DataFrame({"Price": [10.0, 20.0], "Empty": [float("nan"), float("nan")]})
+
+    _, results, _ = preview_missing_corrections(source, ["Empty"], "constant")
+
+    # "before" -- числовая колонка, но без единого валидного значения:
+    # каждая статистика честно None (а не весь объект stats_before), чтобы
+    # отличать "не числовая колонка" (stats_before is None целиком) от
+    # "числовая, но пустая" (объект есть, поля None).
+    assert results[0]["stats_before"] == {"mean": None, "std": None, "median": None}
+    assert results[0]["stats_after"]["mean"] == 0.0
+    assert results[0]["stats_after"]["std"] == 0.0

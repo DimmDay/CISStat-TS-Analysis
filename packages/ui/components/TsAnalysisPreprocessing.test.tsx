@@ -200,6 +200,31 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
     expect(screen.getByText(/0\/10/)).toBeInTheDocument();
   });
 
+  it("shows a 'Панель управления' header above the right-hand column", async () => {
+    render(<TsAnalysisPreprocessing />);
+    expect(await screen.findByRole("heading", { name: "Панель управления" })).toBeInTheDocument();
+  });
+
+  it("shows the real Цель/Метрики/Алгоритм backend description for 'Метрики и алгоритм'", async () => {
+    render(<TsAnalysisPreprocessing />);
+    await screen.findByRole("table", { name: "Матрица пропусков по колонкам" });
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+
+    expect(await screen.findByText(/Метрики и алгоритм: Пропуски/)).toBeInTheDocument();
+    expect(screen.getByText(/Алгоритм backend/)).toBeInTheDocument();
+    expect(screen.getByText(/MCAR \/ MAR \/ MNAR/)).toBeInTheDocument();
+  });
+
+  it("shows step-by-step wizard instructions for 'Исправить пропуски'", async () => {
+    render(<TsAnalysisPreprocessing />);
+    await screen.findByRole("table", { name: "Матрица пропусков по колонкам" });
+    fireEvent.click(screen.getByRole("button", { name: "Исправить пропуски" }));
+
+    expect((await screen.findAllByText(/Мастер исправления пропусков/)).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Отметьте колонки с пропусками/)).toBeInTheDocument();
+    expect(screen.getByText(/Прогноз влияния на статистики/)).toBeInTheDocument();
+  });
+
   it("opens the correction wizard and refreshes the profile after applying", async () => {
     const preview = {
       applied: false, strategy: "median_mode", total_missing: 2, total_changed: 2,
