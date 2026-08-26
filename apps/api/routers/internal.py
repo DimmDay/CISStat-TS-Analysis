@@ -136,6 +136,8 @@ def load_rules_template(template_id: str):
         consistency=rules.get("consistency"),
         formats=rules.get("formats"),
         referential=rules.get("referential"),
+        text_quality=rules.get("text_quality"),
+        regularity=rules.get("regularity"),
         outliers=rules.get("outliers"),
         sufficiency=rules.get("sufficiency"),
     )

@@ -133,6 +133,8 @@ export { ValidationReferentialOverview } from "./components/ValidationReferentia
 export { ValidationReferentialPipeline } from "./components/ValidationReferentialPipeline";
 export { ValidationTextQualityOverview } from "./components/ValidationTextQualityOverview";
 export { ValidationTextQualityPipeline } from "./components/ValidationTextQualityPipeline";
+export { ValidationRegularityOverview } from "./components/ValidationRegularityOverview";
+export { ValidationRegularityPipeline } from "./components/ValidationRegularityPipeline";
 export type {
   ReferentialProfileItem,
   ReferentialProfileResponse,
@@ -142,6 +144,11 @@ export type {
   TextQualityProfileItem,
   TextQualityProfileResponse,
 } from "./components/ValidationTextQualityOverview";
+export type {
+  RegularityGroup,
+  RegularityProfile,
+  RegularityProfileResponse,
+} from "./components/ValidationRegularityOverview";
 export type {
   TypeValidationMode,
   ValidationSemanticType,

@@ -45,6 +45,8 @@ import { ValidationReferentialOverview } from "./ValidationReferentialOverview";
 import { ValidationReferentialPipeline } from "./ValidationReferentialPipeline";
 import { ValidationTextQualityOverview } from "./ValidationTextQualityOverview";
 import { ValidationTextQualityPipeline } from "./ValidationTextQualityPipeline";
+import { ValidationRegularityOverview } from "./ValidationRegularityOverview";
+import { ValidationRegularityPipeline } from "./ValidationRegularityPipeline";
 import { useAppShell } from "../context/AppShellContext";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
@@ -375,6 +377,32 @@ const TEXT_QUALITY_PIPELINE_DESCRIPTION = `Мастер исправления �
 
 Нормализация удаляет управляющие и повреждённые символы, обрезает края, сжимает пробелы и приводит текст к нижнему регистру. Она может объединить ранее разные категории, поэтому результат обязательно показывается до применения.`;
 
+const REGULARITY_METRICS_DESCRIPTION = `Метрики и алгоритм: Равномерность шага
+
+Цель
+Проверка определяет, упорядочены ли временные метки и образуют ли они стабильную сетку отдельно внутри каждой сущности панельного датасета. Нерегулярность мешает корректной интерполяции, STL, ACF/PACF и моделям семейства ARIMA.
+
+Метрики
+1. Некорректные даты — непустые значения, которые нельзя преобразовать во временную метку.
+2. Нарушения сортировки — переходы назад во времени в исходном порядке строк.
+3. Дубли дат — повторные метки внутри одной сущности.
+4. Разрывы — интервалы больше модального шага × порог; отдельно оценивается число пропущенных периодов.
+
+Алгоритм backend
+1. Resolver использует явные date_column, entity_column, frequency и порог из правил сессии; иначе применяет системные детекторы структуры.
+2. Профиль строится отдельно по каждой группе и не смешивает временные шкалы разных сущностей.
+3. Общая валидация, обзор и мастер используют один профиль причин нарушений.
+4. Нет надёжной временной оси — «Не требуется» в режиме «Авто» или «Требуется настройка» в режиме «Включена»; ноль причин — «Проверка пройдена».`;
+
+const REGULARITY_PIPELINE_DESCRIPTION = `Мастер исправления равномерности шага
+
+1. Проверьте определённые системой временную ось, группировку, частоту и найденные причины нерегулярности.
+2. Выберите стратегию Streamlit: сортировка, построение полной сетки с интерполяцией/протяжкой/пропусками, фиктивные нули либо диагностический флаг.
+3. Выполните предпросмотр на глубокой копии и оцените добавленные строки, агрегированные дубли и оставшиеся нарушения.
+4. Подтвердите применение. Датасет сохраняется атомарно, затем общая валидация запускается повторно.
+
+Ресемплирование выполняется отдельно внутри каждой сущности. Некорректные даты требуют сначала исправить тип или формат; ошибки преобразования не скрываются.`;
+
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisValidation() {
@@ -626,6 +654,7 @@ export function TsAnalysisValidation() {
       if (activeCheck.id === "inclusion") return INCLUSION_METRICS_DESCRIPTION;
       if (activeCheck.id === "referential") return REFERENTIAL_METRICS_DESCRIPTION;
       if (activeCheck.id === "text_quality") return TEXT_QUALITY_METRICS_DESCRIPTION;
+      if (activeCheck.id === "regularity") return REGULARITY_METRICS_DESCRIPTION;
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
     if (activeCheck.id === "data_types") return DATA_TYPES_PIPELINE_DESCRIPTION;
@@ -636,6 +665,7 @@ export function TsAnalysisValidation() {
     if (activeCheck.id === "inclusion") return INCLUSION_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "referential") return REFERENTIAL_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "text_quality") return TEXT_QUALITY_PIPELINE_DESCRIPTION;
+    if (activeCheck.id === "regularity") return REGULARITY_PIPELINE_DESCRIPTION;
     return `Полный пайплайн: ${activeCheck.label.toLowerCase()}\n\n1. Обнаружение → 2. Диагностика → 3. Преобразование → 4. Верификация\n\n${activeCheck.description}`;
   })();
 
@@ -653,6 +683,7 @@ export function TsAnalysisValidation() {
     if (activeCheck.id === "inclusion") return "Мастер исправления принадлежности к набору";
     if (activeCheck.id === "referential") return "Мастер исправления ссылочной целостности";
     if (activeCheck.id === "text_quality") return "Мастер исправления целостности текста";
+    if (activeCheck.id === "regularity") return "Мастер исправления равномерности шага";
     return `Полный пайплайн — ${activeCheck.label}`;
   })();
 
@@ -863,6 +894,8 @@ export function TsAnalysisValidation() {
               ? "Мастер исправления ссылочной целостности"
               : activeCheckId === "text_quality" && descriptionSection === "pipeline"
               ? "Мастер исправления целостности текста"
+              : activeCheckId === "regularity" && descriptionSection === "pipeline"
+              ? "Мастер исправления равномерности шага"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -882,6 +915,8 @@ export function TsAnalysisValidation() {
               ? "Проверьте связи, выберите стратегию, оцените последствия и устраните сиротские ключи."
               : activeCheckId === "text_quality" && descriptionSection === "pipeline"
               ? "Выберите колонки и стратегию, оцените последствия очистки и примените исправления."
+              : activeCheckId === "regularity" && descriptionSection === "pipeline"
+              ? "Проверьте временную сетку, выберите стратегию, оцените последствия и примените исправление."
               : activeCheckId === "data_types"
               ? "Распределение фактических типов и построчная матрица колонок."
               : activeCheckId === "ranges"
@@ -896,6 +931,8 @@ export function TsAnalysisValidation() {
               ? "Соотношение связанных и сиротских записей и матрица активных внешних ключей."
               : activeCheckId === "text_quality"
               ? "Соотношение чистых и проблемных значений и матрица причин по текстовым колонкам."
+              : activeCheckId === "regularity"
+              ? "Равномерность временной сетки по группам, разрывы, дубли и нарушения сортировки."
               : "Визуализация результатов проверки по активному критерию."}
           </p>
 
@@ -939,6 +976,11 @@ export function TsAnalysisValidation() {
             />
           ) : activeCheckId === "text_quality" && descriptionSection === "pipeline" ? (
             <ValidationTextQualityPipeline onApplied={runValidation} />
+          ) : activeCheckId === "regularity" && descriptionSection === "pipeline" ? (
+            <ValidationRegularityPipeline
+              onApplied={runValidation}
+              onOpenRules={() => setDescriptionSection("rules")}
+            />
           ) : validationHasRun && activeCheck.status === "skipped" ? (
             <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
               {activeCheck.statusReason === "disabled"
@@ -1004,6 +1046,14 @@ export function TsAnalysisValidation() {
             ) : (
               <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы построить профиль целостности текстовых колонок.
+              </div>
+            )
+          ) : activeCheckId === "regularity" ? (
+            validationHasRun ? (
+              <ValidationRegularityOverview refreshKey={validationVersion} />
+            ) : (
+              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+                Запустите валидацию, чтобы проверить равномерность временной сетки по каждой сущности.
               </div>
             )
           ) : (
@@ -1161,6 +1211,8 @@ export function TsAnalysisValidation() {
                   ? "Исправить ссылочную целостность"
                   : check.id === "text_quality"
                   ? "Исправить целостность текста"
+                  : check.id === "regularity"
+                  ? "Исправить равномерность шага"
                   : "Полный пайплайн"}
               </button>
 

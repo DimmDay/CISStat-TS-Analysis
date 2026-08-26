@@ -87,6 +87,13 @@ interface TextQualityRule {
   garbageDraft?: string;
 }
 
+interface RegularityRule {
+  date_column?: string;
+  entity_column?: string;
+  frequency?: string;
+  gap_threshold_multiplier?: number;
+}
+
 interface RulesContent {
   ranges: RangeRule[];
   inclusion?: Record<string, InclusionRule>;
@@ -95,6 +102,7 @@ interface RulesContent {
   formats?: Record<string, FormatRule>;
   referential?: ReferentialRule[];
   text_quality?: TextQualityRule;
+  regularity?: RegularityRule;
   outliers?: Record<string, unknown>;
   sufficiency?: Record<string, unknown>;
 }
@@ -288,6 +296,12 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
               },
             })
           : templateContent.text_quality,
+        regularity: activeOverrides.regularity
+          ? {
+              ...(templateContent.regularity || {}),
+              ...(activeOverrides.regularity as RegularityRule),
+            }
+          : templateContent.regularity,
       };
       setRules(content);
       setUniquenessKeyDraft(content.uniqueness?.composite_key?.join(", ") || "");
@@ -327,7 +341,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       };
       setRules(content);
       setUniquenessKeyDraft(content.uniqueness?.composite_key?.join(", ") || "");
-      setOriginalRules({ ranges: [], formats: {}, consistency: [], uniqueness: {}, inclusion: {}, referential: [], text_quality: undefined });
+      setOriginalRules({ ranges: [], formats: {}, consistency: [], uniqueness: {}, inclusion: {}, referential: [], text_quality: undefined, regularity: undefined });
       setError(null);
     }
   }, [selectedTemplate, loadTemplate, sessionSelection]);
@@ -541,6 +555,11 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     setRules({ ...rules, text_quality: { ...(rules.text_quality || {}), ...patch } });
   };
 
+  const updateRegularity = (patch: Partial<RegularityRule>) => {
+    if (!rules) return;
+    setRules({ ...rules, regularity: { ...(rules.regularity || {}), ...patch } });
+  };
+
   const serializableFormats = (formats: Record<string, FormatRule> = {}) => Object.fromEntries(
     Object.entries(formats)
       .filter(([column]) => column.trim() && !column.startsWith("__new_"))
@@ -591,6 +610,18 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     };
   };
 
+  const serializableRegularity = (rule?: RegularityRule) => {
+    if (!rule) return {};
+    return {
+      ...(rule.date_column?.trim() ? { date_column: rule.date_column.trim() } : {}),
+      ...(rule.entity_column?.trim() ? { entity_column: rule.entity_column.trim() } : {}),
+      ...(rule.frequency?.trim() ? { frequency: rule.frequency.trim() } : {}),
+      ...(rule.gap_threshold_multiplier !== undefined
+        ? { gap_threshold_multiplier: rule.gap_threshold_multiplier }
+        : {}),
+    };
+  };
+
   const serializableConsistency = (consistency: ConsistencyRule[] = []) => consistency.map((rule) => {
     const { draft: _draft, ...serialized } = rule;
     const columns = (rule.columns || []).map((column) => column.trim()).filter(Boolean);
@@ -625,6 +656,8 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       const originalReferential = serializableReferential(originalRules?.referential);
       const currentTextQuality = serializableTextQuality(rules.text_quality);
       const originalTextQuality = serializableTextQuality(originalRules?.text_quality);
+      const currentRegularity = serializableRegularity(rules.regularity);
+      const originalRegularity = serializableRegularity(originalRules?.regularity);
       const normalizedUniquenessKey = uniquenessKeyDraft
         .split(",")
         .map((column) => column.trim())
@@ -705,6 +738,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       if (JSON.stringify(currentTextQuality) !== JSON.stringify(originalTextQuality)) {
         overrides.text_quality = currentTextQuality;
       }
+      if (JSON.stringify(currentRegularity) !== JSON.stringify(originalRegularity)) {
+        overrides.regularity = currentRegularity;
+      }
       const resp = await fetch(`${API_BASE}/v1/session/dataset/validation-rules`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -726,6 +762,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         referential: normalizeReferential(currentReferential),
         text_quality: Object.keys(currentTextQuality).length > 0
           ? normalizeTextQuality(currentTextQuality)
+          : undefined,
+        regularity: Object.keys(currentRegularity).length > 0
+          ? currentRegularity
           : undefined,
       } : current);
       setApplied(true);
@@ -1059,6 +1098,32 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
             <p className="mt-2 text-[11px] text-neutral-500">
               Управляющие символы, U+FFFD/BOM, пустые строки и лишние пробелы проверяются системой всегда. Шаблоны отдельных колонок наследуются из выбранного шаблона.
             </p>
+          </div>
+        </div>
+      )}
+
+      {rules && !loading && (
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h4 className="text-sm font-medium">Редактор равномерности шага</h4>
+            <span className="text-[11px] text-neutral-500">Пустые поля определяются системой</span>
+          </div>
+          <div className="rounded-md border border-neutral-200 bg-white px-3 py-2">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <label className="text-[11px] text-neutral-500">Временная колонка
+                <input type="text" aria-label="Временная колонка равномерности" value={rules.regularity?.date_column ?? ""} onChange={(event) => updateRegularity({ date_column: event.target.value })} placeholder="Например: Date" className="mt-1 w-full rounded border border-neutral-300 px-2 py-1 text-sm text-neutral-800" />
+              </label>
+              <label className="text-[11px] text-neutral-500">Группирующая колонка
+                <input type="text" aria-label="Группирующая колонка равномерности" value={rules.regularity?.entity_column ?? ""} onChange={(event) => updateRegularity({ entity_column: event.target.value })} placeholder="Например: Country" className="mt-1 w-full rounded border border-neutral-300 px-2 py-1 text-sm text-neutral-800" />
+              </label>
+              <label className="text-[11px] text-neutral-500">Частота (pandas)
+                <input type="text" aria-label="Частота равномерности" value={rules.regularity?.frequency ?? ""} onChange={(event) => updateRegularity({ frequency: event.target.value })} placeholder="D, W, MS, YS…" className="mt-1 w-full rounded border border-neutral-300 px-2 py-1 font-mono text-sm text-neutral-800" />
+              </label>
+              <label className="text-[11px] text-neutral-500">Множитель разрыва
+                <input type="number" min={1.01} step={0.1} aria-label="Множитель порога разрыва" value={rules.regularity?.gap_threshold_multiplier ?? 1.5} onChange={(event) => updateRegularity({ gap_threshold_multiplier: Number(event.target.value) })} className="mt-1 w-full rounded border border-neutral-300 px-2 py-1 text-sm text-neutral-800" />
+              </label>
+            </div>
+            <p className="mt-2 text-[11px] text-neutral-500">Проверка всегда выполняется отдельно внутри каждой группы. Явная частота используется для подсчёта пропущенных периодов и построения сетки исправления.</p>
           </div>
         </div>
       )}

@@ -46,6 +46,9 @@ from apps.api.schemas import (
     DatasetRangeCorrectionRequest,
     DatasetRangeCorrectionResponse,
     DatasetRangeProfileResponse,
+    DatasetRegularityCorrectionRequest,
+    DatasetRegularityCorrectionResponse,
+    DatasetRegularityProfileResponse,
     DatasetReferentialCorrectionRequest,
     DatasetReferentialCorrectionResponse,
     DatasetReferentialProfileResponse,
@@ -85,6 +88,7 @@ from apps.api.schemas import (
     MissingRowHistogramItemOut,
     RangeCorrectionResultOut,
     RangeProfileItemOut,
+    RegularityProfileOut,
     ReferentialCorrectionResultOut,
     ReferentialProfileItemOut,
     TextQualityCorrectionResultOut,
@@ -104,6 +108,7 @@ from app.data.detectors import score_all_columns_as_date, score_all_columns_as_e
 from validation.engine import profile_consistency, profile_formats, profile_inclusion, profile_ranges, profile_uniqueness, validate_dataframe
 from validation.inclusion import coerce_inclusion_rule_to_series
 from validation.referential import profile_referential
+from validation.regularity import normalize_frequency, profile_regularity
 from validation.text_quality import profile_text_quality
 from validation.rule_resolver import CHECK_IDS, resolve_validation_rules
 from apps.api.consistency_correction import preview_consistency_corrections
@@ -113,6 +118,7 @@ from apps.api.missing_correction import preview_missing_corrections
 from app.preprocessing.missing import missing_per_row_histogram, missing_summary, profile_missing
 from apps.api.range_correction import preview_range_corrections
 from apps.api.referential_correction import preview_referential_corrections
+from apps.api.regularity_correction import preview_regularity_correction
 from apps.api.text_quality_correction import preview_text_quality_corrections
 from apps.api.type_conversion import preview_type_conversions
 from apps.api.uniqueness_correction import preview_uniqueness_correction
@@ -1299,6 +1305,63 @@ def correct_dataset_text_quality(
     )
 
 
+@router.get(
+    "/dataset/regularity-profile",
+    response_model=DatasetRegularityProfileResponse,
+)
+def get_dataset_regularity_profile(request: Request, response: Response):
+    """Единый профиль временной оси, дублей, сортировки и разрывов."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, rule_sources = _session_validation_rules(session)
+    profile = profile_regularity(session.dataframe, rules)
+    return DatasetRegularityProfileResponse(
+        rule_source=(
+            rule_sources.get("regularity", "not_applicable")
+            if profile["applicable"] else "not_applicable"
+        ),
+        profile=RegularityProfileOut(**profile),
+    )
+
+
+@router.post(
+    "/dataset/regularity-corrections",
+    response_model=DatasetRegularityCorrectionResponse,
+)
+def correct_dataset_regularity(
+    payload: DatasetRegularityCorrectionRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply исправления временной сетки без скрытой деградации."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, _rule_sources = _session_validation_rules(session)
+    try:
+        corrected_df, summary = preview_regularity_correction(
+            session.dataframe, rules, payload.strategy, payload.frequency
+        )
+    except (ValueError, TypeError) as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
+        session.touch()
+        store.save(session)
+
+    return DatasetRegularityCorrectionResponse(applied=payload.apply, **summary)
+
+
 @router.get("/dataset/consistency-profile", response_model=DatasetConsistencyProfileResponse)
 def get_dataset_consistency_profile(request: Request, response: Response):
     """Профиль хронологических и предметных правил активной сессии."""
@@ -1671,6 +1734,46 @@ def save_dataset_validation_rules(
             raise HTTPException(
                 status_code=422,
                 detail=f"Порог для колонки '{column}' должен быть от 0 до 100",
+            )
+
+    regularity = normalized_overrides.get("regularity")
+    if regularity is not None:
+        allowed_regularity_keys = {
+            "date_column", "date_col", "entity_column", "entity_col",
+            "frequency", "gap_threshold_multiplier",
+        }
+        unknown_regularity = sorted(set(regularity) - allowed_regularity_keys)
+        if unknown_regularity:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Неизвестные параметры равномерности: {', '.join(unknown_regularity)}",
+            )
+        date_column = regularity.get("date_column") or regularity.get("date_col")
+        entity_column = regularity.get("entity_column") or regularity.get("entity_col")
+        for label, column in (("Временная", date_column), ("Группирующая", entity_column)):
+            if column is not None and (not isinstance(column, str) or not column.strip()):
+                raise HTTPException(status_code=422, detail=f"{label} колонка задана некорректно")
+            if column and column not in session.dataframe.columns:
+                raise HTTPException(status_code=422, detail=f"Колонка '{column}' отсутствует в датасете")
+        if date_column and entity_column and date_column == entity_column:
+            raise HTTPException(
+                status_code=422,
+                detail="Временная и группирующая колонки должны различаться",
+            )
+        if "frequency" in regularity:
+            try:
+                normalize_frequency(regularity.get("frequency"))
+            except ValueError as ex:
+                raise HTTPException(status_code=422, detail=str(ex)) from ex
+        multiplier = regularity.get("gap_threshold_multiplier", 1.5)
+        if (
+            not isinstance(multiplier, (int, float))
+            or isinstance(multiplier, bool)
+            or multiplier <= 1
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail="Множитель порога разрыва должен быть числом больше 1",
             )
 
     text_quality = normalized_overrides.get("text_quality")

@@ -733,6 +733,70 @@ class DatasetTextQualityCorrectionResponse(BaseModel):
     profile: List[TextQualityProfileItemOut]
 
 
+class RegularityGapExampleOut(BaseModel):
+    previous_date: str
+    current_date: str
+    missing_periods: int
+
+
+class RegularityGroupOut(BaseModel):
+    group: str
+    observations: int
+    inferred_frequency: Optional[str] = None
+    modal_interval: Optional[str] = None
+    gap_count: int
+    missing_period_count: int
+    duplicate_count: int
+    sort_violations: int
+    gap_examples: List[RegularityGapExampleOut] = Field(default_factory=list)
+
+
+class RegularityProfileOut(BaseModel):
+    applicable: bool
+    applicability_message: Optional[str] = None
+    date_column: Optional[str] = None
+    entity_column: Optional[str] = None
+    target_frequency: Optional[str] = None
+    detected_frequency: Optional[str] = None
+    gap_threshold_multiplier: float = 1.5
+    is_sorted: bool
+    sort_violations: int
+    invalid_date_count: int
+    duplicate_count: int
+    gap_count: int
+    missing_period_count: int
+    total_violations: int
+    groups: List[RegularityGroupOut] = Field(default_factory=list)
+    supported_actions: List[str] = Field(default_factory=list)
+
+
+class DatasetRegularityProfileResponse(BaseModel):
+    rule_source: Literal["system", "template", "session", "not_applicable"]
+    profile: RegularityProfileOut
+
+
+class DatasetRegularityCorrectionRequest(BaseModel):
+    strategy: Literal["sort", "interpolate", "ffill", "bfill", "asfreq", "fictitious_zero", "flag"] = "interpolate"
+    frequency: Optional[str] = None
+    apply: bool = Field(False, description="False -- preview; True -- сохранить в сессии")
+
+
+class DatasetRegularityCorrectionResponse(BaseModel):
+    applied: bool
+    strategy: str
+    frequency: Optional[str] = None
+    rows_before: int
+    rows_after: int
+    rows_added: int
+    duplicates_aggregated: int
+    total_violations_before: int
+    total_violations_after: int
+    sort_violations_before: int
+    sort_violations_after: int
+    added_columns: List[str] = Field(default_factory=list)
+    profile: RegularityProfileOut
+
+
 class ConsistencyProfileItemOut(BaseModel):
     rule_index: int
     rule_name: str
@@ -918,6 +982,8 @@ class RulesContent(BaseModel):
     uniqueness: Optional[Dict[str, Any]] = None
     formats: Optional[Dict[str, Any]] = None
     referential: Optional[List[Dict[str, Any]]] = None
+    text_quality: Optional[Dict[str, Any]] = None
+    regularity: Optional[Dict[str, Any]] = None
     outliers: Optional[Dict[str, Any]] = None
     sufficiency: Optional[Dict[str, Any]] = None
 

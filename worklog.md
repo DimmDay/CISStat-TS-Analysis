@@ -3149,3 +3149,68 @@ TDD и проверка
 - packages/ui/index.ts
 - tests/unit/test_text_quality_correction.py
 - tests/api/test_dataset_text_quality_correction.py
+
+---
+
+Task ID: 51 — Профиль и мастер исправления равномерности шага
+
+Date: 2026-08-26
+
+Задача
+Применить к остановке «Равномерность шага» утверждённый паттерн вкладки «Валидация»: специализированные «Метрики и алгоритм», «Обзор», «Мастер исправления», управление правилами, безопасный preview/apply и автоматический повтор общей валидации. Исследовать и переиспользовать существующую backend/Streamlit-логику, устранив расхождения и скрытую деградацию.
+
+Состояние репозитория
+Task 51 выполнена поверх локальных незакоммиченных Task 49–50 (`HEAD aa4eb83`). Новая синхронизация не выполнялась: прямого указания тимлида на fetch/pull в текущем запросе не было, что соответствует `AGENTS.md`.
+
+Исследование и проектное решение
+- Обнаружены две независимые реализации проверки регулярности: `validation/engine.py::validate_regular_step` и `app/validation/regularity.py::compute_regularity_violations`. Они по-разному определяли колонки и группы, жёстко использовали коэффициент 1.5 и не давали общему запуску различить неверные даты, сортировку, дубли меток и разрывы.
+- Legacy `apply_regularity_strategy` переиспользовал полезные стратегии Streamlit, но перехватывал любые исключения и мог молча вернуть неизменённый DataFrame. Ресемплирование сохраняло только number/object/string/category и могло потерять bool/extension-колонки.
+- Создан единый профиль `validation/regularity.py`, используемый общей валидацией, API обзора, маской флага и строгим мастером. Системный режим применяет существующие контентные детекторы даты/сущности; правила сессии могут явно закрепить `date_column`, `entity_column`, `frequency`, `gap_threshold_multiplier`.
+- Для панельных данных расчёт выполняется отдельно внутри каждой сущности. Явная частота является эталоном: стабильный фактический шаг 2D не проходит правило D. Без явной частоты используется модальный интервал и порог, поэтому система не выдумывает предметный календарь.
+
+Backend
+- `profile_regularity` возвращает применимость, временную и группирующую колонки, целевую/определённую частоту, сортировку, некорректные даты, дубли временных меток, границы разрывов, оценку пропущенных периодов и детализацию по группам с примерами.
+- `_run_all_checks` переведён на единый профиль: статус и счётчик общей кнопки теперь включают все причины, а не только сортировку либо количество gap-границ.
+- Добавлены `GET /v1/session/dataset/regularity-profile` и `POST /v1/session/dataset/regularity-corrections`.
+- Реализованы семь действий: `sort`, `interpolate`, `ffill`, `bfill`, `asfreq`, `fictitious_zero`, `flag`. Preview работает на глубокой копии; ресемплирование выполняется отдельно по группам, агрегирует дубли (mean для чисел, first для остальных) и сохраняет полный исходный набор колонок.
+- Ошибки частоты, некорректные даты и конфликт существующего `_has_gap` возвращаются как 422, а не скрываются. Apply атомарно сохраняет DataFrame, обновляет rows/columns сессии; UI повторяет общую валидацию.
+- PUT правил валидирует допустимые ключи, существование и различие осей, pandas-частоту и коэффициент разрыва > 1 до изменения сессии. Контракт загрузки шаблонов расширен секциями `regularity` и `text_quality`.
+
+Frontend
+- Кнопка названа «Исправить равномерность шага», центральный workflow — «Мастер исправления равномерности шага».
+- «Метрики и алгоритм» объясняет четыре причины нарушений, групповой расчёт, системную детекцию и состояния pass/not-required/needs-rule.
+- Новый обзор показывает ось, группировку, целевой шаг, число пропущенных периодов, stacked bar регулярных/проблемных групп и таблицу «Группа / наблюдения / частота / разрывы / дубли и сортировка / статус».
+- Мастер содержит четыре шага: проверка оси и групп, выбор стратегии/частоты, немутирующий preview, подтверждённый apply. При отсутствии надёжной временной оси есть прямой переход в «Управление правилами».
+- В редактор правил добавлены временная колонка, группирующая колонка, pandas-частота и множитель порога; пустые поля сохраняют системную детекцию, частичные session overrides объединяются с шаблоном.
+
+TDD и проверка
+- RED: frontend-тесты ссылались на отсутствующие overview/pipeline; backend-тесты — на отсутствующие профиль, correction-модуль и API.
+- GREEN: focused Jest — 4/4 suites, 59/59 tests PASS.
+- Полный Jest — 36/36 suites, 325/325 tests PASS, 0 snapshots.
+- `npm run typecheck:all` — PASS для embedded и standalone.
+- Next.js production build embedded — PASS, 13/13 статических страниц.
+- Next.js production build standalone — PASS, 13/13 статических страниц.
+- Для сборок использовались временные локальные font/memory shims из-за сетевого ограничения Google Fonts и известного `uv_resident_set_memory`; они удалены и в изменения не входят. Существующее предупреждение Tailwind об app-level `content` остаётся, обе сборки успешны.
+- `python -m compileall` изменённых backend-файлов — PASS; прямой pandas smoke покрывает профиль, явную частоту и семь действий — PASS.
+- Полный pytest в текущем runtime недоступен: модуль `pytest` не установлен, а импорт полного validation package требует `pandera`; unit/API-тесты подготовлены для штатного локального `.venv` и CI.
+- `git diff --check` — PASS.
+
+Изменённые и новые файлы текущей задачи
+- validation/regularity.py
+- apps/api/regularity_correction.py
+- validation/engine.py
+- apps/api/routers/session.py
+- apps/api/routers/internal.py
+- apps/api/routers/public.py
+- apps/api/schemas.py
+- packages/ui/components/ValidationRegularityOverview.tsx
+- packages/ui/components/ValidationRegularityOverview.test.tsx
+- packages/ui/components/ValidationRegularityPipeline.tsx
+- packages/ui/components/ValidationRegularityPipeline.test.tsx
+- packages/ui/components/RulesManagementPanel.tsx
+- packages/ui/components/RulesManagementPanel.test.tsx
+- packages/ui/components/TsAnalysisValidation.tsx
+- packages/ui/components/TsAnalysisValidation.test.tsx
+- packages/ui/index.ts
+- tests/unit/test_regularity_correction.py
+- tests/api/test_dataset_regularity_correction.py

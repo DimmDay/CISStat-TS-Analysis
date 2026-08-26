@@ -23,6 +23,7 @@ from validation.inclusion import (
     normalize_inclusion_rule,
 )
 from validation.referential import profile_referential, referential_invalid_mask
+from validation.regularity import profile_regularity
 from validation.text_quality import profile_text_quality
 
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -339,19 +340,22 @@ def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict, target_c
 
     # ── regularity (ось времени, не значение) -- dataset-wide, см. докстринг ──
     def _regularity():
-        raw, _masks, _freq_info, sort_info = validate_regular_step(df, rules)
-        if sort_info.get("date_col") is None:
+        profile = profile_regularity(df, rules)
+        if not profile["applicable"]:
             return {"status": "pending", "count": None, "items": [], "scope": "dataset"}
-        if not sort_info.get("is_sorted", True):
-            n = sort_info.get("sort_violations", 0)
-            return {
-                "status": _status(n),
-                "count": n,
-                "items": [{"label": "Нарушение хронологии", "count": n}],
-                "scope": "dataset",
-            }
-        items = [{"label": r.get("Группа", "?"), "count": r.get("Пропусков", 0)} for r in raw]
-        count = sum(i["count"] for i in items)
+        items = []
+        for label, key in (
+            ("Некорректные временные метки", "invalid_date_count"),
+            ("Нарушения сортировки", "sort_violations"),
+            ("Дубли временных меток", "duplicate_count"),
+        ):
+            if profile[key] > 0:
+                items.append({"label": label, "count": int(profile[key])})
+        items.extend(
+            {"label": f"Разрывы: {group['group']}", "count": int(group["gap_count"])}
+            for group in profile["groups"] if group["gap_count"] > 0
+        )
+        count = int(profile["total_violations"])
         return {"status": _status(count), "count": count, "items": items, "scope": "dataset"}
     _safe("regularity", _regularity)
 

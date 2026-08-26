@@ -182,6 +182,28 @@ describe("RulesManagementPanel", () => {
     });
   });
 
+  it("saves explicit regularity axes, frequency and gap threshold", async () => {
+    const { container } = render(<RulesManagementPanel />);
+    const selector = await waitTemplatesLoaded(container);
+    fireEvent.change(selector, { target: { value: "fao_prices" } });
+
+    fireEvent.change(await screen.findByRole("textbox", { name: "Временная колонка равномерности" }), { target: { value: "Year" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Группирующая колонка равномерности" }), { target: { value: "Country" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Частота равномерности" }), { target: { value: "YS" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Множитель порога разрыва" }), { target: { value: "1.8" } });
+    fireEvent.click(screen.getByTestId("apply-rules-btn"));
+
+    await waitFor(() => {
+      const putCall = mockFetch.mock.calls.find(
+        (call: [string, RequestInit?]) => call[0].includes("/session/dataset/validation-rules") && call[1]?.method === "PUT"
+      );
+      const payload = JSON.parse((putCall?.[1]?.body ?? "{}") as string);
+      expect(payload.overrides.regularity).toEqual({
+        date_column: "Year", entity_column: "Country", frequency: "YS", gap_threshold_multiplier: 1.8,
+      });
+    });
+  });
+
   it("saves a changed uniqueness key as a session override", async () => {
     const { container } = render(<RulesManagementPanel />);
     const selector = await waitTemplatesLoaded(container);

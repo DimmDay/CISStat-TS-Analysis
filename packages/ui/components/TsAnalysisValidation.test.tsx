@@ -134,6 +134,7 @@ function mockActiveValidation(validateResponse: (url?: string) => Promise<unknow
       });
     }
     if (url.includes("/dataset/referential-profile")) return validateResponse(url);
+    if (url.includes("/dataset/regularity-profile")) return validateResponse(url);
     if (url.includes("/dataset/validate")) return validateResponse(url);
     return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
   }) as unknown as typeof fetch;
@@ -229,7 +230,7 @@ describe("TsAnalysisValidation", () => {
     renderValidation();
 
     const correctionButton = await screen.findByRole("button", { name: "Исправить типы данных" });
-    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(1);
     fireEvent.click(correctionButton);
 
     expect(screen.getAllByText("Мастер исправления типов").length).toBeGreaterThan(0);
@@ -789,5 +790,34 @@ describe("TsAnalysisValidation", () => {
     expect(await screen.findByRole("table", { name: "Матрица ссылочной целостности" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Исправить ссылочную целостность" }));
     expect(screen.getByRole("region", { name: "Мастер исправления ссылочной целостности" })).toBeInTheDocument();
+  });
+
+  it("opens the regularity overview and correction master", async () => {
+    const regularityProfile = {
+      rule_source: "system",
+      profile: {
+        applicable: true, applicability_message: null, date_column: "Date", entity_column: "Country",
+        target_frequency: "D", detected_frequency: null, gap_threshold_multiplier: 1.5,
+        is_sorted: true, sort_violations: 0, invalid_date_count: 0, duplicate_count: 0,
+        gap_count: 1, missing_period_count: 1, total_violations: 1,
+        groups: [{ group: "A", observations: 3, inferred_frequency: null, modal_interval: "1 days", gap_count: 1, missing_period_count: 1, duplicate_count: 0, sort_violations: 0, gap_examples: [] }],
+        supported_actions: ["sort", "interpolate", "ffill", "bfill", "asfreq", "fictitious_zero", "flag"],
+      },
+    };
+    mockActiveValidation((url) => {
+      if (url.includes("/regularity-profile")) return Promise.resolve({ ok: true, json: () => Promise.resolve(regularityProfile) });
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(validationResponse("warning", "schema", 1)) });
+    });
+
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    await screen.findByText("Найдены проблемы: 1");
+
+    fireEvent.click(screen.getByRole("button", { name: /Равномерность шага/ }));
+    expect(await screen.findByRole("table", { name: "Матрица равномерности временного шага" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Исправить равномерность шага" }));
+    expect(screen.getByRole("region", { name: "Мастер исправления равномерности шага" })).toBeInTheDocument();
   });
 });
