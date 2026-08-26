@@ -500,6 +500,83 @@ class DatasetRangeCorrectionResponse(BaseModel):
     profile: List[RangeProfileItemOut]
 
 
+class MissingProfileItemOut(BaseModel):
+    column: str
+    dtype: str
+    semantic: Literal["numeric", "datetime", "categorical", "text"]
+    total_count: int
+    missing_count: int
+    non_missing_count: int
+    missing_pct: Optional[float] = None
+    recommended_strategy: Literal[
+        "none", "drop_rows", "median_mode", "mean_mode", "constant", "interpolate", "flag"
+    ]
+    missing_examples: List[int] = Field(default_factory=list)
+
+
+class MissingRowHistogramItemOut(BaseModel):
+    missing_in_row: int
+    row_count: int
+
+
+class DatasetMissingProfileResponse(BaseModel):
+    rule_source: Literal["system", "not_applicable"]
+    # Режимы остановки «Пропуски» модуля «Предобработка» -- та же семантика
+    # auto/enabled/disabled, что и validation_check_modes (Task 47), но
+    # применённая к остановке степпера, а не к правилу валидации: у
+    # проверки пропусков нет отдельного "правила" для настройки, она
+    # безусловна для любого датасета, поэтому auto и enabled расходятся
+    # ТОЛЬКО в одном случае -- см. _preprocessing_missing_status в
+    # apps/api/routers/session.py.
+    mode: Literal["auto", "enabled", "disabled"] = "auto"
+    status: Literal["done", "warning", "pending", "skipped"] = "pending"
+    status_reason: Optional[Literal["not_required", "disabled"]] = None
+    total_rows: int
+    total_columns: int
+    total_missing: int
+    missing_rate_pct: Optional[float] = None
+    rows_with_missing: int
+    rows_with_missing_pct: Optional[float] = None
+    empty_rows: int
+    columns: List[MissingProfileItemOut] = Field(default_factory=list)
+    row_histogram: List[MissingRowHistogramItemOut] = Field(default_factory=list)
+
+
+class DatasetMissingCorrectionRequest(BaseModel):
+    columns: List[str] = Field(..., min_length=1, max_length=100)
+    strategy: Literal["drop_rows", "median_mode", "mean_mode", "constant", "interpolate", "flag"] = "median_mode"
+    apply: bool = Field(False, description="False -- preview; True -- сохранить в сессии")
+
+
+class MissingCorrectionResultOut(BaseModel):
+    column: str
+    missing_count: int
+    changed_count: int
+    still_missing: int
+    missing_examples: List[int] = Field(default_factory=list)
+    flag_column: Optional[str] = None
+
+
+class DatasetMissingCorrectionResponse(BaseModel):
+    applied: bool
+    strategy: str
+    total_missing: int
+    total_changed: int
+    total_still_missing: int
+    rows_removed: int = 0
+    added_columns: List[str] = Field(default_factory=list)
+    columns: List[MissingCorrectionResultOut]
+    profile: List[MissingProfileItemOut]
+
+
+class DatasetPreprocessingCheckModesRequest(BaseModel):
+    modes: Dict[str, Literal["auto", "enabled", "disabled"]] = Field(default_factory=dict)
+
+
+class DatasetPreprocessingCheckModesResponse(BaseModel):
+    modes: Dict[str, Literal["auto", "enabled", "disabled"]]
+
+
 class InclusionInvalidValueOut(BaseModel):
     value: str
     count: int

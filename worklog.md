@@ -2963,3 +2963,59 @@ TDD и проверка
 - tests/api/test_dataset_validate.py
 - tests/api/test_dataset_validation_rules.py
 - tests/api/test_session_store.py
+
+Task ID: 48 — Остановка «Пропуски» (Предобработка) + режимы Авто/Включена/Отключена
+
+Date: 2026-08-26
+
+Задача
+Первая реальная остановка степпера «Предобработка»: «Пропуски» — переиспользовать существующую backend-логику (эвристики и стратегии из легаси app.py), реализовать паттерн остановки (маршрут+статус слева, Описание+Обзор в центре, Панель управления справа), мастер исправления (настройка → предпросмотр без мутации → подтверждение → применение → повторная проверка), шесть различимых состояний. Затем: синхронизация с параллельно выполненной Task 47 («Валидация»: режимы auto/enabled/disabled, нейтральный skipped, корректный DQ Score) и адаптация той же модели режимов к «Предобработке».
+
+Синхронизация
+Локальные незакоммиченные изменения (стоп «Пропуски») сохранены в защитный stash, выполнен fast-forward до `origin/main` (`8db590d`, Task 47 поверх Task 46 `8442d81`). Stash поднят обратно; единственный конфликт — `StatusIcon.tsx` (оба расширения независимо трогали один файл). Разрешён вручную: объединённая модель `CheckStatus = "done" | "warning" | "pending" | "skipped" | "running" | "error"` — `skipped` унифицирован с командным термином Task 47 (неприменимо/отключено, разбор причины через отдельное поле statusReason у потребителя), `running`/`error` — сетевой жизненный цикл запроса, которого не было ни в одной из версий по отдельности. Контрольный прогон подтвердил отсутствие регрессий от синхронизации: до применения моих изменений (чистый Task 47) — 34 failed/767 passed; после — 29 failed/781+ passed (меньше failed, не больше — расхождение объясняется нестабильностью preexisting бага CSV-сниффера, не моими правками).
+
+Проектное решение (остановка «Пропуски»)
+- `app/preprocessing/missing.py` (новый, чистый): `profile_missing` — профиль по каждой колонке (dtype, семантика, count/pct пропусков, рекомендованная стратегия, примеры индексов строк), переносит эвристику рекомендаций из app.py; `missing_summary`; `missing_per_row_histogram`.
+- `apps/api/missing_correction.py` (новый): `preview_missing_corrections` — порт 6 стратегий Streamlit (удалить строки / медиана-мода / среднее-мода / ноль-Unknown / линейная интерполяция / флаг пропуска) по паттерну `range_correction.py`. Два сознательных отличия от легаси: (1) стратегия применяется только к явно выбранным колонкам, не ко всем сразу; (2) `drop_rows` — объединение пропусков только по выбранным колонкам.
+- Роуты `GET /dataset/missing-profile`, `POST /dataset/missing-corrections` в `session.py`; схемы в `schemas.py`.
+- Фронтенд: `PreprocessingMissingOverview.tsx` (матрица пропусков по колонкам, полоса заполненности) и `PreprocessingMissingPipeline.tsx` (мастер: выбор колонок → стратегия → предпросмотр → подтверждение чекбоксом → применение → refresh) — по паттерну `ValidationRangeOverview`/`ValidationRangePipeline`. Подключены в `TsAnalysisPreprocessing.tsx` вместо мока для check.id === "missing".
+- `StatusIcon.tsx` расширен (изначально `running`/`not_applicable`/`error`, затем объединён с `skipped` от Task 47 при синхронизации — см. выше).
+
+Проектное решение (режимы, адаптация Task 47 → «Предобработка»)
+- `AnalysisSession.preprocessing_check_modes` — отдельный от `validation_check_modes` словарь (разные степперы), тот же контракт: отсутствующий ключ = "auto", сбрасывается в `set_dataset()`, сериализуется в Redis-совместимый dict.
+- `PREPROCESSING_CHECK_IDS` (все 11 остановок степпера) + `_effective_preprocessing_check_modes()` в `session.py` — форма готова для всех будущих остановок, даже пока backend есть только у одной.
+- `_preprocessing_missing_status(mode, total_columns, total_missing)` — политика режима для остановки «Пропуски» ЧЕСТНО отличается от валидационной: у проверки пропусков нет отдельного настраиваемого «правила» (она безусловна для любого датасета с колонками), поэтому `enabled` не порождает `needs_rule`/pending-состояния, как у Range/Format — принудительное включение не может заставить появиться колонки. Разница `auto` vs `enabled` — только гипотетическая (обе одинаково neutral-skip при 0 колонок); реальная развилка — только явный `disabled`.
+- `GET/PUT /v1/session/dataset/preprocessing-check-modes` — тот же контракт partial-update, что у `/dataset/validation-check-modes`.
+- `DatasetMissingProfileResponse` расширен полями `mode`, `status`, `status_reason` — реальные данные (счётчики, таблица по колонкам) остаются правдивыми всегда; эти три поля управляют ТОЛЬКО тем, участвует ли остановка в прогрессе/степпере как "skipped" — сознательное отличие от Validation, где `disabled` дополнительно обнуляет count/items: профиль пропусков — описательный инструмент анализа данных, а не бинарная проверка правила, обнулять реальные цифры было бы недостоверно.
+- Фронтенд: селектор режима «Авто/Включена/Отключена» в панели управления показан ТОЛЬКО для «Пропусков» (у остальных 10 остановок ещё нет backend-проверки, которую можно реально включить/отключить — показывать селектор было бы нечестной UI-обещанием). Статус степпера/бейдж берутся напрямую из `mode`/`status`/`status_reason` бэкенда (единый источник истины, без дублирующей клиентской логики). Прогресс-бар (`doneCount`/`applicableChecks.length`) исключает `skipped` из знаменателя — та же политика, что применена к DQ Score «Валидации» в Task 47.
+
+TDD и проверка
+- Backend: 25 unit/API тестов на остановку «Пропуски» (профиль, 6 стратегий preview/apply, edge-кейсы) + 3 API-теста + 3 unit-теста на политику режимов (`_preprocessing_missing_status`) — все зелёные.
+- Frontend: `StatusIcon.test.tsx` (9), `PreprocessingMissingOverview.test.tsx` (5, включая skipped/disabled), `PreprocessingMissingPipeline.test.tsx` (5), `TsAnalysisPreprocessing.test.tsx` (15, включая селектор режима и прогресс-бар) — все зелёные.
+- Полный pytest (`tests/`, без `test_file_loader.py`) — 781 passed, 29 failed (preexisting, не мои: несовместимость pandas 3.0.2 в окружении с закреплённым в requirements.txt `<3.0`, плюс нестабильный CSV-сниффер — см. ниже), 1 skipped.
+- Полный Jest — 30/30 suites, 304/304 tests PASS, 0 snapshots.
+- `npm run typecheck:all` — PASS для embedded и standalone.
+- Production build embedded и standalone — PASS (13/13 статических страниц каждая) через ВРЕМЕННЫЙ шим `next/font/google` → статический объект (песочница без сетевого доступа к fonts.googleapis.com); шим применён, собран, немедленно возвращён (`git diff` по `layout.tsx` пуст) — в поставку не входит, только для верификации.
+
+Обнаруженные баги (не мои, не в этой задаче — для тимлида)
+1. `app/data/file_loader.py`: `pd.read_csv(..., sep=None)` (автоопределение через `csv.Sniffer`) иногда неверно определяет разделитель для CSV с ОДНОЙ колонкой (например, "Price" разбивается на "P"/"ice"). Объясняет часть preexisting падений в `tests/api/test_dataset_range_correction.py` и аналогичных. Обошёл в своих тестах через многоколоночные датасеты.
+2. Окружение задачи использует pandas 3.0.2, тогда как `requirements.txt` закрепляет `<3.0.0` (из-за `.fillna(method=...)` в `app/features/rolling.py::apply_wma` — см. комментарий там же). Часть preexisting failures — прямое следствие расхождения версий, не бага кода.
+
+Изменённые/новые файлы
+- app/preprocessing/missing.py (новый)
+- apps/api/missing_correction.py (новый)
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- apps/api/session_store.py
+- packages/ui/components/StatusIcon.tsx
+- packages/ui/components/StatusIcon.test.tsx (новый)
+- packages/ui/components/PreprocessingMissingOverview.tsx (новый)
+- packages/ui/components/PreprocessingMissingOverview.test.tsx (новый)
+- packages/ui/components/PreprocessingMissingPipeline.tsx (новый)
+- packages/ui/components/PreprocessingMissingPipeline.test.tsx (новый)
+- packages/ui/components/TsAnalysisPreprocessing.tsx
+- packages/ui/components/TsAnalysisPreprocessing.test.tsx
+- tests/unit/test_preprocessing_missing.py (новый)
+- tests/unit/test_missing_correction.py (новый)
+- tests/unit/test_preprocessing_missing_status.py (новый)
+- tests/api/test_dataset_missing_correction.py (новый)

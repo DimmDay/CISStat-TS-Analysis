@@ -17,11 +17,14 @@
 //   └─────────────┘    [Строк][Проп][Выбр]    ▼ Пайплайн
 //                                                [Пересчитать]
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "./Button";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
+import { sessionApiUrl } from "../lib/apiClient";
+import { PreprocessingMissingOverview, type MissingProfileResponse } from "./PreprocessingMissingOverview";
+import { PreprocessingMissingPipeline } from "./PreprocessingMissingPipeline";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -36,8 +39,8 @@ interface Check {
 // ── Моковые данные (заменить на API) ─────────────────────────
 
 const CHECKS: Check[] = [
-  { id: "missing", label: "Пропуски", status: "warning", count: 11,
-    description: "Пропуски нарушают DatetimeIndex, делают невозможной STL-декомпозицию, искажают ACF/PACF и ломают ARIMA/SARIMA. Стратегии: интерполяция, forward-fill, mean, drop." },
+  { id: "missing", label: "Пропуски", status: "pending", count: null,
+    description: "Пропуски нарушают DatetimeIndex, делают невозможной STL-декомпозицию, искажают ACF/PACF и ломают ARIMA/SARIMA. Стратегии: удаление строк, медиана/мода, среднее/мода, ноль/Unknown, линейная интерполяция, флаг пропуска." },
   { id: "outliers", label: "Выбросы", status: "warning", count: 1145,
     description: "Выбросы завышают дисперсию, искажают оценки тренда и ломают тесты стационарности (ADF/KPSS). Методы: IQR, Z-score, MAD, Isolation Forest, LOF." },
   { id: "regularity", label: "Регулярность ряда", status: "pending", count: null,
@@ -94,6 +97,8 @@ const PREPROCESSING_HELP = `Цели модуля "Предобработка"
 10. Масштабирование — Standard, MinMax, Robust, Quantile, Power
 11. Паспорт свойств ряда — сравнение v1.0 → v1.1 → v1.2`;
 
+type PreprocessingCheckMode = "auto" | "enabled" | "disabled";
+
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisPreprocessing() {
@@ -103,6 +108,85 @@ export function TsAnalysisPreprocessing() {
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
+
+  // ── Режимы остановок (Task 47, применено к «Предобработке») ──
+  // «Авто» / «Включена» / «Отключена» -- сохраняются в сессии через
+  // GET/PUT /dataset/preprocessing-check-modes, отдельно от режимов
+  // «Валидации» (другой степпер, другой словарь на бэкенде). Только
+  // «Пропуски» реально реагируют на режим сегодня -- у остальных 10
+  // остановок ещё нет backend-проверки, которую можно включить/отключить,
+  // поэтому селектор режима показан только для «Пропусков»: показывать
+  // его для мока значило бы обещать эффект, которого нет.
+  const [checkModes, setCheckModes] = useState<Record<string, PreprocessingCheckMode>>({});
+  const [modeSaving, setModeSaving] = useState<string | null>(null);
+  const [modeError, setModeError] = useState<{ checkId: string; message: string } | null>(null);
+
+  // ── Остановка «Пропуски»: реальный статус вместо мока ──
+  // Лёгкий собственный запрос профиля (тот же /dataset/missing-profile,
+  // что использует и PreprocessingMissingOverview) -- нужен здесь отдельно,
+  // чтобы степпер слева и статус-бейдж справа отражали состояние даже пока
+  // Overview/Pipeline ещё не смонтированы (активна другая проверка).
+  // Дублирование запроса такое же, как между /dataset/validate и
+  // /dataset/range-profile в TsAnalysisValidation.tsx -- уже принятый
+  // в проекте компромисс между простотой компонента и числом запросов.
+  const [missingProfile, setMissingProfile] = useState<MissingProfileResponse | null>(null);
+  const [missingLoading, setMissingLoading] = useState(true);
+  const [missingNoDataset, setMissingNoDataset] = useState(false);
+  const [missingError, setMissingError] = useState<string | null>(null);
+  const [missingRefreshKey, setMissingRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setMissingLoading(true);
+    setMissingError(null);
+    setMissingNoDataset(false);
+    void (async () => {
+      try {
+        const response = await fetch(sessionApiUrl("/dataset/missing-profile"), { credentials: "include" });
+        if (response.status === 404) {
+          if (active) setMissingNoDataset(true);
+          return;
+        }
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(typeof body?.detail === "string" ? body.detail : `HTTP ${response.status}`);
+        }
+        const data: MissingProfileResponse = await response.json();
+        if (active) {
+          setMissingProfile(data);
+          setCheckModes((current) => ({ ...current, missing: data.mode }));
+        }
+      } catch (caught) {
+        if (active) setMissingError(caught instanceof Error ? caught.message : "Не удалось загрузить профиль пропусков");
+      } finally {
+        if (active) setMissingLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [missingRefreshKey]);
+
+  // Режим и статус остановки «Пропуски» приходят напрямую с бэкенда
+  // (единый источник истины -- та же политика auto/enabled/disabled, что
+  // применяется к /dataset/missing-profile). "skipped" покрывает и явное
+  // отключение, и нейтральную неприменимость (0 колонок) -- разница
+  // передаётся через status_reason, не через отдельные значения иконки.
+  const missingStatus: CheckStatus = missingLoading
+    ? "running"
+    : missingNoDataset
+    ? "skipped"
+    : missingError
+    ? "error"
+    : missingProfile
+    ? missingProfile.status
+    : "pending";
+
+  // Итоговый список проверок -- статика для ещё не реализованных
+  // остановок, реальные данные для «Пропусков».
+  const checks = useMemo<Check[]>(() => CHECKS.map((check) =>
+    check.id === "missing"
+      ? { ...check, status: missingStatus, count: missingProfile?.total_missing ?? null }
+      : check
+  ), [missingStatus, missingProfile]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -122,13 +206,45 @@ export function TsAnalysisPreprocessing() {
     }
   }, [descriptionExpanded, handleOutsideClick]);
 
-  const doneCount = CHECKS.filter((c) => c.status === "done").length;
-  const progressPct = Math.round((doneCount / CHECKS.length) * 100);
-  const activeCheck = CHECKS.find((c) => c.id === activeCheckId)!;
+  // Отключённые и нейтрально неприменимые остановки исключаются из
+  // прогресса -- та же политика, что применена к DQ Score «Валидации»
+  // в Task 47 (applicableChecks/evaluatedChecks).
+  const applicableChecks = checks.filter((c) => c.status !== "skipped");
+  const doneCount = applicableChecks.filter((c) => c.status === "done").length;
+  const progressPct = applicableChecks.length > 0
+    ? Math.round((doneCount / applicableChecks.length) * 100)
+    : 100;
+  const activeCheck = checks.find((c) => c.id === activeCheckId)!;
 
-  const orderedChecks = [...CHECKS].sort((a, b) =>
+  const orderedChecks = [...checks].sort((a, b) =>
     a.id === activeCheckId ? -1 : b.id === activeCheckId ? 1 : 0
   );
+
+  const handleCheckModeChange = async (checkId: string, mode: PreprocessingCheckMode) => {
+    if (modeSaving) return;
+    const previous = checkModes;
+    setCheckModes((current) => ({ ...current, [checkId]: mode }));
+    setModeSaving(checkId);
+    setModeError(null);
+    try {
+      const response = await fetch(sessionApiUrl("/dataset/preprocessing-check-modes"), {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modes: { [checkId]: mode } }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      // Режим сохранён -- запускаем повторную проверку затронутой
+      // остановки, чтобы степпер/панель немедленно отразили новый режим
+      // (та же идея, что runValidation() после смены режима в Validation).
+      if (checkId === "missing") setMissingRefreshKey((k) => k + 1);
+    } catch {
+      setCheckModes(previous);
+      setModeError({ checkId, message: "Не удалось сохранить режим проверки" });
+    } finally {
+      setModeSaving(null);
+    }
+  };
 
   // Переключение секции описания в центральном текстовом поле
   const handleDescriptionClick = (check: Check, section: "metrics" | "pipeline") => {
@@ -217,7 +333,7 @@ export function TsAnalysisPreprocessing() {
         {/* Прогресс */}
         <div className="flex items-center gap-2">
           <p className="text-[11px] text-neutral-500 tabular-nums">
-            {doneCount}/{CHECKS.length}
+            {doneCount}/{applicableChecks.length}
           </p>
           <div className="flex-1 bg-neutral-200 rounded-full h-1.5">
             <div
@@ -229,7 +345,7 @@ export function TsAnalysisPreprocessing() {
 
         {/* Степпер: прямоугольные карточки с текстом + иконка */}
         <div className="flex flex-col gap-1.5">
-          {CHECKS.map((check) => (
+          {checks.map((check) => (
             <button
               key={check.id}
               onClick={() => {
@@ -308,24 +424,47 @@ export function TsAnalysisPreprocessing() {
           </div>
         </div>
 
-        {/* График */}
+        {/* График / Обзор / Мастер исправления */}
         <div>
-          <h3 className="font-semibold mb-1">Обзор: {activeCheck.label}</h3>
+          <h3 className="font-semibold mb-1">
+            {activeCheckId === "missing" && descriptionSection === "pipeline"
+              ? "Мастер исправления пропусков"
+              : `Обзор: ${activeCheck.label}`}
+          </h3>
           <p className="text-xs text-neutral-500 mb-3">
-            Меняется автоматически под активную проверку.
+            {activeCheckId === "missing" && descriptionSection === "pipeline"
+              ? "Выберите колонки и стратегию, оцените последствия на копии и примените исправления."
+              : activeCheckId === "missing"
+              ? "Полнота данных по колонкам, рекомендованная стратегия исправления."
+              : "Меняется автоматически под активную проверку."}
           </p>
 
-          <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
-            [ график для «{activeCheck.label}» ]
-          </div>
+          {activeCheckId === "missing" && descriptionSection === "pipeline" ? (
+            <PreprocessingMissingPipeline onApplied={() => setMissingRefreshKey((k) => k + 1)} />
+          ) : activeCheckId === "missing" ? (
+            <PreprocessingMissingOverview refreshKey={missingRefreshKey} />
+          ) : (
+            <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
+              [ график для «{activeCheck.label}» ]
+            </div>
+          )}
 
-          <div className="grid grid-cols-4 gap-3 mt-4">
-            <Metric label="Строк" value="200" />
-            <Metric label="Пропусков" value="11" />
-            <Metric label="Выбросов" value="1145" />
-            <Metric label="ADF p" value="0.03" />
-            <Metric label="Частота" value="D" />
-          </div>
+          {activeCheckId === "missing" ? (
+            <div className="grid grid-cols-4 gap-3 mt-4">
+              <Metric label="Строк" value={missingProfile ? String(missingProfile.total_rows) : "—"} />
+              <Metric label="Колонок" value={missingProfile ? String(missingProfile.total_columns) : "—"} />
+              <Metric label="Пропусков" value={missingProfile ? String(missingProfile.total_missing) : "—"} />
+              <Metric label="Строк с пропуском" value={missingProfile ? String(missingProfile.rows_with_missing) : "—"} />
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-3 mt-4">
+              <Metric label="Строк" value="200" />
+              <Metric label="Пропусков" value="11" />
+              <Metric label="Выбросов" value="1145" />
+              <Metric label="ADF p" value="0.03" />
+              <Metric label="Частота" value="D" />
+            </div>
+          )}
         </div>
       </section>
 
@@ -345,19 +484,89 @@ export function TsAnalysisPreprocessing() {
 
               <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
 
-              {/* Бейдж результата — после описания */}
-              {check.count !== null && check.count > 0 && (
-                <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
-                  ⚠️ Найдено {check.count} нарушений
-                </p>
+              {/* Режим проверки -- только для «Пропусков»: у остальных
+                  10 остановок ещё нет backend-проверки, которую можно
+                  реально включить/отключить (см. комментарий у useState
+                  checkModes выше). */}
+              {check.id === "missing" && (
+                <label className="mb-2 block text-[11px] font-medium text-neutral-600">
+                  Режим проверки
+                  <select
+                    aria-label={`Режим проверки ${check.label}`}
+                    value={checkModes.missing ?? "auto"}
+                    disabled={modeSaving !== null}
+                    onChange={(event) => void handleCheckModeChange("missing", event.target.value as PreprocessingCheckMode)}
+                    className="mt-1 w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm font-normal text-neutral-800 focus:outline-none focus:ring-1 focus:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="auto">Авто</option>
+                    <option value="enabled">Включена</option>
+                    <option value="disabled">Отключена</option>
+                  </select>
+                </label>
               )}
-              {check.status === "done" && (
-                <p className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
-                  Проверка пройдена, нарушений нет
-                </p>
+              {modeSaving === check.id && (
+                <p role="status" className="mb-2 text-[11px] text-brand">Сохранение режима…</p>
+              )}
+              {modeError?.checkId === check.id && (
+                <p role="alert" className="mb-2 text-[11px] text-red-700">{modeError.message}</p>
               )}
 
-              {/* Кнопка «Метрики и алгоритм» — активирует контент в центральном поле */}
+              {/* Бейдж результата -- для «Пропусков» все состояния явно
+                  различимы; для остальных (ещё не подключённых)
+                  остановок -- прежняя упрощённая логика по count/status. */}
+              {check.id === "missing" ? (
+                <>
+                  {check.status === "running" && (
+                    <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                      Проверка выполняется…
+                    </p>
+                  )}
+                  {check.status === "error" && (
+                    <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">
+                      {missingError ?? "Ошибка выполнения проверки"}
+                    </p>
+                  )}
+                  {check.status === "pending" && (
+                    <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                      Проверка не запускалась
+                    </p>
+                  )}
+                  {check.status === "skipped" && (
+                    <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                      {missingNoDataset
+                        ? "Нет активного датасета"
+                        : missingProfile?.status_reason === "disabled"
+                        ? "Отключено"
+                        : "Не требуется"}
+                    </p>
+                  )}
+                  {check.status === "warning" && (
+                    <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
+                      Найдено {check.count ?? 0} пропусков
+                    </p>
+                  )}
+                  {check.status === "done" && (
+                    <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
+                      Проверка пройдена, пропусков нет
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  {check.count !== null && check.count > 0 && (
+                    <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
+                      ⚠️ Найдено {check.count} нарушений
+                    </p>
+                  )}
+                  {check.status === "done" && (
+                    <p className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
+                      Проверка пройдена, нарушений нет
+                    </p>
+                  )}
+                </>
+              )}
+
+              {/* Кнопка «Метрики и алгоритм» -- активирует контент в центральном поле */}
               <button
                 onClick={() => handleDescriptionClick(check, "metrics")}
                 className={`w-full mb-2 rounded px-3 py-2 text-sm text-left font-medium transition-colors ${
@@ -369,7 +578,7 @@ export function TsAnalysisPreprocessing() {
                 Метрики и алгоритм
               </button>
 
-              {/* Кнопка «Полный пайплайн» — активирует контент в центральном поле */}
+              {/* Для реализованных остановок открывается специализированный мастер. */}
               <button
                 onClick={() => handleDescriptionClick(check, "pipeline")}
                 className={`w-full mb-3 rounded px-3 py-2 text-sm text-left font-medium transition-colors ${
@@ -378,7 +587,7 @@ export function TsAnalysisPreprocessing() {
                     : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
                 }`}
               >
-                Полный пайплайн
+                {check.id === "missing" ? "Исправить пропуски" : "Полный пайплайн"}
               </button>
 
               <Button>Пересчитать свойства после преобразования ({check.label.toLowerCase()})</Button>

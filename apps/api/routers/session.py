@@ -14,6 +14,7 @@ apps/standalone/components/StandaloneHome.tsx) для sessions-aware
 """
 import re
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -37,6 +38,11 @@ from apps.api.schemas import (
     DatasetInclusionCorrectionRequest,
     DatasetInclusionCorrectionResponse,
     DatasetInclusionProfileResponse,
+    DatasetMissingCorrectionRequest,
+    DatasetMissingCorrectionResponse,
+    DatasetMissingProfileResponse,
+    DatasetPreprocessingCheckModesRequest,
+    DatasetPreprocessingCheckModesResponse,
     DatasetRangeCorrectionRequest,
     DatasetRangeCorrectionResponse,
     DatasetRangeProfileResponse,
@@ -68,6 +74,9 @@ from apps.api.schemas import (
     FormatProfileItemOut,
     InclusionCorrectionResultOut,
     InclusionProfileItemOut,
+    MissingCorrectionResultOut,
+    MissingProfileItemOut,
+    MissingRowHistogramItemOut,
     RangeCorrectionResultOut,
     RangeProfileItemOut,
     TargetColumnRequest,
@@ -87,6 +96,8 @@ from validation.rule_resolver import CHECK_IDS, resolve_validation_rules
 from apps.api.consistency_correction import preview_consistency_corrections
 from apps.api.format_correction import preview_format_corrections
 from apps.api.inclusion_correction import preview_inclusion_corrections
+from apps.api.missing_correction import preview_missing_corrections
+from app.preprocessing.missing import missing_per_row_histogram, missing_summary, profile_missing
 from apps.api.range_correction import preview_range_corrections
 from apps.api.type_conversion import preview_type_conversions
 from apps.api.uniqueness_correction import preview_uniqueness_correction
@@ -115,6 +126,51 @@ def _effective_validation_check_modes(session: AnalysisSession) -> dict[str, str
         )
         for check_id in CHECK_IDS
     }
+
+
+# Остановки степпера «Предобработка» (TsAnalysisPreprocessing.tsx :: CHECKS).
+# Список фиксирован здесь (а не выведен динамически), т.к. большинство
+# остановок ещё не имеют backend-реализации -- у режима пока нет эффекта
+# для них, но словарь модели/persist готов заранее, чтобы не пришлось
+# менять формат сессии, когда очередная остановка получит бэкенд.
+PREPROCESSING_CHECK_IDS = (
+    "missing", "outliers", "regularity", "decomposition", "variance_stab",
+    "smoothing", "stationarity", "spectral", "feature_eng", "scaling", "passport",
+)
+
+
+def _effective_preprocessing_check_modes(session: AnalysisSession) -> dict[str, str]:
+    """Тот же контракт, что _effective_validation_check_modes, для другого степпера."""
+    allowed_modes = {"auto", "enabled", "disabled"}
+    return {
+        check_id: (
+            session.preprocessing_check_modes.get(check_id, "auto")
+            if session.preprocessing_check_modes.get(check_id, "auto") in allowed_modes
+            else "auto"
+        )
+        for check_id in PREPROCESSING_CHECK_IDS
+    }
+
+
+def _preprocessing_missing_status(
+    mode: str, total_columns: int, total_missing: int
+) -> tuple[str, Optional[str]]:
+    """Статус степпера остановки «Пропуски» с учётом режима.
+
+    В отличие от валидационных проверок (ranges/formats/...), у «Пропусков»
+    нет отдельного настраиваемого правила -- проверка либо безусловно
+    выполнима (в датасете есть хотя бы одна колонка), либо нет. Поэтому
+    auto и enabled расходятся ТОЛЬКО в... нигде: включить проверку
+    принудительно, когда датасету физически нечего проверять, нельзя
+    заставить появиться колонки -- то есть "needs_rule"-аналога здесь не
+    существует, и enabled ведёт себя как auto. Единственная развилка,
+    которую вносит режим, -- explicit disabled.
+    """
+    if mode == "disabled":
+        return "skipped", "disabled"
+    if total_columns == 0:
+        return "skipped", "not_required"
+    return ("warning" if total_missing > 0 else "done"), None
 
 
 def _to_response(session: AnalysisSession) -> SessionStateResponse:
@@ -888,6 +944,144 @@ def correct_dataset_ranges(
         added_columns=[item["flag_column"] for item in raw_results if item["flag_column"]],
         columns=[RangeCorrectionResultOut(**item) for item in raw_results],
         profile=[RangeProfileItemOut(**item) for item in next_profile],
+    )
+
+
+@router.get("/dataset/missing-profile", response_model=DatasetMissingProfileResponse)
+def get_dataset_missing_profile(request: Request, response: Response):
+    """Полный профиль пропусков активной сессии -- остановка «Пропуски»
+    модуля «Предобработка» (packages/ui/components/TsAnalysisPreprocessing.tsx).
+
+    В отличие от валидационных проверок (ranges/formats/...), здесь нет
+    понятия "правило не задано": пропуски проверяются безусловно для любого
+    датасета. rule_source == "not_applicable" только когда в датасете нет
+    ни одной колонки (например, после чрезмерного удаления строк/колонок) --
+    честный сигнал "нечего проверять", а не 0 пропусков.
+    """
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    df = session.dataframe
+    summary = missing_summary(df)
+    columns = profile_missing(df)
+    histogram = missing_per_row_histogram(df)
+    mode = _effective_preprocessing_check_modes(session)["missing"]
+    status, status_reason = _preprocessing_missing_status(
+        mode, summary["total_columns"], summary["total_missing"]
+    )
+    return DatasetMissingProfileResponse(
+        rule_source="system" if columns else "not_applicable",
+        mode=mode,
+        status=status,
+        status_reason=status_reason,
+        total_rows=summary["total_rows"],
+        total_columns=summary["total_columns"],
+        total_missing=summary["total_missing"],
+        missing_rate_pct=summary["missing_rate_pct"],
+        rows_with_missing=summary["rows_with_missing"],
+        rows_with_missing_pct=summary["rows_with_missing_pct"],
+        empty_rows=summary["empty_rows"],
+        columns=[MissingProfileItemOut(**item) for item in columns],
+        row_histogram=[MissingRowHistogramItemOut(**item) for item in histogram],
+    )
+
+
+@router.get(
+    "/dataset/preprocessing-check-modes",
+    response_model=DatasetPreprocessingCheckModesResponse,
+)
+def get_dataset_preprocessing_check_modes(request: Request, response: Response):
+    """Возвращает эффективный режим каждой остановки «Предобработки» --
+    аналог GET /dataset/validation-check-modes (Task 47), другой степпер."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    return DatasetPreprocessingCheckModesResponse(
+        modes=_effective_preprocessing_check_modes(session)
+    )
+
+
+@router.put(
+    "/dataset/preprocessing-check-modes",
+    response_model=DatasetPreprocessingCheckModesResponse,
+)
+def save_dataset_preprocessing_check_modes(
+    payload: DatasetPreprocessingCheckModesRequest,
+    request: Request,
+    response: Response,
+):
+    """Сохраняет partial-обновление режимов остановок «Предобработки»;
+    auto удаляет явный override -- тот же контракт, что у валидации."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    unknown = sorted(set(payload.modes) - set(PREPROCESSING_CHECK_IDS))
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Неизвестные остановки: {', '.join(unknown)}",
+        )
+    next_modes = dict(session.preprocessing_check_modes)
+    for check_id, mode in payload.modes.items():
+        if mode == "auto":
+            next_modes.pop(check_id, None)
+        else:
+            next_modes[check_id] = mode
+    session.preprocessing_check_modes = next_modes
+    session.touch()
+    store.save(session)
+    return DatasetPreprocessingCheckModesResponse(
+        modes=_effective_preprocessing_check_modes(session)
+    )
+
+
+@router.post("/dataset/missing-corrections", response_model=DatasetMissingCorrectionResponse)
+def correct_dataset_missing(
+    payload: DatasetMissingCorrectionRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply безопасных стратегий исправления пропусков -- тот же
+    контракт (preview на копии → confirm → apply → сессия обновляется
+    атомарно), что и /dataset/range-corrections."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    try:
+        corrected_df, raw_results, rows_removed = preview_missing_corrections(
+            session.dataframe, payload.columns, payload.strategy
+        )
+        next_profile = profile_missing(corrected_df)
+    except (ValueError, TypeError) as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
+        session.touch()
+        store.save(session)
+
+    return DatasetMissingCorrectionResponse(
+        applied=payload.apply,
+        strategy=payload.strategy,
+        total_missing=sum(item["missing_count"] for item in raw_results),
+        total_changed=sum(item["changed_count"] for item in raw_results),
+        total_still_missing=sum(item["still_missing"] for item in raw_results),
+        rows_removed=rows_removed,
+        added_columns=[item["flag_column"] for item in raw_results if item["flag_column"]],
+        columns=[MissingCorrectionResultOut(**item) for item in raw_results],
+        profile=[MissingProfileItemOut(**item) for item in next_profile],
     )
 
 
