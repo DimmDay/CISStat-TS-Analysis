@@ -94,6 +94,20 @@ interface RegularityRule {
   gap_threshold_multiplier?: number;
 }
 
+interface SufficiencyRule {
+  date_column?: string;
+  entity_column?: string;
+  target_column?: string;
+  frequency?: string;
+  seasonal_period?: number;
+  min_obs_trend?: number;
+  min_obs_seasonality?: number;
+  min_obs_arima?: number;
+  min_obs_fft?: number;
+  min_obs_ml?: number;
+  min_seasons?: number;
+}
+
 interface RulesContent {
   ranges: RangeRule[];
   inclusion?: Record<string, InclusionRule>;
@@ -104,7 +118,7 @@ interface RulesContent {
   text_quality?: TextQualityRule;
   regularity?: RegularityRule;
   outliers?: Record<string, unknown>;
-  sufficiency?: Record<string, unknown>;
+  sufficiency?: SufficiencyRule;
 }
 
 interface SessionRulesSelection {
@@ -302,6 +316,12 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
               ...(activeOverrides.regularity as RegularityRule),
             }
           : templateContent.regularity,
+        sufficiency: activeOverrides.sufficiency
+          ? {
+              ...(templateContent.sufficiency || {}),
+              ...(activeOverrides.sufficiency as SufficiencyRule),
+            }
+          : templateContent.sufficiency,
       };
       setRules(content);
       setUniquenessKeyDraft(content.uniqueness?.composite_key?.join(", ") || "");
@@ -341,7 +361,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       };
       setRules(content);
       setUniquenessKeyDraft(content.uniqueness?.composite_key?.join(", ") || "");
-      setOriginalRules({ ranges: [], formats: {}, consistency: [], uniqueness: {}, inclusion: {}, referential: [], text_quality: undefined, regularity: undefined });
+      setOriginalRules({ ranges: [], formats: {}, consistency: [], uniqueness: {}, inclusion: {}, referential: [], text_quality: undefined, regularity: undefined, sufficiency: undefined });
       setError(null);
     }
   }, [selectedTemplate, loadTemplate, sessionSelection]);
@@ -560,6 +580,11 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     setRules({ ...rules, regularity: { ...(rules.regularity || {}), ...patch } });
   };
 
+  const updateSufficiency = (patch: Partial<SufficiencyRule>) => {
+    if (!rules) return;
+    setRules({ ...rules, sufficiency: { ...(rules.sufficiency || {}), ...patch } });
+  };
+
   const serializableFormats = (formats: Record<string, FormatRule> = {}) => Object.fromEntries(
     Object.entries(formats)
       .filter(([column]) => column.trim() && !column.startsWith("__new_"))
@@ -622,6 +647,23 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     };
   };
 
+  const serializableSufficiency = (rule?: SufficiencyRule) => {
+    if (!rule) return {};
+    return {
+      ...(rule.date_column?.trim() ? { date_column: rule.date_column.trim() } : {}),
+      ...(rule.entity_column?.trim() ? { entity_column: rule.entity_column.trim() } : {}),
+      ...(rule.target_column?.trim() ? { target_column: rule.target_column.trim() } : {}),
+      ...(rule.frequency?.trim() ? { frequency: rule.frequency.trim() } : {}),
+      ...(rule.seasonal_period !== undefined ? { seasonal_period: rule.seasonal_period } : {}),
+      ...(rule.min_obs_trend !== undefined ? { min_obs_trend: rule.min_obs_trend } : {}),
+      ...(rule.min_obs_seasonality !== undefined ? { min_obs_seasonality: rule.min_obs_seasonality } : {}),
+      ...(rule.min_obs_arima !== undefined ? { min_obs_arima: rule.min_obs_arima } : {}),
+      ...(rule.min_obs_fft !== undefined ? { min_obs_fft: rule.min_obs_fft } : {}),
+      ...(rule.min_obs_ml !== undefined ? { min_obs_ml: rule.min_obs_ml } : {}),
+      ...(rule.min_seasons !== undefined ? { min_seasons: rule.min_seasons } : {}),
+    };
+  };
+
   const serializableConsistency = (consistency: ConsistencyRule[] = []) => consistency.map((rule) => {
     const { draft: _draft, ...serialized } = rule;
     const columns = (rule.columns || []).map((column) => column.trim()).filter(Boolean);
@@ -658,6 +700,8 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       const originalTextQuality = serializableTextQuality(originalRules?.text_quality);
       const currentRegularity = serializableRegularity(rules.regularity);
       const originalRegularity = serializableRegularity(originalRules?.regularity);
+      const currentSufficiency = serializableSufficiency(rules.sufficiency);
+      const originalSufficiency = serializableSufficiency(originalRules?.sufficiency);
       const normalizedUniquenessKey = uniquenessKeyDraft
         .split(",")
         .map((column) => column.trim())
@@ -741,6 +785,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       if (JSON.stringify(currentRegularity) !== JSON.stringify(originalRegularity)) {
         overrides.regularity = currentRegularity;
       }
+      if (JSON.stringify(currentSufficiency) !== JSON.stringify(originalSufficiency)) {
+        overrides.sufficiency = currentSufficiency;
+      }
       const resp = await fetch(`${API_BASE}/v1/session/dataset/validation-rules`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -765,6 +812,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
           : undefined,
         regularity: Object.keys(currentRegularity).length > 0
           ? currentRegularity
+          : undefined,
+        sufficiency: Object.keys(currentSufficiency).length > 0
+          ? currentSufficiency
           : undefined,
       } : current);
       setApplied(true);
@@ -1124,6 +1174,43 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
               </label>
             </div>
             <p className="mt-2 text-[11px] text-neutral-500">Проверка всегда выполняется отдельно внутри каждой группы. Явная частота используется для подсчёта пропущенных периодов и построения сетки исправления.</p>
+          </div>
+        </div>
+      )}
+
+      {rules && !loading && (
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h4 className="text-sm font-medium">Редактор достаточности наблюдений</h4>
+            <span className="text-[11px] text-neutral-500">Пустые оси определяются системой</span>
+          </div>
+          <div className="rounded-md border border-neutral-200 bg-white px-3 py-2">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <label className="text-[11px] text-neutral-500">Временная колонка
+                <input type="text" aria-label="Временная колонка достаточности" value={rules.sufficiency?.date_column ?? ""} onChange={(event) => updateSufficiency({ date_column: event.target.value })} placeholder="Например: Date" className="mt-1 w-full rounded border border-neutral-300 px-2 py-1 text-sm text-neutral-800" />
+              </label>
+              <label className="text-[11px] text-neutral-500">Группирующая колонка
+                <input type="text" aria-label="Группирующая колонка достаточности" value={rules.sufficiency?.entity_column ?? ""} onChange={(event) => updateSufficiency({ entity_column: event.target.value })} placeholder="Например: Country" className="mt-1 w-full rounded border border-neutral-300 px-2 py-1 text-sm text-neutral-800" />
+              </label>
+              <label className="text-[11px] text-neutral-500">Целевая колонка
+                <input type="text" aria-label="Целевая колонка достаточности" value={rules.sufficiency?.target_column ?? ""} onChange={(event) => updateSufficiency({ target_column: event.target.value })} placeholder="Активный признак" className="mt-1 w-full rounded border border-neutral-300 px-2 py-1 text-sm text-neutral-800" />
+              </label>
+              <label className="text-[11px] text-neutral-500">Частота (pandas)
+                <input type="text" aria-label="Частота достаточности" value={rules.sufficiency?.frequency ?? ""} onChange={(event) => updateSufficiency({ frequency: event.target.value })} placeholder="D, B, W, MS, YS…" className="mt-1 w-full rounded border border-neutral-300 px-2 py-1 font-mono text-sm text-neutral-800" />
+              </label>
+              {([
+                ["Сезонный период", "seasonal_period", "авто"],
+                ["Минимум для тренда", "min_obs_trend", "10"],
+                ["Минимум для сезонности", "min_obs_seasonality", "24"],
+                ["Минимум для ARIMA / ETS", "min_obs_arima", "50"],
+                ["Минимум для FFT", "min_obs_fft", "64"],
+                ["Минимум для ML", "min_obs_ml", "100"],
+                ["Минимум сезонных циклов", "min_seasons", "2"],
+              ] as const).map(([label, key, placeholder]) => <label key={key} className="text-[11px] text-neutral-500">{label}
+                <input type="number" min={1} step={1} aria-label={label} value={rules.sufficiency?.[key] ?? ""} onChange={(event) => updateSufficiency({ [key]: event.target.value === "" ? undefined : Number(event.target.value) })} placeholder={placeholder} className="mt-1 w-full rounded border border-neutral-300 px-2 py-1 text-sm text-neutral-800" />
+              </label>)}
+            </div>
+            <p className="mt-2 text-[11px] text-neutral-500">Пороги задают доступность классов методов, а не допустимость строк. Для конкретной модели её собственный minimum проверяется повторно на этапе «Моделирование».</p>
           </div>
         </div>
       )}

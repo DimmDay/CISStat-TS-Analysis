@@ -797,6 +797,82 @@ class DatasetRegularityCorrectionResponse(BaseModel):
     profile: RegularityProfileOut
 
 
+class SufficiencyCheckOut(BaseModel):
+    id: str
+    label: str
+    actual: int
+    threshold: int
+    unit: str
+    passed: bool
+    deficit: int
+    models: str
+
+
+class SufficiencyThresholdOut(BaseModel):
+    id: str
+    label: str
+    threshold: int
+    unit: str
+    models: str
+
+
+class SufficiencyGroupOut(BaseModel):
+    group: str
+    rows_total: int
+    valid_observations: int
+    invalid_target_count: int
+    invalid_date_count: int
+    unique_timestamps: int
+    frequency: Optional[str] = None
+    seasonal_period: int
+    seasonal_cycles: int
+    failed_checks: int
+    passed_checks: int
+    checks: List[SufficiencyCheckOut] = Field(default_factory=list)
+    available_capabilities: List[str] = Field(default_factory=list)
+    unavailable_capabilities: List[str] = Field(default_factory=list)
+
+
+class SufficiencyProfileOut(BaseModel):
+    applicable: bool
+    applicability_message: Optional[str] = None
+    date_column: Optional[str] = None
+    entity_column: Optional[str] = None
+    target_column: Optional[str] = None
+    frequency: Optional[str] = None
+    seasonal_period: Optional[int] = None
+    groups_total: int
+    sufficient_groups: int
+    insufficient_groups: int
+    total_failed_checks: int
+    groups: List[SufficiencyGroupOut] = Field(default_factory=list)
+    thresholds: List[SufficiencyThresholdOut] = Field(default_factory=list)
+    supported_actions: List[str] = Field(default_factory=list)
+
+
+class DatasetSufficiencyProfileResponse(BaseModel):
+    rule_source: Literal["system", "template", "session", "not_applicable"]
+    plan: Dict[str, Any] = Field(default_factory=dict)
+    profile: SufficiencyProfileOut
+
+
+class DatasetSufficiencyPlanRequest(BaseModel):
+    strategy: Literal["restrict_models", "flag_groups", "drop_groups"] = "restrict_models"
+    apply: bool = Field(False, description="False -- preview; True -- сохранить решение в сессии")
+
+
+class DatasetSufficiencyPlanResponse(BaseModel):
+    applied: bool
+    strategy: str
+    rows_before: int
+    rows_after: int
+    rows_removed: int
+    added_columns: List[str] = Field(default_factory=list)
+    eligible_groups: List[str] = Field(default_factory=list)
+    insufficient_groups: List[str] = Field(default_factory=list)
+    profile: SufficiencyProfileOut
+
+
 class ConsistencyProfileItemOut(BaseModel):
     rule_index: int
     rule_name: str

@@ -204,6 +204,30 @@ describe("RulesManagementPanel", () => {
     });
   });
 
+  it("saves sufficiency axes, seasonal period and model thresholds", async () => {
+    const { container } = render(<RulesManagementPanel />);
+    const selector = await waitTemplatesLoaded(container);
+    fireEvent.change(selector, { target: { value: "fao_prices" } });
+
+    fireEvent.change(await screen.findByRole("textbox", { name: "Временная колонка достаточности" }), { target: { value: "Year" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Группирующая колонка достаточности" }), { target: { value: "Country" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Целевая колонка достаточности" }), { target: { value: "Price" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Сезонный период" }), { target: { value: "4" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Минимум для ARIMA / ETS" }), { target: { value: "48" } });
+    fireEvent.click(screen.getByTestId("apply-rules-btn"));
+
+    await waitFor(() => {
+      const putCall = mockFetch.mock.calls.find(
+        (call: [string, RequestInit?]) => call[0].includes("/session/dataset/validation-rules") && call[1]?.method === "PUT"
+      );
+      const payload = JSON.parse((putCall?.[1]?.body ?? "{}") as string);
+      expect(payload.overrides.sufficiency).toEqual(expect.objectContaining({
+        date_column: "Year", entity_column: "Country", target_column: "Price",
+        seasonal_period: 4, min_obs_arima: 48,
+      }));
+    });
+  });
+
   it("saves a changed uniqueness key as a session override", async () => {
     const { container } = render(<RulesManagementPanel />);
     const selector = await waitTemplatesLoaded(container);
@@ -475,8 +499,9 @@ describe("RulesManagementPanel", () => {
       expect(allLabels.length).toBe(2);
       expect(maxLabels.length).toBe(2);
       // 4 числовых input (type=number → role=spinbutton).
-      const spinInputs = screen.getAllByRole("spinbutton", { name: /^(Минимум|Максимум)/i });
-      expect(spinInputs.length).toBe(4);
+      const rangeEditor = screen.getByText(/Редактор диапазонов/i).parentElement?.parentElement;
+      const spinInputs = rangeEditor?.querySelectorAll('input[type="number"]');
+      expect(spinInputs?.length).toBe(4);
     });
   });
 

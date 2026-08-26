@@ -47,6 +47,8 @@ import { ValidationTextQualityOverview } from "./ValidationTextQualityOverview";
 import { ValidationTextQualityPipeline } from "./ValidationTextQualityPipeline";
 import { ValidationRegularityOverview } from "./ValidationRegularityOverview";
 import { ValidationRegularityPipeline } from "./ValidationRegularityPipeline";
+import { ValidationSufficiencyOverview } from "./ValidationSufficiencyOverview";
+import { ValidationSufficiencyPipeline } from "./ValidationSufficiencyPipeline";
 import { useAppShell } from "../context/AppShellContext";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
@@ -403,6 +405,32 @@ const REGULARITY_PIPELINE_DESCRIPTION = `Мастер исправления р�
 
 Ресемплирование выполняется отдельно внутри каждой сущности. Некорректные даты требуют сначала исправить тип или формат; ошибки преобразования не скрываются.`;
 
+const SUFFICIENCY_METRICS_DESCRIPTION = `Метрики и алгоритм: Достаточность наблюдений
+
+Цель
+Проверка определяет, для каких классов методов длины каждого временного ряда достаточно. Это ограничение применимости моделей, а не ошибка отдельных строк.
+
+Метрики
+1. Валидные наблюдения — строки, где одновременно корректны временная метка и числовое значение исследуемого признака.
+2. Уникальные временные метки — фактическая длина временной оси без дублей.
+3. Эквивалент сезонных циклов — число уникальных меток, делённое на сезонный период из правил или системной частоты.
+4. Недоступные требования — пороги тренда, сезонности, ARIMA/ETS, FFT, ML и минимального числа циклов, которые группа не выполняет.
+
+Алгоритм backend
+1. Resolver использует явные date_column, entity_column, target_column, частоту и пороги правил; иначе применяет системные детекторы и активный исследуемый признак.
+2. Расчёт выполняется отдельно по каждой сущности и не смешивает панельные ряды.
+3. Общая валидация, обзор и мастер используют один профиль достаточности.
+4. Порог означает доступность класса методов, а точные ограничения конкретной модели дополнительно проверяются на этапе «Моделирование».`;
+
+const SUFFICIENCY_PIPELINE_DESCRIPTION = `Мастер решений по достаточности
+
+1. Проверьте целевой ряд, временную ось, группировку, частоту и пороги применимости.
+2. Выберите безопасное решение: ограничить набор моделей, добавить диагностический флаг либо исключить недостаточные группы панельного ряда.
+3. Выполните предпросмотр и оцените охват, добавляемые признаки или число удаляемых строк.
+4. Подтвердите решение. План сохраняется в сессии, затем общая валидация запускается повторно.
+
+Мастер не создаёт синтетические наблюдения и не предлагает агрегацию как способ увеличить n: агрегация уменьшает длину ряда. Сбор новых данных остаётся внешним организационным действием.`;
+
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisValidation() {
@@ -655,6 +683,7 @@ export function TsAnalysisValidation() {
       if (activeCheck.id === "referential") return REFERENTIAL_METRICS_DESCRIPTION;
       if (activeCheck.id === "text_quality") return TEXT_QUALITY_METRICS_DESCRIPTION;
       if (activeCheck.id === "regularity") return REGULARITY_METRICS_DESCRIPTION;
+      if (activeCheck.id === "sufficiency") return SUFFICIENCY_METRICS_DESCRIPTION;
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
     if (activeCheck.id === "data_types") return DATA_TYPES_PIPELINE_DESCRIPTION;
@@ -666,6 +695,7 @@ export function TsAnalysisValidation() {
     if (activeCheck.id === "referential") return REFERENTIAL_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "text_quality") return TEXT_QUALITY_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "regularity") return REGULARITY_PIPELINE_DESCRIPTION;
+    if (activeCheck.id === "sufficiency") return SUFFICIENCY_PIPELINE_DESCRIPTION;
     return `Полный пайплайн: ${activeCheck.label.toLowerCase()}\n\n1. Обнаружение → 2. Диагностика → 3. Преобразование → 4. Верификация\n\n${activeCheck.description}`;
   })();
 
@@ -684,6 +714,7 @@ export function TsAnalysisValidation() {
     if (activeCheck.id === "referential") return "Мастер исправления ссылочной целостности";
     if (activeCheck.id === "text_quality") return "Мастер исправления целостности текста";
     if (activeCheck.id === "regularity") return "Мастер исправления равномерности шага";
+    if (activeCheck.id === "sufficiency") return "Мастер решений по достаточности";
     return `Полный пайплайн — ${activeCheck.label}`;
   })();
 
@@ -896,6 +927,8 @@ export function TsAnalysisValidation() {
               ? "Мастер исправления целостности текста"
               : activeCheckId === "regularity" && descriptionSection === "pipeline"
               ? "Мастер исправления равномерности шага"
+              : activeCheckId === "sufficiency" && descriptionSection === "pipeline"
+              ? "Мастер решений по достаточности"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -917,6 +950,8 @@ export function TsAnalysisValidation() {
               ? "Выберите колонки и стратегию, оцените последствия очистки и примените исправления."
               : activeCheckId === "regularity" && descriptionSection === "pipeline"
               ? "Проверьте временную сетку, выберите стратегию, оцените последствия и примените исправление."
+              : activeCheckId === "sufficiency" && descriptionSection === "pipeline"
+              ? "Проверьте длину рядов, выберите безопасное решение и сохраните план анализа."
               : activeCheckId === "data_types"
               ? "Распределение фактических типов и построчная матрица колонок."
               : activeCheckId === "ranges"
@@ -933,6 +968,8 @@ export function TsAnalysisValidation() {
               ? "Соотношение чистых и проблемных значений и матрица причин по текстовым колонкам."
               : activeCheckId === "regularity"
               ? "Равномерность временной сетки по группам, разрывы, дубли и нарушения сортировки."
+              : activeCheckId === "sufficiency"
+              ? "Достаточные и ограниченные группы, валидные наблюдения, сезонные циклы и доступные классы методов."
               : "Визуализация результатов проверки по активному критерию."}
           </p>
 
@@ -978,6 +1015,11 @@ export function TsAnalysisValidation() {
             <ValidationTextQualityPipeline onApplied={runValidation} />
           ) : activeCheckId === "regularity" && descriptionSection === "pipeline" ? (
             <ValidationRegularityPipeline
+              onApplied={runValidation}
+              onOpenRules={() => setDescriptionSection("rules")}
+            />
+          ) : activeCheckId === "sufficiency" && descriptionSection === "pipeline" ? (
+            <ValidationSufficiencyPipeline
               onApplied={runValidation}
               onOpenRules={() => setDescriptionSection("rules")}
             />
@@ -1054,6 +1096,14 @@ export function TsAnalysisValidation() {
             ) : (
               <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы проверить равномерность временной сетки по каждой сущности.
+              </div>
+            )
+          ) : activeCheckId === "sufficiency" ? (
+            validationHasRun ? (
+              <ValidationSufficiencyOverview refreshKey={validationVersion} />
+            ) : (
+              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+                Запустите валидацию, чтобы оценить применимость методов по длине каждого временного ряда.
               </div>
             )
           ) : (
@@ -1213,6 +1263,8 @@ export function TsAnalysisValidation() {
                   ? "Исправить целостность текста"
                   : check.id === "regularity"
                   ? "Исправить равномерность шага"
+                  : check.id === "sufficiency"
+                  ? "Настроить план анализа"
                   : "Полный пайплайн"}
               </button>
 

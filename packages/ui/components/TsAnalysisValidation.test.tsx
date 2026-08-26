@@ -135,6 +135,7 @@ function mockActiveValidation(validateResponse: (url?: string) => Promise<unknow
     }
     if (url.includes("/dataset/referential-profile")) return validateResponse(url);
     if (url.includes("/dataset/regularity-profile")) return validateResponse(url);
+    if (url.includes("/dataset/sufficiency-profile")) return validateResponse(url);
     if (url.includes("/dataset/validate")) return validateResponse(url);
     return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
   }) as unknown as typeof fetch;
@@ -230,7 +231,8 @@ describe("TsAnalysisValidation", () => {
     renderValidation();
 
     const correctionButton = await screen.findByRole("button", { name: "Исправить типы данных" });
-    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Полный пайплайн" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Настроить план анализа" })).toBeInTheDocument();
     fireEvent.click(correctionButton);
 
     expect(screen.getAllByText("Мастер исправления типов").length).toBeGreaterThan(0);
@@ -819,5 +821,32 @@ describe("TsAnalysisValidation", () => {
     expect(await screen.findByRole("table", { name: "Матрица равномерности временного шага" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Исправить равномерность шага" }));
     expect(screen.getByRole("region", { name: "Мастер исправления равномерности шага" })).toBeInTheDocument();
+  });
+
+  it("opens the sufficiency overview and analysis-plan master", async () => {
+    const sufficiencyProfile = {
+      rule_source: "system", plan: {},
+      profile: {
+        applicable: true, applicability_message: null, date_column: "Date", entity_column: "Country", target_column: "Value",
+        frequency: "D", seasonal_period: 7, groups_total: 1, sufficient_groups: 0, insufficient_groups: 1, total_failed_checks: 2,
+        thresholds: [], supported_actions: ["restrict_models", "flag_groups", "drop_groups"],
+        groups: [{ group: "A", rows_total: 10, valid_observations: 10, invalid_target_count: 0, invalid_date_count: 0, unique_timestamps: 10, frequency: "D", seasonal_period: 7, seasonal_cycles: 1, failed_checks: 2, passed_checks: 4, checks: [], available_capabilities: ["Тренд"], unavailable_capabilities: ["ARIMA", "ML"] }],
+      },
+    };
+    mockActiveValidation((url) => {
+      if (url.includes("/sufficiency-profile")) return Promise.resolve({ ok: true, json: () => Promise.resolve(sufficiencyProfile) });
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(validationResponse("warning", "schema", 2)) });
+    });
+
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    await screen.findByText("Найдены проблемы: 2");
+
+    fireEvent.click(screen.getByRole("button", { name: /Достаточность наблюдений/ }));
+    expect(await screen.findByRole("table", { name: "Матрица достаточности наблюдений" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Настроить план анализа" }));
+    expect(screen.getByRole("region", { name: "Мастер решений по достаточности" })).toBeInTheDocument();
   });
 });

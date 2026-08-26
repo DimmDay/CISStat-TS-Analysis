@@ -6,6 +6,7 @@
 """
 
 import pandas as pd
+from validation.sufficiency import legacy_sufficiency_result, profile_sufficiency
 import numpy as np
 import pandera as pa
 from pandera import Check, Column, DataFrameSchema
@@ -362,11 +363,14 @@ def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict, target_c
     # ── sufficiency (per-column -- validate_sufficiency принимает num_col
     # НАПРЯМУЮ, самый прямой случай скоупинга из всех 10) ──
     def _sufficiency():
-        raw, _recs = validate_sufficiency(df, rules, num_col=target_column)
-        if raw and raw[0].get("Тип") == "Нет временной колонки":
+        profile = profile_sufficiency(df, rules, target_column=target_column)
+        if not profile["applicable"]:
             return {"status": "pending", "count": None, "items": [], "scope": "column"}
-        items = [{"label": r.get("Группа", "?"), "count": r.get("Нарушений", 0)} for r in raw]
-        count = sum(i["count"] for i in items)
+        items = [
+            {"label": item["group"], "count": item["failed_checks"]}
+            for item in profile["groups"] if item["failed_checks"] > 0
+        ]
+        count = int(profile["total_failed_checks"])
         return {"status": _status(count), "count": count, "items": items, "scope": "column"}
     _safe("sufficiency", _sufficiency)
 
@@ -1389,219 +1393,17 @@ def validate_regular_step(df, rules, date_col=None):
 
 
 def validate_sufficiency(df, rules, date_col=None, group_col=None, num_col=None):
-    """Проверяет достаточность числа наблюдений для применения TS-моделей."""
-    results = []
-    recommendations = {}
-
-    # Автоопределение колонок
-    if date_col is None:
-        date_candidates = [c for c in df.columns if 'year' in c.lower() or 'date' in c.lower() or 'дата' in c.lower()]
-        if not date_candidates:
-            results.append({
-                'Тип': 'Нет временной колонки',
-                'Статус': '⚠️ Анализ невозможен',
-                'Рекомендация': 'Для проверки достаточности необходима колонка с датами/годами'
-            })
-            return results, recommendations
-        date_col = date_candidates[0]
-
-    if group_col is None:
-        for c in df.columns:
-            if c != date_col and df[c].dtype == 'object' and df[c].nunique() < 100:
-                if 'country' in c.lower() or 'стран' in c.lower() or 'region' in c.lower():
-                    group_col = c
-                    break
-
-    if num_col is None:
-        num_cols = df.select_dtypes(include='number').columns.tolist()
-        if num_cols:
-            num_col = num_cols[0]
-
-    # Пороговые значения
-    sufficiency_rules = rules.get("sufficiency", {})
-    thresholds = {
-        'min_obs_trend': sufficiency_rules.get('min_obs_trend', 10),
-        'min_obs_seasonality': sufficiency_rules.get('min_obs_seasonality', 24),
-        'min_obs_arima': sufficiency_rules.get('min_obs_arima', 50),
-        'min_obs_ml': sufficiency_rules.get('min_obs_ml', 100),
-        'min_obs_fft': sufficiency_rules.get('min_obs_fft', 64),
-        'min_seasons': sufficiency_rules.get('min_seasons', 2),
-    }
-
-    def detect_frequency(dates_series):
-        """Определяет частоту временного ряда"""
-        if pd.api.types.is_datetime64_any_dtype(dates_series):
-            inferred = pd.infer_freq(dates_series.sort_values())
-            if inferred:
-                if 'D' in inferred:
-                    return 'daily', 365
-                elif 'M' in inferred or 'MS' in inferred:
-                    return 'monthly', 12
-                elif 'Q' in inferred:
-                    return 'quarterly', 4
-                elif 'Y' in inferred or 'A' in inferred:
-                    return 'yearly', 1
-        else:
-            try:
-                years = pd.to_datetime(dates_series.astype(str), format='%Y', errors='coerce')
-                years = years.dropna()
-                if len(years) > 1:
-                    intervals = years.diff().dropna()
-                    avg_interval = intervals.mean()
-                    if avg_interval.days > 300:
-                        return 'yearly', 1
-                    elif avg_interval.days > 25:
-                        return 'monthly', 12
-            except:
-                pass
-        return 'unknown', 1
-
-    def check_group_sufficiency(group_df, group_name=""):
-        group_results = []
-        n_total = len(group_df)
-        if n_total == 0:
-            return group_results
-
-        freq_name, periods_per_year = detect_frequency(group_df[date_col])
-
-        if pd.api.types.is_datetime64_any_dtype(group_df[date_col]):
-            n_years = (group_df[date_col].max() - group_df[date_col].min()).days / 365.25
-        else:
-            # БАГ (найдено 2026-08-14, первое реальное подключение к API):
-            # date_col часто хранится как ISO-строка ("2020-01-01"), ещё
-            # не приведённая к datetime64 (валидация вызывается ДО стадии
-            # «Предобработка»). Старый код сразу пытался pd.to_numeric --
-            # на ISO-строке это молча даёт NaN для ВСЕХ значений (не
-            # исключение), затем years.max()-years.min() на пустой Series
-            # тоже молча даёт NaN (не исключение) -- except ниже никогда
-            # не срабатывал, и NaN долетал до int(n_years) => ValueError,
-            # роняя всю проверку "sufficiency" (перехватывалось _safe() в
-            # _run_all_checks, но пользователь просто не видел результат).
-            # Фикс: сначала пробуем как дату, потом как голый год.
-            parsed_dates = pd.to_datetime(group_df[date_col], errors='coerce').dropna()
-            if len(parsed_dates) >= 2:
-                n_years = (parsed_dates.max() - parsed_dates.min()).days / 365.25
-            else:
-                years = pd.to_numeric(group_df[date_col], errors='coerce').dropna()
-                if len(years) >= 2:
-                    n_years = float(years.max() - years.min())
-                else:
-                    n_years = n_total / periods_per_year if periods_per_year > 0 else 0
-
-        n_seasons = int(n_years) if periods_per_year == 1 else int(n_years)
-
-        checks = [
-            {
-                'name': 'Минимум для тренда',
-                'threshold': thresholds['min_obs_trend'],
-                'actual': n_total,
-                'passed': n_total >= thresholds['min_obs_trend'],
-                'models': 'Базовый тренд, линейная регрессия'
-            },
-            {
-                'name': 'Минимум для ARIMA',
-                'threshold': thresholds['min_obs_arima'],
-                'actual': n_total,
-                'passed': n_total >= thresholds['min_obs_arima'],
-                'models': 'ARIMA, SARIMA, Exponential Smoothing'
-            },
-            {
-                'name': 'Минимум для сезонности',
-                'threshold': thresholds['min_obs_seasonality'],
-                'actual': n_total,
-                'passed': n_total >= thresholds['min_obs_seasonality'],
-                'models': 'STL-декомпозиция, сезонные модели'
-            },
-            {
-                'name': 'Минимум для спектрального анализа (FFT)',
-                'threshold': thresholds['min_obs_fft'],
-                'actual': n_total,
-                'passed': n_total >= thresholds['min_obs_fft'],
-                'models': 'FFT, Wavelet-анализ, периодограмма'
-            },
-            {
-                'name': 'Минимум для ML-моделей',
-                'threshold': thresholds['min_obs_ml'],
-                'actual': n_total,
-                'passed': n_total >= thresholds['min_obs_ml'],
-                'models': 'LSTM, XGBoost, Prophet (рекомендуется)'
-            },
-            {
-                'name': 'Достаточность сезонов для SARIMA',
-                'threshold': thresholds['min_seasons'],
-                'actual': n_seasons,
-                'passed': n_seasons >= thresholds['min_seasons'],
-                'models': 'SARIMA, Holt-Winters (требуют ≥2 полных сезона)',
-                'unit': 'сезонов'
-            }
-        ]
-
-        failed_checks = [c for c in checks if not c['passed']]
-
-        if failed_checks:
-            entry = {
-                'Тип': 'Панельная группа' if group_name else 'Общий ряд',
-                'Группа': group_name if group_name else 'Весь датасет',
-                'Всего наблюдений': n_total,
-                'Частота': freq_name,
-                'Периодов в году': periods_per_year,
-                'Полных сезонов (лет)': n_seasons,
-                'Нарушений': len(failed_checks),
-                'Детали': [
-                    f"❌ {c['name']}: {c['actual']} {c.get('unit', 'набл.')} < {c['threshold']} (доступно: {c['models']})"
-                    for c in failed_checks
-                ],
-                'Рекомендации': _generate_recommendations(failed_checks, n_total, freq_name),
-                'Статус': '⚠️ Недостаточно'
-            }
-            group_results.append(entry)
-        else:
-            group_results.append({
-                'Тип': 'Панельная группа' if group_name else 'Общий ряд',
-                'Группа': group_name if group_name else 'Весь датасет',
-                'Всего наблюдений': n_total,
-                'Частота': freq_name,
-                'Полных сезонов': n_seasons,
-                'Нарушений': 0,
-                'Статус': '✅ Достаточность обеспечена'
-            })
-
-        recommendations[group_name if group_name else 'all'] = {
-            'n_total': n_total,
-            'frequency': freq_name,
-            'n_seasons': n_seasons,
-            'available_models': [c['models'] for c in checks if c['passed']],
-            'unavailable_models': [c['models'] for c in failed_checks]
-        }
-
-        return group_results
-
-    # Проверка для панельных или обычных данных
-    if group_col and group_col in df.columns:
-        for group_name, group_df in df.groupby(group_col):
-            results.extend(check_group_sufficiency(group_df, group_name))
-    else:
-        results.extend(check_group_sufficiency(df, ""))
-
-    return results, recommendations
-
-
-def _generate_recommendations(failed_checks, n_total, freq_name):
-    """Генерирует рекомендации на основе выявленных недостатков"""
-    recs = []
-    for check in failed_checks:
-        deficit = check['threshold'] - check['actual']
-        if 'сезон' in check.get('unit', ''):
-            recs.append(f"• Для {check['name']} нужно ещё {deficit} полных сезонов")
-        else:
-            recs.append(f"• Для {check['name']} нужно ещё {deficit} наблюдений")
-
-    if n_total < 50:
-        recs.append("💡 Рассмотрите сбор дополнительных данных или агрегацию по более крупным периодам")
-    if n_total < 100 and freq_name == 'yearly':
-        recs.append("💡 Для годовых данных с n<100 рекомендуется использовать простые модели (ARIMA, ETS)")
-
-    return "\n".join(recs) if recs else "Нарушений не выявлено"
+    """Совместимый Streamlit-адаптер поверх единого профиля."""
+    scoped_rules = dict(rules or {})
+    sufficiency = dict(scoped_rules.get("sufficiency", {}) or {})
+    if date_col:
+        sufficiency["date_column"] = date_col
+    if group_col:
+        sufficiency["entity_column"] = group_col
+    if num_col:
+        sufficiency["target_column"] = num_col
+    scoped_rules["sufficiency"] = sufficiency
+    return legacy_sufficiency_result(profile_sufficiency(df, scoped_rules, target_column=num_col))
 
 
 def generate_validation_passport(df_before, val_results, df_after=None,

@@ -49,6 +49,9 @@ from apps.api.schemas import (
     DatasetRegularityCorrectionRequest,
     DatasetRegularityCorrectionResponse,
     DatasetRegularityProfileResponse,
+    DatasetSufficiencyPlanRequest,
+    DatasetSufficiencyPlanResponse,
+    DatasetSufficiencyProfileResponse,
     DatasetReferentialCorrectionRequest,
     DatasetReferentialCorrectionResponse,
     DatasetReferentialProfileResponse,
@@ -89,6 +92,7 @@ from apps.api.schemas import (
     RangeCorrectionResultOut,
     RangeProfileItemOut,
     RegularityProfileOut,
+    SufficiencyProfileOut,
     ReferentialCorrectionResultOut,
     ReferentialProfileItemOut,
     TextQualityCorrectionResultOut,
@@ -109,6 +113,7 @@ from validation.engine import profile_consistency, profile_formats, profile_incl
 from validation.inclusion import coerce_inclusion_rule_to_series
 from validation.referential import profile_referential
 from validation.regularity import normalize_frequency, profile_regularity
+from validation.sufficiency import DEFAULT_THRESHOLDS, profile_sufficiency
 from validation.text_quality import profile_text_quality
 from validation.rule_resolver import CHECK_IDS, resolve_validation_rules
 from apps.api.consistency_correction import preview_consistency_corrections
@@ -119,6 +124,7 @@ from app.preprocessing.missing import missing_per_row_histogram, missing_summary
 from apps.api.range_correction import preview_range_corrections
 from apps.api.referential_correction import preview_referential_corrections
 from apps.api.regularity_correction import preview_regularity_correction
+from apps.api.sufficiency_plan import preview_sufficiency_plan
 from apps.api.text_quality_correction import preview_text_quality_corrections
 from apps.api.type_conversion import preview_type_conversions
 from apps.api.uniqueness_correction import preview_uniqueness_correction
@@ -130,6 +136,41 @@ from apps.api.session_store import (
     get_session_store,
 )
 from apps.api.upload_common import _compute_column_info, _compute_parse_warnings, _compute_quality_teaser
+
+
+def _sufficiency_plan_is_current(
+    plan: dict,
+    profile: dict,
+    dataframe: pd.DataFrame,
+) -> bool:
+    """Не позволяет старому решению скрыть изменившийся профиль ряда."""
+    if not plan or plan.get("strategy") not in {"restrict_models", "flag_groups", "drop_groups"}:
+        return False
+    eligible = [item["group"] for item in profile["groups"] if item["failed_checks"] == 0]
+    insufficient = [item["group"] for item in profile["groups"] if item["failed_checks"] > 0]
+    capabilities = [
+        {
+            "group": item["group"],
+            "available": item["available_capabilities"],
+            "unavailable": item["unavailable_capabilities"],
+        }
+        for item in profile["groups"]
+    ]
+    return bool(
+        profile["applicable"]
+        and plan.get("target_column") == profile.get("target_column")
+        and plan.get("date_column") == profile.get("date_column")
+        and plan.get("entity_column") == profile.get("entity_column")
+        and plan.get("thresholds") == profile.get("thresholds")
+        and plan.get("seasonal_period") == profile.get("seasonal_period")
+        and plan.get("eligible_groups") == eligible
+        and plan.get("insufficient_groups") == insufficient
+        and plan.get("capabilities") == capabilities
+        and (
+            plan.get("strategy") != "flag_groups"
+            or "_sufficiency_eligible" in dataframe.columns
+        )
+    )
 
 router = APIRouter()
 
@@ -687,7 +728,8 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
 
     column сохранён для обратной совместимости как опциональный per-column
     скоуп выбранного target_column (см. GET/POST /target-column). Общая
-    кнопка UI не передаёт column и всегда проверяет весь датасет. Часть
+    кнопка UI не передаёт column и проверяет весь датасет; достаточность
+    при этом использует активный target_column сессии. Часть
     проверок при прямом вызове API
     учитывают column (ranges/formats/inclusion/referential/text_quality/
     sufficiency), часть принципиально dataset-wide (data_types/
@@ -706,6 +748,41 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
 
     rules, rule_sources = _session_validation_rules(session)
     result = validate_dataframe(df, rules, target_column=column)
+
+    # Общий запуск остаётся dataset-wide для остальных критериев, но
+    # достаточность по смыслу относится к активному прогнозируемому ряду.
+    # Явный query column имеет приоритет, иначе используется выбор сессии.
+    sufficiency_target = column or session.target_column
+    current_sufficiency = profile_sufficiency(
+        df, rules, target_column=sufficiency_target,
+    )
+    if current_sufficiency["applicable"]:
+        sufficiency_items = [
+            {"label": item["group"], "count": item["failed_checks"]}
+            for item in current_sufficiency["groups"] if item["failed_checks"] > 0
+        ]
+        failed_count = int(current_sufficiency["total_failed_checks"])
+        result["checks"]["sufficiency"] = {
+            "status": "warning" if failed_count else "done",
+            "count": failed_count,
+            "items": sufficiency_items,
+            "scope": "column",
+        }
+    else:
+        result["checks"]["sufficiency"] = {
+            "status": "pending", "count": None, "items": [], "scope": "column",
+        }
+
+    # Достаточность может быть закрыта не изменением данных, а явно
+    # подтверждённым безопасным планом (ограничение моделей/маркировка).
+    # План признаётся актуальным только пока совпадают оси и состав
+    # достаточных/ограниченных групп; устаревшее решение не маскирует риск.
+    plan = session.sufficiency_plan
+    if plan and plan.get("strategy") in {"restrict_models", "flag_groups"}:
+        if _sufficiency_plan_is_current(plan, current_sufficiency, df):
+            result["checks"]["sufficiency"] = {
+                "status": "done", "count": 0, "items": [], "scope": "column",
+            }
 
     modes = _effective_validation_check_modes(session)
     checks: dict[str, ValidationCheckResult] = {}
@@ -1362,6 +1439,97 @@ def correct_dataset_regularity(
     return DatasetRegularityCorrectionResponse(applied=payload.apply, **summary)
 
 
+@router.get(
+    "/dataset/sufficiency-profile",
+    response_model=DatasetSufficiencyProfileResponse,
+)
+def get_dataset_sufficiency_profile(request: Request, response: Response):
+    """Профиль применимости классов моделей по длине валидного ряда."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, rule_sources = _session_validation_rules(session)
+    profile = profile_sufficiency(
+        session.dataframe, rules, target_column=session.target_column,
+    )
+    active_plan = (
+        session.sufficiency_plan
+        if _sufficiency_plan_is_current(session.sufficiency_plan, profile, session.dataframe)
+        else {}
+    )
+    return DatasetSufficiencyProfileResponse(
+        rule_source=(
+            rule_sources.get("sufficiency", "not_applicable")
+            if profile["applicable"] else "not_applicable"
+        ),
+        plan=active_plan,
+        profile=SufficiencyProfileOut(**profile),
+    )
+
+
+@router.post(
+    "/dataset/sufficiency-plan",
+    response_model=DatasetSufficiencyPlanResponse,
+)
+def save_dataset_sufficiency_plan(
+    payload: DatasetSufficiencyPlanRequest,
+    request: Request,
+    response: Response,
+):
+    """Предпросмотр или сохранение решения без генерации ложных данных."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, _rule_sources = _session_validation_rules(session)
+    try:
+        corrected_df, summary = preview_sufficiency_plan(
+            session.dataframe,
+            rules,
+            payload.strategy,
+            target_column=session.target_column,
+        )
+    except (ValueError, TypeError) as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
+        profile = summary["profile"]
+        session.sufficiency_plan = {
+            "strategy": payload.strategy,
+            "target_column": profile.get("target_column"),
+            "date_column": profile.get("date_column"),
+            "entity_column": profile.get("entity_column"),
+            "thresholds": profile.get("thresholds", []),
+            "seasonal_period": profile.get("seasonal_period"),
+            "eligible_groups": [
+                item["group"] for item in profile.get("groups", []) if item["failed_checks"] == 0
+            ],
+            "insufficient_groups": [
+                item["group"] for item in profile.get("groups", []) if item["failed_checks"] > 0
+            ],
+            "capabilities": [
+                {
+                    "group": item["group"],
+                    "available": item["available_capabilities"],
+                    "unavailable": item["unavailable_capabilities"],
+                }
+                for item in profile.get("groups", [])
+            ],
+        }
+        session.touch()
+        store.save(session)
+
+    return DatasetSufficiencyPlanResponse(applied=payload.apply, **summary)
+
+
 @router.get("/dataset/consistency-profile", response_model=DatasetConsistencyProfileResponse)
 def get_dataset_consistency_profile(request: Request, response: Response):
     """Профиль хронологических и предметных правил активной сессии."""
@@ -1776,6 +1944,58 @@ def save_dataset_validation_rules(
                 detail="Множитель порога разрыва должен быть числом больше 1",
             )
 
+    sufficiency = normalized_overrides.get("sufficiency")
+    if sufficiency is not None:
+        allowed_sufficiency_keys = {
+            "date_column", "date_col", "entity_column", "entity_col",
+            "target_column", "value_column", "frequency", "seasonal_period",
+            *DEFAULT_THRESHOLDS.keys(),
+        }
+        unknown_sufficiency = sorted(set(sufficiency) - allowed_sufficiency_keys)
+        if unknown_sufficiency:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Неизвестные параметры достаточности: {', '.join(unknown_sufficiency)}",
+            )
+        axes = {
+            "Временная": sufficiency.get("date_column") or sufficiency.get("date_col"),
+            "Группирующая": sufficiency.get("entity_column") or sufficiency.get("entity_col"),
+            "Целевая": sufficiency.get("target_column") or sufficiency.get("value_column"),
+        }
+        for label, column in axes.items():
+            if column is not None and (not isinstance(column, str) or not column.strip()):
+                raise HTTPException(status_code=422, detail=f"{label} колонка задана некорректно")
+            if column and column not in session.dataframe.columns:
+                raise HTTPException(status_code=422, detail=f"Колонка '{column}' отсутствует в датасете")
+        selected_axes = [column for column in axes.values() if column]
+        if len(selected_axes) != len(set(selected_axes)):
+            raise HTTPException(
+                status_code=422,
+                detail="Временная, группирующая и целевая колонки должны различаться",
+            )
+        target_column = axes["Целевая"]
+        if target_column and not pd.api.types.is_numeric_dtype(session.dataframe[target_column]):
+            raise HTTPException(status_code=422, detail="Целевая колонка достаточности должна быть числовой")
+        if "frequency" in sufficiency:
+            try:
+                normalize_frequency(sufficiency.get("frequency"))
+            except ValueError as ex:
+                raise HTTPException(status_code=422, detail=str(ex)) from ex
+        for key in (*DEFAULT_THRESHOLDS.keys(), "seasonal_period"):
+            if key not in sufficiency:
+                continue
+            value = sufficiency[key]
+            if not isinstance(value, int) or isinstance(value, bool):
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Параметр '{key}' должен быть целым положительным числом",
+                )
+            if value < 1:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Параметр '{key}' должен быть положительным",
+                )
+
     text_quality = normalized_overrides.get("text_quality")
     if text_quality is not None:
         min_length = text_quality.get("min_length", 1)
@@ -1830,6 +2050,7 @@ def save_dataset_validation_rules(
     )
     session.validation_template_id = payload.template_id
     session.validation_rule_overrides = normalized_overrides
+    session.sufficiency_plan = {}
     session.touch()
     store.save(session)
     return DatasetValidationRulesResponse(
@@ -1914,6 +2135,7 @@ def convert_dataset_types(
             converted_df[session.target_column]
         ):
             session.target_column = None
+            session.sufficiency_plan = {}
             target_column_reset = True
         session.touch()
         store.save(session)
@@ -2057,6 +2279,7 @@ def set_target_column(
         )
 
     session.set_target_column(column)
+    session.sufficiency_plan = {}
     # КОНТРАКТ SessionStore: мутация -- обязательно save().
     store.save(session)
 
