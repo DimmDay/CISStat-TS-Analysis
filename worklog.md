@@ -3002,20 +3002,86 @@ TDD и проверка
 2. Окружение задачи использует pandas 3.0.2, тогда как `requirements.txt` закрепляет `<3.0.0` (из-за `.fillna(method=...)` в `app/features/rolling.py::apply_wma` — см. комментарий там же). Часть preexisting failures — прямое следствие расхождения версий, не бага кода.
 
 Изменённые/новые файлы
-- app/preprocessing/missing.py (новый)
-- apps/api/missing_correction.py (новый)
+- app/preprocessing/missing.py (new)
+- apps/api/missing_correction.py (new)
 - apps/api/routers/session.py
 - apps/api/schemas.py
 - apps/api/session_store.py
 - packages/ui/components/StatusIcon.tsx
-- packages/ui/components/StatusIcon.test.tsx (новый)
-- packages/ui/components/PreprocessingMissingOverview.tsx (новый)
-- packages/ui/components/PreprocessingMissingOverview.test.tsx (новый)
-- packages/ui/components/PreprocessingMissingPipeline.tsx (новый)
-- packages/ui/components/PreprocessingMissingPipeline.test.tsx (новый)
+- packages/ui/components/StatusIcon.test.tsx (new)
+- packages/ui/components/PreprocessingMissingOverview.tsx (new)
+- packages/ui/components/PreprocessingMissingOverview.test.tsx (new)
+- packages/ui/components/PreprocessingMissingPipeline.tsx (new)
+- packages/ui/components/PreprocessingMissingPipeline.test.tsx (new)
 - packages/ui/components/TsAnalysisPreprocessing.tsx
 - packages/ui/components/TsAnalysisPreprocessing.test.tsx
-- tests/unit/test_preprocessing_missing.py (новый)
-- tests/unit/test_missing_correction.py (новый)
-- tests/unit/test_preprocessing_missing_status.py (новый)
-- tests/api/test_dataset_missing_correction.py (новый)
+- tests/unit/test_preprocessing_missing.py (new)
+- tests/unit/test_missing_correction.py (new)
+- tests/unit/test_preprocessing_missing_status.py (new)
+- tests/api/test_dataset_missing_correction.py (new)
+
+---
+
+Task ID: 49 — Профиль и мастер исправления ссылочной целостности
+
+Date: 2026-08-26
+
+Задача
+Применить к остановке «Ссылочная целостность» утверждённый паттерн вкладки «Валидация»: специализированные «Метрики и алгоритм», «Обзор», «Мастер исправления», управление правилами, безопасный preview/apply и автоматический повтор общей валидации. Исследовать и переиспользовать бизнес-логику Streamlit и существующий backend, устранив выявленные архитектурные риски.
+
+Синхронизация
+Перед синхронизацией локальная поставка Task 47 была сохранена в защитный stash `codex-pre-sync-task48-20260826`. `git fetch` обнаружил опубликованные Task 47 (`8db590d`) и параллельную Task 48 по «Предобработке» (`aa4eb83`); выполнен fast-forward до чистого актуального `main`. Task 49 реализован поверх `aa4eb83`. Финальный fetch подтвердил совпадение HEAD и `origin/main`; новых параллельных коммитов за время работы не появилось.
+
+Исследование и проектное решение
+- Существующий web-backend содержал только низкоуровневый `validate_referential`: прямую проверку `child_column.isin(allowed_values)` без профиля, API мастера и серверной валидации правил.
+- Streamlit предоставлял полезные стратегии — удаление сирот, default, мода связанных значений, `NaN`, флаг — но дублировал маски между preview/apply, мутировал рабочие DataFrame вручную и содержал вызов отсутствующей `_compute_referential_violations`.
+- В текущей однотабличной сессии родительский справочник задаётся явно как `allowed_values`. Система не выводит его из исследуемого датасета, потому что это круговая проверка, автоматически признающая любую наблюдаемую сироту допустимой.
+- «Принадлежность к набору» проверяет собственный предметный домен значения; «Ссылочная целостность» проверяет дочерний ключ относительно эталона родительских ключей. Реализации переиспользуют dtype-aware приведение, но сохраняют разные бизнес-метрики, правила, названия флагов и мастера.
+
+Backend
+- `validation/referential.py` стал единым источником профиля и маски: правила различают применимость, pass и нарушения; возвращаются дочерняя колонка, размер родительского справочника, checked/valid/orphan counts, доля и частоты сирот, валидность default и поддерживаемые действия.
+- Значения текстового редактора безопасно приводятся к dtype дочерней колонки через существующую логику inclusion; числовые ключи больше не дают ложных сирот из-за сравнения `"101"` с `101`, а строковые идентификаторы сохраняют ведущие нули.
+- Общая валидация, обзор и мастер используют одну маску. Правило с отсутствующей колонкой или пустым справочником неприменимо; только применимое правило с нулём сирот получает `done`.
+- Добавлены `GET /v1/session/dataset/referential-profile` и `POST /v1/session/dataset/referential-corrections`.
+- Реализованы пять стратегий Streamlit: `mode`, `replace_default`, `replace_null`, `drop_rows`, `flag` (`{child_column}_ref_valid`). Мода вычисляется только по уже связанным наблюдениям; default разрешён только если входит в справочник.
+- Preview всегда работает на глубокой копии. Apply атомарно сохраняет подготовленный DataFrame и обновляет rows/columns сессии; UI затем повторяет общую валидацию.
+- PUT правил валидирует название, существование дочерней колонки, непустой список примитивных родительских ключей, дубли, повторное правило для одной колонки и допустимость default до изменения сессии.
+- Legacy `compute_referential_violations` сохранён для Streamlit, но переведён на общую dtype-aware маску.
+
+Frontend
+- Кнопка остановки называется «Исправить ссылочную целостность», центральный workflow — «Мастер исправления ссылочной целостности».
+- «Метрики и алгоритм» объясняет `N_ref`, `N_orphan`, `r_orphan`, порядок resolver, различие pass/not-required/needs-rule и запрет кругового эталона.
+- Новый обзор показывает stacked bar «связанные / сироты» и таблицу «Правило / дочерняя колонка / родительские ключи / сиротские значения / статус / нарушения»; неприменимое правило не отображается как успешное.
+- Мастер содержит четыре шага: выбор нарушенных связей, совместимая стратегия, немутирующий preview, подтверждённый apply. Для отсутствующих правил есть прямой переход в «Управление правилами».
+- `RulesManagementPanel` получил отдельный редактор ссылочной целостности: название связи, дочерняя колонка, родительские ключи через запятую, optional default, добавление/удаление и сохранение session override. Стабильный `editorId` исключает потерю фокуса при вводе.
+- Режимы `Авто / Включена / Отключена` из Task 47 переиспользуются без дублирования: без явной связи `Авто` даёт «Не требуется», `Включена` — «Требуется настройка».
+
+TDD и проверка
+- RED: новые frontend suites не компилировались из-за отсутствующих overview/pipeline-компонентов; backend-тесты ссылались на отсутствующие профиль, correction-модуль и API.
+- GREEN: focused Jest — 4/4 suites, 55/55 tests PASS.
+- Полный Jest — 32/32 suites, 311/311 tests PASS, 0 snapshots.
+- `npm run typecheck:all` — PASS для embedded и standalone.
+- Next.js production build embedded — PASS, 13/13 статических страниц.
+- Next.js production build standalone — PASS, 13/13 статических страниц.
+- Обе сборки выполнили lint и проверку типов; временные font/memory shims удалены и в изменения не входят.
+- `python -m compileall` изменённых backend-файлов и Python-тестов — PASS.
+- Полный pytest в текущем runtime недоступен: модуль `pytest` не установлен; новые unit/API-тесты подготовлены для штатного `.venv` и CI.
+- `git diff --check` — PASS. Существующее предупреждение Tailwind о пустом app-level `content` остаётся; обе сборки успешны.
+
+Изменённые и новые файлы
+- apps/api/referential_correction.py
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- validation/engine.py
+- validation/referential.py
+- packages/ui/components/ValidationReferentialOverview.tsx
+- packages/ui/components/ValidationReferentialOverview.test.tsx
+- packages/ui/components/ValidationReferentialPipeline.tsx
+- packages/ui/components/ValidationReferentialPipeline.test.tsx
+- packages/ui/components/RulesManagementPanel.tsx
+- packages/ui/components/RulesManagementPanel.test.tsx
+- packages/ui/components/TsAnalysisValidation.tsx
+- packages/ui/components/TsAnalysisValidation.test.tsx
+- packages/ui/index.ts
+- tests/unit/test_referential_correction.py
+- tests/api/test_dataset_referential_correction.py

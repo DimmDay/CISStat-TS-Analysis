@@ -22,6 +22,7 @@ from validation.inclusion import (
     inclusion_invalid_mask,
     normalize_inclusion_rule,
 )
+from validation.referential import profile_referential, referential_invalid_mask
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -294,21 +295,16 @@ def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict, target_c
     # FK-справочники -- без явного шаблона правил всегда "pending", это
     # ЧЕСТНО отражает реальность: у нас нет родительской таблицы для сверки) ──
     def _referential():
-        ref_rules = rules.get("referential", [])
-        if not ref_rules:
-            return {"status": "pending", "count": None, "items": [], "scope": "column"}
-        ref_columns = {r.get("child_column") or r.get("column") for r in ref_rules}
-        if target_column is not None and target_column not in ref_columns:
-            return {"status": "pending", "count": None, "items": [], "scope": "column"}
-        raw, _masks = validate_referential(df, rules)
-        # Та же асимметрия, что и в inclusion -- отсутствие записи при
-        # подтверждённой применимости значит 0 нарушений, не pending.
+        profiles = [item for item in profile_referential(df, rules) if item["applicable"]]
         if target_column is not None:
-            count = sum(r["Нарушений"] for r in raw if r["Колонка"] == target_column)
-            items = [{"label": target_column, "count": count}] if count > 0 else []
-            return {"status": _status(count), "count": count, "items": items, "scope": "column"}
-        items = [{"label": r["Колонка"], "count": r["Нарушений"]} for r in raw]
-        count = sum(i["count"] for i in items)
+            profiles = [item for item in profiles if item["child_column"] == target_column]
+        if not profiles:
+            return {"status": "pending", "count": None, "items": [], "scope": "column"}
+        items = [
+            {"label": item["rule_name"], "count": item["invalid_count"]}
+            for item in profiles if item["invalid_count"] > 0
+        ]
+        count = sum(int(item["invalid_count"] or 0) for item in profiles)
         return {"status": _status(count), "count": count, "items": items, "scope": "column"}
     _safe("referential", _referential)
 
@@ -1246,32 +1242,24 @@ def auto_generate_rules(df: pd.DataFrame) -> dict:
 
 
 def validate_referential(df, rules):
-    """Проверяет ссылочную целостность."""
+    """Legacy-контракт поверх единого профиля ссылочной целостности."""
     results = []
     violation_masks = {}
-    ref_rules = rules.get("referential", [])
-
-    for rule in ref_rules:
-        child_col = rule.get("child_column")
-        parent_values = rule.get("allowed_values", [])
-        default_val = rule.get("default_value", "Unknown")
-        rule_name = rule.get("name", "Unnamed")
-
-        if child_col and child_col in df.columns and parent_values:
-            mask = ~df[child_col].isin(parent_values) & df[child_col].notna()
-            violations = mask.sum()
-
-            if violations > 0:
-                violation_masks[rule_name] = mask
-                results.append({
-                    "Правило": rule_name,
-                    "Колонка": child_col,
-                    "Нарушений": int(violations),
-                    "% брака": f"{(violations / len(df)) * 100:.2f}%",
-                    "allowed_values": parent_values,
-                    "default_value": default_val,
-                    "Статус": "⚠️ Нарушено"
-                })
+    for item in profile_referential(df, rules):
+        if not item["applicable"] or not item["invalid_count"]:
+            continue
+        child_col = item["child_column"]
+        mask = referential_invalid_mask(df[child_col], item["allowed_values"])
+        violation_masks[item["rule_name"]] = mask
+        results.append({
+            "Правило": item["rule_name"],
+            "Колонка": child_col,
+            "Нарушений": item["invalid_count"],
+            "% брака": f"{item['invalid_pct']:.2f}%",
+            "allowed_values": item["allowed_values"],
+            "default_value": item["default_value"],
+            "Статус": "⚠️ Нарушено",
+        })
 
     return results, violation_masks
 

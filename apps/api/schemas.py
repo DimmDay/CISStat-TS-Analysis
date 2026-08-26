@@ -628,6 +628,58 @@ class DatasetInclusionCorrectionResponse(BaseModel):
     profile: List[InclusionProfileItemOut]
 
 
+class ReferentialProfileItemOut(BaseModel):
+    rule_index: int
+    rule_name: str
+    child_column: str
+    allowed_values: List[Any] = Field(default_factory=list)
+    reference_count: int
+    applicable: bool
+    applicability_message: Optional[str] = None
+    total_count: int
+    valid_count: int
+    invalid_count: Optional[int] = None
+    invalid_pct: Optional[float] = None
+    invalid_values: List[InclusionInvalidValueOut] = Field(default_factory=list)
+    default_value: Optional[Any] = None
+    default_valid: bool = False
+    supported_actions: List[str] = Field(default_factory=list)
+
+
+class DatasetReferentialProfileResponse(BaseModel):
+    rule_source: Literal["system", "template", "session", "not_applicable"]
+    rules: List[ReferentialProfileItemOut] = Field(default_factory=list)
+
+
+class DatasetReferentialCorrectionRequest(BaseModel):
+    rule_indices: List[int] = Field(..., min_length=1, max_length=100)
+    strategy: Literal["mode", "replace_null", "drop_rows", "replace_default", "flag"] = "mode"
+    apply: bool = Field(False, description="False -- preview; True -- сохранить в сессии")
+
+
+class ReferentialCorrectionResultOut(BaseModel):
+    rule_index: int
+    rule_name: str
+    child_column: str
+    invalid_count: int
+    changed_count: int
+    still_invalid: int
+    replacement_value: Optional[Any] = None
+    flag_column: Optional[str] = None
+
+
+class DatasetReferentialCorrectionResponse(BaseModel):
+    applied: bool
+    strategy: Literal["mode", "replace_null", "drop_rows", "replace_default", "flag"]
+    total_violations: int
+    total_changed: int
+    total_still_invalid: int
+    rows_removed: int = 0
+    added_columns: List[str] = Field(default_factory=list)
+    rules: List[ReferentialCorrectionResultOut]
+    profile: List[ReferentialProfileItemOut]
+
+
 class ConsistencyProfileItemOut(BaseModel):
     rule_index: int
     rule_name: str

@@ -129,6 +129,12 @@ export type {
   InclusionProfileItem,
   InclusionProfileResponse,
 } from "./components/ValidationInclusionOverview";
+export { ValidationReferentialOverview } from "./components/ValidationReferentialOverview";
+export { ValidationReferentialPipeline } from "./components/ValidationReferentialPipeline";
+export type {
+  ReferentialProfileItem,
+  ReferentialProfileResponse,
+} from "./components/ValidationReferentialOverview";
 export type {
   TypeValidationMode,
   ValidationSemanticType,

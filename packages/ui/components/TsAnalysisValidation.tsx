@@ -41,6 +41,8 @@ import { ValidationUniquenessOverview } from "./ValidationUniquenessOverview";
 import { ValidationUniquenessPipeline } from "./ValidationUniquenessPipeline";
 import { ValidationInclusionOverview } from "./ValidationInclusionOverview";
 import { ValidationInclusionPipeline } from "./ValidationInclusionPipeline";
+import { ValidationReferentialOverview } from "./ValidationReferentialOverview";
+import { ValidationReferentialPipeline } from "./ValidationReferentialPipeline";
 import { useAppShell } from "../context/AppShellContext";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
@@ -317,6 +319,34 @@ const INCLUSION_PIPELINE_DESCRIPTION = `Мастер исправления пр
 
 Значение по умолчанию разрешено только когда оно явно входит в справочник. Мода вычисляется только по уже допустимым наблюдениям.`;
 
+const REFERENTIAL_METRICS_DESCRIPTION = `Метрики и алгоритм: Ссылочная целостность
+
+Цель
+Проверка выявляет «сиротские» дочерние ключи: непустые значения child_column, для которых нет соответствующего ключа в явно заданном родительском справочнике. Такие записи ломают JOIN, агрегирование панелей и многомерные модели.
+
+Метрики
+1. N_ref — число проверенных непустых дочерних ключей.
+2. N_orphan — число записей, отсутствующих в справочнике родительских ключей.
+3. r_orphan = N_orphan / N_ref × 100 — доля сиротских записей.
+4. Покрытие связи — число уникальных родительских ключей и частоты сиротских значений.
+
+Алгоритм backend
+1. Resolver выбирает правила сессии → шаблон → системный слой.
+2. Для каждого явного правила проверяются child_column и непустой allowed_values. Строковые значения редактора безопасно приводятся к dtype дочерней колонки.
+3. Векторная маска child.notna() & ~child.isin(parent_keys) используется общей валидацией, обзором и мастером.
+4. Ноль сирот при применимом правиле означает «Проверка пройдена». Без явной связи режим «Авто» даёт нейтральное «Не требуется», а режим «Включена» — «Требуется настройка».
+
+Платформа не выводит родительский справочник из самого исследуемого датасета: это сделало бы проверку круговой и автоматически признало бы любую сироту корректной.`;
+
+const REFERENTIAL_PIPELINE_DESCRIPTION = `Мастер исправления ссылочной целостности
+
+1. Проверьте дочернюю колонку, эталон родительских ключей и найденные сиротские значения.
+2. Выберите безопасную стратегию: мода среди связанных значений, явный допустимый default, пропуск, удаление строк либо флаг связности.
+3. Выполните предпросмотр на глубокой копии и оцените исправленные значения, оставшиеся сироты, удаляемые строки и добавляемые колонки.
+4. Подтвердите применение. Копия сохраняется атомарно, после чего общая валидация запускается повторно.
+
+Default разрешён только когда он входит в родительский справочник; мода вычисляется только по уже связанным наблюдениям.`;
+
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisValidation() {
@@ -566,6 +596,7 @@ export function TsAnalysisValidation() {
       if (activeCheck.id === "consistency") return CONSISTENCY_METRICS_DESCRIPTION;
       if (activeCheck.id === "uniqueness") return UNIQUENESS_METRICS_DESCRIPTION;
       if (activeCheck.id === "inclusion") return INCLUSION_METRICS_DESCRIPTION;
+      if (activeCheck.id === "referential") return REFERENTIAL_METRICS_DESCRIPTION;
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
     if (activeCheck.id === "data_types") return DATA_TYPES_PIPELINE_DESCRIPTION;
@@ -574,6 +605,7 @@ export function TsAnalysisValidation() {
     if (activeCheck.id === "consistency") return CONSISTENCY_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "uniqueness") return UNIQUENESS_PIPELINE_DESCRIPTION;
     if (activeCheck.id === "inclusion") return INCLUSION_PIPELINE_DESCRIPTION;
+    if (activeCheck.id === "referential") return REFERENTIAL_PIPELINE_DESCRIPTION;
     return `Полный пайплайн: ${activeCheck.label.toLowerCase()}\n\n1. Обнаружение → 2. Диагностика → 3. Преобразование → 4. Верификация\n\n${activeCheck.description}`;
   })();
 
@@ -589,6 +621,7 @@ export function TsAnalysisValidation() {
     if (activeCheck.id === "consistency") return "Мастер исправления логики и хронологии";
     if (activeCheck.id === "uniqueness") return "Мастер исправления уникальности";
     if (activeCheck.id === "inclusion") return "Мастер исправления принадлежности к набору";
+    if (activeCheck.id === "referential") return "Мастер исправления ссылочной целостности";
     return `Полный пайплайн — ${activeCheck.label}`;
   })();
 
@@ -795,6 +828,8 @@ export function TsAnalysisValidation() {
               ? "Мастер исправления уникальности"
               : activeCheckId === "inclusion" && descriptionSection === "pipeline"
               ? "Мастер исправления принадлежности к набору"
+              : activeCheckId === "referential" && descriptionSection === "pipeline"
+              ? "Мастер исправления ссылочной целостности"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -810,6 +845,8 @@ export function TsAnalysisValidation() {
               ? "Проверьте ключ, выберите стратегию, оцените точное число удаляемых строк и примените исправление."
               : activeCheckId === "inclusion" && descriptionSection === "pipeline"
               ? "Проверьте справочник, выберите стратегию, оцените последствия и примените исправления."
+              : activeCheckId === "referential" && descriptionSection === "pipeline"
+              ? "Проверьте связи, выберите стратегию, оцените последствия и устраните сиротские ключи."
               : activeCheckId === "data_types"
               ? "Распределение фактических типов и построчная матрица колонок."
               : activeCheckId === "ranges"
@@ -820,6 +857,8 @@ export function TsAnalysisValidation() {
               ? "Распределение строк и группы повторов по активному составному или системному ключу."
               : activeCheckId === "inclusion"
               ? "Соотношение допустимых и недопустимых значений и матрица активных справочников."
+              : activeCheckId === "referential"
+              ? "Соотношение связанных и сиротских записей и матрица активных внешних ключей."
               : "Визуализация результатов проверки по активному критерию."}
           </p>
 
@@ -853,6 +892,11 @@ export function TsAnalysisValidation() {
             <ValidationUniquenessPipeline onApplied={runValidation} />
           ) : activeCheckId === "inclusion" && descriptionSection === "pipeline" ? (
             <ValidationInclusionPipeline
+              onApplied={runValidation}
+              onOpenRules={() => setDescriptionSection("rules")}
+            />
+          ) : activeCheckId === "referential" && descriptionSection === "pipeline" ? (
+            <ValidationReferentialPipeline
               onApplied={runValidation}
               onOpenRules={() => setDescriptionSection("rules")}
             />
@@ -905,6 +949,14 @@ export function TsAnalysisValidation() {
             ) : (
               <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы проверить принадлежность значениям предметных справочников.
+              </div>
+            )
+          ) : activeCheckId === "referential" ? (
+            validationHasRun ? (
+              <ValidationReferentialOverview refreshKey={validationVersion} />
+            ) : (
+              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+                Запустите валидацию, чтобы проверить внешние ключи относительно предметных справочников.
               </div>
             )
           ) : (
@@ -1058,6 +1110,8 @@ export function TsAnalysisValidation() {
                   ? "Исправить уникальность"
                   : check.id === "inclusion"
                   ? "Исправить принадлежность к набору"
+                  : check.id === "referential"
+                  ? "Исправить ссылочную целостность"
                   : "Полный пайплайн"}
               </button>
 

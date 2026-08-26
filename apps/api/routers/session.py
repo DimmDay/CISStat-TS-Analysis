@@ -46,6 +46,9 @@ from apps.api.schemas import (
     DatasetRangeCorrectionRequest,
     DatasetRangeCorrectionResponse,
     DatasetRangeProfileResponse,
+    DatasetReferentialCorrectionRequest,
+    DatasetReferentialCorrectionResponse,
+    DatasetReferentialProfileResponse,
     DatasetTypeConversionRequest,
     DatasetTypeConversionResponse,
     DatasetTypeSchemaRequest,
@@ -79,6 +82,8 @@ from apps.api.schemas import (
     MissingRowHistogramItemOut,
     RangeCorrectionResultOut,
     RangeProfileItemOut,
+    ReferentialCorrectionResultOut,
+    ReferentialProfileItemOut,
     TargetColumnRequest,
     TargetColumnResponse,
     TimeSeriesPoint,
@@ -92,6 +97,8 @@ from apps.api.schemas import (
 )
 from app.data.detectors import score_all_columns_as_date, score_all_columns_as_entity_group, detect_column_frequency
 from validation.engine import profile_consistency, profile_formats, profile_inclusion, profile_ranges, profile_uniqueness, validate_dataframe
+from validation.inclusion import coerce_inclusion_rule_to_series
+from validation.referential import profile_referential
 from validation.rule_resolver import CHECK_IDS, resolve_validation_rules
 from apps.api.consistency_correction import preview_consistency_corrections
 from apps.api.format_correction import preview_format_corrections
@@ -99,6 +106,7 @@ from apps.api.inclusion_correction import preview_inclusion_corrections
 from apps.api.missing_correction import preview_missing_corrections
 from app.preprocessing.missing import missing_per_row_histogram, missing_summary, profile_missing
 from apps.api.range_correction import preview_range_corrections
+from apps.api.referential_correction import preview_referential_corrections
 from apps.api.type_conversion import preview_type_conversions
 from apps.api.uniqueness_correction import preview_uniqueness_correction
 from apps.api.session_store import (
@@ -1147,6 +1155,75 @@ def correct_dataset_inclusion(
     )
 
 
+@router.get(
+    "/dataset/referential-profile",
+    response_model=DatasetReferentialProfileResponse,
+)
+def get_dataset_referential_profile(request: Request, response: Response):
+    """Профиль дочерних ключей относительно явных справочников сессии."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, rule_sources = _session_validation_rules(session)
+    profile = profile_referential(session.dataframe, rules)
+    applicable = [item for item in profile if item["applicable"]]
+    return DatasetReferentialProfileResponse(
+        rule_source=(
+            rule_sources.get("referential", "not_applicable")
+            if applicable else "not_applicable"
+        ),
+        rules=[ReferentialProfileItemOut(**item) for item in profile],
+    )
+
+
+@router.post(
+    "/dataset/referential-corrections",
+    response_model=DatasetReferentialCorrectionResponse,
+)
+def correct_dataset_referential(
+    payload: DatasetReferentialCorrectionRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply стратегий устранения «сиротских» дочерних ключей."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    rules, _rule_sources = _session_validation_rules(session)
+    try:
+        corrected_df, raw_results, rows_removed = preview_referential_corrections(
+            session.dataframe, rules, payload.rule_indices, payload.strategy
+        )
+        next_profile = profile_referential(corrected_df, rules)
+    except (ValueError, TypeError) as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
+        session.touch()
+        store.save(session)
+
+    return DatasetReferentialCorrectionResponse(
+        applied=payload.apply,
+        strategy=payload.strategy,
+        total_violations=sum(item["invalid_count"] for item in raw_results),
+        total_changed=sum(item["changed_count"] for item in raw_results),
+        total_still_invalid=sum(item["still_invalid"] for item in raw_results),
+        rows_removed=rows_removed,
+        added_columns=[item["flag_column"] for item in raw_results if item["flag_column"]],
+        rules=[ReferentialCorrectionResultOut(**item) for item in raw_results],
+        profile=[ReferentialProfileItemOut(**item) for item in next_profile],
+    )
+
+
 @router.get("/dataset/consistency-profile", response_model=DatasetConsistencyProfileResponse)
 def get_dataset_consistency_profile(request: Request, response: Response):
     """Профиль хронологических и предметных правил активной сессии."""
@@ -1414,6 +1491,57 @@ def save_dataset_validation_rules(
                 status_code=422,
                 detail=f"Колонка '{missing_columns[0]}' отсутствует в датасете",
             )
+
+    referential_columns: list[str] = []
+    for index, rule in enumerate(normalized_overrides.get("referential", []), start=1):
+        name = rule.get("name")
+        child_column = rule.get("child_column") or rule.get("column")
+        allowed_values = rule.get("allowed_values")
+        if not isinstance(name, str) or not name.strip():
+            raise HTTPException(
+                status_code=422,
+                detail=f"Для правила ссылочной целостности {index} задайте название",
+            )
+        if not isinstance(child_column, str) or not child_column.strip():
+            raise HTTPException(
+                status_code=422,
+                detail=f"Для правила ссылочной целостности {index} задайте дочернюю колонку",
+            )
+        if child_column not in session.dataframe.columns:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Колонка '{child_column}' отсутствует в датасете",
+            )
+        if child_column in referential_columns:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Для колонки '{child_column}' уже задано правило ссылочной целостности",
+            )
+        referential_columns.append(child_column)
+        if not isinstance(allowed_values, list) or not allowed_values:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Для правила '{name}' задайте непустой список родительских ключей",
+            )
+        if any(value is None or type(value) not in {str, int, float, bool} for value in allowed_values):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Справочник правила '{name}' содержит неподдерживаемое значение",
+            )
+        coerced_values, coerced_default = coerce_inclusion_rule_to_series(
+            session.dataframe[child_column], allowed_values, rule.get("default_value")
+        )
+        if len({(type(value).__name__, str(value)) for value in coerced_values}) != len(coerced_values):
+            raise HTTPException(
+                status_code=422,
+                detail=f"Справочник правила '{name}' содержит повторы",
+            )
+        if "default_value" in rule and rule["default_value"] is not None:
+            if coerced_default not in coerced_values:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Значение по умолчанию правила '{name}' должно входить в справочник",
+                )
 
     for column, config in normalized_overrides.get("inclusion", {}).items():
         if column not in session.dataframe.columns:

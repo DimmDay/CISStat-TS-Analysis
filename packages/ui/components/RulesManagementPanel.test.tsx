@@ -516,4 +516,37 @@ describe("RulesManagementPanel", () => {
       expect(firstMinInput.value).toBe("0");
     });
   });
+
+  it("lets a custom session add and save a referential rule", async () => {
+    render(<RulesManagementPanel />);
+    await waitFor(() => expect(screen.getByTestId("apply-system-rules-btn")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Добавить связь" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Название связи 1" }), {
+      target: { value: "Код страны существует" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Дочерняя колонка связи 1" }), {
+      target: { value: "CountryCode" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Родительские ключи связи 1" }), {
+      target: { value: "BY, KZ" },
+    });
+    fireEvent.change(screen.getByRole("textbox", { name: "Значение по умолчанию связи 1" }), {
+      target: { value: "BY" },
+    });
+    fireEvent.click(screen.getByTestId("apply-system-rules-btn"));
+
+    await waitFor(() => {
+      const putCall = mockFetch.mock.calls.find(
+        (call: [string, RequestInit?]) => call[0].includes("/session/dataset/validation-rules") && call[1]?.method === "PUT"
+      );
+      const payload = JSON.parse((putCall?.[1]?.body ?? "{}") as string);
+      expect(payload.overrides.referential).toEqual([{
+        name: "Код страны существует",
+        child_column: "CountryCode",
+        allowed_values: ["BY", "KZ"],
+        default_value: "BY",
+      }]);
+    });
+  });
 });

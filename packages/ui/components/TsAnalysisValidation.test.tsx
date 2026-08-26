@@ -96,7 +96,7 @@ function validationResponse(
   };
 }
 
-function mockActiveValidation(validateResponse: () => Promise<unknown>) {
+function mockActiveValidation(validateResponse: (url?: string) => Promise<unknown>) {
   global.fetch = jest.fn((url: string) => {
     if (url.includes("/session/current")) {
       return Promise.resolve({
@@ -133,7 +133,8 @@ function mockActiveValidation(validateResponse: () => Promise<unknown>) {
         json: () => Promise.resolve({ rule_source: "not_applicable", columns: [] }),
       });
     }
-    if (url.includes("/dataset/validate")) return validateResponse();
+    if (url.includes("/dataset/referential-profile")) return validateResponse(url);
+    if (url.includes("/dataset/validate")) return validateResponse(url);
     return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
   }) as unknown as typeof fetch;
 }
@@ -228,7 +229,7 @@ describe("TsAnalysisValidation", () => {
     renderValidation();
 
     const correctionButton = await screen.findByRole("button", { name: "Исправить типы данных" });
-    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(4);
+    expect(screen.getAllByRole("button", { name: "Полный пайплайн" })).toHaveLength(3);
     fireEvent.click(correctionButton);
 
     expect(screen.getAllByText("Мастер исправления типов").length).toBeGreaterThan(0);
@@ -740,5 +741,39 @@ describe("TsAnalysisValidation", () => {
       expect(validateCalls).toHaveLength(1);
       expect(validateCalls[0]).not.toContain("column=");
     });
+  });
+
+  it("opens the referential overview and correction master", async () => {
+    mockActiveValidation((url) => {
+      if (url.includes("/referential-profile")) return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          rule_source: "session",
+          rules: [{
+            rule_index: 0, rule_name: "Код страны существует", child_column: "CountryCode",
+            allowed_values: ["BY", "KZ"], reference_count: 2, applicable: true,
+            applicability_message: null, total_count: 3, valid_count: 2, invalid_count: 1,
+            invalid_pct: 33.33, invalid_values: [{ value: "XX", count: 1 }],
+            default_value: "BY", default_valid: true,
+            supported_actions: ["mode", "replace_null", "drop_rows", "replace_default", "flag"],
+          }],
+        }),
+      });
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(validationResponse("warning", "schema", 1)),
+      });
+    });
+
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    await screen.findByText("Найдены проблемы: 1");
+
+    fireEvent.click(screen.getByRole("button", { name: /Ссылочная целостность/ }));
+    expect(await screen.findByRole("table", { name: "Матрица ссылочной целостности" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Исправить ссылочную целостность" }));
+    expect(screen.getByRole("region", { name: "Мастер исправления ссылочной целостности" })).toBeInTheDocument();
   });
 });

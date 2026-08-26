@@ -69,13 +69,23 @@ interface InclusionRule {
   allowedDraft?: string;
 }
 
+interface ReferentialRule {
+  name: string;
+  child_column: string;
+  allowed_values: Array<string | number | boolean>;
+  default_value?: string | number | boolean;
+  draft?: boolean;
+  editorId?: string;
+  allowedDraft?: string;
+}
+
 interface RulesContent {
   ranges: RangeRule[];
   inclusion?: Record<string, InclusionRule>;
   consistency?: ConsistencyRule[];
   uniqueness?: { composite_key?: string[]; description?: string };
   formats?: Record<string, FormatRule>;
-  referential?: unknown[];
+  referential?: ReferentialRule[];
   outliers?: Record<string, unknown>;
   sufficiency?: Record<string, unknown>;
 }
@@ -108,8 +118,24 @@ const normalizeInclusion = (inclusion: Record<string, unknown> = {}): Record<str
     }];
   }));
 
+const normalizeReferential = (referential: unknown[] = []): ReferentialRule[] =>
+  referential.filter((value): value is Record<string, unknown> => Boolean(value) && typeof value === "object").map((value, index) => {
+    const allowedValues = Array.isArray(value.allowed_values)
+      ? value.allowed_values as Array<string | number | boolean>
+      : [];
+    return {
+      name: String(value.name || ""),
+      child_column: String(value.child_column || value.column || ""),
+      allowed_values: allowedValues,
+      ...(value.default_value !== undefined ? { default_value: value.default_value as string | number | boolean } : {}),
+      editorId: String(value.editorId || `referential:${index}:${value.child_column || value.column || "rule"}`),
+      allowedDraft: allowedValues.map(String).join(", "),
+    };
+  });
+
 let formatDraftSequence = 0;
 let inclusionDraftSequence = 0;
+let referentialDraftSequence = 0;
 
 const rulesCountLabel = (count: number) => {
   const mod100 = count % 100;
@@ -201,6 +227,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         ranges: Array.isArray(rawContent.ranges) ? rawContent.ranges : [],
         formats: normalizeFormats(rawContent.formats || {}),
         inclusion: normalizeInclusion(rawContent.inclusion || {}),
+        referential: normalizeReferential(rawContent.referential || []),
         consistency: Array.isArray(rawContent.consistency) ? rawContent.consistency : [],
         uniqueness: rawContent.uniqueness || {},
       };
@@ -227,6 +254,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
           ...(templateContent.inclusion || {}),
           ...normalizeInclusion((activeOverrides.inclusion || {}) as Record<string, unknown>),
         },
+        referential: Array.isArray(activeOverrides.referential)
+          ? normalizeReferential(activeOverrides.referential)
+          : templateContent.referential,
       };
       setRules(content);
       setUniquenessKeyDraft(content.uniqueness?.composite_key?.join(", ") || "");
@@ -255,6 +285,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         ranges: Array.isArray(activeOverrides.ranges) ? activeOverrides.ranges : [],
         formats: normalizeFormats((activeOverrides.formats || {}) as Record<string, unknown>),
         inclusion: normalizeInclusion((activeOverrides.inclusion || {}) as Record<string, unknown>),
+        referential: normalizeReferential(Array.isArray(activeOverrides.referential) ? activeOverrides.referential : []),
         consistency: Array.isArray(activeOverrides.consistency)
           ? activeOverrides.consistency as ConsistencyRule[]
           : [],
@@ -262,7 +293,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       };
       setRules(content);
       setUniquenessKeyDraft(content.uniqueness?.composite_key?.join(", ") || "");
-      setOriginalRules({ ranges: [], formats: {}, consistency: [], uniqueness: {}, inclusion: {} });
+      setOriginalRules({ ranges: [], formats: {}, consistency: [], uniqueness: {}, inclusion: {}, referential: [] });
       setError(null);
     }
   }, [selectedTemplate, loadTemplate, sessionSelection]);
@@ -438,6 +469,39 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
     setRules({ ...rules, inclusion });
   };
 
+  const updateReferentialRule = (index: number, patch: Partial<ReferentialRule>) => {
+    if (!rules) return;
+    const referential = [...(rules.referential || [])];
+    referential[index] = { ...referential[index], ...patch };
+    setRules({ ...rules, referential });
+  };
+
+  const addReferentialRule = () => {
+    if (!rules) return;
+    setRules({
+      ...rules,
+      referential: [
+        ...(rules.referential || []),
+        {
+          name: "",
+          child_column: "",
+          allowed_values: [],
+          allowedDraft: "",
+          draft: true,
+          editorId: `referential-draft:${++referentialDraftSequence}`,
+        },
+      ],
+    });
+  };
+
+  const removeReferentialRule = (index: number) => {
+    if (!rules) return;
+    setRules({
+      ...rules,
+      referential: (rules.referential || []).filter((_rule, ruleIndex) => ruleIndex !== index),
+    });
+  };
+
   const serializableFormats = (formats: Record<string, FormatRule> = {}) => Object.fromEntries(
     Object.entries(formats)
       .filter(([column]) => column.trim() && !column.startsWith("__new_"))
@@ -466,6 +530,15 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
           : {}),
       }])
   );
+
+  const serializableReferential = (referential: ReferentialRule[] = []) => referential.map((rule) => ({
+    name: rule.name.trim(),
+    child_column: rule.child_column.trim(),
+    allowed_values: rule.allowed_values,
+    ...(rule.default_value !== undefined && String(rule.default_value).trim() !== ""
+      ? { default_value: rule.default_value }
+      : {}),
+  }));
 
   const serializableConsistency = (consistency: ConsistencyRule[] = []) => consistency.map((rule) => {
     const { draft: _draft, ...serialized } = rule;
@@ -497,6 +570,8 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       const originalConsistency = serializableConsistency(originalRules?.consistency);
       const currentInclusion = serializableInclusion(rules.inclusion);
       const originalInclusion = serializableInclusion(originalRules?.inclusion);
+      const currentReferential = serializableReferential(rules.referential);
+      const originalReferential = serializableReferential(originalRules?.referential);
       const normalizedUniquenessKey = uniquenessKeyDraft
         .split(",")
         .map((column) => column.trim())
@@ -541,6 +616,20 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         setError("Для каждого набора задайте колонку, допустимые значения и корректное значение по умолчанию");
         return;
       }
+      const referentialChanged = JSON.stringify(currentReferential) !== JSON.stringify(originalReferential);
+      if (referentialChanged) {
+        const incompleteReferential = currentReferential.find((rule) =>
+          !rule.name
+          || !rule.child_column
+          || rule.allowed_values.length === 0
+          || (rule.default_value !== undefined
+            && !rule.allowed_values.some((value) => String(value) === String(rule.default_value)))
+        );
+        if (incompleteReferential) {
+          setError("Для каждой связи задайте название, дочернюю колонку, родительские ключи и корректный default");
+          return;
+        }
+      }
       const overrides: Record<string, unknown> = {};
       if (JSON.stringify(currentRanges) !== JSON.stringify(originalRanges)) {
         overrides.ranges = currentRanges;
@@ -556,6 +645,9 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       }
       if (JSON.stringify(currentInclusion) !== JSON.stringify(originalInclusion)) {
         overrides.inclusion = currentInclusion;
+      }
+      if (referentialChanged) {
+        overrides.referential = currentReferential;
       }
       const resp = await fetch(`${API_BASE}/v1/session/dataset/validation-rules`, {
         method: "PUT",
@@ -575,6 +667,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
         ...current,
         uniqueness: currentUniqueness,
         inclusion: normalizeInclusion(currentInclusion),
+        referential: normalizeReferential(currentReferential),
       } : current);
       setApplied(true);
       onRulesApplied();
@@ -663,7 +756,7 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
       )}
 
       {rules && !loading && (
-        <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-6">
           <span className="rounded bg-neutral-50 px-2 py-1 text-neutral-600">
             Диапазоны: {rulesCountLabel(rules.ranges.length)}
           </span>
@@ -703,6 +796,15 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
               ? rulesCountLabel(Object.keys(rules.inclusion || {}).length)
               : "не заданы"}
           </span>
+          <span className={`rounded px-2 py-1 ${
+            (rules.referential || []).length
+              ? "bg-green-50 text-green-700"
+              : "bg-amber-50 text-amber-700"
+          }`}>
+            Связи: {(rules.referential || []).length
+              ? rulesCountLabel((rules.referential || []).length)
+              : "не заданы"}
+          </span>
         </div>
       )}
 
@@ -725,6 +827,71 @@ export function RulesManagementPanel({ onRulesApplied = () => undefined }: { onR
             <p className="mt-1 text-[11px] text-neutral-500">
               Пустое поле включает системный выбор: сущность + время, а при отсутствии времени — полные строки.
             </p>
+          </div>
+        </div>
+      )}
+
+      {rules && !loading && (
+        <div>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h4 className="text-sm font-medium">Редактор ссылочной целостности ({(rules.referential || []).length} правил)</h4>
+            <button type="button" onClick={addReferentialRule} className="flex items-center gap-1 rounded border border-brand/40 px-2 py-1 text-xs font-medium text-brand hover:bg-brand/5">
+              <Plus size={13} /> Добавить связь
+            </button>
+          </div>
+          {(rules.referential || []).length === 0 && (
+            <p className="mb-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Правила ссылочной целостности не заданы. Добавьте дочернюю колонку и эталон родительских ключей.
+            </p>
+          )}
+          <div className="space-y-2">
+            {(rules.referential || []).map((rule, index) => {
+              const isDraft = Boolean(rule.draft);
+              return (
+                <div key={rule.editorId || index} className="rounded-md border border-neutral-200 bg-white px-3 py-2">
+                  <div className="grid gap-2 sm:grid-cols-[minmax(140px,1fr)_minmax(110px,0.8fr)_minmax(180px,1.5fr)_minmax(110px,0.7fr)_auto]">
+                    <input
+                      type="text"
+                      value={rule.name}
+                      onChange={(event) => updateReferentialRule(index, { name: event.target.value })}
+                      readOnly={selectedTemplate !== "custom" && !isDraft}
+                      aria-label={`Название связи ${index + 1}`}
+                      placeholder="Название связи"
+                      className="min-w-0 rounded border border-neutral-300 px-2 py-1 text-sm read-only:bg-neutral-50 read-only:text-neutral-500"
+                    />
+                    <input
+                      type="text"
+                      value={rule.child_column}
+                      onChange={(event) => updateReferentialRule(index, { child_column: event.target.value })}
+                      readOnly={selectedTemplate !== "custom" && !isDraft}
+                      aria-label={`Дочерняя колонка связи ${index + 1}`}
+                      placeholder="Дочерняя колонка"
+                      className="min-w-0 rounded border border-neutral-300 px-2 py-1 text-sm read-only:bg-neutral-50 read-only:text-neutral-500"
+                    />
+                    <input
+                      type="text"
+                      value={rule.allowedDraft ?? rule.allowed_values.map(String).join(", ")}
+                      onChange={(event) => updateReferentialRule(index, {
+                        allowedDraft: event.target.value,
+                        allowed_values: event.target.value.split(",").map((value) => value.trim()).filter(Boolean),
+                      })}
+                      aria-label={`Родительские ключи связи ${index + 1}`}
+                      placeholder="Ключи через запятую"
+                      className="min-w-0 rounded border border-neutral-300 px-2 py-1 text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={rule.default_value === undefined ? "" : String(rule.default_value)}
+                      onChange={(event) => updateReferentialRule(index, { default_value: event.target.value })}
+                      aria-label={`Значение по умолчанию связи ${index + 1}`}
+                      placeholder="По умолчанию"
+                      className="min-w-0 rounded border border-neutral-300 px-2 py-1 text-sm"
+                    />
+                    {(selectedTemplate === "custom" || isDraft) && <button type="button" onClick={() => removeReferentialRule(index)} aria-label={`Удалить связь ${index + 1}`} className="rounded p-1.5 text-red-600 hover:bg-red-50"><Trash2 size={15} /></button>}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
