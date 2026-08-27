@@ -29,6 +29,7 @@ export type { CapabilityStat, Capability } from "./lib/capabilities";
 export { NavigatorHero } from "./components/NavigatorHero";
 export { TsAnalysisNavigator } from "./components/TsAnalysisNavigator";
 export { PlatformIntroduction } from "./components/PlatformIntroduction";
+export { AppliedTasksNavigator } from "./components/AppliedTasksNavigator";
 export {
   NAVIGATOR_STOPS,
   NAVIGATOR_BADGES,
@@ -39,6 +40,19 @@ export {
   PURPOSE_LABEL,
   OVERVIEW_EXAMPLE_METRICS,
 } from "./lib/navigator-stops";
+export {
+  APPLIED_TASK_DOMAINS,
+  APPLIED_TASK_KINDS,
+  APPLIED_TASK_MATRIX,
+  getAppliedTaskExamples,
+} from "./lib/applied-tasks";
+export type {
+  AppliedTaskDomain,
+  AppliedTaskDomainId,
+  AppliedTaskExample,
+  AppliedTaskKind,
+  AppliedTaskKindId,
+} from "./lib/applied-tasks";
 export type {
   NavigatorStop,
   NavigatorStopItem,

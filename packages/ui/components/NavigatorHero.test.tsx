@@ -69,11 +69,13 @@ describe("NavigatorHero", () => {
     });
   });
 
-  it("renders the applied tasks placeholder and the research stages as anchor targets", () => {
+  it("renders the applied tasks navigator and the research stages as anchor targets", () => {
     render(<NavigatorHero />);
     expect(document.getElementById("applied-tasks")).toBeInTheDocument();
     expect(document.getElementById("research-stages")).toBeInTheDocument();
-    expect(screen.getByText(/Наполнение блока согласуем в следующей задаче/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Предметная область" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Основная задача" })).toBeInTheDocument();
+    expect(screen.queryByText(/Наполнение блока согласуем в следующей задаче/i)).toBeNull();
     expect(
       screen.getByRole("heading", { level: 2, name: /Ключевые этапы исследования ряда/i }),
     ).toBeInTheDocument();

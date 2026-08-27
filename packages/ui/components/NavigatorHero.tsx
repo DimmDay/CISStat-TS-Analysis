@@ -5,7 +5,7 @@
 // Верхняя часть страницы «Знакомство с платформой» в обоих apps/*.
 // Содержит:
 //   - H1 и три якорные карточки разделов в стиле главной страницы
-//   - заглушку блока прикладных задач
+//   - интерактивный трёхколоночный навигатор прикладных задач
 //   - секцию «Ключевые этапы исследования ряда»
 //   - 6 chevron-стрелок в ряд (светло-серый фон, зелёная цифра)
 //   - под каждой стрелкой — заголовок + поддерживающий текст
@@ -28,6 +28,7 @@ import {
   PURPOSE_TEXT,
 } from "../lib/navigator-stops";
 import { RouteCard } from "./RouteCard";
+import { AppliedTasksNavigator } from "./AppliedTasksNavigator";
 
 // ── Chevron-стрелка ──────────────────────────────────────────────
 //
@@ -168,14 +169,7 @@ export function NavigatorHero() {
         >
           Прикладные задачи, решаемые платформой
         </h2>
-        <div className="mt-6 rounded-xl border border-dashed border-brand/40 bg-brand-light/35 px-6 py-10 text-center">
-          <p className="text-sm font-medium text-neutral-700">
-            Наполнение блока согласуем в следующей задаче.
-          </p>
-          <p className="mt-2 text-sm text-neutral-500">
-            Здесь будут представлены прикладные сценарии и задачи пользователей платформы.
-          </p>
-        </div>
+        <AppliedTasksNavigator />
       </section>
 
       <section
