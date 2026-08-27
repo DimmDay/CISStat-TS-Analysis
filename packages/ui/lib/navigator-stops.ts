@@ -37,19 +37,19 @@ export interface NavigatorSectionRoute {
 export const NAVIGATOR_SECTION_ROUTES: NavigatorSectionRoute[] = [
   {
     title: "Прикладные задачи, решаемые платформой",
-    description: "Перейти к прикладным сценариям использования платформы",
+    description: "перейти к прикладным сценариям использования платформы",
     icon: BriefcaseBusiness,
     href: "#applied-tasks",
   },
   {
     title: "Ключевые этапы исследования ряда",
-    description: "Просмотреть путь от структуры данных до построения прогноза",
+    description: "просмотреть путь от структуры данных до построения прогноза",
     icon: Route,
     href: "#research-stages",
   },
   {
     title: "Подробная навигация по платформе",
-    description: "Изучить модули, остановки и доступные действия",
+    description: "изучить модули, остановки и доступные действия",
     icon: Map,
     href: "#platform-navigation",
   },
