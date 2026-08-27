@@ -19,6 +19,11 @@ export function PlatformIntroduction() {
         </h2>
         <TsAnalysisNavigator />
       </section>
+      <div
+        data-testid="page-bottom-separator"
+        className="mt-12 h-px w-full bg-neutral-200"
+        aria-hidden="true"
+      />
     </>
   );
 }

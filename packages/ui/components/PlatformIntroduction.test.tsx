@@ -19,4 +19,17 @@ describe("PlatformIntroduction", () => {
       screen.getByRole("heading", { level: 2, name: "Подробная навигация по платформе" }),
     ).toBeInTheDocument();
   });
+
+  it("renders a full-width gray rule as the final element of the page", () => {
+    const { container } = render(
+      <AppShellProvider>
+        <PlatformIntroduction />
+      </AppShellProvider>,
+    );
+
+    const separator = screen.getByTestId("page-bottom-separator");
+    expect(separator.className).toContain("w-full");
+    expect(separator.className).toContain("bg-neutral-200");
+    expect(container.lastElementChild).toBe(separator);
+  });
 });

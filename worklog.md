@@ -3508,3 +3508,39 @@ TDD и проверка
 - packages/ui/components/NavigatorHero.test.tsx
 - packages/ui/components/TsAnalysisNavigator.tsx
 - packages/ui/components/TsAnalysisNavigator.test.tsx
+
+---
+
+Task ID: 58 — Уточнение расположения разделителей на странице «Знакомство с платформой»
+
+Date: 2026-08-27
+
+Задача
+Точечно скорректировать серые линии на `/navigator`: убрать линию под заголовком «Примеры прикладных задач», добавить линию над заголовком «Ключевые этапы исследования ряда» и разместить линию в самом низу страницы.
+
+Состояние репозитория
+- Работа выполнена поверх локальных изменений Task 57 на актуальном клоне `main`, `HEAD f42575e`.
+- Новая синхронизация не выполнялась: прямого указания тимлида на `fetch/pull` в текущем запросе не было.
+- Коммиты и push не выполнялись.
+
+Проектирование и реализация
+- Контейнер заголовка «Примеры прикладных задач» изменён с `border-y` на `border-t`: верхняя полноширинная серая линия сохранена, нижняя удалена.
+- Заголовок «Ключевые этапы исследования ряда» помещён в полноширинный контейнер с `border-t border-neutral-200`; линия находится непосредственно над заголовком.
+- Нижний декоративный разделитель удалён из `NavigatorHero`, где он находился перед разделом подробной навигации, и перенесён в `PlatformIntroduction` после секции `#platform-navigation`. Теперь это последний элемент общей композиции страницы.
+- Нижний разделитель оставлен декоративным (`aria-hidden=true`) и получил стабильный `data-testid` для проверки его позиции в DOM.
+
+TDD и проверка
+- RED: focused Jest — 2 suites, 3 ожидаемых падения, 22 прежних теста PASS; тесты зафиксировали нижнюю линию у первого заголовка, отсутствие линии у этапов и отсутствие разделителя в конце страницы.
+- GREEN: focused Jest — 2/2 suites, 25/25 tests PASS.
+- Полный Jest — 41/41 suites, 354/354 tests PASS, 0 snapshots.
+- TypeScript typecheck — PASS для embedded и standalone (`tsc --noEmit` для каждого приложения). Из-за контракта TypeScript 6 для side-effect CSS imports временно использовались локальные `.d.ts`-shim'ы; после проверки они удалены и в изменения не входят.
+- Next.js production build embedded — PASS, 13/13 статических страниц.
+- Next.js production build standalone — PASS, 13/13 статических страниц.
+- Из-за известной ошибки runtime `uv_resident_set_memory` для сборок временно использовался локальный memory shim; после проверки он удалён и в изменения не входит.
+- Существующее предупреждение Tailwind о пустом app-level `content` остаётся; обе сборки успешны.
+
+Изменённые файлы текущей задачи
+- packages/ui/components/NavigatorHero.tsx
+- packages/ui/components/NavigatorHero.test.tsx
+- packages/ui/components/PlatformIntroduction.tsx
+- packages/ui/components/PlatformIntroduction.test.tsx

@@ -10,7 +10,7 @@
 //   - 6 chevron-стрелок в ряд (светло-серый фон, зелёная цифра)
 //   - под каждой стрелкой — заголовок + поддерживающий текст
 //   - 2 раскрывающихся полубейджа «Для кого» / «Для чего» (Task 21)
-//   - декоративный разделитель
+//   - серые разделители над заголовками содержательных разделов
 //
 // a11y-контракт:
 //   - Chevron-ряд — aria-label="Этапы анализа", цифры aria-hidden
@@ -163,7 +163,7 @@ export function NavigatorHero() {
         aria-labelledby="applied-tasks-title"
         className="scroll-mt-24"
       >
-        <div className="w-full border-y border-neutral-200 py-4">
+        <div className="w-full border-t border-neutral-200 py-4">
           <h2
             id="applied-tasks-title"
             className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a] text-center"
@@ -179,12 +179,14 @@ export function NavigatorHero() {
         aria-labelledby="research-stages-title"
         className="scroll-mt-24 space-y-6"
       >
-        <h2
-          id="research-stages-title"
-          className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a] text-center"
-        >
-          Ключевые этапы исследования ряда
-        </h2>
+        <div className="w-full border-t border-neutral-200 pt-4">
+          <h2
+            id="research-stages-title"
+            className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a] text-center"
+          >
+            Ключевые этапы исследования ряда
+          </h2>
+        </div>
 
       {/* ── 2. Chevron-стрелки + текст (Task 26) ──
           Сетка 6 колонок × 3 строки:
@@ -237,9 +239,6 @@ export function NavigatorHero() {
       </div>
 
       </section>
-
-      {/* ── 5. Декоративный разделитель ── */}
-      <div className="h-px w-full bg-neutral-200" aria-hidden="true" />
     </div>
   );
 }

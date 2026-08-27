@@ -81,7 +81,7 @@ describe("NavigatorHero", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the applied tasks section under the new title between two full-width gray rules", () => {
+  it("renders the applied tasks title with only a full-width gray rule above it", () => {
     render(<NavigatorHero />);
 
     const heading = screen.getByRole("heading", {
@@ -99,7 +99,24 @@ describe("NavigatorHero", () => {
     const ruledHeading = heading.parentElement;
     expect(ruledHeading).not.toBeNull();
     expect(ruledHeading?.className).toContain("w-full");
-    expect(ruledHeading?.className).toContain("border-y");
+    expect(ruledHeading?.className).toContain("border-t");
+    expect(ruledHeading?.className).not.toContain("border-y");
+    expect(ruledHeading?.className).not.toContain("border-b");
+    expect(ruledHeading?.className).toContain("border-neutral-200");
+  });
+
+  it("renders a full-width gray rule above the research stages title", () => {
+    render(<NavigatorHero />);
+
+    const heading = screen.getByRole("heading", {
+      level: 2,
+      name: "Ключевые этапы исследования ряда",
+    });
+    const ruledHeading = heading.parentElement;
+
+    expect(ruledHeading).not.toBeNull();
+    expect(ruledHeading?.className).toContain("w-full");
+    expect(ruledHeading?.className).toContain("border-t");
     expect(ruledHeading?.className).toContain("border-neutral-200");
   });
 
@@ -297,12 +314,4 @@ describe("NavigatorHero", () => {
     expect(downChevrons).toHaveLength(1);
   });
 
-  // ── Декоративный разделитель ─────────────────────────────────────
-
-  it("renders a decorative separator (aria-hidden divider) after the hero section", () => {
-    render(<NavigatorHero />);
-    const dividers = document.querySelectorAll("[aria-hidden='true']");
-    // По крайней мере один скрытый элемент-разделитель
-    expect(dividers.length).toBeGreaterThanOrEqual(1);
-  });
 });
