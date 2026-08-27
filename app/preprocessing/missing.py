@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+import numpy as np
 import pandas as pd
 
 # Максимум примеров индексов строк с пропуском на колонку -- согласовано
@@ -123,3 +124,129 @@ def missing_per_row_histogram(df: pd.DataFrame, max_buckets: int = 20) -> list[d
     if len(counts) > max_buckets:
         counts = counts.iloc[:max_buckets]
     return [{"missing_in_row": int(k), "row_count": int(v)} for k, v in counts.items()]
+
+
+# ── Визуализации пропусков (перенос app.py "Визуализация пропусков",
+#    ~строки 7843-7862: selectbox "Матрица пропусков" / "Тепловая карта
+#    корреляции" / "Сравнение распределений (Boxplot)") ──
+
+
+def missing_matrix(df: pd.DataFrame, max_bins: int = 200) -> dict[str, Any]:
+    """Матрица пропусков по колонкам, забинованная по строкам.
+
+    Легаси (px.imshow(df.isnull().T)) рисовал ОДИН пиксель на строку --
+    нормально для Plotly в браузере со своим канвасом, но неприемлемо как
+    JSON-полезная нагрузка при десятках тысяч строк. Вместо прореживания
+    (потеряло бы короткие серии пропусков между сэмплированными точками)
+    строки группируются в max_bins непрерывных смежных блоков, для каждого
+    блока и каждой колонки считается ДОЛЯ пропущенных значений (0..1) --
+    короткий контигуальный провал внутри блока по-прежнему поднимает его
+    заливку выше нуля, а не исчезает между двумя случайно выбранными
+    строками, как было бы при простом прореживании.
+    """
+    total_rows = len(df)
+    columns = [str(c) for c in df.columns]
+    if total_rows == 0 or not columns:
+        return {"columns": columns, "bins": [], "rows_per_bin": 0, "total_rows": total_rows}
+
+    null_mask = df.isnull()
+    n_bins = min(max_bins, total_rows)
+    # np.array_split распределяет остаток по первым бинам -- бины отличаются
+    # не более чем на одну строку, не только "последний бин короче".
+    bin_row_indices = np.array_split(np.arange(total_rows), n_bins)
+    bins: list[dict[str, Any]] = []
+    for bin_idx, row_positions in enumerate(bin_row_indices):
+        if len(row_positions) == 0:
+            continue
+        chunk = null_mask.iloc[row_positions]
+        bins.append({
+            "bin_index": bin_idx,
+            "row_start": int(df.index[row_positions[0]]) if total_rows else 0,
+            "row_end": int(df.index[row_positions[-1]]) if total_rows else 0,
+            "row_count": int(len(row_positions)),
+            "missing_share": {
+                column: round(float(chunk[col].mean()), 4)
+                for column, col in zip(columns, df.columns)
+            },
+        })
+    return {
+        "columns": columns,
+        "bins": bins,
+        "rows_per_bin": int(round(total_rows / max(len(bins), 1))),
+        "total_rows": total_rows,
+    }
+
+
+def missing_correlation(df: pd.DataFrame) -> dict[str, Any]:
+    """Корреляция индикаторов пропуска между колонками (nullity correlation)
+    -- перенос df.isnull().astype(int).corr() из легаси. Диагностирует MAR:
+    если пропуск в колонке A систематически совпадает с пропуском в B
+    (корреляция → 1), это одно совместное событие пропуска (например, оба
+    поля пишет один и тот же отказавший датчик), а не два независимых.
+
+    Колонки без вариативности пропуска (0% или 100% пропусков -- корреляция
+    математически не определена, pandas вернул бы NaN) исключаются из
+    матрицы, а не подставляются нулём -- ноль означал бы "доказанно нет
+    связи", что для неопределённого случая неверно.
+    """
+    null_indicator = df.isnull().astype(int)
+    varying_columns = [c for c in null_indicator.columns if null_indicator[c].nunique() > 1]
+    if len(varying_columns) < 2:
+        return {"columns": [], "matrix": []}
+
+    corr = null_indicator[varying_columns].corr()
+    columns = [str(c) for c in varying_columns]
+    matrix = [
+        [round(float(corr.iloc[i, j]), 4) if pd.notnull(corr.iloc[i, j]) else None for j in range(len(varying_columns))]
+        for i in range(len(varying_columns))
+    ]
+    return {"columns": columns, "matrix": matrix}
+
+
+def _five_number_summary(series: pd.Series) -> Optional[dict[str, float]]:
+    valid = series.dropna()
+    if valid.empty:
+        return None
+    return {
+        "count": int(valid.shape[0]),
+        "min": float(valid.min()),
+        "q1": float(valid.quantile(0.25)),
+        "median": float(valid.median()),
+        "q3": float(valid.quantile(0.75)),
+        "max": float(valid.max()),
+        "mean": float(valid.mean()),
+    }
+
+
+def missing_distribution_comparison(
+    df: pd.DataFrame, value_column: str, indicator_column: str
+) -> dict[str, Any]:
+    """Boxplot-сводка «влияет ли пропуск в indicator_column на распределение
+    value_column» -- перенос px.box(df, x='Has_Miss', y=col_box) из легаси,
+    но вместо сырых точек (которые пришлось бы гонять по сети) возвращается
+    только пятичисловая сводка на группу -- этого достаточно для отрисовки
+    box-and-whiskers на фронтенде и не тянет весь датасет в ответ API.
+
+    Если распределение value_column заметно отличается между "пропуск
+    есть"/"пропуска нет" по indicator_column -- это диагностика MNAR/MAR:
+    пропуск в indicator_column НЕ является полностью случайным относительно
+    value_column, и заполнение медианой/средним может сместить оценки.
+    """
+    if value_column not in df.columns:
+        raise ValueError(f"Колонка '{value_column}' отсутствует в датасете")
+    if indicator_column not in df.columns:
+        raise ValueError(f"Колонка '{indicator_column}' отсутствует в датасете")
+    if value_column == indicator_column:
+        raise ValueError("Колонка сравнения и колонка-индикатор должны различаться")
+    if not pd.api.types.is_numeric_dtype(df[value_column]):
+        raise ValueError(f"Колонка '{value_column}' должна быть числовой для Boxplot")
+
+    indicator_mask = df[indicator_column].isnull()
+    with_missing = _five_number_summary(df.loc[indicator_mask, value_column])
+    without_missing = _five_number_summary(df.loc[~indicator_mask, value_column])
+    return {
+        "value_column": value_column,
+        "indicator_column": indicator_column,
+        "with_missing": with_missing,
+        "without_missing": without_missing,
+    }

@@ -40,6 +40,9 @@ from apps.api.schemas import (
     DatasetInclusionProfileResponse,
     DatasetMissingCorrectionRequest,
     DatasetMissingCorrectionResponse,
+    DatasetMissingCorrelationResponse,
+    DatasetMissingDistributionResponse,
+    DatasetMissingMatrixResponse,
     DatasetMissingProfileResponse,
     DatasetPreprocessingCheckModesRequest,
     DatasetPreprocessingCheckModesResponse,
@@ -120,7 +123,14 @@ from apps.api.consistency_correction import preview_consistency_corrections
 from apps.api.format_correction import preview_format_corrections
 from apps.api.inclusion_correction import preview_inclusion_corrections
 from apps.api.missing_correction import preview_missing_corrections
-from app.preprocessing.missing import missing_per_row_histogram, missing_summary, profile_missing
+from app.preprocessing.missing import (
+    missing_correlation,
+    missing_distribution_comparison,
+    missing_matrix,
+    missing_per_row_histogram,
+    missing_summary,
+    profile_missing,
+)
 from apps.api.range_correction import preview_range_corrections
 from apps.api.referential_correction import preview_referential_corrections
 from apps.api.regularity_correction import preview_regularity_correction
@@ -1137,6 +1147,54 @@ def save_dataset_preprocessing_check_modes(
     return DatasetPreprocessingCheckModesResponse(
         modes=_effective_preprocessing_check_modes(session)
     )
+
+
+@router.get("/dataset/missing-matrix", response_model=DatasetMissingMatrixResponse)
+def get_dataset_missing_matrix(request: Request, response: Response):
+    """Матрица пропусков, забинованная по строкам -- см. missing_matrix()
+    в app/preprocessing/missing.py. Не зависит от режима остановки: это
+    диагностический вид «Обзора», доступен независимо от auto/enabled/
+    disabled (та же логика, что у самого профиля -- реальные данные
+    честны всегда, режим управляет только участием в прогрессе)."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    result = missing_matrix(session.dataframe)
+    return DatasetMissingMatrixResponse(**result)
+
+
+@router.get("/dataset/missing-correlation", response_model=DatasetMissingCorrelationResponse)
+def get_dataset_missing_correlation(request: Request, response: Response):
+    """Корреляция индикаторов пропуска между колонками -- MAR-диагностика,
+    см. missing_correlation() в app/preprocessing/missing.py."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    result = missing_correlation(session.dataframe)
+    return DatasetMissingCorrelationResponse(**result)
+
+
+@router.get("/dataset/missing-distribution", response_model=DatasetMissingDistributionResponse)
+def get_dataset_missing_distribution(
+    value_column: str,
+    indicator_column: str,
+    request: Request,
+    response: Response,
+):
+    """Boxplot-сводка «влияет ли пропуск в indicator_column на распределение
+    value_column» -- см. missing_distribution_comparison() в
+    app/preprocessing/missing.py."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    try:
+        result = missing_distribution_comparison(session.dataframe, value_column, indicator_column)
+    except ValueError as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
+    return DatasetMissingDistributionResponse(**result)
 
 
 @router.post("/dataset/missing-corrections", response_model=DatasetMissingCorrectionResponse)

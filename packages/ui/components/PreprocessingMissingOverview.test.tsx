@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 import { PreprocessingMissingOverview } from "./PreprocessingMissingOverview";
 
@@ -94,5 +94,25 @@ describe("PreprocessingMissingOverview", () => {
     render(<PreprocessingMissingOverview refreshKey={1} />);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("В сессии нет активного датасета");
+  });
+
+  it("switches to the matrix visualization tab and fetches its own data", async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(PROFILE) });
+    render(<PreprocessingMissingOverview refreshKey={1} />);
+    await screen.findByRole("table", { name: "Матрица пропусков по колонкам" });
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        columns: ["Price"],
+        bins: [{ bin_index: 0, row_start: 0, row_end: 3, row_count: 4, missing_share: { Price: 0.5 } }],
+        rows_per_bin: 4,
+        total_rows: 4,
+      }),
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Матрица" }));
+
+    expect(await screen.findByText(/Каждый столбец матрицы/)).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Матрица пропусков по колонкам" })).not.toBeInTheDocument();
   });
 });

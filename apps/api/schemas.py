@@ -590,6 +590,43 @@ class DatasetPreprocessingCheckModesResponse(BaseModel):
     modes: Dict[str, Literal["auto", "enabled", "disabled"]]
 
 
+class MissingMatrixBinOut(BaseModel):
+    bin_index: int
+    row_start: int
+    row_end: int
+    row_count: int
+    missing_share: Dict[str, float]
+
+
+class DatasetMissingMatrixResponse(BaseModel):
+    columns: List[str]
+    bins: List[MissingMatrixBinOut] = Field(default_factory=list)
+    rows_per_bin: int = 0
+    total_rows: int = 0
+
+
+class DatasetMissingCorrelationResponse(BaseModel):
+    columns: List[str]
+    matrix: List[List[Optional[float]]] = Field(default_factory=list)
+
+
+class MissingDistributionGroupOut(BaseModel):
+    count: int
+    min: float
+    q1: float
+    median: float
+    q3: float
+    max: float
+    mean: float
+
+
+class DatasetMissingDistributionResponse(BaseModel):
+    value_column: str
+    indicator_column: str
+    with_missing: Optional[MissingDistributionGroupOut] = None
+    without_missing: Optional[MissingDistributionGroupOut] = None
+
+
 class InclusionInvalidValueOut(BaseModel):
     value: str
     count: int

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
+import { MissingMatrixChart, MissingCorrelationChart, MissingBoxplotChart } from "./PreprocessingMissingVisualizations";
 
 export interface MissingProfileItem {
   column: string;
@@ -66,6 +67,7 @@ export function PreprocessingMissingOverview({ refreshKey = 0 }: { refreshKey?: 
   const [profile, setProfile] = useState<MissingProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<"table" | "matrix" | "correlation" | "boxplot">("table");
 
   useEffect(() => {
     let active = true;
@@ -139,41 +141,71 @@ export function PreprocessingMissingOverview({ refreshKey = 0 }: { refreshKey?: 
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table aria-label="Матрица пропусков по колонкам" className="w-full min-w-[760px] text-left text-xs">
-          <thead className="sticky top-0 bg-neutral-50 text-neutral-500">
-            <tr>
-              <th className="px-3 py-2">Колонка</th>
-              <th className="px-3 py-2">Тип</th>
-              <th className="px-3 py-2 text-right">Пропусков</th>
-              <th className="px-3 py-2">Статус</th>
-              <th className="px-3 py-2">Рекомендация</th>
-            </tr>
-          </thead>
-          <tbody>
-            {profile.columns.map((item) => (
-              <tr key={item.column} className="border-t border-neutral-100 text-neutral-700">
-                <td className="px-3 py-2">
-                  <span className="block font-medium text-neutral-800">{item.column}</span>
-                  {item.missing_examples.length > 0 && (
-                    <span className="block max-w-[220px] truncate text-[11px] text-neutral-400">
-                      Строки: {item.missing_examples.join(", ")}
-                    </span>
-                  )}
-                </td>
-                <td className="px-3 py-2 tabular-nums">{item.dtype}</td>
-                <td className="px-3 py-2 text-right font-mono">{item.missing_count} ({pctLabel(item.missing_pct)})</td>
-                <td className="px-3 py-2">
-                  <span className={`rounded px-2 py-1 font-medium ${item.missing_count > 0 ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700"}`}>
-                    {item.missing_count > 0 ? "Найдены проблемы" : "Пройдено"}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-neutral-600">{STRATEGY_LABEL[item.recommended_strategy]}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="flex gap-1 border-b border-neutral-100 px-4 pt-2">
+        {(
+          [
+            { id: "table", label: "Таблица" },
+            { id: "matrix", label: "Матрица" },
+            { id: "correlation", label: "Корреляция" },
+            { id: "boxplot", label: "Boxplot" },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveView(tab.id)}
+            aria-pressed={activeView === tab.id}
+            className={`rounded-t px-3 py-1.5 text-xs font-medium transition-colors ${
+              activeView === tab.id
+                ? "bg-white text-brand border border-b-0 border-neutral-200"
+                : "text-neutral-500 hover:text-neutral-700"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
+
+      {activeView === "table" && (
+        <div className="overflow-x-auto">
+          <table aria-label="Матрица пропусков по колонкам" className="w-full min-w-[760px] text-left text-xs">
+            <thead className="sticky top-0 bg-neutral-50 text-neutral-500">
+              <tr>
+                <th className="px-3 py-2">Колонка</th>
+                <th className="px-3 py-2">Тип</th>
+                <th className="px-3 py-2 text-right">Пропусков</th>
+                <th className="px-3 py-2">Статус</th>
+                <th className="px-3 py-2">Рекомендация</th>
+              </tr>
+            </thead>
+            <tbody>
+              {profile.columns.map((item) => (
+                <tr key={item.column} className="border-t border-neutral-100 text-neutral-700">
+                  <td className="px-3 py-2">
+                    <span className="block font-medium text-neutral-800">{item.column}</span>
+                    {item.missing_examples.length > 0 && (
+                      <span className="block max-w-[220px] truncate text-[11px] text-neutral-400">
+                        Строки: {item.missing_examples.join(", ")}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 tabular-nums">{item.dtype}</td>
+                  <td className="px-3 py-2 text-right font-mono">{item.missing_count} ({pctLabel(item.missing_pct)})</td>
+                  <td className="px-3 py-2">
+                    <span className={`rounded px-2 py-1 font-medium ${item.missing_count > 0 ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700"}`}>
+                      {item.missing_count > 0 ? "Найдены проблемы" : "Пройдено"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-neutral-600">{STRATEGY_LABEL[item.recommended_strategy]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {activeView === "matrix" && <MissingMatrixChart />}
+      {activeView === "correlation" && <MissingCorrelationChart />}
+      {activeView === "boxplot" && <MissingBoxplotChart columns={profile.columns} />}
     </section>
   );
 }
