@@ -3544,3 +3544,35 @@ TDD и проверка
 - packages/ui/components/NavigatorHero.test.tsx
 - packages/ui/components/PlatformIntroduction.tsx
 - packages/ui/components/PlatformIntroduction.test.tsx
+
+---
+
+Task ID: 59 — Разделитель над подробной навигацией
+
+Date: 2026-08-27
+
+Задача
+Добавить полноширинную серую линию над заголовком «Подробная навигация по платформе» на странице `/navigator`.
+
+Состояние репозитория
+- Работа выполнена поверх локальных изменений Task 57–58 на актуальном клоне `main`, `HEAD f42575e`.
+- Новая синхронизация не выполнялась: прямого указания тимлида на `fetch/pull` в текущем запросе не было.
+- Коммиты и push не выполнялись.
+
+Проектирование и реализация
+- Изменение локализовано в общей композиции `PlatformIntroduction`, поэтому одинаково применяется к standalone и embedded.
+- Заголовок «Подробная навигация по платформе» помещён в полноширинный контейнер `w-full border-t border-neutral-200 pt-4`.
+- Якорь `#platform-navigation`, связь `aria-labelledby`, содержимое навигатора и остальные разделители не изменены.
+
+TDD и проверка
+- RED: focused Jest — 1 suite, 1 ожидаемое падение, 2 прежних теста PASS; тест зафиксировал отсутствие полноширинной линии над заголовком.
+- GREEN: focused Jest — 1/1 suite, 3/3 tests PASS.
+- Полный Jest — 41/41 suites, 355/355 tests PASS, 0 snapshots.
+- TypeScript typecheck — PASS для embedded и standalone (`tsc --noEmit` для каждого приложения). Временные `.d.ts`-shim'ы для side-effect CSS imports после проверки удалены и в изменения не входят.
+- Next.js production build embedded — PASS, 13/13 статических страниц.
+- Next.js production build standalone — PASS, 13/13 статических страниц.
+- Для обхода известной ошибки runtime `uv_resident_set_memory` временно использовался локальный memory shim; после проверки он удалён и в изменения не входит.
+
+Изменённые файлы текущей задачи
+- packages/ui/components/PlatformIntroduction.tsx
+- packages/ui/components/PlatformIntroduction.test.tsx

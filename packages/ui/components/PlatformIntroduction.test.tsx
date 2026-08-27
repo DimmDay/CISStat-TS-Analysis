@@ -20,6 +20,25 @@ describe("PlatformIntroduction", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders a full-width gray rule above the platform navigation title", () => {
+    render(
+      <AppShellProvider>
+        <PlatformIntroduction />
+      </AppShellProvider>,
+    );
+
+    const heading = screen.getByRole("heading", {
+      level: 2,
+      name: "Подробная навигация по платформе",
+    });
+    const ruledHeading = heading.parentElement;
+
+    expect(ruledHeading).not.toBeNull();
+    expect(ruledHeading?.className).toContain("w-full");
+    expect(ruledHeading?.className).toContain("border-t");
+    expect(ruledHeading?.className).toContain("border-neutral-200");
+  });
+
   it("renders a full-width gray rule as the final element of the page", () => {
     const { container } = render(
       <AppShellProvider>

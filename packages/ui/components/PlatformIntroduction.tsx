@@ -11,12 +11,14 @@ export function PlatformIntroduction() {
         aria-labelledby="platform-navigation-title"
         className="scroll-mt-24 mt-12"
       >
-        <h2
-          id="platform-navigation-title"
-          className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a] text-center mb-4"
-        >
-          Подробная навигация по платформе
-        </h2>
+        <div className="w-full border-t border-neutral-200 pt-4">
+          <h2
+            id="platform-navigation-title"
+            className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a] text-center mb-4"
+          >
+            Подробная навигация по платформе
+          </h2>
+        </div>
         <TsAnalysisNavigator />
       </section>
       <div
