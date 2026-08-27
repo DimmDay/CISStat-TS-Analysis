@@ -33,12 +33,12 @@ export interface AppliedTaskExample {
 }
 
 export const APPLIED_TASK_DOMAINS: AppliedTaskDomain[] = [
-  { id: "government", label: "Госуправление", subtitle: "бюджет, меры и государственные услуги" },
+  { id: "government", label: "ГОСУПРАВЛЕНИЕ", subtitle: "бюджет, меры и государственные услуги" },
   { id: "universities", label: "ВУЗы", subtitle: "обучение, контингент и ресурсы" },
   { id: "institutes", label: "НИИ", subtitle: "проекты, гранты и публикации" },
-  { id: "business", label: "Бизнес", subtitle: "спрос, выручка и операции" },
-  { id: "researchers", label: "Исследователи", subtitle: "гипотезы, данные и воспроизводимость" },
-  { id: "developers", label: "ИТ-разработчики", subtitle: "продукты, инфраструктура и ML" },
+  { id: "business", label: "БИЗНЕС", subtitle: "спрос, выручка и операции" },
+  { id: "researchers", label: "ИССЛЕДОВАТЕЛИ", subtitle: "гипотезы, данные и воспроизводимость" },
+  { id: "developers", label: "ИТ-РАЗРАБОТЧИКИ", subtitle: "продукты, инфраструктура и ML" },
 ];
 
 export const APPLIED_TASK_KINDS: AppliedTaskKind[] = [
