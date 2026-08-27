@@ -10,40 +10,8 @@
 //   - Поддерживающий текст тонким серым шрифтом
 //   - Сетку 3×2 из 6 карточек-маршрутов (HOME_ROUTES)
 
-import Link from "next/link";
 import { HOME_ROUTES } from "../lib/home-stops";
-
-// ── Одноячеистая карточка маршрута ─────────────────────────────
-
-function RouteCard({
-  title,
-  description,
-  icon: Icon,
-  href,
-}: (typeof HOME_ROUTES)[number]) {
-  return (
-    <Link
-      href={href}
-      className="group flex items-start gap-4 rounded-xl border border-brand/60 bg-brand-light/60 p-6 transition-colors hover:border-brand/90 hover:bg-brand-light/90"
-    >
-      {/* Иконка в брендовом кружке */}
-      <span
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-light text-brand transition-colors group-hover:bg-brand group-hover:text-white"
-        aria-hidden="true"
-      >
-        <Icon size={20} />
-      </span>
-      <div className="min-w-0">
-        <h3 className="text-sm font-semibold text-neutral-900 leading-snug">
-          {title}
-        </h3>
-        <p className="mt-1 text-sm text-neutral-500 leading-relaxed">
-          {description}
-        </p>
-      </div>
-    </Link>
-  );
-}
+import { RouteCard } from "./RouteCard";
 
 // ── Основной компонент ─────────────────────────────────────────
 

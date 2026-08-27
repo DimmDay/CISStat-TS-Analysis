@@ -2,11 +2,13 @@
 
 // packages/ui/components/NavigatorHero.tsx
 //
-// Верхняя часть страницы «Навигатор» в обоих apps/* (standalone и embedded).
-// Презентационный компонент с локальной интерактивностью:
-//   - H1 «Ключевые этапы исследования временного ряда»
+// Верхняя часть страницы «Знакомство с платформой» в обоих apps/*.
+// Содержит:
+//   - H1 и три якорные карточки разделов в стиле главной страницы
+//   - заглушку блока прикладных задач
+//   - секцию «Ключевые этапы исследования ряда»
 //   - 6 chevron-стрелок в ряд (светло-серый фон, зелёная цифра)
-//   - Под каждой стрелкой — заголовок (пронумерованный) + поддерживающий текст
+//   - под каждой стрелкой — заголовок + поддерживающий текст
 //   - 2 раскрывающихся полубейджа «Для кого» / «Для чего» (Task 21)
 //   - декоративный разделитель
 //
@@ -19,11 +21,13 @@ import { useState } from "react";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import {
   NAVIGATOR_BADGES,
+  NAVIGATOR_SECTION_ROUTES,
   AUDIENCE_LABEL,
   AUDIENCE_TEXT,
   PURPOSE_LABEL,
   PURPOSE_TEXT,
 } from "../lib/navigator-stops";
+import { RouteCard } from "./RouteCard";
 
 // ── Chevron-стрелка ──────────────────────────────────────────────
 //
@@ -132,11 +136,59 @@ export function NavigatorHero() {
   const [purposeOpen, setPurposeOpen] = useState(false);
 
   return (
-    <div className="space-y-6">
-      {/* ── 1. Заголовок (Task 31: добавлен text-center) ── */}
-      <h1 className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a] text-center">
-        Ключевые этапы исследования временного ряда
-      </h1>
+    <div className="space-y-12">
+      <header className="space-y-10">
+        <div className="text-center">
+          <h1 className="font-sans text-2xl font-semibold tracking-tight text-[#1e3a8a] text-center">
+            Знакомство с платформой
+          </h1>
+          <p className="mt-3 text-lg text-[#1e3a8a]">
+            Выберите раздел, чтобы быстро понять задачи, логику исследования и устройство платформы
+          </p>
+        </div>
+
+        <nav
+          className="grid grid-cols-1 md:grid-cols-3 gap-5"
+          aria-label="Разделы знакомства с платформой"
+        >
+          {NAVIGATOR_SECTION_ROUTES.map((route) => (
+            <RouteCard key={route.href} {...route} />
+          ))}
+        </nav>
+      </header>
+
+      <section
+        id="applied-tasks"
+        aria-labelledby="applied-tasks-title"
+        className="scroll-mt-24"
+      >
+        <h2
+          id="applied-tasks-title"
+          className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a] text-center"
+        >
+          Прикладные задачи, решаемые платформой
+        </h2>
+        <div className="mt-6 rounded-xl border border-dashed border-brand/40 bg-brand-light/35 px-6 py-10 text-center">
+          <p className="text-sm font-medium text-neutral-700">
+            Наполнение блока согласуем в следующей задаче.
+          </p>
+          <p className="mt-2 text-sm text-neutral-500">
+            Здесь будут представлены прикладные сценарии и задачи пользователей платформы.
+          </p>
+        </div>
+      </section>
+
+      <section
+        id="research-stages"
+        aria-labelledby="research-stages-title"
+        className="scroll-mt-24 space-y-6"
+      >
+        <h2
+          id="research-stages-title"
+          className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a] text-center"
+        >
+          Ключевые этапы исследования ряда
+        </h2>
 
       {/* ── 2. Chevron-стрелки + текст (Task 26) ──
           Сетка 6 колонок × 3 строки:
@@ -187,6 +239,8 @@ export function NavigatorHero() {
           onToggle={() => setPurposeOpen((prev) => !prev)}
         />
       </div>
+
+      </section>
 
       {/* ── 5. Декоративный разделитель ── */}
       <div className="h-px w-full bg-neutral-200" aria-hidden="true" />

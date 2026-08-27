@@ -18,6 +18,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { NavigatorHero } from "./NavigatorHero";
 import {
   NAVIGATOR_BADGES,
+  NAVIGATOR_SECTION_ROUTES,
   AUDIENCE_LABEL,
   AUDIENCE_TEXT,
   PURPOSE_LABEL,
@@ -25,12 +26,12 @@ import {
 } from "../lib/navigator-stops";
 
 describe("NavigatorHero", () => {
-  // ── H1 ────────────────────────────────────────────────────────────
+  // ── Вводная секция и маршруты по странице ─────────────────────────
 
-  it("renders the H1 title", () => {
+  it("renders the page H1 title", () => {
     render(<NavigatorHero />);
     expect(
-      screen.getByRole("heading", { level: 1, name: /Ключевые этапы исследования временного ряда/i }),
+      screen.getByRole("heading", { level: 1, name: /Знакомство с платформой/i }),
     ).toBeInTheDocument();
   });
 
@@ -38,9 +39,44 @@ describe("NavigatorHero", () => {
     render(<NavigatorHero />);
     const h1 = screen.getByRole("heading", {
       level: 1,
-      name: /Ключевые этапы исследования временного ряда/i,
+      name: /Знакомство с платформой/i,
     });
     expect(h1.className).toContain("text-center");
+  });
+
+  it("renders three route badges with stable anchor links", () => {
+    render(<NavigatorHero />);
+
+    expect(
+      screen.getByRole("navigation", { name: "Разделы знакомства с платформой" }),
+    ).toBeInTheDocument();
+    expect(NAVIGATOR_SECTION_ROUTES).toHaveLength(3);
+    NAVIGATOR_SECTION_ROUTES.forEach((route) => {
+      const link = screen.getByRole("link", { name: new RegExp(route.title, "i") });
+      expect(link).toHaveAttribute("href", route.href);
+    });
+  });
+
+  it("reuses the visual states of route cards from the home page", () => {
+    const { container } = render(<NavigatorHero />);
+    const links = container.querySelectorAll('nav[aria-label="Разделы знакомства с платформой"] > a');
+    expect(links).toHaveLength(3);
+    links.forEach((link) => {
+      expect(link.className).toContain("border-brand/60");
+      expect(link.className).toContain("bg-brand-light/60");
+      expect(link.className).toContain("hover:border-brand/90");
+      expect(link.className).toContain("hover:bg-brand-light/90");
+    });
+  });
+
+  it("renders the applied tasks placeholder and the research stages as anchor targets", () => {
+    render(<NavigatorHero />);
+    expect(document.getElementById("applied-tasks")).toBeInTheDocument();
+    expect(document.getElementById("research-stages")).toBeInTheDocument();
+    expect(screen.getByText(/Наполнение блока согласуем в следующей задаче/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: /Ключевые этапы исследования ряда/i }),
+    ).toBeInTheDocument();
   });
 
   // ── 6 chevron-стрелок с цифрами (Task 26) ─────────────────────────

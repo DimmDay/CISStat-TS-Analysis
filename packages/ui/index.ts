@@ -3,6 +3,8 @@
 // Главная страница (/) — исследовательская карта (Task 24).
 // HomeHero: H1 + поддерживающий текст + сетка 3×2 из 6 маршрутов.
 export { HomeHero } from "./components/HomeHero";
+export { RouteCard } from "./components/RouteCard";
+export type { RouteCardProps } from "./components/RouteCard";
 export { HOME_ROUTES } from "./lib/home-stops";
 export type { HomeRoute } from "./lib/home-stops";
 
@@ -26,9 +28,11 @@ export type { CapabilityStat, Capability } from "./lib/capabilities";
 // 2026-08-17) — показывается всегда, без auth-ветвления.
 export { NavigatorHero } from "./components/NavigatorHero";
 export { TsAnalysisNavigator } from "./components/TsAnalysisNavigator";
+export { PlatformIntroduction } from "./components/PlatformIntroduction";
 export {
   NAVIGATOR_STOPS,
   NAVIGATOR_BADGES,
+  NAVIGATOR_SECTION_ROUTES,
   AUDIENCE_TEXT,
   PURPOSE_TEXT,
   AUDIENCE_LABEL,
@@ -39,6 +43,7 @@ export type {
   NavigatorStop,
   NavigatorStopItem,
   NumberedBadge,
+  NavigatorSectionRoute,
   OverviewExampleMetric,
 } from "./lib/navigator-stops";
 

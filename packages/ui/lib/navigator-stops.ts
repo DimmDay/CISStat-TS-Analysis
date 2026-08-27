@@ -21,7 +21,39 @@
 // к ним идёт обращение при реальном входе в модуль. Здесь — только то, что
 // нужно для превью на Навигаторе, без дублирования контракта статусов.
 
+import type { LucideIcon } from "lucide-react";
+import { BriefcaseBusiness, Map, Route } from "lucide-react";
+
 // ── Типы ──────────────────────────────────────────────────────
+
+export interface NavigatorSectionRoute {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  href: `#${string}`;
+}
+
+/** Три верхнеуровневых маршрута страницы «Знакомство с платформой». */
+export const NAVIGATOR_SECTION_ROUTES: NavigatorSectionRoute[] = [
+  {
+    title: "Прикладные задачи, решаемые платформой",
+    description: "Перейти к прикладным сценариям использования платформы",
+    icon: BriefcaseBusiness,
+    href: "#applied-tasks",
+  },
+  {
+    title: "Ключевые этапы исследования ряда",
+    description: "Просмотреть путь от структуры данных до построения прогноза",
+    icon: Route,
+    href: "#research-stages",
+  },
+  {
+    title: "Подробная навигация по платформе",
+    description: "Изучить модули, остановки и доступные действия",
+    icon: Map,
+    href: "#platform-navigation",
+  },
+];
 
 export interface NavigatorStopItem {
   /** Идентификатор пункта (совпадает с id в CHECK_META/CHECKS соответствующего модуля). */

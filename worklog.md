@@ -3325,3 +3325,94 @@ TDD и проверка
 - packages/ui/components/PreprocessingMissingPipeline.test.tsx
 - tests/unit/test_missing_correction.py
 - tests/api/test_dataset_missing_correction.py
+
+Task ID: 54 — Визуализация пропусков (Матрица, Корреляция, Boxplot) внутри Обзора
+
+Date: 2026-08-26
+
+Задача
+Предложить и реализовать визуализацию пропусков, органично встроенную в паттерн остановки «Пропуски». Тимлид указал три уже существующих в бэкенде (легаси app.py, Streamlit) визуализации: матрица пропусков, тепловая карта корреляции, Boxplot-сравнение распределений — предложил либо бейджи под Мастером, либо другой вариант размещения.
+
+Решение по размещению
+Вкладки-переключатели («Таблица» / «Матрица» / «Корреляция» / «Boxplot») ВНУТРИ `PreprocessingMissingOverview`, а не бейджи под Мастером исправления. Обоснование: степпер уже разделяет две разные функциональные зоны — «Обзор» (диагностика, исследование данных) и «Мастер» (принятие решения, действие). Визуализации по своей природе — диагностический инструмент, помогающий аналитику ВЫБРАТЬ стратегию до открытия Мастера, а не часть самого 4-шагового процесса применения. Размещение под Мастером смешало бы эти две зоны и завело бы новый, ранее не использовавшийся паттерн взаимодействия (бейджи-раскрывашки), тогда как вкладки внутри Обзора — минимальное расширение уже существующего self-contained компонента.
+
+Backend (перенос легаси app.py, секция «Визуализация пропусков», ~строки 7843-7862)
+`app/preprocessing/missing.py` — три новые чистые функции:
+- `missing_matrix(df, max_bins=200)` — матрица пропусков, забинованная по строкам. Легаси рисовал по пикселю на строку (приемлемо для Plotly в браузере, неприемлемо как JSON-нагрузка при десятках тысяч строк) — вместо прореживания (потеряло бы короткие гэпы между сэмплированными точками) строки группируются в ≤200 смежных бинов, для каждого считается ДОЛЯ пропущенных значений на колонку — контигуальный провал внутри бина по-прежнему поднимает заливку выше нуля.
+- `missing_correlation(df)` — корреляция индикаторов пропуска между колонками (`df.isnull().astype(int).corr()`), перенесена без изменений по сути. Колонки без вариативности пропуска (0% или 100%) исключаются из матрицы вместо подстановки нуля — ноль означал бы «доказанно нет связи», что для мат. неопределённого случая (NaN у pandas) было бы неверно.
+- `missing_distribution_comparison(df, value_column, indicator_column)` — перенос `px.box(df, x='Has_Miss', y=col_box)`, но вместо сырых точек возвращается только пятичисловая сводка (min/q1/median/q3/max/mean/count) на группу — этого достаточно для отрисовки box-and-whiskers и не тянет весь датасет в ответ API. Осознанное отличие от легаси: там сравнение работало только для ПЕРВОЙ числовой колонки во всём датасете при фиксированном выборе индикатора через два общих selectbox; здесь аналитик свободно выбирает любую пару (числовая колонка, колонка-индикатор).
+
+`apps/api/routers/session.py`: три новых роута — `GET /dataset/missing-matrix`, `GET /dataset/missing-correlation`, `GET /dataset/missing-distribution?value_column=&indicator_column=`. Не зависят от режима остановки (auto/enabled/disabled) — это диагностический вид «Обзора», доступный независимо от участия проверки в прогрессе (та же логика, что у самого профиля: реальные данные честны всегда).
+
+`apps/api/schemas.py`: `DatasetMissingMatrixResponse`, `DatasetMissingCorrelationResponse`, `DatasetMissingDistributionResponse` + вложенные `MissingMatrixBinOut`/`MissingDistributionGroupOut`.
+
+Frontend
+`packages/ui/components/PreprocessingMissingVisualizations.tsx` (новый) — три компонента (`MissingMatrixChart`, `MissingCorrelationChart`, `MissingBoxplotChart`), каждый самостоятельно опрашивает свой эндпоинт. Отрисовка — hand-rolled SVG/CSS-grid (без новых зависимостей, recharts не подходит для тепловых карт/box-plot из коробки): цветовая шкала матрицы повторяет легаси (синий → красный), корреляции — расходящаяся RdBu_r-подобная шкала (синий/белый/красный). Boxplot — компактный SVG box-and-whiskers на пятичисловой сводке с двумя select'ами (числовая колонка / колонка-индикатор), обновляющими запрос при смене выбора.
+`packages/ui/components/PreprocessingMissingOverview.tsx`: добавлена панель вкладок (`Таблица` активна по умолчанию — сохраняет прежнее поведение для всех существующих тестов), переключение рендерит соответствующий чарт вместо таблицы.
+
+TDD и проверка
+- Backend: 15 новых unit-тестов (`missing_matrix` с сохранением коротких гэпов внутри бина / пустой датасет; `missing_correlation` с обнаружением совместных пропусков / исключением колонок без вариативности; `missing_distribution_comparison` с пятичисловой сводкой / отклонением нечисловой value_column / отклонением одинаковых колонок / пустой группой) + 5 API-тестов (включая 404 без датасета для всех трёх эндпоинтов) — все зелёные.
+- Frontend: новый файл тестов `PreprocessingMissingVisualizations.test.tsx` (8 тестов: рендер данных, alert при ошибке, обнаружение недостаточной вариативности для корреляции, рендер обеих групп Boxplot, отсутствие числовых колонок, рефетч при смене индикатора) + 1 новый тест переключения вкладок в `PreprocessingMissingOverview.test.tsx`.
+- Полный Jest — 39/39 suites, 341/341 tests PASS.
+- Полный pytest (без `test_file_loader.py`) — 842 passed, 29 failed (preexisting, без изменений), 1 skipped.
+- `npm run typecheck:all` — PASS для embedded и standalone.
+
+Изменённые/новые файлы
+- app/preprocessing/missing.py
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- packages/ui/components/PreprocessingMissingVisualizations.tsx (новый)
+- packages/ui/components/PreprocessingMissingVisualizations.test.tsx (новый)
+- packages/ui/components/PreprocessingMissingOverview.tsx
+- packages/ui/components/PreprocessingMissingOverview.test.tsx
+- tests/unit/test_preprocessing_missing.py
+- tests/api/test_dataset_missing_correction.py
+
+---
+
+Task ID: 55 — Перекомпоновка вкладки «Знакомство с платформой»
+
+Date: 2026-08-27
+
+Задача
+Стилистически сблизить `/navigator` с главной страницей «О платформе» и организовать содержимое в три верхнеуровневых блока: «Прикладные задачи, решаемые платформой», «Ключевые этапы исследования ряда», «Подробная навигация по платформе». Для первого блока временно показать заглушку.
+
+Синхронизация
+- По прямому указанию тимлида незакоммиченная локальная Task 52 сохранена в защитный stash, выполнены `fetch origin main` и `merge --ff-only`.
+- `main` обновлён с `e2d3057` до `6c7a0e6`; upstream уже содержит Tasks 52–54. Повторное наложение опубликованной Task 52 не выполнялось.
+- Коммиты и push не выполнялись.
+
+UX-решение
+- Выбран паттерн «карточка маршрута → якорная секция», а не аккордеон. Все разделы остаются видимыми и доступными для сканирования, сложный интерактивный путеводитель не прячется во вложенном раскрывающемся блоке, а стабильные hash-якоря поддерживают прямые ссылки, клавиатурную навигацию и историю браузера.
+- Три верхние карточки используют тот же общий компонент, цвета, рамки, иконки, hover- и focus-состояния, что маршруты главной страницы.
+- Для обоих приложений создана единая композиция `PlatformIntroduction`, исключающая расхождение standalone и embedded.
+
+Реализация
+- H1 изменён на «Знакомство с платформой» и дополнен кратким вводным текстом в стилистике главной страницы.
+- Добавлена сетка из трёх карточек: прикладные задачи (`#applied-tasks`), ключевые этапы (`#research-stages`) и подробная навигация (`#platform-navigation`).
+- Первый раздел содержит нейтральную заглушку без выдуманного предметного наполнения.
+- Существующие шесть этапов исследования и блоки «Для кого / Для чего» сохранены во втором разделе.
+- Существующий интерактивный `TsAnalysisNavigator` сохранён целиком и размещён в третьем разделе под новым согласованным заголовком.
+- Якорные секции получили `scroll-mt-24`, `aria-labelledby`; карточки получили видимый keyboard focus.
+
+TDD и проверка
+- Добавлены регрессионные тесты трёх ссылок, точных якорей, заглушки, визуального контракта карточек и общей композиции страницы.
+- Focused Jest — 4/4 suites, 42/42 tests PASS.
+- Полный Jest — 40/40 suites, 345/345 tests PASS, 0 snapshots.
+- `npm run typecheck:all` — PASS для embedded и standalone.
+- Next.js production build embedded — PASS, 13/13 статических страниц.
+- Next.js production build standalone — PASS, 13/13 статических страниц.
+- Из-за ограничений runtime для сборок временно использовались локальные font/memory shims; после проверки они удалены и в изменения не входят.
+- `git diff --check` — PASS.
+
+Изменённые и новые файлы текущей задачи
+- apps/embedded/app/navigator/page.tsx
+- apps/standalone/app/navigator/page.tsx
+- packages/ui/components/HomeHero.tsx
+- packages/ui/components/NavigatorHero.tsx
+- packages/ui/components/NavigatorHero.test.tsx
+- packages/ui/components/PlatformIntroduction.tsx
+- packages/ui/components/PlatformIntroduction.test.tsx
+- packages/ui/components/RouteCard.tsx
+- packages/ui/lib/navigator-stops.ts
+- packages/ui/index.ts
