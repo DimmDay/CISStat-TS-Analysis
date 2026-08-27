@@ -9,7 +9,7 @@
 //   - Заголовок H1 — статичный
 //   - 6 chevron-стрелок — статичные, в каждой зелёная цифра в кружочке
 //   - 6 текстовых блоков ниже стрелок: заголовок (БЕЗ номера) + subtitle
-//   - 2 полубейджа «Для кого» / «Для чего» — раскрывающиеся (collapsed default)
+//   - 2 полубейджа «Для кого» / «Для чего» — раскрывающиеся (expanded default)
 //   - Состояние каждого полубейджа НЕЗАВИСИМО (не accordion)
 //   - a11y: button с aria-expanded, aria-controls на контейнер с текстом
 
@@ -81,6 +81,28 @@ describe("NavigatorHero", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders the applied tasks section under the new title between two full-width gray rules", () => {
+    render(<NavigatorHero />);
+
+    const heading = screen.getByRole("heading", {
+      level: 2,
+      name: "Примеры прикладных задач",
+    });
+    expect(heading).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        level: 2,
+        name: "Прикладные задачи, решаемые платформой",
+      }),
+    ).toBeNull();
+
+    const ruledHeading = heading.parentElement;
+    expect(ruledHeading).not.toBeNull();
+    expect(ruledHeading?.className).toContain("w-full");
+    expect(ruledHeading?.className).toContain("border-y");
+    expect(ruledHeading?.className).toContain("border-neutral-200");
+  });
+
   // ── 6 chevron-стрелок с цифрами (Task 26) ─────────────────────────
 
   it("renders all 6 step numbers inside chevron arrows", () => {
@@ -144,18 +166,18 @@ describe("NavigatorHero", () => {
     expect(screen.getByText(PURPOSE_LABEL)).toBeInTheDocument();
   });
 
-  it("renders audience and purpose texts only when their badges are expanded (collapsed by default)", () => {
+  it("renders audience and purpose texts by default and lets each badge collapse independently", () => {
     render(<NavigatorHero />);
-    expect(screen.queryByText(AUDIENCE_TEXT)).toBeNull();
-    expect(screen.queryByText(PURPOSE_TEXT)).toBeNull();
+    expect(screen.getByText(AUDIENCE_TEXT)).toBeInTheDocument();
+    expect(screen.getByText(PURPOSE_TEXT)).toBeInTheDocument();
 
     fireEvent.click(screen.getByText(AUDIENCE_LABEL));
-    expect(screen.getByText(AUDIENCE_TEXT)).toBeInTheDocument();
-    expect(screen.queryByText(PURPOSE_TEXT)).toBeNull();
+    expect(screen.queryByText(AUDIENCE_TEXT)).toBeNull();
+    expect(screen.getByText(PURPOSE_TEXT)).toBeInTheDocument();
 
     fireEvent.click(screen.getByText(PURPOSE_LABEL));
-    expect(screen.getByText(PURPOSE_TEXT)).toBeInTheDocument();
-    expect(screen.getByText(AUDIENCE_TEXT)).toBeInTheDocument();
+    expect(screen.queryByText(PURPOSE_TEXT)).toBeNull();
+    expect(screen.queryByText(AUDIENCE_TEXT)).toBeNull();
   });
 
   it("renders exactly 2 collapsible half-width badges with proper trigger buttons", () => {
@@ -179,71 +201,70 @@ describe("NavigatorHero", () => {
     expect(audienceCard).not.toBe(purposeCard);
   });
 
-  // ── a11y: раскрывающееся поведение (Task 21, без изменений) ────────
+  // ── a11y: раскрывающееся поведение (открыты по умолчанию) ──────────
 
-  it("audience text is hidden by default (collapsed state)", () => {
+  it("audience text is visible by default (expanded state)", () => {
     render(<NavigatorHero />);
-    expect(screen.queryByText(AUDIENCE_TEXT)).toBeNull();
+    expect(screen.getByText(AUDIENCE_TEXT)).toBeInTheDocument();
   });
 
-  it("purpose text is hidden by default (collapsed state)", () => {
+  it("purpose text is visible by default (expanded state)", () => {
     render(<NavigatorHero />);
-    expect(screen.queryByText(PURPOSE_TEXT)).toBeNull();
+    expect(screen.getByText(PURPOSE_TEXT)).toBeInTheDocument();
   });
 
   it("toggles audience text visibility on click (and updates aria-expanded)", () => {
     render(<NavigatorHero />);
     const trigger = screen.getByText(AUDIENCE_LABEL).closest("button");
     expect(trigger).not.toBeNull();
-    expect(trigger).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByText(AUDIENCE_TEXT)).toBeNull();
-
-    fireEvent.click(trigger!);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText(AUDIENCE_TEXT)).toBeInTheDocument();
+
+    fireEvent.click(trigger!);
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText(AUDIENCE_TEXT)).toBeNull();
   });
 
   it("toggles purpose text visibility on click (and updates aria-expanded)", () => {
     render(<NavigatorHero />);
     const trigger = screen.getByText(PURPOSE_LABEL).closest("button");
     expect(trigger).not.toBeNull();
-    expect(trigger).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByText(PURPOSE_TEXT)).toBeNull();
-
-    fireEvent.click(trigger!);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText(PURPOSE_TEXT)).toBeInTheDocument();
+
+    fireEvent.click(trigger!);
+    expect(trigger).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText(PURPOSE_TEXT)).toBeNull();
   });
 
-  it("audience and purpose badges are independent (opening one does not open the other)", () => {
+  it("audience and purpose badges are independent (collapsing one does not collapse the other)", () => {
     render(<NavigatorHero />);
     const audienceTrigger = screen.getByText(AUDIENCE_LABEL).closest("button");
     const purposeTrigger = screen.getByText(PURPOSE_LABEL).closest("button");
 
-    fireEvent.click(audienceTrigger!);
-    expect(screen.getByText(AUDIENCE_TEXT)).toBeInTheDocument();
-    expect(screen.queryByText(PURPOSE_TEXT)).toBeNull();
-    expect(audienceTrigger).toHaveAttribute("aria-expanded", "true");
-    expect(purposeTrigger).toHaveAttribute("aria-expanded", "false");
-
-    fireEvent.click(purposeTrigger!);
     expect(screen.getByText(AUDIENCE_TEXT)).toBeInTheDocument();
     expect(screen.getByText(PURPOSE_TEXT)).toBeInTheDocument();
     expect(audienceTrigger).toHaveAttribute("aria-expanded", "true");
     expect(purposeTrigger).toHaveAttribute("aria-expanded", "true");
+
+    fireEvent.click(audienceTrigger!);
+    expect(screen.queryByText(AUDIENCE_TEXT)).toBeNull();
+    expect(screen.getByText(PURPOSE_TEXT)).toBeInTheDocument();
+    expect(audienceTrigger).toHaveAttribute("aria-expanded", "false");
+    expect(purposeTrigger).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("re-clicking a trigger collapses the text back", () => {
+  it("re-clicking a collapsed trigger expands the text back", () => {
     render(<NavigatorHero />);
     const trigger = screen.getByText(AUDIENCE_LABEL).closest("button");
 
     fireEvent.click(trigger!);
-    expect(screen.getByText(AUDIENCE_TEXT)).toBeInTheDocument();
-    expect(trigger).toHaveAttribute("aria-expanded", "true");
-
-    fireEvent.click(trigger!);
     expect(screen.queryByText(AUDIENCE_TEXT)).toBeNull();
     expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(trigger!);
+    expect(screen.getByText(AUDIENCE_TEXT)).toBeInTheDocument();
+    expect(trigger).toHaveAttribute("aria-expanded", "true");
   });
 
   it("trigger has aria-controls pointing to the text content container", () => {
@@ -255,7 +276,6 @@ describe("NavigatorHero", () => {
     expect(controlsId).toBeTruthy();
     expect(controlsId?.length).toBeGreaterThan(0);
 
-    fireEvent.click(trigger!);
     const panel = document.getElementById(controlsId!);
     expect(panel).not.toBeNull();
     expect(panel?.textContent).toContain(AUDIENCE_TEXT);
@@ -264,17 +284,17 @@ describe("NavigatorHero", () => {
   it("chevron icon is present in both badges and toggles direction on expand", () => {
     render(<NavigatorHero />);
 
-    const downChevrons = screen.getAllByLabelText(/chevron down/i);
-    expect(downChevrons).toHaveLength(2);
+    const upChevrons = screen.getAllByLabelText(/chevron up/i);
+    expect(upChevrons).toHaveLength(2);
 
     const audienceTrigger = screen.getByText(AUDIENCE_LABEL).closest("button");
     fireEvent.click(audienceTrigger!);
 
-    const upChevrons = screen.getAllByLabelText(/chevron up/i);
-    expect(upChevrons).toHaveLength(1);
+    const remainingUpChevrons = screen.getAllByLabelText(/chevron up/i);
+    expect(remainingUpChevrons).toHaveLength(1);
 
-    const remainingDownChevrons = screen.getAllByLabelText(/chevron down/i);
-    expect(remainingDownChevrons).toHaveLength(1);
+    const downChevrons = screen.getAllByLabelText(/chevron down/i);
+    expect(downChevrons).toHaveLength(1);
   });
 
   // ── Декоративный разделитель ─────────────────────────────────────

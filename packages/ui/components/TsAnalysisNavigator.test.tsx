@@ -71,6 +71,14 @@ describe("TsAnalysisNavigator", () => {
     });
   });
 
+  it("does not render the tariff section in the first column", () => {
+    renderNavigator();
+    const firstColumn = getColumns()[0];
+
+    expect(within(firstColumn).queryByRole("heading", { name: "Тарифы" })).toBeNull();
+    expect(within(firstColumn).queryAllByRole("radio")).toHaveLength(0);
+  });
+
   // ── Task 23 — порядок колонок ──────────────────────────────────────────
 
   describe("Task 23: column order", () => {

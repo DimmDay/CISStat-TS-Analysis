@@ -16,14 +16,14 @@
 //   ├─Предобр.──○─┤       │  Подтверждение │          [область графика]
 //   ├─EDA──────○─┤       │  ...           │          [Metric-карточки]
 //   ├─Моделир.──○─┤       └────────────────┘
-//   ├─Прогноз───○─┤       кнопка "Запустить..."         ─ серая черта ─
-//   ├─Сценарный─○Soon                                    (нет)
-//   ├─Причинный─○Soon    Синяя кнопка                   Субмодуль "Тарифы"
-//   ├─Принятие──○Soon    "Начать анализ" → /upload      (в левой колонке)
+//   ├─Прогноз───○─┤       кнопка "Запустить..."
+//   ├─Сценарный─○Soon
+//   ├─Причинный─○Soon    Синяя кнопка
+//   ├─Принятие──○Soon    "Начать анализ" → /upload
 //   └─Мониторинг○Soon
 //
 // Новая последовательность слева направо (Task 23):
-//   1. Степпер + Тарифы (w-60)     ← левая колонка
+//   1. Степпер (w-60)               ← левая колонка
 //   2. Этапы модуля (w-80)          ← бывшая правая → теперь средняя
 //   3. Описание + Обзор (flex-1)    ← бывший центр → теперь правая
 //
@@ -36,8 +36,6 @@
 //     тимлида, вопрос 3: превью без возможности запуска).
 //   - Для 4 будущих остановок (soon=true) средняя панель показывает
 //     заглушку "Скоро", кнопка "Начать анализ" скрыта.
-//   - "Тарифы" — декоративный STUB (выбор radio ни к чему не ведёт,
-//     отдельная задача — см. lib/plans.ts и будущий work по биллингу).
 //
 // Правое окно "Обзор": если в сессии есть активный датасет —
 // реальные показатели из activeDataset; иначе статичный пример-иллюстрация
@@ -47,7 +45,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { MapPin, ArrowRight, Lock } from "lucide-react";
 import { useAppShell } from "../context/AppShellContext";
-import { PLAN_DEFINITIONS, type PlanName } from "../lib/plans";
 import { Metric } from "./Metric";
 import {
   NAVIGATOR_STOPS,
@@ -61,8 +58,6 @@ import { UploadAutoPreviewPipeline } from "./UploadAutoPreviewPipeline";
 export function TsAnalysisNavigator() {
   const [activeStopId, setActiveStopId] = useState<string>(NAVIGATOR_STOPS[0].id);
   const [activeItemId, setActiveItemId] = useState<string>(NAVIGATOR_STOPS[0].items[0].id);
-  // Декоративный STUB: выбор тарифа ни к чему не ведёт (отдельная задача).
-  const [activePlan, setActivePlan] = useState<PlanName>("professional");
 
   const { activeDataset } = useAppShell();
 
@@ -97,7 +92,7 @@ export function TsAnalysisNavigator() {
 
   return (
     <div className="flex gap-[49px] mt-8">
-      {/* ── ЛЕВАЯ КОЛОНКА: Маршрут исследования (степпер + Тарифы) ──
+      {/* ── ЛЕВАЯ КОЛОНКА: Маршрут исследования ──
           Task 23: левая колонка остаётся на месте.
           Порядок слева направо: степпер | этапы модуля | описание+обзор. */}
       <aside className="w-60 shrink-0 flex flex-col gap-4">
@@ -183,45 +178,6 @@ export function TsAnalysisNavigator() {
           </div>
         )}
 
-        {/* ── Субмодуль "Тарифы" ──
-            Декоративный STUB (по решению тимлида, вопрос 5): выбор radio
-            ни к чему не ведёт, изменения — через отдельную задачу. */}
-        <div className="mt-2">
-          <h3 className="text-[13px] font-semibold text-neutral-800 mb-2">Тарифы</h3>
-          <div className="flex flex-col gap-1">
-            {(Object.keys(PLAN_DEFINITIONS) as PlanName[]).map((planName) => {
-              const isActive = planName === activePlan;
-              return (
-                <label
-                  key={planName}
-                  className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-sm cursor-pointer transition-colors ${
-                    isActive
-                      ? "border-brand bg-brand-light text-neutral-900"
-                      : "border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-50"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="tariff-plan"
-                    value={planName}
-                    checked={isActive}
-                    onChange={() => setActivePlan(planName)}
-                    className="sr-only"
-                  />
-                  <span
-                    className={`h-3.5 w-3.5 rounded-full border-2 flex items-center justify-center ${
-                      isActive ? "border-brand" : "border-neutral-300"
-                    }`}
-                    aria-hidden="true"
-                  >
-                    {isActive && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
-                  </span>
-                  <span className="font-medium capitalize">{planName}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
       </aside>
 
       {/* ── СРЕДНЯЯ КОЛОНКА: Этапы модуля (превью пунктов активной остановки) ──

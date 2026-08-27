@@ -133,8 +133,8 @@ function CollapsibleHalfBadge({
 // ── Основной компонент ───────────────────────────────────────────────
 
 export function NavigatorHero() {
-  const [audienceOpen, setAudienceOpen] = useState(false);
-  const [purposeOpen, setPurposeOpen] = useState(false);
+  const [audienceOpen, setAudienceOpen] = useState(true);
+  const [purposeOpen, setPurposeOpen] = useState(true);
 
   return (
     <div className="space-y-12">
@@ -163,12 +163,14 @@ export function NavigatorHero() {
         aria-labelledby="applied-tasks-title"
         className="scroll-mt-24"
       >
-        <h2
-          id="applied-tasks-title"
-          className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a] text-center"
-        >
-          Прикладные задачи, решаемые платформой
-        </h2>
+        <div className="w-full border-y border-neutral-200 py-4">
+          <h2
+            id="applied-tasks-title"
+            className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a] text-center"
+          >
+            Примеры прикладных задач
+          </h2>
+        </div>
         <AppliedTasksNavigator />
       </section>
 
