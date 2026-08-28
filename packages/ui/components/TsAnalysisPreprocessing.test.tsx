@@ -62,6 +62,20 @@ const OUTLIERS_PROFILE = {
 // ответ.
 function routeFetch(overrides: { missing?: unknown; outliers?: unknown; put?: unknown } = {}) {
   return jest.fn((url: string, init?: RequestInit) => {
+    if (typeof url === "string" && url.includes("/target-column")) {
+      const selected = init?.method === "POST"
+        ? JSON.parse(String(init.body)).column
+        : null;
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          target_column: selected,
+          suggested_column: "Price",
+          available_columns: ["Year", "Price", "Volume"],
+          has_dataset: true,
+        }),
+      });
+    }
     if (init?.method === "PUT") {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.put ?? { modes: {} }) });
     }
@@ -98,6 +112,23 @@ describe("TsAnalysisPreprocessing", () => {
     stepLabels.forEach((label) => {
       expect(screen.getByText(label)).toBeInTheDocument();
     });
+  });
+
+  it("uses the shared target selector instead of mock ticker columns", async () => {
+    render(<TsAnalysisPreprocessing />);
+
+    const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" });
+    await waitFor(() => expect(selector).toHaveValue("Price"));
+    expect(screen.getByRole("option", { name: "Year" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Volume" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "adj_close" })).not.toBeInTheDocument();
+
+    fireEvent.change(selector, { target: { value: "Volume" } });
+    await waitFor(() => expect(selector).toHaveValue("Volume"));
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/session/target-column"),
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ column: "Volume" }) }),
+    );
   });
 
   // ── Кнопка «Справка» ──
@@ -281,6 +312,20 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
     // один и тот же эндпоинт -- парент, Overview, Pipeline) и POST-коррекцию,
     // а не полагается на фиксированный порядок вызовов.
     global.fetch = jest.fn((url: string, init?: RequestInit) => {
+      if (url.includes("/target-column")) {
+        const selected = init?.method === "POST"
+          ? JSON.parse(String(init.body)).column
+          : "Price";
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            target_column: selected,
+            suggested_column: "Price",
+            available_columns: ["Price"],
+            has_dataset: true,
+          }),
+        });
+      }
       if (init?.method === "POST") {
         const body = init.body ? JSON.parse(init.body as string) : {};
         if (body.apply) applied = true;
@@ -364,4 +409,3 @@ describe("TsAnalysisPreprocessing — остановка «Выбросы»", ()
     expect(await screen.findByRole("region", { name: "Мастер исправления выбросов" })).toBeInTheDocument();
   });
 });
-

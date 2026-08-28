@@ -13,6 +13,21 @@ const STATS_RESPONSE = {
   min_non_null_for_stats: 2,
   columns: [
     {
+      name: "Year",
+      non_null_count: 4,
+      stats: {
+        mean: 2021.5,
+        median: 2021.5,
+        std: 1.29,
+        skewness: 0,
+        kurtosis: -1.2,
+        q1: 2020.75,
+        q3: 2022.25,
+        iqr: 1.5,
+        distribution_hint: "Близко к нормальному",
+      },
+    },
+    {
       name: "Price",
       non_null_count: 4,
       stats: {
@@ -45,8 +60,23 @@ const STATS_RESPONSE = {
   ],
 };
 
-function routeFetch(input: RequestInfo | URL) {
+function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
   const url = String(input);
+  if (url.includes("/target-column")) {
+    const selected = init?.method === "POST"
+      ? JSON.parse(String(init.body)).column
+      : null;
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({
+        target_column: selected,
+        suggested_column: "Price",
+        available_columns: ["Year", "Price", "Volume"],
+        has_dataset: true,
+      }),
+    });
+  }
   if (url.includes("/dataset/stats")) {
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(STATS_RESPONSE) });
   }
@@ -95,12 +125,13 @@ describe("TsAnalysisEDA", () => {
     });
   });
 
-  it("loads real numeric features and renders the descriptive overview", async () => {
+  it("uses the shared target selector and does not default to the numeric time axis", async () => {
     global.fetch = jest.fn(routeFetch) as jest.Mock;
     render(<TsAnalysisEDA />);
 
     const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" });
     await waitFor(() => expect(selector).toHaveValue("Price"));
+    expect(screen.getByRole("option", { name: "Year" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Volume" })).toBeInTheDocument();
     expect(
       await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" }),
@@ -108,8 +139,14 @@ describe("TsAnalysisEDA", () => {
     expect(screen.getByText("Mean", { selector: "div" }).nextElementSibling).toHaveTextContent("25");
 
     fireEvent.change(selector, { target: { value: "Volume" } });
-    expect(selector).toHaveValue("Volume");
-    expect(screen.getByText("Mean", { selector: "div" }).nextElementSibling).toHaveTextContent("250");
+    await waitFor(() => expect(selector).toHaveValue("Volume"));
+    await waitFor(() => {
+      expect(screen.getByText("Mean", { selector: "div" }).nextElementSibling).toHaveTextContent("250");
+    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/session/target-column"),
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ column: "Volume" }) }),
+    );
   });
 
   it("shows the specialized metric and pipeline descriptions", async () => {

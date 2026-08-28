@@ -23,6 +23,7 @@ import { Button } from "./Button";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { sessionApiUrl } from "../lib/apiClient";
+import { useTargetColumn } from "../hooks/useTargetColumn";
 import { PreprocessingMissingOverview, type MissingProfileResponse } from "./PreprocessingMissingOverview";
 import { PreprocessingMissingPipeline } from "./PreprocessingMissingPipeline";
 import { PreprocessingOutliersOverview, type OutlierProfileResponse } from "./PreprocessingOutliersOverview";
@@ -63,11 +64,6 @@ const CHECKS: Check[] = [
     description: "Нормализация признаков методами StandardScaler, MinMaxScaler, RobustScaler, QuantileTransformer или PowerTransformer. Критично для NN, SVM, k-NN." },
   { id: "passport", label: "Паспорт свойств ряда", status: "pending", count: null,
     description: "Сравнительный анализ свойств ряда: v1.0 (загрузка) → v1.1 (после валидации) → v1.2 (после предобработки). Метрики: ADF, Ljung-Box, Jarque-Bera, R². Экспорт в Excel." },
-];
-
-// Моковый список числовых признаков (заменить на activeDataset.columns)
-const NUMERIC_FEATURES = [
-  "price", "volume", "open", "high", "low", "close", "adj_close",
 ];
 
 // ── Справка по целям модуля «Предобработка» (из app.py) ───────────
@@ -168,11 +164,21 @@ type PreprocessingCheckMode = "auto" | "enabled" | "disabled";
 
 export function TsAnalysisPreprocessing() {
   const [activeCheckId, setActiveCheckId] = useState(CHECKS[0].id);
-  const [activeFeature, setActiveFeature] = useState(NUMERIC_FEATURES[0]);
   const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | null>(null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
+
+  // Общий target_column вместо сломанного mock-списка тикеров. Хук
+  // восстанавливает сохранённый выбор из AnalysisSession либо один раз
+  // фиксирует backend-рекомендацию (первая числовая, кроме временной оси).
+  const {
+    targetColumn: activeFeature,
+    availableColumns: numericFeatures,
+    loading: targetLoading,
+    error: targetError,
+    setColumn: setActiveFeature,
+  } = useTargetColumn(undefined);
 
   // ── Режимы остановок (Task 47, применено к «Предобработке») ──
   // «Авто» / «Включена» / «Отключена» -- сохраняются в сессии через
@@ -441,18 +447,29 @@ export function TsAnalysisPreprocessing() {
 
         {/* Селектор числового признака */}
         <div>
-          <label className="text-[11px] text-neutral-500 block mb-1">
+          <label htmlFor="preprocessing-active-feature" className="text-[11px] text-neutral-500 block mb-1">
             Исследуемый признак:
           </label>
           <select
-            value={activeFeature}
-            onChange={(e) => setActiveFeature(e.target.value)}
+            id="preprocessing-active-feature"
+            value={activeFeature ?? ""}
+            onChange={(e) => void setActiveFeature(e.target.value)}
+            disabled={targetLoading || numericFeatures.length === 0}
             className="w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
           >
-            {NUMERIC_FEATURES.map((f) => (
-              <option key={f} value={f}>{f}</option>
-            ))}
+            {numericFeatures.length ? (
+              numericFeatures.map((feature) => (
+                <option key={feature} value={feature}>{feature}</option>
+              ))
+            ) : (
+              <option value="">Нет числовых признаков</option>
+            )}
           </select>
+          {targetError && (
+            <p role="alert" className="mt-1 text-[10px] text-red-600">
+              Не удалось синхронизировать признак: {targetError}
+            </p>
+          )}
         </div>
 
         {/* Прогресс */}

@@ -18,6 +18,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { sessionApiUrl } from "../lib/apiClient";
+import { useTargetColumn } from "../hooks/useTargetColumn";
 import { Button } from "./Button";
 import {
   EdaDescriptiveOverview,
@@ -144,11 +145,22 @@ function formatMetric(value: number | null | undefined): string {
 
 export function TsAnalysisEDA() {
   const [activeCheckId, setActiveCheckId] = useState(CHECKS[0].id);
-  const [activeFeature, setActiveFeature] = useState("");
   const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | null>(null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
+
+  // Единый исследуемый признак всей платформы. Backend исключает
+  // date/year-похожие числовые колонки из АВТОМАТИЧЕСКОЙ рекомендации,
+  // а явный выбор пользователя сохраняется в AnalysisSession и доступен
+  // на остальных вкладках через тот же GET/POST /target-column.
+  const {
+    targetColumn: activeFeature,
+    availableColumns: numericFeatures,
+    loading: targetLoading,
+    error: targetError,
+    setColumn: setActiveFeature,
+  } = useTargetColumn(undefined);
 
   // ── Остановка «Описательные статистики»: реальные данные ──
   // Переиспользуем endpoint вкладки «Загрузка»: он уже считает профиль по
@@ -171,7 +183,6 @@ export function TsAnalysisEDA() {
           if (active) {
             setDescriptiveNoDataset(true);
             setDescriptiveProfile(null);
-            setActiveFeature("");
           }
           return;
         }
@@ -179,11 +190,6 @@ export function TsAnalysisEDA() {
         const data: DescriptiveStatsResponse = await response.json();
         if (active) {
           setDescriptiveProfile(data);
-          setActiveFeature((current) =>
-            data.columns.some((item) => item.name === current)
-              ? current
-              : data.columns[0]?.name ?? "",
-          );
         }
       } catch (caught) {
         if (active) {
@@ -198,10 +204,12 @@ export function TsAnalysisEDA() {
     return () => { active = false; };
   }, [descriptiveRefreshKey]);
 
+  const descriptiveBusy = descriptiveLoading || targetLoading;
+  const descriptiveRequestError = descriptiveError ?? targetError;
   const insufficientColumns = descriptiveProfile?.columns.filter((item) => item.stats === null).length ?? 0;
-  const descriptiveStatus: CheckStatus = descriptiveLoading
+  const descriptiveStatus: CheckStatus = descriptiveBusy
     ? "running"
-    : descriptiveError
+    : descriptiveRequestError
     ? "error"
     : descriptiveNoDataset || descriptiveProfile?.columns.length === 0
     ? "skipped"
@@ -333,19 +341,24 @@ export function TsAnalysisEDA() {
           </label>
           <select
             id="eda-active-feature"
-            value={activeFeature}
-            onChange={(e) => setActiveFeature(e.target.value)}
-            disabled={descriptiveLoading || !descriptiveProfile?.columns.length}
+            value={activeFeature ?? ""}
+            onChange={(e) => void setActiveFeature(e.target.value)}
+            disabled={descriptiveBusy || numericFeatures.length === 0}
             className="w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
           >
-            {descriptiveProfile?.columns.length ? (
-              descriptiveProfile.columns.map((item) => (
-                <option key={item.name} value={item.name}>{item.name}</option>
+            {numericFeatures.length ? (
+              numericFeatures.map((feature) => (
+                <option key={feature} value={feature}>{feature}</option>
               ))
             ) : (
               <option value="">Нет числовых признаков</option>
             )}
           </select>
+          {targetError && (
+            <p role="alert" className="mt-1 text-[10px] text-red-600">
+              Не удалось синхронизировать признак: {targetError}
+            </p>
+          )}
         </div>
 
         {/* Прогресс */}
@@ -452,9 +465,9 @@ export function TsAnalysisEDA() {
           {activeCheckId === "descriptive" ? (
             <EdaDescriptiveOverview
               profile={descriptiveProfile}
-              activeFeature={activeFeature}
-              loading={descriptiveLoading}
-              error={descriptiveError}
+              activeFeature={activeFeature ?? ""}
+              loading={descriptiveBusy}
+              error={descriptiveRequestError}
               noDataset={descriptiveNoDataset}
               refreshKey={descriptiveRefreshKey}
             />
@@ -518,7 +531,7 @@ export function TsAnalysisEDA() {
                   )}
                   {check.status === "error" && (
                     <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">
-                      {descriptiveError ?? "Ошибка расчёта статистик"}
+                      {descriptiveRequestError ?? "Ошибка расчёта статистик"}
                     </p>
                   )}
                   {check.status === "skipped" && (
@@ -582,9 +595,9 @@ export function TsAnalysisEDA() {
                 <Button
                   type="button"
                   onClick={() => setDescriptiveRefreshKey((key) => key + 1)}
-                  disabled={descriptiveLoading}
+                  disabled={descriptiveBusy}
                 >
-                  {descriptiveLoading ? "Рассчитываем…" : "Пересчитать статистики"}
+                  {descriptiveBusy ? "Рассчитываем…" : "Пересчитать статистики"}
                 </Button>
               ) : (
                 <Button>Запустить анализ ({check.label.toLowerCase()})</Button>
