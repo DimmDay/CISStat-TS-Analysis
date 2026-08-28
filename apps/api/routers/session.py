@@ -23,6 +23,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response
 from apps.api.chart_data import MAX_ZOOM_POINTS, build_histogram, build_kde, build_scatter_series, build_timeseries_points
 from apps.api.decomposition_data import build_decomposition, build_decomposition_series
 from apps.api.eda_correlation import build_eda_correlation
+from apps.api.eda_ih import build_eda_ih
 from apps.api.schemas import (
     ColumnDetectionOut,
     ColumnStatsOut,
@@ -33,6 +34,7 @@ from apps.api.schemas import (
     DatasetConsistencyCorrectionResponse,
     DatasetConsistencyProfileResponse,
     DatasetEdaCorrelationResponse,
+    DatasetEdaIhResponse,
     DatasetStatsResponse,
     DatasetSummaryOut,
     DatasetFormatCorrectionRequest,
@@ -456,6 +458,35 @@ def get_dataset_eda_correlation(
     return DatasetEdaCorrelationResponse(
         **build_eda_correlation(session.dataframe, column=column, max_lags=max_lags)
     )
+
+
+@router.get("/dataset/eda-ih", response_model=DatasetEdaIhResponse)
+def get_dataset_eda_ih(
+    column: str,
+    request: Request,
+    response: Response,
+    sharpness: float = Query(0.25, gt=0, le=1),
+    min_samples: int = Query(20, ge=2, le=500),
+    top_k: int = Query(10, ge=1, le=20),
+    max_lag: int = Query(3, ge=0, le=20),
+    permutations: int = Query(49, ge=9, le=199),
+):
+    """Information-Entropy профиль факторов относительно выбранной цели."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
+    return DatasetEdaIhResponse(**build_eda_ih(
+        session.dataframe,
+        column=column,
+        sharpness=sharpness,
+        min_samples=min_samples,
+        top_k=top_k,
+        max_lag=max_lag,
+        permutations=permutations,
+    ))
 
 
 @router.get("/dataset/panel-balance", response_model=PanelBalanceResponse)

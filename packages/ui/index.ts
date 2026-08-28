@@ -83,6 +83,14 @@ export type {
   EdaCorrelationPoint,
   EdaCorrelationResponse,
 } from "./components/EdaCorrelationOverview";
+export { EdaIhOverview } from "./components/EdaIhOverview";
+export type {
+  EdaIhConditionalRow,
+  EdaIhFeature,
+  EdaIhParameters,
+  EdaIhResponse,
+  EdaIhSynergy,
+} from "./components/EdaIhOverview";
 export { TsAnalysisUpload } from "./components/TsAnalysisUpload";
 export { StructuralClassSchema } from "./components/StructuralClassSchema";
 export { classifyStructure } from "./lib/structuralClass";

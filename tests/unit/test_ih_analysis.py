@@ -6,7 +6,9 @@ from app.eda.ih_analysis import (
     discretize_feature, 
     shannon_entropy, 
     mutual_information, 
-    compute_r_metric
+    compute_r_metric,
+    compute_synergy,
+    permutation_test_r_metric,
 )
 
 # ──────────────────────────────────────────────
@@ -73,3 +75,64 @@ def test_r_metric_perfect_correlation():
     y = pd.Series(np.arange(100) * 2 + 1) # Идеальная линейная зависимость
     res = compute_r_metric(x, y, sharpness=0.2, min_samples=5)
     assert res["R"] > 0.95  # Должна быть очень высокой
+
+
+def test_high_cardinality_categorical_feature_is_not_sent_to_numeric_binning():
+    x = pd.Series([f"category-{index}" for index in range(15)] * 4)
+    y = pd.Series([index % 3 for index in range(60)])
+
+    discretized = discretize_feature(x, sharpness=0.25, min_samples=5)
+    result = compute_r_metric(x, y, sharpness=0.25, min_samples=5)
+
+    assert discretized.nunique() == 15
+    assert 0.0 <= result["R"] <= 1.0
+
+
+def test_min_samples_reliably_caps_the_number_of_numeric_bins():
+    series = pd.Series(np.arange(100, dtype=float))
+    discretized = discretize_feature(series, sharpness=0.1, min_samples=25)
+
+    assert discretized.nunique() == 4
+    assert discretized.value_counts().min() >= 25
+
+
+def test_missing_values_are_a_separate_signal_for_low_cardinality_features():
+    series = pd.Series(["A", "B", None, "A"])
+    discretized = discretize_feature(series, sharpness=0.25, min_samples=2)
+
+    assert "_MISSING_" in discretized.tolist()
+
+
+def test_synergy_handles_combined_features_with_more_than_ten_states():
+    frame = pd.DataFrame({
+        "x1": np.tile(np.arange(6), 20),
+        "x2": np.repeat(np.arange(4), 30),
+    })
+    frame["target"] = (frame["x1"] + frame["x2"]) % 3
+
+    result = compute_synergy(
+        frame,
+        target_col="target",
+        features=["x1", "x2"],
+        sharpness=0.25,
+        min_samples=5,
+    )
+
+    assert len(result) == 1
+    assert np.isfinite(result.loc[0, "R_combined"])
+    assert "incremental_gain" in result.columns
+    assert "interaction_delta" in result.columns
+
+
+def test_permutation_baseline_distinguishes_signal_from_chance_deterministically():
+    rng = np.random.default_rng(42)
+    x = pd.Series(np.linspace(-2, 2, 240))
+    y = pd.Series(x.to_numpy() ** 2 + rng.normal(0, 0.03, len(x)))
+
+    first = permutation_test_r_metric(x, y, 0.25, 20, n_permutations=49, seed=7)
+    second = permutation_test_r_metric(x, y, 0.25, 20, n_permutations=49, seed=7)
+
+    assert first == second
+    assert first["R"] > 0.5
+    assert first["R_adjusted"] > 0.4
+    assert first["p_value"] <= 0.05

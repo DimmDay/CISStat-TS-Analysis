@@ -169,6 +169,68 @@ class DatasetEdaCorrelationResponse(BaseModel):
     suggested_q: Optional[int] = None
 
 
+class EdaIhFeatureOut(BaseModel):
+    feature: str
+    kind: Literal["numeric", "categorical", "lag"]
+    dtype: str
+    n_observations: int
+    r: float
+    r_adjusted: float
+    mi: float
+    h_x: float
+    h_y: float
+    n_bins_x: int
+    n_bins_y: int
+    permutation_baseline: float
+    p_value: float
+    q_value: float
+    significant: bool
+    error: Optional[str] = None
+
+
+class EdaIhSynergyOut(BaseModel):
+    pair: str
+    feature_1: str
+    feature_2: str
+    r_1: float
+    r_2: float
+    r_combined: float
+    incremental_gain: float
+    interaction_delta: float
+
+
+class EdaIhConditionalRow(BaseModel):
+    x_bin: str
+    values: List[float]
+
+
+class DatasetEdaIhResponse(BaseModel):
+    column: str
+    applicable: bool
+    reason: Optional[str] = None
+    n_observations: int
+    features_analyzed: int
+    sharpness: float
+    min_samples: int
+    top_k: int
+    max_lag: int
+    permutations: int
+    target_entropy: Optional[float] = None
+    target_bins: int
+    order_source: Literal["time_column", "row_order"]
+    order_column: Optional[str] = None
+    order_warning: Optional[str] = None
+    frequency: Optional[str] = None
+    lag_features_included: bool
+    results: List[EdaIhFeatureOut] = Field(default_factory=list)
+    synergies: List[EdaIhSynergyOut] = Field(default_factory=list)
+    conditional_feature: Optional[str] = None
+    conditional_x_bins: List[str] = Field(default_factory=list)
+    conditional_y_bins: List[str] = Field(default_factory=list)
+    conditional_matrix: List[EdaIhConditionalRow] = Field(default_factory=list)
+    recommendations: List[str] = Field(default_factory=list)
+
+
 class PanelBalanceResponse(BaseModel):
     """Реальная проверка Balanced/Unbalanced для панельных данных --
     пункт 8 контракта (структурный класс), визуальная схема на
