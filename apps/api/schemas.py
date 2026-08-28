@@ -627,6 +627,69 @@ class DatasetMissingDistributionResponse(BaseModel):
     without_missing: Optional[MissingDistributionGroupOut] = None
 
 
+class OutlierBoundsOut(BaseModel):
+    lower: float
+    upper: float
+
+
+class OutlierProfileItemOut(BaseModel):
+    column: str
+    sample_size: int
+    outlier_count: int
+    outlier_pct: Optional[float] = None
+    recommended_method: Literal["iqr", "zscore", "mad", "percentile"]
+    bounds: Optional[OutlierBoundsOut] = None
+    outlier_examples: List[int] = Field(default_factory=list)
+    insufficient_sample: bool = False
+
+
+class DatasetOutlierProfileResponse(BaseModel):
+    rule_source: Literal["system", "not_applicable"]
+    mode: Literal["auto", "enabled", "disabled"] = "auto"
+    status: Literal["done", "warning", "pending", "skipped"] = "pending"
+    status_reason: Optional[Literal["not_required", "disabled"]] = None
+    method: Literal["iqr", "zscore", "mad", "percentile"]
+    total_rows: int
+    total_numeric_columns: int
+    total_outliers: int
+    outlier_rate_pct: Optional[float] = None
+    affected_columns: List[str] = Field(default_factory=list)
+    columns: List[OutlierProfileItemOut] = Field(default_factory=list)
+
+
+class DatasetOutlierCorrectionRequest(BaseModel):
+    columns: List[str] = Field(..., min_length=1, max_length=100)
+    strategy: Literal["drop_rows", "cap", "median", "flag"] = "cap"
+    method: Literal["iqr", "zscore", "mad", "percentile"] = "iqr"
+    param: Optional[Any] = None
+    use_residual: bool = False
+    date_column: Optional[str] = None
+    apply: bool = Field(False, description="False -- preview; True -- сохранить в сессии")
+
+
+class OutlierCorrectionResultOut(BaseModel):
+    column: str
+    outlier_count: int
+    changed_count: int
+    still_outliers: int
+    outlier_examples: List[int] = Field(default_factory=list)
+    flag_column: Optional[str] = None
+
+
+class DatasetOutlierCorrectionResponse(BaseModel):
+    applied: bool
+    strategy: str
+    method: str
+    used_residual: bool = False
+    total_outliers: int
+    total_changed: int
+    total_still_outliers: int
+    rows_removed: int = 0
+    added_columns: List[str] = Field(default_factory=list)
+    columns: List[OutlierCorrectionResultOut]
+    profile: List[OutlierProfileItemOut]
+
+
 class InclusionInvalidValueOut(BaseModel):
     value: str
     count: int

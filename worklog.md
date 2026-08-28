@@ -3576,3 +3576,54 @@ TDD и проверка
 Изменённые файлы текущей задачи
 - packages/ui/components/PlatformIntroduction.tsx
 - packages/ui/components/PlatformIntroduction.test.tsx
+
+Task ID: 60 — Остановка «Выбросы» (Предобработка) + опциональное обнаружение на остатке STL
+
+Date: 2026-08-27
+
+Задача
+Вторая реальная остановка степпера «Предобработка»: «Выбросы» — применить паттерн уже реализованной остановки «Пропуски» (Task 48/53/54), переиспользовать существующую backend-логику (validation/outliers.py, легаси app.py), и дать обоснованную позицию по вопросу: «многие аналитики считают, что выбросы можно обрабатывать только по шуму после декомпозиции».
+
+Синхронизация (перед началом работы)
+Локальный WIP сохранён в защитный stash, выполнен fast-forward до `origin/main` (Task 55 — перекомпоновка «Знакомство с платформой»). При возврате stash — конфликт только в `worklog.md` (обе стороны независимо дописывали в конец), разрешён вручную. По ходу разрешения ДОПУЩЕНА И ИСПРАВЛЕНА собственная ошибка: неаккуратный regex случайно удалил всю запись Task 53 при первом проходе — обнаружено на шаге сверки заголовков (`grep "Task ID: 5"`), запись восстановлена из собственного вывода в истории диалога. Контрольный прогон подтвердил чистоту финальной синхронизации: 40/40 Jest suites, 842 backend-теста, без регрессий (кроме двух restore-тестов, добавленных в `test_dataset_missing_correction.py`/`test_preprocessing_missing.py` — оказалось, что тимлид закоммитил Task 54 БЕЗ моих последних тестов на визуализации пропусков, хотя весь production-код визуализаций был закоммичен полностью; тесты восстановлены).
+
+Позиция по вопросу «выбросы только по остатку после декомпозиции» (обоснование в докстринге app/preprocessing/outliers.py)
+Мнение статистически обосновано: точка, необычная в сырых значениях (декабрьский пик продаж), может быть законной сезонностью, а не аномалией — общепринятая практика (Hyndman & Athanasopoulos; seasonal-hybrid ESD) — искать аномалию в ОСТАТКЕ после STL, а не в сырых данных. Делать это ЕДИНСТВЕННЫМ способом для этой остановки архитектурно неверно по трём причинам:
+1. Порядок степпера: «Выбросы» идёт ДО «Регулярности» и «Декомпозиции» (CHECKS в TsAnalysisPreprocessing.tsx) — регулярный DatetimeIndex на этом этапе не гарантирован; декомпозиция для него попросту недоступна.
+2. Панельные/кросс-секционные датасеты: существующий гейт `_prepare_decomposable_series` (apps/api/decomposition_data.py) явно отклоняет данные с несколькими строками на одну дату — ровно случай тестового FAO-датасета (Страна × Год). Для такого датасета декомпозиции не существует ни для одной колонки в принципе; обязательность оставила бы аналитика без единого способа обработать явную ошибку ввода (например, «8590» вместо «85.90»).
+3. Обратная связь: сам выброс искажает декомпозицию (один большой выброс смещает оценку тренда/сезонности даже у устойчивого STL).
+Решение: статистические методы (IQR/Z-score/MAD/процентиль) одинаково применимы к сырым значениям ИЛИ к ряду остатка — различие не в алгоритме, а в том, какой ряд ему подать. `profile_outliers` всегда на сырых значениях (безусловная диагностика, как и `profile_missing`); обнаружение на остатке — ОПЦИОНАЛЬНАЯ, явно запрашиваемая возможность мастера (`detect_mask_on_residual`), доступная только когда декомпозиция для конкретной пары колонок реально применима (тот же честный гейт, что и у самой декомпозиции — 422 с понятной причиной, а не 500, для панельных данных).
+
+Backend
+- `app/preprocessing/outliers.py` (новый): 4 метода обнаружения (IQR, Z-score, Modified Z-score/MAD, процентильный) — перенос легаси app.py; `profile_outliers(df)` строит профиль по КАЖДОЙ числовой колонке без исключений (как `profile_missing`); рекомендация метода по эвристике легаси (выборка < 100 → IQR; |асимметрия| > 2 → MAD; иначе → Z-score).
+- `apps/api/outliers_correction.py` (новый): 4 стратегии (drop_rows, cap/winsorize по границам 1.5×IQR, замена медианой, флаг) — тот же архитектурный выбор, что и `missing_correction.py` (стратегия только на явно выбранных колонках). `detect_mask_on_residual(df, column, date_column, method, param)` — переиспользует `app/preprocessing/decomposition.py::apply_decomposition` и `apps/api/decomposition_data.py::_prepare_decomposable_series`, сопоставляет обнаруженные на остатке аномалии обратно на исходные позиции строк через дату (не через позицию, т.к. остаток переиндексирован после сортировки/дедупликации).
+- `apps/api/schemas.py`: `DatasetOutlierProfileResponse`, `DatasetOutlierCorrectionRequest/Response` + вложенные `OutlierProfileItemOut`/`OutlierBoundsOut`/`OutlierCorrectionResultOut`.
+- `apps/api/routers/session.py`: `_preprocessing_outliers_status` (тот же контракт, что `_preprocessing_missing_status` — auto/enabled расходятся только через explicit disabled, «не применимо» — при отсутствии ЧИСЛОВЫХ колонок, а не колонок вообще); роуты `GET /dataset/outlier-profile` и `POST /dataset/outlier-corrections` (последний — с `use_residual`/`date_column`, ограничение ровно одной колонки при остаточном обнаружении, т.к. декомпозиция — операция на одном ряде).
+
+Frontend
+`PreprocessingOutliersOverview.tsx` и `PreprocessingOutliersPipeline.tsx` (новые) — по паттерну `PreprocessingMissing*`: пятишаговый мастер (колонки → метод+параметр+опция остатка → стратегия → предпросмотр → применение), с переключателем «Обнаруживать на остатке после STL-декомпозиции», доступным только при выборе ровно одной колонки и наличии кандидата на date_column (список всех колонок переиспользован из `/dataset/missing-profile` — не заведён отдельный «list columns» эндпоинт). `TsAnalysisPreprocessing.tsx`: «Выбросы» подключена как вторая реальная остановка (полное зеркалирование паттерна «Пропуски» — собственный статус-опрос, режим auto/enabled/disabled, реальные тексты «Метрики и алгоритм» с изложенной выше позицией по декомпозиции, пошаговая инструкция мастера); прогресс-бар и `applicableChecks` уже были обобщены в Task 53/54 и подхватили вторую остановку без изменений.
+
+TDD и проверка
+- Backend: 13 unit-тестов на `outliers.py` (4 метода, рекомендация, профиль с 0 выбросов, недостаточная выборка, границы) + 10 на `outliers_correction.py` (4 стратегии, включая обнаружение на остатке STL с инъецированной аномалией и понятную 422-ошибку для панельных данных вместо 500) + 14 API-тестов (профиль, коррекция, режимы, `use_residual`/`date_column`) — все 37 зелёные с первого прогона после мелких правок тестовых данных (вырожденный MAD, dtype-ловушка all-None).
+- Frontend: `PreprocessingOutliersOverview.test.tsx` (4), `PreprocessingOutliersPipeline.test.tsx` (4, включая гонку состояний между parallel-fetch — исправлена через синхронную установку обоих setState без await между ними), 6 новых интеграционных тестов в `TsAnalysisPreprocessing.test.tsx` (переключение на «Выбросы», статус-бейдж, независимый режим, реальное описание с позицией по декомпозиции, инструкция мастера, открытие региона мастера); существующие тесты `TsAnalysisPreprocessing.test.tsx` адаptированы под маршрутизирующий мок `routeFetch()` (два реальных стопа опрашивают бэкенд параллельно — плоский мок больше не подходит).
+- Полный Jest — 42/42 suites, 359/359 tests PASS.
+- Полный pytest (без `test_file_loader.py`) — 879 passed, 29 failed (preexisting: pandas 3.0.2 vs `<3.0` в requirements.txt, нестабильность statsmodels ARIMA start_params на некоторых порядках тестов — воспроизводится изолированно, не связано с этой задачей).
+- `npm run typecheck:all` — PASS для embedded и standalone.
+- Production build embedded и standalone — PASS (13/13 статических страниц каждая) через временный шим `next/font/google` (песочница без сетевого доступа к fonts.googleapis.com); шим применён, собран, немедленно возвращён (`git diff` по обоим `layout.tsx` пуст) — в поставку не входит.
+
+Изменённые/новые файлы
+- app/preprocessing/outliers.py (новый)
+- apps/api/outliers_correction.py (новый)
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- packages/ui/components/PreprocessingOutliersOverview.tsx (новый)
+- packages/ui/components/PreprocessingOutliersOverview.test.tsx (новый)
+- packages/ui/components/PreprocessingOutliersPipeline.tsx (новый)
+- packages/ui/components/PreprocessingOutliersPipeline.test.tsx (новый)
+- packages/ui/components/TsAnalysisPreprocessing.tsx
+- packages/ui/components/TsAnalysisPreprocessing.test.tsx
+- tests/unit/test_preprocessing_outliers.py (новый)
+- tests/unit/test_outliers_correction.py (новый)
+- tests/api/test_dataset_outlier_correction.py (новый)
+- tests/unit/test_preprocessing_missing.py (восстановлены тесты, потерянные при коммите Task 54)
+- tests/api/test_dataset_missing_correction.py (восстановлены тесты, потерянные при коммите Task 54)

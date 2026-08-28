@@ -31,6 +31,47 @@ const MISSING_PROFILE = {
   row_histogram: [],
 };
 
+// Второй реальный стоп («Выбросы») теперь ТОЖЕ опрашивает бэкенд при
+// каждом монтировании компонента -- нейтральный дефолт (status: "warning",
+// не "done" и не "skipped"), чтобы не искажать существующие
+// прогресс-бар/счётчик-тесты, написанные до появления «Выбросов».
+const OUTLIERS_PROFILE = {
+  rule_source: "system",
+  mode: "auto",
+  status: "warning",
+  status_reason: null,
+  method: "iqr",
+  total_rows: 4,
+  total_numeric_columns: 1,
+  total_outliers: 1,
+  outlier_rate_pct: 25,
+  affected_columns: ["Price"],
+  columns: [
+    {
+      column: "Price", sample_size: 4, outlier_count: 1, outlier_pct: 25,
+      recommended_method: "iqr", bounds: { lower: -5, upper: 25 },
+      outlier_examples: [3], insufficient_sample: false,
+    },
+  ],
+};
+
+// Маршрутизирующий мок fetch -- используется везде, где раньше был
+// плоский `jest.fn().mockResolvedValue(MISSING_PROFILE)`: теперь ДВА
+// реальных стопа опрашивают бэкенд параллельно при монтировании, и без
+// маршрутизации по URL «Выбросы» получали бы чужой (missing-shaped)
+// ответ.
+function routeFetch(overrides: { missing?: unknown; outliers?: unknown; put?: unknown } = {}) {
+  return jest.fn((url: string, init?: RequestInit) => {
+    if (init?.method === "PUT") {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.put ?? { modes: {} }) });
+    }
+    if (typeof url === "string" && url.includes("outlier-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.outliers ?? OUTLIERS_PROFILE) });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.missing ?? MISSING_PROFILE) });
+  }) as unknown as typeof fetch;
+}
+
 describe("TsAnalysisPreprocessing", () => {
   beforeEach(() => {
     // Компонент теперь запрашивает реальный профиль остановки «Пропуски»
@@ -38,7 +79,7 @@ describe("TsAnalysisPreprocessing", () => {
     // существующие тесты по-прежнему проходят (запрос ловится внутренним
     // try/catch и переводит статус в "error"), но именно ЭТОТ мок нужен
     // новым тестам ниже, которые проверяют содержательный обзор/статус.
-    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(MISSING_PROFILE) });
+    global.fetch = routeFetch();
   });
 
   it("renders the module title", () => {
@@ -141,7 +182,7 @@ describe("TsAnalysisPreprocessing", () => {
 
 describe("TsAnalysisPreprocessing — остановка «Пропуски»", () => {
   beforeEach(() => {
-    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(MISSING_PROFILE) });
+    global.fetch = routeFetch();
   });
 
   it("shows the real missing-values overview by default (missing is the first step)", async () => {
@@ -162,19 +203,15 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
   it("shows the skipped status when no dataset is active", async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 404, json: () => Promise.resolve({ detail: "no dataset" }) });
     render(<TsAnalysisPreprocessing />);
-    expect(await screen.findByText("Нет активного датасета")).toBeInTheDocument();
+    const matches = await screen.findAllByText("Нет активного датасета");
+    expect(matches.length).toBeGreaterThanOrEqual(1); // «Пропуски» и «Выбросы» -- оба реальных стопа, оба 404
   });
 
   it("shows a mode selector for the missing-values stop and persists disabled mode", async () => {
-    global.fetch = jest.fn((url: string, init?: RequestInit) => {
-      if (init?.method === "PUT") {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ modes: { missing: "disabled" } }) });
-      }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({ ...MISSING_PROFILE, mode: "disabled", status: "skipped", status_reason: "disabled" }),
-      });
-    }) as unknown as typeof fetch;
+    global.fetch = routeFetch({
+      missing: { ...MISSING_PROFILE, mode: "disabled", status: "skipped", status_reason: "disabled" },
+      put: { modes: { missing: "disabled" } },
+    });
 
     render(<TsAnalysisPreprocessing />);
     const select = await screen.findByRole("combobox", { name: "Режим проверки Пропуски" });
@@ -188,9 +225,8 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
   });
 
   it("excludes a skipped missing-values stop from the progress bar denominator", async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ ...MISSING_PROFILE, mode: "disabled", status: "skipped", status_reason: "disabled" }),
+    global.fetch = routeFetch({
+      missing: { ...MISSING_PROFILE, mode: "disabled", status: "skipped", status_reason: "disabled" },
     });
     render(<TsAnalysisPreprocessing />);
     await screen.findByText("Отключено");
@@ -269,6 +305,63 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
     fireEvent.click(screen.getByRole("button", { name: "Применить исправления" }));
 
     await waitFor(() => expect(screen.getByText("Проверка пройдена, пропусков нет")).toBeInTheDocument());
+  });
+});
+
+// ── Интеграция остановки «Выбросы» с бэкендом ──
+
+describe("TsAnalysisPreprocessing — остановка «Выбросы»", () => {
+  beforeEach(() => {
+    global.fetch = routeFetch();
+  });
+
+  it("switching to 'Выбросы' shows the real outliers overview", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Выбросы"));
+    expect(await screen.findByRole("table", { name: "Выбросы по числовым колонкам" })).toBeInTheDocument();
+  });
+
+  it("reflects warning status and count in the right-column badge", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Выбросы"));
+    await screen.findByRole("table", { name: "Выбросы по числовым колонкам" });
+    expect(screen.getByText("Найдено 1 выбросов")).toBeInTheDocument();
+  });
+
+  it("shows a mode selector for outliers independent from missing's mode", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Выбросы"));
+    expect(await screen.findByRole("combobox", { name: "Режим проверки Выбросы" })).toBeInTheDocument();
+  });
+
+  it("shows the real Цель/Метрики/Алгоритм backend description including the decomposition-only position", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Выбросы"));
+    await screen.findByRole("table", { name: "Выбросы по числовым колонкам" });
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+
+    expect(await screen.findByText(/Метрики и алгоритм: Выбросы/)).toBeInTheDocument();
+    expect(screen.getByText(/только по остатку после декомпозиции/)).toBeInTheDocument();
+    expect(screen.getByText(/степпере идёт ДО «Регулярности»/)).toBeInTheDocument();
+  });
+
+  it("shows step-by-step wizard instructions mentioning the residual-detection option", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Выбросы"));
+    await screen.findByRole("table", { name: "Выбросы по числовым колонкам" });
+    fireEvent.click(screen.getByRole("button", { name: "Исправить выбросы" }));
+
+    expect((await screen.findAllByText(/Мастер исправления выбросов/)).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Обнаруживать на остатке после STL-декомпозиции/).length).toBeGreaterThan(0);
+  });
+
+  it("opens the outliers wizard region when 'Исправить выбросы' is clicked", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Выбросы"));
+    await screen.findByRole("table", { name: "Выбросы по числовым колонкам" });
+    fireEvent.click(screen.getByRole("button", { name: "Исправить выбросы" }));
+
+    expect(await screen.findByRole("region", { name: "Мастер исправления выбросов" })).toBeInTheDocument();
   });
 });
 

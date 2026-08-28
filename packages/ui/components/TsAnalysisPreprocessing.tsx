@@ -25,6 +25,8 @@ import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { sessionApiUrl } from "../lib/apiClient";
 import { PreprocessingMissingOverview, type MissingProfileResponse } from "./PreprocessingMissingOverview";
 import { PreprocessingMissingPipeline } from "./PreprocessingMissingPipeline";
+import { PreprocessingOutliersOverview, type OutlierProfileResponse } from "./PreprocessingOutliersOverview";
+import { PreprocessingOutliersPipeline } from "./PreprocessingOutliersPipeline";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -41,8 +43,8 @@ interface Check {
 const CHECKS: Check[] = [
   { id: "missing", label: "Пропуски", status: "pending", count: null,
     description: "Пропуски нарушают DatetimeIndex, делают невозможной STL-декомпозицию, искажают ACF/PACF и ломают ARIMA/SARIMA. Стратегии: удаление строк, медиана/мода, среднее/мода, ноль/Unknown, линейная интерполяция, флаг пропуска." },
-  { id: "outliers", label: "Выбросы", status: "warning", count: 1145,
-    description: "Выбросы завышают дисперсию, искажают оценки тренда и ломают тесты стационарности (ADF/KPSS). Методы: IQR, Z-score, MAD, Isolation Forest, LOF." },
+  { id: "outliers", label: "Выбросы", status: "pending", count: null,
+    description: "Выбросы завышают дисперсию, искажают оценки тренда и ломают тесты стационарности (ADF/KPSS). Методы: IQR, Z-score, Modified Z-score (MAD), процентильный. Обнаружение — на сырых значениях по умолчанию; на остатке после STL-декомпозиции — опционально, когда декомпозиция применима." },
   { id: "regularity", label: "Регулярность ряда", status: "pending", count: null,
     description: "Нерегулярный временной шаг мешает декомпозиции (STL), спектральному анализу (FFT) и моделям ARIMA. Решение: интерполяция gaps, ресемплирование к фиксированной частоте." },
   { id: "decomposition", label: "Декомпозиция ряда", status: "pending", count: null,
@@ -133,6 +135,33 @@ const MISSING_PIPELINE_DESCRIPTION = `Мастер исправления про
 4. Оцените прогноз: заметный сдвиг среднего или резкое падение стандартного отклонения — сигнал, что выбранная стратегия слишком агрессивно сглаживает эту колонку; в этом случае вернитесь к шагу 2 и попробуйте другую стратегию.
 5. Подтвердите применение отдельным чекбоксом и нажмите «Применить исправления». Подготовленная копия сохраняется в сессии атомарно, после чего профиль пропусков и статус остановки пересчитываются автоматически.`;
 
+const OUTLIERS_METRICS_DESCRIPTION = `Метрики и алгоритм: Выбросы
+
+Цель
+Проверка находит аномальные значения в каждой числовой колонке активного датасета. Выбросы завышают дисперсию, искажают оценку тренда и линейную регрессию, ломают тесты стационарности (ADF/KPSS) и STL-декомпозицию (один большой выброс сильно смещает оценку сезонности даже у устойчивого STL).
+
+Метрики
+1. Четыре метода на выбор: IQR (границы Q1 − k×IQR / Q3 + k×IQR, устойчив по умолчанию), Z-score (|значение − среднее| / std), Modified Z-score / MAD (то же на медиане — устойчив при асимметрии), процентильный (явные нижняя/верхняя границы).
+2. По каждой числовой колонке: sample_size, outlier_count и outlier_pct, границы метода (для IQR/процентильного — в исходной шкале величины; для Z-score/MAD границ в исходной шкале нет, они работают в стандартизованных единицах), до 5 примеров индексов строк-выбросов.
+3. Колонки с sample_size < 10 помечаются «недостаточно наблюдений» — статистика на таких выборках неустойчива, outlier_count принудительно 0, а не ложный результат.
+
+Алгоритм backend
+1. GET /v1/session/dataset/outlier-profile?method=... получает полный DataFrame активной сессии.
+2. profile_outliers(df) строит профиль по КАЖДОЙ числовой колонке без исключений (включая 0 выбросов) — как и profile_missing; нечисловые колонки не входят в профиль вовсе (метод статистически не определён для текста/категорий).
+3. Рекомендация метода на колонку: выборка < 100 → IQR; |асимметрия| > 2 → Modified Z-score (MAD); иначе → Z-score — перенос эвристики легаси app.py.
+4. status = done, если выбросов нет; warning — если найдены; skipped — если проверка отключена аналитиком либо в датасете нет числовых колонок.
+
+Позиция: «выбросы можно обрабатывать только по остатку после декомпозиции»?
+Мнение статистически обосновано — точка, необычная в сырых значениях (например, декабрьский пик продаж), может быть законной сезонностью, а не аномалией; общепринятая практика (Hyndman & Athanasopoulos) — искать аномалию в ОСТАТКЕ после STL, а не в сырых данных. Тем не менее делать это ЕДИНСТВЕННЫМ способом здесь архитектурно неверно: (1) «Выбросы» в степпере идёт ДО «Регулярности» и «Декомпозиции» — регулярный DatetimeIndex на этом этапе не гарантирован; (2) для панельных/кросс-секционных датасетов (несколько строк на одну дату — например, тестовый датасет FAO «Страна × Год») декомпозиции не существует ни для одной колонки в принципе — сделать её обязательной оставило бы аналитика без единого способа обработать явную ошибку ввода; (3) сам выброс искажает декомпозицию (обратная связь). Решение: методы одинаково применимы к сырым значениям ИЛИ к остатку — различие не в алгоритме, а в том, какой ряд ему подать. Профиль всегда на сырых значениях (безусловная диагностика); обнаружение на остатке — опциональная явно запрашиваемая возможность мастера, доступная только когда декомпозиция для конкретной пары колонок применима.`;
+
+const OUTLIERS_PIPELINE_DESCRIPTION = `Мастер исправления выбросов
+
+1. Отметьте числовые колонки с выбросами. Список предзаполнен колонками, где найден хотя бы один выброс выбранным методом.
+2. Выберите метод обнаружения (IQR / Z-score / Modified Z-score (MAD) / процентильный) и его параметр. По умолчанию — обнаружение на сырых значениях. Если выбрана РОВНО одна колонка и в датасете есть подходящая колонка с датой, доступен переключатель «Обнаруживать на остатке после STL-декомпозиции» — включите его, если считаете, что выброс нужно оценивать относительно ожидаемого сезонного уровня, а не абсолютной величины (см. позицию в «Метрики и алгоритм» выше).
+3. Выберите стратегию исправления: удаление строк, кэпирование (winsorize по границам 1.5×IQR — не зависит от выбранного метода обнаружения), замена медианой (не-выбросных значений) либо флаг выброса (сохраняет исходные значения, добавляет индикаторную колонку *_outlier_flag).
+4. Запустите «Предпросмотр изменений». Расчёт выполняется на копии датасета и не меняет активные данные: вы увидите число найденных и исправленных выбросов, оставшиеся выбросы и — при выборе обнаружения на остатке — явную отметку об этом в результате.
+5. Подтвердите применение отдельным чекбоксом и нажмите «Применить исправления». Подготовленная копия сохраняется в сессии атомарно, после чего профиль выбросов и статус остановки пересчитываются автоматически.`;
+
 type PreprocessingCheckMode = "auto" | "enabled" | "disabled";
 
 // ── Компонент ─────────────────────────────────────────────────
@@ -216,13 +245,60 @@ export function TsAnalysisPreprocessing() {
     ? missingProfile.status
     : "pending";
 
+  // ── Остановка «Выбросы»: тот же паттерн, что и «Пропуски» ──
+  const [outliersProfile, setOutliersProfile] = useState<OutlierProfileResponse | null>(null);
+  const [outliersLoading, setOutliersLoading] = useState(true);
+  const [outliersNoDataset, setOutliersNoDataset] = useState(false);
+  const [outliersError, setOutliersError] = useState<string | null>(null);
+  const [outliersRefreshKey, setOutliersRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setOutliersLoading(true);
+    setOutliersError(null);
+    setOutliersNoDataset(false);
+    void (async () => {
+      try {
+        const response = await fetch(sessionApiUrl("/dataset/outlier-profile?method=iqr"), { credentials: "include" });
+        if (response.status === 404) {
+          if (active) setOutliersNoDataset(true);
+          return;
+        }
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(typeof body?.detail === "string" ? body.detail : `HTTP ${response.status}`);
+        }
+        const data: OutlierProfileResponse = await response.json();
+        if (active) {
+          setOutliersProfile(data);
+          setCheckModes((current) => ({ ...current, outliers: data.mode }));
+        }
+      } catch (caught) {
+        if (active) setOutliersError(caught instanceof Error ? caught.message : "Не удалось загрузить профиль выбросов");
+      } finally {
+        if (active) setOutliersLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [outliersRefreshKey]);
+
+  const outliersStatus: CheckStatus = outliersLoading
+    ? "running"
+    : outliersNoDataset
+    ? "skipped"
+    : outliersError
+    ? "error"
+    : outliersProfile
+    ? outliersProfile.status
+    : "pending";
+
   // Итоговый список проверок -- статика для ещё не реализованных
-  // остановок, реальные данные для «Пропусков».
-  const checks = useMemo<Check[]>(() => CHECKS.map((check) =>
-    check.id === "missing"
-      ? { ...check, status: missingStatus, count: missingProfile?.total_missing ?? null }
-      : check
-  ), [missingStatus, missingProfile]);
+  // остановок, реальные данные для «Пропусков» и «Выбросов».
+  const checks = useMemo<Check[]>(() => CHECKS.map((check) => {
+    if (check.id === "missing") return { ...check, status: missingStatus, count: missingProfile?.total_missing ?? null };
+    if (check.id === "outliers") return { ...check, status: outliersStatus, count: outliersProfile?.total_outliers ?? null };
+    return check;
+  }), [missingStatus, missingProfile, outliersStatus, outliersProfile]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -274,6 +350,7 @@ export function TsAnalysisPreprocessing() {
       // остановки, чтобы степпер/панель немедленно отразили новый режим
       // (та же идея, что runValidation() после смены режима в Validation).
       if (checkId === "missing") setMissingRefreshKey((k) => k + 1);
+      if (checkId === "outliers") setOutliersRefreshKey((k) => k + 1);
     } catch {
       setCheckModes(previous);
       setModeError({ checkId, message: "Не удалось сохранить режим проверки" });
@@ -313,6 +390,9 @@ export function TsAnalysisPreprocessing() {
     if (activeCheckId === "missing") {
       return descriptionSection === "metrics" ? MISSING_METRICS_DESCRIPTION : MISSING_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "outliers") {
+      return descriptionSection === "metrics" ? OUTLIERS_METRICS_DESCRIPTION : OUTLIERS_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -325,6 +405,9 @@ export function TsAnalysisPreprocessing() {
     if (!descriptionSection) return "Выберите раздел в боковой панели";
     if (activeCheckId === "missing") {
       return descriptionSection === "metrics" ? "Метрики и алгоритм — Пропуски" : "Мастер исправления пропусков";
+    }
+    if (activeCheckId === "outliers") {
+      return descriptionSection === "metrics" ? "Метрики и алгоритм — Выбросы" : "Мастер исправления выбросов";
     }
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
@@ -471,6 +554,8 @@ export function TsAnalysisPreprocessing() {
           <h3 className="font-semibold mb-1">
             {activeCheckId === "missing" && descriptionSection === "pipeline"
               ? "Мастер исправления пропусков"
+              : activeCheckId === "outliers" && descriptionSection === "pipeline"
+              ? "Мастер исправления выбросов"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -478,6 +563,10 @@ export function TsAnalysisPreprocessing() {
               ? "Выберите колонки и стратегию, оцените последствия на копии и примените исправления."
               : activeCheckId === "missing"
               ? "Полнота данных по колонкам, рекомендованная стратегия исправления."
+              : activeCheckId === "outliers" && descriptionSection === "pipeline"
+              ? "Выберите колонку, метод и стратегию; обнаружение — на сырых значениях или (опционально) на остатке после STL-декомпозиции."
+              : activeCheckId === "outliers"
+              ? "Выбросы по числовым колонкам методом IQR, границы и рекомендованный метод на колонку."
               : "Меняется автоматически под активную проверку."}
           </p>
 
@@ -485,6 +574,10 @@ export function TsAnalysisPreprocessing() {
             <PreprocessingMissingPipeline onApplied={() => setMissingRefreshKey((k) => k + 1)} />
           ) : activeCheckId === "missing" ? (
             <PreprocessingMissingOverview refreshKey={missingRefreshKey} />
+          ) : activeCheckId === "outliers" && descriptionSection === "pipeline" ? (
+            <PreprocessingOutliersPipeline onApplied={() => setOutliersRefreshKey((k) => k + 1)} />
+          ) : activeCheckId === "outliers" ? (
+            <PreprocessingOutliersOverview refreshKey={outliersRefreshKey} />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
@@ -497,6 +590,13 @@ export function TsAnalysisPreprocessing() {
               <Metric label="Колонок" value={missingProfile ? String(missingProfile.total_columns) : "—"} />
               <Metric label="Пропусков" value={missingProfile ? String(missingProfile.total_missing) : "—"} />
               <Metric label="Строк с пропуском" value={missingProfile ? String(missingProfile.rows_with_missing) : "—"} />
+            </div>
+          ) : activeCheckId === "outliers" ? (
+            <div className="grid grid-cols-4 gap-3 mt-4">
+              <Metric label="Строк" value={outliersProfile ? String(outliersProfile.total_rows) : "—"} />
+              <Metric label="Числовых колонок" value={outliersProfile ? String(outliersProfile.total_numeric_columns) : "—"} />
+              <Metric label="Выбросов" value={outliersProfile ? String(outliersProfile.total_outliers) : "—"} />
+              <Metric label="Затронуто колонок" value={outliersProfile ? String(outliersProfile.affected_columns.length) : "—"} />
             </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
@@ -531,18 +631,18 @@ export function TsAnalysisPreprocessing() {
 
               <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
 
-              {/* Режим проверки -- только для «Пропусков»: у остальных
-                  10 остановок ещё нет backend-проверки, которую можно
-                  реально включить/отключить (см. комментарий у useState
-                  checkModes выше). */}
-              {check.id === "missing" && (
+              {/* Режим проверки -- только для «Пропусков» и «Выбросов»:
+                  у остальных остановок ещё нет backend-проверки, которую
+                  можно реально включить/отключить (см. комментарий у
+                  useState checkModes выше). */}
+              {(check.id === "missing" || check.id === "outliers") && (
                 <label className="mb-2 block text-[11px] font-medium text-neutral-600">
                   Режим проверки
                   <select
                     aria-label={`Режим проверки ${check.label}`}
-                    value={checkModes.missing ?? "auto"}
+                    value={checkModes[check.id] ?? "auto"}
                     disabled={modeSaving !== null}
-                    onChange={(event) => void handleCheckModeChange("missing", event.target.value as PreprocessingCheckMode)}
+                    onChange={(event) => void handleCheckModeChange(check.id, event.target.value as PreprocessingCheckMode)}
                     className="mt-1 w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm font-normal text-neutral-800 focus:outline-none focus:ring-1 focus:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <option value="auto">Авто</option>
@@ -558,9 +658,10 @@ export function TsAnalysisPreprocessing() {
                 <p role="alert" className="mb-2 text-[11px] text-red-700">{modeError.message}</p>
               )}
 
-              {/* Бейдж результата -- для «Пропусков» все состояния явно
-                  различимы; для остальных (ещё не подключённых)
-                  остановок -- прежняя упрощённая логика по count/status. */}
+              {/* Бейдж результата -- для «Пропусков»/«Выбросов» все
+                  состояния явно различимы; для остальных (ещё не
+                  подключённых) остановок -- прежняя упрощённая логика
+                  по count/status. */}
               {check.id === "missing" ? (
                 <>
                   {check.status === "running" && (
@@ -595,6 +696,43 @@ export function TsAnalysisPreprocessing() {
                   {check.status === "done" && (
                     <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
                       Проверка пройдена, пропусков нет
+                    </p>
+                  )}
+                </>
+              ) : check.id === "outliers" ? (
+                <>
+                  {check.status === "running" && (
+                    <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                      Проверка выполняется…
+                    </p>
+                  )}
+                  {check.status === "error" && (
+                    <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">
+                      {outliersError ?? "Ошибка выполнения проверки"}
+                    </p>
+                  )}
+                  {check.status === "pending" && (
+                    <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                      Проверка не запускалась
+                    </p>
+                  )}
+                  {check.status === "skipped" && (
+                    <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                      {outliersNoDataset
+                        ? "Нет активного датасета"
+                        : outliersProfile?.status_reason === "disabled"
+                        ? "Отключено"
+                        : "Не требуется"}
+                    </p>
+                  )}
+                  {check.status === "warning" && (
+                    <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
+                      Найдено {check.count ?? 0} выбросов
+                    </p>
+                  )}
+                  {check.status === "done" && (
+                    <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
+                      Проверка пройдена, выбросов нет
                     </p>
                   )}
                 </>
@@ -634,7 +772,7 @@ export function TsAnalysisPreprocessing() {
                     : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
                 }`}
               >
-                {check.id === "missing" ? "Исправить пропуски" : "Полный пайплайн"}
+                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : "Полный пайплайн"}
               </button>
 
               <Button>Пересчитать свойства после преобразования ({check.label.toLowerCase()})</Button>

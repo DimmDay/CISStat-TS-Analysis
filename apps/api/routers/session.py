@@ -42,6 +42,9 @@ from apps.api.schemas import (
     DatasetMissingCorrectionResponse,
     DatasetMissingCorrelationResponse,
     DatasetMissingDistributionResponse,
+    DatasetOutlierCorrectionRequest,
+    DatasetOutlierCorrectionResponse,
+    DatasetOutlierProfileResponse,
     DatasetMissingMatrixResponse,
     DatasetMissingProfileResponse,
     DatasetPreprocessingCheckModesRequest,
@@ -92,6 +95,8 @@ from apps.api.schemas import (
     MissingCorrectionResultOut,
     MissingProfileItemOut,
     MissingRowHistogramItemOut,
+    OutlierCorrectionResultOut,
+    OutlierProfileItemOut,
     RangeCorrectionResultOut,
     RangeProfileItemOut,
     RegularityProfileOut,
@@ -131,6 +136,8 @@ from app.preprocessing.missing import (
     missing_summary,
     profile_missing,
 )
+from apps.api.outliers_correction import detect_mask_on_residual, preview_outlier_corrections
+from app.preprocessing.outliers import outliers_summary, profile_outliers
 from apps.api.range_correction import preview_range_corrections
 from apps.api.referential_correction import preview_referential_corrections
 from apps.api.regularity_correction import preview_regularity_correction
@@ -243,6 +250,23 @@ def _preprocessing_missing_status(
     if total_columns == 0:
         return "skipped", "not_required"
     return ("warning" if total_missing > 0 else "done"), None
+
+
+def _preprocessing_outliers_status(
+    mode: str, total_numeric_columns: int, total_outliers: int
+) -> tuple[str, Optional[str]]:
+    """Тот же контракт, что _preprocessing_missing_status: у «Выбросов»
+    тоже нет отдельного настраиваемого правила (метод/параметр -- это
+    выбор способа СЧИТАТЬ, а не условие применимости), поэтому auto и
+    enabled расходятся так же, как и для «Пропусков» -- НИГДЕ, кроме
+    explicit disabled. Единственное отличие от missing: "не применимо"
+    здесь наступает при отсутствии ЧИСЛОВЫХ колонок, а не колонок вообще
+    -- метод статистически не определён для текста/категорий."""
+    if mode == "disabled":
+        return "skipped", "disabled"
+    if total_numeric_columns == 0:
+        return "skipped", "not_required"
+    return ("warning" if total_outliers > 0 else "done"), None
 
 
 def _to_response(session: AnalysisSession) -> SessionStateResponse:
@@ -1238,6 +1262,126 @@ def correct_dataset_missing(
         added_columns=[item["flag_column"] for item in raw_results if item["flag_column"]],
         columns=[MissingCorrectionResultOut(**item) for item in raw_results],
         profile=[MissingProfileItemOut(**item) for item in next_profile],
+    )
+
+
+@router.get("/dataset/outlier-profile", response_model=DatasetOutlierProfileResponse)
+def get_dataset_outlier_profile(
+    request: Request,
+    response: Response,
+    method: str = "iqr",
+    param_low: Optional[float] = None,
+    param_high: Optional[float] = None,
+):
+    """Профиль выбросов активной сессии -- остановка «Выбросы» модуля
+    «Предобработка». Всегда на СЫРЫХ значениях (безусловная диагностика,
+    как и /dataset/missing-profile) -- см. обоснование в докстринге
+    app/preprocessing/outliers.py, почему обнаружение на остатке
+    STL-декомпозиции не может быть единственным/обязательным способом
+    и потому не подмешивается в этот эндпоинт.
+
+    param_low/param_high используются только для method="percentile"
+    (пара границ в процентах); для iqr/zscore/mad общий параметр не
+    нужен в query -- профиль всегда строится с их дефолтами (1.5/3.0/3.5),
+    настройка точного порога -- задача мастера (POST .../outlier-corrections),
+    не обзора.
+    """
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if method not in {"iqr", "zscore", "mad", "percentile"}:
+        raise HTTPException(status_code=422, detail=f"Неизвестный метод: {method}")
+
+    param = (param_low, param_high) if method == "percentile" and param_low is not None and param_high is not None else None
+    df = session.dataframe
+    columns = profile_outliers(df, method=method, param=param)
+    summary = outliers_summary(columns, total_rows=len(df))
+    mode = _effective_preprocessing_check_modes(session)["outliers"]
+    status, status_reason = _preprocessing_outliers_status(
+        mode, summary["total_numeric_columns"], summary["total_outliers"]
+    )
+    return DatasetOutlierProfileResponse(
+        rule_source="system" if columns else "not_applicable",
+        mode=mode,
+        status=status,
+        status_reason=status_reason,
+        method=method,
+        total_rows=summary["total_rows"],
+        total_numeric_columns=summary["total_numeric_columns"],
+        total_outliers=summary["total_outliers"],
+        outlier_rate_pct=summary["outlier_rate_pct"],
+        affected_columns=summary["affected_columns"],
+        columns=[OutlierProfileItemOut(**item) for item in columns],
+    )
+
+
+@router.post("/dataset/outlier-corrections", response_model=DatasetOutlierCorrectionResponse)
+def correct_dataset_outliers(
+    payload: DatasetOutlierCorrectionRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply безопасных стратегий исправления выбросов -- тот же
+    контракт (preview на копии → confirm → apply → сессия обновляется
+    атомарно), что и /dataset/missing-corrections.
+
+    use_residual=True + date_column -- явно запрошенное аналитиком
+    обнаружение на остатке STL-декомпозиции вместо сырых значений (см.
+    detect_mask_on_residual). Если декомпозиция для пары (date_column,
+    единственная выбранная колонка) неприменима -- 422 с понятной
+    причиной, а не 500; при use_residual разрешена ровно ОДНА колонка
+    за раз (декомпозиция -- операция на одном ряде, смешивать несколько
+    колонок с разными остатками в одном запросе было бы нечестной
+    агрегацией)."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    masks_override = None
+    if payload.use_residual:
+        if not payload.date_column:
+            raise HTTPException(status_code=422, detail="Для use_residual нужно указать date_column")
+        if len(payload.columns) != 1:
+            raise HTTPException(status_code=422, detail="use_residual поддерживает ровно одну колонку за раз")
+        try:
+            mask = detect_mask_on_residual(
+                session.dataframe, payload.columns[0], payload.date_column, payload.method, payload.param
+            )
+        except ValueError as ex:
+            raise HTTPException(status_code=422, detail=str(ex)) from ex
+        masks_override = {payload.columns[0]: mask}
+
+    try:
+        corrected_df, raw_results, rows_removed = preview_outlier_corrections(
+            session.dataframe, payload.columns, payload.strategy, payload.method, payload.param, masks_override
+        )
+        next_profile = profile_outliers(corrected_df, method=payload.method, param=payload.param)
+    except (ValueError, TypeError) as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
+        session.touch()
+        store.save(session)
+
+    return DatasetOutlierCorrectionResponse(
+        applied=payload.apply,
+        strategy=payload.strategy,
+        method=payload.method,
+        used_residual=payload.use_residual,
+        total_outliers=sum(item["outlier_count"] for item in raw_results),
+        total_changed=sum(item["changed_count"] for item in raw_results),
+        total_still_outliers=sum(item["still_outliers"] for item in raw_results),
+        rows_removed=rows_removed,
+        added_columns=[item["flag_column"] for item in raw_results if item["flag_column"]],
+        columns=[OutlierCorrectionResultOut(**item) for item in raw_results],
+        profile=[OutlierProfileItemOut(**item) for item in next_profile],
     )
 
 
