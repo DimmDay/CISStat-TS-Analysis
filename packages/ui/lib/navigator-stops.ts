@@ -36,7 +36,7 @@ export interface NavigatorSectionRoute {
 /** Три верхнеуровневых маршрута страницы «Знакомство с платформой». */
 export const NAVIGATOR_SECTION_ROUTES: NavigatorSectionRoute[] = [
   {
-    title: "Прикладные задачи, решаемые совместно с платформой",
+    title: "Задачи, решаемые совместно с платформой",
     description: "перейти к прикладным сценариям использования платформы",
     icon: BriefcaseBusiness,
     href: "#applied-tasks",
