@@ -189,3 +189,70 @@ def test_new_dataset_resets_preprocessing_check_modes():
     _upload(pd.DataFrame({"Price": [1.0, 2.0], "Region": ["A", "B"]}), filename="second.csv")
     modes = client.get("/v1/session/dataset/preprocessing-check-modes").json()
     assert modes["modes"]["missing"] == "auto"
+
+
+# ── Визуализации пропусков ──
+
+
+def test_missing_matrix_reports_bins_and_columns():
+    _upload(pd.DataFrame({
+        "Price": [10.0, None, 30.0, None],
+        "Region": ["A", "B", "A", "B"],
+    }))
+
+    response = client.get("/v1/session/dataset/missing-matrix")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["columns"] == ["Price", "Region"]
+    assert body["total_rows"] == 4
+    assert len(body["bins"]) == 4
+    assert body["bins"][1]["missing_share"]["Price"] == 1.0
+
+
+def test_missing_correlation_detects_joint_missingness():
+    _upload(pd.DataFrame({
+        "Price": [10.0, None, 30.0, None],
+        "Cost": [1.0, None, 3.0, None],
+        "Region": ["A", "B", "A", "B"],
+    }))
+
+    response = client.get("/v1/session/dataset/missing-correlation")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert "Price" in body["columns"] and "Cost" in body["columns"]
+    assert "Region" not in body["columns"]  # без пропусков -- нет вариативности
+
+
+def test_missing_distribution_reports_five_number_summary():
+    _upload(pd.DataFrame({
+        "Price": [10.0, 20.0, 500.0, 600.0],
+        "Region": ["A", "B", None, None],
+    }))
+
+    response = client.get(
+        "/v1/session/dataset/missing-distribution",
+        params={"value_column": "Price", "indicator_column": "Region"},
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["with_missing"]["count"] == 2
+    assert body["without_missing"]["count"] == 2
+
+
+def test_missing_distribution_rejects_non_numeric_value_column():
+    _upload(pd.DataFrame({"Price": [10.0, None], "Region": ["A", "B"]}))
+
+    response = client.get(
+        "/v1/session/dataset/missing-distribution",
+        params={"value_column": "Region", "indicator_column": "Price"},
+    )
+    assert response.status_code == 422
+
+
+def test_visualization_endpoints_404_without_dataset():
+    assert client.get("/v1/session/dataset/missing-matrix").status_code == 404
+    assert client.get("/v1/session/dataset/missing-correlation").status_code == 404
+    assert client.get(
+        "/v1/session/dataset/missing-distribution",
+        params={"value_column": "A", "indicator_column": "B"},
+    ).status_code == 404

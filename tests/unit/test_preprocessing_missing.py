@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from app.preprocessing.missing import (
+    missing_correlation,
+    missing_distribution_comparison,
+    missing_matrix,
     missing_per_row_histogram,
     missing_summary,
     profile_missing,
@@ -87,3 +91,96 @@ def test_missing_per_row_histogram_buckets_by_missing_count():
 def test_missing_per_row_histogram_empty_when_no_missing_values():
     df = pd.DataFrame({"A": [1.0, 2.0]})
     assert missing_per_row_histogram(df) == []
+
+
+# ── missing_matrix ──
+
+
+def test_missing_matrix_reports_share_per_bin_and_column():
+    df = pd.DataFrame({
+        "A": [None, None, 1.0, 1.0],
+        "B": [1.0, 1.0, 1.0, None],
+    })
+    result = missing_matrix(df, max_bins=4)  # по бину на строку
+    assert result["columns"] == ["A", "B"]
+    assert len(result["bins"]) == 4
+    assert result["bins"][0]["missing_share"] == {"A": 1.0, "B": 0.0}
+    assert result["bins"][3]["missing_share"] == {"A": 0.0, "B": 1.0}
+
+
+def test_missing_matrix_bins_preserve_short_gaps_within_a_bin():
+    # Один короткий провал (строка 2) внутри бина из 4 строк не должен
+    # пропасть при биновании -- доля должна быть ненулевой для колонки A.
+    df = pd.DataFrame({"A": [1.0, 1.0, None, 1.0]})
+    result = missing_matrix(df, max_bins=1)
+    assert result["bins"][0]["missing_share"]["A"] == pytest.approx(0.25)
+
+
+def test_missing_matrix_empty_dataframe():
+    result = missing_matrix(pd.DataFrame())
+    assert result["bins"] == []
+    assert result["total_rows"] == 0
+
+
+# ── missing_correlation ──
+
+
+def test_missing_correlation_detects_joint_missingness():
+    # A и B пропускают ОДНОВРЕМЕННО (индексы 1 и 3) -- корреляция должна
+    # быть высокой положительной.
+    df = pd.DataFrame({
+        "A": [1.0, None, 3.0, None],
+        "B": [1.0, None, 3.0, None],
+        "C": [1.0, 2.0, 3.0, 4.0],  # без пропусков вовсе
+    })
+    result = missing_correlation(df)
+    assert result["columns"] == ["A", "B"]  # C исключена (нет вариативности -- 0% пропусков)
+    a_idx, b_idx = result["columns"].index("A"), result["columns"].index("B")
+    assert result["matrix"][a_idx][b_idx] == pytest.approx(1.0)
+
+
+def test_missing_correlation_returns_empty_when_fewer_than_two_varying_columns():
+    df = pd.DataFrame({"A": [1.0, None, 3.0], "B": [1.0, 2.0, 3.0]})
+    result = missing_correlation(df)
+    assert result["columns"] == []
+    assert result["matrix"] == []
+
+
+# ── missing_distribution_comparison ──
+
+
+def test_distribution_comparison_reports_five_number_summary_per_group():
+    df = pd.DataFrame({
+        "Price": [10.0, 20.0, 500.0, 600.0],
+        "Region": ["A", "B", None, None],
+    })
+    result = missing_distribution_comparison(df, value_column="Price", indicator_column="Region")
+    assert result["with_missing"]["count"] == 2
+    assert result["with_missing"]["median"] == pytest.approx(550.0)
+    assert result["without_missing"]["count"] == 2
+    assert result["without_missing"]["median"] == pytest.approx(15.0)
+
+
+def test_distribution_comparison_rejects_non_numeric_value_column():
+    df = pd.DataFrame({"Region": ["A", "B"], "Other": [None, "x"]})
+    with pytest.raises(ValueError, match="должна быть числовой"):
+        missing_distribution_comparison(df, value_column="Region", indicator_column="Other")
+
+
+def test_distribution_comparison_rejects_same_column_twice():
+    df = pd.DataFrame({"Price": [1.0, None]})
+    with pytest.raises(ValueError, match="должны различаться"):
+        missing_distribution_comparison(df, value_column="Price", indicator_column="Price")
+
+
+def test_distribution_comparison_rejects_unknown_column():
+    df = pd.DataFrame({"Price": [1.0, None]})
+    with pytest.raises(ValueError, match="отсутствует в датасете"):
+        missing_distribution_comparison(df, value_column="Price", indicator_column="Nope")
+
+
+def test_distribution_comparison_group_is_none_when_no_valid_values():
+    df = pd.DataFrame({"Price": [float("nan"), float("nan")], "Region": ["A", None]})
+    result = missing_distribution_comparison(df, value_column="Price", indicator_column="Region")
+    assert result["with_missing"] is None
+    assert result["without_missing"] is None
