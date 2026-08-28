@@ -24,6 +24,10 @@ import {
   EdaDescriptiveOverview,
   type DescriptiveStatsResponse,
 } from "./EdaDescriptiveOverview";
+import {
+  EdaCorrelationOverview,
+  type EdaCorrelationResponse,
+} from "./EdaCorrelationOverview";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 
@@ -125,6 +129,26 @@ const DESCRIPTIVE_PIPELINE_DESCRIPTION = `Полный пайплайн: опи�
 7. Scatter сэмплируется LTTB только для больших рядов с сохранением экстремумов; гистограмма и KDE всегда считаются по полному выбранному диапазону.
 8. Остановка read-only: она диагностирует текущее состояние и не мутирует датасет. Кнопка «Пересчитать статистики» повторно читает данные после преобразований предыдущих этапов.`;
 
+const CORRELATION_METRICS_DESCRIPTION = `Метрики и алгоритм: Корреляция (ACF/PACF)
+
+Остановка исследует линейную зависимость выбранного ряда от его прошлых значений. Она работает с ПОЛНЫМ текущим рядом из AnalysisSession и не изменяет датасет.
+
+1. ACF(k) = corr(yₜ, yₜ₋ₖ) измеряет суммарную линейную связь с лагом k. Медленное затухание часто указывает на тренд или нестационарность; пики на кратных лагах — кандидат на сезонную структуру.
+2. PACF(k) оценивает прямую связь yₜ и yₜ₋ₖ после исключения влияния промежуточных лагов 1…k−1. Резкое обрезание PACF используют как начальный ориентир порядка AR(p), а обрезание ACF — порядка MA(q).
+3. Серые пунктирные границы — 95% доверительные интервалы statsmodels (alpha=0,05). Красным отмечены лаги, чей интервал не включает ноль. При просмотре десятков лагов отдельные ложноположительные пики возможны из-за множественных сравнений.
+4. Ljung–Box проверяет совместную гипотезу об отсутствии автокорреляции до выбранного контрольного лага: p < 0,05 означает, что ряд не похож на белый шум.
+5. Кандидаты p и q — только объяснимая стартовая эвристика по непрерывной последовательности значимых лагов от лага 1. Это не автоматический выбор финальной ARIMA: параметр d определяется после проверки стационарности, а порядки подтверждаются диагностикой остатков и временной валидацией.`;
+
+const CORRELATION_PIPELINE_DESCRIPTION = `Полный пайплайн: корреляция (ACF/PACF)
+
+1. Выбранный во всей платформе «Исследуемый признак» передаётся в GET /v1/session/dataset/eda-correlation?column=...&max_lags=....
+2. Backend контентно ищет временную ось существующим детектором. При уверенном обнаружении даты ряд сортируется по возрастанию; числовые годы обрабатываются как годы, а не unix-наносекунды.
+3. Повторяющиеся даты блокируют расчёт как вероятные панельные данные: без выбора сущности автоматическая агрегация исказила бы ряд. Нераспознанные даты и пропуски/∞ в значениях также не удаляются молча, потому что это меняет смысл лага.
+4. Если ось времени не найдена, расчёт использует текущий порядок строк и явно показывает предупреждение. При нерегулярной частоте один лаг означает один соседний шаг наблюдения, а не фиксированный календарный интервал.
+5. ACF рассчитывается statsmodels с FFT; PACF — методом Yule–Walker. Горизонт ограничивается условием PACF nlags < N/2, поэтому интерфейс показывает фактически доступный максимум.
+6. Один API-ответ содержит ACF, PACF, их 95% границы, значимые лаги, Ljung–Box и стартовые p/q. Вкладки «ACF», «PACF» и «Таблица» переиспользуют этот ответ без повторных запросов.
+7. Остановка read-only. «Пересчитать корреляцию» повторяет расчёт после изменений датасета, а смена признака или горизонта лагов автоматически запрашивает согласованный профиль.`;
+
 async function responseDetail(response: Response): Promise<string> {
   try {
     const body = await response.json();
@@ -133,6 +157,16 @@ async function responseDetail(response: Response): Promise<string> {
     // Нейтральная ошибка ниже покрывает ответ без JSON.
   }
   return `Не удалось загрузить описательные статистики (HTTP ${response.status})`;
+}
+
+async function correlationResponseDetail(response: Response): Promise<string> {
+  try {
+    const body = await response.json();
+    if (typeof body?.detail === "string") return body.detail;
+  } catch {
+    // Нейтральная ошибка ниже покрывает ответ без JSON.
+  }
+  return `Не удалось рассчитать ACF/PACF (HTTP ${response.status})`;
 }
 
 function formatMetric(value: number | null | undefined): string {
@@ -157,6 +191,7 @@ export function TsAnalysisEDA() {
   const {
     targetColumn: activeFeature,
     availableColumns: numericFeatures,
+    hasDataset,
     loading: targetLoading,
     error: targetError,
     setColumn: setActiveFeature,
@@ -219,11 +254,85 @@ export function TsAnalysisEDA() {
     ? "done"
     : "pending";
 
+  // ── Остановка «Корреляция»: ACF/PACF выбранного общего признака ──
+  const [correlationProfile, setCorrelationProfile] = useState<EdaCorrelationResponse | null>(null);
+  const [correlationLoading, setCorrelationLoading] = useState(false);
+  const [correlationNoDataset, setCorrelationNoDataset] = useState(false);
+  const [correlationError, setCorrelationError] = useState<string | null>(null);
+  const [correlationRefreshKey, setCorrelationRefreshKey] = useState(0);
+  const [correlationMaxLags, setCorrelationMaxLags] = useState(40);
+
+  useEffect(() => {
+    if (activeCheckId !== "correlation" || targetLoading) return;
+    if (!hasDataset) {
+      setCorrelationNoDataset(true);
+      setCorrelationProfile(null);
+      setCorrelationLoading(false);
+      return;
+    }
+    if (!activeFeature) {
+      setCorrelationNoDataset(false);
+      setCorrelationProfile(null);
+      setCorrelationLoading(false);
+      return;
+    }
+
+    let active = true;
+    setCorrelationLoading(true);
+    setCorrelationError(null);
+    setCorrelationNoDataset(false);
+    void (async () => {
+      try {
+        const response = await fetch(
+          sessionApiUrl(
+            `/dataset/eda-correlation?column=${encodeURIComponent(activeFeature)}&max_lags=${correlationMaxLags}`,
+          ),
+          { credentials: "include" },
+        );
+        if (response.status === 404) {
+          if (active) {
+            setCorrelationNoDataset(true);
+            setCorrelationProfile(null);
+          }
+          return;
+        }
+        if (!response.ok) throw new Error(await correlationResponseDetail(response));
+        const data: EdaCorrelationResponse = await response.json();
+        if (active) setCorrelationProfile(data);
+      } catch (caught) {
+        if (active) {
+          setCorrelationError(
+            caught instanceof Error ? caught.message : "Не удалось рассчитать ACF/PACF",
+          );
+        }
+      } finally {
+        if (active) setCorrelationLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [activeCheckId, activeFeature, correlationMaxLags, correlationRefreshKey, hasDataset, targetLoading]);
+
+  const correlationBusy = correlationLoading || (activeCheckId === "correlation" && targetLoading);
+  const correlationRequestError = correlationError ?? (activeCheckId === "correlation" ? targetError : null);
+  const correlationStatus: CheckStatus = correlationBusy
+    ? "running"
+    : correlationRequestError
+    ? "error"
+    : correlationNoDataset || (hasDataset && !activeFeature)
+    ? "skipped"
+    : correlationProfile?.applicable === false
+    ? "warning"
+    : correlationProfile?.applicable
+    ? "done"
+    : "pending";
+
   const checks = useMemo<Check[]>(() => CHECKS.map((check) =>
     check.id === "descriptive"
       ? { ...check, status: descriptiveStatus, count: insufficientColumns }
+      : check.id === "correlation"
+      ? { ...check, status: correlationStatus, count: null }
       : check,
-  ), [descriptiveStatus, insufficientColumns]);
+  ), [correlationStatus, descriptiveStatus, insufficientColumns]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -289,6 +398,11 @@ export function TsAnalysisEDA() {
         ? DESCRIPTIVE_METRICS_DESCRIPTION
         : DESCRIPTIVE_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "correlation") {
+      return descriptionSection === "metrics"
+        ? CORRELATION_METRICS_DESCRIPTION
+        : CORRELATION_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -303,6 +417,11 @@ export function TsAnalysisEDA() {
       return descriptionSection === "metrics"
         ? "Метрики и алгоритм — Описательные статистики"
         : "Полный пайплайн — Описательные статистики";
+    }
+    if (activeCheckId === "correlation") {
+      return descriptionSection === "metrics"
+        ? "Метрики и алгоритм — Корреляция (ACF/PACF)"
+        : "Полный пайплайн — Корреляция (ACF/PACF)";
     }
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
@@ -471,6 +590,15 @@ export function TsAnalysisEDA() {
               noDataset={descriptiveNoDataset}
               refreshKey={descriptiveRefreshKey}
             />
+          ) : activeCheckId === "correlation" ? (
+            <EdaCorrelationOverview
+              profile={correlationProfile}
+              loading={correlationBusy}
+              error={correlationRequestError}
+              noDataset={correlationNoDataset}
+              maxLags={correlationMaxLags}
+              onMaxLagsChange={setCorrelationMaxLags}
+            />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
@@ -492,6 +620,20 @@ export function TsAnalysisEDA() {
                   </>
                 );
               })()}
+            </div>
+          ) : activeCheckId === "correlation" ? (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+              <Metric label="N" value={correlationProfile ? String(correlationProfile.n_observations) : "—"} />
+              <Metric label="Макс. лаг" value={correlationProfile?.applicable ? String(correlationProfile.max_lag) : "—"} />
+              <Metric label="Значимых ACF" value={correlationProfile?.applicable ? String(correlationProfile.significant_acf_lags.length) : "—"} />
+              <Metric label="Значимых PACF" value={correlationProfile?.applicable ? String(correlationProfile.significant_pacf_lags.length) : "—"} />
+              <Metric label="Ljung–Box p" value={formatMetric(correlationProfile?.ljung_box_pvalue)} />
+              <Metric
+                label="Кандидаты p / q"
+                value={correlationProfile?.applicable
+                  ? `${correlationProfile.suggested_p ?? "—"} / ${correlationProfile.suggested_q ?? "—"}`
+                  : "—"}
+              />
             </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
@@ -552,6 +694,36 @@ export function TsAnalysisEDA() {
                     </p>
                   )}
                 </>
+              ) : check.id === "correlation" ? (
+                <>
+                  {check.status === "running" && (
+                    <p role="status" className="text-sm text-brand bg-brand-light rounded px-3 py-2 mb-2">
+                      Рассчитываем ACF/PACF по полному ряду…
+                    </p>
+                  )}
+                  {check.status === "error" && (
+                    <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">
+                      {correlationRequestError ?? "Ошибка расчёта ACF/PACF"}
+                    </p>
+                  )}
+                  {check.status === "skipped" && (
+                    <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                      {correlationNoDataset ? "Нет активного датасета" : "Нет числового исследуемого признака"}
+                    </p>
+                  )}
+                  {check.status === "warning" && (
+                    <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
+                      {correlationProfile?.reason ?? "ACF/PACF неприменимы"}
+                    </p>
+                  )}
+                  {check.status === "done" && (
+                    <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
+                      {correlationProfile?.is_white_noise
+                        ? "Ljung–Box: автокорреляция совместно не обнаружена"
+                        : `Значимых лагов: ACF ${correlationProfile?.significant_acf_lags.length ?? 0}, PACF ${correlationProfile?.significant_pacf_lags.length ?? 0}`}
+                    </p>
+                  )}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -598,6 +770,14 @@ export function TsAnalysisEDA() {
                   disabled={descriptiveBusy}
                 >
                   {descriptiveBusy ? "Рассчитываем…" : "Пересчитать статистики"}
+                </Button>
+              ) : check.id === "correlation" ? (
+                <Button
+                  type="button"
+                  onClick={() => setCorrelationRefreshKey((key) => key + 1)}
+                  disabled={correlationBusy || !activeFeature}
+                >
+                  {correlationBusy ? "Рассчитываем…" : "Пересчитать корреляцию"}
                 </Button>
               ) : (
                 <Button>Запустить анализ ({check.label.toLowerCase()})</Button>

@@ -60,6 +60,36 @@ const STATS_RESPONSE = {
   ],
 };
 
+const CORRELATION_RESPONSE = {
+  column: "Price",
+  applicable: true,
+  reason: null,
+  n_observations: 80,
+  missing_count: 0,
+  requested_max_lags: 40,
+  max_lag: 20,
+  alpha: 0.05,
+  order_source: "time_column",
+  order_column: "Date",
+  order_warning: null,
+  frequency: "D",
+  acf: [
+    { lag: 0, value: 1, confidence_lower: -0.2, confidence_upper: 0.2, significant: false },
+    { lag: 1, value: 0.7, confidence_lower: -0.2, confidence_upper: 0.2, significant: true },
+  ],
+  pacf: [
+    { lag: 0, value: 1, confidence_lower: -0.2, confidence_upper: 0.2, significant: false },
+    { lag: 1, value: 0.65, confidence_lower: -0.2, confidence_upper: 0.2, significant: true },
+  ],
+  significant_acf_lags: [1],
+  significant_pacf_lags: [1],
+  ljung_box_lag: 10,
+  ljung_box_pvalue: 0.002,
+  is_white_noise: false,
+  suggested_p: 1,
+  suggested_q: 1,
+};
+
 function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
   const url = String(input);
   if (url.includes("/target-column")) {
@@ -79,6 +109,14 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
   }
   if (url.includes("/dataset/stats")) {
     return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(STATS_RESPONSE) });
+  }
+  if (url.includes("/dataset/eda-correlation")) {
+    const column = new URL(url).searchParams.get("column") ?? "Price";
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ...CORRELATION_RESPONSE, column }),
+    });
   }
   if (url.includes("/dataset/distribution")) {
     const column = new URL(url).searchParams.get("column") ?? "Price";
@@ -172,6 +210,48 @@ describe("TsAnalysisEDA", () => {
     await waitFor(() => {
       const statsCallsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/stats")).length;
       expect(statsCallsAfter).toBe(statsCallsBefore + 1);
+    });
+  });
+
+  it("loads correlation for the shared target and exposes three overview views", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" });
+    await waitFor(() => expect(selector).toHaveValue("Price"));
+
+    fireEvent.click(screen.getByRole("button", { name: /^Корреляция \(ACF\/PACF\)/ }));
+
+    expect(await screen.findByRole("img", { name: "График ACF для Price" })).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/dataset/eda-correlation?column=Price&max_lags=40"),
+      { credentials: "include" },
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "PACF" }));
+    expect(screen.getByRole("img", { name: "График PACF для Price" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Таблица" }));
+    expect(screen.getByRole("table", { name: "Значения ACF и PACF по лагам" })).toBeInTheDocument();
+    expect(screen.getByText("Ljung–Box p", { selector: "div" }).nextElementSibling).toHaveTextContent("0,002");
+  });
+
+  it("shows the correlation-specific methodology and recalculates it", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+
+    const correlationButton = screen.getByRole("button", { name: /^Корреляция \(ACF\/PACF\)/ });
+    fireEvent.click(correlationButton);
+    await screen.findByRole("img", { name: "График ACF для Price" });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/ACF\(k\) = corr/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Полный пайплайн" })[0]);
+    expect(screen.getByText(/dataset\/eda-correlation/i)).toBeInTheDocument();
+
+    const callsBefore = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-correlation")).length;
+    fireEvent.click(screen.getByRole("button", { name: "Пересчитать корреляцию" }));
+    await waitFor(() => {
+      const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-correlation")).length;
+      expect(callsAfter).toBe(callsBefore + 1);
     });
   });
 

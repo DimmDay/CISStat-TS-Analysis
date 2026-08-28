@@ -136,6 +136,39 @@ class DatasetStatsResponse(BaseModel):
     min_non_null_for_stats: int = Field(2, description="Порог непустых значений, ниже которого статистика не считается")
 
 
+class EdaCorrelationPoint(BaseModel):
+    lag: int
+    value: float
+    confidence_lower: float
+    confidence_upper: float
+    significant: bool
+
+
+class DatasetEdaCorrelationResponse(BaseModel):
+    """ACF/PACF-профиль одного исследуемого временного ряда."""
+    column: str
+    applicable: bool
+    reason: Optional[str] = None
+    n_observations: int
+    missing_count: int
+    requested_max_lags: int
+    max_lag: int
+    alpha: float
+    order_source: Literal["time_column", "row_order"]
+    order_column: Optional[str] = None
+    order_warning: Optional[str] = None
+    frequency: Optional[str] = None
+    acf: List[EdaCorrelationPoint] = Field(default_factory=list)
+    pacf: List[EdaCorrelationPoint] = Field(default_factory=list)
+    significant_acf_lags: List[int] = Field(default_factory=list)
+    significant_pacf_lags: List[int] = Field(default_factory=list)
+    ljung_box_lag: Optional[int] = None
+    ljung_box_pvalue: Optional[float] = None
+    is_white_noise: Optional[bool] = None
+    suggested_p: Optional[int] = None
+    suggested_q: Optional[int] = None
+
+
 class PanelBalanceResponse(BaseModel):
     """Реальная проверка Balanced/Unbalanced для панельных данных --
     пункт 8 контракта (структурный класс), визуальная схема на

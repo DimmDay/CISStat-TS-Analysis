@@ -78,6 +78,11 @@ export type {
   DescriptiveStatsResponse,
   DescriptiveStatsValues,
 } from "./components/EdaDescriptiveOverview";
+export { EdaCorrelationOverview } from "./components/EdaCorrelationOverview";
+export type {
+  EdaCorrelationPoint,
+  EdaCorrelationResponse,
+} from "./components/EdaCorrelationOverview";
 export { TsAnalysisUpload } from "./components/TsAnalysisUpload";
 export { StructuralClassSchema } from "./components/StructuralClassSchema";
 export { classifyStructure } from "./lib/structuralClass";

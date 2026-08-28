@@ -18,10 +18,11 @@ from pathlib import Path
 from typing import Optional
 
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 
 from apps.api.chart_data import MAX_ZOOM_POINTS, build_histogram, build_kde, build_scatter_series, build_timeseries_points
 from apps.api.decomposition_data import build_decomposition, build_decomposition_series
+from apps.api.eda_correlation import build_eda_correlation
 from apps.api.schemas import (
     ColumnDetectionOut,
     ColumnStatsOut,
@@ -31,6 +32,7 @@ from apps.api.schemas import (
     DatasetConsistencyCorrectionRequest,
     DatasetConsistencyCorrectionResponse,
     DatasetConsistencyProfileResponse,
+    DatasetEdaCorrelationResponse,
     DatasetStatsResponse,
     DatasetSummaryOut,
     DatasetFormatCorrectionRequest,
@@ -430,6 +432,30 @@ def get_dataset_stats(request: Request, response: Response):
             )
         )
     return DatasetStatsResponse(columns=columns_out, min_non_null_for_stats=min_for_stats)
+
+
+@router.get("/dataset/eda-correlation", response_model=DatasetEdaCorrelationResponse)
+def get_dataset_eda_correlation(
+    column: str,
+    request: Request,
+    response: Response,
+    max_lags: int = Query(40, ge=1, le=200),
+):
+    """ACF/PACF выбранного признака по полному текущему датасету."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Колонка '{column}' не числовая — ACF/PACF недоступны",
+        )
+    return DatasetEdaCorrelationResponse(
+        **build_eda_correlation(session.dataframe, column=column, max_lags=max_lags)
+    )
 
 
 @router.get("/dataset/panel-balance", response_model=PanelBalanceResponse)

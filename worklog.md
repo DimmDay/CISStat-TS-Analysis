@@ -3730,3 +3730,65 @@ TDD и проверка
 - packages/ui/components/TsAnalysisPreprocessing.tsx
 - packages/ui/components/TsAnalysisPreprocessing.test.tsx
 - packages/ui/hooks/useTargetColumn.ts
+
+---
+
+Task ID: 63 — Остановка «Корреляция» (ACF/PACF) во вкладке «Разведочный EDA»
+
+Date: 2026-08-28
+
+Задача
+Спроектировать и реализовать следующую реальную остановку EDA — «Корреляция (ACF/PACF)» — по паттернам «Описательных статистик» и «Пропусков», с активным использованием переключаемых визуализаций «Обзора», исследованием и переиспользованием backend-логики.
+
+Синхронизация
+- По прямому указанию тимлида выполнен `git fetch origin main`; `origin/main` продвинулся с `9bb1cc8` до `f63da68` и уже содержал Task 61 (`915f07a`) и Task 62 (`f63da68`).
+- Локальные совпадающие изменения Task 61/62 перед fast-forward безопасно сохранены вместе с untracked-файлами в `stash@{0}`: `pre-sync-task63-eda-correlation-2026-08-28`. Возвращать stash не потребовалось: production-код полностью присутствовал в новом main.
+- Выполнен безопасный fast-forward до `f63da68`; Task 63 начата на чистом рабочем дереве. Коммиты и push не выполнялись.
+
+Исследование backend и проектирование
+- В `app/eda/correlation.py` существовала только межколоночная Pearson-корреляция `find_significant_correlations`; endpoint ACF/PACF отсутствовал.
+- Переиспользованы уже принятые в проекте зависимости и идеи: `statsmodels.tsa.stattools.acf`, Ljung–Box из `app/core/passport.py`, контентный детектор временной оси `score_all_columns_as_date`, безопасный конвертер числовых лет `smart_to_datetime` и определение частоты `detect_column_frequency`.
+- Реализация отделена на чистое статистическое ядро `analyze_autocorrelation` и API-адаптер порядка `build_eda_correlation`, чтобы не дублировать математику в роутере и тестировать уровни независимо.
+- ACF рассчитывается с FFT; PACF — Yule–Walker (`ywm`). Пользовательский горизонт ограничивается безопасным условием `nlags < N/2`, ответ сохраняет и запрошенный, и фактический максимум.
+- 95% интервалы statsmodels преобразуются в общую визуальную полосу вокруг нуля; значимость определяется по исходному интервалу. Добавлены списки значимых лагов, Ljung–Box и прозрачные стартовые эвристики p/q по непрерывной последовательности значимых лагов от 1.
+
+Backend и контракт API
+- Добавлен `GET /v1/session/dataset/eda-correlation?column=...&max_lags=...` (`max_lags` 1…200), считающий профиль по полному текущему `AnalysisSession.dataframe`.
+- При уверенно найденной временной оси ряд сортируется по времени; возвращаются `order_column`, `order_source` и реальная `frequency`. При нерегулярной частоте интерфейс предупреждает, что лаг — соседний шаг наблюдения, а не фиксированная календарная длительность.
+- Если ось времени не распознана, используется текущий порядок строк с явным предупреждением, без выдуманной даты.
+- Повторяющиеся даты честно блокируют расчёт как вероятная панель: без выбора сущности автоматическая агрегация изменила бы объект анализа.
+- Пропуски, бесконечности и нераспознанные даты не удаляются молча, поскольку сжатие ряда меняет расстояния лагов. Также предусмотрены понятные отказы для N < 8, константного ряда, нечисловой колонки и редкой численной неустойчивости statsmodels.
+- Для сериализации патологических случаев нечисловой Ljung–Box возвращается как `null`, не превращая полезные ACF/PACF в HTTP 500.
+
+Frontend
+- Создан `EdaCorrelationOverview` с тремя представлениями одного API-ответа: «ACF», «PACF» и «Таблица».
+- ACF/PACF визуализируются отдельными графиками по лагам: серые пунктирные 95% границы, синяя обычная и красная значимая корреляция, нулевая ось и tooltip.
+- Таблица объединяет точные ACF/PACF и статус значимости по каждому лагу; повторных запросов при смене вкладок нет.
+- В header «Обзора» показаны исследуемый признак, N, применённая временная сортировка, частота и selector максимального лага (20/40/60/100). Если PACF требует меньшего горизонта, UI объясняет фактическое ограничение.
+- Остановка использует единый платформенный `useTargetColumn`: открытие запрашивает ACF/PACF для session target; смена признака или лага автоматически обновляет результат без локального альтернативного селектора.
+- Добавлены реальные lifecycle-состояния running/done/warning/skipped/error, шесть нижних метрик (N, max lag, значимые ACF/PACF, Ljung–Box p, кандидаты p/q), информативный badge и ручное «Пересчитать корреляцию».
+- «Метрики и алгоритм» и «Полный пайплайн» заменены специализированными материалами об интерпретации ACF/PACF, множественных сравнениях, Ljung–Box, нестационарности, временной сортировке, panel guard и ограничениях p/q-эвристики.
+
+TDD, риски и проверка
+- RED: новый frontend-тест первоначально завершился ожидаемой ошибкой `Cannot find module './EdaCorrelationOverview'`; backend-тесты зафиксированы до реализации, но pytest отсутствует в среде.
+- Focused Jest — 2/2 suites, 18/18 tests PASS: ACF/PACF/таблица, horizon selector, not-applicable/error, общий target, API URL, специализированные описания и refresh.
+- Полный Jest — 45/45 suites, 383/383 tests PASS, 0 snapshots.
+- TypeScript typecheck — PASS для embedded и standalone.
+- Next.js production build embedded — PASS, 13/13 статических страниц.
+- Next.js production build standalone — PASS, 13/13 статических страниц.
+- Из-за дефекта изолированного Node 24 (`uv_resident_set_memory`) production builds запускались с временным process-memory preload; shim после проверки удалён и в задачу не входит.
+- Python `compileall` — PASS для статистического ядра, API-адаптера, схем и роутера; `git diff --check` — PASS.
+- Добавлены 3 unit-сценария (AR(1), safe lag cap, short/missing/constant) и 4 API-сценария (временная сортировка, panel guard, gaps, 404/422). Запустить их в текущем runtime невозможно: отсутствуют `pytest` и `statsmodels`, хотя оба объявлены проектом в `requirements-dev.txt` / `requirements.txt`. Это ограничение среды; тесты предназначены для штатного Python CI.
+
+Изменённые и новые файлы текущей задачи
+- app/eda/correlation.py
+- apps/api/eda_correlation.py (новый)
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- packages/ui/components/EdaCorrelationOverview.tsx (новый)
+- packages/ui/components/EdaCorrelationOverview.test.tsx (новый)
+- packages/ui/components/TsAnalysisEDA.tsx
+- packages/ui/components/TsAnalysisEDA.test.tsx
+- packages/ui/index.ts
+- tests/unit/test_eda_autocorrelation.py (новый)
+- tests/api/test_dataset_eda_correlation.py (новый)
