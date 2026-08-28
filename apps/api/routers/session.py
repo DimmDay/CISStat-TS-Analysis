@@ -12,6 +12,7 @@ standalone-фронтенду, включая неавторизованного
 apps/standalone/components/StandaloneHome.tsx) для sessions-aware
 логики "рабочий стол vs онбординг/маркетинг".
 """
+import math
 import re
 from pathlib import Path
 from typing import Optional
@@ -361,10 +362,12 @@ def get_session_dataset(request: Request, response: Response):
     )
 
 
-def _distribution_hint(skew: float, kurtosis: float) -> str:
+def _distribution_hint(skew: Optional[float], kurtosis: Optional[float]) -> str:
     """Грубая эвристика по форме распределения -- ориентир для аналитика
     на вкладке «Загрузка», НЕ замена KS-теста с фиттингом распределений
     в «Моделировании» (тот делает содержательный статистический вывод)."""
+    if skew is None or kurtosis is None:
+        return "Недостаточно данных для оценки формы распределения"
     if abs(skew) < 0.5 and abs(kurtosis) < 1:
         return "Близко к нормальному"
     if skew >= 0.5:
@@ -405,8 +408,10 @@ def get_dataset_stats(request: Request, response: Response):
             columns_out.append(ColumnStatsOut(name=str(col), non_null_count=non_null_count, stats=None))
             continue
         q1, q3 = float(series.quantile(0.25)), float(series.quantile(0.75))
-        skew = float(series.skew())
-        kurt = float(series.kurt())  # pandas: excess kurtosis (0 = нормальное)
+        raw_skew = float(series.skew())
+        raw_kurt = float(series.kurt())  # pandas: excess kurtosis (0 = нормальное)
+        skew = raw_skew if math.isfinite(raw_skew) else None
+        kurt = raw_kurt if math.isfinite(raw_kurt) else None
         columns_out.append(
             ColumnStatsOut(
                 name=str(col),

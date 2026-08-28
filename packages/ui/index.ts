@@ -72,6 +72,12 @@ export { ValidationSufficiencyOverview } from "./components/ValidationSufficienc
 export { ValidationSufficiencyPipeline } from "./components/ValidationSufficiencyPipeline";
 export type { SufficiencyProfile, SufficiencyGroup, SufficiencyCheck } from "./components/ValidationSufficiencyOverview";
 export { TsAnalysisEDA } from "./components/TsAnalysisEDA";
+export { EdaDescriptiveOverview } from "./components/EdaDescriptiveOverview";
+export type {
+  DescriptiveColumnStats,
+  DescriptiveStatsResponse,
+  DescriptiveStatsValues,
+} from "./components/EdaDescriptiveOverview";
 export { TsAnalysisUpload } from "./components/TsAnalysisUpload";
 export { StructuralClassSchema } from "./components/StructuralClassSchema";
 export { classifyStructure } from "./lib/structuralClass";

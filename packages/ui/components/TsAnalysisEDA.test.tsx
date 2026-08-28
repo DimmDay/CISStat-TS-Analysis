@@ -6,10 +6,77 @@
 // 3. Expandable description box: chevron, overlay, collapse
 
 import "@testing-library/jest-dom";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { TsAnalysisEDA } from "./TsAnalysisEDA";
 
+const STATS_RESPONSE = {
+  min_non_null_for_stats: 2,
+  columns: [
+    {
+      name: "Price",
+      non_null_count: 4,
+      stats: {
+        mean: 25,
+        median: 25,
+        std: 12.91,
+        skewness: 0,
+        kurtosis: -1.2,
+        q1: 17.5,
+        q3: 32.5,
+        iqr: 15,
+        distribution_hint: "Близко к нормальному",
+      },
+    },
+    {
+      name: "Volume",
+      non_null_count: 4,
+      stats: {
+        mean: 250,
+        median: 250,
+        std: 129.1,
+        skewness: 0,
+        kurtosis: -1.2,
+        q1: 175,
+        q3: 325,
+        iqr: 150,
+        distribution_hint: "Близко к нормальному",
+      },
+    },
+  ],
+};
+
+function routeFetch(input: RequestInfo | URL) {
+  const url = String(input);
+  if (url.includes("/dataset/stats")) {
+    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(STATS_RESPONSE) });
+  }
+  if (url.includes("/dataset/distribution")) {
+    const column = new URL(url).searchParams.get("column") ?? "Price";
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({
+        column,
+        non_null_count: 4,
+        min: 10,
+        max: 40,
+        scatter: [{ x: 0, y: 10 }],
+        scatter_sampled: false,
+        scatter_sampling_method: null,
+        scatter_original_count: 4,
+        histogram: [{ x0: 10, x1: 20, count: 2 }],
+        kde: [{ x: 10, y: 0.1 }],
+      }),
+    });
+  }
+  return Promise.reject(new Error(`Unexpected fetch: ${url}`));
+}
+
 describe("TsAnalysisEDA", () => {
+  beforeEach(() => {
+    global.fetch = jest.fn(() => new Promise(() => {}));
+  });
+
   it("renders the module title", () => {
     render(<TsAnalysisEDA />);
     expect(screen.getByText("Разведочный EDA")).toBeInTheDocument();
@@ -25,6 +92,49 @@ describe("TsAnalysisEDA", () => {
     ];
     stepLabels.forEach((label) => {
       expect(screen.getByText(label)).toBeInTheDocument();
+    });
+  });
+
+  it("loads real numeric features and renders the descriptive overview", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+
+    const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" });
+    await waitFor(() => expect(selector).toHaveValue("Price"));
+    expect(screen.getByRole("option", { name: "Volume" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Mean", { selector: "div" }).nextElementSibling).toHaveTextContent("25");
+
+    fireEvent.change(selector, { target: { value: "Volume" } });
+    expect(selector).toHaveValue("Volume");
+    expect(screen.getByText("Mean", { selector: "div" }).nextElementSibling).toHaveTextContent("250");
+  });
+
+  it("shows the specialized metric and pipeline descriptions", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/N = число непустых наблюдений/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Полный пайплайн" })[0]);
+    expect(screen.getByText(/GET \/v1\/session\/dataset\/stats/i)).toBeInTheDocument();
+  });
+
+  it("recalculates the descriptive profile on demand", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+    const statsCallsBefore = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/stats")).length;
+
+    fireEvent.click(screen.getByRole("button", { name: "Пересчитать статистики" }));
+
+    await waitFor(() => {
+      const statsCallsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/stats")).length;
+      expect(statsCallsAfter).toBe(statsCallsBefore + 1);
     });
   });
 

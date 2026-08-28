@@ -107,8 +107,8 @@ class ColumnStatsValues(BaseModel):
     mean: float
     median: float
     std: float
-    skewness: float
-    kurtosis: float
+    skewness: Optional[float] = Field(None, description="Недоступно при N < 3")
+    kurtosis: Optional[float] = Field(None, description="Недоступно при N < 4")
     q1: float
     q3: float
     iqr: float

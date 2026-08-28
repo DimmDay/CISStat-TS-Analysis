@@ -3627,3 +3627,53 @@ TDD и проверка
 - tests/api/test_dataset_outlier_correction.py (новый)
 - tests/unit/test_preprocessing_missing.py (восстановлены тесты, потерянные при коммите Task 54)
 - tests/api/test_dataset_missing_correction.py (восстановлены тесты, потерянные при коммите Task 54)
+
+---
+
+Task ID: 61 — Остановка «Описательные статистики» (Разведочный EDA)
+
+Date: 2026-08-28
+
+Задача
+Спроектировать и реализовать первую реальную остановку вкладки «Разведочный EDA» — «Описательные статистики» — по UX-паттернам остановки «Пропуски»: реальный жизненный цикл запроса, информативный «Обзор», переключаемые представления и специализированные тексты алгоритма/пайплайна. Максимально переиспользовать существующую backend-реализацию.
+
+Синхронизация и исходное состояние
+- По прямому указанию тимлида выполнен `git fetch origin main` и безопасный fast-forward с `f42575e` до `9bb1cc8` (`origin/main`).
+- Перед синхронизацией локальный WIP сохранён в защитный `stash@{0}` с именем `pre-sync-task61-eda-descriptive-2026-08-28`; возвращать его не потребовалось, поскольку актуальный `main` уже содержал соответствующие Task 57–60 изменения.
+- Коммиты и push не выполнялись.
+
+Проектирование и переиспользование backend
+- Существующие `GET /v1/session/dataset/stats` и `GET /v1/session/dataset/distribution?column=...` признаны достаточным backend-контрактом: первый считает профиль по полному текущему `session.dataframe`, второй одним ответом отдаёт scatter, histogram и KDE.
+- Исторического снимка датасета «до предобработки» в `AnalysisSession` нет. Поэтому прежняя mock-формулировка о сравнении до/после удалена: остановка честно показывает текущее преобразованное состояние и не фабрикует отсутствующие данные.
+- Остановка сделана read-only. «Пересчитать статистики» повторно читает актуальный датасет, не мутируя его.
+- При ревизии найден и закрыт крайний случай существующего endpoint: pandas возвращает NaN для skewness при N < 3 и kurtosis при N < 4. Теперь недоступные показатели сериализуются как JSON `null`, схема допускает `Optional[float]`, а эвристика сообщает о недостатке данных вместо формирования невалидного JSON.
+
+Frontend
+- Удалён hardcoded-список признаков; селектор строится из реальных числовых колонок `/dataset/stats` и синхронизирует весь обзор.
+- Создан `EdaDescriptiveOverview` с четырьмя вкладками: «Таблица», «Гистограмма», «KDE», «Разброс».
+- Таблица показывает все числовые признаки и метрики N, Mean, Median, Std, Q1, Q3, IQR, Skewness, Kurtosis и backend-интерпретацию. Признаки с N < 2 не скрываются и получают явное пояснение.
+- Графические вкладки лениво загружают один `/dataset/distribution` для выбранного признака и переиспользуют его при переключении представлений. Кэш привязан к паре `refreshKey + feature`, поэтому смена признака/пересчёт не показывает устаревший график и не порождает дублирующие запросы.
+- Переиспользованы существующие `HistogramDistributionChart`, `KdeDistributionChart`, `ScatterDistributionChart` и `SamplingBadge`, включая LTTB-индикацию для больших scatter-рядов.
+- Добавлены состояния loading/error/no dataset/no numeric features, реальные статусы степпера (done/warning/skipped/error/running), шесть карточек выбранного признака и корректный учёт warning как выполненного исследования в прогрессе.
+- «Метрики и алгоритм» и «Полный пайплайн» содержат специализированное описание расчётов, порогов применимости, API и ограничений интерпретации.
+
+TDD и проверка
+- RED: тесты зафиксировали отсутствие отдельного overview-компонента, hardcoded-селектор, mock-график и отсутствие пересчёта.
+- Focused Jest — 2/2 suites, 16/16 tests PASS: таблица, пустые/ошибочные состояния, переключение вкладок, один запрос распределения, реальные признаки/метрики, смена признака, справка и refresh.
+- Полный Jest — 44/44 suites, 376/376 tests PASS, 0 snapshots. Один параллельный с production builds прогон дал три таймаута в несвязанном `TsAnalysisUpload.test.tsx`; изолированный повторный полный прогон полностью зелёный.
+- TypeScript — PASS для embedded и standalone (`tsc --noEmit` для каждого приложения); временные CSS-shim'ы удалены.
+- Next.js production build embedded — PASS, 13/13 статических страниц.
+- Next.js production build standalone — PASS, 13/13 статических страниц.
+- Python `compileall` — PASS для `apps/api` и нового API-теста.
+- Добавлены 4 API-теста на stats/distribution/404 и безопасную сериализацию коротких колонок. Запустить pytest в текущем runtime невозможно: отсутствуют модули `pytest` и `fastapi`; проектного venv нет. Это ограничение окружения, а не падение тестов.
+- `git diff --check` — PASS.
+
+Изменённые и новые файлы текущей задачи
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- packages/ui/components/EdaDescriptiveOverview.tsx (новый)
+- packages/ui/components/EdaDescriptiveOverview.test.tsx (новый)
+- packages/ui/components/TsAnalysisEDA.tsx
+- packages/ui/components/TsAnalysisEDA.test.tsx
+- packages/ui/index.ts
+- tests/api/test_dataset_eda_descriptive.py (новый)

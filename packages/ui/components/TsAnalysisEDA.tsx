@@ -15,9 +15,14 @@
 //   ├─ACF/PACF────○─┤   [карточки]            [Полный пайплайн]
 //   └────────────────┘                         [Запустить анализ]
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { sessionApiUrl } from "../lib/apiClient";
 import { Button } from "./Button";
+import {
+  EdaDescriptiveOverview,
+  type DescriptiveStatsResponse,
+} from "./EdaDescriptiveOverview";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 
@@ -35,7 +40,7 @@ interface Check {
 
 const CHECKS: Check[] = [
   { id: "descriptive", label: "Описательные статистики", status: "pending", count: null,
-    description: "Таблица mean, std, skew, kurtosis, quantiles по каждому признаку. Сравнение до/после предобработки. Подтверждение, что ряд стал «моделируемым»." },
+    description: "Mean, median, std, квартильный профиль, skewness и excess kurtosis по каждому числовому признаку текущего преобразованного датасета. Таблица и три переключаемые визуализации помогают оценить масштаб, вариативность, асимметрию и тяжесть хвостов перед дальнейшим EDA." },
   { id: "correlation", label: "Корреляция (ACF/PACF)", status: "pending", count: null,
     description: "Автокорреляционная и частная автокорреляционная функции с доверительными интервалами. Ключевой вход для идентификации ARIMA-порядков (p, q). Сезонные ACF/PACF при наличии сезонности." },
   { id: "ih_analysis", label: "IH-анализ", status: "pending", count: null,
@@ -56,11 +61,6 @@ const CHECKS: Check[] = [
     description: "Таблица применимости: модель → требование → статус ряда → вывод. ARIMA, SARIMA, Prophet, LSTM, VAR, XGBoost и др. Автоматическая фильтрация по свойствам ряда." },
   { id: "passport", label: "Паспорт свойств ряда", status: "pending", count: null,
     description: "Финальная сводка конвейера: v1.0 (загрузка) → v1.1 (валидация) → v1.2 (предобработка) → v1.3 (EDA). Включает ACF-структуру, энтропийные метрики, стационарность, рекомендованные модели. Экспорт в Excel." },
-];
-
-// Моковый список числовых признаков (заменить на activeDataset.columns)
-const NUMERIC_FEATURES = [
-  "price", "volume", "open", "high", "low", "close", "adj_close",
 ];
 
 // ── Справка по целям модуля «Разведочный EDA» ────────────────
@@ -94,15 +94,128 @@ const EDA_HELP = `Цели модуля "Разведочный EDA"
 10. Матрица моделей — рекомендация по применимости
 11. Паспорт свойств ряда — сводка v1.0 → v1.3`;
 
+const DESCRIPTIVE_METRICS_DESCRIPTION = `Метрики и алгоритм: Описательные статистики
+
+Остановка рассчитывает профиль каждой числовой колонки по ПОЛНОМУ текущему dataset в AnalysisSession. Это состояние уже включает применённые исправления и преобразования. Исторического снимка «до предобработки» сессия сейчас не хранит, поэтому интерфейс не показывает выдуманное сравнение до/после.
+
+Основные метрики
+1. N = число непустых наблюдений. При N < 2 статистики не вычисляются, а признак остаётся в таблице с честным пояснением.
+2. Mean и Median характеризуют центр. Их заметное расхождение — сигнал асимметрии или влияния экстремальных значений.
+3. Std — выборочное стандартное отклонение (pandas, ddof=1), мера абсолютного разброса в единицах признака.
+4. Q1 и Q3 — 25-й и 75-й процентили; IQR = Q3 − Q1 — устойчивый к выбросам разброс центральных 50% наблюдений.
+5. Skewness — коэффициент асимметрии: около 0 — симметрия; > 0 — длинный правый хвост; < 0 — длинный левый хвост. Доступен при N ≥ 3.
+6. Kurtosis — excess kurtosis (у нормального распределения 0): положительное значение указывает на более тяжёлые хвосты, отрицательное — на более плоскую форму. Доступен при N ≥ 4.
+
+Эвристика формы распределения
+- |skew| < 0.5 и |kurtosis| < 1 → близко к нормальному;
+- skew ≥ 0.5 / ≤ −0.5 → правосторонняя / левосторонняя асимметрия;
+- при умеренной асимметрии kurtosis ≥ 1 → тяжёлые хвосты, иначе плосковершинная форма.
+
+Эта эвристика — навигационный сигнал, а не статистический тест нормальности. Формальные тесты и QQ-plot относятся к отдельной остановке «Распределение».`;
+
+const DESCRIPTIVE_PIPELINE_DESCRIPTION = `Полный пайплайн: описательные статистики
+
+1. GET /v1/session/dataset/stats читает полный текущий session.dataframe; превью 5+5 строк не используется.
+2. Backend выбирает все числовые колонки и отдельно удаляет NaN только на время расчёта каждой колонки.
+3. Для N ≥ 2 pandas вычисляет mean, median, sample std, Q1, Q3 и IQR; skewness доступна при N ≥ 3, excess kurtosis — при N ≥ 4. Недоступные показатели формы возвращаются как null. Признаки с N < 2 не исчезают: возвращаются с stats=null и фактическим N.
+4. Backend добавляет объяснимую эвристику формы распределения по skewness/kurtosis.
+5. Выбор признака в левой колонке синхронизирует таблицу, нижние метрики и вкладки визуализации.
+6. При первом открытии графической вкладки GET /v1/session/dataset/distribution?column=... возвращает scatter, гистограмму и KDE для выбранного признака. Один ответ переиспользуется при переключении вкладок.
+7. Scatter сэмплируется LTTB только для больших рядов с сохранением экстремумов; гистограмма и KDE всегда считаются по полному выбранному диапазону.
+8. Остановка read-only: она диагностирует текущее состояние и не мутирует датасет. Кнопка «Пересчитать статистики» повторно читает данные после преобразований предыдущих этапов.`;
+
+async function responseDetail(response: Response): Promise<string> {
+  try {
+    const body = await response.json();
+    if (typeof body?.detail === "string") return body.detail;
+  } catch {
+    // Нейтральная ошибка ниже покрывает ответ без JSON.
+  }
+  return `Не удалось загрузить описательные статистики (HTTP ${response.status})`;
+}
+
+function formatMetric(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return "—";
+  const normalized = Object.is(value, -0) ? 0 : value;
+  return normalized.toLocaleString("ru-RU", { maximumFractionDigits: 3 });
+}
+
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisEDA() {
   const [activeCheckId, setActiveCheckId] = useState(CHECKS[0].id);
-  const [activeFeature, setActiveFeature] = useState(NUMERIC_FEATURES[0]);
+  const [activeFeature, setActiveFeature] = useState("");
   const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | null>(null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
+
+  // ── Остановка «Описательные статистики»: реальные данные ──
+  // Переиспользуем endpoint вкладки «Загрузка»: он уже считает профиль по
+  // полному session.dataframe и честно сохраняет разреженные колонки.
+  const [descriptiveProfile, setDescriptiveProfile] = useState<DescriptiveStatsResponse | null>(null);
+  const [descriptiveLoading, setDescriptiveLoading] = useState(true);
+  const [descriptiveNoDataset, setDescriptiveNoDataset] = useState(false);
+  const [descriptiveError, setDescriptiveError] = useState<string | null>(null);
+  const [descriptiveRefreshKey, setDescriptiveRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setDescriptiveLoading(true);
+    setDescriptiveError(null);
+    setDescriptiveNoDataset(false);
+    void (async () => {
+      try {
+        const response = await fetch(sessionApiUrl("/dataset/stats"), { credentials: "include" });
+        if (response.status === 404) {
+          if (active) {
+            setDescriptiveNoDataset(true);
+            setDescriptiveProfile(null);
+            setActiveFeature("");
+          }
+          return;
+        }
+        if (!response.ok) throw new Error(await responseDetail(response));
+        const data: DescriptiveStatsResponse = await response.json();
+        if (active) {
+          setDescriptiveProfile(data);
+          setActiveFeature((current) =>
+            data.columns.some((item) => item.name === current)
+              ? current
+              : data.columns[0]?.name ?? "",
+          );
+        }
+      } catch (caught) {
+        if (active) {
+          setDescriptiveError(
+            caught instanceof Error ? caught.message : "Не удалось загрузить описательные статистики",
+          );
+        }
+      } finally {
+        if (active) setDescriptiveLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [descriptiveRefreshKey]);
+
+  const insufficientColumns = descriptiveProfile?.columns.filter((item) => item.stats === null).length ?? 0;
+  const descriptiveStatus: CheckStatus = descriptiveLoading
+    ? "running"
+    : descriptiveError
+    ? "error"
+    : descriptiveNoDataset || descriptiveProfile?.columns.length === 0
+    ? "skipped"
+    : insufficientColumns > 0
+    ? "warning"
+    : descriptiveProfile
+    ? "done"
+    : "pending";
+
+  const checks = useMemo<Check[]>(() => CHECKS.map((check) =>
+    check.id === "descriptive"
+      ? { ...check, status: descriptiveStatus, count: insufficientColumns }
+      : check,
+  ), [descriptiveStatus, insufficientColumns]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -122,11 +235,16 @@ export function TsAnalysisEDA() {
     }
   }, [descriptionExpanded, handleOutsideClick]);
 
-  const doneCount = CHECKS.filter((c) => c.status === "done").length;
-  const progressPct = Math.round((doneCount / CHECKS.length) * 100);
-  const activeCheck = CHECKS.find((c) => c.id === activeCheckId)!;
+  const applicableChecks = checks.filter((check) => check.status !== "skipped");
+  const evaluatedCount = applicableChecks.filter(
+    (check) => check.status === "done" || check.status === "warning",
+  ).length;
+  const progressPct = applicableChecks.length > 0
+    ? Math.round((evaluatedCount / applicableChecks.length) * 100)
+    : 100;
+  const activeCheck = checks.find((c) => c.id === activeCheckId)!;
 
-  const orderedChecks = [...CHECKS].sort((a, b) =>
+  const orderedChecks = [...checks].sort((a, b) =>
     a.id === activeCheckId ? -1 : b.id === activeCheckId ? 1 : 0
   );
 
@@ -158,6 +276,11 @@ export function TsAnalysisEDA() {
   const descriptionContent = (() => {
     if (descriptionSection === "help") return EDA_HELP;
     if (!descriptionSection) return null;
+    if (activeCheckId === "descriptive") {
+      return descriptionSection === "metrics"
+        ? DESCRIPTIVE_METRICS_DESCRIPTION
+        : DESCRIPTIVE_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -168,6 +291,11 @@ export function TsAnalysisEDA() {
   const descriptionSubtitle = (() => {
     if (descriptionSection === "help") return "Справка — Цели модуля и результаты EDA";
     if (!descriptionSection) return "Выберите раздел в боковой панели";
+    if (activeCheckId === "descriptive") {
+      return descriptionSection === "metrics"
+        ? "Метрики и алгоритм — Описательные статистики"
+        : "Полный пайплайн — Описательные статистики";
+    }
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
   })();
@@ -200,24 +328,30 @@ export function TsAnalysisEDA() {
 
         {/* Селектор числового признака */}
         <div>
-          <label className="text-[11px] text-neutral-500 block mb-1">
+          <label htmlFor="eda-active-feature" className="text-[11px] text-neutral-500 block mb-1">
             Исследуемый признак:
           </label>
           <select
+            id="eda-active-feature"
             value={activeFeature}
             onChange={(e) => setActiveFeature(e.target.value)}
+            disabled={descriptiveLoading || !descriptiveProfile?.columns.length}
             className="w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
           >
-            {NUMERIC_FEATURES.map((f) => (
-              <option key={f} value={f}>{f}</option>
-            ))}
+            {descriptiveProfile?.columns.length ? (
+              descriptiveProfile.columns.map((item) => (
+                <option key={item.name} value={item.name}>{item.name}</option>
+              ))
+            ) : (
+              <option value="">Нет числовых признаков</option>
+            )}
           </select>
         </div>
 
         {/* Прогресс */}
         <div className="flex items-center gap-2">
           <p className="text-[11px] text-neutral-500 tabular-nums">
-            {doneCount}/{CHECKS.length}
+            {evaluatedCount}/{applicableChecks.length}
           </p>
           <div className="flex-1 bg-neutral-200 rounded-full h-1.5">
             <div
@@ -229,7 +363,7 @@ export function TsAnalysisEDA() {
 
         {/* Степпер: прямоугольные карточки с текстом + иконка */}
         <div className="flex flex-col gap-1.5">
-          {CHECKS.map((check) => (
+          {checks.map((check) => (
             <button
               key={check.id}
               onClick={() => {
@@ -315,17 +449,46 @@ export function TsAnalysisEDA() {
             Визуализация результатов исследования.
           </p>
 
-          <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
-            [ график для «{activeCheck.label}» ]
-          </div>
+          {activeCheckId === "descriptive" ? (
+            <EdaDescriptiveOverview
+              profile={descriptiveProfile}
+              activeFeature={activeFeature}
+              loading={descriptiveLoading}
+              error={descriptiveError}
+              noDataset={descriptiveNoDataset}
+              refreshKey={descriptiveRefreshKey}
+            />
+          ) : (
+            <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
+              [ график для «{activeCheck.label}» ]
+            </div>
+          )}
 
-          <div className="grid grid-cols-4 gap-3 mt-4">
-            <Metric label="Строк" value="200" />
-            <Metric label="Признаков" value="8" />
-            <Metric label="H(ряд)" value="2.14" />
-            <Metric label="ADF p" value="0.03" />
-            <Metric label="Частота" value="D" />
-          </div>
+          {activeCheckId === "descriptive" ? (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+              {(() => {
+                const selected = descriptiveProfile?.columns.find((item) => item.name === activeFeature) ?? null;
+                return (
+                  <>
+                    <Metric label="N" value={selected ? String(selected.non_null_count) : "—"} />
+                    <Metric label="Mean" value={formatMetric(selected?.stats?.mean)} />
+                    <Metric label="Median" value={formatMetric(selected?.stats?.median)} />
+                    <Metric label="Std" value={formatMetric(selected?.stats?.std)} />
+                    <Metric label="Skewness" value={formatMetric(selected?.stats?.skewness)} />
+                    <Metric label="Kurtosis" value={formatMetric(selected?.stats?.kurtosis)} />
+                  </>
+                );
+              })()}
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-3 mt-4">
+              <Metric label="Строк" value="200" />
+              <Metric label="Признаков" value="8" />
+              <Metric label="H(ряд)" value="2.14" />
+              <Metric label="ADF p" value="0.03" />
+              <Metric label="Частота" value="D" />
+            </div>
+          )}
         </div>
       </section>
 
@@ -346,15 +509,49 @@ export function TsAnalysisEDA() {
               <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
 
               {/* Бейдж результата — после описания */}
-              {check.count !== null && check.count > 0 && (
-                <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
-                  ⚠️ Найдено {check.count} нарушений
-                </p>
-              )}
-              {check.status === "done" && (
-                <p className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
-                  Исследование завершено
-                </p>
+              {check.id === "descriptive" ? (
+                <>
+                  {check.status === "running" && (
+                    <p role="status" className="text-sm text-brand bg-brand-light rounded px-3 py-2 mb-2">
+                      Рассчитываем статистики по полному датасету…
+                    </p>
+                  )}
+                  {check.status === "error" && (
+                    <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">
+                      {descriptiveError ?? "Ошибка расчёта статистик"}
+                    </p>
+                  )}
+                  {check.status === "skipped" && (
+                    <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                      {descriptiveNoDataset
+                        ? "Нет активного датасета"
+                        : "В датасете нет числовых признаков"}
+                    </p>
+                  )}
+                  {check.status === "warning" && check.count !== null && (
+                    <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
+                      Для {check.count} {check.count === 1 ? "признака" : "признаков"} недостаточно наблюдений
+                    </p>
+                  )}
+                  {check.status === "done" && (
+                    <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
+                      Рассчитано признаков: {descriptiveProfile?.columns.length ?? 0}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  {check.count !== null && check.count > 0 && (
+                    <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
+                      ⚠️ Найдено {check.count} нарушений
+                    </p>
+                  )}
+                  {check.status === "done" && (
+                    <p className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
+                      Исследование завершено
+                    </p>
+                  )}
+                </>
               )}
 
               {/* Кнопка «Метрики и алгоритм» */}
@@ -381,7 +578,17 @@ export function TsAnalysisEDA() {
                 Полный пайплайн
               </button>
 
-              <Button>Запустить анализ ({check.label.toLowerCase()})</Button>
+              {check.id === "descriptive" ? (
+                <Button
+                  type="button"
+                  onClick={() => setDescriptiveRefreshKey((key) => key + 1)}
+                  disabled={descriptiveLoading}
+                >
+                  {descriptiveLoading ? "Рассчитываем…" : "Пересчитать статистики"}
+                </Button>
+              ) : (
+                <Button>Запустить анализ ({check.label.toLowerCase()})</Button>
+              )}
             </article>
           ))}
         </div>
