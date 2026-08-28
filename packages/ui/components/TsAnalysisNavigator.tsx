@@ -52,6 +52,7 @@ import {
   type NavigatorStop,
 } from "../lib/navigator-stops";
 import { UploadAutoPreviewPipeline } from "./UploadAutoPreviewPipeline";
+import { NavigatorChartPreview } from "./NavigatorChartPreview";
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -283,11 +284,20 @@ export function TsAnalysisNavigator() {
               (id="upload" + id="preview") рендерим блок-схему «Пайплайн
               автопревью» (UploadAutoPreviewPipeline) — статичную
               информационную схему последовательности шагов, которые
-              бэкенд выполняет сразу после загрузки файла. Для остальных
-              пунктов — текстовая заглушка (своя визуализация для каждого
-              пункта в будущих задачах). */}
+              бэкенд выполняет сразу после загрузки файла.
+
+              Задача 2026-08-29: для пары «Загрузка» + «График»
+              (id="upload" + id="chart") рендерим статичный линейный график
+              признака volume синтетического датасета demo_finance_ohlcv.csv
+              (NavigatorChartPreview). График НЕ зависит от сессии/сети —
+              отображается при любых условиях, даже если сам датасет удалён.
+
+              Для остальных пунктов — текстовая заглушка (своя визуализация
+              для каждого пункта в будущих задачах). */}
           {activeStopId === "upload" && activeItemId === "preview" ? (
             <UploadAutoPreviewPipeline />
+          ) : activeStopId === "upload" && activeItemId === "chart" ? (
+            <NavigatorChartPreview />
           ) : (
             <div
               className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"

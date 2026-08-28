@@ -206,3 +206,74 @@ export function demoDatasetToFile(dataset: DemoDataset): File {
   const csv = dataset.generateCsv();
   return new File([csv], dataset.fileName, { type: "text/csv" });
 }
+
+// ── Хелпер для окна «Обзор» остановки «График» (Навигатор) ────────────
+//
+// Задача 2026-08-29: в окне «Обзор» при активации пункта «График» (id="chart")
+// секции «Этапы модуля» остановки «Загрузка» должен отображаться СТАТИЧНЫЙ
+// линейный график признака `volume` синтетического датасета demo_finance_ohlcv.csv
+// (id="finance_ohlcv" в DEMO_DATASETS). График обязан работать ПРИ ЛЮБЫХ
+// УСЛОВИЯХ — даже если сам датасет удалён из сессии. Поэтому данные берутся
+// из детерминированного клиентского генератора (НЕ из сети/сессии).
+//
+// Чтобы не дублировать генератор, переиспользуем уже существующий
+// `generateFinanceOhlcv()` (детерминированный mulberry32 seed 20260821,
+// 500 торговых дней) и парсим его же CSV — так данные графика всегда
+// совпадают с тем демо-датасетом, который пользователь может загрузить.
+
+export interface NavigatorChartPoint {
+  /** ISO-дата (YYYY-MM-DD). */
+  date: string;
+  /** Значение признака volume. */
+  volume: number;
+}
+
+/**
+ * Возвращает детерминированный ряд {date, volume} из синтетического датасета
+ * demo_finance_ohlcv.csv (500 торговых дней, без выходных).
+ *
+ * Источник: `generateFinanceOhlcv()` (тот же seed, что и у демо-датасета
+ * «Котировки инструмента (OHLCV)» в окне «Загрузка»). Вызов без побочных
+ * эффектов, идемпотентный — безопасно оборачивать в useMemo / вызывать
+ * многократно.
+ *
+ * Реализован как простой парсинг CSV, а не как второй генератор, чтобы
+ * исключить расхождение между числом точек графика и числом строк
+ * демо-датасета: если генератор `generateFinanceOhlcv` изменится,
+ * график автоматически подстроится.
+ */
+export function getDemoFinanceOhlcvVolumeSeries(): NavigatorChartPoint[] {
+  // Находим датасет по id — это страхует от хардкода fileName, который
+  // может измениться (демо-датасеты эволюционируют по решению тимлида).
+  const dataset = DEMO_DATASETS.find((d) => d.id === "finance_ohlcv");
+  if (!dataset) {
+    // Не должно случаться — датасет объявлен в DEMO_DATASETS статически.
+    // Возвращаем пустой массив вместо исключения: статичный график не
+    // должен валить рендер страницы Навигатор даже при структурных
+    // изменениях demoDatasets.ts (graceful degradation).
+    return [];
+  }
+
+  const csv = dataset.generateCsv();
+  const lines = csv.split("\n");
+  // Первая строка — заголовок: date,open,high,low,close,volume
+  // volume находится в колонке с индексом 5.
+  const header = lines[0].split(",");
+  const volumeIdx = header.indexOf("volume");
+  const dateIdx = header.indexOf("date");
+  // Если по какой-то причине структура CSV изменилась — возвращаем пустой
+  // массив, чтобы компонент показал заглушку вместо падения.
+  if (volumeIdx < 0 || dateIdx < 0) return [];
+
+  const points: NavigatorChartPoint[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line) continue;
+    const cols = line.split(",");
+    const date = cols[dateIdx];
+    const volume = Number(cols[volumeIdx]);
+    if (!date || !Number.isFinite(volume)) continue;
+    points.push({ date, volume });
+  }
+  return points;
+}

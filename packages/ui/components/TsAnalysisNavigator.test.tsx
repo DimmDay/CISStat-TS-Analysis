@@ -8,7 +8,7 @@
 
 import React from "react";
 import "@testing-library/jest-dom";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, fireEvent } from "@testing-library/react";
 import { TsAnalysisNavigator } from "./TsAnalysisNavigator";
 import { NAVIGATOR_STOPS } from "../lib/navigator-stops";
 import { AppShellProvider } from "../context/AppShellContext";
@@ -118,6 +118,78 @@ describe("TsAnalysisNavigator", () => {
       expect(cols[0].className).toContain("w-60");
       expect(cols[1].className).toContain("w-80");
       expect(cols[2].className).toContain("flex-1");
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Задача 2026-08-29 — окно «Обзор» остановки «График» (upload+chart)
+  // рендерит статичный линейный график demo_finance_ohlcv.csv по volume.
+  // Требование тимлида: график СТАТИЧНЫЙ, отображается ПРИ ЛЮБЫХ УСЛОВИЯХ,
+  // даже если сам датасет удалён. Значит — НЕ зависит от activeDataset.
+  // ─────────────────────────────────────────────────────────────────────
+  describe("upload + chart: static line chart in Overview", () => {
+    // По умолчанию активна пара upload+preview (первый item), поэтому
+    // переключаемся на chart вручную через клик по item-карточке.
+    // ВАЖНО: используем fireEvent.click() вместо нативного .click() —
+    // React synthetic events в jsdom не всегда срабатывают через
+    // нативный Element.click(), особенно на <article> элементах.
+    function activateChartItem() {
+      const card = screen.getByText("График");
+      const article = card.closest("article")!;
+      fireEvent.click(article);
+    }
+
+    it("renders a recharts chart frame when upload + chart is active", () => {
+      renderNavigator();
+      activateChartItem();
+      const c3 = getColumns()[2];
+      // within() возвращает только By* функции, без querySelector —
+      // используем нативный querySelector у HTMLElement.
+      expect(c3.querySelector(".recharts-responsive-container")).toBeTruthy();
+    });
+
+    it("renders the static dataset label demo_finance_ohlcv.csv in Overview", () => {
+      renderNavigator();
+      activateChartItem();
+      // Имя файла встречается в шапке графика и в подписи — минимум 1.
+      const matches = screen.getAllByText(/demo_finance_ohlcv\.csv/i);
+      expect(matches.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("renders the feature label volume in Overview", () => {
+      renderNavigator();
+      activateChartItem();
+      expect(screen.getByText(/volume/i)).toBeInTheDocument();
+    });
+
+    it("does NOT show the generic placeholder text for chart item", () => {
+      renderNavigator();
+      activateChartItem();
+      // Заглушка «[ область графика/таблицы/блок-схемы для «График» ]»
+      // должна быть заменена статичным графиком.
+      expect(screen.queryByText(/область графика\/таблицы\/блок-схемы/)).toBeNull();
+    });
+
+    it("renders the static chart WITHOUT activeDataset (works if dataset is deleted)", () => {
+      // AppShellProvider по умолчанию не предоставляет activeDataset —
+      // если бы график зависел от сессии, тест бы падал на empty-state.
+      renderNavigator();
+      activateChartItem();
+      expect(screen.getAllByText(/demo_finance_ohlcv\.csv/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByText(/нет данных/i)).toBeNull();
+    });
+
+    it("still shows generic placeholder for OTHER upload items (no regression)", () => {
+      renderNavigator();
+      // По умолчанию активен upload + preview (первый item) —
+      // для preview рендерится UploadAutoPreviewPipeline, не заглушка.
+      // Переключимся на «Подтверждение автоопределения» (3-й item),
+      // для которого НЕТ специализированного Overview-компонента.
+      const card = screen.getByText("Подтверждение автоопределения");
+      fireEvent.click(card.closest("article")!);
+      expect(
+        screen.getByText(/область графика\/таблицы\/блок-схемы/)
+      ).toBeInTheDocument();
     });
   });
 

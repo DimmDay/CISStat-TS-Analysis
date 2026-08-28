@@ -263,3 +263,22 @@ export { RulesManagementPanel } from "./components/RulesManagementPanel";
 // переиспользования в документации/onboarding-туре.
 export { UploadAutoPreviewPipeline, PIPELINE_STEPS } from "./components/UploadAutoPreviewPipeline";
 export type { PipelineStep } from "./components/UploadAutoPreviewPipeline";
+
+// Статичный линейный график для окна «Обзор» остановки «График»
+// (id="chart") секции «Этапы модуля» остановки «Загрузка» (Task 2026-08-29).
+// Рендерится только при активной паре «Загрузка» + «График»
+// (см. TsAnalysisNavigator.tsx). Чисто презентационный, БЕЗ зависимости
+// от useAppShell / activeDataset / сети — данные берутся из
+// детерминированного генератора демо-датасета demo_finance_ohlcv.csv
+// (getDemoFinanceOhlcvVolumeSeries). Отображается при любых условиях,
+// даже если сам датасет удалён из сессии.
+export { NavigatorChartPreview } from "./components/NavigatorChartPreview";
+export {
+  NAVIGATOR_CHART_PREVIEW_DATASET_ID,
+  NAVIGATOR_CHART_PREVIEW_DATASET_FILE,
+  NAVIGATOR_CHART_PREVIEW_FEATURE,
+} from "./components/NavigatorChartPreview";
+export {
+  getDemoFinanceOhlcvVolumeSeries,
+} from "./lib/demoDatasets";
+export type { NavigatorChartPoint } from "./lib/demoDatasets";
