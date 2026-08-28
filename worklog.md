@@ -3792,3 +3792,105 @@ TDD, риски и проверка
 - packages/ui/index.ts
 - tests/unit/test_eda_autocorrelation.py (новый)
 - tests/api/test_dataset_eda_correlation.py (новый)
+
+---
+
+Task ID: 64 — Остановка «IH-анализ» во вкладке «Разведочный EDA»
+
+Date: 2026-08-28
+
+Задача
+Спроектировать и реализовать реальную остановку «IH-анализ» по UX-паттернам «Описательных статистик» и «Пропусков», исследовать и проверить существующий backend, изучить статью https://habr.com/ru/articles/1040980/ и активно использовать переключаемые визуализации «Обзора».
+
+Состояние репозитория
+- Работа продолжена на `HEAD f63da68` поверх незакоммиченной Task 63; новая синхронизация не выполнялась, поскольку прямого указания тимлида на sync в текущей задаче не было.
+- Защитные stash Task 61/63 сохранены без изменений. Коммиты и push не выполнялись.
+
+Исследование метода и backend
+- Статья и связанные официальные репозитории `ih-prep`, `ih-lib`, `ih-coverage` подтвердили фактический контракт IH: H(Y), H(Y|X), I(X;Y)=H(Y)−H(Y|X) и нормированная мера R(Y|X)=I(X;Y)/H(Y), после унифицированной дискретизации чисел, категорий и пропусков.
+- Прежнее frontend-описание ошибочно смешивало IH с Sample/Approximate/Permutation Entropy и Transfer Entropy. Оно заменено на поддерживаемый Information-Entropy метод; неподдерживаемые обещания удалены.
+- В `app/eda/ih_analysis.py` уже существовали формулы Shannon/MI/R, дискретизация, парные комбинации и рекомендации, но API отсутствовал, а остановка standalone была mock.
+- Проверка выявила дефекты backend: категориальный X с >10 значениями ошибочно передавался в `qcut/pd.cut`; параметр `min_samples` не ограничивал фактическое число интервалов; короткий numeric fallback превращал каждое значение в категорию и мог давать искусственный R≈1; реальный пропуск в low-cardinality признаке превращался в строку `nan`; комбинированный фактор синергии повторно дискретизировался как numeric и ломался при >10 состояний; MI рассчитывалась медленным двойным Python-циклом; оценка не контролировала конечновыборочное/кардинальное смещение.
+
+Исправление статистического ядра
+- Публичные функции legacy сохранены, но расчёт разделён на подготовку признака и метрики по уже дискретным X/Y, что исключило повторную дискретизацию комбинаций.
+- Категории любой кардинальности остаются категориями; пропуск получает отдельный `_MISSING_`; бесконечности numeric трактуются как отсутствующие значения.
+- Для количественных признаков используется квантильная дискретизация с желаемым числом интервалов ≈2/sharpness и реальным ограничением `floor(N/min_samples)`. Короткий ряд получает общий интервал вместо уникальной категории на каждое число.
+- Mutual information переведена с двойного Python-цикла/crosstab на factorize+bincount contingency matrix; формулы и диапазон R=[0;1] сохранены.
+- Добавлен воспроизводимый перестановочный тест: средний chance-baseline, R_adjusted=max(0,R−baseline) и empirical p-value.
+- Для пар введены две раздельные метрики: `incremental_gain = R(X1,X2;Y)−max(R1,R2)` и `interaction_delta = R(X1,X2;Y)−R1−R2`. Legacy-поля `synergy/synergy_pct` сохранены для Streamlit-совместимости.
+
+Backend API
+- Добавлен адаптер `apps/api/eda_ih.py` и endpoint `GET /v1/session/dataset/eda-ih` с параметрами `column`, `sharpness`, `min_samples`, `top_k`, `max_lag`, `permutations` и строгими Query-границами.
+- Общий «Исследуемый признак» используется как цель Y; факторы X — остальные числовые/категориальные колонки, кроме временной оси, плюс лаги цели Y[t−1]…Y[t−k].
+- Временная колонка определяется существующим контентным детектором, числовые годы безопасно конвертируются и ряд сортируется по времени. Без уверенной даты используется текущий порядок с предупреждением.
+- При панельных дублях дат contemporaneous IH сохраняется, но лаги отключаются: без выбора сущности они смешали бы разные ряды.
+- Для top-K выполняются 49 перестановок по умолчанию и Benjamini–Hochberg FDR; ответ возвращает q-value/significant, энтропии, MI, raw/adjusted R, baseline и размеры дискретизации.
+- Для максимум шести лучших обычных факторов рассчитываются пары; lag-комбинации исключены из перебора из-за различной длины выровненных выборок.
+- Ответ также содержит условную матрицу P(Y-bin|X-bin), рекомендации, сведения о порядке/частоте и честные `applicable=false/reason` для короткой или константной цели/отсутствия факторов.
+
+Frontend и «Обзор»
+- Создан `EdaIhOverview` с пятью представлениями одного API-ответа: «Рейтинг», «Карта метрик», «Синергия», «Условная карта», «Таблица».
+- Рейтинг сравнивает raw R и R после permutation baseline; FDR-значимые adjusted-бары визуально выделяются.
+- Карта метрик показывает H(X), MI, R и R adj. как числовую heatmap; синергия сравнивает практическую добавку и interaction delta; условная карта визуализирует строко-нормированное P(Y|X); таблица раскрывает N, тип, бины, p/q и все метрики.
+- В header добавлены controls sharpness, min observations per interval, top-K и число лагов. Отдельного target-селектора нет: используется единый `useTargetColumn` платформы.
+- Добавлены реальные состояния running/done/warning/skipped/error, ручной refresh, автоматический пересчёт при смене цели/параметров и шесть нижних карточек: N, H(Y), top R, top R adj., число значимых q≤0,05, лучший incremental ΔR.
+- Специализированные «Метрики и алгоритм»/«Полный пайплайн» объясняют формулы, дискретизацию, permutation/FDR, временные лаги, panel guard и ограничения причинной трактовки.
+
+TDD, производительность и проверка
+- RED: компонентный тест зафиксировал ожидаемое отсутствие `EdaIhOverview`; unit/API-контракты написаны до реализации.
+- Focused Jest — 2/2 suites, 19/19 tests PASS.
+- Полный Jest — 46/46 suites, 388/388 tests PASS, 0 snapshots.
+- TypeScript typecheck — PASS для embedded и standalone; временные CSS declarations удалены.
+- Next.js production build embedded — PASS, 13/13 статических страниц.
+- Next.js production build standalone — PASS, 13/13 статических страниц; временные retry загрузки Inter завершились успешно.
+- Python `compileall`, Pydantic-валидация реального IH-ответа и прямые numerical smoke-сценарии — PASS. Проверены нелинейная U-связь, лаги, временная сортировка, высокая кардинальность, синергия >10 состояний, min_samples cap, missing-category, constant target и panel guard.
+- Benchmark: 50 000 строк, 8 факторов, top-8 и 49 перестановок — около 5,93 с в текущем runtime.
+- Полноценный pytest/TestClient прогон в среде недоступен: отсутствует `pytest`/`fastapi`; тесты добавлены для штатного Python CI. Это ограничение runtime, не падение тестов.
+- `git diff --check` — PASS. Временные memory/CSS shims удалены.
+
+Изменённые и новые файлы текущей задачи
+- app/eda/ih_analysis.py
+- apps/api/eda_ih.py (новый)
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- packages/ui/components/EdaIhOverview.tsx (новый)
+- packages/ui/components/EdaIhOverview.test.tsx (новый)
+- packages/ui/components/TsAnalysisEDA.tsx
+- packages/ui/components/TsAnalysisEDA.test.tsx
+- packages/ui/index.ts
+- tests/unit/test_ih_analysis.py
+- tests/api/test_dataset_eda_ih.py (новый)
+
+---
+
+Task ID: 65 — Исправление падающего upstream Jest-suite IH/EDA
+
+Date: 2026-08-28
+
+Задача
+Исправить падение upstream-suite, связанное с невалидным относительным импортом `import { Metric } from "./Metric"` из файлов, ошибочно размещённых в `tests/api/`.
+
+Синхронизация и диагностика
+- Локальный checkout безопасно синхронизирован fast-forward с `origin/main`: `f63da68` → `bee091a`; незакоммиченные материалы Task 63/64 предварительно сохранены в защитный stash и необходимые отсутствующие upstream-файлы восстановлены.
+- На чистой копии `bee091a` воспроизведено падение `tests/api/TsAnalysisEDA.test.tsx`: копия `tests/api/TsAnalysisEDA.tsx` имела семь неразрешимых импортов (`../lib/apiClient`, `../hooks/useTargetColumn`, `./Button`, `./EdaDescriptiveOverview`, `./EdaCorrelationOverview`, `./Metric`, `./StatusIcon`).
+- Установлена первопричина: commit Task 64 случайно добавил в `tests/api/` четыре точных дубликата канонических UI-файлов из `packages/ui/components/`. Исправление только `./Metric` оставило бы suite сломанным на следующем относительном импорте.
+
+Исправление
+- Удалены ошибочные дубликаты `tests/api/EdaIhOverview.test.tsx`, `tests/api/EdaIhOverview.tsx`, `tests/api/TsAnalysisEDA.test.tsx`, `tests/api/TsAnalysisEDA.tsx`.
+- Канонические компоненты и тесты в `packages/ui/components/` не изменялись; backend API-тесты в `tests/api/test_*.py` сохранены.
+
+Проверка
+- Focused Jest: 2/2 suites, 19/19 tests PASS (`packages/ui/components/EdaIhOverview.test.tsx`, `packages/ui/components/TsAnalysisEDA.test.tsx`).
+- Полный Jest: 47/47 suites, 409/409 tests PASS, 0 snapshots.
+- TypeScript typecheck: PASS для embedded и standalone.
+- Next.js production build: PASS для embedded и standalone, по 13/13 статических страниц.
+- Для build применялись временные локальные shims Google Fonts и Node 24 `uv_resident_set_memory`; после проверки удалены и в задачу не входят.
+- Коммиты и push не выполнялись.
+
+Изменённые файлы текущей задачи
+- tests/api/EdaIhOverview.test.tsx (удалён ошибочный дубликат)
+- tests/api/EdaIhOverview.tsx (удалён ошибочный дубликат)
+- tests/api/TsAnalysisEDA.test.tsx (удалён ошибочный дубликат)
+- tests/api/TsAnalysisEDA.tsx (удалён ошибочный дубликат)
+- worklog.md
