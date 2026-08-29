@@ -4059,3 +4059,41 @@ Frontend
 - tests/unit/test_eda_seasonality_adapter.py (новый)
 - tests/api/test_dataset_eda_seasonality.py (новый)
 
+---
+
+Task ID: 69 — Восстановление production-модуля исправления выбросов
+
+Date: 2026-08-29
+
+Задача
+Исправить независимый upstream-дефект commit `a0dbc60`: файл `apps/api/outliers_correction.py` был полностью заменён API-тестом, импортировал `apps.api.main` и создавал циклическую зависимость при импорте FastAPI-приложения.
+
+Состояние репозитория и диагностика
+- Работа выполнена на текущем `HEAD a0dbc60` поверх незакоммиченной Task 68; новая синхронизация не выполнялась, поскольку в текущей задаче её не запрашивали.
+- Сравнение с родителем `5937351` подтвердило, что production-реализация была затёрта точной копией `tests/api/test_dataset_outlier_correction.py`: модуль импортировал `pytest`, `TestClient` и `apps.api.main`, создавал client/fixtures и объявлял тесты вместо функций, которые импортирует session router.
+- Восстановление только родительской версии было бы неполным: актуальные router/schema/tests из Task 65 уже требуют `stats_before`, `stats_after` и `outlier_boxplot_groups`.
+
+Исправление
+- Восстановлены production-функции `detect_mask_on_residual`, `preview_outlier_corrections` и `outlier_correction_profile` без импорта FastAPI-приложения и тестовых библиотек.
+- Сохранены четыре стратегии платформы: удаление строк, кэпирование, замена медианой и флаг; проверки неизвестных/нечисловых/повторяющихся колонок и безопасная работа на глубокой копии.
+- Сохранён режим обнаружения по STL-остатку с выравниванием маски на исходный индекс.
+- Возвращены актуальные поля влияния коррекции на `mean/std/median` до и после операции.
+- Реализована требуемая Task 65 boxplot-сводка отдельно для выбросов и нормальных наблюдений с выравниванием маски и исключением пропусков.
+- Добавлен архитектурный regression-test, запрещающий `pytest`, `fastapi.testclient` и `apps.api.main` в production-модуле и проверяющий все функции, импортируемые session router.
+
+TDD и проверка
+- RED: новый boundary-suite воспроизвёл дефект — 2/2 теста падали на тестовых импортах и отсутствии production-функций.
+- После исправления boundary + unit-контракт коррекций: 17/17 PASS.
+- Целевой API-suite `test_dataset_outlier_correction.py`: 20/20 PASS; в полном API-прогоне этот suite также прошёл полностью.
+- Смежные новые EDA API-suite корреляции, IH и сезонности: 12/12 PASS; приложение импортируется, session router регистрируется без цикла.
+- Полный frontend Jest: 49/49 suites, 425/425 tests PASS, 0 snapshots.
+- TypeScript typecheck: PASS для embedded и standalone.
+- Next.js production build: PASS для embedded и standalone, по 13/13 статических страниц. Временные Google Fonts/Node memory shims после проверки удалены и в изменения не входят.
+- Python `py_compile` и `git diff --check`: PASS.
+- Полный API-suite: 365 PASS, 20 FAIL, 1 SKIP. Все 20 падений находятся в независимых существующих контурах format/inclusion/range/type/schema/validation/modeling/tune; outlier-suite зелёный.
+- Полный unit-suite не собирается из-за независимой синтаксической ошибки `tests/unit/test_file_loader.py:87` (`IndentationError`); целевые unit-тесты текущей задачи выполнены отдельно и проходят.
+- Коммиты и push не выполнялись.
+
+Изменённые и новые файлы текущей задачи
+- apps/api/outliers_correction.py
+- tests/unit/test_outliers_module_boundary.py (новый)
