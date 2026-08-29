@@ -594,7 +594,7 @@ export function TsAnalysisPreprocessing() {
           ) : activeCheckId === "outliers" && descriptionSection === "pipeline" ? (
             <PreprocessingOutliersPipeline onApplied={() => setOutliersRefreshKey((k) => k + 1)} />
           ) : activeCheckId === "outliers" ? (
-            <PreprocessingOutliersOverview refreshKey={outliersRefreshKey} />
+            <PreprocessingOutliersOverview refreshKey={outliersRefreshKey} column={activeFeature} />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
