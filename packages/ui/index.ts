@@ -310,3 +310,15 @@ export type { NavigatorChartPoint } from "./lib/demoDatasets";
 // понимает алгоритм: 3 параллельных детектора (date / entity / frequency)
 // → StructureDetectionResponse → можно поправить вручную.
 export { NavigatorStructureConfirmPreview } from "./components/NavigatorStructureConfirmPreview";
+
+// Статичная блок-схема подсчёта счётчиков качества для окна «Обзор»
+// остановки «Teaser качества» (id="quality_teaser") секции «Этапы
+// модуля» остановки «Загрузка» (Task 2026-08-30).
+// Рендерится только при активной паре «Загрузка» + «Teaser качества»
+// (см. TsAnalysisNavigator.tsx). Чисто презентационная, БЕЗ зависимости
+// от useAppShell / activeDataset / сети — основана на РЕАЛЬНОЙ
+// бэкенд-логике (apps/api/upload_common.py::_compute_quality_teaser,
+// apps/api/schemas.py::QualityTeaserOut, отдаётся внутри UploadResponse.quality).
+// Аналитик мгновенно понимает: 4 счётчика (missing / outliers / rows /
+// duplicates) → QualityTeaserOut → статус warning если любой из 3 > 0.
+export { NavigatorQualityTeaserPreview } from "./components/NavigatorQualityTeaserPreview";

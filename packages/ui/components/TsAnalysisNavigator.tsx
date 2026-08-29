@@ -54,6 +54,7 @@ import {
 import { UploadAutoPreviewPipeline } from "./UploadAutoPreviewPipeline";
 import { NavigatorChartPreview } from "./NavigatorChartPreview";
 import { NavigatorStructureConfirmPreview } from "./NavigatorStructureConfirmPreview";
+import { NavigatorQualityTeaserPreview } from "./NavigatorQualityTeaserPreview";
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -301,6 +302,13 @@ export function TsAnalysisNavigator() {
               score_all_columns_as_entity_group / detect_column_frequency).
               Аналитик мгновенно понимает алгоритм благодаря инфографике.
 
+              Задача 2026-08-30 (Teaser качества): для пары «Загрузка» +
+              «Teaser качества» (id="upload" + id="quality_teaser")
+              рендерим статичную блок-схему подсчёта 4 счётчиков качества
+              (cols_with_missing / cols_with_outliers / rows_total /
+              duplicates) на основе РЕАЛЬНОЙ бэкенд-логики
+              (_compute_quality_teaser, QualityTeaserOut).
+
               Для остальных пунктов — текстовая заглушка (своя визуализация
               для каждого пункта в будущих задачах). */}
           {activeStopId === "upload" && activeItemId === "preview" ? (
@@ -309,6 +317,8 @@ export function TsAnalysisNavigator() {
             <NavigatorChartPreview />
           ) : activeStopId === "upload" && activeItemId === "structure_confirm" ? (
             <NavigatorStructureConfirmPreview />
+          ) : activeStopId === "upload" && activeItemId === "quality_teaser" ? (
+            <NavigatorQualityTeaserPreview />
           ) : (
             <div
               className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"

@@ -184,13 +184,61 @@ describe("TsAnalysisNavigator", () => {
       // По умолчанию активен upload + preview (первый item) —
       // для preview рендерится UploadAutoPreviewPipeline, не заглушка.
       // После задачи 2026-08-30 «Подтверждение автоопределения» (3-й item)
-      // тоже имеет специализированный Overview — выбираем пункт БЕЗ
-      // специализированной визуализации: «Teaser качества» (4-й item).
-      const card = screen.getByText("Teaser качества");
+      // и «Teaser качества» (4-й item) тоже имеют специализированный
+      // Overview — выбираем пункт БЕЗ специализированной визуализации:
+      // «Техническая информация» (5-й item, id="tech_info").
+      const card = screen.getByText("Техническая информация");
       fireEvent.click(card.closest("article")!);
       expect(
         screen.getByText(/область графика\/таблицы\/блок-схемы/)
       ).toBeInTheDocument();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Задача 2026-08-30 — окно «Обзор» остановки «Teaser качества»
+  // (upload+quality_teaser) рендерит статичную блок-схему алгоритма
+  // подсчёта 4 счётчиков качества (missing / outliers / rows / duplicates).
+  // ─────────────────────────────────────────────────────────────────────
+  describe("upload + quality_teaser: static infographic in Overview", () => {
+    function activateQualityTeaserItem() {
+      const card = screen.getByText("Teaser качества");
+      fireEvent.click(card.closest("article")!);
+    }
+
+    it("renders the infographic heading when upload + quality_teaser is active", () => {
+      renderNavigator();
+      activateQualityTeaserItem();
+      // H3 «Обзор: Teaser качества» — заголовок окна Обзор из
+      // TsAnalysisNavigator. Сама инфографика тоже содержит H3 «Teaser
+      // качества». Поэтому минимум 2 совпадения.
+      const headings = screen.getAllByRole("heading", {
+        level: 3,
+        name: /teaser качества/i,
+      });
+      expect(headings.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("does NOT show the generic placeholder text for quality_teaser item", () => {
+      renderNavigator();
+      activateQualityTeaserItem();
+      expect(screen.queryByText(/область графика\/таблицы\/блок-схемы/)).toBeNull();
+    });
+
+    it("renders all 4 counter cards (missing / outliers / rows / duplicates)", () => {
+      renderNavigator();
+      activateQualityTeaserItem();
+      expect(screen.getByText(/колонок с пропусками/i)).toBeInTheDocument();
+      expect(screen.getByText(/колонок с выбросами/i)).toBeInTheDocument();
+      expect(screen.getByText(/всего строк/i)).toBeInTheDocument();
+      expect(screen.getByText(/дубликатов/i)).toBeInTheDocument();
+    });
+
+    it("renders the infographic WITHOUT activeDataset (works if dataset is deleted)", () => {
+      renderNavigator();
+      activateQualityTeaserItem();
+      expect(screen.getByText(/_compute_quality_teaser/i)).toBeInTheDocument();
+      expect(screen.queryByText(/нет данных/i)).toBeNull();
     });
   });
 
