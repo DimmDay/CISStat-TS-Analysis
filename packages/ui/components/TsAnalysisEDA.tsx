@@ -814,8 +814,13 @@ export function TsAnalysisEDA() {
         </div>
       </section>
 
-      {/* ── ПРАВАЯ КОЛОНКА: список исследований ── */}
-      <aside className="w-80 shrink-0">
+      {/* ── ПРАВАЯ КОЛОНКА: панель управления + список исследований ── */}
+      <aside className="w-80 shrink-0 pt-1">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-neutral-800">
+            Панель управления
+          </h2>
+        </div>
         <div className="max-h-[830px] overflow-y-auto pr-2 space-y-5 feed-scroll">
           {orderedChecks.map((check) => (
             <article

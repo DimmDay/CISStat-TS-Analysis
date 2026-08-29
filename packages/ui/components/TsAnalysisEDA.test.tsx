@@ -190,6 +190,18 @@ describe("TsAnalysisEDA", () => {
     expect(screen.getByText("Разведочный EDA")).toBeInTheDocument();
   });
 
+  it("renders the right control-panel title with the validation/preprocessing layout", () => {
+    render(<TsAnalysisEDA />);
+
+    const controlPanelTitle = screen.getByRole("heading", {
+      level: 2,
+      name: "Панель управления",
+    });
+
+    expect(controlPanelTitle).toHaveClass("text-lg", "font-semibold", "text-neutral-800");
+    expect(controlPanelTitle.closest("aside")).toHaveClass("pt-1");
+  });
+
   it("renders all 11 EDA investigations in the stepper", () => {
     render(<TsAnalysisEDA />);
     const stepLabels = [
