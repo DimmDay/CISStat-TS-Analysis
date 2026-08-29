@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
+import { OutlierLineChart, OutlierHistogramChart, OutlierDensityChart, OutlierBoxplotChart } from "./PreprocessingOutliersVisualizations";
 
 export interface OutlierBounds {
   lower: number;
@@ -55,13 +56,21 @@ const pctLabel = (value: number | null) => (value === null ? "—" : `${value.to
 export function PreprocessingOutliersOverview({
   refreshKey = 0,
   method = "iqr",
+  column = null,
 }: {
   refreshKey?: number;
   method?: OutlierProfileItem["recommended_method"];
+  /** Глобальный «Исследуемый признак» (useTargetColumn) -- та же колонка,
+      что выбрана селектором вверху страницы «Предобработка». Используется
+      только вкладками-графиками (Линейный/Гистограмма/Плотность/Boxplot);
+      вкладка «Таблица» по-прежнему показывает профиль по ВСЕМ числовым
+      колонкам сразу, как и раньше. */
+  column?: string | null;
 }) {
   const [profile, setProfile] = useState<OutlierProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<"table" | "line" | "histogram" | "density" | "boxplot">("table");
 
   useEffect(() => {
     let active = true;
@@ -123,46 +132,84 @@ export function PreprocessingOutliersOverview({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table aria-label="Выбросы по числовым колонкам" className="w-full min-w-[760px] text-left text-xs">
-          <thead className="sticky top-0 bg-neutral-50 text-neutral-500">
-            <tr>
-              <th className="px-3 py-2">Колонка</th>
-              <th className="px-3 py-2 text-right">Выбросов</th>
-              <th className="px-3 py-2">Границы метода</th>
-              <th className="px-3 py-2">Статус</th>
-              <th className="px-3 py-2">Рекомендованный метод</th>
-            </tr>
-          </thead>
-          <tbody>
-            {profile.columns.map((item) => (
-              <tr key={item.column} className="border-t border-neutral-100 text-neutral-700">
-                <td className="px-3 py-2">
-                  <span className="block font-medium text-neutral-800">{item.column}</span>
-                  {item.outlier_examples.length > 0 && (
-                    <span className="block max-w-[220px] truncate text-[11px] text-neutral-400">
-                      Строки: {item.outlier_examples.join(", ")}
-                    </span>
-                  )}
-                  {item.insufficient_sample && (
-                    <span className="block text-[11px] text-amber-700">Недостаточно наблюдений (&lt;10)</span>
-                  )}
-                </td>
-                <td className="px-3 py-2 text-right font-mono">{item.outlier_count} ({pctLabel(item.outlier_pct)})</td>
-                <td className="px-3 py-2 text-neutral-600">
-                  {item.bounds ? `${item.bounds.lower.toFixed(2)} … ${item.bounds.upper.toFixed(2)}` : "—"}
-                </td>
-                <td className="px-3 py-2">
-                  <span className={`rounded px-2 py-1 font-medium ${item.outlier_count > 0 ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700"}`}>
-                    {item.outlier_count > 0 ? "Найдены проблемы" : "Пройдено"}
-                  </span>
-                </td>
-                <td className="px-3 py-2 text-neutral-600">{METHOD_LABEL[item.recommended_method]}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="flex gap-1 border-b border-neutral-100 px-4 pt-2">
+        {(
+          [
+            { id: "table", label: "Таблица" },
+            { id: "line", label: "Линейный" },
+            { id: "histogram", label: "Гистограмма" },
+            { id: "density", label: "Плотность" },
+            { id: "boxplot", label: "Boxplot" },
+          ] as const
+        ).map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveView(tab.id)}
+            aria-pressed={activeView === tab.id}
+            className={`rounded-t px-3 py-1.5 text-xs font-medium transition-colors ${
+              activeView === tab.id
+                ? "bg-white text-brand border border-b-0 border-neutral-200"
+                : "text-neutral-500 hover:text-neutral-700"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
+
+      {activeView !== "table" && (
+        <p className="border-b border-neutral-100 px-4 py-2 text-xs text-neutral-500">
+          Признак: <span className="font-medium text-neutral-700">{column ?? "не выбран"}</span> — переключается общим селектором «Исследуемый признак» вверху страницы.
+        </p>
+      )}
+
+      {activeView === "table" && (
+        <div className="overflow-x-auto">
+          <table aria-label="Выбросы по числовым колонкам" className="w-full min-w-[760px] text-left text-xs">
+            <thead className="sticky top-0 bg-neutral-50 text-neutral-500">
+              <tr>
+                <th className="px-3 py-2">Колонка</th>
+                <th className="px-3 py-2 text-right">Выбросов</th>
+                <th className="px-3 py-2">Границы метода</th>
+                <th className="px-3 py-2">Статус</th>
+                <th className="px-3 py-2">Рекомендованный метод</th>
+              </tr>
+            </thead>
+            <tbody>
+              {profile.columns.map((item) => (
+                <tr key={item.column} className="border-t border-neutral-100 text-neutral-700">
+                  <td className="px-3 py-2">
+                    <span className="block font-medium text-neutral-800">{item.column}</span>
+                    {item.outlier_examples.length > 0 && (
+                      <span className="block max-w-[220px] truncate text-[11px] text-neutral-400">
+                        Строки: {item.outlier_examples.join(", ")}
+                      </span>
+                    )}
+                    {item.insufficient_sample && (
+                      <span className="block text-[11px] text-amber-700">Недостаточно наблюдений (&lt;10)</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono">{item.outlier_count} ({pctLabel(item.outlier_pct)})</td>
+                  <td className="px-3 py-2 text-neutral-600">
+                    {item.bounds ? `${item.bounds.lower.toFixed(2)} … ${item.bounds.upper.toFixed(2)}` : "—"}
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className={`rounded px-2 py-1 font-medium ${item.outlier_count > 0 ? "bg-amber-50 text-amber-700" : "bg-green-50 text-green-700"}`}>
+                      {item.outlier_count > 0 ? "Найдены проблемы" : "Пройдено"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-neutral-600">{METHOD_LABEL[item.recommended_method]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {activeView === "line" && <OutlierLineChart column={column} />}
+      {activeView === "histogram" && <OutlierHistogramChart column={column} method={method} />}
+      {activeView === "density" && <OutlierDensityChart column={column} />}
+      {activeView === "boxplot" && <OutlierBoxplotChart column={column} method={method} />}
     </section>
   );
 }

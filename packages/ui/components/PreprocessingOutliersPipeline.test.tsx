@@ -20,7 +20,11 @@ const PREVIEW = {
   applied: false, strategy: "cap", method: "iqr", used_residual: false,
   total_outliers: 1, total_changed: 1, total_still_outliers: 0,
   rows_removed: 0, added_columns: [],
-  columns: [{ column: "Price", outlier_count: 1, changed_count: 1, still_outliers: 0, outlier_examples: [20], flag_column: null }],
+  columns: [{
+    column: "Price", outlier_count: 1, changed_count: 1, still_outliers: 0, outlier_examples: [20], flag_column: null,
+    stats_before: { mean: 57, median: 10, std: 216.3 },
+    stats_after: { mean: 11, median: 10, std: 3.4 },
+  }],
   profile: [{ ...PROFILE.columns[0], outlier_count: 0, outlier_pct: 0, outlier_examples: [] }],
 };
 
@@ -77,5 +81,17 @@ describe("PreprocessingOutliersPipeline", () => {
     mockFetchSequence({ ...PROFILE, total_outliers: 0, columns: [{ ...PROFILE.columns[0], outlier_count: 0 }] }, ALL_COLUMNS);
     render(<PreprocessingOutliersPipeline onApplied={jest.fn()} />);
     expect(await screen.findByText(/Выбросов в датасете не найдено/)).toBeInTheDocument();
+  });
+
+  it("shows the before/after impact forecast in the preview step", async () => {
+    mockFetchSequence(PROFILE, ALL_COLUMNS, PREVIEW);
+    render(<PreprocessingOutliersPipeline onApplied={jest.fn()} />);
+
+    await screen.findByText("Price");
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр изменений" }));
+
+    expect(await screen.findByText("Прогноз влияния на статистики")).toBeInTheDocument();
+    expect(screen.getByText("10 → 10")).toBeInTheDocument(); // медиана не меняется
+    expect(screen.getByText(/216,3 → 3,4/)).toBeInTheDocument(); // std резко падает
   });
 });

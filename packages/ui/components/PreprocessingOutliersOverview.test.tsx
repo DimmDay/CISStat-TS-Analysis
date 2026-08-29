@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 
 import { PreprocessingOutliersOverview } from "./PreprocessingOutliersOverview";
 
@@ -61,5 +61,21 @@ describe("PreprocessingOutliersOverview", () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 404, json: () => Promise.resolve({ detail: "нет датасета" }) });
     render(<PreprocessingOutliersOverview refreshKey={1} />);
     expect(await screen.findByRole("alert")).toHaveTextContent("нет датасета");
+  });
+
+  it("switches to a chart tab and shows the globally selected feature", async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(PROFILE) });
+    render(<PreprocessingOutliersOverview refreshKey={1} column="Price" />);
+    await screen.findByRole("table", { name: "Выбросы по числовым колонкам" });
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ bins: [{ x0: 0, x1: 10, count: 3 }], bounds: null }),
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Гистограмма" }));
+
+    expect(await screen.findByText(/Признак:/)).toBeInTheDocument();
+    expect(screen.getByText("Price")).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Выбросы по числовым колонкам" })).not.toBeInTheDocument();
   });
 });

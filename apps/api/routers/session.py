@@ -49,6 +49,10 @@ from apps.api.schemas import (
     DatasetMissingDistributionResponse,
     DatasetOutlierCorrectionRequest,
     DatasetOutlierCorrectionResponse,
+    DatasetOutlierBoxplotResponse,
+    DatasetOutlierDensityResponse,
+    DatasetOutlierHistogramResponse,
+    DatasetOutlierLineResponse,
     DatasetOutlierProfileResponse,
     DatasetMissingMatrixResponse,
     DatasetMissingProfileResponse,
@@ -100,8 +104,13 @@ from apps.api.schemas import (
     MissingCorrectionResultOut,
     MissingProfileItemOut,
     MissingRowHistogramItemOut,
+    OutlierBoxplotGroupOut,
     OutlierCorrectionResultOut,
+    OutlierBoundsOut,
+    OutlierDensityPointOut,
+    OutlierHistogramBinOut,
     OutlierProfileItemOut,
+    OutlierScatterPointOut,
     RangeCorrectionResultOut,
     RangeProfileItemOut,
     RegularityProfileOut,
@@ -141,8 +150,8 @@ from app.preprocessing.missing import (
     missing_summary,
     profile_missing,
 )
-from apps.api.outliers_correction import detect_mask_on_residual, preview_outlier_corrections
-from app.preprocessing.outliers import outliers_summary, profile_outliers
+from apps.api.outliers_correction import detect_mask_on_residual, outlier_boxplot_groups, preview_outlier_corrections
+from app.preprocessing.outliers import detect_outlier_mask, method_bounds, outliers_summary, profile_outliers
 from apps.api.range_correction import preview_range_corrections
 from apps.api.referential_correction import preview_referential_corrections
 from apps.api.regularity_correction import preview_regularity_correction
@@ -1444,6 +1453,109 @@ def correct_dataset_outliers(
         added_columns=[item["flag_column"] for item in raw_results if item["flag_column"]],
         columns=[OutlierCorrectionResultOut(**item) for item in raw_results],
         profile=[OutlierProfileItemOut(**item) for item in next_profile],
+    )
+
+
+@router.get("/dataset/outlier-line", response_model=DatasetOutlierLineResponse)
+def get_dataset_outlier_line(column: str, request: Request, response: Response):
+    """«Линейный» график вкладки визуализаций остановки «Выбросы» --
+    переиспользует build_scatter_series (apps/api/chart_data.py, тот же
+    контракт, что и график распределения на вкладке «Загрузка»): точки
+    по позиции строки, с гарантированным сохранением глобальных
+    min/max и IQR-выбросов при LTTB-сэмплинге больших датасетов."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая")
+    result = build_scatter_series(session.dataframe[column].dropna())
+    return DatasetOutlierLineResponse(**result)
+
+
+@router.get("/dataset/outlier-histogram", response_model=DatasetOutlierHistogramResponse)
+def get_dataset_outlier_histogram(
+    column: str,
+    request: Request,
+    response: Response,
+    method: str = "iqr",
+    param_low: Optional[float] = None,
+    param_high: Optional[float] = None,
+):
+    """Гистограмма -- переиспользует build_histogram (chart_data.py);
+    bounds добавляет вертикальные границы метода, если применимо (перенос
+    fig_hist.add_vline из легаси app.py, ~строки 8253-8257)."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая")
+    if method not in {"iqr", "zscore", "mad", "percentile"}:
+        raise HTTPException(status_code=422, detail=f"Неизвестный метод: {method}")
+
+    series = session.dataframe[column]
+    param = (param_low, param_high) if method == "percentile" and param_low is not None and param_high is not None else None
+    bins = build_histogram(series.dropna())
+    bounds = method_bounds(series, method, param)
+    return DatasetOutlierHistogramResponse(
+        bins=[OutlierHistogramBinOut(**item) for item in bins],
+        bounds=OutlierBoundsOut(**bounds) if bounds else None,
+    )
+
+
+@router.get("/dataset/outlier-density", response_model=DatasetOutlierDensityResponse)
+def get_dataset_outlier_density(column: str, request: Request, response: Response):
+    """Плотность (KDE) -- переиспользует build_kde (chart_data.py),
+    тот же перенос scipy.stats.gaussian_kde, что и в легаси EDA-разделе
+    app.py (~строки 1237-1248)."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая")
+    points = build_kde(session.dataframe[column].dropna())
+    return DatasetOutlierDensityResponse(points=points)
+
+
+@router.get("/dataset/outlier-boxplot", response_model=DatasetOutlierBoxplotResponse)
+def get_dataset_outlier_boxplot(
+    column: str,
+    request: Request,
+    response: Response,
+    method: str = "iqr",
+    param_low: Optional[float] = None,
+    param_high: Optional[float] = None,
+):
+    """Boxplot «Выброс» vs «Норма» -- переиспользует outlier_boxplot_groups
+    (перенос px.box(df_plot, y=viz_col, color='Status') из легаси, см.
+    apps/api/outliers_correction.py)."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая")
+    if method not in {"iqr", "zscore", "mad", "percentile"}:
+        raise HTTPException(status_code=422, detail=f"Неизвестный метод: {method}")
+
+    series = session.dataframe[column]
+    param = (param_low, param_high) if method == "percentile" and param_low is not None and param_high is not None else None
+    mask = detect_outlier_mask(series, method, param)
+    groups = outlier_boxplot_groups(series, mask)
+    return DatasetOutlierBoxplotResponse(
+        column=column,
+        outliers=OutlierBoxplotGroupOut(**groups["outliers"]) if groups["outliers"] else None,
+        normal=OutlierBoxplotGroupOut(**groups["normal"]) if groups["normal"] else None,
     )
 
 

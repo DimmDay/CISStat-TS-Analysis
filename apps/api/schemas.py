@@ -769,6 +769,61 @@ class OutlierCorrectionResultOut(BaseModel):
     still_outliers: int
     outlier_examples: List[int] = Field(default_factory=list)
     flag_column: Optional[str] = None
+    stats_before: Optional[MissingColumnStatsOut] = None
+    stats_after: Optional[MissingColumnStatsOut] = None
+
+
+class OutlierScatterPointOut(BaseModel):
+    x: int
+    y: float
+
+
+class DatasetOutlierLineResponse(BaseModel):
+    """Точки для «Линейного» графика вкладки визуализаций остановки
+    «Выбросы» -- прямое переиспользование build_scatter_series
+    (apps/api/chart_data.py), тот же контракт, что и у графика
+    распределения на вкладке «Загрузка» (гарантирует сохранение
+    глобальных min/max и IQR-выбросов при LTTB-сэмплинге)."""
+    points: List[OutlierScatterPointOut] = Field(default_factory=list)
+    sampled: bool = False
+    sampling_method: Optional[str] = None
+    original_count: int = 0
+
+
+class OutlierHistogramBinOut(BaseModel):
+    x0: float
+    x1: float
+    count: int
+
+
+class DatasetOutlierHistogramResponse(BaseModel):
+    bins: List[OutlierHistogramBinOut] = Field(default_factory=list)
+    bounds: Optional[OutlierBoundsOut] = None
+
+
+class OutlierDensityPointOut(BaseModel):
+    x: float
+    y: float
+
+
+class DatasetOutlierDensityResponse(BaseModel):
+    points: Optional[List[OutlierDensityPointOut]] = None
+
+
+class OutlierBoxplotGroupOut(BaseModel):
+    count: int
+    min: float
+    q1: float
+    median: float
+    q3: float
+    max: float
+    mean: float
+
+
+class DatasetOutlierBoxplotResponse(BaseModel):
+    column: str
+    outliers: Optional[OutlierBoxplotGroupOut] = None
+    normal: Optional[OutlierBoxplotGroupOut] = None
 
 
 class DatasetOutlierCorrectionResponse(BaseModel):

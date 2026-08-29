@@ -21,6 +21,12 @@ const STRATEGY_TEXT: Record<Strategy, { label: string; help: string }> = {
   flag: { label: "Добавить флаг выброса", help: "Исходные значения сохраняются как есть; рядом создаётся индикаторная колонка *_outlier_flag." },
 };
 
+interface ColumnStats {
+  mean: number | null;
+  std: number | null;
+  median: number | null;
+}
+
 interface CorrectionResponse {
   applied: boolean;
   strategy: Strategy;
@@ -38,8 +44,28 @@ interface CorrectionResponse {
     still_outliers: number;
     outlier_examples: number[];
     flag_column: string | null;
+    stats_before: ColumnStats | null;
+    stats_after: ColumnStats | null;
   }>;
   profile: OutlierProfileItem[];
+}
+
+// ── Прогноз влияния на статистики (перенос app.py "Прогноз влияния на
+//    статистики" + того же блока, уже реализованного для «Пропусков» в
+//    PreprocessingMissingPipeline.tsx) ──
+const STAT_LABEL: Record<"mean" | "median" | "std", string> = {
+  mean: "Mean", median: "Median", std: "Std",
+};
+
+function formatStat(value: number | null): string {
+  return value === null ? "N/A" : value.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+}
+
+function formatDeltaPct(before: number | null, after: number | null): string {
+  if (before === null || after === null || before === 0 || before === after) return "";
+  const pct = ((after - before) / Math.abs(before)) * 100;
+  const sign = pct >= 0 ? "+" : "";
+  return ` (${sign}${pct.toFixed(1)}%)`;
 }
 
 interface AllColumnsResponse {
@@ -306,6 +332,35 @@ export function PreprocessingOutliersPipeline({ onApplied }: { onApplied: () => 
               {preview.used_residual && <p className="text-brand">Обнаружение на остатке после декомпозиции</p>}
               {preview.rows_removed > 0 && <p>Будет удалено строк: {preview.rows_removed}</p>}
               {preview.added_columns.length > 0 && <p>Добавлены колонки: {preview.added_columns.join(", ")}</p>}
+            </div>
+          )}
+          {preview && preview.columns.some((item) => item.stats_before) && (
+            <div className="mt-3 rounded border border-neutral-200 p-2">
+              <p className="text-xs font-medium text-neutral-800">Прогноз влияния на статистики</p>
+              <p className="mt-0.5 text-[11px] text-neutral-500">
+                Среднее / медиана / стандартное отклонение до и после стратегии на копии.
+              </p>
+              <div className="mt-2 space-y-2">
+                {preview.columns.filter((item) => item.stats_before).map((item) => (
+                  <div key={item.column} className="text-xs text-neutral-700">
+                    <p className="font-medium">{item.column}</p>
+                    <dl className="mt-0.5 grid grid-cols-3 gap-x-2 gap-y-0.5 text-[11px]">
+                      {(["mean", "median", "std"] as const).map((stat) => (
+                        <div key={stat}>
+                          <dt className="text-neutral-400">{STAT_LABEL[stat]}</dt>
+                          <dd className="font-mono">
+                            {formatStat(item.stats_before?.[stat] ?? null)} → {formatStat(item.stats_after?.[stat] ?? null)}
+                            {formatDeltaPct(item.stats_before?.[stat] ?? null, item.stats_after?.[stat] ?? null)}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-[11px] text-amber-700">
+                Заметное падение стандартного отклонения — ожидаемый эффект кэпирования/замены медианой; резкий сдвиг среднего в других стратегиях стоит перепроверить.
+              </p>
             </div>
           )}
         </div>

@@ -142,7 +142,7 @@ def detect_outlier_mask(
     return (series < lower) | (series > upper)
 
 
-def _method_bounds(series: pd.Series, method: str, param: Any) -> Optional[dict[str, float]]:
+def method_bounds(series: pd.Series, method: str, param: Any) -> Optional[dict[str, float]]:
     """Границы метода (для UI/обзора) -- только для методов с явными
     порогами в единицах исходной величины (iqr/percentile); zscore/mad
     работают в стандартизованных единицах, единой пары "нижняя/верхняя
@@ -201,7 +201,7 @@ def profile_outliers(
             "outlier_count": outlier_count,
             "outlier_pct": round(outlier_count / total_rows * 100, 2) if total_rows else None,
             "recommended_method": recommended,
-            "bounds": _method_bounds(series, method, param),
+            "bounds": method_bounds(series, method, param),
             "outlier_examples": [int(i) for i in df.index[mask][:_MAX_EXAMPLES].tolist()],
             "insufficient_sample": False,
         })

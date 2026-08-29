@@ -224,3 +224,56 @@ def test_use_residual_returns_422_for_panel_data_not_500():
     )
     assert response.status_code == 422
     assert "Декомпозиция недоступна" in response.json()["detail"]
+
+
+# ── Визуализации (Линейный / Гистограмма / Плотность / Boxplot) ──
+
+
+def test_outlier_line_returns_scatter_points():
+    _upload(_df_with_outlier())
+    response = client.get("/v1/session/dataset/outlier-line", params={"column": "Price"})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["original_count"] == 21
+    assert len(body["points"]) == 21
+
+
+def test_outlier_histogram_reports_bins_and_bounds():
+    _upload(_df_with_outlier())
+    response = client.get("/v1/session/dataset/outlier-histogram", params={"column": "Price", "method": "iqr"})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert len(body["bins"]) > 0
+    assert body["bounds"] is not None
+    assert body["bounds"]["upper"] < 1000.0
+
+
+def test_outlier_density_returns_kde_points():
+    _upload(_df_with_outlier())
+    response = client.get("/v1/session/dataset/outlier-density", params={"column": "Price"})
+    assert response.status_code == 200, response.text
+    assert response.json()["points"] is not None
+
+
+def test_outlier_boxplot_splits_outliers_and_normal():
+    _upload(_df_with_outlier())
+    response = client.get("/v1/session/dataset/outlier-boxplot", params={"column": "Price", "method": "iqr"})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["outliers"]["count"] == 1
+    assert body["normal"]["count"] == 20
+
+
+def test_visualization_endpoints_404_without_dataset():
+    assert client.get("/v1/session/dataset/outlier-line", params={"column": "Price"}).status_code == 404
+    assert client.get("/v1/session/dataset/outlier-histogram", params={"column": "Price"}).status_code == 404
+    assert client.get("/v1/session/dataset/outlier-density", params={"column": "Price"}).status_code == 404
+    assert client.get("/v1/session/dataset/outlier-boxplot", params={"column": "Price"}).status_code == 404
+
+
+def test_visualization_endpoints_422_for_unknown_or_non_numeric_column():
+    _upload(_df_with_outlier())
+    assert client.get("/v1/session/dataset/outlier-line", params={"column": "Nope"}).status_code == 422
+    assert client.get("/v1/session/dataset/outlier-histogram", params={"column": "Region"}).status_code == 422
+    assert client.get("/v1/session/dataset/outlier-density", params={"column": "Region"}).status_code == 422
+    assert client.get("/v1/session/dataset/outlier-boxplot", params={"column": "Region"}).status_code == 422
