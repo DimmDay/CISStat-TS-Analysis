@@ -122,6 +122,23 @@ const IH_RESPONSE = {
   recommendations: ["Volume — наиболее информативный фактор"],
 };
 
+const SEASONALITY_RESPONSE = {
+  column: "Price", applicable: true, reason: null, n_observations: 240, missing_count: 0,
+  min_cycles: 3, max_candidates: 5, max_period: 80, detrend: "linear", window: "hann",
+  order_source: "time_column", order_column: "Date", order_warning: null, frequency: "D",
+  spectral_entropy: 0.2, dominant_period: 12, dominant_strength: 0.84, confirmed_periods: 1,
+  fft: [{ frequency: 1 / 12, period: 12, amplitude: 3, power: null, is_peak: true }],
+  periodogram: [{ frequency: 1 / 12, period: 12, amplitude: null, power: 4.5, is_peak: true }],
+  candidates: [{
+    rank: 1, period: 12, period_rounded: 12, frequency: 1 / 12, amplitude: 3, power: 4.5,
+    power_share: 75, prominence: 4.2, spectral_snr: 30, autocorrelation: 0.9,
+    seasonal_strength: 0.84, cycles: 20, confirmed: true, calendar_hint: null, harmonic_of: null,
+  }],
+  phase_period: 12,
+  phase_profile: Array.from({ length: 12 }, (_, index) => ({ phase: index + 1, mean: index / 10, lower: index / 10 - 0.1, upper: index / 10 + 0.1, count: 20 })),
+  recommendations: ["Подтверждён период 12"],
+};
+
 function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
   const url = String(input);
   if (url.includes("/target-column")) {
@@ -156,6 +173,14 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
       ok: true,
       status: 200,
       json: () => Promise.resolve({ ...IH_RESPONSE, column }),
+    });
+  }
+  if (url.includes("/dataset/eda-seasonality")) {
+    const column = new URL(url).searchParams.get("column") ?? "Price";
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ...SEASONALITY_RESPONSE, column }),
     });
   }
   if (url.includes("/dataset/distribution")) {
@@ -349,6 +374,55 @@ describe("TsAnalysisEDA", () => {
     fireEvent.click(screen.getByRole("button", { name: "Пересчитать IH-анализ" }));
     await waitFor(() => {
       const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-ih")).length;
+      expect(callsAfter).toBe(callsBefore + 1);
+    });
+  });
+
+  it("loads seasonality for the shared target and exposes four overview views", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" });
+    await waitFor(() => expect(selector).toHaveValue("Price"));
+
+    fireEvent.click(screen.getByRole("button", { name: /^Сезонность и периодичность/ }));
+
+    expect(await screen.findByRole("img", { name: "FFT-спектр для Price" })).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/dataset/eda-seasonality?column=Price&min_cycles=3&max_candidates=5"),
+      { credentials: "include" },
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Периодограмма" }));
+    expect(screen.getByRole("img", { name: "Периодограмма для Price" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Фазовый профиль" }));
+    expect(screen.getByRole("img", { name: "Фазовый профиль периода 12 для Price" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Кандидаты" }));
+    expect(screen.getByRole("table", { name: "Периоды-кандидаты" })).toBeInTheDocument();
+    expect(screen.getByText("Топ-период", { selector: "div" }).nextElementSibling).toHaveTextContent("12");
+  });
+
+  it("uses seasonality-specific methodology, reacts to parameters and supports refresh", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+    fireEvent.click(screen.getByRole("button", { name: /^Сезонность и периодичность/ }));
+    await screen.findByRole("img", { name: "FFT-спектр для Price" });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/окно Hann сглаживает границы/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Полный пайплайн" })[0]);
+    expect(screen.getByText(/dataset\/eda-seasonality/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Минимум полных циклов" }), { target: { value: "4" } });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("min_cycles=4"),
+      { credentials: "include" },
+    ));
+    await screen.findByRole("button", { name: "Пересчитать сезонность" });
+
+    const callsBefore = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-seasonality")).length;
+    fireEvent.click(screen.getByRole("button", { name: "Пересчитать сезонность" }));
+    await waitFor(() => {
+      const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-seasonality")).length;
       expect(callsAfter).toBe(callsBefore + 1);
     });
   });

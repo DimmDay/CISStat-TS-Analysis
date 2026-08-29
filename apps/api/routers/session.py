@@ -24,6 +24,7 @@ from apps.api.chart_data import MAX_ZOOM_POINTS, build_histogram, build_kde, bui
 from apps.api.decomposition_data import build_decomposition, build_decomposition_series
 from apps.api.eda_correlation import build_eda_correlation
 from apps.api.eda_ih import build_eda_ih
+from apps.api.eda_seasonality import build_eda_seasonality
 from apps.api.schemas import (
     ColumnDetectionOut,
     ColumnStatsOut,
@@ -35,6 +36,7 @@ from apps.api.schemas import (
     DatasetConsistencyProfileResponse,
     DatasetEdaCorrelationResponse,
     DatasetEdaIhResponse,
+    DatasetEdaSeasonalityResponse,
     DatasetStatsResponse,
     DatasetSummaryOut,
     DatasetFormatCorrectionRequest,
@@ -495,6 +497,34 @@ def get_dataset_eda_ih(
         top_k=top_k,
         max_lag=max_lag,
         permutations=permutations,
+    ))
+
+
+@router.get("/dataset/eda-seasonality", response_model=DatasetEdaSeasonalityResponse)
+def get_dataset_eda_seasonality(
+    column: str,
+    request: Request,
+    response: Response,
+    min_cycles: int = Query(3, ge=2, le=10),
+    max_candidates: int = Query(5, ge=1, le=10),
+):
+    """FFT, периодограмма и фазовая проверка выбранного ряда."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Колонка '{column}' не числовая — спектральный анализ недоступен",
+        )
+    return DatasetEdaSeasonalityResponse(**build_eda_seasonality(
+        session.dataframe,
+        column=column,
+        min_cycles=min_cycles,
+        max_candidates=max_candidates,
     ))
 
 

@@ -33,6 +33,11 @@ import {
   type EdaIhParameters,
   type EdaIhResponse,
 } from "./EdaIhOverview";
+import {
+  EdaSeasonalityOverview,
+  type EdaSeasonalityParameters,
+  type EdaSeasonalityResponse,
+} from "./EdaSeasonalityOverview";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 
@@ -56,7 +61,7 @@ const CHECKS: Check[] = [
   { id: "ih_analysis", label: "IH-анализ", status: "pending", count: null,
     description: "Information-Entropy анализ факторов X относительно исследуемой цели Y: энтропия Шеннона, взаимная информация и нормированная мера R(Y|X). Работает с нелинейными связями, категориями, пропусками, лагами цели и комбинациями факторов; перестановочная проверка отделяет устойчивый сигнал от смещения дискретизации." },
   { id: "seasonality", label: "Сезонность и периодичность", status: "pending", count: null,
-    description: "FFT/periodogram на преобразованном ряде. Выделение доминантных частот и множественной сезонности. Калькулятор сезонных периодов. Сравнение с результатами спектрального анализа из Предобработки." },
+    description: "FFT и периодограмма равномерного преобразованного ряда после линейного detrend и окна Hann. Спектральные пики проверяются через ACF и фазовый профиль; поддерживаются несколько периодов и маркировка гармоник." },
   { id: "stationarity", label: "Верификация стационарности", status: "pending", count: null,
     description: "Финальная проверка ADF/KPSS/PP на полностью преобразованном ряде. Скользящие mean/std. Автоматическая рекомендация: «ряд стационарен — ARIMA применима» или «вернитесь к шагу 7 Предобработки»." },
   { id: "distribution", label: "Распределение", status: "pending", count: null,
@@ -187,6 +192,31 @@ const IH_PIPELINE_DESCRIPTION = `Полный пайплайн: IH-анализ
 8. Один ответ API питает пять вкладок «Обзора»: рейтинг, карту метрик, синергию, условное распределение и точную таблицу. Переключение вкладок не создаёт новых запросов.
 9. Остановка read-only. Смена цели или параметров автоматически пересчитывает профиль; ручная кнопка повторяет расчёт после изменений датасета.`;
 
+const SEASONALITY_METRICS_DESCRIPTION = `Метрики и алгоритм: Сезонность и периодичность
+
+Остановка ищет повторяющиеся компоненты выбранного преобразованного ряда. Период всегда измеряется в числе наблюдений; календарная интерпретация добавляется только при уверенно определённой регулярной частоте.
+
+1. Перед спектром удаляется линейный тренд. Это снижает утечку низкочастотной энергии, из-за которой обычный тренд мог ошибочно выглядеть как очень длинный цикл.
+2. Окно Hann сглаживает границы конечного отрезка и уменьшает spectral leakage. FFT показывает амплитуду гармоник, периодограмма — распределение мощности; это два представления одного спектрального свидетельства, а не два независимых теста.
+3. Spectral entropy нормирована в [0;1]: низкое значение означает концентрацию энергии в небольшом числе частот, высокое — более рассеянный/шумовой спектр. Энтропия не доказывает наличие сезонности.
+4. Пики периодограммы ранжируются по мощности и prominence. Допускаются только периоды, для которых в ряду помещается заданное минимальное число полных циклов.
+5. SNR — отношение мощности пика к локальному медианному фону. ACF(period) проверяет повторяемость через соответствующий лаг. Seasonal strength = max(0, 1 − Var(residual)/Var(detrended)) оценивает долю вариации, воспроизводимую средним фазовым профилем.
+6. Период помечается «подтверждён», только если одновременно достаточно выражены prominence, локальный SNR, положительная ACF и фазовая сила. Это объяснимая разведочная эвристика, не формальный p-value и не доказательство будущей устойчивости.
+7. Короткий пик, кратный более длинному кандидату, маркируется как возможная гармоника. Он не удаляется: несинусоидальная сезонная форма закономерно создаёт гармоники.
+
+Сезонность может быть множественной и меняться со временем. Финальный период модели необходимо подтвердить на временных срезах, после учёта структурных сдвигов и через временную валидацию.`;
+
+const SEASONALITY_PIPELINE_DESCRIPTION = `Полный пайплайн: сезонность и периодичность
+
+1. Общий «Исследуемый признак» передаётся в GET /v1/session/dataset/eda-seasonality вместе с минимальным числом циклов и лимитом кандидатов.
+2. Backend переиспользует общий детектор временной оси. Даты сортируются по возрастанию; повторные даты блокируют расчёт как вероятная панель, а не агрегируются без выбора сущности.
+3. FFT и классическая периодограмма требуют равномерной дискретизации. Нерегулярная сетка честно возвращает «неприменимо» с рекомендацией сначала регуляризовать ряд либо применять Lomb–Scargle; пропуски/∞ также не удаляются молча.
+4. Если дата не определена, текущий порядок строк допускается как равномерная индексная шкала с явным предупреждением: период тогда имеет только смысл «наблюдений», без календарной метки.
+5. Существующий backend-модуль app/features/spectral.py расширен производственным контуром: linear detrend → Hann window → real FFT + periodogram → локальные пики/prominence → SNR → ACF → фазовая сила → гармоники.
+6. Верхняя граница периода N/min_cycles не позволяет делать вывод по одному неполному колебанию. Для каждого кандидата возвращаются период, частота, число циклов, доля мощности, prominence, SNR, ACF, сила и календарная подсказка.
+7. Один API-ответ питает четыре вкладки «Обзора»: FFT, периодограмму, фазовый профиль доминирующего кандидата и таблицу периодов. Переключение вкладок не создаёт повторных запросов.
+8. Остановка read-only. Смена общего признака или параметров автоматически пересчитывает результат; ручная кнопка повторяет запрос после преобразований датасета.`;
+
 async function responseDetail(response: Response): Promise<string> {
   try {
     const body = await response.json();
@@ -215,6 +245,16 @@ async function ihResponseDetail(response: Response): Promise<string> {
     // Нейтральная ошибка ниже покрывает ответ без JSON.
   }
   return `Не удалось выполнить IH-анализ (HTTP ${response.status})`;
+}
+
+async function seasonalityResponseDetail(response: Response): Promise<string> {
+  try {
+    const body = await response.json();
+    if (typeof body?.detail === "string") return body.detail;
+  } catch {
+    // Нейтральная ошибка ниже покрывает ответ без JSON.
+  }
+  return `Не удалось выполнить спектральный анализ (HTTP ${response.status})`;
 }
 
 function formatMetric(value: number | null | undefined): string {
@@ -455,6 +495,84 @@ export function TsAnalysisEDA() {
     ? "done"
     : "pending";
 
+  // ── Остановка «Сезонность и периодичность»: спектр общего target ──
+  const [seasonalityProfile, setSeasonalityProfile] = useState<EdaSeasonalityResponse | null>(null);
+  const [seasonalityLoading, setSeasonalityLoading] = useState(false);
+  const [seasonalityNoDataset, setSeasonalityNoDataset] = useState(false);
+  const [seasonalityError, setSeasonalityError] = useState<string | null>(null);
+  const [seasonalityRefreshKey, setSeasonalityRefreshKey] = useState(0);
+  const [seasonalityParameters, setSeasonalityParameters] = useState<EdaSeasonalityParameters>({
+    minCycles: 3,
+    maxCandidates: 5,
+  });
+
+  useEffect(() => {
+    if (activeCheckId !== "seasonality" || targetLoading) return;
+    if (!hasDataset) {
+      setSeasonalityNoDataset(true);
+      setSeasonalityProfile(null);
+      setSeasonalityLoading(false);
+      return;
+    }
+    if (!activeFeature) {
+      setSeasonalityNoDataset(false);
+      setSeasonalityProfile(null);
+      setSeasonalityLoading(false);
+      return;
+    }
+
+    let active = true;
+    setSeasonalityLoading(true);
+    setSeasonalityError(null);
+    setSeasonalityNoDataset(false);
+    void (async () => {
+      try {
+        const query = new URLSearchParams({
+          column: activeFeature,
+          min_cycles: String(seasonalityParameters.minCycles),
+          max_candidates: String(seasonalityParameters.maxCandidates),
+        });
+        const response = await fetch(
+          sessionApiUrl(`/dataset/eda-seasonality?${query.toString()}`),
+          { credentials: "include" },
+        );
+        if (response.status === 404) {
+          if (active) {
+            setSeasonalityNoDataset(true);
+            setSeasonalityProfile(null);
+          }
+          return;
+        }
+        if (!response.ok) throw new Error(await seasonalityResponseDetail(response));
+        const data: EdaSeasonalityResponse = await response.json();
+        if (active) setSeasonalityProfile(data);
+      } catch (caught) {
+        if (active) {
+          setSeasonalityError(
+            caught instanceof Error ? caught.message : "Не удалось выполнить спектральный анализ",
+          );
+        }
+      } finally {
+        if (active) setSeasonalityLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [activeCheckId, activeFeature, hasDataset, seasonalityParameters, seasonalityRefreshKey, targetLoading]);
+
+  const seasonalityBusy = seasonalityLoading || (activeCheckId === "seasonality" && targetLoading);
+  const seasonalityRequestError = seasonalityError ?? (activeCheckId === "seasonality" ? targetError : null);
+  const seasonalityStatus: CheckStatus = seasonalityBusy
+    ? "running"
+    : seasonalityRequestError
+    ? "error"
+    : seasonalityNoDataset || (hasDataset && !activeFeature)
+    ? "skipped"
+    : seasonalityProfile?.applicable === false
+    ? "warning"
+    : seasonalityProfile?.applicable
+    ? "done"
+    : "pending";
+
   const checks = useMemo<Check[]>(() => CHECKS.map((check) =>
     check.id === "descriptive"
       ? { ...check, status: descriptiveStatus, count: insufficientColumns }
@@ -462,8 +580,10 @@ export function TsAnalysisEDA() {
       ? { ...check, status: correlationStatus, count: null }
       : check.id === "ih_analysis"
       ? { ...check, status: ihStatus, count: null }
+      : check.id === "seasonality"
+      ? { ...check, status: seasonalityStatus, count: seasonalityProfile?.confirmed_periods ?? null }
       : check,
-  ), [correlationStatus, descriptiveStatus, ihStatus, insufficientColumns]);
+  ), [correlationStatus, descriptiveStatus, ihStatus, insufficientColumns, seasonalityProfile?.confirmed_periods, seasonalityStatus]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -537,6 +657,9 @@ export function TsAnalysisEDA() {
     if (activeCheckId === "ih_analysis") {
       return descriptionSection === "metrics" ? IH_METRICS_DESCRIPTION : IH_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "seasonality") {
+      return descriptionSection === "metrics" ? SEASONALITY_METRICS_DESCRIPTION : SEASONALITY_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -561,6 +684,11 @@ export function TsAnalysisEDA() {
       return descriptionSection === "metrics"
         ? "Метрики и алгоритм — IH-анализ"
         : "Полный пайплайн — IH-анализ";
+    }
+    if (activeCheckId === "seasonality") {
+      return descriptionSection === "metrics"
+        ? "Метрики и алгоритм — Сезонность и периодичность"
+        : "Полный пайплайн — Сезонность и периодичность";
     }
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
@@ -747,6 +875,15 @@ export function TsAnalysisEDA() {
               parameters={ihParameters}
               onParametersChange={(changes) => setIhParameters((current) => ({ ...current, ...changes }))}
             />
+          ) : activeCheckId === "seasonality" ? (
+            <EdaSeasonalityOverview
+              profile={seasonalityProfile}
+              loading={seasonalityBusy}
+              error={seasonalityRequestError}
+              noDataset={seasonalityNoDataset}
+              parameters={seasonalityParameters}
+              onParametersChange={(changes) => setSeasonalityParameters((current) => ({ ...current, ...changes }))}
+            />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
@@ -801,6 +938,15 @@ export function TsAnalysisEDA() {
                   </>
                 );
               })()}
+            </div>
+          ) : activeCheckId === "seasonality" ? (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+              <Metric label="N" value={seasonalityProfile ? String(seasonalityProfile.n_observations) : "—"} />
+              <Metric label="Частота" value={seasonalityProfile?.frequency ?? (seasonalityProfile?.order_source === "row_order" ? "индекс" : "—")} />
+              <Metric label="Топ-период" value={formatMetric(seasonalityProfile?.dominant_period)} />
+              <Metric label="Сила профиля" value={formatMetric(seasonalityProfile?.dominant_strength)} />
+              <Metric label="Спектр. энтропия" value={formatMetric(seasonalityProfile?.spectral_entropy)} />
+              <Metric label="Подтверждено" value={seasonalityProfile?.applicable ? String(seasonalityProfile.confirmed_periods) : "—"} />
             </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
@@ -924,6 +1070,36 @@ export function TsAnalysisEDA() {
                     </p>
                   )}
                 </>
+              ) : check.id === "seasonality" ? (
+                <>
+                  {check.status === "running" && (
+                    <p role="status" className="text-sm text-brand bg-brand-light rounded px-3 py-2 mb-2">
+                      Строим спектральный и фазовый профиль…
+                    </p>
+                  )}
+                  {check.status === "error" && (
+                    <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">
+                      {seasonalityRequestError ?? "Ошибка спектрального анализа"}
+                    </p>
+                  )}
+                  {check.status === "skipped" && (
+                    <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                      {seasonalityNoDataset ? "Нет активного датасета" : "Нет числового исследуемого признака"}
+                    </p>
+                  )}
+                  {check.status === "warning" && (
+                    <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
+                      {seasonalityProfile?.reason ?? "Спектральный анализ неприменим"}
+                    </p>
+                  )}
+                  {check.status === "done" && (
+                    <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
+                      {seasonalityProfile?.confirmed_periods
+                        ? `Подтверждено периодов: ${seasonalityProfile.confirmed_periods}`
+                        : "Анализ завершён: устойчивые периоды не подтверждены"}
+                    </p>
+                  )}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -986,6 +1162,14 @@ export function TsAnalysisEDA() {
                   disabled={ihBusy || !activeFeature}
                 >
                   {ihBusy ? "Рассчитываем…" : "Пересчитать IH-анализ"}
+                </Button>
+              ) : check.id === "seasonality" ? (
+                <Button
+                  type="button"
+                  onClick={() => setSeasonalityRefreshKey((key) => key + 1)}
+                  disabled={seasonalityBusy || !activeFeature}
+                >
+                  {seasonalityBusy ? "Рассчитываем…" : "Пересчитать сезонность"}
                 </Button>
               ) : (
                 <Button>Запустить анализ ({check.label.toLowerCase()})</Button>

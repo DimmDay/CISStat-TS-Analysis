@@ -3864,7 +3864,53 @@ TDD, производительность и проверка
 
 ---
 
-Task ID: 65 — Исправление падающего upstream Jest-suite IH/EDA
+Task ID: 65 — Визуализация выбросов (Линейный/Гистограмма/Плотность/Boxplot) + прогноз влияния на статистики
+
+Date: 2026-08-28
+
+Задача
+Два пункта по остановке «Выбросы» (Предобработка): 1) добавить в Обзор графики Линейный/Гистограмма/Плотность/Boxplot по аналогии с уже реализованной визуализацией «Пропусков», переиспользуя backend; 2) добавить в шаг «Предпросмотр» Мастера «Прогноз влияния на статистики», тоже по аналогии с «Пропусками».
+
+Синхронизация (перед началом работы)
+Локальный WIP сохранён в защитный stash, выполнен fast-forward до `origin/main` (Task 61–63: остановки «Описательные статистики» и «Корреляция ACF/PACF» в «Разведочном EDA» + ключевое для этой задачи Task 62 — единый хук `useTargetColumn` для «Исследуемого признака», заменивший моковый список колонок в «Предобработке» и «EDA»). При возврате stash — конфликты только в тестовых файлах выбросов (`tests/api/test_dataset_outlier_correction.py`, `tests/unit/test_outliers_correction.py`) и `worklog.md`; все тривиальны (upstream не содержал моих последних локальных дополнений на момент коммита тимлида), разрешены в пользу локальных версий с новыми тестами. Контроль после синхронизации: 45/45 Jest suites, 901 backend-тест — без регрессий.
+
+Важная находка при синхронизации
+Task 62 дал готовый `activeFeature`/`numericFeatures` через `useTargetColumn()` прямо в `TsAnalysisPreprocessing.tsx` — устранило необходимость городить отдельный локальный селектор колонки для графиков «Выбросов» (как изначально планировалось): колонка для графиков берётся из уже существующего глобального селектора «Исследуемый признак» вверху страницы, а не из нового дублирующего UI-элемента.
+
+Пункт 1 — графики
+Backend переиспользует уже существующие чистые функции `build_scatter_series`/`build_histogram`/`build_kde` (`apps/api/chart_data.py`), изначально созданные для распределения на вкладке «Загрузка» (`DistributionCharts.tsx`) — те же функции, тот же контракт (LTTB-сэмплинг с гарантированным сохранением экстремумов/выбросов для «Линейного»). Добавлен `outlier_boxplot_groups()` в `apps/api/outliers_correction.py` — перенос `px.box(df_plot, y=viz_col, color='Status')` из легаси app.py, пятичисловая сводка раздельно по группам «Выброс»/«Норма» (тот же архитектурный выбор, что `missing_distribution_comparison` — сводка, а не сырые точки, чтобы не тянуть весь датасет в ответ API). 4 новых роута в `session.py`: `GET /dataset/outlier-line|histogram|density|boxplot`, все с честными 404 (нет датасета) / 422 (неизвестная/нечисловая колонка). Гистограмма дополнительно возвращает `bounds` метода (вертикальные линии на графике — перенос `fig_hist.add_vline` из легаси).
+
+Frontend: новый файл `PreprocessingOutliersVisualizations.tsx` — 4 компонента (`OutlierLineChart`, `OutlierHistogramChart`, `OutlierDensityChart`, `OutlierBoxplotChart`) на `recharts`, тот же визуальный язык, что и `DistributionCharts.tsx` (палитра BRAND #2E3192 — официальный цвет Статкомитета СНГ, не придумана заново). `PreprocessingOutliersOverview.tsx`: панель вкладок «Таблица | Линейный | Гистограмма | Плотность | Boxplot» (Таблица — прежнее поведение по умолчанию, показывает профиль по ВСЕМ числовым колонкам сразу; графики — по ОДНОЙ колонке, полученной новым пропом `column` от родителя). `TsAnalysisPreprocessing.tsx`: `<PreprocessingOutliersOverview column={activeFeature} />` — прямое переиспользование Task 62's хука без дублирования состояния.
+
+Пункт 2 — прогноз влияния на статистики
+Перенос того же блока app.py "Прогноз влияния на статистики" и того же паттерна, что уже реализован для «Пропусков» (Task 53): `apps/api/outliers_correction.py` — добавлены `_safe_stat`/`_column_stats` (идентичны missing_correction.py), `preview_outlier_corrections` теперь считает `stats_before`/`stats_after` (mean/std/median) для каждой обрабатываемой колонки при любой стратегии. Схема: `OutlierCorrectionResultOut` расширена теми же полями, переиспользует существующую `MissingColumnStatsOut` (форма идентична, отдельная схема не заведена). Frontend: `PreprocessingOutliersPipeline.tsx`, шаг 4 (Предпросмотр) дополнен блоком «Прогноз влияния на статистики» — таблица mean/median/std «до → после» с дельтой в % (подавляется при before==after, чтобы не показывать обманчивое «+0.0%»), тот же UI-паттерн, что у `PreprocessingMissingPipeline.tsx`.
+
+TDD и проверка
+- Backend: 5 unit-тестов на stats_before/after у выбросов (кэпирование снижает среднее, flag не меняет статистику, drop_rows сужает выборку) + 2 на `outlier_boxplot_groups` + 20 API-тестов на 4 новых роута визуализаций (данные, границы, 404/422) — все зелёные.
+- Frontend: `PreprocessingOutliersVisualizations.test.tsx` (8 тестов: рендер данных, сэмплинг-бейдж, alert при ошибке, пустая плотность, обе группы boxplot) + 1 новый тест переключения вкладок в `PreprocessingOutliersOverview.test.tsx` + 1 новый тест прогноза статистик в `PreprocessingOutliersPipeline.test.tsx`.
+- Полный Jest — 46/46 suites, 393/393 tests PASS.
+- Полный pytest (без `test_file_loader.py`) — 901 passed, 29 failed (preexisting, без изменений).
+- `npm run typecheck:all` — PASS для embedded и standalone.
+- Production build embedded и standalone — PASS (13/13 статических страниц каждая) через временный шим `next/font/google` (песочница без сетевого доступа к fonts.googleapis.com); шим применён, собран, немедленно возвращён (`git diff` по обоим `layout.tsx` пуст) — в поставку не входит.
+
+Изменённые/новые файлы
+- app/preprocessing/outliers.py (метод `_method_bounds` переименован в публичный `method_bounds` для переиспользования из session.py)
+- apps/api/outliers_correction.py
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- packages/ui/components/PreprocessingOutliersVisualizations.tsx (новый)
+- packages/ui/components/PreprocessingOutliersVisualizations.test.tsx (новый)
+- packages/ui/components/PreprocessingOutliersOverview.tsx
+- packages/ui/components/PreprocessingOutliersOverview.test.tsx
+- packages/ui/components/PreprocessingOutliersPipeline.tsx
+- packages/ui/components/PreprocessingOutliersPipeline.test.tsx
+- packages/ui/components/TsAnalysisPreprocessing.tsx
+- tests/unit/test_outliers_correction.py
+- tests/api/test_dataset_outlier_correction.py
+
+---
+
+Task ID: 65_fix — Исправление падающего upstream Jest-suite IH/EDA
 
 Date: 2026-08-28
 
@@ -3894,3 +3940,122 @@ Date: 2026-08-28
 - tests/api/TsAnalysisEDA.test.tsx (удалён ошибочный дубликат)
 - tests/api/TsAnalysisEDA.tsx (удалён ошибочный дубликат)
 - worklog.md
+
+---
+
+Task ID: 66 — Объединение backend-редакций IH-анализа и остановки «Выбросы»
+
+Date: 2026-08-29
+
+Задача
+Проверить два пересекающихся файла тимлида (`apps/api/routers/session.py`, `apps/api/schemas.py`) и подготовить объединённую редакцию, не теряющую backend-контракт IH-анализа.
+
+Результат слияния
+- За основу взяты приложенные редакции тимлида со всеми изменениями остановки «Выбросы».
+- В `session.py` сохранены новые outlier-импорты и endpoints `outlier-line`, `outlier-histogram`, `outlier-density`, `outlier-boxplot`; восстановлены импорт `build_eda_ih`, импорт `DatasetEdaIhResponse` и endpoint `GET /dataset/eda-ih`.
+- В `schemas.py` сохранены новые outlier response-модели и поля `stats_before`/`stats_after`; восстановлены `EdaIhFeatureOut`, `EdaIhSynergyOut`, `EdaIhConditionalRow`, `DatasetEdaIhResponse`.
+- Реализация корреляции ACF/PACF, присутствовавшая в обеих редакциях, сохранена без изменений.
+- Объединённые файлы подготовлены отдельно в `download/Task-66-Merged-Session-Schemas/`; рабочие backend-файлы не заменялись, потому что текущий checkout ещё не содержал сопутствующие реализации тимлида `outlier_boxplot_groups` и `method_bounds`.
+
+Проверка
+- Python `py_compile` обоих объединённых файлов — PASS.
+- AST-сверка — PASS: IH handler и четыре IH-схемы идентичны текущей реализации; присутствуют 6 требуемых handlers и 9 требуемых response-схем; все 53 пары HTTP method/path уникальны.
+- Все импортируемые из `apps.api.schemas` имена существуют в объединённом `schemas.py`.
+- Pydantic smoke — PASS для IH response и четырёх новых outlier response-контрактов.
+- Diff относительно редакции тимлида содержит только возврат IH: +31 строка в `session.py`, +62 строки в `schemas.py`.
+- Коммиты, push и синхронизация с GitHub не выполнялись.
+
+Файлы текущей задачи
+- download/Task-66-Merged-Session-Schemas/apps/api/routers/session.py
+- download/Task-66-Merged-Session-Schemas/apps/api/schemas.py
+- worklog.md
+
+---
+
+Task ID: 67 — Заголовок правой панели вкладки «Разведочный EDA»
+
+Date: 2026-08-29
+
+Задача
+Добавить правой боковой панели вкладки «Разведочный EDA» заголовок «Панель управления» по визуальному и структурному паттерну вкладок «Валидация» и «Предобработка».
+
+Синхронизация
+- По прямому указанию тимлида выполнен безопасный fast-forward `main`: `bee091a` → `a0dbc60`.
+- Upstream уже содержал удаление четырёх ошибочных Jest-дубликатов и объединённые изменения IH/«Выбросов»; повторное наложение старых правок не выполнялось.
+- Незакоммиченные материалы предыдущих задач сохранены в защитном stash `pre-sync-task67-eda-control-panel-2026-08-29`.
+
+Реализация
+- В правой колонке `TsAnalysisEDA` добавлен `h2` «Панель управления» с классами `text-lg font-semibold text-neutral-800`.
+- Контейнер заголовка получил `mb-4`, а правая колонка — `pt-1`, как во вкладках «Валидация» и «Предобработка».
+- Комментарий разметки уточнён: правая колонка содержит панель управления и список исследований.
+- Добавлен регрессионный тест доступного заголовка уровня 2, типографики и верхнего отступа панели.
+
+Проверка
+- RED: до изменения компонентный suite падал на отсутствии heading «Панель управления».
+- Focused Jest: 1/1 suite, 17/17 tests PASS.
+- Полный Jest: 48/48 suites, 420/420 tests PASS, 0 snapshots.
+- TypeScript typecheck: PASS для embedded и standalone.
+- Next.js production build: PASS для embedded и standalone, по 13/13 статических страниц.
+- Для build применялись временные локальные shims Google Fonts и Node 24 `uv_resident_set_memory`; после проверки удалены и в задачу не входят.
+- `git diff --check` — PASS.
+- Коммиты и push не выполнялись.
+
+Изменённые файлы текущей задачи
+- packages/ui/components/TsAnalysisEDA.tsx
+- packages/ui/components/TsAnalysisEDA.test.tsx
+- worklog.md
+
+---
+
+Task ID: 68 — Остановка EDA «Сезонность и периодичность»
+
+Date: 2026-08-29
+
+Задача
+Спроектировать и реализовать следующую остановку вкладки «Разведочный EDA» по паттернам «Описательные статистики» и «IH-анализ»: исследовать существующий backend, проверить методологию, переиспользовать пригодную реализацию и активно использовать переключаемые визуализации в «Обзоре».
+
+Исследование backend и методологии
+- Найден существующий `app/features/spectral.py`, но его прежний FFT-контур вычитал только среднее, не проверял равномерность временной сетки/пропуски, отбирал пики порогом mean+std и возвращал ненормированную энтропию. Такой результат нельзя безопасно интерпретировать как сезонность.
+- Найдена legacy-логика паспорта с фиксированным STL period=7 для daily и 12 для остальных частот; она некорректна для weekly/quarterly/hourly/annual и коротких рядов, поэтому в новый EDA-контур не перенесена.
+- Переиспользованы общий контентный детектор временной оси/частоты, правило отказа от автоматической агрегации панелей и существующий spectral-модуль как единая backend-точка расчёта.
+- Методология сверена с официальной документацией SciPy для periodogram/find_peaks/detrend/Lomb–Scargle, statsmodels STL и FPP3 по множественной сезонности. Классические FFT/periodogram разрешены только на равномерной сетке; для нерегулярной сетки возвращается честный отказ с рекомендацией regularization или Lomb–Scargle.
+
+Backend
+- `app/features/spectral.py` расширен совместимым production-контуром `analyze_spectral_seasonality`; прежние публичные функции сохранены.
+- Pipeline: linear detrend → Hann window → real FFT + periodogram → локальные пики/prominence → локальный spectral SNR → ACF(period) → фазовая сила → маркировка гармоник.
+- Для множественной сезонности подтверждённый фазовый профиль последовательно удаляется перед ACF/phase-проверкой следующего пика: сильный период больше не маскирует слабый.
+- Период ограничен `N/min_cycles`; по умолчанию требуется 3 полных цикла. Пропуски/∞ не удаляются молча, линейный тренд не превращается в ложный длинный период, spectral entropy нормирована в [0;1].
+- Добавлен `apps/api/eda_seasonality.py`: сортировка по уверенно найденной дате, отказ на нераспознанных/повторных/нерегулярных датах, индексная шкала с предупреждением при отсутствии временной колонки.
+- Добавлены response-схемы и read-only endpoint `GET /v1/session/dataset/eda-seasonality?column=...&min_cycles=...&max_candidates=...`.
+
+Frontend
+- Добавлен `EdaSeasonalityOverview` с четырьмя вкладками на одном API-ответе: FFT, периодограмма, фазовый профиль, таблица кандидатов.
+- Встроены параметры «Минимум полных циклов» и «Число кандидатов», общий селектор «Исследуемый признак», автоматический пересчёт при смене target/параметров и ручная кнопка обновления.
+- В EDA-степпер добавлены реальные running/done/warning/skipped/error состояния, число подтверждённых периодов, шесть итоговых метрик и специализированные разделы «Метрики и алгоритм»/«Полный пайплайн».
+- Объяснимо разделены «кандидат» и «подтверждён»: это разведочная эвристика нескольких согласованных диагностик, а не формальный p-value или доказательство устойчивости.
+
+Тесты и сборка
+- RED-тесты на отсутствующие `analyze_spectral_seasonality` и endpoint написаны до реализации; первый запуск был технически заблокирован отсутствующим системным `pytest`, после временной установки зависимостей тесты выполнены.
+- Python unit/adapter: 5/5 PASS — периоды 12 и 5, чистый линейный тренд, запрет пропусков, сортировка регулярной даты, отказы для irregular/panel, Pydantic response smoke.
+- Focused Jest: 2/2 suites, 22/22 tests PASS.
+- Полный Jest по исходникам (архивные копии `download/` исключены): 49/49 suites, 425/425 tests PASS, 0 snapshots.
+- TypeScript typecheck: PASS для embedded и standalone.
+- Next.js production build: PASS для embedded и standalone, по 13/13 статических страниц. Временные Google Fonts/memory shims удалены и в изменения не входят.
+- Python `py_compile`/AST и `git diff --check`: PASS.
+- Интеграционный FastAPI-suite текущего checkout заблокирован независимым upstream-дефектом `a0dbc60`: `apps/api/outliers_correction.py` содержит тестовый модуль и циклически импортирует `apps.api.main`, поэтому приложение не импортируется до регистрации любых session endpoints. Файл не менялся в Task 68; новый adapter/schema проверены изолированно.
+- Коммиты, push и новая синхронизация с GitHub не выполнялись.
+
+Изменённые файлы текущей задачи
+- app/features/spectral.py
+- apps/api/eda_seasonality.py (новый)
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- packages/ui/components/EdaSeasonalityOverview.tsx (новый)
+- packages/ui/components/EdaSeasonalityOverview.test.tsx (новый)
+- packages/ui/components/TsAnalysisEDA.tsx
+- packages/ui/components/TsAnalysisEDA.test.tsx
+- packages/ui/index.ts
+- tests/unit/test_spectral_seasonality.py (новый)
+- tests/unit/test_eda_seasonality_adapter.py (новый)
+- tests/api/test_dataset_eda_seasonality.py (новый)
+

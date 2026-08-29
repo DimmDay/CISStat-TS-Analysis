@@ -231,6 +231,68 @@ class DatasetEdaIhResponse(BaseModel):
     recommendations: List[str] = Field(default_factory=list)
 
 
+class EdaSpectrumPoint(BaseModel):
+    frequency: float
+    period: float
+    amplitude: Optional[float] = None
+    power: Optional[float] = None
+    is_peak: bool
+
+
+class EdaSeasonalityCandidateOut(BaseModel):
+    rank: int
+    period: float
+    period_rounded: int
+    frequency: float
+    amplitude: float
+    power: float
+    power_share: float
+    prominence: float
+    spectral_snr: float
+    autocorrelation: float
+    seasonal_strength: float
+    cycles: float
+    confirmed: bool
+    calendar_hint: Optional[str] = None
+    harmonic_of: Optional[float] = None
+
+
+class EdaSeasonalityPhasePoint(BaseModel):
+    phase: int
+    mean: float
+    lower: float
+    upper: float
+    count: int
+
+
+class DatasetEdaSeasonalityResponse(BaseModel):
+    """Спектральный и фазовый профиль одного равномерного временного ряда."""
+    column: str
+    applicable: bool
+    reason: Optional[str] = None
+    n_observations: int
+    missing_count: int
+    min_cycles: int
+    max_candidates: int
+    max_period: Optional[float] = None
+    detrend: Literal["linear"]
+    window: Literal["hann"]
+    order_source: Literal["time_column", "row_order"]
+    order_column: Optional[str] = None
+    order_warning: Optional[str] = None
+    frequency: Optional[str] = None
+    spectral_entropy: Optional[float] = None
+    dominant_period: Optional[float] = None
+    dominant_strength: Optional[float] = None
+    confirmed_periods: int
+    fft: List[EdaSpectrumPoint] = Field(default_factory=list)
+    periodogram: List[EdaSpectrumPoint] = Field(default_factory=list)
+    candidates: List[EdaSeasonalityCandidateOut] = Field(default_factory=list)
+    phase_period: Optional[int] = None
+    phase_profile: List[EdaSeasonalityPhasePoint] = Field(default_factory=list)
+    recommendations: List[str] = Field(default_factory=list)
+
+
 class PanelBalanceResponse(BaseModel):
     """Реальная проверка Balanced/Unbalanced для панельных данных --
     пункт 8 контракта (структурный класс), визуальная схема на

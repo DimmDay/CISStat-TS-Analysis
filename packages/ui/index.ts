@@ -91,6 +91,14 @@ export type {
   EdaIhResponse,
   EdaIhSynergy,
 } from "./components/EdaIhOverview";
+export { EdaSeasonalityOverview } from "./components/EdaSeasonalityOverview";
+export type {
+  EdaSeasonalityCandidate,
+  EdaSeasonalityParameters,
+  EdaSeasonalityPhasePoint,
+  EdaSeasonalityResponse,
+  EdaSpectrumPoint,
+} from "./components/EdaSeasonalityOverview";
 export { TsAnalysisUpload } from "./components/TsAnalysisUpload";
 export { StructuralClassSchema } from "./components/StructuralClassSchema";
 export { classifyStructure } from "./lib/structuralClass";
