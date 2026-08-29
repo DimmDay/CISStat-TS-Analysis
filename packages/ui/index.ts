@@ -298,3 +298,15 @@ export {
   getDemoFinanceOhlcvVolumeSeries,
 } from "./lib/demoDatasets";
 export type { NavigatorChartPoint } from "./lib/demoDatasets";
+
+// Статичная блок-схема алгоритма автоопределения структуры для окна
+// «Обзор» остановки «Подтверждение автоопределения» (id="structure_confirm")
+// секции «Этапы модуля» остановки «Загрузка» (Task 2026-08-30).
+// Рендерится только при активной паре «Загрузка» + «Подтверждение
+// автоопределения» (см. TsAnalysisNavigator.tsx). Чисто презентационная,
+// БЕЗ зависимости от useAppShell / activeDataset / сети — основана на
+// РЕАЛЬНОЙ бэкенд-логике (apps/api/routers/session.py::
+// get_structure_detection, app/data/detectors.py). Аналитик мгновенно
+// понимает алгоритм: 3 параллельных детектора (date / entity / frequency)
+// → StructureDetectionResponse → можно поправить вручную.
+export { NavigatorStructureConfirmPreview } from "./components/NavigatorStructureConfirmPreview";

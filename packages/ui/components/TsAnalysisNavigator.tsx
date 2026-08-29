@@ -53,6 +53,7 @@ import {
 } from "../lib/navigator-stops";
 import { UploadAutoPreviewPipeline } from "./UploadAutoPreviewPipeline";
 import { NavigatorChartPreview } from "./NavigatorChartPreview";
+import { NavigatorStructureConfirmPreview } from "./NavigatorStructureConfirmPreview";
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -292,12 +293,22 @@ export function TsAnalysisNavigator() {
               (NavigatorChartPreview). График НЕ зависит от сессии/сети —
               отображается при любых условиях, даже если сам датасет удалён.
 
+              Задача 2026-08-30: для пары «Загрузка» + «Подтверждение
+              автоопределения» (id="upload" + id="structure_confirm")
+              рендерим статичную блок-схему алгоритма автоопределения
+              структуры (3 параллельных детектора: date / entity / frequency)
+              на основе РЕАЛЬНОЙ бэкенд-логики (score_all_columns_as_date /
+              score_all_columns_as_entity_group / detect_column_frequency).
+              Аналитик мгновенно понимает алгоритм благодаря инфографике.
+
               Для остальных пунктов — текстовая заглушка (своя визуализация
               для каждого пункта в будущих задачах). */}
           {activeStopId === "upload" && activeItemId === "preview" ? (
             <UploadAutoPreviewPipeline />
           ) : activeStopId === "upload" && activeItemId === "chart" ? (
             <NavigatorChartPreview />
+          ) : activeStopId === "upload" && activeItemId === "structure_confirm" ? (
+            <NavigatorStructureConfirmPreview />
           ) : (
             <div
               className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"

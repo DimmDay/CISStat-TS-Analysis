@@ -183,13 +183,63 @@ describe("TsAnalysisNavigator", () => {
       renderNavigator();
       // По умолчанию активен upload + preview (первый item) —
       // для preview рендерится UploadAutoPreviewPipeline, не заглушка.
-      // Переключимся на «Подтверждение автоопределения» (3-й item),
-      // для которого НЕТ специализированного Overview-компонента.
-      const card = screen.getByText("Подтверждение автоопределения");
+      // После задачи 2026-08-30 «Подтверждение автоопределения» (3-й item)
+      // тоже имеет специализированный Overview — выбираем пункт БЕЗ
+      // специализированной визуализации: «Teaser качества» (4-й item).
+      const card = screen.getByText("Teaser качества");
       fireEvent.click(card.closest("article")!);
       expect(
         screen.getByText(/область графика\/таблицы\/блок-схемы/)
       ).toBeInTheDocument();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Задача 2026-08-30 — окно «Обзор» остановки «Подтверждение
+  // автоопределения» (upload+structure_confirm) рендерит статичную
+  // блок-схему алгоритма автоопределения структуры (3 параллельных
+  // детектора: date / entity / frequency).
+  // ─────────────────────────────────────────────────────────────────────
+  describe("upload + structure_confirm: static infographic in Overview", () => {
+    function activateStructureConfirmItem() {
+      const card = screen.getByText("Подтверждение автоопределения");
+      fireEvent.click(card.closest("article")!);
+    }
+
+    it("renders the infographic heading when upload + structure_confirm is active", () => {
+      renderNavigator();
+      activateStructureConfirmItem();
+      // H3 «Обзор: Подтверждение автоопределения» — это заголовок окна
+      // Обзор из TsAnalysisNavigator. Сама инфографика тоже содержит H3
+      // «Подтверждение автоопределения». Поэтому минимум 2 совпадения.
+      const headings = screen.getAllByRole("heading", {
+        level: 3,
+        name: /подтверждение автоопределения/i,
+      });
+      expect(headings.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("does NOT show the generic placeholder text for structure_confirm item", () => {
+      renderNavigator();
+      activateStructureConfirmItem();
+      expect(screen.queryByText(/область графика\/таблицы\/блок-схемы/)).toBeNull();
+    });
+
+    it("renders 3 detector lanes (date / entity / frequency)", () => {
+      renderNavigator();
+      activateStructureConfirmItem();
+      // Каждая из 3 дорожек встречается ровно 1 раз (нет совпадений вне
+      // инфографики), используем getByText.
+      expect(screen.getByText("Временная колонка")).toBeInTheDocument();
+      expect(screen.getByText("Группирующая колонка")).toBeInTheDocument();
+      expect(screen.getByText("Частота ряда")).toBeInTheDocument();
+    });
+
+    it("renders the infographic WITHOUT activeDataset (works if dataset is deleted)", () => {
+      renderNavigator();
+      activateStructureConfirmItem();
+      expect(screen.getByText(/\/dataset\/structure-detection/i)).toBeInTheDocument();
+      expect(screen.queryByText(/нет данных/i)).toBeNull();
     });
   });
 
