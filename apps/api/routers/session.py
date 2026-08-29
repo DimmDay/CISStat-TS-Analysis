@@ -25,6 +25,7 @@ from apps.api.decomposition_data import build_decomposition, build_decomposition
 from apps.api.eda_correlation import build_eda_correlation
 from apps.api.eda_ih import build_eda_ih
 from apps.api.eda_seasonality import build_eda_seasonality
+from apps.api.eda_stationarity import build_eda_stationarity
 from apps.api.schemas import (
     ColumnDetectionOut,
     ColumnStatsOut,
@@ -37,6 +38,7 @@ from apps.api.schemas import (
     DatasetEdaCorrelationResponse,
     DatasetEdaIhResponse,
     DatasetEdaSeasonalityResponse,
+    DatasetEdaStationarityResponse,
     DatasetStatsResponse,
     DatasetSummaryOut,
     DatasetFormatCorrectionRequest,
@@ -525,6 +527,34 @@ def get_dataset_eda_seasonality(
         column=column,
         min_cycles=min_cycles,
         max_candidates=max_candidates,
+    ))
+
+
+@router.get("/dataset/eda-stationarity", response_model=DatasetEdaStationarityResponse)
+def get_dataset_eda_stationarity(
+    column: str,
+    request: Request,
+    response: Response,
+    alpha: float = Query(0.05, ge=0.01, le=0.10),
+    rolling_window: int = Query(12, ge=3, le=200),
+):
+    """ADF/KPSS/PP/ZA и скользящие диагностики выбранного ряда."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Колонка '{column}' не числовая — проверка стационарности недоступна",
+        )
+    return DatasetEdaStationarityResponse(**build_eda_stationarity(
+        session.dataframe,
+        column=column,
+        alpha=alpha,
+        rolling_window=rolling_window,
     ))
 
 

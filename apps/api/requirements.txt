@@ -11,6 +11,7 @@ python-multipart  # Для поддержки UploadFile
 numpy>=1.24.0
 scipy>=1.10.0
 statsmodels>=0.14.0          # app/core/passport.py -- ADF/KPSS/ACF
+arch>=7.0.0                  # EDA stationarity -- реальный Phillips–Perron
 scikit-learn>=1.3.0           # apps/api/routers/models.py, schemas.py
 pandera>=0.18.0               # validation/engine.py
 openpyxl>=3.1.0               # app/data/file_loader.py -- чтение .xlsx
@@ -27,4 +28,3 @@ plotly>=5.18.0                # apps/api/routers/models.py, schemas.py
 # формально не нужна -- но добавлена в requirements, чтобы при деплое
 # на Render с REDIS_URL=rediss://... библиотека была доступна.
 redis>=5.0.0                  # apps/api/session_store.py RedisSessionStore
-

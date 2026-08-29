@@ -21,7 +21,7 @@ pydantic>=2.0.0  # требуется src/catalog/models_catalog.py — отсу
 # === Временные ряды / статистика ===
 matplotlib>=3.7.0
 statsmodels>=0.14.0
+arch>=7.0.0  # реальный Phillips–Perron; ADF не используется как ложная подмена
 PyYAML>=6.0
 PyWavelets>=1.4.0
 openpyxl
- 

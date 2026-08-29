@@ -250,114 +250,12 @@ def run_stationarity_tests(series: pd.Series, max_lag: int = None) -> dict:
         - consensus: 'stationary' | 'non-stationary' | 'trend-stationary' | 'inconclusive'
         - recommendation: str
     """
-    results = {}
-    n = len(series)
+    from app.eda.stationarity import analyze_stationarity
 
-    if n < 30:
-        return {'error': 'Недостаточно данных (нужно ≥ 30)'}
-
-    try:
-        from statsmodels.tsa.stattools import adfuller, kpss
-
-        # ── 1. ADF TEST ──────────────────────────
-        # H0: ряд имеет единичный корень (нестационарен)
-        # H1: ряд стационарен
-        if max_lag is None:
-            max_lag_adf = min(int(12 * (n / 100) ** 0.25), n // 3)
-        else:
-            max_lag_adf = max_lag
-
-        adf_result = adfuller(series.dropna(), autolag='AIC', maxlag=max_lag_adf)
-        results['adf'] = {
-            'stat': adf_result[0],
-            'pvalue': adf_result[1],
-            'lags': adf_result[2],
-            'is_stationary': adf_result[1] < 0.05,
-            'critical_values': adf_result[4]
-        }
-
-        # ─ 2. KPSS TEST ─────────────────────────
-        # H0: ряд стационарен (вокруг уровня или тренда)
-        # H1: ряд нестационарен
-        # Тестируем два варианта: level (вокруг константы) и trend (вокруг тренда)
-        try:
-            kpss_level = kpss(series.dropna(), regression='c', nlags='auto')
-            kpss_trend = kpss(series.dropna(), regression='ct', nlags='auto')
-            results['kpss'] = {
-                'stat_level': kpss_level[0],
-                'pvalue_level': kpss_level[1],
-                'stat_trend': kpss_trend[0],
-                'pvalue_trend': kpss_trend[1],
-                'is_stationary_level': kpss_level[1] > 0.05,
-                'is_stationary_trend': kpss_trend[1] > 0.05
-            }
-        except Exception as e:
-            results['kpss'] = {'error': str(e)}
-
-        # ── 3. PHILLIPS-PERRON TEST ──────────────
-        # Альтернатива ADF, устойчива к гетероскедастичности
-        try:
-            from arch.unitroot import PhillipsPerron
-            pp_result = PhillipsPerron(series.dropna(), lags=max_lag_adf)
-            results['pp'] = {
-                'stat': pp_result.stat,
-                'pvalue': pp_result.pvalue,
-                'is_stationary': pp_result.pvalue < 0.05
-            }
-        except Exception:
-            # Fallback: если PP недоступен, используем ADF как proxy
-            results['pp'] = {
-                'stat': adf_result[0],
-                'pvalue': adf_result[1],
-                'is_stationary': adf_result[1] < 0.05,
-                'note': 'PP недоступен, используется ADF'
-            }
-
-        # ── 4. ZIVOT-ANDREWS TEST (опционально) ──
-        # Учитывает структурные разрывы
-        try:
-            from statsmodels.tsa.stattools import zivot_andrews
-            za_result = zivot_andrews(series.dropna(), model='c')
-            results['za'] = {
-                'stat': za_result[0],
-                'pvalue': za_result[1],  # Может быть недоступен в старых версиях
-                'breakpoint': za_result[2] if len(za_result) > 2 else None,
-                'is_stationary': za_result[0] < -4.8  # Приблизительный критический уровень
-            }
-        except Exception:
-            results['za'] = {'note': 'Тест Zivot-Andrews недоступен (statsmodels < 0.14)'}
-
-        # ── 5. КОНСЕНСУС ─────────────────────────
-        adf_stat = results['adf']['is_stationary']
-        kpss_level_stat = results['kpss'].get('is_stationary_level', None)
-        kpss_trend_stat = results['kpss'].get('is_stationary_trend', None)
-        pp_stat = results['pp']['is_stationary']
-
-        if adf_stat and kpss_level_stat:
-            consensus = 'stationary'
-            recommendation = '✅ Ряд стационарен. Дифференцирование не требуется.'
-        elif not adf_stat and kpss_trend_stat:
-            consensus = 'trend-stationary'
-            recommendation = '⚠️ Ряд стационарен вокруг тренда. Достаточно удалить тренд (детренд).'
-        elif not adf_stat and not kpss_level_stat:
-            consensus = 'non-stationary'
-            if pp_stat:
-                recommendation = '⚠️ ADF и KPSS противоречат PP. Попробуйте другое дифференцирование.'
-            else:
-                recommendation = ' Ряд нестационарен. Требуется дифференцирование.'
-        else:
-            consensus = 'inconclusive'
-            recommendation = '️ Результаты тестов противоречивы. Визуальный анализ + пробное дифференцирование.'
-
-        results['consensus'] = consensus
-        results['recommendation'] = recommendation
-
-    except ImportError as e:
-        results['error'] = f'Не установлены необходимые библиотеки: {e}'
-    except Exception as e:
-        results['error'] = str(e)
-
-    return results
+    result = analyze_stationarity(series, alpha=0.05, max_lag=max_lag)
+    if not result["applicable"]:
+        return {"error": result["reason"], **result}
+    return result
 
 
 
@@ -581,7 +479,6 @@ def compute_row_properties(series: pd.Series, name: str = "") -> dict:
         props['distribution_type'] = 'Эмпирическое'
 
     return props
-
 
 
 

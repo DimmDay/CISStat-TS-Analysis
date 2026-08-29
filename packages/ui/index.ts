@@ -99,6 +99,14 @@ export type {
   EdaSeasonalityResponse,
   EdaSpectrumPoint,
 } from "./components/EdaSeasonalityOverview";
+export { EdaStationarityOverview } from "./components/EdaStationarityOverview";
+export type {
+  EdaStationarityParameters,
+  EdaStationarityResponse,
+  EdaStationarityRollingPoint,
+  EdaStationarityTest,
+  StationarityConsensus,
+} from "./components/EdaStationarityOverview";
 export { TsAnalysisUpload } from "./components/TsAnalysisUpload";
 export { StructuralClassSchema } from "./components/StructuralClassSchema";
 export { classifyStructure } from "./lib/structuralClass";

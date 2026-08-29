@@ -293,6 +293,68 @@ class DatasetEdaSeasonalityResponse(BaseModel):
     recommendations: List[str] = Field(default_factory=list)
 
 
+class EdaStationarityTestOut(BaseModel):
+    id: Literal[
+        "adf_level",
+        "adf_trend",
+        "kpss_level",
+        "kpss_trend",
+        "pp",
+        "zivot_andrews",
+    ]
+    label: str
+    null_hypothesis: str
+    alternative_hypothesis: str
+    available: bool
+    statistic: Optional[float] = None
+    p_value: Optional[float] = None
+    lags: Optional[int] = None
+    reject_null: Optional[bool] = None
+    supports_stationarity: Optional[bool] = None
+    critical_values: Dict[str, float] = Field(default_factory=dict)
+    note: Optional[str] = None
+
+
+class EdaStationarityRollingPointOut(BaseModel):
+    index: int
+    label: Optional[str] = None
+    value: float
+    rolling_mean: Optional[float] = None
+    rolling_std: Optional[float] = None
+
+
+class DatasetEdaStationarityResponse(BaseModel):
+    """Комплементарные unit-root тесты и скользящие диагностики ряда."""
+    column: str
+    applicable: bool
+    reason: Optional[str] = None
+    n_observations: int
+    missing_count: int
+    min_observations: int = 30
+    alpha: float
+    requested_rolling_window: int
+    rolling_window: int
+    consensus: Optional[Literal[
+        "stationary",
+        "trend-stationary",
+        "non-stationary",
+        "inconclusive",
+    ]] = None
+    recommendation: Optional[str] = None
+    order_source: Literal["time_column", "row_order"]
+    order_column: Optional[str] = None
+    order_warning: Optional[str] = None
+    frequency: Optional[str] = None
+    breakpoint_index: Optional[int] = None
+    breakpoint_label: Optional[str] = None
+    tests: List[EdaStationarityTestOut] = Field(default_factory=list)
+    rolling: List[EdaStationarityRollingPointOut] = Field(default_factory=list)
+    rolling_sampled: bool = False
+    rolling_original_count: int
+    recommendations: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+
+
 class PanelBalanceResponse(BaseModel):
     """Реальная проверка Balanced/Unbalanced для панельных данных --
     пункт 8 контракта (структурный класс), визуальная схема на

@@ -139,6 +139,25 @@ const SEASONALITY_RESPONSE = {
   recommendations: ["Подтверждён период 12"],
 };
 
+const STATIONARITY_RESPONSE = {
+  column: "Price", applicable: true, reason: null, n_observations: 240, missing_count: 0,
+  min_observations: 30, alpha: 0.05, requested_rolling_window: 12, rolling_window: 12,
+  consensus: "stationary", recommendation: "Ряд стационарен вокруг уровня.",
+  order_source: "time_column", order_column: "Date", order_warning: null, frequency: "D",
+  breakpoint_index: 120, breakpoint_label: "2020-04-30T00:00:00",
+  tests: [
+    { id: "adf_level", label: "ADF (уровень)", null_hypothesis: "Единичный корень", alternative_hypothesis: "Стационарность вокруг уровня", available: true, statistic: -4.2, p_value: 0.001, lags: 2, reject_null: true, supports_stationarity: true, critical_values: { "5%": -2.9 }, note: null },
+    { id: "adf_trend", label: "ADF (тренд)", null_hypothesis: "Единичный корень", alternative_hypothesis: "Стационарность вокруг тренда", available: true, statistic: -4.4, p_value: 0.004, lags: 2, reject_null: true, supports_stationarity: true, critical_values: { "5%": -3.4 }, note: null },
+    { id: "kpss_level", label: "KPSS (уровень)", null_hypothesis: "Стационарность вокруг уровня", alternative_hypothesis: "Единичный корень", available: true, statistic: 0.1, p_value: 0.1, lags: 4, reject_null: false, supports_stationarity: true, critical_values: { "5%": 0.463 }, note: null },
+    { id: "kpss_trend", label: "KPSS (тренд)", null_hypothesis: "Стационарность вокруг тренда", alternative_hypothesis: "Единичный корень", available: true, statistic: 0.05, p_value: 0.1, lags: 4, reject_null: false, supports_stationarity: true, critical_values: { "5%": 0.146 }, note: null },
+    { id: "pp", label: "Phillips–Perron", null_hypothesis: "Единичный корень", alternative_hypothesis: "Стационарность вокруг уровня", available: true, statistic: -4.1, p_value: 0.001, lags: 12, reject_null: true, supports_stationarity: true, critical_values: { "5%": -2.9 }, note: null },
+    { id: "zivot_andrews", label: "Zivot–Andrews", null_hypothesis: "Единичный корень с одним разрывом", alternative_hypothesis: "Стационарность с одним разрывом", available: true, statistic: -5.2, p_value: 0.02, lags: 2, reject_null: true, supports_stationarity: true, critical_values: { "5%": -4.8 }, note: null },
+  ],
+  rolling: Array.from({ length: 24 }, (_, index) => ({ index, label: `2020-01-${String(index + 1).padStart(2, "0")}T00:00:00`, value: index / 10, rolling_mean: index < 11 ? null : index / 10, rolling_std: index < 11 ? null : 0.3 })),
+  rolling_sampled: false, rolling_original_count: 240,
+  recommendations: ["ADF и KPSS согласованы."], warnings: [],
+};
+
 function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
   const url = String(input);
   if (url.includes("/target-column")) {
@@ -181,6 +200,14 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
       ok: true,
       status: 200,
       json: () => Promise.resolve({ ...SEASONALITY_RESPONSE, column }),
+    });
+  }
+  if (url.includes("/dataset/eda-stationarity")) {
+    const column = new URL(url).searchParams.get("column") ?? "Price";
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ...STATIONARITY_RESPONSE, column }),
     });
   }
   if (url.includes("/dataset/distribution")) {
@@ -423,6 +450,55 @@ describe("TsAnalysisEDA", () => {
     fireEvent.click(screen.getByRole("button", { name: "Пересчитать сезонность" }));
     await waitFor(() => {
       const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-seasonality")).length;
+      expect(callsAfter).toBe(callsBefore + 1);
+    });
+  });
+
+  it("loads stationarity for the shared target and exposes four overview views", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" });
+    await waitFor(() => expect(selector).toHaveValue("Price"));
+
+    fireEvent.click(screen.getByRole("button", { name: /^Верификация стационарности/ }));
+
+    expect(await screen.findByRole("img", { name: "Ряд и скользящее среднее для Price" })).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/dataset/eda-stationarity?column=Price&alpha=0.05&rolling_window=12"),
+      { credentials: "include" },
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Скользящее σ" }));
+    expect(screen.getByRole("img", { name: "Скользящее стандартное отклонение для Price" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "p-value" }));
+    expect(screen.getByRole("img", { name: "Сопоставление p-value тестов стационарности для Price" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Таблица" }));
+    expect(screen.getByRole("table", { name: "Результаты тестов стационарности" })).toBeInTheDocument();
+    expect(screen.getByText("Консенсус", { selector: "div" }).nextElementSibling).toHaveTextContent("Стационарен");
+  });
+
+  it("uses stationarity-specific methodology, reacts to alpha and supports refresh", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+    fireEvent.click(screen.getByRole("button", { name: /^Верификация стационарности/ }));
+    await screen.findByRole("img", { name: "Ряд и скользящее среднее для Price" });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/ADF и Phillips–Perron проверяют H₀: единичный корень/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Полный пайплайн" })[0]);
+    expect(screen.getByText(/dataset\/eda-stationarity/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Уровень значимости α" }), { target: { value: "0.01" } });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("alpha=0.01"),
+      { credentials: "include" },
+    ));
+    await screen.findByRole("button", { name: "Пересчитать стационарность" });
+
+    const callsBefore = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-stationarity")).length;
+    fireEvent.click(screen.getByRole("button", { name: "Пересчитать стационарность" }));
+    await waitFor(() => {
+      const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-stationarity")).length;
       expect(callsAfter).toBe(callsBefore + 1);
     });
   });

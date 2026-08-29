@@ -38,6 +38,12 @@ import {
   type EdaSeasonalityParameters,
   type EdaSeasonalityResponse,
 } from "./EdaSeasonalityOverview";
+import {
+  EdaStationarityOverview,
+  type EdaStationarityParameters,
+  type EdaStationarityResponse,
+  type StationarityConsensus,
+} from "./EdaStationarityOverview";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 
@@ -217,6 +223,31 @@ const SEASONALITY_PIPELINE_DESCRIPTION = `Полный пайплайн: сез�
 7. Один API-ответ питает четыре вкладки «Обзора»: FFT, периодограмму, фазовый профиль доминирующего кандидата и таблицу периодов. Переключение вкладок не создаёт повторных запросов.
 8. Остановка read-only. Смена общего признака или параметров автоматически пересчитывает результат; ручная кнопка повторяет запрос после преобразований датасета.`;
 
+const STATIONARITY_METRICS_DESCRIPTION = `Метрики и алгоритм: Верификация стационарности
+
+Стационарность означает устойчивость вероятностных характеристик ряда во времени. Остановка не делает вывод по одному p-value: тесты имеют разные нулевые гипотезы, чувствительны к спецификации детерминированных компонент и на коротких выборках обладают ограниченной мощностью.
+
+1. ADF и Phillips–Perron проверяют H₀: единичный корень. p < α означает отклонение H₀ в пользу стационарности для выбранной спецификации. ADF моделирует серийную корреляцию лагами и выбирает их по AIC; PP использует Newey–West оценку долгосрочной дисперсии.
+2. KPSS проверяет обратную H₀: стационарность. Для KPSS p ≥ α означает, что оснований отвергнуть стационарность нет. Его табличные p-value ограничены диапазоном [0,01; 0,10], поэтому backend сохраняет предупреждение о границе вместо ложной точности.
+3. ADF и KPSS рассчитываются дважды: c — стационарность вокруг уровня, ct — вокруг линейного тренда. «Стационарен вокруг тренда» выдаётся только при согласии ADF(ct) и KPSS(ct), а не из одного неотвергнутого теста.
+4. Консенсус: stationary — ADF(c) отвергает единичный корень и KPSS(c) не отвергает уровень; trend-stationary — согласованы ADF(ct)/KPSS(ct); non-stationary — обе ADF-спецификации и обе KPSS-спецификации согласованы с единичным корнем; остальные комбинации честно помечаются inconclusive.
+5. Phillips–Perron рассчитывается реальным классом arch.unitroot.PhillipsPerron. Если зависимость недоступна, PP помечается недоступным: результат ADF больше не выдаётся за другой тест.
+6. Zivot–Andrews проверяет единичный корень при одном эндогенно найденном структурном разрыве. В ответе используется реальный breakpoint index и p-value, а не приблизительный вручную заданный порог.
+7. Скользящие mean/std — визуальная диагностика локальной стабильности, не формальный тест. Выбранное окно измеряется в наблюдениях; систематический дрейф этих кривых помогает объяснить статистический вывод.
+
+Даже согласованный вывод не доказывает применимость всей ARIMA-модели: ещё требуются корректная сезонная спецификация, диагностика остатков и временная валидация.`;
+
+const STATIONARITY_PIPELINE_DESCRIPTION = `Полный пайплайн: верификация стационарности
+
+1. Общий «Исследуемый признак» передаётся в GET /v1/session/dataset/eda-stationarity?column=...&alpha=...&rolling_window=.... Остановка читает текущий полностью преобразованный session.dataframe и не мутирует его.
+2. Backend переиспользует общий контентный детектор временной оси. Даты сортируются по возрастанию; повторяющиеся даты блокируют расчёт как вероятную панель, поскольку выбор или агрегация сущности без решения пользователя изменили бы ряд.
+3. Нераспознанные и нерегулярные даты блокируют unit-root тесты: лаги должны соответствовать равноотстоящим наблюдениям. Если дата не определена, допускается текущий порядок строк с явным предупреждением и окном в наблюдениях.
+4. Пропуски и бесконечности не удаляются молча. Удаление сжало бы временную ось; интерфейс направляет пользователя назад в Предобработку. Минимум — 30 конечных наблюдений; константный ряд помечается как вырожденный для unit-root p-value.
+5. Улучшенный общий backend-контур app.eda.stationarity используется и legacy-функцией run_stationarity_tests: ADF(c/ct) → KPSS(c/ct) → настоящий PP → Zivot–Andrews → комплементарный консенсус.
+6. Один API-ответ содержит шесть строк тестов, critical values, лаги, решение при α, breakpoint, рекомендации и скользящие mean/std. Для большого ряда график LTTB-сэмплируется с сохранением формы; сами тесты всегда считаются по полному ряду.
+7. Четыре вкладки «Обзора» — «Ряд и μ», «Скользящее σ», «p-value», «Таблица» — переиспользуют один ответ без повторных запросов.
+8. Смена α, окна или общего признака автоматически пересчитывает профиль; кнопка ручного обновления повторяет проверку после преобразований предыдущих этапов.`;
+
 async function responseDetail(response: Response): Promise<string> {
   try {
     const body = await response.json();
@@ -257,10 +288,28 @@ async function seasonalityResponseDetail(response: Response): Promise<string> {
   return `Не удалось выполнить спектральный анализ (HTTP ${response.status})`;
 }
 
+async function stationarityResponseDetail(response: Response): Promise<string> {
+  try {
+    const body = await response.json();
+    if (typeof body?.detail === "string") return body.detail;
+  } catch {
+    // Нейтральная ошибка ниже покрывает ответ без JSON.
+  }
+  return `Не удалось проверить стационарность (HTTP ${response.status})`;
+}
+
 function formatMetric(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
   const normalized = Object.is(value, -0) ? 0 : value;
   return normalized.toLocaleString("ru-RU", { maximumFractionDigits: 3 });
+}
+
+function stationarityConsensusLabel(consensus: StationarityConsensus | null | undefined): string {
+  if (consensus === "stationary") return "Стационарен";
+  if (consensus === "trend-stationary") return "Вокруг тренда";
+  if (consensus === "non-stationary") return "Нестационарен";
+  if (consensus === "inconclusive") return "Неопределённо";
+  return "—";
 }
 
 // ── Компонент ─────────────────────────────────────────────────
@@ -573,6 +622,86 @@ export function TsAnalysisEDA() {
     ? "done"
     : "pending";
 
+  // ── Остановка «Верификация стационарности»: общий target без мутации ──
+  const [stationarityProfile, setStationarityProfile] = useState<EdaStationarityResponse | null>(null);
+  const [stationarityLoading, setStationarityLoading] = useState(false);
+  const [stationarityNoDataset, setStationarityNoDataset] = useState(false);
+  const [stationarityError, setStationarityError] = useState<string | null>(null);
+  const [stationarityRefreshKey, setStationarityRefreshKey] = useState(0);
+  const [stationarityParameters, setStationarityParameters] = useState<EdaStationarityParameters>({
+    alpha: 0.05,
+    rollingWindow: 12,
+  });
+
+  useEffect(() => {
+    if (activeCheckId !== "stationarity" || targetLoading) return;
+    if (!hasDataset) {
+      setStationarityNoDataset(true);
+      setStationarityProfile(null);
+      setStationarityLoading(false);
+      return;
+    }
+    if (!activeFeature) {
+      setStationarityNoDataset(false);
+      setStationarityProfile(null);
+      setStationarityLoading(false);
+      return;
+    }
+
+    let active = true;
+    setStationarityLoading(true);
+    setStationarityError(null);
+    setStationarityNoDataset(false);
+    void (async () => {
+      try {
+        const query = new URLSearchParams({
+          column: activeFeature,
+          alpha: String(stationarityParameters.alpha),
+          rolling_window: String(stationarityParameters.rollingWindow),
+        });
+        const response = await fetch(
+          sessionApiUrl(`/dataset/eda-stationarity?${query.toString()}`),
+          { credentials: "include" },
+        );
+        if (response.status === 404) {
+          if (active) {
+            setStationarityNoDataset(true);
+            setStationarityProfile(null);
+          }
+          return;
+        }
+        if (!response.ok) throw new Error(await stationarityResponseDetail(response));
+        const data: EdaStationarityResponse = await response.json();
+        if (active) setStationarityProfile(data);
+      } catch (caught) {
+        if (active) {
+          setStationarityError(
+            caught instanceof Error ? caught.message : "Не удалось проверить стационарность",
+          );
+        }
+      } finally {
+        if (active) setStationarityLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [activeCheckId, activeFeature, hasDataset, stationarityParameters, stationarityRefreshKey, targetLoading]);
+
+  const stationarityBusy = stationarityLoading || (activeCheckId === "stationarity" && targetLoading);
+  const stationarityRequestError = stationarityError ?? (activeCheckId === "stationarity" ? targetError : null);
+  const stationarityStatus: CheckStatus = stationarityBusy
+    ? "running"
+    : stationarityRequestError
+    ? "error"
+    : stationarityNoDataset || (hasDataset && !activeFeature)
+    ? "skipped"
+    : stationarityProfile?.applicable === false
+    ? "warning"
+    : stationarityProfile?.consensus === "stationary" || stationarityProfile?.consensus === "trend-stationary"
+    ? "done"
+    : stationarityProfile?.applicable
+    ? "warning"
+    : "pending";
+
   const checks = useMemo<Check[]>(() => CHECKS.map((check) =>
     check.id === "descriptive"
       ? { ...check, status: descriptiveStatus, count: insufficientColumns }
@@ -582,8 +711,10 @@ export function TsAnalysisEDA() {
       ? { ...check, status: ihStatus, count: null }
       : check.id === "seasonality"
       ? { ...check, status: seasonalityStatus, count: seasonalityProfile?.confirmed_periods ?? null }
+      : check.id === "stationarity"
+      ? { ...check, status: stationarityStatus, count: null }
       : check,
-  ), [correlationStatus, descriptiveStatus, ihStatus, insufficientColumns, seasonalityProfile?.confirmed_periods, seasonalityStatus]);
+  ), [correlationStatus, descriptiveStatus, ihStatus, insufficientColumns, seasonalityProfile?.confirmed_periods, seasonalityStatus, stationarityStatus]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -660,6 +791,9 @@ export function TsAnalysisEDA() {
     if (activeCheckId === "seasonality") {
       return descriptionSection === "metrics" ? SEASONALITY_METRICS_DESCRIPTION : SEASONALITY_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "stationarity") {
+      return descriptionSection === "metrics" ? STATIONARITY_METRICS_DESCRIPTION : STATIONARITY_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -689,6 +823,11 @@ export function TsAnalysisEDA() {
       return descriptionSection === "metrics"
         ? "Метрики и алгоритм — Сезонность и периодичность"
         : "Полный пайплайн — Сезонность и периодичность";
+    }
+    if (activeCheckId === "stationarity") {
+      return descriptionSection === "metrics"
+        ? "Метрики и алгоритм — Верификация стационарности"
+        : "Полный пайплайн — Верификация стационарности";
     }
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
@@ -884,6 +1023,15 @@ export function TsAnalysisEDA() {
               parameters={seasonalityParameters}
               onParametersChange={(changes) => setSeasonalityParameters((current) => ({ ...current, ...changes }))}
             />
+          ) : activeCheckId === "stationarity" ? (
+            <EdaStationarityOverview
+              profile={stationarityProfile}
+              loading={stationarityBusy}
+              error={stationarityRequestError}
+              noDataset={stationarityNoDataset}
+              parameters={stationarityParameters}
+              onParametersChange={(changes) => setStationarityParameters((current) => ({ ...current, ...changes }))}
+            />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
@@ -947,6 +1095,22 @@ export function TsAnalysisEDA() {
               <Metric label="Сила профиля" value={formatMetric(seasonalityProfile?.dominant_strength)} />
               <Metric label="Спектр. энтропия" value={formatMetric(seasonalityProfile?.spectral_entropy)} />
               <Metric label="Подтверждено" value={seasonalityProfile?.applicable ? String(seasonalityProfile.confirmed_periods) : "—"} />
+            </div>
+          ) : activeCheckId === "stationarity" ? (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+              {(() => {
+                const byId = (id: string) => stationarityProfile?.tests.find((item) => item.id === id) ?? null;
+                return (
+                  <>
+                    <Metric label="N" value={stationarityProfile ? String(stationarityProfile.n_observations) : "—"} />
+                    <Metric label="Консенсус" value={stationarityConsensusLabel(stationarityProfile?.consensus)} />
+                    <Metric label="ADF p" value={formatMetric(byId("adf_level")?.p_value)} />
+                    <Metric label="KPSS p" value={formatMetric(byId("kpss_level")?.p_value)} />
+                    <Metric label="PP p" value={formatMetric(byId("pp")?.p_value)} />
+                    <Metric label="ZA-разрыв" value={stationarityProfile?.breakpoint_label ?? (stationarityProfile?.breakpoint_index !== null && stationarityProfile?.breakpoint_index !== undefined ? String(stationarityProfile.breakpoint_index) : "—")} />
+                  </>
+                );
+              })()}
             </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
@@ -1100,6 +1264,36 @@ export function TsAnalysisEDA() {
                     </p>
                   )}
                 </>
+              ) : check.id === "stationarity" ? (
+                <>
+                  {check.status === "running" && (
+                    <p role="status" className="text-sm text-brand bg-brand-light rounded px-3 py-2 mb-2">
+                      Выполняем ADF/KPSS/PP и скользящие диагностики…
+                    </p>
+                  )}
+                  {check.status === "error" && (
+                    <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">
+                      {stationarityRequestError ?? "Ошибка проверки стационарности"}
+                    </p>
+                  )}
+                  {check.status === "skipped" && (
+                    <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                      {stationarityNoDataset ? "Нет активного датасета" : "Нет числового исследуемого признака"}
+                    </p>
+                  )}
+                  {check.status === "warning" && (
+                    <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
+                      {stationarityProfile?.applicable === false
+                        ? stationarityProfile.reason
+                        : stationarityProfile?.recommendation ?? "Результаты тестов требуют проверки"}
+                    </p>
+                  )}
+                  {check.status === "done" && (
+                    <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
+                      {stationarityConsensusLabel(stationarityProfile?.consensus)} при α={stationarityProfile?.alpha ?? stationarityParameters.alpha}
+                    </p>
+                  )}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -1170,6 +1364,14 @@ export function TsAnalysisEDA() {
                   disabled={seasonalityBusy || !activeFeature}
                 >
                   {seasonalityBusy ? "Рассчитываем…" : "Пересчитать сезонность"}
+                </Button>
+              ) : check.id === "stationarity" ? (
+                <Button
+                  type="button"
+                  onClick={() => setStationarityRefreshKey((key) => key + 1)}
+                  disabled={stationarityBusy || !activeFeature}
+                >
+                  {stationarityBusy ? "Рассчитываем…" : "Пересчитать стационарность"}
                 </Button>
               ) : (
                 <Button>Запустить анализ ({check.label.toLowerCase()})</Button>
