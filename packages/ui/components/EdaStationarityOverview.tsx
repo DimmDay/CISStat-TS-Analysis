@@ -90,7 +90,7 @@ type StationarityView = "series" | "rolling_std" | "pvalues" | "tests";
 const TABS: { id: StationarityView; label: string }[] = [
   { id: "series", label: "Ряд и μ" },
   { id: "rolling_std", label: "Скользящее σ" },
-  { id: "pvalues", label: "p-value" },
+  { id: "pvalues", label: "p-значения" },
   { id: "tests", label: "Таблица" },
 ];
 
@@ -110,6 +110,22 @@ function formatTickLabel(point: EdaStationarityRollingPoint): string {
   if (!point.label) return String(point.index);
   const date = new Date(point.label);
   return Number.isNaN(date.getTime()) ? point.label : date.toLocaleDateString("ru-RU");
+}
+
+function localizeKpssDiagnostic(note: string | null, pValue?: number | null): string | null {
+  if (!note) return null;
+  const normalized = note.toLowerCase();
+  if (normalized.includes("actual p-value is smaller") || pValue !== null && pValue !== undefined && pValue <= 0.01) {
+    return "Расчётное p-значение ниже нижней границы табличного диапазона 0,01; показано граничное значение 0,01.";
+  }
+  if (normalized.includes("actual p-value is greater") || pValue !== null && pValue !== undefined && pValue >= 0.10) {
+    return "Расчётное p-значение выше верхней границы табличного диапазона 0,10; показано граничное значение 0,10.";
+  }
+  if (normalized.includes("kpss currently returns a plain tuple")) return null;
+  if (normalized.includes("p-value ограничен таблицей")) {
+    return "p-значение ограничено табличным диапазоном метода KPSS.";
+  }
+  return note;
 }
 
 function ParameterSelect({
@@ -201,7 +217,7 @@ function PValueChart({ profile }: { profile: EdaStationarityResponse }) {
       supports_stationarity: item.supports_stationarity,
     }));
   return (
-    <div role="img" aria-label={`Сопоставление p-value тестов стационарности для ${profile.column}`} className="h-[265px] px-2 py-2">
+    <div role="img" aria-label={`Сопоставление p-значений тестов стационарности для ${profile.column}`} className="h-[265px] px-2 py-2">
       <p className="px-2 text-[10px] text-neutral-500">Зелёный — вывод поддерживает стационарность. Для ADF/PP/ZA это p&lt;α, для KPSS — p≥α.</p>
       <div className="h-[238px]">
         <ResponsiveContainer width="100%" height="100%">
@@ -211,7 +227,7 @@ function PValueChart({ profile }: { profile: EdaStationarityResponse }) {
             <YAxis tick={{ fontSize: 10 }} width={52} domain={[0, "auto"]} />
             <Tooltip formatter={(value: number | string) => typeof value === "number" ? formatNumber(value) : value} />
             <ReferenceLine y={profile.alpha} stroke="#dc2626" strokeDasharray="4 3" label={{ value: `α=${profile.alpha}`, fontSize: 9, fill: "#dc2626" }} />
-            <Bar dataKey="p_value" name="p-value" isAnimationActive={false}>
+            <Bar dataKey="p_value" name="p-значение" isAnimationActive={false}>
               {data.map((item) => <Cell key={item.label} fill={item.supports_stationarity ? "#16a34a" : "#d97706"} />)}
             </Bar>
           </BarChart>
@@ -228,7 +244,7 @@ function TestsTable({ profile }: { profile: EdaStationarityResponse }) {
         <thead className="sticky top-0 bg-neutral-50 text-neutral-500">
           <tr>
             <th className="px-2 py-2">Тест</th><th className="px-2 py-2">H₀</th>
-            <th className="px-2 py-2 text-right">Статистика</th><th className="px-2 py-2 text-right">p-value</th>
+            <th className="px-2 py-2 text-right">Статистика</th><th className="px-2 py-2 text-right">p-значение</th>
             <th className="px-2 py-2 text-right">Лаги</th><th className="px-2 py-2">Решение при α={profile.alpha}</th>
           </tr>
         </thead>
@@ -242,7 +258,7 @@ function TestsTable({ profile }: { profile: EdaStationarityResponse }) {
               <td className="px-2 py-2 text-right tabular-nums">{item.lags ?? "—"}</td>
               <td className={`px-2 py-2 font-medium ${item.supports_stationarity === true ? "text-green-700" : item.supports_stationarity === false ? "text-amber-700" : "text-neutral-500"}`}>
                 {!item.available ? "недоступен" : item.reject_null ? "H₀ отвергается" : "H₀ не отвергается"}
-                {item.note ? <span className="mt-0.5 block font-normal text-neutral-500">{item.note}</span> : null}
+                {localizeKpssDiagnostic(item.note, item.p_value) ? <span className="mt-0.5 block font-normal text-neutral-500">{localizeKpssDiagnostic(item.note, item.p_value)}</span> : null}
               </td>
             </tr>
           ))}
@@ -261,6 +277,9 @@ export function EdaStationarityOverview({
   onParametersChange,
 }: EdaStationarityOverviewProps) {
   const [activeView, setActiveView] = useState<StationarityView>("series");
+  const localizedWarnings = profile?.warnings
+    .map((warning) => localizeKpssDiagnostic(warning))
+    .filter((warning): warning is string => Boolean(warning)) ?? [];
 
   if (loading) return <div role="status" className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Выполняем ADF/KPSS/PP и скользящие диагностики…</div>;
   if (error) return <div role="alert" className="flex h-[420px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">{error}</div>;
@@ -289,7 +308,7 @@ export function EdaStationarityOverview({
           </div>
         </div>
         {profile.recommendation && <p className="mt-3 rounded bg-brand-light px-3 py-2 text-xs text-neutral-700">{profile.recommendation}</p>}
-        {profile.warnings.length > 0 && <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">{profile.warnings.join(" ")}</p>}
+        {localizedWarnings.length > 0 && <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">{localizedWarnings.join(" ")}</p>}
       </div>
 
       <div role="tablist" aria-label="Представления стационарности" className="flex flex-wrap gap-1 border-b border-neutral-100 px-4 pt-3">

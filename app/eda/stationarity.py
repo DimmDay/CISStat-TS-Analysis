@@ -132,11 +132,29 @@ def _run_kpss(
 ) -> dict[str, Any]:
     from statsmodels.tsa.stattools import kpss
 
-    with warnings.catch_warnings(record=True) as captured:
-        warnings.simplefilter("always")
-        result = kpss(values, regression=regression, nlags="auto")
-    notes = list(dict.fromkeys(str(item.message) for item in captured))
+    kwargs: dict[str, Any] = {"regression": regression, "nlags": "auto"}
+    # Служебное предупреждение statsmodels об изменении типа возвращаемого
+    # объекта не относится к результату исследования и не должно попадать
+    # пользователю. Явно сохраняем текущий кортежный контракт там, где новая
+    # версия библиотеки уже поддерживает этот параметр.
+    if "result_object" in signature(kpss).parameters:
+        kwargs["result_object"] = False
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        result = kpss(values, **kwargs)
     pvalue = float(result[1])
+    if pvalue <= 0.01:
+        note = (
+            "Расчётное p-значение ниже нижней границы табличного диапазона 0,01; "
+            "показано граничное значение 0,01."
+        )
+    elif pvalue >= 0.10:
+        note = (
+            "Расчётное p-значение выше верхней границы табличного диапазона 0,10; "
+            "показано граничное значение 0,10."
+        )
+    else:
+        note = None
     return {
         "available": True,
         "stat": float(result[0]),
@@ -144,7 +162,7 @@ def _run_kpss(
         "lags": int(result[2]),
         "is_stationary": bool(pvalue >= alpha),
         "critical_values": _critical_values(result[3]),
-        "note": " ".join(notes) or None,
+        "note": note,
     }
 
 
@@ -239,7 +257,7 @@ def analyze_stationarity(
     if float(numeric.max() - numeric.min()) == 0.0:
         return stationarity_not_applicable(
             numeric,
-            "Ряд константный: unit-root тесты вырождены и не дают корректного p-value.",
+            "Ряд константный: тесты единичного корня вырождены и не дают корректного p-значения.",
             alpha,
         )
 

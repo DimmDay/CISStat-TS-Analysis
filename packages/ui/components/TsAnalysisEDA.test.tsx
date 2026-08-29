@@ -469,11 +469,11 @@ describe("TsAnalysisEDA", () => {
     );
     fireEvent.click(screen.getByRole("tab", { name: "Скользящее σ" }));
     expect(screen.getByRole("img", { name: "Скользящее стандартное отклонение для Price" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: "p-value" }));
-    expect(screen.getByRole("img", { name: "Сопоставление p-value тестов стационарности для Price" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "p-значения" }));
+    expect(screen.getByRole("img", { name: "Сопоставление p-значений тестов стационарности для Price" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Таблица" }));
     expect(screen.getByRole("table", { name: "Результаты тестов стационарности" })).toBeInTheDocument();
-    expect(screen.getByText("Консенсус", { selector: "div" }).nextElementSibling).toHaveTextContent("Стационарен");
+    expect(screen.getByText("Сводный вывод", { selector: "div" }).nextElementSibling).toHaveTextContent("Стационарен");
   });
 
   it("uses stationarity-specific methodology, reacts to alpha and supports refresh", async () => {

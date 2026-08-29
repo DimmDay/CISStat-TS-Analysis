@@ -6,6 +6,7 @@ import {
   type EdaStationarityResponse,
 } from "./EdaStationarityOverview";
 
+const RAW_KPSS_WARNING = "The test statistic is outside of the range of p-values available in the look-up table. The actual p-value is greater than the p-value returned. kpss currently returns a plain tuple.";
 
 const PROFILE: EdaStationarityResponse = {
   column: "Price",
@@ -28,7 +29,7 @@ const PROFILE: EdaStationarityResponse = {
   tests: [
     { id: "adf_level", label: "ADF (уровень)", null_hypothesis: "Единичный корень", alternative_hypothesis: "Стационарность вокруг уровня", available: true, statistic: -4.2, p_value: 0.001, lags: 2, reject_null: true, supports_stationarity: true, critical_values: { "5%": -2.9 }, note: null },
     { id: "adf_trend", label: "ADF (тренд)", null_hypothesis: "Единичный корень", alternative_hypothesis: "Стационарность вокруг тренда", available: true, statistic: -4.4, p_value: 0.004, lags: 2, reject_null: true, supports_stationarity: true, critical_values: { "5%": -3.4 }, note: null },
-    { id: "kpss_level", label: "KPSS (уровень)", null_hypothesis: "Стационарность вокруг уровня", alternative_hypothesis: "Единичный корень", available: true, statistic: 0.1, p_value: 0.1, lags: 4, reject_null: false, supports_stationarity: true, critical_values: { "5%": 0.463 }, note: "p-value ограничен таблицей" },
+    { id: "kpss_level", label: "KPSS (уровень)", null_hypothesis: "Стационарность вокруг уровня", alternative_hypothesis: "Единичный корень", available: true, statistic: 0.1, p_value: 0.1, lags: 4, reject_null: false, supports_stationarity: true, critical_values: { "5%": 0.463 }, note: RAW_KPSS_WARNING },
     { id: "kpss_trend", label: "KPSS (тренд)", null_hypothesis: "Стационарность вокруг тренда", alternative_hypothesis: "Единичный корень", available: true, statistic: 0.05, p_value: 0.1, lags: 4, reject_null: false, supports_stationarity: true, critical_values: { "5%": 0.146 }, note: null },
     { id: "pp", label: "Phillips–Perron", null_hypothesis: "Единичный корень", alternative_hypothesis: "Стационарность вокруг уровня", available: true, statistic: -4.1, p_value: 0.001, lags: 12, reject_null: true, supports_stationarity: true, critical_values: { "5%": -2.9 }, note: null },
     { id: "zivot_andrews", label: "Zivot–Andrews", null_hypothesis: "Единичный корень с одним разрывом", alternative_hypothesis: "Стационарность с одним разрывом", available: true, statistic: -5.2, p_value: 0.02, lags: 2, reject_null: true, supports_stationarity: true, critical_values: { "5%": -4.8 }, note: "Кандидат разрыва: 60" },
@@ -43,7 +44,7 @@ const PROFILE: EdaStationarityResponse = {
   rolling_sampled: false,
   rolling_original_count: 120,
   recommendations: ["ADF и KPSS согласованы."],
-  warnings: [],
+  warnings: [RAW_KPSS_WARNING],
 };
 
 
@@ -54,11 +55,20 @@ describe("EdaStationarityOverview", () => {
     expect(screen.getByRole("img", { name: "Ряд и скользящее среднее для Price" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Скользящее σ" }));
     expect(screen.getByRole("img", { name: "Скользящее стандартное отклонение для Price" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("tab", { name: "p-value" }));
-    expect(screen.getByRole("img", { name: "Сопоставление p-value тестов стационарности для Price" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "p-значения" }));
+    expect(screen.getByRole("img", { name: "Сопоставление p-значений тестов стационарности для Price" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Таблица" }));
     expect(screen.getByRole("table", { name: "Результаты тестов стационарности" })).toBeInTheDocument();
     expect(screen.getByText("Phillips–Perron")).toBeInTheDocument();
+  });
+
+  it("never exposes raw English diagnostics returned by the statistics library", () => {
+    render(<EdaStationarityOverview profile={PROFILE} loading={false} error={null} noDataset={false} parameters={{ alpha: 0.05, rollingWindow: 12 }} onParametersChange={jest.fn()} />);
+
+    expect(screen.queryByText(/The test statistic/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/верхней границы табличного диапазона 0,10/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Таблица" }));
+    expect(screen.queryByText(/currently returns a plain tuple/i)).not.toBeInTheDocument();
   });
 
   it("updates alpha and rolling window without adding another target selector", () => {

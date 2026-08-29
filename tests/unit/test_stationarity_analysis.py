@@ -22,6 +22,22 @@ def test_white_noise_is_level_stationary_with_complementary_tests():
     assert result["pp"]["is_stationary"] is True
 
 
+def test_kpss_boundary_notes_are_localized_and_hide_library_internals():
+    rng = np.random.default_rng(42)
+    result = analyze_stationarity(pd.Series(rng.normal(size=300)), alpha=0.05)
+
+    notes = [
+        result["kpss"]["note_level"],
+        result["kpss"]["note_trend"],
+    ]
+    visible_notes = [note for note in notes if note]
+
+    assert visible_notes
+    assert any("табличн" in note.lower() for note in visible_notes)
+    assert all("The test statistic" not in note for note in visible_notes)
+    assert all("currently returns a plain tuple" not in note for note in visible_notes)
+
+
 def test_random_walk_is_non_stationary_and_trend_stationary_is_distinguished():
     rng = np.random.default_rng(7)
     walk = analyze_stationarity(pd.Series(np.cumsum(rng.normal(size=500))))
@@ -89,3 +105,5 @@ def test_short_missing_infinite_and_constant_series_are_honestly_not_applicable(
     constant = analyze_stationarity(pd.Series(np.ones(60)))
     assert constant["applicable"] is False
     assert "констант" in constant["reason"].lower()
+    assert "unit-root" not in constant["reason"].lower()
+    assert "p-value" not in constant["reason"].lower()
