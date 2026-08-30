@@ -4372,3 +4372,30 @@ TDD и проверка
 - tests/unit/test_structural_breaks_analysis.py (новый)
 - tests/unit/test_eda_structural_breaks_adapter.py (новый)
 - tests/api/test_dataset_eda_structural_breaks.py (новый)
+
+---
+
+Task ID: 75 — Исправление ложного состояния «Загрузите датасет» в структурных сдвигах
+
+Date: 2026-08-30
+
+Причина
+После синхронизации с опубликованным commit `73a867ee993edb6175d16ea3f525be422f274e25` установлено, что в commit вошли ядро анализа, API-схемы и frontend, но не вошли импорт адаптера, response-схемы и endpoint в `apps/api/routers/session.py`. Запрос `GET /v1/session/dataset/eda-structural-breaks` поэтому возвращал стандартный 404 `Not Found`. Frontend трактовал любой 404 этой остановки как отсутствие активного датасета и показывал сообщение «Загрузите датасет, чтобы исследовать структурные сдвиги».
+
+Исправление
+- В `apps/api/routers/session.py` зарегистрирован отсутствовавший endpoint с проверками сессии, колонки, числового типа и параметров.
+- В `TsAnalysisEDA.tsx` состояние «нет датасета» теперь устанавливается только для 404 с точным серверным сообщением `В сессии нет активного датасета`. Неизвестный маршрут и отсутствующая колонка больше не маскируются и отображаются как фактическая ошибка API.
+- В `TsAnalysisEDA.test.tsx` добавлен регрессионный тест на различение этих двух видов 404.
+
+TDD и проверка
+- RED на опубликованном commit: API-suite — 2 failed (`404 Not Found` вместо 200/422); новый frontend-тест не находил ошибку, потому что отображалось состояние отсутствующего датасета.
+- После исправления API-suite: 2/2 PASS.
+- Полный `TsAnalysisEDA.test.tsx`: 26/26 PASS.
+- `npm run typecheck:all`: PASS для embedded и standalone.
+- Production build standalone: PASS, 13/13 страниц; временные песочничные шимы после проверки удалены без diff.
+- `git diff --check`: PASS.
+
+Изменённые файлы текущей задачи
+- apps/api/routers/session.py
+- packages/ui/components/TsAnalysisEDA.tsx
+- packages/ui/components/TsAnalysisEDA.test.tsx

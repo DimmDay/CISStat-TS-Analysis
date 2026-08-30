@@ -891,8 +891,12 @@ export function TsAnalysisEDA() {
           { credentials: "include" },
         );
         if (response.status === 404) {
-          if (active) { setStructuralNoDataset(true); setStructuralProfile(null); }
-          return;
+          const detail = await structuralResponseDetail(response);
+          if (detail === "В сессии нет активного датасета") {
+            if (active) { setStructuralNoDataset(true); setStructuralProfile(null); }
+            return;
+          }
+          throw new Error(detail);
         }
         if (!response.ok) throw new Error(await structuralResponseDetail(response));
         const data: EdaStructuralBreaksResponse = await response.json();

@@ -27,6 +27,7 @@ from apps.api.eda_distribution import build_eda_distribution
 from apps.api.eda_ih import build_eda_ih
 from apps.api.eda_seasonality import build_eda_seasonality
 from apps.api.eda_stationarity import build_eda_stationarity
+from apps.api.eda_structural_breaks import build_eda_structural_breaks
 from apps.api.schemas import (
     ColumnDetectionOut,
     ColumnStatsOut,
@@ -41,6 +42,7 @@ from apps.api.schemas import (
     DatasetEdaIhResponse,
     DatasetEdaSeasonalityResponse,
     DatasetEdaStationarityResponse,
+    DatasetEdaStructuralBreaksResponse,
     DatasetStatsResponse,
     DatasetSummaryOut,
     DatasetFormatCorrectionRequest,
@@ -605,6 +607,36 @@ def get_dataset_eda_distribution(
         column=column,
         alpha=alpha,
         bins=bins,
+    ))
+
+
+@router.get("/dataset/eda-structural-breaks", response_model=DatasetEdaStructuralBreaksResponse)
+def get_dataset_eda_structural_breaks(
+    column: str,
+    request: Request,
+    response: Response,
+    alpha: float = Query(0.05, ge=0.01, le=0.10),
+    min_segment: int = Query(20, ge=5, le=200),
+    penalty_multiplier: float = Query(2.0, gt=0, le=10),
+):
+    """CUSUM, PELT и локальная Chow-диагностика выбранного ряда."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Колонка '{column}' не числовая — анализ структурных сдвигов недоступен",
+        )
+    return DatasetEdaStructuralBreaksResponse(**build_eda_structural_breaks(
+        session.dataframe,
+        column=column,
+        alpha=alpha,
+        min_segment=min_segment,
+        penalty_multiplier=penalty_multiplier,
     ))
 
 

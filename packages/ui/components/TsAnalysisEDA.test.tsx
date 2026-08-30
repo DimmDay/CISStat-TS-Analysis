@@ -662,6 +662,27 @@ describe("TsAnalysisEDA", () => {
     });
   });
 
+  it("does not mask an unknown structural-breaks 404 as a missing dataset", async () => {
+    global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/dataset/eda-structural-breaks")) {
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          json: () => Promise.resolve({ detail: "Маршрут структурных сдвигов не найден" }),
+        });
+      }
+      return routeFetch(input, init);
+    }) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Структурные сдвиги/ }));
+
+    const alerts = await screen.findAllByRole("alert");
+    expect(alerts.some((item) => item.textContent?.includes("Маршрут структурных сдвигов не найден"))).toBe(true);
+    expect(screen.queryByText("Загрузите датасет, чтобы исследовать структурные сдвиги.")).not.toBeInTheDocument();
+  });
+
   // ── Кнопка «Справка» ──
 
   it("renders the 'Справка' button in the header", () => {
