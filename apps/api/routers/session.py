@@ -23,6 +23,7 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response
 from apps.api.chart_data import MAX_ZOOM_POINTS, build_histogram, build_kde, build_scatter_series, build_timeseries_points
 from apps.api.decomposition_data import build_decomposition, build_decomposition_series
 from apps.api.eda_correlation import build_eda_correlation
+from apps.api.eda_distribution import build_eda_distribution
 from apps.api.eda_ih import build_eda_ih
 from apps.api.eda_seasonality import build_eda_seasonality
 from apps.api.eda_stationarity import build_eda_stationarity
@@ -36,6 +37,7 @@ from apps.api.schemas import (
     DatasetConsistencyCorrectionResponse,
     DatasetConsistencyProfileResponse,
     DatasetEdaCorrelationResponse,
+    DatasetEdaDistributionResponse,
     DatasetEdaIhResponse,
     DatasetEdaSeasonalityResponse,
     DatasetEdaStationarityResponse,
@@ -575,6 +577,34 @@ def get_dataset_eda_stationarity(
         column=column,
         alpha=alpha,
         rolling_window=rolling_window,
+    ))
+
+
+@router.get("/dataset/eda-distribution", response_model=DatasetEdaDistributionResponse)
+def get_dataset_eda_distribution(
+    column: str,
+    request: Request,
+    response: Response,
+    alpha: float = Query(0.05, ge=0.01, le=0.10),
+    bins: int = Query(20, ge=5, le=100),
+):
+    """Форма распределения и комплементарные проверки нормальности."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Колонка '{column}' не числовая — анализ распределения недоступен",
+        )
+    return DatasetEdaDistributionResponse(**build_eda_distribution(
+        session.dataframe,
+        column=column,
+        alpha=alpha,
+        bins=bins,
     ))
 
 

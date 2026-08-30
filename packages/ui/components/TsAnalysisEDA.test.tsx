@@ -158,6 +158,27 @@ const STATIONARITY_RESPONSE = {
   recommendations: ["ADF и KPSS согласованы."], warnings: [],
 };
 
+const DISTRIBUTION_RESPONSE = {
+  column: "Price", applicable: true, reason: null, n_observations: 240,
+  missing_count: 0, min_observations: 8, alpha: 0.05, requested_bins: 20,
+  bins: 20, is_discrete: false, unique_count: 240, mean: 10, median: 9.8,
+  std: 2, q1: 8.5, q3: 11.2, iqr: 2.7, mad: 1.3, skewness: 0.08,
+  excess_kurtosis: -0.12, shape_label: "Почти симметричное распределение",
+  normality_applicable: true, normality_status: "compatible", qq_r: 0.997,
+  qq_slope: 1.95, qq_intercept: 10, tests: [
+    { id: "shapiro", label: "Shapiro–Wilk", available: true, statistic: 0.99, p_value: 0.32, adjusted_p_value: 0.64, reject_normality: false, n_used: 240, calibration: "standard", note: null },
+    { id: "jarque_bera", label: "Jarque–Bera", available: true, statistic: 0.8, p_value: 0.67, adjusted_p_value: 0.67, reject_normality: false, n_used: 240, calibration: "monte_carlo", note: "p-значение откалибровано методом Монте-Карло." },
+    { id: "lilliefors", label: "K–S (Лиллиефорс)", available: true, statistic: 0.04, p_value: 0.44, adjusted_p_value: 0.64, reject_normality: false, n_used: 240, calibration: "table", note: null },
+  ],
+  histogram: [{ x0: 4, x1: 6, count: 10, density: 0.02, normal_expected_count: 8.2 }],
+  density: [{ x: 4, empirical: 0.01, normal: 0.005 }, { x: 10, empirical: 0.2, normal: 0.199 }],
+  qq: [{ theoretical: -2, observed: 6, reference: 6.1 }, { theoretical: 2, observed: 14, reference: 13.9 }],
+  cdf: [{ x: 6, empirical: 0.03, normal: 0.023 }, { x: 14, empirical: 0.98, normal: 0.977 }],
+  recommendation: "Форма ряда совместима с нормальным распределением.",
+  recommendations: ["Сопоставьте вывод с Q–Q графиком."],
+  warnings: ["Формальная нормальность для модели проверяется на остатках."],
+};
+
 function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
   const url = String(input);
   if (url.includes("/target-column")) {
@@ -208,6 +229,14 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
       ok: true,
       status: 200,
       json: () => Promise.resolve({ ...STATIONARITY_RESPONSE, column }),
+    });
+  }
+  if (url.includes("/dataset/eda-distribution")) {
+    const column = new URL(url).searchParams.get("column") ?? "Price";
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ...DISTRIBUTION_RESPONSE, column }),
     });
   }
   if (url.includes("/dataset/distribution")) {
@@ -499,6 +528,57 @@ describe("TsAnalysisEDA", () => {
     fireEvent.click(screen.getByRole("button", { name: "Пересчитать стационарность" }));
     await waitFor(() => {
       const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-stationarity")).length;
+      expect(callsAfter).toBe(callsBefore + 1);
+    });
+  });
+
+  it("loads distribution for the shared target and exposes five overview views", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" });
+    await waitFor(() => expect(selector).toHaveValue("Price"));
+
+    fireEvent.click(screen.getByRole("button", { name: /^Распределение/ }));
+
+    expect(await screen.findByRole("img", { name: "Гистограмма распределения для Price" })).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/dataset/eda-distribution?column=Price&alpha=0.05&bins=20"),
+      { credentials: "include" },
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Плотность" }));
+    expect(screen.getByRole("img", { name: "Сравнение плотностей для Price" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Q–Q" }));
+    expect(screen.getByRole("img", { name: "Q–Q график для Price" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "F(x)" }));
+    expect(screen.getByRole("img", { name: "Сравнение функций распределения для Price" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Тесты" }));
+    expect(screen.getByRole("table", { name: "Тесты нормальности" })).toBeInTheDocument();
+    expect(screen.getByText("Q–Q: r", { selector: "div" }).nextElementSibling).toHaveTextContent("0,997");
+  });
+
+  it("uses distribution-specific methodology, reacts to alpha and supports refresh", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+    fireEvent.click(screen.getByRole("button", { name: /^Распределение/ }));
+    await screen.findByRole("img", { name: "Гистограмма распределения для Price" });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/поправкой Лиллиефорса/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Полный пайплайн" })[0]);
+    expect(screen.getByText(/dataset\/eda-distribution/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Уровень значимости α" }), { target: { value: "0.01" } });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("alpha=0.01"),
+      { credentials: "include" },
+    ));
+    await screen.findByRole("button", { name: "Пересчитать распределение" });
+
+    const callsBefore = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-distribution")).length;
+    fireEvent.click(screen.getByRole("button", { name: "Пересчитать распределение" }));
+    await waitFor(() => {
+      const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-distribution")).length;
       expect(callsAfter).toBe(callsBefore + 1);
     });
   });

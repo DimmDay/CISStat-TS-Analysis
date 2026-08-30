@@ -44,6 +44,11 @@ import {
   type EdaStationarityResponse,
   type StationarityConsensus,
 } from "./EdaStationarityOverview";
+import {
+  EdaDistributionOverview,
+  type EdaDistributionParameters,
+  type EdaDistributionResponse,
+} from "./EdaDistributionOverview";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 
@@ -71,7 +76,7 @@ const CHECKS: Check[] = [
   { id: "stationarity", label: "Верификация стационарности", status: "pending", count: null,
     description: "Финальная проверка полностью преобразованного ряда методами ADF, KPSS, Phillips–Perron и Zivot–Andrews. Скользящие среднее и стандартное отклонение помогают увидеть локальную устойчивость. Вывод подсказывает, можно ли рассматривать порядок интегрирования d=0 или следует вернуться к преобразованиям на шаге «Стационарность ряда» в Предобработке." },
   { id: "distribution", label: "Распределение", status: "pending", count: null,
-    description: "Гистограмма + плотность N(0,σ²), QQ-plot, тесты Jarque-Bera / Shapiro-Wilk / Kolmogorov-Smirnov. Вывод о корректности доверительных интервалов модели." },
+    description: "Гистограмма, оценка плотности KDE, Q–Q график и эмпирическая F(x) сопоставляются с нормальным распределением с параметрами выбранного ряда. Shapiro–Wilk, Jarque–Bera и тест Лиллиефорса применяются с поправкой Холма. Вывод относится к форме текущего ряда; предположение модели о нормальности проверяется отдельно на её остатках." },
   { id: "structural", label: "Структурные сдвиги", status: "pending", count: null,
     description: "Поиск точек regime change: CUSUM, Chow test, PELT. Визуализация с аннотациями. Рекомендация: «обучать на периоде после [date]» или «использовать модель с переключением режимов»." },
   { id: "feature_select", label: "Отбор признаков", status: "pending", count: null,
@@ -248,6 +253,29 @@ const STATIONARITY_PIPELINE_DESCRIPTION = `Полный пайплайн: вер
 7. Четыре вкладки «Обзора» — «Ряд и μ», «Скользящее σ», «p-значения», «Таблица» — переиспользуют один ответ без повторных запросов.
 8. Смена α, окна или общего признака автоматически пересчитывает профиль; кнопка ручного обновления повторяет проверку после преобразований предыдущих этапов.`;
 
+const DISTRIBUTION_METRICS_DESCRIPTION = `Метрики и алгоритм: Распределение
+
+Остановка исследует маргинальную форму выбранного полностью преобразованного ряда. Нормальная форма исходного ряда не является обязательным условием большинства моделей: для корректности модельных доверительных интервалов распределение проверяют на остатках после обучения.
+
+1. Асимметрия описывает направление и выраженность хвоста; эксцесс сравнивает тяжесть хвостов с нормальным распределением, для которого он равен нулю. Q–Q: r показывает близость точек к опорной прямой, но не заменяет просмотр формы отклонений.
+2. Shapiro–Wilk применяется при 8 ≤ N ≤ 5000. При большем N его p-значение не рассчитывается, поскольку его точность не гарантируется.
+3. Jarque–Bera объединяет асимметрию и эксцесс. При N < 2000 p-значение калибруется по 499 нормальным выборкам методом Монте-Карло; при N ≥ 2000 используется асимптотическая калибровка χ²(2).
+4. K–S применяется с поправкой Лиллиефорса, поскольку среднее и дисперсия нормального распределения оцениваются по той же выборке. Обычный K–S с заранее заданным распределением в этом случае давал бы некорректное p-значение.
+5. Ко всем доступным p-значениям применяется последовательная поправка Холма. Нормальная форма считается совместимой с данными, только если ни один скорректированный тест её не отвергает и абсолютные величины асимметрии и эксцесса невелики.
+6. Для низкокардинального целочисленного признака тесты непрерывной нормальности помечаются неприменимыми. Пропуски, бесконечные значения, константа и N < 8 не удаляются и не маскируются: остановка направляет пользователя завершить предобработку.
+
+Для временного ряда наблюдения часто автокоррелированы, поэтому p-значения здесь служат диагностикой. Формальный вывод о распределении ошибок модели делают по её остаткам.`;
+
+const DISTRIBUTION_PIPELINE_DESCRIPTION = `Полный пайплайн: распределение
+
+1. Общий «Исследуемый признак» передаётся в GET /v1/session/dataset/eda-distribution?column=...&alpha=...&bins=.... Остановка читает полный текущий session.dataframe и не изменяет его.
+2. Сервер проверяет числовой тип, конечность всех значений, минимальный объём, ненулевую дисперсию и дискретность. Некорректные условия возвращаются как объяснимое состояние, а не как пустой или искусственно очищенный результат.
+3. Общий расчётный модуль app.eda.distributions вычисляет центр, устойчивый и обычный разброс, асимметрию, эксцесс, Shapiro–Wilk, Jarque–Bera, K–S с поправкой Лиллиефорса и поправку Холма.
+4. Существующие серверные построители гистограммы и KDE переиспользуются. К гистограмме добавляются ожидаемые частоты, а к KDE — плотность нормального распределения со средним и стандартным отклонением выбранного ряда.
+5. Q–Q точки строятся по квантилям Filliben с опорной прямой; F(x) сопоставляет эмпирическую и оценённую нормальную функции распределения. Большие массивы графических точек равномерно прореживаются, тесты всегда используют полный ряд.
+6. Один API-ответ питает пять вкладок «Обзора»: «Гистограмма», «Плотность», «Q–Q», «F(x)», «Тесты». Переключение представлений не создаёт новых запросов.
+7. Смена α, числа интервалов или общего признака автоматически обновляет профиль; ручная кнопка повторяет запрос после преобразований предыдущих этапов.`;
+
 async function responseDetail(response: Response): Promise<string> {
   try {
     const body = await response.json();
@@ -296,6 +324,16 @@ async function stationarityResponseDetail(response: Response): Promise<string> {
     // Нейтральная ошибка ниже покрывает ответ без JSON.
   }
   return `Не удалось проверить стационарность (HTTP ${response.status})`;
+}
+
+async function distributionResponseDetail(response: Response): Promise<string> {
+  try {
+    const body = await response.json();
+    if (typeof body?.detail === "string") return body.detail;
+  } catch {
+    // Нейтральная ошибка ниже покрывает ответ без JSON.
+  }
+  return `Не удалось исследовать распределение (HTTP ${response.status})`;
 }
 
 function formatMetric(value: number | null | undefined): string {
@@ -702,6 +740,86 @@ export function TsAnalysisEDA() {
     ? "warning"
     : "pending";
 
+  // ── Остановка «Распределение»: общий target, пять представлений ──
+  const [distributionProfile, setDistributionProfile] = useState<EdaDistributionResponse | null>(null);
+  const [distributionLoading, setDistributionLoading] = useState(false);
+  const [distributionNoDataset, setDistributionNoDataset] = useState(false);
+  const [distributionError, setDistributionError] = useState<string | null>(null);
+  const [distributionRefreshKey, setDistributionRefreshKey] = useState(0);
+  const [distributionParameters, setDistributionParameters] = useState<EdaDistributionParameters>({
+    alpha: 0.05,
+    bins: 20,
+  });
+
+  useEffect(() => {
+    if (activeCheckId !== "distribution" || targetLoading) return;
+    if (!hasDataset) {
+      setDistributionNoDataset(true);
+      setDistributionProfile(null);
+      setDistributionLoading(false);
+      return;
+    }
+    if (!activeFeature) {
+      setDistributionNoDataset(false);
+      setDistributionProfile(null);
+      setDistributionLoading(false);
+      return;
+    }
+
+    let active = true;
+    setDistributionLoading(true);
+    setDistributionError(null);
+    setDistributionNoDataset(false);
+    void (async () => {
+      try {
+        const query = new URLSearchParams({
+          column: activeFeature,
+          alpha: String(distributionParameters.alpha),
+          bins: String(distributionParameters.bins),
+        });
+        const response = await fetch(
+          sessionApiUrl(`/dataset/eda-distribution?${query.toString()}`),
+          { credentials: "include" },
+        );
+        if (response.status === 404) {
+          if (active) {
+            setDistributionNoDataset(true);
+            setDistributionProfile(null);
+          }
+          return;
+        }
+        if (!response.ok) throw new Error(await distributionResponseDetail(response));
+        const data: EdaDistributionResponse = await response.json();
+        if (active) setDistributionProfile(data);
+      } catch (caught) {
+        if (active) {
+          setDistributionError(
+            caught instanceof Error ? caught.message : "Не удалось исследовать распределение",
+          );
+        }
+      } finally {
+        if (active) setDistributionLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [activeCheckId, activeFeature, distributionParameters, distributionRefreshKey, hasDataset, targetLoading]);
+
+  const distributionBusy = distributionLoading || (activeCheckId === "distribution" && targetLoading);
+  const distributionRequestError = distributionError ?? (activeCheckId === "distribution" ? targetError : null);
+  const distributionStatus: CheckStatus = distributionBusy
+    ? "running"
+    : distributionRequestError
+    ? "error"
+    : distributionNoDataset || (hasDataset && !activeFeature)
+    ? "skipped"
+    : distributionProfile?.applicable === false
+    ? "warning"
+    : distributionProfile?.normality_status === "compatible"
+    ? "done"
+    : distributionProfile?.applicable
+    ? "warning"
+    : "pending";
+
   const checks = useMemo<Check[]>(() => CHECKS.map((check) =>
     check.id === "descriptive"
       ? { ...check, status: descriptiveStatus, count: insufficientColumns }
@@ -713,8 +831,10 @@ export function TsAnalysisEDA() {
       ? { ...check, status: seasonalityStatus, count: seasonalityProfile?.confirmed_periods ?? null }
       : check.id === "stationarity"
       ? { ...check, status: stationarityStatus, count: null }
+      : check.id === "distribution"
+      ? { ...check, status: distributionStatus, count: null }
       : check,
-  ), [correlationStatus, descriptiveStatus, ihStatus, insufficientColumns, seasonalityProfile?.confirmed_periods, seasonalityStatus, stationarityStatus]);
+  ), [correlationStatus, descriptiveStatus, distributionStatus, ihStatus, insufficientColumns, seasonalityProfile?.confirmed_periods, seasonalityStatus, stationarityStatus]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -794,6 +914,9 @@ export function TsAnalysisEDA() {
     if (activeCheckId === "stationarity") {
       return descriptionSection === "metrics" ? STATIONARITY_METRICS_DESCRIPTION : STATIONARITY_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "distribution") {
+      return descriptionSection === "metrics" ? DISTRIBUTION_METRICS_DESCRIPTION : DISTRIBUTION_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -828,6 +951,11 @@ export function TsAnalysisEDA() {
       return descriptionSection === "metrics"
         ? "Метрики и алгоритм — Верификация стационарности"
         : "Полный пайплайн — Верификация стационарности";
+    }
+    if (activeCheckId === "distribution") {
+      return descriptionSection === "metrics"
+        ? "Метрики и алгоритм — Распределение"
+        : "Полный пайплайн — Распределение";
     }
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
@@ -1032,6 +1160,15 @@ export function TsAnalysisEDA() {
               parameters={stationarityParameters}
               onParametersChange={(changes) => setStationarityParameters((current) => ({ ...current, ...changes }))}
             />
+          ) : activeCheckId === "distribution" ? (
+            <EdaDistributionOverview
+              profile={distributionProfile}
+              loading={distributionBusy}
+              error={distributionRequestError}
+              noDataset={distributionNoDataset}
+              parameters={distributionParameters}
+              onParametersChange={(changes) => setDistributionParameters((current) => ({ ...current, ...changes }))}
+            />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
@@ -1111,6 +1248,15 @@ export function TsAnalysisEDA() {
                   </>
                 );
               })()}
+            </div>
+          ) : activeCheckId === "distribution" ? (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+              <Metric label="N" value={distributionProfile ? String(distributionProfile.n_observations) : "—"} />
+              <Metric label="Форма" value={distributionProfile?.shape_label ?? "—"} />
+              <Metric label="Асимметрия" value={formatMetric(distributionProfile?.skewness)} />
+              <Metric label="Эксцесс" value={formatMetric(distributionProfile?.excess_kurtosis)} />
+              <Metric label="Q–Q: r" value={formatMetric(distributionProfile?.qq_r)} />
+              <Metric label="Отклонено тестов" value={distributionProfile?.applicable ? String(distributionProfile.tests.filter((item) => item.reject_normality === true).length) : "—"} />
             </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
@@ -1294,6 +1440,36 @@ export function TsAnalysisEDA() {
                     </p>
                   )}
                 </>
+              ) : check.id === "distribution" ? (
+                <>
+                  {check.status === "running" && (
+                    <p role="status" className="text-sm text-brand bg-brand-light rounded px-3 py-2 mb-2">
+                      Оцениваем форму распределения и выполняем тесты…
+                    </p>
+                  )}
+                  {check.status === "error" && (
+                    <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">
+                      {distributionRequestError ?? "Ошибка анализа распределения"}
+                    </p>
+                  )}
+                  {check.status === "skipped" && (
+                    <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                      {distributionNoDataset ? "Нет активного датасета" : "Нет числового исследуемого признака"}
+                    </p>
+                  )}
+                  {check.status === "warning" && (
+                    <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
+                      {distributionProfile?.applicable === false
+                        ? distributionProfile.reason
+                        : distributionProfile?.recommendation ?? "Форма требует дополнительной проверки"}
+                    </p>
+                  )}
+                  {check.status === "done" && (
+                    <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
+                      Нормальная форма не отвергается при α={distributionProfile?.alpha ?? distributionParameters.alpha}
+                    </p>
+                  )}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -1372,6 +1548,14 @@ export function TsAnalysisEDA() {
                   disabled={stationarityBusy || !activeFeature}
                 >
                   {stationarityBusy ? "Рассчитываем…" : "Пересчитать стационарность"}
+                </Button>
+              ) : check.id === "distribution" ? (
+                <Button
+                  type="button"
+                  onClick={() => setDistributionRefreshKey((key) => key + 1)}
+                  disabled={distributionBusy || !activeFeature}
+                >
+                  {distributionBusy ? "Рассчитываем…" : "Пересчитать распределение"}
                 </Button>
               ) : (
                 <Button>Запустить анализ ({check.label.toLowerCase()})</Button>

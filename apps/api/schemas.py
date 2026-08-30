@@ -355,6 +355,83 @@ class DatasetEdaStationarityResponse(BaseModel):
     warnings: List[str] = Field(default_factory=list)
 
 
+class EdaDistributionTestOut(BaseModel):
+    id: Literal["shapiro", "jarque_bera", "lilliefors"]
+    label: str
+    available: bool
+    statistic: Optional[float] = None
+    p_value: Optional[float] = None
+    adjusted_p_value: Optional[float] = None
+    reject_normality: Optional[bool] = None
+    n_used: Optional[int] = None
+    calibration: Optional[Literal["standard", "monte_carlo", "asymptotic", "table"]] = None
+    note: Optional[str] = None
+
+
+class EdaDistributionHistogramBinOut(BaseModel):
+    x0: float
+    x1: float
+    count: int
+    density: float
+    normal_expected_count: float
+
+
+class EdaDistributionDensityPointOut(BaseModel):
+    x: float
+    empirical: float
+    normal: float
+
+
+class EdaDistributionQqPointOut(BaseModel):
+    theoretical: float
+    observed: float
+    reference: float
+
+
+class EdaDistributionCdfPointOut(BaseModel):
+    x: float
+    empirical: float
+    normal: float
+
+
+class DatasetEdaDistributionResponse(BaseModel):
+    """Форма распределения, тесты нормальности и графические диагностики."""
+    column: str
+    applicable: bool
+    reason: Optional[str] = None
+    n_observations: int
+    missing_count: int
+    min_observations: int = 8
+    alpha: float
+    requested_bins: int
+    bins: int
+    is_discrete: bool
+    unique_count: int
+    mean: Optional[float] = None
+    median: Optional[float] = None
+    std: Optional[float] = None
+    q1: Optional[float] = None
+    q3: Optional[float] = None
+    iqr: Optional[float] = None
+    mad: Optional[float] = None
+    skewness: Optional[float] = None
+    excess_kurtosis: Optional[float] = None
+    shape_label: str
+    normality_applicable: bool
+    normality_status: Literal["compatible", "departed", "inconclusive", "not_applicable"]
+    qq_r: Optional[float] = None
+    qq_slope: Optional[float] = None
+    qq_intercept: Optional[float] = None
+    tests: List[EdaDistributionTestOut] = Field(default_factory=list)
+    histogram: List[EdaDistributionHistogramBinOut] = Field(default_factory=list)
+    density: List[EdaDistributionDensityPointOut] = Field(default_factory=list)
+    qq: List[EdaDistributionQqPointOut] = Field(default_factory=list)
+    cdf: List[EdaDistributionCdfPointOut] = Field(default_factory=list)
+    recommendation: Optional[str] = None
+    recommendations: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+
+
 class PanelBalanceResponse(BaseModel):
     """Реальная проверка Balanced/Unbalanced для панельных данных --
     пункт 8 контракта (структурный класс), визуальная схема на

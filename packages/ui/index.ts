@@ -107,6 +107,13 @@ export type {
   EdaStationarityTest,
   StationarityConsensus,
 } from "./components/EdaStationarityOverview";
+export { EdaDistributionOverview } from "./components/EdaDistributionOverview";
+export type {
+  DistributionNormalityStatus,
+  EdaDistributionParameters,
+  EdaDistributionResponse,
+  EdaDistributionTest,
+} from "./components/EdaDistributionOverview";
 export { TsAnalysisUpload } from "./components/TsAnalysisUpload";
 export { StructuralClassSchema } from "./components/StructuralClassSchema";
 export { classifyStructure } from "./lib/structuralClass";
