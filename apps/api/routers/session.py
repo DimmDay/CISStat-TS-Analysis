@@ -65,9 +65,12 @@ from apps.api.schemas import (
     DatasetRangeCorrectionRequest,
     DatasetRangeCorrectionResponse,
     DatasetRangeProfileResponse,
+    DatasetPreprocessingRegularityProfileResponse,
     DatasetRegularityCorrectionRequest,
     DatasetRegularityCorrectionResponse,
+    DatasetRegularityIntervalsResponse,
     DatasetRegularityProfileResponse,
+    DatasetRegularityTimelineResponse,
     DatasetSufficiencyPlanRequest,
     DatasetSufficiencyPlanResponse,
     DatasetSufficiencyProfileResponse,
@@ -138,7 +141,7 @@ from app.data.detectors import score_all_columns_as_date, score_all_columns_as_e
 from validation.engine import profile_consistency, profile_formats, profile_inclusion, profile_ranges, profile_uniqueness, validate_dataframe
 from validation.inclusion import coerce_inclusion_rule_to_series
 from validation.referential import profile_referential
-from validation.regularity import normalize_frequency, profile_regularity
+from validation.regularity import normalize_frequency, profile_regularity, regularity_intervals, regularity_timeline
 from validation.sufficiency import DEFAULT_THRESHOLDS, profile_sufficiency
 from validation.text_quality import profile_text_quality
 from validation.rule_resolver import CHECK_IDS, resolve_validation_rules
@@ -285,6 +288,23 @@ def _preprocessing_outliers_status(
     if total_numeric_columns == 0:
         return "skipped", "not_required"
     return ("warning" if total_outliers > 0 else "done"), None
+
+
+def _preprocessing_regularity_status(
+    mode: str, applicable: bool, total_violations: int
+) -> tuple[str, Optional[str]]:
+    """Тот же контракт auto/enabled/disabled, что у Пропусков/Выбросов.
+    «Регулярность» тоже не имеет отдельного настраиваемого правила --
+    applicable решается автодетекцией колонки даты внутри profile_regularity
+    (найдена ли колонка с датой и ≥2 корректных временных метки), а не
+    выбором аналитика. "Не применимо" -- когда эта автодетекция не нашла
+    подходящую временную ось (например, чисто кросс-секционные данные без
+    даты вовсе, или дата единственна и не даёт ни одного интервала)."""
+    if mode == "disabled":
+        return "skipped", "disabled"
+    if not applicable:
+        return "skipped", "not_required"
+    return ("warning" if total_violations > 0 else "done"), None
 
 
 def _to_response(session: AnalysisSession) -> SessionStateResponse:
@@ -1860,6 +1880,109 @@ def correct_dataset_regularity(
     try:
         corrected_df, summary = preview_regularity_correction(
             session.dataframe, rules, payload.strategy, payload.frequency
+        )
+    except (ValueError, TypeError) as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
+        session.touch()
+        store.save(session)
+
+    return DatasetRegularityCorrectionResponse(applied=payload.apply, **summary)
+
+
+@router.get(
+    "/dataset/preprocessing/regularity-profile",
+    response_model=DatasetPreprocessingRegularityProfileResponse,
+)
+def get_dataset_preprocessing_regularity_profile(request: Request, response: Response):
+    """Остановка «Регулярность» модуля «Предобработка» -- переиспользует
+    profile_regularity (validation/regularity.py) БЕЗ per-колоночных
+    правил «Валидации» (rules=None): применимость и обнаружение здесь
+    безусловны, как и у «Пропусков»/«Выбросов» -- автодетекция колонки
+    даты/сущности, а не настроенное аналитиком правило. Путь НЕ совпадает
+    с /dataset/regularity-profile (это отдельный, ранее реализованный
+    Validation-check с DQ Score и своими режимами) -- тот же профиль,
+    другое место в UI и другая система режимов (preprocessing_check_modes)."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    profile = profile_regularity(session.dataframe, rules=None)
+    mode = _effective_preprocessing_check_modes(session)["regularity"]
+    status, status_reason = _preprocessing_regularity_status(
+        mode, profile["applicable"], profile["total_violations"]
+    )
+    return DatasetPreprocessingRegularityProfileResponse(
+        mode=mode,
+        status=status,
+        status_reason=status_reason,
+        profile=RegularityProfileOut(**profile),
+    )
+
+
+@router.get(
+    "/dataset/preprocessing/regularity-intervals",
+    response_model=DatasetRegularityIntervalsResponse,
+)
+def get_dataset_preprocessing_regularity_intervals(
+    request: Request, response: Response, group: Optional[str] = None
+):
+    """Гистограмма интервалов между наблюдениями -- график «Интервалы»
+    Обзора (см. regularity_intervals в validation/regularity.py): та же
+    величина, на которой основано обнаружение разрывов (modal ×
+    gap_threshold_multiplier), визуализированная напрямую."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    result = regularity_intervals(session.dataframe, rules=None, group=group)
+    return DatasetRegularityIntervalsResponse(**result)
+
+
+@router.get(
+    "/dataset/preprocessing/regularity-timeline",
+    response_model=DatasetRegularityTimelineResponse,
+)
+def get_dataset_preprocessing_regularity_timeline(request: Request, response: Response):
+    """Таймлайн событий (разрыв/дубль/нарушение сортировки) вдоль
+    временной оси -- график «Таймлайн» Обзора (см. regularity_timeline)."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    result = regularity_timeline(session.dataframe, rules=None)
+    return DatasetRegularityTimelineResponse(**result)
+
+
+@router.post(
+    "/dataset/preprocessing/regularity-corrections",
+    response_model=DatasetRegularityCorrectionResponse,
+)
+def correct_dataset_preprocessing_regularity(
+    payload: DatasetRegularityCorrectionRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply для остановки «Регулярность» «Предобработки» --
+    переиспользует preview_regularity_correction (apps/api/regularity_correction.py)
+    БЕЗ per-колоночных правил «Валидации» (rules=None), тот же контракт
+    (preview на копии → confirm → apply → сессия обновляется атомарно),
+    что и у /dataset/missing-corrections / /dataset/outlier-corrections."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+
+    try:
+        corrected_df, summary = preview_regularity_correction(
+            session.dataframe, rules=None, strategy=payload.strategy, frequency=payload.frequency
         )
     except (ValueError, TypeError) as ex:
         raise HTTPException(status_code=422, detail=str(ex)) from ex

@@ -4097,3 +4097,159 @@ TDD и проверка
 Изменённые и новые файлы текущей задачи
 - apps/api/outliers_correction.py
 - tests/unit/test_outliers_module_boundary.py (новый)
+
+---
+
+Task ID: 70 — Остановка EDA «Верификация стационарности»
+
+Date: 2026-08-29
+
+Задача
+Спроектировать и реализовать следующую остановку вкладки «Разведочный EDA» по паттернам «Описательные статистики» и «IH-анализ»: исследовать backend, проверить и при необходимости скорректировать методологию, переиспользовать пригодный код и активно использовать переключаемые визуализации в «Обзоре».
+
+Синхронизация
+- По прямому указанию выполнен безопасный fast-forward `main`: `a0dbc60` → `290d2aa`.
+- Перед синхронизацией текущие незакоммиченные материалы Tasks 68/69, предыдущие архивы и IH API-тест сохранены в stash с untracked-файлами; после fast-forward содержимое сверено и восстановлено без повторного наложения уже вошедших в upstream изменений.
+- Единственный конфликт в `worklog.md` разрешён объединением записей Tasks 68/69. Текущий checkout учитывает upstream-коммиты Tasks 67–69.
+
+Исследование backend и корректировка методологии
+- Найден legacy-контур `app/preprocessing/transforms.py::run_stationarity_tests`, но в нём пропуски удалялись молча, Phillips–Perron при отсутствии `arch` подменялся результатом ADF, Zivot–Andrews интерпретировал словарь критических значений как индекс разрыва и применял жёсткий порог `-4.8`, а неопределённый KPSS мог ошибочно повлиять на итоговый вывод.
+- Методология сверена с официальной документацией statsmodels для ADF, KPSS и Zivot–Andrews и с документацией `arch` для Phillips–Perron. Учтены противоположные нулевые гипотезы: ADF/PP/ZA проверяют единичный корень, KPSS — стационарность уровня или тренда.
+- Итоговый класс строится на согласовании ADF и KPSS отдельно для `c` и `ct`: стационарность уровня, тренд-стационарность, нестационарность либо честный `inconclusive`. PP и ZA используются как дополняющие диагностики, а не как способ искусственно усилить консенсус.
+- Phillips–Perron теперь выполняется реальным `arch.unitroot.PhillipsPerron`; ложная подмена ADF удалена, зависимость `arch>=7.0.0` объявлена в обоих requirements.
+- Zivot–Andrews использует корректный `bpidx`, p-value и тренд с константой. Пропуски/∞, константный или слишком короткий ряд, повторные даты, panel-структура и нерегулярная временная сетка получают явный отказ/предупреждение вместо скрытого преобразования данных.
+
+Backend
+- Добавлен общий расчётный модуль `app/eda/stationarity.py`: ADF/KPSS для уровня и тренда, PP, ZA, консенсус, диагностические предупреждения и рекомендации.
+- Legacy-функция предобработки переведена на этот общий core с сохранением прежних ключей ответа для обратной совместимости.
+- Добавлен адаптер `apps/api/eda_stationarity.py`: детектирование и сортировка временной оси, контроль регулярности/панелей, rolling mean/std и корректная метка структурного разрыва; статистические тесты всегда выполняются на полном ряду, а длинная визуализация безопасно прореживается LTTB.
+- Добавлены response-схемы и read-only endpoint `GET /v1/session/dataset/eda-stationarity?column=...&alpha=...&rolling_window=...`.
+
+Frontend
+- Добавлен `EdaStationarityOverview` с четырьмя представлениями одного API-ответа: «Ряд и μ», «Скользящее σ», «p-value» и «Таблица».
+- На графике ряда показаны исходные наблюдения, скользящее среднее и найденная ZA-точка разрыва; отдельный график показывает устойчивость дисперсии; p-value сопоставляются с выбранным уровнем значимости с учётом противоположной гипотезы KPSS.
+- Параметры `alpha` и окно rolling-диагностики встроены в «Обзор»; общий селектор «Исследуемый признак» остаётся единственным источником target и запускает пересчёт.
+- В степпер добавлены реальные состояния выполнения, специализированное описание методологии/пайплайна, шесть итоговых метрик, рекомендация и предупреждения в «Панели управления».
+
+TDD, тесты и сборка
+- RED: frontend-тесты сначала падали из-за отсутствующего overview/интеграции, Python-тесты — на отсутствующих `app.eda.stationarity` и `apps.api.eda_stationarity`.
+- Целевые Python unit/adapter/API/transforms: 21/21 PASS.
+- Focused Jest после финальной правки p-value: 2/2 suites, 24/24 tests PASS.
+- Полный frontend Jest: 50/50 suites, 430/430 tests PASS, 0 snapshots.
+- TypeScript typecheck: PASS для embedded и standalone.
+- Next.js production build после финальной правки: PASS для embedded и standalone, по 13/13 статических страниц. Временные Google Fonts/Node memory shims после проверки удалены и в изменения не входят.
+- Полный API-suite: 369 PASS, 20 FAIL, 1 SKIP; новый stationarity API-suite 4/4 PASS. Все 20 падений относятся к существующим независимым контурам format/inclusion/range/type/schema/validation/modeling/tune.
+- Полный unit-suite не собирается из-за независимой upstream-синтаксической ошибки `tests/unit/test_file_loader.py:87` (`IndentationError`); целевые unit-тесты текущей задачи проходят.
+- Python `py_compile` и `git diff --check`: PASS; структура архива проверена перед передачей.
+- Коммиты и push не выполнялись.
+
+Изменённые и новые файлы текущей задачи
+- app/eda/stationarity.py (новый)
+- app/preprocessing/transforms.py
+- apps/api/eda_stationarity.py (новый)
+- apps/api/routers/session.py
+- apps/api/schemas.py
+- apps/api/requirements.txt
+- requirements.txt
+- packages/ui/components/EdaStationarityOverview.tsx (новый)
+- packages/ui/components/EdaStationarityOverview.test.tsx (новый)
+- packages/ui/components/TsAnalysisEDA.tsx
+- packages/ui/components/TsAnalysisEDA.test.tsx
+- packages/ui/index.ts
+- tests/unit/test_stationarity_analysis.py (новый)
+- tests/unit/test_eda_stationarity_adapter.py (новый)
+- tests/api/test_dataset_eda_stationarity.py (новый)
+
+---
+
+Task ID: 71 — Русская локализация остановки «Верификация стационарности»
+
+Date: 2026-08-29
+
+Задача
+Убрать из поясняющего интерфейса остановки английские служебные сообщения статистической библиотеки и заменить смешанную русско-английскую терминологию русскими формулировками. Английские названия сохранены только для методов, алгоритмов, программных идентификаторов и принятых статистических обозначений.
+
+Диагностика и риски
+- Снимки экрана подтвердили два места утечки одного и того же сообщения `statsmodels`: общий блок предупреждений и примечание в строках KPSS таблицы.
+- Источник найден в `app/eda/stationarity.py::_run_kpss`: код дословно преобразовывал все перехваченные предупреждения в пользовательский текст. Вместе с содержательным сообщением о границе табличного p-значения туда попадало служебное предупреждение о будущем изменении типа возвращаемого объекта.
+- Учтено возможное временное рассогласование развёртывания Vercel и Render: одного исправления серверной части недостаточно, поскольку обновлённый интерфейс некоторое время может получать старый английский ответ API.
+
+Исправление
+- Серверная часть больше не передаёт текст предупреждений `statsmodels`. Для совместимых версий явно фиксируется текущий кортежный контракт `result_object=False`, а служебные предупреждения подавляются внутри расчёта.
+- Граничные результаты KPSS преобразуются в два коротких русских пояснения: расчётное p-значение ниже 0,01 либо выше 0,10; интерфейс честно сообщает, какое граничное значение показано.
+- В `EdaStationarityOverview` добавлена защитная локализация известных сообщений старого API. Английское сообщение не отображается ни в общем предупреждении, ни в таблице даже при несовпадении версий frontend/backend.
+- Вкладка и подписи `p-value` переименованы в «p-значения»/«p-значение»; `Консенсус` — в «Сводный вывод»; `ZA-разрыв` — в «Разрыв по ZA».
+- Пояснения остановки очищены от `backend`, `unit-root`, `mean/std`, `breakpoint index`, `critical values`, `legacy` и сырых английских значений результата. Названия ADF, KPSS, Phillips–Perron, Zivot–Andrews, Newey–West, ARIMA, API и LTTB оставлены как названия методов, моделей, интерфейса и алгоритма.
+- Формулировка для константного ряда теперь полностью русская: тесты единичного корня вырождены и не дают корректного p-значения.
+
+TDD и проверка
+- RED: компонентный тест воспроизвёл вывод английского сообщения и отсутствие русской вкладки «p-значения»; обе новые проверки падали до исправления.
+- Целевые Python unit/adapter/transforms/API: 22/22 PASS, включая новый тест отсутствия английских сообщений KPSS.
+- Целевые Jest: 2/2 suites, 25/25 tests PASS.
+- Полный frontend Jest по исходникам, без архивных копий `download/`: 50/50 suites, 431/431 tests PASS.
+- Next.js production build: PASS для embedded и standalone, по 13/13 статических страниц; встроенная проверка типов обоих приложений прошла.
+- Прямой `tsc --noEmit` в текущем окружении TypeScript 6.0.3 сообщает существующую несовместимость Next.js 14 с проверкой побочного импорта `./globals.css` (`TS2882`) в обоих layout-файлах. Эти файлы и настройка TypeScript задачей не изменялись; production typecheck Next.js зелёный.
+- Python `py_compile` и `git diff --check`: PASS.
+- Временные зависимости Python и временные build-shims удалены и в изменения не входят.
+- Синхронизация, commit и push не выполнялись.
+
+Изменённые файлы текущей задачи
+- app/eda/stationarity.py
+- packages/ui/components/EdaStationarityOverview.tsx
+- packages/ui/components/EdaStationarityOverview.test.tsx
+- packages/ui/components/TsAnalysisEDA.tsx
+- packages/ui/components/TsAnalysisEDA.test.tsx
+- tests/unit/test_stationarity_analysis.py
+
+---
+
+Task ID: 72 — Остановка «Регулярность ряда» (Предобработка)
+
+Date: 2026-08-29
+
+Задача
+Спроектировать и реализовать третью реальную остановку степпера «Предобработка» — «Регулярность ряда», применяя паттерн уже реализованных остановок «Пропуски»/«Выбросы». Исследовать существующий backend, оценить методологию, переиспользовать при наличии, активно задействовать визуализацию в Обзоре.
+
+Синхронизация (перед началом и в процессе работы)
+Три раунда синхронизации по ходу задачи (тимлид активно коммитил параллельно): Tasks 66–69 (IH-анализ EDA, восстановление `outliers_correction.py`), Tasks 70–71 (стационарность EDA), Navigator-компоненты (`NavigatorQualityTeaserPreview`, `NavigatorStructureConfirmPreview`). Все три раунда — fast-forward без содержательных конфликтов (один тривиальный конфликт в `worklog.md`, обе стороны независимо дописывали в конец). Контроль после каждого раунда подтверждал отсутствие регрессий.
+
+Исследование существующего backend и оценка методологии
+Обнаружено: «Регулярность» уже полностью реализована как проверка **Валидации** (Task 51) — `validation/regularity.py::profile_regularity` (автодетекция колонки даты/сущности через content-детекторы, панельная группировка, обнаружение разрывов/дублей/нарушений сортировки) + `apps/api/regularity_correction.py::preview_regularity_correction` (7 стратегий: sort/interpolate/ffill/bfill/asfreq/fictitious_zero/flag, панельно-осведомлённые). Отдельно существует `app/validation/regularity.py::compute_regularity_violations` — старый Streamlit-модуль (`app.py`, `apps/api/routers/internal.py`/`public.py`, quality-teaser бейдж при загрузке), НЕ путать с первым — оставлен нетронутым, не относится к этой задаче.
+
+Оценка методологии `profile_regularity` (задокументирована прямо в UI — константа `REGULARITY_METRICS_DESCRIPTION`, раздел «Оценка методологии»): разрыв определяется как интервал между соседними уникальными датами больше **модального** интервала × 1.5 (тот же IQR-подобный коэффициент, что уже принят на платформе для выбросов). Модальный интервал (а не среднее/медиана) — методологически корректный выбор: устойчив к переменной календарной длине месяца/квартала. При явно заданной целевой частоте разрывы считаются через `date_range` (календарно-осведомлённо), а не наивным сравнением `Timedelta` — корректно обрабатывает месячные/квартальные/годовые частоты. Панельные данные (несколько строк на одну дату — ровно случай тестового FAO-датасета «Страна × Год») обрабатываются группа за группой, разрыв в одной сущности не путается с обычным интервалом между сущностями. Существенной корректировки методология не потребовала; единственное расхождение — коэффициент 1.5 принят по аналогии с «Выбросами», а не выведен из отдельного источника специально для регулярности — явно оговорено как осознанный выбор консистентности, а не недосмотр.
+
+Переиспользование и оптимизация
+`profile_regularity`/`preview_regularity_correction` переиспользованы БЕЗ ИЗМЕНЕНИЙ основной логики, вызваны с `rules=None` (у «Предобработки» нет per-колоночных правил «Валидации» — применимость и обнаружение безусловны, как у «Пропусков»/«Выбросов»). Новые backend-роуты — не дублирование, а тонкая обёртка со своей системой режимов (`preprocessing_check_modes`, отдельной от `validation_check_modes` Валидации) под ДРУГИМИ путями (`/dataset/preprocessing/regularity-profile|corrections`), т.к. `/dataset/regularity-profile|corrections` заняты существующей Validation-проверкой с DQ Score.
+
+Для визуализации Обзора (явное требование задачи — «активно используй возможность визуализации») добавлены ДВЕ новые функции в `validation/regularity.py` (естественное расширение уже существующей логики группировки/интервалов, не новый модуль): `regularity_intervals()` — гистограмма интервалов между наблюдениями (та же величина, на которой основано обнаружение разрывов, визуализированная напрямую, с модальным интервалом и порогом разрыва), `regularity_timeline()` — события (разрыв/дубль/нарушение сортировки) вдоль оси реальных дат (кластер в одном периоде — разовый сбой; разброс по всему ряду — системная проблема источника).
+
+Backend
+- `validation/regularity.py`: `regularity_intervals(df, rules, group, max_bins)`, `regularity_timeline(df, rules, max_events)`, `_select_group()` (панельные данные — по умолчанию самая длинная по наблюдениям группа, либо явный выбор).
+- `apps/api/schemas.py`: `DatasetPreprocessingRegularityProfileResponse` (обёртка `RegularityProfileOut` + mode/status/status_reason), `DatasetRegularityIntervalsResponse`, `DatasetRegularityTimelineResponse` + вложенные схемы.
+- `apps/api/routers/session.py`: `_preprocessing_regularity_status()` (тот же контракт auto/enabled/disabled, что у Пропусков/Выбросов — «не применимо» при отсутствии автодетектированной колонки даты); 4 новых роута (`GET .../regularity-profile`, `GET .../regularity-intervals`, `GET .../regularity-timeline`, `POST .../regularity-corrections`).
+
+Frontend
+`PreprocessingRegularityOverview.tsx` (таблица по группам + вкладки Таблица/Интервалы/Таймлайн), `PreprocessingRegularityVisualizations.tsx` (`RegularityIntervalsChart` — гистограмма с референс-линией порога, `RegularityTimelineChart` — scatter вдоль оси дат, три цвета по типу нарушения), `PreprocessingRegularityPipeline.tsx` (4-шаговый мастер: стратегия → целевая частота (только для ресемплирующих стратегий) → предпросмотр → применение). `TsAnalysisPreprocessing.tsx`: «Регулярность» подключена как третья реальная остановка, полное зеркалирование паттерна «Пропуски»/«Выбросы» (собственный статус-опрос, независимый режим auto/enabled/disabled, реальные тексты «Метрики и алгоритм» с оценкой методологии, пошаговая инструкция мастера, метрики в нижней панели).
+
+TDD и проверка
+- Backend: 7 unit-тестов на `regularity_intervals`/`regularity_timeline` (модальный интервал/порог, не применимо, выбор самой большой группы по умолчанию и явный выбор, события разрыв/дубль/нарушение сортировки, усечение по `max_events`) + 9 API-тестов (профиль, интервалы, таймлайн, preview/apply, режимы, не применимо без колонки даты, панельные данные) — все 16 зелёные.
+- Frontend: `PreprocessingRegularityOverview.test.tsx` (5), `PreprocessingRegularityVisualizations.test.tsx` (5), `PreprocessingRegularityPipeline.test.tsx` (5) + 5 новых интеграционных тестов в `TsAnalysisPreprocessing.test.tsx` (переключение, статус-бейдж, независимый режим, описание с оценкой методологии, мастер) — обнаружен и исправлен собственный баг при интеграции: `regularityProfile?.profile.total_violations` падал при частично сформированном ответе (добавлен optional chaining `?.profile?.`; заодно исправлена маршрутизация тестового мока `routeFetch()`, ранее не различавшего эндпоинт регулярности).
+- Полный Jest — 55/55 suites, 488/488 tests PASS.
+- Полный pytest (без `test_file_loader.py`) — 943 passed, 32 failed (preexisting: pandas/statsmodels версии, IH-анализ, snapshot-тесты преобразований — без изменений от этой задачи).
+- `npm run typecheck:all` — PASS для embedded и standalone.
+- Production build embedded и standalone — PASS (13/13 статических страниц каждая) через временный шим `next/font/google` (песочница без сетевого доступа к fonts.googleapis.com); шим применён, собран, немедленно возвращён (`git diff` по обоим `layout.tsx` пуст) — в поставку не входит.
+
+Изменённые и новые файлы текущей задачи
+- validation/regularity.py
+- apps/api/schemas.py
+- apps/api/routers/session.py
+- packages/ui/components/PreprocessingRegularityOverview.tsx (новый)
+- packages/ui/components/PreprocessingRegularityOverview.test.tsx (новый)
+- packages/ui/components/PreprocessingRegularityVisualizations.tsx (новый)
+- packages/ui/components/PreprocessingRegularityVisualizations.test.tsx (новый)
+- packages/ui/components/PreprocessingRegularityPipeline.tsx (новый)
+- packages/ui/components/PreprocessingRegularityPipeline.test.tsx (новый)
+- packages/ui/components/TsAnalysisPreprocessing.tsx
+- packages/ui/components/TsAnalysisPreprocessing.test.tsx
+- tests/unit/test_regularity_charts.py (новый)
+- tests/api/test_dataset_preprocessing_regularity.py (новый)

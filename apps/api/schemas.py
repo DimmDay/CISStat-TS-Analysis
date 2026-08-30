@@ -1184,6 +1184,52 @@ class DatasetRegularityCorrectionResponse(BaseModel):
     profile: RegularityProfileOut
 
 
+class DatasetPreprocessingRegularityProfileResponse(BaseModel):
+    """Обёртка RegularityProfileOut для остановки «Регулярность» модуля
+    «Предобработка» -- тот же профиль, что и у «Валидации», но с полями
+    mode/status/status_reason режима остановки (auto/enabled/disabled),
+    как у DatasetMissingProfileResponse/DatasetOutlierProfileResponse.
+    У «Регулярности» тоже нет отдельного настраиваемого «правила»: она
+    либо применима (найдена колонка с датой, ≥2 корректных меток), либо
+    нет -- то же самое разграничение auto/enabled, что и у Пропусков/
+    Выбросов (расходятся только через explicit disabled)."""
+    mode: Literal["auto", "enabled", "disabled"] = "auto"
+    status: Literal["done", "warning", "pending", "skipped"] = "pending"
+    status_reason: Optional[Literal["not_required", "disabled"]] = None
+    profile: RegularityProfileOut
+
+
+class RegularityIntervalBucketOut(BaseModel):
+    """Один бин гистограммы интервалов между соседними наблюдениями --
+    данные для графика «Интервалы» Обзора остановки «Регулярность»."""
+    x0: float
+    x1: float
+    count: int
+
+
+class DatasetRegularityIntervalsResponse(BaseModel):
+    group: str
+    unit: Literal["seconds"] = "seconds"
+    bins: List[RegularityIntervalBucketOut] = Field(default_factory=list)
+    modal_seconds: Optional[float] = None
+    threshold_seconds: Optional[float] = None
+
+
+class RegularityTimelineEventOut(BaseModel):
+    date: str
+    kind: Literal["gap", "duplicate", "sort_violation"]
+    group: str
+
+
+class DatasetRegularityTimelineResponse(BaseModel):
+    date_column: Optional[str] = None
+    entity_column: Optional[str] = None
+    min_date: Optional[str] = None
+    max_date: Optional[str] = None
+    events: List[RegularityTimelineEventOut] = Field(default_factory=list)
+    truncated: bool = False
+
+
 class SufficiencyCheckOut(BaseModel):
     id: str
     label: str

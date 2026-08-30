@@ -28,6 +28,8 @@ import { PreprocessingMissingOverview, type MissingProfileResponse } from "./Pre
 import { PreprocessingMissingPipeline } from "./PreprocessingMissingPipeline";
 import { PreprocessingOutliersOverview, type OutlierProfileResponse } from "./PreprocessingOutliersOverview";
 import { PreprocessingOutliersPipeline } from "./PreprocessingOutliersPipeline";
+import { PreprocessingRegularityOverview, type RegularityProfileResponse } from "./PreprocessingRegularityOverview";
+import { PreprocessingRegularityPipeline } from "./PreprocessingRegularityPipeline";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -47,7 +49,7 @@ const CHECKS: Check[] = [
   { id: "outliers", label: "Выбросы", status: "pending", count: null,
     description: "Выбросы завышают дисперсию, искажают оценки тренда и ломают тесты стационарности (ADF/KPSS). Методы: IQR, Z-score, Modified Z-score (MAD), процентильный. Обнаружение — на сырых значениях по умолчанию; на остатке после STL-декомпозиции — опционально, когда декомпозиция применима." },
   { id: "regularity", label: "Регулярность ряда", status: "pending", count: null,
-    description: "Нерегулярный временной шаг мешает декомпозиции (STL), спектральному анализу (FFT) и моделям ARIMA. Решение: интерполяция gaps, ресемплирование к фиксированной частоте." },
+    description: "Нерегулярный временной шаг мешает декомпозиции (STL), спектральному анализу (FFT) и моделям ARIMA/SARIMA. Стратегии: сортировка по дате, ресемплирование к целевой частоте с интерполяцией/ffill/bfill/нулём/без заполнения, флаг нарушения." },
   { id: "decomposition", label: "Декомпозиция ряда", status: "pending", count: null,
     description: "Разложение на Trend + Seasonal + Cycle + Residual методами STL, Classical, SEATS или X13. Диагностика остатков на нормальность и автокорреляцию." },
   { id: "variance_stab", label: "Стабилизация дисперсии", status: "pending", count: null,
@@ -157,6 +159,33 @@ const OUTLIERS_PIPELINE_DESCRIPTION = `Мастер исправления вы�
 3. Выберите стратегию исправления: удаление строк, кэпирование (winsorize по границам 1.5×IQR — не зависит от выбранного метода обнаружения), замена медианой (не-выбросных значений) либо флаг выброса (сохраняет исходные значения, добавляет индикаторную колонку *_outlier_flag).
 4. Запустите «Предпросмотр изменений». Расчёт выполняется на копии датасета и не меняет активные данные: вы увидите число найденных и исправленных выбросов, оставшиеся выбросы и — при выборе обнаружения на остатке — явную отметку об этом в результате.
 5. Подтвердите применение отдельным чекбоксом и нажмите «Применить исправления». Подготовленная копия сохраняется в сессии атомарно, после чего профиль выбросов и статус остановки пересчитываются автоматически.`;
+
+const REGULARITY_METRICS_DESCRIPTION = `Метрики и алгоритм: Регулярность ряда
+
+Цель
+Проверка находит нарушения равномерности временного шага: разрывы (пропущенные периоды), дубликаты дат, нарушения хронологического порядка и некорректные значения даты. Нерегулярный шаг делает невозможной STL-декомпозицию и спектральный анализ (FFT/периодограмма требуют равномерной сетки) и искажает автокорреляцию (ACF/PACF) моделей ARIMA/SARIMA.
+
+Метрики
+1. Колонка даты и колонка сущности (для панельных датасетов — несколько строк на одну дату, например «Страна × Год») определяются автоматически по тем же content-детекторам, что использует остальная платформа.
+2. Целевая частота: если задана явно (например, в правилах «Валидации») — учитывается календарная нерегулярность месяцев/кварталов/лет через date_range, а не наивное сравнение Timedelta; если нет — определяется по модальному интервалу между наблюдениями.
+3. Разрыв — интервал между соседними уникальными датами больше modal_interval × gap_threshold_multiplier (по умолчанию 1.5 — тот же коэффициент, что и у IQR-метода в «Выбросах»). Мода, а не среднее/медиана — устойчива к календарным различиям длины месяца.
+4. По каждой группе (сущности): число наблюдений, обнаруженная частота, разрывы, дубликаты, нарушения сортировки, до 5 примеров разрывов с датами и числом пропущенных периодов.
+
+Алгоритм backend
+1. GET /v1/session/dataset/preprocessing/regularity-profile переиспользует profile_regularity (validation/regularity.py) — тот же движок, что уже работает в «Валидации» (там — как отдельная DQ-проверка с настраиваемым правилом), но здесь без per-колоночных правил: применимость и обнаружение безусловны, как у «Пропусков»/«Выбросов».
+2. Панельные датасеты обрабатываются группа за группой — разрыв в одной сущности не путается с обычным интервалом между сущностями.
+3. status = done, если нарушений нет; warning — если найдены; skipped — если проверка отключена аналитиком либо колонка даты не определена автоматически (например, чисто кросс-секционные данные без временной оси).
+
+Оценка методологии
+Модальный интервал (а не среднее или медиана) — методологически корректный выбор для порога разрыва: устойчив к тому, что настоящие календарные частоты (месяц, квартал) физически имеют переменную длину в днях, а мода схватывает «типичный шаг» вне зависимости от единичных выбросов в самих интервалах. Коэффициент 1.5 — тот же IQR-подобный эвристический множитель, что уже принят на платформе для выбросов; отдельного обоснования именно для регулярности в источниках нет, но согласованность с остальной платформой — осознанный выбор, а не недосмотр. Существенная корректировка методологии не потребовалась.`;
+
+const REGULARITY_PIPELINE_DESCRIPTION = `Мастер исправления регулярности
+
+1. Выберите стратегию: «Отсортировать по дате» (только переупорядочивает строки, не создаёт/не удаляет данные); «Ресемплировать + …» (интерполяция / forward fill / backward fill / ноль-Unknown / без заполнения) приводит ряд к регулярной сетке целевой частоты; «Только пометить флагом» не меняет данные, добавляет индикаторную колонку _has_gap.
+2. Для стратегий с ресемплированием укажите целевую частоту (pandas-alias: D, W, MS, QS, YS, h, min и т.п.) — по умолчанию подставлена автоматически определённая частота.
+3. Запустите «Предпросмотр изменений». Расчёт выполняется на копии датасета и не меняет активные данные: вы увидите изменение числа нарушений и строк (ресемплирование добавляет строки на месте разрывов), число агрегированных дублей.
+4. Подтвердите применение отдельным чекбоксом и нажмите «Применить исправления». Подготовленная копия сохраняется в сессии атомарно, после чего профиль регулярности и статус остановки пересчитываются автоматически.
+5. Совет: если дальше в пайплайне планируется декомпозиция или спектральный анализ, выбирайте стратегию с ресемплированием (не «Отсортировать» и не «Флаг») — этим шагам нужна физически регулярная сетка дат, а не просто отсутствие явных «разрывов» в отсортированном ряду.`;
 
 type PreprocessingCheckMode = "auto" | "enabled" | "disabled";
 
@@ -298,13 +327,61 @@ export function TsAnalysisPreprocessing() {
     ? outliersProfile.status
     : "pending";
 
+  // ── Остановка «Регулярность»: тот же паттерн ──
+  const [regularityProfile, setRegularityProfile] = useState<RegularityProfileResponse | null>(null);
+  const [regularityLoading, setRegularityLoading] = useState(true);
+  const [regularityNoDataset, setRegularityNoDataset] = useState(false);
+  const [regularityError, setRegularityError] = useState<string | null>(null);
+  const [regularityRefreshKey, setRegularityRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setRegularityLoading(true);
+    setRegularityError(null);
+    setRegularityNoDataset(false);
+    void (async () => {
+      try {
+        const response = await fetch(sessionApiUrl("/dataset/preprocessing/regularity-profile"), { credentials: "include" });
+        if (response.status === 404) {
+          if (active) setRegularityNoDataset(true);
+          return;
+        }
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(typeof body?.detail === "string" ? body.detail : `HTTP ${response.status}`);
+        }
+        const data: RegularityProfileResponse = await response.json();
+        if (active) {
+          setRegularityProfile(data);
+          setCheckModes((current) => ({ ...current, regularity: data.mode }));
+        }
+      } catch (caught) {
+        if (active) setRegularityError(caught instanceof Error ? caught.message : "Не удалось загрузить профиль регулярности");
+      } finally {
+        if (active) setRegularityLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [regularityRefreshKey]);
+
+  const regularityStatus: CheckStatus = regularityLoading
+    ? "running"
+    : regularityNoDataset
+    ? "skipped"
+    : regularityError
+    ? "error"
+    : regularityProfile
+    ? regularityProfile.status
+    : "pending";
+
   // Итоговый список проверок -- статика для ещё не реализованных
-  // остановок, реальные данные для «Пропусков» и «Выбросов».
+  // остановок, реальные данные для «Пропусков», «Выбросов» и «Регулярности».
   const checks = useMemo<Check[]>(() => CHECKS.map((check) => {
     if (check.id === "missing") return { ...check, status: missingStatus, count: missingProfile?.total_missing ?? null };
     if (check.id === "outliers") return { ...check, status: outliersStatus, count: outliersProfile?.total_outliers ?? null };
+    if (check.id === "regularity") return { ...check, status: regularityStatus, count: regularityProfile?.profile?.total_violations ?? null };
     return check;
-  }), [missingStatus, missingProfile, outliersStatus, outliersProfile]);
+  }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -357,6 +434,7 @@ export function TsAnalysisPreprocessing() {
       // (та же идея, что runValidation() после смены режима в Validation).
       if (checkId === "missing") setMissingRefreshKey((k) => k + 1);
       if (checkId === "outliers") setOutliersRefreshKey((k) => k + 1);
+      if (checkId === "regularity") setRegularityRefreshKey((k) => k + 1);
     } catch {
       setCheckModes(previous);
       setModeError({ checkId, message: "Не удалось сохранить режим проверки" });
@@ -399,6 +477,9 @@ export function TsAnalysisPreprocessing() {
     if (activeCheckId === "outliers") {
       return descriptionSection === "metrics" ? OUTLIERS_METRICS_DESCRIPTION : OUTLIERS_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "regularity") {
+      return descriptionSection === "metrics" ? REGULARITY_METRICS_DESCRIPTION : REGULARITY_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -414,6 +495,9 @@ export function TsAnalysisPreprocessing() {
     }
     if (activeCheckId === "outliers") {
       return descriptionSection === "metrics" ? "Метрики и алгоритм — Выбросы" : "Мастер исправления выбросов";
+    }
+    if (activeCheckId === "regularity") {
+      return descriptionSection === "metrics" ? "Метрики и алгоритм — Регулярность" : "Мастер исправления регулярности";
     }
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
@@ -573,6 +657,8 @@ export function TsAnalysisPreprocessing() {
               ? "Мастер исправления пропусков"
               : activeCheckId === "outliers" && descriptionSection === "pipeline"
               ? "Мастер исправления выбросов"
+              : activeCheckId === "regularity" && descriptionSection === "pipeline"
+              ? "Мастер исправления регулярности"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -584,6 +670,10 @@ export function TsAnalysisPreprocessing() {
               ? "Выберите колонку, метод и стратегию; обнаружение — на сырых значениях или (опционально) на остатке после STL-декомпозиции."
               : activeCheckId === "outliers"
               ? "Выбросы по числовым колонкам методом IQR, границы и рекомендованный метод на колонку."
+              : activeCheckId === "regularity" && descriptionSection === "pipeline"
+              ? "Выберите стратегию и целевую частоту, оцените последствия на копии и примените исправления."
+              : activeCheckId === "regularity"
+              ? "Разрывы, дубликаты и нарушения сортировки по группам; интервалы и таймлайн — во вкладках."
               : "Меняется автоматически под активную проверку."}
           </p>
 
@@ -595,6 +685,10 @@ export function TsAnalysisPreprocessing() {
             <PreprocessingOutliersPipeline onApplied={() => setOutliersRefreshKey((k) => k + 1)} />
           ) : activeCheckId === "outliers" ? (
             <PreprocessingOutliersOverview refreshKey={outliersRefreshKey} column={activeFeature} />
+          ) : activeCheckId === "regularity" && descriptionSection === "pipeline" ? (
+            <PreprocessingRegularityPipeline onApplied={() => setRegularityRefreshKey((k) => k + 1)} />
+          ) : activeCheckId === "regularity" ? (
+            <PreprocessingRegularityOverview refreshKey={regularityRefreshKey} />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
@@ -614,6 +708,13 @@ export function TsAnalysisPreprocessing() {
               <Metric label="Числовых колонок" value={outliersProfile ? String(outliersProfile.total_numeric_columns) : "—"} />
               <Metric label="Выбросов" value={outliersProfile ? String(outliersProfile.total_outliers) : "—"} />
               <Metric label="Затронуто колонок" value={outliersProfile ? String(outliersProfile.affected_columns.length) : "—"} />
+            </div>
+          ) : activeCheckId === "regularity" ? (
+            <div className="grid grid-cols-4 gap-3 mt-4">
+              <Metric label="Разрывов" value={regularityProfile ? String(regularityProfile.profile.gap_count) : "—"} />
+              <Metric label="Дублей" value={regularityProfile ? String(regularityProfile.profile.duplicate_count) : "—"} />
+              <Metric label="Нарушений сортировки" value={regularityProfile ? String(regularityProfile.profile.sort_violations) : "—"} />
+              <Metric label="Частота" value={regularityProfile?.profile.target_frequency ?? "—"} />
             </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
@@ -652,7 +753,7 @@ export function TsAnalysisPreprocessing() {
                   у остальных остановок ещё нет backend-проверки, которую
                   можно реально включить/отключить (см. комментарий у
                   useState checkModes выше). */}
-              {(check.id === "missing" || check.id === "outliers") && (
+              {(check.id === "missing" || check.id === "outliers" || check.id === "regularity") && (
                 <label className="mb-2 block text-[11px] font-medium text-neutral-600">
                   Режим проверки
                   <select
@@ -753,6 +854,43 @@ export function TsAnalysisPreprocessing() {
                     </p>
                   )}
                 </>
+              ) : check.id === "regularity" ? (
+                <>
+                  {check.status === "running" && (
+                    <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                      Проверка выполняется…
+                    </p>
+                  )}
+                  {check.status === "error" && (
+                    <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">
+                      {regularityError ?? "Ошибка выполнения проверки"}
+                    </p>
+                  )}
+                  {check.status === "pending" && (
+                    <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                      Проверка не запускалась
+                    </p>
+                  )}
+                  {check.status === "skipped" && (
+                    <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">
+                      {regularityNoDataset
+                        ? "Нет активного датасета"
+                        : regularityProfile?.status_reason === "disabled"
+                        ? "Отключено"
+                        : "Не требуется"}
+                    </p>
+                  )}
+                  {check.status === "warning" && (
+                    <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">
+                      Найдено {check.count ?? 0} нарушений регулярности
+                    </p>
+                  )}
+                  {check.status === "done" && (
+                    <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">
+                      Проверка пройдена, нарушений нет
+                    </p>
+                  )}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -789,7 +927,7 @@ export function TsAnalysisPreprocessing() {
                     : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
                 }`}
               >
-                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : "Полный пайплайн"}
+                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : "Полный пайплайн"}
               </button>
 
               <Button>Пересчитать свойства после преобразования ({check.label.toLowerCase()})</Button>

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from app.data.detectors import (
@@ -304,3 +305,134 @@ def regularity_violation_mask(df: pd.DataFrame, rules: dict[str, Any] | None = N
         modal = modes.iloc[0] if not modes.empty else positive.median()
         mask.loc[intervals[intervals > modal * multiplier].index] = True
     return mask
+
+
+# ── Визуализации Обзора остановки «Регулярность» (модуль «Предобработка»,
+#    TsAnalysisPreprocessing.tsx) -- переиспользуют ту же группировку и
+#    те же интервалы, что profile_regularity уже вычисляет внутри себя,
+#    но profile_regularity не публикует сырые интервалы наружу (только
+#    агрегаты + до 5 примеров разрывов). Эти две функции -- не новая
+#    логика обнаружения, а другой СРЕЗ уже посчитанных данных. ──
+
+
+def _select_group(df: pd.DataFrame, date_column: str, entity_column: str | None, group: str | None):
+    """Возвращает (label, sub-DataFrame) для конкретной группы -- либо
+    указанной по имени, либо (по умолчанию) с наибольшим числом строк,
+    как самую репрезентативную для гистограммы/таймлайна."""
+    if entity_column is None:
+        return _group_label(None, None), df
+    best_label, best_frame, best_size = None, None, -1
+    for value, frame in _group_frames(df, entity_column):
+        label = _group_label(entity_column, value)
+        if group is not None and label != group:
+            continue
+        if len(frame) > best_size:
+            best_label, best_frame, best_size = label, frame, len(frame)
+    if best_frame is None:
+        return None, None
+    return best_label, best_frame
+
+
+def regularity_intervals(
+    df: pd.DataFrame, rules: dict[str, Any] | None = None, group: str | None = None, max_bins: int = 30
+) -> dict[str, Any]:
+    """Гистограмма интервалов (в секундах) между соседними уникальными
+    датами внутри одной группы -- визуализирует ровно ту же величину,
+    на которой основано обнаружение разрывов (modal × gap_threshold_multiplier).
+    Панельные датасеты: по умолчанию берётся самая длинная по наблюдениям
+    группа (см. _select_group); можно указать конкретную через group=.
+    """
+    profile = profile_regularity(df, rules)
+    empty = {"group": group or "", "bins": [], "modal_seconds": None, "threshold_seconds": None}
+    if not profile["applicable"]:
+        return empty
+    date_column = profile["date_column"]
+    entity_column = profile["entity_column"]
+    assert date_column is not None
+    converted = smart_to_datetime(df[date_column])
+    working = df.copy(deep=False).assign(**{date_column: converted})
+    label, frame = _select_group(working, date_column, entity_column, group)
+    if frame is None:
+        return empty
+    dates = frame[date_column].dropna().drop_duplicates().sort_values()
+    intervals = dates.diff().dropna()
+    positive = intervals[intervals > pd.Timedelta(0)]
+    if positive.empty:
+        return {**empty, "group": label}
+    seconds = positive.dt.total_seconds()
+    modes = positive.mode()
+    modal = modes.iloc[0] if not modes.empty else positive.median()
+    threshold_seconds = float(modal.total_seconds()) * float(profile["gap_threshold_multiplier"])
+
+    n_bins = min(max_bins, seconds.nunique()) or 1
+    counts, edges = np.histogram(seconds.to_numpy(), bins=n_bins)
+    bins = [
+        {"x0": float(edges[i]), "x1": float(edges[i + 1]), "count": int(counts[i])}
+        for i in range(len(counts))
+    ]
+    return {
+        "group": label,
+        "bins": bins,
+        "modal_seconds": float(modal.total_seconds()),
+        "threshold_seconds": threshold_seconds,
+    }
+
+
+def regularity_timeline(
+    df: pd.DataFrame, rules: dict[str, Any] | None = None, max_events: int = 500
+) -> dict[str, Any]:
+    """События нарушений (разрыв/дубль/нарушение сортировки) с датами --
+    для таймлайн-графика Обзора: где именно во времени сосредоточены
+    проблемы (единый кластер -- один сбойный период; разброс по всему
+    ряду -- системная проблема источника данных)."""
+    profile = profile_regularity(df, rules)
+    empty = {
+        "date_column": None, "entity_column": None, "min_date": None, "max_date": None,
+        "events": [], "truncated": False,
+    }
+    if not profile["applicable"]:
+        return empty
+    date_column = profile["date_column"]
+    entity_column = profile["entity_column"]
+    assert date_column is not None
+    converted = smart_to_datetime(df[date_column])
+    working = df.copy(deep=False).assign(**{date_column: converted})
+    multiplier = profile["gap_threshold_multiplier"]
+
+    events: list[dict[str, Any]] = []
+    all_dates: list[pd.Timestamp] = []
+    for value, group in _group_frames(working, entity_column):
+        label = _group_label(entity_column, value)
+        dates_original = group[date_column]
+        valid_dates = dates_original.dropna()
+        all_dates.extend(valid_dates.tolist())
+
+        negative = dates_original.diff().lt(pd.Timedelta(0)).fillna(False)
+        for idx in dates_original.index[negative]:
+            events.append({"date": dates_original.loc[idx].isoformat(), "kind": "sort_violation", "group": label})
+
+        duplicated = valid_dates.duplicated(keep="first")
+        for idx in valid_dates.index[duplicated]:
+            events.append({"date": valid_dates.loc[idx].isoformat(), "kind": "duplicate", "group": label})
+
+        unique_dates = valid_dates.drop_duplicates().sort_values()
+        intervals = unique_dates.diff().dropna()
+        positive = intervals[intervals > pd.Timedelta(0)]
+        if not positive.empty:
+            modes = positive.mode()
+            modal = modes.iloc[0] if not modes.empty else positive.median()
+            gap_positions = intervals[intervals > modal * multiplier]
+            for position in gap_positions.index:
+                events.append({"date": unique_dates.loc[position].isoformat(), "kind": "gap", "group": label})
+
+    events.sort(key=lambda item: item["date"])
+    truncated = len(events) > max_events
+    return {
+        "date_column": date_column,
+        "entity_column": entity_column,
+        "min_date": min(all_dates).isoformat() if all_dates else None,
+        "max_date": max(all_dates).isoformat() if all_dates else None,
+        "events": events[:max_events],
+        "truncated": truncated,
+    }
+

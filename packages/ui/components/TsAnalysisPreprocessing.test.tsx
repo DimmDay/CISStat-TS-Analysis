@@ -55,12 +55,40 @@ const OUTLIERS_PROFILE = {
   ],
 };
 
+// Нейтральный дефолт (status: "done", 0 нарушений), чтобы тесты «Пропусков»/
+// «Выбросов» (не проверяющие «Регулярность» напрямую) не падали при
+// монтировании родителя, который теперь параллельно опрашивает и этот
+// эндпоинт тоже.
+const REGULARITY_PROFILE = {
+  mode: "auto",
+  status: "done",
+  status_reason: null,
+  profile: {
+    applicable: true,
+    applicability_message: null,
+    date_column: "Date",
+    entity_column: null,
+    target_frequency: "MS",
+    detected_frequency: "MS",
+    gap_threshold_multiplier: 1.5,
+    is_sorted: true,
+    sort_violations: 0,
+    invalid_date_count: 0,
+    duplicate_count: 0,
+    gap_count: 0,
+    missing_period_count: 0,
+    total_violations: 0,
+    groups: [],
+    supported_actions: ["sort", "interpolate", "ffill", "bfill", "asfreq", "fictitious_zero", "flag"],
+  },
+};
+
 // Маршрутизирующий мок fetch -- используется везде, где раньше был
 // плоский `jest.fn().mockResolvedValue(MISSING_PROFILE)`: теперь ДВА
 // реальных стопа опрашивают бэкенд параллельно при монтировании, и без
 // маршрутизации по URL «Выбросы» получали бы чужой (missing-shaped)
 // ответ.
-function routeFetch(overrides: { missing?: unknown; outliers?: unknown; put?: unknown } = {}) {
+function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; put?: unknown } = {}) {
   return jest.fn((url: string, init?: RequestInit) => {
     if (typeof url === "string" && url.includes("/target-column")) {
       const selected = init?.method === "POST"
@@ -78,6 +106,9 @@ function routeFetch(overrides: { missing?: unknown; outliers?: unknown; put?: un
     }
     if (init?.method === "PUT") {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.put ?? { modes: {} }) });
+    }
+    if (typeof url === "string" && url.includes("regularity-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.regularity ?? REGULARITY_PROFILE) });
     }
     if (typeof url === "string" && url.includes("outlier-profile")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.outliers ?? OUTLIERS_PROFILE) });
@@ -258,6 +289,7 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
   it("excludes a skipped missing-values stop from the progress bar denominator", async () => {
     global.fetch = routeFetch({
       missing: { ...MISSING_PROFILE, mode: "disabled", status: "skipped", status_reason: "disabled" },
+      regularity: { ...REGULARITY_PROFILE, status: "pending" },
     });
     render(<TsAnalysisPreprocessing />);
     await screen.findByText("Отключено");
@@ -407,5 +439,59 @@ describe("TsAnalysisPreprocessing — остановка «Выбросы»", ()
     fireEvent.click(screen.getByRole("button", { name: "Исправить выбросы" }));
 
     expect(await screen.findByRole("region", { name: "Мастер исправления выбросов" })).toBeInTheDocument();
+  });
+});
+
+// ── Интеграция остановки «Регулярность» с бэкендом ──
+
+describe("TsAnalysisPreprocessing — остановка «Регулярность»", () => {
+  const WARNING_REGULARITY = {
+    ...REGULARITY_PROFILE,
+    status: "warning",
+    profile: { ...REGULARITY_PROFILE.profile, gap_count: 1, total_violations: 1 },
+  };
+
+  beforeEach(() => {
+    global.fetch = routeFetch({ regularity: WARNING_REGULARITY });
+  });
+
+  it("switching to 'Регулярность ряда' shows the real regularity overview", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Регулярность ряда"));
+    expect(await screen.findByRole("table", { name: "Регулярность по группам" })).toBeInTheDocument();
+  });
+
+  it("reflects warning status and count in the right-column badge", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Регулярность ряда"));
+    await screen.findByRole("table", { name: "Регулярность по группам" });
+    expect(screen.getByText("Найдено 1 нарушений регулярности")).toBeInTheDocument();
+  });
+
+  it("shows a mode selector for regularity independent from other stops", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Регулярность ряда"));
+    expect(await screen.findByRole("combobox", { name: "Режим проверки Регулярность ряда" })).toBeInTheDocument();
+  });
+
+  it("shows the real Цель/Метрики/Алгоритм backend description including the methodology assessment", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Регулярность ряда"));
+    await screen.findByRole("table", { name: "Регулярность по группам" });
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+
+    expect(await screen.findByText(/Метрики и алгоритм: Регулярность ряда/)).toBeInTheDocument();
+    expect(screen.getByText(/Оценка методологии/)).toBeInTheDocument();
+    expect(screen.getByText(/profile_regularity/)).toBeInTheDocument();
+  });
+
+  it("shows step-by-step wizard instructions when 'Исправить регулярность' is clicked", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Регулярность ряда"));
+    await screen.findByRole("table", { name: "Регулярность по группам" });
+    fireEvent.click(screen.getByRole("button", { name: "Исправить регулярность" }));
+
+    expect(await screen.findByRole("region", { name: "Мастер исправления регулярности" })).toBeInTheDocument();
+    expect(screen.getAllByText(/Ресемплировать/).length).toBeGreaterThan(0);
   });
 });
