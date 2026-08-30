@@ -49,6 +49,11 @@ import {
   type EdaDistributionParameters,
   type EdaDistributionResponse,
 } from "./EdaDistributionOverview";
+import {
+  EdaStructuralBreaksOverview,
+  type EdaStructuralBreaksParameters,
+  type EdaStructuralBreaksResponse,
+} from "./EdaStructuralBreaksOverview";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 
@@ -78,7 +83,7 @@ const CHECKS: Check[] = [
   { id: "distribution", label: "Распределение", status: "pending", count: null,
     description: "Гистограмма, оценка плотности KDE, Q–Q график и эмпирическая F(x) сопоставляются с нормальным распределением с параметрами выбранного ряда. Shapiro–Wilk, Jarque–Bera и тест Лиллиефорса применяются с поправкой Холма. Вывод относится к форме текущего ряда; предположение модели о нормальности проверяется отдельно на её остатках." },
   { id: "structural", label: "Структурные сдвиги", status: "pending", count: null,
-    description: "Поиск точек regime change: CUSUM, Chow test, PELT. Визуализация с аннотациями. Рекомендация: «обучать на периоде после [date]» или «использовать модель с переключением режимов»." },
+    description: "CUSUM проверяет общую стабильность параметров линейного тренда, PELT локализует несколько изменений уровня и наклона, а локальная Chow-диагностика и анализ чувствительности описывают найденные кандидаты. Результат помогает сравнить обучение на последнем режиме с моделью, допускающей изменение параметров." },
   { id: "feature_select", label: "Отбор признаков", status: "pending", count: null,
     description: "Корреляционная матрица сгенерированных признаков, VIF (Variance Inflation Factor), Granger causality для многомерных моделей. Рекомендация: оставить N значимых из M сгенерированных." },
   { id: "validation_strategy", label: "Стратегия валидации", status: "pending", count: null,
@@ -276,6 +281,29 @@ const DISTRIBUTION_PIPELINE_DESCRIPTION = `Полный пайплайн: рас
 6. Один API-ответ питает пять вкладок «Обзора»: «Гистограмма», «Плотность», «Q–Q», «F(x)», «Тесты». Переключение представлений не создаёт новых запросов.
 7. Смена α, числа интервалов или общего признака автоматически обновляет профиль; ручная кнопка повторяет запрос после преобразований предыдущих этапов.`;
 
+const STRUCTURAL_METRICS_DESCRIPTION = `Метрики и алгоритм: Структурные сдвиги
+
+Остановка объединяет три взаимодополняющие диагностики и не выдаёт одну найденную точку за доказанный разрыв.
+
+1. CUSUM по остаткам общей линейной регрессии проверяет H₀ о стабильности её параметров на всём интервале. Он отвечает на глобальный вопрос, но сам не локализует дату сдвига.
+2. PELT с кусочно-линейной функцией потерь ищет несколько изменений уровня и наклона. Штраф ограничивает сложность: меньшее значение даёт больше сегментов, большее — более консервативное разбиение.
+3. Минимальная длина сегмента защищает от коротких случайных режимов. Базовый штраф масштабируется оценкой дисперсии остатков и log(N), а в «Чувствительности» точки сравниваются при нескольких множителях штрафа.
+4. Локальная Chow-диагностика измеряет улучшение двух линейных моделей относительно одной на соседних сегментах. Chow после выбора точки PELT рассчитан на тех же данных: p-значение является послевыборочной диагностикой, а не независимым подтверждением. Для нескольких кандидатов применяется поправка Холма.
+5. Кандидат считается поддержанным только при согласии глобального CUSUM, локальной Chow-диагностики и сохранении точки не менее чем в 60% сценариев чувствительности.
+6. Изменение уровня оценивается в точке границы, изменение наклона — разностью коэффициентов соседних сегментов, выигрыш RSS — относительным снижением суммы квадратов ошибок.
+
+Метод ищет сдвиги уровня и линейного наклона. Изменение только дисперсии требует отдельной диагностики волатильности; автокорреляция и сезонность могут искажать формальные p-значения, поэтому результат нужно повторить на остатках корректной модели.`;
+
+const STRUCTURAL_PIPELINE_DESCRIPTION = `Полный пайплайн: структурные сдвиги
+
+1. Общий «Исследуемый признак» передаётся в GET /v1/session/dataset/eda-structural-breaks?column=...&alpha=...&min_segment=...&penalty_multiplier=.... Исходный session.dataframe не изменяется.
+2. Временная колонка определяется общим детектором, сортируется по возрастанию и проверяется на регулярность. Повторные даты блокируют анализ как вероятная панель; автоматическая агрегация не выполняется.
+3. Если временная ось уверенно не найдена, используется текущий порядок строк с явным предупреждением. Пропуски, бесконечные значения, константный и слишком короткий ряд возвращают объяснимое состояние «неприменимо».
+4. Общая линейная модель даёт остатки для CUSUM и масштаб штрафа. PELT из ruptures выполняет оптимальную сегментацию с ограничением минимальной длины; чрезмерное число точек сдерживается автоматическим увеличением штрафа.
+5. Для границ PELT вычисляются изменения уровня и наклона, локальная Chow-диагностика с поправкой Холма и устойчивость к сетке штрафов. Решение не мутирует ряд и не выбирает период обучения автоматически.
+6. Один API-ответ питает пять вкладок «Обзора»: «Режимы», «CUSUM», «Чувствительность», «Сегменты», «Кандидаты». Графики могут быть прорежены методом LTTB, расчёты всегда используют полный ряд.
+7. Смена α, минимальной длины, штрафа или общего признака пересчитывает профиль; ручная кнопка повторяет запрос после изменений датасета. Найденные даты следует сопоставить с предметными событиями и проверить на временных срезах.`;
+
 async function responseDetail(response: Response): Promise<string> {
   try {
     const body = await response.json();
@@ -334,6 +362,16 @@ async function distributionResponseDetail(response: Response): Promise<string> {
     // Нейтральная ошибка ниже покрывает ответ без JSON.
   }
   return `Не удалось исследовать распределение (HTTP ${response.status})`;
+}
+
+async function structuralResponseDetail(response: Response): Promise<string> {
+  try {
+    const body = await response.json();
+    if (typeof body?.detail === "string") return body.detail;
+  } catch {
+    // Нейтральная ошибка ниже покрывает ответ без JSON.
+  }
+  return `Не удалось исследовать структурные сдвиги (HTTP ${response.status})`;
 }
 
 function formatMetric(value: number | null | undefined): string {
@@ -820,6 +858,63 @@ export function TsAnalysisEDA() {
     ? "warning"
     : "pending";
 
+  // ── Остановка «Структурные сдвиги»: CUSUM + PELT + Chow ──
+  const [structuralProfile, setStructuralProfile] = useState<EdaStructuralBreaksResponse | null>(null);
+  const [structuralLoading, setStructuralLoading] = useState(false);
+  const [structuralNoDataset, setStructuralNoDataset] = useState(false);
+  const [structuralError, setStructuralError] = useState<string | null>(null);
+  const [structuralRefreshKey, setStructuralRefreshKey] = useState(0);
+  const [structuralParameters, setStructuralParameters] = useState<EdaStructuralBreaksParameters>({
+    alpha: 0.05, minSegment: 20, penaltyMultiplier: 2,
+  });
+
+  useEffect(() => {
+    if (activeCheckId !== "structural" || targetLoading) return;
+    if (!hasDataset) {
+      setStructuralNoDataset(true); setStructuralProfile(null); setStructuralLoading(false); return;
+    }
+    if (!activeFeature) {
+      setStructuralNoDataset(false); setStructuralProfile(null); setStructuralLoading(false); return;
+    }
+    let active = true;
+    setStructuralLoading(true); setStructuralError(null); setStructuralNoDataset(false);
+    void (async () => {
+      try {
+        const query = new URLSearchParams({
+          column: activeFeature,
+          alpha: String(structuralParameters.alpha),
+          min_segment: String(structuralParameters.minSegment),
+          penalty_multiplier: String(structuralParameters.penaltyMultiplier),
+        });
+        const response = await fetch(
+          sessionApiUrl(`/dataset/eda-structural-breaks?${query.toString()}`),
+          { credentials: "include" },
+        );
+        if (response.status === 404) {
+          if (active) { setStructuralNoDataset(true); setStructuralProfile(null); }
+          return;
+        }
+        if (!response.ok) throw new Error(await structuralResponseDetail(response));
+        const data: EdaStructuralBreaksResponse = await response.json();
+        if (active) setStructuralProfile(data);
+      } catch (caught) {
+        if (active) setStructuralError(caught instanceof Error ? caught.message : "Не удалось исследовать структурные сдвиги");
+      } finally {
+        if (active) setStructuralLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [activeCheckId, activeFeature, hasDataset, structuralParameters, structuralRefreshKey, targetLoading]);
+
+  const structuralBusy = structuralLoading || (activeCheckId === "structural" && targetLoading);
+  const structuralRequestError = structuralError ?? (activeCheckId === "structural" ? targetError : null);
+  const structuralStatus: CheckStatus = structuralBusy
+    ? "running" : structuralRequestError ? "error"
+    : structuralNoDataset || (hasDataset && !activeFeature) ? "skipped"
+    : structuralProfile?.applicable === false ? "warning"
+    : structuralProfile?.status === "stable" ? "done"
+    : structuralProfile?.applicable ? "warning" : "pending";
+
   const checks = useMemo<Check[]>(() => CHECKS.map((check) =>
     check.id === "descriptive"
       ? { ...check, status: descriptiveStatus, count: insufficientColumns }
@@ -833,8 +928,10 @@ export function TsAnalysisEDA() {
       ? { ...check, status: stationarityStatus, count: null }
       : check.id === "distribution"
       ? { ...check, status: distributionStatus, count: null }
+      : check.id === "structural"
+      ? { ...check, status: structuralStatus, count: structuralProfile?.supported_count ?? null }
       : check,
-  ), [correlationStatus, descriptiveStatus, distributionStatus, ihStatus, insufficientColumns, seasonalityProfile?.confirmed_periods, seasonalityStatus, stationarityStatus]);
+  ), [correlationStatus, descriptiveStatus, distributionStatus, ihStatus, insufficientColumns, seasonalityProfile?.confirmed_periods, seasonalityStatus, stationarityStatus, structuralProfile?.supported_count, structuralStatus]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -917,6 +1014,9 @@ export function TsAnalysisEDA() {
     if (activeCheckId === "distribution") {
       return descriptionSection === "metrics" ? DISTRIBUTION_METRICS_DESCRIPTION : DISTRIBUTION_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "structural") {
+      return descriptionSection === "metrics" ? STRUCTURAL_METRICS_DESCRIPTION : STRUCTURAL_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -956,6 +1056,11 @@ export function TsAnalysisEDA() {
       return descriptionSection === "metrics"
         ? "Метрики и алгоритм — Распределение"
         : "Полный пайплайн — Распределение";
+    }
+    if (activeCheckId === "structural") {
+      return descriptionSection === "metrics"
+        ? "Метрики и алгоритм — Структурные сдвиги"
+        : "Полный пайплайн — Структурные сдвиги";
     }
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
@@ -1169,6 +1274,15 @@ export function TsAnalysisEDA() {
               parameters={distributionParameters}
               onParametersChange={(changes) => setDistributionParameters((current) => ({ ...current, ...changes }))}
             />
+          ) : activeCheckId === "structural" ? (
+            <EdaStructuralBreaksOverview
+              profile={structuralProfile}
+              loading={structuralBusy}
+              error={structuralRequestError}
+              noDataset={structuralNoDataset}
+              parameters={structuralParameters}
+              onParametersChange={(changes) => setStructuralParameters((current) => ({ ...current, ...changes }))}
+            />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
@@ -1257,6 +1371,15 @@ export function TsAnalysisEDA() {
               <Metric label="Эксцесс" value={formatMetric(distributionProfile?.excess_kurtosis)} />
               <Metric label="Q–Q: r" value={formatMetric(distributionProfile?.qq_r)} />
               <Metric label="Отклонено тестов" value={distributionProfile?.applicable ? String(distributionProfile.tests.filter((item) => item.reject_normality === true).length) : "—"} />
+            </div>
+          ) : activeCheckId === "structural" ? (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+              <Metric label="N" value={structuralProfile ? String(structuralProfile.n_observations) : "—"} />
+              <Metric label="CUSUM p" value={formatMetric(structuralProfile?.cusum.p_value)} />
+              <Metric label="Кандидатов" value={structuralProfile?.applicable ? String(structuralProfile.break_count) : "—"} />
+              <Metric label="Поддержано" value={structuralProfile?.applicable ? String(structuralProfile.supported_count) : "—"} />
+              <Metric label="Сегментов" value={structuralProfile?.applicable ? String(structuralProfile.segments.length) : "—"} />
+              <Metric label="Штраф" value={formatMetric(structuralProfile?.penalty_value)} />
             </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
@@ -1470,6 +1593,14 @@ export function TsAnalysisEDA() {
                     </p>
                   )}
                 </>
+              ) : check.id === "structural" ? (
+                <>
+                  {check.status === "running" && <p role="status" className="text-sm text-brand bg-brand-light rounded px-3 py-2 mb-2">Ищем изменения уровня и наклона…</p>}
+                  {check.status === "error" && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">{structuralRequestError ?? "Ошибка анализа структурных сдвигов"}</p>}
+                  {check.status === "skipped" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">{structuralNoDataset ? "Нет активного датасета" : "Нет числового исследуемого признака"}</p>}
+                  {check.status === "warning" && <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">{structuralProfile?.applicable === false ? structuralProfile.reason : structuralProfile?.recommendation ?? "Найдены кандидаты, требующие проверки"}</p>}
+                  {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Структурные сдвиги не обнаружены при выбранных параметрах</p>}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -1556,6 +1687,14 @@ export function TsAnalysisEDA() {
                   disabled={distributionBusy || !activeFeature}
                 >
                   {distributionBusy ? "Рассчитываем…" : "Пересчитать распределение"}
+                </Button>
+              ) : check.id === "structural" ? (
+                <Button
+                  type="button"
+                  onClick={() => setStructuralRefreshKey((key) => key + 1)}
+                  disabled={!activeFeature}
+                >
+                  Пересчитать сдвиги
                 </Button>
               ) : (
                 <Button>Запустить анализ ({check.label.toLowerCase()})</Button>

@@ -432,6 +432,103 @@ class DatasetEdaDistributionResponse(BaseModel):
     warnings: List[str] = Field(default_factory=list)
 
 
+class EdaStructuralCusumOut(BaseModel):
+    statistic: Optional[float] = None
+    p_value: Optional[float] = None
+    reject_stability: Optional[bool] = None
+    critical_values: Dict[str, float] = Field(default_factory=dict)
+
+
+class EdaStructuralCandidateOut(BaseModel):
+    rank: int
+    index: int
+    label: Optional[str] = None
+    level_change: float
+    standardized_level_change: float
+    slope_before: float
+    slope_after: float
+    slope_change: float
+    rss_gain: float
+    chow_statistic: float
+    p_value: float
+    adjusted_p_value: Optional[float] = None
+    chow_reject_stability: Optional[bool] = None
+    stability_support: float
+    supported: bool
+
+
+class EdaStructuralSegmentOut(BaseModel):
+    id: int
+    start_index: int
+    end_index: int
+    start_label: Optional[str] = None
+    end_label: Optional[str] = None
+    n_observations: int
+    mean: float
+    std: float
+    slope: float
+
+
+class EdaStructuralSeriesPointOut(BaseModel):
+    index: int
+    label: Optional[str] = None
+    value: float
+    fitted: float
+    segment_id: int
+
+
+class EdaStructuralCusumPointOut(BaseModel):
+    index: int
+    label: Optional[str] = None
+    value: float
+    upper: float
+    lower: float
+
+
+class EdaStructuralSensitivityPointOut(BaseModel):
+    penalty_multiplier: float
+    index: int
+    label: Optional[str] = None
+
+
+class DatasetEdaStructuralBreaksResponse(BaseModel):
+    """Глобальная стабильность, локализация режимов и чувствительность."""
+    column: str
+    applicable: bool
+    reason: Optional[str] = None
+    n_observations: int
+    missing_count: int
+    min_observations: int = 60
+    alpha: float
+    requested_min_segment: int
+    min_segment: int
+    requested_penalty_multiplier: float
+    penalty_multiplier: float
+    penalty_value: Optional[float] = None
+    max_breaks: int
+    jump: int
+    model: Literal["piecewise_linear"]
+    status: Literal["breaks_detected", "candidates_only", "global_instability", "stable", "not_applicable"]
+    break_count: int
+    supported_count: int
+    order_source: Literal["time_column", "row_order"]
+    order_column: Optional[str] = None
+    order_warning: Optional[str] = None
+    frequency: Optional[str] = None
+    cusum: EdaStructuralCusumOut
+    candidates: List[EdaStructuralCandidateOut] = Field(default_factory=list)
+    segments: List[EdaStructuralSegmentOut] = Field(default_factory=list)
+    series: List[EdaStructuralSeriesPointOut] = Field(default_factory=list)
+    cusum_path: List[EdaStructuralCusumPointOut] = Field(default_factory=list)
+    sensitivity: List[EdaStructuralSensitivityPointOut] = Field(default_factory=list)
+    series_sampled: bool = False
+    series_original_count: int
+    cusum_sampled: bool = False
+    recommendation: Optional[str] = None
+    recommendations: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+
+
 class PanelBalanceResponse(BaseModel):
     """Реальная проверка Balanced/Unbalanced для панельных данных --
     пункт 8 контракта (структурный класс), визуальная схема на

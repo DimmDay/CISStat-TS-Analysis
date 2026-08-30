@@ -179,6 +179,27 @@ const DISTRIBUTION_RESPONSE = {
   warnings: ["Формальная нормальность для модели проверяется на остатках."],
 };
 
+const STRUCTURAL_BREAKS_RESPONSE = {
+  column: "Price", applicable: true, reason: null, n_observations: 180, missing_count: 0,
+  min_observations: 60, alpha: 0.05, requested_min_segment: 20, min_segment: 20,
+  requested_penalty_multiplier: 2, penalty_multiplier: 2, penalty_value: 1.8,
+  max_breaks: 10, jump: 1, model: "piecewise_linear", status: "breaks_detected",
+  break_count: 1, supported_count: 1, order_source: "time_column", order_column: "Date",
+  order_warning: null, frequency: "D", cusum: { statistic: 2.1, p_value: 0.001, reject_stability: true, critical_values: { "5%": 1.36 } },
+  candidates: [{ rank: 1, index: 90, label: "2024-03-31T00:00:00", level_change: 3, standardized_level_change: 1.9, slope_before: 0.001, slope_after: 0.002, slope_change: 0.001, rss_gain: 0.88, chow_statistic: 340, p_value: 0.0001, adjusted_p_value: 0.0001, stability_support: 1, supported: true }],
+  segments: [
+    { id: 1, start_index: 0, end_index: 89, start_label: "2024-01-01T00:00:00", end_label: "2024-03-30T00:00:00", n_observations: 90, mean: 0, std: 0.2, slope: 0.001 },
+    { id: 2, start_index: 90, end_index: 179, start_label: "2024-03-31T00:00:00", end_label: "2024-06-28T00:00:00", n_observations: 90, mean: 3, std: 0.2, slope: 0.002 },
+  ],
+  series: [{ index: 0, label: "2024-01-01T00:00:00", value: 0.1, fitted: 0, segment_id: 1 }, { index: 90, label: "2024-03-31T00:00:00", value: 3.1, fitted: 3, segment_id: 2 }],
+  cusum_path: [{ index: 0, label: "2024-01-01T00:00:00", value: 0.1, upper: 1.36, lower: -1.36 }, { index: 90, label: "2024-03-31T00:00:00", value: 2.1, upper: 1.36, lower: -1.36 }],
+  sensitivity: [{ penalty_multiplier: 1, index: 90, label: "2024-03-31T00:00:00" }, { penalty_multiplier: 2, index: 90, label: "2024-03-31T00:00:00" }],
+  series_sampled: false, series_original_count: 180, cusum_sampled: false,
+  recommendation: "Устойчивый структурный сдвиг около 2024-03-31.",
+  recommendations: ["Проверьте модели по режимам."],
+  warnings: ["Chow после выбора PELT является диагностикой."],
+};
+
 function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
   const url = String(input);
   if (url.includes("/target-column")) {
@@ -237,6 +258,14 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
       ok: true,
       status: 200,
       json: () => Promise.resolve({ ...DISTRIBUTION_RESPONSE, column }),
+    });
+  }
+  if (url.includes("/dataset/eda-structural-breaks")) {
+    const column = new URL(url).searchParams.get("column") ?? "Price";
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ ...STRUCTURAL_BREAKS_RESPONSE, column }),
     });
   }
   if (url.includes("/dataset/distribution")) {
@@ -579,6 +608,56 @@ describe("TsAnalysisEDA", () => {
     fireEvent.click(screen.getByRole("button", { name: "Пересчитать распределение" }));
     await waitFor(() => {
       const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-distribution")).length;
+      expect(callsAfter).toBe(callsBefore + 1);
+    });
+  });
+
+  it("loads structural breaks for the shared target and exposes five overview views", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" });
+    await waitFor(() => expect(selector).toHaveValue("Price"));
+
+    fireEvent.click(screen.getByRole("button", { name: /^Структурные сдвиги/ }));
+
+    expect(await screen.findByRole("img", { name: "Режимы и структурные сдвиги для Price" })).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/dataset/eda-structural-breaks?column=Price&alpha=0.05&min_segment=20&penalty_multiplier=2"),
+      { credentials: "include" },
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "CUSUM" }));
+    expect(screen.getByRole("img", { name: "CUSUM-диагностика для Price" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Чувствительность" }));
+    expect(screen.getByRole("img", { name: "Устойчивость точек PELT для Price" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Сегменты" }));
+    expect(screen.getByRole("table", { name: "Сегменты ряда" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Кандидаты" }));
+    expect(screen.getByRole("table", { name: "Кандидаты структурных сдвигов" })).toBeInTheDocument();
+    expect(screen.getByText("Поддержано", { selector: "div" }).nextElementSibling).toHaveTextContent("1");
+  });
+
+  it("uses structural-break methodology, reacts to penalty and supports refresh", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+    fireEvent.click(screen.getByRole("button", { name: /^Структурные сдвиги/ }));
+    await screen.findByRole("img", { name: "Режимы и структурные сдвиги для Price" });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/Chow после выбора точки/i)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Полный пайплайн" })[0]);
+    expect(screen.getByText(/dataset\/eda-structural-breaks/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Штраф PELT" }), { target: { value: "3" } });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("penalty_multiplier=3"),
+      { credentials: "include" },
+    ));
+
+    const callsBefore = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-structural-breaks")).length;
+    fireEvent.click(screen.getByRole("button", { name: "Пересчитать сдвиги" }));
+    await waitFor(() => {
+      const callsAfter = (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes("/dataset/eda-structural-breaks")).length;
       expect(callsAfter).toBe(callsBefore + 1);
     });
   });

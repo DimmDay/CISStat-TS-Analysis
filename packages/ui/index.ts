@@ -114,6 +114,11 @@ export type {
   EdaDistributionResponse,
   EdaDistributionTest,
 } from "./components/EdaDistributionOverview";
+export { EdaStructuralBreaksOverview } from "./components/EdaStructuralBreaksOverview";
+export type {
+  EdaStructuralBreaksParameters,
+  EdaStructuralBreaksResponse,
+} from "./components/EdaStructuralBreaksOverview";
 export { TsAnalysisUpload } from "./components/TsAnalysisUpload";
 export { StructuralClassSchema } from "./components/StructuralClassSchema";
 export { classifyStructure } from "./lib/structuralClass";
