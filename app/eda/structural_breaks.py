@@ -16,6 +16,7 @@ from scipy import stats
 
 MIN_STRUCTURAL_OBSERVATIONS = 60
 MAX_STRUCTURAL_BREAKS = 10
+MAX_PELT_GRID_POINTS = 250
 SENSITIVITY_MULTIPLIERS = (0.75, 1.0, 2.0, 3.0, 5.0)
 
 
@@ -262,12 +263,26 @@ def analyze_structural_breaks(
 
     values = numeric.to_numpy(dtype=float)
     n = len(values)
-    global_coefficients, global_rss = _ols(values, 0, n)
+    _, global_rss = _ols(values, 0, n)
+    numerical_rss_floor = (
+        np.finfo(float).eps
+        * n
+        * max(float(np.var(values)), 1.0)
+        * 100.0
+    )
+    if global_rss <= numerical_rss_floor:
+        return _base_result(
+            numeric,
+            "Ряд практически точно описывается одной линейной функцией: остаточная дисперсия слишком мала для устойчивых CUSUM и Chow-расчётов.",
+            alpha,
+            min_segment,
+            penalty_multiplier,
+        )
     residual_variance = max(global_rss / max(1, n - 2), np.finfo(float).eps)
     base_penalty = 2.0 * residual_variance * np.log(n)
     normalized_time = np.linspace(-1.0, 1.0, n)
     signal = np.column_stack((values, np.ones(n), normalized_time))
-    jump = max(1, n // 1_000)
+    jump = max(1, int(np.ceil(n / MAX_PELT_GRID_POINTS)))
 
     effective_multiplier = float(penalty_multiplier)
     breaks: list[int] = []
@@ -353,6 +368,10 @@ def analyze_structural_breaks(
         "CUSUM и Chow предполагают корректную линейную спецификацию и устойчивые ошибки. При автокорреляции или сезонности интерпретируйте p-значения как диагностические.",
         "PELT ищет изменения уровня и линейного наклона. Сдвиги только дисперсии требуют отдельной диагностики волатильности.",
     ]
+    if jump > 1:
+        warnings_out.append(
+            f"Для ограничения времени вычисления PELT проверяет кандидатов с шагом {jump} наблюдений; точность локализации соответствует этому шагу."
+        )
     if effective_multiplier != float(penalty_multiplier):
         warnings_out.append(
             f"Чтобы ограничить число точек значением {MAX_STRUCTURAL_BREAKS}, множитель штрафа автоматически повышен до {effective_multiplier:.3g}."

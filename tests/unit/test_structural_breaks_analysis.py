@@ -73,3 +73,20 @@ def test_penalty_controls_complexity_and_invalid_series_are_refused_honestly():
     assert constant["applicable"] is False
     assert "констант" in constant["reason"].lower()
 
+
+def test_long_series_bounds_pelt_grid_and_preserves_break_localization():
+    rng = np.random.default_rng(31)
+    values = np.r_[rng.normal(0, 0.3, 500), rng.normal(2.5, 0.3, 500)]
+
+    result = analyze_structural_breaks(pd.Series(values), min_segment=30)
+
+    assert result["jump"] == 4
+    assert min(abs(item["index"] - 500) for item in result["candidates"]) <= result["jump"]
+    assert any("вычисл" in warning.lower() and "шаг" in warning.lower() for warning in result["warnings"])
+
+
+def test_exact_linear_series_is_reported_as_numerically_degenerate():
+    result = analyze_structural_breaks(pd.Series(np.arange(100, dtype=float)))
+
+    assert result["applicable"] is False
+    assert "линейн" in result["reason"].lower()
