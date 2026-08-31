@@ -274,7 +274,7 @@ families:
         min_observations: 100
         supports_exogenous: false
         supports_prediction_intervals: true
-        libraries: ["statsmodels"]
+        libraries: ["statsforecast"]
         training_time: "minutes"
 
   # ── 7. TREE-BASED ML ───────────────────────────────────────────────────────
@@ -479,12 +479,12 @@ applicability_engine:
         Для данного типа данных она неприменима.
 
     - id: "F03"
-      description: "Модель с экзогенными признаками, но экзогенных нет в данных"
-      condition: "model.supports_exogenous == false AND n_exogenous > 0"
+      description: "Использование экзогенных признаков обязательно, но модель их не поддерживает"
+      condition: "exogenous_required == true AND model.supports_exogenous == false"
       result: "NOT_APPLICABLE"
       message: >-
-        {model.name} не поддерживает экзогенные признаки.
-        Уберите экзогенные переменные или выберите другую модель.
+        {model.name} не поддерживает обязательные для задачи экзогенные признаки.
+        Выберите модель с поддержкой X или измените постановку задачи.
 
     - id: "F04"
       description: "Данных меньше абсолютного минимума модели"

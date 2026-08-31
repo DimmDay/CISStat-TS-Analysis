@@ -134,6 +134,17 @@ export type {
   EdaValidationStrategyResponse,
   ValidationStrategy,
 } from "./components/EdaValidationStrategyOverview";
+export { EdaModelMatrixOverview } from "./components/EdaModelMatrixOverview";
+export type {
+  EdaModelCriterion,
+  EdaModelMatrixFamily,
+  EdaModelMatrixModel,
+  EdaModelMatrixParameters,
+  EdaModelMatrixResponse,
+  ModelCompatibility,
+  ModelCriterionStatus,
+  ModelMatrixTask,
+} from "./components/EdaModelMatrixOverview";
 export { TsAnalysisUpload } from "./components/TsAnalysisUpload";
 export { StructuralClassSchema } from "./components/StructuralClassSchema";
 export { classifyStructure } from "./lib/structuralClass";

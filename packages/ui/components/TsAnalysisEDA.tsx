@@ -65,6 +65,11 @@ import {
   type EdaValidationStrategyParameters,
   type EdaValidationStrategyResponse,
 } from "./EdaValidationStrategyOverview";
+import {
+  EdaModelMatrixOverview,
+  type EdaModelMatrixParameters,
+  type EdaModelMatrixResponse,
+} from "./EdaModelMatrixOverview";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 
@@ -359,6 +364,35 @@ const VALIDATION_STRATEGY_PIPELINE_DESCRIPTION = `Полный пайплайн:
 5. Один ответ питает четыре представления «Обзора»: схему train/gap/test, динамику размера train, сравнение стратегий и таблицу точных границ.
 6. План является спецификацией будущего backtesting. Фактические метрики появятся на этапе моделирования, где весь pipeline должен выполняться внутри каждого fold.`;
 
+const MODEL_MATRIX_METRICS_DESCRIPTION = `Метрики и алгоритм: Матрица моделей
+
+Матрица является фильтром предпосылок, а не рейтингом ожидаемой точности. Она сопоставляет каждую модель из единого rules/modeling.yaml с полным набором наблюдаемых требований и не скрывает решение за одним первым сработавшим правилом.
+
+1. Статусы критериев: выполнено, требуется действие, блокирует, неизвестно и не требуется. Неизвестное свойство создаёт оговорку, а не ложную рекомендацию.
+2. Минимальная история проверяется на самом маленьком train выбранной временной схемы, а не на полном N. Горизонт, folds, gap и sliding-окно переиспользуются из «Стратегии валидации».
+3. Наличие экзогенных X не блокирует одномерную модель без поддержки X: такая модель просто их не использует. Lag/rolling/calendar-признаки для ML должны строиться заново внутри каждого train fold.
+4. VAR требует совместно заданных стационарных рядов; VECM — I(1) и подтверждённой коинтеграции. Числовые колонки не выдаются автоматически за независимую панель DeepAR.
+5. GARCH/EGARCH относятся к условной дисперсии стационарных изменений или доходностей, а не к прогнозу уровня. ARCH-эффект проверяется отдельно.
+6. Методологическая совместимость отделена от статуса backend: «только каталог» означает, что production backtest платформы ещё не реализован.
+7. Итоговый выбор выполняется только сравнением shortlist и обязательных baselines на временных folds с диагностикой остатков.
+
+Официальные реализации и документация:
+- statsmodels Time Series Analysis: https://www.statsmodels.org/stable/tsa/
+- StatsForecast: https://nixtlaverse.nixtla.io/statsforecast/index.html
+- scikit-learn lagged features: https://scikit-learn.org/stable/auto_examples/applications/plot_time_series_lagged_features.html
+- arch volatility forecasting: https://arch.readthedocs.io/en/latest/univariate/univariate_volatility_forecasting.html
+- Prophet diagnostics: https://facebook.github.io/prophet/docs/diagnostics.html
+- NeuralForecast: https://nixtlaverse.nixtla.io/neuralforecast/docs/getting-started/introduction.html`;
+
+const MODEL_MATRIX_PIPELINE_DESCRIPTION = `Полный пайплайн: матрица моделей
+
+1. GET /v1/session/dataset/eda-model-matrix получает общий target, тип задачи и параметры текущей временной валидации; датасет не мутируется и модели не обучаются.
+2. Backend переиспользует 8 семейств и 24 модели ModelingSpec из rules/modeling.yaml. Отдельный реестр отмечает 9 реально запускаемых production backtest.
+3. Профиль формируется из полного преобразованного ряда: временная ось/регулярность, N первого train fold, подтверждённая сезонность, консенсус стационарности, число числовых X и знак цели.
+4. Для каждой модели строятся десять явных критериев. Жёсткое несоответствие блокирует модель; действие, неизвестность или отсутствие backend переводят её в «с оговорками».
+5. Один ответ питает четыре представления «Обзора»: тепловую карту требований, stacked-сводку семейств, shortlist-карточки и детальную таблицу причин.
+6. Runnable shortlist служит обоснованным входом для этапа «Моделирование». Он не содержит заявления о лучшей модели: точность устанавливает backtest на folds из предыдущей остановки.`;
+
 async function responseDetail(response: Response): Promise<string> {
   try {
     const body = await response.json();
@@ -437,6 +471,11 @@ async function featureSelectionResponseDetail(response: Response): Promise<strin
 async function validationStrategyResponseDetail(response: Response): Promise<string> {
   try { const body = await response.json(); if (typeof body?.detail === "string") return body.detail; } catch {}
   return `Не удалось построить стратегию валидации (HTTP ${response.status})`;
+}
+
+async function modelMatrixResponseDetail(response: Response): Promise<string> {
+  try { const body = await response.json(); if (typeof body?.detail === "string") return body.detail; } catch {}
+  return `Не удалось построить матрицу моделей (HTTP ${response.status})`;
 }
 
 function formatMetric(value: number | null | undefined): string {
@@ -1059,6 +1098,59 @@ export function TsAnalysisEDA() {
     : validationStrategyProfile?.strategy === "single" || (validationStrategyProfile?.warnings.length ?? 0) > 0 ? "warning"
     : validationStrategyProfile?.applicable ? "done" : "pending";
 
+  const [modelMatrixProfile, setModelMatrixProfile] = useState<EdaModelMatrixResponse | null>(null);
+  const [modelMatrixLoading, setModelMatrixLoading] = useState(false);
+  const [modelMatrixNoDataset, setModelMatrixNoDataset] = useState(false);
+  const [modelMatrixError, setModelMatrixError] = useState<string | null>(null);
+  const [modelMatrixRefreshKey, setModelMatrixRefreshKey] = useState(0);
+  const [modelMatrixParameters, setModelMatrixParameters] = useState<EdaModelMatrixParameters>({
+    task: "forecast", horizon: 12,
+  });
+
+  useEffect(() => {
+    if (activeCheckId !== "model_matrix" || targetLoading) return;
+    if (!hasDataset) { setModelMatrixNoDataset(true); setModelMatrixProfile(null); return; }
+    if (!activeFeature) { setModelMatrixProfile(null); return; }
+    let active = true;
+    setModelMatrixLoading(true); setModelMatrixError(null); setModelMatrixNoDataset(false);
+    void (async () => {
+      try {
+        const query = new URLSearchParams({
+          column: activeFeature,
+          task: modelMatrixParameters.task,
+          horizon: String(modelMatrixParameters.horizon),
+          validation_strategy: validationStrategyParameters.strategy,
+          n_splits: String(validationStrategyParameters.nSplits),
+          gap: String(validationStrategyParameters.gap),
+          train_window: String(validationStrategyParameters.trainWindow),
+        });
+        const response = await fetch(sessionApiUrl(`/dataset/eda-model-matrix?${query}`), { credentials: "include" });
+        if (response.status === 404) {
+          const detail = await modelMatrixResponseDetail(response);
+          if (detail === "В сессии нет активного датасета") { if (active) setModelMatrixNoDataset(true); return; }
+          throw new Error(detail);
+        }
+        if (!response.ok) throw new Error(await modelMatrixResponseDetail(response));
+        const data: EdaModelMatrixResponse = await response.json();
+        if (active) setModelMatrixProfile(data);
+      } catch (error) {
+        if (active) setModelMatrixError(error instanceof Error ? error.message : "Не удалось построить матрицу моделей");
+      } finally {
+        if (active) setModelMatrixLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [activeCheckId, activeFeature, datasetKey, hasDataset, modelMatrixParameters, modelMatrixRefreshKey, targetLoading, validationStrategyParameters]);
+
+  const modelMatrixBusy = modelMatrixLoading || (activeCheckId === "model_matrix" && targetLoading);
+  const modelMatrixRequestError = modelMatrixError ?? (activeCheckId === "model_matrix" ? targetError : null);
+  const modelMatrixStatus: CheckStatus = modelMatrixBusy ? "running"
+    : modelMatrixRequestError ? "error"
+    : modelMatrixNoDataset || (hasDataset && !activeFeature) ? "skipped"
+    : modelMatrixProfile?.applicable === false ? "warning"
+    : (modelMatrixProfile?.summary.blocked ?? 0) > 0 || (modelMatrixProfile?.warnings.length ?? 0) > 0 ? "warning"
+    : modelMatrixProfile?.applicable ? "done" : "pending";
+
   // Результаты принадлежат конкретному датасету. При его смене убираем
   // старые красные/жёлтые статусы; активная остановка ниже пересчитается
   // благодаря datasetKey в зависимостях запроса.
@@ -1071,6 +1163,7 @@ export function TsAnalysisEDA() {
     setStructuralProfile(null); setStructuralError(null); setStructuralNoDataset(false);
     setFeatureSelectionProfile(null); setFeatureSelectionError(null); setFeatureSelectionNoDataset(false);
     setValidationStrategyProfile(null); setValidationStrategyError(null); setValidationStrategyNoDataset(false);
+    setModelMatrixProfile(null); setModelMatrixError(null); setModelMatrixNoDataset(false);
   }, [datasetKey]);
 
   const checks = useMemo<Check[]>(() => CHECKS.map((check) =>
@@ -1092,8 +1185,10 @@ export function TsAnalysisEDA() {
       ? { ...check, status: featureSelectionStatus, count: (featureSelectionProfile?.review_features.length ?? 0) + (featureSelectionProfile?.low_signal_features.length ?? 0) }
       : check.id === "validation_strategy"
       ? { ...check, status: validationStrategyStatus, count: null }
+      : check.id === "model_matrix"
+      ? { ...check, status: modelMatrixStatus, count: modelMatrixProfile?.summary.blocked ?? null }
       : check,
-  ), [correlationStatus, descriptiveStatus, distributionStatus, featureSelectionProfile, featureSelectionStatus, ihStatus, insufficientColumns, seasonalityProfile?.confirmed_periods, seasonalityStatus, stationarityStatus, structuralProfile?.supported_count, structuralStatus, validationStrategyStatus]);
+  ), [correlationStatus, descriptiveStatus, distributionStatus, featureSelectionProfile, featureSelectionStatus, ihStatus, insufficientColumns, modelMatrixProfile?.summary.blocked, modelMatrixStatus, seasonalityProfile?.confirmed_periods, seasonalityStatus, stationarityStatus, structuralProfile?.supported_count, structuralStatus, validationStrategyStatus]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -1185,6 +1280,9 @@ export function TsAnalysisEDA() {
     if (activeCheckId === "validation_strategy") {
       return descriptionSection === "metrics" ? VALIDATION_STRATEGY_METRICS_DESCRIPTION : VALIDATION_STRATEGY_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "model_matrix") {
+      return descriptionSection === "metrics" ? MODEL_MATRIX_METRICS_DESCRIPTION : MODEL_MATRIX_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -1232,6 +1330,7 @@ export function TsAnalysisEDA() {
     }
     if (activeCheckId === "feature_select") return descriptionSection === "metrics" ? "Метрики и алгоритм — Отбор признаков" : "Полный пайплайн — Отбор признаков";
     if (activeCheckId === "validation_strategy") return descriptionSection === "metrics" ? "Метрики и алгоритм — Стратегия валидации" : "Полный пайплайн — Стратегия валидации";
+    if (activeCheckId === "model_matrix") return descriptionSection === "metrics" ? "Метрики и алгоритм — Матрица моделей" : "Полный пайплайн — Матрица моделей";
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
   })();
@@ -1464,6 +1563,15 @@ export function TsAnalysisEDA() {
               parameters={validationStrategyParameters}
               onParametersChange={(changes) => setValidationStrategyParameters((current) => ({ ...current, ...changes }))}
             />
+          ) : activeCheckId === "model_matrix" ? (
+            <EdaModelMatrixOverview
+              profile={modelMatrixProfile}
+              loading={modelMatrixBusy}
+              error={modelMatrixRequestError}
+              noDataset={modelMatrixNoDataset}
+              parameters={modelMatrixParameters}
+              onParametersChange={(changes) => setModelMatrixParameters((current) => ({ ...current, ...changes }))}
+            />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
@@ -1572,6 +1680,15 @@ export function TsAnalysisEDA() {
               <Metric label="Folds" value={validationStrategyProfile?.applicable ? String(validationStrategyProfile.effective_splits) : "—"} />
               <Metric label="Начальный train" value={validationStrategyProfile?.applicable ? String(validationStrategyProfile.initial_train_size) : "—"} />
               <Metric label="Test coverage" value={validationStrategyProfile?.applicable ? `${formatMetric(validationStrategyProfile.test_coverage)}%` : "—"} />
+            </div>
+          ) : activeCheckId === "model_matrix" ? (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+              <Metric label="Моделей" value={modelMatrixProfile ? String(modelMatrixProfile.summary.total_models) : "—"} />
+              <Metric label="Совместимы" value={modelMatrixProfile?.applicable ? String(modelMatrixProfile.summary.candidates) : "—"} />
+              <Metric label="С оговорками" value={modelMatrixProfile?.applicable ? String(modelMatrixProfile.summary.conditional) : "—"} />
+              <Metric label="Заблокированы" value={modelMatrixProfile?.applicable ? String(modelMatrixProfile.summary.blocked) : "—"} />
+              <Metric label="Backend готов" value={modelMatrixProfile?.applicable ? String(modelMatrixProfile.summary.ready) : "—"} />
+              <Metric label="Runnable shortlist" value={modelMatrixProfile?.applicable ? String(modelMatrixProfile.runnable_shortlist.length) : "—"} />
             </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
@@ -1809,6 +1926,14 @@ export function TsAnalysisEDA() {
                   {check.status === "warning" && <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">{validationStrategyProfile?.reason ?? validationStrategyProfile?.warnings[0] ?? validationStrategyProfile?.recommendation}</p>}
                   {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Готово folds: {validationStrategyProfile?.effective_splits ?? 0}; последний test до конца ряда</p>}
                 </>
+              ) : check.id === "model_matrix" ? (
+                <>
+                  {check.status === "running" && <p role="status" className="text-sm text-brand bg-brand-light rounded px-3 py-2 mb-2">Проверяем требования каталога моделей…</p>}
+                  {check.status === "error" && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">{modelMatrixRequestError}</p>}
+                  {check.status === "skipped" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">{modelMatrixNoDataset ? "Нет активного датасета" : "Нет числового исследуемого признака"}</p>}
+                  {check.status === "warning" && <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">{modelMatrixProfile?.reason ?? `Shortlist: ${modelMatrixProfile?.shortlist.length ?? 0}; backend готов: ${modelMatrixProfile?.runnable_shortlist.length ?? 0}`}</p>}
+                  {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Runnable shortlist: {modelMatrixProfile?.runnable_shortlist.length ?? 0}; сравните на временных folds</p>}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -1908,6 +2033,8 @@ export function TsAnalysisEDA() {
                 <Button type="button" onClick={()=>setFeatureSelectionRefreshKey(key=>key+1)} disabled={featureSelectionBusy||!activeFeature}>{featureSelectionBusy?"Рассчитываем…":"Пересчитать отбор"}</Button>
               ) : check.id === "validation_strategy" ? (
                 <Button type="button" onClick={() => setValidationStrategyRefreshKey((key) => key + 1)} disabled={validationStrategyBusy || !activeFeature}>{validationStrategyBusy ? "Строим…" : "Пересчитать стратегию"}</Button>
+              ) : check.id === "model_matrix" ? (
+                <Button type="button" onClick={() => setModelMatrixRefreshKey((key) => key + 1)} disabled={modelMatrixBusy || !activeFeature}>{modelMatrixBusy ? "Проверяем…" : "Пересчитать матрицу"}</Button>
               ) : (
                 <Button>Запустить анализ ({check.label.toLowerCase()})</Button>
               )}

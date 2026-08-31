@@ -667,6 +667,7 @@ class ModelingSpec(BaseModel):
             # Ограничения
             "gpu_available": profile.gpu_available,
             "feature_engineering_applied": profile.feature_engineering_applied,
+            "exogenous_required": bool(constraints.get("exogenous_required", False)),
             # Удобные сокращения
             "model.id": model.id,
             "model.family": family.id,
@@ -690,7 +691,7 @@ class ModelingSpec(BaseModel):
             # ── Forbidden (NOT_APPLICABLE) ────────────────
             "F01": lambda: ctx["n_series"] == 1 and (ctx.get("model.requires_multiple_series") or ctx.get("model.min_series", 0) is not None and (ctx.get("model.min_series") or 0) > 1),
             "F02": lambda: ctx.get("model.domain") == "financial" and ctx.get("data.domain") != "financial",
-            "F03": lambda: ctx.get("model.supports_exogenous") is False and ctx["n_exogenous"] > 0,
+            "F03": lambda: ctx.get("exogenous_required", False) and ctx.get("model.supports_exogenous") is False,
             "F04": lambda: ctx["n_observations"] < ctx["model.min_observations"],
             "F05": lambda: ctx.get("model_id") == "deepar" and ctx["n_series"] < (ctx.get("model.min_series") or 5),
 

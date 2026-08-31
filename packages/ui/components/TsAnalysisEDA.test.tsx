@@ -228,6 +228,24 @@ const VALIDATION_STRATEGY_RESPONSE = {
   recommendations: ["Горизонт должен совпадать с эксплуатацией."], warnings: [],
 };
 
+const MODEL_MATRIX_RESPONSE = {
+  column: "Price", applicable: true, reason: null, task: "forecast", horizon: 12,
+  spec_version: "1.0.0-draft",
+  profile: { n_observations: 240, missing_count: 0, numeric_series_count: 2, n_exogenous: 1,
+    order_source: "time_column", order_column: "Date", frequency: "D", is_regular: true,
+    temporal_status: "regular", seasonality_status: "present", seasonal_periods: [12],
+    stationarity_status: "stationary", has_negative_values: false,
+    validation_strategy: "expanding", initial_train_observations: 180, required_observations: 80 },
+  summary: { total_models: 24, candidates: 1, conditional: 1, blocked: 22, ready: 9, catalog_only: 15 },
+  families: [{ family_id: "baselines", family_name: "Базовые модели", candidates: 1, conditional: 0, blocked: 3, ready: 4, catalog_only: 0 }],
+  models: [{ model_id: "naive", model_name: "Naive", family_id: "baselines", family_name: "Базовые модели",
+    compatibility: "candidate", platform_status: "ready", min_observations: 2, supports_exogenous: false,
+    libraries: [], training_time: "instant", blocking_reasons: [], cautions: [],
+    criteria: [{ id: "history", label: "История", status: "pass", observed: "train=180", requirement: "train≥2", conclusion: "Достаточно", blocking: false }] }],
+  shortlist: ["naive"], runnable_shortlist: ["naive"], recommendation: "Сравните на folds.",
+  methodology_note: "Матрица не ранжирует точность.", warnings: [],
+};
+
 function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
   const url = String(input);
   if (url.includes("/target-column")) {
@@ -305,6 +323,18 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
         ...VALIDATION_STRATEGY_RESPONSE,
         column: parsed.searchParams.get("column") ?? "Price",
         strategy: parsed.searchParams.get("strategy") ?? "expanding",
+      }),
+    });
+  }
+  if (url.includes("/dataset/eda-model-matrix")) {
+    const parsed = new URL(url);
+    return Promise.resolve({
+      ok: true, status: 200,
+      json: () => Promise.resolve({
+        ...MODEL_MATRIX_RESPONSE,
+        column: parsed.searchParams.get("column") ?? "Price",
+        task: parsed.searchParams.get("task") ?? "forecast",
+        horizon: Number(parsed.searchParams.get("horizon") ?? 12),
       }),
     });
   }
@@ -768,6 +798,24 @@ describe("TsAnalysisEDA", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
     expect(screen.getAllByText(/TimeSeriesSplit/i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("builds the model matrix from the shared target and validation plan", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Матрица моделей/ }));
+
+    expect(await screen.findByRole("table", { name: "Тепловая карта применимости моделей" })).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/dataset/eda-model-matrix?column=Price&task=forecast&horizon=12&validation_strategy=expanding&n_splits=5&gap=0&train_window=60"),
+      { credentials: "include" },
+    );
+    expect(screen.getByText("Runnable shortlist", { selector: "div" }).nextElementSibling).toHaveTextContent("1");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/не рейтингом ожидаемой точности/i)).toBeInTheDocument();
   });
 
   // ── Кнопка «Справка» ──

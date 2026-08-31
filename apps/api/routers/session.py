@@ -30,6 +30,7 @@ from apps.api.eda_seasonality import build_eda_seasonality
 from apps.api.eda_stationarity import build_eda_stationarity
 from apps.api.eda_structural_breaks import build_eda_structural_breaks
 from apps.api.eda_validation_strategy import build_eda_validation_strategy
+from apps.api.eda_model_matrix import build_eda_model_matrix
 from apps.api.schemas import (
     ColumnDetectionOut,
     ColumnStatsOut,
@@ -47,6 +48,7 @@ from apps.api.schemas import (
     DatasetEdaStationarityResponse,
     DatasetEdaStructuralBreaksResponse,
     DatasetEdaValidationStrategyResponse,
+    DatasetEdaModelMatrixResponse,
     DatasetStatsResponse,
     DatasetSummaryOut,
     DatasetFormatCorrectionRequest,
@@ -690,6 +692,37 @@ def get_dataset_eda_validation_strategy(
         column=column,
         strategy=strategy,
         horizon=horizon,
+        n_splits=n_splits,
+        gap=gap,
+        train_window=train_window,
+    ))
+
+
+@router.get("/dataset/eda-model-matrix", response_model=DatasetEdaModelMatrixResponse)
+def get_dataset_eda_model_matrix(
+    column: str, request: Request, response: Response,
+    task: str = Query("forecast", pattern="^(forecast|multivariate|volatility)$"),
+    horizon: int = Query(12, ge=1, le=200),
+    validation_strategy: str = Query("expanding", pattern="^(expanding|sliding|single)$"),
+    n_splits: int = Query(5, ge=2, le=10),
+    gap: int = Query(0, ge=0, le=200),
+    train_window: int = Query(60, ge=20, le=5000),
+):
+    """Многокритериальная применимость каталога без обучения моделей."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая — матрица моделей недоступна")
+    return DatasetEdaModelMatrixResponse(**build_eda_model_matrix(
+        session.dataframe,
+        column=column,
+        task=task,
+        horizon=horizon,
+        validation_strategy=validation_strategy,
         n_splits=n_splits,
         gap=gap,
         train_window=train_window,

@@ -41,6 +41,7 @@ from apps.api.model_impls import (
     run_auto_arima_backtest,
 )
 from apps.api.model_impls.tuning import tune_ets_predict, tune_arima_predict
+from apps.api.model_readiness import PRODUCTION_BACKTEST_MODEL_IDS
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -220,6 +221,9 @@ _BACKTEST_IMPLEMENTATIONS = {
     "arima": run_arima_backtest,
     "arima_auto": run_auto_arima_backtest,
 }
+
+if frozenset(_BACKTEST_IMPLEMENTATIONS) != PRODUCTION_BACKTEST_MODEL_IDS:
+    raise RuntimeError("Реестр готовности моделей расходится с production backtest dispatch")
 
 
 MAX_TRIALS: int = 64

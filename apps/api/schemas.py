@@ -662,6 +662,88 @@ class DatasetEdaValidationStrategyResponse(BaseModel):
     warnings: List[str] = Field(default_factory=list)
 
 
+class EdaModelCriterionOut(BaseModel):
+    id: str
+    label: str
+    status: Literal["pass", "attention", "fail", "unknown", "not_required"]
+    observed: str
+    requirement: str
+    conclusion: str
+    blocking: bool = False
+
+
+class EdaModelMatrixModelOut(BaseModel):
+    model_id: str
+    model_name: str
+    family_id: str
+    family_name: str
+    compatibility: Literal["candidate", "conditional", "blocked"]
+    platform_status: Literal["ready", "catalog_only"]
+    min_observations: int
+    supports_exogenous: bool
+    libraries: List[str] = Field(default_factory=list)
+    training_time: str
+    criteria: List[EdaModelCriterionOut] = Field(default_factory=list)
+    blocking_reasons: List[str] = Field(default_factory=list)
+    cautions: List[str] = Field(default_factory=list)
+
+
+class EdaModelMatrixFamilyOut(BaseModel):
+    family_id: str
+    family_name: str
+    candidates: int
+    conditional: int
+    blocked: int
+    ready: int
+    catalog_only: int
+
+
+class EdaModelMatrixProfileOut(BaseModel):
+    n_observations: int
+    missing_count: int
+    numeric_series_count: int
+    n_exogenous: int
+    order_source: Literal["time_column", "row_order"]
+    order_column: Optional[str] = None
+    frequency: Optional[str] = None
+    is_regular: Optional[bool] = None
+    temporal_status: Literal["regular", "irregular", "panel", "invalid", "unknown"]
+    seasonality_status: Literal["present", "absent", "unknown"]
+    seasonal_periods: List[int] = Field(default_factory=list)
+    stationarity_status: Literal["stationary", "non_stationary", "inconclusive", "unknown"]
+    has_negative_values: bool
+    validation_strategy: Literal["expanding", "sliding", "single"]
+    initial_train_observations: int
+    required_observations: int
+
+
+class EdaModelMatrixSummaryOut(BaseModel):
+    total_models: int
+    candidates: int
+    conditional: int
+    blocked: int
+    ready: int
+    catalog_only: int
+
+
+class DatasetEdaModelMatrixResponse(BaseModel):
+    column: str
+    applicable: bool
+    reason: Optional[str] = None
+    task: Literal["forecast", "multivariate", "volatility"]
+    horizon: int
+    spec_version: str
+    profile: EdaModelMatrixProfileOut
+    summary: EdaModelMatrixSummaryOut
+    families: List[EdaModelMatrixFamilyOut] = Field(default_factory=list)
+    models: List[EdaModelMatrixModelOut] = Field(default_factory=list)
+    shortlist: List[str] = Field(default_factory=list)
+    runnable_shortlist: List[str] = Field(default_factory=list)
+    recommendation: str
+    methodology_note: str
+    warnings: List[str] = Field(default_factory=list)
+
+
 class PanelBalanceResponse(BaseModel):
     """Реальная проверка Balanced/Unbalanced для панельных данных --
     пункт 8 контракта (структурный класс), визуальная схема на

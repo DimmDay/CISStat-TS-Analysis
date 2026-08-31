@@ -152,3 +152,54 @@ Date: 2026-08-31
 - `tests/api/test_cv.py`
 - `tests/api/test_dataset_eda_validation_strategy.py`
 - `tests/unit/test_validation_strategy_analysis.py`
+
+---
+
+## Task ID: 80 — EDA «Матрица моделей»
+
+Дата: 2026-08-31
+
+### Аудит методологии
+
+- В backend уже существовали единый `rules/modeling.yaml`, `ModelingSpec`, движок применимости и candidates API; во frontend — каталог и пул кандидатов вкладки «Моделирование». Сама остановка EDA оставалась заглушкой без API и визуализации.
+- Прежний candidates-движок возвращал только первое сработавшее правило и при отсутствии совпадений назначал `RECOMMENDED`; этого недостаточно для объяснимой матрицы требований. Новая остановка переиспользует тот же каталог 8 семейств / 24 моделей, но показывает все критерии и не трактует совместимость как прогноз точности.
+- Исправлена методологическая ошибка F03: наличие экзогенных колонок больше не блокирует ETS/Naive и другие модели, которые могут просто не использовать X. Запрет действует только при явно обязательном использовании X и отсутствии поддержки у модели.
+- Статистическая совместимость отделена от готовности платформы: 9 моделей с production backtest помечаются `ready`, остальные — `catalog_only`. Реестр проверяется на точное совпадение с фактическим backend-dispatch.
+- TBATS больше не приписывается `statsmodels`; в каталоге указана официальная реализация StatsForecast.
+- Методология опирается на официальные источники: [statsmodels TSA](https://www.statsmodels.org/stable/tsa/), [StatsForecast](https://nixtlaverse.nixtla.io/statsforecast/index.html), [scikit-learn lagged features](https://scikit-learn.org/stable/auto_examples/applications/plot_time_series_lagged_features.html), [arch volatility forecasting](https://arch.readthedocs.io/en/latest/univariate/univariate_volatility_forecasting.html), [Prophet diagnostics](https://facebook.github.io/prophet/docs/diagnostics.html), [NeuralForecast](https://nixtlaverse.nixtla.io/neuralforecast/docs/getting-started/introduction.html).
+
+### Реализация
+
+- Добавлен read-only endpoint `GET /v1/session/dataset/eda-model-matrix` с режимами `forecast`, `multivariate`, `volatility`; он читает текущий target и не обучает модели.
+- Параметры expanding/sliding/single, horizon, folds, gap и train-window переиспользуются из «Стратегии валидации». Минимальная история каждой модели проверяется по первому, самому короткому train fold, а не по полному N.
+- Для каждой модели формируются десять явных критериев: задача, история, временная ось, сезонность, стационарность/коинтеграция, структура рядов, экзогенные X, lag-features, цель/знак и backend readiness.
+- Жёсткое несоответствие даёт `blocked`; действие или неизвестное свойство — `conditional`; только полностью наблюдаемое соответствие — `candidate`. Отдельно возвращаются `shortlist` и `runnable_shortlist`.
+- Повторные даты/панель и ошибки временной оси блокируют одномерный запуск без скрытой агрегации. Для VAR не выдаётся проверка одной цели за проверку всей системы; VECM требует отдельной коинтеграции; DeepAR не принимает числовые колонки одного объекта за панель рядов.
+- В «Обзоре» реализованы четыре представления: тепловая карта требований, stacked-график семейств, shortlist-карточки и детальная таблица причин. Встроены ссылки на официальную документацию.
+- Остановка интегрирована в общий target/dataset lifecycle EDA, очищается при смене датасета, поддерживает ручной пересчёт и показывает шесть сводных метрик.
+
+### TDD и проверка
+
+- RED backend: отсутствовал `apps.api.eda_model_matrix`; RED frontend: отсутствовал `EdaModelMatrixOverview`.
+- Расширенный backend EDA + ModelingSpec/candidates: 151/151 PASS.
+- Frontend EDA: 11 suites, 61/61 PASS.
+- TypeScript embedded/standalone: PASS.
+- Production build embedded/standalone: PASS, по 13/13 страниц.
+- `git diff --check`: PASS.
+
+### Изменённые и новые файлы
+
+- `apps/api/eda_model_matrix.py`
+- `apps/api/model_readiness.py`
+- `apps/api/routers/models.py`
+- `apps/api/routers/session.py`
+- `apps/api/schemas.py`
+- `packages/ui/components/EdaModelMatrixOverview.tsx`
+- `packages/ui/components/EdaModelMatrixOverview.test.tsx`
+- `packages/ui/components/TsAnalysisEDA.tsx`
+- `packages/ui/components/TsAnalysisEDA.test.tsx`
+- `packages/ui/index.ts`
+- `rules/modeling.yaml`
+- `src/catalog/modeling_spec_loader.py`
+- `tests/api/test_dataset_eda_model_matrix.py`
+- `tests/unit/test_eda_model_matrix.py`
