@@ -54,6 +54,11 @@ import {
   type EdaStructuralBreaksParameters,
   type EdaStructuralBreaksResponse,
 } from "./EdaStructuralBreaksOverview";
+import {
+  EdaFeatureSelectionOverview,
+  type EdaFeatureSelectionParameters,
+  type EdaFeatureSelectionResponse,
+} from "./EdaFeatureSelectionOverview";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 
@@ -85,7 +90,7 @@ const CHECKS: Check[] = [
   { id: "structural", label: "Структурные сдвиги", status: "pending", count: null,
     description: "CUSUM проверяет общую стабильность параметров линейного тренда, PELT локализует несколько изменений уровня и наклона, а локальная Chow-диагностика и анализ чувствительности описывают найденные кандидаты. Результат помогает сравнить обучение на последнем режиме с моделью, допускающей изменение параметров." },
   { id: "feature_select", label: "Отбор признаков", status: "pending", count: null,
-    description: "Корреляционная матрица сгенерированных признаков, VIF (Variance Inflation Factor), Granger causality для многомерных моделей. Рекомендация: оставить N значимых из M сгенерированных." },
+    description: "Многокритериальный shortlist числовых предикторов относительно выбранной цели Y: Pearson и Spearman измеряют одновременную связь, VIF выявляет мультиколлинеарность, а Granger X → Y проверяет добавочную опережающую предсказательность с FDR-коррекцией. Остановка не удаляет признаки автоматически." },
   { id: "validation_strategy", label: "Стратегия валидации", status: "pending", count: null,
     description: "Выбор схемы разбиения: expanding window / sliding window / single split. Визуализация train/test на графике. Задание горизонта прогноза. Проверка достаточности наблюдений в train." },
   { id: "model_matrix", label: "Матрица моделей", status: "pending", count: null,
@@ -304,6 +309,28 @@ const STRUCTURAL_PIPELINE_DESCRIPTION = `Полный пайплайн: стру
 6. Один API-ответ питает пять вкладок «Обзора»: «Режимы», «CUSUM», «Чувствительность», «Сегменты», «Кандидаты». Графики могут быть прорежены методом LTTB, расчёты всегда используют полный ряд.
 7. Смена α, минимальной длины, штрафа или общего признака пересчитывает профиль; ручная кнопка повторяет запрос после изменений датасета. Найденные даты следует сопоставить с предметными событиями и проверить на временных срезах.`;
 
+const FEATURE_SELECTION_METRICS_DESCRIPTION = `Метрики и алгоритм: Отбор признаков
+
+1. Pearson измеряет линейную связь X и Y, Spearman — монотонную ранговую связь. Порог |r| — диагностический размер эффекта, а не формальный p-value для автокоррелированных наблюдений.
+2. VIF = 1/(1−R²) диагностирует мультиколлинеарность; превышение порога требует проверки, но не автоматического удаления.
+3. Granger X → Y проверяет добавочную предсказательность прошлых X сверх прошлых Y, а не причинность. Для всех пар «признак × лаг» применяется Benjamini–Hochberg FDR.
+4. На нерегулярной или панельной оси Granger блокируется. Доступны текущие уровни или первые разности Δ1. Shortlist подтверждается expanding-window валидацией.
+
+Официальная документация методов и реализаций:
+- pandas DataFrame.corr: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.corr.html
+- SciPy pearsonr: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.pearsonr.html
+- SciPy spearmanr: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.spearmanr.html
+- statsmodels VIF: https://www.statsmodels.org/stable/generated/statsmodels.stats.outliers_influence.variance_inflation_factor.html
+- statsmodels Granger: https://www.statsmodels.org/stable/generated/statsmodels.tsa.stattools.grangercausalitytests.html
+- statsmodels FDR: https://www.statsmodels.org/stable/generated/statsmodels.stats.multitest.multipletests.html`;
+
+const FEATURE_SELECTION_PIPELINE_DESCRIPTION = `Полный пайплайн: отбор признаков
+
+1. GET /v1/session/dataset/eda-feature-selection получает Y, α, максимальный лаг, пороги |r|/VIF и порядок разности; исходный датасет не мутируется.
+2. Backend сортирует регулярную уникальную временную ось, исключает дату из предикторов и блокирует Granger при дубликатах или нерегулярности.
+3. Константы и признаки с пропусками возвращаются с причиной. Pearson/Spearman, VIF и Granger/FDR рассчитываются раздельно.
+4. Один ответ питает пять представлений: связь с Y, матрицу, VIF, Granger −log10(q) и таблицу решений.`;
+
 async function responseDetail(response: Response): Promise<string> {
   try {
     const body = await response.json();
@@ -372,6 +399,11 @@ async function structuralResponseDetail(response: Response): Promise<string> {
     // Нейтральная ошибка ниже покрывает ответ без JSON.
   }
   return `Не удалось исследовать структурные сдвиги (HTTP ${response.status})`;
+}
+
+async function featureSelectionResponseDetail(response: Response): Promise<string> {
+  try { const body = await response.json(); if (typeof body?.detail === "string") return body.detail; } catch {}
+  return `Не удалось выполнить отбор признаков (HTTP ${response.status})`;
 }
 
 function formatMetric(value: number | null | undefined): string {
@@ -919,6 +951,24 @@ export function TsAnalysisEDA() {
     : structuralProfile?.status === "stable" ? "done"
     : structuralProfile?.applicable ? "warning" : "pending";
 
+  const [featureSelectionProfile, setFeatureSelectionProfile] = useState<EdaFeatureSelectionResponse | null>(null);
+  const [featureSelectionLoading, setFeatureSelectionLoading] = useState(false);
+  const [featureSelectionNoDataset, setFeatureSelectionNoDataset] = useState(false);
+  const [featureSelectionError, setFeatureSelectionError] = useState<string | null>(null);
+  const [featureSelectionRefreshKey, setFeatureSelectionRefreshKey] = useState(0);
+  const [featureSelectionParameters, setFeatureSelectionParameters] = useState<EdaFeatureSelectionParameters>({alpha:.05,maxLag:3,correlationThreshold:.3,vifThreshold:5,differenceOrder:0});
+  useEffect(()=>{
+    if(activeCheckId!=="feature_select"||targetLoading)return;
+    if(!hasDataset){setFeatureSelectionNoDataset(true);setFeatureSelectionProfile(null);return;}
+    if(!activeFeature){setFeatureSelectionProfile(null);return;}
+    let active=true; setFeatureSelectionLoading(true); setFeatureSelectionError(null); setFeatureSelectionNoDataset(false);
+    void(async()=>{try{const p=featureSelectionParameters;const query=new URLSearchParams({column:activeFeature,alpha:String(p.alpha),max_lag:String(p.maxLag),correlation_threshold:String(p.correlationThreshold),vif_threshold:String(p.vifThreshold),difference_order:String(p.differenceOrder)});const response=await fetch(sessionApiUrl(`/dataset/eda-feature-selection?${query}`),{credentials:"include"});if(response.status===404){const detail=await featureSelectionResponseDetail(response);if(detail==="В сессии нет активного датасета"){if(active)setFeatureSelectionNoDataset(true);return;}throw new Error(detail);}if(!response.ok)throw new Error(await featureSelectionResponseDetail(response));const data:EdaFeatureSelectionResponse=await response.json();if(active)setFeatureSelectionProfile(data);}catch(e){if(active)setFeatureSelectionError(e instanceof Error?e.message:"Не удалось выполнить отбор признаков");}finally{if(active)setFeatureSelectionLoading(false);}})();
+    return()=>{active=false};
+  },[activeCheckId,activeFeature,featureSelectionParameters,featureSelectionRefreshKey,hasDataset,targetLoading]);
+  const featureSelectionBusy=featureSelectionLoading||(activeCheckId==="feature_select"&&targetLoading);
+  const featureSelectionRequestError=featureSelectionError??(activeCheckId==="feature_select"?targetError:null);
+  const featureSelectionStatus:CheckStatus=featureSelectionBusy?"running":featureSelectionRequestError?"error":featureSelectionNoDataset||(hasDataset&&!activeFeature)?"skipped":featureSelectionProfile?.applicable===false?"warning":featureSelectionProfile?.review_features.length||featureSelectionProfile?.low_signal_features.length?"warning":featureSelectionProfile?.applicable?"done":"pending";
+
   const checks = useMemo<Check[]>(() => CHECKS.map((check) =>
     check.id === "descriptive"
       ? { ...check, status: descriptiveStatus, count: insufficientColumns }
@@ -934,8 +984,10 @@ export function TsAnalysisEDA() {
       ? { ...check, status: distributionStatus, count: null }
       : check.id === "structural"
       ? { ...check, status: structuralStatus, count: structuralProfile?.supported_count ?? null }
+      : check.id === "feature_select"
+      ? { ...check, status: featureSelectionStatus, count: (featureSelectionProfile?.review_features.length ?? 0) + (featureSelectionProfile?.low_signal_features.length ?? 0) }
       : check,
-  ), [correlationStatus, descriptiveStatus, distributionStatus, ihStatus, insufficientColumns, seasonalityProfile?.confirmed_periods, seasonalityStatus, stationarityStatus, structuralProfile?.supported_count, structuralStatus]);
+  ), [correlationStatus, descriptiveStatus, distributionStatus, featureSelectionProfile, featureSelectionStatus, ihStatus, insufficientColumns, seasonalityProfile?.confirmed_periods, seasonalityStatus, stationarityStatus, structuralProfile?.supported_count, structuralStatus]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -1021,6 +1073,9 @@ export function TsAnalysisEDA() {
     if (activeCheckId === "structural") {
       return descriptionSection === "metrics" ? STRUCTURAL_METRICS_DESCRIPTION : STRUCTURAL_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "feature_select") {
+      return descriptionSection === "metrics" ? FEATURE_SELECTION_METRICS_DESCRIPTION : FEATURE_SELECTION_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -1066,6 +1121,7 @@ export function TsAnalysisEDA() {
         ? "Метрики и алгоритм — Структурные сдвиги"
         : "Полный пайплайн — Структурные сдвиги";
     }
+    if (activeCheckId === "feature_select") return descriptionSection === "metrics" ? "Метрики и алгоритм — Отбор признаков" : "Полный пайплайн — Отбор признаков";
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
   })();
@@ -1287,6 +1343,8 @@ export function TsAnalysisEDA() {
               parameters={structuralParameters}
               onParametersChange={(changes) => setStructuralParameters((current) => ({ ...current, ...changes }))}
             />
+          ) : activeCheckId === "feature_select" ? (
+            <EdaFeatureSelectionOverview profile={featureSelectionProfile} loading={featureSelectionBusy} error={featureSelectionRequestError} noDataset={featureSelectionNoDataset} parameters={featureSelectionParameters} onParametersChange={(changes)=>setFeatureSelectionParameters(current=>({...current,...changes}))}/>
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
@@ -1385,6 +1443,8 @@ export function TsAnalysisEDA() {
               <Metric label="Сегментов" value={structuralProfile?.applicable ? String(structuralProfile.segments.length) : "—"} />
               <Metric label="Штраф" value={formatMetric(structuralProfile?.penalty_value)} />
             </div>
+          ) : activeCheckId === "feature_select" ? (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-4"><Metric label="N" value={featureSelectionProfile?String(featureSelectionProfile.n_observations):"—"}/><Metric label="Кандидатов" value={featureSelectionProfile?.applicable?String(featureSelectionProfile.analyzed_features):"—"}/><Metric label="Сохранить" value={String(featureSelectionProfile?.kept_features.length??0)}/><Metric label="Проверить" value={String(featureSelectionProfile?.review_features.length??0)}/><Metric label="Слабый сигнал" value={String(featureSelectionProfile?.low_signal_features.length??0)}/><Metric label="Значимых Granger" value={String(featureSelectionProfile?.features.filter(x=>x.granger_significant).length??0)}/></div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
               <Metric label="Строк" value="200" />
@@ -1605,6 +1665,14 @@ export function TsAnalysisEDA() {
                   {check.status === "warning" && <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">{structuralProfile?.applicable === false ? structuralProfile.reason : structuralProfile?.recommendation ?? "Найдены кандидаты, требующие проверки"}</p>}
                   {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Структурные сдвиги не обнаружены при выбранных параметрах</p>}
                 </>
+              ) : check.id === "feature_select" ? (
+                <>
+                  {check.status === "running" && <p role="status" className="text-sm text-brand bg-brand-light rounded px-3 py-2 mb-2">Сопоставляем связь с целью, VIF и Granger…</p>}
+                  {check.status === "error" && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">{featureSelectionRequestError}</p>}
+                  {check.status === "skipped" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">{featureSelectionNoDataset?"Нет активного датасета":"Нет числовой цели Y"}</p>}
+                  {check.status === "warning" && <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">{featureSelectionProfile?.reason??featureSelectionProfile?.recommendation}</p>}
+                  {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Предварительно сохранить: {featureSelectionProfile?.kept_features.length??0}</p>}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -1700,6 +1768,8 @@ export function TsAnalysisEDA() {
                 >
                   Пересчитать сдвиги
                 </Button>
+              ) : check.id === "feature_select" ? (
+                <Button type="button" onClick={()=>setFeatureSelectionRefreshKey(key=>key+1)} disabled={featureSelectionBusy||!activeFeature}>{featureSelectionBusy?"Рассчитываем…":"Пересчитать отбор"}</Button>
               ) : (
                 <Button>Запустить анализ ({check.label.toLowerCase()})</Button>
               )}

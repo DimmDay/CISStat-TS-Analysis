@@ -119,6 +119,13 @@ export type {
   EdaStructuralBreaksParameters,
   EdaStructuralBreaksResponse,
 } from "./components/EdaStructuralBreaksOverview";
+export { EdaFeatureSelectionOverview } from "./components/EdaFeatureSelectionOverview";
+export type {
+  EdaFeatureSelectionItem,
+  EdaFeatureSelectionParameters,
+  EdaFeatureSelectionResponse,
+  FeatureDecision,
+} from "./components/EdaFeatureSelectionOverview";
 export { TsAnalysisUpload } from "./components/TsAnalysisUpload";
 export { StructuralClassSchema } from "./components/StructuralClassSchema";
 export { classifyStructure } from "./lib/structuralClass";

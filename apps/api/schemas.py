@@ -529,6 +529,84 @@ class DatasetEdaStructuralBreaksResponse(BaseModel):
     warnings: List[str] = Field(default_factory=list)
 
 
+class EdaFeatureCorrelationCellOut(BaseModel):
+    row: str
+    column: str
+    pearson: float
+    spearman: float
+
+
+class EdaFeatureItemOut(BaseModel):
+    name: str
+    n_observations: int
+    pearson: float
+    spearman: float
+    vif: Optional[float] = None
+    vif_infinite: bool
+    max_abs_predictor_correlation: float
+    granger_available: bool
+    best_granger_lag: Optional[int] = None
+    granger_p_value: Optional[float] = None
+    granger_adjusted_p_value: Optional[float] = None
+    granger_significant: bool
+    decision: Literal["keep", "review", "low_signal"]
+    decision_reason: str
+
+
+class EdaFeatureGrangerPointOut(BaseModel):
+    feature: str
+    lag: int
+    f_statistic: float
+    p_value: float
+    adjusted_p_value: float
+    significant: bool
+
+
+class EdaFeatureCorrelationPairOut(BaseModel):
+    first: str
+    second: str
+    correlation: float
+
+
+class EdaFeatureExcludedOut(BaseModel):
+    name: str
+    reason: str
+
+
+class DatasetEdaFeatureSelectionResponse(BaseModel):
+    column: str
+    applicable: bool
+    reason: Optional[str] = None
+    n_observations: int
+    min_observations: int
+    numeric_candidates: int
+    analyzed_features: int
+    alpha: float
+    requested_max_lag: int
+    max_lag: int
+    correlation_threshold: float
+    vif_threshold: float
+    difference_order: Literal[0, 1]
+    granger_n_observations: int
+    granger_available: bool
+    granger_reason: Optional[str] = None
+    order_source: Literal["time_column", "row_order"]
+    order_column: Optional[str] = None
+    order_warning: Optional[str] = None
+    frequency: Optional[str] = None
+    correlation_matrix: List[EdaFeatureCorrelationCellOut] = Field(default_factory=list)
+    features: List[EdaFeatureItemOut] = Field(default_factory=list)
+    granger: List[EdaFeatureGrangerPointOut] = Field(default_factory=list)
+    high_correlation_pairs: List[EdaFeatureCorrelationPairOut] = Field(default_factory=list)
+    excluded_features: List[EdaFeatureExcludedOut] = Field(default_factory=list)
+    kept_features: List[str] = Field(default_factory=list)
+    review_features: List[str] = Field(default_factory=list)
+    low_signal_features: List[str] = Field(default_factory=list)
+    recommendation: Optional[str] = None
+    recommendations: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+
+
 class PanelBalanceResponse(BaseModel):
     """Реальная проверка Balanced/Unbalanced для панельных данных --
     пункт 8 контракта (структурный класс), визуальная схема на
