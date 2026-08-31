@@ -360,3 +360,16 @@ export { NavigatorStructureConfirmPreview } from "./components/NavigatorStructur
 // Аналитик мгновенно понимает: 4 счётчика (missing / outliers / rows /
 // duplicates) → QualityTeaserOut → статус warning если любой из 3 > 0.
 export { NavigatorQualityTeaserPreview } from "./components/NavigatorQualityTeaserPreview";
+
+// Статичная блок-схема технической информации по колонкам для окна
+// «Обзор» остановки «Техническая информация» (id="tech_info") секции
+// «Этапы модуля» остановки «Загрузка» (Task 2026-08-31).
+// Рендерится только при активной паре «Загрузка» + «Техническая
+// информация» (см. TsAnalysisNavigator.tsx). Чисто презентационная,
+// БЕЗ зависимости от useAppShell / activeDataset / сети — основана на
+// РЕАЛЬНОЙ бэкенд-логике (apps/api/upload_common.py::_compute_column_info,
+// apps/api/schemas.py::ColumnInfoOut, отдаётся внутри UploadResponse.columns_info).
+// Аналитик мгновенно понимает: 4 ветки type_icon по dtype (datetime →
+// numeric → categorical → text, if/elif chain) + 3 метрики (non_null /
+// nulls / unique) → ColumnInfoOut[] → таблица 5 колонок во вкладке Загрузка.
+export { NavigatorTechInfoPreview } from "./components/NavigatorTechInfoPreview";

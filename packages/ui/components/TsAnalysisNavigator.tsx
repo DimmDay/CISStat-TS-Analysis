@@ -55,6 +55,7 @@ import { UploadAutoPreviewPipeline } from "./UploadAutoPreviewPipeline";
 import { NavigatorChartPreview } from "./NavigatorChartPreview";
 import { NavigatorStructureConfirmPreview } from "./NavigatorStructureConfirmPreview";
 import { NavigatorQualityTeaserPreview } from "./NavigatorQualityTeaserPreview";
+import { NavigatorTechInfoPreview } from "./NavigatorTechInfoPreview";
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -309,6 +310,14 @@ export function TsAnalysisNavigator() {
               duplicates) на основе РЕАЛЬНОЙ бэкенд-логики
               (_compute_quality_teaser, QualityTeaserOut).
 
+              Задача 2026-08-31 (Техническая информация): для пары
+              «Загрузка» + «Техническая информация» (id="upload" +
+              id="tech_info") рендерим статичную блок-схему построения
+              технической информации по каждой колонке (4 ветки type_icon
+              по dtype + 3 метрики non_null/nulls/unique) на основе
+              РЕАЛЬНОЙ бэкенд-логики (_compute_column_info, ColumnInfoOut).
+              Аналитик мгновенно понимает алгоритм благодаря инфографике.
+
               Для остальных пунктов — текстовая заглушка (своя визуализация
               для каждого пункта в будущих задачах). */}
           {activeStopId === "upload" && activeItemId === "preview" ? (
@@ -319,6 +328,8 @@ export function TsAnalysisNavigator() {
             <NavigatorStructureConfirmPreview />
           ) : activeStopId === "upload" && activeItemId === "quality_teaser" ? (
             <NavigatorQualityTeaserPreview />
+          ) : activeStopId === "upload" && activeItemId === "tech_info" ? (
+            <NavigatorTechInfoPreview />
           ) : (
             <div
               className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"

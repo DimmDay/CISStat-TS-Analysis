@@ -183,11 +183,12 @@ describe("TsAnalysisNavigator", () => {
       renderNavigator();
       // По умолчанию активен upload + preview (первый item) —
       // для preview рендерится UploadAutoPreviewPipeline, не заглушка.
-      // После задачи 2026-08-30 «Подтверждение автоопределения» (3-й item)
-      // и «Teaser качества» (4-й item) тоже имеют специализированный
-      // Overview — выбираем пункт БЕЗ специализированной визуализации:
-      // «Техническая информация» (5-й item, id="tech_info").
-      const card = screen.getByText("Техническая информация");
+      // После задач 2026-08-30/31 «Подтверждение автоопределения» (3-й item),
+      // «Teaser качества» (4-й item) и «Техническая информация» (5-й item)
+      // тоже имеют специализированный Overview — выбираем пункт БЕЗ
+      // специализированной визуализации: «Превью 5+5 строк» (6-й item,
+      // id="preview_5_5").
+      const card = screen.getByText("Превью 5+5 строк");
       fireEvent.click(card.closest("article")!);
       expect(
         screen.getByText(/область графика\/таблицы\/блок-схемы/)
@@ -287,6 +288,55 @@ describe("TsAnalysisNavigator", () => {
       renderNavigator();
       activateStructureConfirmItem();
       expect(screen.getByText(/\/dataset\/structure-detection/i)).toBeInTheDocument();
+      expect(screen.queryByText(/нет данных/i)).toBeNull();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Задача 2026-08-31 — окно «Обзор» остановки «Техническая информация»
+  // (upload+tech_info) рендерит статичную блок-схему алгоритма построения
+  // технической информации по каждой колонке (type_icon + 3 метрики).
+  // ─────────────────────────────────────────────────────────────────────
+  describe("upload + tech_info: static infographic in Overview", () => {
+    function activateTechInfoItem() {
+      const card = screen.getByText("Техническая информация");
+      fireEvent.click(card.closest("article")!);
+    }
+
+    it("renders the infographic heading when upload + tech_info is active", () => {
+      renderNavigator();
+      activateTechInfoItem();
+      // H3 «Обзор: Техническая информация» — заголовок окна Обзор из
+      // TsAnalysisNavigator. Сама инфографика тоже содержит H3 «Техническая
+      // информация». Поэтому минимум 2 совпадения.
+      const headings = screen.getAllByRole("heading", {
+        level: 3,
+        name: /техническая информация/i,
+      });
+      expect(headings.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("does NOT show the generic placeholder text for tech_info item", () => {
+      renderNavigator();
+      activateTechInfoItem();
+      expect(screen.queryByText(/область графика\/таблицы\/блок-схемы/)).toBeNull();
+    });
+
+    it("renders all 4 type_icon lanes (datetime / numeric / categorical / text)", () => {
+      renderNavigator();
+      activateTechInfoItem();
+      // Имена type_icon встречаются несколько раз внутри инфографики
+      // (лейбл дорожки + финальная подпись if/elif chain) — getAllByText.
+      expect(screen.getAllByText(/datetime/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/numeric/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/categorical/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/\btext\b/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("renders the infographic WITHOUT activeDataset (works if dataset is deleted)", () => {
+      renderNavigator();
+      activateTechInfoItem();
+      expect(screen.getByText(/_compute_column_info/i)).toBeInTheDocument();
       expect(screen.queryByText(/нет данных/i)).toBeNull();
     });
   });
