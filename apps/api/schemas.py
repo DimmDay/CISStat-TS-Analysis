@@ -608,6 +608,60 @@ class DatasetEdaFeatureSelectionResponse(BaseModel):
     warnings: List[str] = Field(default_factory=list)
 
 
+class EdaValidationFoldOut(BaseModel):
+    fold: int
+    train_start: int
+    train_end: int
+    train_size: int
+    gap_start: Optional[int] = None
+    gap_end: Optional[int] = None
+    gap_size: int
+    test_start: int
+    test_end: int
+    test_size: int
+    train_start_label: Optional[str] = None
+    train_end_label: Optional[str] = None
+    test_start_label: Optional[str] = None
+    test_end_label: Optional[str] = None
+
+
+class EdaValidationAlternativeOut(BaseModel):
+    strategy: Literal["expanding", "sliding", "single"]
+    label: str
+    suitable: bool
+    required_observations: int
+    reason: str
+
+
+class DatasetEdaValidationStrategyResponse(BaseModel):
+    column: str
+    applicable: bool
+    reason: Optional[str] = None
+    strategy: Literal["expanding", "sliding", "single"]
+    horizon: int
+    requested_splits: int
+    effective_splits: int
+    gap: int
+    train_window: int
+    min_train_observations: int
+    n_observations: int
+    missing_count: int
+    required_observations: int
+    initial_train_size: int
+    unused_observations: int
+    test_coverage: float
+    order_source: Literal["time_column", "row_order"]
+    order_column: Optional[str] = None
+    order_warning: Optional[str] = None
+    frequency: Optional[str] = None
+    comparable_duration: bool
+    folds: List[EdaValidationFoldOut] = Field(default_factory=list)
+    alternatives: List[EdaValidationAlternativeOut] = Field(default_factory=list)
+    recommendation: Optional[str] = None
+    recommendations: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+
+
 class PanelBalanceResponse(BaseModel):
     """Реальная проверка Balanced/Unbalanced для панельных данных --
     пункт 8 контракта (структурный класс), визуальная схема на

@@ -105,3 +105,50 @@ Date: 2026-08-31
 - `packages/ui/components/TsAnalysisUpload.tsx`
 - `packages/ui/components/TsAnalysisEDA.tsx`
 - `packages/ui/components/TsAnalysisEDA.test.tsx`
+
+---
+
+## Task ID: 79 — EDA «Стратегия валидации»
+
+Дата: 2026-08-31
+
+### Аудит методологии
+
+- В backend уже существовали `CVStrategy` и `ExpandingWindowCV`, реально используемые в grid-search `/v1/models/tune`. Базовый контракт корректно запрещал shuffle и обеспечивал `train < test`, поэтому он переиспользован.
+- Существующей реализации не хватало gap, sliding window, финального holdout, привязки EDA-плана к концу ряда и визуального API-контракта.
+- Методология приведена к официальным контрактам [scikit-learn TimeSeriesSplit](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html) и [skforecast Backtesting/TimeSeriesFold](https://skforecast.org/latest/user_guides/backtesting.html): одинаковый горизонт test, возрастающий или фиксированный train, gap перед test и сохранение временного порядка.
+- Single split не позиционируется как замена CV: это финальный нетронутый holdout после выбора модели. На нерегулярной оси folds допустимы по порядку наблюдений, но календарная длительность метрик объявляется несопоставимой. Панельные дубли блокируются без скрытой агрегации.
+
+### Реализация
+
+- `ExpandingWindowCV` расширен опциональным `gap=0` без изменения прежнего поведения; добавлен переиспользуемый `SlidingWindowCV`.
+- Добавлен read-only endpoint `GET /v1/session/dataset/eda-validation-strategy` со схемами `expanding`, `sliding`, `single`, параметрами horizon/folds/gap/train window и типизированным ответом.
+- План всегда привязан к хвосту ряда: последний test заканчивается последним доступным наблюдением. При недостатке истории folds не сокращаются молча — возвращаются точное требуемое N и применимость альтернатив.
+- Контролируются временной порядок, повторные даты, нерегулярность и пропуски цели; исходный `session.dataframe` не изменяется.
+- В «Обзоре» реализованы четыре представления: карта Train/Gap/Test, график размера train, сравнение стратегий и таблица точных границ. Параметры меняются без второго target-селектора.
+- В UI и описании добавлены кликабельные ссылки на официальную документацию scikit-learn и skforecast.
+
+### TDD и проверка
+
+- RED: отсутствовали `SlidingWindowCV`, backend-builder и UI-компонент остановки.
+- Backend CV/builder/API: 43/43 PASS.
+- Frontend EDA: 9 suites, 54/54 PASS.
+- Расширенный backend-набор: 136/139 PASS; три старых ARIMA tuning-теста падают внутри `statsmodels` SARIMAX на коротком train и воспроизводятся без изменений Task 79 на исходной копии.
+- TypeScript embedded/standalone: PASS.
+- Production build embedded/standalone: PASS, по 13/13 страниц.
+- `git diff --check`: PASS.
+
+### Изменённые и новые файлы
+
+- `apps/api/cv.py`
+- `apps/api/eda_validation_strategy.py`
+- `apps/api/routers/session.py`
+- `apps/api/schemas.py`
+- `packages/ui/components/EdaValidationStrategyOverview.tsx`
+- `packages/ui/components/EdaValidationStrategyOverview.test.tsx`
+- `packages/ui/components/TsAnalysisEDA.tsx`
+- `packages/ui/components/TsAnalysisEDA.test.tsx`
+- `packages/ui/index.ts`
+- `tests/api/test_cv.py`
+- `tests/api/test_dataset_eda_validation_strategy.py`
+- `tests/unit/test_validation_strategy_analysis.py`

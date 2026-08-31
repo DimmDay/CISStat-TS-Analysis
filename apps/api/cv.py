@@ -154,6 +154,7 @@ class ExpandingWindowCV(CVStrategy):
         test_size: int = 1,
         min_train_size: Optional[int] = None,
         step: Optional[int] = None,
+        gap: int = 0,
     ) -> None:
         # Валидация (defensive — ValueError с понятным сообщением,
         # чтобы пользователь tune-ендпоинта понял, что не так).
@@ -173,6 +174,8 @@ class ExpandingWindowCV(CVStrategy):
             raise ValueError(
                 f"step must be >= 1, got {step}"
             )
+        if gap < 0:
+            raise ValueError(f"gap must be >= 0, got {gap}")
 
         self.n_splits = n_splits
         self.test_size = test_size
@@ -180,6 +183,7 @@ class ExpandingWindowCV(CVStrategy):
         self.min_train_size = min_train_size if min_train_size is not None else test_size
         # None → default = test_size → non-overlapping test windows
         self.step = step if step is not None else test_size
+        self.gap = gap
 
     def min_samples(self) -> int:
         """Минимальная длина ряда для работы стратегии.
@@ -192,6 +196,7 @@ class ExpandingWindowCV(CVStrategy):
         """
         return (
             self.min_train_size
+            + self.gap
             + self.test_size
             + (self.n_splits - 1) * self.step
         )
@@ -217,7 +222,7 @@ class ExpandingWindowCV(CVStrategy):
         train_end = self.min_train_size
 
         for fold in range(self.n_splits):
-            test_start = train_end
+            test_start = train_end + self.gap
             test_end = test_start + self.test_size
 
             # Truncation: если test выходит за пределы ряда — этот fold
@@ -237,4 +242,59 @@ class ExpandingWindowCV(CVStrategy):
             # Расширение train на step точек (для следующего fold).
             train_end += self.step
 
+        return splits
+
+
+class SlidingWindowCV(CVStrategy):
+    """Walk-forward CV с фиксированным train-окном и опциональным gap.
+
+    В отличие от expanding window начало train сдвигается на ``step`` в
+    каждом fold. Это ограничивает влияние далёкой истории и подходит для
+    проверки моделей в меняющемся режиме, не нарушая временную причинность.
+    """
+
+    def __init__(
+        self,
+        n_splits: int = 5,
+        train_size: int = 20,
+        test_size: int = 1,
+        step: Optional[int] = None,
+        gap: int = 0,
+    ) -> None:
+        if n_splits < 1:
+            raise ValueError(f"n_splits must be >= 1, got {n_splits}")
+        if train_size < 1:
+            raise ValueError(f"train_size must be >= 1, got {train_size}")
+        if test_size < 1:
+            raise ValueError(f"test_size must be >= 1, got {test_size}")
+        if step is not None and step < 1:
+            raise ValueError(f"step must be >= 1, got {step}")
+        if gap < 0:
+            raise ValueError(f"gap must be >= 0, got {gap}")
+        self.n_splits = n_splits
+        self.train_size = train_size
+        self.test_size = test_size
+        self.step = step if step is not None else test_size
+        self.gap = gap
+
+    def min_samples(self) -> int:
+        return self.train_size + self.gap + self.test_size + (self.n_splits - 1) * self.step
+
+    def split(self, n: int) -> List[CVSplit]:
+        if n < self.min_samples():
+            raise ValueError(
+                f"Слишком короткий ряд для CV: нужно ≥ {self.min_samples()}, есть {n}. "
+                "Уменьшите n_splits, test_size, gap или train_size."
+            )
+        splits: List[CVSplit] = []
+        for fold in range(self.n_splits):
+            train_start = fold * self.step
+            train_end = train_start + self.train_size
+            test_start = train_end + self.gap
+            test_end = test_start + self.test_size
+            splits.append(CVSplit(
+                fold=fold,
+                train_idx=list(range(train_start, train_end)),
+                test_idx=list(range(test_start, test_end)),
+            ))
         return splits

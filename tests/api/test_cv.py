@@ -12,7 +12,7 @@ Phase 1-B: Тесты для apps/api/cv.py — CVStrategy + ExpandingWindowCV.
 """
 import pytest
 
-from apps.api.cv import CVSplit, CVStrategy, ExpandingWindowCV
+from apps.api.cv import CVSplit, CVStrategy, ExpandingWindowCV, SlidingWindowCV
 
 
 # ═══════════════════════════════════════════════════════════
@@ -309,3 +309,42 @@ class TestListIntegration:
         y_test_2 = [series[i] for i in splits[2].test_idx]
         assert y_train_2 == [10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0]
         assert y_test_2 == [17.0, 18.0]
+
+
+class TestGapAndSlidingWindow:
+    def test_expanding_window_excludes_gap_before_each_test(self):
+        cv = ExpandingWindowCV(
+            n_splits=3,
+            test_size=2,
+            min_train_size=4,
+            step=2,
+            gap=1,
+        )
+
+        splits = cv.split(11)
+
+        assert cv.min_samples() == 11
+        assert splits[0].train_idx == [0, 1, 2, 3]
+        assert splits[0].test_idx == [5, 6]
+        assert splits[1].train_idx == [0, 1, 2, 3, 4, 5]
+        assert splits[1].test_idx == [7, 8]
+        assert all(max(split.train_idx) + 1 < min(split.test_idx) for split in splits)
+
+    def test_sliding_window_keeps_train_size_and_moves_origin(self):
+        cv = SlidingWindowCV(
+            n_splits=3,
+            train_size=4,
+            test_size=2,
+            step=2,
+            gap=1,
+        )
+
+        splits = cv.split(11)
+
+        assert cv.min_samples() == 11
+        assert [split.train_idx for split in splits] == [
+            [0, 1, 2, 3],
+            [2, 3, 4, 5],
+            [4, 5, 6, 7],
+        ]
+        assert [split.test_idx for split in splits] == [[5, 6], [7, 8], [9, 10]]

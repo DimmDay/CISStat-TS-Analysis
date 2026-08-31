@@ -60,6 +60,11 @@ import {
   type EdaFeatureSelectionParameters,
   type EdaFeatureSelectionResponse,
 } from "./EdaFeatureSelectionOverview";
+import {
+  EdaValidationStrategyOverview,
+  type EdaValidationStrategyParameters,
+  type EdaValidationStrategyResponse,
+} from "./EdaValidationStrategyOverview";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 
@@ -332,6 +337,28 @@ const FEATURE_SELECTION_PIPELINE_DESCRIPTION = `Полный пайплайн: �
 3. Константы и признаки с пропусками возвращаются с причиной. Pearson/Spearman, VIF и Granger/FDR рассчитываются раздельно.
 4. Один ответ питает пять представлений: связь с Y, матрицу, VIF, Granger −log10(q) и таблицу решений.`;
 
+const VALIDATION_STRATEGY_METRICS_DESCRIPTION = `Метрики и алгоритм: Стратегия валидации
+
+1. Временная валидация не перемешивает наблюдения: каждый train заканчивается строго раньше gap и test. Это исключает обучение на будущем.
+2. Горизонт h равен длине каждого test-окна и должен воспроизводить реальный горизонт эксплуатации, а не выбираться по удобству датасета.
+3. Expanding window на каждом fold использует всю доступную историю. Sliding window сохраняет фиксированное train-окно и полезен при дрейфе или смене режимов. Single split оставляет один финальный holdout и не заменяет многократную оценку при выборе модели.
+4. Gap исключает наблюдения непосредственно перед test и моделирует задержку появления признаков/цели. Все preprocessing, feature selection и tuning должны обучаться заново только внутри train fold.
+5. Folds привязаны к концу ряда: последний test всегда заканчивается последним доступным наблюдением. Неполные folds и тихое уменьшение их числа не допускаются.
+6. Для сопоставимости метрик календарная длительность test должна быть одинаковой. На нерегулярной оси схема остаётся корректной по порядку, но интерфейс предупреждает, что h измеряется наблюдениями.
+
+Официальные реализации и документация:
+- scikit-learn TimeSeriesSplit (test_size, max_train_size, gap): https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html
+- skforecast Backtesting / TimeSeriesFold: https://skforecast.org/latest/user_guides/backtesting.html`;
+
+const VALIDATION_STRATEGY_PIPELINE_DESCRIPTION = `Полный пайплайн: стратегия валидации
+
+1. GET /v1/session/dataset/eda-validation-strategy получает общий target, схему, горизонт, число folds, gap и размер sliding train-окна; датасет не мутируется и модели не обучаются.
+2. Backend переиспользует CVStrategy/ExpandingWindowCV, добавляет gap и SlidingWindowCV. Временной детектор сортирует уникальную ось; панельные дубли блокируются без неявной агрегации.
+3. После удаления только пропусков цели проверяется точная достаточность истории. Никакие folds не отбрасываются молча: при дефиците возвращаются требуемое N и доступные альтернативы.
+4. Expanding и sliding создают неперекрывающиеся test-окна длины h; single создаёт один последний holdout. Последний test заканчивается в конце ряда.
+5. Один ответ питает четыре представления «Обзора»: схему train/gap/test, динамику размера train, сравнение стратегий и таблицу точных границ.
+6. План является спецификацией будущего backtesting. Фактические метрики появятся на этапе моделирования, где весь pipeline должен выполняться внутри каждого fold.`;
+
 async function responseDetail(response: Response): Promise<string> {
   try {
     const body = await response.json();
@@ -405,6 +432,11 @@ async function structuralResponseDetail(response: Response): Promise<string> {
 async function featureSelectionResponseDetail(response: Response): Promise<string> {
   try { const body = await response.json(); if (typeof body?.detail === "string") return body.detail; } catch {}
   return `Не удалось выполнить отбор признаков (HTTP ${response.status})`;
+}
+
+async function validationStrategyResponseDetail(response: Response): Promise<string> {
+  try { const body = await response.json(); if (typeof body?.detail === "string") return body.detail; } catch {}
+  return `Не удалось построить стратегию валидации (HTTP ${response.status})`;
 }
 
 function formatMetric(value: number | null | undefined): string {
@@ -974,6 +1006,59 @@ export function TsAnalysisEDA() {
   const featureSelectionRequestError=featureSelectionError??(activeCheckId==="feature_select"?targetError:null);
   const featureSelectionStatus:CheckStatus=featureSelectionBusy?"running":featureSelectionRequestError?"error":featureSelectionNoDataset||(hasDataset&&!activeFeature)||featureSelectionProfile?.applicability_status==="not_required"?"skipped":featureSelectionProfile?.applicable===false?"warning":featureSelectionProfile?.review_features.length||featureSelectionProfile?.low_signal_features.length?"warning":featureSelectionProfile?.applicable?"done":"pending";
 
+  const [validationStrategyProfile, setValidationStrategyProfile] = useState<EdaValidationStrategyResponse | null>(null);
+  const [validationStrategyLoading, setValidationStrategyLoading] = useState(false);
+  const [validationStrategyNoDataset, setValidationStrategyNoDataset] = useState(false);
+  const [validationStrategyError, setValidationStrategyError] = useState<string | null>(null);
+  const [validationStrategyRefreshKey, setValidationStrategyRefreshKey] = useState(0);
+  const [validationStrategyParameters, setValidationStrategyParameters] = useState<EdaValidationStrategyParameters>({
+    strategy: "expanding", horizon: 12, nSplits: 5, gap: 0, trainWindow: 60,
+  });
+
+  useEffect(() => {
+    if (activeCheckId !== "validation_strategy" || targetLoading) return;
+    if (!hasDataset) { setValidationStrategyNoDataset(true); setValidationStrategyProfile(null); return; }
+    if (!activeFeature) { setValidationStrategyProfile(null); return; }
+    let active = true;
+    setValidationStrategyLoading(true); setValidationStrategyError(null); setValidationStrategyNoDataset(false);
+    void (async () => {
+      try {
+        const parameters = validationStrategyParameters;
+        const query = new URLSearchParams({
+          column: activeFeature,
+          strategy: parameters.strategy,
+          horizon: String(parameters.horizon),
+          n_splits: String(parameters.nSplits),
+          gap: String(parameters.gap),
+          train_window: String(parameters.trainWindow),
+        });
+        const response = await fetch(sessionApiUrl(`/dataset/eda-validation-strategy?${query}`), { credentials: "include" });
+        if (response.status === 404) {
+          const detail = await validationStrategyResponseDetail(response);
+          if (detail === "В сессии нет активного датасета") { if (active) setValidationStrategyNoDataset(true); return; }
+          throw new Error(detail);
+        }
+        if (!response.ok) throw new Error(await validationStrategyResponseDetail(response));
+        const data: EdaValidationStrategyResponse = await response.json();
+        if (active) setValidationStrategyProfile(data);
+      } catch (error) {
+        if (active) setValidationStrategyError(error instanceof Error ? error.message : "Не удалось построить стратегию валидации");
+      } finally {
+        if (active) setValidationStrategyLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [activeCheckId, activeFeature, datasetKey, hasDataset, targetLoading, validationStrategyParameters, validationStrategyRefreshKey]);
+
+  const validationStrategyBusy = validationStrategyLoading || (activeCheckId === "validation_strategy" && targetLoading);
+  const validationStrategyRequestError = validationStrategyError ?? (activeCheckId === "validation_strategy" ? targetError : null);
+  const validationStrategyStatus: CheckStatus = validationStrategyBusy ? "running"
+    : validationStrategyRequestError ? "error"
+    : validationStrategyNoDataset || (hasDataset && !activeFeature) ? "skipped"
+    : validationStrategyProfile?.applicable === false ? "warning"
+    : validationStrategyProfile?.strategy === "single" || (validationStrategyProfile?.warnings.length ?? 0) > 0 ? "warning"
+    : validationStrategyProfile?.applicable ? "done" : "pending";
+
   // Результаты принадлежат конкретному датасету. При его смене убираем
   // старые красные/жёлтые статусы; активная остановка ниже пересчитается
   // благодаря datasetKey в зависимостях запроса.
@@ -985,6 +1070,7 @@ export function TsAnalysisEDA() {
     setDistributionProfile(null); setDistributionError(null); setDistributionNoDataset(false);
     setStructuralProfile(null); setStructuralError(null); setStructuralNoDataset(false);
     setFeatureSelectionProfile(null); setFeatureSelectionError(null); setFeatureSelectionNoDataset(false);
+    setValidationStrategyProfile(null); setValidationStrategyError(null); setValidationStrategyNoDataset(false);
   }, [datasetKey]);
 
   const checks = useMemo<Check[]>(() => CHECKS.map((check) =>
@@ -1004,8 +1090,10 @@ export function TsAnalysisEDA() {
       ? { ...check, status: structuralStatus, count: structuralProfile?.supported_count ?? null }
       : check.id === "feature_select"
       ? { ...check, status: featureSelectionStatus, count: (featureSelectionProfile?.review_features.length ?? 0) + (featureSelectionProfile?.low_signal_features.length ?? 0) }
+      : check.id === "validation_strategy"
+      ? { ...check, status: validationStrategyStatus, count: null }
       : check,
-  ), [correlationStatus, descriptiveStatus, distributionStatus, featureSelectionProfile, featureSelectionStatus, ihStatus, insufficientColumns, seasonalityProfile?.confirmed_periods, seasonalityStatus, stationarityStatus, structuralProfile?.supported_count, structuralStatus]);
+  ), [correlationStatus, descriptiveStatus, distributionStatus, featureSelectionProfile, featureSelectionStatus, ihStatus, insufficientColumns, seasonalityProfile?.confirmed_periods, seasonalityStatus, stationarityStatus, structuralProfile?.supported_count, structuralStatus, validationStrategyStatus]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -1094,6 +1182,9 @@ export function TsAnalysisEDA() {
     if (activeCheckId === "feature_select") {
       return descriptionSection === "metrics" ? FEATURE_SELECTION_METRICS_DESCRIPTION : FEATURE_SELECTION_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "validation_strategy") {
+      return descriptionSection === "metrics" ? VALIDATION_STRATEGY_METRICS_DESCRIPTION : VALIDATION_STRATEGY_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -1140,6 +1231,7 @@ export function TsAnalysisEDA() {
         : "Полный пайплайн — Структурные сдвиги";
     }
     if (activeCheckId === "feature_select") return descriptionSection === "metrics" ? "Метрики и алгоритм — Отбор признаков" : "Полный пайплайн — Отбор признаков";
+    if (activeCheckId === "validation_strategy") return descriptionSection === "metrics" ? "Метрики и алгоритм — Стратегия валидации" : "Полный пайплайн — Стратегия валидации";
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
   })();
@@ -1363,6 +1455,15 @@ export function TsAnalysisEDA() {
             />
           ) : activeCheckId === "feature_select" ? (
             <EdaFeatureSelectionOverview profile={featureSelectionProfile} loading={featureSelectionBusy} error={featureSelectionRequestError} noDataset={featureSelectionNoDataset} parameters={featureSelectionParameters} onParametersChange={(changes)=>setFeatureSelectionParameters(current=>({...current,...changes}))}/>
+          ) : activeCheckId === "validation_strategy" ? (
+            <EdaValidationStrategyOverview
+              profile={validationStrategyProfile}
+              loading={validationStrategyBusy}
+              error={validationStrategyRequestError}
+              noDataset={validationStrategyNoDataset}
+              parameters={validationStrategyParameters}
+              onParametersChange={(changes) => setValidationStrategyParameters((current) => ({ ...current, ...changes }))}
+            />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
@@ -1463,6 +1564,15 @@ export function TsAnalysisEDA() {
             </div>
           ) : activeCheckId === "feature_select" ? (
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-4"><Metric label="N" value={featureSelectionProfile?String(featureSelectionProfile.n_observations):"—"}/><Metric label="Кандидатов" value={featureSelectionProfile?.applicable?String(featureSelectionProfile.analyzed_features):"—"}/><Metric label="Сохранить" value={String(featureSelectionProfile?.kept_features.length??0)}/><Metric label="Проверить" value={String(featureSelectionProfile?.review_features.length??0)}/><Metric label="Слабый сигнал" value={String(featureSelectionProfile?.low_signal_features.length??0)}/><Metric label="Значимых Granger" value={String(featureSelectionProfile?.features.filter(x=>x.granger_significant).length??0)}/></div>
+          ) : activeCheckId === "validation_strategy" ? (
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+              <Metric label="N" value={validationStrategyProfile ? String(validationStrategyProfile.n_observations) : "—"} />
+              <Metric label="Схема" value={validationStrategyProfile?.strategy ?? "—"} />
+              <Metric label="Горизонт" value={validationStrategyProfile ? String(validationStrategyProfile.horizon) : "—"} />
+              <Metric label="Folds" value={validationStrategyProfile?.applicable ? String(validationStrategyProfile.effective_splits) : "—"} />
+              <Metric label="Начальный train" value={validationStrategyProfile?.applicable ? String(validationStrategyProfile.initial_train_size) : "—"} />
+              <Metric label="Test coverage" value={validationStrategyProfile?.applicable ? `${formatMetric(validationStrategyProfile.test_coverage)}%` : "—"} />
+            </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
               <Metric label="Строк" value="200" />
@@ -1691,6 +1801,14 @@ export function TsAnalysisEDA() {
                   {check.status === "warning" && <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">{featureSelectionProfile?.reason??featureSelectionProfile?.recommendation}</p>}
                   {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Предварительно сохранить: {featureSelectionProfile?.kept_features.length??0}</p>}
                 </>
+              ) : check.id === "validation_strategy" ? (
+                <>
+                  {check.status === "running" && <p role="status" className="text-sm text-brand bg-brand-light rounded px-3 py-2 mb-2">Строим временные folds без утечки…</p>}
+                  {check.status === "error" && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">{validationStrategyRequestError}</p>}
+                  {check.status === "skipped" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">{validationStrategyNoDataset ? "Нет активного датасета" : "Нет числового исследуемого признака"}</p>}
+                  {check.status === "warning" && <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">{validationStrategyProfile?.reason ?? validationStrategyProfile?.warnings[0] ?? validationStrategyProfile?.recommendation}</p>}
+                  {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Готово folds: {validationStrategyProfile?.effective_splits ?? 0}; последний test до конца ряда</p>}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -1788,6 +1906,8 @@ export function TsAnalysisEDA() {
                 </Button>
               ) : check.id === "feature_select" ? (
                 <Button type="button" onClick={()=>setFeatureSelectionRefreshKey(key=>key+1)} disabled={featureSelectionBusy||!activeFeature}>{featureSelectionBusy?"Рассчитываем…":"Пересчитать отбор"}</Button>
+              ) : check.id === "validation_strategy" ? (
+                <Button type="button" onClick={() => setValidationStrategyRefreshKey((key) => key + 1)} disabled={validationStrategyBusy || !activeFeature}>{validationStrategyBusy ? "Строим…" : "Пересчитать стратегию"}</Button>
               ) : (
                 <Button>Запустить анализ ({check.label.toLowerCase()})</Button>
               )}

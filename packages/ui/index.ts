@@ -126,6 +126,14 @@ export type {
   EdaFeatureSelectionResponse,
   FeatureDecision,
 } from "./components/EdaFeatureSelectionOverview";
+export { EdaValidationStrategyOverview } from "./components/EdaValidationStrategyOverview";
+export type {
+  EdaValidationAlternative,
+  EdaValidationFold,
+  EdaValidationStrategyParameters,
+  EdaValidationStrategyResponse,
+  ValidationStrategy,
+} from "./components/EdaValidationStrategyOverview";
 export { TsAnalysisUpload } from "./components/TsAnalysisUpload";
 export { StructuralClassSchema } from "./components/StructuralClassSchema";
 export { classifyStructure } from "./lib/structuralClass";

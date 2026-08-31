@@ -206,6 +206,28 @@ const STRUCTURAL_BREAKS_RESPONSE = {
   warnings: ["Chow после выбора PELT является диагностикой."],
 };
 
+const VALIDATION_STRATEGY_RESPONSE = {
+  column: "Price", applicable: true, reason: null, strategy: "expanding",
+  horizon: 12, requested_splits: 5, effective_splits: 5, gap: 0,
+  train_window: 60, min_train_observations: 20, n_observations: 100,
+  missing_count: 0, required_observations: 80, initial_train_size: 40,
+  unused_observations: 0, test_coverage: 60, order_source: "time_column",
+  order_column: "Date", order_warning: null, frequency: "D", comparable_duration: true,
+  folds: Array.from({ length: 5 }, (_, index) => ({
+    fold: index + 1, train_start: 0, train_end: 39 + index * 12, train_size: 40 + index * 12,
+    gap_start: null, gap_end: null, gap_size: 0, test_start: 40 + index * 12,
+    test_end: 51 + index * 12, test_size: 12, train_start_label: "2024-01-01",
+    train_end_label: "2024-02-09", test_start_label: "2024-02-10", test_end_label: "2024-02-21",
+  })),
+  alternatives: [
+    { strategy: "expanding", label: "Расширяющееся окно", suitable: true, required_observations: 80, reason: "Максимум истории" },
+    { strategy: "sliding", label: "Скользящее окно", suitable: false, required_observations: 120, reason: "Свежая история" },
+    { strategy: "single", label: "Финальный holdout", suitable: true, required_observations: 32, reason: "Финальная оценка" },
+  ],
+  recommendation: "Expanding window использует всю доступную историю.",
+  recommendations: ["Горизонт должен совпадать с эксплуатацией."], warnings: [],
+};
+
 function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
   const url = String(input);
   if (url.includes("/target-column")) {
@@ -272,6 +294,18 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
       ok: true,
       status: 200,
       json: () => Promise.resolve({ ...STRUCTURAL_BREAKS_RESPONSE, column }),
+    });
+  }
+  if (url.includes("/dataset/eda-validation-strategy")) {
+    const parsed = new URL(url);
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({
+        ...VALIDATION_STRATEGY_RESPONSE,
+        column: parsed.searchParams.get("column") ?? "Price",
+        strategy: parsed.searchParams.get("strategy") ?? "expanding",
+      }),
     });
   }
   if (url.includes("/dataset/distribution")) {
@@ -711,6 +745,29 @@ describe("TsAnalysisEDA", () => {
     const alerts = await screen.findAllByRole("alert");
     expect(alerts.some((item) => item.textContent?.includes("Маршрут структурных сдвигов не найден"))).toBe(true);
     expect(screen.queryByText("Загрузите датасет, чтобы исследовать структурные сдвиги.")).not.toBeInTheDocument();
+  });
+
+  it("builds a visual time-validation plan and reacts to strategy parameters", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Стратегия валидации/ }));
+
+    expect(await screen.findByRole("img", { name: "Схема временных folds для Price" })).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/dataset/eda-validation-strategy?column=Price&strategy=expanding&horizon=12&n_splits=5&gap=0&train_window=60"),
+      { credentials: "include" },
+    );
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Схема" }), { target: { value: "sliding" } });
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("strategy=sliding"),
+      { credentials: "include" },
+    ));
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getAllByText(/TimeSeriesSplit/i).length).toBeGreaterThanOrEqual(1);
   });
 
   // ── Кнопка «Справка» ──
