@@ -744,7 +744,7 @@ export function TsAnalysisPreprocessing() {
               }`}
             >
               <h3 className="font-semibold mb-1">
-                <StatusIcon status={check.status} /> Проверка: {check.label}
+                <StatusIcon status={check.status} /> Преобразование: {check.label}
               </h3>
 
               <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
