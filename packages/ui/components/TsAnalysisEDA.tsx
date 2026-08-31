@@ -19,6 +19,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
+import { useAppShell } from "../context/AppShellContext";
 import { Button } from "./Button";
 import {
   EdaDescriptiveOverview,
@@ -423,6 +424,10 @@ function stationarityConsensusLabel(consensus: StationarityConsensus | null | un
 // ── Компонент ─────────────────────────────────────────────────
 
 export function TsAnalysisEDA() {
+  const { activeDataset } = useAppShell();
+  // dataset_id меняется даже при повторной загрузке файла с тем же именем.
+  // Имя остаётся fallback для старых ответов/тестовых фикстур.
+  const datasetKey = activeDataset?.datasetId ?? activeDataset?.name;
   const [activeCheckId, setActiveCheckId] = useState(CHECKS[0].id);
   const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | null>(null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
@@ -440,7 +445,7 @@ export function TsAnalysisEDA() {
     loading: targetLoading,
     error: targetError,
     setColumn: setActiveFeature,
-  } = useTargetColumn(undefined);
+  } = useTargetColumn(datasetKey);
 
   // ── Остановка «Описательные статистики»: реальные данные ──
   // Переиспользуем endpoint вкладки «Загрузка»: он уже считает профиль по
@@ -482,7 +487,7 @@ export function TsAnalysisEDA() {
       }
     })();
     return () => { active = false; };
-  }, [descriptiveRefreshKey]);
+  }, [datasetKey, descriptiveRefreshKey]);
 
   const descriptiveBusy = descriptiveLoading || targetLoading;
   const descriptiveRequestError = descriptiveError ?? targetError;
@@ -555,7 +560,7 @@ export function TsAnalysisEDA() {
       }
     })();
     return () => { active = false; };
-  }, [activeCheckId, activeFeature, correlationMaxLags, correlationRefreshKey, hasDataset, targetLoading]);
+  }, [activeCheckId, activeFeature, correlationMaxLags, correlationRefreshKey, datasetKey, hasDataset, targetLoading]);
 
   const correlationBusy = correlationLoading || (activeCheckId === "correlation" && targetLoading);
   const correlationRequestError = correlationError ?? (activeCheckId === "correlation" ? targetError : null);
@@ -636,7 +641,7 @@ export function TsAnalysisEDA() {
       }
     })();
     return () => { active = false; };
-  }, [activeCheckId, activeFeature, hasDataset, ihParameters, ihRefreshKey, targetLoading]);
+  }, [activeCheckId, activeFeature, datasetKey, hasDataset, ihParameters, ihRefreshKey, targetLoading]);
 
   const ihBusy = ihLoading || (activeCheckId === "ih_analysis" && targetLoading);
   const ihRequestError = ihError ?? (activeCheckId === "ih_analysis" ? targetError : null);
@@ -714,7 +719,7 @@ export function TsAnalysisEDA() {
       }
     })();
     return () => { active = false; };
-  }, [activeCheckId, activeFeature, hasDataset, seasonalityParameters, seasonalityRefreshKey, targetLoading]);
+  }, [activeCheckId, activeFeature, datasetKey, hasDataset, seasonalityParameters, seasonalityRefreshKey, targetLoading]);
 
   const seasonalityBusy = seasonalityLoading || (activeCheckId === "seasonality" && targetLoading);
   const seasonalityRequestError = seasonalityError ?? (activeCheckId === "seasonality" ? targetError : null);
@@ -792,7 +797,7 @@ export function TsAnalysisEDA() {
       }
     })();
     return () => { active = false; };
-  }, [activeCheckId, activeFeature, hasDataset, stationarityParameters, stationarityRefreshKey, targetLoading]);
+  }, [activeCheckId, activeFeature, datasetKey, hasDataset, stationarityParameters, stationarityRefreshKey, targetLoading]);
 
   const stationarityBusy = stationarityLoading || (activeCheckId === "stationarity" && targetLoading);
   const stationarityRequestError = stationarityError ?? (activeCheckId === "stationarity" ? targetError : null);
@@ -872,7 +877,7 @@ export function TsAnalysisEDA() {
       }
     })();
     return () => { active = false; };
-  }, [activeCheckId, activeFeature, distributionParameters, distributionRefreshKey, hasDataset, targetLoading]);
+  }, [activeCheckId, activeFeature, datasetKey, distributionParameters, distributionRefreshKey, hasDataset, targetLoading]);
 
   const distributionBusy = distributionLoading || (activeCheckId === "distribution" && targetLoading);
   const distributionRequestError = distributionError ?? (activeCheckId === "distribution" ? targetError : null);
@@ -940,7 +945,7 @@ export function TsAnalysisEDA() {
       }
     })();
     return () => { active = false; };
-  }, [activeCheckId, activeFeature, hasDataset, structuralParameters, structuralRefreshKey, targetLoading]);
+  }, [activeCheckId, activeFeature, datasetKey, hasDataset, structuralParameters, structuralRefreshKey, targetLoading]);
 
   const structuralBusy = structuralLoading || (activeCheckId === "structural" && targetLoading);
   const structuralRequestError = structuralError ?? (activeCheckId === "structural" ? targetError : null);
@@ -964,10 +969,23 @@ export function TsAnalysisEDA() {
     let active=true; setFeatureSelectionLoading(true); setFeatureSelectionError(null); setFeatureSelectionNoDataset(false);
     void(async()=>{try{const p=featureSelectionParameters;const query=new URLSearchParams({column:activeFeature,alpha:String(p.alpha),max_lag:String(p.maxLag),correlation_threshold:String(p.correlationThreshold),vif_threshold:String(p.vifThreshold),difference_order:String(p.differenceOrder)});const response=await fetch(sessionApiUrl(`/dataset/eda-feature-selection?${query}`),{credentials:"include"});if(response.status===404){const detail=await featureSelectionResponseDetail(response);if(detail==="В сессии нет активного датасета"){if(active)setFeatureSelectionNoDataset(true);return;}throw new Error(detail);}if(!response.ok)throw new Error(await featureSelectionResponseDetail(response));const data:EdaFeatureSelectionResponse=await response.json();if(active)setFeatureSelectionProfile(data);}catch(e){if(active)setFeatureSelectionError(e instanceof Error?e.message:"Не удалось выполнить отбор признаков");}finally{if(active)setFeatureSelectionLoading(false);}})();
     return()=>{active=false};
-  },[activeCheckId,activeFeature,featureSelectionParameters,featureSelectionRefreshKey,hasDataset,targetLoading]);
+  },[activeCheckId,activeFeature,datasetKey,featureSelectionParameters,featureSelectionRefreshKey,hasDataset,targetLoading]);
   const featureSelectionBusy=featureSelectionLoading||(activeCheckId==="feature_select"&&targetLoading);
   const featureSelectionRequestError=featureSelectionError??(activeCheckId==="feature_select"?targetError:null);
   const featureSelectionStatus:CheckStatus=featureSelectionBusy?"running":featureSelectionRequestError?"error":featureSelectionNoDataset||(hasDataset&&!activeFeature)||featureSelectionProfile?.applicability_status==="not_required"?"skipped":featureSelectionProfile?.applicable===false?"warning":featureSelectionProfile?.review_features.length||featureSelectionProfile?.low_signal_features.length?"warning":featureSelectionProfile?.applicable?"done":"pending";
+
+  // Результаты принадлежат конкретному датасету. При его смене убираем
+  // старые красные/жёлтые статусы; активная остановка ниже пересчитается
+  // благодаря datasetKey в зависимостях запроса.
+  useEffect(() => {
+    setCorrelationProfile(null); setCorrelationError(null); setCorrelationNoDataset(false);
+    setIhProfile(null); setIhError(null); setIhNoDataset(false);
+    setSeasonalityProfile(null); setSeasonalityError(null); setSeasonalityNoDataset(false);
+    setStationarityProfile(null); setStationarityError(null); setStationarityNoDataset(false);
+    setDistributionProfile(null); setDistributionError(null); setDistributionNoDataset(false);
+    setStructuralProfile(null); setStructuralError(null); setStructuralNoDataset(false);
+    setFeatureSelectionProfile(null); setFeatureSelectionError(null); setFeatureSelectionNoDataset(false);
+  }, [datasetKey]);
 
   const checks = useMemo<Check[]>(() => CHECKS.map((check) =>
     check.id === "descriptive"

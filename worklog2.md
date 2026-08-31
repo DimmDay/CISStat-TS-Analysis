@@ -69,3 +69,39 @@ Date: 2026-08-31
 - `tests/unit/test_feature_selection_analysis.py`
 - `tests/unit/test_eda_feature_selection_adapter.py`
 - `tests/api/test_dataset_eda_feature_selection.py`
+
+---
+
+## Task ID: 78 — Восстановление исследований EDA после смены датасета
+
+Дата: 2026-08-31
+
+### Диагностика
+
+- Репозиторий синхронизирован с `d5bc8ea34572d5aa510af6d3af6cb158c1ac7e4f`; локальные backend-тесты и живые EDA API подтвердили исправность вычислительных методов.
+- Найден общий клиентский дефект: `TsAnalysisEDA` вызывал `useTargetColumn(undefined)`, хотя контракт хука требует ключ активного датасета для повторного получения target после загрузки нового файла.
+- В результате EDA сохранял старый признак (например, `Price`) и отправлял его во все target-зависимые исследования нового датасета. Описательные статистики продолжали работать, поскольку target им не нужен.
+- Зафиксировано рассогласование развёртываний: живой backend ещё возвращает прежний ответ feature selection без нового поля `applicability_status`. Это не является причиной общей поломки, но Render необходимо развернуть из того же commit, что и Vercel.
+
+### Исправление
+
+- В `ActiveDataset` добавлен `datasetId`, заполняемый как при гидратации сессии, так и после загрузки файла.
+- EDA передаёт в `useTargetColumn` стабильный ключ `datasetId` с fallback на имя файла; повторная загрузка одноимённого CSV также вызывает refetch.
+- Все запросы исследований и описательной статистики инвалидируются по ключу датасета.
+- При смене датасета очищаются профили, ошибки и статусы предыдущего набора данных, чтобы красные/жёлтые индикаторы не переносились в новый анализ.
+
+### TDD и проверка
+
+- RED: при смене `dataset-a → dataset-b` с одинаковым именем файла выполнялся только один GET `/target-column`.
+- GREEN: регрессионный тест подтверждает второй GET после смены `datasetId`.
+- Jest: `TsAnalysisEDA` — 27/27 PASS; `TsAnalysisUpload` — 25/25 PASS.
+- Python EDA API/core/adapter: 26/26 PASS.
+- TypeScript: embedded и standalone PASS.
+- Production build: standalone и embedded PASS, по 13/13 страниц.
+
+### Изменённые файлы
+
+- `packages/ui/context/AppShellContext.tsx`
+- `packages/ui/components/TsAnalysisUpload.tsx`
+- `packages/ui/components/TsAnalysisEDA.tsx`
+- `packages/ui/components/TsAnalysisEDA.test.tsx`

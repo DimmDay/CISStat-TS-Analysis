@@ -9,6 +9,12 @@ import "@testing-library/jest-dom";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { TsAnalysisEDA } from "./TsAnalysisEDA";
 
+let mockActiveDataset: { datasetId?: string; name: string; rows: number; sizeLabel: string } | null = null;
+
+jest.mock("../context/AppShellContext", () => ({
+  useAppShell: () => ({ activeDataset: mockActiveDataset }),
+}));
+
 const STATS_RESPONSE = {
   min_non_null_for_stats: 2,
   columns: [
@@ -292,6 +298,7 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
 
 describe("TsAnalysisEDA", () => {
   beforeEach(() => {
+    mockActiveDataset = null;
     global.fetch = jest.fn(() => new Promise(() => {}));
   });
 
@@ -347,6 +354,29 @@ describe("TsAnalysisEDA", () => {
       expect.stringContaining("/v1/session/target-column"),
       expect.objectContaining({ method: "POST", body: JSON.stringify({ column: "Volume" }) }),
     );
+  });
+
+  it("refetches the shared target when the active dataset changes", async () => {
+    mockActiveDataset = { datasetId: "dataset-a", name: "prices.csv", rows: 4, sizeLabel: "1 KB" };
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    const { rerender } = render(<TsAnalysisEDA />);
+
+    await waitFor(() => {
+      const targetGets = (global.fetch as jest.Mock).mock.calls.filter(
+        ([url, options]) => String(url).includes("/target-column") && options?.method === "GET",
+      );
+      expect(targetGets).toHaveLength(1);
+    });
+
+    mockActiveDataset = { datasetId: "dataset-b", name: "prices.csv", rows: 8, sizeLabel: "2 KB" };
+    rerender(<TsAnalysisEDA />);
+
+    await waitFor(() => {
+      const targetGets = (global.fetch as jest.Mock).mock.calls.filter(
+        ([url, options]) => String(url).includes("/target-column") && options?.method === "GET",
+      );
+      expect(targetGets).toHaveLength(2);
+    });
   });
 
   it("shows the specialized metric and pipeline descriptions", async () => {

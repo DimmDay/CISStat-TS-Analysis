@@ -595,6 +595,7 @@ export function TsAnalysisUpload() {
         // может быть готова синхронно в этой точке. Без data.frequency
         // с бэкенда поле просто остаётся неопределённым, а не подделывается.
         setActiveDataset({
+          datasetId: data.dataset_id,
           name: data.name,
           rows: data.rows,
           sizeLabel: data.size_label ?? "—",

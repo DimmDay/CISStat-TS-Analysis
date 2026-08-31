@@ -28,6 +28,7 @@ export interface LogEntry {
 }
 
 export interface ActiveDataset {
+  datasetId?: string;
   name: string;
   rows: number;
   sizeLabel: string;
@@ -84,6 +85,7 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   const applySessionResponse = useCallback((data: SessionCurrentResponse) => {
     if (data.has_active_dataset && data.dataset) {
       setActiveDatasetState({
+        datasetId: data.dataset.dataset_id,
         name: data.dataset.name,
         rows: data.dataset.rows,
         sizeLabel: data.dataset.size_label,
