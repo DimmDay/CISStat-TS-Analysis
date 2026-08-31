@@ -14,3 +14,12 @@ def test_adapter_disables_granger_for_panel_but_keeps_other_diagnostics():
     result=build_eda_feature_selection(pd.DataFrame({"Date":dates,"Y":np.arange(80.),"X":np.sin(np.arange(80.))}),"Y")
     assert result["applicable"] is True and result["granger_available"] is False
     assert result["features"] and "панель" in result["granger_reason"].lower()
+
+def test_adapter_excludes_detected_date_before_classifying_univariate_series():
+    frame = pd.DataFrame({
+        "Date": pd.date_range("2024-01-01", periods=40, freq="D"),
+        "Y": np.arange(40, dtype=float),
+    })
+    result = build_eda_feature_selection(frame, "Y")
+    assert result["applicability_status"] == "not_required"
+    assert result["excluded_features"] == []

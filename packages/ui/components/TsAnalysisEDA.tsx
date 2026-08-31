@@ -967,7 +967,7 @@ export function TsAnalysisEDA() {
   },[activeCheckId,activeFeature,featureSelectionParameters,featureSelectionRefreshKey,hasDataset,targetLoading]);
   const featureSelectionBusy=featureSelectionLoading||(activeCheckId==="feature_select"&&targetLoading);
   const featureSelectionRequestError=featureSelectionError??(activeCheckId==="feature_select"?targetError:null);
-  const featureSelectionStatus:CheckStatus=featureSelectionBusy?"running":featureSelectionRequestError?"error":featureSelectionNoDataset||(hasDataset&&!activeFeature)?"skipped":featureSelectionProfile?.applicable===false?"warning":featureSelectionProfile?.review_features.length||featureSelectionProfile?.low_signal_features.length?"warning":featureSelectionProfile?.applicable?"done":"pending";
+  const featureSelectionStatus:CheckStatus=featureSelectionBusy?"running":featureSelectionRequestError?"error":featureSelectionNoDataset||(hasDataset&&!activeFeature)||featureSelectionProfile?.applicability_status==="not_required"?"skipped":featureSelectionProfile?.applicable===false?"warning":featureSelectionProfile?.review_features.length||featureSelectionProfile?.low_signal_features.length?"warning":featureSelectionProfile?.applicable?"done":"pending";
 
   const checks = useMemo<Check[]>(() => CHECKS.map((check) =>
     check.id === "descriptive"
@@ -1669,7 +1669,7 @@ export function TsAnalysisEDA() {
                 <>
                   {check.status === "running" && <p role="status" className="text-sm text-brand bg-brand-light rounded px-3 py-2 mb-2">Сопоставляем связь с целью, VIF и Granger…</p>}
                   {check.status === "error" && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">{featureSelectionRequestError}</p>}
-                  {check.status === "skipped" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">{featureSelectionNoDataset?"Нет активного датасета":"Нет числовой цели Y"}</p>}
+                  {check.status === "skipped" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">{featureSelectionNoDataset?"Нет активного датасета":featureSelectionProfile?.applicability_status==="not_required"?"Одномерный ряд: отбор признаков не требуется":"Нет числовой цели Y"}</p>}
                   {check.status === "warning" && <p className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">{featureSelectionProfile?.reason??featureSelectionProfile?.recommendation}</p>}
                   {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Предварительно сохранить: {featureSelectionProfile?.kept_features.length??0}</p>}
                 </>

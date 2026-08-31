@@ -576,6 +576,7 @@ class EdaFeatureExcludedOut(BaseModel):
 class DatasetEdaFeatureSelectionResponse(BaseModel):
     column: str
     applicable: bool
+    applicability_status: Literal["applicable", "not_required", "requires_preprocessing", "not_applicable"]
     reason: Optional[str] = None
     n_observations: int
     min_observations: int

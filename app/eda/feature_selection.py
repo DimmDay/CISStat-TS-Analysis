@@ -25,11 +25,12 @@ def _finite(value: Any) -> float | None:
 
 def _empty_result(df: pd.DataFrame, target: str, reason: str, alpha: float,
                   max_lag: int, correlation_threshold: float,
-                  vif_threshold: float, difference_order: int) -> dict[str, Any]:
+                  vif_threshold: float, difference_order: int,
+                  applicability_status: str = "not_applicable") -> dict[str, Any]:
     numeric_target = pd.to_numeric(df[target], errors="coerce") if target in df else pd.Series(dtype=float)
     finite_count = int(np.isfinite(numeric_target.to_numpy(dtype=float)).sum()) if len(numeric_target) else 0
     return {
-        "column": target, "applicable": False, "reason": reason,
+        "column": target, "applicable": False, "applicability_status": applicability_status, "reason": reason,
         "n_observations": finite_count, "min_observations": MIN_FEATURE_SELECTION_OBSERVATIONS,
         "numeric_candidates": 0, "analyzed_features": 0, "alpha": float(alpha),
         "requested_max_lag": int(max_lag), "max_lag": 0,
@@ -112,8 +113,19 @@ def analyze_feature_selection(
         return _empty_result(df, target, "Целевой ряд константный.", alpha, max_lag, correlation_threshold, vif_threshold, difference_order)
 
     excluded_set = {str(name) for name in excluded_columns}
+    potential_candidates = [
+        str(name) for name in df.columns
+        if str(name) != target and str(name) not in excluded_set
+    ]
     numeric_candidates = [str(name) for name in df.select_dtypes(include="number").columns if str(name) != target and str(name) not in excluded_set]
-    excluded_features: list[dict[str, str]] = []
+    excluded_features: list[dict[str, str]] = [
+        {
+            "name": name,
+            "reason": f"Нечисловой тип {df[name].dtype}: преобразуйте числовые значения или закодируйте категорию на этапе подготовки признаков.",
+        }
+        for name in potential_candidates
+        if name not in numeric_candidates
+    ]
     candidates: list[str] = []
     work = pd.DataFrame({target: target_values.astype(float).reset_index(drop=True)})
     for name in numeric_candidates:
@@ -126,7 +138,16 @@ def analyze_feature_selection(
             candidates.append(name)
             work[name] = values.astype(float)
     if not candidates:
+        not_required = len(potential_candidates) == 0
+        reason = (
+            "Кроме временной оси и цели Y в датасете нет предикторов X: для одномерного ряда отбор признаков не требуется."
+            if not_required else
+            f"Обнаружено потенциальных предикторов: {len(potential_candidates)}, но ни один пока не пригоден для расчёта. Завершите преобразование типов, обработку пропусков и констант."
+        )
         result = _empty_result(df, target, "Нужен хотя бы один корректный числовой предиктор.", alpha, max_lag, correlation_threshold, vif_threshold, difference_order)
+        result["reason"] = reason
+        result["recommendation"] = reason
+        result["applicability_status"] = "not_required" if not_required else "requires_preprocessing"
         result.update(numeric_candidates=len(numeric_candidates), excluded_features=excluded_features)
         return result
 
@@ -175,7 +196,7 @@ def analyze_feature_selection(
         warnings_out.append(granger_disabled_reason)
     if failed:
         warnings_out.append("Granger не удалось оценить для: " + ", ".join(sorted(failed)) + ".")
-    return {"column": target, "applicable": True, "reason": None, "n_observations": len(work),
+    return {"column": target, "applicable": True, "applicability_status": "applicable", "reason": None, "n_observations": len(work),
             "min_observations": MIN_FEATURE_SELECTION_OBSERVATIONS, "numeric_candidates": len(numeric_candidates),
             "analyzed_features": len(features), "alpha": float(alpha), "requested_max_lag": int(max_lag), "max_lag": actual_max_lag,
             "correlation_threshold": float(correlation_threshold), "vif_threshold": float(vif_threshold), "difference_order": int(difference_order),
