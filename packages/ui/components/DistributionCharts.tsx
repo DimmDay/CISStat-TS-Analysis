@@ -110,7 +110,7 @@ export function ScatterDistributionChart({ data }: { data: DistributionChartData
 
   return (
     <ChartFrame>
-      <RechartsScatterChart margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+      <RechartsScatterChart margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
         <CartesianGrid stroke="#F0F0F0" />
         <XAxis type="number" dataKey="x" tick={AXIS_TICK_STYLE} tickFormatter={fmtCompact} name="Позиция" />
         <YAxis type="number" dataKey="y" tick={AXIS_TICK_STYLE} tickFormatter={fmtCompact} width={48} />
@@ -140,7 +140,7 @@ export function HistogramDistributionChart({ data }: { data: DistributionChartDa
 
   return (
     <ChartFrame>
-      <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+      <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
         <CartesianGrid stroke="#F0F0F0" vertical={false} />
         <XAxis
           dataKey="mid"
@@ -180,7 +180,7 @@ export function KdeDistributionChart({ data }: { data: DistributionChartData | n
 
   return (
     <ChartFrame>
-      <AreaChart data={data.kde} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+      <AreaChart data={data.kde} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
         <defs>
           <linearGradient id="kdeFill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={BRAND} stopOpacity={0.35} />
