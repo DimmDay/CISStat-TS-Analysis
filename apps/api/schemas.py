@@ -1048,6 +1048,115 @@ class DatasetPreprocessingVarianceResponse(BaseModel):
     metadata: VarianceTransformationMetadataOut
 
 
+SmoothingMethod = Literal["sma", "ema", "wma", "median", "savgol", "lowess"]
+
+
+class SmoothingDiagnosticOut(BaseModel):
+    normalized_roughness: Optional[float] = None
+    difference_std_ratio: Optional[float] = None
+    lag1_autocorrelation: Optional[float] = None
+    high_frequency_power_share: Optional[float] = None
+    standard_deviation: Optional[float] = None
+
+
+class SmoothingCandidateOut(BaseModel):
+    method: SmoothingMethod
+    label: str
+    causal: bool
+    available: bool
+    reason: Optional[str] = None
+    parameter_label: str
+    correlation: Optional[float] = None
+    roughness_reduction_pct: Optional[float] = None
+    high_frequency_reduction_pct: Optional[float] = None
+    variance_retained_pct: Optional[float] = None
+    residual_ljung_box_pvalue: Optional[float] = None
+
+
+class SmoothingPointOut(BaseModel):
+    x: str
+    original: float
+    smoothed: float
+    residual: float
+
+
+class SmoothingSpectrumPointOut(BaseModel):
+    frequency: float
+    before: float
+    after: float
+
+
+class SmoothingAcfPointOut(BaseModel):
+    lag: int
+    value: float
+
+
+class PreprocessingSmoothingProfileOut(BaseModel):
+    column: str
+    applicable: bool
+    reason: Optional[str] = None
+    n_observations: int = 0
+    missing_count: int = 0
+    order_source: Literal["time_column", "row_order"] = "row_order"
+    order_column: Optional[str] = None
+    frequency: Optional[str] = None
+    regular: Optional[bool] = None
+    selected_method: Optional[SmoothingMethod] = None
+    selected_parameters: Dict[str, float] = Field(default_factory=dict)
+    needs_smoothing: bool = False
+    diagnostics_before: Optional[SmoothingDiagnosticOut] = None
+    diagnostics_after: Optional[SmoothingDiagnosticOut] = None
+    candidates: List[SmoothingCandidateOut] = Field(default_factory=list)
+    points: List[SmoothingPointOut] = Field(default_factory=list)
+    spectrum: List[SmoothingSpectrumPointOut] = Field(default_factory=list)
+    residual_acf: List[SmoothingAcfPointOut] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+    recommendation: str
+    methodology_note: str
+
+
+class DatasetPreprocessingSmoothingProfileResponse(BaseModel):
+    mode: Literal["auto", "enabled", "disabled"] = "auto"
+    status: Literal["done", "warning", "pending", "skipped"] = "pending"
+    status_reason: Optional[Literal["not_required", "disabled"]] = None
+    profile: PreprocessingSmoothingProfileOut
+
+
+class DatasetPreprocessingSmoothingRequest(BaseModel):
+    column: str = Field(..., min_length=1)
+    method: SmoothingMethod
+    window: int = Field(7, ge=3, le=501)
+    span: int = Field(7, ge=2, le=501)
+    frac: float = Field(0.2, gt=0, le=1)
+    polyorder: int = Field(2, ge=1, le=10)
+    confirm_non_causal: bool = False
+    apply: bool = Field(False, description="False — preview; True — сохранить новую колонку и параметры")
+
+
+class SmoothingTransformationMetadataOut(BaseModel):
+    kind: Literal["smoothing"] = "smoothing"
+    source_column: str
+    output_column: str
+    method: SmoothingMethod
+    parameters: Dict[str, float] = Field(default_factory=dict)
+    causal: bool
+    modeling_safe: bool
+    inverse_supported: bool = False
+    fitted_on_n: int
+
+
+class DatasetPreprocessingSmoothingResponse(BaseModel):
+    applied: bool
+    column: str
+    method: SmoothingMethod
+    output_column: str
+    rows_before: int
+    rows_after: int
+    columns_before: int
+    columns_after: int
+    metadata: SmoothingTransformationMetadataOut
+
+
 # ── Структурная детекция (2026-08-14, найден реальный баг: фронт
 # показывал позиционную заглушку "первые 3 колонки файла" вместо
 # реального контентного скоринга -- см. app/data/detectors.py) ──

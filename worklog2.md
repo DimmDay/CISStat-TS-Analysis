@@ -308,3 +308,58 @@ Date: 2026-08-31
 - `packages/ui/index.ts`
 - `tests/api/test_dataset_preprocessing_variance.py`
 - `tests/unit/test_variance_stabilization.py`
+
+---
+
+## Task ID: 83 — Предобработка «Сглаживание ряда»
+
+Дата: 2026-09-01
+
+### Аудит методологии
+
+- В legacy backend уже существовал `app.features.rolling`: SMA, EMA, WMA, rolling median и LOWESS; Streamlit-контур дополнительно вызывал HP-filter. В новом standalone/embedded frontend остановка оставалась статической заглушкой без session API.
+- Исправлена утечка будущего: legacy SMA/median по умолчанию использовали `center=True`, а WMA заполнял начало через `bfill()` значением будущего полного окна. Новый контур использует trailing SMA/WMA/median, EMA `adjust=False`; WMA считает каждый префикс собственными весами 1…k.
+- LOWESS и Savitzky–Golay честно обозначены как двусторонние offline-фильтры. Для preview/apply требуется отдельное подтверждение; metadata содержит `causal=false`, `modeling_safe=false`. Каузальность самого расчёта не отменяет leakage выбора параметров: в backtest method/window/span выбираются только на train.
+- Абсолютный legacy roughness заменён на безразмерный `mean((Δ²y)²) / Var(y)`. Legacy-пороги одного `σ(Δy)/σ(y)` не выдаются за тест шума: основной `needs_smoothing` — прозрачная UI-эвристика совместного сигнала normalized roughness ≥ 1 и доли periodogram-мощности при f ≥ 0,25 не меньше 0,35.
+- Визуальная гладкость не трактуется как улучшение прогноза. Корреляция, снижение roughness/high-frequency power, сохранённая дисперсия и Ljung–Box остатка описывают компромисс, но итоговое решение требует expanding/sliding-window backtest.
+- HP-filter исключён из основной матрицы как trend/cycle decomposition с endpoint bias, дублирующая уже реализованную остановку «Декомпозиция ряда». Заодно исправлено описание legacy-параметров: официальная документация statsmodels приводит 6,25 для annual, 1600 для quarterly и 129600 для monthly, а не прежнюю таблицу платформы.
+- Методология опирается на официальные реализации: [pandas rolling](https://pandas.pydata.org/docs/reference/api/pandas.Series.rolling.html), [pandas EWM](https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.ewm.html), [SciPy periodogram](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.periodogram.html), [SciPy Savitzky–Golay](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html), [statsmodels LOWESS](https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.smoothers_lowess.lowess), [statsmodels HP-filter](https://www.statsmodels.org/stable/generated/statsmodels.tsa.filters.hp_filter.hpfilter.html).
+
+### Реализация
+
+- Добавлен чистый core `apply_smoothing_series` для шести методов: `sma`, `ema`, `wma`, `median`, `savgol`, `lowess`, с единым контрактом параметров и признаками causal/modeling-safe/inverse-supported.
+- Legacy `app.features.rolling` реально переиспользован и исправлен. WMA больше не подсматривает в будущее; LOWESS использует одну residual-reweighting итерацию после остановки «Выбросы» и официальный `delta` для длинных рядов, сокращая вычислительную нагрузку Render.
+- Добавлен `GET /v1/session/dataset/preprocessing/smoothing-profile`: общий target, честная временная сортировка или row-order, проверка пропусков/finite/константы/N≥15, блокировка нескольких значений на одну дату, регулярность/частота, diagnostics до/после, шесть кандидатов, ряд, удалённая компонента, ACF и спектр.
+- Добавлен `POST /v1/session/dataset/preprocessing/smoothing-transformations` с preview → подтверждение → атомарный apply. Исходный target не перезаписывается; создаётся `*_<method>`. Конфликт имени возвращает 422.
+- Apply сохраняет в `AnalysisSession.preprocessing_transformations` kind/source/output/method/parameters, causal/modeling_safe, `inverse_supported=false` и `fitted_on_n`. Для LOWESS/Savitzky–Golay без `confirm_non_causal=true` возвращается 422 до выполнения дорогого расчёта.
+- Остановка подключена к общему target lifecycle, `auto/enabled/disabled`, статусам степпера, прогрессу, четырём сводным метрикам и ручному пересчёту обеих оболочек.
+- В «Обзоре» реализованы пять представлений светло-серыми круглыми бейджами: исходный/сглаженный ряд, удалённая компонента + ACF, сравнение методов, спектр до/после и диагностические карточки. Добавлены кликабельные ссылки на официальную документацию.
+- Мастер поддерживает параметры window/span/frac/polyorder, отдельно объясняет каузальный и offline-контракты, preview на глубокой копии и подтверждение добавления новой колонки.
+- Комментарий ограничения pandas `<3` актуализирован: прежний явный WMA-блокер устранён, но верхняя граница сохраняется до отдельного полного parity-аудита pandas 3.
+
+### TDD и проверка
+
+- RED backend: отсутствовал `app.preprocessing.smoothing`; RED frontend: отсутствовали `PreprocessingSmoothingOverview`/`Pipeline`.
+- Добавлены unit/API/Jest-тесты core, профиля, схемы, session persistence, режимов, offline opt-in, пяти представлений Overview и мастера.
+- PASS: task Python `py_compile`; `git diff --check`; ручной core smoke каузальности/WMA/Savitzky–Golay; adapter/Pydantic-schema smoke; edge-contract smoke для missing/constant/panel/offline gate.
+- Полный pytest/Jest/typecheck/production build в текущей изолированной среде не запускался: свежий clone не содержит pytest/FastAPI/statsmodels/node_modules, а установка из PyPI/npm заблокирована сетевой политикой среды. Тестовые файлы готовы для обязательного прогона в CI/рабочей среде с зависимостями; это ограничение среды, а не отмеченный PASS.
+- Общий `compileall` дополнительно упирается в ранее существующий `IndentationError` в `tests/unit/test_file_loader.py:87`; task-файлы компилируются успешно.
+
+### Изменённые и новые файлы
+
+- `app/features/rolling.py`
+- `app/preprocessing/smoothing.py`
+- `apps/api/preprocessing_smoothing.py`
+- `apps/api/routers/session.py`
+- `apps/api/schemas.py`
+- `packages/ui/components/PreprocessingSmoothingOverview.tsx`
+- `packages/ui/components/PreprocessingSmoothingOverview.test.tsx`
+- `packages/ui/components/PreprocessingSmoothingPipeline.tsx`
+- `packages/ui/components/PreprocessingSmoothingPipeline.test.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.test.tsx`
+- `packages/ui/index.ts`
+- `requirements.txt`
+- `tests/unit/test_rolling.py`
+- `tests/unit/test_preprocessing_smoothing.py`
+- `tests/api/test_dataset_preprocessing_smoothing.py`

@@ -61,11 +61,15 @@ def apply_wma(
     Returns:
         сглаженный ряд
     """
-    weights = np.arange(1, window + 1)
-    smoothed = series.rolling(window=window).apply(
-        lambda x: np.dot(x, weights) / weights.sum(), raw=True
+    # min_periods=1 не оставляет пустой префикс и, в отличие от прежнего
+    # ``bfill()``, не подставляет в начало значение, рассчитанное с
+    # использованием будущего полного окна. Для каждого доступного
+    # префикса строятся собственные линейные веса 1..k.
+    smoothed = series.rolling(window=window, min_periods=1).apply(
+        lambda x: np.dot(x, np.arange(1, len(x) + 1)) / np.arange(1, len(x) + 1).sum(),
+        raw=True,
     )
-    return smoothed.bfill()
+    return smoothed
 
 
 def apply_median_smoothing(
@@ -105,7 +109,15 @@ def apply_lowess(
     
     x = np.arange(len(series))
     y = series.values
-    lowess_result = lowess(y, x, frac=frac, return_sorted=False)
+    # После отдельной остановки «Выбросы» трёх тяжёлых robust-итераций
+    # legacy по умолчанию не требуется. Одна итерация сохраняет защиту от
+    # остаточных экстремумов. Для длинных рядов используем официальный
+    # delta-механизм statsmodels: близкие точки интерполируются между
+    # локальными регрессиями и не создают O(N²)-таймаут Render.
+    delta = 0.01 * float(x[-1] - x[0]) if len(x) > 1000 else 0.0
+    lowess_result = lowess(
+        y, x, frac=frac, it=1, delta=delta, return_sorted=False,
+    )
     return pd.Series(lowess_result, index=series.index)
 
 

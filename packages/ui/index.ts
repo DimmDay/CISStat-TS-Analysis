@@ -82,6 +82,14 @@ export type {
   VarianceProfileResponse,
 } from "./components/PreprocessingVarianceOverview";
 export { PreprocessingVariancePipeline } from "./components/PreprocessingVariancePipeline";
+export { PreprocessingSmoothingOverview } from "./components/PreprocessingSmoothingOverview";
+export type {
+  SmoothingMethod,
+  SmoothingDiagnostics,
+  SmoothingProfile,
+  SmoothingProfileResponse,
+} from "./components/PreprocessingSmoothingOverview";
+export { PreprocessingSmoothingPipeline } from "./components/PreprocessingSmoothingPipeline";
 export { TsAnalysisValidation } from "./components/TsAnalysisValidation";
 export { ValidationSufficiencyOverview } from "./components/ValidationSufficiencyOverview";
 export { ValidationSufficiencyPipeline } from "./components/ValidationSufficiencyPipeline";

@@ -1,9 +1,9 @@
 # === Основные зависимости ===
 streamlit>=1.30.0
-# pandas закреплён строго ниже 3.0: app/features/rolling.py::apply_wma использует
-# .fillna(method='bfill'), а параметр method был удалён в pandas 3.0.
-# Снять верхнюю границу можно только вместе с фиксом rolling.py (см. tools/passport_parity_check.py
-# для образца процесса: golden-тест до правки, потом .bfill() вместо fillna(method=...)).
+# Верхняя граница пока сохраняется консервативно до полного pandas 3 parity-прогона.
+# Прежний явный блокер app/features/rolling.py::apply_wma устранён в Task 83:
+# WMA больше не использует fillna(method=...) / bfill и не подсматривает в будущее.
+# Снимать ограничение следует отдельной задачей после полного golden/regression набора.
 pandas>=2.0.0,<3.0.0
 plotly>=5.18.0
 sqlalchemy>=2.0.0

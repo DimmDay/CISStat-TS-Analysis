@@ -78,6 +78,9 @@ from apps.api.schemas import (
     DatasetPreprocessingVarianceProfileResponse,
     DatasetPreprocessingVarianceRequest,
     DatasetPreprocessingVarianceResponse,
+    DatasetPreprocessingSmoothingProfileResponse,
+    DatasetPreprocessingSmoothingRequest,
+    DatasetPreprocessingSmoothingResponse,
     DatasetRangeCorrectionRequest,
     DatasetRangeCorrectionResponse,
     DatasetRangeProfileResponse,
@@ -185,6 +188,10 @@ from apps.api.preprocessing_decomposition import (
 from apps.api.preprocessing_variance import (
     build_variance_profile,
     preview_variance_transformation,
+)
+from apps.api.preprocessing_smoothing import (
+    build_smoothing_profile,
+    preview_smoothing_transformation,
 )
 from apps.api.sufficiency_plan import preview_sufficiency_plan
 from apps.api.text_quality_correction import preview_text_quality_corrections
@@ -351,6 +358,17 @@ def _preprocessing_variance_status(
     if not applicable:
         return "skipped", "not_required"
     return ("warning" if needs_stabilization else "done"), None
+
+
+def _preprocessing_smoothing_status(
+    mode: str, applicable: bool, needs_smoothing: bool
+) -> tuple[str, Optional[str]]:
+    """warning означает диагностическую потребность сравнить фильтры."""
+    if mode == "disabled":
+        return "skipped", "disabled"
+    if not applicable:
+        return "skipped", "not_required"
+    return ("warning" if needs_smoothing else "done"), None
 
 
 def _to_response(session: AnalysisSession) -> SessionStateResponse:
@@ -2330,6 +2348,98 @@ def create_dataset_preprocessing_variance_transformation(
         session.touch()
         store.save(session)
     return DatasetPreprocessingVarianceResponse(applied=payload.apply, **summary)
+
+
+@router.get(
+    "/dataset/preprocessing/smoothing-profile",
+    response_model=DatasetPreprocessingSmoothingProfileResponse,
+)
+def get_dataset_preprocessing_smoothing_profile(
+    column: str,
+    request: Request,
+    response: Response,
+    method: str = "auto",
+    window: int = Query(7, ge=3, le=501),
+    span: int = Query(7, ge=2, le=501),
+    frac: float = Query(0.2, gt=0, le=1),
+    polyorder: int = Query(2, ge=1, le=10),
+):
+    """Профиль высокочастотной мощности и сравнение фильтров.
+
+    Auto выбирает EMA как безопасный каузальный baseline. Ранжирование
+    по полному ряду не объявляется оптимизацией прогнозной точности.
+    """
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая")
+    if method not in {"auto", "sma", "ema", "wma", "median", "savgol", "lowess"}:
+        raise HTTPException(status_code=422, detail=f"Неподдерживаемый метод сглаживания: {method}")
+
+    profile = build_smoothing_profile(
+        session.dataframe,
+        column=column,
+        method=method,
+        window=window,
+        span=span,
+        frac=frac,
+        polyorder=polyorder,
+    )
+    mode = _effective_preprocessing_check_modes(session)["smoothing"]
+    status, status_reason = _preprocessing_smoothing_status(
+        mode, profile["applicable"], profile["needs_smoothing"],
+    )
+    return DatasetPreprocessingSmoothingProfileResponse(
+        mode=mode, status=status, status_reason=status_reason, profile=profile,
+    )
+
+
+@router.post(
+    "/dataset/preprocessing/smoothing-transformations",
+    response_model=DatasetPreprocessingSmoothingResponse,
+)
+def create_dataset_preprocessing_smoothing_transformation(
+    payload: DatasetPreprocessingSmoothingRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply новой колонки; target не перезаписывается.
+
+    LOWESS/Savitzky–Golay требуют отдельного подтверждения некаузального
+    offline-режима. Метаданные остаются в AnalysisSession.
+    """
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    try:
+        corrected_df, summary = preview_smoothing_transformation(
+            session.dataframe,
+            payload.column,
+            payload.method,
+            window=payload.window,
+            span=payload.span,
+            frac=payload.frac,
+            polyorder=payload.polyorder,
+            confirm_non_causal=payload.confirm_non_causal,
+        )
+    except (ValueError, TypeError, FloatingPointError, OverflowError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        session.preprocessing_transformations[summary["output_column"]] = dict(summary["metadata"])
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
+        session.touch()
+        store.save(session)
+    return DatasetPreprocessingSmoothingResponse(applied=payload.apply, **summary)
 
 
 @router.get(

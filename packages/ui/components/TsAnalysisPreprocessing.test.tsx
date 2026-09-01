@@ -110,12 +110,28 @@ const VARIANCE_PROFILE = {
   },
 };
 
+const SMOOTHING_PROFILE = {
+  mode: "auto", status: "warning", status_reason: null,
+  profile: {
+    column: "Price", applicable: true, reason: null, n_observations: 60,
+    missing_count: 0, order_source: "time_column", order_column: "Date",
+    frequency: "MS", regular: true, selected_method: "ema",
+    selected_parameters: { span: 7, alpha: 0.25 }, needs_smoothing: true,
+    diagnostics_before: { normalized_roughness: 2.5, difference_std_ratio: 0.8, lag1_autocorrelation: 0.3, high_frequency_power_share: 0.48, standard_deviation: 3 },
+    diagnostics_after: { normalized_roughness: 0.6, difference_std_ratio: 0.2, lag1_autocorrelation: 0.9, high_frequency_power_share: 0.1, standard_deviation: 2 },
+    candidates: [{ method: "ema", label: "EMA", causal: true, available: true, reason: null, parameter_label: "span=7", correlation: 0.9, roughness_reduction_pct: 70, high_frequency_reduction_pct: 75, variance_retained_pct: 70, residual_ljung_box_pvalue: 0.2 }],
+    points: [], spectrum: [], residual_acf: [], warnings: [],
+    recommendation: "Высокочастотная составляющая выражена.",
+    methodology_note: "Эвристика, не статистический тест.",
+  },
+};
+
 // Маршрутизирующий мок fetch -- используется везде, где раньше был
 // плоский `jest.fn().mockResolvedValue(MISSING_PROFILE)`: теперь ДВА
 // реальных стопа опрашивают бэкенд параллельно при монтировании, и без
 // маршрутизации по URL «Выбросы» получали бы чужой (missing-shaped)
 // ответ.
-function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; decomposition?: unknown; variance?: unknown; put?: unknown } = {}) {
+function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; decomposition?: unknown; variance?: unknown; smoothing?: unknown; put?: unknown } = {}) {
   return jest.fn((url: string, init?: RequestInit) => {
     if (typeof url === "string" && url.includes("/target-column")) {
       const selected = init?.method === "POST"
@@ -139,6 +155,9 @@ function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regulari
     }
     if (typeof url === "string" && url.includes("variance-profile")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.variance ?? VARIANCE_PROFILE) });
+    }
+    if (typeof url === "string" && url.includes("smoothing-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.smoothing ?? SMOOTHING_PROFILE) });
     }
     if (typeof url === "string" && url.includes("regularity-profile")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.regularity ?? REGULARITY_PROFILE) });
@@ -582,5 +601,28 @@ describe("TsAnalysisPreprocessing — остановка «Стабилизац�
     expect(screen.getByRole("region", { name: "Мастер стабилизации дисперсии" })).toBeInTheDocument();
     fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
     expect(screen.getByText(/Старый код добавлял 1e-10/)).toBeInTheDocument();
+  });
+});
+
+describe("TsAnalysisPreprocessing — остановка «Сглаживание ряда»", () => {
+  beforeEach(() => { global.fetch = routeFetch(); });
+
+  it("shows the visual overview, real status and mode selector", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Сглаживание ряда"));
+    expect(await screen.findByRole("tablist", { name: "Графики сглаживания ряда" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Режим проверки Сглаживание ряда" })).toBeInTheDocument();
+    expect(screen.getAllByText(/Высокочастотная составляющая выражена/).length).toBeGreaterThan(0);
+  });
+
+  it("opens the wizard and documents corrected causal methodology", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Сглаживание ряда"));
+    await screen.findByRole("tablist", { name: "Графики сглаживания ряда" });
+    fireEvent.click(screen.getByRole("button", { name: "Настроить сглаживание" }));
+    expect(screen.getByRole("region", { name: "Мастер сглаживания ряда" })).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/WMA.bfill подставлял в начало/)).toBeInTheDocument();
+    expect(screen.getByText(/HP-filter исключён/)).toBeInTheDocument();
   });
 });

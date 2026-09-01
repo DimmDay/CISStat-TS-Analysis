@@ -40,6 +40,11 @@ import {
   type VarianceProfileResponse,
 } from "./PreprocessingVarianceOverview";
 import { PreprocessingVariancePipeline } from "./PreprocessingVariancePipeline";
+import {
+  PreprocessingSmoothingOverview,
+  type SmoothingProfileResponse,
+} from "./PreprocessingSmoothingOverview";
+import { PreprocessingSmoothingPipeline } from "./PreprocessingSmoothingPipeline";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -247,6 +252,42 @@ const VARIANCE_PIPELINE_DESCRIPTION = `Мастер стабилизации д�
 3. Preview рассчитывается на глубокой копии. Исходный target не перезаписывается; добавляется колонка *_box_cox, *_yeo_johnson, *_log, *_log1p или *_sqrt.
 4. После отдельного подтверждения apply атомарно сохраняет новую колонку, method, λ, shift=0 и число наблюдений fit. Эти метаданные достаточны для обратного преобразования.
 5. Если сравнительный score не улучшился или исходная диагностика не выявила проблемы, оставьте исходную шкалу. Для прогнозного pipeline переоцените λ внутри каждого fold только на train.`;
+
+const SMOOTHING_METRICS_DESCRIPTION = `Метрики и алгоритм: Сглаживание ряда
+
+Цель
+Опционально уменьшить высокочастотные колебания и создать отдельный сглаженный признак, не перезаписывая исходный target. Визуально гладкая линия не означает лучший прогноз: решение подтверждается только временным backtest.
+
+Метрики
+1. Нормированная roughness = mean((Δ²y)²) / Var(y) — безразмерная мера кривизны вместо абсолютной суммы квадратов legacy-кода, которая зависела от масштаба и длины ряда.
+2. σ(Δy) / σ(y) и lag-1 autocorrelation описывают локальную изменчивость и память ряда, но сами по себе не отделяют шум от полезной краткосрочной динамики.
+3. High-frequency power share — доля нормированной мощности scipy.signal.periodogram при f ≥ 0,25 цикла на наблюдение после линейного detrend.
+4. needs_smoothing — прозрачная UI-эвристика: одновременно high-frequency share ≥ 0,35 и normalized roughness ≥ 1. Это не статистический тест и не критерий качества модели.
+5. Для каждого метода показаны корреляция с исходным рядом, снижение roughness/high-frequency power, сохранённая дисперсия и Ljung–Box p-value удалённой компоненты. Эти метрики помогают увидеть компромисс, но не ранжируют прогнозы.
+
+Методы и корректировка legacy
+Переиспользованы app.features.rolling и официальные pandas rolling/EWM, statsmodels LOWESS; добавлен официальный scipy.signal.savgol_filter. Trailing SMA, EMA(adjust=False), trailing WMA и trailing median каузальны. Исправлен leakage legacy: center=True у SMA/median использовал будущие точки, а WMA.bfill подставлял в начало результат будущего полного окна. Теперь WMA на префиксе использует только доступную историю. Для длинного LOWESS включён официальный delta-механизм statsmodels и одна residual-reweighting итерация после уже пройденной остановки «Выбросы», чтобы профиль укладывался в вычислительный бюджет Render.
+
+LOWESS и Savitzky–Golay двусторонние и явно маркируются offline. HP-filter исключён из основной матрицы: это trend/cycle decomposition с endpoint bias, он дублирует остановку «Декомпозиция ряда»; legacy-рекомендации λ также были неверны относительно statsmodels (официально: 6,25 annual, 1600 quarterly, 129600 monthly).
+
+Ограничение утечки
+Даже каузальный расчёт становится leakage, если метод/параметр выбран по validation/test. В backtest выбор выполняется на train; EMA переносит состояние, trailing-фильтры используют только историю до t. Offline-выходы нельзя подавать как готовые признаки.
+
+Официальные реализации
+- pandas rolling: https://pandas.pydata.org/docs/reference/api/pandas.Series.rolling.html
+- pandas EWM: https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.ewm.html
+- SciPy periodogram: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.periodogram.html
+- SciPy Savitzky–Golay: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.savgol_filter.html
+- statsmodels LOWESS: https://www.statsmodels.org/stable/generated/statsmodels.nonparametric.smoothers_lowess.lowess
+- statsmodels HP-filter (обоснование исключения): https://www.statsmodels.org/stable/generated/statsmodels.tsa.filters.hp_filter.hpfilter.html`;
+
+const SMOOTHING_PIPELINE_DESCRIPTION = `Мастер сглаживания ряда
+
+1. Выберите метод. Для прогнозного контура используйте каузальные EMA, trailing SMA/WMA/median. LOWESS и Savitzky–Golay доступны для offline-анализа только после отдельного подтверждения.
+2. Настройте span/window/frac/polyorder. Savitzky–Golay требует нечётное window и polyorder < window; backend проверяет ограничения официальной SciPy-реализации.
+3. Preview выполняется на глубокой копии и создаёт новую колонку *_ema, *_sma, *_wma, *_median, *_savgol или *_lowess. Исходный target не перезаписывается.
+4. После подтверждения apply атомарно сохраняет колонку и metadata: method, parameters, causal/modeling_safe, inverse_supported=false и fitted_on_n.
+5. Сглаживание необратимо и способно удалить полезный сигнал. Сравните исходный и сглаженный варианты expanding/sliding-window backtest-ом; параметры выбирайте только на train.`;
 
 type PreprocessingCheckMode = "auto" | "enabled" | "disabled";
 
@@ -513,6 +554,37 @@ export function TsAnalysisPreprocessing() {
 
   const varianceStatus: CheckStatus = varianceLoading ? "running" : varianceNoDataset ? "skipped" : varianceError ? "error" : varianceProfile ? varianceProfile.status : "pending";
 
+  // ── Остановка «Сглаживание ряда»: каузальный baseline + offline-сравнение ──
+  const [smoothingProfile, setSmoothingProfile] = useState<SmoothingProfileResponse | null>(null);
+  const [smoothingLoading, setSmoothingLoading] = useState(false);
+  const [smoothingNoDataset, setSmoothingNoDataset] = useState(false);
+  const [smoothingError, setSmoothingError] = useState<string | null>(null);
+  const [smoothingRefreshKey, setSmoothingRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setSmoothingError(null); setSmoothingNoDataset(false);
+    if (!activeFeature) { setSmoothingProfile(null); setSmoothingLoading(false); return () => { active = false; }; }
+    setSmoothingLoading(true);
+    void (async () => {
+      try {
+        const response = await fetch(sessionApiUrl(`/dataset/preprocessing/smoothing-profile?column=${encodeURIComponent(activeFeature)}`), { credentials: "include" });
+        if (response.status === 404) { if (active) setSmoothingNoDataset(true); return; }
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(typeof body?.detail === "string" ? body.detail : `HTTP ${response.status}`);
+        }
+        const data: SmoothingProfileResponse = await response.json();
+        if (active) { setSmoothingProfile(data); setCheckModes((current) => ({ ...current, smoothing: data.mode })); }
+      } catch (caught) {
+        if (active) setSmoothingError(caught instanceof Error ? caught.message : "Не удалось оценить потребность в сглаживании");
+      } finally { if (active) setSmoothingLoading(false); }
+    })();
+    return () => { active = false; };
+  }, [activeFeature, smoothingRefreshKey]);
+
+  const smoothingStatus: CheckStatus = smoothingLoading ? "running" : smoothingNoDataset ? "skipped" : smoothingError ? "error" : smoothingProfile ? smoothingProfile.status : "pending";
+
   // Итоговый список проверок -- статика для ещё не реализованных
   // остановок, реальные данные для «Пропусков», «Выбросов» и «Регулярности».
   const checks = useMemo<Check[]>(() => CHECKS.map((check) => {
@@ -521,8 +593,9 @@ export function TsAnalysisPreprocessing() {
     if (check.id === "regularity") return { ...check, status: regularityStatus, count: regularityProfile?.profile?.total_violations ?? null };
     if (check.id === "decomposition") return { ...check, status: decompositionStatus, count: decompositionProfile?.profile?.warnings.length ?? null };
     if (check.id === "variance_stab") return { ...check, status: varianceStatus, count: varianceProfile?.profile?.needs_stabilization ? 1 : 0 };
+    if (check.id === "smoothing") return { ...check, status: smoothingStatus, count: smoothingProfile?.profile?.needs_smoothing ? 1 : 0 };
     return check;
-  }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile, decompositionStatus, decompositionProfile, varianceStatus, varianceProfile]);
+  }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile, decompositionStatus, decompositionProfile, varianceStatus, varianceProfile, smoothingStatus, smoothingProfile]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -578,6 +651,7 @@ export function TsAnalysisPreprocessing() {
       if (checkId === "regularity") setRegularityRefreshKey((k) => k + 1);
       if (checkId === "decomposition") setDecompositionRefreshKey((k) => k + 1);
       if (checkId === "variance_stab") setVarianceRefreshKey((k) => k + 1);
+      if (checkId === "smoothing") setSmoothingRefreshKey((k) => k + 1);
     } catch {
       setCheckModes(previous);
       setModeError({ checkId, message: "Не удалось сохранить режим проверки" });
@@ -629,6 +703,9 @@ export function TsAnalysisPreprocessing() {
     if (activeCheckId === "variance_stab") {
       return descriptionSection === "metrics" ? VARIANCE_METRICS_DESCRIPTION : VARIANCE_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "smoothing") {
+      return descriptionSection === "metrics" ? SMOOTHING_METRICS_DESCRIPTION : SMOOTHING_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -653,6 +730,9 @@ export function TsAnalysisPreprocessing() {
     }
     if (activeCheckId === "variance_stab") {
       return descriptionSection === "metrics" ? "Метрики и алгоритм — Стабилизация дисперсии" : "Мастер стабилизации дисперсии";
+    }
+    if (activeCheckId === "smoothing") {
+      return descriptionSection === "metrics" ? "Метрики и алгоритм — Сглаживание ряда" : "Мастер сглаживания ряда";
     }
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
@@ -818,6 +898,8 @@ export function TsAnalysisPreprocessing() {
               ? "Мастер декомпозиции ряда"
               : activeCheckId === "variance_stab" && descriptionSection === "pipeline"
               ? "Мастер стабилизации дисперсии"
+              : activeCheckId === "smoothing" && descriptionSection === "pipeline"
+              ? "Мастер сглаживания ряда"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -841,6 +923,10 @@ export function TsAnalysisPreprocessing() {
               ? "Выберите обратимую трансформацию, оцените новую колонку на копии и подтвердите добавление."
               : activeCheckId === "variance_stab"
               ? "До/после, скользящая σ, сравнение методов, распределения и диагностика — во вкладках-бейджах."
+              : activeCheckId === "smoothing" && descriptionSection === "pipeline"
+              ? "Выберите каузальный или offline-метод, оцените новую колонку на копии и подтвердите добавление."
+              : activeCheckId === "smoothing"
+              ? "Ряд, удалённая компонента/ACF, сравнение методов, спектр и диагностика — во вкладках-бейджах."
               : "Меняется автоматически под активную проверку."}
           </p>
 
@@ -881,6 +967,19 @@ export function TsAnalysisPreprocessing() {
               loading={varianceLoading}
               error={varianceError}
               noDataset={varianceNoDataset}
+            />
+          ) : activeCheckId === "smoothing" && descriptionSection === "pipeline" ? (
+            <PreprocessingSmoothingPipeline
+              column={activeFeature}
+              recommendedMethod={smoothingProfile?.profile.selected_method ?? null}
+              onApplied={() => setSmoothingRefreshKey((k) => k + 1)}
+            />
+          ) : activeCheckId === "smoothing" ? (
+            <PreprocessingSmoothingOverview
+              profile={smoothingProfile?.profile ?? null}
+              loading={smoothingLoading}
+              error={smoothingError}
+              noDataset={smoothingNoDataset}
             />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
@@ -923,6 +1022,13 @@ export function TsAnalysisPreprocessing() {
               <Metric label="Score до" value={varianceProfile?.profile.diagnostics_before ? varianceProfile.profile.diagnostics_before.stability_score.toFixed(1) : "—"} />
               <Metric label="Score после" value={varianceProfile?.profile.diagnostics_after ? varianceProfile.profile.diagnostics_after.stability_score.toFixed(1) : "—"} />
             </div>
+          ) : activeCheckId === "smoothing" ? (
+            <div className="grid grid-cols-4 gap-3 mt-4">
+              <Metric label="Метод" value={smoothingProfile?.profile.selected_method?.toUpperCase() ?? "—"} />
+              <Metric label="Roughness до" value={smoothingProfile?.profile.diagnostics_before?.normalized_roughness !== null && smoothingProfile?.profile.diagnostics_before?.normalized_roughness !== undefined ? smoothingProfile.profile.diagnostics_before.normalized_roughness.toFixed(3) : "—"} />
+              <Metric label="High-freq до" value={smoothingProfile?.profile.diagnostics_before?.high_frequency_power_share !== null && smoothingProfile?.profile.diagnostics_before?.high_frequency_power_share !== undefined ? `${(100 * smoothingProfile.profile.diagnostics_before.high_frequency_power_share).toFixed(1)}%` : "—"} />
+              <Metric label="High-freq после" value={smoothingProfile?.profile.diagnostics_after?.high_frequency_power_share !== null && smoothingProfile?.profile.diagnostics_after?.high_frequency_power_share !== undefined ? `${(100 * smoothingProfile.profile.diagnostics_after.high_frequency_power_share).toFixed(1)}%` : "—"} />
+            </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
               <Metric label="Строк" value="200" />
@@ -960,7 +1066,7 @@ export function TsAnalysisPreprocessing() {
                   у остальных остановок ещё нет backend-проверки, которую
                   можно реально включить/отключить (см. комментарий у
                   useState checkModes выше). */}
-              {(check.id === "missing" || check.id === "outliers" || check.id === "regularity" || check.id === "decomposition" || check.id === "variance_stab") && (
+              {(check.id === "missing" || check.id === "outliers" || check.id === "regularity" || check.id === "decomposition" || check.id === "variance_stab" || check.id === "smoothing") && (
                 <label className="mb-2 block text-[11px] font-medium text-neutral-600">
                   Режим проверки
                   <select
@@ -1116,6 +1222,15 @@ export function TsAnalysisPreprocessing() {
                   {check.status === "warning" && <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">Обнаружена нестабильность масштаба; сравните трансформации</p>}
                   {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Сильных признаков нестабильной дисперсии нет</p>}
                 </>
+              ) : check.id === "smoothing" ? (
+                <>
+                  {check.status === "running" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">Оценивается высокочастотная составляющая…</p>}
+                  {check.status === "error" && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">{smoothingError ?? "Ошибка диагностики сглаживания"}</p>}
+                  {check.status === "pending" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">Проверка не запускалась</p>}
+                  {check.status === "skipped" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">{smoothingNoDataset ? "Нет активного датасета" : smoothingProfile?.status_reason === "disabled" ? "Отключено" : smoothingProfile?.profile.reason ?? "Не применимо"}</p>}
+                  {check.status === "warning" && <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">Высокочастотная составляющая выражена; сравните фильтры</p>}
+                  {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Сильного сигнала для обязательного сглаживания нет</p>}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -1152,7 +1267,7 @@ export function TsAnalysisPreprocessing() {
                     : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
                 }`}
               >
-                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : check.id === "variance_stab" ? "Настроить трансформацию" : "Полный пайплайн"}
+                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : check.id === "variance_stab" ? "Настроить трансформацию" : check.id === "smoothing" ? "Настроить сглаживание" : "Полный пайплайн"}
               </button>
 
               <Button>Пересчитать свойства после преобразования ({check.label.toLowerCase()})</Button>
