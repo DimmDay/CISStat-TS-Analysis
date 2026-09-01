@@ -1,4 +1,4 @@
-// packages/ui/lib/demoDatasets.ts
+/// packages/ui/lib/demoDatasets.ts
 //
 // Демо-датасеты для вкладки «Загрузка» (согласовано с тимлидом
 // 2026-08-19): при знакомстве с платформой у пользователя может не
@@ -431,31 +431,32 @@ function estimateKde(values: number[], nPoints = 40): KdePoint[] {
   return points;
 }
 
-/** Строит гистограмму по правилу Freedman-Diaconis (bin width = 2*IQR/n^(1/3)),
- * максимум 20 бинов — достаточно для статичного примера. */
+/** Строит гистограмму с фиксированным числом бинов = 30 — 1:1 как на
+ * бэкенде: apps/api/chart_data.py::build_histogram использует
+ * `np.histogram(values, bins=DEFAULT_HISTOGRAM_BINS)`, где
+ * DEFAULT_HISTOGRAM_BINS = 30 (apps/api/chart_data.py:33).
+ *
+ * Раньше тут было правило Freedman-Diaconis с ограничением min(20,…)/
+ * max(5,…) — давало 11 бинов для demo_energy_consumption.csv, что
+ * расходилось со вкладкой «Загрузка» (там 30 бинов из бэкенда).
+ * Точечная правка: 30 равномерных бинов по диапазону [min, max]. */
+const HISTOGRAM_BINS = 30;
+
 function buildHistogram(values: number[]): HistogramBin[] {
   const n = values.length;
   if (n < 2) return [];
-  const sorted = [...values].sort((a, b) => a - b);
-  const q1 = sorted[Math.floor(n * 0.25)];
-  const q3 = sorted[Math.floor(n * 0.75)];
-  const iqr = q3 - q1;
-  const min = sorted[0];
-  const max = sorted[n - 1];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
   if (max === min) return [];
-  // Freedman-Diaconis: bin width = 2 * IQR / n^(1/3).
-  let binWidth = iqr > 0 ? (2 * iqr) / Math.cbrt(n) : (max - min) / 10;
-  let nBins = Math.min(20, Math.ceil((max - min) / binWidth));
-  nBins = Math.max(5, nBins); // минимум 5 бинов для читаемости
-  binWidth = (max - min) / nBins;
+  const binWidth = (max - min) / HISTOGRAM_BINS;
   const bins: HistogramBin[] = [];
-  for (let i = 0; i < nBins; i++) {
+  for (let i = 0; i < HISTOGRAM_BINS; i++) {
     const x0 = min + i * binWidth;
     const x1 = x0 + binWidth;
     let count = 0;
     for (const v of values) {
-      // Последний бин включает правую границу.
-      if (v >= x0 && (v < x1 || (i === nBins - 1 && v <= x1))) count++;
+      // Последний бин включает правую границу (как np.histogram).
+      if (v >= x0 && (v < x1 || (i === HISTOGRAM_BINS - 1 && v <= x1))) count++;
     }
     bins.push({ x0, x1, count });
   }
