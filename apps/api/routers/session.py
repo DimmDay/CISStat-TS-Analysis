@@ -72,6 +72,9 @@ from apps.api.schemas import (
     DatasetMissingProfileResponse,
     DatasetPreprocessingCheckModesRequest,
     DatasetPreprocessingCheckModesResponse,
+    DatasetPreprocessingDecompositionProfileResponse,
+    DatasetPreprocessingDecompositionRequest,
+    DatasetPreprocessingDecompositionResponse,
     DatasetRangeCorrectionRequest,
     DatasetRangeCorrectionResponse,
     DatasetRangeProfileResponse,
@@ -172,6 +175,10 @@ from app.preprocessing.outliers import detect_outlier_mask, method_bounds, outli
 from apps.api.range_correction import preview_range_corrections
 from apps.api.referential_correction import preview_referential_corrections
 from apps.api.regularity_correction import preview_regularity_correction
+from apps.api.preprocessing_decomposition import (
+    build_preprocessing_decomposition,
+    preview_decomposition_outputs,
+)
 from apps.api.sufficiency_plan import preview_sufficiency_plan
 from apps.api.text_quality_correction import preview_text_quality_corrections
 from apps.api.type_conversion import preview_type_conversions
@@ -315,6 +322,17 @@ def _preprocessing_regularity_status(
     if not applicable:
         return "skipped", "not_required"
     return ("warning" if total_violations > 0 else "done"), None
+
+
+def _preprocessing_decomposition_status(
+    mode: str, applicable: bool, warnings: int
+) -> tuple[str, Optional[str]]:
+    """Успешный STL — done; диагностические проблемы остатка — warning."""
+    if mode == "disabled":
+        return "skipped", "disabled"
+    if not applicable:
+        return "skipped", "not_required"
+    return ("warning" if warnings > 0 else "done"), None
 
 
 def _to_response(session: AnalysisSession) -> SessionStateResponse:
@@ -2147,6 +2165,85 @@ def correct_dataset_preprocessing_regularity(
         store.save(session)
 
     return DatasetRegularityCorrectionResponse(applied=payload.apply, **summary)
+
+
+@router.get(
+    "/dataset/preprocessing/decomposition-profile",
+    response_model=DatasetPreprocessingDecompositionProfileResponse,
+)
+def get_dataset_preprocessing_decomposition_profile(
+    column: str,
+    request: Request,
+    response: Response,
+    period: Optional[int] = Query(None, ge=2),
+    robust: bool = True,
+):
+    """Диагностика остановки «Декомпозиция ряда».
+
+    Вычисляет STL по выбранному числовому target после строгих гейтов
+    полноты, уникальности дат и регулярности. Псевдо-«цикл» старого
+    upload-виджета намеренно не возвращается: STL определяет только
+    trend/seasonal/resid.
+    """
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая")
+
+    profile = build_preprocessing_decomposition(
+        session.dataframe, column=column, period=period, robust=robust,
+    )
+    mode = _effective_preprocessing_check_modes(session)["decomposition"]
+    status, status_reason = _preprocessing_decomposition_status(
+        mode, profile["applicable"], len(profile["warnings"]),
+    )
+    return DatasetPreprocessingDecompositionProfileResponse(
+        mode=mode, status=status, status_reason=status_reason, profile=profile,
+    )
+
+
+@router.post(
+    "/dataset/preprocessing/decomposition-outputs",
+    response_model=DatasetPreprocessingDecompositionResponse,
+)
+def create_dataset_preprocessing_decomposition_outputs(
+    payload: DatasetPreprocessingDecompositionRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply добавления компонент и скорректированных рядов.
+
+    Исходная целевая колонка не перезаписывается: это сохраняет
+    воспроизводимость и позволяет строить обратное преобразование.
+    """
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    try:
+        corrected_df, summary = preview_decomposition_outputs(
+            session.dataframe,
+            column=payload.column,
+            period=payload.period,
+            robust=payload.robust,
+            outputs=payload.outputs,
+        )
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
+        session.touch()
+        store.save(session)
+    return DatasetPreprocessingDecompositionResponse(applied=payload.apply, **summary)
 
 
 @router.get(

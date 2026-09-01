@@ -83,12 +83,25 @@ const REGULARITY_PROFILE = {
   },
 };
 
+const DECOMPOSITION_PROFILE = {
+  mode: "auto", status: "done", status_reason: null,
+  profile: {
+    column: "Price", date_column: "Date", applicable: true, reason: null,
+    method: "STL", robust: true, frequency: "MS", period: 12, n_points: 60,
+    sampled: false, original_count: 60, trend_strength: 0.9,
+    seasonal_strength: 0.85, residual_mean: 0, residual_std: 1,
+    ljung_box_lag: 12, ljung_box_pvalue: 0.2, jarque_bera_pvalue: 0.1,
+    points: [], seasonal_pattern: [], residual_acf: [], warnings: [],
+    recommendation: "Сезонность выражена.", methodology_note: "STL additive",
+  },
+};
+
 // Маршрутизирующий мок fetch -- используется везде, где раньше был
 // плоский `jest.fn().mockResolvedValue(MISSING_PROFILE)`: теперь ДВА
 // реальных стопа опрашивают бэкенд параллельно при монтировании, и без
 // маршрутизации по URL «Выбросы» получали бы чужой (missing-shaped)
 // ответ.
-function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; put?: unknown } = {}) {
+function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; decomposition?: unknown; put?: unknown } = {}) {
   return jest.fn((url: string, init?: RequestInit) => {
     if (typeof url === "string" && url.includes("/target-column")) {
       const selected = init?.method === "POST"
@@ -106,6 +119,9 @@ function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regulari
     }
     if (init?.method === "PUT") {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.put ?? { modes: {} }) });
+    }
+    if (typeof url === "string" && url.includes("decomposition-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.decomposition ?? DECOMPOSITION_PROFILE) });
     }
     if (typeof url === "string" && url.includes("regularity-profile")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.regularity ?? REGULARITY_PROFILE) });
@@ -294,9 +310,10 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
     render(<TsAnalysisPreprocessing />);
     await screen.findByText("Отключено");
     // 11 остановок всего, но «Пропуски» (skipped) исключены из знаменателя
-    // прогресса -- 0 done из 10 применимых, "100%" не должен появиться
+    // Декомпозиция может ещё выполняться (0) или уже завершиться (1):
+    // в обоих случаях 10 применимых остановок и "100%" не появляется.
     // ошибочно, а прогресс-бар не должен упасть на NaN/делении на 0.
-    expect(screen.getByText(/0\/10/)).toBeInTheDocument();
+    expect(screen.getByText(/^[01]\/10$/)).toBeInTheDocument();
   });
 
   it("shows a 'Панель управления' header above the right-hand column", async () => {
@@ -493,5 +510,38 @@ describe("TsAnalysisPreprocessing — остановка «Регулярнос�
 
     expect(await screen.findByRole("region", { name: "Мастер исправления регулярности" })).toBeInTheDocument();
     expect(screen.getAllByText(/Ресемплировать/).length).toBeGreaterThan(0);
+  });
+});
+
+describe("TsAnalysisPreprocessing — остановка «Декомпозиция ряда»", () => {
+  beforeEach(() => { global.fetch = routeFetch(); });
+
+  it("shows the real STL overview and mode selector", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Декомпозиция ряда"));
+
+    expect(await screen.findByRole("tablist", { name: "Графики декомпозиции" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Режим проверки Декомпозиция ряда" })).toBeInTheDocument();
+    expect(screen.getByText("STL выполнен, остаточная диагностика пройдена")).toBeInTheDocument();
+  });
+
+  it("opens the decomposition wizard and explains leakage", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Декомпозиция ряда"));
+    await screen.findByRole("tablist", { name: "Графики декомпозиции" });
+    fireEvent.click(screen.getByRole("button", { name: "Настроить декомпозицию" }));
+
+    expect(screen.getByRole("region", { name: "Мастер декомпозиции ряда" })).toBeInTheDocument();
+    expect(screen.getAllByText(/только на train/i).length).toBeGreaterThan(0);
+  });
+
+  it("describes why the pseudo-cycle and variance percentages are rejected", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Декомпозиция ряда"));
+    await screen.findByRole("tablist", { name: "Графики декомпозиции" });
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+
+    expect(screen.getByText(/двойной счёт/)).toBeInTheDocument();
+    expect(screen.getByText(/STL не возвращает отдельный cycle/)).toBeInTheDocument();
   });
 });

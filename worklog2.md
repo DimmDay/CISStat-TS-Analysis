@@ -203,3 +203,55 @@ Date: 2026-08-31
 - `src/catalog/modeling_spec_loader.py`
 - `tests/api/test_dataset_eda_model_matrix.py`
 - `tests/unit/test_eda_model_matrix.py`
+
+---
+
+## Task ID: 81 — Предобработка «Декомпозиция ряда»
+
+Дата: 2026-09-01
+
+### Аудит методологии
+
+- В backend уже существовали `app.preprocessing.decomposition.apply_decomposition` (statsmodels STL / classical additive / multiplicative) и upload-API компонент. Во frontend существовали только виджеты декомпозиции остановки «График» вкладки загрузки; сама остановка «Предобработка → Декомпозиция ряда» оставалась заглушкой.
+- Переиспользован официальный [statsmodels STL](https://www.statsmodels.org/stable/generated/statsmodels.tsa.seasonal.STL.html) с робастными весами. Classical `seasonal_decompose` не выбран основным методом, поскольку сама [документация statsmodels](https://www.statsmodels.org/stable/generated/statsmodels.tsa.seasonal.seasonal_decompose.html) называет его наивной декомпозицией и рекомендует более совершенные методы.
+- Исправлена методологическая ошибка нового контура: старые upload-бейджи выделяли «цикличность» как `trend − rolling_mean(trend)` и повторно включали её дисперсию вместе с дисперсией самого trend. STL не возвращает отдельный cycle, а коррелированные дисперсии компонент нельзя честно нормировать до 100%. Остановка использует только `observed = trend + seasonal + resid` и strength-метрики `max(0, 1 − Var(resid) / Var(component + resid))`.
+- Остаток проверяется ACF и официальным [statsmodels Ljung–Box](https://www.statsmodels.org/stable/generated/statsmodels.stats.diagnostic.acorr_ljungbox.html); Jarque–Bera трактуется только как предупреждение для параметрических интервалов, а не как блокирующее требование к любому прогнозу.
+- SEATS/X-13 не заявлены как «встроенные»: statsmodels требует отдельный X-12/X-13 executable (`X13PATH`/`X12PATH`), которого нет в контракте Render. MSTL оставлен следующим расширением для рядов с несколькими сезонностями; текущий детектор платформы возвращает один сезонный период.
+- Зафиксировано ограничение утечки: декомпозиция всего исторического ряда пригодна для EDA, но компоненты нельзя напрямую подавать в backtest. В моделировании STL должен переоцениваться только на train-части каждого fold.
+
+### Реализация
+
+- Добавлен `GET /v1/session/dataset/preprocessing/decomposition-profile`: выбранный общий target, автоматический/ручной period, robust STL, компоненты, средний сезонный профиль, ACF остатка, trend/seasonal strength, Ljung–Box и Jarque–Bera.
+- Добавлены честные гейты: числовой target, определённая временная колонка, отсутствие пропусков/битых дат, одна точка на дату, регулярная сетка, минимум два полных периода и ненулевая дисперсия. Панель, нерегулярность и недостаточная история дают `applicable=false`, а не синтетический период 12.
+- Поддержаны актуальные pandas-aliases `ME/BME/QE` наряду с прежними `M/BM/Q`.
+- Добавлен `POST /v1/session/dataset/preprocessing/decomposition-outputs` с контрактом preview → отдельное подтверждение → атомарный apply. Исходный target не перезаписывается; можно добавить `*_trend`, `*_seasonal`, `*_resid`, `*_seasonally_adjusted`, `*_detrended`. Конфликт имён блокируется 422.
+- Остановка включена в реальные `auto/enabled/disabled` режимы, статус степпера и общие метрики. `warning` означает оставшуюся структуру/ненормальность остатка, `done` — успешный STL без диагностических предупреждений, `skipped` — отключение или неприменимость.
+- В «Обзоре» реализованы четыре представления: компоненты, сезонный профиль, ACF остатка и диагностические карточки. Переключатели оформлены светло-серыми круглыми бейджами по запрошенному паттерну «Матрицы моделей», без активного фиолетового таба.
+- Мастер позволяет настроить период/robust и выбрать выходы, показывает preview добавляемых колонок и предупреждает об утечке в backtest.
+
+### TDD и проверка
+
+- RED backend: отсутствовал `apps.api.preprocessing_decomposition`; RED frontend: отсутствовал `PreprocessingDecompositionOverview`.
+- Backend core/API и регрессия существующей декомпозиции/регулярности: 71/71 PASS.
+- Frontend «Предобработка»: 12 suites, 88/88 PASS.
+- Расширенный Python-набор с `test_regularity_correction.py`: 80/81 PASS; старый тест `test_profile_distinguishes_sort_duplicates_and_bad_dates` ожидает `is_sorted=false`, получает `true` и воспроизводится без изменений на чистом Task 80, поэтому не является регрессией Task 81.
+- TypeScript embedded/standalone: PASS.
+- Production build embedded/standalone: PASS, по 13/13 страниц.
+- `git diff --check` и `compileall`: PASS.
+
+### Изменённые и новые файлы
+
+- `app/preprocessing/decomposition.py`
+- `apps/api/decomposition_data.py`
+- `apps/api/preprocessing_decomposition.py`
+- `apps/api/routers/session.py`
+- `apps/api/schemas.py`
+- `packages/ui/components/PreprocessingDecompositionOverview.tsx`
+- `packages/ui/components/PreprocessingDecompositionOverview.test.tsx`
+- `packages/ui/components/PreprocessingDecompositionPipeline.tsx`
+- `packages/ui/components/PreprocessingDecompositionPipeline.test.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.test.tsx`
+- `packages/ui/index.ts`
+- `tests/api/test_dataset_preprocessing_decomposition.py`
+- `tests/unit/test_preprocessing_decomposition.py`

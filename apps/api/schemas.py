@@ -863,6 +863,90 @@ class DecompositionSeriesResponse(BaseModel):
     points: List[DecompositionSeriesPoint] = Field(default_factory=list)
 
 
+class PreprocessingDecompositionPointOut(BaseModel):
+    x: str
+    observed: float
+    trend: float
+    seasonal: float
+    resid: float
+
+
+class PreprocessingSeasonalPatternPointOut(BaseModel):
+    phase: int
+    label: str
+    value: float
+
+
+class PreprocessingResidualAcfPointOut(BaseModel):
+    lag: int
+    value: float
+
+
+class PreprocessingDecompositionProfileOut(BaseModel):
+    """Диагностический профиль робастного STL без псевдо-компонент.
+
+    ``trend_strength``/``seasonal_strength`` — ограниченные [0, 1]
+    strength-метрики через дисперсию остатка, не «проценты дисперсий»,
+    которые нельзя честно складывать для коррелированных компонент STL.
+    """
+    column: str
+    date_column: Optional[str] = None
+    applicable: bool
+    reason: Optional[str] = None
+    method: Literal["STL"] = "STL"
+    robust: bool = True
+    frequency: Optional[str] = None
+    period: Optional[int] = None
+    n_points: int = 0
+    sampled: bool = False
+    original_count: int = 0
+    trend_strength: Optional[float] = None
+    seasonal_strength: Optional[float] = None
+    residual_mean: Optional[float] = None
+    residual_std: Optional[float] = None
+    ljung_box_lag: Optional[int] = None
+    ljung_box_pvalue: Optional[float] = None
+    jarque_bera_pvalue: Optional[float] = None
+    points: List[PreprocessingDecompositionPointOut] = Field(default_factory=list)
+    seasonal_pattern: List[PreprocessingSeasonalPatternPointOut] = Field(default_factory=list)
+    residual_acf: List[PreprocessingResidualAcfPointOut] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+    recommendation: str
+    methodology_note: str
+
+
+class DatasetPreprocessingDecompositionProfileResponse(BaseModel):
+    mode: Literal["auto", "enabled", "disabled"] = "auto"
+    status: Literal["done", "warning", "pending", "skipped"] = "pending"
+    status_reason: Optional[Literal["not_required", "disabled"]] = None
+    profile: PreprocessingDecompositionProfileOut
+
+
+class DatasetPreprocessingDecompositionRequest(BaseModel):
+    column: str = Field(..., min_length=1)
+    period: Optional[int] = Field(None, ge=2)
+    robust: bool = True
+    outputs: List[Literal["components", "seasonally_adjusted", "detrended"]] = Field(
+        default_factory=lambda: ["components"], min_length=1, max_length=3,
+    )
+    apply: bool = Field(False, description="False — preview; True — сохранить новые колонки в сессии")
+
+
+class DatasetPreprocessingDecompositionResponse(BaseModel):
+    applied: bool
+    column: str
+    method: Literal["STL"] = "STL"
+    robust: bool
+    period: int
+    outputs: List[str]
+    rows_before: int
+    rows_after: int
+    columns_before: int
+    columns_after: int
+    added_columns: List[str] = Field(default_factory=list)
+    profile: PreprocessingDecompositionProfileOut
+
+
 # ── Структурная детекция (2026-08-14, найден реальный баг: фронт
 # показывал позиционную заглушку "первые 3 колонки файла" вместо
 # реального контентного скоринга -- см. app/data/detectors.py) ──

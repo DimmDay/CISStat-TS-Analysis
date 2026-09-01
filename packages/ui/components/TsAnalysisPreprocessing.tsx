@@ -30,6 +30,11 @@ import { PreprocessingOutliersOverview, type OutlierProfileResponse } from "./Pr
 import { PreprocessingOutliersPipeline } from "./PreprocessingOutliersPipeline";
 import { PreprocessingRegularityOverview, type RegularityProfileResponse } from "./PreprocessingRegularityOverview";
 import { PreprocessingRegularityPipeline } from "./PreprocessingRegularityPipeline";
+import {
+  PreprocessingDecompositionOverview,
+  type PreprocessingDecompositionProfileResponse,
+} from "./PreprocessingDecompositionOverview";
+import { PreprocessingDecompositionPipeline } from "./PreprocessingDecompositionPipeline";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -51,7 +56,7 @@ const CHECKS: Check[] = [
   { id: "regularity", label: "Регулярность ряда", status: "pending", count: null,
     description: "Нерегулярный временной шаг мешает декомпозиции (STL), спектральному анализу (FFT) и моделям ARIMA/SARIMA. Стратегии: сортировка по дате, ресемплирование к целевой частоте с интерполяцией/ffill/bfill/нулём/без заполнения, флаг нарушения." },
   { id: "decomposition", label: "Декомпозиция ряда", status: "pending", count: null,
-    description: "Разложение на Trend + Seasonal + Cycle + Residual методами STL, Classical, SEATS или X13. Диагностика остатков на нормальность и автокорреляцию." },
+    description: "Робастный STL: наблюдение = тренд + сезонность + остаток. Диагностика — strength-метрики, ACF/Ljung–Box и Jarque–Bera; отдельная «циклическая» компонента не приписывается STL." },
   { id: "variance_stab", label: "Стабилизация дисперсии", status: "pending", count: null,
     description: "Гетероскедастичность ломает доверительные интервалы и тесты. Трансформации: Box-Cox, Yeo-Johnson, log, sqrt. Параметры сохраняются для обратного преобразования." },
   { id: "smoothing", label: "Сглаживание ряда", status: "pending", count: null,
@@ -186,6 +191,31 @@ const REGULARITY_PIPELINE_DESCRIPTION = `Мастер исправления р�
 3. Запустите «Предпросмотр изменений». Расчёт выполняется на копии датасета и не меняет активные данные: вы увидите изменение числа нарушений и строк (ресемплирование добавляет строки на месте разрывов), число агрегированных дублей.
 4. Подтвердите применение отдельным чекбоксом и нажмите «Применить исправления». Подготовленная копия сохраняется в сессии атомарно, после чего профиль регулярности и статус остановки пересчитываются автоматически.
 5. Совет: если дальше в пайплайне планируется декомпозиция или спектральный анализ, выбирайте стратегию с ресемплированием (не «Отсортировать» и не «Флаг») — этим шагам нужна физически регулярная сетка дат, а не просто отсутствие явных «разрывов» в отсортированном ряду.`;
+
+const DECOMPOSITION_METRICS_DESCRIPTION = `Метрики и алгоритм: Декомпозиция ряда
+
+Цель
+Разложить один полный регулярный ряд на три математически определённые компоненты робастного STL: observed = trend + seasonal + resid. Метод реализован официальной библиотекой statsmodels (STL, LOESS). Временная колонка определяется тем же content-детектором, что используется в «Регулярности ряда»; пропуски, нерегулярная сетка и несколько значений на одну дату блокируют расчёт с явным объяснением.
+
+Метрики
+1. Сила тренда F_T = max(0, 1 − Var(R) / Var(T + R)) и сила сезонности F_S = max(0, 1 − Var(R) / Var(S + R)), обе в диапазоне 0…1. Это НЕ доли общей дисперсии и их не нужно складывать до 100%.
+2. ACF остатка и Ljung–Box на lag = min(2 × period, floor(N / 5)): p < 0,05 означает, что в остатке сохранилась временная структура.
+3. Jarque–Bera остатка: p < 0,05 отвергает нормальность; это важно для параметрических доверительных интервалов, но само по себе не запрещает STL или точечный прогноз.
+4. Для автоматического периода используются календарные соответствия частоты (D→7, B→5, W→52, M/MS→12, Q/QS→4). Нужно минимум два полных периода; аналитик может задать период вручную.
+
+Корректировка методологии
+Старый upload-контур добавлял «цикличность» как trend минус 30-точечное скользящее среднее и суммировал её дисперсию вместе с дисперсией самого trend. Это двойной счёт: STL не возвращает отдельный cycle, а его компоненты не обязаны быть некоррелированными, поэтому нормировать сумму их дисперсий до 100% некорректно. В этой остановке псевдо-компонента исключена, а вместо «процентов дисперсии» применяются стандартные strength-метрики.
+
+Ограничение утечки
+Графики всего исторического ряда — разведочная диагностика. Компоненты, оценённые с использованием будущих наблюдений, нельзя напрямую использовать как признаки в backtest: STL нужно переоценивать внутри каждого fold только на train-части.`;
+
+const DECOMPOSITION_PIPELINE_DESCRIPTION = `Мастер декомпозиции ряда
+
+1. Проверьте автоматически определённый сезонный период или задайте целое значение вручную (не меньше 2; в данных должно быть не менее двух полных периодов).
+2. Оставьте робастный режим включённым после первичной обработки выбросов: statsmodels использует итеративные веса, уменьшающие влияние отдельных экстремумов.
+3. Выберите обратимые выходы: три компоненты *_trend/*_seasonal/*_resid, сезонно скорректированный ряд *_seasonally_adjusted и/или ряд без тренда *_detrended. Исходная целевая колонка никогда не перезаписывается.
+4. Выполните preview на глубокой копии, проверьте имена и число добавляемых колонок, затем отдельно подтвердите apply. При конфликте имён backend возвращает 422 вместо перезаписи данных.
+5. Добавленные по всему ряду компоненты предназначены для исследования и экспорта. Для честного моделирования декомпозицию следует встраивать в fold-aware pipeline и оценивать только на train.`;
 
 type PreprocessingCheckMode = "auto" | "enabled" | "disabled";
 
@@ -374,14 +404,62 @@ export function TsAnalysisPreprocessing() {
     ? regularityProfile.status
     : "pending";
 
+  // ── Остановка «Декомпозиция»: профиль зависит от общего target ──
+  const [decompositionProfile, setDecompositionProfile] = useState<PreprocessingDecompositionProfileResponse | null>(null);
+  const [decompositionLoading, setDecompositionLoading] = useState(false);
+  const [decompositionNoDataset, setDecompositionNoDataset] = useState(false);
+  const [decompositionError, setDecompositionError] = useState<string | null>(null);
+  const [decompositionRefreshKey, setDecompositionRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setDecompositionError(null);
+    setDecompositionNoDataset(false);
+    if (!activeFeature) {
+      setDecompositionProfile(null);
+      setDecompositionLoading(false);
+      return () => { active = false; };
+    }
+    setDecompositionLoading(true);
+    void (async () => {
+      try {
+        const response = await fetch(sessionApiUrl(`/dataset/preprocessing/decomposition-profile?column=${encodeURIComponent(activeFeature)}`), { credentials: "include" });
+        if (response.status === 404) { if (active) setDecompositionNoDataset(true); return; }
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(typeof body?.detail === "string" ? body.detail : `HTTP ${response.status}`);
+        }
+        const data: PreprocessingDecompositionProfileResponse = await response.json();
+        if (active) {
+          setDecompositionProfile(data);
+          setCheckModes((current) => ({ ...current, decomposition: data.mode }));
+        }
+      } catch (caught) {
+        if (active) setDecompositionError(caught instanceof Error ? caught.message : "Не удалось выполнить декомпозицию");
+      } finally { if (active) setDecompositionLoading(false); }
+    })();
+    return () => { active = false; };
+  }, [activeFeature, decompositionRefreshKey]);
+
+  const decompositionStatus: CheckStatus = decompositionLoading
+    ? "running"
+    : decompositionNoDataset
+    ? "skipped"
+    : decompositionError
+    ? "error"
+    : decompositionProfile
+    ? decompositionProfile.status
+    : "pending";
+
   // Итоговый список проверок -- статика для ещё не реализованных
   // остановок, реальные данные для «Пропусков», «Выбросов» и «Регулярности».
   const checks = useMemo<Check[]>(() => CHECKS.map((check) => {
     if (check.id === "missing") return { ...check, status: missingStatus, count: missingProfile?.total_missing ?? null };
     if (check.id === "outliers") return { ...check, status: outliersStatus, count: outliersProfile?.total_outliers ?? null };
     if (check.id === "regularity") return { ...check, status: regularityStatus, count: regularityProfile?.profile?.total_violations ?? null };
+    if (check.id === "decomposition") return { ...check, status: decompositionStatus, count: decompositionProfile?.profile?.warnings.length ?? null };
     return check;
-  }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile]);
+  }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile, decompositionStatus, decompositionProfile]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -435,6 +513,7 @@ export function TsAnalysisPreprocessing() {
       if (checkId === "missing") setMissingRefreshKey((k) => k + 1);
       if (checkId === "outliers") setOutliersRefreshKey((k) => k + 1);
       if (checkId === "regularity") setRegularityRefreshKey((k) => k + 1);
+      if (checkId === "decomposition") setDecompositionRefreshKey((k) => k + 1);
     } catch {
       setCheckModes(previous);
       setModeError({ checkId, message: "Не удалось сохранить режим проверки" });
@@ -480,6 +559,9 @@ export function TsAnalysisPreprocessing() {
     if (activeCheckId === "regularity") {
       return descriptionSection === "metrics" ? REGULARITY_METRICS_DESCRIPTION : REGULARITY_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "decomposition") {
+      return descriptionSection === "metrics" ? DECOMPOSITION_METRICS_DESCRIPTION : DECOMPOSITION_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -498,6 +580,9 @@ export function TsAnalysisPreprocessing() {
     }
     if (activeCheckId === "regularity") {
       return descriptionSection === "metrics" ? "Метрики и алгоритм — Регулярность" : "Мастер исправления регулярности";
+    }
+    if (activeCheckId === "decomposition") {
+      return descriptionSection === "metrics" ? "Метрики и алгоритм — Декомпозиция ряда" : "Мастер декомпозиции ряда";
     }
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
@@ -659,6 +744,8 @@ export function TsAnalysisPreprocessing() {
               ? "Мастер исправления выбросов"
               : activeCheckId === "regularity" && descriptionSection === "pipeline"
               ? "Мастер исправления регулярности"
+              : activeCheckId === "decomposition" && descriptionSection === "pipeline"
+              ? "Мастер декомпозиции ряда"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -674,6 +761,10 @@ export function TsAnalysisPreprocessing() {
               ? "Выберите стратегию и целевую частоту, оцените последствия на копии и примените исправления."
               : activeCheckId === "regularity"
               ? "Разрывы, дубликаты и нарушения сортировки по группам; интервалы и таймлайн — во вкладках."
+              : activeCheckId === "decomposition" && descriptionSection === "pipeline"
+              ? "Настройте период и выходы, оцените новые колонки на копии и подтвердите добавление."
+              : activeCheckId === "decomposition"
+              ? "Компоненты STL, сезонный профиль, ACF остатка и диагностика — во вкладках-бейджах."
               : "Меняется автоматически под активную проверку."}
           </p>
 
@@ -689,6 +780,19 @@ export function TsAnalysisPreprocessing() {
             <PreprocessingRegularityPipeline onApplied={() => setRegularityRefreshKey((k) => k + 1)} />
           ) : activeCheckId === "regularity" ? (
             <PreprocessingRegularityOverview refreshKey={regularityRefreshKey} />
+          ) : activeCheckId === "decomposition" && descriptionSection === "pipeline" ? (
+            <PreprocessingDecompositionPipeline
+              column={activeFeature}
+              profile={decompositionProfile?.profile ?? null}
+              onApplied={() => setDecompositionRefreshKey((k) => k + 1)}
+            />
+          ) : activeCheckId === "decomposition" ? (
+            <PreprocessingDecompositionOverview
+              profile={decompositionProfile?.profile ?? null}
+              loading={decompositionLoading}
+              error={decompositionError}
+              noDataset={decompositionNoDataset}
+            />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
@@ -715,6 +819,13 @@ export function TsAnalysisPreprocessing() {
               <Metric label="Дублей" value={regularityProfile ? String(regularityProfile.profile.duplicate_count) : "—"} />
               <Metric label="Нарушений сортировки" value={regularityProfile ? String(regularityProfile.profile.sort_violations) : "—"} />
               <Metric label="Частота" value={regularityProfile?.profile.target_frequency ?? "—"} />
+            </div>
+          ) : activeCheckId === "decomposition" ? (
+            <div className="grid grid-cols-4 gap-3 mt-4">
+              <Metric label="Период" value={decompositionProfile?.profile.period ? String(decompositionProfile.profile.period) : "—"} />
+              <Metric label="Сила тренда" value={decompositionProfile?.profile.trend_strength !== null && decompositionProfile?.profile.trend_strength !== undefined ? `${(100 * decompositionProfile.profile.trend_strength).toFixed(1)}%` : "—"} />
+              <Metric label="Сила сезонности" value={decompositionProfile?.profile.seasonal_strength !== null && decompositionProfile?.profile.seasonal_strength !== undefined ? `${(100 * decompositionProfile.profile.seasonal_strength).toFixed(1)}%` : "—"} />
+              <Metric label="Ljung–Box p" value={decompositionProfile?.profile.ljung_box_pvalue !== null && decompositionProfile?.profile.ljung_box_pvalue !== undefined ? decompositionProfile.profile.ljung_box_pvalue.toFixed(4) : "—"} />
             </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
@@ -753,7 +864,7 @@ export function TsAnalysisPreprocessing() {
                   у остальных остановок ещё нет backend-проверки, которую
                   можно реально включить/отключить (см. комментарий у
                   useState checkModes выше). */}
-              {(check.id === "missing" || check.id === "outliers" || check.id === "regularity") && (
+              {(check.id === "missing" || check.id === "outliers" || check.id === "regularity" || check.id === "decomposition") && (
                 <label className="mb-2 block text-[11px] font-medium text-neutral-600">
                   Режим проверки
                   <select
@@ -891,6 +1002,15 @@ export function TsAnalysisPreprocessing() {
                     </p>
                   )}
                 </>
+              ) : check.id === "decomposition" ? (
+                <>
+                  {check.status === "running" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">Выполняется STL-декомпозиция…</p>}
+                  {check.status === "error" && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">{decompositionError ?? "Ошибка выполнения декомпозиции"}</p>}
+                  {check.status === "pending" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">Проверка не запускалась</p>}
+                  {check.status === "skipped" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">{decompositionNoDataset ? "Нет активного датасета" : decompositionProfile?.status_reason === "disabled" ? "Отключено" : decompositionProfile?.profile.reason ?? "Не применимо"}</p>}
+                  {check.status === "warning" && <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">STL выполнен; остаток требует внимания ({check.count ?? 0})</p>}
+                  {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">STL выполнен, остаточная диагностика пройдена</p>}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -927,7 +1047,7 @@ export function TsAnalysisPreprocessing() {
                     : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
                 }`}
               >
-                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : "Полный пайплайн"}
+                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : "Полный пайплайн"}
               </button>
 
               <Button>Пересчитать свойства после преобразования ({check.label.toLowerCase()})</Button>

@@ -67,6 +67,13 @@ export { Metric } from "./components/Metric";
 export { StatusIcon, STATUS_ICON } from "./components/StatusIcon";
 export type { CheckStatus } from "./components/StatusIcon";
 export { TsAnalysisPreprocessing } from "./components/TsAnalysisPreprocessing";
+export { PreprocessingDecompositionOverview } from "./components/PreprocessingDecompositionOverview";
+export type {
+  PreprocessingDecompositionPoint,
+  PreprocessingDecompositionProfile,
+  PreprocessingDecompositionProfileResponse,
+} from "./components/PreprocessingDecompositionOverview";
+export { PreprocessingDecompositionPipeline } from "./components/PreprocessingDecompositionPipeline";
 export { TsAnalysisValidation } from "./components/TsAnalysisValidation";
 export { ValidationSufficiencyOverview } from "./components/ValidationSufficiencyOverview";
 export { ValidationSufficiencyPipeline } from "./components/ValidationSufficiencyPipeline";

@@ -34,9 +34,6 @@ def apply_decomposition(
     Returns:
         dict с ключами: 'observed', 'trend', 'seasonal', 'resid', 'method'
     """
-    if series.empty or len(series) < 2 * (period or 12):
-        raise ValueError(f"Недостаточно данных для декомпозиции (нужно минимум {2 * (period or 12)} точек)")
-    
     # Определяем период, если не задан
     if period is None:
         inferred_freq = pd.infer_freq(series.index)
@@ -46,6 +43,13 @@ def apply_decomposition(
             period = 12  # годовая сезонность для месячных данных
         else:
             period = 12  # default
+
+    if period < 2:
+        raise ValueError("Сезонный период должен быть не меньше 2")
+    if series.empty or len(series) < 2 * period:
+        raise ValueError(f"Недостаточно данных для декомпозиции (нужно минимум {2 * period} точек)")
+    if series.isna().any():
+        raise ValueError("Ряд содержит пропуски; декомпозиция требует полных наблюдений")
     
     if method == 'STL':
         # БАГ (найден 2026-08-19 при первом реальном вызове этой функции --
