@@ -184,11 +184,11 @@ describe("TsAnalysisNavigator", () => {
       // По умолчанию активен upload + preview (первый item) —
       // для preview рендерится UploadAutoPreviewPipeline, не заглушка.
       // После задач 2026-08-30/31 «Подтверждение автоопределения» (3-й item),
-      // «Teaser качества» (4-й item) и «Техническая информация» (5-й item)
-      // тоже имеют специализированный Overview — выбираем пункт БЕЗ
-      // специализированной визуализации: «Превью 5+5 строк» (6-й item,
-      // id="preview_5_5").
-      const card = screen.getByText("Превью 5+5 строк");
+      // «Teaser качества» (4-й item), «Техническая информация» (5-й item)
+      // и «Превью 5+5 строк» (6-й item) тоже имеют специализированный
+      // Overview — выбираем пункт БЕЗ специализированной визуализации:
+      // «Визуализация распределения» (7-й item, id="distribution").
+      const card = screen.getByText("Визуализация распределения");
       fireEvent.click(card.closest("article")!);
       expect(
         screen.getByText(/область графика\/таблицы\/блок-схемы/)
@@ -337,6 +337,66 @@ describe("TsAnalysisNavigator", () => {
       renderNavigator();
       activateTechInfoItem();
       expect(screen.getByText(/_compute_column_info/i)).toBeInTheDocument();
+      expect(screen.queryByText(/нет данных/i)).toBeNull();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Задача 2026-09-01 — окно «Обзор» остановки «Превью 5+5 строк»
+  // (upload+preview_5_5) рендерит статичную таблицу 5+5 строк
+  // синтетического датасета demo_finance_ohlcv.csv.
+  // ─────────────────────────────────────────────────────────────────────
+  describe("upload + preview_5_5: static dataset preview in Overview", () => {
+    function activatePreview55Item() {
+      const card = screen.getByText("Превью 5+5 строк");
+      fireEvent.click(card.closest("article")!);
+    }
+
+    it("renders the preview heading when upload + preview_5_5 is active", () => {
+      renderNavigator();
+      activatePreview55Item();
+      // H3 «Обзор: Превью 5+5 строк» — заголовок окна Обзор из
+      // TsAnalysisNavigator. Сама инфографика тоже содержит H3 «Превью
+      // 5+5 строк». Поэтому минимум 2 совпадения.
+      const headings = screen.getAllByRole("heading", {
+        level: 3,
+        name: /превью 5\+5 строк/i,
+      });
+      expect(headings.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("does NOT show the generic placeholder text for preview_5_5 item", () => {
+      renderNavigator();
+      activatePreview55Item();
+      expect(screen.queryByText(/область графика\/таблицы\/блок-схемы/)).toBeNull();
+    });
+
+    it("renders the static dataset filename demo_finance_ohlcv.csv in Overview", () => {
+      renderNavigator();
+      activatePreview55Item();
+      expect(
+        screen.getAllByText(/demo_finance_ohlcv\.csv/i).length
+      ).toBeGreaterThanOrEqual(1);
+    });
+
+    it("renders all 6 column headers (date/open/high/low/close/volume)", () => {
+      renderNavigator();
+      activatePreview55Item();
+      // Точные строковые совпадения (каждое встречается 1 раз в header).
+      expect(screen.getByText("date")).toBeInTheDocument();
+      expect(screen.getByText("open")).toBeInTheDocument();
+      expect(screen.getByText("high")).toBeInTheDocument();
+      expect(screen.getByText("low")).toBeInTheDocument();
+      expect(screen.getByText("close")).toBeInTheDocument();
+      expect(screen.getByText("volume")).toBeInTheDocument();
+    });
+
+    it("renders the preview WITHOUT activeDataset (works if dataset is deleted)", () => {
+      renderNavigator();
+      activatePreview55Item();
+      // AppShellProvider по умолчанию не предоставляет activeDataset —
+      // если бы превью зависело от сессии, тест бы падал на empty-state.
+      expect(screen.getByText("2022-01-03")).toBeInTheDocument();
       expect(screen.queryByText(/нет данных/i)).toBeNull();
     });
   });

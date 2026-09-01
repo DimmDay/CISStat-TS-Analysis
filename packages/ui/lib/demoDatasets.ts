@@ -277,3 +277,70 @@ export function getDemoFinanceOhlcvVolumeSeries(): NavigatorChartPoint[] {
   }
   return points;
 }
+
+// ── Хелпер для окна «Обзор» остановки «Превью 5+5 строк» (Навигатор) ──
+//
+// Задача 2026-09-01: в окне «Обзор» при активации пункта «Превью 5+5 строк»
+// (id="preview_5_5") секции «Этапы модуля» остановки «Загрузка» должна
+// отображаться СТАТИЧНАЯ таблица 5+5 строк синтетического датасета
+// demo_finance_ohlcv.csv. Превью закреплено как пример и сохраняется
+// ВНЕ ЗАВИСИМОСТИ от того, удалён датасет или нет.
+//
+// Контракт повторяет apps/api/upload_common.py::handle_upload (поля
+// UploadResponse.preview.head / preview.tail):
+//   - head: string[][] — head[0] = заголовки колонок, head[1..5] = первые
+//     5 строк данных (df.head(5)).
+//   - tail: string[][] — последние 5 строк данных (df.tail(5)).
+//   - Между head и tail в UI — separator «…».
+//
+// Тот же генератор generateFinanceOhlcv (mulberry32 seed 20260821),
+// что и в getDemoFinanceOhlcvVolumeSeries — данные превью всегда
+// совпадают с тем демо-датасетом, который пользователь может загрузить.
+
+export interface Preview55Data {
+  /** head[0] — заголовки колонок, head[1..5] — первые 5 строк данных. */
+  head: string[][];
+  /** Последние 5 строк данных. */
+  tail: string[][];
+}
+
+/**
+ * Возвращает детерминированное превью 5+5 строк синтетического датасета
+ * demo_finance_ohlcv.csv (первые 5 строк + последние 5 строк).
+ *
+ * Источник: `generateFinanceOhlcv()` (тот же seed, что и у демо-датасета
+ * «Котировки инструмента (OHLCV)» в окне «Загрузка», и тот же, что у
+ * графика в NavigatorChartPreview). Вызов без побочных эффектов,
+ * идемпотентный — безопасно оборачивать в useMemo / вызывать многократно.
+ *
+ * Реализован как простой парсинг CSV — если генератор `generateFinanceOhlcv`
+ * изменится (добавятся/удалятся колонки, поменяется seed), превью
+ * автоматически подстроится, расхождения с реальным демо-датасетом не будет.
+ *
+ * Возвращает пустые массивы при отсутствии датасета или изменении схемы
+ * (graceful degradation — компонент покажет заглушку, а не упадёт).
+ */
+export function getDemoFinanceOhlcvPreview55(): Preview55Data {
+  const dataset = DEMO_DATASETS.find((d) => d.id === "finance_ohlcv");
+  if (!dataset) {
+    return { head: [], tail: [] };
+  }
+
+  const csv = dataset.generateCsv();
+  const lines = csv.split("\n").filter((l) => l.length > 0);
+  if (lines.length < 1) {
+    return { head: [], tail: [] };
+  }
+
+  // lines[0] — заголовок. lines[1..N] — строки данных (N = 500 для OHLCV).
+  // Каждую строку CSV сразу разбиваем на ячейки → string[][].
+  const header: string[] = lines[0].split(",");
+  const dataRows: string[][] = lines.slice(1).map((l) => l.split(","));
+
+  // head: [header, row1, row2, row3, row4, row5]
+  const head: string[][] = [header, ...dataRows.slice(0, 5)];
+  // tail: последние 5 строк (rowN-4 .. rowN)
+  const tail: string[][] = dataRows.slice(-5);
+
+  return { head, tail };
+}

@@ -405,3 +405,23 @@ export { NavigatorQualityTeaserPreview } from "./components/NavigatorQualityTeas
 // numeric → categorical → text, if/elif chain) + 3 метрики (non_null /
 // nulls / unique) → ColumnInfoOut[] → таблица 5 колонок во вкладке Загрузка.
 export { NavigatorTechInfoPreview } from "./components/NavigatorTechInfoPreview";
+
+// Статичная таблица превью 5+5 строк для окна «Обзор» остановки
+// «Превью 5+5 строк» (id="preview_5_5") секции «Этапы модуля» остановки
+// «Загрузка» (Task 2026-09-01).
+// Рендерится только при активной паре «Загрузка» + «Превью 5+5 строк»
+// (см. TsAnalysisNavigator.tsx). Чисто презентационная, БЕЗ зависимости
+// от useAppShell / activeDataset / сети — данные берутся из
+// детерминированного генератора демо-датасета demo_finance_ohlcv.csv
+// (getDemoFinanceOhlcvPreview55, тот же seed, что у NavigatorChartPreview).
+// Превью закреплено статично как пример и сохраняется вне зависимости,
+// удалён датасет или нет.
+export { NavigatorPreview55Preview } from "./components/NavigatorPreview55Preview";
+export {
+  NAVIGATOR_PREVIEW55_DATASET_FILE,
+  NAVIGATOR_PREVIEW55_FEATURE,
+} from "./components/NavigatorPreview55Preview";
+export {
+  getDemoFinanceOhlcvPreview55,
+} from "./lib/demoDatasets";
+export type { Preview55Data } from "./lib/demoDatasets";

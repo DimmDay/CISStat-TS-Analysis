@@ -56,6 +56,7 @@ import { NavigatorChartPreview } from "./NavigatorChartPreview";
 import { NavigatorStructureConfirmPreview } from "./NavigatorStructureConfirmPreview";
 import { NavigatorQualityTeaserPreview } from "./NavigatorQualityTeaserPreview";
 import { NavigatorTechInfoPreview } from "./NavigatorTechInfoPreview";
+import { NavigatorPreview55Preview } from "./NavigatorPreview55Preview";
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -318,6 +319,14 @@ export function TsAnalysisNavigator() {
               РЕАЛЬНОЙ бэкенд-логики (_compute_column_info, ColumnInfoOut).
               Аналитик мгновенно понимает алгоритм благодаря инфографике.
 
+              Задача 2026-09-01 (Превью 5+5 строк): для пары «Загрузка» +
+              «Превью 5+5 строк» (id="upload" + id="preview_5_5")
+              рендерим СТАТИЧНУЮ таблицу 5+5 строк синтетического датасета
+              demo_finance_ohlcv.csv (первые 5 строк + separator + последние
+              5). Превью закреплено как пример и сохраняется ВНЕ
+              ЗАВИСИМОСТИ от того, удалён датасет или нет — данные берутся
+              из детерминированного клиентского генератора (НЕ из сети).
+
               Для остальных пунктов — текстовая заглушка (своя визуализация
               для каждого пункта в будущих задачах). */}
           {activeStopId === "upload" && activeItemId === "preview" ? (
@@ -330,6 +339,8 @@ export function TsAnalysisNavigator() {
             <NavigatorQualityTeaserPreview />
           ) : activeStopId === "upload" && activeItemId === "tech_info" ? (
             <NavigatorTechInfoPreview />
+          ) : activeStopId === "upload" && activeItemId === "preview_5_5" ? (
+            <NavigatorPreview55Preview />
           ) : (
             <div
               className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"
