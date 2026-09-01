@@ -71,7 +71,12 @@ const BRAND_SOFT = "#E8EAF6";
 const AXIS_TICK_STYLE = { fontSize: 11, fill: "#737373" }; // neutral-500
 
 function fmtCompact(n: number): string {
-  return n.toLocaleString("ru-RU", { maximumFractionDigits: 1 });
+  // Округление до целого без разделителя тысяч и без дробной части —
+  // компактно для узких карточек оси (3 графика в ряд в Навигаторе).
+  // Раньше было toLocaleString("ru-RU", { maximumFractionDigits: 1 }),
+  // что давало "2 064,5" (с пробелом-разделителем и запятой) —
+  // подписи сливались в узких карточках.
+  return Math.round(n).toString();
 }
 
 // Общая обёртка карточки графика -- та же рамка/фон, что и в placeholder'е,
@@ -189,7 +194,7 @@ export function KdeDistributionChart({ data }: { data: DistributionChartData | n
         </defs>
         <CartesianGrid stroke="#F0F0F0" vertical={false} />
         <XAxis dataKey="x" type="number" domain={["dataMin", "dataMax"]} tick={AXIS_TICK_STYLE} tickFormatter={fmtCompact} />
-        <YAxis tick={AXIS_TICK_STYLE} width={32} tickFormatter={(v) => v.toFixed(2)} />
+        <YAxis tick={AXIS_TICK_STYLE} width={32} tickFormatter={(v) => v.toFixed(4)} />
         <Tooltip formatter={(value: number) => value.toFixed(4)} labelFormatter={(x) => `x = ${fmtCompact(Number(x))}`} />
         <Area type="monotone" dataKey="y" stroke={BRAND} strokeWidth={1.75} fill="url(#kdeFill)" isAnimationActive={false} />
       </AreaChart>
