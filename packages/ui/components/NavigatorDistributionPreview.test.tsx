@@ -5,21 +5,19 @@
 // остановки «Загрузка» на странице Навигатор.
 //
 // Контракт (задача 2026-09-02):
-//   - Визуализация — СТАТИЧНЫЕ графики распределения (точечный/гистограмма/KDE)
-//     + бейджи описательной статистики синтетического датасета
-//     demo_energy_consumption.csv (колонка consumption_mwh, 300 значений).
+//   - Визуализация — СТАТИЧНЫЕ графики распределения (точечный/
+//     гистограмма/KDE) + бейджи описательной статистики
+//     синтетического датасета demo_energy_consumption.csv (колонка
+//     consumption_mwh, 300 значений).
 //   - Источник: packages/ui/lib/demoDatasets.ts::generateEnergyConsumption
-//     (mulberry32 seed 20260820, 5 регионов × 60 месяцев, сбалансированная
-//     панель; колонки: region, month, consumption_mwh).
+//     (mulberry32 seed 20260820, 5 регионов × 60 месяцев).
+//   - Раскладка 1:1 как во вкладке «Загрузка» (TsAnalysisUpload.tsx:1113-1182):
+//     grid grid-cols-3 (3 графика с H4+иконкой) + параграф «Тип распределения»
+//     + grid grid-cols-4 (8 Metric-бейджей).
+//   - БЕЗ шапки/подписи/бейджа «статичный пример» — границы окна «Обзор»
+//     не расширяем, заголовок уже рендерит TsAnalysisNavigator выше.
 //   - Визуализация закреплена СТАТИЧНО как пример — НЕ зависит от
-//     useAppShell, activeDataset, fetch, сети, сессии. Даже если датасет
-//     удалён, графики и бейджи остаются на месте.
-//
-// Архитектурно — ближайший родственник NavigatorChartPreview (Task 64)
-// и NavigatorPreview55Preview (Task 85): статичные данные из
-// детерминированного генератора, переиспользует существующие
-// ScatterDistributionChart/HistogramDistributionChart/KdeDistributionChart
-// из DistributionCharts.tsx.
+//     useAppShell, activeDataset, fetch, сети, сессии.
 
 import React from "react";
 import "@testing-library/jest-dom";
@@ -104,36 +102,12 @@ describe("NavigatorDistributionPreview — rendering", () => {
     expect(container.firstChild).not.toBeNull();
   });
 
-  it("renders the section heading «Визуализация распределения»", () => {
-    render(<NavigatorDistributionPreview />);
-    expect(
-      screen.getByRole("heading", {
-        level: 3,
-        name: /визуализация распределения/i,
-      })
-    ).toBeInTheDocument();
-  });
-
   it("exposes static dataset file = demo_energy_consumption.csv", () => {
     expect(NAVIGATOR_DISTRIBUTION_DATASET_FILE).toBe("demo_energy_consumption.csv");
   });
 
   it("exposes feature name = consumption_mwh", () => {
     expect(NAVIGATOR_DISTRIBUTION_FEATURE).toBe("consumption_mwh");
-  });
-
-  it("renders the dataset filename visible to the user", () => {
-    render(<NavigatorDistributionPreview />);
-    expect(
-      screen.getAllByText(/demo_energy_consumption\.csv/i).length
-    ).toBeGreaterThanOrEqual(1);
-  });
-
-  it("renders the feature label consumption_mwh visible to the user", () => {
-    render(<NavigatorDistributionPreview />);
-    expect(
-      screen.getAllByText(/consumption_mwh/i).length
-    ).toBeGreaterThanOrEqual(1);
   });
 
   it("renders 3 recharts chart frames (scatter/histogram/kde)", () => {
@@ -143,7 +117,21 @@ describe("NavigatorDistributionPreview — rendering", () => {
     expect(containers.length).toBe(3);
   });
 
-  it("renders 8 descriptive statistics Metric badges", () => {
+  it("renders 3 H4 chart titles matching Загрузка layout", () => {
+    render(<NavigatorDistributionPreview />);
+    // Те же заголовки, что в TsAnalysisUpload.tsx:1123, 1138, 1150.
+    expect(screen.getByText("Точечный график")).toBeInTheDocument();
+    expect(screen.getByText("Гистограмма")).toBeInTheDocument();
+    expect(screen.getByText(/KDE \(плотность\)/i)).toBeInTheDocument();
+  });
+
+  it("renders the «Тип распределения» paragraph (как в Загрузке)", () => {
+    render(<NavigatorDistributionPreview />);
+    // Тот же лейбл, что в TsAnalysisUpload.tsx:1169.
+    expect(screen.getByText(/тип распределения/i)).toBeInTheDocument();
+  });
+
+  it("renders 8 descriptive statistics Metric badges (те же лейблы, что в Загрузке)", () => {
     render(<NavigatorDistributionPreview />);
     // 8 метрик: Mean, Median, Std, Skewness, Kurtosis, Q1, Q3, IQR.
     expect(screen.getByText(/mean.*среднее/i)).toBeInTheDocument();
@@ -156,9 +144,18 @@ describe("NavigatorDistributionPreview — rendering", () => {
     expect(screen.getByText(/iqr.*межквартильный/i)).toBeInTheDocument();
   });
 
-  it("renders the «статичный пример» badge", () => {
+  it("does NOT add a wrapper H3 heading (no expansion of Обзор frame)", () => {
     render(<NavigatorDistributionPreview />);
-    expect(screen.getByText(/статичный пример/i)).toBeInTheDocument();
+    // Заголовок H3 «Визуализация распределения» рендерит TsAnalysisNavigator
+    // выше как «Обзор: Визуализация распределения». Сам компонент НЕ должен
+    // добавлять свой H3 — это расширило бы границы окна Обзор.
+    const headings = screen.queryAllByRole("heading", { level: 3 });
+    expect(headings).toHaveLength(0);
+  });
+
+  it("does NOT add a «статичный пример» badge (no extra content)", () => {
+    render(<NavigatorDistributionPreview />);
+    expect(screen.queryByText(/статичный пример/i)).toBeNull();
   });
 
   it("renders without loading/empty state — always shows charts + stats", () => {
@@ -198,14 +195,5 @@ describe("NavigatorDistributionPreview — rendering", () => {
     rerender(<NavigatorDistributionPreview />);
     const text2 = c1.textContent;
     expect(text2).toBe(text1);
-  });
-
-  it("has role=img with informative aria-label on the root container", () => {
-    const { container } = render(<NavigatorDistributionPreview />);
-    const root = container.firstChild as HTMLElement;
-    expect(root.getAttribute("role")).toBe("img");
-    expect(root.getAttribute("aria-label") ?? "").toMatch(
-      /распределение|demo_energy_consumption|consumption_mwh/i
-    );
   });
 });

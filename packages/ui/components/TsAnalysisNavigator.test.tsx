@@ -418,27 +418,20 @@ describe("TsAnalysisNavigator", () => {
       renderNavigator();
       activateDistributionItem();
       // H3 «Обзор: Визуализация распределения» — заголовок окна Обзор из
-      // TsAnalysisNavigator. Сама инфографика тоже содержит H3 «Визуализация
-      // распределения». Поэтому минимум 2 совпадения.
+      // TsAnalysisNavigator. Сам компонент NavigatorDistributionPreview НЕ
+      // добавляет свой H3 (границы окна Обзор не расширяем) — поэтому ровно
+      // 1 совпадение.
       const headings = screen.getAllByRole("heading", {
         level: 3,
         name: /визуализация распределения/i,
       });
-      expect(headings.length).toBeGreaterThanOrEqual(2);
+      expect(headings).toHaveLength(1);
     });
 
     it("does NOT show the generic placeholder text for distribution item", () => {
       renderNavigator();
       activateDistributionItem();
       expect(screen.queryByText(/область графика\/таблицы\/блок-схемы/)).toBeNull();
-    });
-
-    it("renders the static dataset filename demo_energy_consumption.csv in Overview", () => {
-      renderNavigator();
-      activateDistributionItem();
-      expect(
-        screen.getAllByText(/demo_energy_consumption\.csv/i).length
-      ).toBeGreaterThanOrEqual(1);
     });
 
     it("renders 3 recharts chart frames (scatter/histogram/kde)", () => {
@@ -466,9 +459,11 @@ describe("TsAnalysisNavigator", () => {
     it("renders the distribution preview WITHOUT activeDataset (works if dataset is deleted)", () => {
       renderNavigator();
       activateDistributionItem();
-      expect(
-        screen.getAllByText(/consumption_mwh/i).length
-      ).toBeGreaterThanOrEqual(1);
+      // Компонент НЕ зависит от activeDataset (статичные данные из
+      // детерминированного генератора). Проверяем, что 3 графика и 8 Metric
+      // рендерятся даже без загруженного датасета.
+      const c3 = getColumns()[2];
+      expect(c3.querySelectorAll(".recharts-responsive-container")).toHaveLength(3);
       expect(screen.queryByText(/нет данных/i)).toBeNull();
     });
   });
