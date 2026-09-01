@@ -425,3 +425,29 @@ export {
   getDemoFinanceOhlcvPreview55,
 } from "./lib/demoDatasets";
 export type { Preview55Data } from "./lib/demoDatasets";
+
+// Статичная визуализация распределения для окна «Обзор» остановки
+// «Визуализация распределения» (id="distribution") секции «Этапы модуля»
+// остановки «Загрузка» (Task 2026-09-02).
+// Рендерится только при активной паре «Загрузка» + «Визуализация
+// распределения» (см. TsAnalysisNavigator.tsx). Чисто презентационная,
+// БЕЗ зависимости от useAppShell / activeDataset / сети — данные берутся
+// из детерминированного генератора демо-датасета demo_energy_consumption.csv
+// (getDemoEnergyDistributionData, тот же seed, что у демо-датасета
+// «Энергопотребление по регионам» во вкладке «Загрузка»). Переиспользует
+// существующие ScatterDistributionChart/HistogramDistributionChart/
+// KdeDistributionChart из DistributionCharts.tsx + 8 Metric-бейджей.
+// Визуализация закреплена статично как пример и сохраняется вне
+// зависимости, удалён датасет или нет.
+export { NavigatorDistributionPreview } from "./components/NavigatorDistributionPreview";
+export {
+  NAVIGATOR_DISTRIBUTION_DATASET_FILE,
+  NAVIGATOR_DISTRIBUTION_FEATURE,
+} from "./components/NavigatorDistributionPreview";
+export {
+  getDemoEnergyDistributionData,
+} from "./lib/demoDatasets";
+export type {
+  DistributionStats,
+  DistributionPreviewData,
+} from "./lib/demoDatasets";

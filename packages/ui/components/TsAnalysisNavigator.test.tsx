@@ -183,12 +183,13 @@ describe("TsAnalysisNavigator", () => {
       renderNavigator();
       // По умолчанию активен upload + preview (первый item) —
       // для preview рендерится UploadAutoPreviewPipeline, не заглушка.
-      // После задач 2026-08-30/31 «Подтверждение автоопределения» (3-й item),
-      // «Teaser качества» (4-й item), «Техническая информация» (5-й item)
-      // и «Превью 5+5 строк» (6-й item) тоже имеют специализированный
-      // Overview — выбираем пункт БЕЗ специализированной визуализации:
-      // «Визуализация распределения» (7-й item, id="distribution").
-      const card = screen.getByText("Визуализация распределения");
+      // После задач 2026-08-30..2026-09-02 остановки «Подтверждение
+      // автоопределения» (3-й item), «Teaser качества» (4-й item),
+      // «Техническая информация» (5-й item), «Превью 5+5 строк» (6-й item)
+      // и «Визуализация распределения» (7-й item) тоже имеют
+      // специализированный Overview — выбираем пункт БЕЗ специализированной
+      // визуализации: «Форматы и объём» (8-й item, id="formats").
+      const card = screen.getByText("Форматы и объём");
       fireEvent.click(card.closest("article")!);
       expect(
         screen.getByText(/область графика\/таблицы\/блок-схемы/)
@@ -397,6 +398,77 @@ describe("TsAnalysisNavigator", () => {
       // AppShellProvider по умолчанию не предоставляет activeDataset —
       // если бы превью зависело от сессии, тест бы падал на empty-state.
       expect(screen.getByText("2022-01-03")).toBeInTheDocument();
+      expect(screen.queryByText(/нет данных/i)).toBeNull();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Задача 2026-09-02 — окно «Обзор» остановки «Визуализация
+  // распределения» (upload+distribution) рендерит статичные графики
+  // распределения (точечный/гистограмма/KDE) + бейджи описательной
+  // статистики синтетического датасета demo_energy_consumption.csv.
+  // ─────────────────────────────────────────────────────────────────────
+  describe("upload + distribution: static distribution preview in Overview", () => {
+    function activateDistributionItem() {
+      const card = screen.getByText("Визуализация распределения");
+      fireEvent.click(card.closest("article")!);
+    }
+
+    it("renders the heading when upload + distribution is active", () => {
+      renderNavigator();
+      activateDistributionItem();
+      // H3 «Обзор: Визуализация распределения» — заголовок окна Обзор из
+      // TsAnalysisNavigator. Сама инфографика тоже содержит H3 «Визуализация
+      // распределения». Поэтому минимум 2 совпадения.
+      const headings = screen.getAllByRole("heading", {
+        level: 3,
+        name: /визуализация распределения/i,
+      });
+      expect(headings.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("does NOT show the generic placeholder text for distribution item", () => {
+      renderNavigator();
+      activateDistributionItem();
+      expect(screen.queryByText(/область графика\/таблицы\/блок-схемы/)).toBeNull();
+    });
+
+    it("renders the static dataset filename demo_energy_consumption.csv in Overview", () => {
+      renderNavigator();
+      activateDistributionItem();
+      expect(
+        screen.getAllByText(/demo_energy_consumption\.csv/i).length
+      ).toBeGreaterThanOrEqual(1);
+    });
+
+    it("renders 3 recharts chart frames (scatter/histogram/kde)", () => {
+      renderNavigator();
+      activateDistributionItem();
+      const c3 = getColumns()[2];
+      const containers = c3.querySelectorAll(".recharts-responsive-container");
+      expect(containers.length).toBe(3);
+    });
+
+    it("renders 8 descriptive statistics Metric badges", () => {
+      renderNavigator();
+      activateDistributionItem();
+      // 8 метрик: Mean, Median, Std, Skewness, Kurtosis, Q1, Q3, IQR.
+      expect(screen.getByText(/mean.*среднее/i)).toBeInTheDocument();
+      expect(screen.getByText(/median.*медиана/i)).toBeInTheDocument();
+      expect(screen.getByText(/std.*стандартное/i)).toBeInTheDocument();
+      expect(screen.getByText(/skewness.*асимметрия/i)).toBeInTheDocument();
+      expect(screen.getByText(/kurtosis.*эксцесс/i)).toBeInTheDocument();
+      expect(screen.getByText(/q1.*1 квартиль/i)).toBeInTheDocument();
+      expect(screen.getByText(/q3.*3 квартиль/i)).toBeInTheDocument();
+      expect(screen.getByText(/iqr.*межквартильный/i)).toBeInTheDocument();
+    });
+
+    it("renders the distribution preview WITHOUT activeDataset (works if dataset is deleted)", () => {
+      renderNavigator();
+      activateDistributionItem();
+      expect(
+        screen.getAllByText(/consumption_mwh/i).length
+      ).toBeGreaterThanOrEqual(1);
       expect(screen.queryByText(/нет данных/i)).toBeNull();
     });
   });

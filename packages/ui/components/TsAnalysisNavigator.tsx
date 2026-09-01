@@ -57,6 +57,7 @@ import { NavigatorStructureConfirmPreview } from "./NavigatorStructureConfirmPre
 import { NavigatorQualityTeaserPreview } from "./NavigatorQualityTeaserPreview";
 import { NavigatorTechInfoPreview } from "./NavigatorTechInfoPreview";
 import { NavigatorPreview55Preview } from "./NavigatorPreview55Preview";
+import { NavigatorDistributionPreview } from "./NavigatorDistributionPreview";
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -327,6 +328,14 @@ export function TsAnalysisNavigator() {
               ЗАВИСИМОСТИ от того, удалён датасет или нет — данные берутся
               из детерминированного клиентского генератора (НЕ из сети).
 
+              Задача 2026-09-02 (Визуализация распределения): для пары
+              «Загрузка» + «Визуализация распределения» (id="upload" +
+              id="distribution") рендерим СТАТИЧНЫЕ графики распределения
+              (точечный/гистограмма/KDE) + 8 бейджей описательной статистики
+              синтетического датасета demo_energy_consumption.csv (колонка
+              consumption_mwh). Визуализация закреплена как пример и
+              сохраняется ВНЕ ЗАВИСИМОСТИ от того, удалён датасет или нет.
+
               Для остальных пунктов — текстовая заглушка (своя визуализация
               для каждого пункта в будущих задачах). */}
           {activeStopId === "upload" && activeItemId === "preview" ? (
@@ -341,6 +350,8 @@ export function TsAnalysisNavigator() {
             <NavigatorTechInfoPreview />
           ) : activeStopId === "upload" && activeItemId === "preview_5_5" ? (
             <NavigatorPreview55Preview />
+          ) : activeStopId === "upload" && activeItemId === "distribution" ? (
+            <NavigatorDistributionPreview />
           ) : (
             <div
               className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"

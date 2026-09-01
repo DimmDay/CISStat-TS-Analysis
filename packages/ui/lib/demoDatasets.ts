@@ -344,3 +344,231 @@ export function getDemoFinanceOhlcvPreview55(): Preview55Data {
 
   return { head, tail };
 }
+
+// ── Хелпер для окна «Обзор» остановки «Визуализация распределения» ────
+//
+// Задача 2026-09-02: в окне «Обзор» при активации пункта «Визуализация
+// распределения» (id="distribution") секции «Этапы модуля» остановки
+// «Загрузка» должны отображаться СТАТИЧНЫЕ графики распределения
+// (точечный/гистограмма/KDE) + бейджи описательной статистики
+// синтетического датасета demo_energy_consumption.csv (колонка
+// consumption_mwh, 300 значений: 5 регионов × 60 месяцев).
+//
+// Визуализация закреплена СТАТИЧНО как пример — НЕ зависит от сессии/сети.
+// Данные берутся из того же детерминированного генератора
+// `generateEnergyConsumption()` (mulberry32 seed 20260820), что и у
+// демо-датасета «Энергопотребление по регионам» во вкладке «Загрузка».
+//
+// Контракт повторяет apps/api/routers/session.py::get_dataset_distribution
+// (DistributionChartResponse) и apps/api/schemas.py::ColumnStatsOut —
+// те же поля, что получает реальная вкладка «Загрузка» через
+// GET /dataset/distribution?column=... и GET /dataset/stats.
+//
+// Расчёт scatter/histogram/kde/stat делается НА КЛИЕНТЕ (а не через API),
+// т.к. это статичный пример — нет смысла гонять сеть для детерминированных
+// данных. Формулы зеркалируют бэкенд (build_scatter_series без сэмплинга
+// при < 3000 точек, гистограмма по правилу Freedman-Diaconis, KDE через
+// простой kernel density estimate с гауссовым ядром).
+
+import type {
+  DistributionChartData,
+  ScatterPoint,
+  HistogramBin,
+  KdePoint,
+} from "../components/DistributionCharts";
+
+export interface DistributionStats {
+  mean: number;
+  median: number;
+  std: number;
+  skewness: number | null;
+  kurtosis: number | null;
+  q1: number;
+  q3: number;
+  iqr: number;
+}
+
+export interface DistributionPreviewData {
+  /** Полный DistributionChartData для переиспользования существующих
+   *  ScatterDistributionChart/HistogramDistributionChart/KdeDistributionChart. */
+  distribution: DistributionChartData;
+  /** 8 описательных статистик для Metric-бейджей. */
+  stats: DistributionStats;
+  /** Сырые значения (для отладки/тестов — детерминизм, длина). */
+  rawValues: number[];
+}
+
+/** Оценивает плотность (KDE) гауссовым ядром на сетке из 40 точек.
+ * Простой аналог scipy.stats.gaussian_kde — достаточен для статичного
+ * примера, не претендует на научную точность (нет оптимизации bandwidth
+ * по Silverman, используется эвристика std/3). */
+function estimateKde(values: number[], nPoints = 40): KdePoint[] {
+  const n = values.length;
+  if (n < 2) return [];
+  const mean = values.reduce((a, b) => a + b, 0) / n;
+  const variance = values.reduce((a, v) => a + (v - mean) ** 2, 0) / (n - 1);
+  const std = Math.sqrt(variance);
+  if (std === 0) return [];
+  // Простой bandwidth: 1.06 * std * n^(-1/5) (правило Silverman).
+  const h = 1.06 * std * Math.pow(n, -1 / 5);
+  if (h === 0) return [];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min;
+  if (range === 0) return [];
+  const step = range / (nPoints - 1);
+  const points: KdePoint[] = [];
+  for (let i = 0; i < nPoints; i++) {
+    const x = min + i * step;
+    // Сумма гауссовых ядер / (n * h).
+    let sum = 0;
+    for (let j = 0; j < n; j++) {
+      const u = (x - values[j]) / h;
+      sum += Math.exp(-0.5 * u * u) / Math.sqrt(2 * Math.PI);
+    }
+    points.push({ x, y: sum / (n * h) });
+  }
+  return points;
+}
+
+/** Строит гистограмму по правилу Freedman-Diaconis (bin width = 2*IQR/n^(1/3)),
+ * максимум 20 бинов — достаточно для статичного примера. */
+function buildHistogram(values: number[]): HistogramBin[] {
+  const n = values.length;
+  if (n < 2) return [];
+  const sorted = [...values].sort((a, b) => a - b);
+  const q1 = sorted[Math.floor(n * 0.25)];
+  const q3 = sorted[Math.floor(n * 0.75)];
+  const iqr = q3 - q1;
+  const min = sorted[0];
+  const max = sorted[n - 1];
+  if (max === min) return [];
+  // Freedman-Diaconis: bin width = 2 * IQR / n^(1/3).
+  let binWidth = iqr > 0 ? (2 * iqr) / Math.cbrt(n) : (max - min) / 10;
+  let nBins = Math.min(20, Math.ceil((max - min) / binWidth));
+  nBins = Math.max(5, nBins); // минимум 5 бинов для читаемости
+  binWidth = (max - min) / nBins;
+  const bins: HistogramBin[] = [];
+  for (let i = 0; i < nBins; i++) {
+    const x0 = min + i * binWidth;
+    const x1 = x0 + binWidth;
+    let count = 0;
+    for (const v of values) {
+      // Последний бин включает правую границу.
+      if (v >= x0 && (v < x1 || (i === nBins - 1 && v <= x1))) count++;
+    }
+    bins.push({ x0, x1, count });
+  }
+  return bins;
+}
+
+/** Считает skewness (асимметрия) и kurtosis (эксцесс) — те же формулы,
+ * что pandas: skew = m3 / m2^(3/2), kurt = m4 / m2^2 - 3 (Fisher).
+ * Возвращает null при n < 4 (бэкенд так же сериализует NaN в null). */
+function computeSkewnessKurtosis(values: number[]): {
+  skewness: number | null;
+  kurtosis: number | null;
+} {
+  const n = values.length;
+  if (n < 4) return { skewness: null, kurtosis: null };
+  const mean = values.reduce((a, b) => a + b, 0) / n;
+  const m2 = values.reduce((a, v) => a + (v - mean) ** 2, 0) / n;
+  const m3 = values.reduce((a, v) => a + (v - mean) ** 3, 0) / n;
+  const m4 = values.reduce((a, v) => a + (v - mean) ** 4, 0) / n;
+  if (m2 === 0) return { skewness: null, kurtosis: null };
+  const skewness = m3 / Math.pow(m2, 1.5);
+  const kurtosis = m4 / (m2 * m2) - 3; // Fisher (excess kurtosis)
+  return { skewness, kurtosis };
+}
+
+/**
+ * Возвращает детерминированные данные распределения + описательные
+ * статистики для синтетического датасета demo_energy_consumption.csv
+ * (колонка consumption_mwh, 300 значений).
+ *
+ * Источник: `generateEnergyConsumption()` (mulberry32 seed 20260820).
+ * Идемпотентный, без побочных эффектов — безопасно оборачивать в useMemo.
+ *
+ * Контракт: DistributionChartData (scatter/histogram/kde) — тот же, что
+ * в apps/api/routers/session.py::get_dataset_distribution; DistributionStats
+ * — те же поля, что в ColumnStatsOut (mean/median/std/skew/kurtosis/q1/q3/iqr).
+ */
+export function getDemoEnergyDistributionData(): DistributionPreviewData {
+  const dataset = DEMO_DATASETS.find((d) => d.id === "energy_consumption");
+  if (!dataset) {
+    // Graceful degradation — не должно случаться, датасет объявлен статически.
+    return {
+      distribution: {
+        column: "consumption_mwh",
+        non_null_count: 0,
+        min: null,
+        max: null,
+        scatter: [],
+        scatter_sampled: false,
+        scatter_sampling_method: null,
+        scatter_original_count: 0,
+        histogram: [],
+        kde: null,
+      },
+      stats: {
+        mean: 0, median: 0, std: 0,
+        skewness: null, kurtosis: null,
+        q1: 0, q3: 0, iqr: 0,
+      },
+      rawValues: [],
+    };
+  }
+
+  // Парсим CSV: колонки region, month, consumption_mwh (индекс 2).
+  const csv = dataset.generateCsv();
+  const lines = csv.split("\n").filter((l) => l.length > 0);
+  const header = lines[0].split(",");
+  const consumptionIdx = header.indexOf("consumption_mwh");
+  const rawValues: number[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(",");
+    const v = Number(cols[consumptionIdx]);
+    if (Number.isFinite(v)) rawValues.push(v);
+  }
+
+  const n = rawValues.length;
+  const min = n > 0 ? Math.min(...rawValues) : null;
+  const max = n > 0 ? Math.max(...rawValues) : null;
+
+  // Scatter: x = позиция в очищенном ряде (0-based), y = значение.
+  // При n <= 3000 (у нас 300) — без LTTB-сэмплинга, как на бэкенде.
+  const scatter: ScatterPoint[] = rawValues.map((y, x) => ({ x, y }));
+
+  const histogram = buildHistogram(rawValues);
+  const kde = n >= 2 ? estimateKde(rawValues) : null;
+
+  // Описательные статистики — те же формулы, что pandas (cmoment).
+  const mean = rawValues.reduce((a, b) => a + b, 0) / n;
+  const sorted = [...rawValues].sort((a, b) => a - b);
+  const median = n % 2 === 1
+    ? sorted[(n - 1) / 2]
+    : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+  const variance = rawValues.reduce((a, v) => a + (v - mean) ** 2, 0) / (n - 1);
+  const std = Math.sqrt(variance);
+  const q1 = sorted[Math.floor(n * 0.25)];
+  const q3 = sorted[Math.floor(n * 0.75)];
+  const iqr = q3 - q1;
+  const { skewness, kurtosis } = computeSkewnessKurtosis(rawValues);
+
+  return {
+    distribution: {
+      column: "consumption_mwh",
+      non_null_count: n,
+      min,
+      max,
+      scatter,
+      scatter_sampled: false,
+      scatter_sampling_method: null,
+      scatter_original_count: n,
+      histogram,
+      kde,
+    },
+    stats: { mean, median, std, skewness, kurtosis, q1, q3, iqr },
+    rawValues,
+  };
+}
