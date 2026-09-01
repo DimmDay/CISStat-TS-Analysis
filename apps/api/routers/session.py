@@ -31,6 +31,10 @@ from apps.api.eda_stationarity import build_eda_stationarity
 from apps.api.eda_structural_breaks import build_eda_structural_breaks
 from apps.api.eda_validation_strategy import build_eda_validation_strategy
 from apps.api.eda_model_matrix import build_eda_model_matrix
+from apps.api.preprocessing_stationarity import (
+    build_stationarity_profile,
+    preview_stationarity_transformation,
+)
 from apps.api.schemas import (
     ColumnDetectionOut,
     ColumnStatsOut,
@@ -81,6 +85,9 @@ from apps.api.schemas import (
     DatasetPreprocessingSmoothingProfileResponse,
     DatasetPreprocessingSmoothingRequest,
     DatasetPreprocessingSmoothingResponse,
+    DatasetPreprocessingStationarityProfileResponse,
+    DatasetPreprocessingStationarityRequest,
+    DatasetPreprocessingStationarityResponse,
     DatasetRangeCorrectionRequest,
     DatasetRangeCorrectionResponse,
     DatasetRangeProfileResponse,
@@ -369,6 +376,17 @@ def _preprocessing_smoothing_status(
     if not applicable:
         return "skipped", "not_required"
     return ("warning" if needs_smoothing else "done"), None
+
+
+def _preprocessing_stationarity_status(
+    mode: str, applicable: bool, needs_transformation: bool
+) -> tuple[str, Optional[str]]:
+    """warning означает потребность в аналитическом решении о преобразовании."""
+    if mode == "disabled":
+        return "skipped", "disabled"
+    if not applicable:
+        return "skipped", "not_required"
+    return ("warning" if needs_transformation else "done"), None
 
 
 def _to_response(session: AnalysisSession) -> SessionStateResponse:
@@ -2440,6 +2458,82 @@ def create_dataset_preprocessing_smoothing_transformation(
         session.touch()
         store.save(session)
     return DatasetPreprocessingSmoothingResponse(applied=payload.apply, **summary)
+
+
+@router.get(
+    "/dataset/preprocessing/stationarity-profile",
+    response_model=DatasetPreprocessingStationarityProfileResponse,
+)
+def get_dataset_preprocessing_stationarity_profile(
+    column: str,
+    request: Request,
+    response: Response,
+    method: str = "auto",
+    alpha: float = Query(0.05, ge=0.01, le=0.10),
+    seasonal_period: int = Query(12, ge=2, le=10000),
+    rolling_window: int = Query(12, ge=3, le=500),
+):
+    """ADF/KPSS-консенсус и сравнение минимальных преобразований."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая")
+    allowed = {
+        "auto", "linear_detrend", "first_difference", "second_difference",
+        "seasonal_difference", "combined_difference", "log_difference",
+    }
+    if method not in allowed:
+        raise HTTPException(status_code=422, detail=f"Неподдерживаемый метод обеспечения стационарности: {method}")
+    profile = build_stationarity_profile(
+        session.dataframe, column, method, alpha=alpha,
+        seasonal_period=seasonal_period, rolling_window=rolling_window,
+    )
+    mode = _effective_preprocessing_check_modes(session)["stationarity"]
+    status, status_reason = _preprocessing_stationarity_status(
+        mode, profile["applicable"], profile["needs_transformation"],
+    )
+    return DatasetPreprocessingStationarityProfileResponse(
+        mode=mode, status=status, status_reason=status_reason, profile=profile,
+    )
+
+
+@router.post(
+    "/dataset/preprocessing/stationarity-transformations",
+    response_model=DatasetPreprocessingStationarityResponse,
+)
+def create_dataset_preprocessing_stationarity_transformation(
+    payload: DatasetPreprocessingStationarityRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply новой колонки с явной потерей неопределённого префикса."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    try:
+        corrected_df, summary = preview_stationarity_transformation(
+            session.dataframe, payload.column, payload.method,
+            seasonal_period=payload.seasonal_period,
+            confirm_non_causal=payload.confirm_non_causal,
+        )
+    except (ValueError, TypeError, FloatingPointError, OverflowError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        session.preprocessing_transformations[summary["output_column"]] = dict(summary["metadata"])
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
+        session.touch()
+        store.save(session)
+    return DatasetPreprocessingStationarityResponse(applied=payload.apply, **summary)
 
 
 @router.get(

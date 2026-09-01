@@ -1157,6 +1157,143 @@ class DatasetPreprocessingSmoothingResponse(BaseModel):
     metadata: SmoothingTransformationMetadataOut
 
 
+StationarityTransformMethod = Literal[
+    "linear_detrend", "first_difference", "second_difference",
+    "seasonal_difference", "combined_difference", "log_difference",
+]
+StationarityProfileMethod = Literal[
+    "none", "linear_detrend", "first_difference", "second_difference",
+    "seasonal_difference", "combined_difference", "log_difference",
+]
+StationarityConsensus = Literal[
+    "stationary", "trend-stationary", "non-stationary", "inconclusive",
+]
+
+
+class StationarityTestComparisonOut(BaseModel):
+    id: Literal["adf_level", "adf_trend", "kpss_level", "kpss_trend", "pp", "zivot_andrews"]
+    label: str
+    null_hypothesis: str
+    before_p_value: Optional[float] = None
+    after_p_value: Optional[float] = None
+    before_supports_stationarity: Optional[bool] = None
+    after_supports_stationarity: Optional[bool] = None
+
+
+class StationarityCandidateOut(BaseModel):
+    method: StationarityTransformMethod
+    label: str
+    available: bool
+    reason: Optional[str] = None
+    consensus: Optional[StationarityConsensus] = None
+    lost_observations: int = 0
+    adf_p_value: Optional[float] = None
+    kpss_p_value: Optional[float] = None
+    acf_lag1: Optional[float] = None
+    variance_ratio: Optional[float] = None
+    over_differencing_warning: bool = False
+
+
+class StationarityPointOut(BaseModel):
+    x: str
+    original: float
+    transformed: Optional[float] = None
+    rolling_mean_z_before: Optional[float] = None
+    rolling_mean_z_after: Optional[float] = None
+    rolling_std_ratio_before: Optional[float] = None
+    rolling_std_ratio_after: Optional[float] = None
+
+
+class StationarityAcfPointOut(BaseModel):
+    lag: int
+    before: float
+    after: float
+    confidence_before: float
+    confidence_after: float
+
+
+class PreprocessingStationarityProfileOut(BaseModel):
+    column: str
+    applicable: bool
+    reason: Optional[str] = None
+    n_observations: int = 0
+    missing_count: int = 0
+    min_observations: int = 30
+    alpha: float = 0.05
+    order_source: Literal["time_column", "row_order"] = "row_order"
+    order_column: Optional[str] = None
+    frequency: Optional[str] = None
+    regular: bool = False
+    seasonal_period: int = 12
+    selected_method: Optional[StationarityProfileMethod] = None
+    needs_transformation: bool = False
+    consensus_before: Optional[StationarityConsensus] = None
+    consensus_after: Optional[StationarityConsensus] = None
+    lost_observations: int = 0
+    acf_lag1_before: Optional[float] = None
+    acf_lag1_after: Optional[float] = None
+    variance_before: Optional[float] = None
+    variance_after: Optional[float] = None
+    over_differencing_warning: bool = False
+    tests: List[StationarityTestComparisonOut] = Field(default_factory=list)
+    candidates: List[StationarityCandidateOut] = Field(default_factory=list)
+    points: List[StationarityPointOut] = Field(default_factory=list)
+    acf: List[StationarityAcfPointOut] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+    recommendation: str
+    methodology_note: str
+
+
+class DatasetPreprocessingStationarityProfileResponse(BaseModel):
+    mode: Literal["auto", "enabled", "disabled"] = "auto"
+    status: Literal["done", "warning", "pending", "skipped"] = "pending"
+    status_reason: Optional[Literal["not_required", "disabled"]] = None
+    profile: PreprocessingStationarityProfileOut
+
+
+class DatasetPreprocessingStationarityRequest(BaseModel):
+    column: str = Field(..., min_length=1)
+    method: StationarityTransformMethod
+    seasonal_period: int = Field(12, ge=2, le=10000)
+    confirm_non_causal: bool = False
+    apply: bool = Field(False, description="False — preview; True — добавить колонку и удалить неопределённый префикс")
+
+
+class StationarityTransformationMetadataOut(BaseModel):
+    kind: Literal["stationarity"] = "stationarity"
+    source_column: str
+    output_column: str
+    method: StationarityTransformMethod
+    regular_order: int
+    seasonal_order: int
+    seasonal_period: Optional[int] = None
+    domain_transform: Optional[Literal["log"]] = None
+    causal: bool
+    modeling_safe: bool
+    inverse_supported: bool
+    lost_observations: int
+    fitted_on_n: int
+    history_tail: List[float] = Field(default_factory=list)
+    trend_intercept: Optional[float] = None
+    trend_slope: Optional[float] = None
+    order_source: Literal["time_column", "row_order"]
+    order_column: Optional[str] = None
+    frequency: Optional[str] = None
+
+
+class DatasetPreprocessingStationarityResponse(BaseModel):
+    applied: bool
+    column: str
+    method: StationarityTransformMethod
+    output_column: str
+    rows_before: int
+    rows_after: int
+    rows_dropped: int
+    columns_before: int
+    columns_after: int
+    metadata: StationarityTransformationMetadataOut
+
+
 # ── Структурная детекция (2026-08-14, найден реальный баг: фронт
 # показывал позиционную заглушку "первые 3 колонки файла" вместо
 # реального контентного скоринга -- см. app/data/detectors.py) ──

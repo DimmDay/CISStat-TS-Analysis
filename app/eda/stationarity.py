@@ -227,6 +227,8 @@ def analyze_stationarity(
     series: pd.Series,
     alpha: float = 0.05,
     max_lag: int | None = None,
+    *,
+    include_confirmatory: bool = True,
 ) -> dict[str, Any]:
     """Запускает ADF(c/ct), KPSS(c/ct), PP и Zivot–Andrews.
 
@@ -266,8 +268,13 @@ def analyze_stationarity(
     adf_trend = _run_adf(values, "ct", alpha, max_lag)
     kpss_level = _run_kpss(values, "c", alpha)
     kpss_trend = _run_kpss(values, "ct", alpha)
-    pp = _run_pp(values, alpha, max_lag)
-    za = _run_zivot_andrews(values, alpha, max_lag)
+    if include_confirmatory:
+        pp = _run_pp(values, alpha, max_lag)
+        za = _run_zivot_andrews(values, alpha, max_lag)
+    else:
+        skipped = "Подтверждающая диагностика пропущена в быстром сравнении кандидатов."
+        pp = _empty_test(skipped)
+        za = {**_empty_test(skipped), "breakpoint": None}
 
     level_stationary = bool(
         adf_level["is_stationary"] and kpss_level["is_stationary"]
@@ -310,14 +317,14 @@ def analyze_stationarity(
 
     recommendations = [recommendation]
     analysis_warnings: list[str] = []
-    if pp["available"]:
+    if include_confirmatory and pp["available"]:
         if pp["is_stationary"] == adf_level["is_stationary"]:
             recommendations.append("Phillips–Perron подтверждает вывод ADF для спецификации с константой.")
         else:
             recommendations.append("Phillips–Perron расходится с ADF; интерпретируйте консенсус осторожно.")
-    else:
+    elif include_confirmatory:
         analysis_warnings.append(str(pp["note"]))
-    if za["available"] and za["is_stationary"]:
+    if include_confirmatory and za["available"] and za["is_stationary"]:
         recommendations.append(
             f"Zivot–Andrews отвергает единичный корень с одним разрывом; кандидат точки разрыва — наблюдение {za['breakpoint']}."
         )

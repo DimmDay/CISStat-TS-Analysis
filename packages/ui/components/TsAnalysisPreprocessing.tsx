@@ -45,6 +45,11 @@ import {
   type SmoothingProfileResponse,
 } from "./PreprocessingSmoothingOverview";
 import { PreprocessingSmoothingPipeline } from "./PreprocessingSmoothingPipeline";
+import {
+  PreprocessingStationarityOverview,
+  type StationarityProfileResponse,
+} from "./PreprocessingStationarityOverview";
+import { PreprocessingStationarityPipeline } from "./PreprocessingStationarityPipeline";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -72,7 +77,7 @@ const CHECKS: Check[] = [
   { id: "smoothing", label: "Сглаживание ряда", status: "pending", count: null,
     description: "Удаление высокочастотного шума методами SMA, EMA, Holt-Winters, HP-filter, Savitzky-Golay или фильтром Калмана. Опциональный шаг для зашумлённых рядов." },
   { id: "stationarity", label: "Стационарность ряда", status: "pending", count: null,
-    description: "Нестационарность ломает ACF/PACF и идентификацию ARIMA. Дифференцирование порядка d и сезонное D с контролем ADF/KPSS/PP. Порядок сохраняется для обратного преобразования." },
+    description: "Консенсус ADF/KPSS различает стационарность уровня, тренд-стационарность, единичный корень и неопределённость. Доступны detrend, минимальные обычные/сезонные разности и log-разность с сохранением inverse-границ." },
   { id: "spectral", label: "Спектральный анализ", status: "pending", count: null,
     description: "Разведочный анализ частотного состава ряда: FFT, periodogram, вейвлет-преобразование. Определяет доминантные частоты и сезонные периоды для генерации лаговых признаков." },
   { id: "feature_eng", label: "Генерация признаков", status: "pending", count: null,
@@ -288,6 +293,42 @@ const SMOOTHING_PIPELINE_DESCRIPTION = `Мастер сглаживания ря
 3. Preview выполняется на глубокой копии и создаёт новую колонку *_ema, *_sma, *_wma, *_median, *_savgol или *_lowess. Исходный target не перезаписывается.
 4. После подтверждения apply атомарно сохраняет колонку и metadata: method, parameters, causal/modeling_safe, inverse_supported=false и fitted_on_n.
 5. Сглаживание необратимо и способно удалить полезный сигнал. Сравните исходный и сглаженный варианты expanding/sliding-window backtest-ом; параметры выбирайте только на train.`;
+
+const STATIONARITY_METRICS_DESCRIPTION = `Метрики и алгоритм: Стационарность ряда
+
+Цель
+Определить, стационарен ли выбранный ряд вокруг уровня или детерминированного тренда, и сравнить минимальные преобразования без автоматического назначения порядка ARIMA. Стационарность модели относится к ошибкам/динамике конкретной спецификации: современные state-space, ETS, Prophet и ML-модели не следует блокировать общей фразой «все модели требуют стационарности».
+
+Метрики и тесты
+1. ADF с regression='c' и 'ct', autolag='AIC': H0 — единичный корень, поэтому p < α поддерживает стационарность.
+2. KPSS с regression='c' и 'ct', nlags='auto': обратная H0 — стационарность вокруг уровня/тренда, поэтому p ≥ α поддерживает её. Табличный диапазон p-value 0,01…0,10 показывается с пояснением.
+3. Консенсус строится только на согласованных ADF/KPSS: stationary, trend-stationary, non-stationary или inconclusive. Phillips–Perron и Zivot–Andrews служат подтверждающими диагностиками и не подменяют основной вывод.
+4. В Overview дополнительно сравниваются ACF, нормированные rolling mean/σ, потеря начальных наблюдений и отношение дисперсий. ACF(1) < −0,5 после разностей — только эвристический сигнал возможного over-differencing.
+5. Кандидаты не ранжируются по минимальному p-value: многократный перебор тестов создавал бы data snooping. Auto использует решение до трансформации: stationary → ничего; trend-stationary → linear detrend; иначе → первая разность.
+
+Корректировка legacy
+Legacy apply_differencing смешивал порядок и лаг: first с d=2 вызывал diff(2), а «second» тоже означал y_t−y_{t−2}, а не Δ²y_t = y_t−2y_{t−1}+y_{t−2}. Combined повторял ту же ошибку. Fractional differencing имел неверный знак первого веса и почти всегда оставлял одну точку из-за усечения; его исключили из основного мастера до отдельного корректного long-memory/inverse-контракта. Новый core явно разделяет Δ, Δ², Δs и ΔΔs.
+
+Временной контракт
+Unit-root тесты и сезонные лаги требуют регулярной однообъектной оси: нераспознанные/дублирующиеся даты и нерегулярная сетка блокируются с переходом к предыдущим остановкам. Без уверенно найденной даты допускается row-order с предупреждением. Преобразование сохраняет исходный target, сортирует ось, удаляет из всего датасета только математически неопределённый префикс и сохраняет history_tail/trend coefficients для инверсии.
+
+Официальные источники
+- statsmodels ADF: https://www.statsmodels.org/stable/generated/statsmodels.tsa.stattools.adfuller.html
+- statsmodels KPSS: https://www.statsmodels.org/stable/generated/statsmodels.tsa.stattools.kpss.html
+- statsmodels ADF/KPSS detrending: https://www.statsmodels.org/stable/examples/notebooks/generated/stationarity_detrending_adf_kpss.html
+- arch Phillips–Perron: https://arch.readthedocs.io/en/stable/unitroot/generated/arch.unitroot.PhillipsPerron.html
+- statsmodels Zivot–Andrews: https://www.statsmodels.org/stable/generated/statsmodels.tsa.stattools.zivot_andrews.html
+- pandas Series.diff: https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.Series.diff.html
+- FPP3 stationarity/differencing: https://otexts.com/fpp3/stationarity.html`;
+
+const STATIONARITY_PIPELINE_DESCRIPTION = `Мастер обеспечения стационарности
+
+1. Оцените консенсус до преобразования. Если ряд стационарен вокруг уровня, оставьте его без изменений. Для trend-stationary сравните явный тренд модели и linear detrend; не назначайте d=1 автоматически.
+2. Выберите минимальный интерпретируемый оператор: первая разность Δ, сезонная Δs при подтверждённом периоде, комбинация ΔΔs, log-разность для строго положительных значений или редко необходимая Δ². Fractional differencing осознанно не предлагается.
+3. Linear detrend по полной истории является offline-операцией и требует отдельного подтверждения; в backtest slope/intercept оцениваются заново только на train. Разности каузальны, но выбор d/D/s тоже выполняется внутри train-fold.
+4. Preview показывает новую колонку, число теряемых начальных строк и поддержку inverse. Исходный target не перезаписывается; удаление префикса синхронно сохраняет выравнивание всех признаков.
+5. После подтверждения apply атомарно сохраняет transformed column, d/D/s, log-domain, causal/modeling_safe, history_tail или trend coefficients. Эти границы нужны для возврата будущего прогноза в исходную шкалу.
+6. После применения повторите ADF/KPSS и временной backtest. Если ACF(1) резко отрицательна или качество прогноза ухудшилось, уменьшите число разностей.`;
 
 type PreprocessingCheckMode = "auto" | "enabled" | "disabled";
 
@@ -585,6 +626,38 @@ export function TsAnalysisPreprocessing() {
 
   const smoothingStatus: CheckStatus = smoothingLoading ? "running" : smoothingNoDataset ? "skipped" : smoothingError ? "error" : smoothingProfile ? smoothingProfile.status : "pending";
 
+  // ── Остановка «Стационарность ряда»: ADF/KPSS + безопасные разности ──
+  const [stationarityProfile, setStationarityProfile] = useState<StationarityProfileResponse | null>(null);
+  const [stationarityLoading, setStationarityLoading] = useState(false);
+  const [stationarityNoDataset, setStationarityNoDataset] = useState(false);
+  const [stationarityError, setStationarityError] = useState<string | null>(null);
+  const [stationarityRefreshKey, setStationarityRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setStationarityError(null); setStationarityNoDataset(false);
+    if (!activeFeature) { setStationarityProfile(null); setStationarityLoading(false); return () => { active = false; }; }
+    setStationarityLoading(true);
+    void (async () => {
+      try {
+        const query = new URLSearchParams({ column: activeFeature, seasonal_period: "12" });
+        const response = await fetch(sessionApiUrl(`/dataset/preprocessing/stationarity-profile?${query.toString()}`), { credentials: "include" });
+        if (response.status === 404) { if (active) setStationarityNoDataset(true); return; }
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(typeof body?.detail === "string" ? body.detail : `HTTP ${response.status}`);
+        }
+        const data: StationarityProfileResponse = await response.json();
+        if (active) { setStationarityProfile(data); setCheckModes((current) => ({ ...current, stationarity: data.mode })); }
+      } catch (caught) {
+        if (active) setStationarityError(caught instanceof Error ? caught.message : "Не удалось проверить стационарность");
+      } finally { if (active) setStationarityLoading(false); }
+    })();
+    return () => { active = false; };
+  }, [activeFeature, stationarityRefreshKey]);
+
+  const stationarityStatus: CheckStatus = stationarityLoading ? "running" : stationarityNoDataset ? "skipped" : stationarityError ? "error" : stationarityProfile ? stationarityProfile.status : "pending";
+
   // Итоговый список проверок -- статика для ещё не реализованных
   // остановок, реальные данные для «Пропусков», «Выбросов» и «Регулярности».
   const checks = useMemo<Check[]>(() => CHECKS.map((check) => {
@@ -594,8 +667,9 @@ export function TsAnalysisPreprocessing() {
     if (check.id === "decomposition") return { ...check, status: decompositionStatus, count: decompositionProfile?.profile?.warnings.length ?? null };
     if (check.id === "variance_stab") return { ...check, status: varianceStatus, count: varianceProfile?.profile?.needs_stabilization ? 1 : 0 };
     if (check.id === "smoothing") return { ...check, status: smoothingStatus, count: smoothingProfile?.profile?.needs_smoothing ? 1 : 0 };
+    if (check.id === "stationarity") return { ...check, status: stationarityStatus, count: stationarityProfile?.profile?.needs_transformation ? 1 : 0 };
     return check;
-  }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile, decompositionStatus, decompositionProfile, varianceStatus, varianceProfile, smoothingStatus, smoothingProfile]);
+  }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile, decompositionStatus, decompositionProfile, varianceStatus, varianceProfile, smoothingStatus, smoothingProfile, stationarityStatus, stationarityProfile]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -652,6 +726,7 @@ export function TsAnalysisPreprocessing() {
       if (checkId === "decomposition") setDecompositionRefreshKey((k) => k + 1);
       if (checkId === "variance_stab") setVarianceRefreshKey((k) => k + 1);
       if (checkId === "smoothing") setSmoothingRefreshKey((k) => k + 1);
+      if (checkId === "stationarity") setStationarityRefreshKey((k) => k + 1);
     } catch {
       setCheckModes(previous);
       setModeError({ checkId, message: "Не удалось сохранить режим проверки" });
@@ -706,6 +781,9 @@ export function TsAnalysisPreprocessing() {
     if (activeCheckId === "smoothing") {
       return descriptionSection === "metrics" ? SMOOTHING_METRICS_DESCRIPTION : SMOOTHING_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "stationarity") {
+      return descriptionSection === "metrics" ? STATIONARITY_METRICS_DESCRIPTION : STATIONARITY_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -733,6 +811,9 @@ export function TsAnalysisPreprocessing() {
     }
     if (activeCheckId === "smoothing") {
       return descriptionSection === "metrics" ? "Метрики и алгоритм — Сглаживание ряда" : "Мастер сглаживания ряда";
+    }
+    if (activeCheckId === "stationarity") {
+      return descriptionSection === "metrics" ? "Метрики и алгоритм — Стационарность ряда" : "Мастер обеспечения стационарности";
     }
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
@@ -900,6 +981,8 @@ export function TsAnalysisPreprocessing() {
               ? "Мастер стабилизации дисперсии"
               : activeCheckId === "smoothing" && descriptionSection === "pipeline"
               ? "Мастер сглаживания ряда"
+              : activeCheckId === "stationarity" && descriptionSection === "pipeline"
+              ? "Мастер обеспечения стационарности"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -927,6 +1010,10 @@ export function TsAnalysisPreprocessing() {
               ? "Выберите каузальный или offline-метод, оцените новую колонку на копии и подтвердите добавление."
               : activeCheckId === "smoothing"
               ? "Ряд, удалённая компонента/ACF, сравнение методов, спектр и диагностика — во вкладках-бейджах."
+              : activeCheckId === "stationarity" && descriptionSection === "pipeline"
+              ? "Выберите минимальный оператор, оцените потерю строк и inverse-контракт, затем подтвердите применение."
+              : activeCheckId === "stationarity"
+              ? "Ряд, rolling μ/σ, комплементарные тесты, ACF и сравнение кандидатов — во вкладках-бейджах."
               : "Меняется автоматически под активную проверку."}
           </p>
 
@@ -981,6 +1068,20 @@ export function TsAnalysisPreprocessing() {
               error={smoothingError}
               noDataset={smoothingNoDataset}
             />
+          ) : activeCheckId === "stationarity" && descriptionSection === "pipeline" ? (
+            <PreprocessingStationarityPipeline
+              column={activeFeature}
+              recommendedMethod={stationarityProfile?.profile?.selected_method ?? null}
+              seasonalPeriod={stationarityProfile?.profile?.seasonal_period ?? 12}
+              onApplied={() => setStationarityRefreshKey((k) => k + 1)}
+            />
+          ) : activeCheckId === "stationarity" ? (
+            <PreprocessingStationarityOverview
+              profile={stationarityProfile?.profile ?? null}
+              loading={stationarityLoading}
+              error={stationarityError}
+              noDataset={stationarityNoDataset}
+            />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
@@ -1029,6 +1130,13 @@ export function TsAnalysisPreprocessing() {
               <Metric label="High-freq до" value={smoothingProfile?.profile.diagnostics_before?.high_frequency_power_share !== null && smoothingProfile?.profile.diagnostics_before?.high_frequency_power_share !== undefined ? `${(100 * smoothingProfile.profile.diagnostics_before.high_frequency_power_share).toFixed(1)}%` : "—"} />
               <Metric label="High-freq после" value={smoothingProfile?.profile.diagnostics_after?.high_frequency_power_share !== null && smoothingProfile?.profile.diagnostics_after?.high_frequency_power_share !== undefined ? `${(100 * smoothingProfile.profile.diagnostics_after.high_frequency_power_share).toFixed(1)}%` : "—"} />
             </div>
+          ) : activeCheckId === "stationarity" ? (
+            <div className="grid grid-cols-4 gap-3 mt-4">
+              <Metric label="Консенсус до" value={stationarityProfile?.profile?.consensus_before ?? "—"} />
+              <Metric label="Метод" value={stationarityProfile?.profile?.selected_method?.replace(/_/g, " ") ?? "—"} />
+              <Metric label="Консенсус после" value={stationarityProfile?.profile?.consensus_after ?? "—"} />
+              <Metric label="Потеря N" value={stationarityProfile?.profile ? String(stationarityProfile.profile.lost_observations) : "—"} />
+            </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
               <Metric label="Строк" value="200" />
@@ -1066,7 +1174,7 @@ export function TsAnalysisPreprocessing() {
                   у остальных остановок ещё нет backend-проверки, которую
                   можно реально включить/отключить (см. комментарий у
                   useState checkModes выше). */}
-              {(check.id === "missing" || check.id === "outliers" || check.id === "regularity" || check.id === "decomposition" || check.id === "variance_stab" || check.id === "smoothing") && (
+              {(check.id === "missing" || check.id === "outliers" || check.id === "regularity" || check.id === "decomposition" || check.id === "variance_stab" || check.id === "smoothing" || check.id === "stationarity") && (
                 <label className="mb-2 block text-[11px] font-medium text-neutral-600">
                   Режим проверки
                   <select
@@ -1231,6 +1339,15 @@ export function TsAnalysisPreprocessing() {
                   {check.status === "warning" && <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">Высокочастотная составляющая выражена; сравните фильтры</p>}
                   {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Сильного сигнала для обязательного сглаживания нет</p>}
                 </>
+              ) : check.id === "stationarity" ? (
+                <>
+                  {check.status === "running" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">Выполняются ADF/KPSS и сравнение преобразований…</p>}
+                  {check.status === "error" && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">{stationarityError ?? "Ошибка диагностики стационарности"}</p>}
+                  {check.status === "pending" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">Проверка не запускалась</p>}
+                  {check.status === "skipped" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">{stationarityNoDataset ? "Нет активного датасета" : stationarityProfile?.status_reason === "disabled" ? "Отключено" : stationarityProfile?.profile?.reason ?? "Не применимо"}</p>}
+                  {check.status === "warning" && <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">{stationarityProfile?.profile?.consensus_before === "trend-stationary" ? "Ряд тренд-стационарен; сравните detrend с явным трендом модели" : stationarityProfile?.profile?.consensus_before === "inconclusive" ? "ADF/KPSS расходятся; требуется аналитическое решение" : "Обнаружены признаки единичного корня; сравните минимальные разности"}</p>}
+                  {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Ряд стационарен вокруг уровня; преобразование не требуется</p>}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -1267,10 +1384,10 @@ export function TsAnalysisPreprocessing() {
                     : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
                 }`}
               >
-                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : check.id === "variance_stab" ? "Настроить трансформацию" : check.id === "smoothing" ? "Настроить сглаживание" : "Полный пайплайн"}
+                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : check.id === "variance_stab" ? "Настроить трансформацию" : check.id === "smoothing" ? "Настроить сглаживание" : check.id === "stationarity" ? "Обеспечить стационарность" : "Полный пайплайн"}
               </button>
 
-              <Button>Пересчитать свойства после преобразования ({check.label.toLowerCase()})</Button>
+              <Button onClick={check.id === "stationarity" ? () => setStationarityRefreshKey((key) => key + 1) : undefined}>Пересчитать свойства после преобразования ({check.label.toLowerCase()})</Button>
             </article>
           ))}
         </div>

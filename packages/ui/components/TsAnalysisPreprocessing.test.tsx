@@ -126,12 +126,30 @@ const SMOOTHING_PROFILE = {
   },
 };
 
+const STATIONARITY_PROFILE = {
+  mode: "auto", status: "warning", status_reason: null,
+  profile: {
+    column: "Price", applicable: true, reason: null, n_observations: 180,
+    missing_count: 0, min_observations: 30, alpha: 0.05,
+    order_source: "time_column", order_column: "Date", frequency: "MS",
+    regular: true, seasonal_period: 12, selected_method: "first_difference",
+    needs_transformation: true, consensus_before: "non-stationary", consensus_after: "stationary",
+    lost_observations: 1, acf_lag1_before: 0.97, acf_lag1_after: -0.08,
+    variance_before: 12, variance_after: 1, over_differencing_warning: false,
+    tests: [{ id: "adf_level", label: "ADF (уровень)", null_hypothesis: "Единичный корень", before_p_value: 0.4, after_p_value: 0.001, before_supports_stationarity: false, after_supports_stationarity: true }],
+    candidates: [{ method: "first_difference", label: "Первая разность", available: true, reason: null, consensus: "stationary", lost_observations: 1, adf_p_value: 0.001, kpss_p_value: 0.1, acf_lag1: -0.08, variance_ratio: 0.08, over_differencing_warning: false }],
+    points: [], acf: [], warnings: [],
+    recommendation: "ADF и KPSS указывают на единичный корень; рекомендуется первая разность.",
+    methodology_note: "Комплементарные H0 и минимум разностей.",
+  },
+};
+
 // Маршрутизирующий мок fetch -- используется везде, где раньше был
 // плоский `jest.fn().mockResolvedValue(MISSING_PROFILE)`: теперь ДВА
 // реальных стопа опрашивают бэкенд параллельно при монтировании, и без
 // маршрутизации по URL «Выбросы» получали бы чужой (missing-shaped)
 // ответ.
-function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; decomposition?: unknown; variance?: unknown; smoothing?: unknown; put?: unknown } = {}) {
+function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; decomposition?: unknown; variance?: unknown; smoothing?: unknown; stationarity?: unknown; put?: unknown } = {}) {
   return jest.fn((url: string, init?: RequestInit) => {
     if (typeof url === "string" && url.includes("/target-column")) {
       const selected = init?.method === "POST"
@@ -158,6 +176,9 @@ function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regulari
     }
     if (typeof url === "string" && url.includes("smoothing-profile")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.smoothing ?? SMOOTHING_PROFILE) });
+    }
+    if (typeof url === "string" && url.includes("stationarity-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.stationarity ?? STATIONARITY_PROFILE) });
     }
     if (typeof url === "string" && url.includes("regularity-profile")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.regularity ?? REGULARITY_PROFILE) });
@@ -624,5 +645,28 @@ describe("TsAnalysisPreprocessing — остановка «Сглаживани�
     fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
     expect(screen.getByText(/WMA.bfill подставлял в начало/)).toBeInTheDocument();
     expect(screen.getByText(/HP-filter исключён/)).toBeInTheDocument();
+  });
+});
+
+describe("TsAnalysisPreprocessing — остановка «Стационарность ряда»", () => {
+  beforeEach(() => { global.fetch = routeFetch(); });
+
+  it("shows the five-view overview, real warning and mode selector", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Стационарность ряда"));
+    expect(await screen.findByRole("tablist", { name: "Графики стационарности ряда" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Режим проверки Стационарность ряда" })).toBeInTheDocument();
+    expect(screen.getByText(/Обнаружены признаки единичного корня/)).toBeInTheDocument();
+  });
+
+  it("opens the stationarity wizard and documents corrected legacy methodology", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Стационарность ряда"));
+    await screen.findByRole("tablist", { name: "Графики стационарности ряда" });
+    fireEvent.click(screen.getByRole("button", { name: "Обеспечить стационарность" }));
+    expect(screen.getByRole("region", { name: "Мастер обеспечения стационарности" })).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/смешивал порядок и лаг/)).toBeInTheDocument();
+    expect(screen.getByText(/Fractional differencing имел неверный знак/)).toBeInTheDocument();
   });
 });

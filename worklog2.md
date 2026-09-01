@@ -363,3 +363,56 @@ Date: 2026-08-31
 - `tests/unit/test_rolling.py`
 - `tests/unit/test_preprocessing_smoothing.py`
 - `tests/api/test_dataset_preprocessing_smoothing.py`
+
+---
+
+## Task ID: 84 — Предобработка «Стационарность ряда»
+
+Дата: 2026-09-01
+
+### Аудит методологии
+
+- В EDA backend уже существовал качественный `analyze_stationarity`: ADF с константой/трендом, KPSS с константой/трендом, Phillips–Perron и Zivot–Andrews. В legacy-предобработке существовали разности и fractional differencing, но standalone/embedded-остановка оставалась заглушкой без session API, визуального обзора и безопасного apply-контракта.
+- Исправлена критическая семантическая ошибка legacy-разностей: `Series.diff(d)` вычисляет разность с лагом `d`, а не разность порядка `d`; прежняя «вторая разность» была `y[t] − y[t−2]`, а не `Δ²y[t]`. Новый core использует `np.diff(..., n=2)`, сезонный оператор `y[t] − y[t−s]` и их корректную композицию `(1−B)(1−B^s)`.
+- Legacy fractional differencing не перенесён в мастер: знак первого веса для `(1−B)^d` был неверен, а текущая пороговая усечка могла оставлять одно наблюдение. Метод требует отдельного long-memory-контракта, явной схемы truncation и проверенной инверсии; выдавать его сейчас как готовый метод было бы методологически неверно.
+- Основной вывод строится на паре тестов с противоположными нулевыми гипотезами: [`statsmodels.adfuller`](https://www.statsmodels.org/stable/generated/statsmodels.tsa.stattools.adfuller.html) проверяет H0 единичного корня, [`statsmodels.kpss`](https://www.statsmodels.org/stable/generated/statsmodels.tsa.stattools.kpss.html) — H0 стационарности. Интерпретация уровня и тренда следует официальному [примеру statsmodels по ADF/KPSS](https://www.statsmodels.org/stable/examples/notebooks/generated/stationarity_detrending_adf_kpss.html).
+- [`arch.unitroot.PhillipsPerron`](https://arch.readthedocs.io/en/stable/unitroot/generated/arch.unitroot.PhillipsPerron.html) и [`statsmodels.zivot_andrews`](https://www.statsmodels.org/stable/generated/statsmodels.tsa.stattools.zivot_andrews.html) оставлены подтверждающими диагностиками и не «голосуют» повторно в консенсусе. В быстрой матрице кандидатов они пропускаются, чтобы не умножать дорогие тесты.
+- Auto не подбирает преобразование по минимальному p-value, что создавало бы data snooping: stationary → без преобразования, trend-stationary → linear detrend, non-stationary/inconclusive → первая разность для сравнения. Сезонная разность применяется только при подтверждённом периоде; ACF(1) < −0,5 показан лишь как эвристическое предупреждение возможного over-differencing.
+- Linear detrend реализован официальным [`scipy.signal.detrend`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.detrend.html). Полноисторический detrend честно помечен `causal=false`, требует отдельного opt-in и в backtest должен переоцениваться только на train. Для разностей сам оператор каузален, но d/D/s также выбираются внутри train-fold. Общая логика минимальных обычных и сезонных разностей сверена с [Forecasting: Principles and Practice](https://otexts.com/fpp3/stationarity.html).
+
+### Реализация
+
+- Добавлен чистый core шести преобразований: `linear_detrend`, первая, вторая, сезонная, комбинированная и log-разность. Для каждого возвращаются d/D/s, causal/modeling-safe, число потерянных строк и достаточные inverse-границы; исходный ряд не перезаписывается.
+- Добавлен `GET /v1/session/dataset/preprocessing/stationarity-profile`: полный ADF/KPSS/PP/Zivot–Andrews профиль до/после, матрица шести кандидатов, ACF, rolling mean/std, дисперсии, предупреждения и объяснимое Auto-решение.
+- Добавлен `POST /v1/session/dataset/preprocessing/stationarity-transformations` с паттерном preview → отдельное подтверждение → атомарный apply. Датасет стабильно сортируется по определённой временной оси, математически неопределённый префикс удаляется синхронно из всех колонок, а преобразованный target добавляется новой колонкой.
+- Строгие гейты блокируют пропуски/inf, константу, N < 30, битые или повторные даты, панель и нерегулярную сетку. Если временная колонка уверенно не определена, используется текущий row-order с явным предупреждением.
+- Metadata в `AnalysisSession.preprocessing_transformations` сохраняет source/output, оператор, порядок разностей, period, log-domain, trend slope/intercept, `history_tail`, `fitted_on_n`, порядок строк и поддержку inverse.
+- Остановка подключена к общему target/dataset lifecycle, режимам `auto/enabled/disabled`, степперу, статусам, метрикам, ручному пересчёту и обеим оболочкам.
+- В «Обзоре» реализованы пять визуальных представлений светло-серыми круглыми бейджами: ряд до/после, нормированные rolling μ/σ, сравнение p-value и противоположных H0, ACF до/после с границами и таблица всех кандидатов. В интерфейс встроены ссылки на официальные источники.
+- Мастер показывает потерю строк и имя новой колонки до мутации, объясняет inverse-контракт, отдельно подтверждает offline-detrend и повторно подтверждает применение к активному датасету.
+
+### TDD и проверка
+
+- RED backend: отсутствовали `app.preprocessing.stationarity` и stationarity session API; RED frontend: отсутствовали `PreprocessingStationarityOverview`/`Pipeline`.
+- Расширенная Python-регрессия core/EDA/API и соседних остановок: 108/108 PASS, 3 snapshots PASS.
+- Frontend всей вкладки «Предобработка»: 18 suites, 109/109 PASS.
+- Production build embedded/standalone: PASS, по 13/13 страниц; штатные build-проверки типов прошли.
+- `git diff --check` и task Python compile: PASS. Optional `tests/api/test_session_store.py` в локальном окружении пропущен целиком из-за отсутствия `fakeredis`; metadata persistence покрыта API apply-тестом.
+
+### Изменённые и новые файлы
+
+- `app/eda/stationarity.py`
+- `app/preprocessing/stationarity.py`
+- `apps/api/preprocessing_stationarity.py`
+- `apps/api/routers/session.py`
+- `apps/api/schemas.py`
+- `packages/ui/components/PreprocessingStationarityOverview.tsx`
+- `packages/ui/components/PreprocessingStationarityOverview.test.tsx`
+- `packages/ui/components/PreprocessingStationarityPipeline.tsx`
+- `packages/ui/components/PreprocessingStationarityPipeline.test.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.test.tsx`
+- `packages/ui/index.ts`
+- `tests/api/test_dataset_preprocessing_stationarity.py`
+- `tests/unit/test_preprocessing_stationarity.py`
+- `tests/unit/test_preprocessing_stationarity_adapter.py`
