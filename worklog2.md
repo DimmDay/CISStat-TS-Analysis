@@ -255,3 +255,56 @@ Date: 2026-08-31
 - `packages/ui/index.ts`
 - `tests/api/test_dataset_preprocessing_decomposition.py`
 - `tests/unit/test_preprocessing_decomposition.py`
+
+---
+
+## Task ID: 82 — Предобработка «Стабилизация дисперсии»
+
+Дата: 2026-09-01
+
+### Аудит методологии
+
+- В backend уже существовали `app.preprocessing.transforms.yeo_johnson_manual` и legacy-диагностика `test_heteroskedasticity`; во frontend остановка оставалась статической заглушкой. Legacy Streamlit-контур визуализировал Box–Cox/Yeo–Johnson/log/log1p/sqrt/reciprocal, но не предоставлял session API для standalone/embedded.
+- Исправлена критичная ошибка legacy Box–Cox: код добавлял `1e-10`, хотя официальный [`scipy.stats.boxcox`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.boxcox.html) требует строго положительный неконстантный одномерный вход и не выполняет shift. Новый контур не меняет домен скрыто: недопустимый метод блокируется с точной причиной, `shift=0` сохраняется явно.
+- Автоматический λ берётся из официальных реализаций: SciPy Box–Cox и [`sklearn.preprocessing.PowerTransformer`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.PowerTransformer.html) для Yeo–Johnson, обе используют maximum likelihood. `standardize=False`, поскольку масштабирование — отдельная остановка платформы. Для обратного Box–Cox используется [`scipy.special.inv_boxcox`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.special.inv_boxcox.html); Yeo–Johnson обращается по формуле официального `PowerTransformer.inverse_transform`.
+- Breusch–Pagan регрессии уровня только на линейное время исключён из основного критерия: он проверяет конкретную зависимость дисперсии регрессионных ошибок от заданных regressors и не является универсальным тестом временной гетероскедастичности. Вместо него используется [`scipy.stats.levene(center="median")`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.levene.html), то есть Brown–Forsythe, по четырём хронологическим блокам, плюс корреляция rolling mean/rolling std.
+- [`statsmodels.stats.diagnostic.het_arch`](https://www.statsmodels.org/stable/generated/statsmodels.stats.diagnostic.het_arch.html) показан отдельной диагностикой условной волатильности. ARCH-LM не включён в решение «нужна power transform»: при значимом ARCH-эффекте UI честно рекомендует рассмотреть ARCH/GARCH, поскольку монотонная трансформация не обязана устранить кластеризацию волатильности.
+- Reciprocal исключён из основной матрицы как агрессивная убывающая трансформация, меняющая направление порядка значений. Поддержаны обратимые монотонно возрастающие Box–Cox, Yeo–Johnson, log, log1p и sqrt со строгими доменными гейтами.
+- Зафиксировано ограничение leakage: обзор полного ряда — диагностический. Выбор метода и λ в backtest должны оцениваться только на train и без переоценки применяться к validation/test.
+
+### Реализация
+
+- В core добавлены `apply_variance_transform` и `inverse_variance_transform` с общей валидацией, автоматическим/ручным λ и round-trip для пяти методов. Legacy `yeo_johnson_manual` реально переиспользован для ручного λ.
+- Добавлен `GET /v1/session/dataset/preprocessing/variance-profile`: профиль выбранного общего target, временная ось либо честный row-order, diagnostics до/после, пять кандидатов с доступностью и score, точки ряда/rolling σ и две гистограммы.
+- Основной статус `warning` означает обнаруженную нестабильность масштаба (`Brown–Forsythe p < 0,05` либо `|corr(mean, std)| ≥ 0,5`), `done` — сильных признаков нет, `skipped` — отключение или честная неприменимость. Пропуски, бесконечности, константный ряд и N < 20 блокируются объяснимо.
+- Добавлен `POST /v1/session/dataset/preprocessing/variance-transformations` с паттерном preview → отдельное подтверждение → атомарный apply. Исходный target не перезаписывается; добавляется `*_<method>`, конфликт имени возвращает 422.
+- На apply в `AnalysisSession.preprocessing_transformations` сохраняются source/output, method, λ, `standardized=false`, `shift=0`, `fitted_on_n` и поддержка inverse. Поле сериализуется в Redis/Memory, backward-compatible для старых сессий и сбрасывается при новом датасете.
+- Остановка подключена к общему target lifecycle, `auto/enabled/disabled`, степперу, статусам, метрикам и ручному пересчёту обеих оболочек.
+- В «Обзоре» реализованы пять визуальных представлений: ряд до/после на независимых шкалах, скользящая σ до/после, bar-сравнение методов, распределения до/после и диагностические карточки. Переключатели — светло-серые круглые бейджи по паттерну «Декомпозиции ряда»/«Матрицы моделей».
+- Мастер поддерживает выбор метода, auto/manual λ, preview на глубокой копии, подтверждение apply и показывает сохранённые inverse-параметры. В UI встроены ссылки на официальные SciPy/scikit-learn/statsmodels источники.
+
+### TDD и проверка
+
+- RED backend: отсутствовали core-функции и `apps.api.preprocessing_variance`; RED frontend: отсутствовали Overview/Pipeline и API-интеграция остановки.
+- Расширенный backend-набор предобработки, декомпозиции, регулярности и session store: 169/169 PASS.
+- Frontend «Предобработка»: 14 suites, 95/95 PASS.
+- TypeScript embedded/standalone: PASS.
+- Production build embedded/standalone: PASS, по 13/13 страниц.
+- `git diff --check` и `compileall`: PASS.
+
+### Изменённые и новые файлы
+
+- `app/preprocessing/transforms.py`
+- `apps/api/preprocessing_variance.py`
+- `apps/api/routers/session.py`
+- `apps/api/schemas.py`
+- `apps/api/session_store.py`
+- `packages/ui/components/PreprocessingVarianceOverview.tsx`
+- `packages/ui/components/PreprocessingVarianceOverview.test.tsx`
+- `packages/ui/components/PreprocessingVariancePipeline.tsx`
+- `packages/ui/components/PreprocessingVariancePipeline.test.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.test.tsx`
+- `packages/ui/index.ts`
+- `tests/api/test_dataset_preprocessing_variance.py`
+- `tests/unit/test_variance_stabilization.py`

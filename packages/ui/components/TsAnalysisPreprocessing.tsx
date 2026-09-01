@@ -35,6 +35,11 @@ import {
   type PreprocessingDecompositionProfileResponse,
 } from "./PreprocessingDecompositionOverview";
 import { PreprocessingDecompositionPipeline } from "./PreprocessingDecompositionPipeline";
+import {
+  PreprocessingVarianceOverview,
+  type VarianceProfileResponse,
+} from "./PreprocessingVarianceOverview";
+import { PreprocessingVariancePipeline } from "./PreprocessingVariancePipeline";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -216,6 +221,32 @@ const DECOMPOSITION_PIPELINE_DESCRIPTION = `Мастер декомпозици�
 3. Выберите обратимые выходы: три компоненты *_trend/*_seasonal/*_resid, сезонно скорректированный ряд *_seasonally_adjusted и/или ряд без тренда *_detrended. Исходная целевая колонка никогда не перезаписывается.
 4. Выполните preview на глубокой копии, проверьте имена и число добавляемых колонок, затем отдельно подтвердите apply. При конфликте имён backend возвращает 422 вместо перезаписи данных.
 5. Добавленные по всему ряду компоненты предназначены для исследования и экспорта. Для честного моделирования декомпозицию следует встраивать в fold-aware pipeline и оценивать только на train.`;
+
+const VARIANCE_METRICS_DESCRIPTION = `Метрики и алгоритм: Стабилизация дисперсии
+
+Цель
+Проверить, меняется ли масштаб колебаний вместе с уровнем или временем, и сравнить обратимые монотонные трансформации. Это не «тест стационарности» и не обещание нормальности: тренд, автокорреляция и условная волатильность требуют собственных методов.
+
+Метрики
+1. corr(rolling mean, rolling std) при адаптивном окне 5…30: |r| ≥ 0,5 — прозрачный эвристический сигнал зависимости масштаба от уровня.
+2. Brown–Forsythe — scipy.stats.levene(center="median") по четырём хронологическим блокам. p < 0,05 отвергает равенство их дисперсий; медианный центр устойчивее к асимметрии.
+3. Отношение максимальной к минимальной дисперсии временных блоков — описательная величина, а не отдельный тест.
+4. ARCH-LM из statsmodels на остатке после линейного тренда показан отдельно: p < 0,05 указывает на условную волатильность. Power transform может её не устранить; тогда нужна модель ARCH/GARCH.
+5. Score 0…100 объединяет |corr|, отношение дисперсий и результат Brown–Forsythe только для визуального сравнения методов; он не имеет собственного p-value.
+
+Методы и корректировка legacy
+Для y > 0 автоматически предлагается Box–Cox, иначе Yeo–Johnson. λ оценивается MLE официальными scipy.stats.boxcox / sklearn.preprocessing.PowerTransformer(standardize=False). Старый код добавлял 1e-10 перед Box–Cox, хотя SciPy требует строго положительный неконстантный вход и не выполняет shift: скрытая смена данных удалена. Reciprocal исключён из основной матрицы как агрессивная убывающая трансформация; доступны Box–Cox, Yeo–Johnson, log, log1p и sqrt со строгими доменными гейтами.
+
+Ограничение утечки
+Диагностика всего ряда допустима для EDA. В backtest λ и сам выбор трансформации оцениваются только на train, затем неизменно применяются к validation/test. Метод и λ сохраняются для обратного преобразования прогнозов.`;
+
+const VARIANCE_PIPELINE_DESCRIPTION = `Мастер стабилизации дисперсии
+
+1. Выберите метод. Box–Cox и log требуют y > 0; sqrt — y ≥ 0; log1p — y > −1; Yeo–Johnson принимает положительные и отрицательные значения. Backend проверяет домен без скрытого сдвига.
+2. Для Box–Cox/Yeo–Johnson оставьте автоматический MLE-подбор λ либо задайте λ вручную в диапазоне −5…5. Стандартизация выключена — это ответственность отдельной остановки «Масштабирование».
+3. Preview рассчитывается на глубокой копии. Исходный target не перезаписывается; добавляется колонка *_box_cox, *_yeo_johnson, *_log, *_log1p или *_sqrt.
+4. После отдельного подтверждения apply атомарно сохраняет новую колонку, method, λ, shift=0 и число наблюдений fit. Эти метаданные достаточны для обратного преобразования.
+5. Если сравнительный score не улучшился или исходная диагностика не выявила проблемы, оставьте исходную шкалу. Для прогнозного pipeline переоцените λ внутри каждого fold только на train.`;
 
 type PreprocessingCheckMode = "auto" | "enabled" | "disabled";
 
@@ -451,6 +482,37 @@ export function TsAnalysisPreprocessing() {
     ? decompositionProfile.status
     : "pending";
 
+  // ── Остановка «Стабилизация дисперсии»: профиль target + preview ──
+  const [varianceProfile, setVarianceProfile] = useState<VarianceProfileResponse | null>(null);
+  const [varianceLoading, setVarianceLoading] = useState(false);
+  const [varianceNoDataset, setVarianceNoDataset] = useState(false);
+  const [varianceError, setVarianceError] = useState<string | null>(null);
+  const [varianceRefreshKey, setVarianceRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setVarianceError(null); setVarianceNoDataset(false);
+    if (!activeFeature) { setVarianceProfile(null); setVarianceLoading(false); return () => { active = false; }; }
+    setVarianceLoading(true);
+    void (async () => {
+      try {
+        const response = await fetch(sessionApiUrl(`/dataset/preprocessing/variance-profile?column=${encodeURIComponent(activeFeature)}`), { credentials: "include" });
+        if (response.status === 404) { if (active) setVarianceNoDataset(true); return; }
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(typeof body?.detail === "string" ? body.detail : `HTTP ${response.status}`);
+        }
+        const data: VarianceProfileResponse = await response.json();
+        if (active) { setVarianceProfile(data); setCheckModes((current) => ({ ...current, variance_stab: data.mode })); }
+      } catch (caught) {
+        if (active) setVarianceError(caught instanceof Error ? caught.message : "Не удалось оценить стабильность дисперсии");
+      } finally { if (active) setVarianceLoading(false); }
+    })();
+    return () => { active = false; };
+  }, [activeFeature, varianceRefreshKey]);
+
+  const varianceStatus: CheckStatus = varianceLoading ? "running" : varianceNoDataset ? "skipped" : varianceError ? "error" : varianceProfile ? varianceProfile.status : "pending";
+
   // Итоговый список проверок -- статика для ещё не реализованных
   // остановок, реальные данные для «Пропусков», «Выбросов» и «Регулярности».
   const checks = useMemo<Check[]>(() => CHECKS.map((check) => {
@@ -458,8 +520,9 @@ export function TsAnalysisPreprocessing() {
     if (check.id === "outliers") return { ...check, status: outliersStatus, count: outliersProfile?.total_outliers ?? null };
     if (check.id === "regularity") return { ...check, status: regularityStatus, count: regularityProfile?.profile?.total_violations ?? null };
     if (check.id === "decomposition") return { ...check, status: decompositionStatus, count: decompositionProfile?.profile?.warnings.length ?? null };
+    if (check.id === "variance_stab") return { ...check, status: varianceStatus, count: varianceProfile?.profile?.needs_stabilization ? 1 : 0 };
     return check;
-  }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile, decompositionStatus, decompositionProfile]);
+  }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile, decompositionStatus, decompositionProfile, varianceStatus, varianceProfile]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -514,6 +577,7 @@ export function TsAnalysisPreprocessing() {
       if (checkId === "outliers") setOutliersRefreshKey((k) => k + 1);
       if (checkId === "regularity") setRegularityRefreshKey((k) => k + 1);
       if (checkId === "decomposition") setDecompositionRefreshKey((k) => k + 1);
+      if (checkId === "variance_stab") setVarianceRefreshKey((k) => k + 1);
     } catch {
       setCheckModes(previous);
       setModeError({ checkId, message: "Не удалось сохранить режим проверки" });
@@ -562,6 +626,9 @@ export function TsAnalysisPreprocessing() {
     if (activeCheckId === "decomposition") {
       return descriptionSection === "metrics" ? DECOMPOSITION_METRICS_DESCRIPTION : DECOMPOSITION_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "variance_stab") {
+      return descriptionSection === "metrics" ? VARIANCE_METRICS_DESCRIPTION : VARIANCE_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -583,6 +650,9 @@ export function TsAnalysisPreprocessing() {
     }
     if (activeCheckId === "decomposition") {
       return descriptionSection === "metrics" ? "Метрики и алгоритм — Декомпозиция ряда" : "Мастер декомпозиции ряда";
+    }
+    if (activeCheckId === "variance_stab") {
+      return descriptionSection === "metrics" ? "Метрики и алгоритм — Стабилизация дисперсии" : "Мастер стабилизации дисперсии";
     }
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
@@ -746,6 +816,8 @@ export function TsAnalysisPreprocessing() {
               ? "Мастер исправления регулярности"
               : activeCheckId === "decomposition" && descriptionSection === "pipeline"
               ? "Мастер декомпозиции ряда"
+              : activeCheckId === "variance_stab" && descriptionSection === "pipeline"
+              ? "Мастер стабилизации дисперсии"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -765,6 +837,10 @@ export function TsAnalysisPreprocessing() {
               ? "Настройте период и выходы, оцените новые колонки на копии и подтвердите добавление."
               : activeCheckId === "decomposition"
               ? "Компоненты STL, сезонный профиль, ACF остатка и диагностика — во вкладках-бейджах."
+              : activeCheckId === "variance_stab" && descriptionSection === "pipeline"
+              ? "Выберите обратимую трансформацию, оцените новую колонку на копии и подтвердите добавление."
+              : activeCheckId === "variance_stab"
+              ? "До/после, скользящая σ, сравнение методов, распределения и диагностика — во вкладках-бейджах."
               : "Меняется автоматически под активную проверку."}
           </p>
 
@@ -792,6 +868,19 @@ export function TsAnalysisPreprocessing() {
               loading={decompositionLoading}
               error={decompositionError}
               noDataset={decompositionNoDataset}
+            />
+          ) : activeCheckId === "variance_stab" && descriptionSection === "pipeline" ? (
+            <PreprocessingVariancePipeline
+              column={activeFeature}
+              recommendedMethod={varianceProfile?.profile.selected_method ?? null}
+              onApplied={() => setVarianceRefreshKey((k) => k + 1)}
+            />
+          ) : activeCheckId === "variance_stab" ? (
+            <PreprocessingVarianceOverview
+              profile={varianceProfile?.profile ?? null}
+              loading={varianceLoading}
+              error={varianceError}
+              noDataset={varianceNoDataset}
             />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
@@ -826,6 +915,13 @@ export function TsAnalysisPreprocessing() {
               <Metric label="Сила тренда" value={decompositionProfile?.profile.trend_strength !== null && decompositionProfile?.profile.trend_strength !== undefined ? `${(100 * decompositionProfile.profile.trend_strength).toFixed(1)}%` : "—"} />
               <Metric label="Сила сезонности" value={decompositionProfile?.profile.seasonal_strength !== null && decompositionProfile?.profile.seasonal_strength !== undefined ? `${(100 * decompositionProfile.profile.seasonal_strength).toFixed(1)}%` : "—"} />
               <Metric label="Ljung–Box p" value={decompositionProfile?.profile.ljung_box_pvalue !== null && decompositionProfile?.profile.ljung_box_pvalue !== undefined ? decompositionProfile.profile.ljung_box_pvalue.toFixed(4) : "—"} />
+            </div>
+          ) : activeCheckId === "variance_stab" ? (
+            <div className="grid grid-cols-4 gap-3 mt-4">
+              <Metric label="Метод" value={varianceProfile?.profile.selected_method?.replace("_", "–") ?? "—"} />
+              <Metric label="λ" value={varianceProfile?.profile.lambda_value !== null && varianceProfile?.profile.lambda_value !== undefined ? varianceProfile.profile.lambda_value.toFixed(4) : "—"} />
+              <Metric label="Score до" value={varianceProfile?.profile.diagnostics_before ? varianceProfile.profile.diagnostics_before.stability_score.toFixed(1) : "—"} />
+              <Metric label="Score после" value={varianceProfile?.profile.diagnostics_after ? varianceProfile.profile.diagnostics_after.stability_score.toFixed(1) : "—"} />
             </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
@@ -864,7 +960,7 @@ export function TsAnalysisPreprocessing() {
                   у остальных остановок ещё нет backend-проверки, которую
                   можно реально включить/отключить (см. комментарий у
                   useState checkModes выше). */}
-              {(check.id === "missing" || check.id === "outliers" || check.id === "regularity" || check.id === "decomposition") && (
+              {(check.id === "missing" || check.id === "outliers" || check.id === "regularity" || check.id === "decomposition" || check.id === "variance_stab") && (
                 <label className="mb-2 block text-[11px] font-medium text-neutral-600">
                   Режим проверки
                   <select
@@ -1011,6 +1107,15 @@ export function TsAnalysisPreprocessing() {
                   {check.status === "warning" && <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">STL выполнен; остаток требует внимания ({check.count ?? 0})</p>}
                   {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">STL выполнен, остаточная диагностика пройдена</p>}
                 </>
+              ) : check.id === "variance_stab" ? (
+                <>
+                  {check.status === "running" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">Оценивается стабильность дисперсии…</p>}
+                  {check.status === "error" && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">{varianceError ?? "Ошибка диагностики дисперсии"}</p>}
+                  {check.status === "pending" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">Проверка не запускалась</p>}
+                  {check.status === "skipped" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">{varianceNoDataset ? "Нет активного датасета" : varianceProfile?.status_reason === "disabled" ? "Отключено" : varianceProfile?.profile.reason ?? "Не применимо"}</p>}
+                  {check.status === "warning" && <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">Обнаружена нестабильность масштаба; сравните трансформации</p>}
+                  {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Сильных признаков нестабильной дисперсии нет</p>}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -1047,7 +1152,7 @@ export function TsAnalysisPreprocessing() {
                     : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
                 }`}
               >
-                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : "Полный пайплайн"}
+                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : check.id === "variance_stab" ? "Настроить трансформацию" : "Полный пайплайн"}
               </button>
 
               <Button>Пересчитать свойства после преобразования ({check.label.toLowerCase()})</Button>

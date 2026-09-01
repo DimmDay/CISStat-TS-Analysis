@@ -146,6 +146,10 @@ class AnalysisSession:
     # «Валидации» не должно влиять на режим проверки пропусков в
     # «Предобработке». Отсутствующий ключ означает "auto".
     preprocessing_check_modes: dict[str, str] = field(default_factory=dict)
+    # Параметры обратимых преобразований, добавленных остановками
+    # предобработки. Ключ — имя созданной колонки; значение содержит
+    # source/method/lambda и версионируется вместе с сессией.
+    preprocessing_transformations: dict[str, dict[str, Any]] = field(default_factory=dict)
     # Подтверждённое аналитиком решение по недостаточной длине ряда.
     sufficiency_plan: dict[str, Any] = field(default_factory=dict)
     updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -171,6 +175,7 @@ class AnalysisSession:
         self.validation_rule_overrides = {}
         self.validation_check_modes = {}
         self.preprocessing_check_modes = {}
+        self.preprocessing_transformations = {}
         self.sufficiency_plan = {}
         self.touch()
 
@@ -259,6 +264,7 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "validation_rule_overrides": dict(session.validation_rule_overrides),
         "validation_check_modes": dict(session.validation_check_modes),
         "preprocessing_check_modes": dict(session.preprocessing_check_modes),
+        "preprocessing_transformations": dict(session.preprocessing_transformations),
         "sufficiency_plan": dict(session.sufficiency_plan),
         "updated_at": session.updated_at,
     }
@@ -285,6 +291,7 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         validation_rule_overrides=dict(d.get("validation_rule_overrides", {})),
         validation_check_modes=dict(d.get("validation_check_modes", {})),
         preprocessing_check_modes=dict(d.get("preprocessing_check_modes", {})),
+        preprocessing_transformations=dict(d.get("preprocessing_transformations", {})),
         sufficiency_plan=dict(d.get("sufficiency_plan", {})),
         updated_at=d.get("updated_at", datetime.now(timezone.utc).isoformat()),
     )

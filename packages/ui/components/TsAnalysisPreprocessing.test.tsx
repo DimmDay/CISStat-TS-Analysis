@@ -96,12 +96,26 @@ const DECOMPOSITION_PROFILE = {
   },
 };
 
+const VARIANCE_PROFILE = {
+  mode: "auto", status: "warning", status_reason: null,
+  profile: {
+    column: "Price", applicable: true, reason: null, n_observations: 60,
+    missing_count: 0, minimum: 1, maximum: 50, order_source: "time_column",
+    order_column: "Date", selected_method: "box_cox", lambda_value: 0.2,
+    needs_stabilization: true,
+    diagnostics_before: { rolling_window: 12, mean_std_correlation: 0.8, levene_statistic: 4, levene_pvalue: 0.01, block_variance_ratio: 5, arch_lm_lag: 10, arch_lm_pvalue: 0.1, skewness: 1, stability_score: 70 },
+    diagnostics_after: { rolling_window: 12, mean_std_correlation: 0.1, levene_statistic: 1, levene_pvalue: 0.3, block_variance_ratio: 1.4, arch_lm_lag: 10, arch_lm_pvalue: 0.2, skewness: 0.1, stability_score: 18 },
+    candidates: [{ method: "box_cox", label: "Box–Cox", available: true, reason: null, lambda_value: 0.2, stability_score: 18 }],
+    points: [], histogram: [], warnings: [], recommendation: "Рекомендуется Box–Cox.", methodology_note: "Brown–Forsythe",
+  },
+};
+
 // Маршрутизирующий мок fetch -- используется везде, где раньше был
 // плоский `jest.fn().mockResolvedValue(MISSING_PROFILE)`: теперь ДВА
 // реальных стопа опрашивают бэкенд параллельно при монтировании, и без
 // маршрутизации по URL «Выбросы» получали бы чужой (missing-shaped)
 // ответ.
-function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; decomposition?: unknown; put?: unknown } = {}) {
+function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; decomposition?: unknown; variance?: unknown; put?: unknown } = {}) {
   return jest.fn((url: string, init?: RequestInit) => {
     if (typeof url === "string" && url.includes("/target-column")) {
       const selected = init?.method === "POST"
@@ -122,6 +136,9 @@ function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regulari
     }
     if (typeof url === "string" && url.includes("decomposition-profile")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.decomposition ?? DECOMPOSITION_PROFILE) });
+    }
+    if (typeof url === "string" && url.includes("variance-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.variance ?? VARIANCE_PROFILE) });
     }
     if (typeof url === "string" && url.includes("regularity-profile")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.regularity ?? REGULARITY_PROFILE) });
@@ -543,5 +560,27 @@ describe("TsAnalysisPreprocessing — остановка «Декомпозиц�
 
     expect(screen.getByText(/двойной счёт/)).toBeInTheDocument();
     expect(screen.getByText(/STL не возвращает отдельный cycle/)).toBeInTheDocument();
+  });
+});
+
+describe("TsAnalysisPreprocessing — остановка «Стабилизация дисперсии»", () => {
+  beforeEach(() => { global.fetch = routeFetch(); });
+
+  it("shows the comparative overview, real status and mode selector", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Стабилизация дисперсии"));
+    expect(await screen.findByRole("tablist", { name: "Графики стабилизации дисперсии" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Режим проверки Стабилизация дисперсии" })).toBeInTheDocument();
+    expect(screen.getByText(/Обнаружена нестабильность масштаба/)).toBeInTheDocument();
+  });
+
+  it("opens the transformation wizard and documents the removed hidden shift", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Стабилизация дисперсии"));
+    await screen.findByRole("tablist", { name: "Графики стабилизации дисперсии" });
+    fireEvent.click(screen.getByRole("button", { name: "Настроить трансформацию" }));
+    expect(screen.getByRole("region", { name: "Мастер стабилизации дисперсии" })).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/Старый код добавлял 1e-10/)).toBeInTheDocument();
   });
 });

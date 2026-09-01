@@ -141,6 +141,119 @@ def yeo_johnson_manual(y: np.ndarray, lmbda: float) -> np.ndarray:
     return result
 
 
+VarianceTransformMethod = Literal['box_cox', 'yeo_johnson', 'log', 'log1p', 'sqrt']
+VARIANCE_TRANSFORM_METHODS = {'box_cox', 'yeo_johnson', 'log', 'log1p', 'sqrt'}
+
+
+def _variance_values(values: np.ndarray) -> np.ndarray:
+    """Нормализовать вход power-transform без скрытой очистки/сдвига."""
+    array = np.asarray(values, dtype=float)
+    if array.ndim != 1:
+        raise ValueError("Трансформация дисперсии принимает одномерный ряд")
+    if array.size < 3:
+        raise ValueError("Для трансформации нужно минимум 3 наблюдения")
+    if not np.isfinite(array).all():
+        raise ValueError("Ряд содержит пропуски или бесконечные значения")
+    return array
+
+
+def apply_variance_transform(
+    values: np.ndarray,
+    method: VarianceTransformMethod,
+    lmbda: Optional[float] = None,
+) -> tuple[np.ndarray, Optional[float]]:
+    """Применить обратимую стабилизирующую трансформацию.
+
+    Box–Cox следует контракту ``scipy.stats.boxcox``: только строго
+    положительные данные, без неявного epsilon/shift. Для автоматического
+    Box–Cox и Yeo–Johnson lambda оценивается MLE; стандартизация намеренно
+    выключена, поскольку это отдельная остановка пайплайна.
+    """
+    from scipy import stats
+    from sklearn.preprocessing import PowerTransformer
+
+    array = _variance_values(values)
+    if method not in VARIANCE_TRANSFORM_METHODS:
+        raise ValueError(f"Неподдерживаемый метод стабилизации: {method}")
+    if lmbda is not None and not np.isfinite(float(lmbda)):
+        raise ValueError("λ должен быть конечным числом")
+
+    if method == 'box_cox':
+        if np.any(array <= 0):
+            raise ValueError("Box–Cox требует строго положительные значения; скрытый сдвиг не применяется")
+        if np.ptp(array) <= 1e-12:
+            raise ValueError("Box–Cox не определён для константного ряда")
+        if lmbda is None:
+            transformed, fitted = stats.boxcox(array)
+            return np.asarray(transformed, dtype=float), float(fitted)
+        return np.asarray(stats.boxcox(array, lmbda=float(lmbda)), dtype=float), float(lmbda)
+
+    if method == 'yeo_johnson':
+        if np.ptp(array) <= 1e-12:
+            raise ValueError("Yeo–Johnson неинформативен для константного ряда")
+        if lmbda is None:
+            transformer = PowerTransformer(method='yeo-johnson', standardize=False)
+            transformed = transformer.fit_transform(array.reshape(-1, 1)).ravel()
+            return transformed.astype(float), float(transformer.lambdas_[0])
+        return yeo_johnson_manual(array, float(lmbda)), float(lmbda)
+
+    if method == 'log':
+        if np.any(array <= 0):
+            raise ValueError("Log требует строго положительные значения")
+        return np.log(array), None
+    if method == 'log1p':
+        if np.any(array <= -1):
+            raise ValueError("Log1p требует значения строго больше −1")
+        return np.log1p(array), None
+    if method == 'sqrt':
+        if np.any(array < 0):
+            raise ValueError("Квадратный корень требует неотрицательные значения")
+        return np.sqrt(array), None
+    raise AssertionError("unreachable")
+
+
+def inverse_variance_transform(
+    values: np.ndarray,
+    method: VarianceTransformMethod,
+    lmbda: Optional[float] = None,
+) -> np.ndarray:
+    """Обратить трансформацию по сохранённым method/lambda."""
+    from scipy.special import inv_boxcox
+
+    array = _variance_values(values)
+    if method not in VARIANCE_TRANSFORM_METHODS:
+        raise ValueError(f"Неподдерживаемый метод стабилизации: {method}")
+    if method == 'box_cox':
+        if lmbda is None:
+            raise ValueError("Для обратного Box–Cox требуется сохранённый λ")
+        return np.asarray(inv_boxcox(array, float(lmbda)), dtype=float)
+    if method == 'yeo_johnson':
+        if lmbda is None:
+            raise ValueError("Для обратного Yeo–Johnson требуется сохранённый λ")
+        value = float(lmbda)
+        result = np.zeros_like(array, dtype=float)
+        positive = array >= 0
+        if np.isclose(value, 0.0):
+            result[positive] = np.expm1(array[positive])
+        else:
+            result[positive] = np.power(value * array[positive] + 1, 1 / value) - 1
+        negative = ~positive
+        if np.isclose(value, 2.0):
+            result[negative] = 1 - np.exp(-array[negative])
+        else:
+            result[negative] = 1 - np.power(
+                1 - (2 - value) * array[negative], 1 / (2 - value)
+            )
+        return result
+    if method == 'log':
+        return np.exp(array)
+    if method == 'log1p':
+        return np.expm1(array)
+    if method == 'sqrt':
+        return np.square(array)
+    raise AssertionError("unreachable")
+
+
 def test_heteroskedasticity(series, window=30):
     """Тест на гетероскедастичность через скользящее std"""
     if len(series) < window * 2:
@@ -479,6 +592,5 @@ def compute_row_properties(series: pd.Series, name: str = "") -> dict:
         props['distribution_type'] = 'Эмпирическое'
 
     return props
-
 
 

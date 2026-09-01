@@ -947,6 +947,107 @@ class DatasetPreprocessingDecompositionResponse(BaseModel):
     profile: PreprocessingDecompositionProfileOut
 
 
+VarianceMethod = Literal["box_cox", "yeo_johnson", "log", "log1p", "sqrt"]
+
+
+class VarianceDiagnosticOut(BaseModel):
+    rolling_window: int
+    mean_std_correlation: Optional[float] = None
+    levene_statistic: Optional[float] = None
+    levene_pvalue: Optional[float] = None
+    block_variance_ratio: Optional[float] = None
+    arch_lm_lag: int
+    arch_lm_pvalue: Optional[float] = None
+    skewness: Optional[float] = None
+    stability_score: float
+
+
+class VarianceCandidateOut(BaseModel):
+    method: VarianceMethod
+    label: str
+    available: bool
+    reason: Optional[str] = None
+    lambda_value: Optional[float] = None
+    stability_score: Optional[float] = None
+
+
+class VariancePointOut(BaseModel):
+    x: str
+    original: float
+    transformed: float
+    rolling_std_before: Optional[float] = None
+    rolling_std_after: Optional[float] = None
+
+
+class VarianceHistogramPointOut(BaseModel):
+    bin: int
+    original_x: float
+    original_density: float
+    transformed_x: float
+    transformed_density: float
+
+
+class PreprocessingVarianceProfileOut(BaseModel):
+    column: str
+    applicable: bool
+    reason: Optional[str] = None
+    n_observations: int = 0
+    missing_count: int = 0
+    minimum: Optional[float] = None
+    maximum: Optional[float] = None
+    order_source: Literal["time_column", "row_order"] = "row_order"
+    order_column: Optional[str] = None
+    selected_method: Optional[VarianceMethod] = None
+    lambda_value: Optional[float] = None
+    needs_stabilization: bool = False
+    diagnostics_before: Optional[VarianceDiagnosticOut] = None
+    diagnostics_after: Optional[VarianceDiagnosticOut] = None
+    candidates: List[VarianceCandidateOut] = Field(default_factory=list)
+    points: List[VariancePointOut] = Field(default_factory=list)
+    histogram: List[VarianceHistogramPointOut] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+    recommendation: str
+    methodology_note: str
+
+
+class DatasetPreprocessingVarianceProfileResponse(BaseModel):
+    mode: Literal["auto", "enabled", "disabled"] = "auto"
+    status: Literal["done", "warning", "pending", "skipped"] = "pending"
+    status_reason: Optional[Literal["not_required", "disabled"]] = None
+    profile: PreprocessingVarianceProfileOut
+
+
+class DatasetPreprocessingVarianceRequest(BaseModel):
+    column: str = Field(..., min_length=1)
+    method: VarianceMethod
+    lambda_value: Optional[float] = Field(None, ge=-5, le=5)
+    apply: bool = Field(False, description="False — preview; True — сохранить новую колонку и inverse-метаданные")
+
+
+class VarianceTransformationMetadataOut(BaseModel):
+    source_column: str
+    output_column: str
+    method: VarianceMethod
+    lambda_value: Optional[float] = None
+    inverse_supported: bool = True
+    fitted_on_n: int
+    standardized: bool = False
+    shift: float = 0.0
+
+
+class DatasetPreprocessingVarianceResponse(BaseModel):
+    applied: bool
+    column: str
+    method: VarianceMethod
+    lambda_value: Optional[float] = None
+    output_column: str
+    rows_before: int
+    rows_after: int
+    columns_before: int
+    columns_after: int
+    metadata: VarianceTransformationMetadataOut
+
+
 # ── Структурная детекция (2026-08-14, найден реальный баг: фронт
 # показывал позиционную заглушку "первые 3 колонки файла" вместо
 # реального контентного скоринга -- см. app/data/detectors.py) ──

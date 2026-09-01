@@ -75,6 +75,9 @@ from apps.api.schemas import (
     DatasetPreprocessingDecompositionProfileResponse,
     DatasetPreprocessingDecompositionRequest,
     DatasetPreprocessingDecompositionResponse,
+    DatasetPreprocessingVarianceProfileResponse,
+    DatasetPreprocessingVarianceRequest,
+    DatasetPreprocessingVarianceResponse,
     DatasetRangeCorrectionRequest,
     DatasetRangeCorrectionResponse,
     DatasetRangeProfileResponse,
@@ -178,6 +181,10 @@ from apps.api.regularity_correction import preview_regularity_correction
 from apps.api.preprocessing_decomposition import (
     build_preprocessing_decomposition,
     preview_decomposition_outputs,
+)
+from apps.api.preprocessing_variance import (
+    build_variance_profile,
+    preview_variance_transformation,
 )
 from apps.api.sufficiency_plan import preview_sufficiency_plan
 from apps.api.text_quality_correction import preview_text_quality_corrections
@@ -333,6 +340,17 @@ def _preprocessing_decomposition_status(
     if not applicable:
         return "skipped", "not_required"
     return ("warning" if warnings > 0 else "done"), None
+
+
+def _preprocessing_variance_status(
+    mode: str, applicable: bool, needs_stabilization: bool
+) -> tuple[str, Optional[str]]:
+    """warning означает найденную потребность, а не ошибку transform."""
+    if mode == "disabled":
+        return "skipped", "disabled"
+    if not applicable:
+        return "skipped", "not_required"
+    return ("warning" if needs_stabilization else "done"), None
 
 
 def _to_response(session: AnalysisSession) -> SessionStateResponse:
@@ -2244,6 +2262,74 @@ def create_dataset_preprocessing_decomposition_outputs(
         session.touch()
         store.save(session)
     return DatasetPreprocessingDecompositionResponse(applied=payload.apply, **summary)
+
+
+@router.get(
+    "/dataset/preprocessing/variance-profile",
+    response_model=DatasetPreprocessingVarianceProfileResponse,
+)
+def get_dataset_preprocessing_variance_profile(
+    column: str,
+    request: Request,
+    response: Response,
+    method: str = "auto",
+    lambda_value: Optional[float] = Query(None, ge=-5, le=5),
+):
+    """Профиль уровня–масштаба и preview выбранной power-трансформации."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая")
+    if method not in {"auto", "box_cox", "yeo_johnson", "log", "log1p", "sqrt"}:
+        raise HTTPException(status_code=422, detail=f"Неподдерживаемый метод стабилизации: {method}")
+
+    profile = build_variance_profile(
+        session.dataframe, column=column, method=method, lambda_value=lambda_value,
+    )
+    mode = _effective_preprocessing_check_modes(session)["variance_stab"]
+    status, status_reason = _preprocessing_variance_status(
+        mode, profile["applicable"], profile["needs_stabilization"],
+    )
+    return DatasetPreprocessingVarianceProfileResponse(
+        mode=mode, status=status, status_reason=status_reason, profile=profile,
+    )
+
+
+@router.post(
+    "/dataset/preprocessing/variance-transformations",
+    response_model=DatasetPreprocessingVarianceResponse,
+)
+def create_dataset_preprocessing_variance_transformation(
+    payload: DatasetPreprocessingVarianceRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply без перезаписи target; apply сохраняет inverse metadata."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    try:
+        corrected_df, summary = preview_variance_transformation(
+            session.dataframe, payload.column, payload.method, payload.lambda_value,
+        )
+    except (ValueError, TypeError, FloatingPointError, OverflowError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    if payload.apply:
+        session.dataframe = corrected_df
+        session.preprocessing_transformations[summary["output_column"]] = dict(summary["metadata"])
+        if session.dataset is not None:
+            session.dataset.rows = len(corrected_df)
+            session.dataset.columns = len(corrected_df.columns)
+        session.touch()
+        store.save(session)
+    return DatasetPreprocessingVarianceResponse(applied=payload.apply, **summary)
 
 
 @router.get(

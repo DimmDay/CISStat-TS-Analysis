@@ -74,6 +74,14 @@ export type {
   PreprocessingDecompositionProfileResponse,
 } from "./components/PreprocessingDecompositionOverview";
 export { PreprocessingDecompositionPipeline } from "./components/PreprocessingDecompositionPipeline";
+export { PreprocessingVarianceOverview } from "./components/PreprocessingVarianceOverview";
+export type {
+  VarianceMethod,
+  VarianceDiagnostics,
+  VarianceProfile,
+  VarianceProfileResponse,
+} from "./components/PreprocessingVarianceOverview";
+export { PreprocessingVariancePipeline } from "./components/PreprocessingVariancePipeline";
 export { TsAnalysisValidation } from "./components/TsAnalysisValidation";
 export { ValidationSufficiencyOverview } from "./components/ValidationSufficiencyOverview";
 export { ValidationSufficiencyPipeline } from "./components/ValidationSufficiencyPipeline";
