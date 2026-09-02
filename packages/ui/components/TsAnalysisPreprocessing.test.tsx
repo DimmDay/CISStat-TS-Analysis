@@ -184,12 +184,34 @@ const FEATURE_GENERATION_PROFILE = {
   },
 };
 
+const SCALING_PROFILE = {
+  mode: "auto", status: "warning", status_reason: null,
+  profile: {
+    target_column: "Price", applicable: true, reason: null, n_observations: 240,
+    numeric_count: 3, eligible_count: 2, suggested_columns: ["Volume", "Temperature"],
+    recommended_method: "standard", configured: false, saved_recipe: null,
+    focus_column: "Volume", scale_ratio: 250, orders_of_magnitude: 2.4,
+    columns: [
+      { name: "Volume", role: "source", dtype: "float64", missing_count: 0, unique_count: 240, binary: false, constant: false, eligible: true, recommended: true, exclusion_reason: null, minimum: 1, maximum: 1000, mean: 500, std: 200, median: 500, q1: 250, q3: 750, iqr: 500, outlier_pct: 0, scale: 200 },
+      { name: "Temperature", role: "source", dtype: "float64", missing_count: 0, unique_count: 240, binary: false, constant: false, eligible: true, recommended: true, exclusion_reason: null, minimum: -5, maximum: 20, mean: 7, std: 4, median: 7, q1: 4, q3: 10, iqr: 6, outlier_pct: 0, scale: 4 },
+    ],
+    preview_points: [{ x: "1", original: 1, scaled: -2.5 }],
+    range_points: [{ column: "Volume", scale_before: 200, scale_after: 1, log_scale_before: 2.3, log_scale_after: 0 }],
+    distribution_points: [{ x_before: 1, density_before: 0.1, x_after: -2.5, density_after: 0.1 }],
+    box_points: [{ column: "Volume", stage: "before", minimum: 1, q1: 250, median: 500, q3: 750, maximum: 1000 }],
+    correlation_points: [{ x: "Volume", y: "Temperature", before: 0.2, after: 0.2, delta: 0 }],
+    methods: [{ method: "standard", label: "StandardScaler", linear: true, centers: "mean", scales: "std", outlier_robust: false, bounded: false, preserves_zero: false, max_correlation_delta: 0, note: "Стандартная шкала." }],
+    warnings: [], recommendation: "Сохраните рецепт StandardScaler.",
+    methodology_note: "fit только на train-fold.",
+  },
+};
+
 // Маршрутизирующий мок fetch -- используется везде, где раньше был
 // плоский `jest.fn().mockResolvedValue(MISSING_PROFILE)`: теперь ДВА
 // реальных стопа опрашивают бэкенд параллельно при монтировании, и без
 // маршрутизации по URL «Выбросы» получали бы чужой (missing-shaped)
 // ответ.
-function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; decomposition?: unknown; variance?: unknown; smoothing?: unknown; stationarity?: unknown; spectral?: unknown; featureGeneration?: unknown; put?: unknown } = {}) {
+function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; decomposition?: unknown; variance?: unknown; smoothing?: unknown; stationarity?: unknown; spectral?: unknown; featureGeneration?: unknown; scaling?: unknown; put?: unknown } = {}) {
   return jest.fn((url: string, init?: RequestInit) => {
     if (typeof url === "string" && url.includes("/target-column")) {
       const selected = init?.method === "POST"
@@ -225,6 +247,9 @@ function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regulari
     }
     if (typeof url === "string" && url.includes("feature-generation-profile")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.featureGeneration ?? FEATURE_GENERATION_PROFILE) });
+    }
+    if (typeof url === "string" && url.includes("scaling-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.scaling ?? SCALING_PROFILE) });
     }
     if (typeof url === "string" && url.includes("regularity-profile")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.regularity ?? REGULARITY_PROFILE) });
@@ -762,5 +787,28 @@ describe("TsAnalysisPreprocessing — остановка «Генерация п
     fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
     expect(screen.getByText(/12 наблюдений превратились бы в 12 дней/)).toBeInTheDocument();
     expect(screen.getByText(/target.shift\(1\)/)).toBeInTheDocument();
+  });
+});
+
+describe("TsAnalysisPreprocessing — остановка «Масштабирование»", () => {
+  beforeEach(() => { global.fetch = routeFetch(); });
+
+  it("shows five scaling views, recipe status and mode selector", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Масштабирование"));
+    expect(await screen.findByRole("tablist", { name: "Представления масштабирования" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Режим проверки Масштабирование" })).toBeInTheDocument();
+    expect(screen.getByText("Рецепт масштабирования ещё не сохранён")).toBeInTheDocument();
+  });
+
+  it("opens the recipe wizard and documents leakage correction", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Масштабирование"));
+    await screen.findByRole("tablist", { name: "Представления масштабирования" });
+    fireEvent.click(screen.getByRole("button", { name: "Настроить масштабирование" }));
+    expect(screen.getByRole("region", { name: "Мастер масштабирования" })).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/fit на полном ряду создаёт leakage/i)).toBeInTheDocument();
+    expect(screen.getByText(/PowerTransformer не дублируется/i)).toBeInTheDocument();
   });
 });

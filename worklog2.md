@@ -527,3 +527,56 @@ Date: 2026-08-31
 - `tests/api/test_dataset_preprocessing_feature_engineering.py`
 - `tests/unit/test_preprocessing_feature_engineering.py`
 - `tests/unit/test_preprocessing_feature_engineering_adapter.py`
+
+---
+
+## Task ID: 87 — Предобработка «Масштабирование»
+
+Дата: 2026-09-02
+
+### Аудит методологии
+
+- Во frontend остановка оставалась статической заглушкой. В backend существовала только неиспользуемая `calculate_scaling_metrics`: она сравнивала число 3σ-выбросов, skewness, kurtosis и коэффициент вариации до/после affine scaling. Standard/MinMax/Robust/MaxAbs не удаляют выбросы и не меняют форму распределения, а CV после центрирования около нуля неустойчив, поэтому эти показатели нельзя трактовать как качество масштабирования.
+- Основной вычислительный контракт приведён к официальному [`sklearn.preprocessing`](https://scikit-learn.org/stable/modules/preprocessing.html): `StandardScaler` использует mean/std, `MinMaxScaler` — обучающие min/max, `RobustScaler` — median/quantile range, `MaxAbsScaler` — max(abs), `QuantileTransformer` — эмпирическое CDF.
+- Исправлен главный риск временных рядов: официальный раздел [scikit-learn Common pitfalls](https://scikit-learn.org/stable/common_pitfalls.html) запрещает включать validation/test в `fit` preprocessing. Поэтому full-history preview используется только для диагностики, apply не материализует `*_scaled` колонки и не сохраняет обученные statistics. Сохраняется рецепт `fit_policy=per_train_fold`: `fit_transform(train)` и `transform(validation/test)` внутри каждого expanding/sliding fold.
+- PowerTransformer исключён из этой остановки: Box–Cox/Yeo–Johnson уже реализованы в «Стабилизации дисперсии», где сохраняются λ и inverse-контракт. Повторное предложение здесь смешивало бы изменение формы распределения со scaling и создавало бы две расходящиеся реализации одного метода.
+- [`QuantileTransformer`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.QuantileTransformer.html) оставлен advanced-вариантом с отдельным opt-in: официальная документация предупреждает, что ранговое отображение искажает корреляции и расстояния. Оно не выбирается автоматически.
+- Нет универсального теста «масштабирование требуется»: решение зависит от модели. Auto предлагает [`StandardScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html) при спокойном профиле и [`RobustScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.RobustScaler.html) при IQR-выбросах >1% или |skew|>2; итог сравнивается с no-scaling во временном backtest. [`MinMaxScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.MinMaxScaler.html) и [`MaxAbsScaler`](https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.MaxAbsScaler.html) доступны для явных требований диапазона/сохранения нулей.
+
+### Реализация
+
+- Добавлен чистый core `fit_transform_scaling` с официальными sklearn-классами, строгой проверкой списка колонок, numeric/finite/constant, диапазонов, числа квантилей и лимитом 50 колонок. Входной DataFrame не мутируется; QuantileTransformer детерминирован `random_state=0`.
+- Добавлен `GET /v1/session/dataset/preprocessing/scaling-profile`: профиль всех числовых колонок, роли target/generated/source, hand-off непрерывных X из «Генерации признаков», исключение temporal/constant/missing, Auto-набор, data-dependent стартовый метод и проверка актуальности сохранённого рецепта по SHA-256 fingerprint значений/dtypes/индекса.
+- Добавлен `POST /v1/session/dataset/preprocessing/scaling-recipes` с паттерном preview → отдельное подтверждение → apply. Preview возвращает before/after-метрики на полной истории как `modeling_safe=false`; apply сохраняет только параметры рецепта, не меняет DataFrame и не переносит fitted statistics.
+- В `AnalysisSession` добавлено backward-compatible поле `preprocessing_scaling_recipe`; оно сериализуется в Redis/Memory, сбрасывается при новом датасете и содержит target, columns, method, параметры, fingerprint, `fit_policy=per_train_fold`, target inverse-флаг и nonlinear-флаг.
+- Остановка подключена к общему target lifecycle, режимам `auto/enabled/disabled`, степперу, статусам, четырём метрикам, ручному пересчёту и ленивой загрузке только при входе в остановку. `warning` означает несохранённый аналитический рецепт, `done` — актуальный рецепт, `skipped` — отключение или отсутствие применимых числовых колонок.
+- В «Обзоре» реализованы пять представлений светло-серыми круглыми бейджами: временной preview до/после на независимых шкалах, log10-сравнение σ, распределение focus-признака, контроль парных корреляций и методическая матрица пяти scaler-ов. Payload ограничен 240 строками и 12 колонками.
+- Мастер позволяет выбрать несколько колонок, Standard/Robust/MinMax/MaxAbs/Quantile, feature/quantile range, число квантилей и output distribution; Quantile требует отдельного подтверждения. UI явно показывает, что DataFrame не меняется и scaler обучается заново внутри каждого train-fold.
+
+### TDD и проверка
+
+- RED backend: отсутствовали `app.preprocessing.scaling` и `apps.api.preprocessing_scaling`; RED frontend: отсутствовали `PreprocessingScalingOverview`/`Pipeline`, а родитель показывал заглушку.
+- Task core/adapter/API/session: 13/13 PASS.
+- Расширенная Python-регрессия текущей и соседних остановок: 146/146 PASS, 3 snapshots PASS; 1 optional module SKIPPED из-за отсутствия `fakeredis`.
+- Полный frontend-набор компонентов: 75 suites, 607/607 PASS; сфокусированная новая остановка и родитель: 3 suites, 49/49 PASS.
+- TypeScript 5.9 embedded/standalone: PASS.
+- Production build embedded/standalone: PASS, по 13/13 страниц; lint/type checks прошли, First Load JS — 445 kB.
+- `git diff --check` и task Python compile: PASS.
+
+### Изменённые и новые файлы
+
+- `app/preprocessing/scaling.py`
+- `apps/api/preprocessing_scaling.py`
+- `apps/api/routers/session.py`
+- `apps/api/schemas.py`
+- `apps/api/session_store.py`
+- `packages/ui/components/PreprocessingScalingOverview.tsx`
+- `packages/ui/components/PreprocessingScalingOverview.test.tsx`
+- `packages/ui/components/PreprocessingScalingPipeline.tsx`
+- `packages/ui/components/PreprocessingScalingPipeline.test.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.test.tsx`
+- `packages/ui/index.ts`
+- `tests/api/test_dataset_preprocessing_scaling.py`
+- `tests/unit/test_preprocessing_scaling.py`
+- `tests/unit/test_preprocessing_scaling_adapter.py`

@@ -119,6 +119,15 @@ export type {
   FeatureGenerationProfileResponse,
 } from "./components/PreprocessingFeatureEngineeringOverview";
 export { PreprocessingFeatureEngineeringPipeline } from "./components/PreprocessingFeatureEngineeringPipeline";
+export { PreprocessingScalingOverview } from "./components/PreprocessingScalingOverview";
+export type {
+  ScalingColumn,
+  ScalingMethod,
+  ScalingProfile,
+  ScalingProfileResponse,
+  ScalingRecipe,
+} from "./components/PreprocessingScalingOverview";
+export { PreprocessingScalingPipeline } from "./components/PreprocessingScalingPipeline";
 export { TsAnalysisValidation } from "./components/TsAnalysisValidation";
 export { ValidationSufficiencyOverview } from "./components/ValidationSufficiencyOverview";
 export { ValidationSufficiencyPipeline } from "./components/ValidationSufficiencyPipeline";

@@ -158,6 +158,10 @@ class AnalysisSession:
     # Fourier-признаков. Хранится отдельно от transformations: это пакет
     # новых X-колонок с общим warm-up и train-fold контрактом.
     preprocessing_feature_generation: dict[str, Any] = field(default_factory=dict)
+    # Fold-safe конфигурация масштабирования. В отличие от обычных
+    # transformations здесь не хранятся параметры, обученные на полном
+    # датасете: scaler должен fit-иться внутри train каждого временного fold.
+    preprocessing_scaling_recipe: dict[str, Any] = field(default_factory=dict)
     # Подтверждённое аналитиком решение по недостаточной длине ряда.
     sufficiency_plan: dict[str, Any] = field(default_factory=dict)
     updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -186,6 +190,7 @@ class AnalysisSession:
         self.preprocessing_transformations = {}
         self.preprocessing_spectral_selection = {}
         self.preprocessing_feature_generation = {}
+        self.preprocessing_scaling_recipe = {}
         self.sufficiency_plan = {}
         self.touch()
 
@@ -277,6 +282,7 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "preprocessing_transformations": dict(session.preprocessing_transformations),
         "preprocessing_spectral_selection": dict(session.preprocessing_spectral_selection),
         "preprocessing_feature_generation": dict(session.preprocessing_feature_generation),
+        "preprocessing_scaling_recipe": dict(session.preprocessing_scaling_recipe),
         "sufficiency_plan": dict(session.sufficiency_plan),
         "updated_at": session.updated_at,
     }
@@ -306,6 +312,7 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         preprocessing_transformations=dict(d.get("preprocessing_transformations", {})),
         preprocessing_spectral_selection=dict(d.get("preprocessing_spectral_selection", {})),
         preprocessing_feature_generation=dict(d.get("preprocessing_feature_generation", {})),
+        preprocessing_scaling_recipe=dict(d.get("preprocessing_scaling_recipe", {})),
         sufficiency_plan=dict(d.get("sufficiency_plan", {})),
         updated_at=d.get("updated_at", datetime.now(timezone.utc).isoformat()),
     )

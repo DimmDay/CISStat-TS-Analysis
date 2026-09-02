@@ -63,6 +63,11 @@ import {
   type FeatureGenerationProfileResponse,
 } from "./PreprocessingFeatureEngineeringOverview";
 import { PreprocessingFeatureEngineeringPipeline } from "./PreprocessingFeatureEngineeringPipeline";
+import {
+  PreprocessingScalingOverview,
+  type ScalingProfileResponse,
+} from "./PreprocessingScalingOverview";
+import { PreprocessingScalingPipeline } from "./PreprocessingScalingPipeline";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -96,7 +101,7 @@ const CHECKS: Check[] = [
   { id: "feature_eng", label: "Генерация признаков", status: "pending", count: null,
     description: "Каузальные лаги, trailing rolling-статистики и лаговые разности; известные заранее календарные sin/cos, time_idx и Fourier-гармоники периодов из спектрального анализа." },
   { id: "scaling", label: "Масштабирование", status: "pending", count: null,
-    description: "Нормализация признаков методами StandardScaler, MinMaxScaler, RobustScaler, QuantileTransformer или PowerTransformer. Критично для NN, SVM, k-NN." },
+    description: "Fold-safe рецепты StandardScaler, MinMaxScaler, RobustScaler, MaxAbsScaler и осознанный QuantileTransformer. Scaler обучается только на train каждого временного fold." },
   { id: "passport", label: "Паспорт свойств ряда", status: "pending", count: null,
     description: "Сравнительный анализ свойств ряда: v1.0 (загрузка) → v1.1 (после валидации) → v1.2 (после предобработки). Метрики: ADF, Ljung-Box, Jarque-Bera, R². Экспорт в Excel." },
 ];
@@ -415,6 +420,43 @@ const FEATURE_ENGINEERING_PIPELINE_DESCRIPTION = `Мастер генераци�
 5. Preview показывает точные имена колонок, максимальный lookback, warm-up и число оставшихся строк. По умолчанию общий пустой префикс удаляется синхронно из всего DataFrame; скрытые bfill/zero-fill не применяются.
 6. Apply атомарно добавляет новые колонки и сохраняет полный каталог формул, параметры, порядок, target_shift=1 и forecast contract в сессии.
 7. После apply оценивайте набор только walk-forward/expanding-window backtest. Отбор признаков, scaling и любые статистики fit выполняются внутри train-fold.`;
+
+const SCALING_METRICS_DESCRIPTION = `Метрики и алгоритм: Масштабирование
+
+Цель
+Сопоставить числовые признаки, измеряемые в разных единицах, и сохранить воспроизводимый рецепт для моделей, чувствительных к масштабу: регуляризованных линейных моделей, SVM, k-NN и нейросетей. Масштабирование не является обязательным свойством временного ряда и обычно не нужно деревьям решений.
+
+Метрики и представления
+1. Профиль по каждой числовой колонке показывает роль target/generated/source, mean, σ, median, IQR, диапазон, асимметрию и долю IQR-выбросов. Временные оси, константы и колонки с пропусками исключаются.
+2. Разброс масштабов = max(scale) / min(scale), где scale — ненулевая σ. log10-разброс показывает число порядков величины между признаками, но не является самостоятельным доказательством улучшения модели.
+3. Preview до/после, распределение и квартильные профили строятся на полной истории только для визуальной диагностики. Эти обученные параметры нигде не сохраняются.
+4. Для affine-методов контролируется изменение Pearson-корреляций: Standard/MinMax/Robust/MaxAbs должны сохранять их с точностью округления. QuantileTransformer нелинеен и может менять корреляции и расстояния.
+5. Auto предлагает StandardScaler при отсутствии выраженных выбросов и RobustScaler при IQR-выбросах >1% или |skew|>2. Это стартовая конфигурация, а не ранжирование качества; выбор подтверждается временным backtest.
+
+Корректировка методологии
+Legacy calculate_scaling_metrics сравнивал outliers, skewness, kurtosis и CV до/после affine scaling, хотя такие преобразования не удаляют выбросы и не меняют форму распределения; CV после центрирования около нуля вообще неустойчив. Эти показатели исключены из критерия «качества scaling». PowerTransformer не дублируется: Box–Cox/Yeo–Johnson уже реализованы отдельной остановкой «Стабилизация дисперсии». QuantileTransformer оставлен advanced-методом с отдельным opt-in, потому что официальная документация предупреждает об искажении корреляций и расстояний.
+
+Leakage-контракт
+fit на полном ряду создаёт leakage: mean/std, min/max, median/IQR и эмпирические квантили начинают зависеть от validation/test. Поэтому apply не материализует *_scaled колонки и не сохраняет full-history statistics. Он сохраняет только рецепт fit_policy=per_train_fold; в каждом expanding/sliding fold выполняются fit_transform(train) и transform(validation/test). При включении target прогноз требует inverse_transform scaler соответствующего train-fold.
+
+Официальные источники
+- scikit-learn preprocessing: https://scikit-learn.org/stable/modules/preprocessing.html
+- StandardScaler: https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler.html
+- MinMaxScaler: https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.MinMaxScaler.html
+- RobustScaler: https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.RobustScaler.html
+- MaxAbsScaler: https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.MaxAbsScaler.html
+- QuantileTransformer: https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.QuantileTransformer.html
+- Common pitfalls / data leakage: https://scikit-learn.org/stable/common_pitfalls.html`;
+
+const SCALING_PIPELINE_DESCRIPTION = `Мастер масштабирования
+
+1. Auto получает непрерывные X из текущего датасета и hand-off остановки «Генерация признаков». Бинарные 0/1 и уже ограниченные Fourier sin/cos не масштабируются автоматически; target по умолчанию исключён.
+2. StandardScaler центрирует по mean и делит на σ; RobustScaler использует median/IQR; MinMaxScaler отображает обучающий диапазон; MaxAbsScaler сохраняет нули; QuantileTransformer нелинейно отображает ранги.
+3. Для MinMax задайте диапазон, для Robust — quantile range, для Quantile — выход uniform/normal и число квантилей. Нелинейный метод требует отдельного подтверждения.
+4. «Проверить рецепт» выполняет full-history fit только для графиков и сводных метрик, не меняя DataFrame и не сохраняя fitted statistics.
+5. После отдельного подтверждения «Сохранить рецепт» фиксирует колонки, метод, параметры, fingerprint входа и fit_policy=per_train_fold. При изменении значений или состава колонок рецепт становится устаревшим.
+6. Моделирование должно встроить рецепт в Pipeline: fit/fit_transform только на train, transform на validation/test. Для target нужен inverse_transform из того же fold.
+7. Сравнивайте recipe/no-scaling и методы только по walk-forward/expanding-window метрикам выбранной модели.`;
 
 type PreprocessingCheckMode = "auto" | "enabled" | "disabled";
 
@@ -815,6 +857,38 @@ export function TsAnalysisPreprocessing() {
 
   const featureGenerationStatus: CheckStatus = featureGenerationLoading ? "running" : featureGenerationNoDataset ? "skipped" : featureGenerationError ? "error" : featureGenerationProfile ? featureGenerationProfile.status : "pending";
 
+  // ── Остановка «Масштабирование»: X-matrix audit + fold-safe recipe ──
+  const [scalingProfile, setScalingProfile] = useState<ScalingProfileResponse | null>(null);
+  const [scalingLoading, setScalingLoading] = useState(false);
+  const [scalingNoDataset, setScalingNoDataset] = useState(false);
+  const [scalingError, setScalingError] = useState<string | null>(null);
+  const [scalingRefreshKey, setScalingRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setScalingError(null); setScalingNoDataset(false);
+    if (activeCheckId !== "scaling") { setScalingLoading(false); return () => { active = false; }; }
+    if (!activeFeature) { setScalingProfile(null); setScalingLoading(false); return () => { active = false; }; }
+    setScalingLoading(true);
+    void (async () => {
+      try {
+        const response = await fetch(sessionApiUrl(`/dataset/preprocessing/scaling-profile?column=${encodeURIComponent(activeFeature)}`), { credentials: "include" });
+        if (response.status === 404) { if (active) setScalingNoDataset(true); return; }
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(typeof body?.detail === "string" ? body.detail : `HTTP ${response.status}`);
+        }
+        const data: ScalingProfileResponse = await response.json();
+        if (active) { setScalingProfile(data); setCheckModes((current) => ({ ...current, scaling: data.mode })); }
+      } catch (caught) {
+        if (active) setScalingError(caught instanceof Error ? caught.message : "Не удалось подготовить масштабирование");
+      } finally { if (active) setScalingLoading(false); }
+    })();
+    return () => { active = false; };
+  }, [activeFeature, scalingRefreshKey, activeCheckId]);
+
+  const scalingStatus: CheckStatus = scalingLoading ? "running" : scalingNoDataset ? "skipped" : scalingError ? "error" : scalingProfile ? scalingProfile.status : "pending";
+
   // Итоговый список проверок -- статика для ещё не реализованных
   // остановок, реальные данные для «Пропусков», «Выбросов» и «Регулярности».
   const checks = useMemo<Check[]>(() => CHECKS.map((check) => {
@@ -827,8 +901,9 @@ export function TsAnalysisPreprocessing() {
     if (check.id === "stationarity") return { ...check, status: stationarityStatus, count: stationarityProfile?.profile?.needs_transformation ? 1 : 0 };
     if (check.id === "spectral") return { ...check, status: spectralStatus, count: spectralProfile?.profile?.confirmed_periods ?? null };
     if (check.id === "feature_eng") return { ...check, status: featureGenerationStatus, count: featureGenerationProfile?.profile?.saved_feature_names.length ?? 0 };
+    if (check.id === "scaling") return { ...check, status: scalingStatus, count: scalingProfile?.profile?.saved_recipe?.columns.length ?? 0 };
     return check;
-  }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile, decompositionStatus, decompositionProfile, varianceStatus, varianceProfile, smoothingStatus, smoothingProfile, stationarityStatus, stationarityProfile, spectralStatus, spectralProfile, featureGenerationStatus, featureGenerationProfile]);
+  }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile, decompositionStatus, decompositionProfile, varianceStatus, varianceProfile, smoothingStatus, smoothingProfile, stationarityStatus, stationarityProfile, spectralStatus, spectralProfile, featureGenerationStatus, featureGenerationProfile, scalingStatus, scalingProfile]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -888,6 +963,7 @@ export function TsAnalysisPreprocessing() {
       if (checkId === "stationarity") setStationarityRefreshKey((k) => k + 1);
       if (checkId === "spectral") setSpectralRefreshKey((k) => k + 1);
       if (checkId === "feature_eng") setFeatureGenerationRefreshKey((k) => k + 1);
+      if (checkId === "scaling") setScalingRefreshKey((k) => k + 1);
     } catch {
       setCheckModes(previous);
       setModeError({ checkId, message: "Не удалось сохранить режим проверки" });
@@ -951,6 +1027,9 @@ export function TsAnalysisPreprocessing() {
     if (activeCheckId === "feature_eng") {
       return descriptionSection === "metrics" ? FEATURE_ENGINEERING_METRICS_DESCRIPTION : FEATURE_ENGINEERING_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "scaling") {
+      return descriptionSection === "metrics" ? SCALING_METRICS_DESCRIPTION : SCALING_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -987,6 +1066,9 @@ export function TsAnalysisPreprocessing() {
     }
     if (activeCheckId === "feature_eng") {
       return descriptionSection === "metrics" ? "Метрики и алгоритм — Генерация признаков" : "Мастер генерации признаков";
+    }
+    if (activeCheckId === "scaling") {
+      return descriptionSection === "metrics" ? "Метрики и алгоритм — Масштабирование" : "Мастер масштабирования";
     }
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
@@ -1160,6 +1242,8 @@ export function TsAnalysisPreprocessing() {
               ? "Мастер спектрального анализа"
               : activeCheckId === "feature_eng" && descriptionSection === "pipeline"
               ? "Мастер генерации признаков"
+              : activeCheckId === "scaling" && descriptionSection === "pipeline"
+              ? "Мастер масштабирования"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -1199,6 +1283,10 @@ export function TsAnalysisPreprocessing() {
               ? "Настройте лаги, trailing rolling, календарь и Fourier; проверьте warm-up и подтвердите применение."
               : activeCheckId === "feature_eng"
               ? "Превью X, лаг-корреляции, доступность, циклические признаки и каталог — во вкладках-бейджах."
+              : activeCheckId === "scaling" && descriptionSection === "pipeline"
+              ? "Выберите X и scaler, выполните диагностический preview и сохраните fold-safe рецепт."
+              : activeCheckId === "scaling"
+              ? "До/после, масштабы, распределение, корреляции и матрица методов — во вкладках-бейджах."
               : "Меняется автоматически под активную проверку."}
           </p>
 
@@ -1295,6 +1383,19 @@ export function TsAnalysisPreprocessing() {
               error={featureGenerationError}
               noDataset={featureGenerationNoDataset}
             />
+          ) : activeCheckId === "scaling" && descriptionSection === "pipeline" ? (
+            <PreprocessingScalingPipeline
+              targetColumn={activeFeature}
+              profile={scalingProfile?.profile ?? null}
+              onApplied={() => setScalingRefreshKey((key) => key + 1)}
+            />
+          ) : activeCheckId === "scaling" ? (
+            <PreprocessingScalingOverview
+              profile={scalingProfile?.profile ?? null}
+              loading={scalingLoading}
+              error={scalingError}
+              noDataset={scalingNoDataset}
+            />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
@@ -1364,6 +1465,13 @@ export function TsAnalysisPreprocessing() {
               <Metric label="Лаги" value={featureGenerationProfile?.profile?.suggested_lags.join(", ") || "—"} />
               <Metric label="Сохранено" value={featureGenerationProfile?.profile ? String(featureGenerationProfile.profile.saved_feature_names.length) : "—"} />
             </div>
+          ) : activeCheckId === "scaling" ? (
+            <div className="grid grid-cols-4 gap-3 mt-4">
+              <Metric label="Числовых" value={scalingProfile?.profile ? String(scalingProfile.profile.numeric_count) : "—"} />
+              <Metric label="В Auto X" value={scalingProfile?.profile ? String(scalingProfile.profile.suggested_columns.length) : "—"} />
+              <Metric label="Разброс σ" value={scalingProfile?.profile ? `×${scalingProfile.profile.scale_ratio.toFixed(1)}` : "—"} />
+              <Metric label="Рецепт" value={scalingProfile?.profile?.saved_recipe?.method ?? "—"} />
+            </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
               <Metric label="Строк" value="200" />
@@ -1398,7 +1506,7 @@ export function TsAnalysisPreprocessing() {
               <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
 
               {/* Режим проверки — только для остановок с реальным API. */}
-              {(check.id === "missing" || check.id === "outliers" || check.id === "regularity" || check.id === "decomposition" || check.id === "variance_stab" || check.id === "smoothing" || check.id === "stationarity" || check.id === "spectral" || check.id === "feature_eng") && (
+              {(check.id === "missing" || check.id === "outliers" || check.id === "regularity" || check.id === "decomposition" || check.id === "variance_stab" || check.id === "smoothing" || check.id === "stationarity" || check.id === "spectral" || check.id === "feature_eng" || check.id === "scaling") && (
                 <label className="mb-2 block text-[11px] font-medium text-neutral-600">
                   Режим проверки
                   <select
@@ -1589,6 +1697,15 @@ export function TsAnalysisPreprocessing() {
                   {check.status === "warning" && <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">Набор рекомендован, но ещё не применён</p>}
                   {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Сгенерировано признаков: {featureGenerationProfile?.profile?.saved_feature_names.length ?? 0}</p>}
                 </>
+              ) : check.id === "scaling" ? (
+                <>
+                  {check.status === "running" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">Сравниваются масштабы и scaler-рецепты…</p>}
+                  {check.status === "error" && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">{scalingError ?? "Ошибка профиля масштабирования"}</p>}
+                  {check.status === "pending" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">Профиль масштабирования не проверялся</p>}
+                  {check.status === "skipped" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">{scalingNoDataset ? "Нет активного датасета" : scalingProfile?.status_reason === "disabled" ? "Отключено" : scalingProfile?.profile?.reason ?? "Не применимо"}</p>}
+                  {check.status === "warning" && <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">Рецепт масштабирования ещё не сохранён</p>}
+                  {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Fold-safe рецепт сохранён: {scalingProfile?.profile?.saved_recipe?.columns.length ?? 0} колонок</p>}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -1625,10 +1742,10 @@ export function TsAnalysisPreprocessing() {
                     : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
                 }`}
               >
-                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : check.id === "variance_stab" ? "Настроить трансформацию" : check.id === "smoothing" ? "Настроить сглаживание" : check.id === "stationarity" ? "Обеспечить стационарность" : check.id === "spectral" ? "Зафиксировать периоды" : check.id === "feature_eng" ? "Сгенерировать признаки" : "Полный пайплайн"}
+                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : check.id === "variance_stab" ? "Настроить трансформацию" : check.id === "smoothing" ? "Настроить сглаживание" : check.id === "stationarity" ? "Обеспечить стационарность" : check.id === "spectral" ? "Зафиксировать периоды" : check.id === "feature_eng" ? "Сгенерировать признаки" : check.id === "scaling" ? "Настроить масштабирование" : "Полный пайплайн"}
               </button>
 
-              <Button onClick={check.id === "stationarity" ? () => setStationarityRefreshKey((key) => key + 1) : check.id === "spectral" ? () => setSpectralRefreshKey((key) => key + 1) : check.id === "feature_eng" ? () => setFeatureGenerationRefreshKey((key) => key + 1) : undefined}>{check.id === "spectral" ? "Пересчитать спектральный профиль" : check.id === "feature_eng" ? "Пересчитать профиль признаков" : `Пересчитать свойства после преобразования (${check.label.toLowerCase()})`}</Button>
+              <Button onClick={check.id === "stationarity" ? () => setStationarityRefreshKey((key) => key + 1) : check.id === "spectral" ? () => setSpectralRefreshKey((key) => key + 1) : check.id === "feature_eng" ? () => setFeatureGenerationRefreshKey((key) => key + 1) : check.id === "scaling" ? () => setScalingRefreshKey((key) => key + 1) : undefined}>{check.id === "spectral" ? "Пересчитать спектральный профиль" : check.id === "feature_eng" ? "Пересчитать профиль признаков" : check.id === "scaling" ? "Пересчитать профиль масштабов" : `Пересчитать свойства после преобразования (${check.label.toLowerCase()})`}</Button>
             </article>
           ))}
         </div>

@@ -1551,6 +1551,191 @@ class DatasetPreprocessingFeatureGenerationResponse(BaseModel):
     metadata: FeatureGenerationMetadataOut
 
 
+ScalingMethod = Literal["standard", "minmax", "robust", "maxabs", "quantile"]
+
+
+class ScalingColumnOut(BaseModel):
+    name: str
+    role: Literal["target", "generated", "source"]
+    dtype: str
+    missing_count: int
+    unique_count: int
+    binary: bool
+    constant: bool
+    eligible: bool
+    recommended: bool
+    exclusion_reason: Optional[str] = None
+    minimum: Optional[float] = None
+    maximum: Optional[float] = None
+    mean: Optional[float] = None
+    std: Optional[float] = None
+    median: Optional[float] = None
+    q1: Optional[float] = None
+    q3: Optional[float] = None
+    iqr: Optional[float] = None
+    outlier_pct: Optional[float] = None
+    skewness: Optional[float] = None
+    scale: Optional[float] = None
+
+
+class ScalingPreviewPointOut(BaseModel):
+    x: str
+    original: Optional[float] = None
+    scaled: Optional[float] = None
+
+
+class ScalingRangePointOut(BaseModel):
+    column: str
+    scale_before: Optional[float] = None
+    scale_after: Optional[float] = None
+    log_scale_before: Optional[float] = None
+    log_scale_after: Optional[float] = None
+
+
+class ScalingDistributionPointOut(BaseModel):
+    x_before: Optional[float] = None
+    density_before: Optional[float] = None
+    x_after: Optional[float] = None
+    density_after: Optional[float] = None
+
+
+class ScalingBoxPointOut(BaseModel):
+    column: str
+    stage: Literal["before", "after"]
+    minimum: Optional[float] = None
+    q1: Optional[float] = None
+    median: Optional[float] = None
+    q3: Optional[float] = None
+    maximum: Optional[float] = None
+
+
+class ScalingCorrelationPointOut(BaseModel):
+    x: str
+    y: str
+    before: Optional[float] = None
+    after: Optional[float] = None
+    delta: Optional[float] = None
+
+
+class ScalingMethodOut(BaseModel):
+    method: ScalingMethod
+    label: str
+    linear: bool
+    centers: str
+    scales: str
+    outlier_robust: bool
+    bounded: bool
+    preserves_zero: bool
+    max_correlation_delta: float
+    note: str
+
+
+class ScalingRecipeOut(BaseModel):
+    kind: Literal["scaling_recipe"] = "scaling_recipe"
+    target_column: str
+    columns: List[str]
+    method: ScalingMethod
+    parameters: Dict[str, Any]
+    fit_policy: Literal["per_train_fold"]
+    modeling_safe: bool
+    materializes_columns: bool
+    configured_on_n: int
+    source_signature: str
+    target_included: bool
+    inverse_transform_required_for_target: bool
+    nonlinear: bool
+
+
+class PreprocessingScalingProfileOut(BaseModel):
+    target_column: str
+    applicable: bool
+    reason: Optional[str] = None
+    n_observations: int
+    numeric_count: int
+    eligible_count: int
+    suggested_columns: List[str] = Field(default_factory=list)
+    recommended_method: ScalingMethod
+    configured: bool
+    saved_recipe: Optional[ScalingRecipeOut] = None
+    focus_column: Optional[str] = None
+    scale_ratio: float
+    orders_of_magnitude: float
+    columns: List[ScalingColumnOut] = Field(default_factory=list)
+    preview_points: List[ScalingPreviewPointOut] = Field(default_factory=list)
+    range_points: List[ScalingRangePointOut] = Field(default_factory=list)
+    distribution_points: List[ScalingDistributionPointOut] = Field(default_factory=list)
+    box_points: List[ScalingBoxPointOut] = Field(default_factory=list)
+    correlation_points: List[ScalingCorrelationPointOut] = Field(default_factory=list)
+    methods: List[ScalingMethodOut] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+    recommendation: str
+    methodology_note: str
+
+
+class DatasetPreprocessingScalingProfileResponse(BaseModel):
+    mode: Literal["auto", "enabled", "disabled"] = "auto"
+    status: Literal["done", "warning", "pending", "skipped"] = "pending"
+    status_reason: Optional[Literal["not_required", "disabled"]] = None
+    profile: PreprocessingScalingProfileOut
+
+
+class DatasetPreprocessingScalingRecipeRequest(BaseModel):
+    target_column: str = Field(..., min_length=1)
+    columns: List[str] = Field(..., min_length=1, max_length=50)
+    method: ScalingMethod = "standard"
+    feature_range: List[float] = Field(default_factory=lambda: [0.0, 1.0], min_length=2, max_length=2)
+    quantile_range: List[float] = Field(default_factory=lambda: [25.0, 75.0], min_length=2, max_length=2)
+    output_distribution: Literal["uniform", "normal"] = "normal"
+    n_quantiles: int = Field(1000, ge=10, le=1000)
+    confirm_nonlinear: bool = False
+    apply: bool = Field(False, description="False — preview; True — сохранить fold-safe рецепт без мутации DataFrame")
+
+
+class ScalingMetricOut(BaseModel):
+    column: str
+    minimum_before: Optional[float] = None
+    maximum_before: Optional[float] = None
+    mean_before: Optional[float] = None
+    std_before: Optional[float] = None
+    median_before: Optional[float] = None
+    q1_before: Optional[float] = None
+    q3_before: Optional[float] = None
+    iqr_before: Optional[float] = None
+    minimum_after: Optional[float] = None
+    maximum_after: Optional[float] = None
+    mean_after: Optional[float] = None
+    std_after: Optional[float] = None
+    median_after: Optional[float] = None
+    q1_after: Optional[float] = None
+    q3_after: Optional[float] = None
+    iqr_after: Optional[float] = None
+    original_scaled_correlation: Optional[float] = None
+
+
+class ScalingPreviewMetadataOut(BaseModel):
+    method: ScalingMethod
+    scaler_class: str
+    parameters: Dict[str, Any]
+    columns: List[str]
+    fitted_on_n: int
+    linear: bool
+    fit_scope: Literal["full_history_diagnostic"]
+    modeling_safe: bool
+    applied_to_dataframe: bool
+    actual_n_quantiles: Optional[int] = None
+
+
+class DatasetPreprocessingScalingRecipeResponse(BaseModel):
+    applied: bool
+    target_column: str
+    columns: List[str]
+    method: ScalingMethod
+    metrics: List[ScalingMetricOut]
+    warnings: List[str] = Field(default_factory=list)
+    recipe: ScalingRecipeOut
+    preview_metadata: ScalingPreviewMetadataOut
+
+
 # ── Структурная детекция (2026-08-14, найден реальный баг: фронт
 # показывал позиционную заглушку "первые 3 колонки файла" вместо
 # реального контентного скоринга -- см. app/data/detectors.py) ──

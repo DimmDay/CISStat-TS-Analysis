@@ -43,6 +43,10 @@ from apps.api.preprocessing_feature_engineering import (
     build_feature_generation_profile,
     preview_feature_generation,
 )
+from apps.api.preprocessing_scaling import (
+    build_scaling_profile,
+    preview_scaling_recipe,
+)
 from apps.api.schemas import (
     ColumnDetectionOut,
     ColumnStatsOut,
@@ -102,6 +106,9 @@ from apps.api.schemas import (
     DatasetPreprocessingFeatureGenerationProfileResponse,
     DatasetPreprocessingFeatureGenerationRequest,
     DatasetPreprocessingFeatureGenerationResponse,
+    DatasetPreprocessingScalingProfileResponse,
+    DatasetPreprocessingScalingRecipeRequest,
+    DatasetPreprocessingScalingRecipeResponse,
     DatasetRangeCorrectionRequest,
     DatasetRangeCorrectionResponse,
     DatasetRangeProfileResponse,
@@ -423,6 +430,17 @@ def _preprocessing_feature_generation_status(
     if not applicable:
         return "skipped", "not_required"
     return ("done" if generated else "warning"), None
+
+
+def _preprocessing_scaling_status(
+    mode: str, applicable: bool, configured: bool,
+) -> tuple[str, Optional[str]]:
+    """Scaling зависит от модели; warning означает несохранённый рецепт."""
+    if mode == "disabled":
+        return "skipped", "disabled"
+    if not applicable:
+        return "skipped", "not_required"
+    return ("done" if configured else "warning"), None
 
 
 def _to_response(session: AnalysisSession) -> SessionStateResponse:
@@ -2731,6 +2749,80 @@ def create_dataset_preprocessing_feature_generation(
         session.touch()
         store.save(session)
     return DatasetPreprocessingFeatureGenerationResponse(applied=payload.apply, **summary)
+
+
+@router.get(
+    "/dataset/preprocessing/scaling-profile",
+    response_model=DatasetPreprocessingScalingProfileResponse,
+)
+def get_dataset_preprocessing_scaling_profile(
+    column: str,
+    request: Request,
+    response: Response,
+):
+    """Матрица масштабов и preview рекомендуемого fold-safe рецепта."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая")
+    try:
+        profile = build_scaling_profile(
+            session.dataframe,
+            column,
+            feature_generation=session.preprocessing_feature_generation,
+            saved_recipe=session.preprocessing_scaling_recipe,
+        )
+    except (ValueError, TypeError, FloatingPointError, OverflowError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    mode = _effective_preprocessing_check_modes(session)["scaling"]
+    status, status_reason = _preprocessing_scaling_status(
+        mode, profile["applicable"], profile["configured"],
+    )
+    return DatasetPreprocessingScalingProfileResponse(
+        mode=mode, status=status, status_reason=status_reason, profile=profile,
+    )
+
+
+@router.post(
+    "/dataset/preprocessing/scaling-recipes",
+    response_model=DatasetPreprocessingScalingRecipeResponse,
+)
+def create_dataset_preprocessing_scaling_recipe(
+    payload: DatasetPreprocessingScalingRecipeRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply рецепта; DataFrame намеренно не материализуется."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if payload.target_column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail=f"Колонка '{payload.target_column}' отсутствует в датасете")
+    try:
+        summary = preview_scaling_recipe(
+            session.dataframe,
+            payload.target_column,
+            columns=payload.columns,
+            method=payload.method,
+            feature_range=payload.feature_range,
+            quantile_range=payload.quantile_range,
+            output_distribution=payload.output_distribution,
+            n_quantiles=payload.n_quantiles,
+            confirm_nonlinear=payload.confirm_nonlinear,
+        )
+    except (ValueError, TypeError, FloatingPointError, OverflowError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if payload.apply:
+        session.preprocessing_scaling_recipe = dict(summary["recipe"])
+        session.touch()
+        store.save(session)
+    return DatasetPreprocessingScalingRecipeResponse(applied=payload.apply, **summary)
 
 
 @router.get(
