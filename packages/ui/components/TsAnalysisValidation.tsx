@@ -51,6 +51,7 @@ import { ValidationSufficiencyOverview } from "./ValidationSufficiencyOverview";
 import { ValidationSufficiencyPipeline } from "./ValidationSufficiencyPipeline";
 import { useAppShell } from "../context/AppShellContext";
 import { sessionApiUrl } from "../lib/apiClient";
+import { DatasetPassportPanel } from "./DatasetPassportPanel";
 import { useTargetColumn } from "../hooks/useTargetColumn";
 
 // ── Типы ──────────────────────────────────────────────────────
@@ -450,6 +451,7 @@ export function TsAnalysisValidation() {
     availableColumns: numericFeatures,
     setColumn: setActiveFeature,
     refetch: refetchTargetColumn,
+    passportResetNotice,
   } = useTargetColumn(activeDataset?.name);
 
   // ── Реальная валидация датасета сессии (GET /dataset/validate) ──
@@ -719,9 +721,10 @@ export function TsAnalysisValidation() {
   })();
 
   return (
-    <div className="flex gap-6">
-      {/* ── ЛЕВАЯ КОЛОНКА: селектор признака + прогресс + степпер ── */}
-      <aside className="w-60 shrink-0 flex flex-col gap-3 pt-1">
+    <div className="space-y-5">
+      <div className="flex gap-6">
+        {/* ── ЛЕВАЯ КОЛОНКА: селектор признака + прогресс + степпер ── */}
+        <aside className="w-60 shrink-0 flex flex-col gap-3 pt-1">
         {/* Заголовок модуля + справка */}
         <div className="mb-1">
           <div className="flex items-center justify-between">
@@ -1271,7 +1274,15 @@ export function TsAnalysisValidation() {
             </article>
           ))}
         </div>
-      </aside>
+        </aside>
+      </div>
+      <DatasetPassportPanel
+        stage="validation"
+        targetColumn={activeFeature}
+        historyResetNotice={passportResetNotice
+          ? `Смена исследуемого признака «${passportResetNotice.previousColumn}» → «${passportResetNotice.newColumn}» сбросила цепочку паспортов.`
+          : null}
+      />
     </div>
   );
 }

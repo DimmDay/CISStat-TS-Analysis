@@ -375,3 +375,12 @@ def test_existing_stateless_passport_response_no_longer_drops_spectral_sections(
     assert response.status_code == 200
     for section in ("correlations", "seasonal_periods", "fft", "periodogram", "wavelet"):
         assert section in response.json()
+
+
+def test_passport_is_not_a_preprocessing_check_mode(client: TestClient):
+    _upload(client)
+
+    response = client.get("/v1/session/dataset/preprocessing-check-modes")
+
+    assert response.status_code == 200
+    assert "passport" not in response.json()["modes"]

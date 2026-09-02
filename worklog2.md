@@ -904,3 +904,77 @@ GREEN и проверка
 - `apps/api/schemas.py`
 - `packages/ui/components/TsAnalysisValidation.test.tsx`
 - `tests/api/test_dataset_passport.py` (новый)
+
+---
+
+Task ID: 92 — Паспорта свойств ряда, frontend-панели трёх вкладок (TDD)
+
+Границы пакета
+
+Реализован общий frontend-контур паспортов для вкладок «Загрузка», «Валидация» и «Предобработка» поверх session API Task 91. Панели являются отдельными блоками под рабочей областью вкладки и не входят в степпер, CheckStatus или pass/fail-прогресс.
+
+TDD: RED
+
+Добавлен контрактный компонентный набор `DatasetPassportPanel.test.tsx` и изменён интеграционный контракт `TsAnalysisPreprocessing.test.tsx`.
+
+RED зафиксирован двумя ожидаемыми причинами: общий `DatasetPassportPanel` отсутствовал (TypeScript module-not-found), а «Паспорт свойств ряда» продолжал отображаться одиннадцатой mock-остановкой степпера. Backend-контракт удаления `passport` из preprocessing modes также добавлен до изменения production-константы; его первый запуск был заблокирован исчезнувшим локальным executable venv, после подключения доступного Python runtime тест прошёл вместе с расширенной регрессией.
+
+Общий компонент
+
+Создан `DatasetPassportPanel`, используемый всеми тремя вкладками с параметром `stage: start | validation | exit`.
+
+- Заголовки используют пользовательские имена «Паспорт свойств ряда: Загрузка / Валидация / Предобработка», а технические id остаются в API.
+- Панель загружает единый status и date-column contract, показывает target/date context, дату последнего снимка, staleness и число append-only снимков этапа.
+- Кандидаты временной колонки фильтруются по тому же порогу 0,7, который применяет backend. Если date ещё не сохранена, панель использует уверенную рекомендацию Upload/backend и атомарно сохраняет её перед фиксацией паспорта.
+- Кнопки всегда видимы и дизейблятся с объяснением: нет датасета/target/date, нет обязательного `start`, ряд не изменился, итоговая точка уже закрыла траекторию либо baseline нельзя переписать после downstream-снимка.
+- После расчёта отображаются 12 переиспользуемых Metric-карточек: n, частота, ADF, R², Ljung–Box, Jarque–Bera, тренд, сила сезонности, Hurst, mean/σ, топ-корреляции и FFT-периоды.
+- Для `validation` и `exit` доступно сравнение. Таблица строит двух- или трёхточечную траекторию из backend `path/comparisons`, показывает значения каждой точки и соседние Δ/Δ%; под ней выводятся summary, булевы/категориальные изменения и chip-diff добавленных/удалённых периодов.
+
+Интеграция вкладок
+
+- «Загрузка» фиксирует `start`, переиспользует общий target и уверенную date-колонку локальной structural detection.
+- «Валидация» фиксирует/пересчитывает `validation` только после `start` и только при изменившемся ряде; после снимка открывает сравнение `start → validation`.
+- «Предобработка» фиксирует `exit` при наличии `start`; `validation` опционален. Сравнение показывает `start → validation → exit` либо прямой `start → exit`.
+- Mock-пункт `passport` удалён из frontend `CHECKS` и backend `PREPROCESSING_CHECK_IDS`. Степпер предобработки теперь содержит 10 преобразующих остановок; паспорт не влияет на знаменатель прогресса и режимы auto/enabled/disabled.
+- Справка предобработки обновлена с версионных `v1.x` на смысловые точки start/validation/exit.
+
+Инвалидация и уведомления
+
+TypeScript-зеркало `TargetColumnResponse` дополнено `passport_history_reset`. Общий `useTargetColumn` теперь сохраняет отдельное уведомление при ручной смене target, если backend сбросил паспортную историю. Все три панели явно показывают, какая смена признака сбросила цепочку.
+
+Смена date также не происходит молча: для поздних стадий панель останавливает расчёт, сообщает о сбросе и направляет сначала зафиксировать новый `start`; на вкладке загрузки сообщение объединяется с подтверждением нового baseline.
+
+Методологическая оценка
+
+Паспорт намеренно не получает «пройдено/ошибка»: ADF, R², Hurst, сезонность и корреляции не имеют универсального направления качества вне контекста модели.
+
+Радарная диаграмма не реализована: перевод разнородных тестов в оси 0…1 потребовал бы незафиксированных весов и порогов и создавал бы ложную интегральную оценку. Основной интерфейс сохраняет исходные статистики и backend-дельты.
+
+Цвет направления применяется только там, где интерпретация однозначна в данном контракте: снижение ADF p-value и рост Jarque–Bera p-value. R² тренда, slope, Hurst, сезонность, mean и σ остаются нейтральными — их увеличение само по себе не означает улучшение ряда.
+
+GREEN и проверка
+
+- Компонент и три интеграции: 4 suites, 113/113 PASS.
+- Полная frontend-регрессия: 81 suites, 711/711 PASS, 0 snapshots.
+- Паспортная и preprocessing backend-регрессия: 96/96 PASS.
+- TypeScript standalone/embedded: PASS. Для обхода baseline side-effect CSS import использован только флаг проверки `--noUncheckedSideEffectImports false`; production-код и tsconfig не менялись.
+- Production build standalone/embedded: PASS, по 13/13 страниц; First Load JS — 449 kB. Из-за sandbox Node 24 временно применялись memory telemetry shim и декларации `*.css`; после проверки они удалены и в изменения не входят.
+- `py_compile` изменённого Python API и теста: PASS.
+- `git diff --check`: PASS.
+
+Изменённые и новые файлы
+
+- `apps/api/routers/session.py`
+- `packages/ui/components/DatasetPassportPanel.tsx` (новый)
+- `packages/ui/components/DatasetPassportPanel.test.tsx` (новый)
+- `packages/ui/components/TsAnalysisUpload.tsx`
+- `packages/ui/components/TsAnalysisUpload.test.tsx`
+- `packages/ui/components/TsAnalysisValidation.tsx`
+- `packages/ui/components/TsAnalysisValidation.test.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.test.tsx`
+- `packages/ui/hooks/useTargetColumn.ts`
+- `packages/ui/lib/modeling.ts`
+- `packages/ui/index.ts`
+- `tests/api/test_dataset_passport.py`
+- `worklog2.md`

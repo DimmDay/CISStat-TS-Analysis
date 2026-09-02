@@ -254,6 +254,7 @@ describe("TsAnalysisUpload", () => {
       expect(screen.getByText("Качество")).toBeInTheDocument();
       // По умолчанию активна первая остановка -- превью-таблица видна сразу
       expect(screen.getByText("date")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Паспорт свойств ряда: Загрузка" })).toBeInTheDocument();
     });
   });
 

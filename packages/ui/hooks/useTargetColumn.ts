@@ -61,6 +61,7 @@ export interface UseTargetColumnResult {
    * быть явно погашено вызовом dismissColumnResetNotice(). */
   columnResetNotice: ColumnResetNotice | null;
   dismissColumnResetNotice: () => void;
+  passportResetNotice: ColumnResetNotice | null;
   /** Явный выбор пользователя -- POST на сервер, wasAutoSelected -> false. */
   setColumn: (column: string) => Promise<void>;
   /** Ручной рефетч (например, после подтверждённой загрузки датасета). */
@@ -81,6 +82,7 @@ export function useTargetColumn(datasetKey: string | null | undefined): UseTarge
   const [error, setError] = useState<string | null>(null);
   const [wasAutoSelected, setWasAutoSelected] = useState(false);
   const [columnResetNotice, setColumnResetNotice] = useState<ColumnResetNotice | null>(null);
+  const [passportResetNotice, setPassportResetNotice] = useState<ColumnResetNotice | null>(null);
 
   // Защита от двойного авто-POST при конкурентных маунтах/эффектах
   // (StrictMode double-effect в dev, или Upload+Validation монтируются
@@ -169,6 +171,8 @@ export function useTargetColumn(datasetKey: string | null | undefined): UseTarge
     async (column: string) => {
       setLoading(true);
       setError(null);
+      setPassportResetNotice(null);
+      const previousColumn = targetColumn;
       try {
         const res = await fetch(sessionApiUrl("/target-column"), {
           method: "POST",
@@ -179,6 +183,9 @@ export function useTargetColumn(datasetKey: string | null | undefined): UseTarge
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: TargetColumnResponse = await res.json();
         applyResponse(data);
+        if (data.passport_history_reset && previousColumn && data.target_column) {
+          setPassportResetNotice({ previousColumn, newColumn: data.target_column });
+        }
         setWasAutoSelected(false); // осознанный выбор пользователя
       } catch (err) {
         setError(err instanceof Error ? err.message : "Не удалось выбрать признак");
@@ -186,7 +193,7 @@ export function useTargetColumn(datasetKey: string | null | undefined): UseTarge
         setLoading(false);
       }
     },
-    [applyResponse]
+    [applyResponse, targetColumn]
   );
 
   useEffect(() => {
@@ -204,6 +211,7 @@ export function useTargetColumn(datasetKey: string | null | undefined): UseTarge
     wasAutoSelected,
     columnResetNotice,
     dismissColumnResetNotice: () => setColumnResetNotice(null),
+    passportResetNotice,
     setColumn,
     refetch: fetchAndMaybeAutoSelect,
   };

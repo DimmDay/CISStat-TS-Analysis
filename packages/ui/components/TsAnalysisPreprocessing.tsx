@@ -68,6 +68,7 @@ import {
   type ScalingProfileResponse,
 } from "./PreprocessingScalingOverview";
 import { PreprocessingScalingPipeline } from "./PreprocessingScalingPipeline";
+import { DatasetPassportPanel } from "./DatasetPassportPanel";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -102,8 +103,6 @@ const CHECKS: Check[] = [
     description: "Каузальные лаги, trailing rolling-статистики и лаговые разности; известные заранее календарные sin/cos, time_idx и Fourier-гармоники периодов из спектрального анализа." },
   { id: "scaling", label: "Масштабирование", status: "pending", count: null,
     description: "Fold-safe рецепты StandardScaler, MinMaxScaler, RobustScaler, MaxAbsScaler и осознанный QuantileTransformer. Scaler обучается только на train каждого временного fold." },
-  { id: "passport", label: "Паспорт свойств ряда", status: "pending", count: null,
-    description: "Сравнительный анализ свойств ряда: v1.0 (загрузка) → v1.1 (после валидации) → v1.2 (после предобработки). Метрики: ADF, Ljung-Box, Jarque-Bera, R². Экспорт в Excel." },
 ];
 
 // ── Справка по целям модуля «Предобработка» (из app.py) ───────────
@@ -119,10 +118,10 @@ const PREPROCESSING_HELP = `Цели модуля "Предобработка"
 Цель раздела. Применить математические преобразования, чтобы удовлетворить эти требования, сохранив при этом полезный сигнал (тренд, цикличность, сезонность). Предобработка решает задачу превращения данных в формат, пригодный для машинного обучения.
 
 Что мы получим на выходе? Применив обратные преобразования после предобработки, мы имеем трансформированный датасет, готовый к загрузке в блок «Моделирование». Пользователь получает рекомендации по доступным моделям прогнозирования и сравнительные паспорта свойств ряда для анализа их изменения:
-- v1.0 до валидации vs v1.3 после предобработки
-- v1.2 до предобработки vs v1.3 после предобработки
+- start на загрузке vs validation после валидации
+- validation (если рассчитан) vs exit после предобработки
 
-Пайплайн предобработки (11 шагов):
+Пайплайн предобработки (10 шагов):
 1. Пропуски — интерполяция, forward-fill, mean, drop
 2. Выбросы — IQR, Z-score, MAD, Isolation Forest, LOF
 3. Регулярность ряда — интерполяция gaps, ресемплирование
@@ -133,7 +132,8 @@ const PREPROCESSING_HELP = `Цели модуля "Предобработка"
 8. Спектральный анализ — FFT, periodogram, вейвлет
 9. Генерация признаков — время, лаги, rolling, производные
 10. Масштабирование — Standard, MinMax, Robust, Quantile, Power
-11. Паспорт свойств ряда — сравнение v1.0 → v1.1 → v1.2`;
+
+Паспорт свойств ряда расположен отдельной панелью под степпером: он фиксирует и сравнивает свойства, но не является pass/fail-проверкой и не входит в прогресс.`;
 
 // ── Метрики и алгоритм / Мастер: остановка «Пропуски» ─────────────
 // Единственная остановка степпера с реальным backend -- см.
@@ -478,6 +478,7 @@ export function TsAnalysisPreprocessing() {
     loading: targetLoading,
     error: targetError,
     setColumn: setActiveFeature,
+    passportResetNotice,
   } = useTargetColumn(undefined);
 
   // ── Режимы остановок (Task 47, применено к «Предобработке») ──
@@ -1075,9 +1076,10 @@ export function TsAnalysisPreprocessing() {
   })();
 
   return (
-    <div className="flex gap-6">
-      {/* ── ЛЕВАЯ КОЛОНКА: селектор признака + прогресс + степпер ── */}
-      <aside className="w-60 shrink-0 flex flex-col gap-3 pt-1">
+    <div className="space-y-5">
+      <div className="flex gap-6">
+        {/* ── ЛЕВАЯ КОЛОНКА: селектор признака + прогресс + степпер ── */}
+        <aside className="w-60 shrink-0 flex flex-col gap-3 pt-1">
         {/* Заголовок модуля + справка */}
         <div className="mb-1">
           <div className="flex items-center justify-between">
@@ -1749,7 +1751,15 @@ export function TsAnalysisPreprocessing() {
             </article>
           ))}
         </div>
-      </aside>
+        </aside>
+      </div>
+      <DatasetPassportPanel
+        stage="exit"
+        targetColumn={activeFeature}
+        historyResetNotice={passportResetNotice
+          ? `Смена исследуемого признака «${passportResetNotice.previousColumn}» → «${passportResetNotice.newColumn}» сбросила цепочку паспортов.`
+          : null}
+      />
     </div>
   );
 }

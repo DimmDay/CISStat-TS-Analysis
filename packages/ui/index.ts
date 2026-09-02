@@ -64,6 +64,8 @@ export type {
 export { PortalNavBar } from "./components/PortalNavBar";
 export { Button } from "./components/Button";
 export { Metric } from "./components/Metric";
+export { DatasetPassportPanel } from "./components/DatasetPassportPanel";
+export type { DatasetPassportPanelProps, PassportStage } from "./components/DatasetPassportPanel";
 export { StatusIcon, STATUS_ICON } from "./components/StatusIcon";
 export type { CheckStatus } from "./components/StatusIcon";
 export { TsAnalysisPreprocessing } from "./components/TsAnalysisPreprocessing";

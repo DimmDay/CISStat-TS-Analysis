@@ -94,6 +94,7 @@ import { useAppShell } from "../context/AppShellContext";
 import { apiUrl, sessionApiUrl } from "../lib/apiClient";
 import { classifyStructure, type PanelBalance, type StructuralClassResult } from "../lib/structuralClass";
 import { useTargetColumn } from "../hooks/useTargetColumn";
+import { DatasetPassportPanel } from "./DatasetPassportPanel";
 import { DEMO_DATASETS, demoDatasetToFile } from "../lib/demoDatasets";
 
 // ──────────────────────────────────────────────────────────────────────
@@ -367,6 +368,7 @@ export function TsAnalysisUpload() {
     wasAutoSelected,
     columnResetNotice,
     dismissColumnResetNotice,
+    passportResetNotice,
     setColumn: setSelectedFeature,
     refetch: refetchTargetColumn,
   } = useTargetColumn(activeDataset?.name);
@@ -895,7 +897,8 @@ export function TsAnalysisUpload() {
           запроса детекции -- только содержимое остановки «Структура»
           ждёт detection (см. loading-state внутри неё ниже). */}
       {isUploaded && (
-        <div className="flex gap-6">
+        <>
+          <div className="flex gap-6">
           {/* ── ЛЕВАЯ КОЛОНКА: заголовок + признак + прогресс + степпер ── */}
           <aside className="w-60 shrink-0 flex flex-col gap-3 pt-1">
             <div className="mb-1">
@@ -1417,7 +1420,16 @@ export function TsAnalysisUpload() {
               </article>
             )}
           </aside>
-        </div>
+          </div>
+          <DatasetPassportPanel
+            stage="start"
+            targetColumn={selectedFeature}
+            suggestedDateColumn={confidentDateCol}
+            historyResetNotice={passportResetNotice
+              ? `Смена исследуемого признака «${passportResetNotice.previousColumn}» → «${passportResetNotice.newColumn}» сбросила цепочку паспортов.`
+              : null}
+          />
+        </>
       )}
     </div>
   );

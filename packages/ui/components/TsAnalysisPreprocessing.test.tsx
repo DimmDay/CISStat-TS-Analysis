@@ -1,7 +1,7 @@
 // packages/ui/components/TsAnalysisPreprocessing.test.tsx
 //
 // Тесты для компонента «Предобработка» — в частности:
-// 1. Рендер модуля и 11 шагов степпера
+// 1. Рендер модуля и 10 преобразующих шагов степпера
 // 2. Кнопка «Справка» переключает секцию
 // 3. Expandable description box: chevron, overlay, collapse
 
@@ -224,6 +224,7 @@ function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regulari
           suggested_column: "Price",
           available_columns: ["Year", "Price", "Volume"],
           has_dataset: true,
+          passport_history_reset: init?.method === "POST",
         }),
       });
     }
@@ -276,17 +277,19 @@ describe("TsAnalysisPreprocessing", () => {
     expect(screen.getByText("Preprocessing")).toBeInTheDocument();
   });
 
-  it("renders all 11 preprocessing steps in the stepper", () => {
+  it("renders 10 preprocessing steps and keeps the passport outside the stepper", () => {
     render(<TsAnalysisPreprocessing />);
     const stepLabels = [
       "Пропуски", "Выбросы", "Регулярность ряда", "Декомпозиция ряда",
       "Стабилизация дисперсии", "Сглаживание ряда", "Стационарность ряда",
       "Спектральный анализ", "Генерация признаков", "Масштабирование",
-      "Паспорт свойств ряда",
     ];
     stepLabels.forEach((label) => {
       expect(screen.getByText(label)).toBeInTheDocument();
     });
+    const stepper = screen.getByText("Preprocessing").closest("aside");
+    expect(stepper).not.toHaveTextContent("Паспорт свойств ряда");
+    expect(screen.getByRole("heading", { name: "Паспорт свойств ряда: Предобработка" })).toBeInTheDocument();
   });
 
   it("uses the shared target selector instead of mock ticker columns", async () => {
@@ -304,6 +307,7 @@ describe("TsAnalysisPreprocessing", () => {
       expect.stringContaining("/v1/session/target-column"),
       expect.objectContaining({ method: "POST", body: JSON.stringify({ column: "Volume" }) }),
     );
+    expect(await screen.findByText(/сбросила цепочку паспортов/i)).toBeInTheDocument();
   });
 
   // ── Кнопка «Справка» ──
@@ -437,12 +441,12 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
     });
     render(<TsAnalysisPreprocessing />);
     await screen.findByText("Отключено");
-    // 11 остановок всего, но «Пропуски» (skipped) исключены из знаменателя
+    // 10 преобразующих остановок всего, но «Пропуски» (skipped) исключены из знаменателя
     // Декомпозиция и спектральный профиль могут ещё выполняться или уже
     // завершиться (0…2):
-    // в обоих случаях 10 применимых остановок и "100%" не появляется.
+    // в обоих случаях 9 применимых остановок и "100%" не появляется
     // ошибочно, а прогресс-бар не должен упасть на NaN/делении на 0.
-    expect(screen.getByText(/^[012]\/10$/)).toBeInTheDocument();
+    expect(screen.getByText(/^[012]\/9$/)).toBeInTheDocument();
   });
 
   it("shows a 'Панель управления' header above the right-hand column", async () => {

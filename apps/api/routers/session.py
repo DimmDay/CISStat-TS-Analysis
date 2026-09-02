@@ -312,7 +312,7 @@ def _effective_validation_check_modes(session: AnalysisSession) -> dict[str, str
 # менять формат сессии, когда очередная остановка получит бэкенд.
 PREPROCESSING_CHECK_IDS = (
     "missing", "outliers", "regularity", "decomposition", "variance_stab",
-    "smoothing", "stationarity", "spectral", "feature_eng", "scaling", "passport",
+    "smoothing", "stationarity", "spectral", "feature_eng", "scaling",
 )
 
 

@@ -177,6 +177,7 @@ describe("TsAnalysisValidation", () => {
   it("renders the module title", async () => {
     renderValidation();
     await waitFor(() => expect(screen.getByText("Data Quality")).toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: "Паспорт свойств ряда: Валидация" })).toBeInTheDocument();
   });
 
   it("renders the control panel title with the same typography and top offset as Data Quality", async () => {

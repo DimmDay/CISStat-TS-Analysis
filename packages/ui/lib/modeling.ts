@@ -213,6 +213,7 @@ export interface TargetColumnResponse {
   suggested_column: string | null;
   available_columns: string[];
   has_dataset: boolean;
+  passport_history_reset?: boolean;
 }
 
 // Веса ранжирования (из modeling.yaml)
