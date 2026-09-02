@@ -144,12 +144,34 @@ const STATIONARITY_PROFILE = {
   },
 };
 
+const SPECTRAL_PROFILE = {
+  mode: "auto", status: "done", status_reason: null,
+  profile: {
+    column: "Price", applicable: true, reason: null, n_observations: 240, missing_count: 0,
+    min_cycles: 3, max_candidates: 6, max_period: 80, detrend: "linear", window: "hann",
+    order_source: "time_column", order_column: "Date", order_warning: null, frequency: "MS",
+    spectral_entropy: 0.2, dominant_period: 12, dominant_strength: 0.8, confirmed_periods: 1,
+    frequency_resolution: 1 / 240, nyquist_frequency: 0.5, welch_segment_length: 64, welch_segments: 6,
+    wavelet_method: "cmor1.5-1.0", wavelet_period_min: 2, wavelet_period_max: 80,
+    analysis_only: true, causal: false, modeling_safe: false, saved_periods: [],
+    fft: [{ frequency: 1 / 12, period: 12, amplitude: 3, power: null, is_peak: true }],
+    periodogram: [{ frequency: 1 / 12, period: 12, amplitude: null, power: 4, is_peak: true }],
+    welch: [{ frequency: 1 / 12, period: 12, amplitude: null, power: 3.5, power_share: 0.7, is_peak: true }],
+    bands: [{ id: "low", label: "Низкие", frequency_min: 0, frequency_max: 0.1, power_share: 0.8 }],
+    candidates: [{ rank: 1, period: 12, period_rounded: 12, frequency: 1 / 12, amplitude: 3, power: 4, power_share: 80, prominence: 3, spectral_snr: 15, autocorrelation: 0.8, seasonal_strength: 0.8, cycles: 20, confirmed: true, calendar_hint: "годовой цикл", harmonic_of: null }],
+    phase_period: 12, phase_profile: [{ phase: 1, mean: 1, lower: 0.8, upper: 1.2, count: 20 }],
+    wavelet: [{ x: "2010-01-01", index: 0, period: 12, power: 4, normalized_power: 0.9, edge_affected: true }],
+    wavelet_global: [{ period: 12, power_share: 0.8 }], recommendations: [], warnings: [],
+    methodology_note: "Global spectrum + Welch + CWT; analysis only.",
+  },
+};
+
 // Маршрутизирующий мок fetch -- используется везде, где раньше был
 // плоский `jest.fn().mockResolvedValue(MISSING_PROFILE)`: теперь ДВА
 // реальных стопа опрашивают бэкенд параллельно при монтировании, и без
 // маршрутизации по URL «Выбросы» получали бы чужой (missing-shaped)
 // ответ.
-function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; decomposition?: unknown; variance?: unknown; smoothing?: unknown; stationarity?: unknown; put?: unknown } = {}) {
+function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; decomposition?: unknown; variance?: unknown; smoothing?: unknown; stationarity?: unknown; spectral?: unknown; put?: unknown } = {}) {
   return jest.fn((url: string, init?: RequestInit) => {
     if (typeof url === "string" && url.includes("/target-column")) {
       const selected = init?.method === "POST"
@@ -179,6 +201,9 @@ function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regulari
     }
     if (typeof url === "string" && url.includes("stationarity-profile")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.stationarity ?? STATIONARITY_PROFILE) });
+    }
+    if (typeof url === "string" && url.includes("spectral-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.spectral ?? SPECTRAL_PROFILE) });
     }
     if (typeof url === "string" && url.includes("regularity-profile")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.regularity ?? REGULARITY_PROFILE) });
@@ -367,10 +392,11 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
     render(<TsAnalysisPreprocessing />);
     await screen.findByText("Отключено");
     // 11 остановок всего, но «Пропуски» (skipped) исключены из знаменателя
-    // Декомпозиция может ещё выполняться (0) или уже завершиться (1):
+    // Декомпозиция и спектральный профиль могут ещё выполняться или уже
+    // завершиться (0…2):
     // в обоих случаях 10 применимых остановок и "100%" не появляется.
     // ошибочно, а прогресс-бар не должен упасть на NaN/делении на 0.
-    expect(screen.getByText(/^[01]\/10$/)).toBeInTheDocument();
+    expect(screen.getByText(/^[012]\/10$/)).toBeInTheDocument();
   });
 
   it("shows a 'Панель управления' header above the right-hand column", async () => {
@@ -668,5 +694,28 @@ describe("TsAnalysisPreprocessing — остановка «Стационарн�
     fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
     expect(screen.getByText(/смешивал порядок и лаг/)).toBeInTheDocument();
     expect(screen.getByText(/Fractional differencing имел неверный знак/)).toBeInTheDocument();
+  });
+});
+
+describe("TsAnalysisPreprocessing — остановка «Спектральный анализ»", () => {
+  beforeEach(() => { global.fetch = routeFetch(); });
+
+  it("shows five spectral views, confirmed-period status and mode selector", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Спектральный анализ"));
+    expect(await screen.findByRole("tablist", { name: "Представления спектрального анализа" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Режим проверки Спектральный анализ" })).toBeInTheDocument();
+    expect(screen.getByText("Подтверждено периодов: 1")).toBeInTheDocument();
+  });
+
+  it("opens period-selection wizard and documents legacy corrections", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Спектральный анализ"));
+    await screen.findByRole("tablist", { name: "Представления спектрального анализа" });
+    fireEvent.click(screen.getByRole("button", { name: "Зафиксировать периоды" }));
+    expect(screen.getByRole("region", { name: "Мастер спектрального анализа" })).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/Legacy compute_fft_features/)).toBeInTheDocument();
+    expect(screen.getByText(/ненормированной и зависела от N/)).toBeInTheDocument();
   });
 });

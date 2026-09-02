@@ -50,6 +50,14 @@ import {
   type StationarityProfileResponse,
 } from "./PreprocessingStationarityOverview";
 import { PreprocessingStationarityPipeline } from "./PreprocessingStationarityPipeline";
+import {
+  PreprocessingSpectralOverview,
+  type PreprocessingSpectralProfileResponse,
+} from "./PreprocessingSpectralOverview";
+import {
+  PreprocessingSpectralPipeline,
+  type SpectralParameters,
+} from "./PreprocessingSpectralPipeline";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -79,7 +87,7 @@ const CHECKS: Check[] = [
   { id: "stationarity", label: "Стационарность ряда", status: "pending", count: null,
     description: "Консенсус ADF/KPSS различает стационарность уровня, тренд-стационарность, единичный корень и неопределённость. Доступны detrend, минимальные обычные/сезонные разности и log-разность с сохранением inverse-границ." },
   { id: "spectral", label: "Спектральный анализ", status: "pending", count: null,
-    description: "Разведочный анализ частотного состава ряда: FFT, periodogram, вейвлет-преобразование. Определяет доминантные частоты и сезонные периоды для генерации лаговых признаков." },
+    description: "Диагностика периодической структуры: Hann FFT/periodogram, медианный Welch PSD, CWT и подтверждение кандидатов через ACF/фазовый профиль. Периоды сохраняются для следующего шага без мутации ряда." },
   { id: "feature_eng", label: "Генерация признаков", status: "pending", count: null,
     description: "Создание временных (hour, day, month), лаговых, скользящих статистик (rolling mean/std) и производных признаков. Структура лагов определяется результатами спектрального анализа." },
   { id: "scaling", label: "Масштабирование", status: "pending", count: null,
@@ -329,6 +337,44 @@ const STATIONARITY_PIPELINE_DESCRIPTION = `Мастер обеспечения �
 4. Preview показывает новую колонку, число теряемых начальных строк и поддержку inverse. Исходный target не перезаписывается; удаление префикса синхронно сохраняет выравнивание всех признаков.
 5. После подтверждения apply атомарно сохраняет transformed column, d/D/s, log-domain, causal/modeling_safe, history_tail или trend coefficients. Эти границы нужны для возврата будущего прогноза в исходную шкалу.
 6. После применения повторите ADF/KPSS и временной backtest. Если ACF(1) резко отрицательна или качество прогноза ухудшилось, уменьшите число разностей.`;
+
+const SPECTRAL_METRICS_DESCRIPTION = `Метрики и алгоритм: Спектральный анализ
+
+Цель
+Найти интерпретируемые периодические компоненты после приведения ряда к регулярной временной сетке и сравнить их глобальную и локальную устойчивость. Остановка аналитическая: она не фильтрует ряд и не создаёт лаговые признаки, а сохраняет подтверждённые периоды как вход следующего шага.
+
+Метрики и представления
+1. Односторонний FFT показывает амплитуды неотрицательных частот вещественного ряда. Нулевая частота исключается, частотное разрешение равно 1/N, Nyquist — 0,5 цикла на наблюдение.
+2. SciPy periodogram с linear detrend и периодическим Hann-окном оценивает глобальный power spectrum. Анализ ограничивает максимальный период условием минимум min_cycles полных циклов.
+3. Медианный Welch PSD делит ряд на перекрывающиеся на 50% Hann-сегменты и усредняет их периодограммы. Он снижает дисперсию оценки и устойчивее к локальным всплескам, но короткий сегмент ухудшает разрешение низких частот.
+4. PyWavelets CWT cmor1.5-1.0 строит time-frequency скалограмму. Она показывает, когда энергия периода активна; бледные края помечают область краевого влияния. CWT не используется как формальный тест значимости.
+5. Кандидат подтверждается совместно глобальным пиком, spectral SNR/prominence, ACF на округлённом лаге и силой фазового профиля. Пики и пороги остаются диагностическими эвристиками, а не доказательством причинного цикла.
+6. Low/mid/high power shares используют диапазоны (0;0,1), [0,1;0,25) и [0,25;0,5] циклов/наблюдение. Это описательные доли мощности, не критерий качества прогноза.
+
+Корректировка методологии
+Legacy compute_fft_features анализировал лишь demeaned ряд без window/detrend, применял порог mean+σ к амплитуде и мог принять leakage линейного тренда за длинный цикл. Legacy spectral entropy была ненормированной и зависела от N. Новый контур переиспользует исправленный EDA-анализ: linear detrend, Hann, нормированная entropy [0;1], минимум полных циклов и независимое ACF/phase-подтверждение. Lomb–Scargle не запускается скрыто для нерегулярной оси: сначала аналитик исправляет регулярность либо осознанно выбирает специализированный анализ.
+
+Временной контракт
+FFT/periodogram/Welch требуют равномерной однообъектной сетки. Пропуски, inf, повторные/битые даты, панель и нерегулярность блокируются; без уверенной даты row-order допускается с предупреждением. Выбор периода по полной истории имеет look-ahead и не переносится в backtest: отбор лагов повторяется внутри каждого train-fold.
+
+Официальные источники
+- NumPy rFFT: https://numpy.org/doc/stable/reference/generated/numpy.fft.rfft.html
+- SciPy periodogram: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.periodogram.html
+- SciPy Welch: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.welch.html
+- SciPy Hann: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.hann.html
+- SciPy detrend: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.detrend.html
+- PyWavelets CWT: https://pywavelets.readthedocs.io/en/stable/ref/cwt.html
+- SciPy Lomb–Scargle: https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lombscargle.html`;
+
+const SPECTRAL_PIPELINE_DESCRIPTION = `Мастер спектрального анализа
+
+1. Настройте минимум полных циклов и число показываемых кандидатов. Больший min_cycles уменьшает риск принять медленный тренд/сдвиг за период, но исключает длинные циклы.
+2. Выберите Welch segment length. Auto оставляет не менее трёх сегментов с 50% overlap; меньшие сегменты дают больше усреднений, но хуже различают близкие низкие частоты.
+3. Сопоставьте periodogram, Welch, CWT, ACF и фазовый профиль. Гармонику не выдавайте за независимый фундаментальный период; используйте календарный/предметный смысл.
+4. Отметьте целочисленные периоды. Неподтверждённый кандидат требует отдельного подтверждения аналитика; допустимо сохранить явное решение «без периодов».
+5. Preview валидирует диапазон 2…N/min_cycles и показывает будущие lag-кандидаты. DataFrame не изменяется, никаких Fourier/lag-признаков на этом шаге не создаётся.
+6. Apply сохраняет source, periods/frequencies, подтверждение, параметры Welch/CWT, N и временной порядок в сессии для остановки «Генерация признаков».
+7. Сохранённое полноисторическое решение имеет analysis_only=true, causal=false, modeling_safe=false. В backtest период/лаги выбираются заново только на train.`;
 
 type PreprocessingCheckMode = "auto" | "enabled" | "disabled";
 
@@ -658,6 +704,47 @@ export function TsAnalysisPreprocessing() {
 
   const stationarityStatus: CheckStatus = stationarityLoading ? "running" : stationarityNoDataset ? "skipped" : stationarityError ? "error" : stationarityProfile ? stationarityProfile.status : "pending";
 
+  // ── Остановка «Спектральный анализ»: global PSD + Welch + CWT ──
+  const [spectralProfile, setSpectralProfile] = useState<PreprocessingSpectralProfileResponse | null>(null);
+  const [spectralLoading, setSpectralLoading] = useState(false);
+  const [spectralNoDataset, setSpectralNoDataset] = useState(false);
+  const [spectralError, setSpectralError] = useState<string | null>(null);
+  const [spectralRefreshKey, setSpectralRefreshKey] = useState(0);
+  const [spectralParameters, setSpectralParameters] = useState<SpectralParameters>({
+    minCycles: 3, maxCandidates: 6, welchSegmentLength: null, waveletScales: 24,
+  });
+
+  useEffect(() => {
+    let active = true;
+    setSpectralError(null); setSpectralNoDataset(false);
+    if (!activeFeature) { setSpectralProfile(null); setSpectralLoading(false); return () => { active = false; }; }
+    setSpectralLoading(true);
+    void (async () => {
+      try {
+        const query = new URLSearchParams({
+          column: activeFeature,
+          min_cycles: String(spectralParameters.minCycles),
+          max_candidates: String(spectralParameters.maxCandidates),
+          wavelet_scales: String(spectralParameters.waveletScales),
+        });
+        if (spectralParameters.welchSegmentLength !== null) query.set("welch_segment_length", String(spectralParameters.welchSegmentLength));
+        const response = await fetch(sessionApiUrl(`/dataset/preprocessing/spectral-profile?${query.toString()}`), { credentials: "include" });
+        if (response.status === 404) { if (active) setSpectralNoDataset(true); return; }
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(typeof body?.detail === "string" ? body.detail : `HTTP ${response.status}`);
+        }
+        const data: PreprocessingSpectralProfileResponse = await response.json();
+        if (active) { setSpectralProfile(data); setCheckModes((current) => ({ ...current, spectral: data.mode })); }
+      } catch (caught) {
+        if (active) setSpectralError(caught instanceof Error ? caught.message : "Не удалось выполнить спектральный анализ");
+      } finally { if (active) setSpectralLoading(false); }
+    })();
+    return () => { active = false; };
+  }, [activeFeature, spectralRefreshKey, spectralParameters]);
+
+  const spectralStatus: CheckStatus = spectralLoading ? "running" : spectralNoDataset ? "skipped" : spectralError ? "error" : spectralProfile ? spectralProfile.status : "pending";
+
   // Итоговый список проверок -- статика для ещё не реализованных
   // остановок, реальные данные для «Пропусков», «Выбросов» и «Регулярности».
   const checks = useMemo<Check[]>(() => CHECKS.map((check) => {
@@ -668,8 +755,9 @@ export function TsAnalysisPreprocessing() {
     if (check.id === "variance_stab") return { ...check, status: varianceStatus, count: varianceProfile?.profile?.needs_stabilization ? 1 : 0 };
     if (check.id === "smoothing") return { ...check, status: smoothingStatus, count: smoothingProfile?.profile?.needs_smoothing ? 1 : 0 };
     if (check.id === "stationarity") return { ...check, status: stationarityStatus, count: stationarityProfile?.profile?.needs_transformation ? 1 : 0 };
+    if (check.id === "spectral") return { ...check, status: spectralStatus, count: spectralProfile?.profile?.confirmed_periods ?? null };
     return check;
-  }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile, decompositionStatus, decompositionProfile, varianceStatus, varianceProfile, smoothingStatus, smoothingProfile, stationarityStatus, stationarityProfile]);
+  }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile, decompositionStatus, decompositionProfile, varianceStatus, varianceProfile, smoothingStatus, smoothingProfile, stationarityStatus, stationarityProfile, spectralStatus, spectralProfile]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -727,6 +815,7 @@ export function TsAnalysisPreprocessing() {
       if (checkId === "variance_stab") setVarianceRefreshKey((k) => k + 1);
       if (checkId === "smoothing") setSmoothingRefreshKey((k) => k + 1);
       if (checkId === "stationarity") setStationarityRefreshKey((k) => k + 1);
+      if (checkId === "spectral") setSpectralRefreshKey((k) => k + 1);
     } catch {
       setCheckModes(previous);
       setModeError({ checkId, message: "Не удалось сохранить режим проверки" });
@@ -784,6 +873,9 @@ export function TsAnalysisPreprocessing() {
     if (activeCheckId === "stationarity") {
       return descriptionSection === "metrics" ? STATIONARITY_METRICS_DESCRIPTION : STATIONARITY_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "spectral") {
+      return descriptionSection === "metrics" ? SPECTRAL_METRICS_DESCRIPTION : SPECTRAL_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -814,6 +906,9 @@ export function TsAnalysisPreprocessing() {
     }
     if (activeCheckId === "stationarity") {
       return descriptionSection === "metrics" ? "Метрики и алгоритм — Стационарность ряда" : "Мастер обеспечения стационарности";
+    }
+    if (activeCheckId === "spectral") {
+      return descriptionSection === "metrics" ? "Метрики и алгоритм — Спектральный анализ" : "Мастер спектрального анализа";
     }
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
@@ -983,6 +1078,8 @@ export function TsAnalysisPreprocessing() {
               ? "Мастер сглаживания ряда"
               : activeCheckId === "stationarity" && descriptionSection === "pipeline"
               ? "Мастер обеспечения стационарности"
+              : activeCheckId === "spectral" && descriptionSection === "pipeline"
+              ? "Мастер спектрального анализа"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -1014,6 +1111,10 @@ export function TsAnalysisPreprocessing() {
               ? "Выберите минимальный оператор, оцените потерю строк и inverse-контракт, затем подтвердите применение."
               : activeCheckId === "stationarity"
               ? "Ряд, rolling μ/σ, комплементарные тесты, ACF и сравнение кандидатов — во вкладках-бейджах."
+              : activeCheckId === "spectral" && descriptionSection === "pipeline"
+              ? "Настройте разрешение, подтвердите периоды и сохраните их без изменения датасета."
+              : activeCheckId === "spectral"
+              ? "FFT/periodogram, Welch PSD, CWT, фазовый профиль и кандидаты — во вкладках-бейджах."
               : "Меняется автоматически под активную проверку."}
           </p>
 
@@ -1082,6 +1183,21 @@ export function TsAnalysisPreprocessing() {
               error={stationarityError}
               noDataset={stationarityNoDataset}
             />
+          ) : activeCheckId === "spectral" && descriptionSection === "pipeline" ? (
+            <PreprocessingSpectralPipeline
+              column={activeFeature}
+              profile={spectralProfile?.profile ?? null}
+              parameters={spectralParameters}
+              onParametersChange={(changes) => setSpectralParameters((current) => ({ ...current, ...changes }))}
+              onApplied={() => setSpectralRefreshKey((key) => key + 1)}
+            />
+          ) : activeCheckId === "spectral" ? (
+            <PreprocessingSpectralOverview
+              profile={spectralProfile?.profile ?? null}
+              loading={spectralLoading}
+              error={spectralError}
+              noDataset={spectralNoDataset}
+            />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
@@ -1137,6 +1253,13 @@ export function TsAnalysisPreprocessing() {
               <Metric label="Консенсус после" value={stationarityProfile?.profile?.consensus_after ?? "—"} />
               <Metric label="Потеря N" value={stationarityProfile?.profile ? String(stationarityProfile.profile.lost_observations) : "—"} />
             </div>
+          ) : activeCheckId === "spectral" ? (
+            <div className="grid grid-cols-4 gap-3 mt-4">
+              <Metric label="Дом. период" value={spectralProfile?.profile?.dominant_period !== null && spectralProfile?.profile?.dominant_period !== undefined ? spectralProfile.profile.dominant_period.toFixed(2) : "—"} />
+              <Metric label="Подтверждено" value={spectralProfile?.profile ? String(spectralProfile.profile.confirmed_periods) : "—"} />
+              <Metric label="Entropy" value={spectralProfile?.profile?.spectral_entropy !== null && spectralProfile?.profile?.spectral_entropy !== undefined ? spectralProfile.profile.spectral_entropy.toFixed(3) : "—"} />
+              <Metric label="Welch сегментов" value={spectralProfile?.profile ? String(spectralProfile.profile.welch_segments) : "—"} />
+            </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
               <Metric label="Строк" value="200" />
@@ -1174,7 +1297,7 @@ export function TsAnalysisPreprocessing() {
                   у остальных остановок ещё нет backend-проверки, которую
                   можно реально включить/отключить (см. комментарий у
                   useState checkModes выше). */}
-              {(check.id === "missing" || check.id === "outliers" || check.id === "regularity" || check.id === "decomposition" || check.id === "variance_stab" || check.id === "smoothing" || check.id === "stationarity") && (
+              {(check.id === "missing" || check.id === "outliers" || check.id === "regularity" || check.id === "decomposition" || check.id === "variance_stab" || check.id === "smoothing" || check.id === "stationarity" || check.id === "spectral") && (
                 <label className="mb-2 block text-[11px] font-medium text-neutral-600">
                   Режим проверки
                   <select
@@ -1348,6 +1471,14 @@ export function TsAnalysisPreprocessing() {
                   {check.status === "warning" && <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">{stationarityProfile?.profile?.consensus_before === "trend-stationary" ? "Ряд тренд-стационарен; сравните detrend с явным трендом модели" : stationarityProfile?.profile?.consensus_before === "inconclusive" ? "ADF/KPSS расходятся; требуется аналитическое решение" : "Обнаружены признаки единичного корня; сравните минимальные разности"}</p>}
                   {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Ряд стационарен вокруг уровня; преобразование не требуется</p>}
                 </>
+              ) : check.id === "spectral" ? (
+                <>
+                  {check.status === "running" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">Выполняются FFT, Welch и CWT…</p>}
+                  {check.status === "error" && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">{spectralError ?? "Ошибка спектрального анализа"}</p>}
+                  {check.status === "pending" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">Анализ не запускался</p>}
+                  {check.status === "skipped" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">{spectralNoDataset ? "Нет активного датасета" : spectralProfile?.status_reason === "disabled" ? "Отключено" : spectralProfile?.profile?.reason ?? "Не применимо"}</p>}
+                  {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">{spectralProfile?.profile?.confirmed_periods ? `Подтверждено периодов: ${spectralProfile.profile.confirmed_periods}` : "Устойчивые периоды не подтверждены"}</p>}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -1384,10 +1515,10 @@ export function TsAnalysisPreprocessing() {
                     : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
                 }`}
               >
-                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : check.id === "variance_stab" ? "Настроить трансформацию" : check.id === "smoothing" ? "Настроить сглаживание" : check.id === "stationarity" ? "Обеспечить стационарность" : "Полный пайплайн"}
+                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : check.id === "variance_stab" ? "Настроить трансформацию" : check.id === "smoothing" ? "Настроить сглаживание" : check.id === "stationarity" ? "Обеспечить стационарность" : check.id === "spectral" ? "Зафиксировать периоды" : "Полный пайплайн"}
               </button>
 
-              <Button onClick={check.id === "stationarity" ? () => setStationarityRefreshKey((key) => key + 1) : undefined}>Пересчитать свойства после преобразования ({check.label.toLowerCase()})</Button>
+              <Button onClick={check.id === "stationarity" ? () => setStationarityRefreshKey((key) => key + 1) : check.id === "spectral" ? () => setSpectralRefreshKey((key) => key + 1) : undefined}>{check.id === "spectral" ? "Пересчитать спектральный профиль" : `Пересчитать свойства после преобразования (${check.label.toLowerCase()})`}</Button>
             </article>
           ))}
         </div>

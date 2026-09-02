@@ -99,6 +99,17 @@ export type {
   StationarityProfileResponse,
 } from "./components/PreprocessingStationarityOverview";
 export { PreprocessingStationarityPipeline } from "./components/PreprocessingStationarityPipeline";
+export { PreprocessingSpectralOverview } from "./components/PreprocessingSpectralOverview";
+export type {
+  PreprocessingSpectralProfile,
+  PreprocessingSpectralProfileResponse,
+  SpectralCandidate,
+  SpectralPoint,
+  SpectralWelchPoint,
+  SpectralWaveletPoint,
+} from "./components/PreprocessingSpectralOverview";
+export { PreprocessingSpectralPipeline } from "./components/PreprocessingSpectralPipeline";
+export type { SpectralParameters } from "./components/PreprocessingSpectralPipeline";
 export { TsAnalysisValidation } from "./components/TsAnalysisValidation";
 export { ValidationSufficiencyOverview } from "./components/ValidationSufficiencyOverview";
 export { ValidationSufficiencyPipeline } from "./components/ValidationSufficiencyPipeline";

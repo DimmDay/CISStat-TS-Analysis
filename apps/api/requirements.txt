@@ -10,6 +10,7 @@ python-multipart  # Для поддержки UploadFile
 # ModuleNotFoundError при первом же импорте роутеров.
 numpy>=1.24.0
 scipy>=1.10.0
+PyWavelets>=1.4.0             # preprocessing spectral CWT / scalogram
 statsmodels>=0.14.0          # app/core/passport.py -- ADF/KPSS/ACF
 arch>=7.0.0                  # EDA stationarity -- реальный Phillips–Perron
 ruptures>=1.1.9              # EDA structural breaks -- PELT

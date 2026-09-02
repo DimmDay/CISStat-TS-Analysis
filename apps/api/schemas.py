@@ -1294,6 +1294,125 @@ class DatasetPreprocessingStationarityResponse(BaseModel):
     metadata: StationarityTransformationMetadataOut
 
 
+class SpectralWelchPointOut(EdaSpectrumPoint):
+    power_share: float
+
+
+class SpectralBandOut(BaseModel):
+    id: Literal["low", "mid", "high"]
+    label: str
+    frequency_min: float
+    frequency_max: float
+    power_share: float
+
+
+class SpectralWaveletPointOut(BaseModel):
+    x: str
+    index: int
+    period: float
+    power: float
+    normalized_power: float
+    edge_affected: bool
+
+
+class SpectralWaveletGlobalOut(BaseModel):
+    period: float
+    power_share: float
+
+
+class PreprocessingSpectralProfileOut(BaseModel):
+    column: str
+    applicable: bool
+    reason: Optional[str] = None
+    n_observations: int = 0
+    missing_count: int = 0
+    min_cycles: int = 3
+    max_candidates: int = 6
+    max_period: Optional[float] = None
+    detrend: Literal["linear"] = "linear"
+    window: Literal["hann"] = "hann"
+    order_source: Literal["time_column", "row_order"] = "row_order"
+    order_column: Optional[str] = None
+    order_warning: Optional[str] = None
+    frequency: Optional[str] = None
+    spectral_entropy: Optional[float] = None
+    dominant_period: Optional[float] = None
+    dominant_strength: Optional[float] = None
+    confirmed_periods: int = 0
+    frequency_resolution: Optional[float] = None
+    nyquist_frequency: Optional[float] = None
+    welch_segment_length: Optional[int] = None
+    welch_segments: int = 0
+    wavelet_method: str = "cmor1.5-1.0"
+    wavelet_period_min: Optional[float] = None
+    wavelet_period_max: Optional[float] = None
+    analysis_only: bool = True
+    causal: bool = False
+    modeling_safe: bool = False
+    saved_periods: List[int] = Field(default_factory=list)
+    fft: List[EdaSpectrumPoint] = Field(default_factory=list)
+    periodogram: List[EdaSpectrumPoint] = Field(default_factory=list)
+    welch: List[SpectralWelchPointOut] = Field(default_factory=list)
+    bands: List[SpectralBandOut] = Field(default_factory=list)
+    candidates: List[EdaSeasonalityCandidateOut] = Field(default_factory=list)
+    phase_period: Optional[int] = None
+    phase_profile: List[EdaSeasonalityPhasePoint] = Field(default_factory=list)
+    wavelet: List[SpectralWaveletPointOut] = Field(default_factory=list)
+    wavelet_global: List[SpectralWaveletGlobalOut] = Field(default_factory=list)
+    recommendations: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+    methodology_note: str
+
+
+class DatasetPreprocessingSpectralProfileResponse(BaseModel):
+    mode: Literal["auto", "enabled", "disabled"] = "auto"
+    status: Literal["done", "warning", "pending", "skipped"] = "pending"
+    status_reason: Optional[Literal["not_required", "disabled"]] = None
+    profile: PreprocessingSpectralProfileOut
+
+
+class DatasetPreprocessingSpectralSelectionRequest(BaseModel):
+    column: str = Field(..., min_length=1)
+    periods: List[int] = Field(default_factory=list, max_length=10)
+    min_cycles: int = Field(3, ge=2, le=10)
+    max_candidates: int = Field(6, ge=1, le=10)
+    welch_segment_length: Optional[int] = Field(None, ge=8, le=4096)
+    confirm_unconfirmed: bool = False
+    apply: bool = Field(False, description="False — preview; True — сохранить аналитическое решение без изменения датасета")
+
+
+class SpectralSelectionMetadataOut(BaseModel):
+    kind: Literal["spectral_selection"] = "spectral_selection"
+    source_column: str
+    selected_periods: List[int]
+    frequencies: List[float]
+    confirmed_periods: List[int]
+    unconfirmed_periods: List[int]
+    min_cycles: int
+    max_candidates: int
+    welch_segment_length: int
+    detrend: Literal["linear"]
+    window: Literal["hann"]
+    wavelet: str
+    analysis_only: bool
+    causal: bool
+    modeling_safe: bool
+    analyzed_on_n: int
+    order_source: Literal["time_column", "row_order"]
+    order_column: Optional[str] = None
+    frequency: Optional[str] = None
+
+
+class DatasetPreprocessingSpectralSelectionResponse(BaseModel):
+    applied: bool
+    column: str
+    selected_periods: List[int]
+    confirmed_periods: List[int]
+    unconfirmed_periods: List[int]
+    suggested_lags: List[int]
+    metadata: SpectralSelectionMetadataOut
+
+
 # ── Структурная детекция (2026-08-14, найден реальный баг: фронт
 # показывал позиционную заглушку "первые 3 колонки файла" вместо
 # реального контентного скоринга -- см. app/data/detectors.py) ──

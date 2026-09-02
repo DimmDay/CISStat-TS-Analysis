@@ -35,6 +35,10 @@ from apps.api.preprocessing_stationarity import (
     build_stationarity_profile,
     preview_stationarity_transformation,
 )
+from apps.api.preprocessing_spectral import (
+    build_preprocessing_spectral_profile,
+    preview_spectral_selection,
+)
 from apps.api.schemas import (
     ColumnDetectionOut,
     ColumnStatsOut,
@@ -88,6 +92,9 @@ from apps.api.schemas import (
     DatasetPreprocessingStationarityProfileResponse,
     DatasetPreprocessingStationarityRequest,
     DatasetPreprocessingStationarityResponse,
+    DatasetPreprocessingSpectralProfileResponse,
+    DatasetPreprocessingSpectralSelectionRequest,
+    DatasetPreprocessingSpectralSelectionResponse,
     DatasetRangeCorrectionRequest,
     DatasetRangeCorrectionResponse,
     DatasetRangeProfileResponse,
@@ -387,6 +394,17 @@ def _preprocessing_stationarity_status(
     if not applicable:
         return "skipped", "not_required"
     return ("warning" if needs_transformation else "done"), None
+
+
+def _preprocessing_spectral_status(
+    mode: str, applicable: bool,
+) -> tuple[str, Optional[str]]:
+    """Спектр — аналитическая остановка: отсутствие пика не является ошибкой."""
+    if mode == "disabled":
+        return "skipped", "disabled"
+    if not applicable:
+        return "skipped", "not_required"
+    return "done", None
 
 
 def _to_response(session: AnalysisSession) -> SessionStateResponse:
@@ -2534,6 +2552,85 @@ def create_dataset_preprocessing_stationarity_transformation(
         session.touch()
         store.save(session)
     return DatasetPreprocessingStationarityResponse(applied=payload.apply, **summary)
+
+
+@router.get(
+    "/dataset/preprocessing/spectral-profile",
+    response_model=DatasetPreprocessingSpectralProfileResponse,
+)
+def get_dataset_preprocessing_spectral_profile(
+    column: str,
+    request: Request,
+    response: Response,
+    min_cycles: int = Query(3, ge=2, le=10),
+    max_candidates: int = Query(6, ge=1, le=10),
+    welch_segment_length: Optional[int] = Query(None, ge=8, le=4096),
+    wavelet_scales: int = Query(24, ge=8, le=64),
+):
+    """Глобальный FFT/periodogram, робастный Welch и CWT во времени."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая")
+    try:
+        profile = build_preprocessing_spectral_profile(
+            session.dataframe,
+            column,
+            min_cycles=min_cycles,
+            max_candidates=max_candidates,
+            welch_segment_length=welch_segment_length,
+            wavelet_scales=wavelet_scales,
+            saved_selection=session.preprocessing_spectral_selection,
+        )
+    except (ValueError, TypeError, FloatingPointError, OverflowError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    mode = _effective_preprocessing_check_modes(session)["spectral"]
+    status, status_reason = _preprocessing_spectral_status(mode, profile["applicable"])
+    return DatasetPreprocessingSpectralProfileResponse(
+        mode=mode, status=status, status_reason=status_reason, profile=profile,
+    )
+
+
+@router.post(
+    "/dataset/preprocessing/spectral-selections",
+    response_model=DatasetPreprocessingSpectralSelectionResponse,
+)
+def save_dataset_preprocessing_spectral_selection(
+    payload: DatasetPreprocessingSpectralSelectionRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply списка периодов без изменения строк или колонок."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if payload.column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail=f"Колонка '{payload.column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[payload.column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{payload.column}' не числовая")
+    try:
+        summary = preview_spectral_selection(
+            session.dataframe,
+            payload.column,
+            payload.periods,
+            min_cycles=payload.min_cycles,
+            max_candidates=payload.max_candidates,
+            welch_segment_length=payload.welch_segment_length,
+            confirm_unconfirmed=payload.confirm_unconfirmed,
+        )
+    except (ValueError, TypeError, FloatingPointError, OverflowError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if payload.apply:
+        session.preprocessing_spectral_selection = dict(summary["metadata"])
+        session.touch()
+        store.save(session)
+    return DatasetPreprocessingSpectralSelectionResponse(applied=payload.apply, **summary)
 
 
 @router.get(
