@@ -49,6 +49,7 @@ import json
 import logging
 import os
 import uuid
+from copy import deepcopy
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
@@ -87,6 +88,7 @@ def format_size_label(size_bytes: int) -> str:
 STAGES = ["upload", "validation", "preprocessing", "eda", "modeling", "forecasting"]
 
 StageStatus = str  # "pending" | "in_progress" | "done"
+PASSPORT_STAGES = ("start", "validation", "exit")
 
 
 @dataclass
@@ -96,6 +98,19 @@ class DatasetInfo:
     rows: int
     columns: int
     size_label: str
+
+
+@dataclass
+class PassportSnapshot:
+    """Сохранённый снимок паспорта в одной смысловой точке анализа."""
+
+    snapshot_id: str
+    stage: str
+    passport: dict[str, Any]
+    fingerprint: str
+    target_column: str
+    date_column: Optional[str]
+    captured_at: str
 
 
 @dataclass
@@ -125,6 +140,13 @@ class AnalysisSession:
     # Phase 0.5: имя выбранной числовой колонки для прогнозирования.
     # None = пользователь ещё не выбрал target → backtest fallback на синтетику.
     target_column: Optional[str] = None
+    # Общая дата-колонка для всех time-series операций сессии. Паспортная
+    # история сбрасывается при её смене так же, как при смене target.
+    date_column: Optional[str] = None
+    # Append-only журнал сохраняет повторные расчёты одной точки; API/UI
+    # получают актуальный снимок через latest_passport(stage), не теряя
+    # аудиторский след промежуточных решений аналитика.
+    passport_history: list[PassportSnapshot] = field(default_factory=list)
     # Пользовательский эталон типов для вкладки «Валидация».
     # Формат: {column_name: integer|float|datetime|string|boolean}.
     # Не выводится автоматически из фактических dtype, иначе проверка
@@ -182,6 +204,8 @@ class AnalysisSession:
         self.stages["upload"] = "done"
         self.last_active_stage = "upload"
         self.target_column = None
+        self.date_column = None
+        self.passport_history = []
         self.type_schema = {}
         self.validation_template_id = "system"
         self.validation_rule_overrides = {}
@@ -206,7 +230,53 @@ class AnalysisSession:
           2) column_name in df.columns
           3) df[column_name] числовая
         """
+        if column_name != self.target_column:
+            self.passport_history = []
         self.target_column = column_name
+        self.touch()
+
+    def set_date_column(self, column_name: str) -> None:
+        """Установить дату ряда и инвалидировать несопоставимые паспорта."""
+        if column_name != self.date_column:
+            self.passport_history = []
+        self.date_column = column_name
+        self.touch()
+
+    def append_passport_snapshot(
+        self,
+        stage: str,
+        passport: dict[str, Any],
+        fingerprint: str,
+    ) -> PassportSnapshot:
+        """Добавить снимок без перезаписи предыдущих расчётов."""
+        if stage not in PASSPORT_STAGES:
+            raise ValueError(f"Неизвестный этап паспорта: {stage}")
+        if not self.target_column:
+            raise ValueError("Для паспорта не выбрана target_column")
+        snapshot = PassportSnapshot(
+            snapshot_id=str(uuid.uuid4()),
+            stage=stage,
+            passport=deepcopy(passport),
+            fingerprint=fingerprint,
+            target_column=self.target_column,
+            date_column=self.date_column,
+            captured_at=datetime.now(timezone.utc).isoformat(),
+        )
+        self.passport_history.append(snapshot)
+        self.touch()
+        return snapshot
+
+    def latest_passport(self, stage: str) -> Optional[PassportSnapshot]:
+        """Последний снимок этапа либо None; история остаётся append-only."""
+        if stage not in PASSPORT_STAGES:
+            return None
+        return next(
+            (item for item in reversed(self.passport_history) if item.stage == stage),
+            None,
+        )
+
+    def reset_passports(self) -> None:
+        self.passport_history = []
         self.touch()
 
     def set_stage(self, stage: str, status: StageStatus) -> None:
@@ -228,6 +298,18 @@ def _dataset_to_dict(ds: DatasetInfo) -> dict[str, Any]:
 
 def _dataset_from_dict(d: dict[str, Any]) -> DatasetInfo:
     return DatasetInfo(**d)
+
+
+def _passport_snapshot_from_dict(d: dict[str, Any]) -> PassportSnapshot:
+    return PassportSnapshot(
+        snapshot_id=d.get("snapshot_id", str(uuid.uuid4())),
+        stage=d["stage"],
+        passport=deepcopy(d.get("passport", {})),
+        fingerprint=d.get("fingerprint", ""),
+        target_column=d.get("target_column", ""),
+        date_column=d.get("date_column"),
+        captured_at=d.get("captured_at", datetime.now(timezone.utc).isoformat()),
+    )
 
 
 def _dataframe_to_json(df: pd.DataFrame) -> str:
@@ -274,6 +356,8 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "stages": dict(session.stages),
         "last_active_stage": session.last_active_stage,
         "target_column": session.target_column,
+        "date_column": session.date_column,
+        "passport_history": [asdict(item) for item in session.passport_history],
         "type_schema": dict(session.type_schema),
         "validation_template_id": session.validation_template_id,
         "validation_rule_overrides": dict(session.validation_rule_overrides),
@@ -304,6 +388,11 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         stages=dict(d.get("stages", {})),
         last_active_stage=d.get("last_active_stage"),
         target_column=d.get("target_column"),  # None для старых записей
+        date_column=d.get("date_column"),
+        passport_history=[
+            _passport_snapshot_from_dict(item)
+            for item in d.get("passport_history", [])
+        ],
         type_schema=dict(d.get("type_schema", {})),  # {} для старых записей
         validation_template_id=d.get("validation_template_id", "system"),
         validation_rule_overrides=dict(d.get("validation_rule_overrides", {})),

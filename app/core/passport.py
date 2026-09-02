@@ -13,6 +13,7 @@
 - _calc_ts_props: упрощённый паспорт для сравнения До/После (A.4)
 - _hurst_exponent: приватная функция для показателя Хёрста
 """
+import hashlib
 import logging
 from typing import Dict, Any, Optional, List
 
@@ -27,6 +28,23 @@ from statsmodels.tsa.seasonal import STL
 from statsmodels.stats.diagnostic import acorr_ljungbox
 
 logger = logging.getLogger(__name__)
+
+_MIN_PASSPORT_POINTS = 30
+_NORMALITY_RELIABILITY_THRESHOLD = 2000
+_FREQ_TO_SEASONAL_PERIOD = {
+    "D": 7,
+    "B": 5,
+    "W": 52,
+    "M": 12,
+    "ME": 12,
+    "MS": 12,
+    "BM": 12,
+    "BME": 12,
+    "BMS": 12,
+    "Q": 4,
+    "QE": 4,
+    "QS": 4,
+}
 
 
 # ═══════════════════════════════════════════════════════
@@ -80,6 +98,109 @@ def _hurst_exponent(series: np.ndarray, max_lag: int = 20) -> float:
         return 0.5
 
 
+def prepare_passport_series(
+    dataframe: pd.DataFrame,
+    target_column: str,
+    date_column: str,
+    *,
+    min_points: int = _MIN_PASSPORT_POINTS,
+) -> pd.Series:
+    """Собирает единственный канонический ряд для расчёта паспорта.
+
+    Невалидные пары ``(дата, значение)`` удаляются, даты приводятся к UTC
+    и возвращаются как timezone-naive ``DatetimeIndex``. Панельные данные
+    не агрегируются молча: повторяющиеся даты требуют явного решения выше
+    по стеку. Исходный DataFrame не изменяется.
+    """
+    if target_column not in dataframe.columns:
+        raise ValueError(f"Колонка значений «{target_column}» не найдена")
+    if date_column not in dataframe.columns:
+        raise ValueError(f"Колонка даты «{date_column}» не найдена")
+    if target_column == date_column:
+        raise ValueError("Колонки даты и значений должны различаться")
+    if min_points < 1:
+        raise ValueError("min_points должен быть положительным")
+
+    dates = pd.to_datetime(dataframe[date_column], errors="coerce", utc=True)
+    values = pd.to_numeric(dataframe[target_column], errors="coerce")
+    finite = pd.Series(
+        np.isfinite(values.to_numpy(dtype=float, na_value=np.nan)),
+        index=dataframe.index,
+    )
+    valid = dates.notna() & values.notna() & finite
+    prepared = pd.DataFrame(
+        {
+            "date": dates.loc[valid].dt.tz_convert(None),
+            "value": values.loc[valid].astype(float),
+        }
+    ).sort_values("date", kind="mergesort")
+
+    if prepared["date"].duplicated().any():
+        raise ValueError(
+            "Обнаружены повторяющиеся даты: паспорт требует один ряд на одну дату"
+        )
+    if len(prepared) < min_points:
+        raise ValueError(
+            f"Недостаточно данных: нужно минимум {min_points} валидных точек"
+        )
+
+    return pd.Series(
+        prepared["value"].to_numpy(dtype=float),
+        index=pd.DatetimeIndex(prepared["date"].to_numpy()),
+        name=target_column,
+    )
+
+
+def _normalize_passport_series(analysis_series: pd.Series) -> pd.Series:
+    """Нормализует прямой вызов ядра тем же контрактом, что и DataFrame."""
+    if not isinstance(analysis_series, pd.Series):
+        raise ValueError("analysis_series должен быть pandas.Series")
+    frame = pd.DataFrame(
+        {
+            "__passport_date": analysis_series.index,
+            "__passport_value": analysis_series.to_numpy(),
+        }
+    )
+    result = prepare_passport_series(
+        frame,
+        "__passport_value",
+        "__passport_date",
+        min_points=_MIN_PASSPORT_POINTS,
+    )
+    result.name = analysis_series.name
+    return result
+
+
+def series_fingerprint(series: pd.Series) -> str:
+    """Возвращает устойчивый SHA-256 fingerprint значений вместе с индексом.
+
+    Ряд сортируется по времени, поэтому перестановка строк не создаёт ложную
+    устарелость. В отличие от агрегатного checksum учитывается каждая пара
+    ``(timestamp, value)``.
+    """
+    if not isinstance(series, pd.Series):
+        raise ValueError("series должен быть pandas.Series")
+    canonical = series.sort_index(kind="mergesort")
+    if canonical.index.has_duplicates:
+        raise ValueError("Fingerprint не определён для повторяющихся дат")
+    hashed = pd.util.hash_pandas_object(canonical, index=True, categorize=False)
+    payload = hashed.to_numpy(dtype="uint64").tobytes()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _seasonal_period_for_frequency(inferred_freq: Optional[str]) -> Optional[int]:
+    if inferred_freq is None:
+        return None
+    base = "".join(
+        ch for ch in str(inferred_freq).upper() if not ch.isdigit()
+    ).split("-")[0]
+    return _FREQ_TO_SEASONAL_PERIOD.get(base)
+
+
+def _not_applicable(reason: str, **values: Any) -> Dict[str, Any]:
+    return {**values, "applicable": False, "reason": reason}
+
+
 # ═══════════════════════════════════════════════════════
 # ЭТАЛОННАЯ ФУНКЦИЯ: ПОЛНЫЙ ПАСПОРТ СВОЙСТВ РЯДА
 # ═══════════════════════════════════════════════════════
@@ -129,20 +250,25 @@ def calculate_ts_passport(
     props: Dict[str, Any] = {}
     _log = error_log if error_log is not None else None
 
-    if len(analysis_series) < 30:
-        return {"error": "Недостаточно данных (нужно > 30 точек)"}
-    
+    try:
+        analysis_series = _normalize_passport_series(analysis_series)
+    except ValueError as exc:
+        message = str(exc)
+        if message.startswith("Недостаточно данных"):
+            return {"error": "Недостаточно данных (нужно минимум 30 валидных точек)"}
+        return {"error": message}
+
     try:
         # ── 0. ЧАСТОТА РЯДА ──────────────────────────
         try:
-            inferred_freq = pd.infer_freq(
-                analysis_series.index.drop_duplicates().sort_values()
-            )
+            inferred_freq = pd.infer_freq(analysis_series.index)
         except (ValueError, TypeError):
             inferred_freq = None
+        is_regular = inferred_freq is not None
         props['freq'] = {
             'value': inferred_freq if inferred_freq else 'Нерегулярная',
-            'is_ok': inferred_freq is not None
+            'is_ok': is_regular,
+            'is_regular': is_regular,
         }
         
         # ── 1. СТАЦИОНАРНОСТЬ (ADF) ──────────────────
@@ -152,7 +278,8 @@ def calculate_ts_passport(
         props['stationarity'] = {
             'value': float(adf_p),
             'is_stationary': bool(is_stationary),
-            'is_ok': bool(is_stationary)
+            'is_ok': bool(is_stationary),
+            'null_hypothesis': 'Ряд имеет единичный корень (нестационарен)',
         }
         
         # ── 2. ДЕТЕРМИНИРОВАННОСТЬ (R² тренда) ───────
@@ -168,17 +295,29 @@ def calculate_ts_passport(
         }
         
         # ── 3. АВТОКОРРЕЛЯЦИЯ (Ljung-Box) ────────────
-        lb_res = acorr_ljungbox(analysis_series, lags=[10])
-        if isinstance(lb_res, pd.DataFrame):
-            lb_p = float(lb_res['lb_pvalue'].iloc[0])
+        if is_regular:
+            tested_lag = min(10, max(1, len(analysis_series) // 5))
+            lb_res = acorr_ljungbox(analysis_series, lags=[tested_lag])
+            if isinstance(lb_res, pd.DataFrame):
+                lb_p = float(lb_res['lb_pvalue'].iloc[0])
+            else:
+                lb_p = float(lb_res[1][0])
+            is_white_noise = lb_p > 0.05
+            props['autocorrelation'] = {
+                'value': lb_p,
+                'is_white_noise': bool(is_white_noise),
+                'is_ok': bool(is_white_noise),
+                'tested_lag': tested_lag,
+                'applicable': True,
+            }
         else:
-            lb_p = float(lb_res[1][0])
-        is_white_noise = lb_p > 0.05
-        props['autocorrelation'] = {
-            'value': lb_p,
-            'is_white_noise': bool(is_white_noise),
-            'is_ok': bool(is_white_noise)
-        }
+            props['autocorrelation'] = _not_applicable(
+                'Ljung-Box по временным лагам требует регулярной частоты',
+                value=None,
+                is_white_noise=None,
+                is_ok=None,
+                tested_lag=None,
+            )
         
         # ── 4. НОРМАЛЬНОСТЬ (Jarque-Bera) ────────────
         jb_res = jarque_bera(analysis_series.dropna())
@@ -187,7 +326,9 @@ def calculate_ts_passport(
         props['normality'] = {
             'value': jb_p,
             'is_normal': bool(is_normal),
-            'is_ok': bool(is_normal)
+            'is_ok': bool(is_normal),
+            'asymptotic_reliable': len(analysis_series) > _NORMALITY_RELIABILITY_THRESHOLD,
+            'reliability_threshold': _NORMALITY_RELIABILITY_THRESHOLD,
         }
         
         # ── 5. НАПРАВЛЕНИЕ ТРЕНДА ────────────────────
@@ -227,142 +368,217 @@ def calculate_ts_passport(
                                  'error_type': 'CorrelationError', 'message': str(e)})
         
         # ── 7. СЕЗОННОСТЬ (STL strength) ─────────────
-        period = 7 if (inferred_freq and 'D' in str(inferred_freq)) else 12
-        try:
-            stl_res = STL(analysis_series, period=period, robust=True).fit()
-            var_total = float(analysis_series.var())
-            var_resid = float(stl_res.resid.var())
-            var_detrended = var_total - float(stl_res.trend.var())
-            strength_seasonality = (
-                max(0, 1 - var_resid / var_detrended)
-                if var_detrended > 0 else 0
+        period = _seasonal_period_for_frequency(inferred_freq)
+        if not is_regular:
+            props['seasonality'] = _not_applicable(
+                'STL требует регулярной частоты',
+                strength=None,
+                is_seasonal=None,
+                period=None,
             )
-            is_seasonal = strength_seasonality > 0.6
-        except Exception as e:
-            logger.warning(f"STL-декомпозиция не удалась: {e}")
-            if _log is not None:
-                _log.append({'stage': 'passport', 'severity': 'warning',
-                             'error_type': 'STLError', 'message': str(e)})
-            strength_seasonality = 0.0
-            is_seasonal = False
-        props['seasonality'] = {
-            'strength': float(strength_seasonality),
-            'is_seasonal': bool(is_seasonal)
-        }
+        elif period is None:
+            props['seasonality'] = _not_applicable(
+                'Для этой частоты нет обоснованного внутрипериодного цикла',
+                strength=None,
+                is_seasonal=None,
+                period=None,
+            )
+        elif len(analysis_series) < 2 * period:
+            props['seasonality'] = _not_applicable(
+                f'Для STL нужно минимум два полных цикла ({2 * period} точек)',
+                strength=None,
+                is_seasonal=None,
+                period=period,
+            )
+        else:
+            try:
+                stl_res = STL(analysis_series, period=period, robust=True).fit()
+                seasonal_plus_resid = stl_res.seasonal + stl_res.resid
+                denominator = float(np.var(seasonal_plus_resid, ddof=1))
+                strength_seasonality = (
+                    max(0.0, min(1.0, 1 - float(np.var(stl_res.resid, ddof=1)) / denominator))
+                    if denominator > 0 else 0.0
+                )
+                is_seasonal = strength_seasonality > 0.6
+                props['seasonality'] = {
+                    'strength': float(strength_seasonality),
+                    'is_seasonal': bool(is_seasonal),
+                    'period': period,
+                    'applicable': True,
+                }
+            except Exception as e:
+                logger.warning(f"STL-декомпозиция не удалась: {e}")
+                if _log is not None:
+                    _log.append({'stage': 'passport', 'severity': 'warning',
+                                 'error_type': 'STLError', 'message': str(e)})
+                props['seasonality'] = _not_applicable(
+                    f'STL не рассчитан: {e}',
+                    strength=None,
+                    is_seasonal=None,
+                    period=period,
+                )
         
         # ── 8. СЕЗОННЫЕ ПЕРИОДЫ (ACF) ────────────────
-        try:
-            max_lag = min(60, len(analysis_series) // 4)
-            acf_values = acf_func(analysis_series, nlags=max_lag)
-            confidence = 1.96 / np.sqrt(len(analysis_series))
-            significant_lags = np.where(np.abs(acf_values) > confidence)[0][1:]
-            seasonal_periods_acf = []
-            for i, lag in enumerate(significant_lags):
-                if i > 0 and lag - significant_lags[i - 1] < 3:
-                    continue
-                if lag > 2:
-                    seasonal_periods_acf.append(int(lag))
-            props['seasonal_periods'] = {
-                'periods': seasonal_periods_acf[:3],
-                'count': len(seasonal_periods_acf[:3])
-            }
-        except Exception as e:
-            logger.warning(f"Не удалось рассчитать сезонные периоды: {e}")
-            if _log is not None:
-                _log.append({'stage': 'passport', 'severity': 'warning',
-                             'error_type': 'ACFError', 'message': str(e)})
-            props['seasonal_periods'] = {'periods': [], 'count': 0}
+        if not is_regular:
+            props['seasonal_periods'] = _not_applicable(
+                'ACF по временным лагам требует регулярной частоты',
+                periods=[],
+                count=0,
+            )
+        else:
+            try:
+                max_lag = min(60, len(analysis_series) // 4)
+                acf_values = acf_func(analysis_series, nlags=max_lag)
+                confidence = 1.96 / np.sqrt(len(analysis_series))
+                significant_lags = np.where(np.abs(acf_values) > confidence)[0][1:]
+                seasonal_periods_acf = []
+                for i, lag in enumerate(significant_lags):
+                    if i > 0 and lag - significant_lags[i - 1] < 3:
+                        continue
+                    if lag > 2:
+                        seasonal_periods_acf.append(int(lag))
+                props['seasonal_periods'] = {
+                    'periods': seasonal_periods_acf[:3],
+                    'count': len(seasonal_periods_acf[:3]),
+                    'applicable': True,
+                }
+            except Exception as e:
+                logger.warning(f"Не удалось рассчитать сезонные периоды: {e}")
+                if _log is not None:
+                    _log.append({'stage': 'passport', 'severity': 'warning',
+                                 'error_type': 'ACFError', 'message': str(e)})
+                props['seasonal_periods'] = _not_applicable(
+                    f'ACF не рассчитан: {e}', periods=[], count=0
+                )
         
         # ── 9. ДОЛГАЯ ПАМЯТЬ (Hurst) ─────────────────
-        hurst_val = _hurst_exponent(analysis_series.values)
-        if hurst_val < 0.45:
-            memory_type = 'anti_persistent'
-        elif hurst_val > 0.55:
-            memory_type = 'persistent'
+        if not is_regular:
+            props['hurst'] = _not_applicable(
+                'Показатель Хёрста по лагам требует регулярной частоты',
+                value=None,
+                type=None,
+            )
         else:
-            memory_type = 'random_walk'
-        props['hurst'] = {
-            'value': float(hurst_val),
-            'type': memory_type
-        }
+            hurst_val = _hurst_exponent(analysis_series.values)
+            if hurst_val < 0.45:
+                memory_type = 'anti_persistent'
+            elif hurst_val > 0.55:
+                memory_type = 'persistent'
+            else:
+                memory_type = 'random_walk'
+            props['hurst'] = {
+                'value': float(hurst_val),
+                'type': memory_type,
+                'applicable': True,
+            }
         
         # ── 10. ДОМИНИРУЮЩИЕ ЧАСТОТЫ (FFT) ───────────
-        try:
-            n = len(analysis_series)
-            y = analysis_series.values - analysis_series.mean()
-            yf = fft(y)
-            xf = fftfreq(n, 1)[:n // 2]
-            amplitude = 2.0 / n * np.abs(yf[0:n // 2])
-            peaks, _ = find_peaks(
-                amplitude, height=np.mean(amplitude) + np.std(amplitude)
+        if not is_regular:
+            props['fft'] = _not_applicable(
+                'FFT требует регулярной частоты', dominant_periods=[], count=0
             )
-            fft_periods = [
-                1 / xf[p] for p in peaks if xf[p] > 0 and xf[p] < 0.5
-            ]
-            fft_dominant = sorted(fft_periods)[:3] if fft_periods else []
-            props['fft'] = {
-                'dominant_periods': fft_dominant,
-                'count': len(fft_dominant)
-            }
-        except Exception as e:
-            logger.warning(f"FFT-анализ не удался: {e}")
-            if _log is not None:
-                _log.append({'stage': 'passport', 'severity': 'warning',
-                             'error_type': 'FFTError', 'message': str(e)})
-            props['fft'] = {'dominant_periods': [], 'count': 0}
+        else:
+            try:
+                n = len(analysis_series)
+                y = analysis_series.values - analysis_series.mean()
+                yf = fft(y)
+                xf = fftfreq(n, 1)[:n // 2]
+                amplitude = 2.0 / n * np.abs(yf[0:n // 2])
+                peaks, _ = find_peaks(
+                    amplitude, height=np.mean(amplitude) + np.std(amplitude)
+                )
+                ranked_peaks = sorted(peaks, key=lambda p: amplitude[p], reverse=True)
+                fft_dominant = [
+                    1 / xf[p] for p in ranked_peaks if 0 < xf[p] < 0.5
+                ][:3]
+                props['fft'] = {
+                    'dominant_periods': fft_dominant,
+                    'count': len(fft_dominant),
+                    'applicable': True,
+                }
+            except Exception as e:
+                logger.warning(f"FFT-анализ не удался: {e}")
+                if _log is not None:
+                    _log.append({'stage': 'passport', 'severity': 'warning',
+                                 'error_type': 'FFTError', 'message': str(e)})
+                props['fft'] = _not_applicable(
+                    f'FFT не рассчитан: {e}', dominant_periods=[], count=0
+                )
         
         # ── 11. ПЕРИОДОГРАММА ────────────────────────
-        try:
-            freq_per, pxx_per = periodogram(
-                analysis_series.values, fs=1.0, window='hann'
+        if not is_regular:
+            props['periodogram'] = _not_applicable(
+                'Периодограмма требует регулярной частоты', periods=[], count=0
             )
-            peaks_per, _ = find_peaks(pxx_per, height=np.median(pxx_per) * 2)
-            periodogram_periods = sorted(
-                [1 / freq_per[p] for p in peaks_per if freq_per[p] > 0]
-            )[:3]
-            props['periodogram'] = {
-                'periods': periodogram_periods,
-                'count': len(periodogram_periods)
-            }
-        except Exception as e:
-            logger.warning(f"Периодограмма не удалась: {e}")
-            if _log is not None:
-                _log.append({'stage': 'passport', 'severity': 'warning',
-                             'error_type': 'PeriodogramError', 'message': str(e)})
-            props['periodogram'] = {'periods': [], 'count': 0}
+        else:
+            try:
+                freq_per, pxx_per = periodogram(
+                    analysis_series.values, fs=1.0, window='hann'
+                )
+                peaks_per, _ = find_peaks(pxx_per, height=np.median(pxx_per) * 2)
+                ranked_peaks = sorted(peaks_per, key=lambda p: pxx_per[p], reverse=True)
+                periodogram_periods = [
+                    1 / freq_per[p] for p in ranked_peaks if freq_per[p] > 0
+                ][:3]
+                props['periodogram'] = {
+                    'periods': periodogram_periods,
+                    'count': len(periodogram_periods),
+                    'applicable': True,
+                }
+            except Exception as e:
+                logger.warning(f"Периодограмма не удалась: {e}")
+                if _log is not None:
+                    _log.append({'stage': 'passport', 'severity': 'warning',
+                                 'error_type': 'PeriodogramError', 'message': str(e)})
+                props['periodogram'] = _not_applicable(
+                    f'Периодограмма не рассчитана: {e}', periods=[], count=0
+                )
         
         # ── 12. ВЕЙВЛЕТ-МАСШТАБЫ ─────────────────────
-        try:
-            import pywt  # Опциональная зависимость
-            widths = np.arange(1, min(128, len(analysis_series) // 4))
-            cwtmatr, _ = pywt.cwt(
-                analysis_series.values - analysis_series.mean(),
-                widths, 'morl', sampling_period=1
+        if not is_regular:
+            props['wavelet'] = _not_applicable(
+                'CWT требует регулярной частоты', scales=[], count=0
             )
-            mean_power = np.mean(np.abs(cwtmatr), axis=1)
-            wavelet_peaks, _ = find_peaks(
-                mean_power, height=np.mean(mean_power)
-            )
-            wavelet_scales = (
-                widths[wavelet_peaks][:3].tolist()
-                if len(wavelet_peaks) > 0 else []
-            )
-            props['wavelet'] = {
-                'scales': wavelet_scales,
-                'count': len(wavelet_scales)
-            }
-        except ImportError:
-            logger.warning("PyWavelets не установлен, wavelet-анализ пропущен")
-            if _log is not None:
-                _log.append({'stage': 'passport', 'severity': 'warning',
-                             'error_type': 'PyWTNotInstalled', 'message': 'PyWavelets not installed'})
-            props['wavelet'] = {'scales': [], 'count': 0}
-        except Exception as e:
-            logger.warning(f"Wavelet-анализ не удался: {e}")
-            if _log is not None:
-                _log.append({'stage': 'passport', 'severity': 'warning',
-                             'error_type': 'WaveletError', 'message': str(e)})
-            props['wavelet'] = {'scales': [], 'count': 0}
+        else:
+            try:
+                import pywt  # Опциональная зависимость
+                widths = np.arange(1, min(128, len(analysis_series) // 4))
+                cwtmatr, _ = pywt.cwt(
+                    analysis_series.values - analysis_series.mean(),
+                    widths, 'morl', sampling_period=1
+                )
+                mean_power = np.mean(np.abs(cwtmatr), axis=1)
+                wavelet_peaks, _ = find_peaks(
+                    mean_power, height=np.mean(mean_power)
+                )
+                ranked_peaks = sorted(
+                    wavelet_peaks, key=lambda p: mean_power[p], reverse=True
+                )
+                wavelet_scales = (
+                    widths[ranked_peaks[:3]].tolist() if ranked_peaks else []
+                )
+                props['wavelet'] = {
+                    'scales': wavelet_scales,
+                    'count': len(wavelet_scales),
+                    'applicable': True,
+                }
+            except ImportError:
+                logger.warning("PyWavelets не установлен, wavelet-анализ пропущен")
+                if _log is not None:
+                    _log.append({'stage': 'passport', 'severity': 'warning',
+                                 'error_type': 'PyWTNotInstalled',
+                                 'message': 'PyWavelets not installed'})
+                props['wavelet'] = _not_applicable(
+                    'PyWavelets не установлен', scales=[], count=0
+                )
+            except Exception as e:
+                logger.warning(f"Wavelet-анализ не удался: {e}")
+                if _log is not None:
+                    _log.append({'stage': 'passport', 'severity': 'warning',
+                                 'error_type': 'WaveletError', 'message': str(e)})
+                props['wavelet'] = _not_applicable(
+                    f'CWT не рассчитан: {e}', scales=[], count=0
+                )
         
         # ── 13. БАЗОВЫЕ СТАТИСТИКИ ───────────────────
         props['basic_stats'] = {
@@ -665,4 +881,3 @@ def calculate_ts_props_quick(series: pd.Series) -> Dict[str, Any]:
         logger.debug(f"FFT seasonality detection failed: {e}")
     
     return props
-
