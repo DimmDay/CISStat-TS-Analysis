@@ -672,3 +672,41 @@ Date: 2026-08-31
 - RED: 2/2 ожидаемых FAIL — отсутствовали общий контейнер 468px и растягиваемая внутренняя область.
 - GREEN: сфокусированный набор 2 suites, 52/52 PASS; полная frontend-регрессия — 79 suites, 676/676 PASS.
 - TypeScript 5.9 embedded/standalone: PASS; production build embedded/standalone: PASS, по 13/13 страниц, First Load JS — 445 kB; `git diff --check`: PASS.
+
+---
+
+## Task ID: 89 — Адаптивная высота вложенных EDA-графиков
+
+Дата: 2026-09-02
+
+### Диагностика
+
+- После увеличения окна «Обзор» до `468px` графические представления «Корреляция (ACF/PACF)», «Описательные статистики» и «IH-анализ» сохраняли прежние фиксированные высоты `275px`, `200px` и `270px`. Поэтому дополнительная высота доставалась пустой области под графиком, а не самой визуализации.
+- Причина пропуска в предыдущем аудите: один внешний контейнер каждого EDA-компонента имеет `overflow-y-auto` и обслуживает одновременно длинные таблицы и непрокручиваемые графические вкладки. Классификация только по CSS-классу внешнего контейнера ошибочно отнесла графические runtime-состояния к прокручиваемым.
+- Общий `ChartFrame` в `DistributionCharts` изначально рассчитан на компактные карточки `200px` вкладок «Загрузка» и «Навигатор». Глобально менять его высоту нельзя: это сломало бы соседние интерфейсы.
+
+### Реализация
+
+- В трёх EDA-окнах внешний контейнер переведён в колонку `flex` при сохранении исходных `h-[468px]`, `overflow-y-auto` и `feed-scroll`. Заголовок и вкладки используют `shrink-0`, а графические области — `min-h-0 flex-1`, поэтому Recharts `ResponsiveContainer height="100%"` занимает всё оставшееся пространство.
+- ACF/PACF, IH-рейтинг и график синергии больше не ограничены фиксированными `275px`/`270px`.
+- В описательных статистиках подпись отделена как `shrink-0`, а гистограмма, KDE, разброс и их loading/error/empty-состояния растягиваются на остаток высоты. Для `DistributionCharts` добавлен необязательный `className`; без него сохранён прежний контракт `h-[200px]` для «Загрузки» и «Навигатора».
+- Таблицы, карта метрик и условная карта помечены `shrink-0`: их естественная высота не сжимается, а прежняя вертикальная прокрутка внешнего окна сохраняется.
+
+### TDD и проверка
+
+- RED: 3 новых теста упали на фиксированных `h-[275px]`, `h-[270px]` и отсутствии растягиваемой области описательной визуализации.
+- GREEN: сфокусированный набор вместе с контрактом 165 состояний — 4 suites, 64/64 PASS.
+- Полная frontend-регрессия: 79 suites, 679/679 PASS, 0 snapshots.
+- TypeScript 5.9 embedded/standalone: PASS.
+- Production build embedded/standalone: PASS, по 13/13 страниц; lint/type checks прошли, First Load JS — 445 kB.
+- `git diff --check`: PASS.
+
+### Изменённые файлы
+
+- `packages/ui/components/DistributionCharts.tsx`
+- `packages/ui/components/EdaCorrelationOverview.tsx`
+- `packages/ui/components/EdaCorrelationOverview.test.tsx`
+- `packages/ui/components/EdaDescriptiveOverview.tsx`
+- `packages/ui/components/EdaDescriptiveOverview.test.tsx`
+- `packages/ui/components/EdaIhOverview.tsx`
+- `packages/ui/components/EdaIhOverview.test.tsx`

@@ -157,8 +157,8 @@ export function EdaDescriptiveOverview({
   }
 
   return (
-    <section className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
-      <div className="border-b border-neutral-100 p-4">
+    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+      <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h4 className="text-sm font-semibold text-neutral-800">Профиль числовых признаков</h4>
@@ -175,7 +175,7 @@ export function EdaDescriptiveOverview({
         )}
       </div>
 
-      <div className="flex gap-1 border-b border-neutral-100 px-4 pt-2" role="tablist" aria-label="Представления описательных статистик">
+      <div className="flex shrink-0 gap-1 border-b border-neutral-100 px-4 pt-2" role="tablist" aria-label="Представления описательных статистик">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -196,7 +196,7 @@ export function EdaDescriptiveOverview({
       </div>
 
       {activeView === "table" ? (
-        <div className="overflow-x-auto">
+        <div className="shrink-0 overflow-x-auto">
           <table aria-label="Описательные статистики по числовым признакам" className="w-full min-w-[980px] text-left text-xs">
             <thead className="sticky top-0 bg-neutral-50 text-neutral-500">
               <tr>
@@ -244,8 +244,8 @@ export function EdaDescriptiveOverview({
           </table>
         </div>
       ) : (
-        <div className="p-4">
-          <p className="mb-3 text-xs text-neutral-500">
+        <div data-testid="descriptive-visualization" className="flex min-h-0 flex-1 flex-col p-4">
+          <p className="mb-3 shrink-0 text-xs text-neutral-500">
             {activeView === "histogram"
               ? `Частотное распределение «${activeFeature}» по интервалам.`
               : activeView === "kde"
@@ -253,21 +253,21 @@ export function EdaDescriptiveOverview({
               : `Наблюдения «${activeFeature}» по позиции в очищенном ряде; экстремумы выделяются отдельно.`}
           </p>
           {(distributionLoading || !distributionReady) && !distributionError && (
-            <div className="flex h-[250px] items-center justify-center text-sm text-neutral-400">Загрузка визуализации…</div>
+            <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-400">Загрузка визуализации…</div>
           )}
           {distributionError && (
-            <div role="alert" className="flex h-[250px] items-center justify-center px-8 text-center text-sm text-red-700">{distributionError}</div>
+            <div role="alert" className="flex min-h-0 flex-1 items-center justify-center px-8 text-center text-sm text-red-700">{distributionError}</div>
           )}
           {!distributionLoading && distributionReady && !distributionError && activeView === "histogram" && (
-            <HistogramDistributionChart data={distribution} />
+            <HistogramDistributionChart data={distribution} className="min-h-0 flex-1" />
           )}
           {!distributionLoading && distributionReady && !distributionError && activeView === "kde" && (
-            <KdeDistributionChart data={distribution} />
+            <KdeDistributionChart data={distribution} className="min-h-0 flex-1" />
           )}
           {!distributionLoading && distributionReady && !distributionError && activeView === "scatter" && (
             <>
-              <ScatterDistributionChart data={distribution} />
-              <SamplingBadge data={distribution} />
+              <ScatterDistributionChart data={distribution} className="min-h-0 flex-1" />
+              <div className="shrink-0"><SamplingBadge data={distribution} /></div>
             </>
           )}
         </div>

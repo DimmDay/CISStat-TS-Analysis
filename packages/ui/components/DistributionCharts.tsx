@@ -81,9 +81,15 @@ function fmtCompact(n: number): string {
 
 // Общая обёртка карточки графика -- та же рамка/фон, что и в placeholder'е,
 // который она заменяет (border-neutral-200, bg-neutral-50, h-[200px]).
-function ChartFrame({ children }: { children: React.ReactNode }) {
+function ChartFrame({
+  children,
+  className = "h-[200px]",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <div className="h-[200px] border border-neutral-200 rounded bg-white px-1 pt-2 pb-1">
+    <div className={`${className} min-w-0 border border-neutral-200 rounded bg-white px-1 pt-2 pb-1`}>
       <ResponsiveContainer width="100%" height="100%">
         {children as React.ReactElement}
       </ResponsiveContainer>
@@ -91,9 +97,9 @@ function ChartFrame({ children }: { children: React.ReactNode }) {
   );
 }
 
-function EmptyFrame({ label }: { label: string }) {
+function EmptyFrame({ label, className = "h-[200px]" }: { label: string; className?: string }) {
   return (
-    <div className="h-[200px] border border-neutral-200 rounded flex items-center justify-center text-xs text-neutral-500 bg-neutral-50">
+    <div className={`${className} min-w-0 border border-neutral-200 rounded flex items-center justify-center text-xs text-neutral-500 bg-neutral-50`}>
       {label}
     </div>
   );
@@ -101,11 +107,11 @@ function EmptyFrame({ label }: { label: string }) {
 
 // ── Точечный график (x = позиция в очищенном от NaN ряде, y = значение) ──
 
-export function ScatterDistributionChart({ data }: { data: DistributionChartData | null }) {
+export function ScatterDistributionChart({ data, className }: { data: DistributionChartData | null; className?: string }) {
   // data.scatter может отсутствовать не только при data===null: неполный/
   // устаревший ответ (например, старый кэш или замоканный в тесте fetch без
   // этого поля) не должен ронять всю страницу -- деградируем до EmptyFrame.
-  if (!data || !data.scatter || data.scatter.length === 0) return <EmptyFrame label="Нет данных" />;
+  if (!data || !data.scatter || data.scatter.length === 0) return <EmptyFrame label="Нет данных" className={className} />;
 
   // Экстремумы уже гарантированно есть среди точек (сервер их сохраняет
   // поверх LTTB) -- находим их здесь же, чтобы визуально выделить, а не
@@ -114,7 +120,7 @@ export function ScatterDistributionChart({ data }: { data: DistributionChartData
   const maxPoint = data.scatter.reduce((a, b) => (b.y > a.y ? b : a));
 
   return (
-    <ChartFrame>
+    <ChartFrame className={className}>
       <RechartsScatterChart margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
         <CartesianGrid stroke="#F0F0F0" />
         <XAxis type="number" dataKey="x" tick={AXIS_TICK_STYLE} tickFormatter={fmtCompact} name="Позиция" />
@@ -134,8 +140,8 @@ export function ScatterDistributionChart({ data }: { data: DistributionChartData
 
 // ── Гистограмма ──
 
-export function HistogramDistributionChart({ data }: { data: DistributionChartData | null }) {
-  if (!data || !data.histogram || data.histogram.length === 0) return <EmptyFrame label="Нет данных" />;
+export function HistogramDistributionChart({ data, className }: { data: DistributionChartData | null; className?: string }) {
+  if (!data || !data.histogram || data.histogram.length === 0) return <EmptyFrame label="Нет данных" className={className} />;
 
   const chartData = data.histogram.map((b) => ({
     ...b,
@@ -144,7 +150,7 @@ export function HistogramDistributionChart({ data }: { data: DistributionChartDa
   }));
 
   return (
-    <ChartFrame>
+    <ChartFrame className={className}>
       <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
         <CartesianGrid stroke="#F0F0F0" vertical={false} />
         <XAxis
@@ -174,17 +180,18 @@ function formatCount(n: number): string {
 
 // ── KDE (кривая плотности) ──
 
-export function KdeDistributionChart({ data }: { data: DistributionChartData | null }) {
+export function KdeDistributionChart({ data, className }: { data: DistributionChartData | null; className?: string }) {
   if (!data || !data.kde) {
     return (
       <EmptyFrame
         label={data && data.non_null_count > 0 ? "KDE не определена (константный столбец)" : "Нет данных"}
+        className={className}
       />
     );
   }
 
   return (
-    <ChartFrame>
+    <ChartFrame className={className}>
       <AreaChart data={data.kde} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
         <defs>
           <linearGradient id="kdeFill" x1="0" y1="0" x2="0" y2="1">

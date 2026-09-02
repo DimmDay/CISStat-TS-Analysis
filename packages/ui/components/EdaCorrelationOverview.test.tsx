@@ -41,6 +41,29 @@ const PROFILE: EdaCorrelationResponse = {
 
 
 describe("EdaCorrelationOverview", () => {
+  it("fills the workspace with charts while preserving the scrollable table layout", () => {
+    render(
+      <EdaCorrelationOverview
+        profile={PROFILE}
+        loading={false}
+        error={null}
+        noDataset={false}
+        maxLags={20}
+        onMaxLagsChange={jest.fn()}
+      />,
+    );
+
+    const chart = screen.getByRole("img", { name: "График ACF для Price" });
+    expect(chart).toHaveClass("min-h-0", "flex-1");
+    expect(chart).not.toHaveClass("h-[275px]");
+    expect(chart.closest("section")).toHaveClass("flex", "overflow-y-auto", "feed-scroll");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Таблица" }));
+    const tableSection = screen.getByRole("table", { name: "Значения ACF и PACF по лагам" }).closest("section");
+    expect(tableSection).toHaveClass("overflow-y-auto");
+    expect(screen.getByRole("table", { name: "Значения ACF и PACF по лагам" }).parentElement).toHaveClass("shrink-0");
+  });
+
   it("switches between ACF, PACF and lag table views", () => {
     render(
       <EdaCorrelationOverview

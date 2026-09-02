@@ -81,7 +81,7 @@ function CorrelationChart({
   points: EdaCorrelationPoint[];
 }) {
   return (
-    <div role="img" aria-label={`График ${kind} для ${column}`} className="h-[275px] px-2 py-3">
+    <div role="img" aria-label={`График ${kind} для ${column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={points} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
@@ -179,10 +179,9 @@ export function EdaCorrelationOverview({
     acf: acfPoint,
     pacf: profile.pacf[index],
   }));
-
   return (
-    <section className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
-      <div className="border-b border-neutral-100 p-4">
+    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+      <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h4 className="text-sm font-semibold text-neutral-800">Корреляционная структура «{profile.column}»</h4>
@@ -215,7 +214,7 @@ export function EdaCorrelationOverview({
         )}
       </div>
 
-      <div className="flex gap-1 border-b border-neutral-100 px-4 pt-2" role="tablist" aria-label="Представления корреляционной структуры">
+      <div className="flex shrink-0 gap-1 border-b border-neutral-100 px-4 pt-2" role="tablist" aria-label="Представления корреляционной структуры">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -237,7 +236,7 @@ export function EdaCorrelationOverview({
       {activeView === "acf" && <CorrelationChart kind="ACF" column={profile.column} points={profile.acf} />}
       {activeView === "pacf" && <CorrelationChart kind="PACF" column={profile.column} points={profile.pacf} />}
       {activeView === "table" && (
-        <div className="overflow-x-auto">
+        <div className="shrink-0 overflow-x-auto">
           <table aria-label="Значения ACF и PACF по лагам" className="w-full text-left text-xs">
             <thead className="sticky top-0 bg-neutral-50 text-neutral-500">
               <tr>

@@ -4,14 +4,14 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { EdaDescriptiveOverview, type DescriptiveStatsResponse } from "./EdaDescriptiveOverview";
 
 jest.mock("./DistributionCharts", () => ({
-  HistogramDistributionChart: ({ data }: { data: { column: string } | null }) => (
-    <div data-testid="histogram-chart">Гистограмма: {data?.column}</div>
+  HistogramDistributionChart: ({ data, className }: { data: { column: string } | null; className?: string }) => (
+    <div data-testid="histogram-chart" className={className}>Гистограмма: {data?.column}</div>
   ),
-  KdeDistributionChart: ({ data }: { data: { column: string } | null }) => (
-    <div data-testid="kde-chart">KDE: {data?.column}</div>
+  KdeDistributionChart: ({ data, className }: { data: { column: string } | null; className?: string }) => (
+    <div data-testid="kde-chart" className={className}>KDE: {data?.column}</div>
   ),
-  ScatterDistributionChart: ({ data }: { data: { column: string } | null }) => (
-    <div data-testid="scatter-chart">Разброс: {data?.column}</div>
+  ScatterDistributionChart: ({ data, className }: { data: { column: string } | null; className?: string }) => (
+    <div data-testid="scatter-chart" className={className}>Разброс: {data?.column}</div>
   ),
   SamplingBadge: () => null,
 }));
@@ -74,6 +74,28 @@ describe("EdaDescriptiveOverview", () => {
     expect(screen.getByText("Близко к нормальному")).toBeInTheDocument();
     expect(screen.getByText(/Недостаточно данных \(n=1, минимум 2\)/)).toBeInTheDocument();
     expect(global.fetch).not.toHaveBeenCalled();
+    const section = screen.getByRole("table", { name: "Описательные статистики по числовым признакам" }).closest("section");
+    expect(section).toHaveClass("overflow-y-auto");
+    expect(screen.getByRole("table", { name: "Описательные статистики по числовым признакам" }).parentElement).toHaveClass("shrink-0");
+  });
+
+  it("gives the caption and histogram the full remaining workspace height", async () => {
+    render(
+      <EdaDescriptiveOverview
+        profile={PROFILE}
+        activeFeature="Price"
+        loading={false}
+        error={null}
+        noDataset={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "Гистограмма" }));
+    const chart = await screen.findByTestId("histogram-chart");
+    const visualization = screen.getByTestId("descriptive-visualization");
+    expect(visualization).toHaveClass("flex", "min-h-0", "flex-1");
+    expect(chart).toHaveClass("min-h-0", "flex-1");
+    expect(visualization.closest("section")).toHaveClass("flex", "overflow-y-auto", "feed-scroll");
   });
 
   it("switches between visualization tabs and reuses one distribution response", async () => {

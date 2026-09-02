@@ -137,7 +137,7 @@ function ParameterSelect({
 function RankingChart({ profile }: { profile: EdaIhResponse }) {
   const data = [...profile.results].reverse();
   return (
-    <div role="img" aria-label={`Рейтинг IH-информативности для ${profile.column}`} className="h-[270px] px-2 py-3">
+    <div role="img" aria-label={`Рейтинг IH-информативности для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical" margin={{ top: 4, right: 24, left: 22, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
@@ -165,7 +165,7 @@ function MetricsMap({ results }: { results: EdaIhFeature[] }) {
     backgroundColor: `rgba(37, 99, 235, ${0.08 + 0.62 * Math.min(1, value / max)})`,
   });
   return (
-    <div className="overflow-x-auto p-3">
+    <div className="shrink-0 overflow-x-auto p-3">
       <table aria-label="Карта энтропийных метрик" className="w-full text-left text-xs">
         <thead className="text-neutral-500">
           <tr><th className="px-2 py-2">Фактор</th><th className="px-2 py-2">H(X)</th><th className="px-2 py-2">I(X;Y)</th><th className="px-2 py-2">R(Y|X)</th><th className="px-2 py-2">R adj.</th></tr>
@@ -188,11 +188,11 @@ function MetricsMap({ results }: { results: EdaIhFeature[] }) {
 
 function SynergyChart({ items }: { items: EdaIhSynergy[] }) {
   if (!items.length) {
-    return <p role="status" className="p-8 text-center text-sm text-neutral-500">Для парного анализа нужны минимум два обычных фактора, не считая лагов.</p>;
+    return <p role="status" className="flex min-h-0 flex-1 items-center justify-center p-8 text-center text-sm text-neutral-500">Для парного анализа нужны минимум два обычных фактора, не считая лагов.</p>;
   }
   const data = [...items].slice(0, 8).reverse();
   return (
-    <div role="img" aria-label="График взаимодействия факторов" className="h-[270px] px-2 py-3">
+    <div role="img" aria-label="График взаимодействия факторов" className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical" margin={{ top: 4, right: 18, left: 55, bottom: 4 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
@@ -214,7 +214,7 @@ function ConditionalMap({ profile }: { profile: EdaIhResponse }) {
     return <p role="status" className="p-8 text-center text-sm text-neutral-500">Условное распределение недоступно.</p>;
   }
   return (
-    <div className="overflow-auto p-3">
+    <div className="shrink-0 overflow-auto p-3">
       <p className="mb-2 text-xs text-neutral-500">
         Строки — интервалы «{profile.conditional_feature}», столбцы — интервалы «{profile.column}»; каждая строка суммируется до 100%.
       </p>
@@ -248,7 +248,7 @@ function ConditionalMap({ profile }: { profile: EdaIhResponse }) {
 
 function ResultsTable({ results }: { results: EdaIhFeature[] }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="shrink-0 overflow-x-auto">
       <table aria-label="Результаты IH-анализа" className="w-full min-w-[940px] text-left text-xs">
         <thead className="sticky top-0 bg-neutral-50 text-neutral-500">
           <tr>
@@ -289,8 +289,8 @@ export function EdaIhOverview({
   if (!profile.applicable) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "IH-анализ неприменим."}</div>;
 
   return (
-    <section className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
-      <div className="border-b border-neutral-100 p-3">
+    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+      <div className="shrink-0 border-b border-neutral-100 p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h4 className="text-sm font-semibold text-neutral-800">IH-профиль факторов для «{profile.column}»</h4>
@@ -309,7 +309,7 @@ export function EdaIhOverview({
         {profile.recommendations[0] && <p className="mt-2 rounded bg-brand-light/60 px-3 py-2 text-xs text-neutral-700">{profile.recommendations[0]}</p>}
       </div>
 
-      <div className="flex gap-1 overflow-x-auto border-b border-neutral-100 px-3 pt-2" role="tablist" aria-label="Представления IH-анализа">
+      <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-neutral-100 px-3 pt-2" role="tablist" aria-label="Представления IH-анализа">
         {TABS.map((tab) => (
           <button
             key={tab.id}

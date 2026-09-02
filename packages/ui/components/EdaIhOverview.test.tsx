@@ -55,6 +55,29 @@ const PROFILE: EdaIhResponse = {
 
 
 describe("EdaIhOverview", () => {
+  it("fills the workspace with chart views but keeps long views scrollable", () => {
+    render(
+      <EdaIhOverview
+        profile={PROFILE}
+        loading={false}
+        error={null}
+        noDataset={false}
+        parameters={{ sharpness: 0.25, minSamples: 20, topK: 10, maxLag: 3 }}
+        onParametersChange={jest.fn()}
+      />,
+    );
+
+    const ranking = screen.getByRole("img", { name: "Рейтинг IH-информативности для Target" });
+    expect(ranking).toHaveClass("min-h-0", "flex-1");
+    expect(ranking).not.toHaveClass("h-[270px]");
+    expect(ranking.closest("section")).toHaveClass("flex", "overflow-y-auto", "feed-scroll");
+
+    fireEvent.click(screen.getByRole("tab", { name: "Карта метрик" }));
+    const metricsSection = screen.getByRole("table", { name: "Карта энтропийных метрик" }).closest("section");
+    expect(metricsSection).toHaveClass("overflow-y-auto");
+    expect(screen.getByRole("table", { name: "Карта энтропийных метрик" }).parentElement).toHaveClass("shrink-0");
+  });
+
   it("switches across all IH visualizations backed by one profile", () => {
     render(
       <EdaIhOverview
