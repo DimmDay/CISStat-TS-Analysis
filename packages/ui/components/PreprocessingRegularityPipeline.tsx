@@ -115,7 +115,7 @@ export function PreprocessingRegularityPipeline({ onApplied }: { onApplied: () =
     <section
       role="region"
       aria-label="Мастер исправления регулярности"
-      className="h-[420px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 feed-scroll"
+      className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 feed-scroll"
     >
       {busy === "load" && <p className="text-sm text-neutral-400">Загрузка профиля…</p>}
       {!busy && !profile?.applicable && (

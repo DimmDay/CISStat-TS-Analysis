@@ -95,21 +95,21 @@ export function PreprocessingOutliersOverview({
   }, [refreshKey, method]);
 
   if (loading) {
-    return <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Загрузка профиля выбросов…</div>;
+    return <div className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Загрузка профиля выбросов…</div>;
   }
   if (error) {
-    return <div role="alert" className="flex h-[420px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">{error}</div>;
+    return <div role="alert" className="flex h-[468px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">{error}</div>;
   }
   if (!profile || profile.columns.length === 0) {
     return (
-      <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-600">
+      <div className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-600">
         В активном датасете нет числовых колонок — проверка выбросов неприменима.
       </div>
     );
   }
   if (profile.status === "skipped") {
     return (
-      <div role="status" className="flex h-[420px] items-center justify-center rounded-lg bg-neutral-50 px-8 text-center text-sm text-neutral-600">
+      <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-neutral-50 px-8 text-center text-sm text-neutral-600">
         {profile.status_reason === "disabled"
           ? "Остановка «Выбросы» отключена аналитиком и не участвует в прогрессе."
           : "Проверка выбросов не требуется для этого датасета."}
@@ -118,7 +118,7 @@ export function PreprocessingOutliersOverview({
   }
 
   return (
-    <section className="h-[420px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+    <section className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
       <div className="border-b border-neutral-100 p-4">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-semibold text-neutral-800">Выбросы по числовым колонкам</h4>

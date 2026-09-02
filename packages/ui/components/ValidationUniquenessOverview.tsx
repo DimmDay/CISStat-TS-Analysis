@@ -71,15 +71,15 @@ export function ValidationUniquenessOverview({ refreshKey = 0 }: { refreshKey?: 
     return () => { active = false; };
   }, [refreshKey]);
 
-  if (loading) return <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Загрузка профиля уникальности…</div>;
-  if (error) return <div role="alert" className="flex h-[420px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">{error}</div>;
-  if (!response?.profile.applicable) return <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-600">{response?.profile.applicability_message || "Правило уникальности неприменимо. Проверьте составной ключ в «Управлении правилами»."}</div>;
+  if (loading) return <div className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Загрузка профиля уникальности…</div>;
+  if (error) return <div role="alert" className="flex h-[468px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">{error}</div>;
+  if (!response?.profile.applicable) return <div className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-600">{response?.profile.applicability_message || "Правило уникальности неприменимо. Проверьте составной ключ в «Управлении правилами»."}</div>;
 
   const profile = response.profile;
   const duplicates = profile.duplicate_rows ?? 0;
   const validPct = profile.total_rows ? (profile.valid_rows / profile.total_rows) * 100 : 100;
   return (
-    <section className="h-[420px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+    <section className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
       <div className="border-b border-neutral-100 p-4">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-semibold text-neutral-800">Распределение строк</h4>

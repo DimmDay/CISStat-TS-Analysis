@@ -580,3 +580,83 @@ Date: 2026-08-31
 - `tests/api/test_dataset_preprocessing_scaling.py`
 - `tests/unit/test_preprocessing_scaling.py`
 - `tests/unit/test_preprocessing_scaling_adapter.py`
+
+---
+
+## Task ID: 88 — Высота окна «Обзор» / «Мастер»
+
+Дата: 2026-09-02
+
+### Аудит интерфейсного контракта
+
+- Рабочие области вкладок «Валидация», «Предобработка» и «Разведочный анализ» использовали единый внешний размер `h-[420px]`. Контракт был продублирован в итоговых контейнерах и во всех состояниях loading/error/empty/not-applicable; частичное изменение только родительских компонентов оставило бы скачки высоты при загрузке и переключении остановок.
+- Зафиксирована целевая высота `468px`: исходные `420px` + требуемые `48px`. Изменены все 165 вхождений рабочего контракта в 48 компонентах.
+- Высоты вложенных графиков, таблиц, блока «Описание», правых панелей и самостоятельного legacy-обзора «Навигатора» не менялись: они не задают размер окна «Обзор»/«Мастер». Существующий `overflow-y-auto` и `feed-scroll` сохранены, поэтому дополнительная высота даёт больше полезного пространства без переполнения длинного содержимого.
+- Backend/API и аналитическая методология не затронуты: задача является чистым изменением layout.
+
+### Реализация
+
+- Во всех Overview/Pipeline-компонентах Validation, Preprocessing и EDA внешний класс высоты и эквивалентные состояния заменены с `h-[420px]` на `h-[468px]`.
+- В родительских заглушках `TsAnalysisValidation`, `TsAnalysisPreprocessing` и `TsAnalysisEDA` применён тот же размер, чтобы ещё не реализованные и неприменимые остановки не меняли высоту окна.
+- Добавлен регрессионный source-contract тест `AnalysisWorkspaceHeight.test.ts`: он проверяет каждый из 48 компонентов, отсутствие старой высоты и полный охват 165 состояний.
+
+### TDD и проверка
+
+- RED: новый тест — 49/49 FAIL (`h-[468px]` отсутствовал, найдено 0 из 165 состояний).
+- GREEN: 49/49 PASS.
+- Полная frontend-регрессия: 78 suites, 673/673 PASS, 0 snapshots.
+- TypeScript 5.9 embedded/standalone: PASS.
+- Production build embedded/standalone: PASS, по 13/13 страниц; lint/type checks прошли, First Load JS — 445 kB.
+- `git diff --check`: PASS; остаточных `h-[420px]` в `packages/ui/components/*.tsx` нет.
+
+### Изменённые и новые файлы
+
+- `packages/ui/components/AnalysisWorkspaceHeight.test.ts` (новый)
+- `packages/ui/components/EdaCorrelationOverview.tsx`
+- `packages/ui/components/EdaDescriptiveOverview.tsx`
+- `packages/ui/components/EdaDistributionOverview.tsx`
+- `packages/ui/components/EdaFeatureSelectionOverview.tsx`
+- `packages/ui/components/EdaIhOverview.tsx`
+- `packages/ui/components/EdaModelMatrixOverview.tsx`
+- `packages/ui/components/EdaSeasonalityOverview.tsx`
+- `packages/ui/components/EdaStationarityOverview.tsx`
+- `packages/ui/components/EdaStructuralBreaksOverview.tsx`
+- `packages/ui/components/EdaValidationStrategyOverview.tsx`
+- `packages/ui/components/PreprocessingDecompositionOverview.tsx`
+- `packages/ui/components/PreprocessingDecompositionPipeline.tsx`
+- `packages/ui/components/PreprocessingFeatureEngineeringOverview.tsx`
+- `packages/ui/components/PreprocessingFeatureEngineeringPipeline.tsx`
+- `packages/ui/components/PreprocessingMissingOverview.tsx`
+- `packages/ui/components/PreprocessingMissingPipeline.tsx`
+- `packages/ui/components/PreprocessingOutliersOverview.tsx`
+- `packages/ui/components/PreprocessingOutliersPipeline.tsx`
+- `packages/ui/components/PreprocessingRegularityOverview.tsx`
+- `packages/ui/components/PreprocessingRegularityPipeline.tsx`
+- `packages/ui/components/PreprocessingScalingOverview.tsx`
+- `packages/ui/components/PreprocessingScalingPipeline.tsx`
+- `packages/ui/components/PreprocessingSmoothingOverview.tsx`
+- `packages/ui/components/PreprocessingSmoothingPipeline.tsx`
+- `packages/ui/components/PreprocessingSpectralOverview.tsx`
+- `packages/ui/components/PreprocessingSpectralPipeline.tsx`
+- `packages/ui/components/PreprocessingStationarityOverview.tsx`
+- `packages/ui/components/PreprocessingStationarityPipeline.tsx`
+- `packages/ui/components/PreprocessingVarianceOverview.tsx`
+- `packages/ui/components/PreprocessingVariancePipeline.tsx`
+- `packages/ui/components/TsAnalysisEDA.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.tsx`
+- `packages/ui/components/TsAnalysisValidation.tsx`
+- `packages/ui/components/ValidationCheckChart.tsx`
+- `packages/ui/components/ValidationConsistencyOverview.tsx`
+- `packages/ui/components/ValidationConsistencyPipeline.tsx`
+- `packages/ui/components/ValidationFormatPipeline.tsx`
+- `packages/ui/components/ValidationInclusionPipeline.tsx`
+- `packages/ui/components/ValidationRangeOverview.tsx`
+- `packages/ui/components/ValidationRangePipeline.tsx`
+- `packages/ui/components/ValidationReferentialPipeline.tsx`
+- `packages/ui/components/ValidationRegularityPipeline.tsx`
+- `packages/ui/components/ValidationSufficiencyPipeline.tsx`
+- `packages/ui/components/ValidationTextQualityPipeline.tsx`
+- `packages/ui/components/ValidationTypeMatrix.tsx`
+- `packages/ui/components/ValidationTypePipeline.tsx`
+- `packages/ui/components/ValidationUniquenessOverview.tsx`
+- `packages/ui/components/ValidationUniquenessPipeline.tsx`

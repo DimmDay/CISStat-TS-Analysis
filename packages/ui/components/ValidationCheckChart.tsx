@@ -63,7 +63,7 @@ function InfoFrame({ tone, children }: { tone: "neutral" | "positive" | "error";
         ? "bg-red-50 text-red-700"
         : "bg-brand-light text-neutral-500";
   return (
-    <div className={`rounded-lg h-[420px] flex items-center justify-center text-sm text-center px-8 ${toneClass}`}>
+    <div className={`rounded-lg h-[468px] flex items-center justify-center text-sm text-center px-8 ${toneClass}`}>
       {children}
     </div>
   );
@@ -149,7 +149,7 @@ export function ValidationCheckChart({
   return (
     <div>
       <ScopeCaption scope={data.scope} selectedColumn={selectedColumn} />
-      <div className="h-[420px] border border-neutral-200 rounded-lg bg-white px-2 pt-4 pb-2">
+      <div className="h-[468px] border border-neutral-200 rounded-lg bg-white px-2 pt-4 pb-2">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data.items} margin={{ top: 4, right: 12, bottom: 24, left: -12 }}>
           <CartesianGrid stroke="#F0F0F0" vertical={false} />

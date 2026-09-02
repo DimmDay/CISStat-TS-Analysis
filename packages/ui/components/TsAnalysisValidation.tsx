@@ -1024,7 +1024,7 @@ export function TsAnalysisValidation() {
               onOpenRules={() => setDescriptionSection("rules")}
             />
           ) : validationHasRun && activeCheck.status === "skipped" ? (
-            <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+            <div className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
               {activeCheck.statusReason === "disabled"
                 ? `Проверка «${activeCheck.label}» отключена аналитиком и не участвует в DQ Score.`
                 : `Проверка «${activeCheck.label}» не требуется для текущего датасета в режиме «Авто».`}
@@ -1038,7 +1038,7 @@ export function TsAnalysisValidation() {
                 hasDataset={Boolean(activeDataset)}
               />
             ) : (
-              <div className="rounded-lg h-[420px] flex items-center justify-center bg-brand-light px-8 text-center text-sm text-neutral-500">
+              <div className="rounded-lg h-[468px] flex items-center justify-center bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы построить матрицу типов и получить статусы проверок.
               </div>
             )
@@ -1046,7 +1046,7 @@ export function TsAnalysisValidation() {
             validationHasRun ? (
               <ValidationRangeOverview refreshKey={validationVersion} />
             ) : (
-              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+              <div className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы построить профиль диапазонов и получить статус проверки.
               </div>
             )
@@ -1054,7 +1054,7 @@ export function TsAnalysisValidation() {
             validationHasRun ? (
               <ValidationConsistencyOverview refreshKey={validationVersion} />
             ) : (
-              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+              <div className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы построить профиль логики и хронологии и получить статус проверки.
               </div>
             )
@@ -1062,7 +1062,7 @@ export function TsAnalysisValidation() {
             validationHasRun ? (
               <ValidationUniquenessOverview refreshKey={validationVersion} />
             ) : (
-              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+              <div className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы построить профиль уникальности и получить статус проверки.
               </div>
             )
@@ -1070,7 +1070,7 @@ export function TsAnalysisValidation() {
             validationHasRun ? (
               <ValidationInclusionOverview refreshKey={validationVersion} />
             ) : (
-              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+              <div className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы проверить принадлежность значениям предметных справочников.
               </div>
             )
@@ -1078,7 +1078,7 @@ export function TsAnalysisValidation() {
             validationHasRun ? (
               <ValidationReferentialOverview refreshKey={validationVersion} />
             ) : (
-              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+              <div className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы проверить внешние ключи относительно предметных справочников.
               </div>
             )
@@ -1086,7 +1086,7 @@ export function TsAnalysisValidation() {
             validationHasRun ? (
               <ValidationTextQualityOverview refreshKey={validationVersion} />
             ) : (
-              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+              <div className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы построить профиль целостности текстовых колонок.
               </div>
             )
@@ -1094,7 +1094,7 @@ export function TsAnalysisValidation() {
             validationHasRun ? (
               <ValidationRegularityOverview refreshKey={validationVersion} />
             ) : (
-              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+              <div className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы проверить равномерность временной сетки по каждой сущности.
               </div>
             )
@@ -1102,7 +1102,7 @@ export function TsAnalysisValidation() {
             validationHasRun ? (
               <ValidationSufficiencyOverview refreshKey={validationVersion} />
             ) : (
-              <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
+              <div className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light px-8 text-center text-sm text-neutral-500">
                 Запустите валидацию, чтобы оценить применимость методов по длине каждого временного ряда.
               </div>
             )

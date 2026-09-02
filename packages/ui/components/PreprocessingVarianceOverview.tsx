@@ -121,14 +121,14 @@ function Diagnostics({ profile }: { profile: VarianceProfile }) {
 
 export function PreprocessingVarianceOverview({ profile, loading, error, noDataset }: Props) {
   const [view, setView] = useState<View>("series");
-  if (loading) return <div role="status" className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Оценивается стабильность дисперсии…</div>;
-  if (error) return <div role="alert" className="flex h-[420px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">{error}</div>;
-  if (noDataset) return <div role="status" className="flex h-[420px] items-center justify-center rounded-lg bg-neutral-50 text-sm text-neutral-600">Загрузите датасет для диагностики дисперсии.</div>;
-  if (!profile) return <div role="status" className="flex h-[420px] items-center justify-center rounded-lg bg-neutral-50 text-sm text-neutral-600">Выберите числовой исследуемый признак.</div>;
-  if (!profile.applicable || !profile.diagnostics_before || !profile.diagnostics_after) return <div role="status" className="flex h-[420px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "Диагностика неприменима."}</div>;
+  if (loading) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Оценивается стабильность дисперсии…</div>;
+  if (error) return <div role="alert" className="flex h-[468px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">{error}</div>;
+  if (noDataset) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-neutral-50 text-sm text-neutral-600">Загрузите датасет для диагностики дисперсии.</div>;
+  if (!profile) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-neutral-50 text-sm text-neutral-600">Выберите числовой исследуемый признак.</div>;
+  if (!profile.applicable || !profile.diagnostics_before || !profile.diagnostics_after) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "Диагностика неприменима."}</div>;
 
   const lambda = profile.lambda_value === null ? "" : ` · λ=${profile.lambda_value.toFixed(3)}`;
-  return <section className="h-[420px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+  return <section className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
     <div className="border-b border-neutral-100 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2"><div><h4 className="text-sm font-semibold text-neutral-800">{profile.column}: {methodName(profile.selected_method)}{lambda}</h4><p className="mt-1 text-[10px] text-neutral-500">{profile.order_source === "time_column" ? `ось ${profile.order_column}` : "порядок строк"} · {profile.n_observations} наблюдений · score {profile.diagnostics_before.stability_score.toFixed(1)} → {profile.diagnostics_after.stability_score.toFixed(1)}</p></div><p className="text-[10px] text-neutral-500">Методы: <a aria-label="SciPy Box–Cox" className="text-brand underline" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.boxcox.html" target="_blank" rel="noreferrer">SciPy Box–Cox</a> · <a className="text-brand underline" href="https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.PowerTransformer.html" target="_blank" rel="noreferrer">PowerTransformer</a> · <a className="text-brand underline" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.levene.html" target="_blank" rel="noreferrer">Brown–Forsythe</a></p></div>
       <p className="mt-2 rounded bg-brand-light px-3 py-2 text-xs text-neutral-700">{profile.recommendation}</p>

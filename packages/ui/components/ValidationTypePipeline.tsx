@@ -185,7 +185,7 @@ export function ValidationTypePipeline({
     <section
       role="region"
       aria-label="Мастер исправления типов"
-      className="h-[420px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 feed-scroll"
+      className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 feed-scroll"
     >
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-md border border-neutral-200 p-3">

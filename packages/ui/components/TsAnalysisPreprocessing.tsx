@@ -1397,7 +1397,7 @@ export function TsAnalysisPreprocessing() {
               noDataset={scalingNoDataset}
             />
           ) : (
-            <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
+            <div className="bg-brand-light rounded-lg h-[468px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
             </div>
           )}

@@ -39,7 +39,7 @@ const TYPE_CONFIG: TypeConfig[] = [
 
 function InfoFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-lg h-[420px] flex items-center justify-center bg-brand-light px-8 text-center text-sm text-neutral-500">
+    <div className="rounded-lg h-[468px] flex items-center justify-center bg-brand-light px-8 text-center text-sm text-neutral-500">
       {children}
     </div>
   );
@@ -89,7 +89,7 @@ export function ValidationTypeMatrix({
     .join(", ");
 
   return (
-    <div className="h-[420px] overflow-hidden rounded-lg border border-neutral-200 bg-white flex flex-col">
+    <div className="h-[468px] overflow-hidden rounded-lg border border-neutral-200 bg-white flex flex-col">
       <div className="border-b border-neutral-100 px-4 py-3">
         <div className="mb-2 flex items-baseline justify-between gap-3">
           <h4 className="text-sm font-semibold text-neutral-800">Распределение классов</h4>

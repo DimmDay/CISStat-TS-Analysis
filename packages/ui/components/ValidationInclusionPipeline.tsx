@@ -75,7 +75,7 @@ export function ValidationInclusionPipeline({ onApplied, onOpenRules = () => und
   };
 
   return (
-    <section role="region" aria-label="Мастер исправления принадлежности к набору" className="h-[420px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 feed-scroll">
+    <section role="region" aria-label="Мастер исправления принадлежности к набору" className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 feed-scroll">
       {passed && <div role="status" className="mb-4 rounded bg-green-50 px-3 py-2 text-sm text-green-700"><p className="font-medium">Все значения входят в допустимые наборы.</p><p className="mt-0.5 text-xs">Исправление не требуется.</p></div>}
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-md border border-neutral-200 p-3">

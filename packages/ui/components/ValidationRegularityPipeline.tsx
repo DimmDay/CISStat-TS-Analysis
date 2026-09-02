@@ -50,7 +50,7 @@ export function ValidationRegularityPipeline({ onApplied, onOpenRules }: { onApp
   const current = profile?.profile;
   const passed = Boolean(current?.applicable && current.total_violations === 0);
 
-  return <section role="region" aria-label="Мастер исправления равномерности шага" className="h-[420px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 feed-scroll">
+  return <section role="region" aria-label="Мастер исправления равномерности шага" className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 feed-scroll">
     {current && !current.applicable && <div className="mb-4 rounded bg-neutral-50 p-3 text-sm text-neutral-600"><p className="font-medium">{current.applicability_message}</p><button type="button" onClick={onOpenRules} className="mt-2 rounded border border-neutral-300 px-3 py-1.5 text-xs font-medium">Открыть управление правилами</button></div>}
     {passed && <div role="status" className="mb-4 rounded bg-green-50 px-3 py-2 text-sm text-green-700"><p className="font-medium">Временной шаг равномерен.</p><p className="mt-0.5 text-xs">Исправление не требуется.</p></div>}
     <div className="grid gap-4 lg:grid-cols-2">

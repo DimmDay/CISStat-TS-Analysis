@@ -158,7 +158,7 @@ export function ValidationConsistencyPipeline({
     <section
       role="region"
       aria-label="Мастер исправления логики и хронологии"
-      className="h-[420px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 feed-scroll"
+      className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 feed-scroll"
     >
       {allRulesPassed && (
         <div role="status" className="mb-4 rounded bg-green-50 px-3 py-2 text-sm text-green-700">

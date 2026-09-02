@@ -129,35 +129,35 @@ export function EdaDescriptiveOverview({
 
   if (loading) {
     return (
-      <div className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">
+      <div className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">
         Рассчитываем описательные статистики…
       </div>
     );
   }
   if (error) {
     return (
-      <div role="alert" className="flex h-[420px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">
+      <div role="alert" className="flex h-[468px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">
         {error}
       </div>
     );
   }
   if (noDataset) {
     return (
-      <div role="status" className="flex h-[420px] items-center justify-center rounded-lg bg-neutral-50 px-8 text-center text-sm text-neutral-600">
+      <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-neutral-50 px-8 text-center text-sm text-neutral-600">
         Загрузите датасет, чтобы рассчитать описательные статистики.
       </div>
     );
   }
   if (!profile || profile.columns.length === 0) {
     return (
-      <div role="status" className="flex h-[420px] items-center justify-center rounded-lg bg-neutral-50 px-8 text-center text-sm text-neutral-600">
+      <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-neutral-50 px-8 text-center text-sm text-neutral-600">
         В активном датасете нет числовых признаков — описательные статистики неприменимы.
       </div>
     );
   }
 
   return (
-    <section className="h-[420px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+    <section className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
       <div className="border-b border-neutral-100 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>

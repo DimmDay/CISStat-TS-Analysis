@@ -28,7 +28,7 @@ export function ValidationSufficiencyPipeline({ onApplied, onOpenRules }: { onAp
   const profile = data?.profile;
   const passed = Boolean(profile?.applicable && profile.total_failed_checks === 0);
   const hasSavedPlan = typeof data?.plan?.strategy === "string";
-  return <section role="region" aria-label="Мастер решений по достаточности" className="h-[420px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 feed-scroll">
+  return <section role="region" aria-label="Мастер решений по достаточности" className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white p-4 feed-scroll">
     {hasSavedPlan && <div role="status" className="mb-4 rounded bg-blue-50 px-3 py-2 text-sm text-blue-700">Для текущего профиля уже сохранён план анализа.</div>}
     {profile && !profile.applicable && <div className="mb-4 rounded bg-neutral-50 p-3 text-sm text-neutral-600"><p className="font-medium">{profile.applicability_message}</p><button type="button" onClick={onOpenRules} className="mt-2 rounded border border-neutral-300 px-3 py-1.5 text-xs font-medium">Открыть управление правилами</button></div>}
     {passed && <div role="status" className="mb-4 rounded bg-green-50 px-3 py-2 text-sm text-green-700"><p className="font-medium">Требования к длине ряда выполнены.</p><p className="mt-0.5 text-xs">Дополнительное решение не требуется.</p></div>}

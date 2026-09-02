@@ -140,35 +140,35 @@ export function EdaCorrelationOverview({
 
   if (loading) {
     return (
-      <div role="status" className="flex h-[420px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">
+      <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">
         Рассчитываем ACF/PACF по полному ряду…
       </div>
     );
   }
   if (error) {
     return (
-      <div role="alert" className="flex h-[420px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">
+      <div role="alert" className="flex h-[468px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">
         {error}
       </div>
     );
   }
   if (noDataset) {
     return (
-      <div role="status" className="flex h-[420px] items-center justify-center rounded-lg bg-neutral-50 px-8 text-center text-sm text-neutral-600">
+      <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-neutral-50 px-8 text-center text-sm text-neutral-600">
         Загрузите датасет, чтобы исследовать корреляционную структуру ряда.
       </div>
     );
   }
   if (!profile) {
     return (
-      <div role="status" className="flex h-[420px] items-center justify-center rounded-lg bg-neutral-50 px-8 text-center text-sm text-neutral-600">
+      <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-neutral-50 px-8 text-center text-sm text-neutral-600">
         Выберите числовой исследуемый признак.
       </div>
     );
   }
   if (!profile.applicable) {
     return (
-      <div role="status" className="flex h-[420px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">
+      <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">
         {profile.reason ?? "ACF/PACF неприменимы к выбранному ряду."}
       </div>
     );
@@ -181,7 +181,7 @@ export function EdaCorrelationOverview({
   }));
 
   return (
-    <section className="h-[420px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+    <section className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
       <div className="border-b border-neutral-100 p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
