@@ -79,8 +79,8 @@ export function ValidationUniquenessOverview({ refreshKey = 0 }: { refreshKey?: 
   const duplicates = profile.duplicate_rows ?? 0;
   const validPct = profile.total_rows ? (profile.valid_rows / profile.total_rows) * 100 : 100;
   return (
-    <section className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
-      <div className="border-b border-neutral-100 p-4">
+    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+      <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-semibold text-neutral-800">Распределение строк</h4>
           <span className="text-xs text-neutral-500">{uniquenessKeyLabel(profile)}</span>
@@ -97,12 +97,12 @@ export function ValidationUniquenessOverview({ refreshKey = 0 }: { refreshKey?: 
       </div>
 
       {duplicates === 0 ? (
-        <div className="flex h-[270px] flex-col items-center justify-center px-8 text-center">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-8 text-center">
           <p className="font-medium text-green-700">Дубликаты не найдены</p>
           <p className="mt-2 text-sm text-neutral-500">Строки проверены по {uniquenessCheckLabel(profile)}.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="shrink-0 overflow-x-auto">
           <table aria-label="Группы дубликатов" className="w-full min-w-[650px] text-left text-xs">
             <thead className="sticky top-0 bg-neutral-50 text-neutral-500"><tr><th className="px-3 py-2">Значения ключа</th><th className="px-3 py-2 text-right">Повторов</th><th className="px-3 py-2 text-right">Лишних</th><th className="px-3 py-2">Строки</th></tr></thead>
             <tbody>{profile.groups.map((group, index) => (

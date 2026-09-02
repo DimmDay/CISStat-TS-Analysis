@@ -119,8 +119,8 @@ export function PreprocessingMissingOverview({ refreshKey = 0 }: { refreshKey?: 
   }
 
   return (
-    <section className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
-      <div className="border-b border-neutral-100 p-4">
+    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+      <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-semibold text-neutral-800">Полнота данных</h4>
           <span className="text-xs text-neutral-400">{profile.columns.length} колонок · {profile.total_rows} строк</span>
@@ -141,7 +141,7 @@ export function PreprocessingMissingOverview({ refreshKey = 0 }: { refreshKey?: 
         </div>
       </div>
 
-      <div className="flex gap-1 border-b border-neutral-100 px-4 pt-2">
+      <div className="flex shrink-0 gap-1 border-b border-neutral-100 px-4 pt-2">
         {(
           [
             { id: "table", label: "Таблица" },
@@ -167,7 +167,7 @@ export function PreprocessingMissingOverview({ refreshKey = 0 }: { refreshKey?: 
       </div>
 
       {activeView === "table" && (
-        <div className="overflow-x-auto">
+        <div className="shrink-0 overflow-x-auto">
           <table aria-label="Матрица пропусков по колонкам" className="w-full min-w-[760px] text-left text-xs">
             <thead className="sticky top-0 bg-neutral-50 text-neutral-500">
               <tr>

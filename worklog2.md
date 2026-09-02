@@ -710,3 +710,55 @@ Date: 2026-08-31
 - `packages/ui/components/EdaDescriptiveOverview.test.tsx`
 - `packages/ui/components/EdaIhOverview.tsx`
 - `packages/ui/components/EdaIhOverview.test.tsx`
+
+### Дополнение — полный runtime-аудит адаптивной высоты
+
+#### Диагностика
+
+- Task 89 охватил только три EDA-компонента и общий `ValidationCheckChart`. Повторный аудит на уровне runtime-представлений, а не только класса внешнего контейнера, выявил ещё 18 Overview-компонентов и 3 вложенных visualization-компонента с фиксированными внутренними высотами `185–340px`.
+- Во вкладке «Валидация» неадаптивным оставалось состояние «Дубликаты не найдены» в `ValidationUniquenessOverview`; остальные специализированные графики используют уже исправленный `ValidationCheckChart`. Формы «Мастера» и табличные состояния намеренно сохраняют естественную высоту и прокрутку.
+- В EDA исправлены оставшиеся состояния семи обзоров: «Распределение» (гистограмма, KDE, Q–Q, CDF), «Отбор признаков» (связи, матрица, VIF, Granger), «Матрица моделей» (матрица требований, семейства, shortlist и внутренние loading/error/empty-состояния), «Сезонность» (FFT, periodogram, phase), «Стационарность» (ряд, rolling σ, p-value), «Структурные сдвиги» (режимы, CUSUM, чувствительность) и «Стратегия валидации» (folds, размер train, альтернативы и внутренние служебные состояния).
+- В «Предобработке» исправлены десять обзоров: «Декомпозиция», «Генерация признаков», «Пропуски», «Выбросы», «Регулярность», «Масштабирование», «Сглаживание», «Спектральный анализ», «Стационарность» и «Стабилизация дисперсии». Вложенные loading/error/empty-состояния графиков также используют остаток рабочей высоты.
+- Всего устранено 86 вхождений фиксированной внутренней высоты в 21 production-компоненте. Высота самого окна остаётся `468px`; контракт 165 внешних состояний не изменён.
+
+#### Реализация
+
+- Рабочие Overview-контейнеры переведены в `flex h-[468px] min-h-0 flex-col`. Заголовки, переключатели, подписи и методические примечания отмечены `shrink-0`; активная визуализация получает `min-h-0 flex-1`.
+- Recharts `ResponsiveContainer` продолжает использовать `height="100%"`, но теперь 100% вычисляется от реально доступного остатка окна, а не от прежней фиксированной высоты 185–340px.
+- Составные представления — парные графики, FFT/periodogram, Welch, CWT, boxplot, матрицы и карточки диагностик — адаптированы как единая область. Подписи остаются внутри контракта 468px и не отнимают высоту скрыто.
+- Таблицы и длинные формы «Мастера» не растягиваются по строкам: они сохраняют `overflow-auto`/`overflow-y-auto`, естественную высоту содержимого и существующий scrollbar-контракт.
+- Добавлен source-contract тест `AdaptiveWorkspaceVisualizations.test.ts`, который фиксирует полный перечень 21 компонента, запрещает возврат прежних фиксированных высот и требует flex-контракт для Overview и вложенных визуализаций.
+
+#### TDD и проверка
+
+- RED: новый контракт — 21/21 FAIL на оставшихся фиксированных высотах и отсутствии flex-контракта.
+- GREEN: новый контракт — 21/21 PASS; сфокусированный набор вместе с контрактом 165 состояний и компонентами Task 89 — 6 suites, 87/87 PASS.
+- Полная frontend-регрессия: 80 suites, 700/700 PASS, 0 snapshots.
+- TypeScript embedded/standalone: PASS.
+- Production build embedded/standalone: PASS, по 13/13 страниц; First Load JS — 445 kB. Для обхода ограничения sandbox Node 24 (`uv_resident_set_memory`) применялся временный runtime-shim, после сборки удалённый и не входящий в изменения.
+- `git diff --check`: PASS; в production-компонентах рабочего окна не осталось внутренних фиксированных высот `185–340px`, перечисленных в контракте.
+
+#### Изменённые и новые файлы дополнения
+
+- `packages/ui/components/AdaptiveWorkspaceVisualizations.test.ts` (новый)
+- `packages/ui/components/EdaDistributionOverview.tsx`
+- `packages/ui/components/EdaFeatureSelectionOverview.tsx`
+- `packages/ui/components/EdaModelMatrixOverview.tsx`
+- `packages/ui/components/EdaSeasonalityOverview.tsx`
+- `packages/ui/components/EdaStationarityOverview.tsx`
+- `packages/ui/components/EdaStructuralBreaksOverview.tsx`
+- `packages/ui/components/EdaValidationStrategyOverview.tsx`
+- `packages/ui/components/PreprocessingDecompositionOverview.tsx`
+- `packages/ui/components/PreprocessingFeatureEngineeringOverview.tsx`
+- `packages/ui/components/PreprocessingMissingOverview.tsx`
+- `packages/ui/components/PreprocessingMissingVisualizations.tsx`
+- `packages/ui/components/PreprocessingOutliersOverview.tsx`
+- `packages/ui/components/PreprocessingOutliersVisualizations.tsx`
+- `packages/ui/components/PreprocessingRegularityOverview.tsx`
+- `packages/ui/components/PreprocessingRegularityVisualizations.tsx`
+- `packages/ui/components/PreprocessingScalingOverview.tsx`
+- `packages/ui/components/PreprocessingSmoothingOverview.tsx`
+- `packages/ui/components/PreprocessingSpectralOverview.tsx`
+- `packages/ui/components/PreprocessingStationarityOverview.tsx`
+- `packages/ui/components/PreprocessingVarianceOverview.tsx`
+- `packages/ui/components/ValidationUniquenessOverview.tsx`

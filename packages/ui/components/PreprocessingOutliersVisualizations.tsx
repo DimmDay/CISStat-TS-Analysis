@@ -27,7 +27,7 @@ function fmt(n: number): string {
 
 function ChartFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="h-[300px] border border-neutral-200 rounded bg-white px-1 pt-2 pb-1">
+    <div className="min-h-0 flex-1 border border-neutral-200 rounded bg-white px-1 pt-2 pb-1">
       <ResponsiveContainer width="100%" height="100%">
         {children as React.ReactElement}
       </ResponsiveContainer>
@@ -74,8 +74,8 @@ function useOutlierChartFetch<T>(path: string | null): { data: T | null; loading
 }
 
 function ChartStatus({ loading, error }: { loading: boolean; error: string | null }) {
-  if (loading) return <div className="flex h-[300px] items-center justify-center text-sm text-neutral-400">Загрузка графика…</div>;
-  if (error) return <div role="alert" className="flex h-[300px] items-center justify-center px-8 text-center text-sm text-red-700">{error}</div>;
+  if (loading) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-400">Загрузка графика…</div>;
+  if (error) return <div role="alert" className="flex min-h-0 flex-1 items-center justify-center px-8 text-center text-sm text-red-700">{error}</div>;
   return null;
 }
 
@@ -92,12 +92,12 @@ export function OutlierLineChart({ column }: { column: string | null }) {
   const { data, loading, error } = useOutlierChartFetch<LineResponse>(
     column ? `/dataset/outlier-line?column=${encodeURIComponent(column)}` : null
   );
-  if (!column) return <div className="flex h-[300px] items-center justify-center text-sm text-neutral-500">Выберите числовой признак.</div>;
+  if (!column) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Выберите числовой признак.</div>;
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
-  if (!data || data.points.length === 0) return <div className="flex h-[300px] items-center justify-center text-sm text-neutral-500">Нет данных.</div>;
+  if (!data || data.points.length === 0) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Нет данных.</div>;
 
   return (
-    <div>
+    <div className="flex min-h-0 flex-1 flex-col">
       <ChartFrame>
         <LineChart data={data.points} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
           <CartesianGrid stroke="#F0F0F0" />
@@ -127,13 +127,13 @@ export function OutlierHistogramChart({ column, method }: { column: string | nul
   const { data, loading, error } = useOutlierChartFetch<HistogramResponse>(
     column ? `/dataset/outlier-histogram?column=${encodeURIComponent(column)}&method=${method}` : null
   );
-  if (!column) return <div className="flex h-[300px] items-center justify-center text-sm text-neutral-500">Выберите числовой признак.</div>;
+  if (!column) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Выберите числовой признак.</div>;
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
-  if (!data || data.bins.length === 0) return <div className="flex h-[300px] items-center justify-center text-sm text-neutral-500">Нет данных.</div>;
+  if (!data || data.bins.length === 0) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Нет данных.</div>;
 
   const chartData = data.bins.map((b) => ({ ...b, mid: (b.x0 + b.x1) / 2 }));
   return (
-    <div>
+    <div className="flex min-h-0 flex-1 flex-col">
       <ChartFrame>
         <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
           <CartesianGrid stroke="#F0F0F0" vertical={false} />
@@ -174,9 +174,9 @@ export function OutlierDensityChart({ column }: { column: string | null }) {
   const { data, loading, error } = useOutlierChartFetch<DensityResponse>(
     column ? `/dataset/outlier-density?column=${encodeURIComponent(column)}` : null
   );
-  if (!column) return <div className="flex h-[300px] items-center justify-center text-sm text-neutral-500">Выберите числовой признак.</div>;
+  if (!column) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Выберите числовой признак.</div>;
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
-  if (!data || !data.points) return <div className="flex h-[300px] items-center justify-center text-sm text-neutral-500">Плотность не определена (константный столбец или мало данных).</div>;
+  if (!data || !data.points) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Плотность не определена (константный столбец или мало данных).</div>;
 
   return (
     <ChartFrame>
@@ -232,15 +232,15 @@ export function OutlierBoxplotChart({ column, method }: { column: string | null;
   const { data, loading, error } = useOutlierChartFetch<BoxplotResponse>(
     column ? `/dataset/outlier-boxplot?column=${encodeURIComponent(column)}&method=${method}` : null
   );
-  if (!column) return <div className="flex h-[300px] items-center justify-center text-sm text-neutral-500">Выберите числовой признак.</div>;
+  if (!column) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Выберите числовой признак.</div>;
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
-  if (!data) return <div className="flex h-[300px] items-center justify-center text-sm text-neutral-500">Нет данных.</div>;
+  if (!data) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Нет данных.</div>;
 
   const domainMin = Math.min(data.outliers?.min ?? Infinity, data.normal?.min ?? Infinity);
   const domainMax = Math.max(data.outliers?.max ?? -Infinity, data.normal?.max ?? -Infinity);
 
   return (
-    <div className="flex h-[300px] items-center justify-center gap-10 border border-neutral-200 rounded bg-white">
+    <div className="flex min-h-0 flex-1 items-center justify-center gap-10 border border-neutral-200 rounded bg-white">
       <BoxAndWhiskers label="Выброс" group={data.outliers} color="#DC2626" domainMin={domainMin} domainMax={domainMax} />
       <BoxAndWhiskers label="Норма" group={data.normal} color={BRAND} domainMin={domainMin} domainMax={domainMax} />
     </div>

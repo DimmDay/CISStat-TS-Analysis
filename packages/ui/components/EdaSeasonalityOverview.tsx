@@ -141,7 +141,7 @@ function SpectrumChart({
   const peaks = points.filter((point) => point.is_peak);
   const label = kind === "fft" ? "FFT-спектр" : "Периодограмма";
   return (
-    <div role="img" aria-label={`${label} для ${profile.column}`} className="h-[265px] px-2 py-3">
+    <div role="img" aria-label={`${label} для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={points} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
@@ -173,10 +173,10 @@ function SpectrumChart({
 
 function PhaseChart({ profile }: { profile: EdaSeasonalityResponse }) {
   if (!profile.phase_profile.length || profile.phase_period === null) {
-    return <p role="status" className="p-8 text-center text-sm text-neutral-500">Нет периода-кандидата для фазового профиля.</p>;
+    return <p role="status" className="flex min-h-0 flex-1 items-center justify-center p-8 text-center text-sm text-neutral-500">Нет периода-кандидата для фазового профиля.</p>;
   }
   return (
-    <div role="img" aria-label={`Фазовый профиль периода ${profile.phase_period} для ${profile.column}`} className="h-[265px] px-2 py-3">
+    <div role="img" aria-label={`Фазовый профиль периода ${profile.phase_period} для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={profile.phase_profile} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
@@ -195,10 +195,10 @@ function PhaseChart({ profile }: { profile: EdaSeasonalityResponse }) {
 
 function CandidatesTable({ candidates }: { candidates: EdaSeasonalityCandidate[] }) {
   if (!candidates.length) {
-    return <p role="status" className="p-8 text-center text-sm text-neutral-500">Локальные спектральные пики не обнаружены.</p>;
+    return <p role="status" className="flex min-h-0 flex-1 items-center justify-center p-8 text-center text-sm text-neutral-500">Локальные спектральные пики не обнаружены.</p>;
   }
   return (
-    <div className="overflow-x-auto">
+    <div className="shrink-0 overflow-x-auto">
       <table aria-label="Периоды-кандидаты" className="w-full min-w-[880px] text-left text-xs">
         <thead className="sticky top-0 bg-neutral-50 text-neutral-500">
           <tr>
@@ -244,8 +244,8 @@ export function EdaSeasonalityOverview({
   if (!profile.applicable) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "Спектральный анализ неприменим."}</div>;
 
   return (
-    <section className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
-      <div className="border-b border-neutral-100 p-4">
+    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+      <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h4 className="text-sm font-semibold text-neutral-800">Периодическая структура «{profile.column}»</h4>
@@ -263,7 +263,7 @@ export function EdaSeasonalityOverview({
         {profile.recommendations[0] && <p className="mt-2 text-xs text-neutral-600">{profile.recommendations[0]}</p>}
       </div>
 
-      <div className="flex gap-1 border-b border-neutral-100 px-4 pt-2" role="tablist" aria-label="Представления сезонности и периодичности">
+      <div className="flex shrink-0 gap-1 border-b border-neutral-100 px-4 pt-2" role="tablist" aria-label="Представления сезонности и периодичности">
         {TABS.map((tab) => (
           <button key={tab.id} type="button" role="tab" aria-selected={activeView === tab.id} onClick={() => setActiveView(tab.id)} className={`rounded-t px-3 py-1.5 text-xs font-medium transition-colors ${activeView === tab.id ? "border border-b-0 border-neutral-200 bg-white text-brand" : "text-neutral-500 hover:text-neutral-700"}`}>
             {tab.label}

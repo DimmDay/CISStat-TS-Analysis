@@ -75,8 +75,8 @@ function useRegularityChartFetch<T>(path: string): { data: T | null; loading: bo
 }
 
 function ChartStatus({ loading, error }: { loading: boolean; error: string | null }) {
-  if (loading) return <div className="flex h-[300px] items-center justify-center text-sm text-neutral-400">Загрузка графика…</div>;
-  if (error) return <div role="alert" className="flex h-[300px] items-center justify-center px-8 text-center text-sm text-red-700">{error}</div>;
+  if (loading) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-400">Загрузка графика…</div>;
+  if (error) return <div role="alert" className="flex min-h-0 flex-1 items-center justify-center px-8 text-center text-sm text-red-700">{error}</div>;
   return null;
 }
 
@@ -94,15 +94,15 @@ export function RegularityIntervalsChart({ refreshKey = 0 }: { refreshKey?: numb
     `/dataset/preprocessing/regularity-intervals?_r=${refreshKey}`
   );
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
-  if (!data || data.bins.length === 0) return <div className="flex h-[300px] items-center justify-center text-sm text-neutral-500">Недостаточно данных для гистограммы интервалов.</div>;
+  if (!data || data.bins.length === 0) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Недостаточно данных для гистограммы интервалов.</div>;
 
   const chartData = data.bins.map((b) => ({ ...b, mid: (b.x0 + b.x1) / 2 }));
   return (
-    <div className="p-3">
-      <p className="mb-2 text-xs text-neutral-500">
+    <div className="flex min-h-0 flex-1 flex-col p-3">
+      <p className="mb-2 shrink-0 text-xs text-neutral-500">
         Группа «{data.group}»: распределение интервалов между соседними наблюдениями. Красная линия — порог разрыва (модальный интервал × 1.5).
       </p>
-      <div className="h-[300px] border border-neutral-200 rounded bg-white px-1 pt-2 pb-1">
+      <div className="min-h-0 flex-1 border border-neutral-200 rounded bg-white px-1 pt-2 pb-1">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
             <CartesianGrid stroke="#F0F0F0" vertical={false} />
@@ -123,7 +123,7 @@ export function RegularityIntervalsChart({ refreshKey = 0 }: { refreshKey?: numb
         </ResponsiveContainer>
       </div>
       {data.modal_seconds !== null && (
-        <p className="mt-1.5 text-[11px] text-neutral-500">
+        <p className="mt-1.5 shrink-0 text-[11px] text-neutral-500">
           Модальный интервал: {fmtSeconds(data.modal_seconds)}. Порог разрыва: {fmtSeconds(data.threshold_seconds ?? 0)}.
         </p>
       )}
@@ -149,7 +149,7 @@ export function RegularityTimelineChart({ refreshKey = 0 }: { refreshKey?: numbe
   );
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
   if (!data || data.events.length === 0) {
-    return <div className="flex h-[300px] items-center justify-center text-sm text-green-700">Нарушений не найдено — событий для таймлайна нет.</div>;
+    return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-green-700">Нарушений не найдено — событий для таймлайна нет.</div>;
   }
 
   const points = data.events.map((event, index) => ({
@@ -161,11 +161,11 @@ export function RegularityTimelineChart({ refreshKey = 0 }: { refreshKey?: numbe
   }));
 
   return (
-    <div className="p-3">
-      <p className="mb-2 text-xs text-neutral-500">
+    <div className="flex min-h-0 flex-1 flex-col p-3">
+      <p className="mb-2 shrink-0 text-xs text-neutral-500">
         Расположение нарушений во времени{data.entity_column ? " (все сущности на одной оси)" : ""}. Кластер в одном периоде — разовый сбой источника; разброс по всему ряду — системная проблема.
       </p>
-      <div className="h-[300px] border border-neutral-200 rounded bg-white px-1 pt-2 pb-1">
+      <div className="min-h-0 flex-1 border border-neutral-200 rounded bg-white px-1 pt-2 pb-1">
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 20, right: 16, bottom: 0, left: -20 }}>
             <CartesianGrid stroke="#F0F0F0" />
@@ -198,7 +198,7 @@ export function RegularityTimelineChart({ refreshKey = 0 }: { refreshKey?: numbe
         </ResponsiveContainer>
       </div>
       {data.truncated && (
-        <p className="mt-1.5 text-[11px] text-amber-700">
+        <p className="mt-1.5 shrink-0 text-[11px] text-amber-700">
           Показаны первые {data.events.length} событий — их больше, чем помещается на график.
         </p>
       )}

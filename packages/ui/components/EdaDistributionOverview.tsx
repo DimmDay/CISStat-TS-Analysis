@@ -127,7 +127,7 @@ function ParameterSelect({ label, value, options, onChange }: {
 function HistogramView({ profile }: { profile: EdaDistributionResponse }) {
   const data = profile.histogram.map((item) => ({ ...item, interval: `${formatNumber(item.x0)}–${formatNumber(item.x1)}` }));
   return (
-    <div role="img" aria-label={`Гистограмма распределения для ${profile.column}`} className="h-[265px] px-2 py-3">
+    <div role="img" aria-label={`Гистограмма распределения для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 8, right: 18, left: 4, bottom: 18 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
@@ -144,7 +144,7 @@ function HistogramView({ profile }: { profile: EdaDistributionResponse }) {
 
 function DensityView({ profile }: { profile: EdaDistributionResponse }) {
   return (
-    <div role="img" aria-label={`Сравнение плотностей для ${profile.column}`} className="h-[265px] px-2 py-3">
+    <div role="img" aria-label={`Сравнение плотностей для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={profile.density} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
@@ -161,7 +161,7 @@ function DensityView({ profile }: { profile: EdaDistributionResponse }) {
 
 function QqView({ profile }: { profile: EdaDistributionResponse }) {
   return (
-    <div role="img" aria-label={`Q–Q график для ${profile.column}`} className="h-[265px] px-2 py-3">
+    <div role="img" aria-label={`Q–Q график для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={profile.qq} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
@@ -178,7 +178,7 @@ function QqView({ profile }: { profile: EdaDistributionResponse }) {
 
 function CdfView({ profile }: { profile: EdaDistributionResponse }) {
   return (
-    <div role="img" aria-label={`Сравнение функций распределения для ${profile.column}`} className="h-[265px] px-2 py-3">
+    <div role="img" aria-label={`Сравнение функций распределения для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={profile.cdf} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
@@ -195,7 +195,7 @@ function CdfView({ profile }: { profile: EdaDistributionResponse }) {
 
 function TestsView({ profile }: { profile: EdaDistributionResponse }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="shrink-0 overflow-x-auto">
       <table aria-label="Тесты нормальности" className="w-full min-w-[790px] text-left text-xs">
         <thead className="sticky top-0 bg-neutral-50 text-neutral-500"><tr>
           <th className="px-2 py-2">Тест</th><th className="px-2 py-2 text-right">Статистика</th><th className="px-2 py-2 text-right">p</th><th className="px-2 py-2 text-right">p после Холма</th><th className="px-2 py-2">Калибровка</th><th className="px-2 py-2">Решение при α={profile.alpha}</th>
@@ -223,8 +223,8 @@ export function EdaDistributionOverview({ profile, loading, error, noDataset, pa
   if (!profile.applicable) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "Анализ распределения неприменим."}</div>;
 
   return (
-    <section className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
-      <div className="border-b border-neutral-100 p-4">
+    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+      <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold text-neutral-800">Распределение «{profile.column}»</h4><span className={`rounded px-2 py-0.5 text-[10px] font-medium ${profile.normality_status === "compatible" ? "bg-green-50 text-green-700" : profile.normality_status === "departed" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"}`}>{STATUS_LABELS[profile.normality_status]}</span></div>
@@ -238,7 +238,7 @@ export function EdaDistributionOverview({ profile, loading, error, noDataset, pa
         {profile.recommendation && <p className="mt-3 rounded bg-brand-light px-3 py-2 text-xs text-neutral-700">{profile.recommendation}</p>}
         {profile.warnings.length > 0 && <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">{profile.warnings.join(" ")}</p>}
       </div>
-      <div role="tablist" aria-label="Представления распределения" className="flex flex-wrap gap-1 border-b border-neutral-100 px-4 pt-3">
+      <div role="tablist" aria-label="Представления распределения" className="flex shrink-0 flex-wrap gap-1 border-b border-neutral-100 px-4 pt-3">
         {TABS.map((tab) => <button key={tab.id} role="tab" aria-selected={activeView === tab.id} onClick={() => setActiveView(tab.id)} className={`rounded-t px-3 py-2 text-xs font-medium ${activeView === tab.id ? "bg-brand text-white" : "bg-neutral-50 text-neutral-600 hover:bg-neutral-100"}`}>{tab.label}</button>)}
       </div>
       {activeView === "histogram" ? <HistogramView profile={profile} /> : null}

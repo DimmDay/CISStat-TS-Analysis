@@ -45,8 +45,8 @@ function useJsonFetch<T>(path: string | null): { data: T | null; loading: boolea
 }
 
 function ChartStatus({ loading, error }: { loading: boolean; error: string | null }) {
-  if (loading) return <div className="flex h-[340px] items-center justify-center text-sm text-neutral-400">Загрузка графика…</div>;
-  if (error) return <div role="alert" className="flex h-[340px] items-center justify-center px-8 text-center text-sm text-red-700">{error}</div>;
+  if (loading) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-400">Загрузка графика…</div>;
+  if (error) return <div role="alert" className="flex min-h-0 flex-1 items-center justify-center px-8 text-center text-sm text-red-700">{error}</div>;
   return null;
 }
 
@@ -80,12 +80,12 @@ export function MissingMatrixChart() {
   const { data, loading, error } = useJsonFetch<MatrixResponse>("/dataset/missing-matrix");
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
   if (!data || data.bins.length === 0) {
-    return <div className="flex h-[340px] items-center justify-center text-sm text-neutral-500">Нет данных для матрицы пропусков.</div>;
+    return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Нет данных для матрицы пропусков.</div>;
   }
 
   const rowHeight = 22;
   return (
-    <div className="p-3">
+    <div className="min-h-0 flex-1 overflow-y-auto p-3">
       <p className="mb-2 text-xs text-neutral-500">
         Каждый столбец матрицы — блок из ~{data.rows_per_bin} строк ({data.total_rows} всего); цвет — доля пропусков в блоке (синий → нет пропусков, красный → пропуски).
       </p>
@@ -139,14 +139,14 @@ export function MissingCorrelationChart() {
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
   if (!data || data.columns.length < 2) {
     return (
-      <div className="flex h-[340px] items-center justify-center px-8 text-center text-sm text-neutral-500">
+      <div className="flex min-h-0 flex-1 items-center justify-center px-8 text-center text-sm text-neutral-500">
         Нужно минимум две колонки с пропусками (и с вариативностью — не 0% и не 100%), чтобы оценить корреляцию.
       </div>
     );
   }
 
   return (
-    <div className="p-3">
+    <div className="min-h-0 flex-1 overflow-y-auto p-3">
       <p className="mb-2 text-xs text-neutral-500">
         Корреляция индикаторов пропуска между колонками. Значение близкое к +1 — пропуски в этих колонках почти всегда происходят одновременно (одно совместное событие, а не два независимых).
       </p>
@@ -232,14 +232,14 @@ export function MissingBoxplotChart({ columns }: { columns: MissingProfileItem[]
   const { data, loading, error } = useJsonFetch<DistributionResponse>(path);
 
   if (numericColumns.length === 0) {
-    return <div className="flex h-[340px] items-center justify-center px-8 text-center text-sm text-neutral-500">В датасете нет числовых колонок для сравнения распределений.</div>;
+    return <div className="flex min-h-0 flex-1 items-center justify-center px-8 text-center text-sm text-neutral-500">В датасете нет числовых колонок для сравнения распределений.</div>;
   }
 
   const domainMin = Math.min(data?.with_missing?.min ?? Infinity, data?.without_missing?.min ?? Infinity);
   const domainMax = Math.max(data?.with_missing?.max ?? -Infinity, data?.without_missing?.max ?? -Infinity);
 
   return (
-    <div className="p-3">
+    <div className="min-h-0 flex-1 overflow-y-auto p-3">
       <p className="mb-3 text-xs text-neutral-500">
         Сравнивает распределение числовой колонки в строках, где пропущен «индикатор». Заметная разница — сигнал, что пропуск не полностью случаен (MAR/MNAR) и заполнение медианой/средним может сместить оценки.
       </p>

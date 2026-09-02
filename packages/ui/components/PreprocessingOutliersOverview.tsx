@@ -118,8 +118,8 @@ export function PreprocessingOutliersOverview({
   }
 
   return (
-    <section className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
-      <div className="border-b border-neutral-100 p-4">
+    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+      <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-semibold text-neutral-800">Выбросы по числовым колонкам</h4>
           <span className="text-xs text-neutral-400">{profile.columns.length} числовых колонок · метод: {METHOD_LABEL[profile.method]}</span>
@@ -132,7 +132,7 @@ export function PreprocessingOutliersOverview({
         </div>
       </div>
 
-      <div className="flex gap-1 border-b border-neutral-100 px-4 pt-2">
+      <div className="flex shrink-0 gap-1 border-b border-neutral-100 px-4 pt-2">
         {(
           [
             { id: "table", label: "Таблица" },
@@ -159,13 +159,13 @@ export function PreprocessingOutliersOverview({
       </div>
 
       {activeView !== "table" && (
-        <p className="border-b border-neutral-100 px-4 py-2 text-xs text-neutral-500">
+        <p className="shrink-0 border-b border-neutral-100 px-4 py-2 text-xs text-neutral-500">
           Признак: <span className="font-medium text-neutral-700">{column ?? "не выбран"}</span> — переключается общим селектором «Исследуемый признак» вверху страницы.
         </p>
       )}
 
       {activeView === "table" && (
-        <div className="overflow-x-auto">
+        <div className="shrink-0 overflow-x-auto">
           <table aria-label="Выбросы по числовым колонкам" className="w-full min-w-[760px] text-left text-xs">
             <thead className="sticky top-0 bg-neutral-50 text-neutral-500">
               <tr>

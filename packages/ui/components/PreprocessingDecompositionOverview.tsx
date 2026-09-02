@@ -57,7 +57,7 @@ function fmtDate(value: string): string {
 
 function ComponentsChart({ profile }: { profile: PreprocessingDecompositionProfile }) {
   return (
-    <div role="img" aria-label="Компоненты STL" className="h-[275px] p-3">
+    <div role="img" aria-label="Компоненты STL" className="min-h-0 flex-1 p-3">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={profile.points} margin={{ top: 6, right: 12, bottom: 0, left: -8 }}>
           <CartesianGrid stroke="#F0F0F0" vertical={false} />
@@ -77,7 +77,7 @@ function ComponentsChart({ profile }: { profile: PreprocessingDecompositionProfi
 
 function SeasonalChart({ profile }: { profile: PreprocessingDecompositionProfile }) {
   return (
-    <div role="img" aria-label="Средний сезонный профиль STL" className="h-[275px] p-3">
+    <div role="img" aria-label="Средний сезонный профиль STL" className="min-h-0 flex-1 p-3">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={profile.seasonal_pattern} margin={{ top: 6, right: 12, bottom: 0, left: -8 }}>
           <CartesianGrid stroke="#F0F0F0" vertical={false} />
@@ -95,7 +95,7 @@ function SeasonalChart({ profile }: { profile: PreprocessingDecompositionProfile
 function ResidualAcfChart({ profile }: { profile: PreprocessingDecompositionProfile }) {
   const limit = profile.n_points > 0 ? 1.96 / Math.sqrt(profile.n_points) : 0;
   return (
-    <div role="img" aria-label="ACF остатка STL" className="h-[275px] p-3">
+    <div role="img" aria-label="ACF остатка STL" className="min-h-0 flex-1 p-3">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={profile.residual_acf} margin={{ top: 6, right: 12, bottom: 0, left: -8 }}>
           <CartesianGrid stroke="#F0F0F0" vertical={false} />
@@ -119,7 +119,7 @@ function MetricCard({ label, value, hint }: { label: string; value: string; hint
 function Diagnostics({ profile }: { profile: PreprocessingDecompositionProfile }) {
   const pct = (value: number | null) => value === null ? "—" : `${(100 * value).toFixed(1)}%`;
   const p = (value: number | null) => value === null ? "—" : value.toFixed(4);
-  return <div className="grid gap-3 p-4 md:grid-cols-2">
+  return <div className="min-h-0 flex-1 content-center grid gap-3 p-4 md:grid-cols-2">
     <MetricCard label="Сила тренда" value={pct(profile.trend_strength)} hint="0 — слабый, 1 — сильный" />
     <MetricCard label="Сила сезонности" value={pct(profile.seasonal_strength)} hint="Не доля суммарной дисперсии" />
     <MetricCard label={`Ljung–Box, lag ${profile.ljung_box_lag ?? "—"}`} value={`p = ${p(profile.ljung_box_pvalue)}`} hint="p < 0,05: в остатке есть автокорреляция" />
@@ -135,8 +135,8 @@ export function PreprocessingDecompositionOverview({ profile, loading, error, no
   if (!profile) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-neutral-50 text-sm text-neutral-600">Выберите числовой исследуемый признак.</div>;
   if (!profile.applicable) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "Декомпозиция неприменима."}</div>;
 
-  return <section className="h-[468px] overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
-    <div className="border-b border-neutral-100 p-4">
+  return <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+    <div className="shrink-0 border-b border-neutral-100 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div><h4 className="text-sm font-semibold text-neutral-800">{profile.column}: {profile.method} · период {profile.period}</h4><p className="mt-1 text-[10px] text-neutral-500">{profile.date_column} · частота {profile.frequency} · {profile.n_points} наблюдений · robust={profile.robust ? "да" : "нет"}</p></div>
         <p className="text-[10px] text-neutral-500">Метод: <a className="text-brand underline" href="https://www.statsmodels.org/stable/generated/statsmodels.tsa.seasonal.STL.html" target="_blank" rel="noreferrer">statsmodels STL</a> · тест: <a className="text-brand underline" href="https://www.statsmodels.org/stable/generated/statsmodels.stats.diagnostic.acorr_ljungbox.html" target="_blank" rel="noreferrer">Ljung–Box</a></p>
@@ -144,13 +144,13 @@ export function PreprocessingDecompositionOverview({ profile, loading, error, no
       <p className="mt-2 rounded bg-brand-light px-3 py-2 text-xs text-neutral-700">{profile.recommendation}</p>
       {profile.warnings.length > 0 && <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">{profile.warnings.join(" ")}</p>}
     </div>
-    <div role="tablist" aria-label="Графики декомпозиции" className="flex flex-wrap gap-1.5 border-b border-neutral-100 px-4 py-2">
+    <div role="tablist" aria-label="Графики декомпозиции" className="flex shrink-0 flex-wrap gap-1.5 border-b border-neutral-100 px-4 py-2">
       {TABS.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${view === tab.id ? "border-neutral-300 bg-neutral-200 text-neutral-800" : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"}`}>{tab.label}</button>)}
     </div>
     {view === "components" && <ComponentsChart profile={profile} />}
     {view === "seasonal" && <SeasonalChart profile={profile} />}
     {view === "acf" && <ResidualAcfChart profile={profile} />}
     {view === "diagnostics" && <Diagnostics profile={profile} />}
-    <p className="px-4 pb-3 text-[9px] text-neutral-400">{profile.methodology_note}</p>
+    <p className="shrink-0 px-4 pb-3 text-[9px] text-neutral-400">{profile.methodology_note}</p>
   </section>;
 }
