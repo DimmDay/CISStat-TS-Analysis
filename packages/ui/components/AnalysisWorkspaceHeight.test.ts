@@ -70,4 +70,21 @@ describe("единая высота окна «Обзор»/«Мастер»", (
 
     expect(count).toBe(165);
   });
+
+  it("фиксирует 44 прокручиваемых и 121 непрокручиваемое состояние", () => {
+    const classes = WORKSPACE_COMPONENTS.flatMap((fileName) => {
+      const source = readFileSync(join(__dirname, fileName), "utf8");
+      return Array.from(source.matchAll(/className=(?:"([^"]*)"|`([^`]*)`)/gs), (match) => (
+        match[1] ?? match[2] ?? ""
+      ));
+    });
+    const heightStates = classes.flatMap((className) => (
+      Array.from(className.matchAll(/h-\[468px\]/g), () => className)
+    ));
+    const scrolling = heightStates.filter((className) => /overflow-(?:y-)?auto/.test(className));
+
+    expect(heightStates).toHaveLength(165);
+    expect(scrolling).toHaveLength(44);
+    expect(heightStates.length - scrolling.length).toBe(121);
+  });
 });

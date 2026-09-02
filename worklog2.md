@@ -660,3 +660,15 @@ Date: 2026-08-31
 - `packages/ui/components/ValidationTypePipeline.tsx`
 - `packages/ui/components/ValidationUniquenessOverview.tsx`
 - `packages/ui/components/ValidationUniquenessPipeline.tsx`
+
+### Дополнение — вложенная визуализация непрокручиваемых состояний
+
+- 165 состояний повторно классифицированы по классу фактического рабочего контейнера: 44 состояния используют `overflow-y-auto`/`overflow-auto`, 121 состояние не имеет ползунка прокрутки.
+- `ValidationTypeMatrix` не отнесена к изменяемой визуализации: внешний контейнер использует `overflow-hidden`, но таблица прокручивается во вложенном `overflow-auto`. Все 44 scrollable-состояния и эта матрица оставлены без изменений.
+- В 120 из 121 непрокручиваемых состояний отображаются только loading/error/empty/not-applicable сообщения, уже занимающие полные `468px`; растягиваемой вложенной визуализации у них нет.
+- Единственная вложенная визуализация без прокрутки — bar chart `ValidationCheckChart`. Ранее подпись `ScopeCaption` располагалась над вложенным блоком `h-[468px]`, поэтому суммарная высота превышала контракт окна. Теперь внешний flex-контейнер имеет ровно `h-[468px]`, а подпись и визуализация делят доступную высоту; chart-panel использует `min-h-0 flex-1`, а `ResponsiveContainer` — `height="100%"`.
+- Тем же контейнером охвачены состояния pending/skipped/done с подписью: информационная область растягивается через `flex-1`, но не создаёт прокрутку и не превышает 468px.
+- Добавлен компонентный RED/GREEN-тест для bar chart и captioned done-state. Source-contract тест расширен проверкой классификации 44/121.
+- RED: 2/2 ожидаемых FAIL — отсутствовали общий контейнер 468px и растягиваемая внутренняя область.
+- GREEN: сфокусированный набор 2 suites, 52/52 PASS; полная frontend-регрессия — 79 suites, 676/676 PASS.
+- TypeScript 5.9 embedded/standalone: PASS; production build embedded/standalone: PASS, по 13/13 страниц, First Load JS — 445 kB; `git diff --check`: PASS.
