@@ -416,3 +416,114 @@ Date: 2026-08-31
 - `tests/api/test_dataset_preprocessing_stationarity.py`
 - `tests/unit/test_preprocessing_stationarity.py`
 - `tests/unit/test_preprocessing_stationarity_adapter.py`
+
+---
+
+## Task ID: 85 — Предобработка «Спектральный анализ»
+
+Дата: 2026-09-02
+
+### Аудит методологии
+
+- В backend уже существовал зрелый контур `app.features.spectral.analyze_spectral_seasonality`: linear detrend, периодическое окно Hann, односторонние FFT/periodogram, нормированная spectral entropy, поиск пиков и подтверждение кандидатов через ACF и устойчивость фазового профиля. EDA API также уже проверял временную ось, сортировку, дубликаты, панель и регулярность. Поэтому новый контур предобработки переиспользует этот двигатель без копирования и расхождения формул.
+- Legacy-функции `compute_fft_features`, `compute_periodogram_features`, `compute_spectral_entropy` и `compute_low_high_freq_ratio` не выбраны основой: они ограничиваются вычитанием среднего, используют абсолютный порог `mean + k·σ`, а entropy не нормирована и зависит от длины ряда. Они сохранены для обратной совместимости, но UI не выдаёт их эвристики за основной метод.
+- Глобальные периоды оцениваются через [`scipy.signal.periodogram`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.periodogram.html) после [`scipy.signal.detrend`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.detrend.html) и периодического окна [`scipy.signal.windows.hann`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.windows.hann.html); FFT использует официальный [`numpy.fft.rfft`](https://numpy.org/doc/stable/reference/generated/numpy.fft.rfft.html). Нулевая частота исключается, максимальный период ограничивается `N / min_cycles`, чтобы кандидат содержал хотя бы заданное число повторов.
+- Добавлен [`scipy.signal.welch`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.welch.html) с Hann, 50% overlap и median averaging. Welch снижает дисперсию PSD за счёт сегментации, но теряет частотное разрешение; поэтому он является устойчивой проверкой, а не заменой full-history periodogram.
+- Добавлен обзор времени–частоты через [`pywt.cwt`](https://pywavelets.readthedocs.io/en/stable/ref/cwt.html) с комплексным Morlet `cmor1.5-1.0`. CWT используется как визуальная диагностика локальности/дрейфа циклов, а не как формальный significance test; крайние точки, затронутые конечностью ряда, визуально приглушаются. Минимальный период равен двум наблюдениям, вывод ограничен 64 масштабами и 120 временными точками, а диапазон CWT — 512 наблюдениями на период для контролируемого payload.
+- Для нерегулярной временной сетки классические FFT/periodogram/Welch не выполняются скрыто. Остановка блокируется до исправления регулярности и ссылается на специализированный [`scipy.signal.lombscargle`](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lombscargle.html), вместо молчаливого предположения равного шага.
+- Подтверждение периода по periodogram + ACF + phase strength является прозрачной эвристикой, а не доказательством сезонности. Отсутствие подтверждённых периодов — нормальный аналитический результат, а не ошибка. Выбор по полной истории помечен `analysis_only=true`, `causal=false`, `modeling_safe=false`: в backtest периоды необходимо заново выбирать только на train-fold.
+
+### Реализация
+
+- Добавлен core `app.preprocessing.spectral`: median Welch PSD, автоматический/ручной размер сегмента, доли мощности в low/mid/high полосах и CWT scaleogram/global spectrum со строгой проверкой finite, константы и N ≥ 24.
+- Добавлен `GET /v1/session/dataset/preprocessing/spectral-profile`: общий target и временной контракт EDA, FFT, periodogram, Welch, CWT, phase profile, кандидаты, frequency resolution, Nyquist, предупреждения, рекомендации и сохранённый выбор периодов.
+- Добавлен `POST /v1/session/dataset/preprocessing/spectral-selections` с паттерном preview → отдельное подтверждение → apply. Остановка не изменяет DataFrame и не создаёт лаги: она сохраняет уникальные целочисленные периоды как явную конфигурацию для следующего этапа feature engineering. Неподтверждённый кандидат требует отдельного opt-in; выбор «периоды не обнаружены» поддержан явно.
+- В `AnalysisSession` добавлено backward-compatible поле `preprocessing_spectral_selection`; оно сериализуется в Redis/Memory, сбрасывается при загрузке нового датасета и не смешивается с преобразованиями колонок.
+- Остановка подключена к общему target/dataset lifecycle, режимам `auto/enabled/disabled`, степперу, статусам, четырём метрикам и ручному пересчёту embedded/standalone. Для применимого профиля статус `done` сохраняется и при нуле циклов; счётчик показывает только подтверждённые периоды.
+- В «Обзоре» реализованы пять представлений светло-серыми круглыми бейджами: FFT + periodogram, Welch PSD + полосы мощности, CWT scaleogram с приглушёнными краями, phase profile и таблица кандидатов. В UI встроены ссылки на официальную документацию NumPy/SciPy/PyWavelets.
+- Мастер позволяет настраивать `min_cycles`, число кандидатов, Welch segment и количество wavelet scales, выбирать периоды, отдельно разрешать неподтверждённые кандидаты, выполнять preview и подтверждать сохранение без мутации датасета.
+- В API-зависимости явно добавлен `PyWavelets>=1.4.0`.
+
+### TDD и проверка
+
+- RED backend: отсутствовали `app.preprocessing.spectral` и `apps.api.preprocessing_spectral`; RED frontend: отсутствовали `PreprocessingSpectralOverview` и `PreprocessingSpectralPipeline`.
+- Расширенная Python-регрессия core/EDA/API и соседних остановок: 125/125 PASS, 3 snapshots PASS.
+- Дополнительная session-группа: 54 PASS, 1 optional module SKIPPED из-за отсутствия `fakeredis`; новое поле отдельно покрыто round-trip и backward-compatible unit-тестом.
+- Frontend всей вкладки «Предобработка»: 20 suites, 116/116 PASS.
+- Production build embedded/standalone: PASS, по 13/13 страниц; штатные lint/type checks прошли, First Load JS — 433 kB.
+- `git diff --check` и task Python compile: PASS.
+
+### Изменённые и новые файлы
+
+- `app/preprocessing/spectral.py`
+- `apps/api/preprocessing_spectral.py`
+- `apps/api/requirements.txt`
+- `apps/api/routers/session.py`
+- `apps/api/schemas.py`
+- `apps/api/session_store.py`
+- `packages/ui/components/PreprocessingSpectralOverview.tsx`
+- `packages/ui/components/PreprocessingSpectralOverview.test.tsx`
+- `packages/ui/components/PreprocessingSpectralPipeline.tsx`
+- `packages/ui/components/PreprocessingSpectralPipeline.test.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.test.tsx`
+- `packages/ui/index.ts`
+- `tests/api/test_dataset_preprocessing_spectral.py`
+- `tests/unit/test_preprocessing_spectral.py`
+- `tests/unit/test_preprocessing_spectral_adapter.py`
+
+---
+
+## Task ID: 86 — Предобработка «Генерация признаков»
+
+Дата: 2026-09-02
+
+### Аудит методологии
+
+- Во frontend остановка была статической заглушкой. В backend существовали `app.features.temporal.create_temporal_features` и `create_fourier_features`, а также rolling-функции сглаживания, но не было session API, lag generator, preview/apply-контракта или каталога созданных X.
+- Legacy `create_fourier_features` определяет период в календарных днях от минимальной даты. Его нельзя напрямую кормить периодом спектральной остановки, измеренным в наблюдениях: для месячного ряда `period=12` означал бы 12 дней, а не 12 месяцев. Новый Fourier-контур использует позицию наблюдения `t` и тем самым согласован с FFT/periodogram предыдущей остановки. Формулы и ограничение гармоник сверены с [`statsmodels.tsa.deterministic.Fourier`](https://www.statsmodels.org/stable/generated/statsmodels.tsa.deterministic.Fourier.html).
+- Raw month/day/dayofweek legacy-контура не выбраны основным представлением циклов: конец и начало периода численно далеки. Новый контур использует пары sin/cos по официальному примеру [scikit-learn о циклических временных признаках](https://scikit-learn.org/stable/auto_examples/applications/plot_cyclical_feature_engineering.html). Auto-набор не дублирует month sin/cos при месячном Fourier period=12 и day-of-week sin/cos при дневном Fourier period=7.
+- Критическая защита от target leakage: lag строится официальным [`pandas.Series.shift(k)`](https://pandas.pydata.org/docs/reference/api/pandas.Series.shift.html), а каждая [`rolling`](https://pandas.pydata.org/docs/reference/api/pandas.Series.rolling.html)-статистика сначала получает `target.shift(1)`. Поэтому X[t] использует окно не позднее t−1. Лаговая разность определяется как `y[t−1] − y[t−k−1]`, а не включает y[t]. Существующие rolling-функции сглаживания не переиспользованы напрямую, поскольку их задача — оценка уровня текущей точки, а не supervised feature matrix.
+- Warm-up не заполняется скрытыми `bfill`, нулями или текущим значением: preview показывает точный max lookback, а apply по умолчанию синхронно удаляет только общий начальный префикс. Можно осознанно оставить NaN с явным предупреждением.
+- Holiday-флаг legacy-контура исключён: он жёстко выбирал календарь RU, а при недоступной библиотеке молча создавал нулевую колонку. Корректная реализация требует явных страны/региона и версии календаря; до такого контракта платформа не выдаёт фиктивные нули за признак.
+- In-sample лаг-корреляция используется только для визуальной диагностики. Даже при каузальной формуле выбор лагов/окон/гармоник по полной истории является data snooping; отбор повторяется внутри train-fold, используя временную валидацию, например [`sklearn.model_selection.TimeSeriesSplit`](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html).
+- Для горизонта больше одного target-derived признаки не объявляются заранее известными: metadata фиксирует необходимость наблюдаемой истории, direct-моделей по горизонтам либо рекурсивной подстановки прогнозов. Календарь, time index и Fourier известны заранее.
+
+### Реализация
+
+- Добавлен чистый core `generate_time_series_features`: положительные уникальные лаги, trailing rolling mean/std/min/max, лаговые разности, `time_idx`, календарные year/quarter/sin-cos/weekend и positional Fourier до пяти идентифицируемых гармоник. Для периода 2 создаётся только информативная Nyquist cosine, без тождественно нулевого sine.
+- Введены ограничения: минимум 8 наблюдений на уровне остановки, finite target без пропусков, параметры меньше N, максимум 100 создаваемых признаков, запрет коллизий имён. Общий `smart_to_datetime` переиспользован для корректной обработки числовых колонок годов без схлопывания в наносекунды 1970 года.
+- Добавлен `GET /v1/session/dataset/preprocessing/feature-generation-profile`: временной контракт, актуальность спектрального hand-off, рекомендации, max lookback, сохранённый набор и пять payload-визуализаций. Битые/повторные даты, панель и нерегулярность блокируются; row-order разрешает лаги/Fourier, но не календарь.
+- Добавлен `POST /v1/session/dataset/preprocessing/feature-generations` с preview → отдельное подтверждение → атомарный apply. Исходные колонки не перезаписываются; DataFrame сортируется по времени, X добавляются новыми колонками, warm-up удаляется только после успешного расчёта всего набора.
+- В `AnalysisSession` добавлено backward-compatible поле `preprocessing_feature_generation`; оно сериализует конфигурацию, каталог формул, имена X, target shift, lookback, dropped rows, порядок, causal/row-level safe и forecast contract, сбрасывается при новом датасете.
+- Остановка подключена к target lifecycle, `auto/enabled/disabled`, степперу, прогрессу, статусам, четырём метрикам и ручному пересчёту. `warning` означает, что безопасный набор рекомендован, но ещё не применён; `done` — сохранённые колонки существуют в актуальном DataFrame.
+- В «Обзоре» реализованы пять представлений светло-серыми круглыми бейджами: preview target/lag/rolling/Fourier, лаг-корреляции, availability/warm-up, календарные и Fourier-циклы, каталог формул. Payload графиков ограничен 240 временными точками.
+- Мастер поддерживает лаги, rolling-окна и статистики, lagged differences, календарные признаки, Fourier periods/harmonics, time index и политику warm-up; показывает число колонок/строк до мутации и отдельно подтверждает apply.
+
+### TDD и проверка
+
+- RED backend: отсутствовали `app.preprocessing.feature_engineering` и `apps.api.preprocessing_feature_engineering`; RED frontend: отсутствовали `PreprocessingFeatureEngineeringOverview` и `PreprocessingFeatureEngineeringPipeline`.
+- Task-набор core/adapter/API/session: 13/13 PASS.
+- Расширенная Python-регрессия текущей и соседних остановок: 140/140 PASS; 1 optional module SKIPPED из-за отсутствия `fakeredis`.
+- Полный frontend-набор компонентов: 73 suites, 601/601 PASS; сфокусированная интеграция новой остановки и родителя: 46/46 PASS.
+- TypeScript embedded/standalone: PASS.
+- Production build embedded/standalone: PASS, по 13/13 страниц; штатные lint/type checks прошли, First Load JS — 439 kB.
+- `git diff --check` и task Python compile: PASS.
+
+### Изменённые и новые файлы
+
+- `app/preprocessing/feature_engineering.py`
+- `apps/api/preprocessing_feature_engineering.py`
+- `apps/api/routers/session.py`
+- `apps/api/schemas.py`
+- `apps/api/session_store.py`
+- `packages/ui/components/PreprocessingFeatureEngineeringOverview.tsx`
+- `packages/ui/components/PreprocessingFeatureEngineeringOverview.test.tsx`
+- `packages/ui/components/PreprocessingFeatureEngineeringPipeline.tsx`
+- `packages/ui/components/PreprocessingFeatureEngineeringPipeline.test.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.tsx`
+- `packages/ui/components/TsAnalysisPreprocessing.test.tsx`
+- `packages/ui/index.ts`
+- `tests/api/test_dataset_preprocessing_feature_engineering.py`
+- `tests/unit/test_preprocessing_feature_engineering.py`
+- `tests/unit/test_preprocessing_feature_engineering_adapter.py`

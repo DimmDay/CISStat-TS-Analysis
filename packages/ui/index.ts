@@ -110,6 +110,15 @@ export type {
 } from "./components/PreprocessingSpectralOverview";
 export { PreprocessingSpectralPipeline } from "./components/PreprocessingSpectralPipeline";
 export type { SpectralParameters } from "./components/PreprocessingSpectralPipeline";
+export { PreprocessingFeatureEngineeringOverview } from "./components/PreprocessingFeatureEngineeringOverview";
+export type {
+  CalendarFeature,
+  FeatureCatalogItem,
+  FeatureFamily,
+  FeatureGenerationProfile,
+  FeatureGenerationProfileResponse,
+} from "./components/PreprocessingFeatureEngineeringOverview";
+export { PreprocessingFeatureEngineeringPipeline } from "./components/PreprocessingFeatureEngineeringPipeline";
 export { TsAnalysisValidation } from "./components/TsAnalysisValidation";
 export { ValidationSufficiencyOverview } from "./components/ValidationSufficiencyOverview";
 export { ValidationSufficiencyPipeline } from "./components/ValidationSufficiencyPipeline";

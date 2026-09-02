@@ -1413,6 +1413,144 @@ class DatasetPreprocessingSpectralSelectionResponse(BaseModel):
     metadata: SpectralSelectionMetadataOut
 
 
+FeatureFamily = Literal["lag", "rolling", "difference", "calendar", "fourier", "trend"]
+RollingStatistic = Literal["mean", "std", "min", "max"]
+CalendarFeature = Literal[
+    "year", "quarter", "month_cyclic", "dayofweek_cyclic",
+    "dayofyear_cyclic", "hour_cyclic", "is_weekend",
+]
+
+
+class FeatureCatalogItemOut(BaseModel):
+    name: str
+    family: FeatureFamily
+    formula: str
+    lookback: int
+    known_in_advance: bool
+    causal: bool
+    missing_count: int
+    coverage: float
+
+
+class FeaturePreviewPointOut(BaseModel):
+    x: str
+    target: float
+    lag: Optional[float] = None
+    rolling: Optional[float] = None
+    fourier: Optional[float] = None
+
+
+class FeatureLagCorrelationOut(BaseModel):
+    lag: int
+    correlation: Optional[float] = None
+    selected: bool
+
+
+class FeatureAvailabilityOut(BaseModel):
+    name: str
+    family: FeatureFamily
+    available_count: int
+    missing_count: int
+    coverage: float
+
+
+class FeatureCyclicPointOut(BaseModel):
+    x: str
+    feature: str
+    value: Optional[float] = None
+
+
+class PreprocessingFeatureGenerationProfileOut(BaseModel):
+    column: str
+    applicable: bool
+    reason: Optional[str] = None
+    n_observations: int = 0
+    order_source: Literal["time_column", "row_order"] = "row_order"
+    order_column: Optional[str] = None
+    frequency: Optional[str] = None
+    regular: bool = False
+    spectral_periods: List[int] = Field(default_factory=list)
+    suggested_lags: List[int] = Field(default_factory=list)
+    suggested_rolling_windows: List[int] = Field(default_factory=list)
+    suggested_calendar_features: List[CalendarFeature] = Field(default_factory=list)
+    suggested_fourier_periods: List[int] = Field(default_factory=list)
+    generated: bool = False
+    saved_feature_names: List[str] = Field(default_factory=list)
+    max_lookback: int = 0
+    preview_feature_count: int = 0
+    preview_points: List[FeaturePreviewPointOut] = Field(default_factory=list)
+    lag_correlations: List[FeatureLagCorrelationOut] = Field(default_factory=list)
+    availability: List[FeatureAvailabilityOut] = Field(default_factory=list)
+    cyclic_points: List[FeatureCyclicPointOut] = Field(default_factory=list)
+    catalog: List[FeatureCatalogItemOut] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+    recommendation: str
+    methodology_note: str
+
+
+class DatasetPreprocessingFeatureGenerationProfileResponse(BaseModel):
+    mode: Literal["auto", "enabled", "disabled"] = "auto"
+    status: Literal["done", "warning", "pending", "skipped"] = "pending"
+    status_reason: Optional[Literal["not_required", "disabled"]] = None
+    profile: PreprocessingFeatureGenerationProfileOut
+
+
+class DatasetPreprocessingFeatureGenerationRequest(BaseModel):
+    column: str = Field(..., min_length=1)
+    lags: List[int] = Field(default_factory=list, max_length=20)
+    rolling_windows: List[int] = Field(default_factory=list, max_length=10)
+    rolling_statistics: List[RollingStatistic] = Field(default_factory=list, max_length=4)
+    difference_lags: List[int] = Field(default_factory=list, max_length=10)
+    calendar_features: List[CalendarFeature] = Field(default_factory=list, max_length=7)
+    fourier_periods: List[int] = Field(default_factory=list, max_length=10)
+    fourier_harmonics: int = Field(1, ge=1, le=5)
+    include_time_index: bool = True
+    drop_warmup_rows: bool = True
+    apply: bool = Field(False, description="False — preview; True — добавить признаки к активному датасету")
+
+
+class FeatureGenerationMetadataOut(BaseModel):
+    kind: Literal["feature_generation"] = "feature_generation"
+    source_column: str
+    date_column: Optional[str] = None
+    feature_names: List[str]
+    feature_catalog: List[FeatureCatalogItemOut]
+    lags: List[int]
+    rolling_windows: List[int]
+    rolling_statistics: List[RollingStatistic]
+    difference_lags: List[int]
+    calendar_features: List[CalendarFeature]
+    fourier_periods: List[int]
+    fourier_harmonics: int
+    include_time_index: bool
+    drop_warmup_rows: bool
+    target_shift: Literal[1]
+    max_lookback: int
+    rows_dropped: int
+    generated_on_n: int
+    result_rows: int
+    order_source: Literal["time_column", "row_order"]
+    order_column: Optional[str] = None
+    frequency: Optional[str] = None
+    causal: bool
+    row_level_modeling_safe: bool
+    selection_requires_train_fold: bool
+    forecast_contract: str
+
+
+class DatasetPreprocessingFeatureGenerationResponse(BaseModel):
+    applied: bool
+    column: str
+    feature_names: List[str]
+    feature_count: int
+    rows_before: int
+    rows_after: int
+    rows_dropped: int
+    max_lookback: int
+    warnings: List[str] = Field(default_factory=list)
+    metadata: FeatureGenerationMetadataOut
+
+
 # ── Структурная детекция (2026-08-14, найден реальный баг: фронт
 # показывал позиционную заглушку "первые 3 колонки файла" вместо
 # реального контентного скоринга -- см. app/data/detectors.py) ──

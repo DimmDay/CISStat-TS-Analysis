@@ -58,6 +58,11 @@ import {
   PreprocessingSpectralPipeline,
   type SpectralParameters,
 } from "./PreprocessingSpectralPipeline";
+import {
+  PreprocessingFeatureEngineeringOverview,
+  type FeatureGenerationProfileResponse,
+} from "./PreprocessingFeatureEngineeringOverview";
+import { PreprocessingFeatureEngineeringPipeline } from "./PreprocessingFeatureEngineeringPipeline";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -89,7 +94,7 @@ const CHECKS: Check[] = [
   { id: "spectral", label: "Спектральный анализ", status: "pending", count: null,
     description: "Диагностика периодической структуры: Hann FFT/periodogram, медианный Welch PSD, CWT и подтверждение кандидатов через ACF/фазовый профиль. Периоды сохраняются для следующего шага без мутации ряда." },
   { id: "feature_eng", label: "Генерация признаков", status: "pending", count: null,
-    description: "Создание временных (hour, day, month), лаговых, скользящих статистик (rolling mean/std) и производных признаков. Структура лагов определяется результатами спектрального анализа." },
+    description: "Каузальные лаги, trailing rolling-статистики и лаговые разности; известные заранее календарные sin/cos, time_idx и Fourier-гармоники периодов из спектрального анализа." },
   { id: "scaling", label: "Масштабирование", status: "pending", count: null,
     description: "Нормализация признаков методами StandardScaler, MinMaxScaler, RobustScaler, QuantileTransformer или PowerTransformer. Критично для NN, SVM, k-NN." },
   { id: "passport", label: "Паспорт свойств ряда", status: "pending", count: null,
@@ -376,6 +381,41 @@ const SPECTRAL_PIPELINE_DESCRIPTION = `Мастер спектрального �
 6. Apply сохраняет source, periods/frequencies, подтверждение, параметры Welch/CWT, N и временной порядок в сессии для остановки «Генерация признаков».
 7. Сохранённое полноисторическое решение имеет analysis_only=true, causal=false, modeling_safe=false. В backtest период/лаги выбираются заново только на train.`;
 
+const FEATURE_ENGINEERING_METRICS_DESCRIPTION = `Метрики и алгоритм: Генерация признаков
+
+Цель
+Преобразовать регулярный одномерный ряд в матрицу X для статистических и ML-моделей, не включая прогнозируемое значение текущей строки в её же признаки. Остановка объединяет лаги, trailing rolling-статистики, лаговые разности, известный заранее календарь, линейный time index и Fourier-гармоники подтверждённых спектральных периодов.
+
+Метрики и представления
+1. Превью совмещает target, первый лаг, первую rolling mean и Fourier sin. Начальный пустой участок — честный warm-up, а не ошибка заполнения.
+2. Лаг-корреляции показывают Pearson corr(y[t], y[t−k]) и выделяют рекомендуемые лаги. Это in-sample диагностика, не доказательство out-of-sample полезности.
+3. Доступность = число непустых значений / N. Максимальный lookback определяет общий префикс строк, который можно синхронно удалить перед моделированием.
+4. Календарные sin/cos и Fourier-гармоники визуализируются отдельно: циклическое кодирование сохраняет близость конца и начала периода.
+5. Каталог раскрывает формулу, семейство, lookback, каузальность и известность признака на будущем горизонте.
+
+Корректировка методологии
+Legacy create_temporal_features создавал raw month/day/dayofweek, а create_fourier_features определял периоды в календарных днях. Поэтому его нельзя напрямую кормить периодом 12 из спектрального анализа месячного ряда: 12 наблюдений превратились бы в 12 дней. Новый контур строит Fourier по порядковому номеру наблюдения t, согласованному со спектральным анализом, а календарные циклы кодирует sin/cos. Legacy rolling-функции предназначены для сглаживания и могут включать текущую точку; в supervised-матрице rolling и lagged differences всегда сначала используют target.shift(1). Holiday-флаг пока исключён: legacy жёстко выбирал календарь RU и при недоступной библиотеке молча записывал нули; корректный контракт требует явных страны и версии календаря.
+
+Временной и leakage-контракт
+Битые/повторные даты, панель, нерегулярная сетка, пропуски и inf блокируются предыдущими остановками. Без уверенной даты разрешены только row-order лаги/Fourier/time_idx, но не календарь. Формулы X[t] каузальны построчно; однако выбор лагов, окон и гармоник по полной истории всё равно является data snooping и должен повторяться внутри каждого train-fold. Для горизонта >1 target-derived лаги требуют наблюдаемую историю, direct-модели по горизонтам или рекурсивную подстановку прогнозов.
+
+Официальные источники
+- pandas shift: https://pandas.pydata.org/docs/reference/api/pandas.Series.shift.html
+- pandas rolling: https://pandas.pydata.org/docs/reference/api/pandas.Series.rolling.html
+- scikit-learn cyclical feature engineering: https://scikit-learn.org/stable/auto_examples/applications/plot_cyclical_feature_engineering.html
+- statsmodels Fourier: https://www.statsmodels.org/stable/generated/statsmodels.tsa.deterministic.Fourier.html
+- scikit-learn TimeSeriesSplit: https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html`;
+
+const FEATURE_ENGINEERING_PIPELINE_DESCRIPTION = `Мастер генерации признаков
+
+1. Начните с lag 1 и подтверждённых периодов из остановки «Спектральный анализ». Не добавляйте плотную сетку лагов без временной валидации: это раздувает размерность и риск переобучения.
+2. Выберите rolling-окна и статистики mean/std/min/max. Backend применяет shift(1) до rolling, поэтому окно для строки t заканчивается на t−1.
+3. Лаговые разности также безопасны: diff k для X[t] равен y[t−1] − y[t−k−1], а не y[t] − y[t−k].
+4. Календарные признаки доступны только при распознанной регулярной дате. Циклические компоненты кодируются парами sin/cos; Fourier-периоды измеряются в наблюдениях и используют до пяти идентифицируемых гармоник.
+5. Preview показывает точные имена колонок, максимальный lookback, warm-up и число оставшихся строк. По умолчанию общий пустой префикс удаляется синхронно из всего DataFrame; скрытые bfill/zero-fill не применяются.
+6. Apply атомарно добавляет новые колонки и сохраняет полный каталог формул, параметры, порядок, target_shift=1 и forecast contract в сессии.
+7. После apply оценивайте набор только walk-forward/expanding-window backtest. Отбор признаков, scaling и любые статистики fit выполняются внутри train-fold.`;
+
 type PreprocessingCheckMode = "auto" | "enabled" | "disabled";
 
 // ── Компонент ─────────────────────────────────────────────────
@@ -402,10 +442,8 @@ export function TsAnalysisPreprocessing() {
   // «Авто» / «Включена» / «Отключена» -- сохраняются в сессии через
   // GET/PUT /dataset/preprocessing-check-modes, отдельно от режимов
   // «Валидации» (другой степпер, другой словарь на бэкенде). Только
-  // «Пропуски» реально реагируют на режим сегодня -- у остальных 10
-  // остановок ещё нет backend-проверки, которую можно включить/отключить,
-  // поэтому селектор режима показан только для «Пропусков»: показывать
-  // его для мока значило бы обещать эффект, которого нет.
+  // Селектор показывается только у остановок с реальным backend-профилем;
+  // для ещё не реализованных «Масштабирования»/«Паспорта» режим не обещаем.
   const [checkModes, setCheckModes] = useState<Record<string, PreprocessingCheckMode>>({});
   const [modeSaving, setModeSaving] = useState<string | null>(null);
   const [modeError, setModeError] = useState<{ checkId: string; message: string } | null>(null);
@@ -745,6 +783,38 @@ export function TsAnalysisPreprocessing() {
 
   const spectralStatus: CheckStatus = spectralLoading ? "running" : spectralNoDataset ? "skipped" : spectralError ? "error" : spectralProfile ? spectralProfile.status : "pending";
 
+  // ── Остановка «Генерация признаков»: causal X + spectral hand-off ──
+  const [featureGenerationProfile, setFeatureGenerationProfile] = useState<FeatureGenerationProfileResponse | null>(null);
+  const [featureGenerationLoading, setFeatureGenerationLoading] = useState(false);
+  const [featureGenerationNoDataset, setFeatureGenerationNoDataset] = useState(false);
+  const [featureGenerationError, setFeatureGenerationError] = useState<string | null>(null);
+  const [featureGenerationRefreshKey, setFeatureGenerationRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    setFeatureGenerationError(null); setFeatureGenerationNoDataset(false);
+    if (activeCheckId !== "feature_eng") { setFeatureGenerationLoading(false); return () => { active = false; }; }
+    if (!activeFeature) { setFeatureGenerationProfile(null); setFeatureGenerationLoading(false); return () => { active = false; }; }
+    setFeatureGenerationLoading(true);
+    void (async () => {
+      try {
+        const response = await fetch(sessionApiUrl(`/dataset/preprocessing/feature-generation-profile?column=${encodeURIComponent(activeFeature)}`), { credentials: "include" });
+        if (response.status === 404) { if (active) setFeatureGenerationNoDataset(true); return; }
+        if (!response.ok) {
+          const body = await response.json().catch(() => null);
+          throw new Error(typeof body?.detail === "string" ? body.detail : `HTTP ${response.status}`);
+        }
+        const data: FeatureGenerationProfileResponse = await response.json();
+        if (active) { setFeatureGenerationProfile(data); setCheckModes((current) => ({ ...current, feature_eng: data.mode })); }
+      } catch (caught) {
+        if (active) setFeatureGenerationError(caught instanceof Error ? caught.message : "Не удалось подготовить генерацию признаков");
+      } finally { if (active) setFeatureGenerationLoading(false); }
+    })();
+    return () => { active = false; };
+  }, [activeFeature, featureGenerationRefreshKey, activeCheckId]);
+
+  const featureGenerationStatus: CheckStatus = featureGenerationLoading ? "running" : featureGenerationNoDataset ? "skipped" : featureGenerationError ? "error" : featureGenerationProfile ? featureGenerationProfile.status : "pending";
+
   // Итоговый список проверок -- статика для ещё не реализованных
   // остановок, реальные данные для «Пропусков», «Выбросов» и «Регулярности».
   const checks = useMemo<Check[]>(() => CHECKS.map((check) => {
@@ -756,8 +826,9 @@ export function TsAnalysisPreprocessing() {
     if (check.id === "smoothing") return { ...check, status: smoothingStatus, count: smoothingProfile?.profile?.needs_smoothing ? 1 : 0 };
     if (check.id === "stationarity") return { ...check, status: stationarityStatus, count: stationarityProfile?.profile?.needs_transformation ? 1 : 0 };
     if (check.id === "spectral") return { ...check, status: spectralStatus, count: spectralProfile?.profile?.confirmed_periods ?? null };
+    if (check.id === "feature_eng") return { ...check, status: featureGenerationStatus, count: featureGenerationProfile?.profile?.saved_feature_names.length ?? 0 };
     return check;
-  }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile, decompositionStatus, decompositionProfile, varianceStatus, varianceProfile, smoothingStatus, smoothingProfile, stationarityStatus, stationarityProfile, spectralStatus, spectralProfile]);
+  }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile, decompositionStatus, decompositionProfile, varianceStatus, varianceProfile, smoothingStatus, smoothingProfile, stationarityStatus, stationarityProfile, spectralStatus, spectralProfile, featureGenerationStatus, featureGenerationProfile]);
 
   // Сворачиваем при смене секции
   useEffect(() => {
@@ -816,6 +887,7 @@ export function TsAnalysisPreprocessing() {
       if (checkId === "smoothing") setSmoothingRefreshKey((k) => k + 1);
       if (checkId === "stationarity") setStationarityRefreshKey((k) => k + 1);
       if (checkId === "spectral") setSpectralRefreshKey((k) => k + 1);
+      if (checkId === "feature_eng") setFeatureGenerationRefreshKey((k) => k + 1);
     } catch {
       setCheckModes(previous);
       setModeError({ checkId, message: "Не удалось сохранить режим проверки" });
@@ -876,6 +948,9 @@ export function TsAnalysisPreprocessing() {
     if (activeCheckId === "spectral") {
       return descriptionSection === "metrics" ? SPECTRAL_METRICS_DESCRIPTION : SPECTRAL_PIPELINE_DESCRIPTION;
     }
+    if (activeCheckId === "feature_eng") {
+      return descriptionSection === "metrics" ? FEATURE_ENGINEERING_METRICS_DESCRIPTION : FEATURE_ENGINEERING_PIPELINE_DESCRIPTION;
+    }
     if (descriptionSection === "metrics") {
       return `Метрики и алгоритм: ${activeCheck.label}\n\n${activeCheck.description}\n\nАлгоритм выявления: автоматический скрининг с порогом по умолчанию, ручная верификация аналитиком.`;
     }
@@ -909,6 +984,9 @@ export function TsAnalysisPreprocessing() {
     }
     if (activeCheckId === "spectral") {
       return descriptionSection === "metrics" ? "Метрики и алгоритм — Спектральный анализ" : "Мастер спектрального анализа";
+    }
+    if (activeCheckId === "feature_eng") {
+      return descriptionSection === "metrics" ? "Метрики и алгоритм — Генерация признаков" : "Мастер генерации признаков";
     }
     if (descriptionSection === "metrics") return `Метрики и алгоритм — ${activeCheck.label}`;
     return `Полный пайплайн — ${activeCheck.label}`;
@@ -1080,6 +1158,8 @@ export function TsAnalysisPreprocessing() {
               ? "Мастер обеспечения стационарности"
               : activeCheckId === "spectral" && descriptionSection === "pipeline"
               ? "Мастер спектрального анализа"
+              : activeCheckId === "feature_eng" && descriptionSection === "pipeline"
+              ? "Мастер генерации признаков"
               : `Обзор: ${activeCheck.label}`}
           </h3>
           <p className="text-xs text-neutral-500 mb-3">
@@ -1115,6 +1195,10 @@ export function TsAnalysisPreprocessing() {
               ? "Настройте разрешение, подтвердите периоды и сохраните их без изменения датасета."
               : activeCheckId === "spectral"
               ? "FFT/periodogram, Welch PSD, CWT, фазовый профиль и кандидаты — во вкладках-бейджах."
+              : activeCheckId === "feature_eng" && descriptionSection === "pipeline"
+              ? "Настройте лаги, trailing rolling, календарь и Fourier; проверьте warm-up и подтвердите применение."
+              : activeCheckId === "feature_eng"
+              ? "Превью X, лаг-корреляции, доступность, циклические признаки и каталог — во вкладках-бейджах."
               : "Меняется автоматически под активную проверку."}
           </p>
 
@@ -1198,6 +1282,19 @@ export function TsAnalysisPreprocessing() {
               error={spectralError}
               noDataset={spectralNoDataset}
             />
+          ) : activeCheckId === "feature_eng" && descriptionSection === "pipeline" ? (
+            <PreprocessingFeatureEngineeringPipeline
+              column={activeFeature}
+              profile={featureGenerationProfile?.profile ?? null}
+              onApplied={() => setFeatureGenerationRefreshKey((key) => key + 1)}
+            />
+          ) : activeCheckId === "feature_eng" ? (
+            <PreprocessingFeatureEngineeringOverview
+              profile={featureGenerationProfile?.profile ?? null}
+              loading={featureGenerationLoading}
+              error={featureGenerationError}
+              noDataset={featureGenerationNoDataset}
+            />
           ) : (
             <div className="bg-brand-light rounded-lg h-[420px] flex items-center justify-center text-sm text-neutral-500">
               [ график для «{activeCheck.label}» ]
@@ -1260,6 +1357,13 @@ export function TsAnalysisPreprocessing() {
               <Metric label="Entropy" value={spectralProfile?.profile?.spectral_entropy !== null && spectralProfile?.profile?.spectral_entropy !== undefined ? spectralProfile.profile.spectral_entropy.toFixed(3) : "—"} />
               <Metric label="Welch сегментов" value={spectralProfile?.profile ? String(spectralProfile.profile.welch_segments) : "—"} />
             </div>
+          ) : activeCheckId === "feature_eng" ? (
+            <div className="grid grid-cols-4 gap-3 mt-4">
+              <Metric label="Признаков" value={featureGenerationProfile?.profile ? String(featureGenerationProfile.profile.preview_feature_count) : "—"} />
+              <Metric label="Lookback" value={featureGenerationProfile?.profile ? String(featureGenerationProfile.profile.max_lookback) : "—"} />
+              <Metric label="Лаги" value={featureGenerationProfile?.profile?.suggested_lags.join(", ") || "—"} />
+              <Metric label="Сохранено" value={featureGenerationProfile?.profile ? String(featureGenerationProfile.profile.saved_feature_names.length) : "—"} />
+            </div>
           ) : (
             <div className="grid grid-cols-4 gap-3 mt-4">
               <Metric label="Строк" value="200" />
@@ -1293,11 +1397,8 @@ export function TsAnalysisPreprocessing() {
 
               <p className="text-sm text-neutral-600 mb-2">{check.description}</p>
 
-              {/* Режим проверки -- только для «Пропусков» и «Выбросов»:
-                  у остальных остановок ещё нет backend-проверки, которую
-                  можно реально включить/отключить (см. комментарий у
-                  useState checkModes выше). */}
-              {(check.id === "missing" || check.id === "outliers" || check.id === "regularity" || check.id === "decomposition" || check.id === "variance_stab" || check.id === "smoothing" || check.id === "stationarity" || check.id === "spectral") && (
+              {/* Режим проверки — только для остановок с реальным API. */}
+              {(check.id === "missing" || check.id === "outliers" || check.id === "regularity" || check.id === "decomposition" || check.id === "variance_stab" || check.id === "smoothing" || check.id === "stationarity" || check.id === "spectral" || check.id === "feature_eng") && (
                 <label className="mb-2 block text-[11px] font-medium text-neutral-600">
                   Режим проверки
                   <select
@@ -1479,6 +1580,15 @@ export function TsAnalysisPreprocessing() {
                   {check.status === "skipped" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">{spectralNoDataset ? "Нет активного датасета" : spectralProfile?.status_reason === "disabled" ? "Отключено" : spectralProfile?.profile?.reason ?? "Не применимо"}</p>}
                   {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">{spectralProfile?.profile?.confirmed_periods ? `Подтверждено периодов: ${spectralProfile.profile.confirmed_periods}` : "Устойчивые периоды не подтверждены"}</p>}
                 </>
+              ) : check.id === "feature_eng" ? (
+                <>
+                  {check.status === "running" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">Строится безопасный preview матрицы X…</p>}
+                  {check.status === "error" && <p role="alert" className="text-sm text-red-700 bg-red-50 rounded px-3 py-2 mb-2">{featureGenerationError ?? "Ошибка генерации признаков"}</p>}
+                  {check.status === "pending" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">Набор признаков не проверялся</p>}
+                  {check.status === "skipped" && <p role="status" className="text-sm text-neutral-600 bg-neutral-50 rounded px-3 py-2 mb-2">{featureGenerationNoDataset ? "Нет активного датасета" : featureGenerationProfile?.status_reason === "disabled" ? "Отключено" : featureGenerationProfile?.profile?.reason ?? "Не применимо"}</p>}
+                  {check.status === "warning" && <p role="status" className="text-sm text-amber-700 bg-amber-50 rounded px-3 py-2 mb-2">Набор рекомендован, но ещё не применён</p>}
+                  {check.status === "done" && <p role="status" className="text-sm text-green-700 bg-green-50 rounded px-3 py-2 mb-2">Сгенерировано признаков: {featureGenerationProfile?.profile?.saved_feature_names.length ?? 0}</p>}
+                </>
               ) : (
                 <>
                   {check.count !== null && check.count > 0 && (
@@ -1515,10 +1625,10 @@ export function TsAnalysisPreprocessing() {
                     : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
                 }`}
               >
-                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : check.id === "variance_stab" ? "Настроить трансформацию" : check.id === "smoothing" ? "Настроить сглаживание" : check.id === "stationarity" ? "Обеспечить стационарность" : check.id === "spectral" ? "Зафиксировать периоды" : "Полный пайплайн"}
+                {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : check.id === "variance_stab" ? "Настроить трансформацию" : check.id === "smoothing" ? "Настроить сглаживание" : check.id === "stationarity" ? "Обеспечить стационарность" : check.id === "spectral" ? "Зафиксировать периоды" : check.id === "feature_eng" ? "Сгенерировать признаки" : "Полный пайплайн"}
               </button>
 
-              <Button onClick={check.id === "stationarity" ? () => setStationarityRefreshKey((key) => key + 1) : check.id === "spectral" ? () => setSpectralRefreshKey((key) => key + 1) : undefined}>{check.id === "spectral" ? "Пересчитать спектральный профиль" : `Пересчитать свойства после преобразования (${check.label.toLowerCase()})`}</Button>
+              <Button onClick={check.id === "stationarity" ? () => setStationarityRefreshKey((key) => key + 1) : check.id === "spectral" ? () => setSpectralRefreshKey((key) => key + 1) : check.id === "feature_eng" ? () => setFeatureGenerationRefreshKey((key) => key + 1) : undefined}>{check.id === "spectral" ? "Пересчитать спектральный профиль" : check.id === "feature_eng" ? "Пересчитать профиль признаков" : `Пересчитать свойства после преобразования (${check.label.toLowerCase()})`}</Button>
             </article>
           ))}
         </div>

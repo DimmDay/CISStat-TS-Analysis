@@ -166,12 +166,30 @@ const SPECTRAL_PROFILE = {
   },
 };
 
+const FEATURE_GENERATION_PROFILE = {
+  mode: "auto", status: "warning", status_reason: null,
+  profile: {
+    column: "Price", applicable: true, reason: null, n_observations: 240,
+    order_source: "time_column", order_column: "Date", frequency: "MS", regular: true,
+    spectral_periods: [12], suggested_lags: [1, 12], suggested_rolling_windows: [3, 12],
+    suggested_calendar_features: ["year", "quarter", "month_cyclic"], suggested_fourier_periods: [12],
+    generated: false, saved_feature_names: [], max_lookback: 12, preview_feature_count: 12,
+    preview_points: [{ x: "2010-01-01", target: 10, lag: null, rolling: null, fourier: 0 }],
+    lag_correlations: [{ lag: 1, correlation: 0.8, selected: true }, { lag: 12, correlation: 0.9, selected: true }],
+    availability: [{ name: "Price_lag_12", family: "lag", available_count: 228, missing_count: 12, coverage: 0.95 }],
+    cyclic_points: [{ x: "2010-01-01", feature: "fourier_p12_k1_sin", value: 0 }],
+    catalog: [{ name: "Price_lag_12", family: "lag", formula: "y[t-12]", lookback: 12, known_in_advance: false, causal: true, missing_count: 12, coverage: 0.95 }],
+    warnings: [], recommendation: "Начните с подтверждённых периодов.",
+    methodology_note: "Все target-derived признаки используют только прошлое.",
+  },
+};
+
 // Маршрутизирующий мок fetch -- используется везде, где раньше был
 // плоский `jest.fn().mockResolvedValue(MISSING_PROFILE)`: теперь ДВА
 // реальных стопа опрашивают бэкенд параллельно при монтировании, и без
 // маршрутизации по URL «Выбросы» получали бы чужой (missing-shaped)
 // ответ.
-function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; decomposition?: unknown; variance?: unknown; smoothing?: unknown; stationarity?: unknown; spectral?: unknown; put?: unknown } = {}) {
+function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; decomposition?: unknown; variance?: unknown; smoothing?: unknown; stationarity?: unknown; spectral?: unknown; featureGeneration?: unknown; put?: unknown } = {}) {
   return jest.fn((url: string, init?: RequestInit) => {
     if (typeof url === "string" && url.includes("/target-column")) {
       const selected = init?.method === "POST"
@@ -204,6 +222,9 @@ function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regulari
     }
     if (typeof url === "string" && url.includes("spectral-profile")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.spectral ?? SPECTRAL_PROFILE) });
+    }
+    if (typeof url === "string" && url.includes("feature-generation-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.featureGeneration ?? FEATURE_GENERATION_PROFILE) });
     }
     if (typeof url === "string" && url.includes("regularity-profile")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(overrides.regularity ?? REGULARITY_PROFILE) });
@@ -717,5 +738,29 @@ describe("TsAnalysisPreprocessing — остановка «Спектральн�
     fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
     expect(screen.getByText(/Legacy compute_fft_features/)).toBeInTheDocument();
     expect(screen.getByText(/ненормированной и зависела от N/)).toBeInTheDocument();
+  });
+});
+
+describe("TsAnalysisPreprocessing — остановка «Генерация признаков»", () => {
+  beforeEach(() => { global.fetch = routeFetch(); });
+
+  it("shows five feature views, actionable status and mode selector", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Генерация признаков"));
+    expect(await screen.findByRole("tablist", { name: "Представления генерации признаков" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Режим проверки Генерация признаков" })).toBeInTheDocument();
+    expect(screen.getByText("Набор рекомендован, но ещё не применён")).toBeInTheDocument();
+    expect(screen.getAllByText("12", { selector: "strong" }).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("opens the wizard and documents corrected legacy methodology", async () => {
+    render(<TsAnalysisPreprocessing />);
+    fireEvent.click(screen.getByText("Генерация признаков"));
+    await screen.findByRole("tablist", { name: "Представления генерации признаков" });
+    fireEvent.click(screen.getByRole("button", { name: "Сгенерировать признаки" }));
+    expect(screen.getByRole("region", { name: "Мастер генерации признаков" })).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/12 наблюдений превратились бы в 12 дней/)).toBeInTheDocument();
+    expect(screen.getByText(/target.shift\(1\)/)).toBeInTheDocument();
   });
 });

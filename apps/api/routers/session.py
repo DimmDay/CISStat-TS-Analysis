@@ -39,6 +39,10 @@ from apps.api.preprocessing_spectral import (
     build_preprocessing_spectral_profile,
     preview_spectral_selection,
 )
+from apps.api.preprocessing_feature_engineering import (
+    build_feature_generation_profile,
+    preview_feature_generation,
+)
 from apps.api.schemas import (
     ColumnDetectionOut,
     ColumnStatsOut,
@@ -95,6 +99,9 @@ from apps.api.schemas import (
     DatasetPreprocessingSpectralProfileResponse,
     DatasetPreprocessingSpectralSelectionRequest,
     DatasetPreprocessingSpectralSelectionResponse,
+    DatasetPreprocessingFeatureGenerationProfileResponse,
+    DatasetPreprocessingFeatureGenerationRequest,
+    DatasetPreprocessingFeatureGenerationResponse,
     DatasetRangeCorrectionRequest,
     DatasetRangeCorrectionResponse,
     DatasetRangeProfileResponse,
@@ -405,6 +412,17 @@ def _preprocessing_spectral_status(
     if not applicable:
         return "skipped", "not_required"
     return "done", None
+
+
+def _preprocessing_feature_generation_status(
+    mode: str, applicable: bool, generated: bool,
+) -> tuple[str, Optional[str]]:
+    """До apply остановка требует решения; применённый актуальный набор — done."""
+    if mode == "disabled":
+        return "skipped", "disabled"
+    if not applicable:
+        return "skipped", "not_required"
+    return ("done" if generated else "warning"), None
 
 
 def _to_response(session: AnalysisSession) -> SessionStateResponse:
@@ -2631,6 +2649,88 @@ def save_dataset_preprocessing_spectral_selection(
         session.touch()
         store.save(session)
     return DatasetPreprocessingSpectralSelectionResponse(applied=payload.apply, **summary)
+
+
+@router.get(
+    "/dataset/preprocessing/feature-generation-profile",
+    response_model=DatasetPreprocessingFeatureGenerationProfileResponse,
+)
+def get_dataset_preprocessing_feature_generation_profile(
+    column: str,
+    request: Request,
+    response: Response,
+):
+    """Рекомендации и пять визуальных срезов безопасной матрицы X."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая")
+    try:
+        profile = build_feature_generation_profile(
+            session.dataframe,
+            column,
+            spectral_selection=session.preprocessing_spectral_selection,
+            saved_generation=session.preprocessing_feature_generation,
+        )
+    except (ValueError, TypeError, FloatingPointError, OverflowError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    mode = _effective_preprocessing_check_modes(session)["feature_eng"]
+    status, status_reason = _preprocessing_feature_generation_status(
+        mode, profile["applicable"], profile["generated"],
+    )
+    return DatasetPreprocessingFeatureGenerationProfileResponse(
+        mode=mode, status=status, status_reason=status_reason, profile=profile,
+    )
+
+
+@router.post(
+    "/dataset/preprocessing/feature-generations",
+    response_model=DatasetPreprocessingFeatureGenerationResponse,
+)
+def create_dataset_preprocessing_feature_generation(
+    payload: DatasetPreprocessingFeatureGenerationRequest,
+    request: Request,
+    response: Response,
+):
+    """Preview/apply каузальных признаков; apply атомарно меняет DataFrame."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if payload.column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail=f"Колонка '{payload.column}' отсутствует в датасете")
+    if not pd.api.types.is_numeric_dtype(session.dataframe[payload.column]):
+        raise HTTPException(status_code=422, detail=f"Колонка '{payload.column}' не числовая")
+    try:
+        featured_df, summary = preview_feature_generation(
+            session.dataframe,
+            payload.column,
+            lags=payload.lags,
+            rolling_windows=payload.rolling_windows,
+            rolling_statistics=payload.rolling_statistics,
+            difference_lags=payload.difference_lags,
+            calendar_features=payload.calendar_features,
+            fourier_periods=payload.fourier_periods,
+            fourier_harmonics=payload.fourier_harmonics,
+            include_time_index=payload.include_time_index,
+            drop_warmup_rows=payload.drop_warmup_rows,
+        )
+    except (ValueError, TypeError, FloatingPointError, OverflowError) as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if payload.apply:
+        session.dataframe = featured_df
+        session.preprocessing_feature_generation = dict(summary["metadata"])
+        if session.dataset is not None:
+            session.dataset.rows = len(featured_df)
+            session.dataset.columns = len(featured_df.columns)
+        session.touch()
+        store.save(session)
+    return DatasetPreprocessingFeatureGenerationResponse(applied=payload.apply, **summary)
 
 
 @router.get(
