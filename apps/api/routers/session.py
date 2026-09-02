@@ -84,6 +84,9 @@ from apps.api.schemas import (
     DatasetOutlierHistogramResponse,
     DatasetOutlierLineResponse,
     DatasetOutlierProfileResponse,
+    DatasetPassportCaptureResponse,
+    DatasetPassportCompareResponse,
+    DatasetPassportStatusResponse,
     DatasetMissingMatrixResponse,
     DatasetMissingProfileResponse,
     DatasetPreprocessingCheckModesRequest,
@@ -144,6 +147,9 @@ from apps.api.schemas import (
     DecompositionSeriesResponse,
     DetectionCandidateOut,
     DistributionChartResponse,
+    DateColumnCandidateOut,
+    DateColumnRequest,
+    DateColumnResponse,
     HistogramBin,
     KdePoint,
     PanelBalanceResponse,
@@ -184,7 +190,18 @@ from apps.api.schemas import (
     ValidationCheckResult,
     ValidationTypeProfileOut,
 )
-from app.data.detectors import score_all_columns_as_date, score_all_columns_as_entity_group, detect_column_frequency
+from app.core.passport import (
+    _compare_ts_props,
+    calculate_ts_passport,
+    prepare_passport_series,
+    series_fingerprint,
+)
+from app.data.detectors import (
+    detect_column_frequency,
+    score_all_columns_as_date,
+    score_all_columns_as_entity_group,
+    smart_to_datetime,
+)
 from validation.engine import profile_consistency, profile_formats, profile_inclusion, profile_ranges, profile_uniqueness, validate_dataframe
 from validation.inclusion import coerce_inclusion_rule_to_series
 from validation.referential import profile_referential
@@ -228,6 +245,7 @@ from apps.api.uniqueness_correction import preview_uniqueness_correction
 from apps.api.session_store import (
     AnalysisSession,
     DatasetInfo,
+    PASSPORT_STAGES,
     format_size_label,
     get_or_create_session_id,
     get_session_store,
@@ -459,6 +477,7 @@ def _to_response(session: AnalysisSession) -> SessionStateResponse:
         stages=session.stages,
         last_active_stage=session.last_active_stage,
         target_column=session.target_column,
+        date_column=session.date_column,
         updated_at=session.updated_at,
     )
 
@@ -3521,6 +3540,7 @@ def convert_dataset_types(
             converted_df[session.target_column]
         ):
             session.target_column = None
+            session.reset_passports()
             session.sufficiency_plan = {}
             target_column_reset = True
         session.touch()
@@ -3664,6 +3684,13 @@ def set_target_column(
             f"Доступные числовые колонки: {_get_numeric_columns(df)}",
         )
 
+    if column == session.date_column:
+        raise HTTPException(
+            status_code=422,
+            detail="Колонки даты и целевого значения должны различаться",
+        )
+
+    passport_history_reset = bool(session.passport_history) and column != session.target_column
     session.set_target_column(column)
     session.sufficiency_plan = {}
     # КОНТРАКТ SessionStore: мутация -- обязательно save().
@@ -3675,6 +3702,308 @@ def set_target_column(
         suggested_column=_suggest_target_column(numeric_columns),
         available_columns=numeric_columns,
         has_dataset=True,
+        passport_history_reset=passport_history_reset,
+    )
+
+
+# ────────────────────────────────────────────────────────────────────
+# Date column + паспорта свойств ряда (Task 91, этап 3)
+# ────────────────────────────────────────────────────────────────────
+
+def _date_column_candidates(df: pd.DataFrame) -> list[dict[str, object]]:
+    return [
+        {"name": str(item["name"]), "score": float(item["score"])}
+        for item in score_all_columns_as_date(df)
+    ]
+
+
+def _date_column_response(
+    session: AnalysisSession,
+    *,
+    passport_history_reset: bool = False,
+) -> DateColumnResponse:
+    if session.dataframe is None:
+        return DateColumnResponse(
+            date_column=None,
+            suggested_column=None,
+            candidates=[],
+            has_dataset=False,
+            passport_history_reset=False,
+        )
+    candidates = _date_column_candidates(session.dataframe)
+    suggested = (
+        str(candidates[0]["name"])
+        if candidates and float(candidates[0]["score"]) >= 0.7
+        else None
+    )
+    return DateColumnResponse(
+        date_column=session.date_column,
+        suggested_column=suggested,
+        candidates=[DateColumnCandidateOut(**item) for item in candidates],
+        has_dataset=True,
+        passport_history_reset=passport_history_reset,
+    )
+
+
+@router.get("/date-column", response_model=DateColumnResponse)
+def get_date_column(request: Request, response: Response):
+    """Текущая временная колонка и ранжированные кандидаты детектора."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    return _date_column_response(session)
+
+
+@router.post("/date-column", response_model=DateColumnResponse)
+def set_date_column(
+    payload: DateColumnRequest,
+    request: Request,
+    response: Response,
+):
+    """Сохраняет общую date_column и инвалидирует несопоставимые паспорта."""
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Сначала загрузите датасет — временную колонку нельзя выбрать без данных",
+        )
+    column = payload.column
+    df = session.dataframe
+    if column not in [str(item) for item in df.columns]:
+        raise HTTPException(status_code=404, detail=f"Колонка '{column}' не найдена в датасете")
+    if column == session.target_column:
+        raise HTTPException(
+            status_code=422,
+            detail="Колонки даты и целевого значения должны различаться",
+        )
+    score = next(
+        (
+            float(item["score"])
+            for item in score_all_columns_as_date(df)
+            if str(item["name"]) == column
+        ),
+        0.0,
+    )
+    if score < 0.7:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Колонка '{column}' не распознана как временная",
+        )
+    parsed = smart_to_datetime(df[column])
+    if int(parsed.notna().sum()) < 2:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Колонка '{column}' содержит меньше двух валидных дат",
+        )
+
+    passport_history_reset = bool(session.passport_history) and column != session.date_column
+    session.set_date_column(column)
+    store.save(session)
+    return _date_column_response(
+        session,
+        passport_history_reset=passport_history_reset,
+    )
+
+
+def _require_passport_series(session: AnalysisSession) -> pd.Series:
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    if not session.target_column:
+        raise HTTPException(status_code=404, detail="Не выбрана целевая колонка ряда")
+    if not session.date_column:
+        raise HTTPException(status_code=404, detail="Не выбрана временная колонка ряда")
+    if session.target_column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail="Целевая колонка отсутствует в текущем датасете")
+    if session.date_column not in session.dataframe.columns:
+        raise HTTPException(status_code=422, detail="Временная колонка отсутствует в текущем датасете")
+    try:
+        return prepare_passport_series(
+            session.dataframe,
+            session.target_column,
+            session.date_column,
+        )
+    except ValueError as ex:
+        raise HTTPException(status_code=422, detail=str(ex)) from ex
+
+
+def _passport_point_status(
+    session: AnalysisSession,
+    stage: str,
+    current_fingerprint: Optional[str],
+) -> dict[str, object]:
+    history = [item for item in session.passport_history if item.stage == stage]
+    latest = history[-1] if history else None
+    return {
+        "captured": latest is not None,
+        "captured_at": latest.captured_at if latest else None,
+        "is_stale": (
+            current_fingerprint != latest.fingerprint
+            if latest is not None and current_fingerprint is not None
+            else None
+        ),
+        "fingerprint": latest.fingerprint if latest else None,
+        "history_count": len(history),
+    }
+
+
+@router.get(
+    "/dataset/passport/status",
+    response_model=DatasetPassportStatusResponse,
+)
+def get_dataset_passport_status(request: Request, response: Response):
+    """Единый readiness/staleness источник для трёх frontend-панелей."""
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    current_fingerprint: Optional[str] = None
+    reason: Optional[str] = None
+    try:
+        current_fingerprint = series_fingerprint(_require_passport_series(session))
+    except HTTPException as ex:
+        reason = str(ex.detail)
+    return DatasetPassportStatusResponse(
+        has_dataset=session.dataframe is not None,
+        target_column=session.target_column,
+        date_column=session.date_column,
+        series_ready=current_fingerprint is not None,
+        reason=reason,
+        current_fingerprint=current_fingerprint,
+        start=_passport_point_status(session, "start", current_fingerprint),
+        validation=_passport_point_status(session, "validation", current_fingerprint),
+        exit=_passport_point_status(session, "exit", current_fingerprint),
+    )
+
+
+def _capture_baseline(session: AnalysisSession, stage: str):
+    if stage == "start":
+        return session.latest_passport("start")
+    if stage == "validation":
+        return session.latest_passport("validation") or session.latest_passport("start")
+    return (
+        session.latest_passport("exit")
+        or session.latest_passport("validation")
+        or session.latest_passport("start")
+    )
+
+
+@router.get(
+    "/dataset/passport/compare",
+    response_model=DatasetPassportCompareResponse,
+)
+def compare_dataset_passports(
+    request: Request,
+    response: Response,
+    to: str = Query(...),
+    from_stage: Optional[str] = Query(None, alias="from"),
+):
+    """Сравнение пары либо полной траектории start → validation → exit."""
+    if to not in {"validation", "exit"}:
+        raise HTTPException(status_code=422, detail="Параметр to: validation или exit")
+    if from_stage not in {None, "start", "validation"}:
+        raise HTTPException(status_code=422, detail="Параметр from: start или validation")
+    if to == "validation" and from_stage not in {None, "start"}:
+        raise HTTPException(status_code=422, detail="validation сравнивается только со start")
+
+    session_id = get_or_create_session_id(request, response)
+    session = get_session_store().get_or_create(session_id)
+    if session.dataframe is None:
+        raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    snapshots = {stage: session.latest_passport(stage) for stage in PASSPORT_STAGES}
+
+    if to == "validation":
+        path = ["start", "validation"]
+    elif from_stage is not None:
+        path = [from_stage, "exit"]
+    else:
+        path = ["start"]
+        if snapshots["validation"] is not None:
+            path.append("validation")
+        path.append("exit")
+
+    missing = [stage for stage in path if snapshots[stage] is None]
+    if missing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Не зафиксированы паспорта: {', '.join(missing)}",
+        )
+
+    comparisons = []
+    for old_stage, new_stage in zip(path, path[1:]):
+        old = snapshots[old_stage]
+        new = snapshots[new_stage]
+        comparisons.append({
+            "from_stage": old_stage,
+            "to_stage": new_stage,
+            "from_snapshot_id": old.snapshot_id,
+            "to_snapshot_id": new.snapshot_id,
+            "comparison": _compare_ts_props(old.passport, new.passport),
+        })
+    return DatasetPassportCompareResponse(
+        target_column=session.target_column or snapshots[path[0]].target_column,
+        date_column=session.date_column,
+        path=path,
+        comparisons=comparisons,
+    )
+
+
+@router.post(
+    "/dataset/passport/{stage}",
+    response_model=DatasetPassportCaptureResponse,
+)
+def capture_dataset_passport(
+    stage: str,
+    request: Request,
+    response: Response,
+):
+    """Фиксирует start/validation/exit с серверным контролем порядка."""
+    if stage not in PASSPORT_STAGES:
+        raise HTTPException(status_code=404, detail=f"Неизвестная точка паспорта: {stage}")
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    series = _require_passport_series(session)
+
+    start = session.latest_passport("start")
+    validation = session.latest_passport("validation")
+    exit_snapshot = session.latest_passport("exit")
+    if stage == "start" and (validation is not None or exit_snapshot is not None):
+        raise HTTPException(status_code=409, detail="Нельзя менять start после следующей точки")
+    if stage in {"validation", "exit"} and start is None:
+        raise HTTPException(status_code=409, detail="Сначала зафиксируйте паспорт start")
+    if stage == "validation" and exit_snapshot is not None:
+        raise HTTPException(status_code=409, detail="Нельзя фиксировать validation после exit")
+
+    fingerprint = series_fingerprint(series)
+    baseline = _capture_baseline(session, stage)
+    if stage != "start" and baseline is not None and baseline.fingerprint == fingerprint:
+        raise HTTPException(
+            status_code=409,
+            detail="Свойства ряда не изменились с последнего расчёта",
+        )
+
+    numeric_columns = [
+        column
+        for column in _get_numeric_columns(session.dataframe)
+        if column != session.date_column
+    ]
+    passport = calculate_ts_passport(
+        series,
+        df_filtered=session.dataframe,
+        ct_f={"num": numeric_columns},
+        target_col=session.target_column,
+    )
+    if "error" in passport:
+        raise HTTPException(status_code=422, detail=str(passport["error"]))
+    snapshot = session.append_passport_snapshot(stage, passport, fingerprint)
+    store.save(session)
+    return DatasetPassportCaptureResponse(
+        snapshot_id=snapshot.snapshot_id,
+        stage=snapshot.stage,
+        passport=snapshot.passport,
+        fingerprint=snapshot.fingerprint,
+        target_column=snapshot.target_column,
+        date_column=snapshot.date_column,
+        captured_at=snapshot.captured_at,
     )
 
 

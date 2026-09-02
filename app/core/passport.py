@@ -27,6 +27,8 @@ from statsmodels.tsa.stattools import adfuller, acf as acf_func
 from statsmodels.tsa.seasonal import STL
 from statsmodels.stats.diagnostic import acorr_ljungbox
 
+from app.data.detectors import smart_to_datetime
+
 logger = logging.getLogger(__name__)
 
 _MIN_PASSPORT_POINTS = 30
@@ -121,7 +123,11 @@ def prepare_passport_series(
     if min_points < 1:
         raise ValueError("min_points должен быть положительным")
 
-    dates = pd.to_datetime(dataframe[date_column], errors="coerce", utc=True)
+    # Единый platform detector корректно трактует числовые годы: голый
+    # pd.to_datetime(2024) ошибочно означает наносекунды после Unix epoch.
+    dates = pd.to_datetime(
+        smart_to_datetime(dataframe[date_column]), errors="coerce", utc=True
+    )
     values = pd.to_numeric(dataframe[target_column], errors="coerce")
     finite = pd.Series(
         np.isfinite(values.to_numpy(dtype=float, na_value=np.nan)),

@@ -844,3 +844,63 @@ ValidationTypeMatrix не отнесена к изменяемой визуал�
 RED: 2/2 ожидаемых FAIL — отсутствовали общий контейнер 468px и растягиваемая внутренняя область.
 GREEN: сфокусированный набор 2 suites, 52/52 PASS; полная frontend-регрессия — 79 suites, 676/676 PASS.
 
+---
+
+Task ID: 91 — Паспорта свойств ряда, этап 3 (session API, TDD)
+
+Границы пакета
+
+Реализован следующий самостоятельный этап плана после foundation/persistence Task 90: единый session API выбора временной колонки, readiness/status, фиксации паспортов `start` / `validation` / `exit` и сравнения снимков.
+
+Frontend-панели паспортов в «Загрузке», «Валидации» и «Предобработке» намеренно не входят в этот пакет: они будут следующим этапом и используют зафиксированный здесь API-контракт.
+
+TDD: RED
+
+Добавлен новый API-набор `tests/api/test_dataset_passport.py`. Первичный RED: 19/19 ожидаемых FAIL с HTTP 404, так как session routes ещё отсутствовали. До GREEN набор расширен до 22 тестов: добавлены числовая колонка года, сброс истории при очистке target через преобразование типа и защита полноты stateless `PassportResponse`.
+
+Контракты покрывают GET/POST временной колонки, detector suggestion, сохранение и сброс истории, readiness/staleness, все три точки фиксации, повторные снимки append-only, порядок точек, неизменившийся ряд, прямой путь `start → exit`, полную траекторию сравнения, ошибки dataset/columns/min-length/duplicate dates и сохранность спектральных секций ответа.
+
+Реализация session API
+
+- `GET /v1/session/date-column` возвращает текущее значение, ранжированные кандидаты общего platform detector и безопасную рекомендацию.
+- `POST /v1/session/date-column` проверяет существование и пригодность колонки, запрещает совпадение с target, сохраняет выбор в сессии и явно сообщает о сбросе несовместимой истории.
+- `GET /v1/session/dataset/passport/status` является единым источником readiness/staleness для будущих трёх frontend-панелей: возвращает текущий fingerprint и статус/дату/счётчик истории каждой точки.
+- `POST /v1/session/dataset/passport/{stage}` переиспользует канонические `prepare_passport_series()`, `series_fingerprint()` и `calculate_ts_passport()`, контролирует порядок точек и возвращает 409 для расчёта без изменений.
+- `GET /v1/session/dataset/passport/compare` переиспользует `_compare_ts_props()` для пары `start → validation`, конкретной пары до `exit` или полной траектории `start → validation? → exit`.
+- API использует единый `PASSPORT_STAGES` из session store, без второй копии stage-контракта.
+
+Инвалидация состояния
+
+Смена target/date сбрасывает все паспортные снимки через методы `AnalysisSession`; повторная установка того же значения историю сохраняет. Если преобразование типа делает текущий target нечисловым и очищает его, история теперь также сбрасывается. Выбор одной колонки одновременно как date и target запрещён в обоих направлениях.
+
+Методологические уточнения
+
+Для подготовки индекса переиспользован `smart_to_datetime()`: это устраняет ошибочную интерпретацию числового года `2024` как наносекунд после Unix epoch, сохраняя календарную семантику.
+
+История остаётся append-only согласно решению тимлида для будущего «Отчёта об исследовании временного ряда». При проверке доступности повторного `validation`/`exit` API сравнивает ряд с последним снимком того же этапа, а не только с предыдущей точкой траектории; это не позволяет повторно нажимать кнопку без нового изменения и не теряет аудиторский след.
+
+Pydantic `PassportResponse` дополнен уже вычисляемыми каноническим backend секциями `correlations`, `seasonal_periods`, `fft`, `periodogram`, `wavelet`: прежняя схема молча отбрасывала их в stateless API.
+
+Стабилизация существующего frontend-теста
+
+В коммите синхронизации `5a6d1c3` отсутствовала ранее подготовленная коррекция теста `TsAnalysisValidation`. Она включена в пакет: перед сменой режима тест теперь ждёт завершённый React-render первого validation response, а не только увеличение счётчика fetch. Это устраняет гонку, сообщённую в полном Jest-прогоне, без изменения production frontend.
+
+GREEN и проверка
+
+- Новый API-набор: 22/22 PASS.
+- Паспортная/session регрессия: 161/161 PASS.
+- Проблемный `TsAnalysisValidation` suite: 32/32 PASS.
+- Полная frontend-регрессия: 80 suites, 700/700 PASS, 0 snapshots.
+- `py_compile` изменённых Python-файлов: PASS.
+- FastAPI/OpenAPI smoke: PASS; все 4 новых route paths присутствуют в схеме.
+- `git diff --check`: PASS.
+
+Расширенный backend-прогон с обходом уже существующего `IndentationError` в `tests/unit/test_file_loader.py:87`: 1193 PASS, 23 FAIL, 3 ERROR. Отдельный прогон чистого worktree на точном baseline `5a6d1c3` воспроизвёл те же 26 test cases без отличий; новых backend-регрессий Task 91 не добавил. Сбои baseline относятся к коротким/single-column CSV fixtures, устаревшим diagnostics/validation expectations, ARIMA на короткой выборке и отсутствующей snapshot fixture.
+
+Изменённые и новые файлы
+
+- `app/core/passport.py`
+- `apps/api/routers/session.py`
+- `apps/api/schemas.py`
+- `packages/ui/components/TsAnalysisValidation.test.tsx`
+- `tests/api/test_dataset_passport.py` (новый)

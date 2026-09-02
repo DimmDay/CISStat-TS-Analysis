@@ -519,6 +519,12 @@ describe("TsAnalysisValidation", () => {
     await waitFor(() => expect(runButton).toBeEnabled());
     fireEvent.click(runButton);
     await waitFor(() => expect(validateCalls).toBe(1));
+    // validateCalls increments before the response is committed to React state.
+    // Wait for the completed render so changing the mode cannot race the first run.
+    await waitFor(() => {
+      expect(screen.getByText("1.00")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Запустить валидацию" })).toBeEnabled();
+    });
 
     fireEvent.change(screen.getByRole("combobox", { name: "Режим проверки Принадлежность к набору" }), {
       target: { value: "disabled" },

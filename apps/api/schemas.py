@@ -29,8 +29,13 @@ class PassportResponse(BaseModel):
     autocorrelation: Optional[Dict[str, Any]] = None
     normality: Optional[Dict[str, Any]] = None
     trend: Optional[Dict[str, Any]] = None
+    correlations: Optional[Dict[str, Any]] = None
     seasonality: Optional[Dict[str, Any]] = None
+    seasonal_periods: Optional[Dict[str, Any]] = None
     hurst: Optional[Dict[str, Any]] = None
+    fft: Optional[Dict[str, Any]] = None
+    periodogram: Optional[Dict[str, Any]] = None
+    wavelet: Optional[Dict[str, Any]] = None
     basic_stats: Optional[Dict[str, Any]] = None
     timestamp: Optional[str] = None
     error: Optional[str] = None
@@ -2685,6 +2690,7 @@ class SessionStateResponse(BaseModel):
     stages: Dict[str, str]
     last_active_stage: Optional[str] = None
     target_column: Optional[str] = None
+    date_column: Optional[str] = None
     updated_at: Optional[str] = None
 
 
@@ -2720,6 +2726,77 @@ class TargetColumnResponse(BaseModel):
     has_dataset: bool = Field(
         False, description="Загружен ли датасет (если нет -- выбор target невозможен)"
     )
+    passport_history_reset: bool = Field(
+        False,
+        description="Смена target сбросила историю несопоставимых паспортов",
+    )
+
+
+# ── Date column + session passports ──
+
+PassportStage = Literal["start", "validation", "exit"]
+
+
+class DateColumnRequest(BaseModel):
+    column: str = Field(..., min_length=1, description="Имя временной колонки")
+
+
+class DateColumnCandidateOut(BaseModel):
+    name: str
+    score: float = Field(..., ge=0, le=1)
+
+
+class DateColumnResponse(BaseModel):
+    date_column: Optional[str] = None
+    suggested_column: Optional[str] = None
+    candidates: List[DateColumnCandidateOut] = Field(default_factory=list)
+    has_dataset: bool = False
+    passport_history_reset: bool = False
+
+
+class PassportPointStatusOut(BaseModel):
+    captured: bool = False
+    captured_at: Optional[str] = None
+    is_stale: Optional[bool] = None
+    fingerprint: Optional[str] = None
+    history_count: int = 0
+
+
+class DatasetPassportStatusResponse(BaseModel):
+    has_dataset: bool
+    target_column: Optional[str] = None
+    date_column: Optional[str] = None
+    series_ready: bool = False
+    reason: Optional[str] = None
+    current_fingerprint: Optional[str] = None
+    start: PassportPointStatusOut
+    validation: PassportPointStatusOut
+    exit: PassportPointStatusOut
+
+
+class DatasetPassportCaptureResponse(BaseModel):
+    snapshot_id: str
+    stage: PassportStage
+    passport: Dict[str, Any]
+    fingerprint: str
+    target_column: str
+    date_column: Optional[str] = None
+    captured_at: str
+
+
+class PassportComparisonPairOut(BaseModel):
+    from_stage: PassportStage
+    to_stage: PassportStage
+    from_snapshot_id: str
+    to_snapshot_id: str
+    comparison: Dict[str, Any]
+
+
+class DatasetPassportCompareResponse(BaseModel):
+    target_column: str
+    date_column: Optional[str] = None
+    path: List[PassportStage]
+    comparisons: List[PassportComparisonPairOut]
 
 
 # ── Управление правилами валидации ──
