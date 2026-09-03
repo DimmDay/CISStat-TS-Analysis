@@ -316,6 +316,15 @@ def preview_variance_transformation(
         "method": method, "lambda_value": _round_optional(fitted_lambda, 12),
         "inverse_supported": True, "fitted_on_n": int(len(values)),
         "standardized": False, "shift": 0.0,
+        "lambda_policy": (
+            "fixed" if lambda_value is not None else
+            ("estimate_per_train_fold" if method in {"box_cox", "yeo_johnson"} else "not_applicable")
+        ),
+        "fit_policy": (
+            "fixed_parameter" if lambda_value is not None else
+            ("per_train_fold" if method in {"box_cox", "yeo_johnson"} else "deterministic")
+        ),
+        "preview_fit_scope": "full_history_diagnostic",
     }
     summary = {
         "column": column, "method": method,

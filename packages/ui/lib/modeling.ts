@@ -246,6 +246,35 @@ export interface BacktestResponse {
   folds?: BacktestFoldResult[];
   oof_predictions?: BacktestPredictionPoint[];
   warnings?: string[];
+  preprocessing?: {
+    fit_policy: "none" | "per_train_fold";
+    source_column: string;
+    target_column: string;
+    evaluation_scale: string;
+    transformations?: string[];
+    target_scaling?: string | null;
+    inverse_transform_applied?: boolean;
+  };
+}
+
+export interface TuningFoldPlan {
+  fold: number;
+  train_start: number;
+  train_end: number;
+  test_start: number;
+  test_end: number;
+  gap: number;
+}
+
+export interface SessionTuningResponse {
+  model_id: string;
+  best_params: Record<string, unknown>;
+  best_metrics: BacktestMetrics;
+  strategy: "single" | "expanding" | "sliding";
+  cohort_id: string;
+  folds: TuningFoldPlan[];
+  preprocessing: NonNullable<BacktestResponse["preprocessing"]>;
+  warnings: string[];
 }
 
 export type TraceabilityStatus = "done" | "warning" | "skipped" | "pending";

@@ -66,6 +66,11 @@ def test_plan_uses_exact_eda_fold_boundaries_and_stable_cohort():
 
     assert first.cohort_id == second.cohort_id
     assert first.cohort_id != different_metric_scale.cohort_id
+    different_preprocessing = build_backtest_plan(
+        _validation(), n_observations=9, fingerprint="fp", target_column="value",
+        seasonal_period=1, preprocessing_signature="scaled-standard",
+    )
+    assert first.cohort_id != different_preprocessing.cohort_id
     assert first.strategy == "expanding"
     assert [(fold.train_indices, fold.test_indices) for fold in first.folds] == [
         (list(range(0, 4)), [5, 6]),

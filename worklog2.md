@@ -1342,7 +1342,7 @@ TDD и проверка
 
 Спроектирована архитектура фичи expand/collapse для вложенных графиков
 «Обзора» на всех вкладках платформы (Validation/Preprocessing/EDA/Modeling).
-Артефакт: `spec_max/min_graph.md`.
+Артефакт: `spec_max_graph.md`.
 
 Ключевые решения: переиспользуемый примитив ExpandableChartPanel/
 ExpandableChartsProvider/ChartExpandToggle в packages/ui; single-expand
@@ -1355,3 +1355,113 @@ detail_level=compact|expanded для сэмплирования на раскр�
 
 Статус: архитектурный дизайн передан на ревью, реализация не начата
 (коммит/push в main запрещён протоколом AGENTS.md).
+
+---
+
+## Task 98 — Единый BacktestPlan для tuning и fold-local preprocessing (TDD)
+
+### Исходная точка и выявленный разрыв
+
+Работа выполнена на точном исходном коммите
+`fe1c636fccb75bb8f9162fa479cbb7ccecc5f6ca`; commit/push не выполнялись.
+Повторно изучены `AGENTS.md`, Task 96, session Modeling API, legacy
+`/v1/models/tune`, EDA validation strategy, preprocessing metadata и оба
+frontend shell.
+
+До Task 98 session backtest уже исполнял `BacktestPlan`, но session tuning
+строил второй набор разбиений через `ExpandingWindowCV`. Поэтому он не мог
+гарантировать те же фактические границы folds, отдельно интерпретировал
+`min_train_size/step`, запрещал sliding и допускал пользовательский `cv`,
+разрывающий cohort. Сохранённый рецепт `fit_policy=per_train_fold` не
+исполнялся: scaling target игнорировался, а оценочные power-transform target
+блокировались целиком.
+
+### Архитектурное решение
+
+- Добавлен `modeling_tuning.py`: grid/max-trials сохранены, но каждый trial
+  теперь запускается через тот же строгий `run_backtest_plan()`, что и
+  production backtest. Метрики агрегируются по всем OOF-точкам exact EDA
+  folds, а не по заново построенному legacy CV.
+- Session endpoint `POST /v1/session/modeling/tune` принимает только
+  сохранённый EDA `BacktestPlan`. `single`, `expanding` и `sliding`
+  поддерживаются одинаково; ручной `cv` возвращает 422. Публичный legacy
+  `/v1/models/tune` оставлен для обратной совместимости, но Modeling больше
+  его не вызывает.
+- Tuning response сохраняет и показывает `strategy`, `cohort_id`, точные
+  `train_start/train_end/test_start/test_end/gap` каждого fold,
+  preprocessing contract и warnings. `weighted_score` запрещён на этом
+  шаге: он определяется только внутри общего comparison cohort.
+- Sliding plan дополнительно валидирует постоянный `train_window` и
+  монотонное смещение train-окна.
+
+### Fold-local preprocessing
+
+- Добавлен `fold_preprocessing.py`, который восстанавливает цепочку
+  `source_column → ... → target_column` по сохранённым metadata. Полностью
+  материализованная диагностическая target-колонка не используется как
+  источник обучения.
+- Для каждого EDA fold отдельно выполняются fit/transform train и transform
+  последующего `gap + horizon`. Автоматические Box–Cox и Yeo–Johnson
+  переоценивают lambda только на train; явно заданная аналитиком lambda
+  хранится как fixed-рецепт; log/log1p/sqrt применяются детерминированно.
+- Реализованы fold-local stationarity и inverse для linear detrend,
+  first/second/seasonal/combined/log difference. Прогноз возвращается в
+  исходную шкалу перед OOF-метриками.
+- Causal SMA/EMA/WMA/median допускаются как явно выбранная целевая шкала;
+  некаузальные LOWESS/Savitzky–Golay отклоняются в production.
+- Если scaling recipe включает target, scaler fit-ится только на train fold,
+  а прогноз inverse-transform-ится до расчёта метрик. Рецепт только для X
+  не применяется текущими univariate ETS/ARIMA и маркируется предупреждением.
+- Preprocessing signature включена в `cohort_id`: разные transform/scaler
+  contracts нельзя сравнить как один эксперимент. Tuned params применяются
+  backtest только при совпадении cohort.
+- Backtest и Model Card сохраняют использованный preprocessing contract,
+  evaluation scale и факт inverse transform.
+
+### Frontend
+
+- Обзор стадии «Тюнинг» объясняет использование exact EDA BacktestPlan и
+  train-only preprocessing.
+- После запуска показывается компактная сводка: стратегия, число folds,
+  `fit_policy` и короткий cohort id; полный JSON-аудит сохранён.
+- TypeScript-контракты дополнены fold-local preprocessing и session tuning.
+
+### TDD и проверка
+
+- RED backend: новый набор остановился на отсутствующих
+  `fold_preprocessing`/`modeling_tuning`; RED frontend подтвердил отсутствие
+  tuning cohort summary.
+- GREEN core/session: 28/28 PASS. Проверены exact sliding boundaries и общий
+  cohort tuning↔backtest, запрет второго CV-контракта, train-only Box–Cox,
+  исходная шкала OOF, target scaling inverse и stationarity inverse.
+- Modeling UI: 56/56 PASS; отдельный overview: 3/3 PASS.
+- Расширенная legacy tuning/preprocessing регрессия: 158/160 PASS. Два
+  оставшихся ARIMA-сбоя на коротких legacy folds (`d=1`, statsmodels 0-D
+  initialization) совпадают с baseline Task 96 и не относятся к Task 98.
+- Расширенный Modeling-набор: 144/151 PASS. Кроме тех же двух ARIMA-сбоев,
+  пять падений относятся к ранее зафиксированному расхождению legacy
+  diagnostics YAML с runtime Phase 2; изменённые Task 98 тесты в остаток не
+  входят.
+- TypeScript standalone/embedded: PASS с ранее принятым флагом
+  `--noUncheckedSideEffectImports false`.
+- Production build standalone/embedded: PASS, по 13/13 страниц, `/modeling`
+  включена; First Load JS 455 kB. Для известного ограничения sandbox Node 24
+  `uv_resident_set_memory` применялся временный memory shim, после проверки
+  удалённый и не входящий в изменения.
+- `py_compile`, `git diff --check`: PASS.
+
+### Изменённые и новые файлы Task 98
+
+- `app/preprocessing/transforms.py`
+- `apps/api/backtesting.py`
+- `apps/api/fold_preprocessing.py` (новый)
+- `apps/api/modeling_tuning.py` (новый)
+- `apps/api/preprocessing_variance.py`
+- `apps/api/routers/modeling_session.py`
+- `apps/api/schemas.py`
+- `packages/ui/components/ModelingWorkflowOverview.tsx`
+- `packages/ui/components/ModelingWorkflowOverview.test.tsx`
+- `packages/ui/lib/modeling.ts`
+- `tests/api/test_modeling_workflow.py`
+- `tests/unit/test_backtesting_engine.py`
+- `tests/unit/test_modeling_tuning_plan.py` (новый)

@@ -220,7 +220,11 @@ def inverse_variance_transform(
     """Обратить трансформацию по сохранённым method/lambda."""
     from scipy.special import inv_boxcox
 
-    array = _variance_values(values)
+    array = np.asarray(values, dtype=float)
+    if array.ndim != 1 or array.size < 1:
+        raise ValueError("Обратная трансформация принимает непустой одномерный ряд")
+    if not np.isfinite(array).all():
+        raise ValueError("Прогноз содержит бесконечные или неопределённые значения")
     if method not in VARIANCE_TRANSFORM_METHODS:
         raise ValueError(f"Неподдерживаемый метод стабилизации: {method}")
     if method == 'box_cox':
@@ -592,5 +596,4 @@ def compute_row_properties(series: pd.Series, name: str = "") -> dict:
         props['distribution_type'] = 'Эмпирическое'
 
     return props
-
 

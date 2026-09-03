@@ -76,6 +76,8 @@ def test_preview_does_not_persist_apply_adds_column_and_saves_inverse_metadata()
     session = get_session_store().get(session_id)
     assert session is not None
     assert session.preprocessing_transformations["Price_box_cox"]["lambda_value"] is not None
+    assert session.preprocessing_transformations["Price_box_cox"]["lambda_policy"] == "estimate_per_train_fold"
+    assert session.preprocessing_transformations["Price_box_cox"]["fit_policy"] == "per_train_fold"
 
     persisted = client.get(
         "/v1/session/dataset/preprocessing/variance-profile",

@@ -3073,6 +3073,10 @@ class BacktestResponse(BaseModel):
     folds: List[BacktestFoldResult] = Field(default_factory=list)
     oof_predictions: List[BacktestPredictionPoint] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
+    preprocessing: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Fold-local preprocessing contract used by this run",
+    )
 
 
 # ── Моделирование: тюнинг гиперпараметров (Phase 1-C) ───────────────────
@@ -3151,6 +3155,16 @@ class TuneTrialResult(BaseModel):
     n_folds: int = Field(..., description="Число folds, по которым усреднены метрики")
 
 
+class TuneFoldPlan(BaseModel):
+    """Границы fold, реально исполненные session tuning."""
+    fold: int = Field(..., ge=1)
+    train_start: int = Field(..., ge=0)
+    train_end: int = Field(..., ge=0)
+    test_start: int = Field(..., ge=0)
+    test_end: int = Field(..., ge=0)
+    gap: int = Field(0, ge=0)
+
+
 class TuneResponse(BaseModel):
     """Ответ: результаты grid search с CV.
 
@@ -3178,3 +3192,10 @@ class TuneResponse(BaseModel):
         default_factory=list, description="Все trials с params и метриками"
     )
     duration_ms: float = Field(..., description="Время расчёта (мс)")
+    strategy: Optional[Literal["single", "expanding", "sliding"]] = None
+    cohort_id: Optional[str] = Field(
+        None, description="Тот же exact-fold cohort, что использует session backtest",
+    )
+    folds: List[TuneFoldPlan] = Field(default_factory=list)
+    preprocessing: Dict[str, Any] = Field(default_factory=dict)
+    warnings: List[str] = Field(default_factory=list)

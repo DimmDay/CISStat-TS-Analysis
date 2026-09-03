@@ -167,6 +167,53 @@ def test_candidates_preserve_sliding_eda_contract_for_backtest(client: TestClien
     assert all(fold["test_start"] - fold["train_end"] - 1 == 2 for fold in body["folds"])
 
 
+def test_tuning_reuses_exact_sliding_eda_plan_and_cohort(client: TestClient):
+    _prepare(client)
+    candidates = client.post(
+        "/v1/session/modeling/candidates",
+        json={
+            "strategy": "sliding", "horizon": 2, "n_splits": 2,
+            "gap": 1, "train_window": 40,
+        },
+    )
+    assert candidates.status_code == 200, candidates.text
+
+    tuned = client.post(
+        "/v1/session/modeling/tune",
+        json={"model_id": "ets", "max_trials": 1, "metric": "rmse"},
+    )
+
+    assert tuned.status_code == 200, tuned.text
+    body = tuned.json()
+    assert body["strategy"] == "sliding"
+    assert body["cohort_id"]
+    assert body["cv_config"] == {
+        "n_splits": 2, "test_size": 2, "min_train_size": 40,
+        "step": 2, "gap": 1,
+    }
+    assert [(fold["train_start"], fold["train_end"]) for fold in body["folds"]] == [
+        (51, 90), (53, 92),
+    ]
+    assert all(trial["n_folds"] == 2 for trial in body["trials"])
+
+    backtest = client.post("/v1/session/modeling/backtest", json={"model_id": "ets"})
+    assert backtest.status_code == 200, backtest.text
+    assert backtest.json()["cohort_id"] == body["cohort_id"]
+
+
+def test_session_tuning_rejects_a_second_legacy_cv_contract(client: TestClient):
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=2&n_splits=2").status_code == 200
+
+    response = client.post(
+        "/v1/session/modeling/tune",
+        json={"model_id": "ets", "cv": {"n_splits": 1, "test_size": 1}},
+    )
+
+    assert response.status_code == 422
+    assert "BacktestPlan" in response.json()["detail"]
+
+
 def test_diagnostics_reuses_out_of_fold_residuals_from_backtest(client: TestClient):
     _prepare(client)
     assert client.get("/v1/session/modeling/context?horizon=3&n_splits=3").status_code == 200
@@ -194,6 +241,40 @@ def test_backtest_blocks_target_transform_fitted_on_full_history(client: TestCli
 
     assert response.status_code == 422
     assert "train fold" in response.json()["detail"]
+
+
+def test_session_backtest_refits_and_inverts_saved_power_transform_per_fold(client: TestClient):
+    uploaded = client.post(
+        "/v1/internal/upload",
+        files={"file": ("series.csv", io.BytesIO(_csv().encode()), "text/csv")},
+    )
+    assert uploaded.status_code == 200, uploaded.text
+    transformed = client.post(
+        "/v1/session/dataset/preprocessing/variance-transformations",
+        json={
+            "column": "value", "method": "box_cox",
+            "lambda_value": None, "apply": True,
+        },
+    )
+    assert transformed.status_code == 200, transformed.text
+    assert client.post(
+        "/v1/session/target-column", json={"column": "value_box_cox"},
+    ).status_code == 200
+    assert client.post("/v1/session/date-column", json={"column": "date"}).status_code == 200
+    assert client.post("/v1/session/dataset/passport/start").status_code == 200
+    assert client.post("/v1/session/dataset/passport/modeling_entry").status_code == 200
+    assert client.get("/v1/session/modeling/context?horizon=2&n_splits=2").status_code == 200
+
+    response = client.post("/v1/session/modeling/backtest", json={"model_id": "naive"})
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["preprocessing"]["fit_policy"] == "per_train_fold"
+    assert body["preprocessing"]["source_column"] == "value"
+    assert body["preprocessing"]["evaluation_scale"] == "value"
+    original = pd.read_csv(io.StringIO(_csv()))["value"].to_list()
+    assert [point["actual"] for point in body["oof_predictions"]] == pytest.approx(original[-4:])
+    assert "train каждого EDA fold" in body["warnings"][0]
 
 
 def test_backtests_compare_select_and_model_card_are_persisted(client: TestClient):
@@ -228,6 +309,7 @@ def test_backtests_compare_select_and_model_card_are_persisted(client: TestClien
     assert card["model_info"]["model_id"] == selected_id
     assert card["data_summary"]["source_checkpoint"]
     assert card["performance"]["backtest_metrics"]
+    assert card["training"]["preprocessing"]["fit_policy"] == "none"
     assert card["traceability"]["total_sources"] == 30
 
     downloaded = client.get(f"/v1/session/modeling/card/{card_id}")

@@ -12,7 +12,7 @@ from hashlib import sha256
 import json
 import math
 import time
-from typing import Any, Callable, Mapping, Optional
+from typing import Any, Callable, Mapping, Optional, Protocol
 
 import numpy as np
 
@@ -46,7 +46,11 @@ def validate_target_preprocessing(
             f"Target '{target_column}' получен методом '{method}', который должен "
             "переоцениваться внутри каждого train fold"
         )
-    if method in {"box_cox", "yeo_johnson"} and metadata.get("fit_policy") != "per_train_fold":
+    if (
+        method in {"box_cox", "yeo_johnson"}
+        and metadata.get("lambda_policy") != "fixed"
+        and metadata.get("fit_policy") != "per_train_fold"
+    ):
         raise BacktestExecutionError(
             f"Параметры '{method}' для target '{target_column}' оценены по полной "
             "истории; требуется fit внутри каждого train fold"
@@ -79,11 +83,28 @@ class BacktestPlan:
     target_column: str
     seasonal_period: int
     n_observations: int
+    preprocessing_signature: str = "none"
+
+
+class PreparedFoldProtocol(Protocol):
+    model_train: list[float]
+    evaluation_train: list[float]
+    evaluation_actual: list[float]
+    restore_forecast: Callable[[list[float]], list[float]]
+
+
+class FoldPreprocessorProtocol(Protocol):
+    summary: Mapping[str, Any]
+
+    def prepare(
+        self, values: list[float], fold: BacktestFoldPlan,
+    ) -> PreparedFoldProtocol: ...
 
 
 def build_backtest_plan(
     validation: Mapping[str, Any], *, n_observations: int,
     fingerprint: str, target_column: str, seasonal_period: int,
+    preprocessing_signature: str = "none",
 ) -> BacktestPlan:
     """Validate and freeze the exact folds produced by EDA."""
     strategy = str(validation.get("strategy", ""))
@@ -121,6 +142,17 @@ def build_backtest_plan(
         if strategy == "expanding" and folds:
             if train_start != folds[-1].train_indices[0] or train_end <= folds[-1].train_indices[-1]:
                 raise BacktestExecutionError("Expanding folds не расширяют train-окно")
+        if strategy == "sliding":
+            declared_window = int(validation.get("train_window") or len(train_indices))
+            if len(train_indices) != declared_window:
+                raise BacktestExecutionError(
+                    f"Fold {ordinal}: train_size={len(train_indices)} не равен sliding train_window={declared_window}"
+                )
+            if folds and (
+                train_start <= folds[-1].train_indices[0]
+                or train_end <= folds[-1].train_indices[-1]
+            ):
+                raise BacktestExecutionError("Sliding folds не сдвигают train-окно вперёд")
         seen_test_indices.update(test_indices)
         folds.append(BacktestFoldPlan(
             fold=int(raw.get("fold", ordinal)), train_indices=train_indices,
@@ -142,6 +174,7 @@ def build_backtest_plan(
         "fingerprint": fingerprint, "target_column": target_column,
         "strategy": strategy, "horizon": horizon, "gap": gap,
         "metric_seasonal_period": metric_period,
+        "preprocessing_signature": preprocessing_signature,
         "folds": [
             {"fold": item.fold, "train": item.train_indices, "test": item.test_indices}
             for item in folds
@@ -155,6 +188,7 @@ def build_backtest_plan(
         cohort_id=cohort_id, fingerprint=fingerprint, target_column=target_column,
         seasonal_period=metric_period,
         n_observations=n_observations,
+        preprocessing_signature=preprocessing_signature,
     )
 
 
@@ -190,7 +224,8 @@ def fixed_origin_baseline_predict(
 def _predict_ets(y_train, horizon, period, params, *, damped: bool):
     from apps.api.model_impls.ets import _ets_fit_predict
     return _ets_fit_predict(
-        y_train, horizon, period, damped=damped,
+        y_train, horizon, period,
+        damped=True if damped else bool(params.get("damped_trend", False)),
         trend=params.get("trend", "add"), seasonal=params.get("seasonal", "add"),
     )
 
@@ -312,6 +347,7 @@ def run_backtest_plan(
     seasonal_period: int, params: Optional[Mapping[str, Any]] = None,
     predictors: Optional[Mapping[str, Predictor]] = None,
     preprocessing_warnings: Optional[list[str]] = None,
+    fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
 ) -> dict[str, Any]:
     """Execute every EDA fold with strict, fixed-origin model predictions."""
     if int(seasonal_period) != plan.seasonal_period:
@@ -331,15 +367,28 @@ def run_backtest_plan(
     folds: list[dict[str, Any]] = []
     started = time.monotonic()
     for fold in plan.folds:
-        y_train = [values[index] for index in fold.train_indices]
-        y_true = [values[index] for index in fold.test_indices]
+        raw_train = [values[index] for index in fold.train_indices]
         fold_started = time.monotonic()
         try:
-            forecast = [float(value) for value in predictor(
+            if fold_preprocessor is None:
+                y_train = raw_train
+                y_true = [values[index] for index in fold.test_indices]
+                metric_train = y_train
+                restore_forecast = lambda forecast: forecast
+            else:
+                prepared = fold_preprocessor.prepare(values, fold)
+                y_train = prepared.model_train
+                y_true = prepared.evaluation_actual
+                metric_train = prepared.evaluation_train
+                restore_forecast = prepared.restore_forecast
+            model_forecast = [float(value) for value in predictor(
                 y_train, fold.gap + len(y_true), seasonal_period, parameters,
             )]
+            forecast = [float(value) for value in restore_forecast(model_forecast)]
+            if len(forecast) != fold.gap + len(y_true):
+                raise BacktestExecutionError("Model/preprocessing вернул неверную длину прогноза")
             y_pred = forecast[fold.gap:]
-            metrics = compute_backtest_metrics(y_true, y_pred, y_train, seasonal_period)
+            metrics = compute_backtest_metrics(y_true, y_pred, metric_train, seasonal_period)
         except Exception as exc:
             raise BacktestExecutionError(
                 f"{model_name}: fold {fold.fold} завершился ошибкой: {exc}"
@@ -359,7 +408,7 @@ def run_backtest_plan(
             "fold": fold.fold, "status": "success",
             "train_start": fold.train_indices[0], "train_end": fold.train_indices[-1],
             "test_start": fold.test_indices[0], "test_end": fold.test_indices[-1],
-            "gap": fold.gap, "n_train": len(y_train), "n_test": len(y_true),
+            "gap": fold.gap, "n_train": len(raw_train), "n_test": len(y_true),
             "train_start_label": fold.train_start_label or labels[fold.train_indices[0]],
             "train_end_label": fold.train_end_label or labels[fold.train_indices[-1]],
             "test_start_label": fold.test_start_label or labels[fold.test_indices[0]],
@@ -376,6 +425,12 @@ def run_backtest_plan(
     if aggregate.mase is None:
         warnings.append("MASE/RMSSE не определены: train-only seasonal scale равен нулю или истории недостаточно.")
     last_train = len(plan.folds[-1].train_indices)
+    preprocessing = (
+        dict(fold_preprocessor.summary) if fold_preprocessor is not None else {
+            "fit_policy": "none", "evaluation_scale": plan.target_column,
+            "source_column": plan.target_column, "target_column": plan.target_column,
+        }
+    )
     return {
         "model_id": model_id, "model_name": model_name, "family_id": family_id,
         "metrics": aggregate.model_dump(mode="json"),
@@ -386,4 +441,5 @@ def run_backtest_plan(
         "strategy": plan.strategy, "cohort_id": plan.cohort_id,
         "horizon": plan.horizon, "n_folds": len(plan.folds), "gap": plan.gap,
         "folds": folds, "oof_predictions": oof, "warnings": warnings,
+        "preprocessing": preprocessing,
     }

@@ -16,6 +16,29 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
+test("shows the exact EDA cohort used by tuning", async () => {
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      model_id: "ets", best_params: { trend: "add" }, strategy: "sliding",
+      cohort_id: "cohort-1234567890", folds: [
+        { fold: 1, train_start: 10, train_end: 49, test_start: 51, test_end: 52, gap: 1 },
+        { fold: 2, train_start: 12, train_end: 51, test_start: 53, test_end: 54, gap: 1 },
+      ],
+      preprocessing: { fit_policy: "per_train_fold", evaluation_scale: "value" },
+    }),
+  });
+  render(<ModelingWorkflowOverview stageId="tuning" modelIds={["ets"]} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Запустить тюнинг" }));
+
+  await waitFor(() => expect(screen.getByTestId("tuning-plan-summary")).toBeInTheDocument());
+  expect(screen.getByTestId("tuning-plan-summary")).toHaveTextContent("sliding");
+  expect(screen.getByTestId("tuning-plan-summary")).toHaveTextContent("2 folds");
+  expect(screen.getByTestId("tuning-plan-summary")).toHaveTextContent("per_train_fold");
+  expect(screen.getByTestId("tuning-plan-summary")).toHaveTextContent("cohort-1234");
+});
+
 test("runs comparison and renders transparent ranking", async () => {
   mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ comparison_id: "cmp-1", normalization: "min_max_within_comparable_pool", metric_weights: {}, ranking, warnings: [] }) });
   render(<ModelingWorkflowOverview stageId="comparison" modelIds={["naive", "drift"]} />);

@@ -15,14 +15,17 @@ from apps.api.backtesting import (
     BacktestExecutionError,
     build_backtest_plan,
     run_backtest_plan,
-    validate_target_preprocessing,
 )
-from apps.api.model_readiness import PRODUCTION_BACKTEST_MODEL_IDS
+from apps.api.fold_preprocessing import prepare_modeling_target
+from apps.api.model_readiness import (
+    PRODUCTION_BACKTEST_MODEL_IDS,
+    PRODUCTION_TUNING_MODEL_IDS,
+)
+from apps.api.modeling_tuning import execute_tuning_plan
 from apps.api.modeling_workflow import build_modeling_context
 from apps.api.routers.diagnostics import _diagnose
 from apps.api.routers.models import (
     _compute_candidates,
-    _execute_tune,
     _resolve_model_info,
     _run_backtest_with_series,
 )
@@ -280,26 +283,35 @@ def run_modeling_backtest(
             status_code=422,
             detail="Ручной train_ratio запрещён: backtest исполняет точные folds из EDA validation strategy",
         )
-    series = prepare_passport_series(session.dataframe, session.target_column, session.date_column)
-    values = series.to_numpy(dtype=float).tolist()
     period = (session.modeling_artifacts.get("profile", context["profile"]).get("seasonal_periods") or [1])[0]
     model_info = _resolve_model_info(payload.model_id)
     validation = session.modeling_artifacts["validation_strategy"]
-    tuned = session.modeling_artifacts.get("tuning", {}).get(payload.model_id, {})
     try:
-        preprocessing_warnings = validate_target_preprocessing(
-            session.preprocessing_transformations, session.target_column,
+        prepared = prepare_modeling_target(
+            session.dataframe, target_column=session.target_column,
+            date_column=session.date_column,
+            transformations=session.preprocessing_transformations,
+            scaling_recipe=session.preprocessing_scaling_recipe,
         )
         plan = build_backtest_plan(
-            validation, n_observations=len(values),
+            validation, n_observations=len(prepared.series),
             fingerprint=context["fingerprint"], target_column=session.target_column,
             seasonal_period=int(period),
+            preprocessing_signature=prepared.preprocessing_signature,
         )
+        tuned = session.modeling_artifacts.get("tuning", {}).get(payload.model_id, {})
+        tuned_params = tuned.get("best_params", {}) if tuned.get("cohort_id") == plan.cohort_id else {}
+        preprocessing_warnings = list(prepared.warnings)
+        if tuned and not tuned_params:
+            preprocessing_warnings.append(
+                "Сохранённые tuned-параметры относятся к другому cohort и не применены."
+            )
         result = BacktestResponse(**run_backtest_plan(
             model_id=payload.model_id, model_name=model_info[0], family_id=model_info[1],
-            series=values, labels=[value.isoformat() for value in series.index],
-            plan=plan, seasonal_period=int(period), params=tuned.get("best_params", {}),
+            series=prepared.series, labels=prepared.labels,
+            plan=plan, seasonal_period=int(period), params=tuned_params,
             preprocessing_warnings=preprocessing_warnings,
+            fold_preprocessor=prepared.fold_preprocessor,
         ))
     except BacktestExecutionError as exc:
         session.modeling_artifacts.setdefault("backtest_failures", {})[payload.model_id] = {
@@ -328,27 +340,61 @@ def tune_modeling_candidate(
     store, session = _get_session(request, response)
     context = _action_context(session)
     _prepare_state(session, context)
-    series = prepare_passport_series(session.dataframe, session.target_column, session.date_column)
     from apps.api.routers.models import _get_spec
-    validation = session.modeling_artifacts["validation_strategy"]
-    if payload.cv is None and validation.get("strategy") == "sliding":
+    if payload.model_id not in PRODUCTION_TUNING_MODEL_IDS:
         raise HTTPException(
             status_code=422,
-            detail="Тюнинг sliding-window пока не реализован; выберите expanding или передайте явную CV config",
+            detail=f"Production tuning для модели '{payload.model_id}' не реализован",
         )
-    cv_config = payload.cv or CVConfig(
-        n_splits=int(validation.get("n_splits") or 1),
-        test_size=int(validation.get("horizon") or 1),
-        min_train_size=int(validation.get("initial_train_size") or 1),
-        step=int(validation.get("horizon") or 1),
-        gap=int(validation.get("gap") or 0),
-    )
-    result = _execute_tune(
-        spec=_get_spec(), model_id=payload.model_id,
-        series=series.to_numpy(dtype=float).tolist(), cv_config=cv_config,
-        max_trials=payload.max_trials, metric=payload.metric,
-        random_state=payload.random_state,
-    )
+    runnable = set(session.modeling_artifacts.get("runnable_shortlist") or context.get("runnable_shortlist", []))
+    if payload.model_id not in runnable:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Модель '{payload.model_id}' заблокирована матрицей применимости для текущего ряда",
+        )
+    validation = session.modeling_artifacts["validation_strategy"]
+    if payload.cv is not None:
+        raise HTTPException(
+            status_code=422,
+            detail="Ручная CV config запрещена: session tuning исполняет точный BacktestPlan из EDA",
+        )
+    model = _get_spec().get_model(payload.model_id)
+    if model is None:
+        raise HTTPException(status_code=404, detail=f"Модель '{payload.model_id}' не найдена")
+    if model.param_space is None:
+        raise HTTPException(status_code=422, detail=f"Для модели '{payload.model_id}' param_space не задан")
+    period = (session.modeling_artifacts.get("profile", context["profile"]).get("seasonal_periods") or [1])[0]
+    model_info = _resolve_model_info(payload.model_id)
+    try:
+        prepared = prepare_modeling_target(
+            session.dataframe, target_column=session.target_column,
+            date_column=session.date_column,
+            transformations=session.preprocessing_transformations,
+            scaling_recipe=session.preprocessing_scaling_recipe,
+        )
+        plan = build_backtest_plan(
+            validation, n_observations=len(prepared.series),
+            fingerprint=context["fingerprint"], target_column=session.target_column,
+            seasonal_period=int(period),
+            preprocessing_signature=prepared.preprocessing_signature,
+        )
+        result = execute_tuning_plan(
+            model_id=payload.model_id, model_name=model_info[0], family_id=model_info[1],
+            param_space=model.param_space, series=prepared.series, labels=prepared.labels,
+            plan=plan, seasonal_period=int(period), max_trials=payload.max_trials,
+            metric=payload.metric, random_state=payload.random_state,
+            fold_preprocessor=prepared.fold_preprocessor,
+            preprocessing_warnings=prepared.warnings,
+        )
+    except BacktestExecutionError as exc:
+        session.modeling_artifacts.setdefault("tuning_failures", {})[payload.model_id] = {
+            "model_id": payload.model_id,
+            "cohort_id": getattr(locals().get("plan"), "cohort_id", None),
+            "error": str(exc), "failed_at": datetime.now(timezone.utc).isoformat(),
+        }
+        session.touch()
+        store.save(session)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     session.modeling_artifacts.setdefault("tuning", {})[payload.model_id] = result.model_dump(mode="json")
     session.modeling_pipeline["tuning"] = "done"
     session.modeling_pipeline["diagnostics"] = "in_progress"
@@ -584,6 +630,7 @@ def create_model_card(
             "gap": backtest.get("gap", 0),
             "cohort_id": backtest.get("cohort_id"),
             "folds": folds,
+            "preprocessing": backtest.get("preprocessing", {}),
             "training_time_seconds": round(backtest["duration_ms"] / 1000, 6),
             "gpu_used": False,
         },
