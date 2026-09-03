@@ -220,6 +220,10 @@ class AnalysisSession:
     # transformations здесь не хранятся параметры, обученные на полном
     # датасете: scaler должен fit-иться внутри train каждого временного fold.
     preprocessing_scaling_recipe: dict[str, Any] = field(default_factory=dict)
+    # Последний рассчитанный на вкладке EDA план временной валидации.
+    # Modeling использует его как default hand-off и не заменяет silently
+    # собственными horizon/folds после перехода между вкладками.
+    eda_validation_strategy: dict[str, Any] = field(default_factory=dict)
     # Session-backed контур Моделирования. Pipeline хранит только статусы
     # канонических 11 стадий из modeling.yaml, artifacts — JSON-совместимые
     # результаты, привязанные к fingerprint checkpoint modeling_entry.
@@ -257,6 +261,7 @@ class AnalysisSession:
         self.preprocessing_spectral_selection = {}
         self.preprocessing_feature_generation = {}
         self.preprocessing_scaling_recipe = {}
+        self.eda_validation_strategy = {}
         self.reset_modeling()
         self.sufficiency_plan = {}
         self.touch()
@@ -366,6 +371,7 @@ class AnalysisSession:
     def reset_passports(self) -> None:
         self.passport_history = []
         self.passport_checkpoints = []
+        self.eda_validation_strategy = {}
         self.reset_modeling()
         self.touch()
 
@@ -479,6 +485,7 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "preprocessing_spectral_selection": dict(session.preprocessing_spectral_selection),
         "preprocessing_feature_generation": dict(session.preprocessing_feature_generation),
         "preprocessing_scaling_recipe": dict(session.preprocessing_scaling_recipe),
+        "eda_validation_strategy": deepcopy(session.eda_validation_strategy),
         "modeling_pipeline": dict(session.modeling_pipeline),
         "modeling_artifacts": deepcopy(session.modeling_artifacts),
         "sufficiency_plan": dict(session.sufficiency_plan),
@@ -520,6 +527,7 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         preprocessing_spectral_selection=dict(d.get("preprocessing_spectral_selection", {})),
         preprocessing_feature_generation=dict(d.get("preprocessing_feature_generation", {})),
         preprocessing_scaling_recipe=dict(d.get("preprocessing_scaling_recipe", {})),
+        eda_validation_strategy=deepcopy(d.get("eda_validation_strategy", {})),
         modeling_pipeline={
             stage: dict(d.get("modeling_pipeline", {})).get(stage, "pending")
             for stage in MODELING_STAGE_IDS

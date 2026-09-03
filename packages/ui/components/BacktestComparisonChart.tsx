@@ -14,11 +14,9 @@
 // каждом клике «Запустить бэктест» (см. runBacktest). График появляется
 // только когда есть хотя бы один реальный результат -- не мок.
 //
-// weighted_score -- НОРМАЛИЗОВАННАЯ ОШИБКА (0.35*MAE_n + 0.25*RMSE_n +
-// 0.20*MAPE_n + 0.20*MASE_n), см. apps/api/routers/models.py::_compute_metrics.
-// НИЖЕ = ЛУЧШЕ. В детальной карточке кандидата (справа) это подписано
-// просто «Скоринг» без указания направления -- здесь явно проговариваем,
-// чтобы график не читался наоборот.
+// До Task 96 график использовал per-model weighted_score с произвольными
+// абсолютными делителями. Теперь до server-side comparison показываем MASE:
+// это scale-free OOF-ошибка, рассчитанная с train-only seasonal scale.
 //
 // Палитра -- та же brand/brand-light из tailwind-preset.ts, что и в
 // DistributionCharts.tsx (см. её докстринг).
@@ -42,7 +40,7 @@ const AXIS_TICK_STYLE = { fontSize: 11, fill: "#737373" };
 interface BacktestChartRow {
   model_id: string;
   model_name: string;
-  score_pct: number; // weighted_score * 100, для читаемой оси (0-100)
+  mase_score: number;
   mae: number;
   rmse: number;
   mape: number;
@@ -70,20 +68,25 @@ export function BacktestComparisonChart({
   }
 
   const rows: BacktestChartRow[] = entries
+    .filter((bt) => bt.metrics.mase != null)
     .map((bt) => ({
       model_id: bt.model_id,
       model_name: bt.model_name,
-      score_pct: Math.round(bt.metrics.weighted_score * 1000) / 10,
+      mase_score: Number(bt.metrics.mase),
       mae: bt.metrics.mae,
       rmse: bt.metrics.rmse,
-      mape: bt.metrics.mape,
-      mase: bt.metrics.mase,
+      mape: bt.metrics.mape ?? Number.NaN,
+      mase: Number(bt.metrics.mase),
       data_source: bt.data_source,
     }))
     // Ниже = лучше -- сортируем по возрастанию ошибки, лучшая модель первая
-    .sort((a, b) => a.score_pct - b.score_pct);
+    .sort((a, b) => a.mase_score - b.mase_score);
 
-  const bestScore = rows[0]?.score_pct;
+  if (rows.length === 0) {
+    return <div className="h-[180px] border border-neutral-200 rounded flex items-center justify-center text-xs text-neutral-500 bg-neutral-50">MASE не определена для выполненных бэктестов</div>;
+  }
+
+  const bestScore = rows[0]?.mase_score;
 
   return (
     <div>
@@ -97,10 +100,10 @@ export function BacktestComparisonChart({
               tickFormatter={(name: string) => truncateName(name)}
               interval={0}
             />
-            <YAxis tick={AXIS_TICK_STYLE} width={32} domain={[0, 100]} />
+            <YAxis tick={AXIS_TICK_STYLE} width={38} domain={[0, "auto"]} />
             <Tooltip
               formatter={(value: number, name: string) => {
-                if (name === "score_pct") return [`${value.toFixed(1)}`, "Скоринг ошибки (ниже лучше)"];
+                if (name === "mase_score") return [`${value.toFixed(3)}`, "OOF MASE (ниже лучше)"];
                 return [value, name];
               }}
               labelFormatter={(label: string) => label}
@@ -111,11 +114,11 @@ export function BacktestComparisonChart({
                   <div className="rounded border border-neutral-200 bg-white px-2 py-1.5 text-[11px] shadow-sm">
                     <p className="font-semibold text-neutral-800 mb-1">{row.model_name}</p>
                     <p className="text-neutral-600">
-                      Скоринг ошибки: <span className="font-mono font-semibold">{row.score_pct.toFixed(1)}</span>{" "}
+                      OOF MASE: <span className="font-mono font-semibold">{row.mase_score.toFixed(3)}</span>{" "}
                       <span className="text-neutral-400">(ниже лучше)</span>
                     </p>
                     <p className="text-neutral-500 mt-0.5">
-                      MAE {row.mae.toFixed(2)} · RMSE {row.rmse.toFixed(2)} · MAPE {row.mape.toFixed(1)}% · MASE{" "}
+                      MAE {row.mae.toFixed(2)} · RMSE {row.rmse.toFixed(2)} · MAPE {Number.isFinite(row.mape) ? `${row.mape.toFixed(1)}%` : "—"} · MASE{" "}
                       {row.mase.toFixed(2)}
                     </p>
                     {row.data_source && (
@@ -127,16 +130,16 @@ export function BacktestComparisonChart({
                 );
               }}
             />
-            <Bar dataKey="score_pct" radius={[2, 2, 0, 0]} isAnimationActive={false}>
+            <Bar dataKey="mase_score" radius={[2, 2, 0, 0]} isAnimationActive={false}>
               {rows.map((row) => (
-                <Cell key={row.model_id} fill={row.score_pct === bestScore ? BRAND_BEST : BRAND} />
+                <Cell key={row.model_id} fill={row.mase_score === bestScore ? BRAND_BEST : BRAND} />
               ))}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
       <p className="text-[11px] text-neutral-500 mt-1.5">
-        Скоринг ошибки (0–100, ниже = лучше) · <span className="text-green-700 font-medium">зелёным</span> — лучшая
+        OOF MASE (ниже = лучше) · <span className="text-green-700 font-medium">зелёным</span> — лучшая
         из {rows.length} протестированных
       </p>
     </div>

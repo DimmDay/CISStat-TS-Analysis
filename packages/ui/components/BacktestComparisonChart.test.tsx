@@ -3,7 +3,7 @@
 // Тесты для графика сравнения бэктестов (Моделирование):
 // 1. Пустое состояние -- нет ни одного бэктеста
 // 2. Рендер с одним результатом
-// 3. Сортировка/выделение лучшей модели (минимальный weighted_score)
+// 3. Сортировка/выделение лучшей модели (минимальный OOF MASE)
 // 4. Направление корректно проговорено ("ниже = лучше") -- та самая
 //    неоднозначность, из-за которой этот тест вообще написан
 
@@ -52,7 +52,7 @@ describe("BacktestComparisonChart", () => {
     expect(container.querySelector(".recharts-responsive-container")).toBeTruthy();
   });
 
-  it("explicitly states the direction 'ниже = лучше' (weighted_score is a normalized error, not a score)", () => {
+  it("explicitly states the direction 'ниже = лучше' for OOF MASE", () => {
     const results = { naive: makeBacktest() };
     render(<BacktestComparisonChart backtestResults={results} />);
     expect(screen.getByText(/ниже\s*=\s*лучше/i)).toBeInTheDocument();

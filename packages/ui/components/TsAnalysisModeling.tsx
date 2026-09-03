@@ -25,6 +25,7 @@ import { ChevronDown, ChevronUp, RefreshCw, Filter, Loader2 } from "lucide-react
 import { Button } from "./Button";
 import { Metric } from "./Metric";
 import { BacktestComparisonChart } from "./BacktestComparisonChart";
+import { BacktestOofChart } from "./BacktestOofChart";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import {
   type DataProfile,
@@ -380,9 +381,11 @@ export function TsAnalysisModeling() {
         credentials: "include",
         body: JSON.stringify({
           min_level: "CONDITIONALLY_APPLICABLE",
+          strategy: modelingContext.validation_strategy.strategy || "expanding",
           horizon: Number(modelingContext.validation_strategy.horizon || 12),
           n_splits: Number(modelingContext.validation_strategy.n_splits || 5),
           gap: Number(modelingContext.validation_strategy.gap || 0),
+          train_window: Number(modelingContext.validation_strategy.train_window || 60),
         }),
       });
       if (!res.ok) {
@@ -1114,6 +1117,15 @@ export function TsAnalysisModeling() {
           <BacktestComparisonChart backtestResults={backtestResults} />
         </div>
 
+        {activeCandidateId && backtestResults[activeCandidateId] && (
+          <div className="mt-4" data-testid="active-oof-backtest">
+            <h3 className="mb-1 text-sm font-semibold text-neutral-800">
+              Out-of-fold: {backtestResults[activeCandidateId].model_name}
+            </h3>
+            <BacktestOofChart result={backtestResults[activeCandidateId]} />
+          </div>
+        )}
+
         {/* ── Спецификация ── */}
         {specVersion && (
           <p className="text-[11px] text-neutral-400 mt-2">
@@ -1255,27 +1267,28 @@ export function TsAnalysisModeling() {
                           <div>
                             <span className="text-neutral-500">MAPE</span>
                             <p className="font-mono font-semibold text-neutral-800">
-                              {m.mape.toFixed(1)}%
+                              {m.mape == null ? "—" : `${m.mape.toFixed(1)}%`}
                             </p>
                           </div>
                           <div>
                             <span className="text-neutral-500">MASE</span>
                             <p className="font-mono font-semibold text-neutral-800">
-                              {m.mase.toFixed(2)}
+                              {m.mase == null ? "—" : m.mase.toFixed(2)}
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center justify-between text-[10px] text-neutral-500 pt-1 border-t border-neutral-200">
+                        <div
+                          className="flex items-center justify-between text-[10px] text-neutral-500 pt-1 border-t border-neutral-200"
+                          data-testid="backtest-fold-summary"
+                        >
+                          <span>{bt.strategy ?? "single"} · {bt.n_folds ?? 1} folds · h={bt.horizon ?? bt.n_test}</span>
                           <span>
-                            Скоринг:{" "}
-                            <span className="font-mono font-semibold text-brand">
-                              {(m.weighted_score * 100).toFixed(1)}
-                            </span>
-                          </span>
-                          <span>
-                            {bt.n_train} / {bt.n_test} точек
+                            train(last) {bt.n_train} · OOF {bt.n_test}
                           </span>
                         </div>
+                        {(bt.warnings ?? []).map((warning) => (
+                          <p key={warning} className="text-[10px] text-amber-700">{warning}</p>
+                        ))}
                       </>
                     );
                   })()}

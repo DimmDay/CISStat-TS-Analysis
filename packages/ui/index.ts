@@ -257,6 +257,7 @@ export type { DistributionChartData, ScatterPoint, HistogramBin, KdePoint } from
 // второе подключение после «Загрузки» (2026-08-14). Данные -- уже
 // накопленный backtestResults компонента, не новый запрос.
 export { BacktestComparisonChart } from "./components/BacktestComparisonChart";
+export { BacktestOofChart } from "./components/BacktestOofChart";
 
 // График детализации проверки (Recharts) -- вкладка «Валидация», третье
 // подключение после «Загрузки» и «Моделирования» (2026-08-14).

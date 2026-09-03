@@ -477,20 +477,24 @@ def _run_backtest_with_series(
     seasonal_period: int,
 ) -> tuple[BacktestMetrics, float]:
     start = time.monotonic()
+    if model_id not in PRODUCTION_BACKTEST_MODEL_IDS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Production backtest для модели '{model_id}' не реализован; "
+                "фиктивные метрики запрещены"
+            ),
+        )
     impl = _BACKTEST_IMPLEMENTATIONS.get(model_id)
     if impl:
         metrics = impl(series, train_ratio, seasonal_period)
     else:
-        naive_metrics = _run_naive_backtest(series, train_ratio)
-        family_penalty = {
-            "exponential_smoothing": 0.85, "arima": 0.80, "structural": 0.75,
-            "tree_ml": 0.70, "neural": 0.60, "multivariate": 0.65, "volatility": 0.70,
-        }.get(model_info[1], 1.0)
-        factor = 1.1 / family_penalty
-        metrics = BacktestMetrics(
-            mae=round(naive_metrics.mae * factor, 4), rmse=round(naive_metrics.rmse * factor, 4),
-            mape=round(naive_metrics.mape * factor, 2), mase=round(naive_metrics.mase * factor, 4),
-            weighted_score=round(naive_metrics.weighted_score * factor, 4),
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Реестр помечает '{model_id}' как production-ready, "
+                "но backtest implementation отсутствует"
+            ),
         )
     return metrics, (time.monotonic() - start) * 1000
 

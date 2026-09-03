@@ -823,16 +823,17 @@ def get_dataset_eda_validation_strategy(
     gap: int = Query(0, ge=0, le=200),
     train_window: int = Query(60, ge=20, le=5000),
 ):
-    """План временных folds без shuffle и без обучения моделей."""
+    """План folds без shuffle; последний расчёт сохраняется как EDA hand-off."""
     session_id = get_or_create_session_id(request, response)
-    session = get_session_store().get_or_create(session_id)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
     if session.dataframe is None:
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
     if column not in session.dataframe.columns:
         raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
     if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
         raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая — временная валидация недоступна")
-    return DatasetEdaValidationStrategyResponse(**build_eda_validation_strategy(
+    plan = build_eda_validation_strategy(
         session.dataframe,
         column=column,
         strategy=strategy,
@@ -840,7 +841,14 @@ def get_dataset_eda_validation_strategy(
         n_splits=n_splits,
         gap=gap,
         train_window=train_window,
-    ))
+    )
+    # Это последний явно рассчитанный аналитиком EDA-план. Сохраняем его
+    # как session hand-off, чтобы Modeling не подменил sliding/single и gap
+    # своими дефолтами после навигации или reload.
+    session.eda_validation_strategy = dict(plan)
+    session.touch()
+    store.save(session)
+    return DatasetEdaValidationStrategyResponse(**plan)
 
 
 @router.get("/dataset/eda-model-matrix", response_model=DatasetEdaModelMatrixResponse)

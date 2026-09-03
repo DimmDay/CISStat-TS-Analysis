@@ -183,9 +183,42 @@ export interface BacktestRequest {
 export interface BacktestMetrics {
   mae: number;
   rmse: number;
-  mape: number; // в процентах
-  mase: number;
-  weighted_score: number; // 0–1, ниже = лучше
+  mape: number | null; // в процентах; null при отсутствии ненулевых фактов
+  mase: number | null;
+  smape?: number | null;
+  rmsse?: number | null;
+  mape_valid_points?: number;
+  weighted_score: number | null; // вычисляется только внутри общего comparison cohort
+}
+
+export interface BacktestPredictionPoint {
+  fold: number;
+  horizon_step: number;
+  index: number;
+  label: string | null;
+  actual: number;
+  predicted: number;
+  residual: number;
+}
+
+export interface BacktestFoldResult {
+  fold: number;
+  status: "success" | "failed";
+  train_start: number;
+  train_end: number;
+  test_start: number;
+  test_end: number;
+  gap: number;
+  n_train: number;
+  n_test: number;
+  train_start_label?: string | null;
+  train_end_label?: string | null;
+  test_start_label?: string | null;
+  test_end_label?: string | null;
+  metrics: BacktestMetrics | null;
+  predictions: BacktestPredictionPoint[];
+  duration_ms: number;
+  error?: string | null;
 }
 
 export interface BacktestResponse {
@@ -204,6 +237,15 @@ export interface BacktestResponse {
    * Опционально для backward-compat со старым /v1/models/backtest (без bridge).
    */
   data_source?: "session" | "synthetic";
+  status?: "success" | "partial";
+  strategy?: "single" | "expanding" | "sliding";
+  cohort_id?: string | null;
+  horizon?: number;
+  n_folds?: number;
+  gap?: number;
+  folds?: BacktestFoldResult[];
+  oof_predictions?: BacktestPredictionPoint[];
+  warnings?: string[];
 }
 
 export type TraceabilityStatus = "done" | "warning" | "skipped" | "pending";
@@ -234,8 +276,11 @@ export interface ModelingContext {
   profile: DataProfile;
   passport: Record<string, unknown>;
   validation_strategy: Record<string, unknown> & {
+    strategy: "expanding" | "sliding" | "single";
     horizon: number;
     n_splits: number;
+    gap: number;
+    train_window: number;
   };
   model_matrix: Record<string, unknown>;
   runnable_shortlist: string[];

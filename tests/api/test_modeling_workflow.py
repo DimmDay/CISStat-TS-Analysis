@@ -88,6 +88,31 @@ def test_context_is_derived_from_real_handoff_and_covers_30_sources(client: Test
     assert body["validation_strategy"]["n_splits"] == 3
 
 
+def test_context_reuses_the_last_eda_validation_plan_without_silent_defaults(client: TestClient):
+    _prepare(client)
+    eda = client.get(
+        "/v1/session/dataset/eda-validation-strategy",
+        params={
+            "column": "value", "strategy": "sliding", "horizon": 6,
+            "n_splits": 3, "gap": 2, "train_window": 40,
+        },
+    )
+    assert eda.status_code == 200, eda.text
+
+    response = client.get("/v1/session/modeling/context")
+
+    assert response.status_code == 200, response.text
+    contract = response.json()["validation_strategy"]
+    assert contract["strategy"] == "sliding"
+    assert contract["horizon"] == 6
+    assert contract["gap"] == 2
+    assert contract["train_window"] == 40
+    assert contract["folds"] == eda.json()["folds"]
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    restored = session_from_dict(session_to_dict(get_session_store().get(session_id)))
+    assert restored.eda_validation_strategy["strategy"] == "sliding"
+
+
 def test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics(client: TestClient):
     _prepare(client)
 
@@ -108,8 +133,67 @@ def test_backtest_defaults_to_the_horizon_confirmed_by_validation_strategy(clien
     response = client.post("/v1/session/modeling/backtest", json={"model_id": "naive"})
 
     assert response.status_code == 200, response.text
-    assert response.json()["n_test"] == 6
-    assert response.json()["n_train"] == 90
+    body = response.json()
+    assert body["strategy"] == "expanding"
+    assert body["horizon"] == 6
+    assert body["n_folds"] == 3
+    assert len(body["folds"]) == 3
+    assert all(fold["n_test"] == 6 for fold in body["folds"])
+    assert body["n_test"] == 18
+    assert len(body["oof_predictions"]) == 18
+    assert body["cohort_id"]
+
+
+def test_candidates_preserve_sliding_eda_contract_for_backtest(client: TestClient):
+    _prepare(client)
+
+    candidates = client.post(
+        "/v1/session/modeling/candidates",
+        json={
+            "strategy": "sliding", "horizon": 6, "n_splits": 3,
+            "gap": 2, "train_window": 40,
+        },
+    )
+    assert candidates.status_code == 200, candidates.text
+
+    response = client.post("/v1/session/modeling/backtest", json={"model_id": "naive"})
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["strategy"] == "sliding"
+    assert body["gap"] == 2
+    assert body["n_folds"] == 3
+    assert all(fold["n_train"] == 40 for fold in body["folds"])
+    assert all(fold["test_start"] - fold["train_end"] - 1 == 2 for fold in body["folds"])
+
+
+def test_diagnostics_reuses_out_of_fold_residuals_from_backtest(client: TestClient):
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=3&n_splits=3").status_code == 200
+    backtest = client.post("/v1/session/modeling/backtest", json={"model_id": "naive"})
+    assert backtest.status_code == 200, backtest.text
+
+    response = client.post("/v1/session/modeling/diagnostics", json={"model_id": "naive"})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["residuals_source"] == "backtest_oof"
+    assert response.json()["residuals_count"] == len(backtest.json()["oof_predictions"])
+
+
+def test_backtest_blocks_target_transform_fitted_on_full_history(client: TestClient):
+    _prepare(client)
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    store = get_session_store()
+    session = store.get(session_id)
+    session.preprocessing_transformations["value"] = {
+        "method": "box_cox", "lambda_value": 0.2, "fitted_on_n": 96,
+    }
+    store.save(session)
+
+    response = client.post("/v1/session/modeling/backtest", json={"model_id": "naive"})
+
+    assert response.status_code == 422
+    assert "train fold" in response.json()["detail"]
 
 
 def test_backtests_compare_select_and_model_card_are_persisted(client: TestClient):
@@ -117,7 +201,7 @@ def test_backtests_compare_select_and_model_card_are_persisted(client: TestClien
     for model_id in ("naive", "drift"):
         response = client.post(
             "/v1/session/modeling/backtest",
-            json={"model_id": model_id, "train_ratio": 0.8},
+            json={"model_id": model_id},
         )
         assert response.status_code == 200, response.text
         assert response.json()["data_source"] == "session"
@@ -160,7 +244,7 @@ def test_modeling_state_roundtrips_and_is_invalidated_by_target_change(client: T
     _prepare(client)
     response = client.post(
         "/v1/session/modeling/backtest",
-        json={"model_id": "naive", "train_ratio": 0.8},
+        json={"model_id": "naive"},
     )
     assert response.status_code == 200
 

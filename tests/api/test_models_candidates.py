@@ -438,6 +438,16 @@ class TestBacktestNaive:
         assert data["model_name"] == "Naive"
         assert data["family_id"] == "baselines"
 
+    def test_unsupported_model_never_returns_penalty_metrics(self):
+        response = client.post(
+            "/v1/models/backtest",
+            json={"model_id": "lightgbm", "profile": MACRO_PROFILE},
+            headers=PRO_HEADERS,
+        )
+
+        assert response.status_code == 422
+        assert "фиктивные метрики запрещены" in response.json()["detail"]
+
 
 class TestBacktestOtherBaselines:
     """Бэктест для других baseline-моделей (реальный расчёт)."""

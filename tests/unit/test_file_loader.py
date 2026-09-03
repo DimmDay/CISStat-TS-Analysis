@@ -84,7 +84,7 @@ class TestReadUploadedFileCsvHeader:
         assert pd.api.types.is_numeric_dtype(df["col_0"])
         assert pd.api.types.is_numeric_dtype(df["col_1"])
  
- class MockUploadedFile:
+class MockUploadedFile:
     """Mock для UploadFile (FastAPI)."""
     def __init__(self, content, filename):
         self.file = io.StringIO(content) if isinstance(content, str) else io.BytesIO(content)

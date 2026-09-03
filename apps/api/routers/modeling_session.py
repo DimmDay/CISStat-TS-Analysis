@@ -11,9 +11,15 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from app.core.passport import prepare_passport_series
+from apps.api.backtesting import (
+    BacktestExecutionError,
+    build_backtest_plan,
+    run_backtest_plan,
+    validate_target_preprocessing,
+)
 from apps.api.model_readiness import PRODUCTION_BACKTEST_MODEL_IDS
 from apps.api.modeling_workflow import build_modeling_context
-from apps.api.routers.diagnostics import _diagnose, _fit_residuals
+from apps.api.routers.diagnostics import _diagnose
 from apps.api.routers.models import (
     _compute_candidates,
     _execute_tune,
@@ -43,9 +49,11 @@ def _package_version(name: str) -> str:
 
 class ModelingCandidatesRequest(BaseModel):
     min_level: str = "CONDITIONALLY_APPLICABLE"
+    strategy: Literal["expanding", "sliding", "single"] = "expanding"
     horizon: int = Field(12, ge=1, le=10000)
     n_splits: int = Field(5, ge=1, le=20)
     gap: int = Field(0, ge=0, le=10000)
+    train_window: int = Field(60, ge=2, le=100000)
 
 
 class ModelingBacktestRequest(BaseModel):
@@ -95,8 +103,11 @@ def _validation_contract(context: dict[str, Any]) -> dict[str, Any]:
     return {
         key: context["validation_strategy"].get(key)
         for key in (
+            "column", "applicable", "reason",
             "strategy", "horizon", "n_splits", "gap", "train_window",
-            "initial_train_size",
+            "initial_train_size", "effective_splits", "requested_splits",
+            "n_observations", "folds", "order_source", "order_column",
+            "frequency", "warnings",
         )
     }
 
@@ -145,16 +156,28 @@ def _get_session(request: Request, response: Response):
 def get_modeling_context(
     request: Request,
     response: Response,
-    horizon: int = Query(12, ge=1, le=10000),
-    strategy: Literal["expanding", "sliding", "single"] = "expanding",
-    n_splits: int = Query(5, ge=1, le=20),
-    gap: int = Query(0, ge=0, le=10000),
-    train_window: int = Query(60, ge=2, le=100000),
+    horizon: Optional[int] = Query(None, ge=1, le=10000),
+    strategy: Optional[Literal["expanding", "sliding", "single"]] = None,
+    n_splits: Optional[int] = Query(None, ge=1, le=20),
+    gap: Optional[int] = Query(None, ge=0, le=10000),
+    train_window: Optional[int] = Query(None, ge=2, le=100000),
 ):
     store, session = _get_session(request, response)
+    saved = session.modeling_artifacts.get("validation_strategy") or session.eda_validation_strategy
+    if saved.get("column") not in {None, session.target_column}:
+        saved = {}
     context = _context(
-        session, horizon=horizon, strategy=strategy, n_splits=n_splits,
-        gap=gap, train_window=train_window, require_ready=False,
+        session,
+        horizon=horizon if horizon is not None else int(saved.get("horizon") or 12),
+        strategy=strategy or saved.get("strategy") or "expanding",
+        n_splits=n_splits if n_splits is not None else int(
+            saved.get("requested_splits") or saved.get("n_splits") or 5
+        ),
+        gap=gap if gap is not None else int(saved.get("gap") or 0),
+        train_window=(
+            train_window if train_window is not None else int(saved.get("train_window") or 60)
+        ),
+        require_ready=False,
     )
     _prepare_state(session, context, refresh_contract=True)
     store.save(session)
@@ -186,8 +209,9 @@ def generate_modeling_candidates(
 ):
     store, session = _get_session(request, response)
     context = _context(
-        session, horizon=payload.horizon, n_splits=payload.n_splits,
-        gap=payload.gap,
+        session, strategy=payload.strategy, horizon=payload.horizon,
+        n_splits=payload.n_splits, gap=payload.gap,
+        train_window=payload.train_window,
     )
     _prepare_state(session, context, refresh_contract=True)
     result = _compute_candidates(CandidatesRequest(
@@ -251,23 +275,40 @@ def run_modeling_backtest(
             status_code=422,
             detail=f"Модель '{payload.model_id}' заблокирована матрицей применимости для текущего ряда",
         )
+    if payload.train_ratio is not None:
+        raise HTTPException(
+            status_code=422,
+            detail="Ручной train_ratio запрещён: backtest исполняет точные folds из EDA validation strategy",
+        )
     series = prepare_passport_series(session.dataframe, session.target_column, session.date_column)
     values = series.to_numpy(dtype=float).tolist()
     period = (session.modeling_artifacts.get("profile", context["profile"]).get("seasonal_periods") or [1])[0]
     model_info = _resolve_model_info(payload.model_id)
     validation = session.modeling_artifacts["validation_strategy"]
-    horizon = min(int(validation.get("horizon") or 1), len(values) - 1)
-    train_ratio = payload.train_ratio if payload.train_ratio is not None else (len(values) - horizon) / len(values)
-    metrics, duration_ms = _run_backtest_with_series(
-        payload.model_id, model_info, values, train_ratio, int(period),
-    )
-    n_train = int(len(values) * train_ratio)
-    result = BacktestResponse(
-        model_id=payload.model_id, model_name=model_info[0], family_id=model_info[1],
-        metrics=metrics, n_train=n_train, n_test=len(values) - n_train,
-        train_ratio=train_ratio, duration_ms=round(duration_ms, 2),
-        data_source="session",
-    )
+    tuned = session.modeling_artifacts.get("tuning", {}).get(payload.model_id, {})
+    try:
+        preprocessing_warnings = validate_target_preprocessing(
+            session.preprocessing_transformations, session.target_column,
+        )
+        plan = build_backtest_plan(
+            validation, n_observations=len(values),
+            fingerprint=context["fingerprint"], target_column=session.target_column,
+            seasonal_period=int(period),
+        )
+        result = BacktestResponse(**run_backtest_plan(
+            model_id=payload.model_id, model_name=model_info[0], family_id=model_info[1],
+            series=values, labels=[value.isoformat() for value in series.index],
+            plan=plan, seasonal_period=int(period), params=tuned.get("best_params", {}),
+            preprocessing_warnings=preprocessing_warnings,
+        ))
+    except BacktestExecutionError as exc:
+        session.modeling_artifacts.setdefault("backtest_failures", {})[payload.model_id] = {
+            "model_id": payload.model_id, "cohort_id": getattr(locals().get("plan"), "cohort_id", None),
+            "error": str(exc), "failed_at": datetime.now(timezone.utc).isoformat(),
+        }
+        session.touch()
+        store.save(session)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     session.modeling_artifacts.setdefault("backtests", {})[payload.model_id] = result.model_dump(mode="json")
     if model_info[1] == "baselines":
         session.modeling_pipeline["baseline_estimation"] = "done"
@@ -325,19 +366,23 @@ def diagnose_modeling_candidate(
     store, session = _get_session(request, response)
     context = _action_context(session)
     _prepare_state(session, context)
-    tuned = session.modeling_artifacts.get("tuning", {}).get(payload.model_id, {})
-    params = tuned.get("best_params", {})
-    series = prepare_passport_series(session.dataframe, session.target_column, session.date_column)
+    backtest = session.modeling_artifacts.get("backtests", {}).get(payload.model_id)
+    if not backtest:
+        raise HTTPException(status_code=409, detail="Сначала выполните backtest модели на EDA folds")
+    points = backtest.get("oof_predictions") or []
+    if not points:
+        raise HTTPException(status_code=409, detail="Backtest не содержит OOF-остатков для диагностики")
+    residuals = np.asarray([point["residual"] for point in points], dtype=float)
     try:
-        residuals = _fit_residuals(payload.model_id, series.to_numpy(dtype=float).tolist(), params)
         diagnostics = _diagnose(residuals, payload.alpha, payload.ljung_box_lags, payload.arch_lags)
     except (ValueError, TypeError, ArithmeticError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     result = {
         "model_id": payload.model_id, "target_column": session.target_column,
-        "n_observations": len(series), "residuals_count": int(residuals.size),
+        "n_observations": int(residuals.size), "residuals_count": int(residuals.size),
         "alpha": payload.alpha,
-        "params_source": "tuning" if tuned else "default",
+        "params_source": "backtest", "residuals_source": "backtest_oof",
+        "cohort_id": backtest.get("cohort_id"),
         "diagnostics": [item.model_dump(mode="json") for item in diagnostics],
     }
     session.modeling_artifacts.setdefault("diagnostics", {})[payload.model_id] = result
@@ -369,17 +414,22 @@ def compare_modeling_candidates(
     results = [saved[item] for item in model_ids if item in saved]
     if len(results) < 2:
         raise HTTPException(status_code=409, detail="Для сравнения нужны минимум два сопоставимых бэктеста")
-    cohorts = {(item["train_ratio"], item["n_train"], item["n_test"], item.get("data_source")) for item in results}
-    if len(cohorts) != 1:
+    incomplete = [item["model_id"] for item in results if item.get("status") != "success"]
+    if incomplete:
+        raise HTTPException(status_code=409, detail=f"Неполные backtest нельзя сравнивать: {incomplete}")
+    cohorts = {item.get("cohort_id") for item in results}
+    if None in cohorts or len(cohorts) != 1:
         raise HTTPException(status_code=409, detail="Бэктесты рассчитаны на разных разбиениях и несопоставимы")
 
     metric_ids = ["mae", "rmse", "mape", "mase"]
     weights = {"mae": 0.35, "rmse": 0.25, "mape": 0.20, "mase": 0.20}
-    series = prepare_passport_series(session.dataframe, session.target_column, session.date_column)
     warnings = []
-    if bool((series.to_numpy(dtype=float) == 0).any()):
+    if any(item["metrics"].get("mape") is None for item in results):
         metric_ids.remove("mape")
-        warnings.append("MAPE исключена из ranking: в цели есть нулевые значения.")
+        warnings.append("MAPE исключена из ranking: метрика определена не для всех моделей cohort.")
+    if any(item["metrics"].get("mase") is None for item in results):
+        metric_ids.remove("mase")
+        warnings.append("MASE исключена из ranking: seasonal train scale не определён для всех folds.")
     weight_sum = sum(weights[item] for item in metric_ids)
     normalized = {
         metric: _minmax([float(item["metrics"][metric]) for item in results])
@@ -388,21 +438,31 @@ def compare_modeling_candidates(
     ranking = []
     for index, item in enumerate(results):
         score = sum(weights[metric] / weight_sum * normalized[metric][index] for metric in metric_ids)
-        mase = float(item["metrics"]["mase"])
+        raw_mase = item["metrics"].get("mase")
+        mase = float(raw_mase) if raw_mase is not None else None
+        baseline_eligible = mase is not None and mase <= 1.05
         ranking.append({
             "model_id": item["model_id"], "model_name": item["model_name"],
             "family_id": item["family_id"], "metrics": item["metrics"],
             "weighted_score": round(score, 6),
-            "baseline_eligible": mase <= 1.05,
-            "baseline_note": "лучше/сопоставима с Naive" if mase <= 1.05 else "хуже Naive более чем на 5%; допустим только осознанный override",
+            "baseline_eligible": baseline_eligible,
+            "baseline_note": (
+                "лучше/сопоставима с сезонным Naive scale" if baseline_eligible
+                else "MASE не определена либо выше 1.05; допустим только осознанный override"
+            ),
         })
-    ranking.sort(key=lambda item: (item["weighted_score"], item["metrics"]["mase"], item["metrics"]["rmse"]))
+    ranking.sort(key=lambda item: (
+        item["weighted_score"],
+        item["metrics"].get("mase") if item["metrics"].get("mase") is not None else float("inf"),
+        item["metrics"]["rmse"],
+    ))
     for rank, item in enumerate(ranking, 1):
         item["rank"] = rank
     if any(not item["baseline_eligible"] for item in ranking):
         warnings.append("Модели с MASE > 1.05 помечены риском, но не скрыты из аудиторской таблицы.")
     result = {
         "comparison_id": str(uuid4()), "fingerprint": context["fingerprint"],
+        "cohort_id": next(iter(cohorts)),
         "normalization": "min_max_within_comparable_pool", "metric_weights": {
             metric: round(weights[metric] / weight_sum, 6) for metric in metric_ids
         },
@@ -434,7 +494,10 @@ def select_modeling_candidate(
         raise HTTPException(status_code=409, detail="Подтвердите выбор модели, уступающей Naive")
     top = comparison["ranking"][:3]
     close_scores = len(top) >= 2 and top[1]["weighted_score"] - top[0]["weighted_score"] <= 0.05
-    enough_strong_models = sum(item["metrics"]["mase"] < 1 for item in top) >= 2
+    enough_strong_models = sum(
+        item["metrics"].get("mase") is not None and item["metrics"]["mase"] < 1
+        for item in top
+    ) >= 2
     ensemble_candidate = close_scores and enough_strong_models
     result = {
         "selected_model_id": payload.model_id,
@@ -477,6 +540,9 @@ def create_model_card(
     diagnostics = session.modeling_artifacts.get("diagnostics", {}).get(model_id)
     candidate = next((item for item in session.modeling_artifacts.get("candidates", {}).get("candidates", []) if item["model_id"] == model_id), None)
     series = prepare_passport_series(session.dataframe, session.target_column, session.date_column)
+    folds = backtest.get("folds") or []
+    first_fold = folds[0] if folds else None
+    last_fold = folds[-1] if folds else None
     diagnostics_items = (diagnostics or {}).get("diagnostics", [])
     passed = [item["test"] for item in diagnostics_items if item["applicable"] and item["status"] == "pass"]
     failed = [item for item in diagnostics_items if item["applicable"] and item["status"] in {"warning", "fail"}]
@@ -497,7 +563,7 @@ def create_model_card(
             },
         },
         "data_summary": {
-            "n_observations": backtest["n_train"], "n_series": context["profile"]["n_series"],
+            "n_observations": len(series), "n_series": context["profile"]["n_series"],
             "frequency": context["profile"]["frequency"], "domain": context["profile"]["domain"],
             "target_column": session.target_column, "date_column": session.date_column,
             "source_checkpoint": context["checkpoint"]["checkpoint_id"],
@@ -505,16 +571,26 @@ def create_model_card(
         },
         "hyperparameters": (tuning or {}).get("best_params", {}),
         "training": {
-            "train_start": str(series.index[0]), "train_end": str(series.index[backtest["n_train"] - 1]),
-            "validation_method": context["validation_strategy"]["strategy"],
-            "n_folds": (tuning or {}).get("cv_config", {}).get(
-                "n_splits", context["validation_strategy"]["n_splits"],
+            "train_start": (
+                first_fold.get("train_start_label") if first_fold else str(series.index[0])
             ),
+            "train_end": (
+                last_fold.get("train_end_label") if last_fold
+                else str(series.index[backtest["n_train"] - 1])
+            ),
+            "validation_method": backtest.get("strategy", context["validation_strategy"]["strategy"]),
+            "n_folds": backtest.get("n_folds", context["validation_strategy"]["n_splits"]),
+            "horizon": backtest.get("horizon"),
+            "gap": backtest.get("gap", 0),
+            "cohort_id": backtest.get("cohort_id"),
+            "folds": folds,
             "training_time_seconds": round(backtest["duration_ms"] / 1000, 6),
             "gpu_used": False,
         },
         "performance": {
             "backtest_metrics": backtest["metrics"],
+            "residuals_source": "backtest_oof",
+            "oof_predictions": backtest.get("oof_predictions", []),
             "cv_metrics": (tuning or {}).get("best_metrics") or {},
             "baseline_comparison": {
                 "mase": ranked["metrics"]["mase"],

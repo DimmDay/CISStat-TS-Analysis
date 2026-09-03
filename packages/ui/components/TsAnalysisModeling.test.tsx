@@ -221,7 +221,7 @@ const MOCK_MODELING_CONTEXT = {
     has_holidays: false, gpu_available: false, feature_engineering_applied: false,
   },
   passport: {},
-  validation_strategy: { strategy: "expanding", horizon: 12, n_splits: 5, gap: 0 },
+  validation_strategy: { strategy: "sliding", horizon: 12, n_splits: 5, gap: 2, train_window: 60 },
   model_matrix: {},
   runnable_shortlist: ["naive", "ets", "arima"],
   traceability: {
@@ -524,6 +524,20 @@ describe("TsAnalysisModeling", () => {
     expect(oldCalls).toHaveLength(0);
   });
 
+  it("passes the complete EDA validation contract to candidate generation", async () => {
+    render(<TsAnalysisModeling />);
+    await waitFor(() => {
+      const call = mockFetch.mock.calls.find(
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/session/modeling/candidates")
+      );
+      expect(call).toBeDefined();
+      const payload = JSON.parse((call?.[1] as RequestInit).body as string);
+      expect(payload).toMatchObject({
+        strategy: "sliding", horizon: 12, n_splits: 5, gap: 2, train_window: 60,
+      });
+    });
+  });
+
   // ── 8. Кнопка «Загрузить пул» ──
 
   it("renders the 'Загрузить пул' button", () => {
@@ -783,6 +797,19 @@ const MOCK_BACKTEST_RESPONSE = {
   train_ratio: 0.8,
   duration_ms: 12.3,
   data_source: "session",
+  status: "success",
+  strategy: "expanding",
+  cohort_id: "cohort-test",
+  horizon: 2,
+  n_folds: 3,
+  gap: 0,
+  folds: [
+    { fold: 1, status: "success", n_train: 90, n_test: 2, train_start: 0, train_end: 89, test_start: 90, test_end: 91, duration_ms: 2, metrics: { mae: 3, rmse: 4, mape: 2, mase: 0.8, weighted_score: null }, predictions: [] },
+    { fold: 2, status: "success", n_train: 92, n_test: 2, train_start: 0, train_end: 91, test_start: 92, test_end: 93, duration_ms: 2, metrics: { mae: 3, rmse: 4, mape: 2, mase: 0.8, weighted_score: null }, predictions: [] },
+    { fold: 3, status: "success", n_train: 94, n_test: 2, train_start: 0, train_end: 93, test_start: 94, test_end: 95, duration_ms: 2, metrics: { mae: 3, rmse: 4, mape: 2, mase: 0.8, weighted_score: null }, predictions: [] },
+  ],
+  oof_predictions: [],
+  warnings: [],
 };
 
 const MOCK_BACKTEST_RESPONSE_REAL_DATA = {
@@ -886,6 +913,7 @@ describe("TsAnalysisModeling — backtest", () => {
     expect(screen.getByText("3.45")).toBeInTheDocument(); // MAE
     expect(screen.getByText("4.12")).toBeInTheDocument(); // RMSE
     expect(screen.getByText("2.1%")).toBeInTheDocument(); // MAPE
+    expect(screen.getByTestId("backtest-fold-summary")).toHaveTextContent("3 folds");
   });
 
   it("shows only the real session data badge", async () => {

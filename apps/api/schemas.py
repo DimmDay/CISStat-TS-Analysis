@@ -2997,11 +2997,50 @@ class BacktestMetrics(BaseModel):
     """Метрики бэктеста."""
     mae: float = Field(..., description="Mean Absolute Error")
     rmse: float = Field(..., description="Root Mean Squared Error")
-    mape: float = Field(..., description="Mean Absolute Percentage Error (%)")
-    mase: float = Field(..., description="Mean Absolute Scaled Error")
-    weighted_score: float = Field(
-        ..., description="Взвешенный итог: 0.35*MAE_n + 0.25*RMSE_n + 0.20*MAPE_n + 0.20*MASE_n"
+    mape: Optional[float] = Field(None, description="MAPE (%); null, если в holdout нет ненулевых фактов")
+    mase: Optional[float] = Field(None, description="MASE с train-only seasonal scale; null при нулевом scale")
+    smape: Optional[float] = Field(None, description="Symmetric MAPE (%)")
+    rmsse: Optional[float] = Field(None, description="Root Mean Squared Scaled Error")
+    mape_valid_points: int = Field(0, ge=0, description="Число OOF-точек, на которых MAPE определена")
+    weighted_score: Optional[float] = Field(
+        None,
+        description=(
+            "Legacy score для старых endpoints/tuning. В каноническом backtest null: "
+            "нормализация допустима только внутри общего comparison cohort."
+        ),
     )
+
+
+class BacktestPredictionPoint(BaseModel):
+    """Одна out-of-fold прогнозная точка."""
+    fold: int
+    horizon_step: int = Field(..., ge=1)
+    index: int = Field(..., ge=0)
+    label: Optional[str] = None
+    actual: float
+    predicted: float
+    residual: float
+
+
+class BacktestFoldResult(BaseModel):
+    """Аудируемый результат одного rolling-origin fold."""
+    fold: int = Field(..., ge=1)
+    status: Literal["success", "failed"]
+    train_start: int = Field(..., ge=0)
+    train_end: int = Field(..., ge=0)
+    test_start: int = Field(..., ge=0)
+    test_end: int = Field(..., ge=0)
+    gap: int = Field(0, ge=0)
+    n_train: int = Field(..., ge=1)
+    n_test: int = Field(..., ge=1)
+    train_start_label: Optional[str] = None
+    train_end_label: Optional[str] = None
+    test_start_label: Optional[str] = None
+    test_end_label: Optional[str] = None
+    metrics: Optional[BacktestMetrics] = None
+    predictions: List[BacktestPredictionPoint] = Field(default_factory=list)
+    duration_ms: float = Field(..., ge=0)
+    error: Optional[str] = None
 
 
 class BacktestResponse(BaseModel):
@@ -3025,6 +3064,15 @@ class BacktestResponse(BaseModel):
         None,
         description="Источник ряда: 'session' (реальный из датасета) | 'synthetic' (синтетический)",
     )
+    status: Literal["success", "partial"] = "success"
+    strategy: Literal["single", "expanding", "sliding"] = "single"
+    cohort_id: Optional[str] = Field(None, description="Fingerprint данных и точного набора folds")
+    horizon: int = Field(1, ge=1)
+    n_folds: int = Field(1, ge=1)
+    gap: int = Field(0, ge=0)
+    folds: List[BacktestFoldResult] = Field(default_factory=list)
+    oof_predictions: List[BacktestPredictionPoint] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
 
 
 # ── Моделирование: тюнинг гиперпараметров (Phase 1-C) ───────────────────

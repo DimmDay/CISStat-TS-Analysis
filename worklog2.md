@@ -1264,3 +1264,74 @@ TDD и проверка
 - `packages/ui/lib/modeling.ts`
 - `tests/api/test_models_candidates.py`
 - `tests/unit/test_model_readiness_candidates.py`
+
+---
+
+Task ID: 96 — Leakage-safe rolling-origin backtest как единая основа Modeling (TDD)
+
+Исходная точка и аудит
+
+Работа выполнена после синхронизации `main` с точным коммитом `65d39b8ef4a013ed57e006b388fbaeb8da1c9343`; commit/push не выполнялись. Повторно проверены `AGENTS.md`, Modeling session workflow, EDA validation strategy, девять production model implementations, legacy public/internal backtest, diagnostics, comparison, Model Card и обе frontend-оболочки.
+
+До Task 96 session backtest фактически был одиночным holdout: из EDA-контракта использовался только horizon, а `strategy`, `n_splits`, `gap`, `train_window` и сами folds не исполнялись. Naive строил one-step rolling forecast с фактическими значениями test, Seasonal Naive также мог читать holdout. При ошибке statsmodels legacy-обёртки могли вернуть Naive под именем исходной модели, а для неподдержанных моделей существовала формула `Naive × family_penalty`. В ответе не было fold boundaries, OOF-прогнозов и OOF-остатков; diagnostics заново строила in-sample residuals по полной истории. Абсолютный `weighted_score` вычислялся до появления сопоставимого пула моделей.
+
+Каноническая основа backtest
+
+- Добавлен отдельный `backtesting.py`: `BacktestPlan` валидирует и замораживает точные folds из остановки EDA без shuffle. Проверяются временной порядок, непересекающиеся test-интервалы, строгий gap, горизонт, expanding-семантика, число folds и завершение последнего test на последнем наблюдении.
+- `cohort_id` является SHA-256 от fingerprint ряда, target, стратегии, точных train/test индексов, gap, horizon и seasonal period метрик. Поэтому сравнение результатов с разной шкалой MASE или разными разбиениями невозможно.
+- Каждый predictor получает только train slice. Прогноз строится fixed-origin сразу на `gap + horizon`; gap-прогнозы не оцениваются, а в OOF попадает только следующий test-интервал. Naive фиксирует последний train, Drift продолжает train-тренд, Seasonal Naive рекурсивно продолжает train-сезонность и не читает test даже при `horizon > period`.
+- Один строгий registry подключает все девять реально реализованных моделей: Naive, Seasonal Naive, Drift, Mean, ETS, ETS Damped, Theta, ARIMA и Auto-ARIMA. Registry программно сверяется с `PRODUCTION_BACKTEST_MODEL_IDS`.
+- Любая ошибка fit/predict завершает fold и весь запуск честным 422 с сохранением `backtest_failures`; подмена Naive запрещена. Legacy penalty-ветка также удалена: public/internal API больше не могут вернуть фиктивные метрики для LightGBM, структурных, neural, multivariate или volatility моделей.
+- Для каждого fold сохраняются индексы и временные labels train/test, gap, duration, метрики и прогнозные точки. Агрегат строится по всем OOF-точкам; сохраняются actual, predicted и residual.
+- Метрики: MAE, RMSE, MAPE с числом допустимых точек, sMAPE, seasonal MASE и RMSSE. Знаменатели MASE/RMSSE рассчитываются только по train соответствующего fold. Невычислимые MAPE/MASE возвращаются как `null` с предупреждением. `weighted_score` канонического одиночного backtest равен `null` и появляется только после min-max нормализации внутри общего comparison cohort.
+- Производные target, полученные некаузальным сглаживанием/detrending либо Box-Cox/Yeo-Johnson с параметрами по полной истории, блокируются до появления fold-local preprocessing fit. Детерминированный каузальный target допускается с явным предупреждением о шкале метрик.
+
+EDA hand-off и downstream-трассируемость
+
+- Последний рассчитанный план EDA сохраняется в `AnalysisSession.eda_validation_strategy`, проходит Memory/Redis JSON round-trip и сбрасывается вместе с паспортом при смене dataset/target/date.
+- `GET /v1/session/modeling/context` без ручных query-параметров восстанавливает последний EDA-план либо текущий Modeling contract; переход между вкладками и reload больше не заменяют sliding/single/gap дефолтным expanding.
+- Candidates request теперь передаёт и сохраняет полный контракт: strategy, horizon, n_splits, gap и train_window. Backtest принимает только сохранённые folds; ручной `train_ratio` в каноническом маршруте отвергается.
+- Diagnostics использует только сохранённые OOF residuals того же backtest/cohort, а не повторный in-sample fit по полной истории.
+- Compare принимает только полностью успешные backtests с одинаковым ненулевым cohort id. MAPE/MASE исключаются из ranking с перенормировкой весов, если метрика не определена хотя бы для одной модели.
+- Model Card сохраняет полный fold contract, cohort id, horizon/gap, OOF predictions/residual source, корректное число наблюдений исходного ряда и фактические границы train.
+
+Frontend
+
+- Типы Modeling расширены fold/OOF/cohort-контрактом и nullable-метриками.
+- Карточка результата показывает стратегию, число folds, horizon, последний train и общий размер OOF вместо методологически неверного абсолютного score.
+- Сравнительный график до стадии server-side comparison показывает OOF MASE, а не старый `weighted_score` с произвольными делителями.
+- Добавлен график «факт ↔ fixed-origin прогноз» выбранной модели по OOF-точкам с разделителями folds; при отсутствии OOF UI не рисует фиктивную визуализацию.
+
+TDD и проверка
+
+- RED: отсутствовал модуль backtest engine; UI не показывал fold contract. Дополнительные RED-регрессии подтвердили потерю sliding-параметров, возврат penalty-метрик LightGBM и игнорирование gap при прогнозировании.
+- GREEN core/session contract: 23/23 PASS.
+- Расширенный backtest/session/store contract: 88/88 PASS.
+- Проверены реальные strict-dispatch всех девяти production-моделей на одном OOF cohort.
+- Расширенная Modeling/backend-регрессия: 157/159 PASS; два сбоя — ранее известный baseline ARIMA tuning на технически коротких folds в текущей версии statsmodels.
+- Полный backend collection без синтаксически повреждённого baseline-файла `tests/unit/test_file_loader.py`: 1219 PASS, 33 FAIL, 3 ERROR. Число и классы остатка совпадают с ранее зафиксированным baseline: Pandas 3 string dtype, отсутствующие `ruptures` и snapshot fixture, legacy diagnostics YAML contract и короткие ARIMA folds.
+- Целевой frontend: 3 suites, 59/59 PASS.
+- Полный frontend: 84 suites, 723/723 PASS, 0 snapshots.
+- TypeScript embedded/standalone: PASS с ранее принятым проверочным флагом `--noUncheckedSideEffectImports false`; production tsconfig не менялся.
+- Production build embedded/standalone: PASS, по 13/13 страниц, включая `/modeling`; First Load JS 455 kB. Временный sandbox memory shim удалён и в изменения не входит.
+- `py_compile` изменённых Python-файлов и `git diff --check`: PASS.
+
+Изменённые и новые файлы Task 96
+
+- `apps/api/backtesting.py` (новый)
+- `apps/api/routers/modeling_session.py`
+- `apps/api/routers/models.py`
+- `apps/api/routers/session.py`
+- `apps/api/schemas.py`
+- `apps/api/session_store.py`
+- `packages/ui/components/BacktestComparisonChart.tsx`
+- `packages/ui/components/BacktestComparisonChart.test.tsx`
+- `packages/ui/components/BacktestOofChart.tsx` (новый)
+- `packages/ui/components/BacktestOofChart.test.tsx` (новый)
+- `packages/ui/components/TsAnalysisModeling.tsx`
+- `packages/ui/components/TsAnalysisModeling.test.tsx`
+- `packages/ui/lib/modeling.ts`
+- `packages/ui/index.ts`
+- `tests/api/test_modeling_workflow.py`
+- `tests/api/test_models_candidates.py`
+- `tests/unit/test_backtesting_engine.py` (новый)
