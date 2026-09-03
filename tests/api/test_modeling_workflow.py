@@ -196,9 +196,108 @@ def test_tuning_reuses_exact_sliding_eda_plan_and_cohort(client: TestClient):
     ]
     assert all(trial["n_folds"] == 2 for trial in body["trials"])
 
+    assert body["tuning_id"]
+    assert body["parameter_signature"]
+    promoted = body["promoted_backtest"]
+    assert promoted["params_source"] == "tuning"
+    assert promoted["params"] == body["best_params"]
+    assert promoted["parameter_signature"] == body["parameter_signature"]
+    assert promoted["tuning_id"] == body["tuning_id"]
+    assert promoted["cohort_id"] == body["cohort_id"]
+
     backtest = client.post("/v1/session/modeling/backtest", json={"model_id": "ets"})
     assert backtest.status_code == 200, backtest.text
     assert backtest.json()["cohort_id"] == body["cohort_id"]
+
+
+def test_diagnostics_are_bound_to_promoted_tuned_oof_lineage(client: TestClient):
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=2&n_splits=4").status_code == 200
+    initial = client.post("/v1/session/modeling/backtest", json={"model_id": "ets"})
+    assert initial.status_code == 200, initial.text
+    assert initial.json()["params_source"] == "model_default"
+
+    tuned = client.post(
+        "/v1/session/modeling/tune",
+        json={"model_id": "ets", "max_trials": 1, "metric": "rmse"},
+    )
+    assert tuned.status_code == 200, tuned.text
+    tuning = tuned.json()
+    state = client.get("/v1/session/modeling/state").json()
+    promoted = state["artifacts"]["backtests"]["ets"]
+    assert promoted["run_id"] == tuning["promoted_backtest"]["run_id"]
+    assert promoted["oof_signature"] == tuning["promoted_backtest"]["oof_signature"]
+
+    response = client.post("/v1/session/modeling/diagnostics", json={"model_id": "ets"})
+
+    assert response.status_code == 200, response.text
+    diagnostics = response.json()
+    assert diagnostics["residuals_source"] == "tuned_backtest_oof"
+    assert diagnostics["params_source"] == "tuning"
+    assert diagnostics["params"] == tuning["best_params"]
+    assert diagnostics["parameter_signature"] == tuning["parameter_signature"]
+    assert diagnostics["tuning_id"] == tuning["tuning_id"]
+    assert diagnostics["backtest_run_id"] == promoted["run_id"]
+    assert diagnostics["residuals_signature"] == promoted["oof_signature"]
+    assert {item["test"] for item in diagnostics["diagnostics"]} == {
+        "ljung_box", "jarque_bera", "arch_lm", "durbin_watson",
+    }
+
+
+def test_diagnostics_rejects_tampered_promoted_oof_lineage(client: TestClient):
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=2&n_splits=4").status_code == 200
+    tuned = client.post(
+        "/v1/session/modeling/tune",
+        json={"model_id": "ets", "max_trials": 1, "metric": "rmse"},
+    )
+    assert tuned.status_code == 200, tuned.text
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    store = get_session_store()
+    session = store.get(session_id)
+    session.modeling_artifacts["backtests"]["ets"]["oof_predictions"][0]["residual"] += 1
+    store.save(session)
+
+    response = client.post("/v1/session/modeling/diagnostics", json={"model_id": "ets"})
+
+    assert response.status_code == 409
+    assert "OOF lineage" in response.json()["detail"]
+
+
+def test_repeated_tuning_invalidates_stale_downstream_artifacts(client: TestClient):
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=2&n_splits=4").status_code == 200
+    for model_id in ("naive", "ets"):
+        response = client.post("/v1/session/modeling/backtest", json={"model_id": model_id})
+        assert response.status_code == 200, response.text
+    assert client.post(
+        "/v1/session/modeling/diagnostics", json={"model_id": "ets"},
+    ).status_code == 200
+    comparison = client.post("/v1/session/modeling/compare", json={})
+    assert comparison.status_code == 200, comparison.text
+    selected_id = comparison.json()["ranking"][0]["model_id"]
+    assert client.post(
+        "/v1/session/modeling/select",
+        json={"model_id": selected_id, "acknowledge_baseline_risk": True},
+    ).status_code == 200
+    assert client.post("/v1/session/modeling/card", json={}).status_code == 200
+
+    tuned = client.post(
+        "/v1/session/modeling/tune",
+        json={"model_id": "ets", "max_trials": 1},
+    )
+
+    assert tuned.status_code == 200, tuned.text
+    state = client.get("/v1/session/modeling/state").json()
+    artifacts = state["artifacts"]
+    assert "ets" not in artifacts["diagnostics"]
+    assert "comparison" not in artifacts
+    assert "selection" not in artifacts
+    assert artifacts["model_cards"] == {}
+    assert state["pipeline"]["diagnostics"] == "in_progress"
+    assert state["pipeline"]["comparison"] == "pending"
+    assert state["pipeline"]["selection"] == "pending"
+    assert state["pipeline"]["model_card"] == "pending"
 
 
 def test_session_tuning_rejects_a_second_legacy_cv_contract(client: TestClient):
@@ -225,6 +324,9 @@ def test_diagnostics_reuses_out_of_fold_residuals_from_backtest(client: TestClie
     assert response.status_code == 200, response.text
     assert response.json()["residuals_source"] == "backtest_oof"
     assert response.json()["residuals_count"] == len(backtest.json()["oof_predictions"])
+    assert response.json()["params_source"] == "model_default"
+    assert response.json()["parameter_signature"] == backtest.json()["parameter_signature"]
+    assert response.json()["residuals_signature"] == backtest.json()["oof_signature"]
 
 
 def test_backtest_blocks_target_transform_fitted_on_full_history(client: TestClient):

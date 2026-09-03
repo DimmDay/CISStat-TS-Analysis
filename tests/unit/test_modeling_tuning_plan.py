@@ -6,7 +6,7 @@ import pytest
 from app.preprocessing.transforms import apply_variance_transform
 from apps.api.backtesting import build_backtest_plan, run_backtest_plan
 from apps.api.fold_preprocessing import prepare_modeling_target
-from apps.api.modeling_tuning import execute_tuning_plan
+from apps.api.modeling_tuning import execute_tuning_plan, execute_tuning_plan_with_artifacts
 
 
 def _sliding_plan():
@@ -58,6 +58,31 @@ def test_tuning_executes_the_exact_sliding_eda_backtest_plan():
         [0.0, 1.0, 2.0, 3.0], [2.0, 3.0, 4.0, 5.0],
         [0.0, 1.0, 2.0, 3.0], [2.0, 3.0, 4.0, 5.0],
     ]
+
+
+def test_tuning_promotes_the_exact_best_trial_oof_without_a_rerun():
+    plan = _sliding_plan()
+    calls: list[float] = []
+
+    def predictor(train, horizon, _period, params):
+        calls.append(params["offset"])
+        return [train[-1] + params["offset"]] * horizon
+
+    execution = execute_tuning_plan_with_artifacts(
+        model_id="test", model_name="Test", family_id="test",
+        param_space={"offset": [0.0, 2.0]},
+        series=[float(value) for value in range(9)],
+        labels=[f"t{value}" for value in range(9)],
+        plan=plan, seasonal_period=1, max_trials=None,
+        metric="rmse", random_state=42, predictors={"test": predictor},
+    )
+
+    assert calls == [0.0, 0.0, 2.0, 2.0]
+    assert execution.response.best_params == {"offset": 2.0}
+    assert execution.best_backtest["metrics"] == execution.response.best_metrics.model_dump()
+    assert [
+        point["predicted"] for point in execution.best_backtest["oof_predictions"]
+    ] == [5.0, 5.0, 7.0, 7.0]
 
 
 def test_box_cox_is_refitted_per_fold_and_predictions_return_to_source_scale():

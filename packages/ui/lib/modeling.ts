@@ -255,6 +255,12 @@ export interface BacktestResponse {
     target_scaling?: string | null;
     inverse_transform_applied?: boolean;
   };
+  run_id?: string | null;
+  params?: Record<string, unknown>;
+  params_source?: "model_default" | "tuning" | "request";
+  parameter_signature?: string | null;
+  tuning_id?: string | null;
+  oof_signature?: string | null;
 }
 
 export interface TuningFoldPlan {
@@ -275,6 +281,9 @@ export interface SessionTuningResponse {
   folds: TuningFoldPlan[];
   preprocessing: NonNullable<BacktestResponse["preprocessing"]>;
   warnings: string[];
+  tuning_id?: string | null;
+  parameter_signature?: string | null;
+  promoted_backtest?: BacktestResponse | null;
 }
 
 export type TraceabilityStatus = "done" | "warning" | "skipped" | "pending";

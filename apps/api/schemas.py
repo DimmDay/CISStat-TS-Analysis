@@ -3077,6 +3077,24 @@ class BacktestResponse(BaseModel):
         default_factory=dict,
         description="Fold-local preprocessing contract used by this run",
     )
+    run_id: Optional[str] = Field(
+        None, description="Уникальный идентификатор конкретного исполнения backtest",
+    )
+    params: Dict[str, Any] = Field(
+        default_factory=dict, description="Параметры, фактически использованные во всех folds",
+    )
+    params_source: Literal["model_default", "tuning", "request"] = Field(
+        "model_default", description="Происхождение фактически использованных параметров",
+    )
+    parameter_signature: Optional[str] = Field(
+        None, description="SHA-256 модели и канонического набора параметров",
+    )
+    tuning_id: Optional[str] = Field(
+        None, description="Идентификатор tuning run, если backtest является promoted trial",
+    )
+    oof_signature: Optional[str] = Field(
+        None, description="SHA-256 упорядоченных фактов, прогнозов и остатков OOF",
+    )
 
 
 # ── Моделирование: тюнинг гиперпараметров (Phase 1-C) ───────────────────
@@ -3199,3 +3217,13 @@ class TuneResponse(BaseModel):
     folds: List[TuneFoldPlan] = Field(default_factory=list)
     preprocessing: Dict[str, Any] = Field(default_factory=dict)
     warnings: List[str] = Field(default_factory=list)
+    tuning_id: Optional[str] = Field(
+        None, description="Уникальный идентификатор tuning run",
+    )
+    parameter_signature: Optional[str] = Field(
+        None, description="SHA-256 модели и best_params",
+    )
+    promoted_backtest: Optional[BacktestResponse] = Field(
+        None,
+        description="Точный backtest лучшего trial без повторного обучения",
+    )

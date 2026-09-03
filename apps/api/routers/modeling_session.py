@@ -21,9 +21,13 @@ from apps.api.model_readiness import (
     PRODUCTION_BACKTEST_MODEL_IDS,
     PRODUCTION_TUNING_MODEL_IDS,
 )
-from apps.api.modeling_tuning import execute_tuning_plan
+from apps.api.modeling_tuning import (
+    execute_tuning_plan_with_artifacts,
+    oof_signature,
+    parameter_signature,
+)
 from apps.api.modeling_workflow import build_modeling_context
-from apps.api.routers.diagnostics import _diagnose
+from apps.api.routers.diagnostics import DiagnosticResult, _diagnose
 from apps.api.routers.models import (
     _compute_candidates,
     _resolve_model_info,
@@ -77,6 +81,24 @@ class ModelingDiagnosticsRequest(BaseModel):
     alpha: float = Field(0.05, gt=0, lt=1)
     ljung_box_lags: Optional[int] = Field(None, ge=1, le=50)
     arch_lags: Optional[int] = Field(None, ge=1, le=20)
+
+
+class SessionDiagnosticsResponse(BaseModel):
+    model_id: str
+    target_column: str
+    n_observations: int
+    residuals_count: int
+    alpha: float
+    params_source: Literal["model_default", "tuning"]
+    params: dict[str, Any] = Field(default_factory=dict)
+    parameter_signature: str
+    tuning_id: Optional[str] = None
+    backtest_run_id: str
+    residuals_signature: str
+    residuals_source: Literal["backtest_oof", "tuned_backtest_oof"]
+    cohort_id: str
+    preprocessing: dict[str, Any] = Field(default_factory=dict)
+    diagnostics: list[DiagnosticResult]
 
 
 class ModelingCompareRequest(BaseModel):
@@ -147,6 +169,34 @@ def _prepare_state(session, context: dict[str, Any], *, refresh_contract: bool =
         session.modeling_artifacts["validation_strategy"] = _validation_contract(context)
         session.modeling_artifacts["profile"] = context["profile"]
         session.modeling_artifacts["runnable_shortlist"] = context["runnable_shortlist"]
+
+
+def _trace_backtest(
+    raw: dict[str, Any], *, model_id: str, params: dict[str, Any],
+    params_source: Literal["model_default", "tuning"], tuning_id: Optional[str] = None,
+) -> BacktestResponse:
+    """Attach immutable execution and OOF lineage to a backtest payload."""
+    payload = dict(raw)
+    payload.update({
+        "run_id": str(uuid4()),
+        "params": dict(params),
+        "params_source": params_source,
+        "parameter_signature": parameter_signature(model_id, params),
+        "tuning_id": tuning_id,
+        "oof_signature": oof_signature(payload.get("oof_predictions") or []),
+    })
+    return BacktestResponse(**payload)
+
+
+def _invalidate_after_model_run(session, model_id: str) -> None:
+    """Remove every artifact that depended on an older OOF execution."""
+    session.modeling_artifacts.setdefault("diagnostics", {}).pop(model_id, None)
+    session.modeling_artifacts.pop("comparison", None)
+    session.modeling_artifacts.pop("selection", None)
+    session.modeling_artifacts["model_cards"] = {}
+    session.modeling_pipeline["diagnostics"] = "in_progress"
+    for stage in ("comparison", "selection", "model_card"):
+        session.modeling_pipeline[stage] = "pending"
 
 
 def _get_session(request: Request, response: Response):
@@ -300,19 +350,25 @@ def run_modeling_backtest(
             preprocessing_signature=prepared.preprocessing_signature,
         )
         tuned = session.modeling_artifacts.get("tuning", {}).get(payload.model_id, {})
-        tuned_params = tuned.get("best_params", {}) if tuned.get("cohort_id") == plan.cohort_id else {}
+        tuned_matches = bool(tuned) and tuned.get("cohort_id") == plan.cohort_id
+        tuned_params = tuned.get("best_params", {}) if tuned_matches else {}
         preprocessing_warnings = list(prepared.warnings)
         if tuned and not tuned_params:
             preprocessing_warnings.append(
                 "Сохранённые tuned-параметры относятся к другому cohort и не применены."
             )
-        result = BacktestResponse(**run_backtest_plan(
+        raw_result = run_backtest_plan(
             model_id=payload.model_id, model_name=model_info[0], family_id=model_info[1],
             series=prepared.series, labels=prepared.labels,
             plan=plan, seasonal_period=int(period), params=tuned_params,
             preprocessing_warnings=preprocessing_warnings,
             fold_preprocessor=prepared.fold_preprocessor,
-        ))
+        )
+        result = _trace_backtest(
+            raw_result, model_id=payload.model_id, params=tuned_params,
+            params_source="tuning" if tuned_matches else "model_default",
+            tuning_id=tuned.get("tuning_id") if tuned_matches else None,
+        )
     except BacktestExecutionError as exc:
         session.modeling_artifacts.setdefault("backtest_failures", {})[payload.model_id] = {
             "model_id": payload.model_id, "cohort_id": getattr(locals().get("plan"), "cohort_id", None),
@@ -321,11 +377,12 @@ def run_modeling_backtest(
         session.touch()
         store.save(session)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    _invalidate_after_model_run(session, payload.model_id)
     session.modeling_artifacts.setdefault("backtests", {})[payload.model_id] = result.model_dump(mode="json")
     if model_info[1] == "baselines":
         session.modeling_pipeline["baseline_estimation"] = "done"
     session.modeling_pipeline["backtest"] = "done"
-    session.modeling_pipeline["tuning"] = "in_progress"
+    session.modeling_pipeline["tuning"] = "done" if tuned_matches else "in_progress"
     session.touch()
     store.save(session)
     return result
@@ -378,7 +435,7 @@ def tune_modeling_candidate(
             seasonal_period=int(period),
             preprocessing_signature=prepared.preprocessing_signature,
         )
-        result = execute_tuning_plan(
+        execution = execute_tuning_plan_with_artifacts(
             model_id=payload.model_id, model_name=model_info[0], family_id=model_info[1],
             param_space=model.param_space, series=prepared.series, labels=prepared.labels,
             plan=plan, seasonal_period=int(period), max_trials=payload.max_trials,
@@ -386,6 +443,13 @@ def tune_modeling_candidate(
             fold_preprocessor=prepared.fold_preprocessor,
             preprocessing_warnings=prepared.warnings,
         )
+        result = execution.response
+        promoted = _trace_backtest(
+            execution.best_backtest, model_id=payload.model_id,
+            params=result.best_params, params_source="tuning",
+            tuning_id=result.tuning_id,
+        )
+        result = result.model_copy(update={"promoted_backtest": promoted})
     except BacktestExecutionError as exc:
         session.modeling_artifacts.setdefault("tuning_failures", {})[payload.model_id] = {
             "model_id": payload.model_id,
@@ -395,6 +459,8 @@ def tune_modeling_candidate(
         session.touch()
         store.save(session)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+    _invalidate_after_model_run(session, payload.model_id)
+    session.modeling_artifacts.setdefault("backtests", {})[payload.model_id] = promoted.model_dump(mode="json")
     session.modeling_artifacts.setdefault("tuning", {})[payload.model_id] = result.model_dump(mode="json")
     session.modeling_pipeline["tuning"] = "done"
     session.modeling_pipeline["diagnostics"] = "in_progress"
@@ -403,7 +469,7 @@ def tune_modeling_candidate(
     return result
 
 
-@router.post("/diagnostics")
+@router.post("/diagnostics", response_model=SessionDiagnosticsResponse)
 def diagnose_modeling_candidate(
     payload: ModelingDiagnosticsRequest,
     request: Request,
@@ -418,20 +484,64 @@ def diagnose_modeling_candidate(
     points = backtest.get("oof_predictions") or []
     if not points:
         raise HTTPException(status_code=409, detail="Backtest не содержит OOF-остатков для диагностики")
+    current_oof_signature = oof_signature(points)
+    current_parameter_signature = parameter_signature(
+        payload.model_id, backtest.get("params") or {},
+    )
+    if (
+        not backtest.get("run_id")
+        or not backtest.get("cohort_id")
+        or backtest.get("oof_signature") != current_oof_signature
+        or backtest.get("parameter_signature") != current_parameter_signature
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Backtest не содержит валидную OOF lineage; повторите backtest или tuning",
+        )
+    tuning = session.modeling_artifacts.get("tuning", {}).get(payload.model_id)
+    if backtest.get("params_source") == "tuning":
+        if (
+            not tuning
+            or tuning.get("cohort_id") != backtest.get("cohort_id")
+            or tuning.get("tuning_id") != backtest.get("tuning_id")
+            or tuning.get("parameter_signature") != backtest.get("parameter_signature")
+            or tuning.get("parameter_signature") != parameter_signature(
+                payload.model_id, tuning.get("best_params") or {},
+            )
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="Promoted backtest не соответствует текущему tuning run; повторите tuning",
+            )
+    elif tuning and tuning.get("cohort_id") == backtest.get("cohort_id"):
+        raise HTTPException(
+            status_code=409,
+            detail="Backtest устарел относительно текущего tuning run; повторите tuning",
+        )
     residuals = np.asarray([point["residual"] for point in points], dtype=float)
     try:
         diagnostics = _diagnose(residuals, payload.alpha, payload.ljung_box_lags, payload.arch_lags)
     except (ValueError, TypeError, ArithmeticError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    result = {
+    result = SessionDiagnosticsResponse(**{
         "model_id": payload.model_id, "target_column": session.target_column,
         "n_observations": int(residuals.size), "residuals_count": int(residuals.size),
         "alpha": payload.alpha,
-        "params_source": "backtest", "residuals_source": "backtest_oof",
+        "params_source": backtest.get("params_source", "model_default"),
+        "params": backtest.get("params", {}),
+        "parameter_signature": backtest.get("parameter_signature"),
+        "tuning_id": backtest.get("tuning_id"),
+        "backtest_run_id": backtest.get("run_id"),
+        "residuals_signature": current_oof_signature,
+        "residuals_source": (
+            "tuned_backtest_oof" if backtest.get("params_source") == "tuning"
+            else "backtest_oof"
+        ),
         "cohort_id": backtest.get("cohort_id"),
+        "preprocessing": backtest.get("preprocessing", {}),
         "diagnostics": [item.model_dump(mode="json") for item in diagnostics],
-    }
-    session.modeling_artifacts.setdefault("diagnostics", {})[payload.model_id] = result
+    })
+    session.modeling_artifacts.setdefault("diagnostics", {})[payload.model_id] = result.model_dump(mode="json")
     session.modeling_pipeline["diagnostics"] = "done"
     session.modeling_pipeline["comparison"] = "in_progress"
     session.touch()
@@ -466,6 +576,37 @@ def compare_modeling_candidates(
     cohorts = {item.get("cohort_id") for item in results}
     if None in cohorts or len(cohorts) != 1:
         raise HTTPException(status_code=409, detail="Бэктесты рассчитаны на разных разбиениях и несопоставимы")
+    untraceable = [
+        item["model_id"] for item in results
+        if not item.get("run_id") or not item.get("parameter_signature")
+        or item.get("parameter_signature") != parameter_signature(
+            item["model_id"], item.get("params") or {},
+        )
+        or item.get("oof_signature") != oof_signature(item.get("oof_predictions") or [])
+    ]
+    if untraceable:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Бэктесты не имеют валидной execution/OOF lineage: {untraceable}",
+        )
+    tunings = session.modeling_artifacts.get("tuning", {})
+    stale_tuned = []
+    for item in results:
+        tuning = tunings.get(item["model_id"])
+        if tuning and tuning.get("cohort_id") == item.get("cohort_id") and (
+            item.get("params_source") != "tuning"
+            or item.get("tuning_id") != tuning.get("tuning_id")
+            or item.get("parameter_signature") != tuning.get("parameter_signature")
+            or tuning.get("parameter_signature") != parameter_signature(
+                item["model_id"], tuning.get("best_params") or {},
+            )
+        ):
+            stale_tuned.append(item["model_id"])
+    if stale_tuned:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Бэктесты устарели относительно текущего tuning run: {stale_tuned}",
+        )
 
     metric_ids = ["mae", "rmse", "mape", "mase"]
     weights = {"mae": 0.35, "rmse": 0.25, "mape": 0.20, "mase": 0.20}
@@ -490,6 +631,11 @@ def compare_modeling_candidates(
         ranking.append({
             "model_id": item["model_id"], "model_name": item["model_name"],
             "family_id": item["family_id"], "metrics": item["metrics"],
+            "backtest_run_id": item.get("run_id"),
+            "params_source": item.get("params_source"),
+            "parameter_signature": item.get("parameter_signature"),
+            "tuning_id": item.get("tuning_id"),
+            "oof_signature": item.get("oof_signature"),
             "weighted_score": round(score, 6),
             "baseline_eligible": baseline_eligible,
             "baseline_note": (
@@ -615,7 +761,7 @@ def create_model_card(
             "source_checkpoint": context["checkpoint"]["checkpoint_id"],
             "fingerprint": context["fingerprint"],
         },
-        "hyperparameters": (tuning or {}).get("best_params", {}),
+        "hyperparameters": backtest.get("params", {}),
         "training": {
             "train_start": (
                 first_fold.get("train_start_label") if first_fold else str(series.index[0])
@@ -629,6 +775,11 @@ def create_model_card(
             "horizon": backtest.get("horizon"),
             "gap": backtest.get("gap", 0),
             "cohort_id": backtest.get("cohort_id"),
+            "backtest_run_id": backtest.get("run_id"),
+            "params_source": backtest.get("params_source"),
+            "parameter_signature": backtest.get("parameter_signature"),
+            "tuning_id": backtest.get("tuning_id"),
+            "oof_signature": backtest.get("oof_signature"),
             "folds": folds,
             "preprocessing": backtest.get("preprocessing", {}),
             "training_time_seconds": round(backtest["duration_ms"] / 1000, 6),
@@ -636,7 +787,8 @@ def create_model_card(
         },
         "performance": {
             "backtest_metrics": backtest["metrics"],
-            "residuals_source": "backtest_oof",
+            "residuals_source": (diagnostics or {}).get("residuals_source", "backtest_oof"),
+            "residuals_signature": (diagnostics or {}).get("residuals_signature"),
             "oof_predictions": backtest.get("oof_predictions", []),
             "cv_metrics": (tuning or {}).get("best_metrics") or {},
             "baseline_comparison": {

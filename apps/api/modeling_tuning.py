@@ -2,9 +2,13 @@
 from __future__ import annotations
 
 import itertools
+import hashlib
+import json
 import random
 import time
+from dataclasses import dataclass
 from typing import Any, Mapping, Optional
+from uuid import uuid4
 
 from apps.api.backtesting import (
     BacktestExecutionError,
@@ -24,6 +28,37 @@ from apps.api.schemas import (
 
 MAX_TRIALS = 64
 VALID_SESSION_TUNING_METRICS = {"mae", "rmse", "mape", "mase"}
+
+
+def parameter_signature(model_id: str, params: Mapping[str, Any]) -> str:
+    """Return a stable identity for the exact model parameterization."""
+    encoded = json.dumps(
+        {"model_id": model_id, "params": dict(params)},
+        ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def oof_signature(points: list[dict[str, Any]]) -> str:
+    """Bind diagnostics to ordered OOF facts, forecasts and residuals."""
+    canonical = [
+        {
+            "fold": point.get("fold"), "horizon_step": point.get("horizon_step"),
+            "index": point.get("index"), "actual": point.get("actual"),
+            "predicted": point.get("predicted"), "residual": point.get("residual"),
+        }
+        for point in points
+    ]
+    encoded = json.dumps(
+        canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+@dataclass(frozen=True)
+class TuningPlanExecution:
+    response: TuneResponse
+    best_backtest: dict[str, Any]
 
 
 def _grid(param_space: Mapping[str, list[Any]]) -> list[dict[str, Any]]:
@@ -55,7 +90,7 @@ def _cv_summary(plan: BacktestPlan) -> CVConfig:
     )
 
 
-def execute_tuning_plan(
+def execute_tuning_plan_with_artifacts(
     *, model_id: str, model_name: str, family_id: str,
     param_space: Mapping[str, list[Any]], series: list[float], labels: list[str],
     plan: BacktestPlan, seasonal_period: int, max_trials: Optional[int],
@@ -63,7 +98,7 @@ def execute_tuning_plan(
     predictors: Optional[Mapping[str, Predictor]] = None,
     fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
     preprocessing_warnings: Optional[list[str]] = None,
-) -> TuneResponse:
+) -> TuningPlanExecution:
     """Execute every trial with the same folds and engine as backtest."""
     started = time.monotonic()
     if metric not in VALID_SESSION_TUNING_METRICS:
@@ -77,6 +112,7 @@ def execute_tuning_plan(
     requested = min(int(max_trials or MAX_TRIALS), MAX_TRIALS)
     selected_grid, truncated = _truncate(full_grid, requested, random_state)
     trials: list[TuneTrialResult] = []
+    trial_backtests: list[dict[str, Any]] = []
     warnings = list(preprocessing_warnings or [])
     failures: list[str] = []
     for params in selected_grid:
@@ -95,6 +131,7 @@ def execute_tuning_plan(
             trials.append(TuneTrialResult(
                 params=params, metrics=metrics, n_folds=len(plan.folds),
             ))
+            trial_backtests.append(result)
         except (BacktestExecutionError, ValueError, RuntimeError, ArithmeticError) as exc:
             failures.append(f"params={params}: {exc}")
     if not trials:
@@ -116,9 +153,11 @@ def execute_tuning_plan(
             "target_column": plan.target_column, "evaluation_scale": plan.target_column,
         }
     )
-    return TuneResponse(
+    tuning_id = str(uuid4())
+    best_params = trials[best_index].params
+    response = TuneResponse(
         model_id=model_id, model_name=model_name, family_id=family_id,
-        best_params=trials[best_index].params,
+        best_params=best_params,
         best_metrics=trials[best_index].metrics,
         best_trial=best_index, n_trials=len(trials), grid_size=len(full_grid),
         truncated=truncated, cv_config=_cv_summary(plan), metric=metric,
@@ -133,4 +172,27 @@ def execute_tuning_plan(
             for fold in plan.folds
         ],
         preprocessing=preprocessing, warnings=warnings,
+        tuning_id=tuning_id,
+        parameter_signature=parameter_signature(model_id, best_params),
     )
+    return TuningPlanExecution(response=response, best_backtest=trial_backtests[best_index])
+
+
+def execute_tuning_plan(
+    *, model_id: str, model_name: str, family_id: str,
+    param_space: Mapping[str, list[Any]], series: list[float], labels: list[str],
+    plan: BacktestPlan, seasonal_period: int, max_trials: Optional[int],
+    metric: str, random_state: int,
+    predictors: Optional[Mapping[str, Predictor]] = None,
+    fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
+    preprocessing_warnings: Optional[list[str]] = None,
+) -> TuneResponse:
+    """Backward-compatible response-only facade for non-session callers."""
+    return execute_tuning_plan_with_artifacts(
+        model_id=model_id, model_name=model_name, family_id=family_id,
+        param_space=param_space, series=series, labels=labels, plan=plan,
+        seasonal_period=seasonal_period, max_trials=max_trials, metric=metric,
+        random_state=random_state, predictors=predictors,
+        fold_preprocessor=fold_preprocessor,
+        preprocessing_warnings=preprocessing_warnings,
+    ).response

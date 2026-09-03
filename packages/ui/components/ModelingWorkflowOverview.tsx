@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "./Button";
 import { getApiBase } from "../lib/apiClient";
+import type { BacktestResponse } from "../lib/modeling";
 
 
 const API_BASE = getApiBase();
@@ -31,12 +32,53 @@ interface TuningResult {
   cohort_id?: string | null;
   folds?: Array<{ fold: number }>;
   preprocessing?: { fit_policy?: string; evaluation_scale?: string };
+  tuning_id?: string | null;
+  parameter_signature?: string | null;
+  promoted_backtest?: BacktestResponse | null;
+}
+
+interface DiagnosticItem {
+  test: "ljung_box" | "jarque_bera" | "arch_lm" | "durbin_watson";
+  applicable: boolean;
+  statistic: number | null;
+  p_value: number | null;
+  status: "pass" | "warning" | "fail";
+  reason?: string | null;
+}
+
+interface DiagnosticsResult {
+  model_id: string;
+  residuals_source: "backtest_oof" | "tuned_backtest_oof";
+  params_source: "model_default" | "tuning";
+  params?: Record<string, unknown>;
+  parameter_signature?: string | null;
+  cohort_id?: string | null;
+  tuning_id?: string | null;
+  backtest_run_id: string;
+  residuals_signature: string;
+  preprocessing?: { fit_policy?: string; evaluation_scale?: string };
+  diagnostics: DiagnosticItem[];
 }
 
 interface Props {
   stageId: string;
   modelIds: string[];
   onStageComplete?: (stageId: string) => void;
+  onBacktestPromoted?: (result: BacktestResponse) => void;
+}
+
+const DIAGNOSTIC_LABELS: Record<DiagnosticItem["test"], string> = {
+  ljung_box: "Ljung–Box",
+  jarque_bera: "Jarque–Bera",
+  arch_lm: "ARCH-LM",
+  durbin_watson: "Durbin–Watson",
+};
+
+function diagnosticStatus(item: DiagnosticItem): string {
+  if (!item.applicable) return "Неприменимо";
+  if (item.status === "pass") return "Пройдено";
+  if (item.status === "warning") return "Предупреждение";
+  return "Не пройдено";
 }
 
 async function postJson(path: string, body: Record<string, unknown>) {
@@ -53,8 +95,8 @@ async function postJson(path: string, body: Record<string, unknown>) {
   return payload;
 }
 
-export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete }: Props) {
-  const supportedModelIds = ["tuning", "diagnostics"].includes(stageId)
+export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, onBacktestPromoted }: Props) {
+  const supportedModelIds = stageId === "tuning"
     ? modelIds.filter((item) => ["ets", "ets_damped", "arima"].includes(item))
     : modelIds;
   const [modelId, setModelId] = useState(supportedModelIds[0] ?? "");
@@ -69,6 +111,11 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete }:
   useEffect(() => {
     if (!supportedModelIds.includes(modelId)) setModelId(supportedModelIds[0] ?? "");
   }, [modelId, supportedModelIds]);
+
+  useEffect(() => {
+    setResult(null);
+    setError(null);
+  }, [stageId]);
 
   const execute = useCallback(async (action: () => Promise<Record<string, unknown>>, stage: string) => {
     setLoading(true);
@@ -110,13 +157,24 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete }:
     if (value) setCard(value);
   };
 
+  const runTuning = async () => {
+    const value = await execute(
+      () => postJson("/v1/session/modeling/tune", { model_id: modelId }),
+      "tuning",
+    ) as unknown as TuningResult | null;
+    if (value?.promoted_backtest) onBacktestPromoted?.(value.promoted_backtest);
+  };
+
   const modelSelector = (
-    <select value={modelId} onChange={(event) => setModelId(event.target.value)} className="rounded border border-neutral-300 bg-white px-2 py-1 text-xs">
+    <select value={modelId} onChange={(event) => { setModelId(event.target.value); setResult(null); }} className="rounded border border-neutral-300 bg-white px-2 py-1 text-xs">
       {supportedModelIds.map((item) => <option key={item} value={item}>{item}</option>)}
     </select>
   );
   const tuningResult = stageId === "tuning" && result
     ? result as unknown as TuningResult
+    : null;
+  const diagnosticsResult = stageId === "diagnostics" && result
+    ? result as unknown as DiagnosticsResult
     : null;
 
   return (
@@ -125,12 +183,12 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete }:
         {stageId === "tuning" && (
           <div className="flex items-center justify-between gap-3">
             <div><h3 className="font-semibold">Тюнинг на временных folds</h3><p className="text-xs text-neutral-500">ETS, ETS Damped и ARIMA исполняют точный EDA BacktestPlan; preprocessing fit-ится только на train.</p></div>
-            <div className="flex items-center gap-2">{modelSelector}<Button disabled={loading || !modelId} onClick={() => void execute(() => postJson("/v1/session/modeling/tune", { model_id: modelId }), "tuning")}>Запустить тюнинг</Button></div>
+            <div className="flex items-center gap-2">{modelSelector}<Button disabled={loading || !modelId} onClick={() => void runTuning()}>Запустить тюнинг</Button></div>
           </div>
         )}
         {stageId === "diagnostics" && (
           <div className="flex items-center justify-between gap-3">
-            <div><h3 className="font-semibold">Диагностика остатков</h3><p className="text-xs text-neutral-500">Ljung–Box, Jarque–Bera, ARCH-LM и Durbin–Watson для точной tuned-конфигурации.</p></div>
+            <div><h3 className="font-semibold">Диагностика остатков</h3><p className="text-xs text-neutral-500">Четыре теста по OOF точного backtest; для tuned-модели используется promoted trial.</p></div>
             <div className="flex items-center gap-2">{modelSelector}<Button disabled={loading || !modelId} onClick={() => void execute(() => postJson("/v1/session/modeling/diagnostics", { model_id: modelId }), "diagnostics")}>Проверить остатки</Button></div>
           </div>
         )}
@@ -165,7 +223,33 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete }:
           <span title={tuningResult.cohort_id ?? undefined}><b>Cohort:</b> {tuningResult.cohort_id?.slice(0, 12) ?? "—"}</span>
         </div>
       )}
-      {result && !comparison && !card && <pre className="mt-4 min-h-0 flex-1 overflow-auto whitespace-pre-wrap rounded bg-neutral-50 p-3 text-[10px]">{JSON.stringify(result, null, 2)}</pre>}
+      {diagnosticsResult && (
+        <div className="mt-3 min-h-0 flex-1 overflow-auto" data-testid="diagnostics-report">
+          <div className="mb-3 grid grid-cols-2 gap-2 rounded border border-blue-200 bg-blue-50 p-2 text-[10px] text-blue-900" data-testid="diagnostics-lineage">
+            <span><b>OOF:</b> {diagnosticsResult.residuals_source}</span>
+            <span><b>Параметры:</b> {diagnosticsResult.params_source}</span>
+            <span className="col-span-2 break-all"><b>Конфигурация:</b> {JSON.stringify(diagnosticsResult.params ?? {})}</span>
+            <span title={diagnosticsResult.cohort_id ?? undefined}><b>Cohort:</b> {diagnosticsResult.cohort_id?.slice(0, 12) ?? "—"}</span>
+            <span title={diagnosticsResult.tuning_id ?? undefined}><b>Tuning:</b> {diagnosticsResult.tuning_id?.slice(0, 12) ?? "не требуется"}</span>
+            <span title={diagnosticsResult.backtest_run_id}><b>Backtest run:</b> {diagnosticsResult.backtest_run_id?.slice(0, 12)}</span>
+            <span title={diagnosticsResult.parameter_signature ?? undefined}><b>Params SHA:</b> {diagnosticsResult.parameter_signature?.slice(0, 12) ?? "—"}</span>
+            <span title={diagnosticsResult.residuals_signature}><b>Residuals SHA:</b> {diagnosticsResult.residuals_signature?.slice(0, 12)}</span>
+            <span><b>Preprocessing:</b> {diagnosticsResult.preprocessing?.fit_policy ?? "none"}</span>
+          </div>
+          <table className="w-full text-xs">
+            <thead><tr className="border-b text-left text-neutral-500"><th className="py-2">Проверка</th><th>Статистика</th><th>p-value</th><th>Статус</th></tr></thead>
+            <tbody>{diagnosticsResult.diagnostics.map((item) => (
+              <tr key={item.test} className="border-b border-neutral-100">
+                <td className="py-2 font-medium">{DIAGNOSTIC_LABELS[item.test]}</td>
+                <td>{item.statistic == null ? "—" : item.statistic.toFixed(4)}</td>
+                <td>{item.p_value == null ? "—" : item.p_value.toFixed(4)}</td>
+                <td title={item.reason ?? undefined}>{diagnosticStatus(item)}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      )}
+      {result && !comparison && !card && stageId !== "diagnostics" && <pre className="mt-4 min-h-0 flex-1 overflow-auto whitespace-pre-wrap rounded bg-neutral-50 p-3 text-[10px]">{JSON.stringify(result, null, 2)}</pre>}
     </section>
   );
 }

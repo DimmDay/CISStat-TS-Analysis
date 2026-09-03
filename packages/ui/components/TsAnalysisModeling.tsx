@@ -942,6 +942,10 @@ export function TsAnalysisModeling() {
             stageId={activeStageId}
             modelIds={Object.keys(backtestResults)}
             onStageComplete={(stage) => setCompletedStages((previous) => new Set(previous).add(stage))}
+            onBacktestPromoted={(promoted) => setBacktestResults((previous) => ({
+              ...previous,
+              [promoted.model_id]: promoted,
+            }))}
           />
         )}
 

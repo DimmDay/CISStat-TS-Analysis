@@ -853,45 +853,48 @@ pipeline:
       name: "Диагностика остатков"
       order: 8
       description: >-
-        Проверка предпосылок модели через анализ остатков.
+        Проверка предпосылок модели по out-of-fold остаткам точного backtest run.
+        Отчёт фиксирует параметры, tuning run, cohort, preprocessing и SHA-256 OOF.
         Модель не проходит диагностику → понижение уровня применимости.
       inputs:
-        - "tuned_models"
-        - "train_data"
+        - "promoted_or_default_backtests"
+        - "out_of_fold_predictions"
+        - "parameter_and_preprocessing_lineage"
       outputs:
         - "diagnostic_reports"        # {model_id → DiagnosticReport}
       checks:
-        - id: "residual_normality"
-          name: "Нормальность остатков (Ljung-Box)"
-          null_hypothesis: "Остатки — белый шум"
-          alpha: 0.05
-          severity_if_failed: "warning"    # не блокирует, но предупреждает
-
-        - id: "residual_autocorrelation"
+        - id: "ljung_box"
           name: "Автокорреляция остатков (Ljung-Box)"
           null_hypothesis: "Нет автокорреляции в остатках"
+          applicable_if: "n_observations > lags"
+          requires_p_value: true
           lags: 10
           alpha: 0.05
           severity_if_failed: "error"      # серьёзная проблема
 
-        - id: "residual_homoscedasticity"
-          name: "Гомоскедастичность (ARCH-LM)"
+        - id: "jarque_bera"
+          name: "Нормальность остатков (Jarque-Bera)"
+          null_hypothesis: "Остатки имеют нормальное распределение"
+          applicable_if: "n_observations >= 8"
+          requires_p_value: true
+          alpha: 0.05
+          severity_if_failed: "warning"
+
+        - id: "arch_lm"
+          name: "Условная гетероскедастичность (ARCH-LM)"
           null_hypothesis: "Дисперсия остатков постоянна"
+          applicable_if: "n_observations > arch_lags + 1 and residual variance > 0"
+          requires_p_value: true
+          lags: 10
           alpha: 0.05
           severity_if_failed: "warning"
 
-        - id: "residual_stationarity"
-          name: "Стационарность остатков (ADF)"
-          null_hypothesis: "Остатки стационарны"
+        - id: "durbin_watson"
+          name: "Статистика Дарбина-Уотсона (Durbin-Watson)"
+          null_hypothesis: "Последовательная корреляция остатков отсутствует"
+          applicable_if: "finite residuals with at least 2 observations"
+          requires_p_value: false
           alpha: 0.05
-          severity_if_failed: "warning"
-
-        - id: "prediction_interval_coverage"
-          name: "Покрытие доверительных интервалов"
-          description: >-
-            Фактическая доля наблюдений внутри PI должна быть ≈ номинальному уровню.
-          nominal_level: 0.95
-          tolerance: 0.05             # допустимое отклонение
           severity_if_failed: "warning"
 
     # ── Stage 9: Comparison & Ranking ───────────────────────────────────────

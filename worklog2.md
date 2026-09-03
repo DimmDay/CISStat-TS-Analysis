@@ -1340,11 +1340,11 @@ TDD и проверка
 
 ## Task 97 — Спецификация: раскрытие/схлопывание вложенных графиков в Обзоре
 
-Спроектирована архитектура фичи expand/collapse для вложенных графиков
+### Спроектирована архитектура фичи expand/collapse для вложенных графиков
 «Обзора» на всех вкладках платформы (Validation/Preprocessing/EDA/Modeling).
 Артефакт: `spec_max_graph.md`.
 
-Ключевые решения: переиспользуемый примитив ExpandableChartPanel/
+### Ключевые решения: переиспользуемый примитив ExpandableChartPanel/
 ExpandableChartsProvider/ChartExpandToggle в packages/ui; single-expand
 инвариант на уровне одного Обзора; раскрытие в границах существующего
 468px-контейнера (Task 88) через absolute inset-0; опциональный
@@ -1353,7 +1353,7 @@ detail_level=compact|expanded для сэмплирования на раскр�
 сэмплирование → тиражирование). Открытые вопросы по вторичным потолкам
 сэмплирования и приоритету пилотных Обзоров — на решение тимлида.
 
-Статус: архитектурный дизайн передан на ревью, реализация не начата
+### Статус: архитектурный дизайн передан на ревью, реализация не начата
 (коммит/push в main запрещён протоколом AGENTS.md).
 
 ---
@@ -1465,3 +1465,105 @@ frontend shell.
 - `tests/api/test_modeling_workflow.py`
 - `tests/unit/test_backtesting_engine.py`
 - `tests/unit/test_modeling_tuning_plan.py` (новый)
+
+---
+
+## Task 99 — Трассируемая диагностика tuned-модели (TDD)
+
+Дата: 2026-09-03
+
+### Исходная точка и выявленный разрыв
+
+Работа выполнена после синхронизации с точным коммитом
+`7986075459001fc375ff2ed3dc8af490f2b21a45`; commit/push не выполнялись.
+Task 98 уже унифицировал backtest и tuning на одном `BacktestPlan`, но лучший
+trial сохранялся только как `best_params/best_metrics`. Его полный OOF backtest
+отбрасывался, а session diagnostics читала прежний backtest модели. Поэтому
+после tuning можно было диагностировать остатки default-конфигурации и назвать
+их tuned-остатками. При повторном tuning сохранялись старые diagnostics,
+comparison, selection и Model Card.
+
+Дополнительно формальный Stage 8 в `modeling.yaml` описывал пять старых
+проверок, тогда как runtime реально выполнял Ljung–Box, Jarque–Bera, ARCH-LM и
+Durbin–Watson. UI скрывал baseline-модели из diagnostics, хотя session endpoint
+методологически работает с OOF любого успешного backtest, и показывал только
+неструктурированный JSON без provenance.
+
+### Архитектурное решение
+
+- Tuning engine теперь сохраняет полный backtest каждого успешного trial и
+  возвращает точный OOF лучшего trial без повторного fit. Совместимый фасад
+  `execute_tuning_plan()` сохранён для существующих вызовов и тестов.
+- Для каждого tuning run создаётся `tuning_id`; exact `best_params` получают
+  детерминированный SHA-256 `parameter_signature`.
+- Лучший trial атомарно повышается до session backtest с `run_id`,
+  `params_source=tuning`, `tuning_id`, `parameter_signature` и SHA-256
+  упорядоченных OOF actual/predicted/residual (`oof_signature`). Метрики tuning
+  и promoted backtest относятся к одному вычислению.
+- Обычный backtest получает тот же lineage-контракт. Для baseline/default
+  фиксируется `params_source=model_default`; при совпавшем tuning cohort —
+  `params_source=tuning` и соответствующий `tuning_id`.
+- Diagnostics принимает только сохранённый OOF и проверяет подписи параметров и
+  OOF, `run_id`, cohort и соответствие текущему tuning run. Изменённый или
+  устаревший артефакт возвращает 409 вместо расчёта по недоказанным остаткам.
+- Типизированный session response сохраняет exact params, parameter/tuning/
+  backtest/OOF identity, preprocessing contract и источник
+  `tuned_backtest_oof | backtest_oof` вместе с четырьмя результатами тестов.
+- Повторный backtest/tuning удаляет diagnostics этой модели и все зависящие
+  comparison/selection/model cards; pipeline возвращается к корректным
+  незавершённым стадиям.
+- Compare повторно валидирует parameter и OOF signatures и запрещает stale
+  tuned-backtests. Ranking и Model Card сохраняют execution lineage; Model Card
+  берёт гиперпараметры из фактически выбранного backtest, а не из потенциально
+  несвязанного tuning artifact.
+- `modeling.yaml` синхронизирован с runtime: ровно Ljung–Box, Jarque–Bera,
+  ARCH-LM и Durbin–Watson, включая applicable conditions, p-value contract и
+  lag settings. Удалены неисполняемые ADF и prediction-interval coverage.
+
+### Frontend
+
+- После tuning promoted backtest сразу заменяет прежний результат модели в
+  `TsAnalysisModeling`, поэтому последующие графики и diagnostics используют
+  тот же OOF run.
+- Diagnostics доступны для всех моделей с сохранённым production backtest, а
+  не только ETS/ARIMA; tuning по-прежнему ограничен реестром ETS/ETS
+  Damped/ARIMA.
+- Вместо raw JSON показана таблица четырёх тестов со статусами и отдельный
+  lineage-блок: источник OOF и параметров, exact params, cohort, tuning ID,
+  backtest run ID, Params SHA, Residuals SHA и fold-local preprocessing.
+- Результат очищается при смене стадии или модели, чтобы отчёт предыдущего run
+  не отображался под новым выбором.
+
+### TDD, риски и проверка
+
+- RED backend: 9 ожидаемых падений — отсутствовали lineage/promotion,
+  downstream invalidation и актуальный YAML-контракт.
+- RED frontend: compile-time ошибка по отсутствующему callback promoted
+  backtest; отчёт diagnostics не был реализован.
+- Добавлен unit-инвариант: лучший trial повышается с исходным OOF и не
+  переобучается. Добавлен API-негативный тест изменения OOF после tuning.
+- Целевой GREEN: 26/26 backend; ModelingWorkflowOverview 4/4.
+- Расширенная Modeling/backend-регрессия: 245/245 PASS, включая Memory/Redis
+  SessionStore, public/internal backtest, runtime diagnostics и ModelingSpec.
+- Расширенная Modeling UI-регрессия: 5 suites, 65/65 PASS.
+- Полная frontend-регрессия: 84 suites, 725/725 PASS, 0 snapshots.
+- TypeScript embedded/standalone: PASS с принятым флагом
+  `--noUncheckedSideEffectImports false`.
+- Production build embedded/standalone: PASS, по 13/13 страниц, включая
+  `/modeling`; First Load JS 456 kB. Для известного sandbox-ограничения Node 24
+  `uv_resident_set_memory` использован временный shim, удалённый после сборки и
+  не входящий в изменения.
+- `py_compile` и `git diff --check`: PASS.
+
+### Изменённые файлы Task 99
+
+- `apps/api/modeling_tuning.py`
+- `apps/api/routers/modeling_session.py`
+- `apps/api/schemas.py`
+- `packages/ui/components/ModelingWorkflowOverview.tsx`
+- `packages/ui/components/ModelingWorkflowOverview.test.tsx`
+- `packages/ui/components/TsAnalysisModeling.tsx`
+- `packages/ui/lib/modeling.ts`
+- `rules/modeling.yaml`
+- `tests/api/test_modeling_workflow.py`
+- `tests/unit/test_modeling_tuning_plan.py`

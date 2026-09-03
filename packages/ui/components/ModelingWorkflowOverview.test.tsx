@@ -17,6 +17,7 @@ beforeEach(() => {
 });
 
 test("shows the exact EDA cohort used by tuning", async () => {
+  const onBacktestPromoted = jest.fn();
   mockFetch.mockResolvedValueOnce({
     ok: true,
     json: async () => ({
@@ -26,9 +27,10 @@ test("shows the exact EDA cohort used by tuning", async () => {
         { fold: 2, train_start: 12, train_end: 51, test_start: 53, test_end: 54, gap: 1 },
       ],
       preprocessing: { fit_policy: "per_train_fold", evaluation_scale: "value" },
+      promoted_backtest: { model_id: "ets", metrics: {}, oof_predictions: [] },
     }),
   });
-  render(<ModelingWorkflowOverview stageId="tuning" modelIds={["ets"]} />);
+  render(<ModelingWorkflowOverview stageId="tuning" modelIds={["ets"]} onBacktestPromoted={onBacktestPromoted} />);
 
   fireEvent.click(screen.getByRole("button", { name: "Запустить тюнинг" }));
 
@@ -37,6 +39,43 @@ test("shows the exact EDA cohort used by tuning", async () => {
   expect(screen.getByTestId("tuning-plan-summary")).toHaveTextContent("2 folds");
   expect(screen.getByTestId("tuning-plan-summary")).toHaveTextContent("per_train_fold");
   expect(screen.getByTestId("tuning-plan-summary")).toHaveTextContent("cohort-1234");
+  expect(onBacktestPromoted).toHaveBeenCalledWith(expect.objectContaining({ model_id: "ets" }));
+});
+
+test("renders traceable OOF diagnostics for a baseline model", async () => {
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      model_id: "naive", residuals_source: "backtest_oof",
+      params_source: "model_default", cohort_id: "cohort-abcdef",
+      params: {}, parameter_signature: "params-123",
+      backtest_run_id: "run-123", residuals_signature: "residuals-123",
+      preprocessing: { fit_policy: "per_train_fold", evaluation_scale: "value" },
+      diagnostics: [
+        { test: "ljung_box", applicable: true, statistic: 2.1, p_value: 0.71, status: "pass" },
+        { test: "jarque_bera", applicable: true, statistic: 7.4, p_value: 0.025, status: "warning" },
+        { test: "arch_lm", applicable: false, statistic: null, p_value: null, status: "warning", reason: "Недостаточно наблюдений" },
+        { test: "durbin_watson", applicable: true, statistic: 1.9, p_value: null, status: "pass" },
+      ],
+    }),
+  });
+  render(<ModelingWorkflowOverview stageId="diagnostics" modelIds={["naive"]} />);
+
+  expect(screen.getByRole("option", { name: "naive" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Проверить остатки" }));
+
+  await waitFor(() => expect(screen.getByTestId("diagnostics-report")).toBeInTheDocument());
+  expect(screen.getByTestId("diagnostics-lineage")).toHaveTextContent("backtest_oof");
+  expect(screen.getByTestId("diagnostics-lineage")).toHaveTextContent("model_default");
+  expect(screen.getByTestId("diagnostics-lineage")).toHaveTextContent("cohort-abcd");
+  expect(screen.getByTestId("diagnostics-lineage")).toHaveTextContent("params-123");
+  expect(screen.getByTestId("diagnostics-lineage")).toHaveTextContent("per_train_fold");
+  expect(screen.getByText("Ljung–Box")).toBeInTheDocument();
+  expect(screen.getByText("Jarque–Bera")).toBeInTheDocument();
+  expect(screen.getByText("ARCH-LM")).toBeInTheDocument();
+  expect(screen.getByText("Durbin–Watson")).toBeInTheDocument();
+  expect(screen.getAllByText("Пройдено")).toHaveLength(2);
+  expect(screen.getByText("Неприменимо")).toBeInTheDocument();
 });
 
 test("runs comparison and renders transparent ranking", async () => {
