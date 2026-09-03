@@ -49,6 +49,9 @@ const MOCK_CANDIDATES_RESPONSE = {
       rule_id: "P07",
       message: "Baseline-модель всегда рекомендуется",
       rank: 1,
+      platform_status: "ready",
+      available_actions: ["backtest"],
+      blocking_reason: null,
     },
     {
       model_id: "seasonal_naive",
@@ -58,6 +61,9 @@ const MOCK_CANDIDATES_RESPONSE = {
       rule_id: "P07",
       message: "Baseline-модель всегда рекомендуется",
       rank: 1,
+      platform_status: "ready",
+      available_actions: ["backtest"],
+      blocking_reason: null,
     },
     {
       model_id: "drift",
@@ -67,6 +73,9 @@ const MOCK_CANDIDATES_RESPONSE = {
       rule_id: "P07",
       message: "Baseline-модель всегда рекомендуется",
       rank: 1,
+      platform_status: "ready",
+      available_actions: ["backtest"],
+      blocking_reason: null,
     },
     {
       model_id: "mean",
@@ -76,6 +85,9 @@ const MOCK_CANDIDATES_RESPONSE = {
       rule_id: "P07",
       message: "Baseline-модель всегда рекомендуется",
       rank: 1,
+      platform_status: "ready",
+      available_actions: ["backtest"],
+      blocking_reason: null,
     },
     {
       model_id: "ets",
@@ -85,6 +97,9 @@ const MOCK_CANDIDATES_RESPONSE = {
       rule_id: "P01",
       message: "Модель рекомендована для данного профиля",
       rank: 1,
+      platform_status: "ready",
+      available_actions: ["backtest", "tune", "diagnostics"],
+      blocking_reason: null,
     },
     {
       model_id: "arima_auto",
@@ -94,6 +109,9 @@ const MOCK_CANDIDATES_RESPONSE = {
       rule_id: "P02",
       message: "Модель рекомендована для данного профиля",
       rank: 1,
+      platform_status: "ready",
+      available_actions: ["backtest"],
+      blocking_reason: null,
     },
     {
       model_id: "garch",
@@ -103,6 +121,9 @@ const MOCK_CANDIDATES_RESPONSE = {
       rule_id: "D03",
       message: "Модель не рекомендуется: область не financial",
       rank: 3,
+      platform_status: "catalog_only",
+      available_actions: [],
+      blocking_reason: "Production-реализация модели ещё не подключена.",
     },
     {
       model_id: "prophet",
@@ -112,6 +133,9 @@ const MOCK_CANDIDATES_RESPONSE = {
       rule_id: "C03",
       message: "Условно применима: нет сезонности",
       rank: 2,
+      platform_status: "catalog_only",
+      available_actions: [],
+      blocking_reason: "Production-реализация модели ещё не подключена.",
     },
     {
       model_id: "var",
@@ -121,6 +145,9 @@ const MOCK_CANDIDATES_RESPONSE = {
       rule_id: "F02",
       message: "Неприменима: одномерный ряд",
       rank: 4,
+      platform_status: "catalog_only",
+      available_actions: [],
+      blocking_reason: "Production-реализация модели ещё не подключена.",
     },
   ],
   statistics: {
@@ -361,6 +388,24 @@ describe("TsAnalysisModeling", () => {
     await waitFor(() => {
       expect(screen.getByTestId("candidate-pool")).toBeInTheDocument();
     });
+  });
+
+  it("shows catalog-only models without offering a backtest action", async () => {
+    render(<TsAnalysisModeling />);
+    await waitFor(() => expect(screen.getByTestId("candidate-pool")).toBeInTheDocument());
+
+    expect(screen.queryByTestId("candidate-prophet")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Весь каталог/ }));
+    fireEvent.click(screen.getByTestId("family-header-structural"));
+    fireEvent.click(screen.getByTestId("candidate-prophet"));
+
+    expect(screen.getByTestId("execution-badge-prophet")).toHaveTextContent("В каталоге");
+    expect(screen.getByTestId("backtest-unavailable")).toHaveTextContent("Production-реализация");
+    expect(screen.queryByTestId("run-backtest-btn")).not.toBeInTheDocument();
+    const backtestCalls = mockFetch.mock.calls.filter(
+      ([url]: [string]) => typeof url === "string" && url.includes("/v1/session/modeling/backtest")
+    );
+    expect(backtestCalls).toHaveLength(0);
   });
 
   it("renders family headers for families with candidates", async () => {

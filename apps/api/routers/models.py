@@ -41,7 +41,10 @@ from apps.api.model_impls import (
     run_auto_arima_backtest,
 )
 from apps.api.model_impls.tuning import tune_ets_predict, tune_arima_predict
-from apps.api.model_readiness import PRODUCTION_BACKTEST_MODEL_IDS
+from apps.api.model_readiness import (
+    PRODUCTION_BACKTEST_MODEL_IDS,
+    available_model_actions,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -111,16 +114,28 @@ def _compute_candidates(payload: CandidatesRequest) -> CandidatesResponse:
     if min_level not in valid_levels:
         raise HTTPException(status_code=422, detail=f"Некорректный min_level: '{min_level}'. Допустимые: {valid_levels}")
     candidate_results = spec.get_candidate_pool(profile, min_level=min_level)
-    candidates = [
-        ModelCandidate(
-            model_id=r.model_id, model_name=r.model_name, family_id=r.family_id,
-            level=r.level, rule_id=r.rule_id, message=r.message, rank=r.rank,
-        ) for r in candidate_results
-    ]
+    candidates = []
+    for candidate in candidate_results:
+        actions = available_model_actions(candidate.model_id)
+        ready = "backtest" in actions
+        candidates.append(ModelCandidate(
+            model_id=candidate.model_id, model_name=candidate.model_name,
+            family_id=candidate.family_id, level=candidate.level,
+            rule_id=candidate.rule_id, message=candidate.message,
+            rank=candidate.rank,
+            platform_status="ready" if ready else "catalog_only",
+            available_actions=actions,
+            blocking_reason=None if ready else (
+                "Production-реализация модели ещё не подключена; "
+                "фиктивные метрики запрещены."
+            ),
+        ))
     level_counts = Counter(c.level for c in candidates)
     statistics = CandidatesStatistics(
         total_candidates=len(candidates), by_level=dict(level_counts),
         total_models_in_spec=spec.total_model_count(),
+        runnable_candidates=sum("backtest" in item.available_actions for item in candidates),
+        catalog_only_candidates=sum(item.platform_status == "catalog_only" for item in candidates),
     )
     return CandidatesResponse(
         candidates=candidates, statistics=statistics, spec_version=spec.metadata.version,

@@ -110,7 +110,10 @@ class TestCandidatesResponse:
         )
         data = resp.json()
         candidate = data["candidates"][0]
-        for field in ["model_id", "model_name", "family_id", "level", "rank"]:
+        for field in [
+            "model_id", "model_name", "family_id", "level", "rank",
+            "platform_status", "available_actions", "blocking_reason",
+        ]:
             assert field in candidate, f"Missing field: {field}"
 
     def test_response_has_statistics(self):

@@ -2936,6 +2936,16 @@ class ModelCandidate(BaseModel):
     rule_id: Optional[str] = Field(None, description="ID правила, определившего уровень")
     message: str = Field("", description="Пояснение уровня применимости")
     rank: int = Field(1, ge=1, description="Ранг уровня (1=RECOMMENDED)")
+    platform_status: Literal["ready", "catalog_only"] = Field(
+        ..., description="Наличие реальной production-реализации модели",
+    )
+    available_actions: List[Literal["backtest", "tune", "diagnostics"]] = Field(
+        default_factory=list,
+        description="Только действия, реально поддержанные backend",
+    )
+    blocking_reason: Optional[str] = Field(
+        None, description="Почему модель нельзя запустить для текущего контекста",
+    )
 
 
 class CandidatesRequest(BaseModel):
@@ -2952,6 +2962,9 @@ class CandidatesStatistics(BaseModel):
     total_candidates: int
     by_level: Dict[str, int] = Field(default_factory=dict)
     total_models_in_spec: int = Field(0, description="Общее число моделей в спецификации")
+    runnable_candidates: int = Field(0, description="Кандидаты с доступным production backtest")
+    catalog_only_candidates: int = Field(0, description="Методологические кандидаты без production backtest")
+    blocked_candidates: int = Field(0, description="Реализованные модели, заблокированные текущими данными")
 
 
 class CandidatesResponse(BaseModel):

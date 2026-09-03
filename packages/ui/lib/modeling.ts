@@ -87,6 +87,9 @@ export interface ModelCandidate {
   rule_id: string | null;
   message: string;
   rank: number;
+  platform_status: "ready" | "catalog_only";
+  available_actions: Array<"backtest" | "tune" | "diagnostics">;
+  blocking_reason: string | null;
 }
 
 // ── Запрос / Ответ ──────────────────────────────────────────────
@@ -100,6 +103,9 @@ export interface CandidatesStatistics {
   total_candidates: number;
   by_level: Record<string, number>;
   total_models_in_spec: number;
+  runnable_candidates: number;
+  catalog_only_candidates: number;
+  blocked_candidates: number;
 }
 
 export interface CandidatesResponse {

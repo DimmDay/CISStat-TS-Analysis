@@ -17,3 +17,17 @@ PRODUCTION_BACKTEST_MODEL_IDS = frozenset({
     "arima_auto",
 })
 
+PRODUCTION_TUNING_MODEL_IDS = frozenset({"ets", "ets_damped", "arima"})
+PRODUCTION_DIAGNOSTICS_MODEL_IDS = frozenset({"ets", "ets_damped", "arima"})
+
+
+def available_model_actions(model_id: str) -> list[str]:
+    """Return only actions backed by a real production implementation."""
+    actions: list[str] = []
+    if model_id in PRODUCTION_BACKTEST_MODEL_IDS:
+        actions.append("backtest")
+    if model_id in PRODUCTION_TUNING_MODEL_IDS:
+        actions.append("tune")
+    if model_id in PRODUCTION_DIAGNOSTICS_MODEL_IDS:
+        actions.append("diagnostics")
+    return actions

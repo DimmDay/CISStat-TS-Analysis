@@ -1153,3 +1153,65 @@ TDD и проверка
 Артефакт передачи
 
 - `download/task94_modeling_traceability_ae4a27f.zip` — только перечисленные изменённые/новые файлы Task 94 с сохранением структуры каталогов.
+
+---
+
+Task ID: 95 — Разделение применимости и production-готовности моделей (TDD)
+
+Проблема
+
+На демо-датасете модели семейств «Структурные», «Деревья и бустинг» и «Нейросетевые» отображались как обычные кандидаты с активной кнопкой «Запустить бэктест». После клика backend корректно возвращал `Production backtest для модели '<id>' не реализован; фиктивные метрики запрещены`.
+
+Причина — два независимых понятия были сведены в один UI-статус:
+
+- `level` из `modeling.yaml` описывал статистическую/методологическую применимость метода к профилю ряда;
+- реестр `PRODUCTION_BACKTEST_MODEL_IDS` описывал наличие реального backend-dispatch;
+- EDA model matrix уже различала `ready` и `catalog_only`, но `ModelCandidate`/`CandidatesResponse` эти данные не передавали;
+- UI разрешал backtest любому элементу candidate pool.
+
+Решение backend
+
+- `model_readiness.py` остаётся единым реестром реальных реализаций и дополнен реестрами tuning/diagnostics и функцией `available_model_actions()`.
+- `ModelCandidate` получил обязательные поля `platform_status: ready | catalog_only`, `available_actions` и `blocking_reason`.
+- `CandidatesStatistics` отдельно считает `runnable_candidates`, `catalog_only_candidates` и `blocked_candidates`.
+- Общий `_compute_candidates()` помечает все девять production backtest моделей как `ready`; остальные модели каталога получают `catalog_only`, пустой список действий и честное объяснение об отсутствии реализации.
+- Session candidates дополнительно пересекает production actions с `runnable_shortlist` текущей EDA model matrix. Поэтому реализованная, но противопоказанная текущему ряду модель получает `ready` на уровне платформы, пустые действия для текущего запуска и точную причину из `blocking_reasons/cautions`.
+- Серверный 422 для прямого вызова неподдержанной модели сохранён как обязательный второй уровень защиты.
+
+Решение frontend
+
+- Добавлен независимый фильтр исполнения: `Доступные` включён по умолчанию, `Весь каталог` открывает методологический справочник.
+- В рабочем списке по умолчанию остаются только девять моделей с реальным backtest: Naive, Seasonal Naive, Drift, Mean, ETS, ETS Damped, Theta, ARIMA и Auto-ARIMA.
+- В полном каталоге каждая модель имеет второй бейдж: `Готово`, `В каталоге` или `Ограничено` — отдельно от бейджа статистической применимости.
+- Для `catalog_only` и data-blocked кандидатов вместо кнопки отображается недоступное состояние с `blocking_reason`; DOM-элемент запуска не создаётся.
+- `runBacktest()` получил дополнительную клиентскую защиту и не выполняет fetch без действия `backtest`.
+- Сводные показатели теперь отдельно показывают общее число кандидатов, доступные реализации и позиции только в каталоге.
+- Решение автоматически охватывает также multivariate/volatility и любые будущие модели, отсутствующие в production registry.
+
+TDD и проверка
+
+- RED backend: 2/2 ожидаемых FAIL — в `ModelCandidate` и статистике отсутствовали runtime readiness поля.
+- RED frontend: новый тест обнаружил, что Prophet видим в рабочем пуле по умолчанию и имеет путь запуска.
+- GREEN backend: readiness/candidates/session workflow — 51/51 PASS.
+- GREEN Modeling UI: 51/51 PASS.
+- Полная frontend-регрессия: 83 suites, 719/719 PASS, 0 snapshots.
+- TypeScript embedded/standalone: PASS.
+- Production build embedded/standalone: PASS, по 13/13 страниц; First Load JS 454 kB.
+- `py_compile` изменённых Python-файлов и `git diff --check`: PASS.
+
+Изменённые и новые файлы Task 95
+
+- `apps/api/model_readiness.py`
+- `apps/api/routers/models.py`
+- `apps/api/routers/modeling_session.py`
+- `apps/api/schemas.py`
+- `packages/ui/components/TsAnalysisModeling.tsx`
+- `packages/ui/components/TsAnalysisModeling.test.tsx`
+- `packages/ui/lib/modeling.ts`
+- `tests/api/test_models_candidates.py`
+- `tests/unit/test_model_readiness_candidates.py` (новый)
+- `worklog2.md`
+
+Артефакт передачи
+
+- `download/task95_model_runtime_readiness_ae4a27f.zip` — только перечисленные изменённые/новые файлы Task 95 с сохранением структуры каталогов.

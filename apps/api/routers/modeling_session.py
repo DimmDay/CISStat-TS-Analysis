@@ -194,6 +194,30 @@ def generate_modeling_candidates(
         profile=DataProfileRequest(**context["profile"]),
         min_level=payload.min_level,
     ))
+    runnable = set(context["runnable_shortlist"])
+    matrix_models = {
+        item["model_id"]: item for item in context["model_matrix"].get("models", [])
+    }
+    for candidate in result.candidates:
+        if candidate.platform_status != "ready" or candidate.model_id in runnable:
+            continue
+        matrix_item = matrix_models.get(candidate.model_id, {})
+        reasons = matrix_item.get("blocking_reasons") or matrix_item.get("cautions") or []
+        candidate.available_actions = []
+        candidate.blocking_reason = (
+            "; ".join(str(reason) for reason in reasons)
+            or "Модель реализована, но заблокирована матрицей применимости для текущего ряда."
+        )
+    result.statistics.runnable_candidates = sum(
+        "backtest" in candidate.available_actions for candidate in result.candidates
+    )
+    result.statistics.catalog_only_candidates = sum(
+        candidate.platform_status == "catalog_only" for candidate in result.candidates
+    )
+    result.statistics.blocked_candidates = sum(
+        candidate.platform_status == "ready" and not candidate.available_actions
+        for candidate in result.candidates
+    )
     session.modeling_artifacts["candidates"] = result.model_dump(mode="json")
     session.modeling_artifacts["runnable_shortlist"] = context["runnable_shortlist"]
     session.modeling_pipeline["candidate_generation"] = "done"

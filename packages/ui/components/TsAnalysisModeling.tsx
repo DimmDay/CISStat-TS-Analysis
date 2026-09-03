@@ -140,6 +140,9 @@ export function TsAnalysisModeling() {
     total_candidates: number;
     by_level: Record<string, number>;
     total_models_in_spec: number;
+    runnable_candidates?: number;
+    catalog_only_candidates?: number;
+    blocked_candidates?: number;
   } | null>(null);
   const [specVersion, setSpecVersion] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -153,6 +156,7 @@ export function TsAnalysisModeling() {
     null
   );
   const [levelFilter, setLevelFilter] = useState<string>("all");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"runnable" | "all">("runnable");
   const [descriptionSection, setDescriptionSection] = useState<
     "metrics" | "pipeline" | "help" | null
   >(null);
@@ -421,6 +425,11 @@ export function TsAnalysisModeling() {
   // Синтетический fallback намеренно запрещён.
   const runBacktest = useCallback(
     async (modelId: string) => {
+      const candidate = candidates.find((item) => item.model_id === modelId);
+      if (!candidate?.available_actions.includes("backtest")) {
+        setBacktestError(candidate?.blocking_reason || "Production backtest для модели недоступен.");
+        return;
+      }
       if (modelingContext?.ready !== true) {
         setBacktestError("Бэктест заблокирован: нет подтверждённого EDA hand-off.");
         return;
@@ -461,7 +470,7 @@ export function TsAnalysisModeling() {
         setBacktestLoading(false);
       }
     },
-    [modelingContext]
+    [candidates, modelingContext]
   );
 
   // ── Collapse/Expand description ──
@@ -504,6 +513,7 @@ export function TsAnalysisModeling() {
 
   // ── Фильтрация и группировка ──
   const filteredCandidates = candidates.filter((c) => {
+    if (availabilityFilter === "runnable" && !c.available_actions.includes("backtest")) return false;
     if (levelFilter !== "all" && c.level !== levelFilter) return false;
     return true;
   });
@@ -518,6 +528,12 @@ export function TsAnalysisModeling() {
   const activeCandidate = candidates.find(
     (c) => c.model_id === activeCandidateId
   );
+
+  useEffect(() => {
+    if (activeCandidateId && !filteredCandidates.some((item) => item.model_id === activeCandidateId)) {
+      setActiveCandidateId(null);
+    }
+  }, [activeCandidateId, availabilityFilter, levelFilter, filteredCandidates]);
 
   // Пайплайн — динамические статусы на основе completedStages
   const dynamicStages = PIPELINE_STAGES.map((s) => {
@@ -541,7 +557,7 @@ export function TsAnalysisModeling() {
     if (!descriptionSection) return null;
     if (descriptionSection === "metrics") {
       if (activeCandidate) {
-        return `Метрики и алгоритм: ${activeCandidate.model_name}\n\nСемейство: ${activeCandidate.family_id}\nУровень применимости: ${APPLICABILITY_LABEL[activeCandidate.level as ApplicabilityLevel]}\n${activeCandidate.rule_id ? `Правило: ${activeCandidate.rule_id}` : ""}\n${activeCandidate.message}\n\nАлгоритм: движок применимости оценивает 23 правила (5 forbidden, 6 discouraged, 5 conditional, 7 preferred) и определяет наивысший уровень применимости модели для данного профиля данных.`;
+        return `Метрики и алгоритм: ${activeCandidate.model_name}\n\nСемейство: ${activeCandidate.family_id}\nУровень применимости: ${APPLICABILITY_LABEL[activeCandidate.level as ApplicabilityLevel]}\nСтатус исполнения: ${activeCandidate.available_actions.includes("backtest") ? "production backtest готов" : "только методологический каталог"}\n${activeCandidate.blocking_reason || ""}\n${activeCandidate.rule_id ? `Правило: ${activeCandidate.rule_id}` : ""}\n${activeCandidate.message}\n\nАлгоритм: движок применимости оценивает 23 правила (5 forbidden, 6 discouraged, 5 conditional, 7 preferred) и определяет наивысший уровень применимости модели для данного профиля данных. Статус исполнения формируется отдельно из реестра реальных backend-dispatch.`;
       }
       return `Метрики и алгоритм: Пул кандидатов\n\nАлгоритм формирования пула:\n1. Применить 23 правила применимости ко всем 24 моделям\n2. Отфильтровать по минимальному уровню (≥ CONDITIONALLY_APPLICABLE)\n3. Baseline-модели включаются всегда\n4. Сортировка по рангу уровня (RECOMMENDED → CONDITIONALLY_APPLICABLE → NOT_RECOMMENDED)`;
     }
@@ -937,10 +953,26 @@ export function TsAnalysisModeling() {
 
         {/* ── Фильтр по уровню применимости ── */}
         {hasFetched && (
-          <div className="flex items-center gap-2 mb-3">
-            <Filter size={14} className="text-neutral-500" />
-            <span className="text-xs text-neutral-500">Уровень:</span>
-            {[
+          <div className="mb-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <Filter size={14} className="text-neutral-500" />
+              <span className="text-xs text-neutral-500">Исполнение:</span>
+              <button
+                onClick={() => setAvailabilityFilter("runnable")}
+                className={`rounded border px-2 py-1 text-xs ${availabilityFilter === "runnable" ? "border-brand bg-brand text-white" : "border-neutral-200 bg-white text-neutral-700"}`}
+              >
+                Доступные ({candidates.filter((item) => item.available_actions.includes("backtest")).length})
+              </button>
+              <button
+                onClick={() => setAvailabilityFilter("all")}
+                className={`rounded border px-2 py-1 text-xs ${availabilityFilter === "all" ? "border-brand bg-brand text-white" : "border-neutral-200 bg-white text-neutral-700"}`}
+              >
+                Весь каталог ({candidates.length})
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="ml-6 text-xs text-neutral-500">Применимость:</span>
+              {[
               { value: "all", label: "Все" },
               { value: "RECOMMENDED", label: "Рекоменд." },
               {
@@ -951,19 +983,20 @@ export function TsAnalysisModeling() {
                 value: "NOT_RECOMMENDED",
                 label: "Не реком.",
               },
-            ].map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setLevelFilter(opt.value)}
-                className={`text-xs px-2 py-1 rounded border transition-colors ${
-                  levelFilter === opt.value
-                    ? "bg-brand text-white border-brand"
-                    : "bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setLevelFilter(opt.value)}
+                  className={`text-xs px-2 py-1 rounded border transition-colors ${
+                    levelFilter === opt.value
+                      ? "bg-brand text-white border-brand"
+                      : "bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -1020,12 +1053,19 @@ export function TsAnalysisModeling() {
                         <span className="truncate text-neutral-800">
                           {c.model_name}
                         </span>
-                        {/* Бейдж применимости */}
-                        <span
-                          className={`ml-2 shrink-0 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${badge.bg} ${badge.text} ${badge.border}`}
-                          data-testid={`badge-${c.model_id}`}
-                        >
-                          {APPLICABILITY_LABEL[c.level as ApplicabilityLevel]}
+                        <span className="ml-2 flex shrink-0 items-center gap-1">
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${badge.bg} ${badge.text} ${badge.border}`}
+                            data-testid={`badge-${c.model_id}`}
+                          >
+                            {APPLICABILITY_LABEL[c.level as ApplicabilityLevel]}
+                          </span>
+                          <span
+                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${c.available_actions.includes("backtest") ? "border-green-200 bg-green-50 text-green-700" : "border-neutral-200 bg-neutral-100 text-neutral-600"}`}
+                            data-testid={`execution-badge-${c.model_id}`}
+                          >
+                            {c.available_actions.includes("backtest") ? "Готово" : c.platform_status === "catalog_only" ? "В каталоге" : "Ограничено"}
+                          </span>
                         </span>
                       </div>
                     );
@@ -1047,14 +1087,12 @@ export function TsAnalysisModeling() {
           <div className="grid grid-cols-4 gap-3 mt-4" data-testid="statistics-grid">
             <Metric label="Кандидатов" value={String(statistics.total_candidates)} />
             <Metric
-              label="Рекомендовано"
-              value={String(statistics.by_level.RECOMMENDED || 0)}
+              label="Доступно"
+              value={String(statistics.runnable_candidates ?? candidates.filter((item) => item.available_actions.includes("backtest")).length)}
             />
             <Metric
-              label="Условно"
-              value={String(
-                statistics.by_level.CONDITIONALLY_APPLICABLE || 0
-              )}
+              label="Только каталог"
+              value={String(statistics.catalog_only_candidates ?? candidates.filter((item) => item.platform_status === "catalog_only").length)}
             />
             <Metric
               label="Всего в спецификации"
@@ -1115,6 +1153,17 @@ export function TsAnalysisModeling() {
                 );
               })()}
 
+              <p
+                className={`mb-2 rounded border px-3 py-2 text-xs ${activeCandidate.available_actions.includes("backtest") ? "border-green-200 bg-green-50 text-green-700" : "border-neutral-200 bg-neutral-50 text-neutral-700"}`}
+                data-testid="candidate-runtime-status"
+              >
+                {activeCandidate.available_actions.includes("backtest")
+                  ? "Production backtest подключён"
+                  : activeCandidate.platform_status === "catalog_only"
+                    ? "Метод есть в методологическом каталоге, но ещё не реализован в production"
+                    : "Production-модель ограничена для текущего ряда"}
+              </p>
+
               {/* Сообщение движка */}
               {activeCandidate.message && (
                 <p className="text-xs text-neutral-500 mb-2">
@@ -1160,7 +1209,15 @@ export function TsAnalysisModeling() {
               </button>
 
               {/* Кнопка / Результат «Запустить бэктест» */}
-              {backtestResults[activeCandidate.model_id] ? (
+              {!activeCandidate.available_actions.includes("backtest") ? (
+                <div
+                  className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800"
+                  data-testid="backtest-unavailable"
+                >
+                  <p className="font-medium">Бэктест недоступен</p>
+                  <p className="mt-1">{activeCandidate.blocking_reason}</p>
+                </div>
+              ) : backtestResults[activeCandidate.model_id] ? (
                 <div
                   className="mt-2 p-3 rounded-lg border border-brand/30 bg-brand-light/50 space-y-2"
                   data-testid="backtest-result"
