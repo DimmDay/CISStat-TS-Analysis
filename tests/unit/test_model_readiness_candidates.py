@@ -43,9 +43,22 @@ def test_candidate_statistics_report_runtime_availability_separately():
     ))
 
     assert response.statistics.runnable_candidates == 9
-    assert response.statistics.catalog_only_candidates > 0
-    assert (
-        response.statistics.runnable_candidates
-        + response.statistics.catalog_only_candidates
-        == response.statistics.total_candidates
-    )
+    assert response.statistics.catalog_only_candidates == 15
+    assert response.statistics.total_models_in_spec == 24
+
+
+def test_response_keeps_filtered_candidate_pool_and_exposes_complete_catalog():
+    response = _compute_candidates(CandidatesRequest(
+        profile=_broad_profile(),
+        min_level="CONDITIONALLY_APPLICABLE",
+    ))
+
+    candidate_ids = {item.model_id for item in response.candidates}
+    catalog = {item.model_id: item for item in response.catalog}
+
+    assert len(response.catalog) == response.statistics.total_models_in_spec == 24
+    assert len(response.candidates) < len(response.catalog)
+    assert "var" not in candidate_ids
+    assert catalog["var"].level == "NOT_APPLICABLE"
+    assert catalog["var"].available_actions == []
+    assert catalog["var"].message

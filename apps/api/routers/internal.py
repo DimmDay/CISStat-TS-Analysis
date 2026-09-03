@@ -317,7 +317,7 @@ def run_backtest_internal(
 def get_candidates_internal(payload: CandidatesRequest):
     """Пул кандидатов — зеркало /v1/models/candidates без auth.
 
-    Возвращает ТОТ ЖЕ CandidatesResponse (candidates + statistics +
+    Возвращает ТОТ ЖЕ CandidatesResponse (candidates + catalog + statistics +
     spec_version), что и защищённый эндпоинт, поскольку вызывает ту же
     бизнес-логику _compute_candidates(). Это позволяет UI работать с
     обоими эндпоинтами взаимозаменяемо (мы переключились на internal,

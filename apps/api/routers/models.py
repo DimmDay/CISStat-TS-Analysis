@@ -114,31 +114,54 @@ def _compute_candidates(payload: CandidatesRequest) -> CandidatesResponse:
     if min_level not in valid_levels:
         raise HTTPException(status_code=422, detail=f"Некорректный min_level: '{min_level}'. Допустимые: {valid_levels}")
     candidate_results = spec.get_candidate_pool(profile, min_level=min_level)
-    candidates = []
-    for candidate in candidate_results:
-        actions = available_model_actions(candidate.model_id)
-        ready = "backtest" in actions
-        candidates.append(ModelCandidate(
+    candidate_ids = {candidate.model_id for candidate in candidate_results}
+    all_results = spec.resolve_all_applicability(profile)
+
+    def build_catalog_item(candidate) -> ModelCandidate:
+        production_actions = available_model_actions(candidate.model_id)
+        platform_ready = "backtest" in production_actions
+        included = candidate.model_id in candidate_ids
+        actions = production_actions if included else []
+        if not platform_ready:
+            blocking_reason = (
+                "Production-реализация модели ещё не подключена; "
+                "фиктивные метрики запрещены."
+            )
+        elif not included:
+            blocking_reason = candidate.message or (
+                f"Модель исключена из пула уровнем применимости {candidate.level}."
+            )
+        else:
+            blocking_reason = None
+        return ModelCandidate(
             model_id=candidate.model_id, model_name=candidate.model_name,
             family_id=candidate.family_id, level=candidate.level,
             rule_id=candidate.rule_id, message=candidate.message,
             rank=candidate.rank,
-            platform_status="ready" if ready else "catalog_only",
+            platform_status="ready" if platform_ready else "catalog_only",
             available_actions=actions,
-            blocking_reason=None if ready else (
-                "Production-реализация модели ещё не подключена; "
-                "фиктивные метрики запрещены."
-            ),
-        ))
+            blocking_reason=blocking_reason,
+        )
+
+    # Полный каталог сохраняет порядок modeling.yaml и содержит все уровни
+    # применимости. Профильный candidates остаётся отдельным shortlist.
+    catalog = [build_catalog_item(candidate) for candidate in all_results.values()]
+    catalog_by_id = {candidate.model_id: candidate for candidate in catalog}
+    candidates = [catalog_by_id[candidate.model_id] for candidate in candidate_results]
     level_counts = Counter(c.level for c in candidates)
     statistics = CandidatesStatistics(
         total_candidates=len(candidates), by_level=dict(level_counts),
         total_models_in_spec=spec.total_model_count(),
         runnable_candidates=sum("backtest" in item.available_actions for item in candidates),
-        catalog_only_candidates=sum(item.platform_status == "catalog_only" for item in candidates),
+        catalog_only_candidates=sum(item.platform_status == "catalog_only" for item in catalog),
+        blocked_candidates=sum(
+            item.platform_status == "ready" and not item.available_actions
+            for item in catalog
+        ),
     )
     return CandidatesResponse(
-        candidates=candidates, statistics=statistics, spec_version=spec.metadata.version,
+        candidates=candidates, catalog=catalog,
+        statistics=statistics, spec_version=spec.metadata.version,
     )
 
 

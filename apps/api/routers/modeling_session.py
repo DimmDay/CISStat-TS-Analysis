@@ -198,7 +198,9 @@ def generate_modeling_candidates(
     matrix_models = {
         item["model_id"]: item for item in context["model_matrix"].get("models", [])
     }
-    for candidate in result.candidates:
+    # Ограничения EDA применяются ко всему каталогу, иначе реализованная, но
+    # противопоказанная модель могла бы получить кнопку запуска в режиме all.
+    for candidate in result.catalog:
         if candidate.platform_status != "ready" or candidate.model_id in runnable:
             continue
         matrix_item = matrix_models.get(candidate.model_id, {})
@@ -208,15 +210,17 @@ def generate_modeling_candidates(
             "; ".join(str(reason) for reason in reasons)
             or "Модель реализована, но заблокирована матрицей применимости для текущего ряда."
         )
+    catalog_by_id = {candidate.model_id: candidate for candidate in result.catalog}
+    result.candidates = [catalog_by_id[candidate.model_id] for candidate in result.candidates]
     result.statistics.runnable_candidates = sum(
         "backtest" in candidate.available_actions for candidate in result.candidates
     )
     result.statistics.catalog_only_candidates = sum(
-        candidate.platform_status == "catalog_only" for candidate in result.candidates
+        candidate.platform_status == "catalog_only" for candidate in result.catalog
     )
     result.statistics.blocked_candidates = sum(
         candidate.platform_status == "ready" and not candidate.available_actions
-        for candidate in result.candidates
+        for candidate in result.catalog
     )
     session.modeling_artifacts["candidates"] = result.model_dump(mode="json")
     session.modeling_artifacts["runnable_shortlist"] = context["runnable_shortlist"]

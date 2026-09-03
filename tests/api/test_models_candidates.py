@@ -101,6 +101,20 @@ class TestCandidatesResponse:
         assert isinstance(data["candidates"], list)
         assert len(data["candidates"]) > 0
 
+    def test_response_has_complete_catalog(self):
+        """Полный каталог не сужается порогом применимости candidate pool."""
+        resp = client.post(
+            "/v1/models/candidates",
+            json={"profile": MACRO_PROFILE},
+            headers=PRO_HEADERS,
+        )
+        data = resp.json()
+        assert len(data["catalog"]) == data["statistics"]["total_models_in_spec"] == 24
+        assert len(data["candidates"]) < len(data["catalog"])
+        assert {item["level"] for item in data["catalog"]} >= {
+            "RECOMMENDED", "NOT_APPLICABLE",
+        }
+
     def test_candidate_structure(self):
         """Каждый кандидат имеет обязательные поля."""
         resp = client.post(

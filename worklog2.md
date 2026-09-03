@@ -1215,3 +1215,52 @@ TDD и проверка
 Артефакт передачи
 
 - `download/task95_model_runtime_readiness_ae4a27f.zip` — только перечисленные изменённые/новые файлы Task 95 с сохранением структуры каталогов.
+
+---
+
+Task ID: 95 — корректирующий патч полного каталога моделей (TDD)
+
+Проблема
+
+После разделения production-готовности интерфейс показывал `Весь каталог (16)`, хотя `modeling.yaml` содержит 24 модели. Причина — UI строил оба режима из `CandidatesResponse.candidates`, а этот список намеренно является профильным shortlist и формируется с `min_level=CONDITIONALLY_APPLICABLE`. Модели `NOT_RECOMMENDED` и `NOT_APPLICABLE` отбрасывались backend до ответа. Поле статистики `total_models_in_spec=24` не решало проблему: отсутствующие модели нельзя было открыть и изучить.
+
+Архитектурное решение
+
+- Семантика существующего `candidates` сохранена: это профильный пул `RECOMMENDED + CONDITIONALLY_APPLICABLE` с обязательными baseline-моделями.
+- `CandidatesResponse` дополнен отдельным `catalog`, который всегда строится через `resolve_all_applicability()` и содержит все 24 модели в порядке `modeling.yaml`.
+- Каждая запись полного каталога несёт уровень применимости, правило, сообщение, `platform_status`, разрешённые действия и причину блокировки.
+- Production-модель, исключённая порогом применимости, сохраняет `platform_status=ready`, но получает пустой `available_actions` и объяснение ограничения. Catalog-only модель также не получает действия.
+- Session workflow применяет EDA model matrix ко всему `catalog`, затем синхронизирует те же объекты с профильным `candidates`. Это исключает появление кнопки запуска у противопоказанной модели в режиме полного каталога.
+- Статистика `catalog_only_candidates` и `blocked_candidates` теперь считается по полному каталогу; `runnable_candidates` — по рабочему shortlist текущего ряда.
+- Старые ответы backend поддержаны на клиенте через fallback `data.catalog ?? data.candidates`.
+
+Frontend
+
+- Состояния `candidates` и `catalog` разделены.
+- Режим `Доступные` использует профильный shortlist и дополнительно требует действие `backtest`.
+- Режим `Весь каталог` использует `catalog`; счётчик теперь равен 24, а не длине shortlist.
+- Фильтры четырёх уровней применимости работают по полному каталогу, поэтому `NOT_RECOMMENDED` и `NOT_APPLICABLE` доступны для методологического просмотра.
+- Карточка активной модели и клиентская защита backtest ищут модель в полном каталоге; недоступная модель не создаёт кнопку запуска.
+
+TDD и проверка
+
+- RED backend: 2 ожидаемых FAIL — `CandidatesResponse` не имел `catalog`, API не возвращал полный список.
+- RED frontend: 1 ожидаемый FAIL — кнопка `Весь каталог (24)` отсутствовала.
+- GREEN backend: candidates/readiness/internal/session workflow — 53/53 PASS.
+- GREEN Modeling UI: 52/52 PASS.
+- Полная frontend-регрессия: 83 suites, 720/720 PASS, 0 snapshots.
+- TypeScript standalone/embedded: PASS.
+- Production build standalone/embedded: PASS, по 13/13 страниц, включая `/modeling`; First Load JS 454 kB.
+- `py_compile` изменённых Python-файлов и `git diff --check`: PASS.
+
+Изменённые файлы корректирующего патча Task 95
+
+- `apps/api/routers/internal.py`
+- `apps/api/routers/models.py`
+- `apps/api/routers/modeling_session.py`
+- `apps/api/schemas.py`
+- `packages/ui/components/TsAnalysisModeling.tsx`
+- `packages/ui/components/TsAnalysisModeling.test.tsx`
+- `packages/ui/lib/modeling.ts`
+- `tests/api/test_models_candidates.py`
+- `tests/unit/test_model_readiness_candidates.py`

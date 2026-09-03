@@ -136,6 +136,7 @@ export function TsAnalysisModeling() {
   // ── Состояние ──
   const [profile, setProfile] = useState<DataProfile>(DEFAULT_PROFILE);
   const [candidates, setCandidates] = useState<ModelCandidate[]>([]);
+  const [catalog, setCatalog] = useState<ModelCandidate[]>([]);
   const [statistics, setStatistics] = useState<{
     total_candidates: number;
     by_level: Record<string, number>;
@@ -392,6 +393,7 @@ export function TsAnalysisModeling() {
       }
       const data: CandidatesResponse = await res.json();
       setCandidates(data.candidates);
+      setCatalog(data.catalog ?? data.candidates);
       setStatistics(data.statistics);
       setSpecVersion(data.spec_version);
       setHasFetched(true);
@@ -425,7 +427,7 @@ export function TsAnalysisModeling() {
   // Синтетический fallback намеренно запрещён.
   const runBacktest = useCallback(
     async (modelId: string) => {
-      const candidate = candidates.find((item) => item.model_id === modelId);
+      const candidate = catalog.find((item) => item.model_id === modelId);
       if (!candidate?.available_actions.includes("backtest")) {
         setBacktestError(candidate?.blocking_reason || "Production backtest для модели недоступен.");
         return;
@@ -470,7 +472,7 @@ export function TsAnalysisModeling() {
         setBacktestLoading(false);
       }
     },
-    [candidates, modelingContext]
+    [catalog, modelingContext]
   );
 
   // ── Collapse/Expand description ──
@@ -501,7 +503,7 @@ export function TsAnalysisModeling() {
     const observer = new ResizeObserver(checkOverflow);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [descriptionSection, candidates]);
+  }, [descriptionSection, catalog]);
 
   // ── Обработчики профиля ──
   const handleProfileChange = useCallback(
@@ -512,7 +514,8 @@ export function TsAnalysisModeling() {
   );
 
   // ── Фильтрация и группировка ──
-  const filteredCandidates = candidates.filter((c) => {
+  const visibleModels = availabilityFilter === "all" ? catalog : candidates;
+  const filteredCandidates = visibleModels.filter((c) => {
     if (availabilityFilter === "runnable" && !c.available_actions.includes("backtest")) return false;
     if (levelFilter !== "all" && c.level !== levelFilter) return false;
     return true;
@@ -525,7 +528,7 @@ export function TsAnalysisModeling() {
   })).filter((fam) => fam.models.length > 0);
 
   // Активный кандидат
-  const activeCandidate = candidates.find(
+  const activeCandidate = catalog.find(
     (c) => c.model_id === activeCandidateId
   );
 
@@ -967,7 +970,7 @@ export function TsAnalysisModeling() {
                 onClick={() => setAvailabilityFilter("all")}
                 className={`rounded border px-2 py-1 text-xs ${availabilityFilter === "all" ? "border-brand bg-brand text-white" : "border-neutral-200 bg-white text-neutral-700"}`}
               >
-                Весь каталог ({candidates.length})
+                Весь каталог ({catalog.length})
               </button>
             </div>
             <div className="flex items-center gap-2">
@@ -1092,7 +1095,7 @@ export function TsAnalysisModeling() {
             />
             <Metric
               label="Только каталог"
-              value={String(statistics.catalog_only_candidates ?? candidates.filter((item) => item.platform_status === "catalog_only").length)}
+              value={String(statistics.catalog_only_candidates ?? catalog.filter((item) => item.platform_status === "catalog_only").length)}
             />
             <Metric
               label="Всего в спецификации"

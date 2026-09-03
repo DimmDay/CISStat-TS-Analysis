@@ -2963,13 +2963,20 @@ class CandidatesStatistics(BaseModel):
     by_level: Dict[str, int] = Field(default_factory=dict)
     total_models_in_spec: int = Field(0, description="Общее число моделей в спецификации")
     runnable_candidates: int = Field(0, description="Кандидаты с доступным production backtest")
-    catalog_only_candidates: int = Field(0, description="Методологические кандидаты без production backtest")
-    blocked_candidates: int = Field(0, description="Реализованные модели, заблокированные текущими данными")
+    catalog_only_candidates: int = Field(0, description="Модели полного каталога без production backtest")
+    blocked_candidates: int = Field(0, description="Production-модели полного каталога, заблокированные текущими данными")
 
 
 class CandidatesResponse(BaseModel):
     """Ответ: пул кандидатов для моделирования."""
     candidates: List[ModelCandidate]
+    catalog: List[ModelCandidate] = Field(
+        default_factory=list,
+        description=(
+            "Полный каталог моделей спецификации, включая NOT_RECOMMENDED "
+            "и NOT_APPLICABLE; candidates остаётся профильным shortlist"
+        ),
+    )
     statistics: CandidatesStatistics
     spec_version: str = Field("", description="Версия спецификации modeling.yaml")
 

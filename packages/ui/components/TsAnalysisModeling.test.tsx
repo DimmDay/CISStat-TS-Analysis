@@ -39,8 +39,7 @@ jest.mock("../context/AppShellContext", () => ({
 }));
 
 // ── Test data ──
-const MOCK_CANDIDATES_RESPONSE = {
-  candidates: [
+const MOCK_CANDIDATES = [
     {
       model_id: "naive",
       model_name: "Naive",
@@ -149,7 +148,27 @@ const MOCK_CANDIDATES_RESPONSE = {
       available_actions: [],
       blocking_reason: "Production-реализация модели ещё не подключена.",
     },
-  ],
+  ];
+
+const MOCK_CATALOG = [
+  ...MOCK_CANDIDATES,
+  ...Array.from({ length: 15 }, (_, index) => ({
+    model_id: `catalog_model_${index + 1}`,
+    model_name: `Catalog model ${index + 1}`,
+    family_id: "neural",
+    level: "NOT_APPLICABLE",
+    rule_id: "F04",
+    message: "Недостаточно данных для текущего ряда",
+    rank: 4,
+    platform_status: "catalog_only",
+    available_actions: [],
+    blocking_reason: "Production-реализация модели ещё не подключена.",
+  })),
+];
+
+const MOCK_CANDIDATES_RESPONSE = {
+  candidates: MOCK_CANDIDATES,
+  catalog: MOCK_CATALOG,
   statistics: {
     total_candidates: 9,
     by_level: {
@@ -406,6 +425,19 @@ describe("TsAnalysisModeling", () => {
       ([url]: [string]) => typeof url === "string" && url.includes("/v1/session/modeling/backtest")
     );
     expect(backtestCalls).toHaveLength(0);
+  });
+
+  it("shows all 24 specification models in the complete catalog", async () => {
+    render(<TsAnalysisModeling />);
+    await waitFor(() => expect(screen.getByTestId("candidate-pool")).toBeInTheDocument());
+
+    const catalogButton = screen.getByRole("button", { name: "Весь каталог (24)" });
+    expect(catalogButton).toBeInTheDocument();
+    fireEvent.click(catalogButton);
+    fireEvent.click(screen.getByTestId("family-header-multivariate"));
+
+    expect(screen.getByTestId("candidate-var")).toBeInTheDocument();
+    expect(screen.getByTestId("badge-var")).toHaveTextContent("Неприменима");
   });
 
   it("renders family headers for families with candidates", async () => {

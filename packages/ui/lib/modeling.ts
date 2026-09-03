@@ -110,6 +110,7 @@ export interface CandidatesStatistics {
 
 export interface CandidatesResponse {
   candidates: ModelCandidate[];
+  catalog: ModelCandidate[];
   statistics: CandidatesStatistics;
   spec_version: string;
 }
