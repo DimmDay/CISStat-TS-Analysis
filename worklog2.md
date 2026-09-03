@@ -1335,3 +1335,23 @@ TDD и проверка
 - `tests/api/test_modeling_workflow.py`
 - `tests/api/test_models_candidates.py`
 - `tests/unit/test_backtesting_engine.py` (новый)
+
+---
+
+## Task 97 — Спецификация: раскрытие/схлопывание вложенных графиков в Обзоре
+
+Спроектирована архитектура фичи expand/collapse для вложенных графиков
+«Обзора» на всех вкладках платформы (Validation/Preprocessing/EDA/Modeling).
+Артефакт: `spec_max/min_graph.md`.
+
+Ключевые решения: переиспользуемый примитив ExpandableChartPanel/
+ExpandableChartsProvider/ChartExpandToggle в packages/ui; single-expand
+инвариант на уровне одного Обзора; раскрытие в границах существующего
+468px-контейнера (Task 88) через absolute inset-0; опциональный
+detail_level=compact|expanded для сэмплирования на раскрытом графике
+с обратной совместимостью. Поэтапный роллаут (фундамент → пилот →
+сэмплирование → тиражирование). Открытые вопросы по вторичным потолкам
+сэмплирования и приоритету пилотных Обзоров — на решение тимлида.
+
+Статус: архитектурный дизайн передан на ревью, реализация не начата
+(коммит/push в main запрещён протоколом AGENTS.md).
