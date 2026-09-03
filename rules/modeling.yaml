@@ -902,20 +902,31 @@ pipeline:
       name: "Сравнение и ранжирование"
       order: 9
       description: >-
-        Ранжирование моделей по метрикам на validation-выборке.
-        Модель, не побеждающая лучший baseline, исключается.
+        Воспроизводимое ранжирование по прогнозным метрикам на точных общих
+        OOF-точках. Диагностика показывается отдельной осью решения и не
+        смешивается с точностью произвольным бонусом.
       inputs:
-        - "tuned_models"
-        - "cv_scores"
-        - "baseline_scores"
-        - "diagnostic_reports"
+        - "comparable_backtests"
+        - "current_oof_diagnostic_reports"
+        - "baseline_backtest"
       outputs:
-        - "ranked_models"
+        - "traceable_ranking"
+        - "fold_stability"
+        - "oof_error_correlation"
       rules:
-        exclude_if_worse_than_baseline: true
-        baseline_threshold: "best_baseline_score * 1.05"  # допуск 5%
-        rank_by: "weighted_score"     # см. секцию metrics
-        diagnostics_bonus: 0.1        # +10% к score если все диагностики пройдены
+        require_exact_oof_alignment: true
+        require_current_diagnostics: true
+        require_baseline_in_pool: true
+        rank_by: "weighted_score"
+        diagnostics_in_score: false
+        diagnostics_policy: "current_oof_report_required_not_scored"
+        baseline_policy: "flag_and_explicit_override"
+        baseline_threshold: 1.05
+        stability_metric: "rmse"
+        error_correlation: "pearson_on_exactly_aligned_oof_residuals"
+        error_correlation_caveat: >-
+          Корреляция не определена при нулевой дисперсии ошибок и сама по себе
+          не доказывает преимущество ансамбля.
 
     # ── Stage 10: Selection ──────────────────────────────────────────────────
     - id: "selection"
@@ -1407,14 +1418,14 @@ ui_config:
       - "model_name"
       - "family"
       - "applicability_level"
-      - "MAE"
       - "RMSE"
-      - "MAPE"
       - "MASE"
-      - "PI_coverage"
-      - "diagnostics_passed"
       - "weighted_score"
-      - "training_time"
+      - "fold_rmse_mean_std"
+      - "fold_top1_rate"
+      - "diagnostics_status"
+      - "baseline_status"
+      - "backtest_run_id"
 
   # Фильтры
   filters:

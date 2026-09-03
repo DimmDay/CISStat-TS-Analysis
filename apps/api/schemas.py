@@ -3097,6 +3097,73 @@ class BacktestResponse(BaseModel):
     )
 
 
+class ComparisonDiagnosticsSummary(BaseModel):
+    """Диагностика как отдельная ось решения, не добавка к forecast score."""
+    overall_status: Literal["pass", "warning", "fail"]
+    passed: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+    failed: List[str] = Field(default_factory=list)
+    not_applicable: List[str] = Field(default_factory=list)
+    diagnostics_signature: str
+
+
+class ComparisonFoldStability(BaseModel):
+    """Устойчивость RMSE и позиции модели между одинаковыми folds."""
+    metric: Literal["rmse"] = "rmse"
+    fold_values: List[float]
+    mean: float
+    std: float
+    coefficient_of_variation: Optional[float] = None
+    fold_ranks: List[int]
+    mean_rank: float
+    rank_std: float
+    top1_rate: float
+
+
+class ComparisonRankingItem(BaseModel):
+    rank: int = Field(..., ge=1)
+    model_id: str
+    model_name: str
+    family_id: str
+    applicability_level: Literal[
+        "RECOMMENDED", "CONDITIONALLY_APPLICABLE", "NOT_RECOMMENDED", "NOT_APPLICABLE",
+    ]
+    metrics: BacktestMetrics
+    backtest_run_id: str
+    params_source: Literal["model_default", "tuning", "request"]
+    parameter_signature: str
+    tuning_id: Optional[str] = None
+    oof_signature: str
+    normalized_metrics: Dict[str, float]
+    weighted_score: float
+    baseline_eligible: bool
+    baseline_note: str
+    diagnostics: ComparisonDiagnosticsSummary
+    fold_stability: ComparisonFoldStability
+
+
+class ErrorCorrelationMatrix(BaseModel):
+    """Pearson correlation of exactly aligned OOF residual vectors."""
+    model_ids: List[str]
+    n_points: int = Field(..., ge=1)
+    values: List[List[Optional[float]]]
+    unavailable_pairs: List[str] = Field(default_factory=list)
+
+
+class ModelingComparisonResponse(BaseModel):
+    comparison_id: str
+    comparison_signature: str
+    fingerprint: str
+    cohort_id: str
+    ranking_policy: Literal["forecast_metrics_only_diagnostics_separate"]
+    diagnostics_policy: Literal["current_oof_report_required_not_scored"]
+    normalization: Literal["min_max_within_comparable_pool"]
+    metric_weights: Dict[str, float]
+    ranking: List[ComparisonRankingItem]
+    error_correlation: ErrorCorrelationMatrix
+    warnings: List[str] = Field(default_factory=list)
+
+
 # ── Моделирование: тюнинг гиперпараметров (Phase 1-C) ───────────────────
 #
 # POST /v1/models/tune — grid search по param_space модели с expanding-window CV.

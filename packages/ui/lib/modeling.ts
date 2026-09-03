@@ -286,6 +286,66 @@ export interface SessionTuningResponse {
   promoted_backtest?: BacktestResponse | null;
 }
 
+export interface ComparisonDiagnosticsSummary {
+  overall_status: "pass" | "warning" | "fail";
+  passed: string[];
+  warnings: string[];
+  failed: string[];
+  not_applicable: string[];
+  diagnostics_signature: string;
+}
+
+export interface ComparisonFoldStability {
+  metric: "rmse";
+  fold_values: number[];
+  mean: number;
+  std: number;
+  coefficient_of_variation: number | null;
+  fold_ranks: number[];
+  mean_rank: number;
+  rank_std: number;
+  top1_rate: number;
+}
+
+export interface ComparisonRankingItem {
+  rank: number;
+  model_id: string;
+  model_name: string;
+  family_id: string;
+  applicability_level: ApplicabilityLevel;
+  metrics: BacktestMetrics;
+  backtest_run_id: string;
+  params_source: "model_default" | "tuning" | "request";
+  parameter_signature: string;
+  tuning_id: string | null;
+  oof_signature: string;
+  normalized_metrics: Record<string, number>;
+  weighted_score: number;
+  baseline_eligible: boolean;
+  baseline_note: string;
+  diagnostics: ComparisonDiagnosticsSummary;
+  fold_stability: ComparisonFoldStability;
+}
+
+export interface ModelingComparisonResponse {
+  comparison_id: string;
+  comparison_signature: string;
+  fingerprint: string;
+  cohort_id: string;
+  ranking_policy: "forecast_metrics_only_diagnostics_separate";
+  diagnostics_policy: "current_oof_report_required_not_scored";
+  normalization: "min_max_within_comparable_pool";
+  metric_weights: Record<string, number>;
+  ranking: ComparisonRankingItem[];
+  error_correlation: {
+    model_ids: string[];
+    n_points: number;
+    values: Array<Array<number | null>>;
+    unavailable_pairs: string[];
+  };
+  warnings: string[];
+}
+
 export type TraceabilityStatus = "done" | "warning" | "skipped" | "pending";
 
 export interface ModelingTraceNode {

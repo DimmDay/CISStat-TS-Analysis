@@ -4,28 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "./Button";
 import { getApiBase } from "../lib/apiClient";
-import type { BacktestResponse } from "../lib/modeling";
+import type {
+  ApplicabilityLevel,
+  BacktestResponse,
+  ComparisonRankingItem,
+  ModelingComparisonResponse,
+} from "../lib/modeling";
 
 
 const API_BASE = getApiBase();
-
-interface RankingItem {
-  rank: number;
-  model_id: string;
-  model_name: string;
-  family_id: string;
-  metrics: { mae: number; rmse: number; mape: number; mase: number };
-  weighted_score: number;
-  baseline_eligible: boolean;
-  baseline_note: string;
-}
-
-interface ComparisonResult {
-  comparison_id: string;
-  normalization: string;
-  ranking: RankingItem[];
-  warnings: string[];
-}
 
 interface TuningResult {
   strategy?: "single" | "expanding" | "sliding";
@@ -81,6 +68,32 @@ function diagnosticStatus(item: DiagnosticItem): string {
   return "Не пройдено";
 }
 
+function comparisonDiagnosticStatus(status: ComparisonRankingItem["diagnostics"]["overall_status"]): string {
+  if (status === "pass") return "Пройдено";
+  if (status === "warning") return "Предупреждение";
+  return "Не пройдено";
+}
+
+function applicabilityLabel(level: ApplicabilityLevel): string {
+  if (level === "RECOMMENDED") return "Рекомендована";
+  if (level === "CONDITIONALLY_APPLICABLE") return "Условно применима";
+  if (level === "NOT_RECOMMENDED") return "Не рекомендуется";
+  return "Неприменима";
+}
+
+function apiErrorDetail(detail: unknown, status: number): string {
+  if (typeof detail === "string") return detail;
+  if (detail && typeof detail === "object") {
+    const value = detail as Record<string, unknown>;
+    const lists = [
+      "missing_backtests", "missing_diagnostics", "stale_diagnostics", "missing_applicability",
+    ]
+      .flatMap((key) => Array.isArray(value[key]) ? value[key] as string[] : []);
+    return `${typeof value.message === "string" ? value.message : `HTTP ${status}`}${lists.length ? `: ${lists.join(", ")}` : ""}`;
+  }
+  return `HTTP ${status}`;
+}
+
 async function postJson(path: string, body: Record<string, unknown>) {
   const response = await fetch(`${API_BASE}${path}`, {
     method: "POST",
@@ -90,7 +103,7 @@ async function postJson(path: string, body: Record<string, unknown>) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(typeof payload.detail === "string" ? payload.detail : `HTTP ${response.status}`);
+    throw new Error(apiErrorDetail(payload.detail, response.status));
   }
   return payload;
 }
@@ -100,7 +113,11 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
     ? modelIds.filter((item) => ["ets", "ets_damped", "arima"].includes(item))
     : modelIds;
   const [modelId, setModelId] = useState(supportedModelIds[0] ?? "");
-  const [comparison, setComparison] = useState<ComparisonResult | null>(null);
+  const [comparison, setComparison] = useState<ModelingComparisonResponse | null>(null);
+  const [diagnosticFilter, setDiagnosticFilter] = useState<"all" | "pass" | "warning" | "fail">("all");
+  const [applicabilityFilter, setApplicabilityFilter] = useState<"all" | ApplicabilityLevel>("all");
+  const [familyFilter, setFamilyFilter] = useState("all");
+  const [baselineFilter, setBaselineFilter] = useState<"all" | "eligible" | "risk">("all");
   const [selection, setSelection] = useState<{ selected_model_id: string; ensemble_recommended?: boolean } | null>(null);
   const [riskAcknowledged, setRiskAcknowledged] = useState<Record<string, boolean>>({});
   const [card, setCard] = useState<{ card_id: string; card: Record<string, unknown> } | null>(null);
@@ -122,6 +139,14 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
     setError(null);
     try {
       const value = await action();
+      if (["tuning", "diagnostics"].includes(stage)) {
+        setComparison(null);
+        setSelection(null);
+        setCard(null);
+      } else if (stage === "comparison") {
+        setSelection(null);
+        setCard(null);
+      }
       setResult(value);
       onStageComplete?.(stage);
       return value;
@@ -137,11 +162,11 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
     const value = await execute(
       () => postJson("/v1/session/modeling/compare", { model_ids: modelIds }),
       "comparison",
-    ) as unknown as ComparisonResult | null;
+    ) as unknown as ModelingComparisonResponse | null;
     if (value) setComparison(value);
   };
 
-  const select = async (item: RankingItem) => {
+  const select = async (item: ComparisonRankingItem) => {
     const value = await execute(
       () => postJson("/v1/session/modeling/select", {
         model_id: item.model_id,
@@ -176,6 +201,15 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
   const diagnosticsResult = stageId === "diagnostics" && result
     ? result as unknown as DiagnosticsResult
     : null;
+  const filteredRanking = comparison?.ranking.filter((item) => (
+    diagnosticFilter === "all" || item.diagnostics.overall_status === diagnosticFilter
+  )).filter((item) => applicabilityFilter === "all" || item.applicability_level === applicabilityFilter)
+    .filter((item) => familyFilter === "all" || item.family_id === familyFilter)
+    .filter((item) => (
+      baselineFilter === "all"
+      || (baselineFilter === "eligible" ? item.baseline_eligible : !item.baseline_eligible)
+    )) ?? [];
+  const comparisonFamilies = Array.from(new Set(comparison?.ranking.map((item) => item.family_id) ?? []));
 
   return (
     <section className="flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white p-4" data-testid="modeling-workflow-overview">
@@ -193,7 +227,7 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
           </div>
         )}
         {stageId === "comparison" && (
-          <div className="flex items-center justify-between"><div><h3 className="font-semibold">Сравнение моделей</h3><p className="text-xs text-neutral-500">Единое разбиение; min-max внутри сопоставимого пула.</p></div><Button disabled={loading} onClick={() => void loadComparison()}>Сравнить модели</Button></div>
+          <div className="flex items-center justify-between"><div><h3 className="font-semibold">Сравнение моделей</h3><p className="text-xs text-neutral-500">Точные общие OOF; min-max внутри сопоставимого пула, diagnostics отдельно.</p></div><Button disabled={loading} onClick={() => void loadComparison()}>Сравнить модели</Button></div>
         )}
         {stageId === "selection" && (
           <div className="flex items-center justify-between"><div><h3 className="font-semibold">Выбор модели</h3><p className="text-xs text-neutral-500">Top-1 — рекомендация, override остаётся явным решением аналитика.</p></div>{!comparison && <Button disabled={loading} onClick={() => void loadComparison()}>Загрузить рейтинг</Button>}</div>
@@ -207,9 +241,30 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
       {error && <div className="mt-3 rounded border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</div>}
       {!loading && comparison && ["comparison", "selection"].includes(stageId) && (
         <div className="mt-4 min-h-0 flex-1 overflow-auto feed-scroll">
-          <table className="w-full text-xs"><thead><tr className="border-b text-left text-neutral-500"><th className="py-2">#</th><th>Модель</th><th>MASE</th><th>Score</th><th>Baseline</th>{stageId === "selection" && <th>Действие</th>}</tr></thead>
-            <tbody>{comparison.ranking.map((item) => <tr key={item.model_id} className="border-b border-neutral-100"><td className="py-2">{item.rank}</td><td className="font-medium">{item.model_name}</td><td>{item.metrics.mase.toFixed(3)}</td><td>{item.weighted_score.toFixed(3)}</td><td className={item.baseline_eligible ? "text-green-700" : "text-amber-700"}>{item.baseline_note}</td>{stageId === "selection" && <td>{!item.baseline_eligible && <label className="mr-2 inline-flex items-center gap-1 text-[10px] text-amber-700"><input type="checkbox" checked={Boolean(riskAcknowledged[item.model_id])} onChange={(event) => setRiskAcknowledged((previous) => ({ ...previous, [item.model_id]: event.target.checked }))} />Принимаю риск</label>}<button className="text-brand underline disabled:text-neutral-300" disabled={!item.baseline_eligible && !riskAcknowledged[item.model_id]} onClick={() => void select(item)} aria-label={`Выбрать ${item.model_name}`}>Выбрать</button></td>}</tr>)}</tbody>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded border border-blue-200 bg-blue-50 p-2 text-[10px] text-blue-900" data-testid="comparison-lineage">
+            <span title={comparison.comparison_signature}><b>Comparison SHA:</b> {comparison.comparison_signature.slice(0, 13)}</span>
+            <span title={comparison.cohort_id}><b>Cohort:</b> {comparison.cohort_id.slice(0, 12)}</span>
+            <span><b>OOF:</b> {comparison.error_correlation.n_points} точек</span>
+            <span><b>Policy:</b> diagnostics не входят в score</span>
+          </div>
+          <div className="mb-2 flex items-center gap-2">
+            <label htmlFor="applicability-filter" className="text-[10px] text-neutral-500">Применимость</label>
+            <select id="applicability-filter" aria-label="Фильтр применимости" value={applicabilityFilter} onChange={(event) => setApplicabilityFilter(event.target.value as typeof applicabilityFilter)} className="rounded border border-neutral-300 bg-white px-2 py-1 text-[10px]">
+              <option value="all">Все уровни</option><option value="RECOMMENDED">Рекомендована</option><option value="CONDITIONALLY_APPLICABLE">Условно применима</option><option value="NOT_RECOMMENDED">Не рекомендуется</option><option value="NOT_APPLICABLE">Неприменима</option>
+            </select>
+            <label htmlFor="diagnostic-filter" className="text-[10px] text-neutral-500">Диагностика</label>
+            <select id="diagnostic-filter" aria-label="Фильтр диагностики" value={diagnosticFilter} onChange={(event) => setDiagnosticFilter(event.target.value as typeof diagnosticFilter)} className="rounded border border-neutral-300 bg-white px-2 py-1 text-[10px]">
+              <option value="all">Все статусы</option><option value="pass">Пройдено</option><option value="warning">Предупреждение</option><option value="fail">Не пройдено</option>
+            </select>
+            <label htmlFor="family-filter" className="text-[10px] text-neutral-500">Семейство</label>
+            <select id="family-filter" aria-label="Фильтр семейства" value={familyFilter} onChange={(event) => setFamilyFilter(event.target.value)} className="rounded border border-neutral-300 bg-white px-2 py-1 text-[10px]"><option value="all">Все семейства</option>{comparisonFamilies.map((family) => <option key={family} value={family}>{family}</option>)}</select>
+            <label htmlFor="baseline-filter" className="text-[10px] text-neutral-500">Baseline</label>
+            <select id="baseline-filter" aria-label="Фильтр baseline" value={baselineFilter} onChange={(event) => setBaselineFilter(event.target.value as typeof baselineFilter)} className="rounded border border-neutral-300 bg-white px-2 py-1 text-[10px]"><option value="all">Все</option><option value="eligible">MASE ≤ 1.05</option><option value="risk">Риск</option></select>
+          </div>
+          <table className="w-full text-[10px]" data-testid="comparison-ranking"><thead><tr className="border-b text-left text-neutral-500"><th className="py-2">#</th><th>Модель</th><th>Применимость</th><th>RMSE</th><th>MASE</th><th>Score</th><th>Fold RMSE μ±σ</th><th>Диагностика</th><th>Baseline</th>{stageId === "selection" && <th>Действие</th>}</tr></thead>
+            <tbody>{filteredRanking.map((item) => <tr key={item.model_id} className="border-b border-neutral-100"><td className="py-2">{item.rank}</td><td className="font-medium" title={`run: ${item.backtest_run_id}`}>{item.model_name}<span className="block text-[9px] font-normal text-neutral-400">{item.family_id}</span></td><td>{applicabilityLabel(item.applicability_level)}</td><td>{item.metrics.rmse.toFixed(3)}</td><td>{item.metrics.mase == null ? "—" : item.metrics.mase.toFixed(3)}</td><td title={JSON.stringify(item.normalized_metrics)}>{item.weighted_score.toFixed(3)}</td><td>{item.fold_stability.mean.toFixed(3)} ± {item.fold_stability.std.toFixed(3)}<span className="block text-[9px] text-neutral-400">top-1 {(item.fold_stability.top1_rate * 100).toFixed(0)}%</span></td><td title={`pass: ${item.diagnostics.passed.join(", ")}; warning: ${item.diagnostics.warnings.join(", ")}; fail: ${item.diagnostics.failed.join(", ")}`}>{comparisonDiagnosticStatus(item.diagnostics.overall_status)}</td><td className={item.baseline_eligible ? "text-green-700" : "text-amber-700"}>{item.baseline_note}</td>{stageId === "selection" && <td>{!item.baseline_eligible && <label className="mr-2 inline-flex items-center gap-1 text-[10px] text-amber-700"><input type="checkbox" checked={Boolean(riskAcknowledged[item.model_id])} onChange={(event) => setRiskAcknowledged((previous) => ({ ...previous, [item.model_id]: event.target.checked }))} />Принимаю риск</label>}<button className="text-brand underline disabled:text-neutral-300" disabled={!item.baseline_eligible && !riskAcknowledged[item.model_id]} onClick={() => void select(item)} aria-label={`Выбрать ${item.model_name}`}>Выбрать</button></td>}</tr>)}</tbody>
           </table>
+          {stageId === "comparison" && <div className="mt-3" data-testid="error-correlation-matrix"><h4 className="mb-1 text-[10px] font-semibold text-neutral-700">Корреляция точно совмещённых OOF-ошибок</h4><table className="text-[10px]"><thead><tr><th className="px-2 py-1" />{comparison.error_correlation.model_ids.map((model) => <th key={model} className="px-2 py-1 text-neutral-500">{model}</th>)}</tr></thead><tbody>{comparison.error_correlation.model_ids.map((model, row) => <tr key={model}><th className="px-2 py-1 text-left text-neutral-500">{model}</th>{(comparison.error_correlation.values[row] ?? []).map((value, column) => <td key={`${model}-${column}`} className="px-2 py-1 text-right">{value == null ? "—" : value.toFixed(3)}</td>)}</tr>)}</tbody></table></div>}
           {comparison.warnings.map((warning) => <p key={warning} className="mt-2 text-[10px] text-amber-700">{warning}</p>)}
         </div>
       )}

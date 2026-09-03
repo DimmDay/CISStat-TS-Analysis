@@ -21,6 +21,11 @@ from apps.api.model_readiness import (
     PRODUCTION_BACKTEST_MODEL_IDS,
     PRODUCTION_TUNING_MODEL_IDS,
 )
+from apps.api.modeling_comparison import (
+    ComparisonContractError,
+    build_comparison,
+    diagnostics_signature,
+)
 from apps.api.modeling_tuning import (
     execute_tuning_plan_with_artifacts,
     oof_signature,
@@ -39,6 +44,7 @@ from apps.api.schemas import (
     CandidatesRequest,
     CandidatesResponse,
     DataProfileRequest,
+    ModelingComparisonResponse,
     TuneResponse,
 )
 from apps.api.session_store import get_or_create_session_id, get_session_store
@@ -99,6 +105,7 @@ class SessionDiagnosticsResponse(BaseModel):
     cohort_id: str
     preprocessing: dict[str, Any] = Field(default_factory=dict)
     diagnostics: list[DiagnosticResult]
+    diagnostics_signature: str
 
 
 class ModelingCompareRequest(BaseModel):
@@ -196,6 +203,16 @@ def _invalidate_after_model_run(session, model_id: str) -> None:
     session.modeling_artifacts["model_cards"] = {}
     session.modeling_pipeline["diagnostics"] = "in_progress"
     for stage in ("comparison", "selection", "model_card"):
+        session.modeling_pipeline[stage] = "pending"
+
+
+def _invalidate_after_diagnostics(session) -> None:
+    """Diagnostics are a comparison input, so every downstream artifact is stale."""
+    session.modeling_artifacts.pop("comparison", None)
+    session.modeling_artifacts.pop("selection", None)
+    session.modeling_artifacts["model_cards"] = {}
+    session.modeling_pipeline["comparison"] = "in_progress"
+    for stage in ("selection", "model_card"):
         session.modeling_pipeline[stage] = "pending"
 
 
@@ -523,7 +540,7 @@ def diagnose_modeling_candidate(
         diagnostics = _diagnose(residuals, payload.alpha, payload.ljung_box_lags, payload.arch_lags)
     except (ValueError, TypeError, ArithmeticError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    result = SessionDiagnosticsResponse(**{
+    result_payload = {
         "model_id": payload.model_id, "target_column": session.target_column,
         "n_observations": int(residuals.size), "residuals_count": int(residuals.size),
         "alpha": payload.alpha,
@@ -540,7 +557,10 @@ def diagnose_modeling_candidate(
         "cohort_id": backtest.get("cohort_id"),
         "preprocessing": backtest.get("preprocessing", {}),
         "diagnostics": [item.model_dump(mode="json") for item in diagnostics],
-    })
+    }
+    result_payload["diagnostics_signature"] = diagnostics_signature(result_payload)
+    result = SessionDiagnosticsResponse(**result_payload)
+    _invalidate_after_diagnostics(session)
     session.modeling_artifacts.setdefault("diagnostics", {})[payload.model_id] = result.model_dump(mode="json")
     session.modeling_pipeline["diagnostics"] = "done"
     session.modeling_pipeline["comparison"] = "in_progress"
@@ -549,14 +569,7 @@ def diagnose_modeling_candidate(
     return result
 
 
-def _minmax(values: list[float]) -> list[float]:
-    lo, hi = min(values), max(values)
-    if hi - lo <= np.finfo(float).eps:
-        return [0.0 for _ in values]
-    return [(value - lo) / (hi - lo) for value in values]
-
-
-@router.post("/compare")
+@router.post("/compare", response_model=ModelingComparisonResponse)
 def compare_modeling_candidates(
     payload: ModelingCompareRequest,
     request: Request,
@@ -566,10 +579,23 @@ def compare_modeling_candidates(
     context = _action_context(session)
     _prepare_state(session, context)
     saved = session.modeling_artifacts.get("backtests", {})
+    if len(payload.model_ids) != len(set(payload.model_ids)):
+        raise HTTPException(status_code=422, detail="model_ids содержит дубликаты")
     model_ids = payload.model_ids or list(saved)
-    results = [saved[item] for item in model_ids if item in saved]
+    missing_backtests = [model_id for model_id in model_ids if model_id not in saved]
+    if missing_backtests:
+        raise HTTPException(
+            status_code=409,
+            detail={"message": "Не все запрошенные backtests существуют", "missing_backtests": missing_backtests},
+        )
+    results = [saved[model_id] for model_id in model_ids]
     if len(results) < 2:
         raise HTTPException(status_code=409, detail="Для сравнения нужны минимум два сопоставимых бэктеста")
+    if not any(item.get("family_id") == "baselines" for item in results):
+        raise HTTPException(
+            status_code=409,
+            detail="Comparable pool должен содержать минимум один рассчитанный baseline",
+        )
     incomplete = [item["model_id"] for item in results if item.get("status") != "success"]
     if incomplete:
         raise HTTPException(status_code=409, detail=f"Неполные backtest нельзя сравнивать: {incomplete}")
@@ -607,62 +633,70 @@ def compare_modeling_candidates(
             status_code=409,
             detail=f"Бэктесты устарели относительно текущего tuning run: {stale_tuned}",
         )
-
-    metric_ids = ["mae", "rmse", "mape", "mase"]
-    weights = {"mae": 0.35, "rmse": 0.25, "mape": 0.20, "mase": 0.20}
-    warnings = []
-    if any(item["metrics"].get("mape") is None for item in results):
-        metric_ids.remove("mape")
-        warnings.append("MAPE исключена из ranking: метрика определена не для всех моделей cohort.")
-    if any(item["metrics"].get("mase") is None for item in results):
-        metric_ids.remove("mase")
-        warnings.append("MASE исключена из ranking: seasonal train scale не определён для всех folds.")
-    weight_sum = sum(weights[item] for item in metric_ids)
-    normalized = {
-        metric: _minmax([float(item["metrics"][metric]) for item in results])
-        for metric in metric_ids
+    saved_diagnostics = session.modeling_artifacts.get("diagnostics", {})
+    missing_diagnostics = [model_id for model_id in model_ids if model_id not in saved_diagnostics]
+    if missing_diagnostics:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Для comparison нужны diagnostics каждого backtest",
+                "missing_diagnostics": missing_diagnostics,
+            },
+        )
+    stale_diagnostics = []
+    for backtest in results:
+        model_id = backtest["model_id"]
+        report = saved_diagnostics[model_id]
+        expected_signature = diagnostics_signature(report)
+        if (
+            report.get("backtest_run_id") != backtest.get("run_id")
+            or report.get("residuals_signature") != backtest.get("oof_signature")
+            or report.get("parameter_signature") != backtest.get("parameter_signature")
+            or report.get("cohort_id") != backtest.get("cohort_id")
+            or report.get("diagnostics_signature") != expected_signature
+        ):
+            stale_diagnostics.append(model_id)
+    if stale_diagnostics:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Diagnostics не соответствуют текущим backtest runs",
+                "stale_diagnostics": stale_diagnostics,
+            },
+        )
+    candidate_catalog = _compute_candidates(CandidatesRequest(
+        profile=DataProfileRequest(**context["profile"]),
+        min_level="NOT_APPLICABLE",
+    )).catalog
+    applicability_levels = {
+        candidate.model_id: candidate.level for candidate in candidate_catalog
     }
-    ranking = []
-    for index, item in enumerate(results):
-        score = sum(weights[metric] / weight_sum * normalized[metric][index] for metric in metric_ids)
-        raw_mase = item["metrics"].get("mase")
-        mase = float(raw_mase) if raw_mase is not None else None
-        baseline_eligible = mase is not None and mase <= 1.05
-        ranking.append({
-            "model_id": item["model_id"], "model_name": item["model_name"],
-            "family_id": item["family_id"], "metrics": item["metrics"],
-            "backtest_run_id": item.get("run_id"),
-            "params_source": item.get("params_source"),
-            "parameter_signature": item.get("parameter_signature"),
-            "tuning_id": item.get("tuning_id"),
-            "oof_signature": item.get("oof_signature"),
-            "weighted_score": round(score, 6),
-            "baseline_eligible": baseline_eligible,
-            "baseline_note": (
-                "лучше/сопоставима с сезонным Naive scale" if baseline_eligible
-                else "MASE не определена либо выше 1.05; допустим только осознанный override"
-            ),
-        })
-    ranking.sort(key=lambda item: (
-        item["weighted_score"],
-        item["metrics"].get("mase") if item["metrics"].get("mase") is not None else float("inf"),
-        item["metrics"]["rmse"],
-    ))
-    for rank, item in enumerate(ranking, 1):
-        item["rank"] = rank
-    if any(not item["baseline_eligible"] for item in ranking):
-        warnings.append("Модели с MASE > 1.05 помечены риском, но не скрыты из аудиторской таблицы.")
-    result = {
-        "comparison_id": str(uuid4()), "fingerprint": context["fingerprint"],
-        "cohort_id": next(iter(cohorts)),
-        "normalization": "min_max_within_comparable_pool", "metric_weights": {
-            metric: round(weights[metric] / weight_sum, 6) for metric in metric_ids
-        },
-        "ranking": ranking, "warnings": warnings,
-    }
-    session.modeling_artifacts["comparison"] = result
+    missing_applicability = [
+        model_id for model_id in model_ids if model_id not in applicability_levels
+    ]
+    if missing_applicability:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Для comparison отсутствует оценка применимости",
+                "missing_applicability": missing_applicability,
+            },
+        )
+    try:
+        result = build_comparison(
+            fingerprint=context["fingerprint"], cohort_id=next(iter(cohorts)),
+            backtests=results, diagnostics=saved_diagnostics,
+            applicability_levels=applicability_levels,
+            comparison_id=str(uuid4()),
+        )
+    except ComparisonContractError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    session.modeling_artifacts["comparison"] = result.model_dump(mode="json")
+    session.modeling_artifacts.pop("selection", None)
+    session.modeling_artifacts["model_cards"] = {}
     session.modeling_pipeline["comparison"] = "done"
     session.modeling_pipeline["selection"] = "in_progress"
+    session.modeling_pipeline["model_card"] = "pending"
     session.touch()
     store.save(session)
     return result
@@ -693,14 +727,18 @@ def select_modeling_candidate(
     ensemble_candidate = close_scores and enough_strong_models
     result = {
         "selected_model_id": payload.model_id,
+        "comparison_id": comparison["comparison_id"],
+        "comparison_signature": comparison["comparison_signature"],
+        "backtest_run_id": candidate["backtest_run_id"],
+        "diagnostics_signature": candidate["diagnostics"]["diagnostics_signature"],
         "selected_at": datetime.now(timezone.utc).isoformat(),
         "user_override": payload.model_id != comparison["ranking"][0]["model_id"],
         "baseline_risk_acknowledged": payload.acknowledge_baseline_risk,
         "ensemble_candidate": ensemble_candidate,
         "ensemble_recommended": False,
         "ensemble_note": (
-            "Выполнены условия MASE и близости score, но корреляция out-of-fold ошибок не сохранена; "
-            "автоматический ансамбль методологически недопустим."
+            "Выполнены условия MASE и близости score; OOF-корреляция сохранена в comparison. "
+            "Порог диверсификации и веса должны быть утверждены на отдельном этапе selection."
             if ensemble_candidate else None
         ),
     }
@@ -746,7 +784,7 @@ def create_model_card(
     card = {
         "model_info": {
             "model_id": model_id, "family": ranked["family_id"],
-            "applicability_level": (candidate or {}).get("level", "CONDITIONALLY_APPLICABLE"),
+            "applicability_level": ranked["applicability_level"],
             "description": (candidate or {}).get("message", ranked["model_name"]),
             "version": "1.0", "library_versions": {
                 "numpy": _package_version("numpy"),
@@ -787,6 +825,9 @@ def create_model_card(
         },
         "performance": {
             "backtest_metrics": backtest["metrics"],
+            "normalized_comparison_metrics": ranked.get("normalized_metrics", {}),
+            "weighted_score": ranked.get("weighted_score"),
+            "fold_stability": ranked.get("fold_stability"),
             "residuals_source": (diagnostics or {}).get("residuals_source", "backtest_oof"),
             "residuals_signature": (diagnostics or {}).get("residuals_signature"),
             "oof_predictions": backtest.get("oof_predictions", []),
@@ -807,6 +848,9 @@ def create_model_card(
             "total_sources": context["traceability"]["summary"]["total"],
             "summary": context["traceability"]["summary"],
             "checkpoint_id": context["checkpoint"]["checkpoint_id"],
+            "comparison_id": comparison.get("comparison_id"),
+            "comparison_signature": comparison.get("comparison_signature"),
+            "diagnostics_signature": (diagnostics or {}).get("diagnostics_signature"),
         },
         "notes": payload.notes,
         "created_at": datetime.now(timezone.utc).isoformat(),

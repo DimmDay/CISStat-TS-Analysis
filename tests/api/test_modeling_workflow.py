@@ -8,6 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from apps.api.main import app
+from apps.api.modeling_tuning import oof_signature
 from apps.api.session_store import (
     SESSION_COOKIE_NAME,
     get_session_store,
@@ -50,6 +51,16 @@ def _prepare(client: TestClient) -> None:
     assert client.post("/v1/session/date-column", json={"column": "date"}).status_code == 200
     assert client.post("/v1/session/dataset/passport/start").status_code == 200
     assert client.post("/v1/session/dataset/passport/modeling_entry").status_code == 200
+
+
+def _backtest_and_diagnose(client: TestClient, *model_ids: str) -> None:
+    for model_id in model_ids:
+        backtest = client.post("/v1/session/modeling/backtest", json={"model_id": model_id})
+        assert backtest.status_code == 200, backtest.text
+        diagnostics = client.post(
+            "/v1/session/modeling/diagnostics", json={"model_id": model_id},
+        )
+        assert diagnostics.status_code == 200, diagnostics.text
 
 
 def test_context_requires_confirmed_modeling_entry(client: TestClient):
@@ -270,9 +281,10 @@ def test_repeated_tuning_invalidates_stale_downstream_artifacts(client: TestClie
     for model_id in ("naive", "ets"):
         response = client.post("/v1/session/modeling/backtest", json={"model_id": model_id})
         assert response.status_code == 200, response.text
-    assert client.post(
-        "/v1/session/modeling/diagnostics", json={"model_id": "ets"},
-    ).status_code == 200
+    for model_id in ("naive", "ets"):
+        assert client.post(
+            "/v1/session/modeling/diagnostics", json={"model_id": model_id},
+        ).status_code == 200
     comparison = client.post("/v1/session/modeling/compare", json={})
     assert comparison.status_code == 200, comparison.text
     selected_id = comparison.json()["ranking"][0]["model_id"]
@@ -388,6 +400,10 @@ def test_backtests_compare_select_and_model_card_are_persisted(client: TestClien
         )
         assert response.status_code == 200, response.text
         assert response.json()["data_source"] == "session"
+        diagnostics = client.post(
+            "/v1/session/modeling/diagnostics", json={"model_id": model_id},
+        )
+        assert diagnostics.status_code == 200, diagnostics.text
 
     comparison = client.post("/v1/session/modeling/compare", json={})
     assert comparison.status_code == 200, comparison.text
@@ -403,6 +419,7 @@ def test_backtests_compare_select_and_model_card_are_persisted(client: TestClien
     )
     assert selected.status_code == 200, selected.text
     assert selected.json()["selected_model_id"] == selected_id
+    assert selected.json()["comparison_signature"] == comparison.json()["comparison_signature"]
 
     created = client.post("/v1/session/modeling/card", json={})
     assert created.status_code == 200, created.text
@@ -411,8 +428,14 @@ def test_backtests_compare_select_and_model_card_are_persisted(client: TestClien
     assert card["model_info"]["model_id"] == selected_id
     assert card["data_summary"]["source_checkpoint"]
     assert card["performance"]["backtest_metrics"]
+    ranked = next(
+        item for item in comparison.json()["ranking"] if item["model_id"] == selected_id
+    )
+    assert card["model_info"]["applicability_level"] == ranked["applicability_level"]
     assert card["training"]["preprocessing"]["fit_policy"] == "none"
     assert card["traceability"]["total_sources"] == 30
+    assert card["traceability"]["comparison_signature"] == comparison.json()["comparison_signature"]
+    assert card["traceability"]["diagnostics_signature"]
 
     downloaded = client.get(f"/v1/session/modeling/card/{card_id}")
     assert downloaded.status_code == 200
@@ -422,6 +445,154 @@ def test_backtests_compare_select_and_model_card_are_persisted(client: TestClien
     assert state["pipeline"]["comparison"] == "done"
     assert state["pipeline"]["selection"] == "done"
     assert state["pipeline"]["model_card"] == "done"
+
+
+def test_comparison_requires_current_diagnostics_for_every_backtest(client: TestClient):
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=3&n_splits=3").status_code == 200
+    for model_id in ("naive", "drift"):
+        response = client.post("/v1/session/modeling/backtest", json={"model_id": model_id})
+        assert response.status_code == 200, response.text
+
+    missing_all = client.post("/v1/session/modeling/compare", json={})
+    assert missing_all.status_code == 409
+    assert set(missing_all.json()["detail"]["missing_diagnostics"]) == {"naive", "drift"}
+
+    assert client.post(
+        "/v1/session/modeling/diagnostics", json={"model_id": "naive"},
+    ).status_code == 200
+    missing_one = client.post("/v1/session/modeling/compare", json={})
+    assert missing_one.status_code == 409
+    assert missing_one.json()["detail"]["missing_diagnostics"] == ["drift"]
+
+    assert client.post(
+        "/v1/session/modeling/diagnostics", json={"model_id": "drift"},
+    ).status_code == 200
+    assert client.post("/v1/session/modeling/compare", json={}).status_code == 200
+
+
+def test_comparison_rejects_duplicate_unknown_and_baselineless_pool(client: TestClient):
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=2&n_splits=2").status_code == 200
+    _backtest_and_diagnose(client, "naive", "drift")
+
+    duplicate = client.post(
+        "/v1/session/modeling/compare", json={"model_ids": ["naive", "naive"]},
+    )
+    assert duplicate.status_code == 422
+    assert "дублик" in duplicate.json()["detail"].lower()
+
+    unknown = client.post(
+        "/v1/session/modeling/compare", json={"model_ids": ["naive", "missing"]},
+    )
+    assert unknown.status_code == 409
+    assert unknown.json()["detail"]["missing_backtests"] == ["missing"]
+
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    store = get_session_store()
+    session = store.get(session_id)
+    for model_id in ("naive", "drift"):
+        session.modeling_artifacts["backtests"][model_id]["family_id"] = "not_baseline"
+    store.save(session)
+    no_baseline = client.post("/v1/session/modeling/compare", json={})
+    assert no_baseline.status_code == 409
+    assert "baseline" in no_baseline.json()["detail"].lower()
+
+
+def test_comparison_has_reproducible_lineage_stability_and_error_correlation(client: TestClient):
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=3&n_splits=3").status_code == 200
+    _backtest_and_diagnose(client, "naive", "drift")
+
+    first = client.post(
+        "/v1/session/modeling/compare", json={"model_ids": ["drift", "naive"]},
+    )
+    second = client.post(
+        "/v1/session/modeling/compare", json={"model_ids": ["naive", "drift"]},
+    )
+
+    assert first.status_code == 200, first.text
+    assert second.status_code == 200, second.text
+    body = first.json()
+    assert len(body["comparison_signature"]) == 64
+    assert body["comparison_signature"] == second.json()["comparison_signature"]
+    assert body["comparison_id"] != second.json()["comparison_id"]
+    assert body["ranking_policy"] == "forecast_metrics_only_diagnostics_separate"
+    assert body["diagnostics_policy"] == "current_oof_report_required_not_scored"
+    assert [item["model_id"] for item in body["ranking"]] == [
+        item["model_id"] for item in second.json()["ranking"]
+    ]
+    assert sum(body["metric_weights"].values()) == pytest.approx(1.0, abs=1e-5)
+    for item in body["ranking"]:
+        assert item["backtest_run_id"]
+        assert item["applicability_level"] in {
+            "RECOMMENDED", "CONDITIONALLY_APPLICABLE", "NOT_RECOMMENDED", "NOT_APPLICABLE",
+        }
+        assert set(item["normalized_metrics"]) == set(body["metric_weights"])
+        assert item["diagnostics"]["diagnostics_signature"]
+        assert sum(len(item["diagnostics"][key]) for key in (
+            "passed", "warnings", "failed", "not_applicable",
+        )) == 4
+        assert item["fold_stability"]["metric"] == "rmse"
+        assert len(item["fold_stability"]["fold_values"]) == 3
+        assert len(item["fold_stability"]["fold_ranks"]) == 3
+        assert 0 <= item["fold_stability"]["top1_rate"] <= 1
+    correlations = body["error_correlation"]
+    assert correlations["model_ids"] == sorted(["naive", "drift"])
+    assert correlations["n_points"] == 9
+    assert len(correlations["values"]) == 2
+    assert correlations["values"][0][1] == correlations["values"][1][0]
+
+
+def test_comparison_rejects_individually_signed_but_misaligned_oof(client: TestClient):
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=3&n_splits=3").status_code == 200
+    _backtest_and_diagnose(client, "naive", "drift")
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    store = get_session_store()
+    session = store.get(session_id)
+    drift = session.modeling_artifacts["backtests"]["drift"]
+    drift["oof_predictions"][0]["index"] += 1000
+    drift["oof_signature"] = oof_signature(drift["oof_predictions"])
+    session.modeling_artifacts["diagnostics"].pop("drift")
+    store.save(session)
+    assert client.post(
+        "/v1/session/modeling/diagnostics", json={"model_id": "drift"},
+    ).status_code == 200
+
+    response = client.post("/v1/session/modeling/compare", json={})
+
+    assert response.status_code == 409
+    assert "OOF" in response.json()["detail"]
+
+
+def test_rerun_diagnostics_invalidates_comparison_selection_and_cards(client: TestClient):
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=3&n_splits=3").status_code == 200
+    _backtest_and_diagnose(client, "naive", "drift")
+    comparison = client.post("/v1/session/modeling/compare", json={})
+    assert comparison.status_code == 200, comparison.text
+    selected_id = comparison.json()["ranking"][0]["model_id"]
+    assert client.post(
+        "/v1/session/modeling/select",
+        json={"model_id": selected_id, "acknowledge_baseline_risk": True},
+    ).status_code == 200
+    assert client.post("/v1/session/modeling/card", json={}).status_code == 200
+
+    rerun = client.post(
+        "/v1/session/modeling/diagnostics",
+        json={"model_id": "naive", "alpha": 0.1},
+    )
+
+    assert rerun.status_code == 200, rerun.text
+    assert rerun.json()["diagnostics_signature"]
+    state = client.get("/v1/session/modeling/state").json()
+    assert "comparison" not in state["artifacts"]
+    assert "selection" not in state["artifacts"]
+    assert state["artifacts"]["model_cards"] == {}
+    assert state["pipeline"]["comparison"] == "in_progress"
+    assert state["pipeline"]["selection"] == "pending"
+    assert state["pipeline"]["model_card"] == "pending"
 
 
 def test_modeling_state_roundtrips_and_is_invalidated_by_target_change(client: TestClient):

@@ -1567,3 +1567,110 @@ Durbin–Watson. UI скрывал baseline-модели из diagnostics, хо�
 - `rules/modeling.yaml`
 - `tests/api/test_modeling_workflow.py`
 - `tests/unit/test_modeling_tuning_plan.py`
+
+---
+
+## Task 100 — Трассируемое сравнение моделей на едином OOF cohort (TDD)
+
+Дата: 2026-09-03
+
+### Исходная точка и выявленный разрыв
+
+Работа выполнена на точном исходном коммите
+`0d1786f9050e0b313097a25a14ed60acadb8e07d`; commit/push не выполнялись.
+Task 99 замкнул цепочку tuned backtest → OOF diagnostics, однако Stage 9
+сравнивал только совпавший `cohort_id`. Он не доказывал равенство фактических
+OOF-точек, границ folds, исходных фактов и шкалы оценки, не требовал актуальную
+диагностику каждой модели и не имел воспроизводимой подписи comparison.
+
+Legacy YAML дополнительно смешивал разные основания решения: давал
+диагностике произвольный бонус 10% к прогнозному score. UI показывал только
+ранг и агрегированные метрики, без lineage, устойчивости между folds,
+корреляции ошибок и состояния diagnostics. Формальный столбец применимости
+был описан в UI-контракте, но не доходил до runtime comparison.
+
+### Архитектурное и методологическое решение
+
+- Добавлен чистый модуль `modeling_comparison.py`. Comparable pool теперь
+  содержит минимум две успешные модели и обязательно рассчитанный baseline;
+  неизвестные и повторяющиеся `model_ids` отклоняются явно.
+- Для всех моделей проверяется точное совпадение ключей
+  `fold/horizon_step/index/label`, границ train/test/gap, evaluation scale и
+  фактических значений OOF. Совпавшего `cohort_id` без этих доказательств
+  недостаточно.
+- Comparison требует текущий diagnostics report для каждого backtest и
+  валидирует связь `backtest_run_id + cohort_id + parameter_signature +
+  residuals_signature + diagnostics_signature`. Повторная диагностика
+  инвалидирует comparison, selection и Model Card.
+- Прогнозный рейтинг рассчитывается только по MAE/RMSE/MAPE/MASE после min-max
+  нормализации внутри exact comparable pool. Если MAPE или MASE не определена
+  хотя бы у одной модели, метрика исключается для всего пула, а веса
+  перенормируются до единицы. Diagnostics не изменяет score и остаётся
+  отдельным свидетельством.
+- Результат содержит raw и normalized metrics, детерминированный tie-break,
+  baseline-флаг MASE ≤ 1.05 и явный override для рискованного выбора.
+- Для каждого fold рассчитаны RMSE, среднее, стандартное отклонение,
+  коэффициент вариации, ранги, средний ранг, разброс ранга и доля top-1.
+  Равные с учётом численной точности значения получают одинаковый ранг.
+- Добавлена Pearson-матрица только по точно совмещённым OOF residual vectors.
+  При нулевой дисперсии значение честно возвращается как `null` с причиной;
+  корреляция не трактуется как автоматическое доказательство ансамбля.
+- `comparison_signature` детерминированно связывает fingerprint, cohort,
+  политики, веса, backtest run/params/OOF, агрегированные и fold-метрики,
+  diagnostics signatures и уровни применимости. Порядок `model_ids` на
+  подпись и итоговый рейтинг не влияет.
+- Уровень применимости повторно берётся из существующего rule-engine
+  кандидатов на том же профиле. Он отображается и входит в lineage, но не
+  смешивается с прогнозной точностью или диагностикой.
+- Selection фиксирует `comparison_id/signature`, backtest run и diagnostics
+  signature. Model Card получает те же ссылки, normalized score, fold
+  stability и фактический уровень применимости выбранной строки рейтинга.
+
+### Frontend и спецификация
+
+- Stage 9 в `modeling.yaml` синхронизирован с runtime: exact OOF alignment,
+  current diagnostics, обязательный baseline, раздельные evidence axes,
+  fold stability и OOF error correlation. Удалён неисполняемый
+  `diagnostics_bonus`.
+- В comparison показан lineage-блок с Comparison SHA, cohort, числом OOF-точек
+  и политикой score. Таблица содержит применимость, raw score, RMSE/MASE,
+  fold RMSE μ±σ/top-1, diagnostics и baseline status.
+- Добавлены фильтры по применимости, семейству, diagnostics status и
+  baseline-risk, а также матрица корреляции OOF-ошибок.
+- Структурированные 409-ответы показывают конкретные missing/stale model IDs.
+  Повторный tuning/diagnostics/comparison очищает устаревшее локальное
+  отображение downstream-артефактов.
+
+### TDD, риски и проверка
+
+- RED backend: 7 ожидаемых падений — endpoint принимал отсутствующие
+  diagnostics/неполный пул, не имел comparison/diagnostics signatures,
+  пропускал несовмещённые OOF и расходился с YAML. RED frontend подтвердил
+  отсутствие lineage, stability, correlation и структурированной ошибки.
+- Целевой GREEN backend: 88/88 PASS, включая 21 session workflow test,
+  ModelingSpec, новый YAML-contract и unit-инварианты tie/alignment/signature.
+- Целевой ModelingWorkflowOverview: 5/5 PASS.
+- Расширенная Modeling/backend-регрессия: 271/272 PASS. Единственный сбой —
+  ранее зафиксированный legacy `/v1/models/tune` ARIMA-grid на коротких folds
+  с `d=1` (`statsmodels` 0-D initialization); Task 100 этот контур не меняет,
+  session Modeling использует единый `BacktestPlan`.
+- Полная frontend-регрессия: 84 suites, 726/726 PASS, 0 snapshots.
+- TypeScript embedded/standalone: PASS.
+- Production build embedded/standalone: PASS, по 13/13 страниц, включая
+  `/modeling`; First Load JS 458 kB. Для известного sandbox-ограничения
+  Node 24 `uv_resident_set_memory` использован временный shim, удалённый после
+  сборок и не входящий в изменения.
+- `py_compile` и `git diff --check`: PASS.
+
+### Изменённые и новые файлы Task 100
+
+- `apps/api/modeling_comparison.py` (новый)
+- `apps/api/routers/modeling_session.py`
+- `apps/api/schemas.py`
+- `packages/ui/components/ModelingWorkflowOverview.tsx`
+- `packages/ui/components/ModelingWorkflowOverview.test.tsx`
+- `packages/ui/lib/modeling.ts`
+- `rules/modeling.yaml`
+- `tests/api/test_modeling_workflow.py`
+- `tests/api/test_modeling_comparison_spec.py` (новый)
+- `tests/unit/test_modeling_comparison.py` (новый)
