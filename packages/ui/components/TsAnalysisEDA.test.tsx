@@ -1,7 +1,7 @@
 // packages/ui/components/TsAnalysisEDA.test.tsx
 //
 // Тесты для компонента «Разведочный EDA» — в частности:
-// 1. Рендер модуля и 11 исследований степпера
+// 1. Рендер модуля, 10 исследований и отдельной паспортной панели
 // 2. Кнопка «Справка» переключает секцию
 // 3. Expandable description box: chevron, overlay, collapse
 
@@ -248,6 +248,44 @@ const MODEL_MATRIX_RESPONSE = {
 
 function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
   const url = String(input);
+  if (url.includes("/dataset/passport/status")) {
+    const emptyPoint = { captured: false, captured_at: null, is_stale: null, fingerprint: null, history_count: 0 };
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({
+        has_dataset: true,
+        target_column: "Price",
+        date_column: "Date",
+        series_ready: true,
+        reason: null,
+        current_fingerprint: "current",
+        start: { ...emptyPoint, captured: true, is_stale: false, fingerprint: "current", history_count: 1 },
+        validation: emptyPoint,
+        exit: emptyPoint,
+        modeling_entry: {
+          ...emptyPoint,
+          checkpoint_id: null,
+          snapshot_id: null,
+          source_stage: null,
+          reused_snapshot: null,
+        },
+      }),
+    });
+  }
+  if (url.includes("/date-column")) {
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({
+        date_column: "Date",
+        suggested_column: "Date",
+        candidates: [{ name: "Date", score: 1 }],
+        has_dataset: true,
+        passport_history_reset: false,
+      }),
+    });
+  }
   if (url.includes("/target-column")) {
     const selected = init?.method === "POST"
       ? JSON.parse(String(init.body)).column
@@ -383,16 +421,22 @@ describe("TsAnalysisEDA", () => {
     expect(controlPanelTitle.closest("aside")).toHaveClass("pt-1");
   });
 
-  it("renders all 11 EDA investigations in the stepper", () => {
+  it("renders 10 EDA investigations and keeps the final passport outside the stepper", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
     render(<TsAnalysisEDA />);
     const stepLabels = [
       "Описательные статистики", "Корреляция (ACF/PACF)", "IH-анализ",
       "Сезонность и периодичность", "Верификация стационарности",
       "Распределение", "Структурные сдвиги", "Отбор признаков",
-      "Стратегия валидации", "Матрица моделей", "Паспорт свойств ряда",
+      "Стратегия валидации", "Матрица моделей",
     ];
     stepLabels.forEach((label) => {
       expect(screen.getByText(label)).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("button", { name: "Паспорт свойств ряда" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Паспорт свойств ряда: Для моделирования" })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Подтвердить паспорт для моделирования" })).toBeEnabled();
     });
   });
 

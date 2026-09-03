@@ -10,7 +10,7 @@
 //   [Левая ~240px]     [Центр flex-1]         [Правая ~320px]
 //   EDA  [Справка]      Описание               Исследование: ...
 //   ▼ Признак: price   [текстовое поле]       описание
-//   0/11 ░░░░░░         Обзор: ...             [бейдж]
+//   0/10 ░░░░░░         Обзор: ...             [бейдж]
 //   ┌─Описательные──○─┐  [график]              [Метрики и алгоритм]
 //   ├─ACF/PACF────○─┤   [карточки]            [Полный пайплайн]
 //   └────────────────┘                         [Запустить анализ]
@@ -72,6 +72,7 @@ import {
 } from "./EdaModelMatrixOverview";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
+import { DatasetPassportPanel } from "./DatasetPassportPanel";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -83,7 +84,7 @@ interface Check {
   description: string;
 }
 
-// ── 11 исследований EDA ──────────────────────────────────────
+// ── 10 исследований EDA ──────────────────────────────────────
 
 const CHECKS: Check[] = [
   { id: "descriptive", label: "Описательные статистики", status: "pending", count: null,
@@ -106,8 +107,6 @@ const CHECKS: Check[] = [
     description: "Выбор схемы разбиения: expanding window / sliding window / single split. Визуализация train/test на графике. Задание горизонта прогноза. Проверка достаточности наблюдений в train." },
   { id: "model_matrix", label: "Матрица моделей", status: "pending", count: null,
     description: "Таблица применимости: модель → требование → статус ряда → вывод. ARIMA, SARIMA, Prophet, LSTM, VAR, XGBoost и др. Автоматическая фильтрация по свойствам ряда." },
-  { id: "passport", label: "Паспорт свойств ряда", status: "pending", count: null,
-    description: "Финальная сводка конвейера: v1.0 (загрузка) → v1.1 (валидация) → v1.2 (предобработка) → v1.3 (EDA). Включает ACF-структуру, энтропийные метрики, стационарность, рекомендованные модели. Экспорт в Excel." },
 ];
 
 // ── Справка по целям модуля «Разведочный EDA» ────────────────
@@ -126,9 +125,9 @@ const EDA_HELP = `Цели модуля "Разведочный EDA"
 - Отбор значимых признаков с исключением мультиколлинеарности
 - Стратегию временной валидации (train/test split)
 - Матрицу применимости моделей с автоматической фильтрацией
-- Финальный паспорт свойств ряда v1.0 → v1.3
+- Подтверждённый паспорт точного состояния ряда, передаваемого в моделирование
 
-Пайплайн EDA (11 шагов):
+Пайплайн EDA (10 исследований + контрольная точка):
 1. Описательные статистики — mean, std, skew, kurtosis
 2. Корреляция (ACF/PACF) — линейная структура, идентификация (p,q)
 3. IH-анализ — нелинейная структура, предсказуемость (энтропия)
@@ -139,7 +138,8 @@ const EDA_HELP = `Цели модуля "Разведочный EDA"
 8. Отбор признаков — VIF, Granger causality, мультиколлинеарность
 9. Стратегия валидации — expanding/sliding window, горизонт
 10. Матрица моделей — рекомендация по применимости
-11. Паспорт свойств ряда — сводка v1.0 → v1.3`;
+
+После исследований отдельная сквозная панель «Паспорт свойств ряда: Для моделирования» фиксирует modeling_entry. Если EDA не изменил ряд, checkpoint ссылается на последний существующий снимок без повторного хранения тех же метрик. Если состояние ряда изменилось, создаётся новый снимок. Паспорт не входит в progress и не получает искусственный pass/fail-статус.`;
 
 const DESCRIPTIVE_METRICS_DESCRIPTION = `Метрики и алгоритм: Описательные статистики
 
@@ -516,6 +516,7 @@ export function TsAnalysisEDA() {
     loading: targetLoading,
     error: targetError,
     setColumn: setActiveFeature,
+    passportResetNotice,
   } = useTargetColumn(datasetKey);
 
   // ── Остановка «Описательные статистики»: реальные данные ──
@@ -1336,7 +1337,8 @@ export function TsAnalysisEDA() {
   })();
 
   return (
-    <div className="flex gap-6">
+    <div className="space-y-5">
+      <div className="flex gap-6">
       {/* ── ЛЕВАЯ КОЛОНКА: селектор признака + прогресс + степпер ── */}
       <aside className="w-60 shrink-0 flex flex-col gap-3 pt-1">
         {/* Заголовок модуля + справка */}
@@ -2042,6 +2044,14 @@ export function TsAnalysisEDA() {
           ))}
         </div>
       </aside>
+      </div>
+      <DatasetPassportPanel
+        stage="modeling_entry"
+        targetColumn={activeFeature}
+        historyResetNotice={passportResetNotice
+          ? `Смена исследуемого признака «${passportResetNotice.previousColumn}» → «${passportResetNotice.newColumn}» сбросила цепочку паспортов.`
+          : null}
+      />
     </div>
   );
 }

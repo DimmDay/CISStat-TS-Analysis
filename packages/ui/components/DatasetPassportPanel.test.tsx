@@ -29,6 +29,13 @@ const READY_STATUS = {
   start: START_POINT,
   validation: EMPTY_POINT,
   exit: EMPTY_POINT,
+  modeling_entry: {
+    ...EMPTY_POINT,
+    checkpoint_id: null,
+    snapshot_id: null,
+    source_stage: null,
+    reused_snapshot: null,
+  },
 };
 
 const DATE_RESPONSE = {
@@ -95,6 +102,7 @@ describe("DatasetPassportPanel", () => {
     ["start", "Паспорт свойств ряда: Загрузка", "Рассчитать паспорт на загрузке"],
     ["validation", "Паспорт свойств ряда: Валидация", "Рассчитать паспорт после валидации"],
     ["exit", "Паспорт свойств ряда: Предобработка", "Рассчитать итоговый паспорт"],
+    ["modeling_entry", "Паспорт свойств ряда: Для моделирования", "Подтвердить паспорт для моделирования"],
   ] as const)("renders the %s panel outside a check status", async (stage, title, action) => {
     mockPassportFetch();
 
@@ -187,6 +195,77 @@ describe("DatasetPassportPanel", () => {
 
     expect(await screen.findByText("Снимков в истории: 3")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Сравнить паспорта свойств" })).toBeInTheDocument();
+  });
+
+  it("allows the first EDA handoff when the series is unchanged since preprocessing", async () => {
+    const exit = { ...START_POINT, is_stale: false };
+    mockPassportFetch({
+      status: { ...READY_STATUS, exit },
+      capture: {
+        ...CAPTURE_RESPONSE,
+        stage: "modeling_entry",
+        checkpoint_id: "checkpoint-1",
+        source_stage: "exit",
+        reused_snapshot: true,
+      },
+    });
+
+    render(<DatasetPassportPanel stage="modeling_entry" targetColumn="value" />);
+
+    const button = await screen.findByRole("button", { name: "Подтвердить паспорт для моделирования" });
+    await waitFor(() => expect(button).toBeEnabled());
+    fireEvent.click(button);
+
+    expect(await screen.findByText(/использован существующий снимок «Предобработка»/i)).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/dataset/passport/modeling_entry"),
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("shows an EDA checkpoint instead of a zero-delta duplicate in comparison", async () => {
+    const modelingEntry = {
+      ...START_POINT,
+      is_stale: false,
+      checkpoint_id: "checkpoint-1",
+      snapshot_id: "snapshot-exit",
+      source_stage: "exit",
+      reused_snapshot: true,
+    };
+    const comparison = {
+      path: ["start", "exit"],
+      target_column: "value",
+      date_column: "date",
+      comparisons: [{
+        from_stage: "start",
+        to_stage: "exit",
+        from_snapshot_id: "snapshot-start",
+        to_snapshot_id: "snapshot-exit",
+        comparison: {
+          metrics: {}, qualitative_changes: [], categorical_changes: {},
+          list_changes: {}, boolean_changes: {}, summary: "Ряд изменился после предобработки",
+        },
+      }],
+      checkpoint: {
+        checkpoint_id: "checkpoint-1",
+        stage: "modeling_entry",
+        snapshot_id: "snapshot-exit",
+        source_stage: "exit",
+        reused_snapshot: true,
+        unchanged_from_previous: true,
+        confirmed_at: "2026-09-03T10:00:00+00:00",
+      },
+    };
+    mockPassportFetch({
+      status: { ...READY_STATUS, exit: { ...START_POINT, is_stale: false }, modeling_entry: modelingEntry },
+      compare: comparison,
+    });
+
+    render(<DatasetPassportPanel stage="modeling_entry" targetColumn="value" />);
+    fireEvent.click(await screen.findByRole("button", { name: "Сравнить паспорта свойств" }));
+
+    expect(await screen.findByText(/подтверждён в EDA без изменения ряда/i)).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Для моделирования" })).not.toBeInTheDocument();
   });
 
   it("shows an explicit notice when a target change resets passport history", async () => {

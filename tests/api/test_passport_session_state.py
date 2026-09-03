@@ -9,6 +9,7 @@ import pytest
 from apps.api.session_store import (
     AnalysisSession,
     DatasetInfo,
+    PassportCheckpoint,
     PassportSnapshot,
     RedisSessionStore,
     session_from_dict,
@@ -36,6 +37,7 @@ def test_defaults_are_backward_compatible():
 
     assert restored.date_column is None
     assert restored.passport_history == []
+    assert restored.passport_checkpoints == []
 
 
 def test_append_only_history_preserves_multiple_versions_and_latest():
@@ -67,6 +69,26 @@ def test_snapshot_captures_context_and_defensively_copies_payload():
     assert snapshot.captured_at
 
 
+def test_modeling_checkpoint_references_snapshot_without_copying_passport():
+    session = _session()
+    snapshot = _append(session, "exit", 3.0)
+
+    checkpoint = session.append_passport_checkpoint(
+        "modeling_entry",
+        snapshot,
+        previous_snapshot_id=snapshot.snapshot_id,
+        created_snapshot=False,
+    )
+
+    assert checkpoint.stage == "modeling_entry"
+    assert checkpoint.snapshot_id == snapshot.snapshot_id
+    assert checkpoint.source_stage == "exit"
+    assert checkpoint.previous_snapshot_id == snapshot.snapshot_id
+    assert checkpoint.created_snapshot is False
+    assert session.latest_passport_checkpoint("modeling_entry") == checkpoint
+    assert len(session.passport_history) == 1
+
+
 @pytest.mark.parametrize("stage", ["upload", "preprocessing", "unknown", "START"])
 def test_snapshot_rejects_unknown_stage(stage: str):
     with pytest.raises(ValueError, match="этап"):
@@ -75,18 +97,27 @@ def test_snapshot_rejects_unknown_stage(stage: str):
 
 def test_target_or_date_change_invalidates_history_but_same_value_does_not():
     session = _session()
-    _append(session, "start", 1.0)
+    snapshot = _append(session, "start", 1.0)
+    session.append_passport_checkpoint(
+        "modeling_entry",
+        snapshot,
+        previous_snapshot_id=snapshot.snapshot_id,
+        created_snapshot=False,
+    )
 
     session.set_target_column("value")
     session.set_date_column("date")
     assert len(session.passport_history) == 1
+    assert len(session.passport_checkpoints) == 1
 
     session.set_target_column("other")
     assert session.passport_history == []
+    assert session.passport_checkpoints == []
     _append(session, "start", 2.0)
 
     session.set_date_column("other_date")
     assert session.passport_history == []
+    assert session.passport_checkpoints == []
 
 
 def test_new_dataset_resets_date_and_history():
@@ -106,12 +137,20 @@ def test_new_dataset_resets_date_and_history():
 def test_session_serialization_roundtrip_preserves_history():
     session = _session()
     expected = _append(session, "validation", 7.0)
+    expected_checkpoint = session.append_passport_checkpoint(
+        "modeling_entry",
+        expected,
+        previous_snapshot_id=expected.snapshot_id,
+        created_snapshot=False,
+    )
 
     restored = session_from_dict(json.loads(json.dumps(session_to_dict(session))))
 
     assert restored.date_column == "date"
     assert restored.passport_history == [expected]
+    assert restored.passport_checkpoints == [expected_checkpoint]
     assert isinstance(restored.passport_history[0], PassportSnapshot)
+    assert isinstance(restored.passport_checkpoints[0], PassportCheckpoint)
 
 
 def test_redis_roundtrip_preserves_passport_history():
@@ -119,6 +158,12 @@ def test_redis_roundtrip_preserves_passport_history():
     store = RedisSessionStore(fakeredis.FakeRedis(decode_responses=True))
     session = _session()
     expected = _append(session, "validation", 5.0)
+    expected_checkpoint = session.append_passport_checkpoint(
+        "modeling_entry",
+        expected,
+        previous_snapshot_id=expected.snapshot_id,
+        created_snapshot=False,
+    )
 
     store.save(session)
     restored = store.get(session.session_id)
@@ -126,3 +171,4 @@ def test_redis_roundtrip_preserves_passport_history():
     assert restored is not None
     assert restored.date_column == "date"
     assert restored.passport_history == [expected]
+    assert restored.passport_checkpoints == [expected_checkpoint]

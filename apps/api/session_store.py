@@ -88,7 +88,8 @@ def format_size_label(size_bytes: int) -> str:
 STAGES = ["upload", "validation", "preprocessing", "eda", "modeling", "forecasting"]
 
 StageStatus = str  # "pending" | "in_progress" | "done"
-PASSPORT_STAGES = ("start", "validation", "exit")
+PASSPORT_STAGES = ("start", "validation", "exit", "modeling_entry")
+PASSPORT_CHECKPOINT_STAGES = ("modeling_entry",)
 
 
 @dataclass
@@ -111,6 +112,29 @@ class PassportSnapshot:
     target_column: str
     date_column: Optional[str]
     captured_at: str
+
+
+@dataclass
+class PassportCheckpoint:
+    """Логическая точка передачи ряда между этапами анализа.
+
+    Checkpoint ссылается на физический снимок вместо копирования паспорта.
+    Для ``modeling_entry`` это позволяет подтвердить неизменившийся после
+    предобработки ряд и всё же сохранить воспроизводимый EDA → Modeling
+    handoff. Если состояние ряда новое, сначала создаётся PassportSnapshot,
+    затем checkpoint ссылается на него.
+    """
+
+    checkpoint_id: str
+    stage: str
+    snapshot_id: str
+    source_stage: str
+    previous_snapshot_id: Optional[str]
+    fingerprint: str
+    target_column: str
+    date_column: Optional[str]
+    created_snapshot: bool
+    confirmed_at: str
 
 
 @dataclass
@@ -147,6 +171,9 @@ class AnalysisSession:
     # получают актуальный снимок через latest_passport(stage), не теряя
     # аудиторский след промежуточных решений аналитика.
     passport_history: list[PassportSnapshot] = field(default_factory=list)
+    # Логические подтверждения этапов хранятся отдельно от рассчитанных
+    # снимков, чтобы не дублировать полный passport при том же fingerprint.
+    passport_checkpoints: list[PassportCheckpoint] = field(default_factory=list)
     # Пользовательский эталон типов для вкладки «Валидация».
     # Формат: {column_name: integer|float|datetime|string|boolean}.
     # Не выводится автоматически из фактических dtype, иначе проверка
@@ -206,6 +233,7 @@ class AnalysisSession:
         self.target_column = None
         self.date_column = None
         self.passport_history = []
+        self.passport_checkpoints = []
         self.type_schema = {}
         self.validation_template_id = "system"
         self.validation_rule_overrides = {}
@@ -231,14 +259,14 @@ class AnalysisSession:
           3) df[column_name] числовая
         """
         if column_name != self.target_column:
-            self.passport_history = []
+            self.reset_passports()
         self.target_column = column_name
         self.touch()
 
     def set_date_column(self, column_name: str) -> None:
         """Установить дату ряда и инвалидировать несопоставимые паспорта."""
         if column_name != self.date_column:
-            self.passport_history = []
+            self.reset_passports()
         self.date_column = column_name
         self.touch()
 
@@ -275,8 +303,54 @@ class AnalysisSession:
             None,
         )
 
+    def append_passport_checkpoint(
+        self,
+        stage: str,
+        snapshot: PassportSnapshot,
+        *,
+        previous_snapshot_id: Optional[str],
+        created_snapshot: bool,
+    ) -> PassportCheckpoint:
+        """Зафиксировать handoff, ссылаясь на существующий снимок."""
+        if stage not in PASSPORT_CHECKPOINT_STAGES:
+            raise ValueError(f"Неизвестный этап checkpoint паспорта: {stage}")
+        stored_snapshot = self.passport_snapshot(snapshot.snapshot_id)
+        if stored_snapshot is None:
+            raise ValueError("Checkpoint должен ссылаться на снимок текущей сессии")
+        snapshot = stored_snapshot
+        checkpoint = PassportCheckpoint(
+            checkpoint_id=str(uuid.uuid4()),
+            stage=stage,
+            snapshot_id=snapshot.snapshot_id,
+            source_stage=snapshot.stage,
+            previous_snapshot_id=previous_snapshot_id,
+            fingerprint=snapshot.fingerprint,
+            target_column=snapshot.target_column,
+            date_column=snapshot.date_column,
+            created_snapshot=created_snapshot,
+            confirmed_at=datetime.now(timezone.utc).isoformat(),
+        )
+        self.passport_checkpoints.append(checkpoint)
+        self.touch()
+        return checkpoint
+
+    def latest_passport_checkpoint(self, stage: str) -> Optional[PassportCheckpoint]:
+        if stage not in PASSPORT_CHECKPOINT_STAGES:
+            return None
+        return next(
+            (item for item in reversed(self.passport_checkpoints) if item.stage == stage),
+            None,
+        )
+
+    def passport_snapshot(self, snapshot_id: str) -> Optional[PassportSnapshot]:
+        return next(
+            (item for item in reversed(self.passport_history) if item.snapshot_id == snapshot_id),
+            None,
+        )
+
     def reset_passports(self) -> None:
         self.passport_history = []
+        self.passport_checkpoints = []
         self.touch()
 
     def set_stage(self, stage: str, status: StageStatus) -> None:
@@ -309,6 +383,21 @@ def _passport_snapshot_from_dict(d: dict[str, Any]) -> PassportSnapshot:
         target_column=d.get("target_column", ""),
         date_column=d.get("date_column"),
         captured_at=d.get("captured_at", datetime.now(timezone.utc).isoformat()),
+    )
+
+
+def _passport_checkpoint_from_dict(d: dict[str, Any]) -> PassportCheckpoint:
+    return PassportCheckpoint(
+        checkpoint_id=d.get("checkpoint_id", str(uuid.uuid4())),
+        stage=d.get("stage", "modeling_entry"),
+        snapshot_id=d.get("snapshot_id", ""),
+        source_stage=d.get("source_stage", "start"),
+        previous_snapshot_id=d.get("previous_snapshot_id"),
+        fingerprint=d.get("fingerprint", ""),
+        target_column=d.get("target_column", ""),
+        date_column=d.get("date_column"),
+        created_snapshot=bool(d.get("created_snapshot", False)),
+        confirmed_at=d.get("confirmed_at", datetime.now(timezone.utc).isoformat()),
     )
 
 
@@ -358,6 +447,7 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "target_column": session.target_column,
         "date_column": session.date_column,
         "passport_history": [asdict(item) for item in session.passport_history],
+        "passport_checkpoints": [asdict(item) for item in session.passport_checkpoints],
         "type_schema": dict(session.type_schema),
         "validation_template_id": session.validation_template_id,
         "validation_rule_overrides": dict(session.validation_rule_overrides),
@@ -392,6 +482,10 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         passport_history=[
             _passport_snapshot_from_dict(item)
             for item in d.get("passport_history", [])
+        ],
+        passport_checkpoints=[
+            _passport_checkpoint_from_dict(item)
+            for item in d.get("passport_checkpoints", [])
         ],
         type_schema=dict(d.get("type_schema", {})),  # {} для старых записей
         validation_template_id=d.get("validation_template_id", "system"),

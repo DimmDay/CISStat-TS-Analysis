@@ -2734,7 +2734,7 @@ class TargetColumnResponse(BaseModel):
 
 # ── Date column + session passports ──
 
-PassportStage = Literal["start", "validation", "exit"]
+PassportStage = Literal["start", "validation", "exit", "modeling_entry"]
 
 
 class DateColumnRequest(BaseModel):
@@ -2762,6 +2762,13 @@ class PassportPointStatusOut(BaseModel):
     history_count: int = 0
 
 
+class PassportCheckpointStatusOut(PassportPointStatusOut):
+    checkpoint_id: Optional[str] = None
+    snapshot_id: Optional[str] = None
+    source_stage: Optional[PassportStage] = None
+    reused_snapshot: Optional[bool] = None
+
+
 class DatasetPassportStatusResponse(BaseModel):
     has_dataset: bool
     target_column: Optional[str] = None
@@ -2772,6 +2779,7 @@ class DatasetPassportStatusResponse(BaseModel):
     start: PassportPointStatusOut
     validation: PassportPointStatusOut
     exit: PassportPointStatusOut
+    modeling_entry: PassportCheckpointStatusOut
 
 
 class DatasetPassportCaptureResponse(BaseModel):
@@ -2782,6 +2790,9 @@ class DatasetPassportCaptureResponse(BaseModel):
     target_column: str
     date_column: Optional[str] = None
     captured_at: str
+    checkpoint_id: Optional[str] = None
+    source_stage: Optional[PassportStage] = None
+    reused_snapshot: bool = False
 
 
 class PassportComparisonPairOut(BaseModel):
@@ -2792,11 +2803,22 @@ class PassportComparisonPairOut(BaseModel):
     comparison: Dict[str, Any]
 
 
+class PassportCheckpointOut(BaseModel):
+    checkpoint_id: str
+    stage: Literal["modeling_entry"]
+    snapshot_id: str
+    source_stage: PassportStage
+    reused_snapshot: bool
+    unchanged_from_previous: bool
+    confirmed_at: str
+
+
 class DatasetPassportCompareResponse(BaseModel):
     target_column: str
     date_column: Optional[str] = None
     path: List[PassportStage]
     comparisons: List[PassportComparisonPairOut]
+    checkpoint: Optional[PassportCheckpointOut] = None
 
 
 # ── Управление правилами валидации ──

@@ -3847,12 +3847,36 @@ def _passport_point_status(
     }
 
 
+def _passport_checkpoint_status(
+    session: AnalysisSession,
+    stage: str,
+    current_fingerprint: Optional[str],
+) -> dict[str, object]:
+    history = [item for item in session.passport_checkpoints if item.stage == stage]
+    latest = history[-1] if history else None
+    return {
+        "captured": latest is not None,
+        "captured_at": latest.confirmed_at if latest else None,
+        "is_stale": (
+            current_fingerprint != latest.fingerprint
+            if latest is not None and current_fingerprint is not None
+            else None
+        ),
+        "fingerprint": latest.fingerprint if latest else None,
+        "history_count": len(history),
+        "checkpoint_id": latest.checkpoint_id if latest else None,
+        "snapshot_id": latest.snapshot_id if latest else None,
+        "source_stage": latest.source_stage if latest else None,
+        "reused_snapshot": not latest.created_snapshot if latest else None,
+    }
+
+
 @router.get(
     "/dataset/passport/status",
     response_model=DatasetPassportStatusResponse,
 )
 def get_dataset_passport_status(request: Request, response: Response):
-    """Единый readiness/staleness источник для трёх frontend-панелей."""
+    """Единый readiness/staleness источник для четырёх frontend-панелей."""
     session_id = get_or_create_session_id(request, response)
     session = get_session_store().get_or_create(session_id)
     current_fingerprint: Optional[str] = None
@@ -3871,6 +3895,11 @@ def get_dataset_passport_status(request: Request, response: Response):
         start=_passport_point_status(session, "start", current_fingerprint),
         validation=_passport_point_status(session, "validation", current_fingerprint),
         exit=_passport_point_status(session, "exit", current_fingerprint),
+        modeling_entry=_passport_checkpoint_status(
+            session,
+            "modeling_entry",
+            current_fingerprint,
+        ),
     )
 
 
@@ -3896,29 +3925,88 @@ def compare_dataset_passports(
     to: str = Query(...),
     from_stage: Optional[str] = Query(None, alias="from"),
 ):
-    """Сравнение пары либо полной траектории start → validation → exit."""
-    if to not in {"validation", "exit"}:
-        raise HTTPException(status_code=422, detail="Параметр to: validation или exit")
+    """Сравнение пары либо полной траектории до выбранной точки.
+
+    Неизменившийся ``modeling_entry`` не добавляется как дублирующая
+    колонка с нулевыми delta: ответ содержит checkpoint, а path остаётся
+    траекторией уникальных физических снимков.
+    """
+    if to not in {"validation", "exit", "modeling_entry"}:
+        raise HTTPException(
+            status_code=422,
+            detail="Параметр to: validation, exit или modeling_entry",
+        )
     if from_stage not in {None, "start", "validation"}:
         raise HTTPException(status_code=422, detail="Параметр from: start или validation")
     if to == "validation" and from_stage not in {None, "start"}:
         raise HTTPException(status_code=422, detail="validation сравнивается только со start")
+    if to == "modeling_entry" and from_stage is not None:
+        raise HTTPException(
+            status_code=422,
+            detail="modeling_entry возвращает полную траекторию без параметра from",
+        )
 
     session_id = get_or_create_session_id(request, response)
     session = get_session_store().get_or_create(session_id)
     if session.dataframe is None:
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
-    snapshots = {stage: session.latest_passport(stage) for stage in PASSPORT_STAGES}
+    snapshots = {
+        stage: session.latest_passport(stage)
+        for stage in ("start", "validation", "exit")
+    }
+    checkpoint_payload = None
 
     if to == "validation":
         path = ["start", "validation"]
     elif from_stage is not None:
         path = [from_stage, "exit"]
-    else:
+    elif to == "exit":
         path = ["start"]
         if snapshots["validation"] is not None:
             path.append("validation")
         path.append("exit")
+    else:
+        checkpoint = session.latest_passport_checkpoint("modeling_entry")
+        if checkpoint is None:
+            raise HTTPException(
+                status_code=409,
+                detail="Не подтверждён паспорт modeling_entry",
+            )
+        modeling_snapshot = session.passport_snapshot(checkpoint.snapshot_id)
+        if modeling_snapshot is None:
+            raise HTTPException(
+                status_code=409,
+                detail="Снимок паспорта для modeling_entry недоступен",
+            )
+
+        # Берём версии трёх предыдущих точек, существовавшие в момент
+        # handoff. Более поздний возврат в Предобработку не должен менять
+        # уже зафиксированное сравнение EDA задним числом.
+        snapshots = {
+            stage: next(
+                (
+                    item
+                    for item in reversed(session.passport_history)
+                    if item.stage == stage and item.captured_at <= checkpoint.confirmed_at
+                ),
+                None,
+            )
+            for stage in ("start", "validation", "exit")
+        }
+        path = [stage for stage in ("start", "validation", "exit") if snapshots[stage] is not None]
+        unchanged_from_previous = checkpoint.previous_snapshot_id == checkpoint.snapshot_id
+        if not unchanged_from_previous:
+            path.append("modeling_entry")
+            snapshots["modeling_entry"] = modeling_snapshot
+        checkpoint_payload = {
+            "checkpoint_id": checkpoint.checkpoint_id,
+            "stage": checkpoint.stage,
+            "snapshot_id": checkpoint.snapshot_id,
+            "source_stage": checkpoint.source_stage,
+            "reused_snapshot": not checkpoint.created_snapshot,
+            "unchanged_from_previous": unchanged_from_previous,
+            "confirmed_at": checkpoint.confirmed_at,
+        }
 
     missing = [stage for stage in path if snapshots[stage] is None]
     if missing:
@@ -3943,6 +4031,7 @@ def compare_dataset_passports(
         date_column=session.date_column,
         path=path,
         comparisons=comparisons,
+        checkpoint=checkpoint_payload,
     )
 
 
@@ -3955,7 +4044,7 @@ def capture_dataset_passport(
     request: Request,
     response: Response,
 ):
-    """Фиксирует start/validation/exit с серверным контролем порядка."""
+    """Фиксирует снимок либо EDA-checkpoint с контролем порядка."""
     if stage not in PASSPORT_STAGES:
         raise HTTPException(status_code=404, detail=f"Неизвестная точка паспорта: {stage}")
     session_id = get_or_create_session_id(request, response)
@@ -3966,14 +4055,75 @@ def capture_dataset_passport(
     start = session.latest_passport("start")
     validation = session.latest_passport("validation")
     exit_snapshot = session.latest_passport("exit")
-    if stage == "start" and (validation is not None or exit_snapshot is not None):
+    modeling_checkpoint = session.latest_passport_checkpoint("modeling_entry")
+    if stage == "start" and (
+        validation is not None
+        or exit_snapshot is not None
+        or modeling_checkpoint is not None
+    ):
         raise HTTPException(status_code=409, detail="Нельзя менять start после следующей точки")
-    if stage in {"validation", "exit"} and start is None:
+    if stage in {"validation", "exit", "modeling_entry"} and start is None:
         raise HTTPException(status_code=409, detail="Сначала зафиксируйте паспорт start")
     if stage == "validation" and exit_snapshot is not None:
         raise HTTPException(status_code=409, detail="Нельзя фиксировать validation после exit")
 
     fingerprint = series_fingerprint(series)
+
+    if stage == "modeling_entry":
+        if modeling_checkpoint is not None and modeling_checkpoint.fingerprint == fingerprint:
+            raise HTTPException(
+                status_code=409,
+                detail="Паспорт для моделирования уже подтверждён для текущего ряда",
+            )
+
+        previous_snapshot = session.passport_history[-1]
+        snapshot = next(
+            (
+                item
+                for item in reversed(session.passport_history)
+                if item.fingerprint == fingerprint
+                and item.target_column == session.target_column
+                and item.date_column == session.date_column
+            ),
+            None,
+        )
+        created_snapshot = snapshot is None
+        if snapshot is None:
+            numeric_columns = [
+                column
+                for column in _get_numeric_columns(session.dataframe)
+                if column != session.date_column
+            ]
+            passport = calculate_ts_passport(
+                series,
+                df_filtered=session.dataframe,
+                ct_f={"num": numeric_columns},
+                target_col=session.target_column,
+            )
+            if "error" in passport:
+                raise HTTPException(status_code=422, detail=str(passport["error"]))
+            snapshot = session.append_passport_snapshot(stage, passport, fingerprint)
+
+        checkpoint = session.append_passport_checkpoint(
+            stage,
+            snapshot,
+            previous_snapshot_id=previous_snapshot.snapshot_id,
+            created_snapshot=created_snapshot,
+        )
+        store.save(session)
+        return DatasetPassportCaptureResponse(
+            snapshot_id=snapshot.snapshot_id,
+            stage=stage,
+            passport=snapshot.passport,
+            fingerprint=snapshot.fingerprint,
+            target_column=snapshot.target_column,
+            date_column=snapshot.date_column,
+            captured_at=checkpoint.confirmed_at,
+            checkpoint_id=checkpoint.checkpoint_id,
+            source_stage=checkpoint.source_stage,
+            reused_snapshot=not checkpoint.created_snapshot,
+        )
+
     baseline = _capture_baseline(session, stage)
     if stage != "start" and baseline is not None and baseline.fingerprint == fingerprint:
         raise HTTPException(

@@ -978,3 +978,78 @@ GREEN и проверка
 - `packages/ui/index.ts`
 - `tests/api/test_dataset_passport.py`
 - `worklog2.md`
+
+---
+
+Task ID: 93 — Финальный паспорт EDA перед моделированием (TDD)
+
+Синхронизация и границы
+
+Работа выполнена в отдельном чистом worktree на точном коммите `bb113059bdfbb9d6b928cc4d0a4b5a8e7a75aadd`; незакоммиченные изменения прежних задач в исходной рабочей папке не затрагивались. Реализована согласованная четвёртая логическая точка паспортного контура на границе EDA → Modeling.
+
+Методологическое решение
+
+EDA в текущем пайплайне является read-only аналитическим этапом. Поэтому `modeling_entry` реализован как обязательный логический checkpoint, но не как безусловная копия третьего паспорта:
+
+- `PassportSnapshot` хранит полный результат канонического `calculate_ts_passport()` только для уникального состояния ряда;
+- `PassportCheckpoint` фиксирует подтверждение точного снимка для моделирования;
+- при совпадении fingerprint с существующим снимком создаётся только ссылка, без повторного расчёта и хранения паспорта;
+- при новом fingerprint создаётся физический snapshot стадии `modeling_entry`, затем checkpoint ссылается на него;
+- если ряд вернулся к ранее сохранённому состоянию, старый snapshot переиспользуется, а сравнение показывает содержательный переход к нему;
+- выводы EDA не смешиваются с паспортом данных: стационарность, сезонность, структурные сдвиги, стратегия валидации и shortlist моделей остаются отдельным аналитическим контуром.
+
+Спецификация `spec_passports.md` дополнена приоритетным разделом для четырёхточечного жизненного цикла. Внутренний `exit` сохранён для обратной совместимости и теперь явно трактуется как выход из Предобработки; финальная граница входа в моделирование — `modeling_entry`.
+
+TDD: RED
+
+Backend-тесты сначала завершились ожидаемой ошибкой импорта отсутствующего `PassportCheckpoint`. Контракт покрывает ссылочный checkpoint без копирования паспорта, append-only историю подтверждений, Memory/Redis roundtrip, сброс по dataset/target/date, обязательный `start`, создание нового снимка только для нового fingerprint, повторное подтверждение, возврат к старому fingerprint и сравнение без фиктивной нулевой дельты.
+
+Frontend RED после подключения уже установленных зависимостей подтвердил отсутствие `modeling_entry` в `PassportStage`. Компонентные и EDA-интеграционные тесты добавлены до production-правок: отдельная EDA-панель, удаление mock-пункта из степпера, активное первое подтверждение неизменившегося ряда, сообщение о переиспользовании snapshot и checkpoint-callout в сравнении.
+
+Backend и персистентность
+
+- `PASSPORT_STAGES` расширен `modeling_entry`; добавлен отдельный контракт `PASSPORT_CHECKPOINT_STAGES`.
+- `AnalysisSession` получил append-only `passport_checkpoints`, методы добавления/поиска checkpoint и разрешения `snapshot_id`.
+- JSON/Redis-сериализация использует backward-compatible default `[]` для старых сессий.
+- Единый `reset_passports()` теперь атомарно очищает снимки и checkpoint при смене dataset/target/date.
+- `GET /dataset/passport/status` возвращает состояние `modeling_entry`, источник снимка, staleness и число подтверждений.
+- `POST /dataset/passport/modeling_entry` переиспользует snapshot при совпадении fingerprint либо рассчитывает новый канонический паспорт; повторное подтверждение текущего ряда получает 409.
+- `GET /dataset/passport/compare?to=modeling_entry` возвращает уникальную траекторию физических снимков и отдельные метаданные checkpoint. При неизменном EDA финальная дублирующая колонка не создаётся; более поздний возврат в Предобработку не переписывает уже подтверждённую траекторию задним числом.
+
+Frontend EDA
+
+- Общий `DatasetPassportPanel` расширен стадией `modeling_entry` и заголовком «Паспорт свойств ряда: Для моделирования».
+- Первое подтверждение доступно даже при неизменном после Предобработки ряде; после подтверждения кнопка дизейблится до изменения fingerprint.
+- UI различает новый snapshot, ссылку на последний snapshot и переиспользование более старого состояния.
+- Mock «Паспорт свойств ряда» удалён из `CHECKS`: EDA-степпер содержит 10 реальных исследований, а паспорт расположен отдельной панелью под трёхколоночной рабочей областью и не влияет на progress/CheckStatus.
+- Справка EDA переведена с условного `v1.0 → v1.3` на смысловой checkpoint-контракт.
+- Уведомление общего `useTargetColumn` о сбросе цепочки передаётся и в EDA-панель.
+
+GREEN и проверка
+
+- Целевой backend-контракт: 40/40 PASS.
+- Расширенная паспортная/session-регрессия: 150/150 PASS.
+- Целевой frontend-контракт: 2 suites, 43/43 PASS.
+- Полная frontend-регрессия: 81 suites, 714/714 PASS, 0 snapshots.
+- TypeScript standalone/embedded: PASS с тем же проверочным флагом `--noUncheckedSideEffectImports false`, который использовался в Task 92; production tsconfig не менялся.
+- Production build embedded/standalone: PASS, по 13/13 страниц; First Load JS — 450 kB. Временные memory/CSS shims для ограничений sandbox Node 24 удалены и в пакет не входят.
+- `py_compile` изменённых Python-файлов и `git diff --check`: PASS.
+- Полный backend collection по-прежнему блокируется baseline `IndentationError` в `tests/unit/test_file_loader.py:87`. Прогон с исключением только этого файла: 1200 PASS, 23 FAIL, 3 ERROR; количество и классы известных сбоев совпадают с ранее зафиксированным baseline и не относятся к Task 93.
+
+Изменённые файлы
+
+- `apps/api/routers/session.py`
+- `apps/api/schemas.py`
+- `apps/api/session_store.py`
+- `packages/ui/components/DatasetPassportPanel.tsx`
+- `packages/ui/components/DatasetPassportPanel.test.tsx`
+- `packages/ui/components/TsAnalysisEDA.tsx`
+- `packages/ui/components/TsAnalysisEDA.test.tsx`
+- `tests/api/test_dataset_passport.py`
+- `tests/api/test_passport_session_state.py`
+- `spec_passports.md`
+- `worklog2.md`
+
+Артефакт передачи
+
+- `download/task93_eda_modeling_passport_bb11305.zip` — только перечисленные изменённые файлы текущей задачи с сохранением структуры каталогов.

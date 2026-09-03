@@ -65,6 +65,17 @@ def _mutate_target(client: TestClient, delta: float = 5.0) -> None:
     store.save(session)
 
 
+def _set_first_target_value(client: TestClient, value: float) -> None:
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    assert session_id
+    store = get_session_store()
+    session = store.get(session_id)
+    assert session is not None and session.dataframe is not None
+    session.dataframe.loc[session.dataframe.index[0], "value"] = value
+    session.touch()
+    store.save(session)
+
+
 class TestDateColumnApi:
     def test_get_without_dataset_is_safe(self, client: TestClient):
         response = client.get("/v1/session/date-column")
@@ -149,6 +160,8 @@ class TestPassportCaptureAndStatus:
             "fingerprint": None,
             "history_count": 0,
         }
+        assert body["modeling_entry"]["captured"] is False
+        assert body["modeling_entry"]["checkpoint_id"] is None
 
     def test_captures_start_with_complete_passport_and_metadata(self, client: TestClient):
         _upload(client)
@@ -174,7 +187,7 @@ class TestPassportCaptureAndStatus:
         assert status["start"]["is_stale"] is False
         assert status["start"]["history_count"] == 1
 
-    @pytest.mark.parametrize("stage", ["validation", "exit"])
+    @pytest.mark.parametrize("stage", ["validation", "exit", "modeling_entry"])
     def test_later_stage_requires_start(self, client: TestClient, stage: str):
         _upload(client)
         _select_series(client)
@@ -183,6 +196,61 @@ class TestPassportCaptureAndStatus:
 
         assert response.status_code == 409
         assert "start" in response.json()["detail"]
+
+    def test_modeling_entry_reuses_unchanged_snapshot_as_checkpoint(self, client: TestClient):
+        _upload(client)
+        _select_series(client)
+        start = client.post("/v1/session/dataset/passport/start").json()
+
+        response = client.post("/v1/session/dataset/passport/modeling_entry")
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["stage"] == "modeling_entry"
+        assert body["snapshot_id"] == start["snapshot_id"]
+        assert body["checkpoint_id"]
+        assert body["source_stage"] == "start"
+        assert body["reused_snapshot"] is True
+        assert body["passport"] == start["passport"]
+
+        session_id = client.cookies.get(SESSION_COOKIE_NAME)
+        session = get_session_store().get(session_id)
+        assert session is not None
+        assert len(session.passport_history) == 1
+        assert len(session.passport_checkpoints) == 1
+
+        status = client.get("/v1/session/dataset/passport/status").json()["modeling_entry"]
+        assert status["captured"] is True
+        assert status["is_stale"] is False
+        assert status["history_count"] == 1
+        assert status["source_stage"] == "start"
+        assert status["reused_snapshot"] is True
+
+        duplicate = client.post("/v1/session/dataset/passport/modeling_entry")
+        assert duplicate.status_code == 409
+        assert "подтвержд" in duplicate.json()["detail"].lower()
+
+    def test_modeling_entry_creates_snapshot_only_for_new_series_state(self, client: TestClient):
+        _upload(client)
+        _select_series(client)
+        assert client.post("/v1/session/dataset/passport/start").status_code == 200
+        _mutate_target(client, 3)
+        assert client.post("/v1/session/dataset/passport/exit").status_code == 200
+        _mutate_target(client, 4)
+
+        response = client.post("/v1/session/dataset/passport/modeling_entry")
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["source_stage"] == "modeling_entry"
+        assert body["reused_snapshot"] is False
+        session_id = client.cookies.get(SESSION_COOKIE_NAME)
+        session = get_session_store().get(session_id)
+        assert session is not None
+        assert [item.stage for item in session.passport_history] == [
+            "start", "exit", "modeling_entry",
+        ]
+        assert len(session.passport_checkpoints) == 1
 
     def test_validation_requires_changed_series_and_appends_history(self, client: TestClient):
         _upload(client)
@@ -357,6 +425,57 @@ class TestPassportCompare:
 
         assert missing.status_code == 409
         assert invalid.status_code == 422
+
+    def test_unchanged_modeling_checkpoint_deduplicates_trajectory(self, client: TestClient):
+        self._capture_full_path(client)
+        captured = client.post("/v1/session/dataset/passport/modeling_entry")
+        assert captured.status_code == 200
+
+        response = client.get(
+            "/v1/session/dataset/passport/compare",
+            params={"to": "modeling_entry"},
+        )
+
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["path"] == ["start", "validation", "exit"]
+        assert len(body["comparisons"]) == 2
+        assert body["checkpoint"]["stage"] == "modeling_entry"
+        assert body["checkpoint"]["source_stage"] == "exit"
+        assert body["checkpoint"]["unchanged_from_previous"] is True
+
+    def test_modeling_checkpoint_can_reuse_an_older_snapshot_after_revert(self, client: TestClient):
+        _upload(client)
+        _select_series(client)
+        session_id = client.cookies.get(SESSION_COOKIE_NAME)
+        session = get_session_store().get(session_id)
+        assert session is not None and session.dataframe is not None
+        original = float(session.dataframe.loc[session.dataframe.index[0], "value"])
+        start = client.post("/v1/session/dataset/passport/start").json()
+        _mutate_target(client, 3)
+        assert client.post("/v1/session/dataset/passport/validation").status_code == 200
+        _mutate_target(client, 4)
+        assert client.post("/v1/session/dataset/passport/exit").status_code == 200
+        _set_first_target_value(client, original)
+
+        captured = client.post("/v1/session/dataset/passport/modeling_entry")
+
+        assert captured.status_code == 200, captured.text
+        assert captured.json()["snapshot_id"] == start["snapshot_id"]
+        assert captured.json()["source_stage"] == "start"
+        assert captured.json()["reused_snapshot"] is True
+        session = get_session_store().get(session_id)
+        assert session is not None
+        assert len(session.passport_history) == 3
+
+        comparison = client.get(
+            "/v1/session/dataset/passport/compare",
+            params={"to": "modeling_entry"},
+        ).json()
+        assert comparison["path"] == ["start", "validation", "exit", "modeling_entry"]
+        assert comparison["comparisons"][-1]["from_stage"] == "exit"
+        assert comparison["comparisons"][-1]["to_stage"] == "modeling_entry"
+        assert comparison["checkpoint"]["unchanged_from_previous"] is False
 
 
 def test_existing_stateless_passport_response_no_longer_drops_spectral_sections(

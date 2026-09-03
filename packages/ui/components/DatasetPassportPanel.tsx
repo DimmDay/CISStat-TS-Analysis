@@ -6,7 +6,7 @@ import { sessionApiUrl } from "../lib/apiClient";
 import { Button } from "./Button";
 import { Metric } from "./Metric";
 
-export type PassportStage = "start" | "validation" | "exit";
+export type PassportStage = "start" | "validation" | "exit" | "modeling_entry";
 
 interface PassportPointStatus {
   captured: boolean;
@@ -14,6 +14,10 @@ interface PassportPointStatus {
   is_stale: boolean | null;
   fingerprint: string | null;
   history_count: number;
+  checkpoint_id?: string | null;
+  snapshot_id?: string | null;
+  source_stage?: PassportStage | null;
+  reused_snapshot?: boolean | null;
 }
 
 interface DatasetPassportStatus {
@@ -26,6 +30,7 @@ interface DatasetPassportStatus {
   start: PassportPointStatus;
   validation: PassportPointStatus;
   exit: PassportPointStatus;
+  modeling_entry: PassportPointStatus;
 }
 
 interface DateColumnResponse {
@@ -46,6 +51,9 @@ interface PassportCaptureResponse {
   target_column: string;
   date_column: string | null;
   captured_at: string;
+  checkpoint_id?: string | null;
+  source_stage?: PassportStage | null;
+  reused_snapshot?: boolean;
 }
 
 interface NumericChange {
@@ -85,6 +93,15 @@ interface PassportCompareResponse {
   date_column: string | null;
   path: PassportStage[];
   comparisons: PassportComparisonPair[];
+  checkpoint?: {
+    checkpoint_id: string;
+    stage: "modeling_entry";
+    snapshot_id: string;
+    source_stage: PassportStage;
+    reused_snapshot: boolean;
+    unchanged_from_previous: boolean;
+    confirmed_at: string;
+  } | null;
 }
 
 export interface DatasetPassportPanelProps {
@@ -109,6 +126,11 @@ const STAGE_TEXT: Record<PassportStage, { title: string; short: string; action: 
     title: "Паспорт свойств ряда: Предобработка",
     short: "Предобработка",
     action: "Рассчитать итоговый паспорт",
+  },
+  modeling_entry: {
+    title: "Паспорт свойств ряда: Для моделирования",
+    short: "Для моделирования",
+    action: "Подтвердить паспорт для моделирования",
   },
 };
 
@@ -242,7 +264,20 @@ function ComparisonView({ data }: { data: PassportCompareResponse }) {
 
   return (
     <div className="space-y-4" data-testid="passport-comparison">
-      <div className="overflow-x-auto rounded-lg border border-neutral-200">
+      {data.checkpoint?.unchanged_from_previous && (
+        <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          Паспорт для моделирования подтверждён в EDA без изменения ряда. Используется снимок
+          {" "}«{STAGE_TEXT[data.checkpoint.source_stage].short}». Подтверждение: {formatDate(data.checkpoint.confirmed_at)}.
+        </p>
+      )}
+      {data.checkpoint?.reused_snapshot && !data.checkpoint.unchanged_from_previous && (
+        <p className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+          Финальное состояние совпало с ранее рассчитанным снимком
+          {" "}«{STAGE_TEXT[data.checkpoint.source_stage].short}»; повторный расчёт и хранение копии не выполнялись.
+        </p>
+      )}
+
+      {metricNames.length > 0 && <div className="overflow-x-auto rounded-lg border border-neutral-200">
         <table className="w-full min-w-[720px] text-xs">
           <thead className="bg-neutral-50 text-neutral-600">
             <tr>
@@ -281,7 +316,7 @@ function ComparisonView({ data }: { data: PassportCompareResponse }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </div>}
 
       {data.comparisons.map((pair) => (
         <p key={`${pair.from_snapshot_id}-${pair.to_snapshot_id}`} className="rounded-lg bg-brand-light px-3 py-2 text-sm text-neutral-700">
@@ -382,14 +417,23 @@ export function DatasetPassportPanel({
   const startPoint = status?.start ?? null;
   const validationPoint = status?.validation ?? null;
   const exitPoint = status?.exit ?? null;
+  const modelingEntryPoint = status?.modeling_entry ?? null;
   const dateCandidates = Array.isArray(dateConfig?.candidates)
     ? dateConfig.candidates.filter((candidate) => candidate.score >= 0.7 || candidate.name === dateConfig.date_column)
     : [];
-  const currentPoint = stage === "start" ? startPoint : stage === "validation" ? validationPoint : exitPoint;
+  const currentPoint = stage === "start"
+    ? startPoint
+    : stage === "validation"
+    ? validationPoint
+    : stage === "exit"
+    ? exitPoint
+    : modelingEntryPoint;
   const baselinePoint = stage === "start"
     ? startPoint
     : stage === "validation"
     ? (validationPoint?.captured ? validationPoint : startPoint)
+    : stage === "modeling_entry"
+    ? modelingEntryPoint
     : exitPoint?.captured
     ? exitPoint
     : validationPoint?.captured
@@ -401,7 +445,7 @@ export function DatasetPassportPanel({
     if (!status?.has_dataset) return "Сначала загрузите датасет";
     if (!status.target_column) return "Сначала выберите исследуемый признак";
     if (!status.date_column && !selectedDate) return "Выберите временную колонку";
-    if (stage === "start" && (validationPoint?.captured || exitPoint?.captured)) {
+    if (stage === "start" && (validationPoint?.captured || exitPoint?.captured || modelingEntryPoint?.captured)) {
       return "Baseline нельзя менять после фиксации следующей точки";
     }
     if (stage !== "start" && !startPoint?.captured) {
@@ -411,11 +455,14 @@ export function DatasetPassportPanel({
       return "Итоговый паспорт уже зафиксирован";
     }
     if (!status.series_ready && status.date_column && status.reason) return status.reason;
+    if (stage === "modeling_entry" && currentPoint?.captured && currentPoint.is_stale === false) {
+      return "Паспорт для моделирования уже подтверждён для текущего ряда";
+    }
     if (baselinePoint?.captured && baselinePoint.is_stale === false) {
       return "Свойства ряда не изменились с последнего расчёта";
     }
     return null;
-  }, [baselinePoint, exitPoint, loading, selectedDate, stage, startPoint, status, validationPoint]);
+  }, [baselinePoint, currentPoint, exitPoint, loading, modelingEntryPoint, selectedDate, stage, startPoint, status, validationPoint]);
 
   const capture = async () => {
     if (!status || disabledReason || busy) return;
@@ -450,7 +497,14 @@ export function DatasetPassportPanel({
       const body: PassportCaptureResponse = await response.json();
       setPassport(body);
       setComparison(null);
-      setNotice(`${dateHistoryWasReset ? "Смена временной колонки сбросила прежнюю цепочку. " : ""}Снимок зафиксирован: ${formatDate(body.captured_at)}`);
+      if (stage === "modeling_entry") {
+        const source = body.source_stage ? STAGE_TEXT[body.source_stage].short : "предыдущего этапа";
+        setNotice(body.reused_snapshot
+          ? `Паспорт для моделирования подтверждён: использован существующий снимок «${source}» без дублирования расчёта.`
+          : `Паспорт для моделирования подтверждён: новое состояние ряда зафиксировано ${formatDate(body.captured_at)}.`);
+      } else {
+        setNotice(`${dateHistoryWasReset ? "Смена временной колонки сбросила прежнюю цепочку. " : ""}Снимок зафиксирован: ${formatDate(body.captured_at)}`);
+      }
       await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Не удалось рассчитать паспорт");
@@ -492,10 +546,16 @@ export function DatasetPassportPanel({
           </p>
           {currentPoint?.captured && (
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-neutral-600">
-              <span>Последний снимок: {formatDate(currentPoint.captured_at)}</span>
-              <span>Снимков в истории: {currentPoint.history_count}</span>
+              <span>{stage === "modeling_entry" ? "Последнее подтверждение" : "Последний снимок"}: {formatDate(currentPoint.captured_at)}</span>
+              <span>{stage === "modeling_entry" ? "Подтверждений" : "Снимков"} в истории: {currentPoint.history_count}</span>
               <span className={currentPoint.is_stale ? "text-amber-700" : "text-green-700"}>
-                {currentPoint.is_stale ? "Текущий ряд изменён" : "Снимок соответствует текущему ряду"}
+                {stage === "modeling_entry"
+                  ? currentPoint.is_stale
+                    ? "Текущий ряд изменён после подтверждения"
+                    : "Паспорт подтверждён для текущего ряда"
+                  : currentPoint.is_stale
+                  ? "Текущий ряд изменён"
+                  : "Снимок соответствует текущему ряду"}
               </span>
             </div>
           )}
