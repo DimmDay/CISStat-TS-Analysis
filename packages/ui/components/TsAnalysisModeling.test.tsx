@@ -155,6 +155,35 @@ const MOCK_TARGET_COLUMN_RESPONSE_WITH_DATASET = {
   has_dataset: true,
 };
 
+const MOCK_MODELING_CONTEXT = {
+  ready: true,
+  data_source: "session",
+  fingerprint: "test-fingerprint",
+  checkpoint: {
+    checkpoint_id: "cp-test",
+    snapshot_id: "snap-test",
+    stage: "modeling_entry",
+    source_stage: "exit",
+    confirmed_at: "2026-09-03T00:00:00Z",
+  },
+  profile: {
+    n_observations: 120, n_series: 1, n_exogenous: 0, is_regular: true,
+    frequency: "M", has_seasonality: true, seasonal_periods: [12],
+    is_stationary_or_diffable: true, is_cointegrated: false,
+    has_negative_values: false, has_volatility_clustering: false,
+    domain: "macro", missing_ratio: 0, outlier_ratio: 0,
+    has_holidays: false, gpu_available: false, feature_engineering_applied: false,
+  },
+  passport: {},
+  validation_strategy: { strategy: "expanding", horizon: 12, n_splits: 5, gap: 0 },
+  model_matrix: {},
+  runnable_shortlist: ["naive", "ets", "arima"],
+  traceability: {
+    nodes: [],
+    summary: { total: 30, done: 30, warning: 0, skipped: 0, pending: 0, blocking: 0 },
+  },
+};
+
 // @ts-ignore — mock fetch с частичным Response
 const mockFetch: any = jest.fn((url: string) => {
   // GET target-column (без body в mock — components не передаёт method для GET)
@@ -170,8 +199,15 @@ const mockFetch: any = jest.fn((url: string) => {
     json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
   });
 });
+// Контекст hand-off всегда отдаётся отдельно; mockFetch продолжает хранить
+// только предметные вызовы, которые проверяются в тестах.
 // @ts-ignore
-global.fetch = mockFetch;
+global.fetch = ((url: string, options?: unknown) => {
+  if (typeof url === "string" && url.includes("/v1/session/modeling/context")) {
+    return Promise.resolve({ ok: true, json: () => Promise.resolve(MOCK_MODELING_CONTEXT) });
+  }
+  return mockFetch(url, options);
+}) as typeof fetch;
 
 // ═══════════════════════════════════════════════════════════
 // Test suites
@@ -218,7 +254,7 @@ describe("TsAnalysisModeling", () => {
       "Диагностика", "Сравнение", "Выбор модели", "Model Card",
     ];
     stageLabels.forEach((label) => {
-      expect(screen.getByText(label)).toBeInTheDocument();
+      expect(screen.getAllByText(label).length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -296,12 +332,12 @@ describe("TsAnalysisModeling", () => {
     // Phase 1: на маунте ДВА fetch — target-column (GET) + candidates (POST)
     await waitFor(() => {
       const candidatesCalls = mockFetch.mock.calls.filter(
-        ([u]: [string]) => typeof u === "string" && u.includes("/v1/internal/models/candidates")
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/session/modeling/candidates")
       );
       expect(candidatesCalls.length).toBe(1);
     });
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("/v1/internal/models/candidates"),
+      expect.stringContaining("/v1/session/modeling/candidates"),
       expect.objectContaining({ method: "POST" })
     );
   });
@@ -391,13 +427,13 @@ describe("TsAnalysisModeling", () => {
     expect(objectStringEls).toHaveLength(0);
   });
 
-  it("Task 14 fix: uses /v1/internal/models/candidates (NOT /v1/models/candidates)", async () => {
+  it("uses the traceable session candidates route", async () => {
     // Regression test: раньше UI ходил на /v1/models/candidates (требует X-Api-Key),
     // теперь — на зеркало /v1/internal/models/candidates (без auth).
     render(<TsAnalysisModeling />);
     await waitFor(() => {
       const internalCalls = mockFetch.mock.calls.filter(
-        ([u]: [string]) => typeof u === "string" && u.includes("/v1/internal/models/candidates")
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/session/modeling/candidates")
       );
       expect(internalCalls.length).toBeGreaterThanOrEqual(1);
     });
@@ -424,16 +460,17 @@ describe("TsAnalysisModeling", () => {
     // Phase 1: на маунте ДВА fetch — target-column + candidates
     await waitFor(() => {
       const candidatesCalls = mockFetch.mock.calls.filter(
-        ([u]: [string]) => typeof u === "string" && u.includes("/v1/internal/models/candidates")
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/session/modeling/candidates")
       );
       expect(candidatesCalls.length).toBe(1);
     });
     // Кликаем кнопку — должен быть ещё один candidates-запрос
     const btn = screen.getByTestId("fetch-candidates-btn");
+    await waitFor(() => expect(btn).not.toBeDisabled());
     fireEvent.click(btn);
     await waitFor(() => {
       const candidatesCalls = mockFetch.mock.calls.filter(
-        ([u]: [string]) => typeof u === "string" && u.includes("/v1/internal/models/candidates")
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/session/modeling/candidates")
       );
       expect(candidatesCalls.length).toBe(2);
     });
@@ -668,10 +705,7 @@ const MOCK_BACKTEST_RESPONSE = {
   n_test: 24,
   train_ratio: 0.8,
   duration_ms: 12.3,
-  // Phase 1: data_source — показывает, реальный ряд или синтетика.
-  // "session" — реальный ряд из session.dataframe[target_column].
-  // "synthetic" — fallback на синтетический ряд (target_column не задан).
-  data_source: "synthetic",
+  data_source: "session",
 };
 
 const MOCK_BACKTEST_RESPONSE_REAL_DATA = {
@@ -694,7 +728,7 @@ describe("TsAnalysisModeling — backtest", () => {
           json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET),
         });
       }
-      if (typeof url === "string" && url.includes("/v1/internal/models/backtest")) {
+      if (typeof url === "string" && url.includes("/v1/session/modeling/backtest")) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(MOCK_BACKTEST_RESPONSE),
@@ -723,7 +757,7 @@ describe("TsAnalysisModeling — backtest", () => {
     expect(screen.getByTestId("run-backtest-btn")).toBeInTheDocument();
   });
 
-  it("clicking 'Запустить бэктест' triggers backtest API call to /v1/internal/models/backtest (Phase 1)", async () => {
+  it("clicking 'Запустить бэктест' triggers the traceable session route", async () => {
     render(<TsAnalysisModeling />);
     await waitFor(() => {
       expect(screen.getByTestId("candidate-pool")).toBeInTheDocument();
@@ -742,7 +776,7 @@ describe("TsAnalysisModeling — backtest", () => {
     // read session) to /v1/internal/models/backtest (no auth, uses session bridge).
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining("/v1/internal/models/backtest"),
+        expect.stringContaining("/v1/session/modeling/backtest"),
         expect.objectContaining({
           method: "POST",
           credentials: "include", // cookie сессии обязателен для internal-зеркала
@@ -777,7 +811,7 @@ describe("TsAnalysisModeling — backtest", () => {
     expect(screen.getByText("2.1%")).toBeInTheDocument(); // MAPE
   });
 
-  it("shows 'Синтетический ряд' badge when data_source=synthetic (Phase 1)", async () => {
+  it("shows only the real session data badge", async () => {
     render(<TsAnalysisModeling />);
     await waitFor(() => {
       expect(screen.getByTestId("candidate-pool")).toBeInTheDocument();
@@ -796,9 +830,9 @@ describe("TsAnalysisModeling — backtest", () => {
       expect(screen.getByTestId("backtest-result")).toBeInTheDocument();
     });
 
-    // Badge «Синтетический ряд» — индикатор источника данных
+    // Traceable workflow never offers a synthetic fallback.
     expect(screen.getByTestId("data-source-badge")).toBeInTheDocument();
-    expect(screen.getByTestId("data-source-badge").textContent).toContain("Синтетический ряд");
+    expect(screen.getByTestId("data-source-badge").textContent).toContain("Реальные данные");
   });
 
   it("shows 'Реальные данные' badge when data_source=session (Phase 1)", async () => {
@@ -810,7 +844,7 @@ describe("TsAnalysisModeling — backtest", () => {
           json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET),
         });
       }
-      if (typeof url === "string" && url.includes("/v1/internal/models/backtest")) {
+      if (typeof url === "string" && url.includes("/v1/session/modeling/backtest")) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(MOCK_BACKTEST_RESPONSE_REAL_DATA),
@@ -851,7 +885,7 @@ describe("TsAnalysisModeling — backtest", () => {
           json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET),
         });
       }
-      if (typeof url === "string" && url.includes("/v1/internal/models/backtest")) {
+      if (typeof url === "string" && url.includes("/v1/session/modeling/backtest")) {
         return Promise.resolve({
           ok: false,
           status: 500,
@@ -928,7 +962,7 @@ describe("TsAnalysisModeling — target_column selector (Phase 1)", () => {
           json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET),
         });
       }
-      if (typeof url === "string" && url.includes("/v1/internal/models/backtest")) {
+      if (typeof url === "string" && url.includes("/v1/session/modeling/backtest")) {
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(MOCK_BACKTEST_RESPONSE),
@@ -1121,7 +1155,7 @@ describe("TsAnalysisModeling — target_column selector (Phase 1)", () => {
     expect(screen.getByTestId("target-column-error").textContent).toContain("не числовая");
   });
 
-  it("does NOT call /v1/models/backtest (old endpoint, replaced by /v1/internal/models/backtest)", async () => {
+  it("does NOT call legacy model backtest routes", async () => {
     render(<TsAnalysisModeling />);
     await waitFor(() => {
       expect(screen.getByTestId("candidate-pool")).toBeInTheDocument();
@@ -1139,7 +1173,7 @@ describe("TsAnalysisModeling — target_column selector (Phase 1)", () => {
     await waitFor(() => {
       // Должен быть вызов к internal-зеркалу
       const internalCalls = mockFetch.mock.calls.filter(
-        ([u]: [string]) => typeof u === "string" && u.includes("/v1/internal/models/backtest")
+        ([u]: [string]) => typeof u === "string" && u.includes("/v1/session/modeling/backtest")
       );
       expect(internalCalls.length).toBeGreaterThanOrEqual(1);
     });

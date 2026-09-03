@@ -90,6 +90,15 @@ STAGES = ["upload", "validation", "preprocessing", "eda", "modeling", "forecasti
 StageStatus = str  # "pending" | "in_progress" | "done"
 PASSPORT_STAGES = ("start", "validation", "exit", "modeling_entry")
 PASSPORT_CHECKPOINT_STAGES = ("modeling_entry",)
+MODELING_STAGE_IDS = (
+    "problem_definition", "data_structure", "constraint_mapping",
+    "candidate_generation", "baseline_estimation", "backtest", "tuning",
+    "diagnostics", "comparison", "selection", "model_card",
+)
+
+
+def _empty_modeling_pipeline() -> dict[str, StageStatus]:
+    return {stage: "pending" for stage in MODELING_STAGE_IDS}
 
 
 @dataclass
@@ -211,6 +220,11 @@ class AnalysisSession:
     # transformations здесь не хранятся параметры, обученные на полном
     # датасете: scaler должен fit-иться внутри train каждого временного fold.
     preprocessing_scaling_recipe: dict[str, Any] = field(default_factory=dict)
+    # Session-backed контур Моделирования. Pipeline хранит только статусы
+    # канонических 11 стадий из modeling.yaml, artifacts — JSON-совместимые
+    # результаты, привязанные к fingerprint checkpoint modeling_entry.
+    modeling_pipeline: dict[str, StageStatus] = field(default_factory=_empty_modeling_pipeline)
+    modeling_artifacts: dict[str, Any] = field(default_factory=dict)
     # Подтверждённое аналитиком решение по недостаточной длине ряда.
     sufficiency_plan: dict[str, Any] = field(default_factory=dict)
     updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
@@ -243,6 +257,7 @@ class AnalysisSession:
         self.preprocessing_spectral_selection = {}
         self.preprocessing_feature_generation = {}
         self.preprocessing_scaling_recipe = {}
+        self.reset_modeling()
         self.sufficiency_plan = {}
         self.touch()
 
@@ -351,6 +366,13 @@ class AnalysisSession:
     def reset_passports(self) -> None:
         self.passport_history = []
         self.passport_checkpoints = []
+        self.reset_modeling()
+        self.touch()
+
+    def reset_modeling(self) -> None:
+        """Сбросить результаты, которые нельзя переносить между рядами."""
+        self.modeling_pipeline = _empty_modeling_pipeline()
+        self.modeling_artifacts = {}
         self.touch()
 
     def set_stage(self, stage: str, status: StageStatus) -> None:
@@ -457,6 +479,8 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "preprocessing_spectral_selection": dict(session.preprocessing_spectral_selection),
         "preprocessing_feature_generation": dict(session.preprocessing_feature_generation),
         "preprocessing_scaling_recipe": dict(session.preprocessing_scaling_recipe),
+        "modeling_pipeline": dict(session.modeling_pipeline),
+        "modeling_artifacts": deepcopy(session.modeling_artifacts),
         "sufficiency_plan": dict(session.sufficiency_plan),
         "updated_at": session.updated_at,
     }
@@ -496,6 +520,11 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         preprocessing_spectral_selection=dict(d.get("preprocessing_spectral_selection", {})),
         preprocessing_feature_generation=dict(d.get("preprocessing_feature_generation", {})),
         preprocessing_scaling_recipe=dict(d.get("preprocessing_scaling_recipe", {})),
+        modeling_pipeline={
+            stage: dict(d.get("modeling_pipeline", {})).get(stage, "pending")
+            for stage in MODELING_STAGE_IDS
+        },
+        modeling_artifacts=deepcopy(d.get("modeling_artifacts", {})),
         sufficiency_plan=dict(d.get("sufficiency_plan", {})),
         updated_at=d.get("updated_at", datetime.now(timezone.utc).isoformat()),
     )

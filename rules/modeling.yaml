@@ -1052,14 +1052,15 @@ metrics:
       weighted_score = 0.35·norm(MAE) + 0.25·norm(RMSE) +
                        0.20·norm(MAPE) + 0.20·norm(MASE)
       где norm — min-max нормализация по пулу кандидатов.
-      Модели с MASE > 1.05 (хуже baseline + допуск) исключаются.
+      Модели с MASE > 1.05 (хуже baseline + допуск) остаются в аудиторской
+      таблице, помечаются риском и требуют явного подтверждения выбора.
     weights:
       mae: 0.35
       rmse: 0.25
       mape: 0.20
       mase: 0.20
     normalization: "min_max"         # нормализация по пулу кандидатов
-    baseline_filter_threshold: 1.05  # MASE > 1.05 → exclude
+    baseline_filter_threshold: 1.05  # MASE > 1.05 → flag + explicit override
 
 
 # ══════════════════════════════════════════════════════════════════════════════

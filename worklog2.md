@@ -1053,3 +1053,103 @@ GREEN и проверка
 Артефакт передачи
 
 - `download/task93_eda_modeling_passport_bb11305.zip` — только перечисленные изменённые файлы текущей задачи с сохранением структуры каталогов.
+
+---
+
+Task ID: 94 — Сквозная трассируемость и рабочий модуль «Моделирование» (TDD)
+
+Синхронизация и аудит
+
+Работа выполнена в ветке `main` на точном исходном коммите `ae4a27f60f6f5ebd0637b939c98e6742492e70c9`; commit/push не выполнялись. Изучены `AGENTS.md`, `worklog_summary.md`, `worklog2.md`, legacy-план Modeling, `rules/modeling.yaml`, session/passport API, все остановки Validation/Preprocessing/EDA, существующие кандидаты, backtest, tuning, diagnostics и обе frontend-оболочки.
+
+До Task 94 вкладка Modeling содержала 11 визуальных шагов, но рабочими были только ручной профиль, список кандидатов и одиночный backtest. При отсутствии session target UI мог незаметно использовать синтетический ряд; `modeling_pipeline` не сохранялся; diagnostics-компонент не был включён в цепочку; compare/select/Model Card отсутствовали.
+
+Методологическая цепочка
+
+Зафиксирован единый маршрут:
+
+`modeling_entry checkpoint + fingerprint → канонический ряд, отсортированный по date_column → 30 upstream-свидетельств → EDA validation strategy + model matrix → кандидаты → baseline/backtest → tuning → residual diagnostics → сопоставимое ranking → явный выбор → Model Card JSON`.
+
+Каталог трассируемости содержит ровно 30 узлов:
+
+- 10 проверок Validation: типы, форматы, диапазоны, согласованность, уникальность, включение, ссылочная целостность, текст, регулярность, достаточность;
+- 10 остановок Preprocessing: пропуски, выбросы, регулярность, декомпозиция, стабилизация дисперсии, сглаживание, стационарность, спектр, признаки, масштабирование;
+- 10 исследований EDA: descriptive, correlation, IH, seasonality, stationarity, distribution, structural breaks, feature selection, validation strategy, model matrix.
+
+Каждый узел хранит исходный endpoint, evidence, статус `done/warning/skipped/pending`, флаг блокировки, точные Modeling inputs и downstream stages. Опциональное `skipped` не считается ошибкой. Общая sufficiency-проверка не блокирует ряд, если конкретные horizon/folds помещаются; нерегулярность ограничивает модели через model matrix, а не вводит ложный универсальный запрет.
+
+Backend и SessionStore
+
+- `AnalysisSession` дополнен персистентными `modeling_pipeline` из 11 канонических стадий и `modeling_artifacts`; Memory/Redis JSON round-trip обратно совместим со старыми сессиями.
+- Dataset/target/date/passport reset атомарно инвалидирует Modeling.
+- Новый `modeling_workflow.py` переиспользует `prepare_passport_series`, `series_fingerprint`, финальный паспорт, `build_eda_validation_strategy`, `build_eda_model_matrix`, validation engine и `modeling.yaml`; второй реализации аналитических алгоритмов нет.
+- Новый session router предоставляет `GET context/state`, `POST candidates/backtest/tune/diagnostics/compare/select/card` и `GET card/{id}`.
+- Все вычислительные маршруты требуют актуальный `modeling_entry`, совпадающий fingerprint, date/target и отсутствие критических blockers. Синтетический fallback запрещён; catalog-only модели получают 422 без фиктивных метрик.
+- Horizon, effective folds и gap выбранной EDA-стратегии сохраняются как контракт запуска. Backtest без ручного override использует этот horizon; tuning использует те же expanding folds и gap. Sliding tuning честно возвращает 422, так как существующий production tuner реализует только expanding-window.
+- Сравнение допускает только один cohort разбиения/источника. Weighted score пересчитывается min-max внутри текущего пула; MAPE исключается при нулях в target с перенормировкой весов.
+- Модели с MASE > 1.05 не скрываются: они помечаются риском и требуют явного подтверждения аналитика. Это сохраняет аудиторский след.
+- Ensemble не создаётся по одной близости агрегированных метрик. Backend отмечает только candidate, если есть минимум две модели с MASE < 1 и близким score; `ensemble_recommended=false`, пока отсутствует корреляция out-of-fold ошибок.
+- Model Card сохраняет checkpoint/fingerprint, реальный train interval, версии библиотек, hyperparameters, CV/backtest, baseline comparison, diagnostics, limitations, recommendations и traceability; повторная загрузка доступна по card id. Не реализованное coverage prediction intervals остаётся `null` и явно внесено в limitations.
+
+Frontend
+
+- Профиль загружается из EDA hand-off и становится read-only; ручные поля не участвуют в расчётах.
+- Кандидаты и backtest используют только `/v1/session/modeling/*` с cookie. UI дополнительно отвергает ответ, если `data_source != session`.
+- После reload восстанавливаются завершённые стадии и backtests из SessionStore.
+- Первые три стадии показывают интерактивную карту 30 upstream-связей с evidence и blockers.
+- Tuning/diagnostics/compare/selection/Model Card получили рабочие панели в прежнем 468px layout-паттерне.
+- Для tuning/diagnostics UI предлагает только реально поддержанные ETS, ETS Damped и ARIMA.
+- Ranking показывает score, MASE и baseline status. Для рискованной модели требуется отдельный checkbox «Принимаю риск»; автоматического acknowledge нет.
+- Model Card отображается как JSON и скачивается повторно через session endpoint.
+
+Оценка legacy-плана
+
+- PRE-0 остаётся обязательным release gate, но из текущего sandbox live Render/Vercel недоступны: попытки безопасного GET и запуска штатного smoke заблокированы сетевой политикой. Production smoke необходимо повторить из CI/локального окружения после деплоя Task 94.
+- Phase 0+0.5 подтверждена по направлению, но ручной `PATCH modeling-stage` отвергнут: стадии выводятся из фактически сохранённых артефактов, иначе клиент может ложно отметить невыполненную стадию.
+- Phase 6-P0 уже реализована шире плана: 9 production backtest моделей. Обязательный `pmdarima` отвергнут; существующий bounded statsmodels grid легче для Render и уже покрывает Auto-ARIMA.
+- Phase 1 подтверждена частично: production tuning есть только для ETS/ETS Damped/ARIMA и expanding CV. Полная sliding strategy требует отдельной реализации.
+- Phase 2 подтверждена: четыре диагностики уже существовали и теперь встроены в session workflow.
+- Phase 3 скорректирована: polling/job layer не нужен для ранжирования уже сохранённых backtests; реализован синхронный compare. Async job понадобится при едином endpoint параллельного обучения всех моделей.
+- Phase 4 скорректирована: выбор реализован, auto-ensemble без OOF прогнозов и корреляции ошибок отвергнут как методологически недоказанный.
+- Phase 5 реализована как честный Model Card. Формальное заполнение prediction interval coverage числом до реализации интервалов отвергнуто; поле остаётся `null` с limitation.
+
+Таким образом, оценка `~49 ч` не подтверждается как актуальная: значительная часть Phase 0/1/2/6-P0 уже присутствовала в baseline, а часть Phase 3/4 была избыточной или методологически неполной.
+
+TDD и проверка
+
+- RED backend: отсутствовали модуль traceability и session workflow routes.
+- RED frontend: отсутствовали оба Modeling overview-компонента.
+- Целевой backend: 9/9 PASS.
+- Расширенный Modeling/SessionStore/spec backend: 135/135 PASS; после добавления horizon-контракта целевой набор отдельно 9/9 PASS.
+- Полный frontend: 83 suites, 718/718 PASS, 0 snapshots.
+- Целевой frontend после финальных правок: 3 suites, 54/54 PASS.
+- TypeScript embedded/standalone: PASS.
+- Production build standalone и embedded: PASS, по 13/13 статических страниц, включая `/modeling`; First Load JS 453 kB.
+- `py_compile` и `git diff --check`: PASS.
+
+Полный backend collection исходно блокируется `tests/unit/test_file_loader.py:87` (`IndentationError`) и отсутствующим `openpyxl`. Прогон с исключением этих двух файлов: 1189 PASS, 33 FAIL, 3 ERROR. Остаток относится к baseline/окружению: Pandas 3 string dtype против legacy object expectations, отсутствующие `ruptures` и snapshot fixture, устаревший diagnostics YAML contract и ARIMA на технически слишком коротких folds. Целевые Task 94 тесты зелёные.
+
+Изменённые и новые файлы
+
+- `apps/api/main.py`
+- `apps/api/modeling_workflow.py` (новый)
+- `apps/api/routers/modeling_session.py` (новый)
+- `apps/api/routers/models.py`
+- `apps/api/schemas.py`
+- `apps/api/session_store.py`
+- `packages/ui/components/ModelingTraceabilityOverview.tsx` (новый)
+- `packages/ui/components/ModelingTraceabilityOverview.test.tsx` (новый)
+- `packages/ui/components/ModelingWorkflowOverview.tsx` (новый)
+- `packages/ui/components/ModelingWorkflowOverview.test.tsx` (новый)
+- `packages/ui/components/TsAnalysisModeling.tsx`
+- `packages/ui/components/TsAnalysisModeling.test.tsx`
+- `packages/ui/lib/modeling.ts`
+- `packages/ui/index.ts`
+- `rules/modeling.yaml`
+- `tests/api/test_modeling_workflow.py` (новый)
+- `tests/unit/test_modeling_traceability.py` (новый)
+- `worklog2.md`
+
+Артефакт передачи
+
+- `download/task94_modeling_traceability_ae4a27f.zip` — только перечисленные изменённые/новые файлы Task 94 с сохранением структуры каталогов.

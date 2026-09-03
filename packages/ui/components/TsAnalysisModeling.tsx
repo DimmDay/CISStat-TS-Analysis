@@ -32,6 +32,7 @@ import {
   type CandidatesResponse,
   type ApplicabilityLevel,
   type BacktestResponse,
+  type ModelingContext,
   type TargetColumnResponse,
   APPLICABILITY_LABEL,
   APPLICABILITY_BADGE,
@@ -43,6 +44,8 @@ import {
 } from "../lib/modeling";
 import { useAppShell } from "../context/AppShellContext";
 import { getApiBase } from "../lib/apiClient";
+import { ModelingTraceabilityOverview } from "./ModelingTraceabilityOverview";
+import { ModelingWorkflowOverview } from "./ModelingWorkflowOverview";
 
 // ── Константы ──────────────────────────────────────────────────
 
@@ -144,7 +147,7 @@ export function TsAnalysisModeling() {
   const [hasFetched, setHasFetched] = useState(false);
 
   // UI-состояние
-  const [activeStageId, setActiveStageId] = useState("candidate_pool");
+  const [activeStageId, setActiveStageId] = useState("candidate_generation");
   const [activeFamilyId, setActiveFamilyId] = useState<string | null>(null);
   const [activeCandidateId, setActiveCandidateId] = useState<string | null>(
     null
@@ -167,10 +170,8 @@ export function TsAnalysisModeling() {
   // ── Phase 1: target_column (мост Upload → Backtest) ──
   // Селектор читает GET /v1/session/target-column (колонки доступны только
   // если в сессии есть загруженный датасет). Запись — POST того же URL с
-  // телом { column: string }. Бэктест (см. ниже runBacktest) использует
-  // /v1/internal/models/backtest — зеркало /v1/models/backtest без auth,
-  // которое при наличии target_column в сессии выполняет расчёт на РЕАЛЬНОМ
-  // ряде (data_source="session"), иначе fallback на синтетику.
+  // телом { column: string }. Бэктест допускается только через подтверждённый
+  // EDA checkpoint и использует реальный сессионный ряд.
   const [targetColumn, setTargetColumn] = useState<string | null>(null);
   const [availableColumns, setAvailableColumns] = useState<string[]>([]);
   const [hasDataset, setHasDataset] = useState(false);
@@ -179,10 +180,67 @@ export function TsAnalysisModeling() {
     null
   );
 
+  // Канонический hand-off EDA → Modeling. При его наличии manual profile
+  // остаётся только прозрачным отображением, а расчёты используют session API.
+  const [modelingContext, setModelingContext] = useState<ModelingContext | null>(null);
+  const [modelingContextError, setModelingContextError] = useState<string | null>(null);
+
   // ── Завершённые стадии пайплайна ──
   const [completedStages, setCompletedStages] = useState<Set<string>>(
-    new Set(["problem_definition", "data_structure", "constraints"])
+    new Set(["problem_definition", "data_structure", "constraint_mapping"])
   );
+
+  const fetchModelingState = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE}/v1/session/modeling/state`, {
+        credentials: "include",
+      });
+      if (!response.ok) return;
+      const body = await response.json();
+      if (body?.pipeline) {
+        setCompletedStages(new Set(
+          Object.entries(body.pipeline)
+            .filter(([, status]) => status === "done")
+            .map(([stage]) => stage),
+        ));
+      }
+      if (body?.artifacts?.backtests) {
+        setBacktestResults(body.artifacts.backtests as Record<string, BacktestResponse>);
+      }
+    } catch {
+      // Контекст остаётся рабочим; state boot можно повторить после операции.
+    }
+  }, []);
+
+  const fetchModelingContext = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE}/v1/session/modeling/context`, {
+        credentials: "include",
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setModelingContextError(typeof body.detail === "string" ? body.detail : `HTTP ${response.status}`);
+        setModelingContext(null);
+        return;
+      }
+      if (body?.ready === true && body?.profile) {
+        const context = body as ModelingContext;
+        setModelingContext(context);
+        setModelingContextError(null);
+        setProfile(context.profile);
+        void fetchModelingState();
+        setCompletedStages((previous) => {
+          const next = new Set(previous);
+          next.add("problem_definition");
+          next.add("data_structure");
+          next.add("constraint_mapping");
+          return next;
+        });
+      }
+    } catch (reason) {
+      setModelingContextError(reason instanceof Error ? reason.message : "Контекст моделирования недоступен");
+    }
+  }, [fetchModelingState]);
 
   // ── Автозаполнение профиля из activeDataset ──
   // Маппинг: rows→n_observations, frequency→frequency, domain→domain,
@@ -226,10 +284,7 @@ export function TsAnalysisModeling() {
       setAvailableColumns(data.available_columns);
       setHasDataset(data.has_dataset);
     } catch (err) {
-      // Не показываем красный баннер — target_column опционален. Логируем
-      // в отдельное поле, но компонент продолжает работать (бэктест выполнится
-      // на синтетике). Это важно: GET может упасть, если бэкенд недоступен,
-      // но candidates-запрос ниже должен всё равно пройти.
+      // Ошибка чтения target_column не подменяется синтетическим рядом.
       setTargetColumnError(
         err instanceof Error ? err.message : "Не удалось получить колонки"
       );
@@ -246,11 +301,7 @@ export function TsAnalysisModeling() {
     async (e: ChangeEvent<HTMLSelectElement>) => {
       const column = e.target.value;
       if (!column) {
-        // Пустой выбор = сброс (target_column = null). Сервер принимает
-        // пустую строку как сигнал «убрать target_column». На UI это
-        // позволяет вернуться к синтетике без перезагрузки.
-        setTargetColumn(null);
-        // TODO: добавить POST с пустой колонкой, если потребуется persisted reset.
+        setTargetColumnError("Выберите числовую целевую колонку; моделирование без цели запрещено.");
         return;
       }
       setTargetColumnLoading(true);
@@ -272,6 +323,11 @@ export function TsAnalysisModeling() {
         setTargetColumn(data.target_column);
         setAvailableColumns(data.available_columns);
         setHasDataset(data.has_dataset);
+        setModelingContext(null);
+        setCandidates([]);
+        setBacktestResults({});
+        setHasFetched(false);
+        void fetchModelingContext();
       } catch (err) {
         setTargetColumnError(
           err instanceof Error ? err.message : "Не удалось выбрать колонку"
@@ -280,12 +336,13 @@ export function TsAnalysisModeling() {
         setTargetColumnLoading(false);
       }
     },
-    []
+    [fetchModelingContext]
   );
 
   // ── Fetch target_column на маунте ──
   useEffect(() => {
     fetchTargetColumn();
+    void fetchModelingContext();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Refetch target_column при смене активного датасета ──
@@ -297,29 +354,30 @@ export function TsAnalysisModeling() {
   useEffect(() => {
     if (activeDatasetName) {
       fetchTargetColumn();
+      void fetchModelingContext();
     }
-  }, [activeDatasetName, fetchTargetColumn]);
+  }, [activeDatasetName, fetchTargetColumn, fetchModelingContext]);
 
   // ── Fetch кандидатов ──
-  // Task 14 fix: используем /v1/internal/models/candidates (БЕЗ auth) —
-  // зеркало /v1/models/candidates (см. apps/api/routers/internal.py).
-  // Раньше вызывали /v1/models/candidates, который защищён
-  // require_capability("can_train_models") → требует X-Api-Key.
-  // Браузер visitior'а standalone НЕ имеет API-ключа → 422 (missing header),
-  // в UI выводилось "Ошибка: [object Object],[object Object]" (массив
-  // Pydantic-ошибок [{...},{...}], приведённый к строке через String()).
-  // Из-за этого candidates=[] → activeCandidate=null → кнопка бэктеста
-  // не отрисовывалась → пользователь видел «бэктест не активный».
+  // Профиль формируется на сервере из подтверждённого EDA hand-off.
+  // Ручной профиль и синтетический fallback в рабочий контур не попадают.
   const fetchCandidates = useCallback(async () => {
+    if (modelingContext?.ready !== true) {
+      setError("Подтвердите финальный паспорт «Для моделирования» на вкладке EDA.");
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/v1/internal/models/candidates`, {
+      const res = await fetch(`${API_BASE}/v1/session/modeling/candidates`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
-          profile,
           min_level: "CONDITIONALLY_APPLICABLE",
+          horizon: Number(modelingContext.validation_strategy.horizon || 12),
+          n_splits: Number(modelingContext.validation_strategy.n_splits || 5),
+          gap: Number(modelingContext.validation_strategy.gap || 0),
         }),
       });
       if (!res.ok) {
@@ -340,45 +398,41 @@ export function TsAnalysisModeling() {
     } finally {
       setIsLoading(false);
     }
-  }, [profile]);
+  }, [modelingContext]);
 
-  // ── Авто-фetch при маунте ──
+  // ── Авто-fetch только после успешного EDA hand-off ──
   useEffect(() => {
-    fetchCandidates();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (modelingContext?.ready) void fetchCandidates();
+  }, [modelingContext?.fingerprint]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Продвижение пайплайна при загрузке пула ──
   useEffect(() => {
     if (hasFetched && candidates.length > 0) {
       setCompletedStages((prev) => {
         const next = new Set(prev);
-        next.add("candidate_pool");
+        next.add("candidate_generation");
         return next;
       });
     }
   }, [hasFetched, candidates.length]);
 
   // ── Запуск бэктеста ──
-  // Phase 1: переключили с /v1/models/backtest (требует X-Api-Key, не работает
-  // в standalone-режиме без ключа, не использует session) на зеркало
-  // /v1/internal/models/backtest (без auth, читает cookie сессии, выполняет
-  // расчёт на РЕАЛЬНОМ ряде из session.dataframe[target_column] если target
-  // задан, иначе fallback на синтетику). Поле data_source в ответе показывает,
-  // какой путь сработал.
+  // Маршрут читает канонический, отсортированный по дате ряд из checkpoint.
+  // Синтетический fallback намеренно запрещён.
   const runBacktest = useCallback(
     async (modelId: string) => {
+      if (modelingContext?.ready !== true) {
+        setBacktestError("Бэктест заблокирован: нет подтверждённого EDA hand-off.");
+        return;
+      }
       setBacktestLoading(true);
       setBacktestError(null);
       try {
-        const res = await fetch(`${API_BASE}/v1/internal/models/backtest`, {
+        const res = await fetch(`${API_BASE}/v1/session/modeling/backtest`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include", // cookie сессии — для чтения target_column
-          body: JSON.stringify({
-            model_id: modelId,
-            profile,
-            train_ratio: 0.8,
-          }),
+          body: JSON.stringify({ model_id: modelId }),
         });
         if (!res.ok) {
           const errBody = await res.json().catch(() => ({}));
@@ -387,12 +441,15 @@ export function TsAnalysisModeling() {
           );
         }
         const data: BacktestResponse = await res.json();
+        if (data.data_source !== "session") {
+          throw new Error("Нарушена трассируемость: backend вернул не сессионный ряд.");
+        }
         setBacktestResults((prev) => ({ ...prev, [modelId]: data }));
         // Продвигаем пайплайн: candidate_pool → baseline → backtest
         setCompletedStages((prev) => {
           const next = new Set(prev);
-          next.add("candidate_pool");
-          next.add("baseline");
+          next.add("candidate_generation");
+          if (data.family_id === "baselines") next.add("baseline_estimation");
           next.add("backtest");
           return next;
         });
@@ -404,7 +461,7 @@ export function TsAnalysisModeling() {
         setBacktestLoading(false);
       }
     },
-    [profile]
+    [modelingContext]
   );
 
   // ── Collapse/Expand description ──
@@ -488,7 +545,7 @@ export function TsAnalysisModeling() {
       }
       return `Метрики и алгоритм: Пул кандидатов\n\nАлгоритм формирования пула:\n1. Применить 23 правила применимости ко всем 24 моделям\n2. Отфильтровать по минимальному уровню (≥ CONDITIONALLY_APPLICABLE)\n3. Baseline-модели включаются всегда\n4. Сортировка по рангу уровня (RECOMMENDED → CONDITIONALLY_APPLICABLE → NOT_RECOMMENDED)`;
     }
-    return `Полный пайплайн: Моделирование\n\n1. Определение задачи → 2. Структура данных → 3. Ограничения → 4. Пул кандидатов → 5. Baseline → 6. Бэктест → 7. Тюнинг → 8. Диагностика → 9. Сравнение → 10. Выбор модели → 11. Model Card\n\nТекущая стадия: Пул кандидатов — движок применимости определил ${candidates.length} моделей-кандидатов из ${statistics?.total_models_in_spec || 24} моделей спецификации.`;
+    return `Полный пайплайн: Моделирование\n\n1. Определение задачи → 2. Структура данных → 3. Ограничения → 4. Пул кандидатов → 5. Baseline → 6. Бэктест → 7. Тюнинг → 8. Диагностика → 9. Сравнение → 10. Выбор модели → 11. Model Card\n\nВход: checkpoint modeling_entry и трасса 30 источников. Синтетические метрики в рабочем session-контуре запрещены.`;
   })();
 
   const descriptionSubtitle = (() => {
@@ -539,12 +596,12 @@ export function TsAnalysisModeling() {
             <p className="text-[11px] text-neutral-500 font-medium">
               Профиль данных
             </p>
-            {activeDataset && (
+            {(modelingContext || activeDataset) && (
               <span
                 className="text-[9px] text-brand font-medium bg-brand-light px-1.5 py-0.5 rounded"
                 data-testid="autofill-indicator"
               >
-                из датасета
+                {modelingContext ? "из EDA hand-off" : "из датасета"}
               </span>
             )}
           </div>
@@ -558,6 +615,7 @@ export function TsAnalysisModeling() {
               type="number"
               min={1}
               value={profile.n_observations}
+              disabled={modelingContext?.ready === true}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 handleProfileChange(
                   "n_observations",
@@ -578,6 +636,7 @@ export function TsAnalysisModeling() {
               type="number"
               min={1}
               value={profile.n_series}
+              disabled={modelingContext?.ready === true}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 handleProfileChange(
                   "n_series",
@@ -596,6 +655,7 @@ export function TsAnalysisModeling() {
             </label>
             <select
               value={profile.frequency}
+              disabled={modelingContext?.ready === true}
               onChange={(e) => handleProfileChange("frequency", e.target.value)}
               className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand"
               data-testid="profile-frequency"
@@ -615,6 +675,7 @@ export function TsAnalysisModeling() {
             </label>
             <select
               value={profile.domain}
+              disabled={modelingContext?.ready === true}
               onChange={(e) => handleProfileChange("domain", e.target.value)}
               className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand"
               data-testid="profile-domain"
@@ -633,6 +694,7 @@ export function TsAnalysisModeling() {
               <input
                 type="checkbox"
                 checked={profile.has_seasonality}
+                disabled={modelingContext?.ready === true}
                 onChange={(e) =>
                   handleProfileChange("has_seasonality", e.target.checked)
                 }
@@ -645,6 +707,7 @@ export function TsAnalysisModeling() {
               <input
                 type="checkbox"
                 checked={profile.is_regular}
+                disabled={modelingContext?.ready === true}
                 onChange={(e) =>
                   handleProfileChange("is_regular", e.target.checked)
                 }
@@ -657,6 +720,7 @@ export function TsAnalysisModeling() {
               <input
                 type="checkbox"
                 checked={profile.gpu_available}
+                disabled={modelingContext?.ready === true}
                 onChange={(e) =>
                   handleProfileChange("gpu_available", e.target.checked)
                 }
@@ -695,7 +759,7 @@ export function TsAnalysisModeling() {
                 className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand disabled:bg-neutral-50 disabled:text-neutral-400"
                 data-testid="target-column-select"
               >
-                <option value="">— не выбрано —</option>
+                <option value="" disabled={Boolean(targetColumn)}>— не выбрано —</option>
                 {availableColumns.map((col) => (
                   <option key={col} value={col}>
                     {col}
@@ -730,7 +794,7 @@ export function TsAnalysisModeling() {
           {/* Кнопка «Загрузить пул» */}
           <Button
             onClick={fetchCandidates}
-            disabled={isLoading}
+            disabled={isLoading || modelingContext?.ready !== true}
             className="w-full text-xs"
             data-testid="fetch-candidates-btn"
           >
@@ -840,6 +904,26 @@ export function TsAnalysisModeling() {
             )}
           </div>
         </div>
+
+        {(["problem_definition", "data_structure", "constraint_mapping"].includes(activeStageId)) && (
+          modelingContext ? (
+            <ModelingTraceabilityOverview context={modelingContext} />
+          ) : (
+            <div className="flex h-[468px] items-center justify-center rounded-lg border border-amber-200 bg-amber-50 p-6 text-center text-sm text-amber-800" data-testid="modeling-context-gate">
+              {modelingContextError || "Подтвердите финальный паспорт «Для моделирования» на вкладке EDA."}
+            </div>
+          )
+        )}
+
+        {(["tuning", "diagnostics", "comparison", "selection", "model_card"].includes(activeStageId)) && (
+          <ModelingWorkflowOverview
+            stageId={activeStageId}
+            modelIds={Object.keys(backtestResults)}
+            onStageComplete={(stage) => setCompletedStages((previous) => new Set(previous).add(stage))}
+          />
+        )}
+
+        {(["candidate_generation", "baseline_estimation", "backtest"].includes(activeStageId)) && (<>
 
         {/* ── Ошибка API ── */}
         {error && (
@@ -995,11 +1079,12 @@ export function TsAnalysisModeling() {
             Спецификация v{specVersion}
           </p>
         )}
+        </>)}
       </section>
 
       {/* ══ ПРАВАЯ КОЛОНКА: карточки семейств/кандидатов ══ */}
       <aside className="w-80 shrink-0">
-        <div className="max-h-[830px] overflow-y-auto pr-2 space-y-5 feed-scroll">
+        <div className="h-[468px] overflow-y-auto pr-2 space-y-5 feed-scroll">
           {/* Карточка активного кандидата */}
           {activeCandidate && (
             <article
@@ -1086,31 +1171,14 @@ export function TsAnalysisModeling() {
                   {(() => {
                     const bt = backtestResults[activeCandidate.model_id];
                     const m = bt.metrics;
-                    // Phase 1: data_source badge — показывает, реальный ряд
-                    // (из session.dataframe[target_column]) или синтетический.
-                    // Если поле отсутствует (старый эндпоинт без bridge) — не
-                    // показываем ничего (backward-compat).
-                    const dataSource = bt.data_source;
-                    const dataSourceLabel =
-                      dataSource === "session"
-                        ? "Реальные данные"
-                        : dataSource === "synthetic"
-                        ? "Синтетический ряд"
-                        : null;
-                    const dataSourceClass =
-                      dataSource === "session"
-                        ? "bg-green-50 text-green-700 border-green-200"
-                        : "bg-neutral-100 text-neutral-500 border-neutral-200";
                     return (
                       <>
-                        {dataSourceLabel && (
-                          <span
-                            className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${dataSourceClass}`}
-                            data-testid="data-source-badge"
-                          >
-                            {dataSourceLabel}
-                          </span>
-                        )}
+                        <span
+                          className="inline-flex items-center rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[10px] font-medium text-green-700"
+                          data-testid="data-source-badge"
+                        >
+                          Реальные данные
+                        </span>
                         <div className="grid grid-cols-2 gap-2 text-[11px]">
                           <div>
                             <span className="text-neutral-500">MAE</span>

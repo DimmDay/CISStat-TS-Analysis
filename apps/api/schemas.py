@@ -3036,6 +3036,10 @@ class CVConfig(BaseModel):
         None, ge=1,
         description="Сдвиг test-окна между folds (default=test_size внутри CV)",
     )
+    gap: int = Field(
+        0, ge=0,
+        description="Число наблюдений между train и test для защиты от пограничной утечки",
+    )
 
 
 class TuneRequest(BaseModel):

@@ -154,9 +154,9 @@ export interface PipelineStage {
 export const PIPELINE_STAGES: PipelineStage[] = [
   { id: "problem_definition", label: "Определение задачи", status: "done" },
   { id: "data_structure", label: "Структура данных", status: "done" },
-  { id: "constraints", label: "Ограничения", status: "done" },
-  { id: "candidate_pool", label: "Пул кандидатов", status: "active" },
-  { id: "baseline", label: "Baseline", status: "pending" },
+  { id: "constraint_mapping", label: "Ограничения", status: "done" },
+  { id: "candidate_generation", label: "Пул кандидатов", status: "active" },
+  { id: "baseline_estimation", label: "Baseline", status: "pending" },
   { id: "backtest", label: "Бэктест", status: "pending" },
   { id: "tuning", label: "Тюнинг", status: "pending" },
   { id: "diagnostics", label: "Диагностика", status: "pending" },
@@ -197,6 +197,45 @@ export interface BacktestResponse {
    * Опционально для backward-compat со старым /v1/models/backtest (без bridge).
    */
   data_source?: "session" | "synthetic";
+}
+
+export type TraceabilityStatus = "done" | "warning" | "skipped" | "pending";
+
+export interface ModelingTraceNode {
+  group: "validation" | "preprocessing" | "eda";
+  source_id: string;
+  label: string;
+  source_endpoint: string;
+  modeling_inputs: string[];
+  modeling_stages: string[];
+  status: TraceabilityStatus;
+  evidence: string;
+  blocking: boolean;
+}
+
+export interface ModelingContext {
+  ready: boolean;
+  data_source: "session";
+  fingerprint: string;
+  checkpoint: {
+    checkpoint_id: string;
+    snapshot_id: string;
+    stage: "modeling_entry";
+    source_stage: string;
+    confirmed_at: string;
+  };
+  profile: DataProfile;
+  passport: Record<string, unknown>;
+  validation_strategy: Record<string, unknown> & {
+    horizon: number;
+    n_splits: number;
+  };
+  model_matrix: Record<string, unknown>;
+  runnable_shortlist: string[];
+  traceability: {
+    nodes: ModelingTraceNode[];
+    summary: Record<TraceabilityStatus | "total" | "blocking", number>;
+  };
 }
 
 // ── target_column (Phase 0.5 мост Upload → Backtest) ───────────

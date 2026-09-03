@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from apps.api.routers import public, internal, models, session, diagnostics, diagnostics_internal
+from apps.api.routers import public, internal, models, session, diagnostics, diagnostics_internal, modeling_session
 
 app = FastAPI(
     title="CISStat TS Analysis API",
@@ -61,6 +61,7 @@ app.include_router(diagnostics_internal.router, prefix="/v1/internal", tags=["in
 # /v1/session -- НЕ под public/internal: сессия (AnalysisSession) общая
 # для embedded и standalone, см. docstring apps/api/routers/session.py.
 app.include_router(session.router, prefix="/v1/session", tags=["session"])
+app.include_router(modeling_session.router, prefix="/v1/session/modeling", tags=["modeling-session"])
 
 
 @app.get("/health")

@@ -340,6 +340,8 @@ export type { DecompositionSeriesData, DecompositionSeriesPoint } from "./compon
 // ── Ниже: перенесено без изменений из origin/main (команда, "Моделирование") ──
 
 export { TsAnalysisModeling } from "./components/TsAnalysisModeling";
+export { ModelingTraceabilityOverview } from "./components/ModelingTraceabilityOverview";
+export { ModelingWorkflowOverview } from "./components/ModelingWorkflowOverview";
 
 // Типы моделирования (зеркало apps/api/schemas.py).
 export type {

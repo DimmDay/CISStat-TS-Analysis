@@ -295,6 +295,7 @@ def _execute_tune(
             test_size=cv_config.test_size,
             min_train_size=cv_config.min_train_size,
             step=cv_config.step,
+            gap=cv_config.gap,
         )
     except ValueError as e:
         raise HTTPException(status_code=422, detail=f"Некорректная CV config: {e}")
@@ -320,7 +321,7 @@ def _execute_tune(
             try:
                 y_pred = _tunable_predict(model_id, y_train, len(y_test), params)
                 fold_metrics.append(_compute_metrics(y_test, y_pred, y_train))
-            except (ValueError, RuntimeError, ArithmeticError) as exc:
+            except (ValueError, RuntimeError, ArithmeticError, IndexError) as exc:
                 logger.warning("Tuning trial failed: model=%s params=%s error=%s", model_id, params, exc)
                 failed_trials += 1
                 break
