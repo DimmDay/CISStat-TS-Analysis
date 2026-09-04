@@ -2411,3 +2411,50 @@ Commit/push и production deploy не выполнялись.
 - `packages/ui/components/ModelingWorkflowOverview.test.tsx`
 - `packages/ui/components/TsAnalysisModeling.tsx`
 - `tests/api/test_modeling_workflow.py`
+
+---
+
+## Task 115 — Client crash при переходе Tuning → Diagnostics
+
+Дата: 2026-09-04. База: `main @ fbb550b066a215d05485a3c8d7974cc2b15da1df`
++ working tree Task 114. Commit/push и production deploy не выполнялись.
+
+### Воспроизведение и первопричина
+
+- После подтверждения defaults в общем `result` оставался response
+  `{model_ids, status: "skipped", execution_scope}`.
+- При клике на «Диагностика» React сначала рендерил новый
+  `stageId` со старым `result`, и только потом запускал `useEffect`,
+  который должен был очистить response.
+- В этом переходном render tuning-response без проверки приводился
+  к `DiagnosticsResult`. Вызов `diagnosticsResult.diagnostics.map(...)` для
+  отсутствующего поля выбрасывал client-side `TypeError` до работы
+  effect, что и давало белый Application error screen.
+
+### Исправление
+
+- Общий response state заменён на provenance-контракт
+  `WorkflowResult {stageId, value}`.
+- Актуальный `result` выдаётся в render только если его
+  `stageId` совпадает с текущей остановкой. Эта проверка синхронна
+  и не зависит от порядка запуска `useEffect`.
+- Перед рендерингом diagnostics table добавлена runtime-проверка
+  `Array.isArray(diagnosticsResult.diagnostics)`, чтобы malformed API response также
+  не мог уронить всю клиентскую страницу.
+
+### TDD и проверки
+
+- До production-кода добавлена регрессия: получить tuning/defaults
+  response, переключить тот же component instance на Diagnostics и проверить
+  отсутствие exception/ложного diagnostics report.
+- RED source-contract: 3/3 FAIL — response не хранил producing stage,
+  render не сверял stage, diagnostics shape не проверялся.
+- GREEN source-contract: 3/3 PASS. `git diff --check` и Python `py_compile`
+  кумулятивных Task 114 files: PASS.
+- Jest, TypeScript typecheck и production build не запущены: в checkout
+  отсутствуют `node_modules`, `jest`, `tsc` и `next`.
+
+### Изменённые файлы Task 115
+
+- `packages/ui/components/ModelingWorkflowOverview.tsx`
+- `packages/ui/components/ModelingWorkflowOverview.test.tsx`

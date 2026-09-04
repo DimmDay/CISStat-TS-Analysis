@@ -35,6 +35,11 @@ interface TuningJobResult {
   tuning_response: TuningResult | null;
 }
 
+interface WorkflowResult {
+  stageId: string;
+  value: Record<string, unknown>;
+}
+
 interface DiagnosticItem {
   test: "ljung_box" | "jarque_bera" | "arch_lm" | "durbin_watson";
   applicable: boolean;
@@ -172,17 +177,21 @@ export function ModelingWorkflowOverview({
   const [selectionBiasAcknowledged, setSelectionBiasAcknowledged] = useState(false);
   const [ensembleNoGainAcknowledged, setEnsembleNoGainAcknowledged] = useState(false);
   const [card, setCard] = useState<{ card_id: string; card: Record<string, unknown> } | null>(null);
-  const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [resultState, setResultState] = useState<WorkflowResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tuningProgress, setTuningProgress] = useState<{ completed: number; total: number } | null>(null);
+  // The effect below clears stale state after a stage change, but render happens
+  // first. Gate synchronously by provenance so a tuning response can never be
+  // interpreted as a diagnostics payload during that transition render.
+  const result = resultState?.stageId === stageId ? resultState.value : null;
 
   useEffect(() => {
     if (!supportedModelIds.includes(modelId)) setModelId(supportedModelIds[0] ?? "");
   }, [modelId, supportedModelIds]);
 
   useEffect(() => {
-    setResult(null);
+    setResultState(null);
     setError(null);
   }, [stageId]);
 
@@ -207,7 +216,7 @@ export function ModelingWorkflowOverview({
         setEnsembleNoGainAcknowledged(false);
         setRiskAcknowledged({});
       }
-      setResult(value);
+      setResultState({ stageId: stage, value });
       await onStageComplete?.(stage);
       return value;
     } catch (reason) {
@@ -311,7 +320,7 @@ export function ModelingWorkflowOverview({
   };
 
   const modelSelector = (
-    <select value={modelId} onChange={(event) => { setModelId(event.target.value); setResult(null); }} className="rounded border border-neutral-300 bg-white px-2 py-1 text-xs">
+    <select value={modelId} onChange={(event) => { setModelId(event.target.value); setResultState(null); }} className="rounded border border-neutral-300 bg-white px-2 py-1 text-xs">
       {supportedModelIds.map((item) => <option key={item} value={item}>{item}</option>)}
     </select>
   );
@@ -477,7 +486,7 @@ export function ModelingWorkflowOverview({
           <span title={tuningResult.cohort_id ?? undefined}><b>Cohort:</b> {tuningResult.cohort_id?.slice(0, 12) ?? "—"}</span>
         </div>
       )}
-      {diagnosticsResult && (
+      {diagnosticsResult && Array.isArray(diagnosticsResult.diagnostics) && (
         <div className="mt-3 min-h-0 flex-1 overflow-auto" data-testid="diagnostics-report">
           <div className="mb-3 grid grid-cols-2 gap-2 rounded border border-blue-200 bg-blue-50 p-2 text-[10px] text-blue-900" data-testid="diagnostics-lineage">
             <span><b>OOF:</b> {diagnosticsResult.residuals_source}</span>

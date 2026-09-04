@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
 import { ModelingWorkflowOverview } from "./ModelingWorkflowOverview";
+import type { ModelAction } from "../lib/modeling";
 
 
 const ranking = [
@@ -171,6 +172,45 @@ test("records one atomic defaults decision for every pending tunable model", asy
     }),
   );
   expect(mockFetch.mock.calls[0][1].body).not.toContain("model_id");
+});
+
+test("does not interpret a tuning response as diagnostics during a stage transition", async () => {
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      model_ids: ["ets"],
+      status: "skipped",
+      execution_scope: {},
+    }),
+  });
+  const actions: Record<string, ModelAction[]> = {
+    ets: ["backtest", "tune", "diagnostics"],
+  };
+  const { rerender } = render(
+    <ModelingWorkflowOverview
+      stageId="tuning"
+      modelIds={["ets"]}
+      modelActions={actions}
+      tuningPendingModelIds={["ets"]}
+    />,
+  );
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Оставить defaults для всех (1)" }),
+  );
+  await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(screen.getByText(/"status": "skipped"/)).toBeInTheDocument());
+
+  expect(() => rerender(
+    <ModelingWorkflowOverview
+      stageId="diagnostics"
+      modelIds={["ets"]}
+      modelActions={actions}
+      tuningPendingModelIds={[]}
+    />,
+  )).not.toThrow();
+  expect(screen.getByText("Диагностика остатков")).toBeInTheDocument();
+  expect(screen.queryByTestId("diagnostics-report")).not.toBeInTheDocument();
 });
 
 test("does not offer defaults skip when tuning is already completed", () => {
