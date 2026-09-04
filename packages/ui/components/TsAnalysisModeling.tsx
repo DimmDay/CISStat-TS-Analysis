@@ -8,7 +8,7 @@
 // Компоновка:
 //   [Левая ~240px]       [Центр flex-1]          [Правая ~320px]
 //   Моделирование         Описание                Семейство: ...
-//   ▼ Профиль данных     [таблица кандидатов]    модели с бейджами
+//   Контекст hand-off     [таблица кандидатов]    модели с бейджами
 //   4/11 ░░░             [метрики-сводка]        [Метрики и алгоритм]
 //   ┌─Определение──○─┐   [фильтр по уровню]     [Полный пайплайн]
 //   ├─Структура───○─┤                           [Запустить бэктест]
@@ -19,7 +19,6 @@ import {
   useRef,
   useEffect,
   useCallback,
-  type ChangeEvent,
 } from "react";
 import { ChevronDown, ChevronUp, RefreshCw, Filter, Loader2 } from "lucide-react";
 import { Button } from "./Button";
@@ -28,7 +27,6 @@ import { BacktestComparisonChart } from "./BacktestComparisonChart";
 import { BacktestOofChart } from "./BacktestOofChart";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import {
-  type DataProfile,
   type ModelCandidate,
   type CandidatesResponse,
   type ApplicabilityLevel,
@@ -41,9 +39,6 @@ import {
   APPLICABILITY_BADGE,
   MODEL_FAMILIES,
   PIPELINE_STAGES,
-  DEFAULT_PROFILE,
-  DOMAINS,
-  FREQUENCIES,
 } from "../lib/modeling";
 import { useAppShell } from "../context/AppShellContext";
 import { getApiBase } from "../lib/apiClient";
@@ -56,6 +51,20 @@ import { ModelingWorkflowOverview } from "./ModelingWorkflowOverview";
 // бэкенд). НЕ дёргаем NEXT_PUBLIC_API_URL напрямую -- иначе обойдём
 // прокси и потеряем first-party cookie (см. lib/apiClient.ts::getApiBase).
 const API_BASE = getApiBase();
+
+const FREQUENCY_LABELS: Record<string, string> = {
+  D: "Дневная",
+  W: "Недельная",
+  M: "Месячная",
+  Q: "Квартальная",
+  Y: "Годовая",
+};
+
+const VALIDATION_STRATEGY_LABELS: Record<string, string> = {
+  expanding: "Expanding",
+  sliding: "Sliding",
+  single: "Single holdout",
+};
 
 // ── Утилита для рендера detail ошибок (Task 14 fix) ──────────────
 // FastAPI/Pydantic v2 возвращает ошибки ДВУХ форм:
@@ -107,6 +116,8 @@ const MODELING_HELP = `Цели модуля "Моделирование"
 
 Моделирование — это одноразовый процесс выбора лучшей модели для данного временного ряда. Это НЕ прогнозирование: моделирование выбирает модель, прогнозирование генерирует прогнозы.
 
+Целевая колонка, профиль ряда и план валидации поступают из подтверждённого EDA hand-off и в этом модуле доступны только для чтения.
+
 Движок применимости (23 правила, 4 уровня):
 1. RECOMMENDED — модель подходит для данного профиля данных
 2. CONDITIONALLY_APPLICABLE — применима с оговорками
@@ -137,7 +148,6 @@ export function TsAnalysisModeling() {
   const { activeDataset } = useAppShell();
 
   // ── Состояние ──
-  const [profile, setProfile] = useState<DataProfile>(DEFAULT_PROFILE);
   const [candidates, setCandidates] = useState<ModelCandidate[]>([]);
   const [catalog, setCatalog] = useState<ModelCandidate[]>([]);
   const [statistics, setStatistics] = useState<{
@@ -177,28 +187,23 @@ export function TsAnalysisModeling() {
   const [executionScope, setExecutionScope] = useState<ModelingExecutionScope | null>(null);
   const [exclusionReason, setExclusionReason] = useState("");
 
-  // ── Phase 1: target_column (мост Upload → Backtest) ──
-  // Селектор читает GET /v1/session/target-column (колонки доступны только
-  // если в сессии есть загруженный датасет). Запись — POST того же URL с
-  // телом { column: string }. Бэктест допускается только через подтверждённый
-  // EDA checkpoint и использует реальный сессионный ряд.
+  // ── Read-only target_column (мост Upload/EDA → Modeling) ──
+  // Модуль читает уже подтверждённую цель из session API, но не
+  // меняет её: POST здесь сбросил бы upstream-паспорта и artifacts.
   const [targetColumn, setTargetColumn] = useState<string | null>(null);
-  const [availableColumns, setAvailableColumns] = useState<string[]>([]);
   const [hasDataset, setHasDataset] = useState(false);
   const [targetColumnLoading, setTargetColumnLoading] = useState(false);
   const [targetColumnError, setTargetColumnError] = useState<string | null>(
     null
   );
 
-  // Канонический hand-off EDA → Modeling. При его наличии manual profile
-  // остаётся только прозрачным отображением, а расчёты используют session API.
+  // Канонический hand-off EDA → Modeling — единственный источник
+  // профиля, валидационного плана и checkpoint для расчётов.
   const [modelingContext, setModelingContext] = useState<ModelingContext | null>(null);
   const [modelingContextError, setModelingContextError] = useState<string | null>(null);
 
   // ── Завершённые стадии пайплайна ──
-  const [completedStages, setCompletedStages] = useState<Set<string>>(
-    new Set(["problem_definition", "data_structure", "constraint_mapping"])
-  );
+  const [completedStages, setCompletedStages] = useState<Set<string>>(new Set<string>());
 
   const fetchModelingState = useCallback(async () => {
     try {
@@ -226,58 +231,45 @@ export function TsAnalysisModeling() {
   }, []);
 
   const fetchModelingContext = useCallback(async () => {
+    setModelingContextError(null);
     try {
       const response = await fetch(`${API_BASE}/v1/session/modeling/context`, {
         credentials: "include",
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
-        setModelingContextError(typeof body.detail === "string" ? body.detail : `HTTP ${response.status}`);
+        setModelingContextError(formatErrorDetail(body.detail) || `HTTP ${response.status}`);
         setModelingContext(null);
         return;
       }
-      if (body?.ready === true && body?.profile) {
+      if (body?.profile && body?.checkpoint && body?.validation_strategy) {
         const context = body as ModelingContext;
         setModelingContext(context);
         setModelingContextError(null);
-        setProfile(context.profile);
-        void fetchModelingState();
-        setCompletedStages((previous) => {
-          const next = new Set(previous);
-          next.add("problem_definition");
-          next.add("data_structure");
-          next.add("constraint_mapping");
-          return next;
-        });
+        if (context.ready) {
+          void fetchModelingState();
+          setCompletedStages((previous) => {
+            const next = new Set(previous);
+            next.add("problem_definition");
+            next.add("data_structure");
+            next.add("constraint_mapping");
+            return next;
+          });
+        }
+        return;
       }
+      setModelingContext(null);
+      setModelingContextError("Ответ EDA hand-off не содержит полный контекст.");
     } catch (reason) {
+      setModelingContext(null);
       setModelingContextError(reason instanceof Error ? reason.message : "Контекст моделирования недоступен");
     }
   }, [fetchModelingState]);
 
-  // ── Автозаполнение профиля из activeDataset ──
-  // Маппинг: rows→n_observations, frequency→frequency, domain→domain,
-  // nSeries→n_series, hasSeasonality→has_seasonality, isRegular→is_regular.
-  // Поля опциональны: если activeDataset их не содержит, сохраняем текущее.
-  useEffect(() => {
-    if (activeDataset) {
-      setProfile((prev) => ({
-        ...prev,
-        n_observations: activeDataset.rows || prev.n_observations,
-        ...(activeDataset.frequency != null && { frequency: activeDataset.frequency }),
-        ...(activeDataset.domain != null && { domain: activeDataset.domain }),
-        ...(activeDataset.nSeries != null && { n_series: activeDataset.nSeries }),
-        ...(activeDataset.hasSeasonality != null && { has_seasonality: activeDataset.hasSeasonality }),
-        ...(activeDataset.isRegular != null && { is_regular: activeDataset.isRegular }),
-      }));
-    }
-  }, [activeDataset]);
-
-  // ── Phase 1: fetch target_column из сессии ──
-  // На маунте + при смене activeDataset.name (пользователь загрузил новый
-  // датасет → нужно обновить список доступных колонок). GET, не требует
-  // body; cookie сессии передаётся через credentials:"include" (мост
-  // Phase 0.5: AnalysisSession.target_column хранится в Redis по session_id).
+  // ── Read-only target_column из сессии ──
+  // Modeling только показывает уже подтверждённую upstream-цель. Изменение
+  // target здесь запрещено: POST сбросил бы паспорта, EDA hand-off и все
+  // Modeling artifacts.
   const fetchTargetColumn = useCallback(async () => {
     setTargetColumnLoading(true);
     setTargetColumnError(null);
@@ -294,7 +286,6 @@ export function TsAnalysisModeling() {
       }
       const data: TargetColumnResponse = await res.json();
       setTargetColumn(data.target_column);
-      setAvailableColumns(data.available_columns);
       setHasDataset(data.has_dataset);
     } catch (err) {
       // Ошибка чтения target_column не подменяется синтетическим рядом.
@@ -306,70 +297,30 @@ export function TsAnalysisModeling() {
     }
   }, []);
 
-  // ── Phase 1: установить target_column (POST) ──
-  // Вызывается при выборе колонки в селекторе. Сервер валидирует: колонка
-  // должна существовать и быть числовой (иначе 404/422). После успеха —
-  // обновляем локальный стейт (response = новое состояние сессии).
-  const handleTargetColumnChange = useCallback(
-    async (e: ChangeEvent<HTMLSelectElement>) => {
-      const column = e.target.value;
-      if (!column) {
-        setTargetColumnError("Выберите числовую целевую колонку; моделирование без цели запрещено.");
-        return;
-      }
-      setTargetColumnLoading(true);
-      setTargetColumnError(null);
-      try {
-        const res = await fetch(`${API_BASE}/v1/session/target-column`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include", // cookie сессии — для записи в AnalysisSession
-          body: JSON.stringify({ column }),
-        });
-        if (!res.ok) {
-          const errBody = await res.json().catch(() => ({}));
-          throw new Error(
-            formatErrorDetail(errBody.detail) || `HTTP ${res.status}: ${res.statusText}`
-          );
-        }
-        const data: TargetColumnResponse = await res.json();
-        setTargetColumn(data.target_column);
-        setAvailableColumns(data.available_columns);
-        setHasDataset(data.has_dataset);
-        setModelingContext(null);
-        setCandidates([]);
-        setBacktestResults({});
-        setHasFetched(false);
-        void fetchModelingContext();
-      } catch (err) {
-        setTargetColumnError(
-          err instanceof Error ? err.message : "Не удалось выбрать колонку"
-        );
-      } finally {
-        setTargetColumnLoading(false);
-      }
-    },
-    [fetchModelingContext]
-  );
-
-  // ── Fetch target_column на маунте ──
+  // datasetId различает повторную загрузку одноимённого файла. Имя остаётся
+  // fallback для старого AppShell-контракта.
+  const activeDatasetKey = activeDataset?.datasetId ?? activeDataset?.name;
   useEffect(() => {
-    fetchTargetColumn();
+    // Не показываем цель, контекст и результаты предыдущего
+    // dataset, пока session API повторно не подтвердит hand-off.
+    setTargetColumn(null);
+    setHasDataset(false);
+    setModelingContext(null);
+    setModelingContextError(null);
+    setCandidates([]);
+    setCatalog([]);
+    setStatistics(null);
+    setBacktestResults({});
+    setError(null);
+    setBacktestError(null);
+    setExecutionScope(null);
+    setExclusionReason("");
+    setActiveCandidateId(null);
+    setHasFetched(false);
+    setCompletedStages(new Set<string>());
+    void fetchTargetColumn();
     void fetchModelingContext();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Refetch target_column при смене активного датасета ──
-  // Симптом: пользователь загрузил новый CSV на вкладке «Загрузка», вернулся
-  // на «Моделирование» — список доступных колонок устарел. Рефетчим.
-  // Зависимость — activeDataset?.name (имя файла меняется при re-upload,
-  // что является надёжным сигналом изменения состояния сессии).
-  const activeDatasetName = activeDataset?.name;
-  useEffect(() => {
-    if (activeDatasetName) {
-      fetchTargetColumn();
-      void fetchModelingContext();
-    }
-  }, [activeDatasetName, fetchTargetColumn, fetchModelingContext]);
+  }, [activeDatasetKey, fetchTargetColumn, fetchModelingContext]);
 
   // ── Fetch кандидатов ──
   // Профиль формируется на сервере из подтверждённого EDA hand-off.
@@ -556,14 +507,6 @@ export function TsAnalysisModeling() {
     return () => observer.disconnect();
   }, [descriptionSection, catalog]);
 
-  // ── Обработчики профиля ──
-  const handleProfileChange = useCallback(
-    (field: keyof DataProfile, value: number | string | boolean | number[]) => {
-      setProfile((prev) => ({ ...prev, [field]: value }));
-    },
-    []
-  );
-
   // ── Фильтрация и группировка ──
   const visibleModels = availabilityFilter === "all" ? catalog : candidates;
   const filteredCandidates = visibleModels.filter((c) => {
@@ -630,7 +573,7 @@ export function TsAnalysisModeling() {
   const descriptionSubtitle = (() => {
     if (descriptionSection === "help")
       return "Справка — Цели модуля и результаты моделирования";
-    if (!descriptionSection) return "Настройте профиль данных и нажмите «Загрузить пул»";
+    if (!descriptionSection) return "Проверьте контекст EDA hand-off и загрузите пул кандидатов";
     if (descriptionSection === "metrics")
       return activeCandidate
         ? `Метрики и алгоритм — ${activeCandidate.model_name}`
@@ -638,10 +581,22 @@ export function TsAnalysisModeling() {
     return "Полный пайплайн — Моделирование";
   })();
 
+  const contextProfile = modelingContext?.profile;
+  const validationStrategy = modelingContext?.validation_strategy;
+  const rawDateColumn = validationStrategy?.order_column;
+  const dateColumn = typeof rawDateColumn === "string" ? rawDateColumn : "—";
+  const frequencyLabel = contextProfile
+    ? FREQUENCY_LABELS[contextProfile.frequency] ?? contextProfile.frequency
+    : "—";
+  const strategyLabel = validationStrategy
+    ? VALIDATION_STRATEGY_LABELS[validationStrategy.strategy] ?? validationStrategy.strategy
+    : "—";
+  const seasonalPeriods = contextProfile?.seasonal_periods ?? [];
+
   // ── Рендер ──
   return (
     <div className="flex gap-6">
-      {/* ══ ЛЕВАЯ КОЛОНКА: профиль + прогресс + степпер ══ */}
+      {/* ══ ЛЕВАЯ КОЛОНКА: read-only контекст + прогресс + степпер ══ */}
       <aside className="w-60 shrink-0 flex flex-col gap-3 pt-1">
         {/* Заголовок модуля + справка */}
         <div className="mb-1">
@@ -669,152 +624,32 @@ export function TsAnalysisModeling() {
           </p>
         </div>
 
-        {/* ── Компактная форма профиля данных ── */}
-        <div className="space-y-2">
+        {/* ── Канонический read-only контекст EDA → Modeling ── */}
+        <div
+          className="space-y-2 rounded-lg border border-neutral-200 bg-neutral-50/70 p-2.5"
+          data-testid="modeling-context-summary"
+        >
           <div className="flex items-center justify-between">
-            <p className="text-[11px] text-neutral-500 font-medium">
-              Профиль данных
+            <p className="text-[11px] font-semibold text-neutral-700">
+              Контекст моделирования
             </p>
-            {(modelingContext || activeDataset) && (
-              <span
-                className="text-[9px] text-brand font-medium bg-brand-light px-1.5 py-0.5 rounded"
-                data-testid="autofill-indicator"
-              >
-                {modelingContext ? "из EDA hand-off" : "из датасета"}
-              </span>
-            )}
+            <span className={`rounded px-1.5 py-0.5 text-[9px] font-medium ${
+              modelingContext?.ready
+                ? "bg-brand-light text-brand"
+                : "bg-amber-100 text-amber-800"
+            }`}>
+              {modelingContext?.ready
+                ? "EDA hand-off"
+                : modelingContext
+                  ? "есть ограничения"
+                  : "ожидает EDA"}
+            </span>
           </div>
 
-          {/* n_observations */}
-          <div>
-            <label className="text-[10px] text-neutral-500 block mb-0.5">
-              Наблюдений
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={profile.n_observations}
-              disabled={modelingContext?.ready === true}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                handleProfileChange(
-                  "n_observations",
-                  Math.max(1, Number(e.target.value))
-                )
-              }
-              className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand"
-              data-testid="profile-n-observations"
-            />
-          </div>
-
-          {/* n_series */}
-          <div>
-            <label className="text-[10px] text-neutral-500 block mb-0.5">
-              Рядов
-            </label>
-            <input
-              type="number"
-              min={1}
-              value={profile.n_series}
-              disabled={modelingContext?.ready === true}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                handleProfileChange(
-                  "n_series",
-                  Math.max(1, Number(e.target.value))
-                )
-              }
-              className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand"
-              data-testid="profile-n-series"
-            />
-          </div>
-
-          {/* frequency */}
-          <div>
-            <label className="text-[10px] text-neutral-500 block mb-0.5">
-              Частота
-            </label>
-            <select
-              value={profile.frequency}
-              disabled={modelingContext?.ready === true}
-              onChange={(e) => handleProfileChange("frequency", e.target.value)}
-              className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand"
-              data-testid="profile-frequency"
-            >
-              {FREQUENCIES.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* domain */}
-          <div>
-            <label className="text-[10px] text-neutral-500 block mb-0.5">
-              Предметная область
-            </label>
-            <select
-              value={profile.domain}
-              disabled={modelingContext?.ready === true}
-              onChange={(e) => handleProfileChange("domain", e.target.value)}
-              className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand"
-              data-testid="profile-domain"
-            >
-              {DOMAINS.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Тогглы в одну строку */}
-          <div className="flex gap-3">
-            <label className="flex items-center gap-1 text-[10px] text-neutral-600">
-              <input
-                type="checkbox"
-                checked={profile.has_seasonality}
-                disabled={modelingContext?.ready === true}
-                onChange={(e) =>
-                  handleProfileChange("has_seasonality", e.target.checked)
-                }
-                className="rounded border-neutral-300"
-                data-testid="profile-has-seasonality"
-              />
-              Сезонность
-            </label>
-            <label className="flex items-center gap-1 text-[10px] text-neutral-600">
-              <input
-                type="checkbox"
-                checked={profile.is_regular}
-                disabled={modelingContext?.ready === true}
-                onChange={(e) =>
-                  handleProfileChange("is_regular", e.target.checked)
-                }
-                className="rounded border-neutral-300"
-                data-testid="profile-is-regular"
-              />
-              Регулярность
-            </label>
-            <label className="flex items-center gap-1 text-[10px] text-neutral-600">
-              <input
-                type="checkbox"
-                checked={profile.gpu_available}
-                disabled={modelingContext?.ready === true}
-                onChange={(e) =>
-                  handleProfileChange("gpu_available", e.target.checked)
-                }
-                className="rounded border-neutral-300"
-              />
-              GPU
-            </label>
-          </div>
-
-          {/* ── Phase 1: селектор target_column ── */}
-          {/* Мост Upload → Backtest: читает доступные числовые колонки из
-              сессии (загруженный датасет). После выбора — POST в сессию,
-              бэктест выполняется на реальном ряде (data_source="session"). */}
+          {/* Визуально сохраняем селектор, но его значение является фактом
+              upstream-контракта и никогда не редактируется в Modeling. */}
           <div
-            className="pt-2 border-t border-neutral-100 mt-1"
+            className="border-t border-neutral-200 pt-2"
             data-testid="target-column-block"
           >
             <div className="flex items-center justify-between mb-0.5">
@@ -829,36 +664,24 @@ export function TsAnalysisModeling() {
                 />
               )}
             </div>
-
-            {hasDataset ? (
-              <select
-                value={targetColumn ?? ""}
-                onChange={handleTargetColumnChange}
-                disabled={targetColumnLoading}
-                className="w-full rounded border border-neutral-300 bg-white px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-brand disabled:bg-neutral-50 disabled:text-neutral-400"
-                data-testid="target-column-select"
-              >
-                <option value="" disabled={Boolean(targetColumn)}>— не выбрано —</option>
-                {availableColumns.map((col) => (
-                  <option key={col} value={col}>
-                    {col}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <p
-                className="text-[10px] text-neutral-400 italic py-1"
-                data-testid="target-column-no-dataset"
-              >
-                Загрузите датасет, чтобы выбрать колонку
-              </p>
-            )}
-
-            {targetColumn && (
-              <p className="text-[10px] text-brand mt-0.5">
-                Бэктест будет на реальном ряде
-              </p>
-            )}
+            <select
+              value={targetColumn ?? ""}
+              disabled
+              aria-label="Целевая колонка — только чтение"
+              className="w-full rounded border border-neutral-300 bg-neutral-100 px-2 py-1 text-xs text-neutral-600 disabled:cursor-not-allowed disabled:opacity-100"
+              data-testid="target-column-select"
+            >
+              {targetColumn ? (
+                <option value={targetColumn}>{targetColumn}</option>
+              ) : (
+                <option value="">
+                  {hasDataset ? "Цель не выбрана" : "Нет активного датасета"}
+                </option>
+              )}
+            </select>
+            <p className="mt-0.5 text-[9px] text-neutral-500">
+              Зафиксирована предыдущими этапами; изменение выполняется до EDA hand-off.
+            </p>
 
             {targetColumnError && (
               <p
@@ -869,6 +692,78 @@ export function TsAnalysisModeling() {
               </p>
             )}
           </div>
+
+          {modelingContext && contextProfile && validationStrategy ? (
+            <>
+              <dl className="grid grid-cols-2 gap-x-2 gap-y-1 border-t border-neutral-200 pt-2 text-[10px]">
+                <div>
+                  <dt className="text-neutral-500">Наблюдений</dt>
+                  <dd className="font-semibold text-neutral-800" data-testid="context-observations">
+                    {contextProfile.n_observations}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-neutral-500">Частота</dt>
+                  <dd className="font-semibold text-neutral-800" data-testid="context-frequency">
+                    {frequencyLabel}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-neutral-500">Рядов / X</dt>
+                  <dd className="font-semibold text-neutral-800">
+                    {contextProfile.n_series} / {contextProfile.n_exogenous}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-neutral-500">Сезонность</dt>
+                  <dd className="font-semibold text-neutral-800">
+                    {contextProfile.has_seasonality
+                      ? seasonalPeriods.length > 0
+                        ? `Да · ${seasonalPeriods.join(", ")}`
+                        : "Да"
+                      : "Нет"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-neutral-500">Регулярность</dt>
+                  <dd className="font-semibold text-neutral-800">
+                    {contextProfile.is_regular ? "Регулярный" : "Нерегулярный"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-neutral-500">Колонка времени</dt>
+                  <dd className="truncate font-semibold text-neutral-800" data-testid="context-date-column" title={dateColumn}>
+                    {dateColumn}
+                  </dd>
+                </div>
+              </dl>
+
+              <div className="rounded border border-neutral-200 bg-white px-2 py-1.5 text-[9px] text-neutral-600" data-testid="context-validation-plan">
+                <span className="font-semibold text-neutral-800">{strategyLabel}</span>
+                {` · H=${validationStrategy.horizon} · folds=${validationStrategy.n_splits} · gap=${validationStrategy.gap}`}
+              </div>
+
+              <div className="text-[9px] text-neutral-500" data-testid="context-checkpoint">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-neutral-700">modeling_entry</span>
+                  <span>{modelingContext.checkpoint.source_stage}</span>
+                </div>
+                <p className="truncate font-mono" title={modelingContext.fingerprint}>
+                  SHA {modelingContext.fingerprint.slice(0, 12)}…
+                </p>
+              </div>
+
+              {!modelingContext.ready && (
+                <p className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-[9px] text-amber-800" data-testid="context-restrictions">
+                  EDA hand-off зафиксирован, но пул моделей заблокирован ограничениями контекста.
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-[9px] text-amber-800" data-testid="context-unavailable">
+              {modelingContextError || "Подтвердите финальный паспорт «Для моделирования» на вкладке EDA."}
+            </p>
+          )}
 
           {/* Кнопка «Загрузить пул» */}
           <Button

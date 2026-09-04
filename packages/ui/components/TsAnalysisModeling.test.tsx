@@ -4,12 +4,12 @@
 // 1. Рендер модуля и 11 стадий пайплайна
 // 2. Кнопка «Справка» переключает секцию
 // 3. Expandable description box
-// 4. Профиль данных (форма)
+// 4. Read-only контекст EDA hand-off
 // 5. Fetch кандидатов (mock fetch)
 // 6. Фильтрация по уровню
 // 7. Выбор кандидата → детальная карточка
 // 8. Обработка ошибок API
-// 9. activeDataset → автозаполнение профиля
+// 9. activeDataset → обновление session-контекста
 
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
@@ -189,10 +189,9 @@ const MOCK_CANDIDATES_RESPONSE = {
 // ── Mock fetch (на уровне модуля, как DataUploadForm.test.tsx) ──
 // Маршрутизация по URL:
 //   • GET  /v1/session/target-column → MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET
-//   • POST /v1/internal/models/candidates → MOCK_CANDIDATES_RESPONSE  (Task 14 fix: mirror without auth)
-//   • POST /v1/internal/models/backtest → MOCK_BACKTEST_RESPONSE
-// Это позволяет компоненту на маунте вызвать ДВА fetch (target-column + candidates)
-// без падения тестов.
+//   • GET  /v1/session/modeling/context → MOCK_MODELING_CONTEXT
+//   • POST /v1/session/modeling/candidates → MOCK_CANDIDATES_RESPONSE
+//   • POST /v1/session/modeling/baselines → baselineFetch
 const MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET = {
   target_column: null,
   available_columns: [],
@@ -203,6 +202,11 @@ const MOCK_TARGET_COLUMN_RESPONSE_WITH_DATASET = {
   target_column: null,
   available_columns: ["value", "gdp", "inflation"],
   has_dataset: true,
+};
+
+const MOCK_TARGET_COLUMN_RESPONSE_SELECTED = {
+  ...MOCK_TARGET_COLUMN_RESPONSE_WITH_DATASET,
+  target_column: "value",
 };
 
 const MOCK_MODELING_CONTEXT = {
@@ -225,7 +229,10 @@ const MOCK_MODELING_CONTEXT = {
     has_holidays: false, gpu_available: false, feature_engineering_applied: false,
   },
   passport: {},
-  validation_strategy: { strategy: "sliding", horizon: 12, n_splits: 5, gap: 2, train_window: 60 },
+  validation_strategy: {
+    strategy: "sliding", horizon: 12, n_splits: 5, gap: 2,
+    train_window: 60, order_column: "date",
+  },
   model_matrix: {},
   runnable_shortlist: ["naive", "ets", "arima"],
   traceability: {
@@ -369,37 +376,47 @@ describe("TsAnalysisModeling", () => {
     expect(collapseBtn).toBeNull();
   });
 
-  // ── 5. Профиль данных ──
+  // ── 5. Канонический read-only контекст ──
 
-  it("renders the data profile form with n_observations input", () => {
-    render(<TsAnalysisModeling />);
-    const input = screen.getByTestId("profile-n-observations");
-    expect(input).toBeInTheDocument();
-  });
+  it("replaces the legacy editable profile with a compact EDA hand-off context", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/v1/session/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_SELECTED),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
+      });
+    });
 
-  it("renders the data profile form with n_series input", () => {
     render(<TsAnalysisModeling />);
-    const input = screen.getByTestId("profile-n-series");
-    expect(input).toBeInTheDocument();
-  });
 
-  it("renders the frequency selector", () => {
-    render(<TsAnalysisModeling />);
-    const select = screen.getByTestId("profile-frequency");
-    expect(select).toBeInTheDocument();
-  });
-
-  it("renders the domain selector", () => {
-    render(<TsAnalysisModeling />);
-    const select = screen.getByTestId("profile-domain");
-    expect(select).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId("modeling-context-summary")).toBeInTheDocument();
+      expect(screen.getByTestId("context-observations")).toHaveTextContent("120");
+    });
+    expect(screen.getByTestId("context-frequency")).toHaveTextContent("Месячная");
+    expect(screen.getByTestId("context-date-column")).toHaveTextContent("date");
+    expect(screen.getByTestId("context-validation-plan")).toHaveTextContent("Sliding");
+    expect(screen.getByTestId("context-validation-plan")).toHaveTextContent("H=12");
+    expect(screen.getByTestId("context-checkpoint")).toHaveTextContent("modeling_entry");
+    expect(screen.queryByText("Профиль данных")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("profile-n-observations")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("profile-n-series")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("profile-frequency")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("profile-domain")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("profile-has-seasonality")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("profile-is-regular")).not.toBeInTheDocument();
   });
 
   // ── 6. Fetch кандидатов ──
 
   it("fetches candidates on mount", async () => {
     render(<TsAnalysisModeling />);
-    // Phase 1: на маунте ДВА fetch — target-column (GET) + candidates (POST)
+    // Пул автоматически загружается после готового EDA hand-off.
     await waitFor(() => {
       const candidatesCalls = mockFetch.mock.calls.filter(
         ([u]: [string]) => typeof u === "string" && u.includes("/v1/session/modeling/candidates")
@@ -416,7 +433,7 @@ describe("TsAnalysisModeling", () => {
     ));
   });
 
-  it("fetches target-column on mount (Phase 1)", async () => {
+  it("fetches the read-only target column on mount", async () => {
     render(<TsAnalysisModeling />);
     await waitFor(() => {
       const tcCalls = mockFetch.mock.calls.filter(
@@ -692,7 +709,7 @@ describe("TsAnalysisModeling", () => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// 13. activeDataset → автозаполнение профиля
+// 13. activeDataset → обновление read-only контекста
 // ═══════════════════════════════════════════════════════════
 
 describe("TsAnalysisModeling — activeDataset integration", () => {
@@ -712,108 +729,32 @@ describe("TsAnalysisModeling — activeDataset integration", () => {
     });
   });
 
-  it("auto-fills n_observations from activeDataset.rows", () => {
-    mockActiveDataset = {
-      name: "test.csv",
-      rows: 500,
-      sizeLabel: "2.5 MB",
-    };
-    render(<TsAnalysisModeling />);
-    const input = screen.getByTestId("profile-n-observations") as HTMLInputElement;
-    expect(input.value).toBe("500");
-  });
-
-  it("auto-fills frequency from activeDataset.frequency", () => {
-    mockActiveDataset = {
-      name: "test.csv",
-      rows: 200,
-      sizeLabel: "1.0 MB",
-      frequency: "D",
-    };
-    render(<TsAnalysisModeling />);
-    const select = screen.getByTestId("profile-frequency") as HTMLSelectElement;
-    expect(select.value).toBe("D");
-  });
-
-  it("auto-fills domain from activeDataset.domain", () => {
-    mockActiveDataset = {
-      name: "test.csv",
-      rows: 200,
-      sizeLabel: "1.0 MB",
-      domain: "financial",
-    };
-    render(<TsAnalysisModeling />);
-    const select = screen.getByTestId("profile-domain") as HTMLSelectElement;
-    expect(select.value).toBe("financial");
-  });
-
-  it("auto-fills n_series from activeDataset.nSeries", () => {
-    mockActiveDataset = {
-      name: "test.csv",
-      rows: 200,
-      sizeLabel: "1.0 MB",
-      nSeries: 3,
-    };
-    render(<TsAnalysisModeling />);
-    const input = screen.getByTestId("profile-n-series") as HTMLInputElement;
-    expect(input.value).toBe("3");
-  });
-
-  it("auto-fills has_seasonality from activeDataset.hasSeasonality", () => {
-    mockActiveDataset = {
-      name: "test.csv",
-      rows: 200,
-      sizeLabel: "1.0 MB",
-      hasSeasonality: true,
-    };
-    render(<TsAnalysisModeling />);
-    const checkbox = screen.getByTestId("profile-has-seasonality") as HTMLInputElement;
-    expect(checkbox.checked).toBe(true);
-  });
-
-  it("auto-fills is_regular from activeDataset.isRegular", () => {
-    mockActiveDataset = {
-      name: "test.csv",
-      rows: 200,
-      sizeLabel: "1.0 MB",
-      isRegular: false,
-    };
-    render(<TsAnalysisModeling />);
-    const checkbox = screen.getByTestId("profile-is-regular") as HTMLInputElement;
-    expect(checkbox.checked).toBe(false);
-  });
-
-  it("shows auto-fill indicator when activeDataset is present", () => {
-    mockActiveDataset = {
-      name: "test.csv",
-      rows: 500,
-      sizeLabel: "2.5 MB",
-    };
-    render(<TsAnalysisModeling />);
-    expect(screen.getByTestId("autofill-indicator")).toBeInTheDocument();
-  });
-
-  it("does not show auto-fill indicator when no activeDataset", () => {
+  it("refetches context when a same-name dataset receives a new datasetId", async () => {
     mockActiveDataset = null;
-    render(<TsAnalysisModeling />);
-    expect(screen.queryByTestId("autofill-indicator")).not.toBeInTheDocument();
-  });
+    const { rerender } = render(<TsAnalysisModeling />);
 
-  it("keeps DEFAULT_PROFILE values when activeDataset has no optional fields", () => {
+    const targetCalls = () => mockFetch.mock.calls.filter(
+      ([url]: [string]) => typeof url === "string" && url.includes("/v1/session/target-column"),
+    ).length;
+    await waitFor(() => expect(targetCalls()).toBe(1));
+
     mockActiveDataset = {
-      name: "test.csv",
-      rows: 100,
-      sizeLabel: "0.5 MB",
-      // frequency, domain, nSeries — отсутствуют
+      datasetId: "dataset-a",
+      name: "series.csv",
+      rows: 120,
+      sizeLabel: "1.0 MB",
     };
-    render(<TsAnalysisModeling />);
-    const freqSelect = screen.getByTestId("profile-frequency") as HTMLSelectElement;
-    const domainSelect = screen.getByTestId("profile-domain") as HTMLSelectElement;
-    const nSeriesInput = screen.getByTestId("profile-n-series") as HTMLInputElement;
-    // DEFAULT_PROFILE: frequency="M", domain="macro", n_series=1
-    expect(freqSelect.value).toBe("M");
-    expect(domainSelect.value).toBe("macro");
-    expect(nSeriesInput.value).toBe("1");
+    rerender(<TsAnalysisModeling />);
+    await waitFor(() => expect(targetCalls()).toBe(2));
+
+    mockActiveDataset = {
+      datasetId: "dataset-b",
+      name: "series.csv",
+      rows: 120,
+      sizeLabel: "1.0 MB",
+    };
+    rerender(<TsAnalysisModeling />);
+    await waitFor(() => expect(targetCalls()).toBe(3));
   });
 });
 
@@ -1092,10 +1033,10 @@ describe("TsAnalysisModeling — backtest", () => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// 15. Phase 1: target_column selector
+// 15. Read-only target_column evidence
 // ═══════════════════════════════════════════════════════════
 
-describe("TsAnalysisModeling — target_column selector (Phase 1)", () => {
+describe("TsAnalysisModeling — read-only target_column evidence", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockActiveDataset = null;
@@ -1120,38 +1061,25 @@ describe("TsAnalysisModeling — target_column selector (Phase 1)", () => {
     });
   });
 
-  it("renders the target_column selector block in left column", async () => {
+  it("renders the target_column selector block in the context summary", async () => {
     render(<TsAnalysisModeling />);
     expect(screen.getByTestId("target-column-block")).toBeInTheDocument();
   });
 
-  it("renders 'Загрузите датасет' hint when has_dataset=false", async () => {
+  it("renders a disabled placeholder when the session has no dataset", async () => {
     render(<TsAnalysisModeling />);
     await waitFor(() => {
-      expect(screen.getByTestId("target-column-no-dataset")).toBeInTheDocument();
+      expect(screen.getByTestId("target-column-select")).toBeDisabled();
     });
-    expect(screen.getByTestId("target-column-no-dataset").textContent).toContain("Загрузите датасет");
+    expect(screen.getByTestId("target-column-select")).toHaveTextContent("Нет активного датасета");
   });
 
-  it("renders disabled select placeholder when no dataset", async () => {
-    render(<TsAnalysisModeling />);
-    // Select присутствует, но disabled (нет колонок для выбора)
-    const select = screen.queryByTestId("target-column-select");
-    // Либо select disabled, либо нет вовсе (показан hint вместо select)
-    if (select) {
-      expect(select).toBeDisabled();
-    } else {
-      // hint показан, select скрыт — это валидное состояние
-      expect(screen.getByTestId("target-column-no-dataset")).toBeInTheDocument();
-    }
-  });
-
-  it("renders enabled select with available columns when has_dataset=true", async () => {
+  it("keeps the selected target visible but always disabled", async () => {
     mockFetch.mockImplementation((url: string) => {
       if (typeof url === "string" && url.includes("/v1/session/target-column")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_WITH_DATASET),
+          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_SELECTED),
         });
       }
       return Promise.resolve({
@@ -1162,35 +1090,20 @@ describe("TsAnalysisModeling — target_column selector (Phase 1)", () => {
 
     render(<TsAnalysisModeling />);
     await waitFor(() => {
-      expect(screen.getByTestId("target-column-select")).not.toBeDisabled();
+      expect(screen.getByTestId("target-column-select")).toHaveValue("value");
     });
 
-    // Проверяем, что в селекте есть все 3 колонки из мока
     const select = screen.getByTestId("target-column-select") as HTMLSelectElement;
-    const optionValues = Array.from(select.options).map((o) => o.value);
-    expect(optionValues).toContain("value");
-    expect(optionValues).toContain("gdp");
-    expect(optionValues).toContain("inflation");
+    expect(select).toBeDisabled();
+    expect(screen.getByText(/Зафиксирована предыдущими этапами/i)).toBeInTheDocument();
   });
 
-  it("selecting a column triggers POST to /v1/session/target-column with credentials", async () => {
-    mockFetch.mockImplementation((url: string, options: any = {}) => {
+  it("never posts a target change from Modeling", async () => {
+    mockFetch.mockImplementation((url: string) => {
       if (typeof url === "string" && url.includes("/v1/session/target-column")) {
-        // POST: возвращаем обновлённый target_column
-        if (options?.method === "POST") {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({
-              target_column: "value",
-              available_columns: ["value", "gdp", "inflation"],
-              has_dataset: true,
-            }),
-          });
-        }
-        // GET
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_WITH_DATASET),
+          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_SELECTED),
         });
       }
       return Promise.resolve({
@@ -1201,103 +1114,16 @@ describe("TsAnalysisModeling — target_column selector (Phase 1)", () => {
 
     render(<TsAnalysisModeling />);
     await waitFor(() => {
-      expect(screen.getByTestId("target-column-select")).not.toBeDisabled();
+      expect(screen.getByTestId("target-column-select")).toHaveValue("value");
     });
 
-    // Выбираем колонку "value"
-    fireEvent.change(screen.getByTestId("target-column-select"), {
-      target: { value: "value" },
-    });
-
-    await waitFor(() => {
-      const postCalls = mockFetch.mock.calls.filter(
-        ([u, opts]: [string, any]) =>
-          typeof u === "string" &&
-          u.includes("/v1/session/target-column") &&
-          opts?.method === "POST"
-      );
-      expect(postCalls.length).toBe(1);
-    });
-
-    // Тело запроса должно содержать column: "value"
-    const postCall = mockFetch.mock.calls.find(
+    const postCalls = mockFetch.mock.calls.filter(
       ([u, opts]: [string, any]) =>
         typeof u === "string" &&
         u.includes("/v1/session/target-column") &&
         opts?.method === "POST"
     );
-    expect(postCall).toBeDefined();
-    const body = JSON.parse(postCall![1].body);
-    expect(body.column).toBe("value");
-
-    // Cookie обязателен
-    expect(postCall![1].credentials).toBe("include");
-  });
-
-  it("refetches target-column when activeDataset changes (e.g. after upload)", async () => {
-    // Сначала без датасета
-    mockActiveDataset = null;
-    const { rerender } = render(<TsAnalysisModeling />);
-
-    await waitFor(() => {
-      const tcCalls = mockFetch.mock.calls.filter(
-        ([u]: [string]) => typeof u === "string" && u.includes("/v1/session/target-column")
-      );
-      expect(tcCalls.length).toBe(1);
-    });
-
-    // Пользователь загрузил новый датасет → activeDataset сменился
-    mockActiveDataset = {
-      name: "new_dataset.csv",
-      rows: 500,
-      sizeLabel: "2.5 MB",
-    };
-    rerender(<TsAnalysisModeling />);
-
-    // Должен произойти повторный fetch target-column (теперь их 2)
-    await waitFor(() => {
-      const tcCalls = mockFetch.mock.calls.filter(
-        ([u]: [string]) => typeof u === "string" && u.includes("/v1/session/target-column")
-      );
-      expect(tcCalls.length).toBe(2);
-    });
-  });
-
-  it("shows target_column error when POST fails", async () => {
-    mockFetch.mockImplementation((url: string, options: any = {}) => {
-      if (typeof url === "string" && url.includes("/v1/session/target-column")) {
-        if (options?.method === "POST") {
-          return Promise.resolve({
-            ok: false,
-            status: 422,
-            statusText: "Unprocessable Entity",
-            json: () => Promise.resolve({ detail: "Колонка 'foo' не числовая" }),
-          });
-        }
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_WITH_DATASET),
-        });
-      }
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
-      });
-    });
-
-    render(<TsAnalysisModeling />);
-    await waitFor(() => {
-      expect(screen.getByTestId("target-column-select")).not.toBeDisabled();
-    });
-
-    fireEvent.change(screen.getByTestId("target-column-select"), {
-      target: { value: "value" },
-    });
-
-    await waitFor(() => {
-      expect(screen.getByTestId("target-column-error")).toBeInTheDocument();
-    });
-    expect(screen.getByTestId("target-column-error").textContent).toContain("не числовая");
+    expect(postCalls).toHaveLength(0);
   });
 
   it("does NOT call legacy model backtest routes", async () => {

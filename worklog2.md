@@ -2290,3 +2290,60 @@ Commit/push и production deploy не выполнялись.
 - `packages/ui/components/TsAnalysisModeling.tsx`
 - `tests/api/test_modeling_workflow.py`
 - `tests/api/test_session_store.py`
+
+---
+
+## Task 113 — Read-only EDA hand-off и перекомпоновка UI «Моделирование»
+
+Дата: 2026-09-04. База: `main @ a974886b6b18b6b270de0d32a7ae691b696908a6`.
+Commit/push и production deploy не выполнялись.
+
+### Проблема и принятый UI-контракт
+
+- Активный селектор целевой колонки в Modeling вызывал
+  `POST /v1/session/target-column`. Серверный `set_target_column()` при
+  изменении цели сбрасывает passport/checkpoint history, EDA validation
+  strategy, Modeling pipeline и artifacts. Так поздний UI-шаг мог
+  инвалидировать результаты предыдущих модулей.
+- Legacy-форма «Профиль данных» создавала второй ручной источник
+  параметров ряда рядом с каноническим session-контекстом EDA.
+- Принят один источник истины: `modeling_entry` EDA hand-off. Селектор
+  цели сохранён как визуальное свидетельство, но всегда `disabled`.
+  Изменение цели остаётся в upstream-этапах до фиксации hand-off.
+
+### Реализация
+
+- Из `TsAnalysisModeling` удалены local `DataProfile`, его ручные inputs/selects,
+  автозаполнение из `activeDataset` и target-column POST handler.
+- Вместо них в левой колонке размещён компактный read-only блок
+  «Контекст моделирования»: target, временная колонка, число
+  наблюдений, частота, число рядов/X, сезонность, регулярность,
+  validation strategy/folds/horizon/gap и fingerprint checkpoint.
+- Без `modeling_entry` показывается EDA gate; при неготовом, но
+  существующем hand-off контекст остаётся видимым, а запуск пула
+  блокируется до `ready=true`.
+- Перезагрузка одноимённого файла теперь определяется по `datasetId`,
+  а не только по filename. До ответа session API очищаются цель,
+  контекст, пул, backtests, execution scope и прогресс предыдущего
+  dataset.
+- Legacy-поля `ActiveDataset` оставлены в shell-типе для обратной
+  совместимости, но больше не формируют Modeling profile.
+
+### TDD и проверки
+
+- До производственного кода переписаны UI-регрессии: новый
+  read-only hand-off context, удаление legacy-формы, всегда disabled
+  target selector, отсутствие target POST и refetch по новому `datasetId`.
+- RED source-contract: 4/4 проверки ожидаемо падали на исходном UI.
+  После реализации тот же контракт: 4/4 PASS.
+- `git diff --check`: PASS.
+- Jest, TypeScript typecheck и production build в текущем sandbox не запущены:
+  checkout не содержит `node_modules`, локальные `jest`, `tsc` и `next`
+  отсутствуют, а команда установки зависимостей остановлена
+  сетевыми ограничениями среды.
+
+### Изменённые файлы Task 113
+
+- `packages/ui/components/TsAnalysisModeling.tsx`
+- `packages/ui/components/TsAnalysisModeling.test.tsx`
+- `packages/ui/context/AppShellContext.tsx`

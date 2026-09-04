@@ -32,9 +32,9 @@ export interface ActiveDataset {
   name: string;
   rows: number;
   sizeLabel: string;
-  // Опциональные поля для автозаполнения DataProfile в модуле «Моделирование».
-  // Перенесено без изменений из origin/main (команда, задача 6 в worklog.md).
-  // Добавляются при наличии в ответе API загрузки (passport / structure-detection).
+  // Legacy-метаданные ответа upload API оставлены в shell-контракте
+  // для обратной совместимости. Modeling больше не строит из них
+  // ручной DataProfile, а читает канонический EDA hand-off из session API.
   frequency?: string;       // "D" | "W" | "M" | "Q" | "Y"
   domain?: string;          // "financial" | "macro" | "price" | "other"
   nSeries?: number;         // число временных рядов (≥ 1)
