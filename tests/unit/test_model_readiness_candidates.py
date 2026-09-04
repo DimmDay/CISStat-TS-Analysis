@@ -28,11 +28,18 @@ def test_candidate_contract_separates_methodological_applicability_from_runtime_
     for model_id in ("naive", "ets", "theta", "arima", "arima_auto"):
         assert candidates[model_id].platform_status == "ready"
         assert "backtest" in candidates[model_id].available_actions
+        assert "diagnostics" in candidates[model_id].available_actions
         assert candidates[model_id].blocking_reason is None
+
+    assert response.capability_contract_version == "model-capabilities-v1"
+    assert len(candidates["naive"].stage_capabilities) == 11
+    assert candidates["naive"].stage_capabilities["tuning"].status == "not_applicable"
+    assert candidates["ets"].stage_capabilities["tuning"].status == "available"
 
     for model_id in ("prophet", "tbats", "xgboost", "lightgbm", "catboost", "lstm", "tft", "nbeats", "nhits"):
         assert candidates[model_id].platform_status == "catalog_only"
         assert candidates[model_id].available_actions == []
+        assert candidates[model_id].stage_capabilities["backtest"].status == "not_implemented"
         assert "production" in candidates[model_id].blocking_reason.lower()
 
 

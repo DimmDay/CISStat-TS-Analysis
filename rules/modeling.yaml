@@ -673,7 +673,15 @@ applicability_engine:
 
 pipeline:
   id: "modeling_pipeline"
-  version: "1.0"
+  version: "1.1"
+  capability_contract:
+    version: "model-capabilities-v1"
+    statuses: ["available", "not_applicable", "blocked", "not_implemented"]
+    completion_policy: >-
+      Capability не означает completion. Backtest завершён только после расчёта
+      каждого runnable-кандидата либо его явно подтверждённого исключения;
+      tuning — после расчёта или явно подтверждённого сохранения defaults.
+    comparison_scope: "all_runnable_minus_acknowledged_exclusions"
 
   stages:
     # ── Stage 1: Problem Definition ──────────────────────────────────────────

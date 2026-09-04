@@ -34,6 +34,8 @@ import {
   type ApplicabilityLevel,
   type BacktestResponse,
   type ModelingContext,
+  type ModelingExecutionScope,
+  type ModelAction,
   type TargetColumnResponse,
   APPLICABILITY_LABEL,
   APPLICABILITY_BADGE,
@@ -119,7 +121,7 @@ const MODELING_HELP = `Цели модуля "Моделирование"
 • Волатильность (2) — GARCH, EGARCH
 • Структурные (2) — Prophet, TBATS
 • Деревья и бустинг (4) — XGBoost, LightGBM, CatBoost, RF
-• Нейросетевые (5) — LSTM, DeepAR, TFT, N-BEATS, WaveNet
+• Нейросетевые (5) — LSTM, DeepAR, TFT, N-BEATS, N-HiTS
 
 11-стадийный пайплайн:
 1. Определение задачи → 2. Структура данных → 3. Ограничения
@@ -172,6 +174,8 @@ export function TsAnalysisModeling() {
   >({});
   const [backtestLoading, setBacktestLoading] = useState(false);
   const [backtestError, setBacktestError] = useState<string | null>(null);
+  const [executionScope, setExecutionScope] = useState<ModelingExecutionScope | null>(null);
+  const [exclusionReason, setExclusionReason] = useState("");
 
   // ── Phase 1: target_column (мост Upload → Backtest) ──
   // Селектор читает GET /v1/session/target-column (колонки доступны только
@@ -212,6 +216,9 @@ export function TsAnalysisModeling() {
       }
       if (body?.artifacts?.backtests) {
         setBacktestResults(body.artifacts.backtests as Record<string, BacktestResponse>);
+      }
+      if (body?.artifacts?.execution_scope) {
+        setExecutionScope(body.artifacts.execution_scope as ModelingExecutionScope);
       }
     } catch {
       // Контекст остаётся рабочим; state boot можно повторить после операции.
@@ -421,10 +428,9 @@ export function TsAnalysisModeling() {
       setCompletedStages((previous) => {
         const next = new Set(previous);
         next.add("candidate_generation");
-        next.add("baseline_estimation");
-        next.add("backtest");
         return next;
       });
+      void fetchModelingState();
       setHasFetched(true);
     } catch (err) {
       setError(
@@ -433,7 +439,7 @@ export function TsAnalysisModeling() {
     } finally {
       setIsLoading(false);
     }
-  }, [modelingContext]);
+  }, [modelingContext, fetchModelingState]);
 
   // ── Авто-fetch только после успешного EDA hand-off ──
   useEffect(() => {
@@ -485,14 +491,7 @@ export function TsAnalysisModeling() {
           throw new Error("Нарушена трассируемость: backend вернул не сессионный ряд.");
         }
         setBacktestResults((prev) => ({ ...prev, [modelId]: data }));
-        // Продвигаем пайплайн: candidate_pool → baseline → backtest
-        setCompletedStages((prev) => {
-          const next = new Set(prev);
-          next.add("candidate_generation");
-          if (data.family_id === "baselines") next.add("baseline_estimation");
-          next.add("backtest");
-          return next;
-        });
+        void fetchModelingState();
       } catch (err) {
         setBacktestError(
           err instanceof Error ? err.message : "Ошибка бэктеста"
@@ -501,8 +500,31 @@ export function TsAnalysisModeling() {
         setBacktestLoading(false);
       }
     },
-    [catalog, modelingContext]
+    [catalog, modelingContext, fetchModelingState]
   );
+
+  const decideBacktestScope = useCallback(async (modelId: string, decision: "exclude" | "include") => {
+    setBacktestError(null);
+    try {
+      const reason = decision === "exclude" ? exclusionReason.trim() : undefined;
+      if (decision === "exclude" && (!reason || reason.length < 3)) {
+        setBacktestError("Укажите причину исключения модели из comparison.");
+        return;
+      }
+      const response = await fetch(`${API_BASE}/v1/session/modeling/backtest/exclude`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ model_id: modelId, decision, reason, acknowledge: decision === "exclude" }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(formatErrorDetail(body.detail) || `HTTP ${response.status}`);
+      setExclusionReason("");
+      await fetchModelingState();
+    } catch (reason) {
+      setBacktestError(reason instanceof Error ? reason.message : "Не удалось изменить execution scope");
+    }
+  }, [exclusionReason, fetchModelingState]);
 
   // ── Collapse/Expand description ──
   useEffect(() => {
@@ -592,6 +614,15 @@ export function TsAnalysisModeling() {
         return `Метрики и алгоритм: ${activeCandidate.model_name}\n\nСемейство: ${activeCandidate.family_id}\nУровень применимости: ${APPLICABILITY_LABEL[activeCandidate.level as ApplicabilityLevel]}\nСтатус исполнения: ${activeCandidate.available_actions.includes("backtest") ? "production backtest готов" : "только методологический каталог"}\n${activeCandidate.blocking_reason || ""}\n${activeCandidate.rule_id ? `Правило: ${activeCandidate.rule_id}` : ""}\n${activeCandidate.message}\n\nАлгоритм: движок применимости оценивает 23 правила (5 forbidden, 6 discouraged, 5 conditional, 7 preferred) и определяет наивысший уровень применимости модели для данного профиля данных. Статус исполнения формируется отдельно из реестра реальных backend-dispatch.`;
       }
       return `Метрики и алгоритм: Пул кандидатов\n\nАлгоритм формирования пула:\n1. Применить 23 правила применимости ко всем 24 моделям\n2. Отфильтровать по минимальному уровню (≥ CONDITIONALLY_APPLICABLE)\n3. Baseline-модели включаются всегда\n4. Сортировка по рангу уровня (RECOMMENDED → CONDITIONALLY_APPLICABLE → NOT_RECOMMENDED)`;
+    }
+    if (activeCandidate?.stage_capabilities) {
+      const labels: Record<string, string> = Object.fromEntries(
+        PIPELINE_STAGES.map((stage) => [stage.id, stage.label]),
+      );
+      const lines = Object.entries(activeCandidate.stage_capabilities).map(([stage, capability]) => (
+        `${labels[stage] ?? stage}: ${capability.status}${capability.required ? " · required" : ""} — ${capability.reason}`
+      ));
+      return `Полный пайплайн: ${activeCandidate.model_name}\n\nCapability contract по 11 стадиям:\n${lines.join("\n")}\n\nСтатус capability не подменяет execution status: завершённость вычисляется по полному session scope.`;
     }
     return `Полный пайплайн: Моделирование\n\n1. Определение задачи → 2. Структура данных → 3. Ограничения → 4. Пул кандидатов → 5. Baseline → 6. Бэктест → 7. Тюнинг → 8. Диагностика → 9. Сравнение → 10. Выбор модели → 11. Model Card\n\nВход: checkpoint modeling_entry и трасса 30 источников. Синтетические метрики в рабочем session-контуре запрещены.`;
   })();
@@ -967,7 +998,12 @@ export function TsAnalysisModeling() {
           <ModelingWorkflowOverview
             stageId={activeStageId}
             modelIds={Object.keys(backtestResults)}
-            onStageComplete={(stage) => setCompletedStages((previous) => new Set(previous).add(stage))}
+            modelActions={Object.fromEntries(
+              catalog.map((candidate) => [candidate.model_id, candidate.available_actions as ModelAction[]]),
+            )}
+            tuningSkippedModelIds={Object.keys(executionScope?.tuning_skips ?? {})}
+            onStageComplete={() => void fetchModelingState()}
+            onWorkflowStateChanged={() => void fetchModelingState()}
             onBacktestPromoted={(promoted) => setBacktestResults((previous) => ({
               ...previous,
               [promoted.model_id]: promoted,
@@ -984,6 +1020,12 @@ export function TsAnalysisModeling() {
             data-testid="api-error"
           >
             Ошибка: {error}
+          </div>
+        )}
+
+        {executionScope && (
+          <div className="mb-3 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] text-blue-900" data-testid="execution-scope-summary">
+            <b>Execution scope:</b> {executionScope.completed_backtest_model_ids.length}/{executionScope.included_backtest_model_ids.length} backtests · {executionScope.pending_backtest_model_ids.length} ожидают · {Object.keys(executionScope.backtest_exclusions).length} исключены с обоснованием.
           </div>
         )}
 
@@ -1347,6 +1389,21 @@ export function TsAnalysisModeling() {
                   )}
                 </Button>
               )}
+
+              {activeCandidate.family_id !== "baselines"
+                && activeCandidate.available_actions.includes("backtest")
+                && !backtestResults[activeCandidate.model_id]
+                && (executionScope?.backtest_exclusions[activeCandidate.model_id] ? (
+                  <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-[10px] text-amber-800" data-testid="backtest-excluded">
+                    <p>Исключена из текущего comparison: {executionScope.backtest_exclusions[activeCandidate.model_id].reason}</p>
+                    <button className="mt-1 underline" onClick={() => void decideBacktestScope(activeCandidate.model_id, "include")}>Вернуть в execution scope</button>
+                  </div>
+                ) : (
+                  <div className="mt-2 space-y-1 rounded border border-neutral-200 p-2" data-testid="backtest-exclusion-control">
+                    <input className="w-full rounded border border-neutral-300 px-2 py-1 text-[10px]" value={exclusionReason} onChange={(event) => setExclusionReason(event.target.value)} placeholder="Причина осознанного исключения" />
+                    <button className="text-[10px] text-amber-700 underline disabled:text-neutral-300" disabled={exclusionReason.trim().length < 3} onClick={() => void decideBacktestScope(activeCandidate.model_id, "exclude")}>Исключить из comparison</button>
+                  </div>
+                ))}
 
               {/* Ошибка бэктеста */}
               {backtestError && (

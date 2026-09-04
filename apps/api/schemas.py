@@ -2927,6 +2927,14 @@ class DataProfileRequest(BaseModel):
     feature_engineering_applied: bool = Field(False, description="Feature engineering выполнен")
 
 
+class ModelStageCapability(BaseModel):
+    """Статическая возможность модели на одной стадии Modeling."""
+    status: Literal["available", "not_applicable", "blocked", "not_implemented"]
+    required: bool
+    action: Optional[Literal["backtest", "tune", "diagnostics"]] = None
+    reason: str
+
+
 class ModelCandidate(BaseModel):
     """Один кандидат в пуле моделирования."""
     model_id: str
@@ -2945,6 +2953,10 @@ class ModelCandidate(BaseModel):
     )
     blocking_reason: Optional[str] = Field(
         None, description="Почему модель нельзя запустить для текущего контекста",
+    )
+    stage_capabilities: Dict[str, ModelStageCapability] = Field(
+        default_factory=dict,
+        description="Полная capability-матрица модели по 11 стадиям Modeling",
     )
 
 
@@ -2979,6 +2991,9 @@ class CandidatesResponse(BaseModel):
     )
     statistics: CandidatesStatistics
     spec_version: str = Field("", description="Версия спецификации modeling.yaml")
+    capability_contract_version: str = Field(
+        "", description="Версия единого stage capability-контракта",
+    )
 
 
 # ── Моделирование: бэктест ──
@@ -3204,6 +3219,7 @@ class ModelingComparisonResponse(BaseModel):
     diagnostics_policy: Literal["current_oof_report_required_not_scored"]
     normalization: Literal["min_max_within_comparable_pool"]
     metric_weights: Dict[str, float]
+    execution_scope: Dict[str, Any] = Field(default_factory=dict)
     baseline_policy: OofBaselinePolicy
     mase_context: MaseAuditContext
     ranking: List[ComparisonRankingItem]

@@ -21,8 +21,10 @@ from apps.api.backtesting import (
 )
 from apps.api.fold_preprocessing import prepare_modeling_target
 from apps.api.model_readiness import (
+    MODELING_CAPABILITY_CONTRACT_VERSION,
     PRODUCTION_BACKTEST_MODEL_IDS,
     PRODUCTION_TUNING_MODEL_IDS,
+    model_stage_capabilities,
 )
 from apps.api.modeling_comparison import (
     ComparisonContractError,
@@ -56,6 +58,7 @@ from apps.api.schemas import (
     CandidatesResponse,
     DataProfileRequest,
     ModelingComparisonResponse,
+    ModelStageCapability,
     TuneResponse,
     TuneTrialResult,
 )
@@ -63,7 +66,7 @@ from apps.api.session_store import get_or_create_session_id, get_session_store
 
 
 router = APIRouter()
-MODELING_ARTIFACT_SCHEMA_VERSION = 4
+MODELING_ARTIFACT_SCHEMA_VERSION = 5
 
 
 def _package_version(name: str) -> str:
@@ -87,12 +90,25 @@ class ModelingBacktestRequest(BaseModel):
     train_ratio: Optional[float] = Field(None, ge=0.5, le=0.95)
 
 
+class ModelingBacktestDecisionRequest(BaseModel):
+    model_id: str
+    decision: Literal["exclude", "include"]
+    reason: Optional[str] = Field(None, min_length=3, max_length=500)
+    acknowledge: bool = False
+
+
 class ModelingTuneRequest(BaseModel):
     model_id: str
     cv: Optional[CVConfig] = None
     max_trials: Optional[int] = Field(None, ge=1)
     metric: Literal["mae", "rmse", "mape", "mase", "weighted_score"] = "rmse"
     random_state: int = 42
+
+
+class ModelingTuningSkipRequest(BaseModel):
+    model_id: str
+    reason: str = Field(..., min_length=3, max_length=500)
+    acknowledge: bool = False
 
 
 class ModelingTuningStepRequest(BaseModel):
@@ -307,7 +323,7 @@ def _migrate_modeling_artifacts(session) -> None:
         "reason": (
             "unsigned_or_stale_execution_oof_lineage"
             if invalid_backtests or invalid_tunings or invalid_diagnostics
-            else "comparison_baseline_contract_upgrade"
+            else "model_capability_scope_contract_upgrade"
         ),
         "migrated_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -381,6 +397,107 @@ def _invalidate_after_diagnostics(session) -> None:
         session.modeling_pipeline[stage] = "pending"
 
 
+def _ensure_execution_scope(session) -> Optional[dict[str, Any]]:
+    """Build the immutable candidate scope used to decide stage completeness."""
+    candidates_artifact = session.modeling_artifacts.get("candidates") or {}
+    candidates = candidates_artifact.get("candidates") or []
+    if not candidates:
+        return None
+    required = sorted({
+        str(item["model_id"])
+        for item in candidates
+        if "backtest" in (item.get("available_actions") or [])
+    })
+    families = {
+        str(item["model_id"]): str(item.get("family_id") or "")
+        for item in candidates
+    }
+    previous = session.modeling_artifacts.get("execution_scope") or {}
+    exclusions = {
+        model_id: value
+        for model_id, value in (previous.get("backtest_exclusions") or {}).items()
+        if model_id in required and families.get(model_id) != "baselines"
+    }
+    tuning_skips = {
+        model_id: value
+        for model_id, value in (previous.get("tuning_skips") or {}).items()
+        if model_id in required and model_id in PRODUCTION_TUNING_MODEL_IDS
+    }
+    scope = {
+        "capability_contract_version": MODELING_CAPABILITY_CONTRACT_VERSION,
+        "required_backtest_model_ids": required,
+        "backtest_exclusions": exclusions,
+        "tuning_skips": tuning_skips,
+    }
+    session.modeling_artifacts["execution_scope"] = scope
+    return scope
+
+
+def _refresh_execution_readiness(session) -> Optional[dict[str, Any]]:
+    """Derive pipeline statuses from the complete scope, never from one success."""
+    scope = _ensure_execution_scope(session)
+    if scope is None:
+        return None
+    required = set(scope["required_backtest_model_ids"])
+    excluded = set(scope["backtest_exclusions"])
+    included = required - excluded
+    backtests = session.modeling_artifacts.get("backtests") or {}
+    completed = {
+        model_id for model_id in included
+        if (backtests.get(model_id) or {}).get("status") == "success"
+    }
+    pending = sorted(included - completed)
+    candidates = (session.modeling_artifacts.get("candidates") or {}).get("candidates") or []
+    families = {str(item["model_id"]): item.get("family_id") for item in candidates}
+    baselines = {model_id for model_id in included if families.get(model_id) == "baselines"}
+    pending_baselines = sorted(baselines - completed)
+    tunable = completed & set(PRODUCTION_TUNING_MODEL_IDS)
+    tuning = session.modeling_artifacts.get("tuning") or {}
+    tuning_skips = set(scope["tuning_skips"])
+    pending_tuning = sorted(tunable - set(tuning) - tuning_skips)
+    diagnostics = session.modeling_artifacts.get("diagnostics") or {}
+    completed_diagnostics = {
+        model_id for model_id in completed
+        if model_id in diagnostics
+        and _diagnostics_matches_backtest(diagnostics[model_id], backtests[model_id])
+    }
+    pending_diagnostics = sorted(completed - completed_diagnostics)
+
+    scope.update({
+        "included_backtest_model_ids": sorted(included),
+        "completed_backtest_model_ids": sorted(completed),
+        "pending_backtest_model_ids": pending,
+        "completed_tuning_model_ids": sorted(tunable & set(tuning)),
+        "pending_tuning_model_ids": pending_tuning,
+        "completed_diagnostics_model_ids": sorted(completed_diagnostics),
+        "pending_diagnostics_model_ids": pending_diagnostics,
+    })
+    session.modeling_pipeline["baseline_estimation"] = (
+        "done" if baselines and not pending_baselines else "in_progress"
+    )
+    session.modeling_pipeline["backtest"] = (
+        "done" if required and not pending else "in_progress"
+    )
+    if session.modeling_pipeline["backtest"] == "done":
+        session.modeling_pipeline["tuning"] = "done" if not pending_tuning else "in_progress"
+        session.modeling_pipeline["diagnostics"] = (
+            "done" if completed and not pending_diagnostics else "in_progress"
+        )
+    else:
+        session.modeling_pipeline["tuning"] = "pending"
+        session.modeling_pipeline["diagnostics"] = "pending"
+    if "comparison" not in session.modeling_artifacts:
+        session.modeling_pipeline["comparison"] = "pending"
+    if (
+        "selection_analysis" not in session.modeling_artifacts
+        and "selection" not in session.modeling_artifacts
+    ):
+        session.modeling_pipeline["selection"] = "pending"
+    if not session.modeling_artifacts.get("model_cards"):
+        session.modeling_pipeline["model_card"] = "pending"
+    return scope
+
+
 def _get_session(request: Request, response: Response):
     session_id = get_or_create_session_id(request, response)
     store = get_session_store()
@@ -438,6 +555,7 @@ def get_modeling_state(request: Request, response: Response):
     try:
         context = _context(session, require_ready=False)
         _prepare_state(session, context)
+        _refresh_execution_readiness(session)
         store.save(session)
     except HTTPException:
         stale = bool(session.modeling_artifacts)
@@ -481,6 +599,13 @@ def generate_modeling_candidates(
             "; ".join(str(reason) for reason in reasons)
             or "Модель реализована, но заблокирована матрицей применимости для текущего ряда."
         )
+        candidate.stage_capabilities = {
+            stage: ModelStageCapability(**capability)
+            for stage, capability in model_stage_capabilities(
+                candidate.model_id, candidate.family_id,
+                included=False, blocking_reason=candidate.blocking_reason,
+            ).items()
+        }
     catalog_by_id = {candidate.model_id: candidate for candidate in result.catalog}
     result.candidates = [catalog_by_id[candidate.model_id] for candidate in result.candidates]
     result.statistics.runnable_candidates = sum(
@@ -495,8 +620,14 @@ def generate_modeling_candidates(
     )
     session.modeling_artifacts["candidates"] = result.model_dump(mode="json")
     session.modeling_artifacts["runnable_shortlist"] = context["runnable_shortlist"]
+    session.modeling_artifacts["execution_scope"] = {
+        "capability_contract_version": MODELING_CAPABILITY_CONTRACT_VERSION,
+        "required_backtest_model_ids": [],
+        "backtest_exclusions": {},
+        "tuning_skips": {},
+    }
     session.modeling_pipeline["candidate_generation"] = "done"
-    session.modeling_pipeline["baseline_estimation"] = "in_progress"
+    _refresh_execution_readiness(session)
     session.touch()
     store.save(session)
     return result
@@ -551,9 +682,8 @@ def bootstrap_modeling_baselines(request: Request, response: Response):
         )
         and item.get("oof_signature") == oof_signature(item.get("oof_predictions") or [])
     }
-    if reusable:
-        session.modeling_pipeline["baseline_estimation"] = "done"
-        session.modeling_pipeline["backtest"] = "done"
+    if set(reusable) == set(baseline_ids):
+        _refresh_execution_readiness(session)
         session.touch()
         store.save(session)
         return {
@@ -598,8 +728,9 @@ def bootstrap_modeling_baselines(request: Request, response: Response):
     }
     session.modeling_artifacts.setdefault("backtests", {}).update(serialized)
     session.modeling_artifacts["baseline_failures"] = failures
-    session.modeling_pipeline["baseline_estimation"] = "done"
-    session.modeling_pipeline["backtest"] = "done"
+    if _refresh_execution_readiness(session) is None:
+        session.modeling_pipeline["baseline_estimation"] = "done"
+        session.modeling_pipeline["backtest"] = "done"
     session.touch()
     store.save(session)
     return {
@@ -679,13 +810,90 @@ def run_modeling_backtest(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     _invalidate_after_model_run(session, payload.model_id)
     session.modeling_artifacts.setdefault("backtests", {})[payload.model_id] = result.model_dump(mode="json")
-    if model_info[1] == "baselines":
-        session.modeling_pipeline["baseline_estimation"] = "done"
-    session.modeling_pipeline["backtest"] = "done"
-    session.modeling_pipeline["tuning"] = "done" if tuned_matches else "in_progress"
+    scope = _ensure_execution_scope(session)
+    if scope:
+        scope["backtest_exclusions"].pop(payload.model_id, None)
+    if _refresh_execution_readiness(session) is None:
+        if model_info[1] == "baselines":
+            session.modeling_pipeline["baseline_estimation"] = "done"
+        session.modeling_pipeline["backtest"] = "done"
+        session.modeling_pipeline["tuning"] = "done" if tuned_matches else "in_progress"
     session.touch()
     store.save(session)
     return result
+
+
+@router.post("/backtest/exclude")
+def decide_modeling_backtest_scope(
+    payload: ModelingBacktestDecisionRequest,
+    request: Request,
+    response: Response,
+):
+    """Explicitly exclude/restore one non-baseline model in the signed run scope."""
+    store, session = _get_session(request, response)
+    context = _action_context(session)
+    _prepare_state(session, context)
+    scope = _ensure_execution_scope(session)
+    if scope is None or payload.model_id not in scope["required_backtest_model_ids"]:
+        raise HTTPException(status_code=409, detail="Модель отсутствует в текущем runnable scope")
+    candidate = next(
+        item for item in session.modeling_artifacts["candidates"]["candidates"]
+        if item["model_id"] == payload.model_id
+    )
+    if candidate.get("family_id") == "baselines":
+        raise HTTPException(status_code=409, detail="Обязательный baseline нельзя исключить")
+    if payload.decision == "exclude":
+        if not payload.acknowledge or not payload.reason:
+            raise HTTPException(
+                status_code=409,
+                detail="Исключение требует явного подтверждения и причины",
+            )
+        scope["backtest_exclusions"][payload.model_id] = {
+            "reason": payload.reason,
+            "acknowledged": True,
+            "decided_at": datetime.now(timezone.utc).isoformat(),
+        }
+        scope["tuning_skips"].pop(payload.model_id, None)
+    else:
+        scope["backtest_exclusions"].pop(payload.model_id, None)
+    _invalidate_after_diagnostics(session)
+    refreshed = _refresh_execution_readiness(session)
+    session.touch()
+    store.save(session)
+    return {"model_id": payload.model_id, "decision": payload.decision, "execution_scope": refreshed}
+
+
+@router.post("/tuning/skip")
+def skip_modeling_tuning(
+    payload: ModelingTuningSkipRequest,
+    request: Request,
+    response: Response,
+):
+    """Record an auditable choice to retain model-default parameters."""
+    store, session = _get_session(request, response)
+    context = _action_context(session)
+    _prepare_state(session, context)
+    if payload.model_id not in PRODUCTION_TUNING_MODEL_IDS:
+        raise HTTPException(status_code=422, detail="Для модели отдельный production tuning неприменим")
+    if not payload.acknowledge:
+        raise HTTPException(status_code=409, detail="Пропуск tuning требует явного подтверждения")
+    if payload.model_id not in session.modeling_artifacts.get("backtests", {}):
+        raise HTTPException(status_code=409, detail="Сначала выполните backtest модели")
+    if payload.model_id in session.modeling_artifacts.get("tuning", {}):
+        raise HTTPException(status_code=409, detail="Модель уже имеет текущий tuning result")
+    scope = _ensure_execution_scope(session)
+    if scope is None or payload.model_id not in scope["required_backtest_model_ids"]:
+        raise HTTPException(status_code=409, detail="Модель отсутствует в текущем runnable scope")
+    scope["tuning_skips"][payload.model_id] = {
+        "reason": payload.reason,
+        "acknowledged": True,
+        "decided_at": datetime.now(timezone.utc).isoformat(),
+    }
+    _invalidate_after_diagnostics(session)
+    refreshed = _refresh_execution_readiness(session)
+    session.touch()
+    store.save(session)
+    return {"model_id": payload.model_id, "status": "skipped", "execution_scope": refreshed}
 
 
 @router.post("/tune", response_model=TuneResponse)
@@ -762,8 +970,12 @@ def tune_modeling_candidate(
     _invalidate_after_model_run(session, payload.model_id)
     session.modeling_artifacts.setdefault("backtests", {})[payload.model_id] = promoted.model_dump(mode="json")
     session.modeling_artifacts.setdefault("tuning", {})[payload.model_id] = result.model_dump(mode="json")
-    session.modeling_pipeline["tuning"] = "done"
-    session.modeling_pipeline["diagnostics"] = "in_progress"
+    scope = _ensure_execution_scope(session)
+    if scope:
+        scope["tuning_skips"].pop(payload.model_id, None)
+    if _refresh_execution_readiness(session) is None:
+        session.modeling_pipeline["tuning"] = "done"
+        session.modeling_pipeline["diagnostics"] = "in_progress"
     session.touch()
     store.save(session)
     return result
@@ -855,7 +1067,11 @@ def start_modeling_tuning(
     ]:
         jobs.pop(stale_id, None)
     jobs[job_id] = job
-    session.modeling_pipeline["tuning"] = "in_progress"
+    scope = _ensure_execution_scope(session)
+    if scope:
+        scope["tuning_skips"].pop(payload.model_id, None)
+    if _refresh_execution_readiness(session) is None:
+        session.modeling_pipeline["tuning"] = "in_progress"
     session.touch()
     store.save(session)
     return {
@@ -985,8 +1201,12 @@ def step_modeling_tuning(
     _invalidate_after_model_run(session, model_id)
     session.modeling_artifacts.setdefault("backtests", {})[model_id] = promoted.model_dump(mode="json")
     session.modeling_artifacts.setdefault("tuning", {})[model_id] = result.model_dump(mode="json")
-    session.modeling_pipeline["tuning"] = "done"
-    session.modeling_pipeline["diagnostics"] = "in_progress"
+    scope = _ensure_execution_scope(session)
+    if scope:
+        scope["tuning_skips"].pop(model_id, None)
+    if _refresh_execution_readiness(session) is None:
+        session.modeling_pipeline["tuning"] = "done"
+        session.modeling_pipeline["diagnostics"] = "in_progress"
     job["status"] = "completed"
     job["tuning_response"] = result.model_dump(mode="json")
     # Raw per-trial OOF payloads are no longer needed after promotion.
@@ -1134,7 +1354,8 @@ def diagnose_modeling_candidate(
     result = _build_session_diagnostics(session, payload)
     _invalidate_after_diagnostics(session)
     session.modeling_artifacts.setdefault("diagnostics", {})[payload.model_id] = result.model_dump(mode="json")
-    session.modeling_pipeline["diagnostics"] = "done"
+    if _refresh_execution_readiness(session) is None:
+        session.modeling_pipeline["diagnostics"] = "done"
     session.modeling_pipeline["comparison"] = "in_progress"
     session.touch()
     store.save(session)
@@ -1171,6 +1392,7 @@ def ensure_modeling_diagnostics(
         session, model_ids, backtests,
     )
     _commit_prepared_diagnostics(session, diagnostics, calculated)
+    _refresh_execution_readiness(session)
     session.touch()
     store.save(session)
     return {
@@ -1193,7 +1415,43 @@ def compare_modeling_candidates(
     saved = session.modeling_artifacts.get("backtests", {})
     if len(payload.model_ids) != len(set(payload.model_ids)):
         raise HTTPException(status_code=422, detail="model_ids содержит дубликаты")
-    model_ids = payload.model_ids or list(saved)
+    scope = _refresh_execution_readiness(session)
+    if scope:
+        expected_model_ids = list(scope["included_backtest_model_ids"])
+        pending_backtests = list(scope["pending_backtest_model_ids"])
+        if pending_backtests:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Runnable scope обработан не полностью",
+                    "pending_backtests": pending_backtests,
+                },
+            )
+        pending_tuning = list(scope["pending_tuning_model_ids"])
+        if pending_tuning:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Tuning не выполнен и не пропущен явно",
+                    "pending_tuning": pending_tuning,
+                },
+            )
+        if payload.model_ids and set(payload.model_ids) != set(expected_model_ids):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "message": "Comparison должен использовать полный execution scope",
+                    "missing_scope_models": sorted(
+                        set(expected_model_ids) - set(payload.model_ids)
+                    ),
+                    "unexpected_scope_models": sorted(
+                        set(payload.model_ids) - set(expected_model_ids)
+                    ),
+                },
+            )
+        model_ids = expected_model_ids
+    else:
+        model_ids = payload.model_ids or list(saved)
     missing_backtests = [model_id for model_id in model_ids if model_id not in saved]
     if missing_backtests:
         raise HTTPException(
@@ -1293,6 +1551,15 @@ def compare_modeling_candidates(
                 (session.modeling_artifacts.get("profile", context["profile"])
                  .get("seasonal_periods") or [1])[0]
             ),
+            execution_scope=(
+                {
+                    "capability_contract_version": scope["capability_contract_version"],
+                    "included_backtest_model_ids": scope["included_backtest_model_ids"],
+                    "backtest_exclusions": scope["backtest_exclusions"],
+                    "tuning_skips": scope["tuning_skips"],
+                }
+                if scope else {}
+            ),
         )
     except ComparisonContractError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -1308,6 +1575,9 @@ def compare_modeling_candidates(
     session.modeling_pipeline["comparison"] = "done"
     session.modeling_pipeline["selection"] = "in_progress"
     session.modeling_pipeline["model_card"] = "pending"
+    _refresh_execution_readiness(session)
+    session.modeling_pipeline["comparison"] = "done"
+    session.modeling_pipeline["selection"] = "in_progress"
     session.touch()
     store.save(session)
     return result
@@ -1614,6 +1884,7 @@ def create_model_card(
             "checkpoint_id": context["checkpoint"]["checkpoint_id"],
             "comparison_id": comparison.get("comparison_id"),
             "comparison_signature": comparison.get("comparison_signature"),
+            "execution_scope": comparison.get("execution_scope", {}),
             "diagnostics_signature": (diagnostics or {}).get("diagnostics_signature"),
             "selection_analysis_id": selection.get("selection_analysis_id"),
             "selection_signature": selection.get("selection_signature"),

@@ -51,6 +51,10 @@ const MOCK_CANDIDATES = [
       platform_status: "ready",
       available_actions: ["backtest"],
       blocking_reason: null,
+      stage_capabilities: {
+        backtest: { status: "available", required: true, action: "backtest", reason: "OOF backtest подключён." },
+        tuning: { status: "not_applicable", required: false, action: null, reason: "Нет гиперпараметров." },
+      },
     },
     {
       model_id: "seasonal_naive",
@@ -672,6 +676,18 @@ describe("TsAnalysisModeling", () => {
     await waitFor(() => {
       expect(screen.getByText(/Метрики и алгоритм — Naive/i)).toBeInTheDocument();
     });
+  });
+
+  it("shows the selected model capability statuses in the full pipeline", async () => {
+    render(<TsAnalysisModeling />);
+    await waitFor(() => expect(screen.getByTestId("candidate-pool")).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("family-header-baselines"));
+    fireEvent.click(screen.getByTestId("candidate-naive"));
+    fireEvent.click(screen.getAllByText("Полный пайплайн")[0]);
+
+    await waitFor(() => expect(screen.getByText(/Capability contract по 11 стадиям/i)).toBeInTheDocument());
+    expect(screen.getByText(/Бэктест: available · required/i)).toBeInTheDocument();
+    expect(screen.getByText(/Тюнинг: not_applicable/i)).toBeInTheDocument();
   });
 });
 

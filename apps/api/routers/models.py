@@ -42,8 +42,10 @@ from apps.api.model_impls import (
 )
 from apps.api.model_impls.tuning import tune_ets_predict, tune_arima_predict
 from apps.api.model_readiness import (
+    MODELING_CAPABILITY_CONTRACT_VERSION,
     PRODUCTION_BACKTEST_MODEL_IDS,
     available_model_actions,
+    model_stage_capabilities,
 )
 
 logger = logging.getLogger(__name__)
@@ -141,6 +143,11 @@ def _compute_candidates(payload: CandidatesRequest) -> CandidatesResponse:
             platform_status="ready" if platform_ready else "catalog_only",
             available_actions=actions,
             blocking_reason=blocking_reason,
+            stage_capabilities=model_stage_capabilities(
+                candidate.model_id, candidate.family_id,
+                included=included,
+                blocking_reason=blocking_reason if platform_ready and not included else None,
+            ),
         )
 
     # Полный каталог сохраняет порядок modeling.yaml и содержит все уровни
@@ -162,6 +169,7 @@ def _compute_candidates(payload: CandidatesRequest) -> CandidatesResponse:
     return CandidatesResponse(
         candidates=candidates, catalog=catalog,
         statistics=statistics, spec_version=spec.metadata.version,
+        capability_contract_version=MODELING_CAPABILITY_CONTRACT_VERSION,
     )
 
 
@@ -416,7 +424,7 @@ _MODEL_INFO = {
     "xgboost": ("XGBoost", "tree_ml"), "lightgbm": ("LightGBM", "tree_ml"),
     "catboost": ("CatBoost", "tree_ml"), "random_forest": ("Random Forest", "tree_ml"),
     "lstm": ("LSTM", "neural"), "deepar": ("DeepAR", "neural"), "tft": ("TFT", "neural"),
-    "nbeats": ("N-BEATS", "neural"), "wavenet": ("WaveNet", "neural"),
+    "nbeats": ("N-BEATS", "neural"), "nhits": ("N-HiTS", "neural"),
 }
 
 

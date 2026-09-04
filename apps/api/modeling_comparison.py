@@ -274,6 +274,7 @@ def build_comparison(
     diagnostics: Mapping[str, Mapping[str, Any]],
     applicability_levels: Mapping[str, str],
     comparison_id: str, seasonal_period: int = 1,
+    execution_scope: Mapping[str, Any] | None = None,
 ) -> ModelingComparisonResponse:
     """Build an input-order-independent ranking and its complete lineage."""
     ordered_backtests = sorted(backtests, key=lambda item: str(item["model_id"]))
@@ -365,12 +366,14 @@ def build_comparison(
         )
     correlation = _error_correlation(residuals)
     warnings.extend(correlation.unavailable_pairs)
+    scope_payload = dict(execution_scope or {})
     signature = _signature({
         "fingerprint": fingerprint, "cohort_id": cohort_id,
         "ranking_policy": RANKING_POLICY, "diagnostics_policy": DIAGNOSTICS_POLICY,
         "normalization": NORMALIZATION, "metric_weights": metric_weights,
         "baseline_policy": baseline_policy.model_dump(mode="json"),
         "mase_context": mase_context.model_dump(mode="json"),
+        "execution_scope": scope_payload,
         "runs": [
             {
                 "model_id": item["model_id"], "run_id": item["run_id"],
@@ -389,6 +392,7 @@ def build_comparison(
         fingerprint=fingerprint, cohort_id=cohort_id,
         ranking_policy=RANKING_POLICY, diagnostics_policy=DIAGNOSTICS_POLICY,
         normalization=NORMALIZATION, metric_weights=metric_weights,
+        execution_scope=scope_payload,
         baseline_policy=baseline_policy, mase_context=mase_context,
         ranking=ranking, error_correlation=correlation, warnings=warnings,
     )

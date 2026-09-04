@@ -202,12 +202,86 @@ def test_baseline_bootstrap_atomically_populates_comparable_cohort(client: TestC
 
     state = client.get("/v1/session/modeling/state").json()
     assert state["pipeline"]["baseline_estimation"] == "done"
+    assert state["pipeline"]["backtest"] == "in_progress"
+    assert state["artifacts"]["execution_scope"]["pending_backtest_model_ids"]
     assert "naive" in state["artifacts"]["backtests"]
 
     repeated = client.post("/v1/session/modeling/baselines")
     assert repeated.status_code == 200, repeated.text
     assert repeated.json()["reused"] is True
     assert repeated.json()["backtests"]["naive"]["run_id"] == body["backtests"]["naive"]["run_id"]
+
+
+def test_comparison_requires_complete_scope_or_explicit_backtest_exclusions(client: TestClient):
+    _prepare(client)
+    candidates = client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "expanding", "horizon": 2, "n_splits": 2},
+    )
+    assert candidates.status_code == 200, candidates.text
+    baselines = client.post("/v1/session/modeling/baselines")
+    assert baselines.status_code == 200, baselines.text
+    state = client.get("/v1/session/modeling/state").json()
+    pending = state["artifacts"]["execution_scope"]["pending_backtest_model_ids"]
+    assert pending
+
+    incomplete = client.post("/v1/session/modeling/compare", json={})
+    assert incomplete.status_code == 409
+    assert incomplete.json()["detail"]["pending_backtests"] == pending
+
+    for model_id in pending:
+        excluded = client.post(
+            "/v1/session/modeling/backtest/exclude",
+            json={
+                "model_id": model_id,
+                "decision": "exclude",
+                "reason": "Осознанно исключена из текущего comparison",
+                "acknowledge": True,
+            },
+        )
+        assert excluded.status_code == 200, excluded.text
+
+    ready = client.get("/v1/session/modeling/state").json()
+    assert ready["pipeline"]["backtest"] == "done"
+    assert ready["artifacts"]["execution_scope"]["pending_backtest_model_ids"] == []
+    compared = client.post("/v1/session/modeling/compare", json={})
+    assert compared.status_code == 200, compared.text
+    assert sorted(compared.json()["execution_scope"]["backtest_exclusions"]) == sorted(pending)
+    assert compared.json()["execution_scope"]["capability_contract_version"] == (
+        "model-capabilities-v1"
+    )
+
+
+def test_tuning_stage_requires_tune_or_explicit_skip_for_tunable_models(client: TestClient):
+    _prepare(client)
+    candidates = client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "expanding", "horizon": 2, "n_splits": 2},
+    )
+    assert candidates.status_code == 200, candidates.text
+    assert client.post("/v1/session/modeling/baselines").status_code == 200
+    assert client.post("/v1/session/modeling/backtest", json={"model_id": "ets"}).status_code == 200
+
+    scope = client.get("/v1/session/modeling/state").json()["artifacts"]["execution_scope"]
+    for model_id in scope["pending_backtest_model_ids"]:
+        response = client.post(
+            "/v1/session/modeling/backtest/exclude",
+            json={"model_id": model_id, "decision": "exclude", "reason": "Не входит в проверку", "acknowledge": True},
+        )
+        assert response.status_code == 200, response.text
+
+    before = client.get("/v1/session/modeling/state").json()
+    assert before["pipeline"]["tuning"] == "in_progress"
+    assert before["artifacts"]["execution_scope"]["pending_tuning_model_ids"] == ["ets"]
+
+    skipped = client.post(
+        "/v1/session/modeling/tuning/skip",
+        json={"model_id": "ets", "reason": "Оставить параметры по умолчанию", "acknowledge": True},
+    )
+    assert skipped.status_code == 200, skipped.text
+    after = client.get("/v1/session/modeling/state").json()
+    assert after["pipeline"]["tuning"] == "done"
+    assert after["artifacts"]["execution_scope"]["pending_tuning_model_ids"] == []
 
 
 def test_resumable_tuning_executes_one_trial_per_step_and_promotes_best(client: TestClient):
@@ -643,6 +717,17 @@ def test_diagnostics_ensure_prepares_the_entire_comparable_pool(client: TestClie
     assert repeated.json()["calculated_model_ids"] == []
     assert sorted(repeated.json()["reused_model_ids"]) == sorted(model_ids)
 
+    scope = client.get("/v1/session/modeling/state").json()["artifacts"]["execution_scope"]
+    for model_id in scope["pending_backtest_model_ids"]:
+        excluded = client.post(
+            "/v1/session/modeling/backtest/exclude",
+            json={
+                "model_id": model_id, "decision": "exclude",
+                "reason": "Не входит в diagnostics regression pool", "acknowledge": True,
+            },
+        )
+        assert excluded.status_code == 200, excluded.text
+
     comparison = client.post(
         "/v1/session/modeling/compare", json={"model_ids": model_ids},
     )
@@ -882,7 +967,7 @@ def test_state_migrates_legacy_unsigned_backtests_without_discarding_valid_basel
 
     assert response.status_code == 200, response.text
     artifacts = response.json()["artifacts"]
-    assert artifacts["artifact_schema_version"] == 4
+    assert artifacts["artifact_schema_version"] == 5
     assert "naive" in artifacts["backtests"]
     assert "ets" not in artifacts["backtests"]
     assert "arima_auto" not in artifacts["backtests"]
@@ -908,7 +993,7 @@ def test_state_migrates_legacy_unsigned_backtests_without_discarding_valid_basel
     assert comparison.status_code == 200, comparison.text
 
 
-def test_state_v4_upgrade_preserves_valid_runs_and_invalidates_old_baseline_verdict(
+def test_state_v5_upgrade_preserves_valid_runs_and_invalidates_old_scope_verdict(
     client: TestClient,
 ):
     _prepare(client)
@@ -920,7 +1005,7 @@ def test_state_v4_upgrade_preserves_valid_runs_and_invalidates_old_baseline_verd
     session_id = client.cookies.get(SESSION_COOKIE_NAME)
     store = get_session_store()
     session = store.get(session_id)
-    session.modeling_artifacts["artifact_schema_version"] = 3
+    session.modeling_artifacts["artifact_schema_version"] = 4
     session.modeling_artifacts["selection_analysis"] = {"legacy": True}
     session.modeling_artifacts["selection"] = {"legacy": True}
     session.modeling_artifacts["model_cards"] = {"legacy": {}}
@@ -930,12 +1015,12 @@ def test_state_v4_upgrade_preserves_valid_runs_and_invalidates_old_baseline_verd
 
     assert state.status_code == 200, state.text
     artifacts = state.json()["artifacts"]
-    assert artifacts["artifact_schema_version"] == 4
+    assert artifacts["artifact_schema_version"] == 5
     assert set(artifacts["backtests"]) == {"naive", "drift"}
     assert set(artifacts["diagnostics"]) == {"naive", "drift"}
     assert "comparison" not in artifacts
     assert "selection_analysis" not in artifacts
     assert "selection" not in artifacts
     assert artifacts["model_cards"] == {}
-    assert artifacts["artifact_migration"]["reason"] == "comparison_baseline_contract_upgrade"
+    assert artifacts["artifact_migration"]["reason"] == "model_capability_scope_contract_upgrade"
     assert state.json()["pipeline"]["comparison"] == "pending"

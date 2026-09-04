@@ -11,6 +11,7 @@ import type {
   ModelingComparisonResponse,
   ModelingSelectionAnalysis,
   ModelingSelectionResult,
+  ModelAction,
 } from "../lib/modeling";
 
 
@@ -60,8 +61,11 @@ interface DiagnosticsResult {
 interface Props {
   stageId: string;
   modelIds: string[];
+  modelActions?: Record<string, ModelAction[]>;
+  tuningSkippedModelIds?: string[];
   onStageComplete?: (stageId: string) => void;
   onBacktestPromoted?: (result: BacktestResponse) => void;
+  onWorkflowStateChanged?: () => void;
 }
 
 const DIAGNOSTIC_LABELS: Record<DiagnosticItem["test"], string> = {
@@ -107,6 +111,7 @@ function apiErrorDetail(detail: unknown, status: number): string {
     const value = detail as Record<string, unknown>;
     const lists = [
       "missing_backtests", "missing_diagnostics", "stale_diagnostics", "missing_applicability",
+      "pending_backtests", "pending_tuning", "missing_scope_models", "unexpected_scope_models",
     ]
       .flatMap((key) => Array.isArray(value[key]) ? value[key] as string[] : []);
     return `${typeof value.message === "string" ? value.message : `HTTP ${status}`}${lists.length ? `: ${lists.join(", ")}` : ""}`;
@@ -128,10 +133,22 @@ async function postJson(path: string, body: Record<string, unknown>) {
   return payload;
 }
 
-export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, onBacktestPromoted }: Props) {
-  const supportedModelIds = stageId === "tuning"
-    ? modelIds.filter((item) => ["ets", "ets_damped", "arima"].includes(item))
+export function ModelingWorkflowOverview({
+  stageId, modelIds, modelActions, tuningSkippedModelIds = [],
+  onStageComplete, onBacktestPromoted, onWorkflowStateChanged,
+}: Props) {
+  const supportedModelIds = modelActions
+    ? modelIds.filter((item) => (
+        stageId === "tuning"
+          ? modelActions[item]?.includes("tune")
+          : stageId === "diagnostics"
+            ? modelActions[item]?.includes("diagnostics")
+            : true
+      ))
     : modelIds;
+  const notApplicableTuningCount = stageId === "tuning"
+    ? modelIds.length - supportedModelIds.length
+    : 0;
   const [modelId, setModelId] = useState(supportedModelIds[0] ?? "");
   const [comparison, setComparison] = useState<ModelingComparisonResponse | null>(null);
   const [diagnosticFilter, setDiagnosticFilter] = useState<"all" | "pass" | "warning" | "fail">("all");
@@ -269,6 +286,20 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
       "tuning",
     ) as unknown as TuningResult | null;
     if (value?.promoted_backtest) onBacktestPromoted?.(value.promoted_backtest);
+    if (value) onWorkflowStateChanged?.();
+  };
+
+  const skipTuning = async () => {
+    if (!modelId) return;
+    const value = await execute(
+      () => postJson("/v1/session/modeling/tuning/skip", {
+        model_id: modelId,
+        reason: "Осознанно оставлены параметры модели по умолчанию",
+        acknowledge: true,
+      }),
+      "tuning",
+    );
+    if (value) onWorkflowStateChanged?.();
   };
 
   const modelSelector = (
@@ -302,8 +333,8 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
       <div className="shrink-0">
         {stageId === "tuning" && (
           <div className="flex items-center justify-between gap-3">
-            <div><h3 className="font-semibold">Тюнинг на временных folds</h3><p className="text-xs text-neutral-500">ETS, ETS Damped и ARIMA исполняют точный EDA BacktestPlan; preprocessing fit-ится только на train.</p></div>
-            <div className="flex items-center gap-2">{modelSelector}<Button disabled={loading || !modelId} onClick={() => void runTuning()}>Запустить тюнинг</Button></div>
+            <div><h3 className="font-semibold">Тюнинг на временных folds</h3><p className="text-xs text-neutral-500">Селектор сформирован единым capability-контрактом; preprocessing fit-ится только на train.</p>{notApplicableTuningCount > 0 && <p className="text-[10px] text-neutral-500">{notApplicableTuningCount} {notApplicableTuningCount === 1 ? "модель" : "моделей"} не требует отдельного tuning (N/A).</p>}</div>
+            <div className="flex items-center gap-2">{modelSelector}<Button disabled={loading || !modelId} onClick={() => void runTuning()}>Запустить тюнинг</Button><Button disabled={loading || !modelId || tuningSkippedModelIds.includes(modelId)} onClick={() => void skipTuning()}>{tuningSkippedModelIds.includes(modelId) ? "Tuning пропущен" : "Оставить defaults"}</Button></div>
           </div>
         )}
         {stageId === "diagnostics" && (

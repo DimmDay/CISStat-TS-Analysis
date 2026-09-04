@@ -115,6 +115,47 @@ test("shows the exact EDA cohort used by tuning", async () => {
   expect(onBacktestPromoted).toHaveBeenCalledWith(expect.objectContaining({ model_id: "ets" }));
 });
 
+test("derives tuning selector from capability actions instead of hardcoded model ids", () => {
+  render(
+    <ModelingWorkflowOverview
+      stageId="tuning"
+      modelIds={["theta", "custom_tunable"]}
+      modelActions={{
+        theta: ["backtest", "diagnostics"],
+        custom_tunable: ["backtest", "tune", "diagnostics"],
+      }}
+    />,
+  );
+
+  expect(screen.getByRole("option", { name: "custom_tunable" })).toBeInTheDocument();
+  expect(screen.queryByRole("option", { name: "theta" })).not.toBeInTheDocument();
+  expect(screen.getByText(/1 модель.*не требует отдельного tuning/i)).toBeInTheDocument();
+});
+
+test("records an explicit tuning skip through the capability workflow", async () => {
+  const onWorkflowStateChanged = jest.fn();
+  mockFetch.mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({ model_id: "ets", status: "skipped", execution_scope: {} }),
+  });
+  render(
+    <ModelingWorkflowOverview
+      stageId="tuning"
+      modelIds={["ets"]}
+      modelActions={{ ets: ["backtest", "tune", "diagnostics"] }}
+      onWorkflowStateChanged={onWorkflowStateChanged}
+    />,
+  );
+
+  fireEvent.click(screen.getByRole("button", { name: "Оставить defaults" }));
+
+  await waitFor(() => expect(onWorkflowStateChanged).toHaveBeenCalled());
+  expect(mockFetch).toHaveBeenCalledWith(
+    expect.stringContaining("/tuning/skip"),
+    expect.objectContaining({ body: expect.stringContaining('"acknowledge":true') }),
+  );
+});
+
 test("renders traceable OOF diagnostics for a baseline model", async () => {
   mockFetch.mockResolvedValueOnce({
     ok: true,

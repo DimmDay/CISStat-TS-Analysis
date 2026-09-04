@@ -2122,3 +2122,97 @@ Commit/push и production deploy не выполнялись.
 - `tests/test_modeling_spec.py`
 - `tests/unit/test_modeling_comparison.py`
 - `tests/unit/test_modeling_selection.py`
+
+---
+
+## Task 111 — Единая capability-матрица моделей и корректная завершённость степпера
+
+Дата: 2026-09-04. База: `main @ 29911403c1b16ee033f4872455cfdab8b6d322be`.
+Commit/push и production deploy не выполнялись.
+
+### Воспроизведённая проблема
+
+- Каталог содержит 24 модели, но production backtest реализован для 9, tuning —
+  для 3. При этом сведения о доступности были распределены между backend и
+  hardcoded-условиями UI, а diagnostics ошибочно рекламировались только для
+  трёх моделей, хотя фактически работают по подписанным OOF-остаткам всех 9.
+- Степпер отмечал `backtest=done` после bootstrap baseline либо одного успешного
+  запуска. Поэтому последующие стадии могли открываться до обработки полного
+  runnable-пула.
+- Comparison принимал произвольное подмножество сохранённых backtests и не мог
+  доказать, что остальные кандидаты рассчитаны либо осознанно исключены.
+- В UI tuning-модели были зашиты вручную; справка содержала WaveNet вместо
+  фактической N-HiTS.
+
+### Единый capability-контракт
+
+- Введён versioned-контракт `model-capabilities-v1`: для каждой из 24 моделей
+  возвращается полная матрица всех 11 стадий со статусом `available`,
+  `not_applicable`, `blocked` либо `not_implemented`, флагом `required`,
+  допустимым action и человекочитаемой причиной.
+- Единственными источниками runtime-возможностей стали
+  `PRODUCTION_BACKTEST_MODEL_IDS`, `PRODUCTION_TUNING_MODEL_IDS` и
+  model-agnostic diagnostics для всего production backtest-набора.
+- Каталог не выдаёт фиктивную готовность: 9 моделей имеют production backtest,
+  15 остаются `catalog_only`/`not_implemented`. Профильная неприменимость
+  production-модели представлена отдельным статусом `blocked`.
+- Контракт опубликован в candidate API, typed Python/TypeScript schemas и
+  `rules/modeling.yaml`; pipeline spec повышен до 1.1. UI получает действия из
+  API, а не из локального списка моделей.
+
+### Корректная завершённость и трассируемый scope
+
+- В session artifacts добавлен `execution_scope`: обязательные, включённые,
+  выполненные и ожидающие backtests/tuning/diagnostics, а также подписанные
+  решения об исключении backtest и сохранении default-параметров без tuning.
+- `baseline_estimation` завершается только после всех runnable baselines;
+  `backtest` — после всех включённых runnable-моделей; `tuning` — после tuning
+  либо явного skip каждой рассчитанной tunable-модели; `diagnostics` — после
+  текущего signed OOF-report каждой рассчитанной включённой модели.
+- Добавлены endpoints осознанного исключения/возврата non-baseline модели и
+  явного tuning skip. Оба требуют подтверждения и причины; обязательный baseline
+  исключить нельзя.
+- Comparison блокирует pending backtests и tuning, запрещает передать неполный
+  model subset и использует точный `all runnable − acknowledged exclusions`
+  scope. Scope включён в comparison signature, response и Model Card lineage.
+- Modeling artifact schema повышена с 4 до 5; старые downstream verdicts
+  инвалидируются, валидные execution/OOF runs сохраняются.
+- UI показывает прогресс execution scope, capability-статусы выбранной модели
+  по 11 стадиям, управляемое исключение с причиной и действие «Оставить
+  defaults». После baseline/backtest клиент перечитывает вычисленный backend
+  state и больше не помечает стадии завершёнными локально.
+
+### TDD и проверки
+
+- RED: новый контрактный тест сначала остановился на collection с `ImportError`
+  из-за отсутствующего `MODELING_CAPABILITY_CONTRACT_VERSION`; требуемые scope
+  endpoints и capability-driven UI также отсутствовали в исходной базе.
+- Контрактная/API-регрессия: 33/33 PASS, включая матрицу 24×11, отсутствие
+  ложного `backtest=done`, обязательность полного scope, explicit exclusions и
+  tune-or-skip.
+- Расширенный Modeling-прогон: 118 PASS; два известных stale-теста базы не
+  относятся к Task 111 — ожидание `1.0.0-draft` вместо текущей
+  `1.1.0-draft` и удалённого в Task 102 `auto_ensemble_trigger`.
+- Modeling UI: 65/65 PASS. TypeScript embedded/standalone, `py_compile` и
+  `git diff --check`: PASS.
+- Production build standalone: PASS, 13/13 static pages, `/modeling` включён,
+  First Load JS 460 kB; временный memory shim удалён.
+
+### Изменённые файлы Task 111
+
+- `apps/api/model_readiness.py`
+- `apps/api/modeling_comparison.py`
+- `apps/api/routers/modeling_session.py`
+- `apps/api/routers/models.py`
+- `apps/api/schemas.py`
+- `apps/api/session_store.py`
+- `packages/ui/components/ModelingWorkflowOverview.test.tsx`
+- `packages/ui/components/ModelingWorkflowOverview.tsx`
+- `packages/ui/components/TsAnalysisModeling.test.tsx`
+- `packages/ui/components/TsAnalysisModeling.tsx`
+- `packages/ui/lib/modeling.ts`
+- `rules/modeling.yaml`
+- `src/catalog/modeling_spec_loader.py`
+- `tests/api/test_modeling_workflow.py`
+- `tests/unit/test_model_capability_matrix.py`
+- `tests/unit/test_model_readiness_candidates.py`

@@ -79,6 +79,20 @@ export const APPLICABILITY_BADGE: Record<
 
 // ── Кандидат моделирования ──────────────────────────────────────
 
+export type ModelingStageId =
+  | "problem_definition" | "data_structure" | "constraint_mapping"
+  | "candidate_generation" | "baseline_estimation" | "backtest" | "tuning"
+  | "diagnostics" | "comparison" | "selection" | "model_card";
+
+export type ModelAction = "backtest" | "tune" | "diagnostics";
+
+export interface ModelStageCapability {
+  status: "available" | "not_applicable" | "blocked" | "not_implemented";
+  required: boolean;
+  action: ModelAction | null;
+  reason: string;
+}
+
 export interface ModelCandidate {
   model_id: string;
   model_name: string;
@@ -88,8 +102,9 @@ export interface ModelCandidate {
   message: string;
   rank: number;
   platform_status: "ready" | "catalog_only";
-  available_actions: Array<"backtest" | "tune" | "diagnostics">;
+  available_actions: ModelAction[];
   blocking_reason: string | null;
+  stage_capabilities: Record<ModelingStageId, ModelStageCapability>;
 }
 
 // ── Запрос / Ответ ──────────────────────────────────────────────
@@ -113,6 +128,21 @@ export interface CandidatesResponse {
   catalog: ModelCandidate[];
   statistics: CandidatesStatistics;
   spec_version: string;
+  capability_contract_version: "model-capabilities-v1";
+}
+
+export interface ModelingExecutionScope {
+  capability_contract_version: "model-capabilities-v1";
+  required_backtest_model_ids: string[];
+  included_backtest_model_ids: string[];
+  completed_backtest_model_ids: string[];
+  pending_backtest_model_ids: string[];
+  completed_tuning_model_ids: string[];
+  pending_tuning_model_ids: string[];
+  completed_diagnostics_model_ids: string[];
+  pending_diagnostics_model_ids: string[];
+  backtest_exclusions: Record<string, { reason: string; acknowledged: true; decided_at: string }>;
+  tuning_skips: Record<string, { reason: string; acknowledged: true; decided_at: string }>;
 }
 
 // ── Семейства моделей (для UI-группировки) ─────────────────────
@@ -359,6 +389,7 @@ export interface ModelingComparisonResponse {
   diagnostics_policy: "current_oof_report_required_not_scored";
   normalization: "min_max_within_comparable_pool";
   metric_weights: Record<string, number>;
+  execution_scope: Partial<ModelingExecutionScope>;
   baseline_policy: {
     source: "exact_aligned_oof";
     metric: "mae" | "rmse";

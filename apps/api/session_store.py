@@ -58,6 +58,8 @@ from typing import Any, Optional
 import pandas as pd
 from fastapi import Request, Response
 
+from apps.api.model_readiness import MODELING_STAGE_IDS
+
 logger = logging.getLogger(__name__)
 
 SESSION_COOKIE_NAME = "cisstat_session_id"
@@ -90,13 +92,6 @@ STAGES = ["upload", "validation", "preprocessing", "eda", "modeling", "forecasti
 StageStatus = str  # "pending" | "in_progress" | "done"
 PASSPORT_STAGES = ("start", "validation", "exit", "modeling_entry")
 PASSPORT_CHECKPOINT_STAGES = ("modeling_entry",)
-MODELING_STAGE_IDS = (
-    "problem_definition", "data_structure", "constraint_mapping",
-    "candidate_generation", "baseline_estimation", "backtest", "tuning",
-    "diagnostics", "comparison", "selection", "model_card",
-)
-
-
 def _empty_modeling_pipeline() -> dict[str, StageStatus]:
     return {stage: "pending" for stage in MODELING_STAGE_IDS}
 

@@ -140,6 +140,7 @@ class Pipeline(BaseModel):
     """Пайплайн моделирования из 11 стадий."""
     id: str = "modeling_pipeline"
     version: str = "1.0"
+    capability_contract: Dict[str, Any] = Field(default_factory=dict)
     stages: List[PipelineStage] = Field(default_factory=list)
 
 
