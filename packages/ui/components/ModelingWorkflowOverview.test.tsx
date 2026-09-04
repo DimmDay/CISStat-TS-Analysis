@@ -26,6 +26,38 @@ const comparison = {
   warnings: [],
 };
 
+const selectionAnalysis = {
+  selection_analysis_id: "selection-123",
+  selection_signature: "selection-signature-abcdef",
+  comparison_id: comparison.comparison_id,
+  comparison_signature: comparison.comparison_signature,
+  cohort_id: comparison.cohort_id,
+  policy: {
+    version: "selection-v1-equal-weight", primary_metric: "rmse",
+    max_member_relative_gap: 0.1, max_error_correlation: 0.8,
+    min_oof_points: 8, min_ensemble_relative_improvement: 0.01,
+    min_fold_win_rate: 0.5, practical_tie_relative: 0.01,
+  },
+  recommended_single: {
+    model_id: "drift", primary_metric: "rmse", primary_loss: 1.2,
+    practical_ties: ["drift"], relative_improvement_vs_best_baseline: 0.4545,
+  },
+  best_baseline: { model_id: "naive", primary_metric: "rmse", primary_loss: 2.2 },
+  ensemble: {
+    status: "not_eligible", strategy: "simple_average", member_ids: ["drift", "naive"],
+    weights: [0.5, 0.5], error_correlation: 0.91,
+    relative_improvement_vs_best_single: null, relative_improvement_vs_best_baseline: null,
+    fold_win_rate: null, backtest: null, diagnostics: null,
+    reasons: ["Корреляция OOF-ошибок выше порога диверсификации."],
+  },
+  recommended_candidate: { kind: "single", model_id: "drift" },
+  evaluation_contract: {
+    source: "exact_aligned_selection_oof", estimate_status: "selection_oof_reused",
+    independent_holdout: false, requires_acknowledgement: true,
+  },
+  warnings: ["Tuning и selection используют один OOF cohort; итоговая оценка может быть оптимистичной."],
+};
+
 const mockFetch = jest.fn();
 global.fetch = mockFetch as unknown as typeof fetch;
 
@@ -142,13 +174,31 @@ test("shows which diagnostics are missing from the comparable pool", async () =>
 test("selects a ranked model and generates downloadable Model Card", async () => {
   mockFetch
     .mockResolvedValueOnce({ ok: true, json: async () => comparison })
-    .mockResolvedValueOnce({ ok: true, json: async () => ({ selected_model_id: "drift", ensemble_recommended: false }) })
+    .mockResolvedValueOnce({ ok: true, json: async () => selectionAnalysis })
+    .mockResolvedValueOnce({ ok: true, json: async () => ({
+      selected_model_id: "drift", selected_kind: "single",
+      selection_analysis_id: "selection-123", selection_signature: "selection-signature-abcdef",
+      primary_metric: "rmse", primary_loss: 1.2, best_baseline_loss: 2.2,
+      ensemble_status: "not_eligible", ensemble_recommended: false,
+      ensemble_members: [], independent_holdout: false,
+    }) })
     .mockResolvedValueOnce({ ok: true, json: async () => ({ card_id: "card-1", card: { model_info: { model_id: "drift" } } }) });
   const { rerender } = render(<ModelingWorkflowOverview stageId="selection" modelIds={["naive", "drift"]} />);
   fireEvent.click(screen.getByRole("button", { name: "Загрузить рейтинг" }));
-  await waitFor(() => screen.getByRole("button", { name: "Выбрать Drift" }));
+  await waitFor(() => screen.getByRole("button", { name: "Верифицировать выбор" }));
+  fireEvent.click(screen.getByRole("button", { name: "Верифицировать выбор" }));
+  await waitFor(() => expect(screen.getByTestId("selection-analysis")).toBeInTheDocument());
+  expect(screen.getByTestId("selection-analysis")).toHaveTextContent("Selection SHA: selection-sig");
+  expect(screen.getByTestId("selection-analysis")).toHaveTextContent("Baseline: naive (2.200)");
+  expect(screen.getByTestId("ensemble-verdict")).toHaveTextContent("Не допущен к проверке");
+  expect(screen.getByTestId("ensemble-verdict")).toHaveTextContent("Корреляция OOF-ошибок выше порога");
+  expect(screen.getByRole("button", { name: "Выбрать Drift" })).toBeDisabled();
+  fireEvent.click(screen.getByLabelText("Подтвердить отсутствие независимого holdout"));
   fireEvent.click(screen.getByRole("button", { name: "Выбрать Drift" }));
-  await waitFor(() => expect(screen.getByText("Выбрана модель: drift")).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText("Выбран кандидат (single): drift")).toBeInTheDocument());
+  expect(mockFetch.mock.calls[2]?.[1]).toEqual(expect.objectContaining({
+    body: expect.stringContaining('"selection_signature":"selection-signature-abcdef"'),
+  }));
 
   rerender(<ModelingWorkflowOverview stageId="model_card" modelIds={["naive", "drift"]} />);
   fireEvent.click(screen.getByRole("button", { name: "Сформировать Model Card" }));

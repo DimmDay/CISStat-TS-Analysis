@@ -9,6 +9,8 @@ import type {
   BacktestResponse,
   ComparisonRankingItem,
   ModelingComparisonResponse,
+  ModelingSelectionAnalysis,
+  ModelingSelectionResult,
 } from "../lib/modeling";
 
 
@@ -81,6 +83,16 @@ function applicabilityLabel(level: ApplicabilityLevel): string {
   return "Неприменима";
 }
 
+function ensembleStatusLabel(status: ModelingSelectionAnalysis["ensemble"]["status"]): string {
+  if (status === "recommended") return "Рекомендован по фактическому OOF";
+  if (status === "tested_no_gain") return "Проверен, улучшение не доказано";
+  return "Не допущен к проверке";
+}
+
+function percent(value: number | null): string {
+  return value == null ? "—" : `${(value * 100).toFixed(1)}%`;
+}
+
 function apiErrorDetail(detail: unknown, status: number): string {
   if (typeof detail === "string") return detail;
   if (detail && typeof detail === "object") {
@@ -118,8 +130,11 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
   const [applicabilityFilter, setApplicabilityFilter] = useState<"all" | ApplicabilityLevel>("all");
   const [familyFilter, setFamilyFilter] = useState("all");
   const [baselineFilter, setBaselineFilter] = useState<"all" | "eligible" | "risk">("all");
-  const [selection, setSelection] = useState<{ selected_model_id: string; ensemble_recommended?: boolean } | null>(null);
+  const [selectionAnalysis, setSelectionAnalysis] = useState<ModelingSelectionAnalysis | null>(null);
+  const [selection, setSelection] = useState<ModelingSelectionResult | null>(null);
   const [riskAcknowledged, setRiskAcknowledged] = useState<Record<string, boolean>>({});
+  const [selectionBiasAcknowledged, setSelectionBiasAcknowledged] = useState(false);
+  const [ensembleNoGainAcknowledged, setEnsembleNoGainAcknowledged] = useState(false);
   const [card, setCard] = useState<{ card_id: string; card: Record<string, unknown> } | null>(null);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -141,11 +156,19 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
       const value = await action();
       if (["tuning", "diagnostics"].includes(stage)) {
         setComparison(null);
+        setSelectionAnalysis(null);
         setSelection(null);
         setCard(null);
+        setSelectionBiasAcknowledged(false);
+        setEnsembleNoGainAcknowledged(false);
+        setRiskAcknowledged({});
       } else if (stage === "comparison") {
+        setSelectionAnalysis(null);
         setSelection(null);
         setCard(null);
+        setSelectionBiasAcknowledged(false);
+        setEnsembleNoGainAcknowledged(false);
+        setRiskAcknowledged({});
       }
       setResult(value);
       onStageComplete?.(stage);
@@ -166,15 +189,41 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
     if (value) setComparison(value);
   };
 
-  const select = async (item: ComparisonRankingItem) => {
+  const evaluateSelection = async () => {
+    const value = await execute(
+      () => postJson("/v1/session/modeling/selection/evaluate", {}),
+      "selection_evaluation",
+    ) as unknown as ModelingSelectionAnalysis | null;
+    if (value) {
+      setSelectionAnalysis(value);
+      setSelection(null);
+      setCard(null);
+      setSelectionBiasAcknowledged(false);
+      setEnsembleNoGainAcknowledged(false);
+      setRiskAcknowledged({});
+    }
+  };
+
+  const selectCandidate = async (candidateId: string, baselineRisk: boolean, ensembleNoGain = false) => {
+    if (!selectionAnalysis) return;
     const value = await execute(
       () => postJson("/v1/session/modeling/select", {
-        model_id: item.model_id,
-        acknowledge_baseline_risk: !item.baseline_eligible && Boolean(riskAcknowledged[item.model_id]),
+        model_id: candidateId,
+        selection_analysis_id: selectionAnalysis.selection_analysis_id,
+        selection_signature: selectionAnalysis.selection_signature,
+        acknowledge_baseline_risk: baselineRisk && Boolean(riskAcknowledged[candidateId]),
+        acknowledge_selection_bias: selectionBiasAcknowledged,
+        acknowledge_ensemble_no_gain: ensembleNoGain && ensembleNoGainAcknowledged,
       }),
       "selection",
-    ) as unknown as { selected_model_id: string; ensemble_recommended?: boolean } | null;
+    ) as unknown as ModelingSelectionResult | null;
     if (value) setSelection(value);
+  };
+
+  const selectionBaselineRisk = (item: ComparisonRankingItem): boolean => {
+    if (!selectionAnalysis) return false;
+    const metric = selectionAnalysis.policy.primary_metric;
+    return item.metrics[metric] > selectionAnalysis.best_baseline.primary_loss;
   };
 
   const generateCard = async () => {
@@ -210,6 +259,12 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
       || (baselineFilter === "eligible" ? item.baseline_eligible : !item.baseline_eligible)
     )) ?? [];
   const comparisonFamilies = Array.from(new Set(comparison?.ranking.map((item) => item.family_id) ?? []));
+  const ensembleCandidateId = selectionAnalysis?.ensemble.backtest?.model_id;
+  const ensembleBaselineRisk = Boolean(
+    selectionAnalysis && selectionAnalysis.ensemble.backtest
+    && selectionAnalysis.ensemble.backtest.metrics[selectionAnalysis.policy.primary_metric]
+      > selectionAnalysis.best_baseline.primary_loss,
+  );
 
   return (
     <section className="flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white p-4" data-testid="modeling-workflow-overview">
@@ -230,7 +285,7 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
           <div className="flex items-center justify-between"><div><h3 className="font-semibold">Сравнение моделей</h3><p className="text-xs text-neutral-500">Точные общие OOF; min-max внутри сопоставимого пула, diagnostics отдельно.</p></div><Button disabled={loading} onClick={() => void loadComparison()}>Сравнить модели</Button></div>
         )}
         {stageId === "selection" && (
-          <div className="flex items-center justify-between"><div><h3 className="font-semibold">Выбор модели</h3><p className="text-xs text-neutral-500">Top-1 — рекомендация, override остаётся явным решением аналитика.</p></div>{!comparison && <Button disabled={loading} onClick={() => void loadComparison()}>Загрузить рейтинг</Button>}</div>
+          <div className="flex items-center justify-between"><div><h3 className="font-semibold">Трассируемый выбор модели</h3><p className="text-xs text-neutral-500">Primary OOF loss определяет single-кандидата; корреляция только допускает ensemble к фактической проверке.</p></div>{!comparison ? <Button disabled={loading} onClick={() => void loadComparison()}>Загрузить рейтинг</Button> : !selectionAnalysis && <Button disabled={loading} onClick={() => void evaluateSelection()}>Верифицировать выбор</Button>}</div>
         )}
         {stageId === "model_card" && (
           <div className="flex items-center justify-between"><div><h3 className="font-semibold">Model Card JSON</h3><p className="text-xs text-neutral-500">Воспроизводимый итог с checkpoint, метриками, диагностикой и ограничениями.</p></div><Button disabled={loading} onClick={() => void generateCard()}>Сформировать Model Card</Button></div>
@@ -247,6 +302,38 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
             <span><b>OOF:</b> {comparison.error_correlation.n_points} точек</span>
             <span><b>Policy:</b> diagnostics не входят в score</span>
           </div>
+          {stageId === "selection" && selectionAnalysis && (
+            <div className="mb-3 rounded border border-violet-200 bg-violet-50 p-3 text-[10px] text-violet-950" data-testid="selection-analysis">
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                <span title={selectionAnalysis.selection_signature}><b>Selection SHA:</b> {selectionAnalysis.selection_signature.slice(0, 13)}</span>
+                <span><b>Primary:</b> {selectionAnalysis.policy.primary_metric.toUpperCase()}</span>
+                <span><b>Single:</b> {selectionAnalysis.recommended_single.model_id} ({selectionAnalysis.recommended_single.primary_loss.toFixed(3)})</span>
+                <span><b>Baseline:</b> {selectionAnalysis.best_baseline.model_id} ({selectionAnalysis.best_baseline.primary_loss.toFixed(3)})</span>
+              </div>
+              <div className="mt-2 border-t border-violet-200 pt-2" data-testid="ensemble-verdict">
+                <p><b>Ensemble:</b> {ensembleStatusLabel(selectionAnalysis.ensemble.status)} · {selectionAnalysis.ensemble.member_ids.join(" + ") || "нет пары"}</p>
+                <p>Корреляция ошибок: {selectionAnalysis.ensemble.error_correlation?.toFixed(3) ?? "—"}; улучшение к single: {percent(selectionAnalysis.ensemble.relative_improvement_vs_best_single)}; fold wins: {percent(selectionAnalysis.ensemble.fold_win_rate)}</p>
+                {selectionAnalysis.ensemble.reasons.map((reason) => <p key={reason} className="text-amber-800">{reason}</p>)}
+                {selectionAnalysis.ensemble.backtest && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {selectionAnalysis.ensemble.status === "tested_no_gain" && <label className="inline-flex items-center gap-1 text-amber-800"><input type="checkbox" checked={ensembleNoGainAcknowledged} onChange={(event) => setEnsembleNoGainAcknowledged(event.target.checked)} />Явно выбрать ensemble без доказанного выигрыша</label>}
+                    {ensembleBaselineRisk && ensembleCandidateId && <label className="inline-flex items-center gap-1 text-amber-800"><input type="checkbox" checked={Boolean(riskAcknowledged[ensembleCandidateId])} onChange={(event) => setRiskAcknowledged((previous) => ({ ...previous, [ensembleCandidateId]: event.target.checked }))} />Ensemble уступает OOF baseline</label>}
+                    <button
+                      className="text-brand underline disabled:text-neutral-300"
+                      disabled={!selectionBiasAcknowledged || (selectionAnalysis.ensemble.status === "tested_no_gain" && !ensembleNoGainAcknowledged) || (ensembleBaselineRisk && !riskAcknowledged[ensembleCandidateId!])}
+                      onClick={() => void selectCandidate(
+                        selectionAnalysis.ensemble.backtest!.model_id,
+                        ensembleBaselineRisk,
+                        selectionAnalysis.ensemble.status === "tested_no_gain",
+                      )}
+                    >Выбрать проверенный ensemble</button>
+                  </div>
+                )}
+              </div>
+              {selectionAnalysis.warnings.map((warning) => <p key={warning} className="mt-1 text-amber-800">{warning}</p>)}
+              <label className="mt-2 inline-flex items-center gap-1 font-medium"><input aria-label="Подтвердить отсутствие независимого holdout" type="checkbox" checked={selectionBiasAcknowledged} onChange={(event) => setSelectionBiasAcknowledged(event.target.checked)} />Подтверждаю: независимый final holdout не использован</label>
+            </div>
+          )}
           <div className="mb-2 flex items-center gap-2">
             <label htmlFor="applicability-filter" className="text-[10px] text-neutral-500">Применимость</label>
             <select id="applicability-filter" aria-label="Фильтр применимости" value={applicabilityFilter} onChange={(event) => setApplicabilityFilter(event.target.value as typeof applicabilityFilter)} className="rounded border border-neutral-300 bg-white px-2 py-1 text-[10px]">
@@ -262,13 +349,16 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
             <select id="baseline-filter" aria-label="Фильтр baseline" value={baselineFilter} onChange={(event) => setBaselineFilter(event.target.value as typeof baselineFilter)} className="rounded border border-neutral-300 bg-white px-2 py-1 text-[10px]"><option value="all">Все</option><option value="eligible">MASE ≤ 1.05</option><option value="risk">Риск</option></select>
           </div>
           <table className="w-full text-[10px]" data-testid="comparison-ranking"><thead><tr className="border-b text-left text-neutral-500"><th className="py-2">#</th><th>Модель</th><th>Применимость</th><th>RMSE</th><th>MASE</th><th>Score</th><th>Fold RMSE μ±σ</th><th>Диагностика</th><th>Baseline</th>{stageId === "selection" && <th>Действие</th>}</tr></thead>
-            <tbody>{filteredRanking.map((item) => <tr key={item.model_id} className="border-b border-neutral-100"><td className="py-2">{item.rank}</td><td className="font-medium" title={`run: ${item.backtest_run_id}`}>{item.model_name}<span className="block text-[9px] font-normal text-neutral-400">{item.family_id}</span></td><td>{applicabilityLabel(item.applicability_level)}</td><td>{item.metrics.rmse.toFixed(3)}</td><td>{item.metrics.mase == null ? "—" : item.metrics.mase.toFixed(3)}</td><td title={JSON.stringify(item.normalized_metrics)}>{item.weighted_score.toFixed(3)}</td><td>{item.fold_stability.mean.toFixed(3)} ± {item.fold_stability.std.toFixed(3)}<span className="block text-[9px] text-neutral-400">top-1 {(item.fold_stability.top1_rate * 100).toFixed(0)}%</span></td><td title={`pass: ${item.diagnostics.passed.join(", ")}; warning: ${item.diagnostics.warnings.join(", ")}; fail: ${item.diagnostics.failed.join(", ")}`}>{comparisonDiagnosticStatus(item.diagnostics.overall_status)}</td><td className={item.baseline_eligible ? "text-green-700" : "text-amber-700"}>{item.baseline_note}</td>{stageId === "selection" && <td>{!item.baseline_eligible && <label className="mr-2 inline-flex items-center gap-1 text-[10px] text-amber-700"><input type="checkbox" checked={Boolean(riskAcknowledged[item.model_id])} onChange={(event) => setRiskAcknowledged((previous) => ({ ...previous, [item.model_id]: event.target.checked }))} />Принимаю риск</label>}<button className="text-brand underline disabled:text-neutral-300" disabled={!item.baseline_eligible && !riskAcknowledged[item.model_id]} onClick={() => void select(item)} aria-label={`Выбрать ${item.model_name}`}>Выбрать</button></td>}</tr>)}</tbody>
+            <tbody>{filteredRanking.map((item) => {
+              const actualBaselineRisk = selectionBaselineRisk(item);
+              return <tr key={item.model_id} className="border-b border-neutral-100"><td className="py-2">{item.rank}</td><td className="font-medium" title={`run: ${item.backtest_run_id}`}>{item.model_name}<span className="block text-[9px] font-normal text-neutral-400">{item.family_id}</span></td><td>{applicabilityLabel(item.applicability_level)}</td><td>{item.metrics.rmse.toFixed(3)}</td><td>{item.metrics.mase == null ? "—" : item.metrics.mase.toFixed(3)}</td><td title={JSON.stringify(item.normalized_metrics)}>{item.weighted_score.toFixed(3)}</td><td>{item.fold_stability.mean.toFixed(3)} ± {item.fold_stability.std.toFixed(3)}<span className="block text-[9px] text-neutral-400">top-1 {(item.fold_stability.top1_rate * 100).toFixed(0)}%</span></td><td title={`pass: ${item.diagnostics.passed.join(", ")}; warning: ${item.diagnostics.warnings.join(", ")}; fail: ${item.diagnostics.failed.join(", ")}`}>{comparisonDiagnosticStatus(item.diagnostics.overall_status)}</td><td className={item.baseline_eligible ? "text-green-700" : "text-amber-700"}>{item.baseline_note}</td>{stageId === "selection" && <td>{selectionAnalysis && actualBaselineRisk && <label className="mr-2 inline-flex items-center gap-1 text-[10px] text-amber-700"><input type="checkbox" checked={Boolean(riskAcknowledged[item.model_id])} onChange={(event) => setRiskAcknowledged((previous) => ({ ...previous, [item.model_id]: event.target.checked }))} />Уступает OOF baseline</label>}<button className="text-brand underline disabled:text-neutral-300" disabled={!selectionAnalysis || !selectionBiasAcknowledged || (actualBaselineRisk && !riskAcknowledged[item.model_id])} onClick={() => void selectCandidate(item.model_id, actualBaselineRisk)} aria-label={`Выбрать ${item.model_name}`}>Выбрать</button></td>}</tr>;
+            })}</tbody>
           </table>
           {stageId === "comparison" && <div className="mt-3" data-testid="error-correlation-matrix"><h4 className="mb-1 text-[10px] font-semibold text-neutral-700">Корреляция точно совмещённых OOF-ошибок</h4><table className="text-[10px]"><thead><tr><th className="px-2 py-1" />{comparison.error_correlation.model_ids.map((model) => <th key={model} className="px-2 py-1 text-neutral-500">{model}</th>)}</tr></thead><tbody>{comparison.error_correlation.model_ids.map((model, row) => <tr key={model}><th className="px-2 py-1 text-left text-neutral-500">{model}</th>{(comparison.error_correlation.values[row] ?? []).map((value, column) => <td key={`${model}-${column}`} className="px-2 py-1 text-right">{value == null ? "—" : value.toFixed(3)}</td>)}</tr>)}</tbody></table></div>}
           {comparison.warnings.map((warning) => <p key={warning} className="mt-2 text-[10px] text-amber-700">{warning}</p>)}
         </div>
       )}
-      {selection && stageId === "selection" && <div className="mt-3 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-700">Выбрана модель: {selection.selected_model_id}</div>}
+      {selection && stageId === "selection" && <div className="mt-3 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-700">Выбран кандидат ({selection.selected_kind}): {selection.selected_model_id}</div>}
       {card && stageId === "model_card" && <div className="mt-4 min-h-0 flex-1 overflow-auto"><div className="mb-2 flex items-center justify-between text-xs"><span>{card.card_id}</span><a className="text-brand underline" href={`${API_BASE}/v1/session/modeling/card/${card.card_id}`} download>Скачать JSON</a></div><pre className="whitespace-pre-wrap rounded bg-neutral-950 p-3 text-[10px] text-neutral-100">{JSON.stringify(card.card, null, 2)}</pre></div>}
       {tuningResult && (
         <div className="mt-3 grid grid-cols-4 gap-2 rounded border border-blue-200 bg-blue-50 p-2 text-[10px] text-blue-900" data-testid="tuning-plan-summary">

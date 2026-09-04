@@ -268,15 +268,39 @@ if frozenset(PRODUCTION_PREDICTORS) != PRODUCTION_BACKTEST_MODEL_IDS:
     raise RuntimeError("Backtest predictor registry расходится с production readiness registry")
 
 
-def compute_backtest_metrics(
-    y_true: list[float], y_pred: list[float], y_train: list[float], seasonal_period: int,
+def compute_metric_scales(
+    y_train: list[float], seasonal_period: int,
+) -> tuple[Optional[float], Optional[float]]:
+    """Return train-only MASE/RMSSE denominators for audit and reuse.
+
+    Persisting the denominators makes a pointwise forecast combination
+    evaluable on exactly the same fold without reconstructing or leaking the
+    training data later in the selection stage.
+    """
+    train = np.asarray(y_train, dtype=float)
+    period = max(1, int(seasonal_period))
+    if train.size <= period:
+        return None, None
+    scale_errors = train[period:] - train[:-period]
+    mae_scale = float(np.mean(np.abs(scale_errors)))
+    rmsse_scale = float(np.sqrt(np.mean(np.square(scale_errors))))
+    epsilon = np.finfo(float).eps
+    return (
+        mae_scale if mae_scale > epsilon else None,
+        rmsse_scale if rmsse_scale > epsilon else None,
+    )
+
+
+def compute_forecast_metrics(
+    y_true: list[float], y_pred: list[float], *,
+    mase_scale: Optional[float], rmsse_scale: Optional[float],
 ) -> BacktestMetrics:
+    """Compute metrics from forecasts and already fitted train-only scales."""
     if not y_true or len(y_true) != len(y_pred):
         raise BacktestExecutionError("Факты и прогноз должны иметь одинаковую ненулевую длину")
     actual = np.asarray(y_true, dtype=float)
     predicted = np.asarray(y_pred, dtype=float)
-    train = np.asarray(y_train, dtype=float)
-    if not (np.isfinite(actual).all() and np.isfinite(predicted).all() and np.isfinite(train).all()):
+    if not (np.isfinite(actual).all() and np.isfinite(predicted).all()):
         raise BacktestExecutionError("Backtest получил NaN/Inf")
     errors = actual - predicted
     mae = float(np.mean(np.abs(errors)))
@@ -287,21 +311,23 @@ def compute_backtest_metrics(
     valid_smape = denominator > np.finfo(float).eps
     smape = float(np.mean(200 * np.abs(errors[valid_smape]) / denominator[valid_smape])) if valid_smape.any() else 0.0
 
-    period = max(1, int(seasonal_period))
-    if train.size <= period:
-        mase = rmsse = None
-    else:
-        scale_errors = train[period:] - train[:-period]
-        mae_scale = float(np.mean(np.abs(scale_errors)))
-        mse_scale = float(np.mean(np.square(scale_errors)))
-        mase = mae / mae_scale if mae_scale > np.finfo(float).eps else None
-        rmsse = rmse / math.sqrt(mse_scale) if mse_scale > np.finfo(float).eps else None
+    mase = mae / mase_scale if mase_scale is not None else None
+    rmsse = rmse / rmsse_scale if rmsse_scale is not None else None
     return BacktestMetrics(
         mae=round(mae, 6), rmse=round(rmse, 6),
         mape=round(mape, 6) if mape is not None else None,
         mase=round(mase, 6) if mase is not None else None,
         smape=round(smape, 6), rmsse=round(rmsse, 6) if rmsse is not None else None,
         mape_valid_points=int(nonzero.sum()), weighted_score=None,
+    )
+
+
+def compute_backtest_metrics(
+    y_true: list[float], y_pred: list[float], y_train: list[float], seasonal_period: int,
+) -> BacktestMetrics:
+    mase_scale, rmsse_scale = compute_metric_scales(y_train, seasonal_period)
+    return compute_forecast_metrics(
+        y_true, y_pred, mase_scale=mase_scale, rmsse_scale=rmsse_scale,
     )
 
 
@@ -388,7 +414,10 @@ def run_backtest_plan(
             if len(forecast) != fold.gap + len(y_true):
                 raise BacktestExecutionError("Model/preprocessing вернул неверную длину прогноза")
             y_pred = forecast[fold.gap:]
-            metrics = compute_backtest_metrics(y_true, y_pred, metric_train, seasonal_period)
+            mase_scale, rmsse_scale = compute_metric_scales(metric_train, seasonal_period)
+            metrics = compute_forecast_metrics(
+                y_true, y_pred, mase_scale=mase_scale, rmsse_scale=rmsse_scale,
+            )
         except Exception as exc:
             raise BacktestExecutionError(
                 f"{model_name}: fold {fold.fold} завершился ошибкой: {exc}"
@@ -414,6 +443,7 @@ def run_backtest_plan(
             "test_start_label": fold.test_start_label or labels[fold.test_indices[0]],
             "test_end_label": fold.test_end_label or labels[fold.test_indices[-1]],
             "metrics": metrics.model_dump(mode="json"), "predictions": predictions,
+            "mase_scale": mase_scale, "rmsse_scale": rmsse_scale,
             "duration_ms": round((time.monotonic() - fold_started) * 1000, 3),
             "error": None,
         })

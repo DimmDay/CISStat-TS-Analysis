@@ -26,6 +26,11 @@ from apps.api.modeling_comparison import (
     build_comparison,
     diagnostics_signature,
 )
+from apps.api.modeling_selection import (
+    SelectionContractError,
+    SelectionPolicy,
+    evaluate_selection,
+)
 from apps.api.modeling_tuning import (
     execute_tuning_plan_with_artifacts,
     oof_signature,
@@ -114,7 +119,21 @@ class ModelingCompareRequest(BaseModel):
 
 class ModelingSelectRequest(BaseModel):
     model_id: str
+    selection_analysis_id: Optional[str] = None
+    selection_signature: Optional[str] = None
     acknowledge_baseline_risk: bool = False
+    acknowledge_selection_bias: bool = False
+    acknowledge_ensemble_no_gain: bool = False
+
+
+class ModelingSelectionEvaluationRequest(BaseModel):
+    primary_metric: Literal["mae", "rmse"] = "rmse"
+    max_member_relative_gap: float = Field(0.10, ge=0, le=10)
+    max_error_correlation: float = Field(0.80, ge=-1, le=1)
+    min_oof_points: int = Field(8, ge=2, le=100000)
+    min_ensemble_relative_improvement: float = Field(0.01, ge=0, le=1)
+    min_fold_win_rate: float = Field(0.50, ge=0, le=1)
+    practical_tie_relative: float = Field(0.01, ge=0, le=1)
 
 
 class ModelingCardRequest(BaseModel):
@@ -199,6 +218,9 @@ def _invalidate_after_model_run(session, model_id: str) -> None:
     """Remove every artifact that depended on an older OOF execution."""
     session.modeling_artifacts.setdefault("diagnostics", {}).pop(model_id, None)
     session.modeling_artifacts.pop("comparison", None)
+    session.modeling_artifacts.pop("selection_analysis", None)
+    session.modeling_artifacts.pop("ensemble_backtests", None)
+    session.modeling_artifacts.pop("ensemble_diagnostics", None)
     session.modeling_artifacts.pop("selection", None)
     session.modeling_artifacts["model_cards"] = {}
     session.modeling_pipeline["diagnostics"] = "in_progress"
@@ -209,6 +231,9 @@ def _invalidate_after_model_run(session, model_id: str) -> None:
 def _invalidate_after_diagnostics(session) -> None:
     """Diagnostics are a comparison input, so every downstream artifact is stale."""
     session.modeling_artifacts.pop("comparison", None)
+    session.modeling_artifacts.pop("selection_analysis", None)
+    session.modeling_artifacts.pop("ensemble_backtests", None)
+    session.modeling_artifacts.pop("ensemble_diagnostics", None)
     session.modeling_artifacts.pop("selection", None)
     session.modeling_artifacts["model_cards"] = {}
     session.modeling_pipeline["comparison"] = "in_progress"
@@ -692,9 +717,51 @@ def compare_modeling_candidates(
     except ComparisonContractError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     session.modeling_artifacts["comparison"] = result.model_dump(mode="json")
+    session.modeling_artifacts.pop("selection_analysis", None)
+    session.modeling_artifacts.pop("ensemble_backtests", None)
+    session.modeling_artifacts.pop("ensemble_diagnostics", None)
     session.modeling_artifacts.pop("selection", None)
     session.modeling_artifacts["model_cards"] = {}
     session.modeling_pipeline["comparison"] = "done"
+    session.modeling_pipeline["selection"] = "in_progress"
+    session.modeling_pipeline["model_card"] = "pending"
+    session.touch()
+    store.save(session)
+    return result
+
+
+@router.post("/selection/evaluate")
+def evaluate_modeling_selection(
+    payload: ModelingSelectionEvaluationRequest,
+    request: Request,
+    response: Response,
+):
+    """Build a traceable recommendation and actually test ensemble OOF."""
+    store, session = _get_session(request, response)
+    _action_context(session)
+    comparison = session.modeling_artifacts.get("comparison")
+    if not comparison:
+        raise HTTPException(status_code=409, detail="Сначала выполните сравнение моделей")
+    policy = SelectionPolicy(**payload.model_dump())
+    try:
+        result = evaluate_selection(
+            comparison=comparison,
+            backtests=session.modeling_artifacts.get("backtests", {}),
+            diagnostics=session.modeling_artifacts.get("diagnostics", {}),
+            policy=policy,
+        )
+    except (SelectionContractError, ValueError, TypeError, ArithmeticError) as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    session.modeling_artifacts["selection_analysis"] = result
+    session.modeling_artifacts["ensemble_backtests"] = {}
+    session.modeling_artifacts["ensemble_diagnostics"] = {}
+    ensemble = result.get("ensemble") or {}
+    if ensemble.get("backtest"):
+        ensemble_id = ensemble["backtest"]["model_id"]
+        session.modeling_artifacts["ensemble_backtests"][ensemble_id] = ensemble["backtest"]
+        session.modeling_artifacts["ensemble_diagnostics"][ensemble_id] = ensemble["diagnostics"]
+    session.modeling_artifacts.pop("selection", None)
+    session.modeling_artifacts["model_cards"] = {}
     session.modeling_pipeline["selection"] = "in_progress"
     session.modeling_pipeline["model_card"] = "pending"
     session.touch()
@@ -711,36 +778,71 @@ def select_modeling_candidate(
     store, session = _get_session(request, response)
     _action_context(session)
     comparison = session.modeling_artifacts.get("comparison")
-    if not comparison:
-        raise HTTPException(status_code=409, detail="Сначала выполните сравнение моделей")
-    candidate = next((item for item in comparison["ranking"] if item["model_id"] == payload.model_id), None)
-    if candidate is None:
-        raise HTTPException(status_code=404, detail="Модель отсутствует в текущем сравнении")
-    if not candidate["baseline_eligible"] and not payload.acknowledge_baseline_risk:
-        raise HTTPException(status_code=409, detail="Подтвердите выбор модели, уступающей Naive")
-    top = comparison["ranking"][:3]
-    close_scores = len(top) >= 2 and top[1]["weighted_score"] - top[0]["weighted_score"] <= 0.05
-    enough_strong_models = sum(
-        item["metrics"].get("mase") is not None and item["metrics"]["mase"] < 1
-        for item in top
-    ) >= 2
-    ensemble_candidate = close_scores and enough_strong_models
+    analysis = session.modeling_artifacts.get("selection_analysis")
+    if not comparison or not analysis:
+        raise HTTPException(
+            status_code=409,
+            detail="Сначала выполните comparison и верифицируйте selection/ensemble trigger",
+        )
+    if (
+        analysis.get("comparison_signature") != comparison.get("comparison_signature")
+        or payload.selection_analysis_id != analysis.get("selection_analysis_id")
+        or payload.selection_signature != analysis.get("selection_signature")
+    ):
+        raise HTTPException(status_code=409, detail="Selection analysis устарел или не подтверждён подписью")
+    if not payload.acknowledge_selection_bias:
+        raise HTTPException(
+            status_code=409,
+            detail="Подтвердите отсутствие независимого final holdout: оценка использует selection OOF",
+        )
+    candidate = next(
+        (item for item in comparison["ranking"] if item["model_id"] == payload.model_id), None,
+    )
+    ensemble = analysis.get("ensemble") or {}
+    ensemble_backtest = ensemble.get("backtest")
+    is_ensemble = bool(ensemble_backtest and ensemble_backtest.get("model_id") == payload.model_id)
+    if candidate is None and not is_ensemble:
+        raise HTTPException(status_code=404, detail="Кандидат отсутствует в текущем selection analysis")
+    if is_ensemble and ensemble.get("status") != "recommended" and not payload.acknowledge_ensemble_no_gain:
+        raise HTTPException(
+            status_code=409,
+            detail="Ансамбль не доказал улучшение; требуется явный override",
+        )
+    primary_metric = analysis["policy"]["primary_metric"]
+    baseline_loss = float(analysis["best_baseline"]["primary_loss"])
+    selected_loss = float(
+        ensemble_backtest["metrics"][primary_metric]
+        if is_ensemble else candidate["metrics"][primary_metric]
+    )
+    baseline_risk = selected_loss > baseline_loss + np.finfo(float).eps
+    if baseline_risk and not payload.acknowledge_baseline_risk:
+        raise HTTPException(status_code=409, detail="Подтвердите выбор, уступающий лучшему фактическому OOF baseline")
+    diagnostics = (
+        ensemble.get("diagnostics") if is_ensemble else candidate["diagnostics"]
+    )
+    backtest_run_id = (
+        ensemble_backtest["run_id"] if is_ensemble else candidate["backtest_run_id"]
+    )
     result = {
         "selected_model_id": payload.model_id,
+        "selected_kind": "ensemble" if is_ensemble else "single",
+        "selection_analysis_id": analysis["selection_analysis_id"],
+        "selection_signature": analysis["selection_signature"],
         "comparison_id": comparison["comparison_id"],
         "comparison_signature": comparison["comparison_signature"],
-        "backtest_run_id": candidate["backtest_run_id"],
-        "diagnostics_signature": candidate["diagnostics"]["diagnostics_signature"],
+        "backtest_run_id": backtest_run_id,
+        "diagnostics_signature": diagnostics["diagnostics_signature"],
         "selected_at": datetime.now(timezone.utc).isoformat(),
-        "user_override": payload.model_id != comparison["ranking"][0]["model_id"],
+        "user_override": payload.model_id != analysis["recommended_candidate"]["model_id"],
         "baseline_risk_acknowledged": payload.acknowledge_baseline_risk,
-        "ensemble_candidate": ensemble_candidate,
-        "ensemble_recommended": False,
-        "ensemble_note": (
-            "Выполнены условия MASE и близости score; OOF-корреляция сохранена в comparison. "
-            "Порог диверсификации и веса должны быть утверждены на отдельном этапе selection."
-            if ensemble_candidate else None
-        ),
+        "selection_bias_acknowledged": payload.acknowledge_selection_bias,
+        "independent_holdout": False,
+        "primary_metric": primary_metric,
+        "primary_loss": selected_loss,
+        "best_baseline_loss": baseline_loss,
+        "ensemble_status": ensemble.get("status"),
+        "ensemble_recommended": ensemble.get("status") == "recommended",
+        "ensemble_members": ensemble.get("member_ids") if is_ensemble else [],
     }
     session.modeling_artifacts["selection"] = result
     session.modeling_pipeline["selection"] = "done"
@@ -764,11 +866,46 @@ def create_model_card(
     if not selection or not comparison:
         raise HTTPException(status_code=409, detail="Сначала сравните и выберите модель")
     model_id = selection["selected_model_id"]
-    ranked = next(item for item in comparison["ranking"] if item["model_id"] == model_id)
-    backtest = session.modeling_artifacts["backtests"][model_id]
-    tuning = session.modeling_artifacts.get("tuning", {}).get(model_id)
-    diagnostics = session.modeling_artifacts.get("diagnostics", {}).get(model_id)
-    candidate = next((item for item in session.modeling_artifacts.get("candidates", {}).get("candidates", []) if item["model_id"] == model_id), None)
+    is_ensemble = selection.get("selected_kind") == "ensemble"
+    selection_analysis = session.modeling_artifacts.get("selection_analysis") or {}
+    if (
+        selection.get("comparison_signature") != comparison.get("comparison_signature")
+        or selection.get("selection_analysis_id") != selection_analysis.get("selection_analysis_id")
+        or selection.get("selection_signature") != selection_analysis.get("selection_signature")
+    ):
+        raise HTTPException(status_code=409, detail="Selection lineage устарела; повторите верификацию")
+    if is_ensemble:
+        backtest = session.modeling_artifacts.get("ensemble_backtests", {}).get(model_id)
+        diagnostics = session.modeling_artifacts.get("ensemble_diagnostics", {}).get(model_id)
+        if not backtest or not diagnostics:
+            raise HTTPException(status_code=409, detail="Ensemble selection artifact устарел")
+        ensemble = selection_analysis.get("ensemble") or {}
+        ranked = {
+            "family_id": "ensemble",
+            "applicability_level": "CONDITIONALLY_APPLICABLE",
+            "model_name": backtest["model_name"],
+            "metrics": backtest["metrics"],
+            "normalized_metrics": {},
+            "weighted_score": None,
+            "fold_stability": {
+                "metric": selection_analysis.get("policy", {}).get("primary_metric", "rmse"),
+                "fold_values": [
+                    fold["metrics"][selection_analysis.get("policy", {}).get("primary_metric", "rmse")]
+                    for fold in backtest.get("folds") or []
+                ],
+                "top1_rate": ensemble.get("fold_win_rate"),
+            },
+            "baseline_eligible": (ensemble.get("relative_improvement_vs_best_baseline") or 0) >= 0,
+            "baseline_note": "сравнение с лучшим фактическим OOF baseline",
+        }
+        tuning = None
+        candidate = None
+    else:
+        ranked = next(item for item in comparison["ranking"] if item["model_id"] == model_id)
+        backtest = session.modeling_artifacts["backtests"][model_id]
+        tuning = session.modeling_artifacts.get("tuning", {}).get(model_id)
+        diagnostics = session.modeling_artifacts.get("diagnostics", {}).get(model_id)
+        candidate = next((item for item in session.modeling_artifacts.get("candidates", {}).get("candidates", []) if item["model_id"] == model_id), None)
     series = prepare_passport_series(session.dataframe, session.target_column, session.date_column)
     folds = backtest.get("folds") or []
     first_fold = folds[0] if folds else None
@@ -777,6 +914,10 @@ def create_model_card(
     passed = [item["test"] for item in diagnostics_items if item["applicable"] and item["status"] == "pass"]
     failed = [item for item in diagnostics_items if item["applicable"] and item["status"] in {"warning", "fail"}]
     limitations = ["Оценка основана на историческом временном разбиении; будущий режим может отличаться."]
+    if not selection.get("independent_holdout"):
+        limitations.append(
+            "Независимый final holdout не использован: tuning и selection опираются на один OOF cohort."
+        )
     if not diagnostics:
         limitations.append("Диагностика остатков для выбранной модели не зафиксирована.")
     limitations.append("Prediction intervals и их coverage ещё не реализованы в production backtest.")
@@ -786,6 +927,8 @@ def create_model_card(
             "model_id": model_id, "family": ranked["family_id"],
             "applicability_level": ranked["applicability_level"],
             "description": (candidate or {}).get("message", ranked["model_name"]),
+            "selection_kind": selection.get("selected_kind", "single"),
+            "ensemble_members": selection.get("ensemble_members", []),
             "version": "1.0", "library_versions": {
                 "numpy": _package_version("numpy"),
                 "pandas": _package_version("pandas"),
@@ -833,8 +976,10 @@ def create_model_card(
             "oof_predictions": backtest.get("oof_predictions", []),
             "cv_metrics": (tuning or {}).get("best_metrics") or {},
             "baseline_comparison": {
-                "mase": ranked["metrics"]["mase"],
-                "threshold": 1.05,
+                "mase": ranked["metrics"].get("mase"),
+                "primary_metric": selection.get("primary_metric"),
+                "selected_loss": selection.get("primary_loss"),
+                "best_baseline_loss": selection.get("best_baseline_loss"),
                 "eligible": ranked["baseline_eligible"],
                 "note": ranked["baseline_note"],
             },
@@ -851,6 +996,9 @@ def create_model_card(
             "comparison_id": comparison.get("comparison_id"),
             "comparison_signature": comparison.get("comparison_signature"),
             "diagnostics_signature": (diagnostics or {}).get("diagnostics_signature"),
+            "selection_analysis_id": selection.get("selection_analysis_id"),
+            "selection_signature": selection.get("selection_signature"),
+            "independent_holdout": selection.get("independent_holdout", False),
         },
         "notes": payload.notes,
         "created_at": datetime.now(timezone.utc).isoformat(),

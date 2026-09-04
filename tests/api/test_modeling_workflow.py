@@ -288,9 +288,18 @@ def test_repeated_tuning_invalidates_stale_downstream_artifacts(client: TestClie
     comparison = client.post("/v1/session/modeling/compare", json={})
     assert comparison.status_code == 200, comparison.text
     selected_id = comparison.json()["ranking"][0]["model_id"]
+    evaluation = client.post(
+        "/v1/session/modeling/selection/evaluate", json={"min_oof_points": 4},
+    ).json()
     assert client.post(
         "/v1/session/modeling/select",
-        json={"model_id": selected_id, "acknowledge_baseline_risk": True},
+        json={
+            "model_id": selected_id,
+            "selection_analysis_id": evaluation["selection_analysis_id"],
+            "selection_signature": evaluation["selection_signature"],
+            "acknowledge_baseline_risk": True,
+            "acknowledge_selection_bias": True,
+        },
     ).status_code == 200
     assert client.post("/v1/session/modeling/card", json={}).status_code == 200
 
@@ -412,14 +421,45 @@ def test_backtests_compare_select_and_model_card_are_persisted(client: TestClien
     assert [item["rank"] for item in ranking] == [1, 2]
     assert all(0 <= item["weighted_score"] <= 1 for item in ranking)
 
+    evaluated = client.post(
+        "/v1/session/modeling/selection/evaluate",
+        json={"primary_metric": "rmse", "min_oof_points": 4},
+    )
+    assert evaluated.status_code == 200, evaluated.text
+    evaluation = evaluated.json()
+    assert evaluation["selection_signature"]
+    assert evaluation["comparison_signature"] == comparison.json()["comparison_signature"]
+    assert evaluation["evaluation_contract"]["estimate_status"] == "selection_oof_reused"
+    assert evaluation["best_baseline"]["model_id"] in {"naive", "drift"}
+    assert evaluation["recommended_candidate"]["kind"] in {"single", "ensemble"}
+
     selected_id = ranking[0]["model_id"]
+    unacknowledged = client.post(
+        "/v1/session/modeling/select",
+        json={
+            "model_id": selected_id,
+            "selection_analysis_id": evaluation["selection_analysis_id"],
+            "selection_signature": evaluation["selection_signature"],
+            "acknowledge_baseline_risk": True,
+        },
+    )
+    assert unacknowledged.status_code == 409
+    assert "независим" in unacknowledged.json()["detail"].lower()
     selected = client.post(
         "/v1/session/modeling/select",
-        json={"model_id": selected_id, "acknowledge_baseline_risk": True},
+        json={
+            "model_id": selected_id,
+            "selection_analysis_id": evaluation["selection_analysis_id"],
+            "selection_signature": evaluation["selection_signature"],
+            "acknowledge_baseline_risk": True,
+            "acknowledge_selection_bias": True,
+        },
     )
     assert selected.status_code == 200, selected.text
     assert selected.json()["selected_model_id"] == selected_id
     assert selected.json()["comparison_signature"] == comparison.json()["comparison_signature"]
+    assert selected.json()["selection_signature"] == evaluation["selection_signature"]
+    assert selected.json()["independent_holdout"] is False
 
     created = client.post("/v1/session/modeling/card", json={})
     assert created.status_code == 200, created.text
@@ -436,6 +476,8 @@ def test_backtests_compare_select_and_model_card_are_persisted(client: TestClien
     assert card["traceability"]["total_sources"] == 30
     assert card["traceability"]["comparison_signature"] == comparison.json()["comparison_signature"]
     assert card["traceability"]["diagnostics_signature"]
+    assert card["traceability"]["selection_signature"] == evaluation["selection_signature"]
+    assert any("независим" in item.lower() for item in card["limitations"])
 
     downloaded = client.get(f"/v1/session/modeling/card/{card_id}")
     assert downloaded.status_code == 200
@@ -573,9 +615,18 @@ def test_rerun_diagnostics_invalidates_comparison_selection_and_cards(client: Te
     comparison = client.post("/v1/session/modeling/compare", json={})
     assert comparison.status_code == 200, comparison.text
     selected_id = comparison.json()["ranking"][0]["model_id"]
+    evaluation = client.post(
+        "/v1/session/modeling/selection/evaluate", json={"min_oof_points": 4},
+    ).json()
     assert client.post(
         "/v1/session/modeling/select",
-        json={"model_id": selected_id, "acknowledge_baseline_risk": True},
+        json={
+            "model_id": selected_id,
+            "selection_analysis_id": evaluation["selection_analysis_id"],
+            "selection_signature": evaluation["selection_signature"],
+            "acknowledge_baseline_risk": True,
+            "acknowledge_selection_bias": True,
+        },
     ).status_code == 200
     assert client.post("/v1/session/modeling/card", json={}).status_code == 200
 

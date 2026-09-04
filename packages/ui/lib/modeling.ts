@@ -346,6 +346,76 @@ export interface ModelingComparisonResponse {
   warnings: string[];
 }
 
+export type EnsembleEvaluationStatus = "not_eligible" | "tested_no_gain" | "recommended";
+
+export interface ModelingSelectionAnalysis {
+  selection_analysis_id: string;
+  selection_signature: string;
+  comparison_id: string;
+  comparison_signature: string;
+  cohort_id: string;
+  policy: {
+    version: string;
+    primary_metric: "mae" | "rmse";
+    max_member_relative_gap: number;
+    max_error_correlation: number;
+    min_oof_points: number;
+    min_ensemble_relative_improvement: number;
+    min_fold_win_rate: number;
+    practical_tie_relative: number;
+  };
+  recommended_single: {
+    model_id: string;
+    primary_metric: "mae" | "rmse";
+    primary_loss: number;
+    practical_ties: string[];
+    relative_improvement_vs_best_baseline: number;
+  };
+  best_baseline: {
+    model_id: string;
+    primary_metric: "mae" | "rmse";
+    primary_loss: number;
+  };
+  ensemble: {
+    status: EnsembleEvaluationStatus;
+    strategy: "simple_average";
+    member_ids: string[];
+    weights: number[];
+    error_correlation: number | null;
+    relative_improvement_vs_best_single: number | null;
+    relative_improvement_vs_best_baseline: number | null;
+    fold_win_rate: number | null;
+    backtest: BacktestResponse | null;
+    diagnostics: ({ diagnostics_signature: string } & Record<string, unknown>) | null;
+    reasons: string[];
+  };
+  recommended_candidate: {
+    kind: "single" | "ensemble";
+    model_id: string;
+  };
+  evaluation_contract: {
+    source: "exact_aligned_selection_oof";
+    estimate_status: "selection_oof_reused";
+    independent_holdout: false;
+    requires_acknowledgement: true;
+  };
+  warnings: string[];
+}
+
+export interface ModelingSelectionResult {
+  selected_model_id: string;
+  selected_kind: "single" | "ensemble";
+  selection_analysis_id: string;
+  selection_signature: string;
+  primary_metric: "mae" | "rmse";
+  primary_loss: number;
+  best_baseline_loss: number;
+  ensemble_status: EnsembleEvaluationStatus;
+  ensemble_recommended: boolean;
+  ensemble_members: string[];
+  independent_holdout: false;
+}
+
 export type TraceabilityStatus = "done" | "warning" | "skipped" | "pending";
 
 export interface ModelingTraceNode {

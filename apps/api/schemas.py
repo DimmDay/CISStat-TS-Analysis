@@ -3039,6 +3039,12 @@ class BacktestFoldResult(BaseModel):
     test_end_label: Optional[str] = None
     metrics: Optional[BacktestMetrics] = None
     predictions: List[BacktestPredictionPoint] = Field(default_factory=list)
+    mase_scale: Optional[float] = Field(
+        None, gt=0, description="Train-only denominator used for fold MASE",
+    )
+    rmsse_scale: Optional[float] = Field(
+        None, gt=0, description="Train-only denominator used for fold RMSSE",
+    )
     duration_ms: float = Field(..., ge=0)
     error: Optional[str] = None
 

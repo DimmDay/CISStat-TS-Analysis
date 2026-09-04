@@ -1340,11 +1340,11 @@ TDD и проверка
 
 ## Task 97 — Спецификация: раскрытие/схлопывание вложенных графиков в Обзоре
 
-### Спроектирована архитектура фичи expand/collapse для вложенных графиков
+Спроектирована архитектура фичи expand/collapse для вложенных графиков
 «Обзора» на всех вкладках платформы (Validation/Preprocessing/EDA/Modeling).
 Артефакт: `spec_max_graph.md`.
 
-### Ключевые решения: переиспользуемый примитив ExpandableChartPanel/
+Ключевые решения: переиспользуемый примитив ExpandableChartPanel/
 ExpandableChartsProvider/ChartExpandToggle в packages/ui; single-expand
 инвариант на уровне одного Обзора; раскрытие в границах существующего
 468px-контейнера (Task 88) через absolute inset-0; опциональный
@@ -1353,7 +1353,7 @@ detail_level=compact|expanded для сэмплирования на раскр�
 сэмплирование → тиражирование). Открытые вопросы по вторичным потолкам
 сэмплирования и приоритету пилотных Обзоров — на решение тимлида.
 
-### Статус: архитектурный дизайн передан на ревью, реализация не начата
+Статус: архитектурный дизайн передан на ревью, реализация не начата
 (коммит/push в main запрещён протоколом AGENTS.md).
 
 ---
@@ -1474,99 +1474,50 @@ frontend shell.
 
 ### Исходная точка и выявленный разрыв
 
-Работа выполнена после синхронизации с точным коммитом
-`7986075459001fc375ff2ed3dc8af490f2b21a45`; commit/push не выполнялись.
-Task 98 уже унифицировал backtest и tuning на одном `BacktestPlan`, но лучший
-trial сохранялся только как `best_params/best_metrics`. Его полный OOF backtest
-отбрасывался, а session diagnostics читала прежний backtest модели. Поэтому
-после tuning можно было диагностировать остатки default-конфигурации и назвать
-их tuned-остатками. При повторном tuning сохранялись старые diagnostics,
-comparison, selection и Model Card.
+Работа выполнена после синхронизации с точным коммитом 7986075459001fc375ff2ed3dc8af490f2b21a45; commit/push не выполнялись. Task 98 уже унифицировал backtest и tuning на одном BacktestPlan, но лучший trial сохранялся только как best_params/best_metrics. Его полный OOF backtest отбрасывался, а session diagnostics читала прежний backtest модели. Поэтому после tuning можно было диагностировать остатки default-конфигурации и назвать их tuned-остатками. При повторном tuning сохранялись старые diagnostics, comparison, selection и Model Card.
 
-Дополнительно формальный Stage 8 в `modeling.yaml` описывал пять старых
-проверок, тогда как runtime реально выполнял Ljung–Box, Jarque–Bera, ARCH-LM и
-Durbin–Watson. UI скрывал baseline-модели из diagnostics, хотя session endpoint
-методологически работает с OOF любого успешного backtest, и показывал только
-неструктурированный JSON без provenance.
+Дополнительно формальный Stage 8 в modeling.yaml описывал пять старых проверок, тогда как runtime реально выполнял Ljung–Box, Jarque–Bera, ARCH-LM и Durbin–Watson. UI скрывал baseline-модели из diagnostics, хотя session endpoint методологически работает с OOF любого успешного backtest, и показывал только неструктурированный JSON без provenance.
 
 ### Архитектурное решение
 
-- Tuning engine теперь сохраняет полный backtest каждого успешного trial и
-  возвращает точный OOF лучшего trial без повторного fit. Совместимый фасад
-  `execute_tuning_plan()` сохранён для существующих вызовов и тестов.
-- Для каждого tuning run создаётся `tuning_id`; exact `best_params` получают
-  детерминированный SHA-256 `parameter_signature`.
-- Лучший trial атомарно повышается до session backtest с `run_id`,
-  `params_source=tuning`, `tuning_id`, `parameter_signature` и SHA-256
-  упорядоченных OOF actual/predicted/residual (`oof_signature`). Метрики tuning
-  и promoted backtest относятся к одному вычислению.
-- Обычный backtest получает тот же lineage-контракт. Для baseline/default
-  фиксируется `params_source=model_default`; при совпавшем tuning cohort —
-  `params_source=tuning` и соответствующий `tuning_id`.
-- Diagnostics принимает только сохранённый OOF и проверяет подписи параметров и
-  OOF, `run_id`, cohort и соответствие текущему tuning run. Изменённый или
-  устаревший артефакт возвращает 409 вместо расчёта по недоказанным остаткам.
-- Типизированный session response сохраняет exact params, parameter/tuning/
-  backtest/OOF identity, preprocessing contract и источник
-  `tuned_backtest_oof | backtest_oof` вместе с четырьмя результатами тестов.
-- Повторный backtest/tuning удаляет diagnostics этой модели и все зависящие
-  comparison/selection/model cards; pipeline возвращается к корректным
-  незавершённым стадиям.
-- Compare повторно валидирует parameter и OOF signatures и запрещает stale
-  tuned-backtests. Ranking и Model Card сохраняют execution lineage; Model Card
-  берёт гиперпараметры из фактически выбранного backtest, а не из потенциально
-  несвязанного tuning artifact.
-- `modeling.yaml` синхронизирован с runtime: ровно Ljung–Box, Jarque–Bera,
-  ARCH-LM и Durbin–Watson, включая applicable conditions, p-value contract и
-  lag settings. Удалены неисполняемые ADF и prediction-interval coverage.
-
-### Frontend
-
-- После tuning promoted backtest сразу заменяет прежний результат модели в
-  `TsAnalysisModeling`, поэтому последующие графики и diagnostics используют
-  тот же OOF run.
-- Diagnostics доступны для всех моделей с сохранённым production backtest, а
-  не только ETS/ARIMA; tuning по-прежнему ограничен реестром ETS/ETS
-  Damped/ARIMA.
-- Вместо raw JSON показана таблица четырёх тестов со статусами и отдельный
-  lineage-блок: источник OOF и параметров, exact params, cohort, tuning ID,
-  backtest run ID, Params SHA, Residuals SHA и fold-local preprocessing.
-- Результат очищается при смене стадии или модели, чтобы отчёт предыдущего run
-  не отображался под новым выбором.
-
-### TDD, риски и проверка
-
-- RED backend: 9 ожидаемых падений — отсутствовали lineage/promotion,
-  downstream invalidation и актуальный YAML-контракт.
-- RED frontend: compile-time ошибка по отсутствующему callback promoted
-  backtest; отчёт diagnostics не был реализован.
-- Добавлен unit-инвариант: лучший trial повышается с исходным OOF и не
-  переобучается. Добавлен API-негативный тест изменения OOF после tuning.
-- Целевой GREEN: 26/26 backend; ModelingWorkflowOverview 4/4.
-- Расширенная Modeling/backend-регрессия: 245/245 PASS, включая Memory/Redis
-  SessionStore, public/internal backtest, runtime diagnostics и ModelingSpec.
-- Расширенная Modeling UI-регрессия: 5 suites, 65/65 PASS.
-- Полная frontend-регрессия: 84 suites, 725/725 PASS, 0 snapshots.
-- TypeScript embedded/standalone: PASS с принятым флагом
-  `--noUncheckedSideEffectImports false`.
-- Production build embedded/standalone: PASS, по 13/13 страниц, включая
-  `/modeling`; First Load JS 456 kB. Для известного sandbox-ограничения Node 24
-  `uv_resident_set_memory` использован временный shim, удалённый после сборки и
-  не входящий в изменения.
-- `py_compile` и `git diff --check`: PASS.
+Tuning engine теперь сохраняет полный backtest каждого успешного trial и возвращает точный OOF лучшего trial без повторного fit. Совместимый фасад execute_tuning_plan() сохранён для существующих вызовов и тестов.
+Для каждого tuning run создаётся tuning_id; exact best_params получают детерминированный SHA-256 parameter_signature.
+Лучший trial атомарно повышается до session backtest с run_id, params_source=tuning, tuning_id, parameter_signature и SHA-256 упорядоченных OOF actual/predicted/residual (oof_signature). Метрики tuning и promoted backtest относятся к одному вычислению.
+Обычный backtest получает тот же lineage-контракт. Для baseline/default фиксируется params_source=model_default; при совпавшем tuning cohort — params_source=tuning и соответствующий tuning_id.
+Diagnostics принимает только сохранённый OOF и проверяет подписи параметров и OOF, run_id, cohort и соответствие текущему tuning run. Изменённый или устаревший артефакт возвращает 409 вместо расчёта по недоказанным остаткам.
+Типизированный session response сохраняет exact params, parameter/tuning/ backtest/OOF identity, preprocessing contract и источник tuned_backtest_oof | backtest_oof вместе с четырьмя результатами тестов.
+Повторный backtest/tuning удаляет diagnostics этой модели и все зависящие comparison/selection/model cards; pipeline возвращается к корректным незавершённым стадиям.
+Compare повторно валидирует parameter и OOF signatures и запрещает stale tuned-backtests. Ranking и Model Card сохраняют execution lineage; Model Card берёт гиперпараметры из фактически выбранного backtest, а не из потенциально несвязанного tuning artifact.
+modeling.yaml синхронизирован с runtime: ровно Ljung–Box, Jarque–Bera, ARCH-LM и Durbin–Watson, включая applicable conditions, p-value contract и lag settings. Удалены неисполняемые ADF и prediction-interval coverage.
+Frontend
+После tuning promoted backtest сразу заменяет прежний результат модели в TsAnalysisModeling, поэтому последующие графики и diagnostics используют тот же OOF run.
+Diagnostics доступны для всех моделей с сохранённым production backtest, а не только ETS/ARIMA; tuning по-прежнему ограничен реестром ETS/ETS Damped/ARIMA.
+Вместо raw JSON показана таблица четырёх тестов со статусами и отдельный lineage-блок: источник OOF и параметров, exact params, cohort, tuning ID, backtest run ID, Params SHA, Residuals SHA и fold-local preprocessing.
+Результат очищается при смене стадии или модели, чтобы отчёт предыдущего run не отображался под новым выбором.
+TDD, риски и проверка
+RED backend: 9 ожидаемых падений — отсутствовали lineage/promotion, downstream invalidation и актуальный YAML-контракт.
+RED frontend: compile-time ошибка по отсутствующему callback promoted backtest; отчёт diagnostics не был реализован.
+Добавлен unit-инвариант: лучший trial повышается с исходным OOF и не переобучается. Добавлен API-негативный тест изменения OOF после tuning.
+Целевой GREEN: 26/26 backend; ModelingWorkflowOverview 4/4.
+Расширенная Modeling/backend-регрессия: 245/245 PASS, включая Memory/Redis SessionStore, public/internal backtest, runtime diagnostics и ModelingSpec.
+Расширенная Modeling UI-регрессия: 5 suites, 65/65 PASS.
+Полная frontend-регрессия: 84 suites, 725/725 PASS, 0 snapshots.
+TypeScript embedded/standalone: PASS с принятым флагом --noUncheckedSideEffectImports false.
+Production build embedded/standalone: PASS, по 13/13 страниц, включая /modeling; First Load JS 456 kB. Для известного sandbox-ограничения Node 24 uv_resident_set_memory использован временный shim, удалённый после сборки и не входящий в изменения.
+py_compile и git diff --check: PASS.
 
 ### Изменённые файлы Task 99
 
-- `apps/api/modeling_tuning.py`
-- `apps/api/routers/modeling_session.py`
-- `apps/api/schemas.py`
-- `packages/ui/components/ModelingWorkflowOverview.tsx`
-- `packages/ui/components/ModelingWorkflowOverview.test.tsx`
-- `packages/ui/components/TsAnalysisModeling.tsx`
-- `packages/ui/lib/modeling.ts`
-- `rules/modeling.yaml`
-- `tests/api/test_modeling_workflow.py`
-- `tests/unit/test_modeling_tuning_plan.py`
+apps/api/modeling_tuning.py
+apps/api/routers/modeling_session.py
+apps/api/schemas.py
+packages/ui/components/ModelingWorkflowOverview.tsx
+packages/ui/components/ModelingWorkflowOverview.test.tsx
+packages/ui/components/TsAnalysisModeling.tsx
+packages/ui/lib/modeling.ts
+rules/modeling.yaml
+tests/api/test_modeling_workflow.py
+tests/unit/test_modeling_tuning_plan.py
 
 ---
 
@@ -1576,95 +1527,153 @@ Durbin–Watson. UI скрывал baseline-модели из diagnostics, хо�
 
 ### Исходная точка и выявленный разрыв
 
-Работа выполнена на точном исходном коммите
-`0d1786f9050e0b313097a25a14ed60acadb8e07d`; commit/push не выполнялись.
-Task 99 замкнул цепочку tuned backtest → OOF diagnostics, однако Stage 9
-сравнивал только совпавший `cohort_id`. Он не доказывал равенство фактических
-OOF-точек, границ folds, исходных фактов и шкалы оценки, не требовал актуальную
-диагностику каждой модели и не имел воспроизводимой подписи comparison.
+Работа выполнена на точном исходном коммите 0d1786f9050e0b313097a25a14ed60acadb8e07d; commit/push не выполнялись. Task 99 замкнул цепочку tuned backtest → OOF diagnostics, однако Stage 9 сравнивал только совпавший cohort_id. Он не доказывал равенство фактических OOF-точек, границ folds, исходных фактов и шкалы оценки, не требовал актуальную диагностику каждой модели и не имел воспроизводимой подписи comparison.
 
-Legacy YAML дополнительно смешивал разные основания решения: давал
-диагностике произвольный бонус 10% к прогнозному score. UI показывал только
-ранг и агрегированные метрики, без lineage, устойчивости между folds,
-корреляции ошибок и состояния diagnostics. Формальный столбец применимости
-был описан в UI-контракте, но не доходил до runtime comparison.
+Legacy YAML дополнительно смешивал разные основания решения: давал диагностике произвольный бонус 10% к прогнозному score. UI показывал только ранг и агрегированные метрики, без lineage, устойчивости между folds, корреляции ошибок и состояния diagnostics. Формальный столбец применимости был описан в UI-контракте, но не доходил до runtime comparison.
 
 ### Архитектурное и методологическое решение
 
-- Добавлен чистый модуль `modeling_comparison.py`. Comparable pool теперь
-  содержит минимум две успешные модели и обязательно рассчитанный baseline;
-  неизвестные и повторяющиеся `model_ids` отклоняются явно.
-- Для всех моделей проверяется точное совпадение ключей
-  `fold/horizon_step/index/label`, границ train/test/gap, evaluation scale и
-  фактических значений OOF. Совпавшего `cohort_id` без этих доказательств
-  недостаточно.
-- Comparison требует текущий diagnostics report для каждого backtest и
-  валидирует связь `backtest_run_id + cohort_id + parameter_signature +
-  residuals_signature + diagnostics_signature`. Повторная диагностика
-  инвалидирует comparison, selection и Model Card.
-- Прогнозный рейтинг рассчитывается только по MAE/RMSE/MAPE/MASE после min-max
-  нормализации внутри exact comparable pool. Если MAPE или MASE не определена
-  хотя бы у одной модели, метрика исключается для всего пула, а веса
-  перенормируются до единицы. Diagnostics не изменяет score и остаётся
-  отдельным свидетельством.
-- Результат содержит raw и normalized metrics, детерминированный tie-break,
-  baseline-флаг MASE ≤ 1.05 и явный override для рискованного выбора.
-- Для каждого fold рассчитаны RMSE, среднее, стандартное отклонение,
-  коэффициент вариации, ранги, средний ранг, разброс ранга и доля top-1.
-  Равные с учётом численной точности значения получают одинаковый ранг.
-- Добавлена Pearson-матрица только по точно совмещённым OOF residual vectors.
-  При нулевой дисперсии значение честно возвращается как `null` с причиной;
-  корреляция не трактуется как автоматическое доказательство ансамбля.
-- `comparison_signature` детерминированно связывает fingerprint, cohort,
-  политики, веса, backtest run/params/OOF, агрегированные и fold-метрики,
-  diagnostics signatures и уровни применимости. Порядок `model_ids` на
-  подпись и итоговый рейтинг не влияет.
-- Уровень применимости повторно берётся из существующего rule-engine
-  кандидатов на том же профиле. Он отображается и входит в lineage, но не
-  смешивается с прогнозной точностью или диагностикой.
-- Selection фиксирует `comparison_id/signature`, backtest run и diagnostics
-  signature. Model Card получает те же ссылки, normalized score, fold
-  stability и фактический уровень применимости выбранной строки рейтинга.
-
-### Frontend и спецификация
-
-- Stage 9 в `modeling.yaml` синхронизирован с runtime: exact OOF alignment,
-  current diagnostics, обязательный baseline, раздельные evidence axes,
-  fold stability и OOF error correlation. Удалён неисполняемый
-  `diagnostics_bonus`.
-- В comparison показан lineage-блок с Comparison SHA, cohort, числом OOF-точек
-  и политикой score. Таблица содержит применимость, raw score, RMSE/MASE,
-  fold RMSE μ±σ/top-1, diagnostics и baseline status.
-- Добавлены фильтры по применимости, семейству, diagnostics status и
-  baseline-risk, а также матрица корреляции OOF-ошибок.
-- Структурированные 409-ответы показывают конкретные missing/stale model IDs.
-  Повторный tuning/diagnostics/comparison очищает устаревшее локальное
-  отображение downstream-артефактов.
-
-### TDD, риски и проверка
-
-- RED backend: 7 ожидаемых падений — endpoint принимал отсутствующие
-  diagnostics/неполный пул, не имел comparison/diagnostics signatures,
-  пропускал несовмещённые OOF и расходился с YAML. RED frontend подтвердил
-  отсутствие lineage, stability, correlation и структурированной ошибки.
-- Целевой GREEN backend: 88/88 PASS, включая 21 session workflow test,
-  ModelingSpec, новый YAML-contract и unit-инварианты tie/alignment/signature.
-- Целевой ModelingWorkflowOverview: 5/5 PASS.
-- Расширенная Modeling/backend-регрессия: 271/272 PASS. Единственный сбой —
-  ранее зафиксированный legacy `/v1/models/tune` ARIMA-grid на коротких folds
-  с `d=1` (`statsmodels` 0-D initialization); Task 100 этот контур не меняет,
-  session Modeling использует единый `BacktestPlan`.
-- Полная frontend-регрессия: 84 suites, 726/726 PASS, 0 snapshots.
-- TypeScript embedded/standalone: PASS.
-- Production build embedded/standalone: PASS, по 13/13 страниц, включая
-  `/modeling`; First Load JS 458 kB. Для известного sandbox-ограничения
-  Node 24 `uv_resident_set_memory` использован временный shim, удалённый после
-  сборок и не входящий в изменения.
-- `py_compile` и `git diff --check`: PASS.
+Добавлен чистый модуль modeling_comparison.py. Comparable pool теперь содержит минимум две успешные модели и обязательно рассчитанный baseline; неизвестные и повторяющиеся model_ids отклоняются явно.
+Для всех моделей проверяется точное совпадение ключей fold/horizon_step/index/label, границ train/test/gap, evaluation scale и фактических значений OOF. Совпавшего cohort_id без этих доказательств недостаточно.
+Comparison требует текущий diagnostics report для каждого backtest и валидирует связь backtest_run_id + cohort_id + parameter_signature + residuals_signature + diagnostics_signature. Повторная диагностика инвалидирует comparison, selection и Model Card.
+Прогнозный рейтинг рассчитывается только по MAE/RMSE/MAPE/MASE после min-max нормализации внутри exact comparable pool. Если MAPE или MASE не определена хотя бы у одной модели, метрика исключается для всего пула, а веса перенормируются до единицы. Diagnostics не изменяет score и остаётся отдельным свидетельством.
+Результат содержит raw и normalized metrics, детерминированный tie-break, baseline-флаг MASE ≤ 1.05 и явный override для рискованного выбора.
+Для каждого fold рассчитаны RMSE, среднее, стандартное отклонение, коэффициент вариации, ранги, средний ранг, разброс ранга и доля top-1. Равные с учётом численной точности значения получают одинаковый ранг.
+Добавлена Pearson-матрица только по точно совмещённым OOF residual vectors. При нулевой дисперсии значение честно возвращается как null с причиной; корреляция не трактуется как автоматическое доказательство ансамбля.
+comparison_signature детерминированно связывает fingerprint, cohort, политики, веса, backtest run/params/OOF, агрегированные и fold-метрики, diagnostics signatures и уровни применимости. Порядок model_ids на подпись и итоговый рейтинг не влияет.
+Уровень применимости повторно берётся из существующего rule-engine кандидатов на том же профиле. Он отображается и входит в lineage, но не смешивается с прогнозной точностью или диагностикой.
+Selection фиксирует comparison_id/signature, backtest run и diagnostics signature. Model Card получает те же ссылки, normalized score, fold stability и фактический уровень применимости выбранной строки рейтинга.
+Frontend и спецификация
+Stage 9 в modeling.yaml синхронизирован с runtime: exact OOF alignment, current diagnostics, обязательный baseline, раздельные evidence axes, fold stability и OOF error correlation. Удалён неисполняемый diagnostics_bonus.
+В comparison показан lineage-блок с Comparison SHA, cohort, числом OOF-точек и политикой score. Таблица содержит применимость, raw score, RMSE/MASE, fold RMSE μ±σ/top-1, diagnostics и baseline status.
+Добавлены фильтры по применимости, семейству, diagnostics status и baseline-risk, а также матрица корреляции OOF-ошибок.
+Структурированные 409-ответы показывают конкретные missing/stale model IDs. Повторный tuning/diagnostics/comparison очищает устаревшее локальное отображение downstream-артефактов.
+TDD, риски и проверка
+RED backend: 7 ожидаемых падений — endpoint принимал отсутствующие diagnostics/неполный пул, не имел comparison/diagnostics signatures, пропускал несовмещённые OOF и расходился с YAML. RED frontend подтвердил отсутствие lineage, stability, correlation и структурированной ошибки.
+Целевой GREEN backend: 88/88 PASS, включая 21 session workflow test, ModelingSpec, новый YAML-contract и unit-инварианты tie/alignment/signature.
+Целевой ModelingWorkflowOverview: 5/5 PASS.
+Расширенная Modeling/backend-регрессия: 271/272 PASS. Единственный сбой — ранее зафиксированный legacy /v1/models/tune ARIMA-grid на коротких folds с d=1 (statsmodels 0-D initialization); Task 100 этот контур не меняет, session Modeling использует единый BacktestPlan.
+Полная frontend-регрессия: 84 suites, 726/726 PASS, 0 snapshots.
+TypeScript embedded/standalone: PASS.
+Production build embedded/standalone: PASS, по 13/13 страниц, включая /modeling; First Load JS 458 kB. Для известного sandbox-ограничения Node 24 uv_resident_set_memory использован временный shim, удалённый после сборок и не входящий в изменения.
+py_compile и git diff --check: PASS.
 
 ### Изменённые и новые файлы Task 100
 
-- `apps/api/modeling_comparison.py` (новый)
+apps/api/modeling_comparison.py (новый)
+apps/api/routers/modeling_session.py
+apps/api/schemas.py
+packages/ui/components/ModelingWorkflowOverview.tsx
+packages/ui/components/ModelingWorkflowOverview.test.tsx
+packages/ui/lib/modeling.ts
+rules/modeling.yaml
+tests/api/test_modeling_workflow.py
+tests/api/test_modeling_comparison_spec.py (новый)
+tests/unit/test_modeling_comparison.py (новый)
+
+---
+
+## Task 101 — Спецификация: Soft Pillow (балансировка нижних границ колонок)
+
+Спроектирована архитектура декоративного layout-примитива Soft Pillow — выравнивание нижних границ соседних колонок многоколоночных секций на всех вкладках платформы. Артефакт: spec_soft_pillow.md. Синхронизация: main @ 0d1786f (Task 99).
+
+Ключевые решения: SoftPillowSection/SoftPillowColumn/SoftPillow в packages/ui, паттерн провайдера по образцу ExpandableChartsProvider (Task 97); ResizeObserver наблюдает контент отдельно от подушки (защита от цикла обратной связи); активация только выше брейкпоинта многоколоночной раскладки. Переиспользование: существующие дизайн-токены (цвет skeleton/empty-state, радиус карточек), существующая инфраструктура измерения размеров (Task 89) — новых backend-изменений не требуется. Явно разграничено с Task 97 (разные уровни вложенности, не конфликтуют).
+
+Статус: архитектурный дизайн передан на ревью, реализация не начата (коммит/push в main запрещён протоколом AGENTS.md).
+
+---
+
+## Task 102 — Трассируемый выбор модели и верифицируемый ensemble trigger (TDD)
+
+Дата: 2026-09-04
+
+### Исходная точка и устранённый методологический разрыв
+
+Работа выполнена на точном коммите
+`a42df0a75a022336daa85862cae041633dd4ac38`; commit/push не выполнялись.
+После Task 100 comparison был воспроизводимым, но Stage 10 всё ещё выбирал
+top-1 по pool-dependent weighted min-max score. Baseline-risk определялся по
+MASE ≤ 1.05, а ensemble лишь помечался эвристикой «две модели с MASE < 1 и
+близким score» — комбинированный прогноз не строился и не имел собственных
+OOF-метрик, diagnostics и lineage. Корреляция ошибок сохранялась, но не
+участвовала в исполняемом и проверяемом trigger.
+
+### Архитектурное и методологическое решение
+
+- Добавлен чистый модуль `modeling_selection.py` с версионированной политикой
+  `selection-v1-equal-weight`. Финальный single-кандидат определяется по
+  фактической primary OOF loss (`RMSE` по умолчанию), а weighted score остаётся
+  только обзорной осью comparison. Практические ничьи фиксируются отдельно.
+- Baseline-риск теперь сравнивает выбранную модель с лучшим реально
+  рассчитанным OOF baseline по той же primary metric. Привлекательная MASE сама
+  по себе больше не считается доказательством выигрыша.
+- Eligibility gate выбирает две модели, которые не хуже фактического baseline,
+  укладываются в относительный разрыв primary loss, имеют достаточно OOF-точек
+  и корреляцию ошибок ниже порога. Корреляция служит только gate и никогда не
+  создаёт рекомендацию сама.
+- Production v1 строит только детерминированное простое среднее 50/50 на точно
+  совмещённых OOF-точках. Ансамбль получает собственные point forecasts,
+  fold/aggregate MAE, RMSE, MAPE, MASE, sMAPE, RMSSE, OOF SHA-256, run/parameter
+  signatures и четыре residual diagnostics.
+- Для воспроизводимого пересчёта MASE/RMSSE backtest сохраняет в каждом fold
+  train-only denominators. Масштабы fit-ятся до test и не реконструируются из
+  holdout.
+- Ensemble имеет три явных состояния: `not_eligible`, `tested_no_gain`,
+  `recommended`. Рекомендация требует фактического относительного улучшения к
+  лучшему single, минимальной доли выигранных folds и отсутствия проигрыша
+  лучшему OOF baseline. Выбор `tested_no_gain` возможен только как явный override.
+- Новый `POST /v1/session/modeling/selection/evaluate` сохраняет signed
+  `selection_analysis`, а также ensemble backtest/diagnostics при фактической
+  проверке. `POST /select` требует точные analysis ID/SHA и отклоняет stale
+  lineage.
+- Текущая оценка честно маркируется `selection_oof_reused`: tuning и selection
+  используют один OOF cohort, независимый final holdout отсутствует. До выбора
+  обязательно явное подтверждение этого ограничения; следующий методологический
+  уровень — sealed tail holdout или outer temporal CV.
+- Любой новый backtest, tuning, diagnostics или comparison инвалидирует
+  selection analysis, ensemble artifacts, selection и Model Cards. Model Card
+  повторно проверяет selection lineage и для ensemble сохраняет его участников,
+  собственный OOF run, diagnostics, primary baseline comparison и ограничение
+  по отсутствию независимого holdout.
+
+### Frontend и формальная спецификация
+
+- Stage 10 получил отдельное действие «Верифицировать выбор». До получения
+  signed analysis и подтверждения reused-OOF bias кнопки выбора заблокированы.
+- UI показывает Selection SHA, primary metric/loss, фактический лучший baseline,
+  состояние и состав ensemble, корреляцию ошибок, улучшение, fold win rate и
+  причины отказа. Для ensemble без доказанного выигрыша и/или хуже baseline
+  предусмотрены отдельные подтверждения override.
+- Подтверждения очищаются при каждом новом comparison/selection analysis и не
+  переносятся на новый lineage.
+- `modeling.yaml` обновлён до `1.1.0-draft`: Stage 10 закрепляет primary OOF
+  selection и actual baseline; ensemble v1 — только `simple_average`, correlation
+  — eligibility gate, а inverse-MAE/median/stacking явно оставлены planned до
+  честного независимого validation.
+
+### TDD, риски и проверка
+
+- RED core: 4 теста падали из-за отсутствующего `modeling_selection`; RED YAML:
+  2 теста подтвердили отсутствие primary-loss selection и verified trigger.
+- Unit/spec/backtesting: 20/20 PASS, включая actual baseline вместо MASE,
+  correlation-only gate, собственный ensemble OOF, стабильность selection SHA,
+  fail-closed при подмене diagnostics lineage и сохранение train-only scales.
+- Интеграционный session Modeling workflow: 21/21 PASS.
+- UI-регрессия Modeling: 58/58 PASS; целевой компонент после финальной правки:
+  5/5 PASS.
+- TypeScript embedded/standalone: PASS; после production build использован
+  принятый для репозитория флаг `--noUncheckedSideEffectImports false` из-за
+  известного side-effect импорта `globals.css`.
+- Production build standalone: PASS, 13/13 static pages, включая `/modeling`;
+  First Load JS 459 kB. Для sandbox-ограничения Node 24
+  `uv_resident_set_memory` использован временный shim, удалённый после сборки и
+  не входящий в изменения.
+- `py_compile`, `compileall` и `git diff --check`: PASS.
+
+### Изменённые и новые файлы Task 102
+
+- `apps/api/backtesting.py`
+- `apps/api/modeling_selection.py` (новый)
 - `apps/api/routers/modeling_session.py`
 - `apps/api/schemas.py`
 - `packages/ui/components/ModelingWorkflowOverview.tsx`
@@ -1672,24 +1681,6 @@ Legacy YAML дополнительно смешивал разные основ�
 - `packages/ui/lib/modeling.ts`
 - `rules/modeling.yaml`
 - `tests/api/test_modeling_workflow.py`
-- `tests/api/test_modeling_comparison_spec.py` (новый)
-- `tests/unit/test_modeling_comparison.py` (новый)
-
-## Task 101 — Спецификация: Soft Pillow (балансировка нижних границ колонок)
-
-Спроектирована архитектура декоративного layout-примитива Soft Pillow —
-выравнивание нижних границ соседних колонок многоколоночных секций
-на всех вкладках платформы. Артефакт: `spec_soft_pillow.md`.
-Синхронизация: main @ 0d1786f (Task 99).
-
-Ключевые решения: SoftPillowSection/SoftPillowColumn/SoftPillow в
-packages/ui, паттерн провайдера по образцу ExpandableChartsProvider
-(Task 97); ResizeObserver наблюдает контент отдельно от подушки
-(защита от цикла обратной связи); активация только выше брейкпоинта
-многоколоночной раскладки. Переиспользование: существующие дизайн-токены
-(цвет skeleton/empty-state, радиус карточек), существующая инфраструктура
-измерения размеров (Task 89) — новых backend-изменений не требуется.
-Явно разграничено с Task 97 (разные уровни вложенности, не конфликтуют).
-
-Статус: архитектурный дизайн передан на ревью, реализация не начата
-(коммит/push в main запрещён протоколом AGENTS.md).
+- `tests/api/test_modeling_selection_spec.py` (новый)
+- `tests/unit/test_backtesting_engine.py`
+- `tests/unit/test_modeling_selection.py` (новый)

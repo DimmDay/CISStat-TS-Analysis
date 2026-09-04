@@ -156,6 +156,8 @@ def test_run_persists_oof_predictions_and_fold_residuals():
     assert len(result["oof_predictions"]) == 4
     assert [point["index"] for point in result["oof_predictions"]] == [5, 6, 7, 8]
     assert all(point["residual"] == point["actual"] - point["predicted"] for point in result["oof_predictions"])
+    assert all(fold["mase_scale"] > 0 for fold in result["folds"])
+    assert all(fold["rmsse_scale"] > 0 for fold in result["folds"])
 
 
 @pytest.mark.parametrize(

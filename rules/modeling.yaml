@@ -1,7 +1,7 @@
 # ══════════════════════════════════════════════════════════════════════════════
 # СПЕЦИФИКАЦИЯ МОДУЛЯ «МОДЕЛИРОВАНИЕ»  CISStat-TS-Analysis
-# Версия: 1.0.0-draft
-# Дата:   2026-08-07
+# Версия: 1.1.0-draft
+# Дата:   2026-09-04
 # ══════════════════════════════════════════════════════════════════════════════
 #
 # Архитектура: 8 семейств моделей → движок применимости → пайплайн моделирования
@@ -17,8 +17,8 @@
 # ══════════════════════════════════════════════════════════════════════════════
 
 metadata:
-  version: "1.0.0-draft"
-  last_updated: "2026-08-07"
+  version: "1.1.0-draft"
+  last_updated: "2026-09-04"
   author: "CISStat TS Analysis Team"
   description: >-
     Формальная спецификация модуля «Моделирование»:
@@ -763,7 +763,8 @@ pipeline:
       description: >-
         Обязательный этап. Обучение всех 4 baseline-моделей
         на train-выборке, оценка на validation.
-        Если продвинутая модель не бьёт лучший baseline — она отбрасывается.
+        Модель, уступающая лучшему фактически рассчитанному OOF baseline,
+        сохраняется в аудиторском пуле и требует явного override при выборе.
       inputs:
         - "candidate_pool"
         - "train_data"
@@ -930,20 +931,37 @@ pipeline:
 
     # ── Stage 10: Selection ──────────────────────────────────────────────────
     - id: "selection"
-      name: "Выбор модели"
+      name: "Трассируемый выбор модели"
       order: 10
       description: >-
-        Финальный выбор модели (или ансамбля) на основе ранжирования,
-        диагностики и пользовательских предпочтений.
+        Версионированное решение по фактической primary OOF loss. Weighted
+        score остаётся средством обзора comparison, но не определяет финальный
+        single-кандидат. Correlation/diversity только допускает простой
+        ансамбль к проверке; рекомендацию получает лишь ансамбль со своими
+        OOF-прогнозами, метриками, диагностикой и lineage.
       inputs:
-        - "ranked_models"
-        - "user_preferences"          # интерпретируемость, скорость, и т.д.
+        - "traceable_ranking"
+        - "comparable_backtests"
+        - "current_oof_diagnostic_reports"
+        - "oof_error_correlation"
       outputs:
+        - "selection_analysis"
+        - "verified_ensemble_candidate"
         - "selected_model"
       rules:
-        auto_select: true             # автоматически — top-1
-        allow_user_override: true     # пользователь может выбрать другую
-        allow_ensemble: true          # предложить ансамбль top-K
+        policy_version: "selection-v1-equal-weight"
+        single_rank_by: "primary_metric_oof_loss"
+        primary_metric: "rmse"
+        practical_tie_relative: 0.01
+        baseline_reference: "best_actual_oof_baseline"
+        require_exact_oof_alignment: true
+        require_selection_signature: true
+        allow_user_override: true
+        allow_ensemble: true
+        independent_holdout: false
+        estimate_status: "selection_oof_reused"
+        require_selection_bias_acknowledgement: true
+        honest_evaluation_upgrade: "sealed_tail_holdout_or_outer_temporal_cv"
 
     # ── Stage 11: Model Card ─────────────────────────────────────────────────
     - id: "model_card"
@@ -1308,9 +1326,12 @@ lifecycle_separation:
 
 ensemble:
   description: >-
-    Опциональный этап: комбинация top-K моделей для повышения
-    устойчивости. Предлагается автоматически если несколько моделей
-    показывают сопоставимое качество.
+    Опциональная комбинация точечных прогнозов. В production v1 исполняется
+    только детерминированное простое среднее двух сильных моделей. Остальные
+    стратегии остаются планируемыми до появления независимого holdout или
+    внешнего temporal CV для честной настройки весов и мета-модели.
+
+  production_strategy: "simple_average"
 
   strategies:
     - id: "simple_average"
@@ -1318,12 +1339,14 @@ ensemble:
       formula: "Ÿ_ens = (1/K) Σ ŷ_k"
       applicability: "K ≥ 2"
       weights: "equal"
+      status: "production_v1"
 
     - id: "weighted_average"
       name: "Взвешенное усреднение"
       formula: "Ÿ_ens = Σ w_k · ŷ_k,  Σw_k = 1"
       applicability: "K ≥ 2"
       weights: "inverse_mae"         # w_k ∝ 1/MAE_k
+      status: "planned_requires_honest_weight_validation"
       description: >-
         Веса обратно пропорциональны MAE на validation.
 
@@ -1331,6 +1354,7 @@ ensemble:
       name: "Медианный ансамбль"
       formula: "Ÿ_ens = median(ŷ_1, …, ŷ_K)"
       applicability: "K ≥ 3"
+      status: "planned"
       description: >-
         Робастен к выбросам среди прогнозов моделей.
 
@@ -1338,21 +1362,44 @@ ensemble:
       name: "Stacking (мета-модель)"
       formula: "Ÿ_ens = f(ŷ_1, …, ŷ_K)"
       applicability: "K ≥ 2 AND n_observations >= 200"
+      status: "planned_requires_independent_validation"
       meta_learner: "ridge"          # простая линейная мета-модель
       description: >-
         Мета-модель обучается на прогнозах base-моделей.
         Риск переобучения — нужен отдельный validation fold.
 
-  auto_ensemble_trigger:
+  verified_trigger:
     description: >-
-      Ансамбль предлагается автоматически если:
-      1. ≥ 2 модели имеют MASE < 1 (лучше baseline)
-      2. Разница в weighted_score между top-1 и top-2 < 0.05
-      3. Корреляция ошибок top-2 < 0.8 (модели диверсифицированы)
-    conditions:
-      min_models_with_mase_below_1: 2
-      max_score_gap: 0.05
-      max_error_correlation: 0.8
+      Сначала eligibility gate выбирает две модели, не уступающие лучшему
+      фактическому OOF baseline, с близкой primary loss и приемлемой
+      корреляцией ошибок. Корреляция не является доказательством выигрыша.
+      Затем простой ансамбль строится и оценивается как самостоятельный
+      кандидат на точно совмещённых OOF-точках.
+    policy_version: "selection-v1-equal-weight"
+    member_count: 2
+    member_rank_by: "primary_metric_oof_loss"
+    primary_metric: "rmse"
+    baseline_reference: "best_actual_oof_baseline"
+    max_member_relative_gap: 0.10
+    max_error_correlation: 0.80
+    min_oof_points: 8
+    correlation_role: "eligibility_gate_only"
+    evaluation_source: "exact_aligned_selection_oof"
+    estimate_status: "selection_oof_reused"
+    independent_holdout: false
+    recommend_if:
+      min_relative_improvement_vs_best_single: 0.01
+      min_fold_win_rate: 0.50
+      must_not_lose_to_best_actual_baseline: true
+    statuses:
+      - "not_eligible"
+      - "tested_no_gain"
+      - "recommended"
+    artifacts:
+      - "ensemble_backtest"
+      - "ensemble_oof_signature"
+      - "ensemble_diagnostics"
+      - "selection_signature"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
