@@ -112,6 +112,11 @@ class ModelingTuningSkipRequest(BaseModel):
     acknowledge: bool = False
 
 
+class ModelingPendingTuningSkipRequest(BaseModel):
+    reason: str = Field(..., min_length=3, max_length=500)
+    acknowledge: bool = False
+
+
 class ModelingTuningStepRequest(BaseModel):
     job_id: str = Field(..., min_length=1)
     expected_trial_index: int = Field(..., ge=0)
@@ -633,12 +638,15 @@ def generate_modeling_candidates(
     )
     session.modeling_artifacts["candidates"] = result.model_dump(mode="json")
     session.modeling_artifacts["runnable_shortlist"] = context["runnable_shortlist"]
-    session.modeling_artifacts["execution_scope"] = {
+    # Candidate generation is also used as an idempotent UI refresh. Preserve
+    # auditable exclusions/defaults decisions; _ensure_execution_scope() below
+    # filters them against the newly computed runnable capability scope.
+    session.modeling_artifacts.setdefault("execution_scope", {
         "capability_contract_version": MODELING_CAPABILITY_CONTRACT_VERSION,
         "required_backtest_model_ids": [],
         "backtest_exclusions": {},
         "tuning_skips": {},
-    }
+    })
     session.modeling_pipeline["candidate_generation"] = "done"
     _refresh_execution_readiness(session)
     session.touch()
@@ -907,6 +915,73 @@ def skip_modeling_tuning(
     session.touch()
     store.save(session)
     return {"model_id": payload.model_id, "status": "skipped", "execution_scope": refreshed}
+
+
+@router.post("/tuning/skip-pending")
+def skip_all_pending_modeling_tuning(
+    payload: ModelingPendingTuningSkipRequest,
+    request: Request,
+    response: Response,
+):
+    """Atomically retain defaults for the complete pending tuning scope."""
+    store, session = _get_session(request, response)
+    context = _action_context(session)
+    _prepare_state(session, context)
+    if not payload.acknowledge:
+        raise HTTPException(
+            status_code=409,
+            detail="Сохранение defaults для всех моделей требует явного подтверждения",
+        )
+    scope = _refresh_execution_readiness(session)
+    if scope is None:
+        raise HTTPException(status_code=409, detail="Execution scope ещё не сформирован")
+    pending_backtests = list(scope["pending_backtest_model_ids"])
+    if pending_backtests:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Сначала завершите полный backtest scope",
+                "pending_backtests": pending_backtests,
+            },
+        )
+    pending_tuning = list(scope["pending_tuning_model_ids"])
+    active_tuning = sorted({
+        str(job.get("model_id"))
+        for job in (session.modeling_artifacts.get("tuning_jobs") or {}).values()
+        if job.get("status") == "in_progress"
+        and job.get("model_id") in pending_tuning
+    })
+    if active_tuning:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Нельзя сохранить defaults во время выполняющегося tuning",
+                "active_tuning": active_tuning,
+            },
+        )
+    if not pending_tuning:
+        return {
+            "model_ids": [],
+            "status": "unchanged",
+            "execution_scope": scope,
+        }
+
+    decided_at = datetime.now(timezone.utc).isoformat()
+    for model_id in pending_tuning:
+        scope["tuning_skips"][model_id] = {
+            "reason": payload.reason,
+            "acknowledged": True,
+            "decided_at": decided_at,
+        }
+    _invalidate_after_diagnostics(session)
+    refreshed = _refresh_execution_readiness(session)
+    session.touch()
+    store.save(session)
+    return {
+        "model_ids": pending_tuning,
+        "status": "skipped",
+        "execution_scope": refreshed,
+    }
 
 
 @router.post("/tune", response_model=TuneResponse)

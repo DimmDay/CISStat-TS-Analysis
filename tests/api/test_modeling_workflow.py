@@ -285,6 +285,90 @@ def test_tuning_stage_requires_tune_or_explicit_skip_for_tunable_models(client: 
     assert after["artifacts"]["execution_scope"]["pending_tuning_model_ids"] == []
 
 
+def test_one_defaults_decision_atomically_closes_the_complete_tuning_scope(client: TestClient):
+    """Exact UI regression: one global defaults action must cover every pending model."""
+    _prepare(client)
+    candidates = client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "expanding", "horizon": 2, "n_splits": 2},
+    )
+    assert candidates.status_code == 200, candidates.text
+    assert client.post("/v1/session/modeling/baselines").status_code == 200
+    for model_id in ("arima", "ets", "ets_damped"):
+        backtest = client.post(
+            "/v1/session/modeling/backtest", json={"model_id": model_id},
+        )
+        assert backtest.status_code == 200, backtest.text
+
+    scope = client.get("/v1/session/modeling/state").json()["artifacts"]["execution_scope"]
+    for model_id in scope["pending_backtest_model_ids"]:
+        excluded = client.post(
+            "/v1/session/modeling/backtest/exclude",
+            json={
+                "model_id": model_id,
+                "decision": "exclude",
+                "reason": "Не входит в regression scope",
+                "acknowledge": True,
+            },
+        )
+        assert excluded.status_code == 200, excluded.text
+
+    before = client.get("/v1/session/modeling/state").json()
+    assert before["artifacts"]["execution_scope"]["pending_tuning_model_ids"] == [
+        "arima", "ets", "ets_damped",
+    ]
+    expected_exclusions = sorted(
+        before["artifacts"]["execution_scope"]["backtest_exclusions"],
+    )
+
+    skipped = client.post(
+        "/v1/session/modeling/tuning/skip-pending",
+        json={
+            "reason": "Осознанно оставлены параметры моделей по умолчанию",
+            "acknowledge": True,
+        },
+    )
+
+    assert skipped.status_code == 200, skipped.text
+    assert skipped.json()["model_ids"] == ["arima", "ets", "ets_damped"]
+    after = client.get("/v1/session/modeling/state").json()
+    execution_scope = after["artifacts"]["execution_scope"]
+    assert execution_scope["pending_tuning_model_ids"] == []
+    assert sorted(execution_scope["tuning_skips"]) == ["arima", "ets", "ets_damped"]
+    assert after["pipeline"]["tuning"] == "done"
+
+    # Modeling refetches candidates on a fresh UI mount. That idempotent refresh
+    # must not erase the already acknowledged defaults decisions.
+    regenerated = client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "expanding", "horizon": 2, "n_splits": 2},
+    )
+    assert regenerated.status_code == 200, regenerated.text
+    after_regeneration = client.get("/v1/session/modeling/state").json()
+    regenerated_scope = after_regeneration["artifacts"]["execution_scope"]
+    assert regenerated_scope["pending_tuning_model_ids"] == []
+    assert sorted(regenerated_scope["tuning_skips"]) == [
+        "arima", "ets", "ets_damped",
+    ]
+    assert sorted(regenerated_scope["backtest_exclusions"]) == expected_exclusions
+
+    repeated = client.post(
+        "/v1/session/modeling/tuning/skip-pending",
+        json={
+            "reason": "Повтор той же подтверждённой операции",
+            "acknowledge": True,
+        },
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["model_ids"] == []
+    assert repeated.json()["status"] == "unchanged"
+
+    diagnostics = client.post("/v1/session/modeling/diagnostics/ensure", json={})
+    assert diagnostics.status_code == 200, diagnostics.text
+    comparison = client.post("/v1/session/modeling/compare", json={})
+    assert comparison.status_code == 200, comparison.text
+
+
 def test_redis_stale_snapshot_cannot_restore_pending_tuning_after_success(monkeypatch):
     """Exact production regression: pending ETS must not reappear after tuning."""
     fakeredis = pytest.importorskip("fakeredis")

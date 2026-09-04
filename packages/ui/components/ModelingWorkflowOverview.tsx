@@ -64,7 +64,8 @@ interface Props {
   modelActions?: Record<string, ModelAction[]>;
   tuningSkippedModelIds?: string[];
   tuningCompletedModelIds?: string[];
-  onStageComplete?: (stageId: string) => void;
+  tuningPendingModelIds?: string[];
+  onStageComplete?: (stageId: string) => void | Promise<void>;
   onBacktestPromoted?: (result: BacktestResponse) => void;
 }
 
@@ -112,6 +113,7 @@ function apiErrorDetail(detail: unknown, status: number): string {
     const lists = [
       "missing_backtests", "missing_diagnostics", "stale_diagnostics", "missing_applicability",
       "pending_backtests", "pending_tuning", "missing_scope_models", "unexpected_scope_models",
+      "active_tuning",
     ]
       .flatMap((key) => Array.isArray(value[key]) ? value[key] as string[] : []);
     return `${typeof value.message === "string" ? value.message : `HTTP ${status}`}${lists.length ? `: ${lists.join(", ")}` : ""}`;
@@ -135,7 +137,8 @@ async function postJson(path: string, body: Record<string, unknown>) {
 
 export function ModelingWorkflowOverview({
   stageId, modelIds, modelActions, tuningSkippedModelIds = [],
-  tuningCompletedModelIds = [], onStageComplete, onBacktestPromoted,
+  tuningCompletedModelIds = [], tuningPendingModelIds,
+  onStageComplete, onBacktestPromoted,
 }: Props) {
   const supportedModelIds = modelActions
     ? modelIds.filter((item) => (
@@ -149,6 +152,14 @@ export function ModelingWorkflowOverview({
   const notApplicableTuningCount = stageId === "tuning"
     ? modelIds.length - supportedModelIds.length
     : 0;
+  const pendingTuningModelIds = stageId === "tuning"
+    ? (
+        tuningPendingModelIds ?? supportedModelIds.filter((item) => (
+          !tuningCompletedModelIds.includes(item)
+          && !tuningSkippedModelIds.includes(item)
+        ))
+      )
+    : [];
   const [modelId, setModelId] = useState(supportedModelIds[0] ?? "");
   const [comparison, setComparison] = useState<ModelingComparisonResponse | null>(null);
   const [diagnosticFilter, setDiagnosticFilter] = useState<"all" | "pass" | "warning" | "fail">("all");
@@ -197,7 +208,7 @@ export function ModelingWorkflowOverview({
         setRiskAcknowledged({});
       }
       setResult(value);
-      onStageComplete?.(stage);
+      await onStageComplete?.(stage);
       return value;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Ошибка операции моделирования");
@@ -288,12 +299,11 @@ export function ModelingWorkflowOverview({
     if (value?.promoted_backtest) onBacktestPromoted?.(value.promoted_backtest);
   };
 
-  const skipTuning = async () => {
-    if (!modelId) return;
-    const value = await execute(
-      () => postJson("/v1/session/modeling/tuning/skip", {
-        model_id: modelId,
-        reason: "Осознанно оставлены параметры модели по умолчанию",
+  const skipPendingTuning = async () => {
+    if (pendingTuningModelIds.length === 0) return;
+    await execute(
+      () => postJson("/v1/session/modeling/tuning/skip-pending", {
+        reason: "Осознанно оставлены параметры моделей по умолчанию",
         acknowledge: true,
       }),
       "tuning",
@@ -333,8 +343,41 @@ export function ModelingWorkflowOverview({
       <div className="shrink-0">
         {stageId === "tuning" && (
           <div className="flex items-center justify-between gap-3">
-            <div><h3 className="font-semibold">Тюнинг на временных folds</h3><p className="text-xs text-neutral-500">Селектор сформирован единым capability-контрактом; preprocessing fit-ится только на train.</p>{notApplicableTuningCount > 0 && <p className="text-[10px] text-neutral-500">{notApplicableTuningCount} {notApplicableTuningCount === 1 ? "модель" : "моделей"} не требует отдельного tuning (N/A).</p>}</div>
-            <div className="flex items-center gap-2">{modelSelector}<Button disabled={loading || !modelId} onClick={() => void runTuning()}>{tuningCompleted ? "Перезапустить тюнинг" : "Запустить тюнинг"}</Button><Button disabled={loading || !modelId || tuningSkipped || tuningCompleted} onClick={() => void skipTuning()}>{tuningCompleted ? "Tuning выполнен" : tuningSkipped ? "Tuning пропущен" : "Оставить defaults"}</Button></div>
+            <div>
+              <h3 className="font-semibold">Тюнинг на временных folds</h3>
+              <p className="text-xs text-neutral-500">
+                Селектор сформирован единым capability-контрактом; preprocessing fit-ится только на train.
+              </p>
+              {notApplicableTuningCount > 0 && (
+                <p className="text-[10px] text-neutral-500">
+                  {notApplicableTuningCount} {notApplicableTuningCount === 1 ? "модель" : "моделей"} не требует отдельного tuning (N/A).
+                </p>
+              )}
+              {pendingTuningModelIds.length > 0 && (
+                <p className="text-[10px] text-amber-700" data-testid="pending-tuning-models">
+                  Ожидают решения: {pendingTuningModelIds.join(", ")}
+                </p>
+              )}
+              {modelId && (tuningCompleted || tuningSkipped) && (
+                <p className="text-[10px] text-green-700">
+                  {tuningCompleted ? "Tuning выполнен" : "Для выбранной модели сохранены defaults"}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {modelSelector}
+              <Button disabled={loading || !modelId} onClick={() => void runTuning()}>
+                {tuningCompleted ? "Перезапустить тюнинг" : "Запустить тюнинг"}
+              </Button>
+              <Button
+                disabled={loading || pendingTuningModelIds.length === 0}
+                onClick={() => void skipPendingTuning()}
+              >
+                {pendingTuningModelIds.length > 0
+                  ? `Оставить defaults для всех (${pendingTuningModelIds.length})`
+                  : "Defaults сохранены"}
+              </Button>
+            </div>
           </div>
         )}
         {stageId === "diagnostics" && (

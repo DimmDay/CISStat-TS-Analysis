@@ -2347,3 +2347,67 @@ Commit/push и production deploy не выполнялись.
 - `packages/ui/components/TsAnalysisModeling.tsx`
 - `packages/ui/components/TsAnalysisModeling.test.tsx`
 - `packages/ui/context/AppShellContext.tsx`
+
+---
+
+## Task 114 — Атомарное «Оставить defaults» для полного tuning scope
+
+Дата: 2026-09-04. База: `main @ fbb550b066a215d05485a3c8d7974cc2b15da1df`.
+Commit/push и production deploy не выполнялись.
+
+### Воспроизведение и первопричина
+
+- Comparison правильно требует решение `tune-or-explicit-defaults`
+  для каждой завершённой tunable-модели. В воспроизведённом
+  scope это `arima`, `ets`, `ets_damped`.
+- UI-кнопка «Оставить defaults» визуально выглядела как решение
+  для всего шага, но вызывала `POST /tuning/skip` только для
+  одной текущей модели селектора. Pending scope не показывался,
+  поэтому переход к Comparison оставался ложно разрешённым.
+- Повторная генерация кандидатов, которую UI использует и как
+  session refresh, безусловно пересоздавала `execution_scope` с пустыми
+  `tuning_skips` и `backtest_exclusions`. После remount/refresh уже
+  подтверждённые defaults исчезали, и Comparison снова видел все
+  три модели как pending.
+
+### Исправление
+
+- Добавлена атомарная session-операция
+  `POST /v1/session/modeling/tuning/skip-pending`. Она фиксирует
+  одно осознанное решение для всех `pending_tuning_model_ids`, но
+  сохраняет отдельную audit-запись с причиной, acknowledgement и
+  timestamp по каждой модели.
+- Операция отклоняется до завершения полного backtest scope и
+  во время активного tuning job. Повторный запрос идемпотен и
+  возвращает `status=unchanged`.
+- Candidate refresh больше не обнуляет execution scope:
+  `_ensure_execution_scope()` сохраняет и фильтрует только валидные
+  decisions относительно нового runnable-контракта.
+- UI показывает канонический backend-список «Ожидают решения»,
+  а кнопка явно названа «Оставить defaults для всех (N)».
+  После операции UI ждёт повторного чтения backend state и только
+  затем снимает loading-блокировку.
+
+### TDD и проверки
+
+- RED source-contract: отсутствовали atomic endpoint, UI-вызов и
+  отображение pending scope — 3/3 FAIL.
+- Добавлена API-регрессия полной цепочки:
+  `arima, ets, ets_damped pending` → один defaults request → `pending=[]` →
+  candidate regeneration не сбрасывает decisions → diagnostics → Comparison 200.
+- UI-регрессии проверяют один batch-запрос без `model_id`,
+  канонический pending-список, partial scope и завершённое состояние.
+- GREEN source-contract: 6/6 PASS. `py_compile` для изменённых
+  Python-файлов и `git diff --check`: PASS.
+- Полные pytest/Jest, TypeScript typecheck и production build в текущем
+  sandbox не запущены: checkout не содержит `node_modules`,
+  `pytest`/`fastapi`, локальные `jest`, `tsc` и `next` отсутствуют,
+  а установка зависимостей ограничена сетевой политикой среды.
+
+### Изменённые файлы Task 114
+
+- `apps/api/routers/modeling_session.py`
+- `packages/ui/components/ModelingWorkflowOverview.tsx`
+- `packages/ui/components/ModelingWorkflowOverview.test.tsx`
+- `packages/ui/components/TsAnalysisModeling.tsx`
+- `tests/api/test_modeling_workflow.py`

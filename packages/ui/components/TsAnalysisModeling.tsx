@@ -898,7 +898,8 @@ export function TsAnalysisModeling() {
             )}
             tuningSkippedModelIds={Object.keys(executionScope?.tuning_skips ?? {})}
             tuningCompletedModelIds={executionScope?.completed_tuning_model_ids ?? []}
-            onStageComplete={() => void fetchModelingState()}
+            tuningPendingModelIds={executionScope?.pending_tuning_model_ids}
+            onStageComplete={() => fetchModelingState()}
             onBacktestPromoted={(promoted) => setBacktestResults((previous) => ({
               ...previous,
               [promoted.model_id]: promoted,

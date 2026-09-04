@@ -132,28 +132,45 @@ test("derives tuning selector from capability actions instead of hardcoded model
   expect(screen.getByText(/1 модель.*не требует отдельного tuning/i)).toBeInTheDocument();
 });
 
-test("records an explicit tuning skip through the capability workflow", async () => {
+test("records one atomic defaults decision for every pending tunable model", async () => {
   const onStageComplete = jest.fn();
   mockFetch.mockResolvedValueOnce({
     ok: true,
-    json: async () => ({ model_id: "ets", status: "skipped", execution_scope: {} }),
+    json: async () => ({
+      model_ids: ["arima", "ets", "ets_damped"],
+      status: "skipped",
+      execution_scope: {},
+    }),
   });
   render(
     <ModelingWorkflowOverview
       stageId="tuning"
-      modelIds={["ets"]}
-      modelActions={{ ets: ["backtest", "tune", "diagnostics"] }}
+      modelIds={["arima", "ets", "ets_damped"]}
+      modelActions={{
+        arima: ["backtest", "tune", "diagnostics"],
+        ets: ["backtest", "tune", "diagnostics"],
+        ets_damped: ["backtest", "tune", "diagnostics"],
+      }}
+      tuningPendingModelIds={["arima", "ets", "ets_damped"]}
       onStageComplete={onStageComplete}
     />,
   );
 
-  fireEvent.click(screen.getByRole("button", { name: "Оставить defaults" }));
+  expect(screen.getByTestId("pending-tuning-models")).toHaveTextContent(
+    "arima, ets, ets_damped",
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Оставить defaults для всех (3)" }),
+  );
 
   await waitFor(() => expect(onStageComplete).toHaveBeenCalledWith("tuning"));
   expect(mockFetch).toHaveBeenCalledWith(
-    expect.stringContaining("/tuning/skip"),
-    expect.objectContaining({ body: expect.stringContaining('"acknowledge":true') }),
+    expect.stringContaining("/tuning/skip-pending"),
+    expect.objectContaining({
+      body: expect.stringContaining('"acknowledge":true'),
+    }),
   );
+  expect(mockFetch.mock.calls[0][1].body).not.toContain("model_id");
 });
 
 test("does not offer defaults skip when tuning is already completed", () => {
@@ -163,11 +180,33 @@ test("does not offer defaults skip when tuning is already completed", () => {
       modelIds={["ets"]}
       modelActions={{ ets: ["backtest", "tune", "diagnostics"] }}
       tuningCompletedModelIds={["ets"]}
+      tuningPendingModelIds={[]}
     />,
   );
 
-  expect(screen.getByRole("button", { name: "Tuning выполнен" })).toBeDisabled();
-  expect(screen.queryByRole("button", { name: "Оставить defaults" })).not.toBeInTheDocument();
+  expect(screen.getByText("Tuning выполнен")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Defaults сохранены" })).toBeDisabled();
+  expect(screen.queryByText("Ожидают решения")).not.toBeInTheDocument();
+});
+
+test("shows that a defaults decision covers only the remaining tuning scope", () => {
+  render(
+    <ModelingWorkflowOverview
+      stageId="tuning"
+      modelIds={["arima", "ets", "ets_damped"]}
+      modelActions={{
+        arima: ["backtest", "tune", "diagnostics"],
+        ets: ["backtest", "tune", "diagnostics"],
+        ets_damped: ["backtest", "tune", "diagnostics"],
+      }}
+      tuningCompletedModelIds={["ets"]}
+      tuningSkippedModelIds={["arima"]}
+      tuningPendingModelIds={["ets_damped"]}
+    />,
+  );
+
+  expect(screen.getByTestId("pending-tuning-models")).toHaveTextContent("ets_damped");
+  expect(screen.getByRole("button", { name: "Оставить defaults для всех (1)" })).toBeEnabled();
 });
 
 test("renders traceable OOF diagnostics for a baseline model", async () => {
