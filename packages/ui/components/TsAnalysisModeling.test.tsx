@@ -2,7 +2,7 @@
 //
 // Тесты для компонента «Моделирование»:
 // 1. Рендер модуля и 11 стадий пайплайна
-// 2. Кнопка «Справка» переключает секцию
+// 2. Контекстное описание: остановка → операция → возврат
 // 3. Expandable description box
 // 4. Read-only контекст EDA hand-off
 // 5. Fetch кандидатов (mock fetch)
@@ -321,6 +321,13 @@ describe("TsAnalysisModeling", () => {
     expect(screen.getByText("Выбор модели для прогнозирования")).toBeInTheDocument();
   });
 
+  it("uses the platform control-panel heading in the right column", () => {
+    render(<TsAnalysisModeling />);
+    expect(
+      screen.getByRole("heading", { name: "Панель управления" })
+    ).toBeInTheDocument();
+  });
+
   // ── 2. 11 стадий пайплайна ──
 
   it("renders all 11 pipeline stages in the stepper", () => {
@@ -335,7 +342,23 @@ describe("TsAnalysisModeling", () => {
     });
   });
 
-  // ── 3. Кнопка «Справка» ──
+  // ── 3. Контекстное окно «Описание» ──
+
+  it("describes the active pipeline stage by default and after a stage change", () => {
+    render(<TsAnalysisModeling />);
+
+    expect(screen.getByTestId("description-stage")).toHaveTextContent(
+      "Остановка · Пул кандидатов"
+    );
+    expect(screen.getByText(/формирует воспроизводимый список моделей/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /Диагностика/ }));
+
+    expect(screen.getByTestId("description-stage")).toHaveTextContent(
+      "Остановка · Диагностика"
+    );
+    expect(screen.getByText(/остатки актуального OOF-бэктеста/i)).toBeInTheDocument();
+  });
 
   it("renders the 'Справка' button in the header", () => {
     render(<TsAnalysisModeling />);
@@ -346,7 +369,7 @@ describe("TsAnalysisModeling", () => {
   it("clicking 'Справка' shows help content in the central text area", () => {
     render(<TsAnalysisModeling />);
     const helpButton = screen.getByRole("button", { name: /Справка/i });
-    expect(screen.getByText(/Нажмите «Метрики и алгоритм»/i)).toBeInTheDocument();
+    expect(screen.getByTestId("description-stage")).toHaveTextContent("Пул кандидатов");
     fireEvent.click(helpButton);
     // После клика — появляется справка (может быть несколько совпадений — подзаголовок + контент)
     const matches = screen.getAllByText(/Цели модуля/i);
@@ -357,9 +380,9 @@ describe("TsAnalysisModeling", () => {
     render(<TsAnalysisModeling />);
     const helpButton = screen.getByRole("button", { name: /Справка/i });
     fireEvent.click(helpButton);
-    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("description-stage")).not.toBeInTheDocument();
     fireEvent.click(helpButton);
-    expect(screen.getByText(/Нажмите «Метрики и алгоритм»/i)).toBeInTheDocument();
+    expect(screen.getByTestId("description-stage")).toHaveTextContent("Пул кандидатов");
   });
 
   // ── 4. Expandable Description Box ──
@@ -693,6 +716,55 @@ describe("TsAnalysisModeling", () => {
     await waitFor(() => {
       expect(screen.getByText(/Метрики и алгоритм — Naive/i)).toBeInTheDocument();
     });
+    expect(screen.getByTestId("description-operation")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /Вернуться к описанию остановки «Пул кандидатов»/i,
+      })
+    );
+    expect(screen.getByTestId("description-stage")).toHaveTextContent(
+      "Остановка · Пул кандидатов"
+    );
+  });
+
+  it("returns from an operation to the newly selected stage", async () => {
+    render(<TsAnalysisModeling />);
+    await waitFor(() => expect(screen.getByTestId("candidate-pool")).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("family-header-baselines"));
+    fireEvent.click(screen.getByTestId("candidate-naive"));
+    fireEvent.click(screen.getAllByText("Полный пайплайн")[0]);
+
+    expect(screen.getByTestId("description-operation")).toHaveTextContent("Полный пайплайн");
+    fireEvent.click(screen.getByRole("button", { name: /Диагностика/ }));
+
+    expect(screen.queryByTestId("description-operation")).not.toBeInTheDocument();
+    expect(screen.getByTestId("description-stage")).toHaveTextContent(
+      "Остановка · Диагностика"
+    );
+  });
+
+  it("shows the requested placeholder while the applicability engine is loading", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/v1/session/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET),
+        });
+      }
+      return new Promise(() => undefined);
+    });
+
+    render(<TsAnalysisModeling />);
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Загружаю доступные модели, минутку...",
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Сравнение бэктестов" })
+    ).not.toBeInTheDocument();
   });
 
   it("shows the selected model capability statuses in the full pipeline", async () => {
@@ -856,6 +928,10 @@ describe("TsAnalysisModeling — backtest", () => {
     });
 
     fireEvent.click(screen.getByTestId("run-backtest-btn"));
+
+    expect(screen.getByTestId("description-operation")).toHaveTextContent(
+      /Операция · Пересчитать бэктест — Naive/i
+    );
 
     // Phase 1: switched from /v1/models/backtest (requires X-Api-Key, doesn't
     // read session) to /v1/internal/models/backtest (no auth, uses session bridge).

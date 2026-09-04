@@ -7,7 +7,7 @@
 //
 // Компоновка:
 //   [Левая ~240px]       [Центр flex-1]          [Правая ~320px]
-//   Моделирование         Описание                Семейство: ...
+//   Моделирование         Описание                Панель управления
 //   Контекст hand-off     [таблица кандидатов]    модели с бейджами
 //   4/11 ░░░             [метрики-сводка]        [Метрики и алгоритм]
 //   ┌─Определение──○─┐   [фильтр по уровню]     [Полный пайплайн]
@@ -141,6 +141,112 @@ const MODELING_HELP = `Цели модуля "Моделирование"
 
 Метрики ранжирования: MAE(0.35) + RMSE(0.25) + MAPE(0.20) + MASE(0.20). R² исключён из ранжирования.`;
 
+interface ModelingStageDescription {
+  content: string;
+}
+
+const MODELING_STAGE_DESCRIPTIONS: Record<string, ModelingStageDescription> = {
+  problem_definition: {
+    content: `Определение задачи
+
+Цель остановки — зафиксировать, что именно прогнозируется и на каком горизонте. Модуль читает целевую колонку и BacktestPlan из подтверждённого EDA hand-off; менять эти факты здесь нельзя.
+
+Вход: целевая колонка, временная ось, горизонт, стратегия и folds валидации.
+Результат: трассируемая постановка задачи, пригодная для единого сравнения моделей.
+Критерий завершения: checkpoint modeling_entry содержит согласованные цель и план валидации.`,
+  },
+  data_structure: {
+    content: `Структура данных
+
+Остановка проверяет финальные свойства ряда перед запуском моделей: объём истории, частоту, регулярность, сезонность, количество рядов и экзогенных признаков.
+
+Здесь отображается read-only срез финального паспорта EDA. Он определяет допустимые семейства моделей и необходимую fold-local предобработку.
+Критерий завершения: структура однозначно восстановлена из modeling_entry без локального переопределения.`,
+  },
+  constraint_mapping: {
+    content: `Ограничения
+
+Остановка переводит свойства ряда и ограничения среды в capability-контракт моделей. Жёсткие запреты отделяются от предупреждений и условий применимости.
+
+Вход: финальный паспорт, BacktestPlan и доступность production-dispatch.
+Результат: объяснимые статусы available, not_applicable, blocked или not_implemented для каждой стадии.
+Критерий завершения: каждое ограничение имеет источник и не подменяет фактический статус исполнения.`,
+  },
+  candidate_generation: {
+    content: `Пул кандидатов
+
+Движок применимости формирует воспроизводимый список моделей из полного методологического каталога. Для каждой модели отдельно показываются применимость к ряду и готовность production-исполнения.
+
+Вход: checkpoint modeling_entry и единая capability-матрица.
+Результат: каталог моделей, исполнимый shortlist и причины включения или блокировки.
+Критерий завершения: пул сохранён в сессии, а обязательные baseline-модели рассчитаны на согласованном горизонте.`,
+  },
+  baseline_estimation: {
+    content: `Baseline
+
+Остановка рассчитывает простые эталонные модели на том же горизонте, тех же folds и той же шкале, что будут использоваться для кандидатов.
+
+Baseline задаёт честную нижнюю границу качества. Сложная модель не проходит gate, если не подтверждает улучшение относительно сопоставимого OOF-прогноза.
+Критерий завершения: обязательные baseline имеют текущие backtest run и horizon-aligned метрики.`,
+  },
+  backtest: {
+    content: `Бэктест
+
+Остановка оценивает модели без нарушения временного порядка. Используется согласованный в EDA BacktestPlan; преобразования обучаются только на train-части каждого fold.
+
+Результат: фактические OOF-прогнозы, метрики MAE, RMSE, MAPE и MASE, сигнатуры параметров и предупреждения.
+Критерий завершения: все модели execution scope рассчитаны либо явно исключены с обоснованием.`,
+  },
+  tuning: {
+    content: `Тюнинг
+
+Остановка подбирает гиперпараметры только для моделей с capability tune, используя тот же BacktestPlan и fold-local preprocessing, что и основной бэктест.
+
+Можно принять параметры по умолчанию для всего ожидающего scope. Решение фиксируется атомарно и не теряется при обновлении пула кандидатов.
+Критерий завершения: каждая применимая модель имеет tuning result либо явный подтверждённый skip.`,
+  },
+  diagnostics: {
+    content: `Диагностика
+
+Остановка анализирует остатки актуального OOF-бэктеста выбранной версии модели. Проверяются автокорреляция, нормальность, ARCH-эффекты и статистика Durbin–Watson.
+
+Диагностика не добавляется скрытым весом к рейтингу: её статус показывается отдельным доказательством риска.
+Критерий завершения: для всех моделей текущего scope есть отчёт, связанный с актуальными backtest и parameter signature.`,
+  },
+  comparison: {
+    content: `Сравнение
+
+Остановка сопоставляет только модели одного проверенного OOF-cohort. Рейтинг строится по прогнозным метрикам, а применимость, диагностика и стабильность folds отображаются отдельными слоями решения.
+
+MASE сопровождается прозрачным train-only знаменателем; baseline gate использует фактически совмещённые OOF-точки одинакового горизонта.
+Критерий завершения: сформирован воспроизводимый ranking с полными сигнатурами входных артефактов.`,
+  },
+  selection: {
+    content: `Выбор модели
+
+Остановка фиксирует победителя на основании проверенного comparison. Single-кандидат определяется primary OOF loss; ensemble допускается только после фактической проверки прироста на совместимых OOF-прогнозах.
+
+Риски baseline gate, диагностики и selection bias требуют явного подтверждения, а не скрытого обхода.
+Критерий завершения: выбран один трассируемый вариант и сохранено обоснование решения.`,
+  },
+  model_card: {
+    content: `Model Card
+
+Финальная остановка собирает паспорт выбранной модели: назначение, данные, BacktestPlan, параметры, метрики, диагностику, ограничения и происхождение артефактов.
+
+Model Card не пересчитывает модель и не заменяет результаты предыдущих остановок. Он фиксирует их согласованную версию для передачи в прогнозирование.
+Критерий завершения: карточка создана из актуального selection и доступна как неизменяемый трассируемый артефакт.`,
+  },
+};
+
+type DescriptionSection =
+  | "metrics"
+  | "pipeline"
+  | "backtest"
+  | "scope"
+  | "help"
+  | null;
+
 // ── Компонент ──────────────────────────────────────────────────
 
 export function TsAnalysisModeling() {
@@ -171,9 +277,9 @@ export function TsAnalysisModeling() {
   );
   const [levelFilter, setLevelFilter] = useState<string>("all");
   const [availabilityFilter, setAvailabilityFilter] = useState<"runnable" | "all">("runnable");
-  const [descriptionSection, setDescriptionSection] = useState<
-    "metrics" | "pipeline" | "help" | null
-  >(null);
+  // null — каноническое описание активной остановки. Любая операция
+  // временно замещает его и всегда имеет явный путь возврата.
+  const [descriptionSection, setDescriptionSection] = useState<DescriptionSection>(null);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
@@ -480,7 +586,7 @@ export function TsAnalysisModeling() {
   // ── Collapse/Expand description ──
   useEffect(() => {
     setDescriptionExpanded(false);
-  }, [descriptionSection]);
+  }, [activeStageId, descriptionSection]);
 
   const handleOutsideClick = useCallback((e: MouseEvent) => {
     if (descRef.current && !descRef.current.contains(e.target as Node)) {
@@ -505,7 +611,7 @@ export function TsAnalysisModeling() {
     const observer = new ResizeObserver(checkOverflow);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [descriptionSection, catalog]);
+  }, [activeStageId, descriptionSection, catalog]);
 
   // ── Фильтрация и группировка ──
   const visibleModels = availabilityFilter === "all" ? catalog : candidates;
@@ -529,6 +635,7 @@ export function TsAnalysisModeling() {
   useEffect(() => {
     if (activeCandidateId && !filteredCandidates.some((item) => item.model_id === activeCandidateId)) {
       setActiveCandidateId(null);
+      setDescriptionSection(null);
     }
   }, [activeCandidateId, availabilityFilter, levelFilter, filteredCandidates]);
 
@@ -548,15 +655,30 @@ export function TsAnalysisModeling() {
     (doneStages / dynamicStages.length) * 100
   );
 
-  // Описание для центрального поля
+  const activeStage = PIPELINE_STAGES.find((stage) => stage.id === activeStageId)
+    ?? PIPELINE_STAGES[0];
+  const activeStageDescription = MODELING_STAGE_DESCRIPTIONS[activeStageId]
+    ?? MODELING_STAGE_DESCRIPTIONS.problem_definition;
+
+  // Контекстное описание: активная остановка → выбранная операция → возврат.
   const descriptionContent = (() => {
     if (descriptionSection === "help") return MODELING_HELP;
-    if (!descriptionSection) return null;
+    if (!descriptionSection) return activeStageDescription.content;
     if (descriptionSection === "metrics") {
       if (activeCandidate) {
         return `Метрики и алгоритм: ${activeCandidate.model_name}\n\nСемейство: ${activeCandidate.family_id}\nУровень применимости: ${APPLICABILITY_LABEL[activeCandidate.level as ApplicabilityLevel]}\nСтатус исполнения: ${activeCandidate.available_actions.includes("backtest") ? "production backtest готов" : "только методологический каталог"}\n${activeCandidate.blocking_reason || ""}\n${activeCandidate.rule_id ? `Правило: ${activeCandidate.rule_id}` : ""}\n${activeCandidate.message}\n\nАлгоритм: движок применимости оценивает 23 правила (5 forbidden, 6 discouraged, 5 conditional, 7 preferred) и определяет наивысший уровень применимости модели для данного профиля данных. Статус исполнения формируется отдельно из реестра реальных backend-dispatch.`;
       }
       return `Метрики и алгоритм: Пул кандидатов\n\nАлгоритм формирования пула:\n1. Применить 23 правила применимости ко всем 24 моделям\n2. Отфильтровать по минимальному уровню (≥ CONDITIONALLY_APPLICABLE)\n3. Baseline-модели включаются всегда\n4. Сортировка по рангу уровня (RECOMMENDED → CONDITIONALLY_APPLICABLE → NOT_RECOMMENDED)`;
+    }
+    if (descriptionSection === "backtest") {
+      return activeCandidate
+        ? `Запуск бэктеста: ${activeCandidate.model_name}\n\nОперация рассчитывает фактические OOF-прогнозы на каноническом BacktestPlan из EDA. Предобработка обучается отдельно внутри train-части каждого fold; метрики возвращаются на исходной шкале.\n\nПовторный запуск заменит текущий backtest этой модели и потребует актуализировать зависящие от него диагностику, сравнение и выбор.`
+        : activeStageDescription.content;
+    }
+    if (descriptionSection === "scope") {
+      return activeCandidate
+        ? `Execution scope: ${activeCandidate.model_name}\n\nИсключение разрешает продолжить сравнение без ещё не рассчитанной модели, но требует явной причины и подтверждения. Возврат модели в scope снова делает её бэктест обязательным.\n\nРешение сохраняется в сессии и остаётся видимым в трассе моделирования.`
+        : activeStageDescription.content;
     }
     if (activeCandidate?.stage_capabilities) {
       const labels: Record<string, string> = Object.fromEntries(
@@ -573,13 +695,23 @@ export function TsAnalysisModeling() {
   const descriptionSubtitle = (() => {
     if (descriptionSection === "help")
       return "Справка — Цели модуля и результаты моделирования";
-    if (!descriptionSection) return "Проверьте контекст EDA hand-off и загрузите пул кандидатов";
+    if (!descriptionSection) return `Остановка · ${activeStage.label}`;
     if (descriptionSection === "metrics")
       return activeCandidate
-        ? `Метрики и алгоритм — ${activeCandidate.model_name}`
-        : "Метрики и алгоритм — Пул кандидатов";
-    return "Полный пайплайн — Моделирование";
+        ? `Операция · Метрики и алгоритм — ${activeCandidate.model_name}`
+        : "Операция · Метрики и алгоритм — Пул кандидатов";
+    if (descriptionSection === "backtest")
+      return `Операция · ${backtestResults[activeCandidate?.model_id ?? ""] ? "Пересчитать бэктест" : "Запустить бэктест"}${activeCandidate ? ` — ${activeCandidate.model_name}` : ""}`;
+    if (descriptionSection === "scope")
+      return `Операция · Execution scope${activeCandidate ? ` — ${activeCandidate.model_name}` : ""}`;
+    return `Операция · Полный пайплайн${activeCandidate ? ` — ${activeCandidate.model_name}` : ""}`;
   })();
+
+  const descriptionTestId = descriptionSection === null
+    ? "description-stage"
+    : descriptionSection === "help"
+      ? "description-help"
+      : "description-operation";
 
   const contextProfile = modelingContext?.profile;
   const validationStrategy = modelingContext?.validation_strategy;
@@ -804,7 +936,7 @@ export function TsAnalysisModeling() {
               key={stage.id}
               onClick={() => {
                 setActiveStageId(stage.id);
-                if (descriptionSection === "help") setDescriptionSection(null);
+                setDescriptionSection(null);
               }}
               className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-xs transition-colors ${
                 stage.id === activeStageId
@@ -836,9 +968,24 @@ export function TsAnalysisModeling() {
         {/* Блок «Описание» */}
         <div className="mb-5">
           <h3 className="font-semibold mb-1">Описание</h3>
-          <p className="text-xs text-neutral-500 mb-2">
-            {descriptionSubtitle}
-          </p>
+          <div className="mb-2 flex min-h-5 items-start justify-between gap-3">
+            <p
+              className="text-xs text-neutral-500"
+              data-testid={descriptionTestId}
+            >
+              {descriptionSubtitle}
+            </p>
+            {descriptionSection !== null && (
+              <button
+                type="button"
+                onClick={() => setDescriptionSection(null)}
+                className="shrink-0 text-[11px] font-medium text-brand underline decoration-brand/40 underline-offset-2 hover:decoration-brand"
+                aria-label={`Вернуться к описанию остановки «${activeStage.label}»`}
+              >
+                К описанию остановки
+              </button>
+            )}
+          </div>
           <div className="relative min-h-[220px]">
             <div
               ref={descRef}
@@ -848,11 +995,7 @@ export function TsAnalysisModeling() {
                   : "max-h-[220px] min-h-[220px] bg-brand-light/50"
               }`}
             >
-              {descriptionContent || (
-                <span className="text-neutral-400 italic">
-                  Нажмите «Метрики и алгоритм», «Полный пайплайн» или «Справка»
-                </span>
-              )}
+              {descriptionContent}
               {descriptionExpanded && (
                 <div className="sticky bottom-0 flex justify-center py-1 bg-brand-light rounded-b-lg">
                   <button
@@ -1016,7 +1159,10 @@ export function TsAnalysisModeling() {
                     return (
                       <div
                         key={c.model_id}
-                        onClick={() => setActiveCandidateId(c.model_id)}
+                        onClick={() => {
+                          setActiveCandidateId(c.model_id);
+                          setDescriptionSection(null);
+                        }}
                         className={`flex items-center justify-between rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors ${
                           c.model_id === activeCandidateId
                             ? "border-brand bg-brand-light/50"
@@ -1080,9 +1226,28 @@ export function TsAnalysisModeling() {
             при клике «Запустить бэктест» (справа). Не новый запрос к API.
             Показывается всегда (не только при statistics), т.к. не зависит
             от пула кандидатов -- от факта хотя бы одного бэктеста. */}
-        <div className="mt-4">
-          <h3 className="text-sm font-semibold text-neutral-800 mb-1">Сравнение бэктестов</h3>
-          <BacktestComparisonChart backtestResults={backtestResults} />
+        <div className="mt-4" data-testid="backtest-comparison-panel">
+          {isLoading && !hasFetched ? (
+            <>
+              <h3 className="mb-1 text-sm font-semibold text-neutral-800">
+                Загружаю доступные модели, минутку...
+              </h3>
+              <div
+                role="status"
+                className="flex h-[198px] items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 text-sm text-neutral-500"
+              >
+                <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                Движок применимости анализирует профиль ряда
+              </div>
+            </>
+          ) : (
+            <>
+              <h3 className="mb-1 text-sm font-semibold text-neutral-800">
+                Сравнение бэктестов
+              </h3>
+              <BacktestComparisonChart backtestResults={backtestResults} />
+            </>
+          )}
         </div>
 
         {activeCandidateId && backtestResults[activeCandidateId] && (
@@ -1103,8 +1268,13 @@ export function TsAnalysisModeling() {
         </>)}
       </section>
 
-      {/* ══ ПРАВАЯ КОЛОНКА: карточки семейств/кандидатов ══ */}
-      <aside className="w-80 shrink-0">
+      {/* ══ ПРАВАЯ КОЛОНКА: панель управления ══ */}
+      <aside className="w-80 shrink-0 pt-1">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-neutral-800">
+            Панель управления
+          </h2>
+        </div>
         <div className="h-[468px] overflow-y-auto pr-2 space-y-5 feed-scroll">
           {/* Карточка активного кандидата */}
           {activeCandidate && (
@@ -1167,6 +1337,7 @@ export function TsAnalysisModeling() {
                   setActiveCandidateId(activeCandidate.model_id);
                   setDescriptionSection("metrics");
                 }}
+                aria-pressed={descriptionSection === "metrics"}
                 className={`w-full mb-2 rounded px-3 py-2 text-sm text-left font-medium transition-colors ${
                   descriptionSection === "metrics"
                     ? "bg-brand text-white"
@@ -1182,6 +1353,7 @@ export function TsAnalysisModeling() {
                   setActiveCandidateId(activeCandidate.model_id);
                   setDescriptionSection("pipeline");
                 }}
+                aria-pressed={descriptionSection === "pipeline"}
                 className={`w-full mb-3 rounded px-3 py-2 text-sm text-left font-medium transition-colors ${
                   descriptionSection === "pipeline"
                     ? "bg-brand text-white"
@@ -1258,7 +1430,10 @@ export function TsAnalysisModeling() {
                           <p key={warning} className="text-[10px] text-amber-700">{warning}</p>
                         ))}
                         <Button
-                          onClick={() => runBacktest(activeCandidate.model_id)}
+                          onClick={() => {
+                            setDescriptionSection("backtest");
+                            void runBacktest(activeCandidate.model_id);
+                          }}
                           disabled={backtestLoading}
                           className="w-full text-xs"
                           data-testid="run-backtest-btn"
@@ -1271,7 +1446,10 @@ export function TsAnalysisModeling() {
                 </div>
               ) : (
                 <Button
-                  onClick={() => runBacktest(activeCandidate.model_id)}
+                  onClick={() => {
+                    setDescriptionSection("backtest");
+                    void runBacktest(activeCandidate.model_id);
+                  }}
                   disabled={backtestLoading}
                   className="w-full text-xs"
                   data-testid="run-backtest-btn"
@@ -1292,12 +1470,29 @@ export function TsAnalysisModeling() {
                 && (executionScope?.backtest_exclusions[activeCandidate.model_id] ? (
                   <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-[10px] text-amber-800" data-testid="backtest-excluded">
                     <p>Исключена из текущего comparison: {executionScope.backtest_exclusions[activeCandidate.model_id].reason}</p>
-                    <button className="mt-1 underline" onClick={() => void decideBacktestScope(activeCandidate.model_id, "include")}>Вернуть в execution scope</button>
+                    <button
+                      className="mt-1 underline"
+                      onClick={() => {
+                        setDescriptionSection("scope");
+                        void decideBacktestScope(activeCandidate.model_id, "include");
+                      }}
+                    >
+                      Вернуть в execution scope
+                    </button>
                   </div>
                 ) : (
                   <div className="mt-2 space-y-1 rounded border border-neutral-200 p-2" data-testid="backtest-exclusion-control">
                     <input className="w-full rounded border border-neutral-300 px-2 py-1 text-[10px]" value={exclusionReason} onChange={(event) => setExclusionReason(event.target.value)} placeholder="Причина осознанного исключения" />
-                    <button className="text-[10px] text-amber-700 underline disabled:text-neutral-300" disabled={exclusionReason.trim().length < 3} onClick={() => void decideBacktestScope(activeCandidate.model_id, "exclude")}>Исключить из comparison</button>
+                    <button
+                      className="text-[10px] text-amber-700 underline disabled:text-neutral-300"
+                      disabled={exclusionReason.trim().length < 3}
+                      onClick={() => {
+                        setDescriptionSection("scope");
+                        void decideBacktestScope(activeCandidate.model_id, "exclude");
+                      }}
+                    >
+                      Исключить из comparison
+                    </button>
                   </div>
                 ))}
 
