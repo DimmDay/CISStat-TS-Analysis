@@ -602,6 +602,45 @@ def test_comparison_requires_current_diagnostics_for_every_backtest(client: Test
     assert client.post("/v1/session/modeling/compare", json={}).status_code == 200
 
 
+def test_diagnostics_ensure_prepares_the_entire_comparable_pool(client: TestClient):
+    _prepare(client)
+    candidates = client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "expanding", "horizon": 3, "n_splits": 3},
+    )
+    assert candidates.status_code == 200, candidates.text
+    baselines = client.post("/v1/session/modeling/baselines")
+    assert baselines.status_code == 200, baselines.text
+    theta = client.post("/v1/session/modeling/backtest", json={"model_id": "theta"})
+    assert theta.status_code == 200, theta.text
+    model_ids = ["theta", *baselines.json()["backtests"]]
+
+    ensured = client.post(
+        "/v1/session/modeling/diagnostics/ensure",
+        json={"model_ids": model_ids},
+    )
+
+    assert ensured.status_code == 200, ensured.text
+    body = ensured.json()
+    assert sorted(body["model_ids"]) == sorted(model_ids)
+    assert sorted(body["calculated_model_ids"]) == sorted(model_ids)
+    assert body["reused_model_ids"] == []
+    assert set(body["diagnostics"]) == set(model_ids)
+
+    repeated = client.post(
+        "/v1/session/modeling/diagnostics/ensure",
+        json={"model_ids": model_ids},
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["calculated_model_ids"] == []
+    assert sorted(repeated.json()["reused_model_ids"]) == sorted(model_ids)
+
+    comparison = client.post(
+        "/v1/session/modeling/compare", json={"model_ids": model_ids},
+    )
+    assert comparison.status_code == 200, comparison.text
+
+
 def test_comparison_rejects_duplicate_unknown_and_baselineless_pool(client: TestClient):
     _prepare(client)
     assert client.get("/v1/session/modeling/context?horizon=2&n_splits=2").status_code == 200
@@ -784,7 +823,7 @@ def test_state_migrates_legacy_unsigned_backtests_without_discarding_valid_basel
 
     assert response.status_code == 200, response.text
     artifacts = response.json()["artifacts"]
-    assert artifacts["artifact_schema_version"] == 2
+    assert artifacts["artifact_schema_version"] == 3
     assert "naive" in artifacts["backtests"]
     assert "ets" not in artifacts["backtests"]
     assert "arima_auto" not in artifacts["backtests"]

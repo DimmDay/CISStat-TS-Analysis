@@ -99,11 +99,30 @@ def _status_from_pvalue(p_value: float, alpha: float) -> str:
     return "pass"
 
 
+def _finite_diagnostic_result(
+    *, test: str, applicable_if: str, statistic: float,
+    p_value: Optional[float], status: str,
+) -> DiagnosticResult:
+    """Convert numerically undefined statistics into an honest N/A result."""
+    values = [statistic, *([] if p_value is None else [p_value])]
+    if not all(np.isfinite(value) for value in values):
+        return DiagnosticResult(
+            test=test, applicable=False, applicable_if=applicable_if,
+            statistic=None, p_value=None, status="warning",
+            reason="Statistic is undefined for this residual series",
+        )
+    return DiagnosticResult(
+        test=test, applicable=True, applicable_if=applicable_if,
+        statistic=statistic, p_value=p_value, status=status,
+    )
+
+
 def _diagnose(residuals: np.ndarray, alpha: float, ljung_box_lags: Optional[int], arch_lags: Optional[int]) -> List[DiagnosticResult]:
     n = int(residuals.size)
     lb_lags = ljung_box_lags or min(10, n - 1)
     arch_max = min(10, max(1, n // 5))
     arch_n = arch_lags or arch_max
+    zero_variance = np.std(residuals) <= np.finfo(float).eps
 
     results: List[DiagnosticResult] = []
 
@@ -113,12 +132,17 @@ def _diagnose(residuals: np.ndarray, alpha: float, ljung_box_lags: Optional[int]
             applicable_if=f"n_observations > lags ({lb_lags})",
             status="warning", reason="Not enough residuals for the requested lag count",
         ))
+    elif zero_variance:
+        results.append(DiagnosticResult(
+            test="ljung_box", applicable=False,
+            applicable_if="residual variance > 0 and n_observations > lags",
+            status="warning", reason="Residual variance is effectively zero",
+        ))
     else:
         lb = acorr_ljungbox(residuals, lags=[lb_lags], return_df=True).iloc[-1]
         p = float(lb["lb_pvalue"])
-        results.append(DiagnosticResult(
-            test="ljung_box", applicable=True,
-            applicable_if=f"n_observations > lags ({lb_lags})",
+        results.append(_finite_diagnostic_result(
+            test="ljung_box", applicable_if=f"n_observations > lags ({lb_lags})",
             statistic=float(lb["lb_stat"]), p_value=p,
             status=_status_from_pvalue(p, alpha),
         ))
@@ -129,12 +153,17 @@ def _diagnose(residuals: np.ndarray, alpha: float, ljung_box_lags: Optional[int]
             applicable_if="n_observations >= 8",
             status="warning", reason="Not enough residuals",
         ))
+    elif zero_variance:
+        results.append(DiagnosticResult(
+            test="jarque_bera", applicable=False,
+            applicable_if="n_observations >= 8 and residual variance > 0",
+            status="warning", reason="Residual variance is effectively zero",
+        ))
     else:
         jb = jarque_bera(residuals)
         p = float(jb.pvalue)
-        results.append(DiagnosticResult(
-            test="jarque_bera", applicable=True,
-            applicable_if="n_observations >= 8",
+        results.append(_finite_diagnostic_result(
+            test="jarque_bera", applicable_if="n_observations >= 8",
             statistic=float(jb.statistic), p_value=p,
             status=_status_from_pvalue(p, alpha),
         ))
@@ -145,7 +174,7 @@ def _diagnose(residuals: np.ndarray, alpha: float, ljung_box_lags: Optional[int]
             applicable_if=f"n_observations > arch_lags + 1 ({arch_n + 1})",
             status="warning", reason="Not enough residuals for ARCH-LM",
         ))
-    elif np.std(residuals) <= np.finfo(float).eps:
+    elif zero_variance:
         results.append(DiagnosticResult(
             test="arch_lm", applicable=False,
             applicable_if="residual variance > 0 and sufficient observations",
@@ -154,8 +183,8 @@ def _diagnose(residuals: np.ndarray, alpha: float, ljung_box_lags: Optional[int]
     else:
         lm_stat, lm_pvalue, _, _ = het_arch(residuals, nlags=arch_n)
         p = float(lm_pvalue)
-        results.append(DiagnosticResult(
-            test="arch_lm", applicable=True,
+        results.append(_finite_diagnostic_result(
+            test="arch_lm",
             applicable_if=f"n_observations > arch_lags + 1 ({arch_n + 1}) and residual variance > 0",
             statistic=float(lm_stat), p_value=p,
             status=_status_from_pvalue(p, alpha),
@@ -164,8 +193,8 @@ def _diagnose(residuals: np.ndarray, alpha: float, ljung_box_lags: Optional[int]
     dw = float(durbin_watson(residuals))
     distance = abs(dw - 2.0)
     status = "pass" if distance <= 0.5 else ("warning" if distance <= 1.0 else "fail")
-    results.append(DiagnosticResult(
-        test="durbin_watson", applicable=True,
+    results.append(_finite_diagnostic_result(
+        test="durbin_watson",
         applicable_if="finite residuals with at least 2 observations",
         statistic=dw, p_value=None, status=status,
     ))

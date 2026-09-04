@@ -1837,3 +1837,63 @@ Commit/push и production deploy не выполнялись.
 
 - `apps/api/routers/modeling_session.py`
 - `tests/api/test_modeling_workflow.py`
+
+---
+
+## Task 106 — Автоматическая diagnostics готовность comparable pool
+
+Дата: 2026-09-04. База: `main @ a363837488901ce71f8520f6936cf245d60bd07f`.
+Включает незакоммиченный hotfix Task 105; commit/push и deploy не выполнялись.
+
+### Симптом и причина
+
+- Comparison после расчёта `theta` и автоматического baseline pool возвращал:
+  `Для comparison нужны diagnostics каждого backtest: theta, naive, drift, mean`.
+- Fail-closed проверка backend методологически корректна: comparison использует
+  diagnostics каждого точного OOF run. Ошибка находилась в UI orchestration:
+  Stage 8 позволял вручную диагностировать только одну модель, а Stage 9 сразу
+  отправлял весь накопленный pool.
+- В batch-сценарии обнаружен дополнительный численный дефект: для постоянных
+  baseline residuals отдельные statsmodels-тесты могли вернуть `NaN`. Starlette
+  запрещает такой JSON и отвечал 500 вместо диагностического отчёта.
+
+### Исправление
+
+- Логика построения session diagnostics выделена в чистую функцию без мутации
+  сессии. Одиночный `POST /diagnostics` сохраняет прежний контракт.
+- Добавлен `POST /v1/session/modeling/diagnostics/ensure`. Он принимает точный
+  comparable pool, проверяет наличие и lineage каждого backtest, переиспользует
+  актуальные подписанные reports и рассчитывает только отсутствующие/stale.
+- Batch исполняется атомарно: сессия изменяется только после успешного расчёта
+  всего запрошенного пула. Downstream invalidation выполняется один раз.
+- UI перед каждым comparison сначала вызывает diagnostics ensure, затем строгий
+  `/compare`. Backend comparison gate не ослаблен и по-прежнему отклоняет прямые
+  запросы без diagnostics.
+- Для Ljung–Box, Jarque–Bera, ARCH-LM и Durbin–Watson введена общая проверка
+  конечности statistic/p-value. Нулевая дисперсия residuals и иные численно
+  неопределённые результаты маркируются `applicable=false`, `warning`, значения
+  становятся `null`; ложный статус `pass` и невалидный JSON исключены.
+- Schema version Modeling artifacts повышена до 3. Сохранённые diagnostics с
+  `NaN/Inf` признаются stale и безопасно пересчитываются.
+
+### TDD и проверки
+
+- RED API: `/diagnostics/ensure` отсутствовал (404).
+- RED UI: первый ответ ensure ошибочно интерпретировался как comparison, что
+  подтвердило отсутствие двухшаговой orchestration.
+- RED numerical: constant residuals возвращали non-finite statistic.
+- Modeling backend/core/API: 67/67 PASS.
+- Modeling UI: 58/58 PASS.
+- TypeScript embedded/standalone: PASS.
+- Production build standalone: PASS, 13/13 static pages, `/modeling` включён,
+  First Load JS 459 kB.
+- `py_compile` и `git diff --check`: PASS.
+
+### Изменённые файлы Task 106
+
+- `apps/api/routers/diagnostics.py`
+- `apps/api/routers/modeling_session.py`
+- `packages/ui/components/ModelingWorkflowOverview.tsx`
+- `packages/ui/components/ModelingWorkflowOverview.test.tsx`
+- `tests/api/test_diagnostics.py`
+- `tests/api/test_modeling_workflow.py`

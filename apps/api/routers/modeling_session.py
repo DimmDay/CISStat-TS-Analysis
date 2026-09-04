@@ -63,7 +63,7 @@ from apps.api.session_store import get_or_create_session_id, get_session_store
 
 
 router = APIRouter()
-MODELING_ARTIFACT_SCHEMA_VERSION = 2
+MODELING_ARTIFACT_SCHEMA_VERSION = 3
 
 
 def _package_version(name: str) -> str:
@@ -105,6 +105,10 @@ class ModelingDiagnosticsRequest(BaseModel):
     alpha: float = Field(0.05, gt=0, lt=1)
     ljung_box_lags: Optional[int] = Field(None, ge=1, le=50)
     arch_lags: Optional[int] = Field(None, ge=1, le=20)
+
+
+class ModelingDiagnosticsEnsureRequest(BaseModel):
+    model_ids: list[str] = Field(default_factory=list)
 
 
 class SessionDiagnosticsResponse(BaseModel):
@@ -189,6 +193,17 @@ def _action_context(session) -> dict[str, Any]:
     return _context(session, **{key: value for key, value in kwargs.items() if value is not None})
 
 
+def _diagnostics_values_are_finite(report: dict[str, Any]) -> bool:
+    try:
+        return all(
+            value is None or np.isfinite(float(value))
+            for item in report.get("diagnostics") or []
+            for value in (item.get("statistic"), item.get("p_value"))
+        )
+    except (TypeError, ValueError):
+        return False
+
+
 def _migrate_modeling_artifacts(session) -> None:
     """Drop unverifiable pre-lineage artifacts without fabricating signatures."""
     artifacts = session.modeling_artifacts
@@ -247,6 +262,7 @@ def _migrate_modeling_artifacts(session) -> None:
             or report.get("parameter_signature") != backtest.get("parameter_signature")
             or report.get("cohort_id") != backtest.get("cohort_id")
             or report.get("diagnostics_signature") != diagnostics_signature(report)
+            or not _diagnostics_values_are_finite(report)
         ):
             invalid_diagnostics.append(model_id)
     invalid_diagnostics.sort()
@@ -977,15 +993,10 @@ def step_modeling_tuning(
     }
 
 
-@router.post("/diagnostics", response_model=SessionDiagnosticsResponse)
-def diagnose_modeling_candidate(
-    payload: ModelingDiagnosticsRequest,
-    request: Request,
-    response: Response,
-):
-    store, session = _get_session(request, response)
-    context = _action_context(session)
-    _prepare_state(session, context)
+def _build_session_diagnostics(
+    session, payload: ModelingDiagnosticsRequest,
+) -> SessionDiagnosticsResponse:
+    """Build diagnostics from a traceable OOF backtest without mutating session."""
     backtest = session.modeling_artifacts.get("backtests", {}).get(payload.model_id)
     if not backtest:
         raise HTTPException(status_code=409, detail="Сначала выполните backtest модели на EDA folds")
@@ -1050,7 +1061,32 @@ def diagnose_modeling_candidate(
         "diagnostics": [item.model_dump(mode="json") for item in diagnostics],
     }
     result_payload["diagnostics_signature"] = diagnostics_signature(result_payload)
-    result = SessionDiagnosticsResponse(**result_payload)
+    return SessionDiagnosticsResponse(**result_payload)
+
+
+def _diagnostics_matches_backtest(
+    report: dict[str, Any], backtest: dict[str, Any],
+) -> bool:
+    return bool(
+        report.get("backtest_run_id") == backtest.get("run_id")
+        and report.get("residuals_signature") == backtest.get("oof_signature")
+        and report.get("parameter_signature") == backtest.get("parameter_signature")
+        and report.get("cohort_id") == backtest.get("cohort_id")
+        and report.get("diagnostics_signature") == diagnostics_signature(report)
+        and _diagnostics_values_are_finite(report)
+    )
+
+
+@router.post("/diagnostics", response_model=SessionDiagnosticsResponse)
+def diagnose_modeling_candidate(
+    payload: ModelingDiagnosticsRequest,
+    request: Request,
+    response: Response,
+):
+    store, session = _get_session(request, response)
+    context = _action_context(session)
+    _prepare_state(session, context)
+    result = _build_session_diagnostics(session, payload)
     _invalidate_after_diagnostics(session)
     session.modeling_artifacts.setdefault("diagnostics", {})[payload.model_id] = result.model_dump(mode="json")
     session.modeling_pipeline["diagnostics"] = "done"
@@ -1058,6 +1094,66 @@ def diagnose_modeling_candidate(
     session.touch()
     store.save(session)
     return result
+
+
+@router.post("/diagnostics/ensure")
+def ensure_modeling_diagnostics(
+    payload: ModelingDiagnosticsEnsureRequest,
+    request: Request,
+    response: Response,
+):
+    """Atomically ensure current diagnostics for every requested backtest."""
+    store, session = _get_session(request, response)
+    context = _action_context(session)
+    _prepare_state(session, context)
+    if len(payload.model_ids) != len(set(payload.model_ids)):
+        raise HTTPException(status_code=422, detail="model_ids содержит дубликаты")
+    backtests = session.modeling_artifacts.get("backtests", {})
+    model_ids = payload.model_ids or list(backtests)
+    if not model_ids:
+        raise HTTPException(status_code=409, detail="Нет backtests для диагностики")
+    missing = [model_id for model_id in model_ids if model_id not in backtests]
+    if missing:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "message": "Не все запрошенные backtests существуют",
+                "missing_backtests": missing,
+            },
+        )
+
+    saved = session.modeling_artifacts.setdefault("diagnostics", {})
+    calculated: dict[str, SessionDiagnosticsResponse] = {}
+    reused_model_ids: list[str] = []
+    for model_id in model_ids:
+        report = saved.get(model_id)
+        if report and _diagnostics_matches_backtest(report, backtests[model_id]):
+            reused_model_ids.append(model_id)
+            continue
+        calculated[model_id] = _build_session_diagnostics(
+            session, ModelingDiagnosticsRequest(model_id=model_id),
+        )
+
+    if calculated:
+        _invalidate_after_diagnostics(session)
+        session.modeling_artifacts.setdefault("diagnostics", {}).update({
+            model_id: report.model_dump(mode="json")
+            for model_id, report in calculated.items()
+        })
+        session.modeling_pipeline["diagnostics"] = "done"
+        session.modeling_pipeline["comparison"] = "in_progress"
+        session.touch()
+        store.save(session)
+    else:
+        session.touch()
+        store.save(session)
+    diagnostics = session.modeling_artifacts.get("diagnostics", {})
+    return {
+        "model_ids": model_ids,
+        "calculated_model_ids": list(calculated),
+        "reused_model_ids": reused_model_ids,
+        "diagnostics": {model_id: diagnostics[model_id] for model_id in model_ids},
+    }
 
 
 @router.post("/compare", response_model=ModelingComparisonResponse)

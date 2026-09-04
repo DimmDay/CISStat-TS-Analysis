@@ -192,7 +192,12 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
 
   const loadComparison = async () => {
     const value = await execute(
-      () => postJson("/v1/session/modeling/compare", { model_ids: modelIds }),
+      async () => {
+        await postJson("/v1/session/modeling/diagnostics/ensure", {
+          model_ids: modelIds,
+        });
+        return postJson("/v1/session/modeling/compare", { model_ids: modelIds });
+      },
       "comparison",
     ) as unknown as ModelingComparisonResponse | null;
     if (value) setComparison(value);

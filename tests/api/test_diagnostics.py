@@ -78,3 +78,16 @@ def test_diagnostic_statuses_are_bounded_to_ui_contract() -> None:
     residuals = _fit_residuals("arima", _arima_series(), {"p": 1, "d": 1, "q": 1})
     results = _diagnose(residuals, alpha=0.05, ljung_box_lags=5, arch_lags=5)
     assert all(item.status in {"pass", "warning", "fail"} for item in results)
+
+
+def test_constant_residual_diagnostics_never_expose_non_finite_json_values() -> None:
+    results = _diagnose(
+        np.ones(12, dtype=float), alpha=0.05, ljung_box_lags=5, arch_lags=2,
+    )
+
+    assert any(not item.applicable for item in results)
+    assert all(
+        value is None or np.isfinite(value)
+        for item in results
+        for value in (item.statistic, item.p_value)
+    )
