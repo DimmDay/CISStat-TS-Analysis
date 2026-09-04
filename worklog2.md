@@ -1960,3 +1960,57 @@ Commit/push и production deploy не выполнялись.
 - `packages/ui/components/ModelingWorkflowOverview.tsx`
 - `packages/ui/components/ModelingWorkflowOverview.test.tsx`
 - `tests/api/test_modeling_workflow.py`
+
+---
+
+## Task 108 — Верификация MASE > 1,05 для всего comparable pool
+
+Дата: 2026-09-04. База: рабочее состояние после Task 107 на
+`main @ a363837488901ce71f8520f6936cf245d60bd07f`.
+Исследование и воспроизведение; production-код не изменялся.
+
+### Наблюдение
+
+- На экране сравнения при 120 OOF-точках все восемь моделей, включая `naive` и
+  `drift`, получили MASE от 2,461 до 6,402 и одинаковое предупреждение
+  `MASE ... выше 1.05; требуется осознанный override`.
+- 120 OOF-точек соответствуют используемой платформой схеме 5 folds × horizon 24.
+
+### Проверка реализации
+
+- Production backtest рассчитывает fold-local denominator только на train:
+  `mean(abs(y[t] - y[t-m]))`, где `m` — подтверждённый seasonal period либо 1.
+- Fold MASE равен `MAE(test forecast) / train scale`; итоговый MASE — взвешенное
+  по числу test-точек среднее fold MASE. Формула, отсутствие leakage и aggregation
+  проверены численно до точности округления.
+- Это стандартный scale MASE, но denominator не является ошибкой фактически
+  рассчитанного OOF baseline на том же многокроковом горизонте.
+
+### Воспроизведение
+
+- На случайном блуждании длиной 240, `m=1`, 5 expanding folds × 24 точки получен
+  тот же паттерн: все модели выше 1; значения 3,430–3,852, Naive = 3,430.
+- Monte Carlo из 100 случайных блужданий подтвердил horizon effect для Naive:
+  H=1 — mean 0,992 и 43% запусков выше 1,05; H=6 — 1,858 и 99%;
+  H=12 — 2,466 и 100%; H=24 — 3,409 и 100%.
+- Для random walk ожидаемая абсолютная ошибка шага `h` растёт примерно как
+  `sqrt(h)`, тогда как denominator MASE остаётся однокроковым train scale.
+  Поэтому средний 24-шаговый MASE самого Naive закономерно существенно выше 1.
+
+### Вывод и корректировка методологии
+
+- Систематической ошибки в численном расчёте MASE нет.
+- Есть систематическая ошибка семантики UI/comparison: абсолютный порог
+  `MASE <= 1.05` трактуется как допуск относительно baseline и требует override
+  для каждой модели. На multi-step fixed-origin backtest этот порог не сравнивает
+  модель с фактическим OOF baseline и потому почти неизбежно помечает весь pool.
+- Task 102 уже использует правильную основу выбора: primary loss модели против
+  лучшего фактически рассчитанного baseline на тех же aligned OOF-точках.
+- Рекомендуемое исправление: оставить MASE как scale-free метрику и явно показать
+  её train-only denominator/period, но убрать `MASE <= 1.05` из eligibility gate.
+  Если нужен допуск 5%, применять его к отношению `model OOF primary loss /
+  best baseline OOF primary loss` на том же cohort и horizon.
+
+### Изменённые файлы Task 108
+
+- `worklog2.md`
