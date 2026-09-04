@@ -1709,3 +1709,79 @@ AccountMembership (owner/member — отдельная ось от Role/Plan). �
 (коммит/push в main запрещён протоколом AGENTS.md). 5 открытых вопросов
 к тимлиду (§9 спецификации), в первую очередь — калибровка
 ALGORITHM_COEFFICIENTS на реальных бенчмарках.
+
+---
+
+## Task 104 — Устранение HTTP 502 tuning и гарантированный baseline pool
+
+Дата: 2026-09-04. База: `main @ a4395e11b422780bc91999c0e5531356fc6264ec`.
+Commit/push и production deploy не выполнялись.
+
+### Диагностика
+
+- First-party API через Vercel rewrite и Render доступен: обычный session route
+  отвечает штатно. Ошибка локализована в `POST /v1/session/modeling/tune`:
+  вся сетка ETS/ARIMA исполнялась синхронно в одном HTTP-запросе. Даже локальный
+  ETS grid на коротком ряду занимает несколько секунд; на shared CPU и реальном
+  числе folds суммарное время может превысить proxy/runtime budget и проявиться
+  как bodyless HTTP 502.
+- Stage 5 был объявлен обязательным, однако UI не запускал baseline автоматически
+  и позволял перейти к comparison. Backend корректно fail-closed отклонял пул без
+  рассчитанной baseline-модели сообщением `Comparable pool должен содержать
+  минимум один рассчитанный baseline`.
+- Сокращение tuning grid отклонено: оно маскировало бы инфраструктурную проблему
+  и меняло методологию выбора модели.
+
+### Реализация
+
+- Добавлен `POST /v1/session/modeling/baselines`. Он один раз строит точный EDA
+  `BacktestPlan`, рассчитывает доступные production baselines в одном session
+  transaction, сохраняет только успешные traceable backtests одного cohort и
+  требует минимум один успех. При повторном вызове валидный baseline того же
+  cohort переиспользуется без новых run IDs и без инвалидации downstream.
+- Загрузка candidate pool в UI теперь включает обязательный baseline bootstrap.
+  Результаты сразу попадают в общий `backtestResults`, а стадии Baseline/Backtest
+  отмечаются завершёнными. Ручной пересчёт модели остаётся доступен.
+- Tuning engine разделён на три проверяемые операции: детерминированная подготовка
+  grid, выполнение одного trial и каноническая финализация всех trial artifacts.
+  Старый response-only и синхронный API сохранены для обратной совместимости.
+- Добавлены `POST /v1/session/modeling/tuning/start` и
+  `POST /v1/session/modeling/tuning/step`. Start фиксирует grid, metric, seed,
+  cohort и SHA-256 job signature в Redis-compatible session state. Каждый step
+  исполняет ровно один trial на всех точных EDA folds и сохраняет прогресс.
+  Последний step выбирает best trial, без повторного fit продвигает его OOF
+  backtest и сохраняет прежний `TuneResponse`/lineage contract.
+- Step использует `expected_trial_index` и возвращает 409 при рассинхронизации;
+  завершённый job идемпотентно возвращает тот же tuning result. Изменение EDA
+  cohort или job policy переводит запуск в stale и требует нового start.
+- UI последовательно вызывает короткие step-запросы, показывает `Trial N/M` и
+  останавливается при невалидном размере plan или непродвигающемся progress.
+  Полная ETS/ARIMA grid и правила выбора лучшего trial не сокращались.
+
+### TDD и проверки
+
+- RED: новые API-тесты получили ожидаемый 404 для отсутствующих baseline/start
+  routes; UI-тест подтвердил, что старый единственный `/tune` response не
+  удовлетворяет пошаговому контракту.
+- `tests/unit/test_modeling_tuning_plan.py` +
+  `tests/api/test_modeling_workflow.py`: 28/28 PASS.
+- Полный релевантный Modeling-набор: 119 PASS; 2 известных stale-теста базового
+  `a4395e1` остались красными (`1.0.0-draft` против уже принятого
+  `1.1.0-draft`, а также удалённый Task 102 heuristic `auto_ensemble_trigger`).
+  Они не вызваны Task 104 и не исправлялись вне его scope.
+- UI Modeling: 58/58 PASS.
+- TypeScript embedded/standalone: PASS с принятыми для текущего toolchain
+  флагами `--ignoreDeprecations 6.0 --noUncheckedSideEffectImports false`.
+- Production build standalone: PASS, 13/13 static pages, `/modeling` включён,
+  First Load JS 459 kB. Временный Node 24 memory shim после проверки удалён.
+- `py_compile` и `git diff --check`: PASS.
+
+### Изменённые файлы Task 104
+
+- `apps/api/modeling_tuning.py`
+- `apps/api/routers/modeling_session.py`
+- `packages/ui/components/ModelingWorkflowOverview.tsx`
+- `packages/ui/components/ModelingWorkflowOverview.test.tsx`
+- `packages/ui/components/TsAnalysisModeling.tsx`
+- `packages/ui/components/TsAnalysisModeling.test.tsx`
+- `tests/api/test_modeling_workflow.py`

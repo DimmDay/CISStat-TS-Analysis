@@ -178,6 +178,95 @@ def test_candidates_preserve_sliding_eda_contract_for_backtest(client: TestClien
     assert all(fold["test_start"] - fold["train_end"] - 1 == 2 for fold in body["folds"])
 
 
+def test_baseline_bootstrap_atomically_populates_comparable_cohort(client: TestClient):
+    _prepare(client)
+    candidates = client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "sliding", "horizon": 2, "n_splits": 2, "gap": 1, "train_window": 40},
+    )
+    assert candidates.status_code == 200, candidates.text
+
+    response = client.post("/v1/session/modeling/baselines")
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "success"
+    assert "naive" in body["backtests"]
+    assert body["cohort_id"]
+    assert {
+        item["cohort_id"] for item in body["backtests"].values()
+    } == {body["cohort_id"]}
+    assert all(item["family_id"] == "baselines" for item in body["backtests"].values())
+
+    state = client.get("/v1/session/modeling/state").json()
+    assert state["pipeline"]["baseline_estimation"] == "done"
+    assert "naive" in state["artifacts"]["backtests"]
+
+    repeated = client.post("/v1/session/modeling/baselines")
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["reused"] is True
+    assert repeated.json()["backtests"]["naive"]["run_id"] == body["backtests"]["naive"]["run_id"]
+
+
+def test_resumable_tuning_executes_one_trial_per_step_and_promotes_best(client: TestClient):
+    _prepare(client)
+    candidates = client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "sliding", "horizon": 2, "n_splits": 2, "gap": 1, "train_window": 40},
+    )
+    assert candidates.status_code == 200, candidates.text
+
+    started = client.post(
+        "/v1/session/modeling/tuning/start",
+        json={"model_id": "ets", "max_trials": 2, "metric": "rmse"},
+    )
+    assert started.status_code == 200, started.text
+    job = started.json()
+    assert job["status"] == "in_progress"
+    assert job["completed_trials"] == 0
+    assert job["total_trials"] == 2
+    assert "ets" not in client.get("/v1/session/modeling/state").json()["artifacts"]["tuning"]
+
+    first = client.post(
+        "/v1/session/modeling/tuning/step",
+        json={"job_id": job["job_id"], "expected_trial_index": 0},
+    )
+    assert first.status_code == 200, first.text
+    assert first.json()["status"] == "in_progress"
+    assert first.json()["completed_trials"] == 1
+    assert first.json()["tuning_response"] is None
+
+    stale = client.post(
+        "/v1/session/modeling/tuning/step",
+        json={"job_id": job["job_id"], "expected_trial_index": 0},
+    )
+    assert stale.status_code == 409
+
+    final = client.post(
+        "/v1/session/modeling/tuning/step",
+        json={"job_id": job["job_id"], "expected_trial_index": 1},
+    )
+    assert final.status_code == 200, final.text
+    result = final.json()
+    assert result["status"] == "completed"
+    assert result["completed_trials"] == 2
+    tuning = result["tuning_response"]
+    assert tuning["n_trials"] == 2
+    assert tuning["promoted_backtest"]["cohort_id"] == tuning["cohort_id"]
+    assert tuning["promoted_backtest"]["params"] == tuning["best_params"]
+
+    state = client.get("/v1/session/modeling/state").json()
+    assert state["artifacts"]["tuning"]["ets"]["tuning_id"] == tuning["tuning_id"]
+    assert state["artifacts"]["backtests"]["ets"]["run_id"] == tuning["promoted_backtest"]["run_id"]
+
+    repeated = client.post(
+        "/v1/session/modeling/tuning/step",
+        json={"job_id": job["job_id"], "expected_trial_index": 2},
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["tuning_response"]["tuning_id"] == tuning["tuning_id"]
+
+
 def test_tuning_reuses_exact_sliding_eda_plan_and_cohort(client: TestClient):
     _prepare(client)
     candidates = client.post(

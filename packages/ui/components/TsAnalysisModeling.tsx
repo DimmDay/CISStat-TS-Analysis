@@ -395,10 +395,36 @@ export function TsAnalysisModeling() {
         );
       }
       const data: CandidatesResponse = await res.json();
+      const baselineRes = await fetch(`${API_BASE}/v1/session/modeling/baselines`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      if (!baselineRes.ok) {
+        const errBody = await baselineRes.json().catch(() => ({}));
+        throw new Error(
+          formatErrorDetail(errBody.detail)
+          || `Baseline bootstrap: HTTP ${baselineRes.status}: ${baselineRes.statusText}`
+        );
+      }
+      const baselineData = await baselineRes.json() as {
+        backtests: Record<string, BacktestResponse>;
+      };
+      if (!baselineData.backtests || Object.keys(baselineData.backtests).length === 0) {
+        throw new Error("Baseline bootstrap завершён без рассчитанных моделей.");
+      }
       setCandidates(data.candidates);
       setCatalog(data.catalog ?? data.candidates);
       setStatistics(data.statistics);
       setSpecVersion(data.spec_version);
+      setBacktestResults((previous) => ({ ...previous, ...baselineData.backtests }));
+      setCompletedStages((previous) => {
+        const next = new Set(previous);
+        next.add("candidate_generation");
+        next.add("baseline_estimation");
+        next.add("backtest");
+        return next;
+      });
       setHasFetched(true);
     } catch (err) {
       setError(
@@ -1293,6 +1319,14 @@ export function TsAnalysisModeling() {
                         {(bt.warnings ?? []).map((warning) => (
                           <p key={warning} className="text-[10px] text-amber-700">{warning}</p>
                         ))}
+                        <Button
+                          onClick={() => runBacktest(activeCandidate.model_id)}
+                          disabled={backtestLoading}
+                          className="w-full text-xs"
+                          data-testid="run-backtest-btn"
+                        >
+                          {backtestLoading ? "Расчёт…" : "Пересчитать бэктест"}
+                        </Button>
                       </>
                     );
                   })()}

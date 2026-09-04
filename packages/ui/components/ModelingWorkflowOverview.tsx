@@ -26,6 +26,14 @@ interface TuningResult {
   promoted_backtest?: BacktestResponse | null;
 }
 
+interface TuningJobResult {
+  job_id: string;
+  status: "in_progress" | "completed";
+  completed_trials: number;
+  total_trials: number;
+  tuning_response: TuningResult | null;
+}
+
 interface DiagnosticItem {
   test: "ljung_box" | "jarque_bera" | "arch_lm" | "durbin_watson";
   applicable: boolean;
@@ -139,6 +147,7 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tuningProgress, setTuningProgress] = useState<{ completed: number; total: number } | null>(null);
 
   useEffect(() => {
     if (!supportedModelIds.includes(modelId)) setModelId(supportedModelIds[0] ?? "");
@@ -232,8 +241,32 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
   };
 
   const runTuning = async () => {
+    setTuningProgress(null);
     const value = await execute(
-      () => postJson("/v1/session/modeling/tune", { model_id: modelId }),
+      async () => {
+        let job = await postJson(
+          "/v1/session/modeling/tuning/start", { model_id: modelId },
+        ) as unknown as TuningJobResult;
+        if (job.total_trials < 1 || job.total_trials > 64) {
+          throw new Error("Backend вернул недопустимый размер tuning plan");
+        }
+        setTuningProgress({ completed: job.completed_trials, total: job.total_trials });
+        while (job.status === "in_progress") {
+          const expectedTrialIndex = job.completed_trials;
+          job = await postJson("/v1/session/modeling/tuning/step", {
+            job_id: job.job_id,
+            expected_trial_index: expectedTrialIndex,
+          }) as unknown as TuningJobResult;
+          if (job.status === "in_progress" && job.completed_trials <= expectedTrialIndex) {
+            throw new Error("Tuning progress не продвигается; повторите запуск");
+          }
+          setTuningProgress({ completed: job.completed_trials, total: job.total_trials });
+        }
+        if (!job.tuning_response) {
+          throw new Error("Tuning job завершён без верифицируемого результата");
+        }
+        return job.tuning_response as unknown as Record<string, unknown>;
+      },
       "tuning",
     ) as unknown as TuningResult | null;
     if (value?.promoted_backtest) onBacktestPromoted?.(value.promoted_backtest);
@@ -292,7 +325,7 @@ export function ModelingWorkflowOverview({ stageId, modelIds, onStageComplete, o
         )}
       </div>
 
-      {loading && <div className="flex flex-1 items-center justify-center gap-2 text-sm text-neutral-500"><Loader2 size={16} className="animate-spin" /> Выполняется…</div>}
+      {loading && <div className="flex flex-1 items-center justify-center gap-2 text-sm text-neutral-500"><Loader2 size={16} className="animate-spin" /> {stageId === "tuning" && tuningProgress ? `Trial ${tuningProgress.completed}/${tuningProgress.total}` : "Выполняется…"}</div>}
       {error && <div className="mt-3 rounded border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</div>}
       {!loading && comparison && ["comparison", "selection"].includes(stageId) && (
         <div className="mt-4 min-h-0 flex-1 overflow-auto feed-scroll">

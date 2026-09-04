@@ -230,6 +230,16 @@ const MOCK_MODELING_CONTEXT = {
   },
 };
 
+const MOCK_BASELINE_BACKTEST = {
+  model_id: "naive", model_name: "Naive", family_id: "baselines",
+  metrics: { mae: 3.45, rmse: 4.12, mape: 2.1, mase: 0.87, weighted_score: null },
+  n_train: 96, n_test: 24, train_ratio: 0.8, duration_ms: 5,
+  data_source: "session", status: "success", strategy: "expanding",
+  cohort_id: "cohort-bootstrap", horizon: 2, n_folds: 3, gap: 0,
+  folds: [], oof_predictions: [], warnings: [],
+};
+const baselineFetch = jest.fn();
+
 // @ts-ignore — mock fetch с частичным Response
 const mockFetch: any = jest.fn((url: string) => {
   // GET target-column (без body в mock — components не передаёт method для GET)
@@ -251,6 +261,16 @@ const mockFetch: any = jest.fn((url: string) => {
 global.fetch = ((url: string, options?: unknown) => {
   if (typeof url === "string" && url.includes("/v1/session/modeling/context")) {
     return Promise.resolve({ ok: true, json: () => Promise.resolve(MOCK_MODELING_CONTEXT) });
+  }
+  if (typeof url === "string" && url.includes("/v1/session/modeling/baselines")) {
+    baselineFetch(url, options);
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        status: "success", cohort_id: "cohort-bootstrap",
+        backtests: { naive: MOCK_BASELINE_BACKTEST }, failures: {},
+      }),
+    });
   }
   return mockFetch(url, options);
 }) as typeof fetch;
@@ -386,6 +406,10 @@ describe("TsAnalysisModeling", () => {
       expect.stringContaining("/v1/session/modeling/candidates"),
       expect.objectContaining({ method: "POST" })
     );
+    await waitFor(() => expect(baselineFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/v1/session/modeling/baselines"),
+      expect.objectContaining({ method: "POST", credentials: "include" })
+    ));
   });
 
   it("fetches target-column on mount (Phase 1)", async () => {

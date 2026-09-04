@@ -61,6 +61,13 @@ class TuningPlanExecution:
     best_backtest: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class PreparedTuningGrid:
+    selected: list[dict[str, Any]]
+    grid_size: int
+    truncated: bool
+
+
 def _grid(param_space: Mapping[str, list[Any]]) -> list[dict[str, Any]]:
     keys = list(param_space)
     return [
@@ -90,17 +97,11 @@ def _cv_summary(plan: BacktestPlan) -> CVConfig:
     )
 
 
-def execute_tuning_plan_with_artifacts(
-    *, model_id: str, model_name: str, family_id: str,
-    param_space: Mapping[str, list[Any]], series: list[float], labels: list[str],
-    plan: BacktestPlan, seasonal_period: int, max_trials: Optional[int],
+def prepare_tuning_grid(
+    param_space: Mapping[str, list[Any]], *, max_trials: Optional[int],
     metric: str, random_state: int,
-    predictors: Optional[Mapping[str, Predictor]] = None,
-    fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
-    preprocessing_warnings: Optional[list[str]] = None,
-) -> TuningPlanExecution:
-    """Execute every trial with the same folds and engine as backtest."""
-    started = time.monotonic()
+) -> PreparedTuningGrid:
+    """Validate and deterministically select the trials before execution."""
     if metric not in VALID_SESSION_TUNING_METRICS:
         raise BacktestExecutionError(
             "Session tuning поддерживает mae/rmse/mape/mase; weighted_score "
@@ -108,32 +109,48 @@ def execute_tuning_plan_with_artifacts(
         )
     full_grid = _grid(param_space)
     if not full_grid:
-        raise BacktestExecutionError(f"Для модели '{model_id}' param_space пуст")
+        raise BacktestExecutionError("Param space пуст")
     requested = min(int(max_trials or MAX_TRIALS), MAX_TRIALS)
-    selected_grid, truncated = _truncate(full_grid, requested, random_state)
-    trials: list[TuneTrialResult] = []
-    trial_backtests: list[dict[str, Any]] = []
-    warnings = list(preprocessing_warnings or [])
-    failures: list[str] = []
-    for params in selected_grid:
-        try:
-            result = run_backtest_plan(
-                model_id=model_id, model_name=model_name, family_id=family_id,
-                series=series, labels=labels, plan=plan,
-                seasonal_period=seasonal_period, params=params,
-                predictors=predictors, fold_preprocessor=fold_preprocessor,
-                preprocessing_warnings=preprocessing_warnings,
-            )
-            metrics = BacktestMetrics(**result["metrics"])
-            if getattr(metrics, metric) is None:
-                failures.append(f"params={params}: метрика {metric} не определена")
-                continue
-            trials.append(TuneTrialResult(
-                params=params, metrics=metrics, n_folds=len(plan.folds),
-            ))
-            trial_backtests.append(result)
-        except (BacktestExecutionError, ValueError, RuntimeError, ArithmeticError) as exc:
-            failures.append(f"params={params}: {exc}")
+    selected, truncated = _truncate(full_grid, requested, random_state)
+    return PreparedTuningGrid(
+        selected=selected, grid_size=len(full_grid), truncated=truncated,
+    )
+
+
+def execute_tuning_trial(
+    *, model_id: str, model_name: str, family_id: str, params: Mapping[str, Any],
+    series: list[float], labels: list[str], plan: BacktestPlan, seasonal_period: int,
+    metric: str, predictors: Optional[Mapping[str, Predictor]] = None,
+    fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
+    preprocessing_warnings: Optional[list[str]] = None,
+) -> tuple[TuneTrialResult, dict[str, Any]]:
+    """Execute exactly one bounded trial on the immutable EDA plan."""
+    if metric not in VALID_SESSION_TUNING_METRICS:
+        raise BacktestExecutionError(f"Метрика tuning '{metric}' не поддерживается")
+    result = run_backtest_plan(
+        model_id=model_id, model_name=model_name, family_id=family_id,
+        series=series, labels=labels, plan=plan,
+        seasonal_period=seasonal_period, params=dict(params),
+        predictors=predictors, fold_preprocessor=fold_preprocessor,
+        preprocessing_warnings=preprocessing_warnings,
+    )
+    metrics = BacktestMetrics(**result["metrics"])
+    if getattr(metrics, metric) is None:
+        raise BacktestExecutionError(f"Метрика {metric} не определена")
+    return TuneTrialResult(
+        params=dict(params), metrics=metrics, n_folds=len(plan.folds),
+    ), result
+
+
+def finalize_tuning_plan_with_artifacts(
+    *, model_id: str, model_name: str, family_id: str,
+    trials: list[TuneTrialResult], trial_backtests: list[dict[str, Any]],
+    failures: list[str], grid_size: int, selected_count: int, truncated: bool,
+    plan: BacktestPlan, metric: str, duration_ms: float,
+    fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
+    preprocessing_warnings: Optional[list[str]] = None,
+) -> TuningPlanExecution:
+    """Build the canonical response after monolithic or resumed execution."""
     if not trials:
         detail = failures[0] if failures else "нет исполнимых trials"
         raise BacktestExecutionError(
@@ -143,9 +160,10 @@ def execute_tuning_plan_with_artifacts(
         range(len(trials)),
         key=lambda index: float(getattr(trials[index].metrics, metric)),
     )
+    warnings = list(preprocessing_warnings or [])
     if failures:
         warnings.append(
-            f"Пропущено несовместимых trial: {len(failures)} из {len(selected_grid)}."
+            f"Пропущено несовместимых trial: {len(failures)} из {selected_count}."
         )
     preprocessing = (
         dict(fold_preprocessor.summary) if fold_preprocessor is not None else {
@@ -157,11 +175,10 @@ def execute_tuning_plan_with_artifacts(
     best_params = trials[best_index].params
     response = TuneResponse(
         model_id=model_id, model_name=model_name, family_id=family_id,
-        best_params=best_params,
-        best_metrics=trials[best_index].metrics,
-        best_trial=best_index, n_trials=len(trials), grid_size=len(full_grid),
+        best_params=best_params, best_metrics=trials[best_index].metrics,
+        best_trial=best_index, n_trials=len(trials), grid_size=grid_size,
         truncated=truncated, cv_config=_cv_summary(plan), metric=metric,
-        trials=trials, duration_ms=round((time.monotonic() - started) * 1000, 2),
+        trials=trials, duration_ms=round(duration_ms, 2),
         strategy=plan.strategy, cohort_id=plan.cohort_id,
         folds=[
             TuneFoldPlan(
@@ -171,11 +188,52 @@ def execute_tuning_plan_with_artifacts(
             )
             for fold in plan.folds
         ],
-        preprocessing=preprocessing, warnings=warnings,
-        tuning_id=tuning_id,
+        preprocessing=preprocessing, warnings=warnings, tuning_id=tuning_id,
         parameter_signature=parameter_signature(model_id, best_params),
     )
     return TuningPlanExecution(response=response, best_backtest=trial_backtests[best_index])
+
+
+def execute_tuning_plan_with_artifacts(
+    *, model_id: str, model_name: str, family_id: str,
+    param_space: Mapping[str, list[Any]], series: list[float], labels: list[str],
+    plan: BacktestPlan, seasonal_period: int, max_trials: Optional[int],
+    metric: str, random_state: int,
+    predictors: Optional[Mapping[str, Predictor]] = None,
+    fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
+    preprocessing_warnings: Optional[list[str]] = None,
+) -> TuningPlanExecution:
+    """Execute every trial with the same folds and engine as backtest."""
+    started = time.monotonic()
+    prepared_grid = prepare_tuning_grid(
+        param_space, max_trials=max_trials, metric=metric, random_state=random_state,
+    )
+    trials: list[TuneTrialResult] = []
+    trial_backtests: list[dict[str, Any]] = []
+    failures: list[str] = []
+    for params in prepared_grid.selected:
+        try:
+            trial, result = execute_tuning_trial(
+                model_id=model_id, model_name=model_name, family_id=family_id,
+                params=params, series=series, labels=labels, plan=plan,
+                seasonal_period=seasonal_period, metric=metric,
+                predictors=predictors, fold_preprocessor=fold_preprocessor,
+                preprocessing_warnings=preprocessing_warnings,
+            )
+            trials.append(trial)
+            trial_backtests.append(result)
+        except (BacktestExecutionError, ValueError, RuntimeError, ArithmeticError) as exc:
+            failures.append(f"params={params}: {exc}")
+    return finalize_tuning_plan_with_artifacts(
+        model_id=model_id, model_name=model_name, family_id=family_id,
+        trials=trials, trial_backtests=trial_backtests, failures=failures,
+        grid_size=prepared_grid.grid_size,
+        selected_count=len(prepared_grid.selected), truncated=prepared_grid.truncated,
+        plan=plan, metric=metric,
+        duration_ms=(time.monotonic() - started) * 1000,
+        fold_preprocessor=fold_preprocessor,
+        preprocessing_warnings=preprocessing_warnings,
+    )
 
 
 def execute_tuning_plan(

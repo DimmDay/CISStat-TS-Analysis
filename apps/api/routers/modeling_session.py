@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import hashlib
 from importlib.metadata import PackageNotFoundError, version
+import json
+import time
 from typing import Any, Literal, Optional
 from uuid import uuid4
 
@@ -32,9 +35,12 @@ from apps.api.modeling_selection import (
     evaluate_selection,
 )
 from apps.api.modeling_tuning import (
+    execute_tuning_trial,
     execute_tuning_plan_with_artifacts,
+    finalize_tuning_plan_with_artifacts,
     oof_signature,
     parameter_signature,
+    prepare_tuning_grid,
 )
 from apps.api.modeling_workflow import build_modeling_context
 from apps.api.routers.diagnostics import DiagnosticResult, _diagnose
@@ -51,6 +57,7 @@ from apps.api.schemas import (
     DataProfileRequest,
     ModelingComparisonResponse,
     TuneResponse,
+    TuneTrialResult,
 )
 from apps.api.session_store import get_or_create_session_id, get_session_store
 
@@ -85,6 +92,11 @@ class ModelingTuneRequest(BaseModel):
     max_trials: Optional[int] = Field(None, ge=1)
     metric: Literal["mae", "rmse", "mape", "mase", "weighted_score"] = "rmse"
     random_state: int = 42
+
+
+class ModelingTuningStepRequest(BaseModel):
+    job_id: str = Field(..., min_length=1)
+    expected_trial_index: int = Field(..., ge=0)
 
 
 class ModelingDiagnosticsRequest(BaseModel):
@@ -247,6 +259,18 @@ def _get_session(request: Request, response: Response):
     return store, store.get_or_create(session_id)
 
 
+def _tuning_job_signature(
+    *, model_id: str, cohort_id: str, selected_grid: list[dict[str, Any]],
+    metric: str, random_state: int,
+) -> str:
+    encoded = json.dumps({
+        "model_id": model_id, "cohort_id": cohort_id,
+        "selected_grid": selected_grid, "metric": metric,
+        "random_state": random_state,
+    }, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 @router.get("/context")
 def get_modeling_context(
     request: Request,
@@ -348,6 +372,112 @@ def generate_modeling_candidates(
     session.touch()
     store.save(session)
     return result
+
+
+@router.post("/baselines")
+def bootstrap_modeling_baselines(request: Request, response: Response):
+    """Calculate the runnable baseline cohort in one session transaction."""
+    store, session = _get_session(request, response)
+    context = _action_context(session)
+    _prepare_state(session, context)
+    runnable = set(
+        session.modeling_artifacts.get("runnable_shortlist")
+        or context.get("runnable_shortlist", [])
+    )
+    baseline_ids = [
+        model_id for model_id in ("naive", "seasonal_naive", "drift", "mean")
+        if model_id in runnable and model_id in PRODUCTION_BACKTEST_MODEL_IDS
+    ]
+    if not baseline_ids:
+        raise HTTPException(
+            status_code=409,
+            detail="Матрица применимости не содержит исполнимого baseline",
+        )
+    period = (
+        session.modeling_artifacts.get("profile", context["profile"])
+        .get("seasonal_periods") or [1]
+    )[0]
+    validation = session.modeling_artifacts["validation_strategy"]
+    prepared = prepare_modeling_target(
+        session.dataframe, target_column=session.target_column,
+        date_column=session.date_column,
+        transformations=session.preprocessing_transformations,
+        scaling_recipe=session.preprocessing_scaling_recipe,
+    )
+    plan = build_backtest_plan(
+        validation, n_observations=len(prepared.series),
+        fingerprint=context["fingerprint"], target_column=session.target_column,
+        seasonal_period=int(period),
+        preprocessing_signature=prepared.preprocessing_signature,
+    )
+    saved = session.modeling_artifacts.get("backtests", {})
+    reusable = {
+        model_id: item for model_id, item in saved.items()
+        if model_id in baseline_ids
+        and item.get("family_id") == "baselines"
+        and item.get("status") == "success"
+        and item.get("cohort_id") == plan.cohort_id
+        and item.get("run_id")
+        and item.get("parameter_signature") == parameter_signature(
+            model_id, item.get("params") or {},
+        )
+        and item.get("oof_signature") == oof_signature(item.get("oof_predictions") or [])
+    }
+    if reusable:
+        session.modeling_pipeline["baseline_estimation"] = "done"
+        session.modeling_pipeline["backtest"] = "done"
+        session.touch()
+        store.save(session)
+        return {
+            "status": "success", "cohort_id": plan.cohort_id,
+            "backtests": reusable,
+            "failures": session.modeling_artifacts.get("baseline_failures", {}),
+            "reused": True,
+        }
+    calculated: dict[str, BacktestResponse] = {}
+    failures: dict[str, str] = {}
+    for model_id in baseline_ids:
+        model_name, family_id = _resolve_model_info(model_id)
+        try:
+            raw = run_backtest_plan(
+                model_id=model_id, model_name=model_name, family_id=family_id,
+                series=prepared.series, labels=prepared.labels, plan=plan,
+                seasonal_period=int(period), params={},
+                preprocessing_warnings=prepared.warnings,
+                fold_preprocessor=prepared.fold_preprocessor,
+            )
+            calculated[model_id] = _trace_backtest(
+                raw, model_id=model_id, params={}, params_source="model_default",
+            )
+        except (BacktestExecutionError, ValueError, RuntimeError, ArithmeticError) as exc:
+            failures[model_id] = str(exc)
+    if not calculated:
+        session.modeling_artifacts["baseline_failures"] = failures
+        session.touch()
+        store.save(session)
+        detail = next(iter(failures.values()), "нет исполнимых baseline")
+        raise HTTPException(
+            status_code=422,
+            detail=f"Ни один baseline не рассчитан: {detail}",
+        )
+
+    for model_id in calculated:
+        session.modeling_artifacts.setdefault("diagnostics", {}).pop(model_id, None)
+    _invalidate_after_model_run(session, next(iter(calculated)))
+    serialized = {
+        model_id: result.model_dump(mode="json")
+        for model_id, result in calculated.items()
+    }
+    session.modeling_artifacts.setdefault("backtests", {}).update(serialized)
+    session.modeling_artifacts["baseline_failures"] = failures
+    session.modeling_pipeline["baseline_estimation"] = "done"
+    session.modeling_pipeline["backtest"] = "done"
+    session.touch()
+    store.save(session)
+    return {
+        "status": "success", "cohort_id": plan.cohort_id,
+        "backtests": serialized, "failures": failures,
+    }
 
 
 @router.post("/backtest", response_model=BacktestResponse)
@@ -509,6 +639,237 @@ def tune_modeling_candidate(
     session.touch()
     store.save(session)
     return result
+
+
+@router.post("/tuning/start")
+def start_modeling_tuning(
+    payload: ModelingTuneRequest,
+    request: Request,
+    response: Response,
+):
+    """Persist a deterministic tuning plan without executing a long request."""
+    store, session = _get_session(request, response)
+    context = _action_context(session)
+    _prepare_state(session, context)
+    from apps.api.routers.models import _get_spec
+    if payload.model_id not in PRODUCTION_TUNING_MODEL_IDS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Production tuning для модели '{payload.model_id}' не реализован",
+        )
+    runnable = set(
+        session.modeling_artifacts.get("runnable_shortlist")
+        or context.get("runnable_shortlist", [])
+    )
+    if payload.model_id not in runnable:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Модель '{payload.model_id}' заблокирована матрицей применимости для текущего ряда",
+        )
+    if payload.cv is not None:
+        raise HTTPException(
+            status_code=422,
+            detail="Ручная CV config запрещена: session tuning исполняет точный BacktestPlan из EDA",
+        )
+    model = _get_spec().get_model(payload.model_id)
+    if model is None:
+        raise HTTPException(status_code=404, detail=f"Модель '{payload.model_id}' не найдена")
+    if model.param_space is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Для модели '{payload.model_id}' param_space не задан",
+        )
+    period = (
+        session.modeling_artifacts.get("profile", context["profile"])
+        .get("seasonal_periods") or [1]
+    )[0]
+    prepared = prepare_modeling_target(
+        session.dataframe, target_column=session.target_column,
+        date_column=session.date_column,
+        transformations=session.preprocessing_transformations,
+        scaling_recipe=session.preprocessing_scaling_recipe,
+    )
+    plan = build_backtest_plan(
+        session.modeling_artifacts["validation_strategy"],
+        n_observations=len(prepared.series), fingerprint=context["fingerprint"],
+        target_column=session.target_column, seasonal_period=int(period),
+        preprocessing_signature=prepared.preprocessing_signature,
+    )
+    try:
+        prepared_grid = prepare_tuning_grid(
+            model.param_space, max_trials=payload.max_trials,
+            metric=payload.metric, random_state=payload.random_state,
+        )
+    except BacktestExecutionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    job_id = str(uuid4())
+    signature = _tuning_job_signature(
+        model_id=payload.model_id, cohort_id=plan.cohort_id,
+        selected_grid=prepared_grid.selected, metric=payload.metric,
+        random_state=payload.random_state,
+    )
+    job = {
+        "job_id": job_id, "job_signature": signature,
+        "model_id": payload.model_id, "cohort_id": plan.cohort_id,
+        "metric": payload.metric, "random_state": payload.random_state,
+        "selected_grid": prepared_grid.selected,
+        "grid_size": prepared_grid.grid_size,
+        "truncated": prepared_grid.truncated,
+        "next_trial_index": 0, "trials": [], "trial_backtests": [],
+        "failures": [], "duration_ms": 0.0, "status": "in_progress",
+        "tuning_response": None,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    jobs = session.modeling_artifacts.setdefault("tuning_jobs", {})
+    for stale_id in [
+        key for key, value in jobs.items()
+        if value.get("model_id") == payload.model_id
+    ]:
+        jobs.pop(stale_id, None)
+    jobs[job_id] = job
+    session.modeling_pipeline["tuning"] = "in_progress"
+    session.touch()
+    store.save(session)
+    return {
+        "job_id": job_id, "job_signature": signature, "status": "in_progress",
+        "completed_trials": 0, "total_trials": len(prepared_grid.selected),
+        "tuning_response": None,
+    }
+
+
+@router.post("/tuning/step")
+def step_modeling_tuning(
+    payload: ModelingTuningStepRequest,
+    request: Request,
+    response: Response,
+):
+    """Execute and persist one trial, keeping every HTTP request bounded."""
+    store, session = _get_session(request, response)
+    jobs = session.modeling_artifacts.get("tuning_jobs", {})
+    job = jobs.get(payload.job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Tuning job не найден или устарел")
+    if job.get("status") == "completed":
+        return {
+            "job_id": payload.job_id, "job_signature": job["job_signature"],
+            "status": "completed", "completed_trials": job["next_trial_index"],
+            "total_trials": len(job["selected_grid"]),
+            "tuning_response": job["tuning_response"],
+        }
+    current_index = int(job.get("next_trial_index", 0))
+    if payload.expected_trial_index != current_index:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Tuning step рассинхронизирован: "
+                f"ожидался trial {current_index}, получен {payload.expected_trial_index}"
+            ),
+        )
+
+    context = _action_context(session)
+    _prepare_state(session, context)
+    from apps.api.routers.models import _get_spec
+    model_id = str(job["model_id"])
+    model = _get_spec().get_model(model_id)
+    if model is None or model.param_space is None:
+        raise HTTPException(status_code=409, detail="Спецификация tuning job больше недоступна")
+    period = (
+        session.modeling_artifacts.get("profile", context["profile"])
+        .get("seasonal_periods") or [1]
+    )[0]
+    prepared = prepare_modeling_target(
+        session.dataframe, target_column=session.target_column,
+        date_column=session.date_column,
+        transformations=session.preprocessing_transformations,
+        scaling_recipe=session.preprocessing_scaling_recipe,
+    )
+    plan = build_backtest_plan(
+        session.modeling_artifacts["validation_strategy"],
+        n_observations=len(prepared.series), fingerprint=context["fingerprint"],
+        target_column=session.target_column, seasonal_period=int(period),
+        preprocessing_signature=prepared.preprocessing_signature,
+    )
+    expected_signature = _tuning_job_signature(
+        model_id=model_id, cohort_id=plan.cohort_id,
+        selected_grid=job["selected_grid"], metric=job["metric"],
+        random_state=job["random_state"],
+    )
+    if plan.cohort_id != job.get("cohort_id") or expected_signature != job.get("job_signature"):
+        job["status"] = "stale"
+        session.touch()
+        store.save(session)
+        raise HTTPException(
+            status_code=409,
+            detail="EDA cohort или tuning policy изменились; запустите tuning заново",
+        )
+
+    model_name, family_id = _resolve_model_info(model_id)
+    params = job["selected_grid"][current_index]
+    started = time.monotonic()
+    try:
+        trial, raw_backtest = execute_tuning_trial(
+            model_id=model_id, model_name=model_name, family_id=family_id,
+            params=params, series=prepared.series, labels=prepared.labels,
+            plan=plan, seasonal_period=int(period), metric=job["metric"],
+            fold_preprocessor=prepared.fold_preprocessor,
+            preprocessing_warnings=prepared.warnings,
+        )
+        job["trials"].append(trial.model_dump(mode="json"))
+        job["trial_backtests"].append(raw_backtest)
+    except (BacktestExecutionError, ValueError, RuntimeError, ArithmeticError) as exc:
+        job["failures"].append(f"params={params}: {exc}")
+    job["duration_ms"] = float(job.get("duration_ms", 0.0)) + (
+        time.monotonic() - started
+    ) * 1000
+    job["next_trial_index"] = current_index + 1
+    total_trials = len(job["selected_grid"])
+    if job["next_trial_index"] < total_trials:
+        session.touch()
+        store.save(session)
+        return {
+            "job_id": payload.job_id, "job_signature": job["job_signature"],
+            "status": "in_progress", "completed_trials": job["next_trial_index"],
+            "total_trials": total_trials, "tuning_response": None,
+        }
+
+    try:
+        execution = finalize_tuning_plan_with_artifacts(
+            model_id=model_id, model_name=model_name, family_id=family_id,
+            trials=[TuneTrialResult(**item) for item in job["trials"]],
+            trial_backtests=job["trial_backtests"], failures=job["failures"],
+            grid_size=job["grid_size"], selected_count=total_trials,
+            truncated=job["truncated"], plan=plan, metric=job["metric"],
+            duration_ms=job["duration_ms"],
+            fold_preprocessor=prepared.fold_preprocessor,
+            preprocessing_warnings=prepared.warnings,
+        )
+    except BacktestExecutionError as exc:
+        job["status"] = "failed"
+        session.touch()
+        store.save(session)
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    result = execution.response
+    promoted = _trace_backtest(
+        execution.best_backtest, model_id=model_id, params=result.best_params,
+        params_source="tuning", tuning_id=result.tuning_id,
+    )
+    result = result.model_copy(update={"promoted_backtest": promoted})
+    _invalidate_after_model_run(session, model_id)
+    session.modeling_artifacts.setdefault("backtests", {})[model_id] = promoted.model_dump(mode="json")
+    session.modeling_artifacts.setdefault("tuning", {})[model_id] = result.model_dump(mode="json")
+    session.modeling_pipeline["tuning"] = "done"
+    session.modeling_pipeline["diagnostics"] = "in_progress"
+    job["status"] = "completed"
+    job["tuning_response"] = result.model_dump(mode="json")
+    # Raw per-trial OOF payloads are no longer needed after promotion.
+    job["trial_backtests"] = []
+    session.touch()
+    store.save(session)
+    return {
+        "job_id": payload.job_id, "job_signature": job["job_signature"],
+        "status": "completed", "completed_trials": job["next_trial_index"],
+        "total_trials": total_trials, "tuning_response": job["tuning_response"],
+    }
 
 
 @router.post("/diagnostics", response_model=SessionDiagnosticsResponse)

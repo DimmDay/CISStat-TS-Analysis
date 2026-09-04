@@ -70,6 +70,20 @@ test("shows the exact EDA cohort used by tuning", async () => {
   mockFetch.mockResolvedValueOnce({
     ok: true,
     json: async () => ({
+      job_id: "tune-job-1", status: "in_progress", completed_trials: 0,
+      total_trials: 2, tuning_response: null,
+    }),
+  }).mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      job_id: "tune-job-1", status: "in_progress", completed_trials: 1,
+      total_trials: 2, tuning_response: null,
+    }),
+  }).mockResolvedValueOnce({
+    ok: true,
+    json: async () => ({
+      job_id: "tune-job-1", status: "completed", completed_trials: 2,
+      total_trials: 2, tuning_response: {
       model_id: "ets", best_params: { trend: "add" }, strategy: "sliding",
       cohort_id: "cohort-1234567890", folds: [
         { fold: 1, train_start: 10, train_end: 49, test_start: 51, test_end: 52, gap: 1 },
@@ -77,7 +91,7 @@ test("shows the exact EDA cohort used by tuning", async () => {
       ],
       preprocessing: { fit_policy: "per_train_fold", evaluation_scale: "value" },
       promoted_backtest: { model_id: "ets", metrics: {}, oof_predictions: [] },
-    }),
+    }}),
   });
   render(<ModelingWorkflowOverview stageId="tuning" modelIds={["ets"]} onBacktestPromoted={onBacktestPromoted} />);
 
@@ -88,6 +102,9 @@ test("shows the exact EDA cohort used by tuning", async () => {
   expect(screen.getByTestId("tuning-plan-summary")).toHaveTextContent("2 folds");
   expect(screen.getByTestId("tuning-plan-summary")).toHaveTextContent("per_train_fold");
   expect(screen.getByTestId("tuning-plan-summary")).toHaveTextContent("cohort-1234");
+  expect(mockFetch).toHaveBeenNthCalledWith(1, expect.stringContaining("/tuning/start"), expect.anything());
+  expect(mockFetch).toHaveBeenNthCalledWith(2, expect.stringContaining("/tuning/step"), expect.anything());
+  expect(mockFetch).toHaveBeenNthCalledWith(3, expect.stringContaining("/tuning/step"), expect.anything());
   expect(onBacktestPromoted).toHaveBeenCalledWith(expect.objectContaining({ model_id: "ets" }));
 });
 
