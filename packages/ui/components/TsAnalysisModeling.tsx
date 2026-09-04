@@ -1002,8 +1002,8 @@ export function TsAnalysisModeling() {
               catalog.map((candidate) => [candidate.model_id, candidate.available_actions as ModelAction[]]),
             )}
             tuningSkippedModelIds={Object.keys(executionScope?.tuning_skips ?? {})}
+            tuningCompletedModelIds={executionScope?.completed_tuning_model_ids ?? []}
             onStageComplete={() => void fetchModelingState()}
-            onWorkflowStateChanged={() => void fetchModelingState()}
             onBacktestPromoted={(promoted) => setBacktestResults((previous) => ({
               ...previous,
               [promoted.model_id]: promoted,

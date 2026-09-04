@@ -1,6 +1,7 @@
 """Session-backed, traceable Modeling workflow for both web shells."""
 from __future__ import annotations
 
+from copy import deepcopy
 from datetime import datetime, timezone
 import hashlib
 from importlib.metadata import PackageNotFoundError, version
@@ -527,6 +528,8 @@ def get_modeling_context(
     train_window: Optional[int] = Query(None, ge=2, le=100000),
 ):
     store, session = _get_session(request, response)
+    previous_pipeline = deepcopy(session.modeling_pipeline)
+    previous_artifacts = deepcopy(session.modeling_artifacts)
     saved = session.modeling_artifacts.get("validation_strategy") or session.eda_validation_strategy
     if saved.get("column") not in {None, session.target_column}:
         saved = {}
@@ -544,19 +547,29 @@ def get_modeling_context(
         require_ready=False,
     )
     _prepare_state(session, context, refresh_contract=True)
-    store.save(session)
+    if (
+        session.modeling_pipeline != previous_pipeline
+        or session.modeling_artifacts != previous_artifacts
+    ):
+        store.save(session)
     return context
 
 
 @router.get("/state")
 def get_modeling_state(request: Request, response: Response):
     store, session = _get_session(request, response)
+    previous_pipeline = deepcopy(session.modeling_pipeline)
+    previous_artifacts = deepcopy(session.modeling_artifacts)
     stale = False
     try:
         context = _context(session, require_ready=False)
         _prepare_state(session, context)
         _refresh_execution_readiness(session)
-        store.save(session)
+        if (
+            session.modeling_pipeline != previous_pipeline
+            or session.modeling_artifacts != previous_artifacts
+        ):
+            store.save(session)
     except HTTPException:
         stale = bool(session.modeling_artifacts)
     return {

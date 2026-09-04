@@ -32,6 +32,7 @@ from apps.api.session_store import (
     DatasetInfo,
     MemorySessionStore,
     SESSION_COOKIE_NAME,
+    SessionConflictError,
     SessionStore,
     format_size_label,
     get_or_create_session_id,
@@ -341,6 +342,7 @@ class _SessionStoreContract:
         d = session_to_dict(self.store.get(sid))
         restored = session_from_dict(d)
         assert restored.target_column == "value"
+        assert restored.storage_revision == d["storage_revision"]
 
     def test_target_column_backcompat_legacy_dict_without_field(self):
         """Старые сессии в Redis (без поля target_column) должны
@@ -362,6 +364,7 @@ class _SessionStoreContract:
         }
         session = session_from_dict(legacy_dict)
         assert session.target_column is None
+        assert session.storage_revision == 0
         assert session.session_id == "legacy-024"
 
     # ── 6. type_schema (Task 36) ──
@@ -547,6 +550,27 @@ class TestRedisSessionStore(_SessionStoreContract):
         ttl = self.store._client.ttl(self.store._key(sid))
         assert ttl > 0
         assert ttl <= 3600  # не больше заданного
+
+    def test_redis_rejects_a_stale_whole_session_snapshot(self):
+        """Поздний stale save не должен удалять более свежие artifacts."""
+        sid = "cas-modeling-019"
+        initial = self.store.get_or_create(sid)
+        initial.modeling_artifacts["tuning"] = {}
+        self.store.save(initial)
+
+        stale = self.store.get(sid)
+        fresh = self.store.get(sid)
+        fresh.modeling_artifacts["tuning"]["ets"] = {"tuning_id": "tune-new"}
+        self.store.save(fresh)
+
+        stale.modeling_artifacts["execution_scope"] = {
+            "pending_tuning_model_ids": ["ets"],
+        }
+        with pytest.raises(SessionConflictError):
+            self.store.save(stale)
+
+        persisted = self.store.get(sid)
+        assert persisted.modeling_artifacts["tuning"]["ets"]["tuning_id"] == "tune-new"
 
 
 # ────────────────────────────────────────────────────────────────────

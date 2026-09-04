@@ -13,6 +13,7 @@ from apps.api.modeling_tuning import oof_signature
 from apps.api.session_store import (
     RedisSessionStore,
     SESSION_COOKIE_NAME,
+    SessionConflictError,
     get_session_store,
     reset_session_store_for_testing,
     session_from_dict,
@@ -282,6 +283,66 @@ def test_tuning_stage_requires_tune_or_explicit_skip_for_tunable_models(client: 
     after = client.get("/v1/session/modeling/state").json()
     assert after["pipeline"]["tuning"] == "done"
     assert after["artifacts"]["execution_scope"]["pending_tuning_model_ids"] == []
+
+
+def test_redis_stale_snapshot_cannot_restore_pending_tuning_after_success(monkeypatch):
+    """Exact production regression: pending ETS must not reappear after tuning."""
+    fakeredis = pytest.importorskip("fakeredis")
+    store = RedisSessionStore(client=fakeredis.FakeStrictRedis(), ttl_seconds=3600)
+    monkeypatch.setattr(session_store_module, "_store", store)
+    with TestClient(app) as redis_client:
+        _prepare(redis_client)
+        assert redis_client.post(
+            "/v1/session/modeling/candidates",
+            json={"strategy": "expanding", "horizon": 2, "n_splits": 2},
+        ).status_code == 200
+        assert redis_client.post("/v1/session/modeling/baselines").status_code == 200
+        assert redis_client.post(
+            "/v1/session/modeling/backtest", json={"model_id": "ets"},
+        ).status_code == 200
+        scope = redis_client.get(
+            "/v1/session/modeling/state",
+        ).json()["artifacts"]["execution_scope"]
+        for model_id in scope["pending_backtest_model_ids"]:
+            response = redis_client.post(
+                "/v1/session/modeling/backtest/exclude",
+                json={
+                    "model_id": model_id, "decision": "exclude",
+                    "reason": "Не входит в Redis regression scope", "acknowledge": True,
+                },
+            )
+            assert response.status_code == 200, response.text
+
+        session_id = redis_client.cookies.get(SESSION_COOKIE_NAME)
+        stale_before_tuning = session_from_dict(session_to_dict(store.get(session_id)))
+        assert stale_before_tuning.modeling_artifacts[
+            "execution_scope"
+        ]["pending_tuning_model_ids"] == ["ets"]
+
+        started = redis_client.post(
+            "/v1/session/modeling/tuning/start",
+            json={"model_id": "ets", "max_trials": 1, "metric": "rmse"},
+        )
+        assert started.status_code == 200, started.text
+        job = started.json()
+        finished = redis_client.post(
+            "/v1/session/modeling/tuning/step",
+            json={"job_id": job["job_id"], "expected_trial_index": 0},
+        )
+        assert finished.status_code == 200, finished.text
+        assert finished.json()["status"] == "completed"
+
+        with pytest.raises(SessionConflictError):
+            store.save(stale_before_tuning)
+
+        state = redis_client.get("/v1/session/modeling/state").json()
+        assert state["artifacts"]["execution_scope"]["pending_tuning_model_ids"] == []
+        assert state["artifacts"]["execution_scope"]["completed_tuning_model_ids"] == ["ets"]
+        stable_revision = store.get(session_id).storage_revision
+        assert redis_client.get("/v1/session/modeling/state").status_code == 200
+        assert store.get(session_id).storage_revision == stable_revision
+        comparison = redis_client.post("/v1/session/modeling/compare", json={})
+        assert comparison.status_code == 200, comparison.text
 
 
 def test_resumable_tuning_executes_one_trial_per_step_and_promotes_best(client: TestClient):
@@ -734,10 +795,10 @@ def test_diagnostics_ensure_prepares_the_entire_comparable_pool(client: TestClie
     assert comparison.status_code == 200, comparison.text
 
 
-def test_compare_recovers_if_redis_session_is_overwritten_after_diagnostics_ensure(
+def test_redis_stale_snapshot_cannot_overwrite_prepared_diagnostics(
     monkeypatch,
 ):
-    """Reproduce the two-request lost-update window from production Redis."""
+    """Task 107 lost-update window is closed before diagnostics can vanish."""
     fakeredis = pytest.importorskip("fakeredis")
     store = RedisSessionStore(client=fakeredis.FakeStrictRedis(), ttl_seconds=3600)
     monkeypatch.setattr(session_store_module, "_store", store)
@@ -760,10 +821,13 @@ def test_compare_recovers_if_redis_session_is_overwritten_after_diagnostics_ensu
         )
         assert ensured.status_code == 200, ensured.text
 
-        # A request that started before ensure can overwrite the whole Redis
-        # document afterwards. Task 106 then made /compare observe no reports.
-        store.save(stale_request_snapshot)
-        assert store.get(session_id).modeling_artifacts.get("diagnostics", {}) == {}
+        # A request that started before ensure may finish later, but optimistic
+        # revision control must reject its stale whole-document write.
+        with pytest.raises(SessionConflictError):
+            store.save(stale_request_snapshot)
+        assert set(store.get(session_id).modeling_artifacts["diagnostics"]) == {
+            "naive", "drift",
+        }
 
         comparison = redis_client.post(
             "/v1/session/modeling/compare",

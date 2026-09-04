@@ -133,7 +133,7 @@ test("derives tuning selector from capability actions instead of hardcoded model
 });
 
 test("records an explicit tuning skip through the capability workflow", async () => {
-  const onWorkflowStateChanged = jest.fn();
+  const onStageComplete = jest.fn();
   mockFetch.mockResolvedValueOnce({
     ok: true,
     json: async () => ({ model_id: "ets", status: "skipped", execution_scope: {} }),
@@ -143,17 +143,31 @@ test("records an explicit tuning skip through the capability workflow", async ()
       stageId="tuning"
       modelIds={["ets"]}
       modelActions={{ ets: ["backtest", "tune", "diagnostics"] }}
-      onWorkflowStateChanged={onWorkflowStateChanged}
+      onStageComplete={onStageComplete}
     />,
   );
 
   fireEvent.click(screen.getByRole("button", { name: "Оставить defaults" }));
 
-  await waitFor(() => expect(onWorkflowStateChanged).toHaveBeenCalled());
+  await waitFor(() => expect(onStageComplete).toHaveBeenCalledWith("tuning"));
   expect(mockFetch).toHaveBeenCalledWith(
     expect.stringContaining("/tuning/skip"),
     expect.objectContaining({ body: expect.stringContaining('"acknowledge":true') }),
   );
+});
+
+test("does not offer defaults skip when tuning is already completed", () => {
+  render(
+    <ModelingWorkflowOverview
+      stageId="tuning"
+      modelIds={["ets"]}
+      modelActions={{ ets: ["backtest", "tune", "diagnostics"] }}
+      tuningCompletedModelIds={["ets"]}
+    />,
+  );
+
+  expect(screen.getByRole("button", { name: "Tuning выполнен" })).toBeDisabled();
+  expect(screen.queryByRole("button", { name: "Оставить defaults" })).not.toBeInTheDocument();
 });
 
 test("renders traceable OOF diagnostics for a baseline model", async () => {

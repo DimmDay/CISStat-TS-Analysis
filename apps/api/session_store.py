@@ -12,7 +12,7 @@ Context. Идентификация -- httponly cookie, а не API-ключ, п
   SessionStore ABC с 4 методами:
     - get(session_id) -> Optional[AnalysisSession]
     - get_or_create(session_id) -> AnalysisSession
-    - save(session) -> None              # persist after mutation
+    - save(session) -> None              # optimistic persist after mutation
     - delete(session_id) -> bool
 
   Две реализации:
@@ -64,6 +64,10 @@ logger = logging.getLogger(__name__)
 
 SESSION_COOKIE_NAME = "cisstat_session_id"
 SESSION_TTL_SECONDS = 60 * 60 * 24 * 30  # 30 дней -- совпадает с cookie max_age
+
+
+class SessionConflictError(RuntimeError):
+    """Хранилище уже содержит более свежую ревизию этой сессии."""
 
 
 def format_size_label(size_bytes: int) -> str:
@@ -148,8 +152,9 @@ class AnalysisSession:
     ВАЖНО: мутации (set_dataset, set_stage, set_target_column, правила) НЕ
     персистятся автоматически. После любой мутации вызывающий код ДОЛЖЕН
     вызвать store.save(session), иначе изменения потеряются при следующем
-    get() в Redis-режиме. В Memory-режиме save() -- no-op по сути
-    (алиасинг), но ВЫЗЫВАТЬ ВСЁ РАВНО НАДО -- иначе код несовместим с Redis.
+    get() в Redis-режиме. В Memory-режиме объект по-прежнему виден по ссылке,
+    но save() обновляет revision; ВЫЗЫВАТЬ ЕГО ВСЁ РАВНО НАДО, иначе код
+    несовместим с Redis.
 
     Phase 0.5: target_column -- выбранная пользователем прогнозируемая
     колонка (для моста Upload → Backtest). Сбрасывается в None при
@@ -157,6 +162,9 @@ class AnalysisSession:
     не существовать. См. контракт в routers/session.py::set_target_column.
     """
     session_id: str
+    # Optimistic concurrency token. Legacy Redis documents without the field
+    # are revision 0 and upgrade on their first successful save.
+    storage_revision: int = 0
     dataset: Optional[DatasetInfo] = None
     # Сырой DataFrame НЕ отдаётся клиенту напрямую -- нужен будущим
     # эндпоинтам (quality-teaser в деталях, column-mapping override и
@@ -463,6 +471,7 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
     """
     return {
         "session_id": session.session_id,
+        "storage_revision": session.storage_revision,
         "dataset": _dataset_to_dict(session.dataset) if session.dataset else None,
         "dataframe_json": _dataframe_to_json(session.dataframe) if session.dataframe is not None else None,
         "stages": dict(session.stages),
@@ -499,6 +508,7 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
     df = _dataframe_from_json(d["dataframe_json"]) if d.get("dataframe_json") is not None else None
     return AnalysisSession(
         session_id=d["session_id"],
+        storage_revision=int(d.get("storage_revision", 0)),
         dataset=dataset,
         dataframe=df,
         stages=dict(d.get("stages", {})),
@@ -563,10 +573,11 @@ class SessionStore(ABC):
 
     @abstractmethod
     def save(self, session: AnalysisSession) -> None:
-        """Персистировать сессию (overwrite по session_id).
+        """Персистировать сессию через optimistic revision check.
 
         ДОЛЖЕН вызываться после любой мутации AnalysisSession. Без
-        save() изменения потеряются в Redis-режиме.
+        save() изменения потеряются в Redis-режиме. Устаревший снимок
+        ДОЛЖЕН вызвать SessionConflictError, а не затереть свежие данные.
         """
         ...
 
@@ -602,10 +613,21 @@ class MemorySessionStore(SessionStore):
         return session
 
     def save(self, session: AnalysisSession) -> None:
-        # В memory ссылка уже в _sessions (если был get_or_create) --
-        # мутации видны сразу. save() -- для контракта, не делает
-        # ничего дополнительно. НО: если session создан вне get_or_create
-        # (маловероно, но возможно в тестах), регистрируем его.
+        # В memory ссылка уже в _sessions (если был get_or_create), поэтому
+        # мутации видны сразу. save() всё же обновляет optimistic revision и
+        # регистрирует объекты, созданные вне get_or_create.
+        current = self._sessions.get(session.session_id)
+        if (
+            current is not None
+            and current is not session
+            and current.storage_revision != session.storage_revision
+        ):
+            raise SessionConflictError(
+                f"Stale session revision {session.storage_revision}; "
+                f"current revision is {current.storage_revision}"
+            )
+        session.touch()
+        session.storage_revision += 1
         self._sessions[session.session_id] = session
 
     def delete(self, session_id: str) -> bool:
@@ -695,12 +717,43 @@ class RedisSessionStore(SessionStore):
         return session
 
     def save(self, session: AnalysisSession) -> None:
-        session.touch()
-        data = session_to_dict(session)
-        payload = json.dumps(data, default=str)
+        from redis.exceptions import WatchError
+
         key = self._key(session.session_id)
-        # setex = SET + EX (expire) в одной атомарной команде
-        self._client.setex(key, self._ttl, payload)
+        expected_revision = int(session.storage_revision)
+        next_revision = expected_revision + 1
+        try:
+            with self._client.pipeline() as pipe:
+                pipe.watch(key)
+                current_raw = pipe.get(key)
+                if current_raw is None:
+                    current_revision = 0
+                else:
+                    try:
+                        current_revision = int(
+                            json.loads(current_raw).get("storage_revision", 0)
+                        )
+                    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+                        raise SessionConflictError(
+                            "Current session document cannot be revision-checked"
+                        ) from exc
+                if current_revision != expected_revision:
+                    raise SessionConflictError(
+                        f"Stale session revision {expected_revision}; "
+                        f"current revision is {current_revision}"
+                    )
+                session.touch()
+                data = session_to_dict(session)
+                data["storage_revision"] = next_revision
+                payload = json.dumps(data, default=str)
+                pipe.multi()
+                pipe.set(key, payload, ex=self._ttl)
+                pipe.execute()
+        except WatchError as exc:
+            raise SessionConflictError(
+                f"Session {session.session_id} changed during save"
+            ) from exc
+        session.storage_revision = next_revision
 
     def delete(self, session_id: str) -> bool:
         key = self._key(session_id)

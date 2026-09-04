@@ -2216,3 +2216,77 @@ Commit/push и production deploy не выполнялись.
 - `tests/api/test_modeling_workflow.py`
 - `tests/unit/test_model_capability_matrix.py`
 - `tests/unit/test_model_readiness_candidates.py`
+
+---
+
+## Task 112 — Защита tuning result от Redis lost update
+
+Дата: 2026-09-04. База: `main @ fc21b5be9c62be674ff468216d6b20c801284332`.
+Commit/push и production deploy не выполнялись.
+
+### Воспроизведение и первопричина
+
+- После фактически выполненного ETS tuning Comparison мог сообщить
+  `Tuning не выполнен и не пропущен явно: ets`, а действие «Оставить defaults» —
+  `Модель уже имеет текущий tuning result`.
+- Последовательный API-сценарий работает корректно: после tuning
+  `completed_tuning_model_ids=[ets]`, `pending_tuning_model_ids=[]`, Comparison
+  отвечает 200, а tuning skip закономерно отклоняется.
+- Production-shaped Redis-тест воспроизвёл оба сообщения: старый снимок с
+  default-backtest ETS и без tuning целиком перезаписывал более свежий JSON
+  сессии; более поздняя запись свежего снимка снова делала tuning видимым.
+- `RedisSessionStore.save()` использовал безусловный `SETEX` без revision/CAS.
+  Дополнительно read endpoints сохраняли session даже при отсутствии изменений,
+  а UI запускал два одинаковых state refresh после одной tuning-операции.
+- UI получал `completed_tuning_model_ids`, но не передавал их в tuning-компонент,
+  поэтому кнопка «Оставить defaults» оставалась доступной после расчёта.
+
+### Исправление
+
+- В `AnalysisSession` добавлен backward-compatible `storage_revision`: старые
+  Redis-документы без поля читаются как revision 0 и обновляются при первом
+  успешном сохранении.
+- Redis save переведён на optimistic CAS через `WATCH` → проверку revision →
+  `MULTI/SET EX/EXEC`. Stale snapshot получает `SessionConflictError` и больше
+  не может удалить tuning, diagnostics или другие свежие artifacts. Контракт
+  соответствует официальным Redis/redis-py и Upstash WATCH transactions:
+  https://redis.io/docs/latest/develop/clients/redis-py/transpipe/ и
+  https://upstash.com/docs/redis/commands/transactions/watch.
+- MemorySessionStore поддерживает тот же revision-контракт для снимков без
+  aliasing. FastAPI преобразует конфликт в предметный HTTP 409 с указанием, что
+  актуальные результаты сохранены и операцию следует повторить.
+- Modeling `/context` и `/state` сохраняют сессию только при фактическом
+  изменении pipeline/artifacts. Стабильный state read больше не увеличивает
+  revision и не создаёт лишнего окна конкуренции.
+- UI использует `completed_tuning_model_ids`: после успешного tuning показывает
+  disabled «Tuning выполнен», не предлагает несовместимый defaults skip и
+  оставляет явное действие «Перезапустить тюнинг».
+- Удалён второй дублирующий state refresh; один callback после успешной операции
+  перечитывает каноническое backend-состояние.
+
+### TDD и проверки
+
+- RED backend: новые тесты остановились на импорте отсутствующего
+  `SessionConflictError`. RED UI: TypeScript сообщил об отсутствующем prop
+  `tuningCompletedModelIds`.
+- Три точные Redis-регрессии PASS: stale tuning snapshot отклонён, завершённый
+  ETS не возвращается в pending, старый diagnostics snapshot не затирает
+  подготовленные отчёты. Comparison после защищённого ETS tuning отвечает 200.
+- SessionStore + Modeling API: 95/95 PASS. Modeling UI: 66/66 PASS.
+- Полный API-прогон: 561 PASS; 15 существующих падений базы воспроизводятся
+  изолированно и не связаны с Task 112: 12 correction/type-schema fixture
+  failures, ожидание старой spec version и два ожидания ARIMA grid.
+- TypeScript embedded/standalone, `py_compile`, `git diff --check`: PASS.
+- Production build standalone: PASS, 13/13 static pages, `/modeling` включён,
+  First Load JS 460 kB; временный memory shim удалён.
+
+### Изменённые файлы Task 112
+
+- `apps/api/main.py`
+- `apps/api/routers/modeling_session.py`
+- `apps/api/session_store.py`
+- `packages/ui/components/ModelingWorkflowOverview.test.tsx`
+- `packages/ui/components/ModelingWorkflowOverview.tsx`
+- `packages/ui/components/TsAnalysisModeling.tsx`
+- `tests/api/test_modeling_workflow.py`
+- `tests/api/test_session_store.py`
