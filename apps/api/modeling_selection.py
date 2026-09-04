@@ -16,7 +16,11 @@ from typing import Any, Mapping, Sequence
 import numpy as np
 
 from apps.api.backtesting import compute_forecast_metrics
-from apps.api.modeling_comparison import aligned_oof, diagnostics_signature
+from apps.api.modeling_comparison import (
+    aligned_oof,
+    diagnostics_signature,
+    oof_baseline_comparison,
+)
 from apps.api.modeling_tuning import oof_signature
 from apps.api.routers.diagnostics import _diagnose
 
@@ -27,7 +31,7 @@ class SelectionContractError(ValueError):
 
 @dataclass(frozen=True)
 class SelectionPolicy:
-    version: str = "selection-v1-equal-weight"
+    version: str = "selection-v2-horizon-baseline"
     primary_metric: str = "rmse"
     max_member_relative_gap: float = 0.10
     max_error_correlation: float = 0.80
@@ -35,10 +39,11 @@ class SelectionPolicy:
     min_ensemble_relative_improvement: float = 0.01
     min_fold_win_rate: float = 0.50
     practical_tie_relative: float = 0.01
+    baseline_tolerance_ratio: float = 1.05
 
     def validate(self) -> None:
         if self.primary_metric not in {"mae", "rmse"}:
-            raise SelectionContractError("Selection v1 поддерживает primary_metric mae/rmse")
+            raise SelectionContractError("Selection v2 поддерживает primary_metric mae/rmse")
         if self.min_oof_points < 2:
             raise SelectionContractError("min_oof_points должен быть не меньше 2")
         for name, value in (
@@ -52,6 +57,8 @@ class SelectionPolicy:
             raise SelectionContractError("max_error_correlation должен быть в диапазоне [-1, 1]")
         if not 0 <= self.min_fold_win_rate <= 1:
             raise SelectionContractError("min_fold_win_rate должен быть в диапазоне [0, 1]")
+        if self.baseline_tolerance_ratio < 1:
+            raise SelectionContractError("baseline_tolerance_ratio должен быть не меньше 1")
 
 
 def _signature(payload: Any) -> str:
@@ -275,6 +282,16 @@ def evaluate_selection(
         raise SelectionContractError("Selection требует фактически рассчитанный baseline")
     baseline = min(baselines, key=lambda item: (_metric(item, policy.primary_metric), str(item["model_id"])))
     baseline_loss = _metric(baseline, policy.primary_metric)
+    baseline_comparisons = {
+        str(item["model_id"]): oof_baseline_comparison(
+            model_loss=_metric(item, policy.primary_metric),
+            baseline_loss=baseline_loss,
+            baseline_model_id=str(baseline["model_id"]),
+            metric=policy.primary_metric,
+            tolerance_ratio=policy.baseline_tolerance_ratio,
+        ).model_dump(mode="json")
+        for item in candidates
+    }
 
     reasons: list[str] = []
     strong = [
@@ -296,7 +313,8 @@ def evaluate_selection(
         "weights": [0.5, 0.5] if len(members) == 2 else [],
         "error_correlation": None, "relative_improvement_vs_best_single": None,
         "relative_improvement_vs_best_baseline": None, "fold_win_rate": None,
-        "backtest": None, "diagnostics": None, "reasons": reasons,
+        "baseline_comparison": None, "backtest": None, "diagnostics": None,
+        "reasons": reasons,
     }
     if not reasons:
         member_backtests = [backtests[str(item["model_id"])] for item in members]
@@ -309,7 +327,6 @@ def evaluate_selection(
         else:
             ensemble_loss = _metric(ensemble_backtest, policy.primary_metric)
             improvement = -_relative_gap(ensemble_loss, best_loss)
-            baseline_improvement = -_relative_gap(ensemble_loss, baseline_loss)
             best_folds = {
                 int(fold["fold"]): float(fold["metrics"][policy.primary_metric])
                 for fold in backtests[str(best["model_id"])]["folds"]
@@ -322,6 +339,12 @@ def evaluate_selection(
                 ensemble_folds[fold] < best_folds[fold] for fold in sorted(best_folds)
             ]))
             ensemble_diagnostics = _ensemble_diagnostics(ensemble_backtest)
+            ensemble_baseline_comparison = oof_baseline_comparison(
+                model_loss=ensemble_loss, baseline_loss=baseline_loss,
+                baseline_model_id=str(baseline["model_id"]),
+                metric=policy.primary_metric,
+                tolerance_ratio=policy.baseline_tolerance_ratio,
+            )
             recommended = (
                 improvement >= policy.min_ensemble_relative_improvement
                 and fold_win_rate >= policy.min_fold_win_rate
@@ -331,7 +354,10 @@ def evaluate_selection(
                 "status": "recommended" if recommended else "tested_no_gain",
                 "backtest": ensemble_backtest, "diagnostics": ensemble_diagnostics,
                 "relative_improvement_vs_best_single": round(improvement, 10),
-                "relative_improvement_vs_best_baseline": round(baseline_improvement, 10),
+                "relative_improvement_vs_best_baseline": (
+                    ensemble_baseline_comparison.relative_improvement
+                ),
+                "baseline_comparison": ensemble_baseline_comparison.model_dump(mode="json"),
                 "fold_win_rate": round(fold_win_rate, 10),
             })
             if not recommended:
@@ -355,12 +381,16 @@ def evaluate_selection(
         "recommended_single": {
             "model_id": str(best["model_id"]), "primary_metric": policy.primary_metric,
             "primary_loss": best_loss, "practical_ties": ties,
-            "relative_improvement_vs_best_baseline": round(-_relative_gap(best_loss, baseline_loss), 10),
+            "relative_improvement_vs_best_baseline": baseline_comparisons[
+                str(best["model_id"])
+            ]["relative_improvement"],
         },
         "best_baseline": {
             "model_id": str(baseline["model_id"]), "primary_metric": policy.primary_metric,
             "primary_loss": baseline_loss,
+            "tolerance_ratio": policy.baseline_tolerance_ratio,
         },
+        "baseline_comparisons": baseline_comparisons,
         "ensemble": ensemble_payload,
         "recommended_candidate": recommended,
         "evaluation_contract": {

@@ -41,4 +41,7 @@ def test_diagnostics_are_separate_evidence_not_an_arbitrary_score_bonus() -> Non
     assert rules["diagnostics_in_score"] is False
     assert rules["diagnostics_policy"] == "current_oof_report_required_not_scored"
     assert "diagnostics_bonus" not in rules
-    assert rules["baseline_policy"] == "flag_and_explicit_override"
+    assert rules["baseline_policy"] == "best_actual_aligned_oof_baseline"
+    assert rules["baseline_metric"] == "rmse"
+    assert rules["baseline_tolerance_ratio"] == 1.05
+    assert rules["mase_role"] == "scale_free_metric_not_baseline_gate"

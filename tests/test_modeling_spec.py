@@ -433,9 +433,17 @@ class TestMetrics:
         assert len(spec.metrics.ranking_formula.weights) == 4
 
     def test_mase_in_primary(self, spec):
-        """MASE — основная метрика (ключевая для baseline-сравнения)."""
+        """MASE остаётся scale-free метрикой, но не подменяет OOF baseline gate."""
         mase = next(m for m in spec.metrics.primary if m.id == "mase")
         assert mase.weight_in_ranking > 0
+        assert "непригодна" not in mase.interpretation.lower()
+        assert "train" in mase.interpretation.lower()
+
+    def test_baseline_gate_is_horizon_consistent(self, spec):
+        ranking = spec.metrics.ranking_formula
+        assert ranking.baseline_oof_metric == "rmse"
+        assert ranking.baseline_oof_tolerance_ratio == 1.05
+        assert ranking.baseline_filter_threshold is None
 
 
 # ═══════════════════════════════════════════════════════════
@@ -564,6 +572,8 @@ class TestUIConfig:
         assert "model_name" in cols
         assert "MASE" in cols
         assert "applicability_level" in cols
+        assert "oof_baseline_ratio" in cols
+        assert "baseline_status" not in cols
 
     def test_filters_present(self, spec):
         """Фильтры определены."""

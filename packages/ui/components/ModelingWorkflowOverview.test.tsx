@@ -5,8 +5,8 @@ import { ModelingWorkflowOverview } from "./ModelingWorkflowOverview";
 
 
 const ranking = [
-  { rank: 1, model_id: "drift", model_name: "Drift", family_id: "baselines", applicability_level: "RECOMMENDED", metrics: { mae: 1, rmse: 1.2, mape: 2, mase: 0.8 }, normalized_metrics: { mae: 0, rmse: 0, mape: 0, mase: 0 }, weighted_score: 0, baseline_eligible: true, baseline_note: "лучше Naive", backtest_run_id: "run-drift", diagnostics: { overall_status: "pass", passed: ["ljung_box", "jarque_bera", "arch_lm", "durbin_watson"], warnings: [], failed: [], not_applicable: [], diagnostics_signature: "diag-drift" }, fold_stability: { metric: "rmse", fold_values: [1.1, 1.3], mean: 1.2, std: 0.1, coefficient_of_variation: 0.0833, fold_ranks: [1, 1], mean_rank: 1, rank_std: 0, top1_rate: 1 } },
-  { rank: 2, model_id: "naive", model_name: "Naive", family_id: "baselines", applicability_level: "CONDITIONALLY_APPLICABLE", metrics: { mae: 2, rmse: 2.2, mape: 3, mase: 1 }, normalized_metrics: { mae: 1, rmse: 1, mape: 1, mase: 1 }, weighted_score: 1, baseline_eligible: true, baseline_note: "сопоставима", backtest_run_id: "run-naive", diagnostics: { overall_status: "warning", passed: ["ljung_box", "durbin_watson"], warnings: ["jarque_bera"], failed: [], not_applicable: ["arch_lm"], diagnostics_signature: "diag-naive" }, fold_stability: { metric: "rmse", fold_values: [2, 2.4], mean: 2.2, std: 0.2, coefficient_of_variation: 0.0909, fold_ranks: [2, 2], mean_rank: 2, rank_std: 0, top1_rate: 0 } },
+  { rank: 1, model_id: "drift", model_name: "Drift", family_id: "baselines", applicability_level: "RECOMMENDED", metrics: { mae: 1, rmse: 1.2, mape: 2, mase: 2.46 }, normalized_metrics: { mae: 0, rmse: 0, mape: 0, mase: 0 }, weighted_score: 0, baseline_eligible: true, baseline_note: "OOF RMSE 1.200; 45.5% лучше baseline naive", baseline_comparison: { source: "exact_aligned_oof", metric: "rmse", baseline_model_id: "naive", model_loss: 1.2, baseline_loss: 2.2, loss_ratio: 0.545455, relative_improvement: 0.454545, tolerance_ratio: 1.05, eligible: true }, backtest_run_id: "run-drift", diagnostics: { overall_status: "pass", passed: ["ljung_box", "jarque_bera", "arch_lm", "durbin_watson"], warnings: [], failed: [], not_applicable: [], diagnostics_signature: "diag-drift" }, fold_stability: { metric: "rmse", fold_values: [1.1, 1.3], mean: 1.2, std: 0.1, coefficient_of_variation: 0.0833, fold_ranks: [1, 1], mean_rank: 1, rank_std: 0, top1_rate: 1 } },
+  { rank: 2, model_id: "naive", model_name: "Naive", family_id: "baselines", applicability_level: "CONDITIONALLY_APPLICABLE", metrics: { mae: 2, rmse: 2.2, mape: 3, mase: 2.84 }, normalized_metrics: { mae: 1, rmse: 1, mape: 1, mase: 1 }, weighted_score: 1, baseline_eligible: true, baseline_note: "лучший OOF baseline naive; ratio 1.000", baseline_comparison: { source: "exact_aligned_oof", metric: "rmse", baseline_model_id: "naive", model_loss: 2.2, baseline_loss: 2.2, loss_ratio: 1, relative_improvement: 0, tolerance_ratio: 1.05, eligible: true }, backtest_run_id: "run-naive", diagnostics: { overall_status: "warning", passed: ["ljung_box", "durbin_watson"], warnings: ["jarque_bera"], failed: [], not_applicable: ["arch_lm"], diagnostics_signature: "diag-naive" }, fold_stability: { metric: "rmse", fold_values: [2, 2.4], mean: 2.2, std: 0.2, coefficient_of_variation: 0.0909, fold_ranks: [2, 2], mean_rank: 2, rank_std: 0, top1_rate: 0 } },
 ];
 
 const comparison = {
@@ -18,6 +18,8 @@ const comparison = {
   ranking_policy: "forecast_metrics_only_diagnostics_separate",
   diagnostics_policy: "current_oof_report_required_not_scored",
   metric_weights: { mae: 0.35, rmse: 0.25, mape: 0.2, mase: 0.2 },
+  baseline_policy: { source: "exact_aligned_oof", metric: "rmse", tolerance_ratio: 1.05, baseline_model_id: "naive", baseline_loss: 2.2 },
+  mase_context: { formula: "fold_mae / train_only_mean_abs_seasonal_difference", denominator_policy: "train_only_seasonal_naive_mae", seasonal_period: 1, horizon: 24, aggregation: "test_size_weighted_fold_mase", fold_scales: [{ fold: 1, scale: 1.5 }, { fold: 2, scale: 1.6 }], is_same_horizon_baseline_comparison: false },
   ranking,
   error_correlation: {
     model_ids: ["drift", "naive"], n_points: 6,
@@ -33,16 +35,21 @@ const selectionAnalysis = {
   comparison_signature: comparison.comparison_signature,
   cohort_id: comparison.cohort_id,
   policy: {
-    version: "selection-v1-equal-weight", primary_metric: "rmse",
+    version: "selection-v2-horizon-baseline", primary_metric: "rmse",
     max_member_relative_gap: 0.1, max_error_correlation: 0.8,
     min_oof_points: 8, min_ensemble_relative_improvement: 0.01,
     min_fold_win_rate: 0.5, practical_tie_relative: 0.01,
+    baseline_tolerance_ratio: 1.05,
   },
   recommended_single: {
     model_id: "drift", primary_metric: "rmse", primary_loss: 1.2,
     practical_ties: ["drift"], relative_improvement_vs_best_baseline: 0.4545,
   },
   best_baseline: { model_id: "naive", primary_metric: "rmse", primary_loss: 2.2 },
+  baseline_comparisons: {
+    drift: ranking[0].baseline_comparison,
+    naive: ranking[1].baseline_comparison,
+  },
   ensemble: {
     status: "not_eligible", strategy: "simple_average", member_ids: ["drift", "naive"],
     weights: [0.5, 0.5], error_correlation: 0.91,
@@ -156,6 +163,10 @@ test("runs comparison and renders transparent ranking", async () => {
   expect(screen.getByText(/min-max внутри сопоставимого пула/)).toBeInTheDocument();
   expect(screen.getByTestId("comparison-lineage")).toHaveTextContent("comparison-ab");
   expect(screen.getByTestId("comparison-ranking")).toHaveTextContent("1.200 ± 0.100");
+  expect(screen.getByTestId("mase-context")).toHaveTextContent("m=1");
+  expect(screen.getByTestId("mase-context")).toHaveTextContent("H=24");
+  expect(screen.getByTestId("comparison-ranking")).toHaveTextContent("0.545");
+  expect(screen.queryByText(/MASE ≤ 1.05/)).not.toBeInTheDocument();
   expect(screen.getByTestId("comparison-ranking")).toHaveTextContent("Рекомендована");
   expect(screen.getByTestId("comparison-ranking")).toHaveTextContent("Пройдено");
   expect(screen.getByTestId("comparison-ranking")).toHaveTextContent("Предупреждение");
@@ -207,7 +218,7 @@ test("selects a ranked model and generates downloadable Model Card", async () =>
   fireEvent.click(screen.getByRole("button", { name: "Верифицировать выбор" }));
   await waitFor(() => expect(screen.getByTestId("selection-analysis")).toBeInTheDocument());
   expect(screen.getByTestId("selection-analysis")).toHaveTextContent("Selection SHA: selection-sig");
-  expect(screen.getByTestId("selection-analysis")).toHaveTextContent("Baseline: naive (2.200)");
+  expect(screen.getByTestId("selection-analysis")).toHaveTextContent("Baseline: naive (2.200; допуск ×1.05)");
   expect(screen.getByTestId("ensemble-verdict")).toHaveTextContent("Не допущен к проверке");
   expect(screen.getByTestId("ensemble-verdict")).toHaveTextContent("Корреляция OOF-ошибок выше порога");
   expect(screen.getByRole("button", { name: "Выбрать Drift" })).toBeDisabled();

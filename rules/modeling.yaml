@@ -42,8 +42,9 @@ families:
     required: true               # ← Baseline-семейство обязательно
     description: >-
       Простейшие модели-заглушки. Не требуют подбора гиперпараметров.
-      Обязательны как lower bound для любого моделирования:
-      если модель не побеждает Seasonal Naive — она непригодна.
+      Обязательны как фактически рассчитанная same-horizon точка отсчёта:
+      допустимость выбора определяется по aligned OOF primary loss с заданным
+      допуском, а не по абсолютному значению MASE.
     models:
       - id: "naive"
         name: "Naive"
@@ -921,8 +922,10 @@ pipeline:
         rank_by: "weighted_score"
         diagnostics_in_score: false
         diagnostics_policy: "current_oof_report_required_not_scored"
-        baseline_policy: "flag_and_explicit_override"
-        baseline_threshold: 1.05
+        baseline_policy: "best_actual_aligned_oof_baseline"
+        baseline_metric: "rmse"
+        baseline_tolerance_ratio: 1.05
+        mase_role: "scale_free_metric_not_baseline_gate"
         stability_metric: "rmse"
         error_correlation: "pearson_on_exactly_aligned_oof_residuals"
         error_correlation_caveat: >-
@@ -949,11 +952,12 @@ pipeline:
         - "verified_ensemble_candidate"
         - "selected_model"
       rules:
-        policy_version: "selection-v1-equal-weight"
+        policy_version: "selection-v2-horizon-baseline"
         single_rank_by: "primary_metric_oof_loss"
         primary_metric: "rmse"
         practical_tie_relative: 0.01
         baseline_reference: "best_actual_oof_baseline"
+        baseline_tolerance_ratio: 1.05
         require_exact_oof_alignment: true
         require_selection_signature: true
         allow_user_override: true
@@ -1019,14 +1023,15 @@ metrics:
 
     - id: "mase"
       name: "MASE (Mean Absolute Scaled Error)"
-      formula: "MAE_model / MAE_naive"
+      formula: "fold_MAE_forecast / train_only_mean_abs_seasonal_difference"
       scale_dependent: false
       direction: "minimize"
       weight_in_ranking: 0.20
       interpretation: >-
-        MASE < 1: модель лучше Naive.
-        MASE = 1: равна Naive.
-        MASE > 1: хуже Naive — модель непригодна.
+        Безразмерная ошибка относительно train-only one-step Naive scale
+        (либо seasonal-naive scale с лагом m). Для multi-step fixed-origin
+        прогноза MASE > 1 не означает проигрыш фактически рассчитанному OOF
+        baseline на том же горизонте и не является eligibility gate.
 
   # ── 5.2. Дополнительные метрики (отчётность, не ранжирование) ──────────────
   secondary:
@@ -1084,15 +1089,17 @@ metrics:
       weighted_score = 0.35·norm(MAE) + 0.25·norm(RMSE) +
                        0.20·norm(MAPE) + 0.20·norm(MASE)
       где norm — min-max нормализация по пулу кандидатов.
-      Модели с MASE > 1.05 (хуже baseline + допуск) остаются в аудиторской
-      таблице, помечаются риском и требуют явного подтверждения выбора.
+      MASE остаётся scale-free осью ранжирования, но не baseline gate.
+      Допуск выбора вычисляется по отношению OOF RMSE модели к OOF RMSE
+      лучшего baseline на тех же точках, folds и горизонте.
     weights:
       mae: 0.35
       rmse: 0.25
       mape: 0.20
       mase: 0.20
     normalization: "min_max"         # нормализация по пулу кандидатов
-    baseline_filter_threshold: 1.05  # MASE > 1.05 → flag + explicit override
+    baseline_oof_metric: "rmse"
+    baseline_oof_tolerance_ratio: 1.05
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1225,8 +1232,9 @@ model_card_template:
     - path: "performance.baseline_comparison"
       type: "dict"
       description: >-
-        Сравнение с baseline: {naive, snaive, drift, mean} → MASE_ratio.
-        MASE_ratio < 1 → модель лучше baseline.
+        Сравнение primary loss с лучшим фактическим baseline на точно
+        совмещённых OOF-точках: model_loss, baseline_loss, loss_ratio,
+        tolerance_ratio, eligible. MASE и её train-only scale фиксируются отдельно.
 
     - path: "performance.prediction_interval_coverage"
       type: "float"
@@ -1375,7 +1383,7 @@ ensemble:
       корреляцией ошибок. Корреляция не является доказательством выигрыша.
       Затем простой ансамбль строится и оценивается как самостоятельный
       кандидат на точно совмещённых OOF-точках.
-    policy_version: "selection-v1-equal-weight"
+    policy_version: "selection-v2-horizon-baseline"
     member_count: 2
     member_rank_by: "primary_metric_oof_loss"
     primary_metric: "rmse"
@@ -1453,7 +1461,9 @@ ui_config:
   # Отображение моделей в UI
   model_card_display:
     show_applicability_badge: true    # цветной бейдж уровня
-    show_mase_vs_baseline: true       # MASE относительно Naive
+    show_mase_vs_baseline: false      # MASE не является same-horizon baseline ratio
+    show_mase_context: true
+    show_oof_baseline_comparison: true
     show_prediction_intervals: true
     show_diagnostics_summary: true    # ✅/⚠️/❌ для каждой проверки
     show_feature_importance: true     # если доступно
@@ -1471,7 +1481,7 @@ ui_config:
       - "fold_rmse_mean_std"
       - "fold_top1_rate"
       - "diagnostics_status"
-      - "baseline_status"
+      - "oof_baseline_ratio"
       - "backtest_run_id"
 
   # Фильтры

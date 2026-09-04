@@ -63,7 +63,7 @@ from apps.api.session_store import get_or_create_session_id, get_session_store
 
 
 router = APIRouter()
-MODELING_ARTIFACT_SCHEMA_VERSION = 3
+MODELING_ARTIFACT_SCHEMA_VERSION = 4
 
 
 def _package_version(name: str) -> str:
@@ -151,6 +151,7 @@ class ModelingSelectionEvaluationRequest(BaseModel):
     min_ensemble_relative_improvement: float = Field(0.01, ge=0, le=1)
     min_fold_win_rate: float = Field(0.50, ge=0, le=1)
     practical_tie_relative: float = Field(0.01, ge=0, le=1)
+    baseline_tolerance_ratio: float = Field(1.05, ge=1, le=10)
 
 
 class ModelingCardRequest(BaseModel):
@@ -207,6 +208,7 @@ def _diagnostics_values_are_finite(report: dict[str, Any]) -> bool:
 def _migrate_modeling_artifacts(session) -> None:
     """Drop unverifiable pre-lineage artifacts without fabricating signatures."""
     artifacts = session.modeling_artifacts
+    previous_version = artifacts.get("artifact_schema_version")
     if artifacts.get("artifact_schema_version") == MODELING_ARTIFACT_SCHEMA_VERSION:
         return
 
@@ -269,7 +271,8 @@ def _migrate_modeling_artifacts(session) -> None:
     for model_id in invalid_diagnostics:
         diagnostics.pop(model_id, None)
 
-    if invalid_backtests or invalid_tunings or invalid_diagnostics:
+    contract_changed = previous_version != MODELING_ARTIFACT_SCHEMA_VERSION
+    if invalid_backtests or invalid_tunings or invalid_diagnostics or contract_changed:
         for key in (
             "comparison", "selection_analysis", "ensemble_backtests",
             "ensemble_diagnostics", "selection",
@@ -301,7 +304,11 @@ def _migrate_modeling_artifacts(session) -> None:
         "invalidated_backtests": invalid_backtests,
         "invalidated_tunings": invalid_tunings,
         "invalidated_diagnostics": invalid_diagnostics,
-        "reason": "unsigned_or_stale_execution_oof_lineage",
+        "reason": (
+            "unsigned_or_stale_execution_oof_lineage"
+            if invalid_backtests or invalid_tunings or invalid_diagnostics
+            else "comparison_baseline_contract_upgrade"
+        ),
         "migrated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -1282,6 +1289,10 @@ def compare_modeling_candidates(
             backtests=results, diagnostics=prepared_diagnostics,
             applicability_levels=applicability_levels,
             comparison_id=str(uuid4()),
+            seasonal_period=int(
+                (session.modeling_artifacts.get("profile", context["profile"])
+                 .get("seasonal_periods") or [1])[0]
+            ),
         )
     except ComparisonContractError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -1386,7 +1397,29 @@ def select_modeling_candidate(
         ensemble_backtest["metrics"][primary_metric]
         if is_ensemble else candidate["metrics"][primary_metric]
     )
-    baseline_risk = selected_loss > baseline_loss + np.finfo(float).eps
+    baseline_comparison = (
+        ensemble.get("baseline_comparison")
+        if is_ensemble
+        else (analysis.get("baseline_comparisons") or {}).get(payload.model_id)
+    )
+    if not baseline_comparison:
+        raise HTTPException(
+            status_code=409,
+            detail="Selection analysis не содержит horizon-consistent baseline verdict",
+        )
+    if (
+        baseline_comparison.get("metric") != primary_metric
+        or not np.isclose(
+            float(baseline_comparison.get("model_loss")), selected_loss,
+            rtol=1e-12, atol=1e-12,
+        )
+        or not np.isclose(
+            float(baseline_comparison.get("baseline_loss")), baseline_loss,
+            rtol=1e-12, atol=1e-12,
+        )
+    ):
+        raise HTTPException(status_code=409, detail="Baseline verdict не соответствует selection loss")
+    baseline_risk = not bool(baseline_comparison.get("eligible"))
     if baseline_risk and not payload.acknowledge_baseline_risk:
         raise HTTPException(status_code=409, detail="Подтвердите выбор, уступающий лучшему фактическому OOF baseline")
     diagnostics = (
@@ -1412,6 +1445,11 @@ def select_modeling_candidate(
         "primary_metric": primary_metric,
         "primary_loss": selected_loss,
         "best_baseline_loss": baseline_loss,
+        "best_baseline_model_id": analysis["best_baseline"]["model_id"],
+        "baseline_loss_ratio": baseline_comparison.get("loss_ratio"),
+        "baseline_relative_improvement": baseline_comparison.get("relative_improvement"),
+        "baseline_tolerance_ratio": baseline_comparison["tolerance_ratio"],
+        "baseline_comparison": baseline_comparison,
         "ensemble_status": ensemble.get("status"),
         "ensemble_recommended": ensemble.get("status") == "recommended",
         "ensemble_members": ensemble.get("member_ids") if is_ensemble else [],
@@ -1467,7 +1505,9 @@ def create_model_card(
                 ],
                 "top1_rate": ensemble.get("fold_win_rate"),
             },
-            "baseline_eligible": (ensemble.get("relative_improvement_vs_best_baseline") or 0) >= 0,
+            "baseline_eligible": bool(
+                (ensemble.get("baseline_comparison") or {}).get("eligible")
+            ),
             "baseline_note": "сравнение с лучшим фактическим OOF baseline",
         }
         tuning = None
@@ -1548,12 +1588,19 @@ def create_model_card(
             "oof_predictions": backtest.get("oof_predictions", []),
             "cv_metrics": (tuning or {}).get("best_metrics") or {},
             "baseline_comparison": {
+                "source": "exact_aligned_selection_oof",
                 "mase": ranked["metrics"].get("mase"),
+                "mase_context": comparison.get("mase_context"),
                 "primary_metric": selection.get("primary_metric"),
                 "selected_loss": selection.get("primary_loss"),
+                "best_baseline_model_id": selection.get("best_baseline_model_id"),
                 "best_baseline_loss": selection.get("best_baseline_loss"),
-                "eligible": ranked["baseline_eligible"],
-                "note": ranked["baseline_note"],
+                "loss_ratio": selection.get("baseline_loss_ratio"),
+                "relative_improvement": selection.get("baseline_relative_improvement"),
+                "tolerance_ratio": selection.get("baseline_tolerance_ratio"),
+                "eligible": (selection.get("baseline_comparison") or {}).get("eligible"),
+                "risk_acknowledged": selection.get("baseline_risk_acknowledged"),
+                "note": "MASE показана отдельно; eligibility основана на aligned OOF primary loss.",
             },
             "prediction_interval_coverage": None, "winkler_score": None,
         },

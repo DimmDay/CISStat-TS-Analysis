@@ -209,6 +209,34 @@ def test_actual_oof_baseline_loss_is_used_instead_of_mase_threshold():
     assert any("baseline" in reason.lower() for reason in result["ensemble"]["reasons"])
 
 
+def test_baseline_tolerance_uses_oof_primary_loss_even_when_mase_is_above_one():
+    baseline = _backtest("naive", "baselines", [10.5, 20.5, 30.5, 40.5])
+    near = _backtest("ets", "exponential_smoothing", [10.52, 20.52, 30.52, 40.52])
+    near["metrics"]["mase"] = 9.0
+    result = evaluate_selection(
+        comparison=_comparison({"naive": baseline, "ets": near}),
+        backtests={"naive": baseline, "ets": near},
+        diagnostics=_diagnostics({"naive": baseline, "ets": near}),
+        policy=SelectionPolicy(min_oof_points=4, baseline_tolerance_ratio=1.05),
+    )
+
+    verdict = result["baseline_comparisons"]["ets"]
+    assert verdict["metric"] == "rmse"
+    assert verdict["loss_ratio"] == pytest.approx(1.04)
+    assert verdict["eligible"] is True
+    assert verdict["tolerance_ratio"] == 1.05
+
+    far = _backtest("ets", "exponential_smoothing", [10.55, 20.55, 30.55, 40.55])
+    far_result = evaluate_selection(
+        comparison=_comparison({"naive": baseline, "ets": far}),
+        backtests={"naive": baseline, "ets": far},
+        diagnostics=_diagnostics({"naive": baseline, "ets": far}),
+        policy=SelectionPolicy(min_oof_points=4, baseline_tolerance_ratio=1.05),
+    )
+    assert far_result["baseline_comparisons"]["ets"]["loss_ratio"] == pytest.approx(1.1)
+    assert far_result["baseline_comparisons"]["ets"]["eligible"] is False
+
+
 def test_selection_signature_is_order_independent_and_binds_policy():
     backtests = {
         "naive": _backtest("naive", "baselines", [8, 22, 28, 42]),

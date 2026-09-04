@@ -12,7 +12,11 @@ from apps.api.schemas import (
     ComparisonFoldStability,
     ComparisonRankingItem,
     ErrorCorrelationMatrix,
+    MaseAuditContext,
+    MaseFoldScale,
     ModelingComparisonResponse,
+    OofBaselineComparison,
+    OofBaselinePolicy,
 )
 
 
@@ -20,6 +24,8 @@ RANKING_POLICY = "forecast_metrics_only_diagnostics_separate"
 DIAGNOSTICS_POLICY = "current_oof_report_required_not_scored"
 NORMALIZATION = "min_max_within_comparable_pool"
 BASE_WEIGHTS = {"mae": 0.35, "rmse": 0.25, "mape": 0.20, "mase": 0.20}
+BASELINE_METRIC = "rmse"
+BASELINE_TOLERANCE_RATIO = 1.05
 
 
 class ComparisonContractError(ValueError):
@@ -84,6 +90,7 @@ def aligned_oof(
         for fold in reference.get("folds") or []
     ]
     reference_scale = (reference.get("preprocessing") or {}).get("evaluation_scale")
+    reference_mase_scales = [fold.get("mase_scale") for fold in reference.get("folds") or []]
     residuals: dict[str, np.ndarray] = {}
     for backtest in backtests:
         model_id = str(backtest["model_id"])
@@ -104,6 +111,16 @@ def aligned_oof(
         scale = (backtest.get("preprocessing") or {}).get("evaluation_scale")
         if scale != reference_scale:
             raise ComparisonContractError("Шкалы OOF-оценки моделей не совпадают")
+        mase_scales = [fold.get("mase_scale") for fold in backtest.get("folds") or []]
+        if len(mase_scales) != len(reference_mase_scales) or any(
+            (left is None) != (right is None)
+            or (
+                left is not None and right is not None
+                and not np.isclose(float(left), float(right), rtol=1e-12, atol=1e-12)
+            )
+            for left, right in zip(mase_scales, reference_mase_scales)
+        ):
+            raise ComparisonContractError("Train-only MASE scales моделей не совпадают")
         for key in keys:
             if not np.isclose(
                 float(points[key]["actual"]), float(reference_points[key]["actual"]),
@@ -145,6 +162,49 @@ def _minmax(values: list[float]) -> list[float]:
     if hi - lo <= np.finfo(float).eps:
         return [0.0 for _ in values]
     return [(value - lo) / (hi - lo) for value in values]
+
+
+def oof_baseline_comparison(
+    *, model_loss: float, baseline_loss: float, baseline_model_id: str,
+    metric: str, tolerance_ratio: float,
+) -> OofBaselineComparison:
+    """Compare losses measured on one exact OOF horizon without using MASE as a gate."""
+    epsilon = np.finfo(float).eps
+    if baseline_loss <= epsilon:
+        equal_zero = model_loss <= epsilon
+        loss_ratio = 1.0 if equal_zero else None
+        relative_improvement = 0.0 if equal_zero else None
+        eligible = equal_zero
+    else:
+        loss_ratio = model_loss / baseline_loss
+        relative_improvement = (baseline_loss - model_loss) / baseline_loss
+        eligible = model_loss <= baseline_loss * tolerance_ratio + epsilon
+    return OofBaselineComparison(
+        metric=metric, baseline_model_id=baseline_model_id,
+        model_loss=round(model_loss, 10), baseline_loss=round(baseline_loss, 10),
+        loss_ratio=round(loss_ratio, 10) if loss_ratio is not None else None,
+        relative_improvement=(
+            round(relative_improvement, 10) if relative_improvement is not None else None
+        ),
+        tolerance_ratio=tolerance_ratio, eligible=eligible,
+    )
+
+
+def _baseline_note(comparison: OofBaselineComparison) -> str:
+    metric = comparison.metric.upper()
+    if comparison.loss_ratio is None:
+        return (
+            f"OOF {metric}={comparison.model_loss:.3f}; baseline "
+            f"{comparison.baseline_model_id}=0; ratio не определён, требуется override"
+        )
+    relation = (
+        f"в допуске ≤ {comparison.tolerance_ratio:.2f}"
+        if comparison.eligible else f"выше допуска {comparison.tolerance_ratio:.2f}; требуется override"
+    )
+    return (
+        f"OOF {metric} ratio={comparison.loss_ratio:.3f} к baseline "
+        f"{comparison.baseline_model_id}; {relation}"
+    )
 
 
 def _fold_stability(
@@ -213,7 +273,7 @@ def build_comparison(
     backtests: Sequence[Mapping[str, Any]],
     diagnostics: Mapping[str, Mapping[str, Any]],
     applicability_levels: Mapping[str, str],
-    comparison_id: str,
+    comparison_id: str, seasonal_period: int = 1,
 ) -> ModelingComparisonResponse:
     """Build an input-order-independent ranking and its complete lineage."""
     ordered_backtests = sorted(backtests, key=lambda item: str(item["model_id"]))
@@ -235,13 +295,44 @@ def build_comparison(
         metric: _minmax([float(item["metrics"][metric]) for item in ordered_backtests])
         for metric in metric_ids
     }
+    horizons = {int(item.get("horizon", 1)) for item in ordered_backtests}
+    if len(horizons) != 1:
+        raise ComparisonContractError("Горизонты backtest-моделей не совпадают")
+    baselines = [item for item in ordered_backtests if item.get("family_id") == "baselines"]
+    if not baselines:
+        raise ComparisonContractError("Comparison требует фактически рассчитанный baseline")
+    best_baseline = min(
+        baselines,
+        key=lambda item: (float(item["metrics"][BASELINE_METRIC]), str(item["model_id"])),
+    )
+    baseline_loss = float(best_baseline["metrics"][BASELINE_METRIC])
+    baseline_policy = OofBaselinePolicy(
+        metric=BASELINE_METRIC, tolerance_ratio=BASELINE_TOLERANCE_RATIO,
+        baseline_model_id=str(best_baseline["model_id"]), baseline_loss=baseline_loss,
+    )
+    reference_folds = ordered_backtests[0].get("folds") or []
+    mase_context = MaseAuditContext(
+        formula="fold_mae / train_only_mean_abs_seasonal_difference",
+        denominator_policy="train_only_seasonal_naive_mae",
+        seasonal_period=max(1, int(seasonal_period)), horizon=next(iter(horizons)),
+        aggregation="test_size_weighted_fold_mase",
+        fold_scales=[
+            MaseFoldScale(fold=int(fold["fold"]), scale=fold.get("mase_scale"))
+            for fold in reference_folds
+        ],
+        is_same_horizon_baseline_comparison=False,
+    )
     ranking_payload: list[dict[str, Any]] = []
     for index, item in enumerate(ordered_backtests):
         model_id = str(item["model_id"])
         score = sum(metric_weights[metric] * normalized[metric][index] for metric in metric_ids)
-        raw_mase = item["metrics"].get("mase")
-        mase = float(raw_mase) if raw_mase is not None else None
-        eligible = mase is not None and mase <= 1.05
+        baseline_comparison = oof_baseline_comparison(
+            model_loss=float(item["metrics"][BASELINE_METRIC]),
+            baseline_loss=baseline_loss,
+            baseline_model_id=str(best_baseline["model_id"]),
+            metric=BASELINE_METRIC,
+            tolerance_ratio=BASELINE_TOLERANCE_RATIO,
+        )
         ranking_payload.append({
             "model_id": model_id, "model_name": item["model_name"],
             "family_id": item["family_id"], "metrics": item["metrics"],
@@ -252,11 +343,10 @@ def build_comparison(
             "normalized_metrics": {
                 metric: round(normalized[metric][index], 10) for metric in metric_ids
             },
-            "weighted_score": round(score, 10), "baseline_eligible": eligible,
-            "baseline_note": (
-                "лучше/сопоставима с сезонным Naive scale" if eligible
-                else "MASE не определена либо выше 1.05; требуется осознанный override"
-            ),
+            "weighted_score": round(score, 10),
+            "baseline_eligible": baseline_comparison.eligible,
+            "baseline_note": _baseline_note(baseline_comparison),
+            "baseline_comparison": baseline_comparison,
             "diagnostics": summarize_diagnostics(diagnostics[model_id]),
             "fold_stability": fold_stability[model_id],
         })
@@ -270,13 +360,17 @@ def build_comparison(
         for rank, item in enumerate(ranking_payload, 1)
     ]
     if any(not item.baseline_eligible for item in ranking):
-        warnings.append("Модели с MASE > 1.05 отмечены риском и требуют override при выборе.")
+        warnings.append(
+            "Модели с OOF RMSE выше лучшего baseline более чем на 5% отмечены риском."
+        )
     correlation = _error_correlation(residuals)
     warnings.extend(correlation.unavailable_pairs)
     signature = _signature({
         "fingerprint": fingerprint, "cohort_id": cohort_id,
         "ranking_policy": RANKING_POLICY, "diagnostics_policy": DIAGNOSTICS_POLICY,
         "normalization": NORMALIZATION, "metric_weights": metric_weights,
+        "baseline_policy": baseline_policy.model_dump(mode="json"),
+        "mase_context": mase_context.model_dump(mode="json"),
         "runs": [
             {
                 "model_id": item["model_id"], "run_id": item["run_id"],
@@ -295,5 +389,6 @@ def build_comparison(
         fingerprint=fingerprint, cohort_id=cohort_id,
         ranking_policy=RANKING_POLICY, diagnostics_policy=DIAGNOSTICS_POLICY,
         normalization=NORMALIZATION, metric_weights=metric_weights,
+        baseline_policy=baseline_policy, mase_context=mase_context,
         ranking=ranking, error_correlation=correlation, warnings=warnings,
     )

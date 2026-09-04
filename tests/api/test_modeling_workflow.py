@@ -522,6 +522,8 @@ def test_backtests_compare_select_and_model_card_are_persisted(client: TestClien
     assert evaluation["comparison_signature"] == comparison.json()["comparison_signature"]
     assert evaluation["evaluation_contract"]["estimate_status"] == "selection_oof_reused"
     assert evaluation["best_baseline"]["model_id"] in {"naive", "drift"}
+    assert evaluation["policy"]["baseline_tolerance_ratio"] == 1.05
+    assert set(evaluation["baseline_comparisons"]) == {"naive", "drift"}
     assert evaluation["recommended_candidate"]["kind"] in {"single", "ensemble"}
 
     selected_id = ranking[0]["model_id"]
@@ -551,6 +553,9 @@ def test_backtests_compare_select_and_model_card_are_persisted(client: TestClien
     assert selected.json()["comparison_signature"] == comparison.json()["comparison_signature"]
     assert selected.json()["selection_signature"] == evaluation["selection_signature"]
     assert selected.json()["independent_holdout"] is False
+    assert selected.json()["best_baseline_model_id"] in {"naive", "drift"}
+    assert selected.json()["baseline_tolerance_ratio"] == 1.05
+    assert selected.json()["baseline_loss_ratio"] is not None
 
     created = client.post("/v1/session/modeling/card", json={})
     assert created.status_code == 200, created.text
@@ -559,6 +564,12 @@ def test_backtests_compare_select_and_model_card_are_persisted(client: TestClien
     assert card["model_info"]["model_id"] == selected_id
     assert card["data_summary"]["source_checkpoint"]
     assert card["performance"]["backtest_metrics"]
+    baseline_comparison = card["performance"]["baseline_comparison"]
+    assert baseline_comparison["source"] == "exact_aligned_selection_oof"
+    assert baseline_comparison["best_baseline_model_id"] in {"naive", "drift"}
+    assert baseline_comparison["loss_ratio"] is not None
+    assert baseline_comparison["tolerance_ratio"] == 1.05
+    assert baseline_comparison["mase_context"]["is_same_horizon_baseline_comparison"] is False
     ranked = next(
         item for item in comparison.json()["ranking"] if item["model_id"] == selected_id
     )
@@ -727,6 +738,13 @@ def test_comparison_has_reproducible_lineage_stability_and_error_correlation(cli
     assert body["comparison_id"] != second.json()["comparison_id"]
     assert body["ranking_policy"] == "forecast_metrics_only_diagnostics_separate"
     assert body["diagnostics_policy"] == "current_oof_report_required_not_scored"
+    assert body["baseline_policy"]["source"] == "exact_aligned_oof"
+    assert body["baseline_policy"]["metric"] == "rmse"
+    assert body["baseline_policy"]["tolerance_ratio"] == 1.05
+    assert body["mase_context"]["horizon"] == 3
+    assert body["mase_context"]["seasonal_period"] >= 1
+    assert len(body["mase_context"]["fold_scales"]) == 3
+    assert body["mase_context"]["is_same_horizon_baseline_comparison"] is False
     assert [item["model_id"] for item in body["ranking"]] == [
         item["model_id"] for item in second.json()["ranking"]
     ]
@@ -742,6 +760,9 @@ def test_comparison_has_reproducible_lineage_stability_and_error_correlation(cli
             "passed", "warnings", "failed", "not_applicable",
         )) == 4
         assert item["fold_stability"]["metric"] == "rmse"
+        assert item["baseline_comparison"]["source"] == "exact_aligned_oof"
+        assert item["baseline_comparison"]["metric"] == "rmse"
+        assert item["baseline_eligible"] == item["baseline_comparison"]["eligible"]
         assert len(item["fold_stability"]["fold_values"]) == 3
         assert len(item["fold_stability"]["fold_ranks"]) == 3
         assert 0 <= item["fold_stability"]["top1_rate"] <= 1
@@ -861,7 +882,7 @@ def test_state_migrates_legacy_unsigned_backtests_without_discarding_valid_basel
 
     assert response.status_code == 200, response.text
     artifacts = response.json()["artifacts"]
-    assert artifacts["artifact_schema_version"] == 3
+    assert artifacts["artifact_schema_version"] == 4
     assert "naive" in artifacts["backtests"]
     assert "ets" not in artifacts["backtests"]
     assert "arima_auto" not in artifacts["backtests"]
@@ -885,3 +906,36 @@ def test_state_migrates_legacy_unsigned_backtests_without_discarding_valid_basel
         "/v1/session/modeling/compare", json={"model_ids": ["naive", "ets"]},
     )
     assert comparison.status_code == 200, comparison.text
+
+
+def test_state_v4_upgrade_preserves_valid_runs_and_invalidates_old_baseline_verdict(
+    client: TestClient,
+):
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=3&n_splits=3").status_code == 200
+    _backtest_and_diagnose(client, "naive", "drift")
+    comparison = client.post("/v1/session/modeling/compare", json={})
+    assert comparison.status_code == 200, comparison.text
+
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    store = get_session_store()
+    session = store.get(session_id)
+    session.modeling_artifacts["artifact_schema_version"] = 3
+    session.modeling_artifacts["selection_analysis"] = {"legacy": True}
+    session.modeling_artifacts["selection"] = {"legacy": True}
+    session.modeling_artifacts["model_cards"] = {"legacy": {}}
+    store.save(session)
+
+    state = client.get("/v1/session/modeling/state")
+
+    assert state.status_code == 200, state.text
+    artifacts = state.json()["artifacts"]
+    assert artifacts["artifact_schema_version"] == 4
+    assert set(artifacts["backtests"]) == {"naive", "drift"}
+    assert set(artifacts["diagnostics"]) == {"naive", "drift"}
+    assert "comparison" not in artifacts
+    assert "selection_analysis" not in artifacts
+    assert "selection" not in artifacts
+    assert artifacts["model_cards"] == {}
+    assert artifacts["artifact_migration"]["reason"] == "comparison_baseline_contract_upgrade"
+    assert state.json()["pipeline"]["comparison"] == "pending"

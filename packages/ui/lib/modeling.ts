@@ -307,6 +307,28 @@ export interface ComparisonFoldStability {
   top1_rate: number;
 }
 
+export interface OofBaselineComparison {
+  source: "exact_aligned_oof";
+  metric: "mae" | "rmse";
+  baseline_model_id: string;
+  model_loss: number;
+  baseline_loss: number;
+  loss_ratio: number | null;
+  relative_improvement: number | null;
+  tolerance_ratio: number;
+  eligible: boolean;
+}
+
+export interface MaseAuditContext {
+  formula: "fold_mae / train_only_mean_abs_seasonal_difference";
+  denominator_policy: "train_only_seasonal_naive_mae";
+  seasonal_period: number;
+  horizon: number;
+  aggregation: "test_size_weighted_fold_mase";
+  fold_scales: Array<{ fold: number; scale: number | null }>;
+  is_same_horizon_baseline_comparison: false;
+}
+
 export interface ComparisonRankingItem {
   rank: number;
   model_id: string;
@@ -323,6 +345,7 @@ export interface ComparisonRankingItem {
   weighted_score: number;
   baseline_eligible: boolean;
   baseline_note: string;
+  baseline_comparison: OofBaselineComparison;
   diagnostics: ComparisonDiagnosticsSummary;
   fold_stability: ComparisonFoldStability;
 }
@@ -336,6 +359,14 @@ export interface ModelingComparisonResponse {
   diagnostics_policy: "current_oof_report_required_not_scored";
   normalization: "min_max_within_comparable_pool";
   metric_weights: Record<string, number>;
+  baseline_policy: {
+    source: "exact_aligned_oof";
+    metric: "mae" | "rmse";
+    tolerance_ratio: number;
+    baseline_model_id: string;
+    baseline_loss: number;
+  };
+  mase_context: MaseAuditContext;
   ranking: ComparisonRankingItem[];
   error_correlation: {
     model_ids: string[];
@@ -363,19 +394,22 @@ export interface ModelingSelectionAnalysis {
     min_ensemble_relative_improvement: number;
     min_fold_win_rate: number;
     practical_tie_relative: number;
+    baseline_tolerance_ratio: number;
   };
   recommended_single: {
     model_id: string;
     primary_metric: "mae" | "rmse";
     primary_loss: number;
     practical_ties: string[];
-    relative_improvement_vs_best_baseline: number;
+    relative_improvement_vs_best_baseline: number | null;
   };
   best_baseline: {
     model_id: string;
     primary_metric: "mae" | "rmse";
     primary_loss: number;
+    tolerance_ratio?: number;
   };
+  baseline_comparisons: Record<string, OofBaselineComparison>;
   ensemble: {
     status: EnsembleEvaluationStatus;
     strategy: "simple_average";
@@ -384,6 +418,7 @@ export interface ModelingSelectionAnalysis {
     error_correlation: number | null;
     relative_improvement_vs_best_single: number | null;
     relative_improvement_vs_best_baseline: number | null;
+    baseline_comparison: OofBaselineComparison | null;
     fold_win_rate: number | null;
     backtest: BacktestResponse | null;
     diagnostics: ({ diagnostics_signature: string } & Record<string, unknown>) | null;
@@ -410,6 +445,11 @@ export interface ModelingSelectionResult {
   primary_metric: "mae" | "rmse";
   primary_loss: number;
   best_baseline_loss: number;
+  best_baseline_model_id: string;
+  baseline_loss_ratio: number | null;
+  baseline_relative_improvement: number | null;
+  baseline_tolerance_ratio: number;
+  baseline_comparison: OofBaselineComparison;
   ensemble_status: EnsembleEvaluationStatus;
   ensemble_recommended: boolean;
   ensemble_members: string[];

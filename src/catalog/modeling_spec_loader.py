@@ -180,7 +180,9 @@ class RankingFormula(BaseModel):
     description: str = ""
     weights: Dict[str, float] = Field(default_factory=dict)
     normalization: str = "min_max"
-    baseline_filter_threshold: float = 1.05
+    baseline_filter_threshold: Optional[float] = None
+    baseline_oof_metric: str = "rmse"
+    baseline_oof_tolerance_ratio: float = 1.05
 
 
 class MetricsConfig(BaseModel):
@@ -301,7 +303,9 @@ class PreprocessingRule(BaseModel):
 
 class ModelCardDisplay(BaseModel):
     show_applicability_badge: bool = True
-    show_mase_vs_baseline: bool = True
+    show_mase_vs_baseline: bool = False
+    show_mase_context: bool = True
+    show_oof_baseline_comparison: bool = True
     show_prediction_intervals: bool = True
     show_diagnostics_summary: bool = True
     show_feature_importance: bool = True

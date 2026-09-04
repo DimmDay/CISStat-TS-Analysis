@@ -3126,6 +3126,42 @@ class ComparisonFoldStability(BaseModel):
     top1_rate: float
 
 
+class OofBaselineComparison(BaseModel):
+    """Same-horizon comparison against the best baseline in the aligned OOF cohort."""
+    source: Literal["exact_aligned_oof"] = "exact_aligned_oof"
+    metric: Literal["mae", "rmse"]
+    baseline_model_id: str
+    model_loss: float = Field(..., ge=0)
+    baseline_loss: float = Field(..., ge=0)
+    loss_ratio: Optional[float] = Field(None, ge=0)
+    relative_improvement: Optional[float] = None
+    tolerance_ratio: float = Field(..., ge=1)
+    eligible: bool
+
+
+class OofBaselinePolicy(BaseModel):
+    source: Literal["exact_aligned_oof"] = "exact_aligned_oof"
+    metric: Literal["mae", "rmse"]
+    tolerance_ratio: float = Field(..., ge=1)
+    baseline_model_id: str
+    baseline_loss: float = Field(..., ge=0)
+
+
+class MaseFoldScale(BaseModel):
+    fold: int = Field(..., ge=1)
+    scale: Optional[float] = Field(None, gt=0)
+
+
+class MaseAuditContext(BaseModel):
+    formula: Literal["fold_mae / train_only_mean_abs_seasonal_difference"]
+    denominator_policy: Literal["train_only_seasonal_naive_mae"]
+    seasonal_period: int = Field(..., ge=1)
+    horizon: int = Field(..., ge=1)
+    aggregation: Literal["test_size_weighted_fold_mase"]
+    fold_scales: List[MaseFoldScale]
+    is_same_horizon_baseline_comparison: Literal[False] = False
+
+
 class ComparisonRankingItem(BaseModel):
     rank: int = Field(..., ge=1)
     model_id: str
@@ -3142,8 +3178,11 @@ class ComparisonRankingItem(BaseModel):
     oof_signature: str
     normalized_metrics: Dict[str, float]
     weighted_score: float
-    baseline_eligible: bool
+    baseline_eligible: bool = Field(
+        ..., description="True when same-horizon OOF loss is within baseline tolerance",
+    )
     baseline_note: str
+    baseline_comparison: OofBaselineComparison
     diagnostics: ComparisonDiagnosticsSummary
     fold_stability: ComparisonFoldStability
 
@@ -3165,6 +3204,8 @@ class ModelingComparisonResponse(BaseModel):
     diagnostics_policy: Literal["current_oof_report_required_not_scored"]
     normalization: Literal["min_max_within_comparable_pool"]
     metric_weights: Dict[str, float]
+    baseline_policy: OofBaselinePolicy
+    mase_context: MaseAuditContext
     ranking: List[ComparisonRankingItem]
     error_correlation: ErrorCorrelationMatrix
     warnings: List[str] = Field(default_factory=list)

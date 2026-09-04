@@ -2039,3 +2039,86 @@ reuse-detection; явно разобрана кросс-доменная про�
 Статус: архитектурный дизайн передан на ревью, реализация не начата
 (коммит/push в main запрещён протоколом AGENTS.md). 5 открытых вопросов
 к тимлиду (§11), два блокирующих (внутренний IdP, cookie vs BFF).
+
+---
+
+## Task 110 — Горизонт-согласованный baseline gate и прозрачная MASE
+
+Дата: 2026-09-04. База: `main @ 5f25c62c1f36f080ee3b90c90c77ffcd13041782`.
+Commit/push и production deploy не выполнялись.
+
+### Проблема и контракт решения
+
+- Task 108 подтвердил, что высокий MASE при multi-step fixed-origin backtest не
+  является арифметической ошибкой: denominator строится по однокроковым
+  train-only seasonal differences, тогда как ошибка прогноза растёт с горизонтом.
+- Прежний gate `MASE <= 1.05` поэтому систематически создавал ложный риск для
+  всего comparable pool, включая сами baseline-модели.
+- MASE сохранена как scale-free метрика ранжирования. Eligibility теперь
+  определяется только отношением primary OOF loss модели к loss лучшего
+  фактически рассчитанного baseline на одних и тех же OOF-точках, folds и
+  горизонте: `model_loss / best_baseline_loss <= 1.05`.
+- На этапе Comparison зафиксирована RMSE. На этапе Selection тот же контракт
+  применяется к выбранной policy-метрике (`RMSE` либо `MAE`).
+
+### Реализация
+
+- В API добавлены типизированные `OofBaselinePolicy`,
+  `OofBaselineComparison`, `MaseAuditContext` и fold-local MASE scales.
+- Comparison выбирает лучший фактически рассчитанный baseline детерминированно,
+  выдаёт для каждой модели loss ratio, relative improvement, tolerance и
+  signed eligibility. Policy и MASE context включены в comparison signature.
+- Проверяется не только точное совпадение OOF facts/folds/evaluation scale, но и
+  совпадение train-only MASE scale каждого fold между моделями.
+- MASE audit раскрывает формулу, denominator policy, seasonal period, horizon,
+  агрегацию, scale каждого fold и явный флаг
+  `is_same_horizon_baseline_comparison=false`.
+- Selection policy повышена до `selection-v2-horizon-baseline`; verdict каждого
+  кандидата и проверенного ensemble рассчитывается по фактической primary loss.
+  Override требуется только при выходе за OOF baseline tolerance, а не при
+  абсолютном MASE выше 1,05. Учтён случай baseline loss = 0 без `Infinity` в JSON.
+- Endpoint выбора повторно сверяет подписанный verdict с primary metric/loss и
+  baseline loss. В selection result и Model Card сохраняются baseline model,
+  ratio, improvement, tolerance, eligibility, acknowledgement и полный MASE
+  context.
+- UI показывает отдельный блок «Контекст MASE» и отдельную колонку OOF baseline
+  ratio. Старый фильтр/текст `MASE <= 1.05` удалён.
+- Modeling artifact schema повышена с 3 до 4. При миграции валидные backtests и
+  diagnostics сохраняются, но старые comparison/selection/Model Cards
+  инвалидируются, поскольку они не содержат нового проверяемого verdict.
+- `rules/modeling.yaml` и typed loader приведены к единому контракту.
+
+### TDD и проверки
+
+- RED: 4 ожидаемых падения подтвердили отсутствие `seasonal_period`/MASE audit в
+  Comparison, baseline tolerance в Selection и нового контракта в spec/loader.
+- Добавлены регрессии для сценария со всеми `MASE > 1.05`: сильная ETS проходит
+  при OOF RMSE ratio 0,8, слабый Mean не проходит при ratio 2,0.
+- Добавлены проверки границы допуска 1,05, mismatch train-only MASE scales,
+  API lineage, Model Card и миграции schema v3 → v4.
+- Финальный Modeling backend/core/API/spec прогон: 101 PASS; остались два
+  известных stale-теста базы, не связанные с Task 110: ожидание версии
+  `1.0.0-draft` вместо текущей `1.1.0-draft` и удалённого в Task 102 эвристического
+  `auto_ensemble_trigger`.
+- Расширенный прогон в ходе реализации: 168 PASS и те же 2 known stale failures.
+- Modeling UI: 62/62 PASS; после финального аудита изменённый suite: 5/5 PASS.
+- TypeScript embedded/standalone, `py_compile`, `git diff --check`: PASS.
+- Production build standalone: PASS, 13/13 static pages, `/modeling` включён,
+  First Load JS 459 kB; временный memory shim удалён.
+
+### Изменённые файлы Task 110
+
+- `apps/api/modeling_comparison.py`
+- `apps/api/modeling_selection.py`
+- `apps/api/routers/modeling_session.py`
+- `apps/api/schemas.py`
+- `packages/ui/components/ModelingWorkflowOverview.test.tsx`
+- `packages/ui/components/ModelingWorkflowOverview.tsx`
+- `packages/ui/lib/modeling.ts`
+- `rules/modeling.yaml`
+- `src/catalog/modeling_spec_loader.py`
+- `tests/api/test_modeling_comparison_spec.py`
+- `tests/api/test_modeling_workflow.py`
+- `tests/test_modeling_spec.py`
+- `tests/unit/test_modeling_comparison.py`
+- `tests/unit/test_modeling_selection.py`
