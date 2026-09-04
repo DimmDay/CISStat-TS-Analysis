@@ -1785,3 +1785,55 @@ Commit/push и production deploy не выполнялись.
 - `packages/ui/components/TsAnalysisModeling.tsx`
 - `packages/ui/components/TsAnalysisModeling.test.tsx`
 - `tests/api/test_modeling_workflow.py`
+
+---
+
+## Task 105 — Миграция legacy Modeling artifacts без execution/OOF lineage
+
+Дата: 2026-09-04. База: `main @ a363837488901ce71f8520f6936cf245d60bd07f`.
+Commit/push и production deploy не выполнялись.
+
+### Симптом и причина
+
+- После устранения 502 и автоматизации baseline comparison мог вернуть:
+  `Бэктесты не имеют валидной execution/OOF lineage: ['arima_auto', 'ets']`.
+- Ошибка воспроизведена для Redis-сессии, пережившей обновление backend. Modeling
+  artifacts не имели версии схемы, поэтому `/v1/session/modeling/state` возвращал
+  UI старые backtests, созданные до Task 102 — без `run_id`, корректного
+  `parameter_signature` и/или `oof_signature`.
+- Comparison правильно работал fail-closed. Подписывать старые результаты задним
+  числом нельзя: это выдало бы непроверенное legacy-исполнение за трассируемое.
+
+### Исправление
+
+- Введена `MODELING_ARTIFACT_SCHEMA_VERSION = 2`; новые Modeling states получают
+  версию при инициализации.
+- Для существующих сессий добавлена селективная миграция. Она независимо проверяет:
+  tuning ID/cohort/parameter SHA; backtest run/cohort/parameter/OOF SHA и связь с
+  tuned result; diagnostics run/residual/parameter/cohort/signature.
+- Валидные результаты Task 102–104 сохраняются. Удаляются только unsigned,
+  tampered или stale artifacts и их зависимые tuning/diagnostics.
+- При инвалидации очищаются comparison, selection analysis, ensemble artifacts,
+  selection и Model Cards; статусы pipeline пересчитываются по фактически
+  сохранённым artifacts.
+- В `artifact_migration` сохраняются версия, причина, время и отсортированные
+  списки удалённых backtests/tunings/diagnostics. Ложная lineage не создаётся.
+- Воспроизведён сценарий скриншота: валидный baseline оставлен, legacy `ets` и
+  `arima_auto` исключены; после нового backtest/diagnostics для ETS comparison
+  `naive + ets` успешно выполняется.
+
+### TDD и проверки
+
+- RED: новый migration-тест получил `KeyError: artifact_schema_version`, а
+  legacy `ets/arima_auto` продолжали возвращаться через state.
+- Modeling backend/core/API: 60/60 PASS.
+- Modeling UI: 58/58 PASS.
+- TypeScript embedded и standalone: PASS.
+- Production build standalone: PASS, 13/13 static pages, `/modeling` включён,
+  First Load JS 459 kB.
+- `py_compile` и `git diff --check`: PASS.
+
+### Изменённые файлы Task 105
+
+- `apps/api/routers/modeling_session.py`
+- `tests/api/test_modeling_workflow.py`

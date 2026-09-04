@@ -63,6 +63,7 @@ from apps.api.session_store import get_or_create_session_id, get_session_store
 
 
 router = APIRouter()
+MODELING_ARTIFACT_SCHEMA_VERSION = 2
 
 
 def _package_version(name: str) -> str:
@@ -188,11 +189,113 @@ def _action_context(session) -> dict[str, Any]:
     return _context(session, **{key: value for key, value in kwargs.items() if value is not None})
 
 
+def _migrate_modeling_artifacts(session) -> None:
+    """Drop unverifiable pre-lineage artifacts without fabricating signatures."""
+    artifacts = session.modeling_artifacts
+    if artifacts.get("artifact_schema_version") == MODELING_ARTIFACT_SCHEMA_VERSION:
+        return
+
+    tunings = artifacts.setdefault("tuning", {})
+    invalid_tunings = sorted(
+        model_id for model_id, tuning in tunings.items()
+        if not tuning.get("tuning_id")
+        or not tuning.get("cohort_id")
+        or tuning.get("parameter_signature") != parameter_signature(
+            model_id, tuning.get("best_params") or {},
+        )
+    )
+    for model_id in invalid_tunings:
+        tunings.pop(model_id, None)
+
+    backtests = artifacts.setdefault("backtests", {})
+    invalid_backtests: list[str] = []
+    for model_id, backtest in backtests.items():
+        traceable = bool(
+            backtest.get("run_id")
+            and backtest.get("cohort_id")
+            and backtest.get("parameter_signature") == parameter_signature(
+                model_id, backtest.get("params") or {},
+            )
+            and backtest.get("oof_signature")
+            == oof_signature(backtest.get("oof_predictions") or [])
+        )
+        tuning = tunings.get(model_id)
+        if backtest.get("params_source") == "tuning":
+            traceable = traceable and bool(
+                tuning
+                and tuning.get("cohort_id") == backtest.get("cohort_id")
+                and tuning.get("tuning_id") == backtest.get("tuning_id")
+                and tuning.get("parameter_signature")
+                == backtest.get("parameter_signature")
+            )
+        elif tuning and tuning.get("cohort_id") == backtest.get("cohort_id"):
+            traceable = False
+        if not traceable:
+            invalid_backtests.append(model_id)
+    invalid_backtests.sort()
+    for model_id in invalid_backtests:
+        backtests.pop(model_id, None)
+        tunings.pop(model_id, None)
+
+    diagnostics = artifacts.setdefault("diagnostics", {})
+    invalid_diagnostics: list[str] = []
+    for model_id, report in diagnostics.items():
+        backtest = backtests.get(model_id)
+        if not backtest or (
+            report.get("backtest_run_id") != backtest.get("run_id")
+            or report.get("residuals_signature") != backtest.get("oof_signature")
+            or report.get("parameter_signature") != backtest.get("parameter_signature")
+            or report.get("cohort_id") != backtest.get("cohort_id")
+            or report.get("diagnostics_signature") != diagnostics_signature(report)
+        ):
+            invalid_diagnostics.append(model_id)
+    invalid_diagnostics.sort()
+    for model_id in invalid_diagnostics:
+        diagnostics.pop(model_id, None)
+
+    if invalid_backtests or invalid_tunings or invalid_diagnostics:
+        for key in (
+            "comparison", "selection_analysis", "ensemble_backtests",
+            "ensemble_diagnostics", "selection",
+        ):
+            artifacts.pop(key, None)
+        artifacts["model_cards"] = {}
+        has_candidates = bool(artifacts.get("candidates"))
+        has_baseline = any(
+            item.get("family_id") == "baselines" for item in backtests.values()
+        )
+        session.modeling_pipeline["candidate_generation"] = (
+            "done" if has_candidates else "in_progress"
+        )
+        session.modeling_pipeline["baseline_estimation"] = (
+            "done" if has_baseline else ("in_progress" if has_candidates else "pending")
+        )
+        session.modeling_pipeline["backtest"] = "done" if backtests else "pending"
+        session.modeling_pipeline["tuning"] = "done" if tunings else "pending"
+        session.modeling_pipeline["diagnostics"] = (
+            "done" if backtests and len(diagnostics) == len(backtests)
+            else ("in_progress" if backtests else "pending")
+        )
+        for stage in ("comparison", "selection", "model_card"):
+            session.modeling_pipeline[stage] = "pending"
+
+    artifacts["artifact_schema_version"] = MODELING_ARTIFACT_SCHEMA_VERSION
+    artifacts["artifact_migration"] = {
+        "to_version": MODELING_ARTIFACT_SCHEMA_VERSION,
+        "invalidated_backtests": invalid_backtests,
+        "invalidated_tunings": invalid_tunings,
+        "invalidated_diagnostics": invalid_diagnostics,
+        "reason": "unsigned_or_stale_execution_oof_lineage",
+        "migrated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 def _prepare_state(session, context: dict[str, Any], *, refresh_contract: bool = False) -> None:
     fingerprint = context["fingerprint"]
     if session.modeling_artifacts.get("source_fingerprint") != fingerprint:
         session.reset_modeling()
         session.modeling_artifacts = {
+            "artifact_schema_version": MODELING_ARTIFACT_SCHEMA_VERSION,
             "source_fingerprint": fingerprint,
             "source_checkpoint": context["checkpoint"],
             "profile": context["profile"],
@@ -203,10 +306,12 @@ def _prepare_state(session, context: dict[str, Any], *, refresh_contract: bool =
         for stage in ("problem_definition", "data_structure", "constraint_mapping"):
             session.modeling_pipeline[stage] = "done"
         session.modeling_pipeline["candidate_generation"] = "in_progress"
-    elif refresh_contract:
-        session.modeling_artifacts["validation_strategy"] = _validation_contract(context)
-        session.modeling_artifacts["profile"] = context["profile"]
-        session.modeling_artifacts["runnable_shortlist"] = context["runnable_shortlist"]
+    else:
+        _migrate_modeling_artifacts(session)
+        if refresh_contract:
+            session.modeling_artifacts["validation_strategy"] = _validation_contract(context)
+            session.modeling_artifacts["profile"] = context["profile"]
+            session.modeling_artifacts["runnable_shortlist"] = context["runnable_shortlist"]
 
 
 def _trace_backtest(

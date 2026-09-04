@@ -754,3 +754,57 @@ def test_modeling_state_roundtrips_and_is_invalidated_by_target_change(client: T
     session = get_session_store().get(session_id)
     assert session.modeling_artifacts == {}
     assert all(status == "pending" for status in session.modeling_pipeline.values())
+
+
+def test_state_migrates_legacy_unsigned_backtests_without_discarding_valid_baseline(
+    client: TestClient,
+):
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=2&n_splits=2").status_code == 200
+    baseline = client.post("/v1/session/modeling/backtest", json={"model_id": "naive"})
+    assert baseline.status_code == 200, baseline.text
+    ets = client.post("/v1/session/modeling/backtest", json={"model_id": "ets"})
+    assert ets.status_code == 200, ets.text
+
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    store = get_session_store()
+    session = store.get(session_id)
+    session.modeling_artifacts.pop("artifact_schema_version", None)
+    legacy_ets = session.modeling_artifacts["backtests"]["ets"]
+    for key in ("run_id", "parameter_signature", "oof_signature"):
+        legacy_ets.pop(key, None)
+    legacy_auto = dict(legacy_ets)
+    legacy_auto["model_id"] = "arima_auto"
+    legacy_auto["model_name"] = "Auto-ARIMA"
+    legacy_auto["family_id"] = "arima"
+    session.modeling_artifacts["backtests"]["arima_auto"] = legacy_auto
+    store.save(session)
+
+    response = client.get("/v1/session/modeling/state")
+
+    assert response.status_code == 200, response.text
+    artifacts = response.json()["artifacts"]
+    assert artifacts["artifact_schema_version"] == 2
+    assert "naive" in artifacts["backtests"]
+    assert "ets" not in artifacts["backtests"]
+    assert "arima_auto" not in artifacts["backtests"]
+    assert artifacts["artifact_migration"]["invalidated_backtests"] == [
+        "arima_auto", "ets",
+    ]
+    assert response.json()["pipeline"]["baseline_estimation"] == "done"
+    assert response.json()["pipeline"]["comparison"] == "pending"
+
+    assert client.post(
+        "/v1/session/modeling/diagnostics", json={"model_id": "naive"},
+    ).status_code == 200
+    recalculated = client.post(
+        "/v1/session/modeling/backtest", json={"model_id": "ets"},
+    )
+    assert recalculated.status_code == 200, recalculated.text
+    assert client.post(
+        "/v1/session/modeling/diagnostics", json={"model_id": "ets"},
+    ).status_code == 200
+    comparison = client.post(
+        "/v1/session/modeling/compare", json={"model_ids": ["naive", "ets"]},
+    )
+    assert comparison.status_code == 200, comparison.text
