@@ -7,9 +7,11 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
+from apps.api import session_store as session_store_module
 from apps.api.main import app
 from apps.api.modeling_tuning import oof_signature
 from apps.api.session_store import (
+    RedisSessionStore,
     SESSION_COOKIE_NAME,
     get_session_store,
     reset_session_store_for_testing,
@@ -578,28 +580,23 @@ def test_backtests_compare_select_and_model_card_are_persisted(client: TestClien
     assert state["pipeline"]["model_card"] == "done"
 
 
-def test_comparison_requires_current_diagnostics_for_every_backtest(client: TestClient):
+def test_comparison_atomically_prepares_current_diagnostics_for_every_backtest(client: TestClient):
     _prepare(client)
     assert client.get("/v1/session/modeling/context?horizon=3&n_splits=3").status_code == 200
     for model_id in ("naive", "drift"):
         response = client.post("/v1/session/modeling/backtest", json={"model_id": model_id})
         assert response.status_code == 200, response.text
 
-    missing_all = client.post("/v1/session/modeling/compare", json={})
-    assert missing_all.status_code == 409
-    assert set(missing_all.json()["detail"]["missing_diagnostics"]) == {"naive", "drift"}
+    comparison = client.post("/v1/session/modeling/compare", json={})
 
-    assert client.post(
-        "/v1/session/modeling/diagnostics", json={"model_id": "naive"},
-    ).status_code == 200
-    missing_one = client.post("/v1/session/modeling/compare", json={})
-    assert missing_one.status_code == 409
-    assert missing_one.json()["detail"]["missing_diagnostics"] == ["drift"]
-
-    assert client.post(
-        "/v1/session/modeling/diagnostics", json={"model_id": "drift"},
-    ).status_code == 200
-    assert client.post("/v1/session/modeling/compare", json={}).status_code == 200
+    assert comparison.status_code == 200, comparison.text
+    state = client.get("/v1/session/modeling/state").json()
+    assert set(state["artifacts"]["diagnostics"]) == {"naive", "drift"}
+    for model_id in ("naive", "drift"):
+        report = state["artifacts"]["diagnostics"][model_id]
+        backtest = state["artifacts"]["backtests"][model_id]
+        assert report["backtest_run_id"] == backtest["run_id"]
+        assert report["residuals_signature"] == backtest["oof_signature"]
 
 
 def test_diagnostics_ensure_prepares_the_entire_comparable_pool(client: TestClient):
@@ -639,6 +636,47 @@ def test_diagnostics_ensure_prepares_the_entire_comparable_pool(client: TestClie
         "/v1/session/modeling/compare", json={"model_ids": model_ids},
     )
     assert comparison.status_code == 200, comparison.text
+
+
+def test_compare_recovers_if_redis_session_is_overwritten_after_diagnostics_ensure(
+    monkeypatch,
+):
+    """Reproduce the two-request lost-update window from production Redis."""
+    fakeredis = pytest.importorskip("fakeredis")
+    store = RedisSessionStore(client=fakeredis.FakeStrictRedis(), ttl_seconds=3600)
+    monkeypatch.setattr(session_store_module, "_store", store)
+    with TestClient(app) as redis_client:
+        _prepare(redis_client)
+        assert redis_client.get(
+            "/v1/session/modeling/context?horizon=3&n_splits=3",
+        ).status_code == 200
+        for model_id in ("naive", "drift"):
+            backtest = redis_client.post(
+                "/v1/session/modeling/backtest", json={"model_id": model_id},
+            )
+            assert backtest.status_code == 200, backtest.text
+
+        session_id = redis_client.cookies.get(SESSION_COOKIE_NAME)
+        stale_request_snapshot = store.get(session_id)
+        ensured = redis_client.post(
+            "/v1/session/modeling/diagnostics/ensure",
+            json={"model_ids": ["naive", "drift"]},
+        )
+        assert ensured.status_code == 200, ensured.text
+
+        # A request that started before ensure can overwrite the whole Redis
+        # document afterwards. Task 106 then made /compare observe no reports.
+        store.save(stale_request_snapshot)
+        assert store.get(session_id).modeling_artifacts.get("diagnostics", {}) == {}
+
+        comparison = redis_client.post(
+            "/v1/session/modeling/compare",
+            json={"model_ids": ["naive", "drift"]},
+        )
+        assert comparison.status_code == 200, comparison.text
+        persisted = store.get(session_id)
+        assert set(persisted.modeling_artifacts["diagnostics"]) == {"naive", "drift"}
+        assert persisted.modeling_artifacts["comparison"]["comparison_id"]
 
 
 def test_comparison_rejects_duplicate_unknown_and_baselineless_pool(client: TestClient):

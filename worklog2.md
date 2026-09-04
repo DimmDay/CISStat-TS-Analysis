@@ -1897,3 +1897,66 @@ Commit/push и production deploy не выполнялись.
 - `packages/ui/components/ModelingWorkflowOverview.test.tsx`
 - `tests/api/test_diagnostics.py`
 - `tests/api/test_modeling_workflow.py`
+
+---
+
+## Task 107 — Атомарная подготовка diagnostics в comparison
+
+Дата: 2026-09-04. База: `main @ a363837488901ce71f8520f6936cf245d60bd07f`.
+Включает незакоммиченные hotfix Task 105–106; commit/push и production deploy не выполнялись.
+
+### Воспроизведение и первопричина
+
+- После Task 106 UI всё ещё мог получить: `Для comparison нужны diagnostics каждого
+  backtest: theta, naive, drift, mean`.
+- Живой Render backend проверен через Vercel proxy: `/diagnostics/ensure` существует
+  и отвечает предметной валидацией 409, а не 404. Причина не сводилась к отсутствию
+  нового endpoint на backend.
+- Task 106 разбивал одну пользовательскую операцию на два HTTP-запроса:
+  `diagnostics/ensure`, затем `/compare`. Каждый запрос независимо читал и полностью
+  перезаписывал JSON-документ сессии в Redis. Запрос, начавшийся со старого снимка,
+  мог сохраниться между этими шагами и удалить только что рассчитанные diagnostics.
+- Production-shaped тест с `RedisSessionStore`/`fakeredis` детерминированно
+  воспроизвёл окно: ensure сохраняет оба отчёта, затем устаревший snapshot
+  перезаписывает сессию; прежний прямой compare видел пустой diagnostics map и
+  возвращал тот же 409. MemorySessionStore этот класс проблемы маскировал aliasing.
+
+### Исправление
+
+- `/v1/session/modeling/compare` теперь сам обеспечивает полный prerequisite:
+  после проверки backtests, execution/OOF lineage, cohort и tuning lineage он
+  переиспользует актуальные diagnostics и рассчитывает отсутствующие либо stale.
+- Подготовка отчётов выполняется в отдельном snapshot без мутации сессии. Только
+  после успешной валидации diagnostics, applicability и построения comparison
+  diagnostics и comparison сохраняются вместе одним `store.save()`.
+- Fail-closed контракт сохранён: отсутствующий, incomplete, неподписанный,
+  несопоставимый или stale относительно tuning backtest по-прежнему отклоняется;
+  diagnostics не синтезируются без валидного OOF lineage.
+- UI comparison упрощён до одного `/compare` запроса. Это устраняет наблюдаемое
+  промежуточное состояние и остаётся совместимым со старым клиентом: даже если он
+  вызывает `/compare` напрямую, backend сам выполняет обязательную диагностику.
+- Явный `/diagnostics/ensure` сохранён для batch-подготовки и повторного использования.
+
+### TDD и проверки
+
+- RED: прямой `/compare` после двух валидных backtests без ручных diagnostics
+  вернул 409 с `missing_diagnostics=[naive, drift]`, полностью повторив симптом.
+- Добавлен Redis regression test с принудительной перезаписью stale snapshot между
+  ensure и compare; новый compare восстанавливает diagnostics и сохраняет comparison.
+- Точечные API/Redis тесты: 3/3 PASS.
+- Полный Modeling backend/core/API набор: 153 PASS; 2 известных stale-теста базы
+  остались красными (`1.0.0-draft` против `1.1.0-draft` и удалённый Task 102
+  heuristic `auto_ensemble_trigger`). Изменения Task 107 их не затрагивают.
+- Modeling UI: 62/62 PASS.
+- TypeScript embedded/standalone: PASS с принятыми флагами
+  `--ignoreDeprecations 6.0 --noUncheckedSideEffectImports false`.
+- Production build standalone: PASS, 13/13 static pages, `/modeling` включён,
+  First Load JS 459 kB. Временный Node memory shim после проверки удалён.
+- `py_compile` и `git diff --check`: PASS.
+
+### Изменённые файлы Task 107
+
+- `apps/api/routers/modeling_session.py`
+- `packages/ui/components/ModelingWorkflowOverview.tsx`
+- `packages/ui/components/ModelingWorkflowOverview.test.tsx`
+- `tests/api/test_modeling_workflow.py`

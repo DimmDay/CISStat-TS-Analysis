@@ -1077,6 +1077,44 @@ def _diagnostics_matches_backtest(
     )
 
 
+def _prepare_session_diagnostics(
+    session,
+    model_ids: list[str],
+    backtests: dict[str, dict[str, Any]],
+) -> tuple[dict[str, dict[str, Any]], dict[str, SessionDiagnosticsResponse], list[str]]:
+    """Build a complete diagnostics snapshot without mutating the session."""
+    saved = session.modeling_artifacts.get("diagnostics", {})
+    prepared = dict(saved)
+    calculated: dict[str, SessionDiagnosticsResponse] = {}
+    reused_model_ids: list[str] = []
+    for model_id in model_ids:
+        report = saved.get(model_id)
+        if report and _diagnostics_matches_backtest(report, backtests[model_id]):
+            reused_model_ids.append(model_id)
+            continue
+        calculated[model_id] = _build_session_diagnostics(
+            session, ModelingDiagnosticsRequest(model_id=model_id),
+        )
+    prepared.update({
+        model_id: report.model_dump(mode="json")
+        for model_id, report in calculated.items()
+    })
+    return prepared, calculated, reused_model_ids
+
+
+def _commit_prepared_diagnostics(
+    session,
+    prepared: dict[str, dict[str, Any]],
+    calculated: dict[str, SessionDiagnosticsResponse],
+) -> None:
+    if not calculated:
+        return
+    _invalidate_after_diagnostics(session)
+    session.modeling_artifacts["diagnostics"] = prepared
+    session.modeling_pipeline["diagnostics"] = "done"
+    session.modeling_pipeline["comparison"] = "in_progress"
+
+
 @router.post("/diagnostics", response_model=SessionDiagnosticsResponse)
 def diagnose_modeling_candidate(
     payload: ModelingDiagnosticsRequest,
@@ -1122,32 +1160,12 @@ def ensure_modeling_diagnostics(
             },
         )
 
-    saved = session.modeling_artifacts.setdefault("diagnostics", {})
-    calculated: dict[str, SessionDiagnosticsResponse] = {}
-    reused_model_ids: list[str] = []
-    for model_id in model_ids:
-        report = saved.get(model_id)
-        if report and _diagnostics_matches_backtest(report, backtests[model_id]):
-            reused_model_ids.append(model_id)
-            continue
-        calculated[model_id] = _build_session_diagnostics(
-            session, ModelingDiagnosticsRequest(model_id=model_id),
-        )
-
-    if calculated:
-        _invalidate_after_diagnostics(session)
-        session.modeling_artifacts.setdefault("diagnostics", {}).update({
-            model_id: report.model_dump(mode="json")
-            for model_id, report in calculated.items()
-        })
-        session.modeling_pipeline["diagnostics"] = "done"
-        session.modeling_pipeline["comparison"] = "in_progress"
-        session.touch()
-        store.save(session)
-    else:
-        session.touch()
-        store.save(session)
-    diagnostics = session.modeling_artifacts.get("diagnostics", {})
+    diagnostics, calculated, reused_model_ids = _prepare_session_diagnostics(
+        session, model_ids, backtests,
+    )
+    _commit_prepared_diagnostics(session, diagnostics, calculated)
+    session.touch()
+    store.save(session)
     return {
         "model_ids": model_ids,
         "calculated_model_ids": list(calculated),
@@ -1220,28 +1238,17 @@ def compare_modeling_candidates(
             status_code=409,
             detail=f"Бэктесты устарели относительно текущего tuning run: {stale_tuned}",
         )
-    saved_diagnostics = session.modeling_artifacts.get("diagnostics", {})
-    missing_diagnostics = [model_id for model_id in model_ids if model_id not in saved_diagnostics]
-    if missing_diagnostics:
-        raise HTTPException(
-            status_code=409,
-            detail={
-                "message": "Для comparison нужны diagnostics каждого backtest",
-                "missing_diagnostics": missing_diagnostics,
-            },
-        )
+    # Comparison owns its complete prerequisite contract. Preparing diagnostics
+    # here keeps Redis read/modify/write and comparison in one HTTP request, so
+    # old clients and concurrent session reloads cannot observe a half-ready pool.
+    prepared_diagnostics, calculated_diagnostics, _ = _prepare_session_diagnostics(
+        session, model_ids, saved,
+    )
     stale_diagnostics = []
     for backtest in results:
         model_id = backtest["model_id"]
-        report = saved_diagnostics[model_id]
-        expected_signature = diagnostics_signature(report)
-        if (
-            report.get("backtest_run_id") != backtest.get("run_id")
-            or report.get("residuals_signature") != backtest.get("oof_signature")
-            or report.get("parameter_signature") != backtest.get("parameter_signature")
-            or report.get("cohort_id") != backtest.get("cohort_id")
-            or report.get("diagnostics_signature") != expected_signature
-        ):
+        report = prepared_diagnostics[model_id]
+        if not _diagnostics_matches_backtest(report, backtest):
             stale_diagnostics.append(model_id)
     if stale_diagnostics:
         raise HTTPException(
@@ -1272,12 +1279,15 @@ def compare_modeling_candidates(
     try:
         result = build_comparison(
             fingerprint=context["fingerprint"], cohort_id=next(iter(cohorts)),
-            backtests=results, diagnostics=saved_diagnostics,
+            backtests=results, diagnostics=prepared_diagnostics,
             applicability_levels=applicability_levels,
             comparison_id=str(uuid4()),
         )
     except ComparisonContractError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    _commit_prepared_diagnostics(
+        session, prepared_diagnostics, calculated_diagnostics,
+    )
     session.modeling_artifacts["comparison"] = result.model_dump(mode="json")
     session.modeling_artifacts.pop("selection_analysis", None)
     session.modeling_artifacts.pop("ensemble_backtests", None)

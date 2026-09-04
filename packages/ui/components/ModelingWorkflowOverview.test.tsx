@@ -145,19 +145,14 @@ test("renders traceable OOF diagnostics for a baseline model", async () => {
 });
 
 test("runs comparison and renders transparent ranking", async () => {
-  mockFetch
-    .mockResolvedValueOnce({ ok: true, json: async () => ({
-      model_ids: ["naive", "drift"], calculated_model_ids: ["naive", "drift"],
-      reused_model_ids: [], diagnostics: {},
-    }) })
-    .mockResolvedValueOnce({ ok: true, json: async () => comparison });
+  mockFetch.mockResolvedValueOnce({ ok: true, json: async () => comparison });
   render(<ModelingWorkflowOverview stageId="comparison" modelIds={["naive", "drift"]} />);
 
   fireEvent.click(screen.getByRole("button", { name: "Сравнить модели" }));
 
   await waitFor(() => expect(screen.getByText("Drift")).toBeInTheDocument());
-  expect(mockFetch).toHaveBeenNthCalledWith(1, expect.stringContaining("/v1/session/modeling/diagnostics/ensure"), expect.objectContaining({ credentials: "include" }));
-  expect(mockFetch).toHaveBeenNthCalledWith(2, expect.stringContaining("/v1/session/modeling/compare"), expect.objectContaining({ credentials: "include" }));
+  expect(mockFetch).toHaveBeenCalledTimes(1);
+  expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("/v1/session/modeling/compare"), expect.objectContaining({ credentials: "include" }));
   expect(screen.getByText(/min-max внутри сопоставимого пула/)).toBeInTheDocument();
   expect(screen.getByTestId("comparison-lineage")).toHaveTextContent("comparison-ab");
   expect(screen.getByTestId("comparison-ranking")).toHaveTextContent("1.200 ± 0.100");
@@ -196,10 +191,6 @@ test("shows when comparable-pool diagnostics cannot be ensured", async () => {
 
 test("selects a ranked model and generates downloadable Model Card", async () => {
   mockFetch
-    .mockResolvedValueOnce({ ok: true, json: async () => ({
-      model_ids: ["naive", "drift"], calculated_model_ids: [],
-      reused_model_ids: ["naive", "drift"], diagnostics: {},
-    }) })
     .mockResolvedValueOnce({ ok: true, json: async () => comparison })
     .mockResolvedValueOnce({ ok: true, json: async () => selectionAnalysis })
     .mockResolvedValueOnce({ ok: true, json: async () => ({
