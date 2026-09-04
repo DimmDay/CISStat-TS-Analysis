@@ -1684,3 +1684,28 @@ OOF-метрик, diagnostics и lineage. Корреляция ошибок со
 - `tests/api/test_modeling_selection_spec.py` (новый)
 - `tests/unit/test_backtesting_engine.py`
 - `tests/unit/test_modeling_selection.py` (новый)
+
+---
+
+## Task 103 — Спецификация: Account/Seats (моно/мульти доступ) + Compute Unit метеринг
+
+Спроектирована архитектура биллинговой модели, расширяющей
+ROLES_AND_PLANS_SPEC.md: сущность Account (mono/multi, seats, пул CU) +
+AccountMembership (owner/member — отдельная ось от Role/Plan). План и
+цена перенесены с Principal на Account, require_capability(...) не
+переписывается — меняется только источник резолва плана.
+Артефакт: spec_billing_accounts.md. Синхронизация: main @ a42df0a.
+
+Ключевые решения: линейное ценообразование price = base_price × seats
+для self-service; единица метеринга — Compute Unit (не токены LLM) —
+формула по типу операции, коэффициенты калибруются отдельно; пул CU
+на уровне Account, масштабируемый от seats, не делится поровну;
+резервирование CU до выполнения операции (защита инфраструктурного
+бюджета, не только бухгалтерия). Переиспользование: бюджет PELT-сетки
+(Task 76) и TuningPlanExecution (Task 99) как источники входных
+параметров формулы CU — не переизобретаются заново.
+
+Статус: архитектурный дизайн передан на ревью, реализация не начата
+(коммит/push в main запрещён протоколом AGENTS.md). 5 открытых вопросов
+к тимлиду (§9 спецификации), в первую очередь — калибровка
+ALGORITHM_COEFFICIENTS на реальных бенчмарках.
