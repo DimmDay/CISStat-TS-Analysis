@@ -11,8 +11,8 @@
 // портала, или отдельный суб-бренд ("CISStat TS Analysis" как отдельный
 // продукт под общим брендом)?
 //
-// Task 119: слева от названия добавлен логотип (public/logo_TS.png),
-// название усилено до bold с небольшим увеличением размера шрифта.
+// Task 119/120: логотип обслуживается из public-каталога standalone-приложения,
+// название семантически и визуально усилено до bold.
 
 import Link from "next/link";
 import Image from "next/image";
@@ -41,7 +41,7 @@ export function ProductHeader() {
                 priority
               />
             </div>
-            <span className="text-[15px] font-bold text-brand">CISStat TS Analysis</span>
+            <strong className="text-[15px] font-bold text-brand">CISStat TS Analysis</strong>
           </div>
           <nav className="flex items-center gap-6 text-[13.5px]">
             {NAV_ITEMS.map((item) => (

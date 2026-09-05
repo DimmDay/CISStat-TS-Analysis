@@ -2648,3 +2648,56 @@ Commit/push и production deploy не выполнялись.
 
 - `apps/standalone/components/ProductHeader.tsx`
 - `apps/standalone/components/ProductHeader.test.tsx`
+
+---
+
+## Task 120 — Исправление logo asset и production bold в ProductHeader
+
+Дата: 2026-09-05. База: `main @ 7d143cccf33bcf618589a88e96c43e7bf2b35fb7`.
+Commit/push и production deploy не выполнялись.
+
+### Воспроизведение и первопричины Task 119
+
+- `ProductHeader` запрашивал `/logo_TS.png`, однако файл находился в
+  корневом `public/` монорепозитория. Standalone Next.js собирается из
+  `apps/standalone` и обслуживает статические URL только из
+  `apps/standalone/public`, поэтому production-запрос логотипа возвращал 404
+  и браузер показывал значок сломанного изображения с alt-текстом.
+- В компонент был добавлен класс `font-bold`, но standalone Tailwind config
+  сканировал только `./app/**/*` и `../../packages/ui/**/*`. Каталог
+  `./components/**/*`, где расположен `ProductHeader`, отсутствовал в content
+  scan. Уникальные классы `font-bold` и `text-[15px]` не гарантированно
+  попадали в production CSS, поэтому название сохраняло обычное начертание.
+- Тест Task 119 проверял только наличие className в DOM и существование
+  элемента `next/image`, но не наличие физически обслуживаемого файла и не
+  production scan Tailwind.
+
+### Исправление
+
+- Точная копия `logo_TS.png` добавлена в канонический public-каталог
+  standalone-приложения: `apps/standalone/public/logo_TS.png`. URL компонента
+  `/logo_TS.png` теперь соответствует Next.js static-file contract.
+- В `apps/standalone/tailwind.config.ts` добавлен glob
+  `./components/**/*.{ts,tsx}`, поэтому стили ProductHeader включаются в
+  production build.
+- Название заменено со `span` на семантический `strong` и сохраняет явные
+  классы `font-bold text-[15px]`. Жирное начертание подтверждается и
+  семантикой HTML, и сгенерированным Tailwind CSS.
+
+### TDD и проверки
+
+- До production-кода тесты усилены проверками: название рендерится как
+  `STRONG`, PNG существует и непуст в `apps/standalone/public`, Tailwind
+  content включает standalone components.
+- RED source-contract: 3/3 FAIL. GREEN source-contract: 4/4 PASS;
+  бинарная копия PNG побайтово совпадает с исходным ассетом.
+- `file` подтверждает корректный PNG 1058×1034 RGBA; `git diff --check`: PASS.
+- Jest, TypeScript typecheck и production build не запущены: чистый worktree
+  не содержит `node_modules`, локальные `jest`, `tsc` и `next` отсутствуют.
+
+### Изменённые/новые файлы Task 120
+
+- `apps/standalone/components/ProductHeader.tsx`
+- `apps/standalone/components/ProductHeader.test.tsx`
+- `apps/standalone/tailwind.config.ts`
+- `apps/standalone/public/logo_TS.png`
