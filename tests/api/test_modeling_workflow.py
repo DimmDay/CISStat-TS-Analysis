@@ -169,7 +169,6 @@ def test_candidates_preserve_sliding_eda_contract_for_backtest(client: TestClien
         },
     )
     assert candidates.status_code == 200, candidates.text
-
     response = client.post("/v1/session/modeling/backtest", json={"model_id": "naive"})
 
     assert response.status_code == 200, response.text
@@ -188,13 +187,19 @@ def test_baseline_bootstrap_atomically_populates_comparable_cohort(client: TestC
         json={"strategy": "sliding", "horizon": 2, "n_splits": 2, "gap": 1, "train_window": 40},
     )
     assert candidates.status_code == 200, candidates.text
+    runnable = {
+        item["model_id"] for item in candidates.json()["candidates"]
+        if "backtest" in item["available_actions"]
+    }
 
     response = client.post("/v1/session/modeling/baselines")
 
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["status"] == "success"
-    assert "naive" in body["backtests"]
+    assert set(body["backtests"]) == {
+        "naive", "seasonal_naive", "drift", "mean",
+    }
     assert body["cohort_id"]
     assert {
         item["cohort_id"] for item in body["backtests"].values()
@@ -204,7 +209,9 @@ def test_baseline_bootstrap_atomically_populates_comparable_cohort(client: TestC
     state = client.get("/v1/session/modeling/state").json()
     assert state["pipeline"]["baseline_estimation"] == "done"
     assert state["pipeline"]["backtest"] == "in_progress"
-    assert state["artifacts"]["execution_scope"]["pending_backtest_model_ids"]
+    assert state["artifacts"]["execution_scope"]["pending_backtest_model_ids"] == sorted(
+        runnable - {"naive", "seasonal_naive", "drift", "mean"},
+    )
     assert "naive" in state["artifacts"]["backtests"]
 
     repeated = client.post("/v1/session/modeling/baselines")
@@ -486,6 +493,217 @@ def test_resumable_tuning_executes_one_trial_per_step_and_promotes_best(client: 
     )
     assert repeated.status_code == 200, repeated.text
     assert repeated.json()["tuning_response"]["tuning_id"] == tuning["tuning_id"]
+
+
+def test_universal_model_job_is_idempotent_resumable_and_compact(client: TestClient):
+    _prepare(client)
+    candidates = client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "sliding", "horizon": 2, "n_splits": 2,
+              "gap": 1, "train_window": 40},
+    )
+    assert candidates.status_code == 200, candidates.text
+    request = {
+        "operation": "tuning", "model_id": "ets", "max_trials": 2,
+        "metric": "rmse", "random_state": 42,
+        "idempotency_key": "ets-default-tuning",
+    }
+
+    started = client.post("/v1/session/modeling/jobs/start", json=request)
+    repeated_start = client.post("/v1/session/modeling/jobs/start", json=request)
+
+    assert started.status_code == 200, started.text
+    assert repeated_start.status_code == 200, repeated_start.text
+    job = started.json()
+    assert repeated_start.json()["job_id"] == job["job_id"]
+    assert repeated_start.json()["idempotent_replay"] is True
+    assert job["contract_version"] == "model-job-v1"
+    assert job["operation"] == "tuning"
+    assert job["dependency_group"] == "classical"
+    assert job["deterministic_seed"] == 42
+    assert job["progress"] == {
+        "phase": "trials", "completed_steps": 0, "total_steps": 2,
+        "percent": 0.0,
+        "trials": {"completed": 0, "total": 2},
+        "folds": {"completed": 0, "total": 4},
+        "epochs": {"completed": 0, "total": 0},
+    }
+
+    first = client.post(
+        f"/v1/session/modeling/jobs/{job['job_id']}/step",
+        json={"expected_step": 0},
+    )
+    assert first.status_code == 200, first.text
+    assert first.json()["progress"]["trials"] == {"completed": 1, "total": 2}
+    assert first.json()["progress"]["folds"] == {"completed": 2, "total": 4}
+
+    replay = client.post(
+        f"/v1/session/modeling/jobs/{job['job_id']}/step",
+        json={"expected_step": 0},
+    )
+    assert replay.status_code == 200, replay.text
+    assert replay.json()["idempotent_replay"] is True
+    assert replay.json()["progress"]["completed_steps"] == 1
+
+    status = client.get(f"/v1/session/modeling/jobs/{job['job_id']}")
+    assert status.status_code == 200, status.text
+    assert status.json()["progress"]["completed_steps"] == 1
+
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    stored = get_session_store().get(session_id).modeling_artifacts["model_jobs"][job["job_id"]]
+    assert "trial_backtests" not in stored
+    assert "fitted_model" not in stored
+    assert len(stored.get("best_backtest", {}).get("oof_predictions", [])) == 4
+
+    final = client.post(
+        f"/v1/session/modeling/jobs/{job['job_id']}/step",
+        json={"expected_step": 1},
+    )
+    assert final.status_code == 200, final.text
+    assert final.json()["status"] == "completed"
+    assert final.json()["result"]["promoted_backtest"]["model_id"] == "ets"
+
+
+def test_universal_model_job_cancel_is_persisted_and_blocks_steps(client: TestClient):
+    _prepare(client)
+    assert client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "expanding", "horizon": 2, "n_splits": 2},
+    ).status_code == 200
+    started = client.post(
+        "/v1/session/modeling/jobs/start",
+        json={"operation": "tuning", "model_id": "ets", "max_trials": 2},
+    )
+    assert started.status_code == 200, started.text
+    job_id = started.json()["job_id"]
+
+    cancelled = client.post(
+        f"/v1/session/modeling/jobs/{job_id}/cancel",
+        json={"reason": "Остановлено аналитиком"},
+    )
+    assert cancelled.status_code == 200, cancelled.text
+    assert cancelled.json()["status"] == "cancelled"
+    assert cancelled.json()["cancellation"]["reason"] == "Остановлено аналитиком"
+
+    step = client.post(
+        f"/v1/session/modeling/jobs/{job_id}/step",
+        json={"expected_step": 0},
+    )
+    assert step.status_code == 409
+    assert client.get(
+        f"/v1/session/modeling/jobs/{job_id}",
+    ).json()["status"] == "cancelled"
+
+
+def test_universal_model_job_enforces_memory_budget(
+    client: TestClient, monkeypatch,
+):
+    from apps.api.routers import modeling_session as modeling_session_router
+
+    _prepare(client)
+    assert client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "expanding", "horizon": 2, "n_splits": 2},
+    ).status_code == 200
+    started = client.post(
+        "/v1/session/modeling/jobs/start",
+        json={"operation": "tuning", "model_id": "ets", "max_trials": 1},
+    )
+    assert started.status_code == 200, started.text
+    job_id = started.json()["job_id"]
+    monkeypatch.setattr(modeling_session_router, "process_memory_mb", lambda: 1_000_000.0)
+
+    step = client.post(
+        f"/v1/session/modeling/jobs/{job_id}/step",
+        json={"expected_step": 0},
+    )
+
+    assert step.status_code == 422
+    status = client.get(f"/v1/session/modeling/jobs/{job_id}").json()
+    assert status["status"] == "failed"
+    assert "memory budget" in status["error"]
+
+
+def test_universal_model_job_enforces_persisted_deadline(
+    client: TestClient, monkeypatch,
+):
+    from apps.api.routers import modeling_session as modeling_session_router
+
+    _prepare(client)
+    assert client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "expanding", "horizon": 2, "n_splits": 2},
+    ).status_code == 200
+    started = client.post(
+        "/v1/session/modeling/jobs/start",
+        json={"operation": "tuning", "model_id": "ets", "max_trials": 1},
+    )
+    assert started.status_code == 200, started.text
+    job_id = started.json()["job_id"]
+    monkeypatch.setattr(modeling_session_router, "deadline_expired", lambda _job: True)
+
+    step = client.post(
+        f"/v1/session/modeling/jobs/{job_id}/step",
+        json={"expected_step": 0},
+    )
+
+    assert step.status_code == 408
+    status = client.get(f"/v1/session/modeling/jobs/{job_id}").json()
+    assert status["status"] == "failed"
+    assert "timeout" in status["error"]
+
+
+def test_universal_model_job_concurrent_redis_step_converges_via_cas(monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    import apps.api.routers.modeling_session as modeling_session_router
+
+    fakeredis = pytest.importorskip("fakeredis")
+    store = RedisSessionStore(client=fakeredis.FakeStrictRedis(), ttl_seconds=3600)
+    monkeypatch.setattr(session_store_module, "_store", store)
+    original_execute = modeling_session_router.execute_tuning_trial
+    barrier = Barrier(2)
+
+    def synchronized_execute(*args, **kwargs):
+        result = original_execute(*args, **kwargs)
+        barrier.wait(timeout=15)
+        return result
+
+    monkeypatch.setattr(
+        modeling_session_router, "execute_tuning_trial", synchronized_execute,
+    )
+    with TestClient(app) as redis_client:
+        _prepare(redis_client)
+        assert redis_client.post(
+            "/v1/session/modeling/candidates",
+            json={"strategy": "expanding", "horizon": 2, "n_splits": 2},
+        ).status_code == 200
+        started = redis_client.post(
+            "/v1/session/modeling/jobs/start",
+            json={"operation": "tuning", "model_id": "ets", "max_trials": 1},
+        )
+        assert started.status_code == 200, started.text
+        job_id = started.json()["job_id"]
+
+        def run_step():
+            return redis_client.post(
+                f"/v1/session/modeling/jobs/{job_id}/step",
+                json={"expected_step": 0},
+            )
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            responses = list(executor.map(lambda _: run_step(), range(2)))
+
+        assert [item.status_code for item in responses] == [200, 200]
+        bodies = [item.json() for item in responses]
+        assert all(item["status"] == "completed" for item in bodies)
+        assert any(item["idempotent_replay"] for item in bodies)
+        persisted = redis_client.get(
+            f"/v1/session/modeling/jobs/{job_id}",
+        ).json()
+        assert persisted["progress"]["completed_steps"] == 1
+        assert persisted["result"]["model_id"] == "ets"
 
 
 def test_tuning_reuses_exact_sliding_eda_plan_and_cohort(client: TestClient):

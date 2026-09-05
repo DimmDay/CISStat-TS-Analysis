@@ -2936,3 +2936,103 @@ Commit/push и production deploy не выполнялись.
 - `tests/unit/test_model_execution_contract.py`
 - `tests/unit/test_model_execution_contract_v2_compliance.py`
 - `tests/unit/test_modeling_comparison.py`
+
+---
+
+## Task 123 — Универсальное исполнение долгих model jobs
+
+Дата: 2026-09-05. База: `main @ 36439d569ba1d118fbebb9b29b3f482ea8fefac7`.
+Commit/push и production deploy не выполнялись.
+
+### Проверка поведения авто-бэктеста
+
+- Поведение после Task 122.1 соответствует контракту Modeling: POST
+  `/modeling/baselines` автоматически исполняет только четыре обязательные
+  baseline-модели — `naive`, `seasonal_naive`, `drift`, `mean`.
+- Остальные runtime-ready модели входят в подписанный execution scope как
+  `pending_backtest_model_ids` и должны быть запущены аналитиком либо явно
+  исключены с обоснованием. Это не потеря capability.
+- Наблюдавшиеся пять готовых результатов означают четыре автоматически
+  рассчитанных baseline плюс один переиспользованный совместимый backtest из
+  session artifacts. Regression-test фиксирует точный baseline-набор и
+  вычисляет pending относительно актуального runnable shortlist.
+
+### Model Job Contract v1
+
+- Добавлен независимый от FastAPI модуль `model-job-v1`: детерминированная
+  SHA-256 identity связывает operation, model, cohort, work plan, seed и
+  resource policy. Текущий tuning стал первым production-адаптером общего
+  job-протокола; новые модели в scope Task 123 не добавлялись.
+- Реализованы endpoint’ы `POST /jobs/start`, `GET /jobs/{job_id}`,
+  `POST /jobs/{job_id}/step`, `POST /jobs/{job_id}/cancel`. Один step
+  исполняет один ограниченный trial; status позволяет продолжить job после
+  перезапуска API/клиента по сохранённому Redis state.
+- Повторный start того же плана и повтор уже подтверждённого step возвращают
+  текущее состояние как idempotent replay. Конкурентные одинаковые Redis
+  steps сходятся через optimistic CAS: победившая revision возвращается обоим
+  клиентам без повторного продвижения progress.
+- Job хранит selected work plan, компактные trial metrics, ошибки, progress и
+  только лучший промежуточный OOF artifact. После завершения временные данные
+  очищаются, а job сохраняет ссылку на канонический tuning artifact; fitted
+  model/estimator в Redis не сериализуется.
+- Legacy `/tuning/start` и `/tuning/step` сохранены для обратной совместимости,
+  но основной UI переведён на универсальные `/jobs/*` endpoint’ы.
+
+### Ресурсы, зависимости и воспроизводимость
+
+- Registry descriptor расширен `dependency_group`; текущие девять моделей
+  относятся к `classical`. Манифест заранее разделяет `classical`, `ml`,
+  `volatility`, `neural` без преждевременной установки библиотек будущих
+  Tasks 124–143.
+- Resource policy выводится из registry capabilities и фиксирует memory class/
+  MiB, CPU threads/time, GPU mode, step timeout и общий persisted deadline.
+  Memory, CPU time и оба timeout проверяются fail closed; required GPU
+  допускается только при явном deploy-сигнале `CISSTAT_GPU_AVAILABLE`, без
+  eager-импорта PyTorch/CUDA.
+- `random_state` подписан job identity и передаётся в каждый fold-level
+  `ModelExecutionRequest`; nondeterministic adapter не допускается к job start.
+- Прогресс имеет общий формат trials/folds/epochs. Для текущего tuning один
+  work unit завершает один trial и его exact EDA folds; epochs остаются 0/0 до
+  подключения neural job adapters.
+
+### UI
+
+- Tuning использует универсальный job API, восстанавливает уже выполняющийся
+  идентичный план и показывает progress одновременно по trials, folds и
+  epochs.
+- Во время job доступна кооперативная отмена. После cancel следующий work unit
+  не стартует; ошибка/terminal state выводится доступным `role=alert`.
+- Promoted backtest и весь последующий diagnostics/comparison/selection/
+  Model Card workflow сохраняют прежний контракт.
+
+### TDD и проверки
+
+- RED backend: новый suite завершался collection error
+  `ModuleNotFoundError: apps.api.model_jobs`; RED frontend показывал обращения
+  к legacy `/tuning/start|step` вместо `/jobs/*`.
+- Job/API gates проверяют start/status/step/cancel, start/step idempotency,
+  compact Redis state, persisted deadline, memory budget, deterministic seed,
+  dependency groups и реальную гонку двух Redis steps через barrier/CAS.
+- Modeling regression subset: 169/169 PASS; Modeling UI: 58/58 PASS.
+- Полный backend regression: 1328/1328 PASS, 3/3 snapshots PASS.
+- Полный frontend regression: 84/84 suites, 726/726 tests PASS.
+- TypeScript 5.9 application typecheck: embedded PASS, standalone PASS.
+- Production build embedded/standalone: PASS, по 13/13 статических страниц,
+  включая `/modeling`; First Load JS 464 kB. Для ограничения sandbox Node 24
+  `uv_resident_set_memory` использован временный внешний memory shim; после
+  сборок он удалён и в изменения не входит.
+- `pip check`: PASS. `git diff --check`: PASS.
+
+### Изменённые/новые файлы Task 123
+
+- `apps/api/model_jobs.py`
+- `apps/api/model_execution.py`
+- `apps/api/backtesting.py`
+- `apps/api/modeling_tuning.py`
+- `apps/api/routers/modeling_session.py`
+- `packages/ui/components/ModelingWorkflowOverview.tsx`
+- `packages/ui/components/ModelingWorkflowOverview.test.tsx`
+- `packages/ui/lib/modeling.ts`
+- `tests/api/test_modeling_workflow.py`
+- `tests/unit/test_model_execution_contract.py`
+- `tests/unit/test_model_jobs.py`

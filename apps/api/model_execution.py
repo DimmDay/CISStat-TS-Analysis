@@ -27,6 +27,7 @@ ExecutionInputKind = Literal[
 ]
 ExecutionOutputKind = Literal["point", "distribution", "volatility"]
 GpuCapability = Literal["unsupported", "optional", "required"]
+ModelDependencyGroup = Literal["classical", "ml", "volatility", "neural"]
 
 
 class ModelExecutionContractError(ValueError):
@@ -207,6 +208,7 @@ class ModelExecutionDefinition:
     supports_prediction_intervals: bool = False
     deterministic: bool = True
     engine: str = "native"
+    dependency_group: ModelDependencyGroup = "classical"
     required_packages: tuple[str, ...] = ()
     resource_capabilities: ModelResourceCapabilities = field(
         default_factory=ModelResourceCapabilities,
@@ -225,6 +227,10 @@ class ModelExecutionDefinition:
             raise ModelExecutionContractError(f"Неподдерживаемый objective: {self.objective}")
         if self.input_kind not in {"univariate", "supervised", "multivariate", "panel"}:
             raise ModelExecutionContractError(f"Неподдерживаемый input_kind: {self.input_kind}")
+        if self.dependency_group not in {"classical", "ml", "volatility", "neural"}:
+            raise ModelExecutionContractError(
+                f"Неподдерживаемая dependency_group: {self.dependency_group}"
+            )
         supported_actions = {"backtest", "tune", "diagnostics"}
         if not self.actions or not self.actions.issubset(supported_actions):
             raise ModelExecutionContractError("actions содержит неподдерживаемое действие")
@@ -282,6 +288,7 @@ class ModelExecutionDefinition:
             "supports_prediction_intervals": self.supports_prediction_intervals,
             "deterministic": self.deterministic,
             "engine": self.engine,
+            "dependency_group": self.dependency_group,
             "required_packages": list(self.required_packages),
             "dependency_status": list(dependencies),
             "library_versions": {

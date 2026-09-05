@@ -336,6 +336,7 @@ def run_backtest_plan(
     predictors: Optional[Mapping[str, Predictor]] = None,
     preprocessing_warnings: Optional[list[str]] = None,
     fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
+    random_state: int = 42,
 ) -> dict[str, Any]:
     """Execute every EDA fold with strict, fixed-origin model predictions."""
     if int(seasonal_period) != plan.seasonal_period:
@@ -367,6 +368,7 @@ def run_backtest_plan(
             "output_kind": "point",
             "fit_policy": "per_train_fold",
             "actions": ["backtest"],
+            "dependency_group": "classical",
             "dependency_status": [],
             "library_versions": {"python": platform.python_version()},
             "runtime_available": True,
@@ -429,6 +431,7 @@ def run_backtest_plan(
                         params=parameters,
                         train_timestamps=train_timestamps,
                         future_timestamps=future_timestamps,
+                        random_state=random_state,
                     ),
                 )
                 model_forecast = list(execution_result.forecast)

@@ -123,6 +123,7 @@ def execute_tuning_trial(
     metric: str, predictors: Optional[Mapping[str, Predictor]] = None,
     fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
     preprocessing_warnings: Optional[list[str]] = None,
+    random_state: int = 42,
 ) -> tuple[TuneTrialResult, dict[str, Any]]:
     """Execute exactly one bounded trial on the immutable EDA plan."""
     if metric not in VALID_SESSION_TUNING_METRICS:
@@ -133,6 +134,7 @@ def execute_tuning_trial(
         seasonal_period=seasonal_period, params=dict(params),
         predictors=predictors, fold_preprocessor=fold_preprocessor,
         preprocessing_warnings=preprocessing_warnings,
+        random_state=random_state,
     )
     metrics = BacktestMetrics(**result["metrics"])
     if getattr(metrics, metric) is None:
@@ -149,6 +151,7 @@ def finalize_tuning_plan_with_artifacts(
     plan: BacktestPlan, metric: str, duration_ms: float,
     fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
     preprocessing_warnings: Optional[list[str]] = None,
+    best_backtest: Optional[dict[str, Any]] = None,
 ) -> TuningPlanExecution:
     """Build the canonical response after monolithic or resumed execution."""
     if not trials:
@@ -160,6 +163,11 @@ def finalize_tuning_plan_with_artifacts(
         range(len(trials)),
         key=lambda index: float(getattr(trials[index].metrics, metric)),
     )
+    selected_backtest = best_backtest
+    if selected_backtest is None:
+        if len(trial_backtests) != len(trials):
+            raise BacktestExecutionError("Tuning artifacts не совпадают с успешными trials")
+        selected_backtest = trial_backtests[best_index]
     warnings = list(preprocessing_warnings or [])
     if failures:
         warnings.append(
@@ -191,9 +199,9 @@ def finalize_tuning_plan_with_artifacts(
         ],
         preprocessing=preprocessing, warnings=warnings, tuning_id=tuning_id,
         parameter_signature=parameter_signature(model_id, best_params),
-        execution_contract=trial_backtests[best_index].get("execution_contract", {}),
+        execution_contract=selected_backtest.get("execution_contract", {}),
     )
-    return TuningPlanExecution(response=response, best_backtest=trial_backtests[best_index])
+    return TuningPlanExecution(response=response, best_backtest=selected_backtest)
 
 
 def execute_tuning_plan_with_artifacts(
@@ -221,6 +229,7 @@ def execute_tuning_plan_with_artifacts(
                 seasonal_period=seasonal_period, metric=metric,
                 predictors=predictors, fold_preprocessor=fold_preprocessor,
                 preprocessing_warnings=preprocessing_warnings,
+                random_state=random_state,
             )
             trials.append(trial)
             trial_backtests.append(result)

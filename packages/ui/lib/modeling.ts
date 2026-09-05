@@ -105,6 +105,7 @@ export interface ModelExecutionDescriptor {
   supports_prediction_intervals: boolean;
   deterministic: boolean;
   engine: string;
+  dependency_group: "classical" | "ml" | "volatility" | "neural";
   required_packages: string[];
   dependency_status: Array<{
     package: string;

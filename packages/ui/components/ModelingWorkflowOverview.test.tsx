@@ -110,9 +110,9 @@ test("shows the exact EDA cohort used by tuning", async () => {
   expect(screen.getByTestId("tuning-plan-summary")).toHaveTextContent("2 folds");
   expect(screen.getByTestId("tuning-plan-summary")).toHaveTextContent("per_train_fold");
   expect(screen.getByTestId("tuning-plan-summary")).toHaveTextContent("cohort-1234");
-  expect(mockFetch).toHaveBeenNthCalledWith(1, expect.stringContaining("/tuning/start"), expect.anything());
-  expect(mockFetch).toHaveBeenNthCalledWith(2, expect.stringContaining("/tuning/step"), expect.anything());
-  expect(mockFetch).toHaveBeenNthCalledWith(3, expect.stringContaining("/tuning/step"), expect.anything());
+  expect(mockFetch).toHaveBeenNthCalledWith(1, expect.stringContaining("/jobs/start"), expect.anything());
+  expect(mockFetch).toHaveBeenNthCalledWith(2, expect.stringContaining("/jobs/tune-job-1/step"), expect.anything());
+  expect(mockFetch).toHaveBeenNthCalledWith(3, expect.stringContaining("/jobs/tune-job-1/step"), expect.anything());
   expect(onBacktestPromoted).toHaveBeenCalledWith(expect.objectContaining({ model_id: "ets" }));
 });
 
@@ -131,6 +131,64 @@ test("derives tuning selector from capability actions instead of hardcoded model
   expect(screen.getByRole("option", { name: "custom_tunable" })).toBeInTheDocument();
   expect(screen.queryByRole("option", { name: "theta" })).not.toBeInTheDocument();
   expect(screen.getByText(/1 модель.*не требует отдельного tuning/i)).toBeInTheDocument();
+});
+
+test("shows universal job progress units and can cancel the active job", async () => {
+  let resolveStep: ((value: unknown) => void) | undefined;
+  mockFetch.mockImplementation((url: string) => {
+    if (url.includes("/jobs/start")) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          job_id: "job-progress", status: "in_progress",
+          progress: {
+            completed_steps: 0, total_steps: 2, percent: 0,
+            trials: { completed: 0, total: 2 },
+            folds: { completed: 0, total: 6 },
+            epochs: { completed: 0, total: 0 },
+          },
+        }),
+      });
+    }
+    if (url.includes("/jobs/job-progress/step")) {
+      return new Promise((resolve) => {
+        resolveStep = resolve;
+      });
+    }
+    if (url.includes("/jobs/job-progress/cancel")) {
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ job_id: "job-progress", status: "cancelled" }),
+      });
+    }
+    return Promise.reject(new Error(`Unexpected URL: ${url}`));
+  });
+  render(<ModelingWorkflowOverview stageId="tuning" modelIds={["ets"]} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "Запустить тюнинг" }));
+
+  await waitFor(() => expect(screen.getByText(
+    "Trials 0/2 · folds 0/6 · epochs 0/0",
+  )).toBeInTheDocument());
+  fireEvent.click(screen.getByRole("button", { name: "Отменить job" }));
+  await waitFor(() => expect(mockFetch).toHaveBeenCalledWith(
+    expect.stringContaining("/jobs/job-progress/cancel"), expect.anything(),
+  ));
+  resolveStep?.({
+    ok: true,
+    json: async () => ({
+      job_id: "job-progress", status: "in_progress",
+      progress: {
+        completed_steps: 1, total_steps: 2, percent: 50,
+        trials: { completed: 1, total: 2 },
+        folds: { completed: 3, total: 6 },
+        epochs: { completed: 0, total: 0 },
+      },
+    }),
+  });
+  await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(
+    "Model job отменён аналитиком",
+  ));
 });
 
 test("records one atomic defaults decision for every pending tunable model", async () => {

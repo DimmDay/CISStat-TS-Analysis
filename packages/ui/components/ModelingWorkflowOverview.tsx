@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "./Button";
 import { getApiBase } from "../lib/apiClient";
@@ -29,10 +29,19 @@ interface TuningResult {
 
 interface TuningJobResult {
   job_id: string;
-  status: "in_progress" | "completed";
-  completed_trials: number;
-  total_trials: number;
-  tuning_response: TuningResult | null;
+  status: "in_progress" | "completed" | "failed" | "cancelled" | "stale";
+  completed_trials?: number;
+  total_trials?: number;
+  tuning_response?: TuningResult | null;
+  result?: TuningResult | null;
+  progress?: {
+    completed_steps: number;
+    total_steps: number;
+    percent: number;
+    trials: { completed: number; total: number };
+    folds: { completed: number; total: number };
+    epochs: { completed: number; total: number };
+  };
 }
 
 interface WorkflowResult {
@@ -180,7 +189,16 @@ export function ModelingWorkflowOverview({
   const [resultState, setResultState] = useState<WorkflowResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tuningProgress, setTuningProgress] = useState<{ completed: number; total: number } | null>(null);
+  const [tuningProgress, setTuningProgress] = useState<{
+    completed: number;
+    total: number;
+    foldsCompleted: number;
+    foldsTotal: number;
+    epochsCompleted: number;
+    epochsTotal: number;
+  } | null>(null);
+  const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const cancelRequestedRef = useRef(false);
   // The effect below clears stale state after a stage change, but render happens
   // first. Gate synchronously by provenance so a tuning response can never be
   // interpreted as a diagnostics payload during that transition render.
@@ -278,34 +296,70 @@ export function ModelingWorkflowOverview({
 
   const runTuning = async () => {
     setTuningProgress(null);
+    setActiveJobId(null);
+    cancelRequestedRef.current = false;
     const value = await execute(
       async () => {
         let job = await postJson(
-          "/v1/session/modeling/tuning/start", { model_id: modelId },
+          "/v1/session/modeling/jobs/start", {
+            operation: "tuning",
+            model_id: modelId,
+            idempotency_key: `ui-tuning-${modelId}`,
+          },
         ) as unknown as TuningJobResult;
-        if (job.total_trials < 1 || job.total_trials > 64) {
+        setActiveJobId(job.job_id);
+        const updateProgress = (current: TuningJobResult) => {
+          const completed = current.progress?.completed_steps ?? current.completed_trials ?? 0;
+          const total = current.progress?.total_steps ?? current.total_trials ?? 0;
+          setTuningProgress({
+            completed,
+            total,
+            foldsCompleted: current.progress?.folds.completed ?? 0,
+            foldsTotal: current.progress?.folds.total ?? 0,
+            epochsCompleted: current.progress?.epochs.completed ?? 0,
+            epochsTotal: current.progress?.epochs.total ?? 0,
+          });
+          return { completed, total };
+        };
+        const initial = updateProgress(job);
+        if (initial.total < 1 || initial.total > 64) {
           throw new Error("Backend вернул недопустимый размер tuning plan");
         }
-        setTuningProgress({ completed: job.completed_trials, total: job.total_trials });
         while (job.status === "in_progress") {
-          const expectedTrialIndex = job.completed_trials;
-          job = await postJson("/v1/session/modeling/tuning/step", {
-            job_id: job.job_id,
-            expected_trial_index: expectedTrialIndex,
+          if (cancelRequestedRef.current) {
+            throw new Error("Model job отменён аналитиком");
+          }
+          const expectedStep = job.progress?.completed_steps ?? job.completed_trials ?? 0;
+          job = await postJson(`/v1/session/modeling/jobs/${job.job_id}/step`, {
+            expected_step: expectedStep,
           }) as unknown as TuningJobResult;
-          if (job.status === "in_progress" && job.completed_trials <= expectedTrialIndex) {
+          const next = updateProgress(job);
+          if (job.status === "in_progress" && next.completed <= expectedStep) {
             throw new Error("Tuning progress не продвигается; повторите запуск");
           }
-          setTuningProgress({ completed: job.completed_trials, total: job.total_trials });
         }
-        if (!job.tuning_response) {
+        const tuningResult = job.result ?? job.tuning_response;
+        if (job.status !== "completed" || !tuningResult) {
           throw new Error("Tuning job завершён без верифицируемого результата");
         }
-        return job.tuning_response as unknown as Record<string, unknown>;
+        return tuningResult as unknown as Record<string, unknown>;
       },
       "tuning",
     ) as unknown as TuningResult | null;
+    setActiveJobId(null);
     if (value?.promoted_backtest) onBacktestPromoted?.(value.promoted_backtest);
+  };
+
+  const cancelActiveJob = async () => {
+    if (!activeJobId) return;
+    cancelRequestedRef.current = true;
+    try {
+      await postJson(`/v1/session/modeling/jobs/${activeJobId}/cancel`, {
+        reason: "Остановлено аналитиком в интерфейсе",
+      });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Не удалось отменить model job");
+    }
   };
 
   const skipPendingTuning = async () => {
@@ -378,6 +432,11 @@ export function ModelingWorkflowOverview({
               <Button disabled={loading || !modelId} onClick={() => void runTuning()}>
                 {tuningCompleted ? "Перезапустить тюнинг" : "Запустить тюнинг"}
               </Button>
+              {loading && activeJobId && (
+                <Button onClick={() => void cancelActiveJob()}>
+                  Отменить job
+                </Button>
+              )}
               <Button
                 disabled={loading || pendingTuningModelIds.length === 0}
                 onClick={() => void skipPendingTuning()}
@@ -406,8 +465,8 @@ export function ModelingWorkflowOverview({
         )}
       </div>
 
-      {loading && <div className="flex flex-1 items-center justify-center gap-2 text-sm text-neutral-500"><Loader2 size={16} className="animate-spin" /> {stageId === "tuning" && tuningProgress ? `Trial ${tuningProgress.completed}/${tuningProgress.total}` : "Выполняется…"}</div>}
-      {error && <div className="mt-3 rounded border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</div>}
+      {loading && <div className="flex flex-1 items-center justify-center gap-2 text-sm text-neutral-500"><Loader2 size={16} className="animate-spin" /> {stageId === "tuning" && tuningProgress ? `Trials ${tuningProgress.completed}/${tuningProgress.total} · folds ${tuningProgress.foldsCompleted}/${tuningProgress.foldsTotal} · epochs ${tuningProgress.epochsCompleted}/${tuningProgress.epochsTotal}` : "Выполняется…"}</div>}
+      {error && <div role="alert" className="mt-3 rounded border border-red-200 bg-red-50 p-3 text-xs text-red-700">{error}</div>}
       {!loading && comparison && ["comparison", "selection"].includes(stageId) && (
         <div className="mt-4 min-h-0 flex-1 overflow-auto feed-scroll">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded border border-blue-200 bg-blue-50 p-2 text-[10px] text-blue-900" data-testid="comparison-lineage">

@@ -42,6 +42,7 @@ def test_registry_is_the_single_source_of_truth_for_production_actions():
         assert descriptor["model_id"] == model_id
         assert descriptor["input_kind"] == "univariate"
         assert descriptor["fit_policy"] == "per_train_fold"
+        assert descriptor["dependency_group"] == "classical"
         assert len(descriptor["signature"]) == 64
         assert "executor" not in descriptor
 

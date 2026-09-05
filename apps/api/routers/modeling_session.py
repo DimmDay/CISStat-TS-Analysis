@@ -21,7 +21,21 @@ from apps.api.backtesting import (
     run_backtest_plan,
 )
 from apps.api.fold_preprocessing import prepare_modeling_target
-from apps.api.model_execution import MODEL_EXECUTION_CONTRACT_VERSION
+from apps.api.model_execution import (
+    MODEL_EXECUTION_CONTRACT_VERSION,
+    MODEL_EXECUTION_REGISTRY,
+)
+from apps.api.model_jobs import (
+    MODEL_JOB_CONTRACT_VERSION,
+    deadline_expired,
+    deadline_iso,
+    gpu_runtime_available,
+    job_signature,
+    process_memory_mb,
+    public_job,
+    resource_policy_for,
+    utc_now,
+)
 from apps.api.model_readiness import (
     MODELING_CAPABILITY_CONTRACT_VERSION,
     PRODUCTION_BACKTEST_MODEL_IDS,
@@ -64,7 +78,11 @@ from apps.api.schemas import (
     TuneResponse,
     TuneTrialResult,
 )
-from apps.api.session_store import get_or_create_session_id, get_session_store
+from apps.api.session_store import (
+    SessionConflictError,
+    get_or_create_session_id,
+    get_session_store,
+)
 
 
 router = APIRouter()
@@ -121,6 +139,23 @@ class ModelingPendingTuningSkipRequest(BaseModel):
 class ModelingTuningStepRequest(BaseModel):
     job_id: str = Field(..., min_length=1)
     expected_trial_index: int = Field(..., ge=0)
+
+
+class ModelingJobStartRequest(BaseModel):
+    operation: Literal["tuning"] = "tuning"
+    model_id: str = Field(..., min_length=1)
+    max_trials: Optional[int] = Field(None, ge=1)
+    metric: Literal["mae", "rmse", "mape", "mase"] = "rmse"
+    random_state: int = 42
+    idempotency_key: Optional[str] = Field(None, min_length=3, max_length=128)
+
+
+class ModelingJobStepRequest(BaseModel):
+    expected_step: int = Field(..., ge=0)
+
+
+class ModelingJobCancelRequest(BaseModel):
+    reason: str = Field("Остановлено аналитиком", min_length=3, max_length=500)
 
 
 class ModelingDiagnosticsRequest(BaseModel):
@@ -958,9 +993,13 @@ def skip_all_pending_modeling_tuning(
             },
         )
     pending_tuning = list(scope["pending_tuning_model_ids"])
+    tuning_jobs = [
+        *(session.modeling_artifacts.get("tuning_jobs") or {}).values(),
+        *(session.modeling_artifacts.get("model_jobs") or {}).values(),
+    ]
     active_tuning = sorted({
         str(job.get("model_id"))
-        for job in (session.modeling_artifacts.get("tuning_jobs") or {}).values()
+        for job in tuning_jobs
         if job.get("status") == "in_progress"
         and job.get("model_id") in pending_tuning
     })
@@ -1080,6 +1119,414 @@ def tune_modeling_candidate(
     session.touch()
     store.save(session)
     return result
+
+
+def _model_job_view(
+    session, job: dict[str, Any], *, idempotent_replay: bool = False,
+) -> dict[str, Any]:
+    view = public_job(job, idempotent_replay=idempotent_replay)
+    result_ref = job.get("result_ref") or {}
+    if result_ref.get("artifact") == "tuning":
+        view["result"] = (
+            session.modeling_artifacts.get("tuning", {})
+            .get(result_ref.get("model_id"))
+        )
+    return view
+
+
+def _find_replayable_model_job(
+    session, *, signature: str, idempotency_key: Optional[str],
+) -> Optional[dict[str, Any]]:
+    jobs = session.modeling_artifacts.get("model_jobs") or {}
+    if idempotency_key:
+        keyed = next(
+            (item for item in jobs.values()
+             if item.get("idempotency_key") == idempotency_key),
+            None,
+        )
+        if keyed and keyed.get("job_signature") != signature:
+            raise HTTPException(
+                status_code=409,
+                detail="Idempotency key уже связан с другим model job plan",
+            )
+        if keyed and keyed.get("status") in {"in_progress", "completed"}:
+            return keyed
+    return next(
+        (item for item in jobs.values()
+         if item.get("job_signature") == signature
+         and item.get("status") in {"in_progress", "completed"}),
+        None,
+    )
+
+
+def _prepare_tuning_job_inputs(session, context, payload: ModelingJobStartRequest):
+    from apps.api.routers.models import _get_spec
+
+    if payload.model_id not in PRODUCTION_TUNING_MODEL_IDS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Production tuning для модели '{payload.model_id}' не реализован",
+        )
+    runnable = set(
+        session.modeling_artifacts.get("runnable_shortlist")
+        or context.get("runnable_shortlist", [])
+    )
+    if payload.model_id not in runnable:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Модель '{payload.model_id}' заблокирована матрицей применимости для текущего ряда",
+        )
+    model = _get_spec().get_model(payload.model_id)
+    if model is None:
+        raise HTTPException(status_code=404, detail=f"Модель '{payload.model_id}' не найдена")
+    if model.param_space is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Для модели '{payload.model_id}' param_space не задан",
+        )
+    period = (
+        session.modeling_artifacts.get("profile", context["profile"])
+        .get("seasonal_periods") or [1]
+    )[0]
+    prepared = prepare_modeling_target(
+        session.dataframe, target_column=session.target_column,
+        date_column=session.date_column,
+        transformations=session.preprocessing_transformations,
+        scaling_recipe=session.preprocessing_scaling_recipe,
+    )
+    plan = build_backtest_plan(
+        session.modeling_artifacts["validation_strategy"],
+        n_observations=len(prepared.series), fingerprint=context["fingerprint"],
+        target_column=session.target_column, seasonal_period=int(period),
+        preprocessing_signature=prepared.preprocessing_signature,
+    )
+    try:
+        grid = prepare_tuning_grid(
+            model.param_space, max_trials=payload.max_trials,
+            metric=payload.metric, random_state=payload.random_state,
+        )
+    except BacktestExecutionError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    descriptor = MODEL_EXECUTION_REGISTRY.describe(payload.model_id)
+    policy = resource_policy_for(descriptor["resource_capabilities"])
+    if not descriptor.get("deterministic", False):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Model job '{payload.model_id}' не гарантирует deterministic seed",
+        )
+    if policy["gpu"] == "required" and not gpu_runtime_available():
+        raise HTTPException(
+            status_code=422,
+            detail=f"Model job '{payload.model_id}' требует GPU runtime",
+        )
+    return model, int(period), prepared, plan, grid, descriptor, policy
+
+
+@router.post("/jobs/start")
+def start_modeling_job(
+    payload: ModelingJobStartRequest,
+    request: Request,
+    response: Response,
+):
+    """Create or resume one deterministic, persistent long-running model job."""
+    store, session = _get_session(request, response)
+    context = _action_context(session)
+    _prepare_state(session, context)
+    _, _, _, plan, grid, descriptor, policy = _prepare_tuning_job_inputs(
+        session, context, payload,
+    )
+    work_plan = [
+        {
+            "trial_index": index,
+            "params": params,
+            "execution_contract_signature": descriptor["signature"],
+        }
+        for index, params in enumerate(grid.selected)
+    ]
+    signature = job_signature(
+        operation=payload.operation, model_id=payload.model_id,
+        cohort_id=plan.cohort_id, work_plan=work_plan,
+        random_state=payload.random_state, resource_policy=policy,
+    )
+    replay = _find_replayable_model_job(
+        session, signature=signature, idempotency_key=payload.idempotency_key,
+    )
+    if replay:
+        return _model_job_view(session, replay, idempotent_replay=True)
+
+    now = utc_now().isoformat()
+    job_id = str(uuid4())
+    job = {
+        "job_id": job_id,
+        "job_signature": signature,
+        "contract_version": MODEL_JOB_CONTRACT_VERSION,
+        "operation": payload.operation,
+        "model_id": payload.model_id,
+        "cohort_id": plan.cohort_id,
+        "dependency_group": descriptor["dependency_group"],
+        "execution_contract_signature": descriptor["signature"],
+        "resource_policy": policy,
+        "random_state": payload.random_state,
+        "idempotency_key": payload.idempotency_key,
+        "selected_grid": grid.selected,
+        "grid_size": grid.grid_size,
+        "truncated": grid.truncated,
+        "metric": payload.metric,
+        "next_step": 0,
+        "total_steps": len(grid.selected),
+        "folds_per_step": len(plan.folds),
+        "epochs_per_step": 0,
+        "progress_phase": "trials",
+        "trials": [],
+        "failures": [],
+        "best_metric": None,
+        "best_backtest": None,
+        "duration_ms": 0.0,
+        "status": "in_progress",
+        "result_ref": None,
+        "error": None,
+        "cancellation": None,
+        "created_at": now,
+        "updated_at": now,
+        "deadline_at": deadline_iso(
+            total_timeout_seconds=policy["total_timeout_seconds"],
+        ),
+    }
+    jobs = session.modeling_artifacts.setdefault("model_jobs", {})
+    jobs[job_id] = job
+    scope = _ensure_execution_scope(session)
+    if scope:
+        scope["tuning_skips"].pop(payload.model_id, None)
+    if _refresh_execution_readiness(session) is None:
+        session.modeling_pipeline["tuning"] = "in_progress"
+    session.touch()
+    try:
+        store.save(session)
+    except SessionConflictError:
+        current = store.get(session.session_id)
+        if current is not None:
+            replay = _find_replayable_model_job(
+                current, signature=signature,
+                idempotency_key=payload.idempotency_key,
+            )
+            if replay:
+                return _model_job_view(current, replay, idempotent_replay=True)
+        raise
+    return _model_job_view(session, job)
+
+
+@router.get("/jobs/{job_id}")
+def get_modeling_job(job_id: str, request: Request, response: Response):
+    """Read persisted progress so a client can resume after reload/restart."""
+    _, session = _get_session(request, response)
+    job = (session.modeling_artifacts.get("model_jobs") or {}).get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Model job не найден или устарел")
+    return _model_job_view(session, job)
+
+
+@router.post("/jobs/{job_id}/cancel")
+def cancel_modeling_job(
+    job_id: str,
+    payload: ModelingJobCancelRequest,
+    request: Request,
+    response: Response,
+):
+    """Persist cooperative cancellation between bounded work units."""
+    store, session = _get_session(request, response)
+    job = (session.modeling_artifacts.get("model_jobs") or {}).get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Model job не найден или устарел")
+    if job.get("status") == "completed":
+        raise HTTPException(status_code=409, detail="Завершённый model job нельзя отменить")
+    if job.get("status") == "cancelled":
+        return _model_job_view(session, job, idempotent_replay=True)
+    now = utc_now().isoformat()
+    job["status"] = "cancelled"
+    job["updated_at"] = now
+    job["cancellation"] = {"reason": payload.reason, "cancelled_at": now}
+    session.touch()
+    try:
+        store.save(session)
+    except SessionConflictError:
+        current = store.get(session.session_id)
+        latest = (
+            (current.modeling_artifacts.get("model_jobs") or {}).get(job_id)
+            if current is not None else None
+        )
+        if latest and latest.get("status") == "cancelled":
+            return _model_job_view(current, latest, idempotent_replay=True)
+        raise
+    return _model_job_view(session, job)
+
+
+@router.post("/jobs/{job_id}/step")
+def step_modeling_job(
+    job_id: str,
+    payload: ModelingJobStepRequest,
+    request: Request,
+    response: Response,
+):
+    """Execute one bounded work unit and atomically checkpoint its progress."""
+    store, session = _get_session(request, response)
+    job = (session.modeling_artifacts.get("model_jobs") or {}).get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Model job не найден или устарел")
+    if job.get("status") == "completed":
+        return _model_job_view(session, job, idempotent_replay=True)
+    if job.get("status") in {"cancelled", "failed", "stale"}:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Model job имеет terminal status={job.get('status')}",
+        )
+    current_step = int(job.get("next_step", 0))
+    if payload.expected_step < current_step:
+        return _model_job_view(session, job, idempotent_replay=True)
+    if payload.expected_step > current_step:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Model job ожидает step {current_step}, получен {payload.expected_step}",
+        )
+    if deadline_expired(job):
+        job["status"] = "failed"
+        job["error"] = "Превышен общий timeout model job"
+        job["updated_at"] = utc_now().isoformat()
+        session.touch()
+        store.save(session)
+        raise HTTPException(status_code=408, detail=job["error"])
+
+    context = _action_context(session)
+    _prepare_state(session, context)
+    replay_payload = ModelingJobStartRequest(
+        operation="tuning", model_id=job["model_id"],
+        max_trials=max(1, int(job["total_steps"])), metric=job["metric"],
+        random_state=int(job["random_state"]),
+        idempotency_key=job.get("idempotency_key"),
+    )
+    _, period, prepared, plan, _, descriptor, policy = _prepare_tuning_job_inputs(
+        session, context, replay_payload,
+    )
+    work_plan = [
+        {
+            "trial_index": index,
+            "params": params,
+            "execution_contract_signature": descriptor["signature"],
+        }
+        for index, params in enumerate(job["selected_grid"])
+    ]
+    expected_signature = job_signature(
+        operation=job["operation"], model_id=job["model_id"],
+        cohort_id=plan.cohort_id, work_plan=work_plan,
+        random_state=job["random_state"], resource_policy=policy,
+    )
+    if (
+        plan.cohort_id != job.get("cohort_id")
+        or descriptor["signature"] != job.get("execution_contract_signature")
+        or expected_signature != job.get("job_signature")
+    ):
+        job["status"] = "stale"
+        job["error"] = "EDA cohort, adapter или resource policy изменились"
+        job["updated_at"] = utc_now().isoformat()
+        session.touch()
+        store.save(session)
+        raise HTTPException(status_code=409, detail=f"{job['error']}; запустите job заново")
+
+    model_name, family_id = _resolve_model_info(job["model_id"])
+    params = job["selected_grid"][current_step]
+    wall_started = time.monotonic()
+    cpu_started = time.process_time()
+    try:
+        trial, raw_backtest = execute_tuning_trial(
+            model_id=job["model_id"], model_name=model_name, family_id=family_id,
+            params=params, series=prepared.series, labels=prepared.labels,
+            plan=plan, seasonal_period=period, metric=job["metric"],
+            fold_preprocessor=prepared.fold_preprocessor,
+            preprocessing_warnings=prepared.warnings,
+            random_state=int(job["random_state"]),
+        )
+        elapsed_seconds = time.monotonic() - wall_started
+        cpu_seconds = time.process_time() - cpu_started
+        memory_mb = process_memory_mb()
+        if elapsed_seconds > float(policy["step_timeout_seconds"]):
+            raise BacktestExecutionError("Work unit превысил step timeout")
+        if cpu_seconds > float(policy["step_timeout_seconds"]):
+            raise BacktestExecutionError("Work unit превысил CPU time budget")
+        if memory_mb > float(policy["memory_limit_mb"]):
+            raise BacktestExecutionError("Work unit превысил memory budget")
+        job["trials"].append(trial.model_dump(mode="json"))
+        metric_value = float(getattr(trial.metrics, job["metric"]))
+        if job.get("best_metric") is None or metric_value < float(job["best_metric"]):
+            job["best_metric"] = metric_value
+            job["best_backtest"] = raw_backtest
+    except (BacktestExecutionError, ValueError, RuntimeError, ArithmeticError) as exc:
+        job["failures"].append(f"params={params}: {exc}")
+    job["duration_ms"] = float(job.get("duration_ms", 0.0)) + (
+        time.monotonic() - wall_started
+    ) * 1000
+    job["next_step"] = current_step + 1
+    job["updated_at"] = utc_now().isoformat()
+
+    if job["next_step"] >= int(job["total_steps"]):
+        try:
+            execution = finalize_tuning_plan_with_artifacts(
+                model_id=job["model_id"], model_name=model_name,
+                family_id=family_id,
+                trials=[TuneTrialResult(**item) for item in job["trials"]],
+                trial_backtests=[], failures=job["failures"],
+                grid_size=job["grid_size"], selected_count=job["total_steps"],
+                truncated=job["truncated"], plan=plan, metric=job["metric"],
+                duration_ms=job["duration_ms"],
+                fold_preprocessor=prepared.fold_preprocessor,
+                preprocessing_warnings=prepared.warnings,
+                best_backtest=job.get("best_backtest"),
+            )
+        except BacktestExecutionError as exc:
+            job["status"] = "failed"
+            job["error"] = str(exc)
+        else:
+            result = execution.response
+            promoted = _trace_backtest(
+                execution.best_backtest, model_id=job["model_id"],
+                params=result.best_params, params_source="tuning",
+                tuning_id=result.tuning_id,
+            )
+            result = result.model_copy(update={"promoted_backtest": promoted})
+            _invalidate_after_model_run(session, job["model_id"])
+            session.modeling_artifacts.setdefault("backtests", {})[
+                job["model_id"]
+            ] = promoted.model_dump(mode="json")
+            session.modeling_artifacts.setdefault("tuning", {})[
+                job["model_id"]
+            ] = result.model_dump(mode="json")
+            scope = _ensure_execution_scope(session)
+            if scope:
+                scope["tuning_skips"].pop(job["model_id"], None)
+            _refresh_execution_readiness(session)
+            job["status"] = "completed"
+            job["result_ref"] = {
+                "artifact": "tuning", "model_id": job["model_id"],
+                "tuning_id": result.tuning_id,
+            }
+            # Completed jobs retain only progress and immutable artifact links.
+            job["selected_grid"] = []
+            job["trials"] = []
+            job["best_backtest"] = None
+
+    session.touch()
+    try:
+        store.save(session)
+    except SessionConflictError:
+        current = store.get(session.session_id)
+        latest = (
+            (current.modeling_artifacts.get("model_jobs") or {}).get(job_id)
+            if current is not None else None
+        )
+        if latest and int(latest.get("next_step", 0)) > current_step:
+            return _model_job_view(current, latest, idempotent_replay=True)
+        raise
+    if job.get("status") == "failed":
+        raise HTTPException(status_code=422, detail=job.get("error"))
+    return _model_job_view(session, job)
 
 
 @router.post("/tuning/start")
@@ -1258,6 +1705,7 @@ def step_modeling_tuning(
             plan=plan, seasonal_period=int(period), metric=job["metric"],
             fold_preprocessor=prepared.fold_preprocessor,
             preprocessing_warnings=prepared.warnings,
+            random_state=int(job["random_state"]),
         )
         job["trials"].append(trial.model_dump(mode="json"))
         job["trial_backtests"].append(raw_backtest)
