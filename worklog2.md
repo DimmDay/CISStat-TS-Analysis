@@ -2518,3 +2518,52 @@ Commit/push и production deploy не выполнялись.
 
 - `packages/ui/components/TsAnalysisModeling.tsx`
 - `packages/ui/components/TsAnalysisModeling.test.tsx`
+
+--
+
+## Task 117 — Loading-state Modeling с первого render
+
+Дата: 2026-09-05. База: `main @ fa3a5190030b01ee67015f1b1bd3e0ecd812af7a`.
+Commit/push и production deploy не выполнялись.
+
+### Воспроизведение и первопричина
+
+- При первом открытии Modeling второе центральное окно на один render
+  показывало пустое «Сравнение бэктестов», а затем переключалось на
+  «Загружаю доступные модели, минутку...». Этот стартовый экран создавал
+  ложное впечатление, что модели уже загружены и пользователь должен вручную
+  запустить бэктест.
+- Условие loading-state использовало только `isLoading && !hasFetched`.
+  Но `isLoading` включается внутри `fetchCandidates`, который запускается
+  лишь после асинхронного получения `/v1/session/modeling/context`.
+  Поэтому самый первый render неизбежно проходил в ветку comparison.
+
+### Исправление
+
+- Добавлен derived-флаг `isApplicabilityBootstrapping`, активный синхронно
+  уже на первом render при ещё отсутствующем modeling context.
+- Bootstrap остаётся активным после получения готового EDA hand-off и до
+  успешного завершения Движка применимости. Между context response и стартом
+  candidates-effect больше нет промежуточного comparison-кадра.
+- Ошибка загрузки или неготовый EDA hand-off завершают bootstrap и передают
+  отображение существующим предметным error/gate-состояниям. Повторная ручная
+  загрузка после уже полученного пула не скрывает актуальное сравнение.
+- Второе окно теперь с первого кадра открывается состоянием
+  «Загружаю доступные модели, минутку...», а «Сравнение бэктестов» появляется
+  только после завершения первичной загрузки.
+
+### TDD и проверки
+
+- До production-кода добавлена регрессия, проверяющая первое синхронное
+  состояние сразу после `render(<TsAnalysisModeling />)`, до разрешения
+  асинхронного context-запроса.
+- RED source-contract: 2/2 FAIL — отсутствовали полный bootstrap-state и его
+  использование в окне сравнения. GREEN source-contract: 4/4 PASS.
+- `git diff --check`: PASS.
+- Jest, TypeScript typecheck и production build не запущены: чистый worktree
+  не содержит `node_modules`, локальные `jest`, `tsc` и `next` отсутствуют.
+
+### Изменённые файлы Task 117
+
+- `packages/ui/components/TsAnalysisModeling.tsx`
+- `packages/ui/components/TsAnalysisModeling.test.tsx`

@@ -308,6 +308,16 @@ export function TsAnalysisModeling() {
   const [modelingContext, setModelingContext] = useState<ModelingContext | null>(null);
   const [modelingContextError, setModelingContextError] = useState<string | null>(null);
 
+  // Первый render происходит до useEffect/fetchModelingContext, поэтому один
+  // isLoading (он включается только внутри fetchCandidates) оставлял кадр со
+  // «Сравнением бэктестов». Держим bootstrap активным от самого первого
+  // render до результата Движка применимости. Неготовый EDA hand-off и ошибки
+  // завершают ожидание и передают управление предметным gate/error-состояниям.
+  const isApplicabilityBootstrapping = !hasFetched
+    && !error
+    && !modelingContextError
+    && (modelingContext === null || modelingContext.ready === true);
+
   // ── Завершённые стадии пайплайна ──
   const [completedStages, setCompletedStages] = useState<Set<string>>(new Set<string>());
 
@@ -1227,7 +1237,7 @@ export function TsAnalysisModeling() {
             Показывается всегда (не только при statistics), т.к. не зависит
             от пула кандидатов -- от факта хотя бы одного бэктеста. */}
         <div className="mt-4" data-testid="backtest-comparison-panel">
-          {isLoading && !hasFetched ? (
+          {isApplicabilityBootstrapping ? (
             <>
               <h3 className="mb-1 text-sm font-semibold text-neutral-800">
                 Загружаю доступные модели, минутку...

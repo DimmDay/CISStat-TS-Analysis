@@ -767,6 +767,19 @@ describe("TsAnalysisModeling", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("starts with the applicability loading window before the context request resolves", () => {
+    render(<TsAnalysisModeling />);
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Загружаю доступные модели, минутку...",
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Сравнение бэктестов" })
+    ).not.toBeInTheDocument();
+  });
+
   it("shows the selected model capability statuses in the full pipeline", async () => {
     render(<TsAnalysisModeling />);
     await waitFor(() => expect(screen.getByTestId("candidate-pool")).toBeInTheDocument());
