@@ -5,21 +5,14 @@
 Этот набор намеренно отделён от статистической применимости.
 """
 
-PRODUCTION_BACKTEST_MODEL_IDS = frozenset({
-    "naive",
-    "seasonal_naive",
-    "drift",
-    "mean",
-    "ets",
-    "ets_damped",
-    "theta",
-    "arima",
-    "arima_auto",
-})
+from apps.api.model_execution import MODEL_EXECUTION_REGISTRY
 
-PRODUCTION_TUNING_MODEL_IDS = frozenset({"ets", "ets_damped", "arima"})
-# Session diagnostics consumes signed OOF residuals and is model-agnostic.
-PRODUCTION_DIAGNOSTICS_MODEL_IDS = PRODUCTION_BACKTEST_MODEL_IDS
+
+# Runtime readiness is derived from the executable v2 registry.  The names are
+# retained as a compatibility API for session/UI code and older tests.
+PRODUCTION_BACKTEST_MODEL_IDS = MODEL_EXECUTION_REGISTRY.model_ids_for("backtest")
+PRODUCTION_TUNING_MODEL_IDS = MODEL_EXECUTION_REGISTRY.model_ids_for("tune")
+PRODUCTION_DIAGNOSTICS_MODEL_IDS = MODEL_EXECUTION_REGISTRY.model_ids_for("diagnostics")
 
 MODELING_CAPABILITY_CONTRACT_VERSION = "model-capabilities-v1"
 MODELING_STAGE_IDS = (

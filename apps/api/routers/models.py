@@ -41,6 +41,10 @@ from apps.api.model_impls import (
     run_auto_arima_backtest,
 )
 from apps.api.model_impls.tuning import tune_ets_predict, tune_arima_predict
+from apps.api.model_execution import (
+    MODEL_EXECUTION_CONTRACT_VERSION,
+    MODEL_EXECUTION_REGISTRY,
+)
 from apps.api.model_readiness import (
     MODELING_CAPABILITY_CONTRACT_VERSION,
     PRODUCTION_BACKTEST_MODEL_IDS,
@@ -148,6 +152,10 @@ def _compute_candidates(payload: CandidatesRequest) -> CandidatesResponse:
                 included=included,
                 blocking_reason=blocking_reason if platform_ready and not included else None,
             ),
+            execution_contract=(
+                MODEL_EXECUTION_REGISTRY.describe(candidate.model_id)
+                if platform_ready else None
+            ),
         )
 
     # Полный каталог сохраняет порядок modeling.yaml и содержит все уровни
@@ -170,6 +178,7 @@ def _compute_candidates(payload: CandidatesRequest) -> CandidatesResponse:
         candidates=candidates, catalog=catalog,
         statistics=statistics, spec_version=spec.metadata.version,
         capability_contract_version=MODELING_CAPABILITY_CONTRACT_VERSION,
+        execution_contract_version=MODEL_EXECUTION_CONTRACT_VERSION,
     )
 
 
@@ -410,6 +419,7 @@ def _execute_tune(
         metric=metric,
         trials=trial_results,
         duration_ms=round(duration_ms, 2),
+        execution_contract=MODEL_EXECUTION_REGISTRY.describe(model_id),
     )
 
 
@@ -468,6 +478,7 @@ def run_backtest(
         model_id=model_id, model_name=model_info[0], family_id=model_info[1], metrics=metrics,
         n_train=n_train, n_test=n_test, train_ratio=train_ratio,
         duration_ms=round(duration_ms, 2), data_source="synthetic",
+        execution_contract=MODEL_EXECUTION_REGISTRY.describe(model_id),
     )
 
 

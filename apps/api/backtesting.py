@@ -16,11 +16,15 @@ from typing import Any, Callable, Mapping, Optional, Protocol
 
 import numpy as np
 
-from apps.api.model_readiness import PRODUCTION_BACKTEST_MODEL_IDS
+from apps.api.model_execution import (
+    LegacyPredictor as Predictor,
+    MODEL_EXECUTION_CONTRACT_VERSION,
+    MODEL_EXECUTION_REGISTRY,
+    ModelExecutionRequest,
+    fixed_origin_baseline_predict,
+    legacy_predictor_registry,
+)
 from apps.api.schemas import BacktestMetrics
-
-
-Predictor = Callable[[list[float], int, int, Mapping[str, Any]], list[float]]
 
 
 class BacktestExecutionError(ValueError):
@@ -192,80 +196,9 @@ def build_backtest_plan(
     )
 
 
-def fixed_origin_baseline_predict(
-    model_id: str, y_train: list[float], horizon: int, seasonal_period: int,
-) -> list[float]:
-    """Fixed-origin baselines; no observed holdout value is ever consumed."""
-    if not y_train:
-        raise BacktestExecutionError("Train fold пуст")
-    if model_id == "naive":
-        return [float(y_train[-1])] * horizon
-    if model_id == "mean":
-        return [float(np.mean(y_train))] * horizon
-    if model_id == "drift":
-        slope = (y_train[-1] - y_train[0]) / max(len(y_train) - 1, 1)
-        return [float(y_train[-1] + slope * step) for step in range(1, horizon + 1)]
-    if model_id == "seasonal_naive":
-        period = int(seasonal_period)
-        if period < 1 or len(y_train) < period:
-            raise BacktestExecutionError(
-                f"Seasonal Naive требует не менее одного полного периода m={period} в train"
-            )
-        history = [float(value) for value in y_train]
-        predictions: list[float] = []
-        for _ in range(horizon):
-            value = history[-period]
-            predictions.append(value)
-            history.append(value)
-        return predictions
-    raise BacktestExecutionError(f"Неизвестная baseline-модель: {model_id}")
-
-
-def _predict_ets(y_train, horizon, period, params, *, damped: bool):
-    from apps.api.model_impls.ets import _ets_fit_predict
-    return _ets_fit_predict(
-        y_train, horizon, period,
-        damped=True if damped else bool(params.get("damped_trend", False)),
-        trend=params.get("trend", "add"), seasonal=params.get("seasonal", "add"),
-    )
-
-
-def _predict_theta(y_train, horizon, period, _params):
-    from apps.api.model_impls.theta import _theta_fit_predict
-    return _theta_fit_predict(y_train, horizon, period)
-
-
-def _predict_arima(y_train, horizon, _period, params):
-    from apps.api.model_impls.arima import DEFAULT_ARIMA_ORDER, _arima_fit_predict
-    order = tuple(params.get(key, DEFAULT_ARIMA_ORDER[index]) for index, key in enumerate(("p", "d", "q")))
-    return _arima_fit_predict(y_train, horizon, order)
-
-
-def _predict_auto_arima(y_train, horizon, _period, _params):
-    from apps.api.model_impls.arima import _arima_fit_predict, _auto_arima_select_order
-    return _arima_fit_predict(y_train, horizon, _auto_arima_select_order(y_train))
-
-
-def _baseline(model_id: str) -> Predictor:
-    return lambda train, horizon, period, _params: fixed_origin_baseline_predict(
-        model_id, train, horizon, period,
-    )
-
-
-PRODUCTION_PREDICTORS: dict[str, Predictor] = {
-    model_id: _baseline(model_id)
-    for model_id in ("naive", "seasonal_naive", "drift", "mean")
-}
-PRODUCTION_PREDICTORS.update({
-    "ets": lambda train, horizon, period, params: _predict_ets(train, horizon, period, params, damped=False),
-    "ets_damped": lambda train, horizon, period, params: _predict_ets(train, horizon, period, params, damped=True),
-    "theta": _predict_theta,
-    "arima": _predict_arima,
-    "arima_auto": _predict_auto_arima,
-})
-
-if frozenset(PRODUCTION_PREDICTORS) != PRODUCTION_BACKTEST_MODEL_IDS:
-    raise RuntimeError("Backtest predictor registry расходится с production readiness registry")
+# Compatibility facade for tests and callers that inject the legacy callable
+# shape.  Canonical production execution below goes through the typed registry.
+PRODUCTION_PREDICTORS: dict[str, Predictor] = legacy_predictor_registry()
 
 
 def compute_metric_scales(
@@ -382,15 +315,40 @@ def run_backtest_plan(
         raise BacktestExecutionError("Длина ряда расходится с зафиксированным backtest cohort")
     if len(series) != len(labels):
         raise BacktestExecutionError("Число временных меток не совпадает с длиной ряда")
-    registry = predictors or PRODUCTION_PREDICTORS
-    predictor = registry.get(model_id)
-    if predictor is None:
-        raise BacktestExecutionError(f"Production predictor для модели '{model_id}' не реализован")
+    predictor = None if predictors is None else predictors.get(model_id)
+    if predictors is None:
+        try:
+            execution_contract = MODEL_EXECUTION_REGISTRY.describe(model_id)
+        except ValueError as exc:
+            raise BacktestExecutionError(str(exc)) from exc
+    else:
+        if predictor is None:
+            raise BacktestExecutionError(
+                f"Injected predictor для модели '{model_id}' не реализован"
+            )
+        injected_payload = {
+            "version": MODEL_EXECUTION_CONTRACT_VERSION,
+            "model_id": model_id,
+            "family_id": family_id,
+            "adapter_id": "injected-legacy-predictor",
+            "adapter_version": "compat-v1",
+            "input_kind": "univariate",
+            "output_kind": "point",
+            "fit_policy": "per_train_fold",
+            "actions": ["backtest"],
+        }
+        encoded = json.dumps(
+            injected_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+        ).encode("utf-8")
+        execution_contract = {
+            **injected_payload, "signature": sha256(encoded).hexdigest(),
+        }
     values = [float(value) for value in series]
     if not np.isfinite(np.asarray(values, dtype=float)).all():
         raise BacktestExecutionError("Ряд содержит NaN/Inf")
     parameters = dict(params or {})
     folds: list[dict[str, Any]] = []
+    adapter_warnings: list[str] = []
     started = time.monotonic()
     for fold in plan.folds:
         raw_train = [values[index] for index in fold.train_indices]
@@ -407,9 +365,36 @@ def run_backtest_plan(
                 y_true = prepared.evaluation_actual
                 metric_train = prepared.evaluation_train
                 restore_forecast = prepared.restore_forecast
-            model_forecast = [float(value) for value in predictor(
-                y_train, fold.gap + len(y_true), seasonal_period, parameters,
-            )]
+            execution_horizon = fold.gap + len(y_true)
+            if predictors is None:
+                train_timestamps = (
+                    [labels[index] for index in fold.train_indices]
+                    if len(y_train) == len(raw_train) else []
+                )
+                future_timestamps = [
+                    labels[index]
+                    for index in range(
+                        fold.train_indices[-1] + 1, fold.test_indices[-1] + 1,
+                    )
+                ]
+                execution_result = MODEL_EXECUTION_REGISTRY.execute(
+                    model_id,
+                    ModelExecutionRequest(
+                        target=y_train,
+                        horizon=execution_horizon,
+                        seasonal_period=seasonal_period,
+                        params=parameters,
+                        train_timestamps=train_timestamps,
+                        future_timestamps=future_timestamps,
+                    ),
+                )
+                model_forecast = list(execution_result.forecast)
+                adapter_warnings.extend(execution_result.warnings)
+            else:
+                assert predictor is not None
+                model_forecast = [float(value) for value in predictor(
+                    y_train, execution_horizon, seasonal_period, parameters,
+                )]
             forecast = [float(value) for value in restore_forecast(model_forecast)]
             if len(forecast) != fold.gap + len(y_true):
                 raise BacktestExecutionError("Model/preprocessing вернул неверную длину прогноза")
@@ -450,6 +435,7 @@ def run_backtest_plan(
     aggregate = _aggregate_metrics(folds)
     oof = [point for fold in folds for point in fold["predictions"]]
     warnings: list[str] = list(preprocessing_warnings or [])
+    warnings.extend(adapter_warnings)
     if aggregate.mape is None:
         warnings.append("MAPE не определена: во всех OOF-фактах нулевые значения.")
     if aggregate.mase is None:
@@ -472,4 +458,5 @@ def run_backtest_plan(
         "horizon": plan.horizon, "n_folds": len(plan.folds), "gap": plan.gap,
         "folds": folds, "oof_predictions": oof, "warnings": warnings,
         "preprocessing": preprocessing,
+        "execution_contract": execution_contract,
     }

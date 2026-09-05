@@ -2958,6 +2958,10 @@ class ModelCandidate(BaseModel):
         default_factory=dict,
         description="Полная capability-матрица модели по 11 стадиям Modeling",
     )
+    execution_contract: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Подписанный Model Execution Contract v2 для runnable-модели",
+    )
 
 
 class CandidatesRequest(BaseModel):
@@ -2993,6 +2997,9 @@ class CandidatesResponse(BaseModel):
     spec_version: str = Field("", description="Версия спецификации modeling.yaml")
     capability_contract_version: str = Field(
         "", description="Версия единого stage capability-контракта",
+    )
+    execution_contract_version: str = Field(
+        "", description="Версия typed model execution boundary",
     )
 
 
@@ -3115,6 +3122,10 @@ class BacktestResponse(BaseModel):
     )
     oof_signature: Optional[str] = Field(
         None, description="SHA-256 упорядоченных фактов, прогнозов и остатков OOF",
+    )
+    execution_contract: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Версия и подпись адаптера, исполнившего прогноз",
     )
 
 
@@ -3352,6 +3363,10 @@ class TuneResponse(BaseModel):
     )
     parameter_signature: Optional[str] = Field(
         None, description="SHA-256 модели и best_params",
+    )
+    execution_contract: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Версия и подпись адаптера, исполнившего trials",
     )
     promoted_backtest: Optional[BacktestResponse] = Field(
         None,

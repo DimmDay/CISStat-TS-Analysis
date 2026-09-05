@@ -2780,3 +2780,78 @@ Commit/push и production deploy не выполнялись.
 - `tests/unit/test_modeling_mvp_certification.py`
 - `validation/engine.py`
 - `validation/regularity.py`
+
+---
+
+## Task 122 — Model Execution Contract v2
+
+Дата: 2026-09-05. База: `main @ 02581fc2f83e3f413f9d04a7d05f1968a2b1bcd8`.
+Commit/push и production deploy не выполнялись.
+
+### Проектирование и границы задачи
+
+- Перед подключением остальных 15 моделей введена единая typed execution
+  boundary `model-execution-v2`; scope Task 122 не расширяет сертифицированный
+  production-набор из девяти моделей и не объявляет catalog-only модели
+  исполняемыми.
+- `ModelExecutionRequest` разделяет train target, train/future covariates,
+  train-only связанные ряды и train/future timestamps. В интерфейсе адаптера
+  отсутствует holdout target, поэтому случайная передача фактов модели
+  исключена конструкцией контракта.
+- `ModelExecutionResult` нормализует point forecast, опциональные интервалы,
+  metadata и warnings. Request/result fail closed на пустом train, неверных
+  горизонтах, несовпадающих размерностях, NaN/Inf, неполных интервалах и
+  прогнозе неверной длины.
+- Каждая модель описывается immutable definition: family/adapter identity,
+  version, input/output kind, fit policy, actions, feature/multivariate flags,
+  engine/dependencies и стабильная SHA-256 подпись descriptor. Исполняемый
+  callable в публичный descriptor не попадает.
+
+### Реализация и устранённые риски
+
+- Создан `ModelExecutionRegistry` — единственный источник production
+  backtest/tune/diagnostics readiness. Старые `PRODUCTION_*_MODEL_IDS` теперь
+  вычисляются из registry, поэтому новый адаптер нельзя объявить готовым в
+  capability-слое без реальной регистрации исполнения.
+- Девять сертифицированных адаптеров перенесены в registry: четыре fixed-origin
+  baseline, ETS/ETS Damped/Theta и ARIMA/Auto-ARIMA. Canonical session
+  backtest/tuning исполняет их через v2 request/result; legacy predictor map
+  сохранён только как compatibility facade для существующих инъекционных
+  тестов и клиентов.
+- Backtest artifact и TuneResponse сохраняют точный execution descriptor и
+  его signature. Candidates API публикует descriptor только для runtime-ready
+  моделей, а catalog-only получает `null`; response и session execution scope
+  содержат `execution_contract_version=model-execution-v2`.
+- TypeScript mirror расширен тем же descriptor union для будущих
+  univariate, feature-based, multivariate и volatility adapters.
+- Совместимость MVP сохранена: production scope остаётся ровно девять моделей,
+  tuning — ровно ETS, ETS Damped и ARIMA; фиктивные forecasts не добавлялись.
+
+### TDD и проверки
+
+- RED до production-кода: collection error
+  `ModuleNotFoundError: apps.api.model_execution` в новом contract suite.
+- GREEN contract/regression subset: 98/98 PASS; финальный Task 122 contract
+  gate: 5/5 PASS.
+- Полный backend regression: 1314/1314 PASS, 3/3 snapshots PASS.
+- Полный frontend regression: 84/84 suites, 724/724 tests PASS.
+- TypeScript: standalone и embedded PASS; production builds выполнили также
+  встроенные lint/type checks. Изолированный package-only `tsc` по-прежнему
+  показывает существующие ES5/downlevelIteration ошибки в несвязанных
+  preprocessing-компонентах, но оба application tsconfig проходят.
+- Production build embedded/standalone: PASS, по 13/13 статических страниц,
+  включая `/modeling`; First Load JS 464 kB. Временный Node 24 memory shim для
+  sandbox `uv_resident_set_memory` после сборок удалён и в задачу не входит.
+- `pip check`: PASS. `git diff --check`: PASS.
+
+### Изменённые/новые файлы Task 122
+
+- `apps/api/model_execution.py`
+- `apps/api/backtesting.py`
+- `apps/api/model_readiness.py`
+- `apps/api/modeling_tuning.py`
+- `apps/api/routers/modeling_session.py`
+- `apps/api/routers/models.py`
+- `apps/api/schemas.py`
+- `packages/ui/lib/modeling.ts`
+- `tests/unit/test_model_execution_contract.py`

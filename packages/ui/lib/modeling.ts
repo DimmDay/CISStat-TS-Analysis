@@ -86,6 +86,26 @@ export type ModelingStageId =
 
 export type ModelAction = "backtest" | "tune" | "diagnostics";
 
+export interface ModelExecutionDescriptor {
+  version: "model-execution-v2";
+  model_id: string;
+  family_id: string;
+  adapter_id: string;
+  adapter_version: string;
+  input_kind: "univariate" | "target_with_features" | "multiple_targets" | "volatility";
+  output_kind: "point" | "distribution" | "volatility";
+  fit_policy: "per_train_fold";
+  actions: ModelAction[];
+  requires_train_features: boolean;
+  supports_future_features: boolean;
+  requires_related_series: boolean;
+  supports_prediction_intervals: boolean;
+  deterministic: boolean;
+  engine: string;
+  required_packages: string[];
+  signature: string;
+}
+
 export interface ModelStageCapability {
   status: "available" | "not_applicable" | "blocked" | "not_implemented";
   required: boolean;
@@ -105,6 +125,7 @@ export interface ModelCandidate {
   available_actions: ModelAction[];
   blocking_reason: string | null;
   stage_capabilities: Record<ModelingStageId, ModelStageCapability>;
+  execution_contract: ModelExecutionDescriptor | null;
 }
 
 // ── Запрос / Ответ ──────────────────────────────────────────────
@@ -129,10 +150,12 @@ export interface CandidatesResponse {
   statistics: CandidatesStatistics;
   spec_version: string;
   capability_contract_version: "model-capabilities-v1";
+  execution_contract_version: "model-execution-v2";
 }
 
 export interface ModelingExecutionScope {
   capability_contract_version: "model-capabilities-v1";
+  execution_contract_version: "model-execution-v2";
   required_backtest_model_ids: string[];
   included_backtest_model_ids: string[];
   completed_backtest_model_ids: string[];
@@ -291,6 +314,7 @@ export interface BacktestResponse {
   parameter_signature?: string | null;
   tuning_id?: string | null;
   oof_signature?: string | null;
+  execution_contract?: ModelExecutionDescriptor;
 }
 
 export interface TuningFoldPlan {
@@ -313,6 +337,7 @@ export interface SessionTuningResponse {
   warnings: string[];
   tuning_id?: string | null;
   parameter_signature?: string | null;
+  execution_contract?: ModelExecutionDescriptor;
   promoted_backtest?: BacktestResponse | null;
 }
 

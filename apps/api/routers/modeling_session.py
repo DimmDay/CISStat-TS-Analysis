@@ -21,6 +21,7 @@ from apps.api.backtesting import (
     run_backtest_plan,
 )
 from apps.api.fold_preprocessing import prepare_modeling_target
+from apps.api.model_execution import MODEL_EXECUTION_CONTRACT_VERSION
 from apps.api.model_readiness import (
     MODELING_CAPABILITY_CONTRACT_VERSION,
     PRODUCTION_BACKTEST_MODEL_IDS,
@@ -431,6 +432,7 @@ def _ensure_execution_scope(session) -> Optional[dict[str, Any]]:
     }
     scope = {
         "capability_contract_version": MODELING_CAPABILITY_CONTRACT_VERSION,
+        "execution_contract_version": MODEL_EXECUTION_CONTRACT_VERSION,
         "required_backtest_model_ids": required,
         "backtest_exclusions": exclusions,
         "tuning_skips": tuning_skips,
@@ -643,6 +645,7 @@ def generate_modeling_candidates(
     # filters them against the newly computed runnable capability scope.
     session.modeling_artifacts.setdefault("execution_scope", {
         "capability_contract_version": MODELING_CAPABILITY_CONTRACT_VERSION,
+        "execution_contract_version": MODEL_EXECUTION_CONTRACT_VERSION,
         "required_backtest_model_ids": [],
         "backtest_exclusions": {},
         "tuning_skips": {},
@@ -1642,6 +1645,7 @@ def compare_modeling_candidates(
             execution_scope=(
                 {
                     "capability_contract_version": scope["capability_contract_version"],
+                    "execution_contract_version": scope["execution_contract_version"],
                     "included_backtest_model_ids": scope["included_backtest_model_ids"],
                     "backtest_exclusions": scope["backtest_exclusions"],
                     "tuning_skips": scope["tuning_skips"],

@@ -190,6 +190,7 @@ def finalize_tuning_plan_with_artifacts(
         ],
         preprocessing=preprocessing, warnings=warnings, tuning_id=tuning_id,
         parameter_signature=parameter_signature(model_id, best_params),
+        execution_contract=trial_backtests[best_index].get("execution_contract", {}),
     )
     return TuningPlanExecution(response=response, best_backtest=trial_backtests[best_index])
 
