@@ -22,6 +22,8 @@
 // это правильное место для полифилов, см.
 // https://jestjs.io/docs/configuration#setupfilesafterenv-array
 
+require("@testing-library/jest-dom");
+
 class ResizeObserverStub {
   observe() {}
   unobserve() {}

@@ -163,9 +163,11 @@ def profile_regularity(df: pd.DataFrame, rules: dict[str, Any] | None = None) ->
 
     for group_value, group in _group_frames(working, entity_column):
         dates_original = group[date_column]
-        negative = dates_original.diff().lt(pd.Timedelta(0)).fillna(False)
-        sort_violations = int(negative.sum())
         valid = dates_original.dropna()
+        # Некорректная метка не должна разрывать сравнение двух соседних
+        # валидных дат: [02 Jan, invalid, 01 Jan] всё ещё не отсортирован.
+        negative = valid.diff().lt(pd.Timedelta(0)).fillna(False)
+        sort_violations = int(negative.sum())
         duplicate_count = int(valid.duplicated(keep="first").sum())
         unique_dates = pd.Series(valid.drop_duplicates().sort_values().tolist(), dtype="datetime64[ns]")
         intervals = unique_dates.diff().dropna()
@@ -435,4 +437,3 @@ def regularity_timeline(
         "events": events[:max_events],
         "truncated": truncated,
     }
-

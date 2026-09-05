@@ -4,12 +4,53 @@
 ⚠️ ВАЖНО: Этот модуль НЕ импортирует streamlit.
 Все функции — stateless, с явными аргументами (Правило 14).
 """
+import csv
 import json
 import logging
+import re
 import pandas as pd
+from io import BytesIO, StringIO
 from typing import Optional, Any
 
 logger = logging.getLogger(__name__)
+
+_CSV_DATE_VALUE = re.compile(
+    r"(?:\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4})"
+)
+
+
+def _looks_like_csv_data(value: str) -> bool:
+    """Return whether a first-row cell is clearly data, not a label."""
+    token = value.strip()
+    if not token:
+        return True
+    try:
+        float(token)
+        return True
+    except ValueError:
+        return bool(_CSV_DATE_VALUE.fullmatch(token))
+
+
+def _csv_separator(sample: str) -> str:
+    """Choose a conservative delimiter and preserve genuine one-column CSVs."""
+    first_line = sample.splitlines()[0] if sample.splitlines() else ""
+    candidates = (",", ";", "\t", "|")
+    return max(candidates, key=first_line.count) if any(char in first_line for char in candidates) else ","
+
+
+def _csv_has_header(sample: str, delimiter: str) -> bool:
+    """Detect the supported headerless case without guessing away text labels.
+
+    ``csv.Sniffer.has_header`` treats many valid one-column pandas exports as
+    headerless (``Price\n1\n2``). For this loader, a CSV is headerless only
+    when every first-row value is unambiguously numeric or date-like. This
+    preserves normal named-column uploads while covering raw time-series rows.
+    """
+    try:
+        first_row = next(csv.reader(StringIO(sample), delimiter=delimiter))
+    except (csv.Error, StopIteration):
+        return True
+    return not first_row or not all(_looks_like_csv_data(value) for value in first_row)
 
 # Опциональные зависимости (драйверы БД)
 # Импортируются на уровне модуля с защитой от отсутствия
@@ -111,35 +152,46 @@ def read_uploaded_file(uploaded_file) -> tuple[pd.DataFrame, str]:
     if hasattr(uploaded_file, 'filename') and hasattr(uploaded_file, 'file'):
         file_name = uploaded_file.filename
         ext = file_name.split('.')[-1].lower() if '.' in file_name else 'csv'  # Default to CSV
-        file_content = uploaded_file.file.read()
-        uploaded_file.file.seek(0)  # Сбрасываем указатель
-        from io import BytesIO
-        uploaded_file = BytesIO(file_content)
-        uploaded_file.name = file_name
+        source = uploaded_file.file
     else:
         # --- Обработка BytesIO/StringIO/обычных файлов ---
         file_name = getattr(uploaded_file, 'name', 'unknown.file')
         ext = file_name.split('.')[-1].lower() if '.' in file_name else 'csv'
+        source = uploaded_file
 
-    # --- Проверка на пустой файл ---
-    if hasattr(uploaded_file, 'read'):
-        uploaded_file.seek(0)
-        first_bytes = uploaded_file.read(1024)  # Читаем первые 1KB для проверки
-        uploaded_file.seek(0)
-        if not first_bytes:
-            raise ValueError("Файл пуст или не содержит данных.")
+    # Читаем поток одним вызовом без size: такой контракт поддерживают и
+    # FastAPI/Streamlit-файлы, и простые тестовые file-like объекты. Исходный
+    # указатель восстанавливаем, а pandas получает независимый seekable buffer.
+    if not hasattr(source, 'read'):
+        raise ValueError("Файл не поддерживает чтение.")
+    source.seek(0)
+    file_content = source.read()
+    source.seek(0)
+    if not file_content:
+        raise ValueError("Файл пуст или не содержит данных.")
+    uploaded_file = (
+        BytesIO(file_content)
+        if isinstance(file_content, bytes)
+        else StringIO(str(file_content))
+    )
 
     # --- Чтение файла в зависимости от расширения ---
     if ext == "csv":
         uploaded_file.seek(0)
         try:
+            sample = file_content.decode('utf-8-sig') if isinstance(file_content, bytes) else str(file_content)
+            separator = _csv_separator(sample)
+            has_header = _csv_has_header(sample, separator)
             df = pd.read_csv(
                 uploaded_file,
-                sep=None,
+                sep=separator,
                 engine='python',
                 encoding='utf-8-sig',
                 on_bad_lines='skip',
+                header=0 if has_header else None,
             )
+            if not has_header:
+                df.columns = [f'col_{i}' for i in range(len(df.columns))]
         except Exception as e:
             raise ValueError(f"Ошибка чтения CSV: {str(e)}")
     elif ext in ["xlsx", "xls"]:

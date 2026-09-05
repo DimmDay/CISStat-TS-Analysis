@@ -2701,3 +2701,82 @@ Commit/push и production deploy не выполнялись.
 - `apps/standalone/components/ProductHeader.test.tsx`
 - `apps/standalone/tailwind.config.ts`
 - `apps/standalone/public/logo_TS.png`
+
+---
+
+## Task 121 — Сертификация девятимодельного baseline
+
+Дата: 2026-09-05. База: `main @ 34332f4baa5b1801f270e4997002e8ea16dcaa8a`.
+Commit/push и production deploy не выполнялись.
+
+### Сертифицированный scope
+
+- Каталог сохраняет 24 модели, а production baseline строго ограничен девятью
+  реально исполняемыми моделями: `naive`, `seasonal_naive`, `drift`, `mean`,
+  `ets`, `ets_damped`, `theta`, `arima`, `arima_auto`.
+- Все девять имеют реальные backtest и diagnostics actions и единый OOF
+  capability-контракт. Реальный tuning сертифицирован для `ets`,
+  `ets_damped`, `arima`; у остальных production-моделей tuning корректно
+  отмечен как неприменимый, а 15 catalog-only моделей не получают фиктивных
+  production actions.
+- Добавлен отдельный release-gate
+  `tests/unit/test_modeling_mvp_certification.py`, фиксирующий точный состав
+  MVP, согласованность registry/capabilities и работу ARIMA grid на минимальном
+  двухточечном expanding-window fold.
+
+### Найденные и устранённые блокеры сертификации
+
+- Свежая установка допускала Starlette 1.x, чей TestClient требует другой
+  транспортный стек (`httpx2`). Runtime ограничен совместимой веткой
+  `starlette>=0.40,<1`, а test dependency — `httpx>=0.27,<1`; проверка выполнена
+  также на FastAPI 0.141.1 / Starlette 0.52.1.
+- Для statsmodels 0.15 устранён 0-D сбой инициализации ARIMA на минимальном
+  CV-fold: при конкретном известном `IndexError` передаются нейтральные
+  конечные start parameters, после чего выполняется тот же state-space MLE,
+  без synthetic/naive подмены trial.
+- CSV loader теперь одинаково работает с FastAPI/Streamlit и простыми
+  file-like объектами, сохраняет указатель исходного потока, различает
+  обычные заголовки и явно numeric/date headerless input и не принимает буквы
+  одноколоночного CSV за разделитель.
+- Закрыты обнаруженные compatibility-регрессии Pandas/Pandera: missing-token
+  IH не смешивается с реальным значением, проверка сортировки не теряется из-за
+  некорректной даты, `required_columns` корректно переводятся в Column contract
+  без удалённого аргумента DataFrameSchema.
+- Общий Jest setup подключает `@testing-library/jest-dom`; тесты спецификации
+  синхронизированы с `modeling.yaml` 1.1.0-draft и отключённой старой
+  auto-ensemble MASE-эвристикой.
+
+### TDD и результаты сертификации
+
+- Исходный RED backend: 14 failed, 934 passed, 172 collection errors;
+  frontend: 2 failed, 722 passed. Дополнительный Task 121 release-gate:
+  1 failed / 1 passed до исправления ARIMA minimum-fold.
+- Целевой GREEN после исправлений: 61/61 backend и 4/4 ProductHeader tests.
+- Полный backend regression: 1309/1309 PASS, 3/3 snapshots PASS.
+- Полный frontend regression: 84/84 suites, 724/724 tests PASS.
+- Отдельный modeling smoke: 5/5 PASS — точный capability scope, все девять
+  моделей на одном реальном OOF cohort, persisted comparison/selection/
+  model-card workflow и подготовка diagnostics для сравнимого пула.
+- TypeScript typecheck: embedded PASS, standalone PASS.
+- Production build: embedded и standalone PASS, по 13/13 статических страниц,
+  `/modeling` включён; First Load JS 464 kB. Для известного ограничения
+  sandbox Node 24 `uv_resident_set_memory` применялся временный memory shim
+  вне репозитория, после сборок удалённый и не входящий в изменения.
+- `pip check`: PASS. `git diff --check`: PASS.
+- Live Render/Vercel deploy и удалённый smoke не выполнялись: задача не
+  включает публикацию, поэтому сертификация относится к текущему локальному
+  коду на указанной базе.
+
+### Изменённые/новые файлы Task 121
+
+- `app/data/file_loader.py`
+- `app/eda/ih_analysis.py`
+- `apps/api/model_impls/arima.py`
+- `apps/api/requirements.txt`
+- `jest.setup.js`
+- `requirements-dev.txt`
+- `tests/api/test_param_space.py`
+- `tests/test_modeling_spec.py`
+- `tests/unit/test_modeling_mvp_certification.py`
+- `validation/engine.py`
+- `validation/regularity.py`

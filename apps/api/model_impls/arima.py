@@ -55,7 +55,18 @@ def _arima_fit_predict(
     # Windows/Python 3.13 for short CV folds when a pandas scalar-like input
     # reaches SARIMAX conditional-sum-of-squares initialization.
     model = ARIMA(train, order=order)
-    fitted = model.fit()
+    try:
+        fitted = model.fit()
+    except IndexError as exc:
+        # statsmodels 0.15 can collapse the conditional-sum-of-squares
+        # initializer to a scalar on the minimum two-point CV fold. Supplying
+        # neutral finite parameters keeps the same state-space MLE fit and
+        # avoids replacing a valid ARIMA trial with a synthetic forecast.
+        if "0-dimensional" not in str(exc):
+            raise
+        start_params = np.zeros(model.k_params, dtype=np.float64)
+        start_params[-1] = max(float(np.var(train)), 1e-6)
+        fitted = model.fit(start_params=start_params)
     forecast = np.asarray(fitted.forecast(steps=n_test), dtype=np.float64).reshape(-1)
     return forecast.tolist()
 

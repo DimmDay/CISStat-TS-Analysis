@@ -103,7 +103,7 @@ class TestParamSpaceYamlLoading:
     def test_spec_loads_without_errors(self, spec):
         """Базовая проверка — спецификация парсится."""
         assert spec is not None
-        assert spec.metadata.version == "1.0.0-draft"
+        assert spec.metadata.version == "1.1.0-draft"
 
     def test_ets_has_param_space(self, spec):
         """ETS (Auto) имеет непустой param_space для тюнинга."""

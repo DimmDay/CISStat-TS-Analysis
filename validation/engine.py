@@ -101,6 +101,7 @@ def build_pandera_schema(rules: dict) -> DataFrameSchema:
     """Преобразует YAML-правила в схему Pandera для валидации"""
     columns = {}
     schema_config = rules.get("schema", {})
+    required_columns = set(schema_config.get("required_columns", []))
 
     for col_name, col_rules in schema_config.get("columns", {}).items():
         checks = []
@@ -145,16 +146,11 @@ def build_pandera_schema(rules: dict) -> DataFrameSchema:
             dtype,
             *checks,
             nullable=nullable,
-            required=col_rules.get("required", False),
+            required=col_rules.get("required", col_name in required_columns),
             coerce=col_rules.get("coerce", True)
         )
 
-    return DataFrameSchema(
-        columns,
-        required=schema_config.get("required_columns", []),
-        strict=False,
-        coerce=True
-    )
+    return DataFrameSchema(columns, strict=False, coerce=True)
 
 
 def _run_all_checks(df: pd.DataFrame, rules: dict, schema_errors: dict, target_column: str | None = None) -> dict:

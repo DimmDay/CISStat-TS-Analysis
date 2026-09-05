@@ -1,4 +1,7 @@
 fastapi>=0.110.0
+# Starlette 1.x перешёл на httpx2, тогда как FastAPI TestClient и текущий
+# тестовый/интеграционный контур используют стабильный httpx 0.x API.
+starlette>=0.40.0,<1.0.0
 uvicorn[standard]>=0.29.0
 pydantic>=2.0.0
 pandas>=2.0.0,<3.0.0

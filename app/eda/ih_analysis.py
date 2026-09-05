@@ -21,7 +21,8 @@ MISSING_TOKEN = "_MISSING_"
 def _categorical_values(series: pd.Series) -> pd.Series:
     result = series.astype("string")
     # Не смешиваем реальный текст "_MISSING_" с системным уровнем.
-    result = result.mask(result == MISSING_TOKEN, "_VALUE_MISSING_")
+    literal_missing = result.eq(MISSING_TOKEN).fillna(False)
+    result = result.mask(literal_missing, "_VALUE_MISSING_")
     return result.fillna(MISSING_TOKEN).astype(str)
 
 

@@ -136,7 +136,7 @@ class TestSpecLoading:
     def test_spec_loads(self, spec):
         """Спецификация загружается без ошибок."""
         assert spec is not None
-        assert spec.metadata.version == "1.0.0-draft"
+        assert spec.metadata.version == "1.1.0-draft"
 
     def test_spec_has_8_families(self, spec):
         """Ровно 8 семейств моделей."""
@@ -532,11 +532,9 @@ class TestEnsemble:
         expected = {"simple_average", "weighted_average", "median", "stacking"}
         assert ids == expected
 
-    def test_auto_ensemble_trigger(self, spec):
-        """Настройки auto-ensemble заданы."""
-        trigger = spec.ensemble.auto_ensemble_trigger
-        assert trigger is not None
-        assert trigger.min_models_with_mase_below_1 >= 2
+    def test_unverified_auto_ensemble_trigger_is_disabled(self, spec):
+        """Старая MASE-эвристика не должна включать ансамбль автоматически."""
+        assert spec.ensemble.auto_ensemble_trigger is None
 
 
 # ═══════════════════════════════════════════════════════════
