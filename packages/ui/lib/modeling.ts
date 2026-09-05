@@ -85,14 +85,17 @@ export type ModelingStageId =
   | "diagnostics" | "comparison" | "selection" | "model_card";
 
 export type ModelAction = "backtest" | "tune" | "diagnostics";
+export type ModelObjective = "level_forecast" | "multivariate" | "volatility";
 
 export interface ModelExecutionDescriptor {
   version: "model-execution-v2";
   model_id: string;
   family_id: string;
   adapter_id: string;
+  objective: ModelObjective;
+  model_version: string;
   adapter_version: string;
-  input_kind: "univariate" | "target_with_features" | "multiple_targets" | "volatility";
+  input_kind: "univariate" | "supervised" | "multivariate" | "panel";
   output_kind: "point" | "distribution" | "volatility";
   fit_policy: "per_train_fold";
   actions: ModelAction[];
@@ -103,6 +106,26 @@ export interface ModelExecutionDescriptor {
   deterministic: boolean;
   engine: string;
   required_packages: string[];
+  dependency_status: Array<{
+    package: string;
+    import_name: string;
+    available: boolean;
+    version: string;
+  }>;
+  library_versions: Record<string, string>;
+  runtime_available: boolean;
+  lifecycle_capabilities: {
+    fit: boolean;
+    predict: boolean;
+    tuning: boolean;
+    diagnostics: boolean;
+  };
+  resource_capabilities: {
+    cpu: "required" | "optional";
+    gpu: "unsupported" | "optional" | "required";
+    memory_class: "low" | "standard" | "high";
+    supports_parallel_folds: boolean;
+  };
   signature: string;
 }
 
@@ -156,6 +179,7 @@ export interface CandidatesResponse {
 export interface ModelingExecutionScope {
   capability_contract_version: "model-capabilities-v1";
   execution_contract_version: "model-execution-v2";
+  objective: ModelObjective;
   required_backtest_model_ids: string[];
   included_backtest_model_ids: string[];
   completed_backtest_model_ids: string[];
@@ -293,6 +317,13 @@ export interface BacktestResponse {
   status?: "success" | "partial";
   strategy?: "single" | "expanding" | "sliding";
   cohort_id?: string | null;
+  objective?: ModelObjective;
+  cohort_contract?: {
+    objective: ModelObjective;
+    series_fingerprints: Record<string, string>;
+    feature_contract: Record<string, unknown>;
+    metric_policy: Record<string, unknown>;
+  };
   horizon?: number;
   n_folds?: number;
   gap?: number;
@@ -332,6 +363,8 @@ export interface SessionTuningResponse {
   best_metrics: BacktestMetrics;
   strategy: "single" | "expanding" | "sliding";
   cohort_id: string;
+  objective?: ModelObjective;
+  cohort_contract?: BacktestResponse["cohort_contract"];
   folds: TuningFoldPlan[];
   preprocessing: NonNullable<BacktestResponse["preprocessing"]>;
   warnings: string[];
@@ -410,6 +443,7 @@ export interface ModelingComparisonResponse {
   comparison_signature: string;
   fingerprint: string;
   cohort_id: string;
+  objective: ModelObjective;
   ranking_policy: "forecast_metrics_only_diagnostics_separate";
   diagnostics_policy: "current_oof_report_required_not_scored";
   normalization: "min_max_within_comparable_pool";

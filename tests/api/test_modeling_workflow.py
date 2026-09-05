@@ -1115,7 +1115,7 @@ def test_state_migrates_legacy_unsigned_backtests_without_discarding_valid_basel
 
     assert response.status_code == 200, response.text
     artifacts = response.json()["artifacts"]
-    assert artifacts["artifact_schema_version"] == 5
+    assert artifacts["artifact_schema_version"] == 6
     assert "naive" in artifacts["backtests"]
     assert "ets" not in artifacts["backtests"]
     assert "arima_auto" not in artifacts["backtests"]
@@ -1141,7 +1141,7 @@ def test_state_migrates_legacy_unsigned_backtests_without_discarding_valid_basel
     assert comparison.status_code == 200, comparison.text
 
 
-def test_state_v5_upgrade_preserves_valid_runs_and_invalidates_old_scope_verdict(
+def test_state_v4_upgrade_preserves_valid_runs_and_invalidates_old_scope_verdict(
     client: TestClient,
 ):
     _prepare(client)
@@ -1163,7 +1163,7 @@ def test_state_v5_upgrade_preserves_valid_runs_and_invalidates_old_scope_verdict
 
     assert state.status_code == 200, state.text
     artifacts = state.json()["artifacts"]
-    assert artifacts["artifact_schema_version"] == 5
+    assert artifacts["artifact_schema_version"] == 6
     assert set(artifacts["backtests"]) == {"naive", "drift"}
     assert set(artifacts["diagnostics"]) == {"naive", "drift"}
     assert "comparison" not in artifacts
@@ -1172,3 +1172,37 @@ def test_state_v5_upgrade_preserves_valid_runs_and_invalidates_old_scope_verdict
     assert artifacts["model_cards"] == {}
     assert artifacts["artifact_migration"]["reason"] == "model_capability_scope_contract_upgrade"
     assert state.json()["pipeline"]["comparison"] == "pending"
+
+
+def test_state_v5_upgrade_invalidates_runs_without_v2_lineage(client: TestClient):
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=3&n_splits=3").status_code == 200
+    _backtest_and_diagnose(client, "naive")
+
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    store = get_session_store()
+    session = store.get(session_id)
+    session.modeling_artifacts["artifact_schema_version"] = 5
+    backtest = session.modeling_artifacts["backtests"]["naive"]
+    backtest.pop("objective", None)
+    backtest.pop("cohort_contract", None)
+    backtest["execution_contract"].pop("runtime_available", None)
+    backtest["execution_contract"].pop("library_versions", None)
+    store.save(session)
+
+    state = client.get("/v1/session/modeling/state")
+
+    assert state.status_code == 200, state.text
+    artifacts = state.json()["artifacts"]
+    assert artifacts["artifact_schema_version"] == 6
+    assert artifacts["backtests"] == {}
+    assert artifacts["diagnostics"] == {}
+    assert artifacts["artifact_migration"]["invalidated_backtests"] == ["naive"]
+    assert artifacts["artifact_migration"]["invalidated_diagnostics"] == ["naive"]
+    assert artifacts["artifact_migration"]["reason"] == (
+        "unsigned_or_stale_execution_oof_lineage"
+    )
+    assert state.json()["pipeline"]["backtest"] == "pending"
+
+    candidates = client.post("/v1/session/modeling/candidates", json={})
+    assert candidates.status_code == 200, candidates.text

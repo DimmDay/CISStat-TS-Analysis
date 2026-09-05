@@ -51,6 +51,16 @@ def test_aligned_oof_rejects_different_facts_even_with_same_keys() -> None:
         ])
 
 
+def test_aligned_oof_rejects_different_forecasting_objectives() -> None:
+    first = _backtest("first", [1.0, 2.0])
+    second = _backtest("second", [1.0, 2.0])
+    first["objective"] = "level_forecast"
+    second["objective"] = "volatility"
+
+    with pytest.raises(ComparisonContractError, match="objective"):
+        aligned_oof([first, second])
+
+
 def test_aligned_oof_rejects_different_train_only_mase_scales() -> None:
     first = _backtest("first", [1.0, 2.0])
     second = _backtest("second", [1.0, 2.0])

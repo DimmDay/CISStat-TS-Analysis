@@ -180,6 +180,7 @@ def finalize_tuning_plan_with_artifacts(
         truncated=truncated, cv_config=_cv_summary(plan), metric=metric,
         trials=trials, duration_ms=round(duration_ms, 2),
         strategy=plan.strategy, cohort_id=plan.cohort_id,
+        objective=plan.objective, cohort_contract=plan.cohort_contract,
         folds=[
             TuneFoldPlan(
                 fold=fold.fold, train_start=fold.train_indices[0],

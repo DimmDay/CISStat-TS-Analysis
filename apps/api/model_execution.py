@@ -10,7 +10,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from hashlib import sha256
+from importlib import metadata, util
 import json
+import platform
 from typing import Any, Callable, Literal, Mapping, Sequence
 
 import numpy as np
@@ -19,14 +21,57 @@ import numpy as np
 MODEL_EXECUTION_CONTRACT_VERSION = "model-execution-v2"
 
 ExecutionAction = Literal["backtest", "tune", "diagnostics"]
+ModelObjective = Literal["level_forecast", "multivariate", "volatility"]
 ExecutionInputKind = Literal[
-    "univariate", "target_with_features", "multiple_targets", "volatility",
+    "univariate", "supervised", "multivariate", "panel",
 ]
 ExecutionOutputKind = Literal["point", "distribution", "volatility"]
+GpuCapability = Literal["unsupported", "optional", "required"]
 
 
 class ModelExecutionContractError(ValueError):
     """An adapter request/result violates the leakage-safe v2 contract."""
+
+
+@dataclass(frozen=True)
+class ModelResourceCapabilities:
+    """Minimum execution resources declared before a job is scheduled."""
+
+    cpu: Literal["required", "optional"] = "required"
+    gpu: GpuCapability = "unsupported"
+    memory_class: Literal["low", "standard", "high"] = "low"
+    supports_parallel_folds: bool = False
+
+
+@dataclass(frozen=True)
+class ModelLifecycleCapabilities:
+    """Operations backed by real code for one registered adapter."""
+
+    fit: bool
+    predict: bool
+    tuning: bool
+    diagnostics: bool
+
+
+def _probe_dependency(package_name: str) -> dict[str, Any]:
+    """Inspect a package only when runtime readiness/lineage is requested."""
+    import_name = package_name.replace("-", "_")
+    try:
+        import_available = util.find_spec(import_name) is not None
+    except (ImportError, ModuleNotFoundError, ValueError):
+        import_available = False
+    installed_version = "not-installed"
+    if import_available:
+        try:
+            installed_version = metadata.version(package_name)
+        except metadata.PackageNotFoundError:
+            installed_version = "unknown"
+    return {
+        "package": package_name,
+        "import_name": import_name,
+        "available": import_available,
+        "version": installed_version,
+    }
 
 
 def _finite_vector(values: Sequence[float], *, field_name: str) -> tuple[float, ...]:
@@ -61,6 +106,7 @@ class ModelExecutionRequest:
 
     target: Sequence[float]
     horizon: int
+    objective: ModelObjective = "level_forecast"
     seasonal_period: int = 1
     params: Mapping[str, Any] = field(default_factory=dict)
     train_features: Mapping[str, Sequence[float]] = field(default_factory=dict)
@@ -75,6 +121,8 @@ class ModelExecutionRequest:
             raise ModelExecutionContractError("horizon должен быть положительным")
         if int(self.seasonal_period) < 1:
             raise ModelExecutionContractError("seasonal_period должен быть положительным")
+        if self.objective not in {"level_forecast", "multivariate", "volatility"}:
+            raise ModelExecutionContractError(f"Неподдерживаемый objective: {self.objective}")
         target = _finite_vector(self.target, field_name="target")
         if not target:
             raise ModelExecutionContractError("target train fold пуст")
@@ -146,6 +194,8 @@ class ModelExecutionDefinition:
     family_id: str
     adapter_id: str
     executor: ModelExecutor
+    objective: ModelObjective = "level_forecast"
+    model_version: str = "1.0.0"
     adapter_version: str = "1.0.0"
     input_kind: ExecutionInputKind = "univariate"
     output_kind: ExecutionOutputKind = "point"
@@ -158,6 +208,9 @@ class ModelExecutionDefinition:
     deterministic: bool = True
     engine: str = "native"
     required_packages: tuple[str, ...] = ()
+    resource_capabilities: ModelResourceCapabilities = field(
+        default_factory=ModelResourceCapabilities,
+    )
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "actions", frozenset(self.actions))
@@ -168,30 +221,56 @@ class ModelExecutionDefinition:
             )
         if not callable(self.executor):
             raise ModelExecutionContractError("executor должен быть callable")
+        if self.objective not in {"level_forecast", "multivariate", "volatility"}:
+            raise ModelExecutionContractError(f"Неподдерживаемый objective: {self.objective}")
+        if self.input_kind not in {"univariate", "supervised", "multivariate", "panel"}:
+            raise ModelExecutionContractError(f"Неподдерживаемый input_kind: {self.input_kind}")
         supported_actions = {"backtest", "tune", "diagnostics"}
         if not self.actions or not self.actions.issubset(supported_actions):
             raise ModelExecutionContractError("actions содержит неподдерживаемое действие")
         if "tune" in self.actions and "backtest" not in self.actions:
             raise ModelExecutionContractError("tune требует backtest action")
-        if self.requires_train_features and self.input_kind != "target_with_features":
+        if self.requires_train_features and self.input_kind not in {"supervised", "panel"}:
             raise ModelExecutionContractError(
-                "requires_train_features требует input_kind=target_with_features"
+                "requires_train_features требует input_kind=supervised или panel"
             )
-        if self.supports_future_features and self.input_kind != "target_with_features":
+        if self.supports_future_features and self.input_kind not in {"supervised", "panel"}:
             raise ModelExecutionContractError(
-                "supports_future_features требует input_kind=target_with_features"
+                "supports_future_features требует input_kind=supervised или panel"
             )
-        if self.requires_related_series and self.input_kind != "multiple_targets":
+        if self.requires_related_series and self.input_kind not in {"multivariate", "panel"}:
             raise ModelExecutionContractError(
-                "requires_related_series требует input_kind=multiple_targets"
+                "requires_related_series требует input_kind=multivariate или panel"
+            )
+        if self.objective == "multivariate" and self.input_kind != "multivariate":
+            raise ModelExecutionContractError(
+                "objective=multivariate требует input_kind=multivariate"
             )
 
+    def dependency_status(self) -> tuple[dict[str, Any], ...]:
+        return tuple(_probe_dependency(package) for package in self.required_packages)
+
+    def lifecycle_capabilities(self) -> ModelLifecycleCapabilities:
+        return ModelLifecycleCapabilities(
+            fit="backtest" in self.actions,
+            predict="backtest" in self.actions,
+            tuning="tune" in self.actions,
+            diagnostics="diagnostics" in self.actions,
+        )
+
+    def runtime_available(self) -> bool:
+        return all(item["available"] for item in self.dependency_status())
+
     def descriptor(self) -> dict[str, Any]:
+        dependencies = self.dependency_status()
+        lifecycle = self.lifecycle_capabilities()
         payload = {
             "version": MODEL_EXECUTION_CONTRACT_VERSION,
             "model_id": self.model_id,
             "family_id": self.family_id,
             "adapter_id": self.adapter_id,
+            "objective": self.objective,
+            "model_version": self.model_version,
             "adapter_version": self.adapter_version,
             "input_kind": self.input_kind,
             "output_kind": self.output_kind,
@@ -204,6 +283,24 @@ class ModelExecutionDefinition:
             "deterministic": self.deterministic,
             "engine": self.engine,
             "required_packages": list(self.required_packages),
+            "dependency_status": list(dependencies),
+            "library_versions": {
+                "python": platform.python_version(),
+                **{item["package"]: item["version"] for item in dependencies},
+            },
+            "runtime_available": all(item["available"] for item in dependencies),
+            "lifecycle_capabilities": {
+                "fit": lifecycle.fit,
+                "predict": lifecycle.predict,
+                "tuning": lifecycle.tuning,
+                "diagnostics": lifecycle.diagnostics,
+            },
+            "resource_capabilities": {
+                "cpu": self.resource_capabilities.cpu,
+                "gpu": self.resource_capabilities.gpu,
+                "memory_class": self.resource_capabilities.memory_class,
+                "supports_parallel_folds": self.resource_capabilities.supports_parallel_folds,
+            },
         }
         encoded = json.dumps(
             payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
@@ -231,7 +328,7 @@ class ModelExecutionRegistry:
     def model_ids_for(self, action: ExecutionAction) -> frozenset[str]:
         return frozenset(
             model_id for model_id, definition in self._definitions.items()
-            if action in definition.actions
+            if action in definition.actions and definition.runtime_available()
         )
 
     def get(self, model_id: str) -> ModelExecutionDefinition | None:
@@ -252,6 +349,17 @@ class ModelExecutionRegistry:
         self, model_id: str, request: ModelExecutionRequest,
     ) -> ModelExecutionResult:
         definition = self.require(model_id)
+        dependencies = definition.dependency_status()
+        unavailable = [item["package"] for item in dependencies if not item["available"]]
+        if unavailable:
+            raise ModelExecutionContractError(
+                f"Модель '{model_id}' недоступна: отсутствуют зависимости {unavailable}"
+            )
+        if request.objective != definition.objective:
+            raise ModelExecutionContractError(
+                f"Модель '{model_id}' имеет objective={definition.objective}, "
+                f"получен {request.objective}"
+            )
         if definition.requires_train_features and not request.train_features:
             raise ModelExecutionContractError(
                 f"Модель '{model_id}' требует train_features"
@@ -272,7 +380,7 @@ class ModelExecutionRegistry:
             raise ModelExecutionContractError(
                 f"Модель '{model_id}' требует related_series"
             )
-        if request.related_series and definition.input_kind != "multiple_targets":
+        if request.related_series and definition.input_kind not in {"multivariate", "panel"}:
             raise ModelExecutionContractError(
                 f"Модель '{model_id}' не принимает related_series"
             )
@@ -395,12 +503,13 @@ def _auto_arima_executor(request: ModelExecutionRequest) -> ModelExecutionResult
 
 _BACKTEST_DIAGNOSTICS = frozenset({"backtest", "diagnostics"})
 _TUNABLE = frozenset({"backtest", "tune", "diagnostics"})
+_CLASSICAL_RESOURCES = ModelResourceCapabilities(memory_class="standard")
 
 MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
     ModelExecutionDefinition(
         model_id=model_id, family_id="baselines",
         adapter_id=f"baseline-{model_id}", executor=_baseline_executor(model_id),
-        actions=_BACKTEST_DIAGNOSTICS,
+        actions=_BACKTEST_DIAGNOSTICS, engine="numpy", required_packages=("numpy",),
     )
     for model_id in ("naive", "seasonal_naive", "drift", "mean")
 ] + [
@@ -408,28 +517,33 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         model_id="ets", family_id="exponential_smoothing",
         adapter_id="statsmodels-ets", executor=_ets_executor(force_damped=False),
         actions=_TUNABLE, engine="statsmodels", required_packages=("statsmodels",),
+        resource_capabilities=_CLASSICAL_RESOURCES,
     ),
     ModelExecutionDefinition(
         model_id="ets_damped", family_id="exponential_smoothing",
         adapter_id="statsmodels-ets-damped", executor=_ets_executor(force_damped=True),
         actions=_TUNABLE, engine="statsmodels", required_packages=("statsmodels",),
+        resource_capabilities=_CLASSICAL_RESOURCES,
     ),
     ModelExecutionDefinition(
         model_id="theta", family_id="exponential_smoothing",
         adapter_id="statsmodels-theta", executor=_theta_executor,
         actions=_BACKTEST_DIAGNOSTICS, engine="statsmodels",
         required_packages=("statsmodels",),
+        resource_capabilities=_CLASSICAL_RESOURCES,
     ),
     ModelExecutionDefinition(
         model_id="arima", family_id="arima",
         adapter_id="statsmodels-arima", executor=_arima_executor,
         actions=_TUNABLE, engine="statsmodels", required_packages=("statsmodels",),
+        resource_capabilities=_CLASSICAL_RESOURCES,
     ),
     ModelExecutionDefinition(
         model_id="arima_auto", family_id="arima",
         adapter_id="statsmodels-auto-arima", executor=_auto_arima_executor,
         actions=_BACKTEST_DIAGNOSTICS, engine="statsmodels",
         required_packages=("statsmodels",),
+        resource_capabilities=_CLASSICAL_RESOURCES,
     ),
 ])
 

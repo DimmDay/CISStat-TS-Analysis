@@ -90,10 +90,17 @@ def aligned_oof(
         for fold in reference.get("folds") or []
     ]
     reference_scale = (reference.get("preprocessing") or {}).get("evaluation_scale")
+    reference_objective = str(reference.get("objective") or "level_forecast")
+    reference_cohort_contract = reference.get("cohort_contract") or {}
     reference_mase_scales = [fold.get("mase_scale") for fold in reference.get("folds") or []]
     residuals: dict[str, np.ndarray] = {}
     for backtest in backtests:
         model_id = str(backtest["model_id"])
+        objective = str(backtest.get("objective") or "level_forecast")
+        if objective != reference_objective:
+            raise ComparisonContractError("Backtest objective моделей не совпадает")
+        if (backtest.get("cohort_contract") or {}) != reference_cohort_contract:
+            raise ComparisonContractError("Cohort contracts моделей не совпадают")
         points = _indexed_oof(backtest)
         if set(points) != set(reference_points):
             raise ComparisonContractError(
@@ -369,6 +376,7 @@ def build_comparison(
     scope_payload = dict(execution_scope or {})
     signature = _signature({
         "fingerprint": fingerprint, "cohort_id": cohort_id,
+        "objective": str(ordered_backtests[0].get("objective") or "level_forecast"),
         "ranking_policy": RANKING_POLICY, "diagnostics_policy": DIAGNOSTICS_POLICY,
         "normalization": NORMALIZATION, "metric_weights": metric_weights,
         "baseline_policy": baseline_policy.model_dump(mode="json"),
@@ -390,6 +398,7 @@ def build_comparison(
     return ModelingComparisonResponse(
         comparison_id=comparison_id, comparison_signature=signature,
         fingerprint=fingerprint, cohort_id=cohort_id,
+        objective=str(ordered_backtests[0].get("objective") or "level_forecast"),
         ranking_policy=RANKING_POLICY, diagnostics_policy=DIAGNOSTICS_POLICY,
         normalization=NORMALIZATION, metric_weights=metric_weights,
         execution_scope=scope_payload,

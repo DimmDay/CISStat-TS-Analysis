@@ -97,7 +97,7 @@ def test_contract_can_carry_future_covariates_for_ml_adapters_without_test_targe
         ModelExecutionDefinition(
             model_id="future_ml", family_id="tree_ml",
             adapter_id="future-ml-v1", executor=execute,
-            input_kind="target_with_features", requires_train_features=True,
+            input_kind="supervised", requires_train_features=True,
             supports_future_features=True,
             actions=frozenset({"backtest", "tune", "diagnostics"}),
         ),

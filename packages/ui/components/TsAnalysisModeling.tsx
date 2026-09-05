@@ -320,30 +320,41 @@ export function TsAnalysisModeling() {
 
   // ── Завершённые стадии пайплайна ──
   const [completedStages, setCompletedStages] = useState<Set<string>>(new Set<string>());
+  const modelingStateRequestRef = useRef<Promise<void> | null>(null);
 
-  const fetchModelingState = useCallback(async () => {
-    try {
-      const response = await fetch(`${API_BASE}/v1/session/modeling/state`, {
-        credentials: "include",
-      });
-      if (!response.ok) return;
-      const body = await response.json();
-      if (body?.pipeline) {
-        setCompletedStages(new Set(
-          Object.entries(body.pipeline)
-            .filter(([, status]) => status === "done")
-            .map(([stage]) => stage),
-        ));
+  const fetchModelingState = useCallback((): Promise<void> => {
+    if (modelingStateRequestRef.current) return modelingStateRequestRef.current;
+    const pending = (async () => {
+      try {
+        const response = await fetch(`${API_BASE}/v1/session/modeling/state`, {
+          credentials: "include",
+        });
+        if (!response.ok) return;
+        const body = await response.json();
+        if (body?.pipeline) {
+          setCompletedStages(new Set(
+            Object.entries(body.pipeline)
+              .filter(([, status]) => status === "done")
+              .map(([stage]) => stage),
+          ));
+        }
+        if (body?.artifacts?.backtests) {
+          setBacktestResults(body.artifacts.backtests as Record<string, BacktestResponse>);
+        }
+        if (body?.artifacts?.execution_scope) {
+          setExecutionScope(body.artifacts.execution_scope as ModelingExecutionScope);
+        }
+      } catch {
+        // Контекст остаётся рабочим; state boot можно повторить после операции.
       }
-      if (body?.artifacts?.backtests) {
-        setBacktestResults(body.artifacts.backtests as Record<string, BacktestResponse>);
+    })();
+    modelingStateRequestRef.current = pending;
+    void pending.finally(() => {
+      if (modelingStateRequestRef.current === pending) {
+        modelingStateRequestRef.current = null;
       }
-      if (body?.artifacts?.execution_scope) {
-        setExecutionScope(body.artifacts.execution_scope as ModelingExecutionScope);
-      }
-    } catch {
-      // Контекст остаётся рабочим; state boot можно повторить после операции.
-    }
+    });
+    return pending;
   }, []);
 
   const fetchModelingContext = useCallback(async () => {
@@ -360,10 +371,10 @@ export function TsAnalysisModeling() {
       }
       if (body?.profile && body?.checkpoint && body?.validation_strategy) {
         const context = body as ModelingContext;
-        setModelingContext(context);
-        setModelingContextError(null);
         if (context.ready) {
-          void fetchModelingState();
+          // GET state may persist a Redis artifact migration.  Finish that
+          // optimistic write before POST candidates starts from this context.
+          await fetchModelingState();
           setCompletedStages((previous) => {
             const next = new Set(previous);
             next.add("problem_definition");
@@ -372,6 +383,8 @@ export function TsAnalysisModeling() {
             return next;
           });
         }
+        setModelingContext(context);
+        setModelingContextError(null);
         return;
       }
       setModelingContext(null);

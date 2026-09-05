@@ -68,7 +68,7 @@ from apps.api.session_store import get_or_create_session_id, get_session_store
 
 
 router = APIRouter()
-MODELING_ARTIFACT_SCHEMA_VERSION = 5
+MODELING_ARTIFACT_SCHEMA_VERSION = 6
 
 
 def _package_version(name: str) -> str:
@@ -240,6 +240,8 @@ def _migrate_modeling_artifacts(session) -> None:
         model_id for model_id, tuning in tunings.items()
         if not tuning.get("tuning_id")
         or not tuning.get("cohort_id")
+        or tuning.get("objective") != "level_forecast"
+        or (tuning.get("cohort_contract") or {}).get("objective") != "level_forecast"
         or tuning.get("parameter_signature") != parameter_signature(
             model_id, tuning.get("best_params") or {},
         )
@@ -253,6 +255,12 @@ def _migrate_modeling_artifacts(session) -> None:
         traceable = bool(
             backtest.get("run_id")
             and backtest.get("cohort_id")
+            and backtest.get("objective") == "level_forecast"
+            and (backtest.get("cohort_contract") or {}).get("objective")
+            == "level_forecast"
+            and (backtest.get("execution_contract") or {}).get("runtime_available")
+            is True
+            and (backtest.get("execution_contract") or {}).get("library_versions")
             and backtest.get("parameter_signature") == parameter_signature(
                 model_id, backtest.get("params") or {},
             )
@@ -433,6 +441,7 @@ def _ensure_execution_scope(session) -> Optional[dict[str, Any]]:
     scope = {
         "capability_contract_version": MODELING_CAPABILITY_CONTRACT_VERSION,
         "execution_contract_version": MODEL_EXECUTION_CONTRACT_VERSION,
+        "objective": "level_forecast",
         "required_backtest_model_ids": required,
         "backtest_exclusions": exclusions,
         "tuning_skips": tuning_skips,
@@ -646,6 +655,7 @@ def generate_modeling_candidates(
     session.modeling_artifacts.setdefault("execution_scope", {
         "capability_contract_version": MODELING_CAPABILITY_CONTRACT_VERSION,
         "execution_contract_version": MODEL_EXECUTION_CONTRACT_VERSION,
+        "objective": "level_forecast",
         "required_backtest_model_ids": [],
         "backtest_exclusions": {},
         "tuning_skips": {},
@@ -1646,6 +1656,7 @@ def compare_modeling_candidates(
                 {
                     "capability_contract_version": scope["capability_contract_version"],
                     "execution_contract_version": scope["execution_contract_version"],
+                    "objective": scope["objective"],
                     "included_backtest_model_ids": scope["included_backtest_model_ids"],
                     "backtest_exclusions": scope["backtest_exclusions"],
                     "tuning_skips": scope["tuning_skips"],
@@ -1903,11 +1914,17 @@ def create_model_card(
             "description": (candidate or {}).get("message", ranked["model_name"]),
             "selection_kind": selection.get("selected_kind", "single"),
             "ensemble_members": selection.get("ensemble_members", []),
-            "version": "1.0", "library_versions": {
-                "numpy": _package_version("numpy"),
-                "pandas": _package_version("pandas"),
-                "statsmodels": _package_version("statsmodels"),
-            },
+            "version": (backtest.get("execution_contract") or {}).get(
+                "model_version", "legacy-unknown",
+            ),
+            "library_versions": (backtest.get("execution_contract") or {}).get(
+                "library_versions", {
+                    "numpy": _package_version("numpy"),
+                    "pandas": _package_version("pandas"),
+                    "statsmodels": _package_version("statsmodels"),
+                },
+            ),
+            "execution_contract": backtest.get("execution_contract", {}),
         },
         "data_summary": {
             "n_observations": len(series), "n_series": context["profile"]["n_series"],

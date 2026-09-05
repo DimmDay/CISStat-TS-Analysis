@@ -3095,6 +3095,8 @@ class BacktestResponse(BaseModel):
     status: Literal["success", "partial"] = "success"
     strategy: Literal["single", "expanding", "sliding"] = "single"
     cohort_id: Optional[str] = Field(None, description="Fingerprint данных и точного набора folds")
+    objective: Literal["level_forecast", "multivariate", "volatility"] = "level_forecast"
+    cohort_contract: Dict[str, Any] = Field(default_factory=dict)
     horizon: int = Field(1, ge=1)
     n_folds: int = Field(1, ge=1)
     gap: int = Field(0, ge=0)
@@ -3226,6 +3228,7 @@ class ModelingComparisonResponse(BaseModel):
     comparison_signature: str
     fingerprint: str
     cohort_id: str
+    objective: Literal["level_forecast", "multivariate", "volatility"] = "level_forecast"
     ranking_policy: Literal["forecast_metrics_only_diagnostics_separate"]
     diagnostics_policy: Literal["current_oof_report_required_not_scored"]
     normalization: Literal["min_max_within_comparable_pool"]
@@ -3355,6 +3358,8 @@ class TuneResponse(BaseModel):
     cohort_id: Optional[str] = Field(
         None, description="Тот же exact-fold cohort, что использует session backtest",
     )
+    objective: Literal["level_forecast", "multivariate", "volatility"] = "level_forecast"
+    cohort_contract: Dict[str, Any] = Field(default_factory=dict)
     folds: List[TuneFoldPlan] = Field(default_factory=list)
     preprocessing: Dict[str, Any] = Field(default_factory=dict)
     warnings: List[str] = Field(default_factory=list)

@@ -2855,3 +2855,84 @@ Commit/push и production deploy не выполнялись.
 - `apps/api/schemas.py`
 - `packages/ui/lib/modeling.ts`
 - `tests/unit/test_model_execution_contract.py`
+
+---
+
+## Task 122.1 — Завершение Model Execution Contract v2 и устранение bootstrap CAS race
+
+Дата: 2026-09-05. База: `main @ d8b5b77caff87ff076855b3e561214e9b5f2359f`.
+Commit/push и production deploy не выполнялись.
+
+### Закрытие аудита Task 122
+
+- В execution definition/request введён обязательный типизированный objective:
+  `level_forecast | multivariate | volatility`; input contract приведён к
+  плановым значениям `univariate | supervised | multivariate | panel`.
+- Descriptor теперь публикует отдельные lifecycle capabilities для
+  fit/predict/tuning/diagnostics и resource capabilities для CPU/GPU, класса
+  памяти и parallel folds. Runtime-ready набор по-прежнему выводится только из
+  registry; состав сертифицированных девяти моделей не изменён.
+- Dependency readiness выполняется probe-операцией через import metadata/spec
+  без импорта тяжёлой библиотеки. Недоступная зависимость исключает модель из
+  runtime actions, а прямое исполнение завершается fail closed.
+- В lineage сохраняются версия модели, версия адаптера, Python и точные версии
+  требуемых библиотек, dependency status, runtime verdict и полная подпись
+  execution descriptor. Model Card получает версии из backtest lineage, а не
+  из отдельного текущего окружения.
+- `cohort_id` теперь подписывает objective, fingerprints всех входных рядов/X,
+  feature contract и metric policy вместе с exact EDA folds. Comparison явно
+  отклоняет модели с разными objective или cohort contracts, поэтому ranking
+  между разными постановками задачи невозможен.
+- Схема session artifacts повышена с 5 до 6. Миграция сохраняет только
+  проверяемые v2 artifacts; результаты без нового objective/cohort/library
+  lineage безопасно инвалидируются вместе с зависимыми diagnostics/tuning.
+
+### Ошибка параллельного изменения состояния
+
+- Воспроизведена сообщённая production-ошибка `Состояние анализа изменилось в
+  параллельном запросе`. После загрузки context компонент сразу публиковал его
+  в React state и независимо запускал GET modeling state. Effect по новому
+  fingerprint успевал отправить POST candidates до завершения GET.
+- GET state при первом открытии после Task 122 мигрировал Redis artifact и сам
+  выполнял optimistic save. GET и POST читали одну revision, после чего один
+  из них закономерно получал `SessionConflictError`.
+- Bootstrap сериализован: готовый context публикуется только после завершения
+  state hydration/migration. Одновременные state-запросы coalesce через один
+  in-flight Promise; POST candidates больше не стартует параллельно с
+  миграционной записью.
+
+### TDD и проверки
+
+- RED contract gate до production-кода: 4/4 FAIL — отсутствовали objective/lifecycle/
+  resources, lazy dependency fail-closed и расширенный cohort fingerprint;
+  comparison допускал разные objective.
+- RED UI race: зафиксирован порядок `state:start → candidates:start` без
+  завершения state migration. GREEN подтверждает строгий порядок
+  `state:start → state:finish → candidates:start`.
+- Новый schema 5 → 6 integration test подтверждает инвалидизацию неполного
+  Task 122 lineage и успешный повторный candidates request.
+- Полный backend regression: 1319/1319 PASS, 3/3 snapshots PASS.
+- Полный frontend regression: 84/84 suites, 725/725 tests PASS; компонент
+  Modeling отдельно: 47/47 PASS.
+- TypeScript 5.9 application typecheck: embedded PASS, standalone PASS.
+- Production build embedded/standalone: PASS, по 13/13 статических страниц,
+  включая `/modeling`; First Load JS 464 kB. Для ограничения sandbox Node 24
+  `uv_resident_set_memory` использован временный внешний memory shim; после
+  сборок он удалён и в изменения не входит.
+- `pip check`: PASS. `git diff --check`: PASS.
+
+### Изменённые/новые файлы Task 122.1
+
+- `apps/api/backtesting.py`
+- `apps/api/model_execution.py`
+- `apps/api/modeling_comparison.py`
+- `apps/api/modeling_tuning.py`
+- `apps/api/routers/modeling_session.py`
+- `apps/api/schemas.py`
+- `packages/ui/components/TsAnalysisModeling.tsx`
+- `packages/ui/components/TsAnalysisModeling.test.tsx`
+- `packages/ui/lib/modeling.ts`
+- `tests/api/test_modeling_workflow.py`
+- `tests/unit/test_model_execution_contract.py`
+- `tests/unit/test_model_execution_contract_v2_compliance.py`
+- `tests/unit/test_modeling_comparison.py`

@@ -7,10 +7,11 @@ are never passed to model code.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from hashlib import sha256
 import json
 import math
+import platform
 import time
 from typing import Any, Callable, Mapping, Optional, Protocol
 
@@ -88,6 +89,8 @@ class BacktestPlan:
     seasonal_period: int
     n_observations: int
     preprocessing_signature: str = "none"
+    objective: str = "level_forecast"
+    cohort_contract: dict[str, Any] = field(default_factory=dict)
 
 
 class PreparedFoldProtocol(Protocol):
@@ -109,6 +112,10 @@ def build_backtest_plan(
     validation: Mapping[str, Any], *, n_observations: int,
     fingerprint: str, target_column: str, seasonal_period: int,
     preprocessing_signature: str = "none",
+    objective: str = "level_forecast",
+    series_fingerprints: Optional[Mapping[str, str]] = None,
+    feature_contract: Optional[Mapping[str, Any]] = None,
+    metric_policy: Optional[Mapping[str, Any]] = None,
 ) -> BacktestPlan:
     """Validate and freeze the exact folds produced by EDA."""
     strategy = str(validation.get("strategy", ""))
@@ -117,6 +124,8 @@ def build_backtest_plan(
     horizon = int(validation.get("horizon") or 0)
     gap = int(validation.get("gap") or 0)
     metric_period = int(seasonal_period)
+    if objective not in {"level_forecast", "multivariate", "volatility"}:
+        raise BacktestExecutionError(f"Неподдерживаемый objective: {objective}")
     raw_folds = validation.get("folds") or []
     if horizon < 1 or gap < 0 or metric_period < 1 or not raw_folds:
         raise BacktestExecutionError("EDA validation strategy не содержит исполнимых folds")
@@ -174,11 +183,30 @@ def build_backtest_plan(
         )
     if folds[-1].test_indices[-1] != n_observations - 1:
         raise BacktestExecutionError("Последний EDA test fold должен завершаться последним наблюдением")
+    series_scope = dict(series_fingerprints or {target_column: fingerprint})
+    if not series_scope or not all(series_scope.values()):
+        raise BacktestExecutionError("Cohort требует fingerprint каждого входного ряда")
+    features = dict(feature_contract or {
+        "historic": [], "future_known": [], "static": [], "policy": "none",
+    })
+    metrics = dict(metric_policy or {
+        "metrics": ["mae", "rmse", "mape", "mase", "smape", "rmsse"],
+        "primary": "rmse",
+        "aggregation": "test_size_weighted_folds",
+        "seasonal_period": metric_period,
+    })
+    cohort_contract = {
+        "objective": objective,
+        "series_fingerprints": series_scope,
+        "feature_contract": features,
+        "metric_policy": metrics,
+    }
     payload = {
         "fingerprint": fingerprint, "target_column": target_column,
         "strategy": strategy, "horizon": horizon, "gap": gap,
         "metric_seasonal_period": metric_period,
         "preprocessing_signature": preprocessing_signature,
+        "cohort_contract": cohort_contract,
         "folds": [
             {"fold": item.fold, "train": item.train_indices, "test": item.test_indices}
             for item in folds
@@ -193,6 +221,7 @@ def build_backtest_plan(
         seasonal_period=metric_period,
         n_observations=n_observations,
         preprocessing_signature=preprocessing_signature,
+        objective=objective, cohort_contract=cohort_contract,
     )
 
 
@@ -331,11 +360,24 @@ def run_backtest_plan(
             "model_id": model_id,
             "family_id": family_id,
             "adapter_id": "injected-legacy-predictor",
+            "objective": plan.objective,
+            "model_version": "test-injected",
             "adapter_version": "compat-v1",
             "input_kind": "univariate",
             "output_kind": "point",
             "fit_policy": "per_train_fold",
             "actions": ["backtest"],
+            "dependency_status": [],
+            "library_versions": {"python": platform.python_version()},
+            "runtime_available": True,
+            "lifecycle_capabilities": {
+                "fit": True, "predict": True,
+                "tuning": False, "diagnostics": False,
+            },
+            "resource_capabilities": {
+                "cpu": "required", "gpu": "unsupported",
+                "memory_class": "low", "supports_parallel_folds": False,
+            },
         }
         encoded = json.dumps(
             injected_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
@@ -382,6 +424,7 @@ def run_backtest_plan(
                     ModelExecutionRequest(
                         target=y_train,
                         horizon=execution_horizon,
+                        objective=plan.objective,
                         seasonal_period=seasonal_period,
                         params=parameters,
                         train_timestamps=train_timestamps,
@@ -455,6 +498,7 @@ def run_backtest_plan(
         "duration_ms": round((time.monotonic() - started) * 1000, 3),
         "data_source": "session", "status": "success",
         "strategy": plan.strategy, "cohort_id": plan.cohort_id,
+        "objective": plan.objective, "cohort_contract": plan.cohort_contract,
         "horizon": plan.horizon, "n_folds": len(plan.folds), "gap": plan.gap,
         "folds": folds, "oof_predictions": oof, "warnings": warnings,
         "preprocessing": preprocessing,

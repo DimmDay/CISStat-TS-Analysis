@@ -456,6 +456,48 @@ describe("TsAnalysisModeling", () => {
     ));
   });
 
+  it("finishes state migration before candidate bootstrap to avoid Redis CAS conflicts", async () => {
+    const events: string[] = [];
+    let resolveState: (() => void) | undefined;
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("/v1/session/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_SELECTED),
+        });
+      }
+      if (url.includes("/v1/session/modeling/state")) {
+        events.push("state:start");
+        return new Promise((resolve) => {
+          resolveState = () => {
+            events.push("state:finish");
+            resolve({
+              ok: true,
+              json: () => Promise.resolve({ pipeline: {}, artifacts: {} }),
+            });
+          };
+        });
+      }
+      if (url.includes("/v1/session/modeling/candidates")) {
+        events.push("candidates:start");
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
+      });
+    });
+
+    render(<TsAnalysisModeling />);
+
+    await waitFor(() => expect(events).toContain("state:start"));
+    expect(events).not.toContain("candidates:start");
+    resolveState?.();
+    await waitFor(() => expect(events).toContain("candidates:start"));
+    expect(events.indexOf("state:finish")).toBeLessThan(
+      events.indexOf("candidates:start")
+    );
+  });
+
   it("fetches the read-only target column on mount", async () => {
     render(<TsAnalysisModeling />);
     await waitFor(() => {
