@@ -2567,3 +2567,46 @@ Commit/push и production deploy не выполнялись.
 
 - `packages/ui/components/TsAnalysisModeling.tsx`
 - `packages/ui/components/TsAnalysisModeling.test.tsx`
+
+---
+
+## Task 118 — Единая строка фильтров пула моделей
+
+Дата: 2026-09-05. База: `main @ fa3a5190030b01ee67015f1b1bd3e0ecd812af7a`
++ working tree Task 117. Commit/push и production deploy не выполнялись.
+
+### UI-контракт
+
+- Под окном «Описание» фильтры «Исполнение» и «Применимость» находились
+  на двух строках, хотя управляют одной выдачей пула кандидатов.
+- Согласована единая горизонтальная панель: «Исполнение» остаётся слева,
+  «Применимость» находится в той же строке и прижата к правому краю.
+- Для заголовка «Применимость» выбрана иконка Lucide `BadgeCheck`:
+  она семантически обозначает проверенное соответствие модели условиям,
+  тогда как `Filter` у «Исполнения» продолжает обозначать фильтрацию по
+  технической доступности.
+
+### Реализация
+
+- Две независимые строки заменены общим `model-filter-toolbar` с
+  `justify-between`; группа применимости использует `ml-auto justify-end`.
+- Toolbar сохраняет одну строку через `min-w-max`. При недостаточной ширине
+  родитель включает горизонтальную прокрутку вместо непредсказуемого переноса
+  группы применимости под исполнение.
+- К «Применимость» добавлена декоративная `BadgeCheck` с `aria-hidden=true`;
+  существующие фильтры, счётчики и состояния активных кнопок не изменены.
+
+### TDD и проверки
+
+- До production-кода добавлена регрессия структуры toolbar: обе группы имеют
+  общего родителя, группа применимости выровнена справа, семантическая иконка
+  присутствует и скрыта от accessibility tree как декоративная.
+- RED source-contract: 3/3 FAIL. GREEN source-contract: 5/5 PASS.
+- `git diff --check`: PASS.
+- Jest, TypeScript typecheck и production build не запущены: checkout не
+  содержит `node_modules`, локальные `jest`, `tsc` и `next` отсутствуют.
+
+### Изменённые файлы Task 118
+
+- `packages/ui/components/TsAnalysisModeling.tsx`
+- `packages/ui/components/TsAnalysisModeling.test.tsx`

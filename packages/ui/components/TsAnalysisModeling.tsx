@@ -20,7 +20,7 @@ import {
   useEffect,
   useCallback,
 } from "react";
-import { ChevronDown, ChevronUp, RefreshCw, Filter, Loader2 } from "lucide-react";
+import { BadgeCheck, ChevronDown, ChevronUp, RefreshCw, Filter, Loader2 } from "lucide-react";
 import { Button } from "./Button";
 import { Metric } from "./Metric";
 import { BacktestComparisonChart } from "./BacktestComparisonChart";
@@ -1078,51 +1078,69 @@ export function TsAnalysisModeling() {
           </div>
         )}
 
-        {/* ── Фильтр по уровню применимости ── */}
+        {/* ── Единая строка фильтров исполнения и применимости ── */}
         {hasFetched && (
-          <div className="mb-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <Filter size={14} className="text-neutral-500" />
-              <span className="text-xs text-neutral-500">Исполнение:</span>
-              <button
-                onClick={() => setAvailabilityFilter("runnable")}
-                className={`rounded border px-2 py-1 text-xs ${availabilityFilter === "runnable" ? "border-brand bg-brand text-white" : "border-neutral-200 bg-white text-neutral-700"}`}
+          <div className="mb-3 overflow-x-auto pb-1">
+            <div
+              className="flex min-w-max items-center justify-between gap-6"
+              data-testid="model-filter-toolbar"
+            >
+              <div
+                className="flex items-center gap-2"
+                data-testid="execution-filter-group"
               >
-                Доступные ({candidates.filter((item) => item.available_actions.includes("backtest")).length})
-              </button>
-              <button
-                onClick={() => setAvailabilityFilter("all")}
-                className={`rounded border px-2 py-1 text-xs ${availabilityFilter === "all" ? "border-brand bg-brand text-white" : "border-neutral-200 bg-white text-neutral-700"}`}
-              >
-                Весь каталог ({catalog.length})
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="ml-6 text-xs text-neutral-500">Применимость:</span>
-              {[
-              { value: "all", label: "Все" },
-              { value: "RECOMMENDED", label: "Рекоменд." },
-              {
-                value: "CONDITIONALLY_APPLICABLE",
-                label: "Условно",
-              },
-              {
-                value: "NOT_RECOMMENDED",
-                label: "Не реком.",
-              },
-              ].map((opt) => (
+                <Filter size={14} className="text-neutral-500" aria-hidden="true" />
+                <span className="text-xs text-neutral-500">Исполнение:</span>
                 <button
-                  key={opt.value}
-                  onClick={() => setLevelFilter(opt.value)}
-                  className={`text-xs px-2 py-1 rounded border transition-colors ${
-                    levelFilter === opt.value
-                      ? "bg-brand text-white border-brand"
-                      : "bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50"
-                  }`}
+                  onClick={() => setAvailabilityFilter("runnable")}
+                  className={`rounded border px-2 py-1 text-xs ${availabilityFilter === "runnable" ? "border-brand bg-brand text-white" : "border-neutral-200 bg-white text-neutral-700"}`}
                 >
-                  {opt.label}
+                  Доступные ({candidates.filter((item) => item.available_actions.includes("backtest")).length})
                 </button>
-              ))}
+                <button
+                  onClick={() => setAvailabilityFilter("all")}
+                  className={`rounded border px-2 py-1 text-xs ${availabilityFilter === "all" ? "border-brand bg-brand text-white" : "border-neutral-200 bg-white text-neutral-700"}`}
+                >
+                  Весь каталог ({catalog.length})
+                </button>
+              </div>
+
+              <div
+                className="ml-auto flex items-center justify-end gap-2"
+                data-testid="applicability-filter-group"
+              >
+                <BadgeCheck
+                  size={14}
+                  className="text-neutral-500"
+                  aria-hidden="true"
+                  data-testid="applicability-icon"
+                />
+                <span className="text-xs text-neutral-500">Применимость:</span>
+                {[
+                  { value: "all", label: "Все" },
+                  { value: "RECOMMENDED", label: "Рекоменд." },
+                  {
+                    value: "CONDITIONALLY_APPLICABLE",
+                    label: "Условно",
+                  },
+                  {
+                    value: "NOT_RECOMMENDED",
+                    label: "Не реком.",
+                  },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setLevelFilter(opt.value)}
+                    className={`text-xs px-2 py-1 rounded border transition-colors ${
+                      levelFilter === opt.value
+                        ? "bg-brand text-white border-brand"
+                        : "bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

@@ -649,6 +649,24 @@ describe("TsAnalysisModeling", () => {
     expect(condMatches.length).toBeGreaterThanOrEqual(1);
   });
 
+  it("places execution and applicability filters in one toolbar with applicability on the right", async () => {
+    render(<TsAnalysisModeling />);
+    await waitFor(() => expect(screen.getByTestId("candidate-pool")).toBeInTheDocument());
+
+    const toolbar = screen.getByTestId("model-filter-toolbar");
+    const execution = screen.getByTestId("execution-filter-group");
+    const applicability = screen.getByTestId("applicability-filter-group");
+
+    expect(toolbar).toContainElement(execution);
+    expect(toolbar).toContainElement(applicability);
+    expect(toolbar).toHaveClass("justify-between");
+    expect(applicability).toHaveClass("ml-auto", "justify-end");
+    expect(screen.getByTestId("applicability-icon")).toHaveAttribute(
+      "aria-hidden",
+      "true"
+    );
+  });
+
   // ── 10. Выбор кандидата ──
 
   it("clicking a candidate shows detail in right column", async () => {
