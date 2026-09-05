@@ -2610,3 +2610,41 @@ Commit/push и production deploy не выполнялись.
 
 - `packages/ui/components/TsAnalysisModeling.tsx`
 - `packages/ui/components/TsAnalysisModeling.test.tsx`
+
+---
+
+## Task 119 — Логотип в шапке ProductHeader + усиление названия
+
+Дата: 2026-09-05. База: main @ 385f69f6a4c6d94df23587fb631ff94d3f863f97.
+Commit/push и production deploy не выполнялись.
+
+### UI-контракт
+
+- Слева от текстового названия "CISStat TS Analysis" в `ProductHeader`
+  добавлен логотип `public/logo_TS.png`.
+- Начертание названия усилено с `font-semibold` до `font-bold`,
+  размер шрифта увеличен (явный `text-[15px]` вместо унаследованного).
+
+### Реализация
+
+- Логотип и название обёрнуты в общий `flex items-center gap-2`,
+  порядок в DOM: логотип → название → навигация (без изменений
+  структуры навигации).
+- Логотип рендерится через `next/image` с `fill` внутри контейнера
+  `relative h-7 w-7` — не требует знания реальных пропорций PNG,
+  не искажает изображение; высота согласована с остальными круглыми
+  элементами шапки (кнопка личного кабинета — тот же `h-7 w-7`).
+
+### TDD и проверки
+
+- До production-кода добавлен `ProductHeader.test.tsx`: логотип
+  предшествует названию в DOM-порядке; название имеет `font-bold`
+  (не `font-semibold`) и `text-[15px]`.
+- Jest, TypeScript typecheck и production build не запущены: checkout
+  не содержит `node_modules`, локальные `jest`, `tsc` и `next`
+  отсутствуют.
+
+### Изменённые файлы Task 119
+
+- `apps/standalone/components/ProductHeader.tsx`
+- `apps/standalone/components/ProductHeader.test.tsx`

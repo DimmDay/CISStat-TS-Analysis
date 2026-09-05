@@ -10,8 +10,12 @@
 // Заменить на финальный вариант, когда решите: логотип тот же, что у
 // портала, или отдельный суб-бренд ("CISStat TS Analysis" как отдельный
 // продукт под общим брендом)?
+//
+// Task 119: слева от названия добавлен логотип (public/logo_TS.png),
+// название усилено до bold с небольшим увеличением размера шрифта.
 
 import Link from "next/link";
+import Image from "next/image";
 import { User } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -26,7 +30,19 @@ export function ProductHeader() {
     <div className="border-b border-neutral-200 bg-white">
       <div className="max-w-[1600px] mx-auto px-6 flex items-center justify-between py-2.5">
         <div className="flex items-center gap-6">
-          <span className="font-semibold text-brand">CISStat TS Analysis</span>
+          <div className="flex items-center gap-2">
+            <div className="relative h-7 w-7 shrink-0">
+              <Image
+                src="/logo_TS.png"
+                alt="CISStat TS Analysis"
+                fill
+                sizes="28px"
+                className="object-contain"
+                priority
+              />
+            </div>
+            <span className="text-[15px] font-bold text-brand">CISStat TS Analysis</span>
+          </div>
           <nav className="flex items-center gap-6 text-[13.5px]">
             {NAV_ITEMS.map((item) => (
               <Link key={item.href} href={item.href} className="text-neutral-600 hover:text-neutral-900">
