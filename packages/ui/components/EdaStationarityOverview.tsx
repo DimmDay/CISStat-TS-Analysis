@@ -14,6 +14,15 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+// Task 97.4 (Этап 4, spec_max_graf_fix.md §8): тиражирование раскрытия
+// графиков. Корень Обзора: relative всегда (правка A), overflow переключается
+// по expandedChartId (правка C); графические представления обёрнуты в
+// ExpandableChartPanel (уровень ИСПОЛЬЗОВАНИЯ, §7.2), таблица тестов —
+// без панели. detail_level не заказан (Этап 5 опционален) — раскрытие
+// чисто визуальное, с compact-данными.
+import { ExpandableChartPanel } from "./ExpandableChartPanel";
+import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
+import { useExpandableChartState } from "../hooks/useExpandableChart";
 
 
 export type StationarityConsensus =
@@ -268,7 +277,15 @@ function TestsTable({ profile }: { profile: EdaStationarityResponse }) {
   );
 }
 
-export function EdaStationarityOverview({
+export function EdaStationarityOverview(props: EdaStationarityOverviewProps) {
+  return (
+    <ExpandableChartsProvider>
+      <EdaStationarityOverviewInner {...props} />
+    </ExpandableChartsProvider>
+  );
+}
+
+function EdaStationarityOverviewInner({
   profile,
   loading,
   error,
@@ -277,6 +294,7 @@ export function EdaStationarityOverview({
   onParametersChange,
 }: EdaStationarityOverviewProps) {
   const [activeView, setActiveView] = useState<StationarityView>("series");
+  const { expandedChartId } = useExpandableChartState();
   const localizedWarnings = profile?.warnings
     .map((warning) => localizeKpssDiagnostic(warning))
     .filter((warning): warning is string => Boolean(warning)) ?? [];
@@ -288,7 +306,7 @@ export function EdaStationarityOverview({
   if (!profile.applicable) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "Проверка стационарности неприменима."}</div>;
 
   return (
-    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+    <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
       <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -317,9 +335,9 @@ export function EdaStationarityOverview({
         ))}
       </div>
 
-      {activeView === "series" ? <SeriesChart profile={profile} /> : null}
-      {activeView === "rolling_std" ? <RollingStdChart profile={profile} /> : null}
-      {activeView === "pvalues" ? <PValueChart profile={profile} /> : null}
+      {activeView === "series" ? <ExpandableChartPanel chartId="stationarity-series" title="Ряд и скользящее среднее"><SeriesChart profile={profile} /></ExpandableChartPanel> : null}
+      {activeView === "rolling_std" ? <ExpandableChartPanel chartId="stationarity-rolling-std" title="Скользящее стандартное отклонение"><RollingStdChart profile={profile} /></ExpandableChartPanel> : null}
+      {activeView === "pvalues" ? <ExpandableChartPanel chartId="stationarity-pvalues" title="P-значения тестов"><PValueChart profile={profile} /></ExpandableChartPanel> : null}
       {activeView === "tests" ? <TestsTable profile={profile} /> : null}
     </section>
   );

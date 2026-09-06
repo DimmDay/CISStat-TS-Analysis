@@ -2,6 +2,15 @@
 
 import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+// Task 97.4 (Этап 4, spec_max_graf_fix.md §8): тиражирование раскрытия
+// графиков. Корень Обзора: relative всегда (правка A), overflow переключается
+// по expandedChartId (правка C); визуальные представления (CSS-схема folds
+// и Recharts-график train) обёрнуты в ExpandableChartPanel (§7.2), карточки
+// «Альтернативы» и таблица folds — без панели. detail_level не заказан
+// (Этап 5 опционален) — раскрытие чисто визуальное.
+import { ExpandableChartPanel } from "./ExpandableChartPanel";
+import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
+import { useExpandableChartState } from "../hooks/useExpandableChart";
 
 export type ValidationStrategy = "expanding" | "sliding" | "single";
 
@@ -110,10 +119,19 @@ function FoldTable({ profile }: { profile: EdaValidationStrategyResponse }) {
   return <div className="shrink-0 overflow-x-auto"><table aria-label="Границы временной валидации" className="w-full min-w-[760px] text-left text-xs"><thead className="bg-neutral-50 text-neutral-500"><tr><th className="px-2 py-2">Fold</th><th className="px-2 py-2">Train</th><th className="px-2 py-2 text-right">N train</th><th className="px-2 py-2">Gap</th><th className="px-2 py-2">Test</th><th className="px-2 py-2 text-right">N test</th></tr></thead><tbody>{profile.folds.map((fold) => <tr key={fold.fold} className="border-t border-neutral-100"><td className="px-2 py-2 font-medium">{fold.fold}</td><td className="px-2 py-2">{fold.train_start}–{fold.train_end}</td><td className="px-2 py-2 text-right tabular-nums">{fold.train_size}</td><td className="px-2 py-2">{fold.gap_size ? `${fold.gap_start}–${fold.gap_end}` : "—"}</td><td className="px-2 py-2">{fold.test_start}–{fold.test_end}</td><td className="px-2 py-2 text-right tabular-nums">{fold.test_size}</td></tr>)}</tbody></table></div>;
 }
 
-export function EdaValidationStrategyOverview({ profile, loading, error, noDataset, parameters, onParametersChange }: Props) {
+export function EdaValidationStrategyOverview(props: Props) {
+  return (
+    <ExpandableChartsProvider>
+      <EdaValidationStrategyOverviewInner {...props} />
+    </ExpandableChartsProvider>
+  );
+}
+
+function EdaValidationStrategyOverviewInner({ profile, loading, error, noDataset, parameters, onParametersChange }: Props) {
   const [view, setView] = useState<View>("folds");
-  return <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+  const { expandedChartId } = useExpandableChartState();
+  return <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
     <div className="shrink-0 border-b border-neutral-100 p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><h4 className="text-sm font-semibold text-neutral-800">План временной валидации{profile ? ` «${profile.column}»` : ""}</h4>{profile ? <p className="mt-1 text-xs text-neutral-500">{STRATEGY_LABELS[profile.strategy]} · h={profile.horizon} · folds={profile.effective_splits} · gap={profile.gap}</p> : null}<p className="mt-1 text-[10px] text-neutral-500">Методология: <a className="text-brand underline" href="https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.TimeSeriesSplit.html" target="_blank" rel="noreferrer">scikit-learn TimeSeriesSplit</a> · <a className="text-brand underline" href="https://skforecast.org/latest/user_guides/backtesting.html" target="_blank" rel="noreferrer">skforecast backtesting</a></p></div><Controls parameters={parameters} onChange={onParametersChange} /></div>{profile?.recommendation ? <p className="mt-3 rounded bg-brand-light px-3 py-2 text-xs text-neutral-700">{profile.recommendation}</p> : null}{profile?.warnings.length ? <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">{profile.warnings.join(" ")}</p> : null}</div>
-    {loading ? <div role="status" className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Строим временные folds…</div> : error ? <div role="alert" className="flex min-h-0 flex-1 items-center justify-center bg-red-50 px-8 text-center text-sm text-red-700">{error}</div> : noDataset ? <div role="status" className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-600">Загрузите датасет, чтобы спроектировать валидацию.</div> : !profile ? <div role="status" className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-600">Выберите числовой исследуемый признак.</div> : !profile.applicable ? <div role="status" className="flex min-h-0 flex-1 items-center justify-center bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "Стратегия неприменима."}</div> : <><div role="tablist" aria-label="Представления стратегии валидации" className="flex shrink-0 flex-wrap gap-1 border-b border-neutral-100 px-4 pt-3">{TABS.map((tab) => <button key={tab.id} role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`rounded-t px-3 py-2 text-xs font-medium ${view === tab.id ? "bg-brand text-white" : "bg-neutral-50 text-neutral-600 hover:bg-neutral-100"}`}>{tab.label}</button>)}</div>{view === "folds" ? <FoldTimeline profile={profile} /> : null}{view === "train" ? <TrainChart profile={profile} /> : null}{view === "alternatives" ? <Alternatives profile={profile} /> : null}{view === "table" ? <FoldTable profile={profile} /> : null}</>}
+    {loading ? <div role="status" className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Строим временные folds…</div> : error ? <div role="alert" className="flex min-h-0 flex-1 items-center justify-center bg-red-50 px-8 text-center text-sm text-red-700">{error}</div> : noDataset ? <div role="status" className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-600">Загрузите датасет, чтобы спроектировать валидацию.</div> : !profile ? <div role="status" className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-600">Выберите числовой исследуемый признак.</div> : !profile.applicable ? <div role="status" className="flex min-h-0 flex-1 items-center justify-center bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "Стратегия неприменима."}</div> : <><div role="tablist" aria-label="Представления стратегии валидации" className="flex shrink-0 flex-wrap gap-1 border-b border-neutral-100 px-4 pt-3">{TABS.map((tab) => <button key={tab.id} role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`rounded-t px-3 py-2 text-xs font-medium ${view === tab.id ? "bg-brand text-white" : "bg-neutral-50 text-neutral-600 hover:bg-neutral-100"}`}>{tab.label}</button>)}</div>{view === "folds" ? <ExpandableChartPanel chartId="validation-folds" title="Схема folds"><FoldTimeline profile={profile} /></ExpandableChartPanel> : null}{view === "train" ? <ExpandableChartPanel chartId="validation-train" title="Рост обучающего окна"><TrainChart profile={profile} /></ExpandableChartPanel> : null}{view === "alternatives" ? <Alternatives profile={profile} /> : null}{view === "table" ? <FoldTable profile={profile} /> : null}</>}
   </section>;
 }

@@ -3,6 +3,15 @@
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
 import { OutlierLineChart, OutlierHistogramChart, OutlierDensityChart, OutlierBoxplotChart } from "./PreprocessingOutliersVisualizations";
+// Task 97.4 (Этап 4, spec_max_graf_fix.md §8): тиражирование раскрытия
+// графиков. Корень Обзора: relative всегда (правка A), overflow переключается
+// по expandedChartId (правка C); чарт-блоки из PreprocessingOutliersVisualizations
+// обёрнуты в ExpandableChartPanel на уровне ИСПОЛЬЗОВАНИЯ (§7.2), таблица
+// колонок — без панели. detail_level не заказан (Этап 5 опционален) —
+// раскрытие чисто визуальное.
+import { ExpandableChartPanel } from "./ExpandableChartPanel";
+import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
+import { useExpandableChartState } from "../hooks/useExpandableChart";
 
 export interface OutlierBounds {
   lower: number;
@@ -67,10 +76,27 @@ export function PreprocessingOutliersOverview({
       колонкам сразу, как и раньше. */
   column?: string | null;
 }) {
+  return (
+    <ExpandableChartsProvider>
+      <PreprocessingOutliersOverviewInner refreshKey={refreshKey} method={method} column={column} />
+    </ExpandableChartsProvider>
+  );
+}
+
+function PreprocessingOutliersOverviewInner({
+  refreshKey = 0,
+  method = "iqr",
+  column = null,
+}: {
+  refreshKey?: number;
+  method?: OutlierProfileItem["recommended_method"];
+  column?: string | null;
+}) {
   const [profile, setProfile] = useState<OutlierProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<"table" | "line" | "histogram" | "density" | "boxplot">("table");
+  const { expandedChartId } = useExpandableChartState();
 
   useEffect(() => {
     let active = true;
@@ -118,7 +144,7 @@ export function PreprocessingOutliersOverview({
   }
 
   return (
-    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+    <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
       <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-semibold text-neutral-800">Выбросы по числовым колонкам</h4>
@@ -206,10 +232,10 @@ export function PreprocessingOutliersOverview({
           </table>
         </div>
       )}
-      {activeView === "line" && <OutlierLineChart column={column} />}
-      {activeView === "histogram" && <OutlierHistogramChart column={column} method={method} />}
-      {activeView === "density" && <OutlierDensityChart column={column} />}
-      {activeView === "boxplot" && <OutlierBoxplotChart column={column} method={method} />}
+      {activeView === "line" && <ExpandableChartPanel chartId="outliers-line" title="Ряд с границами выбросов"><OutlierLineChart column={column} /></ExpandableChartPanel>}
+      {activeView === "histogram" && <ExpandableChartPanel chartId="outliers-histogram" title="Гистограмма с границами"><OutlierHistogramChart column={column} method={method} /></ExpandableChartPanel>}
+      {activeView === "density" && <ExpandableChartPanel chartId="outliers-density" title="Плотность с границами"><OutlierDensityChart column={column} /></ExpandableChartPanel>}
+      {activeView === "boxplot" && <ExpandableChartPanel chartId="outliers-boxplot" title="Boxplot выбросов"><OutlierBoxplotChart column={column} method={method} /></ExpandableChartPanel>}
     </section>
   );
 }

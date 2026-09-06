@@ -13,6 +13,17 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+// Task 97.4 (Этап 4, spec_max_graf_fix.md §8): тиражирование раскрытия
+// графиков. Корень Обзора: relative всегда (правка A), overflow переключается
+// по expandedChartId (правка C); графические представления (включая
+// HTML-теплокарты метрик и условного распределения) обёрнуты в
+// ExpandableChartPanel (уровень ИСПОЛЬЗОВАНИЯ, §7.2), таблица результатов —
+// без панели. Панели с пустым состоянием («Синергия», «Условная карта») —
+// только при наличии данных (прецедент Этапа 2). detail_level не заказан
+// (Этап 5 опционален) — раскрытие чисто визуальное.
+import { ExpandableChartPanel } from "./ExpandableChartPanel";
+import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
+import { useExpandableChartState } from "../hooks/useExpandableChart";
 
 
 export interface EdaIhFeature {
@@ -272,7 +283,15 @@ function ResultsTable({ results }: { results: EdaIhFeature[] }) {
   );
 }
 
-export function EdaIhOverview({
+export function EdaIhOverview(props: EdaIhOverviewProps) {
+  return (
+    <ExpandableChartsProvider>
+      <EdaIhOverviewInner {...props} />
+    </ExpandableChartsProvider>
+  );
+}
+
+function EdaIhOverviewInner({
   profile,
   loading,
   error,
@@ -281,6 +300,7 @@ export function EdaIhOverview({
   onParametersChange,
 }: EdaIhOverviewProps) {
   const [activeView, setActiveView] = useState<IhView>("ranking");
+  const { expandedChartId } = useExpandableChartState();
 
   if (loading) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Вычисляем IH-профиль и перестановочный baseline…</div>;
   if (error) return <div role="alert" className="flex h-[468px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">{error}</div>;
@@ -289,7 +309,7 @@ export function EdaIhOverview({
   if (!profile.applicable) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "IH-анализ неприменим."}</div>;
 
   return (
-    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+    <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
       <div className="shrink-0 border-b border-neutral-100 p-3">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -324,10 +344,11 @@ export function EdaIhOverview({
         ))}
       </div>
 
-      {activeView === "ranking" && <RankingChart profile={profile} />}
-      {activeView === "metrics" && <MetricsMap results={profile.results} />}
-      {activeView === "synergy" && <SynergyChart items={profile.synergies} />}
-      {activeView === "conditional" && <ConditionalMap profile={profile} />}
+      {activeView === "ranking" && <ExpandableChartPanel chartId="ih-ranking" title="Рейтинг IH-информативности"><RankingChart profile={profile} /></ExpandableChartPanel>}
+      {activeView === "metrics" && <ExpandableChartPanel chartId="ih-metrics" title="Карта энтропийных метрик"><MetricsMap results={profile.results} /></ExpandableChartPanel>}
+      {/* Панели с пустым состоянием — только при наличии данных, иначе бейдж раскрытия на пустом status-сообщении */}
+      {activeView === "synergy" && (profile.synergies.length > 0 ? <ExpandableChartPanel chartId="ih-synergy" title="Взаимодействие факторов"><SynergyChart items={profile.synergies} /></ExpandableChartPanel> : <SynergyChart items={profile.synergies} />)}
+      {activeView === "conditional" && (profile.conditional_matrix.length > 0 ? <ExpandableChartPanel chartId="ih-conditional" title="Условное распределение цели"><ConditionalMap profile={profile} /></ExpandableChartPanel> : <ConditionalMap profile={profile} />)}
       {activeView === "table" && <ResultsTable results={profile.results} />}
     </section>
   );

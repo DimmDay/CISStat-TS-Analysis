@@ -13,6 +13,15 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+// Task 97.4 (Этап 4, spec_max_graf_fix.md §8): тиражирование раскрытия
+// графиков. Корень Обзора: relative всегда (правка A), overflow переключается
+// по expandedChartId (правка C); графики ACF/PACF обёрнуты в
+// ExpandableChartPanel (уровень ИСПОЛЬЗОВАНИЯ, §7.2), таблица значений —
+// без панели. detail_level не заказан (Этап 5 опционален) — раскрытие
+// чисто визуальное, с compact-данными.
+import { ExpandableChartPanel } from "./ExpandableChartPanel";
+import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
+import { useExpandableChartState } from "../hooks/useExpandableChart";
 
 
 export interface EdaCorrelationPoint {
@@ -128,7 +137,15 @@ function CorrelationChart({
   );
 }
 
-export function EdaCorrelationOverview({
+export function EdaCorrelationOverview(props: EdaCorrelationOverviewProps) {
+  return (
+    <ExpandableChartsProvider>
+      <EdaCorrelationOverviewInner {...props} />
+    </ExpandableChartsProvider>
+  );
+}
+
+function EdaCorrelationOverviewInner({
   profile,
   loading,
   error,
@@ -137,6 +154,7 @@ export function EdaCorrelationOverview({
   onMaxLagsChange,
 }: EdaCorrelationOverviewProps) {
   const [activeView, setActiveView] = useState<CorrelationView>("acf");
+  const { expandedChartId } = useExpandableChartState();
 
   if (loading) {
     return (
@@ -180,7 +198,7 @@ export function EdaCorrelationOverview({
     pacf: profile.pacf[index],
   }));
   return (
-    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+    <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
       <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -233,8 +251,8 @@ export function EdaCorrelationOverview({
         ))}
       </div>
 
-      {activeView === "acf" && <CorrelationChart kind="ACF" column={profile.column} points={profile.acf} />}
-      {activeView === "pacf" && <CorrelationChart kind="PACF" column={profile.column} points={profile.pacf} />}
+      {activeView === "acf" && <ExpandableChartPanel chartId="correlation-acf" title="Автокорреляционная функция"><CorrelationChart kind="ACF" column={profile.column} points={profile.acf} /></ExpandableChartPanel>}
+      {activeView === "pacf" && <ExpandableChartPanel chartId="correlation-pacf" title="Частная автокорреляционная функция"><CorrelationChart kind="PACF" column={profile.column} points={profile.pacf} /></ExpandableChartPanel>}
       {activeView === "table" && (
         <div className="shrink-0 overflow-x-auto">
           <table aria-label="Значения ACF и PACF по лагам" className="w-full text-left text-xs">

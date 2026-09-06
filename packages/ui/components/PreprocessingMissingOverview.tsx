@@ -3,6 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
 import { MissingMatrixChart, MissingCorrelationChart, MissingBoxplotChart } from "./PreprocessingMissingVisualizations";
+// Task 97.4 (Этап 4, spec_max_graf_fix.md §8): тиражирование раскрытия
+// графиков. Корень Обзора: relative всегда (правка A), overflow переключается
+// по expandedChartId (правка C); чарт-блоки из PreprocessingMissingVisualizations
+// обёрнуты в ExpandableChartPanel на уровне ИСПОЛЬЗОВАНИЯ (§7.2), таблица
+// колонок и прогресс-бар полноты — без панели. detail_level не заказан
+// (Этап 5 опционален) — раскрытие чисто визуальное.
+import { ExpandableChartPanel } from "./ExpandableChartPanel";
+import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
+import { useExpandableChartState } from "../hooks/useExpandableChart";
 
 export interface MissingProfileItem {
   column: string;
@@ -64,10 +73,19 @@ async function responseDetail(response: Response) {
 const pctLabel = (value: number | null) => (value === null ? "—" : `${value.toFixed(1)}%`);
 
 export function PreprocessingMissingOverview({ refreshKey = 0 }: { refreshKey?: number }) {
+  return (
+    <ExpandableChartsProvider>
+      <PreprocessingMissingOverviewInner refreshKey={refreshKey} />
+    </ExpandableChartsProvider>
+  );
+}
+
+function PreprocessingMissingOverviewInner({ refreshKey = 0 }: { refreshKey?: number }) {
   const [profile, setProfile] = useState<MissingProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<"table" | "matrix" | "correlation" | "boxplot">("table");
+  const { expandedChartId } = useExpandableChartState();
 
   useEffect(() => {
     let active = true;
@@ -119,7 +137,7 @@ export function PreprocessingMissingOverview({ refreshKey = 0 }: { refreshKey?: 
   }
 
   return (
-    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+    <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
       <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-semibold text-neutral-800">Полнота данных</h4>
@@ -203,9 +221,9 @@ export function PreprocessingMissingOverview({ refreshKey = 0 }: { refreshKey?: 
           </table>
         </div>
       )}
-      {activeView === "matrix" && <MissingMatrixChart />}
-      {activeView === "correlation" && <MissingCorrelationChart />}
-      {activeView === "boxplot" && <MissingBoxplotChart columns={profile.columns} />}
+      {activeView === "matrix" && <ExpandableChartPanel chartId="missing-matrix" title="Матрица пропусков"><MissingMatrixChart /></ExpandableChartPanel>}
+      {activeView === "correlation" && <ExpandableChartPanel chartId="missing-correlation" title="Корреляция пропусков"><MissingCorrelationChart /></ExpandableChartPanel>}
+      {activeView === "boxplot" && <ExpandableChartPanel chartId="missing-boxplot" title="Boxplot пропусков"><MissingBoxplotChart columns={profile.columns} /></ExpandableChartPanel>}
     </section>
   );
 }

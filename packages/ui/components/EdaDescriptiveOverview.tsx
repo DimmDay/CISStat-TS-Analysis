@@ -9,6 +9,15 @@ import {
   ScatterDistributionChart,
   type DistributionChartData,
 } from "./DistributionCharts";
+// Task 97.4 (Этап 4, spec_max_graf_fix.md §8): тиражирование раскрытия
+// графиков. Корень Обзора: relative всегда (правка A), overflow переключается
+// по expandedChartId (правка C); контейнер визуализации (чарт-блоки из
+// DistributionCharts) обёрнут в ExpandableChartPanel на уровне ИСПОЛЬЗОВАНИЯ
+// (§7.2), таблица статистик — без панели. detail_level не заказан (Этап 5
+// опционален) — раскрытие чисто визуальное.
+import { ExpandableChartPanel } from "./ExpandableChartPanel";
+import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
+import { useExpandableChartState } from "../hooks/useExpandableChart";
 
 export interface DescriptiveStatsValues {
   mean: number;
@@ -67,7 +76,15 @@ async function responseDetail(response: Response): Promise<string> {
   return `Не удалось загрузить распределение (HTTP ${response.status})`;
 }
 
-export function EdaDescriptiveOverview({
+export function EdaDescriptiveOverview(props: EdaDescriptiveOverviewProps) {
+  return (
+    <ExpandableChartsProvider>
+      <EdaDescriptiveOverviewInner {...props} />
+    </ExpandableChartsProvider>
+  );
+}
+
+function EdaDescriptiveOverviewInner({
   profile,
   activeFeature,
   loading,
@@ -76,6 +93,7 @@ export function EdaDescriptiveOverview({
   refreshKey = 0,
 }: EdaDescriptiveOverviewProps) {
   const [activeView, setActiveView] = useState<DescriptiveView>("table");
+  const { expandedChartId } = useExpandableChartState();
   const [distribution, setDistribution] = useState<DistributionChartData | null>(null);
   const [distributionCacheKey, setDistributionCacheKey] = useState<string | null>(null);
   const [distributionLoading, setDistributionLoading] = useState(false);
@@ -157,7 +175,7 @@ export function EdaDescriptiveOverview({
   }
 
   return (
-    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+    <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
       <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -244,6 +262,7 @@ export function EdaDescriptiveOverview({
           </table>
         </div>
       ) : (
+        <ExpandableChartPanel chartId="descriptive-visualization" title="Визуализация распределения">
         <div data-testid="descriptive-visualization" className="flex min-h-0 flex-1 flex-col p-4">
           <p className="mb-3 shrink-0 text-xs text-neutral-500">
             {activeView === "histogram"
@@ -271,6 +290,7 @@ export function EdaDescriptiveOverview({
             </>
           )}
         </div>
+        </ExpandableChartPanel>
       )}
     </section>
   );

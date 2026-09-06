@@ -12,6 +12,15 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+// Task 97.4 (Этап 4, spec_max_graf_fix.md §8): тиражирование раскрытия
+// графиков. Корень Обзора: relative всегда (правка A), overflow переключается
+// по expandedChartId (правка C); графические представления обёрнуты в
+// ExpandableChartPanel (уровень ИСПОЛЬЗОВАНИЯ, §7.2), таблица «Тесты» —
+// без панели. detail_level не заказан (Этап 5 опционален) — раскрытие
+// чисто визуальное, с compact-данными.
+import { ExpandableChartPanel } from "./ExpandableChartPanel";
+import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
+import { useExpandableChartState } from "../hooks/useExpandableChart";
 
 export type DistributionNormalityStatus = "compatible" | "departed" | "inconclusive" | "not_applicable";
 
@@ -213,8 +222,17 @@ function TestsView({ profile }: { profile: EdaDistributionResponse }) {
   );
 }
 
-export function EdaDistributionOverview({ profile, loading, error, noDataset, parameters, onParametersChange }: EdaDistributionOverviewProps) {
+export function EdaDistributionOverview(props: EdaDistributionOverviewProps) {
+  return (
+    <ExpandableChartsProvider>
+      <EdaDistributionOverviewInner {...props} />
+    </ExpandableChartsProvider>
+  );
+}
+
+function EdaDistributionOverviewInner({ profile, loading, error, noDataset, parameters, onParametersChange }: EdaDistributionOverviewProps) {
   const [activeView, setActiveView] = useState<DistributionView>("histogram");
+  const { expandedChartId } = useExpandableChartState();
 
   if (loading) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Оцениваем форму распределения и выполняем тесты…</div>;
   if (error) return <div role="alert" className="flex h-[468px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">{error}</div>;
@@ -223,7 +241,7 @@ export function EdaDistributionOverview({ profile, loading, error, noDataset, pa
   if (!profile.applicable) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "Анализ распределения неприменим."}</div>;
 
   return (
-    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+    <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
       <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -241,10 +259,10 @@ export function EdaDistributionOverview({ profile, loading, error, noDataset, pa
       <div role="tablist" aria-label="Представления распределения" className="flex shrink-0 flex-wrap gap-1 border-b border-neutral-100 px-4 pt-3">
         {TABS.map((tab) => <button key={tab.id} role="tab" aria-selected={activeView === tab.id} onClick={() => setActiveView(tab.id)} className={`rounded-t px-3 py-2 text-xs font-medium ${activeView === tab.id ? "bg-brand text-white" : "bg-neutral-50 text-neutral-600 hover:bg-neutral-100"}`}>{tab.label}</button>)}
       </div>
-      {activeView === "histogram" ? <HistogramView profile={profile} /> : null}
-      {activeView === "density" ? <DensityView profile={profile} /> : null}
-      {activeView === "qq" ? <QqView profile={profile} /> : null}
-      {activeView === "cdf" ? <CdfView profile={profile} /> : null}
+      {activeView === "histogram" ? <ExpandableChartPanel chartId="distribution-histogram" title="Гистограмма распределения"><HistogramView profile={profile} /></ExpandableChartPanel> : null}
+      {activeView === "density" ? <ExpandableChartPanel chartId="distribution-density" title="Плотность: KDE и нормальная"><DensityView profile={profile} /></ExpandableChartPanel> : null}
+      {activeView === "qq" ? <ExpandableChartPanel chartId="distribution-qq" title="Q–Q график"><QqView profile={profile} /></ExpandableChartPanel> : null}
+      {activeView === "cdf" ? <ExpandableChartPanel chartId="distribution-cdf" title="Функции распределения"><CdfView profile={profile} /></ExpandableChartPanel> : null}
       {activeView === "tests" ? <TestsView profile={profile} /> : null}
     </section>
   );

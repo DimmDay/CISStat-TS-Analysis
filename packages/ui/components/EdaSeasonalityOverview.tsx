@@ -12,6 +12,15 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+// Task 97.4 (Этап 4, spec_max_graf_fix.md §8): тиражирование раскрытия
+// графиков. Корень Обзора: relative всегда (правка A), overflow переключается
+// по expandedChartId (правка C); спектральные графики обёрнуты в
+// ExpandableChartPanel (уровень ИСПОЛЬЗОВАНИЯ, §7.2), таблица кандидатов —
+// без панели. Панель фазы — только при наличии данных (прецедент Этапа 2).
+// detail_level не заказан (Этап 5 опционален) — раскрытие чисто визуальное.
+import { ExpandableChartPanel } from "./ExpandableChartPanel";
+import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
+import { useExpandableChartState } from "../hooks/useExpandableChart";
 
 
 export interface EdaSpectrumPoint {
@@ -227,7 +236,15 @@ function CandidatesTable({ candidates }: { candidates: EdaSeasonalityCandidate[]
   );
 }
 
-export function EdaSeasonalityOverview({
+export function EdaSeasonalityOverview(props: EdaSeasonalityOverviewProps) {
+  return (
+    <ExpandableChartsProvider>
+      <EdaSeasonalityOverviewInner {...props} />
+    </ExpandableChartsProvider>
+  );
+}
+
+function EdaSeasonalityOverviewInner({
   profile,
   loading,
   error,
@@ -236,6 +253,7 @@ export function EdaSeasonalityOverview({
   onParametersChange,
 }: EdaSeasonalityOverviewProps) {
   const [activeView, setActiveView] = useState<SeasonalityView>("fft");
+  const { expandedChartId } = useExpandableChartState();
 
   if (loading) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Строим спектральный и фазовый профиль…</div>;
   if (error) return <div role="alert" className="flex h-[468px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">{error}</div>;
@@ -244,7 +262,7 @@ export function EdaSeasonalityOverview({
   if (!profile.applicable) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "Спектральный анализ неприменим."}</div>;
 
   return (
-    <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+    <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
       <div className="shrink-0 border-b border-neutral-100 p-4">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -271,9 +289,10 @@ export function EdaSeasonalityOverview({
         ))}
       </div>
 
-      {activeView === "fft" && <SpectrumChart profile={profile} kind="fft" />}
-      {activeView === "periodogram" && <SpectrumChart profile={profile} kind="periodogram" />}
-      {activeView === "phase" && <PhaseChart profile={profile} />}
+      {activeView === "fft" && <ExpandableChartPanel chartId="seasonality-fft" title="FFT-спектр"><SpectrumChart profile={profile} kind="fft" /></ExpandableChartPanel>}
+      {activeView === "periodogram" && <ExpandableChartPanel chartId="seasonality-periodogram" title="Периодограмма"><SpectrumChart profile={profile} kind="periodogram" /></ExpandableChartPanel>}
+      {/* Панель фазы — только при наличии данных, иначе бейдж раскрытия на пустом status-сообщении */}
+      {activeView === "phase" && (profile.phase_profile.length > 0 && profile.phase_period !== null ? <ExpandableChartPanel chartId="seasonality-phase" title="Фазовый профиль"><PhaseChart profile={profile} /></ExpandableChartPanel> : <PhaseChart profile={profile} />)}
       {activeView === "candidates" && <CandidatesTable candidates={profile.candidates} />}
     </section>
   );
