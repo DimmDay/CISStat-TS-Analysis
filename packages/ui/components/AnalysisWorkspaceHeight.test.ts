@@ -74,7 +74,11 @@ describe("единая высота окна «Обзор»/«Мастер»", (
   it("фиксирует 44 прокручиваемых и 121 непрокручиваемое состояние", () => {
     const classes = WORKSPACE_COMPONENTS.flatMap((fileName) => {
       const source = readFileSync(join(__dirname, fileName), "utf8");
-      return Array.from(source.matchAll(/className=(?:"([^"]*)"|`([^`]*)`)/gs), (match) => (
+      // \{? после "=" (Task 97.2): условные состояния Обзоров пишутся
+      // шаблонным className={`... ${cond ? "a" : "b"}`} — без \{? фигурная
+      // скобка делает такие строки невидимыми для теста (у Обзоров пилота
+      // Этапа 2 корень стал шаблонным: relative + условная пара overflow).
+      return Array.from(source.matchAll(/className=\{?(?:"([^"]*)"|`([^`]*)`)/gs), (match) => (
         match[1] ?? match[2] ?? ""
       ));
     });

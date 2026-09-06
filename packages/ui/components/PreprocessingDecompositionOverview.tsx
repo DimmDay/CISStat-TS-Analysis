@@ -5,6 +5,13 @@ import {
   Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ReferenceLine,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
+// Task 97.2 (Этап 2, spec_max_graf_fix.md §4.4): интеграция раскрытия графиков.
+// Корень Обзора: relative всегда (правка A), overflow переключается по
+// expandedChartId (правка C); три графика STL обёрнуты в ExpandableChartPanel
+// (вкладка «Диагностика» — метрики, без панели).
+import { ExpandableChartPanel } from "./ExpandableChartPanel";
+import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
+import { useExpandableChartState } from "../hooks/useExpandableChart";
 
 
 export interface PreprocessingDecompositionPoint {
@@ -127,15 +134,24 @@ function Diagnostics({ profile }: { profile: PreprocessingDecompositionProfile }
   </div>;
 }
 
-export function PreprocessingDecompositionOverview({ profile, loading, error, noDataset }: Props) {
+export function PreprocessingDecompositionOverview(props: Props) {
+  return (
+    <ExpandableChartsProvider>
+      <PreprocessingDecompositionOverviewInner {...props} />
+    </ExpandableChartsProvider>
+  );
+}
+
+function PreprocessingDecompositionOverviewInner({ profile, loading, error, noDataset }: Props) {
   const [view, setView] = useState<View>("components");
+  const { expandedChartId } = useExpandableChartState();
   if (loading) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Выполняется робастная STL-декомпозиция…</div>;
   if (error) return <div role="alert" className="flex h-[468px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">{error}</div>;
   if (noDataset) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-neutral-50 text-sm text-neutral-600">Загрузите датасет для декомпозиции.</div>;
   if (!profile) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-neutral-50 text-sm text-neutral-600">Выберите числовой исследуемый признак.</div>;
   if (!profile.applicable) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "Декомпозиция неприменима."}</div>;
 
-  return <section className="flex h-[468px] min-h-0 flex-col overflow-y-auto rounded-lg border border-neutral-200 bg-white feed-scroll">
+  return <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}>
     <div className="shrink-0 border-b border-neutral-100 p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div><h4 className="text-sm font-semibold text-neutral-800">{profile.column}: {profile.method} · период {profile.period}</h4><p className="mt-1 text-[10px] text-neutral-500">{profile.date_column} · частота {profile.frequency} · {profile.n_points} наблюдений · robust={profile.robust ? "да" : "нет"}</p></div>
@@ -147,9 +163,9 @@ export function PreprocessingDecompositionOverview({ profile, loading, error, no
     <div role="tablist" aria-label="Графики декомпозиции" className="flex shrink-0 flex-wrap gap-1.5 border-b border-neutral-100 px-4 py-2">
       {TABS.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${view === tab.id ? "border-neutral-300 bg-neutral-200 text-neutral-800" : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"}`}>{tab.label}</button>)}
     </div>
-    {view === "components" && <ComponentsChart profile={profile} />}
-    {view === "seasonal" && <SeasonalChart profile={profile} />}
-    {view === "acf" && <ResidualAcfChart profile={profile} />}
+    {view === "components" && <ExpandableChartPanel chartId="decomposition-components" title="Компоненты STL"><ComponentsChart profile={profile} /></ExpandableChartPanel>}
+    {view === "seasonal" && <ExpandableChartPanel chartId="decomposition-seasonal" title="Сезонный профиль STL"><SeasonalChart profile={profile} /></ExpandableChartPanel>}
+    {view === "acf" && <ExpandableChartPanel chartId="decomposition-acf" title="ACF остатка STL"><ResidualAcfChart profile={profile} /></ExpandableChartPanel>}
     {view === "diagnostics" && <Diagnostics profile={profile} />}
     <p className="shrink-0 px-4 pb-3 text-[9px] text-neutral-400">{profile.methodology_note}</p>
   </section>;

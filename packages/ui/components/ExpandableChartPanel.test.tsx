@@ -31,6 +31,22 @@ describe("ExpandableChartPanel (Task 97, Этап 1)", () => {
     expect(screen.getByTestId("chart")).toBeInTheDocument();
   });
 
+  // Интеграция Этапа 2 (Task 97.2): ChartExpandToggle свёрнутой панели —
+  // absolute right-2 top-2, поэтому панель обязана быть containing block'ом
+  // (relative), иначе бейдж якорится к корню Обзора и складывается в кучу
+  // с бейджами других блоков.
+  it("в свёрнутом состоянии панель — containing block (relative) для собственного бейджа", () => {
+    const { container } = render(<Harness />);
+    expect(panelRoot(container)).toHaveClass("relative");
+  });
+
+  it("в раскрытом состоянии relative снят — не конфликтует с absolute inset-0", () => {
+    const { container } = render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+    expect(panelRoot(container)).toHaveClass("absolute");
+    expect(panelRoot(container)).not.toHaveClass("relative");
+  });
+
   it("в раскрытом состоянии применяются absolute inset-0 z-20 (перекрытие Обзора)", () => {
     const { container } = render(<Harness />);
     fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));

@@ -112,10 +112,14 @@ const OUT_OF_SCOPE_NO_CHARTS = [
 const FAMILY_RE = /(Overview|Pipeline|Visualizations)\.tsx$/;
 const FAMILY_TOTAL = 54;
 
-// Извлечение className-строк — по образцу AnalysisWorkspaceHeight.test.ts
+// Извлечение className-строк — по образцу AnalysisWorkspaceHeight.test.ts.
+// Отличие от прецедента (найдено на Этапе 2): JSX-шаблонный className в коде
+// Обзоров пишется как className={`... ${cond ? "a" : "b"}`} — между "=" и
+// backtick стоит фигурная скобка, поэтому \{? после "=" обязателен, иначе
+// ВСЕ условные классы (в т.ч. пара overflow правки C) невидимы для статики.
 function classNamesOf(source: string): string[] {
   return Array.from(
-    source.matchAll(/className=(?:"([^"]*)"|`([^`]*)`)/gs),
+    source.matchAll(/className=\{?(?:"([^"]*)"|`([^`]*)`)/gs),
     (match) => match[1] ?? match[2] ?? ""
   );
 }

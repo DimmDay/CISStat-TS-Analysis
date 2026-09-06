@@ -62,3 +62,44 @@ describe("EdaStructuralBreaksOverview", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Временная сетка нерегулярна");
   });
 });
+
+describe("EdaStructuralBreaksOverview: интеграция раскрытия графиков (Task 97.2, spec_max_graf_fix.md §7.3)", () => {
+  const P = { profile: PROFILE, loading: false, error: null, noDataset: false, parameters: { alpha: 0.05, minSegment: 20, penaltyMultiplier: 2 }, onParametersChange: jest.fn() };
+
+  it("раскрытие перекрывает Обзор, корень переключает overflow, Esc возвращает", () => {
+    const { container } = render(<EdaStructuralBreaksOverview {...P} />);
+
+    const section = container.querySelector("section");
+    expect(section).not.toBeNull();
+    // правки A+C в свёрнутом состоянии
+    expect(section).toHaveClass("relative", "overflow-y-auto");
+    expect(section).not.toHaveClass("overflow-hidden");
+
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+
+    // правка C: при раскрытом графике скролл корня выключен
+    expect(section).toHaveClass("overflow-hidden");
+    expect(section).not.toHaveClass("overflow-y-auto");
+    const expandedPanel = container.querySelector("section > .absolute");
+    expect(expandedPanel).not.toBeNull();
+    expect(expandedPanel).toHaveClass("inset-0", "z-20");
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(section).toHaveClass("overflow-y-auto");
+    expect(section).not.toHaveClass("overflow-hidden");
+    expect(container.querySelector("section > .absolute")).toBeNull();
+  });
+
+  it("повторный клик по бейджу схлопывает график (toggle, без Esc)", () => {
+    const { container } = render(<EdaStructuralBreaksOverview {...P} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+    expect(container.querySelector("section")).toHaveClass("overflow-hidden");
+
+    fireEvent.click(screen.getByRole("button", { name: "Свернуть график" }));
+
+    expect(container.querySelector("section")).toHaveClass("overflow-y-auto");
+    expect(container.querySelector("section > .absolute")).toBeNull();
+  });
+});

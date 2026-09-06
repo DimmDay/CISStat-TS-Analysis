@@ -74,7 +74,11 @@ export function ExpandableChartPanel({
       className={`${
         isExpanded
           ? "absolute inset-0 z-20 flex flex-col bg-white"
-          : "flex min-h-0 flex-1 flex-col"
+          // relative в свёрнутой ветке (Этап 2): панель — containing block
+          // для собственного бейджа ChartExpandToggle (absolute right-2 top-2),
+          // иначе все свёрнутые бейджи Обзора якорятся к корню и складываются
+          // в правом верхнем углу окна.
+          : "relative flex min-h-0 flex-1 flex-col"
       } ${className ?? ""}`}
     >
       <ChartExpandToggle expanded={isExpanded} onClick={() => toggle(chartId)} title={title} />
