@@ -485,3 +485,26 @@ export type {
   DistributionStats,
   DistributionPreviewData,
 } from "./lib/demoDatasets";
+
+// Раскрытие/схлопывание вложенных графиков «Обзора» (Task 97, Этап 1).
+// Фундамент фичи: провайдер на уровень одного Обзора + панель одного
+// визуального блока + иконка-бейдж. Подключение Обзоров — Этапы 2–4
+// чек-листа ExpandableChartCoverage.test.ts; спецификация —
+// spec_max_graf_fix.md в корне репозитория.
+export { ExpandableChartsProvider } from "./components/ExpandableChartsProvider";
+export { ExpandableChartPanel } from "./components/ExpandableChartPanel";
+export type { ExpandableChartPanelProps } from "./components/ExpandableChartPanel";
+export { ChartExpandToggle } from "./components/ChartExpandToggle";
+export type { ChartExpandToggleProps } from "./components/ChartExpandToggle";
+export {
+  CHART_EXPAND_LABEL_COLLAPSED,
+  CHART_EXPAND_LABEL_EXPANDED,
+} from "./components/ChartExpandToggle";
+export {
+  useExpandableChartState,
+  useExpandableChartActions,
+} from "./hooks/useExpandableChart";
+export type {
+  ExpandableChartsState,
+  ExpandableChartsActions,
+} from "./hooks/useExpandableChart";

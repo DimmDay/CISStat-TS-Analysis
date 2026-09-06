@@ -3213,3 +3213,140 @@ Prophet добавлен как десятая production-модель чере�
   catalog/candidates-driven и уже корректно показывает Prophet как `ready`
   без единой правки кода.
 - TBATS (Task 125) — следующая модель в прогрессии "11/24".
+
+---
+
+## Task 97.1 — Раскрытие/схлопывание графиков «Обзора»: Этап 1 (фундамент)
+
+### Исходная точка
+
+Работа выполнена на точном коммите `63b1d7d` (`spec_max_graf_fix` — утверждённая
+v2-редакция спецификации Task 97, вопросы §10 закрыты по рекомендациям
+ревьюера); commit/push не выполнялись. Перед началом пересинхронизирован с
+origin/main, повторно верифицированы факты ревью: 30 `*Overview.tsx`, 54 файла
+Обзор-семейства (Overview+Pipeline+Visualizations), контракт `h-[468px]`
+в 51 файле, `relative` только в 2/54 файлах, `cn()`/`user-event`/`--badge-*`
+в проекте отсутствуют, lucide-react `^0.427.0` и recharts `^2.13.3` в deps.
+Task 124 (Prophet) не затрагивал `packages/ui` — скоуп Этапа 1 не пересекается.
+
+### Что сделано (spec_max_graf_fix.md, Этап 1 — «фундамент»)
+
+Реализован переиспользуемый примитив раскрытия графиков в `packages/ui`,
+без подключения к Обзорам (это Этапы 2–4) и без backend-изменений:
+
+- **`hooks/useExpandableChart.ts`** — state/actions-контексты фичи + хуки
+  доступа `useExpandableChartState` / `useExpandableChartActions` с guard'ом
+  «провайдер отсутствует» (понятная ошибка вместо молчаливой деградации).
+  Разделение контекстов — правка H: actions стабильны по ссылке (useMemo),
+  потребители действий не перерендериваются при смене `expandedChartId`.
+- **`ExpandableChartsProvider.tsx`** — провайдер на уровень ОДНОГО Обзора,
+  инвариант single-expand (expand нового id неявно схлопывает предыдущий;
+  z-index-стек не нужен — §5.2 спеки).
+- **`ExpandableChartPanel.tsx`** — обёртка одного визуального блока:
+  свёрнуто `flex min-h-0 flex-1 flex-col`, раскрыто `absolute inset-0 z-20
+  bg-white`; Esc схлопывает (window keydown, снимается при unmount);
+  `onExpandChange` — сигнал для будущего `useChartDetailData` (Этап 3, §6.3).
+  В коде зафиксированы контракты правок A (`relative` на корне Обзора —
+  проверяет coverage-тест) и C (`overflow-y-auto` → `overflow-hidden`
+  на время раскрытия, интеграционный паттерн §4.4).
+- **`ChartExpandToggle.tsx`** — иконка-бейдж в фактическом стиле бейджей
+  проекта (`rounded-full bg-neutral-100`, hover `bg-neutral-200`,
+  focus-visible ринг `ring-neutral-400` — правка B, без несуществующих
+  `--badge-*`), `aria-label` + `aria-expanded` (правка I), иконки
+  lucide-react `Maximize2`/`Minimize2`. Вместо несуществующей `cn()` —
+  шаблонные строки (правка E).
+- **`packages/ui/index.ts`** — barrel-экспорты нового примитива
+  (компоненты, пропсы, хуки, типы, константы label'ов).
+
+### Контрактный тест покрытия — 3 явных списка (правка F)
+
+`ExpandableChartCoverage.test.ts` построен по прецеденту
+AnalysisWorkspaceHeight/AdaptiveWorkspaceVisualizations (статическая проверка
+исходников, явные списки, `@ts-nocheck`). Инвентарь Обзор-семейства
+верифицирован пофайлово, списки замкнуты инвентарным guard'ом (54 файла,
+без дублей и пропусков — при появлении нового файла семейства тест падает,
+пока файл не отнесён к списку):
+
+- **EXPANDABLE_WINDOW_OVERVIEWS (20)** — Обзоры с окном `h-[468px]`,
+  рендерящие графики данных (10 EDA + 10 Preprocessing Overview, включая
+  Missing/Outliers/Regularity, чьи графики живут в Visualizations-детях).
+  Требования на файл: `relative` в className окна 468px (правка A) +
+  условная пара `overflow-hidden`/`overflow-y-auto` (правка C) +
+  `ExpandableChartsProvider` + обёртка блоков в `ExpandableChartPanel`.
+- **CHART_BLOCK_SOURCES (3)** — Missing/Outliers/Regularity Visualizations:
+  модули, ОПРЕДЕЛЯЮЩИЕ chart-блоки; обёртка ставится на уровне использования
+  (в Обзоре списка 1). Guard: каждый импортируется хотя бы одним Обзором
+  списка 1.
+- **OUT_OF_SCOPE_NO_CHARTS (31)** — файлы семейства без визуализаций данных
+  (18 Validation — таблицы/статусы, 10 Preprocessing Pipeline-обёрток,
+  2 статичные схемы Modeling, UploadAutoPreviewPipeline). Negative-guard:
+  случайное появление Provider/Panel здесь — ошибка скоупа; расширение
+  скоупа = перенос файла в список 1 (одна строка). Решение «таблицы
+  Validation и статичные схемы вне скоупа раскрытия графиков» следует из
+  §2 спеки («раскрыть вложенный график») и зафиксировано явно, а не скрыто.
+
+### TDD-цикл
+
+- RED (тесты написаны до кода): 3 компонентных suite — «Cannot find module»
+  (ожидаемо, модулей ещё нет); coverage-тест — ровно 20 провалов
+  (по одному на файл списка 1, каждый с перечнем недостающих требований:
+  relative / overflow-hidden / overflow-y-auto / Provider / Panel) + 34 GREEN
+  (guards). Это и есть чек-лист Этапов 2–4, RED — сознательный,
+  spec_max_graf_fix.md §7.2/§8.
+- В ходе GREEN выявлен и исправлен дефект самого теста (не кода): в
+  provider-тесте был пропущен импорт `screen` — TypeScript честно разрешил
+  идентификатор к глобальному jsdom `screen` (`lib.dom`); ошибка всплыла на
+  этапе type-check, до запуска. Исправлен импорт.
+- GREEN: компонентные suite — 3/3, тесты 17/17 (Provider: single-expand,
+  implicit collapse, collapse, split-контексты через счётчики рендеров —
+  actions-проба не перерендерилась за 3 смены состояния, guard вне
+  провайдера; Toggle: aria/иконки/клик/фокус; Panel: классы состояний,
+  Esc-expanded/Esc-collapsed, последовательность onExpandChange
+  [false, true, false], aria-expanded встроенного toggle).
+
+### Проверки
+
+- Полный frontend regression: **88 suites / 797 tests** (было 84/726: +4
+  suite, +71 тест), из них **777 PASS, ровно 20 FAIL** — все 20 из
+  сознательно RED чек-листа ExpandableChartCoverage (Этапы 2–4). Все 726
+  прежних тестов — PASS, регрессий нет. Snapshots не затронуты.
+- `typecheck:all`: embedded PASS, standalone PASS (barrel-экспорты
+  компилируются в обоих приложениях).
+- Production build: embedded PASS, standalone PASS, 13/13 статических
+  страниц, First Load JS 464 kB (не изменился — примитив ещё не подключён
+  ни в один маршрут; рост бандла ожидается на Этапе 2 и будет зафиксирован).
+- `npx tsc --noEmit -p packages/ui/tsconfig.json`: exit 0; вывод содержит
+  только преждесуществующие deprecation-предупреждения tsconfig
+  (target=ES5, baseUrl) при установленной версии tsc — к задаче не относятся.
+- Рабочее дерево: только файлы текущей задачи (9 новых + `packages/ui/index.ts`
+  + `worklog2.md`), `git status` чист от побочных изменений.
+
+### Изменённые/новые файлы Task 97.1
+
+Новые:
+- `packages/ui/hooks/useExpandableChart.ts`
+- `packages/ui/components/ExpandableChartsProvider.tsx`
+- `packages/ui/components/ExpandableChartsProvider.test.tsx`
+- `packages/ui/components/ExpandableChartPanel.tsx`
+- `packages/ui/components/ExpandableChartPanel.test.tsx`
+- `packages/ui/components/ChartExpandToggle.tsx`
+- `packages/ui/components/ChartExpandToggle.test.tsx`
+- `packages/ui/components/ExpandableChartCoverage.test.ts`
+
+Изменённые:
+- `packages/ui/index.ts`
+- `worklog2.md` (эта запись)
+
+### Что осталось за рамками Task 97.1 (по плану спеки)
+
+- Этап 2 (пилот): подключение ExpandableChartPanel к пилотным Обзорам
+  (CWT-хитмап спектрального, структурные сдвиги, декомпозиция; матрица
+  моделей — по решению) с добавлением `relative` + условного overflow в
+  каждой PR-итерации; UX-валидация раскрытия на реальных данных.
+- Этап 3: `detail_level=compact|expanded` в backend-профилях,
+  `useChartDetailData`, тесты §7.4 (структура/объём вместо byte-for-byte).
+- Этап 4: тиражирование по чек-листу до полного GREEN coverage-теста.
+- Открытое решение Этапа 2: точка монтирования провайдера в triada
+  Missing/Outliers/Regularity (Overview держит список 1; если пилот покажет,
+  что окно надо отдавать на уровне Pipeline — файл переносится из списка 3
+  в список 1 одной строкой, guard-механика уже готова).
