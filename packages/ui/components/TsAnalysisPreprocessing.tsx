@@ -1371,6 +1371,7 @@ export function TsAnalysisPreprocessing() {
               loading={spectralLoading}
               error={spectralError}
               noDataset={spectralNoDataset}
+              parameters={spectralParameters}
             />
           ) : activeCheckId === "feature_eng" && descriptionSection === "pipeline" ? (
             <PreprocessingFeatureEngineeringPipeline

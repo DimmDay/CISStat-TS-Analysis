@@ -3424,3 +3424,106 @@ Acceptance-сигнал адаптации каждого Обзора — фл�
 - Этап 4: тиражирование на оставшиеся 16 Обзоров списка 1 до полного GREEN.
 - UX-выводы по `title` (сейчас — tooltip бейджа) и поведению шапки в раскрытом
   состоянии — по итогам пилота на реальных данных (§10 п.4).
+
+  ---
+
+## Task 97.3 — Overview Graph Expand: Stage 3 (detail_level backend + useChartDetailData)
+
+**Синхронизация:** `6791c02 → b2c6bb5` (заккоммиченный тимлидом Этап 2;
+локальное незакоммиченное дерево Этапа 2 совпало с origin/main кроме 1 строки
+worklog2.md — сброшено через `reset --hard`). Дерево чистое, npm ci не требовался.
+Спецификация: spec_max_graf_fix.md §6 (модель detail_level), §6.3 (клиентский
+флоу дозагрузки), §7.4 (backend-тесты, правка J), §8 п.4 (Этап 3).
+
+### Скоуп Этапа 3 и маппинг на профили-пилоты
+
+- **Спектральный (CWT-скалограмма):** потолок оси времени CWT — единственный
+  display-потолок профиля; `MAX_WAVELET_TIME_POINTS 120 → MAX_WAVELET_TIME_POINTS_EXPANDED 240`
+  (×2, «×1.5–2 по каждой оси» §6.2). Ось периодов — управляется существующим
+  query-параметром `wavelet_scales` (8..64), изменения не требует. Сама CWT
+  всегда считалась по всему ряду — expanded не меняет стоимость расчёта.
+- **Структурные сдвиги:** LTTB-сэмплы `series`/`cusum_path`:
+  `TARGET_SAMPLED_POINTS 1500 → EXPANDED_TARGET_SAMPLED_POINTS 3000`.
+  PELT-бюджет `MAX_PELT_GRID_POINTS=250` (Task 76) НЕ тронут — это бюджет
+  расчёта, а не отображения.
+- **Декомпозиция:** STL всегда по полному ряду; точки отрисовки:
+  expanded = полный ряд до `EXPANDED_FULL_POINTS_THRESHOLD 6000` («без
+  даунсэмплинга, если в разумных пределах» §6.2), выше — LTTB до 3000.
+- **Матрица моделей:** dense-рядов в ответе нет (категориальная матрица 24
+  моделей, счётчики семейств) — detail-режим не подключён, раскрытие остаётся
+  чисто визуальным (§6.3.6); задокументировано в тесте и коде.
+
+### Backend (GREEN: tests/api/test_dataset_profile_detail_level.py 10/10)
+
+- `apps/api/chart_data.py`: константы `EXPANDED_FULL_POINTS_THRESHOLD=6000`,
+  `EXPANDED_TARGET_SAMPLED_POINTS=3000` — явные тестируемые вторичные потолки
+  (по аналогии с budget PELT Task 76, мера риска §9).
+- `app/preprocessing/spectral.py`: `MAX_WAVELET_TIME_POINTS_EXPANDED=240`;
+  `analyze_spectral_extensions(..., detail_level="compact")` → `_wavelet_payload(max_time_points)`.
+- `apps/api/preprocessing_spectral.py` / `eda_structural_breaks.py` /
+  `preprocessing_decomposition.py`: pass-through `detail_level` со срезом
+  только сэмплинга отображения.
+- `apps/api/routers/session.py`: Optional `detail_level` (Query, default
+  `compact`, pattern `^(compact|expanded)$`) на 3 GET-эндпоинтах пилота —
+  обратная совместимость: клиенты, не знающие параметр, получают текущее
+  поведение (§6.4).
+- Тесты §7.4 (правка J): (1) compact-regression — «без параметра» vs
+  `detail_level=compact` идентичны по структуре/объёму (сигнатура ключей,
+  типов, длин списков, а не байтов); (2) expanded ≥ compact и ≤ явного
+  потолка; (3) методология неизменна — анализ-поля (кандидаты/сегменты
+  PELT, strength-метрики и seasonal_pattern STL, Welch/global CWT и ось
+  периодов) попарно идентичны compact/expanded; (4) неизвестный
+  `detail_level` → 422 на всех трёх эндпоинтах. Регресс затронутых
+  профилей: 28 passed (structural-breaks, decomposition, spectral,
+  timeseries_decomposition).
+
+### Frontend: useChartDetailData (RED→GREEN, 10/10)
+
+- `packages/ui/hooks/useChartDetailData.ts`: условная догрузка §6.3.
+  Ключ кэша `(profileKey, fingerprint, params)`; sessionId в ключе не нужен —
+  фронтенд не держит его в состоянии (cookie), а смена сессии всегда меняет
+  датасет/fingerprint. Попадание в кэш — синхронно, без сети (§6.3.2);
+  промах — фоновый запрос `detail_level=expanded`, `data=null` пока летит —
+  Обзор продолжает показывать compact (§6.3.3); индикатор — тонкий
+  animate-pulse бар сверху панели (рисует Обзор, панель остаётся универсальной).
+  AbortController при размонтировании/смене ключа; ошибка сети/HTTP →
+  `error` без исключения (§6.3.6); FIFO-кэш на 40 записей
+  (`MAX_CHART_DETAIL_CACHE_ENTRIES`).
+- Дефект, найденный при интеграции: в jsdom-тестах без мока сети
+  `globalThis.fetch` отсутствует — раскрытие панели роняло старые тесты
+  §7.3 (`TypeError: fetch.bind`). Хук теперь graceful-деградирует и при
+  отсутствии транспорта; старым тестам §7.2/§7.3 добавлен hermetic fetch-мок
+  (заодно убрана зависимость от порядка сьют в worker'е).
+
+### Wiring пилота (4 панели из 9 пилотных)
+
+- `EdaStructuralBreaksOverview`: hook для «Режимы» и «CUSUM» (новый опциональный
+  проп `datasetKey` — идентичность датасета для инвалидации, передаёт
+  `TsAnalysisEDA`); «Чувствительность» — visual-only.
+- `PreprocessingSpectralOverview`: hook для CWT-вкладки (новый опциональный
+  проп `parameters` — копия compact-параметров контейнера, чтобы expanded
+  считал тот же профиль, §6.4; передаёт `TsAnalysisPreprocessing`);
+  FFT/Welch/фаза — visual-only.
+- `PreprocessingDecompositionOverview`: hook для «Компоненты STL»
+  (params=column — тот же уровень инвалидации, что у compact-феча контейнера);
+  «Сезонный профиль»/«ACF» — размер периода/лагов, visual-only.
+- Wiring-тесты (§6.3): свёрнутый Обзор не ходит в сеть; раскрытие плотной
+  панели → запрос с параметрами compact + `detail_level=expanded` +
+  `credentials: "include"`; раскрытие visual-only панелей не фетчит.
+
+### Верификация
+
+- Полный jest: 89 suites / 817 tests = 801 PASS + ровно 16 FAIL
+  (чек-лист Этапа 4; RED-поле не расширилось, 20 → 16 → 16).
+- `typecheck:all` exit 0; production builds embedded + standalone OK (13/13).
+- Полный pytest: 1350 passed, 0 failed (в исходном прогоне 3 ERROR
+  test_preprocessing snapshot — преждесуществующий дефект окружения:
+  отсутствовал плагин syrupy в локальной venv; после установки 6/6,
+  на чистом дереве воспроизводится тот же ERROR).
+
+### Что осталось (Этапы 4–5)
+
+- Этап 4: тиражирование на оставшиеся 16 Обзоров чек-листа до полного GREEN.
+- Этап 5 (опционально): detail-режим для остальных профилей, где есть
+  плотные выборки; калибровка чисел вторичных потолков на реальных
+  датасетах (§9 follow-up) — контракт уже зафиксирован константами.

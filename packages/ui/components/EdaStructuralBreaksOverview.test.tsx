@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import {
   EdaStructuralBreaksOverview,
@@ -66,6 +66,17 @@ describe("EdaStructuralBreaksOverview", () => {
 describe("EdaStructuralBreaksOverview: интеграция раскрытия графиков (Task 97.2, spec_max_graf_fix.md §7.3)", () => {
   const P = { profile: PROFILE, loading: false, error: null, noDataset: false, parameters: { alpha: 0.05, minSegment: 20, penaltyMultiplier: 2 }, onParametersChange: jest.fn() };
 
+  // Task 97.3: раскрытие панели теперь триггерит фоновую догрузку
+  // detail_level=expanded (§6.3) — отдаём мок, чтобы тесты §7.2/§7.3
+  // проверяли только раскладку, без сети и без зависимости от соседних
+  // сьют в том же worker'е.
+  beforeEach(() => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => PROFILE });
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("раскрытие перекрывает Обзор, корень переключает overflow, Esc возвращает", () => {
     const { container } = render(<EdaStructuralBreaksOverview {...P} />);
 
@@ -101,5 +112,58 @@ describe("EdaStructuralBreaksOverview: интеграция раскрытия �
 
     expect(container.querySelector("section")).toHaveClass("overflow-y-auto");
     expect(container.querySelector("section > .absolute")).toBeNull();
+  });
+});
+
+describe("EdaStructuralBreaksOverview: дозагрузка detail_level (Task 97.3, spec_max_graf_fix.md §6.3)", () => {
+  const DETAIL_PROPS = {
+    profile: PROFILE, loading: false, error: null as string | null, noDataset: false,
+    parameters: { alpha: 0.05, minSegment: 20, penaltyMultiplier: 2 },
+    onParametersChange: jest.fn(),
+  };
+
+  beforeEach(() => {
+    global.fetch = jest.fn();
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("свёрнутый Обзор не ходит в сеть; раскрытие «Режимов» запрашивает expanded с параметрами compact", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => PROFILE });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const { container } = render(<EdaStructuralBreaksOverview {...DETAIL_PROPS} datasetKey="ds-1" />);
+
+    // §6.3.1: пока панель не раскрыта — дозапроса нет
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain("/dataset/eda-structural-breaks");
+    // параметры обязаны совпадать с compact-запросом контейнера (§6.4)
+    expect(String(url)).toContain("column=Price");
+    expect(String(url)).toContain("alpha=0.05");
+    expect(String(url)).toContain("min_segment=20");
+    expect(String(url)).toContain("penalty_multiplier=2");
+    expect(String(url)).toContain("detail_level=expanded");
+    expect(init.credentials).toBe("include");
+    // §6.3.6: ошибка сети не роняет Обзор — компактные данные остаются
+    expect(container.querySelector("section")).not.toBeNull();
+  });
+
+  it("панель «Чувствительность» не дозагружает данные (плотного ряда нет, §6.3.6)", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => PROFILE });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    render(<EdaStructuralBreaksOverview {...DETAIL_PROPS} datasetKey="ds-1" />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Чувствительность" }));
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+
+    // раскрытие работает (панель absolute), но сеть не дёргается
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(document.querySelector("section > .absolute")).not.toBeNull();
   });
 });

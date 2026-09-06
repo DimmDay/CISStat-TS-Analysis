@@ -769,6 +769,10 @@ def get_dataset_eda_structural_breaks(
     alpha: float = Query(0.05, ge=0.01, le=0.10),
     min_segment: int = Query(20, ge=5, le=200),
     penalty_multiplier: float = Query(2.0, gt=0, le=10),
+    detail_level: str = Query(
+        "compact", pattern="^(compact|expanded)$",
+        description="Потолок точек отображения (Task 97.3, spec §6.2); методология не меняется",
+    ),
 ):
     """CUSUM, PELT и локальная Chow-диагностика выбранного ряда."""
     session_id = get_or_create_session_id(request, response)
@@ -788,6 +792,7 @@ def get_dataset_eda_structural_breaks(
         alpha=alpha,
         min_segment=min_segment,
         penalty_multiplier=penalty_multiplier,
+        detail_level=detail_level,
     ))
 
 
@@ -2312,6 +2317,10 @@ def get_dataset_preprocessing_decomposition_profile(
     response: Response,
     period: Optional[int] = Query(None, ge=2),
     robust: bool = True,
+    detail_level: str = Query(
+        "compact", pattern="^(compact|expanded)$",
+        description="Потолок точек отображения STL (Task 97.3, spec §6.2); расчёт всегда по полному ряду",
+    ),
 ):
     """Диагностика остановки «Декомпозиция ряда».
 
@@ -2331,6 +2340,7 @@ def get_dataset_preprocessing_decomposition_profile(
 
     profile = build_preprocessing_decomposition(
         session.dataframe, column=column, period=period, robust=robust,
+        detail_level=detail_level,
     )
     mode = _effective_preprocessing_check_modes(session)["decomposition"]
     status, status_reason = _preprocessing_decomposition_status(
@@ -2629,6 +2639,10 @@ def get_dataset_preprocessing_spectral_profile(
     max_candidates: int = Query(6, ge=1, le=10),
     welch_segment_length: Optional[int] = Query(None, ge=8, le=4096),
     wavelet_scales: int = Query(24, ge=8, le=64),
+    detail_level: str = Query(
+        "compact", pattern="^(compact|expanded)$",
+        description="Потолок оси времени CWT-скалограммы (Task 97.3, spec §6.2); расчёт не меняется",
+    ),
 ):
     """Глобальный FFT/periodogram, робастный Welch и CWT во времени."""
     session_id = get_or_create_session_id(request, response)
@@ -2648,6 +2662,7 @@ def get_dataset_preprocessing_spectral_profile(
             welch_segment_length=welch_segment_length,
             wavelet_scales=wavelet_scales,
             saved_selection=session.preprocessing_spectral_selection,
+            detail_level=detail_level,
         )
     except (ValueError, TypeError, FloatingPointError, OverflowError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

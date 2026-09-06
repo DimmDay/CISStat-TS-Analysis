@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { PreprocessingDecompositionOverview, type PreprocessingDecompositionProfile } from "./PreprocessingDecompositionOverview";
 
@@ -42,5 +42,52 @@ describe("PreprocessingDecompositionOverview", () => {
   it("shows an honest not-applicable reason", () => {
     render(<PreprocessingDecompositionOverview profile={{ ...PROFILE, applicable: false, reason: "Ряд нерегулярный" }} loading={false} error={null} noDataset={false} />);
     expect(screen.getByRole("status")).toHaveTextContent("Ряд нерегулярный");
+  });
+});
+
+describe("PreprocessingDecompositionOverview: дозагрузка detail_level (Task 97.3, spec_max_graf_fix.md §6.3)", () => {
+  beforeEach(() => {
+    global.fetch = jest.fn();
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("свёрнутый Обзор не ходит в сеть; раскрытие «Компонентов» запрашивает expanded", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => PROFILE });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    render(<PreprocessingDecompositionOverview profile={PROFILE} loading={false} error={null} noDataset={false} />);
+
+    // §6.3.1: пока панель не раскрыта — дозапроса нет
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain("/dataset/preprocessing/decomposition-profile");
+    expect(String(url)).toContain("column=Price");
+    expect(String(url)).toContain("detail_level=expanded");
+    expect(init.credentials).toBe("include");
+  });
+
+  it("раскрытие «Сезонного профиля» и «ACF» не дозагружает данные (§6.3.6)", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => PROFILE });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    render(<PreprocessingDecompositionOverview profile={PROFILE} loading={false} error={null} noDataset={false} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "Сезонный профиль" }));
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(document.querySelector("section > .absolute")).not.toBeNull();
+
+    // возврат на «Компоненты»: сброс происходит по клику на видимую часть?
+    // Нет — expandedChartId сохраняется; схлопываем и проверяем ACF
+    fireEvent.click(screen.getByRole("button", { name: "Свернуть график" }));
+    fireEvent.click(screen.getByRole("tab", { name: "ACF остатка" }));
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

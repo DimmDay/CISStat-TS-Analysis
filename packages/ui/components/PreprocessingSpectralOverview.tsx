@@ -9,9 +9,17 @@ import {
 // Корень Обзора: relative всегда (правка A), overflow переключается по
 // expandedChartId (правка C); график-вкладки (FFT/Welch/CWT-скалограмма/фаза)
 // обёрнуты в ExpandableChartPanel, таблица кандидатов — без панели.
+// Task 97.3 (Этап 3, spec_max_graf_fix.md §6.3): панель CWT-скалограммы при
+// раскрытии дозагружает detail_level=expanded — ось времени CWT растёт
+// MAX_WAVELET_TIME_POINTS → MAX_WAVELET_TIME_POINTS_EXPANDED (×2, §6.2);
+// FFT/Welch/фаза плотного down-сэмплинга не имеют — раскрытие чисто
+// визуальное (§6.3.6). Пока запрос летит, показывается компактная
+// скалограмма + лёгкий индикатор сверху панели (§6.3.3).
 import { ExpandableChartPanel } from "./ExpandableChartPanel";
 import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
 import { useExpandableChartState } from "../hooks/useExpandableChart";
+import { useChartDetailData } from "../hooks/useChartDetailData";
+import type { SpectralParameters } from "./PreprocessingSpectralPipeline";
 
 
 export interface SpectralPoint {
@@ -89,6 +97,9 @@ function CandidatesView({ profile }: { profile: PreprocessingSpectralProfile }) 
 
 interface Props {
   profile: PreprocessingSpectralProfile | null; loading: boolean; error: string | null; noDataset: boolean;
+  /** Параметры compact-запроса контейнера — expanded обязан считать тот же
+   * профиль (методология совпадает, §6.4). Не заданы — запрос по умолчанию. */
+  parameters?: SpectralParameters | null;
 }
 
 export function PreprocessingSpectralOverview(props: Props) {
@@ -99,13 +110,29 @@ export function PreprocessingSpectralOverview(props: Props) {
   );
 }
 
-function PreprocessingSpectralOverviewInner({ profile, loading, error, noDataset }: Props) {
+function PreprocessingSpectralOverviewInner({ profile, loading, error, noDataset, parameters }: Props) {
   const [view, setView] = useState<View>("global");
   const { expandedChartId } = useExpandableChartState();
+  // Task 97.3 (§6.3): дозагрузка expanded только для CWT-скалограммы —
+  // самой плотной визуализации пилота. Хук до ранних return'ов.
+  // fingerprint не нужен: контейнер «Предобработки» инвалидирует профиль
+  // по смене target-колонки/параметров (всё входит в ключ кэша).
+  const waveletDetail = useChartDetailData<PreprocessingSpectralProfile>({
+    path: "/dataset/preprocessing/spectral-profile",
+    profileKey: "spectral-wavelet",
+    params: {
+      column: profile?.column,
+      min_cycles: parameters?.minCycles,
+      max_candidates: parameters?.maxCandidates,
+      wavelet_scales: parameters?.waveletScales,
+      welch_segment_length: parameters?.welchSegmentLength ?? null,
+    },
+    enabled: expandedChartId === "spectral-wavelet",
+  });
   if (loading) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Строим FFT, Welch и CWT…</div>;
   if (error) return <div role="alert" className="flex h-[468px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">{error}</div>;
   if (noDataset) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-neutral-50 text-sm text-neutral-600">Загрузите датасет для спектрального анализа.</div>;
   if (!profile) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-neutral-50 text-sm text-neutral-600">Выберите числовой исследуемый признак.</div>;
   if (!profile.applicable) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-amber-50 px-8 text-center text-sm text-amber-800">{profile.reason ?? "Спектральный анализ неприменим."}</div>;
-  return <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}><div className="shrink-0 border-b border-neutral-100 p-4"><div className="flex items-start justify-between gap-4"><div><h4 className="text-sm font-semibold">Частотная структура «{profile.column}»</h4><p className="mt-1 text-xs text-neutral-500">{profile.order_column ? `Порядок: ${profile.order_column}` : "Порядок строк"}{profile.frequency ? ` · ${profile.frequency}` : ""} · n={profile.n_observations} · Δf={number(profile.frequency_resolution, 5)}</p></div><div className="grid grid-cols-3 gap-2 text-center text-[10px]"><span className="rounded bg-neutral-50 px-2 py-1">P*<strong className="block text-xs">{number(profile.dominant_period)}</strong></span><span className="rounded bg-neutral-50 px-2 py-1">Подтверждено<strong className="block text-xs">{profile.confirmed_periods}</strong></span><span className="rounded bg-neutral-50 px-2 py-1">Entropy<strong className="block text-xs">{number(profile.spectral_entropy)}</strong></span></div></div><div role="tablist" aria-label="Представления спектрального анализа" className="mt-3 flex flex-wrap gap-2">{TABS.map((tab) => <button key={tab.id} role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`rounded-full bg-neutral-100 px-3 py-1 text-xs ${view === tab.id ? "ring-2 ring-neutral-400" : "text-neutral-600 hover:bg-neutral-200"}`}>{tab.label}</button>)}</div></div>{view === "global" && <ExpandableChartPanel chartId="spectral-global" title="FFT и периодограмма"><GlobalView profile={profile} /></ExpandableChartPanel>}{view === "welch" && <ExpandableChartPanel chartId="spectral-welch" title="Welch PSD и диапазоны"><WelchView profile={profile} /></ExpandableChartPanel>}{view === "wavelet" && <ExpandableChartPanel chartId="spectral-wavelet" title="CWT-скалограмма"><WaveletView profile={profile} /></ExpandableChartPanel>}{/* Панель фазы — только при наличии данных, иначе бейдж раскрытия на пустом status-сообщении */}{view === "phase" && (profile.phase_profile.length > 0 && profile.phase_period !== null ? <ExpandableChartPanel chartId="spectral-phase" title="Фазовый профиль"><PhaseView profile={profile} /></ExpandableChartPanel> : <PhaseView profile={profile} />)}{view === "candidates" && <CandidatesView profile={profile} />}<div className="shrink-0 border-t border-neutral-100 px-4 py-3 text-[10px] text-neutral-500"><p>{profile.methodology_note}</p>{profile.warnings.map((warning) => <p key={warning} className="mt-1 text-amber-700">{warning}</p>)}<p className="mt-2">Официальные источники: <a className="text-brand underline" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.periodogram.html" target="_blank" rel="noreferrer">SciPy periodogram</a> · <a className="text-brand underline" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.welch.html" target="_blank" rel="noreferrer">SciPy Welch</a> · <a className="text-brand underline" href="https://pywavelets.readthedocs.io/en/stable/ref/cwt.html" target="_blank" rel="noreferrer">PyWavelets CWT</a> · <a className="text-brand underline" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lombscargle.html" target="_blank" rel="noreferrer">SciPy Lomb–Scargle</a></p></div></section>;
+  return <section className={`relative flex h-[468px] min-h-0 flex-col rounded-lg border border-neutral-200 bg-white feed-scroll ${expandedChartId ? "overflow-hidden" : "overflow-y-auto"}`}><div className="shrink-0 border-b border-neutral-100 p-4"><div className="flex items-start justify-between gap-4"><div><h4 className="text-sm font-semibold">Частотная структура «{profile.column}»</h4><p className="mt-1 text-xs text-neutral-500">{profile.order_column ? `Порядок: ${profile.order_column}` : "Порядок строк"}{profile.frequency ? ` · ${profile.frequency}` : ""} · n={profile.n_observations} · Δf={number(profile.frequency_resolution, 5)}</p></div><div className="grid grid-cols-3 gap-2 text-center text-[10px]"><span className="rounded bg-neutral-50 px-2 py-1">P*<strong className="block text-xs">{number(profile.dominant_period)}</strong></span><span className="rounded bg-neutral-50 px-2 py-1">Подтверждено<strong className="block text-xs">{profile.confirmed_periods}</strong></span><span className="rounded bg-neutral-50 px-2 py-1">Entropy<strong className="block text-xs">{number(profile.spectral_entropy)}</strong></span></div></div><div role="tablist" aria-label="Представления спектрального анализа" className="mt-3 flex flex-wrap gap-2">{TABS.map((tab) => <button key={tab.id} role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`rounded-full bg-neutral-100 px-3 py-1 text-xs ${view === tab.id ? "ring-2 ring-neutral-400" : "text-neutral-600 hover:bg-neutral-200"}`}>{tab.label}</button>)}</div></div>{view === "global" && <ExpandableChartPanel chartId="spectral-global" title="FFT и периодограмма"><GlobalView profile={profile} /></ExpandableChartPanel>}{view === "welch" && <ExpandableChartPanel chartId="spectral-welch" title="Welch PSD и диапазоны"><WelchView profile={profile} /></ExpandableChartPanel>}{view === "wavelet" && <ExpandableChartPanel chartId="spectral-wavelet" title="CWT-скалограмма">{waveletDetail.loading && <div aria-hidden="true" className="absolute left-0 right-0 top-0 z-30 h-0.5 animate-pulse bg-brand" />}<WaveletView profile={waveletDetail.data ?? profile} /></ExpandableChartPanel>}{/* Панель фазы — только при наличии данных, иначе бейдж раскрытия на пустом status-сообщении */}{view === "phase" && (profile.phase_profile.length > 0 && profile.phase_period !== null ? <ExpandableChartPanel chartId="spectral-phase" title="Фазовый профиль"><PhaseView profile={profile} /></ExpandableChartPanel> : <PhaseView profile={profile} />)}{view === "candidates" && <CandidatesView profile={profile} />}<div className="shrink-0 border-t border-neutral-100 px-4 py-3 text-[10px] text-neutral-500"><p>{profile.methodology_note}</p>{profile.warnings.map((warning) => <p key={warning} className="mt-1 text-amber-700">{warning}</p>)}<p className="mt-2">Официальные источники: <a className="text-brand underline" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.periodogram.html" target="_blank" rel="noreferrer">SciPy periodogram</a> · <a className="text-brand underline" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.welch.html" target="_blank" rel="noreferrer">SciPy Welch</a> · <a className="text-brand underline" href="https://pywavelets.readthedocs.io/en/stable/ref/cwt.html" target="_blank" rel="noreferrer">PyWavelets CWT</a> · <a className="text-brand underline" href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.lombscargle.html" target="_blank" rel="noreferrer">SciPy Lomb–Scargle</a></p></div></section>;
 }

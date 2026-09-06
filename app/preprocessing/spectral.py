@@ -19,6 +19,12 @@ from scipy.signal import periodogram, welch
 MIN_WELCH_SEGMENT = 8
 MAX_WAVELET_PERIOD = 512.0
 MAX_WAVELET_TIME_POINTS = 120
+# Task 97.3 (Этап 3, spec_max_graf_fix.md §6.2): вторичный потолок оси
+# времени CWT-скалограммы при detail_level=expanded (×2 от компактного,
+# «×1.5–2 по каждой оси»). Сама CWT всегда считается по ВСЕМУ ряду --
+# потолок срезает только объём точек, отдаваемых для отрисовки, поэтому
+# расширенный уровень не меняет ни методологию, ни стоимость расчёта.
+MAX_WAVELET_TIME_POINTS_EXPANDED = 240
 WAVELET_METHOD = "cmor1.5-1.0"
 
 
@@ -92,6 +98,7 @@ def _wavelet_payload(
     labels: list[str],
     max_period: float,
     wavelet_scales: int,
+    max_time_points: int = MAX_WAVELET_TIME_POINTS,
 ) -> tuple[list[dict[str, Any]], list[dict[str, float]], float, list[str]]:
     period_limit = max(2.0, min(float(max_period), MAX_WAVELET_PERIOD))
     periods_requested = np.geomspace(2.0, period_limit, num=max(8, int(wavelet_scales)))
@@ -113,9 +120,9 @@ def _wavelet_payload(
     normalized = np.clip(logged / max(cap, np.finfo(float).tiny), 0.0, 1.0)
 
     time_indices = np.arange(len(values), dtype=int)
-    if len(time_indices) > MAX_WAVELET_TIME_POINTS:
+    if len(time_indices) > max_time_points:
         time_indices = np.linspace(
-            0, len(values) - 1, MAX_WAVELET_TIME_POINTS, dtype=int,
+            0, len(values) - 1, max_time_points, dtype=int,
         )
     points: list[dict[str, Any]] = []
     for scale_index, period in enumerate(periods):
@@ -153,6 +160,7 @@ def analyze_spectral_extensions(
     max_period: float,
     welch_segment_length: int | None = None,
     wavelet_scales: int = 24,
+    detail_level: str = "compact",
 ) -> dict[str, Any]:
     """Построить Welch PSD, диапазоны энергии и CWT для валидного ряда."""
     array = _validated_values(values)
@@ -177,7 +185,14 @@ def analyze_spectral_extensions(
     step = segment - overlap
     segments = 1 + max(0, (len(array) - segment) // step)
     wavelet, wavelet_global, wavelet_period_max, warnings = _wavelet_payload(
-        detrended, label_values, max_period, wavelet_scales,
+        detrended,
+        label_values,
+        max_period,
+        wavelet_scales,
+        max_time_points=(
+            MAX_WAVELET_TIME_POINTS_EXPANDED if detail_level == "expanded"
+            else MAX_WAVELET_TIME_POINTS
+        ),
     )
     return {
         "frequency_resolution": float(1.0 / len(array)),

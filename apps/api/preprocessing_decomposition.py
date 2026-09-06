@@ -18,12 +18,32 @@ from statsmodels.tsa.stattools import acf
 
 from app.data.detectors import smart_to_datetime
 from app.preprocessing.decomposition import apply_decomposition
-from apps.api.chart_data import FULL_POINTS_THRESHOLD, TARGET_SAMPLED_POINTS, _lttb_indices
+from apps.api.chart_data import (
+    EXPANDED_FULL_POINTS_THRESHOLD,
+    EXPANDED_TARGET_SAMPLED_POINTS,
+    FULL_POINTS_THRESHOLD,
+    TARGET_SAMPLED_POINTS,
+    _lttb_indices,
+)
 from apps.api.decomposition_data import _resolve_period
 from validation.regularity import profile_regularity
 
 
 SUPPORTED_OUTPUTS = {"components", "seasonally_adjusted", "detrended"}
+
+
+def _display_sampling_budget(detail_level: str) -> tuple[int, int]:
+    """(порог полного ряда, целевое число точек LTTB) для ОТРИСОВКИ.
+
+    Task 97.3 (spec_max_graf_fix.md §6.2): STL всегда считается по полному
+    ряду; detail_level влияет только на объём отдаываемых точек: compact --
+    текущее поведение, expanded -- полный ряд до расширенного порога
+    (\"без даунсэмплинга, если в разумных пределах\"), выше -- LTTB до
+    расширенного потолка (обе константы -- явные и тестируемые, §7.4).
+    """
+    if detail_level == "expanded":
+        return EXPANDED_FULL_POINTS_THRESHOLD, EXPANDED_TARGET_SAMPLED_POINTS
+    return FULL_POINTS_THRESHOLD, TARGET_SAMPLED_POINTS
 
 
 class DecompositionNotApplicable(ValueError):
@@ -126,6 +146,7 @@ def _analyze(
     column: str,
     period: int | None,
     robust: bool,
+    detail_level: str = "compact",
 ) -> tuple[dict[str, Any], dict[str, pd.Series], pd.Series]:
     series, original_dates, date_column, inferred, resolved_period = _prepare(df, column, period)
     decomposition = apply_decomposition(
@@ -150,12 +171,13 @@ def _analyze(
         residual_acf_values = acf(residual, nlags=nlags, fft=True, missing="raise")
 
     n = len(series)
-    if n <= FULL_POINTS_THRESHOLD:
+    full_threshold, target_points = _display_sampling_budget(detail_level)
+    if n <= full_threshold:
         indices = np.arange(n)
         sampled = False
     else:
         indices = _lttb_indices(
-            np.arange(n, dtype=float), residual.to_numpy(dtype=float), TARGET_SAMPLED_POINTS,
+            np.arange(n, dtype=float), residual.to_numpy(dtype=float), target_points,
         )
         sampled = True
     points = [
@@ -226,9 +248,10 @@ def build_preprocessing_decomposition(
     column: str,
     period: int | None = None,
     robust: bool = True,
+    detail_level: str = "compact",
 ) -> dict[str, Any]:
     try:
-        profile, _components, _dates = _analyze(df, column, period, robust)
+        profile, _components, _dates = _analyze(df, column, period, robust, detail_level)
         return profile
     except DecompositionNotApplicable as exc:
         return _empty_profile(column, str(exc), robust)

@@ -9,9 +9,15 @@ import {
 // Корень Обзора: relative всегда (правка A), overflow переключается по
 // expandedChartId (правка C); три графика STL обёрнуты в ExpandableChartPanel
 // (вкладка «Диагностика» — метрики, без панели).
+// Task 97.3 (Этап 3, spec_max_graf_fix.md §6.3): панель «Компоненты» при
+// раскрытии дозагружает detail_level=expanded (полный ряд до
+// EXPANDED_FULL_POINTS_THRESHOLD, далее LTTB до EXPANDED_TARGET_SAMPLED_POINTS);
+// сезонный профиль и ACF имеют размер периода/лагов и дозагрузки не требуют
+// (§6.3.6). Пока запрос летит, показывается компактный график + индикатор.
 import { ExpandableChartPanel } from "./ExpandableChartPanel";
 import { ExpandableChartsProvider } from "./ExpandableChartsProvider";
 import { useExpandableChartState } from "../hooks/useExpandableChart";
+import { useChartDetailData } from "../hooks/useChartDetailData";
 
 
 export interface PreprocessingDecompositionPoint {
@@ -145,6 +151,16 @@ export function PreprocessingDecompositionOverview(props: Props) {
 function PreprocessingDecompositionOverviewInner({ profile, loading, error, noDataset }: Props) {
   const [view, setView] = useState<View>("components");
   const { expandedChartId } = useExpandableChartState();
+  // Task 97.3 (§6.3): дозагрузка expanded только для панели «Компоненты» —
+  // единственной с плотным рядом точек. Хук до ранних return'ов.
+  // fingerprint не нужен: контейнер «Предобработки» инвалидирует профиль
+  // по смене target-колонки (column входит в params и в ключ кэша).
+  const componentsDetail = useChartDetailData<PreprocessingDecompositionProfile>({
+    path: "/dataset/preprocessing/decomposition-profile",
+    profileKey: "decomposition-components",
+    params: { column: profile?.column },
+    enabled: expandedChartId === "decomposition-components",
+  });
   if (loading) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Выполняется робастная STL-декомпозиция…</div>;
   if (error) return <div role="alert" className="flex h-[468px] items-center justify-center rounded-lg bg-red-50 px-8 text-center text-sm text-red-700">{error}</div>;
   if (noDataset) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-neutral-50 text-sm text-neutral-600">Загрузите датасет для декомпозиции.</div>;
@@ -163,7 +179,7 @@ function PreprocessingDecompositionOverviewInner({ profile, loading, error, noDa
     <div role="tablist" aria-label="Графики декомпозиции" className="flex shrink-0 flex-wrap gap-1.5 border-b border-neutral-100 px-4 py-2">
       {TABS.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${view === tab.id ? "border-neutral-300 bg-neutral-200 text-neutral-800" : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"}`}>{tab.label}</button>)}
     </div>
-    {view === "components" && <ExpandableChartPanel chartId="decomposition-components" title="Компоненты STL"><ComponentsChart profile={profile} /></ExpandableChartPanel>}
+    {view === "components" && <ExpandableChartPanel chartId="decomposition-components" title="Компоненты STL">{componentsDetail.loading && <div aria-hidden="true" className="absolute left-0 right-0 top-0 z-30 h-0.5 animate-pulse bg-brand" />}<ComponentsChart profile={componentsDetail.data ?? profile} /></ExpandableChartPanel>}
     {view === "seasonal" && <ExpandableChartPanel chartId="decomposition-seasonal" title="Сезонный профиль STL"><SeasonalChart profile={profile} /></ExpandableChartPanel>}
     {view === "acf" && <ExpandableChartPanel chartId="decomposition-acf" title="ACF остатка STL"><ResidualAcfChart profile={profile} /></ExpandableChartPanel>}
     {view === "diagnostics" && <Diagnostics profile={profile} />}

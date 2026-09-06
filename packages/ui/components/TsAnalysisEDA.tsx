@@ -1553,6 +1553,7 @@ export function TsAnalysisEDA() {
               noDataset={structuralNoDataset}
               parameters={structuralParameters}
               onParametersChange={(changes) => setStructuralParameters((current) => ({ ...current, ...changes }))}
+              datasetKey={datasetKey}
             />
           ) : activeCheckId === "feature_select" ? (
             <EdaFeatureSelectionOverview profile={featureSelectionProfile} loading={featureSelectionBusy} error={featureSelectionRequestError} noDataset={featureSelectionNoDataset} parameters={featureSelectionParameters} onParametersChange={(changes)=>setFeatureSelectionParameters(current=>({...current,...changes}))}/>

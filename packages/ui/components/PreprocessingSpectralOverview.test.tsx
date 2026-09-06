@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 import { PreprocessingSpectralOverview, type PreprocessingSpectralProfile } from "./PreprocessingSpectralOverview";
 
@@ -57,5 +57,63 @@ describe("PreprocessingSpectralOverview", () => {
   it("shows an honest not-applicable reason", () => {
     render(<PreprocessingSpectralOverview profile={{ ...SPECTRAL_PROFILE, applicable: false, reason: "Временная сетка нерегулярна" }} loading={false} error={null} noDataset={false} />);
     expect(screen.getByRole("status")).toHaveTextContent("Временная сетка нерегулярна");
+  });
+});
+
+describe("PreprocessingSpectralOverview: дозагрузка detail_level (Task 97.3, spec_max_graf_fix.md §6.3)", () => {
+  beforeEach(() => {
+    global.fetch = jest.fn();
+  });
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it("свёрнутый Обзор не ходит в сеть; раскрытие CWT-вкладки запрашивает expanded с параметрами", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => SPECTRAL_PROFILE });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    render(
+      <PreprocessingSpectralOverview
+        profile={SPECTRAL_PROFILE}
+        loading={false}
+        error={null}
+        noDataset={false}
+        parameters={{ minCycles: 3, maxCandidates: 6, welchSegmentLength: null, waveletScales: 24 }}
+      />,
+    );
+
+    // §6.3.1: пока панель не раскрыта — дозапроса нет
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("tab", { name: "CWT" }));
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain("/dataset/preprocessing/spectral-profile");
+    // параметры совпадают с compact-запросом контейнера (§6.4)
+    expect(String(url)).toContain("column=Price");
+    expect(String(url)).toContain("min_cycles=3");
+    expect(String(url)).toContain("max_candidates=6");
+    expect(String(url)).toContain("wavelet_scales=24");
+    expect(String(url)).not.toContain("welch_segment_length");
+    expect(String(url)).toContain("detail_level=expanded");
+    expect(init.credentials).toBe("include");
+  });
+
+  it("раскрытие FFT и Welch не дозагружает данные (§6.3.6)", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => SPECTRAL_PROFILE });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    render(<PreprocessingSpectralOverview profile={SPECTRAL_PROFILE} loading={false} error={null} noDataset={false} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Свернуть график" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Welch PSD" }));
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(document.querySelector("section > .absolute")).not.toBeNull();
   });
 });

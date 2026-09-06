@@ -62,8 +62,14 @@ def build_preprocessing_spectral_profile(
     welch_segment_length: int | None = None,
     wavelet_scales: int = 24,
     saved_selection: dict[str, Any] | None = None,
+    detail_level: str = "compact",
 ) -> dict[str, Any]:
-    """Переиспользовать EDA-кандидаты и дополнить их Welch/CWT."""
+    """Переиспользовать EDA-кандидаты и дополнить их Welch/CWT.
+
+    detail_level (Task 97.3, spec_max_graf_fix.md §6.2): влияет только на
+    потолок оси времени CWT-скалограммы для отрисовки (см. константы
+    app/preprocessing/spectral.py); методология и стоимость расчёта те же.
+    """
     base = build_eda_seasonality(
         df, column, min_cycles=min_cycles, max_candidates=max_candidates,
     )
@@ -84,6 +90,7 @@ def build_preprocessing_spectral_profile(
         max_period=float(base["max_period"]),
         welch_segment_length=welch_segment_length,
         wavelet_scales=wavelet_scales,
+        detail_level=detail_level,
     )
     peak_frequencies = [float(item["frequency"]) for item in base["candidates"]]
     resolution = 1.0 / float(extensions["welch_segment_length"])

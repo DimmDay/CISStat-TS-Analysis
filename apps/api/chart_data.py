@@ -30,6 +30,15 @@ FULL_POINTS_THRESHOLD = 3000  # до этого числа точек -- рис�
 TARGET_SAMPLED_POINTS = 1500  # целевое число точек после LTTB
 MAX_ZOOM_POINTS = 5000  # защитный потолок даже при явном zoom-запросе диапазона
 
+# ── Вторичные потолки detail_level=expanded (Task 97.3, Этап 3) ──
+# spec_max_graf_fix.md §6.2/§7.4: раскрытие графика даёт более плотную
+# отрисовку БЕЗ изменения методологии расчёта -- различается только объём
+# отдаваемых для отображения точек. Потолки -- явные тестируемые константы
+# (по аналогии с бюджетом PELT-сетки Task 76 MAX_PELT_GRID_POINTS),
+# чтобы не провоцировать регресс времени ответа/памяти на render.com.
+EXPANDED_FULL_POINTS_THRESHOLD = 6000  # expanded: полный ряд до этого порога
+EXPANDED_TARGET_SAMPLED_POINTS = 3000  # expanded: целевое число точек после LTTB
+
 DEFAULT_HISTOGRAM_BINS = 30
 KDE_CURVE_POINTS = 200
 IQR_OUTLIER_MULTIPLIER = 1.5  # тот же множитель, что и в get_dataset_stats/validation/outliers.py

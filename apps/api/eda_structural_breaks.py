@@ -8,10 +8,19 @@ import pandas as pd
 
 from app.data.detectors import detect_column_frequency, score_all_columns_as_date, smart_to_datetime
 from app.eda.structural_breaks import analyze_structural_breaks, structural_breaks_not_applicable
-from apps.api.chart_data import TARGET_SAMPLED_POINTS, _lttb_indices
+from apps.api.chart_data import EXPANDED_TARGET_SAMPLED_POINTS, TARGET_SAMPLED_POINTS, _lttb_indices
 
 
 DATE_CONFIDENCE_THRESHOLD = 0.7
+
+
+def _display_sampling_target(detail_level: str) -> int:
+    """Целевое число точек LTTB-сэмплинга ОТРИСОВКИ (Task 97.3, §6.2).
+
+    Методология PELT/CUSUM/Chow не зависит от detail_level -- уровень
+    влияет только на объём точек series/cusum_path, отдаваемых графику.
+    """
+    return EXPANDED_TARGET_SAMPLED_POINTS if detail_level == "expanded" else TARGET_SAMPLED_POINTS
 
 
 def _label(labels: pd.Series | None, index: int) -> str | None:
@@ -26,8 +35,14 @@ def build_eda_structural_breaks(
     alpha: float = 0.05,
     min_segment: int = 20,
     penalty_multiplier: float = 2.0,
+    detail_level: str = "compact",
 ) -> dict[str, Any]:
-    """Валидирует порядок ряда и формирует данные пяти представлений."""
+    """Валидирует порядок ряда и формирует данные пяти представлений.
+
+    detail_level (Task 97.3, spec_max_graf_fix.md §6.2): "compact" --
+    текущее поведение; "expanded" -- тот же расчёт с более высоким
+    вторичным потолком точек отображения (см. _display_sampling_target).
+    """
     values = df[column]
     candidates = [
         item for item in score_all_columns_as_date(df)
@@ -100,10 +115,11 @@ def build_eda_structural_breaks(
     series_sampled = False
     cusum_sampled = False
     if result["applicable"]:
+        display_target = _display_sampling_target(detail_level)
         raw = values.to_numpy(dtype=float)
         indices = np.arange(len(raw), dtype=np.int64)
-        if len(raw) > TARGET_SAMPLED_POINTS:
-            indices = _lttb_indices(np.arange(len(raw), dtype=float), raw, TARGET_SAMPLED_POINTS)
+        if len(raw) > display_target:
+            indices = _lttb_indices(np.arange(len(raw), dtype=float), raw, display_target)
             series_sampled = True
         segment_ends = [int(item["end_index"]) for item in result["segments"]]
         for index in indices:
@@ -119,9 +135,9 @@ def build_eda_structural_breaks(
 
         full_path = result["cusum_path"]
         path_indices = np.arange(len(full_path), dtype=np.int64)
-        if len(full_path) > TARGET_SAMPLED_POINTS:
+        if len(full_path) > display_target:
             path_values = np.asarray([item["value"] for item in full_path], dtype=float)
-            path_indices = _lttb_indices(np.arange(len(full_path), dtype=float), path_values, TARGET_SAMPLED_POINTS)
+            path_indices = _lttb_indices(np.arange(len(full_path), dtype=float), path_values, display_target)
             cusum_sampled = True
         cusum_path = [
             {**full_path[int(index)], "label": _label(labels, int(index))}
