@@ -25,7 +25,7 @@ def test_candidate_contract_separates_methodological_applicability_from_runtime_
     ))
     candidates = {item.model_id: item for item in response.candidates}
 
-    for model_id in ("naive", "ets", "theta", "arima", "arima_auto"):
+    for model_id in ("naive", "ets", "theta", "arima", "arima_auto", "prophet"):
         assert candidates[model_id].platform_status == "ready"
         assert "backtest" in candidates[model_id].available_actions
         assert "diagnostics" in candidates[model_id].available_actions
@@ -36,7 +36,7 @@ def test_candidate_contract_separates_methodological_applicability_from_runtime_
     assert candidates["naive"].stage_capabilities["tuning"].status == "not_applicable"
     assert candidates["ets"].stage_capabilities["tuning"].status == "available"
 
-    for model_id in ("prophet", "tbats", "xgboost", "lightgbm", "catboost", "lstm", "tft", "nbeats", "nhits"):
+    for model_id in ("tbats", "xgboost", "lightgbm", "catboost", "lstm", "tft", "nbeats", "nhits"):
         assert candidates[model_id].platform_status == "catalog_only"
         assert candidates[model_id].available_actions == []
         assert candidates[model_id].stage_capabilities["backtest"].status == "not_implemented"
@@ -49,8 +49,8 @@ def test_candidate_statistics_report_runtime_availability_separately():
         min_level="CONDITIONALLY_APPLICABLE",
     ))
 
-    assert response.statistics.runnable_candidates == 9
-    assert response.statistics.catalog_only_candidates == 15
+    assert response.statistics.runnable_candidates == 10
+    assert response.statistics.catalog_only_candidates == 14
     assert response.statistics.total_models_in_spec == 24
 
 

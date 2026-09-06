@@ -22,7 +22,7 @@ def test_capability_contract_covers_every_catalog_model_and_stage() -> None:
     assert matrix["naive"]["tuning"]["status"] == "not_applicable"
     assert matrix["theta"]["diagnostics"]["status"] == "available"
     assert matrix["ets"]["tuning"]["status"] == "available"
-    assert matrix["prophet"]["backtest"]["status"] == "not_implemented"
+    assert matrix["prophet"]["backtest"]["status"] == "available"
     assert spec.pipeline.version == "1.1"
     assert spec.pipeline.capability_contract["version"] == MODELING_CAPABILITY_CONTRACT_VERSION
     assert spec.pipeline.capability_contract["comparison_scope"] == (

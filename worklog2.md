@@ -3036,3 +3036,180 @@ Commit/push и production deploy не выполнялись.
 - `tests/api/test_modeling_workflow.py`
 - `tests/unit/test_model_execution_contract.py`
 - `tests/unit/test_model_jobs.py`
+
+Номера задач с Task 121 по Task 143 зарезервированы modeling_task_list.md.
+
+---
+
+## Task 124 — Prophet production vertical slice
+
+### Контекст и сертификация Task 123
+
+Перед началом Task 124 самостоятельно пересертифицирован Task 123 (независимо
+от прежней записи): backend 1328/1328 PASS (3/3 snapshots), frontend 84 suites/
+726 tests PASS, `typecheck:all` PASS для embedded и standalone, оба production
+build 13/13 страниц (First Load JS 464 kB, через тот же временный шим
+`next/font/google`, немедленно отменённый — `git diff` после отката пуст),
+`pip check` PASS, рабочее дерево чистое. Task 123 подтверждена как готовая к
+сертификации; после этого начата Task 124.
+
+### Что сделано
+
+Prophet добавлен как десятая production-модель через `MODEL_EXECUTION_REGISTRY`
+(Task 122 контракт) — не отдельная параллельная реализация, а тот же
+`ModelExecutionRequest`/`ModelExecutionResult`, что и у остальных девяти
+моделей, плюс тот же `run_backtest_plan`/exact EDA folds pipeline (Task 76+).
+Собственного второго CV-контура (`prophet.diagnostics.cross_validation`) нет:
+ровно один `fit`+`predict` на fold, который передаёт платформа.
+
+- **Строгий future-known contract**: адаптер использует `train_timestamps`/
+  `future_timestamps` из `ModelExecutionRequest` как есть — не переизобретает
+  даты через `infer_freq`/`make_future_dataframe`. Если платформа не передала
+  реальные даты на fold (например будущий fold-local preprocessing меняет
+  длину target), executor фейлится явно и внятно
+  (`ModelExecutionContractError`), а не молча подставляет synthetic index —
+  это единственная модель в registry, для которой этот контракт критичен.
+- **Fold-local holidays**: `Prophet.add_country_holidays` из bounded набора
+  стран (`SUPPORTED_COUNTRY_HOLIDAYS`) — календарь известен заранее на любой
+  горизонт, поэтому не создаёт утечки; объект Prophet пересоздаётся на каждый
+  fold (fit_policy="per_train_fold"), holidays никогда не переиспользуются
+  между train fold'ами.
+- **Осознанное сужение scope**: произвольные пользовательские регрессоры
+  через `train_features`/`future_features` НЕ подключены в Task 124. Изучение
+  стека (`run_backtest_plan` → `ModelExecutionRequest`) показало, что реальный
+  pipeline наполнения этих полей данными сессии ещё не существует нигде выше
+  `model_execution.py`/`backtesting.py` — сама эта пара полей была
+  спроектирована в Task 122 как будущий контракт для Task 126 (Leakage-safe
+  supervised FeaturePlan). Подключать Prophet к несуществующему upstream было
+  бы фиктивной функциональностью; решение задокументировано здесь явно, а не
+  скрыто в коде (по прецеденту Task 60 с явным протоколированием scope-решений).
+- **Bounded tuning**: `changepoint_prior_scale` × `seasonality_prior_scale` ×
+  `seasonality_mode` = 5×3×2 = 30 trials (≤ MAX_TRIALS=64), добавлено как
+  `param_space` в `rules/modeling.yaml` — тот же grid-tuning движок
+  (`modeling_tuning.py`), что и у ETS/ARIMA, без отдельного bayesian-optimization
+  контура. `country_holidays` в grid не входит (fold-local calendar-опция, не
+  часть bounded-тюнинга).
+- **Prediction intervals**: Prophet — первая модель в registry с
+  `supports_prediction_intervals=True`; адаптер честно возвращает
+  `yhat_lower`/`yhat_upper` (Prophet default `interval_width=0.80`), а не
+  фиктивные значения.
+- **multiplicative seasonality guard**: как и у ETS, `seasonality_mode=
+  "multiplicative"` требует строго положительный ряд — явная проверка с
+  понятной ошибкой вместо непрозрачного сбоя внутри Prophet/Stan.
+- **Legacy synthetic-demo эндпоинт** (`/v1/models/backtest`, `_generate_series`,
+  без реальных дат в профиле): `run_prophet_backtest` синтезирует свою
+  внутреннюю дату-ось (частота выводится из `seasonal_period`), т.к. это чисто
+  демонстрационный путь, не связанный с реальным EDA BacktestPlan; жёсткий
+  инвариант-guard `frozenset(_BACKTEST_IMPLEMENTATIONS) ==
+  PRODUCTION_BACKTEST_MODEL_IDS` в `routers/models.py` потребовал добавить эту
+  реализацию — без неё приложение падало бы при импорте.
+
+### Обнаруженные и обновлённые release-gate инварианты
+
+Регистрация десятой модели закономерно "сломала" несколько сертификационных
+тестов Phase 121/122/123, жёстко фиксировавших число 9 — это ожидаемая,
+предусмотренная часть работы, не побочный ущерб:
+
+- `tests/unit/test_modeling_mvp_certification.py` — CERTIFIED_MODEL_IDS
+  расширен, тест переименован в `..._exactly_ten_real_models...`,
+  `PRODUCTION_TUNING_MODEL_IDS` теперь включает `prophet`.
+- `tests/unit/test_backtesting_engine.py` — `test_all_nine_production_models_
+  ...` переименован в `..._all_ten_...`; лейблы cohort заменены с
+  `["0","1",...]` на реальные `pd.date_range(...).isoformat()` — единственный
+  способ честно прогнать Prophet в общем "same real OOF cohort" тесте.
+- `tests/unit/test_model_readiness_candidates.py` — `prophet` перемещён из
+  списка `catalog_only` в список `ready`; `runnable_candidates` 9→10,
+  `catalog_only_candidates` 15→14.
+- `tests/unit/test_model_execution_contract.py` — `CERTIFIED_IDS` расширен.
+- `tests/unit/test_model_capability_matrix.py` — `matrix["prophet"]["backtest"]
+  ["status"]` теперь `"available"` вместо `"not_implemented"`.
+- `tests/api/test_modeling_workflow.py` —
+  `test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics`
+  использовал `model_id="prophet"` как пример catalog-only модели; заменён на
+  `"tbats"` (по прежнему catalog-only после Task 124).
+- `tests/api/test_models_backtest_real.py` — `test_registry_has_9_
+  implementations` → `..._10_implementations`, добавлен `"prophet"` в
+  ожидаемое множество.
+
+### Новые тесты
+
+- `tests/unit/test_prophet_adapter.py` (10 тестов, НОВЫЙ файл): форма
+  forecast/интервалов, guard на `multiplicative`+неположительный ряд, guard на
+  неподдерживаемый `country_holidays`, ошибка при несовпадении длины
+  timestamps, registry descriptor (`actions`, `dependency_group`,
+  `runtime_available`), `execute()` требует train/future timestamps, интервалы
+  честно содержат точечный прогноз, полный прогон через реальный
+  `build_backtest_plan`/`run_backtest_plan` с настоящими датами, размер
+  bounded tuning grid ≤ MAX_TRIALS.
+- `tests/api/test_modeling_workflow.py::
+  test_prophet_full_session_backtest_and_diagnostics_use_real_calendar_dates`
+  (НОВЫЙ) — единственное место в проекте, где upstream (`prepare_modeling_
+  target`) реально поставляет календарные даты сквозь весь session workflow;
+  доказывает работу Prophet end-to-end, а не только на уровне адаптера.
+- `tests/api/test_models_backtest_real.py::
+  test_prophet_impl_callable_with_minimal_series` (НОВЫЙ) + `"prophet"`
+  добавлен в параметризацию `test_short_series_does_not_500` (edge case: 8
+  точек, `safe_backtest` fallback отработал корректно).
+
+### TDD-цикл
+
+- RED: после регистрации Prophet в `MODEL_EXECUTION_REGISTRY` (до правки
+  тестов) целевой прогон дал ровно 5 ожидаемых провалов — все из-за жёстко
+  зашитого числа 9 в разных файлах; ни одного неожиданного провала. Это
+  подтвердило, что сама интеграция (registry + legacy dispatch + manifest)
+  сделана без побочных разрушений.
+- GREEN: после обновления/добавления тестов — 0 неожиданных провалов на
+  целевом срезе, затем на `test_modeling_workflow.py` целиком (38/38, самый
+  рискованный файл с сотнями неявных сквозных проверок), затем на полном
+  backend regression.
+
+### Проверки
+
+- Полный backend regression: **1340/1340 PASS** (было 1328 — +9 новых
+  `test_prophet_adapter.py` −1 переиспользованный слот +2 новых в
+  `test_modeling_workflow.py`/`test_models_backtest_real.py`), 3/3 snapshots
+  PASS.
+- Полный frontend regression: 84/84 suites, 726/726 tests PASS (без
+  изменений — Task 124 backend-only, фронтенд полностью catalog-driven, ни
+  одного захардкоженного упоминания числа моделей не найдено).
+- `typecheck:all`: embedded PASS, standalone PASS.
+- Production build embedded/standalone: PASS, 13/13 статических страниц,
+  First Load JS 464 kB (не изменился — фронтенд не тронут). Временный шим
+  `next/font/google` применён, собран, немедленно отменён; `git diff` после
+  отката — пуст.
+- `pip check`: PASS. Рабочее дерево чистое (`git status --short` показывает
+  только осознанные изменения из списка ниже).
+- Установлен `prophet==1.4.0`, добавлен в `apps/api/requirements.txt` и в
+  манифест `classical` пакетов (`apps/api/model_jobs.py`).
+
+### Изменённые/новые файлы Task 124
+
+Новые:
+- `apps/api/model_impls/prophet.py`
+- `tests/unit/test_prophet_adapter.py`
+
+Изменённые:
+- `apps/api/model_execution.py`
+- `apps/api/model_impls/__init__.py`
+- `apps/api/model_jobs.py`
+- `apps/api/requirements.txt`
+- `apps/api/routers/models.py`
+- `rules/modeling.yaml`
+- `tests/api/test_modeling_workflow.py`
+- `tests/api/test_models_backtest_real.py`
+- `tests/unit/test_backtesting_engine.py`
+- `tests/unit/test_model_capability_matrix.py`
+- `tests/unit/test_model_execution_contract.py`
+- `tests/unit/test_model_readiness_candidates.py`
+- `tests/unit/test_modeling_mvp_certification.py`
+
+### Что осталось за рамками Task 124 (осознанно, для будущих задач)
+
+- Произвольные пользовательские регрессоры Prophet (`train_features`/
+  `future_features`) — ждут Task 126 (Leakage-safe supervised FeaturePlan).
+- Model Card-специфичный UI-рендеринг для Prophet (ссылка на
+  `Prophet diagnostics` уже присутствует в `TsAnalysisEDA.tsx`, к Modeling
+  напрямую не относится) — фронтенд не тронут, т.к. он полностью
+  catalog/candidates-driven и уже корректно показывает Prophet как `ready`
+  без единой правки кода.
+- TBATS (Task 125) — следующая модель в прогрессии "11/24".

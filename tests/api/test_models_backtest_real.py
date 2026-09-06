@@ -269,6 +269,22 @@ class TestModelImplsModuleDirectly:
             # weighted_score в [0, 1] по определению (см. _compute_metrics)
             assert 0 <= metrics.weighted_score <= 1.0
 
+    def test_prophet_impl_callable_with_minimal_series(self):
+        """Task 124: run_prophet_backtest — тот же контракт, что и у Phase 6-P0
+        пятёрки, но с внутренним синтезом дат (legacy synthetic-demo эндпоинт
+        не несёт реальных timestamps, в отличие от session backtest)."""
+        from apps.api.model_impls import run_prophet_backtest
+        from apps.api.schemas import BacktestMetrics
+
+        series = [100 + 5 * t + 20 * math.sin(2 * math.pi * t / 12)
+                  for t in range(24)]
+
+        metrics = run_prophet_backtest(series, train_ratio=0.8, seasonal_period=12)
+        assert isinstance(metrics, BacktestMetrics)
+        assert metrics.mae >= 0
+        assert metrics.rmse >= 0
+        assert 0 <= metrics.weighted_score <= 1.0
+
     def test_impls_return_different_results_on_different_series(self):
         """На двух разных рядах модели должны давать разные метрики.
         Если заглушка — вернули бы одно и то же (т.к. penalty не зависит
@@ -330,7 +346,7 @@ class TestRealModelsHandleEdgeCases:
                     files={"file": ("short.csv", file, "text/csv")})
         client.post("/v1/session/target-column", json={"column": "value"})
 
-        for model_id in ["ets", "ets_damped", "theta", "arima", "arima_auto"]:
+        for model_id in ["ets", "ets_damped", "theta", "arima", "arima_auto", "prophet"]:
             resp = client.post(
                 "/v1/internal/models/backtest",
                 json={
@@ -418,14 +434,15 @@ class TestBacktestImplementationsRegistry:
     """Регрессия: _BACKTEST_IMPLEMENTATIONS должен содержать все 9 моделей:
     4 baseline + 5 новых. Если кто-то случайно удалил ключ — тест падает."""
 
-    def test_registry_has_9_implementations(self):
+    def test_registry_has_10_implementations(self):
         impls = models_router._BACKTEST_IMPLEMENTATIONS
         expected = {
             "naive", "seasonal_naive", "drift", "mean",  # baselines (Phase 0)
             "ets", "ets_damped", "theta", "arima", "arima_auto",  # Phase 6-P0
+            "prophet",  # Task 124
         }
         assert set(impls.keys()) == expected, (
-            f"Expected 9 implementations: {expected}, got: {set(impls.keys())}"
+            f"Expected 10 implementations: {expected}, got: {set(impls.keys())}"
         )
 
     def test_no_stub_branch_for_5_real_models(self):

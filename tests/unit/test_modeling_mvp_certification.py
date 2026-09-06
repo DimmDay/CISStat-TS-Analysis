@@ -1,4 +1,4 @@
-"""Release gate for the certified nine-model Modeling MVP."""
+"""Release gate for the certified ten-model Modeling MVP."""
 
 import math
 
@@ -25,10 +25,11 @@ CERTIFIED_MODEL_IDS = frozenset({
     "theta",
     "arima",
     "arima_auto",
+    "prophet",
 })
 
 
-def test_certified_scope_is_exactly_nine_real_models_in_the_24_model_catalog():
+def test_certified_scope_is_exactly_ten_real_models_in_the_24_model_catalog():
     spec = ModelingSpec.from_yaml("rules/modeling.yaml")
     catalog = {
         model.id: family.id
@@ -40,7 +41,7 @@ def test_certified_scope_is_exactly_nine_real_models_in_the_24_model_catalog():
     assert PRODUCTION_BACKTEST_MODEL_IDS == CERTIFIED_MODEL_IDS
     assert PRODUCTION_DIAGNOSTICS_MODEL_IDS == CERTIFIED_MODEL_IDS
     assert frozenset(PRODUCTION_PREDICTORS) == CERTIFIED_MODEL_IDS
-    assert PRODUCTION_TUNING_MODEL_IDS == frozenset({"ets", "ets_damped", "arima"})
+    assert PRODUCTION_TUNING_MODEL_IDS == frozenset({"ets", "ets_damped", "arima", "prophet"})
 
     for model_id, family_id in catalog.items():
         capabilities = model_stage_capabilities(model_id, family_id)

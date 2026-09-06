@@ -25,7 +25,7 @@ from apps.api.schemas import CandidatesRequest, DataProfileRequest
 
 CERTIFIED_IDS = frozenset({
     "naive", "seasonal_naive", "drift", "mean", "ets",
-    "ets_damped", "theta", "arima", "arima_auto",
+    "ets_damped", "theta", "arima", "arima_auto", "prophet",
 })
 
 

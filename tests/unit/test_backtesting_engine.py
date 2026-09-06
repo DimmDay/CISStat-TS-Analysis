@@ -173,10 +173,13 @@ def test_full_history_target_transform_is_rejected_until_fold_refit_exists(metad
         validate_target_preprocessing({"target_derived": metadata}, "target_derived")
 
 
-def test_all_nine_production_models_execute_the_same_real_oof_cohort():
+def test_all_ten_production_models_execute_the_same_real_oof_cohort():
+    import pandas as pd
+
     from apps.api.model_readiness import PRODUCTION_BACKTEST_MODEL_IDS
 
     series = [100 + 0.3 * step + 5 * math.sin(2 * math.pi * step / 12) for step in range(72)]
+    dates = pd.date_range("2018-01-01", periods=len(series), freq="MS")
     validation = {
         "strategy": "expanding", "horizon": 3, "n_splits": 2, "gap": 0,
         "folds": [
@@ -192,13 +195,13 @@ def test_all_nine_production_models_execute_the_same_real_oof_cohort():
     results = {
         model_id: run_backtest_plan(
             model_id=model_id, model_name=model_id, family_id="test",
-            series=series, labels=[str(index) for index in range(len(series))],
+            series=series, labels=[value.isoformat() for value in dates],
             plan=plan, seasonal_period=12,
         )
         for model_id in PRODUCTION_BACKTEST_MODEL_IDS
     }
 
-    assert len(results) == 9
+    assert len(results) == 10
     assert {result["cohort_id"] for result in results.values()} == {plan.cohort_id}
     assert all(len(result["oof_predictions"]) == 6 for result in results.values())
     assert all(result["metrics"]["weighted_score"] is None for result in results.values())

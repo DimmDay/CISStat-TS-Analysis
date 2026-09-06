@@ -266,6 +266,20 @@ families:
         supports_prediction_intervals: true
         libraries: ["prophet"]
         training_time: "seconds_to_minutes"
+        # ── Task 124: пространство параметров для тюнинга ──
+        # Декартово произведение: 5 × 3 × 2 = 30 trials (≤ MAX_TRIALS=64).
+        # changepoint_prior_scale/seasonality_prior_scale — официальные
+        # Prophet-параметры регуляризации (bayesian_optimization в описании
+        # Stage 7 -- здесь исполняется через тот же bounded grid, что и
+        # у остальных семейств, платформенным BacktestPlan).
+        # seasonal_mode=multiplicative требует строго положительный ряд
+        # (проверяется в apps/api/model_impls/prophet.py, как у ETS mul).
+        # country_holidays НЕ входит в тюнинг-grid (fold-local calendar
+        # опция, задаётся отдельно вне param_space).
+        param_space:
+          changepoint_prior_scale: [0.001, 0.01, 0.05, 0.1, 0.5]
+          seasonality_prior_scale: [0.01, 1.0, 10.0]
+          seasonality_mode: ["additive", "multiplicative"]
 
       - id: "tbats"
         name: "TBATS"

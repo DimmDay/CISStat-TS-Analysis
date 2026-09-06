@@ -508,6 +508,31 @@ def _auto_arima_executor(request: ModelExecutionRequest) -> ModelExecutionResult
     )
 
 
+def _prophet_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
+    from apps.api.model_impls.prophet import _prophet_fit_predict
+
+    if not request.train_timestamps:
+        raise ModelExecutionContractError(
+            "Модель 'prophet' требует train_timestamps: fold без реальных дат "
+            "не может быть исполнен (строгий future-known contract)"
+        )
+    if not request.future_timestamps:
+        raise ModelExecutionContractError(
+            "Модель 'prophet' требует future_timestamps на весь horizon"
+        )
+    forecast, lower, upper = _prophet_fit_predict(
+        y_train=list(request.target),
+        horizon=request.horizon,
+        train_timestamps=request.train_timestamps,
+        future_timestamps=request.future_timestamps,
+        changepoint_prior_scale=float(request.params.get("changepoint_prior_scale", 0.05)),
+        seasonality_prior_scale=float(request.params.get("seasonality_prior_scale", 10.0)),
+        seasonality_mode=str(request.params.get("seasonality_mode", "additive")),
+        country_holidays=request.params.get("country_holidays"),
+    )
+    return ModelExecutionResult(forecast=forecast, lower_interval=lower, upper_interval=upper)
+
+
 _BACKTEST_DIAGNOSTICS = frozenset({"backtest", "diagnostics"})
 _TUNABLE = frozenset({"backtest", "tune", "diagnostics"})
 _CLASSICAL_RESOURCES = ModelResourceCapabilities(memory_class="standard")
@@ -550,6 +575,13 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         adapter_id="statsmodels-auto-arima", executor=_auto_arima_executor,
         actions=_BACKTEST_DIAGNOSTICS, engine="statsmodels",
         required_packages=("statsmodels",),
+        resource_capabilities=_CLASSICAL_RESOURCES,
+    ),
+    ModelExecutionDefinition(
+        model_id="prophet", family_id="structural",
+        adapter_id="prophet-native", executor=_prophet_executor,
+        actions=_TUNABLE, engine="prophet", required_packages=("prophet",),
+        supports_prediction_intervals=True,
         resource_capabilities=_CLASSICAL_RESOURCES,
     ),
 ])

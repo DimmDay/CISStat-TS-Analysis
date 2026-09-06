@@ -132,7 +132,7 @@ def test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics(clie
 
     response = client.post(
         "/v1/session/modeling/backtest",
-        json={"model_id": "prophet", "train_ratio": 0.8},
+        json={"model_id": "tbats", "train_ratio": 0.8},
     )
 
     assert response.status_code == 422
@@ -178,6 +178,23 @@ def test_candidates_preserve_sliding_eda_contract_for_backtest(client: TestClien
     assert body["n_folds"] == 3
     assert all(fold["n_train"] == 40 for fold in body["folds"])
     assert all(fold["test_start"] - fold["train_end"] - 1 == 2 for fold in body["folds"])
+
+
+def test_prophet_full_session_backtest_and_diagnostics_use_real_calendar_dates(client: TestClient):
+    """Task 124 -- Prophet needs real fold-local dates end-to-end: this is the
+    one place upstream (prepare_modeling_target) actually supplies them,
+    unlike the synthetic-index fixtures used by the other 8 production models.
+    """
+    _prepare(client)
+
+    backtest = client.post("/v1/session/modeling/backtest", json={"model_id": "prophet"})
+    assert backtest.status_code == 200, backtest.text
+    body = backtest.json()
+    assert body["cohort_id"]
+    assert len(body["oof_predictions"]) == body["n_test"]
+
+    diagnostics = client.post("/v1/session/modeling/diagnostics", json={"model_id": "prophet"})
+    assert diagnostics.status_code == 200, diagnostics.text
 
 
 def test_baseline_bootstrap_atomically_populates_comparable_cohort(client: TestClient):
