@@ -102,7 +102,16 @@ function MethodsChart({ profile }: { profile: VarianceProfile }) {
 }
 
 function DistributionCharts({ profile }: { profile: VarianceProfile }) {
-  return <div role="img" aria-label="Распределения до и после" className="grid min-h-0 flex-1 grid-cols-2 gap-2 p-3">
+  // Task 97.4c: grid-rows-1 ОБЯЗАТЕЛЕН. Без явного шаблона строк ряд grid
+  // auto-размерируется ПО КОНТЕНТУ, а recharts записывает в svg явную
+  // пиксельную высоту измеренного контейнера. Раскрытие (absolute inset-0)
+  // увеличивает svg; после схлопывания auto-ряд не сжимается ниже svg
+  // (min-content) и «залипает» на раскрытой высоте: гистограммы переполняют
+  // окно Обзора вниз, налезают на методологическое примечание, окно уходит
+  // в скролл. repeat(1, minmax(0,1fr)) размеряет ряд от definite-высоты
+  // контейнера (flex-цепочка ExpandableChartPanel) и разрешает сжатие до 0 —
+  // ResponsiveContainer следует за свёрнутой панелью.
+  return <div role="img" aria-label="Распределения до и после" className="grid min-h-0 flex-1 grid-cols-2 grid-rows-1 gap-2 p-3">
     <ResponsiveContainer width="100%" height="100%"><BarChart data={profile.histogram} margin={{ top: 18, right: 5, bottom: 0, left: -14 }}>
       <CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="original_x" tick={TICK} tickFormatter={(v: number) => v.toPrecision(3)} /><YAxis tick={TICK} width={44} />
       <Tooltip /><Bar dataKey="original_density" name="Плотность до" fill="#2E3192" isAnimationActive={false} />

@@ -77,7 +77,10 @@ function SeriesView({ profile }: { profile: SmoothingProfile }) {
 }
 
 function ResidualView({ profile }: { profile: SmoothingProfile }) {
-  return <div className="grid min-h-0 flex-1 grid-cols-2 gap-2 p-3"><div role="img" aria-label="Удалённая компонента"><ResponsiveContainer width="100%" height="100%"><LineChart data={profile.points}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="x" tick={TICK} tickFormatter={fmtX} minTickGap={40} /><YAxis tick={TICK} width={42} /><Tooltip /><Line dataKey="residual" name="y − smooth" stroke="#DC2626" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div><div role="img" aria-label="ACF удалённой компоненты"><ResponsiveContainer width="100%" height="100%"><BarChart data={profile.residual_acf}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="lag" tick={TICK} /><YAxis domain={[-1, 1]} tick={TICK} width={38} /><Tooltip /><Bar dataKey="value" name="ACF" fill="#2E3192" isAnimationActive={false} /></BarChart></ResponsiveContainer></div></div>;
+  // Task 97.4c: grid-rows-1 — без явного шаблона строк auto-ряд «залипает»
+  // на пиксельной высоте svg раскрытого состояния (см. DistributionCharts
+  // PreprocessingVarianceOverview) и после схлопывания переполняет окно.
+  return <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-1 gap-2 p-3"><div role="img" aria-label="Удалённая компонента"><ResponsiveContainer width="100%" height="100%"><LineChart data={profile.points}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="x" tick={TICK} tickFormatter={fmtX} minTickGap={40} /><YAxis tick={TICK} width={42} /><Tooltip /><Line dataKey="residual" name="y − smooth" stroke="#DC2626" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div><div role="img" aria-label="ACF удалённой компоненты"><ResponsiveContainer width="100%" height="100%"><BarChart data={profile.residual_acf}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="lag" tick={TICK} /><YAxis domain={[-1, 1]} tick={TICK} width={38} /><Tooltip /><Bar dataKey="value" name="ACF" fill="#2E3192" isAnimationActive={false} /></BarChart></ResponsiveContainer></div></div>;
 }
 
 function MethodsView({ profile }: { profile: SmoothingProfile }) {

@@ -49,6 +49,18 @@ describe("PreprocessingSmoothingOverview", () => {
     expect(screen.getAllByText(/не статистический тест/i).length).toBeGreaterThan(0);
   });
 
+  // Регрессия Task 97.4c: grid вкладки «Остаток / ACF» без явного шаблона
+  // строк — неявный ряд auto не сжимается ниже пиксельной высоты svg,
+  // записанной recharts в раскрытом состоянии, и после схлопывания
+  // «залипает», переполняя окно Обзора вниз.
+  it("сетка вкладки «Остаток / ACF» размеряет единственный ряд от контейнера (grid-rows-1)", () => {
+    render(<PreprocessingSmoothingOverview profile={PROFILE} loading={false} error={null} noDataset={false} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Остаток / ACF" }));
+    const grid = screen.getByRole("img", { name: "Удалённая компонента" }).parentElement as HTMLElement;
+    expect(grid).toHaveClass("grid-rows-1");
+    expect(grid.children).toHaveLength(2); // остаток и ACF — ячейки единственного ряда
+  });
+
   it("shows an honest not-applicable reason", () => {
     render(<PreprocessingSmoothingOverview profile={{ ...PROFILE, applicable: false, reason: "Ряд константный" }} loading={false} error={null} noDataset={false} />);
     expect(screen.getByRole("status")).toHaveTextContent("Ряд константный");

@@ -4108,3 +4108,60 @@ ETS/ARIMA с явными order/trend (не двойной auto-поиск по�
 - Коммит/push не выполнялись. Изменённые файлы упакованы в
   download/Task_97.4b_ExpandableCharts_Hotfix_DetailEnvelope.zip
   (5 файлов: 2 Обзора + 2 тест-файла + worklog2.md).
+
+---
+
+## Task 97.4c — Hotfix: chart-сетки Обзоров «залипали» на высоте раскрытого графика после схлопывания
+
+- Симптом из браузера: Обзор «Стабилизация дисперсии» (Предобработка),
+  вкладка «Распределения» — первичный рендер корректен, раскрытие и
+  раскрытое состояние корректны; после схлопывания графики «уезжают вниз»,
+  не возвращаясь к исходному размеру: переполняют окно Обзора, налезают на
+  методологическое примечание, окно уходит в скролл (скриншот в задаче).
+- Причина: корень DistributionCharts — grid
+  (`grid min-h-0 flex-1 grid-cols-2`) БЕЗ явного шаблона строк → неявный
+  ряд auto размеряется по контенту, а recharts записывает в svg явную
+  пиксельную высоту измеренного контейнера. Раскрытие (absolute inset-0,
+  вся высота окна) увеличивает svg; после схлопывания auto-ряд не может
+  сжаться ниже min-content (высота svg) — ряд «залипает» на раскрытой
+  высоте, ResizeObserver ResponsiveContainer не срабатывает, график
+  остаётся большим. Соседние вкладки («До/после», «Скользящая σ»,
+  «Методы») используют block-корни — height:100% разрешается от definite
+  flex-высоты и дефекта нет; потому баг виден только на «Распределениях».
+- Латентные аналоги (тот же класс дефекта «grid + 2 ResponsiveContainer
+  без шаблона строк») найдены поиском и починены в той же задаче
+  (прецедент 97.4b): Stationarity «Ряд» и «Rolling μ/σ», Scaling
+  «Распределение», Smoothing «Остаток / ACF», Spectral «FFT / Periodogram»
+  и «Welch PSD» — всего 6 grid'ов в 5 файлах.
+- Ложная тревога (зафиксирована для истории): при анализе заподозрено
+  повреждение arbitrary-класса колонок Welch («grid-cols-inmax…»).
+  Побайтовая проверка (hex-коды символов) показала: класс в файле
+  корректен — grid-cols-[minmax(0,2fr)_minmax(170px,1fr)]; «повреждение» —
+  артефакт отображения вывода shell-инструмента (съедание «[m» в выводе).
+  Код Welch не менялся (кроме grid-rows-1); в тест добавлен ассерт,
+  фиксирующий корректный arbitrary-класс.
+- TDD: +5 регресс-тестов (по одному на Обзор; jsdom layout не считает,
+  поэтому структурные ассерты на классы — паттерн 97.4a): grid-обёртки
+  chart-вкладок обязаны иметь grid-rows-1 (= repeat(1, minmax(0,1fr)) —
+  ряд размеряется от definite-высоты контейнера flex-цепочки панели и
+  сжимаем до 0, ResponsiveContainer следует за свёрнутой панелью);
+  в Variance и Smoothing дополнительно фиксируется ровно 2 ячейки
+  единственного ряда, в Spectral — корректные колонки Welch 2fr/1fr.
+  RED подтверждён ровно на 5 новых тестах (5 failed / 18 passed).
+- Фикс: 5 файлов packages/ui — класс grid-обёрток дополнен grid-rows-1:
+  PreprocessingVarianceOverview (DistributionCharts),
+  PreprocessingStationarityOverview (SeriesView, RollingView),
+  PreprocessingScalingOverview (DistributionView),
+  PreprocessingSmoothingOverview (ResidualView),
+  PreprocessingSpectralOverview (GlobalView, WelchView).
+  ExpandableChartPanel / провайдер / хуки / бэкенд не менялись.
+- Верификация: полный jest 89 suites / 829 passed / 0 failed (= 824
+  базлайна 4a2bd85 + 5 новых); typecheck:all exit 0; production builds
+  embedded + standalone OK (обе «Compiled successfully», 13/13).
+  Backend не затронут — pytest-базлайн в силе.
+- Коммит/push не выполнялись. Изменённые файлы упакованы в
+  download/Task_97.4c_ExpandableCharts_Hotfix_GridRowLatch.zip (11 файлов:
+  5 Обзоров + 5 тест-файлов + worklog2.md). Примечание:
+  PreprocessingSpectralOverview.tsx/.test.tsx содержат также изменения
+  97.4b (развёртывание конверта detail-ответа) — файл общий для обеих
+  незакоммиченных задач.

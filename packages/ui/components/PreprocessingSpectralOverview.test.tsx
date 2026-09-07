@@ -66,6 +66,20 @@ describe("PreprocessingSpectralOverview", () => {
     expect(screen.getByRole("table", { name: "Спектральные периоды-кандидаты" })).toBeInTheDocument();
   });
 
+  // Регрессия Task 97.4c: chart-сетки FFT и Welch без явного шаблона строк —
+  // неявный ряд auto «залипает» на пиксельной высоте svg раскрытого состояния
+  // и после схлопывания не даёт графикам вернуться к исходному размеру.
+  // Ассерт на колонки [2fr 1fr] фиксирует корректный произвольный класс Welch:
+  // шаблон minmax обязан существовать и не деградировать.
+  it("сетки FFT и Welch размеряют единственный ряд от контейнера; у Welch колонки [2fr 1fr]", () => {
+    render(<PreprocessingSpectralOverview profile={SPECTRAL_PROFILE} loading={false} error={null} noDataset={false} />);
+    expect(screen.getByRole("img", { name: "Глобальные FFT и periodogram спектры" })).toHaveClass("grid-rows-1");
+    fireEvent.click(screen.getByRole("tab", { name: "Welch PSD" }));
+    const welch = screen.getByRole("img", { name: "Welch PSD и частотные диапазоны" });
+    expect(welch).toHaveClass("grid-rows-1");
+    expect(welch).toHaveClass("grid-cols-[minmax(0,2fr)_minmax(170px,1fr)]");
+  });
+
   it("shows an honest not-applicable reason", () => {
     render(<PreprocessingSpectralOverview profile={{ ...SPECTRAL_PROFILE, applicable: false, reason: "Временная сетка нерегулярна" }} loading={false} error={null} noDataset={false} />);
     expect(screen.getByRole("status")).toHaveTextContent("Временная сетка нерегулярна");

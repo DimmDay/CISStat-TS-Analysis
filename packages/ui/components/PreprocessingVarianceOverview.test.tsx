@@ -47,6 +47,23 @@ describe("PreprocessingVarianceOverview", () => {
     expect(screen.getAllByText("Brown–Forsythe").length).toBeGreaterThan(1);
   });
 
+  // Регрессия Task 97.4c: сетка «Распределений» без явного шаблона строк
+  // получала неявный ряд auto, размер которого не может опуститься ниже
+  // контента — recharts записывает в svg явную пиксельную высоту измеренного
+  // контейнера. После схлопывания раскрытого графика ряд «залипал» на
+  // раскрытой высоте: гистограммы переполняли окно Обзора вниз, налезали на
+  // методологическое примечание, окно уходило в скролл. grid-rows-1
+  // (= repeat(1, minmax(0,1fr))) привязывает ряд к definite-высоте
+  // контейнера (flex-цепочка панели) и разрешает сжатие до 0 —
+  // ResponsiveContainer уменьшается вслед за свёрнутой панелью.
+  it("сетка «Распределений» размеряет единственный ряд от контейнера (minmax(0,1fr)), а не от контента svg", () => {
+    render(<PreprocessingVarianceOverview profile={PROFILE} loading={false} error={null} noDataset={false} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Распределения" }));
+    const grid = screen.getByRole("img", { name: "Распределения до и после" });
+    expect(grid).toHaveClass("grid-rows-1");
+    expect(grid.children).toHaveLength(2); // обе гистограммы — ячейки единственного ряда
+  });
+
   it("shows an honest not-applicable reason", () => {
     render(<PreprocessingVarianceOverview profile={{ ...PROFILE, applicable: false, reason: "Ряд константный" }} loading={false} error={null} noDataset={false} />);
     expect(screen.getByRole("status")).toHaveTextContent("Ряд константный");

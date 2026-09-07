@@ -74,7 +74,10 @@ function RangesView({ profile }: { profile: ScalingProfile }) {
 }
 
 function DistributionView({ profile }: { profile: ScalingProfile }) {
-  return <div role="img" aria-label="Распределение до и после масштабирования" className="grid min-h-0 flex-1 grid-cols-2 gap-3 p-3"><ResponsiveContainer width="100%" height="100%"><LineChart data={profile.distribution_points}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="x_before" tick={TICK} /><YAxis tick={TICK} width={32} /><Tooltip /><Line dataKey="density_before" name="До" stroke="#737373" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer><ResponsiveContainer width="100%" height="100%"><LineChart data={profile.distribution_points}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="x_after" tick={TICK} /><YAxis tick={TICK} width={32} /><Tooltip /><Line dataKey="density_after" name="После" stroke="#7C3AED" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div>;
+  // Task 97.4c: grid-rows-1 — без явного шаблона строк auto-ряд «залипает»
+  // на пиксельной высоте svg раскрытого состояния (см. DistributionCharts
+  // PreprocessingVarianceOverview) и после схлопывания переполняет окно.
+  return <div role="img" aria-label="Распределение до и после масштабирования" className="grid min-h-0 flex-1 grid-cols-2 grid-rows-1 gap-3 p-3"><ResponsiveContainer width="100%" height="100%"><LineChart data={profile.distribution_points}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="x_before" tick={TICK} /><YAxis tick={TICK} width={32} /><Tooltip /><Line dataKey="density_before" name="До" stroke="#737373" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer><ResponsiveContainer width="100%" height="100%"><LineChart data={profile.distribution_points}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="x_after" tick={TICK} /><YAxis tick={TICK} width={32} /><Tooltip /><Line dataKey="density_after" name="После" stroke="#7C3AED" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div>;
 }
 
 function CorrelationsView({ profile }: { profile: ScalingProfile }) {

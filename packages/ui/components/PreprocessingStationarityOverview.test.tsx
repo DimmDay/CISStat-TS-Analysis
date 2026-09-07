@@ -50,6 +50,19 @@ describe("PreprocessingStationarityOverview", () => {
     expect(screen.getByRole("table", { name: "Сравнение преобразований стационарности" })).toBeInTheDocument();
   });
 
+  // Регрессия Task 97.4c: та же схема, что и во вкладке «Распределения»
+  // Обзора стабилизации дисперсии — grid без явного шаблона строк + два
+  // ResponsiveContainer: неявный ряд auto не сжимается ниже записанной
+  // recharts пиксельной высоты svg и после схлопывания «залипает» на
+  // раскрытой высоте. Обе chart-сетки Обзора обязаны держать ряд
+  // minmax(0,1fr) от контейнера.
+  it("chart-сетки «Ряд» и «Rolling μ/σ» размеряют единственный ряд от контейнера (grid-rows-1)", () => {
+    render(<PreprocessingStationarityOverview profile={PROFILE} loading={false} error={null} noDataset={false} />);
+    expect(screen.getByRole("img", { name: "Ряд до и после обеспечения стационарности" })).toHaveClass("grid-rows-1");
+    fireEvent.click(screen.getByRole("tab", { name: "Rolling μ/σ" }));
+    expect(screen.getByRole("img", { name: "Скользящие среднее и отклонение" })).toHaveClass("grid-rows-1");
+  });
+
   it("shows an honest not-applicable reason", () => {
     render(<PreprocessingStationarityOverview profile={{ ...PROFILE, applicable: false, reason: "Временная сетка нерегулярна" }} loading={false} error={null} noDataset={false} />);
     expect(screen.getByRole("status")).toHaveTextContent("Временная сетка нерегулярна");

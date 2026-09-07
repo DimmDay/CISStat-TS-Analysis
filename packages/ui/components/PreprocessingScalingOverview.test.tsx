@@ -44,6 +44,15 @@ describe("PreprocessingScalingOverview", () => {
     expect(screen.getByRole("table", { name: /Сравнение методов масштабирования/i })).toBeInTheDocument();
   });
 
+  // Регрессия Task 97.4c: grid двух density-кривых без явного шаблона строк —
+  // неявный ряд auto «залипает» на пиксельной высоте svg раскрытого состояния
+  // и после схлопывания не даёт графику вернуться к исходному размеру.
+  it("сетка вкладки «Распределение» размеряет единственный ряд от контейнера (grid-rows-1)", () => {
+    render(<PreprocessingScalingOverview profile={profile} loading={false} error={null} noDataset={false} />);
+    fireEvent.click(screen.getByRole("tab", { name: "Распределение" }));
+    expect(screen.getByRole("img", { name: "Распределение до и после масштабирования" })).toHaveClass("grid-rows-1");
+  });
+
   it("supports loading, errors and not-applicable states", () => {
     const { rerender } = render(<PreprocessingScalingOverview profile={null} loading error={null} noDataset={false} />);
     expect(screen.getByRole("status")).toHaveTextContent("Сравниваем масштабы");
