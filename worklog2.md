@@ -4256,3 +4256,115 @@ Runtime-эксперименты (train [10..13], будущее [14,15,16]):
 - Фронтенд не затронут (0 содержательных diff в embedded/standalone/packages); Jest-прогон не информативен в среде без node_modules и не требовался.
 - Примечание по среде: установлены pinned-зависимости из apps/api/requirements.txt (prophet==1.4.0, statsforecast==2.1.1) и requirements-dev.txt (syrupy, fakeredis, PyWavelets, pandera, arch, ruptures, missingno) -- без них часть существующего suite не собирается независимо от Task 126.
 - В рабочем дереве присутствуют посторонние mode-изменения (100644→100755) и чужие удаления `apps/*/app/upload/page.tsx` -- к Task 126 не относятся, в сдачу не включены, не откатывались.
+
+---
+
+## Сертификация Task 126 на b8907a8 — Leakage-safe supervised FeaturePlan
+
+### База и методика
+
+Сертификация выполнена на точном коммите `b8907a87d97dae7118a3057c6e53d1e97425be43`
+(Task 126 — повторная реализация senior-разработчика); локальный HEAD и
+`origin/main` совпадают, рабочее дерево чистое. Проверены требования
+`docs/modeling_task_list.md::Task 126`, пять обязательных условий повторной
+сдачи из рецензии на отклонённую Qwen-версию, код реализации
+(`apps/api/feature_plan.py`, `backtesting.py`, `model_execution.py`,
+`model_impls/prophet.py`, `routers/modeling_session.py`, `schemas.py`),
+тесты (4 новых файла + 4 обновлённых) и независимый прогон полного
+backend-регрессии в чистом окружении.
+
+### Итог по плану: СЕРТИФИЦИРОВАНА. Реализация отличная.
+
+Проверка по пунктам плана Task 126:
+
+1. **Fold-local лаги/rolling/календарные признаки** — закрыто.
+   `FoldFeatureMatrixBuilder._derived_column` пересчитывает lag/rolling/difference
+   каузально ВНУТРИ train-среза каждого EDA-fold (`train_slice[position-lookback:position]`
+   — окно никогда не включает y[t]; сверено с семантикой `past.shift(1).rolling(window)`
+   платформенного генератора — точное совпадение). Warm-up-строки дропаются, а не
+   импутируются. Календарь/Fourier/trend берутся из платформенных колонок по позициям
+   fold'а (gap+horizon покрыт, проверено тестом `test_future_matrix_covers_gap_plus_horizon`).
+2. **Разделение historic / future-known / static X** — закрыто. Роли выводятся
+   из единственного авторитета — флага `known_in_advance` (+явный `static`) каталога
+   генерации; static-константность проверяется внутри train-среза до кодировки;
+   категориальная historic-экзогена (неизвестное будущее) отклоняется outright.
+3. **Запрет неизвестных будущих регрессоров** — закрыто. По построению API:
+   `future_matrix()` материализует ТОЛЬКО future_known/static — пути материализации
+   historic-признака будущего в коде не существует (закрытие Блокера 2 отклонённой
+   сдачи). NaN/Inf в future-known — fail-closed. Источник ролей verified E2E:
+   stale/битая колонка понижает сессию до legacy-cohort с явным warning.
+4. **Multi-step: единый recursive-контракт; direct — только явная поддержка** — закрыто.
+   `RecursiveFeatureState` хранит хвост train, `next_row(prediction)` строит признаки
+   из истории ДО добавления прогноза; distractor-тест доказывает иммунитет к фактам
+   теста. POLICY_RECURSIVE — дефолт всей платформенной проводки; POLICY_DIRECT
+   достижим только явной конструкцией, исполняющего контура direct сегодня нет
+   (честно: появится с ML-адаптерами 127+).
+5. **Fold-local imputation/scaling/encoding** — закрыто. Медиана/mean-std(ddof=0)/
+   one-hot фитуются заново на train-срезе каждого fold'а; builder одноразовый
+   (повторный fit_fold → FeaturePlanError); unknown future-категория → нулевой
+   вектор без подмены train-кодировки; статистики доступны для аудита через
+   `statistics()`.
+6. **Feature fingerprint и importance lineage** — закрыто. Иммутабельный план,
+   детерминированный sha256-fingerprint и plan_id входят в cohort_contract/cohort_id;
+   каждый fold пишет `feature_matrix`-lineage (plan_id/fingerprint/matrix_hash/
+   columns/fit_policy=per_train_fold) — доходит до API-схемы
+   (`BacktestFoldResult.feature_matrix`); `bind_feature_importance` привязывает
+   importance к ТОЧНОЙ fold-матрице, чужие колонки отклоняются.
+7. **MLForecast-ориентир при платформенных folds** — соблюдено: лаг-трансформы
+   по семантике MLForecast, но folds — строго платформенный BacktestPlan, второго
+   CV-контура нет.
+
+Все пять условий повторной сдачи из рецензии закрыты (утечка/ядро/интеграция/
+миграция 6→7/формат). Существенные архитектурные решения приняты корректно:
+расширение СУЩЕСТВУЮЩЕГО Prophet-адаптера Task 124 (не параллельная копия);
+regressor-канал только при `supports_future_features` с учётом уже существовавших
+с Task 122 гейтов registry; инъекция плана во все 6 путей `build_backtest_plan`
+(bootstrap, backtest, sync-tuning, job-inputs, job-start, job-step); reuse-логика
+по cohort_id автоматически инвалидирует pre-plan артефакты; миграция v6→v7
+инвалидирует активный feature_contract без plan_id+fingerprint (policy=none
+остаётся валиден).
+
+### Независимая верификация
+
+- Окружение пересобрано с нуля: pinned `apps/api/requirements.txt` +
+  `requirements-dev.txt` (prophet==1.4.0, statsforecast==2.1.1, syrupy и др.).
+- Целевые срезы: `test_feature_plan*.py` + `test_prophet_regressors.py` —
+  **69/69 PASS**; `test_modeling_workflow.py` + `test_prophet_adapter.py` +
+  `test_model_execution_contract.py` + `test_modeling_mvp_certification.py` —
+  **60/60 PASS** (включая 3 новых E2E: план в session-cohort с гейтом naive и
+  Prophet-lineage; stale-колонка понижает cohort; v7-миграция инвалидирует
+  план без plan_id).
+- Полный backend regression: **1440 passed / 0 failed**, 3/3 snapshots PASS —
+  счётчик сошёлся с заявленным коллегой ровно (базлайн 1365 на 9935252 + 75).
+- **Mutation-проверка RED-валидности** (независимая, сверх прогона коллеги):
+  временная мутация rolling-окна до включения y[t] —
+  `test_rolling_excludes_current_observation` закономерно FAILED; после отката
+  дерево чистое. Leakage-охрана тестов доказана, а не декларирована.
+- `python -m compileall apps` OK; `from apps.api.main import app` OK;
+  `pip check` — PASS.
+- Фронтенд не затронут (все 14 файлов коммита — backend/тесты/worklog);
+  зависимостей UI от `artifact_schema_version` нет — Jest/typecheck/build
+  не требуются, базлайн b8907a8 в силе.
+
+### Наблюдения (не блокирующие, в копилку Tasks 127+)
+
+1. Historic-экзогены (family=exogenous, known_in_advance=False) принимаются
+   ядром, но `_session_feature_plan` материализует в feature_columns только
+   future_known/static — сессия с такой колонкой упала бы по фолдам. Сегодня
+   недостижимо (генератор платформы семьи exogenous не эмитит); при вводе
+   экзогенных колонок в Tasks 127+ проводку колонок через
+   `_session_feature_plan` нужно дополнить.
+2. `RecursiveFeatureState` и `bind_feature_importance` — контракты без
+   runtime-потребителей (по дизайну): потребуются адаптерам RF/XGBoost/
+   LightGBM/CatBoost (Tasks 127–130).
+3. Prophet + укорачивающее преобразование target (first_difference и т.п.)
+   падает по фолду — pre-existing поведение Task 124 (рассинхрон
+   train_timestamps), не регрессия 126; поведение fail-closed, утечки нет.
+4. `scale_exogenous` по умолчанию False и роутером не включается — флаг
+   ждёт своих потребителей в ML-задачах.
+
+### Вердикт
+
+**Task 126 сертифицирована. Реализация отличная.** Состав сдачи: 14 файлов
+(6 backend-модулей, 7 тест-файлов, worklog2.md), +2630/−17 строк. Коммит и
+push в main выполнены тимлидом; со стороны агента изменений кода не потребовалось.
