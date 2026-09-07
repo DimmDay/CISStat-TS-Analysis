@@ -3961,4 +3961,103 @@ ETS/ARIMA с явными order/trend (не двойной auto-поиск по�
 - Прогресс "11/24" production-моделей достигнут (Prophet + TBATS). Следующие
   задачи по plan-файлу — ML/дерево-бустинг группа (Task 126+, начиная с
   Leakage-safe supervised FeaturePlan).
-  
+
+  ---
+
+## Сертификация Tasks 124–125 на aab3584 и разбор видимости TBATS
+
+### База и методика
+
+Сертификация выполнена на точном коммите
+`aab3584f8c8f0c534aa36fb7c874c541ac8ab0a1`; локальный `HEAD` и
+`origin/main` совпадают. Проверены требования `docs/modeling_task_list.md`,
+реализация registry/backtesting/tuning/session workflow, тесты, production
+сборки и фактический PRE-контур Vercel → Render.
+
+### Итог по плану
+
+- **Task 124 — условно сертифицирована.** Prophet зарегистрирован как реальная
+  production-модель, исполняется на точных платформенных EDA folds без второго
+  CV, получает реальные train/future timestamps, создаёт fold-local holidays,
+  имеет bounded grid 5×3×2, реальные prediction intervals и проходит общий
+  OOF/diagnostics/comparison/selection/Model Card workflow. Однако буквальное
+  требование плана о произвольных fold-local regressors не закрыто end-to-end:
+  upstream ещё не формирует `train_features`/`future_features`. Этот разрыв уже
+  был задокументирован в первоначальной сдаче Task 124 и остаётся зависимостью
+  Task 126 (`Leakage-safe supervised FeaturePlan`). Поэтому без выполнения
+  Task 126 полный безусловный PASS по каждому слову Task 124 некорректен.
+- **Task 125 — сертифицирована после исправлений release gate.** TBATS является
+  11-й production-моделью, использует зафиксированный `statsforecast==2.1.1`,
+  получает несколько сезонных периодов через `tbats_seasonal_periods`, имеет
+  ограниченный grid из 6 валидных trial, оценивает Box–Cox внутри каждого
+  train-fold и проходит единый workflow долгих jobs и 11 остановок.
+
+### Почему TBATS не была видна в «Доступных»
+
+Это не отсутствие библиотеки или адаптера. PRE-запрос через Vercel к Render
+подтвердил `platform_status="ready"`, `runtime_available=true`,
+`statsforecast=2.1.1`; отдельный реальный TBATS backtest завершился успешно.
+На широком профиле (`n_observations=500`) API возвращает TBATS с действиями
+`backtest`, `tune`, `diagnostics` и всего 11 runnable production-моделей.
+
+На коротком профиле TBATS блокируется правилом F04: первый train-fold должен
+содержать не менее `model.min_observations=100`. Раньше UI называл runnable-
+фильтр просто «Доступные» и исключал ready-модели без действия `backtest`, а
+причина F04 приходила с неотрендеренными placeholders. Это создавало ложное
+впечатление, что TBATS не подключена.
+
+Исправлено:
+
+- фильтр переименован в **«Для текущего ряда»**;
+- добавлен отдельный фильтр **«Подключённые»**, где TBATS видна даже при F04
+  со статусом «Ограничено», точной причиной и без активной кнопки запуска;
+- DSL-сообщения applicability безопасно подставляют фактические значения:
+  `Недостаточно данных: 60 < 100 (требуется TBATS)`;
+- порог не ослаблялся: чтобы TBATS стала runnable, именно первый train-fold
+  выбранного BacktestPlan, а не только весь ряд, должен иметь ≥100 наблюдений.
+
+### Исправления сертификационного контура
+
+- GitHub Actions теперь устанавливает `apps/api/requirements.txt`; ранее
+  чистый CI мог молча получить урезанный runtime registry и при этом не
+  сертифицировать Prophet/TBATS.
+- Prophet закреплён как `prophet==1.4.0`, совпадающий с проверенным PRE runtime;
+  StatsForecast остаётся `2.1.1`.
+- API Dockerfile выполняет настоящий минимальный fit/predict Prophet и TBATS
+  во время сборки, а не ограничивается импортом старых statsmodels-моделей.
+- Добавлен release-gate тест на зависимости CI/image и регрессии UI/readiness
+  для ready-but-blocked TBATS.
+- Исправлена устаревшая документация ключа TBATS-параметров:
+  `seasonal_periods` → `tbats_seasonal_periods`.
+
+### TDD и проверки
+
+- RED: новые backend-тесты выявили сырые `{n_observations}`/
+  `{model.min_observations}` и отсутствие API dependencies в CI; новый UI-тест
+  выявил отсутствие различия между runnable и connected production-моделями.
+- GREEN: целевой backend-срез — **133/133 PASS**; Modeling UI — **48/48 PASS**.
+- Полный backend regression — **1368/1368 PASS**, **3/3 snapshots PASS**.
+- Полный frontend regression — **89/89 suites, 820/820 tests PASS**.
+- `typecheck:all` — embedded PASS, standalone PASS.
+- Production build — embedded и standalone PASS, по **13/13** статических
+  страниц. Из-за отсутствия `/proc` и сети в рабочем контейнере только на время
+  build использованы memory/font shims; после проверки они удалены, исходные
+  layout-файлы восстановлены функционально.
+- Исполняемый smoke — Prophet PASS, StatsForecast TBATS PASS.
+- `pip check` — PASS; `git diff --check` — PASS.
+
+### Файлы сертификационной доработки
+
+- `.github/workflows/test.yml`
+- `apps/api/Dockerfile`
+- `apps/api/model_impls/tbats.py`
+- `apps/api/requirements.txt`
+- `apps/embedded/app/layout.tsx` (только нормализация финального перевода строки
+  после временного build-shim, без изменения кода)
+- `apps/standalone/app/layout.tsx` (то же)
+- `packages/ui/components/TsAnalysisModeling.tsx`
+- `packages/ui/components/TsAnalysisModeling.test.tsx`
+- `src/catalog/modeling_spec_loader.py`
+- `tests/test_modeling_spec.py`
+- `tests/unit/test_model_readiness_candidates.py`
+- `tests/unit/test_modeling_mvp_certification.py`

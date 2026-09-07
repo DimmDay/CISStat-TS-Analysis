@@ -259,6 +259,23 @@ class TestApplicabilityEngine:
         assert result.level == "NOT_APPLICABLE"
         assert result.rule_id == "F04"
 
+    def test_forbidden_rule_message_renders_profile_and_model_values(self, spec):
+        """Blocking reason must explain why a ready model is hidden from runnable."""
+        profile = DataProfile(
+            n_observations=60, n_series=1, n_exogenous=0,
+            is_regular=True, frequency="M",
+            has_seasonality=True, seasonal_periods=[12],
+            is_stationary_or_diffable=True, is_cointegrated=False,
+            has_negative_values=False, has_volatility_clustering=False,
+            domain="macro", missing_ratio=0.0, outlier_ratio=0.0,
+        )
+
+        result = spec.resolve_applicability("tbats", profile)
+
+        assert result.rule_id == "F04"
+        assert result.message == "Недостаточно данных: 60 < 100 (требуется TBATS)"
+        assert "{" not in result.message
+
     def test_var_for_univariate_is_not_applicable(self, spec, macro_profile):
         """VAR для одномерного ряда → NOT_APPLICABLE (F01)."""
         result = spec.resolve_applicability("var", macro_profile)

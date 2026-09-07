@@ -18,7 +18,7 @@ auto-поиска). Bounded tuning grid (``use_boxcox`` × ``trend_spec``) са�
 
 Множественные сезонные периоды (Task 125, п.2, спектральный hand-off):
 ``season_length`` в statsforecast нативно принимает ``List[int]``
-(например [7, 365] для daily+yearly) -- ``request.params["seasonal_periods"]``
+(например [7, 365] для daily+yearly) -- ``request.params["tbats_seasonal_periods"]``
 (см. apps/api/backtesting.py::run_backtest_plan) передаётся сюда как есть.
 Если платформа не передала множественный список (params пуст), используется
 единственный ``request.seasonal_period`` -- совместимо с остальными моделями.

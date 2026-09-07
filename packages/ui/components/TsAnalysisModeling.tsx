@@ -276,7 +276,7 @@ export function TsAnalysisModeling() {
     null
   );
   const [levelFilter, setLevelFilter] = useState<string>("all");
-  const [availabilityFilter, setAvailabilityFilter] = useState<"runnable" | "all">("runnable");
+  const [availabilityFilter, setAvailabilityFilter] = useState<"runnable" | "production" | "all">("runnable");
   // null — каноническое описание активной остановки. Любая операция
   // временно замещает его и всегда имеет явный путь возврата.
   const [descriptionSection, setDescriptionSection] = useState<DescriptionSection>(null);
@@ -637,7 +637,11 @@ export function TsAnalysisModeling() {
   }, [activeStageId, descriptionSection, catalog]);
 
   // ── Фильтрация и группировка ──
-  const visibleModels = availabilityFilter === "all" ? catalog : candidates;
+  const visibleModels = availabilityFilter === "all"
+    ? catalog
+    : availabilityFilter === "production"
+      ? catalog.filter((candidate) => candidate.platform_status === "ready")
+      : candidates;
   const filteredCandidates = visibleModels.filter((c) => {
     if (availabilityFilter === "runnable" && !c.available_actions.includes("backtest")) return false;
     if (levelFilter !== "all" && c.level !== levelFilter) return false;
@@ -1108,7 +1112,13 @@ export function TsAnalysisModeling() {
                   onClick={() => setAvailabilityFilter("runnable")}
                   className={`rounded border px-2 py-1 text-xs ${availabilityFilter === "runnable" ? "border-brand bg-brand text-white" : "border-neutral-200 bg-white text-neutral-700"}`}
                 >
-                  Доступные ({candidates.filter((item) => item.available_actions.includes("backtest")).length})
+                  Для текущего ряда ({candidates.filter((item) => item.available_actions.includes("backtest")).length})
+                </button>
+                <button
+                  onClick={() => setAvailabilityFilter("production")}
+                  className={`rounded border px-2 py-1 text-xs ${availabilityFilter === "production" ? "border-brand bg-brand text-white" : "border-neutral-200 bg-white text-neutral-700"}`}
+                >
+                  Подключённые ({catalog.filter((item) => item.platform_status === "ready").length})
                 </button>
                 <button
                   onClick={() => setAvailabilityFilter("all")}

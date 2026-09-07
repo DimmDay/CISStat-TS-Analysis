@@ -1,6 +1,7 @@
-"""Release gate for the certified ten-model Modeling MVP."""
+"""Release gate for the certified eleven-model Modeling scope."""
 
 import math
+from pathlib import Path
 
 from apps.api.backtesting import PRODUCTION_PREDICTORS
 from apps.api.model_impls.arima import _arima_fit_predict
@@ -28,6 +29,8 @@ CERTIFIED_MODEL_IDS = frozenset({
     "prophet",
     "tbats",
 })
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_certified_scope_is_exactly_eleven_real_models_in_the_24_model_catalog():
@@ -63,3 +66,16 @@ def test_arima_grid_handles_the_minimum_expanding_window_fold():
 
     assert len(forecast) == 2
     assert all(math.isfinite(value) for value in forecast)
+
+
+def test_ci_and_api_image_install_and_probe_prophet_and_tbats_dependencies():
+    """A clean release must not silently certify a reduced runtime registry."""
+    workflow = (REPOSITORY_ROOT / ".github/workflows/test.yml").read_text(encoding="utf-8-sig")
+    dockerfile = (REPOSITORY_ROOT / "apps/api/Dockerfile").read_text(encoding="utf-8")
+    api_requirements = (REPOSITORY_ROOT / "apps/api/requirements.txt").read_text(encoding="utf-8")
+
+    assert "apps/api/requirements.txt" in workflow
+    assert "prophet==1.4.0" in api_requirements
+    assert "statsforecast==2.1.1" in api_requirements
+    assert "_prophet_fit_predict" in dockerfile
+    assert "_tbats_fit_predict" in dockerfile

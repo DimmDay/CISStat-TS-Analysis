@@ -136,9 +136,9 @@ const MOCK_CANDIDATES = [
       rule_id: "C03",
       message: "Условно применима: нет сезонности",
       rank: 2,
-      platform_status: "catalog_only",
-      available_actions: [],
-      blocking_reason: "Production-реализация модели ещё не подключена.",
+      platform_status: "ready",
+      available_actions: ["backtest", "tune", "diagnostics"],
+      blocking_reason: null,
     },
     {
       model_id: "var",
@@ -156,7 +156,19 @@ const MOCK_CANDIDATES = [
 
 const MOCK_CATALOG = [
   ...MOCK_CANDIDATES,
-  ...Array.from({ length: 15 }, (_, index) => ({
+  {
+    model_id: "tbats",
+    model_name: "TBATS",
+    family_id: "structural",
+    level: "NOT_APPLICABLE",
+    rule_id: "F04",
+    message: "Недостаточно данных: 60 < 100 (требуется TBATS)",
+    rank: 4,
+    platform_status: "ready",
+    available_actions: [],
+    blocking_reason: "Недостаточно данных: 60 < 100 (требуется TBATS)",
+  },
+  ...Array.from({ length: 14 }, (_, index) => ({
     model_id: `catalog_model_${index + 1}`,
     model_name: `Catalog model ${index + 1}`,
     family_id: "neural",
@@ -182,6 +194,9 @@ const MOCK_CANDIDATES_RESPONSE = {
       NOT_APPLICABLE: 1,
     },
     total_models_in_spec: 24,
+    runnable_candidates: 7,
+    catalog_only_candidates: 16,
+    blocked_candidates: 1,
   },
   spec_version: "1.0.0-draft",
 };
@@ -523,18 +538,36 @@ describe("TsAnalysisModeling", () => {
     render(<TsAnalysisModeling />);
     await waitFor(() => expect(screen.getByTestId("candidate-pool")).toBeInTheDocument());
 
-    expect(screen.queryByTestId("candidate-prophet")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("candidate-garch")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Весь каталог/ }));
-    fireEvent.click(screen.getByTestId("family-header-structural"));
-    fireEvent.click(screen.getByTestId("candidate-prophet"));
+    fireEvent.click(screen.getByTestId("family-header-volatility"));
+    fireEvent.click(screen.getByTestId("candidate-garch"));
 
-    expect(screen.getByTestId("execution-badge-prophet")).toHaveTextContent("В каталоге");
+    expect(screen.getByTestId("execution-badge-garch")).toHaveTextContent("В каталоге");
     expect(screen.getByTestId("backtest-unavailable")).toHaveTextContent("Production-реализация");
     expect(screen.queryByTestId("run-backtest-btn")).not.toBeInTheDocument();
     const backtestCalls = mockFetch.mock.calls.filter(
       ([url]: [string]) => typeof url === "string" && url.includes("/v1/session/modeling/backtest")
     );
     expect(backtestCalls).toHaveLength(0);
+  });
+
+  it("distinguishes runnable models from all connected production models", async () => {
+    render(<TsAnalysisModeling />);
+    await waitFor(() => expect(screen.getByTestId("candidate-pool")).toBeInTheDocument());
+
+    expect(screen.getByRole("button", { name: "Для текущего ряда (7)" })).toBeInTheDocument();
+    expect(screen.queryByTestId("candidate-tbats")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Подключённые (8)" }));
+    fireEvent.click(screen.getByTestId("family-header-structural"));
+    fireEvent.click(screen.getByTestId("candidate-tbats"));
+
+    expect(screen.getByTestId("execution-badge-tbats")).toHaveTextContent("Ограничено");
+    expect(screen.getByTestId("backtest-unavailable")).toHaveTextContent(
+      "Недостаточно данных: 60 < 100 (требуется TBATS)"
+    );
+    expect(screen.queryByTestId("run-backtest-btn")).not.toBeInTheDocument();
   });
 
   it("shows all 24 specification models in the complete catalog", async () => {

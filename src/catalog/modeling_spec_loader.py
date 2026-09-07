@@ -548,7 +548,7 @@ class ModelingSpec(BaseModel):
                         family_id=family.id,
                         level=result_level,
                         rule_id=rule.id,
-                        message=rule.message,
+                        message=self._format_rule_message(rule.message, ctx),
                         rank=level_obj.rank if level_obj else 4,
                     )
 
@@ -581,6 +581,21 @@ class ModelingSpec(BaseModel):
                     model.id, profile, constraints
                 )
         return results
+
+    @staticmethod
+    def _format_rule_message(message: str, ctx: Dict[str, Any]) -> str:
+        """Render only exact, known DSL placeholders in a rule message.
+
+        The applicability context deliberately uses dotted keys such as
+        ``model.min_observations``.  ``str.format`` treats dots as attribute
+        access and therefore cannot consume this flat, auditable context.
+        Exact replacement keeps unknown braces untouched and does not execute
+        arbitrary formatting expressions from the YAML specification.
+        """
+        rendered = message
+        for key, value in ctx.items():
+            rendered = rendered.replace("{" + key + "}", str(value))
+        return rendered
 
     def get_candidate_pool(
         self,
@@ -646,6 +661,7 @@ class ModelingSpec(BaseModel):
             "model_id": model.id,
             "model_name": model.name,
             "model_family": family.id,
+            "model.name": model.name,
             "model.min_observations": model.min_observations,
             "model.supports_exogenous": model.supports_exogenous,
             "model.domain": model.domain,

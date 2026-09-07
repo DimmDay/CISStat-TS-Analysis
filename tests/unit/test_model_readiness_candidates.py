@@ -69,3 +69,18 @@ def test_response_keeps_filtered_candidate_pool_and_exposes_complete_catalog():
     assert catalog["var"].level == "NOT_APPLICABLE"
     assert catalog["var"].available_actions == []
     assert catalog["var"].message
+
+
+def test_tbats_is_connected_but_explains_when_current_training_fold_is_too_short():
+    profile = _broad_profile().model_copy(update={"n_observations": 60})
+
+    response = _compute_candidates(CandidatesRequest(
+        profile=profile,
+        min_level="CONDITIONALLY_APPLICABLE",
+    ))
+    tbats = next(item for item in response.catalog if item.model_id == "tbats")
+
+    assert tbats.platform_status == "ready"
+    assert tbats.available_actions == []
+    assert tbats.blocking_reason == "Недостаточно данных: 60 < 100 (требуется TBATS)"
+    assert response.statistics.blocked_candidates == 1

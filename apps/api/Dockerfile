@@ -58,8 +58,9 @@ RUN touch apps/__init__.py
 # ModelingSpec.from_yaml() парсится без исключений.
 #
 # Phase 6-P0: добавлена проверка импортов model_impls (ETS/Theta/ARIMA).
-# Если statsmodels не установится в образ -- сборка упадёт здесь, а не в
-# runtime при первом вызове /v1/internal/models/backtest с model_id=ets.
+# Tasks 124/125: Prophet и StatsForecast TBATS также проверяются на этапе
+# сборки. Иначе lazy dependency probe молча уменьшит production registry,
+# и модель исчезнет из фильтра доступных только после запуска контейнера.
 RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; \
                spec = ModelingSpec.from_yaml('rules/modeling.yaml'); \
                print('modeling.yaml OK, models:', spec.total_model_count())" \
@@ -69,7 +70,14 @@ RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; \
                   print('statsmodels OK:', statsmodels.__version__)" \
     && python -c "from apps.api.model_impls import run_ets_backtest, run_ets_damped_backtest, \
                   run_theta_backtest, run_arima_backtest, run_auto_arima_backtest; \
-                  print('model_impls OK: 5 implementations importable')"
+                  print('model_impls OK: 5 implementations importable')" \
+    && python -c "import pandas as pd; from apps.api.model_impls.prophet import _prophet_fit_predict; \
+                  dates = [value.isoformat() for value in pd.date_range('2020-01-01', periods=14, freq='MS')]; \
+                  forecast, _, _ = _prophet_fit_predict([float(value) for value in range(1, 13)], 2, dates[:12], dates[12:]); \
+                  assert len(forecast) == 2; print('Prophet executable OK')" \
+    && python -c "from apps.api.model_impls.tbats import _tbats_fit_predict; \
+                  forecast, _, _ = _tbats_fit_predict([float(value) for value in range(1, 13)], 2, 4, use_boxcox=False); \
+                  assert len(forecast) == 2; print('StatsForecast TBATS executable OK')"
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
