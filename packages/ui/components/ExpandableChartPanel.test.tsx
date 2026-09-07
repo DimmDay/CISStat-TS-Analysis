@@ -31,6 +31,30 @@ describe("ExpandableChartPanel (Task 97, Этап 1)", () => {
     expect(screen.getByTestId("chart")).toBeInTheDocument();
   });
 
+  // Регресс hotfix Task 97.4a: внутренняя обёртка children ОБЯЗАНА быть
+  // flex-колонкой. Визуальные блоки Обзоров (Этапы 2–4) рассчитаны на
+  // flex-родителя корня окна (flex flex-col h-[468px]) и сами сидят на
+  // «min-h-0 flex-1 …»; block-обёртка делает flex-1 инертным, высота блока
+  // схлопывается, ResponsiveContainer height="100%" разрешается в 0 —
+  // графики Обзора перестают рендериться (пустая область при рабочем
+  // absolute-бейдже). Аналог серверного контракта §4.2 spec_max_graf_fix.md:
+  // «сам вложенный график не изменяется» => обёртка обязана воспроизводить
+  // исходную flex-среду блока.
+  it("обёртка children в свёрнутой панели — flex-колонка min-h-0 flex-1 (не block)", () => {
+    const { container } = render(<Harness />);
+    const wrapper = screen.getByTestId("chart").parentElement;
+    expect(wrapper).not.toBeNull();
+    expect(wrapper).toHaveClass("flex", "flex-col", "min-h-0", "flex-1");
+  });
+
+  it("обёртка children сохраняет flex-колонку и в раскрытой панели (absolute inset-0)", () => {
+    const { container } = render(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+    const wrapper = screen.getByTestId("chart").parentElement;
+    expect(wrapper).toHaveClass("flex", "flex-col", "min-h-0", "flex-1");
+    expect(panelRoot(container)).toHaveClass("absolute", "inset-0");
+  });
+
   // Интеграция Этапа 2 (Task 97.2): ChartExpandToggle свёрнутой панели —
   // absolute right-2 top-2, поэтому панель обязана быть containing block'ом
   // (relative), иначе бейдж якорится к корню Обзора и складывается в кучу

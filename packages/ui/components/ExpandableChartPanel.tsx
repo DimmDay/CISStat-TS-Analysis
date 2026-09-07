@@ -82,7 +82,15 @@ export function ExpandableChartPanel({
       } ${className ?? ""}`}
     >
       <ChartExpandToggle expanded={isExpanded} onClick={() => toggle(chartId)} title={title} />
-      <div className="min-h-0 flex-1">{children}</div>
+      {/* Hotfix Task 97.4a: обёртка children обязана быть flex-колонкой.
+          Все визуальные блоки Обзоров (Этапы 2–4) спроектированы прямыми
+          flex-потомками корня окна (flex flex-col h-[468px]) и сами сидят на
+          «min-h-0 flex-1 …»; block-обёртка делала flex-1 инертным, высота
+          блока схлопывалась, ResponsiveContainer height="100%" разрешался
+          в 0 — графики Обзоров не рендерились (пустая область при рабочем
+          absolute-бейдже). Flex-колонка воспроизводит исходную среду блока
+          и в свёрнутой, и в раскрытой (absolute inset-0) панели. */}
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </div>
   );
 }

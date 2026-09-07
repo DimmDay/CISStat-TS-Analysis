@@ -3697,3 +3697,44 @@ worklog2.md — сброшено через `reset --hard`). Дерево чис
   бинов, HTML-теплокарты) выигрыша от expanded нет, раскрытие остаётся
   чисто визуальным (§8.6). Калибровка вторичных потолков на реальных
   датасетах (§9 follow-up) — контракт уже зафиксирован константами.
+
+---
+
+## Task 97.4a — Hotfix: графики Обзоров не рендерятся (обёртка children ExpandableChartPanel)
+
+- Синхронизация до 8506bc3 (= закоммиченный тимлидом Этап 4, rollout 16
+  Обзоров, full GREEN); reset, дерево чистое. Симптом из браузера (скриншот
+  «Обзор: Корреляция (ACF/PACF)», вкладка PACF): на всех вкладках графиков
+  Обзоров область графика пустая, при этом иконка раскрытия в правом верхнем
+  углу работает; таблицы (auto-height) рендерятся. Jest при этом 817/817 —
+  дефект не ловится, т.к. jsdom не считает layout, а контрактные проверки
+  структурные.
+- Причина (анализ Этапов 1–4): в ExpandableChartPanel.tsx (фундамент Этапа 1,
+  задействован Этапами 2–4) внутренняя обёртка children была block-элементом
+  (<div className="min-h-0 flex-1"> без display:flex). Все обёрнутые
+  визуальные блоки Обзоров спроектированы прямыми flex-потомками корня окна
+  (flex flex-col h-[468px]) и сами сидят на «min-h-0 flex-1 …» — проверено
+  по всем 20 адаптированным файлам (CorrelationChart, HistogramView/Density/
+  Qq/Cdf, SpectrumChart, SeriesChart, MissingMatrixChart, ChartStatus,
+  grid-корни Spectral/Smoothing/Scaling и т.д.). Внутри block-родителя
+  flex-1 инертен: высота блока схлопывается до контента, ResponsiveContainer
+  height="100%" против auto-родителя разрешается в 0 → пустая область.
+  ChartExpandToggle (absolute, вне потока) и таблицы не зависят от flex-1 —
+  ровно наблюдаемый симптом.
+- TDD: 2 RED-теста в ExpandableChartPanel.test.tsx — «обёртка children в
+  свёрнутой панели — flex-колонка min-h-0 flex-1 (не block)» и «…сохраняется
+  и в раскрытой панели (absolute inset-0)»; против кода 8506bc3 падают
+  ровно они (Received: min-h-0 flex-1), 8 прежних зелёные.
+- Фикс центральный, один файл: ExpandableChartPanel.tsx, обёртка children
+  теперь «flex min-h-0 flex-1 flex-col» — воспроизводит исходную flex-среду
+  блока в обоих состояниях панели; 20 Обзоров и 4 пилота не трогались,
+  OUT_OF_SCOPE не затронуты, ExpandableChartCoverage.test.ts не менялся.
+- Верификация: полный jest 89 suites / **819 passed / 0 failed**
+  (817 базлайн + 2 регресс-теста); typecheck:all exit 0; production builds
+  embedded + standalone OK (13/13, First Load JS 87.5 kB без регресса).
+  Backend не затронут (изменения только packages/ui) — pytest-базлайн
+  1350 passed остаётся в силе.
+- Коммит/push не выполнялись. Изменённые файлы упакованы в
+  download/Task_97.4a_ExpandableCharts_Hotfix_ChartRenderFix.zip
+  (3 файла: ExpandableChartPanel.tsx, ExpandableChartPanel.test.tsx,
+  worklog2.md).
