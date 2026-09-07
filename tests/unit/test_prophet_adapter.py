@@ -100,7 +100,11 @@ def test_registry_descriptor_declares_prophet_as_tunable_with_intervals():
 
     assert descriptor["model_id"] == "prophet"
     assert descriptor["family_id"] == "structural"
-    assert descriptor["input_kind"] == "univariate"
+    # Task 126: единственный supervised-адаптер cohort'а -- принимает
+    # future_known/static регрессоры fold-local FeaturePlan (capability-гейт).
+    assert descriptor["input_kind"] == "supervised"
+    assert descriptor["supports_future_features"] is True
+    assert descriptor["requires_train_features"] is False
     assert descriptor["supports_prediction_intervals"] is True
     assert set(descriptor["actions"]) == {"backtest", "tune", "diagnostics"}
     assert descriptor["dependency_group"] == "classical"

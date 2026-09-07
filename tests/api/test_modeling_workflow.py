@@ -1396,7 +1396,7 @@ def test_state_migrates_legacy_unsigned_backtests_without_discarding_valid_basel
 
     assert response.status_code == 200, response.text
     artifacts = response.json()["artifacts"]
-    assert artifacts["artifact_schema_version"] == 6
+    assert artifacts["artifact_schema_version"] == 7
     assert "naive" in artifacts["backtests"]
     assert "ets" not in artifacts["backtests"]
     assert "arima_auto" not in artifacts["backtests"]
@@ -1444,7 +1444,7 @@ def test_state_v4_upgrade_preserves_valid_runs_and_invalidates_old_scope_verdict
 
     assert state.status_code == 200, state.text
     artifacts = state.json()["artifacts"]
-    assert artifacts["artifact_schema_version"] == 6
+    assert artifacts["artifact_schema_version"] == 7
     assert set(artifacts["backtests"]) == {"naive", "drift"}
     assert set(artifacts["diagnostics"]) == {"naive", "drift"}
     assert "comparison" not in artifacts
@@ -1475,7 +1475,7 @@ def test_state_v5_upgrade_invalidates_runs_without_v2_lineage(client: TestClient
 
     assert state.status_code == 200, state.text
     artifacts = state.json()["artifacts"]
-    assert artifacts["artifact_schema_version"] == 6
+    assert artifacts["artifact_schema_version"] == 7
     assert artifacts["backtests"] == {}
     assert artifacts["diagnostics"] == {}
     assert artifacts["artifact_migration"]["invalidated_backtests"] == ["naive"]
@@ -1487,3 +1487,103 @@ def test_state_v5_upgrade_invalidates_runs_without_v2_lineage(client: TestClient
 
     candidates = client.post("/v1/session/modeling/candidates", json={})
     assert candidates.status_code == 200, candidates.text
+
+
+def _feature_plan_metadata(n: int = 96) -> dict:
+    """Совместимая с demo-CSV metadata остановки «Генерация признаков»."""
+    catalog = [
+        {"name": "value_lag_1", "family": "lag", "lookback": 1, "known_in_advance": False},
+        {"name": "date_month_sin", "family": "calendar", "lookback": 0, "known_in_advance": True},
+    ]
+    return {
+        "kind": "feature_generation", "source_column": "value", "date_column": "date",
+        "feature_names": [item["name"] for item in catalog],
+        "feature_catalog": catalog,
+        "max_lookback": 1, "causal": True, "target_shift": 1,
+        "generated_on_n": n, "result_rows": n,
+    }
+
+
+def _inject_feature_plan(client: TestClient) -> None:
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    store = get_session_store()
+    session = store.get(session_id)
+    session.preprocessing_feature_generation = _feature_plan_metadata()
+    months = pd.to_datetime(session.dataframe["date"]).dt.month.to_numpy(dtype=float)
+    session.dataframe["date_month_sin"] = np.sin(2 * np.pi * months / 12.0)
+    store.save(session)
+
+
+def test_feature_plan_enters_session_cohort_and_gates_regressors(client: TestClient):
+    """Task 126 E2E: план входит в cohort, baseline гейтится, Prophet получает регрессор."""
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=3&n_splits=2").status_code == 200
+    _inject_feature_plan(client)
+
+    naive = client.post("/v1/session/modeling/backtest", json={"model_id": "naive"})
+    assert naive.status_code == 200, naive.text
+    naive_body = naive.json()
+    feature_contract = naive_body["cohort_contract"]["feature_contract"]
+    assert feature_contract["policy"] == "recursive"
+    assert feature_contract["historic"] == ["value_lag_1"]
+    assert feature_contract["future_known"] == ["date_month_sin"]
+    assert feature_contract["plan_id"].startswith("fp_")
+    assert any("date_month_sin" in warning for warning in naive_body["warnings"])
+    assert all(
+        fold.get("feature_matrix") is None for fold in naive_body["folds"]
+    )
+
+    prophet = client.post("/v1/session/modeling/backtest", json={"model_id": "prophet"})
+    assert prophet.status_code == 200, prophet.text
+    prophet_body = prophet.json()
+    assert prophet_body["cohort_id"] == naive_body["cohort_id"]
+    for fold in prophet_body["folds"]:
+        matrix = fold["feature_matrix"]
+        assert matrix is not None
+        assert matrix["plan_id"] == feature_contract["plan_id"]
+        assert matrix["fit_policy"] == "per_train_fold"
+        assert matrix["columns"] == ["value_lag_1"]
+        assert matrix["future_known_columns"] == ["date_month_sin"]
+        assert matrix["matrix_hash"]
+
+
+def test_stale_feature_plan_columns_downgrade_session_cohort_with_warning(client: TestClient):
+    """Разрушенная колонка не может тихо сменить состав признаков: план исключён."""
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=3&n_splits=2").status_code == 200
+    _inject_feature_plan(client)
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    store = get_session_store()
+    session = store.get(session_id)
+    session.dataframe.loc[5, "date_month_sin"] = np.nan
+    store.save(session)
+
+    naive = client.post("/v1/session/modeling/backtest", json={"model_id": "naive"})
+    assert naive.status_code == 200, naive.text
+    body = naive.json()
+    assert body["cohort_contract"]["feature_contract"]["policy"] == "none"
+    assert any("date_month_sin" in warning for warning in body["warnings"])
+
+
+def test_state_v7_upgrade_invalidates_unbound_feature_contract(client: TestClient):
+    """v6->v7: активный feature_contract без plan_id не сопоставим с v7-cohort."""
+    _prepare(client)
+    assert client.get("/v1/session/modeling/context?horizon=3&n_splits=2").status_code == 200
+    naive = client.post("/v1/session/modeling/backtest", json={"model_id": "naive"})
+    assert naive.status_code == 200, naive.text
+
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    store = get_session_store()
+    session = store.get(session_id)
+    session.modeling_artifacts["artifact_schema_version"] = 6
+    session.modeling_artifacts["backtests"]["naive"]["cohort_contract"][
+        "feature_contract"
+    ] = {"policy": "recursive", "historic": ["value_lag_1"]}
+    store.save(session)
+
+    state = client.get("/v1/session/modeling/state")
+    assert state.status_code == 200, state.text
+    artifacts = state.json()["artifacts"]
+    assert artifacts["artifact_schema_version"] == 7
+    assert "naive" not in artifacts["backtests"]
+    assert artifacts["artifact_migration"]["invalidated_backtests"] == ["naive"]

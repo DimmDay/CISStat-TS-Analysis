@@ -21,6 +21,13 @@ from apps.api.backtesting import (
     run_backtest_plan,
 )
 from apps.api.fold_preprocessing import prepare_modeling_target
+from apps.api.feature_plan import (
+    FeaturePlan,
+    FeaturePlanError,
+    ROLE_FUTURE_KNOWN,
+    ROLE_STATIC,
+    build_feature_plan_from_metadata,
+)
 from apps.api.model_execution import (
     MODEL_EXECUTION_CONTRACT_VERSION,
     MODEL_EXECUTION_REGISTRY,
@@ -86,7 +93,9 @@ from apps.api.session_store import (
 
 
 router = APIRouter()
-MODELING_ARTIFACT_SCHEMA_VERSION = 6
+# Task 126: v7 -- feature_contract получил иммутабельный FeaturePlan
+# (plan_id/fingerprint) и точную привязку fold-матриц (matrix_hash).
+MODELING_ARTIFACT_SCHEMA_VERSION = 7
 
 
 def _package_version(name: str) -> str:
@@ -318,6 +327,20 @@ def _migrate_modeling_artifacts(session) -> None:
             and backtest.get("oof_signature")
             == oof_signature(backtest.get("oof_predictions") or [])
         )
+        # Task 126 (v7): активный feature_contract обязан быть привязан к
+        # иммутабельному плану (plan_id + fingerprint).  Артефакты с policy
+        # != none без точной идентичности плана несопоставимы с v7-cohort.
+        feature_contract = (
+            (backtest.get("cohort_contract") or {}).get("feature_contract") or {}
+        )
+        feature_policy = str(feature_contract.get("policy") or "none")
+        traceable = traceable and (
+            feature_policy == "none"
+            or bool(
+                feature_contract.get("plan_id")
+                and feature_contract.get("fingerprint")
+            )
+        )
         tuning = tunings.get(model_id)
         if backtest.get("params_source") == "tuning":
             traceable = traceable and bool(
@@ -393,6 +416,77 @@ def _migrate_modeling_artifacts(session) -> None:
         ),
         "migrated_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+def _session_feature_plan(
+    session, prepared,
+) -> tuple[Optional[FeaturePlan], dict[str, list[float]], list[str]]:
+    """Task 126: session-wide leakage-safe FeaturePlan или его явное исключение.
+
+    План строится из сохранённой metadata остановки «Генерация признаков» и
+    включается в cohort (cohort_contract/cohort_id) только когда он ПОЛНОСТЬЮ
+    верифицируем: source_column == моделируемая цель, все future_known/static
+    колонки присутствуют в датасете, числовые, конечные и совпадают по длине
+    с рядом.  Любая stale/битая деталь понижает путь до legacy-cohort с явным
+    warning'ом -- тихая подмена состава признаков исключена по построению.
+    """
+    meta = session.preprocessing_feature_generation or {}
+    catalog = meta.get("feature_catalog") or []
+    warnings: list[str] = []
+    if not catalog:
+        return None, {}, warnings
+    source_column = str(meta.get("source_column") or "")
+    if source_column != session.target_column:
+        warnings.append(
+            f"FeaturePlan исключён: генерация признаков сохранена для "
+            f"'{source_column}', а моделируется '{session.target_column}'"
+        )
+        return None, {}, warnings
+    try:
+        plan = build_feature_plan_from_metadata(meta)
+    except FeaturePlanError as exc:
+        warnings.append(f"FeaturePlan исключён (fail-closed): {exc}")
+        return None, {}, warnings
+    required_names = [
+        spec.name for spec in plan.features
+        if spec.role in {ROLE_FUTURE_KNOWN, ROLE_STATIC}
+    ]
+    if not required_names:
+        # Только target-derived признаки: builder пересчитает их из train-среза.
+        return plan, {}, warnings
+    frame = session.dataframe
+    missing = [name for name in required_names if name not in frame.columns]
+    if missing:
+        warnings.append(
+            f"FeaturePlan исключён: колонки {missing} отсутствуют в датасете "
+            "(stale-генерация относительно активных данных)"
+        )
+        return None, {}, warnings
+    columns: dict[str, list[float]] = {}
+    for name in required_names:
+        raw = frame[name]
+        if len(raw) != len(prepared.series):
+            warnings.append(
+                f"FeaturePlan исключён: длина колонки '{name}' ({len(raw)}) "
+                f"не совпадает с длиной ряда ({len(prepared.series)})"
+            )
+            return None, {}, warnings
+        try:
+            numeric = np.asarray([float(value) for value in raw], dtype=float)
+        except (TypeError, ValueError):
+            warnings.append(
+                f"FeaturePlan исключён: колонка '{name}' нечисловая, а импутация "
+                "future-known регрессоров запрещена"
+            )
+            return None, {}, warnings
+        if not np.isfinite(numeric).all():
+            warnings.append(
+                f"FeaturePlan исключён: колонка '{name}' содержит NaN/Inf -- "
+                "импутация известного будущего не определена (fail-closed)"
+            )
+            return None, {}, warnings
+        columns[name] = numeric.tolist()
+    return plan, columns, warnings
 
 
 def _prepare_state(session, context: dict[str, Any], *, refresh_contract: bool = False) -> None:
@@ -748,11 +842,13 @@ def bootstrap_modeling_baselines(request: Request, response: Response):
         transformations=session.preprocessing_transformations,
         scaling_recipe=session.preprocessing_scaling_recipe,
     )
+    plan_obj, feature_plan_columns, feature_plan_warnings = _session_feature_plan(session, prepared)
     plan = build_backtest_plan(
         validation, n_observations=len(prepared.series),
         fingerprint=context["fingerprint"], target_column=session.target_column,
         seasonal_period=int(period),
         preprocessing_signature=prepared.preprocessing_signature,
+        feature_plan=plan_obj, feature_columns=feature_plan_columns,
     )
     saved = session.modeling_artifacts.get("backtests", {})
     reusable = {
@@ -786,7 +882,7 @@ def bootstrap_modeling_baselines(request: Request, response: Response):
                 model_id=model_id, model_name=model_name, family_id=family_id,
                 series=prepared.series, labels=prepared.labels, plan=plan,
                 seasonal_period=int(period), params={},
-                preprocessing_warnings=prepared.warnings,
+                preprocessing_warnings=[*prepared.warnings, *feature_plan_warnings],
                 fold_preprocessor=prepared.fold_preprocessor,
             )
             calculated[model_id] = _trace_backtest(
@@ -860,16 +956,18 @@ def run_modeling_backtest(
             transformations=session.preprocessing_transformations,
             scaling_recipe=session.preprocessing_scaling_recipe,
         )
+        plan_obj, feature_plan_columns, feature_plan_warnings = _session_feature_plan(session, prepared)
         plan = build_backtest_plan(
             validation, n_observations=len(prepared.series),
             fingerprint=context["fingerprint"], target_column=session.target_column,
             seasonal_period=int(period),
             preprocessing_signature=prepared.preprocessing_signature,
+            feature_plan=plan_obj, feature_columns=feature_plan_columns,
         )
         tuned = session.modeling_artifacts.get("tuning", {}).get(payload.model_id, {})
         tuned_matches = bool(tuned) and tuned.get("cohort_id") == plan.cohort_id
         tuned_params = tuned.get("best_params", {}) if tuned_matches else {}
-        preprocessing_warnings = list(prepared.warnings)
+        preprocessing_warnings = [*prepared.warnings, *feature_plan_warnings]
         if tuned and not tuned_params:
             preprocessing_warnings.append(
                 "Сохранённые tuned-параметры относятся к другому cohort и не применены."
@@ -1096,11 +1194,13 @@ def tune_modeling_candidate(
             transformations=session.preprocessing_transformations,
             scaling_recipe=session.preprocessing_scaling_recipe,
         )
+        plan_obj, feature_plan_columns, feature_plan_warnings = _session_feature_plan(session, prepared)
         plan = build_backtest_plan(
             validation, n_observations=len(prepared.series),
             fingerprint=context["fingerprint"], target_column=session.target_column,
             seasonal_period=int(period),
             preprocessing_signature=prepared.preprocessing_signature,
+            feature_plan=plan_obj, feature_columns=feature_plan_columns,
         )
         execution = execute_tuning_plan_with_artifacts(
             model_id=payload.model_id, model_name=model_info[0], family_id=model_info[1],
@@ -1109,7 +1209,7 @@ def tune_modeling_candidate(
             metric=payload.metric, random_state=payload.random_state,
             seasonal_periods=periods,
             fold_preprocessor=prepared.fold_preprocessor,
-            preprocessing_warnings=prepared.warnings,
+            preprocessing_warnings=[*prepared.warnings, *feature_plan_warnings],
         )
         result = execution.response
         promoted = _trace_backtest(
@@ -1215,11 +1315,13 @@ def _prepare_tuning_job_inputs(session, context, payload: ModelingJobStartReques
         transformations=session.preprocessing_transformations,
         scaling_recipe=session.preprocessing_scaling_recipe,
     )
+    plan_obj, feature_plan_columns, feature_plan_warnings = _session_feature_plan(session, prepared)
     plan = build_backtest_plan(
         session.modeling_artifacts["validation_strategy"],
         n_observations=len(prepared.series), fingerprint=context["fingerprint"],
         target_column=session.target_column, seasonal_period=int(period),
         preprocessing_signature=prepared.preprocessing_signature,
+        feature_plan=plan_obj, feature_columns=feature_plan_columns,
     )
     try:
         grid = prepare_tuning_grid(
@@ -1599,11 +1701,13 @@ def start_modeling_tuning(
         transformations=session.preprocessing_transformations,
         scaling_recipe=session.preprocessing_scaling_recipe,
     )
+    plan_obj, feature_plan_columns, feature_plan_warnings = _session_feature_plan(session, prepared)
     plan = build_backtest_plan(
         session.modeling_artifacts["validation_strategy"],
         n_observations=len(prepared.series), fingerprint=context["fingerprint"],
         target_column=session.target_column, seasonal_period=int(period),
         preprocessing_signature=prepared.preprocessing_signature,
+        feature_plan=plan_obj, feature_columns=feature_plan_columns,
     )
     try:
         prepared_grid = prepare_tuning_grid(
@@ -1698,11 +1802,13 @@ def step_modeling_tuning(
         transformations=session.preprocessing_transformations,
         scaling_recipe=session.preprocessing_scaling_recipe,
     )
+    plan_obj, feature_plan_columns, feature_plan_warnings = _session_feature_plan(session, prepared)
     plan = build_backtest_plan(
         session.modeling_artifacts["validation_strategy"],
         n_observations=len(prepared.series), fingerprint=context["fingerprint"],
         target_column=session.target_column, seasonal_period=int(period),
         preprocessing_signature=prepared.preprocessing_signature,
+        feature_plan=plan_obj, feature_columns=feature_plan_columns,
     )
     expected_signature = _tuning_job_signature(
         model_id=model_id, cohort_id=plan.cohort_id,

@@ -3067,6 +3067,14 @@ class BacktestFoldResult(BaseModel):
     rmsse_scale: Optional[float] = Field(
         None, gt=0, description="Train-only denominator used for fold RMSSE",
     )
+    feature_matrix: Optional[Dict[str, Any]] = Field(
+        None,
+        description=(
+            "Task 126: lineage fold-локальной feature-матрицы (plan_id, "
+            "matrix_hash, columns, future_known_columns, fit_policy) или None, "
+            "если план не применён к модели"
+        ),
+    )
     duration_ms: float = Field(..., ge=0)
     error: Optional[str] = None
 

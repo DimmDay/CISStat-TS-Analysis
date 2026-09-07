@@ -40,7 +40,12 @@ def test_registry_is_the_single_source_of_truth_for_production_actions():
         descriptor = MODEL_EXECUTION_REGISTRY.describe(model_id)
         assert descriptor["version"] == MODEL_EXECUTION_CONTRACT_VERSION
         assert descriptor["model_id"] == model_id
-        assert descriptor["input_kind"] == "univariate"
+        # Task 126: prophet -- единственный supervised-адаптер (capability
+        # supports_future_features для future_known/static регрессоров),
+        # остальные сертифицированные модели остаются univariate.
+        expected_input_kind = "supervised" if model_id == "prophet" else "univariate"
+        assert descriptor["input_kind"] == expected_input_kind
+        assert descriptor["supports_future_features"] is (model_id == "prophet")
         assert descriptor["fit_policy"] == "per_train_fold"
         assert descriptor["dependency_group"] == "classical"
         assert len(descriptor["signature"]) == 64

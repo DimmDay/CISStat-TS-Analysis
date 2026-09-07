@@ -4165,3 +4165,94 @@ ETS/ARIMA с явными order/trend (не двойной auto-поиск по�
   PreprocessingSpectralOverview.tsx/.test.tsx содержат также изменения
   97.4b (развёртывание конверта detail-ответа) — файл общий для обеих
   незакоммиченных задач.
+
+---
+
+## Аудит Task 126 — сдача Qwen_python_20260907_n3jc21r5f.zip (рецензия senior-разработчика)
+
+Дата: 2026-09-07. База аудита: `main @ 9935252` (ZIP из `docs/`). Файлы распакованы, промапплены в структуру репозитория, тесты исполнены; деревом репозитория изменения не становились (после проверок удалены).
+
+### Состав сдачи (5 файлов, пути в ZIP не сохранены)
+
+1. Ядро `FeaturePlan`/`FoldFeatureEngine`/`validate_feature_plan_for_model` (307 строк) → соответствует `apps/api/feature_plan.py`.
+2. Prophet-интеграция (162 строки) → соответствует `apps/api/model_impls/prophet_features.py`.
+3. «Schema v7 additions» (56 строк) — отдельные pydantic-модели `FeaturePlanOut`/`ModelExecutionContractV7`/`BacktestResponseV7`, никуда не включены.
+4–5. Два тест-файла (268 и 200 строк) → `tests/unit/test_feature_plan.py`, `tests/unit/test_prophet_features.py`.
+
+### Вердикт: НЕ ПРИНЯТЬ. Сдача не соответствует инструкциям тимлида и AGENTS.md.
+
+### Блокер 1 — тесты не запускались коллегой (нарушение TDD)
+
+- Тесты Prophet-интеграции не собираются: `ImportError: cannot import name 'ModelExecutionRequest' from 'apps.api.schemas'` — класс фактически живёт в `apps/api/model_execution.py`; `apps/api/schemas.py` его не экспортирует. Ошибка импорта на этапе collection — файл физически не мог быть запущен.
+- Ядро FeaturePlan: **3 из 15 тестов падают** на собственной реализации автора, включая ключевой leakage-тест `test_no_future_leakage_in_lags` (ожидание 13.0, факт 11.0 — медианная импутация вместо хвоста train) и `test_fit_transform_basic` (тест ожидает NaN первой строки, имьютация её заполняет). В `test_imputation_on_train` арифметическая ошибка в ожидании (10.5 против фактической медианы 11.0). Признак того, что RED→GREEN-цикл не был завершён, а тесты писались без прогона.
+
+### Блокер 2 — реальная утечка в ядре (прямая противоположность критерию завершения)
+
+Runtime-эксперименты (train [10..13], будущее [14,15,16]):
+- `transform(полный df)` кладёт в historic-лаги для будущих строк **реальные будущие значения** `[13, 14, 15]` — oracle-утечка, ровно то, что задача запрещает. Docstring обещает «для test-данных признаки будут NaN» — код этого не делает; `shift()`/`rolling()` считаются по всему переданному df без границы train/future.
+- `transform(только test)` даёт для первой будущей точки импутированную медиану (11.0) вместо последнего значения train (13.0): движок не хранит хвост train, следовательно **единый рекурсивный контракт (лаги будущего только из прогнозов) с этим API недостижим**. Параметр `is_train` — мёртвый.
+
+### Блокер 3 — мёртвые пути ядра
+
+- Любой план с `kind="categorical"` падает `KeyError` в `fit()`: `_build_historic_features` никогда не строит категориальные колонки, а encoder фитайнится по `historic_df[self._categorical_features]`. Train-only one-hot не реализован, OneHotEncoder — недостижимый код.
+- `kind="calendar"` и `kind="numeric"` объявлены в типах, но веток построения нет → `KeyError` в `fit()`. Роли разделены только словарями-геттерами; рабочее разделение ролей в матрицах отсутствует.
+
+### Блокер 4 — отсутствие всей интеграционной части
+
+- **Cohort**: FeaturePlan не включён в cohort — нет правок `backtesting.py` (при том, что `build_backtest_plan` уже принимает `feature_contract` в cohort_id/fingerprint), `model_execution.py`, фолд-цикла `run_backtest_plan`, тюнинга и jobs. «Фолд-local» не подключён ни к одному реальному пути исполнения.
+- **Prophet**: написан параллельный `_prophet_fit_predict_with_features` вместо расширения существующего адаптера Task 124 (`apps/api/model_impls/prophet.py`, registry-исполнитель); в `MODEL_EXECUTION_REGISTRY` не зарегистрирован, `build_prophet_features_from_plan` никем не вызывается. Static-категориальные регрессоры (строки) уронили бы Prophet — кодирования нет.
+- **Schema v7**: реальный механизм — `MODELING_ARTIFACT_SCHEMA_VERSION = 6` и `_migrate_modeling_artifacts()` в `routers/modeling_session.py`; в сдаче только отдельные V7-модели, никем не импортируемые; `BacktestResponseV7` не наследует реальный `BacktestResponse` (несмотря на собственный комментарий «inherited»). Миграции артефактов 6→7, инвалидации cohort, проверки session/tuning/job путей — НЕТ.
+- **Recursive/direct**: контракт multi-step стратегий отсутствует полностью; capability `direct` и запрет direct без явной поддержки — не реализованы (при том, что `requires_train_features`/`supports_future_features` в платформе уже есть и гейтируются fail-closed, а валидатор коллеги возвращает мягкие warnings и никем не вызывается).
+- **Importance**: `get_feature_importance_matrix` — повторный `transform()` по полному df (с утечкой из Блокера 2); привязки к точной fold-матрице/OOF-артефактам/lineage нет.
+
+### Приёмка формата (AGENTS.md)
+
+- В ZIP пути репозитория не сохранены (5 файлов с генерированными именами) — отступление от установ Practice предшествующих задач.
+- Запись в worklog2.md не приложена — прямое нарушение протокола.
+
+### Что принято
+
+- `FeatureSpec`/`FeaturePlan` как иммутабельные датаклассы с детерминированным sha256-fingerprint — разумная заготовка идентичности плана; 12/15 валидационных тестов (роли, kinds, fingerprint) проходят.
+- Контракт «Prophet получает только future_known+static, с проверкой длин train/future» на уровне сигнатуры соответствует указанию.
+- `scikit-learn` уже в `requirements.txt` — новых зависимостей не требуется.
+
+### Обязательные условия повторной сдачи
+
+1. Устранить утечку: движок хранит хвост train; historic-признаки будущего строятся только из хвоста train + рекурсивных прогнозов; явная граница train/future в API; честные RED-тесты на oracle-утечку.
+2. Достроить ядро: рабочие ветки lag/rolling/calendar/numeric/categorical, train-only imputation/scaling/one-hot (fail-closed вместо warnings — платформенный стандарт), fresh-инстанс на каждый fold.
+3. Интеграция: FeaturePlan как feature_contract в `build_backtest_plan`/cohort_id, fold-цикл `run_backtest_plan`, расширение существующего Prophet-адаптера, capability-гейты recursive/direct в registry.
+4. Миграция `MODELING_ARTIFACT_SCHEMA_VERSION` 6→7 с инвалидацией cohort и прогоном session/tuning/job путей.
+5. Исправить импорты, довести все тесты до GREEN на реальном прогоне, приложить worklog2.md и ZIP с сохранением структуры каталогов.
+
+---
+
+## Task 126 — Leakage-safe supervised FeaturePlan (повторная реализация senior-разработчика)
+
+Дата: 2026-09-08. База: `main @ 27a3d32` (Task 97.4c Hotfix). Полная ре-имплементация с нуля по критериям тимлида; ошибки отклонённой сдачи Qwen (см. рецензию выше) устранены по построению. TDD: RED-тесты зафиксированы до реализации, весь новый контур доведён до GREEN на реальном прогоне. Commit/push в main не выполнялся.
+
+### Состав (5 исходных файлов + 6 тест-файлов)
+
+1. `apps/api/feature_plan.py` (NEW, ~860 строк) -- ядро: `FeatureSpec`/`FeaturePlan` (иммутабельные, детерминированный sha256-fingerprint и plan_id=`fp_<hex12>`), `build_feature_plan_from_metadata` (fail-closed-парсер каталога «Генерация признаков»: роли строго по `known_in_advance`+`static`, дубликаты/stale-каталог/unknown-family/lookback>max_lookback отклоняются), `empty_feature_plan`, `FoldFeatureMatrixBuilder` (fresh-инстанс на fold, одноразовый), `RecursiveFeatureState`, `bind_feature_importance`.
+2. `apps/api/backtesting.py` -- `BacktestPlan` получил `feature_plan`/`feature_columns`; `build_backtest_plan` принимает план и кладёт `plan.feature_contract()` в `cohort_contract` (cohort_id производен от плана; без плана -- legacy-контракт, старые cohort_id не меняются); `run_backtest_plan` строит fold-матрицы fresh-билдером на каждый fold, гейтит regressor-канал capability-дескриптором (`univariate`/`gated`/`granted`/`none`+`legacy-injected`), пишет `fold["feature_matrix"]` (lineage: plan_id/fingerprint/matrix_hash/columns/future_known_columns/fit_policy="per_train_fold"), warning'и -- в общий пул.
+3. `apps/api/model_impls/prophet.py` -- расширение СУЩЕСТВУЮЩЕГО адаптера Task 124 (не параллельная копия): `_validated_regressors` (fail-closed: симметрия train/future, длины, NaN/Inf) + `add_regressor` до fit; без регрессоров поведение Task 124 не изменено.
+4. `apps/api/model_execution.py` -- `prophet` определение: `input_kind="supervised"`, `supports_future_features=True` (единственный supervised-адаптер cohort); `_prophet_executor` прокидывает regressor-канал.
+5. `apps/api/routers/modeling_session.py` -- `MODELING_ARTIFACT_SCHEMA_VERSION 6→7`; миграция: активный `feature_contract` без `plan_id`+`fingerprint` инвалидируется (v6-артефакты с policy=none остаются валидны); `_session_feature_plan(session, prepared)` -- верифицирует сохранённую metadata генерации (source_column==target, колонки присутствуют/числовые/конечные/по длине ряда) и либо даёт план в cohort, либо явно понижает до legacy с warning'ом; план включён во ВСЕ 6 путей `build_backtest_plan` (baselines, backtest, sync-tuning, job-inputs, job-start, job-step), warning'и -- в preprocessing_warnings.
+6. `apps/api/schemas.py` -- `BacktestFoldResult.feature_matrix: Optional[Dict]` (lineage доходит до API/фронтенда).
+
+Тесты: NEW `tests/unit/test_feature_plan.py` (20 -- построение/роли/kinds/fingerprint/политики), `tests/unit/test_feature_plan_folds.py` (32 -- каузальность lag/rolling внутри fold, отсутствие y[t] в строке, warmup-дроп, future-канал только future_known+static, recursive-контракт из хвоста train и иммунитет к фактам теста, NaN-экзогены, fold-local imputer/scaler/one-hot, static-константность, matrix_hash/lineage/importance-привязка, empty-план), `tests/unit/test_feature_plan_backtest.py` (10 -- cohort-привязка, только future_known в request, capability-гейты, univariate-warning, historic-only без future-payload, legacy-эквивалентность, importance↔fold-матрица), `tests/unit/test_prophet_regressors.py` (7 -- regressor-контракт + backcompat). UPDATED `test_prophet_adapter.py`/`test_model_execution_contract.py` (prophet supervised-capability), `tests/api/test_modeling_workflow.py` (3 миграционных теста v6→v7 + NEW E2E: план в session-cohort, naive-гейт с warning, Prophet-регрессор fold-local lineage, stale-колонка понижает cohort с warning, v7-миграция инвалидирует план без plan_id).
+
+### Как закрыты блокеры рецензии Qwen
+
+- Блокер 2 (oracle-утечка): derived-признаки пересчитываются каузально ВНУТРИ train-среза fold'а; путь материализации historic-признака будущего в API отсутствует -- `future_matrix()` строится только из future_known/static; рекурсия -- через `RecursiveFeatureState` (хвост train + прогнозы; `next_row` игнорирует факты теста по построению, покрыто distractor-тестом).
+- Блокер 3 (мёртвые ветки): реализованы lag/rolling(mean|std|sum|min|max)/difference + numeric/categorical exogenous + calendar/trend/fourier; one-hot фитуется на train-категориях fold'а (порядок первого появления), unknown future-категория -- нулевой вектор; imputation -- train-медиана fold'а (NaN future-known запрещены); scaler -- train mean/std (ddof=0) по флагу `scale_exogenous`; статусы статистик -- `statistics()` для аудита fold-local fit.
+- Блокер 4 (интеграция): FeaturePlan -- в cohort_contract/cohort_id (включая tuning/job-пути через общий `build_backtest_plan`); единый recursive-контракт (`RecursiveFeatureState`) с policy=recursive по умолчанию; direct -- только явной policy; capability-гейт: без `supports_future_features` регрессоры не передаются + warning (плюс registry-гейты `ModelExecutionRegistry.execute`); importance -- `bind_feature_importance` строго к matrix_hash той самой fold-матрицы (чужие колонки отклоняются).
+- Блокер 1 (TDD/импорты): все импорты реальные, полный прогон GREEN (1440 passed; базлайн 1365 + 75 новых/обновлённых). Snapshot-плагин среды -- syrupy по requirements-dev.txt.
+- Формат сдачи: ZIP с сохранением структуры каталогов + настоящая запись в worklog2.md.
+
+### Верификация
+
+- `python -m pytest tests/` -- **1440 passed** (включая новые 73 тест-функции Task 126 и обновлённые контракты).
+- `python -m compileall apps` -- OK; `from apps.api.main import app` -- OK.
+- Фронтенд не затронут (0 содержательных diff в embedded/standalone/packages); Jest-прогон не информативен в среде без node_modules и не требовался.
+- Примечание по среде: установлены pinned-зависимости из apps/api/requirements.txt (prophet==1.4.0, statsforecast==2.1.1) и requirements-dev.txt (syrupy, fakeredis, PyWavelets, pandera, arch, ruptures, missingno) -- без них часть существующего suite не собирается независимо от Task 126.
+- В рабочем дереве присутствуют посторонние mode-изменения (100644→100755) и чужие удаления `apps/*/app/upload/page.tsx` -- к Task 126 не относятся, в сдачу не включены, не откатывались.

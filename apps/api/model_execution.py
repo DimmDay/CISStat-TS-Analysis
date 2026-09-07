@@ -529,6 +529,11 @@ def _prophet_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
         seasonality_prior_scale=float(request.params.get("seasonality_prior_scale", 10.0)),
         seasonality_mode=str(request.params.get("seasonality_mode", "additive")),
         country_holidays=request.params.get("country_holidays"),
+        # Task 126: платформа гейтит состав (future_known/static only) и
+        # capability; адаптер остаётся role-agnostic и валидирует только
+        # симметрию/длины/конечность (fail-closed).
+        train_features=request.train_features or None,
+        future_features=request.future_features or None,
     )
     return ModelExecutionResult(forecast=forecast, lower_interval=lower, upper_interval=upper)
 
@@ -598,6 +603,11 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         model_id="prophet", family_id="structural",
         adapter_id="prophet-native", executor=_prophet_executor,
         actions=_TUNABLE, engine="prophet", required_packages=("prophet",),
+        # Task 126: единственный supervised-адаптер cohort'а -- принимает
+        # future_known/static регрессоры fold-local FeaturePlan. Historic
+        # (target-derived) колонки не проходят capability-гейт платформы.
+        input_kind="supervised",
+        supports_future_features=True,
         supports_prediction_intervals=True,
         resource_capabilities=_CLASSICAL_RESOURCES,
     ),

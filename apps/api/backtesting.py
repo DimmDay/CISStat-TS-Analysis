@@ -25,6 +25,11 @@ from apps.api.model_execution import (
     fixed_origin_baseline_predict,
     legacy_predictor_registry,
 )
+from apps.api.feature_plan import (
+    FoldFeatureMatrixBuilder,
+    FeaturePlan,
+    POLICY_NONE,
+)
 from apps.api.schemas import BacktestMetrics
 
 
@@ -91,6 +96,8 @@ class BacktestPlan:
     preprocessing_signature: str = "none"
     objective: str = "level_forecast"
     cohort_contract: dict[str, Any] = field(default_factory=dict)
+    feature_plan: Optional[FeaturePlan] = None
+    feature_columns: dict[str, list[float]] = field(default_factory=dict)
 
 
 class PreparedFoldProtocol(Protocol):
@@ -116,6 +123,8 @@ def build_backtest_plan(
     series_fingerprints: Optional[Mapping[str, str]] = None,
     feature_contract: Optional[Mapping[str, Any]] = None,
     metric_policy: Optional[Mapping[str, Any]] = None,
+    feature_plan: Optional[FeaturePlan] = None,
+    feature_columns: Optional[Mapping[str, Sequence[float]]] = None,
 ) -> BacktestPlan:
     """Validate and freeze the exact folds produced by EDA."""
     strategy = str(validation.get("strategy", ""))
@@ -186,9 +195,17 @@ def build_backtest_plan(
     series_scope = dict(series_fingerprints or {target_column: fingerprint})
     if not series_scope or not all(series_scope.values()):
         raise BacktestExecutionError("Cohort требует fingerprint каждого входного ряда")
-    features = dict(feature_contract or {
-        "historic": [], "future_known": [], "static": [], "policy": "none",
-    })
+    # Task 126: иммутабельный FeaturePlan -- единственный источник feature_contract.
+    # Без плана контракт остаётся legacy-формы (policy=none), поэтому cohort_id
+    # уже существующих бэктестов не меняется.
+    if feature_plan is not None:
+        features = feature_plan.feature_contract()
+        if not feature_plan.features:
+            feature_plan = None
+    else:
+        features = dict(feature_contract or {
+            "historic": [], "future_known": [], "static": [], "policy": "none",
+        })
     metrics = dict(metric_policy or {
         "metrics": ["mae", "rmse", "mape", "mase", "smape", "rmsse"],
         "primary": "rmse",
@@ -222,6 +239,11 @@ def build_backtest_plan(
         n_observations=n_observations,
         preprocessing_signature=preprocessing_signature,
         objective=objective, cohort_contract=cohort_contract,
+        feature_plan=feature_plan,
+        feature_columns={
+            str(name): [float(value) for value in column]
+            for name, column in (feature_columns or {}).items()
+        },
     )
 
 
@@ -329,6 +351,40 @@ def _aggregate_metrics(folds: list[dict[str, Any]]) -> BacktestMetrics:
     )
 
 
+def _feature_execution_context(
+    plan: BacktestPlan, execution_contract: Mapping[str, Any], model_id: str,
+) -> tuple[Optional[FeaturePlan], str, list[str]]:
+    """Resolve the Task 126 capability gates ONCE per run (not per fold).
+
+    Returns (plan, mode, warnings) where mode is:
+    ``none``     -- нет активного плана: legacy-путь без изменений;
+    ``univariate`` -- модель без regressor-интерфейса: только warning;
+    ``gated``    -- supervised, но без supports_future_features: матрицы
+                    строятся (lineage/подготовка к ML), regressors не идут;
+    ``granted``  -- supervised + supports_future_features: полный канал.
+    """
+    feature_plan = plan.feature_plan
+    if feature_plan is None or not feature_plan.features:
+        return None, "none", []
+    input_kind = execution_contract.get("input_kind")
+    if input_kind == "univariate":
+        return feature_plan, "univariate", [
+            f"FeaturePlan '{feature_plan.plan_id}': модель '{model_id}' не принимает "
+            f"регрессоры (input_kind=univariate); исключены: "
+            f"{feature_plan.future_known_names() + feature_plan.static_names()}"
+        ]
+    if input_kind not in {"supervised", "panel"}:
+        return feature_plan, "none", []
+    if not execution_contract.get("supports_future_features"):
+        return feature_plan, "gated", [
+            f"FeaturePlan '{feature_plan.plan_id}': модель '{model_id}' не объявила "
+            f"supports_future_features; регрессоры "
+            f"{feature_plan.future_known_names() + feature_plan.static_names()} "
+            "исключены (capability-гейт), fold-матрицы записываются для аудита"
+        ]
+    return feature_plan, "granted", []
+
+
 def run_backtest_plan(
     *, model_id: str, model_name: str, family_id: str,
     series: list[float], labels: list[str], plan: BacktestPlan,
@@ -405,12 +461,25 @@ def run_backtest_plan(
     parameters = dict(params or {})
     if seasonal_periods is not None and "tbats_seasonal_periods" not in parameters:
         parameters["tbats_seasonal_periods"] = [int(value) for value in seasonal_periods]
+    feature_plan, feature_mode, feature_warnings = (
+        _feature_execution_context(plan, execution_contract, model_id)
+    )
+    if predictors is not None:
+        # Legacy injected-предикторы не принимают regressor-канал Task 126.
+        feature_mode = "none" if feature_mode == "none" else "legacy-injected"
+        if feature_mode == "legacy-injected":
+            feature_warnings.append(
+                f"FeaturePlan '{feature_plan.plan_id}' не применён: injected-предиктор "
+                f"модели '{model_id}' вне типизированного registry-контракта"
+            )
+            feature_plan = None
     folds: list[dict[str, Any]] = []
     adapter_warnings: list[str] = []
     started = time.monotonic()
     for fold in plan.folds:
         raw_train = [values[index] for index in fold.train_indices]
         fold_started = time.monotonic()
+        feature_lineage: Optional[dict[str, Any]] = None
         try:
             if fold_preprocessor is None:
                 y_train = raw_train
@@ -435,6 +504,27 @@ def run_backtest_plan(
                         fold.train_indices[-1] + 1, fold.test_indices[-1] + 1,
                     )
                 ]
+                supervised_train_features: Mapping[str, Sequence[float]] = {}
+                supervised_future_features: Mapping[str, Sequence[float]] = {}
+                if feature_plan is not None and feature_mode in {"gated", "granted"}:
+                    # Fresh-инстанс на каждый fold: все статистики трансформеров
+                    # (imputer/scaler/encoder) фитуются заново на train-срезе fold'а.
+                    builder = FoldFeatureMatrixBuilder(feature_plan).fit_fold(
+                        values, labels, fold, feature_columns=plan.feature_columns,
+                    )
+                    feature_lineage = builder.lineage_record(fold=fold.fold)
+                    if feature_mode == "granted":
+                        future_matrix = builder.future_matrix()
+                        if future_matrix["columns"]:
+                            train_known = builder.train_known_matrix()
+                            supervised_train_features = {
+                                name: [row[position] for row in train_known["rows"]]
+                                for position, name in enumerate(train_known["columns"])
+                            }
+                            supervised_future_features = {
+                                name: [row[position] for row in future_matrix["rows"]]
+                                for position, name in enumerate(future_matrix["columns"])
+                            }
                 execution_result = MODEL_EXECUTION_REGISTRY.execute(
                     model_id,
                     ModelExecutionRequest(
@@ -443,6 +533,8 @@ def run_backtest_plan(
                         objective=plan.objective,
                         seasonal_period=seasonal_period,
                         params=parameters,
+                        train_features=supervised_train_features,
+                        future_features=supervised_future_features,
                         train_timestamps=train_timestamps,
                         future_timestamps=future_timestamps,
                         random_state=random_state,
@@ -489,6 +581,7 @@ def run_backtest_plan(
             "test_end_label": fold.test_end_label or labels[fold.test_indices[-1]],
             "metrics": metrics.model_dump(mode="json"), "predictions": predictions,
             "mase_scale": mase_scale, "rmsse_scale": rmsse_scale,
+            "feature_matrix": feature_lineage,
             "duration_ms": round((time.monotonic() - fold_started) * 1000, 3),
             "error": None,
         })
@@ -496,6 +589,7 @@ def run_backtest_plan(
     oof = [point for fold in folds for point in fold["predictions"]]
     warnings: list[str] = list(preprocessing_warnings or [])
     warnings.extend(adapter_warnings)
+    warnings.extend(feature_warnings)
     if aggregate.mape is None:
         warnings.append("MAPE не определена: во всех OOF-фактах нулевые значения.")
     if aggregate.mase is None:
