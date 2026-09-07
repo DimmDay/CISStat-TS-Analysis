@@ -1,7 +1,19 @@
 import "@testing-library/jest-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-import { PreprocessingSpectralOverview, type PreprocessingSpectralProfile } from "./PreprocessingSpectralOverview";
+import {
+  PreprocessingSpectralOverview,
+  type PreprocessingSpectralProfile,
+  type PreprocessingSpectralProfileResponse,
+} from "./PreprocessingSpectralOverview";
+import { __clearChartDetailCacheForTests } from "../hooks/useChartDetailData";
+
+// Реальный эндпоинт /dataset/preprocessing/spectral-profile возвращает
+// конверт статуса проверки {mode, status, status_reason, profile} — его же
+// получает и detail-дозагрузка (§6.3).
+function envelope(profile: PreprocessingSpectralProfile): PreprocessingSpectralProfileResponse {
+  return { mode: "auto", status: "done", status_reason: null, profile };
+}
 
 
 export const SPECTRAL_PROFILE: PreprocessingSpectralProfile = {
@@ -63,13 +75,15 @@ describe("PreprocessingSpectralOverview", () => {
 describe("PreprocessingSpectralOverview: дозагрузка detail_level (Task 97.3, spec_max_graf_fix.md §6.3)", () => {
   beforeEach(() => {
     global.fetch = jest.fn();
+    // кэш detail-хука модульный — изолируем тесты друг от друга
+    __clearChartDetailCacheForTests();
   });
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
   it("свёрнутый Обзор не ходит в сеть; раскрытие CWT-вкладки запрашивает expanded с параметрами", async () => {
-    const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => SPECTRAL_PROFILE });
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => envelope(SPECTRAL_PROFILE) });
     global.fetch = fetchMock as unknown as typeof fetch;
     render(
       <PreprocessingSpectralOverview
@@ -101,7 +115,7 @@ describe("PreprocessingSpectralOverview: дозагрузка detail_level (Task
   });
 
   it("раскрытие FFT и Welch не дозагружает данные (§6.3.6)", async () => {
-    const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => SPECTRAL_PROFILE });
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, status: 200, json: async () => envelope(SPECTRAL_PROFILE) });
     global.fetch = fetchMock as unknown as typeof fetch;
     render(<PreprocessingSpectralOverview profile={SPECTRAL_PROFILE} loading={false} error={null} noDataset={false} />);
 
@@ -115,5 +129,51 @@ describe("PreprocessingSpectralOverview: дозагрузка detail_level (Task
     await new Promise((resolve) => setTimeout(resolve, 30));
     expect(fetchMock).not.toHaveBeenCalled();
     expect(document.querySelector("section > .absolute")).not.toBeNull();
+  });
+
+  // Регресс Task 97.4b (полевая ошибка Этапа 3): эндпоинт возвращает конверт
+  // {mode, status, profile}; хук кладёт его в data сырым — WaveletView читал
+  // envelope.wavelet (undefined) и падал на undefined.map → белое поле вместо
+  // скалограммы после дозагрузки.
+  it("detail-ответ-конверт разворачивается: скалограмма рендерит развёрнутые точки", async () => {
+    const detailProfile: PreprocessingSpectralProfile = {
+      ...SPECTRAL_PROFILE,
+      wavelet: [
+        { x: "2010-01-01T00:00:00", index: 0, period: 12, power: 42.75, normalized_power: 0.9, edge_affected: true },
+        { x: "2015-01-01T00:00:00", index: 60, period: 12, power: 5, normalized_power: 1, edge_affected: false },
+      ],
+    };
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => envelope(detailProfile),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    render(<PreprocessingSpectralOverview profile={SPECTRAL_PROFILE} loading={false} error={null} noDataset={false} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "CWT" }));
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+
+    // ячейка DETAIL-скалограммы с уникальной мощностью 42,75 (ru-RU формат);
+    // compact-фолбэк содержит только мощности 4 и 5
+    await screen.findByTitle((_, element) => (element?.getAttribute("title") ?? "").includes("42,75"));
+    expect(screen.getByRole("img", { name: "CWT скалограмма" })).toBeInTheDocument();
+    errorSpy.mockRestore();
+  });
+
+  it("ошибка дозагрузки сохраняет компактную скалограмму (graceful degradation, §6.3.6)", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 500, json: async () => ({ detail: "нет" }) });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    render(<PreprocessingSpectralOverview profile={SPECTRAL_PROFILE} loading={false} error={null} noDataset={false} />);
+
+    fireEvent.click(screen.getByRole("tab", { name: "CWT" }));
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    // компактные ячейки (мощности 4 и 5) остались на месте
+    expect(screen.getAllByTitle((_, element) => (element?.getAttribute("title") ?? "").includes("мощность")).length).toBeGreaterThan(0);
+    errorSpy.mockRestore();
   });
 });

@@ -4061,3 +4061,50 @@ ETS/ARIMA с явными order/trend (не двойной auto-поиск по�
 - `tests/test_modeling_spec.py`
 - `tests/unit/test_model_readiness_candidates.py`
 - `tests/unit/test_modeling_mvp_certification.py`
+
+---
+
+## Task 97.4b — Hotfix: детализация expanded-графиков роняет рендер (конверт ответа эндпоинта)
+
+- Синхронизация до 4a2bd85 (сертификация Task 124–125; в апстриме также
+  08a4482 = применённый тимлидом hotfix 97.4a); npm ci (окружение
+  переустанавливалось). Симптом из браузера: Обзор «Декомпозиция ряда»,
+  вкладка «Компоненты» — первичный compact-график корректен, скрытие
+  корректно, через ~2 с (завершение detail-дозагрузки) рендер исчезает —
+  пустое белое поле с живой легендой; схлопывание возвращает график.
+  Вкладки «Сезонный профиль»/«ACF остатка» корректны (без дозагрузки).
+- Причина: в пилотах Этапа 3 результат useChartDetailData передавался в
+  график сырым ответом эндпоинта. Для /dataset/preprocessing/decomposition-profile
+  и /dataset/preprocessing/spectral-profile это КОНВЕРТ статуса проверки
+  {mode, status, status_reason, profile} (контейнер хранит конверт и
+  передаёт в Обзор развёрнутый .profile), а «голый» профиль отдаёт только
+  /dataset/eda-structural-breaks (поэтому structural-breaks не затронут).
+  Следствие: Decomposition «Компоненты» — LineChart получал конверт,
+  profile.points === undefined → пустое поле с легендой; Spectral CWT —
+  WaveletView падал на envelope.wavelet.map → белое поле (тот же дефект,
+  не вошедший в отчёт). Тесты Этапа 3 прошли из-за мока голым профилем.
+- TDD: +4 теста. RED ровно на 2 регресс-тестах «detail-ответ-конверт
+  разворачивается…»: Decomposition — через recharts-зонд (jest.mock
+  recharts с JSON-пробой: в jsdom DOM recharts пуст, контролируем, какой
+  payload дошёл до графика как data; ассерт: в data НЕТ полей конверта,
+  ЕСТЬ detail-точка observed:42.25); Spectral — реальный краш
+  TypeError: Cannot read properties of undefined (reading 'map') на
+  profile.wavelet. Ещё 2 теста — graceful degradation (ошибка дозагрузки
+  сохраняет компактный график) — зелёные сразу, фиксируют §6.3.6.
+  Моки прежних detail-тестов переведены с голого профиля на конверт;
+  в beforeEach добавлена очистка модульного кэша хука
+  (__clearChartDetailCacheForTests).
+- Фикс: 2 файла, типизация + развёртывание конверта на границе:
+  PreprocessingDecompositionOverview.tsx — useChartDetailData<
+  PreprocessingDecompositionProfileResponse>, график получает
+  componentsDetail.data?.profile ?? profile;
+  PreprocessingSpectralOverview.tsx — useChartDetailData<
+  PreprocessingSpectralProfileResponse>, WaveletView получает
+  waveletDetail.data?.profile ?? profile. Хук и бэкенд не менялись.
+- Верификация: полный jest 89 suites / **824 passed / 0 failed**
+  (= базлайн 4a2bd85 + 4 новых теста); typecheck:all exit 0; production
+  builds embedded + standalone OK (обе «Compiled successfully», 13/13).
+  Backend не затронут (4 файла packages/ui) — pytest-базлайн в силе.
+- Коммит/push не выполнялись. Изменённые файлы упакованы в
+  download/Task_97.4b_ExpandableCharts_Hotfix_DetailEnvelope.zip
+  (5 файлов: 2 Обзора + 2 тест-файла + worklog2.md).

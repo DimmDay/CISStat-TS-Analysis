@@ -155,7 +155,11 @@ function PreprocessingDecompositionOverviewInner({ profile, loading, error, noDa
   // единственной с плотным рядом точек. Хук до ранних return'ов.
   // fingerprint не нужен: контейнер «Предобработки» инвалидирует профиль
   // по смене target-колонки (column входит в params и в ключ кэша).
-  const componentsDetail = useChartDetailData<PreprocessingDecompositionProfile>({
+  // Регресс 97.4b: эндпоинт возвращает конверт статуса
+  // PreprocessingDecompositionProfileResponse {mode, status, profile} —
+  // разворачиваем .profile, иначе график получает конверт вместо профиля
+  // (profile.points === undefined → пустое поле с живой легендой).
+  const componentsDetail = useChartDetailData<PreprocessingDecompositionProfileResponse>({
     path: "/dataset/preprocessing/decomposition-profile",
     profileKey: "decomposition-components",
     params: { column: profile?.column },
@@ -179,7 +183,7 @@ function PreprocessingDecompositionOverviewInner({ profile, loading, error, noDa
     <div role="tablist" aria-label="Графики декомпозиции" className="flex shrink-0 flex-wrap gap-1.5 border-b border-neutral-100 px-4 py-2">
       {TABS.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${view === tab.id ? "border-neutral-300 bg-neutral-200 text-neutral-800" : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"}`}>{tab.label}</button>)}
     </div>
-    {view === "components" && <ExpandableChartPanel chartId="decomposition-components" title="Компоненты STL">{componentsDetail.loading && <div aria-hidden="true" className="absolute left-0 right-0 top-0 z-30 h-0.5 animate-pulse bg-brand" />}<ComponentsChart profile={componentsDetail.data ?? profile} /></ExpandableChartPanel>}
+    {view === "components" && <ExpandableChartPanel chartId="decomposition-components" title="Компоненты STL">{componentsDetail.loading && <div aria-hidden="true" className="absolute left-0 right-0 top-0 z-30 h-0.5 animate-pulse bg-brand" />}<ComponentsChart profile={componentsDetail.data?.profile ?? profile} /></ExpandableChartPanel>}
     {view === "seasonal" && <ExpandableChartPanel chartId="decomposition-seasonal" title="Сезонный профиль STL"><SeasonalChart profile={profile} /></ExpandableChartPanel>}
     {view === "acf" && <ExpandableChartPanel chartId="decomposition-acf" title="ACF остатка STL"><ResidualAcfChart profile={profile} /></ExpandableChartPanel>}
     {view === "diagnostics" && <Diagnostics profile={profile} />}
