@@ -30,7 +30,7 @@ class ModelJobContractError(ValueError):
 _DEPENDENCY_GROUPS: dict[ModelDependencyGroup, dict[str, Any]] = {
     "classical": {
         "install_extra": "classical",
-        "packages": ["numpy", "statsmodels", "scipy", "prophet"],
+        "packages": ["numpy", "statsmodels", "scipy", "prophet", "statsforecast"],
     },
     "ml": {
         "install_extra": "ml",

@@ -3738,3 +3738,227 @@ worklog2.md — сброшено через `reset --hard`). Дерево чис
   download/Task_97.4a_ExpandableCharts_Hotfix_ChartRenderFix.zip
   (3 файла: ExpandableChartPanel.tsx, ExpandableChartPanel.test.tsx,
   worklog2.md).
+
+---
+
+## Task 125 — TBATS production vertical slice
+
+### Синхронизация
+
+По прямому указанию тимлида выполнен `git reset --hard` до
+`6b3ce89f3bdad1ccd092a396350c8ca0e148765c` ("Task 124 — Prophet production
+vertical slice"). Подтверждено: тимлид закоммитил ровно тот набор файлов, что
+был сдан в предыдущей задаче, без правок. Backend на этом коммите: 1340/1340
+PASS. После этого начата Task 125.
+
+### Повторная синхронизация на 08a4482 и проверка на затирание работы команды
+
+После первой сдачи Task 125 (ZIP на базе `6b3ce89`) тимлид указал
+синхронизироваться до `08a448214296b408c139b2cecb2b6df1e5b45cec` и явно
+предупредил: "твоя реализация Task 125 может затереть работу команды".
+Перед сбросом сохранён `git diff` и копии двух новых файлов в `/home/claude`
+(вне репозитория) для последующей сверки. `git log 6b3ce89..08a4482` показал
+6 коммитов команды — Task 97.1–97.4a (Overview Graph Collapse/Expand,
+чисто frontend `packages/ui/*`) + `spec_max_graf_fix` — ни один не назван
+Task 125 и не касается Modeling. Однако `git diff --stat 6b3ce89..08a4482`
+неожиданно показал `apps/api/model_impls/tbats.py` и
+`tests/unit/test_tbats_adapter.py` как уже добавленные — оба оказались
+закоммичены внутри `08a4482` ("Hotfix: Overview charts..."), побайтово
+идентичны сданному мной ZIP (проверено `diff` с сохранённой копией). Похоже,
+тимлид вручную перенёс эти два НОВЫХ файла из ZIP в коммит вместе с
+несвязанным frontend-хотфиксом, но не перенёс остальные 15 изменённых файлов
+(`model_execution.py` на `08a4482` НЕ содержит регистрацию `tbats` — проверено
+`grep`). Все 15 файлов, которые правит Task 125, оказались побайтово
+идентичны состоянию на `6b3ce89` (`git diff --stat 6b3ce89 08a4482 -- <file>`
+пуст для каждого) — команда их не трогала. Это значит:
+- Реального риска "затереть работу команды" в этих 15 файлах не было — команда
+  их не касалась, база не разошлась.
+- Сохранённый ранее патч (15 файлов, без двух новых) применился к `08a4482`
+  чисто (`git apply --check` — 0 ошибок), без единого конфликта.
+- Два уже закоммиченных новых файла НЕ пересоздавались повторно — просто
+  сверены байт-в-байт с моей версией (идентичны), чтобы не задваивать историю.
+- Запись Task 125 в `worklog2.md` (эта секция) добавлена в конец файла ПОСЛЕ
+  существующей записи Task 97.4a, а не вместо неё — предыдущая версия патча
+  на `worklog2.md` пересобрана вручную, т.к. её контекст (конец файла) успел
+  измениться из-за записей команды.
+
+### Что сделано
+
+TBATS добавлен как 11-я production-модель через `MODEL_EXECUTION_REGISTRY`, с
+таким же участием в `run_backtest_plan`/exact EDA folds, что и у остальных
+десяти. Использована **Nixtla StatsForecast, версия зафиксирована**
+(`statsforecast==2.1.1`), класс `statsforecast.models.TBATS` — **сознательно
+не `AutoTBATS`**: `AutoTBATS` запускает свой внутренний AIC-перебор структурных
+спецификаций (Box-Cox вкл/выкл, trend, damped trend, ARMA errors) с
+непредсказуемым по времени исполнением на каждый fit, что напрямую
+противоречит требованию "Бюджетированное обучение и tuning без proxy
+timeout" (Task 125, п.3). Явный `TBATS` с конкретными флагами даёт один
+детерминированный fit на комбинацию параметров — то же свойство, что и у
+ETS/ARIMA с явными order/trend (не двойной auto-поиск поверх auto-поиска).
+Замерено на реальных данных: явный `TBATS` — 0.03–0.15с/fit в зависимости от
+флагов; `AutoTBATS` для сравнения — ~1.4с/fit (внутренний перебор). Решение
+подтверждено бенчмарком, не голым предположением; `_CLASSICAL_RESOURCES`
+(`standard`, 120с step timeout) выбран с этим запасом, без пересмотра класса.
+
+- **Множественные сезонные периоды из спектрального hand-off (Task 125,
+  п.2)** — ключевая архитектурная работа задачи. Обнаружено: во всех ~7 местах
+  `apps/api/routers/modeling_session.py` (`/backtest`, старый монолитный
+  `/tune`, универсальный job-контракт Task 123 `/jobs/start|step`, legacy
+  `/tuning/start|step`) список сезонных периодов из EDA-профиля жёстко
+  усекался до одного значения: `.get("seasonal_periods") or [1])[0]` —
+  единственное, что нужно было ВСЕМ девяти прежним моделям (все читают
+  singular `seasonal_period`), но именно это ограничение блокировало TBATS
+  (единственную модель с нативной поддержкой `season_length: List[int]`).
+  Добавлен сквозной passthrough: `run_backtest_plan` → `execute_tuning_trial`
+  → `execute_tuning_plan_with_artifacts`/`execute_tuning_plan`, новый параметр
+  `seasonal_periods: Optional[Sequence[int]]`, применяется ТОЛЬКО если ключ ещё
+  не занят явно переданными `params`. Diagnostics/Comparison/Model Card не
+  тронуты — они читают уже сохранённый backtest, не пересчитывают модель.
+- **Обнаружена и устранена коллизия имён ключей** (найдена не по докам, а по
+  реальному падению теста `test_tuning_stage_requires_tune_or_explicit_skip_
+  for_tunable_models`): `_ets_executor` уже читал
+  `request.params.get("seasonal_periods", request.seasonal_period)` как
+  singular-override периода (механизм Task 122, ранее ничем не заполнялся).
+  Мой первый вариант плана использовал тот же ключ `"seasonal_periods"` для
+  списка периодов TBATS — это привело к `int() argument ... not 'list'`
+  внутри ETS, как только session router стал реально прокидывать hand-off
+  (что происходит всегда, для любой модели). Ключ переименован в
+  `tbats_seasonal_periods` — специфичный, не пересекающийся ни с чем; добавлен
+  отдельный регрессионный тест
+  `test_seasonal_periods_plumbing_does_not_collide_with_ets_override_key`,
+  который явно фиксирует эту границу на будущее.
+- **Bounded tuning**: `use_boxcox` × `trend_spec` = 2×3 = 6 trials.
+  `trend_spec: {"none","trend","damped_trend"}` — это НЕ прямая пара
+  независимых булевых флагов `use_trend`/`use_damped_trend`: смоук-тестом
+  подтверждено, что `use_damped_trend=True, use_trend=False` — структурно
+  невозможная в TBATS комбинация (`ValueError: Can't use damped trend without
+  trend`), поэтому вместо 2×2 grid с двумя заведомо провальными ячейками
+  введено одно поле с ровно тремя валидными значениями, транслируемое
+  адаптером в пару флагов.
+- **Box-Cox только внутри train-fold (Task 125, п.4)**: удовлетворяется по
+  конструкции — TBATS создаётся заново на каждый fold
+  (fit_policy="per_train_fold", как и у всех моделей registry), Box-Cox lambda
+  оценивается statsforecast'ом внутри `.fit(y_train)`, никогда не видя
+  test/future данные; отдельного кода не потребовалось.
+- **Prediction intervals**: `supports_prediction_intervals=True`, честные
+  `lo-80`/`hi-80` от `TBATS.predict(h, level=[80])` (тот же 80%-default, что и
+  у Prophet в Task 124, для единообразия Model Card).
+- Проверены и подтверждены смоук-тестом граничные случаи: короткая (8 точек) и
+  константная серия не роняют fit (только `RuntimeWarning: divide by zero` на
+  константной — безвредно, аналогично существующим `SingularMatrixWarning` у
+  ARIMA).
+
+### Обновлённые release-gate инварианты (10 → 11 моделей)
+
+Ожидаемо и предусмотрено, как и в Task 124:
+- `tests/unit/test_modeling_mvp_certification.py` — CERTIFIED_MODEL_IDS
+  расширен, тест переименован в `..._exactly_eleven_real_models...`,
+  `PRODUCTION_TUNING_MODEL_IDS` теперь включает `tbats`.
+- `tests/unit/test_backtesting_engine.py` — `test_all_ten_...` →
+  `test_all_eleven_production_models_execute_the_same_real_oof_cohort`.
+- `tests/unit/test_model_readiness_candidates.py` — `tbats` перемещён из
+  `catalog_only` в `ready`; `runnable_candidates` 10→11,
+  `catalog_only_candidates` 14→13.
+- `tests/unit/test_model_execution_contract.py` — `CERTIFIED_IDS` расширен.
+- `tests/api/test_models_backtest_real.py` — `test_registry_has_10_
+  implementations` → `..._11_implementations`; добавлены
+  `test_tbats_impl_callable_with_minimal_series`, `"tbats"` в параметризацию
+  `test_short_series_does_not_500`.
+- `tests/api/test_modeling_workflow.py` —
+  `test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics`
+  использовал `model_id="tbats"` (заменён Task 124) как пример catalog-only;
+  заменён на `"xgboost"` (по-прежнему catalog-only после Task 125).
+  `tests/unit/test_model_capability_matrix.py` изменений не потребовал (там
+  фигурировал только `prophet`).
+
+### Новые тесты
+
+- `tests/unit/test_tbats_adapter.py` (13 тестов, НОВЫЙ файл): форма
+  forecast/интервалов, множественные периоды нативно, fallback на singular
+  period, guard на неположительные периоды и неизвестный `trend_spec`,
+  параметризованная проверка всех 3 валидных `trend_spec` (защита от
+  структурно невозможной комбинации), registry descriptor, `execute()` читает
+  `tbats_seasonal_periods` из params, честные intervals, полный прогон через
+  реальный `build_backtest_plan`/`run_backtest_plan` с multi-period hand-off
+  ([6, 12]), регрессионный тест на коллизию ключей с ETS (см. выше), размер
+  bounded tuning grid ≤ MAX_TRIALS.
+- `tests/api/test_modeling_workflow.py::
+  test_tbats_full_session_backtest_and_tuning_use_the_real_spectral_handoff`
+  (НОВЫЙ) — полный session-flow (backtest → diagnostics → tune) с реальным
+  spectral hand-off. Обнаружена и обойдена нетривиальность: TBATS объявляет
+  `min_observations=100` в каталоге, и правило `F04` (`n_observations <
+  model.min_observations`) жёстко блокирует модель (`compatibility="blocked"`)
+  — стандартная 96-точечная `_prepare()`-фикстура его не проходит, а с
+  дефолтной validation-стратегией (5 splits × 12 horizon) даже 120-точечный
+  ряд не проходит, т.к. `initial_train` (эффективный train первого fold, а не
+  общий n) урезается ниже 100. Тест использует собственный 120-точечный
+  датасет и уменьшенную схему валидации (`n_splits=2, horizon=2` через
+  `/v1/session/modeling/candidates`) — то же самое ограничение, которое
+  случайно задело и НЕСВЯЗАННЫЙ тест `test_tuning_stage_requires_tune_or_
+  explicit_skip_for_tunable_models` (см. ниже).
+
+### TDD-цикл
+
+- RED (интеграция в registry, до правки тестов): целевой прогон дал ровно 6
+  ожидаемых провалов — все из-за жёстко зашитого числа 10 в разных файлах; ни
+  одного неожиданного.
+- GREEN после обновления тестов на счёт "11" — но затем полный прогон
+  `test_modeling_workflow.py` вскрыл РЕАЛЬНЫЙ баг (не тестовую хрупкость):
+  коллизию ключей `params["seasonal_periods"]` между новым TBATS-plumbing'ом и
+  существующим `_ets_executor`. Это ровно тот сценарий, ради которого TDD
+  прогоняет полный набор, а не только целевой срез: узкий срез (registry+
+  readiness) был бы зелёным и без исправления, баг проявился только в
+  `test_tuning_stage_requires_tune_or_explicit_skip_for_tunable_models`
+  (ETS-бэктест внутри сценария с реальным session-профилем). После
+  переименования ключа в `tbats_seasonal_periods` — `test_modeling_workflow.py`
+  целиком 39/39, полный backend regression без единого неожиданного провала.
+
+### Проверки
+
+- Полный backend regression (на базе `08a4482`): **1365/1365 PASS** (база на
+  `08a4482` уже 1352 за счёт команды + мои 13 из `test_tbats_adapter.py`),
+  3/3 snapshots PASS.
+- Полный frontend regression: 89/89 suites, 819/819 tests PASS (рост за счёт
+  Task 97.x команды — Task 125 backend-only, фронтенд не тронут).
+- `typecheck:all`: embedded PASS, standalone PASS.
+- Production build embedded/standalone: PASS, 13/13 статических страниц,
+  First Load JS 468 kB (было 464 kB на `6b3ce89` — рост от Task 97.x команды,
+  не от Task 125). Временный шим `next/font/google`
+  применён, собран, немедленно отменён; `git diff` после отката — пуст.
+- `pip check`: PASS. Рабочее дерево чистое.
+- Установлен `statsforecast==2.1.1`, добавлен в `apps/api/requirements.txt` и
+  в манифест `classical` пакетов (`apps/api/model_jobs.py`).
+
+### Изменённые/новые файлы Task 125
+
+Уже присутствуют в `08a4482` (закоммичены тимлидом ранее вместе с
+несвязанным Task 97.4a, сверены байт-в-байт — не пересобираются в ZIP):
+- `apps/api/model_impls/tbats.py`
+- `tests/unit/test_tbats_adapter.py`
+
+Изменённые в этой сдаче (входят в ZIP):
+- `apps/api/backtesting.py`
+- `apps/api/model_execution.py`
+- `apps/api/model_impls/__init__.py`
+- `apps/api/model_jobs.py`
+- `apps/api/modeling_tuning.py`
+- `apps/api/requirements.txt`
+- `apps/api/routers/modeling_session.py`
+- `apps/api/routers/models.py`
+- `rules/modeling.yaml`
+- `tests/api/test_modeling_workflow.py`
+- `tests/api/test_models_backtest_real.py`
+- `tests/unit/test_backtesting_engine.py`
+- `tests/unit/test_model_execution_contract.py`
+- `tests/unit/test_model_readiness_candidates.py`
+- `tests/unit/test_modeling_mvp_certification.py`
+
+### Что осталось за рамками Task 125 (осознанно)
+
+- `use_arma_errors` зафиксирован адаптером (`False`) и не входит в bounded
+  tuning grid — не упомянут в бюллетнях задачи, минимизация scope по
+  прецеденту Prophet (Task 124: тюнится только явно specified в задаче).
+- Прогресс "11/24" production-моделей достигнут (Prophet + TBATS). Следующие
+  задачи по plan-файлу — ML/дерево-бустинг группа (Task 126+, начиная с
+  Leakage-safe supervised FeaturePlan).
+  

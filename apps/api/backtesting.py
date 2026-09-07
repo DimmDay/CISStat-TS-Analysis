@@ -13,7 +13,7 @@ import json
 import math
 import platform
 import time
-from typing import Any, Callable, Mapping, Optional, Protocol
+from typing import Any, Callable, Mapping, Optional, Protocol, Sequence
 
 import numpy as np
 
@@ -333,12 +333,24 @@ def run_backtest_plan(
     *, model_id: str, model_name: str, family_id: str,
     series: list[float], labels: list[str], plan: BacktestPlan,
     seasonal_period: int, params: Optional[Mapping[str, Any]] = None,
+    seasonal_periods: Optional[Sequence[int]] = None,
     predictors: Optional[Mapping[str, Predictor]] = None,
     preprocessing_warnings: Optional[list[str]] = None,
     fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
     random_state: int = 42,
 ) -> dict[str, Any]:
-    """Execute every EDA fold with strict, fixed-origin model predictions."""
+    """Execute every EDA fold with strict, fixed-origin model predictions.
+
+    ``seasonal_periods`` (plural) is an optional pass-through of the FULL
+    multi-period spectral hand-off (e.g. [7, 365] daily+yearly), distinct from
+    the single ``seasonal_period`` that fixes the cohort's MASE/RMSSE scale
+    (Task 121) and must stay identical across every model for a fair
+    comparison. Stored in ``params`` under ``tbats_seasonal_periods`` (NOT
+    ``seasonal_periods`` -- that key is already used, pre-Task-125, by the ETS
+    executor as a single-value seasonal_period override; reusing it here would
+    silently break ETS). Only TBATS (Task 125) currently reads it; every other
+    adapter ignores unknown params keys, so this is safe to pass unconditionally.
+    """
     if int(seasonal_period) != plan.seasonal_period:
         raise BacktestExecutionError("Seasonal period расходится с зафиксированным backtest cohort")
     if len(series) != plan.n_observations:
@@ -391,6 +403,8 @@ def run_backtest_plan(
     if not np.isfinite(np.asarray(values, dtype=float)).all():
         raise BacktestExecutionError("Ряд содержит NaN/Inf")
     parameters = dict(params or {})
+    if seasonal_periods is not None and "tbats_seasonal_periods" not in parameters:
+        parameters["tbats_seasonal_periods"] = [int(value) for value in seasonal_periods]
     folds: list[dict[str, Any]] = []
     adapter_warnings: list[str] = []
     started = time.monotonic()

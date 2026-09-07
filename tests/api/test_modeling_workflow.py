@@ -132,7 +132,7 @@ def test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics(clie
 
     response = client.post(
         "/v1/session/modeling/backtest",
-        json={"model_id": "tbats", "train_ratio": 0.8},
+        json={"model_id": "xgboost", "train_ratio": 0.8},
     )
 
     assert response.status_code == 422
@@ -195,6 +195,52 @@ def test_prophet_full_session_backtest_and_diagnostics_use_real_calendar_dates(c
 
     diagnostics = client.post("/v1/session/modeling/diagnostics", json={"model_id": "prophet"})
     assert diagnostics.status_code == 200, diagnostics.text
+
+
+def test_tbats_full_session_backtest_and_tuning_use_the_real_spectral_handoff(client: TestClient):
+    """Task 125 -- proves TBATS reaches the real session stack end-to-end:
+    profile.seasonal_periods (spectral hand-off) flows through the ~4 router
+    call sites into run_backtest_plan/execute_tuning_trial without being
+    truncated to a single period anywhere along the way. TBATS declares
+    min_observations=100 in the catalog (F04 hard-blocks below that), so this
+    uses a longer series than the shared 96-point `_prepare` fixture.
+    """
+    uploaded = client.post(
+        "/v1/internal/upload",
+        files={"file": ("series.csv", io.BytesIO(_csv(n=120).encode()), "text/csv")},
+    )
+    assert uploaded.status_code == 200, uploaded.text
+    assert client.post("/v1/session/target-column", json={"column": "value"}).status_code == 200
+    assert client.post("/v1/session/date-column", json={"column": "date"}).status_code == 200
+    assert client.post("/v1/session/dataset/passport/start").status_code == 200
+    assert client.post("/v1/session/dataset/passport/modeling_entry").status_code == 200
+
+    context = client.get("/v1/session/modeling/context").json()
+    assert context["profile"]["seasonal_periods"]
+
+    candidates = client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "expanding", "horizon": 2, "n_splits": 2},
+    )
+    assert candidates.status_code == 200, candidates.text
+
+    backtest = client.post("/v1/session/modeling/backtest", json={"model_id": "tbats"})
+    assert backtest.status_code == 200, backtest.text
+    body = backtest.json()
+    assert body["cohort_id"]
+    assert len(body["oof_predictions"]) == body["n_test"]
+
+    diagnostics = client.post("/v1/session/modeling/diagnostics", json={"model_id": "tbats"})
+    assert diagnostics.status_code == 200, diagnostics.text
+
+    tune = client.post(
+        "/v1/session/modeling/tune",
+        json={"model_id": "tbats", "metric": "rmse", "max_trials": 6, "random_state": 42},
+    )
+    assert tune.status_code == 200, tune.text
+    tune_body = tune.json()
+    assert tune_body["n_trials"] > 0
+    assert tune_body["best_params"]["trend_spec"] in {"none", "trend", "damped_trend"}
 
 
 def test_baseline_bootstrap_atomically_populates_comparable_cohort(client: TestClient):

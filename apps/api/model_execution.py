@@ -533,6 +533,23 @@ def _prophet_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     return ModelExecutionResult(forecast=forecast, lower_interval=lower, upper_interval=upper)
 
 
+def _tbats_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
+    from apps.api.model_impls.tbats import _tbats_fit_predict
+
+    # NB: НЕ "seasonal_periods" -- этот ключ уже занят _ets_executor как
+    # override единственного seasonal_period (см. выше); см. также
+    # backtesting.py::run_backtest_plan.
+    forecast, lower, upper = _tbats_fit_predict(
+        y_train=list(request.target),
+        horizon=request.horizon,
+        seasonal_period=request.seasonal_period,
+        seasonal_periods=request.params.get("tbats_seasonal_periods"),
+        use_boxcox=bool(request.params.get("use_boxcox", True)),
+        trend_spec=str(request.params.get("trend_spec", "damped_trend")),
+    )
+    return ModelExecutionResult(forecast=forecast, lower_interval=lower, upper_interval=upper)
+
+
 _BACKTEST_DIAGNOSTICS = frozenset({"backtest", "diagnostics"})
 _TUNABLE = frozenset({"backtest", "tune", "diagnostics"})
 _CLASSICAL_RESOURCES = ModelResourceCapabilities(memory_class="standard")
@@ -581,6 +598,13 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         model_id="prophet", family_id="structural",
         adapter_id="prophet-native", executor=_prophet_executor,
         actions=_TUNABLE, engine="prophet", required_packages=("prophet",),
+        supports_prediction_intervals=True,
+        resource_capabilities=_CLASSICAL_RESOURCES,
+    ),
+    ModelExecutionDefinition(
+        model_id="tbats", family_id="structural",
+        adapter_id="statsforecast-tbats", executor=_tbats_executor,
+        actions=_TUNABLE, engine="statsforecast", required_packages=("statsforecast",),
         supports_prediction_intervals=True,
         resource_capabilities=_CLASSICAL_RESOURCES,
     ),

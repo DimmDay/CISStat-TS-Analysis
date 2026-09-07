@@ -40,6 +40,7 @@ from apps.api.model_impls import (
     run_arima_backtest,
     run_auto_arima_backtest,
     run_prophet_backtest,
+    run_tbats_backtest,
 )
 from apps.api.model_impls.tuning import tune_ets_predict, tune_arima_predict
 from apps.api.model_execution import (
@@ -277,6 +278,7 @@ _BACKTEST_IMPLEMENTATIONS = {
     "arima": run_arima_backtest,
     "arima_auto": run_auto_arima_backtest,
     "prophet": run_prophet_backtest,
+    "tbats": run_tbats_backtest,
 }
 
 if frozenset(_BACKTEST_IMPLEMENTATIONS) != PRODUCTION_BACKTEST_MODEL_IDS:

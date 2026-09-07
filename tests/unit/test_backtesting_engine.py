@@ -173,7 +173,7 @@ def test_full_history_target_transform_is_rejected_until_fold_refit_exists(metad
         validate_target_preprocessing({"target_derived": metadata}, "target_derived")
 
 
-def test_all_ten_production_models_execute_the_same_real_oof_cohort():
+def test_all_eleven_production_models_execute_the_same_real_oof_cohort():
     import pandas as pd
 
     from apps.api.model_readiness import PRODUCTION_BACKTEST_MODEL_IDS
@@ -201,7 +201,7 @@ def test_all_ten_production_models_execute_the_same_real_oof_cohort():
         for model_id in PRODUCTION_BACKTEST_MODEL_IDS
     }
 
-    assert len(results) == 10
+    assert len(results) == 11
     assert {result["cohort_id"] for result in results.values()} == {plan.cohort_id}
     assert all(len(result["oof_predictions"]) == 6 for result in results.values())
     assert all(result["metrics"]["weighted_score"] is None for result in results.values())

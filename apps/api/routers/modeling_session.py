@@ -239,6 +239,22 @@ def _validation_contract(context: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _seasonal_periods_list(profile: dict[str, Any]) -> list[int]:
+    """Full multi-period spectral hand-off (Task 125), not truncated to [0].
+
+    Every call site that previously did
+    ``(profile.get("seasonal_periods") or [1])[0]`` keeps that same primary
+    period (``periods[0]``) for the shared cohort's MASE/RMSSE scale (Task
+    121 -- must stay identical across every model for a fair comparison).
+    The full list additionally flows into ``run_backtest_plan``/
+    ``execute_tuning_trial`` as ``seasonal_periods=`` so TBATS can use every
+    detected period (e.g. [7, 365]); every other adapter ignores the extra
+    params key.
+    """
+    periods = [int(value) for value in (profile.get("seasonal_periods") or [1])]
+    return periods or [1]
+
+
 def _action_context(session) -> dict[str, Any]:
     """Rebuild readiness using the validation contract chosen for this run."""
     saved = session.modeling_artifacts.get("validation_strategy", {})
@@ -834,6 +850,7 @@ def run_modeling_backtest(
             detail="Ручной train_ratio запрещён: backtest исполняет точные folds из EDA validation strategy",
         )
     period = (session.modeling_artifacts.get("profile", context["profile"]).get("seasonal_periods") or [1])[0]
+    periods = _seasonal_periods_list(session.modeling_artifacts.get("profile", context["profile"]))
     model_info = _resolve_model_info(payload.model_id)
     validation = session.modeling_artifacts["validation_strategy"]
     try:
@@ -861,6 +878,7 @@ def run_modeling_backtest(
             model_id=payload.model_id, model_name=model_info[0], family_id=model_info[1],
             series=prepared.series, labels=prepared.labels,
             plan=plan, seasonal_period=int(period), params=tuned_params,
+            seasonal_periods=periods,
             preprocessing_warnings=preprocessing_warnings,
             fold_preprocessor=prepared.fold_preprocessor,
         )
@@ -1069,6 +1087,7 @@ def tune_modeling_candidate(
     if model.param_space is None:
         raise HTTPException(status_code=422, detail=f"Для модели '{payload.model_id}' param_space не задан")
     period = (session.modeling_artifacts.get("profile", context["profile"]).get("seasonal_periods") or [1])[0]
+    periods = _seasonal_periods_list(session.modeling_artifacts.get("profile", context["profile"]))
     model_info = _resolve_model_info(payload.model_id)
     try:
         prepared = prepare_modeling_target(
@@ -1088,6 +1107,7 @@ def tune_modeling_candidate(
             param_space=model.param_space, series=prepared.series, labels=prepared.labels,
             plan=plan, seasonal_period=int(period), max_trials=payload.max_trials,
             metric=payload.metric, random_state=payload.random_state,
+            seasonal_periods=periods,
             fold_preprocessor=prepared.fold_preprocessor,
             preprocessing_warnings=prepared.warnings,
         )
@@ -1188,6 +1208,7 @@ def _prepare_tuning_job_inputs(session, context, payload: ModelingJobStartReques
         session.modeling_artifacts.get("profile", context["profile"])
         .get("seasonal_periods") or [1]
     )[0]
+    periods = _seasonal_periods_list(session.modeling_artifacts.get("profile", context["profile"]))
     prepared = prepare_modeling_target(
         session.dataframe, target_column=session.target_column,
         date_column=session.date_column,
@@ -1219,7 +1240,7 @@ def _prepare_tuning_job_inputs(session, context, payload: ModelingJobStartReques
             status_code=422,
             detail=f"Model job '{payload.model_id}' требует GPU runtime",
         )
-    return model, int(period), prepared, plan, grid, descriptor, policy
+    return model, int(period), periods, prepared, plan, grid, descriptor, policy
 
 
 @router.post("/jobs/start")
@@ -1232,7 +1253,7 @@ def start_modeling_job(
     store, session = _get_session(request, response)
     context = _action_context(session)
     _prepare_state(session, context)
-    _, _, _, plan, grid, descriptor, policy = _prepare_tuning_job_inputs(
+    _, _, _, _, plan, grid, descriptor, policy = _prepare_tuning_job_inputs(
         session, context, payload,
     )
     work_plan = [
@@ -1403,7 +1424,7 @@ def step_modeling_job(
         random_state=int(job["random_state"]),
         idempotency_key=job.get("idempotency_key"),
     )
-    _, period, prepared, plan, _, descriptor, policy = _prepare_tuning_job_inputs(
+    _, period, periods, prepared, plan, _, descriptor, policy = _prepare_tuning_job_inputs(
         session, context, replay_payload,
     )
     work_plan = [
@@ -1440,6 +1461,7 @@ def step_modeling_job(
             model_id=job["model_id"], model_name=model_name, family_id=family_id,
             params=params, series=prepared.series, labels=prepared.labels,
             plan=plan, seasonal_period=period, metric=job["metric"],
+            seasonal_periods=periods,
             fold_preprocessor=prepared.fold_preprocessor,
             preprocessing_warnings=prepared.warnings,
             random_state=int(job["random_state"]),
@@ -1669,6 +1691,7 @@ def step_modeling_tuning(
         session.modeling_artifacts.get("profile", context["profile"])
         .get("seasonal_periods") or [1]
     )[0]
+    periods = _seasonal_periods_list(session.modeling_artifacts.get("profile", context["profile"]))
     prepared = prepare_modeling_target(
         session.dataframe, target_column=session.target_column,
         date_column=session.date_column,
@@ -1703,6 +1726,7 @@ def step_modeling_tuning(
             model_id=model_id, model_name=model_name, family_id=family_id,
             params=params, series=prepared.series, labels=prepared.labels,
             plan=plan, seasonal_period=int(period), metric=job["metric"],
+            seasonal_periods=periods,
             fold_preprocessor=prepared.fold_preprocessor,
             preprocessing_warnings=prepared.warnings,
             random_state=int(job["random_state"]),

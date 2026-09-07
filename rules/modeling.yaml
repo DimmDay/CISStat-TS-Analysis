@@ -291,6 +291,24 @@ families:
         supports_prediction_intervals: true
         libraries: ["statsforecast"]
         training_time: "minutes"
+        # ── Task 125: пространство параметров для тюнинга ──
+        # Декартово произведение: 2 × 3 = 6 trials (≤ MAX_TRIALS=64).
+        # use_boxcox — Box-Cox трансформация внутри train-fold (не утечка:
+        # statsforecast оценивает lambda внутри .fit(y_train), см.
+        # apps/api/model_impls/tbats.py).
+        # trend_spec кодирует одним полем допустимые сочетания
+        # use_trend/use_damped_trend -- "damped без trend" структурно
+        # невозможно в TBATS (ValueError), поэтому вместо двух независимых
+        # булевых флагов (2×2, из которых 2 ячейки заведомо провальны)
+        # используется одно поле с тремя валидными значениями.
+        # use_arma_errors НЕ входит в grid (фиксирован False по умолчанию
+        # адаптером — вне bounded scope Task 125).
+        # AutoTBATS сознательно не используется — см. docstring адаптера:
+        # непредсказуемое время внутреннего AIC-перебора конфликтует с
+        # "budgeted training without proxy timeout".
+        param_space:
+          use_boxcox: [true, false]
+          trend_spec: ["none", "trend", "damped_trend"]
 
   # ── 7. TREE-BASED ML ───────────────────────────────────────────────────────
   - id: "tree_ml"
