@@ -446,19 +446,20 @@ class TestBaselineModelsStillWork:
 
 
 class TestBacktestImplementationsRegistry:
-    """Регрессия: _BACKTEST_IMPLEMENTATIONS должен содержать все 9 моделей:
-    4 baseline + 5 новых. Если кто-то случайно удалил ключ — тест падает."""
+    """Регрессия: _BACKTEST_IMPLEMENTATIONS должен содержать все 12 моделей:
+    4 baseline + 8 production. Если кто-то случайно удалил ключ — тест падает."""
 
-    def test_registry_has_11_implementations(self):
+    def test_registry_has_12_implementations(self):
         impls = models_router._BACKTEST_IMPLEMENTATIONS
         expected = {
             "naive", "seasonal_naive", "drift", "mean",  # baselines (Phase 0)
             "ets", "ets_damped", "theta", "arima", "arima_auto",  # Phase 6-P0
             "prophet",  # Task 124
             "tbats",  # Task 125
+            "random_forest",  # Task 127
         }
         assert set(impls.keys()) == expected, (
-            f"Expected 11 implementations: {expected}, got: {set(impls.keys())}"
+            f"Expected 12 implementations: {expected}, got: {set(impls.keys())}"
         )
 
     def test_no_stub_branch_for_5_real_models(self):

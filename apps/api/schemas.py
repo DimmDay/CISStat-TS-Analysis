@@ -3075,6 +3075,14 @@ class BacktestFoldResult(BaseModel):
             "если план не применён к модели"
         ),
     )
+    feature_importance: Optional[Dict[str, Any]] = Field(
+        None,
+        description=(
+            "Task 127: feature importance адаптера, привязанный через "
+            "bind_feature_importance к ТОЧНОЙ fold-матрице (matrix_hash, "
+            "importances), или None, если адаптер importance не вернул"
+        ),
+    )
     duration_ms: float = Field(..., ge=0)
     error: Optional[str] = None
 

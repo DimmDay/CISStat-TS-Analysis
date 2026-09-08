@@ -367,6 +367,21 @@ families:
         supports_prediction_intervals: true    # через quantile
         libraries: ["scikit-learn"]
         training_time: "seconds_to_minutes"
+        # ── Task 127: пространство параметров для тюнинга ──
+        # Декартово произведение: 2 × 2 × 2 × 2 = 16 trials (≤ MAX_TRIALS=64).
+        # n_lags -- глубина каузальной авторегрессии адаптера (лаги 1..n_lags,
+        # rolling mean/std по окну n_lags, diff_1; см.
+        # apps/api/model_impls/random_forest.py::rf_feature_specs): признаки
+        # строятся fold-локально через RecursiveFeatureState (Task 126),
+        # история = train-хвост + прогнозы модели (recursive-стратегия).
+        # max_depth/min_samples_leaf ограничивают сложность деревьев против
+        # переобучения на коротких fold'ах; n_estimators -- компромисс
+        # качество/время при bounded-бюджете платформы.
+        param_space:
+          n_estimators: [100, 300]
+          max_depth: [6, 12]
+          min_samples_leaf: [1, 5]
+          n_lags: [3, 7]
 
   # ── 8. NEURAL / DEEP TS ────────────────────────────────────────────────────
   - id: "neural"

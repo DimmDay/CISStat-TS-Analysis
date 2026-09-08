@@ -54,9 +54,18 @@ class ModelLifecycleCapabilities:
     diagnostics: bool
 
 
+# Distribution name -> importable module name.  У scikit-learn имя
+# дистрибутива (pip/metadata) и имя импортируемого модуля расходятся --
+# без алиаса find_spec("scikit_learn") возвращает None и адаптер
+# ошибочно считался недоступным в рантайме (Task 127).
+_IMPORT_NAME_ALIASES: dict[str, str] = {"scikit-learn": "sklearn"}
+
+
 def _probe_dependency(package_name: str) -> dict[str, Any]:
     """Inspect a package only when runtime readiness/lineage is requested."""
-    import_name = package_name.replace("-", "_")
+    import_name = _IMPORT_NAME_ALIASES.get(
+        package_name, package_name.replace("-", "_"),
+    )
     try:
         import_available = util.find_spec(import_name) is not None
     except (ImportError, ModuleNotFoundError, ValueError):
@@ -555,6 +564,28 @@ def _tbats_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     return ModelExecutionResult(forecast=forecast, lower_interval=lower, upper_interval=upper)
 
 
+def _random_forest_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
+    from apps.api.model_impls.random_forest import _rf_fit_predict
+
+    payload = _rf_fit_predict(
+        list(request.target),
+        request.horizon,
+        train_features=request.train_features or None,
+        future_features=request.future_features or None,
+        params=dict(request.params),
+        random_state=request.random_state,
+    )
+    return ModelExecutionResult(
+        forecast=payload["forecast"],
+        lower_interval=payload["lower"],
+        upper_interval=payload["upper"],
+        metadata={
+            "feature_importances": payload["feature_importances"],
+            "feature_importance_lineage": payload["feature_importance_lineage"],
+        },
+    )
+
+
 _BACKTEST_DIAGNOSTICS = frozenset({"backtest", "diagnostics"})
 _TUNABLE = frozenset({"backtest", "tune", "diagnostics"})
 _CLASSICAL_RESOURCES = ModelResourceCapabilities(memory_class="standard")
@@ -617,6 +648,23 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         actions=_TUNABLE, engine="statsforecast", required_packages=("statsforecast",),
         supports_prediction_intervals=True,
         resource_capabilities=_CLASSICAL_RESOURCES,
+    ),
+    ModelExecutionDefinition(
+        model_id="random_forest", family_id="tree_ml",
+        adapter_id="sklearn-random-forest", executor=_random_forest_executor,
+        actions=_TUNABLE, engine="scikit-learn", required_packages=("scikit-learn",),
+        # Task 127: второй supervised-адаптер и первый recursive-стратег.
+        # Регрессорный канал -- тот же granted-гейт Task 126: только
+        # future_known/static колонки fold-local FeaturePlan; historic
+        # (target-derived) признаки адаптер строит САМ каузально через
+        # RecursiveFeatureState (лаги/rolling/diff), будущее из фактов
+        # недостижимо по построению.
+        input_kind="supervised",
+        supports_future_features=True,
+        supports_prediction_intervals=True,
+        deterministic=True,
+        dependency_group="ml",
+        resource_capabilities=ModelResourceCapabilities(memory_class="standard"),
     ),
 ])
 

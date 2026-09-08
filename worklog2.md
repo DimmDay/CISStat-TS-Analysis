@@ -3335,3 +3335,141 @@ Card (94). Раздел сквозных практик расширен пун�
 468px-стандарт, append-only история).
 
 Чисто документационная задача, кода не затрагивает.
+
+---
+
+## Task 127 — Random Forest: production vertical slice (recursive supervised ML)
+
+Дата: 2026-09-08. База: `main @ bb41796` (spec_forecasting2.md v3; включает
+принятые коммиты Task 126 `b8907a8` + сертификации `8ee9579`/`4e8cac8`).
+TDD: RED (14 failed) зафиксирован до реализации, доведён до GREEN; полный
+прогон 1520 passed (базлайн bb41796: 1472 + 48 новых). Commit/push не выполнялся.
+
+### Постановка и дизайн
+
+Task 127 (`docs/modeling_task_list.md`): отдельный vertical slice — Random
+Forest: bounded param_space, exact OOF, feature importance, residual
+diagnostics, reproducible seed, capability/UI и Model Card; никаких
+штрафных/Naive-fallback путей; нативный production API (scikit-learn).
+
+RF — второй supervised-адаптер платформы (после Prophet), первый
+`dependency_group="ml"`, первый ПОТРЕБИТЕЛЬ recursive-контракта Task 126
+(`RecursiveFeatureState` до сих пор был контрактом без runtime-потребителей).
+
+Ключевые архитектурные решения:
+
+1. **Recursive-стратегия через RecursiveFeatureState (peek/push).** При
+   проектировании обнаружено, что последовательный прогнозный цикл через
+   сертифицированный `next_row(prediction)` принципиально не построить без
+   загрязнения history: call строит строку ДО push, поэтому передаваемый
+   прогноз всегда отстаёт на один шаг (доказательство в записи; State-тесты
+   Task 126 это не ловили, т.к. использовали next_row как проверку контракта,
+   а не как генератор). Добавлены АДДИТИВНЫЕ `peek_row()` (строка без мутации)
+   и `push(value)`; `next_row` отрефакторен как `peek_row()+push()` —
+   поведение бит-в-бит, все сертифицированные тесты Task 126 зелёные без правок.
+   Корректный порядок потребителя: `row = peek_row()` → `model.predict(row)` →
+   `push(prediction)`. Train-матрица и рекурсивный прогноз строятся ОДНИМ
+   кодом (peek/push) — train/serve skew рекурсивного прогнозирования устранён
+   по построению.
+2. **Каузальные признаки адаптера**: лаги 1..n_lags, rolling mean/std (окно
+   n_lags, ddof=0 — та же семантика, что у FoldFeatureMatrixBuilder), diff_1;
+   имена префиксованы `rf_` (нет столкновений с каталогом генерации). Warm-up
+   = max lookback, известные колонки обрезаются на тот же warm-up (выравненность).
+3. **Regressor-канал granted (Task 126/124)**: future_known/static колонки
+   fold-local FeaturePlan проходят в RF симметрично train/future; fail-closed
+   валидация (симметрия множеств, длины, NaN/Inf) — тот же стандарт, что у
+   Prophet. Historic-экзогены платформа не передаёт никогда.
+4. **Feature importance ↔ точная fold-матрица**: sklearn impurity importances;
+   адаптер считает matrix_hash СВОЕЙ X-матрицы (canonical JSON + sha256 — та же
+   схема, что у builder) и возвращает lineage в metadata; `run_backtest_plan`
+   связывает через `bind_feature_importance` в `fold["feature_importance"]`
+   (+`fold`, +`plan_id` при активном плане). Oracle-защита сохранена: чужие
+   колонки отклоняются → ошибка fold'а; самопроверка binding'а в адаптере
+   (fail-closed до записи в артефакт). Без плана importance по-прежнему
+   привязан к матрице адаптера (plan_id=None) — важность не существует вне
+   привязки к своей матрице.
+5. **Prediction intervals**: пер-квантили предсказаний отдельных деревьев
+   (p10/p90, fixed 80% — bounded scope, как interval_width у Prophet);
+   границы расширяются до point-прогноза (инвариант реестра
+   lower ≤ point ≤ upper при любом распределении).
+6. **Fail-closed без fallback**: bounded params (n_estimators 10..1000,
+   max_depth None|1..64, min_samples_leaf 1..100, n_lags 1..32; неизвестные
+   ключи игнорируются — соглашение платформы), минимум 8 usable-строк
+   supervised-матрицы, NaN/Inf target/регрессоров — ошибка fold'а. Legacy
+   demo-обёртка `run_random_forest_backtest` — сознательно БЕЗ safe_backtest.
+
+### Состав (11 файлов + 2 новых тест-файла)
+
+- `apps/api/model_impls/random_forest.py` (NEW): `rf_feature_specs`,
+  `validate_rf_params`, `supervised_matrix`, `_rf_fit_predict` (fit +
+  рекурсивный прогноз + интервалы + importance lineage), `run_random_forest_backtest`.
+- `apps/api/feature_plan.py`: `RecursiveFeatureState.peek_row()/push()` (аддитивно).
+- `apps/api/model_execution.py`: `_random_forest_executor`; реестр —
+  `random_forest` (family=tree_ml, supervised, supports_future_features,
+  supports_prediction_intervals, deterministic, ml, scikit-learn, memory=standard);
+  фикс `_probe_dependency`: alias import-имени `scikit-learn`→`sklearn`
+  (иначе find_spec("scikit_learn")=None и адаптер ошибочно считался
+  недоступным — distribution name ≠ module name).
+- `apps/api/backtesting.py`: binding feature_importance в fold-запись.
+- `apps/api/schemas.py`: `BacktestFoldResult.feature_importance: Optional[Dict]`.
+- `apps/api/routers/models.py` + `apps/api/model_impls/__init__.py`:
+  `random_forest` в legacy dispatch (guard консистентности реестра).
+- `rules/modeling.yaml`: bounded param_space random_forest
+  (n_estimators [100,300] × max_depth [6,12] × min_samples_leaf [1,5] ×
+  n_lags [3,7] = 16 trials ≤ MAX_TRIALS=64).
+- `apps/api/Dockerfile`: executable-проба RF в release-образе.
+- Тесты: NEW `tests/unit/test_random_forest_adapter.py` (27: каузальность
+  матрицы построчно, warm-up, выравненность known-колонок, детерминизм
+  peek/push + эквивалентность next_row, период-2 закрытая форма [1,2,1]
+  с точностью 1e-12 — детерминированно ловит stale-history/off-by-one
+  рекурсии, границы экстраполяции RF, A/B-дивергенция регрессорного канала,
+  интервалы lower ≤ point ≤ upper, importance↔матрица + oracle-отрицательный
+  контроль, 10 fail-closed параметрических тестов), NEW
+  `tests/unit/test_random_forest_backtest.py` (12: дескриптор реестра,
+  готовность production actions, отрицательный контроль capability-гейта,
+  E2E run_backtest_plan granted без exclusion-warning, importance в каждой
+  fold-записи c plan_id, детерминизм OOF, реальные метрики, работа без
+  плана, bounded param_space из YAML ≤ 64, execute_tuning_plan на тех же
+  folds). UPDATED сертификационные: test_model_execution_contract (12
+  CERTIFIED_IDS, SUPERVISED_IDS={prophet, random_forest},
+  dependency_group=ml), test_modeling_mvp_certification (twelve-model gate,
+  tuning-множество, RF-проба в Dockerfile), test_model_readiness_candidates
+  (runnable 12/catalog_only 12, RF blocked на n=60 — explain, не fake),
+  test_backtesting_engine (12 моделей общий OOF cohort), test_models_backtest_real
+  (12 реализаций dispatch).
+
+### Тесты и верификация
+
+- RED: 14 failed до реализации (ModuleNotFoundError + сертификационные).
+- GREEN: `python -m pytest tests/` — **1520 passed / 0 failed**
+  (базлайн 1472 + 48 новых; счётчик сходится ровно). Snapshots 3/3.
+- `python -m compileall apps` OK; `from apps.api.main import app` OK;
+  `pip check` PASS; Dockerfile RF-проба исполнена локально (OK).
+- Методологическое примечание: closed-form тесты рекурсии через
+  геометрическое затухание намеренно заменены периодом-2: деревья
+  piecewise-constant и не экстраполируют за диапазон train-таргетов
+  (это свойство зафиксировано отдельным boundary-тестом и описанием
+  семейства tree_ml в modeling.yaml — «не экстраполируют тренд»).
+- Model Card/capability/UI: карта строится генерически из артефактов
+  бэктеста — folds с feature_importance попадают в `training.folds`
+  автоматически; каталог (candidates) поднимает random_forest в
+  platform_status="ready" из реестра, фронтенд-изменений не требуется
+  (family «Деревья и бустинг» уже был в packages/ui/lib/modeling.ts).
+  Residual diagnostics — модель-агностная стадия на OOF-остатках,
+  подключается автоматически (actions включают diagnostics).
+- Окружение: зависимости восстановлены в активный venv (prophet==1.4.0,
+  statsforecast==2.1.1, pandera, syrupy, fakeredis, arch, ruptures и др.).
+- Фронтенд не затронут; Jest/typecheck не требовались.
+
+### Вердикт
+
+**Task 127 реализована как полный vertical slice**: 12/24 production-моделей
+(4 baseline + 8 моделей). Recursive-контракт Task 126 получил первого
+runtime-потребителя; regressor-канал future_known/static работает для
+второго supervised-адаптера; importance привязан к точной fold-матрице
+(oracle-защита воспроизведена и расширена на адаптерную матрицу); tuning —
+на тех же EDA folds с bounded grid 16 trials; интервалы — по деревьям без
+утечки; воспроизводимость — random_state через ModelExecutionRequest.
+Задел для Tasks 128–130 (XGBoost/LightGBM/CatBoost): peek/push-паттерн
+потребления RecursiveFeatureState и адаптерный importance-lineage
+переиспользуются как есть.

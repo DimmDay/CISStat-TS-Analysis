@@ -469,8 +469,19 @@ class RecursiveFeatureState:
             f"Признак '{spec.name}': kind '{spec.kind}' не является historic-трансформом"
         )
 
-    def next_row(self, prediction: float) -> list[float]:
-        """Строка historic-признаков следующей точки + push прогноза в history."""
+    def peek_row(self) -> list[float]:
+        """Строка historic-признаков следующей точки БЕЗ изменения history.
+
+        Task 127 (runtime-потребитель контракта): рекурсивный прогнозный цикл
+        требует разделить построение строки и мутацию истории -- прогноз для
+        точки h становится известен только ПОСЛЕ предсказания по строке h,
+        поэтому связка build+push в одном вызове (``next_row``) для
+        последовательного генератора прогнозов принципиально не применима:
+        переданный аргумент всегда отставал бы от фактического прогноза на
+        один шаг и загрязнял бы history фиктивным значением.
+        Порядок корректного потребителя: ``row = peek_row()`` ->
+        ``prediction = model.predict(row)`` -> ``push(prediction)``.
+        """
         row: list[float] = []
         for name in self._columns:
             spec = self._specs[name]
@@ -478,7 +489,20 @@ class RecursiveFeatureState:
                 row.append(math.nan)
                 continue
             row.append(self._historic_value(spec, self._history))
-        self._history.append(float(prediction))
+        return row
+
+    def push(self, value: float) -> None:
+        """Добавить значение в history (реальное train-наблюдение или прогноз).
+
+        Единственный источник мутации history; внешние копии (``history()``)
+        на состояние не влияют.
+        """
+        self._history.append(float(value))
+
+    def next_row(self, prediction: float) -> list[float]:
+        """Строка historic-признаков следующей точки + push прогноза в history."""
+        row = self.peek_row()
+        self.push(prediction)
         return row
 
 

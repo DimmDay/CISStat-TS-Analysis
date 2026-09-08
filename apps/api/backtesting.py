@@ -31,6 +31,7 @@ from apps.api.feature_plan import (
     KIND_EXOGENOUS,
     POLICY_NONE,
     ROLE_HISTORIC,
+    bind_feature_importance,
 )
 from apps.api.schemas import BacktestMetrics
 
@@ -497,6 +498,7 @@ def run_backtest_plan(
         raw_train = [values[index] for index in fold.train_indices]
         fold_started = time.monotonic()
         feature_lineage: Optional[dict[str, Any]] = None
+        fold_feature_importance: Optional[dict[str, Any]] = None
         try:
             if fold_preprocessor is None:
                 y_train = raw_train
@@ -559,6 +561,23 @@ def run_backtest_plan(
                 )
                 model_forecast = list(execution_result.forecast)
                 adapter_warnings.extend(execution_result.warnings)
+                # Task 127: feature importance адаптера привязывается к ТОЧНОЙ
+                # матрице, на которой он посчитан (bind_feature_importance,
+                # oracle-защита: чужие колонки отклоняются -> ошибка fold'а).
+                fold_feature_importance: Optional[dict[str, Any]] = None
+                importance_lineage = execution_result.metadata.get(
+                    "feature_importance_lineage",
+                )
+                importance_records = execution_result.metadata.get("feature_importances")
+                if isinstance(importance_lineage, Mapping) and importance_records:
+                    fold_feature_importance = bind_feature_importance(
+                        importance_lineage, importance_records,
+                    )
+                    fold_feature_importance["fold"] = fold.fold
+                    if feature_lineage is not None:
+                        fold_feature_importance["plan_id"] = feature_lineage.get("plan_id")
+                else:
+                    fold_feature_importance = None
             else:
                 assert predictor is not None
                 model_forecast = [float(value) for value in predictor(
@@ -599,6 +618,7 @@ def run_backtest_plan(
             "metrics": metrics.model_dump(mode="json"), "predictions": predictions,
             "mase_scale": mase_scale, "rmsse_scale": rmsse_scale,
             "feature_matrix": feature_lineage,
+            "feature_importance": fold_feature_importance,
             "duration_ms": round((time.monotonic() - fold_started) * 1000, 3),
             "error": None,
         })

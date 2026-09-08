@@ -26,7 +26,12 @@ from apps.api.schemas import CandidatesRequest, DataProfileRequest
 CERTIFIED_IDS = frozenset({
     "naive", "seasonal_naive", "drift", "mean", "ets",
     "ets_damped", "theta", "arima", "arima_auto", "prophet", "tbats",
+    # Task 127: первый dependency_group="ml" адаптер, recursive-стратегия.
+    "random_forest",
 })
+
+# Task 127: supervised-адаптеры с regressor-каналом future_known/static.
+SUPERVISED_IDS = frozenset({"prophet", "random_forest"})
 
 
 def test_registry_is_the_single_source_of_truth_for_production_actions():
@@ -40,14 +45,15 @@ def test_registry_is_the_single_source_of_truth_for_production_actions():
         descriptor = MODEL_EXECUTION_REGISTRY.describe(model_id)
         assert descriptor["version"] == MODEL_EXECUTION_CONTRACT_VERSION
         assert descriptor["model_id"] == model_id
-        # Task 126: prophet -- единственный supervised-адаптер (capability
-        # supports_future_features для future_known/static регрессоров),
-        # остальные сертифицированные модели остаются univariate.
-        expected_input_kind = "supervised" if model_id == "prophet" else "univariate"
+        # Task 126/127: prophet и random_forest -- supervised-адаптеры
+        # (capability supports_future_features для future_known/static
+        # регрессоров), остальные остаются univariate.
+        expected_input_kind = "supervised" if model_id in SUPERVISED_IDS else "univariate"
         assert descriptor["input_kind"] == expected_input_kind
-        assert descriptor["supports_future_features"] is (model_id == "prophet")
+        assert descriptor["supports_future_features"] is (model_id in SUPERVISED_IDS)
         assert descriptor["fit_policy"] == "per_train_fold"
-        assert descriptor["dependency_group"] == "classical"
+        expected_dependency_group = "ml" if model_id == "random_forest" else "classical"
+        assert descriptor["dependency_group"] == expected_dependency_group
         assert len(descriptor["signature"]) == 64
         assert "executor" not in descriptor
 
