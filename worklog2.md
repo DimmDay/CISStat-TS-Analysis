@@ -3816,3 +3816,97 @@ importance-lineage с oracle-защитой, bounded tuning 16 trials, чест�
 (90/90 сюит). Коммит/пуш не выполнялись (запрет AGENTS.md соблюдён).
 Задел Tasks 129–130 (LightGBM/CatBoost): ядро _supervised_recursion
 переиспользуется как есть; рекомендуется указывать pytest-счёт кейсов.
+
+---
+
+## Task 129 — LightGBM: production vertical slice (recursive supervised ML, quantile-regression интервалы)
+
+Дата: 2026-09-09. Синхронизация: `main @ 6d4004b` (Task 128 + принятая
+сертификация Task 128 + фикс jest-контура). Реализация по TDD
+(RED → код → GREEN); базовый прогон на базе: 1570 passed / 0 failed,
+snapshots 3/3, jest 90/90 сюит.
+
+### Постановка
+
+docs/modeling_task_list.md, Tasks 127–130: каждая vertical slice включает
+bounded param_space, exact OOF, feature importance, residual diagnostics,
+reproducible seed, capability/UI и Model Card; нативные production API
+(XGBoost, LightGBM); никаких общих штрафных или Naive-fallback реализаций.
+Ожидание тимлида: точка изменения сведена к адаптеру + реестру + yaml +
+dispatch, ядро уже общее — подтверждено: ядро `_supervised_recursion`
+Task 127/128 переиспользовано без единой правки.
+
+### Дизайн
+
+- `apps/api/model_impls/lightgbm.py` (новый, ~370 строк) — зеркало
+  сертифицированного паттерна Task 128 на НАТИВНОМ API LightGBM
+  (`lightgbm.train` + `lgb.Dataset`, без sklearn-обёртки):
+  - recursive-стратегия: каузальные historic-признаки (лаги 1..n_lags,
+    rolling mean/std, diff_1, префикс `lgb_`) через RecursiveFeatureState
+    (peek→predict→push); train-матрица и прогноз — одним кодом
+    (train/serve skew исключён по построению);
+  - интервалы — quantile regression (objective="quantile", alpha=0.1/0.9,
+    fixed 80%): point-бустер ведёт рекурсию, две квантильные предсказывают
+    на ТЕХ ЖЕ future-строках; widen-инвариант lower ≤ point ≤ upper;
+  - importance: нативный `feature_importance("gain")` возвращает СЫРЫЕ
+    суммы гейнов — адаптер НОРМАЛИЗУЕТ к сумме 1.0 (контракт платформы;
+    отличие от XGBoost с его нормализованным feature_importances_);
+    вырожденный ноль суммарного гейна (константный target, ни одного
+    сплита) — детерминированный равномерный fallback (документирован);
+    lineage matrix_hash (canonical JSON + sha256) + самопроверка
+    bind_feature_importance в адаптере (oracle-защита);
+  - bounded params fail-closed: n_estimators(10,1000), num_leaves(2,256),
+    learning_rate(0.001,1.0), min_data_in_leaf(1,100), lambda_l2(0,1000),
+    feature_fraction(0.1,1.0), n_lags(1,32); int/float разделение, bool
+    отклоняется, чужие ключи игнорируются (соглашение платформы);
+  - детерминизм: num_threads=1, deterministic=True, force_col_wise=True,
+    master-seed `seed=random_state` (все подчинённые сиды LightGBM
+    порождаются из него); при feature_fraction=1.0 бустер детерминирован
+    независимо от seed (покрыто двусторонним тестом).
+- Диспетчеризация: `model_execution.py` (`_lightgbm_executor` + реестр:
+  supervised, supports_future_features, intervals, deterministic,
+  dependency_group="ml", engine="lightgbm"); `model_impls/__init__.py`
+  (экспорт); `routers/models.py` (_BACKTEST_IMPLEMENTATIONS — защитный
+  инвариант сверки с PRODUCTION_BACKTEST_MODEL_IDS сошёлся автоматически);
+  `rules/modeling.yaml` — param_space 2×2×2×2=16 trials ≤ 64
+  (n_estimators/num_leaves/learning_rate/n_lags);
+- Рантайм: `requirements.txt` — lightgbm==4.5.0 (зафиксированная версия);
+  `Dockerfile` — проба исполняемости `_lgb_fit_predict` в release-образе
+  (воспроизведена локально). UI — family-уровень, изменений не требует
+  (lightgbm отображается в «Деревья и бустинг» автоматически).
+
+### TDD
+
+RED: tests/unit/test_lightgbm_adapter.py (44 кейса) +
+test_lightgbm_backtest.py (9 кейсов, счёт по pytest --collect-only) —
+ModuleNotFoundError подтверждён.
+GREEN после реализации. Один честный итеративный фикс ТЕСТА (не кода):
+A/B-дивергенция регрессорного канала на чистом y=driver (13-цикл) не
+проявляется — lag-признаки объясняют таргет целиком (биекция), leaf-wise
+бустинг не доходит до driver-сплитов (gain=0, это свойство данных);
+данные перестроены как y = driver + детерминированный джиттер (взаимно
+простые циклы 13/7), driver стал единственным информативным признаком —
+дивергенция, driver-importance ≈ 0.995.
+
+### Синхронные обновления сертификационных тестов (13 → 14 моделей)
+
+test_model_execution_contract.py (CERTIFIED/SUPERVISED/ML_IDS +
+lightgbm-дескриптор в candidates), test_modeling_mvp_certification.py
+(fourteen-model, tuning-сет, _lgb_fit_predict в Dockerfile-пробе),
+test_model_readiness_candidates.py (ready+lightgbm, catalog-only без
+lightgbm, runnable 14/catalog_only 10, blocked 4 при n=60 — explain),
+test_backtesting_engine.py (cohort 14, importance x3 ML),
+test_models_backtest_real.py (14 реализаций),
+test_models_candidates.py (422-пример lightgbm → catboost).
+
+### Верификация
+
+- Полный pytest: **1623 passed / 0 failed** (1570 + 53 новых), snapshots
+  3/3; арифметика счётчиков сходится.
+- jest: 90/90 сюит, 831 тест — фронтенд без регрессий.
+- compileall OK; локальное воспроизведение Dockerfile-пробы: «LightGBM
+  executable OK»; legacy-эндпоинт run_lightgbm_backtest — реальные метрики.
+- 14/24 production-моделей. Коммит/пуш не выполнялись (запрет AGENTS.md
+  соблюдён). Задел Task 130 (CatBoost): точки изменения идентичны —
+  адаптер (native catboost API, CatBoostRegressor с quantile
+  objective=Quantile:alpha) + реестр + yaml + dispatch.

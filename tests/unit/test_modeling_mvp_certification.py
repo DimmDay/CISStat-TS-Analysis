@@ -1,4 +1,4 @@
-"""Release gate for the certified thirteen-model Modeling scope."""
+"""Release gate for the certified fourteen-model Modeling scope."""
 
 import math
 from pathlib import Path
@@ -32,12 +32,14 @@ CERTIFIED_MODEL_IDS = frozenset({
     "random_forest",
     # Task 128: XGBoost -- второй ML-адаптер (quantile-regression интервалы).
     "xgboost",
+    # Task 129: LightGBM -- третий ML-адаптер (native API, leaf-wise).
+    "lightgbm",
 })
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_certified_scope_is_exactly_thirteen_real_models_in_the_24_model_catalog():
+def test_certified_scope_is_exactly_fourteen_real_models_in_the_24_model_catalog():
     spec = ModelingSpec.from_yaml("rules/modeling.yaml")
     catalog = {
         model.id: family.id
@@ -50,7 +52,7 @@ def test_certified_scope_is_exactly_thirteen_real_models_in_the_24_model_catalog
     assert PRODUCTION_DIAGNOSTICS_MODEL_IDS == CERTIFIED_MODEL_IDS
     assert frozenset(PRODUCTION_PREDICTORS) == CERTIFIED_MODEL_IDS
     assert PRODUCTION_TUNING_MODEL_IDS == frozenset(
-        {"ets", "ets_damped", "arima", "prophet", "tbats", "random_forest", "xgboost"},
+        {"ets", "ets_damped", "arima", "prophet", "tbats", "random_forest", "xgboost", "lightgbm"},
     )
 
     for model_id, family_id in catalog.items():
@@ -85,6 +87,7 @@ def test_ci_and_api_image_install_and_probe_prophet_and_tbats_dependencies():
     assert "statsforecast==2.1.1" in api_requirements
     assert "_prophet_fit_predict" in dockerfile
     assert "_tbats_fit_predict" in dockerfile
-    # Task 127/128: пробы исполняемости ML-адаптеров в release-образе.
+    # Task 127/128/129: пробы исполняемости ML-адаптеров в release-образе.
     assert "_rf_fit_predict" in dockerfile
     assert "_xgb_fit_predict" in dockerfile
+    assert "_lgb_fit_predict" in dockerfile

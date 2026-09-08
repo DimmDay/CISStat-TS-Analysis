@@ -30,13 +30,15 @@ CERTIFIED_IDS = frozenset({
     "random_forest",
     # Task 128: XGBoost -- второй ML-адаптер (quantile-regression интервалы).
     "xgboost",
+    # Task 129: LightGBM -- третий ML-адаптер (native API, leaf-wise).
+    "lightgbm",
 })
 
-# Task 126/127/128: supervised-адаптеры с regressor-каналом future_known/static.
-SUPERVISED_IDS = frozenset({"prophet", "random_forest", "xgboost"})
+# Task 126/127/128/129: supervised-адаптеры с regressor-каналом future_known/static.
+SUPERVISED_IDS = frozenset({"prophet", "random_forest", "xgboost", "lightgbm"})
 
-# Task 127/128: ML-семейство (dependency_group="ml").
-ML_IDS = frozenset({"random_forest", "xgboost"})
+# Task 127/128/129: ML-семейство (dependency_group="ml").
+ML_IDS = frozenset({"random_forest", "xgboost", "lightgbm"})
 
 
 def test_registry_is_the_single_source_of_truth_for_production_actions():
@@ -50,7 +52,7 @@ def test_registry_is_the_single_source_of_truth_for_production_actions():
         descriptor = MODEL_EXECUTION_REGISTRY.describe(model_id)
         assert descriptor["version"] == MODEL_EXECUTION_CONTRACT_VERSION
         assert descriptor["model_id"] == model_id
-        # Task 126/127/128: prophet, random_forest и xgboost --
+        # Task 126/127/128/129: prophet, random_forest, xgboost и lightgbm --
         # supervised-адаптеры (capability supports_future_features для
         # future_known/static регрессоров), остальные остаются univariate.
         expected_input_kind = "supervised" if model_id in SUPERVISED_IDS else "univariate"
@@ -74,8 +76,10 @@ def test_candidates_publish_v2_descriptors_only_for_executable_models():
 
     assert response.execution_contract_version == "model-execution-v2"
     assert catalog["naive"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("naive")
-    # Task 128: xgboost стал production-моделью; catalog-only пример -- catboost.
+    # Task 128/129: xgboost и lightgbm стали production-моделями;
+    # catalog-only пример -- catboost.
     assert catalog["xgboost"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("xgboost")
+    assert catalog["lightgbm"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("lightgbm")
     assert catalog["catboost"].execution_contract is None
 
 

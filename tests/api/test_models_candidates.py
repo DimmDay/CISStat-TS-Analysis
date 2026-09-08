@@ -439,9 +439,11 @@ class TestBacktestNaive:
         assert data["family_id"] == "baselines"
 
     def test_unsupported_model_never_returns_penalty_metrics(self):
+        # Task 129: lightgbm стал production-моделью (200); в качестве
+        # catalog-only примера используется catboost.
         response = client.post(
             "/v1/models/backtest",
-            json={"model_id": "lightgbm", "profile": MACRO_PROFILE},
+            json={"model_id": "catboost", "profile": MACRO_PROFILE},
             headers=PRO_HEADERS,
         )
 

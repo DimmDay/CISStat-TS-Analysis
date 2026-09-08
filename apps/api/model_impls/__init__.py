@@ -36,6 +36,7 @@ from apps.api.model_impls.prophet import run_prophet_backtest
 from apps.api.model_impls.tbats import run_tbats_backtest
 from apps.api.model_impls.random_forest import run_random_forest_backtest
 from apps.api.model_impls.xgboost import run_xgboost_backtest
+from apps.api.model_impls.lightgbm import run_lightgbm_backtest
 
 
 __all__ = [
@@ -48,4 +49,5 @@ __all__ = [
     "run_tbats_backtest",
     "run_random_forest_backtest",
     "run_xgboost_backtest",
+    "run_lightgbm_backtest",
 ]
