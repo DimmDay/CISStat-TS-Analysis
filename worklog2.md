@@ -3473,3 +3473,113 @@ runtime-потребителя; regressor-канал future_known/static раб�
 Задел для Tasks 128–130 (XGBoost/LightGBM/CatBoost): peek/push-паттерн
 потребления RecursiveFeatureState и адаптерный importance-lineage
 переиспользуются как есть.
+
+---
+
+## Task 127 — Сертификация Random Forest (аудит на 258f4d9)
+
+Дата: 2026-09-08. Синхронизация: `main @ 258f4d9` (Task 127 коммит `0310e13`).
+Аудитор: независимая сертификационная проверка реализации коллеги.
+
+### Методика аудита
+
+1. Изучены требования `docs/modeling_task_list.md` (Task 127 = vertical slice
+   серии ML: bounded param_space, exact OOF, feature importance, residual
+   diagnostics, reproducible seed, capability/UI, Model Card; запрет
+   Naive-fallback/штрафных результатов; нативный production API).
+2. Постатрочный ревью кода: `apps/api/model_impls/random_forest.py` (401
+   строка), диффы `feature_plan.py` / `model_execution.py` / `backtesting.py`
+   / `schemas.py` / `routers/models.py` / `model_impls/__init__.py` /
+   `rules/modeling.yaml` / `Dockerfile`.
+3. Ревью тестов: `tests/unit/test_random_forest_adapter.py` (38 кейса),
+   `tests/unit/test_random_forest_backtest.py` (10 кейсов) + обновления пяти
+   сертификационных тест-файлов.
+4. Независимое воспроизведение в чистом окружении (восстановлены зависимости:
+   prophet, statsforecast, pandera, syrupy, arch, ruptures, hypothesis,
+   PyWavelets).
+
+### Результаты проверки требований (все подтверждены кодом и прогоном)
+
+1. **Bounded param_space**: `PARAM_BOUNDS` в коде — fail-closed и ВНЕ тюнинга
+   (n_estimators 10..1000, max_depth None|1..64, min_samples_leaf 1..100,
+   n_lags 1..32; bool отсекается). YAML param_space 2×2×2×2 = 16 trials
+   ≤ MAX_TRIALS=64. Подтверждено 10 параметрическими fail-closed тестами и
+   тестом сетки YAML.
+2. **Exact OOF**: единый движок `run_backtest_plan`, общий cohort_id с
+   остальными 11 моделями (тест двенадцатимодельного cohort'а), реальные
+   метрики (positive MAE/RMSE; weighted_score=None — только comparison),
+   детерминизм повторного прогона (OOF и метрики идентичны).
+3. **Feature importance**: sklearn impurity importances; lineage
+   (`matrix_hash` = canonical JSON + sha256 X-матрицы, adapter_id, колонки,
+   warmup, n_rows); `bind_feature_importance` в движке → `fold["feature_importance"]`
+   (+fold, +plan_id). Oracle-защита: чужие колонки отклоняются (негативный
+   контроль в тесте). Без плана — importance с plan_id=None (важность не
+   существует вне привязки к своей матрице).
+4. **Residual diagnostics**: модель-агностная стадия на OOF-остатках,
+   actions={backtest, tune, diagnostics} — подтверждено дескриптором.
+5. **Reproducible seed**: random_state через ModelExecutionRequest; n_jobs=1
+   (детерминизм float-суммирования); тесты: идентичность forecast/lower/upper/
+   matrix_hash при равном seed, расхождение при смене seed.
+6. **Capability/UI**: реестр — family=tree_ml, input_kind=supervised,
+   dependency_group="ml", deterministic; candidates → platform_status="ready";
+   на коротком профиле (n=60) честный блок "60 < 100" из каталога YAML
+   (min_observations=100 — explain, не fake); UI-family «Деревья и бустинг»
+   подтверждена в packages/ui/lib/modeling.ts:210 — фронтенд правок не требует.
+7. **Model Card**: folds с feature_importance попадают в training.folds
+   генерически (schema BacktestFoldResult.feature_importance добавлена
+   опциональной — обратная совместимость контракта API).
+8. **Запрет Naive-fallback**: legacy-обёртка `run_random_forest_backtest`
+   сознательно БЕЗ safe_backtest (в отличие от prophet/tbats legacy-путей) —
+   ошибки модели поднимаются как есть; нулевые метрики только на вырожденном
+   пустом вводе (общая конвенция _common.py, не подмена ошибки модели).
+   Production-контур: fail-closed NaN/Inf/длины/симметрия регрессоров,
+   MIN_USABLE_ROWS=8 — всё в ошибку fold'а.
+9. **Recursive-стратегия (потребление Task 126)**: `peek_row()/push()` —
+   аддитивный рефакторинг; `next_row = peek_row()+push()` бит-в-бит
+   (проверено постатрочно по диффу); все сертифицированные тесты Task 126
+   зелёные БЕЗ правок (доказано полным прогоном). Аргумент о принципиальной
+   неприменимости next_row для последовательного генератора прогнозов
+   корректен: строка строится ДО push, аргумент всегда отставал бы на шаг.
+   Train-матрица и прогноз строятся одним peek/push-кодом — train/serve skew
+   устранён по построению. Каузальность supervised-матрицы подтверждена
+   построчным тестом (target в позиции p, признаки строго из y<p).
+10. **Regressor-канал**: future_known/static из fold-local FeaturePlan
+    симметрично train/future, fail-closed (симметрия множеств, длины,
+    NaN/Inf); A/B-дивергенция доказывает достижимость канала моделью;
+    E2E granted-режим без exclusion-warning; негативный контроль гейта
+    (univariate-модели по-прежнему отклоняют features) — контракт Task 126
+    не ослаблен.
+11. **Дополнительные находки аудита**: фикс `_probe_dependency` (alias
+    `scikit-learn`→`sklearn`, distribution name ≠ module name) — реальный
+    баг, без него адаптер ошибочно считался недоступным; guard
+    консистентности legacy-dispatch с реестром сохранён; Dockerfile-проба RF
+    воспроизведена локально (OK); счётчики readiness обновлены честно
+    (12 runnable / 12 catalog_only / blocked=2 на коротком профиле).
+12. **Числа сходятся**: 48 новых кейса (адаптер 38 + backtest 10), полный
+    прогон **1520 passed / 0 failed** (базлайн bb41796 1472 + 48 — арифметика
+    сходится ровно; заявленные в записи коллеги «27»/«12» — счёт функций по
+    секциям, на арифметику не влияет). compileall OK; `from apps.api.main
+    import app` OK; snapshots 3/3.
+
+### Замечания аудита (некритичные, блокировок нет)
+
+- Описательные счётчики в записи коллеги («27:», «12:») не совпадают с
+  pytest-счётом кейсов (38/10) — при этом сводная арифметика 1472+48=1520
+  точна; рекомендуется в последующих задачах указывать pytest-счёт.
+- В `backtesting.py` `fold_feature_importance` инициализируется дважды
+  (до try и в supervised-ветке) — избыточно, но семантически корректно.
+- `tests/unit/test_model_readiness_candidates.py` содержит избыточную
+  двойную инициализацию той же переменной в тесте блокировок (не влияет).
+
+### Вердикт сертификации
+
+**Task 127 СЕРТИФИЦИРОВАНА. Реализация отличная.**
+
+Все восемь требований постановки выполнены end-to-end без упрощений:
+Random Forest — полный production vertical slice (12/24), первый
+dependency_group="ml" и первый runtime-потребитель recursive-контракта
+Task 126 с устранением train/serve skew по построению; bounded tuning,
+exact OOF, importance-lineage с oracle-защитой, интервалы по деревьям,
+детерминизм, честные capability-гейты. Коммит/пуш не выполнялся (запрет
+AGENTS.md соблюдён). База для Tasks 128–130 (XGBoost/LightGBM/CatBoost):
+peek/push-паттерн и адаптерный importance-lineage переиспользуются как есть.
