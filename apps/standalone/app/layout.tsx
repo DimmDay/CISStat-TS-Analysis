@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ["latin", "cyrillic"], variable: "--font-sans" })
 export const metadata: Metadata = {
   title: "CISStat TS Analysis",
   description: "Платформа анализа временных рядов — самостоятельный продукт: веб и API",
+  icons: {
+    icon: "/logo_TS.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
