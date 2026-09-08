@@ -28,7 +28,9 @@ from apps.api.model_execution import (
 from apps.api.feature_plan import (
     FoldFeatureMatrixBuilder,
     FeaturePlan,
+    KIND_EXOGENOUS,
     POLICY_NONE,
+    ROLE_HISTORIC,
 )
 from apps.api.schemas import BacktestMetrics
 
@@ -473,6 +475,21 @@ def run_backtest_plan(
                 f"модели '{model_id}' вне типизированного registry-контракта"
             )
             feature_plan = None
+    if feature_mode == "granted" and feature_plan is not None:
+        # Task 124: historic-объявления (future неизвестен) не проходят в
+        # regressor-канал ни при каком capability-гейте -- сообщаем это явно,
+        # один раз на run, а не тихим деградационным путём.
+        historic_exogenous = [
+            spec.name for spec in feature_plan.features
+            if spec.role == ROLE_HISTORIC and spec.kind == KIND_EXOGENOUS
+        ]
+        if historic_exogenous:
+            feature_warnings.append(
+                f"FeaturePlan '{feature_plan.plan_id}': historic-регрессоры "
+                f"{historic_exogenous} не переданы модели '{model_id}': будущие "
+                "значения неизвестны (строгий future-known contract); доступны "
+                "только в fold-матрицах аудита"
+            )
     folds: list[dict[str, Any]] = []
     adapter_warnings: list[str] = []
     started = time.monotonic()

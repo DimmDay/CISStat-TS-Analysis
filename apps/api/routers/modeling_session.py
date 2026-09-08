@@ -11,6 +11,7 @@ from typing import Any, Literal, Optional
 from uuid import uuid4
 
 import numpy as np
+import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
@@ -24,9 +25,14 @@ from apps.api.fold_preprocessing import prepare_modeling_target
 from apps.api.feature_plan import (
     FeaturePlan,
     FeaturePlanError,
+    KIND_EXOGENOUS,
+    POLICY_RECURSIVE,
     ROLE_FUTURE_KNOWN,
+    ROLE_HISTORIC,
     ROLE_STATIC,
     build_feature_plan_from_metadata,
+    empty_feature_plan,
+    with_regressor_specs,
 )
 from apps.api.model_execution import (
     MODEL_EXECUTION_CONTRACT_VERSION,
@@ -425,37 +431,72 @@ def _session_feature_plan(
 
     План строится из сохранённой metadata остановки «Генерация признаков» и
     включается в cohort (cohort_contract/cohort_id) только когда он ПОЛНОСТЬЮ
-    верифицируем: source_column == моделируемая цель, все future_known/static
+    верифицируем: source_column == моделируемая цель, все материализуемые
     колонки присутствуют в датасете, числовые, конечные и совпадают по длине
     с рядом.  Любая stale/битая деталь понижает путь до legacy-cohort с явным
     warning'ом -- тихая подмена состава признаков исключена по построению.
+
+    Task 124 (финальная сертификация): произвольные fold-local regressors.
+    Объявления ``session.modeling_feature_regressors`` (колонки датасета,
+    поданные через PUT /feature-regressors) сливаются в план как
+    family=exogenous с ролью из known_in_advance/static.  Материализуются
+    ВСЕ объявленные роли: future_known/static -- симметричный канал
+    train+future к supervised-адаптерам; historic -- ТОЛЬКО train-срез для
+    fold-матриц аудита (будущее historic-колонки не материализуется
+    никогда, в regressor-канал она не проходит).
     """
     meta = session.preprocessing_feature_generation or {}
     catalog = meta.get("feature_catalog") or []
+    declarations = list(session.modeling_feature_regressors or [])
     warnings: list[str] = []
-    if not catalog:
+    if not catalog and not declarations:
         return None, {}, warnings
     source_column = str(meta.get("source_column") or "")
-    if source_column != session.target_column:
+    if catalog and source_column != session.target_column:
         warnings.append(
             f"FeaturePlan исключён: генерация признаков сохранена для "
             f"'{source_column}', а моделируется '{session.target_column}'"
         )
         return None, {}, warnings
-    try:
-        plan = build_feature_plan_from_metadata(meta)
-    except FeaturePlanError as exc:
-        warnings.append(f"FeaturePlan исключён (fail-closed): {exc}")
+    target = str(session.target_column or "")
+    if any(str(item.get("column") or "") == target for item in declarations):
+        warnings.append(
+            f"FeaturePlan исключён: объявленный регрессор совпадает с "
+            f"моделируемой целью '{target}'"
+        )
         return None, {}, warnings
+    if catalog:
+        try:
+            plan = build_feature_plan_from_metadata(meta)
+        except FeaturePlanError as exc:
+            warnings.append(f"FeaturePlan исключён (fail-closed): {exc}")
+            return None, {}, warnings
+    else:
+        # Регрессорный план без каталога генерации: только произвольные
+        # колонки-регрессоры, политика платформы -- единый recursive-контракт.
+        plan = empty_feature_plan(source_column=target)
+    if declarations:
+        try:
+            plan = with_regressor_specs(plan, declarations, policy=POLICY_RECURSIVE)
+        except FeaturePlanError as exc:
+            warnings.append(f"FeaturePlan исключён (fail-closed): {exc}")
+            return None, {}, warnings
     required_names = [
         spec.name for spec in plan.features
         if spec.role in {ROLE_FUTURE_KNOWN, ROLE_STATIC}
     ]
-    if not required_names:
+    historic_exogenous = [
+        spec.name for spec in plan.features
+        if spec.role == ROLE_HISTORIC and spec.kind == KIND_EXOGENOUS
+    ]
+    if not required_names and not historic_exogenous:
         # Только target-derived признаки: builder пересчитает их из train-среза.
         return plan, {}, warnings
     frame = session.dataframe
-    missing = [name for name in required_names if name not in frame.columns]
+    missing = [
+        name for name in [*required_names, *historic_exogenous]
+        if name not in frame.columns
+    ]
     if missing:
         warnings.append(
             f"FeaturePlan исключён: колонки {missing} отсутствуют в датасете "
@@ -463,7 +504,7 @@ def _session_feature_plan(
         )
         return None, {}, warnings
     columns: dict[str, list[float]] = {}
-    for name in required_names:
+    for name in [*required_names, *historic_exogenous]:
         raw = frame[name]
         if len(raw) != len(prepared.series):
             warnings.append(
@@ -479,10 +520,18 @@ def _session_feature_plan(
                 "future-known регрессоров запрещена"
             )
             return None, {}, warnings
-        if not np.isfinite(numeric).all():
+        if name in required_names:
+            if not np.isfinite(numeric).all():
+                warnings.append(
+                    f"FeaturePlan исключён: колонка '{name}' содержит NaN/Inf -- "
+                    "импутация известного будущего не определена (fail-closed)"
+                )
+                return None, {}, warnings
+        elif np.isinf(numeric).any():
             warnings.append(
-                f"FeaturePlan исключён: колонка '{name}' содержит NaN/Inf -- "
-                "импутация известного будущего не определена (fail-closed)"
+                f"FeaturePlan исключён: колонка '{name}' содержит Inf -- "
+                "historic-регрессор недоступен (fail-closed; NaN импутируются "
+                "медианой train-среза fold'а)"
             )
             return None, {}, warnings
         columns[name] = numeric.tolist()
@@ -714,6 +763,119 @@ def get_modeling_context(
     ):
         store.save(session)
     return context
+
+
+class FeatureRegressorDeclaration(BaseModel):
+    """Объявление произвольного fold-local регрессора (Task 124).
+
+    Роль выводится из ``known_in_advance``/``static`` тем же единственным
+    авторитетом, что и в каталоге генерации признаков (Task 126).
+    """
+
+    column: str = Field(..., min_length=1)
+    known_in_advance: bool
+    static: bool = False
+
+
+class FeatureRegressorsRequest(BaseModel):
+    regressors: list[FeatureRegressorDeclaration] = Field(
+        default_factory=list, max_length=64,
+    )
+
+
+class FeatureRegressorsResponse(BaseModel):
+    regressors: list[FeatureRegressorDeclaration]
+    warnings: list[str] = Field(default_factory=list)
+
+
+def _normalize_regressor(item: FeatureRegressorDeclaration) -> dict[str, Any]:
+    return {
+        "column": item.column,
+        "known_in_advance": item.known_in_advance,
+        "static": item.static,
+    }
+
+
+@router.get("/feature-regressors", response_model=FeatureRegressorsResponse)
+def get_modeling_feature_regressors(request: Request, response: Response):
+    """Текущие объявления произвольных регрессоров supervised-моделей."""
+    store, session = _get_session(request, response)
+    return FeatureRegressorsResponse(regressors=[
+        FeatureRegressorDeclaration(**dict(item))
+        for item in session.modeling_feature_regressors
+    ])
+
+
+@router.put("/feature-regressors", response_model=FeatureRegressorsResponse)
+def set_modeling_feature_regressors(
+    payload: FeatureRegressorsRequest, request: Request, response: Response,
+):
+    """Заменить список произвольных регрессоров целиком (Task 124).
+
+    Валидация fail-closed против активного датасета: колонка существует,
+    числовая (Prophet add_regressor принимает только числа), не является
+    моделируемой целью; static-объявление обязано быть константой по ряду.
+    Дубликаты имён запрещены.  Смена объявлений меняет FeaturePlan
+    fingerprint и cohort_id, поэтому reuse-логика автоматически инвалидирует
+    бэктесты/тюнинг прошлых cohort'ов -- тихого переиспользования нет.
+    """
+    store, session = _get_session(request, response)
+    seen: set[str] = set()
+    for item in payload.regressors:
+        if item.column in seen:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Дубликат объявления регрессора '{item.column}'",
+            )
+        seen.add(item.column)
+        if item.static and not item.known_in_advance:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Регрессор '{item.column}': static-роль требует "
+                    "known_in_advance=True",
+            )
+    if payload.regressors:
+        frame = session.dataframe
+        if frame is None:
+            raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+        if not session.target_column:
+            raise HTTPException(
+                status_code=422,
+                detail="Моделируемая цель не выбрана: объявление регрессоров "
+                    "доступно после выбора target",
+            )
+        for item in payload.regressors:
+            if item.column == session.target_column:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Колонка '{item.column}' является моделируемой целью "
+                        "и не может быть регрессором",
+                )
+            if item.column not in frame.columns:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Колонка '{item.column}' отсутствует в датасете",
+                )
+            if not pd.api.types.is_numeric_dtype(frame[item.column]):
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"Колонка '{item.column}' не числовая: regressor-канал "
+                        "Prophet принимает только числовые регрессоры",
+                )
+            if item.static:
+                values = frame[item.column].dropna().unique()
+                if len(values) > 1:
+                    raise HTTPException(
+                        status_code=422,
+                        detail=f"Static-регрессор '{item.column}' не константен "
+                            "по ряду: static-роль требует построчного постоянства",
+                    )
+    session.modeling_feature_regressors = [
+        _normalize_regressor(item) for item in payload.regressors
+    ]
+    session.touch()
+    store.save(session)
+    return FeatureRegressorsResponse(regressors=payload.regressors)
 
 
 @router.get("/state")

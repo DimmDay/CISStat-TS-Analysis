@@ -223,6 +223,15 @@ class AnalysisSession:
     # transformations здесь не хранятся параметры, обученные на полном
     # датасете: scaler должен fit-иться внутри train каждого временного fold.
     preprocessing_scaling_recipe: dict[str, Any] = field(default_factory=dict)
+    # Произвольные регрессоры supervised-моделей (Task 124, финальная
+    # сертификация): объявления колонок датасета, подключаемых к
+    # fold-local FeaturePlan как family=exogenous.  Каждая запись:
+    # {column, known_in_advance, static} -- роль выводится из флагов
+    # тем же авторитетом, что и каталог генерации.  Известное будущее
+    # (known_in_advance=True) попадает в regressor-канал Prophet;
+    # historic-объявления существуют только в train-срезе fold'а.
+    # Новый датасет сбрасывает список: старые колонки могут отсутствовать.
+    modeling_feature_regressors: list[dict[str, Any]] = field(default_factory=list)
     # Последний рассчитанный на вкладке EDA план временной валидации.
     # Modeling использует его как default hand-off и не заменяет silently
     # собственными horizon/folds после перехода между вкладками.
@@ -264,6 +273,7 @@ class AnalysisSession:
         self.preprocessing_spectral_selection = {}
         self.preprocessing_feature_generation = {}
         self.preprocessing_scaling_recipe = {}
+        self.modeling_feature_regressors = []
         self.eda_validation_strategy = {}
         self.reset_modeling()
         self.sufficiency_plan = {}
@@ -489,6 +499,9 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "preprocessing_spectral_selection": dict(session.preprocessing_spectral_selection),
         "preprocessing_feature_generation": dict(session.preprocessing_feature_generation),
         "preprocessing_scaling_recipe": dict(session.preprocessing_scaling_recipe),
+        "modeling_feature_regressors": [
+            dict(item) for item in session.modeling_feature_regressors
+        ],
         "eda_validation_strategy": deepcopy(session.eda_validation_strategy),
         "modeling_pipeline": dict(session.modeling_pipeline),
         "modeling_artifacts": deepcopy(session.modeling_artifacts),
@@ -532,6 +545,11 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         preprocessing_spectral_selection=dict(d.get("preprocessing_spectral_selection", {})),
         preprocessing_feature_generation=dict(d.get("preprocessing_feature_generation", {})),
         preprocessing_scaling_recipe=dict(d.get("preprocessing_scaling_recipe", {})),
+        # [] для старых записей Redis: произвольные регрессоры появились
+        # после Task 126 (финальная сертификация Task 124).
+        modeling_feature_regressors=[
+            dict(item) for item in d.get("modeling_feature_regressors", []) or []
+        ],
         eda_validation_strategy=deepcopy(d.get("eda_validation_strategy", {})),
         modeling_pipeline={
             stage: dict(d.get("modeling_pipeline", {})).get(stage, "pending")

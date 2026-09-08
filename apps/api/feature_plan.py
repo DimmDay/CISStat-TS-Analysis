@@ -312,6 +312,99 @@ def build_feature_plan_from_metadata(
     )
 
 
+def _regressor_spec(
+    declaration: Mapping[str, Any], taken_names: set[str],
+) -> FeatureSpec:
+    """Валидировать одно объявление произвольного регрессора (fail-closed).
+
+    Объявление -- это колонка датасета, подключаемая к supervised-моделям как
+    fold-local регрессор.  Роль выводится из того же единственного авторитета,
+    что и в каталоге генерации: ``known_in_advance`` (+явный ``static``).
+    """
+    if not isinstance(declaration, Mapping):
+        raise FeaturePlanError(
+            "Объявление регрессора должно быть объектом вида "
+            "{column, known_in_advance, static?}"
+        )
+    name = str(declaration.get("column") or "")
+    if not name:
+        raise FeaturePlanError("Объявление регрессора без имени колонки (column)")
+    if name in taken_names:
+        raise FeaturePlanError(
+            f"Регрессор '{name}': колонка уже входит в план признаков -- "
+            "дубликаты имён запрещены"
+        )
+    if "known_in_advance" not in declaration:
+        raise FeaturePlanError(
+            f"Регрессор '{name}': отсутствует обязательный флаг known_in_advance -- "
+            "роль не может быть выведена безопасно"
+        )
+    known_in_advance = bool(declaration["known_in_advance"])
+    static = bool(declaration.get("static", False))
+    if static and not known_in_advance:
+        raise FeaturePlanError(
+            f"Регрессор '{name}': static-роль требует known_in_advance=True"
+        )
+    if static:
+        role = ROLE_STATIC
+    elif known_in_advance:
+        role = ROLE_FUTURE_KNOWN
+    else:
+        role = ROLE_HISTORIC
+    return FeatureSpec(
+        name=name, kind=KIND_EXOGENOUS, role=role, lookback=0,
+        params={}, source_column="",
+    )
+
+
+def with_regressor_specs(
+    plan: FeaturePlan,
+    declarations: Sequence[Mapping[str, Any]],
+    *,
+    policy: Optional[str] = None,
+) -> FeaturePlan:
+    """Дополнить иммутабельный план произвольными регрессорами пользователя.
+
+    Task 124 (финальная сертификация): произвольные fold-local regressors
+    end-to-end.  Каждое объявление превращается в FeatureSpec
+    (kind=exogenous) с ролью из known_in_advance/static; существующие фичи
+    плана не изменяются, исходный план НЕ мутируется.  Дубликаты имён против
+    каталога и внутри объявлений отклоняются fail-closed.  Возвращается
+    НОВЫЙ FeaturePlan с пересчитанным plan_id/fingerprint -- cohort_id
+    бэктестов автоматически меняется, reuse-логика инвалидирует старые
+    артефакты.  Пустой список объявлений возвращает план без изменений.
+    """
+    resolved_policy = policy if policy is not None else plan.policy
+    if resolved_policy not in SUPPORTED_POLICIES:
+        raise FeaturePlanError(f"Неподдерживаемая policy FeaturePlan: {resolved_policy!r}")
+    declarations = list(declarations or [])
+    if not declarations:
+        if resolved_policy == plan.policy:
+            return plan
+        return FeaturePlan(
+            plan_id=plan.plan_id, features=plan.features,
+            policy=resolved_policy, fingerprint=plan.fingerprint,
+            source_column=plan.source_column,
+        )
+    taken_names = {spec.name for spec in plan.features}
+    specs = list(plan.features)
+    for declaration in declarations:
+        spec = _regressor_spec(declaration, taken_names)
+        specs.append(FeatureSpec(
+            name=spec.name, kind=spec.kind, role=spec.role,
+            lookback=spec.lookback, params=spec.params,
+            source_column=plan.source_column,
+        ))
+        taken_names.add(spec.name)
+    new_plan_id, new_fingerprint = _plan_identity(
+        specs, policy=resolved_policy, source_column=plan.source_column,
+    )
+    return FeaturePlan(
+        plan_id=new_plan_id, features=tuple(specs), policy=resolved_policy,
+        fingerprint=new_fingerprint, source_column=plan.source_column,
+    )
+
+
 class RecursiveFeatureState:
     """Единый recursive-контракт для будущих supervised/ML-адаптеров.
 

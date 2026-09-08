@@ -4368,3 +4368,105 @@ regressor-канал только при `supports_future_features` с учёт�
 **Task 126 сертифицирована. Реализация отличная.** Состав сдачи: 14 файлов
 (6 backend-модулей, 7 тест-файлов, worklog2.md), +2630/−17 строк. Коммит и
 push в main выполнены тимлидом; со стороны агента изменений кода не потребовалось.
+
+---
+
+## Task 124 — финальная сертификация: произвольные fold-local regressors end-to-end (8ee9579)
+
+### База и постановка
+
+Синхронизация до `8ee9579cedb45221feef6ee005f8330daf81a3b8` («Task 126 certification on
+b8907a8»). Состояние Task 124 на входе — «условно сертифицирована»: все требования
+Prophet выполнены (точные EDA folds, реальные timestamps, fold-local holidays, bounded
+grid 5x3x2, интервалы, общий OOF-workflow), кроме буквального пункта плана
+«fold-local regressors»: произвольные регрессоры пользователя не были объявляемы
+end-to-end — зависимость Task 126. После сертификации Task 126 ядро платформы
+(FeaturePlan → FoldFeatureMatrixBuilder → capability-гейт → regressor-канал адаптера)
+готово, но остались три разрыва upstream-проводки:
+
+1. генератор каталога признаков не эмитит `family=exogenous` — произвольную колонку
+   датасета невозможно было объявить регрессором;
+2. `_session_feature_plan` материализовала в `feature_columns` только
+   future_known/static — сессия с historic-экзогеной упала бы в fold'е
+   (`_platform_column` → FeaturePlanError);
+3. контракт `with_regressor_specs`-уровня не имел runtime-потребителя и API-точки.
+
+### Реализация (TDD: RED → GREEN, точки изменения)
+
+- `apps/api/feature_plan.py` (+93): `_regressor_spec` + `with_regressor_specs(plan,
+  declarations, *, policy=None)` — слияние объявлений в иммутабельный план:
+  FeatureSpec(kind=exogenous), роль из known_in_advance/static (тот же авторитет, что
+  и каталог), дубликаты имён против каталога/внутри объявлений отклоняются,
+  static без known_in_advance отклоняется, план не мутируется, plan_id/fingerprint
+  пересчитываются → cohort_id меняется, reuse-логика инвалидирует старые артефакты;
+  пустой список — план без изменений (байтоффа cohort_id нет).
+- `apps/api/session_store.py` (+18): поле `AnalysisSession.modeling_feature_regressors`
+  (список {column, known_in_advance, static}), сброс в `set_dataset` (новый датасет —
+  старые колонки могут отсутствовать), сериализация to_dict/from_dict с
+  backcompat-дефолтом `[]` для старых Redis-записей.
+- `apps/api/routers/modeling_session.py` (+175/−13):
+  - `_session_feature_plan`: слияние объявлений через `with_regressor_specs`
+    (fail-closed: FeaturePlanError → план исключён с warning), материализация ВСЕХ
+    объявленных ролей — future_known/static строго конечны (NaN/Inf запрещены),
+    historic-экзогены допускают NaN (импутация медианой train-среза fold'а), Inf
+    запрещены; регрессор, равный target, понижает план (warning); план без каталога
+    генерации, но с объявлениями — валидный регрессорный план policy=recursive;
+  - новые эндпоинты `GET/PUT /v1/session/modeling/feature-regressors`: полная замена
+    списка, fail-closed валидация против активного датасета (существование, числовой
+    dtype, не target, дубликаты, static-константность по ряду), нормализация и
+    сохранение; все 6 путей build_backtest_plan покрыты автоматически через
+    `_session_feature_plan`.
+- `apps/api/backtesting.py` (+17): в granted-режиме historic-экзогены никогда не
+  проходят в regressor-канал (структурно — train_known_matrix/future_matrix содержат
+  только future_known/static), но теперь это сообщается явно: один warning на run
+  вместо тихого деградационного пути.
+
+### Тесты (32 новых: 21 unit + 11 API)
+
+- `tests/unit/test_feature_regressors.py` — роли объявлений, иммутабельность и
+  identity-сдвиг плана, дубликаты/static/missing-флаг, регрессорный план без каталога,
+  материализация historic/future/static в `_session_feature_plan`, fail-closed
+  понижения (отсутствие колонки, NaN в future-known, регрессор==target), интеграция с
+  run_backtest_plan через _StubRegistry: future-known проходит в request симметрично
+  train+future, historic НЕ проходит ни при каком гейте (строгий future-known
+  contract), mixed-разделение по ролям, cohort_contract несёт объявления.
+- `tests/api/test_feature_regressors_api.py` — PUT/GET roundtrip и замена списка,
+  422/404 на неизвестную/целевую/нечисловую/не-константную static колонку и дубликаты,
+  E2E: объявление `driver` → cohort_contract.future_known=[driver] → fold-матрицы
+  с future_known_columns=[driver] → spy-обёртка доказывает, что РЕАЛЬНЫЙ Prophet
+  получил train_features/future_features по `driver` на каждом fold'е (fit+predict
+  с add_regressor); смена объявлений меняет cohort_id; персистентность
+  to_dict/from_dict; set_dataset сбрасывает объявления.
+
+### Независимая верификация
+
+- RED-прогон: новые тесты падали до реализации (ImportError/behavior).
+- Mutation-проверки RED-валидности (сверх прогона):
+  1) swap ролей future_known/historic в `_regressor_spec` → 9 тестов FAILED
+  (утечка неизвестного будущего в канал ловится); 2) удаление материализации
+  historic-объявлений в `_session_feature_plan` → 3 теста FAILED (разрыв
+  end-to-end ловится). Обе мутации откатаны, дерево возвращено в GREEN.
+- Полный backend regression на финальном дереве: **1472 passed / 0 failed**,
+  3/3 snapshots (базлайн 8ee9579: 1440 + 32 новых — счётчик сходится ровно).
+- Смежные срезы до полного прогона: feature_plan/prophet/execution (87 PASS),
+  modeling workflow API (42 PASS).
+- Сборка: `python -m compileall apps` OK; `from apps.api.main import app` OK;
+  `pip check` PASS. Окружение: pinned requirements (prophet==1.4.0,
+  statsforecast==2.1.1) + requirements-dev.
+- Фронтенд не затронут (4 backend-файла + 2 тест-файла); новые ключи сериализации
+  сессии аддитивны, UI-зависимостей от них нет — Jest/typecheck/build не требовались.
+- UI-форма объявления регрессоров (выбор колонок/флагов) — отдельная UI-задача,
+  API-контракт готов к подключению.
+
+### Вердикт
+
+**Task 124 сертифицирована окончательно. Требование «fold-local holidays/regressors
+и строгий future-known contract» закрыто end-to-end:** пользователь объявляет
+произвольные числовые регрессоры через API, роли выводятся из
+known_in_advance/static, признаки строятся fold-локально (fresh builder на каждый
+fold, статистики только train-среза), future_known/static доходят до Prophet
+(add_regressor до fit, симметричный train/future канал), historic существуют только
+в train-матрицах аудита, будущее historic не материализуемо по построению, каждая
+битая деталь понижает план fail-closed с warning. Состав сдачи: 6 файлов
+(4 backend-модуля, 2 тест-файла), +303/−13 в коде + 32 теста. Коммит/пуш — по
+указанию тимлида.
