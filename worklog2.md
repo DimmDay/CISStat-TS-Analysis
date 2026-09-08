@@ -3716,3 +3716,103 @@ quantile-regression интервалы закрывают декларацию m
 двусторонне. Задел для Tasks 129-130 (LightGBM/CatBoost): ядро
 _supervised_recursion переиспользуется как есть, ожидаемые точки изменения
 сведены к адаптеру+реестру+yaml+dispatch.
+
+---
+
+## Task 128 — Сертификация XGBoost (аудит на a2eb462) + фикс jest-контура
+
+Дата: 2026-09-08. Синхронизация: `main @ a2eb462` (Task 128 коммит `a2eb462`,
+принятая сертификация Task 127 `944426c`). Аудитор: независимая
+сертификационная проверка реализации коллеги.
+
+### Часть 1. Аудит Task 128 (XGBoost, quantile-regression интервалы)
+
+Методика идентична Task 127: требования modeling_task_list.md → постатрочный
+ревью кода → ревью тестов → независимое воспроизведение в чистом окружении.
+
+Проверено по коду (все подтверждено):
+
+1. **Общее рекурсивное ядро `_supervised_recursion.py`**: DRY-экстракция
+   Task 127 выполнена без потери поведения — `supervised_feature_specs`
+   (префикс адаптера), `supervised_matrix` (peek/push, каузальность по
+   построению, warm-up, выравненность known-колонок),
+   `validated_known_features` (fail-closed симметрия/длины/NaN),
+   `matrix_digest`, `widen_intervals`. RF-рефакторинг — делегирование с
+   полным сохранением публичного API и сообщений об ошибках (messages
+   задокументированы как контракт тестов); все тесты Task 127 зелёные без
+   единой правки (подтверждено полным прогоном).
+2. **Quantile-regression интервалы**: три бустера на одной supervised-
+   матрице — point (reg:squarederror) ведёт рекурсию (peek→predict→push),
+   две квантильные (reg:quantileerror, alpha=0.1/0.9) предсказывают на ТЕХ
+   ЖЕ future-строках; widen-инвариант гарантирует lower ≤ point ≤ upper
+   транзитивно и lower ≤ upper. Закрыта декларация modeling.yaml
+   («через quantile regression»).
+3. **Детерминизм/seed**: n_jobs=1 + tree_method="hist". Двустороннее
+   доказательство в тестах: (а) при colsample_bytree=1.0 прогноз побайтово
+   одинаков для 3 seed'ов — отсутствие скрытой стохастичности; (б) при
+   colsample_bytree=0.6 разные seed'ы дают разные прогнозы — seed реально
+   доходит до бустера. Корректная трактовка «deterministic=True».
+4. **Bounded params**: 7 параметров, разделение int/float, bool отклоняется,
+   fail-closed вне тюнинга; YAML-сетка 16 trials ≤ MAX_TRIALS=64.
+5. **Importance**: gain-нормализация point-модели, lineage matrix_hash
+   (canonical JSON + sha256), самопроверка bind_feature_importance в
+   адаптере, oracle-негативный контроль в тестах; float32-нюанс суммы
+   importances задокументирован (допуск 1e-6).
+6. **Regressor-канал**: granted future_known/static симметрично, fail-closed;
+   A/B-дивергенция канала; негативный контроль гейта Task 126 (univariate
+   отклоняют features) — контракт не ослаблен.
+7. **Без Naive-fallback**: legacy-обёртка без safe_backtest, ошибки как
+   есть; нулевые метрики только на вырожденном пустом вводе (общая
+   конвенция _common.py).
+8. **Интеграция**: реестр (tree_ml, supervised, ml, deterministic, engine=
+   xgboost), dispatch-гард консистентности, requirements xgboost==2.1.3
+   (pinned), Dockerfile XGB-проба, каталог-гейты 13/11 (blocked=3 на n=60 —
+   explain), catalog-only примеры в тестах честно сдвинуты на catboost/lstm
+   с комментариями.
+
+Независимое воспроизведение: полный прогон **1570 passed / 0 failed**
+(базлайн 944426c: 1520 + 50 новых кейсов — pytest-счёт сходится ровно;
+описательные «29/11» в записи коллеги — счёт секций/функций, арифметике не
+вредит). compileall OK; `from apps.api.main import app` OK; Dockerfile
+XGB-проба воспроизведена локально (OK); `pip check` PASS; snapshots 3/3.
+
+### Часть 2. Починка падающего tests-контура фронтенда (Task 121-regress)
+
+`apps/standalone/app/layout.test.tsx` (добавлен коммитом 258f4d9, favicon
+`/logo_TS.png`) падал suite-level ещё до импорта тестов. Причины и фикс:
+
+1. **TS2307** `@/components/ProductHeader` и **TS2882** `./globals.css`:
+   ts-jest типизировал layout.tsx без `paths` и декларации CSS. Фикс:
+   инлайн-tsconfig заменён внешним `jest.tsconfig.json` (types + node,
+   baseUrl + paths `@/*` → apps/standalone, `@cisstat/ui` как было,
+   files: jest.modules.d.ts с `declare module "*.css"`); в moduleNameMapper
+   добавлены `"^@/(.*)$"` (рантайм-резолв) и `"\\.css$"` → пустой
+   `jest.stub.css`.
+2. **next/font/google**: layout.tsx вызывает `Inter({...})` на уровне
+   модуля — вне контекста сборки Next тянет сетевой загрузчик шрифтов.
+   Локальный hoisted `jest.mock("next/font/google")` в самом тесте
+   (без глобальных побочных эффектов).
+3. **Попутно восстановлены 2 сюиты, сломанные ДО аудита** (подтверждено
+   прогоном с оригинальным конфигом): TsAnalysisModeling.test.tsx и
+   TsAnalysisEDA.test.tsx падали с **TS2304** `Cannot find name 'global'` —
+   лечится `types: [..., "node"]` в jest.tsconfig.json (@types/node уже был
+   в dev-дереве).
+
+Итог фронта: **jest 90/90 сюит, 831/831 тестов** (829 базлайн + 2
+layout-теста), `npm run typecheck:all` — 0 ошибок. Новые файлы:
+jest.tsconfig.json, jest.modules.d.ts, jest.stub.css; изменены:
+jest.config.js, apps/standalone/app/layout.test.tsx.
+
+### Вердикт сертификации
+
+**Task 128 СЕРТИФИЦИРОВАНА. Реализация отличная.**
+
+Все требования постановки выполнены end-to-end: нативный xgboost==2.1.3,
+quantile-regression интервалы по декларации YAML, DRY-ядро рекурсии с
+переиспользованием сертифицированного паттерна Task 127 (39 тестов RF
+зелёные без правок), двустороннее доказательство детерминизма/seed-проводки,
+importance-lineage с oracle-защитой, bounded tuning 16 trials, честные
+каталог-гейты. 13/24 production-моделей. Контур фронтенда восстановлен
+(90/90 сюит). Коммит/пуш не выполнялись (запрет AGENTS.md соблюдён).
+Задел Tasks 129–130 (LightGBM/CatBoost): ядро _supervised_recursion
+переиспользуется как есть; рекомендуется указывать pytest-счёт кейсов.

@@ -1,0 +1,3 @@
+/* Пустой стаб для moduleNameMapper jest.config.js: side-effect CSS-импорты
+   (например, "./globals.css" в apps/standalone/app/layout.tsx) подменяются
+   этим файлом в тестовом окружении jsdom/ts-jest. */

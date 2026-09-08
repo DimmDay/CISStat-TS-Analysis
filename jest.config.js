@@ -5,23 +5,24 @@ module.exports = {
     "^.+\\.tsx?$": [
       "ts-jest",
       {
-        tsconfig: {
-          jsx: "react-jsx",
-          module: "esnext",
-          moduleResolution: "bundler",
-          esModuleInterop: true,
-          strict: false,
-          noImplicitAny: false,
-          target: "es2020",
-          lib: ["es2020", "dom", "dom.iterable"],
-          types: ["jest", "@testing-library/jest-dom"],
-        },
+        // Внешний tsconfig (вместо инлайн-объекта): добавлены types: node
+        // (имя `global` в TsAnalysisModeling/TsAnalysisEDA тестах), paths
+        // для алиаса "@/..." (tsconfig standalone-приложения) и глобальная
+        // декларация "*.css" (jest.modules.d.ts) — иначе импорт layout.tsx
+        // в layout.test.tsx падает на типизации (TS2304/TS2307/TS2882).
+        tsconfig: "<rootDir>/jest.tsconfig.json",
       },
     ],
   },
   moduleNameMapper: {
     "^@cisstat/ui$": "<rootDir>/packages/ui/index.ts",
     "^@cisstat/ui/(.*)$": "<rootDir>/packages/ui/$1",
+    // Task 121 (fix): алиас tsconfig standalone-приложения — layout.test.tsx
+    // импортирует layout.tsx, который тянет "@/components/ProductHeader".
+    "^@/(.*)$": "<rootDir>/apps/standalone/$1",
+    // Task 121 (fix): side-effect импорт "./globals.css" в layout.tsx
+    // подменяется пустым стабом (ts-jest/jsdom CSS не исполняют).
+    "\\.css$": "<rootDir>/jest.stub.css",
   },
   testMatch: ["**/*.test.{ts,tsx}"],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json"],

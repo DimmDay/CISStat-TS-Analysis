@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "target": "es2020",
+    "lib": ["es2020", "dom", "dom.iterable"],
+    "types": ["jest", "@testing-library/jest-dom", "node"],
+    "baseUrl": ".",
+    "paths": {
+      "@cisstat/ui": ["packages/ui/index.ts"],
+      "@cisstat/ui/*": ["packages/ui/*"],
+      "@/*": ["apps/standalone/*"]
+    },
+    "skipLibCheck": true
+  },
+  "files": ["jest.modules.d.ts"]
+}
