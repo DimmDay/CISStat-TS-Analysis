@@ -80,7 +80,10 @@ RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; \
                   assert len(forecast) == 2; print('StatsForecast TBATS executable OK')" \
     && python -c "from apps.api.model_impls.random_forest import _rf_fit_predict; \
                   payload = _rf_fit_predict([float(value) for value in range(1, 21)], 2, params={'n_estimators': 20, 'n_lags': 2}, random_state=42); \
-                  assert len(payload['forecast']) == 2; print('Random Forest executable OK')"
+                  assert len(payload['forecast']) == 2; print('Random Forest executable OK')" \
+    && python -c "from apps.api.model_impls.xgboost import _xgb_fit_predict; \
+                  payload = _xgb_fit_predict([float(value) for value in range(1, 21)], 2, params={'n_estimators': 15, 'n_lags': 2}, random_state=42); \
+                  assert len(payload['forecast']) == 2; print('XGBoost executable OK')"
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000

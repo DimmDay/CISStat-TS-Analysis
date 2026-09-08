@@ -586,6 +586,28 @@ def _random_forest_executor(request: ModelExecutionRequest) -> ModelExecutionRes
     )
 
 
+def _xgboost_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
+    from apps.api.model_impls.xgboost import _xgb_fit_predict
+
+    payload = _xgb_fit_predict(
+        list(request.target),
+        request.horizon,
+        train_features=request.train_features or None,
+        future_features=request.future_features or None,
+        params=dict(request.params),
+        random_state=request.random_state,
+    )
+    return ModelExecutionResult(
+        forecast=payload["forecast"],
+        lower_interval=payload["lower"],
+        upper_interval=payload["upper"],
+        metadata={
+            "feature_importances": payload["feature_importances"],
+            "feature_importance_lineage": payload["feature_importance_lineage"],
+        },
+    )
+
+
 _BACKTEST_DIAGNOSTICS = frozenset({"backtest", "diagnostics"})
 _TUNABLE = frozenset({"backtest", "tune", "diagnostics"})
 _CLASSICAL_RESOURCES = ModelResourceCapabilities(memory_class="standard")
@@ -659,6 +681,22 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         # (target-derived) признаки адаптер строит САМ каузально через
         # RecursiveFeatureState (лаги/rolling/diff), будущее из фактов
         # недостижимо по построению.
+        input_kind="supervised",
+        supports_future_features=True,
+        supports_prediction_intervals=True,
+        deterministic=True,
+        dependency_group="ml",
+        resource_capabilities=ModelResourceCapabilities(memory_class="standard"),
+    ),
+    ModelExecutionDefinition(
+        model_id="xgboost", family_id="tree_ml",
+        adapter_id="xgboost-native", executor=_xgboost_executor,
+        actions=_TUNABLE, engine="xgboost", required_packages=("xgboost",),
+        # Task 128: третий supervised-адаптер на общем рекурсивном ядре
+        # Task 127 (_supervised_recursion); regressor-канал -- тот же
+        # granted-гейт Task 126; интервалы -- quantile regression
+        # (reg:quantileerror alpha=0.1/0.9, как декларировано в
+        # rules/modeling.yaml::xgboost).
         input_kind="supervised",
         supports_future_features=True,
         supports_prediction_intervals=True,

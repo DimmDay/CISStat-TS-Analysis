@@ -25,7 +25,8 @@ def test_candidate_contract_separates_methodological_applicability_from_runtime_
     ))
     candidates = {item.model_id: item for item in response.candidates}
 
-    for model_id in ("naive", "ets", "theta", "arima", "arima_auto", "prophet", "tbats", "random_forest"):
+    for model_id in ("naive", "ets", "theta", "arima", "arima_auto", "prophet", "tbats",
+                     "random_forest", "xgboost"):
         assert candidates[model_id].platform_status == "ready"
         assert "backtest" in candidates[model_id].available_actions
         assert "diagnostics" in candidates[model_id].available_actions
@@ -36,7 +37,7 @@ def test_candidate_contract_separates_methodological_applicability_from_runtime_
     assert candidates["naive"].stage_capabilities["tuning"].status == "not_applicable"
     assert candidates["ets"].stage_capabilities["tuning"].status == "available"
 
-    for model_id in ("xgboost", "lightgbm", "catboost", "lstm", "tft", "nbeats", "nhits"):
+    for model_id in ("lightgbm", "catboost", "lstm", "tft", "nbeats", "nhits"):
         assert candidates[model_id].platform_status == "catalog_only"
         assert candidates[model_id].available_actions == []
         assert candidates[model_id].stage_capabilities["backtest"].status == "not_implemented"
@@ -49,8 +50,8 @@ def test_candidate_statistics_report_runtime_availability_separately():
         min_level="CONDITIONALLY_APPLICABLE",
     ))
 
-    assert response.statistics.runnable_candidates == 12
-    assert response.statistics.catalog_only_candidates == 12
+    assert response.statistics.runnable_candidates == 13
+    assert response.statistics.catalog_only_candidates == 11
     assert response.statistics.total_models_in_spec == 24
 
 
@@ -83,10 +84,12 @@ def test_tbats_is_connected_but_explains_when_current_training_fold_is_too_short
     assert tbats.platform_status == "ready"
     assert tbats.available_actions == []
     assert tbats.blocking_reason == "Недостаточно данных: 60 < 100 (требуется TBATS)"
-    # Task 127: random_forest тоже объявляет min_observations=100 и на
-    # коротком профиле блокируется вместе с TBATS -- explain, не fake.
-    random_forest = next(item for item in response.catalog if item.model_id == "random_forest")
-    assert random_forest.platform_status == "ready"
-    assert random_forest.available_actions == []
-    assert random_forest.blocking_reason == "Недостаточно данных: 60 < 100 (требуется Random Forest)"
-    assert response.statistics.blocked_candidates == 2
+    # Task 127/128: random_forest и xgboost тоже объявляют
+    # min_observations=100 и на коротком профиле блокируются вместе с
+    # TBATS -- explain, не fake.
+    for model_id, name in (("random_forest", "Random Forest"), ("xgboost", "XGBoost")):
+        candidate = next(item for item in response.catalog if item.model_id == model_id)
+        assert candidate.platform_status == "ready"
+        assert candidate.available_actions == []
+        assert candidate.blocking_reason == f"Недостаточно данных: 60 < 100 (требуется {name})"
+    assert response.statistics.blocked_candidates == 3

@@ -130,9 +130,11 @@ def test_context_reuses_the_last_eda_validation_plan_without_silent_defaults(cli
 def test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics(client: TestClient):
     _prepare(client)
 
+    # Task 128: xgboost стал production-моделью; в качестве catalog-only
+    # примера используется lstm (neural-семейство, Tasks 137+).
     response = client.post(
         "/v1/session/modeling/backtest",
-        json={"model_id": "xgboost", "train_ratio": 0.8},
+        json={"model_id": "lstm", "train_ratio": 0.8},
     )
 
     assert response.status_code == 422

@@ -3583,3 +3583,136 @@ exact OOF, importance-lineage с oracle-защитой, интервалы по 
 детерминизм, честные capability-гейты. Коммит/пуш не выполнялся (запрет
 AGENTS.md соблюдён). База для Tasks 128–130 (XGBoost/LightGBM/CatBoost):
 peek/push-паттерн и адаптерный importance-lineage переиспользуются как есть.
+
+---
+
+## Task 128 — XGBoost: production vertical slice (recursive supervised ML, quantile-regression интервалы)
+
+Дата: 2026-09-08. База: `main @ 944426c` (Task 127 `0310e13` + сертификация
+`944426c` -- «СЕРТИФИЦИРОВАНА. Реализация отличная», без обязательных
+доработок). TDD: RED (17 failed + collection error) зафиксирован до
+реализации, доведён до GREEN; полный прогон 1570 passed (базлайн 944426c:
+1520 + 50 новых). Commit/push не выполнялся.
+
+### Постановка и дизайн
+
+Task 128 (`docs/modeling_task_list.md`): отдельный vertical slice -- XGBoost:
+bounded param_space, exact OOF, feature importance, residual diagnostics,
+reproducible seed, capability/UI и Model Card; никаких штрафных/Naive-fallback
+путей; нативный production API (xgboost==2.1.3, зафиксирован в requirements).
+
+Ключевые архитектурные решения:
+
+1. **Общее рекурсивное ядро `_supervised_recursion.py` (NEW).** Задел
+   Task 127 («peek/push-паттерн и адаптерный importance-lineage
+   переиспользуются как есть») реализован ДРY-экстракцией: каузальные спеки
+   (`supervised_feature_specs(prefix, n_lags)`), supervised-матрица через
+   RecursiveFeatureState peek/push, fail-closed regressor-канал
+   (`validated_known_features`), matrix_digest (canonical JSON + sha256) и
+   widen_intervals вынесены из random_forest.py в общий модуль.
+   random_forest.py отрефакторен на делегирование с ПОЛНЫМ сохранением
+   публичного API (rf_feature_specs/supervised_matrix/PARAM_BOUNDS/...)
+   и сообщений об ошибках (часть контракта тестов) -- все 39 тестов
+   Task 127 зелёные без единой правки. Задел для Tasks 129-130.
+2. **Интервалы -- quantile regression**, ровно как декларировано в
+   modeling.yaml («через quantile regression»): три бустера на одной
+   supervised-матрице -- point (reg:squarederror) и две квантильные
+   (reg:quantileerror, alpha=0.1/0.9, fixed 80% -- bounded scope, как
+   interval_width у Prophet).  Рекурсию ведёт point-модель (её прогнозы
+   питают историю через peek/push), квантильные предсказывают на ТЕХ ЖЕ
+   future-строках; границы расширяются до point-прогноза (инвариант
+   реестра lower <= point <= upper).
+3. **Детерминизм и seed-проводка**: n_jobs=1, tree_method="hist",
+   random_state через ModelExecutionRequest.  Наивное ожидание «другой seed
+   -- другой прогноз» для бустинга неверно: при полном сэмплировании
+   (colsample_bytree=1.0, subsample=1.0) xgboost детерминирован независимо
+   от seed -- это зафиксировано ОТДЕЛЬНЫМ тестом отсутствия скрытой
+   стохастичности (3 seed'а -- побайтово одинаковый прогноз), а seed-проводка
+   до бустера доказана обратным тестом с colsample_bytree=0.6 (разные seed --
+   разные прогнозы).
+4. **Importance**: gain-нормализация бустинга (importance_type="gain"),
+   привязка к ТОЧНОЙ матрице адаптера через bind_feature_importance
+   (matrix_hash в lineage, самопроверка в адаптере, oracle-отрицательный
+   контроль в тестах).  Нюанс float32: xgboost нормализует importances во
+   float32 (сумма 1.0 ± 1e-7) -- допуск тестов 1e-6, документировано
+   (sklearn-RF даёт float64-точность 1e-9).
+
+### Состав (13 файлов + 2 новых тест-файла)
+
+- `apps/api/model_impls/_supervised_recursion.py` (NEW): общее рекурсивное
+  ядро семейства tree_ml (см. выше; N_LAGS_BOUNDS=(1,32),
+  MIN_USABLE_ROWS=8 -- общий контракт).
+- `apps/api/model_impls/xgboost.py` (NEW): `validate_xgb_params`
+  (bounded: n_estimators 10..1000, max_depth 1..20, learning_rate
+  0.001..1.0, min_child_weight 1..100, reg_lambda 0..1000,
+  colsample_bytree 0.1..1.0, n_lags 1..32; неизвестные ключи игнорируются),
+  `xgb_feature_specs` (префикс xgb_), `_make_booster` (единая детерминированная
+  конфигурация), `_xgb_fit_predict` (point+2 квантили, рекурсия peek/push,
+  widen, importance-lineage + самопроверка), `run_xgboost_backtest`
+  (legacy demo, сознательно БЕЗ safe_backtest/Naive-fallback).
+- `apps/api/model_impls/random_forest.py`: рефакторинг на общее ядро
+  (делегирование, публичный API и сообщения сохранены).
+- `apps/api/model_execution.py`: `_xgboost_executor`; реестр --
+  `xgboost` (family=tree_ml, supervised, supports_future_features,
+  supports_prediction_intervals, deterministic, ml, engine=xgboost,
+  required_packages=("xgboost",), memory=standard).
+- `rules/modeling.yaml`: bounded param_space xgboost (n_estimators
+  [100,300] × max_depth [3,6] × learning_rate [0.05,0.2] × n_lags [3,7]
+  = 16 trials ≤ 64).
+- `apps/api/requirements.txt`: `xgboost==2.1.3` (pinned, по образцу
+  prophet/statsforecast).
+- `apps/api/Dockerfile`: executable-проба XGBoost в release-образе.
+- `apps/api/model_impls/__init__.py` + `apps/api/routers/models.py`:
+  xgboost в legacy dispatch (guard консистентности реестра).
+- Тесты: NEW `tests/unit/test_xgboost_adapter.py` (29: specs/префикс,
+  общее ядро (каузальность/warm-up/выравненность/минимум истории),
+  bounded params (17 параметрических fail-closed), детерминизм + отсутствие
+  скрытой стохастичности + seed-проводка при colsample<1, интервалы
+  lower <= point <= upper с нетривиальной шириной, период-2 закрытая форма
+  [1,2,1] 1e-9 (learning_rate=1.0 + reg_lambda=0 -- первый бустинг-раунд
+  достигает нулевых остатков), границы диапазона train, A/B-дивергенция
+  канала, importance-lineage + oracle-отрицательный контроль, NaN-target/
+  канал/horizon fail-closed), NEW `tests/unit/test_xgboost_backtest.py`
+  (11: дескриптор реестра, production actions, E2E granted без
+  exclusion-warning, importance в каждой fold-записи c plan_id,
+  детерминизм OOF, реальные метрики, работа без плана (importance
+  plan_id=None), bounded param_space из YAML, execute_tuning_plan на тех
+  же folds). UPDATED сертификационные гейты: test_model_execution_contract
+  (13 CERTIFIED_IDS, SUPERVISED_IDS={prophet, random_forest, xgboost},
+  ML_IDS={random_forest, xgboost}, xgboost-дескриптор в candidates),
+  test_modeling_mvp_certification (thirteen-model gate, tuning-множество,
+  XGB-проба в Dockerfile), test_model_readiness_candidates (runnable
+  13/catalog_only 11; blocked n=60 -- tbats+rf+xgboost=3, explain),
+  test_backtesting_engine (13 моделей общий OOF cohort + importance
+  обоих ML), test_models_backtest_real (13 реализаций dispatch),
+  tests/unit/test_eda_model_matrix (catboost как conditional catalog_only
+  пример вместо ставшего production xgboost), tests/api/test_modeling_workflow
+  (lstm как catalog-only пример в reject-тесте).
+
+### Тесты и верификация
+
+- RED: 17 failed + 1 collection error до реализации.
+- GREEN: `python -m pytest tests/` -- **1570 passed / 0 failed**
+  (базлайн 1520 + 50 новых; счётчик сходится ровно). Snapshots 3/3.
+- `python -m compileall apps` OK; `from apps.api.main import app` OK;
+  `pip check` PASS; Dockerfile XGB-проба исполнена локально (OK).
+- Три каталог-теста, использовавшие xgboost как catalog-only пример,
+  переведены на catboost/lstm с комментариями (дальнейшие сдвиги --
+  при Tasks 129/130).
+- Model Card/capability/UI: карта генерическая (folds с importance
+  попадают в training.folds автоматически); каталог поднимает xgboost в
+  ready из реестра (уровень P06 RECOMMENDED при n>=200+экзогены);
+  residual diagnostics -- модель-агностная стадия на OOF-остатках.
+- Фронтенд не затронут; Jest/typecheck не требовались. commit/push не
+  выполнялся.
+
+### Вердикт
+
+**Task 128 реализована как полный vertical slice**: 13/24 production-моделей
+(4 baseline + 9 моделей). Общее рекурсивное ядро tree_ml выделено и
+сертифицированный паттерн Task 127 переиспользован без копипасты;
+quantile-regression интервалы закрывают декларацию modeling.yaml; tuning
+на тех же EDA folds с bounded grid 16 trials; seed-проводка доказана
+двусторонне. Задел для Tasks 129-130 (LightGBM/CatBoost): ядро
+_supervised_recursion переиспользуется как есть, ожидаемые точки изменения
+сведены к адаптеру+реестру+yaml+dispatch.

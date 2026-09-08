@@ -331,6 +331,18 @@ families:
         supports_prediction_intervals: true   # через quantile regression
         libraries: ["xgboost"]
         training_time: "seconds_to_minutes"
+        # ── Task 128: пространство параметров для тюнинга ──
+        # Декартово произведение: 2 × 2 × 2 × 2 = 16 trials (≤ MAX_TRIALS=64).
+        # n_lags -- глубина каузальной авторегрессии адаптера (общее ядро
+        # _supervised_recursion Task 127/128); интервалы -- quantile
+        # regression (reg:quantileerror alpha=0.1/0.9, не тюнятся --
+        # bounded scope).  learning_rate/max_depth ограничивают сложность
+        # бустинга против переобучения на коротких fold'ах.
+        param_space:
+          n_estimators: [100, 300]
+          max_depth: [3, 6]
+          learning_rate: [0.05, 0.2]
+          n_lags: [3, 7]
 
       - id: "lightgbm"
         name: "LightGBM"
