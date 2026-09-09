@@ -3910,3 +3910,127 @@ test_models_candidates.py (422-пример lightgbm → catboost).
   соблюдён). Задел Task 130 (CatBoost): точки изменения идентичны —
   адаптер (native catboost API, CatBoostRegressor с quantile
   objective=Quantile:alpha) + реестр + yaml + dispatch.
+
+---
+
+## Task 129 — Сертификация LightGBM (аудит на bfe11cf)
+
+Дата: 2026-09-09. Синхронизация: `main @ bfe11cf` (сдача Task 129 коллегой;
+база сдачи `6d4004b` = Task 128 `a2eb462` + принятая сертификация + фикс
+jest-контура). Методика идентична сертификациям Task 127/128: требования
+`docs/modeling_task_list.md` (Tasks 127–130) → постатейный ревью кода →
+ревью тестов → независимое воспроизведение в чистом окружении →
+mutation-проверки RED-валидности тестового контура.
+
+### Аудит выполнения требований постановки (все подтверждены)
+
+1. **Bounded param_space**: `rules/modeling.yaml` — сетка
+   n_estimators [100,300] × num_leaves [15,31] × learning_rate [0.05,0.2] ×
+   n_lags [3,7] = 16 trials ≤ MAX_TRIALS=64; программная сверка: все значения
+   сетки внутри `PARAM_BOUNDS` адаптера (n_estimators 10..1000,
+   num_leaves 2..256, learning_rate 0.001..1.0, min_data_in_leaf 1..100,
+   lambda_l2 0..1000, feature_fraction 0.1..1.0, n_lags 1..32); int/float
+   разделение, bool отклоняется, чужие ключи игнорируются. Выбор num_leaves
+   вместо max_depth — идиоматичен для leaf-wise LightGBM, дефолты адаптера —
+   официальные дефолты библиотеки (num_leaves=31, min_data_in_leaf=20).
+2. **Exact OOF / recursive-контракт**: адаптер построен на ОБЩЕМ ядре
+   `_supervised_recursion` — проверено diff'ом: `feature_plan.py`,
+   `_supervised_recursion.py`, `random_forest.py`, `xgboost.py`,
+   `backtesting.py`, `schemas.py` НЕ тронуты (заявка «ядро переиспользовано
+   без единой правки» подтверждена). Каузальность (признак в позиции p —
+   только target[:p]), warm-up, выравненность known-колонок, fail-closed
+   regressor-канал — унаследованы от сертифицированного ядра. Рекурсия —
+   peek→predict→push; период-2 закрытая форма [1,2,1] с точностью 1e-9
+   (learning_rate=1.0 + min_data_in_leaf=1 + lambda_l2=0) детерминированно
+   ловит stale-history/off-by-one.
+3. **Feature importance**: нативный `booster.feature_importance("gain")`
+   возвращает СЫРЫЕ суммы гейнов (валидное отличие от нормализованного
+   `feature_importances_` XGBoost) — адаптер нормализует к сумме 1.0
+   (тест на 1e-9). Вырожденный zero-gain случай (константный target, ни
+   одного сплита) — детерминированный равномерный fallback, задокументирован
+   в docstring'е. Lineage matrix_hash (canonical JSON + sha256) +
+   самопроверка bind_feature_importance в адаптере + oracle-отрицательный
+   контроль в тестах.
+4. **Residual diagnostics**: модель-агностная стадия на OOF-остатках,
+   подключается автоматически (actions включают diagnostics) — изменений
+   не требует, как и в Task 127/128.
+5. **Reproducible seed**: num_threads=1, deterministic=True,
+   force_col_wise=True, master-параметр `seed=random_state` (LightGBM
+   порождает подчинённые сиды из него при дефолтных значениях). Двустороннее
+   доказательство как в Task 128: (а) при feature_fraction=1.0 (bagging
+   выключен) — побайтово одинаковый прогноз для seed'ов 42/7/2026
+   (отсутствие скрытой стохастичности); (б) при feature_fraction=0.6 разные
+   seed'ы дают разные прогнозы (seed реально доходит до бустера).
+6. **Интервалы**: quantile regression (objective="quantile", alpha=0.1/0.9,
+   fixed 80%) — закрыта декларация modeling.yaml::lightgbm
+   (supports_prediction_intervals). Point-бустер ведёт рекурсию, квантильные
+   предсказывают на ТЕХ ЖЕ future-строках; widen-инвариант lower ≤ point ≤
+   upper; тест нетривиальной ширины на шумных данных.
+7. **Никаких Naive-fallback**: legacy-обёртка `run_lightgbm_backtest`
+   сознательно без safe_backtest; fail-closed на NaN target/прогноза/
+   квантилей, недостатке истории, horizon<1.
+8. **Capability/UI и Model Card**: реестр (tree_ml, supervised,
+   supports_future_features, intervals, deterministic, ml, engine=lightgbm,
+   required_packages=("lightgbm",), runtime_available=True); dispatch-гард
+   консистентности сошёлся; каталог поднимает lightgbm в ready (runnable
+   14 / catalog_only 10; blocked 4 на n=60 — explain, не fake); Model Card —
+   генерическая, folds с importance попадают в training.folds; фронтенд не
+   затронут (family «Деревья и бустинг» существовал ранее).
+9. **Рантайм**: lightgbm==4.5.0 pinned в requirements.txt; Dockerfile-проба
+   `_lgb_fit_predict` (воспроизведена локально: «LightGBM executable OK»).
+
+### Независимое воспроизведение и mutation-проверки
+
+- Полный pytest на bfe11cf в чистом окружении: **1623 passed / 0 failed**,
+  snapshots 3/3; арифметика счётчика сходится ровно (базлайн 6d4004b: 1570 +
+  53 новых, pytest --collect-only: 53 = 44 adapter + 9 backtest — как
+  заявлено). compileall OK; `from apps.api.main import app` OK;
+  `pip check` PASS. Фронтенд коммитом не затронут (0 файлов packages/
+  apps/standalone/apps/embedded) — jest-регрессия невозможна по построению;
+  в среде аудита node_modules отсутствуют, 90/90-заявка коллеги не
+  перепроверялась и не требовалась.
+- Mutation-проверки (4 мутации, каждая применялась и откатывалась):
+  1. сырые гейны без нормализации → FAILED
+     `test_feature_importance_is_normalized_and_bound_to_exact_matrix`;
+  2. удалён `state.push(point)` (stale-history рекурсии) → FAILED
+     `test_recursive_period_two_continuation_is_exact`;
+  3. alpha перепутаны между нижней/верхней квантильными моделями → FAILED
+     `test_forecast_shape_and_intervals_contain_point` (ширина вырождается);
+  4. удалён вырожденный fallback (деление на zero-gain) → FAILED
+     `test_forecast_stays_within_training_target_range` (ZeroDivisionError:
+     тест попадает в вырожденную ветку инцидентально — дефолтный
+     min_data_in_leaf=20 при 18 usable-строках геометрического ряда не
+     оставляет сплитов). Все 4 мутации ловятся контуром.
+- Ручная верификация вырожденной ветки: константный target → константный
+  прогноз, uniform-importance 1/n (n=5 колонок), сумма 1.0, lineage
+  привязывается.
+
+### Замечания (не блокируют сертификацию)
+
+1. Значения равномерного fallback-а не ассертятся ни одним тестом напрямую
+   (путь покрыт инцидентально через мутацию 4 и min_data_in_leaf=20 >
+   usable-строки; значения проверены вручную в аудите). Рекомендация:
+   dedicated-тест константного target в попутном хаускипинге (например,
+   при Task 130).
+2. Косметика: в docstring'е `test_known_regressor_channel_reaches_the_model`
+   оборвана фраза про чистый y=driver («...leaf-wise бустинг не доходит до
+   данных, а не канала» — по смыслу «не доходит до driver-сплитов;
+   дивергенция — свойство данных, а не канала»). Смысл итеративного фикса
+   восстанавливается по записи Task 129 и не влияет на поведение.
+
+### Вердикт
+
+**Task 129 СЕРТИФИЦИРОВАНА. Реализация отличная.** Все восемь требований
+постановки выполнены end-to-end без упрощений: LightGBM — полный production
+vertical slice (14/24), четвёртый supervised-адаптер и третий
+dependency_group="ml"; нативный API (lgb.train, не sklearn-обёртка) с
+quantile-regression интервалами; общее рекурсивное ядро Task 127
+переиспользовано без правок (задел Task 128 реализован ровно как
+спроектирован); importance-lineage с oracle-защитой адаптирован к сырым
+гейнам LightGBM с документированным вырожденным fallback'ом; детерминизм
+доказан двусторонне; bounded tuning 16 trials на тех же EDA folds.
+Замечания 1–2 — косметические, сертификации не препятствуют. Коммит/пуш
+агентом не выполнялись (запрет AGENTS.md соблюдён). Задел Task 130
+(CatBoost): точки изменения идентичны — адаптер (нативный CatBoostRegressor,
+objective="Quantile:alpha") + реестр + yaml + dispatch.
+
