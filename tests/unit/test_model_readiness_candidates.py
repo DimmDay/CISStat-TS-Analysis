@@ -53,9 +53,11 @@ def test_candidate_statistics_report_runtime_availability_separately():
     # Task 130: catboost стал production-моделью -- runnable 15, catalog-only 9.
     # Task 132: var стал production-моделью (16-я); на n_series=1 он
     # production+blocked (F01: требует >= 2 рядов) -- catalog-only 8, blocked 1.
+    # Task 133: vecm -- 17-я; на n_series=1 также production+blocked (F01) --
+    # catalog-only 7, blocked 2.
     assert response.statistics.runnable_candidates == 15
-    assert response.statistics.catalog_only_candidates == 8
-    assert response.statistics.blocked_candidates == 1
+    assert response.statistics.catalog_only_candidates == 7
+    assert response.statistics.blocked_candidates == 2
     assert response.statistics.total_models_in_spec == 24
 
 
@@ -102,4 +104,10 @@ def test_tbats_is_connected_but_explains_when_current_training_fold_is_too_short
     assert var_candidate.platform_status == "ready"
     assert var_candidate.available_actions == []
     assert var_candidate.blocking_reason
-    assert response.statistics.blocked_candidates == 6
+    # Task 133: vecm блокируется F01 тем же честным explain-механизмом
+    # (n_series=1 < min_series=2).
+    vecm_candidate = next(item for item in response.catalog if item.model_id == "vecm")
+    assert vecm_candidate.platform_status == "ready"
+    assert vecm_candidate.available_actions == []
+    assert vecm_candidate.blocking_reason
+    assert response.statistics.blocked_candidates == 7

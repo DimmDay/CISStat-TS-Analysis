@@ -39,12 +39,15 @@ CERTIFIED_MODEL_IDS = frozenset({
     "catboost",
     # Task 132: VAR -- первый multivariate-исполнитель контракта Task 131.
     "var",
+    # Task 133: VECM -- второй multivariate-исполнитель (fold-local ранг
+    # Йохансена; нативный VECMResults.predict с интервалами).
+    "vecm",
 })
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_certified_scope_is_exactly_sixteen_real_models_in_the_24_model_catalog():
+def test_certified_scope_is_exactly_seventeen_real_models_in_the_24_model_catalog():
     spec = ModelingSpec.from_yaml("rules/modeling.yaml")
     catalog = {
         model.id: family.id
@@ -58,7 +61,10 @@ def test_certified_scope_is_exactly_sixteen_real_models_in_the_24_model_catalog(
     assert frozenset(PRODUCTION_PREDICTORS) == CERTIFIED_MODEL_IDS
     assert PRODUCTION_TUNING_MODEL_IDS == frozenset(
         {"ets", "ets_damped", "arima", "prophet", "tbats", "random_forest", "xgboost",
-         "lightgbm", "catboost"},
+         "lightgbm", "catboost",
+         # Task 133: векторный tuning -- execute_vector_tuning_plan
+         # (каждый trial -- векторный backtest на тех же folds).
+         "var", "vecm"},
     )
 
     for model_id, family_id in catalog.items():

@@ -39,6 +39,7 @@ from apps.api.model_impls.xgboost import run_xgboost_backtest
 from apps.api.model_impls.lightgbm import run_lightgbm_backtest
 from apps.api.model_impls.catboost import run_catboost_backtest
 from apps.api.model_impls.var import run_var_backtest
+from apps.api.model_impls.vecm import run_vecm_backtest
 
 
 __all__ = [
@@ -54,4 +55,5 @@ __all__ = [
     "run_lightgbm_backtest",
     "run_catboost_backtest",
     "run_var_backtest",
+    "run_vecm_backtest",
 ]

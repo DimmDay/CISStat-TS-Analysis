@@ -15,6 +15,12 @@ docs/modeling_task_list.md::Task 132 (общая нота серии VAR/VECM):
 3. **Fail-closed**: никаких Naive-fallback и синтетических метрик.  Ошибка
    fit/predict (короткая история, вырожденная ковариация, нечисловой вход)
    -- ошибка fold'а (BacktestExecutionError на движке).
+4. **VARX (Task 133)**: optional exogenous-канал -- future-known регрессоры
+   через VAR(exog=...) + forecast_interval(..., exog_future=...).  Обе
+   части (train+future) обязательны одновременно, одинаковые ключи,
+   числовые/finite, длины nobs и horizon -- иначе fail-closed (импутация
+   известного будущего запрещена).  Отсутствие exog -- прежний контракт
+   бит-в-бит.
 
 Контракт данных: target-ряд -- первая колонка системы, related_series --
 остальные колонки в порядке объявления (EndogenousSystem, Task 131).
@@ -169,6 +175,69 @@ def _search_bound_ok(nobs: int, k: int, maxlags: int, ic: Optional[str]) -> bool
     return nobs > rows_needed
 
 
+def _validated_exog(
+    exog: Optional[Mapping[str, Sequence[float]]],
+    exog_future: Optional[Mapping[str, Sequence[float]]],
+    *, nobs: int, horizon: int,
+) -> tuple[Optional[np.ndarray], Optional[np.ndarray], tuple[str, ...]]:
+    """VARX-канал: обе части одновременно, одинаковые ключи, finite (fail-closed).
+
+    Импутация известного будущего запрещена платформой (Task 126): NaN/Inf
+    в exog_future -- честный отказ fold'а, а не тихая починка.
+    """
+    has_train = bool(exog)
+    has_future = bool(exog_future)
+    if has_train != has_future:
+        raise ValueError(
+            "VAR: exog требует ОДНОВРЕМЕННО train- и future-части "
+            "(future-known контракт): передана только одна"
+        )
+    if not has_train:
+        return None, None, ()
+    train_columns: list[np.ndarray] = []
+    future_columns: list[np.ndarray] = []
+    train_keys = [str(name).strip() for name in dict(exog)]
+    future_keys = [str(name).strip() for name in dict(exog_future)]
+    if not train_keys or any(not name for name in train_keys):
+        raise ValueError("VAR: имена exog не могут быть пустыми")
+    if sorted(train_keys) != sorted(future_keys):
+        raise ValueError(
+            "VAR: ключи exog train и future должны совпадать: "
+            f"train={train_keys}, future={future_keys}"
+        )
+    for name in train_keys:
+        for source, expected, label in (
+            (exog, nobs, "train"), (exog_future, horizon, "будущего"),
+        ):
+            try:
+                vector = np.asarray(
+                    [float(value) for value in source[name]], dtype=float,
+                )
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"VAR: exog '{name}' ({label}) должен быть числовым"
+                ) from exc
+            if vector.size != expected:
+                raise ValueError(
+                    f"VAR: exog '{name}' ({label}): длина {vector.size} не равна "
+                    f"ожидаемой {expected}"
+                )
+            if not np.isfinite(vector).all():
+                raise ValueError(
+                    f"VAR: exog '{name}' ({label}) содержит NaN/Inf -- "
+                    "импутация известного будущего запрещена (fail-closed)"
+                )
+            if label == "train":
+                train_columns.append(vector)
+            else:
+                future_columns.append(vector)
+    return (
+        np.column_stack(train_columns),
+        np.column_stack(future_columns),
+        tuple(train_keys),
+    )
+
+
 def _var_fit_predict(
     target: Sequence[float],
     horizon: int,
@@ -176,6 +245,8 @@ def _var_fit_predict(
     related_series: Optional[Mapping[str, Sequence[float]]] = None,
     params: Optional[Mapping[str, Any]] = None,
     random_state: int = 42,
+    exog: Optional[Mapping[str, Sequence[float]]] = None,
+    exog_future: Optional[Mapping[str, Sequence[float]]] = None,
 ) -> dict[str, Any]:
     """Нативный VAR fit/forecast/forecast_interval на переданном train-срезе.
 
@@ -184,7 +255,8 @@ def _var_fit_predict(
     lag_order/lag_selection/coefficient_matrices/in_sample_residuals --
     вход диагностики companion_stability/system_white_noise_diagnostics
     (Task 131) на движке.  random_state принят по контракту реестра:
-    VAR -- детерминированный OLS, случайности нет.
+    VAR -- детерминированный OLS, случайности нет.  VARX (Task 133):
+    exog/exog_future -- optional future-known регрессоры (см. docs).
     """
     if int(horizon) < 1:
         raise ValueError("VAR: horizon должен быть положительным")
@@ -202,11 +274,17 @@ def _var_fit_predict(
             f"порядка лага до {normalized['maxlags']} при K={k}; уменьшите "
             "maxlags или увеличьте train-срез"
         )
+    exog_matrix, exog_future_matrix, exog_names = _validated_exog(
+        exog, exog_future, nobs=nobs, horizon=int(horizon),
+    )
 
     from statsmodels.tsa.vector_ar.var_model import VAR as _StatsmodelsVAR
 
     try:
-        model = _StatsmodelsVAR(matrix)
+        model = (
+            _StatsmodelsVAR(matrix)
+            if exog_matrix is None else _StatsmodelsVAR(matrix, exog=exog_matrix)
+        )
         if normalized["ic"] is None:
             fitted = model.fit(
                 maxlags=normalized["maxlags"], trend=normalized["trend"],
@@ -236,6 +314,7 @@ def _var_fit_predict(
         point, lower, upper = fitted.forecast_interval(
             matrix[-fitted.k_ar:], steps=int(horizon),
             alpha=normalized["alpha"],
+            **({} if exog_future_matrix is None else {"exog_future": exog_future_matrix}),
         )
     except ValueError:
         raise
@@ -259,7 +338,7 @@ def _var_fit_predict(
     coefficient_matrices = [
         np.asarray(block, dtype=float) for block in fitted.coefs
     ]
-    return {
+    payload = {
         "series_names": series_names,
         "forecast": forecast,
         "lower": lower_matrix,
@@ -274,6 +353,9 @@ def _var_fit_predict(
         "random_state": int(random_state),
         "deterministic": True,
     }
+    if exog_matrix is not None:
+        payload["exogenous"] = {"names": exog_names, "n_exog": len(exog_names)}
+    return payload
 
 
 def run_var_backtest(

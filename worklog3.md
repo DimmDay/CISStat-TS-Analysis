@@ -586,3 +586,119 @@ GREEN после фикса: 13/13.
 - Regression-защита: 13 кейсов фиксируют канонические пути адаптеров и
   «пустоту» пакетного init API — повторение ошибки размещения файлов
   ловится на RED до поднятия бэкенда.
+
+---
+
+## Task 133 — VECM + векторный tuning + exogenous-канал VARX (production vertical slice)
+
+Дата: 2026-09-09. Синхронизация до **74654a0** («Integration Hotfix Task 132»,
+базлайн 1848 passed). Постановка docs/modeling_task_list.md::Task 133 и
+задел «Границы Task 132» worklog3.md. После серии: **17/24** production-моделей.
+
+### Реализация (5 поверхностей)
+
+1. **`apps/api/model_impls/vecm.py` (NEW, ~430 строк)** — нативный
+   statsmodels-VECM. Ранг Йохансена ТОЛЬКО на train-fold: `coint_rank="auto"`
+   => `select_coint_rank` (trace, signif=0.05, det_order из детерминированных
+   термов: n→-1, ci/co→0, li/lo→1); ранг 0 — честный отказ БЕЗ VAR-fallback;
+   фиксированный ранг ≤ K-1. Прогноз — нативный `VECMResults.predict(steps,
+   alpha)` (mid/lower/upper, НЕ цикл одномерных ARIMA). Bounded params:
+   k_ar_diff 1..12, coint_rank auto|int≥1, deterministic n/ci/co/li/lo,
+   alpha 0.01/0.05/0.10; история: nobs > (K+1)(k_ar_diff+1)+K, минимум 20
+   (MIN_SYSTEM_OBSERVATIONS). Metadata: k_ar_diff/coint_rank/rank_selection/
+   deterministic_terms/nobs/var_rep-блоки/in_sample_residuals.
+   `run_vecm_backtest` — честный отказ на одиночном synthetic-ряде.
+2. **Векторный tuning (`modeling_tuning.py` + `modeling_session.py`)** —
+   `execute_vector_tuning_trial` / `execute_vector_tuning_plan_with_artifacts`:
+   каждый trial — ПОЛНЫЙ `run_vector_backtest_plan` на тех же EDA-folds
+   (никаких упрощённых срезов); сетка/усечение/finalize — общие
+   `prepare_tuning_grid`/`finalize_tuning_plan_with_artifacts` (MAX_TRIALS=64,
+   детерминированный sample, failures — честные пропуски, all-fail —
+   BacktestExecutionError). Session tuning endpoint: векторная ветка через
+   общий helper `_multivariate_vector_context` (извлечён из backtest-ветки,
+   behavior bit-for-bit) — система, fingerprints, cohort, план; promoted
+   best_backtest — полноценный векторный артефакт (per-series, scaled_loss,
+   baseline, diagnostics). Реестр: var/vecm actions=_TUNABLE =>
+   PRODUCTION_TUNING_MODEL_IDS 9 → **11**.
+3. **Exogenous-канал VARX** — только VAR (yaml: vecm supports_exogenous:
+   false). Адаптер (`var.py::_validated_exog` + `_var_fit_predict(exog=,
+   exog_future=)`): обе части одновременно, одинаковые ключи, finite
+   (импутация известного будущего запрещена), длины nobs/horizon;
+   statsmodels `VAR(matrix, exog=...)` + `forecast_interval(...,
+   exog_future=...)`; без exog — прежний контракт бит-в-бит. Движок
+   (`run_vector_backtest_plan(exogenous=...)`): полная история exog-колонок,
+   выровненная с системой; fail-closed (имена/дубли с endogenous/числовость/
+   finite/длина); per-fold срезы train_features=[:n_train],
+   future_features=[n_train:n_train+gap+n_test] (гейт future⊆train — по
+   построению); модели без канала — честный warning, exog не передаётся.
+   Реестр: var supports_future_features=True (гейт «supports_future_features
+   требует input_kind=...» расширен на multivariate — VARX); vecm=False —
+   registry fail-closed отвергает future_features. FeaturePlan-интеграция:
+   kind=exogenous, role future_known/static — в varx_columns (VAR) и в
+   cohort-контракт.
+4. **Контракт (`multivariate_contract.py`, добавления без изменения
+   сертифицированных поверхностей)** — `vecm_stability(coefficients,
+   coint_rank)`: устойчивость VECM = РОВНО coint_rank единичных корней
+   companion уровневого VAR-представления (|λ|=1 ± 1e-8), остальные строго
+   < 1; `multivariate_cohort_contract(+exogenous_future_known=(),
+   exogenous_static=())`: честная feature_contract (policy="varx_future_known"),
+   дефолт — бит-в-бит прежний (policy="none").
+5. **Диагностика движка** — модель-специфичный блок multivariate_diagnostics:
+   "var" (как в 132) для VAR; "vecm" (k_ar_diff, coint_rank, rank_selection,
+   deterministic_terms, alpha, nobs, vecm_stability) для VECM;
+   companion_stability-ключ делит семантику; +exogenous-блок (names/n_exog).
+
+### Интеграция
+
+- `model_impls/__init__.py`: экспорт run_vecm_backtest; `routers/models.py`:
+  dispatch "vecm" (gate 17 моделей проходит); `rules/modeling.yaml`: vecm
+  param_space (k_ar_diff [1,2,3] x deterministic [ci,co] = 6 trials);
+  Dockerfile: VECM-проба (release-гейт 17-й модели; неособые sin-данные —
+  линейный ряд даёт сингулярную ML-оценку).
+
+### TDD
+
+RED: 3 новых файла — ModuleNotFoundError (apps.api.model_impls.vecm),
+ImportError (vecm_stability, execute_vector_tuning_plan_with_artifacts).
+GREEN: 63 unit-кейса (test_vecm_adapter 27: bounded params/fold-local ранг/
+auto-ранг-0 отказ/fixed-rank/нативная cross-equation связь/alpha-семантика/
+детерминизм; test_vector_tuning 15: trials на тех же folds/честный argmin/
+полный векторный артефакт/failures/all-fail/усечение/yaml grid 6;
+test_varx_exogenous 21: informative-X/fail-closed длин и NaN/движок-срезы/
+vecm-отказ exog/registry гейты/cohort-контракт/vecm_stability) + 1 API-кейс
+(test_vecm_runs_vector_session_tuning_with_fold_local_rank: tuning →
+promoted vector backtest → session-артефакты → повторный backtest с
+tuned-параметрами).
+
+### Честные обновления сертификационных тестов (как 15→16 в Task 132)
+
+- `test_modeling_mvp_certification.py`: CERTIFIED_MODEL_IDS + vecm (17),
+  тест переименован sixteen→seventeen; PRODUCTION_TUNING + var/vecm (11).
+- `test_model_execution_contract.py`: CERTIFIED_IDS + vecm; MULTIVARIATE_IDS
+  {var, vecm} + MULTIVARIATE_EXOG_IDS {var} (supports_future_features).
+- `test_backtesting_engine.py`: одномерный OOF-cohort исключает var И vecm
+  (векторные исполнители; 15 одномерных).
+- `test_model_readiness_candidates.py`: n_series=1 — catalog-only 7,
+  blocked 2 (vecm блокируется F01 как var); короткий профиль — blocked 7.
+- `test_var_integration_paths.py`: dispatch-цепочка 16 → 17.
+- `test_models_backtest_real.py`: dispatch-реестр 17 ключей.
+
+### Верификация
+
+- Полный pytest: **1912 passed / 0 failed**, snapshots 3/3; арифметика:
+  1848 (74654a0) + 63 unit + 1 API = 1912 (сходится ровно).
+- compileall OK; `from apps.api.main import app` OK; pip check PASS.
+- Dockerfile-проба VECM воспроизведена локально (VECM executable OK).
+- E2E каталога: «Подключённые» = 17; «Многомерные» = var + vecm, оба ready
+  с [backtest, tune, diagnostics] (VECM с cointegrated-профилем — RECOMMENDED
+  по P05); фронтенд не менялся — MODEL_FAMILIES уже содержит "multivariate".
+
+### Границы Task 133
+
+- Векторный tuning job-контур (resumable model_jobs для векторных моделей)
+  наследует общий механизм — при необходимости отдельный честный разбор.
+- VECM с exog (VECMX) не подключён: yaml supports_exogenous: false —
+  сознательное методологическое решение (коинтеграционная спецификация без
+  внешних регрессоров); потребность — отдельная постановка.
+- Rank "auto" — trace-тест signif=0.05 на train-срезе fold'а; выбор уровня
+  значимости не параметризуется (fail-closed конвенция платформы).

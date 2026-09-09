@@ -46,6 +46,7 @@ from apps.api.model_impls import (
     run_lightgbm_backtest,
     run_catboost_backtest,
     run_var_backtest,
+    run_vecm_backtest,
 )
 from apps.api.model_impls.tuning import tune_ets_predict, tune_arima_predict
 from apps.api.model_execution import (
@@ -291,6 +292,9 @@ _BACKTEST_IMPLEMENTATIONS = {
     # Task 132: VAR требует систему K>=2; одиночный synthetic-ряд честно
     # отклоняется адаптером (без синтетических демо и Naive-подмен).
     "var": run_var_backtest,
+    # Task 133: VECM -- второй multivariate-исполнитель; тот же честный
+    # отказ на одиночном synthetic-ряде.
+    "vecm": run_vecm_backtest,
 }
 
 if frozenset(_BACKTEST_IMPLEMENTATIONS) != PRODUCTION_BACKTEST_MODEL_IDS:

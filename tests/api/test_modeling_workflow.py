@@ -1695,3 +1695,85 @@ def test_var_backtest_requires_second_numeric_series(client: TestClient):
     # min_series=2) ИЛИ векторный движок (нет related-рядов для системы).
     detail = response.json()["detail"]
     assert "заблокирована матрицей применимости" in detail or "2 endogenous" in detail
+
+
+def _vecm_csv(n: int = 120, seed: int = 23) -> str:
+    """Коинтегрированная пара: spread value-driver -- стационарный шум
+    (ранг Йохансена >= 1 на train-срезах fold'ов; для VAR этот датасет
+    не предназначен -- у target единичный корень)."""
+    rng = np.random.default_rng(seed)
+    value = 100.0 + np.cumsum(rng.normal(0.0, 1.0, n))
+    driver = value + rng.normal(0.0, 0.1, n)
+    frame = pd.DataFrame({
+        "date": pd.date_range("2018-01-01", periods=n, freq="MS").astype(str),
+        "value": value,
+        "driver": driver,
+    })
+    return frame.to_csv(index=False)
+
+
+def test_vecm_runs_vector_session_tuning_with_fold_local_rank(client: TestClient):
+    """Task 133: session tuning VECM -- каждый trial исполняется векторным
+    движком (EndogenousSystem, vector OOF, per-series метрики), ранг
+    Йохансена переоценивается fold-local (coint_rank="auto"); лучший trial
+    продвигается как полноценный векторный backtest-артефакт."""
+    uploaded = client.post(
+        "/v1/internal/upload",
+        files={"file": ("series.csv", io.BytesIO(_vecm_csv().encode()), "text/csv")},
+    )
+    assert uploaded.status_code == 200, uploaded.text
+    assert client.post("/v1/session/target-column", json={"column": "value"}).status_code == 200
+    assert client.post("/v1/session/date-column", json={"column": "date"}).status_code == 200
+    assert client.post("/v1/session/dataset/passport/start").status_code == 200
+    assert client.post("/v1/session/dataset/passport/modeling_entry").status_code == 200
+    context = client.get("/v1/session/modeling/context?horizon=6&n_splits=2")
+    assert context.status_code == 200, context.text
+
+    tuned = client.post(
+        "/v1/session/modeling/tune",
+        json={"model_id": "vecm", "max_trials": 2, "metric": "rmse"},
+    )
+    assert tuned.status_code == 200, tuned.text
+    body = tuned.json()
+
+    assert body["objective"] == "multivariate"
+    assert body["strategy"]
+    assert body["cohort_id"]
+    assert body["n_trials"] == 2
+    assert body["grid_size"] == 6  # yaml param_space: k_ar_diff 3 x deterministic 2
+    # max_trials=2 < grid_size=6 -- детерминированное усечение (seed).
+    assert body["truncated"] is True
+    assert all(trial["n_folds"] == 2 for trial in body["trials"])
+    assert body["best_params"]["k_ar_diff"] in (1, 2, 3)
+    assert body["best_params"]["deterministic"] in ("ci", "co")
+
+    promoted = body["promoted_backtest"]
+    assert promoted["objective"] == "multivariate"
+    assert promoted["cohort_id"] == body["cohort_id"]
+    assert promoted["params_source"] == "tuning"
+    assert promoted["params"] == body["best_params"]
+    assert set(promoted["per_series_metrics"]) == {"value", "driver"}
+    assert promoted["scaled_loss"] is not None
+    points = promoted["oof_predictions"]
+    assert {point["series"] for point in points} == {"value", "driver"}
+    for fold in promoted["folds"]:
+        vecm_diag = fold["multivariate_diagnostics"]["vecm"]
+        assert vecm_diag["coint_rank"] >= 1
+        assert vecm_diag["rank_selection"]["mode"] == "auto"
+        assert "n_unit_roots" in fold["multivariate_diagnostics"]["companion_stability"]
+
+    # Продвинутый артефакт доступен в session backtests c series-размерностью.
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    session = session_store_module.get_session_store().get(session_id)
+    stored = session.modeling_artifacts["backtests"]["vecm"]
+    assert stored["cohort_id"] == body["cohort_id"]
+    tuning_artifact = session.modeling_artifacts["tuning"]["vecm"]
+    assert tuning_artifact["best_params"] == body["best_params"]
+
+    # Повторный backtest после tuning применяет tuned-параметры.
+    backtest = client.post("/v1/session/modeling/backtest", json={"model_id": "vecm"})
+    assert backtest.status_code == 200, backtest.text
+    rerun = backtest.json()
+    assert rerun["cohort_id"] == body["cohort_id"]
+    assert rerun["params_source"] == "tuning"
+    assert rerun["params"] == body["best_params"]

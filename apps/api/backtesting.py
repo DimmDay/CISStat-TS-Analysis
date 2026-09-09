@@ -827,10 +827,11 @@ def run_vector_backtest_plan(
     *, model_id: str, model_name: str, family_id: str,
     system: "EndogenousSystem", plan: BacktestPlan,
     seasonal_period: int, params: Optional[Mapping[str, Any]] = None,
+    exogenous: Optional[Mapping[str, Sequence[float]]] = None,
     fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
     preprocessing_warnings: Optional[list[str]] = None,
 ) -> dict[str, Any]:
-    """Векторное исполнение EDA-плана для multivariate-моделей (Task 132).
+    """Векторное исполнение EDA-плана для multivariate-моделей (Task 132/133).
 
     Зеркалирует run_backtest_plan, но на системе Task 131:
     - fold-local: адаптер получает ТОЛЬКО train-префикс системы
@@ -845,8 +846,14 @@ def run_vector_backtest_plan(
       белый шум системы по остаткам адаптера;
     - никакого доступа к тестовым наблюдениям со стороны модели.
 
-    FeaturePlan-регрессоры в Task 132 не принимаются (VARX -- предмет
-    Task 133): наличие активного плана даёт честный warning.
+    Task 133 (VARX): ``exogenous`` -- future-known экзогенные регрессоры
+    ПОЛНОЙ длины системы (та же регулярная сетка).  Движок режет их
+    per-fold: train_features = [:n_train], future_features =
+    [n_train:n_train+execution_horizon] (регистри-гейт future ⊆ train
+    выполняется по построению).  Модели без объявления канала
+    (supports_future_features=False, напр. VECM) получают честный
+    warning и НЕ получают exog.  Импутация известного будущего запрещена:
+    NaN/Inf -- отказ fold'а.
     """
     from apps.api.multivariate_contract import (
         companion_stability,
@@ -856,6 +863,7 @@ def run_vector_backtest_plan(
         system_white_noise_diagnostics,
         vector_metric_scales,
         vector_oof_points,
+        vecm_stability,
     )
 
     if plan.objective != "multivariate":
@@ -893,14 +901,56 @@ def run_vector_backtest_plan(
     timestamps = system.timestamps
 
     warnings: list[str] = list(preprocessing_warnings or [])
-    if plan.feature_plan is not None and plan.feature_plan.features:
-        warnings.append(
-            f"FeaturePlan '{plan.feature_plan.plan_id}' не применён: векторный "
-            f"контракт модели '{model_id}' не принимает регрессоры "
-            "(VARX -- предмет Task 133); полная история в fold-матрицах аудита"
-        )
 
     parameters = dict(params or {})
+    # ── Task 133: exogenous-канал (VARX) ────────────────────────────────
+    exogenous_input = dict(exogenous or {})
+    consumed_exogenous: dict[str, list[float]] = {}
+    if exogenous_input:
+        if execution_contract.get("supports_future_features"):
+            system_name_set = set(names)
+            for name, column in exogenous_input.items():
+                clean_name = str(name).strip()
+                if not clean_name:
+                    raise BacktestExecutionError(
+                        "Имена exogenous-регрессоров не могут быть пустыми"
+                    )
+                if clean_name in system_name_set:
+                    raise BacktestExecutionError(
+                        f"Exogenous-колонка '{clean_name}' пересекается с "
+                        "endogenous-рядами системы -- двойной учет запрещен"
+                    )
+                try:
+                    values = [float(value) for value in column]
+                except (TypeError, ValueError) as exc:
+                    raise BacktestExecutionError(
+                        f"Exogenous-колонка '{clean_name}' должна быть числовой"
+                    ) from exc
+                if len(values) != system.n_observations:
+                    raise BacktestExecutionError(
+                        f"Exogenous-колонка '{clean_name}': длина {len(values)} "
+                        f"не равна длине системы {system.n_observations}"
+                    )
+                if not np.isfinite(np.asarray(values, dtype=float)).all():
+                    raise BacktestExecutionError(
+                        f"Exogenous-колонка '{clean_name}' содержит NaN/Inf -- "
+                        "импутация известного будущего запрещена (fail-closed)"
+                    )
+                consumed_exogenous[clean_name] = values
+        else:
+            warnings.append(
+                f"Экзогенные регрессоры {sorted(exogenous_input)} не применены: "
+                f"модель '{model_id}' не поддерживает exogenous-канал (VARX)."
+            )
+    if plan.feature_plan is not None and plan.feature_plan.features \
+            and not consumed_exogenous:
+        warnings.append(
+            f"FeaturePlan '{plan.feature_plan.plan_id}' не применен: векторный "
+            f"контракт модели '{model_id}' не принимает регрессоры "
+            "(exogenous-канал VARX доступен только моделям с "
+            "supports_future_features); полная история в fold-матрицах аудита"
+        )
+
     folds: list[dict[str, Any]] = []
     started = time.monotonic()
     for fold in plan.folds:
@@ -922,6 +972,28 @@ def run_vector_backtest_plan(
                 name: [float(value) for value in system.series[name][:n_train]]
                 for name in related_names
             }
+            # Task 133 (VARX): per-fold срезы future-known экзогенных
+            # колонок.  Полная длина колонки валидирована выше; future-часть
+            # [n_train:n_train+execution_horizon] покрывает gap+n_test.
+            exog_train: dict[str, list[float]] = {}
+            exog_future: dict[str, list[float]] = {}
+            if consumed_exogenous:
+                exog_train = {
+                    name: column[:n_train]
+                    for name, column in consumed_exogenous.items()
+                }
+                exog_future = {
+                    name: column[n_train:n_train + execution_horizon]
+                    for name, column in consumed_exogenous.items()
+                }
+                if any(
+                    len(column) != execution_horizon
+                    for column in exog_future.values()
+                ):
+                    raise BacktestExecutionError(
+                        "Future-часть exogenous-колонок не покрывает "
+                        "горизонт fold'а (gap+test)"
+                    )
             if fold_preprocessor is None:
                 model_train_target = target_values[:n_train]
                 eval_train_target = list(model_train_target)
@@ -948,6 +1020,8 @@ def run_vector_backtest_plan(
                     seasonal_period=seasonal_period,
                     params=parameters,
                     related_series=related_train,
+                    train_features=exog_train,
+                    future_features=exog_future,
                 ),
             )
             metadata = execution_result.metadata
@@ -1047,7 +1121,37 @@ def run_vector_backtest_plan(
                 np.asarray(block, dtype=float)
                 for block in metadata.get("coefficient_matrices") or []
             ]
-            stability = companion_stability(coefficient_matrices)
+            # Task 133: модель-специфичный блок диагностики.  VECM --
+            # vecm_stability (ровно coint_rank единичных корней companion
+            # уровневого VAR-представления); VAR -- companion_stability.
+            if "k_ar_diff" in metadata:
+                model_diagnostics = {
+                    "vecm": {
+                        "k_ar_diff": int(metadata["k_ar_diff"]),
+                        "coint_rank": int(metadata.get("coint_rank") or 0),
+                        "rank_selection": metadata.get("rank_selection"),
+                        "deterministic_terms": metadata.get("deterministic_terms"),
+                        "alpha": metadata.get("alpha"),
+                        "nobs": metadata.get("nobs"),
+                        **vecm_stability(
+                            coefficient_matrices,
+                            coint_rank=int(metadata.get("coint_rank") or 0),
+                        ),
+                    },
+                }
+            else:
+                stability = companion_stability(coefficient_matrices)
+                model_diagnostics = {
+                    "var": {
+                        "lag_order": lag_order,
+                        "lag_selection": metadata.get("lag_selection"),
+                        "trend": metadata.get("trend"),
+                        "alpha": metadata.get("alpha"),
+                        "nobs": metadata.get("nobs"),
+                        "is_stable": stability["is_stable"],
+                        "max_modulus": stability["max_modulus"],
+                    },
+                }
             residuals_insample = np.asarray(
                 metadata.get("in_sample_residuals"), dtype=float,
             )
@@ -1104,19 +1208,19 @@ def run_vector_backtest_plan(
                 "predictions": baseline_predictions,
             },
             "multivariate_diagnostics": {
-                "var": {
-                    "lag_order": lag_order,
-                    "lag_selection": metadata.get("lag_selection"),
-                    "trend": metadata.get("trend"),
-                    "alpha": metadata.get("alpha"),
-                    "nobs": metadata.get("nobs"),
-                    "is_stable": stability["is_stable"],
-                    "max_modulus": stability["max_modulus"],
-                },
+                **model_diagnostics,
                 "stationarity_evidence": stationarity_evidence,
                 "cointegration_evidence": cointegration_evidence,
-                "companion_stability": stability,
+                "companion_stability": (
+                    model_diagnostics["vecm"]
+                    if "vecm" in model_diagnostics else stability
+                ),
                 "white_noise": white_noise,
+                "exogenous": (
+                    {"names": sorted(consumed_exogenous),
+                     "n_exog": len(consumed_exogenous)}
+                    if consumed_exogenous else None
+                ),
             },
             "mase_scale": None, "rmsse_scale": None,
             "feature_matrix": None, "feature_importance": None,

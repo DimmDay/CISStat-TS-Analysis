@@ -721,6 +721,8 @@ def multivariate_cohort_contract(
     *,
     series_fingerprints: Mapping[str, str],
     seasonal_period: int = 1,
+    exogenous_future_known: Sequence[str] = (),
+    exogenous_static: Sequence[str] = (),
 ) -> dict[str, Any]:
     """Cohort-контракт многомерной системы (расширяет контракт движка).
 
@@ -729,6 +731,15 @@ def multivariate_cohort_contract(
     добавлен блок ``system`` (состав endogenous, сетка, версия контракта).
     Разделение cohort'ов гарантируется строгим сравнением aligned_oof:
     несовпадение objective и cohort_contract отвергается движком.
+
+    Task 133 (VARX): ``exogenous_future_known``/``exogenous_static`` --
+    имена future-known экзогенных регрессоров, объявленных для задачи
+    (FeaturePlan, роль future_known/static, kind=exogenous).  Они НЕ входят
+    в endogenous-систему, но честно декларируются в feature_contract с
+    policy="varx_future_known" -- cohort остаётся общим для всех
+    multivariate-моделей датасета (VAR потребляет канал, VECM честно
+    предупреждает).  Дефолтные пустые кортежи -- бит-в-бит прежний
+    контракт (policy="none").
     """
     system_names = system.names
     fingerprints = {
@@ -750,11 +761,38 @@ def multivariate_cohort_contract(
         raise MultivariateContractError(
             "seasonal_period должен быть положительным"
         )
+    def _clean_exogenous(source: Sequence[str], role: str) -> list[str]:
+        cleaned = [str(name).strip() for name in source]
+        if any(not name for name in cleaned):
+            raise MultivariateContractError(
+                f"exogenous_{role} содержит пустые имена"
+            )
+        if len(set(cleaned)) != len(cleaned):
+            raise MultivariateContractError(
+                f"exogenous_{role} содержит дублирующиеся имена: {cleaned}"
+            )
+        collisions = sorted(set(cleaned) & set(system_names))
+        if collisions:
+            raise MultivariateContractError(
+                f"exogenous_{role} пересекается с endogenous-рядами системы: "
+                f"{collisions}"
+            )
+        return cleaned
+
+    future_known = _clean_exogenous(exogenous_future_known, "future_known")
+    static = _clean_exogenous(exogenous_static, "static")
+    overlaps = sorted(set(future_known) & set(static))
+    if overlaps:
+        raise MultivariateContractError(
+            f"имена exogenous-регрессоров пересекаются между ролями: {overlaps}"
+        )
+    policy = "varx_future_known" if (future_known or static) else "none"
     return {
         "objective": "multivariate",
         "series_fingerprints": {name: fingerprints[name] for name in system_names},
         "feature_contract": {
-            "historic": [], "future_known": [], "static": [], "policy": "none",
+            "historic": [], "future_known": future_known,
+            "static": static, "policy": policy,
         },
         "metric_policy": {
             "metrics": ["mae", "rmse", "mape", "mase", "smape", "rmsse"],
@@ -836,6 +874,59 @@ def companion_stability(
         "eigenvalue_moduli": sorted(moduli),
         "order": order,
         "n_series": k_dim,
+    }
+
+
+# ---------------------------------------------------------------------------
+# 6a-2. Диагностика устойчивости VECM (Task 133)
+# ---------------------------------------------------------------------------
+
+#: Допуск отождествления собственного значения с единичным корнем.
+VECM_UNIT_ROOT_TOL = 1e-8
+
+
+def vecm_stability(
+    coefficient_matrices: Sequence[np.ndarray],
+    *,
+    coint_rank: int,
+) -> dict[str, Any]:
+    """Устойчивость VECM по companion-матрице уровневого VAR-представления.
+
+    VECM устойчив <=> в спектре companion-матрицы РОВНО ``coint_rank``
+    единичных корней (|lambda| = 1 с допуском VECM_UNIT_ROOT_TOL), а все
+    остальные -- СТРОГО внутри единичного круга.  Единичные корни -- не
+    дефект, а суть механизма коррекции ошибок: их число обязано совпадать
+    с рангом коинтеграции.  Расхождение (лишние единичные корни или
+    недостающие) -- признак misspecification: ранг/спецификация не
+    соответствуют динамике системы.
+
+    Аргумент ``coefficient_matrices`` -- PHI-блоки уровневого
+    VAR(k_ar_diff+1)-представления (VECMResults.var_rep statsmodels).
+    """
+    coint_rank = int(coint_rank)
+    if coint_rank < 0:
+        raise MultivariateContractError(
+            f"coint_rank={coint_rank} не может быть отрицательным"
+        )
+    base = companion_stability(coefficient_matrices)
+    moduli = base["eigenvalue_moduli"]
+    unit_roots = [
+        modulus for modulus in moduli
+        if abs(modulus - 1.0) <= VECM_UNIT_ROOT_TOL
+    ]
+    rest = [
+        modulus for modulus in moduli
+        if abs(modulus - 1.0) > VECM_UNIT_ROOT_TOL
+    ]
+    is_stable = (
+        len(unit_roots) == coint_rank
+        and all(modulus < 1.0 - VECM_UNIT_ROOT_TOL for modulus in rest)
+    )
+    return {
+        **base,
+        "coint_rank": coint_rank,
+        "n_unit_roots": len(unit_roots),
+        "is_stable": bool(is_stable),
     }
 
 

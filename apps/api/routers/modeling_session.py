@@ -73,6 +73,7 @@ from apps.api.modeling_selection import (
 from apps.api.modeling_tuning import (
     execute_tuning_trial,
     execute_tuning_plan_with_artifacts,
+    execute_vector_tuning_plan_with_artifacts,
     finalize_tuning_plan_with_artifacts,
     oof_signature,
     parameter_signature,
@@ -568,6 +569,97 @@ def _prepare_state(session, context: dict[str, Any], *, refresh_contract: bool =
             session.modeling_artifacts["validation_strategy"] = _validation_contract(context)
             session.modeling_artifacts["profile"] = context["profile"]
             session.modeling_artifacts["runnable_shortlist"] = context["runnable_shortlist"]
+
+
+def _multivariate_vector_context(
+    session, prepared, context: dict[str, Any], *, period: int,
+    plan_obj, feature_plan_columns: dict[str, list[float]],
+    model_id: str,
+) -> tuple[Any, Any, dict[str, list[float]], list[str]]:
+    """Task 132/133: контекст векторного исполнения multivariate-модели.
+
+    Собирает честную endogenous-систему (target + связанные числовые
+    колонки, порядок объявления = порядок датафрейма), series-fingerprints
+    и cohort-контракт Task 131; Task 133 -- exogenous-канал VARX:
+    future-known/static экзогенные регрессоры FeaturePlan декларируются в
+    cohort-контракте (policy="varx_future_known") и возвращаются движку
+    для моделей с supports_future_features.  Общий helper backtest и
+    tuning endpoints -- одинаковый cohort в рамках session.
+    Возвращает (endogenous_system, backtest_plan, exogenous_columns,
+    warnings).
+    """
+    system_profile = honest_system_profile(
+        session.dataframe, date_column=session.date_column,
+        target_column=session.target_column,
+    )
+    related_names = list(system_profile["related_series"])
+    if not related_names:
+        raise BacktestExecutionError(
+            f"Модель '{model_id}' требует не менее 2 "
+            f"endogenous-рядов: в датасете нет числовых колонок кроме "
+            f"target '{session.target_column}'"
+        )
+    endogenous_system = build_endogenous_system(
+        {
+            session.target_column: [float(v) for v in prepared.series],
+            **{
+                name: [float(v) for v in session.dataframe[name].tolist()]
+                for name in related_names
+            },
+        },
+        timestamps=prepared.labels,
+    )
+    series_fingerprints = {
+        session.target_column: context["fingerprint"],
+        **{
+            name: series_fingerprint(pd.Series(
+                [float(v) for v in session.dataframe[name].tolist()],
+                index=pd.to_datetime(prepared.labels),
+            ))
+            for name in related_names
+        },
+    }
+    # Task 133 (VARX): future-known/static экзогенные регрессоры плана --
+    # только для моделей с объявленным exogenous-каналом (VAR); VECM и
+    # target-derived признаки честно не потребляются (warning движка).
+    definition = MODEL_EXECUTION_REGISTRY.get(model_id)
+    supports_exog = bool(
+        definition is not None and definition.supports_future_features
+    )
+    varx_columns: dict[str, list[float]] = {}
+    varx_future_known: list[str] = []
+    varx_static: list[str] = []
+    vector_warnings: list[str] = []
+    if plan_obj is not None and supports_exog:
+        for spec in plan_obj.features:
+            if spec.kind != KIND_EXOGENOUS:
+                continue
+            if spec.role not in {ROLE_FUTURE_KNOWN, ROLE_STATIC}:
+                continue
+            if spec.name not in feature_plan_columns:
+                continue
+            varx_columns[spec.name] = feature_plan_columns[spec.name]
+            if spec.role == ROLE_FUTURE_KNOWN:
+                varx_future_known.append(spec.name)
+            else:
+                varx_static.append(spec.name)
+    cohort_contract = multivariate_cohort_contract(
+        endogenous_system, series_fingerprints=series_fingerprints,
+        seasonal_period=int(period),
+        exogenous_future_known=tuple(varx_future_known),
+        exogenous_static=tuple(varx_static),
+    )
+    plan = build_backtest_plan(
+        session.modeling_artifacts["validation_strategy"],
+        n_observations=len(prepared.series),
+        fingerprint=context["fingerprint"], target_column=session.target_column,
+        seasonal_period=int(period),
+        preprocessing_signature=prepared.preprocessing_signature,
+        feature_plan=plan_obj, feature_columns=feature_plan_columns,
+        objective="multivariate", series_fingerprints=series_fingerprints,
+        cohort_contract_override=cohort_contract,
+    )
+    return endogenous_system, plan, varx_columns, vector_warnings
 
 
 def _trace_backtest(
@@ -1134,53 +1226,15 @@ def run_modeling_backtest(
             and definition.runtime_available()
         )
         if vector_run:
-            # Task 132: multivariate-модель исполняется векторным движком.
-            # Система -- target + связанные числовые колонки (порядок
-            # объявления = порядок датафрейма), cohort-контракт -- Task 131.
-            system_profile = honest_system_profile(
-                session.dataframe, date_column=session.date_column,
-                target_column=session.target_column,
-            )
-            related_names = list(system_profile["related_series"])
-            if not related_names:
-                raise BacktestExecutionError(
-                    f"Модель '{payload.model_id}' требует не менее 2 "
-                    f"endogenous-рядов: в датасете нет числовых колонок кроме "
-                    f"target '{session.target_column}'"
+            # Task 132/133: multivariate-модель исполняется векторным
+            # движком; общий helper собирает систему, fingerprints,
+            # cohort-контракт (с честной декларацией VARX-канала) и план.
+            endogenous_system, plan, varx_columns, vector_extra_warnings = \
+                _multivariate_vector_context(
+                    session, prepared, context, period=int(period),
+                    plan_obj=plan_obj, feature_plan_columns=feature_plan_columns,
+                    model_id=payload.model_id,
                 )
-            endogenous_system = build_endogenous_system(
-                {
-                    session.target_column: [float(v) for v in prepared.series],
-                    **{
-                        name: [float(v) for v in session.dataframe[name].tolist()]
-                        for name in related_names
-                    },
-                },
-                timestamps=prepared.labels,
-            )
-            series_fingerprints = {
-                session.target_column: context["fingerprint"],
-                **{
-                    name: series_fingerprint(pd.Series(
-                        [float(v) for v in session.dataframe[name].tolist()],
-                        index=pd.to_datetime(prepared.labels),
-                    ))
-                    for name in related_names
-                },
-            }
-            cohort_contract = multivariate_cohort_contract(
-                endogenous_system, series_fingerprints=series_fingerprints,
-                seasonal_period=int(period),
-            )
-            plan = build_backtest_plan(
-                validation, n_observations=len(prepared.series),
-                fingerprint=context["fingerprint"], target_column=session.target_column,
-                seasonal_period=int(period),
-                preprocessing_signature=prepared.preprocessing_signature,
-                feature_plan=plan_obj, feature_columns=feature_plan_columns,
-                objective="multivariate", series_fingerprints=series_fingerprints,
-                cohort_contract_override=cohort_contract,
-            )
         else:
             plan = build_backtest_plan(
                 validation, n_observations=len(prepared.series),
@@ -1193,6 +1247,10 @@ def run_modeling_backtest(
         tuned_matches = bool(tuned) and tuned.get("cohort_id") == plan.cohort_id
         tuned_params = tuned.get("best_params", {}) if tuned_matches else {}
         preprocessing_warnings = [*prepared.warnings, *feature_plan_warnings]
+        if vector_run:
+            preprocessing_warnings = [
+                *preprocessing_warnings, *vector_extra_warnings,
+            ]
         if tuned and not tuned_params:
             preprocessing_warnings.append(
                 "Сохранённые tuned-параметры относятся к другому cohort и не применены."
@@ -1203,6 +1261,7 @@ def run_modeling_backtest(
                 family_id=model_info[1],
                 system=endogenous_system, plan=plan,
                 seasonal_period=int(period), params=tuned_params,
+                exogenous=varx_columns,
                 preprocessing_warnings=preprocessing_warnings,
                 fold_preprocessor=prepared.fold_preprocessor,
             )
@@ -1430,22 +1489,53 @@ def tune_modeling_candidate(
             scaling_recipe=session.preprocessing_scaling_recipe,
         )
         plan_obj, feature_plan_columns, feature_plan_warnings = _session_feature_plan(session, prepared)
-        plan = build_backtest_plan(
-            validation, n_observations=len(prepared.series),
-            fingerprint=context["fingerprint"], target_column=session.target_column,
-            seasonal_period=int(period),
-            preprocessing_signature=prepared.preprocessing_signature,
-            feature_plan=plan_obj, feature_columns=feature_plan_columns,
+        definition = MODEL_EXECUTION_REGISTRY.get(payload.model_id)
+        vector_run = (
+            definition is not None
+            and definition.objective == "multivariate"
+            and definition.runtime_available()
         )
-        execution = execute_tuning_plan_with_artifacts(
-            model_id=payload.model_id, model_name=model_info[0], family_id=model_info[1],
-            param_space=model.param_space, series=prepared.series, labels=prepared.labels,
-            plan=plan, seasonal_period=int(period), max_trials=payload.max_trials,
-            metric=payload.metric, random_state=payload.random_state,
-            seasonal_periods=periods,
-            fold_preprocessor=prepared.fold_preprocessor,
-            preprocessing_warnings=[*prepared.warnings, *feature_plan_warnings],
-        )
+        vector_warnings: list[str] = []
+        if vector_run:
+            # Task 133: векторный tuning -- каждый trial исполняется
+            # векторным движком на EndogenousSystem (тот же cohort, что и
+            # backtest; честная декларация VARX-канала в контракте).
+            endogenous_system, plan, varx_columns, vector_warnings = \
+                _multivariate_vector_context(
+                    session, prepared, context, period=int(period),
+                    plan_obj=plan_obj, feature_plan_columns=feature_plan_columns,
+                    model_id=payload.model_id,
+                )
+            execution = execute_vector_tuning_plan_with_artifacts(
+                model_id=payload.model_id, model_name=model_info[0],
+                family_id=model_info[1],
+                param_space=model.param_space, system=endogenous_system,
+                plan=plan, seasonal_period=int(period),
+                max_trials=payload.max_trials,
+                metric=payload.metric, random_state=payload.random_state,
+                exogenous=varx_columns,
+                fold_preprocessor=prepared.fold_preprocessor,
+                preprocessing_warnings=[
+                    *prepared.warnings, *feature_plan_warnings, *vector_warnings,
+                ],
+            )
+        else:
+            plan = build_backtest_plan(
+                validation, n_observations=len(prepared.series),
+                fingerprint=context["fingerprint"], target_column=session.target_column,
+                seasonal_period=int(period),
+                preprocessing_signature=prepared.preprocessing_signature,
+                feature_plan=plan_obj, feature_columns=feature_plan_columns,
+            )
+            execution = execute_tuning_plan_with_artifacts(
+                model_id=payload.model_id, model_name=model_info[0], family_id=model_info[1],
+                param_space=model.param_space, series=prepared.series, labels=prepared.labels,
+                plan=plan, seasonal_period=int(period), max_trials=payload.max_trials,
+                metric=payload.metric, random_state=payload.random_state,
+                seasonal_periods=periods,
+                fold_preprocessor=prepared.fold_preprocessor,
+                preprocessing_warnings=[*prepared.warnings, *feature_plan_warnings],
+            )
         result = execution.response
         promoted = _trace_backtest(
             execution.best_backtest, model_id=payload.model_id,

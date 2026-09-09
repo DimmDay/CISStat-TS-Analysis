@@ -16,6 +16,7 @@ from apps.api.backtesting import (
     BacktestPlan,
     Predictor,
     run_backtest_plan,
+    run_vector_backtest_plan,
 )
 from apps.api.schemas import (
     BacktestMetrics,
@@ -271,3 +272,89 @@ def execute_tuning_plan(
         fold_preprocessor=fold_preprocessor,
         preprocessing_warnings=preprocessing_warnings,
     ).response
+
+
+# ---------------------------------------------------------------------------
+# Task 133: векторный tuning (multivariate cohort, VAR/VECM)
+# ---------------------------------------------------------------------------
+
+def execute_vector_tuning_trial(
+    *, model_id: str, model_name: str, family_id: str, params: Mapping[str, Any],
+    system: Any, plan: BacktestPlan, seasonal_period: int,
+    metric: str,
+    exogenous: Optional[Mapping[str, list[float]]] = None,
+    fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
+    preprocessing_warnings: Optional[list[str]] = None,
+) -> tuple[TuneTrialResult, dict[str, Any]]:
+    """Исполнить ровно один bounded trial на векторном движке.
+
+    Полная семантика run_vector_backtest_plan (fold-local EndogenousSystem,
+    vector OOF, per-series метрики, multivariate baseline) -- никаких
+    упрощённых train/test-срезов в tuning.  Метрика берётся из агрегата
+    векторного backtest'а (mae/rmse/mape/mase), None -- честный отказ.
+    """
+    if metric not in VALID_SESSION_TUNING_METRICS:
+        raise BacktestExecutionError(f"Метрика tuning '{metric}' не поддерживается")
+    result = run_vector_backtest_plan(
+        model_id=model_id, model_name=model_name, family_id=family_id,
+        system=system, plan=plan, seasonal_period=seasonal_period,
+        params=dict(params), exogenous=exogenous,
+        fold_preprocessor=fold_preprocessor,
+        preprocessing_warnings=preprocessing_warnings,
+    )
+    metrics = BacktestMetrics(**result["metrics"])
+    if getattr(metrics, metric) is None:
+        raise BacktestExecutionError(f"Метрика {metric} не определена")
+    return TuneTrialResult(
+        params=dict(params), metrics=metrics, n_folds=len(plan.folds),
+    ), result
+
+
+def execute_vector_tuning_plan_with_artifacts(
+    *, model_id: str, model_name: str, family_id: str,
+    param_space: Mapping[str, list[Any]], system: Any,
+    plan: BacktestPlan, seasonal_period: int, max_trials: Optional[int],
+    metric: str, random_state: int,
+    exogenous: Optional[Mapping[str, list[float]]] = None,
+    fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
+    preprocessing_warnings: Optional[list[str]] = None,
+) -> TuningPlanExecution:
+    """Grid search multivariate-модели: каждый trial -- векторный backtest.
+
+    Сетка/усечение/финализация -- те же prepare_tuning_grid /
+    finalize_tuning_plan_with_artifacts, что у одномерного tuning (единый
+    контракт платформы: MAX_TRIALS, детерминированный sample по seed,
+    failures как честные пропуски, best = argmin метрики).  Лучший trial
+    возвращается с ПОЛНЫМ векторным backtest-артефактом (per_series_metrics,
+    scaled_loss, vector_baseline, multivariate_diagnostics).
+    """
+    started = time.monotonic()
+    prepared_grid = prepare_tuning_grid(
+        param_space, max_trials=max_trials, metric=metric, random_state=random_state,
+    )
+    trials: list[TuneTrialResult] = []
+    trial_backtests: list[dict[str, Any]] = []
+    failures: list[str] = []
+    for params in prepared_grid.selected:
+        try:
+            trial, result = execute_vector_tuning_trial(
+                model_id=model_id, model_name=model_name, family_id=family_id,
+                params=params, system=system, plan=plan,
+                seasonal_period=seasonal_period, metric=metric,
+                exogenous=exogenous, fold_preprocessor=fold_preprocessor,
+                preprocessing_warnings=preprocessing_warnings,
+            )
+            trials.append(trial)
+            trial_backtests.append(result)
+        except (BacktestExecutionError, ValueError, RuntimeError, ArithmeticError) as exc:
+            failures.append(f"params={params}: {exc}")
+    return finalize_tuning_plan_with_artifacts(
+        model_id=model_id, model_name=model_name, family_id=family_id,
+        trials=trials, trial_backtests=trial_backtests, failures=failures,
+        grid_size=prepared_grid.grid_size,
+        selected_count=len(prepared_grid.selected), truncated=prepared_grid.truncated,
+        plan=plan, metric=metric,
+        duration_ms=(time.monotonic() - started) * 1000,
+        fold_preprocessor=fold_preprocessor,
+        preprocessing_warnings=preprocessing_warnings,
+    )

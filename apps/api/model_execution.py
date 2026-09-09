@@ -249,9 +249,17 @@ class ModelExecutionDefinition:
             raise ModelExecutionContractError(
                 "requires_train_features требует input_kind=supervised или panel"
             )
-        if self.supports_future_features and self.input_kind not in {"supervised", "panel"}:
+        if self.supports_future_features and self.input_kind not in {
+            "supervised", "panel", "multivariate",
+        }:
+            # Task 133: multivariate-модель с exogenous-каналом (VARX) --
+            # честный носитель future-known регрессоров: yaml::var
+            # supports_exogenous: true.  Fail-closed гейты исполнения не
+            # меняются: train/future_features отвергаются для всех, кто их
+            # не объявил, включая univariate.
             raise ModelExecutionContractError(
-                "supports_future_features требует input_kind=supervised или panel"
+                "supports_future_features требует input_kind=supervised, "
+                "panel или multivariate (VARX)"
             )
         if self.requires_related_series and self.input_kind not in {"multivariate", "panel"}:
             raise ModelExecutionContractError(
@@ -587,16 +595,64 @@ def _random_forest_executor(request: ModelExecutionRequest) -> ModelExecutionRes
 
 
 def _var_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
-    """Task 132: нативный statsmodels VAR поверх related_series-канала v2.
+    """Task 132/133: нативный statsmodels VAR/VARX поверх related_series-канала v2.
 
     Плоский контракт ``forecast`` = колонка target-ряда (первая колонка
     системы); полный векторный payload (матрицы forecast/lower/upper,
     порядок лага, коэффициенты, in-sample остатки) -- в metadata и
-    читается векторным движком (run_vector_backtest_plan).
+    читается векторным движком (run_vector_backtest_plan).  VARX (Task
+    133): request.train_features/future_features -- future-known экзогенные
+    регрессоры (registry-гейт: supports_future_features=True).
     """
     from apps.api.model_impls.var import _var_fit_predict
 
     payload = _var_fit_predict(
+        list(request.target),
+        request.horizon,
+        related_series=dict(request.related_series) or None,
+        params=dict(request.params),
+        random_state=request.random_state,
+        exog=dict(request.train_features) if request.train_features else None,
+        exog_future=dict(request.future_features) if request.future_features else None,
+    )
+    vector_forecast = payload["forecast"]
+    return ModelExecutionResult(
+        forecast=[float(value) for value in vector_forecast[:, 0]],
+        lower_interval=[float(value) for value in payload["lower"][:, 0]],
+        upper_interval=[float(value) for value in payload["upper"][:, 0]],
+        metadata={
+            "vector_forecast": payload["forecast"].tolist(),
+            "vector_lower": payload["lower"].tolist(),
+            "vector_upper": payload["upper"].tolist(),
+            "series_names": list(payload["series_names"]),
+            "lag_order": payload["lag_order"],
+            "lag_selection": payload["lag_selection"],
+            "trend": payload["trend"],
+            "alpha": payload["alpha"],
+            "nobs": payload["nobs"],
+            "coefficient_matrices": [
+                block.tolist() for block in payload["coefficient_matrices"]
+            ],
+            "in_sample_residuals": payload["in_sample_residuals"].tolist(),
+            "deterministic": payload["deterministic"],
+            "exogenous": payload.get("exogenous"),
+        },
+    )
+
+
+def _vecm_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
+    """Task 133: нативный statsmodels VECM поверх related_series-канала v2.
+
+    Плоский контракт ``forecast`` = колонка target-ряда (первая колонка
+    системы); полный векторный payload (матрицы forecast/lower/upper,
+    fold-local ранг Йохансена, VAR-представление, in-sample остатки) --
+    в metadata и читается векторным движком (run_vector_backtest_plan).
+    Exogenous-канала нет (yaml: supports_exogenous: false): реестр
+    fail-closed отвергает future_features для vecm.
+    """
+    from apps.api.model_impls.vecm import _vecm_fit_predict
+
+    payload = _vecm_fit_predict(
         list(request.target),
         request.horizon,
         related_series=dict(request.related_series) or None,
@@ -613,9 +669,10 @@ def _var_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
             "vector_lower": payload["lower"].tolist(),
             "vector_upper": payload["upper"].tolist(),
             "series_names": list(payload["series_names"]),
-            "lag_order": payload["lag_order"],
-            "lag_selection": payload["lag_selection"],
-            "trend": payload["trend"],
+            "k_ar_diff": payload["k_ar_diff"],
+            "coint_rank": payload["coint_rank"],
+            "rank_selection": payload["rank_selection"],
+            "deterministic_terms": payload["deterministic_terms"],
             "alpha": payload["alpha"],
             "nobs": payload["nobs"],
             "coefficient_matrices": [
@@ -827,7 +884,7 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
     ModelExecutionDefinition(
         model_id="var", family_id="multivariate",
         adapter_id="statsmodels-var", executor=_var_executor,
-        actions=_BACKTEST_DIAGNOSTICS, engine="statsmodels",
+        actions=_TUNABLE, engine="statsmodels",
         required_packages=("statsmodels",),
         # Task 132: первый исполнитель многомерного контракта Task 131.
         # objective="multivariate" + input_kind="multivariate" +
@@ -837,8 +894,33 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         # fold-local (select_order/фиксированный p на train-срезе fold'а);
         # интервалы -- нативный VARResults.forecast_interval (НЕ цикл
         # одномерных ARIMA).  Детерминизм: OLS, случайность отсутствует.
-        # actions без "tune": векторный tuning -- предмет Task 133
-        # (bounded param_space в rules/modeling.yaml уже задокументирован).
+        # Task 133: actions=_TUNABLE -- векторный tuning подключён
+        # (execute_vector_tuning_plan, bounded param_space yaml::var);
+        # supports_future_features=True -- exogenous-канал VARX
+        # (future-known регрессоры через request.train/future_features).
+        objective="multivariate",
+        input_kind="multivariate",
+        requires_related_series=True,
+        supports_future_features=True,
+        supports_prediction_intervals=True,
+        deterministic=True,
+        resource_capabilities=_CLASSICAL_RESOURCES,
+    ),
+    ModelExecutionDefinition(
+        model_id="vecm", family_id="multivariate",
+        adapter_id="statsmodels-vecm", executor=_vecm_executor,
+        actions=_TUNABLE, engine="statsmodels",
+        required_packages=("statsmodels",),
+        # Task 133: второй исполнитель многомерного контракта Task 131.
+        # Ранг Йохансена -- fold-local (coint_rank="auto" => select_coint_rank
+        # на train-срезе fold'а; ранг 0 -- честный отказ без VAR-fallback;
+        # фиксированный ранг <= K-1).  Прогноз -- нативный VECMResults.predict
+        # с интервалами (НЕ цикл одномерных ARIMA).  Диагностика движка --
+        # vecm_stability (ровно coint_rank единичных корней companion) +
+        # белый шум системы.  supports_future_features=False: exogenous-канал
+        # -- только VARX (yaml: vecm supports_exogenous: false); реестр
+        # fail-closed отвергает future_features.  Векторный tuning --
+        # execute_vector_tuning_plan (bounded param_space yaml::vecm).
         objective="multivariate",
         input_kind="multivariate",
         requires_related_series=True,

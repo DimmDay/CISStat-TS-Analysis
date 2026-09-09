@@ -221,6 +221,19 @@ families:
         supports_prediction_intervals: true
         libraries: ["statsmodels"]
         training_time: "seconds_to_minutes"
+        # ── Task 133: bounded param_space ──
+        # Ранг коинтеграции определяется ТОЛЬКО на train-срезе fold'а
+        # (coint_rank="auto" => select_coin_rank/trace, signif=0.05;
+        # ранг 0 -- честный отказ, без VAR-fallback).  k_ar_diff --
+        # число лаговых разностей; deterministic -- детерминированные
+        # термы statsmodels (ci -- константа внутри коинтеграционной
+        # связи, co -- вне).  Интервалы -- нативный VECMResults.predict
+        # (alpha=0.05 = 95%-интервал), НЕ цикл одномерных ARIMA.
+        # Grid 3 x 2 = 6 trials (<= MAX_TRIALS=64); tuning -- векторный
+        # (execute_vector_tuning_plan, Task 133).
+        param_space:
+          k_ar_diff: [1, 2, 3]
+          deterministic: ["ci", "co"]
 
   # ── 5. VOLATILITY ──────────────────────────────────────────────────────────
   - id: "volatility"

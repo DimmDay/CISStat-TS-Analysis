@@ -92,7 +92,11 @@ RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; \
                   assert len(payload['forecast']) == 2; print('CatBoost executable OK')" \
     && python -c "from apps.api.model_impls.var import _var_fit_predict; \
                   payload = _var_fit_predict([float(value) for value in range(1, 31)], 2, related_series={'related': [float(value) ** 2 for value in range(1, 31)]}, params={'maxlags': 2, 'ic': None}); \
-                  assert payload['forecast'].shape == (2, 2); print('VAR executable OK')"
+                  assert payload['forecast'].shape == (2, 2); print('VAR executable OK')" \
+    && python -c "import math; from apps.api.model_impls.vecm import _vecm_fit_predict; \
+                  value = [float(value) + math.sin(value) for value in range(1, 41)]; \
+                  payload = _vecm_fit_predict(value, 2, related_series={'related': value[:-1] + [value[-1]]}, params={'coint_rank': 1, 'k_ar_diff': 1}); \
+                  assert payload['forecast'].shape == (2, 2); print('VECM executable OK')"
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
