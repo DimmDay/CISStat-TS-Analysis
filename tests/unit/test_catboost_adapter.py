@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
 import pytest
 
 from apps.api.feature_plan import (
@@ -404,3 +405,32 @@ class TestCbFitPredictFailClosed:
         y = _y(24)
         with pytest.raises(ValueError, match="horizon"):
             _cb_fit_predict(y, 0, params={"n_lags": 2}, random_state=42)
+
+
+class TestNormalizeImportancesHelper:
+    """Task 130 хаускипинг (рекомендация сертификации Task 130, замечание 1).
+
+    Равномерный fallback нулевой суммарной важности недостижим через
+    публичную поверхность адаптера (CatBoost library-native fail-closed
+    отклоняет константные признаки на стадии квантизации) -- статус
+    «defensive-only» зафиксирован в докстринге хелпера.  Хелпер-тест
+    связывает поведение НАПРЯМУЮ, закрывая gap mutation-проверки 4:
+    удаление fallback-ветки теперь ловится контуром на уровне юнита.
+    """
+
+    def test_zero_total_importance_yields_deterministic_uniform_fallback(self):
+        from apps.api.model_impls.catboost import _normalize_importances
+
+        raw = np.zeros(5, dtype=float)
+        assert _normalize_importances(raw, 5) == [1.0 / 5] * 5
+        # Детерминизм: повторный вызов даёт идентичный результат.
+        assert _normalize_importances(raw, 5) == _normalize_importances(raw, 5)
+
+    def test_positive_importances_are_normalized_to_platform_contract(self):
+        from apps.api.model_impls.catboost import _normalize_importances
+
+        raw = np.array([60.0, 30.0, 10.0], dtype=float)  # проценты CatBoost
+        normalized = _normalize_importances(raw, 3)
+        assert sum(normalized) == pytest.approx(1.0, abs=1e-12)
+        # Порядок колонок сохранён (нормализация не перемешивает).
+        assert normalized == pytest.approx([0.6, 0.3, 0.1])
