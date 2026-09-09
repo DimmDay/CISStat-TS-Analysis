@@ -1,0 +1,334 @@
+# CISStat TS Analysis — Worklog
+
+---
+
+## Task 131 — Multivariate Modeling Contract (каркас VAR/VECM, Tasks 132–133)
+
+Дата: 2026-09-09. Синхронизация: `main @ ffc9deb` (Task 130 CatBoost + принятая
+сертификация Task 130). Реализация по TDD (RED → код → GREEN); базовый прогон
+на базе: 1678 passed / 0 failed, snapshots 3/3. Попутно закрыты оба
+косметических замечания сертификации Task 130 (см. «Хаускипинг»).
+
+### Постановка
+
+docs/modeling_task_list.md::Task 131 — Multivariate Modeling Contract:
+(1) явный набор endogenous-рядов вместо одной target; (2) общая регулярная
+временная сетка без скрытой агрегации; (3) fold-local стационарность всех
+компонент и cointegration evidence; (4) векторные OOF-точки, метрики по
+каждому ряду и агрегированная scaled loss; (5) многомерный baseline и
+отдельный comparison cohort; (6) диагностика устойчивости и белого шума
+системы. Это инфраструктурная задача-контракт (уровень Task 126), НЕ новая
+модель: адаптеры VAR/VECM подключаются в Tasks 132–133 поверх контракта.
+CERTIFIED_IDS/каталог-гейты не менялись (15/24 production-моделей — без
+сдвига).
+
+### Дизайн-рекогносцировка (эмпирическая, до тестов)
+
+Probe-скрипт (scripts/task131_probe.py) зафиксировал факты statsmodels
+0.14.5, на которых построен дизайн: (1) формула объединённого Portmanteau
+(Люткеполь 2005 §4.4.3, с/без small-sample поправкой) воспроизводится через
+numpy и ПОБИТОВО совпадает с официальной VARResults.test_whiteness
+(статистика 60.7974084994 при adjusted=True и 58.7584967252 при False —
+оракул-сверка); (2) Йохансен (coint_johansen) на независимых I(1) рядах
+(seed 11/23/42/77/2026) устойчиво даёт trace-ранг 0 на 95%, на
+коинтегрированной паре y=2x+eps — ранг >= 1 (trace 62.9 > 15.49); (3)
+детерминированная разладка (белый шум + дрейф +200 на хвосте 30 точек)
+разворачивает консенсус ADF/KPSS: train-срез (170 точек) — stationary
+(adf 0.0004/kpss 0.10), полная история — non-stationary (adf 0.74/kpss
+0.01) — основа fold-locality-теста; (4) iid-остатки (seed 3, T=400) —
+Portmanteau p=0.96, AR(1) phi=0.9 — p<1e-6.
+
+### Дизайн
+
+- `apps/api/multivariate_contract.py` (NEW, ~770 строк) — контракт
+  многомерного моделирования, независимый от HTTP/session-кода; НЕ
+  импортирует backtesting.py (в Tasks 132–133 движок будет импортировать
+  контракт — встречный импорт создал бы цикл; паритет формул с движком
+  связан parity-тестами):
+  - **Endogenous system** (`EndogenousSystem`, `build_endogenous_system`):
+    явный набор именованных endogenous-рядов (K >= 2 = min_series из
+    modeling.yaml::var), одинаковая длина >= MIN_SYSTEM_OBSERVATIONS=20
+    (= MIN_TRAIN_OBSERVATIONS EDA-стратегии), finite, имена уникальны
+    (нормализация trim), порядок колонок матрицы = порядок объявления
+    (существенен для интерпретации векторных коэффициентов; никакой скрытой
+    сортировки). Методы: matrix() (T×K), train_slice/test_slice, head(stop)
+    (fold-local подсистема).
+  - **Общая регулярная сетка** (`validate_regular_grid`): дубликаты дат —
+    панель-ошибка, нерегулярные интервалы — «регуляризуйте ряд» (семантика
+    и формулировки EDA-стационарности), несортированный вход — fail-closed
+    (никакой скрытой пересортировки); частота — платформенный
+    detect_column_frequency (pd.infer_freq), календарные месяцы/кварталы
+    распознаются корректно. Ни ресемплинга, ни интерполяции, ни агрегации.
+    Grid-info (frequency/start/end/n) попадает в cohort-контракт; режим без
+    дат — явный row_order (grid=None), как order_source="row_order" в EDA.
+  - **Fold-local стационарность** (`component_stationarity`,
+    `fold_stationarity_evidence`): ADF(уровень)+KPSS(уровень) КАЖДОЙ
+    компоненты, консенсус-метки зеркалят EDA (stationary/non-stationary/
+    inconclusive); advisory-контракт: вырожденные/короткие данные дают
+    available=False с причиной — evidence никогда не выдумывается; функции
+    видят ТОЛЬКО переданную матрицу (train-срез фолда), fold-locality
+    привязана тестом разладки.
+  - **Cointegration evidence** (`fold_cointegration_evidence`): Йохансен
+    trace+max-eig на train-срезе, последовательный ранг (подряд идущие
+    отвержения), det_order ∈ {-1,0,1}, k_ar_diff ∈ [1,12], alpha ∈
+    {0.10,0.05,0.01}; короткие фолды (n < k_ar_diff + 20) и вырожденные
+    данные — available=False с причиной; reference-тест-привязка: статистики
+    модуля == прямому coint_johansen на ТОЙ ЖЕ матрице (rel 1e-12).
+  - **Векторные OOF-точки** (`vector_oof_points`): long-format —
+    сертифицированная схема движка (fold/horizon_step/index/label, residual
+    = actual - predicted round 12) + размерность `series`; детерминированный
+    порядок (шаг горизонта, потом порядок серий); fail-closed на форму/NaN/
+    дубликаты имён/несовпадение test_indices.
+  - **Векторные метрики** (`vector_metric_scales`,
+    `compute_vector_metrics`): per-series MAE/RMSE/MAPE/sMAPE/MASE/RMSSE —
+    формулы ИДЕНТИЧНЫ сертифицированной compute_forecast_metrics движка
+    (parity-тест обоими направлениями); MASE каждой серии масштабируется
+    train-only naive-MAE СВОЕЙ серии (vector_metric_scales — паритет с
+    compute_metric_scales); weighted_score всегда None (нормализация только
+    внутри comparison). Агрегированная scaled loss = mean пер-серийных
+    MASE (масштабо-инвариантна), all-or-none: хоть одна серия без MASE —
+    агрегат честно None (частичная подмена запрещена).
+  - **Многомерный baseline** (`vector_naive_baseline`): persistence каждой
+    серии от последнего наблюдения переданной системы (VAR(0)-аналог);
+    fold-local через system.head(train_end); никаких fallback-подмен.
+  - **Отдельный comparison cohort** (`multivariate_cohort_contract`):
+    objective="multivariate" + system-блок (contract_version, endogenous,
+    n_observations, grid); ключи верхнего уровня совместимы со схемой
+    backtesting.build_backtest_plan; fingerprints обязаны соответствовать
+    составу системы; разделение cohort'ов привязано к сертифицированному
+    aligned_oof (несовпадение objective/cohort_contract отвергается).
+  - **Диагностика системы** (`companion_stability`): companion-матрица из
+    PHI_1..PHI_p (pK×pK), max|lambda| < 1 СТРОГО (граница круга =
+    неустойчивость, задокументировано); `system_white_noise_diagnostics`:
+    объединённый Portmanteau (numpy, центрирование по конвенции
+    statsmodels._compute_acov, adjusted/unadjusted, df=K²(nlags-p),
+    fitted_var_order обязателен < nlags) + пер-серийный Ljung-Box
+    (model_df=fitted_var_order); вырожденная ковариация (идеальный фит) —
+    fail-closed, а не фиктивный «идеальный белый шум».
+- Хаускипинг Task 130 (оба замечания сертификации):
+  1. `apps/api/model_impls/catboost.py::_normalize_importances` — статус
+     DEFENSIVE-ONLY зафиксирован в докстринге (ветка недостижима через
+     публичную поверхность адаптера: zero-сумма важности требует
+     константных признаков, что CatBoost отклоняет library-native) +
+     dedicated хелпер-тесты `TestNormalizeImportancesHelper` в
+     tests/unit/test_catboost_adapter.py: нулевая сумма → детерминированный
+     uniform 1/n, проценты → нормализация к сумме 1.0 с сохранением
+     порядка. Mutation-4 gap (удаление fallback не ловился) закрыт на
+     уровне юнита.
+  2. bagging_temperature=0.0 — документированное платформенное отклонение
+     от официального 1.0 подтверждено как корректное (докстринг модуля уже
+     фиксирует обоснование: байесовский ресемплинг строк избыточно шумит
+     на коротких platform-fold'ах); изменений кода не требует.
+
+### TDD
+
+RED: tests/unit/test_multivariate_contract.py (83 кейса) —
+ModuleNotFoundError подтверждён. Два честных фикса ТЕСТОВ до реализации
+(арифметика моих собственных закрытых форм: MAPE gdp 10%, а не 1000%;
+scaled_loss в A/B-примере 0.25 = mean(0.5, 0.0)) и один тест-фикс
+неполной fake-точки (residual в aligned_oof-заглушке). GREEN после
+реализации: 3 итерационных фикса КОДА — (1) реальный баг: длина временной
+оси сравнивалась с числом СЕРИЙ вместо числа наблюдений + переупорядочена
+валидация (сетка ПЕРЕД минимальной длиной — специфичная ошибка контракта
+важнее общей); (2) формулировки ошибок приведены к контрактам тестов
+(«длина/форма», «список … пуст», «длина … недостаточна») — без изменения
+поведения; (3) добавлен тест инвариантности Portmanteau к центрированию
+остатков после того, как mutation-проверка показала: на VAR-остатках с
+перехватом (выборочное среднее == 0) удаление центрирования оракул-тестом
+не различается.
+
+### Мутационная самопроверка RED-валидности (5 мутаций, применялись и откатывались)
+
+1. residual = predicted - actual (знак) → FAILED
+   test_vector_oof_residual_sign_convention_and_rounding;
+2. scaled_loss = max вместо mean → FAILED
+   test_scaled_loss_is_mean_of_per_series_mase;
+3. is_stable: max_modulus <= 1.0 (нестрогое неравенство) → FAILED
+   test_unit_circle_boundary_is_unstable_by_strict_inequality;
+4. Portmanteau без центрирования остатков → сначала НЕ поймана (остатки
+   VAR с перехватом имеют нулевое среднее), после добавления
+   test_portmanteau_is_invariant_to_residual_centering — FAILED;
+5. (вырожденная ветка) — ковариация нулевых остатков поднимает
+   MultivariateContractError, поведение привязано
+   test_white_noise_singular_covariance_fails_closed напрямую.
+Рабочая копия после каждой мутации верифицирована (backup + git diff).
+
+### Верификация
+
+- Полный pytest: **1763 passed / 0 failed** (1678 + 83 контракт + 2
+  хаускипинга), snapshots 3/3; арифметика счётчиков сходится ровно
+  (--collect-only: 131 = 83 multivariate_contract + 48 catboost_adapter
+  (46 + 2 новых)).
+- compileall apps OK; `from apps.api.main import app` OK; pip check PASS.
+- Фронтенд не затронут (0 файлов packages/, apps/standalone,
+  apps/embedded); jest-регрессия невозможна по построению. commit/push не
+  выполнялись (запрет AGENTS.md соблюдён).
+
+### Задел Tasks 132–133 (VAR/VECM)
+
+Точки подключения: (1) адаптеры в model_impls/ на EndogenousSystem +
+векторной метрике; (2) интеграция движка backtesting.py для векторных
+моделей (objective="multivariate", input_kind="multivariate",
+requires_related_series — все гейты реестра v2 уже готовы, продюсера
+related_series появятся в 132); (3) порядки лагов VAR/ранг Йохансена —
+fold-local через fold_cointegration_evidence/fold_stationarity_evidence;
+(4) диагностика — companion_stability + system_white_noise_diagnostics;
+(5) comparison — multivariate_cohort_contract + vector baseline;
+(6) modeling_workflow.py::build_modeling_context жёстко кодирует
+n_series=1/is_cointegrated=False — при подключении multivariate-трека
+потребует честного профиля системы.
+
+---
+
+## Task 131 — Multivariate Modeling Contract (VAR/VECM framework): сертификация
+
+Дата: 2026-09-09. Синхронизация: `main @ 78d94fd` («Task 131 - Multivariate
+Modeling Contract (VAR/VECM framework, Tasks 132–133)»). Аудит реализации
+коллеги: apps/api/multivariate_contract.py (NEW, 961 строка),
+tests/unit/test_multivariate_contract.py (NEW, 83 кейса), хаускипинг
+apps/api/model_impls/catboost.py + tests/unit/test_catboost_adapter.py
+(+2 кейса). Коммит не изменён; commit/push агентом не выполнялись
+(запрет AGENTS.md соблюдён).
+
+### Методология аудита
+
+(1) Постановка docs/modeling_task_list.md::Task 131 разобрана на 6
+обязательных пунктов и каждый прослежен до кода И до связывающего теста;
+(2) построчная сверка паритета формул с сертифицированным движком
+(compute_metric_scales / compute_forecast_metrics / build_backtest_plan /
+BacktestMetrics / aligned_oof / BacktestPredictionPoint);
+(3) воспроизведение тестового базлайна в чистом окружении;
+(4) НЕЗАВИСИМЫЕ oracle-сверки на собственных данных и seed (не из тестов
+коллеги): объединённый Portmanteau против statsmodels
+VARResults.test_whiteness (K=4, p=3, остатки с ненулевым средним, оба
+варианта adjusted — совпадение rel=0.0, df=112==112), Йохансен против
+прямого coint_johansen на alpha 0.10/0.01 (3 ряда, y=1.7x+eps);
+(5) собственные mutation spot-checks, НЕ пересекающиеся с пятью мутациями
+коллеги: (A) перекрёстная утечка MASE-scale первой серии во все остальные —
+поймана test_vector_metric_scales_match_engine_formulas (2 отказа);
+(B) удаление центрирования остатков в Portmanteau — поймана
+test_portmanteau_is_invariant_to_residual_centering (тест, добавленный
+коллегой после его мутации-4, работает); обе мутации применялись и
+откатывались, рабочая копия верифицирована (83 passed после отката);
+(6) проверка неизменности сертификационной поверхности: коммит трогает
+ровно 5 файлов, registry/yaml/dispatch/CERTIFIED_IDS не затронуты
+(15/24 production-моделей — без сдвига), фронтенд не затронут.
+
+### Покрытие постановки (все 6 пунктов подтверждены)
+
+1. Явный набор endogenous-рядов — EndogenousSystem: K>=2 (=min_series
+   modeling.yaml::var/vecm), равные длины >= MIN_SYSTEM_OBSERVATIONS=20
+   (=MIN_TRAIN_OBSERVATIONS EDA), finite, уникальные имена с trim-
+   нормализацией, порядок колонок = порядок объявления (тест «zebra/alpha»
+   ловит скрытую сортировку); matrix()/train_slice/test_slice/head().
+2. Общая регулярная сетка без скрытой агрегации — validate_regular_grid:
+   дубликаты = панель-ошибка, нерегулярность = «регуляризуйте ряд»
+   (семантика EDA), несортированный вход fail-closed, частота —
+   платформенный detect_column_frequency (pd.infer_freq; месяцы/кварталы
+   распознаются); ни ресемплинга, ни интерполяции; режим row_order
+   (grid=None) явный.
+3. Fold-local стационарность + коинтеграция — ADF+KPSS консенсус каждой
+   компоненты (метки зеркалят app/eda/stationarity), advisory-контракт
+   available=False с причиной на вырожденных данных (константная серия —
+   не выдуманный «stationary»); Йохансен trace+max-eig, последовательный
+   ранг, det_order{-1,0,1}, k_ar_diff[1,12], alpha{0.10,0.05,0.01},
+   короткий фолд < k_ar_diff+20 — честно unavailable; fold-locality
+   привязана тестом разладки (train 170 точек stationary, полная история
+   non-stationary) и reference-сверкой с прямым coint_johansen.
+4. Векторные OOF-точки и метрики — vector_oof_points: long-format,
+   схема движка fold/horizon_step/index/label + series, residual =
+   actual - predicted round 12, детерминированный порядок (шаг, серия
+   объявления); vector_metric_scales — train-only naive-масштаб КАЖДОЙ
+   серии (паритет с compute_metric_scales связан тестом обоими
+   направлениями); compute_vector_metrics — формулы per-series ИДЕНТИЧНЫ
+   compute_forecast_metrics (построчная сверка мною подтверждена: nonzero-
+   маска MAPE по eps, sMAPE 200*|e|/(|a|+|p|), round 6, mape_valid_points,
+   weighted_score=None), scaled_loss = mean пер-серийных MASE, all-or-none
+   (одна серия без MASE — агрегат честно None; привязано тестом).
+5. Многомерный baseline + отдельный cohort — vector_naive_baseline:
+   persistence каждой серии от последнего значения ПЕРЕДАННОЙ системы
+   (VAR(0)-аналог; fold-local через head, привязан тестом «baseline от
+   среза != baseline от полной истории»); multivariate_cohort_contract:
+   objective="multivariate" + system-блок (contract_version, endogenous,
+   n_observations, grid), top-level ключи совместимы со схемой
+   build_backtest_plan (сверено мною с backtesting.py:218–223), изоляция
+   cohort'ов привязана к сертифицированному aligned_oof (тест отказа
+   mixed-objective сравнения; в движке modeling_comparison.py:100–103).
+6. Диагностика системы — companion_stability: pK x pK companion из
+   PHI_1..PHI_p, max|lambda| < 1 СТРОГО (граница круга = неустойчивость,
+   привязано тестом PHI=[[1.0]]); system_white_noise_diagnostics:
+   объединённый Portmanteau Люткеполя 2005 §4.4.3 (центрирование по
+   конвенции _compute_acov; инвариантность к сдвигу уровня привязана
+   отдельным тестом), df = K^2*(nlags - fitted_var_order), nlags >
+   fitted_var_order обязателен, пер-серийный Ljung-Box с model_df;
+   вырожденная ковариация (нулевые остатки) — fail-closed, а не
+   фиктивный «идеальный белый шум» (привязано тестом).
+
+Мои независимые oracle-сверки: Portmanteau rel=0.0 (bitwise) против
+statsmodels на моих данных; Йохансен статистики rel 1e-12 и корректные
+колонки критических значений для 90%/99%; companion max|lambda| ==
+max|eig(PHI)| на моём VAR(1); порядок OOF-точек (шаг, серия-объявление)
+без сортировки имён; знаки residual; per-series масштаб при перестановке
+колонок. Итог 17/17 PASS.
+
+### TDD и мутационная устойчивость
+
+RED зафиксирован коллегой (ModuleNotFoundError, 83 кейса), честные фиксы
+ТЕСТОВ до реализации задокументированы (арифметика закрытых форм).
+Мутационная самопроверка коллеги: 5 мутаций с привязкой к тестам, включая
+честное признание «мутация 4 сначала не ловилась» с последующим усилением
+контура (centering-инвариантность) — это усиление я независимо повторил
+своей мутацией B: тест ловит. Мои мутации A/B дополняют коллегу и
+подтверждают чувствительность контура к перекрёстным утечкам масштаба.
+
+### Верификация (воспроизведена в моём окружении)
+
+- Окружение потребовало установки 7 отсутствующих пакетов (PyWavelets,
+  pandera, prophet, statsforecast, ruptures, arch, syrupy>=4.6.0 — пин из
+  requirements-dev.txt) — дрейф МОЕГО окружения, не кода; после
+  восстановления: **1763 passed / 0 failed, snapshots 3/3** — ровно как
+  заявлено. --collect-only: 1763 = база 1632 + 83 multivariate_contract +
+  48 catboost_adapter (46 + 2 хаускипинга).
+- compileall apps OK; `from apps.api.main import app` OK; pip check PASS.
+- Гейт консистентности `_BACKTEST_IMPLEMENTATIONS` vs
+  PRODUCTION_BACKTEST_MODEL_IDS в routers/models.py при неполных
+  зависимостях честно падает на импорте (RuntimeError) — это
+  спроектированный fail-closed гейт платформы, а не дефект Task 131
+  (модуль контракта от HTTP-кода не зависит и при нём импортируем).
+
+### Хаускипинг Task 130 (оба замечания закрыты подтверждённо)
+
+1. `_normalize_importances`: статус DEFENSIVE-ONLY зафиксирован в
+   докстринге + TestNormalizeImportancesHelper (2 кейса: нулевая сумма →
+   детерминированный uniform 1/n с повторной проверкой детерминизма;
+   проценты → нормализация к 1.0 с сохранением порядка). Gap мутации-4
+   закрыт на уровне юнита.
+2. bagging_temperature=0.0: документированное обоснование в докстринге
+   модуля подтверждено корректным (байесовский ресемплинг строк избыточен
+   на коротких platform-fold'ах); изменений кода не требует — согласен.
+
+### Замечания (косметические, сертификации не препятствуют)
+
+1. scripts/task131_probe.py упомянут в докстринге тестов и worklog, но в
+   репозиторий не закоммичен. Доказательной дыры нет (все факты
+   рекогносцировки привязаны oracle-тестами: Portmanteau против
+   test_whiteness, Йохансен против coint_johansen, разладка, AR(1)),
+   однако ссылка на несуществующий в репо файл — мелкий документационный
+   долг; стоит либо закоммитить probe, либо убрать ссылки.
+2. multivariate_cohort_contract фиксирует feature_contract в legacy-форме
+   policy="none" — корректно для систем без регрессоров, но VAR в
+   modeling.yaml имеет supports_exogenous: true: в Tasks 132–133
+   потребуется явный путь supervised-контракта в многомерный cohort
+   (иначе exogenous-варианты VAR не смогут честно попасть в comparison).
+   Задел уже зафиксирован коллегой в разделе «Задел Tasks 132–133».
+
+### Вердикт
+
+**Task 131 сертифицирована: реализация отличная.** Инфраструктурный
+контракт полностью закрывает все 6 пунктов постановки, следует конвенциям
+сертифицированного ядра (peek/push-уровень fold-locality, паритет формул
+движка, all-or-none честность агрегатов, fail-closed на вырожденных
+данных, advisory-свидетельства без выдуманных фактов), тестовый контур
+чувствителен к мутациям (5 коллеги + 2 мои), базлайн воспроизводится
+(1763/0/3). Изменения поверхности сертификации нет: 15/24 сохраняется,
+адаптеры VAR/VECM — предмет Tasks 132–133.
