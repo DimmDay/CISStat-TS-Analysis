@@ -498,3 +498,91 @@ passed).
 - Изменение критериев EDA-матрицы (task/shape) затронуто минимально и
   честно: production var достижим из session-потока, VECM остаётся
   заблокированным до реализации.
+
+---
+
+## Hotfix интеграции Task 132: канонические пути VAR-адаптера (sync e6f6726)
+
+Дата: 2026-09-09. Синхронизация до **e6f6726** («Task 132 — VAR: production
+vertical slice»). Симптом тимлида: вкладка «Моделирование», «Исполнение»,
+фильтр «Подключённые» — как было 15 моделей, так и осталось; семейство
+«Многомерные» с VAR не появилось.
+
+### Диагноз (корневая причина)
+
+В коммите e6f6726 два файла легли не на свои места (подтверждено
+`python3 -c "import apps.api"` → ModuleNotFoundError):
+
+1. **`apps/api/var.py`** — VAR-адаптер закоммичен в корне пакета API вместо
+   `apps/api/model_impls/var.py`. Файл сам себя документирует первой строкой
+   `# apps/api/model_impls/var.py`; по каноническому пути на него ссылаются
+   4 точки: `apps/api/__init__.py:41` (случайно перезаписанный), 
+   `model_execution.py:597` (`_var_executor`), `Dockerfile:93`
+   (release-проба), `tests/unit/test_var_adapter.py:18`.
+2. **`apps/api/__init__.py`** — пакетный init API (в ef22027 — пустой маркер
+   e69de29) случайно перезаписан копией содержимого
+   `apps/api/model_impls/__init__.py` (+var-импорт). В результате:
+   - `import apps.api` падал первым же импортом
+     (`ModuleNotFoundError: No module named 'apps.api.model_impls.var'`);
+   - бэкенд не поднимался → `/candidates` недоступен → UI отображал
+     устаревший каталог: 15 «Подключённых», без «Многомерные»;
+   - даже при верном пути адаптера реэкспорты в пакетном init API —
+     архитектурная ошибка: side-effect импорты адаптеров при инициализации
+     пакета `apps.api` роняют весь бэкенд от любой ошибки одного адаптера.
+
+### Фикс (3 файла + regression-тест)
+
+- `git mv apps/api/var.py apps/api/model_impls/var.py` (канонический путь
+  всех адаптеров: prophet.py, tbats.py, random_forest.py, catboost.py, ...).
+- `apps/api/__init__.py` — восстановлен пустой маркер пакета
+  (статус-кво ef22027, blob e69de29).
+- `apps/api/model_impls/__init__.py` — добавлены
+  `from apps.api.model_impls.var import run_var_backtest` и
+  `"run_var_backtest"` в `__all__` (экспорт-поверхность dispatch:
+  `routers/models.py:48`, `test_models_backtest_real.py`).
+
+### TDD
+
+RED: `tests/unit/test_var_integration_paths.py` (NEW, 13 кейсов, 4 класса):
+- `TestAdapterCanonicalLocation` — адаптер только в model_impls/, дубль
+  в корне API отсутствует, docstring-путь согласован;
+- `TestApiPackageInitIsPureMarker` — apps/api/__init__.py без реэкспортов
+  (атрибуты + исходник) и без side-effect импортов (subprocess-проверка
+  sys.modules после `import apps.api`);
+- `TestModelImplsExportSurface` — run_var_backtest экспортируется рядом
+  с остальными адаптерами, присутствует в `__all__`, канонический модуль
+  импортируется (run_var_backtest + _var_fit_predict);
+- `TestRegistrySeesVarAtRuntime` — runtime_available('var'), var в
+  PRODUCTION_BACKTEST_MODEL_IDS, полная dispatch-цепочка
+  (routers.models + readiness) исполняется в subprocess и даёт 16 моделей.
+Прогон на e6f6726: **13 failed** (ModuleNotFoundError/ImportError —
+воспроизведение симптома пользователя на уровне импортов).
+
+GREEN после фикса: 13/13.
+
+### Верификация
+
+- Полный pytest: **1848 passed / 0 failed**, snapshots 3/3; арифметика:
+  1763 (ef22027) + 74 новых − 2 обновлённых гейта «15→16» (коллега) +
+  13 regression (фикс) = 1848 (сходится ровно).
+- End-to-end сценарий UI (scripts/task132_fix_ui_e2e_check.py,
+  _compute_candidates на профиле n_series=3, M-сетка, 200 obs):
+  каталог 24 модели, «Подключённые» = **16**, VAR —
+  family_id=multivariate, platform_status=ready, actions
+  [backtest, diagnostics], уровень RECOMMENDED; семейство
+  «Многомерные» = [var, vecm] (VECM — catalog_only до Task 133).
+- Dockerfile-проба `from apps.api.model_impls.var import _var_fit_predict`
+  воспроизведена локально (VAR executable OK, shape (2,2)).
+- compileall apps/api + новый тест OK; pip check PASS.
+- Фронтенд не затронут: MODEL_FAMILIES в packages/ui/lib/modeling.ts уже
+  содержит { id: "multivariate", name: "Многомерные" }; группировка UI
+  строится из catalog по family_id — catalog просто не доходил до UI из-за
+  лежащего бэкенда.
+
+### Влияние
+
+- UI «Моделирование» → «Исполнение» → «Подключённые»: 15 → **16**
+  (VAR подключён); семейство «Многомерные» отображается с VAR.
+- Regression-защита: 13 кейсов фиксируют канонические пути адаптеров и
+  «пустоту» пакетного init API — повторение ошибки размещения файлов
+  ловится на RED до поднятия бэкенда.
