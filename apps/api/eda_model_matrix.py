@@ -106,18 +106,36 @@ def _task_criterion(model: FamilyModel, family: Family, task: Task) -> dict[str,
     if task == "volatility":
         compatible = family.id == "volatility"
         expected = "модель условной дисперсии"
+        status: CriterionStatus = "pass" if compatible else "fail"
+        note = "Назначение модели соответствует задаче." if compatible else "Модель прогнозирует другой объект."
+        blocking = not compatible
     elif task == "multivariate":
         compatible = family.id == "multivariate"
         expected = "совместная модель системы рядов"
+        status = "pass" if compatible else "fail"
+        note = "Назначение модели соответствует задаче." if compatible else "Модель прогнозирует другой объект."
+        blocking = not compatible
     else:
         compatible = family.id not in {"volatility", "multivariate"}
         expected = "прогноз уровня выбранной цели"
+        status = "pass" if compatible else "fail"
+        note = "Назначение модели соответствует задаче." if compatible else "Модель прогнозирует другой объект."
+        blocking = not compatible
+        # Task 132: production multivariate-модели (VAR) исполняются как
+        # прогноз уровня ВСЕЙ endogenous-системы (target -- первая колонка);
+        # они совместимы с задачей forecast при честном составе системы
+        # (структура рядов -- отдельный criterion ниже; состав подтверждает
+        # векторный движок run_vector_backtest_plan).  Catalog-only
+        # multivariate-модели (VECM до Task 133) остаются заблокированными.
+        if family.id == "multivariate" and model.id in PRODUCTION_BACKTEST_MODEL_IDS:
+            status = "attention"
+            note = ("Многомерный прогноз уровня системы; target -- первая колонка "
+                    "EndogenousSystem, состав системы подтверждается векторным движком.")
+            blocking = False
     return _criterion(
-        "task", "Задача", "pass" if compatible else "fail",
+        "task", "Задача", status,
         {"forecast": "прогноз уровня", "multivariate": "многомерная система", "volatility": "волатильность"}[task],
-        expected,
-        "Назначение модели соответствует задаче." if compatible else "Модель прогнозирует другой объект.",
-        blocking=not compatible,
+        expected, note, blocking=blocking,
     )
 
 
@@ -198,7 +216,12 @@ def _shape_criterion(model: FamilyModel, family: Family, task: Task, numeric_ser
     required = model.min_series or (2 if family.id == "multivariate" else 1)
     if required <= 1:
         return _criterion("shape", "Структура рядов", "not_required", "одна целевая серия", "одномерная модель", "Структура подходит.")
-    enough = task == "multivariate" and numeric_series >= required
+    # Task 132: honest n_series -- число числовых рядов-кандидатов системы
+    # (target + связанные числовые колонки, уже исключая date-колонку).
+    # Условие task=="multivariate" было заглушкой до появления
+    # multivariate-исполнителей; теперь система собирается векторным
+    # движком (run_vector_backtest_plan) на фактическом составе датасета.
+    enough = numeric_series >= required
     return _criterion(
         "shape", "Структура рядов", "pass" if enough else "fail",
         f"числовых рядов-кандидатов: {numeric_series}", f"совместно моделируемых рядов ≥ {required}",

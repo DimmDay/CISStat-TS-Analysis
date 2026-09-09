@@ -174,6 +174,52 @@ def _eda_statuses(passport: dict[str, Any], n_exogenous: int, matrix: dict[str, 
     }
 
 
+def honest_system_profile(
+    dataframe: pd.DataFrame, *, date_column: str, target_column: str,
+) -> dict[str, Any]:
+    """Честный профиль endogenous-системы датасета (Task 132).
+
+    ``n_series`` -- число ЧИСЛОВЫХ рядов системы: target + связанные
+    числовые колонки (кроме date-колонки, даже если она числового типа).
+    ``related_series`` -- имена связанных рядов в порядке колонок
+    датафрейма (порядок объявления системы Task 131).
+    ``is_cointegrated`` -- advisory-evidence Йохансена на полной числовой
+    системе (детерминированный coint_johansen, 95%): никогда не выдумывается
+    -- вырожденные/короткие системы честно дают False без коинтеграционного
+    факта (evidence-контракт Task 131; ранг для VECM финально определяется
+    fold-local в Task 133).
+    """
+    date_is_numeric = date_column in dataframe.select_dtypes(include="number").columns
+    numeric_columns = [
+        str(column)
+        for column in dataframe.select_dtypes(include="number").columns
+        if str(column) != str(date_column)
+    ]
+    related = [name for name in numeric_columns if name != str(target_column)]
+    n_series = len(numeric_columns)
+    is_cointegrated = False
+    if n_series >= 2:
+        try:
+            from apps.api.multivariate_contract import fold_cointegration_evidence
+
+            matrix = dataframe[numeric_columns].to_numpy(dtype=float)
+            if np.isfinite(matrix).all() and matrix.shape[0] >= 21:
+                evidence = fold_cointegration_evidence(
+                    matrix, det_order=0, k_ar_diff=1, alpha=0.05,
+                )
+                is_cointegrated = bool(
+                    evidence.get("available") and evidence.get("cointegration_evidence")
+                )
+        except Exception:  # noqa: BLE001 -- advisory-профиль, никогда не блокирует
+            is_cointegrated = False
+    return {
+        "n_series": n_series,
+        "related_series": related,
+        "is_cointegrated": is_cointegrated,
+        "date_is_numeric": bool(date_is_numeric),
+    }
+
+
 def build_modeling_context(session: AnalysisSession, *, horizon: int = 12,
                            strategy: str = "expanding", n_splits: int = 5,
                            gap: int = 0, train_window: int = 60) -> dict[str, Any]:
@@ -213,7 +259,15 @@ def build_modeling_context(session: AnalysisSession, *, horizon: int = 12,
         + list(passport.get("seasonal_periods", {}).get("periods", []))
     ))
     profile = {
-        "n_observations": len(series), "n_series": 1, "n_exogenous": n_exogenous,
+        "n_observations": len(series),
+        # Task 132: честный размер endogenous-системы (target + связанные
+        # числовые ряды) вместо жёсткой единицы -- F01/C03-гейты
+        # applicability-движка работают по фактическому составу датасета.
+        **honest_system_profile(
+            session.dataframe, date_column=session.date_column,
+            target_column=session.target_column,
+        ),
+        "n_exogenous": n_exogenous,
         "is_regular": bool(passport.get("freq", {}).get("is_regular")),
         "frequency": _frequency_alias(passport.get("freq", {}).get("value")),
         "has_seasonality": bool(passport.get("seasonality", {}).get("is_seasonal")),
@@ -221,7 +275,6 @@ def build_modeling_context(session: AnalysisSession, *, horizon: int = 12,
         "is_stationary_or_diffable": bool(passport.get("stationarity", {}).get("is_stationary")) or any(
             item.get("kind") == "stationarity" for item in session.preprocessing_transformations.values()
         ),
-        "is_cointegrated": False,
         "has_negative_values": bool((values < 0).any()),
         "has_volatility_clustering": False,
         "domain": "other", "missing_ratio": 0.0,

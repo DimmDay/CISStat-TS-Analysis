@@ -51,8 +51,11 @@ def test_candidate_statistics_report_runtime_availability_separately():
     ))
 
     # Task 130: catboost стал production-моделью -- runnable 15, catalog-only 9.
+    # Task 132: var стал production-моделью (16-я); на n_series=1 он
+    # production+blocked (F01: требует >= 2 рядов) -- catalog-only 8, blocked 1.
     assert response.statistics.runnable_candidates == 15
-    assert response.statistics.catalog_only_candidates == 9
+    assert response.statistics.catalog_only_candidates == 8
+    assert response.statistics.blocked_candidates == 1
     assert response.statistics.total_models_in_spec == 24
 
 
@@ -87,11 +90,16 @@ def test_tbats_is_connected_but_explains_when_current_training_fold_is_too_short
     assert tbats.blocking_reason == "Недостаточно данных: 60 < 100 (требуется TBATS)"
     # Task 127/128/129/130: random_forest, xgboost, lightgbm и catboost тоже
     # объявляют min_observations=100 и на коротком профиле блокируются вместе
-    # с TBATS -- explain, не fake.
+    # с TBATS -- explain, не fake.  Task 132: var блокируется F01 (n_series=1
+    # < min_series=2) тем же честным explain-механизмом.
     for model_id, name in (("random_forest", "Random Forest"), ("xgboost", "XGBoost"),
                            ("lightgbm", "LightGBM"), ("catboost", "CatBoost")):
         candidate = next(item for item in response.catalog if item.model_id == model_id)
         assert candidate.platform_status == "ready"
         assert candidate.available_actions == []
         assert candidate.blocking_reason == f"Недостаточно данных: 60 < 100 (требуется {name})"
-    assert response.statistics.blocked_candidates == 5
+    var_candidate = next(item for item in response.catalog if item.model_id == "var")
+    assert var_candidate.platform_status == "ready"
+    assert var_candidate.available_actions == []
+    assert var_candidate.blocking_reason
+    assert response.statistics.blocked_candidates == 6

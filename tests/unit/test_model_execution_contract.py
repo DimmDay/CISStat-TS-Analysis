@@ -35,6 +35,9 @@ CERTIFIED_IDS = frozenset({
     # Task 130: CatBoost -- четвёртый ML-адаптер (native CatBoostRegressor,
     # Quantile:alpha интервалы, ordered boosting).
     "catboost",
+    # Task 132: VAR -- первый multivariate-исполнитель контракта Task 131
+    # (native statsmodels, fold-local порядок лага, нативные интервалы).
+    "var",
 })
 
 # Task 126/127/128/129/130: supervised-адаптеры с regressor-каналом future_known/static.
@@ -42,6 +45,10 @@ SUPERVISED_IDS = frozenset({"prophet", "random_forest", "xgboost", "lightgbm", "
 
 # Task 127/128/129/130: ML-семейство (dependency_group="ml").
 ML_IDS = frozenset({"random_forest", "xgboost", "lightgbm", "catboost"})
+
+# Task 132: multivariate-адаптеры (objective="multivariate",
+# input_kind="multivariate", requires_related_series -- векторный движок).
+MULTIVARIATE_IDS = frozenset({"var"})
 
 
 def test_registry_is_the_single_source_of_truth_for_production_actions():
@@ -57,8 +64,14 @@ def test_registry_is_the_single_source_of_truth_for_production_actions():
         assert descriptor["model_id"] == model_id
         # Task 126/127/128/129/130: prophet, random_forest, xgboost, lightgbm
         # и catboost -- supervised-адаптеры (capability supports_future_features
-        # для future_known/static регрессоров), остальные остаются univariate.
-        expected_input_kind = "supervised" if model_id in SUPERVISED_IDS else "univariate"
+        # для future_known/static регрессоров), var -- multivariate (Task 132),
+        # остальные остаются univariate.
+        if model_id in MULTIVARIATE_IDS:
+            expected_input_kind = "multivariate"
+        elif model_id in SUPERVISED_IDS:
+            expected_input_kind = "supervised"
+        else:
+            expected_input_kind = "univariate"
         assert descriptor["input_kind"] == expected_input_kind
         assert descriptor["supports_future_features"] is (model_id in SUPERVISED_IDS)
         assert descriptor["fit_policy"] == "per_train_fold"

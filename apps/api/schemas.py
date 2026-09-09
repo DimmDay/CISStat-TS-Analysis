@@ -3039,6 +3039,13 @@ class BacktestPredictionPoint(BaseModel):
     horizon_step: int = Field(..., ge=1)
     index: int = Field(..., ge=0)
     label: Optional[str] = None
+    series: Optional[str] = Field(
+        None,
+        description=(
+            "Task 132: имя endogenous-ряда для векторных моделей (VAR/VECM); "
+            "null для univariate-моделей"
+        ),
+    )
     actual: float
     predicted: float
     residual: float
@@ -3083,6 +3090,35 @@ class BacktestFoldResult(BaseModel):
             "importances), или None, если адаптер importance не вернул"
         ),
     )
+    per_series_metrics: Optional[Dict[str, Any]] = Field(
+        None,
+        description=(
+            "Task 132: метрики каждого endogenous-ряда fold'а (VAR/VECM); "
+            "null для univariate-моделей"
+        ),
+    )
+    scaled_loss: Optional[float] = Field(
+        None,
+        description=(
+            "Task 132: агрегированная scaled loss fold'а -- mean пер-серийных "
+            "MASE (all-or-none); null для univariate-моделей"
+        ),
+    )
+    vector_baseline: Optional[Dict[str, Any]] = Field(
+        None,
+        description=(
+            "Task 132: многомерный persistence-baseline fold'а (VAR(0)-аналог) "
+            "на тех же тест-индексах; null для univariate-моделей"
+        ),
+    )
+    multivariate_diagnostics: Optional[Dict[str, Any]] = Field(
+        None,
+        description=(
+            "Task 132: fold-local диагностика системы -- порядок лага VAR, "
+            "стационарность/коинтеграция train-среза, companion-устойчивость, "
+            "белый шум остатков; null для univariate-моделей"
+        ),
+    )
     duration_ms: float = Field(..., ge=0)
     error: Optional[str] = None
 
@@ -3118,6 +3154,27 @@ class BacktestResponse(BaseModel):
     gap: int = Field(0, ge=0)
     folds: List[BacktestFoldResult] = Field(default_factory=list)
     oof_predictions: List[BacktestPredictionPoint] = Field(default_factory=list)
+    per_series_metrics: Optional[Dict[str, Any]] = Field(
+        None,
+        description=(
+            "Task 132: агрегированные по folds метрики каждого endogenous-ряда; "
+            "null для univariate-моделей"
+        ),
+    )
+    scaled_loss: Optional[float] = Field(
+        None,
+        description=(
+            "Task 132: агрегированная scaled loss прогона -- взвешенное по "
+            "n_test среднее fold-значений (all-or-none); null для univariate"
+        ),
+    )
+    vector_baseline: Optional[Dict[str, Any]] = Field(
+        None,
+        description=(
+            "Task 132: многомерный persistence-baseline на тех же folds "
+            "(per-fold и агрегат); null для univariate-моделей"
+        ),
+    )
     warnings: List[str] = Field(default_factory=list)
     preprocessing: Dict[str, Any] = Field(
         default_factory=dict,

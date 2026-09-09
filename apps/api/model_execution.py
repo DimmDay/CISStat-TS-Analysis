@@ -586,6 +586,47 @@ def _random_forest_executor(request: ModelExecutionRequest) -> ModelExecutionRes
     )
 
 
+def _var_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
+    """Task 132: нативный statsmodels VAR поверх related_series-канала v2.
+
+    Плоский контракт ``forecast`` = колонка target-ряда (первая колонка
+    системы); полный векторный payload (матрицы forecast/lower/upper,
+    порядок лага, коэффициенты, in-sample остатки) -- в metadata и
+    читается векторным движком (run_vector_backtest_plan).
+    """
+    from apps.api.model_impls.var import _var_fit_predict
+
+    payload = _var_fit_predict(
+        list(request.target),
+        request.horizon,
+        related_series=dict(request.related_series) or None,
+        params=dict(request.params),
+        random_state=request.random_state,
+    )
+    vector_forecast = payload["forecast"]
+    return ModelExecutionResult(
+        forecast=[float(value) for value in vector_forecast[:, 0]],
+        lower_interval=[float(value) for value in payload["lower"][:, 0]],
+        upper_interval=[float(value) for value in payload["upper"][:, 0]],
+        metadata={
+            "vector_forecast": payload["forecast"].tolist(),
+            "vector_lower": payload["lower"].tolist(),
+            "vector_upper": payload["upper"].tolist(),
+            "series_names": list(payload["series_names"]),
+            "lag_order": payload["lag_order"],
+            "lag_selection": payload["lag_selection"],
+            "trend": payload["trend"],
+            "alpha": payload["alpha"],
+            "nobs": payload["nobs"],
+            "coefficient_matrices": [
+                block.tolist() for block in payload["coefficient_matrices"]
+            ],
+            "in_sample_residuals": payload["in_sample_residuals"].tolist(),
+            "deterministic": payload["deterministic"],
+        },
+    )
+
+
 def _xgboost_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     from apps.api.model_impls.xgboost import _xgb_fit_predict
 
@@ -782,6 +823,28 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         deterministic=True,
         dependency_group="ml",
         resource_capabilities=ModelResourceCapabilities(memory_class="standard"),
+    ),
+    ModelExecutionDefinition(
+        model_id="var", family_id="multivariate",
+        adapter_id="statsmodels-var", executor=_var_executor,
+        actions=_BACKTEST_DIAGNOSTICS, engine="statsmodels",
+        required_packages=("statsmodels",),
+        # Task 132: первый исполнитель многомерного контракта Task 131.
+        # objective="multivariate" + input_kind="multivariate" +
+        # requires_related_series -- гейты реестра v2; исполнение ТОЛЬКО
+        # через векторный движок run_vector_backtest_plan (EndogenousSystem,
+        # векторные OOF-точки/per-series метрики).  Порядок лага --
+        # fold-local (select_order/фиксированный p на train-срезе fold'а);
+        # интервалы -- нативный VARResults.forecast_interval (НЕ цикл
+        # одномерных ARIMA).  Детерминизм: OLS, случайность отсутствует.
+        # actions без "tune": векторный tuning -- предмет Task 133
+        # (bounded param_space в rules/modeling.yaml уже задокументирован).
+        objective="multivariate",
+        input_kind="multivariate",
+        requires_related_series=True,
+        supports_prediction_intervals=True,
+        deterministic=True,
+        resource_capabilities=_CLASSICAL_RESOURCES,
     ),
 ])
 

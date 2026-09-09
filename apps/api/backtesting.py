@@ -128,6 +128,7 @@ def build_backtest_plan(
     metric_policy: Optional[Mapping[str, Any]] = None,
     feature_plan: Optional[FeaturePlan] = None,
     feature_columns: Optional[Mapping[str, Sequence[float]]] = None,
+    cohort_contract_override: Optional[Mapping[str, Any]] = None,
 ) -> BacktestPlan:
     """Validate and freeze the exact folds produced by EDA."""
     strategy = str(validation.get("strategy", ""))
@@ -215,12 +216,23 @@ def build_backtest_plan(
         "aggregation": "test_size_weighted_folds",
         "seasonal_period": metric_period,
     })
-    cohort_contract = {
-        "objective": objective,
-        "series_fingerprints": series_scope,
-        "feature_contract": features,
-        "metric_policy": metrics,
-    }
+    if cohort_contract_override is not None:
+        # Task 132: векторный cohort строит контракт АВТОРИТЕТНО через
+        # multivariate_cohort_contract (Task 131) -- с system-блоком и
+        # vector-метрикой; он используется дословно и участвует в cohort_id.
+        override = dict(cohort_contract_override)
+        if str(override.get("objective") or "") != str(objective):
+            raise BacktestExecutionError(
+                "cohort_contract_override не совпадает с objective плана"
+            )
+        cohort_contract = override
+    else:
+        cohort_contract = {
+            "objective": objective,
+            "series_fingerprints": series_scope,
+            "feature_contract": features,
+            "metric_policy": metrics,
+        }
     payload = {
         "fingerprint": fingerprint, "target_column": target_column,
         "strategy": strategy, "horizon": horizon, "gap": gap,
@@ -643,6 +655,538 @@ def run_backtest_plan(
         "metrics": aggregate.model_dump(mode="json"),
         "n_train": last_train, "n_test": len(oof),
         "train_ratio": round(last_train / len(values), 12),
+        "duration_ms": round((time.monotonic() - started) * 1000, 3),
+        "data_source": "session", "status": "success",
+        "strategy": plan.strategy, "cohort_id": plan.cohort_id,
+        "objective": plan.objective, "cohort_contract": plan.cohort_contract,
+        "horizon": plan.horizon, "n_folds": len(plan.folds), "gap": plan.gap,
+        "folds": folds, "oof_predictions": oof, "warnings": warnings,
+        "preprocessing": preprocessing,
+        "execution_contract": execution_contract,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Task 132: векторный движок (multivariate models поверх контракта Task 131)
+# ---------------------------------------------------------------------------
+
+def _pointwise_vector_metrics(
+    actual_matrix: np.ndarray, predicted_matrix: np.ndarray,
+    per_series: Mapping[str, Any],
+) -> BacktestMetrics:
+    """Свести per-series метрики fold'а в один BacktestMetrics.
+
+    MAE/RMSE/MAPE/sMAPE -- поточечный пул по всем сериям (математически
+    определён на объединённом наборе OOF-точек); MASE/RMSSE -- среднее
+    пер-серийных значений (all-or-none: хоть одна None -- агрегат None,
+    частичная подмена запрещена).  Оба подхода редуцируют fold к схеме
+    сертифицированной compute_forecast_metrics движка.
+    """
+    errors = (actual_matrix - predicted_matrix).reshape(-1)
+    actual_flat = actual_matrix.reshape(-1)
+    predicted_flat = predicted_matrix.reshape(-1)
+    mae = float(np.mean(np.abs(errors)))
+    rmse = float(np.sqrt(np.mean(np.square(errors))))
+    nonzero = np.abs(actual_flat) > np.finfo(float).eps
+    mape = (
+        float(np.mean(np.abs(errors[nonzero] / actual_flat[nonzero])) * 100)
+        if nonzero.any() else None
+    )
+    denominator = np.abs(actual_flat) + np.abs(predicted_flat)
+    valid_smape = denominator > np.finfo(float).eps
+    smape = (
+        float(np.mean(200 * np.abs(errors[valid_smape]) / denominator[valid_smape]))
+        if valid_smape.any() else 0.0
+    )
+    mases = [metrics.mase for metrics in per_series.values()]
+    rmsses = [metrics.rmsse for metrics in per_series.values()]
+    mean_mase = (
+        round(float(np.mean([float(v) for v in mases])), 6)
+        if all(v is not None for v in mases) else None
+    )
+    mean_rmsse = (
+        round(float(np.mean([float(v) for v in rmsses])), 6)
+        if all(v is not None for v in rmsses) else None
+    )
+    return BacktestMetrics(
+        mae=round(mae, 6), rmse=round(rmse, 6),
+        mape=round(mape, 6) if mape is not None else None,
+        mase=mean_mase,
+        smape=round(smape, 6),
+        rmsse=mean_rmsse,
+        mape_valid_points=int(nonzero.sum()), weighted_score=None,
+    )
+
+
+def _aggregate_vector_metrics(folds: list[dict[str, Any]]) -> BacktestMetrics:
+    """Агрегат по folds: пул всех OOF-точек + взвешенные MASE/RMSSE folds.
+
+    Зеркалит сертифицированную _aggregate_metrics univariate-движка:
+    поточечные метрики -- пул всех точек, MASE -- взвешенное по n_test
+    среднее fold-значений (all-or-none), RMSSE -- корень из взвешенного
+    среднего квадратов.
+    """
+    points = [point for fold in folds for point in fold["predictions"]]
+    residuals = np.asarray([point["residual"] for point in points], dtype=float)
+    actual_flat = np.asarray([point["actual"] for point in points], dtype=float)
+    predicted_flat = np.asarray([point["predicted"] for point in points], dtype=float)
+    mae = float(np.mean(np.abs(residuals)))
+    rmse = float(np.sqrt(np.mean(np.square(residuals))))
+    nonzero = np.abs(actual_flat) > np.finfo(float).eps
+    mape = (
+        float(np.mean(np.abs(residuals[nonzero] / actual_flat[nonzero])) * 100)
+        if nonzero.any() else None
+    )
+    denominator = np.abs(actual_flat) + np.abs(predicted_flat)
+    valid_smape = denominator > np.finfo(float).eps
+    smape = (
+        float(np.mean(200 * np.abs(residuals[valid_smape]) / denominator[valid_smape]))
+        if valid_smape.any() else 0.0
+    )
+    total = sum(fold["n_test"] for fold in folds)
+
+    def weighted(metric: str) -> Optional[float]:
+        values = [(fold["metrics"].get(metric), fold["n_test"]) for fold in folds]
+        if any(value is None for value, _ in values):
+            return None
+        return sum(float(value) * weight for value, weight in values) / total
+
+    aggregate_mase = weighted("mase")
+    fold_rmsse = [(fold["metrics"].get("rmsse"), fold["n_test"]) for fold in folds]
+    aggregate_rmsse = None
+    if all(value is not None for value, _ in fold_rmsse):
+        aggregate_rmsse = math.sqrt(
+            sum(float(value) ** 2 * weight for value, weight in fold_rmsse) / total
+        )
+    return BacktestMetrics(
+        mae=round(mae, 6), rmse=round(rmse, 6),
+        mape=round(mape, 6) if mape is not None else None,
+        mase=round(aggregate_mase, 6) if aggregate_mase is not None else None,
+        smape=round(float(smape), 6) if smape is not None else 0.0,
+        rmsse=round(aggregate_rmsse, 6) if aggregate_rmsse is not None else None,
+        mape_valid_points=int(nonzero.sum()), weighted_score=None,
+    )
+
+
+def _aggregate_per_series_metrics(folds: list[dict[str, Any]]) -> dict[str, BacktestMetrics]:
+    """Per-series агрегат по folds (пул точек серии; MASE/RMSSE взвешенно)."""
+    names = list(folds[0]["per_series_metrics"]) if folds else []
+    aggregate: dict[str, BacktestMetrics] = {}
+    total = sum(fold["n_test"] for fold in folds)
+    for name in names:
+        residuals: list[float] = []
+        actuals: list[float] = []
+        predicted: list[float] = []
+        weighted_mase: list[tuple[Optional[float], int]] = []
+        weighted_rmsse: list[tuple[Optional[float], int]] = []
+        for fold in folds:
+            for point in fold["predictions"]:
+                if point["series"] == name:
+                    residuals.append(float(point["residual"]))
+                    actuals.append(float(point["actual"]))
+                    predicted.append(float(point["predicted"]))
+            weighted_mase.append((fold["per_series_metrics"][name].get("mase"), fold["n_test"]))
+            weighted_rmsse.append((fold["per_series_metrics"][name].get("rmsse"), fold["n_test"]))
+        errors = np.asarray(residuals, dtype=float)
+        actual_flat = np.asarray(actuals, dtype=float)
+        predicted_flat = np.asarray(predicted, dtype=float)
+        nonzero = np.abs(actual_flat) > np.finfo(float).eps
+        denominator = np.abs(actual_flat) + np.abs(predicted_flat)
+        valid_smape = denominator > np.finfo(float).eps
+
+        def _weighted(values: list[tuple[Optional[float], int]]) -> Optional[float]:
+            if any(value is None for value, _ in values):
+                return None
+            return sum(
+                float(value) * weight for value, weight in values
+            ) / total if total else None
+
+        mase_value = _weighted(weighted_mase)
+        rmsse_values = _weighted(weighted_rmsse)
+        aggregate[name] = BacktestMetrics(
+            mae=round(float(np.mean(np.abs(errors))), 6),
+            rmse=round(float(np.sqrt(np.mean(np.square(errors)))), 6),
+            mape=(
+                round(float(np.mean(np.abs(errors[nonzero] / actual_flat[nonzero])) * 100), 6)
+                if nonzero.any() else None
+            ),
+            mase=round(mase_value, 6) if mase_value is not None else None,
+            smape=(
+                round(float(np.mean(200 * np.abs(errors[valid_smape]) / denominator[valid_smape])), 6)
+                if valid_smape.any() else 0.0
+            ),
+            rmsse=(
+                round(math.sqrt(rmsse_values), 6) if rmsse_values is not None else None
+            ),
+            mape_valid_points=int(nonzero.sum()), weighted_score=None,
+        )
+    return aggregate
+
+
+def run_vector_backtest_plan(
+    *, model_id: str, model_name: str, family_id: str,
+    system: "EndogenousSystem", plan: BacktestPlan,
+    seasonal_period: int, params: Optional[Mapping[str, Any]] = None,
+    fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
+    preprocessing_warnings: Optional[list[str]] = None,
+) -> dict[str, Any]:
+    """Векторное исполнение EDA-плана для multivariate-моделей (Task 132).
+
+    Зеркалирует run_backtest_plan, но на системе Task 131:
+    - fold-local: адаптер получает ТОЛЬКО train-префикс системы
+      (EndogenousSystem валидирована, порядок колонок = порядок объявления);
+    - OOF-точки -- long-format vector_oof_points (размерность series);
+    - метрики -- per-series compute_vector_metrics + агрегированная
+      scaled loss (mean пер-серийных MASE, all-or-none);
+    - baseline -- persistence каждой серии (VAR(0)-аналог) на ТЕХ ЖЕ
+      folds, в evaluation-шкале target-колонки;
+    - диагностика fold'а -- fold-local evidence контракта:
+      стационарность/коинтеграция train-среза, companion-устойчивость и
+      белый шум системы по остаткам адаптера;
+    - никакого доступа к тестовым наблюдениям со стороны модели.
+
+    FeaturePlan-регрессоры в Task 132 не принимаются (VARX -- предмет
+    Task 133): наличие активного плана даёт честный warning.
+    """
+    from apps.api.multivariate_contract import (
+        companion_stability,
+        compute_vector_metrics,
+        fold_cointegration_evidence,
+        fold_stationarity_evidence,
+        system_white_noise_diagnostics,
+        vector_metric_scales,
+        vector_oof_points,
+    )
+
+    if plan.objective != "multivariate":
+        raise BacktestExecutionError(
+            "Векторный движок исполняет только multivariate-планы, "
+            f"получено objective='{plan.objective}'"
+        )
+    if int(seasonal_period) != plan.seasonal_period:
+        raise BacktestExecutionError(
+            "Seasonal period расходится с зафиксированным backtest cohort"
+        )
+    if system.n_observations != plan.n_observations:
+        raise BacktestExecutionError(
+            "Длина системы расходится с зафиксированным backtest cohort"
+        )
+    try:
+        execution_contract = MODEL_EXECUTION_REGISTRY.describe(model_id)
+    except ValueError as exc:
+        raise BacktestExecutionError(str(exc)) from exc
+    if execution_contract.get("objective") != "multivariate":
+        raise BacktestExecutionError(
+            f"Модель '{model_id}' не объявила objective=multivariate"
+        )
+    if execution_contract.get("input_kind") != "multivariate":
+        raise BacktestExecutionError(
+            f"Модель '{model_id}' не объявила input_kind=multivariate"
+        )
+
+    names = list(system.names)
+    target_name = names[0]
+    related_names = names[1:]
+    target_values = [float(value) for value in system.series[target_name]]
+    if not np.isfinite(np.asarray(target_values, dtype=float)).all():
+        raise BacktestExecutionError("Система содержит NaN/Inf")
+    timestamps = system.timestamps
+
+    warnings: list[str] = list(preprocessing_warnings or [])
+    if plan.feature_plan is not None and plan.feature_plan.features:
+        warnings.append(
+            f"FeaturePlan '{plan.feature_plan.plan_id}' не применён: векторный "
+            f"контракт модели '{model_id}' не принимает регрессоры "
+            "(VARX -- предмет Task 133); полная история в fold-матрицах аудита"
+        )
+
+    parameters = dict(params or {})
+    folds: list[dict[str, Any]] = []
+    started = time.monotonic()
+    for fold in plan.folds:
+        fold_started = time.monotonic()
+        n_train = len(fold.train_indices)
+        n_test = len(fold.test_indices)
+        if fold.train_indices != list(range(n_train)):
+            raise BacktestExecutionError(
+                f"Fold {fold.fold}: train-срез векторной модели должен быть "
+                "непрерывным префиксом системы (упорядоченная общая сетка)"
+            )
+        if min(fold.test_indices) <= fold.train_indices[-1]:
+            raise BacktestExecutionError(
+                f"Fold {fold.fold}: тестовые наблюдения не могут пересекать train-срез"
+            )
+        execution_horizon = fold.gap + n_test
+        try:
+            related_train = {
+                name: [float(value) for value in system.series[name][:n_train]]
+                for name in related_names
+            }
+            if fold_preprocessor is None:
+                model_train_target = target_values[:n_train]
+                eval_train_target = list(model_train_target)
+                eval_actual_target = [
+                    float(target_values[index]) for index in fold.test_indices
+                ]
+                restore_forecast = lambda forecast: forecast  # noqa: E731
+            else:
+                prepared = fold_preprocessor.prepare(target_values, fold)
+                model_train_target = prepared.model_train
+                eval_train_target = prepared.evaluation_train
+                eval_actual_target = prepared.evaluation_actual
+                restore_forecast = prepared.restore_forecast
+            if len(model_train_target) != n_train:
+                raise BacktestExecutionError(
+                    "Preprocessing вернул неверную длину train-среза target"
+                )
+            execution_result = MODEL_EXECUTION_REGISTRY.execute(
+                model_id,
+                ModelExecutionRequest(
+                    target=model_train_target,
+                    horizon=execution_horizon,
+                    objective="multivariate",
+                    seasonal_period=seasonal_period,
+                    params=parameters,
+                    related_series=related_train,
+                ),
+            )
+            metadata = execution_result.metadata
+            warnings.extend(execution_result.warnings)
+            vector_forecast = np.asarray(
+                metadata.get("vector_forecast"), dtype=float,
+            )
+            if vector_forecast.shape != (execution_horizon, len(names)):
+                raise BacktestExecutionError(
+                    "Адаптер вернул векторный прогноз неверной формы "
+                    f"{vector_forecast.shape}, ожидалось "
+                    f"({execution_horizon}, {len(names)})"
+                )
+            restored_target = restore_forecast(
+                [float(value) for value in vector_forecast[:, 0]],
+            )
+            if len(restored_target) != execution_horizon:
+                raise BacktestExecutionError(
+                    "Preprocessing вернул неверную длину восстановления прогноза"
+                )
+            predicted_matrix = np.column_stack(
+                [np.asarray(restored_target, dtype=float), vector_forecast[:, 1:]],
+            ) if related_names else np.asarray(restored_target, dtype=float).reshape(-1, 1)
+            actual_matrix = np.column_stack(
+                [np.asarray(eval_actual_target, dtype=float),
+                 np.column_stack([
+                     np.asarray([system.series[name][index] for index in fold.test_indices],
+                                dtype=float)
+                     for name in related_names
+                 ])] if related_names else [np.asarray(eval_actual_target, dtype=float)],
+            )
+            y_pred_matrix = predicted_matrix[fold.gap:]
+            actual_window = actual_matrix
+            if actual_window.shape != (n_test, len(names)):
+                raise BacktestExecutionError(
+                    f"Форма фактов тест-горизонта {actual_window.shape} не "
+                    f"соответствует (n_test={n_test}, K={len(names)})"
+                )
+            # Train-матрица в evaluation-шкале: знаменатели MASE/RMSSE и
+            # fold-local evidence считаются только на train-срезе.
+            eval_train_matrix = np.column_stack(
+                [np.asarray(eval_train_target, dtype=float),
+                 np.column_stack([
+                     np.asarray([system.series[name][index] for index in fold.train_indices],
+                                dtype=float)
+                     for name in related_names
+                 ])] if related_names else [np.asarray(eval_train_target, dtype=float)],
+            )
+            scales = vector_metric_scales(
+                eval_train_matrix, names, seasonal_period=seasonal_period,
+            )
+            metrics = compute_vector_metrics(
+                actual_window, y_pred_matrix, names,
+                mase_scales={
+                    name: scales[name]["mase_scale"] for name in names
+                },
+                rmsse_scales={
+                    name: scales[name]["rmsse_scale"] for name in names
+                },
+            )
+            point_labels = (
+                [timestamps[index] for index in fold.test_indices]
+                if timestamps else None
+            )
+            predictions = vector_oof_points(
+                fold.fold, fold.test_indices, actual_window, y_pred_matrix,
+                names, labels=point_labels,
+            )
+            # Многомерный baseline: persistence каждой серии от последнего
+            # train-наблюдения (evaluation-шкала target), те же folds.
+            last_values = [float(eval_train_target[-1])] + [
+                float(system.series[name][n_train - 1]) for name in related_names
+            ]
+            baseline_matrix = np.asarray([last_values] * execution_horizon, dtype=float)
+            baseline_metrics = compute_vector_metrics(
+                actual_window, baseline_matrix[fold.gap:], names,
+                mase_scales={
+                    name: scales[name]["mase_scale"] for name in names
+                },
+                rmsse_scales={
+                    name: scales[name]["rmsse_scale"] for name in names
+                },
+            )
+            baseline_predictions = vector_oof_points(
+                fold.fold, fold.test_indices, actual_window,
+                baseline_matrix[fold.gap:], names, labels=point_labels,
+            )
+            # Fold-local evidence контракта (advisory, только train-срез).
+            stationarity_evidence = fold_stationarity_evidence(
+                eval_train_matrix, names,
+            )
+            cointegration_evidence = fold_cointegration_evidence(
+                eval_train_matrix, det_order=0, k_ar_diff=1,
+            )
+            lag_order = int(metadata.get("lag_order") or 0)
+            coefficient_matrices = [
+                np.asarray(block, dtype=float)
+                for block in metadata.get("coefficient_matrices") or []
+            ]
+            stability = companion_stability(coefficient_matrices)
+            residuals_insample = np.asarray(
+                metadata.get("in_sample_residuals"), dtype=float,
+            )
+            # nlags строго больше порядка модели (контракт Portmanteau);
+            # нижняя граница 8 -- стандартная ширина окна проверки.
+            nlags = max(lag_order + 1, min(8, lag_order + 3))
+            white_noise = system_white_noise_diagnostics(
+                residuals_insample, nlags=nlags,
+                fitted_var_order=lag_order,
+            )
+        except Exception as exc:
+            raise BacktestExecutionError(
+                f"{model_name}: fold {fold.fold} завершился ошибкой: {exc}"
+            ) from exc
+        per_series_dump = {
+            name: metric.model_dump(mode="json")
+            for name, metric in metrics["per_series"].items()
+        }
+        baseline_series_dump = {
+            name: metric.model_dump(mode="json")
+            for name, metric in baseline_metrics["per_series"].items()
+        }
+        folds.append({
+            "fold": fold.fold, "status": "success",
+            "train_start": fold.train_indices[0], "train_end": fold.train_indices[-1],
+            "test_start": fold.test_indices[0], "test_end": fold.test_indices[-1],
+            "gap": fold.gap, "n_train": n_train, "n_test": n_test,
+            "train_start_label": fold.train_start_label or (
+                timestamps[fold.train_indices[0]] if timestamps else str(fold.train_indices[0])
+            ),
+            "train_end_label": fold.train_end_label or (
+                timestamps[fold.train_indices[-1]] if timestamps else str(fold.train_indices[-1])
+            ),
+            "test_start_label": fold.test_start_label or (
+                timestamps[fold.test_indices[0]] if timestamps else str(fold.test_indices[0])
+            ),
+            "test_end_label": fold.test_end_label or (
+                timestamps[fold.test_indices[-1]] if timestamps else str(fold.test_indices[-1])
+            ),
+            "metrics": _pointwise_vector_metrics(
+                actual_window, y_pred_matrix, metrics["per_series"],
+            ).model_dump(mode="json"),
+            "predictions": predictions,
+            "per_series_metrics": per_series_dump,
+            "scaled_loss": metrics["scaled_loss"],
+            "vector_baseline": {
+                "fold": fold.fold,
+                "metrics": _pointwise_vector_metrics(
+                    actual_window, baseline_matrix[fold.gap:],
+                    baseline_metrics["per_series"],
+                ).model_dump(mode="json"),
+                "per_series_metrics": baseline_series_dump,
+                "scaled_loss": baseline_metrics["scaled_loss"],
+                "predictions": baseline_predictions,
+            },
+            "multivariate_diagnostics": {
+                "var": {
+                    "lag_order": lag_order,
+                    "lag_selection": metadata.get("lag_selection"),
+                    "trend": metadata.get("trend"),
+                    "alpha": metadata.get("alpha"),
+                    "nobs": metadata.get("nobs"),
+                    "is_stable": stability["is_stable"],
+                    "max_modulus": stability["max_modulus"],
+                },
+                "stationarity_evidence": stationarity_evidence,
+                "cointegration_evidence": cointegration_evidence,
+                "companion_stability": stability,
+                "white_noise": white_noise,
+            },
+            "mase_scale": None, "rmsse_scale": None,
+            "feature_matrix": None, "feature_importance": None,
+            "duration_ms": round((time.monotonic() - fold_started) * 1000, 3),
+            "error": None,
+        })
+    aggregate = _aggregate_vector_metrics(folds)
+    per_series_aggregate = _aggregate_per_series_metrics(folds)
+    oof = [point for fold in folds for point in fold["predictions"]]
+    scaled_losses = [fold["scaled_loss"] for fold in folds]
+    aggregate_scaled_loss = (
+        round(
+            float(np.average(
+                [float(value) for value in scaled_losses],
+                weights=[fold["n_test"] for fold in folds],
+            )),
+            6,
+        )
+        if all(value is not None for value in scaled_losses) else None
+    )
+    baseline_losses = [fold["vector_baseline"]["scaled_loss"] for fold in folds]
+    baseline_aggregate_scaled_loss = (
+        round(
+            float(np.average(
+                [float(value) for value in baseline_losses],
+                weights=[fold["n_test"] for fold in folds],
+            )),
+            6,
+        )
+        if all(value is not None for value in baseline_losses) else None
+    )
+    warnings = list(warnings)
+    if aggregate.mape is None:
+        warnings.append("MAPE не определена: во всех OOF-фактах нулевые значения.")
+    if aggregate_scaled_loss is None:
+        warnings.append(
+            "Scaled loss не определена: хотя бы одна серия не имеет train-only "
+            "MASE-масштаба (константный train)."
+        )
+    last_train = len(plan.folds[-1].train_indices)
+    preprocessing = (
+        dict(fold_preprocessor.summary) if fold_preprocessor is not None else {
+            "fit_policy": "none", "evaluation_scale": plan.target_column,
+            "source_column": plan.target_column, "target_column": plan.target_column,
+        }
+    )
+    return {
+        "model_id": model_id, "model_name": model_name, "family_id": family_id,
+        "metrics": aggregate.model_dump(mode="json"),
+        "per_series_metrics": {
+            name: metric.model_dump(mode="json")
+            for name, metric in per_series_aggregate.items()
+        },
+        "scaled_loss": aggregate_scaled_loss,
+        "vector_baseline": {
+            "aggregate": _aggregate_vector_metrics([
+                {"predictions": fold["vector_baseline"]["predictions"],
+                 "metrics": fold["vector_baseline"]["metrics"],
+                 "n_test": fold["n_test"]}
+                for fold in folds
+            ]).model_dump(mode="json"),
+            "folds": [
+                {"fold": fold["fold"], "metrics": fold["vector_baseline"]["metrics"],
+                 "scaled_loss": fold["vector_baseline"]["scaled_loss"]}
+                for fold in folds
+            ],
+            "scaled_loss": baseline_aggregate_scaled_loss,
+        },
+        "n_train": last_train, "n_test": len(oof),
+        "train_ratio": round(last_train / len(target_values), 12),
         "duration_ms": round((time.monotonic() - started) * 1000, 3),
         "data_source": "session", "status": "success",
         "strategy": plan.strategy, "cohort_id": plan.cohort_id,

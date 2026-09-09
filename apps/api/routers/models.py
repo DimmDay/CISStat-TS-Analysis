@@ -45,6 +45,7 @@ from apps.api.model_impls import (
     run_xgboost_backtest,
     run_lightgbm_backtest,
     run_catboost_backtest,
+    run_var_backtest,
 )
 from apps.api.model_impls.tuning import tune_ets_predict, tune_arima_predict
 from apps.api.model_execution import (
@@ -287,6 +288,9 @@ _BACKTEST_IMPLEMENTATIONS = {
     "xgboost": run_xgboost_backtest,
     "lightgbm": run_lightgbm_backtest,
     "catboost": run_catboost_backtest,
+    # Task 132: VAR требует систему K>=2; одиночный synthetic-ряд честно
+    # отклоняется адаптером (без синтетических демо и Naive-подмен).
+    "var": run_var_backtest,
 }
 
 if frozenset(_BACKTEST_IMPLEMENTATIONS) != PRODUCTION_BACKTEST_MODEL_IDS:

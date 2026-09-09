@@ -53,14 +53,18 @@ def diagnostics_signature(report: Mapping[str, Any]) -> str:
 
 
 def _point_key(point: Mapping[str, Any]) -> tuple[int, int, int, str]:
+    # Task 132: размерность series различает векторные OOF-точки (VAR/VECM):
+    # без неё точки разных серий одного шага коллизировали бы.  Для
+    # univariate-точек поле отсутствует -> пустая компонента, ключи не меняются.
     return (
         int(point["fold"]), int(point["horizon_step"]), int(point["index"]),
         "" if point.get("label") is None else str(point["label"]),
+        "" if point.get("series") is None else str(point["series"]),
     )
 
 
-def _indexed_oof(backtest: Mapping[str, Any]) -> dict[tuple[int, int, int, str], Mapping[str, Any]]:
-    indexed: dict[tuple[int, int, int, str], Mapping[str, Any]] = {}
+def _indexed_oof(backtest: Mapping[str, Any]) -> dict[tuple[int, int, int, str, str], Mapping[str, Any]]:
+    indexed: dict[tuple[int, int, int, str, str], Mapping[str, Any]] = {}
     for point in backtest.get("oof_predictions") or []:
         key = _point_key(point)
         if key in indexed:

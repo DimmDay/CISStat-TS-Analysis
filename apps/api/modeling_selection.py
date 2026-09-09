@@ -17,6 +17,7 @@ import numpy as np
 
 from apps.api.backtesting import compute_forecast_metrics
 from apps.api.modeling_comparison import (
+    _point_key,
     aligned_oof,
     diagnostics_signature,
     oof_baseline_comparison,
@@ -152,12 +153,11 @@ def _ensemble_backtest(
 ) -> tuple[dict[str, Any], float]:
     ordered = sorted(members, key=lambda item: str(item["model_id"]))
     keys, residual_vectors = aligned_oof(ordered)
+    # Task 132: ключ точки строится ТОЛЬКО общим _point_key (dimension series
+    # для векторных cohort'ов); локальные копии расходятся при расширении.
     by_model = {
         str(item["model_id"]): {
-            (
-                int(point["fold"]), int(point["horizon_step"]), int(point["index"]),
-                "" if point.get("label") is None else str(point["label"]),
-            ): point
+            _point_key(point): point
             for point in item["oof_predictions"]
         }
         for item in ordered

@@ -197,6 +197,17 @@ families:
         supports_prediction_intervals: true
         libraries: ["statsmodels"]
         training_time: "seconds_to_minutes"
+        # ── Task 132: bounded param_space ──
+        # Порядок лага выбирается fold-local: ic-поиск (select_order) на
+        # train-срезе фолда до maxlags, либо фиксированный p (ic=null).
+        # Интервалы -- нативный VARResults.forecast_interval (alpha --
+        # уровень значимости: 0.05 = 95%-интервал), НЕ цикл одномерных
+        # ARIMA.  Grid 2 x 3 = 6 trials (<= MAX_TRIALS=64); векторный
+        # tuning-контур подключается в Task 133 (actions без "tune" в
+        # реестре v2 на Task 132).
+        param_space:
+          maxlags: [4, 8, 12]
+          ic: ["aic", "bic"]
 
       - id: "vecm"
         name: "VECM"

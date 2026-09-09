@@ -332,3 +332,169 @@ RED зафиксирован коллегой (ModuleNotFoundError, 83 кейс�
 чувствителен к мутациям (5 коллеги + 2 мои), базлайн воспроизводится
 (1763/0/3). Изменения поверхности сертификации нет: 15/24 сохраняется,
 адаптеры VAR/VECM — предмет Tasks 132–133.
+
+---
+
+## Task 132 — VAR: production vertical slice (нативный statsmodels, fold-local порядок лага)
+
+Дата: 2026-09-09. Синхронизация: `main @ ef22027` (принятая сертификация
+Task 131). Реализация по TDD (RED → код → GREEN); базовый прогон на базе:
+база ef22027 1763 passed → финал **1835 passed / 0 failed, snapshots
+3/3**. Арифметика: +72 новых = 28 var_adapter + 26 var_backtest (включая
+юнит взвешенной агрегации) + 16 var_registry_integration + 2 API-workflow.
+commit/push не выполнялись (запрет AGENTS.md соблюдён).
+
+### Постановка
+
+docs/modeling_task_list.md::Task 132 — VAR; общая нота серии: порядок лага
+VAR выбирается fold-local; statsmodels даёт отдельный многомерный прогноз и
+интервалы — НЕ сводить к циклу одномерных ARIMA. modeling.yaml::var:
+min_observations=100, min_series=2, supports_prediction_intervals, statsmodels.
+Точки подключения (worklog3.md, «Задел Tasks 132–133»): адаптер на
+EndogenousSystem + векторная интеграция движка + честный n_series в
+build_modeling_context. После серии: 16/24 production-моделей.
+
+### Дизайн и реализация
+
+1. **`apps/api/model_impls/var.py` (NEW, ~300 строк)** — нативный
+   statsmodels-адаптер (VARAdapterID="statsmodels-var"):
+   - bounded params fail-closed: maxlags (1..12), ic ∈ {aic,bic,hqic,fpe}
+     или None (=фиксированный p=maxlags), trend ∈ {c,ct,n,ctt}, alpha ∈
+     {0.01,0.05,0.10} (семантика statsmodels: уровень значимости — меньше =
+     шире; нативная семантика сохранена);
+   - fold-local порядок лага: select_order/fit ТОЛЬКО на переданном
+     train-срезе; детерминированная проверка достаточности истории
+     (nobs > (K+1)·p + K для фикс. p; для ic-поиска — по верхней границе);
+   - нативные интервалы VARResults.forecast_interval (НЕ цикл ARIMA);
+     инвариант lower ≤ point ≤ upper;
+   - fail-closed: K ≥ 2, NaN/Inf, длины, короткая история (VAR_MIN_TRAIN=20
+     = MIN_SYSTEM_OBSERVATIONS контракта); никаких Naive-fallback;
+   - payload: forecast/lower/upper (horizon×K), lag_order, lag_selection
+     (таблица select_order), coefficient_matrices, in_sample_residuals —
+     вход диагностики контракта Task 131; детерминизм: VAR = OLS,
+     случайности нет (random_state принят по контракту, не влияет);
+   - run_var_backtest (legacy synthetic-эндпоинт): честный отказ на
+     одиночном ряде (синтетические многомерные демо запрещены).
+2. **Реестр v2 (`model_execution.py`)** — первый multivariate-исполнитель:
+   objective="multivariate", input_kind="multivariate",
+   requires_related_series=True, deterministic, intervals; actions =
+   backtest+diagnostics (векторный tuning — предмет Task 133; bounded
+   param_space в yaml уже задокументирован). `_var_executor`: плоский
+   контракт forecast = колонка target-ряда; полный векторный payload в
+   metadata (читается векторным движком).
+3. **Векторный движок (`backtesting.py`)** — `run_vector_backtest_plan`:
+   - вход: валидированная EndogenousSystem (Task 131) + план
+     objective="multivariate"; fold-local: train-срез обязан быть
+     непрерывным префиксом (fail-closed);
+   - fold_preprocessor применяется к target-колонке (model/evaluation
+     шкалы), related-ряды — raw; восстановление прогноза target — через
+     restore_forecast;
+   - OOF — vector_oof_points (long, размерность series, residual =
+     actual − predicted round 12); метрики — vector_metric_scales
+     (train-only, своя серия) + compute_vector_metrics; fold["metrics"] —
+     поточечный пул всех серий (MAE/RMSE/MAPE/sMAPE) + среднее
+     пер-серийных MASE/RMSSE (all-or-none);
+   - агрегаты: поточечный пул всех OOF-точек; MASE — взвешенное по n_test
+     среднее fold-значений; RMSSE — корень из взвешенного среднего
+     квадратов (зеркало _aggregate_metrics); per-series агрегаты отдельно;
+     scaled_loss прогона — взвешенное среднее fold-значений (all-or-none);
+   - baseline — persistence каждой серии (VAR(0)-аналог) от последнего
+     train-наблюдения в evaluation-шкале target, ТЕ ЖЕ folds, те же
+     знаменатели MASE — честный сравнительный якорь в result["vector_baseline"];
+   - fold-local диагностика: fold_stationarity_evidence +
+     fold_cointegration_evidence (train-срез, evaluation-шкала),
+     companion_stability (коэффициенты адаптера), Portmanteau по
+     in-sample остаткам (nlags = max(p+1, min(8, p+3)) — строго > p);
+   - FeaturePlan-регрессоры не применяются (VARX — Task 133) с честным
+     warning; cohort-контракт — авторитетный multivariate_cohort_contract
+     (Task 131) через новый параметр build_backtest_plan
+     cohort_contract_override (участвует в cohort_id; default None —
+     univariate-пути не изменены).
+4. **Схемы (`schemas.py`)** — BacktestPredictionPoint.series
+     (Optional[str]; обратная совместимость: null для univariate);
+     BacktestFoldResult/BacktestResponse: per_series_metrics, scaled_loss,
+     vector_baseline, multivariate_diagnostics — векторные артефакты не
+     теряются при Pydantic-сериализации.
+5. **Comparison (`modeling_comparison.py`)** — _point_key дополнен
+     размерностью series (5-компонентный ключ; univariate-точки без поля
+     дают "" — ключи не меняются); _ensemble_backtest переведён на общий
+     _point_key (локальная 4-компонентная копия расходилась бы).
+6. **Честный n_series (`modeling_workflow.py`)** — honest_system_profile:
+     n_series = число числовых колонок кроме объявленной date-колонки
+     (даже числовой), related_series = имена в порядке датафрейма,
+     is_cointegrated = advisory-Йохансен (95%) на полной числовой системе —
+     никогда не выдумывается; build_modeling_context больше не жёстко
+     кодирует n_series=1/is_cointegrated=False.
+7. **EDA-матрица (`eda_model_matrix.py`)** — shape-критерий multivariate:
+     enough = numeric_series ≥ required (заглушка task=="multivariate"
+     снята — исполнители появились); task-критерий: production
+     multivariate-модель под task="forecast" — attention (прогноз уровня
+     всей системы, target — первая колонка), НЕ fail; catalog-only (VECM
+     до Task 133) остаются заблокированными. Стационарность target —
+     прежний честный блокирующий критерий.
+8. **Dispatch (`routers/models.py`, `model_impls/__init__.py`,
+     `modeling_session.py`)** — _BACKTEST_IMPLEMENTATIONS["var"]
+     (гейт консистентности с реестром соблюдён); run_modeling_backtest
+     ветвится по objective исполнения: vector-путь строит систему из
+     target + связанных числовых колонок (порядок датафрейма), fingerprints
+     каждой серии (target — контекстный, related — series_fingerprint по
+     датам), авторитетный cohort-контракт и вызывает векторный движок.
+9. **`rules/modeling.yaml`** — var.param_space: maxlags [4,8,12] × ic
+     [aic,bic] = 6 trials; Dockerfile — проба исполняемости _var_fit_predict
+     (release-гейт 16-й модели).
+
+### TDD
+
+RED: 3 новых файла (69 кейсов) — ModuleNotFoundError
+apps.api.model_impls.var подтверждён. Честные фиксы ТЕСТОВ до реализации:
+(1) level-shift всей истории ряда b инвариантен в VAR с интерцептом (OLS
+поглощает константу) — мутация хвоста динамики вместо сдвига уровня;
+(2) инвертированная семантика alpha statsmodels (меньше = шире) — тест
+переименован и перевернут; (3) дублирующая колонка — вырожденная система
+(library-native отказ) — независимый шум; (4) seed 42 при n=200 даёт
+ложный ранг Йохансена — конструкция n=150, верифицированная в Task 131;
+(5) точная линейная связь y=2x+c сингулярна — добавлен шум. GREEN: 3
+итерационных фикса КОДА: (1) реальный баг: actual-матрица тест-горизонта
+не нуждается в gap-срезе (срез по gap портил форму при gap>0);
+(2) nlags Portmanteau обязан быть строго > p (ломалось при p=8);
+(3) константная endogenous-серия — library-native отказ statsmodels
+(trend='c') — тест переведён на честный fail-closed.
+
+### Мутационная самопроверка (3 мутации, применялись и откатывались)
+
+1. адаптер игнорирует alpha (интервалы всегда 0.05) → FAILED
+   test_smaller_alpha_gives_wider_intervals;
+2. baseline persistence от последней строки ПОЛНОЙ системы (утечка хвоста)
+   → FAILED test_vector_baseline_is_fold_local_persistence;
+3. агрегат MASE — простое среднее вместо взвешенного по n_test → FAILED
+   test_aggregate_mase_is_test_size_weighted_across_folds (тест добавлен:
+   неравные n_test 9/3 → взвешенное 1.5 vs простое 2.0).
+Рабочая копия после каждой мутации верифицирована (backup + revert + 54
+passed).
+
+### Верификация
+
+- Полный pytest: **1835 passed / 0 failed**, snapshots 3/3;
+  --collect-only: 1835 = 1763 + 28 var_adapter + 26 var_backtest +
+  16 var_registry_integration + 2 API-workflow (сходится ровно).
+- compileall apps OK; `from apps.api.main import app` OK; pip check PASS;
+  Dockerfile-проба _var_fit_predict проверена локально (shape (2,2)).
+- Фронтенд не затронут (0 файлов packages/, apps/standalone,
+  apps/embedded); jest-регрессия невозможна по построению.
+- API-сквозной прогон: session backtest var на стационарной системе
+  (value+driver, n=120, MS-сетка): objective=multivariate, system-блок
+  cohort ["value","driver"], OOF с series-размерностью, per-series
+  метрики, scaled_loss, persistence-baseline, fold-диагностика (порядок
+  лага ≥ 1, белый шум available) — всё в ответе API и session-артефактах.
+
+### Границы Task 132 (задел Task 133 — VECM)
+
+- Векторный tuning (execute_vector_tuning_plan + router-ветки) — Task 133;
+  bounded param_space в yaml готов, actions реестра без "tune".
+- Exogenous-канал (VARX, supports_exogenous: true в yaml) — Task 133:
+  supervised-контракт в multivariate cohort (замечание сертификации 131).
+- Ранг Йохансена fold-local для VECM — через fold_cointegration_evidence
+  контракта (готово).
+- Изменение критериев EDA-матрицы (task/shape) затронуто минимально и
+  честно: production var достижим из session-потока, VECM остаётся
+  заблокированным до реализации.

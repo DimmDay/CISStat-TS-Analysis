@@ -37,12 +37,14 @@ CERTIFIED_MODEL_IDS = frozenset({
     # Task 130: CatBoost -- четвёртый ML-адаптер (native CatBoostRegressor,
     # Quantile:alpha интервалы, ordered boosting).
     "catboost",
+    # Task 132: VAR -- первый multivariate-исполнитель контракта Task 131.
+    "var",
 })
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_certified_scope_is_exactly_fifteen_real_models_in_the_24_model_catalog():
+def test_certified_scope_is_exactly_sixteen_real_models_in_the_24_model_catalog():
     spec = ModelingSpec.from_yaml("rules/modeling.yaml")
     catalog = {
         model.id: family.id
@@ -96,3 +98,5 @@ def test_ci_and_api_image_install_and_probe_prophet_and_tbats_dependencies():
     assert "_xgb_fit_predict" in dockerfile
     assert "_lgb_fit_predict" in dockerfile
     assert "_cb_fit_predict" in dockerfile
+    # Task 132: проба исполняемости VAR-адаптера в release-образе.
+    assert "_var_fit_predict" in dockerfile

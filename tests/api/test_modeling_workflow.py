@@ -1589,3 +1589,109 @@ def test_state_v7_upgrade_invalidates_unbound_feature_contract(client: TestClien
     assert artifacts["artifact_schema_version"] == 7
     assert "naive" not in artifacts["backtests"]
     assert artifacts["artifact_migration"]["invalidated_backtests"] == ["naive"]
+
+
+def _var_csv(n: int = 120) -> str:
+    """Датасет для векторного прогона: target + связанный числовой ряд,
+    регулярная месячная сетка, n >= min_observations=100 (modeling.yaml::var).
+    Ряды СТАЦИОНАРНЫ (без тренда): EDA-критерий стационарности VAR честно
+    блокирует системы с единичным корнем в target."""
+    t = np.arange(n, dtype=float)
+    rng = np.random.default_rng(11)
+    frame = pd.DataFrame({
+        "date": pd.date_range("2018-01-01", periods=n, freq="MS").astype(str),
+        "value": 5 * np.sin(2 * np.pi * t / 12) + rng.normal(size=n) * 0.3,
+        "driver": 2 * np.cos(2 * np.pi * t / 6) + rng.normal(size=n) * 0.3,
+    })
+    return frame.to_csv(index=False)
+
+
+def test_var_runs_multivariate_session_backtest_with_vector_oof(client: TestClient):
+    """Task 132: VAR через session backtest -- векторный движок, long-format
+    OOF с размерностью series, per-series метрики, persistence-baseline и
+    fold-local диагностика (порядок лага) в ответе API."""
+    uploaded = client.post(
+        "/v1/internal/upload",
+        files={"file": ("series.csv", io.BytesIO(_var_csv().encode()), "text/csv")},
+    )
+    assert uploaded.status_code == 200, uploaded.text
+    assert client.post("/v1/session/target-column", json={"column": "value"}).status_code == 200
+    assert client.post("/v1/session/date-column", json={"column": "date"}).status_code == 200
+    assert client.post("/v1/session/dataset/passport/start").status_code == 200
+    assert client.post("/v1/session/dataset/passport/modeling_entry").status_code == 200
+    # Компактная validation-схема: initial_train >= min_observations=100 var.
+    context = client.get("/v1/session/modeling/context?horizon=6&n_splits=2")
+    assert context.status_code == 200, context.text
+
+    response = client.post("/v1/session/modeling/backtest", json={"model_id": "var"})
+    assert response.status_code == 200, response.text
+    body = response.json()
+
+    assert body["status"] == "success"
+    assert body["objective"] == "multivariate"
+    assert body["cohort_contract"]["objective"] == "multivariate"
+    assert body["cohort_contract"]["system"]["endogenous"] == ["value", "driver"]
+    assert body["cohort_contract"]["system"]["n_observations"] == 120
+
+    # Векторные OOF-точки: размерность series, обе серии, residual-знак движка.
+    points = body["oof_predictions"]
+    assert {point["series"] for point in points} == {"value", "driver"}
+    assert all(point["residual"] == round(point["actual"] - point["predicted"], 12)
+               for point in points)
+
+    # Per-series метрики и агрегированная scaled loss (all-or-none).
+    assert set(body["per_series_metrics"]) == {"value", "driver"}
+    assert body["scaled_loss"] is not None
+    for fold in body["folds"]:
+        assert set(fold["per_series_metrics"]) == {"value", "driver"}
+        assert fold["scaled_loss"] is not None
+        diagnostics = fold["multivariate_diagnostics"]
+        assert diagnostics["var"]["lag_order"] >= 1
+        assert set(diagnostics["stationarity_evidence"]["components"]) == {"value", "driver"}
+        assert diagnostics["white_noise"]["available"] is True
+
+    # Persistence-baseline на тех же folds -- честный сравнительный якорь.
+    assert body["vector_baseline"]["aggregate"]["mae"] > 0
+    assert len(body["vector_baseline"]["folds"]) == len(body["folds"])
+
+    # Дублирование ответа в session-артефактах сохраняет series-размерность.
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    session = get_session_store().get(session_id)
+    stored = session.modeling_artifacts["backtests"]["var"]
+    assert {point["series"] for point in stored["oof_predictions"]} == {"value", "driver"}
+
+
+def test_var_backtest_requires_second_numeric_series(client: TestClient):
+    """Fail-closed: одиночный ряд не может исполнить VAR без подмены."""
+    _prepare(client)  # _csv содержит value + driver... удалим driver через upload одного ряда
+    uploaded = client.post(
+        "/v1/internal/upload",
+        files={"file": ("series.csv", io.BytesIO(_csv(n=120).encode()), "text/csv")},
+    )
+    assert uploaded.status_code == 200, uploaded.text
+    assert client.post("/v1/session/target-column", json={"column": "value"}).status_code == 200
+    assert client.post("/v1/session/date-column", json={"column": "date"}).status_code == 200
+    assert client.post("/v1/session/dataset/passport/start").status_code == 200
+    assert client.post("/v1/session/dataset/passport/modeling_entry").status_code == 200
+    # _csv содержит 'driver' -- для честного single-рядного отказа нужен
+    # датасет без второй числовой колонки.
+    single = pd.DataFrame({
+        "date": pd.date_range("2018-01-01", periods=120, freq="MS").astype(str),
+        "value": 100 + 0.3 * np.arange(120),
+    })
+    uploaded = client.post(
+        "/v1/internal/upload",
+        files={"file": ("single.csv", io.BytesIO(single.to_csv(index=False).encode()), "text/csv")},
+    )
+    assert uploaded.status_code == 200, uploaded.text
+    assert client.post("/v1/session/target-column", json={"column": "value"}).status_code == 200
+    assert client.post("/v1/session/date-column", json={"column": "date"}).status_code == 200
+    assert client.post("/v1/session/dataset/passport/start").status_code == 200
+    assert client.post("/v1/session/dataset/passport/modeling_entry").status_code == 200
+
+    response = client.post("/v1/session/modeling/backtest", json={"model_id": "var"})
+    assert response.status_code == 422
+    # Честные гейты по порядку: матрица применимости (F01: n_series=1 <
+    # min_series=2) ИЛИ векторный движок (нет related-рядов для системы).
+    detail = response.json()["detail"]
+    assert "заблокирована матрицей применимости" in detail or "2 endogenous" in detail

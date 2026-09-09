@@ -192,16 +192,21 @@ def test_all_fifteen_production_models_execute_the_same_real_oof_cohort():
         seasonal_period=12,
     )
 
+    # Task 132: var -- первый multivariate-исполнитель; он исполняется
+    # ТОЛЬКО векторным движком (run_vector_backtest_plan) на системе K>=2
+    # и не может входить в одномерный OOF cohort (honest fail-closed).
+    univariate_model_ids = PRODUCTION_BACKTEST_MODEL_IDS - {"var"}
     results = {
         model_id: run_backtest_plan(
             model_id=model_id, model_name=model_id, family_id="test",
             series=series, labels=[value.isoformat() for value in dates],
             plan=plan, seasonal_period=12,
         )
-        for model_id in PRODUCTION_BACKTEST_MODEL_IDS
+        for model_id in univariate_model_ids
     }
 
     assert len(results) == 15
+    assert {"var"} == PRODUCTION_BACKTEST_MODEL_IDS & {"var"}
     assert {result["cohort_id"] for result in results.values()} == {plan.cohort_id}
     assert all(len(result["oof_predictions"]) == 6 for result in results.values())
     assert all(result["metrics"]["weighted_score"] is None for result in results.values())

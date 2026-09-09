@@ -15,11 +15,16 @@ import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
-from app.core.passport import prepare_passport_series
+from app.core.passport import prepare_passport_series, series_fingerprint
 from apps.api.backtesting import (
     BacktestExecutionError,
     build_backtest_plan,
     run_backtest_plan,
+    run_vector_backtest_plan,
+)
+from apps.api.multivariate_contract import (
+    build_endogenous_system,
+    multivariate_cohort_contract,
 )
 from apps.api.fold_preprocessing import prepare_modeling_target
 from apps.api.feature_plan import (
@@ -73,7 +78,10 @@ from apps.api.modeling_tuning import (
     parameter_signature,
     prepare_tuning_grid,
 )
-from apps.api.modeling_workflow import build_modeling_context
+from apps.api.modeling_workflow import (
+    build_modeling_context,
+    honest_system_profile,
+)
 from apps.api.routers.diagnostics import DiagnosticResult, _diagnose
 from apps.api.routers.models import (
     _compute_candidates,
@@ -1119,13 +1127,68 @@ def run_modeling_backtest(
             scaling_recipe=session.preprocessing_scaling_recipe,
         )
         plan_obj, feature_plan_columns, feature_plan_warnings = _session_feature_plan(session, prepared)
-        plan = build_backtest_plan(
-            validation, n_observations=len(prepared.series),
-            fingerprint=context["fingerprint"], target_column=session.target_column,
-            seasonal_period=int(period),
-            preprocessing_signature=prepared.preprocessing_signature,
-            feature_plan=plan_obj, feature_columns=feature_plan_columns,
+        definition = MODEL_EXECUTION_REGISTRY.get(payload.model_id)
+        vector_run = (
+            definition is not None
+            and definition.objective == "multivariate"
+            and definition.runtime_available()
         )
+        if vector_run:
+            # Task 132: multivariate-модель исполняется векторным движком.
+            # Система -- target + связанные числовые колонки (порядок
+            # объявления = порядок датафрейма), cohort-контракт -- Task 131.
+            system_profile = honest_system_profile(
+                session.dataframe, date_column=session.date_column,
+                target_column=session.target_column,
+            )
+            related_names = list(system_profile["related_series"])
+            if not related_names:
+                raise BacktestExecutionError(
+                    f"Модель '{payload.model_id}' требует не менее 2 "
+                    f"endogenous-рядов: в датасете нет числовых колонок кроме "
+                    f"target '{session.target_column}'"
+                )
+            endogenous_system = build_endogenous_system(
+                {
+                    session.target_column: [float(v) for v in prepared.series],
+                    **{
+                        name: [float(v) for v in session.dataframe[name].tolist()]
+                        for name in related_names
+                    },
+                },
+                timestamps=prepared.labels,
+            )
+            series_fingerprints = {
+                session.target_column: context["fingerprint"],
+                **{
+                    name: series_fingerprint(pd.Series(
+                        [float(v) for v in session.dataframe[name].tolist()],
+                        index=pd.to_datetime(prepared.labels),
+                    ))
+                    for name in related_names
+                },
+            }
+            cohort_contract = multivariate_cohort_contract(
+                endogenous_system, series_fingerprints=series_fingerprints,
+                seasonal_period=int(period),
+            )
+            plan = build_backtest_plan(
+                validation, n_observations=len(prepared.series),
+                fingerprint=context["fingerprint"], target_column=session.target_column,
+                seasonal_period=int(period),
+                preprocessing_signature=prepared.preprocessing_signature,
+                feature_plan=plan_obj, feature_columns=feature_plan_columns,
+                objective="multivariate", series_fingerprints=series_fingerprints,
+                cohort_contract_override=cohort_contract,
+            )
+        else:
+            plan = build_backtest_plan(
+                validation, n_observations=len(prepared.series),
+                fingerprint=context["fingerprint"], target_column=session.target_column,
+                seasonal_period=int(period),
+                preprocessing_signature=prepared.preprocessing_signature,
+                feature_plan=plan_obj, feature_columns=feature_plan_columns,
+            )
         tuned = session.modeling_artifacts.get("tuning", {}).get(payload.model_id, {})
         tuned_matches = bool(tuned) and tuned.get("cohort_id") == plan.cohort_id
         tuned_params = tuned.get("best_params", {}) if tuned_matches else {}
@@ -1134,14 +1197,24 @@ def run_modeling_backtest(
             preprocessing_warnings.append(
                 "Сохранённые tuned-параметры относятся к другому cohort и не применены."
             )
-        raw_result = run_backtest_plan(
-            model_id=payload.model_id, model_name=model_info[0], family_id=model_info[1],
-            series=prepared.series, labels=prepared.labels,
-            plan=plan, seasonal_period=int(period), params=tuned_params,
-            seasonal_periods=periods,
-            preprocessing_warnings=preprocessing_warnings,
-            fold_preprocessor=prepared.fold_preprocessor,
-        )
+        if vector_run:
+            raw_result = run_vector_backtest_plan(
+                model_id=payload.model_id, model_name=model_info[0],
+                family_id=model_info[1],
+                system=endogenous_system, plan=plan,
+                seasonal_period=int(period), params=tuned_params,
+                preprocessing_warnings=preprocessing_warnings,
+                fold_preprocessor=prepared.fold_preprocessor,
+            )
+        else:
+            raw_result = run_backtest_plan(
+                model_id=payload.model_id, model_name=model_info[0], family_id=model_info[1],
+                series=prepared.series, labels=prepared.labels,
+                plan=plan, seasonal_period=int(period), params=tuned_params,
+                seasonal_periods=periods,
+                preprocessing_warnings=preprocessing_warnings,
+                fold_preprocessor=prepared.fold_preprocessor,
+            )
         result = _trace_backtest(
             raw_result, model_id=payload.model_id, params=tuned_params,
             params_source="tuning" if tuned_matches else "model_default",

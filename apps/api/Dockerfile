@@ -89,7 +89,10 @@ RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; \
                   assert len(payload['forecast']) == 2; print('LightGBM executable OK')" \
     && python -c "from apps.api.model_impls.catboost import _cb_fit_predict; \
                   payload = _cb_fit_predict([float(value) for value in range(1, 21)], 2, params={'iterations': 15, 'n_lags': 2}, random_state=42); \
-                  assert len(payload['forecast']) == 2; print('CatBoost executable OK')"
+                  assert len(payload['forecast']) == 2; print('CatBoost executable OK')" \
+    && python -c "from apps.api.model_impls.var import _var_fit_predict; \
+                  payload = _var_fit_predict([float(value) for value in range(1, 31)], 2, related_series={'related': [float(value) ** 2 for value in range(1, 31)]}, params={'maxlags': 2, 'ic': None}); \
+                  assert payload['forecast'].shape == (2, 2); print('VAR executable OK')"
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
