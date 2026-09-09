@@ -4034,3 +4034,135 @@ quantile-regression интервалами; общее рекурсивное я
 (CatBoost): точки изменения идентичны — адаптер (нативный CatBoostRegressor,
 objective="Quantile:alpha") + реестр + yaml + dispatch.
 
+---
+
+## Task 130 — CatBoost: production vertical slice (recursive supervised ML, quantile-regression интервалы)
+
+Дата: 2026-09-09. Синхронизация: `main @ 10d6168` (сдача Task 129
+коллегой `bfe11cf` + принятая сертификация Task 129). Реализация по TDD
+(RED → код → GREEN); базовый прогон на базе: 1623 passed / 0 failed,
+snapshots 3/3.
+
+### Постановка
+
+docs/modeling_task_list.md, Tasks 127–130 (Task 130 — CatBoost): bounded
+param_space, exact OOF, feature importance, residual diagnostics,
+reproducible seed, capability/UI и Model Card; нативные production API;
+никаких общих штрафных или Naive-fallback реализаций. Ожидание тимлида:
+точки изменения идентичны Tasks 128/129 — адаптер (нативный
+CatBoostRegressor, objective Quantile:alpha) + реестр + yaml + dispatch,
+ядро уже общее — подтверждено: ядро `_supervised_recursion` Task 127/128
+переиспользовано без единой правки (diff: feature_plan.py,
+_supervised_recursion.py, random_forest.py, xgboost.py, lightgbm.py,
+backtesting.py, schemas.py не тронуты).
+
+### Дизайн-рекогносцировка (эмпирическая, до тестов)
+
+Три probe-скрипта зафиксировали факты библиотеки catboost 1.2.8, на
+которых построен дизайн: (1) loss_function="Quantile:alpha=0.1/0.9"
+работает на numpy-матрицах; (2) нативный get_feature_importance() —
+PredictionValuesChange в ПРОЦЕНТАХ с суммой 100 (нормализация к 1.0 —
+обязанность адаптера); (3) деградированные данные (константный
+target/признаки) CatBoost ОТКЛОНЯЕТ сам — CatBoostError поднимается как
+есть (library-native fail-closed; синтетический fallback невозможен и не
+нужен); (4) двусторонний детерминизм: random_strength=0 +
+bagging_temperature=0 → прогноз побайтово одинаков для seed 42/7/2026,
+при официальном дефолте random_strength=1.0 → разные seed дают разные
+прогнозы; (5) период-2 [1,2,1] достигает машинной точности 1e-9 на
+симметричных oblivious-деревьях (lr=1.0, l2_leaf_reg=0); (6)
+allow_writing_files=False устраняет служебный каталог catboost_info/ и
+весь stdout-шум.
+
+### Дизайн
+
+- `apps/api/model_impls/catboost.py` (новый, ~340 строк) — зеркало
+  сертифицированного паттерна Task 129 на нативном CatBoostRegressor:
+  - recursive-стратегия: каузальные historic-признаки (лаги 1..n_lags,
+    rolling mean/std, diff_1, префикс `cb_`) через RecursiveFeatureState
+    (peek→predict→push); train-матрица и прогноз — одним кодом;
+  - интервалы — quantile regression (loss_function="Quantile:alpha",
+    alpha=0.1/0.9, fixed 80%): point-модель (RMSE) ведёт рекурсию, две
+    квантильные предсказывают на ТЕХ ЖЕ future-строках; widen-инвариант
+    lower ≤ point ≤ upper;
+  - importance: PredictionValuesChange (сумма 100) НОРМАЛИЗУЕТСЯ к 1.0
+    делением на фактическую сумму; защитный равномерный fallback на
+    вырожденный ноль суммарной важности (документирован, унаследован от
+    стандарта Task 129); lineage matrix_hash (canonical JSON + sha256) +
+    самопроверка bind_feature_importance в адаптере (oracle-защита);
+  - bounded params fail-closed: iterations(10,2000), depth(1,16),
+    learning_rate(0.001,1.0), l2_leaf_reg(0,1000), bagging_temperature
+    (0,100), random_strength(0,100), n_lags(1,32); int/float разделение,
+    bool отклоняется, чужие ключи игнорируются;
+  - детерминизм: thread_count=1 + master-seed random_seed;
+    bagging_temperature=0.0 — документированное отклонение от
+    официального 1.0 (на коротких platform-fold'ах байесовский
+    ресемплинг строк избыточно шумит); random_strength оставлен на
+    официальном дефолте 1.0 — дефолтные запуски seed-зависимы, проводка
+    seed до бустера доказана тестом (двустороннее доказательство как в
+    Task 128/129); depth как идиоматичный ограничитель сложности
+    oblivious-деревьев (аналог max_depth XGBoost);
+  - деградация: константный target через target-derived признаки даёт
+    константные признаки → CatBoostError стадии квантизации ("All
+    features are either constant or ignored"); чисто target-ная ветка
+    ("All train targets are equal") через такое конструирование
+    недостижима — обе документированы, ошибка поднимается как есть;
+  - рекомендация сертификации Task 129 (замечание 1) выполнена:
+    dedicated-тест деградированной ветки добавлен.
+- Диспетчеризация: `model_execution.py` (`_catboost_executor` + реестр:
+  supervised, supports_future_features, intervals, deterministic,
+  dependency_group="ml", engine="catboost"); `model_impls/__init__.py`
+  (экспорт); `routers/models.py` (_BACKTEST_IMPLEMENTATIONS — защитный
+  инвариант сверки с PRODUCTION_BACKTEST_MODEL_IDS сошёлся);
+  `rules/modeling.yaml` — param_space 2×2×2×2=16 trials ≤ 64
+  (iterations/depth/learning_rate/n_lags);
+- Рантайм: `requirements.txt` — catboost==1.2.8 (зафиксированная
+  версия); `Dockerfile` — проба исполняемости `_cb_fit_predict`
+  (воспроизведена локально). UI — family-уровень, изменений не требует
+  (catboost отображается в «Деревья и бустинг» автоматически).
+
+### TDD
+
+RED: tests/unit/test_catboost_adapter.py (46 кейсов) +
+test_catboost_backtest.py (9 кейсов) — ModuleNotFoundError подтверждён.
+GREEN: 53/55 сразу, два честных итеративных фикса ТЕСТОВ (не кода):
+(1) тест деградации матчил "All train targets are equal", но библиотека
+первым срабатывает на стадии квантизации ("All features are either
+constant or ignored") — матчи обобщён на обе library-native ветки
+отказа, обе задокументированы; (2) тест «прогноз в диапазоне train» при
+depth=4 уходил ниже min(y) на −0.0012 (сумма Newton-листьев при
+lr=0.5·30 итераций на геометрическом ряде) — depth=6 (как в шаблоне
+Task 128) держит свойство точно; примечание: аналогичный тест Task 129
+проходил через вырожденную ветку LightGBM (min_data_in_leaf=20 >
+usable-строк), у CatBoost вырожденной ветки нет — свойство проверено
+честно на живом бустинге.
+
+### Синхронные обновления сертификационных тестов (14 → 15 моделей)
+
+test_model_execution_contract.py (CERTIFIED/SUPERVISED/ML_IDS +
+catboost-дескриптор в candidates, catalog-only пример catboost → lstm),
+test_modeling_mvp_certification.py (fifteen-model, tuning-сет,
+_cb_fit_predict в Dockerfile-пробе), test_model_readiness_candidates.py
+(ready+catboost, catalog-only без catboost, runnable 15/catalog_only 9,
+blocked 5 при n=60 — explain), test_backtesting_engine.py (cohort 15,
+importance x4 ML), test_models_backtest_real.py (15 реализаций),
+test_models_candidates.py (422-пример catboost → lstm),
+test_eda_model_matrix.py (пример осей: catboost conditional+ready,
+lstm blocked+catalog_only — условная совместимость и production-
+готовность независимы; после Task 130 conditional+catalog_only класс
+пуст: все четыре tree_ml в production).
+
+### Верификация
+
+- Полный pytest: **1678 passed / 0 failed** (1623 + 55 новых), snapshots
+  3/3; арифметика счётчиков сходится.
+- compileall OK; `from apps.api.main import app` OK; локальное
+  воспроизведение Dockerfile-пробы: «CatBoost executable OK»; pip check
+  PASS; загрязнения catboost_info/ нет.
+- 15/24 production-моделей. Коммит/пуш не выполнялись (запрет AGENTS.md
+  соблюдён). Примечание по среде: окружение аудита пересобиралось
+  (pandera, PyWavelets, ruptures, arch, prophet, statsforecast, syrupy
+  reinstall) — на diff Task 130 не влияет; mutation-проверки RED-
+  валидности остаются за сертифицирующим ревью (методика Task 129).
+  Задел Task 131 (Multivariate Modeling Contract) — следующая серия
+  многомерных моделей; tree_ml-серия Tasks 127–130 закрыта полностью.
+

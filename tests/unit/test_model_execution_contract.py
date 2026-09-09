@@ -32,13 +32,16 @@ CERTIFIED_IDS = frozenset({
     "xgboost",
     # Task 129: LightGBM -- третий ML-адаптер (native API, leaf-wise).
     "lightgbm",
+    # Task 130: CatBoost -- четвёртый ML-адаптер (native CatBoostRegressor,
+    # Quantile:alpha интервалы, ordered boosting).
+    "catboost",
 })
 
-# Task 126/127/128/129: supervised-адаптеры с regressor-каналом future_known/static.
-SUPERVISED_IDS = frozenset({"prophet", "random_forest", "xgboost", "lightgbm"})
+# Task 126/127/128/129/130: supervised-адаптеры с regressor-каналом future_known/static.
+SUPERVISED_IDS = frozenset({"prophet", "random_forest", "xgboost", "lightgbm", "catboost"})
 
-# Task 127/128/129: ML-семейство (dependency_group="ml").
-ML_IDS = frozenset({"random_forest", "xgboost", "lightgbm"})
+# Task 127/128/129/130: ML-семейство (dependency_group="ml").
+ML_IDS = frozenset({"random_forest", "xgboost", "lightgbm", "catboost"})
 
 
 def test_registry_is_the_single_source_of_truth_for_production_actions():
@@ -52,9 +55,9 @@ def test_registry_is_the_single_source_of_truth_for_production_actions():
         descriptor = MODEL_EXECUTION_REGISTRY.describe(model_id)
         assert descriptor["version"] == MODEL_EXECUTION_CONTRACT_VERSION
         assert descriptor["model_id"] == model_id
-        # Task 126/127/128/129: prophet, random_forest, xgboost и lightgbm --
-        # supervised-адаптеры (capability supports_future_features для
-        # future_known/static регрессоров), остальные остаются univariate.
+        # Task 126/127/128/129/130: prophet, random_forest, xgboost, lightgbm
+        # и catboost -- supervised-адаптеры (capability supports_future_features
+        # для future_known/static регрессоров), остальные остаются univariate.
         expected_input_kind = "supervised" if model_id in SUPERVISED_IDS else "univariate"
         assert descriptor["input_kind"] == expected_input_kind
         assert descriptor["supports_future_features"] is (model_id in SUPERVISED_IDS)
@@ -76,11 +79,12 @@ def test_candidates_publish_v2_descriptors_only_for_executable_models():
 
     assert response.execution_contract_version == "model-execution-v2"
     assert catalog["naive"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("naive")
-    # Task 128/129: xgboost и lightgbm стали production-моделями;
-    # catalog-only пример -- catboost.
+    # Task 129/130: lightgbm и catboost стали production-моделями;
+    # catalog-only пример -- lstm.
     assert catalog["xgboost"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("xgboost")
     assert catalog["lightgbm"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("lightgbm")
-    assert catalog["catboost"].execution_contract is None
+    assert catalog["catboost"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("catboost")
+    assert catalog["lstm"].execution_contract is None
 
 
 def test_request_and_result_fail_closed_on_misaligned_or_nonfinite_data():

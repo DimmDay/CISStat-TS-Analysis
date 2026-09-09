@@ -44,6 +44,7 @@ from apps.api.model_impls import (
     run_random_forest_backtest,
     run_xgboost_backtest,
     run_lightgbm_backtest,
+    run_catboost_backtest,
 )
 from apps.api.model_impls.tuning import tune_ets_predict, tune_arima_predict
 from apps.api.model_execution import (
@@ -285,6 +286,7 @@ _BACKTEST_IMPLEMENTATIONS = {
     "random_forest": run_random_forest_backtest,
     "xgboost": run_xgboost_backtest,
     "lightgbm": run_lightgbm_backtest,
+    "catboost": run_catboost_backtest,
 }
 
 if frozenset(_BACKTEST_IMPLEMENTATIONS) != PRODUCTION_BACKTEST_MODEL_IDS:

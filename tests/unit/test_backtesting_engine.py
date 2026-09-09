@@ -173,7 +173,7 @@ def test_full_history_target_transform_is_rejected_until_fold_refit_exists(metad
         validate_target_preprocessing({"target_derived": metadata}, "target_derived")
 
 
-def test_all_thirteen_production_models_execute_the_same_real_oof_cohort():
+def test_all_fifteen_production_models_execute_the_same_real_oof_cohort():
     import pandas as pd
 
     from apps.api.model_readiness import PRODUCTION_BACKTEST_MODEL_IDS
@@ -201,13 +201,13 @@ def test_all_thirteen_production_models_execute_the_same_real_oof_cohort():
         for model_id in PRODUCTION_BACKTEST_MODEL_IDS
     }
 
-    assert len(results) == 14
+    assert len(results) == 15
     assert {result["cohort_id"] for result in results.values()} == {plan.cohort_id}
     assert all(len(result["oof_predictions"]) == 6 for result in results.values())
     assert all(result["metrics"]["weighted_score"] is None for result in results.values())
-    # Task 127/128/129: ML-адаптеры в общем cohort'е привязывают importance
+    # Task 127/128/129/130: ML-адаптеры в общем cohort'е привязывают importance
     # к каждой fold-матрице.
-    for model_id in ("random_forest", "xgboost", "lightgbm"):
+    for model_id in ("random_forest", "xgboost", "lightgbm", "catboost"):
         for fold in results[model_id]["folds"]:
             assert fold["feature_importance"] is not None
             assert fold["feature_importance"]["matrix_hash"]

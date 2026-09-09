@@ -630,6 +630,28 @@ def _lightgbm_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     )
 
 
+def _catboost_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
+    from apps.api.model_impls.catboost import _cb_fit_predict
+
+    payload = _cb_fit_predict(
+        list(request.target),
+        request.horizon,
+        train_features=request.train_features or None,
+        future_features=request.future_features or None,
+        params=dict(request.params),
+        random_state=request.random_state,
+    )
+    return ModelExecutionResult(
+        forecast=payload["forecast"],
+        lower_interval=payload["lower"],
+        upper_interval=payload["upper"],
+        metadata={
+            "feature_importances": payload["feature_importances"],
+            "feature_importance_lineage": payload["feature_importance_lineage"],
+        },
+    )
+
+
 _BACKTEST_DIAGNOSTICS = frozenset({"backtest", "diagnostics"})
 _TUNABLE = frozenset({"backtest", "tune", "diagnostics"})
 _CLASSICAL_RESOURCES = ModelResourceCapabilities(memory_class="standard")
@@ -736,6 +758,24 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         # (objective="quantile" alpha=0.1/0.9, как декларировано в
         # rules/modeling.yaml::lightgbm); num_threads=1 + deterministic
         # фиксируют построение гистограмм (детерминизм реестра).
+        input_kind="supervised",
+        supports_future_features=True,
+        supports_prediction_intervals=True,
+        deterministic=True,
+        dependency_group="ml",
+        resource_capabilities=ModelResourceCapabilities(memory_class="standard"),
+    ),
+    ModelExecutionDefinition(
+        model_id="catboost", family_id="tree_ml",
+        adapter_id="catboost-native", executor=_catboost_executor,
+        actions=_TUNABLE, engine="catboost", required_packages=("catboost",),
+        # Task 130: пятый supervised-адаптер и четвёртый dependency_group="ml"
+        # на общем рекурсивном ядре Task 127 (_supervised_recursion);
+        # regressor-канал -- тот же granted-гейт Task 126; интервалы --
+        # quantile regression (loss_function="Quantile:alpha=0.1/0.9", как
+        # декларировано в rules/modeling.yaml::catboost); thread_count=1 +
+        # random_seed фиксируют детерминизм реестра; деградация константного
+        # target fail-closed на уровне библиотеки (CatBoostError).
         input_kind="supervised",
         supports_future_features=True,
         supports_prediction_intervals=True,

@@ -32,12 +32,21 @@ def test_matrix_reuses_all_spec_models_and_separates_compatibility_from_readines
     assert naive["compatibility"] == "candidate"
     assert naive["platform_status"] == "ready"
 
-    # Task 128: xgboost стал production-моделью; в качестве примера
-    # conditional tree_ml-модели вне production используется catboost.
+    # Task 130: catboost стал production-моделью -- все четыре модели
+    # tree_ml в production.  Разделение осей сохраняется на самом catboost:
+    # compatibility="conditional" (feature engineering даёт attention),
+    # но platform_status="ready" -- методологическая совместимость и
+    # production-готовность независимы.  Обратное направление оси --
+    # lstm: compatibility="blocked" (на этом профиле не хватает истории
+    # первому fold'у) и platform_status="catalog_only".
     catboost = _by_id(result, "catboost")
     assert catboost["compatibility"] == "conditional"
-    assert catboost["platform_status"] == "catalog_only"
+    assert catboost["platform_status"] == "ready"
     assert any(item["id"] == "features" and item["status"] == "attention" for item in catboost["criteria"])
+
+    lstm = _by_id(result, "lstm")
+    assert lstm["compatibility"] == "blocked"
+    assert lstm["platform_status"] == "catalog_only"
 
 
 def test_exogenous_columns_do_not_block_models_that_can_ignore_them():
