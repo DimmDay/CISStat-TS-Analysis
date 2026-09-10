@@ -793,3 +793,162 @@ tuned-параметрами).
   реализовано как всегда видимая внизу степпера, решение о gate явно не
   запрашивалось — не введено самостоятельно, чтобы не расширять scope без
   подтверждения.
+
+---
+
+## Сертификация Task 132 (VAR) и Task 133 (VECM + vector tuning + VARX): аудит
+
+Дата: 2026-09-10. Синхронизация: `main @ 081b9fc` («Task 133 — VECM + vector
+tuning + exogenous channel VARX», включает e6f6726 Task 132 и hotfix 74654a0).
+Аудит реализации коллеги; commit/push агентом не выполнялись (запрет
+AGENTS.md соблюдён). Рабочая копия после всех мутационных проб верифицирована
+(git status чист, 229/229 профильных тестов green).
+
+### Методология аудита
+
+(1) Постановки docs/modeling_task_list.md::Task 132/133 (включая общую ноту
+серии: fold-local порядок лага VAR / ранг Йохансена только на train-fold;
+нативный многомерный прогноз statsmodels, НЕ цикл одномерных ARIMA) разобраны
+на пункты и прослежены до кода И до связывающих тестов; (2) построчная
+рекогносцировка surfaces: model_impls/var.py, model_impls/vecm.py,
+векторный движок backtesting.py::run_vector_backtest_plan (+3 агрегатора),
+modeling_tuning.py (vector tuning), routers/modeling_session.py
+(_multivariate_vector_context + обе endpoint-ветки), model_execution.py
+(декларации реестра), multivariate_contract.py (vecm_stability,
+cohort+exogenous), rules/modeling.yaml; (3) воспроизведение базлайна в чистом
+окружении (после восстановления дрейфа МОЕЙ среды: prophet/statsforecast/
+xgboost/lightgbm/catboost/PyWavelets/pandera/syrupy/ruptures/fakeredis);
+(4) НЕЗАВИСИМЫЕ oracle-сверки на собственных данных/сидах
+(audit_scripts/oracle_audit_132_133.py); (5) собственные мутационные пробы,
+НЕ пересекающиеся с тремя мутациями коллеги; (6) сверка сертификационной
+поверхности и честности гейтов.
+
+### Воспроизведение базлайна
+
+- Полный pytest: **1912 passed / 0 failed, snapshots 3/3** — ровно как
+  заявлено; арифметика 1848 (74654a0) + 63 unit + 1 API = 1912 сходится.
+- Гейт консистентности dispatch vs registry честно падает без зависимостей
+  (RuntimeError на импорте) — спроектированный fail-closed, после установки
+  пакетов проходит; production backtest = 17 (var/vecm включены), tuning =
+  11, dispatch-ключи == реестр (17==17).
+- Фронтенд не затронут ни одним из трёх коммитов (0 файлов packages/,
+  apps/standalone, apps/embedded) — jest-регрессия невозможна по построению;
+  claims о MODEL_FAMILIES подтверждены чтением packages/ui/lib/modeling.ts.
+
+### Независимые oracle-сверки (18 проверок, мои данные/сиды)
+
+- VAR: прогноз/интервалы/остатки бит-в-бит == VAR.fit().forecast_interval
+  (atol 1e-12); is_stable == VARResults.is_stable; порядок лага ==
+  select_order на том же срезе.
+- VARX: прогноз/интервалы бит-в-бит == VAR(exog=...).fit().
+  forecast_interval(..., exog_future=...).
+- VECM: auto-ранг == select_coint_rank(trace, 0.05) и согласован с прямым
+  coint_johansen; прогноз/интервалы бит-в-бит == VECMResults.predict;
+  var_rep-блоки == statsmodels.
+- Движок: OOF-прогнозы каждого fold'а == ручному вызову адаптера на ТОЧНОМ
+  префиксе [:n_train] с отбрасыванием gap-шагов (бит-в-бит, gap=2) —
+  префикс-дисциплина и gap-семантика доказаны независимо.
+- Метрики: mase_scale == mean|diff(train)| каждой серии; per-series MAE
+  ручная == движок; scaled_loss == mean(per-series MASE).
+- Итог: **17/18 PASS**; единственный FAIL — C6, см. дефект ниже.
+
+### Мутационные пробы аудита (6, применялись и откатывались; git diff-верификация)
+
+1. M1 (движок, утечка related-рядов: полная история вместо префикса) —
+   ПОЙМАНА: test_leakage_probe_identical_prefix_identical_fold_one +
+   test_oof_points_bind_to_exact_system_values (2 отказа).
+2. M2 (VECM: тихий fallback coint_rank=1 вместо честного отказа при ранге 0) —
+   ПОЙМАНА: test_auto_rank_zero_is_honest_error_without_var_fallback.
+3. M3 (движок: OOF-окно без отбрасывания gap, predicted_matrix[:n_test]) —
+   **ВЫЖИЛА полный набор (1912 passed с мутацией)**: все привязки прогнозов
+   к шагам адаптера в тестах коллеги исполняются при gap=0 (мутация
+   вырождается), а binding-тест фиксирует только actual, не predicted.
+   Код движка сам корректен (мой oracle D бит-в-бит ловит мутацию в обоих
+   folds) — это ПРОБЕЛ ПОКРЫТИЯ, а не дефект поведения.
+4. M4 (tuning: argmax вместо argmin лучшего trial) — **ВЫЖИЛА**
+   test_vector_tuning + API (56 passed с мутацией): фикстура
+   {maxlags:[4,8]×aic} вырождена — AIC выбирает одинаковый порядок, RMSE
+   trials бит-в-бит равны (проверено: 0.752499 == 0.752499), argmin==argmax.
+   На острой сетке [1,8]×[None] мутация переворачивает best_trial (1 вместо
+   0) — путь живой, код корректен (аргмин верифицирован), слаба фикстура.
+5. M5 (агрегат RMSSE: взвешенное среднее вместо корня-из-взвешенных-квадратов)
+   — ПОЙМАНА: test_aggregate_mase_is_test_size_weighted_across_folds.
+6. M6 (vecm_stability: замена на ТЕОРЕТИЧЕСКИ КОРРЕКТНЫЙ инвариант K−r) —
+   2 теста коллеги ПАДАЮТ (test_identity_blocks_two_unit_roots,
+   test_stationary_companion_rank_zero) — доказано, что юнит-тесты кодируют
+   ту же ошибочную семантику, что и реализация (оракул-слепое пятно).
+
+### Критическая находка: vecm_stability инвертирует спектральный инвариант VECM
+
+Реализация (multivariate_contract.py::vecm_stability, Task 133) требует
+«РОВНО coint_rank единичных корней» companion уровневого VAR-представления.
+Теория (Granger-представление / Lütkepohl 2005 гл. 6): y_t = (I+αβ′)y_{t-1}+…
+с rank(α)=rank(β)=r даёт спектр I+αβ′ = {1+μ_i}, где μ_i — собственные
+значения αβ′ ранга r: ровно K−r НУЛЕВЫХ μ дают единичные корни (общие
+стохастические тренды), r ненулевых обязаны лежать строго внутри круга.
+**Число единичных корней = K − r, а не r.** Правило коллеги совпадает с
+теорией только при K=2, r=1 — все их fixture-примеры именно K=2.
+Эмпирика (audit_scripts/vecm_stability_theory_check.py, 4 сценария): K=3
+ранг-1 VECM (учебный случай) — companion даёт 2 единичных корня: движок
+помечает корректно специфицированную модель is_stable=False (ложная тревога
+в multivariate_diagnostics всех K≥3-прогонов); rank=K (стационарные уровни)
+— 0 корней, движок снова is_stable=False; их тест eye(2)+rank2 признаётся
+«stable», хотя комбинация внутренне противоречива (rank 2 = стационарные
+уровни ⇒ 0 корней, а identity-спектр имеет 2). Оракул C6 на реальном
+коинтегрированном K=3-фите зафиксировал тот же провал. Поражённая
+поверхность: advisory-блок multivariate_diagnostics.vecm.{is_stable,
+n_unit_roots} (session-артефакты/карточка); прогнозы, метрики, cohort,
+tuning-выбор НЕ затронуты (доказано оракулами A–E).
+
+### Дополнительные замечания (не блокирующие)
+
+1. Белый шум VECM в движке: lag_order = metadata.get("lag_order") or 0 — у
+   VECM ключа нет ⇒ nlags=3 и fitted_var_order=0 при любом k_ar_diff (вплоть
+   до 12): df Portmanteau завышен (K²·3 вместо K²·(nlags−p)), окно 3 лага
+   может быть меньше порядка модели. Docstring system_white_noise_diagnostics
+   прямо рекомендует передачу порядка для VECM — движок следует ему только
+   для VAR. Advisory-only (available-блок), на метрики не влияет.
+2. Тест-фикстура best_trial (M4) вырождена: сетку стоит сделать
+   различимой ([1,8]×[None] либо фиксированные p).
+3. Для M3 стоит добавить прямой binding: при gap>0 OOF predicted шага h ==
+   адаптеру forecast[gap+h] (мой oracle D — готовый шаблон).
+
+### Покрытие постановки
+
+Task 132 — все пункты подтверждены кодом И тестами: fold-local порядок лага
+(адаптер видит только префикс; движок требует непрерывный префикс fail-closed;
+оракул A5 + leakage-проба), нативный forecast_interval (не ARIMA-цикл:
+cross-equation тест + мои оракулы A1/A2), fail-closed без fallback,
+реестр v2 multivariate, векторный движок (vector OOF, per-series метрики
+с паритетом формул, scaled loss all-or-none, persistence-baseline на тех же
+folds, fold-local диагностика), честный n_series, dispatch/yaml/Dockerfile.
+Task 133 — все пункты КРОМЕ диагностики устойчивости подтверждены:
+fold-local ранг Йохансена (оракулы C1/C2, M2-запрет fallback, ранг 0 — честный
+отказ), нативный VECMResults.predict с интервалами (оракулы C3/C4), векторный
+tuning на тех же EDA-folds с общим контрактом (MAX_TRIALS/усечение/failures),
+VARX-канал (оракулы B1/B2; fail-closed длины/NaN/ключи; VECM честно
+предупреждает и не потребляет; реестр-гейты), cohort+exogenous
+(policy varx_future_known, дефолт бит-в-бит), честные обновления
+сертификационных гейтов 15→16→17 и tuning 9→11 (сверено).
+
+### Вердикт
+
+**Task 132 (VAR): сертифицирована, реализация отличная.** Все требования
+постановки выполнены, поведение доказано независимыми оракулами, мутационный
+контур чувствителен (M1, M5 пойманы), базлайн воспроизводится 1912/0/3.
+Замечания M3 (gap-binding пробел покрытия) — косметика, сертификации не
+препятствуют.
+
+**Task 133 (VECM + vector tuning + VARX): не может быть сертифицирована в
+текущем виде**, потому что vecm_stability инвертирует спектральный инвариант
+VECM (ровно coint_rank единичных корней вместо K − coint_rank): системно
+неверная диагностика устойчивости для стандартного случая K≥3 (и для
+rank=K), при этом юнит-тесты кодируют ту же ошибочную семантику (M6) и
+работлог фиксирует ошибку как дизайнерское достижение. Остальные поверхности
+Task 133 (fold-local ранг, нативный прогноз, tuning, VARX, cohort) —
+отличного качества (17/18 оракулов, единственный FAIL и есть этот дефект).
+Путь пересертификации мал: (1) инвариант n_unit_roots == K − coint_rank
+(при r=K ⇒ 0) с вынесением K из формы матриц; (2) исправить два юнит-теста
+TestVecmStability; (3) добавить K=3 оракул-привязку к спектру var_rep
+statsmodels; (4) опционально — NLags-учёт порядка VECM в white-noise.
+После этого пересертификация формальна.
