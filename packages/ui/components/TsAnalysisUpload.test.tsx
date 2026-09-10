@@ -355,6 +355,23 @@ describe("TsAnalysisUpload", () => {
     });
   });
 
+  it("should show the «Перейти к валидации» invitation button at the bottom of the stepper regardless of the active stop", async () => {
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("Качество")).toBeInTheDocument());
+
+    // Паттерн "Ведём исследователя за руку": кнопка внизу степпера видна
+    // сразу после загрузки (остановка по умолчанию "Превью датасета"),
+    // не только на последней остановке "Качество".
+    const invite = screen.getByRole("link", { name: /Перейти к валидации/ });
+    expect(invite).toHaveAttribute("href", "/validation");
+  });
+
   it("should show a technical parse-warning banner when the backend reports one", async () => {
     mockFetchSequence({ ...okUploadResponse, parse_warnings: ["Возможна проблема с кодировкой файла — обнаружены нечитаемые символы (�)"] });
 

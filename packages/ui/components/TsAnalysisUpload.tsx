@@ -78,6 +78,7 @@ import {
 } from "lucide-react";
 import { Button } from "./Button";
 import { Metric } from "./Metric";
+import { StepperNextModuleButton } from "./StepperNextModuleButton";
 import {
   DistributionChartData,
   HistogramDistributionChart,
@@ -954,6 +955,7 @@ export function TsAnalysisUpload() {
                   </span>
                 </button>
               ))}
+              <StepperNextModuleButton label="Перейти к валидации" href="/validation" />
             </div>
           </aside>
 
