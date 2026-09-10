@@ -14,6 +14,9 @@ export type { HomeRoute } from "./lib/home-stops";
 // решению тимлида. Подключается ТОЛЬКО в standalone — в embedded
 // пользователь уже внутри портала, маркетинговый контекст не нужен.
 export { HomeCapabilities } from "./components/HomeCapabilities";
+// HomeWavesBackground: декоративный фон главной страницы (мягкие волны,
+// шаблон — скриншот «Вариант 1. Волны»), только standalone.
+export { HomeWavesBackground } from "./components/HomeWavesBackground";
 export {
   CAPABILITIES_TITLE,
   CAPABILITIES_SUBTITLE,
