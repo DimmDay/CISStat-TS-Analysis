@@ -2232,3 +2232,23 @@ egarch).  Кодовых дефектов не обнаружено.
 - audit_scripts/cert136_mutations.py (новый, 15 мутаций)
 - audit_scripts/cert136_or6_characterize.py (новый)
 - audit_scripts/cert136_survivor_characterize.py (новый)
+
+---
+
+Task: Cертификация Task 137 не пройдена.
+
+Agent: Super Z (main agent, аудитор)
+
+Work Log:
+- Git-верификация: границы 98ff25f..7e73a83, backend-only, count-гейты не тронуты; замечание о взаимных переносах cert-скриптов 7e73a83/8145806.
+- Построчный аудит neural_contract.py (793), neural_runtime.py (194), тестов (64+21), probe, requirements-neural.txt, modeling.yaml.
+- Свежий venv (neuralforecast 3.2.2 + torch 2.14.0+cpu): регрессия 2184/2184 (1461 unit + 623 api + 100 прочие), compileall/app-import/pip check OK, прод-инварианты 19/24.
+- Оракулы: 86 проб на своих сидах (75 быстрых + 11 тренировочных), 84 PASS / 2 FAIL.
+- БЛОКИРУЮЩАЯ НАХОДКА: BaseModel(random_seed=1) перезасеивает всё (seed_everything в __init__ + on_fit_start); train_and_forecast не прокидывает random_seed → fold_seed/config.seed — no-op; разные сиды дают бит-идентичные прогнозы (max_diff=0.0); явный random_seed меняет прогноз (2.06) — фикс жизнеспособен. Детерминизм-тест вакуумен (мутация M19 переживает).
+- Не-блокирующие: probe несовместим с 3.2.2 (trainer_kwargs crash, QuantileLoss level отклоняется; MQLoss(level) — рабочий путь); accelerator='gpu'-claim верен только при CUDA; keep-колонки не проверяют Inf; pointer без root-конфайнмента.
+- Мутации: 23 применено, 10 KILLED, 13 SURVIVED (все ожидания сошлись), дерево чистое после откатов.
+- Запись сертификации добавлена в worklog3.md (2234 → 2467 строк).
+
+Stage Summary:
+- Вердикт: НЕ СЕРТИФИЦИРОВАНА — возврат на доработку (прецедент Task 126). Один блокирующий пункт (seed-прокидка), объём доработки мал; OR14b/c — готовый инструмент пересдачи.
+- Deliverables: download/task137_certification.zip (worklog3.md + 3 audit-скрипта).
