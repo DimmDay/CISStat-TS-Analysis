@@ -1,0 +1,20 @@
+# apps/api/requirements-neural.txt
+# Task 137 -- Neural Runtime Contract: deploy-манифест опциональной
+# dependency-группы "neural" (см. apps/api/model_jobs.py::_DEPENDENCY_GROUPS,
+# install_extra="neural").
+#
+# ВАЖНО (честность платформы):
+# - Этот файл НЕ входит в production-сборку apps/api/Dockerfile.
+#   Пять нейро-моделей (lstm, nbeats, nhits, tft, deepar) остаются
+#   catalog_only, пока их вертикальные срезы (Tasks 138-142) не добавят
+#   реестровые записи v2 с runtime_available =
+#   apps.api.model_impls.neural_runtime.neuralforecast_runtime_available().
+# - Установка: pip install -r apps/api/requirements-neural.txt
+#   (CPU-вариант torch) либо pip install -e ".[neural]" при появлении extra.
+# - Зафиксированная версия neuralforecast связывает surface, на которой
+#   сертифицирован единый runtime (проб scripts/task137_neural_api_probe.py):
+#   max_epochs deprecated (единый бюджет max_steps), accelerator обязателен
+#   явный (BaseModel молча ставит "gpu"), quantile-выходы point-loss моделей
+#   через conformal (fit prediction_intervals + predict level).
+torch>=2.1,<3                # BaseModel/Lightning-движок; CPU-колёса: --index-url https://download.pytorch.org/whl/cpu
+neuralforecast>=3.0,<4.0     # единый runtime пяти нейро-моделей (Task 137)

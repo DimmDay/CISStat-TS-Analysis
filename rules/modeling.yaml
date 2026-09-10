@@ -495,6 +495,10 @@ families:
       Глубокие архитектуры для временных рядов.
       Нет жёстких порогов по n — только мягкие рекомендации.
       Требуют GPU для обучения на больших выборках.
+      Task 137: единый NeuralForecast-runtime (вместо смеси
+      Darts/GluonTS/PyTorch Forecasting) — долгий формат
+      unique_id/ds/y, exogenous/quantile-контракт, checkpoints
+      вне Redis JSON (apps/api/neural_contract.py).
     models:
       - id: "lstm"
         name: "LSTM / GRU"
@@ -504,7 +508,7 @@ families:
         min_observations: 200          # мягкая рекомендация, не жёсткий порог
         supports_exogenous: true
         supports_prediction_intervals: true   # MC Dropout / deep ensembles
-        libraries: ["pytorch", "darts"]
+        libraries: ["neuralforecast"]
         training_time: "minutes_to_hours"
         requires_gpu: false            # возможно на CPU, но медленно
 
@@ -516,7 +520,7 @@ families:
         min_observations: 200
         supports_exogenous: true
         supports_prediction_intervals: true   # quantile outputs
-        libraries: ["pytorch-forecasting", "darts"]
+        libraries: ["neuralforecast"]
         training_time: "minutes_to_hours"
         requires_gpu: true
 
@@ -528,7 +532,7 @@ families:
         min_observations: 200
         supports_exogenous: false
         supports_prediction_intervals: true
-        libraries: ["darts", "nbeats-pytorch"]
+        libraries: ["neuralforecast"]
         training_time: "minutes_to_hours"
         requires_gpu: true
 
@@ -540,7 +544,7 @@ families:
         min_observations: 200
         supports_exogenous: false
         supports_prediction_intervals: true
-        libraries: ["darts"]
+        libraries: ["neuralforecast"]
         training_time: "minutes_to_hours"
         requires_gpu: true
 
@@ -553,7 +557,7 @@ families:
         min_series: 5                # ← DeepAR требует множество рядов
         supports_exogenous: true
         supports_prediction_intervals: true
-        libraries: ["gluonts", "pytorch-forecasting"]
+        libraries: ["neuralforecast"]
         training_time: "minutes_to_hours"
         requires_gpu: true
 

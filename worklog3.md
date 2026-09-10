@@ -1887,3 +1887,145 @@ volatility_diagnostics), yaml (16 trials), Dockerfile-проба, count-гейт
 - worklog3.md (данная секция)
 - scripts/cert134135_oracles.py (новый, 93 пробы)
 - scripts/cert134135_mutations.py (новый, 16 мутаций)
+
+---
+
+## Task 137 -- Neural Runtime Contract (унификация пяти нейро-моделей на NeuralForecast)
+
+Дата: 2026-09-10. Синхронизация: 98ff25f (cert Task 134+135; EGARCH upstream
+2efcd91). Постановка docs/modeling_task_list.md::Task 137. Прецедент
+каркасной задачи: Task 134 (volatility-контракт -> исполнители 135/136);
+Task 137 -- нейро-аналог: контракт потребляют вертикальные срезы
+Tasks 138-142 (LSTM/GRU, N-BEATS, N-HiTS, TFT, DeepAR), реестровые записи
+v2 НЕ добавляются (производственный срез остаётся 19/24, честный
+catalog_only для пяти нейро-моделей до их срезов).
+
+### Решение (по пунктам постановки)
+
+1. **Единый long-format unique_id/ds/y** -- `apps/api/neural_contract.py::
+   to_long_format/validate_long_format`: широкая платформенная таблица
+   (серия или честная панель) -> формат NeuralForecast; fail-closed на
+   NaN/Inf, дубликаты (unique_id, ds), нерегулярную сетку (per-series
+   `validate_regular_grid` переиспользован из сертифицированного контракта
+   Task 131 -- единый источник истины регулярной сетки). Панель -- только
+   через явный series_column; «числовые колонки одного объекта не выдаются
+   за панель» закреплены на уровне контракта (n_series < min_series ->
+   отказ; gate честности DeepAR Task 142).
+2. **Historic/future/static exogenous contract** -- `build_exogenous_plan`:
+   роли {futr, hist, stat} ОБЯЗАНЫ быть объявлены вызовом (никакого
+   скрытого угадывания, паритет с keyword-выборами Task 134);
+   валидация существования/конечности hist+futr, константности static
+   per unique_id (static может быть категориальным -- region='eu');
+   непересекаемость ролей; sha256-подпись плана -> cohort-контракт.
+   `validate_future_exogenous_frame` -- futr обязан покрыть
+   n_series*horizon без NaN (NeuralForecast требует futr_df на predict);
+   `build_static_frame` -- одна строка на серию.
+3. **CPU/GPU worker capabilities** -- `neural_worker_capabilities`
+   (сигнал CISSTAT_GPU_AVAILABLE через model_jobs.gpu_runtime_available,
+   eager-импорт torch запрещён) + `resolve_neural_device`: requires_gpu
+   без GPU-сигнала -> NeuralRuntimeUnavailableError (тихое CPU-понижение
+   запрещено, yaml-правило D06); нейтральное устройство -> честный "cpu".
+4. **Checkpoints вне Redis JSON** -- `NeuralCheckpointStore`:
+   filesystem-бэкенд (env CISSTAT_NEURAL_CHECKPOINT_DIR | data/
+   neural_checkpoints), потолок CHECKPOINT_MAX_BYTES=512MB, sha256-
+   анти-тампер (прецедент VolatilityTarget), JSON-safe pointer; в
+   Redis/session-JSON попадает ТОЛЬКО pointer (dict), байты -- только на
+   диске (job-записи платформы остаются bounded).
+5. **Early stopping, seed, max epochs/steps** -- `NeuralTrainingConfig`:
+   bounded (seed [0, 2^31-1]; max_steps [1, 10000]; patience [0, 50];
+   batch_size [1, 4096]); patience>0 требует val_size>0 (честная
+   остановка). Эмпирика neuralforecast 3.2.2 (проб
+   scripts/task137_neural_api_probe.py): BaseModel fail-closed отвергает
+   max_epochs ("deprecated, use max_steps") и МОЛЧА ставит
+   accelerator="gpu" -- контракт фиксирует ЕДИНЫЙ бюджет max_steps и
+   ЯВНОЕ устройство (в этом и есть унификация: один бюджетный рычаг
+   вместо расхождения epoch/step-конвенций Darts/GluonTS/PyTorch
+   Forecasting). `fold_seed(seed, fold_index, step)` -- детерминированный
+   per-fold seed (стабильная формула, без хэш-рандомизации).
+6. **Probabilistic losses и quantiles** -- `interval_levels_for_alpha`:
+   симметричные уровни из двусторонней alpha (0.2 -> 10/50/90, медиана
+   всегда присутствует); `resolve_probabilistic_loss`: whitelist
+   {quantile, mqloss, mae, mse, huber}; probabilistic-функции требуют
+   уровней. Вывод квантилей point-loss моделей -- conformal-путь
+   neuralforecast: fit(prediction_intervals=PredictionIntervals()) +
+   predict(level=[...]) -> колонки <Model>-lo-<level>/<Model>-hi-<level>
+   (подтверждено пробом; НИКАКОГО уровня в конструкторе модели -- 3.x
+   прокидывает его в Lightning Trainer и падает).
+7. **Продолжение job после рестарта** -- `restore_resume_state`: job-
+   запись хранит pointer; воркер восстанавливает состояние с диска по
+   pointer с sha256-верификацией; источник истины metadata -- pointer
+   (манифест на диске -- дубликат для аудита). Отсутствующий/битый
+   чекпойнт -- честный отказ: продолжение возможно ТОЛЬКО с
+   верифицированным состоянием; молчаливый retrain контрактом запрещён
+   (решение о retrain -- за job-протоколом, который обязан его записать).
+
+### Единый runtime (model_impls/neural_runtime.py)
+
+- `neuralforecast_runtime_available()` -- честный import-проб (find_spec,
+  без сайд-эффектов); питает будущие runtime_available реестровых записей
+  Tasks 138-142.
+- `require_neuralforecast()` -- ленивый импорт, fail-closed с установочной
+  подсказкой (apps/api/requirements-neural.txt).
+- `seed_neural_runtime(seed)` -- random/numpy/torch (+cuda при наличии)
+  ДО конструирования модели (детерминизм бит-в-бит подтверждён пробом
+  и тестом: одинаковый seed -> одинаковый прогноз NHITS, max diff 0.0).
+- `neural_model_budget_kwargs(config, device)` -- единый бюджет-мэппинг:
+  max_steps, явный accelerator (BaseModel по умолчанию "gpu" -- молчаливый
+  fallback на недоступный GPU недопустим), enable_progress_bar=False,
+  early_stop_patience_steps (enabled: patience; disabled: -1).
+- `train_and_forecast(model_factory, freq, train_long, horizon, config,
+  futr_df, static_df, levels, fold_index)` -- единый fit/predict-цикл:
+  model_factory(budget_kwargs) конструируется ПОСЛЕ сеяния fold_seed;
+  val_size передаётся только при включённом early stopping; levels ->
+  conformal (PredictionIntervals + predict level); пустой прогноз -- отказ.
+- Пять каталог-моделей (LSTM, NBEATS, NHITS, TFT, DeepAR) конструируются
+  на едином runtime с бюджетом контракта -- smoke унификации (5 тестов).
+
+### Границы Task 137 (что осознанно НЕ сделано)
+
+- Реестровые записи v2 для lstm/nbeats/nhits/tft/deepar -- НЕ добавлены
+  (вертикальные срезы Tasks 138-142; производственный срез остаётся 19/24,
+  count-гейты не тронуты). Контракт «готов к потреблению адаптером».
+- Dockerfile-пробы нейро-runtime -- НЕ добавлены (torch/neuralforecast
+  не входят в production-образ до срезов; манифест -- requirements-neural.txt
+  вне Dockerfile, что честно фиксирует catalog_only-статус).
+- Полноценные backtest-адаптеры, param_space, tuning/dispatch/readiness --
+  скоуп Tasks 138-142. Правила применимости yaml (F01/F05/D02/C04/D06/P07)
+  не менялись.
+- config/models/ts_models_catalog.yaml (legacy Streamlit-каталог, не
+  apps/api) -- сознательно не тронут.
+
+### Изменённые/новые файлы
+
+Новые:
+- apps/api/neural_contract.py (~740 строк; pure-модуль, без HTTP и без
+  импорта torch/neuralforecast)
+- apps/api/model_impls/neural_runtime.py (~230 строк; единственная точка
+  ленивого импорта neuralforecast/torch)
+- apps/api/requirements-neural.txt (deploy-манифест install_extra="neural")
+- tests/unit/test_neural_contract.py (64 кейса)
+- tests/unit/test_neural_runtime.py (21 кейс; importorskip neuralforecast)
+- scripts/task137_neural_api_probe.py (эмпирический проб API 3.2.2)
+
+Изменённые:
+- rules/modeling.yaml: libraries пяти нейро-моделей -> ["neuralforecast"]
+  (унификация «вместо смеси Darts/GluonTS/PyTorch Forecasting»); описание
+  семейства neural дополнено ссылкой на контракт Task 137.
+- worklog3.md (данная секция).
+
+### Верификация
+
+- TDD: RED (collection errors обоих модулей отсутствием) -> GREEN:
+  test_neural_contract.py 64/64, test_neural_runtime.py 21/21 (реальный
+  микро-цикл NHITS: point + conformal-квантили 10/90, lo<=hi; детерминизм
+  seed 21 -> бит-в-бит; construct-smoke пяти моделей).
+- Полная регрессия на 98ff25f: база 2099 (1476 unit + 623 api) ->
+  после Task 137: 2184 passed (1561 unit + 623 api) = база + 85 новых,
+  0 упавших; count-гейты 19 не тронуты; apps/api/__init__.py пустой
+  маркер не изменён (13 регресс-тестов на месте).
+- Прод-инварианты: PRODUCTION_BACKTEST_MODEL_IDS == 19, нейро-пять
+  catalog_only (готовность флипается срезами 138-142); консистентность
+  dispatch/readiness (RuntimeError-gate) не затронута.
+- Проб окружения: neuralforecast 3.2.2 + torch 2.14.0+cpu установлены;
+  conformal-колонки, max_epochs-отказ, accelerator-дефолт подтверждены
+  эмпирически и отражены в контракте (не по документации, а по факту).
