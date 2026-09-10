@@ -1122,3 +1122,109 @@ ARCH-LM == het_arch бит-в-бит (rtol 1e-10); QLIKE == классическ
 Изменённые:
 - apps/api/backtesting.py (+17: fail-closed гейт volatility-планов)
 - rules/modeling.yaml (metrics.volatility: qlike/realized_rmse/realized_mae)
+
+---
+
+## Пересертификация Task 133 (VECM + vector tuning + VARX): исправление дефектов аудита
+
+Дата: 2026-09-10. База: main @ 081b9fc, рабочая копия без коммитов/пуша
+(запрет AGENTS.md). Все четыре пункта пути пересертификации из аудита
+выполнены по TDD-циклу (RED → код → GREEN), мутационная верификация
+фиксов — 6/6 проб пойманы, полный набор 1922 passed / 0 failed /
+3 snapshots.
+
+### Изменения кода (исправления дефектов)
+
+1. `apps/api/multivariate_contract.py::vecm_stability` — устранена
+   инверсия спектрального инварианта: устойчивость VECM теперь требует
+   РОВНО `K − coint_rank` единичных корней companion уровневого
+   VAR-представления (спектральная теорема Granger-представления;
+   Johansen 1995, Lütkepohl 2005 гл. 6), а не `coint_rank`. Размерность
+   K вынесена из формы матриц (base["n_series"]), добавлен ключ
+   `expected_unit_roots` и fail-closed отказ при `coint_rank > K`.
+   При r=K ⇒ 0 единичных корней (стационарные уровни); прежняя
+   семантика совпадала с теорией только при K=2r (все fixture-примеры
+   коллеги были K=2, r=1).
+2. `apps/api/multivariate_contract.py::system_white_noise_diagnostics` —
+   новый optional-параметр `rank_adjustment` (int ≥ 0, дефолт 0 =
+   бит-в-бит legacy VAR): df = K²·(nlags − p) − rank_adjustment;
+   fail-closed при df < 1 и при rank_adjustment < 0. Для VECM движок
+   передаёт K·coint_rank — достигнут ТОЧНЫЙ паритет df с официальной
+   statsmodels VECMResults.test_whiteness (закреплён оракул-тестом).
+3. `apps/api/backtesting.py::run_vector_backtest_plan` — VECM-ветка
+   white-noise учитывает фактический порядок модели: окно
+   nlags = max(k_ar_diff+2, min(8, k_ar_diff+4)) строго выше уровневого
+   порядка k_ar_diff+1 (прежде — всегда 3, меньше порядка при
+   k_ar_diff ≥ 3), fitted_var_order = k_ar_diff (прежде 0),
+   rank_adjustment = K·coint_rank. VAR-ветка бит-в-бит прежняя.
+4. Комментарии семантики исправлены в backtesting.py и
+   model_execution.py (реестр vecm: «ровно K − coint_rank единичных
+   корней» + df-поправка ранга).
+
+### Изменения тестов (TDD)
+
+- `tests/unit/test_varx_exogenous.py::TestVecmStability` — переписан на
+  корректную семантику: два прежде ошибочных теста (eye(2)+rank2
+  «stable», diag(0.5,0.3)+rank0 «stable») теперь кодируют честные
+  противоречия (unstable); добавлены K=3-кейсы (r=1 ⇒ 2 единичных
+  корня — устойчиво; лишний корень — нестабильно), fail-closed rank>K
+  и **постоянный оракул** `test_statsmodels_vecm_oracle_k3_rank1`:
+  реальный фит statsmodels VECM на коинтегрированной системе K=3,
+  r=1 (DGP: y1 — блуждание, y2 = y1 + шум, y3 — независимое блуждание;
+  ранг подтверждён select_coint_rank trace 0.05) ⇒ n_unit_roots == 2 ==
+  K−r, is_stable, неранговая часть спектра строго внутри круга +
+  регрессионный якорь n_unit_roots != coint_rank против возврата
+  инвертированной семантики (audit C6 теперь закрыт навсегда).
+- `TestVecmEngineWhiteNoise` (2 теста) — движковый VECM white-noise:
+  окно/порядок/df привязаны к формуле K²·(nlags−p) − K·r.
+- `tests/unit/test_multivariate_contract.py` — df-паритет с
+  VECMResults.test_whiteness на реальном фите (+ проверка, что без
+  поправки df завышен ровно на K·r), fail-closed df<1, отказ
+  отрицательного rank_adjustment.
+- `tests/unit/test_var_backtest.py::test_oof_predictions_bind_to_
+  adapter_forecast_with_gap` — прямой binding (audit M3): при gap=2
+  OOF-прогноз шага h бит-в-бит == forecast[gap+h] адаптера на точном
+  train-префиксе.
+- `tests/unit/test_vector_tuning.py::test_var_grid_from_bounded_space`
+  — сетка сделана различимой [4,8]×[None] вместо вырожденной
+  [4,8]×["aic"] (audit M4), + ассерт неравенства RMSE trials.
+- Докстринги test_varx_exogenous.py синхронизированы с новой семантикой.
+
+### TDD и мутационная верификация
+
+- RED подтверждён: 13 новых тестов падали против дефектного кода
+  (KeyError expected_unit_roots, инвертированный is_stable, TypeError
+  rank_adjustment, df=12 вместо 14), 2 hardening-теста (M3/M4)
+  проходили и до кода — движок/тюнинг были корректны, дефект был в
+  семантике диагностики и в качестве фикстур.
+- GREEN: полный pytest **1922 passed / 0 failed, snapshots 3/3**
+  (базлайн 1912 + 10 новых тестов; арифметика сходится: TestVecmStability
+  4→8, +2 движковых white-noise, +3 контрактных rank_adjustment,
+  +1 gap-binding).
+- Мутационные пробы фиксов (применялись и откатывались, git-верификация
+  отсутствия маркеров): (1) обратная инверсия инварианта — ПОЙМАНА
+  (4 отказа); (2) игнор rank_adjustment в df — ПОЙМАНА (3);
+  (3) legacy-окно white-noise для VECM — ПОЙМАНА (2); (4) снятие
+  fail-closed rank>K — ПОЙМАНА (1); (5) replay M3 (без отбрасывания
+  gap) — ПОЙМАНА новым binding-тестом (2), прежде проба выживала;
+  (6) replay M4 (argmax) — ПОЙМАНА обострённой фикстурой (1), прежде
+  проба выживала.
+- Frontend не затронут (0 файлов packages/, apps/standalone,
+  apps/embedded) — jest-регрессия невозможна по построению.
+- Отладочные заметки: seed 11 K=3-DGP — пограничный для trace-теста
+  (5.49 против крит. 3.84 при r≤2) — оракул зафиксирован на seed 13
+  (ранг 1 подтверждён); companion порядка k_ar_diff+1 несёт K·(p−1)
+  сдвиговых нулей — асsert неранговой части спектра это учитывает.
+
+### Вердикт пересертификации
+
+**Task 133 (VECM + vector tuning + exogenous channel VARX):
+сертифицирована, реализация отличная.** Все требования постановки
+выполнены; единственный блокирующий дефект аудита (инверсия
+спектрального инварианта vecm_stability) устранён вместе с кодировавшей
+ошибку парой юнит-тестов, дополнительный white-noise дефект движка
+закрыт с точным df-паритетом statsmodels, оба мутационных пробела
+покрытия (M3 gap-binding, M4 различимая сетка) закрыты. Поведение
+доказано постоянным K=3-оракулом против statsmodels, мутационный
+контур чувствителен (6/6), полный набор 1922/0/3 воспроизводим.
+Изменения ожидают решения тимлида (commit/push агентом не выполнялись).

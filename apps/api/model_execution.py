@@ -916,8 +916,9 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         # на train-срезе fold'а; ранг 0 -- честный отказ без VAR-fallback;
         # фиксированный ранг <= K-1).  Прогноз -- нативный VECMResults.predict
         # с интервалами (НЕ цикл одномерных ARIMA).  Диагностика движка --
-        # vecm_stability (ровно coint_rank единичных корней companion) +
-        # белый шум системы.  supports_future_features=False: exogenous-канал
+        # vecm_stability (ровно K - coint_rank единичных корней companion,
+        # спектральная теорема Granger-представления) + белый шум системы
+        # с df-поправкой ранга K*coint_rank.  supports_future_features=False: exogenous-канал
         # -- только VARX (yaml: vecm supports_exogenous: false); реестр
         # fail-closed отвергает future_features.  Векторный tuning --
         # execute_vector_tuning_plan (bounded param_space yaml::vecm).

@@ -892,13 +892,18 @@ def vecm_stability(
 ) -> dict[str, Any]:
     """Устойчивость VECM по companion-матрице уровневого VAR-представления.
 
-    VECM устойчив <=> в спектре companion-матрицы РОВНО ``coint_rank``
-    единичных корней (|lambda| = 1 с допуском VECM_UNIT_ROOT_TOL), а все
-    остальные -- СТРОГО внутри единичного круга.  Единичные корни -- не
-    дефект, а суть механизма коррекции ошибок: их число обязано совпадать
-    с рангом коинтеграции.  Расхождение (лишние единичные корни или
-    недостающие) -- признак misspecification: ранг/спецификация не
-    соответствуют динамике системы.
+    Спектральная теорема для VECM (Granger-представление; Johansen 1995,
+    Lütkepohl 2005, гл. 6): уровневое VAR-представление системы ранга r
+    несёт РОВНО ``K - coint_rank`` единичных корней (|lambda| = 1 с
+    допуском VECM_UNIT_ROOT_TOL) -- по одному на каждый общий
+    стохастический тренд -- а остальные r корней лежат СТРОГО внутри
+    единичного круга.  Единичные корни -- не дефект, а суть механизма
+    коррекции ошибок; их число связано с рангом через K - r, а НЕ равно
+    самому рангу (совпадение лишь при K = 2r).  При r = K
+    (стационарные уровни) единичных корней быть не должно вовсе.
+    Размерность K выносится из формы матриц (не из ранга); расхождение
+    спектра с инвариантом и coint_rank > K -- признаки
+    misspecification, fail-closed.
 
     Аргумент ``coefficient_matrices`` -- PHI-блоки уровневого
     VAR(k_ar_diff+1)-представления (VECMResults.var_rep statsmodels).
@@ -909,6 +914,13 @@ def vecm_stability(
             f"coint_rank={coint_rank} не может быть отрицательным"
         )
     base = companion_stability(coefficient_matrices)
+    n_series = int(base["n_series"])
+    if coint_rank > n_series:
+        raise MultivariateContractError(
+            f"coint_rank={coint_rank} превышает размерность системы "
+            f"K={n_series} (ранг Йохансена не больше числа рядов)"
+        )
+    expected_unit_roots = n_series - coint_rank
     moduli = base["eigenvalue_moduli"]
     unit_roots = [
         modulus for modulus in moduli
@@ -919,12 +931,13 @@ def vecm_stability(
         if abs(modulus - 1.0) > VECM_UNIT_ROOT_TOL
     ]
     is_stable = (
-        len(unit_roots) == coint_rank
+        len(unit_roots) == expected_unit_roots
         and all(modulus < 1.0 - VECM_UNIT_ROOT_TOL for modulus in rest)
     )
     return {
         **base,
         "coint_rank": coint_rank,
+        "expected_unit_roots": int(expected_unit_roots),
         "n_unit_roots": len(unit_roots),
         "is_stable": bool(is_stable),
     }
@@ -971,17 +984,23 @@ def system_white_noise_diagnostics(
     *,
     nlags: int,
     fitted_var_order: int = 0,
+    rank_adjustment: int = 0,
     adjusted: bool = True,
     alpha: float = 0.05,
 ) -> dict[str, Any]:
     """Белый шум системы: объединённый Portmanteau + пер-серийный Ljung-Box.
 
     H0 объединённого теста: остатки системы -- белый шум; reject при
-    p < alpha (df = K^2 * (nlags - p)).  ``fitted_var_order`` -- порядок
-    оцениванной модели (число лагов, съедающих степени свободы); для VECM
-    передавайте ранг+детерминированную спецификацию в терминах свободных
-    параметров на уравнение.  Вырожденная ковариация остатков (идеальный
-    фит) -- fail-closed ошибка, а не фиктивный «идеальный белый шум».
+    p < alpha (df = K^2 * (nlags - p) - rank_adjustment).
+    ``fitted_var_order`` -- порядок оцениванной модели (число лагов,
+    съедающих степени свободы): для VAR -- порядок уровневого VAR; для
+    VECM -- k_ar_diff (число разностных лагов).  ``rank_adjustment`` --
+    поправка df на restricted-параметры ранга (пересертификация Task
+    133): для VECM движок передаёт K*coint_rank, что даёт паритет df с
+    statsmodels VECMResults.test_whiteness (K^2*(nlags - k_ar_diff) -
+    K*r); дефолт 0 -- бит-в-бит прежний VAR-контракт.  Вырожденная
+    ковариация остатков (идеальный фит) и df < 1 -- fail-closed ошибки,
+    а не фиктивный «идеальный белый шум».
     """
     matrix = np.asarray(residuals, dtype=float)
     if matrix.ndim != 2:
@@ -999,6 +1018,11 @@ def system_white_noise_diagnostics(
         raise MultivariateContractError(
             "fitted_var_order не может быть отрицательным"
         )
+    rank_adjustment = int(rank_adjustment)
+    if rank_adjustment < 0:
+        raise MultivariateContractError(
+            "rank_adjustment не может быть отрицательным"
+        )
     if nlags <= fitted_var_order:
         raise MultivariateContractError(
             f"nlags ({nlags}) должен быть больше fitted_var_order "
@@ -1009,7 +1033,13 @@ def system_white_noise_diagnostics(
             f"длина residuals ({nobs}) недостаточна: требуется больше, чем "
             f"nlags={nlags} + fitted_var_order={fitted_var_order}"
         )
-    df = k * k * (nlags - fitted_var_order)
+    df = k * k * (nlags - fitted_var_order) - rank_adjustment
+    if df < 1:
+        raise MultivariateContractError(
+            "число степеней свободы Portmanteau неположительное "
+            f"(df={df} = K^2*(nlags-fitted_var_order) - rank_adjustment): "
+            "увеличьте nlags или уменьшите fitted_var_order/rank_adjustment"
+        )
     try:
         statistic = _portmanteau_statistic(matrix, nlags, adjusted=adjusted)
     except np.linalg.LinAlgError as exc:
@@ -1043,6 +1073,7 @@ def system_white_noise_diagnostics(
             "adjusted": bool(adjusted),
             "nlags": nlags,
             "fitted_var_order": fitted_var_order,
+            "rank_adjustment": int(rank_adjustment),
             "alpha": alpha,
         },
         "per_series": per_series,

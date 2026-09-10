@@ -114,10 +114,15 @@ class TestVectorTuningPlan:
     """Векторный tuning: trials на тех же folds, честный best."""
 
     def test_var_grid_from_bounded_space(self):
+        # Аудит Task 133 (проба M4): сетка обязана быть РАЗЛИЧИМОЙ.
+        # Прежняя [4, 8]x["aic"] вырождалась -- AIC выбирал одинаковый
+        # порядок в обоих trials, RMSE совпадали бит-в-бит, и мутация
+        # argmax вместо argmin выживала.  ic=None => фиксированные
+        # порядки 4 и 8 -- разные фиты, разные RMSE.
         matrix = _stationary_system()
         execution = _tune(
             "var", matrix,
-            {"maxlags": [4, 8], "ic": ["aic"]},
+            {"maxlags": [4, 8], "ic": [None]},
         )
         response = execution.response
         assert response.n_trials == 2
@@ -126,10 +131,12 @@ class TestVectorTuningPlan:
         assert response.objective == "multivariate"
         assert response.metric == "rmse"
         assert response.best_params in (
-            {"maxlags": 4, "ic": "aic"}, {"maxlags": 8, "ic": "aic"},
+            {"maxlags": 4, "ic": None}, {"maxlags": 8, "ic": None},
         )
-        # Best -- минимум метрики среди trials (аргмин, не первый).
+        # Best -- минимум метрики среди trials (аргмин, не первый);
+        # сетка различима, поэтому assertion чувствителен к argmax-мутации.
         values = [float(getattr(trial.metrics, "rmse")) for trial in response.trials]
+        assert len({round(value, 12) for value in values}) == 2
         assert response.best_trial == values.index(min(values))
 
     def test_trials_genuinely_differ(self):

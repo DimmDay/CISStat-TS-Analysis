@@ -14,8 +14,9 @@
   fail-closed гейт реестра;
 - cohort-контракт честно декларирует exogenous-канал
   (multivariate_cohort_contract), дефолт -- бит-в-бит прежний;
-- vecm_stability: устойчивость VECM = ровно coint_rank единичных корней
-  companion-матрицы уровневого VAR-представления.
+- vecm_stability: устойчивость VECM = ровно K - coint_rank единичных
+  корней companion-матрицы уровневого VAR-представления (спектральная
+  теорема Granger-представления; пересертификация Task 133, audit M6).
 """
 from __future__ import annotations
 
@@ -358,31 +359,231 @@ class TestCohortContractExogenous:
             )
 
 
-class TestVecmStability:
-    """Устойчивость VECM: ровно coint_rank единичных корней companion."""
+def _vecm_cointegrated_k3(n: int = 300, seed: int = 13) -> np.ndarray:
+    """Коинтегрированная система K=3 ранга 1 (учебный DGP Lütkepohl гл. 6).
 
-    def test_identity_blocks_two_unit_roots(self):
+    y1 -- случайное блуждание (общий стохастический тренд), y2 = y1 +
+    стационарный шум (одна коинтеграционная связь), y3 -- независимое
+    блуждание (второй общий тренд).  Итого: K - r = 2 единичных корня,
+    r = 1.  Спектр companion уровневого VAR: {1, 1, |lambda|<1}.
+    """
+    rng = np.random.default_rng(seed)
+    y1 = 100.0 + np.cumsum(rng.normal(0.0, 1.0, n))
+    y3 = 50.0 + np.cumsum(rng.normal(0.0, 1.2, n))
+    y2 = y1 + rng.normal(0.0, 0.5, n)
+    return np.column_stack([y1, y2, y3])
+
+
+class TestVecmStability:
+    """Устойчивость VECM: ровно K - coint_rank единичных корней companion.
+
+    Спектральная теорема (Granger-представление; Johansen 1995,
+    Lütkepohl 2005, гл. 6): уровневое VAR-представление VECM ранга r
+    несёт K - r общих стохастических трендов => РОВНО K - r единичных
+    корней; остальные r обязаны лежать строго внутри единичного круга.
+    Единичные корни -- не дефект, а суть механизма коррекции ошибок;
+    их число равно K - r, а НЕ самому рангу.  Прежняя семантика
+    («ровно coint_rank») совпадала с теорией только на K=2, r=1.
+    """
+
+    def test_identity_blocks_full_rank_is_unstable(self):
+        # eye(2): спектр {1, 1} -- 2 единичных корня.  Ранг r=K=2
+        # (стационарные уровни) требует 0 единичных корней => комбинация
+        # внутренне противоречива, модель НЕ устойчива.
         blocks = [np.eye(2)]
         report = vecm_stability(blocks, coint_rank=2)
         assert report["n_unit_roots"] == 2
-        assert report["is_stable"] is True
+        assert report["expected_unit_roots"] == 0
+        assert report["is_stable"] is False
         assert abs(report["max_modulus"] - 1.0) <= 1e-8
 
     def test_rank_mismatch_is_unstable(self):
+        # K=2, r=1: требуется ровно 1 единичный корень; eye(2) даёт 2.
         blocks = [np.eye(2)]
         report = vecm_stability(blocks, coint_rank=1)
+        assert report["expected_unit_roots"] == 1
+        assert report["n_unit_roots"] == 2
         assert report["is_stable"] is False
 
-    def test_stationary_companion_rank_zero(self):
+    def test_stationary_companion_full_rank_stable(self):
+        # diag(0.5, 0.3): стационарный companion <=> r=K=2, 0 единичных
+        # корней.  Тот же companion с заявленным r=0 противоречив
+        # (потребовал бы K-0=2 общих трендов).
         blocks = [np.diag([0.5, 0.3])]
-        report = vecm_stability(blocks, coint_rank=0)
+        report = vecm_stability(blocks, coint_rank=2)
         assert report["n_unit_roots"] == 0
+        assert report["expected_unit_roots"] == 0
         assert report["is_stable"] is True
         assert abs(report["max_modulus"] - 0.5) <= 1e-12
+        report = vecm_stability(blocks, coint_rank=0)
+        assert report["expected_unit_roots"] == 2
+        assert report["is_stable"] is False
 
     def test_mixed_spectrum_rank_one(self):
+        # K=2, r=1: спектр {1.0, 0.5} -- ровно 1 единичный корень, 0.5
+        # строго внутри => устойчиво; при r=0 требуется 2 корня => нет.
         blocks = [np.diag([1.0, 0.5])]
         report = vecm_stability(blocks, coint_rank=1)
+        assert report["expected_unit_roots"] == 1
         assert report["is_stable"] is True
         report = vecm_stability(blocks, coint_rank=0)
         assert report["is_stable"] is False
+
+    def test_three_series_rank_one_requires_two_unit_roots(self):
+        # Ключевой K=3-случай (audit M6): K=3, r=1 => K-r=2 единичных
+        # корня.  Диагональный спектр {1, 1, 0.5} -- устойчивая VECM;
+        # прежняя семантика («ровно r») давала ложную тревогу.
+        blocks = [np.diag([1.0, 1.0, 0.5])]
+        report = vecm_stability(blocks, coint_rank=1)
+        assert report["n_series"] == 3
+        assert report["expected_unit_roots"] == 2
+        assert report["n_unit_roots"] == 2
+        assert report["is_stable"] is True
+
+    def test_three_series_extra_unit_root_is_unstable(self):
+        # K=3, r=1, спектр {1, 1, 1}: лишний единичный корень --
+        # пропущенный общий тренд, misspecification => нестабильно.
+        blocks = [np.diag([1.0, 1.0, 1.0])]
+        report = vecm_stability(blocks, coint_rank=1)
+        assert report["n_unit_roots"] == 3
+        assert report["expected_unit_roots"] == 2
+        assert report["is_stable"] is False
+
+    def test_rank_above_dimension_fails_closed(self):
+        with pytest.raises(MultivariateContractError, match="размерност"):
+            vecm_stability([np.eye(2)], coint_rank=3)
+
+    def test_statsmodels_vecm_oracle_k3_rank1(self):
+        """Oracle-привязка (пересертификация Task 133): реальный фит
+        statsmodels VECM на коинтегрированной системе K=3, r=1.
+
+        Спектр companion var_rep обязан иметь ровно K-r=2 единичных
+        корня и стабильную неранговую часть; rank-тест Йохансена на той
+        же матрице подтверждает r=1.  Прежняя семантика («ровно
+        coint_rank=1») на этом оракуле давала is_stable=False (audit C6).
+        """
+        from statsmodels.tsa.vector_ar.vecm import select_coint_rank
+
+        from apps.api.model_impls.vecm import _vecm_fit_predict
+
+        matrix = _vecm_cointegrated_k3()
+        rank_oracle = select_coint_rank(
+            matrix, det_order=0, k_ar_diff=1, method="trace", signif=0.05,
+        )
+        assert int(rank_oracle.rank) == 1
+        payload = _vecm_fit_predict(
+            [float(v) for v in matrix[:, 0]], 4,
+            related_series={
+                "b": [float(v) for v in matrix[:, 1]],
+                "c": [float(v) for v in matrix[:, 2]],
+            },
+            params={"k_ar_diff": 1, "coint_rank": 1},
+        )
+        blocks = payload["coefficient_matrices"]
+        report = vecm_stability(blocks, coint_rank=1)
+        assert report["n_series"] == 3
+        assert report["n_unit_roots"] == 3 - 1
+        assert report["expected_unit_roots"] == 2
+        assert report["is_stable"] is True
+        # Регрессионный якорь против возврата к инвертированной семантике:
+        # число единичных корней НЕ равно рангу (2 != 1).
+        assert report["n_unit_roots"] != report["coint_rank"]
+        # Неранговая часть спектра строго внутри единичного круга
+        # (включая сдвиговые нули companion-блока порядка k_ar_diff+1).
+        inside = [m for m in report["eigenvalue_moduli"]
+                  if abs(m - 1.0) > 1e-8]
+        assert all(m < 1.0 for m in inside)
+        assert len(inside) == 3 * (len(blocks) - 1) + 1
+
+
+class TestVecmEngineWhiteNoise:
+    """Движок: белый шум VECM учитывает фактический порядок модели.
+
+    Прежде движок брал metadata["lag_order"], которого у VECM нет =>
+    nlags=3 и fitted_var_order=0 при любом k_ar_diff: df Portmanteau
+    завышен (K^2*nlags вместо K^2*(nlags-p) - K*r), а окно могло быть
+    меньше порядка модели (audit Task 133, замечание 1).
+    """
+
+    def _run_vecm(self, k_ar_diff: int) -> dict:
+        n = 160
+        rng = np.random.default_rng(13)
+        y1 = 100.0 + np.cumsum(rng.normal(0.0, 1.0, n))
+        y2 = y1 + rng.normal(0.0, 0.5, n)
+        matrix = np.column_stack([y1, y2])
+        labels = [stamp.strftime("%Y-%m-%d")
+                  for stamp in pd.date_range("2020-01-01", periods=n)]
+        system = build_endogenous_system(
+            {"y": [float(v) for v in matrix[:, 0]],
+             "z": [float(v) for v in matrix[:, 1]]},
+            timestamps=labels,
+        )
+        from app.core.passport import series_fingerprint
+
+        fingerprints = {
+            name: series_fingerprint(pd.Series(
+                [float(v) for v in matrix[:, position]], index=labels,
+            ))
+            for position, name in enumerate(("y", "z"))
+        }
+        contract = multivariate_cohort_contract(
+            system, series_fingerprints=fingerprints,
+        )
+        horizon, n_splits = 4, 2
+        folds = []
+        train_end = n - n_splits * horizon - 1
+        for index in range(n_splits):
+            start_test = train_end + 1 + horizon * index
+            folds.append({
+                "fold": index + 1, "train_start": 0,
+                "train_end": train_end + horizon * index,
+                "gap_size": 0, "test_start": start_test,
+                "test_end": start_test + horizon - 1,
+            })
+        plan = build_backtest_plan(
+            {"strategy": "expanding", "horizon": horizon,
+             "n_splits": n_splits, "gap": 0, "folds": folds},
+            n_observations=n, fingerprint="fp-vecm-wn",
+            target_column="y", seasonal_period=1,
+            objective="multivariate", series_fingerprints=fingerprints,
+            cohort_contract_override=contract,
+        )
+        return run_vector_backtest_plan(
+            model_id="vecm", model_name="VECM", family_id="multivariate",
+            system=system, plan=plan, seasonal_period=1,
+            params={"k_ar_diff": k_ar_diff, "coint_rank": 1},
+        )
+
+    def test_white_noise_window_and_df_respect_model_order(self):
+        result = self._run_vecm(3)
+        k, r, p = 2, 1, 3  # K=2 серии, ранг 1, k_ar_diff=3
+        for fold in result["folds"]:
+            diagnostics = fold["multivariate_diagnostics"]
+            assert diagnostics["vecm"]["k_ar_diff"] == p
+            wn = diagnostics["white_noise"]
+            assert wn["available"] is True
+            # Уровневый порядок k_ar_diff+1=4; окно строго выше него
+            # (прежде окно было всегда 3 -- меньше порядка).
+            model_order = p + 1
+            expected_nlags = max(model_order + 1, min(8, model_order + 3))
+            assert wn["joint"]["nlags"] == expected_nlags
+            assert expected_nlags > model_order
+            # df несёт поправку ранга: K^2*(nlags - p) - K*r (паритет
+            # statsmodels VECMResults.test_whiteness).
+            assert wn["joint"]["fitted_var_order"] == p
+            assert wn["joint"]["rank_adjustment"] == k * r
+            assert wn["joint"]["df"] == k * k * (expected_nlags - p) - k * r
+
+    def test_vecm_white_noise_rank_adjustment_shrinks_df(self):
+        # Прежнее поведение: порядок 0, без ранговой поправки => при том же
+        # окне df = K^2*nlags.  Поправка K*r честно съедает степени свободы
+        # под restricted-параметры ранга, а окно растёт вместе с порядком
+        # модели (прежде окно всегда было 3 -- меньше порядка при k_ar_diff>=3).
+        result = self._run_vecm(3)
+        k, r, p = 2, 1, 3
+        fold = result["folds"][0]
+        wn = fold["multivariate_diagnostics"]["white_noise"]
+        nlags = wn["joint"]["nlags"]
+        assert nlags > p + 1  # окно выше уровневого порядка k_ar_diff+1=4
+        assert wn["joint"]["df"] == k * k * (nlags - p) - k * r
+        assert wn["joint"]["df"] < k * k * nlags  # прежний df при том же окне

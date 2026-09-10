@@ -834,6 +834,63 @@ def test_joint_portmanteau_matches_statsmodels_oracle() -> None:
         assert mine["joint"]["df"] == int(oracle.df)
 
 
+def test_white_noise_rank_adjustment_binds_statsmodels_vecm_df() -> None:
+    """Пересертификация Task 133: поправка df на restricted-параметры ранга.
+
+    Для VECM статистика Portmanteau та же, но df обязан учитывать
+    свободные параметры ранга: df = K^2*(nlags - p) - K*r -- ровно как в
+    statsmodels VECMResults.test_whiteness.  Прежний контракт (без
+    rank_adjustment) давал завышенный df => заниженный reject-риск
+    (advisory-диагностика становилась системно оптимистичной).
+    Дефолт rank_adjustment=0 -- бит-в-бит прежний VAR-контракт.
+    """
+    from statsmodels.tsa.vector_ar.vecm import VECM
+
+    rng = np.random.default_rng(13)
+    n = 150
+    y1 = 100.0 + np.cumsum(rng.normal(0.0, 1.0, n))
+    y2 = y1 + rng.normal(0.0, 0.5, n)
+    matrix = np.column_stack([y1, y2])
+    fitted = VECM(matrix, k_ar_diff=1, coint_rank=1, deterministic="ci").fit()
+    residuals = np.asarray(fitted.resid, dtype=float)
+    k, r, p, nlags = 2, 1, 1, 6
+    result = system_white_noise_diagnostics(
+        residuals, nlags=nlags, fitted_var_order=p,
+        rank_adjustment=k * r,
+    )
+    oracle = fitted.test_whiteness(nlags=nlags)
+    # Паритет df с официальной реализацией (adjusted-режим на df не влияет).
+    assert result["joint"]["df"] == int(oracle.df)
+    assert result["joint"]["df"] == k * k * (nlags - p) - k * r
+    assert result["joint"]["rank_adjustment"] == k * r
+    # Без поправки df завышен ровно на K*r -- прежняя слепая зона.
+    legacy = system_white_noise_diagnostics(
+        residuals, nlags=nlags, fitted_var_order=p,
+    )
+    assert legacy["joint"]["df"] == int(oracle.df) + k * r
+    assert legacy["joint"]["rank_adjustment"] == 0
+
+
+def test_white_noise_rejects_nonpositive_df_after_rank_adjustment() -> None:
+    # Fail-closed: ранговая поправка, съевшая все степени свободы --
+    # ошибка контракта, а не фиктивный chi2 с df <= 0.
+    rng = np.random.default_rng(3)
+    residuals = rng.normal(size=(400, 2))
+    with pytest.raises(MultivariateContractError, match="степеней свободы"):
+        system_white_noise_diagnostics(
+            residuals, nlags=8, fitted_var_order=6, rank_adjustment=2 * 2 * 2,
+        )
+
+
+def test_white_noise_rank_adjustment_rejects_negative() -> None:
+    rng = np.random.default_rng(3)
+    residuals = rng.normal(size=(400, 2))
+    with pytest.raises(MultivariateContractError, match="rank_adjustment"):
+        system_white_noise_diagnostics(
+            residuals, nlags=8, rank_adjustment=-1,
+        )
+
+
 def test_white_noise_iid_residuals_not_rejected() -> None:
     # seed 3 верифицирован рекогносцировкой (p = 0.9587).
     rng = np.random.default_rng(3)

@@ -1139,8 +1139,10 @@ def run_vector_backtest_plan(
                 for block in metadata.get("coefficient_matrices") or []
             ]
             # Task 133: модель-специфичный блок диагностики.  VECM --
-            # vecm_stability (ровно coint_rank единичных корней companion
-            # уровневого VAR-представления); VAR -- companion_stability.
+            # vecm_stability (ровно K - coint_rank единичных корней
+            # companion уровневого VAR-представления; спектральная теорема
+            # Granger-представления, пересертификация Task 133);
+            # VAR -- companion_stability.
             if "k_ar_diff" in metadata:
                 model_diagnostics = {
                     "vecm": {
@@ -1174,11 +1176,25 @@ def run_vector_backtest_plan(
             )
             # nlags строго больше порядка модели (контракт Portmanteau);
             # нижняя граница 8 -- стандартная ширина окна проверки.
-            nlags = max(lag_order + 1, min(8, lag_order + 3))
-            white_noise = system_white_noise_diagnostics(
-                residuals_insample, nlags=nlags,
-                fitted_var_order=lag_order,
-            )
+            # Пересертификация Task 133: VECM не имеет ключа lag_order --
+            # белый шум системы обязан учитывать фактический порядок
+            # модели: окно задаёт уровневый порядок k_ar_diff+1, а df несёт
+            # поправку на restricted-параметры ранга K*coint_rank (паритет
+            # df с statsmodels VECMResults.test_whiteness).
+            if "k_ar_diff" in metadata:
+                vecm_model_order = int(metadata["k_ar_diff"]) + 1
+                white_noise = system_white_noise_diagnostics(
+                    residuals_insample,
+                    nlags=max(vecm_model_order + 1, min(8, vecm_model_order + 3)),
+                    fitted_var_order=int(metadata["k_ar_diff"]),
+                    rank_adjustment=len(names) * int(metadata.get("coint_rank") or 0),
+                )
+            else:
+                nlags = max(lag_order + 1, min(8, lag_order + 3))
+                white_noise = system_white_noise_diagnostics(
+                    residuals_insample, nlags=nlags,
+                    fitted_var_order=lag_order,
+                )
         except Exception as exc:
             raise BacktestExecutionError(
                 f"{model_name}: fold {fold.fold} завершился ошибкой: {exc}"

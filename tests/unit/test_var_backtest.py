@@ -161,6 +161,39 @@ def test_gap_steps_are_forecast_but_excluded_from_oof_scoring() -> None:
         assert max(point["index"] for point in fold["predictions"]) == fold["test_end"]
 
 
+def test_oof_predictions_bind_to_adapter_forecast_with_gap() -> None:
+    """Прямой binding при gap>0 (аудит Task 132, проба M3):
+
+    OOF-прогноз шага h обязан совпадать бит-в-бит с forecast[gap+h]
+    адаптера, вызванным на ТОЧНОМ train-префиксе fold'а.  Раньше привязки
+    исполнялись только при gap=0, и мутация «движок не отбрасывает
+    gap-шаги» выживала во всём наборе.  Исполнение горизонта как
+    gap+n_test с отбрасыванием gap-строк фиксирует семантику напрямую.
+    """
+    from apps.api.model_impls.var import _var_fit_predict
+
+    result, matrix, system, plan = _run(gap=2, params={"maxlags": 3, "ic": None})
+    for fold in result["folds"]:
+        n_train = fold["n_train"]
+        prefix = system.matrix()[:n_train]
+        payload = _var_fit_predict(
+            [float(v) for v in prefix[:, 0]],
+            fold["gap"] + fold["n_test"],
+            related_series={
+                name: [float(v) for v in prefix[:, position]]
+                for position, name in enumerate(NAMES[1:], start=1)
+            },
+            params={"maxlags": 3, "ic": None},
+        )
+        scored = np.asarray(payload["forecast"], dtype=float)[fold["gap"]:, :]
+        assert scored.shape == (fold["n_test"], len(NAMES))
+        for point in fold["predictions"]:
+            position = NAMES.index(point["series"])
+            assert point["predicted"] == pytest.approx(
+                scored[point["horizon_step"] - 1, position], abs=1e-12,
+            )
+
+
 # ---------------------------------------------------------------------------
 # Метрики: per-series + scaled loss (all-or-none) + агрегаты
 # ---------------------------------------------------------------------------
