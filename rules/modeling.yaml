@@ -256,6 +256,22 @@ families:
         supports_prediction_intervals: true
         libraries: ["arch"]
         training_time: "seconds"
+        # ── Task 135: bounded param_space (первый исполнитель контракта
+        # Task 134) ──
+        # Порядки (p, q) и спецификация mean/dist оцениваются fold-local
+        # MLE (arch, официальный контур) на train-срезе ЯВНЫХ доходностей;
+        # rescale=False -- БЕЗ скрытого масштабирования входа; несошедшийся
+        # MLE и sigma2 <= 0 -- честный отказ fold'а.  mean: Constant (константа
+        # среднего уравнения) / Zero (без константы -- типично для
+        # лог-доходностей); dist: normal / t (хвостовой параметр nu).
+        # Интервалы -- симуляционные квантили путей дисперсии.  Grid
+        # 2 x 2 x 2 x 2 = 16 trials (<= MAX_TRIALS=64); tuning -- по
+        # primary-метрике QLIKE volatility-cohort (Task 134).
+        param_space:
+          p: [1, 2]
+          q: [1, 2]
+          mean: ["Constant", "Zero"]
+          dist: ["normal", "t"]
 
       - id: "egarch"
         name: "EGARCH(p,q)"

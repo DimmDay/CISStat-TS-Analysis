@@ -17,6 +17,7 @@ from apps.api.backtesting import (
     Predictor,
     run_backtest_plan,
     run_vector_backtest_plan,
+    run_volatility_backtest_plan,
 )
 from apps.api.schemas import (
     BacktestMetrics,
@@ -28,7 +29,9 @@ from apps.api.schemas import (
 
 
 MAX_TRIALS = 64
-VALID_SESSION_TUNING_METRICS = {"mae", "rmse", "mape", "mase"}
+# Task 135: qlike -- primary-метрика volatility-моделей (контракт Task
+# 134); для level-моделей qlike=None -> честный отказ trial'а.
+VALID_SESSION_TUNING_METRICS = {"mae", "rmse", "mape", "mase", "qlike"}
 
 
 def parameter_signature(model_id: str, params: Mapping[str, Any]) -> str:
@@ -356,5 +359,85 @@ def execute_vector_tuning_plan_with_artifacts(
         plan=plan, metric=metric,
         duration_ms=(time.monotonic() - started) * 1000,
         fold_preprocessor=fold_preprocessor,
+        preprocessing_warnings=preprocessing_warnings,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Task 135: volatility tuning -- grid search volatility-моделей (GARCH)
+# ---------------------------------------------------------------------------
+
+def execute_volatility_tuning_trial(
+    *, model_id: str, model_name: str, family_id: str, params: Mapping[str, Any],
+    target: Any, plan: BacktestPlan, seasonal_period: int,
+    metric: str,
+    preprocessing_warnings: Optional[list[str]] = None,
+) -> tuple[TuneTrialResult, dict[str, Any]]:
+    """Исполнить ровно один bounded trial на volatility-движке.
+
+    Полная семантика run_volatility_backtest_plan (fold-local VolatilityTarget,
+    realized proxy, QLIKE-метрики, EWMA-baseline cohort'а) -- никаких
+    упрощённых train/test-срезов в tuning.  Метрика ранжирования --
+    VALID_SESSION_TUNING_METRICS (qlike -- primary volatility-cohort,
+    Task 134/135); None -- честный отказ trial'а (например, mape на
+    условной дисперсии не определена).
+    """
+    if metric not in VALID_SESSION_TUNING_METRICS:
+        raise BacktestExecutionError(f"Метрика tuning '{metric}' не поддерживается")
+    result = run_volatility_backtest_plan(
+        model_id=model_id, model_name=model_name, family_id=family_id,
+        target=target, plan=plan, seasonal_period=seasonal_period,
+        params=dict(params), preprocessing_warnings=preprocessing_warnings,
+    )
+    metrics = BacktestMetrics(**result["metrics"])
+    if getattr(metrics, metric) is None:
+        raise BacktestExecutionError(f"Метрика {metric} не определена")
+    return TuneTrialResult(
+        params=dict(params), metrics=metrics, n_folds=len(plan.folds),
+    ), result
+
+
+def execute_volatility_tuning_plan_with_artifacts(
+    *, model_id: str, model_name: str, family_id: str,
+    param_space: Mapping[str, list[Any]], target: Any,
+    plan: BacktestPlan, seasonal_period: int, max_trials: Optional[int],
+    metric: str, random_state: int,
+    preprocessing_warnings: Optional[list[str]] = None,
+) -> TuningPlanExecution:
+    """Grid search volatility-модели: каждый trial -- volatility backtest.
+
+    Сетка/усечение/финализация -- те же prepare_tuning_grid /
+    finalize_tuning_plan_with_artifacts, что у одномерного и векторного
+    tuning (единый контракт платформы: MAX_TRIALS, детерминированный
+    sample по seed, failures как честные пропуски, best = argmin метрики).
+    Лучший trial возвращается с ПОЛНЫМ volatility-артефактом
+    (QLIKE-метрики, EWMA-baseline, volatility_diagnostics).
+    """
+    started = time.monotonic()
+    prepared_grid = prepare_tuning_grid(
+        param_space, max_trials=max_trials, metric=metric, random_state=random_state,
+    )
+    trials: list[TuneTrialResult] = []
+    trial_backtests: list[dict[str, Any]] = []
+    failures: list[str] = []
+    for params in prepared_grid.selected:
+        try:
+            trial, result = execute_volatility_tuning_trial(
+                model_id=model_id, model_name=model_name, family_id=family_id,
+                params=params, target=target, plan=plan,
+                seasonal_period=seasonal_period, metric=metric,
+                preprocessing_warnings=preprocessing_warnings,
+            )
+            trials.append(trial)
+            trial_backtests.append(result)
+        except (BacktestExecutionError, ValueError, RuntimeError, ArithmeticError) as exc:
+            failures.append(f"params={params}: {exc}")
+    return finalize_tuning_plan_with_artifacts(
+        model_id=model_id, model_name=model_name, family_id=family_id,
+        trials=trials, trial_backtests=trial_backtests, failures=failures,
+        grid_size=prepared_grid.grid_size,
+        selected_count=len(prepared_grid.selected), truncated=prepared_grid.truncated,
+        plan=plan, metric=metric,
+        duration_ms=(time.monotonic() - started) * 1000,
         preprocessing_warnings=preprocessing_warnings,
     )

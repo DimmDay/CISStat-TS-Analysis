@@ -1315,3 +1315,213 @@ path-слоями (явно НЕ `<img>`/`<canvas>`).
 - Не применено к embedded — по той же логике, что и остальной контент
   главной страницы standalone (маркетинговый/исследовательский контекст,
   не нужен внутри портала).
+
+---
+
+## Task 135 — GARCH (первый исполнитель volatility-контракта Task 134)
+
+Дата: 2026-09-10. Синхронизация до **b3b6534** (принятые Task 134
+`56613cc` + пересертификация Task 133 `bd887b2` + фон главной страницы;
+базлайн **1988 passed** / 0 failed, snapshots 3/3). Постановка
+docs/modeling_task_list.md::Task 135 + задел «Границы Task 134»
+(worklog3.md::Task 134): volatility-движок подключается с первым
+исполнителем по прецеденту Task 131→132. CERTIFIED_IDS/каталог-гейты
+сдвинуты честно: **18/24 production-моделей** (17 + GARCH).
+
+### Дизайн-рекогносцировка (эмпирическая, до тестов)
+
+Probe-скрипт (scripts/task135_probe.py) зафиксировал факты, на которых
+построен дизайн: (1) arch 8.0: MLE (SLSQP) детерминирован -- fit+аналити-
+ческий forecast бит-идентичны между запусками; (2) оракул-паритет:
+fc[0] = omega + alpha*eps^2_T + beta*sigma2_T (фильтрованное состояние
+conditional_volatility), fc[h] = omega + (alpha+beta)*fc[h-1] (ожидание
+ненаблюдаемого eps^2 замещается условной дисперсией) -- rtol 1e-8;
+(3) параметр forecast random_state отвечает только за method="bootstrap";
+для method="simulation" RNG -- distribution.simulate (global np.random) =>
+детерминизм интервалов -- через ЯВНЫЙ rng-callable с сидированным
+numpy-генератором (проверено: одинаковый seed => бит-идентичные пути,
+разный => разные при том же точечном прогнозе); (4) rescale=None
+(дефолт arch!) выдал DataScaleWarning на returns ~1e-3 => адаптер
+фиксирует rescale=False ЯВНО (зеркало «без скрытого выбора» Task 134);
+(5) вырожденный вход (все returns нулевые): arch молча возвращает
+convergence_flag=4, прогноз sigma2=0 и NaN в std_resid -- три
+независимых fail-closed слоя адаптера ловят каждый; (6) i.i.d. УРОВЕНЬ
+(не цены!) при дифференцировании даёт MA(1), квадраты которого
+автокоррелированы => ARCH-LM честно детектирует «кластеризацию» --
+для профиля данных эталон отсутствия кластеризации -- случайное
+блуждание, а не белый шум уровня (найдено при отладке теста профиля).
+
+### Реализация (адаптер + движок + 8 поверхностей интеграции)
+
+1. **`apps/api/model_impls/garch.py` (NEW, ~330 строк)** -- нативный
+   GARCH(p,q) пакета arch, первый исполнитель контракта Task 134
+   (прецедент var.py Task 132): fold-local (адаптер получает ТОЛЬКО
+   train-срез returns; полная история недостижима), target -- условная
+   дисперсия (аналитический forecast arch); rescale=False (без скрытого
+   масштабирования); fail-closed: несошедшийся MLE (convergence_flag != 0),
+   sigma2 <= 0 (без clamp-подмен), NaN/Inf вход и не-конечные
+   стандартизованные остатки -- честный отказ fold'а.  Интервалы --
+   симуляционные квантили путей дисперсии (alpha 0.01/0.05/0.10, 1000
+   путей, сидированный rng => детерминизм).  Bounded params: p,q (1..3),
+   mean (Constant/Zero), dist (normal/t).  Метаданные для движка:
+   params/persistence/is_covariance_stationary/convergence_flag/aic/bic/
+   std_residuals/conditional_volatility.  run_garch_backtest -- честный
+   отказ однорядного synthetic-эндпоинта (как VAR/VECM/ML).
+2. **Volatility-движок (`backtesting.py::run_volatility_backtest_plan`,
+   ~250 строк)** -- зеркало run_vector_backtest_plan на контракте
+   Task 134: гейт «только objective=volatility» (плюс input_kind=
+   univariate реестра); fold-local train-префикс returns через
+   VolatilityTarget; OOF-точки -- VOLATILITY_OOF_POINT_KEYS с
+   actual = realized proxy (квадрат return тест-окна), predicted =
+   прогноз дисперсии, label = timestamps[i+1] (return i реализуется
+   между t[i] и t[i+1]); метрики -- compute_volatility_metrics
+   (QLIKE primary, fail-closed) + агрегация aggregate_volatility_
+   metrics (взвешивание по n_test, rmse = корень из взвешенного MSE);
+   baseline -- EWMA RiskMetrics (volatility_naive_baseline) на ТЕХ ЖЕ
+   folds, decay читается из cohort-контракта (fail-closed: подмена
+   baseline между моделями невозможна); диагностика fold'а --
+   standardized_residual_diagnostics (LB/LB^2/ARCH-LM по остаткам
+   адаптера, nlags=8) + a priori volatility_clustering_evidence
+   train-среза + GARCH-блок MLE.
+3. **Реестр v2 (`model_execution.py`)**: `_garch_executor` (плоский
+   forecast = дисперсия; lower/upper = симуляционные квантили; полный
+   payload в metadata) + запись model_id="garch", family_id="volatility",
+   adapter_id="arch-garch", engine="arch", required_packages=("arch",),
+   actions=_TUNABLE, objective="volatility", input_kind="univariate",
+   dependency_group="volatility", supports_prediction_intervals=True,
+   deterministic=True.  GARCHX не декларирован (Task 134:
+   feature_contract policy="none"; прецедент VARX -- отдельная
+   постановка).
+4. **Session-контур (`routers/modeling_session.py`)**: returns_method
+   (log/simple) -- ЯВНЫЙ обязательный параметр ModelingBacktestRequest и
+   ModelingTuneRequest для volatility-моделей (скрытый выбор запрещён
+   контрактом; fail-closed 422 без него); `_volatility_context` --
+   prices = сырой source-ряд (преобразования уровня НЕ применяются --
+   warning честно декларирует), валидационная стратегия ПЕРЕСОБИРАЕТСЯ
+   на пространстве returns (n_prices - 1; та же geometry horizon/gap/
+   splits/train_window), cohort = volatility_cohort_contract; dispatch
+   backtest -> run_volatility_backtest_plan, tune ->
+   execute_volatility_tuning_plan_with_artifacts; tune-metric Literal +
+   VALID_SESSION_TUNING_METRICS += qlike (для level-моделей qlike=None =>
+   честный отказ trial'а, привязано тестом mape-отказа на дисперсии);
+   selection-evaluation Literal += qlike.
+5. **Tuning (`modeling_tuning.py`)**: execute_volatility_tuning_trial/
+   _plan_with_artifacts -- зеркало векторного (та же prepare_tuning_grid/
+   finalize; каждый trial -- полный volatility backtest; best = argmin
+   метрики).
+6. **Selection v2 (`modeling_selection.py`)**: primary_metric расширен
+   {"mae","rmse"} -> {"mae","rmse","qlike"} (задел Task 134 закрыт);
+   смешение objective невозможно -- aligned_oof отвергает cohort'ы с
+   разными objective раньше selection (сертифицировано Task 131).
+7. **Матрица применимости (`eda_model_matrix.py`)**: честный
+   task-критерий для production volatility-моделей под task="forecast":
+   attention (не блок) с honest note «прогноз условной дисперсии
+   доходностей target-ряда; cohort objective='volatility' не смешивается
+   с level-моделями в comparison» -- точное зеркало overrides Task 132
+   для multivariate; catalog-only EGARCH (Task 136) остаётся blocked.
+8. **Честный профиль данных (`modeling_workflow.py`)**:
+   has_volatility_clustering больше не захардкожен False --
+   volatility_clustering_profile(values) через контракт (log-returns,
+   выбор method ОБЪЯВЛЕН в коде/доке; degenerate-ряды -- honest
+   available=False).  P04/D04-гейты читают настоящий флаг.
+9. **Декларации**: rules/modeling.yaml -- garch param_space
+   p/q [1,2] x mean [Constant,Zero] x dist [normal,t] = 16 trials
+   (<= 64) с комментарием о fold-local MLE/rescale/QLIKE; apps/api/
+   Dockerfile -- release-проба _garch_fit_predict на симулированном
+   GARCH-процессе (exec-цикл внутри python -c; verified via sh).
+10. **Схемы (`schemas.py`)**: BacktestMetrics.qlike (Optional, primary
+    volatility-cohort); BacktestFoldResult.volatility_baseline/
+    volatility_diagnostics; BacktestResponse.volatility_baseline --
+    артефакты не теряются при Pydantic-сериализации (привязано тестом).
+
+### TDD
+
+RED: tests/unit/test_garch_adapter.py (24), tests/unit/
+test_volatility_engine.py (11: гейты/leakage-spy реестра/OOF-контракт/
+EWMA-оракул/агрегация/диагностика/честный отказ короткого fold'а),
+tests/unit/test_garch_integration_paths.py (21: реестр/dispatch/readiness
+18/схемы/матрица/selection/профиль/yaml/Dockerfile), tests/api/
+test_garch_session.py (5: returns_method-гейт/полный backtest/tuning
+qlike/честный отказ mape/изоляция objective в aligned_oof) -- все RED
+по правильным причинам (ModuleNotFoundError/NotRegistered/AttributeError).
+GREEN: 62/62.  Оракул-тесты: аналитический forecast == ручная GARCH(1,1)
+рекурсия (seed = фильтрованное состояние arch, rtol 1e-8); детерминизм
+бит-в-бит (точечный прогноз + интервалы при равном seed); EWMA-baseline ==
+независимая рекурсия контракта; паритет params с прямым rescale=False
+фитом + отсутствие DataScaleWarning.
+
+### Мутационная самопроверка (5 мутаций, применялись и откатывались)
+
+(1) rescale=False -> None: пережила первый тест (arch репортит params на
+исходной шкале!) -- тест УСИЛЕН привязкой отсутствия DataScaleWarning,
+мутация убита; (2) гейт «только volatility-планы» удалён из движка ->
+test_rejects_non_volatility_plan падает; (3) GARCH_MIN_TRAIN 20 -> 10:
+пережила тест (константа самосогласована) -- добавлен явный тест
+равенства MIN_RETURNS_OBSERVATIONS == 20, мутация убита; (4) decay
+движка захардкожен 0.94 вместо cohort-контракта -> EWMA-оракул (0.90)
+падает; (5) OOF-label timestamps[index] вместо [index+1] ->
+test_oof_points_contract падает.  Урок: константно-параметризованные
+тесты связывают только относительную согласованность -- абсолютные
+инварианты контракта требуют явных привязок.
+
+### Верификация
+
+- Полный pytest: **2049 passed / 0 failed**, snapshots 3/3; арифметика:
+  1988 (b3b6534) + 62 новых - 0 = 2049 (сходится ровно).
+- Обновлены честные count-гейты сертификации 17 -> 18 (7 тестов:
+  _BACKTEST_IMPLEMENTATIONS/CERTIFIED_IDS/certified-scope/dispatch-chain/
+  candidates-stats/tbats-explain/engine-cohort; в engine-cohort привязан
+  отказ level-движка для garch).
+- compileall OK; `from apps.api.main import app` OK; pip check PASS.
+- E2E-смоук (scripts/task135_e2e_smoke.py): каталог 18 connected;
+  гейт level-движка на месте; волатильный пайплайн:
+  160 цен -> 159 returns (method=log) -> GARCH(1,1) fold-local MLE ->
+  QLIKE GARCH -9.7356 ЛУЧШЕ EWMA-baseline -9.6149 (модель даёт реальную
+  прогнозную ценность на симулированном процессе) -> изоляция cohort ->
+  диагностика (persistence=0.900, cov_stationary=True).
+- Dockerfile-проба исполнена локально через sh: 'GARCH executable OK'.
+
+### Границы Task 135 (задел Task 136)
+
+- EGARCH (leverage/asymmetry) -- тот же volatility-движок переиспользуется
+  бит-в-бит: новый адаптер + запись реестра + yaml (прецедент пары
+  var/vecm в одном движке).
+- Диагностика session-эндпоинта (_diagnose) считает OOF-остатки в шкале
+  дисперсии generic-путём; fold-local standardized_residual_diagnostics
+  (контрактная, честная) уже в volatility_diagnostics каждого fold'а.
+- Comparison внутри volatility-cohort: weighted_score (mae/rmse-базе)
+  считается generic-машинерией; каноническое ранжирование cohort'а --
+  qlike (selection primary_metric).  QLIKE-центричный comparison --
+  отдельная постановка, если потребуется.
+- GARCHX (exogenous-канал) -- отдельная постановка (прецедент VARX
+  Task 133), yaml supports_exogenous: true декларирован каталогом,
+  feature_contract движка -- policy="none".
+
+### Изменённые/новые файлы
+
+Новые:
+- apps/api/model_impls/garch.py (~330 строк)
+- tests/unit/test_garch_adapter.py (25 кейсов)
+- tests/unit/test_volatility_engine.py (11 кейсов)
+- tests/unit/test_garch_integration_paths.py (21 кейс)
+- tests/api/test_garch_session.py (5 кейсов)
+- scripts/task135_probe.py, scripts/task135_e2e_smoke.py
+
+Изменённые:
+- apps/api/backtesting.py (+~250: run_volatility_backtest_plan)
+- apps/api/model_execution.py (_garch_executor + запись реестра)
+- apps/api/routers/models.py (dispatch garch)
+- apps/api/model_impls/__init__.py (экспорт run_garch_backtest)
+- apps/api/routers/modeling_session.py (returns_method, _volatility_context, dispatch, Literals)
+- apps/api/modeling_tuning.py (qlike + execute_volatility_tuning_*)
+- apps/api/modeling_selection.py (primary_metric qlike)
+- apps/api/eda_model_matrix.py (task-критерий volatility-семейства)
+- apps/api/modeling_workflow.py (volatility_clustering_profile)
+- apps/api/schemas.py (qlike, volatility_baseline/diagnostics)
+- rules/modeling.yaml (param_space garch)
+- apps/api/Dockerfile (release-проба GARCH)
+- tests/*: 6 count-гейтов 17 -> 18 (test_models_backtest_real,
+  test_backtesting_engine, test_model_execution_contract,
+  test_model_readiness_candidates, test_modeling_mvp_certification,
+  test_var_integration_paths)
+  

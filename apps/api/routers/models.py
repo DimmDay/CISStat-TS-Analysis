@@ -47,6 +47,7 @@ from apps.api.model_impls import (
     run_catboost_backtest,
     run_var_backtest,
     run_vecm_backtest,
+    run_garch_backtest,
 )
 from apps.api.model_impls.tuning import tune_ets_predict, tune_arima_predict
 from apps.api.model_execution import (
@@ -295,6 +296,10 @@ _BACKTEST_IMPLEMENTATIONS = {
     # Task 133: VECM -- второй multivariate-исполнитель; тот же честный
     # отказ на одиночном synthetic-ряде.
     "vecm": run_vecm_backtest,
+    # Task 135: GARCH -- первый volatility-исполнитель; target -- условная
+    # дисперсия ЯВНОГО price->returns (контракт Task 134); одиночный
+    # synthetic-ряд честно отклоняется адаптером.
+    "garch": run_garch_backtest,
 }
 
 if frozenset(_BACKTEST_IMPLEMENTATIONS) != PRODUCTION_BACKTEST_MODEL_IDS:

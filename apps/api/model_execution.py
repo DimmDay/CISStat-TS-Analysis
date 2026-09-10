@@ -684,6 +684,51 @@ def _vecm_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     )
 
 
+def _garch_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
+    """Task 135: нативный GARCH пакета arch -- первый исполнитель
+    volatility-контракта Task 134.
+
+    Плоский контракт ``forecast`` = прогноз УСЛОВНОЙ ДИСПЕРСИИ (target
+    volatility-cohort, НЕ уровень ряда); симуляционные квантили путей
+    дисперсии -- в lower/upper (детерминизм -- сидированный rng).
+    Полный payload (параметры MLE, persistence, стандартизованные
+    остатки, сходимость) -- в metadata и читается volatility-движком
+    (run_volatility_backtest_plan) для диагностики контракта Task 134.
+    Exogenous-канала нет (GARCHX не декларирован, см. Task 134:
+    feature_contract policy="none"); реестр fail-closed отвергает
+    train/future_features для univariate-входа.
+    """
+    from apps.api.model_impls.garch import _garch_fit_predict
+
+    payload = _garch_fit_predict(
+        list(request.target),
+        request.horizon,
+        params=dict(request.params),
+        random_state=request.random_state,
+    )
+    return ModelExecutionResult(
+        forecast=[float(value) for value in payload["variance_forecast"]],
+        lower_interval=[float(value) for value in payload["lower"]],
+        upper_interval=[float(value) for value in payload["upper"]],
+        metadata={
+            "params": payload["params"],
+            "persistence": payload["persistence"],
+            "is_covariance_stationary": payload["is_covariance_stationary"],
+            "convergence_flag": payload["convergence_flag"],
+            "nobs": payload["nobs"],
+            "loglikelihood": payload["loglikelihood"],
+            "aic": payload["aic"],
+            "bic": payload["bic"],
+            "std_residuals": payload["std_residuals"].tolist(),
+            "conditional_volatility": payload["conditional_volatility"].tolist(),
+            "mean_model": payload["mean_model"],
+            "dist": payload["dist"],
+            "intervals": payload["intervals"],
+            "deterministic": payload["deterministic"],
+        },
+    )
+
+
 def _xgboost_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     from apps.api.model_impls.xgboost import _xgb_fit_predict
 
@@ -927,6 +972,29 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         requires_related_series=True,
         supports_prediction_intervals=True,
         deterministic=True,
+        resource_capabilities=_CLASSICAL_RESOURCES,
+    ),
+    ModelExecutionDefinition(
+        model_id="garch", family_id="volatility",
+        adapter_id="arch-garch", executor=_garch_executor,
+        actions=_TUNABLE, engine="arch",
+        required_packages=("arch",),
+        # Task 135: первый исполнитель volatility-контракта Task 134.
+        # objective="volatility" + input_kind="univariate" -- гейты реестра
+        # v2; исполнение ТОЛЬКО через volatility-движок
+        # run_volatility_backtest_plan (VolatilityTarget: явное
+        # price->returns, realized proxy, QLIKE-метрики; одномерный движок
+        # уровня отказывает volatility-планам -- Task 134).  Порядки (p, q)
+        # и спецификация mean/dist -- fold-local MLE на train-срезе returns;
+        # rescale=False -- БЕЗ скрытого масштабирования входа.  Интервалы --
+        # симуляционные квантили путей дисперсии (сидированный rng).
+        # GARCHX (exogenous-канал) не декларирован: feature_contract
+        # policy="none" (Task 134; прецедент VARX -- отдельная постановка).
+        objective="volatility",
+        input_kind="univariate",
+        supports_prediction_intervals=True,
+        deterministic=True,
+        dependency_group="volatility",
         resource_capabilities=_CLASSICAL_RESOURCES,
     ),
 ])

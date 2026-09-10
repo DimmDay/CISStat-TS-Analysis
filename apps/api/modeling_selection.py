@@ -43,8 +43,14 @@ class SelectionPolicy:
     baseline_tolerance_ratio: float = 1.05
 
     def validate(self) -> None:
-        if self.primary_metric not in {"mae", "rmse"}:
-            raise SelectionContractError("Selection v2 поддерживает primary_metric mae/rmse")
+        # Task 135: qlike -- primary-метрика volatility-cohort (контракт Task
+        # 134); ранжирование внутри cohort'а. Смешение objective в
+        # selection невозможно: comparison (aligned_oof) отвергает
+        # cohort'ы с разными objective раньше selection.
+        if self.primary_metric not in {"mae", "rmse", "qlike"}:
+            raise SelectionContractError(
+                "Selection v2 поддерживает primary_metric mae/rmse/qlike"
+            )
         if self.min_oof_points < 2:
             raise SelectionContractError("min_oof_points должен быть не меньше 2")
         for name, value in (

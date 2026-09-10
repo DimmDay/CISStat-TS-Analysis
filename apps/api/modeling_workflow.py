@@ -99,6 +99,47 @@ def _iqr_outlier_ratio(values: pd.Series) -> float:
     return count / len(values)
 
 
+def volatility_clustering_profile(values: pd.Series) -> dict[str, Any]:
+    """Task 135: честная a priori evidence кластеризации волатильности
+    для профиля данных (modeling.yaml::P04/D04-гейты).
+
+    Требование Task 134 («честная проводка volatility_clustering_evidence
+    в профиль при подключении GARCH»): флаг has_volatility_clustering
+    больше НЕ захардкожен False, а вычисляется контрактом Task 134 на
+    лог-доходностях уровня ряда (выбор method="log" ОБЪЯВЛЕН здесь явно:
+    лог-шкала -- стандарт волатильностного анализа; cohort-контракт
+    конкретной модели фиксирует собственный returns_method).
+
+    Degenerate-ряды (неположительные цены, нулевая дисперсия returns,
+    короткая история) -- honest {"available": False, "reject_null": False}:
+    отсутствие свидетельства, а не фиктивный отказ.
+    """
+    from apps.api.volatility_contract import (
+        VolatilityContractError,
+        price_to_returns,
+        volatility_clustering_evidence,
+    )
+
+    empty = {"available": False, "reject_null": False, "returns_method": "log"}
+    try:
+        vector = pd.to_numeric(values, errors="coerce").dropna().to_numpy(dtype=float)
+        if vector.size < 12:
+            return empty
+        returns = price_to_returns(vector, method="log")
+        evidence = volatility_clustering_evidence(returns, nlags=8)
+    except (VolatilityContractError, ValueError):
+        return empty
+    return {
+        "available": True,
+        "reject_null": bool(evidence["reject_null"]),
+        "returns_method": "log",
+        "statistic": evidence["statistic"],
+        "p_value": evidence["p_value"],
+        "nlags": evidence["nlags"],
+        "n_returns": int(vector.size - 1),
+    }
+
+
 def _validation_statuses(session: AnalysisSession) -> dict[str, tuple[str, str]]:
     try:
         from validation.engine import validate_dataframe
@@ -276,7 +317,9 @@ def build_modeling_context(session: AnalysisSession, *, horizon: int = 12,
             item.get("kind") == "stationarity" for item in session.preprocessing_transformations.values()
         ),
         "has_negative_values": bool((values < 0).any()),
-        "has_volatility_clustering": False,
+        # Task 135: честная evidence кластеризации волатильности (контракт
+        # Task 134) вместо захардкоженного False; P04/D04-гейты читают флаг.
+        "has_volatility_clustering": volatility_clustering_profile(values)["reject_null"],
         "domain": "other", "missing_ratio": 0.0,
         "outlier_ratio": round(_iqr_outlier_ratio(values), 8),
         "has_holidays": False, "gpu_available": False,

@@ -41,6 +41,9 @@ CERTIFIED_IDS = frozenset({
     # Task 133: VECM -- второй multivariate-исполнитель (fold-local ранг
     # Йохансена, нативный VECMResults.predict; supports_future_features=False).
     "vecm",
+    # Task 135: GARCH -- первый volatility-исполнитель контракта Task 134
+    # (native arch, fold-local MLE, rescale=False, QLIKE volatility-cohort).
+    "garch",
 })
 
 # Task 126/127/128/129/130: supervised-адаптеры с regressor-каналом future_known/static.
@@ -55,6 +58,9 @@ ML_IDS = frozenset({"random_forest", "xgboost", "lightgbm", "catboost"})
 MULTIVARIATE_IDS = frozenset({"var", "vecm"})
 # Task 133: multivariate-носители future-known экзогенных регрессоров.
 MULTIVARIATE_EXOG_IDS = frozenset({"var"})
+# Task 135: volatility-адаптеры (objective="volatility", input_kind=
+# "univariate" -- volatility-движок поверх VolatilityTarget Task 134).
+VOLATILITY_IDS = frozenset({"garch"})
 
 
 def test_registry_is_the_single_source_of_truth_for_production_actions():
@@ -84,7 +90,12 @@ def test_registry_is_the_single_source_of_truth_for_production_actions():
             model_id in SUPERVISED_IDS or model_id in MULTIVARIATE_EXOG_IDS
         )
         assert descriptor["fit_policy"] == "per_train_fold"
-        expected_dependency_group = "ml" if model_id in ML_IDS else "classical"
+        if model_id in ML_IDS:
+            expected_dependency_group = "ml"
+        elif model_id in VOLATILITY_IDS:
+            expected_dependency_group = "volatility"
+        else:
+            expected_dependency_group = "classical"
         assert descriptor["dependency_group"] == expected_dependency_group
         assert len(descriptor["signature"]) == 64
         assert "executor" not in descriptor

@@ -21,6 +21,7 @@ from apps.api.backtesting import (
     build_backtest_plan,
     run_backtest_plan,
     run_vector_backtest_plan,
+    run_volatility_backtest_plan,
 )
 from apps.api.multivariate_contract import (
     build_endogenous_system,
@@ -74,11 +75,13 @@ from apps.api.modeling_tuning import (
     execute_tuning_trial,
     execute_tuning_plan_with_artifacts,
     execute_vector_tuning_plan_with_artifacts,
+    execute_volatility_tuning_plan_with_artifacts,
     finalize_tuning_plan_with_artifacts,
     oof_signature,
     parameter_signature,
     prepare_tuning_grid,
 )
+from apps.api.eda_validation_strategy import build_eda_validation_strategy
 from apps.api.modeling_workflow import (
     build_modeling_context,
     honest_system_profile,
@@ -132,6 +135,10 @@ class ModelingCandidatesRequest(BaseModel):
 class ModelingBacktestRequest(BaseModel):
     model_id: str
     train_ratio: Optional[float] = Field(None, ge=0.5, le=0.95)
+    # Task 135: ЯВНОЕ преобразование цены в returns для volatility-моделей
+    # (контракт Task 134: скрытый выбор запрещен).  Для level/multivariate
+    # моделей параметр игнорируется.
+    returns_method: Optional[Literal["log", "simple"]] = None
 
 
 class ModelingBacktestDecisionRequest(BaseModel):
@@ -145,8 +152,12 @@ class ModelingTuneRequest(BaseModel):
     model_id: str
     cv: Optional[CVConfig] = None
     max_trials: Optional[int] = Field(None, ge=1)
-    metric: Literal["mae", "rmse", "mape", "mase", "weighted_score"] = "rmse"
+    # Task 135: qlike -- primary-метрика volatility-cohort (GARCH).
+    metric: Literal["mae", "rmse", "mape", "mase", "qlike", "weighted_score"] = "rmse"
     random_state: int = 42
+    # Task 135: ЯВНОЕ преобразование цены в returns для volatility-моделей
+    # (контракт Task 134).  Для level/multivariate моделей игнорируется.
+    returns_method: Optional[Literal["log", "simple"]] = None
 
 
 class ModelingTuningSkipRequest(BaseModel):
@@ -226,7 +237,7 @@ class ModelingSelectRequest(BaseModel):
 
 
 class ModelingSelectionEvaluationRequest(BaseModel):
-    primary_metric: Literal["mae", "rmse"] = "rmse"
+    primary_metric: Literal["mae", "rmse", "qlike"] = "rmse"
     max_member_relative_gap: float = Field(0.10, ge=0, le=10)
     max_error_correlation: float = Field(0.80, ge=-1, le=1)
     min_oof_points: int = Field(8, ge=2, le=100000)
@@ -660,6 +671,75 @@ def _multivariate_vector_context(
         cohort_contract_override=cohort_contract,
     )
     return endogenous_system, plan, varx_columns, vector_warnings
+
+
+def _volatility_context(
+    session, prepared, context: dict[str, Any], *, period: int,
+    returns_method: str,
+) -> tuple[Any, Any]:
+    """Task 135: контекст volatility-исполнения (контракт Task 134).
+
+    Честная проводка без скрытого выбора:
+    - prices = prepared.series (сырой source-ряд; преобразования уровня
+      НЕ применяются: target волатильности -- условная дисперсия returns
+      ИСХОДНОГО ряда, метод фиксирует returns_method запроса);
+    - returns строятся контрактной price_to_returns (method -- обязательный
+      keyword), VolatilityTarget валидирует сетку и анти-тампер;
+    - валидационная стратегия ПЕРЕСОБИРАЕТСЯ на пространстве returns
+      (n_prices - 1 наблюдений, тот же horizon/gap/splits/train_window):
+      folds честно индексируют returns-ряд;
+    - cohort-контракт -- volatility_cohort_contract (objective="volatility",
+      primary=qlike, realized proxy, EWMA-baseline с decay).
+    Возвращает (volatility_target, backtest_plan).
+    """
+    from apps.api.volatility_contract import (
+        build_volatility_target,
+        price_to_returns,
+        volatility_cohort_contract,
+    )
+
+    level_validation = session.modeling_artifacts["validation_strategy"]
+    prices = [float(value) for value in prepared.series]
+    labels = [str(value) for value in prepared.labels]
+    returns = price_to_returns(prices, method=returns_method)
+    returns_frame = pd.DataFrame({
+        session.date_column or "__date__": labels[1:],
+        "__returns__": returns,
+    })
+    returns_validation = build_eda_validation_strategy(
+        returns_frame, "__returns__",
+        strategy=str(level_validation["strategy"]),
+        horizon=int(level_validation["horizon"]),
+        n_splits=int(level_validation.get("effective_splits")
+                     or level_validation.get("requested_splits") or 1),
+        gap=int(level_validation["gap"]),
+        train_window=int(level_validation.get("train_window") or 60),
+    )
+    if not returns_validation.get("applicable"):
+        raise BacktestExecutionError(
+            "Валидационная стратегия неприменима к доходностям: "
+            f"{returns_validation.get('reason')}"
+        )
+    target = build_volatility_target(
+        prices, method=returns_method, timestamps=labels,
+    )
+    cohort = volatility_cohort_contract(
+        target_column=session.target_column,
+        fingerprint=context["fingerprint"],
+        returns_method=returns_method,
+        n_returns=target.n_returns,
+        seasonal_period=int(period),
+    )
+    plan = build_backtest_plan(
+        returns_validation, n_observations=target.n_returns,
+        fingerprint=context["fingerprint"], target_column=session.target_column,
+        seasonal_period=int(period),
+        preprocessing_signature="none",
+        objective="volatility",
+        series_fingerprints={session.target_column: context["fingerprint"]},
+        cohort_contract_override=cohort,
+    )
+    return target, plan
 
 
 def _trace_backtest(
@@ -1225,6 +1305,32 @@ def run_modeling_backtest(
             and definition.objective == "multivariate"
             and definition.runtime_available()
         )
+        # Task 135: volatility-модель исполняется volatility-движком
+        # (контракт Task 134); returns_method запроса ОБЯЗАТЕЛЕН --
+        # скрытый выбор преобразования цены в returns запрещен.
+        volatility_run = (
+            definition is not None
+            and definition.objective == "volatility"
+            and definition.runtime_available()
+        )
+        if volatility_run:
+            if payload.returns_method is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "volatility-модель требует явного returns_method "
+                        "(log/simple): скрытый выбор преобразования цены в "
+                        "returns запрещен контрактом Task 134"
+                    ),
+                )
+            if payload.returns_method not in {"log", "simple"}:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"returns_method={payload.returns_method!r} недопустим: "
+                        "допустимы log/simple"
+                    ),
+                )
         if vector_run:
             # Task 132/133: multivariate-модель исполняется векторным
             # движком; общий helper собирает систему, fingerprints,
@@ -1235,6 +1341,11 @@ def run_modeling_backtest(
                     plan_obj=plan_obj, feature_plan_columns=feature_plan_columns,
                     model_id=payload.model_id,
                 )
+        elif volatility_run:
+            vol_target, plan = _volatility_context(
+                session, prepared, context, period=int(period),
+                returns_method=payload.returns_method,
+            )
         else:
             plan = build_backtest_plan(
                 validation, n_observations=len(prepared.series),
@@ -1251,11 +1362,29 @@ def run_modeling_backtest(
             preprocessing_warnings = [
                 *preprocessing_warnings, *vector_extra_warnings,
             ]
+        if volatility_run and (
+            prepared.fold_preprocessor is not None
+            or prepared.preprocessing_signature != "none"
+        ):
+            preprocessing_warnings = [
+                *preprocessing_warnings,
+                "Преобразования уровня не применены volatility-моделью: target -- "
+                "условная дисперсия returns исходного ряда "
+                f"(method={payload.returns_method}, контракт Task 134).",
+            ]
         if tuned and not tuned_params:
             preprocessing_warnings.append(
                 "Сохранённые tuned-параметры относятся к другому cohort и не применены."
             )
-        if vector_run:
+        if volatility_run:
+            raw_result = run_volatility_backtest_plan(
+                model_id=payload.model_id, model_name=model_info[0],
+                family_id=model_info[1],
+                target=vol_target, plan=plan,
+                seasonal_period=int(period), params=tuned_params,
+                preprocessing_warnings=preprocessing_warnings,
+            )
+        elif vector_run:
             raw_result = run_vector_backtest_plan(
                 model_id=payload.model_id, model_name=model_info[0],
                 family_id=model_info[1],
@@ -1495,6 +1624,32 @@ def tune_modeling_candidate(
             and definition.objective == "multivariate"
             and definition.runtime_available()
         )
+        # Task 135: volatility-модель тюнится volatility-движком; метрика
+        # ранжирования -- qlike (primary cohort'а) или rmse/mae по realized
+        # proxy; returns_method запроса ОБЯЗАТЕЛЕН (Task 134).
+        volatility_run = (
+            definition is not None
+            and definition.objective == "volatility"
+            and definition.runtime_available()
+        )
+        if volatility_run:
+            if payload.returns_method is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "volatility-модель требует явного returns_method "
+                        "(log/simple): скрытый выбор преобразования цены в "
+                        "returns запрещен контрактом Task 134"
+                    ),
+                )
+            if payload.returns_method not in {"log", "simple"}:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        f"returns_method={payload.returns_method!r} недопустим: "
+                        "допустимы log/simple"
+                    ),
+                )
         vector_warnings: list[str] = []
         if vector_run:
             # Task 133: векторный tuning -- каждый trial исполняется
@@ -1517,6 +1672,33 @@ def tune_modeling_candidate(
                 fold_preprocessor=prepared.fold_preprocessor,
                 preprocessing_warnings=[
                     *prepared.warnings, *feature_plan_warnings, *vector_warnings,
+                ],
+            )
+        elif volatility_run:
+            vol_target, plan = _volatility_context(
+                session, prepared, context, period=int(period),
+                returns_method=payload.returns_method,
+            )
+            execution = execute_volatility_tuning_plan_with_artifacts(
+                model_id=payload.model_id, model_name=model_info[0],
+                family_id=model_info[1],
+                param_space=model.param_space, target=vol_target,
+                plan=plan, seasonal_period=int(period),
+                max_trials=payload.max_trials,
+                metric=payload.metric, random_state=payload.random_state,
+                preprocessing_warnings=[
+                    *prepared.warnings,
+                    *feature_plan_warnings,
+                    *(
+                        [
+                            "Преобразования уровня не применены volatility-моделью: "
+                            "target -- условная дисперсия returns исходного ряда "
+                            f"(method={payload.returns_method}, контракт Task 134)."
+                        ]
+                        if prepared.fold_preprocessor is not None
+                        or prepared.preprocessing_signature != "none"
+                        else []
+                    ),
                 ],
             )
         else:

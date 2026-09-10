@@ -1333,3 +1333,372 @@ def run_vector_backtest_plan(
         "preprocessing": preprocessing,
         "execution_contract": execution_contract,
     }
+
+
+# ---------------------------------------------------------------------------
+# Task 135: volatility-движок (исполнитель контракта волатильности Task 134)
+# ---------------------------------------------------------------------------
+
+def run_volatility_backtest_plan(
+    *, model_id: str, model_name: str, family_id: str,
+    target: "VolatilityTarget", plan: BacktestPlan,
+    seasonal_period: int, params: Optional[Mapping[str, Any]] = None,
+    preprocessing_warnings: Optional[list[str]] = None,
+) -> dict[str, Any]:
+    """Исполнение EDA-плана volatility-моделей (Task 135, зеркало
+    run_vector_backtest_plan Task 132, но на контракте Task 134):
+
+    - гейт: исполняются ТОЛЬКО планы objective="volatility" -- «GARCH
+      нельзя ранжировать рядом с ETS/ARIMA» (одномерный движок уровня
+      отказывает volatility-планам, см. Task 134);
+    - fold-local: адаптер через реестр получает ТОЛЬКО train-префикс
+      returns (VolatilityTarget; полная история недостижима);
+    - OOF-точки -- VOLATILITY_OOF_POINT_KEYS: actual = realized proxy
+      (квадрат return тест-окна), predicted = прогноз условной дисперсии,
+      label = timestamps[i+1] (return i реализуется между t[i] и t[i+1]);
+    - метрики -- compute_volatility_metrics (QLIKE primary, fail-closed
+      без clamp) + агрегация aggregate_volatility_metrics (взвешивание
+      по n_test, rmse -- корень из взвешенного MSE);
+    - baseline -- EWMA RiskMetrics (volatility_naive_baseline) на ТЕХ ЖЕ
+      folds; decay -- из cohort-контракта (все модели cohort'а обязаны
+      сравниваться против одного baseline);
+    - диагностика fold'а -- standardized_residual_diagnostics по
+      стандартизованным остаткам адаптера + a priori
+      volatility_clustering_evidence train-среза (advisory);
+    - никакого доступа к тестовым наблюдениям со стороны модели.
+    """
+    from apps.api.volatility_contract import (
+        REALIZED_PROXIES,
+        VOLATILITY_OOF_POINT_KEYS,
+        VolatilityContractError,
+        aggregate_volatility_metrics,
+        compute_volatility_metrics,
+        realized_variance_proxy,
+        standardized_residual_diagnostics,
+        volatility_clustering_evidence,
+        volatility_naive_baseline,
+    )
+
+    if plan.objective != "volatility":
+        raise BacktestExecutionError(
+            "Volatility-движок исполняет только volatility-планы, "
+            f"получено objective='{plan.objective}'"
+        )
+    if int(seasonal_period) != plan.seasonal_period:
+        raise BacktestExecutionError(
+            "Seasonal period расходится с зафиксированным backtest cohort"
+        )
+    if target.n_returns != plan.n_observations:
+        raise BacktestExecutionError(
+            f"Длина returns ({target.n_returns}) расходится с длиной "
+            f"зафиксированного backtest cohort ({plan.n_observations})"
+        )
+    try:
+        execution_contract = MODEL_EXECUTION_REGISTRY.describe(model_id)
+    except ValueError as exc:
+        raise BacktestExecutionError(str(exc)) from exc
+    if execution_contract.get("objective") != "volatility":
+        raise BacktestExecutionError(
+            f"Модель '{model_id}' не объявила objective=volatility"
+        )
+    if execution_contract.get("input_kind") != "univariate":
+        raise BacktestExecutionError(
+            f"Модель '{model_id}' объявила input_kind="
+            f"'{execution_contract.get('input_kind')}', ожидался univariate"
+        )
+
+    cohort_contract = plan.cohort_contract or {}
+    volatility_policy = (
+        cohort_contract.get("metric_policy", {}).get("volatility") or {}
+    )
+    proxy = volatility_policy.get("realized_proxy")
+    if proxy is None:
+        raise BacktestExecutionError(
+            "Cohort-контракт не объявляет realized_proxy: подмена proxy "
+            "между моделями запрещена (all-or-none контракта Task 134)"
+        )
+    if proxy not in REALIZED_PROXIES:
+        raise BacktestExecutionError(
+            f"Неизвестный realized proxy {proxy!r} в cohort-контракте"
+        )
+    baseline_config = volatility_policy.get("baseline") or {}
+    if baseline_config.get("type") != "ewma_riskmetrics":
+        raise BacktestExecutionError(
+            "Cohort-контракт не объявляет EWMA-baseline: volatility-движок "
+            "сравнивает модели только против собственного baseline cohort'а"
+        )
+    try:
+        decay = float(baseline_config["decay"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise BacktestExecutionError(
+            "Cohort-контракт не фиксирует decay EWMA-baseline"
+        ) from exc
+
+    returns = target.returns_array
+    if not np.isfinite(returns).all():
+        raise BacktestExecutionError("Returns содержат NaN/Inf")
+    timestamps = target.timestamps
+    warnings: list[str] = list(preprocessing_warnings or [])
+    parameters = dict(params or {})
+
+    def _oof_points(
+        fold_number: int, fold_plan: BacktestFoldPlan,
+        realized: np.ndarray, predicted: np.ndarray,
+    ) -> list[dict[str, Any]]:
+        points: list[dict[str, Any]] = []
+        for step, index in enumerate(fold_plan.test_indices, 1):
+            label = (
+                timestamps[index + 1] if timestamps is not None else None
+            )
+            actual_value = float(realized[step - 1])
+            predicted_value = float(predicted[step - 1])
+            points.append({
+                "fold": int(fold_number),
+                "horizon_step": step,
+                "index": int(index),
+                "label": None if label is None else str(label),
+                "series": None,
+                "actual": actual_value,
+                "predicted": predicted_value,
+                "residual": round(actual_value - predicted_value, 12),
+            })
+        return points
+
+    folds: list[dict[str, Any]] = []
+    started = time.monotonic()
+    for fold in plan.folds:
+        fold_started = time.monotonic()
+        n_train = len(fold.train_indices)
+        n_test = len(fold.test_indices)
+        if fold.train_indices != list(range(n_train)):
+            raise BacktestExecutionError(
+                f"Fold {fold.fold}: train-срез volatility-модели должен быть "
+                "непрерывным префиксом returns (упорядоченная общая сетка)"
+            )
+        if min(fold.test_indices) <= fold.train_indices[-1]:
+            raise BacktestExecutionError(
+                f"Fold {fold.fold}: тестовые наблюдения не могут пересекать "
+                "train-срез"
+            )
+        execution_horizon = fold.gap + n_test
+        try:
+            train_returns = target.train_slice(n_train)
+            # A priori evidence кластеризации волатильности (advisory,
+            # только train-срез; источник data.has_volatility_clustering).
+            clustering_evidence = volatility_clustering_evidence(
+                train_returns, nlags=8,
+            )
+            execution_result = MODEL_EXECUTION_REGISTRY.execute(
+                model_id,
+                ModelExecutionRequest(
+                    target=[float(value) for value in train_returns],
+                    horizon=execution_horizon,
+                    objective="volatility",
+                    seasonal_period=seasonal_period,
+                    params=parameters,
+                ),
+            )
+            warnings.extend(execution_result.warnings)
+            metadata = execution_result.metadata
+            variance_forecast = np.asarray(
+                execution_result.forecast, dtype=float,
+            )
+            if variance_forecast.shape != (execution_horizon,):
+                raise BacktestExecutionError(
+                    "Адаптер вернул прогноз дисперсии неверной формы "
+                    f"{variance_forecast.shape}, ожидалось "
+                    f"({execution_horizon},)"
+                )
+            if (variance_forecast <= 0).any():
+                raise BacktestExecutionError(
+                    "Прогноз дисперсии содержит sigma2 <= 0 -- подмена "
+                    "target запрещена (fail-closed контракта Task 134)"
+                )
+            predicted = variance_forecast[fold.gap:]
+            test_returns = target.test_slice(
+                fold.test_indices[0], fold.test_indices[-1] + 1,
+            )
+            realized = realized_variance_proxy(test_returns, proxy=proxy)
+            metrics = compute_volatility_metrics(
+                realized, predicted, proxy=proxy,
+            )
+            metrics = {
+                key: (
+                    round(float(value), 6)
+                    if key in {"qlike", "rmse", "mae"} else value
+                )
+                for key, value in metrics.items()
+            }
+            # Собственный volatility baseline cohort'а: EWMA RiskMetrics на
+            # train-префиксе fold'а, плоское продление горизонта.
+            baseline_forecast = np.asarray(
+                volatility_naive_baseline(
+                    train_returns, execution_horizon, decay=decay,
+                ),
+                dtype=float,
+            )
+            baseline_predicted = baseline_forecast[fold.gap:]
+            baseline_metrics = compute_volatility_metrics(
+                realized, baseline_predicted, proxy=proxy,
+            )
+            baseline_metrics = {
+                key: (
+                    round(float(value), 6)
+                    if key in {"qlike", "rmse", "mae"} else value
+                )
+                for key, value in baseline_metrics.items()
+            }
+            point_labels = (
+                [timestamps[index + 1] for index in fold.test_indices]
+                if timestamps is not None else None
+            )
+            predictions = _oof_points(
+                fold.fold, fold, realized, predicted,
+            )
+            baseline_predictions = _oof_points(
+                fold.fold, fold, realized, baseline_predicted,
+            )
+            # Diagnostics: стандартизованные остатки адаптера (LB/LB^2/
+            # ARCH-LM) + GARCH-блок MLE.  nlags=8 -- стандартная ширина
+            # окна проверки; контракт требует len(z) > nlags.
+            z = np.asarray(metadata.get("std_residuals"), dtype=float)
+            residual_diagnostics = standardized_residual_diagnostics(
+                z, nlags=8,
+            )
+            garch_block = {
+                "params": metadata.get("params"),
+                "persistence": metadata.get("persistence"),
+                "is_covariance_stationary": metadata.get(
+                    "is_covariance_stationary",
+                ),
+                "convergence_flag": metadata.get("convergence_flag"),
+                "nobs": metadata.get("nobs"),
+                "loglikelihood": metadata.get("loglikelihood"),
+                "aic": metadata.get("aic"),
+                "bic": metadata.get("bic"),
+                "mean_model": metadata.get("mean_model"),
+                "dist": metadata.get("dist"),
+                "intervals": metadata.get("intervals"),
+                "deterministic": metadata.get("deterministic"),
+            }
+        except (VolatilityContractError, ValueError) as exc:
+            raise BacktestExecutionError(
+                f"{model_name}: fold {fold.fold} завершился ошибкой: {exc}"
+            ) from exc
+        folds.append({
+            "fold": fold.fold, "status": "success",
+            "train_start": fold.train_indices[0],
+            "train_end": fold.train_indices[-1],
+            "test_start": fold.test_indices[0],
+            "test_end": fold.test_indices[-1],
+            "gap": fold.gap, "n_train": n_train, "n_test": n_test,
+            "train_start_label": fold.train_start_label or (
+                timestamps[fold.train_indices[0] + 1]
+                if timestamps else str(fold.train_indices[0])
+            ),
+            "train_end_label": fold.train_end_label or (
+                timestamps[fold.train_indices[-1] + 1]
+                if timestamps else str(fold.train_indices[-1])
+            ),
+            "test_start_label": fold.test_start_label or (
+                timestamps[fold.test_indices[0] + 1]
+                if timestamps else str(fold.test_indices[0])
+            ),
+            "test_end_label": fold.test_end_label or (
+                timestamps[fold.test_indices[-1] + 1]
+                if timestamps else str(fold.test_indices[-1])
+            ),
+            "metrics": {
+                "mae": metrics["mae"], "rmse": metrics["rmse"],
+                "mape": None, "mase": None, "smape": None, "rmsse": None,
+                "mape_valid_points": 0, "weighted_score": None,
+                "qlike": metrics["qlike"],
+                "realized_proxy": proxy,
+            },
+            "predictions": predictions,
+            "per_series_metrics": None, "scaled_loss": None,
+            "volatility_baseline": {
+                "fold": fold.fold,
+                "metrics": {
+                    "mae": baseline_metrics["mae"],
+                    "rmse": baseline_metrics["rmse"],
+                    "mape": None, "mase": None, "smape": None, "rmsse": None,
+                    "mape_valid_points": 0, "weighted_score": None,
+                    "qlike": baseline_metrics["qlike"],
+                    "realized_proxy": proxy,
+                },
+                "realized_proxy": proxy,
+                "baseline_type": "ewma_riskmetrics",
+                "decay": decay,
+                "predictions": baseline_predictions,
+            },
+            "volatility_diagnostics": {
+                "garch": garch_block,
+                "standardized_residuals": residual_diagnostics,
+                "volatility_clustering_evidence": clustering_evidence,
+                "realized_proxy": proxy,
+            },
+            "mase_scale": None, "rmsse_scale": None,
+            "feature_matrix": None, "feature_importance": None,
+            "duration_ms": round((time.monotonic() - fold_started) * 1000, 3),
+            "error": None,
+        })
+
+    aggregate = aggregate_volatility_metrics(folds)
+    baseline_aggregate = aggregate_volatility_metrics([
+        {
+            "metrics": fold["volatility_baseline"]["metrics"],
+            "n_test": fold["n_test"],
+        }
+        for fold in folds
+    ])
+    oof = [point for fold in folds for point in fold["predictions"]]
+    last_train = len(plan.folds[-1].train_indices)
+    return {
+        "model_id": model_id, "model_name": model_name, "family_id": family_id,
+        "metrics": {
+            "mae": aggregate["mae"], "rmse": aggregate["rmse"],
+            "mape": None, "mase": None, "smape": None, "rmsse": None,
+            "mape_valid_points": 0, "weighted_score": None,
+            "qlike": aggregate["qlike"],
+            "primary": aggregate["primary"],
+            "realized_proxy": aggregate["realized_proxy"],
+            "aggregation": aggregate["aggregation"],
+            "n_points": aggregate["n_points"],
+        },
+        "per_series_metrics": None, "scaled_loss": None,
+        "volatility_baseline": {
+            "aggregate": {
+                "mae": baseline_aggregate["mae"],
+                "rmse": baseline_aggregate["rmse"],
+                "qlike": baseline_aggregate["qlike"],
+                "realized_proxy": baseline_aggregate["realized_proxy"],
+                "aggregation": baseline_aggregate["aggregation"],
+            },
+            "folds": [
+                {"fold": fold["fold"],
+                 "metrics": fold["volatility_baseline"]["metrics"]}
+                for fold in folds
+            ],
+            "predictions": [
+                point
+                for fold in folds
+                for point in fold["volatility_baseline"]["predictions"]
+            ],
+        },
+        "n_train": last_train, "n_test": len(oof),
+        "train_ratio": round(last_train / target.n_returns, 12),
+        "duration_ms": round((time.monotonic() - started) * 1000, 3),
+        "data_source": "session", "status": "success",
+        "strategy": plan.strategy, "cohort_id": plan.cohort_id,
+        "objective": plan.objective, "cohort_contract": plan.cohort_contract,
+        "horizon": plan.horizon, "n_folds": len(plan.folds), "gap": plan.gap,
+        "folds": folds, "oof_predictions": oof, "warnings": warnings,
+        "preprocessing": {
+            "fit_policy": "none", "evaluation_scale": target.method,
+            "source_column": plan.target_column,
+            "target_column": plan.target_column,
+            "returns_method": target.method,
+        },
+        "execution_contract": execution_contract,
+    }

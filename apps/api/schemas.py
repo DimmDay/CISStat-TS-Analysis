@@ -3031,6 +3031,16 @@ class BacktestMetrics(BaseModel):
             "нормализация допустима только внутри общего comparison cohort."
         ),
     )
+    qlike: Optional[float] = Field(
+        None,
+        description=(
+            "Task 135: QLIKE (robust-форма Паттона 2011) -- primary-метрика "
+            "volatility-cohort (objective='volatility'): близость прогноза "
+            "условной дисперсии к realized proxy. Для level-моделей null. "
+            "Fail-closed: прогноз sigma2 <= 0 делает метрику неопределимой "
+            "(отказ без clamp-подмен, контракт Task 134)."
+        ),
+    )
 
 
 class BacktestPredictionPoint(BaseModel):
@@ -3119,6 +3129,23 @@ class BacktestFoldResult(BaseModel):
             "белый шум остатков; null для univariate-моделей"
         ),
     )
+    volatility_baseline: Optional[Dict[str, Any]] = Field(
+        None,
+        description=(
+            "Task 135: собственный volatility baseline fold'а -- EWMA "
+            "RiskMetrics (volatility_naive_baseline, decay из cohort-контракта) "
+            "на тех же тест-индексах; null для моделей вне volatility-cohort"
+        ),
+    )
+    volatility_diagnostics: Optional[Dict[str, Any]] = Field(
+        None,
+        description=(
+            "Task 135: fold-local диагностика volatility-модели -- GARCH-блок "
+            "MLE (params, persistence, сходимость), standardized_residual_"
+            "diagnostics (LB/LB^2/ARCH-LM) и a priori volatility_clustering_"
+            "evidence train-среза; null вне volatility-cohort"
+        ),
+    )
     duration_ms: float = Field(..., ge=0)
     error: Optional[str] = None
 
@@ -3173,6 +3200,15 @@ class BacktestResponse(BaseModel):
         description=(
             "Task 132: многомерный persistence-baseline на тех же folds "
             "(per-fold и агрегат); null для univariate-моделей"
+        ),
+    )
+    volatility_baseline: Optional[Dict[str, Any]] = Field(
+        None,
+        description=(
+            "Task 135: собственный volatility baseline прогона -- EWMA "
+            "RiskMetrics (volatility_naive_baseline, decay из cohort-"
+            "контракта) на тех же folds (per-fold, агрегат, OOF-точки); "
+            "null для моделей вне volatility-cohort"
         ),
     )
     warnings: List[str] = Field(default_factory=list)

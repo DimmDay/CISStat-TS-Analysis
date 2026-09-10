@@ -42,12 +42,16 @@ CERTIFIED_MODEL_IDS = frozenset({
     # Task 133: VECM -- второй multivariate-исполнитель (fold-local ранг
     # Йохансена; нативный VECMResults.predict с интервалами).
     "vecm",
+    # Task 135: GARCH -- первый volatility-исполнитель контракта Task 134
+    # (native arch, fold-local MLE, rescale=False; QLIKE volatility-cohort,
+    # отдельный cohort: не ранжируется рядом с ETS/ARIMA).
+    "garch",
 })
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_certified_scope_is_exactly_seventeen_real_models_in_the_24_model_catalog():
+def test_certified_scope_is_exactly_eighteen_real_models_in_the_24_model_catalog():
     spec = ModelingSpec.from_yaml("rules/modeling.yaml")
     catalog = {
         model.id: family.id
@@ -64,7 +68,10 @@ def test_certified_scope_is_exactly_seventeen_real_models_in_the_24_model_catalo
          "lightgbm", "catboost",
          # Task 133: векторный tuning -- execute_vector_tuning_plan
          # (каждый trial -- векторный backtest на тех же folds).
-         "var", "vecm"},
+         "var", "vecm",
+         # Task 135: volatility tuning -- execute_volatility_tuning_plan
+         # (каждый trial -- volatility backtest на тех же folds, metric=qlike).
+         "garch"},
     )
 
     for model_id, family_id in catalog.items():

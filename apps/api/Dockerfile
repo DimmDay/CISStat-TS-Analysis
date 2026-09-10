@@ -96,7 +96,14 @@ RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; \
     && python -c "import math; from apps.api.model_impls.vecm import _vecm_fit_predict; \
                   value = [float(value) + math.sin(value) for value in range(1, 41)]; \
                   payload = _vecm_fit_predict(value, 2, related_series={'related': value[:-1] + [value[-1]]}, params={'coint_rank': 1, 'k_ar_diff': 1}); \
-                  assert payload['forecast'].shape == (2, 2); print('VECM executable OK')"
+                  assert payload['forecast'].shape == (2, 2); print('VECM executable OK')" \
+    && python -c "import numpy as np; from apps.api.model_impls.garch import _garch_fit_predict; \
+                  rng = np.random.default_rng(7); omega, alpha, beta = 1e-6, 0.1, 0.85; \
+                  s2 = omega / (1 - alpha - beta); returns = []; \
+                  exec('for _ in range(150):\n    eps = rng.standard_normal() * np.sqrt(s2)\n    returns.append(float(eps))\n    s2 = omega + alpha * eps**2 + beta * s2'); \
+                  payload = _garch_fit_predict(returns, 2, random_state=42); \
+                  assert payload['variance_forecast'].shape == (2,) and (payload['variance_forecast'] > 0).all(); \
+                  print('GARCH executable OK')"
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000

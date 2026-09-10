@@ -132,6 +132,19 @@ def _task_criterion(model: FamilyModel, family: Family, task: Task) -> dict[str,
             note = ("Многомерный прогноз уровня системы; target -- первая колонка "
                     "EndogenousSystem, состав системы подтверждается векторным движком.")
             blocking = False
+        # Task 135: production volatility-модели (GARCH) исполняются как
+        # прогноз УСЛОВНОЙ ДИСПЕРСИИ доходностей target-ряда -- другой
+        # объект прогноза, чем уровень, но честно изолированный платформой:
+        # volatility-cohort не смешивается с level-моделями в comparison
+        # (aligned_oof отвергает смешение objective), метрики -- QLIKE
+        # (контракт Task 134), исполнение -- volatility-движок.  Catalog-only
+        # volatility-модели (EGARCH до Task 136) остаются заблокированными.
+        if family.id == "volatility" and model.id in PRODUCTION_BACKTEST_MODEL_IDS:
+            status = "attention"
+            note = ("Прогноз условной дисперсии доходностей target-ряда "
+                    "(volatility-контракт Task 134); cohort objective='volatility' "
+                    "не смешивается с level-моделями в comparison.")
+            blocking = False
     return _criterion(
         "task", "Задача", status,
         {"forecast": "прогноз уровня", "multivariate": "многомерная система", "volatility": "волатильность"}[task],
