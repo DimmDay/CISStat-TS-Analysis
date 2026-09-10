@@ -9,10 +9,18 @@ PyTorch Forecasting.
 
 Эмпирические факты neuralforecast 3.2.2 (проб scripts/task137_neural_api_probe.py):
 - BaseModel: max_epochs DEPRECATED (Exception) -- единый бюджет max_steps;
-- BaseModel: accelerator по умолчанию "gpu" -- устройство задаётся ЯВНО;
+- BaseModel: accelerator='gpu' ставится ТОЛЬКО при torch.cuda.is_available()
+  (на CPU-хосте остаётся auto) -- устройство задаётся ЯВНО бюджет-мэппингом;
+- BaseModel: конструктор ПЕРЕЗАСЕИВАЕТ весь раном (pl.seed_everything в
+  __init__ и on_fit_start, random_seed=1 по умолчанию) -- fold_seed контракта
+  обязан быть прокинут в kwargs конструктора (random_seed), иначе
+  seed-дисциплина runtime -- no-op (блокирующая находка сертификации Task 137);
 - квантильные выходы point-loss моделей: fit(prediction_intervals=PredictionIntervals())
   + predict(level=[...]) (conformal);
-- детерминизм: seed_neural_runtime ДО конструирования модели -> бит-в-бит прогноз.
+- детерминизм: random_seed=fold_seed в конструкторе + seed_neural_runtime ДО
+  конструирования -> бит-в-бит прогноз при том же seed и РАЗНЫЙ прогноз при
+  другом seed/fold_index (дифференциальные тесты -- урок мутационной
+  методологии сертификации).
 """
 from __future__ import annotations
 
@@ -22,7 +30,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from apps.api.neural_contract import NeuralContractError, NeuralTrainingConfig
+from apps.api.neural_contract import (
+    NeuralContractError,
+    NeuralTrainingConfig,
+    fold_seed,
+)
 from apps.api.model_impls.neural_runtime import (
     NEURALFORECAST_VERSION_BOUND,
     neural_model_budget_kwargs,
@@ -111,8 +123,9 @@ def test_budget_kwargs_native_max_steps():
 
 
 def test_budget_kwargs_explicit_device_accelerator():
-    # BaseModel по умолчанию ставит accelerator="gpu" -- контракт обязан
-    # задавать устройство ЯВНО (честные CPU/GPU capabilities).
+    # BaseModel 3.2.2 ставит accelerator='gpu' только при наличии CUDA
+    # (на CPU-хосте остаётся auto) -- контракт обязан задавать устройство
+    # ЯВНО (детерминизм устройства на CPU/GPU-воркерах, честные capabilities).
     config = NeuralTrainingConfig(seed=1, max_steps=3)
     cpu = neural_model_budget_kwargs(config, device="cpu")
     assert cpu["accelerator"] == "cpu"
@@ -135,6 +148,54 @@ def test_budget_kwargs_early_stopping_mapping():
     disabled = NeuralTrainingConfig(seed=1, max_steps=50, early_stopping_patience=0)
     kwargs = neural_model_budget_kwargs(disabled, device="cpu")
     assert kwargs["early_stop_patience_steps"] == -1
+
+
+# ── 4b. Seed-прокидка в конструктор модели (ресертификация Task 137) ────
+
+class _BudgetCapture(Exception):
+    """Маркер остановки до fit: фабрика зафиксировала budget и честно стопит."""
+
+
+def _capturing_factory(captured: list[dict]):
+    def factory(budget):
+        captured.append(dict(budget))
+        raise _BudgetCapture("останов до fit: budget зафиксирован")
+    return factory
+
+
+def test_train_and_forecast_passes_fold_seed_into_model_constructor():
+    """БЛОКИРУЮЩАЯ НАХОДКА сертификации Task 137: BaseModel 3.2.2
+    перезасеивает весь раном в __init__ (pl.seed_everything(random_seed=1)),
+    поэтому fold_seed ОБЯЗАН быть прокинут в kwargs конструктора модели."""
+    captured: list[dict] = []
+    config = NeuralTrainingConfig(seed=41, max_steps=3)
+    with pytest.raises(_BudgetCapture):
+        train_and_forecast(
+            model_factory=_capturing_factory(captured), freq="D",
+            train_long=_long(), horizon=4, config=config, fold_index=2,
+        )
+    assert captured, "фабрика не получила budget"
+    assert captured[0]["random_seed"] == fold_seed(41, fold_index=2)
+
+
+def test_train_and_forecast_constructor_seed_varies_with_seed_and_fold():
+    """random_seed в конструкторе обязан быть fold-производным: зависит
+    и от config.seed, и от fold_index (иначе per-fold диверсификация мертва)."""
+    captured: list[dict] = []
+    for seed, fold in ((41, 0), (41, 1), (43, 0)):
+        with pytest.raises(_BudgetCapture):
+            train_and_forecast(
+                model_factory=_capturing_factory(captured), freq="D",
+                train_long=_long(), horizon=4,
+                config=NeuralTrainingConfig(seed=seed, max_steps=3),
+                fold_index=fold,
+            )
+    assert [entry["random_seed"] for entry in captured] == [
+        fold_seed(41, fold_index=0),
+        fold_seed(41, fold_index=1),
+        fold_seed(43, fold_index=0),
+    ]
+    assert len({entry["random_seed"] for entry in captured}) == 3
 
 
 # ── 5. Унифицированный fit/predict-цикл ──────────────────────────────────
@@ -169,6 +230,10 @@ def test_train_and_forecast_point_only_without_levels():
 
 
 def test_train_and_forecast_deterministic_for_same_seed():
+    # Пара к дифференциальным тестам ниже (урок мутационной методологии
+    # сертификации Task 137): same-seed тест ВАКУУМЕН без парного теста
+    # «разные seed -> разные прогнозы» -- он не отличает «сид работает»
+    # от «сид игнорируется».
     preds_a = train_and_forecast(
         model_factory=_nhits_factory(), freq="D", train_long=_long(),
         horizon=4, config=NeuralTrainingConfig(seed=21, max_steps=3),
@@ -180,6 +245,42 @@ def test_train_and_forecast_deterministic_for_same_seed():
     np.testing.assert_allclose(
         preds_a["NHITS"].to_numpy(), preds_b["NHITS"].to_numpy(), rtol=1e-6,
     )
+
+
+def test_train_and_forecast_different_seeds_give_different_forecasts():
+    """Дифференциальный оракул OR14c сертификации: разные seed обязаны
+    давать разные прогнозы (сид доходит до конструктора модели)."""
+    preds_a = train_and_forecast(
+        model_factory=_nhits_factory(), freq="D", train_long=_long(),
+        horizon=4, config=NeuralTrainingConfig(seed=21, max_steps=3),
+    )
+    preds_b = train_and_forecast(
+        model_factory=_nhits_factory(), freq="D", train_long=_long(),
+        horizon=4, config=NeuralTrainingConfig(seed=31337, max_steps=3),
+    )
+    diff = float(np.abs(
+        preds_a["NHITS"].to_numpy() - preds_b["NHITS"].to_numpy()
+    ).max())
+    assert diff > 0.0, "разные seed обязаны давать разные прогнозы"
+
+
+def test_train_and_forecast_different_fold_index_gives_different_forecast():
+    """Дифференциальный оракул OR14b сертификации: per-fold диверсификация
+    fold_seed обязана менять прогноз (иначе fold-сида -- no-op)."""
+    preds_a = train_and_forecast(
+        model_factory=_nhits_factory(), freq="D", train_long=_long(),
+        horizon=4, config=NeuralTrainingConfig(seed=21, max_steps=3),
+        fold_index=0,
+    )
+    preds_b = train_and_forecast(
+        model_factory=_nhits_factory(), freq="D", train_long=_long(),
+        horizon=4, config=NeuralTrainingConfig(seed=21, max_steps=3),
+        fold_index=1,
+    )
+    diff = float(np.abs(
+        preds_a["NHITS"].to_numpy() - preds_b["NHITS"].to_numpy()
+    ).max())
+    assert diff > 0.0, "другой fold_index обязан давать другой прогноз"
 
 
 def test_train_and_forecast_rejects_empty_train():

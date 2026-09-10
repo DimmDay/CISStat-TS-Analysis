@@ -123,6 +123,34 @@ class TestLongFormatContract:
         assert list(long.columns) == ["unique_id", "ds", "y", "temp"]
         np.testing.assert_allclose(long["temp"].to_numpy(), frame["temp"].to_numpy())
 
+    def test_fail_closed_on_inf_in_keep_column(self):
+        # Ресертификация Task 137 (НАХОДКА-4): docstring обещает fail-closed
+        # на "NaN/Inf в keep-колонках" -- Inf в числовой exog-колонке обязан
+        # отклоняться так же, как Inf в y (раньше проверялся только isna).
+        frame = _univariate_frame()
+        frame["temp"] = np.linspace(1.0, 2.0, len(frame))
+        frame.loc[5, "temp"] = np.inf
+        with pytest.raises(NeuralContractError, match="temp"):
+            to_long_format(
+                frame, value_column="value", time_column="ts",
+                keep_columns=("temp",),
+            )
+
+    def test_keep_columns_categorical_still_allowed(self):
+        # Категориальный static (eu/us/ap) -- легитимный путь (OR5
+        # сертификации): нечисловая keep-колонка не попадает под числовой
+        # конечностный гейт, только под NaN-гейт.
+        frame = _panel_frame()
+        frame["region_code"] = [
+            ("eu", "us", "ap")[i % 3] for i in range(len(frame))
+        ]
+        long = to_long_format(
+            frame, value_column="value", time_column="ts",
+            series_column="entity", keep_columns=("region_code",),
+        )
+        assert "region_code" in long.columns
+        assert set(long["region_code"].unique()) <= {"eu", "us", "ap"}
+
     def test_fail_closed_on_nan_values(self):
         frame = _univariate_frame()
         frame.loc[3, "value"] = np.nan
@@ -441,6 +469,29 @@ class TestCheckpointStore:
         with pytest.raises(NeuralContractError, match="contract_version"):
             store.load_checkpoint("job-ver", stale)
 
+    def test_load_fail_closed_on_pointer_path_outside_root(self, tmp_path):
+        # Ресертификация Task 137 (НАХОДКА-5, hardening): pointer живёт в
+        # server-side job-записи, но конфайнмент root/<job_id>.ckpt
+        # обязателен -- cross-root чтение по подменённому пути отклоняется
+        # ДО чтения файла, даже если файл по пути существует.
+        store = self._store(tmp_path)
+        pointer = store.save_checkpoint("job-conf", b"payload")
+        outside_dir = tmp_path / "elsewhere"
+        outside_dir.mkdir(exist_ok=True)
+        (outside_dir / "job-conf.ckpt").write_bytes(b"payload")
+        outside = dict(pointer, path=str(outside_dir / "job-conf.ckpt"))
+        with pytest.raises(NeuralContractError, match="контейн|root|path"):
+            store.load_checkpoint("job-conf", outside)
+
+    def test_load_fail_closed_on_foreign_job_path_inside_root(self, tmp_path):
+        # 1:1 связка job <-> чекпойнт: путь чужого job_id внутри корня
+        # не выдаётся за чекпойнт другого job.
+        store = self._store(tmp_path)
+        store.save_checkpoint("job-a", b"payload-a")
+        foreign = store.save_checkpoint("job-b", b"payload-b")
+        with pytest.raises(NeuralContractError, match="контейн|root|path"):
+            store.load_checkpoint("job-a", foreign)
+
     def test_save_fail_closed_on_oversized_payload(self, tmp_path, monkeypatch):
         monkeypatch.setattr(
             "apps.api.neural_contract.CHECKPOINT_MAX_BYTES", 16,
@@ -472,24 +523,38 @@ class TestCheckpointStore:
             "job-resume", b"state",
             metadata={"epoch": 7, "next_step": 2, "optimizer_step": 140},
         )
-        state = restore_resume_state("job-resume", pointer)
+        state = restore_resume_state(
+            "job-resume", pointer, root=tmp_path / "ckpt",
+        )
         assert state.checkpoint_path == pointer["path"]
         assert state.contract_version == NEURAL_CONTRACT_VERSION
         assert state.metadata["epoch"] == 7
         assert state.metadata["next_step"] == 2
 
     def test_restore_fail_closed_on_missing_file(self, tmp_path):
+        # Ресертификация: путь pointer'а сконфайнен корнем хранилища,
+        # поэтому "файл отсутствует" проверяется на легитимном пути
+        # root/<job_id>.ckpt (честный отказ, не retrain).
+        store = self._store(tmp_path)
         pointer = {
             "backend": "filesystem",
             "checkpoint_id": "job-gone",
-            "path": str(tmp_path / "missing.ckpt"),
+            "path": str(store.checkpoint_path("job-gone")),
             "bytes": 6,
             "sha256": "a" * 64,
             "contract_version": NEURAL_CONTRACT_VERSION,
             "metadata": {},
         }
         with pytest.raises(NeuralContractError, match="отсутств|найден"):
-            restore_resume_state("job-gone", pointer)
+            restore_resume_state("job-gone", pointer, root=tmp_path / "ckpt")
+
+    def test_restore_fail_closed_on_foreign_root(self, tmp_path):
+        # Ресертификация (НАХОДКА-5): restore с чужим/дефолтным корнем не
+        # читает pointer молча -- pointer другого деплоя даёт честный отказ.
+        store = self._store(tmp_path)
+        pointer = store.save_checkpoint("job-xroot", b"state")
+        with pytest.raises(NeuralContractError, match="контейн|root|path"):
+            restore_resume_state("job-xroot", pointer)
 
     def test_checkpoint_policy_declares_out_of_redis_storage(self):
         policy = checkpoint_policy()

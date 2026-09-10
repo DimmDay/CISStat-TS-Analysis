@@ -17,18 +17,23 @@ scripts/task137_neural_api_probe.py):
 1. **Единый бюджет max_steps**: BaseModel neuralforecast 3.x fail-closed
    отвергает max_epochs ("max_epochs is deprecated, use max_steps") --
    контракт NeuralTrainingConfig фиксирует один бюджетный рычаг.
-2. **Явное устройство**: BaseModel молча ставит accelerator="gpu" по
-   умолчанию -- бюджет-мэппинг обязан задать accelerator из
-   resolve_neural_device (честные CPU/GPU capabilities, правило D06).
+2. **Явное устройство**: BaseModel 3.2.2 ставит accelerator="gpu" ТОЛЬКО при
+   torch.cuda.is_available() (на CPU-хосте остаётся auto/None) --
+   бюджет-мэппинг обязан задать accelerator из resolve_neural_device ЯВНО
+   (детерминизм устройства на CPU/GPU-воркерах, честные capabilities, правило D06).
 3. **Квантильные выходы point-loss моделей** -- conformal-путь:
    fit(prediction_intervals=PredictionIntervals()) + predict(level=[...])
-   -> колонки <Model>-lo-<level>/<Model>-hi-<level>; probabilistic
-   потери (QuantileLoss/MQLoss) дают квантили без conformal.
-4. **Детерминизм**: seed_neural_runtime(random/numpy/torch) обязан
-   выполняться ДО конструирования модели; train_and_forecast принимает
-   model_factory (а не готовую модель) и сеет fold_seed контракта перед
-   конструированием -- одинаковый seed даёт бит-в-бит одинаковый прогноз
-   (связано тестом).
+   -> колонки <Model>-lo-<level>/<Model>-hi-<level>; probabilistic потери
+   (MQLoss; QuantileLoss в 3.2.2 сломана -- проб scripts/task137_neural_api_probe.py)
+   дают квантили без conformal.
+4. **Детерминизм/сид**: BaseModel 3.2.2 ПЕРЕЗАСЕИВАЕТ весь раном в
+   __init__ (pl.seed_everything(random_seed) -- по умолчанию 1) и повторно
+   в on_fit_start, поэтому fold_seed контракта прокидывается В КОНСТРУКТОР
+   модели (budget["random_seed"]); seed_neural_runtime до конструирования
+   остаётся defense-in-depth (сеет random/numpy для пайплайна до fit).
+   Одинаковый seed -- бит-в-бит одинаковый прогноз; другой seed/fold_index --
+   другой прогноз (дифференциальные тесты, урок мутационной методологии
+   сертификации Task 137).
 
 Fail-closed: нейро-runtime недоступен (пакеты не установлены) --
 NeuralRuntimeUnavailableError с установочной подсказкой; runtime_available
@@ -140,11 +145,15 @@ def train_and_forecast(
     """Единый fit/predict-цикл NeuralForecast для Tasks 138-142.
 
     ``model_factory(budget_kwargs)`` конструирует модель ПОСЛЕ сеяния
-    fold_seed (детерминизм бит-в-бит).  ``levels`` -- проценты интервалов
-    (например (10.0, 90.0) из NeuralIntervalPlan контракта): включают
-    conformal-режим fit(prediction_intervals=...).  ``futr_df`` обязателен,
-    если у модели futr_exog_list (контракт валидирует покрытие заранее);
-    ``static_df`` -- одна строка на unique_id.
+    fold_seed; сам fold_seed ДОПОЛНИТЕЛЬНО прокидывается в kwargs
+    конструктора (``random_seed``): BaseModel neuralforecast 3.2.2
+    перезасеивает весь раном в __init__/on_fit_start, поэтому сид,
+    посеянный только снаружи, был бы затёрт дефолтом random_seed=1
+    (блокирующая находка сертификации Task 137).  ``levels`` --
+    проценты интервалов (например (10.0, 90.0) из NeuralIntervalPlan
+    контракта): включают conformal-режим fit(prediction_intervals=...).
+    ``futr_df`` обязателен, если у модели futr_exog_list (контракт
+    валидирует покрытие заранее); ``static_df`` -- одна строка на unique_id.
 
     Fail-closed: пустой/неколонный train, пустой horizon.
     """
@@ -165,6 +174,11 @@ def train_and_forecast(
     seed_neural_runtime(seed)
 
     budget = neural_model_budget_kwargs(config, device="cpu")
+    # Сид обязан дойти до КОНСТРУКТОРА модели: BaseModel 3.2.2 в __init__
+    # перезасеивает весь раном своим random_seed (дефолт 1, seed_everything),
+    # затирая внешнее сеяние; без этой прокидки fold_seed/config.seed --
+    # no-op, а same-seed детерминизм выполняется тривиально (всегда seed 1).
+    budget["random_seed"] = int(seed)
     model = model_factory(dict(budget))
 
     nf = NeuralForecast(models=[model], freq=freq)

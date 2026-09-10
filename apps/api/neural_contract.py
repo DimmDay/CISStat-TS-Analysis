@@ -214,6 +214,19 @@ def to_long_format(
             raise NeuralContractError(
                 f"exog-колонка '{column}' содержит NaN"
             )
+        # Ресертификация Task 137 (НАХОДКА-4): docstring обещает fail-closed
+        # на NaN/Inf в keep-колонках -- численно-коэрцибельная колонка
+        # дополнительно проверяется на конечность (Inf -- отказ).
+        # Нечисловые (категориальные) колонки легитимны (категориальный
+        # static) и проверяются только на NaN.
+        numeric = pd.to_numeric(values, errors="coerce")
+        if numeric.notna().all() and not np.isfinite(
+            numeric.to_numpy(dtype=float)
+        ).all():
+            raise NeuralContractError(
+                f"exog-колонка '{column}' содержит Inf; контракт не "
+                "выполняет скрытую очистку -- сначала исправьте данные"
+            )
         long[column] = values
 
     duplicated = long.duplicated(["unique_id", "ds"], keep=False)
@@ -674,7 +687,13 @@ class NeuralCheckpointStore:
     def load_checkpoint(
         self, job_id: str, pointer: Mapping[str, Any],
     ) -> tuple[bytes, dict[str, Any]]:
-        """Читает чекпойнт по pointer с sha256-верификацией (fail-closed)."""
+        """Читает чекпойнт по pointer с sha256-верификацией (fail-closed).
+
+        Ресертификация Task 137 (НАХОДКА-5, hardening): путь из pointer
+        сконфайнен корнем хранилища -- легитимный pointer обязан указывать
+        ровно на root/<job_id>.ckpt; cross-root чтение и путь чужого job_id
+        отклоняются ДО чтения файла (1:1 связка job <-> чекпойнт).
+        """
         self._validate_job_id(job_id)
         if str(pointer.get("contract_version")) != NEURAL_CONTRACT_VERSION:
             raise NeuralContractError(
@@ -682,7 +701,14 @@ class NeuralCheckpointStore:
                 f"({pointer.get('contract_version')!r}) не совпадает с "
                 f"{NEURAL_CONTRACT_VERSION}: состояние другого контракта"
             )
-        path = Path(str(pointer.get("path", "")))
+        expected = os.path.normpath(str(self.checkpoint_path(job_id)))
+        pointer_path = os.path.normpath(str(pointer.get("path", "")))
+        if pointer_path != expected:
+            raise NeuralContractError(
+                f"pointer path {pointer_path!r} вне контейнера чекпойнтов "
+                f"(ожидался {expected!r}): cross-root чтение отклонено"
+            )
+        path = Path(pointer_path)
         if not path.exists():
             raise NeuralContractError(
                 f"checkpoint-файл отсутствует на диске: {path}; "
@@ -717,10 +743,17 @@ class NeuralCheckpointStore:
 
 
 def restore_resume_state(
-    job_id: str, pointer: Mapping[str, Any],
+    job_id: str, pointer: Mapping[str, Any], *,
+    root: Optional[Path] = None,
 ) -> NeuralResumeState:
-    """Продолжение job после рестарта: верифицированное состояние по pointer."""
-    store = NeuralCheckpointStore()
+    """Продолжение job после рестарта: верифицированное состояние по pointer.
+
+    ``root`` -- корень хранилища, СОЗДАВШЕГО pointer (тот же, что при
+    save_checkpoint): после hardening-конфайнмента НАХОДКИ-5 ресурс
+    обязан резолвиться в тот же root/<job_id>.ckpt, иначе честный отказ
+    (pointer другого деплоя/корня не читается молча).
+    """
+    store = NeuralCheckpointStore(root=root)
     _, manifest = store.load_checkpoint(job_id, pointer)
     # Источник истины metadata -- pointer (живёт в job-записи); манифест
     # на диске -- дубликат для аудита.

@@ -364,3 +364,192 @@ Work Log:
 Stage Summary:
 - Вердикт: НЕ СЕРТИФИЦИРОВАНА — возврат на доработку (прецедент Task 126). Один блокирующий пункт (seed-прокидка), объём доработки мал; OR14b/c — готовый инструмент пересдачи.
 - Deliverables: download/task137_certification.zip (worklog3.md + 3 audit-скрипта).
+
+---
+
+## Task 137 -- Доработка по вердикту сертификации и ресертификация (исправление недоработок)
+
+Дата: 2026-09-11. Исполнитель: senior-разработчик (самостоятельное исправление
+недоработок, найденных сертификацией Task 137, по поручению тимлида; прецедент
+Task 126 -- двухфазный процесс с возвратом на доработку). База: main @ 8145806
+(+ незакоммиченная сертификационная запись в worklog3.md); доработка поверх
+коммита 7e73a83 (Task 137), БЕЗ коммитов/пуша (правила AGENTS.md).
+
+### Объём доработки (по пунктам вердикта сертификации)
+
+БЛОКЕР (seed-прокидка):
+1. apps/api/model_impls/neural_runtime.py::train_and_forecast -- fold_seed
+   прокидывается В КОНСТРУКТОР модели: budget["random_seed"] = int(seed)
+   после neural_model_budget_kwargs (с комментарием-обоснованием).
+   Обоснование: BaseModel 3.2.2 перезасеивает весь раном в __init__
+   (pl.seed_everything(random_seed), дефолт 1) и повторно в on_fit_start;
+   прокидка делает fold_seed/config.seed действующими рычагами, а same-seed
+   детерминизм -- нетривиальным инвариантом. seed_neural_runtime до
+   конструирования сохранён как defense-in-depth (сеет random/numpy для
+   пайплайна до fit). Докстринги (шапка модуля п.2/п.4 и train_and_forecast)
+   переписаны под новую seed-дисциплину.
+
+НАХОДКИ 2-5 (не-блокирующие):
+2. НАХОДКА-2: scripts/task137_neural_api_probe.py -- шаги 4-5 переписаны под
+   фактический API 3.2.2: (а) trainer_kwargs-захват фиксируется БЕЗ fit
+   (в 3.2.2 ключ вкладывается: model.trainer_kwargs содержит вложенный
+   "trainer_kwargs" -- pl.Trainer(**kwargs) упал бы; контракт trainer_kwargs
+   не использует); (б) рабочий бюджетный путь -- LSTM(max_steps=2) на
+   нативных kwargs: fit/predict OK; (в) probabilistic-путь -- MQLoss(level=
+   [10.0, 90.0]) -> NHITS-median/-lo-10.0/-hi-90.0; отказ QuantileLoss(level=
+   ...) документируется try/except (q-сигнатура 3.2.2). Probe воспроизведён
+   end-to-end: EXIT=0, PROBE OK. Новый шаг детерминизма: random_seed в
+   конструкторе -- same-seed max_diff=0.0; разные сиды (21 vs 31337)
+   max_diff=7.79.
+3. НАХОДКА-4: to_long_format -- isfinite-гейт численно-коэрцибельных
+   keep-колонок: pd.to_numeric(errors="coerce") + notna().all() ->
+   np.isfinite-проверка; Inf -> отказ с именем колонки. Нечисловые
+   (категориальные) колонки проходят только NaN-гейт (легитимный
+   категориальный static -- OR5 сертификации). Docstring-обещание
+   "NaN/Inf в keep-колонках" теперь истинно.
+4. НАХОДКА-5 (hardening): NeuralCheckpointStore.load_checkpoint --
+   root-confinement: pointer.path обязан нормализованно (os.path.normpath)
+   совпадать с root/<job_id>.ckpt; cross-root чтение и путь чужого job_id
+   отклоняются ДО чтения файла (1:1 связка job <-> чекпойнт). Легитимные
+   pointer'ы (строятся save_checkpoint тем же store) проходят; избыточные
+   '.'-сегменты не дают ложного отказа.
+5. Следствие hardening: restore_resume_state получил keyword-only параметр
+   root (корень хранилища, создавшего pointer; дефолт -- прежний). Раньше
+   payload молча читался по пути из pointer (точное воспроизведение OR12
+   сертификации); теперь чужой корень -- честный отказ "вне контейнера".
+6. Дисклоужеры НАХОДКИ-3: докстринг neural_runtime.py (accelerator='gpu'
+   ТОЛЬКО при torch.cuda.is_available(); на CPU-хосте auto/None -- явный
+   accelerator остаётся обязательным), шапка test_neural_runtime.py,
+   комментарий test_budget_kwargs_explicit_device_accelerator.
+
+### TDD (RED -> GREEN)
+
+RED -- 9 новых тестов, все отказали ДО фикса по ожидаемым причинам:
+- tests/unit/test_neural_runtime.py: test_train_and_forecast_passes_fold_seed_
+  into_model_constructor (stub-фабрика + _BudgetCapture -- останавливает
+  цикл до fit и фиксирует budget), test_train_and_forecast_constructor_seed_
+  varies_with_seed_and_fold (3 прогона: random_seed fold-производен),
+  test_train_and_forecast_different_seeds_give_different_forecasts (реальная
+  NHITS-тренировка, seed 21 vs 31337), test_train_and_forecast_different_
+  fold_index_gives_different_forecast (fold 0 vs 1) -- дифференциальные
+  убийцы блокера (урок мутационной методологии сертификации).
+- tests/unit/test_neural_contract.py: test_fail_closed_on_inf_in_keep_column,
+  test_keep_columns_categorical_still_allowed (регресс-защита -- PASS сразу),
+  test_load_fail_closed_on_pointer_path_outside_root,
+  test_load_fail_closed_on_foreign_job_path_inside_root,
+  test_restore_fail_closed_on_foreign_root.
+Адаптированы 2 теста под намеренно изменённое поведение (НАХОДКА-5):
+test_restore_fail_closed_on_missing_file (pointer-путь на легитимном
+root/<job_id>.ckpt), test_restore_resume_state_after_restart (restore с
+root=tmp). Существующий same-seed детерминизм-тест снабжён комментарием о
+вакуумности без дифференциальной пары.
+
+GREEN: нейро-набор 94/94 (85 старых + 9 новых). Полная регрессия:
+**2193 passed / 0 failed** = unit 1470 (1461 + 9) + api 623 (включая
+test_models_backtest_real 23) + root/integration/legacy_wrappers 100;
+snapshots 3/3. compileall OK (apps + tests + scripts), app-import OK,
+pip check PASS.
+
+### Ресертификационные оракулы (scripts/audit_scripts/cert137_recert_oracles.py)
+
+20 проб на НОВЫХ сидах аудитора (20260912/42424244/1618034/90210666 -- ни
+один не совпадает с сидами сертификации) -- **20/20 PASS**:
+- RO1a same-seed бит-в-бит (max_diff=0.0); RO1b другой fold_index ->
+  max_diff=6.13 (в сертификации было 0.0 -- сид мёртв); RO1c другой seed
+  (1618034) -> max_diff=3.91 (0.0);
+- RO2a/2b stub-прокидка: budget["random_seed"] == fold_seed(config.seed,
+  fold_index) для 3 пар (seed, fold), 3 значения различны;
+- RO3a-3d Inf-гейт keep-колонок: числовая с Inf -> отказ; объектная с
+  Inf-флоатом (коэрцибельна) -> отказ; чистая числовая -> проход;
+  категориальная -> проход;
+- RO4a-4e чекпойнт-конфайнмент: легитимный roundtrip; cross-root отклонён
+  (было: читалось молча); путь чужого job_id отклонён; path с '..' вне
+  корня отклонён; избыточные '.'-сегменты нормализуются (не ложный отказ);
+- RO5a-5c restore: тот же корень -> metadata из pointer; чужой (дефолтный)
+  корень -> честный отказ; отсутствующий файл на легитимном пути ->
+  отказ "не найден" (не retrain);
+- RO6a-6c прод-инварианты: PRODUCTION_BACKTEST_MODEL_IDS == 19; нейро-пять
+  вне реестра; available_model_actions("lstm") == [] (catalog_only честен).
+
+Старый сертификационный набор cert137_oracles.py на доработанном дереве:
+56 PASS до OR11i, затем останов -- OR11i (restore без root) падает по
+ОЖИДАЕМОЙ причине: pointer теперь отклоняется confinement'ом; проба
+фиксировала старое поведение (characterization), снята с учёта --
+эквивалентное и более жёсткое покрытие в RO5a/RO5b. Хвостовой прогон
+OR13/OR17/OR19/OR20 -- 14/14 PASS (cohort, budget-мэппинг, yaml-унификация,
+границы реестра). Итог: 70 PASS; OR12 формально PASS, но теперь фиксирует
+"отклонено" -- прямое доказательство закрытия НАХОДКИ-5.
+
+### Мутационный ре-тест (scripts/audit_scripts/cert137_recert_mutations.py)
+
+10 проб; откат -- backup/restore-копией файла (НЕ git checkout: дерево
+содержит доработку), чистота верифицируется сравнением с сохранёнными
+копиями. **KILLED=8, SURVIVED=2 (оба ожидания сошлись), unexpected=0.**
+
+KILLED (8): MR1 удаление random_seed из budget (блокер-регресс -- убит
+stub-тестами прокидки); MR2 захардкоденный random_seed=1 (убит
+дифференциальными тестами реальной тренировки); MR5 снят Inf-гейт;
+MR6 снят confinement; MR7 restore игнорирует root; MR8a/MR8b/MR8c -- повторы
+сертификационных M2/M6/M14 (дубликаты (unique_id, ds), конечность hist/futr,
+sha256-анти-тампер) -- убийства не деградировали.
+
+SURVIVED (2, охарактеризованы): MR3 "seed-блок после конструирования" --
+ЭКВИВАЛЕНТНАЯ мутация после фикса: инлайн int(fold_seed(...)) сохраняет то
+же значение в конструкторе, поведение не меняется вовсе (проверено stub +
+дифференциальными вместе). Принципиально отличается от сертификационной M19:
+та МЕНЯЛА поведение (сид вообще не доходил до конструктора) и переживала
+только из-за вакуумного same-seed теста; теперь регресс блока прокидки
+ловится MR1/MR2. MR4 seed_neural_runtime снят целиком -- defense-in-depth:
+после фикса основной механизм -- перезасевание конструктора случайным
+random_seed=fold_seed; выживание ожидаемо и задокументировано.
+
+Методологическая заметка: первый прогон MR3 дал ЛОЖНЫЙ KILLED -- артефакт
+склейки pytest-команд (второй интерпретатор попал в позиционные аргументы ->
+collection error -> passed=False). Механика run_tests исправлена
+(последовательный прогон наборов команд; "no tests ran" и collection error
+не считаются зелёным прогоном), прогон повторён полностью. Урок: сам
+мутационный каркас обязан верифицироваться так же строго, как тестируемый
+код.
+
+### Вероятные вопросы / границы доработки
+
+1. Смещение characterization-проб старого набора (OR11i; OR12 по смыслу) --
+   не деградация: пробы описывали старое поведение, зафиксированное
+   сертификацией как НАХОДКА-5; новое поведение прижато новыми тестами
+   (RO4b/RO4c/RO5b) и мутациями (MR6/MR7).
+2. Счёт unit-тестов: сертификация 1461 -> ресертификация 1470 (+9); 2 теста
+   адаптированы (счёт не меняют).
+3. Доработка НЕ трогает реестр v2/count-гейты/ts_models_catalog.yaml
+   (19/24 подтверждено RO6a); контрактный data-plane изменён только
+   усилением to_long_format/load_checkpoint по находкам 4-5.
+4. Для Tasks 138-142 сохраняется рекомендация сертификации: probabilistic-
+   путь 3.2.2 -- MQLoss (не QuantileLoss); сид-анкета фабрик -- random_seed
+   из budget пробрасывать в BaseModel-наследник (не перекрывать).
+
+### Вердикт ресертификации
+
+**СЕРТИФИЦИРОВАНА** (Task 137, Neural Runtime Contract, neuralforecast
+3.2.2). Блокирующая находка сертификации устранена: fold_seed/config.seed --
+действующие рычаги (дифференциальные оракулы на новых сидах: fold_index ->
+max_diff=6.13, seed -> max_diff=3.91; в сертификации оба 0.0), same-seed
+детерминизм остался бит-в-бит (max_diff=0.0). НАХОДКИ 2-5 закрыты: probe
+воспроизводим end-to-end на 3.2.2 (PROBE OK), Inf-гейт и root-confinement
+прижаты тестами и мутациями (MR5-MR7 KILLED), дисклоужеры внесены.
+Регрессия 2193/2193; прод-инварианты 19/24; границы задачи соблюдены
+(реестр v2 и count-гейты не тронуты, пять нейро-моделей честно catalog_only).
+Пункты постановки: (5) "early stopping, seed, max epochs/steps" --
+ПОДТВЕРЖДЁН в действующей части; (6) probabilistic losses -- ПОДТВЕРЖДЁН
+(математика уровней + conformal-путь + MQLoss-поверхность; QuantileLoss
+3.2.2 сломана и заменена в probe, рекомендация для Tasks 138-142).
+Contract готов как фундамент вертикальных срезов Tasks 138-142.
+
+Изменённые/новые файлы доработки и ресертификации:
+- apps/api/neural_runtime.py (блокер: random_seed-прокидка; дисклоужеры)
+- apps/api/neural_contract.py (НАХОДКА-4: isfinite-гейт; НАХОДКА-5:
+  root-confinement + restore(root))
+- scripts/task137_neural_api_probe.py (НАХОДКА-2: шаги 4-5 под 3.2.2)
+- tests/unit/test_neural_runtime.py (+4 теста, дисклоужеры шапки)
+- tests/unit/test_neural_contract.py (+3 теста, 2 адаптированы)
+- scripts/audit_scripts/cert137_recert_oracles.py (новый, 20 проб)
+- scripts/audit_scripts/cert137_recert_mutations.py (новый, 10 проб)
+- worklog3.md (данная секция)
