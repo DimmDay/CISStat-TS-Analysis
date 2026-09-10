@@ -952,3 +952,173 @@ Task 133 (fold-local ранг, нативный прогноз, tuning, VARX, co
 TestVecmStability; (3) добавить K=3 оракул-привязку к спектру var_rep
 statsmodels; (4) опционально — NLags-учёт порядка VECM в white-noise.
 После этого пересертификация формальна.
+
+---
+
+## Task 134 — Volatility Objective Contract (каркас GARCH/EGARCH, Tasks 135–136)
+
+Дата: 2026-09-10. Синхронизация до **05eb467** (принятый Task 133 коллеги
+`081b9fc` + worklog_summary; базлайн **1912 passed** / 0 failed, snapshots 3/3).
+Постановка docs/modeling_task_list.md::Task 134. Инфраструктурная
+задача-контракт (уровень Task 131), НЕ новая модель: адаптеры GARCH/EGARCH
+подключаются в Tasks 135–136 поверх контракта. CERTIFIED_IDS/каталог-гейты
+не менялись: **17/24 production-моделей — без сдвига**.
+
+### Дизайн-рекогносцировка (эмпирическая, до тестов)
+
+Probe-скрипт (scripts/task134_probe.py) зафиксировал факты, на которых
+построен дизайн: (1) ручная реализация ARCH-LM (Engle 1982,
+LM = T̃·R² из регрессии z² на лаги 1..q с константой, T̃ = T − q) ПОБИТОВО
+совпадает с официальной statsmodels het_arch при nlags 1/3/5/12
+(rtol 1e-10) — оракул-сверка; (2) QLIKE в robust-форме Паттона (2011)
+mean(log σ̂² + σ²/σ̂²) отличается от классической формы
+σ²/σ̂² − log(σ²/σ̂²) − 1 ровно на константу mean(log σ²) + 1 (проверено
+численно: 0.00e+00) — ранжирование-эквивалентность, устойчивость к
+зашумлённому proxy и допустимость σ² = 0; (3) Ljung-Box на квадратах
+(McLeod-Li) работоспособен; (4) на симулированном GARCH(1,1) сырые
+остатки дают reject по LB-квадратам/ARCH-LM и НЕ дают по LB-уровням,
+на стандартизованных z = ε/√σ² все три теста не отвергают (устойчиво
+по seeds 7/11/23/42); (5) **обнаружена дыра**: run_backtest_plan передаёт
+objective=plan.objective в реестр, а с injected-predictor вообще минует
+реестр — volatility-план был бы исполнен одномерным движком с level-
+метриками (MAE/RMSE) на дисперсии.
+
+### Реализация (2 поверхности + декларация)
+
+1. **`apps/api/volatility_contract.py` (NEW, ~730 строк)** — контракт
+   волатильности, зеркало multivariate_contract.py (Task 131), независим
+   от HTTP/session-кода, НЕ импортирует backtesting.py.  Шесть пунктов
+   постановки:
+   - *Явное преобразование цены в returns без скрытого выбора*:
+     `price_to_returns(prices, *, method)` — method ОБЯЗАТЕЛЬНЫЙ keyword
+     {log, simple}: вызов без него невозможен by construction (TypeError),
+     неизвестный метод отклоняется; fail-closed на конечность/строгую
+     положительность цен.  `VolatilityTarget` (frozen dataclass, зеркало
+     EndogenousSystem): анти-тампер — stored returns обязаны
+     воспроизводиться из цен заявленным методом бит-в-бит; timestamps
+     выровнены с ЦЕНАМИ (returns[i] реализуется между t[i] и t[i+1]);
+     MIN_RETURNS_OBSERVATIONS = 20; head/train_slice/test_slice;
+     сетка — переиспользование сертифицированного
+     validate_regular_grid Task 131 (единый источник истины).
+     Преобразование — точечно каузальная функция пары (P_{t-1}, P_t),
+     параметры не оценивает: однократный расчёт на полной истории
+     leakage-safe (в отличие от Box-Cox lambda) — задокументировано.
+   - *Цель — условная дисперсия*: `realized_variance_proxy(returns, *,
+     proxy)` — proxy обязательный keyword {squared_returns}; в
+     cohort-контракте target_kind="conditional_variance"; схема
+     OOF-точки движка (VOLATILITY_OOF_POINT_KEYS) сохраняет
+     сертифицированные ключи fold/horizon_step/index/label/actual/
+     predicted/residual, где actual = realized proxy тест-окна —
+     совместимость с comparison/selection-машинерией по построению.
+   - *Primary metric QLIKE + дополнительные ошибки по proxy*:
+     `compute_volatility_metrics(realized, predicted, *, proxy)` —
+     QLIKE (robust-форма Паттона, primary), RMSE/MAE в шкале дисперсии;
+     прогноз σ̂² ≤ 0 — fail-closed отказ БЕЗ clamp-подмен; отрицательный
+     realized — нарушение контракта proxy; proxy декларируется в каждой
+     точке вычисления (тихая подмена между моделями невозможна).
+     `aggregate_volatility_metrics(folds)` — взвешивание по n_test
+     (конвенция движка): qlike/mae — пул точек, rmse — корень из
+     взвешенного MSE (не среднее RMSE); согласованность proxy между
+     folds — all-or-none.
+   - *Собственный volatility baseline*: `volatility_naive_baseline(
+     returns, horizon, *, decay=0.94)` — EWMA (RiskMetrics), fold-local
+     (аргумент — train-префикс), seed = train-дисперсия (ddof=1),
+     рекурсия σ²_{t+1} = λσ²_t + (1−λ)r²_t, плоское продление горизонта
+     (конвенция RiskMetrics, без скрытой реверсии — она вводила бы
+     скрытый гиперпараметр); decay ∈ (0,1) валидируется и фиксируется в
+     cohort-контракте; вырожденный train (все returns нулевые) — честный
+     отказ.
+   - *Диагностика standardized/squared residuals*:
+     `standardized_residual_diagnostics(z, *, nlags, alpha=0.05)` —
+     Ljung-Box на z + Ljung-Box на z² (McLeod-Li) + ARCH-LM (Engle 1982,
+     ручная реализация с оракул-паритетом het_arch); вырожденные
+     остатки (нулевая дисперсия) — отказ, а не фиктивный «идеальный
+     фит».  `volatility_clustering_evidence(returns, *, nlags, alpha)` —
+     ARCH-LM на самих returns: a priori-свидетельство кластеризации
+     (источник честного data.has_volatility_clustering при подключении
+     GARCH; в Task 134 профиль данных НЕ меняется — граница задачи).
+   - *Полностью отдельный cohort*: `volatility_cohort_contract(*,
+     target_column, fingerprint, returns_method, n_returns,
+     seasonal_period, decay)` — objective="volatility", metric_policy
+     primary="qlike", metrics [qlike, rmse, mae], блоки volatility
+     (target_kind/returns_method/realized_proxy/oof_point_keys/baseline)
+     и target (contract_version/source_column/returns_method);
+     returns_method — обязательный keyword, cohort фиксирует явный выбор.
+2. **Гейт одномерного движка (`backtesting.py::run_backtest_plan`,
+   +17 строк)** — fail-closed отказ volatility-планов ДО любого
+   исполнения (включая injected-predictor путь, минующий реестр):
+   «target волатильности — условная дисперсия, а не уровень ряда;
+   level-метрики (MAE/RMSE/MASE) на ней запрещены».  Закрывает
+   обнаруженную дыру; исполнение volatility-планов — volatility-движок
+   (Tasks 135–136).  build_backtest_plan objective="volatility" уже
+   принимал (проверено probe) — план строим, исполнять движком уровня
+   запрещено; разделение подкреплено существующими гейтами: реестр v2
+   (request.objective == definition.objective), aligned_oof (смешение
+   objective → ComparisonContractError) — привязаны regression-тестами.
+3. **`rules/modeling.yaml`** — секция metrics.volatility: qlike
+   (use_in_ranking: true, primary volatility-cohort, undefined_when
+   σ̂² ≤ 0, robust-форма Паттона с пояснением эквивалентности) +
+   realized_rmse/realized_mae (отчётность, не ранжирование) с
+   комментариями о разделении cohort.  Загрузчик ModelingSpec
+   игнорирует неизвестные ключи metrics (проверено) — backward
+   compatible.
+
+### TDD
+
+RED: tests/unit/test_volatility_contract.py (66 кейсов, 10 классов) —
+ModuleNotFoundError apps.api.volatility_contract; после реализации
+модуля оставался ровно 1 RED (гейт движка: injected-predictor +
+volatility-план исполнялся с level-метриками).  Оракул-тесты:
+ARCH-LM == het_arch бит-в-бит (rtol 1e-10); QLIKE == классическая форма
++ константа; EWMA == независимая рекурсия теста; LB-squared/ARCH-LM
+отвергают на сырых GARCH-остатках и НЕ отвергают на стандартизованных
+(смысл стандартизации связан тестом).  GREEN: 66/66.
+
+### Мутационная самопроверка (5 мутаций, применялись и откатывались)
+
+(1) method получает default "log" → тесты «без скрытого выбора» падают;
+(2) гейт движка удалён → test_univariate_engine_rejects_volatility_plan
+падает; (3) QLIKE подменён на −mean(log σ̂²) → ranking-эквивалентность
+падает; (4) ARCH-LM T вместо T̃ = T − q → оракул-паритет падает;
+(5) EWMA seed = 0 вместо train-дисперсии → рекурсионный оракул падает.
+Урок процесса: git checkout не восстанавливает НЕотслеживаемые файлы —
+для них мутации откатывались вручную (восстановлено, GREEN подтверждён).
+
+### Верификация
+
+- Полный pytest: **1978 passed / 0 failed**, snapshots 3/3; арифметика:
+  1912 (05eb467) + 66 unit = 1978 (сходится ровно).
+- compileall OK; `from apps.api.main import app` OK; pip check PASS.
+- E2E-смоук (scripts/task134_e2e_smoke.py): каталог 17 «Подключённых»
+  без сдвига; в реестре нет objective="volatility"; volatility-план
+  отвергнут движком, level-план исполнен бит-в-бит прежней семантики;
+  мини-пайплайн контракта: 121 цена → 120 returns (method=log) →
+  EWMA-baseline → QLIKE (baseline 1.374 лучше плохого прогноза 1.768) →
+  агрегация folds → диагностика стандартизованных остатков (reject=False
+  на корректной стандартизации) → cohort_id vol ≠ cohort_id level.
+
+### Границы Task 134 (задел Tasks 135–136)
+
+- Volatility-движок (fold-loop с QLIKE-метриками, EWMA-baseline на тех
+  же folds и OOF-точками realized/predicted) подключается с первым
+  исполнителем (GARCH, Task 135) — по прецеденту Task 131→132.
+- Профиль данных: has_volatility_clustering/domain захардкожены
+  (modeling_workflow.py) — честная проводка volatility_clustering_evidence
+  в профиль и P04/D04-гейты — при подключении GARCH.
+- Selection v2 принимает primary_metric только mae/rmse — расширение на
+  qlike (ранжирование внутри volatility-cohort) — с первым
+  volatility-моделями; сейчас fail-closed («Selection v2 поддерживает
+  primary_metric mae/rmse»), тихий fallback на RMSE запрещён.
+- GARCHX (exogenous-канал GARCH) не декларирован: feature_contract
+  policy="none"; потребность — отдельная постановка (прецедент VARX в
+  Task 133).
+
+### Изменённые/новые файлы
+
+Новые:
+- apps/api/volatility_contract.py (~730 строк)
+- tests/unit/test_volatility_contract.py (66 кейсов)
+
+Изменённые:
+- apps/api/backtesting.py (+17: fail-closed гейт volatility-планов)
+- rules/modeling.yaml (metrics.volatility: qlike/realized_rmse/realized_mae)

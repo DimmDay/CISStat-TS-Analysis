@@ -1179,6 +1179,51 @@ metrics:
         нечувствителен к систематическому смещению,
         может быть высоким при плохом прогнозе с правильной дисперсией.
 
+  # ── 5.2b. Volatility-метрики (Task 134) ────────────────────────────────────
+  # Отдельный cohort objective="volatility" (GARCH/EGARCH, Tasks 135-136):
+  # target -- условная дисперсия, а не уровень ряда; level-метрики
+  # (MAE/RMSE/MASE/MAPE) на прогнозах дисперсии запрещены, смешение с
+  # level_forecast-ранжированием отклоняется (aligned_oof / cohort_id).
+  # Реализовано в apps/api/volatility_contract.py.
+  volatility:
+    - id: "qlike"
+      name: "QLIKE (Patton 2011 robust form)"
+      formula: "(1/n) Σ [log(σ̂²_i) + σ²_i/σ̂²_i]"
+      scale_dependent: true
+      direction: "minimize"
+      use_in_ranking: true            # primary-метрика volatility-cohort
+      undefined_when: "σ̂²_i ≤ 0"
+      caveat: >-
+        Primary-метрика ТОЛЬКО volatility-cohort (objective="volatility").
+        Ранжирование-эквивалентна классической форме
+        σ²/σ̂² − log(σ²/σ̂²) − 1 (разность -- константа, не зависящая
+        от прогноза).  Прогноз дисперсии ≤ 0 -- честный отказ, без
+        clamp-подмены.  Оценивается по realized proxy (квадраты
+        доходностей).
+      interpretation: >-
+        Robust-форма Паттона (2011) устойчива к зашумлённому realized
+        proxy.  Нулевой realized (σ²=0) допустим.
+
+    - id: "realized_rmse"
+      name: "RMSE по realized proxy (шкала дисперсии)"
+      formula: "√[(1/n) Σ(σ²_i − σ̂²_i)²]"
+      scale_dependent: true
+      direction: "minimize"
+      use_in_ranking: false           # отчётность, ранжирование -- по QLIKE
+      caveat: >-
+        Дополнительная ошибка по realized proxy; чувствительна к
+        выбросам proxy (квадраты доходностей зашумлены).
+
+    - id: "realized_mae"
+      name: "MAE по realized proxy (шкала дисперсии)"
+      formula: "(1/n) Σ|σ²_i − σ̂²_i|"
+      scale_dependent: true
+      direction: "minimize"
+      use_in_ranking: false
+      caveat: >-
+        Дополнительная ошибка по realized proxy; устойчивее RMSE к
+        выбросам proxy.
+
   # ── 5.3. Метрики для доверительных интервалов ─────────────────────────────
   prediction_interval:
     - id: "coverage"

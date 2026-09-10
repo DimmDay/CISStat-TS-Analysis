@@ -422,6 +422,23 @@ def run_backtest_plan(
     silently break ETS). Only TBATS (Task 125) currently reads it; every other
     adapter ignores unknown params keys, so this is safe to pass unconditionally.
     """
+    # Task 134: одномерный движок считает LEVEL-метрики (MAE/RMSE/MASE) по
+    # уровню ряда.  Для objective="volatility" target -- условная дисперсия:
+    # её метрики -- QLIKE (primary) + RMSE/MAE по realized proxy
+    # (volatility_contract), а level-метрики на дисперсии запрещены
+    # постановкой («GARCH нельзя ранжировать рядом с ETS/ARIMA»).  Гейт
+    # стоит ПЕРЕД любым исполнением (включая injected-predictor путь,
+    # минующий реестр) -- иначе volatility-план был бы исполнен здесь с
+    # фиктивными level-метриками.  Исполнение volatility-планов --
+    # volatility-движок (Tasks 135-136 поверх контракта Task 134).
+    if plan.objective == "volatility":
+        raise BacktestExecutionError(
+            "Одномерный движок не исполняет volatility-планы: target "
+            "волатильности -- условная дисперсия, а не уровень ряда; "
+            "level-метрики (MAE/RMSE/MASE) на ней запрещены. Primary "
+            "метрика volatility-cohort -- QLIKE; исполнение -- "
+            "volatility-движок поверх контракта Task 134."
+        )
     if int(seasonal_period) != plan.seasonal_period:
         raise BacktestExecutionError("Seasonal period расходится с зафиксированным backtest cohort")
     if len(series) != plan.n_observations:
