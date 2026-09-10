@@ -176,7 +176,7 @@ class TestRegistrySeesVarAtRuntime:
         assert result.returncode == 0, (
             f"Цепочка импортов dispatch сломана:\n{result.stderr[-2000:]}"
         )
-        assert "ok 18" in result.stdout, (
-            f"Ожидалось 18 production backtest-моделей (17 + GARCH), получено: "
+        assert "ok 19" in result.stdout, (
+            f"Ожидалось 19 production backtest-моделей (18 + EGARCH), получено: "
             f"{result.stdout.strip()}"
         )

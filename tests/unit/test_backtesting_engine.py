@@ -195,10 +195,11 @@ def test_all_fifteen_production_models_execute_the_same_real_oof_cohort():
     # Task 132/133: var и vecm -- multivariate-исполнители; они исполняются
     # ТОЛЬКО векторным движком (run_vector_backtest_plan) на системе K>=2
     # и не могут входить в одномерный OOF cohort (honest fail-closed).
-    # Task 135: garch -- volatility-исполнитель; исполняется ТОЛЬКО
-    # volatility-движком (run_volatility_backtest_plan) на VolatilityTarget
-    # и не может входить в одномерный level-cohort (гейты Task 134).
-    univariate_model_ids = PRODUCTION_BACKTEST_MODEL_IDS - {"var", "vecm", "garch"}
+    # Task 135/136: garch/egarch -- volatility-исполнители; исполняются
+    # ТОЛЬКО volatility-движком (run_volatility_backtest_plan) на
+    # VolatilityTarget и не могут входить в одномерный level-cohort
+    # (гейты Task 134).
+    univariate_model_ids = PRODUCTION_BACKTEST_MODEL_IDS - {"var", "vecm", "garch", "egarch"}
     results = {
         model_id: run_backtest_plan(
             model_id=model_id, model_name=model_id, family_id="test",
@@ -209,7 +210,7 @@ def test_all_fifteen_production_models_execute_the_same_real_oof_cohort():
     }
 
     assert len(results) == 15
-    assert {"var", "vecm", "garch"} == PRODUCTION_BACKTEST_MODEL_IDS & {"var", "vecm", "garch"}
+    assert {"var", "vecm", "garch", "egarch"} == PRODUCTION_BACKTEST_MODEL_IDS & {"var", "vecm", "garch", "egarch"}
     # Task 135: честный отказ level-движка для volatility-исполнителя.
     with pytest.raises(BacktestExecutionError, match="volatility"):
         run_backtest_plan(

@@ -41,6 +41,7 @@ from apps.api.model_impls.catboost import run_catboost_backtest
 from apps.api.model_impls.var import run_var_backtest
 from apps.api.model_impls.vecm import run_vecm_backtest
 from apps.api.model_impls.garch import run_garch_backtest
+from apps.api.model_impls.egarch import run_egarch_backtest
 
 
 __all__ = [
@@ -58,4 +59,5 @@ __all__ = [
     "run_var_backtest",
     "run_vecm_backtest",
     "run_garch_backtest",
+    "run_egarch_backtest",
 ]

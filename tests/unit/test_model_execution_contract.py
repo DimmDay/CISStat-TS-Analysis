@@ -44,6 +44,10 @@ CERTIFIED_IDS = frozenset({
     # Task 135: GARCH -- первый volatility-исполнитель контракта Task 134
     # (native arch, fold-local MLE, rescale=False, QLIKE volatility-cohort).
     "garch",
+    # Task 136: EGARCH -- второй volatility-исполнитель (прецедент пары
+    # var/vecm: тот же volatility-движок; o >= 1 -- параметризация
+    # leverage/asymmetry, официальный симуляционный контур arch).
+    "egarch",
 })
 
 # Task 126/127/128/129/130: supervised-адаптеры с regressor-каналом future_known/static.
@@ -58,9 +62,10 @@ ML_IDS = frozenset({"random_forest", "xgboost", "lightgbm", "catboost"})
 MULTIVARIATE_IDS = frozenset({"var", "vecm"})
 # Task 133: multivariate-носители future-known экзогенных регрессоров.
 MULTIVARIATE_EXOG_IDS = frozenset({"var"})
-# Task 135: volatility-адаптеры (objective="volatility", input_kind=
-# "univariate" -- volatility-движок поверх VolatilityTarget Task 134).
-VOLATILITY_IDS = frozenset({"garch"})
+# Task 135/136: volatility-адаптеры (objective="volatility", input_kind=
+# "univariate" -- volatility-движок поверх VolatilityTarget Task 134;
+# garch/egarch -- пара исполнителей одного движка, прецедент var/vecm).
+VOLATILITY_IDS = frozenset({"garch", "egarch"})
 
 
 def test_registry_is_the_single_source_of_truth_for_production_actions():

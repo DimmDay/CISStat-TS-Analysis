@@ -274,7 +274,7 @@ families:
           dist: ["normal", "t"]
 
       - id: "egarch"
-        name: "EGARCH(p,q)"
+        name: "EGARCH(p,o,q)"
         description: >-
           Exponential GARCH. Учитывает асимметрию (leverage effect):
           негативные шоки сильнее влияют на волатильность.
@@ -283,6 +283,29 @@ families:
         supports_prediction_intervals: true
         libraries: ["arch"]
         training_time: "seconds"
+        # ── Task 136: bounded param_space (второй исполнитель контракта
+        # Task 134, прецедент пары var/vecm в одном volatility-движке) ──
+        # Порядки (p, o, q) и спецификация mean/dist оцениваются fold-local
+        # MLE (arch, официальный контур) на train-срезе ЯВНЫХ доходностей;
+        # o >= 1 -- модель обязана параметризовать асимметрию (leverage:
+        # знак/значимость fitted gamma честно репортуются в
+        # asymmetry-блоке fold-диагностики); rescale=False -- БЕЗ скрытого
+        # масштабирования входа; несошедшийся MLE и sigma2 <= 0 -- честный
+        # отказ fold'а.  Явный бюджет сходимости MLE (maxiter=1000 через
+        # официальный fit-options arch): дефолт scipy (100) недостаточен
+        # для лог-рекурсии EGARCH (встречаются срезы с
+        # convergence_flag=9 при достижимом оптимуме).  Точечный прогноз
+        # -- официальный симуляционный
+        # контур arch (EGARCH не имеет analytic-прогноза за горизонтом 1);
+        # интервалы -- квантили тех же путей.  Grid
+        # 2 x 2 x 2 x 2 x 2 = 32 trials (<= MAX_TRIALS=64); tuning -- по
+        # primary-метрике QLIKE volatility-cohort (Task 134).
+        param_space:
+          p: [1, 2]
+          o: [1, 2]
+          q: [1, 2]
+          mean: ["Constant", "Zero"]
+          dist: ["normal", "t"]
 
   # ── 6. STRUCTURAL / DECOMPOSABLE ───────────────────────────────────────────
   - id: "structural"

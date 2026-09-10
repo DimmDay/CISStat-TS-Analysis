@@ -711,6 +711,7 @@ def _garch_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
         lower_interval=[float(value) for value in payload["lower"]],
         upper_interval=[float(value) for value in payload["upper"]],
         metadata={
+            "adapter_id": payload["adapter_id"],
             "params": payload["params"],
             "persistence": payload["persistence"],
             "is_covariance_stationary": payload["is_covariance_stationary"],
@@ -721,6 +722,57 @@ def _garch_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
             "bic": payload["bic"],
             "std_residuals": payload["std_residuals"].tolist(),
             "conditional_volatility": payload["conditional_volatility"].tolist(),
+            "mean_model": payload["mean_model"],
+            "dist": payload["dist"],
+            "intervals": payload["intervals"],
+            "deterministic": payload["deterministic"],
+        },
+    )
+
+
+def _egarch_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
+    """Task 136: нативный EGARCH пакета arch -- второй исполнитель
+    volatility-контракта Task 134 (прецедент пары var/vecm: тот же
+    volatility-движок, новый адаптер + запись реестра).
+
+    Плоский контракт ``forecast`` = прогноз УСЛОВНОЙ ДИСПЕРСИИ (target
+    volatility-cohort, НЕ уровень ряда) -- официальный симуляционный
+    контур arch (EGARCH не имеет analytic-прогноза за горизонтом 1;
+    variance.values == среднее путей = честная MC-оценка условного
+    ожидания E[sigma2] -- оптимальный точечный прогноз под QLIKE);
+    квантили тех же путей -- в lower/upper (детерминизм -- сидированный
+    rng).  Полный payload (параметры MLE, beta-персистентность,
+    стандартизованные остатки, сходимость, asymmetry-блок
+    leverage/gamma-статистика -- ядро Task 136) -- в metadata и читается
+    volatility-движком (run_volatility_backtest_plan) для диагностики
+    контракта Task 134.  Exogenous-канала нет; реестр fail-closed
+    отвергает train/future_features для univariate-входа.
+    """
+    from apps.api.model_impls.egarch import _egarch_fit_predict
+
+    payload = _egarch_fit_predict(
+        list(request.target),
+        request.horizon,
+        params=dict(request.params),
+        random_state=request.random_state,
+    )
+    return ModelExecutionResult(
+        forecast=[float(value) for value in payload["variance_forecast"]],
+        lower_interval=[float(value) for value in payload["lower"]],
+        upper_interval=[float(value) for value in payload["upper"]],
+        metadata={
+            "adapter_id": payload["adapter_id"],
+            "params": payload["params"],
+            "persistence": payload["persistence"],
+            "is_covariance_stationary": payload["is_covariance_stationary"],
+            "convergence_flag": payload["convergence_flag"],
+            "nobs": payload["nobs"],
+            "loglikelihood": payload["loglikelihood"],
+            "aic": payload["aic"],
+            "bic": payload["bic"],
+            "std_residuals": payload["std_residuals"].tolist(),
+            "conditional_volatility": payload["conditional_volatility"].tolist(),
+            "asymmetry": payload["asymmetry"],
             "mean_model": payload["mean_model"],
             "dist": payload["dist"],
             "intervals": payload["intervals"],
@@ -990,6 +1042,31 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         # симуляционные квантили путей дисперсии (сидированный rng).
         # GARCHX (exogenous-канал) не декларирован: feature_contract
         # policy="none" (Task 134; прецедент VARX -- отдельная постановка).
+        objective="volatility",
+        input_kind="univariate",
+        supports_prediction_intervals=True,
+        deterministic=True,
+        dependency_group="volatility",
+        resource_capabilities=_CLASSICAL_RESOURCES,
+    ),
+    ModelExecutionDefinition(
+        model_id="egarch", family_id="volatility",
+        adapter_id="arch-egarch", executor=_egarch_executor,
+        actions=_TUNABLE, engine="arch",
+        required_packages=("arch",),
+        # Task 136: второй исполнитель volatility-контракта Task 134
+        # (прецедент пары var/vecm: volatility-движок Task 135
+        # переиспользуется бит-в-бит).  objective="volatility" +
+        # input_kind="univariate" -- гейты реестра v2; исполнение ТОЛЬКО
+        # через volatility-движок run_volatility_backtest_plan
+        # (VolatilityTarget: явное price->returns, realized proxy,
+        # QLIKE-метрики).  Порядки (p, o, q) и спецификация mean/dist --
+        # fold-local MLE на train-срезе returns; o >= 1 -- модель
+        # ОБЯЗАНА параметризовать асимметрию (leverage); rescale=False --
+        # БЕЗ скрытого масштабирования входа.  Точечный прогноз --
+        # официальный симуляционный контур arch (EGARCH не имеет
+        # analytic-прогноза за горизонтом 1); интервалы -- квантили тех
+        # же путей (сидированный rng).  Exogenous-канал не декларирован.
         objective="volatility",
         input_kind="univariate",
         supports_prediction_intervals=True,

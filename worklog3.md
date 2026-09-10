@@ -1524,4 +1524,190 @@ test_oof_points_contract падает.  Урок: константно-пара�
   test_backtesting_engine, test_model_execution_contract,
   test_model_readiness_candidates, test_modeling_mvp_certification,
   test_var_integration_paths)
-  
+
+---
+
+## Task 136 -- EGARCH (второй исполнитель volatility-контракта; leverage/asymmetry)
+
+Дата: 2026-09-10. Синхронизация до **51ee33d** (принятый Task 135 GARCH;
+базлайн **2049 passed** / 0 failed -- задокументирован в записи Task 135
+этого же коммита). Постановка docs/modeling_task_list.md::Task 136:
+«EGARCH дополнительно проверяет leverage/asymmetry. Прогнозы выполняются
+через официальный arch-контур». Задел «Границы Task 135» исполнен
+дословно: volatility-движок Task 135 переиспользуется, новый адаптер +
+запись реестра + yaml (прецедент пары var/vecm). CERTIFIED_IDS сдвинуты
+честно: **19/24 production-моделей** (18 + EGARCH).
+
+### Дизайн-рекогносцировка (эмпирическая, до тестов)
+
+Probe-скрипт (scripts/task136_probe.py) зафиксировал факты дизайна:
+(1) arch 8.0 жёстко запрещает analytic-прогноз EGARCH за горизонтом 1
+(«Analytic forecasts not available for horizon > 1» -- ValueError из
+_check_forecasting_method) => точечный прогноз -- официальный
+СИМУЛЯЦИОННЫЙ контур; (2) variance.values симуляционного прогноза ==
+среднее путей (probe fact 5) -- arch сам определяет точечный прогноз
+EGARCH как MC-оценку E[sigma2_{T+h}|F_T] (оптимальный прогноз под
+QLIKE); (3) h=1 путей ВЫРОЖДЕНЫ (не зависят от симулируемых инноваций)
+=> симуляционное среднее h=1 бит-точно равно analytic h=1 == ручной
+рекурсии EGARCH(1,1,1) из фильтрованного состояния (rtol 1e-8, rel err
+3.45e-16); (4) MC-ошибка среднего на h>=2 при 4000 путях < 0.6% для
+персистентных процессов (sims 4000 vs 50000, runtime ~0.01-0.02с);
+(5) MLE (SLSQP) детерминирован; сидированный rng => бит-идентичные пути
+(разный seed => разные пути при тех же MLE-параметрах); (6) arch НЕ
+предоставляет fitted.persistence для EGARCH => честный аналог --
+сумма beta-коэффициентов (AR(q) по log-дисперсии; стационарность
+log-дисперсии <=> sum(beta) < 1); (7) rescale=None может «молча»
+масштабировать вход => rescale=False ЯВНО (зеркало Task 135);
+(8) leverage восстанавливается: на сериях с gamma_true=-0.15 фит даёт
+gamma<0 на всех проверенных seed; (9) **EGARCH-специфика сходимости**:
+scipy-бюджет SLSQP по умолчанию (maxiter=100) недостаточен -- срез-207
+смоук-серии: flag=9 «Iteration limit reached» при llf=-228.90, с ЯВНЫМ
+бюджетом maxiter=1000 -- flag=0 при llf=-222.58 (лучше!), runtime
+~0.08с; то же поведение воспроизводится unit-оракулом (премиса:
+дефолтный фит не сходится; адаптер сходится к flag=0 с llf не хуже).
+
+### Реализация (адаптер + движок переиспользован + поверхности)
+
+1. **`apps/api/model_impls/egarch.py` (NEW, ~450 строк)** -- нативный
+   EGARCH(p,o,q) пакета arch, второй исполнитель контракта Task 134.
+   Fold-local (только train-срез returns), target -- условная дисперсия;
+   точечный прогноз -- variance.values официального симуляционного
+   контура (метод -- simulation, 4000 путей, сидированный rng);
+   интервалы -- квантили ТЕХ ЖЕ путей (alpha 0.01/0.05/0.10);
+   rescale=False; ЯВНЫЙ бюджет сходимости EGARCH_MAXITER=1000 через
+   официальный fit-options arch (тот же MLE, честная EGARCH-специфика,
+   привязано оракул-тестом на патологическом срезе); fail-closed:
+   несошедшийся MLE (даже при бюджете), sigma2 <= 0, NaN/Inf вход,
+   не-конечные стандартизованные остатки, короткая история (>= 20
+   returns).  **Ядро Task 136 -- asymmetry-блок**: gamma-коэффициенты /
+   std_errors / Wald p-values из официального фита, leverage_direction
+   (negative/positive/mixed из знаковой структуры), asymmetry_
+   significant (порог 0.05), honest note.  Bounded params: p/o/q (1..3,
+   o >= 1 -- модель ОБЯЗАНА параметризовать асимметрию), mean
+   (Constant/Zero), dist (normal/t).  run_egarch_backtest -- честный
+   отказ однорядного synthetic-эндпоинта (как GARCH/VAR/VECM/ML).
+2. **Реестр v2 (`model_execution.py`)**: _egarch_executor (forecast =
+   дисперсия; lower/upper = квантили; полный payload + asymmetry в
+   metadata) + запись model_id="egarch", family_id="volatility",
+   adapter_id="arch-egarch", engine="arch", required_packages=("arch",),
+   actions=_TUNABLE, objective="volatility", input_kind="univariate",
+   dependency_group="volatility", supports_prediction_intervals=True,
+   deterministic=True.  Обоим volatility-executor'ам добавлен adapter_id
+   в metadata (самоиндентификация блока диагностики; для garch --
+   аддитивно, "arch-garch").
+3. **Volatility-движок (`backtesting.py`)**: ЛОГИКА НЕ ТРОНУТА; ключ
+   блока диагностики теперь = model_id (для garch ответ бит-идентичен
+   Task 135: тот же ключ "garch"), блок дополнен adapter_id/asymmetry
+   (для GARCH asymmetry=None -- модель асимметрию не параметризует).
+4. **Dispatch (`routers/models.py`)**: _BACKTEST_IMPLEMENTATIONS +=
+   "egarch"; consistency-gate реестр<->dispatch сошёлся (19==19).
+5. **`model_impls/__init__.py`**: экспорт run_egarch_backtest.
+6. **Декларации**: rules/modeling.yaml -- имя "EGARCH(p,o,q)" (o теперь
+   явный параметр), param_space p/o/q [1,2] x mean [Constant,Zero] x
+   dist [normal,t] = 32 trials (<= 64) с комментарием о fold-local MLE,
+   o >= 1, бюджете сходимости, симуляционном контуре; apps/api/Dockerfile
+   -- release-проба _egarch_fit_predict на симулированном
+   EGARCH-процессе с leverage (проверена локально через sh: 'EGARCH
+   executable OK'; ассертит и asymmetry-блок).
+7. **Матрица применимости (`eda_model_matrix.py`)**: production-критерий
+   выводит готовность из PRODUCTION_BACKTEST_MODEL_IDS -- EGARCH
+   разблокировался автоматически (attention, honest note); комментарий
+   обновлён (catalog-only блок снят).
+
+### TDD
+
+RED: tests/unit/test_egarch_adapter.py (32: параметры/границы, оракул
+h=1 против ручной рекурсии, паритет с официальным variance.values,
+бит-детерминизм, seed меняет симуляцию но не MLE, alpha-ширина
+интервалов, rescale=False без DataScaleWarning, mean=Zero/dist=t/
+о-порядки, asymmetry-блок (структура/знак leverage/обратный полюс/
+старшие порядки), fail-closed (вырожденный вход, короткая история,
+NaN/Inf, horizon<=0, оракул бюджета сходимости на патологическом
+срезе), честный отказ legacy-эндпоинта, минимум истории == 20),
+tests/unit/test_egarch_integration_paths.py (14: контракт реестра,
+гейты objective/train_features/related_series, executor+asymmetry,
+dispatch/readiness 19, пара garch+egarch в одном движке, матрица
+(egarch runnable/short-history), yaml-границы, Dockerfile),
+tests/api/test_egarch_session.py (4: returns_method-гейт, полный
+session backtest с egarch-блоком и asymmetry, tuning qlike, честный
+отказ mape) -- RED по правильным причинам (ModuleNotFoundError/
+NotRegistered/KeyError).  GREEN: все.
+Оракул-тесты: симуляционное среднее h=1 == ручная EGARCH-рекурсия
+(rtol 1e-8); точечный прогноз == variance.values официального контура
+(бит-паритет с прямым arch-фитом при том же seed); патологический
+срез: дефолтный фит flag!=0 => адаптер flag=0 с llf >= премисы
+(детерминизм сходимости от seed не зависит).
+
+### Мутационная самопроверка (5 мутаций, применялись и откатывались)
+
+(1) EGARCH_MAXITER 1000 -> 100: оракул патологического среза падает
+(адаптер честно отказывает на срезе, который обязан осилить); (2) гейт
+o >= 1 ослаблен до o >= 0: test_o_must_be_strictly_positive падает;
+(3) persistence = sum(beta+alpha) вместо sum(beta): тест метаданных
+падает; (4) ключ блока диагностики захардкожен "garch": egarch session
+тест падает (KeyError 'egarch'); (5) leverage_direction "negative" ->
+"positive": тест восстановления leverage падает.  Все мутации убиты,
+рабочее дерево восстановлено байт-в-байт.
+
+### Верификация
+
+- Полный pytest (чанками, каждый -- отдельный прогон): tests/unit
+  **1376 passed** (snapshots 3/3), tests/api **623 passed**, остальные
+  (root/integration/legacy) **100 passed**; итого **2099 passed / 0
+  failed**.  Арифметика: 2049 (51ee33d) + 50 новых (32 адаптер + 14
+  интеграция + 4 session) - 0 изменённых = 2099 -- сходится ровно.
+- Обновлены честные count-гейты сертификации 18 -> 19 (7 файлов:
+  test_model_execution_contract CERTIFIED_IDS/VOLATILITY_IDS,
+  test_modeling_mvp_certification CERTIFIED_MODEL_IDS+tuning-set,
+  test_models_backtest_real dispatch-set, test_backtesting_engine
+  cohort-exclusions, test_var_integration_paths import-chain probe,
+  test_garch_integration_paths count+матрица,
+  test_model_readiness_candidates catalog-статистика: catalog-only 6->5,
+  blocked 3->4 на macro-профиле / 8->9 на короткой истории).
+- compileall OK; `from apps.api.main import app` OK; pip check PASS.
+- E2E-смоук (scripts/task136_e2e_smoke.py): каталог 19 connected;
+  гейт level-движка на месте; волатильный пайплайн: 220 цен -> 219
+  returns (method=log) -> EGARCH(1,1,1) fold-local MLE -> QLIKE
+  EGARCH 0.7189; asymmetry: gamma=-0.1288, p=0.00, direction=negative,
+  significant=True; beta-persistence=0.986, cov_stationary=True;
+  cohort-ранжирование честное: EWMA > GARCH > EGARCH на этой серии
+  (EGARCH не объявлен «лучшим» -- ранжирование только по данным);
+  изоляция cohort на месте.
+- Dockerfile-проба исполнена локально через sh: 'EGARCH executable OK'.
+
+### Границы Task 136 (что осознанно НЕ сделано)
+
+- EGARCHX (exogenous-канал) -- не декларирован (прецедент GARCHX/VARX:
+  отдельная постановка); yaml supports_exogenous не объявлен.
+- Сравнение GARCH vs EGARCH внутри volatility-cohort -- честное
+  QLIKE-ранжирование работает (см. смоук (6)); QLIKE-центричный
+  comparison-UI -- отдельная постановка (задел Task 135 сохранён).
+- Тюнинг симуляционных путей (INTERVAL_SIMULATIONS) и бюджета
+  (EGARCH_MAXITER) -- константы адаптера с фиксированной honest-декла-
+  рацией; вынос в param_space не выполнялся (не гиперпараметры модели).
+- Нейросетевые volatility-модели -- вне скоупа (Neural -- Task 137+).
+
+### Изменённые/новые файлы
+
+Новые:
+- apps/api/model_impls/egarch.py (~450 строк)
+- tests/unit/test_egarch_adapter.py (32 кейса)
+- tests/unit/test_egarch_integration_paths.py (14 кейсов)
+- tests/api/test_egarch_session.py (4 кейса)
+- scripts/task136_probe.py, scripts/task136_e2e_smoke.py
+
+Изменённые:
+- apps/api/model_execution.py (_egarch_executor + запись реестра +
+  adapter_id в metadata volatility-executor'ов)
+- apps/api/backtesting.py (ключ блока диагностики = model_id,
+  adapter_id/asymmetry в блоке; логика движка не тронута)
+- apps/api/routers/models.py (dispatch egarch)
+- apps/api/model_impls/__init__.py (экспорт run_egarch_backtest)
+- apps/api/eda_model_matrix.py (комментарий; логика -- из реестра)
+- rules/modeling.yaml (param_space egarch + имя EGARCH(p,o,q))
+- apps/api/Dockerfile (release-проба EGARCH)
+- tests/*: 7 count-гейтов 18 -> 19 (test_models_backtest_real,
+  test_backtesting_engine, test_model_execution_contract,
+  test_model_readiness_candidates, test_modeling_mvp_certification,
+  test_var_integration_paths, test_garch_integration_paths)
+

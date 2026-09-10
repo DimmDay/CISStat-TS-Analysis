@@ -1559,13 +1559,18 @@ def run_volatility_backtest_plan(
                 fold.fold, fold, realized, baseline_predicted,
             )
             # Diagnostics: стандартизованные остатки адаптера (LB/LB^2/
-            # ARCH-LM) + GARCH-блок MLE.  nlags=8 -- стандартная ширина
+            # ARCH-LM) + volatility-блок MLE.  nlags=8 -- стандартная ширина
             # окна проверки; контракт требует len(z) > nlags.
             z = np.asarray(metadata.get("std_residuals"), dtype=float)
             residual_diagnostics = standardized_residual_diagnostics(
                 z, nlags=8,
             )
-            garch_block = {
+            # Task 136: блок диагностики волатильности идентифицируется
+            # исполнителем -- ключ = model_id (для garch ответ бит-иден-
+            # тичен Task 135), adapter_id делает блок самоиндентифици-
+            # руемым, asymmetry -- leverage/asymmetry-метаданные ядра
+            # Task 136 (для GARCH адаптер блок не декларирует => None).
+            volatility_model_block = {
                 "params": metadata.get("params"),
                 "persistence": metadata.get("persistence"),
                 "is_covariance_stationary": metadata.get(
@@ -1580,6 +1585,8 @@ def run_volatility_backtest_plan(
                 "dist": metadata.get("dist"),
                 "intervals": metadata.get("intervals"),
                 "deterministic": metadata.get("deterministic"),
+                "adapter_id": metadata.get("adapter_id"),
+                "asymmetry": metadata.get("asymmetry"),
             }
         except (VolatilityContractError, ValueError) as exc:
             raise BacktestExecutionError(
@@ -1633,7 +1640,7 @@ def run_volatility_backtest_plan(
                 "predictions": baseline_predictions,
             },
             "volatility_diagnostics": {
-                "garch": garch_block,
+                model_id: volatility_model_block,
                 "standardized_residuals": residual_diagnostics,
                 "volatility_clustering_evidence": clustering_evidence,
                 "realized_proxy": proxy,

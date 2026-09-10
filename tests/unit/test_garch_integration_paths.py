@@ -8,10 +8,12 @@ Tasks 135-136)»):
   dependency_group="volatility", engine="arch" -- гейты реестра v2;
 - dispatch: _BACKTEST_IMPLEMENTATIONS согласован с реестром (gate);
 - readiness: garch в PRODUCTION_BACKTEST_MODEL_IDS (17 -> 18);
+  Task 136: egarch -- (18 -> 19);
 - схемы: qlike в BacktestMetrics, volatility_diagnostics в fold-результате
   не теряются при Pydantic-сериализации;
 - матрица применимости: production volatility-модель под task="forecast"
-  получает честный attention (не блок), catalog-only -- блок;
+  получает честный attention (не блок); Task 136: catalog-only блок
+  EGARCH снят регистрацией в реестре;
 - selection v2: primary_metric расширен на qlike (volatility-cohort);
 - профиль данных: has_volatility_clustering -- честная evidence.
 """
@@ -118,8 +120,9 @@ def test_garch_in_production_backtest_ids_and_dispatch() -> None:
     assert exported_run_garch_backtest is not None
 
 
-def test_production_count_is_eighteen() -> None:
-    assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 18
+def test_production_count_is_nineteen() -> None:
+    """Task 136: 18 (Task 135) + EGARCH = 19 production backtest-моделей."""
+    assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 19
 
 
 # ---------------------------------------------------------------------------
@@ -201,13 +204,18 @@ def test_matrix_marks_production_garch_runnable_under_forecast_task() -> None:
     assert "garch" in matrix["runnable_shortlist"]
 
 
-def test_matrix_blocks_catalog_only_volatility_models() -> None:
+def test_matrix_marks_production_egarch_runnable_under_forecast_task() -> None:
+    """Task 136: catalog-only блок EGARCH снят честной регистрацией в
+    реестре (критерий матрицы выводит готовность из
+    PRODUCTION_BACKTEST_MODEL_IDS) -- egarch проходит как production
+    volatility-модель (attention, не блок)."""
     matrix = build_eda_model_matrix(
         _garch_frame(), "value", task="forecast", horizon=6, n_splits=2,
     )
     entry = next(item for item in matrix["models"] if item["model_id"] == "egarch")
-    assert entry["platform_status"] == "catalog_only"
-    assert entry["compatibility"] == "blocked"
+    assert entry["platform_status"] == "ready"
+    assert entry["compatibility"] != "blocked"
+    assert "egarch" in matrix["runnable_shortlist"]
 
 
 def test_matrix_volatility_task_passes_garch() -> None:

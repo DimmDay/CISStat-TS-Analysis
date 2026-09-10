@@ -103,7 +103,15 @@ RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; \
                   exec('for _ in range(150):\n    eps = rng.standard_normal() * np.sqrt(s2)\n    returns.append(float(eps))\n    s2 = omega + alpha * eps**2 + beta * s2'); \
                   payload = _garch_fit_predict(returns, 2, random_state=42); \
                   assert payload['variance_forecast'].shape == (2,) and (payload['variance_forecast'] > 0).all(); \
-                  print('GARCH executable OK')"
+                  print('GARCH executable OK')" \
+    && python -c "import numpy as np; from apps.api.model_impls.egarch import _egarch_fit_predict; \
+                  rng = np.random.default_rng(9); omega, alpha, gamma, beta = -0.05, 0.12, -0.15, 0.90; \
+                  import math; nc = math.sqrt(2 / math.pi); ln_s2 = omega / (1 - beta); s2 = math.exp(ln_s2); returns = []; \
+                  exec('for _ in range(200):\n    eps = rng.standard_normal() * math.sqrt(s2)\n    returns.append(float(eps))\n    e = eps / math.sqrt(s2)\n    ln_s2 = omega + alpha * (abs(e) - nc) + gamma * e + beta * ln_s2\n    s2 = math.exp(ln_s2)'); \
+                  payload = _egarch_fit_predict(returns, 2, random_state=42); \
+                  assert payload['variance_forecast'].shape == (2,) and (payload['variance_forecast'] > 0).all(); \
+                  assert payload['asymmetry']['order'] == 1 and 'gamma[1]' in payload['asymmetry']['gamma_params']; \
+                  print('EGARCH executable OK')"
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000

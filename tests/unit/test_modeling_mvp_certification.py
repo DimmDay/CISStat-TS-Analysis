@@ -46,12 +46,15 @@ CERTIFIED_MODEL_IDS = frozenset({
     # (native arch, fold-local MLE, rescale=False; QLIKE volatility-cohort,
     # отдельный cohort: не ранжируется рядом с ETS/ARIMA).
     "garch",
+    # Task 136: EGARCH -- второй volatility-исполнитель (прецедент пары
+    # var/vecm; o >= 1 -- параметризация leverage/asymmetry).
+    "egarch",
 })
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_certified_scope_is_exactly_eighteen_real_models_in_the_24_model_catalog():
+def test_certified_scope_is_exactly_nineteen_real_models_in_the_24_model_catalog():
     spec = ModelingSpec.from_yaml("rules/modeling.yaml")
     catalog = {
         model.id: family.id
@@ -70,8 +73,9 @@ def test_certified_scope_is_exactly_eighteen_real_models_in_the_24_model_catalog
          # (каждый trial -- векторный backtest на тех же folds).
          "var", "vecm",
          # Task 135: volatility tuning -- execute_volatility_tuning_plan
-         # (каждый trial -- volatility backtest на тех же folds, metric=qlike).
-         "garch"},
+         # (каждый trial -- volatility backtest на тех же folds, metric=qlike;
+         # Task 136: egarch -- второй исполнитель того же движка).
+         "garch", "egarch"},
     )
 
     for model_id, family_id in catalog.items():

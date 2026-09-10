@@ -58,9 +58,11 @@ def test_candidate_statistics_report_runtime_availability_separately():
     # Task 135: garch -- 18-я (volatility-исполнитель контракта Task 134);
     # на macro-профиле честно blocked domain-гейтом (volatility-семейство
     # предназначено financial/price) -- blocked 3, catalog-only 6.
+    # Task 136: egarch -- 19-я (второй volatility-исполнитель, прецедент
+    # var/vecm); domain-гейт тот же -- blocked 4, catalog-only 5.
     assert response.statistics.runnable_candidates == 15
-    assert response.statistics.catalog_only_candidates == 6
-    assert response.statistics.blocked_candidates == 3
+    assert response.statistics.catalog_only_candidates == 5
+    assert response.statistics.blocked_candidates == 4
     assert response.statistics.total_models_in_spec == 24
 
 
@@ -119,4 +121,10 @@ def test_tbats_is_connected_but_explains_when_current_training_fold_is_too_short
     assert garch_candidate.platform_status == "ready"
     assert garch_candidate.available_actions == []
     assert garch_candidate.blocking_reason
-    assert response.statistics.blocked_candidates == 8
+    # Task 136: egarch -- второй volatility-исполнитель; тот же честный
+    # explain на коротком профиле (60 < 100).
+    egarch_candidate = next(item for item in response.catalog if item.model_id == "egarch")
+    assert egarch_candidate.platform_status == "ready"
+    assert egarch_candidate.available_actions == []
+    assert egarch_candidate.blocking_reason
+    assert response.statistics.blocked_candidates == 9
