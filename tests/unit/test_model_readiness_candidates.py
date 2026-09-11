@@ -32,12 +32,20 @@ def test_candidate_contract_separates_methodological_applicability_from_runtime_
         assert "diagnostics" in candidates[model_id].available_actions
         assert candidates[model_id].blocking_reason is None
 
+    # Task 138: lstm -- production level-модель (Neural Runtime Contract
+    # Task 137): n=500 >= min_observations=200, D02/C04 не срабатывают --
+    # честный ready с actions, как у остальных level-исполнителей.
+    assert candidates["lstm"].platform_status == "ready"
+    assert "backtest" in candidates["lstm"].available_actions
+    assert "tune" in candidates["lstm"].available_actions
+    assert candidates["lstm"].blocking_reason is None
+
     assert response.capability_contract_version == "model-capabilities-v1"
     assert len(candidates["naive"].stage_capabilities) == 11
     assert candidates["naive"].stage_capabilities["tuning"].status == "not_applicable"
     assert candidates["ets"].stage_capabilities["tuning"].status == "available"
 
-    for model_id in ("lstm", "tft", "nbeats", "nhits"):
+    for model_id in ("tft", "nbeats", "nhits"):
         assert candidates[model_id].platform_status == "catalog_only"
         assert candidates[model_id].available_actions == []
         assert candidates[model_id].stage_capabilities["backtest"].status == "not_implemented"
@@ -60,8 +68,11 @@ def test_candidate_statistics_report_runtime_availability_separately():
     # предназначено financial/price) -- blocked 3, catalog-only 6.
     # Task 136: egarch -- 19-я (второй volatility-исполнитель, прецедент
     # var/vecm); domain-гейт тот же -- blocked 4, catalog-only 5.
-    assert response.statistics.runnable_candidates == 15
-    assert response.statistics.catalog_only_candidates == 5
+    # Task 138: lstm -- 20-я (первый исполнитель Neural Runtime Contract
+    # Task 137); на macro-профиле n=500 готова (F04/D02 не срабатывают) --
+    # catalog-only 4.
+    assert response.statistics.runnable_candidates == 16
+    assert response.statistics.catalog_only_candidates == 4
     assert response.statistics.blocked_candidates == 4
     assert response.statistics.total_models_in_spec == 24
 
@@ -127,4 +138,10 @@ def test_tbats_is_connected_but_explains_when_current_training_fold_is_too_short
     assert egarch_candidate.platform_status == "ready"
     assert egarch_candidate.available_actions == []
     assert egarch_candidate.blocking_reason
-    assert response.statistics.blocked_candidates == 9
+    # Task 138: lstm блокируется F04 тем же честным explain-механизмом
+    # (60 < min_observations=200 -- yaml-граница нейро-модели).
+    lstm_candidate = next(item for item in response.catalog if item.model_id == "lstm")
+    assert lstm_candidate.platform_status == "ready"
+    assert lstm_candidate.available_actions == []
+    assert lstm_candidate.blocking_reason == "Недостаточно данных: 60 < 200 (требуется LSTM / GRU)"
+    assert response.statistics.blocked_candidates == 10

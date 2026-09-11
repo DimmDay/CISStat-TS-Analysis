@@ -511,6 +511,24 @@ families:
         libraries: ["neuralforecast"]
         training_time: "minutes_to_hours"
         requires_gpu: false            # возможно на CPU, но медленно
+        # ── Task 138: bounded param_space (первый исполнитель Neural
+        # ── Runtime Contract Task 137; прецедент каркас -> исполнитель:
+        # ── Task 134 -> 135/136).  Ядро постановки -- АРХИТЕКТУРНЫЙ выбор
+        # ── ячейки: cell lstm|gru (каталог «LSTM / GRU»: GRU --
+        # ── легковесная альтернатива) на ЕДИНОМ NeuralForecast-runtime
+        # ── (apps/api/model_impls/lstm.py + neural_runtime Task 137).
+        # ── input_size -- окно рекуррентного кодировщика; hidden -- ширина;
+        # ── max_steps -- единый бюджет контракта (max_epochs deprecated).
+        # ── Декартово произведение: 2 × 2 × 2 × 2 = 16 trials (<= MAX_TRIALS=64).
+        # ── encoder_n_layers/dropout/learning_rate -- валидируемые константы
+        # ── адаптера с явными границами (PARAM_BOUNDS; fail-closed вне
+        # ── тюнинга тоже).  Интервалы -- conformal-путь Task 137
+        # ── (PredictionIntervals + predict level), alpha 0.01/0.05/0.10.
+        param_space:
+          cell: ["lstm", "gru"]
+          input_size: [24, 48]
+          encoder_hidden_size: [16, 64]
+          max_steps: [150, 300]
 
       - id: "tft"
         name: "Temporal Fusion Transformer"

@@ -665,3 +665,153 @@ Commit/push не выполнялись.
 
 - `packages/ui/components/HomeWavesBackground.tsx`
 - `packages/ui/components/HomeWavesBackground.test.tsx`
+
+---
+
+## Task 138 -- LSTM/GRU vertical slice (первый исполнитель Neural Runtime Contract Task 137)
+
+Дата: 2026-09-11. Синхронизация: eba9af8 (ресертификация Task 137; EGARCH
+cert 8145806). Постановка docs/modeling_task_list.md::Tasks 138-142, срез
+«Task 138 -- LSTM/GRU». Прецедент каркас -> исполнитель: Task 134 ->
+135/136 (volatility); нейро-аналог: контракт Task 137 (neural_contract.py +
+model_impls/neural_runtime.py, dependency_group="neural", честный
+catalog_only пяти нейро-моделей) потреблён адаптером lstm.
+
+### Решение (по пунктам постановки)
+
+1. **Единый runtime -- без собственной fit/predict-петли**: исполнение
+   ТОЛЬКО через neural_runtime.train_and_forecast (бюджет max_steps,
+   явный accelerator, enable_progress_bar=False, random_seed=fold_seed в
+   КОНСТРУКТОРЕ -- seed-дисциплина ресертификации Task 137). Адаптер не
+   импортирует torch/neuralforecast напрямую (версии в metadata -- через
+   importlib.metadata; единственная точка тяжёлых импортов сохранена).
+2. **Ядро постановки -- архитектурный выбор ячейки**: каталог
+   rules/modeling.yaml декларирует id="lstm", name="LSTM / GRU"
+   («GRU -- легковесная альтернатива»), поэтому cell ∈ {lstm, gru} --
+   bounded tuning-параметр на ОДНОМ runtime (нейрофоркаст-классы
+   LSTM/GRU с идентичной поверхностью конструктора; эмпирика проба
+   scripts/task138_neural_api_probe.py).  alias="LSTM"/"GRU" --
+   стабильное именование выходных колонок.
+3. **Временная ось -- реальная, регулярная**: train_timestamps
+   обязательны (прецедент prophet); частота -- validate_regular_grid
+   контракта Task 131 (единый источник истины, переиспользован --
+   НЕ продублирован); нерегулярная сетка/дубликаты/row-order метки --
+   честный отказ.  LSTM_MIN_TRAIN=32 (абсолютный пол) + гейт
+   неосуществимого окна (n_train <= input_size + horizon -- отказ,
+   молчаливое ужатие окна запрещено).
+4. **Exogenous -- granted-канал Task 126 -> futr-роль контракта Task
+   137**: future-known/static колонки (train_features + future_features
+   парой) объявляются в NeuralExogenousPlan ролью futr через
+   build_exogenous_plan (hist/stat пустые ЯВНО -- решения не прячутся);
+   build_static_frame не используется: платформенный static приходит
+   timestamped числовым рядом, stat_exog со скрытой агрегацией «первое
+   значение» запрещён.  Fail-closed: несимметричный канал, несовпадение
+   длин, NaN/Inf, коллизия имён с {unique_id, ds, y}.
+5. **Интервалы -- сертифицированный conformal-путь**: point-loss MAE +
+   PredictionIntervals + predict(level); уровни -- interval_levels_for_alpha
+   (alpha {0.01,0.05,0.10}, как у VAR/GARCH/EGARCH).  Семантика колонок
+   neuralforecast 3.2.2 снята ЭМПИРИЧЕСКИ: lo-L = point - q(L/100),
+   hi-L = point + q(L/100) => двусторонний (1-alpha)-интервал -- ОБЕ
+   границы на уровне L=100*(1-alpha/2)=levels[-1] (alpha=0.05 -> lo-97.5/
+   hi-97.5 = 2.5/97.5 квантили).  MQLoss (рекомендация ресертификации
+   Task 137) остаётся probabilistic-поверхностью для срезов 139-142.
+6. **Bounded params**: PARAM_BOUNDS cell{0.01..}, input_size (4..128),
+   encoder_hidden_size (8..256), encoder_n_layers (1..3), encoder_dropout
+   (0..0.5), learning_rate (1e-4..0.1), max_steps (1..10000 = контракт);
+   bool-коэрция целочисленных ручек отклоняется явно.  yaml param_space:
+   cell x input_size x hidden x max_steps = 16 trials (<= 64);
+   encoder_n_layers/dropout/lr -- валидируемые константы адаптера
+   (границы fail-closed и вне тюнинга).
+7. **Реестр v2 + dispatch + образ**: запись №20 -- objective="level_forecast",
+   input_kind="supervised" (шестой supervised-адаптер), supports_future_
+   features=True, dependency_group="neural", engine="neuralforecast",
+   required_packages=("neuralforecast",) (runtime_available -- честный
+   dependency-probe), deterministic=True (same-seed бит-в-бит: тесты +
+   проб), resource memory_class="high", gpu="optional".  Production-образ
+   с Task 138 несёт нейро-зависимости (requirements-neural.txt в Dockerfile,
+   torch CPU-колёса -- иначе consistency-gate dispatch<->readiness честно
+   уронил бы сборку) + Dockerfile-проба 'LSTM/GRU executable OK'
+   (воспроизведена локально).
+8. **Legacy synthetic-эндпоинт -- честный отказ** (run_lstm_backtest,
+   прецедент var/vecm/garch/egarch): bare-ряд не несёт временной оси;
+   изобретать её в обёртке (целочисленный индекс/скрытая регуляризация)
+   -- запрещённый контракт скрытый выбор.
+
+### TDD (RED -> GREEN)
+
+- RED: tests/unit/test_lstm_adapter.py (34 кейса) + tests/unit/
+  test_lstm_integration_paths.py (17 кейсов) -- collection errors на
+  отсутствии модуля/экспортов; count-гейты 19 -- на отсутствии записи.
+- GREEN после реализации + правки ОЖИДАНИЙ по снятой эмпирике:
+  (а) alpha-коэрция числовой строки whitelist'а -- прецедент GARCH
+  (принята), (б) conformal-семантика уровней (обе границы на levels[-1],
+  см. п.5), (в) legacy-отказ вместо «реального» прогона bare-ряда,
+  (г) порядок available_model_actions по реализации.
+
+### Изменённые/новые файлы
+
+Новые:
+- apps/api/model_impls/lstm.py (~560 строк; адаптер LSTM/GRU, docstring
+  с полным обоснованием решений)
+- tests/unit/test_lstm_adapter.py (34 кейса)
+- tests/unit/test_lstm_integration_paths.py (17 кейсов)
+- scripts/task138_neural_api_probe.py (эмпирический проб: conformal/
+  MQLoss/futr_exog/детерминизм GRU -- PROBE OK)
+- scripts/task138_e2e_smoke.py (7 этапов полного chain'а)
+
+Изменённые:
+- apps/api/model_execution.py: _lstm_executor + запись реестра №20
+- apps/api/model_impls/__init__.py: экспорт run_lstm_backtest
+- apps/api/routers/models.py: dispatch + импорт
+- rules/modeling.yaml: lstm param_space (16 trials) + комментарий Task 138
+- apps/api/Dockerfile: neural-зависимости в образе + LSTM-проба
+- apps/api/requirements-neural.txt: дисклоужер статуса (файл входит в
+  production-сборку со среза Task 138)
+- Count-гейты 19->20 честно в 9 файлах: test_egarch/test_garch
+  integration_paths, test_modeling_mvp_certification (CERTIFIED_IDS+
+  tuning set), test_model_execution_contract (NEURAL_IDS, supervised),
+  test_model_readiness_candidates (lstm ready; 16/4/4; blocked 10 на
+  коротком профиле: F04 60<200), test_backtesting_engine (sixteen),
+  test_eda_model_matrix (lstm ready+blocked на профиле -- оси независимы),
+  tests/api/test_models_backtest_real (20 impls), test_var_integration
+  _paths (subprocess 'ok 20'), tests/api: catalog-only примеры
+  test_modeling_workflow/test_models_candidates переключены lstm->tft.
+
+### Границы Task 138 (что осознанно НЕ сделано)
+
+- MQLoss/quantile-loss путь, hist_exog/stat_exog, early stopping
+  (patience>0 требует val_size>0 -- на коротких folds нестабилен),
+  encoder_activation/decoder-ручки -- поверхность контракта для срезов
+  139-142; yaml-записи tft/nbeats/nhits/deepar не тронуты (честный
+  catalog_only до их срезов).
+- GPU-исполнение: runtime Task 137 фиксирует device="cpu" (сертифицировано);
+  gpu="optional" в resource_capabilities -- декларация capability, не
+  переключатель.
+- Audit-скрипты сертификации Task 137 (cert137_*_oracles/mutations) НЕ
+  модифицированы: RO6c ('available_model_actions("lstm") == []') и
+  yaml-пробы теперь описывают ПРЕДЫДУЩЕЕ состояние дерева --
+  characterization-пробы своего момента (прецедент OR11i ресертификации:
+  сняты с учёта как характеризация, эквивалентное покрытие новыми тестами).
+
+### Верификация
+
+- TDD цикл выше; нейро-набор: 34 + 17 = 51 новый кейс.
+- Полная регрессия на eba9af8 + Task 138: база 2193 (1470 unit + 623 api
+  + 100 прочие) -> **2244 passed / 0 failed** (unit 1521 = 1470 + 51,
+  api 623, прочие 100); snapshots 3/3; compileall OK; app-import OK;
+  pip check PASS.
+- Прод-инварианты: PRODUCTION_BACKTEST_MODEL_IDS == 20; lstm
+  backtest/tune/diagnostics; tft/deepar catalog_only ([]); пустой
+  маркер apps/api/__init__.py не тронут (13 регресс-тестов на месте).
+- E2E смоук scripts/task138_e2e_smoke.py: registry/dispatch-gate ->
+  candidates (16/4/4, execution_contract lstm) -> реальный OOF-бэктест
+  GRU 3 folds (mae=0.4753) -> детерминизм плана бит-в-бит -> bounded
+  tuning grid 16 trials + trial реальным движком -> future-known
+  регрессор доходит до futr_exog -> изоляция cohort (level-движок
+  отказывает volatility-плану). E2E SMOKE OK.
+- Проб scripts/task138_neural_api_probe.py: PROBE OK (conformal-колонки
+  с alias, MQLoss-median, futr_exog, same-seed бит-в-бит/другой сид
+  max_diff=0.038); Dockerfile-проба воспроизведена локально:
+  'LSTM/GRU executable OK'.
+- Окружение: neuralforecast 3.2.2 + torch 2.14.0+cpu -- те же версии,
+  на которых сертифицирован Task 137.

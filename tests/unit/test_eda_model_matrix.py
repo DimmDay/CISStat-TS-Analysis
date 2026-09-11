@@ -38,7 +38,8 @@ def test_matrix_reuses_all_spec_models_and_separates_compatibility_from_readines
     # но platform_status="ready" -- методологическая совместимость и
     # production-готовность независимы.  Обратное направление оси --
     # lstm: compatibility="blocked" (на этом профиле не хватает истории
-    # первому fold'у) и platform_status="catalog_only".
+    # первому fold'у, F04/min_observations=200), но platform_status="ready"
+    # со среза Task 138 -- production-готовность от профиля не зависит.
     catboost = _by_id(result, "catboost")
     assert catboost["compatibility"] == "conditional"
     assert catboost["platform_status"] == "ready"
@@ -46,7 +47,7 @@ def test_matrix_reuses_all_spec_models_and_separates_compatibility_from_readines
 
     lstm = _by_id(result, "lstm")
     assert lstm["compatibility"] == "blocked"
-    assert lstm["platform_status"] == "catalog_only"
+    assert lstm["platform_status"] == "ready"
 
 
 def test_exogenous_columns_do_not_block_models_that_can_ignore_them():

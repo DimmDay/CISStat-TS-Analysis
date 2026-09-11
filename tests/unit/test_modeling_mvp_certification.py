@@ -49,12 +49,16 @@ CERTIFIED_MODEL_IDS = frozenset({
     # Task 136: EGARCH -- второй volatility-исполнитель (прецедент пары
     # var/vecm; o >= 1 -- параметризация leverage/asymmetry).
     "egarch",
+    # Task 138: LSTM/GRU -- первый исполнитель Neural Runtime Contract
+    # Task 137 (единый NeuralForecast-runtime; архитектурный выбор ячейки
+    # cell ∈ {lstm, gru}; granted-канал -> futr_exog; conformal-интервалы).
+    "lstm",
 })
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_certified_scope_is_exactly_nineteen_real_models_in_the_24_model_catalog():
+def test_certified_scope_is_exactly_twenty_real_models_in_the_24_model_catalog():
     spec = ModelingSpec.from_yaml("rules/modeling.yaml")
     catalog = {
         model.id: family.id
@@ -75,7 +79,10 @@ def test_certified_scope_is_exactly_nineteen_real_models_in_the_24_model_catalog
          # Task 135: volatility tuning -- execute_volatility_tuning_plan
          # (каждый trial -- volatility backtest на тех же folds, metric=qlike;
          # Task 136: egarch -- второй исполнитель того же движка).
-         "garch", "egarch"},
+         "garch", "egarch",
+         # Task 138: tuning LSTM/GRU -- execute_tuning_plan (level-движок,
+         # каждый trial -- backtest на тех же folds; bounded param_space 16).
+         "lstm"},
     )
 
     for model_id, family_id in catalog.items():

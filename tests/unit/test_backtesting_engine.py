@@ -173,7 +173,7 @@ def test_full_history_target_transform_is_rejected_until_fold_refit_exists(metad
         validate_target_preprocessing({"target_derived": metadata}, "target_derived")
 
 
-def test_all_fifteen_production_models_execute_the_same_real_oof_cohort():
+def test_all_sixteen_production_models_execute_the_same_real_oof_cohort():
     import pandas as pd
 
     from apps.api.model_readiness import PRODUCTION_BACKTEST_MODEL_IDS
@@ -209,7 +209,10 @@ def test_all_fifteen_production_models_execute_the_same_real_oof_cohort():
         for model_id in univariate_model_ids
     }
 
-    assert len(results) == 15
+    # Task 138: lstm -- 20-я production-модель и УЧАСТНИК level-cohort:
+    # исполняется тем же одномерным движком на реальных folds
+    # (input_size=24 по умолчанию укладывается в n_train=66/69).
+    assert len(results) == 16
     assert {"var", "vecm", "garch", "egarch"} == PRODUCTION_BACKTEST_MODEL_IDS & {"var", "vecm", "garch", "egarch"}
     # Task 135: честный отказ level-движка для volatility-исполнителя.
     with pytest.raises(BacktestExecutionError, match="volatility"):

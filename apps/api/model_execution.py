@@ -847,6 +847,52 @@ def _catboost_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     )
 
 
+def _lstm_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
+    """Task 138: LSTM/GRU -- первый исполнитель Neural Runtime Contract
+    Task 137 (прецедент каркас -> исполнитель: Task 134 -> GARCH/EGARCH).
+
+    Плоский контракт ``forecast`` = точечный прогноз уровня ряда (point-loss
+    MAE -- прямой выход сети); интервалы -- сертифицированный conformal-путь
+    Task 137 (PredictionIntervals + predict level, уровни
+    interval_levels_for_alpha).  Exogenous -- granted-канал Task 126:
+    future-known/static колонки train_features/future_features объявляются
+    futr-ролью NeuralExogenousPlan (hist/stat пустые РЯДОВО, решения не
+    прячутся).  Полный payload (normalized params/cell, конфиг обучения с
+    seed-дисциплиной ресертификации Task 137, подписанный exogenous-план,
+    версии neuralforecast/torch) -- в metadata.  Временная ось обязательна:
+    окна строятся по реальной равноотстоящей сетке (validate_regular_grid,
+    единый источник истины Task 131); bare-ряд без дат -- честный отказ.
+    """
+    from apps.api.model_impls.lstm import _lstm_fit_predict
+
+    payload = _lstm_fit_predict(
+        list(request.target),
+        request.horizon,
+        params=dict(request.params),
+        random_state=request.random_state,
+        train_features=request.train_features or None,
+        future_features=request.future_features or None,
+        train_timestamps=request.train_timestamps or None,
+        future_timestamps=request.future_timestamps or None,
+    )
+    return ModelExecutionResult(
+        forecast=[float(value) for value in payload["forecast"]],
+        lower_interval=[float(value) for value in payload["lower"]],
+        upper_interval=[float(value) for value in payload["upper"]],
+        metadata={
+            "adapter_id": payload["adapter_id"],
+            "params": payload["params"],
+            "alias": payload["alias"],
+            "n_train": payload["n_train"],
+            "frequency": payload["frequency"],
+            "exogenous_plan": payload["exogenous_plan"],
+            "intervals": payload["intervals"],
+            "neural": payload["neural"],
+            "deterministic": payload["deterministic"],
+        },
+    )
+
+
 _BACKTEST_DIAGNOSTICS = frozenset({"backtest", "diagnostics"})
 _TUNABLE = frozenset({"backtest", "tune", "diagnostics"})
 _CLASSICAL_RESOURCES = ModelResourceCapabilities(memory_class="standard")
@@ -1073,6 +1119,41 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         deterministic=True,
         dependency_group="volatility",
         resource_capabilities=_CLASSICAL_RESOURCES,
+    ),
+    ModelExecutionDefinition(
+        model_id="lstm", family_id="neural",
+        adapter_id="neuralforecast-lstm", executor=_lstm_executor,
+        actions=_TUNABLE, engine="neuralforecast",
+        required_packages=("neuralforecast",),
+        # Task 138: LSTM/GRU -- первый исполнитель Neural Runtime Contract
+        # Task 137 (прецедент каркас -> исполнитель: Task 134 -> 135/136).
+        # Ядро постановки: «Task 138 -- LSTM/GRU» -- АРХИТЕКТУРНЫЙ выбор
+        # ячейки (params.cell ∈ {lstm, gru}, yaml name="LSTM / GRU") на
+        # ЕДИНОМ runtime: fit/predict ТОЛЬКО через neural_runtime.
+        # train_and_forecast (бюджет max_steps, явный accelerator,
+        # random_seed=fold_seed в конструкторе -- seed-дисциплина
+        # ресертификации Task 137; остальные четыре каталог-модели
+        # (NBEATS/NHITS/TFT/DeepAR -- Tasks 139-142) идут по той же
+        # поверхности).  objective="level_forecast"
+        # + input_kind="supervised" + supports_future_features=True --
+        # granted-канал Task 126 (future-known/static -> futr_exog_list
+        # NeuralExogenousPlan; hist/stat объявлены пустыми явно).
+        # Интервалы -- сертифицированный conformal-путь Task 137
+        # (PredictionIntervals + predict level; MQLoss остаётся
+        # probabilistic-поверхностью для срезов 139-142).  dependency_group
+        # ="neural" и required_packages=("neuralforecast",): без пакета
+        # runtime_available честно ложится и модель исчезает из реестра
+        # (как и задумано контрактом; production-образ несёт neural-зависимости
+        # со среза Task 138 -- apps/api/requirements-neural.txt + Dockerfile-проба).
+        objective="level_forecast",
+        input_kind="supervised",
+        supports_future_features=True,
+        supports_prediction_intervals=True,
+        deterministic=True,
+        dependency_group="neural",
+        resource_capabilities=ModelResourceCapabilities(
+            memory_class="high", gpu="optional",
+        ),
     ),
 ])
 

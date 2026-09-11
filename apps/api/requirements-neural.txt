@@ -1,15 +1,19 @@
 # apps/api/requirements-neural.txt
-# Task 137 -- Neural Runtime Contract: deploy-манифест опциональной
-# dependency-группы "neural" (см. apps/api/model_jobs.py::_DEPENDENCY_GROUPS,
+# Task 137 -- Neural Runtime Contract: deploy-манифест dependency-группы
+# "neural" (см. apps/api/model_jobs.py::_DEPENDENCY_GROUPS,
 # install_extra="neural").
 #
-# ВАЖНО (честность платформы):
-# - Этот файл НЕ входит в production-сборку apps/api/Dockerfile.
-#   Пять нейро-моделей (lstm, nbeats, nhits, tft, deepar) остаются
-#   catalog_only, пока их вертикальные срезы (Tasks 138-142) не добавят
-#   реестровые записи v2 с runtime_available =
-#   apps.api.model_impls.neural_runtime.neuralforecast_runtime_available().
-# - Установка: pip install -r apps/api/requirements-neural.txt
+# Честность платформы:
+# - Task 137: файл НЕ входил в production-сборку apps/api/Dockerfile --
+#   все пять нейро-моделей (lstm, nbeats, nhits, tft, deepar) были
+#   catalog_only до своих вертикальных срезов.
+# - Task 138: ПЕРВЫЙ исполнитель контракта зарегистрирован (lstm:
+#   cell ∈ {lstm, gru}), поэтому consistency-gate dispatch<->readiness
+#   требует нейро-runtime в production-образе -- файл входит в сборку
+#   apps/api/Dockerfile (torch -- CPU-колёса с явным --index-url).
+#   Остальные четыре модели (nbeats, nhits, tft, deepar -- Tasks 139-142)
+#   остаются catalog_only до своих срезов.
+# - Установка локально: pip install -r apps/api/requirements-neural.txt
 #   (CPU-вариант torch) либо pip install -e ".[neural]" при появлении extra.
 # - Зафиксированная версия neuralforecast связывает surface, на которой
 #   сертифицирован единый runtime (проб scripts/task137_neural_api_probe.py):

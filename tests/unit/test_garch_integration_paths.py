@@ -120,9 +120,9 @@ def test_garch_in_production_backtest_ids_and_dispatch() -> None:
     assert exported_run_garch_backtest is not None
 
 
-def test_production_count_is_nineteen() -> None:
-    """Task 136: 18 (Task 135) + EGARCH = 19 production backtest-моделей."""
-    assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 19
+def test_production_count_is_twenty() -> None:
+    """Task 138: 19 (Task 136) + LSTM/GRU = 20 production backtest-моделей."""
+    assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 20
 
 
 # ---------------------------------------------------------------------------

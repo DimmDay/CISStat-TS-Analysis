@@ -28,12 +28,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY apps/api/requirements.txt ./apps/api/requirements.txt
+# Task 138: нейро-runtime входит в production-образ (requirements-neural.txt,
+# dependency_group="neural", install_extra="neural"): с регистрации
+# LSTM/GRU в реестре v2 consistency-gate dispatch<->readiness обязан быть
+# зелёным -- без neuralforecast runtime_available честно ложится и гейт
+# уронил бы сборку.  torch -- CPU-колёса (образ без CUDA; GPU-воркеры
+# на Render/Railway не декларированы, requires_gpu: false).
+COPY apps/api/requirements-neural.txt ./apps/api/requirements-neural.txt
 # Флаг --no-cache-dir + явная проверка импорта критичных зависимостей.
 # Если pip не установит redis (например, из-за кэша слоя), сборка упадёт
 # здесь с явной ошибкой, а не в runtime через fallback на Memory.
 RUN pip install --no-cache-dir -r apps/api/requirements.txt \
+    && pip install --no-cache-dir torch>=2.1,<3 --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir -r apps/api/requirements-neural.txt \
     && python -c "import redis; print('redis OK:', redis.__version__)" \
-    && python -c "import fastapi, pandas, pydantic; print('core deps OK')"
+    && python -c "import fastapi, pandas, pydantic; print('core deps OK')" \
+    && python -c "import neuralforecast, torch; print('neural OK:', neuralforecast.__version__, torch.__version__)"
 
 # Копируем ТОЛЬКО то, что реально импортируется бэкендом (проверено
 # статическим AST-разбором, см. apps/api/requirements.txt) -- не весь
@@ -111,7 +121,14 @@ RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; \
                   payload = _egarch_fit_predict(returns, 2, random_state=42); \
                   assert payload['variance_forecast'].shape == (2,) and (payload['variance_forecast'] > 0).all(); \
                   assert payload['asymmetry']['order'] == 1 and 'gamma[1]' in payload['asymmetry']['gamma_params']; \
-                  print('EGARCH executable OK')"
+                  print('EGARCH executable OK')" \
+    && python -c "import pandas as pd; from apps.api.model_impls.lstm import _lstm_fit_predict; \
+                  stamps = [value.isoformat() for value in pd.date_range('2020-01-01', periods=40, freq='D')]; \
+                  payload = _lstm_fit_predict([float(value) for value in range(1, 39)], 2, \
+                  params={'max_steps': 2, 'input_size': 8, 'encoder_hidden_size': 16}, random_state=42, \
+                  train_timestamps=stamps[:38], future_timestamps=stamps[38:]); \
+                  assert len(payload['forecast']) == 2 and payload['params']['cell'] == 'lstm'; \
+                  print('LSTM/GRU executable OK')"
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
