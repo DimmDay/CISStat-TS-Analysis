@@ -56,15 +56,15 @@ requires_neural = pytest.mark.skipif(
 def test_neural_dispatch_registration_convention():
     """Условная регистрация neural-записей в dispatch прижимается с ОБЕИХ
     сторон: без runtime записи не появляются (gate реестр<->dispatch
-    остаётся точным), с runtime -- появляются обе (Task 138 lstm +
-    Task 139 nbeats)."""
+    остаётся точным), с runtime -- появляются все три (Task 138 lstm +
+    Task 139 nbeats + Task 140 nhits)."""
     without: dict = {}
     _register_neural_dispatch(without, runtime_available=False)
     assert without == {}
 
     with_runtime: dict = {}
     _register_neural_dispatch(with_runtime, runtime_available=True)
-    assert set(with_runtime) == {"lstm", "nbeats"}
+    assert set(with_runtime) == {"lstm", "nbeats", "nhits"}
 
 
 def test_dispatch_gate_consistency_in_this_environment():
@@ -74,6 +74,7 @@ def test_dispatch_gate_consistency_in_this_environment():
     assert frozenset(_BACKTEST_IMPLEMENTATIONS) == PRODUCTION_BACKTEST_MODEL_IDS
     assert ("lstm" in _BACKTEST_IMPLEMENTATIONS) is _HAS_NEURAL
     assert ("nbeats" in _BACKTEST_IMPLEMENTATIONS) is _HAS_NEURAL
+    assert ("nhits" in _BACKTEST_IMPLEMENTATIONS) is _HAS_NEURAL
 
 
 # ── Реестр v2: контракт neural ───────────────────────────────────────────
@@ -130,10 +131,10 @@ def test_lstm_readiness_and_stage_matrix_reflect_runtime():
         assert "backtest" in actions and "diagnostics" in actions and "tune" in actions
         assert capabilities["backtest"]["status"] == "available"
         assert capabilities["tuning"]["status"] == "available"
-        # Task 139: nbeats -- 21-я модель (второй исполнитель контракта
-        # Task 137); без опциональной группы обе нейро-модели честно
-        # вне readiness (19).
-        assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 21
+        # Task 139: nbeats -- 21-я, Task 140: nhits -- 22-я модель
+        # (исполнители контракта Task 137); без опциональной группы все
+        # нейро-модели честно вне readiness (19).
+        assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 22
     else:
         assert actions == []
         assert capabilities["backtest"]["status"] == "not_implemented"

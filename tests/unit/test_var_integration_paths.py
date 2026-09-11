@@ -183,9 +183,10 @@ class TestRegistrySeesVarAtRuntime:
         assert result.returncode == 0, (
             f"Цепочка импортов dispatch сломана:\n{result.stderr[-2000:]}"
         )
-        # Task 138/139: 19 базовых + lstm + nbeats при установленной
-        # опциональной neural-группе (честный runtime_available реестра v2).
-        expected_count = "ok 21 True" if neuralforecast_runtime_available() else "ok 19 False"
+        # Task 138/139/140: 19 базовых + lstm + nbeats + nhits при
+        # установленной опциональной neural-группе (честный
+        # runtime_available реестра v2).
+        expected_count = "ok 22 True" if neuralforecast_runtime_available() else "ok 19 False"
         assert expected_count in result.stdout, (
             f"Ожидалось '{expected_count}' production backtest-моделей, "
             f"получено: {result.stdout.strip()}"

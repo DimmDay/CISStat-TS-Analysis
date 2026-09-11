@@ -50,6 +50,10 @@ from apps.api.model_impls.lstm import run_lstm_backtest
 # Task 137 (адаптер НЕ импортирует torch на уровне модуля -- лениво
 # через neural_runtime; ds-конвенция переиспользована из lstm).
 from apps.api.model_impls.nbeats import run_nbeats_backtest
+# Task 140: N-HiTS -- третий исполнитель neural-runtime контракта
+# Task 137 (адаптер НЕ импортирует torch на уровне модуля -- лениво
+# через neural_runtime; ds-конвенция переиспользована из lstm).
+from apps.api.model_impls.nhits import run_nhits_backtest
 
 
 __all__ = [
@@ -70,4 +74,5 @@ __all__ = [
     "run_egarch_backtest",
     "run_lstm_backtest",
     "run_nbeats_backtest",
+    "run_nhits_backtest",
 ]

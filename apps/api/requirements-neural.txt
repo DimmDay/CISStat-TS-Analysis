@@ -13,8 +13,11 @@
 #   apps/api/Dockerfile (torch -- CPU-колёса с явным --index-url).
 # - Task 139: ВТОРОЙ исполнитель зарегистрирован (nbeats: stack_config
 #   ∈ {interpretable, generic}); neural-runtime в образе уже требуется
-#   с Task 138.  Остальные три модели (nhits, tft, deepar -- Tasks
-#   140-142) остаются catalog_only до своих срезов.
+#   с Task 138.
+# - Task 140: ТРЕТИЙ исполнитель зарегистрирован (nhits:
+#   interpolation_config ∈ {hierarchical, light}); пара nbeats/nhits --
+#   готовая база сравнения на одном runtime.  Остальные две модели
+#   (tft, deepar -- Tasks 141-142) остаются catalog_only до своих срезов.
 # - Установка локально: pip install -r apps/api/requirements-neural.txt
 #   (CPU-вариант torch) либо pip install -e ".[neural]" при появлении extra.
 # - Зафиксированная версия neuralforecast связывает surface, на которой

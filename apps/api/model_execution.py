@@ -873,6 +873,56 @@ def _nbeats_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     )
 
 
+def _nhits_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
+    """Task 140: N-HiTS -- третий исполнитель neural-runtime контракта
+    Task 137 (прецедент пар lstm Task 138 / nbeats Task 139: единый
+    NeuralForecast-runtime, neural_runtime.py).
+
+    Одномерная level-модель (objective="level_forecast",
+    input_kind="univariate"; каталог: supports_exogenous=false): точечный
+    прогноз -- честный нейро-фит на train-срезе fold'а; интервалы --
+    официальный conformal-контур контракта (fit prediction_intervals +
+    predict level), уровни из interval_levels_for_alpha.  Архитектурный
+    выбор степени иерархической интерполяции interpolation_config ∈
+    {hierarchical, light} -- bounded-параметр (yaml::nhits param_space,
+    честная альтернатива каталожного описания «Hierarchical interpolation
+    N-BEATS. Быстрее и точнее на долгих горизонтах»): hierarchical --
+    канонический N-HiTS Challu et al. 2023 (официальные дефолты 3.2.2),
+    light -- минимальная иерархия.  Детерминизм: random_state реестра
+    доходит до КОНСТРУКТОРА модели (ресертификация Task 137).  Бюджет
+    обучения -- константа NHITS_MAX_STEPS адаптера (тюнинг бюджета --
+    вне param_space, прецедент Task 136).  Feature-каналы отвергаются
+    гейтами реестра для univariate-входа.  Пара nbeats/nhits -- единый
+    runtime и один level-cohort: честное ранжирование comparison
+    sectioned by objective применимо к паре напрямую.
+    """
+    from apps.api.model_impls.nhits import _nhits_fit_predict
+
+    payload = _nhits_fit_predict(
+        list(request.target),
+        request.horizon,
+        params=dict(request.params),
+        random_state=request.random_state,
+        timestamps=list(request.train_timestamps) or None,
+    )
+    return ModelExecutionResult(
+        forecast=[float(value) for value in payload["forecast"]],
+        lower_interval=[float(value) for value in payload["lower"]],
+        upper_interval=[float(value) for value in payload["upper"]],
+        metadata={
+            "adapter_id": payload["adapter_id"],
+            "params": payload["params"],
+            "interpolation_config": payload["interpolation_config"],
+            "nobs": payload["nobs"],
+            "max_steps": payload["max_steps"],
+            "seed": payload["seed"],
+            "freq": payload["freq"],
+            "intervals": payload["intervals"],
+            "deterministic": payload["deterministic"],
+        },
+    )
+
+
 def _xgboost_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     from apps.api.model_impls.xgboost import _xgb_fit_predict
 
@@ -1221,6 +1271,41 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         # yaml::nbeats, 8 trials).  Dispatch routers/models.py
         # регистрирует запись условно (_register_neural_dispatch) --
         # gate реестр<->dispatch остаётся точным в обеих средах.
+        input_kind="univariate",
+        supports_prediction_intervals=True,
+        deterministic=True,
+        dependency_group="neural",
+        resource_capabilities=ModelResourceCapabilities(
+            memory_class="standard", gpu="optional",
+        ),
+    ),
+    ModelExecutionDefinition(
+        model_id="nhits", family_id="neural",
+        adapter_id="neuralforecast-nhits", executor=_nhits_executor,
+        actions=_TUNABLE, engine="neuralforecast",
+        required_packages=("neuralforecast",),
+        # Task 140: третий исполнитель neural-runtime контракта Task 137
+        # (прецедент пар lstm Task 138 / nbeats Task 139: runtime-контракт
+        # не меняется -- новый адаптер + запись реестра + условный
+        # dispatch + yaml).  objective="level_forecast" +
+        # input_kind="univariate" -- гейты реестра v2; каталог:
+        # supports_exogenous=false -- feature-каналы отвергаются
+        # fail-closed.  Архитектурный выбор степени иерархической
+        # интерполяции interpolation_config ∈ {hierarchical, light} --
+        # bounded-параметр (yaml::nhits, честная альтернатива каталожного
+        # описания «Hierarchical interpolation N-BEATS. Быстрее и точнее
+        # на долгих горизонтах прогнозирования»); интервалы -- официальный
+        # conformal-контур контракта (не «MC Dropout»).  Детерминизм:
+        # random_state -> fold_seed -> random_seed КОНСТРУКТОРА
+        # (ресертификация Task 137; same-seed бит-в-бит подтверждён пробом
+        # Task 140).  Бюджет -- константа NHITS_MAX_STEPS адаптера;
+        # tuning -- тот же одномерный движок (execute_tuning_plan, bounded
+        # param_space yaml::nhits, 8 trials).  Пара nbeats/nhits -- единый
+        # runtime (train_and_forecast) и один level-cohort: готовая база
+        # сравнения N-BEATS/N-HiTS (постановка Task 140).  Dispatch
+        # routers/models.py регистрирует запись условно
+        # (_register_neural_dispatch) -- gate реестр<->dispatch остаётся
+        # точным в обеих средах.
         input_kind="univariate",
         supports_prediction_intervals=True,
         deterministic=True,

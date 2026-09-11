@@ -277,9 +277,11 @@ class TestCandidatesDifferentProfiles:
         assert "naive" in ids
         # ARIMA (min=50) не должен быть в пуле
         assert "arima" not in ids
-        # DL модели тоже не должны быть (Task 139: nbeats -- тоже DL)
+        # DL модели тоже не должны быть (Task 139: nbeats, Task 140:
+        # nhits -- тоже DL)
         assert "lstm" not in ids
         assert "nbeats" not in ids
+        assert "nhits" not in ids
 
 
 # ═══════════════════════════════════════════════════════════

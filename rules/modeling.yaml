@@ -584,6 +584,32 @@ families:
         libraries: ["neuralforecast"]
         training_time: "minutes_to_hours"
         requires_gpu: true
+        # ── Task 140: третий исполнитель neural-runtime контракта Task 137 ──
+        # Архитектурный выбор степени иерархической интерполяции -- честная
+        # альтернатива каталожного описания: interpolation_config --
+        # bounded-параметр адаптера (apps/api/model_impls/nhits.py),
+        # дефолт hierarchical -- канонический N-HiTS Challu et al. 2023
+        # (официальные дефолты 3.2.2: multi-rate pooling
+        # n_pool_kernel_size=[2,2,1], hierarchical interpolation
+        # n_freq_downsample=[4,2,1] -- агрессивная интерполяция длинных
+        # горизонтов); light -- минимальная иерархия (фактор 2 только на
+        # самом грубом стеке -- максимум разрешения коротких горизонтов).
+        # Единый бюджет обучения fold'а -- константа NHITS_MAX_STEPS
+        # адаптера (единый бюджетный рычаг max_steps NeuralForecast 3.x);
+        # тюнинг бюджета -- вне param_space обоснованно (прецедент
+        # Task 136).  Интервалы -- официальный conformal-контур контракта
+        # Task 137 (fit prediction_intervals + predict level), уровни из
+        # interval_levels_for_alpha.  Grid 2 x 2 x 2 = 8 trials
+        # (<= MAX_TRIALS=64); hidden_size/input_size ограничивают
+        # сложность против переобучения на коротких fold'ах; input_size
+        # -- глубина каузального окна (lookback), гейт неосуществимого
+        # окна -- n_train < input_size + horizon.  Пара nbeats/nhits --
+        # единый runtime и один level-cohort: готовая база сравнения
+        # N-BEATS/N-HiTS.
+        param_space:
+          interpolation_config: ["hierarchical", "light"]
+          hidden_size: [32, 64]
+          input_size: [24, 48]
 
       - id: "deepar"
         name: "DeepAR"
