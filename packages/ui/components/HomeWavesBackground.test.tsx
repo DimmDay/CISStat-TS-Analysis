@@ -22,11 +22,14 @@ describe("HomeWavesBackground", () => {
     expect(root?.className).not.toMatch(/\bfixed\b/);
   });
 
-  it("использует фирменные токены (brand-light/brand), а не произвольную палитру", () => {
+  it("использует сэмплированную из макета палитру (точные hex, не Tailwind-токены brand)", () => {
     const { container } = render(<HomeWavesBackground />);
 
-    expect(container.innerHTML).toContain("brand-light");
-    expect(container.innerHTML).toMatch(/fill-brand\b|fill-brand\/|fill-brand\[/);
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.style.background).toContain("#EFF7FE");
+    expect(root.style.background).toContain("#E6ECFA");
+    expect(container.innerHTML).toContain("#DCE7FB");
+    expect(container.innerHTML).toContain("#C9D9F7");
   });
 
   it("рендерит инлайн SVG с двумя слоями волн (не растровое изображение, не canvas)", () => {
