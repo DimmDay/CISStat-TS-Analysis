@@ -39,7 +39,7 @@ COPY apps/api/requirements-neural.txt ./apps/api/requirements-neural.txt
 # Если pip не установит redis (например, из-за кэша слоя), сборка упадёт
 # здесь с явной ошибкой, а не в runtime через fallback на Memory.
 RUN pip install --no-cache-dir -r apps/api/requirements.txt \
-    && pip install --no-cache-dir torch>=2.1,<3 --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir 'torch>=2.1,<3' --index-url https://download.pytorch.org/whl/cpu \
     && pip install --no-cache-dir -r apps/api/requirements-neural.txt \
     && python -c "import redis; print('redis OK:', redis.__version__)" \
     && python -c "import fastapi, pandas, pydantic; print('core deps OK')" \
@@ -122,12 +122,10 @@ RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; \
                   assert payload['variance_forecast'].shape == (2,) and (payload['variance_forecast'] > 0).all(); \
                   assert payload['asymmetry']['order'] == 1 and 'gamma[1]' in payload['asymmetry']['gamma_params']; \
                   print('EGARCH executable OK')" \
-    && python -c "import pandas as pd; from apps.api.model_impls.lstm import _lstm_fit_predict; \
-                  stamps = [value.isoformat() for value in pd.date_range('2020-01-01', periods=40, freq='D')]; \
+    && python -c "from apps.api.model_impls.lstm import _lstm_fit_predict; \
                   payload = _lstm_fit_predict([float(value) for value in range(1, 39)], 2, \
-                  params={'max_steps': 2, 'input_size': 8, 'encoder_hidden_size': 16}, random_state=42, \
-                  train_timestamps=stamps[:38], future_timestamps=stamps[38:]); \
-                  assert len(payload['forecast']) == 2 and payload['params']['cell'] == 'lstm'; \
+                  params={'cell_type': 'GRU', 'input_size': 8, 'hidden_size': 16}, random_state=42); \
+                  assert len(payload['forecast']) == 2 and payload['params']['cell_type'] == 'GRU'; \
                   print('LSTM/GRU executable OK')"
 
 ENV PYTHONUNBUFFERED=1

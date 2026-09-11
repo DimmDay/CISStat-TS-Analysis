@@ -949,3 +949,279 @@ Stage Summary:
     test_eda_model_matrix, test_var_integration_paths}.py,
     tests/api/{test_models_backtest_real, test_models_candidates,
     test_modeling_workflow}.py, worklog4.md (этот журнал)
+
+---
+
+## Task 138 -- Независимая сертификация (аудит исполненной задачи)
+
+Дата: 2026-09-11. Аудитор: senior-разработчик (независимый, работы Task 138
+не исполнял; прецедент -- мои сертификации 136/137). Объект аудита: Task 138
+`a7cdf90` (LSTM/GRU vertical slice -- первый исполнитель Neural Runtime
+Contract Task 137; адаптер `apps/api/model_impls/lstm.py` 572 строки +
+реестр №20 + dispatch + yaml 16 trials + Dockerfile нейро-зависимости +
+51 новый тест). База аудита: чистое дерево `main @ a7cdf90`, границы diff
+`b677c61..a7cdf90` -- 23 файла, 1889 insertions / 43 deletions; удаления --
+count-гейты 19->20 и комментарии, фронтенд не затронут.
+
+### Методология аудита
+
+(1) Построчный аудит кода против постановки docs/modeling_task_list.md
+::Task 138 и контракта Task 137; (2) воспроизведение окружения (Python
+3.12.14, neuralforecast 3.2.2, torch 2.14.0+cpu -- ТЕ ЖЕ версии, на которых
+сертифицирован Task 137; честный dependency-probe readiness воспроизведён:
+без нейро-зависимостей реестр 16, после установки -- 20, consistency-gate
+dispatch<->readiness на разрыве честно роняет импорт -- гейт живой);
+(3) полная backend-регрессия; (4) 14 независимых оракул-проб на СВОИХ
+данных и сидах (scripts/audit_scripts/cert138_oracles.py: сиды
+20260913/777777767/138138138/555555556/313371137/9000001/444444441/626741/
+977/1000003 -- ни один не совпадает с сидами исполнителя 42/43/4242/11/17/
+5/7/21/23/31/31337/1618034/20260912/42424244/90210666); (5) 20 мутационных
+проб (scripts/audit_scripts/cert138_mutations.py, каждая apply -> targeted
+RED-check -> revert -> byte-verify); (6) характеризация всех выживших
+отдельным скриптом (cert138_survivor_characterize.py) с обязательным
+fresh-subprocess-протоколом (урок: in-process проба под мутацией гоняет
+уже импортированный девственный модуль -- недействительна); (7) максимум
+преимущества исполнителю: каждый выживший дополнительно прогнан через
+ПОЛНУЮ нейро-сюиту 51 кейс под мутацией; (8) воспроизведение e2e-смоука.
+
+### Воспроизведение базлайна и регрессии
+
+- tests/unit **1521 passed** (1470 база + 51 нейро-новых; snapshots 3/3),
+  tests/api **623 passed**, прочие (root/integration/legacy) **100
+  passed**; итого **2244 passed / 0 failed** -- ЗАЯВЛЕНИЕ ИСПОЛНИТЕЛЯ
+  ПОДТВЕРЖДЕНО ТОЧНО (1521 + 623 + 100 = 2244; арифметика 1470 + 51 =
+  1521 сходится, off-by-one прошлых записей не повторился).
+
+### Оракулы (14/14 PASS -- все независимые, на своих данных)
+
+- OR1 same-seed бит-в-бит LSTM; OR2 GRU бит-в-бит + diff-seed
+  дифференциал (анти-вакуум, max_diff=0.364); OR3 fold_seed-дисциплина
+  сквозь train_and_forecast (fold 0 vs 1: max_diff=0.292 -- сид доходит
+  до конструктора, блокер ресертификации 137 не регрессировал); OR4
+  cell-дифференциал LSTM vs GRU на одном runtime (max_diff=1.433 -- ядро
+  постановки НЕ вакуумно) + alias/params-корректность; OR5 OOF-честность
+  (residual == actual-predicted бит-в-бит, независимый пересчёт pooled
+  MAE == declared: 0.992358 == 0.992358); OR6 детерминизм плана (same
+  seed -- идентичные метрики, diff seed -- новые); OR7 exogenous-канал
+  (futr-план/signature + 5 adversarial-отказов: асимметрия, коллизия с
+  сервис-колонкой, короткий future, NaN, Inf); OR8 интервалы (clamp 0
+  нарушений на 3 сида x 3 alpha = 63 точки, interval_level ==
+  100*(1-alpha/2), ширина монотонна по alpha); OR9 fail-closed свип
+  14/14 (horizon<=0, пустой/NaN/Inf-ряд, 31<32, неосуществимое окно,
+  дубликаты/нерегулярная сетка/отсутствие меток, unknown cell, bool
+  ручка, lr вне границ, alpha вне whitelist, короткий future_timestamps);
+  OR10 legacy-эндпоинт честный отказ; OR11 реестр/dispatch/yaml 21/21
+  (20 ids, descriptor neural/neuralforecast/supervised/deterministic,
+  16 trials, cell set, actions, tft/deepar/nbeats/nhits catalog_only);
+  OR12 границы (n_train=31 отказ / 32 прохождение, строгое неравенство
+  окна, ровно-одно-окно); OR13 conformal-симметрия lo+hi == 2*point
+  (max 0.000e+00 -- эмпирическая семантика уровней подтверждена
+  независимо); OR14 metadata-контракт + транзит через executor 15/15.
+
+### Мутации (16/20 KILLED, 4 SURVIVED -- все охарактеризованы)
+
+KILLED (16): M1 floor 32->5, M2 окно-гейт, M3 регулярная сетка, M4
+скрытая целочисленная ось, M5 cell-whitelist (rnn), M7 alpha-whitelist,
+M8 exog-симметрия, M9 сервис-коллизия, M11 seed-прокидка (блокер-137 не
+регрессировал), M12 уровень levels[-1]->[0], M13 futr_df-дроп, M14
+deterministic-флаг, M15 dispatch-удаление, M16 adapter_id, M17 legacy-
+синтетика, M19 PredictionIntervals. Каждый -- целевой RED-check.
+
+SURVIVED (4) -- характеризация (fresh-subprocess + полная сюита 51 под
+мутацией, git-чистота восстановления подтверждена):
+
+- **M20 validate_future_exogenous_frame skip -- ЭКВИВАЛЕНТ
+  (многослойная защита)**: SHORT (длина 4<7) ловится независимо
+  `_build_exogenous_context` (lstm.py:317); NaN ловит сам neuralforecast
+  ("Found null values in futr_df"); Inf -- isfinite-гейт адаптера ("fold
+  отклоняется"). Все три класса malformed-future остаются fail-closed
+  через независимые слои; гейт валиден как defense-in-depth. Вердикт
+  выживания: целевой тест ловит length-класс вторым слоем.
+- **M10 clamp-инвариант -- DEFENSIVE (живой гейт вне happy-path)**:
+  fault-инъекция (lower=point+10 через monkeypatch train_and_forecast):
+  девственный код -- NeuralContractError "нарушен инвариант lower <=
+  point <= upper" (гейт ЖИВОЙ), мутированный -- битый payload проходит
+  до потребителя. Happy-path никогда не нарушает границы (conformal-
+  математика корректна), поэтому сюита не может убить мутацию. Не дыра
+  корректности; рекомендуется fault-injection unit-тест на закрепление.
+- **M6 bool-коэрция -- COVERAGE GAP (узкий)**: под мутацией
+  input_size=True остаётся отклонённым (границы [4,128] ловят 1), НО
+  max_steps=True -> ПРИНЯТ как 1, encoder_n_layers=True -> ПРИНЯТ как 1
+  (нижние границы обеих ручек = 1). Полная сюита 51 passed -- тест
+  покрывает bool только на input_size, где его спасает bounds-слой.
+  Текущее поведение девственного кода КОРРЕКТНО (проба: все 4 ручки
+  отклоняют bool), дефект -- только в защите от регрессии.
+- **M18 max_steps override 1 -- COVERAGE GAP (метаданные vs проводка)**:
+  под мутацией конструктор получает max_steps=1 при метаданных
+  config.max_steps=7 -- метаданные лгут о фактическом бюджете, и НИ
+  один тест/оракул это не ловит (51 passed). Девственная проводка
+  КОРРЕКТНА (spy-проба аудитора: constructor_received=7, wiring_ok) --
+  дефект в верификации, не в коде. Класс "literal-dup" артефакта.
+
+### Воспроизведение смоуков исполнителя
+
+- E2E scripts/task138_e2e_smoke.py: все 7 этапов OK -- реестр 20,
+  candidates 16/4/4, реальный OOF GRU 3 folds **mae=0.4753** (бит-в-бит
+  с записью исполнителя), детерминизм плана, grid 16 trials реальным
+  движком, futr-канал, cohort-изоляция. E2E SMOKE OK.
+- Dockerfile-проба не воспроизводилась (нет docker в среде аудита);
+  локальный эквивалент 'LSTM/GRU executable OK' -- оракулы OR1-OR14
+  исполняют тот же импортно-конструкторский контур.
+
+### НАХОДКИ (все не-блокирующие)
+
+1. НАХОДКА-1 (M18, средняя): отсутствует тест проводки бюджета --
+   metadata-тесты проверяют декларацию, никто не ловит расхождение
+   "декларировано 7 / конструктор получил 1". Рекомендация: spy-тест
+   конструктора (проба аудитора в cert138_survivor_characterize.py --
+   готовый шаблон) на max_steps и input_size.
+2. НАХОДКА-2 (M6, низкая): bool-тест покрывает 1 из 4 int-ручек;
+   параметризовать test_fail_closed_on_bool_instead_of_int по всем
+   _INT_PARAMS (max_steps/encoder_n_layers -- единственные, где bounds
+   не страхуют).
+3. НАХОДКА-3 (M10, низкая): clamp-гейт жив, но не закреплён тестом --
+   добавить fault-injection unit-тест (monkeypatch train_and_forecast,
+   lower>point -> NeuralContractError).
+4. НАБЛЮДЕНИЕ (не находка): validate_future_exogenous_frame дублирует
+   length-проверку _build_exogenous_context -- оставить как есть
+   (defense-in-depth на границе контракта; NaN/Inf-проверка слоя
+   уникальна для этого гейта до перехода на движок).
+
+### Вердикт
+
+**СЕРТИФИЦИРОВАНА** (Task 138, LSTM/GRU vertical slice, neuralforecast
+3.2.2 / torch 2.14.0+cpu). Основания: полная регрессия 2244/2244
+воспроизведена независимо; оракулы 14/14 -- все поведенческие контракты
+(детерминизм, seed-дисциплина, cell-дифференциал, OOF-честность,
+conformal-семантика, fail-closed свип, реестр/dispatch/yaml, границы,
+метаданные) подтверждены на независимых данных и сидах; мутационное
+ядро постановки убивается (16/20), все 4 выживших охарактеризованы:
+1 эквивалент (многослойная защита), 1 defensive-гейт, 2 узких разрыва
+покрытия при КОРРЕКТНОМ текущем поведении; смоуки воспроизведены
+бит-в-бит. Ядро постановки (архитектурный выбор cell ∈ {lstm, gru} на
+едином runtime Neural Runtime Contract) реализовано честно и не вакуумно
+(OR4: LSTM != GRU, max_diff=1.433). НАХОДКИ 1-3 передаются исполнителю
+как не-блокирующие рекомендации (готовый шаблон spy-проба -- в
+audit-скриптах); повторная сертификация по ним не требуется, достаточно
+включения трёх тестов в следующий срез (139-142) с прогоном
+cert138_mutations.py (M6/M10/M18 должны стать KILLED).
+
+### Инструменты аудита (воспроизводимость)
+
+- scripts/audit_scripts/cert138_oracles.py -- 14 оракулов (свои
+  данные/сиды; запуск: python scripts/audit_scripts/cert138_oracles.py
+  [N,...]).
+- scripts/audit_scripts/cert138_mutations.py -- 20 мутаций (apply ->
+  RED -> revert -> byte-verify; запуск: ... cert138_mutations.py [N,...]).
+- scripts/audit_scripts/cert138_survivor_characterize.py -- характеризация
+  выживших (fresh-subprocess протокол; боевой урок: in-process проба под
+  мутацией недействительна -- модуль уже импортирован).
+- Окружение аудита: Python 3.12.14, neuralforecast 3.2.2, torch
+  2.14.0+cpu, pandas 2.3.3, numpy 2.2.4; между мутационными прогонами
+  git-дерево верифицировано чистым.
+
+  ---
+
+## Task 138b -- Исправление deploy-блокера: образ Render не пересобирался с Task 138 (симптом "Подключённые: 19")
+
+Дата: 2026-09-11. Синхронизация: main @ 64f2c27 (Task ID 138a). Симптом от
+приёмки: во вкладке «Моделирование» / «Исполнение» / фильтре «Подключённые»
+19 моделей -- 20-я (LSTM/GRU) не появилась.
+
+### Диагностика (сверху вниз, воспроизведено на живом контуре)
+
+1. UI (packages/ui/components/TsAnalysisModeling.tsx:1121): счётчик
+   «Подключённые» = catalog.filter(platform_status === "ready") -- каталог
+   целиком приходит с бэкенда /v1/session/modeling/candidates; в UI
+   fallback-каталога нет.
+2. Локально на 64f2c27 бэкенд корректен: registry v2 -- 20 production
+   (lstm ready, actions backtest/tune/diagnostics); _compute_candidates --
+   catalog 24 / ready 20; E2E-смоук -- 20 connected.
+3. Живой бэкенд (через прокси standalone) воспроизводит симптом ТОЧНО:
+   /v1/internal/models/candidates -> catalog 24, ready 19, lstm
+   catalog_only ("Production-реализация модели ещё не подключена");
+   /v1/internal/models/backtest(lstm) -> 422 "Production backtest для
+   модели 'lstm' не реализован" -- записи lstm нет в dispatch живого
+   процесса => нейро-зависимость отсутствует в РАБОЧЕМ образе Render.
+4. Причина отсутствия: docker-сборка падает с a7cdf90 (Task 138) на
+   КАЖДОЙ попытке -> Render продолжает обслуживать последний успешный
+   образ (эпоха eba9af8 -- 19 моделей). Два независимых блокера в
+   apps/api/Dockerfile:
+
+   БЛОКЕР-1 (строка 42): незакавыченный version-spec в RUN --
+   `pip install --no-cache-dir torch>=2.1,<3 --index-url ...`.  Shell
+   (dash) парсит `>=`/`<` как РЕДИРЕКТЫ: stdout -> файл "=2.1,", stdin <-
+   файл "3" (не существует) -> "cannot open 3: No such file" -> exit 2 ->
+   RUN падает ДО запуска pip (воспроизведено локально на dash).
+   Введено в a7cdf90; в eba9af8 строки не было.
+
+   БЛОКЕР-2 (строки 125-131): build-проба LSTM вызывает ПОВЕРХНОСТЬ
+   адаптера a7cdf90, переписанную в 138a: kwargs train_timestamps/
+   future_timestamps (в 138a -- timestamps), params.max_steps
+   (в 138a -- константа LSTM_MAX_STEPS=300), params.encoder_hidden_size
+   (в 138a -- hidden_size), assert params['cell']=='lstm' (в 138a --
+   cell_type ∈ {LSTM, GRU}).  Даже после БЛОКЕРА-1 сборка падала бы в
+   пробе: TypeError (unexpected keyword 'train_timestamps') -- подтверждено
+   прямым вызовом.
+
+### Исправление (apps/api/Dockerfile, два hunk'а)
+
+- `'torch>=2.1,<3'` -- кавычки; spec доходит до pip, редиректов нет
+  (проверено: sh -c с кавычками -> exit 0, один аргумент).
+- Проба переписана под контракты 138a: `_lstm_fit_predict(range, 2,
+  params={'cell_type': 'GRU', 'input_size': 8, 'hidden_size': 16},
+  random_state=42)` + assert `payload['params']['cell_type'] == 'GRU'`;
+  временная ось -- задекларированная позиционная целочисленная сетка
+  (timestamps опущены, freq={'kind': 'integer', 'value': 1}); ячейка GRU
+  -- дополнительно покрывает второй конструктор пары LSTM/GRU.
+
+### Верификация
+
+- ВСЕ 17 python -c проб Dockerfile-цепочки прогнаны последовательно
+  локально (семантика fail-fast сборки): 17/17 OK, включая новую
+  'LSTM/GRU executable OK' (скрипт прогона:
+  scripts/run_dockerfile_probes.py).
+- requirements-neural.txt парсится pip (dry-run OK, inline-комментарии
+  валидны); кавыченный spec -- один аргумент pip.
+- Полная регрессия на 64f2c27 + фикс: **1500 unit + 623 api + 100
+  прочие = 2223 passed / 0 failed** -- совпадает с заявлением 138a
+  (2193 база + 30 новых).  E2E-смоук: 20 connected, lstm ready, OOF
+  mae=0.0567, tuning-grid 8 trials, legacy mae=0.0224.
+- Изменения: ТОЛЬКО apps/api/Dockerfile (2 hunk'а); backend/frontend
+  код не тронут -- регрессия это подтверждает.
+
+### Деплой-действия (вне репозитория)
+
+- Требуется пуш фиксa в main (по правилам AGENTS.md commit/push --
+  только по прямому указанию тимлида) и РУЧНОЙ retry deploy сервиса API
+  на Render (Clear build cache & deploy), т.к. autodeploy мог быть
+  отключён после серии падающих сборок.  Проверка после деплоя:
+  /v1/internal/models/candidates -> ready 20, lstm ready; фильтр
+  «Подключённые» -- 20, в семействе «Нейросетевые» у LSTM / GRU бейдж
+  «Готово».  Следующим срезом (Task 139 N-BEATS) на neural-воркере
+  появится 21-я.
+- Эксплуатационное замечание: на free-тарифе Render (512 MB RAM)
+  readiness lstm честен (find_spec не импортирует torch), но реальный
+  нейро-бэктест импортирует neuralforecast+torch -- следить за памятью
+  при росте нагрузки; при OOM-рестартах рассмотреть Starter-план.
+
+### Изменённые/новые файлы и поставка ZIP (AGENTS.md п.14-15)
+
+- Изменённые файлы текущей задачи (Task 138b):
+  apps/api/Dockerfile -- 2 hunk'а (кавычки вокруг torch version-spec;
+  build-проба LSTM/GRU переписана под контракт адаптера 138a);
+  worklog4.md -- данная запись (секции «Диагностика», «Исправление»,
+  «Верификация», «Деплой-действия», настоящая).
+- Новых файлов задача 138b не создаёт; незакоммиченные
+  scripts/audit_scripts/cert138_*.py -- инструменты ПРЕДЫДУЩЕЙ задачи
+  (сертификация Task 138), поставляются отдельным ZIP.
+- ZIP текущей задачи: download/task138b_dockerfile_deploy_fix_worklog4.zip
+  (apps/api/Dockerfile + worklog4.md).
+- ZIP сертификации Task 138 (предыдущая задача этого сеанса):
+  download/task138_certification_worklog4.zip (worklog4.md +
+  scripts/audit_scripts/cert138_oracles.py +
+  scripts/audit_scripts/cert138_mutations.py +
+  scripts/audit_scripts/cert138_survivor_characterize.py) --
+  по прецеденту task137_certification.zip.
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@64f2c27 + перечисленные изменения.
