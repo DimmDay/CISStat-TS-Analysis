@@ -6,11 +6,20 @@
 // информационная. Расположена ПОД HomeHero (см. apps/standalone/app/page.tsx).
 //
 // Содержит:
-//   - Block A — 4 stat-бейджа в ряд НАД заголовком секции. Каждый бейдж —
-//               отдельная карточка со своей рамкой и скруглением (Task 29,
-//               2026-08-21: раньше был «слитый монолит» с 1px-линиями
-//               между ячейками через gap-px + bg-neutral-200 на родителе).
-//               Светло-серый фон, уменьшенный шрифт.
+//   - Block A — marquee-лента из 14 stat-бейджей (Задача M-02,
+//               2026-09-12: 4 исходных + 10 новых маркетинговых тезисов,
+//               фактура верифицирована по коду main @ 23ca75b).
+//               Лента бесшовно движется справа налево с низкой скоростью
+//               (animate-marquee: 90s linear infinite, translateX 0 → -50%),
+//               все бейджи движутся синхронно — анимация одна на трек.
+//               На ширине страницы видно ~5 бейджей (фиксированная ширина
+//               w-[clamp(180px,18vw,300px)]), высота бейджа унифицирована:
+//               подпись — ровно 2 строки (h-7 + line-clamp-2).
+//               Пауза на hover; prefers-reduced-motion отключает анимацию
+//               (см. packages/ui/globals.css).
+//               Бесшовность: лента дублируется в aria-hidden-копию,
+//               сдвиг -50% = ровно одна группа (включая завершающий gap).
+//               Светло-серый фон, компактный паддинг (px-3 py-3).
 //   - Заголовок H2 + поддерживающий текст.
 //   - Block B — сетка 3×2 из 6 capability-карточек: ключевые
 //               возможности и принципы платформы.
@@ -18,52 +27,77 @@
 // Чисто презентационный, без состояния. Данные — в lib/capabilities.ts.
 // Не подключается в embedded — там пользователь уже внутри портала.
 //
-// Правка 2 от 2026-08-20: фон Block A затемнён (bg-neutral-50 →
-// bg-neutral-100); шрифт H2 приведён к H1 (font-normal → font-semibold);
-// под Block B добавлена светло-серая черта (h-px w-full bg-neutral-200).
-//
-// Правка 3 (Task 29) от 2026-08-21: Block A переделан из «слитого монолита»
-// (один общий <dl> с border + rounded-xl + overflow-hidden, ячейки прижаты
-// через gap-px) в 4 отдельных бейджа — каждый StatCell имеет собственную
-// рамку border-neutral-200 и скругление rounded-xl, между ними gap-3.
-// Семантика <dl>/<dt>/<dd> сохранена (a11y).
-//
-// Правка 4 (Task 30) от 2026-08-21: между Block A и H2 добавлена
-// светло-серая черта на всю ширину страницы (h-px w-full bg-neutral-200);
-// H2 уменьшен (text-2xl → text-xl) с сохранением font-semibold, цвет шрифта
-// изменён с брендового тёмно-синего (#1e3a8a) на серый (text-neutral-700);
-// убран hover-эффект с CapabilityCard в Block B (раньше рамка темнела до
-// brand/30, фон уходил в brand-light/30, иконка переходила в bg-brand).
-// Теперь Block B — полностью статичные карточки.
+// История правок:
+//   - Правка 2 от 2026-08-20: фон Block A затемнён (bg-neutral-50 →
+//     bg-neutral-100); шрифт H2 приведён к H1 (font-normal → font-semibold);
+//     под Block B добавлена светло-серая черта (h-px w-full bg-neutral-200).
+//   - Правка 3 (Task 29) от 2026-08-21: Block A переделан из «слитого
+//     монолита» в 4 отдельных бейджа с собственной рамкой/скруглением.
+//   - Правка 4 (Task 30) от 2026-08-21: черта между Block A и H2; H2
+//     text-xl/text-neutral-600; Block B — полностью статичные карточки.
+//   - Правка 5 (M-02) от 2026-09-12: Block A — marquee из 14 бейджей;
+//     сетка grid-cols-2/sm:grid-cols-4 заменена на бегущую строку.
 //
 // a11y-контракт:
 //   - <section aria-labelledby="capabilities-heading"> оборачивает всё
-//   - Stat-счётчики — semantic <dl>/<dt>/<dd>
+//   - Stat-счётчики — semantic <dl>/<dt>/<dd>; aria-label="Метрики платформы"
+//   - Дублирующая группа ленты — aria-hidden="true" (скринридер читает
+//     каждый тезис ровно один раз)
 //   - Иконки карточек — aria-hidden="true"
+//   - Анимация уважает prefers-reduced-motion (CSS в packages/ui/globals.css)
 
 import {
   CAPABILITIES_TITLE,
   CAPABILITIES_SUBTITLE,
   CAPABILITY_STATS,
   CAPABILITIES,
+  type CapabilityStat,
 } from "../lib/capabilities";
 
-// ── Block A: Stat-бейдж ──────────────────────────────────────
+// ── Block A: Stat-бейдж marquee-ленты ────────────────────────
 //
-// Отдельный бейдж-карточка: собственная рамка border-neutral-200,
-// скругление rounded-xl, светло-серый фон bg-neutral-100, уменьшенный
-// шрифт (text-xl вместо text-3xl). На мобильных — 2 колонки, на sm+ — 4.
-// Между бейджами — gap-3 (раньше был gap-px с общей рамкой).
+// Компактная карточка: фиксированная ширина w-[clamp(180px,18vw,300px)]
+// (~5 бейджей на ширину контейнера max-w-[1600px]), собственная рамка
+// border-neutral-200, скругление rounded-xl, светло-серый фон
+// bg-neutral-100, компактный паддинг px-3/py-3. Подпись — ровно 2 строки
+// у ВСЕХ бейджей: h-7 (28px = 2×leading-tight от text-[11px]) +
+// line-clamp-2 (страховка от переполнения на узких вьюпортах).
 
 function StatCell({ value, label }: { value: string; label: string }) {
   return (
-    <div className="bg-neutral-100 px-4 py-4 text-center rounded-xl border border-neutral-200">
+    <div className="w-[clamp(180px,18vw,300px)] shrink-0 bg-neutral-100 px-3 py-3 text-center rounded-xl border border-neutral-200">
       <dd className="text-xl font-semibold text-brand leading-none tracking-tight">
         {value}
       </dd>
-      <dt className="mt-1.5 text-[11px] font-medium uppercase tracking-wide text-neutral-500 leading-tight">
+      <dt className="mt-1.5 h-7 text-[11px] font-medium uppercase tracking-wide text-neutral-500 leading-tight line-clamp-2">
         {label}
       </dt>
+    </div>
+  );
+}
+
+// ── Block A: группа бейджей внутри marquee-трека ─────────────
+//
+// Два идентичных экземпляра: реальный (читается скринридером) и клон
+// (aria-hidden, обеспечивает бесшовный стык при translateX(-50%)).
+// pr-3 на группе — завершающий gap стыка, равный межбейджевому gap-3.
+
+function MarqueeGroup({
+  stats,
+  clone = false,
+}: {
+  stats: CapabilityStat[];
+  clone?: boolean;
+}) {
+  return (
+    <div
+      className="flex gap-3 pr-3"
+      data-testid={clone ? "marquee-group-clone" : "marquee-group-real"}
+      aria-hidden={clone || undefined}
+    >
+      {stats.map((stat) => (
+        <StatCell key={`${stat.value}-${stat.label}`} value={stat.value} label={stat.label} />
+      ))}
     </div>
   );
 }
@@ -112,21 +146,26 @@ export function HomeCapabilities() {
       aria-labelledby="capabilities-heading"
       className="space-y-8 pt-4"
     >
-      {/* ── Block A: 4 stat-бейджа НАД заголовком секции ──
-          Task 29 (2026-08-21): 4 отдельных бейджа вместо слитого монолита.
-          Каждый StatCell — самостоятельная карточка со своей рамкой
-          и скруглением. <dl> без общей рамки, только grid + gap-3. */}
-      <dl
-        className="grid grid-cols-2 sm:grid-cols-4 gap-3"
-        aria-label="Метрики платформы"
-      >
-        {CAPABILITY_STATS.map((stat) => (
-          <StatCell key={stat.label} value={stat.value} label={stat.label} />
-        ))}
-      </dl>
+      {/* ── Block A: marquee из 14 stat-бейджей НАД заголовком секции ──
+          Задача M-02 (2026-09-12): сетка grid-cols-2/sm:grid-cols-4
+          заменена на бегущую строку. Вьюпорт обрезает трек (overflow-hidden),
+          трек (dl, w-max) целиком анимируется одним transform — все бейджи
+          движутся синхронно и равномерно справа налево (90s linear).
+          Пауза на hover; при prefers-reduced-motion анимация отключается
+          CSS-правилом в packages/ui/globals.css (лента остаётся читаемой,
+          вьюпорт переключается на ручную горизонтальную прокрутку). */}
+      <div className="marquee-viewport relative overflow-hidden">
+        <dl
+          className="flex w-max gap-3 animate-marquee hover:[animation-play-state:paused] motion-reduce:animate-none"
+          aria-label="Метрики платформы"
+        >
+          <MarqueeGroup stats={CAPABILITY_STATS} />
+          <MarqueeGroup stats={CAPABILITY_STATS} clone />
+        </dl>
+      </div>
 
       {/* ── Декоративная светло-серая черта между Block A и заголовком ──
-          Task 30 (2026-08-21): разделяет 4 stat-бейджа и H2 визуально. */}
+          Task 30 (2026-08-21): разделяет marquee-ленту и H2 визуально. */}
       <div className="h-px w-full bg-neutral-200" aria-hidden="true" />
 
       {/* ── Заголовок секции ──

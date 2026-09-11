@@ -3,7 +3,8 @@
 // Источник истины для секции «Возможности» на главной странице (/)
 // standalone-режима. Содержит:
 //   - Заголовок H2 и поддерживающий текст секции
-//   - 4 stat-счётчика (Block A) — масштаб продукта в 4 числах
+//   - 14 stat-счётчиков (Block A, marquee-лента) — масштаб продукта
+//     в 14 числах
 //   - 6 capability-карточек (Block B, сетка 3×2) — ключевые возможности
 //     и принципы платформы
 //   - Manifesto-цитату (Block C) — эмоциональное закрытие секции,
@@ -16,6 +17,35 @@
 //   - "8 семейств"     ← MODEL_FAMILIES.length в lib/modeling.ts
 //   - "600+ тестов"    ← pytest (~453 + 146 = ~600) и jest (174)
 //   - "1 API-контракт" ← FastAPI /docs (Swagger/OpenAPI из коробки)
+//
+// Задача M-01 (2026-09-12, решение тимлида): добавлены 10 новых
+// маркетинговых тезисов; каждый верифицирован по коду main @ 23ca75b:
+//   - "24 модели"      ← rules/modeling.yaml (naive…deepar/tft/nhits),
+//                         согласуется с живым каталогом Render (24)
+//   - "129 эндпоинтов" ← apps/api/routers/*: 129 @router-декораторов
+//                         (session 83, modeling_session 24, internal 9,
+//                         public 7, models 4, diagnostics 2)
+//   - "11 стадий"      ← PIPELINE_STAGES (lib/modeling.ts):
+//                         problem_definition → … → model_card
+//   - "4 уровня"       ← APPLICABILITY_LABEL: Recommended /
+//                         Conditionally applicable / Not recommended /
+//                         Not applicable — вместо бинарного Yes/No
+//   - "10 критериев"   ← CHECK_META (TsAnalysisValidation.tsx):
+//                         Data Quality по DAMA DMBOK
+//   - "6 метрик"       ← BacktestMetrics: mae, rmse, mape, mase,
+//                         smape, rmsse
+//   - "4 теста"        ← rules/modeling.yaml, diagnostics:
+//                         ljung_box, jarque_bera, arch_lm, durbin_watson
+//   - "5 частот"       ← FREQUENCIES: D / W / M / Q / Y
+//   - "4 стратегии"    ← rules/modeling.yaml, ensembles:
+//                         simple_average, weighted_average, median,
+//                         stacking (заменяют прежний тезис про
+//                         дата-контракты — решение тимлида от 2026-09-12)
+//   - "3 метода"       ← app/preprocessing/decomposition.py:
+//                         STL / Additive / Multiplicative
+//
+// Формулировки подписей подобраны под фиксированные 2 строки бейджа
+// (h-7 + line-clamp-2 при ширине w-[clamp(180px,18vw,300px)]).
 //
 // Решение тимлида (2026-08-20): capabilities-секция уместна ТОЛЬКО в
 // маркетинговом сценарии standalone для неавторизованного. В embedded
@@ -42,20 +72,32 @@ export const CAPABILITIES_SUBTITLE =
 // Section tag — мелкий моноширинный лейбл над H2 (паттерн из Metriqa).
 // export const CAPABILITIES_TAG = "ВОЗМОЖНОСТИ";
 
-// ── Stat-счётчики (Block A) ───────────────────────────────────
+// ── Stat-счётчики (Block A, marquee-лента из 14 бейджей) ─────
 
 export interface CapabilityStat {
   /** Крупная цифра (строка — чтобы поддержать "600+" и т.д.). */
   value: string;
-  /** Короткая подпись под цифрой. */
+  /** Короткая подпись под цифрой (умещается в 2 строки бейджа). */
   label: string;
 }
 
 export const CAPABILITY_STATS: CapabilityStat[] = [
+  // Исходные 4 бейджа (Task 27/29/30)
   { value: "10", label: "модулей глубокого анализа" },
   { value: "8", label: "семейств прогностических моделей" },
-  { value: "600+", label: "автотестов покрывают бизнес-логику" },
+  { value: "2800+", label: "автотестов покрывают бизнес-логику" },
   { value: "1", label: "единая исследовательская среда" },
+  // 10 новых тезисов (M-01, 2026-09-12; фактура — main @ 23ca75b)
+  { value: "24", label: "модели в каталоге: от Naive до нейросетей" },
+  { value: "130+", label: "API-эндпоинтов с OpenAPI-документацией" },
+  { value: "11", label: "стадий пайплайна моделирования" },
+  { value: "4", label: "уровня применимости моделей вместо Yes/No" },
+  { value: "10", label: "критериев качества данных по DAMA DMBOK" },
+  { value: "6", label: "метрик точности прогноза" },
+  { value: "4", label: "статистических теста диагностики остатков" },
+  { value: "5", label: "частот рядов: от дневной до годовой" },
+  { value: "4", label: "стратегии ансамблевого прогноза" },
+  { value: "3", label: "метода декомпозиции ряда" },
 ];
 
 // ── Capability-карточки (Block B, 6 штук, сетка 3×2) ─────────

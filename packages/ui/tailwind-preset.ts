@@ -26,9 +26,20 @@ const preset: Partial<Config> = {
           "0%, 100%": { opacity: "1", transform: "scale(1)" },
           "50%": { opacity: "0.4", transform: "scale(0.7)" },
         },
+        // Бегущая строка stat-бейджей главной страницы (HomeCapabilities,
+        // Задача M-02): трек шириной w-max состоит из двух одинаковых
+        // групп, сдвиг на -50% = ровно одна группа → бесшовный цикл.
+        // Скорость: 90s на группу из 14 бейджей ≈ 35-40 px/s — низкая.
+        // linear — равномерное движение без ускорений; анимация одна на
+        // весь трек, поэтому все бейджи движутся синхронно.
+        marquee: {
+          from: { transform: "translateX(0)" },
+          to: { transform: "translateX(-50%)" },
+        },
       },
       animation: {
         "pulse-dot": "pulse-dot 1.8s ease-in-out infinite",
+        marquee: "marquee 90s linear infinite",
       },
     },
   },

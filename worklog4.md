@@ -1570,3 +1570,134 @@ Task 138c, nbeats-проба нового класса риска не доба�
   test_modeling_workflow}.py, worklog4.md (этот журнал)
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@ba33792 + перечисленные изменения.
+
+---
+
+Task w/n: Маркетинговая секция главной страницы, бейдж-счётчики
+
+Agent: Super Z (senior dev, вне репозитория)
+Task: Дополнить Block A второй секции главной (/) 10 новыми
+  бейдж-счётчиками для маркетингового продвижения
+  (packages/ui/lib/capabilities.ts -> CAPABILITY_STATS;
+  рендер -- packages/ui/components/HomeCapabilities.tsx, StatCell).
+
+Work Log:
+- Изучены: AGENTS.md, worklog_summary.md, worklog4.md,
+  capabilities.ts + HomeCapabilities.tsx (4 действующих бейджа:
+  10 модулей / 8 семейств / 600+ автотестов / 1 среда).
+- Собраны и верифицированы факты из кода (main @ 23ca75b):
+  * 24 модели в rules/modeling.yaml (naive..deepar); в живом
+    прод-каталоге 24, из них 21 ready (lstm, gru, nbeats -- ready;
+    deepar, nhits, tft -- catalog_only);
+  * 129 REST-эндпоинтов в apps/api/routers (session 83,
+    modeling_session 24, internal 9, public 7, models 4,
+    diagnostics 2) -- подсчёт @router.(get|post|put|delete|patch);
+  * 11 стадий пайплайна моделирования (PIPELINE_STAGES,
+    problem_definition -> model_card);
+  * 4 уровня применимости (RECOMMENDED..NOT_APPLICABLE,
+    APPLICABILITY_LABEL);
+  * 10 критериев Data Quality по DAMA DMBOK (CHECK_META в
+    TsAnalysisValidation.tsx; согласуется с подзаголовком бейджа №2
+    в NAVIGATOR_BADGES);
+  * 6 базовых метрик бэктеста (mae, rmse, mape, mase, smape,
+    rmsse -- BacktestMetrics; всего в yaml 13, включая
+    coverage/winkler/qlike);
+  * 4 теста диагностики остатков (ljung_box, jarque_bera,
+    arch_lm, durbin_watson -- yaml);
+  * 5 частот (FREQUENCIES: D/W/M/Q/Y) и 4 предметные области
+    (DOMAINS);
+  * 4 дата-контракта внешних источников (fao_prices, usda_wasde,
+    eurostat, world_bank -- app/data/contracts/templates);
+  * 4 стратегии ансамблей (simple_average, weighted_average,
+    median, stacking) и 3 метода декомпозиции (STL, Additive,
+    Multiplicative -- app/preprocessing/decomposition.py);
+  * АКТУАЛЬНОЕ число тестов: 2125 pytest-функций (1035 top-level)
+    + 701 jest it/test() = ~2800+ -- существующий бейдж "600+"
+    устарел (комментарий в capabilities.ts опирается на срез
+    2026-08-20: pytest ~600, jest 174). Рекомендовано тимлиду
+    обновить "600+" -> "2800+".
+- Сформулированы 10 тезисов в формате ЦИФРА - ДОСТИЖЕНИЕ (выданы
+  пользователю в чате), отобраны по маркетинговой ценности и
+  непересечению с действующими 4 бейджами.
+- Код НЕ менялся: задача -- формулировка тезисов; правка
+  CAPABILITY_STATS и адаптация сетки grid (sm:grid-cols-4 ->
+  поддержка 14 бейджей) -- отдельно по TDD-циклу (AGENTS.md).
+
+Stage Summary:
+- Выданы 10 бейдж-счётчиков: 24 модели / 129 эндпоинтов /
+  11 стадий / 4 уровня применимости / 10 критериев DAMA DMBOK /
+  6 метрик / 4 теста диагностики / 5 частот / 4 дата-контракта /
+  3 метода декомпозиции. Резерв: 4 стратегии ансамблей,
+  140+ задач разработки, 21 production-модель.
+- Фактура опирается на код main @ 23ca75b; commit/push не
+  выполнялись (запрет AGENTS.md). Следующий шаг -- внедрение в
+  capabilities.ts по TDD (тесты HomeCapabilities.test.tsx).
+
+---
+Task ID: M-02 (маркетинговая секция: компакт + marquee-анимация)
+Agent: Super Z (senior dev, вне репозитория)
+Task: По решениям тимлида от 2026-09-12:
+  (1) пункт 9 заменён: вместо "4 дата-контракта международных
+      источников" -> "4 стратегии ансамблевого прогноза";
+  (2) бейдж компактнее, на ширине страницы видно 5 (а не 4),
+      высота унифицирована: подпись ровно 2 строки у ВСЕХ бейджей;
+  (3) анимация всех 14 бейджей: равномерно, синхронно, справа
+      налево, низкая скорость.
+
+Work Log:
+- TDD RED: переписан HomeCapabilities.test.tsx (27 тестов: 14 новых
+  + 13 пересчитанных под 14x2; ловят: состав тезисов, замену п.9,
+  отсутствие "дата-контракта", clamp-ширину, h-7+line-clamp-2,
+  animate-marquee, паузу на hover, вьюпорт overflow-hidden,
+  бесшовный клон aria-hidden, порядок DOM). npm install с нуля
+  (node_modules отсутствовал); прогон: 14 failed / 13 passed.
+- GREEN-реализация:
+  * lib/capabilities.ts: CAPABILITY_STATS = 14 тезисов (4 исходных +
+    10 из M-01 с заменой п.9); в шапке файла — таблица
+    верификации каждой цифры по коду main @ 23ca75b.
+  * HomeCapabilities.tsx: Block A — marquee-лента. Вьюпорт
+    (div.marquee-viewport, relative + overflow-hidden) обрезает трек;
+    трек = <dl> flex w-max gap-3 animate-marquee (один transform на
+    ВСЕ бейджи — движение синхронное и равномерное); две группы
+    MarqueeGroup (real + clone aria-hidden) по 14 StatCell,
+    pr-3 на группе = gap стыка, translateX(-50%) = ровно одна
+    группа -> бесшовный цикл. StatCell: w-[clamp(180px,18vw,300px)]
+    + shrink-0 (5 бейджей на ширину при контейнере max-w-[1600px]:
+    1024px -> 5, 1100px -> 5, 1600px -> 5 + хвост 6-го как
+    афиша движения), px-3 py-3 (компактнее px-4/py-4), подпись
+    h-7 + line-clamp-2 -> ровно 2 строки у всех бейджей, высота
+    карточки единая (~78px). Формулировки подписей сокращены под
+    2 строки на min-ширине 180px (все <= 43 символа).
+  * tailwind-preset.ts: keyframes marquee (0 -> translateX(-50%))
+    + animation "marquee 90s linear infinite" (низкая скорость
+    ~35-40 px/s, linear без ускорений).
+  * packages/ui/globals.css: prefers-reduced-motion -> анимация off,
+    .marquee-viewport -> overflow-x: auto (ручная прокрутка, контент
+    доступен); правило после @tailwind utilities — перебивает
+    overflow-hidden при равной специфичности. Краевые фейды НЕ
+    добавлены сознательно: фон страницы — градиент HomeWavesBackground
+    (#F8FCFF->#E9EEFF), белый from-white дал бы заметный шов.
+- Проверки: jest 93 сюиты / 852 теста — PASS (в т.ч.
+  HomeCapabilities 27/27); typecheck:all (embedded + standalone) —
+  чисто; production build standalone — OK (/, все роуты Static).
+  Верификация CSS-бандла: marquee 90s linear infinite,
+  translateX(-50%), clamp(180px,18vw,300px), animation-play-state:
+  paused, line-clamp-2 — всё присутствует в .next/static/css.
+- ZIP изменённых файлов -> download/M-02_home_capabilities_marquee.zip
+  (5 файлов, только по текущей задаче).
+
+Stage Summary:
+- Block A главной (/) — бесшовная marquee-лента из 14 бейджей:
+  4 исходных + 10 новых (п.9 = "4 стратегии ансамблевого прогноза");
+  ~5 бейджей по ширине, единая высота с 2-строчными подписями,
+  движение справа налево 90s linear, пауза на hover, уважение
+  reduced-motion, a11y (dl/dt/dd, клон aria-hidden).
+- Изменённые файлы: packages/ui/lib/capabilities.ts,
+  packages/ui/components/HomeCapabilities.tsx,
+  packages/ui/components/HomeCapabilities.test.tsx,
+  packages/ui/tailwind-preset.ts, packages/ui/globals.css.
+- Примечание тимлиду: бейдж "600+ автотестов" не менялся (не было
+  подтверждения), фактический срез — ~2800+ (2125 pytest + 701 jest);
+  embedded затронут только preset/globals.css (общие пакеты),
+  capabilities-секция в embedded не подключается.
+- Рабочее дерево main @ 23ca75b без коммитов (запрет AGENTS.md).
