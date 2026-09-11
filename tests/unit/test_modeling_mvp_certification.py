@@ -52,13 +52,15 @@ CERTIFIED_MODEL_IDS = frozenset({
     "egarch",
 })
 
-# Task 138: LSTM/GRU -- первый исполнитель neural-runtime контракта Task
-# 137.  Реестровая запись и legacy-предиктор существуют всегда (код), но
-# readiness-членство честно зависит от установки опциональной
-# dependency-группы "neural" (apps/api/requirements-neural.txt).
-EXPECTED_PRODUCTION_MODEL_IDS = CERTIFIED_MODEL_IDS | (
-    {"lstm"} if neuralforecast_runtime_available() else frozenset()
+# Task 138/139: LSTM/GRU и N-BEATS -- первые два исполнителя neural-
+# runtime контракта Task 137.  Реестровые записи и legacy-предикторы
+# существуют всегда (код), но readiness-членство честно зависит от
+# установки опциональной dependency-группы "neural"
+# (apps/api/requirements-neural.txt).
+_EXPECTED_NEURAL = (
+    {"lstm", "nbeats"} if neuralforecast_runtime_available() else frozenset()
 )
+EXPECTED_PRODUCTION_MODEL_IDS = CERTIFIED_MODEL_IDS | _EXPECTED_NEURAL
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
@@ -72,14 +74,15 @@ def test_certified_scope_is_exactly_nineteen_real_models_in_the_24_model_catalog
     }
 
     assert len(catalog) == 24
-    # Task 138: readiness = 19 сертифицированных + lstm при установленной
-    # опциональной neural-группе (см. EXPECTED_PRODUCTION_MODEL_IDS).
+    # Task 138/139: readiness = 19 сертифицированных + lstm/nbeats при
+    # установленной опциональной neural-группе (см.
+    # EXPECTED_PRODUCTION_MODEL_IDS).
     assert PRODUCTION_BACKTEST_MODEL_IDS == EXPECTED_PRODUCTION_MODEL_IDS
     assert PRODUCTION_DIAGNOSTICS_MODEL_IDS == EXPECTED_PRODUCTION_MODEL_IDS
-    # Legacy-предикторы строятся по ЗАПИСЯМ реестра (код) -- lstm входит
-    # независимо от среды; вызов без группы честно отклоняется гейтом
-    # зависимостей registry.execute.
-    assert frozenset(PRODUCTION_PREDICTORS) == CERTIFIED_MODEL_IDS | {"lstm"}
+    # Legacy-предикторы строятся по ЗАПИСЯМ реестра (код) -- lstm/nbeats
+    # входят независимо от среды; вызов без группы честно отклоняется
+    # гейтом зависимостей registry.execute.
+    assert frozenset(PRODUCTION_PREDICTORS) == CERTIFIED_MODEL_IDS | {"lstm", "nbeats"}
     assert PRODUCTION_TUNING_MODEL_IDS == frozenset(
         {"ets", "ets_damped", "arima", "prophet", "tbats", "random_forest", "xgboost",
          "lightgbm", "catboost",
@@ -90,7 +93,7 @@ def test_certified_scope_is_exactly_nineteen_real_models_in_the_24_model_catalog
          # (каждый trial -- volatility backtest на тех же folds, metric=qlike;
          # Task 136: egarch -- второй исполнитель того же движка).
          "garch", "egarch"}
-        | ({"lstm"} if neuralforecast_runtime_available() else frozenset()),
+        | _EXPECTED_NEURAL,
     )
 
     for model_id, family_id in catalog.items():

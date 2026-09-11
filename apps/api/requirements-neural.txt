@@ -11,8 +11,10 @@
 #   cell ∈ {lstm, gru}), поэтому consistency-gate dispatch<->readiness
 #   требует нейро-runtime в production-образе -- файл входит в сборку
 #   apps/api/Dockerfile (torch -- CPU-колёса с явным --index-url).
-#   Остальные четыре модели (nbeats, nhits, tft, deepar -- Tasks 139-142)
-#   остаются catalog_only до своих срезов.
+# - Task 139: ВТОРОЙ исполнитель зарегистрирован (nbeats: stack_config
+#   ∈ {interpretable, generic}); neural-runtime в образе уже требуется
+#   с Task 138.  Остальные три модели (nhits, tft, deepar -- Tasks
+#   140-142) остаются catalog_only до своих срезов.
 # - Установка локально: pip install -r apps/api/requirements-neural.txt
 #   (CPU-вариант torch) либо pip install -e ".[neural]" при появлении extra.
 # - Зафиксированная версия neuralforecast связывает surface, на которой

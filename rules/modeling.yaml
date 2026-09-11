@@ -551,6 +551,27 @@ families:
         libraries: ["neuralforecast"]
         training_time: "minutes_to_hours"
         requires_gpu: true
+        # ── Task 139: второй исполнитель neural-runtime контракта Task 137 ──
+        # Архитектурный выбор стека -- честная альтернатива каталожного
+        # описания: stack_config -- bounded-параметр адаптера
+        # (apps/api/model_impls/nbeats.py), дефолт interpretable --
+        # каноническая интерпретируемая декомпозиция Oreshkin et al. 2019
+        # (trend/seasonality стеки с официальными базами библиотеки);
+        # generic -- генеричная basis-expansion сеть (identity-стеки,
+        # basis='polynomial').  Единый бюджет обучения fold'а -- константа
+        # NBEATS_MAX_STEPS адаптера (единый бюджетный рычаг max_steps
+        # NeuralForecast 3.x); тюнинг бюджета -- вне param_space
+        # обоснованно (прецедент Task 136).  Интервалы -- официальный
+        # conformal-контур контракта Task 137 (fit prediction_intervals +
+        # predict level), уровни из interval_levels_for_alpha.  Grid
+        # 2 x 2 x 2 = 8 trials (<= MAX_TRIALS=64); hidden_size/input_size
+        # ограничивают сложность против переобучения на коротких fold'ах;
+        # input_size -- глубина каузального окна (lookback), гейт
+        # неосуществимого окна -- n_train < input_size + horizon.
+        param_space:
+          stack_config: ["interpretable", "generic"]
+          hidden_size: [32, 64]
+          input_size: [24, 48]
 
       - id: "nhits"
         name: "N-HiTS"

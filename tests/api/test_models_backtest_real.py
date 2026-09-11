@@ -465,14 +465,16 @@ class TestBacktestImplementationsRegistry:
             "garch",  # Task 135 (volatility; target -- условная дисперсия)
             "egarch",  # Task 136 (volatility; leverage/asymmetry)
         }
-        # Task 138: lstm -- условная neural-запись (опциональная группа
-        # requirements-neural.txt; см. _register_neural_dispatch).
+        # Task 138/139: lstm и nbeats -- условные neural-записи
+        # (опциональная группа requirements-neural.txt; см.
+        # _register_neural_dispatch).
         from apps.api.model_impls.neural_runtime import (
             neuralforecast_runtime_available,
         )
 
         if neuralforecast_runtime_available():
             expected.add("lstm")
+            expected.add("nbeats")
         assert set(impls.keys()) == expected, (
             f"Expected {len(expected)} implementations: {expected}, "
             f"got: {set(impls.keys())}"

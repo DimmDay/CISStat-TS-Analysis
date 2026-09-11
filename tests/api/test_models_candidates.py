@@ -277,8 +277,9 @@ class TestCandidatesDifferentProfiles:
         assert "naive" in ids
         # ARIMA (min=50) не должен быть в пуле
         assert "arima" not in ids
-        # DL модели тоже не должны быть
+        # DL модели тоже не должны быть (Task 139: nbeats -- тоже DL)
         assert "lstm" not in ids
+        assert "nbeats" not in ids
 
 
 # ═══════════════════════════════════════════════════════════
@@ -440,7 +441,7 @@ class TestBacktestNaive:
 
     def test_unsupported_model_never_returns_penalty_metrics(self):
         # Task 130: catboost стал production-моделью (200); в качестве
-        # catalog-only примера используется tft (Tasks 139-141 не
+        # catalog-only примера используется tft (Tasks 140-141 не
         # реализованы).  Task 138: lstm стал production-моделью
         # (первый исполнитель neural-runtime контракта Task 137), поэтому
         # примером catalog-only больше не является.

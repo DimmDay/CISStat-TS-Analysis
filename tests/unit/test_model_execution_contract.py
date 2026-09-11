@@ -54,6 +54,11 @@ CERTIFIED_IDS = frozenset({
     # опциональной группе requirements-neural.txt -- честный
     # runtime_available; см. test_lstm_integration_paths.py).
     "lstm",
+    # Task 139: N-BEATS -- второй исполнитель neural-runtime контракта
+    # Task 137 (прецедент пары lstm: runtime не меняется -- адаптер +
+    # реестр + условный dispatch + yaml; stack_config ∈ {interpretable,
+    # generic}; same-seed бит-в-бит, проб Task 139).
+    "nbeats",
 })
 
 # Task 126/127/128/129/130: supervised-адаптеры с regressor-каналом future_known/static.
@@ -72,9 +77,9 @@ MULTIVARIATE_EXOG_IDS = frozenset({"var"})
 # "univariate" -- volatility-движок поверх VolatilityTarget Task 134;
 # garch/egarch -- пара исполнителей одного движка, прецедент var/vecm).
 VOLATILITY_IDS = frozenset({"garch", "egarch"})
-# Task 138: neural-адаптер (dependency_group="neural", единый
-# NeuralForecast-runtime Task 137; первый исполнитель Tasks 138-142).
-NEURAL_IDS = frozenset({"lstm"})
+# Task 138/139: neural-адаптеры (dependency_group="neural", единый
+# NeuralForecast-runtime Task 137; исполнители Tasks 138-142).
+NEURAL_IDS = frozenset({"lstm", "nbeats"})
 
 
 def test_registry_is_the_single_source_of_truth_for_production_actions():
@@ -129,12 +134,14 @@ def test_candidates_publish_v2_descriptors_only_for_executable_models():
     assert response.execution_contract_version == "model-execution-v2"
     assert catalog["naive"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("naive")
     # Task 129/130: lightgbm и catboost стали production-моделями.
-    # Task 138: lstm получил реестровую запись; catalog-only пример --
-    # tft (Tasks 139-141 ещё не реализованы, записи нет).
+    # Task 138/139: lstm и nbeats получили реестровые записи;
+    # catalog-only пример -- tft (Tasks 140-141 ещё не реализованы,
+    # записи нет).
     assert catalog["xgboost"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("xgboost")
     assert catalog["lightgbm"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("lightgbm")
     assert catalog["catboost"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("catboost")
     assert catalog["lstm"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("lstm")
+    assert catalog["nbeats"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("nbeats")
     assert catalog["tft"].execution_contract is None
 
 

@@ -330,6 +330,15 @@ def _lstm_fit_predict(
             "LSTM/GRU: прогноз содержит NaN/Inf -- отказ без clamp-подмен "
             "(fail-closed)"
         )
+    # Clamp-инвариант (урок НАХОДКИ-3/M10 сертификации Task 138, закрыто в
+    # Task 139): живой гейт поверх isfinite -- fault-injection тест, а не
+    # только happy-path ассерт; никаких молчаливых clamp-подмен границ.
+    lower_arr = np.asarray(lower, dtype=float)
+    upper_arr = np.asarray(upper, dtype=float)
+    if not ((lower_arr <= point).all() and (point <= upper_arr).all()):
+        raise NeuralContractError(
+            "LSTM/GRU: нарушен инвариант lower <= point <= upper (fail-closed)"
+        )
 
     return {
         "adapter_id": LSTM_ADAPTER_ID,

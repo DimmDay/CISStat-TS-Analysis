@@ -36,6 +36,7 @@ import pytest
 
 from apps.api.neural_contract import (
     NEURAL_MAX_STEPS_BOUND,
+    NeuralContractError,
     NeuralTrainingConfig,
     interval_levels_for_alpha,
 )
@@ -213,6 +214,79 @@ def test_legacy_backtest_short_series_fails_honestly(fast_budget):
     # 10 точек -> train 8 < LSTM_MIN_TRAIN: честный отказ, БЕЗ Naive-подмен.
     with pytest.raises(ValueError, match="слишком короткая"):
         run_lstm_backtest(_series(10), 0.8, 12)
+
+
+# ── 7. Закрытие НАХОДОК 1-3 сертификации Task 138 (M6/M10/M18) ───────────
+# Сертификация Task 138 (вербикт CERTIFIED, находки не-блокирующие)
+# рекомендовала исполнителю следующих срезов (139-142) включить три
+# класса тестов.  Ниже -- аддитивные тесты ТЕКУЩЕЙ поверхности 138a
+# (cert138_mutations.py -- characterization-артефакт поверхности a7cdf90,
+# прецедент OR11i ресертификации Task 137: пробы описывают предыдущее
+# состояние дерева; эквивалентное покрытие -- новыми тестами).
+
+def test_bool_coercion_rejected_for_every_int_handle():
+    """M6-класс: bool -- подкласс int; True->1 проходит нижнюю границу
+    encoder_n_layers (low=1).  Тест параметризован по ВСЕМ целочисленным
+    ручкам адаптера (без надежды на bounds-слой)."""
+    for handle in ("hidden_size", "encoder_n_layers", "input_size"):
+        with pytest.raises(ValueError, match=handle):
+            validate_lstm_params({handle: True})
+
+
+class _WiringProbeDone(Exception):
+    """Sentinel: короткое замыкание spy-обёртки train_and_forecast."""
+
+
+def test_budget_wiring_reaches_the_constructor(monkeypatch, fast_budget):
+    """M18-класс: metadata не должна лгать о фактическом бюджете
+    (literal-dup).  Двухслойный spy: (1) адаптер передаёт в runtime
+    config с бюджетом константы модуля; (2) фабрика честно разворачивает
+    budget в КОНСТРУКТОР -- модель несёт max_steps/random_seed пробы."""
+    captured: dict = {}
+
+    def spy(*, model_factory, config, **_kwargs):
+        captured["config"] = config
+        probe_budget = {
+            "max_steps": 321, "random_seed": 777, "accelerator": "cpu",
+            "enable_progress_bar": False, "early_stop_patience_steps": -1,
+        }
+        captured["model"] = model_factory(dict(probe_budget))
+        raise _WiringProbeDone()
+
+    monkeypatch.setattr(lstm_module, "train_and_forecast", spy)
+    with pytest.raises(_WiringProbeDone):
+        _lstm_fit_predict(_series(), 4)
+    assert captured["config"].max_steps == lstm_module.LSTM_MAX_STEPS
+    model = captured["model"]
+    assert int(model.max_steps) == 321
+    assert int(model.random_seed) == 777
+
+
+def test_fault_injected_broken_bounds_are_rejected(monkeypatch, fast_budget):
+    """M10-класс: clamp-инвариант lower <= point <= upper -- живой гейт,
+    закреплённый fault-injection тестом (happy-path никогда не нарушает
+    границы, поэтому нужен явный ломающий монитор)."""
+
+    def broken_train(*, model_factory, **_kwargs):
+        return pd.DataFrame({
+            "LSTM": [1.0, 1.0, 1.0, 1.0],
+            "LSTM-lo-2.5": [5.0] * 4,
+            "LSTM-hi-97.5": [6.0] * 4,
+        })
+
+    monkeypatch.setattr(lstm_module, "train_and_forecast", broken_train)
+    with pytest.raises(NeuralContractError, match="инвариант"):
+        _lstm_fit_predict(_series(), 4)
+
+
+# ── 8. Контрактная поверхность (импорты для находимых классов) ───────────
+
+def test_neural_contract_error_taxonomy_is_importable():
+    """NeuralContractError -- ValueError-подтип (таксономия 138c):
+    адаптерные отказы ловятся и ValueError-, и NeuralContractError-ветками."""
+    from apps.api.neural_contract import NeuralContractError as _nce
+
+    assert issubclass(_nce, ValueError)
 
 
 def test_training_config_carries_the_adapter_budget(fast_budget):

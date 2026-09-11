@@ -1353,3 +1353,220 @@ Dockerfile-фикс + audit-скрипты + worklog4.md, байт-в-бит == 
   перечисленные файлы).
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@56534e6 + перечисленные изменения.
+
+---
+
+## Task 139 -- N-BEATS vertical slice (второй исполнитель Neural Runtime Contract Task 137)
+
+Дата: 2026-09-11. Синхронизация: ba33792 (138c memory-guard; 138b Dockerfile-fix
++ audit-скрипты сертификации 138). Постановка docs/modeling_task_list.md::
+Tasks 138-142, срез «Task 139 -- N-BEATS». Прецедент каркас -> исполнитель:
+Task 138 (lstm -- первый исполнитель контракта Task 137); runtime-контракт
+Task 137 НЕ меняется -- новый адаптер + запись реестра v2 + условный dispatch
++ yaml (прецедент пары var/vecm, garch/egarch, lstm/nbeats).
+
+### Решение (по пунктам постановки)
+
+1. **Единый runtime -- без собственной fit/predict-петли**: исполнение
+   ТОЛЬКО через neural_runtime.train_and_forecast (бюджет max_steps,
+   явный accelerator, random_seed=fold_seed в КОНСТРУКТОРЕ -- seed-
+   дисциплина ресертификации Task 137).  Адаптер не импортирует
+   torch/neuralforecast напрямую; гейт памяти Task 138c
+   (ensure_neural_memory_capacity) и thread-pinning наследуются
+   автоматически через require_neuralforecast/seed_neural_runtime.
+2. **Ядро постановки -- архитектурный выбор стека**: каталог декларирует
+   «Basis expansion network. Интерпретируемая декомпозиция (тренд +
+   сезонность)».  Оба обещания -- bounded-параметр stack_config ∈
+   {interpretable, generic} (аналог cell_type Task 138): interpretable
+   (дефолт) -- каноническая интерпретируемая декомпозиция Oreshkin et al.
+   2019 (stack_types=["trend","seasonality"], официальные базы
+   n_polynomials/n_harmonics 3.2.2); generic -- генеричная basis-expansion
+   сеть (identity-стеки, basis='polynomial').  Поверхность конструктора
+   3.2.2 снята ЭМПИРИЧЕСКИ (проб scripts/task139_nbeats_probe.py): NBEATS
+   использует mlp_units (НЕ encoder_hidden_size как LSTM); оба стека
+   конструируются/фитятся; conformal-колонки NBEATS-lo/hi-<level> --
+   та же семантика, что у LSTM; alias="NBEATS" стабилен.
+3. **ds-ось -- конвенция neural-семейства ПЕРЕИСПОЛЬЗОВАНА**: lstm.
+   _resolve_time_axis импортирован (единый источник истины, НЕ
+   продублирован): парсимые метки -> datetime + pd.infer_freq, иначе --
+   позиционная целочисленная сетка freq=1 (нативно работает -- проб).
+4. **Гейт неосуществимого окна**: n_train < input_size + horizon -- отказ
+   ДО фита (полностью наблюдаемое supervised-окно; молчаливое ужатие/
+   паддинг запрещены).  Библиотека с start_padding_enabled=False
+   согласована (проб: честный отказ «requires at least 48 training
+   timestamp(s)»), адаптерный гейт даёт детерминированное сообщение до
+   затрат на fit.  NBEATS_MIN_TRAIN=30 (абсолютный пол; каталоговский
+   мягкий порог 200 -- раньше, readiness-гейтом F04).
+5. **Интервалы -- сертифицированный conformal-путь**: point-loss MAE
+   (официальный дефолт 3.2.2) + PredictionIntervals + predict(level);
+   уровни -- interval_levels_for_alpha (alpha {0.01,0.05,0.10}, как у
+   lstm/VAR/GARCH/EGARCH).  MQLoss -- probabilistic-поверхность для
+   срезов 140-142 (граница Task 138).
+6. **Clamp-инвариант с первого дня** (урок НАХОДКИ-3/M10 сертификации
+   Task 138): lower <= point <= upper -- живой гейт поверх isfinite,
+   закреплён fault-injection тестом (monkeypatch train_and_forecast,
+   lower>point -> NeuralContractError), а не только happy-path ассертом.
+7. **Bounded params**: stack_config {interpretable, generic}, hidden_size
+   [8,128] (-> mlp_units [[h]*mlp_layers]*2), mlp_layers [1,4] (дефолт 2,
+   валидируемая ручка вне тюнинга -- прецедент encoder_n_layers),
+   input_size [8,104], alpha whitelist.  Bool-коэрция целочисленных ручек
+   отклоняется ЯВНО (урок НАХОДКИ-2/M6), тест параметризован по ВСЕМ
+   int-ручкам.  yaml param_space: stack_config x hidden_size x input_size
+   = 8 trials (<= 64).
+8. **Бюджет**: константа NBEATS_MAX_STEPS=300 (анти-тампер [100,
+   NEURAL_MAX_STEPS_BOUND]; тюнинг бюджета -- вне param_space, прецедент
+   Task 136) + env-рычаг CISSTAT_NEURAL_MAX_STEPS (паттерн Task 138c:
+   дефолт env не задана -- сертифицированная константа; мусор/меньше 1 --
+   fail-closed; покрытие дефолт/override/garbage тестом).
+9. **Проводка бюджета до конструктора прижата spy-тестом** (урок
+   НАХОДКИ-1/M18 сертификации Task 138, literal-dup класс): двухслойный
+   spy -- (а) адаптер передаёт в runtime config.max_steps константы
+   модуля; (б) фабрика честно разворачивает budget в КОНСТРУКТОР
+   (сконструированная модель несёт max_steps/random_seed пробы -- эмпирика
+   проба: NBEATS хранит оба атрибута).
+10. **Реестр v2 + dispatch + образ**: запись №21 -- model_id="nbeats",
+    family_id="neural", adapter_id="neuralforecast-nbeats",
+    objective="level_forecast", input_kind="univariate" (каталог:
+    supports_exogenous=false -- feature-гейты v2 fail-closed),
+    actions=_TUNABLE, engine="neuralforecast",
+    required_packages=("neuralforecast",), deterministic=True (same-seed
+    бит-в-бит пробом: max|diff|=0.0; другой seed -- 0.53),
+    dependency_group="neural", memory_class="standard", gpu="optional".
+    Dispatch: _register_neural_dispatch расширен (lstm + nbeats), условная
+    регистрация сохранена -- gate реестр<->dispatch точен в обеих средах.
+    Production-образ: Dockerfile-проба 'N-BEATS executable OK' (38 точек,
+    interpretable, input_size=8; воспроизведена локально; LSTM-проба после
+    clamp-гейта тоже перепроверена).
+11. **Legacy synthetic-эндпоинт -- применим** (run_nbeats_backtest,
+    прецедент lstm/random_forest: одномерная level-модель), БЕЗ
+    safe_backtest/Naive-fallback; короткий ряд -- честный отказ.
+
+### Закрытие рекомендаций сертификации Task 138 (НАХОДКИ 1-3, M6/M10/M18)
+
+Сертификация 138 передала исполнителю срезов 139-142 три не-блокирующих
+рекомендации с прогоном cert138_mutations.py.  cert138_mutations.py --
+characterization-артефакт поверхности a7cdf90 (цель-строки/имена тестов
+относятся к ДО-138a реализации: futr_exog_list, 16 trials; на текущем
+дереве 138a/138c эти строки отсутствуют) -- снят с учёта как
+характеризация своего момента (прецедент OR11i ресертификации 137).
+Эквивалентное закрытие КЛАССОВ находок на ТЕКУЩЕЙ поверхности:
+- M6-класс: параметризованный bool-тест по ВСЕМ int-ручкам -- для nbeats
+  нативно, для lstm -- аддитивный тест (текущее поведение корректно:
+  bool отклоняется явно; True->1 ловится на encoder_n_layers, где bounds
+  не страхуют);
+- M10-класс: clamp-гейт возвращён в lstm.py (+9 строк, NeuralContractError
+  "нарушен инвариант lower <= point <= upper") и включён в nbeats с
+  первого дня; fault-injection тесты на обеих поверхностях;
+- M18-класс: spy-тесты проводки бюджета на обеих поверхностях
+  (config.max_steps -> factory -> constructor: model.max_steps==probe).
+Итого: +4 аддитивных теста в test_lstm_adapter.py (без изменения
+существующих), все три класса закрыты на обеих поверхностях.
+
+### TDD (RED -> GREEN)
+
+- RED: tests/unit/test_nbeats_adapter.py (26 кейсов) + tests/unit/
+  test_nbeats_integration_paths.py (12 кейсов) -- collection errors на
+  отсутствии модуля/экспортов; lstm fault-injection -- DID NOT RAISE
+  (clamp-гейта нет) до добавления гейта; bool/spy -- GREEN сразу
+  (текущее поведение корректно, тесты фиксируют).
+- GREEN: правки ОЖИДАНИЙ не потребовались (поверхность снята пробом до
+  написания тестов); нейро-набор 38 (nbeats) + 34 (lstm) кейсов.
+
+### Изменённые/новые файлы
+
+Новые:
+- apps/api/model_impls/nbeats.py (~530 строк; адаптер N-BEATS, docstring
+  с полным обоснованием решений)
+- tests/unit/test_nbeats_adapter.py (26 кейсов)
+- tests/unit/test_nbeats_integration_paths.py (12 кейсов)
+- scripts/task139_nbeats_probe.py (эмпирический проб: конструктор/
+  стеки/conformal/alias/freq=1/детерминизм/spy-атрибуты -- PROBE OK)
+- scripts/task139_e2e_smoke.py (6 этапов полного chain'а)
+
+Изменённые:
+- apps/api/model_execution.py: _nbeats_executor + запись реестра №21
+- apps/api/model_impls/__init__.py: экспорт run_nbeats_backtest
+- apps/api/model_impls/lstm.py: clamp-инвариант (+9 строк, НАХОДКА-3)
+- apps/api/routers/models.py: dispatch (lstm + nbeats) + импорт
+- rules/modeling.yaml: nbeats param_space (8 trials) + комментарий Task 139
+- apps/api/Dockerfile: N-BEATS-проба в production-цепочке
+- apps/api/requirements-neural.txt: дисклоужер статуса (второй исполнитель)
+- Count-гейты 20->21 честно в 10 файлах: test_garch/test_egarch/
+  test_var integration_paths (subprocess 'ok 21'),
+  test_modeling_mvp_certification (_EXPECTED_NEURAL={lstm,nbeats},
+  PREDICTORS), test_model_execution_contract (CERTIFIED_IDS+NEURAL_IDS,
+  nbeats-descriptor), test_model_readiness_candidates (catalog_only
+  tuple без nbeats; runnable 17 / catalog-only 3; короткий профиль:
+  blocked 11, explain «60 < 200 (требуется N-BEATS)»),
+  test_backtesting_engine (sweep исключает nbeats), test_eda_model_matrix
+  (nbeats blocked/ready-ось), tests/api: test_models_backtest_real
+  (expected+nbeats), test_models_candidates (DL-пул без nbeats),
+  test_modeling_workflow/test_models_candidates (комментарии tft-примера
+  140-141), test_lstm_integration_paths (dispatch-конвенция, count 21/19).
+
+### Границы Task 139 (что осознанно НЕ сделано)
+
+- MQLoss/quantile-loss probabilistic-путь, hist_exog/stat_exog, early
+  stopping (patience>0 требует val_size>0 -- на коротких folds
+  нестабилен), dropout/activation/num_lr_decays-ручки -- поверхность
+  контракта для срезов 140-142.
+- yaml requires_gpu: true для nbeats НЕ менялось (методологическая ось
+  D06 NOT_RECOMMENDED на CPU -- независимая от production-готовности
+  platform_status; Task 138 так же не менял lstm requires_gpu: false).
+- Реестровые записи nhits/tft/deepar не тронуты (честный catalog_only до
+  срезов 140-142); DeepAR остаётся panel-постановкой (min_series=5).
+- cert138_mutations.py НЕ модифицировался (characterization-артефакт;
+  эквивалентное покрытие -- новыми тестами, см. выше).
+- GPU-исполнение: runtime Task 137 фиксирует device="cpu"; gpu="optional"
+  -- декларация capability, не переключатель.
+
+### Верификация
+
+- TDD цикл выше; нейро-набор: 26 + 12 = 38 новых кейсов nbeats.
+- Полная регрессия на ba33792 + Task 139: база 2247 (1522 unit + 625 api
+  + 100 прочие) -> **2289 passed / 0 failed** (unit 1564 = 1522 + 42:
+  38 nbeats + 4 аддитивных lstm; api 625; прочие 100) -- арифметика
+  сходится точно.  compileall OK; app-import OK; pip check окружения;
+  rules-smoketest exit=0; фронтенд не затронут (git status -- backend-only).
+- Прод-инварианты: PRODUCTION_BACKTEST_MODEL_IDS == 21; nbeats
+  backtest/tune/diagnostics; tft/nhits/deepar catalog_only ([]);
+  consistency-gate dispatch<->readiness зелёный.
+- E2E смоук scripts/task139_e2e_smoke.py: 21 connected -> dispatch-gate ->
+  nbeats ready (backtest/tune/diagnostics), tft/nhits/deepar
+  catalog_only, статистика 17/3 -> реальный OOF-бэктест 2 folds
+  (mae=0.1110) -> bounded tuning grid 8 trials -> legacy однорядный путь
+  (mae=0.1020).  E2E SMOKE OK.
+- Проб scripts/task139_nbeats_probe.py: PROBE OK (поверхность конструктора,
+  оба стека, conformal-колонки, alias, freq=1, same-seed max|diff|=0.0 /
+  cross-seed 0.53); Dockerfile-пробы LSTM и N-BEATS воспроизведены
+  локально ('LSTM/GRU executable OK', 'N-BEATS executable OK').
+- Окружение: neuralforecast 3.2.2 + torch 2.14.0+cpu -- те же версии, на
+  которых сертифицированы Tasks 137/138.
+
+### Эксплуатационное наблюдение (не блокирует)
+
+На Docker-сборке Render билд-инстанс может иметь жёсткий cgroup-лимит
+памяти: с Task 138c ЛЮБОЙ нейро-проб Dockerfile (включая существующую
+LSTM-пробу и новую N-BEATS-пробу) проходит через
+ensure_neural_memory_capacity (порог 1024 MB).  Если билдер Render
+отдаёт cgroup memory.max < 1024 MB, сборка упадёт на пробе -- тогда
+потребуется повышение билд-плана или явное разрешение сборки (это риск
+Task 138c, nbeats-проба нового класса риска не добавляет: пробы идут
+последовательными процессами, пиковая память не суммируется).
+
+Изменённые/новые файлы (ZIP: download/task139_nbeats_vertical_slice_worklog4.zip):
+- НОВЫЕ: apps/api/model_impls/nbeats.py, tests/unit/test_nbeats_adapter.py,
+  tests/unit/test_nbeats_integration_paths.py,
+  scripts/task139_nbeats_probe.py, scripts/task139_e2e_smoke.py
+- ИЗМЕНЁННЫЕ: apps/api/model_execution.py, apps/api/model_impls/__init__.py,
+  apps/api/model_impls/lstm.py, apps/api/routers/models.py,
+  rules/modeling.yaml, apps/api/Dockerfile, apps/api/requirements-neural.txt,
+  tests/unit/{test_garch_integration_paths, test_egarch_integration_paths,
+  test_var_integration_paths, test_model_execution_contract,
+  test_modeling_mvp_certification, test_model_readiness_candidates,
+  test_backtesting_engine, test_eda_model_matrix,
+  test_lstm_adapter, test_lstm_integration_paths}.py,
+  tests/api/{test_models_backtest_real, test_models_candidates,
+  test_modeling_workflow}.py, worklog4.md (этот журнал)
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@ba33792 + перечисленные изменения.

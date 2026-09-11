@@ -52,6 +52,13 @@ def test_matrix_reuses_all_spec_models_and_separates_compatibility_from_readines
     lstm = _by_id(result, "lstm")
     assert lstm["compatibility"] == "blocked"
     assert lstm["platform_status"] == ("ready" if neuralforecast_runtime_available() else "catalog_only")
+    # Task 139: nbeats -- тот же neural-семейство (правило < 300 точек
+    # блокирует совместимость на этом профиле), та же честная ось
+    # platform_status (ready при установленной опциональной группе,
+    # catalog_only без неё).
+    nbeats = _by_id(result, "nbeats")
+    assert nbeats["compatibility"] == "blocked"
+    assert nbeats["platform_status"] == ("ready" if neuralforecast_runtime_available() else "catalog_only")
 
 
 def test_exogenous_columns_do_not_block_models_that_can_ignore_them():

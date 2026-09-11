@@ -50,6 +50,7 @@ from apps.api.model_impls import (
     run_garch_backtest,
     run_egarch_backtest,
     run_lstm_backtest,
+    run_nbeats_backtest,
 )
 from apps.api.model_impls.neural_runtime import neuralforecast_runtime_available
 from apps.api.neural_contract import NeuralRuntimeCapacityError
@@ -313,19 +314,21 @@ _BACKTEST_IMPLEMENTATIONS = {
 def _register_neural_dispatch(
     implementations: dict, *, runtime_available: bool,
 ) -> None:
-    """Task 138: neural-runtime -- ОПЦИОНАЛЬНАЯ dependency-группа
+    """Task 138/139: neural-runtime -- ОПЦИОНАЛЬНАЯ dependency-группа
     (apps/api/requirements-neural.txt, install_extra="neural").
 
-    LSTM/GRU -- одномерная level-модель: в отличие от VAR/VECM/GARCH/EGARCH
-    однорядный synthetic-эндпоинт для неё ПРИМЕНИМ, поэтому запись
-    dispatch -- реальное исполнение (прецедент random_forest), а не
-    честный отказ.  Регистрация УСЛОВНА: без установленной группы запись
-    не появляется -- readiness реестра честно фильтрует lstm, и строгий
-    gate реестр<->dispatch ниже остаётся точным в ОБЕИХ средах (иначе
-    import-гейт убивал бы бэкенд на хостах без neural-группы).
+    LSTM/GRU (Task 138) и N-BEATS (Task 139) -- одномерные level-модели:
+    в отличие от VAR/VECM/GARCH/EGARCH однорядный synthetic-эндпоинт для
+    них ПРИМЕНИМ, поэтому записи dispatch -- реальное исполнение
+    (прецедент random_forest), а не честный отказ.  Регистрация УСЛОВНА:
+    без установленной группы записи не появляются -- readiness реестра
+    честно фильтрует модели, и строгий gate реестр<->dispatch ниже
+    остаётся точным в ОБЕИХ средах (иначе import-гейт убивал бы бэкенд
+    на хостах без neural-группы).
     """
     if runtime_available:
         implementations["lstm"] = run_lstm_backtest
+        implementations["nbeats"] = run_nbeats_backtest
 
 
 _register_neural_dispatch(

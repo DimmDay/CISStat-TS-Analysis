@@ -825,6 +825,54 @@ def _lstm_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     )
 
 
+def _nbeats_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
+    """Task 139: N-BEATS -- второй исполнитель neural-runtime контракта
+    Task 137 (прецедент пары lstm Task 138: единый NeuralForecast-runtime,
+    neural_runtime.py).
+
+    Одномерная level-модель (objective="level_forecast",
+    input_kind="univariate"; каталог: supports_exogenous=false): точечный
+    прогноз -- честный нейро-фит на train-срезе fold'а; интервалы --
+    официальный conformal-контур контракта (fit prediction_intervals +
+    predict level), уровни из interval_levels_for_alpha.  Архитектурный
+    выбор стека stack_config ∈ {interpretable, generic} -- bounded-параметр
+    (yaml::nbeats param_space, честная альтернатива каталожного описания
+    «Basis expansion network. Интерпретируемая декомпозиция (тренд +
+    сезонность)»): interpretable -- каноническая декомпозиция Oreshkin
+    et al. 2019 (trend/seasonality стеки), generic -- basis-expansion
+    identity-стеки.  Детерминизм: random_state реестра доходит до
+    КОНСТРУКТОРА модели (ресертификация Task 137).  Бюджет обучения --
+    константа NBEATS_MAX_STEPS адаптера (тюнинг бюджета -- вне
+    param_space, прецедент Task 136).  Feature-каналы отвергаются гейтами
+    реестра для univariate-входа.
+    """
+    from apps.api.model_impls.nbeats import _nbeats_fit_predict
+
+    payload = _nbeats_fit_predict(
+        list(request.target),
+        request.horizon,
+        params=dict(request.params),
+        random_state=request.random_state,
+        timestamps=list(request.train_timestamps) or None,
+    )
+    return ModelExecutionResult(
+        forecast=[float(value) for value in payload["forecast"]],
+        lower_interval=[float(value) for value in payload["lower"]],
+        upper_interval=[float(value) for value in payload["upper"]],
+        metadata={
+            "adapter_id": payload["adapter_id"],
+            "params": payload["params"],
+            "stack_config": payload["stack_config"],
+            "nobs": payload["nobs"],
+            "max_steps": payload["max_steps"],
+            "seed": payload["seed"],
+            "freq": payload["freq"],
+            "intervals": payload["intervals"],
+            "deterministic": payload["deterministic"],
+        },
+    )
+
+
 def _xgboost_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     from apps.api.model_impls.xgboost import _xgb_fit_predict
 
@@ -1142,6 +1190,37 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         # установлена; dispatch routers/models.py регистрирует запись
         # условно (_register_neural_dispatch) -- gate реестр<->dispatch
         # остаётся точным в обеих средах.
+        input_kind="univariate",
+        supports_prediction_intervals=True,
+        deterministic=True,
+        dependency_group="neural",
+        resource_capabilities=ModelResourceCapabilities(
+            memory_class="standard", gpu="optional",
+        ),
+    ),
+    ModelExecutionDefinition(
+        model_id="nbeats", family_id="neural",
+        adapter_id="neuralforecast-nbeats", executor=_nbeats_executor,
+        actions=_TUNABLE, engine="neuralforecast",
+        required_packages=("neuralforecast",),
+        # Task 139: второй исполнитель neural-runtime контракта Task 137
+        # (прецедент пары lstm Task 138: runtime-контракт не меняется --
+        # новый адаптер + запись реестра + условный dispatch + yaml).
+        # objective="level_forecast" + input_kind="univariate" -- гейты
+        # реестра v2; каталог: supports_exogenous=false -- feature-каналы
+        # отвергаются fail-closed.  Архитектурный выбор стека
+        # stack_config ∈ {interpretable, generic} -- bounded-параметр
+        # (yaml::nbeats, честная альтернатива каталожного описания
+        # «Basis expansion network. Интерпретируемая декомпозиция (тренд +
+        # сезонность)»); интервалы -- официальный conformal-контур
+        # контракта (не «MC Dropout»).  Детерминизм: random_state ->
+        # fold_seed -> random_seed КОНСТРУКТОРА (ресертификация Task 137;
+        # same-seed бит-в-бит подтверждён пробом Task 139).  Бюджет --
+        # константа NBEATS_MAX_STEPS адаптера; tuning -- тот же
+        # одномерный движок (execute_tuning_plan, bounded param_space
+        # yaml::nbeats, 8 trials).  Dispatch routers/models.py
+        # регистрирует запись условно (_register_neural_dispatch) --
+        # gate реестр<->dispatch остаётся точным в обеих средах.
         input_kind="univariate",
         supports_prediction_intervals=True,
         deterministic=True,
