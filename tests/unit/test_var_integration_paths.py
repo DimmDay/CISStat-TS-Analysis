@@ -35,6 +35,10 @@ import pathlib
 import subprocess
 import sys
 
+from apps.api.model_impls.neural_runtime import (
+    neuralforecast_runtime_available,
+)
+
 API_DIR = pathlib.Path(__file__).resolve().parents[2] / "apps" / "api"
 
 
@@ -165,9 +169,12 @@ class TestRegistrySeesVarAtRuntime:
         # Полная цепочка UI: import apps.api -> routers.models ->
         # dispatch -> readiness; падение любого звена = каталог не строится.
         code = (
+            "from apps.api.model_impls.neural_runtime import "
+            "neuralforecast_runtime_available; "
             "from apps.api.routers import models; "
             "from apps.api.model_readiness import PRODUCTION_BACKTEST_MODEL_IDS; "
-            "print('ok', len(PRODUCTION_BACKTEST_MODEL_IDS))"
+            "print('ok', len(PRODUCTION_BACKTEST_MODEL_IDS), "
+            "neuralforecast_runtime_available())"
         )
         result = subprocess.run(
             [sys.executable, "-c", code], cwd=str(API_DIR.parent.parent),
@@ -176,7 +183,10 @@ class TestRegistrySeesVarAtRuntime:
         assert result.returncode == 0, (
             f"Цепочка импортов dispatch сломана:\n{result.stderr[-2000:]}"
         )
-        assert "ok 20" in result.stdout, (
-            f"Ожидалось 20 production backtest-моделей (19 + LSTM/GRU, Task 138), "
+        # Task 138: 19 базовых + lstm при установленной опциональной
+        # neural-группе (честный runtime_available реестра v2).
+        expected_count = "ok 20 True" if neuralforecast_runtime_available() else "ok 19 False"
+        assert expected_count in result.stdout, (
+            f"Ожидалось '{expected_count}' production backtest-моделей, "
             f"получено: {result.stdout.strip()}"
         )

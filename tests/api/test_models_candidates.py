@@ -439,10 +439,11 @@ class TestBacktestNaive:
         assert data["family_id"] == "baselines"
 
     def test_unsupported_model_never_returns_penalty_metrics(self):
-        # Task 130: catboost стал production-моделью (200); Task 138: lstm --
-        # тоже production (Neural Runtime Contract Task 137; bare-ряд
-        # synthetic-эндпоинта честно отклоняется адаптером), поэтому в
-        # качестве catalog-only примера используется tft.
+        # Task 130: catboost стал production-моделью (200); в качестве
+        # catalog-only примера используется tft (Tasks 139-141 не
+        # реализованы).  Task 138: lstm стал production-моделью
+        # (первый исполнитель neural-runtime контракта Task 137), поэтому
+        # примером catalog-only больше не является.
         response = client.post(
             "/v1/models/backtest",
             json={"model_id": "tft", "profile": MACRO_PROFILE},

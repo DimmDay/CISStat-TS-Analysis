@@ -1,5 +1,12 @@
+from apps.api.model_impls.neural_runtime import neuralforecast_runtime_available
 from apps.api.routers.models import _compute_candidates
 from apps.api.schemas import CandidatesRequest, DataProfileRequest
+
+# Task 138: lstm -- первый исполнитель neural-runtime контракта Task 137;
+# neural-runtime -- опциональная dependency-группа (requirements-neural.txt),
+# поэтому членство lstm в readiness честно зависит от проба пакета.
+_HAS_NEURAL = neuralforecast_runtime_available()
+_CATALOG_ONLY_NEURAL = () if _HAS_NEURAL else ("lstm",)
 
 
 def _broad_profile() -> DataProfileRequest:
@@ -32,24 +39,24 @@ def test_candidate_contract_separates_methodological_applicability_from_runtime_
         assert "diagnostics" in candidates[model_id].available_actions
         assert candidates[model_id].blocking_reason is None
 
-    # Task 138: lstm -- production level-модель (Neural Runtime Contract
-    # Task 137): n=500 >= min_observations=200, D02/C04 не срабатывают --
-    # честный ready с actions, как у остальных level-исполнителей.
-    assert candidates["lstm"].platform_status == "ready"
-    assert "backtest" in candidates["lstm"].available_actions
-    assert "tune" in candidates["lstm"].available_actions
-    assert candidates["lstm"].blocking_reason is None
-
     assert response.capability_contract_version == "model-capabilities-v1"
     assert len(candidates["naive"].stage_capabilities) == 11
     assert candidates["naive"].stage_capabilities["tuning"].status == "not_applicable"
     assert candidates["ets"].stage_capabilities["tuning"].status == "available"
 
-    for model_id in ("tft", "nbeats", "nhits"):
+    # Task 138: при установленном neural-runtime lstm -- production-модель
+    # (20-я), tft/nbeats/nhits остаются catalog_only (Tasks 139-141).
+    for model_id in ("tft", "nbeats", "nhits") + _CATALOG_ONLY_NEURAL:
         assert candidates[model_id].platform_status == "catalog_only"
         assert candidates[model_id].available_actions == []
         assert candidates[model_id].stage_capabilities["backtest"].status == "not_implemented"
         assert "production" in candidates[model_id].blocking_reason.lower()
+    if _HAS_NEURAL:
+        lstm = candidates["lstm"]
+        assert lstm.platform_status == "ready"
+        assert "backtest" in lstm.available_actions
+        assert lstm.stage_capabilities["backtest"].status == "available"
+        assert lstm.blocking_reason is None
 
 
 def test_candidate_statistics_report_runtime_availability_separately():
@@ -68,11 +75,15 @@ def test_candidate_statistics_report_runtime_availability_separately():
     # предназначено financial/price) -- blocked 3, catalog-only 6.
     # Task 136: egarch -- 19-я (второй volatility-исполнитель, прецедент
     # var/vecm); domain-гейт тот же -- blocked 4, catalog-only 5.
-    # Task 138: lstm -- 20-я (первый исполнитель Neural Runtime Contract
-    # Task 137); на macro-профиле n=500 готова (F04/D02 не срабатывают) --
-    # catalog-only 4.
-    assert response.statistics.runnable_candidates == 16
-    assert response.statistics.catalog_only_candidates == 4
+    # Task 138: lstm -- 20-я (первый исполнитель neural-runtime контракта
+    # Task 137); на neural-воркере runnable 16 / catalog-only 4, без
+    # опциональной группы -- честные 15/5 (Task 136).
+    if _HAS_NEURAL:
+        assert response.statistics.runnable_candidates == 16
+        assert response.statistics.catalog_only_candidates == 4
+    else:
+        assert response.statistics.runnable_candidates == 15
+        assert response.statistics.catalog_only_candidates == 5
     assert response.statistics.blocked_candidates == 4
     assert response.statistics.total_models_in_spec == 24
 
@@ -138,10 +149,14 @@ def test_tbats_is_connected_but_explains_when_current_training_fold_is_too_short
     assert egarch_candidate.platform_status == "ready"
     assert egarch_candidate.available_actions == []
     assert egarch_candidate.blocking_reason
-    # Task 138: lstm блокируется F04 тем же честным explain-механизмом
-    # (60 < min_observations=200 -- yaml-граница нейро-модели).
+    # Task 138: lstm на коротком профиле честно блокируется
+    # min_observations=200 (60 < 200) тем же explain-механизмом.
     lstm_candidate = next(item for item in response.catalog if item.model_id == "lstm")
-    assert lstm_candidate.platform_status == "ready"
-    assert lstm_candidate.available_actions == []
     assert lstm_candidate.blocking_reason == "Недостаточно данных: 60 < 200 (требуется LSTM / GRU)"
-    assert response.statistics.blocked_candidates == 10
+    if _HAS_NEURAL:
+        assert lstm_candidate.platform_status == "ready"
+        assert lstm_candidate.available_actions == []
+        assert response.statistics.blocked_candidates == 10
+    else:
+        assert lstm_candidate.platform_status == "catalog_only"
+        assert response.statistics.blocked_candidates == 9

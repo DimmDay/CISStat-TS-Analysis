@@ -507,28 +507,26 @@ families:
           LSTM — долгие зависимости; GRU — легковесная альтернатива.
         min_observations: 200          # мягкая рекомендация, не жёсткий порог
         supports_exogenous: true
-        supports_prediction_intervals: true   # MC Dropout / deep ensembles
+        supports_prediction_intervals: true   # Task 138: conformal-контур NeuralForecast (не MC Dropout)
         libraries: ["neuralforecast"]
         training_time: "minutes_to_hours"
         requires_gpu: false            # возможно на CPU, но медленно
-        # ── Task 138: bounded param_space (первый исполнитель Neural
-        # ── Runtime Contract Task 137; прецедент каркас -> исполнитель:
-        # ── Task 134 -> 135/136).  Ядро постановки -- АРХИТЕКТУРНЫЙ выбор
-        # ── ячейки: cell lstm|gru (каталог «LSTM / GRU»: GRU --
-        # ── легковесная альтернатива) на ЕДИНОМ NeuralForecast-runtime
-        # ── (apps/api/model_impls/lstm.py + neural_runtime Task 137).
-        # ── input_size -- окно рекуррентного кодировщика; hidden -- ширина;
-        # ── max_steps -- единый бюджет контракта (max_epochs deprecated).
-        # ── Декартово произведение: 2 × 2 × 2 × 2 = 16 trials (<= MAX_TRIALS=64).
-        # ── encoder_n_layers/dropout/learning_rate -- валидируемые константы
-        # ── адаптера с явными границами (PARAM_BOUNDS; fail-closed вне
-        # ── тюнинга тоже).  Интервалы -- conformal-путь Task 137
-        # ── (PredictionIntervals + predict level), alpha 0.01/0.05/0.10.
+        # ── Task 138: первый исполнитель neural-runtime контракта Task 137 ──
+        # Единый каталожный id «LSTM / GRU» -- честная альтернатива ячеек:
+        # cell_type -- bounded-параметр адаптера (apps/api/model_impls/
+        # lstm.py), дефолт LSTM.  Единый бюджет обучения fold'а -- константа
+        # LSTM_MAX_STEPS адаптера (единый бюджетный рычаг max_steps
+        # NeuralForecast 3.x); тюнинг бюджета -- вне param_space обоснованно
+        # (прецедент Task 136).  Интервалы -- официальный conformal-контур
+        # контракта Task 137 (fit prediction_intervals + predict level),
+        # уровни из interval_levels_for_alpha.  Grid 2 x 2 x 2 = 8 trials
+        # (<= MAX_TRIALS=64); hidden_size/input_size ограничивают сложность
+        # против переобучения на коротких fold'ах; input_size -- глубина
+        # каузального окна (lookback), сезонность извлекается из данных.
         param_space:
-          cell: ["lstm", "gru"]
+          cell_type: ["LSTM", "GRU"]
+          hidden_size: [32, 64]
           input_size: [24, 48]
-          encoder_hidden_size: [16, 64]
-          max_steps: [150, 300]
 
       - id: "tft"
         name: "Temporal Fusion Transformer"

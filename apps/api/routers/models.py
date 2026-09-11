@@ -51,6 +51,7 @@ from apps.api.model_impls import (
     run_egarch_backtest,
     run_lstm_backtest,
 )
+from apps.api.model_impls.neural_runtime import neuralforecast_runtime_available
 from apps.api.model_impls.tuning import tune_ets_predict, tune_arima_predict
 from apps.api.model_execution import (
     MODEL_EXECUTION_CONTRACT_VERSION,
@@ -305,11 +306,31 @@ _BACKTEST_IMPLEMENTATIONS = {
     # Task 136: EGARCH -- второй volatility-исполнитель (прецедент пары
     # var/vecm); тот же честный отказ на одиночном synthetic-ряде.
     "egarch": run_egarch_backtest,
-    # Task 138: LSTM/GRU -- первый исполнитель Neural Runtime Contract
-    # Task 137; нейро-контракт строит окна по реальной сетке -- bare-ряд
-    # synthetic-эндпоинта честно отклоняется адаптером.
-    "lstm": run_lstm_backtest,
 }
+
+
+def _register_neural_dispatch(
+    implementations: dict, *, runtime_available: bool,
+) -> None:
+    """Task 138: neural-runtime -- ОПЦИОНАЛЬНАЯ dependency-группа
+    (apps/api/requirements-neural.txt, install_extra="neural").
+
+    LSTM/GRU -- одномерная level-модель: в отличие от VAR/VECM/GARCH/EGARCH
+    однорядный synthetic-эндпоинт для неё ПРИМЕНИМ, поэтому запись
+    dispatch -- реальное исполнение (прецедент random_forest), а не
+    честный отказ.  Регистрация УСЛОВНА: без установленной группы запись
+    не появляется -- readiness реестра честно фильтрует lstm, и строгий
+    gate реестр<->dispatch ниже остаётся точным в ОБЕИХ средах (иначе
+    import-гейт убивал бы бэкенд на хостах без neural-группы).
+    """
+    if runtime_available:
+        implementations["lstm"] = run_lstm_backtest
+
+
+_register_neural_dispatch(
+    _BACKTEST_IMPLEMENTATIONS,
+    runtime_available=neuralforecast_runtime_available(),
+)
 
 if frozenset(_BACKTEST_IMPLEMENTATIONS) != PRODUCTION_BACKTEST_MODEL_IDS:
     raise RuntimeError("Реестр готовности моделей расходится с production backtest dispatch")

@@ -5,6 +5,7 @@ from pathlib import Path
 
 from apps.api.backtesting import PRODUCTION_PREDICTORS
 from apps.api.model_impls.arima import _arima_fit_predict
+from apps.api.model_impls.neural_runtime import neuralforecast_runtime_available
 from apps.api.model_readiness import (
     MODELING_STAGE_IDS,
     PRODUCTION_BACKTEST_MODEL_IDS,
@@ -49,16 +50,20 @@ CERTIFIED_MODEL_IDS = frozenset({
     # Task 136: EGARCH -- второй volatility-исполнитель (прецедент пары
     # var/vecm; o >= 1 -- параметризация leverage/asymmetry).
     "egarch",
-    # Task 138: LSTM/GRU -- первый исполнитель Neural Runtime Contract
-    # Task 137 (единый NeuralForecast-runtime; архитектурный выбор ячейки
-    # cell ∈ {lstm, gru}; granted-канал -> futr_exog; conformal-интервалы).
-    "lstm",
 })
+
+# Task 138: LSTM/GRU -- первый исполнитель neural-runtime контракта Task
+# 137.  Реестровая запись и legacy-предиктор существуют всегда (код), но
+# readiness-членство честно зависит от установки опциональной
+# dependency-группы "neural" (apps/api/requirements-neural.txt).
+EXPECTED_PRODUCTION_MODEL_IDS = CERTIFIED_MODEL_IDS | (
+    {"lstm"} if neuralforecast_runtime_available() else frozenset()
+)
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_certified_scope_is_exactly_twenty_real_models_in_the_24_model_catalog():
+def test_certified_scope_is_exactly_nineteen_real_models_in_the_24_model_catalog():
     spec = ModelingSpec.from_yaml("rules/modeling.yaml")
     catalog = {
         model.id: family.id
@@ -67,9 +72,14 @@ def test_certified_scope_is_exactly_twenty_real_models_in_the_24_model_catalog()
     }
 
     assert len(catalog) == 24
-    assert PRODUCTION_BACKTEST_MODEL_IDS == CERTIFIED_MODEL_IDS
-    assert PRODUCTION_DIAGNOSTICS_MODEL_IDS == CERTIFIED_MODEL_IDS
-    assert frozenset(PRODUCTION_PREDICTORS) == CERTIFIED_MODEL_IDS
+    # Task 138: readiness = 19 сертифицированных + lstm при установленной
+    # опциональной neural-группе (см. EXPECTED_PRODUCTION_MODEL_IDS).
+    assert PRODUCTION_BACKTEST_MODEL_IDS == EXPECTED_PRODUCTION_MODEL_IDS
+    assert PRODUCTION_DIAGNOSTICS_MODEL_IDS == EXPECTED_PRODUCTION_MODEL_IDS
+    # Legacy-предикторы строятся по ЗАПИСЯМ реестра (код) -- lstm входит
+    # независимо от среды; вызов без группы честно отклоняется гейтом
+    # зависимостей registry.execute.
+    assert frozenset(PRODUCTION_PREDICTORS) == CERTIFIED_MODEL_IDS | {"lstm"}
     assert PRODUCTION_TUNING_MODEL_IDS == frozenset(
         {"ets", "ets_damped", "arima", "prophet", "tbats", "random_forest", "xgboost",
          "lightgbm", "catboost",
@@ -79,17 +89,15 @@ def test_certified_scope_is_exactly_twenty_real_models_in_the_24_model_catalog()
          # Task 135: volatility tuning -- execute_volatility_tuning_plan
          # (каждый trial -- volatility backtest на тех же folds, metric=qlike;
          # Task 136: egarch -- второй исполнитель того же движка).
-         "garch", "egarch",
-         # Task 138: tuning LSTM/GRU -- execute_tuning_plan (level-движок,
-         # каждый trial -- backtest на тех же folds; bounded param_space 16).
-         "lstm"},
+         "garch", "egarch"}
+        | ({"lstm"} if neuralforecast_runtime_available() else frozenset()),
     )
 
     for model_id, family_id in catalog.items():
         capabilities = model_stage_capabilities(model_id, family_id)
         assert tuple(capabilities) == MODELING_STAGE_IDS
         actions = available_model_actions(model_id)
-        if model_id in CERTIFIED_MODEL_IDS:
+        if model_id in EXPECTED_PRODUCTION_MODEL_IDS:
             assert "backtest" in actions
             assert "diagnostics" in actions
             assert ("tune" in actions) is (model_id in PRODUCTION_TUNING_MODEL_IDS)

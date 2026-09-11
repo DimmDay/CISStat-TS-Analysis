@@ -48,15 +48,16 @@ CERTIFIED_IDS = frozenset({
     # var/vecm: тот же volatility-движок; o >= 1 -- параметризация
     # leverage/asymmetry, официальный симуляционный контур arch).
     "egarch",
-    # Task 138: LSTM/GRU -- первый исполнитель Neural Runtime Contract
-    # Task 137 (единый NeuralForecast-runtime, cell ∈ {lstm, gru},
-    # granted-канал -> futr_exog, conformal-интервалы).
+    # Task 138: LSTM/GRU -- первый исполнитель neural-runtime контракта
+    # Task 137 (единый NeuralForecast-runtime; ЗАПИСЬ реестра существует
+    # всегда, а в readiness модель попадает только при установленной
+    # опциональной группе requirements-neural.txt -- честный
+    # runtime_available; см. test_lstm_integration_paths.py).
     "lstm",
 })
 
 # Task 126/127/128/129/130: supervised-адаптеры с regressor-каналом future_known/static.
-# Task 138: lstm -- шестой supervised-адаптер (granted-канал -> futr_exog_list).
-SUPERVISED_IDS = frozenset({"prophet", "random_forest", "xgboost", "lightgbm", "catboost", "lstm"})
+SUPERVISED_IDS = frozenset({"prophet", "random_forest", "xgboost", "lightgbm", "catboost"})
 
 # Task 127/128/129/130: ML-семейство (dependency_group="ml").
 ML_IDS = frozenset({"random_forest", "xgboost", "lightgbm", "catboost"})
@@ -71,8 +72,8 @@ MULTIVARIATE_EXOG_IDS = frozenset({"var"})
 # "univariate" -- volatility-движок поверх VolatilityTarget Task 134;
 # garch/egarch -- пара исполнителей одного движка, прецедент var/vecm).
 VOLATILITY_IDS = frozenset({"garch", "egarch"})
-# Task 138: нейро-семейство (dependency_group="neural", первый исполнитель
-# Neural Runtime Contract Task 137).
+# Task 138: neural-адаптер (dependency_group="neural", единый
+# NeuralForecast-runtime Task 137; первый исполнитель Tasks 138-142).
 NEURAL_IDS = frozenset({"lstm"})
 
 
@@ -127,13 +128,12 @@ def test_candidates_publish_v2_descriptors_only_for_executable_models():
 
     assert response.execution_contract_version == "model-execution-v2"
     assert catalog["naive"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("naive")
-    # Task 129/130: lightgbm и catboost стали production-моделями;
-    # catalog-only пример -- lstm.
+    # Task 129/130: lightgbm и catboost стали production-моделями.
+    # Task 138: lstm получил реестровую запись; catalog-only пример --
+    # tft (Tasks 139-141 ещё не реализованы, записи нет).
     assert catalog["xgboost"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("xgboost")
     assert catalog["lightgbm"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("lightgbm")
     assert catalog["catboost"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("catboost")
-    # Task 138: lstm стал production-моделью (Neural Runtime Contract
-    # Task 137); catalog-only пример -- tft (срез Task 141 впереди).
     assert catalog["lstm"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("lstm")
     assert catalog["tft"].execution_contract is None
 

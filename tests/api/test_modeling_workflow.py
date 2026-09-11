@@ -130,9 +130,11 @@ def test_context_reuses_the_last_eda_validation_plan_without_silent_defaults(cli
 def test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics(client: TestClient):
     _prepare(client)
 
-    # Task 128: xgboost стал production-моделью; Task 138: lstm -- тоже
-    # production (Neural Runtime Contract Task 137), поэтому в качестве
-    # catalog-only примера используется tft (срез Task 141 впереди).
+    # Task 128: xgboost стал production-моделью; в качестве catalog-only
+    # примера используется tft (neural-семейство, Tasks 139-141).
+    # Task 138: lstm стал production-моделью (первый исполнитель
+    # neural-runtime контракта Task 137) и примером catalog-only больше
+    # не является.
     response = client.post(
         "/v1/session/modeling/backtest",
         json={"model_id": "tft", "train_ratio": 0.8},

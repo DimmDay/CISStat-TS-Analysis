@@ -38,16 +38,20 @@ def test_matrix_reuses_all_spec_models_and_separates_compatibility_from_readines
     # но platform_status="ready" -- методологическая совместимость и
     # production-готовность независимы.  Обратное направление оси --
     # lstm: compatibility="blocked" (на этом профиле не хватает истории
-    # первому fold'у, F04/min_observations=200), но platform_status="ready"
-    # со среза Task 138 -- production-готовность от профиля не зависит.
+    # первому fold'у).  Task 138: lstm -- production-модель (реестр v2,
+    # neural-runtime контракта Task 137), platform_status="ready" при
+    # установленной опциональной группе; без группы
+    # (requirements-neural.txt) -- честный catalog_only.
     catboost = _by_id(result, "catboost")
     assert catboost["compatibility"] == "conditional"
     assert catboost["platform_status"] == "ready"
     assert any(item["id"] == "features" and item["status"] == "attention" for item in catboost["criteria"])
 
+    from apps.api.model_impls.neural_runtime import neuralforecast_runtime_available
+
     lstm = _by_id(result, "lstm")
     assert lstm["compatibility"] == "blocked"
-    assert lstm["platform_status"] == "ready"
+    assert lstm["platform_status"] == ("ready" if neuralforecast_runtime_available() else "catalog_only")
 
 
 def test_exogenous_columns_do_not_block_models_that_can_ignore_them():

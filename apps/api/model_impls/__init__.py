@@ -42,6 +42,9 @@ from apps.api.model_impls.var import run_var_backtest
 from apps.api.model_impls.vecm import run_vecm_backtest
 from apps.api.model_impls.garch import run_garch_backtest
 from apps.api.model_impls.egarch import run_egarch_backtest
+# Task 138: LSTM/GRU -- первый исполнитель neural-runtime контракта
+# Task 137 (адаптер НЕ импортирует torch на уровне модуля -- лениво
+# через neural_runtime).
 from apps.api.model_impls.lstm import run_lstm_backtest
 
 

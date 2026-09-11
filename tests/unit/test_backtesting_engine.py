@@ -173,7 +173,7 @@ def test_full_history_target_transform_is_rejected_until_fold_refit_exists(metad
         validate_target_preprocessing({"target_derived": metadata}, "target_derived")
 
 
-def test_all_sixteen_production_models_execute_the_same_real_oof_cohort():
+def test_all_fifteen_production_models_execute_the_same_real_oof_cohort():
     import pandas as pd
 
     from apps.api.model_readiness import PRODUCTION_BACKTEST_MODEL_IDS
@@ -199,7 +199,13 @@ def test_all_sixteen_production_models_execute_the_same_real_oof_cohort():
     # ТОЛЬКО volatility-движком (run_volatility_backtest_plan) на
     # VolatilityTarget и не могут входить в одномерный level-cohort
     # (гейты Task 134).
-    univariate_model_ids = PRODUCTION_BACKTEST_MODEL_IDS - {"var", "vecm", "garch", "egarch"}
+    # Task 138: lstm -- первый neural-исполнитель; реальный нейро-фит
+    # выведен из sweep'а (бюджет) и покрыт dedicated-тестами
+    # test_lstm_integration_paths.py на укороченном бюджете.
+    univariate_model_ids = (
+        PRODUCTION_BACKTEST_MODEL_IDS
+        - {"var", "vecm", "garch", "egarch"} - {"lstm"}
+    )
     results = {
         model_id: run_backtest_plan(
             model_id=model_id, model_name=model_id, family_id="test",
@@ -209,10 +215,7 @@ def test_all_sixteen_production_models_execute_the_same_real_oof_cohort():
         for model_id in univariate_model_ids
     }
 
-    # Task 138: lstm -- 20-я production-модель и УЧАСТНИК level-cohort:
-    # исполняется тем же одномерным движком на реальных folds
-    # (input_size=24 по умолчанию укладывается в n_train=66/69).
-    assert len(results) == 16
+    assert len(results) == 15
     assert {"var", "vecm", "garch", "egarch"} == PRODUCTION_BACKTEST_MODEL_IDS & {"var", "vecm", "garch", "egarch"}
     # Task 135: честный отказ level-движка для volatility-исполнителя.
     with pytest.raises(BacktestExecutionError, match="volatility"):

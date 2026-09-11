@@ -815,3 +815,137 @@ catalog_only пяти нейро-моделей) потреблён адапте
   'LSTM/GRU executable OK'.
 - Окружение: neuralforecast 3.2.2 + torch 2.14.0+cpu -- те же версии,
   на которых сертифицирован Task 137.
+
+---
+
+Task ID: 138a - fix LSTM/GRU vertical slice
+
+Agent: Super Z (main agent, разработчик)
+
+Task: docs/modeling_task_list.md::Task 138 -- отдельный vertical slice для
+LSTM/GRU.  Синхронизация до eba9af8 (Task 137 -- финализация вердикта
+сертификации и пересдача), проектирование и реализация первого исполнителя
+neural-runtime контракта Task 137.  Стимул от приёмки: во вкладке
+«Моделирование» / «Исполнение» / фильтре «Подключённые» 19 моделей -- 20-я
+(LSTM/GRU) не появилась.
+
+Work Log:
+- Синхронизация: `git stash push -u` (сохранён WIP Task 133 VECM как
+  pre-task138-sync), `git fetch`, checkout `eba9af8`; рабочее дерево чистое.
+  Обновление зависимостей после смены коммита: requirements.txt + PyWavelets/
+  pandera/ruptures/syrupy + prophet/statsforecast (переустановка) + **neural
+  runtime: torch 2.14.0+cpu + neuralforecast 3.2.2** (та же пара, на которой
+  сертифицирован Task 137).  Базовая линия восстановлена: 2193 passed на
+  eba9af8 (PROD = 19 connected, neural-пятёрка catalog_only).
+- Изучение постановки: docs/modeling_task_list.md::Tasks 138-142 -- по
+  одному vertical slice на нейро-модель; Task 138 = «LSTM/GRU»; контрактный
+  каркас уже готов (neural_contract.py 825 строк + neural_runtime.py
+  `train_and_forecast`, докстринг прямо адресует «реестровые записи Tasks
+  138-142»).  worklog3.md хвост: сертификация Task 137 -- блокирующая
+  находка (seed не доходил до конструктора) исправлена в eba9af8.
+- Эмпирический проб `scripts/task138_neural_lstm_probe.py`: LSTM/GRU
+  конструируются с encoder/decoder kwargs; conformal-колонки
+  `<Model>-lo-<level>/<Model>-hi-<level>` (уровни как float -- «-lo-5.0»);
+  целочисленная ds-сетка нативно работает с freq=1; same-seed бит-паритет
+  (max|diff| = 0.0), другой seed -- другой прогноз.
+- TDD RED: `tests/unit/test_lstm_adapter.py` (18 тестов: bounded params,
+  fail-closed вход, payload-контракт, GRU-ячейка, conformal-уровни,
+  детерминизм same/other-seed, ds-ось, анти-тампер бюджета) +
+  `tests/unit/test_lstm_integration_paths.py` (12 тестов: контракт
+  реестра, честный runtime_available, условный dispatch, count-gate
+  19/20 по среде, readiness/матрица, yaml<->адаптерные границы, гейты
+  реестра, executor, session-движок, legacy-экспорт, grid=8).
+  Коллекция RED подтверждена (ModuleNotFoundError / ImportError).
+- GREEN реализация (runtime-контракт Task 137 НЕ менялся -- прецедент
+  var/vecm, garch/egarch):
+  - `apps/api/model_impls/lstm.py` (НОВЫЙ, ~410 строк): bounded params
+    (cell_type ∈ {LSTM, GRU} -- честная альтернатива единого каталожного
+    id «LSTM / GRU»; hidden_size [8,128]; encoder_n_layers [1,3];
+    input_size [8,104]; alpha {0.01,0.05,0.10}); LSTM_MIN_TRAIN=30;
+    бюджет -- КОНСТАНТА LSTM_MAX_STEPS=300 (прижата анти-тампером к
+    [100, NEURAL_MAX_STEPS_BOUND]; тюнинг бюджета -- вне param_space,
+    прецедент Task 136); ds-ось -- задекларированная конвенция (парсимые
+    метки -> datetime + pd.infer_freq, иначе -- позиционная целочисленная
+    сетка freq=1, никакого скрытого ресемплинга); интервалы -- официальный
+    conformal-контур Task 137 (НЕ «MC Dropout», каталог обновлён);
+    fail-closed без clamp-подмен; детерминизм -- random_state -> seed ->
+    fold_seed -> random_seed КОНСТРУКТОРА модели (урок сертификации 137).
+  - `apps/api/model_execution.py`: `_lstm_executor` (metadata: adapter_id,
+    params, cell_type, nobs, max_steps, seed, freq, intervals,
+    deterministic) + запись реестра v2: model_id="lstm",
+    family_id="neural", adapter_id="neuralforecast-lstm-gru",
+    engine="neuralforecast", objective="level_forecast",
+    input_kind="univariate", actions=_TUNABLE,
+    required_packages=("neuralforecast",), supports_prediction_intervals,
+    deterministic, dependency_group="neural", memory_class="standard",
+    gpu="optional".
+  - `apps/api/routers/models.py`: условная регистрация
+    `_register_neural_dispatch(_BACKTEST_IMPLEMENTATIONS,
+    runtime_available=neuralforecast_runtime_available())` -- key design:
+    neural-runtime опционален (requirements-neural.txt НЕ входит в
+    production-сборку Docker, задано сертифицированным Task 137), поэтому
+    безусловная запись убила бы import-гейт `реестр<->dispatch` на хостах
+    без группы; условная регистрация сохраняет gate точным в ОБЕИХ средах.
+    Для одномерной level-модели однорядный synthetic-эндпоинт ПРИМЕНИМ --
+    dispatch-запись исполняется реально (прецедент random_forest), в
+    отличие от честных отказов VAR/VECM/GARCH/EGARCH.
+  - `apps/api/model_impls/__init__.py`: экспорт run_lstm_backtest
+    (адаптер не импортирует torch на уровне модуля).
+  - `rules/modeling.yaml::lstm`: param_space cell_type x hidden_size x
+    input_size = 8 trials (<= 64), значения внутри адаптерных границ;
+    комментарий Task 138 (conformal, бюджет-константа, honest notes).
+- Обновлены count-gates и catalog-only примеры (12 файлов): garch/egarch
+  integration paths (19 -> 20/19 по пробу runtime);
+  test_model_readiness_candidates (catalog_only 5 -> 4 при группе,
+  blocked 9 -> 10 на коротком профиле, честный explain
+  «Недостаточно данных: 60 < 200 (требуется LSTM / GRU)»);
+  test_model_execution_contract (реестровый CERTIFIED_IDS + lstm,
+  NEURAL_IDS, catalog-only пример tft);
+  test_modeling_mvp_certification (EXPECTED_PRODUCTION_MODEL_IDS,
+  legacy-предикторы по ЗАПИСЯМ реестра = 20 всегда, tuning-set + lstm);
+  test_backtesting_engine (lstm выведен из sweep'а -- реальный нейро-фит
+  покрыт dedicated-тестами на укороченном бюджете);
+  test_models_backtest_real (expected + lstm условно);
+  test_var_integration_paths (subprocess-гейт 20/19);
+  test_eda_model_matrix (platform_status ready/catalog_only по пробу);
+  api-тесты catalog-only примеров -> tft.
+- Верификация: полный регресс **2223 passed** (= 2193 база + 30 новых,
+  закрыто точно); E2E-смоук `scripts/task138_e2e_smoke.py`: 20 connected,
+  gate точен, lstm ready (backtest/tune/diagnostics), runnable 16 /
+  catalog-only 4, session-движок -- реальный OOF (2 fold'а, mae
+  стабилен), tuning-grid 8 trials, legacy-путь mae=0.0224; compileall OK;
+  `apps/api/__init__.py` -- пустой маркер не тронут (0 байт, 13
+  регрессий Task 132).
+- UI не менялся: packages/ui/lib/modeling.ts уже содержит семейство
+  «Нейросетевые» (Task 137), счётчик «Подключённые» считается из
+  platform_status==="ready" -- на neural-воркере покажет 20.
+
+Stage Summary:
+- Task 138 реализован как первый исполнитель neural-runtime контракта
+  Task 137: 20-я production-модель «LSTM / GRU» подключена на neural-
+  воркере (probe neuralforecast_runtime_available -- честный фильтр
+  readiness; без группы модель честно catalog_only, backend не падает).
+- Ключевое архитектурное решение: условная регистрация dispatch
+  (_register_neural_dispatch) сохраняет строгий import-гейт
+  реестр<->dispatch в обеих средах при опциональной dependency-группе
+  "neural" (контракт Task 137 не сломан; Docker-образ не тяжелеет).
+- Границы Task 138 (задел Tasks 139-142): exogenous-канал нейро-моделей
+  НЕ декларирован в реестре (univariate-гейты v2; прецедент GARCHX/VARX);
+  DeepAR (Task 142) остаётся panel-постановкой (min_series); бюджет --
+  константа, не тюнится; N-BEATS/N-HiTS/TFT повторяют этот же скелет
+  (адаптер + условный dispatch + yaml param_space).
+- Для подключения в deployment: `pip install -r
+  apps/api/requirements-neural.txt` (torch CPU-колёса), после чего
+  «Подключённые» = 20.
+- Изменённые/новые файлы (ZIP: download/task138_lstm_gru_vertical_slice_worklog4.zip):
+  - НОВЫЕ: apps/api/model_impls/lstm.py, tests/unit/test_lstm_adapter.py,
+    tests/unit/test_lstm_integration_paths.py,
+    scripts/task138_neural_lstm_probe.py, scripts/task138_e2e_smoke.py
+  - ИЗМЕНЁННЫЕ: apps/api/model_execution.py, apps/api/routers/models.py,
+    apps/api/model_impls/__init__.py, rules/modeling.yaml,
+    tests/unit/{test_garch_integration_paths, test_egarch_integration_paths,
+    test_model_readiness_candidates, test_model_execution_contract,
+    test_modeling_mvp_certification, test_backtesting_engine,
+    test_eda_model_matrix, test_var_integration_paths}.py,
+    tests/api/{test_models_backtest_real, test_models_candidates,
+    test_modeling_workflow}.py, worklog4.md (этот журнал)
