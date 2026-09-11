@@ -41,6 +41,7 @@ NeuralRuntimeUnavailableError с установочной подсказкой; 
 """
 from __future__ import annotations
 
+import os
 from importlib.util import find_spec
 from typing import Any, Callable, Mapping, Optional, Sequence
 
@@ -54,6 +55,7 @@ from apps.api.neural_contract import (
     NeuralTrainingConfig,
     fold_seed,
 )
+from apps.api.neural_resources import ensure_neural_memory_capacity
 
 
 NEURALFORECAST_VERSION_BOUND = "neuralforecast>=3.0,<4.0"
@@ -74,7 +76,17 @@ def neuralforecast_runtime_available() -> bool:
 
 
 def require_neuralforecast() -> Any:
-    """Ленивый импорт neuralforecast; недоступен -- fail-closed с подсказкой."""
+    """Ленивый импорт neuralforecast; недоступен -- fail-closed с подсказкой.
+
+    Task 138c: ЕДИНСТВЕННАЯ точка входа в тяжёлый импорт обязана
+    пропускать сначала ресурсный гейт памяти (ensure_neural_memory_capacity):
+    на инстансе меньше контрактуемого бюджета (Render free 512 MB -- замер
+    scripts/probe138b_memory.py: один импорт torch+neuralforecast ~606 MB
+    RSS) OOM-killer убивал процесс API посреди запроса (симптом HTTP 502).
+    Гейт дешевле импорта на порядки (чтение одного файла) и даёт честный
+    NeuralRuntimeCapacityError вместо обвала сервиса.
+    """
+    ensure_neural_memory_capacity()
     try:
         import neuralforecast as _neuralforecast_module
     except ImportError as exc:  # pragma: no cover -- зависит от окружения
@@ -85,7 +97,16 @@ def require_neuralforecast() -> Any:
 
 
 def seed_neural_runtime(seed: int) -> dict[str, Any]:
-    """Детерминизм random/numpy/torch (+cuda при наличии) до конструирования."""
+    """Детерминизм random/numpy/torch (+cuda при наличии) до конструирования.
+
+    Task 138c: попутно прижимает потоки torch (``_pin_torch_threads``) --
+    torch по умолчанию берёт os.cpu_count() потоков, что ВНУТРИ контейнера
+    с квотой CPU возвращает ядра ХОСТА: на слабых quota-инстансах
+    (Render free ~0.1 CPU) oversubscribe потоков -- лишние арены памяти
+    (на 512 MB фатально) и деградация latency от переключений.  Один
+    поток -- детерминированный минимум; на capable-хостах поднимается
+    переменной CISSTAT_NEURAL_TORCH_THREADS (fail-closed валидация).
+    """
     import random as _random
 
     if not isinstance(seed, int) or seed < 0:
@@ -99,11 +120,50 @@ def seed_neural_runtime(seed: int) -> dict[str, Any]:
     except ImportError:
         return seeded
     torch.manual_seed(seed)
+    _pin_torch_threads()
     seeded["torch"] = True
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
         seeded["cuda"] = True
     return seeded
+
+
+def _configured_torch_threads() -> int:
+    """Число intra-op потоков torch: env CISSTAT_NEURAL_TORCH_THREADS,
+    дефолт 1 (обоснование -- seed_neural_runtime); мусор/меньше 1 --
+    fail-closed."""
+    raw = os.environ.get("CISSTAT_NEURAL_TORCH_THREADS", "").strip()
+    if not raw:
+        return 1
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise NeuralContractError(
+            "CISSTAT_NEURAL_TORCH_THREADS обязан быть целым >= 1, "
+            f"получено {raw!r} (fail-closed)"
+        ) from exc
+    if value < 1:
+        raise NeuralContractError(
+            "CISSTAT_NEURAL_TORCH_THREADS обязан быть целым >= 1, "
+            f"получено {raw!r} (fail-closed)"
+        )
+    return value
+
+
+def _pin_torch_threads() -> None:
+    """Прижатие потоков torch после импорта (см. seed_neural_runtime).
+
+    set_num_interop_threads допустим ТОЛЬКО до начала параллельной работы:
+    повторный вызов (повторный seed_neural_runtime в процессе) поднимает
+    RuntimeError -- это честный no-op, поток уже прижат.
+    """
+    import torch
+
+    torch.set_num_threads(_configured_torch_threads())
+    try:
+        torch.set_num_interop_threads(1)
+    except RuntimeError:
+        pass
 
 
 def neural_model_budget_kwargs(

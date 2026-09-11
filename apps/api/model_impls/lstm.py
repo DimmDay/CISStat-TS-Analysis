@@ -59,6 +59,7 @@ fail-closed; канал exog для нейро-моделей -- отдельн�
 """
 from __future__ import annotations
 
+import os
 from typing import Any, Mapping, Optional, Sequence
 
 import numpy as np
@@ -68,6 +69,7 @@ from apps.api.model_impls._common import train_test_split
 from apps.api.model_impls._metrics import compute_metrics
 from apps.api.neural_contract import (
     NeuralContractError,
+    NeuralRuntimeCapacityError,
     NeuralTrainingConfig,
     interval_levels_for_alpha,
 )
@@ -84,6 +86,37 @@ LSTM_MIN_TRAIN = 30
 #: Единый бюджет обучения fold'а (max_steps NeuralForecast 3.x); прижат
 #: анти-тампер тестом к [100, NEURAL_MAX_STEPS_BOUND].
 LSTM_MAX_STEPS = 300
+
+#: Env-рычаг бюджета слабых инстансов (Task 138c): прокси-таймаут Render
+#: ~100 c -- на quota-CPU (free ~0.1 CPU) полный бюджет 300 шагов не
+#: укладывается даже при достаточной памяти.  Дефолт (env не задана) --
+#: СЕРТИФИЦИРОВАННАЯ константа LSTM_MAX_STEPS (семантика Task 138 не
+#: меняется); мусор/меньше 1 -- fail-closed; верхняя граница [1,
+#: NEURAL_MAX_STEPS_BOUND] дотягивается валидацией NeuralTrainingConfig.
+
+
+def _resolve_max_steps() -> int:
+    """Бюджет обучения fold'а: CISSTAT_NEURAL_MAX_STEPS или константа 300.
+
+    Пустая env (дефолт) -- сертифицированная семантика Task 138;
+    задана -- целое >= 1; мусор -- ValueError (fail-closed, стиль
+    локальной валидации адаптера)."""
+    raw = os.environ.get("CISSTAT_NEURAL_MAX_STEPS", "").strip()
+    if not raw:
+        return LSTM_MAX_STEPS
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise ValueError(
+            f"LSTM/GRU: CISSTAT_NEURAL_MAX_STEPS={raw!r} не целое >= 1 "
+            "(fail-closed)"
+        ) from exc
+    if value < 1:
+        raise ValueError(
+            f"LSTM/GRU: CISSTAT_NEURAL_MAX_STEPS={raw!r} не целое >= 1 "
+            "(fail-closed)"
+        )
+    return value
 
 #: Честная альтернатива ячеек единого каталожного id «LSTM / GRU».
 CELL_OPTIONS = ("LSTM", "GRU")
@@ -240,7 +273,9 @@ def _lstm_fit_predict(
     except NeuralContractError as exc:
         raise ValueError(f"LSTM/GRU: {exc}") from exc
 
-    config = NeuralTrainingConfig(seed=int(random_state), max_steps=LSTM_MAX_STEPS)
+    config = NeuralTrainingConfig(
+        seed=int(random_state), max_steps=_resolve_max_steps(),
+    )
 
     neuralforecast_models = _require_models()
     model_cls = getattr(neuralforecast_models, normalized["cell_type"])
@@ -267,6 +302,11 @@ def _lstm_fit_predict(
             levels=plan.levels,
             fold_index=0,
         )
+    except NeuralRuntimeCapacityError:
+        # Task 138c: ресурсный отказ нейро-runtime проходит НАСКВОЗЬ без
+        # ValueError-обёртки -- HTTP-слой обязан увидеть честный статус
+        # (503 legacy-роутера / 422 session-движка), а не потерять его.
+        raise
     except NeuralContractError as exc:
         raise ValueError(f"LSTM/GRU: {exc}") from exc
 
@@ -299,7 +339,7 @@ def _lstm_fit_predict(
         "params": dict(normalized),
         "cell_type": normalized["cell_type"],
         "nobs": int(nobs),
-        "max_steps": LSTM_MAX_STEPS,
+        "max_steps": int(config.max_steps),
         "seed": int(config.seed),
         "freq": (
             {"kind": "datetime", "value": str(freq)}

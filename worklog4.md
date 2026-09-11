@@ -1225,3 +1225,131 @@ cert138_mutations.py (M6/M10/M18 должны стать KILLED).
   по прецеденту task137_certification.zip.
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@64f2c27 + перечисленные изменения.
+
+---
+
+## Task 138c -- Нейро-runtime: честная деградация при недостатке памяти инстанса (симптом "бэктест LSTM/GRU -> HTTP 502")
+
+Дата: 2026-09-11. Синхронизация: main @ 56534e6 (пуш Task 138b тимлидом:
+Dockerfile-фикс + audit-скрипты + worklog4.md, байт-в-бит == поставленный ZIP).
+Симптом от приёмки: бэктест LSTM/GRU на живом контуре -> HTTP 502.
+
+### Диагностика (замер продакшн-пути, воспроизведён локально)
+
+- Пробник scripts/probe138b_memory.py (фазы в СВЕЖИХ subprocess'ах,
+  ru_maxrss каждой фазы независим; стек фазы fit воспроизводит базовую
+  загрузку процесса API -- fastapi/uvicorn/pydantic/pandas/numpy):
+  * baseline (стек API без нейро) -- 134.1 MB RSS;
+  * + импорт torch 2.14.0+cpu + neuralforecast 3.2.2 -- 605.7 MB
+    (+471.6 MB к базе, 9.1 c);
+  * + полный fit (LSTM, max_steps=300, 192 train/48 test) -- 698.4 MB
+    (+564.3 MB к базе, 18.4 c на 2 ядрах).
+- ПРИЧИНА 502: один ИМПОРТ нейро-runtime (606 MB) превышает 512 MB
+  free-инстанса Render -> OOM-killer убивает процесс API ПОСРЕДИ
+  запроса -> прокси отдаёт слепой 502, детерминированно на каждую
+  попытку (сервис недоступен и для остальных эндпоинтов на время
+  рестарта).  Это ровно эксплуатационный риск, зафиксированный в
+  вердикте Task 138b ("следить за памятью; при OOM-рестартах
+  рассмотреть Starter-план") -- теперь подтверждён замером и приёмкой.
+- Сопутствующий риск: proxy-таймаут Render ~100 c.  На quota-CPU
+  (free ~0.1 CPU) полный бюджет 300 шагов в одну thread не уложится
+  даже при достаточной памяти (локально 17-18 c на 2 ядрах).
+- Уточнение механики oversubscribe: torch дефолтно берёт
+  os.cpu_count() intra-op потоков, что внутри контейнера с квотой CPU
+  возвращает ядра ХОСТА (не квоту) -- на многоядерном хосте это лишние
+  арены памяти (на 512 MB фатально) и переключения.
+- Физика: нейро-runtime НЕ помещается в 512 MB никаким кодом (импорт
+  alone 606 MB) -- честная деградация единственный корректный ответ
+  платформы на таком инстансе; на 1 GB+ (Starter) fit помещается
+  (peak ~700 MB < 1024) и обязан работать надёжно.
+- Живой сервис после инцидента: GET /health -> 200 (сервис поднялся
+  рестартом после OOM-краша -- согласуется с диагнозом).
+
+### Решение (fail-closed, прецедент "честный отказ вместо фиктивных метрик")
+
+- NEW apps/api/neural_resources.py (лёгкий модуль, без тяжёлых
+  импортов): read_instance_memory_mb -- лимит памяти инстанса
+  (cgroup v2 memory.max -> cgroup v1 memory.limit_in_bytes с игнором
+  сентинела unlimited -> /proc/meminfo MemTotal -> None вне Linux);
+  ensure_neural_memory_capacity -- guard, привязанный К РЕСУРСНОЙ
+  ПОЛИТИКЕ платформы (NEURAL_MIN_MEMORY_MB ==
+  model_jobs._RESOURCE_POLICIES['standard']['memory_limit_mb'] == 1024,
+  защита привязки -- unit-тест); None (неизвестное окружение, macOS
+  dev) -- пропуск, fail-open ТОЛЬКО при неизвестном окружении.
+- apps/api/neural_contract.py: NEW NeuralRuntimeCapacityError --
+  подтип NeuralContractError (=> ValueError): session-движок маппит в
+  честный 422 СУЩЕСТВУЮЩИМ except-мэппингом (BacktestExecutionError/
+  ValueError-ветки), legacy-роутер -- явно в 503.
+- apps/api/model_impls/neural_runtime.py:
+  * require_neuralforecast -- ЕДИНСТВЕННАЯ точка входа в тяжёлый
+    импорт теперь пропускает гейт памяти ДО импорта (отказ дешёвый:
+    чтение одного файла, ~0.0 c / peak 205 MB на симуляции 512 MB --
+    против 9.1 c / 606 MB обвала);
+  * seed_neural_runtime -- прижимает потоки torch (_pin_torch_threads):
+    set_num_threads(_configured_torch_threads()) + set_num_interop_threads(1)
+    (повторный вызов -- честный no-op через RuntimeError-catch);
+    дефолт 1 поток, env CISSTAT_NEURAL_TORCH_THREADS (мусор/меньше 1 --
+    fail-closed NeuralContractError).
+- apps/api/model_impls/lstm.py: _resolve_max_steps -- env
+  CISSTAT_NEURAL_MAX_STEPS для слабых инстансов (прокси-таймаут ~100 c);
+  дефолт (env не задана) -- СЕРТИФИЦИРОВАННАЯ константа LSTM_MAX_STEPS=300
+  (семантика Task 138 не меняется, анти-тампер тест [100, 10000]
+  затрагивает константу, не env); мусор -- ValueError fail-closed;
+  payload['max_steps'] теперь честно сообщает ФАКТИЧЕСКИ использованный
+  бюджет (int(config.max_steps)); NeuralRuntimeCapacityError проходит
+  сквозь адаптер БЕЗ ValueError-обёртки (явный except-пере-брос --
+  HTTP-слой не теряет статус).
+- apps/api/routers/models.py: run_backtest маппит
+  NeuralRuntimeCapacityError -> HTTP 503 с действенным сообщением
+  (лимит инстанса, требование, совет "Starter 1 GB+ / отдельный
+  воркер").
+
+### Верификация
+
+- TDD: RED (ImportError по правильной причине) -> GREEN.  NEW тесты:
+  tests/unit/test_neural_capacity_guard.py (22: источники лимита v2/v1/
+  meminfo/None и сентинелы; привязка бюджета к политике model_jobs;
+  таксономия исключений; guard в require_neuralforecast и
+  train_and_forecast ДО импорта/фабрики; сквозной пропуск адаптера без
+  обёртки; env-бюджет дефолт/override/fail-closed/whitespace) +
+  tests/api/test_models_backtest_neural_capacity.py (2: 503 с честным
+  сообщением; классика naive на том же "малом" инстансе не задета).
+- Гард-демо на симуляции 512 MB (probe fit_guarded): честный
+  NeuralRuntimeCapacityError за 0.0 c при peak RSS 204.8 MB -- против
+  OOM-обвала 698.4 MB.  Бюджет доходит до payload: env=120 ->
+  payload['max_steps']=120; unset -> 300 (бит-в-бит семантика).
+- Полная регрессия на 56534e6 + фикс: 1519 unit (вкл. 3 snapshot после
+  до-установки syrupy -- среда сбрасывалась) + 625 api + 100 прочие =
+  **2244 passed / 0 failed**.  E2E-смоук Task 138: 7/7 -- 20 connected,
+  lstm ready, session engine 2 folds (mae=0.0307), tuning 8 trials,
+  legacy single-series (mae=0.0191).
+
+### Деплой-действия (вне репозитория)
+
+- Пуш фикса в main (commit/push -- только по прямому указанию тимлида)
+  + retry deploy API на Render.  ПОСЛЕ деплоя на free-инстансе: бэктест
+  LSTM/GRU будет отвечать 503/422 с честным сообщением о памяти (НЕ
+  502, сервис жив); это ОЖИДАЕМОЕ поведение -- 512 MB физически мало
+  для torch+neuralforecast.  Чтобы бэктест LSTM/GRU РАБОТАЛ: поднять
+  план до Starter (1 GB -- peak ~700 MB помещается; рекомендовано) или
+  вынести нейро-модели на отдельный воркер достаточного объёма.
+- Опциональные env на слабых инстансах (задать в Render Environment):
+  CISSTAT_NEURAL_MAX_STEPS=120 (укладываться в proxy-таймаут ~100 c;
+  качество бэктеста снижается -- компромисс слабого инстанса),
+  CISSTAT_NEURAL_TORCH_THREADS=1 (дефолт кода, задавать не требуется).
+- Напоминание вердикта 138b: проверка после деплоя --
+  /v1/internal/models/candidates -> ready 20, фильтр «Подключённые» 20.
+
+### Изменённые/новые файлы и поставка ZIP (AGENTS.md п.14-15)
+
+- NEW: apps/api/neural_resources.py;
+  tests/unit/test_neural_capacity_guard.py;
+  tests/api/test_models_backtest_neural_capacity.py;
+  scripts/probe138b_memory.py (диагностический пробник).
+- Изменённые: apps/api/neural_contract.py;
+  apps/api/model_impls/neural_runtime.py; apps/api/model_impls/lstm.py;
+  apps/api/routers/models.py; worklog4.md (данная запись).
+- ZIP: download/task138c_neural_memory_guard_worklog4.zip (все
+  перечисленные файлы).
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@56534e6 + перечисленные изменения.

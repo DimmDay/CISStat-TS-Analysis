@@ -52,6 +52,7 @@ from apps.api.model_impls import (
     run_lstm_backtest,
 )
 from apps.api.model_impls.neural_runtime import neuralforecast_runtime_available
+from apps.api.neural_contract import NeuralRuntimeCapacityError
 from apps.api.model_impls.tuning import tune_ets_predict, tune_arima_predict
 from apps.api.model_execution import (
     MODEL_EXECUTION_CONTRACT_VERSION,
@@ -526,7 +527,13 @@ def run_backtest(
     model_info = _resolve_model_info(model_id)
     series = _generate_series(profile.n_observations, profile.frequency, profile.has_seasonality)
     seasonal_period = _resolve_seasonal_period(profile)
-    metrics, duration_ms = _run_backtest_with_series(model_id, model_info, series, train_ratio, seasonal_period)
+    try:
+        metrics, duration_ms = _run_backtest_with_series(model_id, model_info, series, train_ratio, seasonal_period)
+    except NeuralRuntimeCapacityError as exc:
+        # Task 138c: честная деградация нейро-runtime на инстансах с
+        # недостаточной памятью -- 503 с действенным сообщением вместо
+        # слепого 502 от OOM-kill процесса (Render free 512 MB).
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     n_train = int(profile.n_observations * train_ratio)
     n_test = profile.n_observations - n_train
     return BacktestResponse(

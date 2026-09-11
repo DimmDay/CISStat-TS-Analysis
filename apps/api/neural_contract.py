@@ -117,6 +117,19 @@ class NeuralRuntimeUnavailableError(RuntimeError):
     """Нейро-runtime недоступен (пакеты не установлены или GPU отсутствует)."""
 
 
+class NeuralRuntimeCapacityError(NeuralContractError):
+    """Инстанс не располагает памятью, контрактуемой ресурсной политикой
+    нейро-runtime (neural_resources.NEURAL_MIN_MEMORY_MB, привязка к
+    memory_class='standard' политики model_jobs).
+
+    Подтип NeuralContractError (=> ValueError): session-движок маппит в
+    честный 422 существующим except-мэппингом; legacy-роутер бэктеста
+    маппит явно в 503.  Поднимается ДО тяжёлого импорта torch/
+    neuralforecast -- вместо OOM-kill процесса (симптом HTTP 502 на
+    Render free 512 MB, Task 138c).
+    """
+
+
 def _assert_json_safe(value: Any, *, path: str = "metadata") -> None:
     """Рекурсивная проверка JSON-безопасности (pointer в Redis/session-JSON)."""
     if value is None or isinstance(value, (str, bool)):
