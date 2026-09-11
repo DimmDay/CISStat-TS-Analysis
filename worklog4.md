@@ -2100,3 +2100,80 @@ lstm/nbeats/nhits).
   test_modeling_workflow}.py, worklog4.md (этот журнал)
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@23ca75b + перечисленные изменения.
+
+---
+
+## Task ID: M-03 (главная: две сетки по 6 бейджей, единый размер)
+
+Agent: Super Z (senior dev, вне репозитория)
+Task: По решениям тимлида от 2026-09-12:
+  (1) отступы бейджей от границ страницы — по 24px слева и справа;
+  (2) сетка бейджей: верхняя секция 6 бейджей «Анализ временных
+      рядов…» (HomeHero), нижняя секция 6 бейджей «Исследование
+      данных…» (HomeCapabilities); размер бейджей секций одинаков.
+
+Work Log:
+- TDD RED: HomeHero.test.tsx (+6 тестов: HERO_STATS 6 значений/6
+  подписей, dl aria-label «Метрики анализа временных рядов», сетка
+  2/3/6 + gap-3, контракт StatBadge px-3/py-3/h-7/line-clamp-2,
+  порядок H1 -> dl -> маршруты; тест сетки маршрутов переведён на
+  явный поиск по role="list") и HomeCapabilities.test.tsx (переписан
+  Block A: 6 бейджей, статичная сетка 2/3/6, отсутствие marquee-
+  классов/вьюпорта/клона, состав нижней секции + резерв, порядок
+  DL -> divider -> H2). Прогон: 9 failed / 14 passed.
+- GREEN-реализация:
+  * lib/capabilities.ts: CAPABILITY_STATS (14) разделена на
+    HERO_STATS (6, ядро анализа: 10 модулей / 24 модели / 8 семейств /
+    11 стадий / 6 метрик / 5 частот) и CAPABILITY_STATS (6, среда и
+    качество: 1 среда / 600+ тестов / 129 эндпоинтов / 10 критериев
+    DAMA DMBOK / 4 уровня применимости / 4 стратегии ансамблей);
+    добавлена STAT_GRID_CLASS = grid grid-cols-2 sm:grid-cols-3
+    lg:grid-cols-6 gap-3; резерв тезисов задокументирован в шапке
+    (4 теста диагностики остатков, 3 метода декомпозиции).
+  * components/StatBadge.tsx (НОВЫЙ): общий бейдж обеих секций —
+    единственность компонента гарантирует одинаковый размер по
+    построению (px-3 py-3, text-xl, подпись h-7 = 2 строки +
+    line-clamp-2, рамка/скругление как в Task 29). Экспортирован в
+    packages/ui/index.ts.
+  * HomeHero.tsx: сетка из 6 StatBadge (HERO_STATS, dl aria-label
+    «Метрики анализа временных рядов») между заголовком и картой
+    маршрутов.
+  * HomeCapabilities.tsx: Block A — статичная сетка 6 StatBadge
+    (CAPABILITY_STATS, dl «Метрики платформы»); marquee-инфраструктура
+    удалена (вьюпорт, клон aria-hidden, data-testid, animate-marquee).
+  * tailwind-preset.ts: keyframes/animation marquee удалены;
+  * packages/ui/globals.css: reduced-motion блок marquee удалён.
+- Отступ 24px: обеспечивается контейнером <main className="px-6">
+  (1.5rem = 24px) в apps/standalone/app/layout.tsx — обе сетки
+  выровнены по общему контейнеру страницы (совпадает с картой
+  маршрутов и H2); дополнительный паддинг не добавлялся во избежание
+  двойного отступа (48px).
+- Пойман и устранён дефект сборки: литералы Tailwind-классов в
+  КОММЕНТАРИЯХ capabilities.ts (w-[clamp(180px,18vw,300px)] из M-02)
+  сканер контента читает как исходники -> в CSS-бандл попадали
+  призрачные utilities. Комментарии переписаны без литералов классов,
+  сделан typecheck:clean + чистая пересборка; в бандле остались только
+  реальные классы (проверено rg по .next/static/css: grid-cols-6 есть,
+  animate-marquee/clamp(180px/marquee отсутствуют).
+- Проверки: jest 93 сюиты / 854 теста — PASS (HomeHero 14,
+  HomeCapabilities 23); typecheck:all — чисто; production build
+  standalone (после чистки .next) — OK, все роуты Static.
+- ZIP изменённых файлов -> download/M-03_home_grids_6badges.zip
+  (9 файлов + worklog4.md; только по текущей задаче).
+
+Stage Summary:
+- Главная standalone: верхняя секция — 6 бейджей «Анализ временных
+  рядов…» (10/24/8/11/6/5), нижняя — 6 бейджей «Исследование данных…»
+  (1/600+/129/10/4/4); обе сетки 2/3/6 колонок, общий StatBadge и
+  STAT_GRID_CLASS — размеры идентичны; отступ от границ страницы 24px
+  (px-6 main). Marquee M-02 снят по решению тимлида (анимацию можно
+  вернуть отдельной правкой preset + StatCell-обёртки).
+- Резерв тезисов для ротации: 4 теста диагностики остатков, 3 метода
+  декомпозиции ряда (закомментированы в lib/capabilities.ts).
+- Изменённые файлы: packages/ui/lib/capabilities.ts,
+  packages/ui/components/StatBadge.tsx (новый), HomeHero.tsx,
+  HomeHero.test.tsx, HomeCapabilities.tsx, HomeCapabilities.test.tsx,
+  packages/ui/tailwind-preset.ts, packages/ui/globals.css,
+  packages/ui/index.ts.
+- Бейдж «600+ автотестов» по-прежнему без обновления (факт ~2800+).
+- Рабочее дерево main @ 23ca75b без коммитов (запрет AGENTS.md).

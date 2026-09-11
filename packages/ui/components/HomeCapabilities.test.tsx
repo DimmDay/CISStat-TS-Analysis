@@ -3,23 +3,19 @@
 // Тесты для HomeCapabilities — вторая секция главной страницы (/)
 // в standalone-режиме.
 //
-// Задача M-02 (2026-09-12): Block A переведён с 4 статичных бейджей
-// в сетке 2/4 на БЕГУЩУЮ СТРОКУ (marquee) из 14 бейдж-счётчиков:
-//   - 4 исходных + 10 новых маркетинговых тезисов (M-01, фактура из
-//     кода main @ 23ca75b);
-//   - компактная ширина бейджа w-[clamp(180px,18vw,300px)] — на ширине
-//     страницы видно ~5 бейджей;
-//   - подпись — фиксированные 2 строки (h-7 + line-clamp-2) у ВСЕХ
-//     бейджей, единая высота карточки;
-//   - анимация: вся лента синхронно движется справа налево с низкой
-//     скоростью (animate-marquee, 90s linear infinite); пауза на hover;
-//     prefers-reduced-motion отключает анимацию (globals.css);
-//   - бесшовный цикл: лента дублируется в aria-hidden-копию, -50%
-//     translate = ровно одна группа (правая граница стыка = левая).
+// Задача M-03 (2026-09-12, решение тимлида): marquee-лента из 14
+// бейджей (M-02) заменена на СТАТИЧНУЮ сетку из 6 бейджей «Исследование
+// данных…»; в hero-секции (HomeHero) появляется симметричная сетка
+// из 6 бейджей «Анализ временных рядов…». Требования:
+//   - размер бейджей обеих секций одинаков — общий компонент StatBadge
+//     и общая константа сетки STAT_GRID_CLASS (2/3/6 колонок);
+//   - отступ бейджей от границ страницы — 24px слева и справа
+//     (даёт контейнер <main className="px-6"> layout.tsx);
+//   - подпись каждого бейджа — фиксированные 2 строки (h-7 + line-clamp-2).
 //
 // Исторические тесты Task 29/30 (собственная рамка/скругление бейджа,
 // отсутствие «слитого монолита», порядок Block A → divider → H2 →
-// Block B → divider) сохранены с пересчётом на 14×2 бейджа.
+// Block B → divider) сохранены с пересчётом на 6 бейджей.
 
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -31,144 +27,100 @@ import {
   CAPABILITIES,
 } from "../lib/capabilities";
 
-// Ширина бейджа — источник истины для «5 бейджей на ширину страницы».
-// Дублируется со StatCell (Tailwind arbitrary value) намеренно: тест
-// ловит случайную потерю класса при рефакторинге.
-const BADGE_WIDTH_CLASS = "w-[clamp(180px,18vw,300px)]";
-
 describe("HomeCapabilities", () => {
-  // ── Block A: marquee из 14 stat-бейджей НАД заголовком ─────
+  // ── Block A: статичная сетка из 6 stat-бейджей НАД заголовком ──
 
-  it("renders 14 stat values in the visible (real) marquee group", () => {
+  it("renders 6 stat values in the badge grid", () => {
     const { container } = render(<HomeCapabilities />);
-    const real = container.querySelector('[data-testid="marquee-group-real"]')!;
-    const dds = Array.from(real.querySelectorAll("dd")).map((el) => el.textContent);
+    const dds = Array.from(container.querySelectorAll("dl dd")).map((el) =>
+      el.textContent,
+    );
     expect(dds).toHaveLength(CAPABILITY_STATS.length);
     for (const stat of CAPABILITY_STATS) {
       expect(dds).toContain(stat.value);
     }
   });
 
-  it("renders 14 stat labels in the visible (real) marquee group", () => {
+  it("renders 6 stat labels in the badge grid", () => {
     const { container } = render(<HomeCapabilities />);
-    const real = container.querySelector('[data-testid="marquee-group-real"]')!;
-    const dts = Array.from(real.querySelectorAll("dt")).map((el) => el.textContent);
+    const dts = Array.from(container.querySelectorAll("dl dt")).map((el) =>
+      el.textContent,
+    );
     expect(dts).toHaveLength(CAPABILITY_STATS.length);
     for (const stat of CAPABILITY_STATS) {
       expect(dts).toContain(stat.label);
     }
   });
 
-  it("duplicates all badges in an aria-hidden clone for the seamless loop", () => {
-    const { container } = render(<HomeCapabilities />);
-    const clone = container.querySelector('[data-testid="marquee-group-clone"]')!;
-    expect(clone).toHaveAttribute("aria-hidden", "true");
-    const cloneDds = Array.from(clone.querySelectorAll("dd")).map((el) => el.textContent);
-    expect(cloneDds).toHaveLength(CAPABILITY_STATS.length);
-    for (const stat of CAPABILITY_STATS) {
-      expect(cloneDds).toContain(stat.value);
-    }
-    // Клон идёт вторым (справа от реальной группы)
-    const groups = Array.from(
-      container.querySelectorAll('[data-testid^="marquee-group-"]'),
-    );
-    expect(groups[1]).toHaveAttribute("aria-hidden", "true");
-  });
-
-  it("renders stats inside semantic <dl> with 28 <dd>/<dt> pairs (14×2)", () => {
+  it("renders stats inside semantic <dl> with 6 <dd>/<dt> pairs", () => {
     const { container } = render(<HomeCapabilities />);
     const dl = container.querySelector("dl");
     expect(dl).not.toBeNull();
     expect(dl).toHaveAttribute("aria-label", "Метрики платформы");
-    expect(dl!.querySelectorAll("dd")).toHaveLength(28);
-    expect(dl!.querySelectorAll("dt")).toHaveLength(28);
+    expect(dl!.querySelectorAll("dd")).toHaveLength(6);
+    expect(dl!.querySelectorAll("dt")).toHaveLength(6);
   });
 
-  it("renders the 10 new achievement theses (M-01) and drops the replaced one", () => {
+  it("renders the badge grid as responsive 2/3/6 grid with gap-3 (same as hero)", () => {
     const { container } = render(<HomeCapabilities />);
-    const text = container.querySelector('[data-testid="marquee-group-real"]')!
-      .textContent!;
-    // 10 новых тезисов (фактура main @ 23ca75b)
-    expect(text).toContain("моделей в каталоге");
-    expect(text).toContain("API-эндпоинтов");
-    expect(text).toContain("стадий пайплайна моделирования");
-    expect(text).toContain("уровня применимости моделей");
-    expect(text).toContain("критериев качества данных по DAMA DMBOK");
-    expect(text).toContain("метрик точности прогноза");
-    expect(text).toContain("статистических теста диагностики остатков");
-    expect(text).toContain("частот рядов");
-    // Пункт 9 заменён по решению тимлида: вместо дата-контрактов —
-    // 4 стратегии ансамблевого прогноза.
-    expect(text).toContain("стратегии ансамблевого прогноза");
-    expect(text).toContain("метода декомпозиции ряда");
-    // Старый пункт 9 исключён из контента
-    expect(text).not.toContain("дата-контракта");
+    const dl = container.querySelector("dl")!;
+    expect(dl.className).toContain("grid");
+    expect(dl.className).toContain("grid-cols-2");
+    expect(dl.className).toContain("sm:grid-cols-3");
+    expect(dl.className).toContain("lg:grid-cols-6");
+    expect(dl.className).toContain("gap-3");
   });
 
-  it("renders compact badges: ~5 visible across the page width (fixed clamp width)", () => {
+  it("renders compact uniform badges with 2-line labels (StatBadge contract)", () => {
     const { container } = render(<HomeCapabilities />);
-    const real = container.querySelector('[data-testid="marquee-group-real"]')!;
-    const badges = real.querySelectorAll("div.bg-neutral-100");
+    const badges = container.querySelectorAll("dl > div.bg-neutral-100");
     expect(badges.length).toBe(CAPABILITY_STATS.length);
     badges.forEach((badge) => {
-      expect(badge.className).toContain(BADGE_WIDTH_CLASS);
-      expect(badge.className).toContain("shrink-0");
-      // Компактнее прежнего px-4 py-4
       expect(badge.className).toContain("px-3");
       expect(badge.className).toContain("py-3");
-      expect(badge.className).not.toContain("px-4");
-      expect(badge.className).not.toContain("py-4");
-    });
-  });
-
-  it("renders every label with a fixed 2-line height (h-7 + line-clamp-2)", () => {
-    const { container } = render(<HomeCapabilities />);
-    const real = container.querySelector('[data-testid="marquee-group-real"]')!;
-    const dts = real.querySelectorAll("dt");
-    expect(dts.length).toBe(CAPABILITY_STATS.length);
-    dts.forEach((dt) => {
+      expect(badge.className).toContain("rounded-xl");
+      expect(badge.className).toContain("border-neutral-200");
+      expect(badge.className).toContain("bg-neutral-100");
+      const dt = badge.querySelector("dt")!;
       expect(dt.className).toContain("h-7");
       expect(dt.className).toContain("line-clamp-2");
-      expect(dt.className).toContain("leading-tight");
+      const dd = badge.querySelector("dd")!;
+      expect(dd.className).toContain("text-xl");
     });
   });
 
-  it("animates the whole track right-to-left slowly and uniformly (marquee)", () => {
+  it("renders the 6 environment/quality theses and drops the reserve ones", () => {
     const { container } = render(<HomeCapabilities />);
-    const dl = container.querySelector("dl")!;
-    // Трек — широкий flex, лента целиком анимируется одним transform
-    expect(dl.className).toContain("flex");
-    expect(dl.className).toContain("w-max");
-    expect(dl.className).toContain("animate-marquee");
-    // Низкая скорость + равномерность — в preset: 90s linear infinite
+    const text = container.querySelector("dl")!.textContent!;
+    // Нижняя секция: среда, качество, инженерия
+    expect(text).toContain("единая исследовательская среда");
+    expect(text).toContain("автотестов покрывают бизнес-логику");
+    expect(text).toContain("API-эндпоинтов");
+    expect(text).toContain("критериев качества данных по DAMA DMBOK");
+    expect(text).toContain("уровня применимости моделей");
+    // Пункт из M-01/M-02 сохранён по решению тимлида
+    expect(text).toContain("стратегии ансамблевого прогноза");
+    // Тезисы, ушедшие в резерв (M-03), не рендерятся
+    expect(text).not.toContain("теста диагностики остатков");
+    expect(text).not.toContain("метода декомпозиции ряда");
+    // Тезисы верхней секции здесь не дублируются
+    expect(text).not.toContain("моделей в каталоге");
+    expect(text).not.toContain("стадий пайплайна");
   });
 
-  it("pauses the marquee on hover", () => {
+  it("does NOT render the marquee anymore (M-02 superseded by M-03)", () => {
     const { container } = render(<HomeCapabilities />);
     const dl = container.querySelector("dl")!;
-    expect(dl.className).toContain("[animation-play-state:paused]");
-  });
-
-  it("clips the marquee inside a viewport wrapper (overflow-hidden + relative)", () => {
-    const { container } = render(<HomeCapabilities />);
-    const viewport = container.querySelector(".marquee-viewport");
-    expect(viewport).not.toBeNull();
-    expect(viewport!.className).toContain("overflow-hidden");
-    expect(viewport!.className).toContain("relative");
-    // dl — прямой ребёнок вьюпорта
-    expect(viewport!.querySelector("dl")).not.toBeNull();
-  });
-
-  it("renders each badge with own border and rounding (Task 29 contract, 28 cells)", () => {
-    const { container } = render(<HomeCapabilities />);
-    const dl = container.querySelector("dl")!;
-    const badges = dl.querySelectorAll("div.bg-neutral-100.rounded-xl.border");
-    expect(badges.length).toBe(28);
-    badges.forEach((badge) => {
-      expect(badge.className).toContain("border-neutral-200");
-      expect(badge.className).toContain("rounded-xl");
-      expect(badge.className).toContain("bg-neutral-100");
-    });
+    // Ни классов бегущей строки, ни вьюпорта, ни клона
+    expect(dl.className).not.toContain("animate-marquee");
+    expect(dl.className).not.toContain("w-max");
+    expect(container.querySelector(".marquee-viewport")).toBeNull();
+    expect(
+      container.querySelector('[data-testid="marquee-group-real"]'),
+    ).toBeNull();
+    expect(
+      container.querySelector('[data-testid="marquee-group-clone"]'),
+    ).toBeNull();
   });
 
   it("uses smaller font for stat values (text-xl, not text-3xl)", () => {
@@ -187,7 +139,6 @@ describe("HomeCapabilities", () => {
     expect(dl.className).not.toContain("rounded-xl");
     expect(dl.className).not.toContain("bg-neutral-200");
     expect(dl.className).not.toContain("gap-px");
-    expect(dl.className).not.toContain("grid");
     // Обычный gap между бейджами
     expect(dl.className).toContain("gap-3");
   });
@@ -232,16 +183,14 @@ describe("HomeCapabilities", () => {
     expect(heading).not.toBeNull();
   });
 
-  // ── Порядок в DOM: marquee → divider → H2 → Block B → divider ──
+  // ── Порядок в DOM: Block A → divider → H2 → Block B → divider ──
 
-  it("renders Block A (marquee) BEFORE the H2 in DOM order", () => {
+  it("renders Block A (badge grid) BEFORE the H2 in DOM order", () => {
     const { container } = render(<HomeCapabilities />);
     const section = container.querySelector("section")!;
     const children = Array.from(section.children);
-    // [0] вьюпорт marquee, внутри — <dl> Block A
-    expect(children[0].tagName).toBe("DIV");
-    expect(children[0].className).toContain("marquee-viewport");
-    expect(children[0].querySelector("dl")).not.toBeNull();
+    // [0] <dl> Block A
+    expect(children[0].tagName).toBe("DL");
     // [1] <div> декоративная черта между Block A и H2 (Task 30)
     expect(children[1].tagName).toBe("DIV");
     expect(children[1].className).toContain("h-px");
@@ -263,8 +212,8 @@ describe("HomeCapabilities", () => {
     const { container } = render(<HomeCapabilities />);
     const section = container.querySelector("section")!;
     const children = Array.from(section.children);
-    // Первый divider стоит сразу после вьюпорта marquee и перед <div> с H2
-    expect(children[0].className).toContain("marquee-viewport"); // Block A
+    // Первый divider стоит сразу после <dl> (Block A) и перед <div> с H2
+    expect(children[0].tagName).toBe("DL"); // Block A
     expect(children[1].className).toContain("h-px"); // divider
     expect(children[1].className).toContain("bg-neutral-200");
     expect(children[1]).toHaveAttribute("aria-hidden", "true");

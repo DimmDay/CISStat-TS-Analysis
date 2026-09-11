@@ -2,17 +2,20 @@
 
 // Главная страница (/) — исследовательская карта (Task 24).
 // HomeHero: H1 + поддерживающий текст + сетка 3×2 из 6 маршрутов.
+// M-03: + сетка из 6 stat-бейджей «Анализ временных рядов…»
+// (HERO_STATS, общий StatBadge и STAT_GRID_CLASS с HomeCapabilities).
 export { HomeHero } from "./components/HomeHero";
+export { StatBadge } from "./components/StatBadge";
 export { RouteCard } from "./components/RouteCard";
 export type { RouteCardProps } from "./components/RouteCard";
 export { HOME_ROUTES } from "./lib/home-stops";
 export type { HomeRoute } from "./lib/home-stops";
 
 // Главная страница (/) — секция «Возможности» (Task 27, правка 2026-08-20).
-// HomeCapabilities: Block A (4 stat НАД заголовком) + заголовок H2 +
-// Block B (3×2 карточек). Block C (manifesto) и section tag убраны по
-// решению тимлида. Подключается ТОЛЬКО в standalone — в embedded
-// пользователь уже внутри портала, маркетинговый контекст не нужен.
+// HomeCapabilities: Block A (сетка из 6 stat-бейджей НАД заголовком, M-03)
+// + заголовок H2 + Block B (3×2 карточек). Block C (manifesto) и section
+// tag убраны по решению тимлида. Подключается ТОЛЬКО в standalone — в
+// embedded пользователь уже внутри портала, маркетинговый контекст не нужен.
 export { HomeCapabilities } from "./components/HomeCapabilities";
 // HomeWavesBackground: декоративный фон главной страницы (мягкие волны,
 // шаблон — скриншот «Вариант 1. Волны»), только standalone.

@@ -14,19 +14,8 @@ html {
   .animate-pulse-dot {
     animation: none;
   }
-
-  /* Marquee stat-бейджей главной (HomeCapabilities, Задача M-02):
-     анимацию отключаем, вьюпорт переводим на ручную горизонтальную
-     прокрутку — контент ленты остаётся полностью доступным.
-     Правило идёт ПОСЛЕ @tailwind utilities, поэтому перебивает
-     одноимённый utility overflow-hidden при равной специфичности. */
-  .animate-marquee {
-    animation: none;
-  }
-  .marquee-viewport {
-    overflow-x: auto;
-    scroll-behavior: auto;
-  }
+  /* Правка для marquee удалена в M-03 (2026-09-12): бегущая строка
+     stat-бейджей заменена статичными сетками 2/3/6 колонок. */
 }
 
 .sr-only {
