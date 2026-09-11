@@ -7,14 +7,28 @@
 //      Task 27). Только в standalone — в embedded маркетинговый контекст
 //      не нужен, пользователь уже внутри портала.
 //
-// HomeWavesBackground — декоративный фон (мягкие волны, шаблон — скриншот
-// «Вариант 1. Волны»), тоже только standalone по той же причине.
+// HomeWavesBackground — декоративный фон (мягкие волны, источник —
+// CISStat_TS_Analysis_background_wave_1600x1600.svg), тоже только
+// standalone по той же причине.
+//
+// -mt-6 pt-6: <main> в layout.tsx задаёт py-6 -- фон HomeWavesBackground
+// (absolute inset-0 этой обёртки) без компенсации начинался бы НИЖЕ
+// верхнего меню (ModuleNav), оставляя незакрашенный зазор в py-6 над
+// заголовком. -mt-6 сдвигает саму обёртку (и вместе с ней abs-фон)
+// вверх ровно на величину padding-top <main>, вплотную к меню;
+// компенсирующий pt-6 на той же обёртке возвращает HomeHero/
+// HomeCapabilities ровно на прежнюю позицию -- видимый эффект: фон
+// доходит до меню, содержимое не сдвигается ни на пиксель. Значения
+// -mt-6/pt-6 -- один и тот же токен шкалы Tailwind (1.5rem), поэтому
+// компенсация точная, не приближённая. Правка локальна для главной
+// страницы -- <main>/layout.tsx не тронуты, остальные вкладки не
+// затронуты.
 
 import { HomeHero, HomeCapabilities, HomeWavesBackground } from "@cisstat/ui";
 
 export default function Page() {
   return (
-    <div className="relative isolate">
+    <div className="relative isolate -mt-6 pt-6">
       <HomeWavesBackground />
       <div className="relative space-y-12">
         <HomeHero />
