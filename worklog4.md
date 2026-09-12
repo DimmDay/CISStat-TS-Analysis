@@ -1573,15 +1573,15 @@ Task 138c, nbeats-проба нового класса риска не доба�
 
 ---
 
-Task w/n: Маркетинговая секция главной страницы, бейдж-счётчики
+## Task w/n: Маркетинговая секция главной страницы, бейдж-счётчики
 
 Agent: Super Z (senior dev, вне репозитория)
-Task: Дополнить Block A второй секции главной (/) 10 новыми
+### Task: Дополнить Block A второй секции главной (/) 10 новыми
   бейдж-счётчиками для маркетингового продвижения
   (packages/ui/lib/capabilities.ts -> CAPABILITY_STATS;
   рендер -- packages/ui/components/HomeCapabilities.tsx, StatCell).
 
-Work Log:
+### Work Log:
 - Изучены: AGENTS.md, worklog_summary.md, worklog4.md,
   capabilities.ts + HomeCapabilities.tsx (4 действующих бейджа:
   10 модулей / 8 семейств / 600+ автотестов / 1 среда).
@@ -1623,7 +1623,7 @@ Work Log:
   CAPABILITY_STATS и адаптация сетки grid (sm:grid-cols-4 ->
   поддержка 14 бейджей) -- отдельно по TDD-циклу (AGENTS.md).
 
-Stage Summary:
+### Stage Summary:
 - Выданы 10 бейдж-счётчиков: 24 модели / 129 эндпоинтов /
   11 стадий / 4 уровня применимости / 10 критериев DAMA DMBOK /
   6 метрик / 4 теста диагностики / 5 частот / 4 дата-контракта /
@@ -1703,3 +1703,182 @@ Agent: Super Z (senior dev, вне репозитория)
   embedded затронут только preset/globals.css (общие пакеты),
   capabilities-секция в embedded не подключается.
 - Рабочее дерево main @ 23ca75b без коммитов (запрет AGENTS.md).
+
+---
+
+## Task 139 -- Независимая сертификация (аудит исполненной задачи)
+
+Дата: 2026-09-12. Синхронизация: 23ca75b (Task 139 N-BEATS vertical slice;
+предшествуют ba33792 138c memory-guard, 56534e6 138b Dockerfile-fix).
+Аудитор: отдельная сессия, методология прецедента сертификации Task 138
+(оракулы на собственных данных + мутационные тесты fresh-subprocess).
+Постановка docs/modeling_task_list.md::Tasks 138-142 (Task 139 -- N-BEATS).
+
+### Методология аудита
+
+- Честность прежде всего: базлайн воспроизводится из чистого дерева 23ca75b;
+  аудиторские инструменты не изменяют код задачи; каждая мутация применяется
+  к байт-чистому дереву и восстанавливается с сверкой SHA-256.
+- Оракулы -- на СОБСТВЕННЫХ данных аудитора (синус+шум, seed 2026; не
+  фикстуры исполнителя default_rng(8)), проверяют СВОЙСТВА платформы:
+  детерминизм, эффект конфигов, boundary-семантика гейтов, тройная
+  согласованность реестр<->dispatch<->readiness, честность metadata.
+- Мутации -- точечные правки кода (21 шт., 5 файлов), kill-подмножество
+  прогоняется в СВЕЖЕМ subprocess (in-process пробы недействительны --
+  урок сертификации Task 138); вердикт KILLED/SURVIVED по коду возврата.
+- Окружение аудита: те же версии, что у сертифицированных Tasks 137/138/139
+  (neuralforecast 3.2.2 + torch 2.14.0+cpu, Python 3.12.14); OMP_NUM_THREADS=1.
+
+### Воспроизведение базлайна и регрессии
+
+- git status чист; compileall OK; app-import (apps.api.main) OK; pip check
+  чистый.
+- Полная регрессия: **2289 passed / 0 failed** -- unit 1564 (1522 база +
+  38 nbeats [26 adapter + 12 integration] + 4 аддитивных lstm), api 625,
+  прочие 100 -- арифметика отчёта исполнителя сходится точно.
+- Счётчики «20 -> 21» проверены по всем 10 файлам из отчёта исполнителя:
+  расхождений не найдено (PRODUCTION_BACKTEST_MODEL_IDS == 21 при
+  установленной neural-группе; nhits/tft/deepar -- честный catalog_only).
+
+### Воспроизведение проб и смоуков исполнителя
+
+- scripts/task139_nbeats_probe.py: PROBE OK (same-seed max|diff| = 0.0;
+  cross-seed 0.533 -- совпадает с отчётом).
+- scripts/task139_e2e_smoke.py: E2E-СМОУК OK -- 21 connected, dispatch-gate,
+  nbeats ready, tft/nhits/deepar catalog_only, OOF-бэктест 2 folds
+  (mae=0.1110), bounded tuning 8 trials, legacy однорядный путь
+  (mae=0.1020) -- бит-в-бит с отчётом исполнителя.
+- Dockerfile-пробы воспроизведены локально из корня репо: 'N-BEATS
+  executable OK' и 'LSTM/GRU executable OK' (после clamp-гейта 138a).
+
+### Оракулы (17/17 PASS -- все независимые, на своих данных)
+
+Инструмент: scripts/audit_scripts/cert139_oracles.py (pytest, env-бюджет
+CISSTAT_NEURAL_MAX_STEPS=6 для скоростных фитов).
+
+- O1 детерминизм: same-seed бит-паритет, cross-seed различие (своя серия).
+- O2 стековая альтернатива имеет РЕАЛЬНЫЙ эффект: interpretable != generic
+  на одинаковых данных/сиде (класс silent-swap; исполнитель проверял
+  только «generic запускается»).
+- O3 bounded-ручки hidden_size/input_size доходят до конструктора
+  (эффект конфига -- класс literal-dup).
+- O4 boundary-семантика гейтов: MIN_TRAIN и окно input_size+horizon
+  дают РАЗЛИЧИМЫЕ честные отказы на точных границах (29/30 точек,
+  раздельные сообщения).
+- O5 fault-injection синтетического кадра: семантика выбора interval-
+  колонок (lo = levels[0], hi = levels[-1]) прижата; неверный выбор
+  колонки активирует clamp-гейт; выходной isfinite-гейт (NaN-прогноз ->
+  отказ без clamp-подмен).
+- O6 двухслойный spy проводки бюджета/сида: env-override доходит до
+  NeuralTrainingConfig (слой адаптер->runtime), фабрика разворачивает
+  budget в КОНСТРУКТОР модели (слой runtime->конструктор; model.max_steps /
+  model.random_seed пробы) -- урок НАХОДКИ-1/M18 сертификации 138.
+- O7 тройная согласованность: запись реестра №21 (все декларации:
+  family/adapter/objective/input_kind/actions/_TUNABLE/engine/packages/
+  deterministic/dependency_group/intervals/gpu/memory_class), dispatch
+  <=> readiness <=> PRODUCTION-множество, строгий gate в этой среде,
+  catalog_only-статус срезов 140-142.
+- O8 yaml::nbeats: декартово произведение grid == 8 trials, значения
+  внутри adapter-bounds; requires_gpu: true не тронут (методологическая
+  ось D06); adapter-bounds прижаты к заявленным (8,128)/(1,4)/(8,104).
+- O9 metadata executor'а честна: max_steps/seed/stack_config/deterministic/
+  intervals/freq соответствуют фактическому исполнению.
+- O10 env-семантика CISSTAT_NEURAL_MAX_STEPS: дефолт 300 / override /
+  whitespace-как-unset / мусор fail-closed (независимо от исполнителя).
+- O11 таксономия NeuralRuntimeCapacityError (NeuralContractError ->
+  ValueError => честный 422-мэппинг) + привязка NEURAL_MIN_MEMORY_MB к
+  политике model_jobs + **equality-граница guard'а** (available ==
+  required -- пропуск; off-by-one класс, исполнителем не покрыт).
+- O12 legacy-эндпоинт: честный отказ на коротком ряде (без
+  Naive-fallback), реальные конечные метрики на рабочем ряде.
+
+### Мутации (21/21 KILLED, 0 SURVIVED -- сильнейший результат сертификаций)
+
+Инструмент: scripts/audit_scripts/cert139_mutations.py (fresh-subprocess,
+SHA-сверка восстановления дерева после каждой мутации; 3 батча).
+
+- Гейты: M01 MIN_TRAIN 30->5, M02 окно `<input+h` -> `<input` -- KILLED.
+- Бюджет: M03 300->250 (внутри анти-тампера!), M04 300->99 -- KILLED
+  (M03 добит value-пиннингом O10: анти-тампер-диапазон исполнителя
+  значение 300 не прижимал -- закрыто оракулом аудитора).
+- Fail-closed: M5 `value<1`->`value<0`, M06 снятие bool-барьера, M07
+  HIDDEN_SIZE_BOUNDS ->(8,256) -- KILLED.
+- Поверхность: M8 interpretable->identity (silent-swap), M09 снятие
+  clamp-гейта, M10 снятие выходного isfinite, M20 alias NBEATS->NBEATSX,
+  M21 lo-колонка levels[0]->levels[-1] -- KILLED (M21/M10 добиты
+  fault-injection оракулом O5/O5b, исполнителем не покрыты).
+- Проводка: M11 seed=0, M12 env-bypass (макс-steps literal) -- KILLED
+  (O6 двухслойный spy; M12 -- 2 failures: O6 + test_training_config).
+- Реестр/dispatch: M13 actions _TUNABLE->{backtest,diagnostics}, M14
+  снятие dispatch-записи, M15 deterministic->False -- KILLED.
+- Capacity guard: M16 `>=`->`>` (off-by-one на границе), M17 standard->low
+  политика, M18 снятие guard'а из require_neuralforecast -- KILLED
+  (M16 добит equality-границей O11 -- исполнителем не покрыт).
+- HTTP: M19 503->500 (честная деградация 138c) -- KILLED api-тестом.
+
+### НАХОДКИ (обе НЕ-БЛОКИРУЮЩИЕ, задокументированы characterization-пробами)
+
+- **НАХОДКА-1 (F1) -- honesty-гэп гейта окна на точной границе**:
+  адаптерный гейт `nobs < input_size + horizon` пропускает n == input+h и
+  n == input+h+1, но библиотека 3.2.2 в conformal-конфигурации
+  (PredictionIntervals в fit) требует фактического n >= input+horizon+2:
+  n=30 (28+2) -> raw Exception «Time series is too short for training»,
+  n=31 -> raw «No windows available for training», n=32 -- фит OK.
+  В полосе из 2 точек fold падает СЫРЫМ Exception вне таксономии
+  NeuralContractError/ValueError (мэппинг 422/503 не применяется).
+  Смягчение: движок бэктеста (backtesting.py::_fold) оборачивает ЛЮБОЕ
+  исключение fold'а в честный BacktestExecutionError с атрибуцией --
+  метрики НЕ подменяются; латентность: readiness min_observations=200 и
+  типовые folds дают запас против 2-точечной полосы; executor-test'ы
+  исполнителя границу не задевают. Рекомендация: ужесточить гейт до
+  `nobs < input_size + horizon + 2` (или пробовать fit с честным
+  переводом библиотечных сообщений), добавить boundary-тест на равенство.
+- **НАХОДКА-2 (F2) -- ручка mlp_layers [1,4] неисполнима как заявлена**:
+  validate_nbeats_params пропускает mlp_layers=1, но конструктор
+  NBEATSBlock падает RAW IndexError (библиотека читает только пары
+  [0]->[1] каждого inner-списка mlp_units: официальная семантика
+  [[h,h]]-пары, адаптер строит [[h]*layers]); значения 3/4 проходят fit,
+  но МОЛЧА эквивалентны 2 (max|diff| = 0.0 -- лишние entries игнорируются).
+  Итого из заявленного диапазона [1,4] исполним только дефолт 2: 1 --
+  крэш, 3/4 -- ложная изменчивость. Смягчение: ручка ВНЕ param_space
+  (тюнинг недоступен -- прод-контур всегда 2), класс ошибки -- честный
+  провал fold'а. Рекомендация: исправить маппинг на парную семантику
+  (например [[h, h]] на стек при любом layers, либо layers как число
+  ПАР), добавить фит-тест нижней границы; до исправления сузить bounds
+  или пометить ручку deprecated в docstring.
+- Отчётная неточность (косметика): worklog исполнителя оценивает адаптер
+  в «~530 строк», фактически 450 (лишняя ссылка в остальном корректна).
+- Характеризации: scripts/audit_scripts/cert139_oracles.py::
+  test_f1_* / test_f2_* -- при исправлении находок пробы упадут:
+  пересмотреть characterization.
+
+### Вердикт
+
+**СЕРТИФИЦИРОВАНА.**
+
+Task 139 -- полноценный второй исполнитель Neural Runtime Contract
+(Task 137): единый runtime без собственной fit/predict-петли, честная
+стековая альтернатива (эффект подтверждён оракулом O2), детерминизм до
+конструктора, bounded-поверхность с честным fail-closed (за
+документированными границами F1/F2), честные 21-счётчики и
+catalog_only-статус срезов 140-142, консистентный dispatch/readiness.
+Регрессия 2289/0, смоуки и пробы бит-в-бит, мутационный скор 21/21 --
+лучший среди сертификаций 136-139 (138: 16/20). Находки F1/F2 --
+латентные, не-блокирующие, с рекомендациями; повторной реализации
+поверхности не требуют. Исполнителю срезов 140-142 (N-HiTS): закрыть
+классы F1/F2 в своём адаптере с первого дня (гейт окна `+2`,
+проверка исполнимости ВСЕХ bounded-ручек реальным фит-пробом) --
+повторяет механизм передачи рекомендаций сертификации 138 -> 139.
+
+### Инструменты аудита (воспроизводимость)
+
+- scripts/audit_scripts/cert139_oracles.py -- 17 оракулов + 2
+  characterization-пробы находок (pytest; OMP_NUM_THREADS=1).
+- scripts/audit_scripts/cert139_mutations.py -- 21 мутация,
+  fresh-subprocess протокол, SHA-контроль восстановления (батчи:
+  `python3 scripts/audit_scripts/cert139_mutations.py M01 M02 ...`).
+- Воспроизведение: `python3 -m pytest scripts/audit_scripts/cert139_oracles.py -q`
+  затем батчи мутаций; на чистом дереве 23ca75b (плюс сами инструменты --
+  untracked, на реестр/поверхность не влияют).
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); дерево 23ca75b байт-чистое
+  после кампании (проверено).
