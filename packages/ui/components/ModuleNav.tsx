@@ -12,6 +12,26 @@
 // Один общий компонент -- используется в standalone и embedded.
 //
 // Общий для embedded и standalone -- пути одинаковые в обоих приложениях.
+//
+// Task w/n — реформатинг классических вкладок (подчёркнутые ссылки с
+// border-b-2) в кликабельные бейджи-«таблетки» по образцу localnav
+// apple.com/apple-intelligence ("Overview"/"iOS"/"macOS"):
+//   - pill rounded-full; неактивный — светлая нейтральная заливка
+//     (Apple: rgba(232,232,237,.5) → neutral-100), hover — темнее;
+//   - активный — сплошная заливка фирменным индиго (bg-brand) и белый
+//     текст (у Apple активный бейдж — тёмная заливка);
+//   - ЕДИНСТВЕННОЕ отличие от образца по постановке тимлида: все
+//     бейджи одинаковы по высоте и ширине, ширина каждого равна ширине
+//     МАКСИМАЛЬНОГО бейджа. CSS-механика: inline-grid +
+//     grid-auto-flow:column + grid-auto-columns:1fr — при
+//     max-content-ширине контейнера fr-колонки выравниваются по самой
+//     широкой (эмпирика проба на реальном Chromium: 5 бейджей разного
+//     текста → ровно одинаковые 155.2×35px). Высота — единая h-9
+//     (36px, как 36px localnav Apple) на каждом бейдже.
+//   - Аккордеон «О платформе» (Task 25, 5 ссылок HOME_ROUTES)
+//     СОХРАНЁН без изменений — реформатинг, не удаление функциональности;
+//     панель absolute не участвует в расчёте ширин колонок (out of flow),
+//     overflow-visible на строке бейджей сохраняет её видимой.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -42,6 +62,20 @@ const MODULES: ModuleLink[] = [
   { label: "Задачи", href: "/tasks" },
 ];
 
+// ── Классы бейджа ──────────────────────────────────────────────
+// Единая геометрия: h-9 (36px, равная высота), rounded-full (pill),
+// whitespace-nowrap (ширина колонки задаёт самый длинный заголовок,
+// а не перенос), justify-center (текст центрируется в равной ширине).
+// Адаптив: <lg — компактный px-3/text-[13px], lg+ — px-4/text-sm.
+
+const BADGE_BASE =
+  "inline-flex h-9 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 text-[13px] transition-colors lg:px-4 lg:text-sm";
+
+const badgeClassName = (active: boolean) =>
+  active
+    ? `${BADGE_BASE} bg-brand font-medium text-white`
+    : `${BADGE_BASE} bg-neutral-100 text-neutral-700 hover:bg-neutral-200 hover:text-neutral-900`;
+
 // ── Компонент ──────────────────────────────────────────────────
 
 export function ModuleNav() {
@@ -57,8 +91,8 @@ export function ModuleNav() {
     PLATFORM_SUBMENU.some((r) => pathname === r.href);
 
   // JS-based hover: onMouseEnter/Leave на wrapper (включает триггер + панель).
-  // При открытом дропдауне — overflow-visible на родительском flex,
-  // чтобы absolute-панель не обрезалась.
+  // Строка бейджей держит overflow-visible, чтобы absolute-панель
+  // аккордеона не обрезалась.
   const handleDropdownEnter = useCallback(() => setDropdownOpen(true), []);
   const handleDropdownLeave = useCallback(() => setDropdownOpen(false), []);
 
@@ -68,9 +102,13 @@ export function ModuleNav() {
         aria-label="Навигация по модулям анализа"
         className="border-b border-neutral-200 bg-white"
       >
-        <div className="max-w-[1600px] mx-auto px-6 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1 overflow-visible">
-            {/* ── «О платформе» с hover-аккордеоном ── */}
+        <div className="max-w-[1600px] mx-auto px-6 flex items-center justify-between gap-2 py-2.5">
+          {/* ── Строка бейджей: равные ширины ПО МАКСИМАЛЬНОМУ бейджу ──
+              inline-grid + grid-flow-col + auto-cols-fr: fr-колонки при
+              max-content-ширине контейнера выравниваются по самой
+              широкой (см. шапку файла) */}
+          <div className="inline-grid grid-flow-col auto-cols-fr items-stretch gap-2 overflow-visible">
+            {/* ── Бейдж «О платформе» с hover-аккордеоном ── */}
             <div
               className="relative"
               onMouseEnter={handleDropdownEnter}
@@ -80,11 +118,7 @@ export function ModuleNav() {
                 href="/"
                 aria-haspopup="menu"
                 aria-expanded={dropdownOpen}
-                className={`whitespace-nowrap inline-flex items-center gap-1.5 px-4 py-3 text-sm border-b-2 transition-colors ${
-                  isPlatformActive
-                    ? "border-brand text-brand font-medium"
-                    : "border-transparent text-neutral-600 hover:text-neutral-900 hover:border-neutral-300"
-                }`}
+                className={`${badgeClassName(isPlatformActive)} w-full`}
               >
                 О платформе
                 <ChevronDown
@@ -94,7 +128,8 @@ export function ModuleNav() {
                 />
               </Link>
 
-              {/* Панель — видна только при dropdownOpen (JS-state). */}
+              {/* Панель — видна только при dropdownOpen (JS-state).
+                  Absolute → out of flow, ширину колонок не меняет. */}
               <div
                 role="menu"
                 aria-label="О платформе"
@@ -126,7 +161,7 @@ export function ModuleNav() {
               </div>
             </div>
 
-            {/* ── Остальные модули ── */}
+            {/* ── Бейджи остальных модулей ── */}
             {MODULES.map((mod) => {
               const isActive =
                 pathname === mod.href || pathname.startsWith(mod.href + "/");
@@ -134,11 +169,8 @@ export function ModuleNav() {
                 <Link
                   key={mod.href}
                   href={mod.href}
-                  className={`whitespace-nowrap inline-flex items-center gap-1.5 px-4 py-3 text-sm border-b-2 transition-colors ${
-                    isActive
-                      ? "border-brand text-brand font-medium"
-                      : "border-transparent text-neutral-600 hover:text-neutral-900 hover:border-neutral-300"
-                  }`}
+                  aria-current={isActive ? "page" : undefined}
+                  className={badgeClassName(isActive)}
                 >
                   {mod.label}
                 </Link>
