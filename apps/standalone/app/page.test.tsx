@@ -41,4 +41,24 @@ describe("Standalone home page", () => {
     // HomeWavesBackground рендерит aria-hidden="true" корневой div первым
     expect(root?.firstElementChild).toHaveAttribute("aria-hidden", "true");
   });
+
+  // Task w/n (2026-09-12): футер главной страницы.
+  //  - рендерится последним в потоке контента (после HomeCapabilities);
+  //  - фон главной страницы #CAD7F7 (дефолт компонента);
+  //  - углы — rounded-2xl, по паттерну фоновой коробки страницы.
+  it("рендерит футер последним элементом потока контента, фон #CAD7F7, скругление rounded-2xl", () => {
+    const { container } = render(<Page />);
+    const root = container.firstElementChild;
+    const content = root?.children[1]; // relative space-y-12 обёртка контента
+    const footer = content?.lastElementChild;
+
+    expect(footer?.tagName).toBe("FOOTER");
+    expect(footer?.className).toContain("rounded-2xl");
+    // jsdom нормализует hex к rgb(...); #CAD7F7 === rgb(202, 215, 247)
+    expect((footer as HTMLElement)?.style.backgroundColor).toBe(
+      "rgb(202, 215, 247)",
+    );
+    // Футер — ПОСЛЕДНИЙ ребёнок потока: за ним только фон-absolute
+    expect(content?.querySelector(":scope > footer")).toBe(footer);
+  });
 });

@@ -31,6 +31,10 @@
 // — bg-brand. Исторические ассерты (Task 29/DOM-порядок) пересчитаны;
 // нижняя полоса (после Block B) и карточки Block B — guard-ами
 // закреплены нейтральными.
+//
+// Правка 8 (Task w/n, 2026-09-12, задача футера): нижняя черта
+// (h-px bg-neutral-200 после Block B) УБРАНА — между нижней границей
+// страницы и футером черта не нужна; секция заканчивается Block B.
 
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -236,13 +240,18 @@ describe("HomeCapabilities", () => {
     expect(children[1]).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("keeps the BOTTOM divider (after Block B) neutral — scope: only the strip under the marquee", () => {
+  it("keeps the marquee-only scope of earlier tweaks intact while dropping the bottom divider (footer task, 2026-09-12)", () => {
     const { container } = render(<HomeCapabilities />);
     const section = container.querySelector("section")!;
     const children = Array.from(section.children);
-    const lastChild = children[children.length - 1];
-    expect(lastChild.className).toContain("bg-neutral-200");
-    expect(lastChild.className).not.toContain("bg-brand");
+    // Полоса под marquee — по-прежнему индиго (правка 7 не откатывается)
+    expect(children[1].className).toContain("bg-brand");
+    // Нижняя черта УБРАНА (футер идёт вплотную к нижней границе
+    // страницы — правка 8): последняя h-px-черта секции отсутствует
+    const trailingDivider = children.filter(
+      (c) => c.className.includes("h-px") && c !== children[1],
+    );
+    expect(trailingDivider).toHaveLength(0);
   });
 
   it("animates the whole track right-to-left slowly and uniformly (marquee)", () => {
@@ -368,13 +377,12 @@ describe("HomeCapabilities", () => {
     // [2] <div> с H2
     expect(children[2].tagName).toBe("DIV");
     expect(children[2].querySelector("h2")).not.toBeNull();
-    // [3] <div role="list"> Block B
+    // [3] <div role="list"> Block B — ПОСЛЕДНИЙ ребёнок секции:
+    // нижняя черта убрана (правка 8, задача футера 2026-09-12)
     expect(children[3].tagName).toBe("DIV");
     expect(children[3]).toHaveAttribute("role", "list");
     expect(children[3].className).toContain("lg:grid-cols-3");
-    // [4] <div> декоративная черта после Block B
-    expect(children[4].tagName).toBe("DIV");
-    expect(children[4].className).toContain("h-px");
+    expect(children).toHaveLength(4);
   });
 
   it("renders a divider between Block A and H2 (Task 30)", () => {
@@ -516,18 +524,21 @@ describe("HomeCapabilities", () => {
     expect(dl.className).not.toContain("px-6");
   });
 
-  // ── Декоративная черта под Block B ─────────────────────────
+  // ── Нижняя черта УБРАНА (Task w/n, футер, 2026-09-12) ─────
+  //
+  // Между нижней границей страницы и футером черта не нужна:
+  // секция заканчивается сеткой Block B (правка 8).
 
-  it("renders a full-width divider <div> after Block B", () => {
+  it("does NOT render a divider after Block B (removed for the footer)", () => {
     const { container } = render(<HomeCapabilities />);
     const section = container.querySelector("section")!;
     const children = Array.from(section.children);
     const lastChild = children[children.length - 1];
-    expect(lastChild.tagName).toBe("DIV");
-    expect(lastChild.className).toContain("h-px");
-    expect(lastChild.className).toContain("w-full");
-    expect(lastChild.className).toContain("bg-neutral-200");
-    expect(lastChild).toHaveAttribute("aria-hidden", "true");
+    // Секция заканчивается Block B (role=list), а не чертой
+    expect(lastChild).toHaveAttribute("role", "list");
+    expect(lastChild.className).not.toContain("h-px");
+    // И во всей секции не осталось нейтральных черт (нижней)
+    expect(section.querySelectorAll("div.h-px.bg-neutral-200")).toHaveLength(0);
   });
 
   it("does NOT render the manifesto block (was removed in 2026-08-20 fix)", () => {

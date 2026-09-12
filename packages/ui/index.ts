@@ -17,6 +17,27 @@ export { HomeCapabilities } from "./components/HomeCapabilities";
 // HomeWavesBackground: декоративный фон главной страницы (мягкие волны,
 // шаблон — скриншот «Вариант 1. Волны»), только standalone.
 export { HomeWavesBackground } from "./components/HomeWavesBackground";
+// HomeFooter: футер главной страницы standalone (Task w/n, 2026-09-13).
+// Шаблон — футер главной страницы портала CISStat (структура 1:1 из
+// продового DOM; блок legal-дисклеймера под футером игнорируется).
+// Пока только на главной: фон параметризуется пропом backgroundColor
+// (на главной — #CAD7F7), текст чёрный, углы rounded-2xl по паттерну
+// фоновой коробки. Embedded не подключается.
+export { HomeFooter } from "./components/HomeFooter";
+export {
+  FOOTER_COLUMNS,
+  FOOTER_CONTACTS,
+  FOOTER_COPYRIGHT,
+  FOOTER_SEARCH_LABEL,
+  FOOTER_SEARCH_PLACEHOLDER,
+  FOOTER_LEGAL_LINKS,
+  FOOTER_HOME_BACKGROUND_COLOR,
+} from "./lib/homeFooter";
+export type {
+  FooterColumn,
+  FooterLink,
+  FooterContactItem,
+} from "./lib/homeFooter";
 export {
   CAPABILITIES_TITLE,
   CAPABILITIES_SUBTITLE,

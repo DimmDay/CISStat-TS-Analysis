@@ -24,7 +24,7 @@
 // страницы -- <main>/layout.tsx не тронуты, остальные вкладки не
 // затронуты.
 
-import { HomeHero, HomeCapabilities, HomeWavesBackground } from "@cisstat/ui";
+import { HomeHero, HomeCapabilities, HomeWavesBackground, HomeFooter } from "@cisstat/ui";
 
 export default function Page() {
   return (
@@ -33,6 +33,12 @@ export default function Page() {
       <div className="relative space-y-12">
         <HomeHero />
         <HomeCapabilities />
+        {/* Task w/n (2026-09-12): футер — последний элемент потока.
+            Фон главной страницы #CAD7F7 — дефолт компонента (на других
+            страницах будет свой цвет пропом). Углы rounded-2xl — по
+            паттерну фоновой коробки (HomeWavesBackground). Черта между
+            контентом и футером убрана (правка 8 в HomeCapabilities). */}
+        <HomeFooter />
       </div>
     </div>
   );

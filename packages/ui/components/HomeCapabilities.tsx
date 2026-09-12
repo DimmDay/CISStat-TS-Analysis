@@ -1,5 +1,7 @@
 "use client";
 
+"use client";
+
 // packages/ui/components/HomeCapabilities.tsx
 //
 // Вторая секция главной страницы (/) в standalone-режиме —
@@ -49,6 +51,10 @@
 //     бегущей строкой (между marquee и H2) — фирменный индиго
 //     (bg-neutral-200 → bg-brand). Нижняя полоса (после Block B),
 //     Block B, анимация, геометрия бейджа НЕ тронуты.
+//   - Правка 8 (Task w/n) от 2026-09-12, задача футера: НИЖНЯЯ черта
+//     (h-px bg-neutral-200 после Block B) УБРАНА — между нижней
+//     границей страницы и футером черта не нужна; секция заканчивается
+//     Block B. Полоса под marquee (bg-brand) не тронута.
 //
 // a11y-контракт:
 //   - <section aria-labelledby="capabilities-heading"> оборачивает всё
@@ -224,8 +230,9 @@ export function HomeCapabilities() {
         ))}
       </div>
 
-      {/* ── Декоративная светло-серая черта на ширину страницы ── */}
-      <div className="h-px w-full bg-neutral-200" aria-hidden="true" />
+      {/* Правка 8 (2026-09-12, задача футера): нижняя черта после Block B
+          УБРАНА — между нижней границей страницы и футером черта не
+          нужна; секция заканчивается сеткой Block B. */}
     </section>
   );
 }
