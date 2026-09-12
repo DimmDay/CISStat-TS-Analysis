@@ -1882,3 +1882,223 @@ catalog_only-статус срезов 140-142, консистентный dispa
   untracked, на реестр/поверхность не влияют).
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); дерево 23ca75b байт-чистое
   после кампании (проверено).
+
+---
+
+## Task 140 -- N-HiTS vertical slice (третий исполнитель Neural Runtime Contract Task 137)
+
+Дата: 2026-09-12. Синхронизация: 23ca75b (Task 139 -- N-BEATS vertical slice;
+второй исполнитель контракта Task 137). Постановка
+docs/modeling_task_list.md::Tasks 138-142, срез «Task 140 -- N-HiTS».
+Комментарий тимлида: «скелет среза повторяется, плюс готовая база для
+сравнения N-BEATS/N-HiTS на одном runtime».  Прецедент каркас ->
+исполнители: Task 138 (lstm -- первый), Task 139 (nbeats -- второй);
+runtime-контракт Task 137 НЕ меняется -- новый адаптер + запись реестра
+v2 + условный dispatch + yaml (прецедент пар var/vecm, garch/egarch,
+lstm/nbeats/nhits).
+
+### Решение (по пунктам постановки)
+
+1. **Единый runtime -- без собственной fit/predict-петли**: исполнение
+   ТОЛЬКО через neural_runtime.train_and_forecast (бюджет max_steps,
+   явный accelerator, random_seed=fold_seed в КОНСТРУКТОРЕ -- seed-
+   дисциплина ресертификации Task 137).  Адаптер не импортирует
+   torch/neuralforecast напрямую; гейт памяти Task 138c
+   (ensure_neural_memory_capacity) и thread-pinning наследуются
+   автоматически через require_neuralforecast/seed_neural_runtime.
+2. **Готовая база сравнения N-BEATS/N-HiTS на одном runtime** (ключевая
+   ось постановки Task 140): пара исполнителей имеет ИДЕНТИЧНЫЙ контракт
+   (objective="level_forecast", input_kind="univariate",
+   engine="neuralforecast", dependency_group="neural", actions,
+   пакеты, детерминизм) и ЕДИНУЮ точку исполнения -- прижато тестом
+   test_nbeats_and_nhits_share_one_runtime_for_fair_comparison:
+   nhits_module.train_and_forecast is nbeats_module.train_and_forecast,
+   _resolve_time_axis -- единый источник истины (НЕ дубликат), оба
+   адаптера без torch в module-globals.  Обе модели проходят ОДИН
+   level-cohort OOF (run_backtest_plan на одном плане fold'ов;
+   e2e-смоук [7]: nbeats mae=0.1110 / nhits mae=0.1526 -- метрики
+   ранжируемы напрямую, comparison sectioned by objective без
+   выравнивания контрактов).
+3. **Ядро постановки -- архитектурный выбор степени иерархической
+   интерполяции**: каталог декларирует «Hierarchical interpolation
+   N-BEATS. Быстрее и точнее на долгих горизонтах прогнозирования».
+   Оба обещания -- bounded-параметр interpolation_config ∈
+   {hierarchical, light} (аналог stack_config Task 139): hierarchical
+   (дефолт) -- канонический N-HiTS Challu et al. 2023 (официальные
+   дефолты 3.2.2: n_pool_kernel_size=[2,2,1], n_freq_downsample=[4,2,1]
+   -- агрессивная интерполяция длинных горизонтов); light --
+   минимальная иерархия (n_pool_kernel_size=[2,1,1],
+   n_freq_downsample=[2,1,1] -- фактор 2 только на самом грубом стеке,
+   максимум разрешения коротких горизонтов).  Оба механизма N-HiTS
+   активны в обеих конфигурациях (multi-rate input pooling +
+   hierarchical interpolation выходов).  Поверхность конструктора 3.2.2
+   снята ЭМПИРИЧЕСКИ (проб scripts/task140_nhits_probe.py): NHITS
+   использует mlp_units (как NBEATS, НЕ encoder_hidden_size) и ТРИ
+   identity-стека; обе конфигурации конструируются/фитятся;
+   conformal-колонки NHITS-lo/hi-<level> -- та же семантика, что у
+   LSTM/NBEATS; alias="NHITS" стабилен.
+4. **ds-ось -- конвенция neural-семейства ПЕРЕИСПОЛЬЗОВАНА**: lstm.
+   _resolve_time_axis импортирован (единый источник истины, НЕ
+   продублирован): парсимые метки -> datetime + pd.infer_freq, иначе --
+   позиционная целочисленная сетка freq=1 (нативно работает -- проб).
+5. **Гейт неосуществимого окна**: n_train < input_size + horizon --
+   отказ ДО фита (полностью наблюдаемое supervised-окно; молчаливое
+   ужатие/паддинг запрещены).  Библиотека с start_padding_enabled=False
+   согласована (проб: честный отказ «NHITS requires at least 48 training
+   timestamp(s)»), адаптерный гейт даёт детерминированное сообщение до
+   затрат на fit.  NHITS_MIN_TRAIN=30 (абсолютный пол; каталоговский
+   мягкий порог 200 -- раньше, readiness-гейтом F04).
+6. **Интервалы -- сертифицированный conformal-путь**: point-loss MAE
+   (официальный дефолт 3.2.2) + PredictionIntervals + predict(level);
+   уровни -- interval_levels_for_alpha (alpha {0.01,0.05,0.10}, как у
+   lstm/nbeats/VAR/GARCH/EGARCH).  MQLoss -- probabilistic-поверхность
+   для срезов 141-142 (граница Task 138).
+7. **Clamp-инвариант с первого дня** (урок НАХОДКИ-3/M10): lower <=
+   point <= upper -- живой гейт поверх isfinite, закреплён
+   fault-injection тестом (monkeypatch train_and_forecast, lower>point
+   -> NeuralContractError).
+8. **Bounded params**: interpolation_config {hierarchical, light},
+   hidden_size [8,128] (-> mlp_units [[h]*mlp_layers]*3 -- ТРИ стека),
+   mlp_layers [1,4] (дефолт 2), input_size [8,104], alpha whitelist.
+   Bool-коэрция целочисленных ручек отклоняется ЯВНО (урок НАХОДКИ-2/
+   M6), тест параметризован по ВСЕМ int-ручкам.  yaml param_space:
+   interpolation_config x hidden_size x input_size = 8 trials (<= 64).
+9. **Бюджет**: константа NHITS_MAX_STEPS=300 (анти-тампер [100,
+   NEURAL_MAX_STEPS_BOUND]; тюнинг бюджета -- вне param_space) + env-
+   рычаг CISSTAT_NEURAL_MAX_STEPS (паттерн Task 138c/139: дефолт env не
+   задана -- сертифицированная константа; мусор/меньше 1 -- fail-closed;
+   покрытие дефолт/override/garbage тестом).
+10. **Проводка бюджета до конструктора прижата spy-тестом** (урок
+    НАХОДКИ-1/M18): двухслойный spy -- config.max_steps из константы
+    модуля; фабрика разворачивает budget в КОНСТРУКТОР (проб: NHITS
+    хранит max_steps/random_seed/input_size атрибутами).
+11. **Реестр v2 + dispatch + образ**: запись №22 -- model_id="nhits",
+    family_id="neural", adapter_id="neuralforecast-nhits",
+    objective="level_forecast", input_kind="univariate" (каталог:
+    supports_exogenous=false -- feature-гейты v2 fail-closed),
+    actions=_TUNABLE, engine="neuralforecast",
+    required_packages=("neuralforecast",), deterministic=True (same-seed
+    бит-в-бит пробом: max|diff|=0.0; другой seed -- 0.44),
+    dependency_group="neural", memory_class="standard", gpu="optional".
+    Dispatch: _register_neural_dispatch расширен (lstm + nbeats + nhits),
+    условная регистрация сохранена -- gate реестр<->dispatch точен в
+    обеих средах.  Production-образ: Dockerfile-проба 'N-HiTS executable
+    OK' (38 точек, light, input_size=8; воспроизведена локально; LSTM и
+    N-BEATS пробы перепроверены).
+12. **Legacy synthetic-эндпоинт -- применим** (run_nhits_backtest,
+    прецедент lstm/nbeats/random_forest: одномерная level-модель), БЕЗ
+    safe_backtest/Naive-fallback; короткий ряд -- честный отказ.
+
+### TDD (RED -> GREEN)
+
+- RED: tests/unit/test_nhits_adapter.py (27 кейсов) + tests/unit/
+  test_nhits_integration_paths.py (14 кейсов) -- collection errors на
+  отсутствии модуля/экспортов; поверхность ожиданий снята пробом ДО
+  написания тестов (прецедент Task 139).
+- GREEN: правки ОЖИДАНИЙ не потребовались; нейро-набор: 27 (nhits) +
+  26 (nbeats) + 34 (lstm) + 26 (nbeats integration) + 14 (nhits
+  integration) + 21 (lstm integration) + runtime/contract/capacity
+  кейсы.  Среда: свежий venv -- доустановлены requirements.txt +
+  requirements-dev.txt (syrupy -- fixture 'snapshot') + neural-группа
+  (torch 2.14.0+cpu, neuralforecast 3.2.2 -- та же пара версий, на
+  которой сертифицированы Tasks 137/138/139); доустановка arch 8.0.0 /
+  prophet 1.4.0 / statsforecast 2.1.1 восстановила полный production
+  dispatch (import-гейт routers/models.py -- честный gate и в dev-среде).
+
+### Изменённые/новые файлы
+
+Новые:
+- apps/api/model_impls/nhits.py (~490 строк; адаптер N-HiTS, docstring
+  с полным обоснованием решений)
+- tests/unit/test_nhits_adapter.py (27 кейсов)
+- tests/unit/test_nhits_integration_paths.py (14 кейсов, включая
+  fair-comparison оракулы пары nbeats/nhits)
+- scripts/task140_nhits_probe.py (эмпирический проб: конструктор/
+  дефолты/обе конфигурации/conformal/alias/freq=1/детерминизм/spy-
+  атрибуты/неосуществимое окно -- PROBE OK)
+- scripts/task140_e2e_smoke.py (7 этапов полного chain'а + этап
+  сравнения пары)
+
+Изменённые:
+- apps/api/model_execution.py: _nhits_executor + запись реестра №22
+- apps/api/model_impls/__init__.py: экспорт run_nhits_backtest
+- apps/api/routers/models.py: dispatch (lstm + nbeats + nhits) + импорт
+- rules/modeling.yaml: nhits param_space (8 trials) + комментарий Task 140
+- apps/api/Dockerfile: N-HiTS-проба в production-цепочке
+- apps/api/requirements-neural.txt: дисклоужер статуса (третий
+  исполнитель; tft/deepar -- Tasks 141-142)
+- Count-гейты 21->22 честно в 10 файлах: test_garch/test_egarch/
+  test_var integration_paths (subprocess 'ok 22'),
+  test_modeling_mvp_certification (_EXPECTED_NEURAL={lstm,nbeats,nhits},
+  PREDICTORS), test_model_execution_contract (CERTIFIED_IDS+NEURAL_IDS,
+  nhits-descriptor), test_model_readiness_candidates (catalog_only
+  tuple без nhits; runnable 18 / catalog-only 2; короткий профиль:
+  blocked 12, explain «60 < 200 (требуется N-HiTS)»),
+  test_backtesting_engine (sweep исключает nhits), test_eda_model_matrix
+  (nhits blocked/ready-ось), tests/api: test_models_backtest_real
+  (expected+nhits), test_models_candidates (DL-пул без nhits),
+  test_modeling_workflow (комментарий tft-примера 141),
+  test_lstm_integration_paths/test_nbeats_integration_paths
+  (dispatch-конвенция {lstm,nbeats,nhits}, count 22/19).
+
+### Границы Task 140 (что осознанно НЕ сделано)
+
+- MQLoss/quantile-loss probabilistic-путь, hist_exog/stat_exog (поверх-
+  ность конструктора есть -- hist_exog_list; реестр НЕ декларирует
+  exog), early stopping, dropout_prob_theta/pooling_mode-ручки --
+  поверхность контракта для срезов 141-142.
+- yaml requires_gpu: true для nhits НЕ менялось (методологическая ось
+  D06 NOT_RECOMMENDED на CPU -- независимая от production-готовности
+  platform_status; Tasks 138/139 так же не меняли lstm/nbeats).
+- Реестровые записи tft/deepar не тронуты (честный catalog_only до
+  срезов 141-142); DeepAR остаётся panel-постановкой (min_series=5).
+- scripts/task138_e2e_smoke.py / task139_e2e_smoke.py НЕ модифицирова-
+  лись (снимки своего момента -- прецедент: task138-смоук остался на
+  20 connected после Task 139; актуальный смоук -- task140).
+- cert138_mutations.py НЕ модифицировался (characterization-артефакт).
+- GPU-исполнение: runtime Task 137 фиксирует device="cpu"; gpu=
+  "optional" -- декларация capability, не переключатель.
+
+### Верификация
+
+- TDD цикл выше; нейро-набор: 27 + 14 = 41 новых кейсов nhits.
+- Полная регрессия: **2330 passed / 0 failed** (unit 1605 = 1564 + 41
+  nhits; api 625; прочие 100) -- арифметика сходится точно.  compileall
+  OK; app-import OK; pip check (No broken requirements); rules-smoketest
+  exit=0; фронтенд не затронут (git status -- backend-only, 0 файлов
+  .ts/.tsx).
+- Прод-инварианты: PRODUCTION_BACKTEST_MODEL_IDS == 22; nhits
+  backtest/tune/diagnostics; tft/deepar catalog_only ([]); consistency-
+  gate dispatch<->readiness зелёный.
+- E2E смоук scripts/task140_e2e_smoke.py: 22 connected -> dispatch-gate
+  -> nhits ready (backtest/tune/diagnostics), tft/deepar catalog_only,
+  статистика 18/2 -> реальный OOF-бэктест 2 folds (mae=0.1526) ->
+  bounded tuning grid 8 trials -> legacy однорядный путь (mae=0.0682)
+  -> база сравнения пары (nbeats mae=0.1110 / nhits mae=0.1526, один
+  cohort, идентичные когортные контракты).  E2E SMOKE OK.
+- Проб scripts/task140_nhits_probe.py: PROBE OK (поверхность
+  конструктора, официальные дефолты [2,2,1]/[4,2,1], обе конфигурации,
+  conformal-колонки, alias, freq=1, same-seed max|diff|=0.0 / cross-seed
+  0.44, неосуществимое окно -- честный отказ библиотеки);
+  Dockerfile-пробы LSTM/N-BEATS/N-HiTS воспроизведены локально
+  ('LSTM/GRU executable OK', 'N-BEATS executable OK',
+  'N-HiTS executable OK').
+- Окружение: neuralforecast 3.2.2 + torch 2.14.0+cpu -- те же версии,
+  на которых сертифицированы Tasks 137/138/139.
+
+Изменённые/новые файлы (ZIP: download/task140_nhits_vertical_slice_worklog4.zip):
+- НОВЫЕ: apps/api/model_impls/nhits.py, tests/unit/test_nhits_adapter.py,
+  tests/unit/test_nhits_integration_paths.py,
+  scripts/task140_nhits_probe.py, scripts/task140_e2e_smoke.py
+- ИЗМЕНЁННЫЕ: apps/api/model_execution.py, apps/api/model_impls/__init__.py,
+  apps/api/routers/models.py, rules/modeling.yaml, apps/api/Dockerfile,
+  apps/api/requirements-neural.txt,
+  tests/unit/{test_garch_integration_paths, test_egarch_integration_paths,
+  test_var_integration_paths, test_model_execution_contract,
+  test_modeling_mvp_certification, test_model_readiness_candidates,
+  test_backtesting_engine, test_eda_model_matrix,
+  test_lstm_integration_paths, test_nbeats_integration_paths}.py,
+  tests/api/{test_models_backtest_real, test_models_candidates,
+  test_modeling_workflow}.py, worklog4.md (этот журнал)
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@23ca75b + перечисленные изменения.
