@@ -923,6 +923,60 @@ def _nhits_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     )
 
 
+def _tft_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
+    """Task 141: TFT -- четвёртый исполнитель neural-runtime контракта
+    Task 137 и ПЕРВЫЙ срез с probabilistic-поверхностью MQLoss/
+    quantiles (прецедент тройки lstm Task 138 / nbeats Task 139 /
+    nhits Task 140: единый NeuralForecast-runtime, neural_runtime.py).
+
+    Одномерная level-модель (objective="level_forecast",
+    input_kind="univariate"; exog-канал нейро-моделей -- отдельная
+    постановка): точечный прогноз -- МЕДИАНА MQLoss ("TFT-median",
+    канонический point-прогноз pinball-loss 0.5); интервалы --
+    NATIVE-квантили функции потерь MQLoss(quantiles=[alpha/2, 0.5,
+    1-alpha/2]) -- первая probabilistic-модель платформы (метод
+    NeuralIntervalPlan "neural_quantile_outputs" контракта Task 137),
+    НЕ conformal-контур тройки lstm/nbeats/nhits -- происхождение
+    интервалов честно дисклоужено в metadata.intervals.  Clamp-
+    инвариант lower <= median <= upper -- живой гейт квантильного
+    пересечения MQLoss (heads независимы).  Attention-ось каталожного
+    описания «Attention-based architecture» -- bounded-параметр
+    n_head ∈ {2, 4} с гейтом делимости hidden_size % n_head == 0
+    (InterpretableMultiHeadAttention: d_k = hidden_size // n_head --
+    эмпирика проба Task 141).  Детерминизм: random_state реестра
+    доходит до КОНСТРУКТОРА модели (ресертификация Task 137).  Бюджет
+    обучения -- константа TFT_MAX_STEPS адаптера (тюнинг бюджета --
+    вне param_space, прецедент Task 136).  Feature-каналы отвергаются
+    гейтами реестра для univariate-входа.  Quartet исполнителей --
+    единый runtime и один level-cohort: честное ранжирование
+    comparison sectioned by objective применимо напрямую.
+    """
+    from apps.api.model_impls.tft import _tft_fit_predict
+
+    payload = _tft_fit_predict(
+        list(request.target),
+        request.horizon,
+        params=dict(request.params),
+        random_state=request.random_state,
+        timestamps=list(request.train_timestamps) or None,
+    )
+    return ModelExecutionResult(
+        forecast=[float(value) for value in payload["forecast"]],
+        lower_interval=[float(value) for value in payload["lower"]],
+        upper_interval=[float(value) for value in payload["upper"]],
+        metadata={
+            "adapter_id": payload["adapter_id"],
+            "params": payload["params"],
+            "nobs": payload["nobs"],
+            "max_steps": payload["max_steps"],
+            "seed": payload["seed"],
+            "freq": payload["freq"],
+            "intervals": payload["intervals"],
+            "deterministic": payload["deterministic"],
+        },
+    )
+
+
 def _xgboost_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     from apps.api.model_impls.xgboost import _xgb_fit_predict
 
@@ -1306,6 +1360,42 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         # routers/models.py регистрирует запись условно
         # (_register_neural_dispatch) -- gate реестр<->dispatch остаётся
         # точным в обеих средах.
+        input_kind="univariate",
+        supports_prediction_intervals=True,
+        deterministic=True,
+        dependency_group="neural",
+        resource_capabilities=ModelResourceCapabilities(
+            memory_class="standard", gpu="optional",
+        ),
+    ),
+    ModelExecutionDefinition(
+        model_id="tft", family_id="neural",
+        adapter_id="neuralforecast-tft", executor=_tft_executor,
+        actions=_TUNABLE, engine="neuralforecast",
+        required_packages=("neuralforecast",),
+        # Task 141: четвёртый исполнитель neural-runtime контракта Task
+        # 137 и ПЕРВЫЙ срез с probabilistic-поверхностью MQLoss/quantiles
+        # (прецедент тройки lstm/nbeats/nhits: runtime-контракт не
+        # меняется -- новый адаптер + запись реестра + условный dispatch
+        # + yaml).  objective="level_forecast" + input_kind="univariate"
+        # -- гейты реестра v2; exog-канал нейро-моделей -- отдельная
+        # постановка (прецедент lstm: каталожное supports_exogenous не
+        # декларируется в реестре до своего среза).  Точка -- медиана
+        # MQLoss; интервалы -- native quantiles (метод
+        # NeuralIntervalPlan "neural_quantile_outputs" контракта Task
+        # 137), НЕ conformal -- происхождение честно дисклоужено в
+        # metadata.intervals; clamp-инвариант -- живой гейт квантильного
+        # пересечения.  Attention-ось -- bounded-параметр n_head ∈ {2,
+        # 4} с гейтом делимости hidden_size % n_head == 0 (проб Task
+        # 141).  Детерминизм: random_state -> fold_seed -> random_seed
+        # КОНСТРУКТОРА (ресертификация Task 137; same-seed бит-в-бит
+        # подтверждён пробом Task 141).  Бюджет -- константа
+        # TFT_MAX_STEPS адаптера; tuning -- тот же одномерный движок
+        # (execute_tuning_plan, bounded param_space yaml::tft, 8
+        # trials).  Quartet lstm/nbeats/nhits/tft -- единый runtime и
+        # один level-cohort.  Dispatch routers/models.py регистрирует
+        # запись условно (_register_neural_dispatch) -- gate
+        # реестр<->dispatch остаётся точным в обеих средах.
         input_kind="univariate",
         supports_prediction_intervals=True,
         deterministic=True,

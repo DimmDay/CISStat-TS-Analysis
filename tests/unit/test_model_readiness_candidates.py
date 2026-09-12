@@ -2,12 +2,13 @@ from apps.api.model_impls.neural_runtime import neuralforecast_runtime_available
 from apps.api.routers.models import _compute_candidates
 from apps.api.schemas import CandidatesRequest, DataProfileRequest
 
-# Task 138/139/140: lstm, nbeats и nhits -- первые три исполнителя
-# neural-runtime контракта Task 137; neural-runtime -- опциональная
-# dependency-группа (requirements-neural.txt), поэтому членство
-# lstm/nbeats/nhits в readiness честно зависит от проба пакета.
+# Task 138/139/140/141: lstm, nbeats, nhits и tft -- первые четыре
+# исполнителя neural-runtime контракта Task 137; neural-runtime --
+# опциональная dependency-группа (requirements-neural.txt), поэтому
+# членство lstm/nbeats/nhits/tft в readiness честно зависит от проба
+# пакета.
 _HAS_NEURAL = neuralforecast_runtime_available()
-_CATALOG_ONLY_NEURAL = () if _HAS_NEURAL else ("lstm", "nbeats", "nhits")
+_CATALOG_ONLY_NEURAL = () if _HAS_NEURAL else ("lstm", "nbeats", "nhits", "tft")
 
 
 def _broad_profile() -> DataProfileRequest:
@@ -32,6 +33,7 @@ def test_candidate_contract_separates_methodological_applicability_from_runtime_
         min_level="CONDITIONALLY_APPLICABLE",
     ))
     candidates = {item.model_id: item for item in response.candidates}
+    catalog = {item.model_id: item for item in response.catalog}
 
     for model_id in ("naive", "ets", "theta", "arima", "arima_auto", "prophet", "tbats",
                      "random_forest", "xgboost", "lightgbm", "catboost"):
@@ -45,16 +47,18 @@ def test_candidate_contract_separates_methodological_applicability_from_runtime_
     assert candidates["naive"].stage_capabilities["tuning"].status == "not_applicable"
     assert candidates["ets"].stage_capabilities["tuning"].status == "available"
 
-    # Task 138/139/140: при установленном neural-runtime lstm, nbeats и
-    # nhits -- production-модели (20-я, 21-я и 22-я), tft остаётся
-    # catalog_only (Task 141).
-    for model_id in ("tft",) + _CATALOG_ONLY_NEURAL:
-        assert candidates[model_id].platform_status == "catalog_only"
-        assert candidates[model_id].available_actions == []
-        assert candidates[model_id].stage_capabilities["backtest"].status == "not_implemented"
-        assert "production" in candidates[model_id].blocking_reason.lower()
+    # Task 138/139/140/141: при установленном neural-runtime lstm,
+    # nbeats, nhits и tft -- production-модели (20-я -- 23-я), deepar
+    # остаётся catalog_only (Task 142, панель).  deepar на macro-профиле
+    # NOT_APPLICABLE (панель min_series=5) -- он в ПОЛНОМ каталоге
+    # (catalog), а не в отфильтрованном пуле кандидатов (candidates).
+    for model_id in ("deepar",) + _CATALOG_ONLY_NEURAL:
+        assert catalog[model_id].platform_status == "catalog_only"
+        assert catalog[model_id].available_actions == []
+        assert catalog[model_id].stage_capabilities["backtest"].status == "not_implemented"
+        assert "production" in catalog[model_id].blocking_reason.lower()
     if _HAS_NEURAL:
-        for model_id in ("lstm", "nbeats", "nhits"):
+        for model_id in ("lstm", "nbeats", "nhits", "tft"):
             candidate = candidates[model_id]
             assert candidate.platform_status == "ready"
             assert "backtest" in candidate.available_actions
@@ -78,13 +82,13 @@ def test_candidate_statistics_report_runtime_availability_separately():
     # предназначено financial/price) -- blocked 3, catalog-only 6.
     # Task 136: egarch -- 19-я (второй volatility-исполнитель, прецедент
     # var/vecm); domain-гейт тот же -- blocked 4, catalog-only 5.
-    # Task 138/139/140: lstm -- 20-я, nbeats -- 21-я, nhits -- 22-я
-    # (исполнители neural-runtime контракта Task 137); на neural-воркере
-    # runnable 18 / catalog-only 2, без опциональной группы -- честные
-    # 15/5 (Task 136).
+    # Task 138/139/140/141: lstm -- 20-я, nbeats -- 21-я, nhits -- 22-я,
+    # tft -- 23-я (исполнители neural-runtime контракта Task 137); на
+    # neural-воркере runnable 19 / catalog-only 1, без опциональной
+    # группы -- честные 15/5 (Task 136).
     if _HAS_NEURAL:
-        assert response.statistics.runnable_candidates == 18
-        assert response.statistics.catalog_only_candidates == 2
+        assert response.statistics.runnable_candidates == 19
+        assert response.statistics.catalog_only_candidates == 1
     else:
         assert response.statistics.runnable_candidates == 15
         assert response.statistics.catalog_only_candidates == 5
@@ -153,14 +157,17 @@ def test_tbats_is_connected_but_explains_when_current_training_fold_is_too_short
     assert egarch_candidate.platform_status == "ready"
     assert egarch_candidate.available_actions == []
     assert egarch_candidate.blocking_reason
-    # Task 138/139/140: lstm, nbeats и nhits на коротком профиле честно
-    # блокируются min_observations=200 (60 < 200) тем же explain-механизмом.
+    # Task 138/139/140/141: lstm, nbeats, nhits и tft на коротком
+    # профиле честно блокируются min_observations=200 (60 < 200) тем
+    # же explain-механизмом.
     lstm_candidate = next(item for item in response.catalog if item.model_id == "lstm")
     assert lstm_candidate.blocking_reason == "Недостаточно данных: 60 < 200 (требуется LSTM / GRU)"
     nbeats_candidate = next(item for item in response.catalog if item.model_id == "nbeats")
     assert nbeats_candidate.blocking_reason == "Недостаточно данных: 60 < 200 (требуется N-BEATS)"
     nhits_candidate = next(item for item in response.catalog if item.model_id == "nhits")
     assert nhits_candidate.blocking_reason == "Недостаточно данных: 60 < 200 (требуется N-HiTS)"
+    tft_candidate = next(item for item in response.catalog if item.model_id == "tft")
+    assert tft_candidate.blocking_reason == "Недостаточно данных: 60 < 200 (требуется Temporal Fusion Transformer)"
     if _HAS_NEURAL:
         assert lstm_candidate.platform_status == "ready"
         assert lstm_candidate.available_actions == []
@@ -168,9 +175,12 @@ def test_tbats_is_connected_but_explains_when_current_training_fold_is_too_short
         assert nbeats_candidate.available_actions == []
         assert nhits_candidate.platform_status == "ready"
         assert nhits_candidate.available_actions == []
-        assert response.statistics.blocked_candidates == 12
+        assert tft_candidate.platform_status == "ready"
+        assert tft_candidate.available_actions == []
+        assert response.statistics.blocked_candidates == 13
     else:
         assert lstm_candidate.platform_status == "catalog_only"
         assert nbeats_candidate.platform_status == "catalog_only"
         assert nhits_candidate.platform_status == "catalog_only"
+        assert tft_candidate.platform_status == "catalog_only"
         assert response.statistics.blocked_candidates == 9

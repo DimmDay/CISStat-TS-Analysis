@@ -56,15 +56,15 @@ requires_neural = pytest.mark.skipif(
 def test_neural_dispatch_registration_convention():
     """Условная регистрация neural-записей в dispatch прижимается с ОБЕИХ
     сторон: без runtime записи не появляются (gate реестр<->dispatch
-    остаётся точным), с runtime -- появляются все три (Task 138 lstm +
-    Task 139 nbeats + Task 140 nhits)."""
+    остаётся точным), с runtime -- появляются все четыре (Task 138 lstm
+    + Task 139 nbeats + Task 140 nhits + Task 141 tft)."""
     without: dict = {}
     _register_neural_dispatch(without, runtime_available=False)
     assert without == {}
 
     with_runtime: dict = {}
     _register_neural_dispatch(with_runtime, runtime_available=True)
-    assert set(with_runtime) == {"lstm", "nbeats", "nhits"}
+    assert set(with_runtime) == {"lstm", "nbeats", "nhits", "tft"}
 
 
 def test_dispatch_gate_consistency_in_this_environment():
@@ -131,10 +131,10 @@ def test_lstm_readiness_and_stage_matrix_reflect_runtime():
         assert "backtest" in actions and "diagnostics" in actions and "tune" in actions
         assert capabilities["backtest"]["status"] == "available"
         assert capabilities["tuning"]["status"] == "available"
-        # Task 139: nbeats -- 21-я, Task 140: nhits -- 22-я модель
-        # (исполнители контракта Task 137); без опциональной группы все
-        # нейро-модели честно вне readiness (19).
-        assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 22
+        # Task 139: nbeats -- 21-я, Task 140: nhits -- 22-я, Task 141:
+        # tft -- 23-я модель (исполнители контракта Task 137); без
+        # опциональной группы все нейро-модели честно вне readiness (19).
+        assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 23
     else:
         assert actions == []
         assert capabilities["backtest"]["status"] == "not_implemented"

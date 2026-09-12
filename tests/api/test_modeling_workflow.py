@@ -131,17 +131,16 @@ def test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics(clie
     _prepare(client)
 
     # Task 128: xgboost стал production-моделью; в качестве catalog-only
-    # примера используется tft (neural-семейство, Task 141;
-    # Task 139: nbeats уже реализован и примером больше не является).
-    # Task 140: nhits тоже стал production-моделью (третий исполнитель
-    # neural-runtime контракта Task 137) и примером catalog-only больше
-    # не является.
-    # Task 138: lstm стал production-моделью (первый исполнитель
-    # neural-runtime контракта Task 137) и примером catalog-only больше
-    # не является.
+    # примера используется neural-семейство (Task 139: nbeats уже
+    # реализован и примером больше не является; Task 140: nhits тоже
+    # стал production-моделью -- третий исполнитель neural-runtime
+    # контракта Task 137; Task 138: lstm -- первый исполнитель).
+    # Task 141: tft тоже стал production-моделью (четвёртый исполнитель,
+    # probabilistic-поверхность MQLoss/quantiles); в качестве catalog-only
+    # примера используется deepar (Task 142 -- панель, ещё не реализована).
     response = client.post(
         "/v1/session/modeling/backtest",
-        json={"model_id": "tft", "train_ratio": 0.8},
+        json={"model_id": "deepar", "train_ratio": 0.8},
     )
 
     assert response.status_code == 422

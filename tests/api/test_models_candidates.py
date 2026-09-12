@@ -278,10 +278,11 @@ class TestCandidatesDifferentProfiles:
         # ARIMA (min=50) не должен быть в пуле
         assert "arima" not in ids
         # DL модели тоже не должны быть (Task 139: nbeats, Task 140:
-        # nhits -- тоже DL)
+        # nhits, Task 141: tft -- тоже DL)
         assert "lstm" not in ids
         assert "nbeats" not in ids
         assert "nhits" not in ids
+        assert "tft" not in ids
 
 
 # ═══════════════════════════════════════════════════════════
@@ -443,13 +444,14 @@ class TestBacktestNaive:
 
     def test_unsupported_model_never_returns_penalty_metrics(self):
         # Task 130: catboost стал production-моделью (200); в качестве
-        # catalog-only примера используется tft (Tasks 140-141 не
-        # реализованы).  Task 138: lstm стал production-моделью
-        # (первый исполнитель neural-runtime контракта Task 137), поэтому
-        # примером catalog-only больше не является.
+        # catalog-only примера используется deepar (Task 142 -- панель,
+        # ещё не реализована).  Task 141: tft стал production-моделью
+        # (четвёртый исполнитель neural-runtime контракта Task 137,
+        # probabilistic-поверхность MQLoss/quantiles), поэтому примером
+        # catalog-only больше не является.
         response = client.post(
             "/v1/models/backtest",
-            json={"model_id": "tft", "profile": MACRO_PROFILE},
+            json={"model_id": "deepar", "profile": MACRO_PROFILE},
             headers=PRO_HEADERS,
         )
 

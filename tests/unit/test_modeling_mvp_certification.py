@@ -52,13 +52,13 @@ CERTIFIED_MODEL_IDS = frozenset({
     "egarch",
 })
 
-# Task 138/139/140: LSTM/GRU, N-BEATS и N-HiTS -- первые три
+# Task 138/139/140/141: LSTM/GRU, N-BEATS, N-HiTS и TFT -- первые четыре
 # исполнителя neural-runtime контракта Task 137.  Реестровые записи и
 # legacy-предикторы существуют всегда (код), но readiness-членство
 # честно зависит от установки опциональной dependency-группы "neural"
 # (apps/api/requirements-neural.txt).
 _EXPECTED_NEURAL = (
-    {"lstm", "nbeats", "nhits"} if neuralforecast_runtime_available() else frozenset()
+    {"lstm", "nbeats", "nhits", "tft"} if neuralforecast_runtime_available() else frozenset()
 )
 EXPECTED_PRODUCTION_MODEL_IDS = CERTIFIED_MODEL_IDS | _EXPECTED_NEURAL
 
@@ -74,15 +74,15 @@ def test_certified_scope_is_exactly_nineteen_real_models_in_the_24_model_catalog
     }
 
     assert len(catalog) == 24
-    # Task 138/139/140: readiness = 19 сертифицированных + lstm/nbeats/
-    # nhits при установленной опциональной neural-группе (см.
+    # Task 138/139/140/141: readiness = 19 сертифицированных + lstm/
+    # nbeats/nhits/tft при установленной опциональной neural-группе (см.
     # EXPECTED_PRODUCTION_MODEL_IDS).
     assert PRODUCTION_BACKTEST_MODEL_IDS == EXPECTED_PRODUCTION_MODEL_IDS
     assert PRODUCTION_DIAGNOSTICS_MODEL_IDS == EXPECTED_PRODUCTION_MODEL_IDS
     # Legacy-предикторы строятся по ЗАПИСЯМ реестра (код) -- lstm/nbeats/
-    # nhits входят независимо от среды; вызов без группы честно
+    # nhits/tft входят независимо от среды; вызов без группы честно
     # отклоняется гейтом зависимостей registry.execute.
-    assert frozenset(PRODUCTION_PREDICTORS) == CERTIFIED_MODEL_IDS | {"lstm", "nbeats", "nhits"}
+    assert frozenset(PRODUCTION_PREDICTORS) == CERTIFIED_MODEL_IDS | {"lstm", "nbeats", "nhits", "tft"}
     assert PRODUCTION_TUNING_MODEL_IDS == frozenset(
         {"ets", "ets_damped", "arima", "prophet", "tbats", "random_forest", "xgboost",
          "lightgbm", "catboost",

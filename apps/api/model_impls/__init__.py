@@ -54,6 +54,11 @@ from apps.api.model_impls.nbeats import run_nbeats_backtest
 # Task 137 (адаптер НЕ импортирует torch на уровне модуля -- лениво
 # через neural_runtime; ds-конвенция переиспользована из lstm).
 from apps.api.model_impls.nhits import run_nhits_backtest
+# Task 141: TFT -- четвёртый исполнитель neural-runtime контракта
+# Task 137 и ПЕРВЫЙ срез с probabilistic-поверхностью MQLoss/quantiles
+# (адаптер НЕ импортирует torch на уровне модуля -- лениво через
+# neural_runtime; ds-конвенция переиспользована из lstm).
+from apps.api.model_impls.tft import run_tft_backtest
 
 
 __all__ = [
@@ -75,4 +80,5 @@ __all__ = [
     "run_lstm_backtest",
     "run_nbeats_backtest",
     "run_nhits_backtest",
+    "run_tft_backtest",
 ]

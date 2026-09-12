@@ -16,8 +16,12 @@
 #   с Task 138.
 # - Task 140: ТРЕТИЙ исполнитель зарегистрирован (nhits:
 #   interpolation_config ∈ {hierarchical, light}); пара nbeats/nhits --
-#   готовая база сравнения на одном runtime.  Остальные две модели
-#   (tft, deepar -- Tasks 141-142) остаются catalog_only до своих срезов.
+#   готовая база сравнения на одном runtime.
+# - Task 141: ЧЕТВЁРТЫЙ исполнитель зарегистрирован (tft -- ПЕРВЫЙ срез
+#   с probabilistic-поверхностью MQLoss/quantiles: точка = медиана,
+#   нативные квантильные выходы вместо conformal).  Осталась одна
+#   модель (deepar -- Task 142, панель min_series=5) catalog_only до
+#   своего среза.
 # - Установка локально: pip install -r apps/api/requirements-neural.txt
 #   (CPU-вариант torch) либо pip install -e ".[neural]" при появлении extra.
 # - Зафиксированная версия neuralforecast связывает surface, на которой

@@ -539,6 +539,34 @@ families:
         libraries: ["neuralforecast"]
         training_time: "minutes_to_hours"
         requires_gpu: true
+        # ── Task 141: четвёртый исполнитель neural-runtime контракта
+        # Task 137 и ПЕРВЫЙ срез с probabilistic-поверхностью
+        # MQLoss/quantiles ── Точечный прогноз -- медиана MQLoss
+        # ("TFT-median"); интервалы -- нативные квантили функции потерь
+        # MQLoss(quantiles=[alpha/2, 0.5, 1-alpha/2]) -- честный
+        # двусторонний интервал [alpha/2; 1-alpha/2] процентилей (метод
+        # NeuralIntervalPlan "neural_quantile_outputs", НЕ conformal --
+        # происхождение интервалов дисклоужено в metadata.intervals;
+        # alpha whitelist адаптера {0.01, 0.05, 0.10}).  Attention-ось
+        # каталожного описания «Attention-based architecture» -- честная
+        # альтернатива: n_head -- bounded-параметр адаптера
+        # (apps/api/model_impls/tft.py), дефолт 4; constraint
+        # InterpretableMultiHeadAttention d_k = hidden_size // n_head
+        # прижат гейтом делимости hidden_size % n_head == 0 (эмпирика:
+        # библиотека падает AssertionError на неделимости -- проб
+        # scripts/task141_tft_probe.py).  Единый бюджет обучения fold'а
+        # -- константа TFT_MAX_STEPS адаптера (семейная конвенция 300);
+        # тюнинг бюджета -- вне param_space обоснованно (прецедент
+        # Task 136).  Grid 2 x 2 x 2 = 8 trials (<= MAX_TRIALS=64);
+        # hidden_size/input_size ограничивают сложность против
+        # переобучения на коротких fold'ах; input_size -- глубина
+        # каузального окна (lookback), гейт неосуществимого окна --
+        # n_train < input_size + horizon.  Quartet lstm/nbeats/nhits/tft
+        # -- единый runtime и один level-cohort.
+        param_space:
+          n_head: [2, 4]
+          hidden_size: [32, 64]
+          input_size: [24, 48]
 
       - id: "nbeats"
         name: "N-BEATS"

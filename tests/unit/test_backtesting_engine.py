@@ -199,14 +199,14 @@ def test_all_fifteen_production_models_execute_the_same_real_oof_cohort():
     # ТОЛЬКО volatility-движком (run_volatility_backtest_plan) на
     # VolatilityTarget и не могут входить в одномерный level-cohort
     # (гейты Task 134).
-    # Task 138/139/140: lstm/nbeats/nhits -- neural-исполнители;
+    # Task 138/139/140/141: lstm/nbeats/nhits/tft -- neural-исполнители;
     # реальный нейро-фит выведен из sweep'а (бюджет) и покрыт
     # dedicated-тестами test_lstm_integration_paths.py /
     # test_nbeats_integration_paths.py / test_nhits_integration_paths.py
-    # на укороченном бюджете.
+    # / test_tft_integration_paths.py на укороченном бюджете.
     univariate_model_ids = (
         PRODUCTION_BACKTEST_MODEL_IDS
-        - {"var", "vecm", "garch", "egarch"} - {"lstm", "nbeats", "nhits"}
+        - {"var", "vecm", "garch", "egarch"} - {"lstm", "nbeats", "nhits", "tft"}
     )
     results = {
         model_id: run_backtest_plan(

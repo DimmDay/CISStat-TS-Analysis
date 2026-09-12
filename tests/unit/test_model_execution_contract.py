@@ -65,6 +65,12 @@ CERTIFIED_IDS = frozenset({
     # ∈ {hierarchical, light}; same-seed бит-в-бит, проб Task 140;
     # пара nbeats/nhits -- готовая база сравнения на одном runtime).
     "nhits",
+    # Task 141: TFT -- четвёртый исполнитель neural-runtime контракта
+    # Task 137 и ПЕРВЫЙ срез с probabilistic-поверхностью
+    # MQLoss/quantiles (точка = медиана MQLoss; native quantiles,
+    # НЕ conformal; attention-ось n_head с гейтом делимости; проб
+    # Task 141).
+    "tft",
 })
 
 # Task 126/127/128/129/130: supervised-адаптеры с regressor-каналом future_known/static.
@@ -83,9 +89,10 @@ MULTIVARIATE_EXOG_IDS = frozenset({"var"})
 # "univariate" -- volatility-движок поверх VolatilityTarget Task 134;
 # garch/egarch -- пара исполнителей одного движка, прецедент var/vecm).
 VOLATILITY_IDS = frozenset({"garch", "egarch"})
-# Task 138/139/140: neural-адаптеры (dependency_group="neural", единый
-# NeuralForecast-runtime Task 137; исполнители Tasks 138-142).
-NEURAL_IDS = frozenset({"lstm", "nbeats", "nhits"})
+# Task 138/139/140/141: neural-адаптеры (dependency_group="neural",
+# единый NeuralForecast-runtime Task 137; исполнители Tasks 138-142;
+# deepar -- Task 142, панель).
+NEURAL_IDS = frozenset({"lstm", "nbeats", "nhits", "tft"})
 
 
 def test_registry_is_the_single_source_of_truth_for_production_actions():
@@ -140,16 +147,17 @@ def test_candidates_publish_v2_descriptors_only_for_executable_models():
     assert response.execution_contract_version == "model-execution-v2"
     assert catalog["naive"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("naive")
     # Task 129/130: lightgbm и catboost стали production-моделями.
-    # Task 138/139/140: lstm, nbeats и nhits получили реестровые записи;
-    # catalog-only пример -- tft (Tasks 141-142 ещё не реализованы,
-    # записи нет).
+    # Task 138/139/140/141: lstm, nbeats, nhits и tft получили
+    # реестровые записи; catalog-only пример -- deepar (Task 142 ещё
+    # не реализована, записи нет).
     assert catalog["xgboost"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("xgboost")
     assert catalog["lightgbm"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("lightgbm")
     assert catalog["catboost"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("catboost")
     assert catalog["lstm"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("lstm")
     assert catalog["nbeats"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("nbeats")
     assert catalog["nhits"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("nhits")
-    assert catalog["tft"].execution_contract is None
+    assert catalog["tft"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("tft")
+    assert catalog["deepar"].execution_contract is None
 
 
 def test_request_and_result_fail_closed_on_misaligned_or_nonfinite_data():

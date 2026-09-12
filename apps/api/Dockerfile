@@ -136,7 +136,12 @@ RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; \
                   payload = _nhits_fit_predict([float(value) for value in range(1, 39)], 2, \
                   params={'interpolation_config': 'light', 'input_size': 8, 'hidden_size': 16}, random_state=42); \
                   assert len(payload['forecast']) == 2 and payload['params']['interpolation_config'] == 'light'; \
-                  print('N-HiTS executable OK')"
+                  print('N-HiTS executable OK')" \
+    && python -c "from apps.api.model_impls.tft import _tft_fit_predict; \
+                  payload = _tft_fit_predict([float(value) for value in range(1, 39)], 2, \
+                  params={'n_head': 2, 'input_size': 8, 'hidden_size': 16}, random_state=42); \
+                  assert len(payload['forecast']) == 2 and payload['intervals']['method'] == 'neural_quantile_outputs'; \
+                  print('TFT executable OK')"
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
