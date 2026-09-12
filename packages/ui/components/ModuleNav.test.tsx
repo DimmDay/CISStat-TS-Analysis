@@ -214,6 +214,20 @@ describe("ModuleNav", () => {
     expect(btn).toBeInTheDocument();
   });
 
+  // ── Точечная правка: линия-подчёркивание под меню убрана ────────
+
+  it("guard: nav has NO bottom border line (border-b removed)", () => {
+    // Точечная правка по постановке тимлида: горизонтальная линия под
+    // строкой бейджей (border-b border-neutral-200 на <nav>) убрана.
+    // Фон белый сохраняется, геометрия бейджей не затрагивается.
+    render(<ModuleNav />);
+    const nav = screen.getByRole("navigation", { name: NAV_LABEL });
+    expect(nav.className).not.toContain("border-b");
+    expect(nav.className).not.toContain("border-neutral-200");
+    // Фон навигации не изменился.
+    expect(nav.className).toContain("bg-white");
+  });
+
   it("does NOT render 'Навигатор' tab (renamed to 'О платформе' in Task 25)", () => {
     render(<ModuleNav />);
     expect(screen.queryByText("Навигатор")).toBeNull();

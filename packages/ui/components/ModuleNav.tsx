@@ -32,6 +32,12 @@
 //     СОХРАНЁН без изменений — реформатинг, не удаление функциональности;
 //     панель absolute не участвует в расчёте ширин колонок (out of flow),
 //     overflow-visible на строке бейджей сохраняет её видимой.
+//
+// Точечная правка (следом за Task w/n) — убрана горизонтальная линия под
+// меню: border-b border-neutral-200 на <nav> удалён, остался только
+// белый фон. Шапка ProductHeader над меню правится так же (симметрично),
+// чтобы над/под строкой бейджей не было разделителей. Геометрия бейджей,
+// аккордеон и «Логи событий» не затронуты.
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -100,7 +106,7 @@ export function ModuleNav() {
     <>
       <nav
         aria-label="Навигация по модулям анализа"
-        className="border-b border-neutral-200 bg-white"
+        className="bg-white"
       >
         <div className="max-w-[1600px] mx-auto px-6 flex items-center justify-between gap-2 py-2.5">
           {/* ── Строка бейджей: равные ширины ПО МАКСИМАЛЬНОМУ бейджу ──

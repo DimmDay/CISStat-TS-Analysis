@@ -13,6 +13,12 @@
 //
 // Task 119/120: логотип обслуживается из public-каталога standalone-приложения,
 // название семантически и визуально усилено до bold.
+//
+// Точечная правка (следом за Task w/n) — убрана горизонтальная линия под
+// шапкой: border-b border-neutral-200 на корневом div удалён, остался
+// только белый фон. ModuleNav под шапкой правится симметрично, чтобы
+// между шапкой, строкой бейджей и контентом не было разделителей.
+// Содержимое шапки (логотип, навигация, РУС/ENG, кабинет) не затронуто.
 
 import Link from "next/link";
 import Image from "next/image";
@@ -27,7 +33,7 @@ const NAV_ITEMS = [
 
 export function ProductHeader() {
   return (
-    <div className="border-b border-neutral-200 bg-white">
+    <div className="bg-white">
       <div className="max-w-[1600px] mx-auto px-6 flex items-center justify-between py-2.5">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">

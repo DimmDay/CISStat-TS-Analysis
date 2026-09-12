@@ -49,4 +49,17 @@ describe("ProductHeader", () => {
   it("includes standalone components in the Tailwind production scan", () => {
     expect(tailwindConfig.content).toContain("./components/**/*.{ts,tsx}");
   });
+
+  it("header root has NO bottom border line (border-b removed)", () => {
+    // Точечная правка по постановке тимлида: горизонтальная линия под
+    // шапкой (border-b border-neutral-200 на корневом div) убрана.
+    // Фон белый сохраняется, содержимое шапки не затрагивается.
+    const { container } = render(<ProductHeader />);
+    const root = container.firstElementChild;
+    expect(root).not.toBeNull();
+    expect(root!.className).not.toContain("border-b");
+    expect(root!.className).not.toContain("border-neutral-200");
+    // Фон шапки не изменился.
+    expect(root!.className).toContain("bg-white");
+  });
 });
