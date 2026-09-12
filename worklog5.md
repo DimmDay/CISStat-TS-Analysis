@@ -392,3 +392,183 @@ scripts/task141_fix_width_semantics_probe.py (НОВЫЙ, три секции):
   test_nhits_adapter, test_tft_adapter}.py, worklog4.md (этот журнал)
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@952653e + перечисленные изменения.
+
+## Task 139a -- Применение исправлений находок F1/F2 сертификации Task 139 (N-BEATS: гейт окна +2, pair-маппинг mlp_units) по полному циклу TDD
+
+Дата: 2026-09-13. Синхронизация: main@f7596e1 (Task 141a -- width-
+семантика тройки; проверки аудитора на дереве f7596e1 показали: обе
+находки сертификации Task 139 в коде НЕ исправлены -- F1: гейт
+`nobs < input_size + horizon` в nbeats.py, F2: `[[hidden] * mlp_layers
+for _ in range(2)]` в _stack_kwargs; артефактов "Task 139a" в истории/
+дереве нет).  Постановка тимлида: «Если исправления не применены, внеси
+необходимые правки» -- находки F1/F2 (НАХОДКИ сертификации Task 139,
+обе латентные не-блокирующие) переведены в исполнение по полному циклу
+AGENTS.md (TDD RED->GREEN, мутации, полная регрессия, сборка).
+
+### Постановка (из находок сертификации Task 139)
+
+- **F1 -- honesty-гэп гейта окна на точной границе**: гейт
+  `nobs < input_size + horizon` пропускал полосу [input+h, input+h+1],
+  где conformal-конфигурация 3.2.2 (PredictionIntervals в fit --
+  калибровочные окна) отказывала СЫРЫМ Exception библиотеки («Time
+  series is too short for training» на input+h; «No windows available
+  for training» на +1) вне таксономии ValueError/NeuralContractError
+  адаптера (мэппинг 422/503 не применялся).
+- **F2 -- ручка mlp_layers [1,4] неисполнима как заявлена**: библиотека
+  читает inner-списки mlp_units как ПАРЫ [in_features, out_features];
+  старый маппинг [[hidden]*layers for _ in range(2)] при layers=1
+  падал RAW IndexError конструктора NBEATSBlock, значения 3/4
+  проходили fit, но МОЛЧА эквивалентны 2 (max|diff| = 0.0 -- лишние
+  entries игнорируются): ложная изменчивость bounded-ручки.
+
+### Диагностика (контрольный замер на реальном runtime ДО правки)
+
+scripts/task139a_fix_f1f2_probe.py (НОВЫЙ, три секции; OMP_NUM_THREADS=1,
+CISSTAT_NEURAL_MAX_STEPS=6):
+- F1: прямые вызовы библиотеки (БЕЗ адаптерного гейта) на 5 конфигах
+  (input,h) = (8,2), (16,4), (24,3), (28,2), (48,6): на n=input+h --
+  сырой «Time series is too short», на n=input+h+1 -- сырой «No windows
+  available», на n=input+h+2 -- фит OK (len == horizon): ФОРМУЛА
+  n_min = input+horizon+2 СТАБИЛЬНА.  Конфиг (8,1) непригоден для
+  замера: библиотека отвергает h=1 с interpretable-стеком по
+  архитектурной причине (см. Кандидат-нахождку ниже).
+- F2 (старый маппинг, до правки): layers=1 -- IndexError: list index
+  out of range; layers=3/4 vs 2 -- max|diff| = 0.0 (МОЛЧА эквивалентны).
+- F2 (новый pair-маппинг, симуляция правки monkeypatch'ем
+  _stack_kwargs): layers ∈ {1,2,3,4} -- все фиты OK; попарно различимы
+  (max|diff| = 0.86 для пары 1 vs 2 и > 0 по всем парам); дефолт
+  layers=2: структуры old/new литерально равны ([[h,h],[h,h]]),
+  бит-паритет прогноза max|diff| = 0.0 -- сертифицированный путь
+  бит-неизменен.  PROBE OK.
+
+### Решение
+
+1. **F1 -- гейт окна** (apps/api/model_impls/nbeats.py): условие
+   `nobs < input_size + horizon + 2` (supervised-окно ПЛЮС 2
+   калибровочных окна conformal-конфигурации 3.2.2); сообщение гейта
+   называет причину («+ 2 калибровочных окна conformal-конфигурации
+   3.2.2») -- честный ValueError ДО фита на всей полосе
+   [input+h, input+h+1]; граница n == input+h+2 исполняется честно.
+   Docstring-шапка адаптера (пункт 4) переписана под формулу с
+   обоснованием и ссылкой на проб.
+2. **F2 -- pair-маппинг** (_stack_kwargs): `mlp_units = [[hidden,
+   hidden] for _ in range(mlp_layers)]` -- inner-списки как пары
+   [in, out]; весь диапазон [1,4] исполним и реально различим; дефолт
+   2 литерально совпадает со старым маппингом ([[32,32],[32,32]]) --
+   сертифицированный путь бит-неизменен (прижат бит-паритет тестом
+   old-vs-new маппинга).  Docstring _stack_kwargs переписан.
+3. **Таксономия/поведение вне полосы НЕ менялись**: point-прогноз,
+   conformal-контур, clamp-инвариант, MIN_TRAIN-гейт (проверяется
+   ПЕРВЫМ -- O4 (a/b) зелёные), bounded-валидация, env-рычаг --
+   бит-неизменны; исправлена ТОЛЬКО полоса гейта и маппинг ручки.
+
+### TDD (RED -> GREEN)
+
+- RED: 4 новых кейса в tests/unit/test_nbeats_adapter.py (секция 2b):
+  (1) F1-boundary: n=input+h и n=input+h+1 -> ValueError match
+  "калибров" ДО фита, n=input+h+2 -> фит OK (RED: сырой Exception
+  библиотеки «Time series is too short...»); (2) F2-структура:
+  _stack_kwargs(...,1) == [[32,32]], (...,"generic",...,4) == [[8,8]]*4,
+  дефолт == [[32,32],[32,32]] (RED: [[32],[32]] != [[32,32]]);
+  (3) F2-различимость: все пары (1,2,3,4) max|diff| > 0 (RED:
+  IndexError на layers=1); (4) F2-бит-паритет дефолта: подмена старого
+  маппинга -> бит-в-бит тот же прогноз (страж, зелёный в обеих фазах).
+  3 failed / 1 passed -- RED подтверждён, падения точно дефектные.
+- GREEN: правки nbeats.py -> 31/31 в test_nbeats_adapter.py.
+- Characterization-оракулы сертификации (scripts/audit_scripts/
+  cert139_oracles.py, задокументированное условие «при исправлении
+  находок пробы упадут: пересмотреть characterization»):
+  test_f1_window_boundary_band_escapes_as_raw_exception ->
+  test_f1_fixed_window_band_gets_honest_value_error_before_fit;
+  test_f2_mlp_layers_surface_is_infeasible_as_declared ->
+  test_f2_fixed_mlp_layers_range_executable_and_distinguishable
+  (оракулы ИСПРАВЛЕННОГО состояния).  Попутно восстановлены 4
+  оракула, дрейфовавшие после width-правки Task 141a (зелёный
+  базлайн сертификации был до неё): O5/O5b/O6 -- синтетические кадры
+  переведены на суффиксы ШИРИНЫ lo-95.0/hi-95.0 (ловушки: дефектные
+  lo-2.5/hi-97.5 и hi-как-lower активируют clamp-гейт); O7 --
+  реестровая актуальность (23 модели, нейро-четверка зарегистрирована,
+  catalog_only только deepar); комментарии O4 -- под формулу +2.
+  Итог: 17/17 (было 13 passed / 4 failed на f7596e1).
+
+### Мутационное тестирование (fresh-subprocess, SHA-контроль)
+
+scripts/audit_scripts/cert139a_mutations.py (НОВЫЙ; протокол 138/139/
+140 с адаптацией: эталон -- байт-копия файла на старте кампании, т.к.
+правки Task 139a незакоммичены -- коммит/пуш запрещены AGENTS.md;
+kill-подмножество: test_nbeats_adapter.py + cert139_oracles.py):
+- M01 гейт +2 -> +1: KILLED (верхняя кромка полосы уходит в сырой
+  Exception);
+- M02 гейт +2 -> +0 (откат F1): KILLED;
+- M03 pair-маппинг -> старый дефектный (откат F2): KILLED;
+- M04 pair-маппинг -> мёртвая ручка range(2): KILLED (3/4 сливаются);
+- M05 сообщение теряет калибровочную причину: KILLED (честная
+  диагностика);
+- M06 off-by-one `<=` (граница +2 ошибочно отклоняется): KILLED.
+Итог: **6/6 KILLED**; восстановление байт-чистое (SHA-контроль).
+
+### Верификация
+
+- Полная регрессия: **2391 passed / 0 failed** (unit 1666 = 1662
+  базлайн f7596e1 + 4 новых; api 625; snapshot 3) -- арифметика
+  сходится.  neural-тесты ИСПОЛНЯЛИСЬ (neuralforecast 3.2.2 + torch
+  2.14.0+cpu -- та же пара, на которой сертифицированы Tasks 137-141;
+  окружение восстановлено из requirements.txt + requirements-dev.txt +
+  neural-группы + prophet 1.4.0 / statsforecast 2.1.1; pip check -- No
+  broken requirements).
+- compileall OK; app-import OK; rules-smoketest exit=0; фронтенд не
+  затронут (git diff -- 0 файлов .ts/.tsx).
+- E2E-смоук актуального момента scripts/task141_e2e_smoke.py: ВСЕ
+  ПРОВЕРКИ ПРОЙДЕНЫ (23 connected -> tft ready; quartet-сравнение:
+  nbeats mae=2.1995 / nhits mae=0.4788 / tft mae=3.3413 -- nbeats mae
+  бит-в-бит совпадает с базлайном Task 141 на том же env-бюджете 60:
+  дефолтный путь unchanged end-to-end).  Dockerfile-проба N-BEATS
+  воспроизведена локально: 'N-BEATS executable OK' (n=38, input=8,
+  h=2: 38 >= 8+2+2 -- вне полосы, проба образа не затронута).
+- Смоуки-снимки своего момента НЕ модифицировались (прецедент):
+  task139_e2e_smoke.py ассертит счётчик 21 (свой момент до Tasks
+  140/141) -- пре-существующий дрейф снимка, не правки (актуальный
+  смоук -- task141).
+
+### Кандидат-нахождка (НОВАЯ, латентная, НЕ-блокирующая; вне мандата Task 139a)
+
+- **F3' (horizon=1 + interpretable/generic-семейство стеков)**:
+  адаптер допускает horizon=1 (гейт `horizon < 1`), но библиотека 3.2.2
+  отвергает h=1 со стеками trend/seasonality СЫРЫМ Exception
+  «Horizon `h=1` incompatible with `seasonality` or `trend` in stacks»
+  (проб, секция F1, конфиг (8,1); все n, не только полоса) -- тот же
+  honesty-класс, что F1 (сырой Exception вне таксономии адаптера;
+  движок бэктеста оборачивает в честный BacktestExecutionError).
+  Рекомендация: либо adapter-гейт `stack_config == "interpretable" and
+  horizon < 2 -> ValueError`, либо проверка исполнимости пары
+  (стек, horizon) по эмпирике проба.  Требует отдельной постановки
+  тимлида (поведенческое изменение сертифицированного среза).
+
+### Границы Task 139a (что осознанно НЕ сделано)
+
+- Аналогичные классы F1'/F2' в nhits.py (унаследованный гейт без +2;
+  мёртвые ручки hidden_size/mlp_layers -- characterization в
+  cert140_oracles.py/cert140_f1f2_probe.py) НЕ трогались: рекомендация
+  сертификации Task 140 -- закрыть их фикс-срезом 140a ВМЕСТЕ.
+  cert140_oracles.py на f7596e1 имеет пре-существующий дрейф 5
+  оракулов (width-правка Task 141a не касалась audit-скриптов --
+  проверено stash-прогоном: те же 5 failed ДО правок Task 139a);
+  ревизия cert140_* -- мандат среза 140a.
+- lstm/tft: гейты окон tft (`nobs < input_size + horizon`) вне мандата
+  (tft -- probabilistic MQLoss БЕЗ conformal-калибровки: потребность
+  +2 не следует переносить без собственного проба; lstm -- свой гейт
+  MIN_TRAIN).
+- yaml param_space не трогался (mlp_layers и раньше был вне
+  param_space; ручки hidden_size/input_size -- без изменений).
+- Исторические записи журнала НЕ редактировались (append-only).
+
+Изменённые/новые файлы (ZIP: download/task139a_f1f2_fixes.zip):
+- НОВЫЕ: scripts/task139a_fix_f1f2_probe.py,
+  scripts/audit_scripts/cert139a_mutations.py
+- ИЗМЕНЁННЫЕ: apps/api/model_impls/nbeats.py (гейт +2 + pair-маппинг +
+  docstring-шапки), tests/unit/test_nbeats_adapter.py (docstring + 4
+  кейса секции 2b), scripts/audit_scripts/cert139_oracles.py
+  (F1/F2 -> оракулы исправленного состояния; ревизия дрейфа O4/O5/O5b/
+  O6/O7), worklog4.md (этот журнал)
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@f7596e1 + перечисленные изменения.

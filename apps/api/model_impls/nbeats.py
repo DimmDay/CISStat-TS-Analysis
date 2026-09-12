@@ -38,13 +38,18 @@ N-BEATS) + требования Task 137:
    -- проб).  ds -- только ось: значения прогноза N-BEATS от меток не
    зависят; НИКАКОГО скрытого ресемплинга/интерполяции/сортировки данных.
 
-4. **Гейт неосуществимого окна**: n_train < input_size + horizon --
+4. **Гейт неосуществимого окна**: n_train < input_size + horizon + 2 --
    отказ ДО фита: полностью наблюдаемое supervised-окно (первое окно
-   обучается на input_size точках входа и horizon точках цели).
-   start_padding_enabled=False (официальный дефолт) согласован: библиотека
-   тоже fail-closed (проб: «NBEATS requires at least 48 training
-   timestamp(s)»), адаптерный гейт даёт детерминированное сообщение до
-   затрат на fit.  Молчаливое ужатие/паддинг окна запрещены.
+   обучается на input_size точках входа и horizon точках цели) ПЛЮС
+   2 калибровочных окна conformal-конфигурации 3.2.2 (PredictionIntervals
+   в fit -- НАХОДКА-1 сертификации Task 139, исправлена в Task 139a:
+   на полосе [input+h, input+h+1] библиотека отказывала СЫРЫМ Exception
+   «Time series is too short»/«No windows available» вне таксономии
+   адаптера; формула n_min = input+horizon+2 подтверждена пробом
+   task139a_fix_f1f2_probe.py на 5 конфигах).  start_padding_enabled=False
+   (официальный дефолт) согласован; адаптерный гейт даёт
+   детерминированное сообщение до затрат на fit.  Молчаливое ужатие/
+   паддинг окна запрещены.
 
 5. **Интервалы -- официальный conformal-контур контракта Task 137**:
    fit(prediction_intervals=PredictionIntervals()) + predict(level=[...])
@@ -227,12 +232,19 @@ def _stack_kwargs(stack_config: str, hidden: int, mlp_layers: int) -> dict[str, 
     """Официальная поверхность конструктора NBEATS 3.2.2 (проб).
 
     Два стека в обоих конфигах: n_blocks=[1, 1] -- по одному блоку на
-    стек (mlp_units -- один inner-список на стек); mlp_layers -- глубина
-    FC-блока (bounded-ручка вне тюнинга, прецедент encoder_n_layers
-    Task 138).  interpretable -- тренд/сезонность с официальными базами
-    библиотеки (n_polynomials/n_harmonics -- дефолты 3.2.2); generic --
+    стек; mlp_layers -- глубина FC-блока (bounded-ручка вне тюнинга,
+    прецедент encoder_n_layers Task 138).  Библиотека читает
+    inner-списки mlp_units как ПАРЫ [in_features, out_features] --
+    маппинг [[hidden, hidden] for _ in range(mlp_layers)] (НАХОДКА-2
+    сертификации Task 139, исправлена в Task 139a: старый
+    [[hidden]*layers for _ in range(2)] при layers=1 падал RAW
+    IndexError конструктора NBEATSBlock, а 3/4 МОЛЧА эквивалентны 2 --
+    лишние entries игнорируются; дефолт 2 литерально совпадает --
+    сертифицированный путь бит-неизменен).  interpretable --
+    тренд/сезонность с официальными базами библиотеки
+    (n_polynomials/n_harmonics -- дефолты 3.2.2); generic --
     identity-стеки с basis='polynomial' (n_basis -- дефолт)."""
-    mlp_units = [[hidden] * mlp_layers for _ in range(2)]
+    mlp_units = [[hidden, hidden] for _ in range(mlp_layers)]
     if stack_config == "interpretable":
         return {
             "stack_types": ["trend", "seasonality"],
@@ -290,10 +302,11 @@ def _nbeats_fit_predict(
             f"N-BEATS: история слишком короткая ({nobs} точек); минимум "
             f"{NBEATS_MIN_TRAIN} (NBEATS_MIN_TRAIN адаптера Task 139)"
         )
-    if nobs < normalized["input_size"] + int(horizon):
+    if nobs < normalized["input_size"] + int(horizon) + 2:
         raise ValueError(
             f"N-BEATS: неосуществимое окно ({nobs} точек < input_size="
-            f"{normalized['input_size']} + horizon={int(horizon)}); "
+            f"{normalized['input_size']} + horizon={int(horizon)} + 2 "
+            "калибровочных окна conformal-конфигурации 3.2.2); "
             "молчаливое ужатие/паддинг окна запрещены (fail-closed)"
         )
 

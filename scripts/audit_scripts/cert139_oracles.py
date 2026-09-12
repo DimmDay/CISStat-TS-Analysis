@@ -11,19 +11,26 @@ O2  stack_config имеет РЕАЛЬНЫЙ эффект (interpretable != gene
     silent-swap (исполнитель проверял только "generic запускается");
 O3  bounded-ручки имеют реальный эффект (hidden_size/input_size доходят
     до конструктора) -- класс literal-dup;
-O4  boundary-семантика гейтов: MIN_TRAIN=30 и окно input_size+horizon
-    различаются по сообщениям на точных границах (29/30 точек);
-F1  НАХОДКА-1 (characterization): полоса [input+horizon, input+horizon+1]
-    -- адаптерный гейт пропускает, библиотека отказывает RAW Exception
-    (не ValueError) -- honesty-гэп на границе, не-блокирующая;
-F2  НАХОДКА-2 (characterization): ручка mlp_layers [1,4] неисполнима:
-    1 -- raw IndexError конструктора, 3/4 -- молча эквивалентны 2
-    (библиотека читает только пары [0]->[1] inner-списка);
-O5  семантика выбора interval-колонок (lo=levels[0], hi=levels[-1]) через
+O4  boundary-семантика гейтов: MIN_TRAIN=30 и окно
+    input_size+horizon+2 (правка F1 Task 139a: +2 калибровочных окна
+    conformal) различаются по сообщениям на точных границах;
+F1  НАХОДКА-1 (ИСПРАВЛЕНА Task 139a): полоса [input+horizon,
+    input+horizon+1] раньше проходила гейт и падала СЫРЫМ Exception
+    библиотеки (характеризация); после правки гейта
+    nobs < input+horizon+2 полоса даёт честный ValueError ДО фита,
+    граница +2 исполняется (оракул фиксированного состояния);
+F2  НАХОДКА-2 (ИСПРАВЛЕНА Task 139a): раньше mlp_layers=1 падал RAW
+    IndexError, 3/4 были МОЛЧА эквивалентны 2 (характеризация);
+    после pair-маппинга [[h, h] for _ in range(layers)] весь [1,4]
+    исполним и попарно различим (оракул фиксированного состояния);
+O5  семантика выбора interval-колонок по ШИРИНЕ (правка width-семантики
+    Task 141a: суффиксы lo-<w>/hi-<w> кодируют ширину) через
     fault-injection синтетического кадра + выходной isfinite-гейт;
 O6  двухслойный spy проводки бюджета/сида: env-override доходит до
     NeuralTrainingConfig, фабрика разворачивает budget в КОНСТРУКТОР;
-O7  тройная согласованность реестр<->dispatch<->readiness (21 модель);
+O7  тройная согласованность реестр<->dispatch<->readiness (23 модели:
+    neural-четверка lstm/nbeats/nhits/tft зарегистрирована, deepar --
+    честный catalog_only до среза 142);
 O8  yaml::nbeats param_space: декартово произведение = 8 trials, значения
     внутри adapter-bounds, requires_gpu не тронут (методологическая ось);
 O9  metadata executor'а честна (max_steps/seed/stack_config/deterministic);
@@ -152,33 +159,34 @@ def test_o4_window_and_min_train_gates_distinct_boundaries():
     with pytest.raises(ValueError, match="минимум"):
         _nbeats_fit_predict(list(np.arange(29, dtype=float)), 2,
                             params={"input_size": 28})
-    # (b) n=29, input_size=28, horizon=1: окно осуществимо (29 >= 29),
-    # но MIN_TRAIN=30 -> всё ещё отказ MIN_TRAIN (граница снизу).
+    # (b) n=29, input_size=28, horizon=1: и окно (29 < 28+1+2=31 после
+    # правки F1), и MIN_TRAIN=30 неосуществимы, но MIN_TRAIN проверяется
+    # ПЕРВЫМ -> сообщение MIN_TRAIN (граница снизу).
     with pytest.raises(ValueError, match="минимум"):
         _nbeats_fit_predict(list(np.arange(29, dtype=float)), 1,
                             params={"input_size": 28})
-    # (c) n=30, input=28, horizon=3 -> окно 31 > 30 -> ОТДЕЛИМОЕ сообщение
-    #    гейта окна (адаптер отказывает ДО фита).
+    # (c) n=30, input=28, horizon=3 -> окно 28+3+2=33 > 30 (правка F1
+    # Task 139a) -> ОТДЕЛИМОЕ сообщение гейта окна (адаптер отказывает
+    # ДО фита).
     with pytest.raises(ValueError, match="окно"):
         _nbeats_fit_predict(_sine_series(30), 3, params={"input_size": 28})
 
 
-# ── F1/F2: characterization задокументированных НАХОДОК аудита ──────────
+# ── F1/F2: оракулы ИСПРАВЛЕННОГО состояния (Task 139a; ранее --
+# characterization дефектов сертификации Task 139) ─────────────────────
 
 @pytest.mark.parametrize("extra", [0, 1])
-def test_f1_window_boundary_band_escapes_as_raw_exception(extra, fast_env):
-    """НАХОДКА-1: в полосе n == input+horizon и n == input+horizon+1
-    адаптерный гейт (nobs < input+horizon) пропускает, а библиотека
-    (conformal-конфигурация требует n >= input+horizon+2) отказывает
-    RAW Exception -- НЕ NeuralContractError/ValueError.  Движок
-    бэктеста оборачивает в честный BacktestExecutionError (метрики не
-    подменяются), потому находка НЕ-БЛОКИРУЮЩАЯ.  Регрессия: если
-    адаптер ужесточат гейт, тест упадёт -- пересмотреть characterization."""
+def test_f1_fixed_window_band_gets_honest_value_error_before_fit(extra, fast_env):
+    """НАХОДКА-1 исправлена (Task 139a): полоса n == input+horizon и
+    n == input+horizon+1 -- теперь честный ValueError адаптера
+    (сообщение называет калибровочные окна conformal) ДО фита, а не
+    сырой Exception библиотеки; за границей полосы (n == input+h+2)
+    библиотека обучается честно (проб task139a_fix_f1f2_probe.py:
+    формула стабильна на 5 конфигах)."""
     n = 28 + 2 + extra
-    with pytest.raises(Exception) as excinfo:
+    with pytest.raises(ValueError, match="калибров"):
         _nbeats_fit_predict(list(np.arange(n, dtype=float)), 2,
                             params={"input_size": 28}, random_state=2026)
-    assert not isinstance(excinfo.value, ValueError)
     # за границей полосы библиотека обучается честно:
     payload = _nbeats_fit_predict(
         list(np.arange(32, dtype=float)), 2,
@@ -187,29 +195,28 @@ def test_f1_window_boundary_band_escapes_as_raw_exception(extra, fast_env):
     assert len(payload["forecast"]) == 2
 
 
-def test_f2_mlp_layers_surface_is_infeasible_as_declared(fast_env):
-    """НАХОДКА-2: декларированная bounded-ручка MLP_LAYERS_BOUNDS=(1,4)
-    фактически неисполнима: mlp_layers=1 проходит validate, но конструктор
-    NBEATSBlock падает RAW IndexError (библиотека читает только пары
-    [0]->[1] каждого inner-списка mlp_units); значения 3/4 проходят fit,
-    но МОЛЧА эквивалентны 2 (лишние entries игнорируются).  Не-блокирующая:
-    ручка вне param_space (тюнинг недоступен), дефолт 2 -- единственный
-    исполнимый.  Регрессия: исправление маппинга сделает тест честным."""
+def test_f2_fixed_mlp_layers_range_executable_and_distinguishable(fast_env):
+    """НАХОДКА-2 исправлена (Task 139a): pair-маппинг
+    [[hidden, hidden] for _ in range(mlp_layers)] -- библиотека читает
+    inner-списки как пары [in, out]; весь диапазон [1, 4] исполним
+    (раньше: 1 -- RAW IndexError) и попарно различим (раньше 3/4 были
+    МОЛЧА эквивалентны 2, max|diff| = 0.0).  Дефолт 2 литерально
+    совпадает со старым -- сертифицированный путь бит-неизменен."""
     assert MLP_LAYERS_BOUNDS == (1, 4)
-    with pytest.raises(Exception) as excinfo:
-        _nbeats_fit_predict(_sine_series(60), 4, params={"mlp_layers": 1},
-                            random_state=2026)
-    assert not isinstance(excinfo.value, ValueError)  # raw IndexError
-    base = _nbeats_fit_predict(_sine_series(60), 4, params={"mlp_layers": 2},
-                               random_state=2026)
-    for value in (3, 4):
-        same = _nbeats_fit_predict(_sine_series(60), 4,
-                                   params={"mlp_layers": value},
-                                   random_state=2026)
-        assert np.array_equal(np.asarray(base["forecast"]),
-                              np.asarray(same["forecast"])), (
-            "mlp_layers=3/4 перестали быть эквивалентными 2 -- "
-            "пересмотреть characterization НАХОДКИ-2")
+    forecasts = {}
+    for value in (1, 2, 3, 4):
+        payload = _nbeats_fit_predict(_sine_series(60), 4,
+                                      params={"mlp_layers": value},
+                                      random_state=2026)
+        forecasts[value] = np.asarray(payload["forecast"], dtype=float)
+    for low in (1, 2, 3):
+        for high in (2, 3, 4):
+            if low >= high:
+                continue
+            diff = float(np.abs(forecasts[low] - forecasts[high]).max())
+            assert diff > 0.0, (
+                f"mlp_layers={low} и {high} идентичны -- ручка мертва"
+            )
 
 
 # ── O5: выбор interval-колонок + выходной isfinite (fault-injection) ─────
@@ -227,25 +234,28 @@ def _synthetic_preds(point: float, lo: dict[float, float],
 def test_o5_interval_column_selection_semantics(fast_env, monkeypatch):
     plan = interval_levels_for_alpha(0.05)
     assert plan.levels == (2.5, 50.0, 97.5)
-    # lo-97.5 специально ВЫШЕ point: неверный выбор lo-колонки (levels[-1])
-    # активирует clamp-гейт -- оракул ловит и выбор, и инвариант сразу.
+    # Ширина w = 100*(1-alpha) = 95.0: суффиксы lo-95.0/hi-95.0
+    # (правка width-семантики Task 141a).  hi-95.0 специально ВЫШЕ point:
+    # неверный выбор hi-колонки как lower активирует clamp-гейт -- оракул
+    # ловит и выбор, и инвариант сразу; дефектные колонки старого запроса
+    # (lo-2.5/hi-97.5 -- 48.75/98.75 процентили) присутствуют как ловушки.
     frame = _synthetic_preds(
         point=10.0,
-        lo={2.5: 9.0, 50.0: 8.0, 97.5: 11.0},
-        hi={2.5: 11.5, 50.0: 12.0, 97.5: 13.0},
+        lo={95.0: 9.0, 2.5: 8.0},
+        hi={95.0: 13.0, 97.5: 12.0},
     )
     monkeypatch.setattr(nbeats_module, "train_and_forecast",
                         lambda **kwargs: frame)
     payload = _nbeats_fit_predict(_sine_series(), 6, random_state=2026)
-    assert np.allclose(payload["lower"], 9.0)   # lo уровня levels[0]
-    assert np.allclose(payload["upper"], 13.0)  # hi уровня levels[-1]
+    assert np.allclose(payload["lower"], 9.0)   # lo ширины 95.0 (2.5-й процентиль)
+    assert np.allclose(payload["upper"], 13.0)  # hi ширины 95.0 (97.5-й процентиль)
 
 
 def test_o5b_output_nonfinite_is_rejected(fast_env, monkeypatch):
     frame = _synthetic_preds(
         point=float("nan"),
-        lo={2.5: 9.0, 50.0: 8.0, 97.5: 7.0},
-        hi={2.5: 11.5, 50.0: 12.0, 97.5: 13.0},
+        lo={95.0: 9.0},
+        hi={95.0: 13.0},
     )
     monkeypatch.setattr(nbeats_module, "train_and_forecast",
                         lambda **kwargs: frame)
@@ -262,8 +272,7 @@ def test_o6_budget_and_seed_wiring_two_layer_spy(fast_env, monkeypatch):
         captured["config"] = kwargs["config"]
         captured["factory"] = kwargs["model_factory"]
         return _synthetic_preds(
-            10.0, {2.5: 9.0, 50.0: 8.0, 97.5: 7.0},
-            {2.5: 11.5, 50.0: 12.0, 97.5: 13.0},
+            10.0, {95.0: 9.0}, {95.0: 13.0},
         )
 
     monkeypatch.setattr(nbeats_module, "train_and_forecast",
@@ -309,15 +318,19 @@ def test_o7_registry_dispatch_readiness_triple_consistency():
     assert ("nbeats" in PRODUCTION_BACKTEST_MODEL_IDS) is available
     # Строгий gate реестр<->dispatch точен в этой среде:
     assert set(_BACKTEST_IMPLEMENTATIONS) == set(PRODUCTION_BACKTEST_MODEL_IDS)
-    # Срезы 140-142 остаются честными catalog_only:
-    for pending in ("nhits", "tft", "deepar"):
+    # Срез 142 (deepar) остается честным catalog_only; нейро-четверка
+    # lstm/nbeats/nhits/tft зарегистрирована (Tasks 138-141):
+    for pending in ("deepar",):
         assert pending not in PRODUCTION_BACKTEST_MODEL_IDS
         assert pending not in _BACKTEST_IMPLEMENTATIONS
         assert MODEL_EXECUTION_REGISTRY.get(pending) is None or (
             MODEL_EXECUTION_REGISTRY.get(pending).dependency_group == "neural"
         )
+    for registered in ("lstm", "nbeats", "nhits", "tft"):
+        assert registered in _BACKTEST_IMPLEMENTATIONS
+        assert registered in PRODUCTION_BACKTEST_MODEL_IDS
     if available:
-        assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 21
+        assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 23
 
 
 # ── O8: yaml param_space -- grid, bounds, методологическая ось ───────────

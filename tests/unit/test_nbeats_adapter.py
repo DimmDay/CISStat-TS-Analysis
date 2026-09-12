@@ -21,10 +21,10 @@ apps/api/model_impls/neural_runtime.py (лениво, fail-closed); адапте
   (fit prediction_intervals + predict level), уровни из
   interval_levels_for_alpha; NBEATS 3.2.2 -- point-loss модель
   (loss=MAE по умолчанию);
-- гейт неосуществимого окна: n_train < input_size + horizon -- отказ
-  ДО фита (полностью наблюдаемое supervised-окно; молчаливое ужатие
-  запрещено; библиотека с start_padding_enabled=False fail-closed
-  согласована -- проб scripts/task139_nbeats_probe.py);
+- гейт неосуществимого окна: n_train < input_size + horizon + 2 -- отказ
+  ДО фита (полностью наблюдаемое supervised-окно + 2 калибровочных окна
+  conformal-конфигурации 3.2.2; молчаливое ужатие запрещено; правка
+  НАХОДКИ-1 сертификации Task 139 -- Task 139a);
 - clamp-инвариант lower <= point <= upper -- с первого дня (урок
   НАХОДКИ-3/M10 сертификации Task 138) + fault-injection тест;
 - fail-closed: короткий train, NaN/Inf, неизвестный стек, значения вне
@@ -154,6 +154,98 @@ def test_fit_predict_rejects_infeasible_window():
     with pytest.raises(ValueError, match="окно"):
         _nbeats_fit_predict(list(np.arange(32, dtype=float)), 4,
                             params={"input_size": 48})
+
+
+# ── 2b. Task 139a -- исправления находок F1/F2 сертификации Task 139 ─────
+
+def test_f1_fix_window_gate_requires_two_conformal_calibration_points(fast_budget):
+    """НАХОДКА-1 (F1) сертификации Task 139, исправление: гейт окна
+    `nobs < input_size + horizon` пропускал полосу [input+h, input+h+1],
+    где conformal-конфигурация 3.2.2 (PredictionIntervals в fit --
+    калибровочные окна) отказывала СЫРЫМ Exception библиотеки вне
+    таксономии ValueError адаптера (проб task139a_fix_f1f2_probe.py,
+    5 конфигов: 'Time series is too short' на input+h, 'No windows
+    available' на +1, фит OK на +2).  Исправленный гейт
+    `nobs < input_size + horizon + 2` даёт честный ValueError ДО фита
+    на всей полосе; граница n == input+h+2 исполняется честно."""
+    horizon, input_size = 2, 28
+    for n in (input_size + horizon, input_size + horizon + 1):
+        with pytest.raises(ValueError, match="калибров"):
+            _nbeats_fit_predict(list(np.arange(n, dtype=float)), horizon,
+                                params={"input_size": input_size},
+                                random_state=2026)
+    payload = _nbeats_fit_predict(
+        list(np.arange(input_size + horizon + 2, dtype=float)), horizon,
+        params={"input_size": input_size}, random_state=2026,
+    )
+    assert len(payload["forecast"]) == horizon
+
+
+def test_f2_fix_mlp_layers_lower_bound_fits_and_pairs_semantics():
+    """НАХОДКА-2 (F2) сертификации Task 139, исправление: библиотека
+    читает inner-списки mlp_units как ПАРЫ [in_features, out_features];
+    старый маппинг [[hidden]*layers for _ in range(2)] при layers=1
+    падал RAW IndexError, а 3/4 МОЛЧА эквивалентны 2.  Новый pair-маппинг
+    [[hidden, hidden] for _ in range(layers)] исполняет весь диапазон
+    [1, 4]; дефолт 2 литерально совпадает со старым --
+    сертифицированный путь бит-неизменен (проб
+    task139a_fix_f1f2_probe.py: бит-паритет max|diff| = 0.0)."""
+    assert nbeats_module._stack_kwargs(
+        "interpretable", 32, 1)["mlp_units"] == [[32, 32]]
+    assert nbeats_module._stack_kwargs(
+        "generic", 8, 4)["mlp_units"] == [[8, 8]] * 4
+    # Дефолт 2 -- литеральный паритет со старой структурой.
+    assert nbeats_module._stack_kwargs(
+        "interpretable", 32, 2)["mlp_units"] == [[32, 32], [32, 32]]
+
+
+def test_f2_fix_mlp_layers_full_range_is_distinguishable(fast_budget):
+    """Все значения bounded-ручки mlp_layers [1, 4] исполнимы и дают
+    реально различимые прогнозы (старый маппинг: 1 -- крэш, 3/4 --
+    ложная изменчивость max|diff| = 0.0)."""
+    forecasts = {
+        layers: np.asarray(_nbeats_fit_predict(
+            _series(), 4, params={"mlp_layers": layers},
+            random_state=21,
+        )["forecast"], dtype=float)
+        for layers in (1, 2, 3, 4)
+    }
+    for low in (1, 2, 3):
+        for high in (2, 3, 4):
+            if low >= high:
+                continue
+            diff = float(np.abs(forecasts[low] - forecasts[high]).max())
+            assert diff > 0.0, (
+                f"mlp_layers={low} и {high} дают идентичный прогноз "
+                "(ручка мертва -- literal-dup класс)"
+            )
+
+
+def test_f2_fix_default_path_bit_parity_with_certified_mapping(
+    monkeypatch, fast_budget,
+):
+    """Сертифицированный путь (дефолт mlp_layers=2) обязан остаться
+    бит-неизменным после исправления маппинга: старая структура
+    [[hidden]*2 for _ in range(2)] литерально равна новой
+    [[hidden, hidden] for _ in range(2)] -- подмена старого маппинга
+    обратно даёт бит-в-бит тот же прогноз."""
+    def _old_mapping(stack_config, hidden, mlp_layers):
+        mlp_units = [[hidden] * mlp_layers for _ in range(2)]
+        if stack_config == "interpretable":
+            return {"stack_types": ["trend", "seasonality"],
+                    "n_blocks": [1, 1], "mlp_units": mlp_units}
+        return {"stack_types": ["identity", "identity"],
+                "n_blocks": [1, 1], "mlp_units": mlp_units,
+                "basis": "polynomial"}
+
+    current = nbeats_module._stack_kwargs
+    monkeypatch.setattr(nbeats_module, "_stack_kwargs", _old_mapping)
+    old_forecast = np.asarray(_nbeats_fit_predict(
+        _series(), 4, random_state=21)["forecast"], dtype=float)
+    monkeypatch.setattr(nbeats_module, "_stack_kwargs", current)
+    new_forecast = np.asarray(_nbeats_fit_predict(
+        _series(), 4, random_state=21)["forecast"], dtype=float)
+    assert float(np.abs(old_forecast - new_forecast).max()) == 0.0
 
 
 # ── 3. Реальный fit/predict (скоростной бюджет max_steps=3) ──────────────
