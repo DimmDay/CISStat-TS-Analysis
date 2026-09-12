@@ -20,6 +20,11 @@
 // Исторические тесты Task 29/30 (собственная рамка/скругление бейджа,
 // отсутствие «слитого монолита», порядок Block A → divider → H2 →
 // Block B → divider) сохранены с пересчётом на 14×2 бейджа.
+//
+// Правка 6 (Task w/n, 2026-09-12): контракт бейджа обновлён —
+// фон ПРОЗРАЧНЫЙ (bg-transparent, было bg-neutral-100), подпись (dt)
+// в фирменном индиго text-brand — единый цвет текста бейджа с цифрой
+// (dd). Селекторы исторических тестов пересчитаны на bg-transparent.
 
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -112,7 +117,8 @@ describe("HomeCapabilities", () => {
   it("renders compact badges: ~5 visible across the page width (fixed clamp width)", () => {
     const { container } = render(<HomeCapabilities />);
     const real = container.querySelector('[data-testid="marquee-group-real"]')!;
-    const badges = real.querySelectorAll("div.bg-neutral-100");
+    // Селектор по прозрачному фону (правка 6: bg-neutral-100 → bg-transparent)
+    const badges = real.querySelectorAll("div.bg-transparent");
     expect(badges.length).toBe(CAPABILITY_STATS.length);
     badges.forEach((badge) => {
       expect(badge.className).toContain(BADGE_WIDTH_CLASS);
@@ -135,6 +141,60 @@ describe("HomeCapabilities", () => {
       expect(dt.className).toContain("line-clamp-2");
       expect(dt.className).toContain("leading-tight");
     });
+  });
+
+  // ── Прозрачный фон бейджей marquee (Task w/n, 2026-09-12) ────
+  //
+  // Фон бейджа убран (bg-neutral-100 → bg-transparent): сквозь бейдж
+  // виден фон страницы. Рамка/скругление/паддинг/анимация НЕ тронуты
+  // (контракт Task 29 сохраняется, см. тест ниже). Блок B (карточки
+  // возможностей) остаётся с белой заливкой — guard ниже.
+
+  it("renders marquee badges with transparent background (no fill)", () => {
+    const { container } = render(<HomeCapabilities />);
+    const real = container.querySelector('[data-testid="marquee-group-real"]')!;
+    const badges = real.querySelectorAll("div.bg-transparent");
+    expect(badges.length).toBe(CAPABILITY_STATS.length);
+    badges.forEach((badge) => {
+      expect(badge.className).toContain("bg-transparent");
+      expect(badge.className).not.toContain("bg-neutral-100");
+      expect(badge.className).not.toContain("bg-neutral-50");
+      expect(badge.className).not.toContain("bg-white");
+    });
+    // Клон (aria-hidden) — тот же компонент, тот же прозрачный фон
+    const clone = container.querySelector('[data-testid="marquee-group-clone"]')!;
+    expect(clone.querySelectorAll("div.bg-transparent").length).toBe(
+      CAPABILITY_STATS.length,
+    );
+  });
+
+  it("renders every badge label in brand indigo — the same color as the value (text-brand)", () => {
+    const { container } = render(<HomeCapabilities />);
+    const real = container.querySelector('[data-testid="marquee-group-real"]')!;
+    // Подпись (dt) — фирменный индиго text-brand (#2E3192), как цифра
+    const dts = real.querySelectorAll("dt");
+    expect(dts.length).toBe(CAPABILITY_STATS.length);
+    dts.forEach((dt) => {
+      expect(dt.className).toContain("text-brand");
+      expect(dt.className).not.toContain("text-neutral-500");
+      expect(dt.className).not.toContain("text-neutral-600");
+      expect(dt.className).not.toContain("text-neutral-700");
+    });
+    // Значение (dd) тоже text-brand — единый цвет текста бейджа
+    const dds = real.querySelectorAll("dd");
+    expect(dds.length).toBe(CAPABILITY_STATS.length);
+    dds.forEach((dd) => {
+      expect(dd.className).toContain("text-brand");
+    });
+  });
+
+  it("does NOT recolor Block B capability cards (scope: marquee only)", () => {
+    const { container } = render(<HomeCapabilities />);
+    // Карточки Block B — по-прежнему белые с нейтральной рамкой
+    const cards = container.querySelectorAll(
+      'div.rounded-xl.border-neutral-200.bg-white',
+    );
+    expect(cards.length).toBe(6);
   });
 
   it("animates the whole track right-to-left slowly and uniformly (marquee)", () => {
@@ -166,12 +226,14 @@ describe("HomeCapabilities", () => {
   it("renders each badge with own border and rounding (Task 29 contract, 28 cells)", () => {
     const { container } = render(<HomeCapabilities />);
     const dl = container.querySelector("dl")!;
-    const badges = dl.querySelectorAll("div.bg-neutral-100.rounded-xl.border");
+    // Правка 6: фон бейджа прозрачный — контракт рамки/скругления сохранён
+    const badges = dl.querySelectorAll("div.bg-transparent.rounded-xl.border");
     expect(badges.length).toBe(28);
     badges.forEach((badge) => {
       expect(badge.className).toContain("border-neutral-200");
       expect(badge.className).toContain("rounded-xl");
-      expect(badge.className).toContain("bg-neutral-100");
+      expect(badge.className).toContain("bg-transparent");
+      expect(badge.className).not.toContain("bg-neutral-100");
     });
   });
 

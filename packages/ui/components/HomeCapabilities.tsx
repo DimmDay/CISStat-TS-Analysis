@@ -19,7 +19,8 @@
 //               (см. packages/ui/globals.css).
 //               Бесшовность: лента дублируется в aria-hidden-копию,
 //               сдвиг -50% = ровно одна группа (включая завершающий gap).
-//               Светло-серый фон, компактный паддинг (px-3 py-3).
+//               Прозрачный фон бейджа, текст — фирменный индиго
+//               text-brand (правка 6), компактный паддинг (px-3 py-3).
 //   - Заголовок H2 + поддерживающий текст.
 //   - Block B — сетка 3×2 из 6 capability-карточек: ключевые
 //               возможности и принципы платформы.
@@ -37,6 +38,11 @@
 //     text-xl/text-neutral-600; Block B — полностью статичные карточки.
 //   - Правка 5 (M-02) от 2026-09-12: Block A — marquee из 14 бейджей;
 //     сетка grid-cols-2/sm:grid-cols-4 заменена на бегущую строку.
+//   - Правка 6 (Task w/n) от 2026-09-12: точечная правка бейджей
+//     marquee — фон прозрачный (bg-neutral-100 → bg-transparent) и
+//     подпись в фирменном индиго text-brand (было text-neutral-500),
+//     т.е. весь текст бейджа — единый цвет цифры (#2E3192). Рамка,
+//     скругление, паддинг, ширина, анимация и Block B НЕ тронуты.
 //
 // a11y-контракт:
 //   - <section aria-labelledby="capabilities-heading"> оборачивает всё
@@ -58,18 +64,20 @@ import {
 //
 // Компактная карточка: фиксированная ширина w-[clamp(180px,18vw,300px)]
 // (~5 бейджей на ширину контейнера max-w-[1600px]), собственная рамка
-// border-neutral-200, скругление rounded-xl, светло-серый фон
-// bg-neutral-100, компактный паддинг px-3/py-3. Подпись — ровно 2 строки
+// border-neutral-200, скругление rounded-xl, ПРОЗРАЧНЫЙ фон
+// bg-transparent (сквозь бейдж виден фон страницы), компактный паддинг
+// px-3/py-3. Весь текст бейджа — фирменный индиго text-brand (#2E3192):
+// и значение (dd), и подпись (dt). Подпись — ровно 2 строки
 // у ВСЕХ бейджей: h-7 (28px = 2×leading-tight от text-[11px]) +
 // line-clamp-2 (страховка от переполнения на узких вьюпортах).
 
 function StatCell({ value, label }: { value: string; label: string }) {
   return (
-    <div className="w-[clamp(180px,18vw,300px)] shrink-0 bg-neutral-100 px-3 py-3 text-center rounded-xl border border-neutral-200">
+    <div className="w-[clamp(180px,18vw,300px)] shrink-0 bg-transparent px-3 py-3 text-center rounded-xl border border-neutral-200">
       <dd className="text-xl font-semibold text-brand leading-none tracking-tight">
         {value}
       </dd>
-      <dt className="mt-1.5 h-7 text-[11px] font-medium uppercase tracking-wide text-neutral-500 leading-tight line-clamp-2">
+      <dt className="mt-1.5 h-7 text-[11px] font-medium uppercase tracking-wide text-brand leading-tight line-clamp-2">
         {label}
       </dt>
     </div>

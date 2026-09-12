@@ -2191,3 +2191,79 @@ vertical slice; фронтенд не менялся с 8a00279/M-02). Симп�
 - worklog4.md (эта запись)
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@412dd36 + перечисленные изменения.
+
+## Task w/n — Точечная правка бейджей бегущей строки: прозрачный фон + фирменный индиго текста
+
+Дата: 2026-09-12. База: main@3960df2 (синхронизация fast-forward с
+412dd36; рабочее дерево чистое). Постановка тимлида: только два
+изменения в бейджах бегущей строки главной страницы
+(ts-standalone.vercel.app): 1) фон каждого бейджа — прозрачный;
+2) цвет шрифта текста бейджа — фирменный индиго, как у цифры бейджа.
+
+### Постановка и scope
+
+- Касается ТОЛЬКО Block A (marquee) секции HomeCapabilities: StatCell,
+  14 бейджей × 2 группы (реальная + aria-hidden клон).
+- НЕ трогается: Block B (6 capability-карточек, bg-white), HomeHero
+  (сетка маршрутов), рамка/скругление/паддинг/ширина/анимация бейджей,
+  вьюпорт и трек marquee (full-bleed), раздел H2.
+
+### Диагностика
+
+- StatCell (packages/ui/components/HomeCapabilities.tsx): фон бейджа —
+  bg-neutral-100; цифра (dd) — text-brand; подпись (dt) —
+  text-neutral-500 (серый) — визуальный диссонанс с цифрой.
+- Фирменный индиго = токен brand.DEFAULT #2E3192 (packages/ui/
+  tailwind-preset.ts, тёмно-синий логотипа Статкомитета СНГ) — именно
+  он уже у цифры. => подписи нужен тот же класс text-brand.
+- Прочие использования bg-neutral-100 в packages/ui (ChartExpandToggle,
+  ModelingTraceabilityOverview, StructuralClassSchema и др.) — вне
+  scope, не затронуты. В тестах завязки на класс бейджа marquee —
+  только HomeCapabilities.test.tsx (2 селектора + 1 assertion).
+
+### Решение (2 класса + комментарии)
+
+- StatCell: `bg-neutral-100` → `bg-transparent` (фон бейджа прозрачен,
+  сквозь него виден фон страницы; рамка border-neutral-200, rounded-xl,
+  px-3/py-3, ширина w-[clamp(180px,18vw,300px)] — без изменений).
+- StatCell dt: `text-neutral-500` → `text-brand` — весь текст бейджа
+  (цифра + подпись) единым фирменным индиго #2E3192.
+- Клон-группа наследует изменения автоматически (тот же компонент).
+- Обновлены doc-комментарии компонента (история правок: + правка 6).
+
+### TDD (RED -> GREEN)
+
+- RED (+3 кейса): renders_marquee_badges_with_transparent_background
+  (bg-transparent у всех 14 + у клона; запрет bg-neutral-100/50/white);
+  renders_every_badge_label_in_brand_indigo (dt text-brand = цвету dd,
+  запрет text-neutral-500/600/700); does_NOT_recolor_Block_B
+  (guard scope: 6 карточек остались bg-white) — зелёный сразу.
+  Прогон файла: 2 failed / 31 passed (33 total).
+- GREEN: правка 2 классов StatCell; ожидания реализации не менялись.
+  Прогон файла: 33/33.
+- Исторические контракты пересчитаны на новый вид бейджа: селектор
+  «compact badges» и тест Task 29 «own border and rounding (28 cells)»
+  переведены с div.bg-neutral-100 на div.bg-transparent (+ запрет
+  возврата bg-neutral-100); комментарий контракта обновлён.
+
+### Верификация
+
+- Jest полный: **93 сюиты / 859 тестов PASS** (база 3960df2 = 856:
+  +3 новых кейса). В т.ч. зелёные guard-ы: «does NOT touch the marquee
+  (no px-6)», «identical layout classes» обеих сеток 3×2 — правки
+  marquee ничего из них не задели.
+- typecheck:all (embedded + standalone) — PASS (exit 0).
+- Production build:all — OK (exit 0; embedded 13/13, standalone 13/13
+  статических страниц). Утилита bg-transparent присутствует в
+  CSS-бандле standalone; bg-neutral-100 остаётся в бандле для прочих
+  компонентов (вне scope).
+
+### Изменённые/новые файлы (ZIP: download/marquee_badge_transparent_indigo_worklog4.zip)
+
+- packages/ui/components/HomeCapabilities.tsx (StatCell: bg-transparent,
+  dt → text-brand; комментарии)
+- packages/ui/components/HomeCapabilities.test.tsx (+3 кейса; 2
+  исторических теста пересчитаны на bg-transparent)
+- worklog4.md (эта запись)
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@3960df2 + перечисленные изменения.
