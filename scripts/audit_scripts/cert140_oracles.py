@@ -6,27 +6,27 @@
 мутируемые kill-подмножества -- в cert140_mutations.py (fresh
 subprocess).
 
-Структура:
+Структура (ревизия Task 140a -- находки F1'/F2' исправлены, оракулы
+исправленного состояния; width-семантика Task 141a; реестровая
+актуальность Task 141 -- 23 модели, нейро-четверка):
 - A -- реестр/dispatch/yaml/константы (без нейро-runtime);
 - B -- fail-closed валидация (мои значения);
-- C -- гейт окна: честная полоса + characterization сырой полосы
-  (F1' -- аналог НАХОДКИ-1 сертификации Task 139, унаследованный
-  Task 140: гейт `nobs < input_size + horizon` без +2 -- полоса
-  [input+h, input+h+1] падает сырым Exception библиотеки вне
-  таксономии адаптера; эмпирия проба cert140_f1f2_probe.py);
-- D -- characterization мёртвых ручек (F2' -- НОВАЯ находка:
-  hidden_size/mlp_layers validated+echo, но в конструктор NHITS не
-  передаются НИКАК; max|diff|=0.0; контраст -- nbeats ручка живая);
- _fault spy доказывает дефолт mlp_units=3*[[512,512]];
+- C -- гейт окна: честная полоса (F1' ИСПРАВЛЕНА в Task 140a: гейт
+  `nobs < input_size + horizon + 2` -- честный ValueError с калибровоч-
+  ной причиной на всей полосе [input+h, input+h+1]; проб
+  task140a_fix_probe.py: формула стабильна на 5 конфигах);
+- D -- живые ручки (F2' ИСПРАВЛЕНА в Task 140a: hidden_size/mlp_layers
+  доходят до конструктора через pair-маппинг mlp_units -- конвенция
+  пар [in, out] Task 139a; весь диапазон исполним и различим;
+  скрытые слои КАЖДОГО из трёх identity-блоков несут маппинг);
 - E -- интерполяция/детерминизм/env/ds-ось (мои данные);
-- F -- fault-injection (clamp/isfinite/длина/capacity/wrap/guard);
-- G -- уровни интервалов и выбор колонок;
+- F -- fault-injection (clamp/isfinite/длина/capacity/wrap/guard) на
+  суффиксах ШИРИНЫ lo-95.0/hi-95.0 (правка width-семантики Task 141a;
+  дефектные колонки старого запроса lo-2.5/hi-97.5 -- ловушки);
+- G -- уровни интервалов (процентили плана + width-дисклоужер) и выбор
+  колонок;
 - H -- сквозные: executor/session-движок/пара nbeats-nhits на ОДНОМ
   cohort'е (постановка Task 140), легаси-эндпоинт.
-
-Characterization-оракулы (C2, D1, D2) намеренно фиксируют ТЕКУЩЕЕ
-поведение; после потенциального фикс-среза 140a они обязаны быть
-пересмотрены (станут тестами нового поведения).
 """
 from __future__ import annotations
 
@@ -48,6 +48,7 @@ from apps.api.neural_contract import (  # noqa: E402
     NeuralContractError,
     NeuralRuntimeCapacityError,
     interval_levels_for_alpha,
+    interval_width_for_alpha,
 )
 
 pytest.importorskip("neuralforecast", reason="neural runtime -- опциональная группа")
@@ -61,10 +62,12 @@ from apps.api.model_impls import nhits as nhits_module  # noqa: E402
 from apps.api.model_impls import nbeats as nbeats_module  # noqa: E402
 from apps.api.model_impls.nhits import (  # noqa: E402
     DEFAULT_PARAMS,
+    MLP_LAYERS_BOUNDS,
     NHITS_MAX_STEPS,
     NHITS_MIN_TRAIN,
     _interpolation_kwargs,
     _interval_column,
+    _mlp_units_kwargs,
     _nhits_fit_predict,
     _resolve_max_steps,
     run_nhits_backtest,
@@ -113,7 +116,9 @@ def test_o01_registry_entry_22_and_contract():
     assert descriptor["engine"] == "neuralforecast"
     assert descriptor["deterministic"] is True
     assert set(descriptor["actions"]) == {"backtest", "tune", "diagnostics"}
-    assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 22
+    # Реестровая актуальность Task 141 (TFT -- четвертый исполнитель):
+    # 23 модели, прецедент O7 cert139_oracles.
+    assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 23
     assert "nhits" in PRODUCTION_BACKTEST_MODEL_IDS
     # Анти-тампер констант адаптера (моя копия, без надежды на тесты
     # исполнителя): бюджет в честном диапазоне, пол -- константа.
@@ -128,16 +133,17 @@ def test_o02_dispatch_convention_and_env_gate():
     assert without == {}
     with_runtime: dict = {}
     _register_neural_dispatch(with_runtime, runtime_available=True)
-    assert set(with_runtime) == {"lstm", "nbeats", "nhits"}
+    # Нейро-четверка Task 141 (lstm + nbeats + nhits + tft).
+    assert set(with_runtime) == {"lstm", "nbeats", "nhits", "tft"}
     # Среда аудита имеет нейро-группу -- dispatch полный и согласован.
     assert "nhits" in _BACKTEST_IMPLEMENTATIONS
     assert frozenset(_BACKTEST_IMPLEMENTATIONS) == PRODUCTION_BACKTEST_MODEL_IDS
 
 
-def test_o03_yaml_param_space_documents_the_dead_hidden_axis():
+def test_o03_yaml_param_space_documents_the_hidden_axis():
     """param_space 2x2x2=8 с осью hidden_size [32, 64] -- ось задокументи-
-    рована; characterization D-блока доказывает, что ось БЕЗ ЭФФЕКТА
-    (мёртвая ручка).  После 140a ось обязана остаться и стать живой."""
+    рована; с Task 140a ось ЖИВАЯ (F2' исправлена: ручки доходят до
+    конструктора через pair-маппинг mlp_units, D-блок)."""
     from src.catalog.modeling_spec_loader import ModelingSpec
 
     spec = ModelingSpec.from_yaml("rules/modeling.yaml")
@@ -184,7 +190,7 @@ def test_o06_horizon_zero_short_series_and_nonfinite_fail_closed():
         _nhits_fit_predict([float("inf")] * 40, 2)
 
 
-# ── C. Гейт окна: честная полоса + characterization сырой полосы (F1') ───
+# ── C. Гейт окна: честная полоса (F1' исправлена в Task 140a) ─────────────
 
 def test_o07_window_gate_honest_below_boundary(fast_env):
     """n = input+horizon-1 = 30 (input=28, h=3): адаптерный гейт даёт
@@ -195,23 +201,21 @@ def test_o07_window_gate_honest_below_boundary(fast_env):
         )
 
 
-@pytest.mark.parametrize(
-    ("nobs", "fragment"),
-    [(31, "too short"), (32, "No windows available")],
-)
-def test_o08_window_boundary_band_is_raw_library_exception(fast_env, nobs, fragment):
-    """F1' characterization (аналог НАХОДКИ-1 сертификации Task 139,
-    эмпирия cert140_f1f2_probe.py на моих данных): полоса
-    [input+h, input+h+1] проходит адаптерный гейт и падает СЫРЫМ
-    Exception библиотеки -- вне таксономии ValueError/NeuralContractError
-    адаптера.  После 140a (гейт +2) оракул пересматривается."""
-    with pytest.raises(Exception) as excinfo:
+@pytest.mark.parametrize("nobs", [31, 32])
+def test_o08_window_boundary_band_gets_honest_value_error_before_fit(
+    fast_env, nobs,
+):
+    """F1' ИСПРАВЛЕНА (Task 140a; ранее -- characterization сырой полосы
+    сертификации Task 140): полоса [input+h, input+h+1] -- теперь честный
+    ValueError адаптера (сообщение называет калибровочные окна conformal)
+    ДО фита, а не сырой Exception библиотеки; за границей полосы
+    (n == input+h+2) библиотека обучается честно (O09; проб
+    task140a_fix_probe.py: формула n_min = input+horizon+2 стабильна
+    на 5 конфигах)."""
+    with pytest.raises(ValueError, match="калибров"):
         _nhits_fit_predict(
             my_series()[:nobs], 3, params={"input_size": 28}, random_state=140,
         )
-    message = str(excinfo.value)
-    assert fragment in message
-    assert "N-HiTS: неосуществимое окно" not in message
 
 
 def test_o09_boundary_plus_two_fits_ok(fast_env):
@@ -228,13 +232,14 @@ def test_o09_boundary_plus_two_fits_ok(fast_env):
     assert payload["params"]["input_size"] == 28
 
 
-# ── D. Мёртвые ручки (F2'): characterization + конструкторный spy ────────
+# ── D. Живые ручки (F2' исправлена в Task 140a) ──────────────────────────
 
-def test_o10_hidden_size_is_a_dead_knob(fast_env):
-    """F2' characterization: hidden_size 8 vs 128 -- бит-идентичный
-    прогноз (max|diff|=0.0), при этом params-эхо ЧЕСТНО сообщают
-    переданное значение как будто оно значимо.  Контраст: nbeats
-    hidden_size 8 vs 128 -- живая ручка (max|diff| > 0)."""
+def test_o10_hidden_size_is_a_live_knob(fast_env):
+    """F2' ИСПРАВЛЕНА (Task 140a; ранее -- characterization мёртвой
+    ручки): hidden_size 8 vs 128 -- РАЗЛИЧИМЫЙ прогноз (pair-маппинг
+    mlp_units доходит до конструктора), params-эхо честно значимо.
+    Контраст-конвенция семейства: nbeats hidden_size 8 vs 128 -- тоже
+    живая ручка (Task 139a)."""
     lo = _nhits_fit_predict(
         my_series(), 4, params={"hidden_size": 8}, random_state=140,
     )
@@ -243,7 +248,7 @@ def test_o10_hidden_size_is_a_dead_knob(fast_env):
     )
     assert float(np.abs(
         np.asarray(lo["forecast"]) - np.asarray(hi["forecast"]),
-    ).max()) == 0.0
+    ).max()) > 0.0, "hidden_size не влияет на прогноз (ручка мертва?)"
     assert lo["params"]["hidden_size"] == 8
     assert hi["params"]["hidden_size"] == 128
 
@@ -258,31 +263,37 @@ def test_o10_hidden_size_is_a_dead_knob(fast_env):
     ).max()) > 0.0
 
 
-def test_o11_mlp_layers_is_a_dead_knob_without_index_error(fast_env):
-    """F2' characterization: mlp_layers 1 vs 4 -- бит-идентичный прогноз,
-    БЕЗ IndexError (Task 140 уклонился от crash-режима НАХОДКИ-2
-    сертификации Task 139 тем, что ручка не подключена вовсе)."""
-    one = _nhits_fit_predict(
-        my_series(), 4, params={"mlp_layers": 1}, random_state=140,
-    )
-    four = _nhits_fit_predict(
-        my_series(), 4, params={"mlp_layers": 4}, random_state=140,
-    )
-    assert float(np.abs(
-        np.asarray(one["forecast"]) - np.asarray(four["forecast"]),
-    ).max()) == 0.0
+def test_o11_mlp_layers_range_executable_and_distinguishable(fast_env):
+    """F2' ИСПРАВЛЕНА (Task 140a; ранее -- characterization мёртвой
+    ручки): весь диапазон mlp_layers [1, 4] исполним и попарно различим
+    (pair-маппинг mlp_units = [[hidden, hidden] * layers] -- конвенция
+    пар [in, out] Task 139a; проб task140a_fix_probe.py секция 3)."""
+    assert MLP_LAYERS_BOUNDS == (1, 4)
+    forecasts = {}
+    for value in (1, 2, 3, 4):
+        payload = _nhits_fit_predict(
+            my_series(), 4, params={"mlp_layers": value}, random_state=140,
+        )
+        forecasts[value] = np.asarray(payload["forecast"], dtype=float)
+    for low in (1, 2, 3):
+        for high in (2, 3, 4):
+            if low >= high:
+                continue
+            diff = float(np.abs(forecasts[low] - forecasts[high]).max())
+            assert diff > 0.0, (
+                f"mlp_layers={low} и {high} идентичны -- ручка мертва"
+            )
 
 
 class _SpyDone(Exception):
     """Sentinel: короткое замыкание spy-обёртки train_and_forecast."""
 
 
-def test_o12_constructor_receives_default_mlp_units_regardless_of_knobs(
-    monkeypatch, fast_env,
-):
-    """Конструкторный spy (двухслойный, паттерн M18-урока): при
-    hidden_size=128/mlp_layers=4 модель НЕСЁТ ОФИЦИАЛЬНЫЕ дефолты
-    mlp_units=3*[[512,512]] -- ручки до конструктора не доходят;
+def test_o12_constructor_receives_declared_knobs(monkeypatch, fast_env):
+    """Конструкторный spy (двухслойный, паттерн M18-урока), оракул
+    ИСПРАВЛЕННОГО состояния (Task 140a): при hidden_size=128/mlp_layers=4
+    модель НЕСЕТ pair-маппинг (первый Linear В 128, последний ИЗ 128,
+    скрытые пары (128, 128) x 4 -- дефолт 512 не остаётся нигде);
     interpolation-kwargs ДОХОДЯТ (живая ручка) в обеих конфигурациях."""
     captured: dict = {}
 
@@ -302,18 +313,20 @@ def test_o12_constructor_receives_default_mlp_units_regardless_of_knobs(
         with pytest.raises(_SpyDone):
             _nhits_fit_predict(my_series(), 4, params=params, random_state=140)
         model = captured["model"]
-        # NHITS не хранит mlp_units атрибутом -- фактическая ширина сети
-        # читается из весов блоков: дефолт 3*[[512,512]] даёт 512-ширины
-        # во всех скрытых Linear; проводи ручки hidden_size=128/8 в
-        # конструктор -- 512 нигде бы не осталось.
         widths = [
             tuple(linear.weight.shape)
             for _, linear in model.blocks[0].named_modules()
             if isinstance(linear, torch.nn.Linear)
         ]
+        declared = params["hidden_size"]
         assert widths, "ожидались Linear-слои блока"
-        assert max(shape[0] for shape in widths) == 512
-        assert max(shape[1] for shape in widths) == 512
+        assert widths[0][0] == declared, widths
+        assert widths[-1][1] == declared, widths
+        inner = widths[1:-1]
+        assert len(inner) == params["mlp_layers"], widths
+        assert all(
+            shape == (declared, declared) for shape in inner
+        ), widths
         assert int(model.max_steps) == 321
         assert int(model.random_seed) == 777
         assert int(model.input_size) == DEFAULT_PARAMS["input_size"]
@@ -395,10 +408,17 @@ def test_o16_ds_axis_datetime_positional_and_missing(fast_env):
 
 def _synthetic_preds(rows: int = 4, point: float = 1.0, lower: float = 0.0,
                      upper: float = 2.0) -> pd.DataFrame:
+    """Суффиксы ШИРИНЫ 95.0 (правка width-семантики Task 141a: адаптер
+    извлекает lo-95.0/hi-95.0); дефектные колонки старого запроса
+    lo-2.5/hi-97.5 (48.75/98.75 процентили) присутствуют как ЛОВУШКИ
+    (прецедент O5 cert139_oracles) -- неверный выбор ловушки активирует
+    clamp-гейт в o17."""
     return pd.DataFrame({
         "NHITS": [point] * rows,
-        "NHITS-lo-2.5": [lower] * rows,
-        "NHITS-hi-97.5": [upper] * rows,
+        "NHITS-lo-2.5": [lower + 0.1] * rows,   # ловушка (схлопнута к медиане)
+        "NHITS-hi-97.5": [upper - 0.1] * rows,  # ловушка
+        "NHITS-lo-95.0": [lower] * rows,
+        "NHITS-hi-95.0": [upper] * rows,
     })
 
 
@@ -459,17 +479,22 @@ def test_o22_memory_guard_refuses_below_budget(monkeypatch, fast_env):
 
 # ── G. Уровни интервалов и выбор колонок ─────────────────────────────────
 
-@pytest.mark.parametrize(("alpha", "levels"), [
-    (0.01, (0.5, 50.0, 99.5)),
-    (0.05, (2.5, 50.0, 97.5)),
-    (0.10, (5.0, 50.0, 95.0)),
+@pytest.mark.parametrize(("alpha", "levels", "width"), [
+    (0.01, (0.5, 50.0, 99.5), 99.0),
+    (0.05, (2.5, 50.0, 97.5), 95.0),
+    (0.10, (5.0, 50.0, 95.0), 90.0),
 ])
-def test_o23_alpha_plan_levels(fast_env, alpha, levels):
+def test_o23_alpha_plan_levels(fast_env, alpha, levels, width):
+    """Процентили плана + width-дисклоужер (правка width-семантики
+    Task 141a: metadata дисклоужирует ОБА плана -- levels и ширину
+    запроса)."""
     payload = _nhits_fit_predict(
         my_series(), 4, params={"alpha": alpha}, random_state=140,
     )
     assert payload["intervals"]["alpha"] == alpha
     assert list(payload["intervals"]["levels"]) == list(levels)
+    assert payload["intervals"]["width"] == width
+    assert payload["intervals"]["width"] == interval_width_for_alpha(alpha)
     assert payload["intervals"]["method"] == "conformal"
 
 

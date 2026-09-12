@@ -65,6 +65,8 @@ from apps.api.neural_contract import (
 
 pytest.importorskip("neuralforecast", reason="neural runtime -- опциональная группа")
 
+import torch  # noqa: E402  -- neuralforecast уже требует torch
+
 from apps.api.model_impls import nhits as nhits_module  # noqa: E402
 from apps.api.model_impls.nhits import (  # noqa: E402
     ALPHA_OPTIONS,
@@ -160,6 +162,138 @@ def test_fit_predict_rejects_infeasible_window():
     with pytest.raises(ValueError, match="окно"):
         _nhits_fit_predict(list(np.arange(32, dtype=float)), 4,
                            params={"input_size": 48})
+
+
+# ── 2b. Task 140a -- исправления находок F1'/F2' сертификации Task 140 ───
+
+def test_f1_fix_window_gate_requires_two_conformal_calibration_points(fast_budget):
+    """НАХОДКА F1' сертификации Task 140 (аналог F1 Task 139), исправление
+    Task 140a: гейт `nobs < input_size + horizon` пропускал полосу
+    [input+h, input+h+1], где conformal-конфигурация 3.2.2
+    (PredictionIntervals в fit -- калибровочные окна) отказывала СЫРЫМ
+    Exception библиотеки вне таксономии ValueError адаптера (проб
+    task140a_fix_probe.py, 5 конфигов: 'Time series is too short' на
+    input+h, 'No windows available' на +1, фит OK на +2 -- формула
+    n_min = input_size + horizon + 2 стабильна).  Исправленный гейт
+    `nobs < input_size + horizon + 2` даёт честный ValueError ДО фита
+    на всей полосе; граница n == input+h+2 исполняется честно."""
+    horizon, input_size = 2, 28
+    for n in (input_size + horizon, input_size + horizon + 1):
+        with pytest.raises(ValueError, match="калибров"):
+            _nhits_fit_predict(list(np.arange(n, dtype=float)), horizon,
+                               params={"input_size": input_size},
+                               random_state=140)
+    payload = _nhits_fit_predict(
+        list(np.arange(input_size + horizon + 2, dtype=float)), horizon,
+        params={"input_size": input_size}, random_state=140,
+    )
+    assert len(payload["forecast"]) == horizon
+
+
+def test_f2_fix_pair_mapping_structure():
+    """НАХОДКА F2' сертификации Task 140, исправление Task 140a: ручки
+    hidden_size/mlp_layers доходят до конструктора через pair-маппинг
+    mlp_units -- библиотека читает inner-списки как ПАРЫ [in, out] (та же
+    конвенция, что сертифицирована для NBEATS Task 139a; проб
+    task140a_fix_probe.py: весовая фактура блока следует маппингу --
+    24/40 вместо дефолтных 512, весь диапазон исполним)."""
+    assert nhits_module._mlp_units_kwargs(32, 1)["mlp_units"] == [[32, 32]]
+    assert nhits_module._mlp_units_kwargs(8, 4)["mlp_units"] == [[8, 8]] * 4
+    # Дефолт 2 -- честная ширина 32, а НЕ дефолт библиотеки 3x[[512,512]].
+    assert nhits_module._mlp_units_kwargs(32, 2)["mlp_units"] == [
+        [32, 32], [32, 32],
+    ]
+
+
+def test_f2_fix_hidden_size_reaches_the_constructor(monkeypatch, fast_budget):
+    """F2' исправление: при hidden_size=128/mlp_layers=4 сконструированная
+    модель несёт 128-ширины (дефолт 512 нигде не остаётся); interpolation-
+    kwargs ДОХОДЯТ по-прежнему (живая ручка) в обеих конфигурациях."""
+    captured: dict = {}
+
+    def spy(*, model_factory, config, **_kwargs):
+        probe_budget = {
+            "max_steps": 321, "random_seed": 777, "accelerator": "cpu",
+            "enable_progress_bar": False, "early_stop_patience_steps": -1,
+        }
+        captured["model"] = model_factory(dict(probe_budget))
+        raise _WiringProbeDone()
+
+    monkeypatch.setattr(nhits_module, "train_and_forecast", spy)
+    for params in (
+        {"hidden_size": 128, "mlp_layers": 4},
+        {"interpolation_config": "light", "hidden_size": 8, "mlp_layers": 1},
+    ):
+        with pytest.raises(_WiringProbeDone):
+            _nhits_fit_predict(_series(), 4, params=params, random_state=140)
+        model = captured["model"]
+        widths = [
+            tuple(linear.weight.shape)
+            for _, linear in model.blocks[0].named_modules()
+            if isinstance(linear, torch.nn.Linear)
+        ]
+        assert widths, "ожидались Linear-слои блока"
+        declared_hidden = params["hidden_size"]
+        declared_layers = params["mlp_layers"]
+        # Pair-маппинг доходит до конструктора (исправление F2'): первый
+        # Linear ведёт В hidden, последний -- ИЗ hidden, скрытые пары --
+        # ровно (hidden, hidden) x mlp_layers; дефолт библиотеки 512 не
+        # остаётся нигде (bounded-границы ручек [8, 128] исключают
+        # совпадение).  Крайние измерения (pooled-вход, n_theta выхода) --
+        # геометрия ряда, от ручек не зависят.
+        assert widths[0][0] == declared_hidden, widths
+        assert widths[-1][1] == declared_hidden, widths
+        inner = widths[1:-1]
+        assert len(inner) == declared_layers, widths
+        assert all(
+            shape == (declared_hidden, declared_hidden) for shape in inner
+        ), widths
+        assert int(model.max_steps) == 321
+        assert int(model.random_seed) == 777
+        assert int(model.input_size) == DEFAULT_PARAMS["input_size"]
+        assert model.alias == "NHITS"
+        pools = []
+        for block in model.blocks:
+            kernel = block.pooling_layer.kernel_size
+            pools.append(kernel[0] if isinstance(kernel, tuple) else kernel)
+        if params.get("interpolation_config") == "light":
+            assert pools == [2, 1, 1]
+        else:
+            assert pools == [2, 2, 1]
+
+
+def test_f2_fix_hidden_size_and_mlp_layers_are_live_knobs(fast_budget):
+    """F2' исправление: hidden_size 8 vs 128 и mlp_layers 1 vs 4 дают
+    реально различимые прогнозы (до правки -- literal-dup: max|diff|=0.0
+    по всему диапазону, проб task140a_fix_probe.py секция 2)."""
+    forecasts = {
+        ("hidden_size", value): np.asarray(_nhits_fit_predict(
+            _series(), 4, params={"hidden_size": value}, random_state=21,
+        )["forecast"], dtype=float)
+        for value in (8, 128)
+    }
+    forecasts.update({
+        ("mlp_layers", value): np.asarray(_nhits_fit_predict(
+            _series(), 4, params={"mlp_layers": value}, random_state=21,
+        )["forecast"], dtype=float)
+        for value in (1, 4)
+    })
+    for low, high in ((("hidden_size", 8), ("hidden_size", 128)),
+                      (("mlp_layers", 1), ("mlp_layers", 4))):
+        diff = float(np.abs(forecasts[low] - forecasts[high]).max())
+        assert diff > 0.0, (
+            f"{low} и {high} дают идентичный прогноз "
+            "(ручка мертва -- literal-dup класс)"
+        )
+
+
+def test_horizon_one_still_fits_identity_stacks(fast_budget):
+    """Соседний класс F3' НЕ переносится на NHITS без эмпирии: identity-
+    стеки N-HiTS исполнимы при horizon=1 (проб task140a_fix_probe.py
+    секция 4: 'NHITS h=1: OK') -- регрессионный страж честной
+    исполнимости, гейт НЕ должен отсекать эту конфигурацию."""
+    payload = _nhits_fit_predict(_series(40), 1, random_state=21)
+    assert len(payload["forecast"]) == 1
 
 
 # ── 3. Реальный fit/predict (скоростной бюджет max_steps=3) ──────────────

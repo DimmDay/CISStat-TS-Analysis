@@ -159,12 +159,21 @@ def test_o4_window_and_min_train_gates_distinct_boundaries():
     with pytest.raises(ValueError, match="минимум"):
         _nbeats_fit_predict(list(np.arange(29, dtype=float)), 2,
                             params={"input_size": 28})
-    # (b) n=29, input_size=28, horizon=1: и окно (29 < 28+1+2=31 после
-    # правки F1), и MIN_TRAIN=30 неосуществимы, но MIN_TRAIN проверяется
-    # ПЕРВЫМ -> сообщение MIN_TRAIN (граница снизу).
-    with pytest.raises(ValueError, match="минимум"):
+    # (b) n=29, input_size=28, horizon=1, interpretable: неосуществимая
+    # ПАРА (стек, horizon) -- F3'-гейт (Task 140a, исправление кандидата-
+    # нахождки Task 139a) проверяется ПЕРВЫМ: параметр-инвариант не
+    # зависит от данных (библиотека отвергает trend/seasonality при h=1
+    # при ЛЮБОЙ длине ряда -- проб task140a_fix_probe.py секция 4), поэтому
+    # сообщение о несовместимости честнее MIN_TRAIN.
+    with pytest.raises(ValueError, match="несовместим"):
         _nbeats_fit_predict(list(np.arange(29, dtype=float)), 1,
                             params={"input_size": 28})
+    # (b') MIN_TRAIN-граница снизу теперь на ИСПОЛНИМОЙ паре (generic,
+    # h=1): 29 < 30 -> сообщение MIN_TRAIN.
+    with pytest.raises(ValueError, match="минимум"):
+        _nbeats_fit_predict(list(np.arange(29, dtype=float)), 1,
+                            params={"input_size": 28,
+                                    "stack_config": "generic"})
     # (c) n=30, input=28, horizon=3 -> окно 28+3+2=33 > 30 (правка F1
     # Task 139a) -> ОТДЕЛИМОЕ сообщение гейта окна (адаптер отказывает
     # ДО фита).

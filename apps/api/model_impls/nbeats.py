@@ -17,7 +17,8 @@ N-BEATS) + требования Task 137:
    - interpretable (дефолт) -- каноническая интерпретируемая
      декомпозиция Oreshkin et al. 2019: stack_types=["trend",
      "seasonality"], трендовая/сезонная базы библиотеки (n_polynomials/
-     n_harmonics -- официальные дефолты 3.2.2);
+     n_harmonics -- официальные дефолты 3.2.2); исполнима при
+     horizon >= 2 (F3', см. п. 7);
    - generic -- генеричная basis-expansion сеть: identity-стеки с
      basis='polynomial' (n_basis -- официальный дефолт).
    (поверхность конструктора снята ЭМПИРИЧЕСКИ пробом
@@ -68,7 +69,10 @@ N-BEATS) + требования Task 137:
    закреплённый fault-injection тестом, а не только happy-path ассертом.
 
 7. **Fail-closed**: короткий train (< NBEATS_MIN_TRAIN), NaN/Inf, стек
-   вне whitelist, параметры вне bounded-границ, bool-коэрция
+   вне whitelist, неосуществимая пара (interpretable, horizon=1) --
+   F3' (Task 139a, исправлена Task 140a: библиотека отвергает
+   trend/seasonality при h=1 сырым Exception при любой длине ряда),
+   параметры вне bounded-границ, bool-коэрция
    целочисленных ручек (урок НАХОДКИ-2/M6) -- отказ fold'а БЕЗ
    Naive-fallback и clamp-подмен.
 
@@ -295,6 +299,20 @@ def _nbeats_fit_predict(
             f"N-BEATS: horizon должен быть положительным, получено {horizon!r}"
         )
     normalized = validate_nbeats_params(params)
+    # F3' (кандидат-нахождка Task 139a, исправлена Task 140a): horizon=1
+    # несовместим со стеком 'interpretable' -- библиотека 3.2.2 отвергает
+    # стеки trend/seasonality при h=1 СЫРЫМ Exception при ЛЮБОЙ длине
+    # ряда (проб task140a_fix_probe.py секция 4; generic и NHITS при
+    # h=1 исполнимы -- гейт ТОЛЬКО для interpretable).  Параметр-инвариант
+    # проверяется РАНЬШЕ гейтов данных (MIN_TRAIN/окно): пара
+    # (стек, horizon) неисправима данными.
+    if normalized["stack_config"] == "interpretable" and int(horizon) < 2:
+        raise ValueError(
+            f"N-BEATS: horizon={int(horizon)} несовместим со стеком "
+            "stack_config='interpretable' (стеки trend/seasonality "
+            "библиотека 3.2.2 отвергает при h=1); используйте "
+            "horizon >= 2 или stack_config='generic' (fail-closed)"
+        )
     vector = _validated_target(target)
     nobs = vector.size
     if nobs < NBEATS_MIN_TRAIN:

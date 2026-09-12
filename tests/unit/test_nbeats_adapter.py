@@ -248,6 +248,37 @@ def test_f2_fix_default_path_bit_parity_with_certified_mapping(
     assert float(np.abs(old_forecast - new_forecast).max()) == 0.0
 
 
+# ── 2c. Task 140a -- исправление кандидата-нахождки F3' (Task 139a) ──────
+
+def test_f3_fix_interpretable_stack_requires_horizon_at_least_two(fast_budget):
+    """Кандидат-нахождка F3' (Task 139a), исправление Task 140a: horizon=1
+    несовместим со стеком 'interpretable' -- библиотека 3.2.2 отвергает
+    стеки trend/seasonality при h=1 СЫРЫМ Exception при ЛЮБОЙ длине ряда
+    (проб task140a_fix_probe.py секция 4: 'Horizon `h=1` incompatible with
+    `seasonality` or `trend` in stacks').  Честный adapter-гейт даёт
+    детерминированный ValueError ДО фита; параметр-инвариант проверяется
+    РАНЬШЕ гейтов данных (MIN_TRAIN/окно) -- пара (стек, horizon)
+    неисправима данными."""
+    # Ряд достаточно длинный для MIN_TRAIN=30 и окна (n=40 >= 28+1+2=31):
+    # отказывает именно F3'-гейт, а не гейты данных.
+    with pytest.raises(ValueError, match="несовместим"):
+        _nbeats_fit_predict(list(np.arange(40, dtype=float)), 1,
+                            params={"input_size": 28}, random_state=2026)
+
+
+def test_f3_fix_generic_stack_still_fits_horizon_one(fast_budget):
+    """F3' гейт НЕ должен отсекать исполнимые пары: generic (identity-
+    стеки) при horizon=1 честно исполняется (проб task140a_fix_probe.py
+    секция 4: 'NBEATS generic h=1: OK') -- регрессионный страж
+    расширения гейта за эмпирику."""
+    payload = _nbeats_fit_predict(
+        list(np.arange(40, dtype=float)), 1,
+        params={"input_size": 28, "stack_config": "generic"},
+        random_state=2026,
+    )
+    assert len(payload["forecast"]) == 1
+
+
 # ── 3. Реальный fit/predict (скоростной бюджет max_steps=3) ──────────────
 
 def _series(n: int = 64, seed: int = 8) -> list[float]:

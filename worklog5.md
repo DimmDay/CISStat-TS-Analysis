@@ -694,3 +694,233 @@ TDD RED->GREEN, живая эмпирическая верификация на 
   test.tsx (11 -> 20 кейсов: бейдж-контракт + guard'ы нетронутости)
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@de70239 + перечисленные изменения.
+
+---
+
+## Task 140a -- Гейт окна +2 и оживление ручек hidden_size/mlp_layers в nhits.py (F1'/F2' сертификации Task 140) + исправление кандидата-нахождки F3' (nbeats interpretable x horizon=1) по полному циклу TDD
+
+Дата: 2026-09-13. Синхронизация: main@de70239 (Task 139a -- применённые
+фиксы F1/F2 сертификации Task 139; находка F3' Task 139a в дереве НЕ
+исправлена, characterization cert140_oracles.py красный -- дрейф 5
+оракулов width-правки Task 141a + реестровой актуальности Task 141).
+Постановка тимлида: «вопрос по F3' и срезу 140a (гейт +2 и мёртвые
+ручки в nhits.py -- тот же класс, characterization там по-прежнему
+красный из-за width-дрейфа).  Разберись в данной проблеме и исправь» --
+F3' + F1'/F2' переведены в исполнение по полному циклу AGENTS.md (TDD
+RED->GREEN, проб, мутации, полная регрессия, смоук).
+
+### Постановка (из находок сертификации Task 140 + кандидата-нахождки Task 139a)
+
+- **F1' -- honesty-гэп гейта окна nhits.py** (унаследован от Task 139,
+  аналог F1): гейт `nobs < input_size + horizon` пропускал полосу
+  [input+h, input+h+1], где conformal-конфигурация 3.2.2
+  (PredictionIntervals в fit) отказывала СЫРЫМ Exception библиотеки
+  («Time series is too short» / «No windows available») вне таксономии
+  ValueError/NeuralContractError адаптера.
+- **F2' -- мёртвые ручки hidden_size/mlp_layers** (literal-dup класс):
+  validate_nhits_params bounded-валидацией подтверждает и params-эхо
+  возвращает значения, но в конструктор NHITS ручки НЕ передавались
+  НИКАК -- дефолт библиотеки 3x[[512,512]] навсегда, max|diff|=0.0 по
+  всему диапазону; yaml::nhits param_space содержит hidden_size --
+  ось тюнинга без эффекта.
+- **F3' -- кандидата-нахождка Task 139a**: адаптер nbeats допускает
+  horizon=1, но библиотека 3.2.2 отвергает h=1 со стеками
+  trend/seasonality СЫРЫМ Exception «Horizon `h=1` incompatible with
+  `seasonality` or `trend` in stacks» при ЛЮБОЙ длине ряда.
+- **Дрейф characterization cert140_oracles.py** (мандат среза 140a):
+  5 оракулов красные на de70239 -- width-правка Task 141a не касалась
+  audit-скриптов (O17/O18/O19: _synthetic_preds на дефектных суффиксах
+  lo-2.5/hi-97.5), реестровая актуальность Task 141 (O01: 22 vs 23;
+  O02: dispatch-набор без tft).
+
+### Диагностика (контрольный замер на реальном runtime ДО правки)
+
+scripts/task140a_fix_probe.py (НОВЫЙ, 4 секции; OMP_NUM_THREADS=1,
+CISSTAT_NEURAL_MAX_STEPS=6):
+- F1': прямые вызовы библиотеки (БЕЗ адаптерного гейта) на 5 конфигах
+  (input,h) = (8,2), (16,4), (24,3), (28,2), (48,6): на n=input+h --
+  сырой «Time series is too short», на n=input+h+1 -- сырой «No windows
+  available», на n=input+h+2 -- фит OK: ФОРМУЛА n_min = input+horizon+2
+  СТАБИЛЬНА (та же, что сертифицирована для NBEATS Task 139a).
+- F2' (текущий код до правки): hidden_size (8,32,128) -- max|diff|
+  попарно = [0.0, 0.0]; mlp_layers (1,2,4) -- [0.0, 0.0]: ручки мертвы.
+- F2' (кандидат-маппинг): семантика потребления mlp_units снята по
+  весам блоков (исходник NHITSBlock 3.2.2: первый Linear ->
+  mlp_units[0][0], пары [in, out] -> скрытые слои КАЖДОГО блока,
+  выходной из mlp_units[-1][1]; дефолт 3x[[512,512]]); pair-маппинг
+  [[hidden, hidden] for _ in range(mlp_layers)] -- весь диапазон
+  hidden [8,128] x layers [1,4] исполним (conformal-конфигурация) и
+  попарно различим на репрезентативной сетке (8,1)/(32,2)/(128,4)/(64,3).
+- F3': NBEATS interpretable h=1 -- сырой отказ (все n); interpretable
+  h=2 -- OK; NBEATS generic h=1 -- OK; NHITS h=1 -- OK: гейт
+  ТОЛЬКО для пары (interpretable, horizon=1); NHITS identity-стеки
+  исполнимы при h=1 (перенос гейта на nhits НЕ требуется).
+- Контрольный замер ПОСЛЕ правки (тот же проб): hidden_size (8,32,128)
+  -- max|diff| = [2.037, 3.573]; mlp_layers (1,2,4) -- [3.161, 0.684]:
+  ручки живые.
+
+### Решение
+
+1. **F1' -- гейт окна** (apps/api/model_impls/nhits.py): условие
+   `nobs < input_size + horizon + 2` (supervised-окно ПЛЮС 2
+   калибровочных окна conformal-конфигурации 3.2.2); сообщение гейта
+   называет причину («+ 2 калибровочных окна conformal-конфигурации
+   3.2.2») -- честный ValueError ДО фита на всей полосе
+   [input+h, input+h+1]; граница n == input+h+2 исполняется честно.
+   Docstring-шапка (пункт 4) переписана под формулу с ссылкой на проб.
+2. **F2' -- pair-маппинг**: НОВАЯ функция _mlp_units_kwargs(hidden,
+   mlp_layers) -> {"mlp_units": [[hidden, hidden] for _ in
+   range(mlp_layers)]} -- та же конвенция ПАР [in, out], что
+   сертифицирована для NBEATS (Task 139a); _factory разворачивает
+   **mlp_units_kwargs в КОНСТРУКТОР.  Весь диапазон [8,128]x[1,4]
+   исполним и реально различим.  ОТЛИЧИЕ от 139a: у NBEATS старый
+   маппинг при дефолте layers=2 литерально совпадал с новым
+   (сертифицированный путь бит-неизменен); у NHITS прежний путь строил
+   512-ширины (ручки не передавались вовсе), поэтому честная проводка
+   ручек ИЗМЕНЯЕТ численный прогноз при дефолтных параметрах
+   (hidden=32/layers=2 -> [[32,32],[32,32]] вместо 3x[[512,512]]) --
+   поведение значимо по декларации, эхо params/metadata больше не лжёт
+   (ресертификация; e2e-смоук: nhits mae=2.3488 против 0.4788 --
+   ожидаемое честное следствие, точечный контракт и fail-closed
+   инварианты без изменений).
+3. **F3' -- гейт пары (стек, horizon)** (apps/api/model_impls/nbeats.py):
+   после validate_nbeats_params, РАНЬШЕ гейтов данных (MIN_TRAIN/окно) --
+   параметр-инвариант не зависит от данными и неисправим ими:
+   `if stack_config == "interpretable" and horizon < 2 -> ValueError`
+   («N-BEATS: horizon=1 несовместим со стеком stack_config='interpretable'
+   (стеки trend/seasonality библиотека 3.2.2 отвергает при h=1);
+   используйте horizon >= 2 или stack_config='generic' (fail-closed)»).
+   Generic x h=1 и NHITS x h=1 остаются исполнимыми (проб, секция 4) --
+   гейт НЕ расширяется за эмпирику.
+4. **Ревизия cert140_oracles.py** (мандат среза): O01 -- реестровая
+   актуальность 23 модели (Task 141, прецедент O7 cert139); O02 --
+   dispatch-набор нейро-четверки {lstm, nbeats, nhits, tft}; O03 --
+   ось hidden_size ЖИВАЯ; O08 -- characterization сырой полосы ->
+   оракул исправленного состояния (ValueError «калибров» на n=31/32);
+   O10 -- characterization мёртвой ручки -> ЖИВАЯ ручка (8 vs 128
+   различимы; контраст nbeats сохранён); O11 -- весь диапазон [1,4]
+   исполним и попарно различим; O12 -- конструкторный spy исправленного
+   состояния (первый Linear В hidden, последний ИЗ hidden, скрытые пары
+   (hidden, hidden) x layers, дефолт 512 не остаётся; pools-фактура
+   interpolation сохранена); _synthetic_preds -- суффиксы ШИРИНЫ
+   lo-95.0/hi-95.0 (правка width-семантики Task 141a) с ловушками
+   lo-2.5/hi-97.5 (прецедент O5 cert139); O23 -- width-дисклоужер
+   metadata на всех трёх alpha; docstring модуля переписан.
+5. **Ревизия cert139_oracles.py O4(b)**: для horizon=1+interpretable
+   ожидается F3'-гейт («несовместим») вместо MIN_TRAIN; MIN_TRAIN-
+   граница снизу перенесена на ИСПОЛНИМУЮ пару (generic, h=1) --
+   прецедент 139a (characterization-оракулы пересматриваются при
+   исправлении находок).
+6. **Таксономия/поведение вне находок НЕ менялись**: point-путь,
+   conformal-контур, clamp-инвариант, MIN_TRAIN-гейт, bounded-валидация,
+   bool-коэрция, env-рычаг, ds-ось, width-семантика -- бит-неизменны.
+
+### TDD (RED -> GREEN)
+
+- RED: 7 новых кейсов -- tests/unit/test_nhits_adapter.py секция 2b
+  (5: F1-boundary «калибров» + фит на границе; F2-структура
+  _mlp_units_kwargs; F2-проводка spy'ем с весовой фактурой блока;
+  F2-различимость hidden 8/128 и layers 1/4; страж nhits x h=1
+  исполним) + tests/unit/test_nbeats_adapter.py секция 2c (2: F3-гейт
+  interpretable x h=1 -> ValueError «несовместим»; страж generic x h=1
+  исполним).  Результат: 5 failed / 61 passed -- падения ТОЧНО
+  дефектные (сырой Exception вместо честного ValueError; AttributeError
+  _mlp_units_kwargs; 512-ширины вместо ручек; max|diff|=0.0; F3-сырой
+  Exception), оба стража зелёные.
+- GREEN: правки nhits.py + nbeats.py -> 66/66 в двух адаптерных
+  файлах.  Попутная коррекция ОЖИДАНИЙ по снятой эмпирике: крайние
+  измерения весовой фактуры блока (pooled-вход, n_theta выхода) --
+  геометрия ряда, от ручек НЕ зависят (исходник NHITSBlock) --
+  оракулы прижаты к структуре пар, а не к «всем измерениям <= hidden».
+- Оракулы: cert140_oracles.py + cert139_oracles.py -- 51/51 после
+  ревизии (до: 5 failed на de70239).
+
+### Мутационное тестирование (fresh-subprocess, SHA-контроль)
+
+scripts/audit_scripts/cert140a_mutations.py (НОВЫЙ; протокол
+cert139a_mutations.py; эталон -- байт-копия файла на старте кампании,
+т.к. правки Task 140a незакоммичены; kill-подмножество: оба адаптерных
+тест-файла + cert140/cert139 оракулы):
+- M01 nhits гейт +2 -> +1: KILLED (верхняя кромка полосы уходит в сырой
+  Exception);
+- M02 nhits гейт +2 -> +0 (откат F1'): KILLED;
+- M03 nhits pair-маппинг отключён (откат F2'): KILLED (512-ширины);
+- M04 pair-маппинг -> мёртвая глубина range(2): KILLED;
+- M05 pair-маппинг -> мёртвая ширина 64: KILLED (8/128 сливаются);
+- M06 сообщение теряет калибровочную причину: KILLED (честная
+  диагностика);
+- M07 off-by-one `<=` (граница +2 ошибочно отклоняется): KILLED;
+- M08 nbeats F3'-гейт удалён (откат): KILLED (сырой Exception);
+- M09 F3'-гейт расширен на generic (за эмпирику): KILLED (страж
+  generic x h=1);
+- M10 F3'-сообщение теряет «несовместим»: KILLED (честная диагностика).
+Итог: **10/10 KILLED**; восстановление байт-чистое (SHA-контроль);
+базлайн kill-подмножества после кампании -- 117 passed.
+
+### Верификация
+
+- Полная регрессия: **2398 passed / 0 failed** (unit + api + snapshot 3;
+  6.5 мин) -- арифметика: 2391 базлайн de70239 + 7 новых = 2398.
+  neural-тесты ИСПОЛНЯЛИСЬ (neuralforecast 3.2.2 + torch 2.14.0+cpu --
+  та же пара, на которой сертифицированы Tasks 137-141; окружение
+  восстановлено из requirements.txt + requirements-dev.txt +
+  requirements-neural.txt + prophet 1.4.0 / statsforecast 2.1.1;
+  pip check -- No broken requirements).
+- compileall OK; app-import OK (FastAPI); rules-smoketest exit=0;
+  фронтенд не затронут (git diff -- 0 файлов .ts/.tsx).
+- E2E-смоук актуального момента scripts/task141_e2e_smoke.py (env-рычаг
+  60): ВСЕ ПРОВЕРКИ ПРОЙДЕНЫ (23 connected -> tft ready -> tuning grid
+  8 trials -> quartet-сравнение: nbeats mae=2.1995 БИТ-В-БИТ базлайн
+  Task 141 -- дефолтный путь N-BEATS не тронут (F3'-гейт вне его
+  конфигурации); nhits mae=2.3488 (был 0.4788) -- ожидаемое честное
+  следствие оживления ручек (см. Решение п.2); tft mae=3.3413 без
+  изменений).
+- Dockerfile-пробы N-BEATS и N-HiTS воспроизведены локально:
+  'N-BEATS executable OK' и 'N-HiTS executable OK' (n=38, input=8, h=2:
+  38 >= 8+2+2=12 -- вне полосы; hidden_size=16 теперь честно доходит до
+  конструктора; ассерты проб не зависят от ширины сети).
+- Контрольный замер после правки (проб, секция 2): ручки живые --
+  max|diff| = 2.04/3.57 (hidden 8->32->128) и 3.16/0.68 (layers
+  1->2->4).
+
+### Кандидат-нахождки (вне мандата Task 140a; требуют отдельной постановки)
+
+- НЕ обнаружено новых: соседние классы проверены пробом -- NHITS x h=1
+  исполним (identity-стеки), generic x h=1 исполним; lstm/tft гейты
+  окон (tft -- probabilistic MQLoss БЕЗ conformal-калибровки: потребность
+  +2 не следует переносить без собственного проба; lstm -- свой гейт
+  MIN_TRAIN) -- вне мандата.
+- Поведенческое следствие F2' для эксплуатации: дефолтный nhits-прогноз
+  изменился (32-ширинный MLP вместо 512-ширинного дефолта библиотеки) --
+  исторические OOF-сравнения quartet'а с участием nhits НЕ сопоставимы
+  через границу правки (аналог честной истории width-правки Task 141a:
+  ретроспективный пересчёт не требуется -- интервалы/метрики
+  производные слои своего момента).
+
+### Границы Task 140a (что осознанно НЕ сделано)
+
+- scripts/audit_scripts/cert140_f1f2_probe.py,
+  cert140_mutations.py, task138/139/140/141_e2e_smoke.py НЕ
+  модифицировались -- characterization-артефакты своего момента
+  (прецедент OR11i; актуальные пробы/смоуки -- task140a_fix_probe.py /
+  task141_e2e_smoke.py).
+- yaml::nhits param_space НЕ менялся (hidden_size [32, 64] -- ось стала
+  живой без правки декларации; mlp_layers и раньше был вне param_space
+  -- прецедент nbeats Task 139a).
+- Исторические записи журнала НЕ редактировались (append-only).
+- Frontend/UI -- без изменений.
+
+Изменённые/новые файлы (ZIP: download/task140a_nhits_gate_liveness_f3_fix.zip):
+- НОВЫЕ: scripts/task140a_fix_probe.py,
+  scripts/audit_scripts/cert140a_mutations.py
+- ИЗМЕНЁННЫЕ: apps/api/model_impls/nhits.py (гейт +2 + pair-маппинг
+  _mlp_units_kwargs + docstring-шапки), apps/api/model_impls/nbeats.py
+  (F3'-гейт + docstring-шапки), tests/unit/test_nhits_adapter.py
+  (секция 2b: 5 кейсов + torch-импорт), tests/unit/
+  test_nbeats_adapter.py (секция 2c: 2 кейса),
+  scripts/audit_scripts/cert140_oracles.py (ревизия O01/O02/O03/O08/
+  O10/O11/O12/_synthetic_preds/O23 + docstring),
+  scripts/audit_scripts/cert139_oracles.py (O4(b) под F3'-гейт),
+  worklog5.md (этот журнал)
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@de70239 + перечисленные изменения.

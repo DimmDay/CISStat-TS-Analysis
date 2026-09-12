@@ -33,9 +33,25 @@ neural_runtime.train_and_forecast -- один level-cohort, честное
      n_freq_downsample=[2,1,1] (фактор 2 только на самом грубом
      стеке -- максимум разрешения коротких горизонтов).
    (поверхность конструктора снята ЭМПИРИЧЕСКИ пробом
-   scripts/task140_nhits_probe.py: NHITS использует mlp_units как
-   NBEATS, три identity-стека; обе конфигурации конструируются и
-   фитятся на 3.2.2).
+   scripts/task140_nhits_probe.py: NHITS использует mlp_units как NBEATS,
+   три identity-стека; обе конфигурации конструируются и фитятся на 3.2.2).
+
+1b. **Живые ручки hidden_size/mlp_layers -- pair-маппинг mlp_units**
+   (НАХОДКА F2' сертификации Task 140, исправлена в Task 140a): раньше
+   bounded-ручки validated+echo, но до конструктора НЕ доходили (дефолт
+   библиотеки 3x[[512,512]] навсегда, max|diff|=0.0 по всему диапазону
+   -- literal-dup класс); исправление -- та же конвенция ПАР [in, out],
+   что сертифицирована для NBEATS (Task 139a): mlp_units =
+   [[hidden, hidden] for _ in range(mlp_layers)] (проб
+   task140a_fix_probe.py: весовая фактура блока следует маппингу, весь
+   диапазон hidden [8,128] x layers [1,4] исполним и попарно различим;
+   скрытые слои КАЖДОГО из трёх identity-блоков несут маппинг).
+   Отметка о сертифицированном пути: дефолт (hidden=32, layers=2) даёт
+   mlp_units=[[32,32],[32,32]] -- В ОТЛИЧИЕ от NBEATS (где старый
+   маппинг при layers=2 литерально совпадал с новым), прежний
+   nhits-путь строил 512-ширины, поэтому честная проводка ручек
+   ИЗМЕНЯЕТ численный прогноз при дефолтных параметрах -- ручки
+   значимы, эхо params/metadata больше не лжёт (ресертификация).
 
 2. **ЕДИНСТВЕННАЯ точка импорта torch/neuralforecast** --
    apps/api/model_impls/neural_runtime.py (лениво, fail-closed,
@@ -52,14 +68,18 @@ neural_runtime.train_and_forecast -- один level-cohort, честное
    зависят; НИКАКОГО скрытого ресемплинга/интерполяции/сортировки
    данных.
 
-4. **Гейт неосуществимого окна**: n_train < input_size + horizon --
+4. **Гейт неосуществимого окна**: n_train < input_size + horizon + 2 --
    отказ ДО фита: полностью наблюдаемое supervised-окно (первое окно
-   обучается на input_size точках входа и horizon точках цели).
-   start_padding_enabled=False (официальный дефолт) согласован:
-   библиотека тоже fail-closed (проб: «NHITS requires at least 48
-   training timestamp(s)»), адаптерный гейт даёт детерминированное
-   сообщение до затрат на fit.  Молчаливое ужатие/паддинг окна
-   запрещены.
+   обучается на input_size точках входа и horizon точках цели) ПЛЮС
+   2 калибровочных окна conformal-конфигурации 3.2.2 (PredictionIntervals
+   в fit -- НАХОДКА F1' сертификации Task 140, унаследованная от Task 139,
+   исправлена в Task 140a: на полосе [input+h, input+h+1] библиотека
+   отказывала СЫРЫМ Exception «Time series is too short»/«No windows
+   available» вне таксономии адаптера; формула n_min = input+horizon+2
+   подтверждена пробом task140a_fix_probe.py на 5 конфигах).
+   start_padding_enabled=False (официальный дефолт) согласован; адаптерный
+   гейт даёт детерминированное сообщение до затрат на fit.  Молчаливое
+   ужатие/паддинг окна запрещены.
 
 5. **Интервалы -- официальный conformal-контур контракта Task 137**:
    fit(prediction_intervals=PredictionIntervals()) + predict(level=[...])
@@ -260,6 +280,20 @@ def _interpolation_kwargs(interpolation_config: str) -> dict[str, Any]:
     }
 
 
+def _mlp_units_kwargs(hidden: int, mlp_layers: int) -> dict[str, Any]:
+    """Живые ручки hidden_size/mlp_layers (исправление F2' Task 140a).
+
+    Библиотека читает inner-списки mlp_units как ПАРЫ [in_features,
+    out_features] (та же конвенция, что сертифицирована для NBEATS
+    Task 139a); маппинг [[hidden, hidden] for _ in range(mlp_layers)]
+    задаёт скрытые слои КАЖДОГО из трёх identity-блоков (проб
+    task140a_fix_probe.py: весовая фактура блока следует маппингу --
+    24/40 вместо дефолтных 512; весь диапазон исполним и различим).
+    До исправления ручки были мёртвыми (validated+echo без проводки в
+    конструктор -- дефолт 3x[[512,512]] навсегда, max|diff| = 0.0)."""
+    return {"mlp_units": [[hidden, hidden] for _ in range(mlp_layers)]}
+
+
 def _validated_target(target: Sequence[float]) -> np.ndarray:
     vector = np.asarray([float(value) for value in target], dtype=float)
     if vector.size == 0:
@@ -303,10 +337,11 @@ def _nhits_fit_predict(
             f"N-HiTS: история слишком короткая ({nobs} точек); минимум "
             f"{NHITS_MIN_TRAIN} (NHITS_MIN_TRAIN адаптера Task 140)"
         )
-    if nobs < normalized["input_size"] + int(horizon):
+    if nobs < normalized["input_size"] + int(horizon) + 2:
         raise ValueError(
             f"N-HiTS: неосуществимое окно ({nobs} точек < input_size="
-            f"{normalized['input_size']} + horizon={int(horizon)}); "
+            f"{normalized['input_size']} + horizon={int(horizon)} + 2 "
+            "калибровочных окна conformal-конфигурации 3.2.2); "
             "молчаливое ужатие/паддинг окна запрещены (fail-closed)"
         )
 
@@ -328,6 +363,9 @@ def _nhits_fit_predict(
     interpolation_kwargs = _interpolation_kwargs(
         normalized["interpolation_config"],
     )
+    mlp_units_kwargs = _mlp_units_kwargs(
+        normalized["hidden_size"], normalized["mlp_layers"],
+    )
 
     def _factory(budget: Mapping[str, Any]):
         return model_cls(
@@ -335,6 +373,7 @@ def _nhits_fit_predict(
             input_size=normalized["input_size"],
             alias="NHITS",
             **interpolation_kwargs,
+            **mlp_units_kwargs,
             **dict(budget),
         )
 
@@ -472,6 +511,7 @@ __all__ = [
     "NHITS_MAX_STEPS",
     "NHITS_MIN_TRAIN",
     "_interpolation_kwargs",
+    "_mlp_units_kwargs",
     "_nhits_fit_predict",
     "run_nhits_backtest",
     "validate_nhits_params",
