@@ -2330,3 +2330,157 @@ vertical slice; фронтенд не менялся с 8a00279/M-02). Симп�
 - worklog4.md (эта запись)
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@3960df2 + правка 6 + перечисленные изменения.
+
+---
+
+## Task 140 -- Независимая сертификация (аудит исполненной задачи)
+
+Дата: 2026-09-12. Синхронизация: 412dd36 (Task 140 -- N-HiTS vertical slice,
+третий исполнитель контракта Task 137; предшествуют 7e399fe -- пуш моей
+сертификации Task 139, c225690/8a00279 -- маркетинговые секции).  Особенность
+сессии: origin/main был перезаписан (forced update; ветка backup-before-revert),
+локальные незапушенные правки Task 139a (фиксы НАХОДОК-1/2 nbeats -- гейт +2
+и парный маппинг mlp_units) сохранены stash'ем
+"task139a-f1-f2-fixes-wip-before-140-cert"; аудит выполнен из ЧИСТОГО дерева
+412dd36, аудиторские инструменты не изменяют код задачи.
+
+### Методология аудита
+
+- Прецедент сертификаций 138/139: оракулы на СОБСТВЕННЫХ данных аудитора
+  (синус+тренд+шум, seed=140 -- НЕ фикстуры исполнителя default_rng(8));
+  мутационные тесты fresh-subprocess с SHA-контролем восстановления
+  (каждая мутация применяется к байт-чистому дереву и откатывается со
+  сверкой SHA-256); батч-режим кампании (урок Task 139: фоновые процессы
+  ОС убивает -- гонять foreground).
+- Окружение: боксовый сброс стёр пакеты -- восстановлены ТЕ ЖЕ версии,
+  на которых сертифицированы Tasks 137-139: neuralforecast 3.2.2 +
+  torch 2.14.0+cpu, Python 3.12.14; OMP_NUM_THREADS=1; pip check чист.
+
+### Репродукция претензий исполнителя (все подтвердились бит-в-бит)
+
+- Полная регрессия: **2330 passed / 0 failed** (unit 1605 = 1564 + 41
+  nhits; api 625; прочие 100) -- арифметика исполнителя сходится точно.
+- Проб scripts/task140_nhits_probe.py: PROBE OK (воспроизведён:
+  конструктор/обе конфигурации/conformal/alias/freq=1/same-seed
+  max|diff|=0.0 / cross-seed 0.4399/честный отказ библиотеки).
+- E2E-смоук scripts/task140_e2e_smoke.py: E2E OK -- 22 connected,
+  nhits ready (backtest/tune/diagnostics), tft/deepar catalog_only,
+  OOF 2 folds mae=0.1526, тюнинг 8 trials, legacy mae=0.0682, база
+  сравнения пары nbeats mae=0.1110 / nhits mae=0.1526 -- все цифры
+  бит-в-бит с журналом исполнителя.
+- Dockerfile-проба 'N-HiTS executable OK' воспроизведена локально
+  (38 точек, light, input_size=8).
+- Счётчики 21->22: PRODUCTION_BACKTEST_MODEL_IDS == 22 ("nhits" в
+  составе), _EXPECTED_NEURAL={lstm,nbeats,nhits}, NEURAL_IDS,
+  subprocess-гейты 'ok 22 True' (garch/egarch/var), catalog_only-гейты
+  readiness, dispatch-конвенция трёх нейро-моделей -- все прижаты.
+
+### Собственные оракулы аудитора (scripts/audit_scripts/cert140_oracles.py)
+
+34 оракула, блоки A-H: A -- реестр №22/dispatch/yaml/анти-тампер
+констант; B -- fail-closed валидация (bounds, bool-коэрция, NaN/Inf,
+horizon=0, короткий ряд); C -- гейт окна (честная полоса + characterization
+сырой); D -- мёртвые ручки + конструкторный spy (ширины весов блоков);
+E -- interpolation live/детерминизм/env/ds-ось (мои метки); F --
+fault-injection (clamp/isfinite/длина/capacity/contract-wrap/memory-guard
+Task 138c); G -- уровни interval_levels_for_alpha + точный выбор
+lo/hi-колонок; H -- executor через реестр, session-движок на моих fold'ах,
+справедливая пара nbeats/nhits в ОДНОМ cohort'е на МОИХ данных (постановка
+Task 140 подтверждена независимо), легаси-эндпоинт.  Итог: 34/34 зелёные.
+
+### Мутационная кампания (scripts/audit_scripts/cert140_mutations.py)
+
+22 мутации, 4 файла (nhits.py / model_execution.py / routers/models.py /
+neural_runtime.py / modeling.yaml), kill-подмножество -- cert140_oracles.py
+в свежем subprocess.  Итог: **22/22 KILLED, 0 SURVIVED** -- лучший скор
+сертификаций (Task 138: 16/20, Task 139: 21/21, Task 140: 22/22).
+
+Урок эквивалентного мутанта (M03): снятие адаптерного NaN/Inf-гейта
+ПЕРЕЖИВАЕТ широкий матч "NaN/Inf" -- контрактный слой to_long_format
+дублирует fail-closed глубже ("значения ряда содержат NaN/Inf; контракт
+не выполняет...").  Оракул O6 усилен пином УНИКАЛЬНОЙ фразы адаптера
+("импутация запрещена") -- мутация убита.  Defense-in-depth не обязан
+быть единственным: kill-оракул обязан различать СЛОЙ отказа.
+
+### НАХОДКА-1 (F1', латентная, не-блокирующая) -- унаследованный дефект гейта окна
+
+Гейт неосуществимого окна nhits.py: `nobs < input_size + horizon` --
+БЕЗ +2, ровно как у nbeats.py до Task 139a (НАХОДКА-1 моей сертификации
+Task 139).  Конформный контур 3.2.2 (PredictionIntervals) требует
+n >= input_size + horizon + 2; эмпирия на МОИХ данных (input=28, h=3,
+проб cert140_f1f2_probe.py): n=30 -- честный ValueError адаптера
+«неосуществимое окно»; n=31 -- СЫРОЕ "Exception: Time series is too
+short for training..."; n=32 -- СЫРОЕ "Exception: No windows available
+for training" (обе -- raise Exception в _base_model.py:936/1004, ВНЕ
+таксономии ValueError/NeuralContractError адаптера); n=33 -- FIT OK.
+Смягчение -- то же, что в Task 139: BacktestExecutionError движка
+оборачивает ЛЮБОЕ исключение fold'а честно, readiness-гейт каталога
+min_observations=200 срабатывает раньше на проде.  Characterization-
+оракул O8 зафиксирован; после потенциального 140a -- пересмотреть.
+Рекомендация: гейт `nobs < input_size + horizon + 2` + уточнение
+сообщения (фикс-паттерн готов в stash Task 139a для nbeats --
+переносится на nhits механически).
+
+### НАХОДКА-2 (F2', латентная, не-блокирующая) -- мёртвые ручки hidden_size/mlp_layers (НОВЫЙ класс metadata-lie)
+
+validate_nhits_params bounded-валидацией подтверждает hidden_size [8,128]
+и mlp_layers [1,4], params/metadata ЭХОМ возвращают значения, yaml::nhits
+param_space содержит ось hidden_size [32,64] с комментарием «ограничивают
+сложность против переобучения», журнал исполнителя декларирует
+«hidden_size [8,128] (-> mlp_units [[h]*mlp_layers]*3 -- ТРИ стека)» --
+НО фабрика _nhits_fit_predict НЕ передаёт hidden_size/mlp_units/
+mlp_layers в конструктор ВООБЩЕ (у NHITS 3.2.2 параметра hidden_size нет;
+конструктор получает только h/input_size/alias/interpolation-kwargs/
+бюджет).  Эмпирия на моих данных: hidden_size 8/32/128 -> max|diff|=0.0;
+mlp_layers 1/2/4 -> max|diff|=0.0 (БЕЗ IndexError -- от crash-режима
+НАХОДКИ-2 Task 139 Task 140 уклонился, не подключив ручки вовсе);
+конструкторный spy O12: ширины ВСЕХ скрытых Linear блоков -- дефолтные
+512 (mlp_units=3*[[512,512]] навсегда).  Контраст: nbeats hidden_size
+8 vs 128 -> max|diff|=10.78 -- семейная конвенция «bounded-ручка живая»
+нарушена.  Следствия: (1) ось тюнинга без эффекта -- 4 из 8 trials
+грида различаются только мёртвым hidden_size, выбор «лучшего» --
+шум; (2) metadata/params/yaml-комментарий лгут о фактической модели
+(literal-dup класс артефаков -- тот же, что НАХОДКА-1/M18 Task 138:
+«metadata не должна лгать о фактическом бюджете»); (3) единственная
+живая структурная ручка -- interpolation_config (hierarchical vs light:
+max|diff|=5.91 на моих данных, spy: MaxPool-ядра [2,2,1]/[2,1,1] --
+обещание постановки «готовая база сравнения» на этой оси ВЫПОЛНЕНО).
+Рекомендация (основа 140a): строить mlp_units из hidden_size/mlp_layers
+с ПАРНОЙ семантикой 3.2.2 (урок F2 Task 139: inner-списки читаются
+парами [in, out]) -- например [[h, h] * mlp_layers] на каждый из трёх
+стеков; после фикса characterization-оракулы D-блока (O10/O11/O12)
+пересматриваются в тесты живости ручек.
+
+### Косметика
+
+- Журнал исполнителя оценил адаптер «~490 строк», фактически 463
+  (прецедент Task 139: «~530» vs 450).
+- worklog-формулировка «короткий ряд -- честный отказ» для legacy-эндпоинта
+  неточна в крае вырожденного сплита (пустой y_train/y_test -> нулевые
+  метрики) -- НО это семейный паттерн lstm/nbeats, сертифицированный
+  дважды; новой находкой Task 140 не является.
+
+### Вердикт
+
+**СЕРТИФИЦИРОВАНА.**  Реестр №22, условный dispatch, readiness, yaml,
+e2e-цепочка, справедливая база сравнения N-BEATS/N-HiTS на одном runtime
+-- исполнены честно и прижаты (регрессия 2330/0, оракулы 34/34, мутации
+22/22 KILLED).  Обе находки (F1' -- унаследованный гейт без +2; F2' --
+мёртвые ручки) -- латентные и не-блокирующие: прод-движок смягчает обе
+(BacktestExecutionError, readiness 200), каталог/постановку не ломают;
+F2' при этом -- новый класс «metadata-lie о фактической модели», который
+рекомендуется закрыть фикс-срезом 140a ВМЕСТЕ с F1' (оба фикса
+механически готовы по паттерну stash Task 139a).
+
+### Инструменты аудита (ZIP: download/task140_certification_worklog4.zip)
+
+- scripts/audit_scripts/cert140_oracles.py -- 34 оракула (A-H), данные
+  seed=140; запуск: OMP_NUM_THREADS=1 python3 -m pytest
+  scripts/audit_scripts/cert140_oracles.py
+- scripts/audit_scripts/cert140_mutations.py -- 22 мутации, батч-режим;
+  запуск: OMP_NUM_THREADS=1 python3 scripts/audit_scripts/cert140_mutations.py
+  (или с явным списком: ... M01 M02 ...)
+- scripts/audit_scripts/cert140_f1f2_probe.py -- эмпирический проб
+  boundary-полосы гейта и мёртвых ручек на данных аудитора.
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  412dd36 + аудиторские скрипты (untracked).
