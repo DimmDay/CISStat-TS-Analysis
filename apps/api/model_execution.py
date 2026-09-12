@@ -788,8 +788,11 @@ def _lstm_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     Одномерная level-модель (objective="level_forecast",
     input_kind="univariate"): точечный прогноз -- честный нейро-фит на
     train-срезе fold'а; интервалы -- официальный conformal-контур
-    контракта (fit prediction_intervals + predict level), уровни из
-    interval_levels_for_alpha.  Ячейка cell_type ∈ {LSTM, GRU} --
+    контракта (fit prediction_intervals + predict level); запрашивается
+    ШИРИНА интервала w=100*(1-alpha) из interval_width_for_alpha --
+    суффиксы '-lo-<w>'/'-hi-<w>' отклика 3.2.2 кодируют ширину, НЕ
+    прямой квантиль (НАХОДКА Task 141 п.2, правка width-семантики
+    тройки).  Ячейка cell_type ∈ {LSTM, GRU} --
     bounded-параметр (yaml::lstm param_space, честная альтернатива
     каталожного имени «LSTM / GRU»).  Детерминизм: random_state реестра
     доходит до КОНСТРУКТОРА модели (ресертификация Task 137).  Бюджет
@@ -834,7 +837,10 @@ def _nbeats_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     input_kind="univariate"; каталог: supports_exogenous=false): точечный
     прогноз -- честный нейро-фит на train-срезе fold'а; интервалы --
     официальный conformal-контур контракта (fit prediction_intervals +
-    predict level), уровни из interval_levels_for_alpha.  Архитектурный
+    predict level); запрашивается ШИРИНА интервала w=100*(1-alpha) из
+    interval_width_for_alpha -- суффиксы '-lo-<w>'/'-hi-<w>' отклика
+    3.2.2 кодируют ширину, НЕ прямой квантиль (НАХОДКА Task 141 п.2,
+    правка width-семантики тройки).  Архитектурный
     выбор стека stack_config ∈ {interpretable, generic} -- bounded-параметр
     (yaml::nbeats param_space, честная альтернатива каталожного описания
     «Basis expansion network. Интерпретируемая декомпозиция (тренд +
@@ -882,7 +888,10 @@ def _nhits_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
     input_kind="univariate"; каталог: supports_exogenous=false): точечный
     прогноз -- честный нейро-фит на train-срезе fold'а; интервалы --
     официальный conformal-контур контракта (fit prediction_intervals +
-    predict level), уровни из interval_levels_for_alpha.  Архитектурный
+    predict level); запрашивается ШИРИНА интервала w=100*(1-alpha) из
+    interval_width_for_alpha -- суффиксы '-lo-<w>'/'-hi-<w>' отклика
+    3.2.2 кодируют ширину, НЕ прямой квантиль (НАХОДКА Task 141 п.2,
+    правка width-семантики тройки).  Архитектурный
     выбор степени иерархической интерполяции interpolation_config ∈
     {hierarchical, light} -- bounded-параметр (yaml::nhits param_space,
     честная альтернатива каталожного описания «Hierarchical interpolation

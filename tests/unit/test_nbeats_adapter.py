@@ -56,6 +56,7 @@ from apps.api.neural_contract import (
     NeuralRuntimeCapacityError,
     NeuralTrainingConfig,
     interval_levels_for_alpha,
+    interval_width_for_alpha,
 )
 
 pytest.importorskip("neuralforecast", reason="neural runtime -- опциональная группа")
@@ -198,6 +199,43 @@ def test_conformal_intervals_match_the_alpha_plan(fast_budget):
     assert len(lower) == len(upper) == 4
 
 
+def test_conformal_request_and_extraction_use_width_semantics(monkeypatch, fast_budget):
+    """НАХОДКА Task 141 п.2 (level-семантика 3.2.2): суффиксы '-lo-<w>'/
+    '-hi-<w>' кодируют ШИРИНУ интервала (50±w/2 процентили), а НЕ прямой
+    квантиль.  Двустороннему плану (1-alpha) соответствует ШИРИНА
+    w=100*(1-alpha): level=[95.0] -> lo-95.0/hi-95.0 = 2.5/97.5
+    процентили; запрос процентилей плана как ширин давал бы 'lo-2.5' =
+    48.75-й процентиль (схлопывание к медиане).  Оракул различимыми
+    значениями: адаптер обязан взять колонки ширины 95.0."""
+    captured: dict = {}
+
+    def fake_train(*, model_factory, config, levels=(), **_kwargs):
+        captured["levels"] = tuple(float(level) for level in levels)
+        return pd.DataFrame({
+            "NBEATS": [1.0] * 4,
+            "NBEATS-lo-2.5": [0.9] * 4,     # дефектная колонка (48.75-й процентиль)
+            "NBEATS-hi-97.5": [1.1] * 4,    # дефектная колонка (98.75-й процентиль)
+            "NBEATS-lo-95.0": [0.0] * 4,    # ширина 95: 2.5-й процентиль
+            "NBEATS-hi-95.0": [2.0] * 4,    # ширина 95: 97.5-й процентиль
+        })
+
+    monkeypatch.setattr(nbeats_module, "train_and_forecast", fake_train)
+    payload = _nbeats_fit_predict(_series(), 4)
+    # Запрос: ШИРИНА w=100*(1-alpha), а НЕ процентили плана (2.5, 50.0, 97.5).
+    assert captured["levels"] == (interval_width_for_alpha(0.05),)
+    # Извлечение: колонки ширины 95.0 -- честные 2.5/97.5 процентили.
+    np.testing.assert_array_equal(
+        np.asarray(payload["lower"], dtype=float), np.full(4, 0.0),
+    )
+    np.testing.assert_array_equal(
+        np.asarray(payload["upper"], dtype=float), np.full(4, 2.0),
+    )
+    # Metadata честно дисклоужирует и процентили плана, и фактическую ширину.
+    assert payload["intervals"]["alpha"] == 0.05
+    assert list(payload["intervals"]["levels"]) == [2.5, 50.0, 97.5]
+    assert payload["intervals"]["width"] == 95.0
+
+
 def test_same_seed_gives_bit_identical_forecast(fast_budget):
     a = _nbeats_fit_predict(_series(), 4, random_state=21)
     b = _nbeats_fit_predict(_series(), 4, random_state=21)
@@ -282,10 +320,13 @@ def test_fault_injected_broken_bounds_are_rejected(monkeypatch, fast_budget):
     живой гейт, закреплённый fault-injection тестом (happy-path никогда
     не нарушает границы, поэтому нужен явный ломающий монитор)."""
     def broken_train(*, model_factory, **_kwargs):
+        # Суффиксы ширины 95.0 (НАХОДКА Task 141 п.2): после правки
+        # адаптер извлекает lo-95.0/hi-95.0 -- только они нарушают
+        # инвариант в этом ломающем мониторе.
         return pd.DataFrame({
             "NBEATS": [1.0, 1.0, 1.0, 1.0],
-            "NBEATS-lo-2.5": [5.0] * 4,
-            "NBEATS-hi-97.5": [6.0] * 4,
+            "NBEATS-lo-95.0": [5.0] * 4,
+            "NBEATS-hi-95.0": [6.0] * 4,
         })
 
     monkeypatch.setattr(nbeats_module, "train_and_forecast", broken_train)

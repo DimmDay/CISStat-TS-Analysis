@@ -525,7 +525,16 @@ class NeuralIntervalPlan:
 
 
 def interval_levels_for_alpha(alpha: float) -> NeuralIntervalPlan:
-    """Симметричные уровни (в процентах) из двусторонней alpha, включая медиану."""
+    """Симметричные уровни (в процентилях) из двусторонней alpha, включая медиану.
+
+    ВАЖНО (НАХОДКА Task 141 п.2): возвращаемые levels -- ПРОЦЕНТИЛИ плана
+    (границы при alpha/2 и 1-alpha/2), это СЕМАНТИКА интервала, а НЕ
+    значения параметра ``level`` neuralforecast 3.2.2.  У того суффиксы
+    колонок '-lo-<w>'/'-hi-<w>' кодируют ШИРИНУ интервала: передача
+    levels в predict(level=[...]) даёт колонки 50±w/2 процентилей
+    ('lo-2.5' = 48.75-й процентиль -- схлопывание к медиане).  Для
+    запроса отклика 3.2.2 используйте interval_width_for_alpha.
+    """
     if not isinstance(alpha, (int, float)) or not 0.0 < float(alpha) < 1.0:
         raise NeuralContractError(
             f"alpha обязана быть в (0, 1), получено {alpha!r}"
@@ -534,6 +543,26 @@ def interval_levels_for_alpha(alpha: float) -> NeuralIntervalPlan:
     lo = round(100.0 * alpha / 2.0, 6)
     hi = round(100.0 * (1.0 - alpha / 2.0), 6)
     return NeuralIntervalPlan(alpha=alpha, levels=(lo, 50.0, hi))
+
+
+def interval_width_for_alpha(alpha: float) -> float:
+    """ШИРИНА интервала w = 100*(1-alpha) для отклика neuralforecast 3.2.2.
+
+    НАХОДКА Task 141 п.2 (эмпирика исходников 3.2.2: level_to_outputs/
+    quantiles_to_outputs round(100-200*q, 2) + conformal
+    add_conformal_distribution_intervals alphas=[100-lv]; контрольный
+    замер scripts/task141_fix_width_semantics_probe.py): суффиксы колонок
+    '-lo-<w>'/'-hi-<w>' кодируют ШИРИНУ интервала -- границы при
+    50±w/2 процентилях, а НЕ прямой квантиль.  Двустороннему плану
+    (1-alpha) соответствует w=100*(1-alpha): для alpha=0.05 ширина 95.0
+    даёт колонки lo-95.0/hi-95.0 = 2.5/97.5 процентили (round(..., 2) --
+    конвенция суффиксов quantiles_to_outputs 3.2.2).
+    """
+    if not isinstance(alpha, (int, float)) or not 0.0 < float(alpha) < 1.0:
+        raise NeuralContractError(
+            f"alpha обязана быть в (0, 1), получено {alpha!r}"
+        )
+    return round(100.0 * (1.0 - float(alpha)), 2)
 
 
 def resolve_probabilistic_loss(

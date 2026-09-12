@@ -39,6 +39,7 @@ from apps.api.neural_contract import (
     NeuralContractError,
     NeuralTrainingConfig,
     interval_levels_for_alpha,
+    interval_width_for_alpha,
 )
 
 pytest.importorskip("neuralforecast", reason="neural runtime -- опциональная группа")
@@ -158,6 +159,46 @@ def test_conformal_intervals_match_the_alpha_plan(fast_budget):
     assert len(lower) == len(upper) == 4
 
 
+def test_conformal_request_and_extraction_use_width_semantics(monkeypatch, fast_budget):
+    """НАХОДКА Task 141 п.2 (level-семантика 3.2.2): суффиксы '-lo-<w>'/
+    '-hi-<w>' отклика neuralforecast кодируют ШИРИНУ интервала (границы
+    при 50±w/2 процентилях), а НЕ прямой квантиль.  Двустороннему плану
+    (1-alpha) соответствует ШИРИНА w=100*(1-alpha): для alpha=0.05 --
+    level=[95.0] (колонки lo-95.0/hi-95.0 = 2.5/97.5 процентили).
+    Запрос процентилей плана как ширин давал бы 'lo-2.5' = 48.75-й
+    процентиль -- схлопывание нижней границы к медиане (контрольный
+    замер scripts/task141_fix_width_semantics_probe.py).  Оракул
+    различимыми значениями: адаптер обязан взять колонки ширины 95.0,
+    а не дефектные lo-2.5/hi-97.5."""
+    captured: dict = {}
+
+    def fake_train(*, model_factory, config, levels=(), **_kwargs):
+        captured["levels"] = tuple(float(level) for level in levels)
+        return pd.DataFrame({
+            "LSTM": [1.0] * 4,
+            "LSTM-lo-2.5": [0.9] * 4,     # дефектная колонка (48.75-й процентиль)
+            "LSTM-hi-97.5": [1.1] * 4,    # дефектная колонка (98.75-й процентиль)
+            "LSTM-lo-95.0": [0.0] * 4,    # ширина 95: 2.5-й процентиль
+            "LSTM-hi-95.0": [2.0] * 4,    # ширина 95: 97.5-й процентиль
+        })
+
+    monkeypatch.setattr(lstm_module, "train_and_forecast", fake_train)
+    payload = _lstm_fit_predict(_series(), 4)
+    # Запрос: ШИРИНА w=100*(1-alpha), а НЕ процентили плана (2.5, 50.0, 97.5).
+    assert captured["levels"] == (interval_width_for_alpha(0.05),)
+    # Извлечение: колонки ширины 95.0 -- честные 2.5/97.5 процентили.
+    np.testing.assert_array_equal(
+        np.asarray(payload["lower"], dtype=float), np.full(4, 0.0),
+    )
+    np.testing.assert_array_equal(
+        np.asarray(payload["upper"], dtype=float), np.full(4, 2.0),
+    )
+    # Metadata честно дисклоужирует и процентили плана, и фактическую ширину.
+    assert payload["intervals"]["alpha"] == 0.05
+    assert list(payload["intervals"]["levels"]) == [2.5, 50.0, 97.5]
+    assert payload["intervals"]["width"] == 95.0
+
+
 def test_same_seed_gives_bit_identical_forecast(fast_budget):
     a = _lstm_fit_predict(_series(), 4, random_state=21)
     b = _lstm_fit_predict(_series(), 4, random_state=21)
@@ -268,10 +309,13 @@ def test_fault_injected_broken_bounds_are_rejected(monkeypatch, fast_budget):
     границы, поэтому нужен явный ломающий монитор)."""
 
     def broken_train(*, model_factory, **_kwargs):
+        # Суффиксы ширины 95.0 (НАХОДКА Task 141 п.2): после правки
+        # адаптер извлекает lo-95.0/hi-95.0 -- только они нарушают
+        # инвариант в этом ломающем мониторе.
         return pd.DataFrame({
             "LSTM": [1.0, 1.0, 1.0, 1.0],
-            "LSTM-lo-2.5": [5.0] * 4,
-            "LSTM-hi-97.5": [6.0] * 4,
+            "LSTM-lo-95.0": [5.0] * 4,
+            "LSTM-hi-95.0": [6.0] * 4,
         })
 
     monkeypatch.setattr(lstm_module, "train_and_forecast", broken_train)

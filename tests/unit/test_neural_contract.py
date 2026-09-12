@@ -49,6 +49,7 @@ from apps.api.neural_contract import (
     checkpoint_policy,
     fold_seed,
     interval_levels_for_alpha,
+    interval_width_for_alpha,
     neural_cohort_contract,
     neural_worker_capabilities,
     resolve_neural_device,
@@ -373,6 +374,44 @@ class TestProbabilisticContract:
             interval_levels_for_alpha(1.0)
         with pytest.raises(NeuralContractError, match="alpha"):
             interval_levels_for_alpha(-0.1)
+
+    # ── НАХОДКА Task 141 п.2: level-семантика 3.2.2 ─────────────────────
+    # Суффиксы '-lo-<w>'/'-hi-<w>' отклика neuralforecast 3.2.2 кодируют
+    # ШИРИНУ интервала w (границы при 50±w/2 процентилях), а НЕ прямой
+    # квантиль.  Двустороннему (1-alpha) плану соответствует ШИРИНА
+    # w=100*(1-alpha) -- единый источник истины контракта.
+
+    def test_interval_width_for_alpha_values(self):
+        assert interval_width_for_alpha(0.01) == 99.0
+        assert interval_width_for_alpha(0.05) == 95.0
+        assert interval_width_for_alpha(0.10) == 90.0
+        assert interval_width_for_alpha(0.20) == 80.0
+
+    def test_interval_width_round_trips_the_percentile_plan(self):
+        """Ключевой семантический оракул: колонки ширины w садятся ровно
+        на процентили плана -- 50-w/2 == levels[0], 50+w/2 == levels[-1].
+        Против дефекта 'lo-2.5 == 48.75-й процентиль' (Task 141)."""
+        for alpha in (0.01, 0.05, 0.10, 0.20):
+            plan = interval_levels_for_alpha(alpha)
+            width = interval_width_for_alpha(alpha)
+            assert round(50.0 - width / 2.0, 6) == plan.levels[0]
+            assert round(50.0 + width / 2.0, 6) == plan.levels[-1]
+
+    def test_interval_width_is_not_the_percentile_level_itself(self):
+        """Анти-регрессия буквальной путаницы: ширина 95.0 НЕ равна
+        верхнему уровню плана 97.5 и нижнему 2.5 (запрос 'уровней' вместо
+        ширины давал бы колонки lo-2.5/hi-97.5 -- дефект тройки)."""
+        width = interval_width_for_alpha(0.05)
+        plan = interval_levels_for_alpha(0.05)
+        assert width not in plan.levels
+
+    def test_interval_width_fail_closed_on_alpha_out_of_range(self):
+        with pytest.raises(NeuralContractError, match="alpha"):
+            interval_width_for_alpha(0.0)
+        with pytest.raises(NeuralContractError, match="alpha"):
+            interval_width_for_alpha(1.0)
+        with pytest.raises(NeuralContractError, match="alpha"):
+            interval_width_for_alpha(-0.1)
 
     def test_resolve_allowed_point_loss(self):
         assert resolve_probabilistic_loss("mae") == "mae"

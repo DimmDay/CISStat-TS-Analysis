@@ -23,9 +23,13 @@ scripts/task137_neural_api_probe.py):
    (детерминизм устройства на CPU/GPU-воркерах, честные capabilities, правило D06).
 3. **Квантильные выходы point-loss моделей** -- conformal-путь:
    fit(prediction_intervals=PredictionIntervals()) + predict(level=[...])
-   -> колонки <Model>-lo-<level>/<Model>-hi-<level>; probabilistic потери
-   (MQLoss; QuantileLoss в 3.2.2 сломана -- проб scripts/task137_neural_api_probe.py)
-   дают квантили без conformal.
+   -> колонки <Model>-lo-<w>/<Model>-hi-<w>; параметр ``level`` 3.2.2 --
+   ШИРИНА интервала (границы при 50±w/2 процентилях -- НАХОДКА
+   Task 141 п.2: суффиксы '-lo-<w>'/'-hi-<w>' кодируют ширину, НЕ
+   прямой квантиль; для двустороннего (1-alpha) передавайте
+   interval_width_for_alpha, а НЕ процентили плана).  Probabilistic
+   потери (MQLoss; QuantileLoss в 3.2.2 сломана -- проб
+   scripts/task137_neural_api_probe.py) дают квантили без conformal.
 4. **Детерминизм/сид**: BaseModel 3.2.2 ПЕРЕЗАСЕИВАЕТ весь раном в
    __init__ (pl.seed_everything(random_seed) -- по умолчанию 1) и повторно
    в on_fit_start, поэтому fold_seed контракта прокидывается В КОНСТРУКТОР
@@ -209,9 +213,12 @@ def train_and_forecast(
     конструктора (``random_seed``): BaseModel neuralforecast 3.2.2
     перезасеивает весь раном в __init__/on_fit_start, поэтому сид,
     посеянный только снаружи, был бы затёрт дефолтом random_seed=1
-    (блокирующая находка сертификации Task 137).  ``levels`` --
-    проценты интервалов (например (10.0, 90.0) из NeuralIntervalPlan
-    контракта): включают conformal-режим fit(prediction_intervals=...).
+    (блокирующая находка сертификации Task 137).  ``levels`` -- ШИРИНЫ
+    интервалов w (проценты) для параметра ``level`` predict 3.2.2:
+    суффиксы колонок '-lo-<w>'/'-hi-<w>' кодируют ширину (границы при
+    50±w/2 процентилях -- НАХОДКА Task 141 п.2); для двустороннего
+    (1-alpha) плана передавайте width=100*(1-alpha)
+    (interval_width_for_alpha контракта), а НЕ процентили плана.
     ``futr_df`` обязателен, если у модели futr_exog_list (контракт
     валидирует покрытие заранее); ``static_df`` -- одна строка на unique_id.
 

@@ -220,6 +220,17 @@ def test_quantile_plan_maps_alpha_to_direct_quantiles():
         assert _quantile_plan(alpha)["width"] == width
 
 
+def test_quantile_plan_width_is_the_contract_width():
+    """Единый источник истины (НАХОДКА Task 141 п.2): ширина плана TFT
+    берётся из interval_width_for_alpha контракта -- той же функции, что
+    и у исправленной тройки lstm/nbeats/nhits (ресертификация
+    width-семантики), а не из локального дубля."""
+    from apps.api.neural_contract import interval_width_for_alpha
+
+    for alpha in (0.01, 0.05, 0.10, 0.20):
+        assert _quantile_plan(alpha)["width"] == interval_width_for_alpha(alpha)
+
+
 def test_fit_predict_payload_contract(fast_budget):
     payload = _tft_fit_predict(_series(), 5)
     assert payload["adapter_id"] == TFT_ADAPTER_ID

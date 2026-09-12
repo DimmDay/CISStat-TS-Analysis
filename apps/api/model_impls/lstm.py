@@ -30,10 +30,15 @@ LSTM/GRU) + требования Task 137:
 
 4. **Интервалы -- официальный conformal-контур контракта Task 137**:
    fit(prediction_intervals=PredictionIntervals()) + predict(level=[...])
-   -> колонки <Model>-lo-<level>/<Model>-hi-<level>; уровни -- из
-   сертифицированного interval_levels_for_alpha (двусторонняя alpha,
-   включая медиану).  Никаких «MC Dropout / deep ensembles», которых в
-   коде нет (каталог обновлён комментарием Task 138).
+   -> колонки <Model>-lo-<w>/<Model>-hi-<w>; запрашивается ШИРИНА
+   интервала w = 100*(1-alpha) из interval_width_for_alpha -- суффиксы
+   '-lo-<w>'/'-hi-<w>' отклика 3.2.2 кодируют ШИРИНУ (границы при
+   50±w/2 процентилях), а НЕ прямой квантиль (НАХОДКА Task 141 п.2:
+   запрос процентилей плана interval_levels_for_alpha как ширин давал
+   бы 'lo-2.5' = 48.75-й процентиль -- схлопывание к медиане; правка
+   width-семантики, ресертификация тройки).  Никаких «MC Dropout /
+   deep ensembles», которых в коде нет (каталог обновлён комментарием
+   Task 138).
 
 5. **Fail-closed**: короткий train (< LSTM_MIN_TRAIN), NaN/Inf, ячейка
    вне whitelist, параметры вне bounded-границ, пустой/нефинитный
@@ -72,6 +77,7 @@ from apps.api.neural_contract import (
     NeuralRuntimeCapacityError,
     NeuralTrainingConfig,
     interval_levels_for_alpha,
+    interval_width_for_alpha,
 )
 from apps.api.model_impls.neural_runtime import train_and_forecast
 from apps.api.schemas import BacktestMetrics
@@ -291,7 +297,13 @@ def _lstm_fit_predict(
             **dict(budget),
         )
 
+    # НАХОДКА Task 141 п.2 (width-семантика 3.2.2): план уровней --
+    # процентили интервала (metadata); в runtime уходит ШИРИНА
+    # w=100*(1-alpha) -- суффиксы '-lo-<w>'/'-hi-<w>' отклика 3.2.2
+    # кодируют ширину, запрос процентилей плана как ширин давал бы
+    # 'lo-2.5' = 48.75-й процентиль (схлопывание к медиане).
     plan = interval_levels_for_alpha(normalized["alpha"])
+    width = interval_width_for_alpha(normalized["alpha"])
     try:
         preds = train_and_forecast(
             model_factory=_factory,
@@ -299,7 +311,7 @@ def _lstm_fit_predict(
             train_long=long,
             horizon=int(horizon),
             config=config,
-            levels=plan.levels,
+            levels=(width,),
             fold_index=0,
         )
     except NeuralRuntimeCapacityError:
@@ -317,8 +329,8 @@ def _lstm_fit_predict(
             f"без точечного прогноза '{model_name}' (fail-closed)"
         )
     point = preds[model_name].to_numpy(dtype=float)
-    lower = _interval_column(preds, model_name, "lo", float(plan.levels[0]))
-    upper = _interval_column(preds, model_name, "hi", float(plan.levels[-1]))
+    lower = _interval_column(preds, model_name, "lo", width)
+    upper = _interval_column(preds, model_name, "hi", width)
 
     if len(point) != int(horizon):
         raise ValueError(
@@ -357,7 +369,11 @@ def _lstm_fit_predict(
         "intervals": {
             "method": "conformal",
             "alpha": normalized["alpha"],
+            # Процентили плана (границы при alpha/2 и 1-alpha/2)...
             "levels": [float(level) for level in plan.levels],
+            # ...и фактическая ШИРИНА запроса отклика 3.2.2 (суффиксы
+            # '-lo-<w>'/'-hi-<w>' кодируют ширину; НАХОДКА Task 141 п.2).
+            "width": float(width),
         },
         "random_state": int(random_state),
         "deterministic": True,

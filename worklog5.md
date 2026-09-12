@@ -264,3 +264,131 @@ MQLoss был явно зарезервирован за срезами 141-142 
   test_modeling_workflow}.py, worklog4.md (этот журнал)
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@412dd36 + перечисленные изменения.
+
+## Task 141a -- Правка width-семантики сертифицированной тройки lstm/nbeats/nhits (отработка НАХОДКИ Task 141 п.2, постановка тимлида)
+
+Синхронизация: main@952653e (Task 141 TFT vertical slice, четвёртый
+исполнитель контракта Task 137).  Постановка тимлида: «Давай сразу
+отработаем найденную тобой находку.  Если требуется внесение изменений,
+реализуй это» -- НАХОДКА Task 141 п.2 (level-семантика neuralforecast
+3.2.2) переведена из статуса «задокументирована, вне границ среза» в
+исполнение по полному циклу AGENTS.md (TDD RED->GREEN, контрольный
+замер, полная регрессия, сборка обеих оболочек).
+
+### Постановка (из находки Task 141 п.2)
+
+Суффиксы квантильных колонок '-lo-<w>'/'-hi-<w>' отклика neuralforecast
+3.2.2 кодируют ШИРИНУ интервала w (границы при 50±w/2 процентилях --
+исходники level_to_outputs/quantiles_to_outputs round(100-200*q, 2) +
+conformal add_conformal_distribution_intervals: alphas=[100-lv]), а НЕ
+прямой квантиль.  Следствие для сертифицированной тройки
+lstm/nbeats/nhits: извлечение lower=lo-2.5/upper=hi-97.5 из плана
+interval_levels_for_alpha(0.05)=(2.5, 50.0, 97.5) даёт фактически
+(48.75, 98.75) процентили -- нижняя conformal-граница схлопывается к
+медиане.  TFT реализует корректную семантику с первого дня (прямая
+декларация quantiles=[alpha/2, 0.5, 1-alpha/2] + суффикс ширины
+w=100*(1-alpha)) -- не затрагивается поведенчески.
+
+### Диагностика (контрольный замер на реальном runtime)
+
+scripts/task141_fix_width_semantics_probe.py (НОВЫЙ, три секции):
+- СТАРЫЙ запрос predict(level=[2.5, 50.0, 97.5]): колонка LSTM-lo-2.5
+  отстоит от точки на 0.27% масштаба (схлопнута к медиане -- 48.75-й
+  процентиль), истинная нижняя граница живёт в LSTM-lo-97.5 (6.70%).
+- НОВЫЙ запрос predict(level=[95.0]) (ширина w=100*(1-alpha)):
+  LSTM-lo-95.0/hi-95.0 симметричны -- по 6.58% масштаба с каждой
+  стороны (= 2.5/97.5 процентили).
+- АДАПТЕР ПОСЛЕ ПРАВКИ: полный путь _lstm_fit_predict на реальном
+  runtime -- metadata.intervals = {'method': 'conformal', 'alpha':
+  0.05, 'levels': [2.5, 50.0, 97.5], 'width': 95.0}; границы симметричны
+  по 4.91% масштаба; lower < point < upper, схлопывания нет.
+
+### Решение
+
+1. **Единый источник истины ширины -- контракт** (apps/api/
+   neural_contract.py): НОВАЯ функция interval_width_for_alpha(alpha)
+   -> round(100*(1-alpha), 2) (конвенция суффиксов quantiles_to_outputs
+   3.2.2); fail-closed валидация alpha в (0,1) -- стиль
+   interval_levels_for_alpha.  Docstring interval_levels_for_alpha
+   дополнен ПРЕДУПРЕЖДЕНИЕМ: levels -- ПРОЦЕНТИЛИ плана (семантика
+   интервала), НЕ значения параметра level 3.2.2; для запроса отклика
+   использовать interval_width_for_alpha.
+2. **Тройка lstm/nbeats/nhits -- минимальная честная правка** (identical
+   паттерн в трёх адаптерах): (а) в train_and_forecast уходит
+   levels=(width,) вместо plan.levels (запрос ШИРИНЫ, один уровень --
+   шесть колонок дефектного запроса больше не создаются); (б) извлечение
+   _interval_column по суффиксам ширины lo-<w>/hi-<w>; (в) metadata
+   intervals дисклоужирует ОБА плана: levels = процентили интервала
+   (контракт NeuralIntervalPlan, без изменений) + НОВЫЙ ключ width =
+   фактическая ширина запроса (консистентно с дисклоужером TFT);
+   (г) docstring-шапки адаптеров переписаны под width-семантику.
+3. **neural_runtime.py -- docstring честен**: параметр ``levels`` --
+   ШИРИНЫ интервалов для predict(level=[...]) (границы при 50±w/2
+   процентилях), прецедент (10.0, 90.0) «из NeuralIntervalPlan» убран.
+4. **TFT -- дублирование устранено**: локальный width=round(100*(1-
+   alpha), 2) заменён переиспользованием interval_width_for_alpha
+   (поведение идентично; _quantile_plan прижат тестом равенства с
+   контрактной функцией на 4 alpha).
+5. **model_execution.py**: docstring трёх executor'ов (lstm/nbeats/
+   nhits) обновлены под width-семантику; metadata passthrough не менялся.
+
+### TDD
+
+- RED: interval_width_for_alpha не существует (ImportError при
+  коллекции) + поведенческие оракулы: запрос levels==(95.0,) spy'ем,
+  извлечение различимыми значениями (дефектные lo-2.5/hi-97.5 vs
+  корректные lo-95.0/hi-95.0 в одном фейковом отклике), metadata
+  width-дисклоужер.
+- GREEN: контракт + тройка + TFT-рефакторинг.
+- Новые тесты: contract -- 4 (values, round-trip 50±w/2 == план,
+  анти-регрессия «ширина не равна уровню», fail-closed); тройка --
+  3 x test_conformal_request_and_extraction_use_width_semantics;
+  tft -- test_quantile_plan_width_is_the_contract_width.
+- M10 fault-injection мониторы тройки переведены на суффиксы ширины
+  (lo-95.0/hi-95.0) -- ломающий монитор остаётся на фактическом пути
+  извлечения.
+
+### Верификация
+
+- Полная регрессия: **2387 passed / 0 failed** (unit + api + snapshot;
+  neural-тесты ИСПОЛНЯЛИСЬ -- neuralforecast 3.2.2 + torch 2.14.0+cpu
+  установлены в окружении; базлайн до правки 144 passed на тройке +
+  контракт).
+- Контрольный замер (probe, реальный runtime) -- все три секции OK
+  (см. Диагностику); дефект воспроизведён, правка подтверждена.
+- Фронтенд не затронут (0 файлов .ts/.tsx); AGENTS.md верификация:
+  npm run typecheck:all -- OK (embedded + standalone);
+  npm run build:all -- Compiled successfully x2 (13/13 static pages
+  обеих оболочек).
+- NOTE окружение: чистая песочница; зависимости восстановлены из
+  requirements.txt + requirements-dev.txt + neuralforecast==3.2.2 +
+  torch CPU-колёса; pip check -- No broken requirements.  Промежуточный
+  сбой коллекции («Реестр готовности моделей расходится...») --
+  артефакт недоустановленного окружения (statsforecast отсутствовал ->
+  tbats выпадал из readiness), не правки; после доустановки гейт зелёный.
+- Поведение точечного прогноза НЕ менялось (point-путь не тронут --
+  метрики сравнения моделей валидны); исправлен ТОЛЬКО origin/смысл
+  интервальных границ тройки (ранее lower ~ медиана).
+
+### Границы Task 141a (что осознанно НЕ сделано)
+
+- scripts/audit_scripts/cert140_*.py, scripts/task138/139/140/141_*.py
+  НЕ модифицировались -- characterization-артефакты своего момента
+  (прецедент OR11i); актуальная семантика прижата новыми тестами.
+- Исторические записи журнала ниже НЕ редактировались (журнал
+  append-only; найденная дефектная семантика остаётся честной историей
+  сертификаций Tasks 138-140).
+- Историческая численность: метрики точечного прогноза не затронуты;
+  пересчёт ретроспективных OOF-интервалов не требуется (интервалы --
+  производный слой, их честная версия начинается с этой правки).
+- Frontend/UI -- без изменений (metadata.intervals дополнен ключом
+  width; существующие потребители levels не ломаются -- ключ сохранён).
+
+Изменённые/новые файлы (ZIP: download/task141a_width_semantics_fix.zip):
+- НОВЫЕ: scripts/task141_fix_width_semantics_probe.py
+- ИЗМЕНЁННЫЕ: apps/api/neural_contract.py, apps/api/model_impls/{lstm,
+  nbeats, nhits, tft, neural_runtime}.py, apps/api/model_execution.py,
+  tests/unit/{test_neural_contract, test_lstm_adapter, test_nbeats_adapter,
+  test_nhits_adapter, test_tft_adapter}.py, worklog4.md (этот журнал)
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@952653e + перечисленные изменения.

@@ -42,11 +42,13 @@ MQLoss был явно зарезервирован под срезы 141-142 г
    (Эмпирическое следствие для сертифицированной тройки
    lstm/nbeats/nhits -- уровни plan.levels=(2.5, 50.0, 97.5) в
    conformal-вызове трактуются как ШИРИНЫ: извлечённая пара
-   lo-2.5/hi-97.5 соответствует (48.75, 98.75) процентилям, а не
-   (2.5, 97.5); нижняя граница схлопывается к медиане.  Находка
-   зафиксирована в worklog4.md::Task 141 для решения тимлида --
-   ВНЕ границ этого среза: правка сертифицированных срезов требует
-   отдельной постановки.)
+   lo-2.5/hi-97.5 соответствовала (48.75, 98.75) процентилям, а не
+   (2.5, 97.5); нижняя граница схлопывалась к медиане.  Находка
+   отработана ПОСТАНОВКОЙ ТИМЛИДА сразу после Task 141: width-семантика
+   исправлена во всей тройке (level=[100*(1-alpha)] из
+   interval_width_for_alpha) с ресертификацией; контрактная функция
+   interval_width_for_alpha -- единый источник истины ширины,
+   _quantile_plan TFT переиспользует её же.)
 
 3. **Архитектурный выбор attention-оси -- честная альтернатива
    каталожного описания**: rules/modeling.yaml::tft -- «Attention-
@@ -141,6 +143,7 @@ from apps.api.neural_contract import (
     NeuralRuntimeCapacityError,
     NeuralTrainingConfig,
     interval_levels_for_alpha,
+    interval_width_for_alpha,
     resolve_probabilistic_loss,
 )
 from apps.api.model_impls.neural_runtime import train_and_forecast
@@ -291,7 +294,10 @@ def _quantile_plan(alpha: float) -> dict[str, Any]:
     plan = interval_levels_for_alpha(alpha)
     q_lo = round(alpha / 2.0, 6)
     q_hi = round(1.0 - alpha / 2.0, 6)
-    width = round(100.0 * (1.0 - alpha), 2)
+    # Единый источник истины ширины (НАХОДКА Task 141 п.2, правка
+    # width-семантики тройки): та же interval_width_for_alpha контракта,
+    # что и у lstm/nbeats/nhits -- без локального дубля.
+    width = interval_width_for_alpha(alpha)
     return {
         "method": "neural_quantile_outputs",
         "loss": "mqloss",
