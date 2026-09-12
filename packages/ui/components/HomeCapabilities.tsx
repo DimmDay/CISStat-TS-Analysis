@@ -43,6 +43,12 @@
 //     подпись в фирменном индиго text-brand (было text-neutral-500),
 //     т.е. весь текст бейджа — единый цвет цифры (#2E3192). Рамка,
 //     скругление, паддинг, ширина, анимация и Block B НЕ тронуты.
+//   - Правка 7 (Task w/n) от 2026-09-12: продолжение точечной правки —
+//     рамка бейджа marquee — фирменный индиго (border-neutral-200 →
+//     border-brand, тот же токен #2E3192); полоса-разделитель ПОД
+//     бегущей строкой (между marquee и H2) — фирменный индиго
+//     (bg-neutral-200 → bg-brand). Нижняя полоса (после Block B),
+//     Block B, анимация, геометрия бейджа НЕ тронуты.
 //
 // a11y-контракт:
 //   - <section aria-labelledby="capabilities-heading"> оборачивает всё
@@ -64,16 +70,17 @@ import {
 //
 // Компактная карточка: фиксированная ширина w-[clamp(180px,18vw,300px)]
 // (~5 бейджей на ширину контейнера max-w-[1600px]), собственная рамка
-// border-neutral-200, скругление rounded-xl, ПРОЗРАЧНЫЙ фон
-// bg-transparent (сквозь бейдж виден фон страницы), компактный паддинг
-// px-3/py-3. Весь текст бейджа — фирменный индиго text-brand (#2E3192):
-// и значение (dd), и подпись (dt). Подпись — ровно 2 строки
-// у ВСЕХ бейджей: h-7 (28px = 2×leading-tight от text-[11px]) +
-// line-clamp-2 (страховка от переполнения на узких вьюпортах).
+// border-brand (фирменный индиго #2E3192, правка 7), скругление
+// rounded-xl, ПРОЗРАЧНЫЙ фон bg-transparent (сквозь бейдж виден фон
+// страницы), компактный паддинг px-3/py-3. Весь текст бейджа —
+// фирменный индиго text-brand: и значение (dd), и подпись (dt).
+// Подпись — ровно 2 строки у ВСЕХ бейджей: h-7 (28px = 2×leading-tight
+// от text-[11px]) + line-clamp-2 (страховка от переполнения на узких
+// вьюпортах).
 
 function StatCell({ value, label }: { value: string; label: string }) {
   return (
-    <div className="w-[clamp(180px,18vw,300px)] shrink-0 bg-transparent px-3 py-3 text-center rounded-xl border border-neutral-200">
+    <div className="w-[clamp(180px,18vw,300px)] shrink-0 bg-transparent px-3 py-3 text-center rounded-xl border border-brand">
       <dd className="text-xl font-semibold text-brand leading-none tracking-tight">
         {value}
       </dd>
@@ -172,9 +179,12 @@ export function HomeCapabilities() {
         </dl>
       </div>
 
-      {/* ── Декоративная светло-серая черта между Block A и заголовком ──
-          Task 30 (2026-08-21): разделяет marquee-ленту и H2 визуально. */}
-      <div className="h-px w-full bg-neutral-200" aria-hidden="true" />
+      {/* ── Декоративная черта между Block A и заголовком ──
+          Task 30 (2026-08-21): разделяет marquee-ленту и H2 визуально.
+          Правка 7 (2026-09-12): цвет — фирменный индиго (bg-brand);
+          это полоса именно ПОД бегущей строкой (нижняя полоса после
+          Block B остаётся нейтральной). */}
+      <div className="h-px w-full bg-brand" aria-hidden="true" />
 
       {/* ── Заголовок секции ──
           Task 30 (2026-08-21): text-2xl → text-xl, font-semibold сохранён,

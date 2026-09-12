@@ -2267,3 +2267,66 @@ vertical slice; фронтенд не менялся с 8a00279/M-02). Симп�
 - worklog4.md (эта запись)
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@3960df2 + перечисленные изменения.
+
+## Task w/n — Индиго-рамка бейджей marquee + индиго-полоса под бегущей строкой
+
+Дата: 2026-09-12. База: main@3960df2 + правка 6 (прозрачный фон бейджей
+и индиго-подпись, рабочий ZIP marquee_badge_transparent_indigo_worklog4.zip).
+Постановка тимлида: 1) цвет рамки каждого бейджа marquee — фирменное
+индиго («text-brand»); 2) цвет полосы ПОД бегущей строкой — то же.
+Больше никаких изменений с бегущей строкой.
+
+### Постановка и scope
+
+- Block A (marquee) секции HomeCapabilities: рамка StatCell (28 ячеек
+  = 14×2 группы) и полоса-разделитель между marquee и H2.
+- НЕ трогается: ширина/паддинг/скругление/фон/текст бейджей, анимация,
+  вьюпорт (full-bleed), НИЖНЯЯ полоса (после Block B — остаётся
+  нейтральной bg-neutral-200), Block B, HomeHero, H2.
+
+### Решение (2 класса)
+
+- StatCell: рамка `border border-neutral-200` → `border border-brand`.
+  Токен тот же, что text-brand: brand.DEFAULT #2E3192 (фирменный
+  тёмно-синий/индиго Статкомитета СНГ, packages/ui/tailwind-preset.ts);
+  в Tailwind для рамки/фона это классы border-brand/bg-brand.
+- Полоса под marquee: `bg-neutral-200` → `bg-brand` (h-px w-full,
+  aria-hidden — без изменений). Нижняя полоса после Block B —
+  сознательно НЕ тронута (в постановке — «полоса под бегущей строкой»,
+  единственное число).
+- Комментарии компонента: + правка 7 в историю, doc StatCell обновлён.
+
+### TDD (RED -> GREEN)
+
+- RED (+3 кейса): renders_every_marquee_badge_border_in_brand_indigo
+  (border-brand на всех 28 ячейках, запрет border-neutral-200);
+  renders_the_divider_UNDER_the_marquee_in_brand_indigo (children[1]
+  — bg-brand, запрет bg-neutral-200); keeps_the_BOTTOM_divider_neutral
+  (guard scope: нижняя полоса осталась bg-neutral-200) — зелёный сразу.
+  Прогон файла: 2 failed / 34 passed (36 total).
+- GREEN: правка 2 классов; исторические ассерты пересчитаны: Task 29
+  «own border and rounding» (border-neutral-200 → border-brand + запрет
+  отката), DOM-порядок и «divider between Block A и H2» (bg-neutral-200
+  → bg-brand + запрет отката). Прогон файла: 36/36.
+
+### Верификация
+
+- Jest полный: **93 сюиты / 862 тестов PASS** (859 + 3 новых). Guard-ы
+  scope зелёные: Block B карточки (bg-white, border-neutral-200),
+  нижняя полоса, «does NOT touch the marquee (no px-6)», identical
+  layout-классы обеих сеток 3×2.
+- typecheck:all — PASS (exit 0).
+- Production build:all — OK (exit 0; embedded 13/13, standalone 13/13).
+  Утилиты border-brand и bg-brand присутствуют в CSS-бандле standalone
+  (bg-brand уже генерировался прочими компонентами; border-brand —
+  новая точка использования токена).
+
+### Изменённые/новые файлы (ZIP: download/marquee_badge_border_indigo_worklog4.zip)
+
+- packages/ui/components/HomeCapabilities.tsx (StatCell: border-brand;
+  полоса под marquee: bg-brand; комментарии/правка 7)
+- packages/ui/components/HomeCapabilities.test.tsx (+3 кейса; 3
+  исторических ассерта пересчитаны на индиго)
+- worklog4.md (эта запись)
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@3960df2 + правка 6 + перечисленные изменения.

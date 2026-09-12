@@ -25,6 +25,12 @@
 // фон ПРОЗРАЧНЫЙ (bg-transparent, было bg-neutral-100), подпись (dt)
 // в фирменном индиго text-brand — единый цвет текста бейджа с цифрой
 // (dd). Селекторы исторических тестов пересчитаны на bg-transparent.
+//
+// Правка 7 (Task w/n, 2026-09-12): рамка бейджа — фирменный индиго
+// border-brand (было border-neutral-200); полоса ПОД бегущей строкой
+// — bg-brand. Исторические ассерты (Task 29/DOM-порядок) пересчитаны;
+// нижняя полоса (после Block B) и карточки Block B — guard-ами
+// закреплены нейтральными.
 
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -197,6 +203,48 @@ describe("HomeCapabilities", () => {
     expect(cards.length).toBe(6);
   });
 
+  // ── Индиго-рамка бейджей и полоса под marquee (Task w/n, 2026-09-12) ──
+  //
+  // Продолжение точечной правки бейджа marquee: рамка бейджа — тот же
+  // фирменный индиго (токен brand #2E3192; в Tailwind для рамки это
+  // класс border-brand, тот же токен, что text-brand). Полоса-разделитель
+  // ПОД бегущей строкой (между marquee и H2) — тоже фирменный индиго
+  // (bg-brand). Нижняя полоса (после Block B) и карточки Block B
+  // остаются нейтральными — guard-ы ниже.
+
+  it("renders every marquee badge border in brand indigo (border-brand)", () => {
+    const { container } = render(<HomeCapabilities />);
+    const dl = container.querySelector("dl")!;
+    // 28 ячеек (14×2): рамка каждой — border-brand, серой рамки нет
+    const badges = dl.querySelectorAll("div.bg-transparent.rounded-xl.border");
+    expect(badges.length).toBe(28);
+    badges.forEach((badge) => {
+      expect(badge.className).toContain("border-brand");
+      expect(badge.className).not.toContain("border-neutral-200");
+    });
+  });
+
+  it("renders the divider UNDER the marquee in brand indigo (bg-brand)", () => {
+    const { container } = render(<HomeCapabilities />);
+    const section = container.querySelector("section")!;
+    const children = Array.from(section.children);
+    // [1] — полоса между marquee и H2: фирменный индиго
+    expect(children[1].className).toContain("h-px");
+    expect(children[1].className).toContain("w-full");
+    expect(children[1].className).toContain("bg-brand");
+    expect(children[1].className).not.toContain("bg-neutral-200");
+    expect(children[1]).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("keeps the BOTTOM divider (after Block B) neutral — scope: only the strip under the marquee", () => {
+    const { container } = render(<HomeCapabilities />);
+    const section = container.querySelector("section")!;
+    const children = Array.from(section.children);
+    const lastChild = children[children.length - 1];
+    expect(lastChild.className).toContain("bg-neutral-200");
+    expect(lastChild.className).not.toContain("bg-brand");
+  });
+
   it("animates the whole track right-to-left slowly and uniformly (marquee)", () => {
     const { container } = render(<HomeCapabilities />);
     const dl = container.querySelector("dl")!;
@@ -230,7 +278,9 @@ describe("HomeCapabilities", () => {
     const badges = dl.querySelectorAll("div.bg-transparent.rounded-xl.border");
     expect(badges.length).toBe(28);
     badges.forEach((badge) => {
-      expect(badge.className).toContain("border-neutral-200");
+      // Правка 7: рамка — фирменный индиго border-brand (было border-neutral-200)
+      expect(badge.className).toContain("border-brand");
+      expect(badge.className).not.toContain("border-neutral-200");
       expect(badge.className).toContain("rounded-xl");
       expect(badge.className).toContain("bg-transparent");
       expect(badge.className).not.toContain("bg-neutral-100");
@@ -308,11 +358,13 @@ describe("HomeCapabilities", () => {
     expect(children[0].tagName).toBe("DIV");
     expect(children[0].className).toContain("marquee-viewport");
     expect(children[0].querySelector("dl")).not.toBeNull();
-    // [1] <div> декоративная черта между Block A и H2 (Task 30)
+    // [1] <div> декоративная черта между Block A и H2 (Task 30;
+    // правка 7 — цвет фирменный индиго bg-brand)
     expect(children[1].tagName).toBe("DIV");
     expect(children[1].className).toContain("h-px");
     expect(children[1].className).toContain("w-full");
-    expect(children[1].className).toContain("bg-neutral-200");
+    expect(children[1].className).toContain("bg-brand");
+    expect(children[1].className).not.toContain("bg-neutral-200");
     // [2] <div> с H2
     expect(children[2].tagName).toBe("DIV");
     expect(children[2].querySelector("h2")).not.toBeNull();
@@ -329,10 +381,12 @@ describe("HomeCapabilities", () => {
     const { container } = render(<HomeCapabilities />);
     const section = container.querySelector("section")!;
     const children = Array.from(section.children);
-    // Первый divider стоит сразу после вьюпорта marquee и перед <div> с H2
+    // Первый divider стоит сразу после вьюпорта marquee и перед <div> с H2;
+    // правка 7 — цвет фирменный индиго (bg-brand)
     expect(children[0].className).toContain("marquee-viewport"); // Block A
     expect(children[1].className).toContain("h-px"); // divider
-    expect(children[1].className).toContain("bg-neutral-200");
+    expect(children[1].className).toContain("bg-brand");
+    expect(children[1].className).not.toContain("bg-neutral-200");
     expect(children[1]).toHaveAttribute("aria-hidden", "true");
     expect(children[2].querySelector("h2")).not.toBeNull(); // H2
   });
