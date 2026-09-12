@@ -24,6 +24,7 @@
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import { HomeCapabilities } from "./HomeCapabilities";
+import { HomeHero } from "./HomeHero";
 import {
   CAPABILITIES_TITLE,
   CAPABILITIES_SUBTITLE,
@@ -88,8 +89,11 @@ describe("HomeCapabilities", () => {
     const { container } = render(<HomeCapabilities />);
     const text = container.querySelector('[data-testid="marquee-group-real"]')!
       .textContent!;
-    // 10 новых тезисов (фактура main @ 23ca75b)
-    expect(text).toContain("моделей в каталоге");
+    // Пункт 1 фактуры: в проде лейбл «24 модели в каталоге…» (числительное
+    // 24 требует именительного падежа); прежнее ожидание «моделей» было
+    // рассинхронизировано с лейблом (preexisting-падение на чистом HEAD,
+    // починено ожиданием под прод-лейбл).
+    expect(text).toContain("модели в каталоге");
     expect(text).toContain("API-эндпоинтов");
     expect(text).toContain("стадий пайплайна моделирования");
     expect(text).toContain("уровня применимости моделей");
@@ -345,6 +349,55 @@ describe("HomeCapabilities", () => {
     expect(capGrid).toBeDefined();
     expect(capGrid!.className).toContain("grid-cols-1");
     expect(capGrid!.className).toContain("sm:grid-cols-2");
+  });
+
+  // ── Отступы бейджей от границ страницы (Task w/n, 2026-09-12) ──
+  //
+  // Обе сетки 3×2 главной («Анализ временных рядов…» = HomeHero и
+  // «Исследование данных…» = Block B здесь) получают собственные боковые
+  // поля 24px (px-6): карточки соразмерно ужимаются (504px -> 488px при
+  // ширине страницы 1600px), между бейджем и границей фоновой коробки
+  // страницы появляется визуальный зазор. Бегущая строка (marquee) НЕ
+  // трогается — остаётся full-bleed до границ страницы.
+
+  it("insets the capabilities grid 24px from the page edges on both sides (px-6)", () => {
+    const { container } = render(<HomeCapabilities />);
+    const grid = container.querySelector(
+      '[aria-label="Ключевые возможности платформы"]',
+    )!;
+    expect(grid).not.toBeNull();
+    expect(grid.className).toContain("px-6");
+  });
+
+  it("keeps hero routes grid and capabilities grid at IDENTICAL layout classes (equal badge sizes across sections)", () => {
+    const hero = render(<HomeHero />);
+    const caps = render(<HomeCapabilities />);
+    const heroGrid = hero.container.querySelector('[aria-label="Маршруты"]')!;
+    const capGrid = caps.container.querySelector(
+      '[aria-label="Ключевые возможности платформы"]',
+    )!;
+    expect(heroGrid).not.toBeNull();
+    expect(capGrid).not.toBeNull();
+    // Одинаковый набор layout-классов сетки => одинаковая ширина бейджей
+    // обеих секций в браузере при любой ширине вьюпорта.
+    for (const cls of [
+      "grid-cols-1",
+      "sm:grid-cols-2",
+      "lg:grid-cols-3",
+      "gap-5",
+      "px-6",
+    ]) {
+      expect(heroGrid.className).toContain(cls);
+      expect(capGrid.className).toContain(cls);
+    }
+  });
+
+  it("does NOT touch the marquee: viewport and track stay full-bleed (no px-6)", () => {
+    const { container } = render(<HomeCapabilities />);
+    const viewport = container.querySelector(".marquee-viewport")!;
+    const dl = container.querySelector("dl")!;
+    expect(viewport.className).not.toContain("px-6");
+    expect(dl.className).not.toContain("px-6");
   });
 
   // ── Декоративная черта под Block B ─────────────────────────

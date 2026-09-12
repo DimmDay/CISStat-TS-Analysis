@@ -28,9 +28,14 @@ export function HomeHero() {
         </p>
       </div>
 
-      {/* ── Исследовательская карта: сетка 3×2 ── */}
+      {/* ── Исследовательская карта: сетка 3×2 ──
+          Task w/n (2026-09-12): px-6 — собственные боковые поля сетки
+          24px слева/справа от границ страницы; карточки соразмерно
+          ужимаются (504px -> 488px при ширине страницы 1600px). Классы
+          сетки идентичны Block B в HomeCapabilities — равный размер
+          бейджей обеих секций (прижат кросс-тестом). */}
       <div
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 px-6"
         role="list"
         aria-label="Маршруты"
       >

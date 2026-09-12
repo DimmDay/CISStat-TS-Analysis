@@ -80,4 +80,15 @@ describe("HomeHero", () => {
     expect(grid?.className).toContain("sm:grid-cols-2");
     expect(grid?.className).toContain("lg:grid-cols-3");
   });
+
+  // Отступы бейджей от границ страницы (Task w/n, 2026-09-12):
+  // сетка 3×2 получает собственные боковые поля 24px (px-6) — карточки
+  // соразмерно ужимаются (504px -> 488px при ширине страницы 1600px),
+  // визуальный зазор между бейджем и границей фоновой коробки страницы.
+  it("insets the routes grid 24px from the page edges on both sides (px-6)", () => {
+    const { container } = render(<HomeHero />);
+    const grid = container.querySelector('[aria-label="Маршруты"]')!;
+    expect(grid).not.toBeNull();
+    expect(grid.className).toContain("px-6");
+  });
 });
