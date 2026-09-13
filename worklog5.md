@@ -924,3 +924,167 @@ cert139a_mutations.py; эталон -- байт-копия файла на ст�
   worklog5.md (этот журнал)
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@de70239 + перечисленные изменения.
+
+---
+
+## Сертификация Task 141 -- TFT vertical slice (независимый аудит: оракулы на собственных данных + мутационная кампания в fresh subprocess)
+
+Дата: 2026-09-13. Синхронизация: main@43553e0 (origin/main; локально
+был f7596e1, fast-forward через 1ccdad3/de70239 Task 139a/e8755b9/
+4184f06 Task 140a/43553e0).  Объект аудита: Task 141 -- TFT vertical
+slice, четвёртый исполнитель Neural Runtime Contract Task 137 и ПЕРВЫЙ
+срез с probabilistic-поверхностью MQLoss/quantiles (коммиты 952653e +
+f7596e1; исполнитель -- коллега).  Постановка
+docs/modeling_task_list.md::Tasks 138-142 («Task 141 -- TFT») +
+требования Task 137 («probabilistic losses и quantiles»).  Методика --
+прецедент сертификаций 136-140: оракулы аудитора на СОБСТВЕННЫХ
+данных (seed=141, НЕ фикстуры исполнителя) + мутационная кампания в
+fresh subprocess с SHA-контролем байт-чистоты дерева.
+
+### Разведка и ревизия кода
+
+- apps/api/model_impls/tft.py (~540 строк) прочитан полностью:
+  probabilistic-план MQLoss(quantiles=[alpha/2, 0.5, 1-alpha/2]) с
+  width-суффиксами interval_width_for_alpha (единый источник истины с
+  тройкой после Task 141a); гейт окна `nobs < input_size + horizon`
+  БЕЗ '+2' -- ОБОСНОВАННО: у TFT НЕТ conformal-калибровочных окон
+  (levels=(), PredictionIntervals не активируется -- квантили нативны
+  loss'у), собственный минимум библиотеки = input+h (проб коллеги
+  «TFT requires at least 48 training timestamp(s)» при 24+24);
+  граница nobs=input+h адмиссибельна -- подтверждено моим оракулом
+  c02, полоса [input+h-1] честно отклоняется на 5 конфигах (c01);
+  clamp-инвариант lower <= median <= upper -- живой гейт квантильного
+  пересечения MQLoss; fail-closed: NaN/Inf, пустой target, MIN_TRAIN=30,
+  bool-коэрция, bounded-границы, делимость d_k=hidden_size//n_head,
+  alpha whitelist {0.01, 0.05, 0.10}, n_head {2, 4}; env-рычаг
+  CISSTAT_NEURAL_MAX_STEPS (дефолт -- константа 300, мусор/<=0 --
+  fail-closed); ds-ось переиспользована из lstm (_resolve_time_axis,
+  НЕ дубликат); torch/neuralforecast НЕ импортируются на уровне модуля.
+- Реестр v2 (model_execution.py): запись tft -- objective=level_forecast,
+  input_kind=univariate, engine=neuralforecast, actions=_TUNABLE,
+  deterministic=True, dependency_group=neural, gpu=optional; executor
+  _tft_executor с честным metadata-мэппингом (adapter_id/params/nobs/
+  max_steps/seed/freq/intervals/deterministic).  Dispatch
+  routers/models.py -- условная регистрация, import-gate
+  dispatch<->readiness на месте.  yaml::tft param_space
+  n_head x hidden_size x input_size = 8 trials, requires_gpu: true
+  (методологическая ось D06) НЕ тронута.  deepar -- честный
+  catalog_only (в реестре исполнения отсутствует).
+- Отличие от гейтов тройки проверено как ДИЗАЙН-решение, не дефект:
+  '+2' сертификаций 139a/140a существует ради калибровочных окон
+  conformal-поверхности 3.2.2; у TFT поверхность нативно-квантильная --
+  формула тройки к TFT неприменима, ослабление до input+h честно.
+
+### Оракулы (scripts/audit_scripts/cert141_oracles.py, 72 кейса)
+
+Секции: A -- реестр/dispatch/yaml/константы/импорт-гигиена (a01-a06,
+включая subprocess-проверку отсутствия eager-импорта torch/
+neuralforecast); B -- fail-closed валидация на моих значениях
+(b01-b08: bool-коэрция с пином формулировки, bounded-границы в обе
+стороны, whitelist, делимость); C -- гейты данных: полоса окна на
+5 конфигах + адмиссибельность границы + MIN_TRAIN + ds-ось integer/
+datetime (c01-c04); D -- живая проводка до КОНСТРУКТОРА через
+fake-harness без torch (d01-d03: kwargs фабрики, MQLoss-quantiles,
+alias, fold_seed в конструкторе, env-рычаг, levels=() -- conformal
+НЕ активируется); F -- fault-injection на синтетическом отклике
+(f01-f09: медиана/квантиль отсутствуют, NaN, длина, квантильное
+пересечение, равенство на границе, capacity passthrough, contract-
+wrap, spy resolve_probabilistic_loss); G -- provenance (g01-g02:
+план всех alpha, payload-метаданные); H -- executor-мэппинг,
+quartet-когорта lstm/nbeats/nhits/tft, deepar catalog_only, легаси-
+эндпоинт (h01-h05); E -- РЕАЛЬНЫЕ фиты на моих данных
+(120 точек: тренд + сезонность 14 + шум, seed=141; e01-e03 + h05,
+env-гейт CISSTAT_CERT141_REAL=1, маркер real_fit): честная ШИРИНА
+интервала (lower < median < upper строго, отступ >= 1% масштаба с
+каждой стороны -- НЕ схлопнут к медиане, урок width-семантики
+НАХОДКИ Task 141 п.2), монотонность W(0.01) > W(0.05) > W(0.10),
+same-seed бит-паритет (array_equal), cross-seed различимость,
+легаси-эндпоинт с честным отказом на коротком ряде.
+
+Результат на чистом дереве: **68 fast + 4 real = 72/72 GREEN**
+(реальные фиты: 6 уникальных, max_steps=50, 100.8 c на 2 vCPU).
+
+### Мутационная кампания (scripts/audit_scripts/cert141_mutations.py)
+
+39 мутаций, kill-подмножество -- fast-часть оракулов (-m "not real_fit")
+в fresh subprocess, SHA-контроль до/после, восстановление git checkout
+с байт-сверкой: **39/39 KILLED**.
+
+- Гейты: M01 weaken окна, M02 over-strict '+2', M03 MIN_TRAIN,
+  M04 NaN, M05 пустой, M06 horizon, M07 делимость, M08 n_head,
+  M09 bounds, M10 alpha, M11 bool-коэрция -- все KILLED (c01/c02/c03,
+  b01-b08).
+- Квантильная поверхность: M12 медиана выпала из плана, M13 width из
+  alpha, M14 точка = первая колонка, M15 сторона lo/hi перепутана,
+  M16 суффикс сдвинут, M17 clamp удалён, M18 clamp строгий, M19
+  isfinite, M20 длина, M21 capacity проглочен, M22 wrap снят, M23
+  контрактный гейт удалён, M24/M25 fail-closed выборки -- все KILLED
+  (d01, f01-f09, g01).
+- Честность metadata: M28 max_steps-литерал, M29 seed-литерал,
+  M30/M31 intervals.method -- KILLED (d02, g01/g02, h03).
+- Идентичность/проводка: M32 alias, M33 adapter_id, M34 model_id,
+  M35 dispatch, M36 registry adapter_id, M37 deterministic=False,
+  M38 yaml trials, M39 executor-мэппинг -- KILLED (a01-a04, h03).
+- Эволюция одного оракула: M04 (NaN-гейт) ПЕРВОНАЧАЛЬНО SURVIVED --
+  эквивалентное действие через defense-in-depth: контрактный
+  to_long_format (Task 137) дублирует NaN-гейт ниже по стеку, отказ
+  оставался честным, но с формулировкой КОНТРАКТА, а не адаптера.
+  Оракул b06 ужесточён до пина адаптерного слоя («импутация запрещена»,
+  _validated_target ДО ds-оси) -- пересборка M04: KILLED.  Вывод:
+  дублирование гейта -- осознанная защита в глубину, НЕ дефект; адаптер
+  обязан отказывать на своём слое, что и подтверждено.
+
+### Кросс-проверка suites исполнителя и прод-инвариантов
+
+- tests/unit/test_tft_adapter.py + test_tft_integration_paths.py:
+  **50/50 passed** в моём окружении (фактическая коллекция 35+15;
+  в журнале исполнителя указано 34+15=49 -- расхождение +1 кейса
+  в сторону учёта, НЕ в сторону потерь, НЕ блокирующее).
+- Count-гейты и контракты (test_lstm/test_nbeats/test_nhits_
+  integration_paths, test_model_execution_contract,
+  test_modeling_mvp_certification, test_model_readiness_candidates):
+  **50/50 passed**.
+- Прод-инварианты на полном dispatch-окружении (venv: requirements +
+  apps/api/requirements + neural-группа; neuralforecast 3.2.2 +
+  torch 2.14.0+cpu + prophet 1.4.0 + statsforecast 2.1.1 + arch):
+  registry 23 == PRODUCTION_BACKTEST_MODEL_IDS 23, tft --
+  backtest/tune/diagnostics, deepar отсутствует в реестре
+  (catalog_only), import-gate dispatch<->readiness зелёный.
+- Окружение аудита: Python 3.12.14, pandas 2.2.3, numpy 2.1.3 --
+  версии пары neuralforecast/torch совпадают с сертификационными
+  Tasks 137-141.
+
+### Вердикт
+
+**Task 141 СЕРТИФИЦИРОВАНА.**  72/72 оракула зелёные, 39/39 мутаций
+убиты, suites исполнителя 100/100, прод-инварианты точны.  Probabilistic-
+поверхность MQLoss/quantiles -- корректная с первого дня (width-
+семантика честная, ПРОТИВОПОЛОЖНАЯ дефекту тройки, исправленному в
+Task 141a), fail-closed дисциплина и metadata-честность выдерживают
+мутационное давление.  НОВЫХ блокирующих находок НЕ обнаружено.
+
+### Границы сертификации (что осознанно НЕ сделано)
+
+- Полная регрессия 2379 тестов НЕ прогонялась (независимая
+  сертификация -- оракулы аудитора + целевые suites исполнителя +
+  count-гейты; полный прогон -- зона исполнителя, заявлено 2379/0).
+- E2E смоук исполнителя scripts/task141_e2e_smoke.py НЕ воспроизводился
+  (его эквивалент на моих данных -- секция E: реальные фиты,
+  provenance, детерминизм; смоук использует фикстуры исполнителя).
+- Тюнинг-грид 8 trials НЕ прогонялась целиком (лёгкий grid-путь
+  прикрыт count-гейтами реестра и e2e-смоком исполнителя).
+- Наблюдение вне мандата (косметическое, НЕ блокирующее): в worklog4.md
+  счётчик кейсов test_tft_adapter.py указан как 34, фактическая
+  коллекция 35 -- журнал расходится на +1 в безопасную сторону.
+
+### Изменённые/новые файлы
+
+Новые:
+- scripts/audit_scripts/cert141_oracles.py (72 оракула, секции A-H+E)
+- scripts/audit_scripts/cert141_mutations.py (39 мутаций, SHA-протокол)
+
+Изменённые:
+- worklog5.md (этот журнал, запись о сертификации)
+
+Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+main@43553e0 + перечисленные файлы.  ZIP: download/cert141_tft_audit_worklog5.zip.
