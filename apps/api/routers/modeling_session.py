@@ -692,6 +692,7 @@ def _panel_neural_context(
     изолирован от univariate-планов на тех же folds (честный comparison).
     Возвращает (endogenous_system, backtest_plan, warnings).
     """
+    from apps.api.model_impls.deepar import DEEPAR_LOSS_KEY, DEEPAR_MIN_SERIES
     from apps.api.neural_contract import (
         NeuralTrainingConfig,
         build_exogenous_plan,
@@ -745,7 +746,10 @@ def _panel_neural_context(
         exogenous=build_exogenous_plan(pd.DataFrame(
             {"unique_id": [], "ds": [], "y": []})),
         interval=interval_levels_for_alpha(0.05),
-        loss="mqloss",
+        # Task 142a: cohort-контракт декларирует ФАКТИЧЕСКУЮ
+        # probabilistic-поверхность среза (distribution-голова;
+        # единый источник истины ключа -- DEEPAR_LOSS_KEY адаптера)
+        loss=DEEPAR_LOSS_KEY,
         config=NeuralTrainingConfig(seed=0, max_steps=1),
     )
     plan = build_backtest_plan(

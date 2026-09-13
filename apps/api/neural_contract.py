@@ -100,8 +100,15 @@ SEED_UPPER_BOUND = 2**31 - 1
 DEFAULT_NEURAL_QUANTILE_LEVELS: tuple[float, ...] = (10.0, 50.0, 90.0)
 NEURAL_ALLOWED_LOSSES: tuple[str, ...] = (
     "quantile", "mqloss", "mae", "mse", "huber",
+    # Task 142a (исправление находки F3 пересертификации 142): параметрическая
+    # distribution-голова (каталожная «parametric distribution head») --
+    # probabilistic-поверхность рекуррентного DeepAR; ключ аддитивен,
+    # семантика существующих ключей не изменена
+    "distribution",
 )
-NEURAL_PROBABILISTIC_LOSSES: tuple[str, ...] = ("quantile", "mqloss")
+NEURAL_PROBABILISTIC_LOSSES: tuple[str, ...] = (
+    "quantile", "mqloss", "distribution",
+)
 
 # Checkpoints
 CHECKPOINT_MAX_BYTES = 512 * 1024 * 1024

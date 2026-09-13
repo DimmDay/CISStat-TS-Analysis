@@ -1568,3 +1568,159 @@ Task w/n-2 запушен тимлидом).  Постановка тимлид�
   apps/standalone/app/tasks/monitoring/page.tsx
 - ИЗМЕНЁННЫЕ: packages/ui/index.ts, apps/standalone/app/tasks/page.tsx,
   worklog5.md (этот журнал)
+
+## Task 142a (применение) -- Оценка состоятельности находок Дарио по коду main@4e5df1b (после Task 143) и применение фикса F1/F3 по полному циклу AGENTS.md
+
+Дата: 2026-09-13.  Синхронизация: main@4e5df1b (Task 143 -- финализация
+полной production-матрицы 24x11; deepar-файлы среза НЕ тронуты --
+проверено sha256-сравнением всех девяти файлов среза между 68a0cb7 и
+4e5df1b: байт-идентичны, правки Task 142a легли без конфликтов).
+Постановка тимлида: «Коллега Дарио параллельно работе коллеги Сэм по
+Task 143 нашёл находки по Task 142 и оформил в Task 142a пока без пуша.
+Задача -- по текущему коду (после реализации Task 143 Сэма) оценить
+состоятельность находок Дарио и, при необходимости, внести изменения».
+Объект оценки: записи «Сертификация Task 142» и «Пересертификация
+Task 142» (выше; вердикт первого аудита -- НЕ СЕРТИФИЦИРОВАНА,
+блокирующая F3; исправление аудитора -- DistributionLoss(StudentT) +
+robust + trajectory_samples, смоук-число mae 116.12 -> 1.57).
+
+### Оценка состоятельности находок на текущем коде (4e5df1b)
+
+Все три находки первого аудита ПОДТВЕРЖДЕНЫ независимо -- Task 143
+обнаруженные дефекты не закрывал (и не мог: они вне его мандата):
+
+- **F1 -- подтверждена (код-инспекция + живой проб)**:
+  `_panel_neural_context` использует DEEPAR_MIN_SERIES (строки
+  708/711/744) при единственном локальном импорте-блоке хелпера
+  (строки 695-700 -- ТОЛЬКО neural_contract) и полном отсутствии имени
+  на уровне модуля -- NameError при первом обращении.  Живой проб
+  scripts/audit_scripts/task142a_f1_nameerror_probe.py (НОВЫЙ,
+  минимальный session-дубль с панелью из 5 рядов):
+  `NameError: name 'DEEPAR_MIN_SERIES' is not defined`
+  (modeling_session.py:708) воспроизведён на чистом 4e5df1b.  Пробел
+  покрытия подтверждён дислокацией вызовов: e2e-смоук task142 и
+  benchmark task143 исполняют run_panel_backtest_plan НАПРЯМУЮ,
+  session-хелпер не исполняется ни одним тестом.
+- **F2 -- подтверждена (код-инспекция)**: docstring deepar.py п.1
+  обещает «запрос с train_features -- честный отказ гейта реестра»;
+  фактически гейт model_execution.py:391 отвергает train_features
+  ТОЛЬКО при input_kind=="univariate" (наследие до-142 гейта) --
+  для panel проходят без потребления, honest-warning даёт
+  panel-движок.  Исправлена Дарио в 142a переписыванием docstring под
+  фактическую семантику (поведение не менялось -- документ-уровень).
+- **F3 -- подтверждена ТРЕМЯ независимыми свидетельствами**:
+  (а) код-инспекция статус-кво: фабрика loss=valid_loss=MQLoss, без
+  scaler_type (дефолт DeepAR "identity"), без trajectory_samples --
+  ровно вырожденная конфигурация из диагноза Дарио;
+  (б) СОБСТВЕННЫЙ проб валидатора на СЫРОЙ библиотеке и СВОИХ данных
+  (seed=20261, НЕ панель Дарио 142 и НЕ данные Сэма;
+  scripts/audit_scripts/task142a_f3_validation_probe.py, бюджет 40):
+  V1 MQLoss+identity -- ширина 0 бит-в-бит + коллапс масштаба точки;
+  К MQLoss+robust -- ширина ВСЁ ЕЩЁ 0 (механизм M1 независим от
+  скейлера); V2 DistributionLoss+robust -- ширина 22.2 + масштаб OK:
+  PROBE OK, оба механизма M1/M2 и кандидат фикса подтверждены;
+  (в) независимое свидетельство в СОБСТВЕННОМ артефакте Task 143:
+  reports/report.json -- deepar OOF mae=109.6 против 0.83-0.87
+  (lstm/nbeats/nhits на тех же данных) -- тот же класс деградации,
+  что и mae=116.1194 смоука исполнителя («слабый бюджет» -- неверная
+  интерпретация, подтверждено диагнозом Дарио).
+
+### Применение (по полному циклу AGENTS.md)
+
+- Фикс перенесён из некоммиченного дерева Дарио (ZIP
+  cert142a_recert_worklog5.zip, база 68a0cb7) в актуальное дерево
+  4e5df1b ФАЙЛ-В-ФАЙЛ после sha256-сверки баз (см. выше) и
+  построчного ревью всех диффов: apps/api/model_impls/deepar.py
+  (ядро: DEEPAR_LOSS_KEY="distribution", DEEPAR_TRAJECTORY_SAMPLES=
+  1000, фабрика DistributionLoss(StudentT, квантили плана)+MAE+
+  robust+trajectory_samples, metadata-дисклоужер, docstring 3/4 --
+  почему НЕ MQLoss и почему robust), apps/api/neural_contract.py
+  (аддитивно "distribution" в NEURAL_ALLOWED_LOSSES и
+  NEURAL_PROBABILISTIC_LOSSES), apps/api/routers/modeling_session.py
+  (фикс F1 -- локальный импорт DEEPAR_LOSS_KEY, DEEPAR_MIN_SERIES;
+  cohort loss=DEEPAR_LOSS_KEY), apps/api/model_execution.py
+  (docstring executor'а и записи №24, уточнение F2),
+  apps/api/model_impls/__init__.py (комментарий среза).
+- Аудиторский контур Дарио перенесён в репозиторий (в нём
+  отсутствовали -- некоммичены): scripts/audit_scripts/
+  cert142_oracles.py (84 оракула), cert142_mutations.py (60 мутаций,
+  снапшот-протокол для некоммиченного дерева), task142_fix_surface_
+  probe.py, task142_fix_surface_probe12.py (матрица E1-E4).
+- Тесты исполнителя перепривязаны: tests/unit/test_deepar_adapter.py
+  (54 кейса: пины DistributionLoss(StudentT)/MAE/robust/
+  trajectory_samples + НОВЫЙ test_contract_gate_distribution_loss_
+  requires_levels), tests/unit/test_deepar_integration_paths.py
+  (cohort-фикстуры loss=DEEPAR_LOSS_KEY).
+
+### TDD (RED -> GREEN, воспроизведено на 4e5df1b)
+
+- RED: (а) suites на статус-кво -- 3 failed
+  (test_contract_gate_distribution_loss_requires_levels,
+  test_intervals_metadata_declares_native_quantile_surface,
+  test_budget_wiring_reaches_the_constructor) + collection ImportError
+  DEEPAR_LOSS_KEY в integration_paths; (б) NameError-проб F1 --
+  воспроизведён; (в) F3-проб V1 -- вырождение на живом runtime.
+- GREEN: suites 54/54; оракулы Дарио **78/78 fast** + **6/6 real_fit**
+  (CISSTAT_CERT142_REAL=1: e01 честная ШИРИНА >= 1% масштаба, e02
+  монотонность W(0.01)>W(0.05)>W(0.10), e05 масштаб точки
+  отслеживает данные, e03 same-seed бит-паритет, e04 min_series-гейт
+  ДО фита, h13 РЕАЛЬНЫЙ panel-движок 2 folds) -- 84/84.
+- Мутационная кампания ВОСПРОИЗВЕДЕНА на 4e5df1b+фикс (foreground
+  батчами по 15, урок Task 139): **60/60 KILLED, выживших нет**
+  (M34a/M59/M60/M61 -- мутации самого фикса -- убиты; восстановление
+  байт-чистое, снапшот-протокол).
+
+### Верификация
+
+- Полная регрессия: **2464 passed / 0 failed** (unit 1728, включая
+  snapshot 3; api 636; прочие 100) -- арифметика сходится: 2463
+  базлайн Task 143 + 1 новый тест Дарио.  neural-тесты ИСПОЛНЯЛИСЬ
+  (neuralforecast 3.2.2 + torch 2.14.0+cpu -- та же сертификационная
+  пара Tasks 137-142).
+- NOTE окружение (пре-существующее, НЕ связано с 142a): тест
+  test_egarch_adapter.py::test_explicit_optimizer_budget_converges_
+  pathological_slice падал на чистом 4e5df1b ДО правок (воспроизведено
+  stash-прогоном -- пре-существующее отклонение окружения): свежий
+  venv принёс scipy 1.18.1, а премиса characterization-теста
+  (сырой фит НЕ сходится на патологическом срезе) чувствительна к
+  оптимизаторному стеку; arch-версия исключена (воспроизводилось и на
+  arch 7.2.0).  Выравнивание venv на сертификационную эпоху
+  (scipy==1.14.1, numpy==2.1.3, pandas==2.2.3, arch 7.2.0) вернуло
+  тест зелёным; дальше -- полный прогон выше на выровненном
+  окружении; pip check -- No broken requirements.
+- compileall OK; app-import OK (FastAPI); rules-smoketest exit=0.
+- E2E-смоук scripts/task142_e2e_smoke.py (env-рычаг 60): ВСЕ 7 СЕКЦИЙ
+  OK (24 connected -> deepar production+blocked F05 -> panel-движок
+  2 folds mae=**3.3732** против 116.1194 на статус-кво -- численное
+  подтверждение фикса на полном session-цепочке -> panel tuning 4/4
+  -> cohort-изоляция -> честный отказ 4<5).
+- Фронтенд не затронут (git diff -- 0 файлов .ts/.tsx -- прецедент
+  Task 139a/140a/142: typecheck/build обеих оболочек не запускались).
+
+### Границы Task 142a (что осознанно НЕ сделано)
+
+- Исторические записи журнала НЕ редактировались (append-only;
+  записи Дарио сохраняют свою синхронизацию main@68a0cb7 -- параллельная
+  работа до коммита Task 143).
+- Мутационная кампания Task 137 НЕ перезапускалась: её строковый якорь
+  whitelist'а стал stale после аддитивного расширения (отмечено Дарио
+  в записи пересертификации; перепривязка -- при следующем касании
+  cert137).
+- Dockerfile-проба DeepAR структурна (не в production-образе) --
+  мандат Дарио сохранён.
+- Эксплуатационная находка Task 143 п.3 (tft wall-time 182 c >
+  step_timeout 120 c standard-класса на benchmark-хосте) -- вне
+  мандата; правка ресурсных политик -- зона тимлида.
+- Vercel/render.com контур НЕ трогался (правки backend-only; PRE-0
+  смоук Task 143 не воспроизводился -- прод-деплой правки не получал).
+
+Изменённые/новые файлы (ZIP: download/task142a_apply_on_4e5df1b.zip):
+- НОВЫЕ: scripts/audit_scripts/{cert142_oracles, cert142_mutations,
+  task142_fix_surface_probe, task142_fix_surface_probe12,
+  task142a_f3_validation_probe, task142a_f1_nameerror_probe}.py
+- ИЗМЕНЁННЫЕ: apps/api/model_impls/deepar.py, apps/api/neural_contract.py,
+  apps/api/routers/modeling_session.py, apps/api/model_execution.py,
+  apps/api/model_impls/__init__.py, tests/unit/test_deepar_adapter.py,
+  tests/unit/test_deepar_integration_paths.py, worklog5.md (этот журнал)
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@4e5df1b + перечисленные изменения.

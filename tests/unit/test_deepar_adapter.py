@@ -1,8 +1,12 @@
 # tests/unit/test_deepar_adapter.py
-"""Task 142 -- DeepAR: адаптер на едином NeuralForecast-runtime
+"""Task 142/142a -- DeepAR: адаптер на едином NeuralForecast-runtime
 (neural_runtime.py Task 137), ПЯТЫЙ исполнитель нейро-семейства,
-panel-постановка и ВТОРОЙ срез с probabilistic-поверхностью
-MQLoss/quantiles.
+panel-постановка и ВТОРОЙ срез с probabilistic-поверхностью --
+DistributionLoss(StudentT, квантили плана; Task 142a -- исправление
+блокирующей находки F3 пересертификации 142: MQLoss вырожден на
+рекуррентном выводе 3.2.2 -- все квантильные каналы получают среднее
+квантилей, ширина тождественно 0; identity-скейлер -- коллапс масштаба
+точки).
 
 Прецедент quartet'а lstm/nbeats/nhits/tft (Tasks 138-141) в
 neural-runtime: ЕДИНСТВЕННАЯ точка импорта torch/neuralforecast --
@@ -16,26 +20,27 @@ apps/api/model_impls/neural_runtime.py (лениво, fail-closed); адапте
 - ГЛОБАЛЬНАЯ модель -- суть DeepAR: ОДИН фит на ВСЕЙ панели
   (long-format unique_id/ds/y через сертифицированный to_long_format
   контракта Task 137 с явным series_column); точечный прогноз --
-  медиана MQLoss ЦЕЛЕВОГО ряда (unique_id "series_0");
-- probabilistic-поверхность -- та же конвенция Task 141 (MQLoss
-  зарезервирован за срезами 141-142): квантили декларируются ПРЯМО
-  (MQLoss(quantiles=[alpha/2, 0.5, 1-alpha/2])), метод интервалов --
-  NeuralIntervalPlan.method="neural_quantile_outputs"; ЭМПИРИКА пробы
-  (scripts/task142_deepar_probe.py): DeepAR с loss=MQLoss требует
-  valid_loss=MQLoss С ТЕМИ ЖЕ quantiles (честный отказ конструктора
-  3.2.2 иначе), колонки отклика "DeepAR-median"/"DeepAR-lo-<w>"/
-  "DeepAR-hi-<w>" (width-семантика НАХОДКИ Task 141 п.2);
+  медиана (0.5-процентиль MC-квантилей) ЦЕЛЕВОГО ряда (unique_id
+  "series_0");
+- probabilistic-поверхность -- DistributionLoss (StudentT,
+  quantiles=[alpha/2, 0.5, 1-alpha/2]; Task 142a), метод интервалов --
+  NeuralIntervalPlan.method="neural_quantile_outputs", происхождение --
+  metadata.intervals (loss/distribution/trajectory_samples); колонки
+  отклика "DeepAR-median"/"DeepAR-lo-<w>"/"DeepAR-hi-<w>" (width-
+  семантика НАХОДКИ Task 141 п.2);
+- масштаб точки -- scaler_type="robust" (Task 142a; семейная конвенция
+  lstm/tft: против коллапса масштаба на identity);
 - clamp-инвариант lower <= median <= upper -- живой гейт поверх
-  isfinite (квантильное пересечение MQLoss теоретически возможно --
-  heads независимы; честный отказ fold'а вместо clamp-подмен) +
+  isfinite (MC-квантили StudentT упорядочены сортировкой выборки,
+  гейт -- defense-in-depth; честный отказ fold'а вместо clamp-подмен) +
   fault-injection тест (урок НАХОДКИ-3/M10 сертификации Task 138);
 - ds-ось -- задекларированная конвенция neural-семейства,
   ПЕРЕИСПОЛЬЗОВАНА из Task 138 (lstm._resolve_time_axis -- единый
   источник истины): datetime + pd.infer_freq либо позиционная
   целочисленная сетка freq=1 (проб);
 - гейт неосуществимого окна: n_train < input_size + horizon -- отказ
-  ДО фита (MQLoss БЕЗ conformal-калибровки -- потребность +2 НЕ
-  следует, прецедент tft; граница n == input+h исполнима -- проб;
+  ДО фита (DistributionLoss БЕЗ conformal-калибровки -- потребность +2
+  НЕ следует, прецедент tft; граница n == input+h исполнима -- проб;
   конструктор 3.2.2 хранит input_size+1 -- внутренний сдвиг
   авторегрессии, прижат spy-тестом);
 - fail-closed: короткий train, NaN/Inf, значения вне bounded-границ,
@@ -230,9 +235,22 @@ def test_fit_predict_rejects_infeasible_window():
                             related_series=panel, params={"input_size": 48})
 
 
-# ── 4. Probabilistic-поверхность MQLoss/quantiles ────────────────────────
+# ── 4. Probabilistic-поверхность DistributionLoss/quantiles (142a) ──────
+
+def test_contract_gate_distribution_loss_requires_levels():
+    """Контрактный гейт Task 137: distribution-голова (Task 142a) --
+    probabilistic-функция потерь: без уровней -- отказ, с планом -- OK.
+    MQLoss остаётся в whitelist'е (поверхность direct-TFT, Task 141)."""
+    with pytest.raises(NeuralContractError, match="уровней"):
+        resolve_probabilistic_loss("distribution", levels=())
+    plan = interval_levels_for_alpha(0.05)
+    assert resolve_probabilistic_loss(
+        "distribution", levels=plan.levels
+    ) == "distribution"
+
 
 def test_contract_gate_mqloss_requires_levels():
+    # mqloss остаётся валидным ключом whitelist'а (поверхность TFT)
     with pytest.raises(NeuralContractError, match="уровней"):
         resolve_probabilistic_loss("mqloss", levels=())
     plan = interval_levels_for_alpha(0.05)
@@ -275,12 +293,18 @@ def test_fit_predict_payload_contract(fast_budget):
 
 
 def test_intervals_metadata_declares_native_quantile_surface(fast_budget):
-    """Точка = медиана MQLoss целевого ряда; интервалы -- нативные
-    квантили (метод NeuralIntervalPlan контракта), НЕ conformal."""
+    """Точка = медиана distribution-головы целевого ряда (0.5-процентиль
+    MC-квантилей); интервалы -- нативные квантили (метод
+    NeuralIntervalPlan контракта), НЕ conformal; происхождение --
+    loss/distribution/trajectory_samples (Task 142a)."""
     payload = _deepar_fit_predict(_series(), 4, related_series=_panel())
     intervals = payload["intervals"]
     assert intervals["method"] == "neural_quantile_outputs"
-    assert intervals["loss"] == "mqloss"
+    assert intervals["loss"] == deepar_module.DEEPAR_LOSS_KEY
+    assert intervals["distribution"] == "StudentT"
+    assert intervals["trajectory_samples"] == (
+        deepar_module.DEEPAR_TRAJECTORY_SAMPLES
+    )
     assert intervals["alpha"] == DEFAULT_PARAMS["alpha"]
     assert list(intervals["quantiles"]) == [0.025, 0.5, 0.975]
     assert list(intervals["levels"]) == [2.5, 50.0, 97.5]
@@ -367,7 +391,7 @@ def test_unparseable_labels_fall_back_to_positional_integer_grid(fast_budget):
     assert payload["freq"] == {"kind": "integer", "value": 1}
 
 
-# ── 6. Проводка бюджета и MQLoss-конвенции конструктора (уроки M18) ──────
+# ── 6. Проводка бюджета и distribution-поверхности конструктора (142a) ──
 
 class _WiringProbeDone(Exception):
     """Sentinel: короткое замыкание spy-обёртки train_and_forecast."""
@@ -377,9 +401,11 @@ def test_budget_wiring_reaches_the_constructor(monkeypatch, fast_budget):
     """Двухслойный spy (урок НАХОДКИ-1/M18 сертификации Task 138):
     (1) адаптер передаёт в runtime config с бюджетом константы модуля;
     (2) фабрика честно разворачивает budget в КОНСТРУКТОР и несёт
-    MQLoss как loss И valid_loss С ТЕМИ ЖЕ квантилями (эмпирика пробы
-    Task 142: конструктор 3.2.2 честно отказывает на рассогласовании;
-    NeuralForecast core валидирует идентичность quantiles loss/valid_loss).
+    поверхность исправления F3 (Task 142a): loss=DistributionLoss
+    (StudentT, квантили плана), valid_loss=MAE (дефолт библиотеки для
+    distribution-голов), scaler_type="robust" (семейная конвенция
+    lstm/tft -- против коллапса масштаба точки) и trajectory_samples
+    (стабильность хвостов MC-квантилей).
     Внутренний сдвиг input_size+1 (авторегрессия DeepAR 3.2.2) прижат."""
     captured: dict = {}
 
@@ -402,13 +428,22 @@ def test_budget_wiring_reaches_the_constructor(monkeypatch, fast_budget):
     # Внутренний сдвиг авторегрессии: конструктор 3.2.2 хранит
     # input_size+1 (проб scripts/task142_deepar_probe.py, секция 7).
     assert int(model.input_size) == DEFAULT_PARAMS["input_size"] + 1
-    assert type(model.loss).__name__ == "MQLoss"
-    assert type(model.valid_loss).__name__ == "MQLoss"
-    # quantiles хранятся float32 (эмпирика пробы Task 142) -- сравнение
+    # Task 142a: поверхность DistributionLoss(StudentT), валидация --
+    # MAE, скейлер и траекторный бюджет доходят до конструктора
+    # (конструктор 3.2.2 хранит гиперпараметры через
+    # save_hyperparameters -- читаются из hparams; траекторный бюджет
+    # продублирован атрибутом n_samples рекуррентного вывода).
+    assert type(model.loss).__name__ == "DistributionLoss"
+    assert model.loss.distribution == "StudentT"
+    assert type(model.valid_loss).__name__ == "MAE"
+    assert model.hparams["scaler_type"] == "robust"
+    assert int(model.hparams["trajectory_samples"]) == (
+        deepar_module.DEEPAR_TRAJECTORY_SAMPLES
+    )
+    assert int(model.n_samples) == deepar_module.DEEPAR_TRAJECTORY_SAMPLES
+    # квантили хранятся float32 (эмпирика пробы Task 142) -- сравнение
     # с допуском машинной точности float32.
     assert list(map(float, model.loss.quantiles)) == pytest.approx(
-        [0.025, 0.5, 0.975], abs=1e-6)
-    assert list(map(float, model.valid_loss.quantiles)) == pytest.approx(
         [0.025, 0.5, 0.975], abs=1e-6)
     # lstm_hidden_size доходит до энкодера (конструктор 3.2.2 хранит
     # ширину рекуррентного энкодера в hist_encoder.hidden_size --
@@ -421,9 +456,9 @@ def test_budget_wiring_reaches_the_constructor(monkeypatch, fast_budget):
 
 def test_fault_injected_quantile_crossing_is_rejected(monkeypatch, fast_budget):
     """Урок НАХОДКИ-3/M10 сертификации Task 138: clamp-инвариант --
-    живой гейт, закреплённый fault-injection тестом.  Для MQLoss гейт
-    ловит квантильное пересечение (heads независимы): честный отказ
-    fold'а вместо clamp-подмен."""
+    живой гейт, закреплённый fault-injection тестом.  Для MC-квантилей
+    StudentT порядок гарантирован сортировкой выборки, гейт --
+    defense-in-depth: честный отказ fold'а вместо clamp-подмен."""
     def broken_train(*, model_factory, **_kwargs):
         frame = pd.DataFrame({
             "unique_id": ["series_0"] * 4,

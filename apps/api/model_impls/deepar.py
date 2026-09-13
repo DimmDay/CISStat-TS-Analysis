@@ -2,12 +2,13 @@
 """
 DeepAR -- авторегрессионная рекуррентная сеть (Amazon) на едином
 NeuralForecast-runtime, ПЯТЫЙ исполнитель Neural Runtime Contract
-Task 137 и ВТОРОЙ срез с probabilistic-поверхностью MQLoss/quantiles
-(Task 142, family=neural).  PANEL-постановка: глобальная модель,
-обучаемая на НЕСКОЛЬКИХ рядах одновременно (прецедент quartet'а
-lstm Task 138 / nbeats Task 139 / nhits Task 140 / tft Task 141 в
-нейро-семействе: runtime-контракт Task 137 НЕ меняется -- новый
-адаптер + запись реестра v2 + условный dispatch + yaml).
+Task 137 и ВТОРОЙ срез с probabilistic-поверхностью -- DistributionLoss
+(StudentT, квантили плана; Task 142/142a, family=neural).  PANEL-
+постановка: глобальная модель, обучаемая на НЕСКОЛЬКИХ рядах
+одновременно (прецедент quartet'а lstm Task 138 / nbeats Task 139 /
+nhits Task 140 / tft Task 141 в нейро-семействе: runtime-контракт
+Task 137 НЕ меняется -- новый адаптер + запись реестра v2 + условный
+dispatch + yaml).
 
 Постановка docs/modeling_task_list.md::Tasks 138-142 (Task 142 --
 DeepAR) + правило моделирования: «DeepAR активируется только для
@@ -20,89 +21,118 @@ DeepAR) + правило моделирования: «DeepAR активируе
    сетке) и отказывает ДО фита, если n_series = 1 + len(related) <
    DEEPAR_MIN_SERIES (=5).  Панель собирается из РЯДОВ датасета
    (target + связанные числовые ряды, как endogenous-система Task
-   131), а НЕ из feature-колонок одного объекта: feature-каналы
-   реестром отвергаются (input_kind="panel" не объявляет
-   supports_future_features; запрос с train_features -- честный отказ
-   гейта реестра).  Честность панели продублирована контрактом Task
-   137 (neural_cohort_contract: n_series < min_series -- отказ) и
-   panel-движком session-контура.
+   131), а НЕ из feature-колонок одного объекта: future_features
+   отвергаются гейтом реестра (supports_future_features=False);
+   train_features реестровым гейтом для panel-модели НЕ отвергаются
+   (гейт покрывает только univariate), но и НЕ потребляются адаптером
+   -- честный warning даёт panel-движок через FeaturePlan (уточнение
+   находки F2 пересертификации 142).  Честность панели продублирована
+   контрактом Task 137 (neural_cohort_contract: n_series <
+   min_series -- отказ) и panel-движком session-контура.
 
 2. **ГЛОБАЛЬНАЯ модель -- суть DeepAR**: ОДИН фит на ВСЕЙ панели в
    long-format unique_id/ds/y через сертифицированный to_long_format
    контракта (явный series_column; NaN/Inf, дубликаты (unique_id, ds),
    нерегулярная сетка -- отказ).  Точечный прогноз payload -- медиана
-   MQLoss ЦЕЛЕВОГО ряда (unique_id "series_0"; прогноз извлекается по
-   unique_id, а не по позиции); missing-строки целевого ряда в отклике
-   -- fail-closed (глобальная модель обязана вернуть прогноз каждой
-   серии панели).
+   (0.5-процентиль MC-квантилей) distribution-головы ЦЕЛЕВОГО ряда
+   (unique_id "series_0"; прогноз извлекается по unique_id, а не по
+   позиции); missing-строки целевого ряда в отклике -- fail-closed
+   (глобальная модель обязана вернуть прогноз каждой серии панели).
 
-3. **Probabilistic-поверхность -- конвенция Task 141** (MQLoss был
-   зарезервирован за срезами 141-142 границей Task 138): квантили
-   декларируются ПРЯМО -- MQLoss(quantiles=[alpha/2, 0.5, 1-alpha/2])
-   -- честный двусторонний интервал [alpha/2; 1-alpha/2] процентилей;
-   план _quantile_plan ПЕРЕИСПОЛЬЗОВАН из tft.py (единый источник
-   истины, НЕ дубликат); метод интервалов в metadata --
-   NeuralIntervalPlan.method="neural_quantile_outputs".  ЭМПИРИКА
-   пробы (scripts/task142_deepar_probe.py): (а) конструктор 3.2.2 с
-   loss=MQLoss требует valid_loss=MQLoss С ТЕМИ ЖЕ quantiles -- иначе
-   честный отказ («Please set valid_loss to MQLoss() ...»), а core
-   дополнительно валидирует идентичность квантилей loss/valid_loss;
-   адаптер передаёт обе головки с одним кортежем quantiles;
-   (б) дефолтный loss -- DistributionLoss(StudentT) (каталожное
-   «parametric distribution head»); выбор MQLoss -- платформенная
-   конвенция probabilistic-поверхности (детерминированные нативные
-   квантильные выходы вместо сэмплирования траекторий), дисклоужен в
-   metadata.intervals.loss="mqloss"; (в) колонки отклика
-   "DeepAR-median"/"DeepAR-lo-<w>"/"DeepAR-hi-<w>" -- width-семантика
-   НАХОДКИ Task 141 п.2 (w = 100*(1-alpha)).
+3. **Probabilistic-поверхность -- DistributionLoss (StudentT) -- Task
+   142a** (исправление блокирующей находки F3 пересертификации 142;
+   MQLoss был зарезервирован за срезами 141-142 границей Task 138 и
+   использовался коллегой здесь ПЕРВОНАЧАЛЬНО): квантили декларируются
+   ПРЯМО -- DistributionLoss(distribution="StudentT", quantiles=
+   [alpha/2, 0.5, 1-alpha/2]) -- честный двусторонний интервал
+   [alpha/2; 1-alpha/2] процентилей; план _quantile_plan
+   ПЕРЕИСПОЛЬЗОВАН из tft.py (единый источник истины, НЕ дубликат);
+   метод интервалов в metadata -- NeuralIntervalPlan.method=
+   "neural_quantile_outputs" (нативные выходы модели, НЕ conformal);
+   происхождение дисклоужено в metadata.intervals (loss="distribution",
+   distribution="StudentT", trajectory_samples).
+   ПОЧЕМУ НЕ MQLoss (эмпирика пересертификации, проб E1-E4 и
+   task142_cert_surface_diag.py): рекуррентный predict neuralforecast
+   3.2.2 (_base_model.py::_predict_step_recurrent_single) для
+   не-distribution losses перезаписывает output_batch СРЕДНИМ
+   квантилей (mean(dim=-1), библиотечный «Todo») ДО сохранения y_hat
+   -- ВСЕ квантильные каналы отклика получают одно значение (среднее
+   квантилей) -- ширина интервала тождественно 0 (находка F3:
+   max|median-lo| = max|hi-median| = 0.0 бит-в-бит на любом
+   бюджете/сиде/скейлере).  DistributionLoss идёт по ветке
+   is_distribution_output: y_hat = concat(mean, MC-квантили) --
+   раздельные значения (проб E3/E4: mean_width > 0).  MQLoss остаётся
+   поверхностью ПРЯМОЙ (direct) TFT (Task 141) -- там рекуррентный
+   путь не задействован.
 
-4. **ЕДИНСТВЕННАЯ точка импорта torch/neuralforecast** --
+4. **Масштаб точки -- scaler_type="robust" -- Task 142a** (второй
+   механизм той же находки F3): дефолт DeepAR scaler_type="identity"
+   не позволяет рекуррентному декодеру выйти на масштаб данных за
+   семейный бюджет 300 шагов (Adam(1e-3) сдвигает выход ~на lr за
+   шаг: проб -- прогноз ~4.3 при уровнях 103/40/12; ~4.7 на
+   константной серии y=100; 21.8 при 1000 шагов).  LSTM/TFT не
+   страдают -- их дефолт "robust" (per-window медиана/MAD);
+   DeepAR выравнен явным scaler_type="robust" (проб E4: медиана ~109
+   при хвосте ~105; |медиана-хвост| ~4 против ~100 на identity).
+   Инверсия нормализации -- per-window статистики ЦЕЛЕВОГО окна
+   (утечки нет: окно -- train-префикс), фидбек рекуррентного вывода
+   возвращается в нормализованное пространство тем же скейлером.
+
+5. **ЕДИНСТВЕННАЯ точка импорта torch/neuralforecast** --
    apps/api/model_impls/neural_runtime.py (лениво, fail-closed,
    NeuralRuntimeUnavailableError с установочной подсказкой; гейт
    памяти Task 138c -- ensure_neural_memory_capacity ДО импорта).
-   Этот модуль torch НЕ импортирует ни на одном уровне; MQLoss --
-   через require_neuralforecast().losses.pytorch -- та же единственная
-   точка тяжёлого импорта.
+   Этот модуль torch НЕ импортирует ни на одном уровне; DistributionLoss
+   и MAE -- через require_neuralforecast().losses.pytorch -- та же
+   единственная точка тяжёлого импорта.  valid_loss=MAE() -- дефолт
+   библиотеки для distribution-головы (валидация средним распределения;
+   mirror-правило «valid_loss=MQLoss с теми же quantiles» -- только
+   для mqloss-голов, конструктор 3.2.2).
 
-5. **ds-ось -- конвенция neural-семейства ПЕРЕИСПОЛЬЗОВАНА из Task
+6. **ds-ось -- конвенция neural-семейства ПЕРЕИСПОЛЬЗОВАНА из Task
    138** (lstm._resolve_time_axis -- единый источник истины):
    datetime + pd.infer_freq либо позиционная целочисленная сетка
    freq=1 (проб: DeepAR int-ds freq=1 OK).  ds -- только ось; НИКАКОГО
    скрытого ресемплинга/интерполяции/сортировки данных.
 
-6. **Гейт неосуществимого окна**: n_train < input_size + horizon --
-   отказ ДО фита (полностью наблюдаемое supervised-окно).  MQLoss БЕЗ
-   conformal-калибровки -- потребность +2 НЕ следует (прецедент tft);
-   граница n == input_size + horizon исполнима (проб, секция 9).
-   Библиотека с start_padding_enabled=False согласована (проб: сырой
-   отказ «DeepAR requires at least ... training timestamp(s)»);
-   адаптерный гейт даёт детерминированное сообщение до затрат на fit.
-   Конструктор 3.2.2 хранит input_size+1 (внутренний сдвиг
-   авторегрессии) -- прижат spy-тестом.  DEEPAR_MIN_TRAIN=30
-   (семейный пол; каталоговский мягкий порог 200 -- раньше,
-   readiness-гейтом F04).
+7. **Гейт неосуществимого окна**: n_train < input_size + horizon --
+   отказ ДО фита (полностью наблюдаемое supervised-окно).
+   DistributionLoss БЕЗ conformal-калибровки -- потребность +2 НЕ
+   следует (прецедент tft); граница n == input_size + horizon
+   исполнима (проб, секция 9).  Библиотека с
+   start_padding_enabled=False согласована (проб: сырой отказ «DeepAR
+   requires at least ... training timestamp(s)»); адаптерный гейт даёт
+   детерминированное сообщение до затрат на fit.  Конструктор 3.2.2
+   хранит input_size+1 (внутренний сдвиг авторегрессии) -- прижат
+   spy-тестом.  DEEPAR_MIN_TRAIN=30 (семейный пол; каталоговский мягкий
+   порог 200 -- раньше, readiness-гейтом F04).
 
-7. **Clamp-инвариант с первого дня** (урок НАХОДКИ-3/M10 сертификации
+8. **Clamp-инвариант с первого дня** (урок НАХОДКИ-3/M10 сертификации
    Task 138): lower <= median <= upper -- живой гейт поверх isfinite,
-   закреплённый fault-injection тестом (квантильное пересечение MQLoss
-   heads независимо) -- честный отказ fold'а вместо clamp-подмен.
+   закреплённый fault-injection тестом; для MC-квантилей StudentT
+   порядок гарантирован сортировкой выборки, гейт -- defense-in-depth
+   (пересечение -- честный отказ fold'а вместо clamp-подмен).
 
-8. **Fail-closed**: короткий train, NaN/Inf (в ЛЮБОЙ серии панели),
+9. **Fail-closed**: короткий train, NaN/Inf (в ЛЮБОЙ серии панели),
    короче-длиннее related-ряды, alpha вне whitelist, значения вне
    bounded-границ, bool-коэрция целочисленных ручек (урок НАХОДКИ-2/
    M6) -- отказ fold'а БЕЗ Naive-fallback и clamp-подмен.
 
-9. **Детерминизм**: random_state реестра -> NeuralTrainingConfig.seed
-   -> fold_seed -> random_seed КОНСТРУКТОРА модели (ресертификация
-   Task 137).  Same-seed -- бит-паритет (проб: max|diff| = 0.0),
-   другой seed -- другой прогноз (проб: max|diff| = 0.0299).
+10. **Детерминизм**: random_state реестра -> NeuralTrainingConfig.seed
+    -> fold_seed -> random_seed КОНСТРУКТОРА модели (ресертификация
+    Task 137); MC-сэмплирование квантилей на predict детерминировано
+    перезапуском сида (torch.manual_seed в predict-пути) -- same-seed
+    бит-паритет (проб/оракул e03), другой seed -- другой прогноз.
 
-10. **Бюджет -- константа модуля** DEEPAR_MAX_STEPS (семейная
+11. **Бюджет -- константа модуля** DEEPAR_MAX_STEPS (семейная
     конвенция 300 -- как lstm/nbeats/nhits/tft) + env-рычаг слабых
     инстансов CISSTAT_NEURAL_MAX_STEPS (паттерн Task 138c/139/140/141;
     дефолт env не задана -- сертифицированная константа).  Тюнинг
     бюджета -- вне param_space обоснованно (прецедент Task 136);
     константа прижата анти-тампер тестом к [100, NEURAL_MAX_STEPS_BOUND].
+    Траекторный бюджет MC-квантилей -- константа DEEPAR_TRAJECTORY_SAMPLES
+    (1000 -- дефолт DistributionLoss.sample; стабильность хвостов 0.5%
+    процентиля alpha=0.01 против дефолтных 100 траекторий модели).
 
 Exogenous-канал (cat/hist/futr/stat lists в поверхности конструктора)
 в реестре НЕ декларирован (supports_future_features=False; exog-канал
@@ -137,6 +167,21 @@ DEEPAR_ADAPTER_ID = "neuralforecast-deepar"
 #: «DeepAR активируется только для настоящей панели»; yaml::deepar
 #: min_series=5, правило F05).
 DEEPAR_MIN_SERIES = 5
+
+#: Ключ probabilistic-поверхности в whitelist'е контракта Task 137
+#: (NEURAL_ALLOWED_LOSSES/NEURAL_PROBABILISTIC_LOSSES) и в
+#: metadata.intervals: параметрическая distribution-голова (Task 142a:
+#: исправление F3 -- MQLoss вырожден на рекуррентном выводе 3.2.2).
+#: Единый источник истины ключа: контрактный гейт адаптера,
+#: metadata payload'а и session-контекст (_panel_neural_context).
+DEEPAR_LOSS_KEY = "distribution"
+
+#: Траекторный бюджет MC-квантилей DistributionLoss на predict
+#: (DeepAR trajectory_samples): 1000 -- дефолт DistributionLoss.sample;
+#: стабилизирует хвостовые MC-процентили alpha=0.01 (0.5% процентиль
+#: из 100 траекторий -- шумный порядок-статистик; детерминизм сида
+#: сохраняется).  Прижат wiring-оракулом d01.
+DEEPAR_TRAJECTORY_SAMPLES = 1000
 
 #: Минимальная длина train-среза fold'а (честный минимум нейро-фита;
 #: мягкий порог применимости каталога min_observations=200 применяется
@@ -347,12 +392,14 @@ def _deepar_fit_predict(
 
     plan = _quantile_plan(normalized["alpha"])
     # Контрактный гейт Task 137: probabilistic-функция потерь требует
-    # объявленного плана уровней (NEURAL_PROBABILISTIC_LOSSES).
-    resolve_probabilistic_loss("mqloss", levels=plan["levels"])
+    # объявленного плана уровней (NEURAL_PROBABILISTIC_LOSSES;
+    # Task 142a: ключ DEEPAR_LOSS_KEY -- distribution-голова).
+    resolve_probabilistic_loss(DEEPAR_LOSS_KEY, levels=plan["levels"])
 
     nf_module = _require_neuralforecast()
     model_cls = nf_module.models.DeepAR
-    mqloss_cls = nf_module.losses.pytorch.MQLoss
+    distribution_loss_cls = nf_module.losses.pytorch.DistributionLoss
+    mae_cls = nf_module.losses.pytorch.MAE
 
     def _factory(budget: Mapping[str, Any]):
         quantiles = list(plan["quantiles"])
@@ -361,19 +408,29 @@ def _deepar_fit_predict(
             input_size=normalized["input_size"],
             lstm_hidden_size=normalized["lstm_hidden_size"],
             alias="DeepAR",
-            # Прямая декларация квантилей: (alpha/2, 0.5, 1-alpha/2) --
-            # честный двусторонний интервал; точка = медиана.  Эмпирика
-            # пробы Task 142: DeepAR с loss=MQLoss требует valid_loss=
-            # MQLoss С ТЕМИ ЖЕ quantiles (иначе честный отказ
-            # конструктора 3.2.2 + core-валидация идентичности).
-            loss=mqloss_cls(quantiles=quantiles),
-            valid_loss=mqloss_cls(quantiles=quantiles),
+            # Task 142a (исправление F3): голова -- DistributionLoss
+            # (StudentT, квантили плана) -- честный двусторонний интервал;
+            # MQLoss на рекуррентном выводе 3.2.2 вырожден (все
+            # квантильные каналы = среднему квантилей, ширина 0 -- проб
+            # E1/E2).  valid_loss=MAE -- дефолт библиотеки для
+            # distribution-голов.  scaler_type="robust" -- семейная
+            # конвенция lstm/tft: без per-window нормализации декодер
+            # не выходит на масштаб данных за бюджет 300 шагов (проб
+            # E1/E3/E4).  trajectory_samples -- стабильность хвостов
+            # MC-квантилей (alpha=0.01).
+            loss=distribution_loss_cls(
+                distribution="StudentT", quantiles=quantiles,
+            ),
+            valid_loss=mae_cls(),
+            scaler_type="robust",
+            trajectory_samples=DEEPAR_TRAJECTORY_SAMPLES,
             **dict(budget),
         )
 
     try:
         # levels=() -- conformal-контур НЕ активируется: квантильные
-        # выходы нативны loss=MQLoss (PredictionIntervals не нужен).
+        # выходы нативны loss=DistributionLoss (PredictionIntervals
+        # не нужен).
         preds = train_and_forecast(
             model_factory=_factory,
             freq=freq,
@@ -404,9 +461,10 @@ def _deepar_fit_predict(
             "(fail-closed)"
         )
     # Clamp-инвариант (урок НАХОДКИ-3/M10 сертификации Task 138): живой
-    # гейт поверх isfinite -- ловит и квантильное пересечение MQLoss
-    # (heads независимы); fault-injection тест, а не только happy-path
-    # ассерт; никаких молчаливых clamp-подмен границ.
+    # гейт поверх isfinite -- defense-in-depth поверх MC-квантилей
+    # StudentT (порядок гарантирован сортировкой выборки);
+    # fault-injection тест, а не только happy-path ассерт; никаких
+    # молчаливых clamp-подмен границ.
     lower_arr = np.asarray(lower, dtype=float)
     upper_arr = np.asarray(upper, dtype=float)
     point_arr = np.asarray(point, dtype=float)
@@ -433,7 +491,9 @@ def _deepar_fit_predict(
         ),
         "intervals": {
             "method": "neural_quantile_outputs",
-            "loss": "mqloss",
+            "loss": DEEPAR_LOSS_KEY,
+            "distribution": "StudentT",
+            "trajectory_samples": int(DEEPAR_TRAJECTORY_SAMPLES),
             "alpha": float(normalized["alpha"]),
             "quantiles": [float(q) for q in plan["quantiles"]],
             "levels": [float(level) for level in plan["levels"]],
@@ -462,10 +522,13 @@ def _target_rows(preds: pd.DataFrame, horizon: int) -> pd.DataFrame:
 
 
 def _median_column(rows: pd.DataFrame) -> np.ndarray:
-    """Точечный прогноз DeepAR -- медиана MQLoss (колонка 'DeepAR-median').
+    """Точечный прогноз DeepAR -- медиана (колонка 'DeepAR-median')
+    distribution-головы (0.5-процентиль MC-квантилей; Task 142a).
 
     При probabilistic-loss NeuralForecast НЕ возвращает bare-колонку
-    'DeepAR' (проб); отсутствие медианы -- fail-closed."""
+    'DeepAR' как точку адаптера (проб; bare-колонка DistributionLoss --
+    среднее распределения, точкой платформы служит медиана); отсутствие
+    медианы -- fail-closed."""
     if "DeepAR-median" not in rows.columns:
         raise ValueError(
             f"DeepAR: NeuralForecast вернул колонки {list(rows.columns)} "
@@ -514,7 +577,8 @@ def _quantile_column(
 def _require_neuralforecast():
     """Ленивый импорт neuralforecast (единственная точка --
     neural_runtime.require_neuralforecast): модели + losses.pytorch
-    (MQLoss) -- одна и та же точка тяжёлого импорта платформы."""
+    (DistributionLoss/MAE) -- одна и та же точка тяжёлого импорта
+    платформы."""
     from apps.api.model_impls.neural_runtime import require_neuralforecast
 
     return require_neuralforecast()
@@ -541,9 +605,11 @@ __all__ = [
     "ALPHA_OPTIONS",
     "DEFAULT_PARAMS",
     "DEEPAR_ADAPTER_ID",
+    "DEEPAR_LOSS_KEY",
     "DEEPAR_MAX_STEPS",
     "DEEPAR_MIN_SERIES",
     "DEEPAR_MIN_TRAIN",
+    "DEEPAR_TRAJECTORY_SAMPLES",
     "INPUT_SIZE_BOUNDS",
     "LSTM_HIDDEN_SIZE_BOUNDS",
     "_quantile_plan",

@@ -987,33 +987,38 @@ def _tft_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
 
 
 def _deepar_executor(request: ModelExecutionRequest) -> ModelExecutionResult:
-    """Task 142: DeepAR -- ПЯТЫЙ исполнитель neural-runtime контракта
-    Task 137, panel-постановка и ВТОРОЙ срез с probabilistic-
-    поверхностью MQLoss/quantiles (прецедент quartet'а lstm/nbeats/
-    nhits/tft: единый NeuralForecast-runtime, neural_runtime.py).
+    """Task 142/142a: DeepAR -- ПЯТЫЙ исполнитель neural-runtime контракта
+    Task 137, panel-постановка и ВТОРОЙ срез с probabilistic-поверхностью
+    -- DistributionLoss(StudentT, квантили плана; прецедент quartet'а
+    lstm/nbeats/nhits/tft: единый NeuralForecast-runtime,
+    neural_runtime.py).
 
     ГЛОБАЛЬНАЯ модель на ПАНЕЛИ (input_kind="panel",
     requires_related_series=True -- единственный такой носитель в
     нейро-семействе): адаптер отказывает ДО фита, если n_series = 1 +
     len(related_series) < 5 (yaml min_series=5, правило F05; несколько
     числовых колонок одного объекта не выдаются за панель).  Точечный
-    прогноз -- МЕДИАНА MQLoss ЦЕЛЕВОГО ряда (unique_id "series_0");
-    интервалы -- NATIVE-квантили MQLoss(quantiles=[alpha/2, 0.5,
-    1-alpha/2]) (метод NeuralIntervalPlan "neural_quantile_outputs",
-    НЕ conformal) -- происхождение честно дисклоужено в
-    metadata.intervals; loss/valid_loss с одинаковыми quantiles --
-    эмпирика пробы Task 142 (конструктор 3.2.2 отказывает иначе).
-    Clamp-инвариант lower <= median <= upper -- живой гейт квантильного
-    пересечения MQLoss.  Детерминизм: random_state реестра доходит до
-    КОНСТРУКТОРА модели (ресертификация Task 137).  Бюджет обучения --
-    константа DEEPAR_MAX_STEPS адаптера (тюнинг бюджета -- вне
-    param_space, прецедент Task 136).  Feature-каналы отвергаются
-    гейтами реестра (exog-канал нейро-моделей -- отдельная постановка).
-    Panel-исполнение session-контура -- ТОЛЬКО через панельный движок
-    run_panel_backtest_plan (Task 134-прецедент отдельного движка под
-    input_kind); panel-cohort изолирован neural_cohort_contract'ом
-    (panel=true/n_series/min_series).  Legacy synthetic-эндпоинт --
-    честный отказ (прецедент var/vecm).
+    прогноз -- МЕДИАНА (0.5-процентиль MC-квантилей) ЦЕЛЕВОГО ряда
+    (unique_id "series_0"); интервалы -- NATIVE-квантили DistributionLoss
+    (quantiles=[alpha/2, 0.5, 1-alpha/2]) (метод NeuralIntervalPlan
+    "neural_quantile_outputs", НЕ conformal) -- происхождение честно
+    дисклоужено в metadata.intervals (loss="distribution",
+    distribution="StudentT", trajectory_samples).  Голова и скейлер
+    исправлены пересертификацией 142 (Task 142a): MQLoss вырожден на
+    рекуррентном выводе 3.2.2 (нулевая ширина), identity-скейлер не
+    выходит на масштаб данных -- DistributionLoss + robust (проб E1-E4).
+    Clamp-инвариант lower <= median <= upper -- живой гейт.  Детерминизм:
+    random_state реестра доходит до КОНСТРУКТОРА модели (ресертификация
+    Task 137).  Бюджет обучения -- константа DEEPAR_MAX_STEPS адаптера
+    (тюнинг бюджета -- вне param_space, прецедент Task 136).
+    Feature-каналы: future_features отвергаются гейтом реестра;
+    train_features для panel не потребляются (honest-warning
+    panel-движка, находка F2).  Panel-исполнение session-контура --
+    ТОЛЬКО через панельный движок run_panel_backtest_plan (Task
+    134-прецедент отдельного движка под input_kind); panel-cohort
+    изолирован neural_cohort_contract'ом (panel=true/n_series/min_series,
+    loss=DEEPAR_LOSS_KEY).  Legacy synthetic-эндпоинт -- честный отказ
+    (прецедент var/vecm).
     """
     from apps.api.model_impls.deepar import _deepar_fit_predict
 
@@ -1476,32 +1481,37 @@ MODEL_EXECUTION_REGISTRY = ModelExecutionRegistry([
         adapter_id="neuralforecast-deepar", executor=_deepar_executor,
         actions=_TUNABLE, engine="neuralforecast",
         required_packages=("neuralforecast",),
-        # Task 142: ПЯТЫЙ исполнитель neural-runtime контракта Task 137,
-        # panel-постановка и ВТОРОЙ срез с probabilistic-поверхностью
-        # MQLoss/quantiles (прецедент quartet'а lstm/nbeats/nhits/tft:
-        # runtime-контракт не меняется -- новый адаптер + запись реестра
-        # + условный dispatch + yaml).  ГЛОБАЛЬНАЯ модель на ПАНЕЛИ:
+        # Task 142/142a: ПЯТЫЙ исполнитель neural-runtime контракта Task 137,
+        # panel-постановка и ВТОРОЙ срез с probabilistic-поверхностью --
+        # DistributionLoss(StudentT, квантили плана); прецедент quartet'а
+        # lstm/nbeats/nhits/tft: runtime-контракт не меняется -- новый
+        # адаптер + запись реестра + условный dispatch + yaml.
+        # ГЛОБАЛЬНАЯ модель на ПАНЕЛИ:
         # input_kind="panel" + requires_related_series=True (единственный
         # такой носитель в нейро-семействе) -- адаптер отказывает ДО
         # фита при n_series < 5 (yaml min_series=5, правило F05;
         # несколько числовых колонок одного объекта не выдаются за
-        # панель).  Точка -- медиана MQLoss ЦЕЛЕВОГО ряда; интервалы --
-        # native quantiles (метод NeuralIntervalPlan
-        # "neural_quantile_outputs" контракта Task 137), НЕ conformal;
-        # loss/valid_loss с одинаковыми quantiles -- эмпирика пробы
-        # Task 142.  Clamp-инвариант -- живой гейт квантильного
-        # пересечения.  Детерминизм: random_state -> fold_seed ->
-        # random_seed КОНСТРУКТОРА (ресертификация Task 137; same-seed
-        # бит-в-бит подтверждён пробом Task 142).  Бюджет -- константа
-        # DEEPAR_MAX_STEPS адаптера; tuning -- панельный движок
-        # (execute_panel_tuning_plan, bounded param_space yaml::deepar,
-        # 4 trials).  Panel-исполнение session-контура -- ТОЛЬКО через
-        # run_panel_backtest_plan (main-движок не передаёт
+        # панель).  Точка -- медиана (0.5-процентиль MC-квантилей)
+        # ЦЕЛЕВОГО ряда; интервалы -- native quantiles (метод
+        # NeuralIntervalPlan "neural_quantile_outputs" контракта Task
+        # 137), НЕ conformal; происхождение -- metadata.intervals
+        # (loss="distribution", distribution="StudentT",
+        # trajectory_samples).  Task 142a (исправление F3
+        # пересертификации): MQLoss вырожден на рекуррентном выводе
+        # 3.2.2 (нулевая ширина), identity-скейлер -- коллапс масштаба
+        # точки; голова DistributionLoss + scaler robust (проб E1-E4).
+        # Clamp-инвариант -- живой гейт.  Детерминизм: random_state ->
+        # fold_seed -> random_seed КОНСТРУКТОРА (ресертификация Task
+        # 137; MC-сэмплирование predict детерминировано сидом).  Бюджет
+        # -- константа DEEPAR_MAX_STEPS адаптера; tuning -- панельный
+        # движок (execute_panel_tuning_plan, bounded param_space
+        # yaml::deepar, 4 trials).  Panel-исполнение session-контура --
+        # ТОЛЬКО через run_panel_backtest_plan (main-движок не передаёт
         # related_series, vector-движок -- objective=multivariate);
-        # panel-cohort изолирован neural_cohort_contract'ом.  Dispatch
-        # routers/models.py регистрирует запись условно
-        # (_register_neural_dispatch) -- gate реестр<->dispatch остаётся
-        # точным в обеих средах.
+        # panel-cohort изолирован neural_cohort_contract'ом
+        # (loss=DEEPAR_LOSS_KEY).  Dispatch routers/models.py
+        # регистрирует запись условно (_register_neural_dispatch) --
+        # gate реестр<->dispatch остаётся точным в обеих средах.
         input_kind="panel",
         requires_related_series=True,
         supports_prediction_intervals=True,

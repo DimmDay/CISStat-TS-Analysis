@@ -1,8 +1,10 @@
 # tests/unit/test_deepar_integration_paths.py
-"""Task 142 -- DeepAR: интеграция реестра v2, dispatch, readiness,
+"""Task 142/142a -- DeepAR: интеграция реестра v2, dispatch, readiness,
 yaml-спецификации, panel-движка session-контура и cohort-изоляции
 (ПЯТЫЙ исполнитель neural-runtime контракта Task 137, panel-постановка,
-ВТОРОЙ срез с probabilistic-поверхностью MQLoss/quantiles).
+ВТОРОЙ срез с probabilistic-поверхностью -- DistributionLoss(StudentT;
+Task 142a -- исправление F3: MQLoss вырожден на рекуррентном выводе
+3.2.2).
 
 Прецедент quartet'а lstm/nbeats/nhits/tft (Tasks 138-141): runtime-
 контракт Task 137 НЕ меняется -- новый адаптер + запись реестра +
@@ -35,6 +37,7 @@ from apps.api.model_execution import (
 )
 from apps.api.model_impls import run_deepar_backtest as exported_run_deepar_backtest
 from apps.api.model_impls.deepar import (
+    DEEPAR_LOSS_KEY,
     DEEPAR_MIN_SERIES,
     INPUT_SIZE_BOUNDS,
     LSTM_HIDDEN_SIZE_BOUNDS,
@@ -283,7 +286,7 @@ def test_deepar_panel_engine_runs_oof_cohort(monkeypatch):
         exogenous=build_exogenous_plan(pd.DataFrame(
             {"unique_id": [], "ds": [], "y": []})),
         interval=interval_levels_for_alpha(0.05),
-        loss="mqloss",
+        loss=DEEPAR_LOSS_KEY,
         config=NeuralTrainingConfig(seed=42, max_steps=20),
     )
     plan = build_backtest_plan(
@@ -338,7 +341,7 @@ def test_panel_cohort_is_isolated_from_univariate_cohorts():
         exogenous=build_exogenous_plan(pd.DataFrame(
             {"unique_id": [], "ds": [], "y": []})),
         interval=interval_levels_for_alpha(0.05),
-        loss="mqloss",
+        loss=DEEPAR_LOSS_KEY,
         config=NeuralTrainingConfig(seed=42, max_steps=300),
     )
     panel = build_backtest_plan(

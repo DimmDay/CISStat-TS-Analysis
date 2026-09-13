@@ -59,9 +59,10 @@ from apps.api.model_impls.nhits import run_nhits_backtest
 # (адаптер НЕ импортирует torch на уровне модуля -- лениво через
 # neural_runtime; ds-конвенция переиспользована из lstm).
 from apps.api.model_impls.tft import run_tft_backtest
-# Task 142: DeepAR -- ПЯТЫЙ исполнитель neural-runtime контракта
-# Task 137 и ВТОРОЙ срез с probabilistic-поверхностью MQLoss/
-# quantiles; PANEL-постановка (min_series=5; legacy synthetic-эндпоинт
+# Task 142/142a: DeepAR -- ПЯТЫЙ исполнитель neural-runtime контракта
+# Task 137 и ВТОРОЙ срез с probabilistic-поверхностью -- DistributionLoss
+# (StudentT; Task 142a: исправление F3 -- MQLoss вырожден на рекуррентном
+# выводе 3.2.2); PANEL-постановка (min_series=5; legacy synthetic-эндпоинт
 # честно отказывает, прецедент var/vecm).
 from apps.api.model_impls.deepar import run_deepar_backtest
 
