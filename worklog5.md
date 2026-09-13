@@ -1460,3 +1460,111 @@ benchmark, PRE-0 smoke Vercel-Render, обновление документац�
   worklog5.md (этот журнал)
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@68a0cb7 + перечисленные изменения.
+
+## Task IA-1 -- Хаб «Задачи» /tasks: карточная сетка + гейтинг по контракту входа (спека docs/spec_tasks_ia.md)
+
+Дата: 2026-09-13.  Синхронизация: main@4ceb081 (RouteCard text-base,
+Task w/n-2 запушен тимлидом).  Постановка тимлида: (1) оформить решение
+по развитию главного меню и росту задач в spec_tasks_ia.md; (2) начать
+реализацию хаба /tasks (карточная сетка + три состояния) по полному
+циклу AGENTS.md.
+
+### Решение IA (спека docs/spec_tasks_ia.md, НОВЫЙ файл)
+
+- Центральный ответ тимлиду: решение задач НЕ предопределено наличием
+  прогноза глобально. Каждая задача декларирует контракт входа:
+  «Причины»/«Сценарии» -- от model_card (XAI/IRF/FEVD считаются
+  обученной моделью на истории; ARCHITECTURE.md:155,1382),
+  «Принятие решений»/«Мониторинг прогноза» -- от forecast_run.
+  Подтверждение в существующей архитектуре: ARCHITECTURE.md:375 --
+  «Задачи» потребляют ВСЕ стадии.
+- Формула: пайплайн -- конечная горизонталь (заморожена, зеркало
+  STAGES), задачи -- открытая вертикаль (растут в хабе /tasks),
+  зависимость -- по контракту входа каждой задачи, не «после прогноза».
+- Эшелоны роста: <=8 задач -- плоская сетка; 9-15 -- категории;
+  15+ -- вкладки/сайдбар внутри /tasks; промоция в верхнюю строку --
+  только как новый этап STAGES (версионно, критерии в спеке §6).
+- Аккордеон «Задачи» из ранней постановки ЗАКРЫТ: хаб-страница
+  масштабируется, аккордеон умирает при 7-9 пунктах.
+
+### Реализация v1
+
+- packages/ui/lib/task-stops.ts (НОВЫЙ): реестр TASK_ROUTES (4 задачи:
+  scenarios/causes/decisions/monitoring, иконки lucide, requires),
+  слой артефактов (validated/model_card/forecast_run <- этапы
+  validation/modeling/forecasting в статусе done, ARTIFACT_STAGE),
+  чистая логика гейтинга: deriveTaskGateState (available: requires
+  подмножество artifacts; awaiting: не выполнено + пайплайн начат;
+  blocked: не выполнено + сессия свежая), taskGateReason (человекочитаемая
+  причина с названием этапа-владельца недостающего артефакта),
+  artifactsFromStages, pipelineStartedFromStages.
+- packages/ui/components/TaskCard.tsx (НОВЫЙ): карточка с визуальной
+  DNA RouteCard (rounded-xl, border-brand/60, иконка h-11 w-11,
+  заголовок text-base, описание text-sm) в трёх состояниях:
+  available -- Link; awaiting -- div role=group + amber-плашка с
+  Lock-иконкой и причиной; blocked -- div role=group + нейтральная
+  плашка. Некликабельные состояния сознательно НЕ ссылки (ложный
+  аффорданс), aria-label содержит название и причину.
+- packages/ui/components/TasksHub.tsx (НОВЫЙ, "use client"): шапка
+  (H1 «Задачи» + поддерживающая строка, стиль HomeHero/NavigatorHero)
+  + сетка grid-cols-1 sm:2 lg:3 gap-5 px-6 role=list aria-label
+  «Задачи на основе прогноза» (геометрия Block B HomeCapabilities).
+  Сессия -- useAppShell().stages (гидратация GET /v1/session/current):
+  хаб ЖИВОЙ, состояния пересчитываются по мере прохождения пайплайна,
+  без нового бэкенда.
+- packages/ui/index.ts: экспорт TasksHub, TaskCard, task-stops
+  (значения + типы).
+- apps/standalone/app/tasks/page.tsx: ModulePlaceholder -> TasksHub.
+- НОВЫЕ плейсхолдер-маршруты задач (ModulePlaceholder, скелет под
+  вертикальные срезы): tasks/{scenarios,causes,decisions,monitoring}/
+  page.tsx -- доступность маршрутов уже сейчас, когда контракты задач
+  начнут выполняться.
+
+### TDD (RED -> GREEN)
+
+- RED: 3 новых сюиты -- packages/ui/lib/task-stops.test.ts (реестр:
+  порядок/уникальность href/валидность requires/кодификация
+  зависимостей спеки §2; слой артефактов; таблица истинности трёх
+  состояний; тексты причин с этапом-владельцем),
+  packages/ui/components/TasksHub.test.tsx (шапка+список 4 карточек;
+  свежая сессия: 0 ссылок + 4 blocked-причины + 4 role=group
+  «недоступна»; после Моделирования: 2 ссылки + 2 awaiting
+  «…после этапа Прогнозирование»; частичный пайплайн: awaiting, не
+  blocked; полный пайплайн: 4 ссылки на свои маршруты; визуальная DNA
+  RouteCard), apps/standalone/app/tasks/page.test.tsx (страница
+  рендерит хаб, не ModulePlaceholder). Прогон до реализации: 3 сюиты
+  fail на отсутствии модулей -- RED подтверждён.
+- GREEN: 24/24 после реализации. Один фикс теста: LucideIcon --
+  ForwardRef-объект, а не function (assert icon truthy).
+- Полная регрессия: npx jest -- 97 сюит / 914 тестов PASSED
+  (+3 сюиты / +24 теста к предыдущему срезу 94/890).
+- Сборка: npm run build (standalone) -- успешно; маршруты
+  /tasks/{scenarios,causes,decisions,monitoring} появились в
+  production-манифесте, все статичные, First Load JS без деградации
+  (553 B против 537 B на остальных -- иконки lucide).
+
+### Границы Task IA-1 (что осознанно НЕ сделано)
+
+- Содержимое задач (What-if/iDSS/XAI/мониторинг) -- отдельные
+  вертикальные срезы; v1 поставляет каркас: хаб + 4 плейсхолдера.
+- Состояние configurable (расщеплённый гейт: настройка правил/порогов
+  без прогноза) -- расширение контракта v2 (спека §7).
+- recommendedWith (подсказки «рекомендован прогноз» для Сценариев) --
+  v2, забота самой задачи.
+- ModuleNav, STAGES, бэкенд, embedded -- НЕ затронуты (запрет спеки §3:
+  верхняя строка заморожена).
+- Исторические записи журнала НЕ редактировались (append-only).
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md).
+
+Изменённые/новые файлы (ZIP: download/task_ia1_tasks_hub.zip):
+- НОВЫЕ: docs/spec_tasks_ia.md, packages/ui/lib/task-stops.ts,
+  packages/ui/lib/task-stops.test.ts, packages/ui/components/TaskCard.tsx,
+  packages/ui/components/TasksHub.tsx,
+  packages/ui/components/TasksHub.test.tsx,
+  apps/standalone/app/tasks/page.test.tsx,
+  apps/standalone/app/tasks/scenarios/page.tsx,
+  apps/standalone/app/tasks/causes/page.tsx,
+  apps/standalone/app/tasks/decisions/page.tsx,
+  apps/standalone/app/tasks/monitoring/page.tsx
+- ИЗМЕНЁННЫЕ: packages/ui/index.ts, apps/standalone/app/tasks/page.tsx,
+  worklog5.md (этот журнал)

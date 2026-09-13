@@ -258,6 +258,27 @@ export type { ApiMode } from "./lib/apiClient";
 export { ModuleNav } from "./components/ModuleNav";
 export { ModulePlaceholder } from "./components/ModulePlaceholder";
 
+// Хаб «Задачи» (/tasks) — открытая вертикаль задач поверх пайплайна
+// (spec_tasks_ia.md): реестр TASK_ROUTES + гейтинг по контракту входа
+// (три состояния), сетка TaskCard с визуальной DNA RouteCard. Сессия —
+// useAppShell().stages, без дополнительного бэкенда.
+export { TasksHub } from "./components/TasksHub";
+export { TaskCard } from "./components/TaskCard";
+export type { TaskCardProps } from "./components/TaskCard";
+export {
+  TASK_ROUTES,
+  ARTIFACT_STAGE,
+  artifactsFromStages,
+  pipelineStartedFromStages,
+  deriveTaskGateState,
+  taskGateReason,
+} from "./lib/task-stops";
+export type {
+  TaskRoute,
+  TaskArtifact,
+  TaskGateState,
+} from "./lib/task-stops";
+
 // Контракт Роль/План/Возможности (зеркало apps/api/plans.py) -- только для UX,
 // реальная защита на бэкенде.
 export { getCapabilities, PLAN_DEFINITIONS } from "./lib/plans";
