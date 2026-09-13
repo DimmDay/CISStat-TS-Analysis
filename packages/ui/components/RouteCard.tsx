@@ -22,7 +22,7 @@ export function RouteCard({ title, description, icon: Icon, href }: RouteCardPro
         <Icon size={20} />
       </span>
       <span className="min-w-0">
-        <span className="block text-sm font-semibold text-neutral-900 leading-snug">
+        <span className="block text-base font-semibold text-neutral-900 leading-snug">
           {title}
         </span>
         <span className="mt-1 block text-sm text-neutral-500 leading-relaxed">
