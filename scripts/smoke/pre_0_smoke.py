@@ -14,17 +14,25 @@ PRE-0 smoke-тест продакшн-деплоя CISStat TS Analysis API на 
   7. POST /v1/models/candidates            — ожидаем 401/403/422 (без API-ключа)
                                             [это нормально для Phase 0 — будет снято позже]
 
+Task 143: параметры выведены в CLI/env (контракт README scripts/smoke/):
+    --api-base / CISSTAT_API_URL             (default: https://cisstat-ts-analysis.onrender.com)
+    --frontend-origin / CISSTAT_FRONTEND_ORIGIN (default: https://ts-standalone.vercel.app)
+    --demo-csv                               (default: <repo>/apps/api/demo_data/sales_demo.csv)
+    --output-dir                             (default: /home/z/my-project/download/pre_0_smoke)
+
 Запуск:
-    python /home/z/my-project/scripts/pre_0_smoke.py
+    python scripts/smoke/pre_0_smoke.py
 
 Выход:
-    /home/z/my-project/download/pre_0_smoke/report.json   — структурированный отчёт
-    /home/z/my-project/download/pre_0_smoke/report.md      — человекочитаемый отчёт
+    download/pre_0_smoke/report.json   — структурированный отчёт
+    download/pre_0_smoke/report.md      — человекочитаемый отчёт
     stdout — summary PASS/FAIL
 """
 from __future__ import annotations
 
+import argparse
 import json
+import os
 import sys
 import time
 import traceback
@@ -35,18 +43,23 @@ from typing import Any
 import httpx
 
 # ────────────────────────────────────────────────────────────────────
-# Константы
+# Константы (defaults; переопределяются env/CLI, см. parse_args())
 # ────────────────────────────────────────────────────────────────────
 
-API_BASE = "https://cisstat-ts-analysis.onrender.com"
-FRONTEND_ORIGIN = "https://ts-standalone.vercel.app"
-DEMO_CSV_PATH = Path("/home/z/my-project/repo/CISStat-TS-Analysis/apps/api/demo_data/sales_demo.csv")
+DEFAULT_API_BASE = "https://cisstat-ts-analysis.onrender.com"
+DEFAULT_FRONTEND_ORIGIN = "https://ts-standalone.vercel.app"
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_DEMO_CSV = _REPO_ROOT / "apps" / "api" / "demo_data" / "sales_demo.csv"
+DEFAULT_OUTPUT_DIR = Path("/home/z/my-project/download/pre_0_smoke")
 
 # Render Free Tier засыпает; первый запрос может ждать cold start до ~60 сек.
 COLD_START_TIMEOUT = 90.0
 WARM_TIMEOUT = 30.0
 
-REPORT_DIR = Path("/home/z/my-project/download/pre_0_smoke")
+API_BASE = os.environ.get("CISSTAT_API_URL", DEFAULT_API_BASE)
+FRONTEND_ORIGIN = os.environ.get("CISSTAT_FRONTEND_ORIGIN", DEFAULT_FRONTEND_ORIGIN)
+DEMO_CSV_PATH = DEFAULT_DEMO_CSV
+REPORT_DIR = DEFAULT_OUTPUT_DIR
 REPORT_JSON = REPORT_DIR / "report.json"
 REPORT_MD = REPORT_DIR / "report.md"
 
@@ -458,7 +471,44 @@ def write_reports(results: list[CheckResult]) -> None:
     REPORT_MD.write_text("\n".join(md))
 
 
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """CLI/env-параметры PRE-0 (контракт README scripts/smoke/ -- Task 143)."""
+    parser = argparse.ArgumentParser(description="PRE-0 smoke: продакшн-деплой CISStat TS Analysis API")
+    parser.add_argument(
+        "--api-base",
+        default=os.environ.get("CISSTAT_API_URL", DEFAULT_API_BASE),
+        help="База API (default: %(default)s; env CISSTAT_API_URL)",
+    )
+    parser.add_argument(
+        "--frontend-origin",
+        default=os.environ.get("CISSTAT_FRONTEND_ORIGIN", DEFAULT_FRONTEND_ORIGIN),
+        help="Origin фронтенда для CORS (default: %(default)s; env CISSTAT_FRONTEND_ORIGIN)",
+    )
+    parser.add_argument(
+        "--demo-csv",
+        type=Path,
+        default=DEFAULT_DEMO_CSV,
+        help="Демо-CSV для кейса upload (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=DEFAULT_OUTPUT_DIR,
+        help="Каталог отчётов report.json/report.md (default: %(default)s)",
+    )
+    return parser.parse_args(argv)
+
+
 def main() -> int:
+    global API_BASE, FRONTEND_ORIGIN, DEMO_CSV_PATH, REPORT_DIR, REPORT_JSON, REPORT_MD
+    args = parse_args()
+    API_BASE = args.api_base.rstrip("/")
+    FRONTEND_ORIGIN = args.frontend_origin
+    DEMO_CSV_PATH = args.demo_csv
+    REPORT_DIR = args.output_dir
+    REPORT_JSON = REPORT_DIR / "report.json"
+    REPORT_MD = REPORT_DIR / "report.md"
+
     print(f"PRE-0 Smoke-тест: {API_BASE}")
     print(f"Frontend origin: {FRONTEND_ORIGIN}")
     print("=" * 60)

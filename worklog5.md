@@ -1340,3 +1340,123 @@ objective=multivariate).
   test_modeling_workflow}.py, worklog5.md (этот журнал)
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@43553e0 + перечисленные изменения.
+
+---
+
+## Task 143 -- Финализация полной production-матрицы 24x11 (performance/timeout/memory benchmark, PRE-0 smoke Vercel-Render, документация)
+
+Дата: 2026-09-13. Синхронизация: main@68a0cb7 (Task 142 -- DeepAR
+vertical slice, закоммичен тимлидом; цепочка нейро-срезов в main
+завершена: lstm -> nbeats -> nhits -> tft -> deepar).  Постановка
+docs/modeling_task_list.md::Task 143 («Полная production-матрица
+24x11») + указание тимлида (финализация матрицы, performance/timeout
+benchmark, PRE-0 smoke Vercel-Render, обновление документации).
+Прецедент финализационных задач: Task 121 (девятимодельный baseline);
+теперь -- 24/24, catalog_only моделей в платформе НЕТ (Task 142 п.12).
+
+### Решение (по пунктам постановки)
+
+1. **«24 модели имеют реальные адаптеры и честные capabilities» --
+   верифицировано, не декларировано**: реестр v2 = 24 записи
+   (MODEL_EXECUTION_REGISTRY), PRODUCTION_BACKTEST_MODEL_IDS = 24,
+   consistency-gate dispatch<->readiness точен; полная capability-матрица
+   24x11 закрыта программно (model_stage_capabilities по каждой модели,
+   tuple == MODELING_STAGE_IDS, статусы из белого списка).  Счётчики
+   readiness на macro-профиле: runnable 19 / catalog-only 0 / blocked 5
+   (профильные правила F01/F05/domain -- НЕ отсутствие реализаций).
+2. **«Все применимые модели проходят полный execution scope» --
+   НОВЫЙ scripts/task143_matrix_benchmark.py**: каждая из 24 моделей
+   исполняет РЕАЛЬНЫЙ backtest через СВОЙ движок (main -- 19
+   univariate; vector -- var/vecm на системе из 3 рядов; volatility --
+   garch/egarch на VolatilityTarget; panel -- deepar на панели из 5
+   рядов) и, для tunable, bounded tuning через СВОЙ контур
+   (execute_{tuning,vector,volatility,panel}_tuning_plan_with_artifacts:
+   13 classical @2 trials + 5 neural @1 trial -- песочница убивает
+   долгие фоновые процессы, порционные прогоны с merge-логикой отчёта).
+   Итог: 24/24 backtest + 18/18 tuning; честность -- 20/20 уникальных
+   MAE (не заглушка), QLIKE primary у volatility, panel-фактура у
+   deepar, scaled_loss+vector_baseline у vector.
+3. **Performance/timeout/memory**: wall-time каждой модели против
+   resource_policy_for (memory_class standard -> step_timeout 120 c);
+   снапшоты пикового RSS процесса по секциям (206 -> 1237 MB -- пик
+   доминирован импортом torch+neuralforecast ~600 MB, см.
+   probe138b_memory.py; production-семантика -- per-job изоляция).
+   ⚠️ НАХОДКА (не блокирует, требует решения тимлида): tft -- 182 c
+   wall 2-fold backtest > 120 c step_timeout standard-класса на
+   benchmark-хосте (4 ГБ RAM, shared CPU); в job-раннере step = ОДИН
+   tuning-trial (tft-trial @2 folds ~450 c @2 trials).  Отчёт в
+   download/task143_benchmark/report.{json,md} -- секция «Находки»;
+   правка бюджетов/политик -- отдельная постановка.
+4. **«Проверены migration старых Redis-сессий и invalidation
+   lineage» -- TDD RED->GREEN (11 новых кейсов)**: (а) якорь версии
+   схемы SESSION_SCHEMA_VERSION=1 -- штамп в session_to_dict, legacy
+   документы (поле отсутствует) читаются как схема 0, документ из
+   БОЛЕЕ нового приложения не роняет чтение (rolling back-deploy,
+   warning); (б) graceful degradation коррапта: битый JSON/бинарный
+   мусор -> get()=None+warning, get_or_create выдаёт пустую сессию;
+   НОВОЕ -- save() поверх нечитаемого документа РАЗРЕШЁН (мусор не
+   несёт ревизии и не может быть «свежее»; раньше SessionConflictError
+   блокировал сессию навсегда: get()=None, save()=конфликт, выхода
+   нет); (в) model_jobs переживают Redis roundtrip (resume после
+   рестарта); (г) pre-Task-142 совместимость: BacktestResponse без
+   panel валиден (Optional, None-дефолт), panel переживает
+   model_dump-roundtrip.  Существующий migration-набор v4/5/6->7
+   зелёный (test_modeling_workflow).
+5. **PRE-0 smoke Vercel-Render**: ремонт pre_0_smoke.py -- CLI
+   (--api-base/--frontend-origin/--demo-csv/--output-dir) + env-рычаги
+   (CISSTAT_API_URL/CISSTAT_FRONTEND_ORIGIN) реализуют контракт
+   README (раньше были зашиты константами); stale-путь демо-CSV
+   (несуществующий /home/z/my-project/repo/...) заменён
+   repo-относительным в pre_0_smoke.py и pre_1_frontend_smoke.py.
+   Прогон против ПРОДАКШЕНА: PRE-0 -- 7/7 PASS (Render direct:
+   health 239ms, CORS preflight, SameSite=None cookie, round-trip,
+   upload, has_active_dataset, candidates 401/422 без ключа); PRE-1 --
+   9/9 PASS (Vercel rewrite -> Render: полный пользовательский контур
+   до зелёного badge «Реальные данные»).  Отчёты в
+   download/pre_0_smoke/ и download/pre_1_frontend_smoke/.
+6. **Обновление modeling.yaml и документации**: metadata.version
+   1.1.0-draft -> 1.2.0 + last_updated 2026-09-13 (пины честно через
+   RED->GREEN в двух тестах); rules-smoketest exit=0.  НОВЫЙ
+   docs/MIGRATION_ARCHITECTURE.md -- чинит stale-ссылку
+   session_store.py::§1.1 и README smoke: архитектура монорепо,
+   шесть этапов (§1.1), схема Redis-документа + правила
+   session_schema_version (§2), версионирование/миграции артефактов
+   v4..7 (§3), контур lineage-инвалидации каскадом (§4).  README
+   smoke синхронизирован с фактическим CLI/дефолтами.
+7. **Верификация сборки**: полная backend-регрессия -- **2463 passed /
+   0 failed** (~6:45; 2452 базлайн Task 142 + 11 новых); neural-тесты
+   ИСПОЛНЯЛИСЬ (окружение восстановлено: torch 2.14.0+cpu +
+   neuralforecast 3.2.2 -- та же сертифицированная пара; pip check
+   clean).  typecheck:all -- 0 ошибок (обе оболочки); production
+   build standalone -- Compiled successfully (13/13 pages); production
+   build embedded -- Compiled successfully (13/13 pages); compileall
+   OK; e2e-смоук task142 (актуальный) -- ВСЕ 7 секций OK (24
+   connected -> panel-движок -> panel tuning 4/4 -> cohort-изоляция ->
+   честный отказ 4<5).
+
+### Границы Task 143 (что осознанно НЕ сделано)
+
+- Правка step_timeout/бюджета TFT по находке п.3 -- отдельная
+  постановка (правка ресурсной политики -- зона тимлида).
+- Tuning neural-группы @1 trial (не 2): предел времени песочницы;
+  контракт тюнинга (prepare_grid -> trial -> finalize -> best)
+  исполняется полностью, сертифицированные 4-trial сетки -- в срезах
+  138-142 и регрессии.
+- Benchmark-профили (120/100/180/72 точек) -- канонические малые;
+  нагрузочное тестирование под продовым трафиком -- отдельный класс.
+- Фронтенд не тронут (0 файлов .ts/.tsx в diff, кроме проверок
+  сборки): production-матрица подаётся существующими
+  capability-каналами.
+- scripts/task135..142_e2e_smoke.py НЕ модифицировались (снимки
+  своего момента; актуальные -- task142 e2e и task143 benchmark).
+
+Изменённые/новые файлы (ZIP: download/task143_finalization.zip):
+- НОВЫЕ: docs/MIGRATION_ARCHITECTURE.md,
+  scripts/task143_matrix_benchmark.py
+- ИЗМЕНЁННЫЕ: apps/api/session_store.py, rules/modeling.yaml,
+  scripts/smoke/pre_0_smoke.py, scripts/smoke/pre_1_frontend_smoke.py,
+  scripts/smoke/README.md, tests/api/test_session_store.py,
+  tests/test_modeling_spec.py, tests/api/test_param_space.py,
+  worklog5.md (этот журнал)
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@68a0cb7 + перечисленные изменения.

@@ -94,17 +94,23 @@ python scripts/smoke/pre_0_smoke.py \
   --api-base https://cisstat-ts-analysis.onrender.com \
   --frontend-origin https://ts-standalone.vercel.app \
   --demo-csv apps/api/demo_data/sales_demo.csv \
-  --output-dir ./pre_0_smoke_output
+  --output-dir /home/z/my-project/download/pre_0_smoke
 ```
 
-`--help` покажет все опции.
+`--help` покажет все опции. Те же параметры можно задать через env:
+`CISSTAT_API_URL` и `CISSTAT_FRONTEND_ORIGIN`.
+
+> Task 143: до финализации CLI/env описывался README, но был зашит в
+> скрипте константами, а дефолтный путь демо-CSV был stale. Теперь
+> `pre_0_smoke.py` реализует контракт README; пути в `pre_1_frontend_smoke.py`
+> также repo-относительные.
 
 ### Где отчёты
 
-После запуска в `--output-dir` (по умолчанию `./pre_0_smoke_output/`):
+После запуска в `--output-dir` (по умолчанию `/home/z/my-project/download/pre_0_smoke/`):
 
 ```
-pre_0_smoke_output/
+pre_0_smoke/
 ├── report.json   — структурированный отчёт (для парсинга)
 └── report.md     — человекочитаемый отчёт (для чтения / в PR)
 ```

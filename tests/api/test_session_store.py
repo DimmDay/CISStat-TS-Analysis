@@ -683,3 +683,170 @@ class TestSessionCookie:
         sid = get_or_create_session_id(req, resp)
         assert resp.cookie_set["samesite"] == "none"
         assert resp.cookie_set["secure"] is True
+
+
+# ────────────────────────────────────────────────────────────────────
+# Task 143 -- миграция старых Redis-сессий: якорь версии схемы,
+# коррапт-документы, model_jobs roundtrip, panel-совместимость
+# (финализация production-матрицы 24x11)
+# ────────────────────────────────────────────────────────────────────
+
+import json as _json
+
+from apps.api.session_store import (
+    SESSION_SCHEMA_VERSION,
+    RedisSessionStore as _RedisSessionStoreFor143,
+    session_from_dict,
+    session_to_dict,
+)
+
+
+def _isolated_redis_store(ttl_seconds: int = 3600) -> tuple:
+    """Изолированный fakeredis-сервер + RedisSessionStore для Task 143 кейсов."""
+    fake_server = fakeredis.FakeServer()
+    client = fakeredis.FakeStrictRedis(server=fake_server)
+    return _RedisSessionStoreFor143(client=client, ttl_seconds=ttl_seconds), client
+
+
+class TestSessionSchemaVersionAnchor:
+    """Task 143: явный якорь версии схемы Redis-документа сессии.
+
+    Исторически документ сессии не нёс версии (миграция -- «дефолт при
+    чтении» через session_from_dict; artifact_schema_version=7 живёт
+    только внутри modeling_artifacts).  Финализация матрицы 24x11 вводит
+    штамп session_schema_version: новые save() пишут поле, старые
+    Redis-документы читаются как раньше -- будущие миграции получают
+    детерминированный якорь вместо эвристики «по отсутствию полей».
+    """
+
+    def test_session_schema_version_is_integer_one_today(self):
+        assert SESSION_SCHEMA_VERSION == 1
+
+    def test_serialized_document_carries_schema_version_stamp(self):
+        session = AnalysisSession(session_id="schema-001")
+        doc = session_to_dict(session)
+        assert doc["session_schema_version"] == SESSION_SCHEMA_VERSION
+
+    def test_saved_redis_document_carries_schema_version_stamp(self):
+        store, _client = _isolated_redis_store()
+        session = store.get_or_create("schema-002")
+        store.save(session)
+        raw = _json.loads(_client.get(store._key("schema-002")))
+        assert raw["session_schema_version"] == SESSION_SCHEMA_VERSION
+
+    def test_legacy_document_without_schema_version_loads_with_defaults(self):
+        legacy = {"session_id": "legacy-143"}
+        session = session_from_dict(legacy)
+        assert session.session_id == "legacy-143"
+        assert session.target_column is None
+        assert session.modeling_artifacts == {}
+
+    def test_future_schema_version_does_not_crash_reading(self):
+        # Сессия из БОЛЕЕ нового приложения (rolling back-deploy): чтение
+        # не падает, неизвестные поля просто игнорируются.
+        futuristic = {"session_id": "future-143", "session_schema_version": 99}
+        session = session_from_dict(futuristic)
+        assert session.session_id == "future-143"
+
+
+class TestCorruptRedisDocumentGracefulDegradation:
+    """Task 143: битый документ в Redis не роняет API и не блокирует сессию.
+
+    Контракт чтения (существовал): get() -> None + warning,
+    get_or_create() -> пустая сессия (семантика «протухшего TTL» --
+    пользователь теряет прогресс, сервис жив).
+    Контракт записи (Task 143): save() поверх нечитаемого документа
+    разрешён -- нечитаемый документ не может быть «свежее» (CAS защищает
+    только валидные документы; мусор не несёт ревизии вовсе).
+    """
+
+    def test_get_returns_none_for_corrupt_json(self):
+        store, client = _isolated_redis_store()
+        client.set(store._key("corrupt-001"), "{not valid json!!")
+        assert store.get("corrupt-001") is None
+
+    def test_get_or_create_recovers_with_fresh_session_after_corrupt(self):
+        store, client = _isolated_redis_store()
+        client.set(store._key("corrupt-002"), b"\xff\xfe binary garbage")
+        session = store.get_or_create("corrupt-002")
+        assert session.session_id == "corrupt-002"
+        assert session.dataset is None
+
+    def test_save_overwrites_unparseable_document(self, sample_dataset_info, sample_dataframe):
+        store, _client = _isolated_redis_store()
+        _client.set(store._key("corrupt-003"), "garbage")
+        session = store.get_or_create("corrupt-003")
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        store.save(session)  # не должен поднимать SessionConflictError
+        refetched = store.get("corrupt-003")
+        assert refetched is not None
+        assert refetched.dataset is not None
+        assert refetched.dataset.dataset_id == "ds-test-001"
+
+
+class TestModelJobsRedisRoundtrip:
+    """Task 143: model_jobs (долгие jobs Task 123) переживают Redis
+    roundtrip -- resume после рестарта процесса опирается на это."""
+
+    def test_model_jobs_survive_redis_roundtrip(self, sample_dataset_info, sample_dataframe):
+        store, _client = _isolated_redis_store()
+        sid = "jobs-143"
+        session = store.get_or_create(sid)
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        job_record = {
+            "job_id": "job-143",
+            "model_id": "ets",
+            "status": "in_progress",
+            "operation": "tuning",
+            "cohort_id": "cohort-abc",
+            "job_signature": "sig-abc",
+            "resource_policy": "standard",
+            "idempotency_key": "idem-143",
+        }
+        session.modeling_artifacts["model_jobs"] = {"job-143": job_record}
+        store.save(session)
+
+        refetched = store.get(sid)
+        stored = refetched.modeling_artifacts["model_jobs"]["job-143"]
+        assert stored["status"] == "in_progress"
+        assert stored["cohort_id"] == "cohort-abc"
+        assert stored["resource_policy"] == "standard"
+
+
+class TestPreTask142PanelFieldCompat:
+    """Task 142 добавил Optional поле panel в BacktestResponse; Task 143
+    фиксирует: ответ без panel (pre-Task-142 клиент/артефакт) валиден,
+    panel по умолчанию None."""
+
+    def _minimal_response_payload(self) -> dict:
+        from apps.api.schemas import BacktestMetrics
+
+        return {
+            "model_id": "ets",
+            "model_name": "ETS (Auto)",
+            "family_id": "exponential_smoothing",
+            "metrics": BacktestMetrics(mae=1.0, rmse=1.5).model_dump(),
+            "n_train": 180,
+            "n_test": 60,
+            "train_ratio": 0.75,
+            "duration_ms": 12.5,
+        }
+
+    def test_backtest_response_validates_without_panel_field(self):
+        from apps.api.schemas import BacktestResponse
+
+        response = BacktestResponse.model_validate(self._minimal_response_payload())
+        assert response.panel is None
+
+    def test_backtest_response_roundtrip_preserves_panel(self):
+        from apps.api.schemas import BacktestResponse
+
+        payload = self._minimal_response_payload()
+        payload["panel"] = {
+            "series_names": ["s0", "s1", "s2", "s3", "s4"],
+            "n_series": 5,
+            "target_series": "series_0",
+        }
+        response = BacktestResponse.model_validate(payload)
+        assert response.panel["n_series"] == 5
+        assert BacktestResponse.model_validate(response.model_dump()).panel == response.panel

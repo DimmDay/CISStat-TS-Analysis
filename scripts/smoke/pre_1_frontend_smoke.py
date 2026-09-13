@@ -56,7 +56,7 @@ import httpx
 FRONTEND_BASE = "https://ts-standalone.vercel.app"
 
 # Демо-CSV из репозитория (3 KB, ниже лимита Vercel Serverless в 4.5 MB)
-DEMO_CSV_PATH = Path("/home/z/my-project/repo/CISStat-TS-Analysis/apps/api/demo_data/sales_demo.csv")
+DEMO_CSV_PATH = Path(__file__).resolve().parents[2] / "apps" / "api" / "demo_data" / "sales_demo.csv"
 
 # Render Free Tier засыпает; первый запрос через Vercel-proxy может ждать
 # холодный старт Render + proxy-overhead. Берём с запасом.

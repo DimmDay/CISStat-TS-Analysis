@@ -136,7 +136,7 @@ class TestSpecLoading:
     def test_spec_loads(self, spec):
         """Спецификация загружается без ошибок."""
         assert spec is not None
-        assert spec.metadata.version == "1.1.0-draft"
+        assert spec.metadata.version == "1.2.0"
 
     def test_spec_has_8_families(self, spec):
         """Ровно 8 семейств моделей."""

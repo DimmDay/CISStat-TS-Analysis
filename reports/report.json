@@ -1,0 +1,528 @@
+{
+  "task": "143",
+  "timestamp": "2026-09-13T14:06:32+0000",
+  "tuning_trials": {
+    "classical": 2,
+    "neural": 1
+  },
+  "section_a": {
+    "models": 24,
+    "stages": 11,
+    "status_values": [
+      "available",
+      "not_applicable"
+    ]
+  },
+  "section_b": {
+    "arima": {
+      "engine": "main",
+      "wall_ms": 116.4,
+      "metric": "3.1046",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "arima_auto": {
+      "engine": "main",
+      "wall_ms": 251.4,
+      "metric": "3.1347",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "catboost": {
+      "engine": "main",
+      "wall_ms": 1599.4,
+      "metric": "7.1389",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "drift": {
+      "engine": "main",
+      "wall_ms": 9.1,
+      "metric": "3.8741",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "ets": {
+      "engine": "main",
+      "wall_ms": 132.8,
+      "metric": "0.6911",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "ets_damped": {
+      "engine": "main",
+      "wall_ms": 145.8,
+      "metric": "0.9973",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "lightgbm": {
+      "engine": "main",
+      "wall_ms": 793.7,
+      "metric": "5.1765",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "lstm": {
+      "engine": "main",
+      "wall_ms": 15537.2,
+      "metric": "0.8539",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "mean": {
+      "engine": "main",
+      "wall_ms": 8.9,
+      "metric": "16.9297",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "naive": {
+      "engine": "main",
+      "wall_ms": 9.0,
+      "metric": "5.1328",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "nbeats": {
+      "engine": "main",
+      "wall_ms": 6897.4,
+      "metric": "0.8336",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "nhits": {
+      "engine": "main",
+      "wall_ms": 9758.4,
+      "metric": "0.8665",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "prophet": {
+      "engine": "main",
+      "wall_ms": 724.1,
+      "metric": "0.7296",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "random_forest": {
+      "engine": "main",
+      "wall_ms": 684.8,
+      "metric": "6.0983",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "seasonal_naive": {
+      "engine": "main",
+      "wall_ms": 9.3,
+      "metric": "3.6922",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "tbats": {
+      "engine": "main",
+      "wall_ms": 603.2,
+      "metric": "0.8781",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "tft": {
+      "engine": "main",
+      "wall_ms": 182086.9,
+      "metric": "1.0586",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "theta": {
+      "engine": "main",
+      "wall_ms": 19.7,
+      "metric": "1.7444",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "xgboost": {
+      "engine": "main",
+      "wall_ms": 377.0,
+      "metric": "4.5664",
+      "n_oof": 24,
+      "cohort_id": "16406b590a424b51a8ace24f44bab98de17e58cbc8678d81491acee7db3d1052"
+    },
+    "var": {
+      "engine": "vector",
+      "wall_ms": 37.2,
+      "metric": "scaled_loss=0.5855",
+      "n_oof": 36,
+      "cohort_id": "4739743417ac64c99936af0e89dddcd4921f8a8350ff6da83462596b3d14f021"
+    },
+    "vecm": {
+      "engine": "vector",
+      "wall_ms": 27.3,
+      "metric": "scaled_loss=0.9095",
+      "n_oof": 36,
+      "cohort_id": "4739743417ac64c99936af0e89dddcd4921f8a8350ff6da83462596b3d14f021"
+    },
+    "garch": {
+      "engine": "volatility",
+      "wall_ms": 44.6,
+      "metric": "qlike=-1.6295",
+      "n_oof": 12,
+      "cohort_id": "26a6f4ae2b4dd5beb67b68701166388facace948511c313564a8483b8099eb6b"
+    },
+    "egarch": {
+      "engine": "volatility",
+      "wall_ms": 31.0,
+      "metric": "qlike=-1.6732",
+      "n_oof": 12,
+      "cohort_id": "26a6f4ae2b4dd5beb67b68701166388facace948511c313564a8483b8099eb6b"
+    },
+    "deepar": {
+      "engine": "panel",
+      "wall_ms": 32589.3,
+      "metric": "109.5998",
+      "n_oof": 6,
+      "cohort_id": "24a02a8dcc656fe964cf95f5cb768fe2d9fc5acabe365001f93388c3bff1f4b5"
+    }
+  },
+  "section_c": {
+    "lstm": {
+      "engine": "main",
+      "wall_ms": 18696.8,
+      "n_trials": 1,
+      "best_params": {
+        "cell_type": "LSTM",
+        "hidden_size": 32,
+        "input_size": 48
+      }
+    },
+    "nbeats": {
+      "engine": "main",
+      "wall_ms": 8171.1,
+      "n_trials": 1,
+      "best_params": {
+        "stack_config": "interpretable",
+        "hidden_size": 32,
+        "input_size": 48
+      }
+    },
+    "nhits": {
+      "engine": "main",
+      "wall_ms": 11045.1,
+      "n_trials": 1,
+      "best_params": {
+        "interpolation_config": "hierarchical",
+        "hidden_size": 32,
+        "input_size": 48
+      }
+    },
+    "tft": {
+      "engine": "main",
+      "wall_ms": 288343.0,
+      "n_trials": 1,
+      "best_params": {
+        "n_head": 2,
+        "hidden_size": 32,
+        "input_size": 48
+      }
+    },
+    "deepar": {
+      "engine": "panel",
+      "wall_ms": 34413.8,
+      "n_trials": 1,
+      "best_params": {
+        "lstm_hidden_size": 32,
+        "input_size": 24
+      }
+    },
+    "arima": {
+      "engine": "main",
+      "wall_ms": 182.0,
+      "n_trials": 2,
+      "best_params": {
+        "p": 0,
+        "d": 1,
+        "q": 0
+      }
+    },
+    "catboost": {
+      "engine": "main",
+      "wall_ms": 1122.3,
+      "n_trials": 2,
+      "best_params": {
+        "iterations": 100,
+        "depth": 4,
+        "learning_rate": 0.2,
+        "n_lags": 7
+      }
+    },
+    "ets": {
+      "engine": "main",
+      "wall_ms": 200.7,
+      "n_trials": 2,
+      "best_params": {
+        "trend": "add",
+        "seasonal": "add",
+        "seasonal_periods": 12,
+        "damped_trend": true
+      }
+    },
+    "ets_damped": {
+      "engine": "main",
+      "wall_ms": 169.8,
+      "n_trials": 2,
+      "best_params": {
+        "trend": "add",
+        "seasonal": "add",
+        "seasonal_periods": 12
+      }
+    },
+    "lightgbm": {
+      "engine": "main",
+      "wall_ms": 796.5,
+      "n_trials": 2,
+      "best_params": {
+        "n_estimators": 100,
+        "num_leaves": 15,
+        "learning_rate": 0.2,
+        "n_lags": 7
+      }
+    },
+    "prophet": {
+      "engine": "main",
+      "wall_ms": 1550.1,
+      "n_trials": 2,
+      "best_params": {
+        "changepoint_prior_scale": 0.1,
+        "seasonality_prior_scale": 1.0,
+        "seasonality_mode": "additive"
+      }
+    },
+    "random_forest": {
+      "engine": "main",
+      "wall_ms": 606.4,
+      "n_trials": 2,
+      "best_params": {
+        "n_estimators": 100,
+        "max_depth": 6,
+        "min_samples_leaf": 5,
+        "n_lags": 7
+      }
+    },
+    "tbats": {
+      "engine": "main",
+      "wall_ms": 1235.5,
+      "n_trials": 2,
+      "best_params": {
+        "use_boxcox": false,
+        "trend_spec": "damped_trend"
+      }
+    },
+    "xgboost": {
+      "engine": "main",
+      "wall_ms": 262.5,
+      "n_trials": 2,
+      "best_params": {
+        "n_estimators": 100,
+        "max_depth": 3,
+        "learning_rate": 0.2,
+        "n_lags": 7
+      }
+    },
+    "var": {
+      "engine": "vector",
+      "wall_ms": 71.3,
+      "n_trials": 2,
+      "best_params": {
+        "maxlags": 12,
+        "ic": "bic"
+      }
+    },
+    "vecm": {
+      "engine": "vector",
+      "wall_ms": 53.3,
+      "n_trials": 2,
+      "best_params": {
+        "k_ar_diff": 1,
+        "deterministic": "ci"
+      }
+    },
+    "egarch": {
+      "engine": "volatility",
+      "wall_ms": 127.6,
+      "n_trials": 2,
+      "best_params": {
+        "p": 1,
+        "o": 1,
+        "q": 1,
+        "mean": "Constant",
+        "dist": "t"
+      }
+    },
+    "garch": {
+      "engine": "volatility",
+      "wall_ms": 71.0,
+      "n_trials": 2,
+      "best_params": {
+        "p": 1,
+        "q": 1,
+        "mean": "Constant",
+        "dist": "normal"
+      }
+    }
+  },
+  "section_d": {
+    "per_model": {
+      "arima": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 116.4,
+        "within_step_timeout": true
+      },
+      "arima_auto": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 251.4,
+        "within_step_timeout": true
+      },
+      "catboost": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 1599.4,
+        "within_step_timeout": true
+      },
+      "deepar": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 32589.3,
+        "within_step_timeout": true
+      },
+      "drift": {
+        "memory_class": "low",
+        "step_timeout_s": 60,
+        "wall_ms": 9.1,
+        "within_step_timeout": true
+      },
+      "egarch": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 31.0,
+        "within_step_timeout": true
+      },
+      "ets": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 132.8,
+        "within_step_timeout": true
+      },
+      "ets_damped": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 145.8,
+        "within_step_timeout": true
+      },
+      "garch": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 44.6,
+        "within_step_timeout": true
+      },
+      "lightgbm": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 793.7,
+        "within_step_timeout": true
+      },
+      "lstm": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 15537.2,
+        "within_step_timeout": true
+      },
+      "mean": {
+        "memory_class": "low",
+        "step_timeout_s": 60,
+        "wall_ms": 8.9,
+        "within_step_timeout": true
+      },
+      "naive": {
+        "memory_class": "low",
+        "step_timeout_s": 60,
+        "wall_ms": 9.0,
+        "within_step_timeout": true
+      },
+      "nbeats": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 6897.4,
+        "within_step_timeout": true
+      },
+      "nhits": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 9758.4,
+        "within_step_timeout": true
+      },
+      "prophet": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 724.1,
+        "within_step_timeout": true
+      },
+      "random_forest": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 684.8,
+        "within_step_timeout": true
+      },
+      "seasonal_naive": {
+        "memory_class": "low",
+        "step_timeout_s": 60,
+        "wall_ms": 9.3,
+        "within_step_timeout": true
+      },
+      "tbats": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 603.2,
+        "within_step_timeout": true
+      },
+      "tft": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 182086.9,
+        "within_step_timeout": false
+      },
+      "theta": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 19.7,
+        "within_step_timeout": true
+      },
+      "var": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 37.2,
+        "within_step_timeout": true
+      },
+      "vecm": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 27.3,
+        "within_step_timeout": true
+      },
+      "xgboost": {
+        "memory_class": "standard",
+        "step_timeout_s": 120,
+        "wall_ms": 377.0,
+        "within_step_timeout": true
+      }
+    },
+    "violations": [
+      "tft: 182087 ms (wall, 2-fold backtest) > step_timeout 120000 ms (standard)"
+    ],
+    "process_peak_rss_mb": 1237.3,
+    "memory_note": "Пиковый RSS -- монотонный показатель ВСЕГО процесса benchmark (движки стеком: classical+ml+volatility+neural в одном процессе); production-семантика -- per-job изоляция. Доминанта пика -- импорт torch+neuralforecast (~600 MB, см. scripts/probe138b_memory.py)."
+  },
+  "memory_snapshots_mb": {
+    "after_a": 204.8
+  }
+}

@@ -65,6 +65,18 @@ logger = logging.getLogger(__name__)
 SESSION_COOKIE_NAME = "cisstat_session_id"
 SESSION_TTL_SECONDS = 60 * 60 * 24 * 30  # 30 дней -- совпадает с cookie max_age
 
+# Task 143 -- якорь версии схемы Redis-документа сессии.
+#
+# Историческая миграция опиралась на «дефолт при чтении» (BACKCOMPAT-контракт
+# session_from_dict) и на artifact_schema_version=7 внутри modeling_artifacts;
+# сам документ сессии версии не нёс.  Финализация production-матрицы 24x11
+# вводит явный штамп: новые save() пишут session_schema_version, старые
+# документы читаются как раньше (отсутствие поля = legacy 0).  Любая будущая
+# ломающая изменение схемы сессии обязана поднять это число и обработать
+# предыдущую версию ЯВНО (см. docs/MIGRATION_ARCHITECTURE.md §1.1), а не
+# расширять эвристику «по отсутствию полей».
+SESSION_SCHEMA_VERSION = 1
+
 
 class SessionConflictError(RuntimeError):
     """Хранилище уже содержит более свежую ревизию этой сессии."""
@@ -482,6 +494,9 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
     return {
         "session_id": session.session_id,
         "storage_revision": session.storage_revision,
+        # Task 143: штамп версии схемы (см. константу выше); legacy-документы
+        # без поля читаются как схема 0 -- session_from_dict не требует его.
+        "session_schema_version": SESSION_SCHEMA_VERSION,
         "dataset": _dataset_to_dict(session.dataset) if session.dataset else None,
         "dataframe_json": _dataframe_to_json(session.dataframe) if session.dataframe is not None else None,
         "stages": dict(session.stages),
@@ -519,6 +534,18 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
     """
     dataset = _dataset_from_dict(d["dataset"]) if d.get("dataset") else None
     df = _dataframe_from_json(d["dataframe_json"]) if d.get("dataframe_json") is not None else None
+    document_schema_version = int(d.get("session_schema_version", 0))
+    if document_schema_version > SESSION_SCHEMA_VERSION:
+        # Rolling back-deploy: документ из БОЛЕЕ нового приложения.  Чтение
+        # не падает (неизвестные поля игнорируются), но факт дисклоужен --
+        # последующий save() может безвозвратно урезать незнакомые поля.
+        logger.warning(
+            "Session %s carries schema version %d newer than supported %d; "
+            "unrecognized fields will be dropped on the next save",
+            d.get("session_id"),
+            document_schema_version,
+            SESSION_SCHEMA_VERSION,
+        )
     return AnalysisSession(
         session_id=d["session_id"],
         storage_revision=int(d.get("storage_revision", 0)),
@@ -715,13 +742,18 @@ class RedisSessionStore(SessionStore):
         return f"{self.KEY_PREFIX}{session_id}"
 
     def get(self, session_id: str) -> Optional[AnalysisSession]:
-        raw = self._client.get(self._key(session_id))
-        if raw is None:
-            return None
         try:
+            raw = self._client.get(self._key(session_id))
+            if raw is None:
+                return None
             data = json.loads(raw)
             return session_from_dict(data)
-        except (json.JSONDecodeError, KeyError, TypeError) as e:
+        except (json.JSONDecodeError, KeyError, TypeError, UnicodeDecodeError) as e:
+            # Task 143: в контракт деградации входит и НЕчитаемый сырой документ
+            # (бинарный мусор под ключом -- UnicodeDecodeError как в клиенте с
+            # decode_responses=True, так и в json.loads для bytes-варианта).
+            # Семантика «протухшего TTL»: warning + None -> get_or_create
+            # выдаёт пустую сессию; save() перезапишет мусор (см. save()).
             logger.warning("Failed to deserialize session %s: %s", session_id, e)
             return None
 
@@ -752,9 +784,20 @@ class RedisSessionStore(SessionStore):
                             json.loads(current_raw).get("storage_revision", 0)
                         )
                     except (json.JSONDecodeError, TypeError, ValueError) as exc:
-                        raise SessionConflictError(
-                            "Current session document cannot be revision-checked"
-                        ) from exc
+                        # Task 143: нечитаемый документ (коррапт-запись,
+                        # бинарный мусор, усечённый JSON) не может быть
+                        # «свежее» -- он не несёт ревизии вовсе.  CAS защищает
+                        # только валидные документы; мусор разрешено
+                        # перезаписать первой же save(), иначе сессия
+                        # блокируется навсегда (get() -> None, save() ->
+                        # конфликт, выхода нет).  Читаемая ревизия = 0.
+                        logger.warning(
+                            "Session %s holds an unparseable document (%s); "
+                            "treating stored revision as 0",
+                            session.session_id,
+                            exc,
+                        )
+                        current_revision = 0
                 if current_revision != expected_revision:
                     raise SessionConflictError(
                         f"Stale session revision {expected_revision}; "
