@@ -816,3 +816,59 @@ describe("TsAnalysisPreprocessing — остановка «Масштабиро�
     expect(screen.getByText(/PowerTransformer не дублируется/i)).toBeInTheDocument();
   });
 });
+
+// ── Приглашение «Перейти к EDA» (паттерн Загрузки/Валидации, Task PRE-1) ──
+
+describe("TsAnalysisPreprocessing — приглашение «Перейти к EDA»", () => {
+  beforeEach(() => { global.fetch = routeFetch(); });
+
+  it("shows the 'Перейти к EDA' invitation at the bottom of the stepper (Upload/Validation pattern)", () => {
+    // Паттерн "Ведём исследователя за руку" (StepperNextModuleButton):
+    // та же механика, что на «Загрузке» и «Валидации» -- внизу степпера
+    // кнопка-приглашение, отделённая светло-серой полосой, со ссылкой
+    // на следующий модуль пайплайна (Предобработка -> EDA).
+    render(<TsAnalysisPreprocessing />);
+
+    // Последняя остановка степпера «Предобработки» -- «Масштабирование».
+    // Имя доступное = текст шага + aria-label svg-иконки статуса, поэтому
+    // матчится по подстроке названия шага.
+    const lastStepperButton = screen.getByRole("button", { name: /Масштабирование/ });
+
+    // 1. Кнопка-приглашение -- ссылка на /eda с доступным именем
+    //    «Перейти к EDA».
+    const invite = screen.getByRole("link", { name: /Перейти к EDA/ });
+    expect(invite).toHaveAttribute("href", "/eda");
+
+    // 2. Низ степпера: приглашение строго НИЖЕ последней кнопки степпера
+    //    и является последним элементом списка степпера (как на
+    //    «Загрузке», где кнопка стоит внутри списка остановок).
+    // eslint-disable-next-line no-bitwise
+    expect(
+      lastStepperButton.compareDocumentPosition(invite) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    const wrapper = invite.closest("div");
+    const stepperList = lastStepperButton.parentElement;
+    expect(stepperList).not.toBeNull();
+    expect(stepperList?.lastElementChild).toBe(wrapper);
+
+    // 3. Светло-серая полоса НАД кнопкой: border-t border-neutral-200
+    //    на обёртке (контракт StepperNextModuleButton).
+    expect(wrapper?.className).toContain("border-t");
+    expect(wrapper?.className).toContain("border-neutral-200");
+
+    // 4. Дизайн в точности по паттерну Загрузки: та же геометрия, что у
+    //    кнопок степпера (rounded-md/border/px-3 py-2/text-sm), статичная
+    //    пастельная заливка bg-brand-light/50, фирменный индиго и белый
+    //    текст при наведении.
+    expect(invite.className).toContain("rounded-md");
+    expect(invite.className).toContain("border");
+    expect(invite.className).toContain("bg-brand-light/50");
+    expect(invite.className).toContain("hover:bg-brand");
+    expect(invite.className).toContain("hover:border-brand");
+    expect(invite.className).toContain("hover:text-white");
+    expect(invite.className).toContain("px-3");
+    expect(invite.className).toContain("py-2");
+    expect(invite.className).toContain("text-sm");
+  });
+});

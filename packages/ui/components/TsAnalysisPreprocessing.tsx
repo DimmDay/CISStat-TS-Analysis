@@ -22,6 +22,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "./Button";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
+import { StepperNextModuleButton } from "./StepperNextModuleButton";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
 import { PreprocessingMissingOverview, type MissingProfileResponse } from "./PreprocessingMissingOverview";
@@ -1163,6 +1164,14 @@ export function TsAnalysisPreprocessing() {
               </span>
             </button>
           ))}
+          {/* ── Приглашение «Перейти к EDA» — паттерн Загрузки ──
+              Общий StepperNextModuleButton ("Ведём исследователя за руку"):
+              тот же дизайн, что на «Загрузке» (геометрия степпер-кнопок,
+              пастельная заливка, индиго при наведении); светло-серая полоса
+              border-t встроена в обёртку компонента. Ставится последним
+              элементом списка степпера: это переход к ДРУГОМУ модулю
+              пайплайна, а не ещё одна остановка Предобработки. */}
+          <StepperNextModuleButton label="Перейти к EDA" href="/eda" />
         </div>
       </aside>
 
