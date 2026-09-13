@@ -25,6 +25,7 @@ import { Button } from "./Button";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { RulesManagementPanel } from "./RulesManagementPanel";
+import { StepperNextModuleButton } from "./StepperNextModuleButton";
 import { ValidationCheckChart, type ValidationCheckData } from "./ValidationCheckChart";
 import {
   ValidationTypeMatrix,
@@ -846,6 +847,14 @@ export function TsAnalysisValidation() {
             Управление правилами
           </button>
         </div>
+
+        {/* ── Приглашение «Перейти к предобработке» — паттерн Загрузки ──
+            Общий StepperNextModuleButton ("Ведём исследователя за руку"):
+            тот же дизайн, что на «Загрузке» (геометрия степпер-кнопок,
+            пастельная заливка, индиго при наведении); светло-серая полоса
+            border-t встроена в обёртку компонента. Ставится строго ниже
+            кнопки правил: это переход к ДРУГОМУ модулю пайплайна. */}
+        <StepperNextModuleButton label="Перейти к предобработке" href="/preprocessing" />
       </aside>
 
       {/* ── ЦЕНТРАЛЬНАЯ КОЛОНКА: описание + график + метрики ── */}

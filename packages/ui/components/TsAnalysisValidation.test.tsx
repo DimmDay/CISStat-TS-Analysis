@@ -318,6 +318,49 @@ describe("TsAnalysisValidation", () => {
     expect(rulesButton).toBeInTheDocument();
   });
 
+  // ── Приглашение «Перейти к предобработке» (паттерн Загрузки) ──
+
+  it("shows the 'Перейти к предобработке' invitation below 'Управление правилами' (Upload stepper pattern)", async () => {
+    // Паттерн "Ведём исследователя за руку" (StepperNextModuleButton):
+    // та же механика, что и на «Загрузке» -- кнопка-приглашение внизу
+    // степпера, отделённая светло-серой полосой, со ссылкой на следующий
+    // модуль пайплайна (Валидация -> Предобработка).
+    renderValidation();
+    const rulesButton = await screen.findByTestId("rules-management-btn");
+
+    // 1. Кнопка-приглашение -- ссылка на /preprocessing.
+    const invite = screen.getByRole("link", { name: /Перейти к предобработке/ });
+    expect(invite).toHaveAttribute("href", "/preprocessing");
+
+    // 2. Порядок DOM: строго НИЖЕ кнопки «Управление правилами».
+    // eslint-disable-next-line no-bitwise
+    expect(
+      rulesButton.compareDocumentPosition(invite) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    // 3. Светло-серая полоса НАД кнопкой: border-t border-neutral-200
+    //    на обёртке (контракт StepperNextModuleButton).
+    const wrapper = invite.closest("div");
+    expect(wrapper?.className).toContain("border-t");
+    expect(wrapper?.className).toContain("border-neutral-200");
+
+    // 4. Дизайн в точности по паттерну Загрузки: та же геометрия, что у
+    //    кнопок степпера (rounded-md/border/px-3 py-2/text-sm), статичная
+    //    пастельная заливка bg-brand-light/50, фирменный индиго и белый
+    //    текст при наведении.
+    expect(invite.className).toContain("rounded-md");
+    expect(invite.className).toContain("border");
+    expect(invite.className).toContain("bg-brand-light/50");
+    expect(invite.className).toContain("hover:bg-brand");
+    expect(invite.className).toContain("hover:border-brand");
+    expect(invite.className).toContain("hover:text-white");
+    expect(invite.className).toContain("px-3");
+    expect(invite.className).toContain("py-2");
+    expect(invite.className).toContain("text-sm");
+  });
+
+
   it("the rules button has a distinct data-testid to differentiate from stepper badges", async () => {
     renderValidation();
     const rulesButton = await screen.findByTestId("rules-management-btn");
