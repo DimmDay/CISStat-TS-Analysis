@@ -3202,6 +3202,14 @@ class BacktestResponse(BaseModel):
             "(per-fold и агрегат); null для univariate-моделей"
         ),
     )
+    panel: Optional[Dict[str, Any]] = Field(
+        None,
+        description=(
+            "Task 142: панельная фактура прогона panel-модели (DeepAR) -- "
+            "series_names/n_series/target_series; null для остальных "
+            "input_kind"
+        ),
+    )
     volatility_baseline: Optional[Dict[str, Any]] = Field(
         None,
         description=(

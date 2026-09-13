@@ -225,8 +225,26 @@ def _stationarity_criterion(model: FamilyModel, family: Family, stationarity_sta
 
 def _shape_criterion(model: FamilyModel, family: Family, task: Task, numeric_series: int) -> dict[str, Any]:
     if model.id == "deepar":
+        # Task 142: честный panel-гейт -- DeepAR активируется только для
+        # настоящей панели: n_series = target + связанные числовые ряды
+        # датасета (тот же honest-профиль, что у endogenous-системы Task
+        # 131) >= min_series (yaml min_series=5, правило F05).  Несколько
+        # числовых колонок одного объекта (feature-канал) панелью НЕ
+        # считаются; до среза 142 критерий был безусловно blocking
+        # (честный catalog_only).
         required = model.min_series or 5
-        return _criterion("shape", "Структура рядов", "fail", "одна выбранная цель", f"панель ≥ {required} независимых рядов", "Числовые колонки одного объекта нельзя считать панелью DeepAR.", blocking=True)
+        enough = numeric_series >= required
+        return _criterion(
+            "shape", "Структура рядов", "pass" if enough else "fail",
+            f"числовых рядов-кандидатов: {numeric_series}",
+            f"панель ≥ {required} независимых рядов",
+            (
+                "Панель собрана из рядов датасета; состав нужно подтвердить."
+                if enough
+                else "Числовые колонки одного объекта нельзя считать панелью DeepAR: нужны ряды ≥ 5 (target + related)."
+            ),
+            blocking=not enough,
+        )
     required = model.min_series or (2 if family.id == "multivariate" else 1)
     if required <= 1:
         return _criterion("shape", "Структура рядов", "not_required", "одна целевая серия", "одномерная модель", "Структура подходит.")

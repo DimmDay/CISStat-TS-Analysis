@@ -19,9 +19,13 @@
 #   готовая база сравнения на одном runtime.
 # - Task 141: ЧЕТВЁРТЫЙ исполнитель зарегистрирован (tft -- ПЕРВЫЙ срез
 #   с probabilistic-поверхностью MQLoss/quantiles: точка = медиана,
-#   нативные квантильные выходы вместо conformal).  Осталась одна
-#   модель (deepar -- Task 142, панель min_series=5) catalog_only до
-#   своего среза.
+#   нативные квантильные выходы вместо conformal).
+# - Task 142: ПЯТЫЙ исполнитель зарегистрирован (deepar -- ВТОРОЙ срез с
+#   probabilistic-поверхностью MQLoss/quantiles; PANEL-постановка
+#   min_series=5 -- глобальная модель на нескольких рядах; legacy
+#   synthetic-эндпоинт честно отказывает, прецедент var/vecm).
+#   Каталог нейро-семейства (5 исполнителей контракта Task 137)
+#   зарегистрирован ПОЛНОСТЬЮ.
 # - Установка локально: pip install -r apps/api/requirements-neural.txt
 #   (CPU-вариант torch) либо pip install -e ".[neural]" при появлении extra.
 # - Зафиксированная версия neuralforecast связывает surface, на которой

@@ -443,12 +443,12 @@ class TestBacktestNaive:
         assert data["family_id"] == "baselines"
 
     def test_unsupported_model_never_returns_penalty_metrics(self):
-        # Task 130: catboost стал production-моделью (200); в качестве
-        # catalog-only примера используется deepar (Task 142 -- панель,
-        # ещё не реализована).  Task 141: tft стал production-моделью
-        # (четвёртый исполнитель neural-runtime контракта Task 137,
-        # probabilistic-поверхность MQLoss/quantiles), поэтому примером
-        # catalog-only больше не является.
+        # Task 142: deepar -- production-модель (пятый исполнитель
+        # neural-runtime контракта Task 137, panel-постановка
+        # min_series=5), поэтому примера catalog-only в каталоге больше
+        # НЕТ (все 24 модели имеют адаптеры).  На однорядном synthetic-
+        # эндпоинте deepar честно отказывает 422 (прецедент var/vecm) --
+        # БЕЗ penalty-метрик и Naive-подмен.
         response = client.post(
             "/v1/models/backtest",
             json={"model_id": "deepar", "profile": MACRO_PROFILE},
@@ -456,7 +456,7 @@ class TestBacktestNaive:
         )
 
         assert response.status_code == 422
-        assert "фиктивные метрики запрещены" in response.json()["detail"]
+        assert "панель" in response.json()["detail"]
 
 
 class TestBacktestOtherBaselines:

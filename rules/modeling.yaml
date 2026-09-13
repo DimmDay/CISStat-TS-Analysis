@@ -651,6 +651,44 @@ families:
         libraries: ["neuralforecast"]
         training_time: "minutes_to_hours"
         requires_gpu: true
+        # ── Task 142: ПЯТЫЙ исполнитель neural-runtime контракта Task 137;
+        # panel-постановка и ВТОРОЙ срез с probabilistic-поверхностью
+        # MQLoss/quantiles ── Точечный прогноз -- медиана MQLoss
+        # ЦЕЛЕВОГО ряда; интервалы -- нативные квантили функции потерь
+        # MQLoss(quantiles=[alpha/2, 0.5, 1-alpha/2]) -- честный
+        # двусторонний интервал [alpha/2; 1-alpha/2] процентилей (метод
+        # NeuralIntervalPlan "neural_quantile_outputs", НЕ conformal --
+        # происхождение интервалов дисклоужено в metadata.intervals;
+        # alpha whitelist адаптера {0.01, 0.05, 0.10}).  ПАНЕЛЬ -- ядро
+        # постановки (правило моделирования: DeepAR активируется только
+        # для настоящей панели; несколько числовых колонок одного
+        # объекта не выдаются за панель): адаптер/контекст/движок
+        # отказывают при n_series = 1 + len(related) < min_series=5
+        # (правило F05); панель = target + связанные числовые ряды
+        # датасета (endogenous-профиль Task 131), исполняется панельным
+        # движком run_panel_backtest_plan (Task 134-прецедент отдельного
+        # движка под input_kind), cohort -- neural_cohort_contract
+        # (panel=true/n_series/min_series) -- изолирован от univariate-
+        # планов.  Эмпирика пробы (scripts/task142_deepar_probe.py):
+        # loss=MQLoss требует valid_loss=MQLoss С ТЕМИ ЖЕ quantiles;
+        # колонки отклика DeepAR-median/DeepAR-lo-<w>/DeepAR-hi-<w>
+        # (width-семантика НАХОДКИ Task 141 п.2).  Каталожное
+        # «parametric distribution head» (дефолт 3.2.2 --
+        # DistributionLoss(StudentT)) честно заменено платформенной
+        # конвенцией probabilistic-поверхности Task 141 (детерминированные
+        # нативные квантильные выходы вместо сэмплирования траекторий) --
+        # дисклоужено в metadata.intervals.loss.  Единый бюджет обучения
+        # fold'а -- константа DEEPAR_MAX_STEPS адаптера (семейная
+        # конвенция 300); тюнинг бюджета -- вне param_space обоснованно
+        # (прецедент Task 136).  Grid 2 x 2 = 4 trials (<= MAX_TRIALS=64);
+        # lstm_hidden_size/input_size ограничивают сложность против
+        # переобучения на коротких fold'ах; input_size -- глубина
+        # каузального окна (lookback), гейт неосуществимого окна --
+        # n_train < input_size + horizon.  Legacy synthetic-эндпоинт --
+        # честный отказ (прецедент var/vecm).
+        param_space:
+          lstm_hidden_size: [32, 64]
+          input_size: [24, 48]
 
 
 # ══════════════════════════════════════════════════════════════════════════════

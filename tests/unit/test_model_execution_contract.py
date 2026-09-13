@@ -71,6 +71,13 @@ CERTIFIED_IDS = frozenset({
     # НЕ conformal; attention-ось n_head с гейтом делимости; проб
     # Task 141).
     "tft",
+    # Task 142: DeepAR -- ПЯТЫЙ исполнитель neural-runtime контракта
+    # Task 137, panel-постановка и ВТОРОЙ срез с probabilistic-
+    # поверхностью MQLoss/quantiles (input_kind="panel" +
+    # requires_related_series -- панель min_series=5; точка = медиана
+    # MQLoss целевого ряда; loss/valid_loss с одинаковыми quantiles --
+    # проб Task 142).
+    "deepar",
 })
 
 # Task 126/127/128/129/130: supervised-адаптеры с regressor-каналом future_known/static.
@@ -89,10 +96,13 @@ MULTIVARIATE_EXOG_IDS = frozenset({"var"})
 # "univariate" -- volatility-движок поверх VolatilityTarget Task 134;
 # garch/egarch -- пара исполнителей одного движка, прецедент var/vecm).
 VOLATILITY_IDS = frozenset({"garch", "egarch"})
-# Task 138/139/140/141: neural-адаптеры (dependency_group="neural",
+# Task 138/139/140/141/142: neural-адаптеры (dependency_group="neural",
 # единый NeuralForecast-runtime Task 137; исполнители Tasks 138-142;
-# deepar -- Task 142, панель).
-NEURAL_IDS = frozenset({"lstm", "nbeats", "nhits", "tft"})
+# deepar -- пятый исполнитель, panel-постановка min_series=5).
+NEURAL_IDS = frozenset({"lstm", "nbeats", "nhits", "tft", "deepar"})
+# Task 142: panel-носитель (DeepAR) -- честная панель из нескольких
+# рядов; несколько числовых колонок одного объекта не выдаются за панель.
+PANEL_IDS = frozenset({"deepar"})
 
 
 def test_registry_is_the_single_source_of_truth_for_production_actions():
@@ -110,11 +120,14 @@ def test_registry_is_the_single_source_of_truth_for_production_actions():
         # и catboost -- supervised-адаптеры (capability supports_future_features
         # для future_known/static регрессоров), var/vecm -- multivariate
         # (Task 132/133; supports_future_features -- только VARX у var),
-        # остальные остаются univariate.
+        # deepar -- panel (Task 142, требует related_series), остальные
+        # остаются univariate.
         if model_id in MULTIVARIATE_IDS:
             expected_input_kind = "multivariate"
         elif model_id in SUPERVISED_IDS:
             expected_input_kind = "supervised"
+        elif model_id in PANEL_IDS:
+            expected_input_kind = "panel"
         else:
             expected_input_kind = "univariate"
         assert descriptor["input_kind"] == expected_input_kind
@@ -147,9 +160,10 @@ def test_candidates_publish_v2_descriptors_only_for_executable_models():
     assert response.execution_contract_version == "model-execution-v2"
     assert catalog["naive"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("naive")
     # Task 129/130: lightgbm и catboost стали production-моделями.
-    # Task 138/139/140/141: lstm, nbeats, nhits и tft получили
-    # реестровые записи; catalog-only пример -- deepar (Task 142 ещё
-    # не реализована, записи нет).
+    # Task 138/139/140/141/142: lstm, nbeats, nhits, tft и deepar
+    # получили реестровые записи; catalog-only примеров больше НЕТ --
+    # все 24 модели каталога имеют production-адаптеры (полный охват
+    # нейро-семейства контракта Task 137).
     assert catalog["xgboost"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("xgboost")
     assert catalog["lightgbm"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("lightgbm")
     assert catalog["catboost"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("catboost")
@@ -157,7 +171,7 @@ def test_candidates_publish_v2_descriptors_only_for_executable_models():
     assert catalog["nbeats"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("nbeats")
     assert catalog["nhits"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("nhits")
     assert catalog["tft"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("tft")
-    assert catalog["deepar"].execution_contract is None
+    assert catalog["deepar"].execution_contract == MODEL_EXECUTION_REGISTRY.describe("deepar")
 
 
 def test_request_and_result_fail_closed_on_misaligned_or_nonfinite_data():

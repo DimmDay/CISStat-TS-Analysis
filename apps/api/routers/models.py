@@ -53,6 +53,7 @@ from apps.api.model_impls import (
     run_nbeats_backtest,
     run_nhits_backtest,
     run_tft_backtest,
+    run_deepar_backtest,
 )
 from apps.api.model_impls.neural_runtime import neuralforecast_runtime_available
 from apps.api.neural_contract import NeuralRuntimeCapacityError
@@ -316,15 +317,19 @@ _BACKTEST_IMPLEMENTATIONS = {
 def _register_neural_dispatch(
     implementations: dict, *, runtime_available: bool,
 ) -> None:
-    """Task 138/139/140/141: neural-runtime -- ОПЦИОНАЛЬНАЯ dependency-группа
-    (apps/api/requirements-neural.txt, install_extra="neural").
+    """Task 138/139/140/141/142: neural-runtime -- ОПЦИОНАЛЬНАЯ
+    dependency-группа (apps/api/requirements-neural.txt,
+    install_extra="neural").
 
     LSTM/GRU (Task 138), N-BEATS (Task 139), N-HiTS (Task 140) и TFT
     (Task 141, probabilistic-поверхность MQLoss/quantiles) --
     одномерные level-модели: в отличие от VAR/VECM/GARCH/EGARCH однорядный
     synthetic-эндпоинт для них ПРИМЕНИМ, поэтому записи dispatch --
     реальное исполнение (прецедент random_forest), а не честный отказ.
-    Регистрация УСЛОВНА: без установленной группы записи не появляются --
+    DeepAR (Task 142, panel-постановка min_series=5) -- наоборот: на
+    одиночном synthetic-ряде исполнение НЕВОЗМОЖНО без подмены, запись
+    dispatch -- честный отказ (прецедент var/vecm).  Регистрация
+    УСЛОВНА: без установленной группы записи не появляются --
     readiness реестра честно фильтрует модели, и строгий gate
     реестр<->dispatch ниже остаётся точным в ОБЕИХ средах (иначе
     import-гейт убивал бы бэкенд на хостах без neural-группы).
@@ -334,6 +339,7 @@ def _register_neural_dispatch(
         implementations["nbeats"] = run_nbeats_backtest
         implementations["nhits"] = run_nhits_backtest
         implementations["tft"] = run_tft_backtest
+        implementations["deepar"] = run_deepar_backtest
 
 
 _register_neural_dispatch(
@@ -542,6 +548,11 @@ def run_backtest(
         # недостаточной памятью -- 503 с действенным сообщением вместо
         # слепого 502 от OOM-kill процесса (Render free 512 MB).
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        # Task 142: честный отказ адаптера (DeepAR: panel-постановка
+        # несовместима с однорядным synthetic-эндпоинтом; прецедент
+        # var/vecm) -- 422 с сообщением, а не слепой 500.
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     n_train = int(profile.n_observations * train_ratio)
     n_test = profile.n_observations - n_train
     return BacktestResponse(

@@ -48,22 +48,32 @@ def test_candidate_contract_separates_methodological_applicability_from_runtime_
     assert candidates["ets"].stage_capabilities["tuning"].status == "available"
 
     # Task 138/139/140/141: при установленном neural-runtime lstm,
-    # nbeats, nhits и tft -- production-модели (20-я -- 23-я), deepar
-    # остаётся catalog_only (Task 142, панель).  deepar на macro-профиле
-    # NOT_APPLICABLE (панель min_series=5) -- он в ПОЛНОМ каталоге
-    # (catalog), а не в отфильтрованном пуле кандидатов (candidates).
-    for model_id in ("deepar",) + _CATALOG_ONLY_NEURAL:
-        assert catalog[model_id].platform_status == "catalog_only"
-        assert catalog[model_id].available_actions == []
-        assert catalog[model_id].stage_capabilities["backtest"].status == "not_implemented"
-        assert "production" in catalog[model_id].blocking_reason.lower()
+    # nbeats, nhits и tft -- production-модели (20-я -- 23-я).
+    # Task 142: deepar -- 24-я (пятый исполнитель, panel-постановка):
+    # на macro-профиле (n_series=1) он production+blocked правилом F05
+    # (панель min_series=5) -- platform_status="ready" в ПОЛНОМ каталоге
+    # (catalog), available_actions пусты, stage backtest -- "blocked";
+    # в отфильтрованный пул кандидатов (candidates) он не входит.  Без
+    # опциональной группы deepar вместе с остальной нейро-четвёркой
+    # честно catalog_only.
     if _HAS_NEURAL:
+        deepar = catalog["deepar"]
+        assert deepar.platform_status == "ready"
+        assert deepar.available_actions == []
+        assert deepar.stage_capabilities["backtest"].status == "blocked"
+        assert deepar.blocking_reason
         for model_id in ("lstm", "nbeats", "nhits", "tft"):
             candidate = candidates[model_id]
             assert candidate.platform_status == "ready"
             assert "backtest" in candidate.available_actions
             assert candidate.stage_capabilities["backtest"].status == "available"
             assert candidate.blocking_reason is None
+    else:
+        for model_id in ("deepar",) + _CATALOG_ONLY_NEURAL:
+            assert catalog[model_id].platform_status == "catalog_only"
+            assert catalog[model_id].available_actions == []
+            assert catalog[model_id].stage_capabilities["backtest"].status == "not_implemented"
+            assert "production" in catalog[model_id].blocking_reason.lower()
 
 
 def test_candidate_statistics_report_runtime_availability_separately():
@@ -83,16 +93,19 @@ def test_candidate_statistics_report_runtime_availability_separately():
     # Task 136: egarch -- 19-я (второй volatility-исполнитель, прецедент
     # var/vecm); domain-гейт тот же -- blocked 4, catalog-only 5.
     # Task 138/139/140/141: lstm -- 20-я, nbeats -- 21-я, nhits -- 22-я,
-    # tft -- 23-я (исполнители neural-runtime контракта Task 137); на
-    # neural-воркере runnable 19 / catalog-only 1, без опциональной
-    # группы -- честные 15/5 (Task 136).
+    # tft -- 23-я (исполнители neural-runtime контракта Task 137);
+    # Task 142: deepar -- 24-я (пятый исполнитель, panel-постановка).  На
+    # neural-воркере runnable 19 (deepar на n_series=1 excluded правилом
+    # F05) / catalog-only 0 / blocked 5 (var, vecm, garch, egarch,
+    # deepar); без опциональной группы -- честные 15/5/4 (Task 136).
     if _HAS_NEURAL:
         assert response.statistics.runnable_candidates == 19
-        assert response.statistics.catalog_only_candidates == 1
+        assert response.statistics.catalog_only_candidates == 0
+        assert response.statistics.blocked_candidates == 5
     else:
         assert response.statistics.runnable_candidates == 15
         assert response.statistics.catalog_only_candidates == 5
-    assert response.statistics.blocked_candidates == 4
+        assert response.statistics.blocked_candidates == 4
     assert response.statistics.total_models_in_spec == 24
 
 
@@ -159,7 +172,11 @@ def test_tbats_is_connected_but_explains_when_current_training_fold_is_too_short
     assert egarch_candidate.blocking_reason
     # Task 138/139/140/141: lstm, nbeats, nhits и tft на коротком
     # профиле честно блокируются min_observations=200 (60 < 200) тем
-    # же explain-механизмом.
+    # же explain-механизмом; Task 142: deepar -- правилом F05 (панель
+    # min_series=5, n_series=1; эмпирика: F05 срабатывает раньше F04 на
+    # этом профиле).
+    deepar_candidate = next(item for item in response.catalog if item.model_id == "deepar")
+    assert deepar_candidate.blocking_reason == "Модель DeepAR требует минимум 5 рядов"
     lstm_candidate = next(item for item in response.catalog if item.model_id == "lstm")
     assert lstm_candidate.blocking_reason == "Недостаточно данных: 60 < 200 (требуется LSTM / GRU)"
     nbeats_candidate = next(item for item in response.catalog if item.model_id == "nbeats")
@@ -177,10 +194,13 @@ def test_tbats_is_connected_but_explains_when_current_training_fold_is_too_short
         assert nhits_candidate.available_actions == []
         assert tft_candidate.platform_status == "ready"
         assert tft_candidate.available_actions == []
-        assert response.statistics.blocked_candidates == 13
+        assert deepar_candidate.platform_status == "ready"
+        assert deepar_candidate.available_actions == []
+        assert response.statistics.blocked_candidates == 14
     else:
         assert lstm_candidate.platform_status == "catalog_only"
         assert nbeats_candidate.platform_status == "catalog_only"
         assert nhits_candidate.platform_status == "catalog_only"
         assert tft_candidate.platform_status == "catalog_only"
+        assert deepar_candidate.platform_status == "catalog_only"
         assert response.statistics.blocked_candidates == 9

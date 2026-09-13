@@ -186,7 +186,7 @@ class TestRegistrySeesVarAtRuntime:
         # Task 138/139/140/141: 19 базовых + lstm + nbeats + nhits + tft
         # при установленной опциональной neural-группе (честный
         # runtime_available реестра v2).
-        expected_count = "ok 23 True" if neuralforecast_runtime_available() else "ok 19 False"
+        expected_count = "ok 24 True" if neuralforecast_runtime_available() else "ok 19 False"
         assert expected_count in result.stdout, (
             f"Ожидалось '{expected_count}' production backtest-моделей, "
             f"получено: {result.stdout.strip()}"

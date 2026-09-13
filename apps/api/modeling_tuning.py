@@ -18,6 +18,7 @@ from apps.api.backtesting import (
     run_backtest_plan,
     run_vector_backtest_plan,
     run_volatility_backtest_plan,
+    run_panel_backtest_plan,
 )
 from apps.api.schemas import (
     BacktestMetrics,
@@ -439,5 +440,91 @@ def execute_volatility_tuning_plan_with_artifacts(
         selected_count=len(prepared_grid.selected), truncated=prepared_grid.truncated,
         plan=plan, metric=metric,
         duration_ms=(time.monotonic() - started) * 1000,
+        preprocessing_warnings=preprocessing_warnings,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Task 142: панельный tuning (panel-cohort, DeepAR -- глобальные модели
+# на нескольких рядах)
+# ---------------------------------------------------------------------------
+
+def execute_panel_tuning_trial(
+    *, model_id: str, model_name: str, family_id: str, params: Mapping[str, Any],
+    system: Any, plan: BacktestPlan, seasonal_period: int,
+    metric: str,
+    fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
+    preprocessing_warnings: Optional[list[str]] = None,
+) -> tuple[TuneTrialResult, dict[str, Any]]:
+    """Исполнить ровно один bounded trial на панельном движке (Task 142).
+
+    Полная семантика run_panel_backtest_plan (fold-local префикс системы,
+    ГЛОБАЛЬНЫЙ фит на всей панели fold'а, OOF-точки target-ряда,
+    сертифицированные метрики main-движка) -- никаких упрощённых
+    train/test-срезов в tuning.  Метрика берётся из агрегата панельного
+    backtest'а (mae/rmse/mape/mase), None -- честный отказ.
+    """
+    if metric not in VALID_SESSION_TUNING_METRICS:
+        raise BacktestExecutionError(f"Метрика tuning '{metric}' не поддерживается")
+    result = run_panel_backtest_plan(
+        model_id=model_id, model_name=model_name, family_id=family_id,
+        system=system, plan=plan, seasonal_period=seasonal_period,
+        params=dict(params), fold_preprocessor=fold_preprocessor,
+        preprocessing_warnings=preprocessing_warnings,
+    )
+    metrics = BacktestMetrics(**result["metrics"])
+    if getattr(metrics, metric) is None:
+        raise BacktestExecutionError(f"Метрика {metric} не определена")
+    return TuneTrialResult(
+        params=dict(params), metrics=metrics, n_folds=len(plan.folds),
+    ), result
+
+
+def execute_panel_tuning_plan_with_artifacts(
+    *, model_id: str, model_name: str, family_id: str,
+    param_space: Mapping[str, list[Any]], system: Any,
+    plan: BacktestPlan, seasonal_period: int, max_trials: Optional[int],
+    metric: str, random_state: int,
+    fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
+    preprocessing_warnings: Optional[list[str]] = None,
+) -> TuningPlanExecution:
+    """Grid search panel-модели: каждый trial -- панельный backtest.
+
+    Сетка/усечение/финализация -- те же prepare_tuning_grid /
+    finalize_tuning_plan_with_artifacts, что у одномерного/векторного/
+    volatility tuning (единый контракт платформы: MAX_TRIALS,
+    детерминированный sample по seed, failures как честные пропуски,
+    best = argmin метрики).  Лучший trial возвращается с ПОЛНЫМ
+    панельным backtest-артефактом (panel: series_names/n_series/
+    target_series).
+    """
+    started = time.monotonic()
+    prepared_grid = prepare_tuning_grid(
+        param_space, max_trials=max_trials, metric=metric, random_state=random_state,
+    )
+    trials: list[TuneTrialResult] = []
+    trial_backtests: list[dict[str, Any]] = []
+    failures: list[str] = []
+    for params in prepared_grid.selected:
+        try:
+            trial, result = execute_panel_tuning_trial(
+                model_id=model_id, model_name=model_name, family_id=family_id,
+                params=params, system=system, plan=plan,
+                seasonal_period=seasonal_period, metric=metric,
+                fold_preprocessor=fold_preprocessor,
+                preprocessing_warnings=preprocessing_warnings,
+            )
+            trials.append(trial)
+            trial_backtests.append(result)
+        except (BacktestExecutionError, ValueError, RuntimeError, ArithmeticError) as exc:
+            failures.append(f"params={params}: {exc}")
+    return finalize_tuning_plan_with_artifacts(
+        model_id=model_id, model_name=model_name, family_id=family_id,
+        trials=trials, trial_backtests=trial_backtests, failures=failures,
+        grid_size=prepared_grid.grid_size,
+        selected_count=len(prepared_grid.selected), truncated=prepared_grid.truncated,
+        plan=plan, metric=metric,
+        duration_ms=(time.monotonic() - started) * 1000,
+        fold_preprocessor=fold_preprocessor,
         preprocessing_warnings=preprocessing_warnings,
     )

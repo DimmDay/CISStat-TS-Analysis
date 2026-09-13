@@ -1088,3 +1088,255 @@ Task 141a), fail-closed дисциплина и metadata-честность вы
 
 Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
 main@43553e0 + перечисленные файлы.  ZIP: download/cert141_tft_audit_worklog5.zip.
+
+---
+
+## Task 142 -- DeepAR vertical slice (ПЯТЫЙ исполнитель Neural Runtime Contract Task 137; PANEL-постановка min_series=5; ВТОРОЙ срез с probabilistic-поверхностью MQLoss/quantiles)
+
+Дата: 2026-09-13. Синхронизация: main@43553e0 (Task w/n-2 minor UI edit;
+цепочка нейро-срезов в main: 952653e Task 141 TFT -> f7596e1 Task 141a
+width-семантика тройки -> de70239 Task 139a -> 4184f06 Task 140a).
+Постановка docs/modeling_task_list.md::Tasks 138-142, срез «Task 142 --
+DeepAR» + правило моделирования: «DeepAR активируется только для
+настоящей панели с несколькими рядами; несколько числовых колонок
+одного объекта не выдаются за панель» (yaml::deepar min_series=5,
+правило F05) + требования Task 137 («probabilistic losses и
+quantiles»; MQLoss зарезервирован за срезами 141-142).  Прецедент
+quartet'а lstm/nbeats/nhits/tft (Tasks 138-141): runtime-контракт
+Task 137 НЕ меняется -- новый адаптер + запись реестра v2 + условный
+dispatch + yaml.  НОВАЯ ось среза: input_kind="panel" (единственный
+такой носитель в нейро-семействе) -- первый panel-исполнитель
+платформы потребовал ПАНЕЛЬНОГО движка session-контура (Task
+134-прецедент отдельного движка под input_kind: main-движок не
+передаёт related_series, vector-движок жёстко требует
+objective=multivariate).
+
+### Решение (по пунктам постановки)
+
+1. **ПАНЕЛЬ -- ядро постановки, честность активации**: адаптер
+   принимает target + related_series (канал реестра v2, все ряды одной
+   длины -- гейт ModelExecutionRequest) и отказывает ДО фита при
+   n_series = 1 + len(related) < DEEPAR_MIN_SERIES=5; сообщение честно
+   называет правило («одиночный ряд и несколько числовых колонок
+   одного объекта не выдаются за панель»).  Гейт продублирован ТРЕМЯ
+   слоями: контекст роутера (honest_system_profile -> n_series-гейт),
+   нейро-cohort-контракт Task 137 (neural_cohort_contract:
+   n_series < min_series -- отказ; panel=true в cohort_id) и
+   panel-движок (len(system.names) < 2 -- отказ).  Панель собирается
+   из РЯДОВ датасета (target + связанные числовые ряды, тот же
+   honest-профиль, что endogenous-система Task 131); feature-каналы
+   реестром/движком не потребляются (FeaturePlan -> честный warning).
+2. **ГЛОБАЛЬНАЯ модель -- суть DeepAR**: ОДИН фит на ВСЕЙ панели в
+   long-format unique_id/ds/y через сертифицированный to_long_format
+   контракта (явный series_column; NaN/Inf, дубликаты (unique_id, ds),
+   нерегулярная сетка, несогласованные длины -- отказ).  Точечный
+   прогноз payload -- медиана MQLoss ЦЕЛЕВОГО ряда (unique_id
+   "series_0", извлечение по unique_id, сортировка по ds --
+   детерминированный порядок горизонта); missing-строки целевого ряда
+   в отклике -- fail-closed (глобальная модель обязана вернуть прогноз
+   каждой серии панели).
+3. **Probabilistic-поверхность -- конвенция Task 141**: квантили
+   декларируются ПРЯМО -- MQLoss(quantiles=[alpha/2, 0.5, 1-alpha/2])
+   -- честный двусторонний интервал [alpha/2; 1-alpha/2] процентилей;
+   план _quantile_plan ПЕРЕИСПОЛЬЗОВАН из tft.py (единый источник
+   истины, прижат identity-тестом); метод интервалов в metadata --
+   NeuralIntervalPlan.method="neural_quantile_outputs"; clamp-инвариант
+   lower <= median <= upper -- живой гейт + fault-injection тест.
+4. **ЭМПИРИКА пробы** (scripts/task142_deepar_probe.py, 10 секций,
+   PROBE OK):
+   (а) конструктор 3.2.2 с loss=MQLoss требует valid_loss=MQLoss С
+   ТЕМИ ЖЕ quantiles -- иначе честный отказ («Please set valid_loss to
+   MQLoss() or HuberMQLoss()...»), а NeuralForecast.core дополнительно
+   валидирует идентичность quantiles loss/valid_loss -- адаптер
+   передаёт ОБЕ головки одним кортежем (прижато spy-тестом, float32-
+   допуск); (б) дефолтный loss -- DistributionLoss(StudentT)
+   (каталожное «parametric distribution head» подтверждено); выбор
+   MQLoss -- платформенная конвенция probabilistic-поверхности Task
+   141 (детерминированные нативные квантильные выходы вместо
+   сэмплирования trajectory_samples=100 путей), дисклоужен в
+   metadata.intervals.loss="mqloss"; (в) колонки отклика
+   "DeepAR-median"/"DeepAR-lo-<w>"/"DeepAR-hi-<w>" -- width-семантика
+   НАХОДКИ Task 141 п.2 (w = 100*(1-alpha)); (г) панель из 5 серий --
+   20 строк отклика (n_series x horizon), unique_ids сохранены;
+   (д) same-seed бит-паритет max|diff| = 0.0, cross-seed 0.0299;
+   (е) граница окна n == input_size + horizon исполнима (гейт БЕЗ +2,
+   как TFT -- MQLoss без conformal-калибровки); конструктор хранит
+   input_size+1 (внутренний сдвиг авторегрессии -- прижат spy-тестом);
+   (ж) int-ds freq=1 OK (конвенция семейства).
+5. **Panel-движок session-контура** (backtesting.py::
+   run_panel_backtest_plan -- НОВЫЙ, четвёртый движок платформы после
+   main/vector/volatility): гейты objective="level_forecast" +
+   input_kind="panel" по execution_contract; fold-local leakage-safe
+   префиксы системы (непрерывный префикс, тест не пересекает train --
+   как vector-движок); related-ряды -- сырые префиксы (семантика VAR);
+   target -- fold-local preprocessing (fold_preprocessor) с
+   restore_forecast; метрики -- сертифицированная compute_forecast_
+   metrics main-движка на target (MASE/RMSSE scale train-only target),
+   агрегат -- сертифицированный _aggregate_metrics; OOF-точки -- формат
+   main-движка (diagnostics/comparison совместимы); result несёт НОВЫЙ
+   блок "panel" (series_names/n_series/target_series; schemа
+   BacktestResponse дополнена опциональным полем panel).
+6. **Panel tuning** (modeling_tuning.py::execute_panel_tuning_trial +
+   execute_panel_tuning_plan_with_artifacts): полная семантика
+   run_panel_backtest_plan на каждый trial; сетка/усечение/финализация
+   -- те же prepare_tuning_grid/finalize_tuning_plan_with_artifacts
+   (единый контракт MAX_TRIALS=64, детерминированный sample, best =
+   argmin).
+7. **Panel-cohort изоляция**: план строится с
+   cohort_contract_override=neural_cohort_contract (objective=
+   "level_forecast" совпадает; panel=true/n_series/min_series/
+   loss=interval/training/device в контракте) + series_fingerprints
+   ВСЕЙ панели -- cohort_id ОТЛИЧЕН от univariate-планов на тех же
+   folds; comparison честно не смешивает ("Cohort contracts моделей не
+   совпадают") -- DeepAR образует собственный comparison-cohort.
+8. **Реестр v2 + dispatch + движок-роутинг**: запись №24 -- model_id=
+   "deepar", family_id="neural", adapter_id="neuralforecast-deepar",
+   objective="level_forecast", input_kind="panel",
+   requires_related_series=True, actions=_TUNABLE,
+   engine="neuralforecast", required_packages=("neuralforecast",),
+   deterministic=True, dependency_group="neural",
+   memory_class="standard", gpu="optional".  Dispatch:
+   _register_neural_dispatch расширен (lstm + nbeats + nhits + tft +
+   deepar; условная регистрация сохранена); legacy synthetic-запись --
+   run_deepar_backtest с ЧЕСТНЫМ отказом (прецедент var/vecm; ValueError
+   маппится в 422 в run_backtest -- honest refusal вместо слепого 500);
+   session-роутер: panel_run-гейт (input_kind == "panel" и
+   runtime_available) в backtest И tuning эндпоинтах + helper
+   _panel_neural_context.  Production-образ: Dockerfile-проба
+   'DeepAR executable OK' (реальный panel-фит 5 серий, n_series=5,
+   intervals method; воспроизведена локально на константе 300).
+9. **Bounded params**: lstm_hidden_size [8, 128] (дефолт 32 -- семейная
+   конвенция; ширина доходит до hist_encoder.hidden_size конструктора),
+   input_size [8, 104], alpha whitelist {0.01, 0.05, 0.10}.  Bool-коэрция
+   целочисленных ручек отклоняется ЯВНО (урок НАХОДКИ-2/M6), тест
+   параметризован по ВСЕМ int-ручкам.  yaml param_space:
+   lstm_hidden_size x input_size = 4 trials (<= 64); alpha вне тюнинга.
+10. **Бюджет**: константа DEEPAR_MAX_STEPS=300 (семейная конвенция;
+    анти-тампер [100, NEURAL_MAX_STEPS_BOUND]; тюнинг бюджета -- вне
+    param_space) + env-рычаг CISSTAT_NEURAL_MAX_STEPS (дефолт не задана
+    -- сертифицированная константа; мусор -- fail-closed).  DEEPAR_
+    MIN_TRAIN=30 (семейный пол; каталоговский мягкий порог 200 --
+    раньше, readiness-гейтом F04; эмпирика: F05 срабатывает раньше F04
+    на коротком профиле n_series=1).  Проводка бюджета до конструктора
+    прижата двухслойным spy-тестом -- модель несёт max_steps/random_seed
+    и MQLoss как loss И valid_loss.
+11. **EDA-матрица -- честный shape-критерий**: до среза deepar был
+    безусловно fail/blocking («одна выбранная цель» -- честный
+    catalog_only); теперь критерий считает числовые ряды-кандидаты
+    (n_series >= 5 -> pass, иначе fail/blocking с сообщением «нельзя
+    считать панелью») -- та же честная ось, что у общего критерия, с
+    panel-спецификой в тексте.
+12. **Каталог нейро-семейства полон**: все 24 модели каталога имеют
+    production-адаптеры; catalog_only-моделей в платформе больше НЕТ
+    (готовность к Task 143 -- полная production-матрица 24x11).
+
+### TDD (RED -> GREEN)
+
+- RED: tests/unit/test_deepar_adapter.py (38 кейса) + tests/unit/
+  test_deepar_integration_paths.py (15 кейсов) -- collection errors на
+  отсутствии модуля/экспортов; поверхность ожиданий снята пробом ДО
+  написания тестов (прецедент Task 139/140/141).  Правки ОЖИДАНИЙ по
+  снятой эмпирике: (а) valid_loss=MQLoss обязателен с теми же
+  quantiles (отказ конструктора/core-валидации); (б) quantiles
+  хранятся float32 (сравнение с допуском); (в) ширина рекуррентного
+  энкодера -- hist_encoder.hidden_size/encoder_hidden_size (атрибута
+  lstm_hidden_size у модели нет); (г) regex «отсутствуют» вместо
+  «колонка».
+- GREEN: адаптер + реестр + dispatch + panel-движок + роутер + yaml.
+  Нейро-набор: 38 (deepar adapter) + 15 (deepar integration) + 34+15
+  (tft) + 26+14 (nbeats/nhits) + 34+17 (lstm) + runtime/contract/
+  capacity кейсы.  Окружение: requirements.txt + requirements-dev.txt +
+  requirements-neural.txt (torch 2.14.0+cpu, neuralforecast 3.2.2 --
+  та же пара, на которой сертифицированы Tasks 137-141) + prophet
+  1.4.0 / statsforecast 2.1.1 -- полный production dispatch; pip check
+  -- No broken requirements.
+- Count-гейты 23->24 честно в 15 файлах: test_lstm/test_nbeats/
+  test_nhits/test_tft integration_paths (dispatch-конвенция
+  {lstm,nbeats,nhits,tft,deepar}, count 24/19), test_garch/test_egarch
+  integration_paths (subprocess-arith 24/19), test_var_integration_
+  paths (subprocess 'ok 24'), test_modeling_mvp_certification
+  (_EXPECTED_NEURAL={lstm,nbeats,nhits,tft,deepar}, PREDICTORS),
+  test_model_execution_contract (CERTIFIED_IDS+NEURAL_IDS+PANEL_IDS;
+  deepar descriptor; catalog-only примеров больше нет),
+  test_model_readiness_candidates (deepar production+blocked F05 на
+  n_series=1; runnable 19 / catalog-only 0 / blocked 5; короткий
+  профиль: blocked 14, deepar F05-объяснение «Модель DeepAR требует
+  минимум 5 рядов»), test_backtesting_engine (sweep исключает deepar),
+  test_eda_model_matrix (deepar shape-критерий), tests/api:
+  test_models_backtest_real (expected+deepar), test_models_candidates
+  (deepar legacy 422 «панель»), test_modeling_workflow (deepar blocked
+  матрицей применимости).
+
+### Верификация
+
+- TDD цикл выше; 54 новых кейса deepar (38 + 15 + 1 матрица).
+- Полная регрессия: **2452 passed / 0 failed** (unit + api + snapshot
+  3; ~7 мин; арифметика: 2398 базлайн + 54 новых) -- neural-тесты
+  ИСПОЛНЯЛИСЬ (neuralforecast 3.2.2 + torch 2.14.0+cpu).  compileall
+  OK; app-import OK (FastAPI); pip check (No broken requirements);
+  rules-smoketest exit=0; фронтенд не затронут (git diff -- 0 файлов
+  .ts/.tsx -- прецедент Task 139a/140a: typecheck/build обеих оболочек
+  не запускались).
+- E2E-смоук scripts/task142_e2e_smoke.py (env-рычаг 60): ВСЕ ПРОВЕРКИ
+  ПРОЙДЕНЫ (24 connected -> dispatch-gate -> deepar production+blocked
+  F05 на n_series=1, catalog-only 0 -> panel-движок: реальный
+  глобальный OOF cohort 2 folds (mae=116.1194 на слабом бюджете --
+  структурные ассерты стабильны) -> panel tuning 4/4 trials
+  (best lstm_hidden_size=64, input_size=24) -> cohort-изоляция ->
+  панельный гейт 4 рядов -- честный отказ).
+- Проб scripts/task142_deepar_probe.py: PROBE OK (10 секций: поверхность
+  конструктора; контрактный гейт MQLoss; односерийный sanity; ПАНЕЛЬ
+  5 серий -> 20 строк; дефолт DistributionLoss(StudentT) --
+  informational; int-ds freq=1; same-seed 0.0 / cross-seed 0.0299;
+  проводка бюджета; неосуществимое окно -- честный отказ; граница
+  n == input+h исполнима; недообученное пересечение 0/4 точек на
+  seed=2).  Dockerfile-проба DeepAR воспроизведена локально:
+  'DeepAR executable OK' (реальный panel-фит на константе 300).
+- Прод-инварианты: PRODUCTION_BACKTEST_MODEL_IDS == 24; deepar
+  backtest/tune/diagnostics (panel-движок); registry size 24; dispatch
+  <-> readiness gate точен; legacy deepar -- честный 422.
+
+### Границы Task 142 (что осознанно НЕ сделано)
+
+- Exogenous-канал DeepAR (cat/hist/futr/stat lists в поверхности
+  конструктора 3.2.2): реестр НЕ декларирует exog (supports_future_
+  features=False); feature-каналы нейро-моделей -- отдельная
+  постановка (прецедент lstm/tft; каталожное supports_exogenous=true
+  не декларировано в реестре до своего среза).
+- hist_exog/stat_exog, early stopping (val_size/patience),
+  lstm_n_layers/lstm_dropout/decoder-ручки, scaler_type -- поверхность
+  контракта для отдельных постановок; срез несёт bounded-ручки
+  lstm_hidden_size/input_size/alpha.
+- Тюнинг бюджета (DEEPAR_MAX_STEPS) -- вне param_space (прецедент
+  Task 136); env-рычаг слабых инстансов сохранён.
+- yaml requires_gpu: true для deepar НЕ менялось (методологическая ось
+  D06 NOT_RECOMMENDED на CPU -- независимая от production-готовности
+  platform_status; Tasks 138-141 так же не меняли нейро-четвёрку).
+- GPU-исполнение: runtime Task 137 фиксирует device="cpu";
+  gpu="optional" -- декларация capability, не переключатель.
+- UI/фронтенд не тронут (0 файлов .ts/.tsx): production-статус deepar
+  подаётся существующими capability-каналами (available_model_actions,
+  execution_contract, blocking_reason).
+- scripts/task138/139/140/141_e2e_smoke.py НЕ модифицировались
+  (снимки своего момента -- прецедент; актуальный смоук -- task142).
+
+Изменённые/новые файлы (ZIP: download/task142_deepar_vertical_slice.zip):
+- НОВЫЕ: apps/api/model_impls/deepar.py,
+  tests/unit/test_deepar_adapter.py,
+  tests/unit/test_deepar_integration_paths.py,
+  scripts/task142_deepar_probe.py, scripts/task142_e2e_smoke.py
+- ИЗМЕНЁННЫЕ: apps/api/model_execution.py, apps/api/model_impls/__init__.py,
+  apps/api/routers/models.py, apps/api/backtesting.py,
+  apps/api/modeling_tuning.py, apps/api/routers/modeling_session.py,
+  apps/api/schemas.py, rules/modeling.yaml, apps/api/eda_model_matrix.py,
+  apps/api/Dockerfile, apps/api/requirements-neural.txt,
+  tests/unit/{test_lstm_integration_paths, test_nbeats_integration_paths,
+  test_nhits_integration_paths, test_tft_integration_paths,
+  test_garch_integration_paths, test_egarch_integration_paths,
+  test_var_integration_paths, test_modeling_mvp_certification,
+  test_model_execution_contract, test_model_readiness_candidates,
+  test_backtesting_engine, test_eda_model_matrix}.py,
+  tests/api/{test_models_backtest_real, test_models_candidates,
+  test_modeling_workflow}.py, worklog5.md (этот журнал)
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@43553e0 + перечисленные изменения.

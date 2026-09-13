@@ -477,6 +477,7 @@ class TestBacktestImplementationsRegistry:
             expected.add("nbeats")
             expected.add("nhits")
             expected.add("tft")
+            expected.add("deepar")  # Task 142 (panel; legacy -- честный отказ)
         assert set(impls.keys()) == expected, (
             f"Expected {len(expected)} implementations: {expected}, "
             f"got: {set(impls.keys())}"

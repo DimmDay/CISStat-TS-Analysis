@@ -136,15 +136,19 @@ def test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics(clie
     # стал production-моделью -- третий исполнитель neural-runtime
     # контракта Task 137; Task 138: lstm -- первый исполнитель).
     # Task 141: tft тоже стал production-моделью (четвёртый исполнитель,
-    # probabilistic-поверхность MQLoss/quantiles); в качестве catalog-only
-    # примера используется deepar (Task 142 -- панель, ещё не реализована).
+    # probabilistic-поверхность MQLoss/quantiles).
+    # Task 142: deepar -- production-модель (пятый исполнитель,
+    # panel-постановка min_series=5), поэтому примера catalog-only
+    # больше НЕТ.  На однорядной session-выборке deepar честно
+    # блокируется матрицей применимости (F05: панель >= 5 рядов),
+    # раньше запроса на исполнение.
     response = client.post(
         "/v1/session/modeling/backtest",
         json={"model_id": "deepar", "train_ratio": 0.8},
     )
 
     assert response.status_code == 422
-    assert "production" in response.json()["detail"].lower()
+    assert "заблокирована матрицей применимости" in response.json()["detail"]
 
 
 def test_backtest_defaults_to_the_horizon_confirmed_by_validation_strategy(client: TestClient):

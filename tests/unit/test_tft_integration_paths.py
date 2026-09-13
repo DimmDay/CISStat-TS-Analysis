@@ -17,7 +17,7 @@ Task 137 (neural_runtime.py + neural_contract.py) НЕ меняется -- но�
   регистрации _register_neural_dispatch прижимается тестами с обеих
   сторон);
 - readiness: tft в PRODUCTION_BACKTEST_MODEL_IDS <=> runtime
-  установлен (23 connected на neural-воркере; на хосте без группы
+  установлен (24 connected на neural-воркере; на хосте без группы
   модель честно остаётся catalog_only);
 - yaml: bounded param_space n_head x hidden_size x input_size = 8
   trials (<= MAX_TRIALS=64), значения -- внутри адаптерных границ;
@@ -74,7 +74,7 @@ def test_neural_dispatch_registration_convention():
 
     with_runtime: dict = {}
     _register_neural_dispatch(with_runtime, runtime_available=True)
-    assert set(with_runtime) == {"lstm", "nbeats", "nhits", "tft"}
+    assert set(with_runtime) == {"lstm", "nbeats", "nhits", "tft", "deepar"}
 
 
 def test_dispatch_gate_consistency_in_this_environment():
@@ -192,7 +192,7 @@ def test_tft_readiness_and_stage_matrix_reflect_runtime():
         assert "backtest" in actions and "diagnostics" in actions and "tune" in actions
         assert capabilities["backtest"]["status"] == "available"
         assert capabilities["tuning"]["status"] == "available"
-        assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 23
+        assert len(PRODUCTION_BACKTEST_MODEL_IDS) == 24
     else:
         assert actions == []
         assert capabilities["backtest"]["status"] == "not_implemented"

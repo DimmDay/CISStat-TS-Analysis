@@ -110,3 +110,25 @@ def test_short_history_and_panel_duplicates_are_explained_per_requirement():
     assert panel_result["applicable"] is True
     assert panel_result["profile"]["temporal_status"] == "panel"
     assert all(model["compatibility"] == "blocked" for model in panel_result["models"])
+
+
+def test_deepar_shape_criterion_is_the_honest_panel_gate():
+    """Task 142: shape-критерий DeepAR -- честный panel-гейт по числу
+    числовых рядов-кандидатов (target + related датасета).  На фрейме с
+    2 числовыми рядами (Price, Volume) панель < min_series=5 --
+    fail/blocking с честным сообщением; колонки одного объекта панелью
+    НЕ считаются.  До среза 142 критерий был безусловно blocking
+    (честный catalog_only)."""
+    result = build_eda_model_matrix(_seasonal_frame(), "Price", task="forecast", horizon=12)
+    deepar = _by_id(result, "deepar")
+    shape = next(item for item in deepar["criteria"] if item["id"] == "shape")
+    assert shape["status"] == "fail"
+    assert shape["blocking"] is True
+    assert "панель" in shape["requirement"].lower()
+    assert "нельзя считать панелью" in shape["conclusion"]
+    assert deepar["compatibility"] == "blocked"
+    from apps.api.model_impls.neural_runtime import neuralforecast_runtime_available
+
+    assert deepar["platform_status"] == (
+        "ready" if neuralforecast_runtime_available() else "catalog_only"
+    )

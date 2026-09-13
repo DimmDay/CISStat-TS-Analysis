@@ -141,7 +141,14 @@ RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; \
                   payload = _tft_fit_predict([float(value) for value in range(1, 39)], 2, \
                   params={'n_head': 2, 'input_size': 8, 'hidden_size': 16}, random_state=42); \
                   assert len(payload['forecast']) == 2 and payload['intervals']['method'] == 'neural_quantile_outputs'; \
-                  print('TFT executable OK')"
+                  print('TFT executable OK')" \
+    && python -c "from apps.api.model_impls.deepar import _deepar_fit_predict; \
+                  related = {f'related_{i}': [float(value) + 10.0 * (i + 1) for value in range(1, 39)] for i in range(4)}; \
+                  payload = _deepar_fit_predict([float(value) for value in range(1, 39)], 2, \
+                  related_series=related, params={'lstm_hidden_size': 8, 'input_size': 8}, random_state=42); \
+                  assert len(payload['forecast']) == 2 and payload['intervals']['method'] == 'neural_quantile_outputs'; \
+                  assert payload['n_series'] == 5 and payload['panel_ids'][0] == 'series_0'; \
+                  print('DeepAR executable OK')"
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000

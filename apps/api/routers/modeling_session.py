@@ -22,6 +22,7 @@ from apps.api.backtesting import (
     run_backtest_plan,
     run_vector_backtest_plan,
     run_volatility_backtest_plan,
+    run_panel_backtest_plan,
 )
 from apps.api.multivariate_contract import (
     build_endogenous_system,
@@ -76,6 +77,7 @@ from apps.api.modeling_tuning import (
     execute_tuning_plan_with_artifacts,
     execute_vector_tuning_plan_with_artifacts,
     execute_volatility_tuning_plan_with_artifacts,
+    execute_panel_tuning_plan_with_artifacts,
     finalize_tuning_plan_with_artifacts,
     oof_signature,
     parameter_signature,
@@ -671,6 +673,92 @@ def _multivariate_vector_context(
         cohort_contract_override=cohort_contract,
     )
     return endogenous_system, plan, varx_columns, vector_warnings
+
+
+def _panel_neural_context(
+    session, prepared, context: dict[str, Any], *, period: int,
+    plan_obj, feature_plan_columns: dict[str, list[float]],
+    model_id: str,
+) -> tuple[Any, Any, list[str]]:
+    """Task 142: контекст панельного исполнения panel-модели (DeepAR).
+
+    Собирает честную панель (target + связанные числовые ряды датасета,
+    порядок объявления = порядок датафрейма -- тот же honest-профиль, что
+    у endogenous-системы Task 131), нейро-cohort-контракт Task 137
+    (neural_cohort_contract: panel=true, n_series, min_series=5 --
+    правило моделирования «несколько числовых колонок одного объекта не
+    выдаются за панель» продублировано гейтом n_series) и план
+    objective="level_forecast" с cohort_contract_override -- panel-cohort
+    изолирован от univariate-планов на тех же folds (честный comparison).
+    Возвращает (endogenous_system, backtest_plan, warnings).
+    """
+    from apps.api.neural_contract import (
+        NeuralTrainingConfig,
+        build_exogenous_plan,
+        interval_levels_for_alpha,
+        neural_cohort_contract,
+    )
+
+    system_profile = honest_system_profile(
+        session.dataframe, date_column=session.date_column,
+        target_column=session.target_column,
+    )
+    related_names = list(system_profile["related_series"])
+    n_series = 1 + len(related_names)
+    if n_series < DEEPAR_MIN_SERIES:
+        raise BacktestExecutionError(
+            f"Модель '{model_id}' требует панель из min_series="
+            f"{DEEPAR_MIN_SERIES} рядов, в датасете числовых рядов "
+            f"{n_series} (target '{session.target_column}' + related); "
+            "несколько числовых колонок одного объекта не выдаются за "
+            "панель (честность Task 142)"
+        )
+    endogenous_system = build_endogenous_system(
+        {
+            session.target_column: [float(v) for v in prepared.series],
+            **{
+                name: [float(v) for v in session.dataframe[name].tolist()]
+                for name in related_names
+            },
+        },
+        timestamps=prepared.labels,
+    )
+    series_fingerprints = {
+        session.target_column: context["fingerprint"],
+        **{
+            name: series_fingerprint(pd.Series(
+                [float(v) for v in session.dataframe[name].tolist()],
+                index=pd.to_datetime(prepared.labels),
+            ))
+            for name in related_names
+        },
+    }
+    definition = MODEL_EXECUTION_REGISTRY.get(model_id)
+    if definition is None or not definition.runtime_available():
+        raise BacktestExecutionError(
+            f"Модель '{model_id}' недоступна для панельного исполнения"
+        )
+    cohort_contract = neural_cohort_contract(
+        fingerprint=context["fingerprint"],
+        n_series=n_series,
+        min_series=DEEPAR_MIN_SERIES,
+        exogenous=build_exogenous_plan(pd.DataFrame(
+            {"unique_id": [], "ds": [], "y": []})),
+        interval=interval_levels_for_alpha(0.05),
+        loss="mqloss",
+        config=NeuralTrainingConfig(seed=0, max_steps=1),
+    )
+    plan = build_backtest_plan(
+        session.modeling_artifacts["validation_strategy"],
+        n_observations=len(prepared.series),
+        fingerprint=context["fingerprint"], target_column=session.target_column,
+        seasonal_period=int(period),
+        preprocessing_signature=prepared.preprocessing_signature,
+        feature_plan=plan_obj, feature_columns=feature_plan_columns,
+        series_fingerprints=series_fingerprints,
+        cohort_contract_override=cohort_contract,
+    )
+    return endogenous_system, plan, []
 
 
 def _volatility_context(
@@ -1313,6 +1401,15 @@ def run_modeling_backtest(
             and definition.objective == "volatility"
             and definition.runtime_available()
         )
+        # Task 142: panel-модель (DeepAR) исполняется панельным движком --
+        # main-движок не передаёт related_series, vector-движок жёстко
+        # требует objective=multivariate; панель = target + связанные
+        # числовые ряды датасета (честный n_series-гейт в контексте).
+        panel_run = (
+            definition is not None
+            and definition.input_kind == "panel"
+            and definition.runtime_available()
+        )
         if volatility_run:
             if payload.returns_method is None:
                 raise HTTPException(
@@ -1341,6 +1438,16 @@ def run_modeling_backtest(
                     plan_obj=plan_obj, feature_plan_columns=feature_plan_columns,
                     model_id=payload.model_id,
                 )
+        elif panel_run:
+            # Task 142: panel-модель исполняется панельным движком;
+            # helper собирает панель (target + related), нейро-cohort-контракт
+            # Task 137 и план objective="level_forecast" с override.
+            endogenous_system, plan, panel_extra_warnings = \
+                _panel_neural_context(
+                    session, prepared, context, period=int(period),
+                    plan_obj=plan_obj, feature_plan_columns=feature_plan_columns,
+                    model_id=payload.model_id,
+                )
         elif volatility_run:
             vol_target, plan = _volatility_context(
                 session, prepared, context, period=int(period),
@@ -1361,6 +1468,10 @@ def run_modeling_backtest(
         if vector_run:
             preprocessing_warnings = [
                 *preprocessing_warnings, *vector_extra_warnings,
+            ]
+        if panel_run:
+            preprocessing_warnings = [
+                *preprocessing_warnings, *panel_extra_warnings,
             ]
         if volatility_run and (
             prepared.fold_preprocessor is not None
@@ -1391,6 +1502,15 @@ def run_modeling_backtest(
                 system=endogenous_system, plan=plan,
                 seasonal_period=int(period), params=tuned_params,
                 exogenous=varx_columns,
+                preprocessing_warnings=preprocessing_warnings,
+                fold_preprocessor=prepared.fold_preprocessor,
+            )
+        elif panel_run:
+            raw_result = run_panel_backtest_plan(
+                model_id=payload.model_id, model_name=model_info[0],
+                family_id=model_info[1],
+                system=endogenous_system, plan=plan,
+                seasonal_period=int(period), params=tuned_params,
                 preprocessing_warnings=preprocessing_warnings,
                 fold_preprocessor=prepared.fold_preprocessor,
             )
@@ -1651,6 +1771,13 @@ def tune_modeling_candidate(
                     ),
                 )
         vector_warnings: list[str] = []
+        # Task 142: panel-модель тюнится панельным движком (тот же cohort,
+        # что и backtest; честный n_series-гейт панели в контексте).
+        panel_run = (
+            definition is not None
+            and definition.input_kind == "panel"
+            and definition.runtime_available()
+        )
         if vector_run:
             # Task 133: векторный tuning -- каждый trial исполняется
             # векторным движком на EndogenousSystem (тот же cohort, что и
@@ -1672,6 +1799,25 @@ def tune_modeling_candidate(
                 fold_preprocessor=prepared.fold_preprocessor,
                 preprocessing_warnings=[
                     *prepared.warnings, *feature_plan_warnings, *vector_warnings,
+                ],
+            )
+        elif panel_run:
+            endogenous_system, plan, panel_warnings = \
+                _panel_neural_context(
+                    session, prepared, context, period=int(period),
+                    plan_obj=plan_obj, feature_plan_columns=feature_plan_columns,
+                    model_id=payload.model_id,
+                )
+            execution = execute_panel_tuning_plan_with_artifacts(
+                model_id=payload.model_id, model_name=model_info[0],
+                family_id=model_info[1],
+                param_space=model.param_space, system=endogenous_system,
+                plan=plan, seasonal_period=int(period),
+                max_trials=payload.max_trials,
+                metric=payload.metric, random_state=payload.random_state,
+                fold_preprocessor=prepared.fold_preprocessor,
+                preprocessing_warnings=[
+                    *prepared.warnings, *feature_plan_warnings, *panel_warnings,
                 ],
             )
         elif volatility_run:

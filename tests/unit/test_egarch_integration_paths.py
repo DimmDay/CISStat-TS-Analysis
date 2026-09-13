@@ -137,13 +137,14 @@ def test_egarch_in_production_backtest_ids_and_dispatch() -> None:
 def test_production_count_is_nineteen() -> None:
     """18 (Task 135) + EGARCH = 19 production backtest-моделей.
     Task 138: lstm -- 20-я, Task 139: nbeats -- 21-я, Task 140: nhits --
-    22-я, Task 141: tft -- 23-я, НО neural-runtime -- опциональная
+    22-я, Task 141: tft -- 23-я, Task 142: deepar -- 24-я, НО
+    neural-runtime -- опциональная
     dependency-группа (requirements-neural.txt): членство lstm/nbeats/
     nhits/tft в readiness честно зависит от прога
     neuralforecast_runtime_available()."""
     from apps.api.model_impls.neural_runtime import neuralforecast_runtime_available
 
-    expected = 23 if neuralforecast_runtime_available() else 19
+    expected = 24 if neuralforecast_runtime_available() else 19
     assert len(PRODUCTION_BACKTEST_MODEL_IDS) == expected
 
 

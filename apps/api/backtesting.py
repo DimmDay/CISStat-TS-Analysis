@@ -1336,6 +1336,243 @@ def run_vector_backtest_plan(
 
 
 # ---------------------------------------------------------------------------
+# Task 142: панельный движок (panel-модели -- глобальные модели на
+# НЕСКОЛЬКИХ рядах; первый исполнитель -- DeepAR Task 142)
+# ---------------------------------------------------------------------------
+
+def run_panel_backtest_plan(
+    *, model_id: str, model_name: str, family_id: str,
+    system: "EndogenousSystem", plan: BacktestPlan,
+    seasonal_period: int, params: Optional[Mapping[str, Any]] = None,
+    fold_preprocessor: Optional[FoldPreprocessorProtocol] = None,
+    preprocessing_warnings: Optional[list[str]] = None,
+) -> dict[str, Any]:
+    """Панельное исполнение EDA-плана для panel-моделей (Task 142).
+
+    Зеркало run_vector_backtest_plan (Task 132) и
+    run_volatility_backtest_plan (Task 135) под input_kind="panel" при
+    objective="level_forecast" (Task 134-прецедент отдельного движка под
+    input_kind; main-движок не передаёт related_series, vector-движок
+    жёстко требует objective=multivariate):
+
+    - гейт: исполняются ТОЛЬКО планы objective="level_forecast" у
+      моделей, объявивших input_kind="panel" (единственный такой
+      исполнитель -- DeepAR Task 142); панель = target + связанные
+      числовые ряды датасета (несколько feature-колонок одного объекта
+      панелью НЕ являются -- правило моделирования Task 142);
+    - fold-local: адаптер получает ТОЛЬКО train-префикс системы
+      (leakage-safe, как в vector-движке); related-ряды -- сырые
+      префиксы (та же семантика, что у VAR: preprocessing -- выбор
+      session для target-колонки);
+    - ГЛОБАЛЬНАЯ модель (суть DeepAR): ОДИН фит на всей панели fold'а;
+      OOF-точки -- прогнозы ЦЕЛЕВОГО ряда (первая колонка системы);
+    - метрики -- сертифицированная compute_forecast_metrics main-движка
+      на target-колонке (MASE/RMSSE scale -- train-only target);
+    - cohort -- neural_cohort_contract контракта Task 137
+      (panel=true/n_series/min_series), собирается контекстом роутера;
+      comparison честно изолирует panel-cohort (контрактный гейт
+      "Cohort contracts моделей не совпадают");
+    - feature-каналы не потребляются: FeaturePlan даёт честный warning
+      (exog-канал нейро-моделей -- отдельная постановка);
+    - никакого доступа к тестовым наблюдениям со стороны модели.
+    """
+    if plan.objective != "level_forecast":
+        raise BacktestExecutionError(
+            "Панельный движок исполняет только level_forecast-планы "
+            f"panel-моделей, получено objective='{plan.objective}'"
+        )
+    if int(seasonal_period) != plan.seasonal_period:
+        raise BacktestExecutionError(
+            "Seasonal period расходится с зафиксированным backtest cohort"
+        )
+    if system.n_observations != plan.n_observations:
+        raise BacktestExecutionError(
+            "Длина системы расходится с зафиксированным backtest cohort"
+        )
+    try:
+        execution_contract = MODEL_EXECUTION_REGISTRY.describe(model_id)
+    except ValueError as exc:
+        raise BacktestExecutionError(str(exc)) from exc
+    if execution_contract.get("objective") != "level_forecast":
+        raise BacktestExecutionError(
+            f"Модель '{model_id}' не объявила objective=level_forecast"
+        )
+    if execution_contract.get("input_kind") != "panel":
+        raise BacktestExecutionError(
+            f"Модель '{model_id}' не объявила input_kind=panel"
+        )
+
+    names = list(system.names)
+    if len(names) < 2:
+        raise BacktestExecutionError(
+            f"Панельная модель '{model_id}' требует несколько рядов: "
+            "в системе один ряд (несколько числовых колонок одного "
+            "объекта не выдаются за панель; честность Task 142)"
+        )
+    target_name = names[0]
+    related_names = names[1:]
+    target_values = [float(value) for value in system.series[target_name]]
+    if not np.isfinite(np.asarray(target_values, dtype=float)).all():
+        raise BacktestExecutionError("Система содержит NaN/Inf")
+    timestamps = system.timestamps
+
+    warnings: list[str] = list(preprocessing_warnings or [])
+    if plan.feature_plan is not None and plan.feature_plan.features:
+        warnings.append(
+            f"FeaturePlan '{plan.feature_plan.plan_id}' не применен: "
+            f"panel-модель '{model_id}' не принимает регрессоры "
+            "(exog-канал нейро-моделей -- отдельная постановка); "
+            "полная история в fold-матрицах аудита"
+        )
+
+    parameters = dict(params or {})
+    folds: list[dict[str, Any]] = []
+    started = time.monotonic()
+    for fold in plan.folds:
+        fold_started = time.monotonic()
+        n_train = len(fold.train_indices)
+        n_test = len(fold.test_indices)
+        if fold.train_indices != list(range(n_train)):
+            raise BacktestExecutionError(
+                f"Fold {fold.fold}: train-срез панельной модели должен быть "
+                "непрерывным префиксом системы (упорядоченная общая сетка)"
+            )
+        if min(fold.test_indices) <= fold.train_indices[-1]:
+            raise BacktestExecutionError(
+                f"Fold {fold.fold}: тестовые наблюдения не могут пересекать train-срез"
+            )
+        execution_horizon = fold.gap + n_test
+        try:
+            related_train = {
+                name: [float(value) for value in system.series[name][:n_train]]
+                for name in related_names
+            }
+            if fold_preprocessor is None:
+                model_train_target = target_values[:n_train]
+                eval_train_target = list(model_train_target)
+                eval_actual_target = [
+                    float(target_values[index]) for index in fold.test_indices
+                ]
+                restore_forecast = lambda forecast: forecast  # noqa: E731
+            else:
+                prepared = fold_preprocessor.prepare(target_values, fold)
+                model_train_target = prepared.model_train
+                eval_train_target = prepared.evaluation_train
+                eval_actual_target = prepared.evaluation_actual
+                restore_forecast = prepared.restore_forecast
+            if len(model_train_target) != n_train:
+                raise BacktestExecutionError(
+                    "Preprocessing вернул неверную длину train-среза target"
+                )
+            train_timestamps = (
+                [timestamps[index] for index in fold.train_indices]
+                if timestamps else []
+            )
+            execution_result = MODEL_EXECUTION_REGISTRY.execute(
+                model_id,
+                ModelExecutionRequest(
+                    target=model_train_target,
+                    horizon=execution_horizon,
+                    objective="level_forecast",
+                    seasonal_period=seasonal_period,
+                    params=parameters,
+                    related_series=related_train,
+                    train_timestamps=train_timestamps,
+                ),
+            )
+            warnings.extend(execution_result.warnings)
+            metadata = execution_result.metadata
+            forecast = [float(value) for value in restore_forecast(
+                execution_result.forecast,
+            )]
+            if len(forecast) != execution_horizon:
+                raise BacktestExecutionError(
+                    "Preprocessing вернул неверную длину восстановления прогноза"
+                )
+            predicted = forecast[fold.gap:]
+            mase_scale, rmsse_scale = compute_metric_scales(
+                eval_train_target, seasonal_period,
+            )
+            metrics = compute_forecast_metrics(
+                eval_actual_target, predicted,
+                mase_scale=mase_scale, rmsse_scale=rmsse_scale,
+            )
+            predictions = [
+                {
+                    "fold": fold.fold, "horizon_step": step,
+                    "index": index, "label": (
+                        timestamps[index] if timestamps else str(index)
+                    ),
+                    "actual": actual, "predicted": predicted_value,
+                    "residual": round(actual - predicted_value, 12),
+                }
+                for step, (index, actual, predicted_value) in enumerate(
+                    zip(fold.test_indices, eval_actual_target, predicted, strict=True), 1,
+                )
+            ]
+        except Exception as exc:
+            raise BacktestExecutionError(
+                f"{model_name}: fold {fold.fold} завершился ошибкой: {exc}"
+            ) from exc
+        folds.append({
+            "fold": fold.fold, "status": "success",
+            "train_start": fold.train_indices[0], "train_end": fold.train_indices[-1],
+            "test_start": fold.test_indices[0], "test_end": fold.test_indices[-1],
+            "gap": fold.gap, "n_train": n_train, "n_test": n_test,
+            "train_start_label": fold.train_start_label or (
+                timestamps[fold.train_indices[0]] if timestamps else str(fold.train_indices[0])
+            ),
+            "train_end_label": fold.train_end_label or (
+                timestamps[fold.train_indices[-1]] if timestamps else str(fold.train_indices[-1])
+            ),
+            "test_start_label": fold.test_start_label or (
+                timestamps[fold.test_indices[0]] if timestamps else str(fold.test_indices[0])
+            ),
+            "test_end_label": fold.test_end_label or (
+                timestamps[fold.test_indices[-1]] if timestamps else str(fold.test_indices[-1])
+            ),
+            "metrics": metrics.model_dump(mode="json"), "predictions": predictions,
+            "mase_scale": mase_scale, "rmsse_scale": rmsse_scale,
+            "feature_matrix": None, "feature_importance": None,
+            "duration_ms": round((time.monotonic() - fold_started) * 1000, 3),
+            "error": None,
+        })
+    aggregate = _aggregate_metrics(folds)
+    oof = [point for fold in folds for point in fold["predictions"]]
+    warnings = list(warnings)
+    if aggregate.mape is None:
+        warnings.append("MAPE не определена: во всех OOF-фактах нулевые значения.")
+    if aggregate.mase is None:
+        warnings.append("MASE/RMSSE не определены: train-only seasonal scale равен нулю или истории недостаточно.")
+    last_train = len(plan.folds[-1].train_indices)
+    preprocessing = (
+        dict(fold_preprocessor.summary) if fold_preprocessor is not None else {
+            "fit_policy": "none", "evaluation_scale": plan.target_column,
+            "source_column": plan.target_column, "target_column": plan.target_column,
+        }
+    )
+    return {
+        "model_id": model_id, "model_name": model_name, "family_id": family_id,
+        "metrics": aggregate.model_dump(mode="json"),
+        "n_train": last_train, "n_test": len(oof),
+        "train_ratio": round(last_train / len(target_values), 12),
+        "duration_ms": round((time.monotonic() - started) * 1000, 3),
+        "data_source": "session", "status": "success",
+        "strategy": plan.strategy, "cohort_id": plan.cohort_id,
+        "objective": plan.objective, "cohort_contract": plan.cohort_contract,
+        "horizon": plan.horizon, "n_folds": len(plan.folds), "gap": plan.gap,
+        "folds": folds, "oof_predictions": oof, "warnings": warnings,
+        "preprocessing": preprocessing,
+        "execution_contract": execution_contract,
+        "panel": {
+            "series_names": names,
+            "n_series": len(names),
+            "target_series": target_name,
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
 # Task 135: volatility-движок (исполнитель контракта волатильности Task 134)
 # ---------------------------------------------------------------------------
 
