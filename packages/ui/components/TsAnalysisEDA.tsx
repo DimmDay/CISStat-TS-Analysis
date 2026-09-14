@@ -21,6 +21,7 @@ import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
 import { useAppShell } from "../context/AppShellContext";
 import { Button } from "./Button";
+import { StepperNextModuleButton } from "./StepperNextModuleButton";
 import {
   EdaDescriptiveOverview,
   type DescriptiveStatsResponse,
@@ -1424,6 +1425,14 @@ export function TsAnalysisEDA() {
               </span>
             </button>
           ))}
+          {/* ── Приглашение «Перейти к моделированию» — паттерн цепочки ──
+              Общий StepperNextModuleButton ("Ведём исследователя за руку"):
+              тот же дизайн, что на «Загрузке» (геометрия степпер-кнопок,
+              пастельная заливка, индиго при наведении); светло-серая полоса
+              border-t встроена в обёртку компонента. Ставится последним
+              элементом списка степпера: это переход к ДРУГОМУ модулю
+              пайплайна, а не ещё одно исследование EDA. */}
+          <StepperNextModuleButton label="Перейти к моделированию" href="/modeling" />
         </div>
       </aside>
 
