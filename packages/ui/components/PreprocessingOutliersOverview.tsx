@@ -62,6 +62,20 @@ async function responseDetail(response: Response) {
 
 const pctLabel = (value: number | null) => (value === null ? "—" : `${value.toFixed(1)}%`);
 
+type OutliersView = "table" | "line" | "histogram" | "density" | "boxplot";
+// Task w/n-3: переключатели представлений — эталонный бейдж-паттерн
+// «Генерации признаков» (PreprocessingFeatureEngineeringOverview): серые
+// pill-бейджи с рамкой, усиление фона при наведении; tablist живёт внутри
+// шапки Обзора (mt-3 flex flex-wrap gap-2), семантика role="tab" +
+// aria-selected. Единый паттерн для всех остановок «Предобработки».
+const TABS: Array<{ id: OutliersView; label: string }> = [
+  { id: "table", label: "Таблица" },
+  { id: "line", label: "Линейный" },
+  { id: "histogram", label: "Гистограмма" },
+  { id: "density", label: "Плотность" },
+  { id: "boxplot", label: "Boxplot" },
+];
+
 export function PreprocessingOutliersOverview({
   refreshKey = 0,
   method = "iqr",
@@ -95,7 +109,7 @@ function PreprocessingOutliersOverviewInner({
   const [profile, setProfile] = useState<OutlierProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<"table" | "line" | "histogram" | "density" | "boxplot">("table");
+  const [activeView, setActiveView] = useState<OutliersView>("table");
   const { expandedChartId } = useExpandableChartState();
 
   useEffect(() => {
@@ -156,32 +170,24 @@ function PreprocessingOutliersOverviewInner({
             <span>Затронутые колонки — {profile.affected_columns.join(", ")}</span>
           )}
         </div>
-      </div>
-
-      <div className="flex shrink-0 gap-1 border-b border-neutral-100 px-4 pt-2">
-        {(
-          [
-            { id: "table", label: "Таблица" },
-            { id: "line", label: "Линейный" },
-            { id: "histogram", label: "Гистограмма" },
-            { id: "density", label: "Плотность" },
-            { id: "boxplot", label: "Boxplot" },
-          ] as const
-        ).map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveView(tab.id)}
-            aria-pressed={activeView === tab.id}
-            className={`rounded-t px-3 py-1.5 text-xs font-medium transition-colors ${
-              activeView === tab.id
-                ? "bg-white text-brand border border-b-0 border-neutral-200"
-                : "text-neutral-500 hover:text-neutral-700"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        <div role="tablist" aria-label="Представления проверки выбросов" className="mt-3 flex flex-wrap gap-2">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeView === tab.id}
+              onClick={() => setActiveView(tab.id)}
+              className={`rounded-full border px-3 py-1 text-xs ${
+                activeView === tab.id
+                  ? "border-neutral-300 bg-neutral-200 text-neutral-800"
+                  : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {activeView !== "table" && (

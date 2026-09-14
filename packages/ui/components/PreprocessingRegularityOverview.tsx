@@ -67,6 +67,18 @@ async function responseDetail(response: Response) {
   return `Не удалось загрузить профиль регулярности (HTTP ${response.status})`;
 }
 
+type RegularityView = "table" | "intervals" | "timeline";
+// Task w/n-3: переключатели представлений — эталонный бейдж-паттерн
+// «Генерации признаков» (PreprocessingFeatureEngineeringOverview): серые
+// pill-бейджи с рамкой, усиление фона при наведении; tablist живёт внутри
+// шапки Обзора (mt-3 flex flex-wrap gap-2), семантика role="tab" +
+// aria-selected. Единый паттерн для всех остановок «Предобработки».
+const TABS: Array<{ id: RegularityView; label: string }> = [
+  { id: "table", label: "Таблица" },
+  { id: "intervals", label: "Интервалы" },
+  { id: "timeline", label: "Таймлайн" },
+];
+
 export function PreprocessingRegularityOverview({ refreshKey = 0 }: { refreshKey?: number }) {
   return (
     <ExpandableChartsProvider>
@@ -79,7 +91,7 @@ function PreprocessingRegularityOverviewInner({ refreshKey = 0 }: { refreshKey?:
   const [data, setData] = useState<RegularityProfileResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<"table" | "intervals" | "timeline">("table");
+  const [activeView, setActiveView] = useState<RegularityView>("table");
   const { expandedChartId } = useExpandableChartState();
 
   useEffect(() => {
@@ -141,30 +153,24 @@ function PreprocessingRegularityOverviewInner({ refreshKey = 0 }: { refreshKey?:
           <span>Нарушений сортировки — {profile.sort_violations}</span>
           {profile.invalid_date_count > 0 && <span className="font-medium text-red-600">Некорректных дат — {profile.invalid_date_count}</span>}
         </div>
-      </div>
-
-      <div className="flex shrink-0 gap-1 border-b border-neutral-100 px-4 pt-2">
-        {(
-          [
-            { id: "table", label: "Таблица" },
-            { id: "intervals", label: "Интервалы" },
-            { id: "timeline", label: "Таймлайн" },
-          ] as const
-        ).map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveView(tab.id)}
-            aria-pressed={activeView === tab.id}
-            className={`rounded-t px-3 py-1.5 text-xs font-medium transition-colors ${
-              activeView === tab.id
-                ? "bg-white text-brand border border-b-0 border-neutral-200"
-                : "text-neutral-500 hover:text-neutral-700"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        <div role="tablist" aria-label="Представления проверки регулярности" className="mt-3 flex flex-wrap gap-2">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeView === tab.id}
+              onClick={() => setActiveView(tab.id)}
+              className={`rounded-full border px-3 py-1 text-xs ${
+                activeView === tab.id
+                  ? "border-neutral-300 bg-neutral-200 text-neutral-800"
+                  : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {activeView === "table" && (

@@ -1776,3 +1776,130 @@ F-B/F-C не правились (косметика отчёта и stale-дек
 
 НОВЫЕ: scripts/audit_scripts/{cert143_oracles, cert143_mutations,task143a_fA_validjson_probe}.py
 ИЗМЕНЁННЫЕ: apps/api/session_store.py (фикс F-A -- TypeError-guard +AttributeError в кортеже save()),tests/api/test_session_store.py (класс TestNonObjectDocument-Degradation, 6 кейсов), worklog5.md (этот журнал)
+
+---
+
+## Task w/n-3 -- Вкладка «Предобработка»: бейдж-паттерн переключателей представлений «Обзора» остановки «Генерация признаков» распространён на ВСЕ остановки степпера (кроме «Масштабирования» -- паттерн уже применён)
+
+Дата: 2026-09-14. Синхронизация: main@30d00d4 (Task 143 certification +
+фикс 143a, закоммичен тимлидом; рабочее дерево чистое).  Постановка
+тимлида: нижнее центральное окно «Обзор» переключает графики/таблицы
+внутренними вкладками; на остановке «Генерация признаков» -- бейджи
+«Превью»/«Лаг корреляции»/«Доступность»/«Циклы»/«Каталог»; паттерн
+(серые бейджи с рамкой, увеличение интенсивности фона при наведении)
+распространить на ВСЕ остановки степпера «Предобработки», кроме
+«Масштабирования» (там применён).  Полный цикл AGENTS.md: TDD
+RED->GREEN, полная frontend-регрессия, typecheck/build обеих оболочек.
+
+### Диагностика (точки изменения; эталон -- PreprocessingFeatureEngineeringOverview.tsx:109, паритет PreprocessingScalingOverview.tsx:110)
+
+Эталонный контракт: tablist ВНУТРИ шапки Обзора (блок `shrink-0 border-b
+border-neutral-100 p-4`, после рекомендации/легенды), контейнер
+`mt-3 flex flex-wrap gap-2`, кнопки `role="tab"` + `aria-selected`,
+классы `rounded-full border px-3 py-1 text-xs`; активный
+`border-neutral-300 bg-neutral-200 text-neutral-800`, неактивный
+`border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100`
+(рамка + усиление фона при наведении).  Три legacy-варианта в 8
+остановках:
+
+- **Вариант A -- классические вкладки** (Missing, Outliers, Regularity):
+  отдельная строка `flex gap-1 border-b px-4 pt-2`, кнопки `rounded-t
+  px-3 py-1.5 font-medium`, активный `bg-white text-brand border-b-0`
+  (индиго-текст), семантика `aria-pressed` БЕЗ ролей tablist/tab.
+- **Вариант B -- pill в отдельной строке** (Decomposition, Variance,
+  Smoothing, Stationarity): цвета уже эталонные, НО строка отдельно от
+  шапки (`border-b px-4 py-2 gap-1.5`), геометрия `px-3 py-1.5 font-medium
+  transition-colors`.
+- **Вариант C -- pill без рамки с ring** (Spectral): в шапке, НО кнопки
+  `bg-neutral-100` БЕЗ border, активный `ring-2 ring-neutral-400`,
+  неактивный `text-neutral-600 hover:bg-neutral-200`.
+
+### Решение
+
+1. **A-вариант (3 файла)**: module-level `type`-union + `const TABS`
+   (прецедент эталона); tablist перенесён внутрь шапки последним
+   элементом (после легенды статистик), старая отдельная строка УДАЛЕНА;
+   кнопки -- эталонные классы + `role="tab"`/`aria-selected` (вместо
+   `aria-pressed`).  aria-label: «Представления проверки пропусков» /
+   «...выбросов» / «...регулярности».  Примечание: индикаторные
+   бейджи-«переключатели представлений» вида `rounded-t` исчезли --
+   активная заливка теперь нейтрально-серая (как в эталоне), индиго
+   остаётся цветом действий/ссылок, не переключателей.
+2. **B-вариант (4 файла)**: tablist перенесён внутрь шапки (после
+   recommendation/warnings), отдельная строка удалена; контейнер
+   `mt-3 flex flex-wrap gap-2`; классы `px-3 py-1.5 text-xs font-medium
+   transition-colors` -> `px-3 py-1 text-xs` (снят лишний вес шрифта и
+   мёртвая transition -- hover в Tailwind-палитре нейтралей без
+   анимационного контракта, эталон transition не имеет).  Имена
+   tablist'ов СОХРАНЕНЫ (прижаты существующими тестами: «Графики
+   сглаживания ряда» и др.).
+3. **C-вариант (1 файл)**: только классы кнопок -> эталон (border вместо
+   ring-2 у активного); tablist уже был в шапке с `mt-3 flex flex-wrap
+   gap-2` -- без переноса.
+4. **Правка B-файлов Smoothing/Stationarity выполнена якорным
+   Python-скриптом** (scripts/task_wn3_fix_bc.py вне репозитория,
+   песочница): точечная замена по трём якорям (tablist-класс, класс
+   кнопок, хвост `</p>}</div><div role="tablist"`) -- однострочный
+   формат этих компонентов не дал использовать Edit-якоря надёжно.
+5. **Честные границы переиспользования**: разметка/тексты/иконки
+   представлений, ExpandableChartPanel-обёртки, условные рендеры
+   (Outliers: строка «Признак: ...» при не-табличных видах; Spectral:
+   панель фазы только при наличии данных) -- БИТ-НЕИЗМЕННЫ; правился
+   ТОЛЬКО слой переключателей.  Степпер TsAnalysisPreprocessing.tsx,
+   маунт-точки компонентов, backend -- не тронуты.
+
+### TDD (RED -> GREEN)
+
+- RED: 8 новых кейсов «переключатели представлений следуют бейдж-паттерну
+  «Генерации признаков»» -- по одному в каждом тест-файле; контракт
+  прижат ПОЛНОСТЬЮ: tablist с именем, классы контейнера `mt-3 flex
+  flex-wrap gap-2`, размещение ВНУТРИ шапки (`parentElement` имеет
+  `p-4` и `border-b border-neutral-100`), активный/неактивный бейдж с
+  ПОЛНЫМ набором эталонных классов (включая `hover:bg-neutral-100`),
+  семантика `aria-selected`.  Попутно 3 существующих запроса
+  `getByRole("button", ...)` переведены на `getByRole("tab", ...)`
+  (Missing: «Матрица»; Outliers: «Гистограмма»; Regularity:
+  «Интервалы») -- явная роль tab перекрывает неявную button.
+  Результат RED: 11 failed / 39 passed -- падения ТОЧНО дефектные (8
+  контрактов на трёх legacy-вариантах + 3 запроса к ещё не
+  переписанным A-компонентам).
+- GREEN: правки 8 компонентов -> 8 сюит / 50 тестов PASSED (39 + 11 --
+  арифметика сходится).
+
+### Верификация
+
+- Полная frontend-регрессия: **97 сюит / 925 тестов PASSED / 0 failed**
+  (75 с).  Арифметика: базлайн 30d00d4 = 917 (= 914 Task IA-1 + 3 кейса
+  из коммитов 4f8a9ef/6768354/d9377ef) + 8 новых кейсов = 925.
+  Регрессий вне задачи нет.
+- Сверка единства паттерна программно по всем 10 файлам
+  Preprocessing*Overview.tsx (включая 2 эталона): geometry/active/
+  inactive-классы + tablist-in-header -- все True, набор байт-одинаков.
+- npm run typecheck:all -- 0 ошибок (embedded + standalone);
+  npm run build:all -- Compiled successfully x2 (embedded 13/13,
+  standalone 17/17 static pages).
+- aria-pressed в Preprocessing*Overview.tsx -- 0 вхождений (паттерн
+  aria-selected вынесен везде).
+
+### Границы Task w/n-3 (что осознанно НЕ сделано)
+
+- EDA- и Validation-Обзоры НЕ трогались (мандат постановки -- только
+  «Предобработка»; в EDA свой набор legacy-вариантов -- при
+  необходимости отдельная постановка).
+- Правка применяется в ОБЕИХ оболочках через общий пакет packages/ui
+  (прецедент Task w/n: общий компонент, форков нет).
+- Мобильная механика (горизонтальный скролл/перенос бейджей) -- не
+  менялась: `flex-wrap` эталона сохранён во всех 10.
+- Backend/контракты данных не затронуты (0 файлов .py; git diff --
+  16 файлов, все .tsx).
+- Исторические записи журнала НЕ редактировались (append-only).
+
+Изменённые/новые файлы (ZIP: download/task_wn3_preprocessing_badge_pattern.zip):
+- ИЗМЕНЁННЫЕ: packages/ui/components/{PreprocessingMissingOverview,
+  PreprocessingOutliersOverview, PreprocessingRegularityOverview,
+  PreprocessingDecompositionOverview, PreprocessingVarianceOverview,
+  PreprocessingSmoothingOverview, PreprocessingStationarityOverview,
+  PreprocessingSpectralOverview}.tsx + их .test.tsx (8+8 = 16 файлов)
+- worklog5.md (этот журнал)
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@30d00d4 + перечисленные изменения.

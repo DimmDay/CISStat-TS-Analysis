@@ -42,6 +42,35 @@ describe("PreprocessingRegularityOverview", () => {
     expect(screen.getByText(/Временная ось: Date/)).toBeInTheDocument();
   });
 
+  // Task w/n-3: бейдж-паттерн «Генерации признаков» (серые pill-бейджи с
+  // рамкой, усиление фона при наведении) распространён на всю
+  // «Предобработку». Контракт эталона
+  // PreprocessingFeatureEngineeringOverview: tablist живёт ВНУТРИ шапки
+  // Обзора (блок p-4 с border-b), классы mt-3 flex flex-wrap gap-2;
+  // активный бейдж border-neutral-300 bg-neutral-200 text-neutral-800,
+  // неактивный border-neutral-200 bg-neutral-50 text-neutral-500 с
+  // hover:bg-neutral-100; семантика role="tab" + aria-selected.
+  it("переключатели представлений следуют бейдж-паттерну «Генерации признаков»", async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(PROFILE_RESPONSE) });
+    render(<PreprocessingRegularityOverview refreshKey={1} />);
+    await screen.findByRole("table", { name: "Регулярность по группам" });
+
+    const tablist = screen.getByRole("tablist", { name: "Представления проверки регулярности" });
+    expect(tablist).toHaveClass("mt-3", "flex", "flex-wrap", "gap-2");
+    expect(tablist.parentElement).toHaveClass("p-4");
+    expect(tablist.parentElement?.className).toContain("border-b border-neutral-100");
+
+    const active = screen.getByRole("tab", { name: "Таблица" });
+    expect(active).toHaveAttribute("aria-selected", "true");
+    expect(active).toHaveClass("rounded-full", "border", "px-3", "py-1", "text-xs");
+    expect(active).toHaveClass("border-neutral-300", "bg-neutral-200", "text-neutral-800");
+
+    const inactive = screen.getByRole("tab", { name: "Интервалы" });
+    expect(inactive).toHaveAttribute("aria-selected", "false");
+    expect(inactive).toHaveClass("rounded-full", "border", "px-3", "py-1", "text-xs");
+    expect(inactive).toHaveClass("border-neutral-200", "bg-neutral-50", "text-neutral-500", "hover:bg-neutral-100");
+  });
+
   it("explains when no date column was detected", async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -78,7 +107,7 @@ describe("PreprocessingRegularityOverview", () => {
       ok: true,
       json: () => Promise.resolve({ group: "Весь датасет", bins: [{ x0: 0, x1: 100, count: 3 }], modal_seconds: 50, threshold_seconds: 75 }),
     });
-    fireEvent.click(screen.getByRole("button", { name: "Интервалы" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Интервалы" }));
 
     expect(await screen.findByText(/распределение интервалов/)).toBeInTheDocument();
     expect(screen.queryByRole("table", { name: "Регулярность по группам" })).not.toBeInTheDocument();

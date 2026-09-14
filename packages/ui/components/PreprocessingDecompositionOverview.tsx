@@ -179,9 +179,13 @@ function PreprocessingDecompositionOverviewInner({ profile, loading, error, noDa
       </div>
       <p className="mt-2 rounded bg-brand-light px-3 py-2 text-xs text-neutral-700">{profile.recommendation}</p>
       {profile.warnings.length > 0 && <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">{profile.warnings.join(" ")}</p>}
-    </div>
-    <div role="tablist" aria-label="Графики декомпозиции" className="flex shrink-0 flex-wrap gap-1.5 border-b border-neutral-100 px-4 py-2">
-      {TABS.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${view === tab.id ? "border-neutral-300 bg-neutral-200 text-neutral-800" : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"}`}>{tab.label}</button>)}
+      {/* Task w/n-3: переключатели представлений — эталонный бейдж-паттерн
+          «Генерации признаков» (серые pill-бейджи с рамкой, усиление фона при
+          наведении), единый во всей «Предобработке»: tablist внутри шапки
+          Обзора (mt-3 flex flex-wrap gap-2), геометрия px-3 py-1 text-xs. */}
+      <div role="tablist" aria-label="Графики декомпозиции" className="mt-3 flex flex-wrap gap-2">
+        {TABS.map((tab) => <button key={tab.id} type="button" role="tab" aria-selected={view === tab.id} onClick={() => setView(tab.id)} className={`rounded-full border px-3 py-1 text-xs ${view === tab.id ? "border-neutral-300 bg-neutral-200 text-neutral-800" : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"}`}>{tab.label}</button>)}
+      </div>
     </div>
     {view === "components" && <ExpandableChartPanel chartId="decomposition-components" title="Компоненты STL">{componentsDetail.loading && <div aria-hidden="true" className="absolute left-0 right-0 top-0 z-30 h-0.5 animate-pulse bg-brand" />}<ComponentsChart profile={componentsDetail.data?.profile ?? profile} /></ExpandableChartPanel>}
     {view === "seasonal" && <ExpandableChartPanel chartId="decomposition-seasonal" title="Сезонный профиль STL"><SeasonalChart profile={profile} /></ExpandableChartPanel>}

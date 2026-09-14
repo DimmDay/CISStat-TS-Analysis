@@ -39,6 +39,30 @@ describe("PreprocessingSmoothingOverview", () => {
     expect(screen.getByRole("link", { name: "SciPy Savitzky–Golay" })).toHaveAttribute("href", expect.stringContaining("savgol_filter"));
   });
 
+  // Task w/n-3: бейдж-паттерн «Генерации признаков» — tablist внутри шапки
+  // Обзора (p-4 с border-b), mt-3 flex flex-wrap gap-2; геометрия эталона
+  // px-3 py-1 text-xs; активный border-neutral-300 bg-neutral-200
+  // text-neutral-800, неактивный border-neutral-200 bg-neutral-50
+  // text-neutral-500 hover:bg-neutral-100.
+  it("переключатели представлений следуют бейдж-паттерну «Генерации признаков»", () => {
+    render(<PreprocessingSmoothingOverview profile={PROFILE} loading={false} error={null} noDataset={false} />);
+
+    const tablist = screen.getByRole("tablist", { name: "Графики сглаживания ряда" });
+    expect(tablist).toHaveClass("mt-3", "flex", "flex-wrap", "gap-2");
+    expect(tablist.parentElement).toHaveClass("p-4");
+    expect(tablist.parentElement?.className).toContain("border-b border-neutral-100");
+
+    const active = screen.getByRole("tab", { name: "Ряд" });
+    expect(active).toHaveAttribute("aria-selected", "true");
+    expect(active).toHaveClass("rounded-full", "border", "px-3", "py-1", "text-xs");
+    expect(active).toHaveClass("border-neutral-300", "bg-neutral-200", "text-neutral-800");
+
+    const inactive = screen.getByRole("tab", { name: "Остаток / ACF" });
+    expect(inactive).toHaveAttribute("aria-selected", "false");
+    expect(inactive).toHaveClass("rounded-full", "border", "px-3", "py-1", "text-xs");
+    expect(inactive).toHaveClass("border-neutral-200", "bg-neutral-50", "text-neutral-500", "hover:bg-neutral-100");
+  });
+
   it("switches between residual, method, spectrum and diagnostic views", () => {
     render(<PreprocessingSmoothingOverview profile={PROFILE} loading={false} error={null} noDataset={false} />);
     fireEvent.click(screen.getByRole("tab", { name: "Методы" }));
