@@ -2009,3 +2009,229 @@ StructuralBreaks, FeatureSelection, ValidationStrategy, ModelMatrix);
 - worklog5.md (этот журнал)
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@f0d2698 + перечисленные изменения.
+
+---
+
+## Task FORECAST-1 -- Этап «Прогнозирование»: полный вертикальный срез по spec_forecasting2.md (final fit + 4 метода интервалов + session-контур + вкладка UI)
+
+Дата: 2026-09-14. Синхронизация: main@30d00d4 (Task 143 certification
++ Task 143a fix). Постановка тимлида: «создаем модуль Прогнозирование;
+изучи spec_forecasting2.md (основа) и spec_education.md (контекст вклада
+в архитектуру обучения); улучшения обоснуй и примени; спроектируй вкладку
+и реализуй в коде по паттернам платформы; следуй AGENTS.md».  Спецификация
+v3 (2026-09-08) писалась до production-адаптеров tree_ml/neural и до
+Model Execution Contract v2 как единственной точки исполнения -- по
+прецеденту сертификаций (декларации сверяются с фактическим кодом)
+применены УТОЧНЕНИЯ, не меняющие методологии §1-§10.
+
+### Решение (по пунктам постановки)
+
+1. **Исполнение через MODEL_EXECUTION_REGISTRY, не PRODUCTION_PREDICTORS**
+   (уточнение к §3): spec предлагала вызов PRODUCTION_PREDICTORS[model_id]
+   (backtesting.py), но это compatibility-facade ПОВЕРХ реестра
+   (model_execution.py::legacy_predictor_registry «Compatibility facade for
+   callers that still inject plain functions»).  Финальный рефит исполняет
+   точку ИСКЛЮЧИТЕЛЬНО через MODEL_EXECUTION_REGISTRY.execute
+   (ModelExecutionRequest с train/future timestamps -- обязательны для
+   prophet) -- та же сертифицированная точка исполнения, что и бэктест.
+2. **Хранение артефактов -- modeling_artifacts["forecasts"]** (уточнение
+   к §5.9): spec предполагала modeling_pipeline["forecasts"], но
+   modeling_pipeline -- dict[str, StageStatus] (статусы стадий).  Прогнозы
+   хранятся по фактическому паттерну артефактов сессии (как model_cards);
+   Redis-roundtrip покрыт тестом; инвалидация forecasts связана с
+   инвалидацией model_cards во ВСЕХ четырёх точках очистки (не могли бы
+   стать stale-ссылками на исчезнувшие карты) + сброс stages["forecasting"].
+3. **Расширение классификации ci_method с 11 до 19 моделей** (уточнение
+   к §4): spec перечисляла baseline+statsmodels+prophet/tbats; дерево
+   (Tasks 127-130: квантильные интервалы) и нейро-четвёрка (Tasks 138-141:
+   conformal/MQLoss с alpha-ручкой) появились позже и имеют СЕРТИФИЦИРОВАННЫЕ
+   нативные интервалы.  Итоговая карта:
+   - analytic: arima/auto_arima (get_forecast().summary_frame(alpha)),
+     theta (prediction_intervals(steps, theta, alpha) -- другой API, §10.3);
+   - parametric_simulation: ets/ets_damped (simulate + rng, §4.1a);
+   - native_adapter: prophet/tbats (80%), tree_ml (90%), lstm/nbeats/nhits/tft
+     (alpha-ручка);
+   - empirical_oof_quantile: baselines (обязателен, §4.2).
+   var/vecm/garch/egarch/deepar -- честный 422: comparison/selection валидируют
+   objective=level_forecast, их Model Card недостижима (objective-изоляция
+   cohort'ов); multi-objective прогнозы -- отдельная постановка.
+4. **Alpha-политика (§5.2 + дисклоужер)**: нейро -- запрошенная alpha
+   прокидывается в params с сертифицированным whitelist {0.01, 0.05, 0.10}
+   (вне -- fail-closed 422); prophet/tbats/tree_ml -- ФИКСИРОВАННАЯ alpha
+   адаптера (0.20/0.10), запрошенная НЕ подменяется другим методом -- интервал
+   как есть + честный warning-дисклоужер (прецедент provenance Task 141);
+   empirical/analytic/simulation -- любая alpha в (0,1), дефолт 0.05.
+5. **Финальный рефит (§3)**: apps/api/final_fit.py::build_final_fit --
+   forward-цепочка target-препроцессинга ОДИН раз на полной истории
+   (переиспользование _resolve_chain/_make_scaler/_inverse_stationarity/
+   apply_variance_transform/apply_smoothing_series из fold_preprocessing --
+   НИ ОДНОЙ дублирующей формулы); fixed-lambda фиксируется, оценённая --
+   переоценивается на полной истории (та же семантика, что у fold-препро-
+   цессора на train-фолде); restore() вызывается ПО ОТДЕЛЬНОСТИ для точки
+   и каждой границы интервала -- для log_difference интервал в исходной
+   шкале асимметричен корректно (тест прижимает).  Необратимая цепочка
+   (сглаживание, inverse_supported=False) и некаузальный smoother --
+   честный 422.
+6. **Паритет-гейт**: для analytic/simulation интервалы требуют объект
+   фита -- модуль делает СОПРЯЖЁННЫЙ фит тем же классом модели/данными/
+   параметрами (зеркало сертифицированных адаптеров) и прижимает честность
+   гейтом: расхождение точки реестра и интервального фита (rtol 1e-6) --
+   ForecastingError, а не молчаливая подмена источника прогноза.  Дрейф
+   зеркала ловит гейт, а не пользователь.
+7. **Эмпирический метод (§4.2)**: интервал = точка + квантиль OOF-остатков
+   СВОЕГО horizon_step (остатки уже в исходной шкале -- инверсия не нужна);
+   шаги за training.horizon -- квантиль последнего валидированного шага +
+   честный warning «консервативная оценка... не валидирован эмпирически»;
+   coverage (§4.3) -- in-sample доля OOF-точек в ретроспективных интервалах,
+   заполняется ТОЛЬКО для эмпирического метода (интервалы других методов
+   нельзя задним числом посчитать без переобучения на каждом train-фолде).
+8. **Аномалии (§5.8)**: переиспользование detect_outlier_mask (Task 60, IQR)
+   на объединении «история+прогноз»; флаг -- предупреждение, не запрет.
+9. **TraceEvent -- общий контракт (рекомендация §10.4 ПРИНЯТА)**: НОВЫЙ
+   apps/api/trace_events.py -- канонический датакласс + make_trace_event
+   (fail-closed на неизвестном event_type); 4 типа событий этапа
+   (forecast_generated/compared/sensitivity_computed/exported) пишутся в
+   ForecastRun.trace_events (формат готов к будущему «Прогрессу» без
+   миграции).  GET-экспорт фиксирует forecast_exported и переводит
+   stages["forecasting"] в done (дефолт §10.5 по прецеденту Моделирования --
+   derived-статус, без кнопки «Готово»); клиентский PNG -- POST /trace.
+10. **Сравнение прогнозов (§5.6)**: сравниваются УЖЕ ПОСТРОЕННЫЕ артефакты
+    (POST /compare {forecast_ids}, 2..4) с событием в каждом участнике --
+    без скрытой регенерации и без нового ранжирования (ранжирование закрыто
+    этапом Моделирования).  Спека предполагала генерацию по model_card_ids --
+    отклонение в сторону честности: сравнение существующих прогнозов не
+    дублирует фиты и сохраняет lineage каждого прогноза.
+11. **Чувствительность (§5.7)**: веер по УГЛАМ param_space из
+    rules/modeling.yaml ( ModelingSpec.get_model; по каждой оси
+    первый/последний элемент списка значений -- без сортировки, значения
+    категориальные), дедуплицированное произведение с потолком 8; params =
+    card_hyperparams + combo; базовая трансформация истории общая (рефит
+    только модели).  Пустой param_space -- честный 422; нейро --
+    предупреждение о времени.
+12. **Экспорт (§5.5)**: CSV (date,actual,forecast,ci_lower,ci_upper:
+    история 96 + прогноз 2) и JSON (ForecastRun целиком, самодостаточен) --
+    backend; PNG -- клиентская сериализация SVG (XMLSerializer -> canvas ->
+    toBlob, scale 2, без новых зависимостей); **PDF сознательно НЕ
+    реализован (уточнение к §5.5)**: jsPDF не содержит кириллических
+    шрифтов -- текстовый PDF требует встраивания шрифта (~200+ КБ) и
+    выбора лицензии; PDF-из-то-же-PNG ценности не добавляет.  Отдельная
+    мелкая постановка.
+13. **Freshness-гейты (lineage)**: fingerprint ряда обязан совпадать с
+    card.data_summary.fingerprint (409 «Model Card устарела»); методы
+    цепочки target-препроцессинга сессии обязаны совпадать с
+    card.training.preprocessing.transformations (409 «цепочка расходится»);
+    ensemble-карты -- честный 422 (прогноз ансамбля -- отдельная постановка).
+14. **Frontend**: TsAnalysisForecasting.tsx -- 3-колоночный лейаут по
+    принятому паттерну (левый: шапка+справка '?'+шаги этапа со StatusIcon+
+    hand-off карты; центр: описание/справка с раскрыванием, честные гейты
+    «Загрузите датасет»/«завершите Моделирование»/«сформируйте Model Card»
+    со ссылкой, ForecastChart (факт + пунктирный прогноз + лента интервала
+    Area + красные аномалии + ReferenceLine начала прогноза, h-468),
+    ForecastAccuracyPanel (дисклоужер «по результатам бэктеста -- не
+    точность этого прогноза», сетка метрик + честное «недоступно для этого
+    метода» для coverage), предупреждения, веер, lineage-note; правый:
+    селектор карт, горизонт (дефолт training.horizon), alpha {0.01,0.05,
+    0.10}, кнопка прогноза, история с чекбоксами сравнения (до 3), кнопка
+    сравнения, веер, ForecastExportMenu (CSV/JSON/PNG)).  lib/forecasting.ts
+    -- типы 1:1 с ForecastRunResponse + человекочитаемые подписи ci_method/
+    alpha_source.  Подкомпоненты -- самостоятельные файлы по манифесту §8.
+15. **GET /card (список карт)** -- аддитивный сводный эндпоинт
+    (card_id/model_id/model_name/selection_kind/horizon/fingerprint/
+    created_at): существовал только POST /card и GET /card/{id} -- списка
+    не было ни для прогнозирования, ни для UI вообще.
+
+### TDD (RED -> GREEN)
+
+- RED: tests/unit/test_forecasting_contract.py (13) +
+  tests/unit/test_final_fit.py (14) + tests/unit/test_forecasting.py (17) +
+  tests/api/test_forecasting_session.py (21) -- collection errors на
+  отсутствии модулей/эндпоинтов (RED-first, прецедент Tasks 138-142).
+  Поверхность ожиданий снята пробом ДО реализации:
+  scripts/task_forecast1_interval_api_probe.py (ARIMA summary_frame;
+  Theta prediction_intervals(steps, theta, alpha) -> DataFrame[lower,upper];
+  ETS simulate(shape nsteps x reps, kwarg rng, anchor=end) -- random_state
+  int устарел; нелинейная инверсия границ log_difference даёт асимметрию).
+  Правки ОЖИДАНИЙ по снятой эмпирике: рецепты тестов -- фактические
+  метаданные сессии (kind=smoothing/stationarity; seasonal_period >= 2 --
+  гейт apply_stationarity_series); coverage на достаточной выборке
+  (экстремальные квантили малой выборки исключают крайние точки).
+- GREEN backend: 65/65 (44 unit + 21 api).  Контур: 2535 passed / 0 failed
+  (2470 базлайн 30d00d4 + 65 новых -- арифметика сходится), нейро-тесты
+  ИСПОЛНЯЛИСЬ (torch 2.14.0+cpu + neuralforecast 3.2.2 -- сертифицированная
+  пара Tasks 137-142; окружение восстановлено из requirements.txt +
+  apps/api/requirements.txt + requirements-dev.txt + нейро-группы +
+  выравнивание сертификационной эпохи scipy==1.14.1/numpy==2.1.3/
+  pandas==2.2.3/arch==7.2.0; pip check -- No broken requirements).
+- GREEN frontend: 5 новых сюит (ForecastChart 4 / ForecastAccuracyPanel 5 /
+  ForecastHistoryList 5 / TsAnalysisForecasting 9 / forecasting page 1) --
+  полная регрессия 102 сюиты / 941 тест passed (было 97/914: +5 сюит /
+  +27 тестов -- арифметика сходится).  typecheck:all -- 0 ошибок (обе
+  оболочки); build:all -- Compiled successfully x2 (13/13 и 17/17 static
+  pages), маршрут /forecasting в production-манифесте обеих оболочек.
+- E2E-смоук scripts/task_forecast1_e2e_smoke.py: 41/41 проверок (полный
+  путь до карты -> прогнозы обоих методов с паритет-гейтом -> предупреждение
+  о горизонте -> история -> compare -> sensitivity 200/422 по param_space ->
+  CSV/JSON экспорт + /trace PNG -> инвалидация прогнозов тюнингом ->
+  отдельный ETS-проход симуляции).
+
+### Верификация
+
+- compileall OK; app-import OK (FastAPI); rules-smoketest exit=0;
+  pip check -- No broken requirements.
+- Прод-инварианты: точка прогноза -- только MODEL_EXECUTION_REGISTRY;
+  ensemble/non-eligible -- 422; fingerprint-гейт -- 409; прогнозы --
+  артефакты сессии (Redis-roundtrip тест); инвалидация -- синхронно с
+  картами во всех 4 точках; forecast_exported завершает этап.
+- Фронтенд: jest 102/941; typecheck:all 0 ошибок; build:all успешно
+  (обе оболочки, /forecasting в манифестах).
+
+### Границы Task FORECAST-1 (что осознанно НЕ сделано)
+
+- PDF-экспорт (§5.5) -- осознанно отложен: кириллические шрифты jsPDF
+  (встраивание ~200+ КБ, лицензия шрифта) -- отдельная мелкая постановка.
+- Прогноз ensemble-карт, multi-objective прогнозы (var/vecm/garch/egarch/
+  deepar -- их карты недостижимы из comparison) -- отдельные постановки;
+  честный 422 с объяснением.
+- Exogenous-канал прогноза (future-known regressors в финальном прогнозе
+  supervised/Prophet) -- вне среза: финальный рефит исполняет univariate
+  target-путь; регрессорный канал -- отдельная постановка (прецедент
+  lstm: supports_future_features декларируется своим срезом).
+- Backend-персистентность панели «Прогресс» (research_runs/trace_events)
+  -- владелец: команда «Прогресса» (§9.4); ForecastRun.trace_events уже
+  совместим по формату (apps/api/trace_events.py -- общий контракт §10.4).
+- StepperNextModuleButton «Перейти к Задачам» на вкладке НЕ добавлялся:
+  прогнозирование -- workspace, а не степпер; естественное продолжение
+  (хаб /tasks потребляет forecast_run) доступно из главного меню.
+- Исторические записи журнала НЕ редактировались (append-only).
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@30d00d4 + перечисленные изменения.
+
+### Кандидат-нахождки (не блокирующие, к следующему касанию)
+
+- spec_forecasting2.md §7 ForecastRun не содержит history; реализация
+  хранит историю (labels/values/source_column) в артефакте -- CSV-экспорт
+  и самодостаточность JSON (§5.5) становятся устойчивыми к смене сессии.
+  При появлении формального клиента «Прогресса» вынести history в схему.
+- Тюнинг-сетки частных моделей (neural @ max_steps 300) делают веер
+  чувствительности по нейро-картам долгим на слабых инстансах (warning
+  в ответе есть); если станет продуктивной болью -- вынести в job-контур
+  (прецедент Task 104/123 start/step).
+
+Изменённые/новые файлы (ZIP: download/task_forecast1_forecasting_module.zip):
+- НОВЫЕ backend: apps/api/{trace_events,forecasting_contract,final_fit,
+  forecasting}.py, apps/api/routers/forecasting_session.py,
+  tests/unit/{test_forecasting_contract,test_final_fit,test_forecasting}.py,
+  tests/api/test_forecasting_session.py,
+  scripts/task_forecast1_interval_api_probe.py,
+  scripts/task_forecast1_e2e_smoke.py
+- НОВЫЕ frontend: packages/ui/lib/forecasting.ts,
+  packages/ui/components/{ForecastChart,ForecastAccuracyPanel,
+  ForecastHistoryList,ForecastExportMenu,TsAnalysisForecasting}.tsx,
+  packages/ui/components/{ForecastChart,ForecastAccuracyPanel,
+  ForecastHistoryList,TsAnalysisForecasting}.test.tsx,
+  apps/standalone/app/forecasting/page.test.tsx
+- ИЗМЕНЁННЫЕ: apps/api/main.py (роутер), apps/api/schemas.py
+  (ForecastRunResponse и др.), apps/api/routers/modeling_session.py
+  (GET /card список, _invalidate_forecasts в 4 точках очистки карт),
+  packages/ui/index.ts (экспорты), apps/standalone/app/forecasting/page.tsx
+  (ModulePlaceholder -> TsAnalysisForecasting), worklog5.md (этот журнал)

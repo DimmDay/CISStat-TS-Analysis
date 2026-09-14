@@ -3494,3 +3494,90 @@ class TuneResponse(BaseModel):
         None,
         description="Точный backtest лучшего trial без повторного обучения",
     )
+
+
+# ---------------------------------------------------------------------------
+# Forecasting (этап «Прогнозирование», spec_forecasting2.md §7)
+# ---------------------------------------------------------------------------
+
+
+class ForecastPointSchema(BaseModel):
+    """Прогнозная точка: шаг горизонта, дата, значение, границы интервала."""
+
+    step: int = Field(..., ge=1, description="1..horizon")
+    date: str = Field(..., description="ISO-метка будущего шага")
+    value: float = Field(..., description="Точечный прогноз (исходная шкала)")
+    ci_lower: float = Field(..., description="Нижняя граница интервала")
+    ci_upper: float = Field(..., description="Верхняя граница интервала")
+    is_anomalous: bool = Field(
+        False,
+        description="Точка-выброс относительно объединения «история+прогноз» (§5.8)",
+    )
+
+
+class ForecastTraceEventSchema(BaseModel):
+    """Событие трассы этапа (контракт apps/api/trace_events.py)."""
+
+    event_type: str
+    timestamp: str
+    payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ForecastRunResponse(BaseModel):
+    """ForecastRun -- трассируемый артефакт прогноза (spec_forecasting2.md §7).
+
+    Прогноз не существует сам по себе: model_card_id -- обязательная ссылка
+    на Model Card; expected_accuracy -- ИСТОРИЧЕСКИЕ метрики бэктеста карты
+    (не «точность этого прогноза» -- у будущих точек нет фактов, §5.4).
+    """
+
+    forecast_id: str
+    model_card_id: str
+    model_id: str
+    model_name: str
+    generated_at: str
+    horizon: int = Field(..., ge=1)
+    alpha: float = Field(..., description="Запрошенная alpha (или фактическая адаптера)")
+    alpha_effective: float = Field(..., description="Alpha, на которой фактически отдаётся интервал")
+    alpha_source: Literal[
+        "requested", "card_default", "platform_default", "adapter_fixed",
+    ]
+    ci_method: Literal[
+        "analytic", "parametric_simulation", "native_adapter",
+        "empirical_oof_quantile",
+    ]
+    points: List[ForecastPointSchema] = Field(default_factory=list)
+    history: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="История ряда (labels/values) в исходной шкале для графика и CSV",
+    )
+    expected_accuracy: Dict[str, Optional[float]] = Field(
+        default_factory=dict,
+        description="Ожидаемая точность ПО РЕЗУЛЬТАТАМ БЭКТЕСТА карты + mse=rmse^2",
+    )
+    prediction_interval_coverage: Optional[float] = Field(
+        None,
+        description="Фактическое покрытие OOF-точек (только empirical_oof_quantile, §4.3)",
+    )
+    warnings: List[str] = Field(default_factory=list)
+    trace_events: List[ForecastTraceEventSchema] = Field(default_factory=list)
+    lineage: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="fingerprint, checkpoint, preprocessing signature, seasonal_period, provenance",
+    )
+    sensitivity: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Веер чувствительности по границам param_space (§5.7), если рассчитан",
+    )
+
+
+class ForecastListResponse(BaseModel):
+    forecasts: List[ForecastRunResponse] = Field(default_factory=list)
+
+
+class ForecastCompareResponse(BaseModel):
+    forecasts: List[ForecastRunResponse] = Field(default_factory=list)
+
+
+class CardListResponse(BaseModel):
+    cards: List[Dict[str, Any]] = Field(default_factory=list)

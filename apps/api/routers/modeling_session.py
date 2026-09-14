@@ -851,6 +851,17 @@ def _trace_backtest(
     return BacktestResponse(**payload)
 
 
+def _invalidate_forecasts(session) -> None:
+    """Прогнозы -- производные артефакты Model Card: уходят вместе с ней.
+
+    Линейный lineage (fingerprint карты vs текущий ряд) уже сделал бы каждый
+    старый прогноз неисполнимым; удаляем артефакты и сбрасываем стадию
+    forecasting, чтобы честный статус пайплайна не противоречил артефактам.
+    """
+    if session.modeling_artifacts.pop("forecasts", None):
+        session.stages["forecasting"] = "pending"
+
+
 def _invalidate_after_model_run(session, model_id: str) -> None:
     """Remove every artifact that depended on an older OOF execution."""
     session.modeling_artifacts.setdefault("diagnostics", {}).pop(model_id, None)
@@ -860,6 +871,7 @@ def _invalidate_after_model_run(session, model_id: str) -> None:
     session.modeling_artifacts.pop("ensemble_diagnostics", None)
     session.modeling_artifacts.pop("selection", None)
     session.modeling_artifacts["model_cards"] = {}
+    _invalidate_forecasts(session)
     session.modeling_pipeline["diagnostics"] = "in_progress"
     for stage in ("comparison", "selection", "model_card"):
         session.modeling_pipeline[stage] = "pending"
@@ -873,6 +885,7 @@ def _invalidate_after_diagnostics(session) -> None:
     session.modeling_artifacts.pop("ensemble_diagnostics", None)
     session.modeling_artifacts.pop("selection", None)
     session.modeling_artifacts["model_cards"] = {}
+    _invalidate_forecasts(session)
     session.modeling_pipeline["comparison"] = "in_progress"
     for stage in ("selection", "model_card"):
         session.modeling_pipeline[stage] = "pending"
@@ -2910,6 +2923,7 @@ def compare_modeling_candidates(
     session.modeling_artifacts.pop("ensemble_diagnostics", None)
     session.modeling_artifacts.pop("selection", None)
     session.modeling_artifacts["model_cards"] = {}
+    _invalidate_forecasts(session)
     session.modeling_pipeline["comparison"] = "done"
     session.modeling_pipeline["selection"] = "in_progress"
     session.modeling_pipeline["model_card"] = "pending"
@@ -2953,6 +2967,7 @@ def evaluate_modeling_selection(
         session.modeling_artifacts["ensemble_diagnostics"][ensemble_id] = ensemble["diagnostics"]
     session.modeling_artifacts.pop("selection", None)
     session.modeling_artifacts["model_cards"] = {}
+    _invalidate_forecasts(session)
     session.modeling_pipeline["selection"] = "in_progress"
     session.modeling_pipeline["model_card"] = "pending"
     session.touch()
@@ -3244,6 +3259,29 @@ def create_model_card(
     session.touch()
     store.save(session)
     return result
+
+
+@router.get("/card")
+def list_model_cards(request: Request, response: Response):
+    """Список карт сессии (сводки) -- источник селектора прогнозирования;
+    полные карты остаются в артефактах сессии (GET /card/{card_id})."""
+    _store, session = _get_session(request, response)
+    cards = session.modeling_artifacts.get("model_cards", {}) or {}
+    summaries = []
+    for card_id, entry in cards.items():
+        card = (entry or {}).get("card") or {}
+        model_info = card.get("model_info") or {}
+        summaries.append({
+            "card_id": card_id,
+            "model_id": model_info.get("model_id"),
+            "model_name": model_info.get("description") or model_info.get("model_id"),
+            "selection_kind": model_info.get("selection_kind", "single"),
+            "horizon": (card.get("training") or {}).get("horizon"),
+            "fingerprint": (card.get("data_summary") or {}).get("fingerprint"),
+            "created_at": card.get("created_at"),
+        })
+    summaries.sort(key=lambda item: item.get("created_at") or "")
+    return {"cards": summaries}
 
 
 @router.get("/card/{card_id}")

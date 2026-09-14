@@ -29,6 +29,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from apps.api.session_store import SessionConflictError
 
 from apps.api.routers import public, internal, models, session, diagnostics, diagnostics_internal, modeling_session
+from apps.api.routers import forecasting_session
 
 app = FastAPI(
     title="CISStat TS Analysis API",
@@ -65,6 +66,9 @@ app.include_router(diagnostics_internal.router, prefix="/v1/internal", tags=["in
 # для embedded и standalone, см. docstring apps/api/routers/session.py.
 app.include_router(session.router, prefix="/v1/session", tags=["session"])
 app.include_router(modeling_session.router, prefix="/v1/session/modeling", tags=["modeling-session"])
+# Прогнозирование -- шестой этап пайплайна (spec_forecasting2.md §6): тот же
+# префикс /v1/session/modeling (общая сессия/cookie), отдельный модуль роутера.
+app.include_router(forecasting_session.router, prefix="/v1/session/modeling", tags=["forecasting"])
 
 
 @app.exception_handler(SessionConflictError)

@@ -386,6 +386,23 @@ export type { DecompositionSeriesData, DecompositionSeriesPoint } from "./compon
 // ── Ниже: перенесено без изменений из origin/main (команда, "Моделирование") ──
 
 export { TsAnalysisModeling } from "./components/TsAnalysisModeling";
+export { TsAnalysisForecasting } from "./components/TsAnalysisForecasting";
+export { ForecastChart } from "./components/ForecastChart";
+export { ForecastAccuracyPanel } from "./components/ForecastAccuracyPanel";
+export { ForecastHistoryList } from "./components/ForecastHistoryList";
+export { ForecastExportMenu } from "./components/ForecastExportMenu";
+export {
+  CI_METHOD_LABELS,
+  ALPHA_SOURCE_LABELS,
+} from "./lib/forecasting";
+export type {
+  CardSummary,
+  CiMethod,
+  AlphaSource,
+  ForecastPoint,
+  ForecastRun,
+  ForecastTraceEvent,
+} from "./lib/forecasting";
 export { ModelingTraceabilityOverview } from "./components/ModelingTraceabilityOverview";
 export { ModelingWorkflowOverview } from "./components/ModelingWorkflowOverview";
 
