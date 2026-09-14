@@ -22,6 +22,7 @@ import {
 } from "react";
 import { BadgeCheck, ChevronDown, ChevronUp, RefreshCw, Filter, Loader2 } from "lucide-react";
 import { Button } from "./Button";
+import { StepperNextModuleButton } from "./StepperNextModuleButton";
 import { Metric } from "./Metric";
 import { BacktestComparisonChart } from "./BacktestComparisonChart";
 import { BacktestOofChart } from "./BacktestOofChart";
@@ -987,6 +988,15 @@ export function TsAnalysisModeling() {
               </span>
             </button>
           ))}
+           {/* ── Приглашение «Перейти к прогнозированию» — паттерн цепочки ──
++              Общий StepperNextModuleButton ("Ведём исследователя за руку"):
++              тот же дизайн, что на «Загрузке», «Предобработке» и в EDA
++              (геометрия степпер-кнопок, пастельная заливка, индиго при
++              наведении); светло-серая полоса border-t встроена в обёртку
++              компонента. Ставится последним элементом списка степпера:
++              это переход к ДРУГОМУ модулю пайплайна, а не ещё одна
++              остановка моделирования. */}
++          <StepperNextModuleButton label="Перейти к прогнозированию" href="/forecasting" />
         </div>
       </aside>
 

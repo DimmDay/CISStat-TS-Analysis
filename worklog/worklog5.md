@@ -2206,7 +2206,7 @@ Model Execution Contract v2 как единственной точки испо�
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@30d00d4 + перечисленные изменения.
 
-### Кандидат-нахождки (не блокирующие, к следующему касанию)
+### Кандидат-находки (не блокирующие, к следующему касанию)
 
 - spec_forecasting2.md §7 ForecastRun не содержит history; реализация
   хранит историю (labels/values/source_column) в артефакте -- CSV-экспорт
@@ -2235,3 +2235,18 @@ Model Execution Contract v2 как единственной точки испо�
   (GET /card список, _invalidate_forecasts в 4 точках очистки карт),
   packages/ui/index.ts (экспорты), apps/standalone/app/forecasting/page.tsx
   (ModulePlaceholder -> TsAnalysisForecasting), worklog5.md (этот журнал)
+
+---
+
+## Task MODEL-1 -- Вкладка «Моделирование»: приглашение «Перейти к прогнозированию» внизу степпера (паттерн цепочки)
+
+- Дата: 2026-09-14. Синхронизация: main@0e06e9c (Task FORECAST-1 закоммичентимлидом; клон в fresh-контуре, дерево чистое, локальных правок нет).Постановка тимлида: реализовать кнопку внизу степпера вкладки«Моделирование» «Перейти к прогнозированию» по паттерну вкладки«Разведочный EDA» (Task EDA-1, коммит d9377ef). Полный цикл AGENTS.md:TDD RED->GREEN, полная frontend-регрессия, typecheck/build обеихоболочек.
+
+- Диагностика (точки изменения)
+Паттерн: общий компонент StepperNextModuleButton(packages/ui/components/StepperNextModuleButton.tsx) -- «Ведёмисследователя за руку». Цепочка уже покрыта на 4 из 5 степперов:Загрузка -> «Перейти к валидации» (/validation), Валидация ->«Перейти к предобработке» (/preprocessing), Предобработка ->«Перейти к EDA» (/eda), EDA -> «Перейти к моделированию»(/modeling). Порядок пайплайна подтверждён по ModuleNav.tsx:... Моделирование -> Прогнозирование (/forecasting).
+Точка изменения: TsAnalysisModeling.tsx, левая колонка, контейнерстеппера «flex flex-col gap-1.5» (11 стадий пайплайна,PIPELINE_STAGES из lib/modeling.ts; последняя остановка -- «ModelCard»). Кнопка-приглашение ставится последним элементом спискастеппера (после dynamicStages.map), как в EDA (TsAnalysisEDA.tsx,Task EDA-1), Загрузке, Валидации и Предобработке.
+Риск: доступное имя последней кнопки степпера = текст шага +aria-label svg-иконки статуса (StatusIcon, role="img") -- в тестематч по подстроке /Model Card/ (уникален среди role="button");неоднозначности getByRole нет (проверено RED-прогоном).
+FORECAST-1 фиксировал «StepperNextModuleButton на вкладкеПрогнозирование НЕ добавлялся: прогнозирование -- workspace, а нестеппер». Настоящая задача этому не противоречит: кнопкадобавляется на СТЕППЕР Modeling, прогнозирование остаётсяworkspace без степпера.
+TDD (RED -> GREEN)
+- RED: 1 новый кейс в TsAnalysisModeling.test.tsx -- сюита«TsAnalysisModeling -- приглашение "Перейти к прогнозированию"»,зеркало теста Task EDA-1. Контракт прижат ПОЛНОСТЬЮ:(1) ссылка role="link" с доступным именем «Перейти кпрогнозированию» и href="/forecasting"; (2) позиция -- строго нижепоследней кнопки степпера (compareDocumentPosition +DOCUMENT_POSITION_FOLLOWING) и последний элемент списка степпера(stepperList.lastElementChild === wrapper); (3) светло-серая полосанад кнопкой -- border-t border-neutral-200 на обёртке; (4) стили --та же геометрия, что у кнопок степпера (rounded-md/border/px-3py-2/text-sm), статичная пастельная заливка bg-brand-light/50,hover-классы фирменного индиго и белого текста (hover:bg-brand /hover:border-brand / hover:text-white). Результат RED: падение наfindByRole("link") -- ссылки нет (кнопка /Model Card/ нашласьоднозначно, 48 остальных кейсов файла в скипе).
+GREEN: импорт StepperNextModuleButton + JSX последним элементомсписка степпера TsAnalysisModeling.tsx -> файл 49/49 passed(48 базлайн + 1 новый -- арифметика сходится).

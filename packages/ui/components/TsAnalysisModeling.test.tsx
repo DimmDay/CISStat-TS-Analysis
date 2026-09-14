@@ -1343,3 +1343,74 @@ describe("TsAnalysisModeling — read-only target_column evidence", () => {
     expect(oldEndpointCalls.length).toBe(0);
   });
 });
+// ── Приглашение «Перейти к прогнозированию» (паттерн цепочки, Modeling) ──
+
+describe("TsAnalysisModeling — приглашение «Перейти к прогнозированию»", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockActiveDataset = null;
+    mockFetch.mockImplementation((url: string) => {
+      if (typeof url === "string" && url.includes("/v1/session/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(MOCK_TARGET_COLUMN_RESPONSE_NO_DATASET),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(MOCK_CANDIDATES_RESPONSE),
+      });
+    });
+  });
+
+  it("shows the 'Перейти к прогнозированию' invitation at the bottom of the stepper (Upload/Validation/Preprocessing/EDA pattern)", async () => {
+    // Паттерн "Ведём исследователя за руку" (StepperNextModuleButton):
+    // та же механика, что на «Загрузке», «Валидации», «Предобработке» и
+    // «Разведочном EDA» -- внизу степпера кнопка-приглашение, отделённая
+    // светло-серой полосой, со ссылкой на следующий модуль пайплайна
+    // (Моделирование -> Прогнозирование).
+    render(<TsAnalysisModeling />);
+
+    // Последняя остановка степпера Modeling -- «Model Card» (11-я стадия
+    // пайплайна). Доступное имя кнопки = текст шага + aria-label svg-иконки
+    // статуса (role="img"), поэтому матч по подстроке названия шага.
+    const lastStepperButton = screen.getByRole("button", { name: /Model Card/ });
+
+    // 1. Кнопка-приглашение -- ссылка на /forecasting с доступным именем
+    //    «Перейти к прогнозированию».
+    const invite = await screen.findByRole("link", { name: /Перейти к прогнозированию/ });
+    expect(invite).toHaveAttribute("href", "/forecasting");
+
+    // 2. Низ степпера: приглашение строго НИЖЕ последней кнопки степпера
+    //    и является последним элементом списка степпера (как на «Загрузке»,
+    //    «Предобработке» и в EDA, где кнопка стоит внутри списка).
+    // eslint-disable-next-line no-bitwise
+    expect(
+      lastStepperButton.compareDocumentPosition(invite) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    const wrapper = invite.closest("div");
+    const stepperList = lastStepperButton.parentElement;
+    expect(stepperList).not.toBeNull();
+    expect(stepperList?.lastElementChild).toBe(wrapper);
+
+    // 3. Светло-серая полоса НАД кнопкой: border-t border-neutral-200
+    //    на обёртке (контракт StepperNextModuleButton).
+    expect(wrapper?.className).toContain("border-t");
+    expect(wrapper?.className).toContain("border-neutral-200");
+
+    // 4. Дизайн в точности по паттерну Загрузки: та же геометрия, что у
+    //    кнопок степпера (rounded-md/border/px-3 py-2/text-sm), статичная
+    //    пастельная заливка bg-brand-light/50, фирменный индиго и белый
+    //    текст при наведении.
+    expect(invite.className).toContain("rounded-md");
+    expect(invite.className).toContain("border");
+    expect(invite.className).toContain("bg-brand-light/50");
+    expect(invite.className).toContain("hover:bg-brand");
+    expect(invite.className).toContain("hover:border-brand");
+    expect(invite.className).toContain("hover:text-white");
+    expect(invite.className).toContain("px-3");
+    expect(invite.className).toContain("py-2");
+    expect(invite.className).toContain("text-sm");
+  });
+});
