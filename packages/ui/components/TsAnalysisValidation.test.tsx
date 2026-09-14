@@ -900,3 +900,231 @@ describe("TsAnalysisValidation", () => {
     expect(screen.getByRole("region", { name: "Мастер решений по достаточности" })).toBeInTheDocument();
   });
 });
+
+
+// ── Зелёная подсветка пройденных остановок степпера (паттерн Моделирования) ──
+//
+// Паттерн перенесён с вкладки «Моделирование» (TsAnalysisModeling) и уже
+// применён к «Разведочному EDA» (Task EDA-2) и «Предобработке»
+// (Task PREPR-1): «Если остановка степпера пройдена и имеет зелёную
+// галочку, то кнопка остановки окрашивается в светло-зелёный цвет и текст
+// становится зелёным. При других статусах кнопка остановки не окрашивается
+// и цвет текста не меняется». Контракт цветов -- ветка done в className
+// кнопки степпера: bg-green-50 border-green-200 text-green-800; активная
+// остановка (bg-brand text-white) сохраняет приоритет, как в эталоне.
+//
+// Особенность «Валидации»: зелёная галочка видна только через
+// StatusIcon(displayedStatus(check)), а displayedStatus отображает "done"
+// один-в-один, поэтому подсветка обязана идти строго по
+// check.status === "done"; спец-бейджи («Отключено», «Настроить», «Нет
+// эталона») и статусы warning/pending/skipped/error подсветки не получают.
+//
+// Механика тестов -- ТА ЖЕ, что у проходящих тестов выше (прямой
+// global.fetch только для /session/current и /dataset/validate, остальные
+// эндпоинты -- ok:false; ожидание СРАЗУ по DOM-сигналу завершения запуска).
+
+function buildChecks(
+  overrides: Record<string, { status: string; status_reason?: string | null; rule_source?: string }>,
+) {
+  return Object.fromEntries(
+    EXPECTED_CHECK_IDS_ARR.map((id) => [id, {
+      status: overrides[id]?.status ?? "pending",
+      count: 0,
+      items: [],
+      scope: "dataset",
+      rule_source: overrides[id]?.rule_source ?? "system",
+      // status_reason включается в ответ ТОЛЬКО когда задан: форма объекта
+      // байт-в-байт совпадает с ответами существующих проходящих тестов.
+      ...(overrides[id]?.status_reason ? { status_reason: overrides[id].status_reason } : {}),
+    }]),
+  );
+}
+
+function renderValidationWithChecks(
+  checks: Record<string, { status: string; status_reason?: string | null; rule_source?: string }>,
+) {
+  global.fetch = jest.fn((url: string) => {
+    if (typeof url === "string" && url.includes("/session/current")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          has_active_dataset: true,
+          dataset: { dataset_id: "d1", name: "types.csv", rows: 50, columns: 3, size_label: "1 KB" },
+          stages: {},
+          last_active_stage: null,
+        }),
+      });
+    }
+    if (typeof url === "string" && url.includes("/dataset/validate")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          is_valid: true,
+          rules_source: "system",
+          total_rows: 50,
+          total_columns: 3,
+          type_validation_mode: "profile",
+          type_profile: [],
+          checks: buildChecks(checks),
+        }),
+      });
+    }
+    return Promise.resolve({ ok: false, json: () => Promise.resolve(null) });
+  }) as unknown as typeof fetch;
+
+  return render(
+    <AppShellProvider>
+      <TsAnalysisValidation />
+    </AppShellProvider>
+  );
+}
+
+// ── Механика: только ПОДТВЁРДЕННАЯ в этом файле связка --
+// mockActiveValidation (все служебные эндпоинты отвечают ok) + ожидание
+// завершения запуска строго через findBy*/findAllBy* (asyncAct-промывка
+// React 18 + RTL 16 + jest 30). Минимальный мок (ok:false на
+// /target-column и profile-эндпоинтах) и waitFor-колбэки дают
+// недетерминированную промывку рендера -- не использовать.
+
+// Все 10 проверок done, КРОМЕ перечисленных pending-идентификаторов.
+function allDoneExcept(pendingIds: string[]) {
+  return Object.fromEntries(
+    EXPECTED_CHECK_IDS_ARR
+      .filter((id) => !pendingIds.includes(id))
+      .map((id) => [id, { status: "done" }]),
+  );
+}
+
+function mockValidationChecks(
+  overrides: Record<string, { status: string; status_reason?: string | null; rule_source?: string }>,
+  onCall?: () => void,
+) {
+  mockActiveValidation(() => {
+    onCall?.();
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        ...validationResponse("done", "schema", 0),
+        rules_source: "system",
+        checks: buildChecks(overrides),
+      }),
+    });
+  });
+}
+
+describe("TsAnalysisValidation — зелёная подсветка пройденных остановок степпера (паттерн Моделирования)", () => {
+  it("colors a passed (done) stop light-green and keeps non-active pending stops uncolored", async () => {
+    // 8 из 10 проверок -- done (зелёная галочка); «Достаточность
+    // наблюдений» и «Уникальность» -- pending.
+    let validateCalls = 0;
+    mockValidationChecks(allDoneExcept(["sufficiency", "uniqueness"]), () => { validateCalls += 1; });
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    await waitFor(() => expect(validateCalls).toBe(1));
+    expect((await screen.findAllByText("Проверка пройдена")).length).toBe(8);
+
+    // Снимаем активность с дефолтной остановки «Типы данных» (done):
+    // кликаем на «Достаточность наблюдений» (pending).
+    fireEvent.click(screen.getByRole("button", { name: /^Достаточность наблюдений/ }));
+
+    // Пройденная остановка (зелёная галочка) -> светло-зелёная кнопка
+    // с зелёным текстом (эталон Моделирования: bg-green-50/green-200/green-800).
+    const doneButton = screen.getByRole("button", { name: /^Типы данных/ });
+    expect(doneButton).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
+    expect(doneButton).not.toHaveClass("bg-brand");
+    expect(doneButton).not.toHaveClass("bg-white");
+
+    // Не пройденная (pending) и не активная остановка -> БЕЗ окраски.
+    const pendingButton = screen.getByRole("button", { name: /^Уникальность/ });
+    expect(pendingButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(pendingButton).not.toHaveClass("bg-green-50");
+    expect(pendingButton).not.toHaveClass("border-green-200");
+    expect(pendingButton).not.toHaveClass("text-green-800");
+  });
+
+  it("keeps the indigo active styling for an active stop even when it is done (active branch priority, as in Modeling)", async () => {
+    // Все 10 проверок done; «Типы данных» остаётся активной по умолчанию
+    // -> приоритет индиго (как в эталоне Моделирования).
+    let validateCalls = 0;
+    mockValidationChecks(allDoneExcept([]), () => { validateCalls += 1; });
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    expect(validateCalls).toBe(0);
+    fireEvent.click(runButton);
+    await waitFor(() => expect(validateCalls).toBe(1));
+    expect(await screen.findAllByText("Проверка пройдена")).toHaveLength(10);
+
+    const activeDoneButton = screen.getByRole("button", { name: /^Типы данных/ });
+    expect(activeDoneButton).toHaveClass("bg-brand", "text-white", "border-brand");
+    expect(activeDoneButton).not.toHaveClass("bg-green-50");
+    expect(activeDoneButton).not.toHaveClass("text-green-800");
+  });
+
+  it("leaves the warning stop uncolored", async () => {
+    // «Типы данных» -- warning (найдены проблемы), «Равномерность шага» --
+    // done; подсветка обязана остаться только у done.
+    mockValidationChecks({
+      data_types: { status: "warning" },
+      regularity: { status: "done" },
+    });
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    expect((await screen.findAllByText(/^Найдены проблемы/)).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Уникальность/ }));
+
+    const warningButton = screen.getByRole("button", { name: /^Типы данных/ });
+    expect(warningButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(warningButton).not.toHaveClass("bg-green-50");
+    expect(warningButton).not.toHaveClass("border-green-200");
+    expect(warningButton).not.toHaveClass("text-green-800");
+  });
+
+  it("leaves the skipped stop ('Отключено' badge) uncolored", async () => {
+    // «Достаточность наблюдений» -- skipped/disabled: бейдж «Отключено»
+    // заменяет иконку; подсветки быть НЕ должно (паттерн красит только done).
+    mockValidationChecks({
+      sufficiency: { status: "skipped", status_reason: "disabled" },
+    });
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    expect((await screen.findAllByText("Отключено")).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Уникальность/ }));
+
+    const skippedButton = screen.getByRole("button", { name: /^Достаточность наблюдений/ });
+    expect(skippedButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(skippedButton).not.toHaveClass("bg-green-50");
+    expect(skippedButton).not.toHaveClass("border-green-200");
+    expect(skippedButton).not.toHaveClass("text-green-800");
+  });
+
+  it("leaves the pending 'needs_rule' stop ('Настроить' badge) uncolored", async () => {
+    // «Форматы и шаблоны» -- pending/needs_rule: бейдж «Настроить»
+    // (displayedStatus отображает его в warning -- НЕ зелёная галочка).
+    mockValidationChecks({
+      formats: { status: "pending", status_reason: "needs_rule" },
+    });
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    expect((await screen.findAllByText("Настроить")).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Уникальность/ }));
+
+    const needsRuleButton = screen.getByRole("button", { name: /^Форматы и шаблоны/ });
+    expect(needsRuleButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(needsRuleButton).not.toHaveClass("bg-green-50");
+    expect(needsRuleButton).not.toHaveClass("border-green-200");
+    expect(needsRuleButton).not.toHaveClass("text-green-800");
+  });
+
+});
