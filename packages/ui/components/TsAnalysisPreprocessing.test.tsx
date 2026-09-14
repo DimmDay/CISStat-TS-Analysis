@@ -872,3 +872,122 @@ describe("TsAnalysisPreprocessing — приглашение «Перейти к
     expect(invite.className).toContain("text-sm");
   });
 });
+
+// ── Зелёная подсветка пройденных остановок степпера (паттерн Моделирования) ──
+//
+// Паттерн перенесён с вкладки «Моделирование» (TsAnalysisModeling) и уже
+// применён к «Разведочному EDA» (Task EDA-2): «Если остановка степпера
+// пройдена и имеет зелёную галочку, то кнопка остановки окрашивается в
+// светло-зелёный цвет и текст становится зелёным. При других статусах
+// кнопка остановки не окрашивается и цвет текста не меняется».
+// Контракт цветов -- ветка done в className кнопки степпера:
+// bg-green-50 border-green-200 text-green-800; активная остановка
+// (bg-brand text-white) сохраняет приоритет, как в эталоне.
+
+describe("TsAnalysisPreprocessing — зелёная подсветка пройденных остановок степпера (паттерн Моделирования)", () => {
+  it("colors a passed (done) stop light-green and keeps non-active pending stops uncolored", async () => {
+    global.fetch = routeFetch();
+    render(<TsAnalysisPreprocessing />);
+
+    // Сигнал готовности: «Регулярность ряда» загружена на монтировании и
+    // получила статус done (зелёная галочка, aria-label «Пройдено»).
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Регулярность ряда/ }))
+        .toHaveAccessibleName(/Пройдено/);
+    });
+
+    // Снимаем активность с дефолтной остановки «Пропуски»: кликаем на
+    // «Масштабирование» (до клика — pending).
+    fireEvent.click(screen.getByRole("button", { name: /Масштабирование/ }));
+
+    // Пройденная остановка (зелёная галочка) -> светло-зелёная кнопка
+    // с зелёным текстом (эталон Моделирования: bg-green-50/green-200/green-800).
+    const doneButton = screen.getByRole("button", { name: /Регулярность ряда/ });
+    expect(doneButton).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
+    expect(doneButton).not.toHaveClass("bg-brand");
+    expect(doneButton).not.toHaveClass("bg-white");
+
+    // Не пройденная (pending) и не активная остановка -> БЕЗ окраски.
+    const pendingButton = screen.getByRole("button", { name: /Генерация признаков/ });
+    expect(pendingButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(pendingButton).not.toHaveClass("bg-green-50");
+    expect(pendingButton).not.toHaveClass("border-green-200");
+    expect(pendingButton).not.toHaveClass("text-green-800");
+  });
+
+  it("keeps the indigo active styling for an active stop even when it is done (active branch priority, as in Modeling)", async () => {
+    global.fetch = routeFetch();
+    render(<TsAnalysisPreprocessing />);
+
+    // «Регулярность ряда» на монтировании становится done; клик по ней не
+    // перезапрашивает профиль (зависимости useEffect не включают
+    // activeCheckId) -> остановка active+done обязана остаться индиго.
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Регулярность ряда/ }))
+        .toHaveAccessibleName(/Пройдено/);
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Регулярность ряда/ }));
+
+    const activeDoneButton = screen.getByRole("button", { name: /Регулярность ряда/ });
+    expect(activeDoneButton).toHaveClass("bg-brand", "text-white", "border-brand");
+    expect(activeDoneButton).not.toHaveClass("bg-green-50");
+    expect(activeDoneButton).not.toHaveClass("text-green-800");
+  });
+
+  it("leaves running and pending stops uncolored", () => {
+    // Вечнозависающий fetch: «Пропуски»/«Выбросы»/«Регулярность» остаются в
+    // running (initial loading=true), профильные остановки без активации и
+    // признака — pending.
+    global.fetch = jest.fn(() => new Promise<Response>(() => {})) as unknown as typeof fetch;
+    render(<TsAnalysisPreprocessing />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Масштабирование/ }));
+
+    const runningButton = screen.getByRole("button", { name: /Пропуски/ });
+    expect(runningButton).not.toHaveClass("bg-green-50");
+    expect(runningButton).not.toHaveClass("border-green-200");
+    expect(runningButton).not.toHaveClass("text-green-800");
+
+    const pendingButton = screen.getByRole("button", { name: /Генерация признаков/ });
+    expect(pendingButton).not.toHaveClass("bg-green-50");
+    expect(pendingButton).not.toHaveClass("text-green-800");
+  });
+
+  it("leaves the warning stop uncolored", async () => {
+    global.fetch = routeFetch();
+    render(<TsAnalysisPreprocessing />);
+
+    // Дефолтный профиль «Пропусков» — warning (найдены пропуски).
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Пропуски/ }))
+        .toHaveAccessibleName(/Найдены проблемы/);
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Масштабирование/ }));
+
+    const warningButton = screen.getByRole("button", { name: /Пропуски/ });
+    expect(warningButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(warningButton).not.toHaveClass("bg-green-50");
+    expect(warningButton).not.toHaveClass("border-green-200");
+    expect(warningButton).not.toHaveClass("text-green-800");
+  });
+
+  it("leaves the skipped stop uncolored", async () => {
+    // Оверрайд статуса профиля регулярности на skipped («Не требуется»).
+    global.fetch = routeFetch({
+      regularity: { ...REGULARITY_PROFILE, status: "skipped" },
+    });
+    render(<TsAnalysisPreprocessing />);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Регулярность ряда/ }))
+        .toHaveAccessibleName(/Не требуется/);
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Масштабирование/ }));
+
+    const skippedButton = screen.getByRole("button", { name: /Регулярность ряда/ });
+    expect(skippedButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(skippedButton).not.toHaveClass("bg-green-50");
+    expect(skippedButton).not.toHaveClass("border-green-200");
+    expect(skippedButton).not.toHaveClass("text-green-800");
+  });
+});
