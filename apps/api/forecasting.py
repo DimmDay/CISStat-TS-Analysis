@@ -290,10 +290,24 @@ def _simulation_interval(
         **kwargs,
     ).fit()
     point = np.asarray(fitted.forecast(steps=horizon), dtype=float)
-    simulated = fitted.simulate(
-        nsimulations=horizon, repetitions=int(trajectories), anchor="end",
-        rng=np.random.default_rng(random_state),
-    )
+    try:
+        simulated = fitted.simulate(
+            nsimulations=horizon, repetitions=int(trajectories), anchor="end",
+            rng=np.random.default_rng(random_state),
+        )
+    except TypeError as exc:
+        # F-1 (аудит FORECAST-1a): API `rng=` появился в statsmodels 0.15;
+        # на 0.14.x simulate() падает сырым TypeError'ом, который не
+        # перехватывается роутером (кроме ForecastingError/ValueError) ->
+        # 500 вместо честного 422. Fail-closed: честная ошибка с указанием
+        # требуемого пола зависимости.
+        import statsmodels
+
+        raise ForecastingError(
+            "Параметрическая симуляция требует statsmodels>=0.15.0 "
+            f"(API simulate(rng=...)), установлена {statsmodels.__version__}: "
+            f"{exc}. Поднимите пол зависимости в requirements.txt"
+        ) from exc
     trajectories_arr = np.asarray(simulated, dtype=float)
     if trajectories_arr.shape[0] != horizon:
         trajectories_arr = trajectories_arr.T

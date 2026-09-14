@@ -14,7 +14,11 @@ python-multipart  # Для поддержки UploadFile
 numpy>=1.24.0
 scipy>=1.10.0
 PyWavelets>=1.4.0             # preprocessing spectral CWT / scalogram
-statsmodels>=0.14.0          # app/core/passport.py -- ADF/KPSS/ACF
+# Пол 0.15.0 -- аудит FORECAST-1a (F-1): путь параметрической симуляции
+# прогноза (apps/api/forecasting.py) использует API simulate(rng=...) из
+# 0.15 (kwarg + приём np.random.Generator); на 0.14.x -- TypeError.
+# Согласовано с сертификационной эпохой (statsmodels==0.15.0).
+statsmodels>=0.15.0          # app/core/passport.py -- ADF/KPSS/ACF; forecasting.py -- интервалы
 prophet==1.4.0                # apps/api/model_impls/prophet.py -- Task 124 certified runtime
 statsforecast==2.1.1          # apps/api/model_impls/tbats.py -- Task 125 (зафиксированная версия/API TBATS)
 xgboost==2.1.3                # apps/api/model_impls/xgboost.py -- Task 128 (зафиксированная версия/API quantile regression)

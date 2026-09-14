@@ -350,6 +350,11 @@ def test_forecast_export_csv_contains_history_and_forecast_columns(client: TestC
     forecast_row = lines[-1].split(",")
     assert forecast_row[1] == ""
     assert forecast_row[2] != "" and forecast_row[3] != "" and forecast_row[4] != ""
+    # §10.5 (аудит F-2): экспорт в ЛЮБОМ формате завершает этап --
+    # forecast_exported переводит стадию forecasting в done.
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    session = get_session_store().get(session_id)
+    assert session.stages["forecasting"] == "done"
 
 
 def test_forecast_export_json_is_self_contained_and_logs_event(client: TestClient):
@@ -483,6 +488,58 @@ def test_forecast_sensitivity_fan_uses_param_space_corners(client: TestClient):
         event["event_type"] == "forecast_sensitivity_computed"
         for event in body["trace_events"]
     )
+
+
+def test_forecast_sensitivity_fan_covers_exact_param_space_corners(client: TestClient):
+    # Аудит F-3/MUT-14: веер обязан покрывать ТОЧНЫЙ состав углов
+    # (первый/последний элемент каждой оси, декартово произведение,
+    # дедуплицированное) -- а не только первый угол каждой оси.
+    # Для ets: trend {add,mul} x seasonal {add,null} x seasonal_periods {12}
+    # x damped_trend {false,true} = 8 углов; для ets_damped: 2x2x1 = 4.
+    card = _reach_model_card(client)
+    run = client.post(
+        "/v1/session/modeling/forecast",
+        json={"model_card_id": card["card_id"]},
+    ).json()
+    model_id = run["model_id"]
+    if model_id not in {"ets", "ets_damped"}:
+        pytest.skip("точный состав углов зафиксирован для ets/ets_damped")
+
+    response = client.post(
+        f"/v1/session/modeling/forecast/{run['forecast_id']}/sensitivity",
+    )
+
+    assert response.status_code == 200, response.text
+    fan = response.json()["sensitivity"]
+    if model_id == "ets":
+        expected = {
+            (trend, seasonal, damped)
+            for trend in ("add", "mul")
+            for seasonal in ("add", None)
+            for damped in (False, True)
+        }
+        actual = {
+            (
+                combo["params"]["trend"],
+                combo["params"]["seasonal"],
+                combo["params"]["damped_trend"],
+            )
+            for combo in fan["combos"]
+        }
+    else:  # ets_damped
+        expected = {
+            (trend, seasonal)
+            for trend in ("add", "mul")
+            for seasonal in ("add", None)
+        }
+        actual = {
+            (combo["params"]["trend"], combo["params"]["seasonal"])
+            for combo in fan["combos"]
+        }
+    assert len(fan["combos"]) == len(expected)
+    assert actual == expected
+    for combo in fan["combos"]:
+        assert combo["params"]["seasonal_periods"] == 12
 
 
 def test_forecast_sensitivity_rejects_empty_param_space(client: TestClient):

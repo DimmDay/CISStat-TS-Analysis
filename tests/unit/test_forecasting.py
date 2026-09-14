@@ -414,3 +414,118 @@ def test_forecast_points_carry_anomaly_flags_from_combined_detection():
         oof_predictions=oof, validated_horizon=6,
     )
     assert [p["is_anomalous"] for p in computation.points] == [False, True, False]
+
+
+# ── Аудит F-1/F-3 (FORECAST-1a): инъекция отказа, семантика квантиля,
+#    fail-closed на statsmodels<0.15 ─────────────────────────────────
+
+
+class _DriftRegistry:
+    """Обёртка над реальным реестром: дрейфует точечный прогноз на заданный
+    относительный сдвиг (инъекция отказа для паритет-гейта)."""
+
+    def __init__(self, inner, drift: float) -> None:
+        self._inner = inner
+        self._drift = drift
+
+    def execute(self, model_id, request):
+        from dataclasses import replace
+
+        result = self._inner.execute(model_id, request)
+        drifted = [float(value) * self._drift for value in result.forecast]
+        return replace(result, forecast=drifted)
+
+
+def test_parity_gate_rejects_drifted_registry_point():
+    # Инъекция отказа (аудит F-3/MUT-04): реестровая точка дрейфует на 1%
+    # относительно сопряжённого фита -- паритет-гейт обязан отказать честно,
+    # молчаливая подмена источника точки запрещена.
+    frame = _frame()
+    fit = _identity_fit(frame)
+    from apps.api.model_execution import MODEL_EXECUTION_REGISTRY
+
+    with pytest.raises(ForecastingError, match="Паритет"):
+        compute_forecast(
+            model_id="arima", horizon=6,
+            alpha_resolution=resolve_forecast_alpha("arima", 0.05, {}),
+            final_fit=fit, seasonal_period=12, params={},
+            registry=_DriftRegistry(MODEL_EXECUTION_REGISTRY, drift=1.01),
+            history_values=fit.source_values,
+            history_labels=fit.history_labels,
+            future_labels=future_date_labels(pd.DatetimeIndex(frame["date"]), 6),
+            oof_predictions=[], validated_horizon=6,
+        )
+
+
+def test_simulation_fan_is_symmetric_on_symmetric_noise():
+    # Семантический оракул квантиля симуляции (аудит F-3/MUT-06): на
+    # симметричном шуме веер обязан быть симметричным вокруг точки
+    # (нижний квантиль alpha/2, верхний 1-alpha/2). Сужающий мутант
+    # (lower: alpha/2 -> alpha) даёт асимметрию ~17% против ~3% на чистом
+    # коде (3000 траекторий, калибровка scripts/task_forecast1a_symmetry_calibration.py).
+    rng = np.random.default_rng(20261)
+    n = 96
+    frame = pd.DataFrame({
+        "date": pd.date_range("2018-01-01", periods=n, freq="MS").astype(str),
+        "value": 100.0 + rng.normal(0, 5.0, n),
+    })
+    fit = _identity_fit(frame)
+    from apps.api.model_execution import MODEL_EXECUTION_REGISTRY
+
+    computation = compute_forecast(
+        model_id="ets", horizon=4,
+        alpha_resolution=resolve_forecast_alpha("ets", 0.05, {}),
+        final_fit=fit, seasonal_period=1,
+        params={"trend": None, "seasonal": None},
+        registry=MODEL_EXECUTION_REGISTRY, history_values=fit.source_values,
+        history_labels=fit.history_labels,
+        future_labels=future_date_labels(pd.DatetimeIndex(frame["date"]), 4),
+        oof_predictions=[], validated_horizon=6,
+        simulation_trajectories=3000, random_state=20261,
+    )
+    assert computation.ci_method == "parametric_simulation"
+    worst = max(
+        abs((p["ci_upper"] - p["value"]) - (p["value"] - p["ci_lower"]))
+        / max(p["value"] - p["ci_lower"], p["ci_upper"] - p["value"])
+        for p in computation.points
+    )
+    assert worst < 0.10
+
+
+def test_simulation_type_error_fails_closed_with_honest_error(monkeypatch):
+    # Аудит F-1 (defense-in-depth): API statsmodels>=0.15 (`rng=`); на 0.14.x
+    # simulate() падает сырым TypeError -> в API-контуре это 500. Контракт
+    # требует честного ForecastingError (маппится в 422) с указанием пола.
+    import statsmodels.tsa.holtwinters as hw
+
+    class _BrokenFitted:
+        def forecast(self, steps):
+            return np.zeros(int(steps))
+
+        def simulate(self, *args, **kwargs):
+            raise TypeError(
+                "simulate() got an unexpected keyword argument 'rng'"
+            )
+
+    class _BrokenES(hw.ExponentialSmoothing):
+        def fit(self, *args, **kwargs):
+            return _BrokenFitted()
+
+    monkeypatch.setattr(hw, "ExponentialSmoothing", _BrokenES)
+
+    from apps.api.model_execution import MODEL_EXECUTION_REGISTRY
+
+    frame = _frame()
+    fit = _identity_fit(frame)
+    with pytest.raises(ForecastingError, match=r"0\.15"):
+        compute_forecast(
+            model_id="ets", horizon=4,
+            alpha_resolution=resolve_forecast_alpha("ets", 0.05, {}),
+            final_fit=fit, seasonal_period=1,
+            params={"trend": None, "seasonal": None},
+            registry=MODEL_EXECUTION_REGISTRY,
+            history_values=fit.source_values,
+            history_labels=fit.history_labels,
+            future_labels=future_date_labels(pd.DatetimeIndex(frame["date"]), 4),
+            oof_predictions=[], validated_horizon=6,
+        )
