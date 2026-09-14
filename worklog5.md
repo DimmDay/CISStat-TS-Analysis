@@ -1724,3 +1724,55 @@ robust + trajectory_samples, смоук-число mae 116.12 -> 1.57).
   tests/unit/test_deepar_integration_paths.py, worklog5.md (этот журнал)
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@4e5df1b + перечисленные изменения.
+
+---
+
+## Сертификация Task 143 (аудит) -- финализация полной production-матрицы 24x11 (коммит 4e5df1b, коллега Сэм) + применение фикса Task 143a
+
+Дата: 2026-09-14. Синхронизация: main@6768354 (Task PRE-1 --preprocessing-степпер; backend идентичен 4e5df1b кроме Task 142a:sha256-сверка session_store-контракта до правок). Постановка тимлида:«проведи разведку кода и честно сертифицируй выполненную коллегой задачуTask 143; при аудите используй также мутационные и оракул тесты на своихданных». Протокол сертификаций Task 136-142 (cert136..cert142_*):count-gates на артефакте + независимые оракулы на СОБСТВЕННЫХ данных +мутационная кампания + RED-верификация тестов исполнителя + полнаярегрессия. Аудиторский контур: scripts/audit_scripts/cert143_oracles.py, cert143_mutations.py,task143a_fA_validjson_probe.py (НОВЫЕ).
+
+### Разведка кода (git show 4e5df1b --stat: 13 файлов, +1921/-26)
+Ядро Task 143: (а) apps/api/session_store.py -- якорьSESSION_SCHEMA_VERSION=1, штамп в session_to_dict, future-versionwarning в session_from_dict, деградация get() на нечитаемом документе(UnicodeDecodeError в кортеже), save() поверх мусора (revision=0);(б) scripts/task143_matrix_benchmark.py (НОВЫЙ, 761 строка) -- секцииA (реестр/матрица 24x11), B (backtest 24 модели через 4 движка),C (tuning 18), D (timeout-политика/память); (в) reports/report.{json,md}-- зафиксированный артефакт прогона; (г) rules/modeling.yaml 1.2.0;(д) docs/MIGRATION_ARCHITECTURE.md (НОВЫЙ); (е) pre_0/pre_1 smokeCLI/env-контракт. Фронтенд: 0 файлов .ts/.tsx -- сборки не требуются(прецедент 142a).
+
+### Независимая верификация деклараций (оракулы на СВОИХ данных, seed 20261)
+- Группа A -- count-gates на артефакте Сэма (11 оракулов):24/24 backtest (19 main + 2 vector + 2 volatility + 1 panel) --рассечение по движкам сверено с input_kind реестра; 18/18 tuning(13 classical @2 + 5 neural @1); 20/20 уникальных MAE (не заглушка);OOF-арифметика (main 24 = 2x12, vector 36 = 3x2x6, volatility 12,panel 6); volatility -- qlike primary, vector -- scaled_loss; находкаtimeout tft 182086.9 ms > 120000 ms зафиксирована честно (не проглочена);report.md согласован с report.json (24 строки backtest, секция«Находки»).
+- Группа B -- session_store на своих payload'ах/fakeredis (17): штамп==1 в сериализации и после roundtrip собственного датафрейма; legacy(без поля) читается как схема 0 БЕЗ future-warning; документ версии 99читается с warning'ом, содержащим session id и обе версии; текущаяверсия НЕ дисклоужается как «новее»; коррапт-классы (JSONDecodeError,бинарь, усечённый JSON) -> get()=None+warning; get_or_create выдаётсвежую сессию; save() поверх мусора перезаписывает; CAS НЕ ослаблен(stale-write на валидном документе обязан конфликтовать -- анти-мутационный оракул); инкремент ревизии == +1; model_jobs переживаютroundtrip; BacktestResponse без panel валиден, panel переживаетmodel_dump.
+- Группа C -- честность benchmark-скрипта (8): TUNABLE_ALL ==PRODUCTION_TUNING_MODEL_IDS, группы не пересекаются, deepar в neural;dispatch 24 моделей согласован с реестром; _validation_folds --собственные комбинации (50/5/3/1, 96/8/2/0, 37/4/2/2): expanding-границы, leakage-инвариант test_start > train_end, покрытие до концаряда; section_d behavioral на своих fake-результатах (в т.ч. границаwall == step_timeout -- violation, строгое <); merge-приоритет свежегозамера (свой tmp-отчёт); _metric_of/канонический ряд (тренд ~0.3,сезонная амплитуда); пины honesty-гейтов в исходнике.
+- Группа D -- smoke CLI (4): parse_args-дефолты, CLI-оверрайды,env-рычаги CISSTAT_API_URL/CISSTAT_FRONTEND_ORIGIN (monkeypatch),repo-относительный demo-csv существует, stale-пути/home/z/my-project/repo отсутствуют в pre_0/pre_1, READMEдокументирует контракт.
+- Группа E -- документы (3): modeling.yaml metadata 1.2.0/2026-09-13(и заголовок); MIGRATION_ARCHITECTURE.md: якоря session_schema_ version/SESSION_SCHEMA_VERSION/storage_revision/§1.1 + docstring-якорь session_store.py синхронизирован; пины 1.2.0 в двух тестах.
+- Группа F -- реальные фиты на СВОИХ данных (5, маркер real_fit):main -- ets/naive на своём ряде (n=96, сезон 6, seed 20261): etsчестно бьёт naive, cohort_id -- sha256; vector -- var на своейсистеме из 3 рядов (scaled_loss конечен, vector_baseline); volatility-- garch на своих ценах (QLIKE primary); panel -- deepar на своейпанели из 5 рядов (n=60): mae < 15 (класс деградации до-142a ~110не воспроизводится; подтверждение фикса 142a на benchmark-пути);сырая библиотека + свои данные: DistributionLoss(StudentT)+robust --ширина > 0, масштаб точки OK, квантильное пересечение (анти-рецидивF3).
+
+### Мутационная кампания (34 мутации, foreground батчами)
+34/34 KILLED, выживших НЕТ. Поверхность = код Task 143: session_store(s01..s16: якорь/штамп/legacy-дефолт/future-warning/деградация get/save-поверх-мусора/CAS/инкремент/docstring-якорь + анти-регрессия фикса143a s15/s16), benchmark (m01..m12: гейт уникальности >= 15, строгаяграница timeout, сбор нарушений, полнота scope, merge-приоритет,fold-арифметика, QLIKE, канонический ряд, группы тюнинга), smoke(k01..k03: CLI-флаг/дефолт/env), документы (y01/y02 -- версия,d01 -- якорь MIGRATION_ARCHITECTURE). Kill-подмножество --cert143_oracles.py -m "not real_fit" (42 оракула) в свежем subprocess;восстановление байт-чистое (SHA-256 против снапшота).УРОК КАМПАНИИ (документирован в комментариях оракулов): корраптb"\xff\xfe..." начинается с UTF-16-BOM -- json.detect_encodingдекодирует его в ТЕКСТ и падение остаётся JSONDecodeError; такойpayload НЕ убивает срез UnicodeDecodeError из except-кортежа (выжившиеs07/s11 первого батча). Усилено мусором БЕЗ BOM (b"\x80\x81...").
+
+### Находки сертификации
+F-A -- БЛОКИРУЮЩАЯ (as-committed), ПРИМЕНЁН ФИКС Task 143a:валидный JSON НЕ-объект (null / число / массив / строка) под ключомсессии крэшил И get(), И save() сырым AttributeError (вне обоихexcept-кортежей) -> 500 на API и вечная блокировка сессии -- ровнота ситуация, которую Task 143 устранял («мусор не несёт ревизии и неможет быть "свежее"»; собственный комментарий кода: «коррапт-запись,бинарный мусор, усечённый JSON»). Тесты Сэма покрывали только классыJSONDecodeError/UnicodeDecodeError. Пробtask143a_fA_validjson_probe.py: 4/4 класса CRASH на чистом дереве.ФИКС (TDD RED->GREEN): TypeError-guard в session_from_dict («Sessiondocument must be a JSON object») + AttributeError в except-кортежеsave() (inline json.loads().get() до session_from_dict); RED 6/6(новый класс TestNonObjectDocumentDegradation), GREEN 82/82test_session_store.py.
+F-B -- не блокирующая (косметика отчёта, НЕ правилась):_write_reports пишет заголовок «Timeout-политика: все модели впределах step_timeout» БЕЗУСЛОВНО -- в зафиксированном report.md(tft-нарушение есть) заголовок противоречит секции «Находки».Рекомендация: условная формулировка при следующем касании скрипта.
+F-C -- не блокирующая (наследие 142a): собственный cohortбенчмарка объявляет deepar loss="mqloss" (семантика ДО 142a);адаптер loss cohort'а не потребляет (исполняет DistributionLossчерез DEEPAR_LOSS_KEY) -- бенчмарк исполняем и честен на текущемдереве (подтверждено моей панелью, группа F), но декларация cohort'аstale. Рекомендация: DEEPAR_LOSS_KEY при следующем касании.
+Унаследованная открытая находка Сэма (п.3): tft wall 182 c >step_timeout 120 c standard-класса на benchmark-хосте -- вне мандатасертификации, решение тимлида.
+RED-верификация тестов исполнителя
+Свап apps/api/session_store.py на 68a0cb7 (пре-143) по снапшот-протоколу: тест-файл Сэма НЕ СОБИРАЕТСЯ (ImportErrorSESSION_SCHEMA_VERSION -- якоря не существовало) -- 11 новых кейсовчестно RED-first; восстановление байт-чистое (SHA-256).
+
+### Верификация (после применения фикса Task 143a)
+Оракул-сьюита: 47/47 GREEN (42 fast по ~3.8 c + 5 real_fit ~52 c).
+Мутационная кампания: 34/34 KILLED.
+Полная backend-регрессия: 2470 passed / 0 failed (~6:53) --арифметика сходится: 2464 (базлайн 142a) + 6 новых кейсов F-A;нейро-тесты ИСПОЛНЯЛИСЬ (torch 2.14.0+cpu + neuralforecast 3.2.2 --сертифицированная пара; pip check clean).
+compileall OK; app-import OK (FastAPI); rules-smoketest exit=0(scripts/check_rules_smoketest.py).
+E2E-смоук scripts/task142_e2e_smoke.py: ВСЕ 7 СЕКЦИЙ OK(24 connected -> panel-движок -> panel tuning 4/4 -> cohort-изоляция-> честный отказ 4<5) -- фикс F-A не ломает session-цепочку.
+Фронтенд не затронут (0 файлов .ts/.tsx) -- typecheck/build обеихоболочек не запускались (прецедент 139a/140a/142/142a).
+
+### ВЕРДИКТ СЕРТИФИКАЦИИ
+Как закоммичено (4e5df1b): НЕ СЕРТИФИЦИРОВАНА -- блокирующая F-Aв п.4 постановки (контракт деградации коррапта заявлен ширереализованного: класс «валидный JSON не-объект» валил API сырымAttributeError и блокировал сессию навсегда).
+Ядро финализации (п.1 реестр/матрица 24x11, п.2 полный executionscope 24+18, п.3 performance/timeout/memory, п.5 PRE-0/PRE-1 smoke,п.6 документация, п.7 сборка/регрессия) -- ПОДТВЕРЖДЕНО ПОЛНОСТЬЮ(count-gates + оракулы + мутации на собственных данных).
+После применения Task 143a (фикс F-A, полный цикл AGENTS.md):СЕРТИФИЦИРОВАНА -- 47/47 оракулов, 34/34 мутаций KILLED,регрессия 2470/0, e2e 7/7.
+
+### Границы (что осознанно НЕ сделано)
+F-B/F-C не правились (косметика отчёта и stale-декларация cohort'а --рекомендации к следующему касанию; артефакт reports/ -- снимокмомента Сэма, не фальсифицировался).
+Правка step_timeout/бюджета TFT -- зона тимлида (отдельнаяпостановка; открыта с Task 143 п.3).
+Полный повторный прогон 24-модельного benchmark НЕ выполнялся(дорого; честность артефакта установлена count-gates + собственнымиреальными фитами всех четырёх движков на своих данных).
+Исторические записи журнала НЕ редактировались (append-only).
+Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее деревоmain@6768354 + перечисленные изменения.
+Изменённые/новые файлы (ZIP: download/task143_certification.zip):
+
+НОВЫЕ: scripts/audit_scripts/{cert143_oracles, cert143_mutations,task143a_fA_validjson_probe}.py
+ИЗМЕНЁННЫЕ: apps/api/session_store.py (фикс F-A -- TypeError-guard +AttributeError в кортеже save()),tests/api/test_session_store.py (класс TestNonObjectDocument-Degradation, 6 кейсов), worklog5.md (этот журнал)

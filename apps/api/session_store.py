@@ -532,6 +532,18 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
     type_schema и validation_*. d.get(...) восстанавливает такие сессии с
     безопасными дефолтами, поэтому rolling deploy не ломает активные сессии.
     """
+    # Task 143a (сертификация Task 143, находка F-A): валидный JSON
+    # НЕ-объект (null / число / массив / строка) под ключом -- тоже
+    # коррапт-запись.  Без guard'а session_from_dict падал сырым
+    # AttributeError (d.get не существует у не-dict), который НЕ входит
+    # в except-кортежи ни get(), ни save() -- сессия блокировалась
+    # навсегда, вопреки контракту деградации Task 143 («мусор не несёт
+    # ревизии и не может быть "свежее"»).  TypeError входит в оба
+    # кортежа: get() -> None + warning, save() -> revision 0 + перезапись.
+    if not isinstance(d, dict):
+        raise TypeError(
+            f"Session document must be a JSON object, got {type(d).__name__}"
+        )
     dataset = _dataset_from_dict(d["dataset"]) if d.get("dataset") else None
     df = _dataframe_from_json(d["dataframe_json"]) if d.get("dataframe_json") is not None else None
     document_schema_version = int(d.get("session_schema_version", 0))
@@ -783,7 +795,8 @@ class RedisSessionStore(SessionStore):
                         current_revision = int(
                             json.loads(current_raw).get("storage_revision", 0)
                         )
-                    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+                    except (json.JSONDecodeError, TypeError, ValueError,
+                            AttributeError) as exc:
                         # Task 143: нечитаемый документ (коррапт-запись,
                         # бинарный мусор, усечённый JSON) не может быть
                         # «свежее» -- он не несёт ревизии вовсе.  CAS защищает
@@ -791,6 +804,9 @@ class RedisSessionStore(SessionStore):
                         # перезаписать первой же save(), иначе сессия
                         # блокируется навсегда (get() -> None, save() ->
                         # конфликт, выхода нет).  Читаемая ревизия = 0.
+                        # Task 143a (F-A): AttributeError -- валидный JSON
+                        # не-объект (null/число/массив/строка) под ключом:
+                        # .get() у него не существует, ревизии он тоже не несёт.
                         logger.warning(
                             "Session %s holds an unparseable document (%s); "
                             "treating stored revision as 0",

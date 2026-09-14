@@ -850,3 +850,38 @@ class TestPreTask142PanelFieldCompat:
         response = BacktestResponse.model_validate(payload)
         assert response.panel["n_series"] == 5
         assert BacktestResponse.model_validate(response.model_dump()).panel == response.panel
+
+
+class TestNonObjectDocumentDegradation:
+    """Task 143a (сертификация Task 143, находка F-A): валидный JSON
+    НЕ-объект (null / число / массив / строка) под ключом сессии -- тоже
+    коррапт-запись.  Контракт Task 143 («мусор не несёт ревизии и не
+    может быть "свежее"») обязан покрывать и этот класс: get() -> None
+    (+warning), get_or_create() -> свежая сессия, save() -> успешная
+    перезапись.  До фикса session_from_dict(None) падал сырым
+    AttributeError (не входящим ни в один except-кортеж) -> 500 на API,
+    save() крэшил -- сессия блокировалась навсегда."""
+
+    @pytest.mark.parametrize("raw", ["null", "5", '[{"session_id": "x"}]', '"hello"'])
+    def test_get_returns_none_for_valid_json_non_object(self, raw):
+        store, client = _isolated_redis_store()
+        client.set(store._key("nonobject-001"), raw)
+        assert store.get("nonobject-001") is None
+
+    def test_get_or_create_recovers_after_non_object_document(self):
+        store, client = _isolated_redis_store()
+        client.set(store._key("nonobject-002"), "null")
+        session = store.get_or_create("nonobject-002")
+        assert session.session_id == "nonobject-002"
+        assert session.storage_revision == 0
+
+    def test_save_overwrites_non_object_document(self, sample_dataset_info, sample_dataframe):
+        store, _client = _isolated_redis_store()
+        _client.set(store._key("nonobject-003"), "null")
+        session = store.get_or_create("nonobject-003")
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        store.save(session)  # до фикса: AttributeError
+        refetched = store.get("nonobject-003")
+        assert refetched is not None
+        assert refetched.dataset is not None
+        assert refetched.dataset.dataset_id == "ds-test-001"
