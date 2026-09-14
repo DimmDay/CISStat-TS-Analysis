@@ -990,3 +990,151 @@ describe("TsAnalysisEDA — приглашение «Перейти к моде�
     expect(invite.className).toContain("text-sm");
   });
 });
+
+// ── Зелёная подсветка пройденных остановок степпера (паттерн Моделирования) ──
+//
+// Паттерн перенесён с вкладки «Моделирование» (TsAnalysisModeling):
+// «Если остановка степпера пройдена и имеет зелёную галочку, то кнопка
+// остановки окрашивается в светло-зелёный цвет и текст становится зелёным.
+// При других статусах кнопка остановки не окрашивается и цвет текста
+// не меняется». Контракт цветов — ветка done в className кнопки степпера:
+// bg-green-50 border-green-200 text-green-800; активная остановка
+// (bg-brand text-white) сохраняет приоритет, как в эталоне.
+
+function routeFetchWithStatsOverride(
+  statsResponse: { ok: boolean; status: number; body: unknown },
+) {
+  return (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.includes("/dataset/stats")) {
+      return Promise.resolve({
+        ok: statsResponse.ok,
+        status: statsResponse.status,
+        json: () => Promise.resolve(statsResponse.body),
+      });
+    }
+    return routeFetch(input, init);
+  };
+}
+
+describe("TsAnalysisEDA — зелёная подсветка пройденных остановок степпера (паттерн Моделирования)", () => {
+  it("colors a passed (done) stop light-green and keeps non-active pending stops uncolored", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+
+    // Сигналы готовности: профиль описательных статистик загружен
+    // (статус done) и общий признак синхронизирован (targetLoading=false).
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+    const selector = screen.getByRole("combobox", { name: "Исследуемый признак:" });
+    await waitFor(() => expect(selector).toHaveValue("Price"));
+
+    // Снимаем активность с «Описательных статистик»: кликаем на
+    // «Матрицу моделей» (до клика — pending).
+    fireEvent.click(screen.getByRole("button", { name: /^Матрица моделей/ }));
+
+    // Пройденная остановка (зелёная галочка) -> светло-зелёная кнопка
+    // с зелёным текстом (эталон Моделирования: bg-green-50/green-200/green-800).
+    const doneButton = screen.getByRole("button", { name: /^Описательные статистики/ });
+    expect(doneButton).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
+    expect(doneButton).not.toHaveClass("bg-brand");
+    expect(doneButton).not.toHaveClass("bg-white");
+
+    // Не пройденная (pending) и не активная остановка -> БЕЗ окраски.
+    const pendingButton = screen.getByRole("button", { name: /^IH-анализ/ });
+    expect(pendingButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(pendingButton).not.toHaveClass("bg-green-50");
+    expect(pendingButton).not.toHaveClass("border-green-200");
+    expect(pendingButton).not.toHaveClass("text-green-800");
+  });
+
+  it("keeps the indigo active styling for an active stop even when it is done (active branch priority, as in Modeling)", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+
+    // «Описательные статистики» активна по умолчанию; после загрузки её
+    // статус — done. Активная остановка обязана остаться индиго.
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+    const selector = screen.getByRole("combobox", { name: "Исследуемый признак:" });
+    await waitFor(() => expect(selector).toHaveValue("Price"));
+
+    const activeDoneButton = screen.getByRole("button", { name: /^Описательные статистики/ });
+    expect(activeDoneButton).toHaveClass("bg-brand", "text-white", "border-brand");
+    expect(activeDoneButton).not.toHaveClass("bg-green-50");
+    expect(activeDoneButton).not.toHaveClass("text-green-800");
+  });
+
+  it("leaves running and pending stops uncolored", async () => {
+    // Вечнозависающий fetch: «Описательные статистики» остаются в running
+    // (descriptiveBusy), остальные остановки — pending.
+    global.fetch = jest.fn(() => new Promise<Response>(() => {})) as jest.Mock;
+    render(<TsAnalysisEDA />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Матрица моделей/ }));
+
+    const runningButton = screen.getByRole("button", { name: /^Описательные статистики/ });
+    expect(runningButton).not.toHaveClass("bg-green-50");
+    expect(runningButton).not.toHaveClass("border-green-200");
+    expect(runningButton).not.toHaveClass("text-green-800");
+
+    const pendingButton = screen.getByRole("button", { name: /^IH-анализ/ });
+    expect(pendingButton).not.toHaveClass("bg-green-50");
+    expect(pendingButton).not.toHaveClass("text-green-800");
+  });
+
+  it("leaves the warning stop (insufficient columns) uncolored", async () => {
+    // Колонка без статистик -> insufficientColumns > 0 -> статус warning:
+    // подсветки быть НЕ должно (паттерн красит только done).
+    global.fetch = jest.fn(
+      routeFetchWithStatsOverride({
+        ok: true,
+        status: 200,
+        body: {
+          min_non_null_for_stats: 2,
+          columns: [
+            { name: "Year", non_null_count: 4, stats: null },
+            { name: "Price", non_null_count: 4, stats: STATS_RESPONSE.columns[1].stats },
+          ],
+        },
+      }),
+    ) as jest.Mock;
+    render(<TsAnalysisEDA />);
+
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+    const selector = screen.getByRole("combobox", { name: "Исследуемый признак:" });
+    await waitFor(() => expect(selector).toHaveValue("Price"));
+
+    fireEvent.click(screen.getByRole("button", { name: /^Матрица моделей/ }));
+
+    const warningButton = screen.getByRole("button", { name: /^Описательные статистики/ });
+    expect(warningButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(warningButton).not.toHaveClass("bg-green-50");
+    expect(warningButton).not.toHaveClass("border-green-200");
+    expect(warningButton).not.toHaveClass("text-green-800");
+  });
+
+  it("leaves the skipped stop (no dataset) uncolored", async () => {
+    // 404 на /dataset/stats -> descriptiveNoDataset -> статус skipped:
+    // подсветки быть НЕ должно (паттерн красит только done).
+    global.fetch = jest.fn(
+      routeFetchWithStatsOverride({
+        ok: false,
+        status: 404,
+        body: { detail: "Нет активного датасета" },
+      }),
+    ) as jest.Mock;
+    render(<TsAnalysisEDA />);
+
+    // Признак синхронизирован -> целевой запрос завершён; профиль при 404
+    // отсутствует, остановка в skipped.
+    const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" });
+    await waitFor(() => expect(selector).toHaveValue("Price"));
+
+    fireEvent.click(screen.getByRole("button", { name: /^Матрица моделей/ }));
+
+    const skippedButton = screen.getByRole("button", { name: /^Описательные статистики/ });
+    expect(skippedButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(skippedButton).not.toHaveClass("bg-green-50");
+    expect(skippedButton).not.toHaveClass("border-green-200");
+    expect(skippedButton).not.toHaveClass("text-green-800");
+  });
+});
