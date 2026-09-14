@@ -327,12 +327,14 @@ function EdaStationarityOverviewInner({
         </div>
         {profile.recommendation && <p className="mt-3 rounded bg-brand-light px-3 py-2 text-xs text-neutral-700">{profile.recommendation}</p>}
         {localizedWarnings.length > 0 && <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">{localizedWarnings.join(" ")}</p>}
-      </div>
-
-      <div role="tablist" aria-label="Представления стационарности" className="flex shrink-0 flex-wrap gap-1 border-b border-neutral-100 px-4 pt-3">
-        {TABS.map((tab) => (
-          <button key={tab.id} role="tab" aria-selected={activeView === tab.id} onClick={() => setActiveView(tab.id)} className={`rounded-t px-3 py-2 text-xs font-medium ${activeView === tab.id ? "bg-brand text-white" : "bg-neutral-50 text-neutral-600 hover:bg-neutral-100"}`}>{tab.label}</button>
-        ))}
+        {/* Task w/n-4: переключатели представлений — бейдж-паттерн «Обзора»
+            «Предобработки» (эталон «Генерации признаков»): tablist внутри шапки,
+            контейнер mt-3 flex flex-wrap gap-2, бейджи rounded-full px-3 py-1. */}
+        <div role="tablist" aria-label="Представления стационарности" className="mt-3 flex flex-wrap gap-2">
+          {TABS.map((tab) => (
+            <button key={tab.id} role="tab" aria-selected={activeView === tab.id} onClick={() => setActiveView(tab.id)} className={`rounded-full border px-3 py-1 text-xs ${activeView === tab.id ? "border-neutral-300 bg-neutral-200 text-neutral-800" : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"}`}>{tab.label}</button>
+          ))}
+        </div>
       </div>
 
       {activeView === "series" ? <ExpandableChartPanel chartId="stationarity-series" title="Ряд и скользящее среднее"><SeriesChart profile={profile} /></ExpandableChartPanel> : null}

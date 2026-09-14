@@ -1903,3 +1903,109 @@ border-neutral-100 p-4`, после рекомендации/легенды), к
 - worklog5.md (этот журнал)
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
   main@30d00d4 + перечисленные изменения.
+
+---
+
+## Task w/n-4 -- Вкладка «Разведочный EDA»: бейдж-паттерн переключателей представлений «Обзора» вкладки «Предобработка» применён ко ВСЕМ остановкам степпера EDA (10 Обзоров)
+
+Дата: 2026-09-14. Синхронизация: main@f0d2698 (Task w/n-3 закоммичен
+тимлидом; рабочее дерево приведено к коммиту, локальный однострочный
+рассинхрон worklog5.md отброшен -- содержимое идентично).  Постановка
+тимлида: применить бейдж-паттерн переключателей представлений «Обзора»
+вкладки «Предобработка» (эталон «Генерация признаков», раскатанный на
+все остановки в Task w/n-3) ко всем остановкам степпера вкладки
+«Разведочный EDA».  Прямое продолжение w/n-3: там граница задачи
+явно фиксила «EDA- и Validation-Обзоры НЕ трогались... отдельная
+постановка».  Полный цикл AGENTS.md: TDD RED->GREEN, полная
+frontend-регрессия, typecheck/build обеих оболочек.
+
+### Диагностика (точки изменения; эталон -- PreprocessingFeatureEngineeringOverview.tsx:109)
+
+Контракт эталона (зафиксирован тестами в w/n-3): tablist ВНУТРИ шапки
+Обзора (блок с p-4/p-3 и border-b border-neutral-100), контейнер
+`mt-3 flex flex-wrap gap-2`, геометрия бейджа `rounded-full border
+px-3 py-1 text-xs`, активный `border-neutral-300 bg-neutral-200
+text-neutral-800`, неактивный `border-neutral-200 bg-neutral-50
+text-neutral-500 hover:bg-neutral-100`, семантика aria-selected.
+
+Состояние 10 Обзоров EDA до правки -- 3 legacy-варианта переключателей:
+(a) «подчёркивание»: `rounded-t` + active `border border-b-0 bg-white
+text-brand` (Descriptive, Correlation, Seasonality, IH -- у IH ещё
+overflow-x-auto/whitespace-nowrap/px-2.5); (b) «заливка»: `rounded-t`
++ active `bg-brand text-white` (Distribution, Stationarity,
+StructuralBreaks, FeatureSelection, ValidationStrategy, ModelMatrix);
+у Descriptive вдобавок aria-pressed рядом с aria-selected.  Общий
+дефект: tablist ВНЕ шапки -- отдельным блоком между шапкой и контентом.
+
+### TDD (RED -> GREEN)
+
+- RED: 10 новых кейсов «переключатели представлений следуют
+  бейдж-паттерну «Обзора» «Предобработки»» -- по одному в каждом
+  тест-файле (EdaDescriptiveOverview, EdaCorrelationOverview,
+  EdaIhOverview, EdaSeasonalityOverview, EdaStationarityOverview,
+  EdaDistributionOverview, EdaStructuralBreaksOverview,
+  EdaFeatureSelectionOverview, EdaValidationStrategyOverview,
+  EdaModelMatrixOverview).  Контракт прижат ПОЛНОСТЬЮ: tablist с
+  именем, классы контейнера `mt-3 flex flex-wrap gap-2`, размещение
+  ВНУТРИ шапки (parentElement имеет p-4; для IH -- p-3, шапка IH
+  сохранена как есть -- суть контракта «внутри шапки», не конкретный
+  паддинг), активный/неактивный бейдж с ПОЛНЫМ набором эталонных
+  классов (включая hover:bg-neutral-100), семантика aria-selected.
+  Роль tab уже использовалась всеми 10 компонентами (в отличие от
+  w/n-3, миграции getByRole("button") не потребовалось).  Результат
+  RED: 10 failed / 39 passed -- падения ТОЧНО дефектные.
+- GREEN: правки 10 компонентов -> полная регрессия 97 сюит /
+  935 тестов PASSED (39 + 10 -- арифметика сходится).
+
+### Верификация
+
+- Полная frontend-регрессия: **97 сюит / 935 тестов PASSED / 0
+  failed** (45 с).  Арифметика: базлайн f0d2698 = 925 + 10 новых
+  кейсов = 935.  Регрессий вне задачи нет.
+- Сверка единства паттерна программно по всем 10 файлам
+  Eda*Overview.tsx: geometry/active/inactive-классы + контейнер
+  `mt-3 flex flex-wrap gap-2` -- все True; legacy-артефакты
+  (rounded-t / bg-brand text-white / border-b-0 / aria-pressed) --
+  0 вхождений в коде (единственное совпадение -- текст
+  поясняющего комментария в EdaDescriptiveOverview).
+- npm run typecheck:all -- 0 ошибок (embedded + standalone);
+  npm run build:all -- Compiled successfully x2 (embedded 13/13,
+  standalone 17/17 static pages).
+
+### Особенности реализации (решения по границам)
+
+- 8 Обзоров с ранними return'ами (Descriptive, Correlation, IH,
+  Seasonality, Stationarity, Distribution, StructuralBreaks,
+  FeatureSelection): tablist перенесён последним элементом шапки;
+  видимость не изменилась (шапка и так рендерится только при готовых
+  данных).  У IH шапка p-3 сохранена (контракт «tablist внутри шапки»
+  соблюдён, паддинг шапки -- ортогональная деталь).
+- ValidationStrategy и ModelMatrix: шапка рендерится ВСЕГДА (в том
+  числе в loading/error/no-dataset), а переключатели жили в
+  условной ветке контента.  Tablist перенесён в шапку с guard
+  `!loading && !error && !noDataset && profile && profile.applicable`
+  -- видимость переключателей по состояниям сохранена 1:1 (в
+  loading/error/пустых состояниях бейджи по-прежнему скрыты).
+- FeatureSelection: шапке добавлен `border-neutral-100` (был голый
+  border-b) -- гармонизация с эталоном, визуально почти неотличимо.
+- aria-pressed удалён из EdaDescriptiveOverview (единственное
+  вхождение в EDA; прецедент w/n-3: aria-selected везде).
+- Мобильная механика: overflow-x-auto/whitespace-nowrap IH заменены
+  на flex-wrap эталона (5 бейджей переносятся строкой, как в
+  «Предобработке»); в остальных файлах flex-wrap уже был или добавлен
+  эталонным контейнером.
+- Backend/контракты данных не затронуты (0 файлов .py); маунт-точки
+  TsAnalysisEDA.tsx, степпер, роли/aria-labelы переключателей --
+  БИТ-НЕИЗМЕННЫ; правился ТОЛЬКО слой переключателей и их размещение.
+- Исторические записи журнала НЕ редактировались (append-only).
+
+Изменённые/новые файлы (ZIP: download/task_wn4_eda_badge_pattern.zip):
+- ИЗМЕНЁННЫЕ: packages/ui/components/{EdaDescriptiveOverview,
+  EdaCorrelationOverview, EdaIhOverview, EdaSeasonalityOverview,
+  EdaStationarityOverview, EdaDistributionOverview,
+  EdaStructuralBreaksOverview, EdaFeatureSelectionOverview,
+  EdaValidationStrategyOverview, EdaModelMatrixOverview}.tsx +
+  их .test.tsx (10+10 = 20 файлов)
+- worklog5.md (этот журнал)
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@f0d2698 + перечисленные изменения.

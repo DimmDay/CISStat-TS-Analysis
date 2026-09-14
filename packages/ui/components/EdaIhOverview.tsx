@@ -327,21 +327,28 @@ function EdaIhOverviewInner({
         </div>
         {profile.order_warning && <p className="mt-2 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">{profile.order_warning}</p>}
         {profile.recommendations[0] && <p className="mt-2 rounded bg-brand-light/60 px-3 py-2 text-xs text-neutral-700">{profile.recommendations[0]}</p>}
-      </div>
-
-      <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-neutral-100 px-3 pt-2" role="tablist" aria-label="Представления IH-анализа">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={activeView === tab.id}
-            onClick={() => setActiveView(tab.id)}
-            className={`whitespace-nowrap rounded-t px-2.5 py-1.5 text-xs font-medium transition-colors ${activeView === tab.id ? "border border-b-0 border-neutral-200 bg-white text-brand" : "text-neutral-500 hover:text-neutral-700"}`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {/* Task w/n-4: переключатели представлений — бейдж-паттерн «Обзора»
+            «Предобработки» (эталон «Генерации признаков»): tablist внутри шапки,
+            контейнер mt-3 flex flex-wrap gap-2, бейджи rounded-full px-3 py-1.
+            Шапка IH — p-3 (не эталонная p-4) — сохранена как есть. */}
+        <div role="tablist" aria-label="Представления IH-анализа" className="mt-3 flex flex-wrap gap-2">
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeView === tab.id}
+              onClick={() => setActiveView(tab.id)}
+              className={`rounded-full border px-3 py-1 text-xs ${
+                activeView === tab.id
+                  ? "border-neutral-300 bg-neutral-200 text-neutral-800"
+                  : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {activeView === "ranking" && <ExpandableChartPanel chartId="ih-ranking" title="Рейтинг IH-информативности"><RankingChart profile={profile} /></ExpandableChartPanel>}

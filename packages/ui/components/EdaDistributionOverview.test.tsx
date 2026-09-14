@@ -60,4 +60,29 @@ describe("EdaDistributionOverview", () => {
     render(<EdaDistributionOverview profile={{ ...PROFILE, applicable: false, reason: "В ряду есть пропуски" }} loading={false} error={null} noDataset={false} parameters={{ alpha: 0.05, bins: 20 }} onParametersChange={jest.fn()} />);
     expect(screen.getByRole("status")).toHaveTextContent("В ряду есть пропуски");
   });
+
+  // Task w/n-4: бейдж-паттерн переключателей представлений «Обзора»
+  // вкладки «Предобработка» (эталон «Генерации признаков») — tablist
+  // внутри шапки Обзора (p-4 с border-b), mt-3 flex flex-wrap gap-2;
+  // геометрия эталона px-3 py-1 text-xs; активный border-neutral-300
+  // bg-neutral-200 text-neutral-800, неактивный border-neutral-200
+  // bg-neutral-50 text-neutral-500 hover:bg-neutral-100.
+  it("переключатели представлений следуют бейдж-паттерну «Обзора» «Предобработки»", () => {
+    render(<EdaDistributionOverview profile={PROFILE} loading={false} error={null} noDataset={false} parameters={{ alpha: 0.05, bins: 20 }} onParametersChange={jest.fn()} />);
+
+    const tablist = screen.getByRole("tablist", { name: "Представления распределения" });
+    expect(tablist).toHaveClass("mt-3", "flex", "flex-wrap", "gap-2");
+    expect(tablist.parentElement).toHaveClass("p-4");
+    expect(tablist.parentElement?.className).toContain("border-b border-neutral-100");
+
+    const active = screen.getByRole("tab", { name: "Гистограмма" });
+    expect(active).toHaveAttribute("aria-selected", "true");
+    expect(active).toHaveClass("rounded-full", "border", "px-3", "py-1", "text-xs");
+    expect(active).toHaveClass("border-neutral-300", "bg-neutral-200", "text-neutral-800");
+
+    const inactive = screen.getByRole("tab", { name: "Тесты" });
+    expect(inactive).toHaveAttribute("aria-selected", "false");
+    expect(inactive).toHaveClass("rounded-full", "border", "px-3", "py-1", "text-xs");
+    expect(inactive).toHaveClass("border-neutral-200", "bg-neutral-50", "text-neutral-500", "hover:bg-neutral-100");
+  });
 });
