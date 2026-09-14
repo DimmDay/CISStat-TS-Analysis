@@ -996,7 +996,7 @@ export function TsAnalysisModeling() {
 +              компонента. Ставится последним элементом списка степпера:
 +              это переход к ДРУГОМУ модулю пайплайна, а не ещё одна
 +              остановка моделирования. */}
-+          <StepperNextModuleButton label="Перейти к прогнозированию" href="/forecasting" />
+          <StepperNextModuleButton label="Перейти к прогнозированию" href="/forecasting" />
         </div>
       </aside>
 
