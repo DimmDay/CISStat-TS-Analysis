@@ -1134,3 +1134,124 @@ function mockApplicableDecompositionFetch() {
     expect(screen.queryByDisplayValue(/D — ежедневная/)).not.toBeInTheDocument();
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Зелёная подсветка пройденных остановок степпера (паттерн вкладки
+// «Моделирование»; уже применён к Валидации [VALID-1], Предобработке
+// [PREPR-1] и Разведочному EDA [EDA-2]). Эталон -- тернарная цепочка
+// className: (1) active «bg-brand text-white border-brand» -> (2) done
+// «bg-green-50 border-green-200 text-green-800» -> (3) иначе «bg-white
+// border-neutral-200 hover:bg-neutral-50 text-neutral-800».
+//
+// Специфика Upload (в отличие от Валидации/EDA/Предобработки): stopStatus
+// (TsAnalysisUpload.tsx) физически производит ТОЛЬКО три статуса --
+// pending/warning/done (путей skipped/running/error в этом степпере нет,
+// бейджей «Отключено»/«Настроить» тоже нет). Пути warning: (a) Качество
+// (пропуски/выборсы/дубликаты), (b) Превью при parse_warnings. Пути
+// pending до загрузки недостижимы (степпер рендерится только после
+// upload), после -- Качество без quality в ответе бэкенда.
+//
+// Детерминированность (урок VALID-1): статусы chart/structure зависят от
+// асинхронной /dataset/structure-detection, поэтому все кейсы строятся на
+// статусах, вычисляемых СИНХРОННО из uploadResponse: Распределение (done
+// при numericCols>0), Превью (done/warning по parse_warnings), Качество
+// (done/warning/pending по quality). Готовность рендера -- findByText
+// (asyncAct-промывка React 18 + RTL 16 + jest 30).
+// ─────────────────────────────────────────────────────────────────────────────
+describe("TsAnalysisUpload — зелёная подсветка пройденных остановок степпера (паттерн Моделирования)", () => {
+  const uploadNoQuality = { ...okUploadResponse } as Record<string, unknown>;
+  delete uploadNoQuality.quality;
+
+  async function renderUploaded(uploadResult: unknown = okUploadResponse) {
+    mockFetchSequence(uploadResult);
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    await screen.findByText("test.csv");
+  }
+
+  const stepperButton = (label: string) => screen.getByRole("button", { name: new RegExp(`^${label}`) });
+
+  it("colors a passed (done) stop light-green and keeps a warning neighbor uncolored", async () => {
+    // Дефолтный мок после загрузки: Распределение -- done (numericCols>0,
+    // неактивна: активна по умолчанию «Превью датасета»); Качество --
+    // warning (cols_with_missing=1, неактивна).
+    await renderUploaded();
+
+    const doneButton = stepperButton("Распределение");
+    expect(doneButton).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
+    expect(doneButton).not.toHaveClass("bg-white");
+    expect(doneButton).not.toHaveClass("bg-brand");
+
+    const warningButton = stepperButton("Качество");
+    expect(warningButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(warningButton).not.toHaveClass("bg-green-50");
+    expect(warningButton).not.toHaveClass("border-green-200");
+    expect(warningButton).not.toHaveClass("text-green-800");
+  });
+
+  it("keeps the indigo active styling for an active stop even when it is done (active branch priority, as in Modeling)", async () => {
+    // «Превью датасета» -- активна по умолчанию и done (parse_warnings=[])
+    // -> приоритет индиго (как в эталоне Моделирования).
+    await renderUploaded();
+
+    const activeDoneButton = stepperButton("Превью датасета");
+    expect(activeDoneButton).toHaveClass("bg-brand", "text-white", "border-brand");
+    expect(activeDoneButton).not.toHaveClass("bg-green-50");
+    expect(activeDoneButton).not.toHaveClass("border-green-200");
+    expect(activeDoneButton).not.toHaveClass("text-green-800");
+  });
+
+  it("leaves the warning stop uncolored both when inactive and when active (active branch wins)", async () => {
+    // «Качество» -- warning (cols_with_missing=1): активная warning остаётся
+    // индиго (active-ветка ПЕРВАЯ в цепочке), неактивная warning -- БЕЗ окраски.
+    await renderUploaded();
+
+    fireEvent.click(stepperButton("Качество"));
+    const activeWarningButton = stepperButton("Качество");
+    expect(activeWarningButton).toHaveClass("bg-brand", "text-white", "border-brand");
+    expect(activeWarningButton).not.toHaveClass("bg-green-50");
+
+    // Снимаем активность: клик на «Распределение» (done) -- «Качество»
+    // снова неактивна и обязана остаться неокрашенной.
+    fireEvent.click(stepperButton("Распределение"));
+    const inactiveWarningButton = stepperButton("Качество");
+    expect(inactiveWarningButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(inactiveWarningButton).not.toHaveClass("bg-green-50");
+    expect(inactiveWarningButton).not.toHaveClass("border-green-200");
+    expect(inactiveWarningButton).not.toHaveClass("text-green-800");
+  });
+
+  it("leaves a pending stop (no quality in upload response) uncolored", async () => {
+    // Ответ upload без quality -> Качество -- pending: БЕЗ окраски
+    // (паттерн красит только done).
+    await renderUploaded(uploadNoQuality);
+
+    const pendingButton = stepperButton("Качество");
+    expect(pendingButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(pendingButton).not.toHaveClass("bg-green-50");
+    expect(pendingButton).not.toHaveClass("border-green-200");
+    expect(pendingButton).not.toHaveClass("text-green-800");
+  });
+
+  it("leaves a parse-warning overview stop uncolored while the newly active done stop keeps indigo", async () => {
+    // Второй путь warning: parse_warnings>0 -> Превью -- warning. Клик на
+    // «Распределение» (done) -- активная done остаётся индиго (НЕ зелёной),
+    // Превью становится неактивной warning -- БЕЗ окраски.
+    await renderUploaded({ ...okUploadResponse, parse_warnings: ["Обнаружена BOM-последовательность"] });
+
+    fireEvent.click(stepperButton("Распределение"));
+    const activeDoneButton = stepperButton("Распределение");
+    expect(activeDoneButton).toHaveClass("bg-brand", "text-white", "border-brand");
+    expect(activeDoneButton).not.toHaveClass("bg-green-50");
+
+    const warningButton = stepperButton("Превью датасета");
+    expect(warningButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(warningButton).not.toHaveClass("bg-green-50");
+    expect(warningButton).not.toHaveClass("border-green-200");
+    expect(warningButton).not.toHaveClass("text-green-800");
+  });
+});
