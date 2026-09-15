@@ -1,0 +1,276 @@
+// packages/ui/lib/__ia1_oracle_cert.test.ts
+//
+// AUDITOR'S ORACLE SUITE (Task IA-1 certification) -- NOT part of the repo
+// deliverable; temporary file, removed after the certification run.
+//
+// Oracle data: exhaustive enumeration of ALL 3^6 = 729 stage-status
+// combinations of the six pipeline stages (auditor's own generated data,
+// not the executor's test fixtures). For every combination and every v1
+// task contract we assert the full invariant system O1-O10:
+//   O1  available <=> requires subset of artifacts
+//   O2  not available => awaiting iff pipelineStarted else blocked
+//   O3  reason == null <=> available (reason/state consistency)
+//   O4  awaiting reason names the OWNER STAGE LABEL of the FIRST missing
+//       artifact in pipeline order (recomputed independently)
+//   O5  blocked reason points to Загрузка
+//   O6  monotonicity: raising any stage status never DEGRADES a task state
+//       (available > awaiting > blocked)
+//   O7  determinism: repeated call yields identical (state, reason)
+//   O8  v1 registry semantics: scenarios/causes available <=> modeling done;
+//       decisions/monitoring available <=> forecasting done
+//   O9  spec §8 acceptance scenarios on concrete auditor sessions
+//   O10 team-lead risk demo: hypothetical requires=["validated"] task
+//       stays awaiting in the CURRENT backend reality (validation stage
+//       never set by any router) -- the documented mine, formalized
+
+import {
+  TASK_ROUTES,
+  TaskArtifact,
+  ARTIFACT_STAGE,
+  artifactsFromStages,
+  pipelineStartedFromStages,
+  deriveTaskGateState,
+  taskGateReason,
+} from "./task-stops";
+import { STAGE_DEFS, StageStatus } from "./stages";
+
+const STATUSES: StageStatus[] = ["pending", "in_progress", "done"];
+const RANK: Record<StageStatus, number> = {
+  pending: 0,
+  in_progress: 1,
+  done: 2,
+};
+
+// Independent re-implementation of the artifact layer (auditor's oracle,
+// deliberately NOT calling artifactsFromStages).
+function oracleArtifacts(stages: Record<string, StageStatus>): Set<TaskArtifact> {
+  const s = new Set<TaskArtifact>();
+  if (stages["validation"] === "done") s.add("validated");
+  if (stages["modeling"] === "done") s.add("model_card");
+  if (stages["forecasting"] === "done") s.add("forecast_run");
+  return s;
+}
+
+function oracleState(
+  requires: TaskArtifact[],
+  stages: Record<string, StageStatus>
+): "available" | "awaiting" | "blocked" {
+  const arts = oracleArtifacts(stages);
+  const ok = requires.every((r) => arts.has(r));
+  if (ok) return "available";
+  const started = STAGE_DEFS.some((s) => stages[s.key] === "done");
+  return started ? "awaiting" : "blocked";
+}
+
+// Exhaustive 3^6 enumeration.
+function* allStageMaps(): Generator<Record<string, StageStatus>> {
+  const keys = STAGE_DEFS.map((s) => s.key);
+  const total = Math.pow(3, keys.length);
+  for (let i = 0; i < total; i++) {
+    const map: Record<string, StageStatus> = {};
+    keys.forEach((k, idx) => {
+      map[k] = STATUSES[Math.floor(i / Math.pow(3, idx)) % 3];
+    });
+    yield map;
+  }
+}
+
+const stageMaps = [...allStageMaps()];
+expect(stageMaps).toHaveLength(729);
+
+describe("IA-1 oracle: exhaustive 729-combination invariant sweep", () => {
+  it("O1/O2/O3: state tri-partition and reason consistency hold for every combo", () => {
+    for (const stages of stageMaps) {
+      const arts = artifactsFromStages(stages);
+      const started = pipelineStartedFromStages(stages);
+      for (const task of TASK_ROUTES) {
+        const state = deriveTaskGateState(task.requires, arts, started);
+        const reason = taskGateReason(task.requires, arts, started);
+        const oracle = oracleState(task.requires, stages);
+
+        expect(state).toBe(oracle); // O1 + O2 vs independent oracle
+
+        const satisfied = task.requires.every((r) => arts.includes(r));
+        if (satisfied) expect(state).toBe("available");
+        else expect(started ? state === "awaiting" : state === "blocked").toBe(true);
+
+        if (state === "available") expect(reason).toBeNull();
+        else expect(reason).not.toBeNull(); // O3
+      }
+    }
+  });
+
+  it("O4: awaiting reason names the owner-stage label of the first missing artifact", () => {
+    const order: TaskArtifact[] = ["validated", "model_card", "forecast_run"];
+    const labelOf = (stageKey: string) =>
+      STAGE_DEFS.find((s) => s.key === stageKey)?.label ?? stageKey;
+
+    for (const stages of stageMaps) {
+      const arts = artifactsFromStages(stages);
+      const started = pipelineStartedFromStages(stages);
+      for (const task of TASK_ROUTES) {
+        const state = deriveTaskGateState(task.requires, arts, started);
+        const reason = taskGateReason(task.requires, arts, started);
+        if (state !== "awaiting") continue;
+
+        const firstMissing = task.requires
+          .filter((r) => !arts.includes(r))
+          .sort((a, b) => order.indexOf(a) - order.indexOf(b))[0];
+        const expectedLabel = labelOf(ARTIFACT_STAGE[firstMissing]);
+
+        expect(reason).toMatch(/^Станет доступна после этапа /);
+        expect(reason).toContain(expectedLabel);
+        // Raw stage key must never leak into the human reason.
+        expect(reason).not.toContain(ARTIFACT_STAGE[firstMissing] + " ");
+      }
+    }
+  });
+
+  it("O5: blocked reason always points to the pipeline start (Загрузка)", () => {
+    for (const stages of stageMaps) {
+      const arts = artifactsFromStages(stages);
+      const started = pipelineStartedFromStages(stages);
+      for (const task of TASK_ROUTES) {
+        const reason = taskGateReason(task.requires, arts, started);
+        if (deriveTaskGateState(task.requires, arts, started) === "blocked") {
+          expect(reason).toContain("Загрузка");
+          expect(reason).toContain("пайплайна");
+        }
+      }
+    }
+  });
+
+  it("O6: monotonicity -- raising a stage status never degrades any task state", () => {
+    const stateRank = { blocked: 0, awaiting: 1, available: 2 };
+    for (const stages of stageMaps) {
+      for (const key of STAGE_DEFS.map((s) => s.key)) {
+        const cur = stages[key];
+        if (cur === "done") continue;
+        const raised: Record<string, StageStatus> = {
+          ...stages,
+          [key]: cur === "pending" ? "in_progress" : "done",
+        };
+        const artsA = artifactsFromStages(stages);
+        const artsB = artifactsFromStages(raised);
+        const startedA = pipelineStartedFromStages(stages);
+        const startedB = pipelineStartedFromStages(raised);
+        for (const task of TASK_ROUTES) {
+          const before = stateRank[
+            deriveTaskGateState(task.requires, artsA, startedA)
+          ];
+          const after = stateRank[
+            deriveTaskGateState(task.requires, artsB, startedB)
+          ];
+          expect(after).toBeGreaterThanOrEqual(before);
+        }
+      }
+    }
+  });
+
+  it("O7: determinism -- repeated evaluation is stable", () => {
+    const stages = stageMaps[123]; // arbitrary fixed combo
+    const arts = artifactsFromStages(stages);
+    const started = pipelineStartedFromStages(stages);
+    for (const task of TASK_ROUTES) {
+      const a = [
+        deriveTaskGateState(task.requires, arts, started),
+        taskGateReason(task.requires, arts, started),
+      ];
+      const b = [
+        deriveTaskGateState(task.requires, arts, started),
+        taskGateReason(task.requires, arts, started),
+      ];
+      expect(a).toEqual(b);
+    }
+  });
+
+  it("O8: v1 registry availability semantics vs stage ownership", () => {
+    for (const stages of stageMaps) {
+      const arts = artifactsFromStages(stages);
+      const started = pipelineStartedFromStages(stages);
+      const stateOf = (id: string) => {
+        const t = TASK_ROUTES.find((x) => x.id === id)!;
+        return deriveTaskGateState(t.requires, arts, started);
+      };
+      expect(stateOf("scenarios") === "available").toBe(stages["modeling"] === "done");
+      expect(stateOf("causes") === "available").toBe(stages["modeling"] === "done");
+      expect(stateOf("decisions") === "available").toBe(stages["forecasting"] === "done");
+      expect(stateOf("monitoring") === "available").toBe(stages["forecasting"] === "done");
+    }
+  });
+});
+
+describe("IA-1 oracle: spec §8 acceptance scenarios (auditor's own sessions)", () => {
+  const full = (over: Record<string, StageStatus>) =>
+    Object.fromEntries(STAGE_DEFS.map((s) => [s.key, over[s.key] ?? "pending"]));
+
+  it("O9a fresh session: 4 blocked, zero links implied", () => {
+    const stages = full({});
+    const arts = artifactsFromStages(stages);
+    expect(arts).toEqual([]);
+    expect(pipelineStartedFromStages(stages)).toBe(false);
+    for (const t of TASK_ROUTES) {
+      expect(deriveTaskGateState(t.requires, arts, false)).toBe("blocked");
+    }
+  });
+
+  it("O9b after Modeling: scenarios+causes available, forecast tasks awaiting Прогнозирование", () => {
+    const stages = full({ validation: "done", modeling: "done" });
+    const arts = artifactsFromStages(stages);
+    const started = pipelineStartedFromStages(stages);
+    expect(arts).toEqual(["validated", "model_card"]); // pipeline order
+    expect(started).toBe(true);
+    const st = (id: string) => {
+      const t = TASK_ROUTES.find((x) => x.id === id)!;
+      return deriveTaskGateState(t.requires, arts, started);
+    };
+    expect(st("scenarios")).toBe("available");
+    expect(st("causes")).toBe("available");
+    expect(st("decisions")).toBe("awaiting");
+    expect(st("monitoring")).toBe("awaiting");
+    const reason = taskGateReason(["forecast_run"], arts, started);
+    expect(reason).toBe("Станет доступна после этапа Прогнозирование");
+  });
+
+  it("O9c full pipeline: all four available with all artifacts in order", () => {
+    const stages = full({
+      upload: "done", validation: "done", preprocessing: "done",
+      eda: "done", modeling: "done", forecasting: "done",
+    });
+    const arts = artifactsFromStages(stages);
+    expect(arts).toEqual(["validated", "model_card", "forecast_run"]);
+    for (const t of TASK_ROUTES) {
+      expect(deriveTaskGateState(t.requires, arts, true)).toBe("available");
+    }
+  });
+
+  it("O10 TEAM-LEAD RISK (formalized): requires=[validated] never unlocks under current backend reality", () => {
+    // Current backend reality: validation stage is never set by any router.
+    // Even an analyst who factually finished validation UI-wise carries
+    // stages.validation == "pending" forever. A hypothetical task with
+    // requires: ["validated"] stays awaiting regardless of user progress.
+    const realisticAfterModeling = full({ modeling: "done" }); // validation NEVER set
+    const arts = artifactsFromStages(realisticAfterModeling);
+    expect(arts).not.toContain("validated");
+    expect(deriveTaskGateState(["validated"], arts, true)).toBe("awaiting");
+
+    // Even a fully "used" pipeline in today's backend (modeling + forecasting done):
+    const reality = full({ modeling: "done", forecasting: "done" });
+    const arts2 = artifactsFromStages(reality);
+    expect(deriveTaskGateState(["validated"], arts2, true)).toBe("awaiting");
+    expect(taskGateReason(["validated"], arts2, true)).toBe(
+      "Станет доступна после этапа Валидация"
+    );
+    // => permanent false promise: reason names a stage the backend never marks.
+  });
+
+  it("O11: upload-only session (real early state) -- awaiting dominates, blocked unreachable", () => {
+    const stages = full({ upload: "done" });
+    const arts = artifactsFromStages(stages);
+    const started = pipelineStartedFromStages(stages);
+    expect(started).toBe(true); // the practical claim of team-lead finding #2
+    for (const t of TASK_ROUTES) {
+      expect(deriveTaskGateState(t.requires, arts, started)).toBe("awaiting");
+    }
+  });
+});
