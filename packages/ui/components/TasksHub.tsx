@@ -22,7 +22,7 @@ import {
   pipelineStartedFromStages,
   deriveTaskGateState,
   taskGateReason,
-  awaitStageInfo,
+  ctaStageInfo,
   taskRecommendedHint,
 } from "../lib/task-stops";
 import { TaskCard } from "./TaskCard";
@@ -69,8 +69,10 @@ export function TasksHub() {
             task.recommendedWith ?? [],
             artifacts
           );
-          // R5: этап-владелец недостающего артефакта — цель микро-CTA.
-          const awaitStage = awaitStageInfo(
+          // R5 + симметрия (follow-up): этап — цель микро-CTA для ОБОИХ
+          // некликабельных состояний (awaiting — этап-владелец недостающего
+          // артефакта; blocked — вход в пайплайн «Загрузка»). null для available.
+          const ctaStage = ctaStageInfo(
             task.requires,
             artifacts,
             pipelineStarted
@@ -82,7 +84,7 @@ export function TasksHub() {
                 state={state}
                 reason={reason}
                 recommendedHint={recommendedHint}
-                awaitStage={awaitStage}
+                ctaStage={ctaStage}
               />
             </div>
           );

@@ -273,6 +273,7 @@ export {
   deriveTaskGateState,
   taskGateReason,
   awaitStageInfo,
+  ctaStageInfo,
   taskRecommendedHint,
 } from "./lib/task-stops";
 export type {

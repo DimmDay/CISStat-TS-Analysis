@@ -857,3 +857,90 @@ TDD-цикл соблюдён (RED подтверждён в журнале ис
   packages/ui/components/TasksHub.tsx, packages/ui/components/TasksHub.test.tsx,
   packages/ui/index.ts, scripts/cert_ia1_mutations.py,
   worklog/worklog6.md (этот журнал).
+
+---
+
+## Task IA-1/CTA-SYM -- Хаб «Задачи»: симметричный микро-CTA для blocked-карточек (follow-up R5)
+
+Дата: 2026-09-15.  Синхронизация: main@bbd04f8 (рабочее дерево содержало
+незакоммиченные изменения Task IA-1/R2-R5 — задача выполнялась ПОВЕРХ них,
+производственные файлы R2-R5 эволюционировали, см. ниже). Постановка
+тимлида: «Дальше: симметричный CTA для blocked-карточек» — та самая
+граница scope, зафиксированная в предыдущей записи как follow-up. Полный
+цикл AGENTS.md: TDD RED->GREEN, мутационный прогон, полная регрессия,
+typecheck/build.
+
+### Дизайн и семантика
+
+- Ключевое семантическое решение: в blocked пайплайн ещё НЕ начат, поэтому
+  CTA ведёт на ВХОД в пайплайн — этап «Загрузка» (STAGE_DEFS key "upload",
+  href "/upload"), а НЕ на этап-владельца недостающего артефакта (до
+  Загрузки ни один последующий этап нереализуем — например, для
+  «Принятия решений» указывать на «Прогнозирование» в blocked нельзя).
+  Это зеркально согласовано с текстом причины blocked («Начните с этапа
+  Загрузка…») — причина сообщает этап, CTA даёт движение.
+- Единая точка истины: НОВАЯ чистая функция ctaStageInfo(requires,
+  artifacts, pipelineStarted) -> StagePointer | null: awaiting —
+  делегирует awaitStageInfo (этап-владелец первого недостающего артефакта
+  в порядке пайплайна); blocked — указатель «Загрузки» (ищется по key в
+  STAGE_DEFS, не хардкод-литерал); available — null. awaitStageInfo
+  сохранён без изменений (awaiting-специфичная семантика + публичный
+  экспорт).
+- Рендер: TaskCard — проп переименован awaitStage -> ctaStage
+  (симметричное имя), условие рендера state !== "available" && ctaStage:
+  та же геометрия/цвета для обоих состояний (text-xs font-semibold
+  text-brand, ArrowRight, focus-ring). TasksHub переключён на
+  ctaStageInfo; экспорт @cisstat/ui: + ctaStageInfo.
+- A11y: ссылка внутри div role="group" валидна (group неинтерактивен);
+  aria-label группы с причиной сохранён байт-в-байт; CTA имеет собственное
+  имя «Перейти к этапу Загрузка»; иконки aria-hidden. Защита от ложного
+  аффорданса СОХРАНЕНА: ссылок на НЕдоступную задачу по-прежнему нет —
+  CTA ведёт только на реализованный этап пайплайна.
+- Контракт §8 (осознанная эволюция, санкционирована заказом тимлида):
+  «свежая сессия — ни одной ссылки» сужается до «ни одной ЗАДАЧНОЙ ссылки
+  (href^="/tasks/")»; появляются 4 CTA на /upload. Спецификацию НЕ правил
+  (прерогатива тимлида) — рекомендуется обновить формулировку §8 стр.1.
+
+### TDD
+
+- RED подтверждён: task-stops.test.ts (срыв компиляции на отсутствующем
+  экспорте ctaStageInfo), TaskCard.test.tsx (3 падения: blocked-CTA,
+  defensive-no-link, available-no-nesting), TasksHub.test.tsx (fresh-сессия
+  ждала 4 CTA на /upload).
+- GREEN: модуль 55/55 (task-stops 34 + TaskCard 14 + TasksHub 6 + page 1;
+  было 48 — рост +7: 5 тестов ctaStageInfo + 2 нетто в TaskCard).
+
+### Верификация
+
+- Полная frontend-регрессия: **103 сюиты / 1011 passed / 0 failed**
+  (базлайн 103/1004 точно; арифметика: 1004 + 7 новых = 1011 — сходится;
+  регрессий вне задачи нет).
+- npm run typecheck:all — 0 ошибок (embedded + standalone).
+- npm run build (standalone) — успешно; /tasks + 4 маршрута статичны,
+  First Load JS без деградации (481 kB).
+- **Мутационный прогон**: матрица расширена 15 -> 18 мутантов:
+  M16 (blocked-указатель возвращается как null — CTA исчезает),
+  M17 (blocked ищет "forecasting" вместо "upload" — указатель на владельца
+  артефакта вместо входа в пайплайн), M18 (условие рендера CTA сужено до
+  awaiting-only). Итог: **18/18 KILLED, 0 SURVIVED** — защита полная,
+  новые семантические риски blocked-ветки закрыты тестами.
+
+### Границы задачи (что осознанно НЕ сделано)
+
+- Спецификация docs/spec_tasks_ia.md §8 — НЕ редактировалась (см. выше).
+- R1 (aria-label списка) — закрыт тимлидом ранее, не трогался.
+- Причина blocked («Начните с этапа Загрузка — задачи работают поверх
+  артефактов пайплайна») — НЕ менялась: лёгкая текстовая избыточность с
+  CTA зеркальна паттерну awaiting и зафиксирована тестами.
+- ModuleNav, STAGES, бэкенд, embedded, содержимое задач — НЕ затронуты.
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md).
+
+Изменённые/новые файлы (ZIP: download/task_ia1_blocked_cta_symmetry.zip):
+- ИЗМЕНЁННЫЕ: packages/ui/lib/task-stops.ts (+ctaStageInfo),
+  packages/ui/components/TaskCard.tsx (проп ctaStage, симметричный рендер),
+  packages/ui/components/TasksHub.tsx (переключён на ctaStageInfo),
+  packages/ui/index.ts (+экспорт), packages/ui/lib/task-stops.test.ts
+  (+5 кейсов), packages/ui/components/TaskCard.test.tsx (+2 нетто,
+  переименование пропа), packages/ui/components/TasksHub.test.tsx
+  (fresh-сессия: 0 задачных ссылок + 4 CTA), worklog/worklog6.md (эта
+  запись); вне дерева: scripts/cert_ia1_mutations.py (M16-M18).

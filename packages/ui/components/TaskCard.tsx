@@ -11,17 +11,21 @@
 //               опционально — плашка-призрак «Рекомендуется также этап …»
 //               для рекомендуемых (НЕ гейтящих) артефактов (R2);
 //   awaiting  — некликабельная карточка с amber-плашкой причины
-//               («Станет доступна после этапа …»): пайплайн движется,
-//               недостающий артефакт создаст обязательный этап; плюс
-//               микро-CTA «Перейти к этапу …» на этап-владелец (R5);
+//               («Станет доступна после этапа …») + микро-CTA
+//               «Перейти к этапу …» на этап-владельца недостающего
+//               артефакта (R5);
 //   blocked   — некликабельная карточка с нейтральной плашкой
-//               («Начните с этапа Загрузка …»): сессия свежая.
+//               («Начните с этапа Загрузка …») + ТОТ ЖЕ микро-CTA
+//               «Перейти к этапу Загрузка» на вход в пайплайн
+//               (симметрия R5 — follow-up по заказу тимлида): сессия
+//               свежая, и единственный осмысленный шаг — Загрузка.
 //
 // Некликабельные состояния сознательно НЕ ссылки на задачу: навигация на
-// нереализуемую пока задачу — ложный аффорданс. Микро-CTA (R5) этому
+// нереализуемую пока задачу — ложный аффорданс. Микро-CTA этому
 // не противоречит: он ведёт на РЕАЛИЗОВАННЫЙ этап пайплайна и помечен
 // явно. a11y: роль group с aria-label, содержащим название задачи и
-// причину.
+// причину; CTA внутри group имеет собственное имя (group неинтерактивен,
+// вложенная ссылка валидна).
 
 import Link from "next/link";
 import { ArrowRight, Lock, Sparkles } from "lucide-react";
@@ -38,8 +42,8 @@ export interface TaskCardProps {
   reason: string | null;
   /** Подсказка «рекомендуемый, не гейтящий» артефакт (R2; available). */
   recommendedHint?: string | null;
-  /** Этап-владелец недостающего артефакта — цель микро-CTA (R5; awaiting). */
-  awaitStage?: StagePointer | null;
+  /** Этап — цель микро-CTA (R5 + симметрия; awaiting и blocked). */
+  ctaStage?: StagePointer | null;
 }
 
 // ── Классы состояния ───────────────────────────────────────────
@@ -72,7 +76,7 @@ export function TaskCard({
   state,
   reason,
   recommendedHint,
-  awaitStage,
+  ctaStage,
 }: TaskCardProps) {
   const Icon = task.icon;
   const available = state === "available";
@@ -114,14 +118,16 @@ export function TaskCard({
             {recommendedHint}
           </span>
         )}
-        {state === "awaiting" && awaitStage && (
-          // Микро-CTA (R5): продолжение паттерна цепочки PRE-1/EDA-1/
-          // MODEL-1 внутри хаба — причина сообщает этап, CTA даёт движение.
+        {state !== "available" && ctaStage && (
+          // Микро-CTA (R5 + симметрия blocked — follow-up): продолжение
+          // паттерна цепочки PRE-1/EDA-1/MODEL-1 внутри хаба — причина
+          // сообщает этап, CTA даёт движение. Для awaiting это этап-владелец
+          // недостающего артефакта, для blocked — вход в пайплайн.
           <Link
-            href={awaitStage.href}
+            href={ctaStage.href}
             className="mt-2 flex w-fit items-center gap-1 rounded-sm text-xs font-semibold text-brand hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2"
           >
-            Перейти к этапу {awaitStage.label}
+            Перейти к этапу {ctaStage.label}
             <ArrowRight size={12} aria-hidden="true" />
           </Link>
         )}

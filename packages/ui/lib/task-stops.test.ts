@@ -23,6 +23,7 @@ import {
   deriveTaskGateState,
   taskGateReason,
   awaitStageInfo,
+  ctaStageInfo,
   taskRecommendedHint,
 } from "./task-stops";
 import { STAGE_DEFS, StageStatus } from "./stages";
@@ -264,6 +265,59 @@ describe("awaitStageInfo", () => {
     expect(
       awaitStageInfo(["model_card", "forecast_run"], ["validated"], true)?.href
     ).toBe("/modeling");
+  });
+});
+
+// ── ctaStageInfo: СИММЕТРИЧНЫЙ микро-CTA (awaiting + blocked) ────
+// Follow-up R5 (заказ тимлида): blocked-карточка получает тот же
+// микро-CTA «Перейти к этапу …», что и awaiting. Ключевая семантика:
+// в blocked пайплайн ещё НЕ начат, поэтому единственный осмысленный
+// шаг — этап «Загрузка» (вход в пайплайн), а НЕ этап-владелец
+// недостающего артефакта (до Загрузки он нереализуем).
+
+describe("ctaStageInfo (symmetric micro-CTA: awaiting + blocked)", () => {
+  it("blocked: points to Загрузка — the pipeline entry, not the artifact owner", () => {
+    expect(ctaStageInfo(["model_card"], [], false)).toEqual({
+      key: "upload",
+      label: "Загрузка",
+      href: "/upload",
+    });
+  });
+
+  it("blocked: upload pointer regardless of the contract (even forecast-only)", () => {
+    // Указывать на владельца недостающего артефакта («Прогнозирование»)
+    // в blocked нельзя: до Загрузки ни один последующий этап недостижим.
+    expect(ctaStageInfo(["forecast_run"], [], false)?.href).toBe("/upload");
+    expect(
+      ctaStageInfo(["validated", "model_card", "forecast_run"], [], false)
+        ?.key
+    ).toBe("upload");
+  });
+
+  it("awaiting: delegates to awaitStageInfo (owner stage of first missing)", () => {
+    expect(ctaStageInfo(["model_card"], ["validated"], true)).toEqual(
+      awaitStageInfo(["model_card"], ["validated"], true)
+    );
+    expect(ctaStageInfo(["model_card"], ["validated"], true)?.href).toBe(
+      "/modeling"
+    );
+  });
+
+  it("available: null — CTA не нужен", () => {
+    expect(ctaStageInfo(["model_card"], ["model_card"], true)).toBeNull();
+    expect(
+      ctaStageInfo(["validated", "forecast_run"], ["validated", "model_card", "forecast_run"], false)
+    ).toBeNull();
+  });
+
+  it("every registry task in a fresh session gets the upload pointer (hub symmetry)", () => {
+    TASK_ROUTES.forEach((t) => {
+      expect(ctaStageInfo(t.requires, [], false)).toEqual({
+        key: "upload",
+        label: "Загрузка",
+        href: "/upload",
+      });
+    });
   });
 });
 

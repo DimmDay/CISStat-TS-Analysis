@@ -181,6 +181,34 @@ export function awaitStageInfo(
 }
 
 /**
+ * СИММЕТРИЧНЫЙ указатель микро-CTA (follow-up R5, заказ тимлида): куда
+ * идти, чтобы приблизить задачу к доступности — единый источник истины
+ * для обеих некликабельных состояний.
+ *   awaiting  — этап-владелец первого недостающего артефакта
+ *               (делегирует awaitStageInfo);
+ *   blocked   — этап «Загрузка» (вход в пайплайн: пока датасета нет,
+ *               последующие этапы нереализуемы, потому причина и говорит
+ *               «Начните с этапа Загрузка» — CTA ведёт туда же, а НЕ на
+ *               владельца недостающего артефакта);
+ *   available — null (CTA не нужен).
+ */
+export function ctaStageInfo(
+  requires: TaskArtifact[],
+  artifacts: TaskArtifact[],
+  pipelineStarted: boolean
+): StagePointer | null {
+  const state = deriveTaskGateState(requires, artifacts, pipelineStarted);
+  if (state === "available") return null;
+  if (state === "blocked") {
+    const upload = STAGE_DEFS.find((s) => s.key === "upload");
+    return upload
+      ? { key: upload.key, label: upload.label, href: upload.href }
+      : null;
+  }
+  return awaitStageInfo(requires, artifacts, pipelineStarted);
+}
+
+/**
  * Человекочитаемая причина недоступности (для плашки на карточке и
  * aria-label). null — для available.
  */

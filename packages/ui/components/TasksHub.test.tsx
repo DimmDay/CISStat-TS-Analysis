@@ -5,14 +5,17 @@
 //   - три состояния по сессии: blocked (свежая), awaiting (частичный
 //     прогресс), available (контракт выполнен);
 //   - некликабельные состояния НЕ ссылки на задачу; available — ссылки
-//     на /tasks/<id>; awaiting-карточки содержат микро-CTA «Перейти
-//     к этапу …» (R5) — ссылку на этап-владелец недостающего артефакта;
+//     на /tasks/<id>; awaiting- и blocked-карточки содержат микро-CTA
+//     «Перейти к этапу …» (R5 + симметрия follow-up): ссылку на этап-владельца
+//     недостающего артефакта (awaiting) или на вход в пайплайн «Загрузка»
+//     (blocked, свежая сессия);
 //   - доступная «Сценарии» с отсутствующим forecast_run показывает
 //     подсказку рекомендуемого (не гейтящего) артефакта (R2);
 //   - причины недоступности видны пользователю.
 //
-// Контракт ссылок: fresh-сессия — 0 ссылок; после Моделирования —
-// 2 задач + 2 CTA; полный пайплайн — 4 задач, CTA и подсказок нет.
+// Контракт ссылок: fresh-сессия — 0 задачных ссылок + 4 CTA на /upload;
+// после Моделирования — 2 задач + 2 CTA; полный пайплайн — 4 задач, CTA
+// и подсказок нет.
 
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -56,18 +59,27 @@ describe("TasksHub", () => {
     });
   });
 
-  it("fresh session: all 4 cards are blocked and NONE is a link", () => {
+  it("fresh session: all 4 cards are blocked, no task links, but each has the symmetric CTA to /upload", () => {
     mockStages = stagesOf({});
     const { container } = render(<TasksHub />);
 
-    const links = container.querySelectorAll("a");
-    expect(links).toHaveLength(0);
+    // Ни одной ССЫЛКИ НА ЗАДАЧУ (защита от ложного аффорданса сохранена).
+    expect(container.querySelectorAll('a[href^="/tasks/"]')).toHaveLength(0);
     // Причина заблокированного состояния видна на каждой карточке.
     const reasons = screen.getAllByText(/Начните с этапа Загрузка/);
     expect(reasons).toHaveLength(4);
     // Состояние озвучено для a11y.
     const groups = screen.getAllByRole("group", { name: /недоступна/i });
     expect(groups).toHaveLength(4);
+    // Симметричный микро-CTA (follow-up R5): каждая blocked-карточка ведёт
+    // на вход в пайплайн — этап «Загрузка».
+    const ctas = screen.getAllByRole("link", {
+      name: "Перейти к этапу Загрузка",
+    });
+    expect(ctas).toHaveLength(4);
+    ctas.forEach((cta) => expect(cta).toHaveAttribute("href", "/upload"));
+    // Всего ссылок: 0 задач + 4 CTA.
+    expect(container.querySelectorAll("a")).toHaveLength(4);
   });
 
   it("after Modeling: Сценарии and Причины are links, forecast tasks are awaiting with reason", () => {

@@ -5,6 +5,9 @@
 // типографическая DNA (text-base заголовок, text-sm описание) защищены
 // на уровне самого компонента, а не только косвенно через TasksHub.
 // Убивает мутантов M13 (text-base -> text-lg) и M14 (срыв aria-причины).
+// Follow-up R5 (симметрия): микро-CTA рендерится в ОБОИХ некликабельных
+// состояниях — awaiting (этап-владелец недостающего артефакта) и blocked
+// (этап «Загрузка», вход в пайплайн).
 
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -21,16 +24,22 @@ const TASK: TaskRoute = {
   requires: ["model_card"],
 };
 
-const AWAIT_STAGE: StagePointer = {
+const CTA_STAGE: StagePointer = {
   key: "modeling",
   label: "Моделирование",
   href: "/modeling",
 };
 
+const UPLOAD_STAGE: StagePointer = {
+  key: "upload",
+  label: "Загрузка",
+  href: "/upload",
+};
+
 const renderCard = (
   state: "available" | "awaiting" | "blocked",
   reason: string | null,
-  extra: { recommendedHint?: string | null; awaitStage?: StagePointer | null } = {}
+  extra: { recommendedHint?: string | null; ctaStage?: StagePointer | null } = {}
 ) =>
   render(<TaskCard task={TASK} state={state} reason={reason} {...extra} />);
 
@@ -83,6 +92,15 @@ describe("TaskCard: available", () => {
     renderCard("available", null, { recommendedHint: null });
     expect(screen.queryByText(/Рекомендуется/)).toBeNull();
   });
+
+  it("never nests a CTA link even if ctaStage is passed (available IS the link)", () => {
+    const { container } = renderCard("available", null, {
+      ctaStage: UPLOAD_STAGE,
+    });
+    // Единственная ссылка — сама карточка; вложенный <a> невалиден в HTML.
+    expect(container.querySelectorAll("a")).toHaveLength(1);
+    expect(screen.queryByText(/Перейти к этапу/)).toBeNull();
+  });
 });
 
 describe("TaskCard: awaiting", () => {
@@ -123,14 +141,14 @@ describe("TaskCard: awaiting", () => {
 
   it("renders the micro-CTA to the awaiting stage when provided (R5)", () => {
     renderCard("awaiting", "Станет доступна после этапа Моделирование", {
-      awaitStage: AWAIT_STAGE,
+      ctaStage: CTA_STAGE,
     });
     const cta = screen.getByRole("link", { name: "Перейти к этапу Моделирование" });
     expect(cta).toHaveAttribute("href", "/modeling");
     expect(cta.className).toContain("text-brand");
   });
 
-  it("renders no micro-CTA when awaitStage is not provided", () => {
+  it("renders no micro-CTA when ctaStage is not provided", () => {
     renderCard("awaiting", "причина");
     expect(screen.queryByRole("link")).toBeNull();
     expect(screen.queryByText(/Перейти к этапу/)).toBeNull();
@@ -157,10 +175,27 @@ describe("TaskCard: blocked", () => {
     expect(container.querySelector(".lucide-lock")).not.toBeNull();
   });
 
-  it("never renders the micro-CTA even if awaitStage is passed", () => {
-    renderCard("blocked", "Начните с этапа Загрузка", {
-      awaitStage: AWAIT_STAGE,
-    });
+  it("renders the SYMMETRIC micro-CTA «Перейти к этапу Загрузка» (follow-up R5)", () => {
+    const { container } = renderCard(
+      "blocked",
+      "Начните с этапа Загрузка — задачи работают поверх артефактов пайплайна",
+      { ctaStage: UPLOAD_STAGE }
+    );
+    // CTA — ссылка на вход в пайплайн, та же геометрия/цвет, что в awaiting.
+    const cta = screen.getByRole("link", { name: "Перейти к этапу Загрузка" });
+    expect(cta).toHaveAttribute("href", "/upload");
+    expect(cta.className).toContain("text-brand");
+    expect(cta.className).toContain("text-xs");
+    expect(cta.className).toContain("focus-visible:ring-brand/50");
+    expect(container.querySelector(".lucide-arrow-right")).not.toBeNull();
+    // Карточка остаётся group с aria-причиной (CTA вложен в неинтерактивный group).
+    expect(
+      screen.getByRole("group", { name: /недоступна/ })
+    ).toBeInTheDocument();
+  });
+
+  it("renders no link when ctaStage is not provided (defensive)", () => {
+    renderCard("blocked", "Начните с этапа Загрузка");
     expect(screen.queryByRole("link")).toBeNull();
     expect(screen.queryByText(/Перейти к этапу/)).toBeNull();
   });
