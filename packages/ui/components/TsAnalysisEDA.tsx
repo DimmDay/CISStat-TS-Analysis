@@ -501,7 +501,17 @@ export function TsAnalysisEDA() {
   // Имя остаётся fallback для старых ответов/тестовых фикстур.
   const datasetKey = activeDataset?.datasetId ?? activeDataset?.name;
   const [activeCheckId, setActiveCheckId] = useState(CHECKS[0].id);
-  const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | null>(null);
+  // Инвариант информативности (2026-09-15, зеркально VALID-2/PREPR-2):
+  // активная остановка степпера АВТОМАТИЧЕСКИ загружает в «Описание»
+  // содержимое «Метрики и алгоритм» данной остановки (и делает кнопку
+  // активной) — вне зависимости от статуса остановки. Контент метрик —
+  // статические константы компонента (без зависимостей от
+  // /dataset/eda-*-профилей и наличия датасета), поэтому автозагрузка
+  // возможна всегда. Секция null более не производится: начальное
+  // состояние — метрики первой активной остановки («Описательные
+  // статистики»); placeholder-ветка ниже остаётся как defense-in-depth
+  // при недостижимом null.
+  const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | null>("metrics");
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
@@ -1229,9 +1239,10 @@ export function TsAnalysisEDA() {
     setDescriptionSection(section);
   };
 
-  // Показать/скрыть справку
+  // Показать/скрыть справку (toggle: закрытие возвращает к метрикам
+  // активной остановки — инвариант информативности)
   const handleHelpClick = () => {
-    setDescriptionSection((prev) => prev === "help" ? null : "help");
+    setDescriptionSection((prev) => prev === "help" ? "metrics" : "help");
   };
 
   // ── Overflow detection для expandable description ──
@@ -1415,7 +1426,13 @@ export function TsAnalysisEDA() {
               key={check.id}
               onClick={() => {
                 setActiveCheckId(check.id);
-                if (descriptionSection === "help") setDescriptionSection(null);
+                // Инвариант информативности (2026-09-15, зеркально
+                // VALID-2/PREPR-2): переключение остановки автозагружает
+                // её «Метрики и алгоритм» (вместо прежнего сброса Справки
+                // в placeholder). Клик по УЖЕ активной остановке секцию
+                // не меняет (открытая Справка остаётся) — прежняя
+                // семантика сохранена.
+                if (check.id !== activeCheckId) setDescriptionSection("metrics");
               }}
               className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors ${
                 check.id === activeCheckId

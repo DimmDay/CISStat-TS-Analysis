@@ -874,8 +874,10 @@ describe("TsAnalysisEDA", () => {
     render(<TsAnalysisEDA />);
     const helpButton = screen.getByRole("button", { name: /Справка/i });
 
-    // До клика — плейсхолдер
-    expect(screen.getByText(/Нажмите «Метрики и алгоритм»/i)).toBeInTheDocument();
+    // До клика — автозагруженные метрики активной остановки «Описательные
+    // статистики» (инвариант информативности EDA-2), а не плейсхолдер.
+    expect(screen.getByText(/Метрики и алгоритм: Описательные статистики/)).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
 
     // Клик
     fireEvent.click(helpButton);
@@ -887,17 +889,19 @@ describe("TsAnalysisEDA", () => {
     expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("clicking 'Справка' toggles content off on second click", () => {
+  it("clicking 'Справка' returns to the active stop's metrics on second click (EDA-2)", () => {
     render(<TsAnalysisEDA />);
     const helpButton = screen.getByRole("button", { name: /Справка/i });
 
-    // Первый клик — показываем
+    // Первый клик — показываем справку
     fireEvent.click(helpButton);
     expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
 
-    // Второй клик — скрываем (toggle)
+    // Второй клик — возврат к метрикам активной остановки (не плейсхолдер):
+    // закрытие Справки возвращает инвариант информативности.
     fireEvent.click(helpButton);
-    expect(screen.getByText(/Нажмите «Метрики и алгоритм»/i)).toBeInTheDocument();
+    expect(screen.getByText(/Метрики и алгоритм: Описательные статистики/)).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
   });
 
   // ── Expandable Description Box ──
@@ -1136,5 +1140,128 @@ describe("TsAnalysisEDA — зелёная подсветка пройденны
     expect(skippedButton).not.toHaveClass("bg-green-50");
     expect(skippedButton).not.toHaveClass("border-green-200");
     expect(skippedButton).not.toHaveClass("text-green-800");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Инвариант информативности (Task EDA-2, 2026-09-15) — зеркально VALID-2 и
+// PREPR-2: активная остановка степпера АВТОМАТИЧЕСКИ загружает в «Описание»
+// содержимое «Метрики и алгоритм» данной остановки (и делает кнопку активной)
+// — вне зависимости от статуса остановки. Контент метрик — статические
+// константы компонента (без зависимостей от /dataset/eda-*-профилей и наличия
+// датасета), поэтому автозагрузка возможна всегда. Явный пользовательский
+// выбор («Полный пайплайн») остаётся приоритетным, пока пользователь сам не
+// вернётся к метрикам.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("TsAnalysisEDA — автозагрузка «Метрики и алгоритм» активной остановки (инвариант информативности)", () => {
+  it("auto-loads the active stop's metrics into the description box on page load", async () => {
+    // Статус активной остановки в момент первого рендера — running (профиль
+    // ещё грузится), после разрешения — done: инвариант действует вне
+    // зависимости от статуса, «Описание» сразу показывает метрики первой
+    // активной остановки.
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+
+    expect(await screen.findByText(/Метрики и алгоритм: Описательные статистики/)).toBeInTheDocument();
+    expect(screen.getByText(/Эвристика формы распределения/)).toBeInTheDocument();
+    expect(screen.getByText("Метрики и алгоритм — Описательные статистики")).toBeInTheDocument();
+    // Placeholder больше никогда не появляется.
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Выберите раздел в боковой панели")).not.toBeInTheDocument();
+
+    // Кнопка «Метрики и алгоритм» активной остановки — в активном (индиго)
+    // состоянии; кнопка соседней карточки — нет.
+    const metricsButtons = screen.getAllByRole("button", { name: "Метрики и алгоритм" });
+    expect(metricsButtons[0]).toHaveClass("bg-brand", "text-white");
+    expect(metricsButtons[1]).not.toHaveClass("bg-brand");
+    expect(metricsButtons[1]).toHaveClass("bg-brand-light");
+  });
+
+  it("auto-loads metrics when switching stops via the stepper (pending stop, no second click)", async () => {
+    // «IH-анализ» остаётся pending при дефолтных моках (профиль ещё не
+    // запрашивался до активации) — инвариант не зависит и от этого статуса.
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+
+    // Клик по другой остановке степпера («IH-анализ», pending)
+    fireEvent.click(screen.getByRole("button", { name: /^IH-анализ/ }));
+
+    // Метрики автозагрузились БЕЗ клика по кнопке «Метрики и алгоритм».
+    expect(screen.getByText(/Метрики и алгоритм: IH-анализ/)).toBeInTheDocument();
+    expect(screen.getByText("Метрики и алгоритм — IH-анализ")).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
+
+    // Кнопка новой активной остановки активна (orderedChecks сортирует её
+    // первой), кнопка прежней активной остановки — нет.
+    const metricsButtons = screen.getAllByRole("button", { name: "Метрики и алгоритм" });
+    expect(metricsButtons[0]).toHaveClass("bg-brand", "text-white");
+    expect(metricsButtons[1]).not.toHaveClass("bg-brand");
+  });
+
+  it("auto-loads metrics for a done stop after its profile has evaluated (status-independence)", async () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+
+    // Сигналы done-статуса «Описательных статистик» (как в сюите зелёной
+    // подсветки): профиль загружен, признак синхронизирован.
+    await screen.findByRole("table", { name: "Описательные статистики по числовым признакам" });
+    const selector = screen.getByRole("combobox", { name: "Исследуемый признак:" });
+    await waitFor(() => expect(selector).toHaveValue("Price"));
+
+    // Переключаемся на «Матрицу моделей» и обратно на пройденную остановку:
+    // клик по done-остановке автозагружает метрики так же, как для pending.
+    fireEvent.click(screen.getByRole("button", { name: /^Матрица моделей/ }));
+    fireEvent.click(screen.getByRole("button", { name: /^Описательные статистики/ }));
+
+    expect(screen.getByText(/Метрики и алгоритм: Описательные статистики/)).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
+    const metricsButtons = screen.getAllByRole("button", { name: "Метрики и алгоритм" });
+    expect(metricsButtons[0]).toHaveClass("bg-brand", "text-white");
+  });
+
+  it("closing the Help toggle returns to the active stop's metrics (not the placeholder)", () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Справка" }));
+    expect(screen.getAllByText(/Цели модуля/i).length).toBeGreaterThanOrEqual(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Справка" }));
+    expect(screen.getByText(/Метрики и алгоритм: Описательные статистики/)).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
+  });
+
+  it("explicit pipeline click still wins over the invariant until the user switches back", () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+
+    // Гард: автозагрузка не ломает явный пользовательский выбор пайплайна
+    // (кнопка активной карточки — первая в orderedChecks).
+    fireEvent.click(screen.getAllByRole("button", { name: "Полный пайплайн" })[0]);
+    expect(screen.getByText(/Полный пайплайн: описательные статистики/)).toBeInTheDocument();
+    expect(screen.queryByText(/Метрики и алгоритм: Описательные статистики/)).not.toBeInTheDocument();
+
+    // Возврат к метрикам — явным кликом по кнопке «Метрики и алгоритм».
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/Метрики и алгоритм: Описательные статистики/)).toBeInTheDocument();
+  });
+
+  it("clicking the already-active stop keeps an open Help section (former semantics preserved)", () => {
+    global.fetch = jest.fn(routeFetch) as jest.Mock;
+    render(<TsAnalysisEDA />);
+
+    // Открываем Справку
+    fireEvent.click(screen.getByRole("button", { name: "Справка" }));
+    expect(screen.getAllByText(/Цели модуля/i).length).toBeGreaterThanOrEqual(1);
+
+    // Клик по УЖЕ активной остановке («Описательные статистики») секцию
+    // не меняет — открытая Справка остаётся (прежняя семантика сохранена).
+    fireEvent.click(screen.getByRole("button", { name: /^Описательные статистики/ }));
+    expect(screen.getAllByText(/Цели модуля/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText(/Метрики и алгоритм: Описательные статистики/)).not.toBeInTheDocument();
+
+    // А вот переключение на ДРУГУЮ остановку автозагружает её метрики.
+    fireEvent.click(screen.getByRole("button", { name: /^IH-анализ/ }));
+    expect(screen.getByText(/Метрики и алгоритм: IH-анализ/)).toBeInTheDocument();
   });
 });
