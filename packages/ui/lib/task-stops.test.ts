@@ -321,6 +321,52 @@ describe("ctaStageInfo (symmetric micro-CTA: awaiting + blocked)", () => {
   });
 });
 
+// ── Правило входа в реестр (R6, вариант A): производимость артефактов ──
+// Мина сертификации IA-1: TaskArtifact декларирует артефакты, которые
+// бэкенд мог не производить; задача с непроизводимым requires стала бы
+// пожизненной awaiting-карточкой (ложное обещание хаба). Правило: артефакт
+// допустим в requires только если этап-владелец выставляется в "done"
+// роутером бэкенда. Свидетельства (spec_tasks_ia.md §5, R6):
+//   validated    -> validation:   session.py::get_dataset_validate (вариант C:
+//                  успешный общий запуск 10 проверок; API-тест
+//                  tests/api/test_dataset_validate.py::
+//                  test_validate_marks_validation_stage_done)
+//   model_card   -> modeling:     modeling_session.py:3258 (создание Model Card)
+//   forecast_run -> forecasting:  forecasting_session.py:182 (завершение ForecastRun)
+// Allowlist сознательно живёт в ТЕСТЕ: его обновление — осознанное решение
+// в том же PR, где меняется контракт или слой артефактов.
+
+const BACKEND_PRODUCIBLE_ARTIFACTS: TaskArtifact[] = [
+  "validated",
+  "model_card",
+  "forecast_run",
+];
+
+describe("registry admission rule (R6): backend-producible artifacts", () => {
+  it("every registry task's requires is inside the producer allowlist", () => {
+    TASK_ROUTES.forEach((t) => {
+      t.requires.forEach((a) =>
+        expect(BACKEND_PRODUCIBLE_ARTIFACTS).toContain(a)
+      );
+    });
+  });
+
+  it("allowlist enumerates the WHOLE artifact layer (new artifact = conscious PR)", () => {
+    // Новый член ARTIFACT_STAGE без обновлённого allowlist (и свидетельств
+    // продюсера) роняет этот тест — мина не проходит молча.
+    expect([...BACKEND_PRODUCIBLE_ARTIFACTS].sort()).toEqual(
+      Object.keys(ARTIFACT_STAGE).sort()
+    );
+  });
+
+  it("every allowlist member maps to a real STAGE_DEFS key (layer integrity)", () => {
+    const stageKeys = STAGE_DEFS.map((s) => s.key);
+    BACKEND_PRODUCIBLE_ARTIFACTS.forEach((a) =>
+      expect(stageKeys).toContain(ARTIFACT_STAGE[a])
+    );
+  });
+});
+
 // ── taskRecommendedHint: подсказка «рекомендуемый, не гейтящий» (R2) ──
 
 describe("taskRecommendedHint", () => {

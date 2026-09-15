@@ -1230,6 +1230,14 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
     consistency/uniqueness/regularity) -- см. ValidationCheckResult.scope
     в ответе и докстринг _run_all_checks. Несуществующая колонка -- 404,
     не молчаливый игнор параметра.
+
+    Этап пайплайна (R6, вариант C, 2026-09-15): успешное завершение
+    запуска выставляет stages.validation = "done" -- артефакт слоя задач
+    «validated» произведён (task-stops.ts: ARTIFACT_STAGE.validated ->
+    этап "validation"). Семантика «работа выполнена» (зеркало
+    моделирования: model_card создан -> modeling done), НЕ «данные
+    чисты» (это отдельное поле is_valid). Свежесть гарантирует
+    set_dataset: новый датасет сбрасывает этапы в pending.
     """
     session_id = get_or_create_session_id(request, response)
     session = get_session_store().get_or_create(session_id)
@@ -1323,7 +1331,7 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
         for check in checks.values()
     )
 
-    return DatasetValidateResponse(
+    payload = DatasetValidateResponse(
         is_valid=policy_is_valid,
         rules_source=(
             "session" if session.type_schema or session.validation_rule_overrides
@@ -1348,6 +1356,17 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
         ),
         checks=checks,
     )
+
+    # R6/вариант C (2026-09-15): артефакт слоя задач «validated» произведён
+    # -- stages.validation = "done". До этого момента ни один роутер не
+    # выставлял этот этап (мина сертификации IA-1: задача с
+    # requires:["validated"] была бы навсегда awaiting). Контракт
+    # SessionStore: мутация -- обязательно save().
+    session.set_stage("validation", "done")
+    session.touch()
+    get_session_store().save(session)
+
+    return payload
 
 
 @router.get("/dataset/validation-rules", response_model=DatasetValidationRulesResponse)

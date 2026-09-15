@@ -228,3 +228,45 @@ def test_dataset_wide_checks_report_scope_dataset_regardless_of_column_param():
     body = resp.json()
     for check_id in ("data_types", "consistency", "uniqueness", "regularity"):
         assert body["checks"][check_id]["scope"] == "dataset", check_id
+
+
+# ── Валидация как этап пайплайна (R6, вариант C, 2026-09-15) ──────────
+# Артефакт слоя задач «validated» (packages/ui/lib/task-stops.ts:
+# ARTIFACT_STAGE.validated -> этап "validation") производится ЗДЕСЬ:
+# успешное завершение общего запуска набора проверок выставляет
+# stages.validation = "done". Семантика -- «работа выполнена» (зеркало
+# моделирования: model_card создан -> modeling done, modeling_session.py:3258),
+# НЕ «данные чисты» (это отдельное поле ответа is_valid). Свежесть
+# гарантирует set_dataset: новый датасет сбрасывает этапы в pending
+# (apps/api/session_store.py::set_dataset -- "Новый датасет -- сбрасывает
+# прогресс по этапам").
+
+def test_validate_marks_validation_stage_done():
+    df = pd.DataFrame({"price": [10.0, 20.0, 30.0], "label": ["a", "b", "c"]})
+    _upload_df(df)
+    # После загрузки валидация ещё не выполнена.
+    stages = client.get("/v1/session/current").json()["stages"]
+    assert stages["validation"] == "pending"
+
+    resp = client.get("/v1/session/dataset/validate")
+    assert resp.status_code == 200, resp.text
+    stages = client.get("/v1/session/current").json()["stages"]
+    assert stages["validation"] == "done"
+
+
+def test_validate_404_without_dataset_leaves_stage_pending():
+    """Без активного датасета эндпоинт 404 -- этап не трогается."""
+    resp = client.get("/v1/session/dataset/validate")
+    assert resp.status_code == 404
+    stages = client.get("/v1/session/current").json()["stages"]
+    assert stages["validation"] == "pending"
+
+
+def test_new_dataset_resets_validation_stage():
+    """Новый датасет устаревает артефакт validated: этап снова pending."""
+    _upload_df(pd.DataFrame({"price": [10.0, 20.0, 30.0]}))
+    client.get("/v1/session/dataset/validate")
+    assert client.get("/v1/session/current").json()["stages"]["validation"] == "done"
+
+    _upload_df(pd.DataFrame({"price": [1.0, 2.0, 3.0], "extra": ["x", "y", "z"]}))
+    assert client.get("/v1/session/current").json()["stages"]["validation"] == "pending"
