@@ -322,8 +322,10 @@ describe("TsAnalysisPreprocessing", () => {
     render(<TsAnalysisPreprocessing />);
     const helpButton = screen.getByRole("button", { name: /Справка/i });
 
-    // До клика — плейсхолдер
-    expect(screen.getByText(/Нажмите «Метрики и алгоритм»/i)).toBeInTheDocument();
+    // До клика — автозагруженные метрики активной остановки «Пропуски»
+    // (инвариант информативности PREPR-2), а не плейсхолдер.
+    expect(screen.getByText(/Метрики и алгоритм: Пропуски/)).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
 
     // Клик
     fireEvent.click(helpButton);
@@ -335,17 +337,19 @@ describe("TsAnalysisPreprocessing", () => {
     expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("clicking 'Справка' toggles content off on second click", () => {
+  it("clicking 'Справка' returns to the active stop's metrics on second click (PREPR-2)", () => {
     render(<TsAnalysisPreprocessing />);
     const helpButton = screen.getByRole("button", { name: /Справка/i });
 
-    // Первый клик — показываем
+    // Первый клик — показываем справку
     fireEvent.click(helpButton);
     expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
 
-    // Второй клик — скрываем (toggle)
+    // Второй клик — возврат к метрикам активной остановки (не плейсхолдер):
+    // закрытие Справки возвращает инвариант информативности.
     fireEvent.click(helpButton);
-    expect(screen.getByText(/Нажмите «Метрики и алгоритм»/i)).toBeInTheDocument();
+    expect(screen.getByText(/Метрики и алгоритм: Пропуски/)).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
   });
 
   // ── Expandable Description Box ──
@@ -989,5 +993,122 @@ describe("TsAnalysisPreprocessing — зелёная подсветка прой
     expect(skippedButton).not.toHaveClass("bg-green-50");
     expect(skippedButton).not.toHaveClass("border-green-200");
     expect(skippedButton).not.toHaveClass("text-green-800");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Инвариант информативности (Task PREPR-2, 2026-09-15) — зеркально VALID-2:
+// активная остановка степпера АВТОМАТИЧЕСКИ загружает в «Описание» содержимое
+// «Метрики и алгоритм» данной остановки (и делает кнопку активной) — вне
+// зависимости от статуса остановки. Контент метрик — статические константы
+// компонента (без зависимостей от /dataset/*-профилей и наличия датасета),
+// поэтому автозагрузка возможна всегда. Явный пользовательский выбор
+// («Исправить …»/мастер) остаётся приоритетным, пока пользователь сам не
+// вернётся к метрикам.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("TsAnalysisPreprocessing — автозагрузка «Метрики и алгоритм» активной остановки (инвариант информативности)", () => {
+  beforeEach(() => {
+    global.fetch = routeFetch();
+  });
+
+  it("auto-loads the active stop's metrics into the description box on page load (warning status)", async () => {
+    // Дефолтный профиль «Пропусков» — warning (найдены пропуски): инвариант
+    // действует вне зависимости от статуса — «Описание» сразу показывает
+    // метрики первой активной остановки.
+    render(<TsAnalysisPreprocessing />);
+
+    expect(await screen.findByText(/Метрики и алгоритм: Пропуски/)).toBeInTheDocument();
+    expect(screen.getByText(/Алгоритм backend/)).toBeInTheDocument();
+    expect(screen.getByText("Метрики и алгоритм — Пропуски")).toBeInTheDocument();
+    // Placeholder больше никогда не появляется.
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Выберите раздел в боковой панели")).not.toBeInTheDocument();
+
+    // Кнопка «Метрики и алгоритм» активной остановки — в активном (индиго)
+    // состоянии; кнопка соседней карточки — нет.
+    const metricsButtons = screen.getAllByRole("button", { name: "Метрики и алгоритм" });
+    expect(metricsButtons[0]).toHaveClass("bg-brand", "text-white");
+    expect(metricsButtons[1]).not.toHaveClass("bg-brand");
+    expect(metricsButtons[1]).toHaveClass("bg-brand-light");
+  });
+
+  it("auto-loads metrics when switching stops via the stepper (pending stop, no second click)", async () => {
+    // Оверрайд статуса профиля «Выбросов» на pending («Проверка не
+    // запускалась») — инвариант не зависит и от этого статуса.
+    global.fetch = routeFetch({
+      outliers: { ...OUTLIERS_PROFILE, status: "pending" },
+    });
+    render(<TsAnalysisPreprocessing />);
+
+    // Клик по другой остановке степпера («Выбросы», pending)
+    fireEvent.click((await screen.findAllByRole("button", { name: /Выбросы/ }))[0]);
+
+    // Метрики автозагрузились БЕЗ клика по кнопке «Метрики и алгоритм».
+    expect(screen.getByText(/Метрики и алгоритм: Выбросы/)).toBeInTheDocument();
+    expect(screen.getByText(/Четыре метода на выбор/)).toBeInTheDocument();
+    expect(screen.getByText("Метрики и алгоритм — Выбросы")).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
+
+    // Кнопка новой активной остановки активна (orderedChecks сортирует её
+    // первой), кнопка прежней активной остановки — нет.
+    const metricsButtons = screen.getAllByRole("button", { name: "Метрики и алгоритм" });
+    expect(metricsButtons[0]).toHaveClass("bg-brand", "text-white");
+    expect(metricsButtons[1]).not.toHaveClass("bg-brand");
+  });
+
+  it("auto-loads metrics for a done stop (status-independence)", async () => {
+    // Дефолтный профиль «Регулярности ряда» — done («Проверка пройдена»):
+    // клик по пройденной остановке автозагружает метрики так же, как для
+    // warning/pending — статус не влияет на инвариант.
+    render(<TsAnalysisPreprocessing />);
+
+    fireEvent.click((await screen.findAllByRole("button", { name: /Регулярность ряда/ }))[0]);
+
+    expect(screen.getByText(/Метрики и алгоритм: Регулярность ряда/)).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
+    const metricsButtons = screen.getAllByRole("button", { name: "Метрики и алгоритм" });
+    expect(metricsButtons[0]).toHaveClass("bg-brand", "text-white");
+  });
+
+  it("closing the Help toggle returns to the active stop's metrics (not the placeholder)", async () => {
+    render(<TsAnalysisPreprocessing />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Справка" }));
+    expect(screen.getAllByText(/Цели модуля/i).length).toBeGreaterThanOrEqual(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Справка" }));
+    expect(screen.getByText(/Метрики и алгоритм: Пропуски/)).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
+  });
+
+  it("explicit pipeline click still wins over the invariant until the user switches back", async () => {
+    render(<TsAnalysisPreprocessing />);
+
+    // Гард: автозагрузка не ломает явный пользовательский выбор мастера.
+    fireEvent.click(await screen.findByRole("button", { name: "Исправить пропуски" }));
+    expect((await screen.findAllByText(/Мастер исправления пропусков/)).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Метрики и алгоритм: Пропуски/)).not.toBeInTheDocument();
+
+    // Возврат к метрикам — явным кликом по кнопке «Метрики и алгоритм».
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText(/Метрики и алгоритм: Пропуски/)).toBeInTheDocument();
+  });
+
+  it("clicking the already-active stop keeps an open Help section (former semantics preserved)", async () => {
+    render(<TsAnalysisPreprocessing />);
+
+    // Открываем Справку
+    fireEvent.click(await screen.findByRole("button", { name: "Справка" }));
+    expect(screen.getAllByText(/Цели модуля/i).length).toBeGreaterThanOrEqual(1);
+
+    // Клик по УЖЕ активной остановке («Пропуски») секцию не меняет —
+    // открытая Справка остаётся (прежняя семантика сохранена).
+    fireEvent.click(screen.getAllByRole("button", { name: /Пропуски/ })[0]);
+    expect(screen.getAllByText(/Цели модуля/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText(/Метрики и алгоритм: Пропуски/)).not.toBeInTheDocument();
+
+    // А вот переключение на ДРУГУЮ остановку автозагружает её метрики.
+    fireEvent.click((await screen.findAllByRole("button", { name: /Выбросы/ }))[0]);
+    expect(screen.getByText(/Метрики и алгоритм: Выбросы/)).toBeInTheDocument();
   });
 });
