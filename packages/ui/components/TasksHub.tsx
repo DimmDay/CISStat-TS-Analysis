@@ -22,6 +22,8 @@ import {
   pipelineStartedFromStages,
   deriveTaskGateState,
   taskGateReason,
+  awaitStageInfo,
+  taskRecommendedHint,
 } from "../lib/task-stops";
 import { TaskCard } from "./TaskCard";
 
@@ -62,9 +64,26 @@ export function TasksHub() {
             artifacts,
             pipelineStarted
           );
+          // R2: подсказка о рекомендуемом (не гейтящем) артефакте.
+          const recommendedHint = taskRecommendedHint(
+            task.recommendedWith ?? [],
+            artifacts
+          );
+          // R5: этап-владелец недостающего артефакта — цель микро-CTA.
+          const awaitStage = awaitStageInfo(
+            task.requires,
+            artifacts,
+            pipelineStarted
+          );
           return (
             <div role="listitem" key={task.id}>
-              <TaskCard task={task} state={state} reason={reason} />
+              <TaskCard
+                task={task}
+                state={state}
+                reason={reason}
+                recommendedHint={recommendedHint}
+                awaitStage={awaitStage}
+              />
             </div>
           );
         })}

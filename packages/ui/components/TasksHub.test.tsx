@@ -4,8 +4,15 @@
 //   - шапка + сетка 4 карточек (TaskCard) с ролью list;
 //   - три состояния по сессии: blocked (свежая), awaiting (частичный
 //     прогресс), available (контракт выполнен);
-//   - некликабельные состояния НЕ ссылки; available — ссылки на /tasks/<id>;
+//   - некликабельные состояния НЕ ссылки на задачу; available — ссылки
+//     на /tasks/<id>; awaiting-карточки содержат микро-CTA «Перейти
+//     к этапу …» (R5) — ссылку на этап-владелец недостающего артефакта;
+//   - доступная «Сценарии» с отсутствующим forecast_run показывает
+//     подсказку рекомендуемого (не гейтящего) артефакта (R2);
 //   - причины недоступности видны пользователю.
+//
+// Контракт ссылок: fresh-сессия — 0 ссылок; после Моделирования —
+// 2 задач + 2 CTA; полный пайплайн — 4 задач, CTA и подсказок нет.
 
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -67,30 +74,68 @@ describe("TasksHub", () => {
     mockStages = stagesOf({ validation: "done", modeling: "done" });
     const { container } = render(<TasksHub />);
 
-    const links = Array.from(container.querySelectorAll("a"));
-    expect(links.map((l) => l.getAttribute("href"))).toEqual(
+    // Ссылки на ЗАДАЧИ — только с доступным контрактом.
+    const taskLinks = Array.from(
+      container.querySelectorAll('a[href^="/tasks/"]')
+    );
+    expect(taskLinks.map((l) => l.getAttribute("href"))).toEqual(
       expect.arrayContaining(["/tasks/scenarios", "/tasks/causes"])
     );
-    expect(links).toHaveLength(2);
+    expect(taskLinks).toHaveLength(2);
 
     // Прогнозные задачи ещё не доступны — причина называет этап.
     const awaiting = screen.getAllByText(/Станет доступна после этапа Прогнозирование/);
     expect(awaiting).toHaveLength(2);
+
+    // Микро-CTA (R5): каждая awaiting-карточка ведёт на этап-владелец.
+    const ctas = screen.getAllByRole("link", {
+      name: "Перейти к этапу Прогнозирование",
+    });
+    expect(ctas).toHaveLength(2);
+    ctas.forEach((cta) =>
+      expect(cta).toHaveAttribute("href", "/forecasting")
+    );
+
+    // Подсказка рекомендуемого артефакта (R2): только у доступных Сценариев
+    // (forecast_run отсутствует; у Причин recommendedWith не объявлен).
+    expect(
+      screen.getByText("Рекомендуется также этап Прогнозирование")
+    ).toBeInTheDocument();
+
+    // Всего ссылок: 2 задач + 2 CTA.
+    expect(container.querySelectorAll("a")).toHaveLength(4);
   });
 
   it("partial pipeline (validation done only): all cards still locked, but awaiting (amber), not blocked", () => {
     mockStages = stagesOf({ validation: "done" });
     const { container } = render(<TasksHub />);
 
-    expect(container.querySelectorAll("a")).toHaveLength(0);
+    // Ни одной ссылки на задачу; карточки не кликабельны.
+    expect(container.querySelectorAll('a[href^="/tasks/"]')).toHaveLength(0);
     // Модельные задачи ждут Моделирование.
     expect(screen.getAllByText(/Станет доступна после этапа Моделирование/)).toHaveLength(2);
     // Прогнозные ждут Прогнозирование (пайплайн уже начат — не blocked).
     expect(screen.getAllByText(/Станет доступна после этапа Прогнозирование/)).toHaveLength(2);
     expect(screen.queryByText(/Начните с этапа Загрузка/)).toBeNull();
+
+    // Микро-CTA (R5): модельные — на /modeling, прогнозные — на /forecasting.
+    const toModeling = screen.getAllByRole("link", {
+      name: "Перейти к этапу Моделирование",
+    });
+    const toForecasting = screen.getAllByRole("link", {
+      name: "Перейти к этапу Прогнозирование",
+    });
+    expect(toModeling).toHaveLength(2);
+    expect(toForecasting).toHaveLength(2);
+    toModeling.forEach((cta) => expect(cta).toHaveAttribute("href", "/modeling"));
+    toForecasting.forEach((cta) =>
+      expect(cta).toHaveAttribute("href", "/forecasting")
+    );
+    // Подсказок рекомендуемого артефакта нет: ни одна задача не available.
+    expect(screen.queryByText(/Рекомендуется также/)).toBeNull();
   });
 
-  it("full pipeline: all 4 cards are links to their routes", () => {
+  it("full pipeline: all 4 cards are links to their routes, no CTAs, no hints", () => {
     mockStages = stagesOf({
       upload: "done",
       validation: "done",
@@ -101,15 +146,19 @@ describe("TasksHub", () => {
     });
     const { container } = render(<TasksHub />);
 
-    const hrefs = Array.from(container.querySelectorAll("a")).map((a) =>
-      a.getAttribute("href")
-    );
+    const hrefs = Array.from(
+      container.querySelectorAll('a[href^="/tasks/"]')
+    ).map((a) => a.getAttribute("href"));
     expect(hrefs).toEqual([
       "/tasks/scenarios",
       "/tasks/causes",
       "/tasks/decisions",
       "/tasks/monitoring",
     ]);
+    // Полный пайплайн: подсказок и CTA не остаётся (артефакты есть).
+    expect(screen.queryByRole("link", { name: /Перейти к этапу/ })).toBeNull();
+    expect(screen.queryByText(/Рекомендуется также/)).toBeNull();
+    expect(container.querySelectorAll("a")).toHaveLength(4);
   });
 
   it("cards inherit the RouteCard visual DNA (badge-card with brand border)", () => {

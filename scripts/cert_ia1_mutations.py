@@ -20,6 +20,7 @@ BACKUP_DIR = Path("/home/z/my-project/scripts/.ia1_backup")
 
 JEST_TARGETS = [
     "packages/ui/lib/task-stops.test.ts",
+    "packages/ui/components/TaskCard.test.tsx",  # R3: unit-защита TaskCard (срез R2-R5)
     "packages/ui/components/TasksHub.test.tsx",
     "apps/standalone/app/tasks/page.test.tsx",
 ]
@@ -51,12 +52,12 @@ MUTANTS = [
      'return STAGE_DEFS.every((s) => stages[s.key] === "done");',
      "pipelineStarted only when ALL stages done"),
     ("M7", TS,
-     ".sort((a, b) => order.indexOf(a) - order.indexOf(b))[0];",
-     ".sort()[0];",
-     "pipeline-order sort removed (dead code for 1-artifact contracts?)"),
+     "(a, b) => PIPELINE_ORDER.indexOf(a) - PIPELINE_ORDER.indexOf(b)",
+     "(a, b) => 0",
+     "pipeline-order comparator removed (requires-order wins -- out-of-order contracts break)"),
     ("M8", TS,
-     "return `Станет доступна после этапа ${stage?.label ?? stageKey}`;",
-     "return `Станет доступна после этапа ${stageKey}`;",
+     "return `Станет доступна после этапа ${stage.label}`;",
+     "return `Станет доступна после этапа ${stage.key}`;",
      "human label fallback removed -> raw key shown"),
     ("M9", TS,
      'model_card: "modeling",',
@@ -82,6 +83,10 @@ MUTANTS = [
      'aria-label={`Задача «${task.title}» недоступна: ${reason ?? ""}`}',
      "aria-label={task.title}",
      "aria reason stripped from non-clickable card"),
+    ("M15", TS,
+     "return `Рекомендуется также этап ${stage?.label ?? firstMissing}`;",
+     "return `Рекомендуется также этап ${stage?.key ?? firstMissing}`;",
+     "recommended hint shows raw key instead of human label (R2)"),
 ]
 
 

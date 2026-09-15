@@ -8,25 +8,38 @@
 // тремя состояниями гейтинга:
 //
 //   available — кликабельная ссылка на /tasks/<id> (DNA RouteCard 1:1);
+//               опционально — плашка-призрак «Рекомендуется также этап …»
+//               для рекомендуемых (НЕ гейтящих) артефактов (R2);
 //   awaiting  — некликабельная карточка с amber-плашкой причины
 //               («Станет доступна после этапа …»): пайплайн движется,
-//               недостающий артефакт создаст обязательный этап;
+//               недостающий артефакт создаст обязательный этап; плюс
+//               микро-CTA «Перейти к этапу …» на этап-владелец (R5);
 //   blocked   — некликабельная карточка с нейтральной плашкой
 //               («Начните с этапа Загрузка …»): сессия свежая.
 //
-// Некликабельные состояния сознательно НЕ ссылки: навигация на
-// нереализуемую пока задачу — ложный аффорданс. a11y: роль group с
-// aria-label, содержащим название задачи и причину.
+// Некликабельные состояния сознательно НЕ ссылки на задачу: навигация на
+// нереализуемую пока задачу — ложный аффорданс. Микро-CTA (R5) этому
+// не противоречит: он ведёт на РЕАЛИЗОВАННЫЙ этап пайплайна и помечен
+// явно. a11y: роль group с aria-label, содержащим название задачи и
+// причину.
 
 import Link from "next/link";
-import { Lock } from "lucide-react";
-import type { TaskRoute, TaskGateState } from "../lib/task-stops";
+import { ArrowRight, Lock, Sparkles } from "lucide-react";
+import type {
+  StagePointer,
+  TaskGateState,
+  TaskRoute,
+} from "../lib/task-stops";
 
 export interface TaskCardProps {
   task: TaskRoute;
   state: TaskGateState;
   /** Человекочитаемая причина недоступности (null для available). */
   reason: string | null;
+  /** Подсказка «рекомендуемый, не гейтящий» артефакт (R2; available). */
+  recommendedHint?: string | null;
+  /** Этап-владелец недостающего артефакта — цель микро-CTA (R5; awaiting). */
+  awaitStage?: StagePointer | null;
 }
 
 // ── Классы состояния ───────────────────────────────────────────
@@ -54,7 +67,13 @@ const CHIP_BY_STATE: Record<TaskGateState, string> = {
   blocked: "bg-neutral-100 text-neutral-500",
 };
 
-export function TaskCard({ task, state, reason }: TaskCardProps) {
+export function TaskCard({
+  task,
+  state,
+  reason,
+  recommendedHint,
+  awaitStage,
+}: TaskCardProps) {
   const Icon = task.icon;
   const available = state === "available";
 
@@ -84,6 +103,27 @@ export function TaskCard({ task, state, reason }: TaskCardProps) {
             <Lock size={12} aria-hidden="true" />
             {reason}
           </span>
+        )}
+        {available && recommendedHint && (
+          // Плашка-призрак (R2): рекомендуемый артефакт ещё не создан.
+          // НЕ гейтит и НЕ блокирует клик — это совет, не турникет.
+          <span
+            className="mt-2 inline-flex items-center gap-1 rounded-full border border-dashed border-brand/40 bg-white/70 px-2.5 py-0.5 text-xs font-medium text-brand"
+          >
+            <Sparkles size={12} aria-hidden="true" />
+            {recommendedHint}
+          </span>
+        )}
+        {state === "awaiting" && awaitStage && (
+          // Микро-CTA (R5): продолжение паттерна цепочки PRE-1/EDA-1/
+          // MODEL-1 внутри хаба — причина сообщает этап, CTA даёт движение.
+          <Link
+            href={awaitStage.href}
+            className="mt-2 flex w-fit items-center gap-1 rounded-sm text-xs font-semibold text-brand hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2"
+          >
+            Перейти к этапу {awaitStage.label}
+            <ArrowRight size={12} aria-hidden="true" />
+          </Link>
         )}
       </span>
     </>

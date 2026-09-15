@@ -272,11 +272,14 @@ export {
   pipelineStartedFromStages,
   deriveTaskGateState,
   taskGateReason,
+  awaitStageInfo,
+  taskRecommendedHint,
 } from "./lib/task-stops";
 export type {
   TaskRoute,
   TaskArtifact,
   TaskGateState,
+  StagePointer,
 } from "./lib/task-stops";
 
 // Контракт Роль/План/Возможности (зеркало apps/api/plans.py) -- только для UX,

@@ -28,6 +28,16 @@ export type TaskArtifact = "validated" | "model_card" | "forecast_run";
 /** Три состояния задачи в хабе (spec_tasks_ia.md §4). */
 export type TaskGateState = "available" | "awaiting" | "blocked";
 
+/** Указатель на этап пайплайна (цель микро-CTA awaiting-карточки, R5). */
+export interface StagePointer {
+  /** Ключ этапа (совпадает с STAGE_DEFS key). */
+  key: string;
+  /** Человекочитаемая метка этапа. */
+  label: string;
+  /** Маршрут этапа (STAGE_DEFS href). */
+  href: string;
+}
+
 export interface TaskRoute {
   /** Стабильный идентификатор (маршрут /tasks/<id>, ключи React). */
   id: string;
@@ -41,6 +51,8 @@ export interface TaskRoute {
   href: string;
   /** Контракт входа: артефакты, без которых исполнение невозможно. */
   requires: TaskArtifact[];
+  /** Рекомендуемые (НЕ гейтящие) артефакты — подсказка хаба (spec §2, R2). */
+  recommendedWith?: TaskArtifact[];
 }
 
 // ── Реестр задач v1 (spec_tasks_ia.md §5) ──────────────────────
@@ -53,6 +65,9 @@ export const TASK_ROUTES: TaskRoute[] = [
     icon: GitBranch,
     href: "/tasks/scenarios",
     requires: ["model_card"],
+    // spec_tasks_ia.md §2: forecast_run — рекомендуемый (не гейтящий)
+    // артефакт: веер налагается на базовый прогноз. Подсказка хаба (R2).
+    recommendedWith: ["forecast_run"],
   },
   {
     id: "causes",
@@ -107,6 +122,27 @@ export function pipelineStartedFromStages(
 
 // ── Гейтинг: три состояния (spec_tasks_ia.md §4) ──────────────
 
+/** Порядок артефактов = порядок пайплайна (spec_tasks_ia.md §4). */
+const PIPELINE_ORDER: TaskArtifact[] = [
+  "validated",
+  "model_card",
+  "forecast_run",
+];
+
+/** Первый недостающий артефакт контракта в порядке пайплайна; null — всё есть. */
+function firstMissingArtifact(
+  requires: TaskArtifact[],
+  artifacts: TaskArtifact[]
+): TaskArtifact | null {
+  const missing = requires.filter((r) => !artifacts.includes(r));
+  if (missing.length === 0) return null;
+  return (
+    missing.sort(
+      (a, b) => PIPELINE_ORDER.indexOf(a) - PIPELINE_ORDER.indexOf(b)
+    )[0] ?? null
+  );
+}
+
 /**
  * available — весь контракт входа satisfied;
  * awaiting   — контракт не satisfied, но пайплайн уже начат
@@ -121,6 +157,27 @@ export function deriveTaskGateState(
   const satisfied = requires.every((r) => artifacts.includes(r));
   if (satisfied) return "available";
   return pipelineStarted ? "awaiting" : "blocked";
+}
+
+/**
+ * Куда идти за недостающим артефактом (awaiting): этап-владелец ПЕРВОГО
+ * недостающего артефакта в порядке пайплайна — общий источник истины для
+ * текста причины (taskGateReason) и цели микро-CTA (R5). null — вне awaiting.
+ */
+export function awaitStageInfo(
+  requires: TaskArtifact[],
+  artifacts: TaskArtifact[],
+  pipelineStarted: boolean
+): StagePointer | null {
+  if (
+    deriveTaskGateState(requires, artifacts, pipelineStarted) !== "awaiting"
+  ) {
+    return null;
+  }
+  const firstMissing = firstMissingArtifact(requires, artifacts);
+  if (!firstMissing) return null;
+  const stage = STAGE_DEFS.find((s) => s.key === ARTIFACT_STAGE[firstMissing]);
+  return stage ? { key: stage.key, label: stage.label, href: stage.href } : null;
 }
 
 /**
@@ -139,12 +196,28 @@ export function taskGateReason(
     return "Начните с этапа Загрузка — задачи работают поверх артефактов пайплайна";
   }
 
-  // awaiting: первый недостающий артефакт в порядке пайплайна.
-  const order: TaskArtifact[] = ["validated", "model_card", "forecast_run"];
-  const firstMissing = requires
-    .filter((r) => !artifacts.includes(r))
-    .sort((a, b) => order.indexOf(a) - order.indexOf(b))[0];
-  const stageKey = ARTIFACT_STAGE[firstMissing];
-  const stage = STAGE_DEFS.find((s) => s.key === stageKey);
-  return `Станет доступна после этапа ${stage?.label ?? stageKey}`;
+  // awaiting: первый недостающий артефакт в порядке пайплайна (см. R5).
+  const stage = awaitStageInfo(requires, artifacts, pipelineStarted);
+  if (stage) {
+    return `Станет доступна после этапа ${stage.label}`;
+  }
+  const firstMissing = firstMissingArtifact(requires, artifacts);
+  return `Станет доступна после этапа ${
+    firstMissing ? ARTIFACT_STAGE[firstMissing] : "?"
+  }`;
+}
+
+/**
+ * Подсказка о рекомендуемом (НЕ гейтящем) артефакте (spec_tasks_ia.md §2,
+ * R2 сертификации IA-1): «Рекомендуется также этап {Label}». null — когда
+ * подсказывать нечего (рекомендации пусты или уже выполнены).
+ */
+export function taskRecommendedHint(
+  recommended: TaskArtifact[],
+  artifacts: TaskArtifact[]
+): string | null {
+  const firstMissing = firstMissingArtifact(recommended, artifacts);
+  if (!firstMissing) return null;
+  const stage = STAGE_DEFS.find((s) => s.key === ARTIFACT_STAGE[firstMissing]);
+  return `Рекомендуется также этап ${stage?.label ?? firstMissing}`;
 }

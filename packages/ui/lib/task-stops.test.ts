@@ -22,6 +22,8 @@ import {
   pipelineStartedFromStages,
   deriveTaskGateState,
   taskGateReason,
+  awaitStageInfo,
+  taskRecommendedHint,
 } from "./task-stops";
 import { STAGE_DEFS, StageStatus } from "./stages";
 
@@ -173,5 +175,124 @@ describe("taskGateReason", () => {
   it("blocked reason points to the pipeline start (Загрузка)", () => {
     const reason = taskGateReason(["model_card"], [], false);
     expect(reason).toContain("Загрузка");
+  });
+});
+
+// ── Мультиартефактные контракты: детерминизм порядка пайплайна (R4) ──
+// Для v1-реестра все контракты одноартефактные; ветка «первый недостающий
+// в порядке пайплайна» исполняется только синтетическими контрактами.
+// Эти тесты оживляют сортировку ДО появления первого мультиартефактного
+// контракта (мутант M7 аудита IA-1: удаление сортировки -> алфавитный
+// порядок -> forecast_run выигрывает у model_card/validated).
+
+describe("multi-artifact contracts: pipeline-order determinism (R4)", () => {
+  it("first missing artifact follows pipeline order, not alphabetical", () => {
+    // Все три артефакта недостающие -> первый по пайплайну validated.
+    // Алфавитный порядок дал бы forecast_run («Прогнозирование»).
+    const reason = taskGateReason(
+      ["validated", "model_card", "forecast_run"],
+      [],
+      true
+    );
+    expect(reason).toContain("Валидация");
+    expect(reason).not.toContain("Прогнозирование");
+  });
+
+  it("model_card beats forecast_run when both are missing", () => {
+    const reason = taskGateReason(
+      ["model_card", "forecast_run"],
+      ["validated"],
+      true
+    );
+    expect(reason).toContain("Моделирование");
+    expect(reason).not.toContain("Прогнозирование");
+  });
+
+  it("pipeline order wins even when the contract is declared out of order", () => {
+    // Контракт объявлен задом наперёд: sorting по requires-порядку
+    // (или отсутствие компаратора) дал бы «Прогнозирование».
+    const reason = taskGateReason(
+      ["forecast_run", "model_card"],
+      ["validated"],
+      true
+    );
+    expect(reason).toContain("Моделирование");
+    expect(reason).not.toContain("Прогнозирование");
+    expect(reason).not.toContain("Валидация");
+  });
+
+  it("awaitStageInfo honours pipeline order for out-of-order contracts", () => {
+    expect(
+      awaitStageInfo(["forecast_run", "validated"], [], true)?.key
+    ).toBe("validation");
+  });
+
+  it("present artifacts satisfy their part of a multi-artifact contract", () => {
+    expect(
+      deriveTaskGateState(
+        ["validated", "forecast_run"],
+        ["validated", "model_card", "forecast_run"],
+        true
+      )
+    ).toBe("available");
+    expect(
+      deriveTaskGateState(["validated", "forecast_run"], ["validated"], true)
+    ).toBe("awaiting");
+  });
+});
+
+// ── awaitStageInfo: указатель этапа для микро-CTA (R5) ──────────
+
+describe("awaitStageInfo", () => {
+  it("returns the owner-stage pointer for an awaiting contract", () => {
+    expect(awaitStageInfo(["model_card"], ["validated"], true)).toEqual({
+      key: "modeling",
+      label: "Моделирование",
+      href: "/modeling",
+    });
+  });
+
+  it("returns null for available and blocked states", () => {
+    expect(awaitStageInfo(["model_card"], ["model_card"], true)).toBeNull();
+    expect(awaitStageInfo(["model_card"], [], false)).toBeNull();
+  });
+
+  it("multi-artifact: pointer follows the first missing artifact in pipeline order", () => {
+    expect(awaitStageInfo(["validated", "forecast_run"], [], true)?.key).toBe(
+      "validation"
+    );
+    expect(
+      awaitStageInfo(["model_card", "forecast_run"], ["validated"], true)?.href
+    ).toBe("/modeling");
+  });
+});
+
+// ── taskRecommendedHint: подсказка «рекомендуемый, не гейтящий» (R2) ──
+
+describe("taskRecommendedHint", () => {
+  it("returns null when the recommended artifact already exists", () => {
+    expect(
+      taskRecommendedHint(["forecast_run"], ["model_card", "forecast_run"])
+    ).toBeNull();
+  });
+
+  it("returns null when nothing is recommended", () => {
+    expect(taskRecommendedHint([], [])).toBeNull();
+    expect(taskRecommendedHint([], ["model_card"])).toBeNull();
+  });
+
+  it("names the recommended stage when the artifact is missing", () => {
+    expect(taskRecommendedHint(["forecast_run"], ["model_card"])).toBe(
+      "Рекомендуется также этап Прогнозирование"
+    );
+  });
+
+  it("scenarios registry entry declares forecast_run as recommendedWith (spec §2)", () => {
+    const scenarios = TASK_ROUTES.find((t) => t.id === "scenarios");
+    expect(scenarios?.recommendedWith).toEqual(["forecast_run"]);
+    // Остальные задачи v1 подсказок не объявляют.
+    TASK_ROUTES.filter((t) => t.id !== "scenarios").forEach((t) =>
+      expect(t.recommendedWith).toBeUndefined()
+    );
   });
 });

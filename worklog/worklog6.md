@@ -754,3 +754,106 @@ TDD-цикл соблюдён (RED подтверждён в журнале ис
 - ВНЕ ДЕРЕВА (аудиторские скрипты): scripts/cert_ia1_mutations.py,
   scripts/cert_ia1_oracle.test.ts.bak (в репозиторий не входят).
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md).
+
+## Task IA-1/R2-R5 -- Хаб «Задачи»: подсказка рекомендуемого артефакта (R2), unit-защита TaskCard (R3), мультиартефактный порядок (R4), микро-CTA в awaiting (R5)
+
+Дата: 2026-09-15.  Синхронизация: main@bbd04f8 (запись сертификации IA-1
+перенесена тимлидом в worklog6.md; производственные файлы IA-1 не менялись
+с 6581c98 -- sha256 task-stops.ts/TaskCard.tsx совпали с baseline аудита).
+Постановка тимлида: R1 закрыт решением («де-факто заголовок/подзаголовок
+хаба корректны, копию не трогаем»); реализовать R2-R5 из рекомендаций
+сертификации IA-1. Полный цикл AGENTS.md: TDD (RED подтверждён), GREEN,
+регрессия, typecheck, build.
+
+### Что реализовано
+
+- **R2 (recommendedWith, spec_tasks_ia.md §2/§7):** `TaskRoute.recommendedWith?`
+  (опционально; только «Сценарии» = ["forecast_run"]) + чистая
+  `taskRecommendedHint(recommended, artifacts)` -> «Рекомендуется также
+  этап Прогнозирование». Рендер: плашка-призрак на ДОСТУПНОЙ карточке
+  (пунктирная brand-рамка, Sparkles, text-xs) — совет, НЕ турникет:
+  не гейтит клик и исчезает, когда артефакт создан. Вырезанный в v1
+  scope (§7) закрыт без расширения контракта состояний.
+- **R3 (unit-защита TaskCard):** НОВЫЙ packages/ui/components/TaskCard.test.tsx
+  (12 кейсов): три состояния × (роль link/group, href, класс-маппинг
+  SHELL/ICON/CHIP, aria-label, Lock/Sparkles/ArrowRight), типографическая
+  DNA (text-base/text-sm, и запрет text-lg) на уровне компонента.
+  Убивает мутантов M13/M14 на самом компоненте (находка #4 сертификации).
+- **R4 (мультиартефактный порядок):** 5 кейсов в task-stops.test.ts,
+  включая контракт, объявленный ЗАДOM НАПЕРЁД (["forecast_run","model_card"]
+  при artifacts=["validated"] -> причина «…Моделирование», НЕ
+  «…Прогнозирование») — оживляет сортировку «первого недостающего» ДО
+  появления первого мультиартефактного контракта в реестре (мутант M7);
+  отдельно зафиксировано: present-артефакты закрывают свою часть
+  мультиартефактного контракта.
+- **R5 (микро-CTA):** чистая `awaitStageInfo(requires, artifacts,
+  pipelineStarted)` -> StagePointer {key,label} — ЕДИНЫЙ источник истины
+  для текста причины и цели CTA (taskGateReason отрефакторен на неё,
+  строки причин сохранены байт-в-байт). Рендер: в awaiting-карточке под
+  amber-плашкой ссылка «Перейти к этапу {Label}» (ArrowRight, text-brand,
+  focus-ring) на STAGE_DEFS.href. НЕ противоречит защите от ложного
+  аффорданса: CTA ведёт на РЕАЛИЗОВАННЫЙ этап пайплайна и помечен явно.
+  blocked-карточки CTA не получают (scope: awaiting; симметричное
+  расширение на blocked — тривиальный follow-up вне этой задачи).
+- Экспорты @cisstat/ui: + awaitStageInfo, taskRecommendedHint (значения),
+  + StagePointer (тип).
+
+### Риски и их закрытие
+
+- Изменение DOM-контракта ссылок хаба (awaiting теперь содержит 1 CTA-ссылку):
+  критерий §8 «свежая сессия — ни одной ссылки» СОХРАНЁН (blocked без CTA,
+  0 ссылок); тесты переведены на фильтр 'a[href^="/tasks/"]' для задачных
+  ссылок + явные проверки CTA (после Моделирования: 2 задач + 2 CTA =
+  4; частичный пайплайн: 0 задач + 4 CTA; полный: 4 задач, CTA нет).
+- Срыв текстов причин при рефакторинге taskGateReason: строки зафиксированы
+  существующими тестами — не изменились.
+- A11y: ссылка внутри div role=group валидна (group не интерактивен);
+  aria-label группы сохранён; CTA имеет собственное имя; иконки aria-hidden.
+- Обратная совместимость: новые пропсы TaskCard опциональны;
+  recommendedWith опционален; потребители вне хаба отсутствуют.
+
+### TDD
+
+- RED: task-stops.test.ts (срыв компиляции на отсутствующих экспортах),
+  TaskCard.test.tsx (suite failed to run — пропсов нет), TasksHub.test.tsx
+  (2 падения на CTA/подсказке) — подтверждён ДО реализации.
+- GREEN: модуль 48/48 (task-stops 29 + TaskCard 12 + TasksHub 6 + page 1;
+  было 24 — рост за счёт R3/R4 и юнитов R2/R5).
+
+### Верификация
+
+- Полная frontend-регрессия: **103 сюиты / 1004 passed / 0 failed**
+  (базлайн bbd04f8 замерен точно: 102/980; арифметика: 980 + 24 новых
+  теста [task-stops +12, TaskCard +12] = 1004, +1 сюита [TaskCard.test.tsx];
+  регрессий вне задачи нет).
+- npm run typecheck:all -- 0 ошибок (embedded + standalone).
+- npm run build (standalone) -- успешно; /tasks + 4 маршрута статичны,
+  First Load JS без деградации (481 kB, иконки lucide +2 симв. классов).
+- **Контрольный мутационный прогон** (scripts/cert_ia1_mutations.py,
+  защита расширена TaskCard.test.tsx): **15/15 KILLED, 0 SURVIVED** --
+  включая M7 (срыв компаратора порядка), M13 (text-base DNA), M14 (aria),
+  M15 (новый: raw key в подсказке R2). Тестовая защита модуля стала
+  ПОЛНОЙ относительно матрицы мутантов сертификации.
+- Оракул-инварианты сертификации IA-1 (O1-O11) не затронуты:
+  deriveTaskGateState/artifactsFromStages/pipelineStartedFromStages не
+  менялись; taskGateReason сохранён поведенчески (рефакторинг на
+  awaitStageInfo).
+
+### Границы Task IA-1/R2-R5 (что осознанно НЕ сделано)
+
+- R1 (aria-label списка «Задачи на основе прогноза») — ЗАКРЫТ ТИМЛИДОМ
+  решением «копия хаба корректна»; НЕ менялся.
+- Микро-CTA для blocked-карточек («Начните с этапа Загрузка» без ссылки)
+  — сознательно вне scope; follow-up при необходимости.
+- Содержимое задач (What-if/XAI/iDSS/мониторинг) — отдельные вертикальные
+  срезы (spec §7).
+- ModuleNav, STAGES, бэкенд, embedded — НЕ затронуты (запрет спеки §3).
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md).
+
+Изменённые/новые файлы (ZIP: download/task_ia1_r2_r5_tasks_hub.zip):
+- НОВЫЕ: packages/ui/components/TaskCard.test.tsx
+- ИЗМЕНЁННЫЕ: packages/ui/lib/task-stops.ts,
+  packages/ui/lib/task-stops.test.ts, packages/ui/components/TaskCard.tsx,
+  packages/ui/components/TasksHub.tsx, packages/ui/components/TasksHub.test.tsx,
+  packages/ui/index.ts, scripts/cert_ia1_mutations.py,
+  worklog/worklog6.md (этот журнал).
