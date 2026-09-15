@@ -371,8 +371,11 @@ describe("TsAnalysisValidation", () => {
     renderValidation();
     const rulesButton = await screen.findByTestId("rules-management-btn");
 
-    // До клика — центральное поле содержит плейсхолдер
-    expect(screen.getByText(/Нажмите «Метрики и алгоритм»/i)).toBeInTheDocument();
+    // До клика — центральное поле показывает метрики активной остановки
+    // (инвариант автозагрузки «Метрики и алгоритм», 2026-09-15): placeholder
+    // больше никогда не появляется.
+    expect(screen.getByText("Метрики и алгоритм — Типы данных")).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
 
     // Клик
     fireEvent.click(rulesButton);
@@ -384,17 +387,20 @@ describe("TsAnalysisValidation", () => {
     expect(screen.getAllByText(/шаблон/i).length).toBeGreaterThan(0);
   });
 
-  it("clicking the rules button toggles content off on second click", async () => {
+  it("clicking the rules button toggles content off on second click (back to active stop metrics)", async () => {
     renderValidation();
     const rulesButton = await screen.findByTestId("rules-management-btn");
 
-    // Первый клик — показываем
+    // Первый клик — показываем панель правил
     fireEvent.click(rulesButton);
     expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Метрики и алгоритм — Типы данных")).not.toBeInTheDocument();
 
-    // Второй клик — скрываем (toggle)
+    // Второй клик — скрываем (toggle): возврат к метрикам активной
+    // остановки (инвариант автозагрузки), НЕ к placeholder.
     fireEvent.click(rulesButton);
-    expect(screen.getByText(/Нажмите «Метрики и алгоритм»/i)).toBeInTheDocument();
+    expect(screen.getByText("Метрики и алгоритм — Типы данных")).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
   });
 
   it("rules button is visually distinct — has outlined/dashed style class", async () => {
@@ -415,9 +421,10 @@ describe("TsAnalysisValidation", () => {
   it("expand button is not visible when no content is loaded", async () => {
     renderValidation();
     await waitFor(() => expect(screen.getByText("Описание")).toBeInTheDocument());
-    // В начальном состоянии (плейсхолдер) нет overflow → нет chevron
+    // С инвариантом автозагрузки (2026-09-15) контент метрик активной
+    // остановки показывается сразу; в jsdom нет layout (scrollHeight/
+    // clientHeight = 0) -> overflow не детектируется -> chevron нет.
     const expandBtn = screen.queryByTestId("desc-expand-btn");
-    // Плейсхолдер короткий, overflow маловероятен
     expect(expandBtn).toBeNull();
   });
 
@@ -602,7 +609,11 @@ describe("TsAnalysisValidation", () => {
 
     expect(await screen.findByText("Эталон диапазонов не задан")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Диапазоны значений/ }));
-    expect(await screen.findByText(/Эталон диапазонов не задан/i)).toBeInTheDocument();
+    // Точный текст: строка статуса в карточке панели управления. Regex
+    // здесь более не годится (инвариант автозагрузки, 2026-09-15):
+    // метрики «Диапазонов значений» сами документируют статус фразой
+    // «Эталон диапазонов не задан» и тоже совпадали бы по подстроке.
+    expect(await screen.findByText("Эталон диапазонов не задан")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Исправить диапазоны значений" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Исправить диапазоны значений" }));
@@ -1127,4 +1138,129 @@ describe("TsAnalysisValidation — зелёная подсветка пройд�
     expect(needsRuleButton).not.toHaveClass("text-green-800");
   });
 
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Автозагрузка «Метрики и алгоритм» активной остановки в окно «Описание»
+// (инвариант информативности, 2026-09-15).
+//
+// Постановка тимлида: при загрузке страницы степпер стоит на первой активной
+// остановке «Типы данных», а в окне «Описание» — placeholder «Нажмите
+// «Метрики и алгоритм»…». Принцип: активная остановка степпера АВТОМАТИЧЕСКИ
+// загружает в «Описание» содержимое кнопки «Метрики и алгоритм» данной
+// остановки (и делает кнопку активной). Вне зависимости от статуса остановки.
+//
+// Блокирующих зависимостей нет: контент метрик — статические константы
+// (*_METRICS_DESCRIPTION) + статический CHECK_META; не зависит ни от
+// GET /dataset/validate, ни от статуса, ни от наличия датасета. Кнопки
+// рендерятся для всех 10 проверок безусловно.
+//
+// Инвариант покрывает ВСЕ пути возврата: загрузка страницы (initial state),
+// клик по остановке степпера, закрытие Справки, закрытие Управления правилами.
+// Явный пользовательский выбор («Исправить этап проверки»/pipeline) остаётся
+// приоритетным, пока пользователь сам не вернётся к метрикам.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("TsAnalysisValidation — автозагрузка «Метрики и алгоритм» активной остановки (инвариант информативности)", () => {
+  it("auto-loads the active stop's metrics into the description box on page load (pending status, no dataset)", async () => {
+    // Без датасета все проверки pending — инвариант действует вне зависимости
+    // от статуса: «Описание» сразу показывает метрики «Типы данных».
+    renderValidation();
+
+    expect(await screen.findByText("Метрики и алгоритм — Типы данных")).toBeInTheDocument();
+    expect(screen.getByText(/Фактический профиль типов/i)).toBeInTheDocument();
+    // Placeholder больше никогда не появляется.
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("Выберите раздел в боковой панели")).not.toBeInTheDocument();
+
+    // Кнопка «Метрики и алгоритм» активной остановки — в активном (индиго)
+    // состоянии; кнопка соседней карточки — нет.
+    const metricsButtons = screen.getAllByRole("button", { name: "Метрики и алгоритм" });
+    expect(metricsButtons[0]).toHaveClass("bg-brand", "text-white");
+    expect(metricsButtons[1]).not.toHaveClass("bg-brand");
+    expect(metricsButtons[1]).toHaveClass("bg-brand-light");
+  });
+
+  it("auto-loads metrics when switching stops via the stepper (pending stop, no second click)", async () => {
+    renderValidation();
+
+    // Клик по другой остановке степпера («Уникальность», pending без датасета)
+    fireEvent.click((await screen.findAllByRole("button", { name: /Уникальность/ }))[0]);
+
+    // Метрики автозагрузились БЕЗ клика по кнопке «Метрики и алгоритм».
+    expect(screen.getByText("Метрики и алгоритм — Уникальность")).toBeInTheDocument();
+    expect(screen.getByText(/Duplicate groups/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
+
+    // Кнопка новой активной остановки активна (orderedChecks сортирует её
+    // первой), кнопка прежней активной остановки — нет.
+    const metricsButtons = screen.getAllByRole("button", { name: "Метрики и алгоритм" });
+    expect(metricsButtons[0]).toHaveClass("bg-brand", "text-white");
+    expect(metricsButtons[1]).not.toHaveClass("bg-brand");
+  });
+
+  it("auto-loads metrics for a done stop after validation has run (status-independence)", async () => {
+    let validateCalls = 0;
+    mockActiveValidation(() => {
+      validateCalls += 1;
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          ...validationResponse("done", "schema", 0),
+          checks: Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, {
+            status: "done", count: 0, items: [], scope: "dataset", rule_source: "system",
+          }])),
+        }),
+      });
+    });
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    await waitFor(() => expect(validateCalls).toBe(1));
+    expect((await screen.findAllByText("Проверка пройдена")).length).toBe(10);
+
+    // Клик по пройденной (done) остановке — метрики автозагружаются
+    // так же, как для pending: статус не влияет на инвариант.
+    fireEvent.click(screen.getByRole("button", { name: /^Форматы и шаблоны/ }));
+
+    expect(screen.getByText("Метрики и алгоритм — Форматы и шаблоны")).toBeInTheDocument();
+    expect(screen.getByText(/полное совпадение регулярному выражению/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
+  });
+
+  it("closing the Help toggle returns to the active stop's metrics (not the placeholder)", async () => {
+    renderValidation();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Справка" }));
+    expect(screen.getByText("Справка по стандартам качества данных")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Справка" }));
+    expect(screen.getByText("Метрики и алгоритм — Типы данных")).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
+  });
+
+  it("closing the Rules management toggle returns to the active stop's metrics (not the placeholder)", async () => {
+    renderValidation();
+    const rulesButton = await screen.findByTestId("rules-management-btn");
+
+    fireEvent.click(rulesButton);
+    expect(screen.getByRole("heading", { name: /Управление правилами валидации/i })).toBeInTheDocument();
+
+    fireEvent.click(rulesButton);
+    expect(screen.getByText("Метрики и алгоритм — Типы данных")).toBeInTheDocument();
+    expect(screen.queryByText(/Нажмите «Метрики и алгоритм»/i)).not.toBeInTheDocument();
+  });
+
+  it("explicit pipeline click still wins over the invariant until the user switches back", async () => {
+    renderValidation();
+
+    // Гард: автозагрузка не ломает явный пользовательский выбор мастера.
+    fireEvent.click(await screen.findByRole("button", { name: "Исправить типы данных" }));
+    expect(screen.getAllByText("Мастер исправления типов").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Метрики и алгоритм — Типы данных")).not.toBeInTheDocument();
+
+    // Возврат к метрикам — явным кликом по кнопке «Метрики и алгоритм».
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(screen.getByText("Метрики и алгоритм — Типы данных")).toBeInTheDocument();
+  });
 });

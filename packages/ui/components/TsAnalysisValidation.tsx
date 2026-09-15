@@ -438,7 +438,15 @@ const SUFFICIENCY_PIPELINE_DESCRIPTION = `Мастер решений по до�
 export function TsAnalysisValidation() {
   const { activeDataset } = useAppShell();
   const [activeCheckId, setActiveCheckId] = useState(CHECK_META[0].id);
-  const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | "rules" | null>(null);
+  // Инвариант информативности (2026-09-15): активная остановка степпера
+  // АВТОМАТИЧЕСКИ загружает в «Описание» содержимое «Метрики и алгоритм»
+  // данной остановки (и делает кнопку активной) — вне зависимости от статуса
+  // остановки. Контент метрик — статические константы (без зависимостей от
+  // /dataset/validate и наличия датасета), поэтому автозагрузка возможна
+  // всегда. Секция null более не производится: начальное состояние —
+  // "metrics", клик по остановке степпера и закрытие Справки/Правил
+  // возвращают к "metrics".
+  const [descriptionSection, setDescriptionSection] = useState<"metrics" | "pipeline" | "help" | "rules" | null>("metrics");
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [hasOverflow, setHasOverflow] = useState(false);
   const descRef = useRef<HTMLDivElement>(null);
@@ -648,14 +656,16 @@ export function TsAnalysisValidation() {
     }
   };
 
-  // Показать справку по стандартам DQ
+  // Показать справку по стандартам DQ (toggle: закрытие возвращает
+  // к метрикам активной остановки — инвариант информативности)
   const handleHelpClick = () => {
-    setDescriptionSection((prev) => prev === "help" ? null : "help");
+    setDescriptionSection((prev) => prev === "help" ? "metrics" : "help");
   };
 
-  // Показать/скрыть «Управление правилами»
+  // Показать/скрыть «Управление правилами» (toggle: закрытие возвращает
+  // к метрикам активной остановки — инвариант информативности)
   const handleRulesClick = () => {
-    setDescriptionSection((prev) => prev === "rules" ? null : "rules");
+    setDescriptionSection((prev) => prev === "rules" ? "metrics" : "rules");
   };
 
   // ── Overflow detection для expandable description ──
@@ -799,7 +809,12 @@ export function TsAnalysisValidation() {
               key={check.id}
               onClick={() => {
                 setActiveCheckId(check.id);
-                if (check.id !== activeCheckId) setDescriptionSection(null);
+                // Инвариант информативности (2026-09-15): переключение
+                // остановки автозагружает её «Метрики и алгоритм» (вместо
+                // прежнего сброса в placeholder). Клик по УЖЕ активной
+                // остановке секцию не меняет (открытая Справка/Правилы
+                // остаются) — прежняя семантика сохранена.
+                if (check.id !== activeCheckId) setDescriptionSection("metrics");
               }}
               className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors ${
                 check.id === activeCheckId
