@@ -1413,3 +1413,159 @@ RED->GREEN, полная регрессия, typecheck/build обеих обол
   (+6 кейсов новой сюиты; переписаны 2 placeholder-теста),
   worklog/worklog6.md (этот журнал).
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md).
+
+---
+
+## Task NAVBG-1 -- Вкладка «Знакомство с платформой» (/navigator): авторский фон по паттерну главной страницы + футер
+
+Дата: 2026-09-16.  Синхронизация: main@765faee (Task EDA-2, autoload
+metrics), дерево чистое до правки.  Постановка тимлида: «Во вложении фон
+для данной страницы. Реализуй поставку данного фона на "Знакомство с
+платформой" по паттерну главной страницы - отрицательная верхняя
+граница, скругленные углы. Внизу поставь футер, также в полном
+соответствии с главной страницей. Следуй AGENTS.md».  Полный цикл:
+TDD RED->GREEN, программная сверка переноса с источником, полная
+регрессия, typecheck/build обеих оболочек.
+
+### Дизайн (эталон и точки изменения)
+
+- ЭТАЛОН: apps/standalone/app/page.tsx (главная): обёртка
+  «relative isolate -mt-6 pt-6» (компенсация py-6 из <main>
+  layout.tsx: абсолютный фон доходит до ModuleNav, контент не
+  сдвигается; -mt-6/pt-6 -- один токен шкалы 1.5rem, компенсация
+  точная) + HomeWavesBackground (absolute inset-0 -z-10
+  overflow-hidden rounded-2xl, inline SVG) + HomeFooter последним
+  элементом потока.
+- ИСТОЧНИК ФОНА: авторский файл
+  CISStat_TS_Analysis_wave_background_3200x1600.svg (холст
+  1600x3200, вертикальная композиция под длинную страницу): rect-
+  подложка с диагональным градиентом + 4 полупрозрачные «ленты» +
+  нижняя мягкая ширма + 3 тонких белых штриха-акцента = 1 rect +
+  9 path, 6 linearGradient.
+- ТОЧКИ ИЗМЕНЕНИЯ: (1) НОВЫЙ NavigatorWavesBackground.tsx в
+  packages/ui -- дословный перенос SVG в JSX по прецеденту
+  HomeWavesBackground; (2) apps/standalone/app/navigator/page.tsx --
+  обёртка + фон + HomeFooter; (3) экспорт в packages/ui/index.ts;
+  (4) НОВЫЕ тесты компонента и страницы.
+- Футер: HomeFooter с дефолтным backgroundColor #CAD7F7 -- тот же,
+  что на главной («в полном соответствии с главной страницей»);
+  компонент документирует «фон -- свой для каждой страницы», но
+  изобретать отдельный тинт для navigator постановка не требует --
+  дефолт главной честнее; замена на специфичный цвет = правка одного
+  пропа по отдельному решению тимлида.
+
+### Два сознательных презентационных отличия от исходного SVG
+(оба -- по прецеденту HomeWavesBackground, задокументированы в
+докстринге компонента и прижаты тестами):
+
+1. id градиентов (bg/waveA/waveB/waveC/waveD/lower) префиксованы
+   «cisstat-nav-»: SVG id глобальны для DOM; голый "bg" почти
+   гарантированно столкнётся с другими инлайн-SVG платформы
+   (иконки, Recharts, фон главной -- там свои префиксы
+   cisstat-home-*). Цвета/offset'ы/opacity скопированы точно.
+2. preserveAspectRatio="none" вместо "xMidYMid slice" источника:
+   фон обязан заполнять фактическую коробку страницы (absolute
+   inset-0) целиком; slice обрезал бы композицию, а мягкие волны
+   допускают растяжение -- тот же паттерн, что у главной.
+
+### Оценка рисков и решения
+
+1. Shared-композиция PlatformIntroduction НЕ тронута -- она
+   используется и embedded (apps/embedded/app/navigator/page.tsx);
+   фон/футер подключены на уровне standalone-страницы, embedded не
+   затронут (прецедент фона/футера главной: standalone-only).
+2. Вертикальная композиция источника (1600x3200) рассчитана на
+   длинную страницу -- /navigator (hero + этапы + навигатор +
+   футер) отвечает этому назначению; при resize растяжение
+   равномерное (preserveAspectRatio="none").
+3. Классы rounded-2xl/overflow-hidden уже в бандле (главная):
+   риск purge-потери исключён.
+4. Существующая нижняя черта page-bottom-separator внутри
+   PlatformIntroduction сохранена: это элемент shared-композиции
+   (embedded), не фоновой коробки; гасить её только в standalone
+   -- вне мандата постановки (на главной черту убирал сам
+   HomeCapabilities, правка 8).
+5. isolate на обёртке удерживает -z-10 фона внутри страницы
+   (фон не уходит под ModuleNav/ProductHeader).
+6. Footer внутри фоновой коробки -- как на главной (bg-бокс
+   обёртки простирается за футер; у футера свой rounded-2xl и
+   свой фон #CAD7F7).
+
+### TDD (RED -> GREEN)
+
+- RED: (a) packages/ui/components/NavigatorWavesBackground.test.tsx
+  -- сюита не собиралась (модуль отсутствует, TS2307);
+  (b) apps/standalone/app/navigator/page.test.tsx -- 5 падений из 6
+  (обёртка -mt-6/pt-6 отсутствует, фон/футер не рендерятся), гард
+  «композиция PlatformIntroduction сохранена» проходил ДО правки.
+- GREEN: 10/10 (компонент) + 6/6 (страница).  Два промежуточных
+  падения -- ошибки ОЖИДАНИЙ теста, не реализации: (1) ссылок на
+  градиенты 7, а не 6 (rect-подложка тоже ссылается на bg);
+  (2) источник содержит stroke-opacity=".80" -- перенос дословный,
+  ожидание уточнено на ".80".  Повторный GREEN всех целевых сюит
+  (включая соседей HomeWavesBackground/HomeFooter/
+  PlatformIntroduction/главная) -- 46/46.
+- Гард дословности: тест компонента прижимает ВСЕ 9 точных d-строк
+  источника (в порядке документа), точную палитру 16 stop-color,
+  3 штриха (stroke-opacity .80/.68/.78, width 3) и полупрозрачные
+  заливки (.58/.52).
+
+### Программная сверка переноса с источником (не на глаз)
+
+- scripts/task_navbg_verify_transfer.py: парсит исходный SVG и
+  компонент, сверяет поэлементно в порядке документа: 6 градиентов
+  (координаты x1/y1/x2/y2, stop offset/color/opacity), rect
+  (размер/fill), 9 path (d=, fill, stroke, stroke-opacity,
+  stroke-width, opacity).  Разрешённые отличия -- ТОЛЬКО префикс id
+  и camelCase имён JSX-атрибутов при байт-равных значениях.
+  Итог: TRANSFER VERIFICATION OK (6 + 1 + 9, байт-равенство).
+- Вспомогательный scripts/task_navbg_extract_source.py -- извлечение
+  точной структуры источника для сборки компонента.
+
+### Верификация
+
+- Полная frontend-регрессия: **105 сюит / 1048 passed / 0 failed**
+  (базлайн main@765faee -- 103/1032; +2 сюиты / +16 тестов
+  [компонент 10 + страница 6] -- арифметика сходится; регрессий
+  вне задачи нет).
+- npm run typecheck:all -- 0 ошибок (embedded + standalone);
+  npm run build:all -- Compiled successfully x2 (13/13 embedded,
+  17/17 standalone static pages).
+- Прод-смоук собранного маршрута: apps/standalone/.next/server/app/
+  navigator.html содержит все 6 префиксованных градиентов
+  cisstat-nav-*, геометрию источниковых path, обёртку -mt-6 pt-6 и
+  футер <footer aria-label="Подвал сайта" class="rounded-2xl..."
+  style="background-color:#CAD7F7">.
+- Backend не затронут (0 файлов .py); правка действует в ОБЕИХ
+  оболочках через общий компонент packages/ui, НО подключена
+  только в standalone-странице (embedded рендерит
+  PlatformIntroduction без фоновой обёртки -- без изменений).
+
+### Границы Task NAVBG-1 (что осознанно НЕ сделано)
+
+- Embedded (/navigator) -- фон/футер НЕ подключались: shared-
+  композиция не тронута, постановка ссылается на standalone
+  (ts-standalone.vercel.app/navigator); при необходимости
+  подключения в embedded -- отдельная постановка (там нет
+  ModuleNav/py-6-обёртки главной -- компенсация другая).
+- Специфичный тинт футера под палитру фона navigator (компонент
+  параметризован пропом) -- не изобретался: дефолт #CAD7F7 =
+  «полное соответствие главной»; замена -- правка одного пропа.
+- Нижняя черта page-bottom-separator (внутри PlatformIntroduction)
+  -- сохранена (shared, embedded); гасить только в standalone --
+  вне мандата.
+- Остальные вкладки платформы -- не тронуты.
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); рабочее дерево
+  main@765faee + изменения Task NAVBG-1.
+
+Изменённые/новые файлы (ZIP: download/task_navbg1_navigator_background_footer.zip):
+- НОВЫЕ: packages/ui/components/NavigatorWavesBackground.tsx,
+  packages/ui/components/NavigatorWavesBackground.test.tsx,
+  apps/standalone/app/navigator/page.test.tsx,
+  scripts/task_navbg_extract_source.py,
+  scripts/task_navbg_verify_transfer.py
+- ИЗМЕНЁННЫЕ: apps/standalone/app/navigator/page.tsx (обёртка
+  relative isolate -mt-6 pt-6 + NavigatorWavesBackground + HomeFooter,
+  докстринг паттерна), packages/ui/index.ts (экспорт),
+  worklog/worklog6.md (этот журнал).
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md).

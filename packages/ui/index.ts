@@ -17,6 +17,10 @@ export { HomeCapabilities } from "./components/HomeCapabilities";
 // HomeWavesBackground: декоративный фон главной страницы (мягкие волны,
 // шаблон — скриншот «Вариант 1. Волны»), только standalone.
 export { HomeWavesBackground } from "./components/HomeWavesBackground";
+// NavigatorWavesBackground: декоративный фон страницы «Знакомство с
+// платформой» /navigator (точный перенос авторского SVG 1600×3200),
+// только standalone — по паттерну главной страницы.
+export { NavigatorWavesBackground } from "./components/NavigatorWavesBackground";
 // HomeFooter: футер главной страницы standalone (Task w/n, 2026-09-13).
 // Шаблон — футер главной страницы портала CISStat (структура 1:1 из
 // продового DOM; блок legal-дисклеймера под футером игнорируется).
