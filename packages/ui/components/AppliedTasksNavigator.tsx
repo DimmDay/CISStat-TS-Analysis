@@ -43,7 +43,12 @@ export function AppliedTasksNavigator() {
   };
 
   return (
-    <div className="flex flex-col xl:flex-row gap-6 xl:gap-[49px] mt-8">
+    // Боковые поля 24px трёхколоночного layout (паттерн главной страницы,
+    // Task w/n; прецедент NAVBG-2 на nav-сетке секции 1): px-6 — собственные
+    // поля от границ фоновой коробки. Сжатие — ТОЛЬКО за счёт колонки
+    // «Описание»: xl:w-60/xl:w-80 + shrink-0 фиксированы, flex-1 min-w-0
+    // поглощает всю дельту.
+    <div className="flex flex-col xl:flex-row gap-6 xl:gap-[49px] mt-8 px-6">
       <aside className="w-full xl:w-60 shrink-0">
         <div className="flex items-center gap-2 mb-4">
           <MapPin size={16} className="text-brand" aria-hidden="true" />
@@ -158,7 +163,7 @@ export function AppliedTasksNavigator() {
                 onClick={() => setActiveExampleId(task.id)}
                 aria-pressed={isActive}
                 aria-controls="applied-task-overview"
-                className={`min-h-16 rounded-lg border px-3 py-2.5 text-left text-xs font-semibold leading-snug transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 ${
+                className={`min-h-16 rounded-lg border px-3 py-2.5 text-left text-sm font-semibold leading-snug transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 ${
                   isActive
                     ? "border-brand bg-brand text-white"
                     : "border-brand/25 bg-brand-light/45 text-neutral-700 hover:border-brand/60 hover:bg-brand-light"
