@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BriefcaseBusiness, ListChecks, MapPin } from "lucide-react";
+import { BriefcaseBusiness, Eye, ListChecks, MapPin } from "lucide-react";
 import {
   APPLIED_TASK_DOMAINS,
   APPLIED_TASK_KINDS,
@@ -176,9 +176,16 @@ export function AppliedTasksNavigator() {
         </div>
 
         <div id="applied-task-overview" className="mt-5" aria-live="polite">
-          <h4 className="font-semibold text-neutral-900 mb-2">
-            Обзор: {activeExample.title}
-          </h4>
+          {/* Тематическая иконка заголовка «Обзор» — по паттерну иконочных
+              заголовков данной секции (MapPin/ListChecks/BriefcaseBusiness):
+              flex items-center gap-2, lucide size={16} text-brand aria-hidden.
+              Отступ mb-2 перенесён с h4 на обёртку — геометрия прежняя. */}
+          <div className="flex items-center gap-2 mb-2">
+            <Eye size={16} className="text-brand" aria-hidden="true" />
+            <h4 className="font-semibold text-neutral-900">
+              Обзор: {activeExample.title}
+            </h4>
+          </div>
           <div className="rounded-lg border border-brand/15 bg-brand-light/45 px-4 py-4 min-h-[220px]">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500">
