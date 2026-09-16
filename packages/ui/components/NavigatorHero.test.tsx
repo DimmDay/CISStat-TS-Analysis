@@ -17,6 +17,18 @@
 //     Task 21) в формат СТАТИЧНОГО бейджа: текст всегда виден, интерактивных
 //     элементов нет; поля 24px (px-6).
 //
+// Задача NAVSTG-2 (2026-09-17): точечная правка стрелок бегущей строки:
+//   - ширина стрелки — строго по формуле постановки:
+//     ШИРИНА СТРАНИЦЫ / 6 = ШИРИНА ОДНОЙ СТРЕЛКИ. Вьюпорт marquee
+//     (full-bleed = ширина страницы) объявлен CSS-контейнером
+//     ([container-type:inline-size] — произвольное свойство Tailwind,
+//     ядерной утилиты @container в TW 3.4 нет); стрелка —
+//     w-[calc(100cqw/6)]: 100cqw = ширина страницы => /6 — ровно шестая
+//     часть; на странице всегда видно ровно 6 стрелок, цифры-оверлей
+//     (grid-cols-6) встают точно по центру своих стрелок;
+//   - рамка стрелки ТОНЬШЕ: stroke-width 2 -> 1 (1px = толщина border
+//     у бейджей главной marquee — стандарт главной).
+//
 // a11y-контракт:
 //   - Обёртка этапов — aria-label="Этапы анализа"; цифры aria-hidden
 //   - Клон marquee-группы — aria-hidden="true"
@@ -261,8 +273,9 @@ describe("NavigatorHero", () => {
     expect(groups).toHaveLength(2);
 
     // Группы идентичны по составу: по 14 стрелок (как 14 бейджей главной —
-    // гарантирует покрытие вьюпорта и бесшовный стык на широких экранах:
-    // 14 × 280px = 3920px >= 3840px).
+    // гарантирует покрытие вьюпорта и бесшовный стык на любых экранах;
+    // NAVSTG-2: стрелка = страница/6 => группа = 14/6 ≈ 2.33 ширины
+    // страницы — ВСЕГДА шире вьюпорта, стык бесшовен при любой ширине).
     const realArrows = real!.querySelectorAll(":scope > div");
     const cloneArrows = clone!.querySelectorAll(":scope > div");
     expect(realArrows.length).toBe(14);
@@ -285,6 +298,69 @@ describe("NavigatorHero", () => {
       expect(polygon!.getAttribute("fill")).toBe("none");
       // Толщина рамки стабильна при неравномерном растяжении контейнера.
       expect(polygon!.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+    });
+  });
+
+  // ── NAVSTG-2: ширина стрелки = ширина страницы / 6 ────────────────
+  //
+  // Формула постановки реализована контейнерными единицами: вьюпорт
+  // (full-bleed, ширина = ширина страницы) — CSS-контейнер
+  // ([container-type:inline-size]), стрелка — w-[calc(100cqw/6)].
+  // 100cqw = 100% ширины контейнера (страницы) => calc(100cqw/6) —
+  // ровно шестая часть страницы. Следствия: на странице видно ровно
+  // 6 стрелок (бывший статичный ряд — тоже 6); статичный оверлей
+  // цифр (grid-cols-6 той же ширины) даёт одну цифру ровно по центру
+  // каждой стрелки. Прежняя эмпирическая ширина
+  // w-[clamp(160px,16vw,280px)] устранена.
+
+  it("declares the marquee viewport a CSS container (source of truth for cqw units)", () => {
+    const { container } = render(<NavigatorHero />);
+    const viewport = container.querySelector('[data-testid="chevron-marquee-viewport"]')!;
+    // [container-type:inline-size] на вьюпорте (произвольное свойство
+    // Tailwind — ядерной утилиты @container в TW 3.4 нет): его ширина
+    // = ширина страницы => cqw внутри трека отсчитывается от страницы.
+    expect(viewport.className).toContain("[container-type:inline-size]");
+    // Обрезка ленты сохранена — контейнер не отменяет overflow-hidden.
+    expect(viewport.className).toContain("overflow-hidden");
+  });
+
+  it("sizes each arrow exactly one sixth of the page width (page width / 6 = arrow width)", () => {
+    const { container } = render(<NavigatorHero />);
+    const arrows = container.querySelectorAll(
+      '[data-testid="chevron-group-real"] > div',
+    );
+    expect(arrows.length).toBe(14);
+
+    arrows.forEach((arrow) => {
+      // Формула: ширина страницы / 6 = ширина одной стрелки.
+      expect(arrow.className).toContain("w-[calc(100cqw/6)]");
+      // Guard: прежняя эмпирическая clamp-ширина устранена.
+      expect(arrow.className).not.toContain("clamp(");
+      // Формула не должна сопровождаться фикс. шириной: у стрелки нет
+      // другого w-[...]-класса с пикселями (см. класс выше).
+    });
+  });
+
+  // ── NAVSTG-2: рамка стрелки тоньше (stroke-width 2 -> 1) ───────────
+  //
+  // 1px — толщина border у бейджей marquee главной страницы (border =
+  // 1px) — стрелка выравнивается по весу линии со стандартом главной.
+  // vector-effect: non-scaling-stroke сохранён — 1px стабилен при
+  // растяжении preserveAspectRatio="none" (стрелка = страница/6).
+
+  it("renders a THINNER arrow frame: stroke-width 1 (was 2)", () => {
+    const { container } = render(<NavigatorHero />);
+    const polygons = container.querySelectorAll(
+      '[data-testid="chevron-group-real"] > div > svg > polygon',
+    );
+    expect(polygons.length).toBe(14);
+
+    polygons.forEach((polygon) => {
+      expect(polygon.getAttribute("stroke-width")).toBe("1");
+      // Guard: прежняя толщина 2 устранена.
+      expect(polygon.getAttribute("stroke-width")).not.toBe("2");
+      // Постоянство толщины при неравномерном растяжении сохранено.
+      expect(polygon.getAttribute("vector-effect")).toBe("non-scaling-stroke");
     });
   });
 
