@@ -36,10 +36,20 @@ const preset: Partial<Config> = {
           from: { transform: "translateX(0)" },
           to: { transform: "translateX(-50%)" },
         },
+        // Зеркальная бегущая строка (NavigatorHero, секция «Ключевые этапы
+        // исследования ряда», задача NAVSTG-1): движение СЛЕВА НАПРАВО.
+        // Трек из двух одинаковых групп, старт с translateX(-50%) (= ровно
+        // одна группа) до 0 — стык бесшовен по той же арифметике, что у
+        // marquee. Скорость — та же 90s linear infinite (стандарт главной).
+        marqueeReverse: {
+          from: { transform: "translateX(-50%)" },
+          to: { transform: "translateX(0)" },
+        },
       },
       animation: {
         "pulse-dot": "pulse-dot 1.8s ease-in-out infinite",
         marquee: "marquee 90s linear infinite",
+        "marquee-reverse": "marqueeReverse 90s linear infinite",
       },
     },
   },
