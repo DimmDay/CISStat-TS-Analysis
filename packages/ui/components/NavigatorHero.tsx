@@ -10,7 +10,8 @@
 //   - 6 chevron-стрелок в ряд (светло-серый фон, зелёная цифра)
 //   - под каждой стрелкой — заголовок + поддерживающий текст
 //   - 2 раскрывающихся полубейджа «Для кого» / «Для чего» (Task 21)
-//   - серые разделители над заголовками содержательных разделов
+//   - индиго-разделители над заголовками содержательных разделов
+//     (токен brand #2E3192 — паттерн главной страницы, Task NAVIG-1)
 //
 // a11y-контракт:
 //   - Chevron-ряд — aria-label="Этапы анализа", цифры aria-hidden
@@ -163,7 +164,7 @@ export function NavigatorHero() {
         aria-labelledby="applied-tasks-title"
         className="scroll-mt-24"
       >
-        <div className="w-full border-t border-neutral-200 py-4">
+        <div className="w-full border-t border-brand py-4">
           <h2
             id="applied-tasks-title"
             className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a] text-center"
@@ -179,7 +180,7 @@ export function NavigatorHero() {
         aria-labelledby="research-stages-title"
         className="scroll-mt-24 space-y-6"
       >
-        <div className="w-full border-t border-neutral-200 pt-4">
+        <div className="w-full border-t border-brand pt-4">
           <h2
             id="research-stages-title"
             className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a] text-center"

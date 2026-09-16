@@ -81,7 +81,13 @@ describe("NavigatorHero", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the applied tasks title with only a full-width gray rule above it", () => {
+  // ── Черты над заголовками — фирменный индиго (Task NAVIG-1) ────────
+  //
+  // Паттерн главной страницы: разделители в токене brand (#2E3192,
+  // фирменный индиго Статкомитета СНГ). Серые (border-neutral-200)
+  // черты запрещены guard-ами ниже.
+
+  it("renders the applied tasks title with only a full-width indigo rule above it", () => {
     render(<NavigatorHero />);
 
     const heading = screen.getByRole("heading", {
@@ -98,14 +104,18 @@ describe("NavigatorHero", () => {
 
     const ruledHeading = heading.parentElement;
     expect(ruledHeading).not.toBeNull();
-    expect(ruledHeading?.className).toContain("w-full");
-    expect(ruledHeading?.className).toContain("border-t");
-    expect(ruledHeading?.className).not.toContain("border-y");
-    expect(ruledHeading?.className).not.toContain("border-b");
-    expect(ruledHeading?.className).toContain("border-neutral-200");
+    // Guard по токенам: "border-brand" содержит подстроку "border-b",
+    // поэтому сравниваем отдельные классы, а не подстроки.
+    const classes = (ruledHeading?.className ?? "").split(/\s+/);
+    expect(classes).toContain("w-full");
+    expect(classes).toContain("border-t");
+    expect(classes).not.toContain("border-y");
+    expect(classes).not.toContain("border-b");
+    expect(classes).toContain("border-brand");
+    expect(classes).not.toContain("border-neutral-200");
   });
 
-  it("renders a full-width gray rule above the research stages title", () => {
+  it("renders a full-width indigo rule above the research stages title", () => {
     render(<NavigatorHero />);
 
     const heading = screen.getByRole("heading", {
@@ -117,7 +127,8 @@ describe("NavigatorHero", () => {
     expect(ruledHeading).not.toBeNull();
     expect(ruledHeading?.className).toContain("w-full");
     expect(ruledHeading?.className).toContain("border-t");
-    expect(ruledHeading?.className).toContain("border-neutral-200");
+    expect(ruledHeading?.className).toContain("border-brand");
+    expect(ruledHeading?.className).not.toContain("border-neutral-200");
   });
 
   // ── 6 chevron-стрелок с цифрами (Task 26) ─────────────────────────

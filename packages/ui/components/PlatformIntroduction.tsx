@@ -1,7 +1,12 @@
 import { NavigatorHero } from "./NavigatorHero";
 import { TsAnalysisNavigator } from "./TsAnalysisNavigator";
 
-/** Общая композиция /navigator для standalone и embedded приложений. */
+/** Общая композиция /navigator для standalone и embedded приложений.
+ *
+ *  Task NAVIG-1: черта над заголовком «Подробная навигация по платформе» —
+ *  фирменный индиго (border-brand, паттерн главной страницы); нижняя
+ *  серая черта (page-bottom-separator) удалена — как на главной.
+ */
 export function PlatformIntroduction() {
   return (
     <>
@@ -11,7 +16,7 @@ export function PlatformIntroduction() {
         aria-labelledby="platform-navigation-title"
         className="scroll-mt-24 mt-12"
       >
-        <div className="w-full border-t border-neutral-200 pt-4">
+        <div className="w-full border-t border-brand pt-4">
           <h2
             id="platform-navigation-title"
             className="font-sans text-2xl font-normal tracking-tight text-[#1e3a8a] text-center mb-4"
@@ -21,11 +26,6 @@ export function PlatformIntroduction() {
         </div>
         <TsAnalysisNavigator />
       </section>
-      <div
-        data-testid="page-bottom-separator"
-        className="mt-12 h-px w-full bg-neutral-200"
-        aria-hidden="true"
-      />
     </>
   );
 }
