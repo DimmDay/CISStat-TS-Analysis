@@ -943,12 +943,22 @@ export function TsAnalysisUpload() {
             </div>
 
             <div className="flex flex-col gap-1.5">
+              {/* Паттерн «Моделирования» (эталон TsAnalysisModeling; уже применён
+                  к EDA/Предобработке/Валидации): пройденная остановка (зелёная
+                  галочка, status done) подсвечивается светло-зелёным с зелёным
+                  текстом; при других статусах (warning/pending) кнопка не
+                  окрашивается. Активная остановка сохраняет приоритет индиго,
+                  как в эталоне. */}
               {STOPS.map((stop) => (
                 <button
                   key={stop.id}
                   onClick={() => setActiveStop(stop.id)}
                   className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors ${
-                    stop.id === activeStop ? "bg-brand text-white border-brand" : "bg-white border-neutral-200 hover:bg-neutral-50 text-neutral-800"
+                    stop.id === activeStop
+                      ? "bg-brand text-white border-brand"
+                      : stopStatus[stop.id] === "done"
+                      ? "bg-green-50 border-green-200 text-green-800"
+                      : "bg-white border-neutral-200 hover:bg-neutral-50 text-neutral-800"
                   }`}
                 >
                   <span className="truncate">{stop.label}</span>

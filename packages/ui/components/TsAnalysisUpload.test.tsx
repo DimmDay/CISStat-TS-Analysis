@@ -1169,3 +1169,117 @@ function mockApplicableDecompositionFetch() {
     expect(screen.queryByDisplayValue(/D — ежедневная/)).not.toBeInTheDocument();
   });
 });
+
+// ── Зелёная подсветка пройденных остановок степпера (паттерн Моделирования) ──
+//
+// Фоновый долг: паттерн перенесён с вкладки «Моделирование» (эталон,
+// TsAnalysisModeling) и уже применён к «Разведочному EDA» (Task EDA-2),
+// «Предобработке» (Task PREPR-1) и «Валидации» (Task VALID-1); «Загрузка»
+// оставалась единственной вкладкой 3-колоночного паттерна без него.
+// Контракт: «Если остановка степпера пройдена и имеет зелёную галочку
+// (status === "done"), кнопка остановки окрашивается в светло-зелёный цвет
+// и текст становится зелёным. При других статусах кнопка не окрашивается».
+// Ветка done в className степпер-кнопки: bg-green-50 border-green-200
+// text-green-800; активная остановка (bg-brand text-white) сохраняет
+// приоритет индиго при любом её статусе -- как в эталоне.
+//
+// Специфика «Загрузки»: stopStatus выдаёт ровно три статуса -- done /
+// warning / pending, поэтому гарды покрывают warning и pending
+// (skipped/error/running на этой вкладке недостижимы). Кейсы ниже
+// покрывают всю достижимую матрицу статус x активность.
+//
+// Статусы при стандартном моке okUploadResponse: «Превью датасета» --
+// done и активна по умолчанию, «График»/«Распределение» -- done,
+// «Структура» -- warning (entity confidence 0 < 70), «Качество» --
+// warning (cols_with_missing = 1).
+
+async function renderUploaded(uploadResult: unknown = okUploadResponse) {
+  mockFetchSequence(uploadResult);
+  render(
+    <AppShellProvider>
+      <TsAnalysisUpload />
+    </AppShellProvider>
+  );
+  dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+  await waitFor(() => expect(screen.getByText("Превью датасета")).toBeInTheDocument());
+}
+
+describe("TsAnalysisUpload — зелёная подсветка пройденных остановок степпера (паттерн Моделирования)", () => {
+  it("colors a passed (done) stop light-green and keeps a warning neighbor uncolored", async () => {
+    await renderUploaded();
+
+    // Снимаем активность с дефолтной остановки «Превью датасета» (done):
+    // кликаем на «Качество» (warning).
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+
+    // Пройденная остановка (зелёная галочка) -> светло-зелёная кнопка
+    // с зелёным текстом (эталон Моделирования: bg-green-50/green-200/green-800).
+    const doneButton = screen.getByRole("button", { name: /^График/ });
+    expect(doneButton).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
+    expect(doneButton).not.toHaveClass("bg-brand");
+    expect(doneButton).not.toHaveClass("bg-white");
+
+    // Не пройденная (warning) и не активная остановка -> БЕЗ окраски.
+    const warningButton = screen.getByRole("button", { name: /^Структура/ });
+    expect(warningButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(warningButton).not.toHaveClass("bg-green-50");
+    expect(warningButton).not.toHaveClass("border-green-200");
+    expect(warningButton).not.toHaveClass("text-green-800");
+  });
+
+  it("keeps the indigo active styling for an active stop even when it is done (active branch priority, as in Modeling)", async () => {
+    await renderUploaded();
+
+    // «Превью датасета» активна по умолчанию и её статус done ->
+    // приоритет индиго (как в эталоне Моделирования).
+    const activeDoneButton = screen.getByRole("button", { name: /^Превью датасета/ });
+    expect(activeDoneButton).toHaveClass("bg-brand", "text-white", "border-brand");
+    expect(activeDoneButton).not.toHaveClass("bg-green-50");
+    expect(activeDoneButton).not.toHaveClass("text-green-800");
+  });
+
+  it("leaves a non-active warning stop uncolored while done stops are highlighted", async () => {
+    await renderUploaded();
+
+    // Дефолтное состояние: «Структура» -- warning (не активна) -> белая;
+    // контраст: «Распределение» (done, не активна) -- зелёная.
+    const warningButton = screen.getByRole("button", { name: /^Структура/ });
+    expect(warningButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(warningButton).not.toHaveClass("bg-green-50");
+    expect(warningButton).not.toHaveClass("border-green-200");
+    expect(warningButton).not.toHaveClass("text-green-800");
+
+    const doneButton = screen.getByRole("button", { name: /^Распределение/ });
+    expect(doneButton).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
+  });
+
+  it("keeps the indigo active styling for an active warning stop (no green, no white)", async () => {
+    await renderUploaded();
+
+    // «Качество» -- warning, после клика активна: активная ветка
+    // приоритетна при ЛЮБОМ статусе -- индиго, без зелёной окраски.
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+
+    const activeWarningButton = screen.getByRole("button", { name: /^Качество/ });
+    expect(activeWarningButton).toHaveClass("bg-brand", "text-white", "border-brand");
+    expect(activeWarningButton).not.toHaveClass("bg-green-50");
+    expect(activeWarningButton).not.toHaveClass("bg-white");
+  });
+
+  it("leaves a pending stop uncolored (distribution without numeric columns)", async () => {
+    // Датасет без числовых колонок: stopStatus(«Распределение») --
+    // pending («Не запускалось»), подсветки быть НЕ должно.
+    await renderUploaded({
+      ...okUploadResponse,
+      columns_info: [
+        { name: "date", dtype: "object", type_icon: "datetime", non_null: 10, nulls: 0, unique: 10 },
+      ],
+    });
+
+    const pendingButton = screen.getByRole("button", { name: /^Распределение/ });
+    expect(pendingButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(pendingButton).not.toHaveClass("bg-green-50");
+    expect(pendingButton).not.toHaveClass("border-green-200");
+    expect(pendingButton).not.toHaveClass("text-green-800");
+  });
+});
