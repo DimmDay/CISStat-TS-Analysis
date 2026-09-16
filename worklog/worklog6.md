@@ -1569,3 +1569,92 @@ TDD RED->GREEN, программная сверка переноса с исто
   докстринг паттерна), packages/ui/index.ts (экспорт),
   worklog/worklog6.md (этот журнал).
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md).
+
+---
+
+## Task FC-MON-1 — Синтетический датасет мониторинга «Прогнозирования»: нейро-пятёрка честно отсекается применимостью (F04), мониторинг без torch на Render free tier
+
+Дата: 2026-09-16. Синхронизация: main@7b4ac02. Постановка тимлида: нужен
+синтетический датасет, который в «Моделировании» фильтром «Применение» не
+пропускается в отбор «Для текущего ряда» для нейросетевых моделей (в
+частности LSTM) — из-за ограничения render.com free tier 512 MB (Task 138c:
+импорт torch+neuralforecast ~606 MB, нейро-бэктест честно 503). До миграции
+на корпоративный сервер — быстрый мониторинг «Прогнозирования» на
+не-нейронных моделях. Датасет выложен в download CSV.
+
+### Механизм блокировки (реальные правила, не обходные пути)
+
+- F04 (forbidden -> NOT_APPLICABLE): n_observations < model.min_observations;
+  у ВСЕЙ нейро-пятёрки min_observations=200. n=150 выбран из окна [100, 200):
+  >=100 сохраняет каталог (arima/arima_auto/prophet/tbats/tree_ml min_obs<=100),
+  <200 блокирует пятёрку, запас 50 строк в обе стороны.
+- LSTM специфичен: requires_gpu=false -> D06 (DL без GPU) его НЕ ловит,
+  D02 (n<300) даёт лишь мягкий NOT_RECOMMENDED. F04 — единственный жёсткий
+  честный блок для LSTM; им же накрывается вся пятёрка.
+- Попутно (тот же профиль, n_series=1, domain=other): var/vecm -> F01,
+  deepar -> F01 (раньше F04: min_series=5), garch/egarch -> F02 (domain
+  financial), tbats -> D05 (n<200), tree_ml -> D03 (без feature engineering).
+
+### Ряд (детерминированный, numpy default_rng(20260916))
+
+150 месячных наблюдений 2013-01..2025-06 (freq=MS);
+value = 120 + 0.55*t + 18*sin(2*pi*(t+2)/12) + N(0, 3.2); положительный
+(min=105.79), без пропусков/выбросов (IQR-ratio=0), колонки date,value,
+файл ~2.7 KB (лимит прокси Vercel 4.5 MB — без проблем).
+
+### Верификация (верификация, не доверие — ТОЛЬКО реальный код платформы)
+
+scripts/dataset_forecast_monitor.py: CSV -> detect_and_convert_datetime
+(date распознана) -> detect_column_frequency (code=MS) ->
+prepare_passport_series -> calculate_ts_passport (is_regular=True,
+is_seasonal=True, нестационарность тренда — ожидаемо, правилом не
+блокируется) -> honest_system_profile (n_series=1) -> мердж
+seasonal_periods В ТОЧНОМ порядке build_modeling_context (матрица EDA
+подтверждает [12], паспорт даёт спектральный артефакт тренда [32] ->
+merged=[12, 32], бэктест возьмёт [0]=12) -> ModelingSpec
+(rules/modeling.yaml): resolve_all_applicability + get_candidate_pool.
+Итог: 24/24 ассертов PASS.
+
+### Результат (пул «Для текущего ряда» — ровно 10 моделей)
+
+naive/seasonal_naive/drift/mean/ets/ets_damped/theta/arima/arima_auto/
+prophet — все RECOMMENDED, все platform_ready. Сообщение LSTM в каталоге:
+«Недостаточно данных: 150 < 200 (требуется LSTM / GRU)». Покрытие
+ci_method этапа «Прогнозирование»: empirical_oof_quantile (baselines),
+analytic (arima/arima_auto/theta), parametric_simulation (ets/ets_damped),
+native_adapter (prophet — условная регистрация: локально пакет prophet не
+установлен, в прод-образе Dockerfile ставит prophet==1.4.0, Task 124
+сертифицирован). Нейро-путь из пула недостижим — инцидент 138c (OOM)
+невозможен по построению.
+
+### Кандидат-находка (не блокирующая, уровень документации, к следующему касанию modeling.yaml/spec loader)
+
+Правила применимости исполняются предопределёнными handlers в
+modeling_spec_loader._evaluate_rule; YAML-condition — декларативная
+документация. Расхождение: YAML-условие F01
+«n_series == 1 AND model.requires_multiple_series» не отражает фактическую
+логику handler'а — в нём fallback «model.min_series > 1» (ни одна модель
+не задаёт requires_multiple_series явно; без fallback F01 был бы мёртвым
+правилом). Поведение корректное и желательное (var/vecm/deepar честно
+блокируются при одном ряде); расхождение — только текст условия vs
+handler. Первая гипотеза «F01 мёртв» (по одному лишь YAML) ОПРОВЕРГНУТА
+контрольным прогоном реального движка.
+
+### Замечание для локального мониторинга
+
+Локальное окружение — statsmodels 0.14.5 (прод — 0.15.x): путь
+parametric_simulation ETS по находке F-1/FORECAST-1a вернёт честный 422
+(defense-in-depth работает), а не интервалы; на проде Render — штатно.
+
+### Границы Task FC-MON-1
+
+- Production-код платформы НЕ тронут (0 изменённых файлов .py; новый
+  скрипт — генератор/верификатор). Тесты pytest/Jest не менялись — задача
+  датасет-артефактная, верификация отдельным проб-скриптом (прецедент
+  scripts/task_*_probe.py).
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md).
+
+Изменённые/новые файлы (ZIP: download/task_fcmon1_forecast_monitor_dataset.zip):
+- НОВЫЕ: scripts/dataset_forecast_monitor.py (генератор + верификация
+  реальным движком), forecast_monitor_synthetic_n150.csv (артефакт,
+  download/), worklog/worklog6.md (этот журнал).
