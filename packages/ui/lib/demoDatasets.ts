@@ -3,11 +3,26 @@
 // Демо-датасеты для вкладки «Загрузка» (согласовано с тимлидом
 // 2026-08-19): при знакомстве с платформой у пользователя может не
 // быть под рукой своего файла -- под drag-and-drop полем предлагаются
-// 3 готовых синтетических датасета из разных отраслей, каждый --
-// другой структурный класс (см. packages/ui/lib/structuralClass.ts),
-// чтобы демонстрировать разные ветки платформы (Univariate TS ->
-// декомпозиция/распределение, Panel Balanced -> структура/panel-balance,
-// Multivariate TS -> будущий корреляционный EDA).
+// готовые синтетические датасеты, каждый -- другой структурный класс
+// (см. packages/ui/lib/structuralClass.ts), чтобы демонстрировать
+// разные ветки платформы (Univariate TS -> декомпозиция/распределение,
+// Panel Balanced -> структура/panel-balance, Multivariate TS -> будущий
+// корреляционный EDA).
+//
+// 2026-09-16 (FC-MON-2): ПЕРВЫМ по очереди добавлен
+// forecast_monitor_synthetic_n150.csv -- месячный ряд с выбросами и
+// пропусками (симуляция «настоящего» набора). Бизнес-цель: быстрый
+// мониторинг модуля «Прогнозирование» на render.com free tier (512MB):
+// n=150 (после пропусков 147) честно отсекает всю нейро-пятёрку
+// (lstm/tft/nbeats/nhits/deepar) правилом F04 applicability-движка
+// (min_observations=200), пул «Для текущего ряда» = 10 не-нейронных
+// моделей. Дизайн ряда -- зеркал генератора
+// scripts/dataset_forecast_monitor.py (Task FC-MON-1): та же формула,
+// те же позиции/дельты выбросов и пропусков; шум -- собственный
+// детерминированный PRNG (mulberry32), поэтому числовая строка файла
+// может отличаться от Python-артефакта -- структурный контракт
+// (n=150, MS, 3 пропуска, 4 IQR-выброса, все значения > 0)
+// зафиксирован тестами demoDatasets.test.ts.
 //
 // РЕАЛИЗАЦИЯ: генерация CSV на клиенте (без нового backend-кода) --
 // сгенерированная строка оборачивается в File и идёт через ТОТ ЖЕ
@@ -167,7 +182,54 @@ function generateFinanceOhlcv(): string {
   return toCsv(["date", "open", "high", "low", "close", "volume"], rows);
 }
 
+// ── 0. Мониторинг «Прогнозирования» -- Univariate TS (ПЕРВЫЙ в списке) ──
+// 2026-09-16: зеркал scripts/dataset_forecast_monitor.py (Task FC-MON-1):
+// 150 месячных наблюдений 2013-01..2025-06, тренд + сезон M=12 + шум,
+// 3 пропуска (t=45,87,122) и 4 выброса (t=25 +110, t=70 +105,
+// t=105 +95, t=130 -135) -- «настоящесть» данных для тизера «Качество».
+// После dropna паспорт видит 147 точек < 200: нейро-модели честно
+// NOT_APPLICABLE (F04), пул «Для текущего ряда» -- 10 не-нейронных.
+const FORECAST_MONITOR_N = 150;
+const FORECAST_MONITOR_START = new Date(Date.UTC(2013, 0, 1));
+const FORECAST_MONITOR_SEED = 20260916;
+const FORECAST_MONITOR_OUTLIERS: [number, number][] = [
+  [25, 110.0],  // спайк в начале
+  [70, 105.0],  // спайк в первой трети (сезонная фаза ~0)
+  [105, 95.0],  // спайк в середине
+  [130, -135.0], // глубокий провал (остаётся > 0)
+];
+const FORECAST_MONITOR_MISSING: number[] = [45, 87, 122];
+
+function generateForecastMonitor(): string {
+  const rng = mulberry32(FORECAST_MONITOR_SEED);
+  const rows: (string | number)[][] = [];
+  for (let t = 0; t < FORECAST_MONITOR_N; t++) {
+    const date = addMonths(FORECAST_MONITOR_START, t);
+    const value =
+      120.0 +
+      0.55 * t +
+      18.0 * Math.sin((2.0 * Math.PI * (t + 2.0)) / 12.0) +
+      gaussian(rng, 0, 3.2);
+    const outlier = FORECAST_MONITOR_OUTLIERS.find(([idx]) => idx === t);
+    const adjusted = outlier ? value + outlier[1] : value;
+    const missing = FORECAST_MONITOR_MISSING.includes(t);
+    rows.push([isoDate(date), missing ? "" : adjusted.toFixed(2)]);
+  }
+  return toCsv(["date", "value"], rows);
+}
+
 export const DEMO_DATASETS: DemoDataset[] = [
+  {
+    id: "forecast_monitor_n150",
+    name: "Мониторинг модуля «Прогнозирование»",
+    industry: "Кросс-отраслевой",
+    structuralClassLabel: "Univariate TS",
+    rowsLabel: "150 месяцев",
+    description:
+      "Месячный ряд (тренд + годовая сезонность) с выбросами и пропусками -- быстрый прогон до «Прогнозирования» без нейро-моделей.",
+    fileName: "forecast_monitor_synthetic_n150.csv",
+    generateCsv: generateForecastMonitor,
+  },
   {
     id: "retail_revenue",
     name: "Выручка розничного магазина",

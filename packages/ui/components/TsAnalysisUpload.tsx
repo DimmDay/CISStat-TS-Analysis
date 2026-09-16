@@ -816,9 +816,11 @@ export function TsAnalysisUpload() {
             )}
 
             {/* ── Демо-датасеты (2026-08-19, согласовано с тимлидом) ──
-                Для знакомства с платформой без своего файла -- 3 готовых
-                синтетических датасета, каждый другой структурный класс
-                и отрасль. Идут через ТОТ ЖЕ doUpload(file), что и
+                Для знакомства с платформой без своего файла -- готовые
+                синтетические датасеты, каждый другой структурный класс
+                и отрасль. С 2026-09-16 ПЕРВЫЙ -- forecast monitor
+                (выбросы + пропуски, быстрый мониторинг «Прогнозирования»,
+                см. FC-MON-2). Идут через ТОТ ЖЕ doUpload(file), что и
                 drag-and-drop -- реальный пайплайн парсинга/детекции/
                 валидации, не имитация (см. packages/ui/lib/demoDatasets.ts). */}
             {!uploading && !hydrating && (
@@ -826,7 +828,7 @@ export function TsAnalysisUpload() {
                 <p className="text-xs text-neutral-500 mb-2">
                   Нет своего датасета под рукой? Загрузите один из демо-наборов, чтобы познакомиться с платформой:
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                   {DEMO_DATASETS.map((ds) => (
                     <button
                       key={ds.id}
@@ -946,17 +948,7 @@ export function TsAnalysisUpload() {
                   key={stop.id}
                   onClick={() => setActiveStop(stop.id)}
                   className={`w-full flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors ${
-                    // Паттерн «зелёная подсветка пройденных остановок степпера»
-                    // (эталон -- вкладка «Моделирование»; применён ко всем
-                    // вкладкам пайплайна: Валидация [VALID-1], Предобработка
-                    // [PREPR-1], EDA [EDA-2] и здесь -- Загрузка): активная
-                    // остановка остаётся индиго, пройденная (done) подсвечивается
-                    // светло-зелёным, прочие статусы не окрашиваются.
-                    stop.id === activeStop
-                      ? "bg-brand text-white border-brand"
-                      : stopStatus[stop.id] === "done"
-                      ? "bg-green-50 border-green-200 text-green-800"
-                      : "bg-white border-neutral-200 hover:bg-neutral-50 text-neutral-800"
+                    stop.id === activeStop ? "bg-brand text-white border-brand" : "bg-white border-neutral-200 hover:bg-neutral-50 text-neutral-800"
                   }`}
                 >
                   <span className="truncate">{stop.label}</span>

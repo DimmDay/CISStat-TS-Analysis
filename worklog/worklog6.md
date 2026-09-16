@@ -1774,3 +1774,98 @@ TDD RED->GREEN, полная frontend-регрессия, typecheck/build обе
   (синхронизация 2 устаревших тестов под семантику NAVIG-1),
   worklog/worklog6.md (этот журнал).
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md).
+
+---
+
+## Task FC-MON-2 (2026-09-16): демо-датасет forecast_monitor_synthetic_n150 на стартовой «Загрузке» — первым, с выбросами и пропусками
+
+### Постановка
+
+Разместить датасет forecast_monitor_synthetic_n150 (FC-MON-1) в один ряд
+с демо-датасетами на стартовой странице «Загрузка» (под drag-and-drop
+полем), ПЕРВЫМ по очереди. В датасет добавить несколько выбросов и
+несколько пропусков для лучшей симуляции настоящего набора данных.
+Следовать AGENTS.md.
+
+### Реализация (TDD RED -> GREEN)
+
+- RED (провал зафиксирован): packages/ui/lib/demoDatasets.test.ts —
+  ровно 4 датасета, forecast_monitor_n150 ПЕРВЫЙ, 150 месячных строк
+  2013-01..2025-06 без разрывов дат, ровно 3 пропуска (пустые ячейки
+  value при сохранной дате), ровно 4 IQR-выброса (квантили linear —
+  тот же метод, что np/pandas.quantile на бэкенде), все значения > 0;
+  TsAnalysisUpload.test.tsx — 4 демо-карточки, первая — forecast
+  monitor, клик по ней уходит в реальный doUpload с файлом
+  forecast_monitor_synthetic_n150.csv.
+- GREEN: packages/ui/lib/demoDatasets.ts — генератор
+  generateForecastMonitor() (mulberry32 seed 20260916, зеркал
+  scripts/dataset_forecast_monitor.py: та же формула
+  120 + 0.55t + 18sin(2π(t+2)/12) + N(0, 3.2), те же позиции/дельты:
+  выбросы t=25 +110, t=70 +105, t=105 +95, t=130 −135; пропуски
+  t=45, 87, 122) + запись ПЕРВОЙ в DEMO_DATASETS (id
+  forecast_monitor_n150, отрасль «Кросс-отраслевой», Univariate TS,
+  имя файла forecast_monitor_synthetic_n150.csv). Шум — собственный
+  PRNG клиента, поэтому числовая строка файла отличается от
+  Python-артефакта: структурный контракт зафиксирован тестами.
+- packages/ui/components/TsAnalysisUpload.tsx — сетка демо-карточек
+  sm:grid-cols-3 -> sm:grid-cols-4 (все 4 карточки в один ряд),
+  комментарий актуализирован. Пайплайн демо-режима НЕ тронут:
+  demoDatasetToFile -> doUpload (реальная загрузка/детекция/валидация).
+
+### Данные: выбросы и пропуски (реализм)
+
+- Выбросы подобраны пробой против IQR-заборов ФИНАЛЬНОГО ряда
+  (q1=139.2/q3=181.0 базового; финальные заборы ~[74.8, 245.0]):
+  3 спайка вверх (262.0 / 261.78 / 264.07) и глубокий провал 58.59,
+  запас >= 9 от заборов, все значения положительные;
+  outlier_ratio = 4/147 = 0.0272 < 0.05.
+- Пропуски: 3 пустые ячейки value (2016-10-01, 2020-04-01, 2023-03-01),
+  даты сохранены -> CSV остаётся регулярным по датам (pd.infer_freq MS).
+
+### Верификация (реальный движок платформы, 30/30 ассертов PASS)
+
+- ЧЕСТНЫЕ последствия пропусков (зафиксированы как ожидания):
+  * prepare_passport_series дропает NaN-строки -> индекс ряда с
+    разрывами -> паспорт честно «Нерегулярная», сезонность до
+    Предобработки не подтверждается (merged seasonal_periods = []);
+  * build_eda_model_matrix на сыром df: applicable=False («цель
+    содержит пропуски — завершите предобработку»);
+  * ПРИ ЭТОМ пул «Для текущего ряда» ПОЛНЫЙ: ровно 10 не-нейронных
+    (naive/seasonal_naive/drift/mean/ets/ets_damped/theta/arima/
+    arima_auto/prophet), нейро-пятёрка NOT_APPLICABLE — F04
+    «Недостаточно данных: 147 < 200 (требуется LSTM / GRU)», deepar
+    F01; garch/egarch F02; var/vecm F01; tbats/xgboost/lightgbm/
+    catboost/random_forest NOT_RECOMMENDED (вне пула);
+  * бэктест получает чистые 147 точек (prepare_modeling_target строит
+    ряд через prepare_passport_series — NaN до моделей не доходят),
+    гейтов регулярности на /backtest нет — быстрый мониторинг
+    «Прогнозирования» работает и без Предобработки; датасет честно
+    ведёт пользователя через Предобработку для полного качества.
+- Найден и исправлен ЛАТЕНТНЫЙ баг скрипта FC-MON-1 (не прод-код):
+  чек «prophet зарегистрирован» сравнивал id модели со списком
+  ДЕЙСТВИЙ реестра ("prophet" in ['backtest',...]) — при незнятых
+  опц. зависимостях сообщение было случайно верным (пустой список),
+  после установки prophet стало ложным. Исправлено на
+  "backtest" in available_model_actions("prophet").
+- Окружение (после сброса среды) восстановлено под прод-образ:
+  apps/api/requirements.txt + prophet 1.4.0 + statsforecast 2.1.1 +
+  arch + requirements-dev.txt (syrupy — снапшот-фикстуры) + neural
+  группа (torch 2.14.0+cpu, neuralforecast 3.x) — блокировка F04
+  проверена против РЕАЛЬНОГО нейро-runtime.
+
+### Регрессия
+
+- Frontend: 102 сюиты / 984 passed / 0 failed (базлайн 975 + 9 новых);
+  typecheck embedded+standalone OK; build:all обеих оболочек OK.
+- Backend: 2539 passed / 0 failed (точное совпадение с базлайном;
+  прод-код .py не тронут — изменился только scripts/).
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md).
+
+Изменённые/новые файлы (ZIP: download/task_fcmon2_demo_dataset_card.zip):
+- ИЗМЕНЕНЫ: packages/ui/lib/demoDatasets.ts, packages/ui/lib/
+  demoDatasets.test.ts, packages/ui/components/TsAnalysisUpload.tsx,
+  packages/ui/components/TsAnalysisUpload.test.tsx,
+  scripts/dataset_forecast_monitor.py (v2: выбросы/пропуски + честные
+  ожидания паспорта + фикс prophet-чека), worklog/worklog6.md (запись).
+- НОВЫЙ артефакт: forecast_monitor_synthetic_n150.csv (v2, 2678 B,
+  download/) — регенерирован с выбросами и пропусками.
