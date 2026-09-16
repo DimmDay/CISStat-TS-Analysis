@@ -149,8 +149,12 @@ export function NavigatorHero() {
           </p>
         </div>
 
+        {/* Боковые поля 24px сетки бейджей (паттерн главной страницы,
+            Task w/n: px-6 — собственные поля от границ фоновой коробки;
+            карточки соразмерно ужимаются, равенство по ширине/высоте —
+            механикой Grid: fr-колонки + row stretch). */}
         <nav
-          className="grid grid-cols-1 md:grid-cols-3 gap-5"
+          className="grid grid-cols-1 md:grid-cols-3 gap-5 px-6"
           aria-label="Разделы знакомства с платформой"
         >
           {NAVIGATOR_SECTION_ROUTES.map((route) => (

@@ -16,6 +16,7 @@
 import "@testing-library/jest-dom";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { NavigatorHero } from "./NavigatorHero";
+import { HomeHero } from "./HomeHero";
 import {
   NAVIGATOR_BADGES,
   NAVIGATOR_SECTION_ROUTES,
@@ -323,6 +324,60 @@ describe("NavigatorHero", () => {
 
     const downChevrons = screen.getAllByLabelText(/chevron down/i);
     expect(downChevrons).toHaveLength(1);
+  });
+
+  // ── Боковые поля 24px первой секции (паттерн главной страницы) ─────
+  //
+  // Постановка: три бейджа секции «Знакомство с платформой» растянуты на
+  // всю ширину страницы (0px до границы фоновой коробки). По паттерну
+  // главной (Task w/n, 2026-09-12: px-6 на сетках HomeHero/Block B) сетка
+  // получает собственные боковые поля 24px (px-6) — карточки соразмерно
+  // ужимаются. Равенство бейджей по ширине/высоте гарантируется механикой
+  // CSS Grid (fr-колонки + row stretch), а не классами карточек, поэтому
+  // гардируется на уровне layout-классов сетки (прецедент кросс-теста
+  // HomeHero ↔ HomeCapabilities в HomeCapabilities.test.tsx).
+
+  it("insets the section routes grid 24px from the page edges on both sides (px-6)", () => {
+    const { container } = render(<NavigatorHero />);
+    const grid = container.querySelector(
+      'nav[aria-label="Разделы знакомства с платформой"]',
+    )!;
+    expect(grid).not.toBeNull();
+    expect(grid.className).toContain("px-6");
+  });
+
+  it("keeps exactly three direct card children in one responsive grid (equal width and height by grid mechanics)", () => {
+    const { container } = render(<NavigatorHero />);
+    const grid = container.querySelector(
+      'nav[aria-label="Разделы знакомства с платформой"]',
+    )!;
+    expect(grid).not.toBeNull();
+    // Ровно три карточки — прямые дети сетки (одна строка на md+).
+    expect(grid.querySelectorAll(":scope > a")).toHaveLength(3);
+    // fr-колонки (md:grid-cols-3) => равная ширина; дефолтный stretch
+    // строки => равная высота; gap-5 не меняется — сжатие соразмерное.
+    expect(grid.className).toContain("grid-cols-1");
+    expect(grid.className).toContain("md:grid-cols-3");
+    expect(grid.className).toContain("gap-5");
+  });
+
+  it("matches the home page inset pattern (gap-5 + px-6 identical to the HomeHero routes grid)", () => {
+    const { container } = render(<NavigatorHero />);
+    const navGrid = container.querySelector(
+      'nav[aria-label="Разделы знакомства с платформой"]',
+    )!;
+    const hero = render(<HomeHero />);
+    const heroGrid = hero.container.querySelector('[aria-label="Маршруты"]')!;
+    expect(navGrid).not.toBeNull();
+    expect(heroGrid).not.toBeNull();
+    // Одинаковые классы зазоров => одинаковый отступ бейджей от границ
+    // страницы на / и /navigator при любой ширине вьюпорта. Брейкпоинты
+    // колонок (md:grid-cols-3 против sm/lg у главной) — существующее
+    // различие, в паттерн зазоров не входят.
+    for (const cls of ["gap-5", "px-6"]) {
+      expect(navGrid.className).toContain(cls);
+      expect(heroGrid.className).toContain(cls);
+    }
   });
 
 });
