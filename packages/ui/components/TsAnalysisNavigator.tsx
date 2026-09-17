@@ -58,13 +58,24 @@
 //   складывался из коллапса mb-1 h2 и mt 12px от space-y; вне space-y
 //   та же геометрия воспроизведена классом mb-3 у h2.
 //
+// Task NAVDET-3 (2026-09-17): тематические иконки СПЕРЕДИ заголовков
+//   «Этапы модуля», «Описание» и «Обзор» — по паттерну секции 2
+//   «Примеры прикладных задач» (AppliedTasksNavigator): обёртка
+//   flex items-center gap-2 [mb-*], lucide-иконка size={16}
+//   className="text-brand" aria-hidden="true"; отступ mb перенесён
+//   с заголовка на обёртку — геометрия прежняя. Словарь иконок
+//   секции 2: «Этапы модуля» → ListChecks (списковая тематика,
+//   как «Основная задача»), «Описание» → BriefcaseBusiness,
+//   «Обзор» → Eye — те же иконки у тех же смысловых заголовков.
+//   Заголовок «Маршрут исследования» уже с иконкой MapPin — не тронут.
+//
 // Правое окно "Обзор": если в сессии есть активный датасет —
 // реальные показатели из activeDataset; иначе статичный пример-иллюстрация
 // с пометкой «пример» (решение тимлида, вопрос 4: гибрид (c)+(a)).
 
 import { useState } from "react";
 import Link from "next/link";
-import { MapPin, ArrowRight, Lock } from "lucide-react";
+import { MapPin, ArrowRight, Lock, ListChecks, BriefcaseBusiness, Eye } from "lucide-react";
 import { useAppShell } from "../context/AppShellContext";
 import { Metric } from "./Metric";
 import {
@@ -218,10 +229,17 @@ export function TsAnalysisNavigator() {
         {/* Заголовок и подзаголовок — ВНЕ окна скроллинга (Task NAVDET-2):
             статично на странице, как заголовки соседних колонок.
             Зазор h2→подзаголовок 12px (mb-3) — эквивалент прежнего
-            коллапса mb-1 + space-y-3 внутри окна скролла. */}
-        <h2 className="text-base font-semibold text-neutral-800 mb-3">
-          Этапы модуля: {activeStop.label}
-        </h2>
+            коллапса mb-1 + space-y-3 внутри окна скролла.
+            Тематическая иконка заголовка (Task NAVDET-3) — по паттерну
+            секции 2 (AppliedTasksNavigator): обёртка flex items-center
+            gap-2, lucide size={16} text-brand aria-hidden; отступ mb-3
+            перенесён с h2 на обёртку — геометрия прежняя. */}
+        <div className="flex items-center gap-2 mb-3">
+          <ListChecks size={16} className="text-brand" aria-hidden="true" />
+          <h2 className="text-base font-semibold text-neutral-800">
+            Этапы модуля: {activeStop.label}
+          </h2>
+        </div>
         <p className="text-[11px] text-neutral-500 mb-3">
           {!activeStop.soon
             ? "Превью всех пунктов модуля."
@@ -287,7 +305,13 @@ export function TsAnalysisNavigator() {
       <section className="flex-1 min-w-0 flex flex-col gap-5">
         {/* Окно "Описание" */}
         <div>
-          <h3 className="font-semibold text-neutral-900 mb-1">Описание</h3>
+          {/* Тематическая иконка заголовка «Описание» (Task NAVDET-3) —
+              BriefcaseBusiness, точно как в секции 2 (AppliedTasksNavigator);
+              отступ mb-1 перенесён с h3 на обёртку — геометрия прежняя. */}
+          <div className="flex items-center gap-2 mb-1">
+            <BriefcaseBusiness size={16} className="text-brand" aria-hidden="true" />
+            <h3 className="font-semibold text-neutral-900">Описание</h3>
+          </div>
           <p className="text-xs text-neutral-500 mb-2">
             {!activeStop.soon
               ? `${activeStop.label} — ${activeStop.subtitle}`
@@ -302,9 +326,15 @@ export function TsAnalysisNavigator() {
 
         {/* Окно "Обзор" */}
         <div>
-          <h3 className="font-semibold text-neutral-900 mb-1">
-            Обзор: {activeItem.title}
-          </h3>
+          {/* Тематическая иконка заголовка «Обзор» (Task NAVDET-3) — Eye,
+              точно как в секции 2 (AppliedTasksNavigator); отступ mb-1
+              перенесён с h3 на обёртку — геометрия прежняя. */}
+          <div className="flex items-center gap-2 mb-1">
+            <Eye size={16} className="text-brand" aria-hidden="true" />
+            <h3 className="font-semibold text-neutral-900">
+              Обзор: {activeItem.title}
+            </h3>
+          </div>
           <p className="text-xs text-neutral-500 mb-2">
             {!activeStop.soon
               ? "Превью пункта активной остановки"

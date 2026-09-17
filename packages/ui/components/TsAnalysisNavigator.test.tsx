@@ -593,9 +593,12 @@ describe("TsAnalysisNavigator", () => {
       // При этом оба принадлежат средней колонке.
       expect(cols[1].contains(header)).toBe(true);
       expect(cols[1].contains(subtitle)).toBe(true);
-      // Заголовок — первый ребёнок колонки, подзаголовок — сразу за ним
-      // (оба ВЫШЕ окна скроллинга в порядке документа).
-      expect(cols[1].children[0]).toBe(header);
+      // Блок заголовка (с Task NAVDET-3 — обёртка иконки и h2) — первый
+      // ребёнок колонки, подзаголовок — сразу за ним, окно скролла —
+      // третье (порядок документа: заголовок ВЫШЕ окна скроллинга).
+      const headerBlock = header.parentElement as HTMLElement;
+      expect(cols[1].contains(headerBlock)).toBe(true);
+      expect(cols[1].children[0]).toBe(headerBlock);
       expect(cols[1].children[1]).toBe(subtitle);
       expect(cols[1].children[2]).toBe(scrollWindow);
     });
@@ -624,7 +627,7 @@ describe("TsAnalysisNavigator", () => {
       expect(cards).toHaveLength(uploadStop.items.length);
     });
 
-    it("keeps the header→subtitle visual gap at 12px (h2 mb-3 reproduces the former space-y collapse)", () => {
+    it("keeps the header→subtitle visual gap at 12px (mb-3 reproduces the former space-y collapse)", () => {
       renderNavigator();
       const cols = getColumns();
       const header = within(cols[1]).getByRole("heading", {
@@ -632,10 +635,105 @@ describe("TsAnalysisNavigator", () => {
       });
       const subtitle = within(cols[1]).getByText("Превью всех пунктов модуля.");
       // Раньше (внутри space-y-3) зазор h2→p был 12px (коллапс mb-1 h2
-      // и mt 12px от space-y); вне space-y та же геометрия = mb-3 у h2.
-      expect(header.className).toContain("mb-3");
+      // и mt 12px от space-y); вне space-y та же геометрия = mb-3.
+      // С Task NAVDET-3 mb-3 живёт на обёртке иконки (перенесён с h2,
+      // дубля нет) — суммарная геометрия прежняя.
+      const headerBlock = header.parentElement as HTMLElement;
+      expect(headerBlock.className).toContain("mb-3");
+      expect(header.className).not.toContain("mb-3");
       // Подзаголовок→скролл: 12px (mb-3) — как и было.
       expect(subtitle.className).toContain("mb-3");
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Task NAVDET-3 — секция 4 «Подробная навигация по платформе»:
+  // тематические иконки СПЕРЕДИ заголовков «Этапы модуля», «Описание»
+  // и «Обзор» — по паттерну секции 2 «Примеры прикладных задач»
+  // (AppliedTasksNavigator): обёртка flex items-center gap-2 [mb-*],
+  // lucide-иконка size={16} className="text-brand" aria-hidden="true",
+  // отступ mb перенесён с заголовка на обёртку — геометрия прежняя.
+  // Словарь иконок секции 2: «Описание» → BriefcaseBusiness,
+  // «Обзор» → Eye (те же смысловые заголовки), «Этапы модуля» →
+  // ListChecks (списковая тематика, как «Основная задача» в секции 2).
+  // Заголовок «Маршрут исследования» уже с иконкой MapPin — не тронут.
+  // ─────────────────────────────────────────────────────────────────────
+  describe("Task NAVDET-3: thematic icons before Module stages / Description / Overview headers (section-2 pattern)", () => {
+    // Обёртка иконки+заголовка по паттерну секции 2.
+    function expectIconHeaderPattern(header: HTMLElement, lucideClass: string) {
+      const wrapper = header.parentElement as HTMLElement;
+      expect(wrapper).not.toBeNull();
+      expect(wrapper.tagName).toBe("DIV");
+      // Паттерн AppliedTasksNavigator: flex items-center gap-2.
+      expect(wrapper.className).toContain("flex");
+      expect(wrapper.className).toContain("items-center");
+      expect(wrapper.className).toContain("gap-2");
+      // Иконка — первый ребёнок (СПЕРЕДИ заголовка), заголовок — второй.
+      // У SVG (foreign element) tagName сохраняет нижний регистр.
+      expect(wrapper.children[0].tagName.toLowerCase()).toBe("svg");
+      expect(wrapper.children[1]).toBe(header);
+      // Lucide-иконка: тематическая (lucide-<name>), брендовый цвет
+      // (text-brand), декоративная (aria-hidden="true").
+      const svg = wrapper.querySelector("svg") as unknown as SVGElement;
+      expect(svg).not.toBeNull();
+      const svgClass = svg.getAttribute("class") ?? "";
+      expect(svgClass).toContain(lucideClass);
+      expect(svgClass).toContain("text-brand");
+      expect(svg.getAttribute("aria-hidden")).toBe("true");
+      return wrapper;
+    }
+
+    it("renders a ListChecks icon in front of the Module stages header", () => {
+      renderNavigator();
+      const cols = getColumns();
+      const header = within(cols[1]).getByRole("heading", {
+        name: /Этапы модуля:/,
+      });
+      const wrapper = expectIconHeaderPattern(header, "lucide-list-checks");
+      // Отступ блока заголовка (бывший mb-3 h2) — на обёртке.
+      expect(wrapper.className).toContain("mb-3");
+    });
+
+    it("renders a BriefcaseBusiness icon in front of the Description header (mirrors section 2)", () => {
+      renderNavigator();
+      const cols = getColumns();
+      const header = within(cols[2]).getByRole("heading", {
+        name: "Описание",
+      });
+      const wrapper = expectIconHeaderPattern(
+        header,
+        "lucide-briefcase-business"
+      );
+      // Отступ блока заголовка (бывший mb-1 h3) — на обёртке.
+      expect(wrapper.className).toContain("mb-1");
+    });
+
+    it("renders an Eye icon in front of the Overview header (mirrors section 2)", () => {
+      renderNavigator();
+      const cols = getColumns();
+      const header = within(cols[2]).getByRole("heading", {
+        name: /Обзор:/,
+      });
+      const wrapper = expectIconHeaderPattern(header, "lucide-eye");
+      // Отступ блока заголовка (бывший mb-1 h3) — на обёртке.
+      expect(wrapper.className).toContain("mb-1");
+    });
+
+    it("renders exactly one decorative icon per icon header (no duplicates, headers keep role/name)", () => {
+      renderNavigator();
+      const cols = getColumns();
+      const headers = [
+        within(cols[1]).getByRole("heading", { name: /Этапы модуля:/ }),
+        within(cols[2]).getByRole("heading", { name: "Описание" }),
+        within(cols[2]).getByRole("heading", { name: /Обзор:/ }),
+      ];
+      headers.forEach((header) => {
+        const wrapper = header.parentElement as HTMLElement;
+        // Ровно одна svg-иконка на обёртку заголовка.
+        expect(wrapper.querySelectorAll("svg")).toHaveLength(1);
+        // Роль/имя заголовка не изменились (heading остаётся heading).
+        expect(header.tagName).toMatch(/^H[1-6]$/);
+      });
     });
   });
 });
