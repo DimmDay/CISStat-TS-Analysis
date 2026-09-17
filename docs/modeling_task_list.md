@@ -159,3 +159,26 @@ Comparison разделён по objective.
 Performance/timeout/memory benchmark.
 PRE-0 smoke Vercel–Render.
 Обновление modeling.yaml, документации, worklog2.md и итоговый task-ZIP.
+
+### Task 144 — Мягкий порог истории вместо бинарного блока (TBATS/деревья) + починка уровня NOT_RECOMMENDED
+
+**Контекст.** Обнаружено при разборе реального кейса (Month_Value_1.csv, 64 валидных наблюдения после отбрасывания хвоста NaN): 14 из 24 моделей блокируются `min_observations`, и блокировка сейчас **везде бинарная**, без возможности «предупредить, но разрешить» — хотя часть моделей (TBATS, деревья/бустинг) численно устойчива и ниже официального порога.
+
+**Находка, требующая исправления в первую очередь.** В кодовой базе — **две независимые, несинхронизированные системы** проверки применимости по данным: YAML-движок с 4 уровнями (`src/catalog/modeling_spec_loader.py`, `RECOMMENDED`/`CONDITIONALLY_APPLICABLE`/`NOT_RECOMMENDED`/`NOT_APPLICABLE`) и хардкод-критерии (`apps/api/eda_model_matrix.py::_history_criterion` и соседние `_criterion`-функции). Именно вторая гейтит реальный запуск (`runnable_shortlist` → `run_modeling_backtest`), и она бинарна. Первая обслуживает `/candidates`, и хотя формально имеет уровень `NOT_RECOMMENDED` («предупредить»), эмпирически проверено — он ведёт себя идентично `NOT_APPLICABLE` (`available_actions=[]` в обоих случаях). Чинить нужно оба пути согласованно, не один.
+
+**Точки изменения:**
+- `rules/modeling.yaml` — новое опциональное поле `soft_min_observations` у моделей. Задать **только** для методологически безопасных семейств (по эмпирической проверке устойчивости на малых выборках в этом же проекте): `tbats`, `random_forest`, `xgboost`, `lightgbm`, `catboost`. Не задавать (= равно `min_observations`, поведение не меняется) для `var`, `vecm`, `garch`, `egarch` и всей нейросетевой пятёрки (`lstm`, `tft`, `nbeats`, `nhits`, `deepar`) — риск несходимости MLE/сингулярной матрицы/бессмысленного, но формально «успешного» фита.
+- `apps/api/eda_model_matrix.py::_history_criterion` — заменить бинарную проверку на три уровня:
+  - `n_observations >= min_observations` → `status="pass"`, `blocking=False` (как сейчас);
+  - `soft_min_observations <= n_observations < min_observations` → `status="attention"`, `blocking=False`, `conclusion` — явный текст предупреждения (не отдельный UI-элемент, уже существующее поле);
+  - `n_observations < soft_min_observations` → `status="fail"`, `blocking=True` (как сейчас).
+- `apps/api/routers/models.py::_compute_candidates` (или `resolve_applicability` в `modeling_spec_loader.py`) — модели уровня `NOT_RECOMMENDED` с `platform_status == "ready"` получают непустой `available_actions`, а `blocking_reason` показывается как предупреждение, а не причина отказа. Уровень `NOT_APPLICABLE` не трогается — остаётся полностью заблокированным.
+- Результат бэктеста/Model Card — при `status="attention"` добавляется запись в `warnings` (тот же паттерн, что уже спроектирован для превышения горизонта в `spec_forecasting2.md §5.1`): «Обучено на N наблюдениях при рекомендованном минимуме M — результат используйте с осторожностью».
+
+**Тесты (TDD, RED → GREEN):**
+- TBATS/RF/XGBoost/LightGBM/CatBoost на выборке между `soft_min_observations` и `min_observations` → `status="attention"`, `blocking=False`, модель присутствует в `runnable_shortlist`, backtest реально выполняется и возвращает `warnings`.
+- Те же модели ниже `soft_min_observations` → по-прежнему `blocking=True`, backtest недоступен — regression-тест на то, что нижняя граница не пропала.
+- GARCH/EGARCH/VAR/VECM/нейросетевая пятёрка — поведение на любых n не изменилось (соответствующий regression-тест на неизменность их `blocking` относительно текущего состояния).
+- `/candidates`: модель уровня `NOT_RECOMMENDED` с `platform_status="ready"` — `available_actions` непустой; уровня `NOT_APPLICABLE` — по-прежнему пустой (граница между уровнями 3 и 4 не стирается, а именно восстанавливается по замыслу исходной 4-уровневой шкалы).
+
+**Открытый вопрос.** Конкретные значения `soft_min_observations` (предложение: 50 для TBATS, 40 для деревьев/бустинга) — стартовые, не откалиброванные эмпирически на реальных бэктестах; требуют пересмотра после первых недель использования, тем же порядком, что и другие эвристические пороги проекта (IQR-множитель, окна дрейф-детекции).
