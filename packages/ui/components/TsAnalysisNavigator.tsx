@@ -69,6 +69,16 @@
 //   «Обзор» → Eye — те же иконки у тех же смысловых заголовков.
 //   Заголовок «Маршрут исследования» уже с иконкой MapPin — не тронут.
 //
+// Task NAVDET-5 (2026-09-17): (1) окно «Обзор» пункта «Источник: файл или
+//   БД» (upload+source, 9-й пункт «Загрузки») получило статичную блок-схему
+//   источника данных NavigatorSourceFileDbPreview — по паттерну других
+//   остановок (NavigatorFormatsVolumePreview и родня); текстовая заглушка
+//   для этого пункта больше не показывается, все 9 пунктов остановки
+//   «Загрузка» имеют специализированный Обзор. (2) Из блока метрик под
+//   окном «Обзор» удалены бейджи «Файл»/«Строк»/«Размер» (решение
+//   тимлида); остались опциональные «Частота»/«Рядов» и пример без
+//   датасета; пустая сетка бейджей не рендерится.
+//
 // Правое окно "Обзор": если в сессии есть активный датасет —
 // реальные показатели из activeDataset; иначе статичный пример-иллюстрация
 // с пометкой «пример» (решение тимлида, вопрос 4: гибрид (c)+(a)).
@@ -91,6 +101,7 @@ import { NavigatorTechInfoPreview } from "./NavigatorTechInfoPreview";
 import { NavigatorPreview55Preview } from "./NavigatorPreview55Preview";
 import { NavigatorDistributionPreview } from "./NavigatorDistributionPreview";
 import { NavigatorFormatsVolumePreview } from "./NavigatorFormatsVolumePreview";
+import { NavigatorSourceFileDbPreview } from "./NavigatorSourceFileDbPreview";
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -113,13 +124,14 @@ export function TsAnalysisNavigator() {
     setActiveItemId(stop.items[0]?.id ?? "");
   };
 
-  // Реальные показатели активного датасета, если есть; иначе — пример.
+  // Показатели под окном «Обзор». Task NAVDET-5: бейджи «Файл»/«Строк»/
+  // «Размер» удалены по решению тимлида — остаются только опциональные
+  // «Частота»/«Рядов» (если метаданные есть в сессии) либо пример без
+  // датасета (OVERVIEW_EXAMPLE_METRICS, решение тимлида, вопрос 4).
+  // Если массив пуст — сетка бейджей не рендерится вовсе.
   const hasRealDataset = Boolean(activeDataset);
   const overviewMetrics = hasRealDataset
     ? [
-        { label: "Файл", value: activeDataset!.name },
-        { label: "Строк", value: activeDataset!.rows.toLocaleString("ru-RU") },
-        { label: "Размер", value: activeDataset!.sizeLabel },
         ...(activeDataset!.frequency
           ? [{ label: "Частота", value: activeDataset!.frequency }]
           : []),
@@ -409,6 +421,21 @@ export function TsAnalysisNavigator() {
               логики (TsAnalysisUpload.tsx + app/data/file_loader.py +
               apps/api/upload_common.py). ВНЕ ЗАВИСИМОСТИ от датасета/сети.
 
+              Task NAVDET-5 (Источник: файл или БД): для пары «Загрузка» +
+              «Источник: файл или БД» (id="upload" + id="source") рендерим
+              СТАТИЧНУЮ блок-схему источника данных (NavigatorSourceFileDb-
+              Preview): переключатель «Файл / База данных (SQL)», файловая
+              дорожка (drag-and-drop → POST /v1/internal/upload →
+              read_uploaded_file → DataFrame, 4 демо-датасета), дорожка БД
+              (PostgreSQL/ClickHouse, форма Host/Port/Database/User/Password,
+              SQL-запрос с LIMIT, тест подключения SELECT 1/ping,
+              pd.read_sql/query_df, таймауты 10с/60с), общий результат
+              (датасет в сессии), ошибки обеих дорожек — на основе РЕАЛЬНОЙ
+              логики (TsAnalysisUpload.tsx + init_db_connection в
+              app/data/file_loader.py + app.py). Честный статус: форма БД
+              на странице «Загрузка» — заглушка, бэкенд готов. ВНЕ
+              ЗАВИСИМОСТИ от датасета/сети.
+
               Для остальных пунктов — текстовая заглушка (своя визуализация
               для каждого пункта в будущих задачах). */}
           {activeStopId === "upload" && activeItemId === "preview" ? (
@@ -427,6 +454,8 @@ export function TsAnalysisNavigator() {
             <NavigatorDistributionPreview />
           ) : activeStopId === "upload" && activeItemId === "formats" ? (
             <NavigatorFormatsVolumePreview />
+          ) : activeStopId === "upload" && activeItemId === "source" ? (
+            <NavigatorSourceFileDbPreview />
           ) : (
             <div
               className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"
@@ -437,12 +466,15 @@ export function TsAnalysisNavigator() {
             </div>
           )}
 
-          {/* Метрики: реальные (если есть датасет) или пример */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-            {overviewMetrics.map((m) => (
-              <Metric key={m.label} label={m.label} value={m.value} />
-            ))}
-          </div>
+          {/* Метрики: реальные (если есть датасет) или пример.
+              Task NAVDET-5: при пустом массиве сетка не рендерится. */}
+          {overviewMetrics.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+              {overviewMetrics.map((m) => (
+                <Metric key={m.label} label={m.label} value={m.value} />
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </div>

@@ -8,7 +8,7 @@
 
 import React from "react";
 import "@testing-library/jest-dom";
-import { render, screen, within, fireEvent } from "@testing-library/react";
+import { render, screen, within, fireEvent, waitFor } from "@testing-library/react";
 import { TsAnalysisNavigator } from "./TsAnalysisNavigator";
 import { NAVIGATOR_STOPS } from "../lib/navigator-stops";
 import { AppShellProvider } from "../context/AppShellContext";
@@ -179,20 +179,21 @@ describe("TsAnalysisNavigator", () => {
       expect(screen.queryByText(/нет данных/i)).toBeNull();
     });
 
-    it("still shows generic placeholder for OTHER upload items (no regression)", () => {
+    it("still shows generic placeholder for items WITHOUT specialized visuals (validation stop)", () => {
       renderNavigator();
       // По умолчанию активен upload + preview (первый item) —
       // для preview рендерится UploadAutoPreviewPipeline, не заглушка.
-      // После задач 2026-08-30..2026-09-02 остановки «Подтверждение
-      // автоопределения» (3-й item), «Teaser качества» (4-й item),
-      // «Техническая информация» (5-й item), «Превью 5+5 строк» (6-й item)
-      // и «Визуализация распределения» (7-й item) имеют
-      // специализированный Overview; с Task NAVDET-4 (2026-09-17) и
-      // «Форматы и объём» (8-й item) тоже — выбираем пункт БЕЗ
-      // специализированной визуализации: «Источник: файл или БД»
-      // (9-й item, id="source").
-      const card = screen.getByText("Источник: файл или БД");
-      fireEvent.click(card.closest("article")!);
+      // После задач 2026-08-30..2026-09-02 специализированный Обзор имеют
+      // «Подтверждение автоопределения» (3-й item), «Teaser качества»
+      // (4-й item), «Техническая информация» (5-й item), «Превью 5+5
+      // строк» (6-й item), «Визуализация распределения» (7-й item);
+      // с Task NAVDET-4 (2026-09-17) — «Форматы и объём» (8-й item);
+      // с Task NAVDET-5 (2026-09-17) — «Источник: файл или БД» (9-й item).
+      // ИТОГ: все 9 пунктов остановки «Загрузка» имеют специализированный
+      // Обзор, поэтому проверка заглушки переносится на пункты ДРУГИХ
+      // остановок: переключаемся на «ВАЛИДАЦИЯ» (первый пункт —
+      // «Типы данных», специализированной визуализации нет).
+      fireEvent.click(screen.getByRole("button", { name: "ВАЛИДАЦИЯ" }));
       expect(
         screen.getByText(/область графика\/таблицы\/блок-схемы/)
       ).toBeInTheDocument();
@@ -785,6 +786,128 @@ describe("TsAnalysisNavigator", () => {
       activateFormatsItem();
       expect(screen.getByText(/\/v1\/internal\/upload/i)).toBeInTheDocument();
       expect(screen.queryByText(/нет данных/i)).toBeNull();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Task NAVDET-5 — окно «Обзор» пункта «Источник: файл или БД»
+  // (upload+source) рендерит статичную блок-схему источника данных:
+  // переключатель «Файл / База данных (SQL)», файловая дорожка
+  // (drag-and-drop → POST /v1/internal/upload → read_uploaded_file),
+  // дорожка БД (PostgreSQL / ClickHouse, тест подключения, pd.read_sql /
+  // query_df), общий результат, ошибки обеих дорожек.
+  // ─────────────────────────────────────────────────────────────────────
+  describe("upload + source: static infographic in Overview", () => {
+    function activateSourceItem() {
+      const card = screen.getByText("Источник: файл или БД");
+      fireEvent.click(card.closest("article")!);
+    }
+
+    it("renders the infographic heading when upload + source is active", () => {
+      renderNavigator();
+      activateSourceItem();
+      // H3 «Обзор: Источник: файл или БД» — заголовок окна Обзор из
+      // TsAnalysisNavigator. Шапка инфографики тоже H3 «Источник: файл
+      // или БД». Поэтому минимум 2 совпадения (карточка средней колонки —
+      // H4, в этот счёт не попадает).
+      const headings = screen.getAllByRole("heading", {
+        level: 3,
+        name: /источник: файл или бд/i,
+      });
+      expect(headings.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("does NOT show the generic placeholder text for source item", () => {
+      renderNavigator();
+      activateSourceItem();
+      // Заглушка «[ область графика/таблицы/блок-схемы для … ]» заменена
+      // статичной блок-схемой источника данных.
+      expect(screen.queryByText(/область графика\/таблицы\/блок-схемы/)).toBeNull();
+    });
+
+    it("renders both source lanes (file + SQL DB)", () => {
+      renderNavigator();
+      activateSourceItem();
+      // Файловая дорожка: drag-and-drop, эндпоинт. Нюанс: «drag-and-drop»
+      // встречается и в описании карточки «Форматы и объём» средней
+      // колонки — поэтому getAllByText.
+      expect(screen.getAllByText(/drag-and-drop/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/\/v1\/internal\/upload/i).length).toBeGreaterThanOrEqual(1);
+      // Дорожка БД: два поддерживаемых типа.
+      expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
+      expect(screen.getByText("ClickHouse")).toBeInTheDocument();
+    });
+
+    it("renders the infographic WITHOUT activeDataset (works if dataset is deleted)", () => {
+      renderNavigator();
+      activateSourceItem();
+      expect(screen.getByText(/read_uploaded_file/i)).toBeInTheDocument();
+      expect(screen.queryByText(/нет данных/i)).toBeNull();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Task NAVDET-5 — удалены 3 бейджа под окном «Обзор»: «Файл»,
+  // «Строк», «Размер» (реальные показатели активного датасета).
+  // Бейджи-пример без датасета (OVERVIEW_EXAMPLE_METRICS: Срок /
+  // Признаков / H(ряд) / ADF p — решение тимлида, вопрос 4) и
+  // опциональные «Частота»/«Рядов» не тронуты.
+  // ─────────────────────────────────────────────────────────────────────
+  describe("Task NAVDET-5: Overview metric badges Файл/Строк/Размер removed", () => {
+    it("still renders the example metric badges when NO dataset is active (unchanged)", () => {
+      renderNavigator();
+      // Провайдер без сессии (fetch в jsdom падает) → activeDataset null
+      // → рендерится статичный пример-иллюстрация. Поведение не менялось.
+      expect(screen.getByText("Срок")).toBeInTheDocument();
+      expect(screen.getByText("Признаков")).toBeInTheDocument();
+      expect(screen.getByText("H(ряд)")).toBeInTheDocument();
+      expect(screen.getByText("ADF p")).toBeInTheDocument();
+    });
+
+    it("does NOT render Файл/Строк/Размер badges when a dataset IS active", async () => {
+      const originalFetch = global.fetch;
+      // Мокаем гидрацию провайдера: GET /v1/session/current возвращает
+      // активный датасет (без frequency/nSeries — как в реальном ответе
+      // applySessionResponse, где эти поля не гидрируются).
+      global.fetch = (async () => ({
+        ok: true,
+        json: async () => ({
+          has_active_dataset: true,
+          dataset: {
+            dataset_id: "ds_navdet5",
+            name: "sales_2024.csv",
+            rows: 1234,
+            columns: 5,
+            size_label: "128 KB",
+          },
+          stages: {},
+          last_active_stage: null,
+          updated_at: null,
+        }),
+      })) as unknown as typeof fetch;
+      try {
+        renderNavigator();
+        // Сигнал гидрации: бейдж «пример» показывается только БЕЗ
+        // датасета; после гидрации с activeDataset он исчезает.
+        await screen.findByText(/Превью пункта активной остановки/);
+        await waitFor(() =>
+          expect(screen.queryByText("пример")).toBeNull()
+        );
+        // Удалённые бейджи (Task NAVDET-5) больше не рендерятся.
+        // Нюанс: шаг пайплайна автопревью тоже называется «Файл»
+        // (UploadAutoPreviewPipeline, title: "Файл") — поэтому ищем
+        // точное совпадение только среди МЕТОК БЕЙДЖЕЙ (класс метки
+        // text-xs из Metric.tsx; заголовок шага — text-[12px]).
+        const findBadgeLabel = (text: string) =>
+          screen
+            .queryAllByText(text)
+            .find((el) => el.className.includes("text-xs"));
+        expect(findBadgeLabel("Файл")).toBeUndefined();
+        expect(findBadgeLabel("Строк")).toBeUndefined();
+        expect(findBadgeLabel("Размер")).toBeUndefined();
+      } finally {
+        global.fetch = originalFetch;
+      }
     });
   });
 });
