@@ -500,4 +500,54 @@ describe("TsAnalysisNavigator", () => {
       expect(children[2].className).toContain("flex-1");
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Task NAVDET-1 — секция 4 «Подробная навигация по платформе»:
+  // сжатие компоновки по ширине по паттерну главной страницы —
+  // зазоры 24px от границ страницы (px-6 на корне flex). Сжатие
+  // производится ТОЛЬКО за счёт ширины колонки «Описание» (flex-1
+  // min-w-0 — единственная гибкая): ширины колонок «Маршрут
+  // исследования» (w-60) и «Этапы модуля» (w-80) НЕ меняются,
+  // shrink-0 запрещает их сжатие механикой flex. Зазоры между
+  // колонками (gap-[49px]) правкой не затрагиваются.
+  // ─────────────────────────────────────────────────────────────────────
+  describe("Task NAVDET-1: 24px page insets, absorbed only by the Description column", () => {
+    it("insets the 3-column layout 24px from the page edges (px-6 on the root flex)", () => {
+      renderNavigator();
+      const root = document.querySelector(
+        ".flex.gap-\\[49px\\].mt-8"
+      ) as HTMLElement;
+      expect(root).not.toBeNull();
+      expect(root.className).toContain("px-6");
+    });
+
+    it("compression hits ONLY the Description column: Route/Module columns keep w-60/w-80 and are shrink-0", () => {
+      renderNavigator();
+      const cols = getColumns();
+      // «Маршрут исследования»: фиксированная ширина сохранена +
+      // запрет flex-сжатия (shrink-0) — колонка НЕ участвует в сжатии.
+      expect(cols[0].className).toContain("w-60");
+      expect(cols[0].className).toContain("shrink-0");
+      // «Этапы модуля»: аналогично — ширина не тронута.
+      expect(cols[1].className).toContain("w-80");
+      expect(cols[1].className).toContain("shrink-0");
+      // «Описание»+«Обзор»: единственная гибкая колонка (flex-1 +
+      // min-w-0) — именно она поглощает сжатие от боковых полей 24px.
+      expect(cols[2].className).toContain("flex-1");
+      expect(cols[2].className).toContain("min-w-0");
+    });
+
+    it("keeps the inter-column gap untouched (compression is NOT via gaps)", () => {
+      renderNavigator();
+      // Зазор между колонками прежний — 49px (присоединение другого
+      // gap-класса запрещено): правка не «прячет» сжатие в gap,
+      // а отдаёт его целиком колонке «Описание».
+      const root = document.querySelector(
+        ".flex.gap-\\[49px\\].mt-8"
+      ) as HTMLElement;
+      expect(root).not.toBeNull();
+      const gapClasses = root.className.split(/\s+/).filter((c) => c.startsWith("gap-"));
+      expect(gapClasses).toEqual(["gap-[49px]"]);
+    });
+  });
 });
