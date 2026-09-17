@@ -2467,3 +2467,74 @@ stash моей CTA-SYM-работы сверен и удалён (содержи
   warn-but-allow + env-гварды нейро)
 - tests/api/test_modeling_workflow.py (+session-тест warnings)
 - worklog/worklog6.md (этот журнал)
+
+---
+
+## Task ID: TASK-144-CERT (2026-09-17) — Сертификационный аудит Task 144 (независимый)
+
+**Вердикт: PASSED WITH REMARKS.** Полный отчёт: docs/task144_certification_report.md.
+
+### Методика и объём
+
+- Объект: незакоммиченная сдача Task 144 (13 файлов поверх main@d302117).
+- Разведка фактического кода против 5 пунктов тимлида — все выполнены:
+  soft-поле ровно у 5 моделей (YAML), history_gate_level pass/attention/fail
+  на существующей инфраструктуре (attention уже был в CriterionStatus),
+  F04 через effective_min = coalesce(soft, min), текст в существующих
+  conclusion/warnings (нового UI нет — attention рендерится штатно),
+  warn-but-allow для NOT_RECOMMENDED в /candidates при нетронутом
+  NOT_APPLICABLE.
+- Воспроизведение: fast-контур 98 passed; workflow 45/46 (падение
+  доказано предсущественным stash-прогоном); полный pytest ровно
+  2307 passed / 38 failed / 3 errors / 24 skipped (1675+587+45);
+  stash-дифф списков падений — РОВНО одна строка (старый readiness-тест,
+  починенный реворком); jest 105/1072 passed; typecheck 0; build OK;
+  ZIP == дереву по sha256 (до и после мутаций); commit/push нет.
+
+### Независимые оракулы аудитора (свои данные, не fixtures коллеги)
+
+scripts/task144_audit_oracle.py — 250/250 GREEN:
+- движок: F04-граница == effective_min у всех 24 моделей (профили без
+  маскировки F01/F02/F05), границы D07 (tbats 49/50/99/100 -> F04/D07/D07/D05;
+  деревья 39/40), рендер трёх чисел в сообщении;
+- матрица на своих фреймах n=64/44/43/104: attention/conditional/shortlist
+  у пяти soft, fail/blocked у garch/egarch/var/lstm, левая граница
+  включительна, нижняя сохранена;
+- Б5-синхронизация: матричная history-граница == движковой F04-границе
+  у КАЖДОЙ модели (n=1..259) + монотонность fail->attention->pass;
+- soft_history_warning: точный текст «Обучено на N … осторожностью.» на
+  границах, None вне окна и у моделей без soft при любых n;
+- валидатор: soft>=min и soft=0 отвергаются, soft=min-1 валиден;
+- /candidates на своём профиле n=64: warn-but-allow пяти, глухие var/vecm/
+  garch/egarch, пул по умолчанию не расширен;
+- E2E на своих CSV: n=96 (RF 200, warning «Обучено на 92 …», naive чист);
+  n=44 -> initial_train=40 — реальный бэктест на ЛЕВОЙ границе с warning
+  «Обучено на 40 …» (не покрыт тестами коллеги); n=43 -> 422 «заблокирована
+  матрицей применимости».
+
+### Мутации (независимый повтор)
+
+scripts/task144_mutations.py на восстановленном дереве: 21/21 KILLED,
+0 SURVIVED, restore sha256 OK. Инцидент: первый прогон в фоне был убит
+средой посреди M1 и оставил дерево мутированным («pattern not found» у
+M1/M2 при повторе); дерево восстановлено из эталонного ZIP по sha256,
+прогон повторён начисто. Раннеру рекомендован pre-flight (зелёная защитная
+сюита + sha256 до цикла, аварийный останов при pattern not found).
+
+### Находки
+
+- R1 (minor, устранено в сертификации): мутационный скрипт ехал только в
+  ZIP, в scripts/ отсутствовал — размещён в scripts/task144_mutations.py.
+- R2 (recommendation): робастность раннера (см. выше).
+- R3 (informational): worklog_summary.md не обновляется пот task'ово —
+  предложить тимлиду рефреш на ближайшем цикле.
+- R4 (informational): warning берёт N по фактическому train первого fold —
+  честно при sliding/train_window; зафиксировать как намеренное поведение.
+
+Изменённые/новые файлы сертификации:
+- docs/task144_certification_report.md (полный отчёт)
+- scripts/task144_audit_oracle.py (оракул 250 проверок)
+- scripts/task144_mutations.py (размещён из ZIP; сам скрипт коллеги)
+- scripts/audit_chunk1_fails.txt, audit_baseline_chunk1_fails.txt,
+  audit_chunk3_fails.txt, audit_baseline_chunk3_fails.txt (stash-диффы)
+- worklog/worklog6.md (эта запись)
