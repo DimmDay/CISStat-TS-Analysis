@@ -136,8 +136,9 @@ class TestSpecLoading:
     def test_spec_loads(self, spec):
         """Спецификация загружается без ошибок."""
         assert spec is not None
-        # Task 144: bump 1.2.0 -> 1.3.0 (мягкий порог истории, D07)
-        assert spec.metadata.version == "1.3.0"
+        # Task 145: bump 1.3.0 -> 1.3.1 (калибровка soft-порогов по реальным
+        # бэктестам; семантика движка не менялась -- только данные)
+        assert spec.metadata.version == "1.3.1"
 
     def test_soft_min_must_be_strictly_below_hard_min(self):
         """Task 144: soft_min_observations >= min_observations отвергается
@@ -308,10 +309,12 @@ class TestApplicabilityEngine:
     # ── Task 144: мягкий порог истории (soft_min_observations) ──
 
     def test_soft_history_window_is_not_recommended_not_not_applicable(self, spec):
-        """TBATS в мягком окне (50 <= n < 100) -- NOT_RECOMMENDED (D07),
-        а не NOT_APPLICABLE: уровнь 3 шкалы предупреждает, но не запрещает."""
+        """TBATS в мягком окне (soft <= n < 100) -- NOT_RECOMMENDED (D07),
+        а не NOT_APPLICABLE: уровнь 3 шкалы предупреждает, но не запрещает.
+        Task 145: soft-порог читается из спецификации (калибровка 50 -> 60)."""
+        soft_min = spec.get_model("tbats").soft_min_observations
         profile = DataProfile(
-            n_observations=60, n_series=1, n_exogenous=0,
+            n_observations=soft_min, n_series=1, n_exogenous=0,
             is_regular=True, frequency="M",
             has_seasonality=True, seasonal_periods=[12],
             is_stationary_or_diffable=True, is_cointegrated=False,
@@ -323,15 +326,16 @@ class TestApplicabilityEngine:
 
         assert result.level == "NOT_RECOMMENDED"
         assert result.rule_id == "D07"
-        assert "60" in result.message
+        assert str(soft_min) in result.message
         assert "100" in result.message
-        assert "50" in result.message
         assert "осторожностью" in result.message
         assert "{" not in result.message
 
     def test_soft_history_floor_below_soft_min_stays_not_applicable(self, spec):
         """Ниже мягкого порога (n < soft_min) TBATS по-прежнему
-        NOT_APPLICABLE: нижняя граница не исчезла (регрессия Task 144)."""
+        NOT_APPLICABLE: нижняя граница не исчезла (регрессия Task 144).
+        Task 145: ожидаемый порог читается из спецификации."""
+        soft_min = spec.get_model("tbats").soft_min_observations
         profile = DataProfile(
             n_observations=30, n_series=1, n_exogenous=0,
             is_regular=True, frequency="M",
@@ -345,8 +349,10 @@ class TestApplicabilityEngine:
 
         assert result.level == "NOT_APPLICABLE"
         assert result.rule_id == "F04"
-        # Эффективный минимум tbats = мягкий порог 50, а не min_observations=100
-        assert result.message == "Недостаточно данных: 30 < 50 (требуется TBATS)"
+        # Эффективный минимум tbats = мягкий порог, а не min_observations=100
+        assert result.message == (
+            f"Недостаточно данных: 30 < {soft_min} (требуется TBATS)"
+        )
 
     def test_models_without_soft_min_keep_hard_threshold(self, spec):
         """GARCH/EGARCH/VAR/VECM и нейросетевая пятёрка НЕ имеют
@@ -376,10 +382,53 @@ class TestApplicabilityEngine:
             model = spec.get_model(model_id)
             assert 1 <= model.soft_min_observations < model.min_observations
 
+    def test_soft_min_matches_task145_calibration_report(self, spec):
+        """Task 145: soft-пороги откалиброваны по реальным бэктестам
+        (scripts/task145/soft_calibration.py, парный end-anchored sliding
+        на 10 реальных рядах платформы, gamma=1.10, оконное среднее).
+
+        Пересечение критерия -- n=66 для обеих групп (tbats и tree_ml);
+        в YAML уходит округлённое ВНИЗ до кратного 10 значение 60
+        (порог-предупреждение: лучше предупредить, чем заблокировать;
+        сохраняет мотивирующий кейс Task 144 -- Month_Value_1.csv, n=64).
+
+        Тест синхронизирует три источника: YAML, значения по группам из
+        отчёта калибровки и ожидаемые калиброванные числа. При будущей
+        перекалибровке обновляются отчёт и этот тест."""
+        import json
+
+        report_path = (
+            Path(__file__).resolve().parents[1]
+            / "docs/task145_soft_history_calibration_results.json"
+        )
+        assert report_path.exists(), (
+            "отчёт калибровки Task 145 отсутствует -- "
+            "запустите scripts/task145/soft_calibration.py"
+        )
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        group = report["group_recommendation"]
+
+        expected_from_report = {
+            "tbats": group["tbats"]["calibrated"],
+            "random_forest": group["tree_ml"]["calibrated"],
+            "xgboost": group["tree_ml"]["calibrated"],
+            "lightgbm": group["tree_ml"]["calibrated"],
+            "catboost": group["tree_ml"]["calibrated"],
+        }
+        # Калиброванный вердикт фиксирован: 60 для обеих групп.
+        assert group["tbats"]["calibrated"] == 60
+        assert group["tree_ml"]["calibrated"] == 60
+
+        for model_id, expected in expected_from_report.items():
+            model = spec.get_model(model_id)
+            assert model.soft_min_observations == expected, model_id
+
     def test_soft_history_boundary_at_soft_min_is_not_recommended(self, spec):
         """Task 144: левая граница мягкого окна включительна -- при n ==
-        soft_min модель ещё NOT_RECOMMENDED (D07), а не NOT_APPLICABLE."""
-        for model_id, soft_min in (("tbats", 50), ("random_forest", 40)):
+        soft_min модель ещё NOT_RECOMMENDED (D07), а не NOT_APPLICABLE.
+        Task 145: порог читается из спецификации (калибровка 50/40 -> 60)."""
+        for model_id in ("tbats", "random_forest"):
+            soft_min = spec.get_model(model_id).soft_min_observations
             profile = DataProfile(
                 n_observations=soft_min, n_series=1, n_exogenous=0,
                 is_regular=True, frequency="M",

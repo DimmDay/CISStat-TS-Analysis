@@ -140,16 +140,18 @@ MUTANTS = [
      "slow",
      "N берётся с последнего fold вместо первого (92 -> 94)"),
     # ── rules/modeling.yaml (данные) ─────────────────────────────
+    # Task 145: пороги откалиброваны 50/40 -> 60; паттерны обновлены под
+    # новое значение (первое вхождение soft-строки в YAML -- блок tbats).
     ("M20", YAML,
-     '        soft_min_observations: 50\n',
-     '        soft_min_observations: 49\n',
+     '        soft_min_observations: 60\n',
+     '        soft_min_observations: 59\n',
      "fast",
      "порог tbats сдвинут (сообщение и границы едут)"),
     ("M21", YAML,
-     '        # Task 144: мягкое окно [40, 100) -- как у всей tree_ml-четвёрки.\n        soft_min_observations: 40\n        supports_exogenous: true\n        requires_feature_engineering: true\n        supports_prediction_intervals: true    # через quantile\n        libraries: ["scikit-learn"]',
-     '        # Task 144: мягкое окно [40, 100) -- как у всей tree_ml-четвёрки.\n        soft_min_observations: 99\n        supports_exogenous: true\n        requires_feature_engineering: true\n        supports_prediction_intervals: true    # через quantile\n        libraries: ["scikit-learn"]',
+     '        soft_min_observations: 60\n        supports_exogenous: true\n        requires_feature_engineering: true\n        supports_prediction_intervals: true    # через quantile\n',
+     '        soft_min_observations: 99\n        supports_exogenous: true\n        requires_feature_engineering: true\n        supports_prediction_intervals: true    # через quantile\n',
      "fast",
-     "soft random_forest 40 -> 99: окно схлопнуто почти до нуля"),
+     "soft random_forest 60 -> 99: окно схлопнуто почти до нуля"),
 ]
 
 

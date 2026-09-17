@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from apps.api.model_impls.neural_runtime import neuralforecast_runtime_available
 from apps.api.model_readiness import PRODUCTION_BACKTEST_MODEL_IDS
 from apps.api.routers.models import _compute_candidates
@@ -150,12 +152,18 @@ def test_not_recommended_soft_window_warns_but_allows_in_catalog():
     catalog = {item.model_id: item for item in response.catalog}
 
     # -- Мягкое окно: warn-but-allow ------------------------------------
+    # Task 145: порог читается из спецификации (калибровка 50/40 -> 60).
+    from src.catalog.modeling_spec_loader import ModelingSpec
+
+    _spec = ModelingSpec.from_yaml(str(
+        Path(__file__).resolve().parents[2] / "rules/modeling.yaml"
+    ))
     soft_specs = {
-        "tbats": ("50", _HAS_STATSFORECAST),
-        "random_forest": ("40", True),
-        "xgboost": ("40", True),
-        "lightgbm": ("40", True),
-        "catboost": ("40", True),
+        "tbats": (str(_spec.get_model("tbats").soft_min_observations), _HAS_STATSFORECAST),
+        "random_forest": (str(_spec.get_model("random_forest").soft_min_observations), True),
+        "xgboost": (str(_spec.get_model("xgboost").soft_min_observations), True),
+        "lightgbm": (str(_spec.get_model("lightgbm").soft_min_observations), True),
+        "catboost": (str(_spec.get_model("catboost").soft_min_observations), True),
     }
     for model_id, (soft_value, is_ready) in soft_specs.items():
         candidate = catalog[model_id]

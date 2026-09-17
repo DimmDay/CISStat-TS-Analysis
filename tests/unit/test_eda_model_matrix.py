@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -187,12 +189,19 @@ def test_soft_history_floor_below_soft_min_still_blocks():
 def test_soft_history_boundary_at_soft_min_is_attention():
     """Task 144: граница мягкого окна включительна слева.
 
-    initial_train == soft_min (40 для деревьев) -- уже attention, а не fail.
+    initial_train == soft_min -- уже attention, а не fail.
+    Task 145: размер фрейма подстраивается под откалиброванный порог
+    (read из спецификации; калибровка 40 -> 60), expanding, horizon=2,
+    n_splits=2 -> initial_train = L - 4.
     """
+    spec = ModelingSpec.from_yaml(str(
+        Path(__file__).resolve().parents[2] / "rules/modeling.yaml"
+    ))
+    soft_min = spec.get_model("random_forest").soft_min_observations
     result = build_eda_model_matrix(
-        _seasonal_frame(44), "Price", task="forecast", horizon=2, n_splits=2,
+        _seasonal_frame(soft_min + 4), "Price", task="forecast", horizon=2, n_splits=2,
     )
-    assert result["profile"]["initial_train_observations"] == 40
+    assert result["profile"]["initial_train_observations"] == soft_min
 
     for model_id in ("random_forest", "xgboost", "lightgbm", "catboost"):
         history = _history_criterion_of(_by_id(result, model_id))
