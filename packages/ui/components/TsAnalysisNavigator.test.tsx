@@ -550,4 +550,92 @@ describe("TsAnalysisNavigator", () => {
       expect(gapClasses).toEqual(["gap-[49px]"]);
     });
   });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Task NAVDET-2 — секция 4 «Подробная навигация по платформе»,
+  // средняя колонка «Этапы модуля»: заголовок h2 «Этапы модуля: …»
+  // и подзаголовок p «Превью всех пунктов модуля.» были ВНУТРИ окна
+  // скроллинга (div.max-h-[820px].overflow-y-auto) и уезжали вверх при
+  // прокрутке. Правка: вынести их ИЗ окна скроллинга в сам aside —
+  // они статичны на странице, как заголовки соседних колонок
+  // («Маршрут исследования», «Описание»). Скроллится только список
+  // карточек пунктов; окно скроллинга (max-h-[820px], overflow-y-auto,
+  // pr-1, space-y-3) не меняется. Зазор h2→подзаголовок сохранён
+  // прежним (12px): внутри space-y-3 он складывался из коллапса
+  // mb-1 h2 и mt 12px от space-y; вне space-y воспроизведён mb-3.
+  // ─────────────────────────────────────────────────────────────────────
+  describe("Task NAVDET-2: Module stages header/subtitle are static, OUTSIDE the scrolling window", () => {
+    // Окно скроллинга средней колонки (единственное max-h-[820px] в DOM).
+    function getScrollWindow(): HTMLElement {
+      const el = document.querySelector(
+        "div.max-h-\\[820px\\]"
+      ) as HTMLElement;
+      if (!el) {
+        throw new Error("Scroll window (div.max-h-[820px]) not found");
+      }
+      return el;
+    }
+
+    it("renders the header h2 and subtitle p OUTSIDE the scrolling window (static like neighbor column headers)", () => {
+      renderNavigator();
+      const cols = getColumns();
+      const scrollWindow = getScrollWindow();
+
+      const header = within(cols[1]).getByRole("heading", {
+        name: /Этапы модуля:/,
+      });
+      const subtitle = within(cols[1]).getByText("Превью всех пунктов модуля.");
+
+      // Заголовок и подзаголовок НЕ потомки окна скроллинга —
+      // при прокрутке списка они остаются на странице.
+      expect(scrollWindow.contains(header)).toBe(false);
+      expect(scrollWindow.contains(subtitle)).toBe(false);
+      // При этом оба принадлежат средней колонке.
+      expect(cols[1].contains(header)).toBe(true);
+      expect(cols[1].contains(subtitle)).toBe(true);
+      // Заголовок — первый ребёнок колонки, подзаголовок — сразу за ним
+      // (оба ВЫШЕ окна скроллинга в порядке документа).
+      expect(cols[1].children[0]).toBe(header);
+      expect(cols[1].children[1]).toBe(subtitle);
+      expect(cols[1].children[2]).toBe(scrollWindow);
+    });
+
+    it("scrolling window contains ONLY item cards (all direct children are articles)", () => {
+      renderNavigator();
+      const scrollWindow = getScrollWindow();
+
+      // Поведение скролла сохранено без изменений.
+      expect(scrollWindow.className).toContain("max-h-[820px]");
+      expect(scrollWindow.className).toContain("overflow-y-auto");
+      expect(scrollWindow.className).toContain("pr-1");
+      expect(scrollWindow.className).toContain("space-y-3");
+
+      // Внутри окна — только карточки пунктов: каждый прямой ребёнок
+      // это <article>; заголовков/подзаголовков среди детей нет.
+      const directChildren = Array.from(scrollWindow.children);
+      expect(directChildren.length).toBeGreaterThan(0);
+      directChildren.forEach((child) => {
+        expect(child.tagName).toBe("ARTICLE");
+      });
+
+      // Все карточки активной остановки — внутри окна.
+      const uploadStop = NAVIGATOR_STOPS.find((s) => s.id === "upload")!;
+      const cards = scrollWindow.querySelectorAll("article");
+      expect(cards).toHaveLength(uploadStop.items.length);
+    });
+
+    it("keeps the header→subtitle visual gap at 12px (h2 mb-3 reproduces the former space-y collapse)", () => {
+      renderNavigator();
+      const cols = getColumns();
+      const header = within(cols[1]).getByRole("heading", {
+        name: /Этапы модуля:/,
+      });
+      const subtitle = within(cols[1]).getByText("Превью всех пунктов модуля.");
+      // Раньше (внутри space-y-3) зазор h2→p был 12px (коллапс mb-1 h2
+      // и mt 12px от space-y); вне space-y та же геометрия = mb-3 у h2.
+      expect(header.className).toContain("mb-3");
+      // Подзаголовок→скролл: 12px (mb-3) — как и было.
+      expect(subtitle.className).toContain("mb-3");
+    });
+  });
 });
