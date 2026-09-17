@@ -22,7 +22,10 @@ export interface EdaModelCriterion {
 export interface EdaModelMatrixModel {
   model_id: string; model_name: string; family_id: string; family_name: string;
   compatibility: ModelCompatibility; platform_status: "ready" | "catalog_only";
-  min_observations: number; supports_exogenous: boolean; libraries: string[];
+  min_observations: number;
+  /** Task 144: мягкий порог истории; null/undefined = равен min_observations */
+  soft_min_observations?: number | null;
+  supports_exogenous: boolean; libraries: string[];
   training_time: string; criteria: EdaModelCriterion[];
   blocking_reasons: string[]; cautions: string[];
 }

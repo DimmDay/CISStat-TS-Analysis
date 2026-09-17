@@ -83,6 +83,7 @@ from apps.api.modeling_tuning import (
     parameter_signature,
     prepare_tuning_grid,
 )
+from apps.api.eda_model_matrix import soft_history_warning
 from apps.api.eda_validation_strategy import build_eda_validation_strategy
 from apps.api.modeling_workflow import (
     build_modeling_context,
@@ -91,6 +92,7 @@ from apps.api.modeling_workflow import (
 from apps.api.routers.diagnostics import DiagnosticResult, _diagnose
 from apps.api.routers.models import (
     _compute_candidates,
+    _get_spec,
     _resolve_model_info,
     _run_backtest_with_series,
 )
@@ -1504,6 +1506,20 @@ def run_modeling_backtest(
             preprocessing_warnings.append(
                 "Сохранённые tuned-параметры относятся к другому cohort и не применены."
             )
+        # Task 144: модель в мягком окне истории (soft_min <= train первого
+        # fold < min_observations) исполняется, но результат снабжается
+        # явным предупреждением в warnings (паттерн horizon-warning
+        # spec_forecasting2 §5.1). Текст и порог -- единая точка истины
+        # (eda_model_matrix.soft_history_warning); для моделей без
+        # soft-порога возвращает None, так что все остальные ветки
+        # (vector/panel/volatility) не затронуты.
+        spec_model = _get_spec().get_model(payload.model_id)
+        if spec_model is not None and plan.folds:
+            soft_warning = soft_history_warning(
+                spec_model, len(plan.folds[0].train_indices),
+            )
+            if soft_warning:
+                preprocessing_warnings.append(soft_warning)
         if volatility_run:
             raw_result = run_volatility_backtest_plan(
                 model_id=payload.model_id, model_name=model_info[0],

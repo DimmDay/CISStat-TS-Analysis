@@ -136,7 +136,31 @@ class TestSpecLoading:
     def test_spec_loads(self, spec):
         """Спецификация загружается без ошибок."""
         assert spec is not None
-        assert spec.metadata.version == "1.2.0"
+        # Task 144: bump 1.2.0 -> 1.3.0 (мягкий порог истории, D07)
+        assert spec.metadata.version == "1.3.0"
+
+    def test_soft_min_must_be_strictly_below_hard_min(self):
+        """Task 144: soft_min_observations >= min_observations отвергается
+        загрузчиком -- вырожденное мягкое окно недопустимо по контракту."""
+        import pytest as _pytest
+        from pydantic import ValidationError
+
+        from src.catalog.modeling_spec_loader import FamilyModel
+
+        base = dict(
+            id="x", name="X", description="d", min_observations=100,
+        )
+        # soft == min -- вырожденное окно
+        with _pytest.raises(ValidationError):
+            FamilyModel(**base, soft_min_observations=100)
+        # soft > min -- бессмыслица
+        with _pytest.raises(ValidationError):
+            FamilyModel(**base, soft_min_observations=150)
+        # soft < min -- валидно
+        model = FamilyModel(**base, soft_min_observations=40)
+        assert model.soft_min_observations == 40
+        # отсутствие поля -- валидно (поведение прежнее)
+        assert FamilyModel(**base).soft_min_observations is None
 
     def test_spec_has_8_families(self, spec):
         """Ровно 8 семейств моделей."""
@@ -234,9 +258,9 @@ class TestApplicabilityEngine:
         assert len(engine.preferred) > 0
 
     def test_total_rules_count(self, spec):
-        """Суммарно 23 правила."""
+        """Суммарно 24 правила (Task 144: +D07 -- мягкое окно истории)."""
         total = spec.applicability_engine.total_rules_count()
-        assert total == 23
+        assert total == 24
 
     # ── NOT_APPLICABLE ─────────────────────────────────────
 
@@ -260,7 +284,32 @@ class TestApplicabilityEngine:
         assert result.rule_id == "F04"
 
     def test_forbidden_rule_message_renders_profile_and_model_values(self, spec):
-        """Blocking reason must explain why a ready model is hidden from runnable."""
+        """Blocking reason must explain why a ready model is hidden from runnable.
+
+        Task 144: tbats при n=60 больше НЕ блокируется F04 (мягкий порог
+        50), поэтому рендеринг F04-сообщения проверяется на lstm -- модели
+        БЕЗ soft_min_observations (min_observations=200, n=60 < 200).
+        """
+        profile = DataProfile(
+            n_observations=60, n_series=1, n_exogenous=0,
+            is_regular=True, frequency="M",
+            has_seasonality=True, seasonal_periods=[12],
+            is_stationary_or_diffable=True, is_cointegrated=False,
+            has_negative_values=False, has_volatility_clustering=False,
+            domain="macro", missing_ratio=0.0, outlier_ratio=0.0,
+        )
+
+        result = spec.resolve_applicability("lstm", profile)
+
+        assert result.rule_id == "F04"
+        assert result.message == "Недостаточно данных: 60 < 200 (требуется LSTM / GRU)"
+        assert "{" not in result.message
+
+    # ── Task 144: мягкий порог истории (soft_min_observations) ──
+
+    def test_soft_history_window_is_not_recommended_not_not_applicable(self, spec):
+        """TBATS в мягком окне (50 <= n < 100) -- NOT_RECOMMENDED (D07),
+        а не NOT_APPLICABLE: уровнь 3 шкалы предупреждает, но не запрещает."""
         profile = DataProfile(
             n_observations=60, n_series=1, n_exogenous=0,
             is_regular=True, frequency="M",
@@ -272,9 +321,93 @@ class TestApplicabilityEngine:
 
         result = spec.resolve_applicability("tbats", profile)
 
-        assert result.rule_id == "F04"
-        assert result.message == "Недостаточно данных: 60 < 100 (требуется TBATS)"
+        assert result.level == "NOT_RECOMMENDED"
+        assert result.rule_id == "D07"
+        assert "60" in result.message
+        assert "100" in result.message
+        assert "50" in result.message
+        assert "осторожностью" in result.message
         assert "{" not in result.message
+
+    def test_soft_history_floor_below_soft_min_stays_not_applicable(self, spec):
+        """Ниже мягкого порога (n < soft_min) TBATS по-прежнему
+        NOT_APPLICABLE: нижняя граница не исчезла (регрессия Task 144)."""
+        profile = DataProfile(
+            n_observations=30, n_series=1, n_exogenous=0,
+            is_regular=True, frequency="M",
+            has_seasonality=True, seasonal_periods=[12],
+            is_stationary_or_diffable=True, is_cointegrated=False,
+            has_negative_values=False, has_volatility_clustering=False,
+            domain="macro", missing_ratio=0.0, outlier_ratio=0.0,
+        )
+
+        result = spec.resolve_applicability("tbats", profile)
+
+        assert result.level == "NOT_APPLICABLE"
+        assert result.rule_id == "F04"
+        # Эффективный минимум tbats = мягкий порог 50, а не min_observations=100
+        assert result.message == "Недостаточно данных: 30 < 50 (требуется TBATS)"
+
+    def test_models_without_soft_min_keep_hard_threshold(self, spec):
+        """GARCH/EGARCH/VAR/VECM и нейросетевая пятёрка НЕ имеют
+        soft_min_observations: их F04-порог неизменен (директива Task 144)."""
+        for model_id in (
+            "garch", "egarch", "var", "vecm",
+            "lstm", "tft", "nbeats", "nhits", "deepar",
+        ):
+            model = spec.get_model(model_id)
+            assert model is not None
+            assert model.soft_min_observations is None, (
+                f"{model_id} не должен иметь soft_min_observations"
+            )
+
+    def test_soft_models_declared_only_for_stable_families(self, spec):
+        """soft_min_observations задан ТОЛЬКО у tbats и четвёрки tree_ml
+        (директива тимлида Task 144: TBATS, Random Forest, XGBoost,
+        LightGBM, CatBoost)."""
+        with_soft = {
+            model.id
+            for family in spec.families
+            for model in family.models
+            if model.soft_min_observations is not None
+        }
+        assert with_soft == {"tbats", "random_forest", "xgboost", "lightgbm", "catboost"}
+        for model_id in with_soft:
+            model = spec.get_model(model_id)
+            assert 1 <= model.soft_min_observations < model.min_observations
+
+    def test_soft_history_boundary_at_soft_min_is_not_recommended(self, spec):
+        """Task 144: левая граница мягкого окна включительна -- при n ==
+        soft_min модель ещё NOT_RECOMMENDED (D07), а не NOT_APPLICABLE."""
+        for model_id, soft_min in (("tbats", 50), ("random_forest", 40)):
+            profile = DataProfile(
+                n_observations=soft_min, n_series=1, n_exogenous=0,
+                is_regular=True, frequency="M",
+                has_seasonality=True, seasonal_periods=[12],
+                is_stationary_or_diffable=True, is_cointegrated=False,
+                has_negative_values=False, has_volatility_clustering=False,
+                domain="macro", missing_ratio=0.0, outlier_ratio=0.0,
+            )
+            result = spec.resolve_applicability(model_id, profile)
+            assert result.level == "NOT_RECOMMENDED", model_id
+            assert result.rule_id == "D07", model_id
+
+    def test_tbats_between_min_and_d05_stays_d05(self, spec):
+        """TBATS при n >= min_observations (100) и n < 200 -- по-прежнему
+        NOT_RECOMMENDED по D05: мягкое окно D07 не размывает D05."""
+        profile = DataProfile(
+            n_observations=120, n_series=1, n_exogenous=0,
+            is_regular=True, frequency="M",
+            has_seasonality=True, seasonal_periods=[12],
+            is_stationary_or_diffable=True, is_cointegrated=False,
+            has_negative_values=False, has_volatility_clustering=False,
+            domain="macro", missing_ratio=0.0, outlier_ratio=0.0,
+        )
+
+        result = spec.resolve_applicability("tbats", profile)
+
+        assert result.level == "NOT_RECOMMENDED"
+        assert result.rule_id == "D05"
 
     def test_var_for_univariate_is_not_applicable(self, spec, macro_profile):
         """VAR для одномерного ряда → NOT_APPLICABLE (F01)."""

@@ -1,4 +1,5 @@
 from apps.api.model_impls.neural_runtime import neuralforecast_runtime_available
+from apps.api.model_readiness import PRODUCTION_BACKTEST_MODEL_IDS
 from apps.api.routers.models import _compute_candidates
 from apps.api.schemas import CandidatesRequest, DataProfileRequest
 
@@ -9,6 +10,10 @@ from apps.api.schemas import CandidatesRequest, DataProfileRequest
 # пакета.
 _HAS_NEURAL = neuralforecast_runtime_available()
 _CATALOG_ONLY_NEURAL = () if _HAS_NEURAL else ("lstm", "nbeats", "nhits", "tft")
+
+# Task 144: tbats readiness зависит от statsforecast (core-зависимость
+# apps/api/requirements.txt, но среда разработки может быть частичной).
+_HAS_STATSFORECAST = "tbats" in PRODUCTION_BACKTEST_MODEL_IDS
 
 
 def _broad_profile() -> DataProfileRequest:
@@ -123,84 +128,98 @@ def test_response_keeps_filtered_candidate_pool_and_exposes_complete_catalog():
     assert "var" not in candidate_ids
     assert catalog["var"].level == "NOT_APPLICABLE"
     assert catalog["var"].available_actions == []
-    assert catalog["var"].message
+def test_not_recommended_soft_window_warns_but_allows_in_catalog():
+    """Task 144: NOT_RECOMMENDED + platform ready -- «предупредить, но не
+    запретить» (уровень 3 исходной 4-уровневой шкалы).
 
+    TBATS (soft 50) и четвёрка tree_ml (soft 40) на профиле n=60 попадают
+    в мягкое окно истории: правило D07 даёт NOT_RECOMMENDED с явным
+    предупреждением в message, available_actions НЕ пусты, blocking_reason
+    снят. NOT_APPLICABLE (уровень 4) остаётся полностью заблокированным:
+    var/vecm -- F01 (n_series=1 < min_series=2), garch/egarch -- F04
+    (60 < 100, без soft), нейро-пятёрка -- F04 (60 < 200) / F05 (deepar).
+    """
+    from apps.api.model_readiness import available_model_actions
 
-def test_tbats_is_connected_but_explains_when_current_training_fold_is_too_short():
     profile = _broad_profile().model_copy(update={"n_observations": 60})
 
     response = _compute_candidates(CandidatesRequest(
         profile=profile,
         min_level="CONDITIONALLY_APPLICABLE",
     ))
-    tbats = next(item for item in response.catalog if item.model_id == "tbats")
+    catalog = {item.model_id: item for item in response.catalog}
 
-    assert tbats.platform_status == "ready"
-    assert tbats.available_actions == []
-    assert tbats.blocking_reason == "Недостаточно данных: 60 < 100 (требуется TBATS)"
-    # Task 127/128/129/130: random_forest, xgboost, lightgbm и catboost тоже
-    # объявляют min_observations=100 и на коротком профиле блокируются вместе
-    # с TBATS -- explain, не fake.  Task 132: var блокируется F01 (n_series=1
-    # < min_series=2) тем же честным explain-механизмом.
-    for model_id, name in (("random_forest", "Random Forest"), ("xgboost", "XGBoost"),
-                           ("lightgbm", "LightGBM"), ("catboost", "CatBoost")):
-        candidate = next(item for item in response.catalog if item.model_id == model_id)
-        assert candidate.platform_status == "ready"
-        assert candidate.available_actions == []
-        assert candidate.blocking_reason == f"Недостаточно данных: 60 < 100 (требуется {name})"
-    var_candidate = next(item for item in response.catalog if item.model_id == "var")
-    assert var_candidate.platform_status == "ready"
+    # -- Мягкое окно: warn-but-allow ------------------------------------
+    soft_specs = {
+        "tbats": ("50", _HAS_STATSFORECAST),
+        "random_forest": ("40", True),
+        "xgboost": ("40", True),
+        "lightgbm": ("40", True),
+        "catboost": ("40", True),
+    }
+    for model_id, (soft_value, is_ready) in soft_specs.items():
+        candidate = catalog[model_id]
+        assert candidate.level == "NOT_RECOMMENDED", model_id
+        assert candidate.rule_id == "D07", model_id
+        assert candidate.message, model_id
+        assert "60" in candidate.message and "100" in candidate.message, model_id
+        assert soft_value in candidate.message, model_id
+        assert "осторожностью" in candidate.message, model_id
+        if is_ready:
+            assert candidate.platform_status == "ready", model_id
+            assert candidate.available_actions, model_id
+            assert candidate.available_actions == available_model_actions(model_id), model_id
+            assert "backtest" in candidate.available_actions, model_id
+            assert candidate.blocking_reason is None, model_id
+        else:
+            # Без statsforecast tbats честно catalog_only: действий нет,
+            # но причина -- отсутствие реализации, а не применимость.
+            assert candidate.platform_status == "catalog_only", model_id
+            assert candidate.available_actions == []
+
+    # NOT_RECOMMENDED-модели по-прежнему НЕ входят в суженный пул
+    # кандидатов (min_level default = CONDITIONALLY_APPLICABLE),
+    # но присутствуют в полном каталоге.
+    candidate_ids = {item.model_id for item in response.candidates}
+    assert candidate_ids.isdisjoint(soft_specs)
+
+    # -- NOT_APPLICABLE: граница уровней 3 и 4 не стирается -------------
+    var_candidate = catalog["var"]
+    assert var_candidate.level == "NOT_APPLICABLE"
     assert var_candidate.available_actions == []
     assert var_candidate.blocking_reason
-    # Task 133: vecm блокируется F01 тем же честным explain-механизмом
-    # (n_series=1 < min_series=2).
-    vecm_candidate = next(item for item in response.catalog if item.model_id == "vecm")
-    assert vecm_candidate.platform_status == "ready"
+    vecm_candidate = catalog["vecm"]
     assert vecm_candidate.available_actions == []
     assert vecm_candidate.blocking_reason
-    # Task 135: garch на коротком профиле (60 < 100) блокируется тем же
-    # честным explain-механизмом.
-    garch_candidate = next(item for item in response.catalog if item.model_id == "garch")
-    assert garch_candidate.platform_status == "ready"
+    garch_candidate = catalog["garch"]
+    assert garch_candidate.level == "NOT_APPLICABLE"
+    # macro-домен: GARCH отсекается F02 (финансовая модель) раньше F04 --
+    # в любом случае полностью заблокирована (уровень 4 не тронут).
     assert garch_candidate.available_actions == []
     assert garch_candidate.blocking_reason
-    # Task 136: egarch -- второй volatility-исполнитель; тот же честный
-    # explain на коротком профиле (60 < 100).
-    egarch_candidate = next(item for item in response.catalog if item.model_id == "egarch")
-    assert egarch_candidate.platform_status == "ready"
+    egarch_candidate = catalog["egarch"]
     assert egarch_candidate.available_actions == []
     assert egarch_candidate.blocking_reason
-    # Task 138/139/140/141: lstm, nbeats, nhits и tft на коротком
-    # профиле честно блокируются min_observations=200 (60 < 200) тем
-    # же explain-механизмом; Task 142: deepar -- правилом F05 (панель
-    # min_series=5, n_series=1; эмпирика: F05 срабатывает раньше F04 на
-    # этом профиле).
-    deepar_candidate = next(item for item in response.catalog if item.model_id == "deepar")
-    assert deepar_candidate.blocking_reason == "Модель DeepAR требует минимум 5 рядов"
-    lstm_candidate = next(item for item in response.catalog if item.model_id == "lstm")
-    assert lstm_candidate.blocking_reason == "Недостаточно данных: 60 < 200 (требуется LSTM / GRU)"
-    nbeats_candidate = next(item for item in response.catalog if item.model_id == "nbeats")
-    assert nbeats_candidate.blocking_reason == "Недостаточно данных: 60 < 200 (требуется N-BEATS)"
-    nhits_candidate = next(item for item in response.catalog if item.model_id == "nhits")
-    assert nhits_candidate.blocking_reason == "Недостаточно данных: 60 < 200 (требуется N-HiTS)"
-    tft_candidate = next(item for item in response.catalog if item.model_id == "tft")
-    assert tft_candidate.blocking_reason == "Недостаточно данных: 60 < 200 (требуется Temporal Fusion Transformer)"
+    # Task 138-142: нейро-пятёрка на коротком профиле честно блокируется
+    # F04 (60 < 200) / F05 (deepar -- панель); причина видна только при
+    # установленной neural-группе, иначе блокирует отсутствие реализации.
     if _HAS_NEURAL:
-        assert lstm_candidate.platform_status == "ready"
-        assert lstm_candidate.available_actions == []
-        assert nbeats_candidate.platform_status == "ready"
-        assert nbeats_candidate.available_actions == []
-        assert nhits_candidate.platform_status == "ready"
-        assert nhits_candidate.available_actions == []
-        assert tft_candidate.platform_status == "ready"
-        assert tft_candidate.available_actions == []
-        assert deepar_candidate.platform_status == "ready"
-        assert deepar_candidate.available_actions == []
-        assert response.statistics.blocked_candidates == 14
-    else:
-        assert lstm_candidate.platform_status == "catalog_only"
-        assert nbeats_candidate.platform_status == "catalog_only"
-        assert nhits_candidate.platform_status == "catalog_only"
-        assert tft_candidate.platform_status == "catalog_only"
-        assert deepar_candidate.platform_status == "catalog_only"
+        assert catalog["deepar"].blocking_reason == "Модель DeepAR требует минимум 5 рядов"
+        assert catalog["lstm"].blocking_reason == "Недостаточно данных: 60 < 200 (требуется LSTM / GRU)"
+        assert catalog["nbeats"].blocking_reason == "Недостаточно данных: 60 < 200 (требуется N-BEATS)"
+        assert catalog["nhits"].blocking_reason == "Недостаточно данных: 60 < 200 (требуется N-HiTS)"
+        assert catalog["tft"].blocking_reason == "Недостаточно данных: 60 < 200 (требуется Temporal Fusion Transformer)"
+        for model_id in ("lstm", "nbeats", "nhits", "tft", "deepar"):
+            assert catalog[model_id].platform_status == "ready", model_id
+            assert catalog[model_id].available_actions == [], model_id
+        # 4 ready-but-blocked (var/vecm/garch/egarch) + 5 нейро = 9
         assert response.statistics.blocked_candidates == 9
+    else:
+        for model_id in ("lstm", "nbeats", "nhits", "tft", "deepar"):
+            assert catalog[model_id].platform_status == "catalog_only", model_id
+            assert catalog[model_id].blocking_reason == (
+                "Production-реализация модели ещё не подключена; "
+                "фиктивные метрики запрещены."
+            ), model_id
+        # Только var/vecm/garch/egarch остаются ready-but-blocked
+        assert response.statistics.blocked_candidates == 4

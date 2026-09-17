@@ -2320,3 +2320,150 @@ frontend-регрессия, typecheck/build обеих оболочек, про
   packages/ui/components/TsAnalysisNavigator.test.tsx
   (describe NAVDET-1, 3 кейса), worklog/worklog6.md (этот журнал).
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md).
+
+---
+
+## Task ID: TASK-144 (2026-09-17) — Мягкий порог истории вместо бинарного блока (TBATS/деревья) + починка уровня NOT_RECOMMENDED
+
+Синхронизация: main@d302117 (после bbd04f8 тимлидом закоммичены IA-1/R2-R5,
+IA-1/CTA-SYM, IA-1/R6 A+C, FC-MON-1, NAVBG/NAVSTG, VALID/PREPR/EDA-2,
+FC-MON-2, d302117 modeling_task_list). Рабочее дерево чистое, локальный
+stash моей CTA-SYM-работы сверен и удалён (содержится в dbf8a32).
+
+### Постановка (тимлид, 5 пунктов + docs/modeling_task_list.md Task 144)
+
+1. Не «выключать F04», а ввести второй мягкий порог ПО СЕМЕЙСТВАМ: только
+   tbats, random_forest, xgboost, lightgbm, catboost; GARCH/EGARCH/VAR/VECM
+   и нейро-пятёрку не трогать.
+2. Одна точка изменения: _history_criterion из бинарной -> трёхуровневая
+   (pass/attention/fail) на существующей инфраструктуре _criterion/
+   compatibility; «conditional» уже включает в runnable_shortlist — новый
+   UI не нужен.
+3. Порог — новое поле в том же YAML, где живёт min_observations:
+   soft_min_observations; отсутствует == min_observations (поведение не
+   меняется).
+4. Явное предупреждение — текст в существующем conclusion матрицы + запись
+   в warnings результата бэктеста (паттерн horizon-warning
+   spec_forecasting2 §5.1), не новый UI-элемент.
+5. Попутный баг: NOT_RECOMMENDED в /candidates вёл себя как
+   NOT_APPLICABLE (available_actions=[] для обоих) — восстановить замысел
+   4-уровневой шкалы «предупредить, но не запретить» для уровня 3.
+
+### Реализация (единый источник истины — YAML-поле; потребители синхронны)
+
+- rules/modeling.yaml: soft_min_observations: 50 (tbats), 40 (tree_ml
+  четвёрка) — только у 5 устойчивых моделей; правило D07 (ПЕРВЫМ в
+  discouraged: предупреждение о нехватке истории не маскируется
+  D05/D03, истинными одновременно) с message-формулой про осторожность;
+  F04: эффективный жёсткий порог = coalesce(soft, min) — сам F04 НЕ
+  выключен, для моделей без soft поведение байт-в-байт прежнее;
+  metadata.version 1.2.0 -> 1.3.0 (прецедент Task 143: семантика
+  движка изменилась — 24 правила).
+- src/catalog/modeling_spec_loader.py: FamilyModel.soft_min_observations
+  (+валидатор: строго меньше min_observations, иначе ValidationError);
+  ctx: model.soft_min_observations + model.effective_min_observations;
+  handlers F04 (эффективный порог) и D07 (мягкое окно
+  soft <= n < min -> NOT_RECOMMENDED).
+- apps/api/eda_model_matrix.py: публичный history_gate_level()
+  (pass/attention/fail — трёхуровневый гейт), _history_criterion
+  переписан на него (attention: blocking=False, явный conclusion с
+  «в пределах мягкого порога»); публичный soft_history_warning()
+  (текст «Обучено на N наблюдениях при рекомендованном минимуме M —
+  результат используйте с осторожностью.» — ровно на attention);
+  _model_out раскрывает soft_min_observations.
+- apps/api/routers/models.py::_compute_candidates: warn-only логика —
+  NOT_RECOMMENDED + platform ready получает непустой available_actions
+  (= available_model_actions), blocking_reason снят (предупреждение
+  живёт в message правила); NOT_APPLICABLE не тронут (полностью
+  заблокирован); stage_capabilities строятся от runnable.
+- apps/api/routers/modeling_session.py::run_modeling_backtest: после
+  сборки плана — soft_history_warning(spec_model, train первого fold)
+  аппендится в preprocessing_warnings -> попадает в warnings ответа
+  бэктеста и Model Card (существующий канал warnings). Для моделей без
+  soft возвращает None — vector/panel/volatility ветки не затронуты.
+- packages/ui/components/TsAnalysisModeling.tsx: счётчик правил
+  23 -> 24 (5 forbidden, 7 discouraged, 5 conditional, 7 preferred) в
+  help-тексте и двух metrics-строках; пояснение уровня 3 дополнено
+  семантикой мягкого окна.
+- packages/ui/components/EdaModelMatrixOverview.tsx: тип матрицы
+  + soft_min_observations?: number | null.
+
+### TDD
+
+- RED (9 падений подтверждены до реализации): движок — D07 для tbats
+  n=60, F04 на n=30 с эффективным порогом «30 < 50», граница n==soft
+  (tbats 50 / rf 40 -> D07), D05 не размыт (tbats n=120 -> D05),
+  отсутствие поля у GARCH/EGARCH/VAR/VECM/нейро-пятёрки, множество
+  soft-моделей ровно 5, валидатор вырожденного окна, счётчик 24
+  правила, F04-сообщение переэкземплировано на lstm (60 < 200);
+  матрица — attention+conditional+runnable на initial_train=60,
+  fail/blocked на 36, границы 40/100, fail без soft у
+  garch/egarch/var/lstm, раскрытие soft-поля; /candidates —
+  warn-but-allow для 5 soft-моделей (n=60, действия непусты,
+  blocking_reason=None, предупреждение в message), NOT_APPLICABLE
+  остался заблокирован (var/vecm F01, garch/egarch F02, нейро F04/F05),
+  blocked_candidates 14->9 (с нейро) / 9->4 (без); session — бэктест RF
+  при initial_train=92 реально исполняется и возвращает
+  «Обучено на 92 наблюдениях при рекомендованном минимуме 100 —
+  результат используйте с осторожностью.», naive — без предупреждения.
+- GREEN: после реализации — 187/189 затронутого контура; 2 оставшихся
+  падения доказаны предсущественными stash-прогоном на baseline
+  d302117 (среда без neural-группы).
+
+### Мутационное тестирование (scripts/task144_mutations.py)
+
+- 21 мутант по всем 5 целям (границы окна, подмена порога, инверсия/
+  удаление D07, откат F04, warn_only-логика, текст/канал предупреждения,
+  fold[0]->fold[-1], данные soft-порогов в YAML, валидатор, прозрачность
+  матрицы). Первый прогон 20/21 KILLED, 1 SURVIVED (M7: ассерт
+  «мягкого порога» не различал «в пределах/вне») — ассерт усилен до
+  «в пределах мягкого порога», повторный прогон: 21/21 KILLED,
+  0 SURVIVED. Восстановление файлов верифицировано sha256.
+
+### Верификация (полная регрессия)
+
+- Backend: полный pytest tests/ — 2307 passed / 38 failed / 3 errors /
+  24 skipped; stash-дифф списков падений против baseline d302117 —
+  РОВНО одна строка: старый readiness-тест, который мой реворк
+  починил (гвардинг _HAS_NEURAL). Все 41 остальных — предсущественные
+  environment-only (нейро-группа не установлена: integration-paths
+  lstm/nbeats/nhits/tft, deepar 422-панель, v2-дескрипторы; +
+  structural_breaks/forecasting/preprocessing-snapshot — версия
+  statsmodels 0.14.5 в venv против pinned 0.15.0 и снапшоты).
+- Frontend: полный jest 105 сюит / 1072 passed / 0 failed;
+  typecheck:all 0 ошибок; build успешен.
+- Среда: доустановлены statsforecast 2.1.1, arch 8.0.0, prophet 1.4.0,
+  pandera 0.33.1, PyWavelets (core-группа requirements); нейро-группа
+  сознательно НЕ ставилась (прецедент R6).
+
+### Следствия и границы
+
+- Кейс Month_Value_1.csv (64 наблюдения) снят: TBATS/деревья/бустинг
+  попадают в мягкое окно -> запускаемы с явным предупреждением; нижняя
+  граница сохранена (ниже soft — прежний честный отказ).
+- Два пути гейтинга синхронизированы одним полем YAML: движок
+  (D07/F04-эффективный) и матрица (history attention) читают один и
+  тот же soft_min_observations; расхождение уровней невозможно без
+  правки данных.
+- Значения 50/40 — стартовые (открытый вопрос Task 144): пересмотр по
+  реальным бэктестам тем же порядком, что IQR-множитель и окна дрейфа.
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); работа в ZIP
+  download/task_144_soft_history_threshold.zip.
+
+Изменённые/новые файлы:
+- rules/modeling.yaml (soft-пороги 5 моделей, D07, F04-эффективный,
+  версия 1.3.0)
+- src/catalog/modeling_spec_loader.py (поле+валидатор, ctx, F04/D07)
+- apps/api/eda_model_matrix.py (history_gate_level, soft_history_warning,
+  _history_criterion 3 уровня, раскрытие soft-поля)
+- apps/api/routers/models.py (warn-but-allow NOT_RECOMMENDED)
+- apps/api/routers/modeling_session.py (инъекция warning в бэктест)
+- packages/ui/components/TsAnalysisModeling.tsx (24 правила, уровень 3)
+- packages/ui/components/EdaModelMatrixOverview.tsx (тип soft-поля)
+- tests/test_modeling_spec.py (+7 кейсов, версия, F04-на-lstm)
+- tests/api/test_param_space.py (версия 1.3.0)
+- tests/unit/test_eda_model_matrix.py (+4 кейса)
+- tests/unit/test_model_readiness_candidates.py (реворк n=60-теста под
+  warn-but-allow + env-гварды нейро)
+- tests/api/test_modeling_workflow.py (+session-тест warnings)
+- worklog/worklog6.md (этот журнал)

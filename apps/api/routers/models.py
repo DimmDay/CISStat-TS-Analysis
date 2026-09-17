@@ -144,13 +144,25 @@ def _compute_candidates(payload: CandidatesRequest) -> CandidatesResponse:
         production_actions = available_model_actions(candidate.model_id)
         platform_ready = "backtest" in production_actions
         included = candidate.model_id in candidate_ids
-        actions = production_actions if included else []
+        # Task 144: NOT_RECOMMENDED (уровень 3 исходной 4-уровневой шкалы)
+        # означает «предупредить, но не запретить». Production-ready модель
+        # этого уровня получает непустой available_actions, а само
+        # предупреждение живёт в message правила (D07 и др.) --
+        # blocking_reason снят, т.к. запуску ничего не мешает.
+        # NOT_APPLICABLE (уровень 4) не трогается: полностью заблокирован.
+        warn_only = (
+            candidate.level == "NOT_RECOMMENDED"
+            and platform_ready
+            and not included
+        )
+        runnable = included or warn_only
+        actions = production_actions if runnable else []
         if not platform_ready:
             blocking_reason = (
                 "Production-реализация модели ещё не подключена; "
                 "фиктивные метрики запрещены."
             )
-        elif not included:
+        elif not runnable:
             blocking_reason = candidate.message or (
                 f"Модель исключена из пула уровнем применимости {candidate.level}."
             )
@@ -166,8 +178,8 @@ def _compute_candidates(payload: CandidatesRequest) -> CandidatesResponse:
             blocking_reason=blocking_reason,
             stage_capabilities=model_stage_capabilities(
                 candidate.model_id, candidate.family_id,
-                included=included,
-                blocking_reason=blocking_reason if platform_ready and not included else None,
+                included=runnable,
+                blocking_reason=blocking_reason if platform_ready and not runnable else None,
             ),
             execution_contract=(
                 MODEL_EXECUTION_REGISTRY.describe(candidate.model_id)

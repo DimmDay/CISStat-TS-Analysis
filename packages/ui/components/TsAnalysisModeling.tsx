@@ -119,10 +119,10 @@ const MODELING_HELP = `Цели модуля "Моделирование"
 
 Целевая колонка, профиль ряда и план валидации поступают из подтверждённого EDA hand-off и в этом модуле доступны только для чтения.
 
-Движок применимости (23 правила, 4 уровня):
+Движок применимости (24 правила, 4 уровня):
 1. RECOMMENDED — модель подходит для данного профиля данных
 2. CONDITIONALLY_APPLICABLE — применима с оговорками
-3. NOT_RECOMMENDED — формально возможна, но результат вряд ли полезен
+3. NOT_RECOMMENDED — формально возможна, но результат вряд ли полезен (Task 144: модели с мягким порогом истории в окне [soft_min_observations, min_observations) запускаются с этим предупреждением)
 4. NOT_APPLICABLE — модель не может быть применена
 
 8 семейств моделей (24 модели):
@@ -694,9 +694,9 @@ export function TsAnalysisModeling() {
     if (!descriptionSection) return activeStageDescription.content;
     if (descriptionSection === "metrics") {
       if (activeCandidate) {
-        return `Метрики и алгоритм: ${activeCandidate.model_name}\n\nСемейство: ${activeCandidate.family_id}\nУровень применимости: ${APPLICABILITY_LABEL[activeCandidate.level as ApplicabilityLevel]}\nСтатус исполнения: ${activeCandidate.available_actions.includes("backtest") ? "production backtest готов" : "только методологический каталог"}\n${activeCandidate.blocking_reason || ""}\n${activeCandidate.rule_id ? `Правило: ${activeCandidate.rule_id}` : ""}\n${activeCandidate.message}\n\nАлгоритм: движок применимости оценивает 23 правила (5 forbidden, 6 discouraged, 5 conditional, 7 preferred) и определяет наивысший уровень применимости модели для данного профиля данных. Статус исполнения формируется отдельно из реестра реальных backend-dispatch.`;
+        return `Метрики и алгоритм: ${activeCandidate.model_name}\n\nСемейство: ${activeCandidate.family_id}\nУровень применимости: ${APPLICABILITY_LABEL[activeCandidate.level as ApplicabilityLevel]}\nСтатус исполнения: ${activeCandidate.available_actions.includes("backtest") ? "production backtest готов" : "только методологический каталог"}\n${activeCandidate.blocking_reason || ""}\n${activeCandidate.rule_id ? `Правило: ${activeCandidate.rule_id}` : ""}\n${activeCandidate.message}\n\nАлгоритм: движок применимости оценивает 24 правила (5 forbidden, 7 discouraged, 5 conditional, 7 preferred) и определяет наивысший уровень применимости модели для данного профиля данных. Статус исполнения формируется отдельно из реестра реальных backend-dispatch.`;
       }
-      return `Метрики и алгоритм: Пул кандидатов\n\nАлгоритм формирования пула:\n1. Применить 23 правила применимости ко всем 24 моделям\n2. Отфильтровать по минимальному уровню (≥ CONDITIONALLY_APPLICABLE)\n3. Baseline-модели включаются всегда\n4. Сортировка по рангу уровня (RECOMMENDED → CONDITIONALLY_APPLICABLE → NOT_RECOMMENDED)`;
+      return `Метрики и алгоритм: Пул кандидатов\n\nАлгоритм формирования пула:\n1. Применить 24 правила применимости ко всем 24 моделям\n2. Отфильтровать по минимальному уровню (≥ CONDITIONALLY_APPLICABLE)\n3. Baseline-модели включаются всегда\n4. Сортировка по рангу уровня (RECOMMENDED → CONDITIONALLY_APPLICABLE → NOT_RECOMMENDED)`;
     }
     if (descriptionSection === "backtest") {
       return activeCandidate

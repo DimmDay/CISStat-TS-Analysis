@@ -1,7 +1,9 @@
 # ══════════════════════════════════════════════════════════════════════════════
 # СПЕЦИФИКАЦИЯ МОДУЛЯ «МОДЕЛИРОВАНИЕ»  CISStat-TS-Analysis
-# Версия: 1.2.0 (production-матрица 24x11 финализирована Task 143)
-# Дата:   2026-09-13
+# Версия: 1.3.0 (Task 144: мягкий порог истории soft_min_observations,
+#          правило D07, трёхуровневый критерий истории, warn-but-allow
+#          для NOT_RECOMMENDED в /candidates)
+# Дата:   2026-09-17
 # ══════════════════════════════════════════════════════════════════════════════
 #
 # Архитектура: 8 семейств моделей → движок применимости → пайплайн моделирования
@@ -17,8 +19,8 @@
 # ══════════════════════════════════════════════════════════════════════════════
 
 metadata:
-  version: "1.2.0"
-  last_updated: "2026-09-13"
+  version: "1.3.0"
+  last_updated: "2026-09-17"
   author: "CISStat TS Analysis Team"
   description: >-
     Формальная спецификация модуля «Моделирование»:
@@ -350,6 +352,9 @@ families:
           Trigonometric seasonality + Box-Cox + ARMA errors + Trend + Seasonal.
           Автоматический подбор множественных сезонностей (дневная + недельная + годовая).
         min_observations: 100
+        # Task 144: TBATS устойчив на малых выборках (эмпирика проекта) --
+        # в мягком окне [50, 100) обучение разрешено с предупреждением (D07).
+        soft_min_observations: 50
         supports_exogenous: false
         supports_prediction_intervals: true
         libraries: ["statsforecast"]
@@ -389,6 +394,9 @@ families:
           Gradient Boosted Trees на lag-фичах. Быстрое обучение,
           feature importance, устойчивость к выбросам.
         min_observations: 100
+        # Task 144: деревья/бустинг численно не падают на нехватке данных --
+        # в мягком окне [40, 100) обучение разрешено с предупреждением (D07).
+        soft_min_observations: 40
         supports_exogenous: true
         requires_feature_engineering: true
         supports_prediction_intervals: true   # через quantile regression
@@ -413,6 +421,8 @@ families:
           Leaf-wise gradient boosting. Быстрее XGBoost на больших выборках,
           эффективнее по памяти. Histogram-based splits.
         min_observations: 100
+        # Task 144: мягкое окно [40, 100) -- как у всей tree_ml-четвёрки.
+        soft_min_observations: 40
         supports_exogenous: true
         requires_feature_engineering: true
         supports_prediction_intervals: true
@@ -439,6 +449,8 @@ families:
           Ordered gradient boosting. Естественная обработка категориальных
           признаков, сниженный overfitting.
         min_observations: 100
+        # Task 144: мягкое окно [40, 100) -- как у всей tree_ml-четвёрки.
+        soft_min_observations: 40
         supports_exogenous: true
         requires_feature_engineering: true
         supports_prediction_intervals: true   # через quantile regression
@@ -465,6 +477,8 @@ families:
           Bagging деревьев. Устойчив к переобучению, не требует масштабирования.
           Менее точен, чем бустинг, но лучше как baseline ML.
         min_observations: 100
+        # Task 144: мягкое окно [40, 100) -- как у всей tree_ml-четвёрки.
+        soft_min_observations: 40
         supports_exogenous: true
         requires_feature_engineering: true
         supports_prediction_intervals: true    # через quantile
@@ -772,11 +786,13 @@ applicability_engine:
 
     - id: "F04"
       description: "Данных меньше абсолютного минимума модели"
-      condition: "n_observations < model.min_observations"
+      # Task 144: для моделей с soft_min_observations абсолютный (жёсткий)
+      # минимум = мягкий порог; для остальных -- min_observations как раньше.
+      condition: "n_observations < effective(model.soft_min_observations, model.min_observations)"
       result: "NOT_APPLICABLE"
       message: >-
-        Недостаточно данных: {n_observations} < {model.min_observations}
-        (требуется {model.name})
+        Недостаточно данных: {n_observations} <
+        {model.effective_min_observations} (требуется {model.name})
 
     - id: "F05"
       description: "DeepAR при недостаточном количестве рядов"
@@ -786,7 +802,22 @@ applicability_engine:
 
   # ── 3.2. НЕЖЕЛАТЕЛЬНЫЕ УСЛОВИЯ → NOT_RECOMMENDED ──────────────────────────
   # Модель МОЖЕТ быть запущена, но результаты ненадёжны.
+  #
+  # Task 144: D07 стоит ПЕРВЫМ в секции -- предупреждение о нехватке
+  # истории самое базовое и не должно маскироваться D01-D06, истинными
+  # одновременно с ним (D05 tbats n<200, D03 tree_ml без FE).
   discouraged:
+    - id: "D07"
+      description: "Модель с мягким порогом истории обучается ниже рекомендованного минимума"
+      condition: >-
+        model.soft_min_observations != null AND
+        model.soft_min_observations <= n_observations < model.min_observations
+      result: "NOT_RECOMMENDED"
+      message: >-
+        Доступно {n_observations} наблюдений при рекомендованном минимуме
+        {model.min_observations} (мягкий порог {model.soft_min_observations}):
+        запуск возможен, результат используйте с осторожностью.
+
     - id: "D01"
       description: "ARIMA при очень длинном ряде (n > 5000)"
       condition: "model.family == 'arima' AND n_observations > 5000"

@@ -22,6 +22,20 @@ class FamilyModel(BaseModel):
     name: str
     description: str
     min_observations: int = Field(..., ge=1)
+
+    # ── Task 144: мягкий порог истории ──
+    #
+    # Опциональное поле для методологически устойчивых на коротких
+    # выборках семейств (TBATS, tree_ml): обучение в мягком окне
+    # [soft_min_observations, min_observations) НЕ блокируется, а
+    # предупреждает (NOT_RECOMMENDED по D07 / attention в матрице).
+    #
+    # Отсутствует (None) -> эффективный жёсткий порог равен
+    # min_observations, поведение в точности прежнее (GARCH/EGARCH/
+    # VAR/VECM и нейросетевая пятёрка сознательно не задают его:
+    # риск несходимости MLE/вырожденного фита на малых n).
+    soft_min_observations: Optional[int] = Field(None, ge=1)
+
     supports_exogenous: bool = False
     supports_seasonality: Optional[bool] = None
     supports_prediction_intervals: bool = False
@@ -60,6 +74,18 @@ class FamilyModel(BaseModel):
         if not v.replace("_", "").isalnum():
             raise ValueError("ID должен содержать только буквы, цифры и _")
         return v.lower()
+
+    @field_validator("soft_min_observations")
+    @classmethod
+    def validate_soft_min(cls, v: Optional[int], info) -> Optional[int]:
+        """Task 144: мягкий порог обязан быть строго меньше жёсткого --
+        иначе он ничего не смягчает, а окно вырождается."""
+        if v is not None and info.data.get("min_observations") is not None:
+            if v >= info.data["min_observations"]:
+                raise ValueError(
+                    "soft_min_observations должен быть меньше min_observations"
+                )
+        return v
 
 
 class Family(BaseModel):
@@ -663,6 +689,15 @@ class ModelingSpec(BaseModel):
             "model_family": family.id,
             "model.name": model.name,
             "model.min_observations": model.min_observations,
+            "model.soft_min_observations": model.soft_min_observations,
+            # Task 144: эффективный жёсткий порог истории = мягкий порог,
+            # если задан, иначе min_observations. F04 блокирует только ниже
+            # него; окно [soft, min) обслуживает D07 (NOT_RECOMMENDED).
+            "model.effective_min_observations": (
+                model.soft_min_observations
+                if model.soft_min_observations is not None
+                else model.min_observations
+            ),
             "model.supports_exogenous": model.supports_exogenous,
             "model.domain": model.domain,
             "model.min_series": model.min_series,
@@ -713,10 +748,24 @@ class ModelingSpec(BaseModel):
             "F01": lambda: ctx["n_series"] == 1 and (ctx.get("model.requires_multiple_series") or ctx.get("model.min_series", 0) is not None and (ctx.get("model.min_series") or 0) > 1),
             "F02": lambda: ctx.get("model.domain") == "financial" and ctx.get("data.domain") != "financial",
             "F03": lambda: ctx.get("exogenous_required", False) and ctx.get("model.supports_exogenous") is False,
-            "F04": lambda: ctx["n_observations"] < ctx["model.min_observations"],
+            # Task 144: F04 блокирует только ниже ЭФФЕКТИВНОГО жёсткого
+            # порога (soft_min_observations, если задан, иначе
+            # min_observations). F04 НЕ «выключен»: для моделей без
+            # soft-порога поведение в точности прежнее.
+            "F04": lambda: ctx["n_observations"] < ctx["model.effective_min_observations"],
             "F05": lambda: ctx.get("model_id") == "deepar" and ctx["n_series"] < (ctx.get("model.min_series") or 5),
 
             # ── Discouraged (NOT_RECOMMENDED) ─────────────
+            # Task 144: D07 -- мягкое окно истории стоит ПЕРВЫМ среди
+            # discouraged: предупреждение о нехватке истории -- самое
+            # базовое и не должно маскироваться более широкими D01-D06
+            # (D05 для tbats n<200, D03 для tree_ml без feature
+            # engineering), истинными одновременно с ним.
+            "D07": lambda: (
+                ctx.get("model.soft_min_observations") is not None
+                and ctx["model.min_observations"] > ctx["n_observations"]
+                >= ctx["model.soft_min_observations"]
+            ),
             "D01": lambda: ctx.get("model.family") == "arima" and ctx["n_observations"] > 5000,
             "D02": lambda: ctx.get("model.family") == "neural" and ctx["n_observations"] < 300,
             "D03": lambda: ctx.get("model.family") == "tree_ml" and not ctx.get("feature_engineering_applied", False),

@@ -153,13 +153,67 @@ def _task_criterion(model: FamilyModel, family: Family, task: Task) -> dict[str,
     )
 
 
+def history_gate_level(model: FamilyModel, initial_train: int) -> CriterionStatus:
+    """Task 144: трёхуровневый гейт истории (вместо бинарного).
+
+    - "pass":      initial_train >= min_observations -- истории достаточно;
+    - "attention": soft_min_observations <= initial_train <
+      min_observations -- мягкое окно: обучение НЕ блокируется, но
+      результат требует осторожной интерпретации (только для моделей с
+      заданным soft-порогом: tbats, tree_ml);
+    - "fail":      ниже эффективного жёсткого порога -- блокировка,
+      как раньше (для моделей без soft-порога поведение неизменно).
+    """
+    soft_min = model.soft_min_observations
+    if soft_min is not None:
+        if initial_train >= model.min_observations:
+            return "pass"
+        return "attention" if initial_train >= soft_min else "fail"
+    return "pass" if initial_train >= model.min_observations else "fail"
+
+
+def soft_history_warning(model: FamilyModel, initial_train: int) -> str | None:
+    """Task 144: текст предупреждения для мягкого окна истории.
+
+    Возвращается ровно на уровне "attention" гейта history_gate_level;
+    предназначен для warnings результата бэктеста (тот же паттерн, что
+    предупреждение о превышении горизонта в spec_forecasting2 §5.1).
+    Формулировка зафиксирована Task 144: «Обучено на N наблюдениях при
+    рекомендованном минимуме M — результат используйте с осторожностью».
+    """
+    if history_gate_level(model, initial_train) != "attention":
+        return None
+    return (
+        f"Обучено на {initial_train} наблюдениях при рекомендованном "
+        f"минимуме {model.min_observations} "
+        "— результат используйте с осторожностью."
+    )
+
+
 def _history_criterion(model: FamilyModel, initial_train: int) -> dict[str, Any]:
-    enough = initial_train >= model.min_observations
+    level = history_gate_level(model, initial_train)
+    observed = f"минимальный train = {initial_train}"
+    hard_requirement = f"train ≥ {model.min_observations}"
+    if level == "pass":
+        return _criterion(
+            "history", "История", "pass", observed, hard_requirement,
+            "Истории достаточно на первом fold.",
+        )
+    if level == "attention":
+        return _criterion(
+            "history", "История", "attention", observed,
+            f"{hard_requirement} (мягкий порог {model.soft_min_observations})",
+            (
+                f"История ниже рекомендованного минимума {model.min_observations}, "
+                f"но в пределах мягкого порога {model.soft_min_observations}: "
+                "семейство устойчиво на коротких выборках, обучайте и "
+                "интерпретируйте результат с осторожностью."
+            ),
+        )
     return _criterion(
-        "history", "История", "pass" if enough else "fail",
-        f"минимальный train = {initial_train}", f"train ≥ {model.min_observations}",
-        "Истории достаточно на первом fold." if enough else "На первом fold модели не хватит истории.",
-        blocking=not enough,
+        "history", "История", "fail", observed, hard_requirement,
+        "На первом fold модели не хватит истории.",
+        blocking=True,
     )
 
 
@@ -332,6 +386,7 @@ def _model_out(
         "compatibility": compatibility,
         "platform_status": platform_status,
         "min_observations": model.min_observations,
+        "soft_min_observations": model.soft_min_observations,
         "supports_exogenous": model.supports_exogenous,
         "libraries": model.libraries,
         "training_time": model.training_time,

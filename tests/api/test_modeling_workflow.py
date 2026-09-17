@@ -255,6 +255,50 @@ def test_tbats_full_session_backtest_and_tuning_use_the_real_spectral_handoff(cl
     assert tune_body["best_params"]["trend_spec"] in {"none", "trend", "damped_trend"}
 
 
+def test_soft_history_backtest_runs_and_returns_explicit_warning(client: TestClient):
+    """Task 144: модель в мягком окне истории (soft_min <= initial_train <
+    min_observations) реально исполняет session-бэктест и возвращает явное
+    предупреждение в warnings (паттерн spec_forecasting2 §5.1).
+
+    Общий fixture n=96, expanding, horizon=2, n_splits=2 ->
+    initial_train=92: random_forest (soft 40, min 100) -- в мягком окне;
+    naive (min 2) -- pass, без мягкого предупреждения.
+    """
+    _prepare(client)
+
+    candidates = client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "expanding", "horizon": 2, "n_splits": 2},
+    )
+    assert candidates.status_code == 200, candidates.text
+    catalog = {c["model_id"]: c for c in candidates.json()["catalog"]}
+    rf = catalog["random_forest"]
+    assert rf["level"] == "NOT_RECOMMENDED"
+    assert rf["rule_id"] == "D07"
+    # Движок говорит о профиле данных (96 наблюдений); сам бэктест ниже
+    # предупредит о фактическом train первого fold (92).
+    assert "96" in rf["message"]
+    # Warn-but-allow в session-каталоге: EDA-матрица даёт conditional ->
+    # модель в runnable_shortlist, ограничение EDA не гасит действия.
+    assert "backtest" in rf["available_actions"]
+    assert rf["blocking_reason"] is None
+
+    backtest = client.post("/v1/session/modeling/backtest", json={"model_id": "random_forest"})
+    assert backtest.status_code == 200, backtest.text
+    body = backtest.json()
+    assert body["status"] == "success"
+    expected = (
+        "Обучено на 92 наблюдениях при рекомендованном минимуме 100 "
+        "— результат используйте с осторожностью."
+    )
+    assert expected in body["warnings"], body["warnings"]
+
+    # Регрессия: pass-модель не получает мягкое предупреждение.
+    naive_backtest = client.post("/v1/session/modeling/backtest", json={"model_id": "naive"})
+    assert naive_backtest.status_code == 200, naive_backtest.text
+    assert not any("рекомендованному минимуму" in w for w in naive_backtest.json()["warnings"])
+
+
 def test_baseline_bootstrap_atomically_populates_comparable_cohort(client: TestClient):
     _prepare(client)
     candidates = client.post(
