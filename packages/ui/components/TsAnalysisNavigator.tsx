@@ -90,6 +90,7 @@ import { NavigatorQualityTeaserPreview } from "./NavigatorQualityTeaserPreview";
 import { NavigatorTechInfoPreview } from "./NavigatorTechInfoPreview";
 import { NavigatorPreview55Preview } from "./NavigatorPreview55Preview";
 import { NavigatorDistributionPreview } from "./NavigatorDistributionPreview";
+import { NavigatorFormatsVolumePreview } from "./NavigatorFormatsVolumePreview";
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -398,6 +399,16 @@ export function TsAnalysisNavigator() {
               consumption_mwh). Визуализация закреплена как пример и
               сохраняется ВНЕ ЗАВИСИМОСТИ от того, удалён датасет или нет.
 
+              Task NAVDET-4 (Форматы и объём): для пары «Загрузка» +
+              «Форматы и объём» (id="upload" + id="formats") рендерим
+              СТАТИЧНУЮ блок-схему приёма файла (NavigatorFormatsVolume-
+              Preview): форматы .csv/.xls/.xlsx/.json, проверки типа и
+              размера (dropzone, лимит 4MB прод), формат по расширению,
+              3 дорожки парсинга CSV/Excel/JSON, ошибки → HTTP 400,
+              результат UploadResponse → SessionStore — на основе РЕАЛЬНОЙ
+              логики (TsAnalysisUpload.tsx + app/data/file_loader.py +
+              apps/api/upload_common.py). ВНЕ ЗАВИСИМОСТИ от датасета/сети.
+
               Для остальных пунктов — текстовая заглушка (своя визуализация
               для каждого пункта в будущих задачах). */}
           {activeStopId === "upload" && activeItemId === "preview" ? (
@@ -414,6 +425,8 @@ export function TsAnalysisNavigator() {
             <NavigatorPreview55Preview />
           ) : activeStopId === "upload" && activeItemId === "distribution" ? (
             <NavigatorDistributionPreview />
+          ) : activeStopId === "upload" && activeItemId === "formats" ? (
+            <NavigatorFormatsVolumePreview />
           ) : (
             <div
               className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"

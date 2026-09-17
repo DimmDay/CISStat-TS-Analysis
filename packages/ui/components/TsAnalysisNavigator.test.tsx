@@ -186,10 +186,12 @@ describe("TsAnalysisNavigator", () => {
       // После задач 2026-08-30..2026-09-02 остановки «Подтверждение
       // автоопределения» (3-й item), «Teaser качества» (4-й item),
       // «Техническая информация» (5-й item), «Превью 5+5 строк» (6-й item)
-      // и «Визуализация распределения» (7-й item) тоже имеют
-      // специализированный Overview — выбираем пункт БЕЗ специализированной
-      // визуализации: «Форматы и объём» (8-й item, id="formats").
-      const card = screen.getByText("Форматы и объём");
+      // и «Визуализация распределения» (7-й item) имеют
+      // специализированный Overview; с Task NAVDET-4 (2026-09-17) и
+      // «Форматы и объём» (8-й item) тоже — выбираем пункт БЕЗ
+      // специализированной визуализации: «Источник: файл или БД»
+      // (9-й item, id="source").
+      const card = screen.getByText("Источник: файл или БД");
       fireEvent.click(card.closest("article")!);
       expect(
         screen.getByText(/область графика\/таблицы\/блок-схемы/)
@@ -734,6 +736,55 @@ describe("TsAnalysisNavigator", () => {
         // Роль/имя заголовка не изменились (heading остаётся heading).
         expect(header.tagName).toMatch(/^H[1-6]$/);
       });
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Task NAVDET-4 — окно «Обзор» пункта «Форматы и объём»
+  // (upload+formats) рендерит статичную блок-схему приёма файла:
+  // форматы (.csv/.xls/.xlsx/.json), проверки типа/размера, 3 дорожки
+  // парсинга (CSV / Excel / JSON), ошибки, UploadResponse → SessionStore.
+  // ─────────────────────────────────────────────────────────────────────
+  describe("upload + formats: static infographic in Overview", () => {
+    function activateFormatsItem() {
+      const card = screen.getByText("Форматы и объём");
+      fireEvent.click(card.closest("article")!);
+    }
+
+    it("renders the infographic heading when upload + formats is active", () => {
+      renderNavigator();
+      activateFormatsItem();
+      // H3 «Обзор: Форматы и объём» — заголовок окна Обзор из
+      // TsAnalysisNavigator. Шапка инфографики тоже H3 «Форматы и
+      // объём». Поэтому минимум 2 совпадения (карточка средней колонки —
+      // H4, в этот счёт не попадает).
+      const headings = screen.getAllByRole("heading", {
+        level: 3,
+        name: /форматы и объём/i,
+      });
+      expect(headings.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("does NOT show the generic placeholder text for formats item", () => {
+      renderNavigator();
+      activateFormatsItem();
+      expect(screen.queryByText(/область графика\/таблицы\/блок-схемы/)).toBeNull();
+    });
+
+    it("renders the 3 parsing lanes (CSV / Excel / JSON)", () => {
+      renderNavigator();
+      activateFormatsItem();
+      // Каждая дорожка парсинга — ровно один раз (используем getByText).
+      expect(screen.getByText("CSV")).toBeInTheDocument();
+      expect(screen.getByText("Excel")).toBeInTheDocument();
+      expect(screen.getByText("JSON")).toBeInTheDocument();
+    });
+
+    it("renders the infographic WITHOUT activeDataset (works if dataset is deleted)", () => {
+      renderNavigator();
+      activateFormatsItem();
+      expect(screen.getByText(/\/v1\/internal\/upload/i)).toBeInTheDocument();
+      expect(screen.queryByText(/нет данных/i)).toBeNull();
     });
   });
 });
