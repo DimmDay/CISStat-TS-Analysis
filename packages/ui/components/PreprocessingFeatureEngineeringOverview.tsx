@@ -48,8 +48,8 @@ const TABS: Array<{ id: View; label: string }> = [
   { id: "availability", label: "Доступность" }, { id: "cycles", label: "Циклы" },
   { id: "catalog", label: "Каталог" },
 ];
-const COLORS = ["#2E3192", "#0891B2", "#16A34A", "#D97706", "#7C3AED", "#DC2626"];
-const TICK = { fontSize: 9, fill: "#737373" };
+const COLORS = ["var(--chart-brand)", "var(--chart-cyan)", "var(--status-success)", "var(--status-warning)", "var(--chart-violet)", "var(--status-error)"];
+const TICK = { fontSize: 9, fill: "var(--chart-axis-text)" };
 const pct = (value: number) => `${(100 * value).toFixed(1)}%`;
 const fmtX = (value: string) => {
   const date = new Date(value);
@@ -57,16 +57,16 @@ const fmtX = (value: string) => {
 };
 
 function PreviewView({ profile }: { profile: FeatureGenerationProfile }) {
-  return <div role="img" aria-label="Превью сгенерированных признаков" className="min-h-0 flex-1 p-3"><ResponsiveContainer width="100%" height="100%"><LineChart data={profile.preview_points}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="x" tick={TICK} tickFormatter={fmtX} minTickGap={35} /><YAxis yAxisId="target" tick={TICK} width={45} /><YAxis yAxisId="cycle" orientation="right" domain={[-1, 1]} hide /><Tooltip labelFormatter={(value: string) => fmtX(value)} /><Legend wrapperStyle={{ fontSize: 9 }} /><Line yAxisId="target" dataKey="target" name="target" stroke="#A3A3A3" dot={false} isAnimationActive={false} /><Line yAxisId="target" dataKey="lag" name="первый лаг" stroke="#2E3192" dot={false} connectNulls={false} isAnimationActive={false} /><Line yAxisId="target" dataKey="rolling" name="rolling mean" stroke="#16A34A" dot={false} connectNulls={false} isAnimationActive={false} /><Line yAxisId="cycle" dataKey="fourier" name="Fourier sin" stroke="#D97706" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div>;
+  return <div role="img" aria-label="Превью сгенерированных признаков" className="min-h-0 flex-1 p-3"><ResponsiveContainer width="100%" height="100%"><LineChart data={profile.preview_points}><CartesianGrid stroke="var(--chart-grid)" vertical={false} /><XAxis dataKey="x" tick={TICK} tickFormatter={fmtX} minTickGap={35} /><YAxis yAxisId="target" tick={TICK} width={45} /><YAxis yAxisId="cycle" orientation="right" domain={[-1, 1]} hide /><Tooltip labelFormatter={(value: string) => fmtX(value)} /><Legend wrapperStyle={{ fontSize: 9 }} /><Line yAxisId="target" dataKey="target" name="target" stroke="var(--chart-axis-muted)" dot={false} isAnimationActive={false} /><Line yAxisId="target" dataKey="lag" name="первый лаг" stroke="var(--chart-brand)" dot={false} connectNulls={false} isAnimationActive={false} /><Line yAxisId="target" dataKey="rolling" name="rolling mean" stroke="var(--status-success)" dot={false} connectNulls={false} isAnimationActive={false} /><Line yAxisId="cycle" dataKey="fourier" name="Fourier sin" stroke="var(--status-warning)" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div>;
 }
 
 function LagsView({ profile }: { profile: FeatureGenerationProfile }) {
-  return <div role="img" aria-label="Корреляции цели с прошлыми лагами" className="min-h-0 flex-1 p-3"><p className="px-2 text-[10px] text-neutral-500">Диагностическая Pearson corr(y[t], y[t−k]); выделены рекомендуемые лаги. Это не оценка out-of-sample полезности.</p><ResponsiveContainer width="100%" height="92%"><BarChart data={profile.lag_correlations}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="lag" tick={TICK} /><YAxis domain={[-1, 1]} tick={TICK} width={35} /><Tooltip /><Bar dataKey="correlation" name="Корреляция" isAnimationActive={false}>{profile.lag_correlations.map((item) => <Cell key={item.lag} fill={item.selected ? "#2E3192" : "#D4D4D4"} />)}</Bar></BarChart></ResponsiveContainer></div>;
+  return <div role="img" aria-label="Корреляции цели с прошлыми лагами" className="min-h-0 flex-1 p-3"><p className="px-2 text-[10px] text-neutral-500">Диагностическая Pearson corr(y[t], y[t−k]); выделены рекомендуемые лаги. Это не оценка out-of-sample полезности.</p><ResponsiveContainer width="100%" height="92%"><BarChart data={profile.lag_correlations}><CartesianGrid stroke="var(--chart-grid)" vertical={false} /><XAxis dataKey="lag" tick={TICK} /><YAxis domain={[-1, 1]} tick={TICK} width={35} /><Tooltip /><Bar dataKey="correlation" name="Корреляция" isAnimationActive={false}>{profile.lag_correlations.map((item) => <Cell key={item.lag} fill={item.selected ? "var(--chart-brand)" : "var(--chart-reference)"} />)}</Bar></BarChart></ResponsiveContainer></div>;
 }
 
 function AvailabilityView({ profile }: { profile: FeatureGenerationProfile }) {
   const data = [...profile.availability].sort((a, b) => a.coverage - b.coverage).slice(0, 20);
-  return <div role="img" aria-label="Доступность признаков после warm-up" className="min-h-0 flex-1 p-3"><ResponsiveContainer width="100%" height="100%"><BarChart data={data} layout="vertical" margin={{ left: 45, right: 15 }}><CartesianGrid stroke="#F0F0F0" /><XAxis type="number" domain={[0, 1]} tick={TICK} tickFormatter={(value) => `${Math.round(100 * value)}%`} /><YAxis dataKey="name" type="category" tick={TICK} width={120} /><Tooltip formatter={(value: number | string) => typeof value === "number" ? pct(value) : value} /><Bar dataKey="coverage" name="Доступно" fill="#0891B2" isAnimationActive={false} /></BarChart></ResponsiveContainer></div>;
+  return <div role="img" aria-label="Доступность признаков после warm-up" className="min-h-0 flex-1 p-3"><ResponsiveContainer width="100%" height="100%"><BarChart data={data} layout="vertical" margin={{ left: 45, right: 15 }}><CartesianGrid stroke="var(--chart-grid)" /><XAxis type="number" domain={[0, 1]} tick={TICK} tickFormatter={(value) => `${Math.round(100 * value)}%`} /><YAxis dataKey="name" type="category" tick={TICK} width={120} /><Tooltip formatter={(value: number | string) => typeof value === "number" ? pct(value) : value} /><Bar dataKey="coverage" name="Доступно" fill="var(--chart-cyan)" isAnimationActive={false} /></BarChart></ResponsiveContainer></div>;
 }
 
 function CyclesView({ profile }: { profile: FeatureGenerationProfile }) {
@@ -81,7 +81,7 @@ function CyclesView({ profile }: { profile: FeatureGenerationProfile }) {
     return { data: [...rows.values()], names: series };
   }, [profile.cyclic_points]);
   if (!names.length) return <p role="status" className="flex min-h-0 flex-1 items-center justify-center p-8 text-center text-sm text-neutral-500">Для текущей оси циклические признаки не предложены.</p>;
-  return <div role="img" aria-label="Календарные и Fourier циклы" className="min-h-0 flex-1 p-3"><ResponsiveContainer width="100%" height="100%"><LineChart data={data}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="x" tick={TICK} tickFormatter={fmtX} minTickGap={35} /><YAxis domain={[-1, 1]} tick={TICK} width={35} /><Tooltip /><Legend wrapperStyle={{ fontSize: 8 }} />{names.map((name, index) => <Line key={name} dataKey={name} name={name} stroke={COLORS[index % COLORS.length]} dot={false} isAnimationActive={false} />)}</LineChart></ResponsiveContainer></div>;
+  return <div role="img" aria-label="Календарные и Fourier циклы" className="min-h-0 flex-1 p-3"><ResponsiveContainer width="100%" height="100%"><LineChart data={data}><CartesianGrid stroke="var(--chart-grid)" vertical={false} /><XAxis dataKey="x" tick={TICK} tickFormatter={fmtX} minTickGap={35} /><YAxis domain={[-1, 1]} tick={TICK} width={35} /><Tooltip /><Legend wrapperStyle={{ fontSize: 8 }} />{names.map((name, index) => <Line key={name} dataKey={name} name={name} stroke={COLORS[index % COLORS.length]} dot={false} isAnimationActive={false} />)}</LineChart></ResponsiveContainer></div>;
 }
 
 function CatalogView({ profile }: { profile: FeatureGenerationProfile }) {

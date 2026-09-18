@@ -455,3 +455,62 @@ scripts/task_dkt2/logo_audit.py, scripts/task_dkt2/mutation_theme.sh,
 docs/task_dkt2_dark_catalog_calibration.md (отчёт),
 docs/task_dkt2_contrast_audit_results.json (сырые данные),
 docs/task_dkt2_logo_audit.json.
+
+---
+
+## Task DKT-2R + DKT-3 + DKT-4 (2026-09-18) — решения §10, «цвет логотипа», hex→var, оболочки
+
+**Синхронизация:** main @ e99cd1f (DKT-1+DKT-2 тимлида). **Решения
+тимлида:** §10.2 «v1 — только standalone», §10.3 системная схема,
+§10.4 логотип оставить — зафиксированы в spec_dark_theme.md §10.
+
+**DKT-2R (требование тимлида: индиго-заголовки в тёмной теме — цветом
+логотипа):** инвентарь произвольных hex-классов — text-[#1e3a8a] ×9/4
+файла (hero h1/h2/p home, navigator, tasks, platform-introduction),
+вне канона каталога, в тёмной ~1.7:1 FAIL. Literal #2E3192 = 1.68:1
+(аудит логотипа) → «цвет логотипа» в тёмной калибровке = brand-bright
+#8F94F5 (hue 237° логотипа). Utility-ревизия .dark .text-\[\#1e3a8a\]
+(§6.2, ноль правок в компонентах). TDD: heading-indigo-calibration.test.ts
+7 тестов (инвентарь-страж новых классов, AA, hue-идентичность ±2°,
+светлая инвариантность), RED 3 → GREEN 7/7.
+Отчёт: docs/task_dkt2r_heading_calibration.md.
+
+**DKT-3 (hex→var, §6.3/§6.4):** ~280 литералов / 36 файлов → 24
+chart/status-переменные + 35 волновых (--wave-home-1..14, -stroke,
+--wave-nav-1..20; тёмные = hue-сохранное преобразование S.32/L.13,
+белый штрих → #2E3038). Светлые значения — байт-инвариант. Скрипт
+scripts/task_dkt3/hex_to_var.py (построчная сверка в worklog). PNG-
+экспорт: lib/chartVars.ts (CHART_VARS_LIGHT 59 значений — зеркало :root
++ resolveSvgVarsLight §6.4); артефакт «всегда светлый» (рекомендация
+§10.1), canvas #FFFFFF — единственный остаточный литерал (намеренно).
+Синхронизированы пины 3 сюит (волны ×23, шеврон ×1) на var-ссылки.
+Отчёт: docs/task_dkt3_dkt4_hex_to_vars.md.
+
+**DKT-4 (оболочки):** body-фон на токен --c-page (#FFFFFF/#0B0C10,
+паритет блоков + сверка с THEME_META_COLOR); ThemeToaster (sonner theme
+prop из контекста, R-7) в standalone; embedded не тронут (§10.2, тест
+фиксирует контракт); ModuleNav — аудит: только токены каталога, правок
+нет. Отложено: токенизация футера #CAD7F7 (пиксельно одинаков в обеих
+темах), тёмная ревизия heatmap-шкалы (JS-интерполяция).
+
+**Верификация (полный цикл AGENTS.md):** TDD RED→GREEN по каждому срезу
+(новые сюиты: 2R ×7, DKT-3 ×6, экспорт-резолв ×5, DKT-4 ×5); полная
+регрессия 117 сюит / 1276 тестов — зелёные; CSS-бандл-смоук PASS;
+typecheck:all чисто; build:all обеих оболочек успешно. ZIP среза —
+в download. Следующий шаг: DKT-5 (финальная регрессия + прод-смоук
+после деплоя тимлидом).
+
+Изменённые файлы: spec_dark_theme.md, packages/ui/globals.css,
+packages/ui/index.ts, apps/standalone/app/layout.tsx,
+packages/ui/components/ForecastExportMenu.tsx, 30 графовых компонентов
+(карта замен — вывод hex_to_var.py), HomeWavesBackground.test.tsx,
+NavigatorWavesBackground.test.tsx, NavigatorHero.test.tsx,
+worklog/worklog7.md.
+
+Новые файлы: packages/ui/heading-indigo-calibration.test.ts,
+packages/ui/dkt3-chart-vars.test.ts, packages/ui/dkt4-shells.test.tsx,
+packages/ui/components/ThemeToaster.tsx,
+packages/ui/components/ForecastExportMenu.vars.test.ts,
+packages/ui/lib/chartVars.ts, scripts/task_dkt3/hex_to_var.py,
+docs/task_dkt2r_heading_calibration.md,
+docs/task_dkt3_dkt4_hex_to_vars.md.

@@ -102,7 +102,7 @@ function ChevronArrowMarquee() {
         <polygon
           points="3,3 263,3 277,22 263,41 3,41 17,22"
           fill="none"
-          stroke="#2E3192"
+          stroke="var(--chart-brand)"
           strokeWidth="1"
           vectorEffect="non-scaling-stroke"
         />

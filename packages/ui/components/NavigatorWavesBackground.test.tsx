@@ -91,24 +91,24 @@ describe("NavigatorWavesBackground", () => {
     const html = container.innerHTML;
 
     // Подложка (bg)
-    expect(html).toContain("#F7FBFE");
-    expect(html).toContain("#EEF6FD");
-    expect(html).toContain("#E7EEFF");
+    expect(html).toContain("var(--wave-nav-1)");
+    expect(html).toContain("var(--wave-nav-2)");
+    expect(html).toContain("var(--wave-nav-3)");
     // Ленты: waveA / waveB / waveC / waveD
-    expect(html).toContain("#DDECFB");
-    expect(html).toContain("#D4E5FB");
-    expect(html).toContain("#D0DAF8");
-    expect(html).toContain("#D6E8FA");
-    expect(html).toContain("#C9DCF8");
-    expect(html).toContain("#C8D6F7");
-    expect(html).toContain("#E5F1FC");
-    expect(html).toContain("#D7E7FA");
-    expect(html).toContain("#D8E1FB");
-    expect(html).toContain("#D9EAFB");
-    expect(html).toContain("#CBDDF8");
-    expect(html).toContain("#C8D7F8");
+    expect(html).toContain("var(--wave-nav-4)");
+    expect(html).toContain("var(--wave-nav-5)");
+    expect(html).toContain("var(--wave-nav-6)");
+    expect(html).toContain("var(--wave-nav-7)");
+    expect(html).toContain("var(--wave-nav-8)");
+    expect(html).toContain("var(--wave-nav-9)");
+    expect(html).toContain("var(--wave-nav-10)");
+    expect(html).toContain("var(--wave-nav-11)");
+    expect(html).toContain("var(--wave-nav-12)");
+    expect(html).toContain("var(--wave-nav-16)");
+    expect(html).toContain("var(--wave-nav-14)");
+    expect(html).toContain("var(--wave-nav-15)");
     // Нижняя ширма (lower)
-    expect(html).toContain("#D1DBFA");
+    expect(html).toContain("var(--wave-nav-17)");
   });
 
   it("использует префиксованные id градиентов, чтобы не конфликтовать с другими инлайн-SVG на странице", () => {

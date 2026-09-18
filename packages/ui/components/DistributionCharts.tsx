@@ -66,9 +66,9 @@ export interface DistributionChartData {
   kde: KdePoint[] | null;
 }
 
-const BRAND = "#2E3192";
-const BRAND_SOFT = "#E8EAF6";
-const AXIS_TICK_STYLE = { fontSize: 11, fill: "#737373" }; // neutral-500
+const BRAND = "var(--chart-brand)";
+const BRAND_SOFT = "var(--chart-brand-soft)";
+const AXIS_TICK_STYLE = { fontSize: 11, fill: "var(--chart-axis-text)" }; // neutral-500
 
 function fmtCompact(n: number): string {
   // Округление до целого без разделителя тысяч и без дробной части —
@@ -122,7 +122,7 @@ export function ScatterDistributionChart({ data, className }: { data: Distributi
   return (
     <ChartFrame className={className}>
       <RechartsScatterChart margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-        <CartesianGrid stroke="#F0F0F0" />
+        <CartesianGrid stroke="var(--chart-grid)" />
         <XAxis type="number" dataKey="x" tick={AXIS_TICK_STYLE} tickFormatter={fmtCompact} name="Позиция" />
         <YAxis type="number" dataKey="y" tick={AXIS_TICK_STYLE} tickFormatter={fmtCompact} width={48} />
         <Tooltip
@@ -131,8 +131,8 @@ export function ScatterDistributionChart({ data, className }: { data: Distributi
           labelFormatter={() => ""}
         />
         <Scatter data={data.scatter} fill={BRAND} fillOpacity={0.55} r={2.5} isAnimationActive={false} />
-        <ReferenceDot x={minPoint.x} y={minPoint.y} r={4} fill="#DC2626" stroke="none" />
-        <ReferenceDot x={maxPoint.x} y={maxPoint.y} r={4} fill="#DC2626" stroke="none" />
+        <ReferenceDot x={minPoint.x} y={minPoint.y} r={4} fill="var(--status-error)" stroke="none" />
+        <ReferenceDot x={maxPoint.x} y={maxPoint.y} r={4} fill="var(--status-error)" stroke="none" />
       </RechartsScatterChart>
     </ChartFrame>
   );
@@ -152,7 +152,7 @@ export function HistogramDistributionChart({ data, className }: { data: Distribu
   return (
     <ChartFrame className={className}>
       <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-        <CartesianGrid stroke="#F0F0F0" vertical={false} />
+        <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
         <XAxis
           dataKey="mid"
           type="number"
@@ -199,7 +199,7 @@ export function KdeDistributionChart({ data, className }: { data: DistributionCh
             <stop offset="100%" stopColor={BRAND} stopOpacity={0.02} />
           </linearGradient>
         </defs>
-        <CartesianGrid stroke="#F0F0F0" vertical={false} />
+        <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
         <XAxis dataKey="x" type="number" domain={["dataMin", "dataMax"]} tick={AXIS_TICK_STYLE} tickFormatter={fmtCompact} />
         <YAxis tick={AXIS_TICK_STYLE} width={32} tickFormatter={(v) => v.toFixed(4)} />
         <Tooltip formatter={(value: number) => value.toFixed(4)} labelFormatter={(x) => `x = ${fmtCompact(Number(x))}`} />

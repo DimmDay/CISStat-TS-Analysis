@@ -124,7 +124,7 @@ interface CorrelationResponse {
 
 // Диагональная (расходящаяся) шкала RdBu_r: -1 -> синий, 0 -> белый, +1 -> красный.
 function correlationColor(value: number | null): string {
-  if (value === null) return "#e5e5e5";
+  if (value === null) return "var(--chart-border)";
   const t = Math.max(-1, Math.min(1, value));
   if (t >= 0) {
     const g = Math.round(255 - t * 130);
@@ -207,11 +207,11 @@ function BoxAndWhiskers({ label, group, color, domainMin, domainMax }: {
       ) : (
         <>
           <svg viewBox={`0 0 ${width} 60`} className="mx-auto block" width={width} height={60}>
-            <line x1={scale(group.min)} x2={scale(group.max)} y1={30} y2={30} stroke="#a3a3a3" strokeWidth={1} />
+            <line x1={scale(group.min)} x2={scale(group.max)} y1={30} y2={30} stroke="var(--chart-axis-muted)" strokeWidth={1} />
             <rect x={scale(group.q1)} y={12} width={Math.max(2, scale(group.q3) - scale(group.q1))} height={36} fill={color} fillOpacity={0.35} stroke={color} />
             <line x1={scale(group.median)} x2={scale(group.median)} y1={12} y2={48} stroke={color} strokeWidth={2} />
-            <line x1={scale(group.min)} x2={scale(group.min)} y1={20} y2={40} stroke="#a3a3a3" />
-            <line x1={scale(group.max)} x2={scale(group.max)} y1={20} y2={40} stroke="#a3a3a3" />
+            <line x1={scale(group.min)} x2={scale(group.min)} y1={20} y2={40} stroke="var(--chart-axis-muted)" />
+            <line x1={scale(group.max)} x2={scale(group.max)} y1={20} y2={40} stroke="var(--chart-axis-muted)" />
           </svg>
           <p className="mt-1 text-[11px] text-neutral-500">n={group.count}, медиана={group.median.toFixed(2)}</p>
         </>
@@ -272,8 +272,8 @@ export function MissingBoxplotChart({ columns }: { columns: MissingProfileItem[]
       {error && <p role="alert" className="mt-4 text-sm text-red-700">{error}</p>}
       {data && !loading && !error && (
         <div className="mt-4 flex gap-6">
-          <BoxAndWhiskers label={`С пропуском в «${indicatorColumn}»`} group={data.with_missing} color="#ef4444" domainMin={domainMin} domainMax={domainMax} />
-          <BoxAndWhiskers label={`Без пропуска в «${indicatorColumn}»`} group={data.without_missing} color="#94a3b8" domainMin={domainMin} domainMax={domainMax} />
+          <BoxAndWhiskers label={`С пропуском в «${indicatorColumn}»`} group={data.with_missing} color="var(--status-error-strong)" domainMin={domainMin} domainMax={domainMax} />
+          <BoxAndWhiskers label={`Без пропуска в «${indicatorColumn}»`} group={data.without_missing} color="var(--chart-slate)" domainMin={domainMin} domainMax={domainMax} />
         </div>
       )}
     </div>

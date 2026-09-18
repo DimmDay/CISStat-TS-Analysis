@@ -151,14 +151,14 @@ function RankingChart({ profile }: { profile: EdaIhResponse }) {
     <div role="img" aria-label={`Рейтинг IH-информативности для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical" margin={{ top: 4, right: 24, left: 22, bottom: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-border)" />
           <XAxis type="number" domain={[0, 1]} tick={{ fontSize: 10 }} />
           <YAxis dataKey="feature" type="category" width={105} tick={{ fontSize: 10 }} />
           <Tooltip formatter={(value: number | string) => typeof value === "number" ? value.toFixed(4) : value} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Bar dataKey="r" name="R(Y|X)" fill="#60a5fa" isAnimationActive={false} />
-          <Bar dataKey="r_adjusted" name="R после baseline" fill="#2563eb" isAnimationActive={false}>
-            {data.map((item) => <Cell key={item.feature} fill={item.significant ? "#16a34a" : "#2563eb"} />)}
+          <Bar dataKey="r" name="R(Y|X)" fill="var(--chart-blue-soft)" isAnimationActive={false} />
+          <Bar dataKey="r_adjusted" name="R после baseline" fill="var(--chart-blue)" isAnimationActive={false}>
+            {data.map((item) => <Cell key={item.feature} fill={item.significant ? "var(--status-success)" : "var(--chart-blue)"} />)}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
@@ -206,14 +206,14 @@ function SynergyChart({ items }: { items: EdaIhSynergy[] }) {
     <div role="img" aria-label="График взаимодействия факторов" className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical" margin={{ top: 4, right: 18, left: 55, bottom: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-border)" />
           <XAxis type="number" tick={{ fontSize: 10 }} />
           <YAxis dataKey="pair" type="category" width={125} tick={{ fontSize: 9 }} />
-          <ReferenceLine x={0} stroke="#737373" />
+          <ReferenceLine x={0} stroke="var(--chart-axis-text)" />
           <Tooltip formatter={(value: number | string) => typeof value === "number" ? value.toFixed(4) : value} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
-          <Bar dataKey="incremental_gain" name="Добавка к лучшему фактору" fill="#2563eb" isAnimationActive={false} />
-          <Bar dataKey="interaction_delta" name="Interaction ΔR" fill="#f59e0b" isAnimationActive={false} />
+          <Bar dataKey="incremental_gain" name="Добавка к лучшему фактору" fill="var(--chart-blue)" isAnimationActive={false} />
+          <Bar dataKey="interaction_delta" name="Interaction ΔR" fill="var(--status-warning-mid)" isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>

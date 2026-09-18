@@ -55,7 +55,7 @@ const TABS: Array<{ id: View; label: string }> = [
   { id: "distribution", label: "Распределения" },
   { id: "diagnostics", label: "Диагностика" },
 ];
-const TICK = { fontSize: 10, fill: "#737373" };
+const TICK = { fontSize: 10, fill: "var(--chart-axis-text)" };
 
 function methodName(method: VarianceMethod | null): string {
   return ({ box_cox: "Box–Cox", yeo_johnson: "Yeo–Johnson", log: "Log", log1p: "Log1p", sqrt: "Квадратный корень" } as Record<string, string>)[method ?? ""] ?? "—";
@@ -69,11 +69,11 @@ function fmtX(value: string): string {
 function SeriesChart({ profile }: { profile: VarianceProfile }) {
   return <div role="img" aria-label="Ряд до и после стабилизации" className="min-h-0 flex-1 p-3">
     <ResponsiveContainer width="100%" height="100%"><LineChart data={profile.points} margin={{ top: 8, right: 14, bottom: 0, left: -8 }}>
-      <CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="x" tick={TICK} tickFormatter={fmtX} minTickGap={34} />
+      <CartesianGrid stroke="var(--chart-grid)" vertical={false} /><XAxis dataKey="x" tick={TICK} tickFormatter={fmtX} minTickGap={34} />
       <YAxis yAxisId="before" tick={TICK} width={48} /><YAxis yAxisId="after" orientation="right" tick={TICK} width={48} />
       <Tooltip labelFormatter={(value: string) => fmtX(value)} /><Legend wrapperStyle={{ fontSize: 10 }} />
-      <Line yAxisId="before" dataKey="original" name="Исходная шкала" stroke="#2E3192" strokeWidth={1.7} dot={false} isAnimationActive={false} />
-      <Line yAxisId="after" dataKey="transformed" name="После трансформации" stroke="#16A34A" strokeWidth={1.7} dot={false} isAnimationActive={false} />
+      <Line yAxisId="before" dataKey="original" name="Исходная шкала" stroke="var(--chart-brand)" strokeWidth={1.7} dot={false} isAnimationActive={false} />
+      <Line yAxisId="after" dataKey="transformed" name="После трансформации" stroke="var(--status-success)" strokeWidth={1.7} dot={false} isAnimationActive={false} />
     </LineChart></ResponsiveContainer>
   </div>;
 }
@@ -81,11 +81,11 @@ function SeriesChart({ profile }: { profile: VarianceProfile }) {
 function RollingChart({ profile }: { profile: VarianceProfile }) {
   return <div role="img" aria-label="Скользящее стандартное отклонение до и после" className="min-h-0 flex-1 p-3">
     <ResponsiveContainer width="100%" height="100%"><LineChart data={profile.points} margin={{ top: 8, right: 14, bottom: 0, left: -8 }}>
-      <CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="x" tick={TICK} tickFormatter={fmtX} minTickGap={34} />
+      <CartesianGrid stroke="var(--chart-grid)" vertical={false} /><XAxis dataKey="x" tick={TICK} tickFormatter={fmtX} minTickGap={34} />
       <YAxis yAxisId="before" tick={TICK} width={48} /><YAxis yAxisId="after" orientation="right" tick={TICK} width={48} />
       <Tooltip labelFormatter={(value: string) => fmtX(value)} /><Legend wrapperStyle={{ fontSize: 10 }} />
-      <Line yAxisId="before" dataKey="rolling_std_before" name="σ до" stroke="#DC2626" strokeWidth={1.7} dot={false} connectNulls isAnimationActive={false} />
-      <Line yAxisId="after" dataKey="rolling_std_after" name="σ после" stroke="#16A34A" strokeWidth={1.7} dot={false} connectNulls isAnimationActive={false} />
+      <Line yAxisId="before" dataKey="rolling_std_before" name="σ до" stroke="var(--status-error)" strokeWidth={1.7} dot={false} connectNulls isAnimationActive={false} />
+      <Line yAxisId="after" dataKey="rolling_std_after" name="σ после" stroke="var(--status-success)" strokeWidth={1.7} dot={false} connectNulls isAnimationActive={false} />
     </LineChart></ResponsiveContainer>
   </div>;
 }
@@ -94,9 +94,9 @@ function MethodsChart({ profile }: { profile: VarianceProfile }) {
   const data = profile.candidates.filter((item) => item.available && item.stability_score !== null);
   return <div role="img" aria-label="Сравнение методов стабилизации" className="min-h-0 flex-1 p-3">
     <ResponsiveContainer width="100%" height="100%"><BarChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: -8 }}>
-      <CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="label" tick={TICK} /><YAxis domain={[0, 100]} tick={TICK} width={42} />
+      <CartesianGrid stroke="var(--chart-grid)" vertical={false} /><XAxis dataKey="label" tick={TICK} /><YAxis domain={[0, 100]} tick={TICK} width={42} />
       <Tooltip formatter={(value: number) => [`${value.toFixed(1)} / 100`, "Score нестабильности"]} />
-      <Bar dataKey="stability_score" name="Меньше — стабильнее" fill="#2E3192" isAnimationActive={false} />
+      <Bar dataKey="stability_score" name="Меньше — стабильнее" fill="var(--chart-brand)" isAnimationActive={false} />
     </BarChart></ResponsiveContainer>
   </div>;
 }
@@ -113,12 +113,12 @@ function DistributionCharts({ profile }: { profile: VarianceProfile }) {
   // ResponsiveContainer следует за свёрнутой панелью.
   return <div role="img" aria-label="Распределения до и после" className="grid min-h-0 flex-1 grid-cols-2 grid-rows-1 gap-2 p-3">
     <ResponsiveContainer width="100%" height="100%"><BarChart data={profile.histogram} margin={{ top: 18, right: 5, bottom: 0, left: -14 }}>
-      <CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="original_x" tick={TICK} tickFormatter={(v: number) => v.toPrecision(3)} /><YAxis tick={TICK} width={44} />
-      <Tooltip /><Bar dataKey="original_density" name="Плотность до" fill="#2E3192" isAnimationActive={false} />
+      <CartesianGrid stroke="var(--chart-grid)" vertical={false} /><XAxis dataKey="original_x" tick={TICK} tickFormatter={(v: number) => v.toPrecision(3)} /><YAxis tick={TICK} width={44} />
+      <Tooltip /><Bar dataKey="original_density" name="Плотность до" fill="var(--chart-brand)" isAnimationActive={false} />
     </BarChart></ResponsiveContainer>
     <ResponsiveContainer width="100%" height="100%"><BarChart data={profile.histogram} margin={{ top: 18, right: 5, bottom: 0, left: -14 }}>
-      <CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="transformed_x" tick={TICK} tickFormatter={(v: number) => v.toPrecision(3)} /><YAxis tick={TICK} width={44} />
-      <Tooltip /><Bar dataKey="transformed_density" name="Плотность после" fill="#16A34A" isAnimationActive={false} />
+      <CartesianGrid stroke="var(--chart-grid)" vertical={false} /><XAxis dataKey="transformed_x" tick={TICK} tickFormatter={(v: number) => v.toPrecision(3)} /><YAxis tick={TICK} width={44} />
+      <Tooltip /><Bar dataKey="transformed_density" name="Плотность после" fill="var(--status-success)" isAnimationActive={false} />
     </BarChart></ResponsiveContainer>
   </div>;
 }

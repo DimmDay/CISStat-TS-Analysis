@@ -28,13 +28,13 @@ import { Line, LineChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, X
 // (#2E3192) исходного линейного графика выше, чтобы не путать "сырой
 // ряд" и "тренд" при беглом просмотре двух графиков подряд.
 const COLORS = {
-  trend: "#2563EB", // синий
-  seasonal: "#16A34A", // зелёный
-  cyclical: "#D97706", // оранжевый -- напоминание, что это оценочная эвристика
-  resid: "#9CA3AF", // серый -- остаток/шум, наименее "содержательная" линия
+  trend: "var(--chart-blue)", // синий
+  seasonal: "var(--status-success)", // зелёный
+  cyclical: "var(--status-warning)", // оранжевый -- напоминание, что это оценочная эвристика
+  resid: "var(--chart-neutral)", // серый -- остаток/шум, наименее "содержательная" линия
 };
 
-const AXIS_TICK_STYLE = { fontSize: 11, fill: "#737373" };
+const AXIS_TICK_STYLE = { fontSize: 11, fill: "var(--chart-axis-text)" };
 
 export interface DecompositionSeriesPoint {
   x: string;
@@ -142,7 +142,7 @@ export function DecompositionSeriesChart({
       <div className="h-[320px] border border-neutral-200 rounded-lg bg-white px-2 pt-4 pb-2">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data.points} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
-            <CartesianGrid stroke="#F0F0F0" vertical={false} />
+            <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
             <XAxis dataKey="x" tick={AXIS_TICK_STYLE} tickFormatter={formatDateTick} minTickGap={40} />
             <YAxis tick={AXIS_TICK_STYLE} width={48} />
             <Tooltip

@@ -139,12 +139,12 @@ function HistogramView({ profile }: { profile: EdaDistributionResponse }) {
     <div role="img" aria-label={`Гистограмма распределения для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 8, right: 18, left: 4, bottom: 18 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-border)" />
           <XAxis dataKey="interval" tick={{ fontSize: 9 }} interval="preserveStartEnd" angle={-10} textAnchor="end" height={42} />
           <YAxis tick={{ fontSize: 10 }} width={52} />
           <Tooltip formatter={(value: number | string, name: string) => [typeof value === "number" ? formatNumber(value) : value, name === "count" ? "Наблюдения" : "Ожидается при нормальной форме"]} />
-          <Bar dataKey="count" name="Наблюдения" fill="#93c5fd" isAnimationActive={false} />
-          <Line type="monotone" dataKey="normal_expected_count" name="Нормальная форма" stroke="#dc2626" strokeWidth={2} dot={false} isAnimationActive={false} />
+          <Bar dataKey="count" name="Наблюдения" fill="var(--chart-blue-pale)" isAnimationActive={false} />
+          <Line type="monotone" dataKey="normal_expected_count" name="Нормальная форма" stroke="var(--status-error)" strokeWidth={2} dot={false} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
@@ -156,12 +156,12 @@ function DensityView({ profile }: { profile: EdaDistributionResponse }) {
     <div role="img" aria-label={`Сравнение плотностей для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={profile.density} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-border)" />
           <XAxis dataKey="x" type="number" domain={["dataMin", "dataMax"]} tick={{ fontSize: 10 }} />
           <YAxis tick={{ fontSize: 10 }} width={58} />
           <Tooltip formatter={(value: number | string, name: string) => [typeof value === "number" ? formatNumber(value, 6) : value, name === "empirical" ? "Оценка KDE" : "Нормальная плотность"]} />
-          <Line type="monotone" dataKey="empirical" name="Оценка KDE" stroke="#2563eb" strokeWidth={2} dot={false} isAnimationActive={false} />
-          <Line type="monotone" dataKey="normal" name="Нормальная плотность" stroke="#dc2626" strokeWidth={2} strokeDasharray="5 3" dot={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="empirical" name="Оценка KDE" stroke="var(--chart-blue)" strokeWidth={2} dot={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="normal" name="Нормальная плотность" stroke="var(--status-error)" strokeWidth={2} strokeDasharray="5 3" dot={false} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
@@ -173,12 +173,12 @@ function QqView({ profile }: { profile: EdaDistributionResponse }) {
     <div role="img" aria-label={`Q–Q график для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={profile.qq} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-border)" />
           <XAxis dataKey="theoretical" type="number" domain={["dataMin", "dataMax"]} tick={{ fontSize: 10 }} name="Теоретический квантиль" />
           <YAxis dataKey="observed" type="number" domain={["auto", "auto"]} tick={{ fontSize: 10 }} width={58} name="Наблюдаемый квантиль" />
           <Tooltip formatter={(value: number | string) => typeof value === "number" ? formatNumber(value) : value} />
-          <Line type="linear" dataKey="reference" name="Опорная прямая" stroke="#dc2626" dot={false} isAnimationActive={false} />
-          <Scatter dataKey="observed" name="Квантили" fill="#2563eb" isAnimationActive={false} />
+          <Line type="linear" dataKey="reference" name="Опорная прямая" stroke="var(--status-error)" dot={false} isAnimationActive={false} />
+          <Scatter dataKey="observed" name="Квантили" fill="var(--chart-blue)" isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
@@ -190,12 +190,12 @@ function CdfView({ profile }: { profile: EdaDistributionResponse }) {
     <div role="img" aria-label={`Сравнение функций распределения для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={profile.cdf} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-border)" />
           <XAxis dataKey="x" type="number" domain={["dataMin", "dataMax"]} tick={{ fontSize: 10 }} />
           <YAxis domain={[0, 1]} tick={{ fontSize: 10 }} width={48} />
           <Tooltip formatter={(value: number | string, name: string) => [typeof value === "number" ? formatNumber(value) : value, name === "empirical" ? "Эмпирическая F(x)" : "Нормальная F(x)"]} />
-          <Line type="stepAfter" dataKey="empirical" name="Эмпирическая F(x)" stroke="#2563eb" strokeWidth={2} dot={false} isAnimationActive={false} />
-          <Line type="monotone" dataKey="normal" name="Нормальная F(x)" stroke="#dc2626" strokeDasharray="5 3" dot={false} isAnimationActive={false} />
+          <Line type="stepAfter" dataKey="empirical" name="Эмпирическая F(x)" stroke="var(--chart-blue)" strokeWidth={2} dot={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="normal" name="Нормальная F(x)" stroke="var(--status-error)" strokeDasharray="5 3" dot={false} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { AppShellProvider, ModuleNav, ThemeProvider, NO_FOUC_SCRIPT } from "@cisstat/ui";
+import { AppShellProvider, ModuleNav, ThemeProvider, ThemeToaster, NO_FOUC_SCRIPT } from "@cisstat/ui";
 import { ProductHeader } from "@/components/ProductHeader";
-import { Toaster } from "sonner";
 
 const inter = Inter({ subsets: ["latin", "cyrillic"], variable: "--font-sans" });
 
@@ -32,7 +31,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AppShellProvider>
             <ModuleNav />
             <main className="max-w-[1600px] mx-auto px-6 py-6">{children}</main>
-            <Toaster />
+            <ThemeToaster />
           </AppShellProvider>
         </ThemeProvider>
       </body>

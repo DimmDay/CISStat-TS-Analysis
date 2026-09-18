@@ -153,7 +153,7 @@ function SpectrumChart({
     <div role="img" aria-label={`${label} для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={points} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-border)" />
           <XAxis
             dataKey="frequency"
             type="number"
@@ -172,8 +172,8 @@ function SpectrumChart({
               return point ? `Период ≈ ${formatValue(point.period)} наблюдения` : "";
             }}
           />
-          <Line type="monotone" dataKey={dataKey} stroke="#2563eb" dot={false} isAnimationActive={false} />
-          <Scatter data={peaks} dataKey={dataKey} fill="#dc2626" isAnimationActive={false} />
+          <Line type="monotone" dataKey={dataKey} stroke="var(--chart-blue)" dot={false} isAnimationActive={false} />
+          <Scatter data={peaks} dataKey={dataKey} fill="var(--status-error)" isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
@@ -188,14 +188,14 @@ function PhaseChart({ profile }: { profile: EdaSeasonalityResponse }) {
     <div role="img" aria-label={`Фазовый профиль периода ${profile.phase_period} для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={profile.phase_profile} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-border)" />
           <XAxis dataKey="phase" type="number" domain={[1, profile.phase_period]} tick={{ fontSize: 10 }} label={{ value: "Фаза", position: "insideBottomRight", offset: -5, fontSize: 10 }} />
           <YAxis tick={{ fontSize: 10 }} width={52} />
           <Tooltip formatter={(value: number | string) => typeof value === "number" ? value.toFixed(4) : value} />
-          <ReferenceLine y={0} stroke="#a3a3a3" />
-          <Line type="monotone" dataKey="upper" name="Верхняя 95% граница" stroke="#a3a3a3" strokeDasharray="4 3" dot={false} isAnimationActive={false} />
-          <Line type="monotone" dataKey="lower" name="Нижняя 95% граница" stroke="#a3a3a3" strokeDasharray="4 3" dot={false} isAnimationActive={false} />
-          <Line type="monotone" dataKey="mean" name="Среднее по фазе" stroke="#16a34a" strokeWidth={2} isAnimationActive={false} />
+          <ReferenceLine y={0} stroke="var(--chart-axis-muted)" />
+          <Line type="monotone" dataKey="upper" name="Верхняя 95% граница" stroke="var(--chart-axis-muted)" strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="lower" name="Нижняя 95% граница" stroke="var(--chart-axis-muted)" strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="mean" name="Среднее по фазе" stroke="var(--status-success)" strokeWidth={2} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

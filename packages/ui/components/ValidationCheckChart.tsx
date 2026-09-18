@@ -27,8 +27,8 @@ import {
   YAxis,
 } from "recharts";
 
-const BRAND = "#2E3192";
-const AXIS_TICK_STYLE = { fontSize: 11, fill: "#737373" };
+const BRAND = "var(--chart-brand)";
+const AXIS_TICK_STYLE = { fontSize: 11, fill: "var(--chart-axis-text)" };
 
 export interface ValidationCheckItem {
   label: string;
@@ -176,7 +176,7 @@ export function ValidationCheckChart({
       >
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data.items} margin={{ top: 4, right: 12, bottom: 24, left: -12 }}>
-            <CartesianGrid stroke="#F0F0F0" vertical={false} />
+            <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
             <XAxis
               dataKey="label"
               tick={AXIS_TICK_STYLE}

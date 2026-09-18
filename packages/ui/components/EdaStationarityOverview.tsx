@@ -170,7 +170,7 @@ function SeriesChart({ profile }: { profile: EdaStationarityResponse }) {
     <div role="img" aria-label={`Ряд и скользящее среднее для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={profile.rolling} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-border)" />
           <XAxis dataKey="index" tick={{ fontSize: 10 }} tickFormatter={(index) => {
             const point = profile.rolling.find((item) => item.index === index);
             return point ? formatTickLabel(point) : String(index);
@@ -187,10 +187,10 @@ function SeriesChart({ profile }: { profile: EdaStationarityResponse }) {
             ]}
           />
           {profile.breakpoint_index !== null && (
-            <ReferenceLine x={profile.breakpoint_index} stroke="#dc2626" strokeDasharray="4 3" label={{ value: "ZA-разрыв", fontSize: 9, fill: "#dc2626" }} />
+            <ReferenceLine x={profile.breakpoint_index} stroke="var(--status-error)" strokeDasharray="4 3" label={{ value: "ZA-разрыв", fontSize: 9, fill: "var(--status-error)" }} />
           )}
-          <Line type="monotone" dataKey="value" stroke="#94a3b8" dot={false} isAnimationActive={false} />
-          <Line type="monotone" dataKey="rolling_mean" stroke="#2563eb" strokeWidth={2} dot={false} connectNulls={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="value" stroke="var(--chart-slate)" dot={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="rolling_mean" stroke="var(--chart-blue)" strokeWidth={2} dot={false} connectNulls={false} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
@@ -202,15 +202,15 @@ function RollingStdChart({ profile }: { profile: EdaStationarityResponse }) {
     <div role="img" aria-label={`Скользящее стандартное отклонение для ${profile.column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={profile.rolling} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-border)" />
           <XAxis dataKey="index" tick={{ fontSize: 10 }} tickFormatter={(index) => {
             const point = profile.rolling.find((item) => item.index === index);
             return point ? formatTickLabel(point) : String(index);
           }} />
           <YAxis tick={{ fontSize: 10 }} width={58} domain={[0, "auto"]} />
           <Tooltip formatter={(value: number | string) => typeof value === "number" ? formatNumber(value) : value} />
-          {profile.breakpoint_index !== null && <ReferenceLine x={profile.breakpoint_index} stroke="#dc2626" strokeDasharray="4 3" />}
-          <Line type="monotone" dataKey="rolling_std" name="Скользящее σ" stroke="#7c3aed" strokeWidth={2} dot={false} connectNulls={false} isAnimationActive={false} />
+          {profile.breakpoint_index !== null && <ReferenceLine x={profile.breakpoint_index} stroke="var(--status-error)" strokeDasharray="4 3" />}
+          <Line type="monotone" dataKey="rolling_std" name="Скользящее σ" stroke="var(--chart-violet)" strokeWidth={2} dot={false} connectNulls={false} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>
@@ -231,13 +231,13 @@ function PValueChart({ profile }: { profile: EdaStationarityResponse }) {
       <div className="min-h-0 flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 8, right: 18, left: 4, bottom: 22 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-border)" />
             <XAxis dataKey="label" tick={{ fontSize: 9 }} interval={0} angle={-12} textAnchor="end" height={48} />
             <YAxis tick={{ fontSize: 10 }} width={52} domain={[0, "auto"]} />
             <Tooltip formatter={(value: number | string) => typeof value === "number" ? formatNumber(value) : value} />
-            <ReferenceLine y={profile.alpha} stroke="#dc2626" strokeDasharray="4 3" label={{ value: `α=${profile.alpha}`, fontSize: 9, fill: "#dc2626" }} />
+            <ReferenceLine y={profile.alpha} stroke="var(--status-error)" strokeDasharray="4 3" label={{ value: `α=${profile.alpha}`, fontSize: 9, fill: "var(--status-error)" }} />
             <Bar dataKey="p_value" name="p-значение" isAnimationActive={false}>
-              {data.map((item) => <Cell key={item.label} fill={item.supports_stationarity ? "#16a34a" : "#d97706"} />)}
+              {data.map((item) => <Cell key={item.label} fill={item.supports_stationarity ? "var(--status-success)" : "var(--status-warning)"} />)}
             </Bar>
           </BarChart>
         </ResponsiveContainer>

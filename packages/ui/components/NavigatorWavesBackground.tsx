@@ -52,33 +52,33 @@ export function NavigatorWavesBackground() {
       >
         <defs>
           <linearGradient id="cisstat-nav-bg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#F7FBFE" />
-            <stop offset="0.48" stopColor="#EEF6FD" />
-            <stop offset="1" stopColor="#E7EEFF" />
+            <stop offset="0" stopColor="var(--wave-nav-1)" />
+            <stop offset="0.48" stopColor="var(--wave-nav-2)" />
+            <stop offset="1" stopColor="var(--wave-nav-3)" />
           </linearGradient>
           <linearGradient id="cisstat-nav-waveA" x1="0" y1="0" x2="1" y2="0.2">
-            <stop offset="0" stopColor="#DDECFB" stopOpacity=".68" />
-            <stop offset=".48" stopColor="#D4E5FB" stopOpacity=".76" />
-            <stop offset="1" stopColor="#D0DAF8" stopOpacity=".62" />
+            <stop offset="0" stopColor="var(--wave-nav-4)" stopOpacity=".68" />
+            <stop offset=".48" stopColor="var(--wave-nav-5)" stopOpacity=".76" />
+            <stop offset="1" stopColor="var(--wave-nav-6)" stopOpacity=".62" />
           </linearGradient>
           <linearGradient id="cisstat-nav-waveB" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor="#D6E8FA" stopOpacity=".48" />
-            <stop offset=".52" stopColor="#C9DCF8" stopOpacity=".66" />
-            <stop offset="1" stopColor="#C8D6F7" stopOpacity=".54" />
+            <stop offset="0" stopColor="var(--wave-nav-7)" stopOpacity=".48" />
+            <stop offset=".52" stopColor="var(--wave-nav-8)" stopOpacity=".66" />
+            <stop offset="1" stopColor="var(--wave-nav-9)" stopOpacity=".54" />
           </linearGradient>
           <linearGradient id="cisstat-nav-waveC" x1="0" y1="0" x2="1" y2="0.2">
-            <stop offset="0" stopColor="#E5F1FC" stopOpacity=".72" />
-            <stop offset=".5" stopColor="#D7E7FA" stopOpacity=".64" />
-            <stop offset="1" stopColor="#D8E1FB" stopOpacity=".72" />
+            <stop offset="0" stopColor="var(--wave-nav-10)" stopOpacity=".72" />
+            <stop offset=".5" stopColor="var(--wave-nav-11)" stopOpacity=".64" />
+            <stop offset="1" stopColor="var(--wave-nav-12)" stopOpacity=".72" />
           </linearGradient>
           <linearGradient id="cisstat-nav-waveD" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor="#D9EAFB" stopOpacity=".42" />
-            <stop offset=".5" stopColor="#CBDDF8" stopOpacity=".58" />
-            <stop offset="1" stopColor="#C8D7F8" stopOpacity=".48" />
+            <stop offset="0" stopColor="var(--wave-nav-13)" stopOpacity=".42" />
+            <stop offset=".5" stopColor="var(--wave-nav-14)" stopOpacity=".58" />
+            <stop offset="1" stopColor="var(--wave-nav-15)" stopOpacity=".48" />
           </linearGradient>
           <linearGradient id="cisstat-nav-lower" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#D9EAFB" stopOpacity=".52" />
-            <stop offset="1" stopColor="#D1DBFA" stopOpacity=".62" />
+            <stop offset="0" stopColor="var(--wave-nav-16)" stopOpacity=".52" />
+            <stop offset="1" stopColor="var(--wave-nav-17)" stopOpacity=".62" />
           </linearGradient>
         </defs>
 
@@ -93,7 +93,7 @@ export function NavigatorWavesBackground() {
         <path
           d="M0 1050 C210 930 390 920 590 1030 C790 1140 900 1260 1060 1160 C1250 1040 1400 820 1600 760"
           fill="none"
-          stroke="#FFFFFF"
+          stroke="var(--wave-nav-18)"
           strokeOpacity=".80"
           strokeWidth="3"
         />
@@ -113,7 +113,7 @@ export function NavigatorWavesBackground() {
         <path
           d="M0 2090 C190 2020 390 1990 600 1880 C810 1770 970 1590 1160 1430 C1310 1300 1450 1210 1600 1160"
           fill="none"
-          stroke="#FFFFFF"
+          stroke="var(--wave-nav-19)"
           strokeOpacity=".68"
           strokeWidth="3"
         />
@@ -126,7 +126,7 @@ export function NavigatorWavesBackground() {
         <path
           d="M0 2210 C220 2100 420 2110 620 2210 C800 2300 930 2460 1100 2440 C1280 2418 1430 2240 1600 2160"
           fill="none"
-          stroke="#FFFFFF"
+          stroke="var(--wave-nav-20)"
           strokeOpacity=".78"
           strokeWidth="3"
         />

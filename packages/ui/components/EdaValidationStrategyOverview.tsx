@@ -108,7 +108,7 @@ function FoldTimeline({ profile }: { profile: EdaValidationStrategyResponse }) {
 }
 
 function TrainChart({ profile }: { profile: EdaValidationStrategyResponse }) {
-  return <div role="img" aria-label={`Рост обучающего окна для ${profile.column}`} className="min-h-0 flex-1 p-3"><ResponsiveContainer width="100%" height="100%"><BarChart data={profile.folds} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" /><XAxis dataKey="fold" tick={{ fontSize: 10 }} label={{ value: "Fold", position: "insideBottom", offset: -3, fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} width={48} /><Tooltip formatter={(value: number | string) => [value, "Train наблюдений"]} /><Bar dataKey="train_size" name="Train" fill="#60a5fa" isAnimationActive={false} /></BarChart></ResponsiveContainer></div>;
+  return <div role="img" aria-label={`Рост обучающего окна для ${profile.column}`} className="min-h-0 flex-1 p-3"><ResponsiveContainer width="100%" height="100%"><BarChart data={profile.folds} margin={{ top: 8, right: 18, left: 4, bottom: 8 }}><CartesianGrid strokeDasharray="3 3" stroke="var(--chart-border)" /><XAxis dataKey="fold" tick={{ fontSize: 10 }} label={{ value: "Fold", position: "insideBottom", offset: -3, fontSize: 10 }} /><YAxis tick={{ fontSize: 10 }} width={48} /><Tooltip formatter={(value: number | string) => [value, "Train наблюдений"]} /><Bar dataKey="train_size" name="Train" fill="var(--chart-blue-soft)" isAnimationActive={false} /></BarChart></ResponsiveContainer></div>;
 }
 
 function Alternatives({ profile }: { profile: EdaValidationStrategyResponse }) {

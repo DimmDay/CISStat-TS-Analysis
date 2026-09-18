@@ -61,7 +61,7 @@ const TABS: Array<{ id: View; label: string }> = [
   { id: "diagnostics", label: "Диагностика" },
 ];
 
-const TICK = { fontSize: 10, fill: "#737373" };
+const TICK = { fontSize: 10, fill: "var(--chart-axis-text)" };
 
 function fmtDate(value: string): string {
   const date = new Date(value);
@@ -73,15 +73,15 @@ function ComponentsChart({ profile }: { profile: PreprocessingDecompositionProfi
     <div role="img" aria-label="Компоненты STL" className="min-h-0 flex-1 p-3">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={profile.points} margin={{ top: 6, right: 12, bottom: 0, left: -8 }}>
-          <CartesianGrid stroke="#F0F0F0" vertical={false} />
+          <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
           <XAxis dataKey="x" tick={TICK} tickFormatter={fmtDate} minTickGap={34} />
           <YAxis tick={TICK} width={48} />
           <Tooltip labelFormatter={(value: string) => fmtDate(value)} />
           <Legend wrapperStyle={{ fontSize: 10 }} />
-          <Line dataKey="observed" name="Наблюдение" stroke="#2E3192" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-          <Line dataKey="trend" name="Тренд" stroke="#2563EB" strokeWidth={2} dot={false} isAnimationActive={false} />
-          <Line dataKey="seasonal" name="Сезонность" stroke="#16A34A" strokeWidth={1.2} dot={false} isAnimationActive={false} />
-          <Line dataKey="resid" name="Остаток" stroke="#9CA3AF" strokeWidth={1} dot={false} isAnimationActive={false} />
+          <Line dataKey="observed" name="Наблюдение" stroke="var(--chart-brand)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+          <Line dataKey="trend" name="Тренд" stroke="var(--chart-blue)" strokeWidth={2} dot={false} isAnimationActive={false} />
+          <Line dataKey="seasonal" name="Сезонность" stroke="var(--status-success)" strokeWidth={1.2} dot={false} isAnimationActive={false} />
+          <Line dataKey="resid" name="Остаток" stroke="var(--chart-neutral)" strokeWidth={1} dot={false} isAnimationActive={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>
@@ -93,12 +93,12 @@ function SeasonalChart({ profile }: { profile: PreprocessingDecompositionProfile
     <div role="img" aria-label="Средний сезонный профиль STL" className="min-h-0 flex-1 p-3">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={profile.seasonal_pattern} margin={{ top: 6, right: 12, bottom: 0, left: -8 }}>
-          <CartesianGrid stroke="#F0F0F0" vertical={false} />
+          <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
           <XAxis dataKey="label" tick={TICK} />
           <YAxis tick={TICK} width={48} />
           <Tooltip formatter={(value: number) => [value.toFixed(4), "Сезонный эффект"]} />
-          <ReferenceLine y={0} stroke="#A3A3A3" />
-          <Bar dataKey="value" name="Сезонный эффект" fill="#2E3192" isAnimationActive={false} />
+          <ReferenceLine y={0} stroke="var(--chart-axis-muted)" />
+          <Bar dataKey="value" name="Сезонный эффект" fill="var(--chart-brand)" isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -111,14 +111,14 @@ function ResidualAcfChart({ profile }: { profile: PreprocessingDecompositionProf
     <div role="img" aria-label="ACF остатка STL" className="min-h-0 flex-1 p-3">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={profile.residual_acf} margin={{ top: 6, right: 12, bottom: 0, left: -8 }}>
-          <CartesianGrid stroke="#F0F0F0" vertical={false} />
+          <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
           <XAxis dataKey="lag" tick={TICK} />
           <YAxis domain={[-1, 1]} tick={TICK} width={48} />
           <Tooltip formatter={(value: number) => [value.toFixed(4), "ACF"]} />
-          <ReferenceLine y={0} stroke="#737373" />
-          <ReferenceLine y={limit} stroke="#DC2626" strokeDasharray="4 3" />
-          <ReferenceLine y={-limit} stroke="#DC2626" strokeDasharray="4 3" />
-          <Bar dataKey="value" name="ACF" fill="#737373" isAnimationActive={false} />
+          <ReferenceLine y={0} stroke="var(--chart-axis-text)" />
+          <ReferenceLine y={limit} stroke="var(--status-error)" strokeDasharray="4 3" />
+          <ReferenceLine y={-limit} stroke="var(--status-error)" strokeDasharray="4 3" />
+          <Bar dataKey="value" name="ACF" fill="var(--chart-axis-text)" isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>

@@ -33,9 +33,9 @@ import {
 } from "recharts";
 import type { BacktestResponse } from "../lib/modeling";
 
-const BRAND = "#2E3192";
-const BRAND_BEST = "#16A34A"; // green-600 -- лучшая (минимальная ошибка) модель
-const AXIS_TICK_STYLE = { fontSize: 11, fill: "#737373" };
+const BRAND = "var(--chart-brand)";
+const BRAND_BEST = "var(--status-success)"; // green-600 -- лучшая (минимальная ошибка) модель
+const AXIS_TICK_STYLE = { fontSize: 11, fill: "var(--chart-axis-text)" };
 
 interface BacktestChartRow {
   model_id: string;
@@ -93,7 +93,7 @@ export function BacktestComparisonChart({
       <div className="h-[180px] border border-neutral-200 rounded bg-white px-1 pt-2 pb-1">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={rows} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-            <CartesianGrid stroke="#F0F0F0" vertical={false} />
+            <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
             <XAxis
               dataKey="model_name"
               tick={AXIS_TICK_STYLE}

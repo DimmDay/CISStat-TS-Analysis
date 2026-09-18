@@ -16,8 +16,8 @@
 
 import { Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-const BRAND = "#2E3192";
-const AXIS_TICK_STYLE = { fontSize: 11, fill: "#737373" };
+const BRAND = "var(--chart-brand)";
+const AXIS_TICK_STYLE = { fontSize: 11, fill: "var(--chart-axis-text)" };
 
 export interface TimeSeriesPoint {
   x: string; // ISO-дата
@@ -58,7 +58,7 @@ export function TimeSeriesLineChart({ data, loading }: { data: TimeSeriesChartDa
       <div className="h-[380px] border border-neutral-200 rounded-lg bg-white px-2 pt-4 pb-2">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data.points} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
-            <CartesianGrid stroke="#F0F0F0" vertical={false} />
+            <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
             <XAxis dataKey="x" tick={AXIS_TICK_STYLE} tickFormatter={formatDateTick} minTickGap={40} />
             <YAxis tick={AXIS_TICK_STYLE} width={48} />
             <Tooltip

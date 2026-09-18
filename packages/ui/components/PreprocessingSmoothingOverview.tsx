@@ -61,7 +61,7 @@ const TABS: Array<{ id: View; label: string }> = [
   { id: "methods", label: "Методы" }, { id: "spectrum", label: "Спектр" },
   { id: "diagnostics", label: "Диагностика" },
 ];
-const TICK = { fontSize: 10, fill: "#737373" };
+const TICK = { fontSize: 10, fill: "var(--chart-axis-text)" };
 
 function fmtX(value: string): string {
   const date = new Date(value);
@@ -73,23 +73,23 @@ function methodName(method: SmoothingMethod | null): string {
 }
 
 function SeriesView({ profile }: { profile: SmoothingProfile }) {
-  return <div role="img" aria-label="Исходный и сглаженный ряд" className="min-h-0 flex-1 p-3"><ResponsiveContainer width="100%" height="100%"><LineChart data={profile.points} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="x" tick={TICK} tickFormatter={fmtX} minTickGap={34} /><YAxis tick={TICK} width={48} /><Tooltip labelFormatter={(value: string) => fmtX(value)} /><Legend wrapperStyle={{ fontSize: 10 }} /><Line dataKey="original" name="Исходный" stroke="#A3A3A3" strokeWidth={1.2} dot={false} isAnimationActive={false} /><Line dataKey="smoothed" name="Сглаженный" stroke="#2E3192" strokeWidth={2} dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div>;
+  return <div role="img" aria-label="Исходный и сглаженный ряд" className="min-h-0 flex-1 p-3"><ResponsiveContainer width="100%" height="100%"><LineChart data={profile.points} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}><CartesianGrid stroke="var(--chart-grid)" vertical={false} /><XAxis dataKey="x" tick={TICK} tickFormatter={fmtX} minTickGap={34} /><YAxis tick={TICK} width={48} /><Tooltip labelFormatter={(value: string) => fmtX(value)} /><Legend wrapperStyle={{ fontSize: 10 }} /><Line dataKey="original" name="Исходный" stroke="var(--chart-axis-muted)" strokeWidth={1.2} dot={false} isAnimationActive={false} /><Line dataKey="smoothed" name="Сглаженный" stroke="var(--chart-brand)" strokeWidth={2} dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div>;
 }
 
 function ResidualView({ profile }: { profile: SmoothingProfile }) {
   // Task 97.4c: grid-rows-1 — без явного шаблона строк auto-ряд «залипает»
   // на пиксельной высоте svg раскрытого состояния (см. DistributionCharts
   // PreprocessingVarianceOverview) и после схлопывания переполняет окно.
-  return <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-1 gap-2 p-3"><div role="img" aria-label="Удалённая компонента"><ResponsiveContainer width="100%" height="100%"><LineChart data={profile.points}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="x" tick={TICK} tickFormatter={fmtX} minTickGap={40} /><YAxis tick={TICK} width={42} /><Tooltip /><Line dataKey="residual" name="y − smooth" stroke="#DC2626" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div><div role="img" aria-label="ACF удалённой компоненты"><ResponsiveContainer width="100%" height="100%"><BarChart data={profile.residual_acf}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="lag" tick={TICK} /><YAxis domain={[-1, 1]} tick={TICK} width={38} /><Tooltip /><Bar dataKey="value" name="ACF" fill="#2E3192" isAnimationActive={false} /></BarChart></ResponsiveContainer></div></div>;
+  return <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-1 gap-2 p-3"><div role="img" aria-label="Удалённая компонента"><ResponsiveContainer width="100%" height="100%"><LineChart data={profile.points}><CartesianGrid stroke="var(--chart-grid)" vertical={false} /><XAxis dataKey="x" tick={TICK} tickFormatter={fmtX} minTickGap={40} /><YAxis tick={TICK} width={42} /><Tooltip /><Line dataKey="residual" name="y − smooth" stroke="var(--status-error)" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div><div role="img" aria-label="ACF удалённой компоненты"><ResponsiveContainer width="100%" height="100%"><BarChart data={profile.residual_acf}><CartesianGrid stroke="var(--chart-grid)" vertical={false} /><XAxis dataKey="lag" tick={TICK} /><YAxis domain={[-1, 1]} tick={TICK} width={38} /><Tooltip /><Bar dataKey="value" name="ACF" fill="var(--chart-brand)" isAnimationActive={false} /></BarChart></ResponsiveContainer></div></div>;
 }
 
 function MethodsView({ profile }: { profile: SmoothingProfile }) {
   const data = profile.candidates.filter((item) => item.available);
-  return <div role="img" aria-label="Сравнение методов сглаживания" className="min-h-0 flex-1 p-3"><ResponsiveContainer width="100%" height="100%"><BarChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="label" tick={TICK} /><YAxis tick={TICK} width={42} /><Tooltip /><Legend wrapperStyle={{ fontSize: 10 }} /><Bar dataKey="roughness_reduction_pct" name="Снижение roughness, %" fill="#2E3192" isAnimationActive={false} /><Bar dataKey="high_frequency_reduction_pct" name="Снижение high-freq, %" fill="#16A34A" isAnimationActive={false} /></BarChart></ResponsiveContainer></div>;
+  return <div role="img" aria-label="Сравнение методов сглаживания" className="min-h-0 flex-1 p-3"><ResponsiveContainer width="100%" height="100%"><BarChart data={data} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}><CartesianGrid stroke="var(--chart-grid)" vertical={false} /><XAxis dataKey="label" tick={TICK} /><YAxis tick={TICK} width={42} /><Tooltip /><Legend wrapperStyle={{ fontSize: 10 }} /><Bar dataKey="roughness_reduction_pct" name="Снижение roughness, %" fill="var(--chart-brand)" isAnimationActive={false} /><Bar dataKey="high_frequency_reduction_pct" name="Снижение high-freq, %" fill="var(--status-success)" isAnimationActive={false} /></BarChart></ResponsiveContainer></div>;
 }
 
 function SpectrumView({ profile }: { profile: SmoothingProfile }) {
-  return <div role="img" aria-label="Спектр до и после сглаживания" className="min-h-0 flex-1 p-3"><ResponsiveContainer width="100%" height="100%"><LineChart data={profile.spectrum} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}><CartesianGrid stroke="#F0F0F0" vertical={false} /><XAxis dataKey="frequency" tick={TICK} /><YAxis tick={TICK} width={48} /><Tooltip /><Legend wrapperStyle={{ fontSize: 10 }} /><Line dataKey="before" name="До" stroke="#A3A3A3" dot={false} isAnimationActive={false} /><Line dataKey="after" name="После" stroke="#2E3192" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div>;
+  return <div role="img" aria-label="Спектр до и после сглаживания" className="min-h-0 flex-1 p-3"><ResponsiveContainer width="100%" height="100%"><LineChart data={profile.spectrum} margin={{ top: 8, right: 12, bottom: 0, left: -8 }}><CartesianGrid stroke="var(--chart-grid)" vertical={false} /><XAxis dataKey="frequency" tick={TICK} /><YAxis tick={TICK} width={48} /><Tooltip /><Legend wrapperStyle={{ fontSize: 10 }} /><Line dataKey="before" name="До" stroke="var(--chart-axis-muted)" dot={false} isAnimationActive={false} /><Line dataKey="after" name="После" stroke="var(--chart-brand)" dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div>;
 }
 
 function DiagnosticsView({ profile }: { profile: SmoothingProfile }) {

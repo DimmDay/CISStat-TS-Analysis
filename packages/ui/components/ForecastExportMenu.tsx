@@ -13,6 +13,7 @@
 import { useCallback, useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 import { exportUrl, recordClientExport } from "../lib/forecasting";
+import { resolveSvgVarsLight } from "../lib/chartVars";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 
@@ -20,13 +21,18 @@ export async function downloadChartPng(container: HTMLElement, fileName: string)
   const svg = container.querySelector("svg");
   if (!svg) throw new Error("График не отрисован: SVG не найден");
   const clone = svg.cloneNode(true) as SVGSVGElement;
-  clone.setAttribute("xmlns", SVG_NS);
+  // Task DKT-3 §6.4: резолв var() в клоне ДО сериализации — сериализованный
+  // SVG теряет контекст стилей документа и var() не разрешается. Артефакт
+  // «всегда светлый» (решение по §10.1 — рекомендация спеки): светлая карта
+  // независимо от темы просмотра.
+  const resolved = resolveSvgVarsLight(clone);
+  resolved.setAttribute("xmlns", SVG_NS);
   const bbox = svg.getBoundingClientRect();
   const width = Math.max(1, Math.ceil(bbox.width));
   const height = Math.max(1, Math.ceil(bbox.height));
-  clone.setAttribute("width", String(width));
-  clone.setAttribute("height", String(height));
-  const serialized = new XMLSerializer().serializeToString(clone);
+  resolved.setAttribute("width", String(width));
+  resolved.setAttribute("height", String(height));
+  const serialized = new XMLSerializer().serializeToString(resolved);
   const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(serialized)}`;
   const image = new Image();
   await new Promise<void>((resolve, reject) => {

@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import type { BacktestResponse } from "../lib/modeling";
 
-const TICK = { fontSize: 10, fill: "#737373" };
+const TICK = { fontSize: 10, fill: "var(--chart-axis-text)" };
 
 export function BacktestOofChart({ result }: { result: BacktestResponse }) {
   const points = result.oof_predictions ?? [];
@@ -35,7 +35,7 @@ export function BacktestOofChart({ result }: { result: BacktestResponse }) {
       >
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 4, right: 10, bottom: 2, left: -12 }}>
-            <CartesianGrid stroke="#F0F0F0" vertical={false} />
+            <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
             <XAxis dataKey="x" tick={TICK} minTickGap={28} />
             <YAxis tick={TICK} width={54} domain={["auto", "auto"]} />
             <Tooltip
@@ -48,12 +48,12 @@ export function BacktestOofChart({ result }: { result: BacktestResponse }) {
               <ReferenceLine
                 key={`${point.fold}-${point.index}`}
                 x={point.label ?? String(point.index)}
-                stroke="#D4D4D4"
+                stroke="var(--chart-reference)"
                 strokeDasharray="3 3"
               />
             ))}
-            <Line type="monotone" dataKey="actual" name="actual" stroke="#171717" dot={false} isAnimationActive={false} />
-            <Line type="monotone" dataKey="predicted" name="predicted" stroke="#2E3192" strokeWidth={2} dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="actual" name="actual" stroke="var(--chart-axis)" dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="predicted" name="predicted" stroke="var(--chart-brand)" strokeWidth={2} dot={false} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>

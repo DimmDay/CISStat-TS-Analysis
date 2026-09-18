@@ -21,7 +21,7 @@ import {
 } from "recharts";
 import type { ForecastPoint, ForecastRun } from "../lib/forecasting";
 
-const TICK = { fontSize: 10, fill: "#737373" };
+const TICK = { fontSize: 10, fill: "var(--chart-axis-text)" };
 
 interface Row {
   x: string;
@@ -86,7 +86,7 @@ export function ForecastChart({ run }: { run: ForecastRun }) {
       >
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={rows} margin={{ top: 8, right: 12, bottom: 2, left: -12 }}>
-            <CartesianGrid stroke="#F0F0F0" vertical={false} />
+            <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
             <XAxis dataKey="x" tick={TICK} minTickGap={36} />
             <YAxis tick={TICK} width={58} domain={["auto", "auto"]} />
             <Tooltip
@@ -105,16 +105,16 @@ export function ForecastChart({ run }: { run: ForecastRun }) {
             {forecastStart > 0 && (
               <ReferenceLine
                 x={rows[forecastStart]?.x}
-                stroke="#D4D4D4"
+                stroke="var(--chart-reference)"
                 strokeDasharray="4 3"
-                label={{ value: "прогноз →", position: "insideTopRight", fontSize: 10, fill: "#737373" }}
+                label={{ value: "прогноз →", position: "insideTopRight", fontSize: 10, fill: "var(--chart-axis-text)" }}
               />
             )}
             <Area
               type="monotone"
               dataKey="ci_upper"
               stroke="none"
-              fill="#2E3192"
+              fill="var(--chart-brand)"
               fillOpacity={0.10}
               isAnimationActive={false}
             />
@@ -122,7 +122,7 @@ export function ForecastChart({ run }: { run: ForecastRun }) {
               type="monotone"
               dataKey="ci_lower"
               stroke="none"
-              fill="#FFFFFF"
+              fill="var(--chart-surface)"
               fillOpacity={0.9}
               isAnimationActive={false}
             />
@@ -130,7 +130,7 @@ export function ForecastChart({ run }: { run: ForecastRun }) {
               type="monotone"
               dataKey="actual"
               name="actual"
-              stroke="#171717"
+              stroke="var(--chart-axis)"
               dot={false}
               isAnimationActive={false}
             />
@@ -138,17 +138,17 @@ export function ForecastChart({ run }: { run: ForecastRun }) {
               type="monotone"
               dataKey="forecast"
               name="forecast"
-              stroke="#2E3192"
+              stroke="var(--chart-brand)"
               strokeWidth={2}
               strokeDasharray="5 3"
-              dot={{ r: 2.5, fill: "#2E3192" }}
+              dot={{ r: 2.5, fill: "var(--chart-brand)" }}
               isAnimationActive={false}
             />
             <Scatter
               dataKey="anomalous_value"
               name="anomalous_value"
               shape="circle"
-              fill="#DC2626"
+              fill="var(--status-error)"
               isAnimationActive={false}
             />
           </ComposedChart>

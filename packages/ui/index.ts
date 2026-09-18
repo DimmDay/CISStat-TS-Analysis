@@ -595,3 +595,4 @@ export {
   THEME_META_COLOR,
 } from "./context/ThemeContext";
 export type { Theme, ThemeContextValue } from "./context/ThemeContext";
+export { ThemeToaster } from "./components/ThemeToaster";

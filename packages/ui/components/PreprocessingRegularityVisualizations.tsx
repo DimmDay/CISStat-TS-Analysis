@@ -15,13 +15,13 @@ import {
 } from "recharts";
 import { sessionApiUrl } from "../lib/apiClient";
 
-const BRAND = "#2E3192";
-const AXIS_TICK_STYLE = { fontSize: 11, fill: "#737373" };
+const BRAND = "var(--chart-brand)";
+const AXIS_TICK_STYLE = { fontSize: 11, fill: "var(--chart-axis-text)" };
 
 const KIND_COLOR: Record<string, string> = {
-  gap: "#DC2626",
-  duplicate: "#D97706",
-  sort_violation: "#7C3AED",
+  gap: "var(--status-error)",
+  duplicate: "var(--status-warning)",
+  sort_violation: "var(--chart-violet)",
 };
 const KIND_LABEL: Record<string, string> = {
   gap: "Разрыв",
@@ -105,7 +105,7 @@ export function RegularityIntervalsChart({ refreshKey = 0 }: { refreshKey?: numb
       <div className="min-h-0 flex-1 border border-neutral-200 rounded bg-white px-1 pt-2 pb-1">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-            <CartesianGrid stroke="#F0F0F0" vertical={false} />
+            <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
             <XAxis dataKey="mid" type="number" domain={["dataMin", "dataMax"]} tick={AXIS_TICK_STYLE} tickFormatter={fmtSeconds} />
             <YAxis tick={AXIS_TICK_STYLE} width={32} allowDecimals={false} />
             <Tooltip
@@ -117,7 +117,7 @@ export function RegularityIntervalsChart({ refreshKey = 0 }: { refreshKey?: numb
             />
             <Bar dataKey="count" fill={BRAND} radius={[1, 1, 0, 0]} isAnimationActive={false} />
             {data.threshold_seconds !== null && (
-              <ReferenceLine x={data.threshold_seconds} stroke="#DC2626" strokeDasharray="4 3" />
+              <ReferenceLine x={data.threshold_seconds} stroke="var(--status-error)" strokeDasharray="4 3" />
             )}
           </BarChart>
         </ResponsiveContainer>
@@ -168,7 +168,7 @@ export function RegularityTimelineChart({ refreshKey = 0 }: { refreshKey?: numbe
       <div className="min-h-0 flex-1 border border-neutral-200 rounded bg-white px-1 pt-2 pb-1">
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 20, right: 16, bottom: 0, left: -20 }}>
-            <CartesianGrid stroke="#F0F0F0" />
+            <CartesianGrid stroke="var(--chart-grid)" />
             <XAxis
               dataKey="x" type="number" domain={["dataMin", "dataMax"]}
               tick={AXIS_TICK_STYLE} tickFormatter={(v) => new Date(v).toLocaleDateString("ru-RU")}

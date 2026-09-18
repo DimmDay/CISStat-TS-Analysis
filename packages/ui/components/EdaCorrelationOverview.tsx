@@ -93,7 +93,7 @@ function CorrelationChart({
     <div role="img" aria-label={`График ${kind} для ${column}`} className="min-h-0 flex-1 px-2 py-3">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={points} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-border)" />
           <XAxis
             dataKey="lag"
             type="number"
@@ -109,11 +109,11 @@ function CorrelationChart({
             ]}
             labelFormatter={(lag) => `Лаг ${lag}`}
           />
-          <ReferenceLine y={0} stroke="#737373" />
+          <ReferenceLine y={0} stroke="var(--chart-axis-text)" />
           <Line
             type="monotone"
             dataKey="confidence_upper"
-            stroke="#a3a3a3"
+            stroke="var(--chart-axis-muted)"
             strokeDasharray="5 4"
             dot={false}
             isAnimationActive={false}
@@ -121,14 +121,14 @@ function CorrelationChart({
           <Line
             type="monotone"
             dataKey="confidence_lower"
-            stroke="#a3a3a3"
+            stroke="var(--chart-axis-muted)"
             strokeDasharray="5 4"
             dot={false}
             isAnimationActive={false}
           />
           <Bar dataKey="value" barSize={4} isAnimationActive={false}>
             {points.map((point) => (
-              <Cell key={point.lag} fill={point.significant ? "#dc2626" : "#2563eb"} />
+              <Cell key={point.lag} fill={point.significant ? "var(--status-error)" : "var(--chart-blue)"} />
             ))}
           </Bar>
         </ComposedChart>

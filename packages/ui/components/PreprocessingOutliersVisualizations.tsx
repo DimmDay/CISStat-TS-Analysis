@@ -18,8 +18,8 @@ import {
 } from "recharts";
 import { sessionApiUrl } from "../lib/apiClient";
 
-const BRAND = "#2E3192";
-const AXIS_TICK_STYLE = { fontSize: 11, fill: "#737373" };
+const BRAND = "var(--chart-brand)";
+const AXIS_TICK_STYLE = { fontSize: 11, fill: "var(--chart-axis-text)" };
 
 function fmt(n: number): string {
   return n.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
@@ -100,7 +100,7 @@ export function OutlierLineChart({ column }: { column: string | null }) {
     <div className="flex min-h-0 flex-1 flex-col">
       <ChartFrame>
         <LineChart data={data.points} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-          <CartesianGrid stroke="#F0F0F0" />
+          <CartesianGrid stroke="var(--chart-grid)" />
           <XAxis type="number" dataKey="x" tick={AXIS_TICK_STYLE} tickFormatter={fmt} name="Позиция" />
           <YAxis type="number" dataKey="y" tick={AXIS_TICK_STYLE} tickFormatter={fmt} width={48} />
           <Tooltip formatter={(value: number) => fmt(value)} labelFormatter={() => ""} />
@@ -136,7 +136,7 @@ export function OutlierHistogramChart({ column, method }: { column: string | nul
     <div className="flex min-h-0 flex-1 flex-col">
       <ChartFrame>
         <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
-          <CartesianGrid stroke="#F0F0F0" vertical={false} />
+          <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
           <XAxis dataKey="mid" type="number" domain={["dataMin", "dataMax"]} tick={AXIS_TICK_STYLE} tickFormatter={fmt} />
           <YAxis tick={AXIS_TICK_STYLE} width={32} allowDecimals={false} />
           <Tooltip
@@ -149,8 +149,8 @@ export function OutlierHistogramChart({ column, method }: { column: string | nul
           <Bar dataKey="count" fill={BRAND} radius={[1, 1, 0, 0]} isAnimationActive={false} />
           {data.bounds && (
             <>
-              <ReferenceLine x={data.bounds.lower} stroke="#DC2626" strokeDasharray="4 3" />
-              <ReferenceLine x={data.bounds.upper} stroke="#DC2626" strokeDasharray="4 3" />
+              <ReferenceLine x={data.bounds.lower} stroke="var(--status-error)" strokeDasharray="4 3" />
+              <ReferenceLine x={data.bounds.upper} stroke="var(--status-error)" strokeDasharray="4 3" />
             </>
           )}
         </BarChart>
@@ -187,7 +187,7 @@ export function OutlierDensityChart({ column }: { column: string | null }) {
             <stop offset="100%" stopColor={BRAND} stopOpacity={0.02} />
           </linearGradient>
         </defs>
-        <CartesianGrid stroke="#F0F0F0" vertical={false} />
+        <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
         <XAxis dataKey="x" type="number" domain={["dataMin", "dataMax"]} tick={AXIS_TICK_STYLE} tickFormatter={fmt} />
         <YAxis tick={AXIS_TICK_STYLE} width={32} tickFormatter={(v) => v.toFixed(2)} />
         <Tooltip formatter={(value: number) => value.toFixed(4)} labelFormatter={(x) => `x = ${fmt(Number(x))}`} />
@@ -215,11 +215,11 @@ function BoxAndWhiskers({ label, group, color, domainMin, domainMax }: {
       ) : (
         <>
           <svg viewBox={`0 0 ${width} 60`} className="mx-auto block" width={width} height={60}>
-            <line x1={scale(group.min)} x2={scale(group.max)} y1={30} y2={30} stroke="#a3a3a3" strokeWidth={1} />
+            <line x1={scale(group.min)} x2={scale(group.max)} y1={30} y2={30} stroke="var(--chart-axis-muted)" strokeWidth={1} />
             <rect x={scale(group.q1)} y={12} width={Math.max(2, scale(group.q3) - scale(group.q1))} height={36} fill={color} fillOpacity={0.35} stroke={color} />
             <line x1={scale(group.median)} x2={scale(group.median)} y1={12} y2={48} stroke={color} strokeWidth={2} />
-            <line x1={scale(group.min)} x2={scale(group.min)} y1={20} y2={40} stroke="#a3a3a3" />
-            <line x1={scale(group.max)} x2={scale(group.max)} y1={20} y2={40} stroke="#a3a3a3" />
+            <line x1={scale(group.min)} x2={scale(group.min)} y1={20} y2={40} stroke="var(--chart-axis-muted)" />
+            <line x1={scale(group.max)} x2={scale(group.max)} y1={20} y2={40} stroke="var(--chart-axis-muted)" />
           </svg>
           <p className="mt-1 text-[11px] text-neutral-500">n={group.count}, медиана={group.median.toFixed(2)}</p>
         </>
@@ -241,7 +241,7 @@ export function OutlierBoxplotChart({ column, method }: { column: string | null;
 
   return (
     <div className="flex min-h-0 flex-1 items-center justify-center gap-10 border border-neutral-200 rounded bg-white">
-      <BoxAndWhiskers label="Выброс" group={data.outliers} color="#DC2626" domainMin={domainMin} domainMax={domainMax} />
+      <BoxAndWhiskers label="Выброс" group={data.outliers} color="var(--status-error)" domainMin={domainMin} domainMax={domainMax} />
       <BoxAndWhiskers label="Норма" group={data.normal} color={BRAND} domainMin={domainMin} domainMax={domainMax} />
     </div>
   );

@@ -293,7 +293,7 @@ describe("NavigatorHero", () => {
       const polygon = svg.querySelector("polygon");
       expect(polygon).not.toBeNull();
       // Рамка — фирменный индиго (тот же токен, что border-brand главной).
-      expect(polygon!.getAttribute("stroke")).toBe("#2E3192");
+      expect(polygon!.getAttribute("stroke")).toBe("var(--chart-brand)");
       // Фон — прозрачный: заливки нет (сквозь стрелку виден фон страницы).
       expect(polygon!.getAttribute("fill")).toBe("none");
       // Толщина рамки стабильна при неравномерном растяжении контейнера.

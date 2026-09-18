@@ -41,28 +41,28 @@ export function HomeWavesBackground() {
       >
         <defs>
           <linearGradient id="cisstat-home-bg" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor="#F8FCFF" />
-            <stop offset=".5" stopColor="#EFF6FD" />
-            <stop offset="1" stopColor="#E9EEFF" />
+            <stop offset="0" stopColor="var(--wave-home-1)" />
+            <stop offset=".5" stopColor="var(--wave-home-2)" />
+            <stop offset="1" stopColor="var(--wave-home-3)" />
           </linearGradient>
           <linearGradient id="cisstat-home-w1">
-            <stop stopColor="#DCEBFA" stopOpacity=".72" />
-            <stop offset=".55" stopColor="#D4E3FA" stopOpacity=".82" />
-            <stop offset="1" stopColor="#D8E0FA" stopOpacity=".68" />
+            <stop stopColor="var(--wave-home-4)" stopOpacity=".72" />
+            <stop offset=".55" stopColor="var(--wave-home-5)" stopOpacity=".82" />
+            <stop offset="1" stopColor="var(--wave-home-6)" stopOpacity=".68" />
           </linearGradient>
           <linearGradient id="cisstat-home-w2">
-            <stop stopColor="#D9E9FA" stopOpacity=".52" />
-            <stop offset=".55" stopColor="#C8DDF7" stopOpacity=".64" />
-            <stop offset="1" stopColor="#C7D5F7" stopOpacity=".48" />
+            <stop stopColor="var(--wave-home-7)" stopOpacity=".52" />
+            <stop offset=".55" stopColor="var(--wave-home-8)" stopOpacity=".64" />
+            <stop offset="1" stopColor="var(--wave-home-9)" stopOpacity=".48" />
           </linearGradient>
           <linearGradient id="cisstat-home-w3">
-            <stop stopColor="#E7F2FC" stopOpacity=".72" />
-            <stop offset=".5" stopColor="#D6E7FA" stopOpacity=".62" />
-            <stop offset="1" stopColor="#D9E2FC" stopOpacity=".72" />
+            <stop stopColor="var(--wave-home-10)" stopOpacity=".72" />
+            <stop offset=".5" stopColor="var(--wave-home-11)" stopOpacity=".62" />
+            <stop offset="1" stopColor="var(--wave-home-12)" stopOpacity=".72" />
           </linearGradient>
           <linearGradient id="cisstat-home-low" x1="0" y1="0" x2="1" y2="1">
-            <stop stopColor="#D7E8FA" stopOpacity=".55" />
-            <stop offset="1" stopColor="#D2DBFA" stopOpacity=".68" />
+            <stop stopColor="var(--wave-home-13)" stopOpacity=".55" />
+            <stop offset="1" stopColor="var(--wave-home-14)" stopOpacity=".68" />
           </linearGradient>
         </defs>
 
@@ -77,7 +77,7 @@ export function HomeWavesBackground() {
         <path
           d="M0 520C220 450 430 450 650 560C880 675 1035 820 1235 835C1380 846 1505 815 1600 790"
           fill="none"
-          stroke="#FFF"
+          stroke="var(--wave-home-stroke)"
           strokeOpacity=".82"
           strokeWidth="3"
         />
@@ -96,7 +96,7 @@ export function HomeWavesBackground() {
         <path
           d="M0 1495C205 1438 390 1390 610 1270C825 1152 1005 1000 1190 885C1350 786 1475 735 1600 705"
           fill="none"
-          stroke="#FFF"
+          stroke="var(--wave-home-stroke)"
           strokeOpacity=".75"
           strokeWidth="3"
         />
@@ -110,7 +110,7 @@ export function HomeWavesBackground() {
         <path
           d="M0 1040C230 1000 400 1020 585 1080C780 1144 910 1260 1100 1305C1290 1350 1450 1290 1600 1210"
           fill="none"
-          stroke="#FFF"
+          stroke="var(--wave-home-stroke)"
           strokeOpacity=".38"
           strokeWidth="2"
         />

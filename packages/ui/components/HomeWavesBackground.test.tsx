@@ -31,19 +31,19 @@ describe("HomeWavesBackground", () => {
     const { container } = render(<HomeWavesBackground />);
     const html = container.innerHTML;
 
-    expect(html).toContain("#F8FCFF");
-    expect(html).toContain("#EFF6FD");
-    expect(html).toContain("#E9EEFF");
+    expect(html).toContain("var(--wave-home-1)");
+    expect(html).toContain("var(--wave-home-2)");
+    expect(html).toContain("var(--wave-home-3)");
   });
 
   it("использует точную палитру всех 4 лент из авторского SVG", () => {
     const { container } = render(<HomeWavesBackground />);
     const html = container.innerHTML;
 
-    expect(html).toContain("#DCEBFA"); // w1
-    expect(html).toContain("#D9E9FA"); // w2
-    expect(html).toContain("#E7F2FC"); // w3
-    expect(html).toContain("#D7E8FA"); // low
+    expect(html).toContain("var(--wave-home-4)"); // w1
+    expect(html).toContain("var(--wave-home-7)"); // w2
+    expect(html).toContain("var(--wave-home-10)"); // w3
+    expect(html).toContain("var(--wave-home-13)"); // low
   });
 
   it("рендерит инлайн SVG (не растровое изображение, не canvas) с полной геометрией источника: 1 rect-подложка + 7 path", () => {

@@ -118,6 +118,68 @@
 
   /* ── text-white ревизия: текст на заливках остаётся белым (§6.2) ── */
   --c-white-fg: 255 255 255;     /* #FFFFFF — обе темы */
+  --c-page: 255 255 255;       /* DKT-4: фон страницы */
+
+  /* DKT-3: графовые/статусные переменные (§6.3; светлые == прежние литералы) */
+  --chart-axis: #171717;
+  --chart-axis-muted: #A3A3A3;
+  --chart-axis-text: #737373;
+  --chart-blue: #2563EB;
+  --chart-blue-pale: #93C5FD;
+  --chart-blue-soft: #60A5FA;
+  --chart-border: #E5E5E5;
+  --chart-brand: #2E3192;
+  --chart-brand-soft: #E8EAF6;
+  --chart-cyan: #0891B2;
+  --chart-grid: #F0F0F0;
+  --chart-neutral: #9CA3AF;
+  --chart-reference: #D4D4D4;
+  --chart-slate: #94A3B8;
+  --chart-surface: #FFFFFF;
+  --chart-violet: #7C3AED;
+  --status-error: #DC2626;
+  --status-error-bright: #F87171;
+  --status-error-strong: #EF4444;
+  --status-success: #16A34A;
+  --status-success-bright: #4ADE80;
+  --status-warning: #D97706;
+  --status-warning-bright: #FBBF24;
+  --status-warning-mid: #F59E0B;
+  --wave-home-1: #F8FCFF;
+  --wave-home-2: #EFF6FD;
+  --wave-home-3: #E9EEFF;
+  --wave-home-4: #DCEBFA;
+  --wave-home-5: #D4E3FA;
+  --wave-home-6: #D8E0FA;
+  --wave-home-7: #D9E9FA;
+  --wave-home-8: #C8DDF7;
+  --wave-home-9: #C7D5F7;
+  --wave-home-10: #E7F2FC;
+  --wave-home-11: #D6E7FA;
+  --wave-home-12: #D9E2FC;
+  --wave-home-13: #D7E8FA;
+  --wave-home-14: #D2DBFA;
+  --wave-home-stroke: #FFFFFF;
+  --wave-nav-1: #F7FBFE;
+  --wave-nav-2: #EEF6FD;
+  --wave-nav-3: #E7EEFF;
+  --wave-nav-4: #DDECFB;
+  --wave-nav-5: #D4E5FB;
+  --wave-nav-6: #D0DAF8;
+  --wave-nav-7: #D6E8FA;
+  --wave-nav-8: #C9DCF8;
+  --wave-nav-9: #C8D6F7;
+  --wave-nav-10: #E5F1FC;
+  --wave-nav-11: #D7E7FA;
+  --wave-nav-12: #D8E1FB;
+  --wave-nav-13: #D9EAFB;
+  --wave-nav-14: #CBDDF8;
+  --wave-nav-15: #C8D7F8;
+  --wave-nav-16: #D9EAFB;
+  --wave-nav-17: #D1DBFA;
+  --wave-nav-18: #FFFFFF;
+  --wave-nav-19: #FFFFFF;
+  --wave-nav-20: #FFFFFF;
 }
 
 .dark {
@@ -204,6 +266,68 @@
 
   /* text-white ревизия: значение то же (текст на заливках не инвертируется) */
   --c-white-fg: 255 255 255;     /* #FFFFFF */
+  --c-page: 11 12 16;          /* DKT-4: фон страницы (каталог §6.1) */
+
+  /* DKT-3: тёмные ревизии графовых/статусных/волновых переменных */
+  --chart-axis: #CACCD4;
+  --chart-axis-muted: #71747F;
+  --chart-axis-text: #9A9DA9;
+  --chart-blue: #60A5FA;
+  --chart-blue-pale: #93C5FD;
+  --chart-blue-soft: #93C5FD;
+  --chart-border: #2E3038;
+  --chart-brand: #8F94F5;
+  --chart-brand-soft: #1E2034;
+  --chart-cyan: #22D3EE;
+  --chart-grid: #262830;
+  --chart-neutral: #9CA3AF;
+  --chart-reference: #3B3E47;
+  --chart-slate: #94A3B8;
+  --chart-surface: #1C1D23;
+  --chart-violet: #A78BFA;
+  --status-error: #F87171;
+  --status-error-bright: #F87171;
+  --status-error-strong: #F87171;
+  --status-success: #4ADE80;
+  --status-success-bright: #4ADE80;
+  --status-warning: #FBBF24;
+  --status-warning-bright: #FBBF24;
+  --status-warning-mid: #FBBF24;
+  --wave-home-1: #17232C;
+  --wave-home-2: #17212C;
+  --wave-home-3: #171B2C;
+  --wave-home-4: #17212C;
+  --wave-home-5: #171F2C;
+  --wave-home-6: #171C2C;
+  --wave-home-7: #17212C;
+  --wave-home-8: #17202C;
+  --wave-home-9: #171D2C;
+  --wave-home-10: #17222C;
+  --wave-home-11: #17212C;
+  --wave-home-12: #171C2C;
+  --wave-home-13: #17212C;
+  --wave-home-14: #171B2C;
+  --wave-nav-1: #17232C;
+  --wave-nav-2: #17222C;
+  --wave-nav-3: #171D2C;
+  --wave-nav-4: #17212C;
+  --wave-nav-5: #17202C;
+  --wave-nav-6: #171C2C;
+  --wave-nav-7: #17212C;
+  --wave-nav-8: #171F2C;
+  --wave-nav-9: #171D2C;
+  --wave-nav-10: #17222C;
+  --wave-nav-11: #17202C;
+  --wave-nav-12: #171C2C;
+  --wave-nav-13: #17212C;
+  --wave-nav-14: #171F2C;
+  --wave-nav-15: #171D2C;
+  --wave-nav-16: #17212C;
+  --wave-nav-17: #171C2C;
+  --wave-nav-18: #2E3038;
+  --wave-nav-19: #2E3038;
+  --wave-nav-20: #2E3038;
+  --wave-home-stroke: #2E3038;
 }
 
 /* ── R-3: текст бренда в тёмной теме (utility-ревизия, §6.2) ──
@@ -216,6 +340,24 @@
   color: rgb(var(--c-brand-bright));
 }
 .dark .hover\:text-brand:hover {
+  color: rgb(var(--c-brand-bright));
+}
+
+/* ── DKT-2R: индиго-заголовки/подзаголовки (решение тимлида 2026-09-18) ──
+   Требование тимлида: все Заголовки и Подзаголовки индиго-цвета в тёмной
+   теме — цветом бренда (логотип CISStat TS Analysis). Hero-заголовки h1/h2
+   и подзаголовки p (home, navigator, tasks, platform-introduction) исполь-
+   зуют произвольный класс text-[#1e3a8a] (9 инстансов, 4 файла) — вне
+   канона каталога §6.1, аудитом DKT-2 не покрывался: в тёмной теме оста-
+   вался #1E3A8A (~1.7:1 на странице #0B0C10 — FAIL). Literal #2E3192 лого-
+   типа на тёмной поверхности = 1.68:1 (аудит логотипа, отчёт §7) — тоже
+   ниже AA, поэтому «цвет логотипа» в тёмной калибровке = токен
+   brand-bright #8F94F5 (hue 237° логотипа, 6.6:1 на странице/карточке —
+   тот же механизм, что text-brand §3). Ревизия на уровне globals.css —
+   компоненты не правятся (§3.3); светлая тема — байт-инвариант. Контроль:
+   packages/ui/heading-indigo-calibration.test.ts (инвентарь произвольных
+   цветовых классов запрещает новые классы без тёмной ревизии). */
+.dark .text-\[\#1e3a8a\] {
   color: rgb(var(--c-brand-bright));
 }
 
@@ -318,4 +460,15 @@ html {
 }
 .dark .feed-scroll::-webkit-scrollbar-thumb:hover {
   background-color: #71747f;
+}
+
+/* ── DKT-4: явный фон body на токен страницы (§7 DKT-4) ──
+   Раньше фон был неявным белым браузерного дефолта — тёмная тема
+   зависела бы от дефолта UA. Светлый = #FFFFFF, тёмный = #0B0C10
+   (каталог §6.1; согласовано с meta theme-color ThemeContext). */
+body {
+  background-color: rgb(var(--c-page));
+}
+.dark body {
+  background-color: rgb(var(--c-page));
 }
