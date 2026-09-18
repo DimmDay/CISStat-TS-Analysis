@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { AppShellProvider, ModuleNav } from "@cisstat/ui";
+import { AppShellProvider, ModuleNav, ThemeProvider, NO_FOUC_SCRIPT } from "@cisstat/ui";
 import { ProductHeader } from "@/components/ProductHeader";
 import { Toaster } from "sonner";
 
@@ -17,14 +17,24 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" className={inter.variable}>
+    // suppressHydrationWarning: класс .dark на <html> ставит блокирующий
+    // no-FOUC-скрипт ДО гидратации (spec_dark_theme.md §4.4/§4.5) —
+    // расхождение атрибутов ожидаемо и ограничено атрибутом class.
+    <html lang="ru" className={inter.variable} suppressHydrationWarning>
+      <head>
+        {/* Task DKT-1 §4.5: арифметика localStorage → системная схема →
+            светлая до первого кадра; после гидратации владеет ThemeProvider. */}
+        <script dangerouslySetInnerHTML={{ __html: NO_FOUC_SCRIPT }} />
+      </head>
       <body>
-        <ProductHeader />
-        <AppShellProvider>
-          <ModuleNav />
-          <main className="max-w-[1600px] mx-auto px-6 py-6">{children}</main>
-          <Toaster />
-        </AppShellProvider>
+        <ThemeProvider>
+          <ProductHeader />
+          <AppShellProvider>
+            <ModuleNav />
+            <main className="max-w-[1600px] mx-auto px-6 py-6">{children}</main>
+            <Toaster />
+          </AppShellProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -1202,7 +1202,11 @@ export function TsAnalysisModeling() {
                   <ChevronDown
                     size={14}
                     strokeWidth={2.5}
-                    className={`text-black transition-transform ${
+                    // DKT-2 §6.2 (класс ≠ роль): text-black живёт на
+                    // нетокенизированных поверхностях (HomeFooter) и НЕ
+                    // инвертируется; здесь шеврон на карточке bg-white —
+                    // точечный dark:-оверрайд возвращает контраст.
+                    className={`text-black dark:text-neutral-900 transition-transform ${
                       activeFamilyId === fam.id ? "rotate-180" : ""
                     }`}
                   />

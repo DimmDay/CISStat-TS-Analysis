@@ -536,7 +536,7 @@ export function ModelingWorkflowOverview({
         </div>
       )}
       {selection && stageId === "selection" && <div className="mt-3 rounded border border-green-200 bg-green-50 p-3 text-sm text-green-700">Выбран кандидат ({selection.selected_kind}): {selection.selected_model_id}</div>}
-      {card && stageId === "model_card" && <div className="mt-4 min-h-0 flex-1 overflow-auto"><div className="mb-2 flex items-center justify-between text-xs"><span>{card.card_id}</span><a className="text-brand underline" href={`${API_BASE}/v1/session/modeling/card/${card.card_id}`} download>Скачать JSON</a></div><pre className="whitespace-pre-wrap rounded bg-neutral-950 p-3 text-[10px] text-neutral-100">{JSON.stringify(card.card, null, 2)}</pre></div>}
+      {card && stageId === "model_card" && <div className="mt-4 min-h-0 flex-1 overflow-auto"><div className="mb-2 flex items-center justify-between text-xs"><span>{card.card_id}</span><a className="text-brand underline" href={`${API_BASE}/v1/session/modeling/card/${card.card_id}`} download>Скачать JSON</a></div><pre className="whitespace-pre-wrap rounded bg-neutral-950 p-3 text-[10px] text-neutral-100 dark:text-neutral-800 dark:ring-1 dark:ring-neutral-800">{JSON.stringify(card.card, null, 2)}</pre></div>}
       {tuningResult && (
         <div className="mt-3 grid grid-cols-4 gap-2 rounded border border-blue-200 bg-blue-50 p-2 text-[10px] text-blue-900" data-testid="tuning-plan-summary">
           <span><b>Стратегия:</b> {tuningResult.strategy ?? "—"}</span>

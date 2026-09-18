@@ -330,3 +330,128 @@ v2 (первый вертикальный срез «Причины», §10.1) �
   packages/ui/components/TsAnalysisForecasting.tsx (кнопка §9.4),
   packages/ui/components/TsAnalysisForecasting.test.tsx (+describe §9.4),
   worklog/worklog7.md (этот журнал).
+
+---
+
+## Task DKT-1 + DKT-2 (2026-09-18) — Фундамент тёмной темы + тёмный каталог значений: калибровка, контраст-аудит, исключения
+
+Синхронизация: main@3c034c5 (DKT-0: спека + журнал), дерево — локальная
+онбординг-запись в worklog6.md (незакоммиченно). Постановка тимлида:
+«Дальше по спеке: DKT-2 (контраст-аудит и калибровка каталога)». Факт
+объёма: артефактов DKT-1 в дереве 3c034c5 не было (§7: «DKT-1 — фундамент,
+без него остальное не исполняется») → фундамент DKT-1 возведён в составе
+среза как обязательная предпосылка, затем исполнена собственно DKT-2.
+Оба среза — полный цикл AGENTS.md (TDD RED→GREEN, регрессия, typecheck/
+build, ZIP). Коммит/пуш НЕ выполнялись (запрет AGENTS.md).
+
+### DKT-1 — фундамент (токенизация, провайдер, переключатель)
+
+- tailwind-preset.ts: darkMode:"class"; все занятые шаги палитры
+  (инвентарь rg: neutral 50–950 + white/black, brand/brand-light,
+  статусные green 8 / amber 9 / red 7 / blue 8 / emerald 4 / violet 3 /
+  sky 5 / cyan-500, footer-токены) → rgb(var(--c-*) / <alpha-value>);
+  НОВЫЙ токен brand-bright (светлое = #2E3192 — байт-инвариант).
+- globals.css: :root = точные светлые значения (байт-инвариант);
+  .dark = тёмная ревизия (вердикт DKT-2 ниже); color-scheme light/dark;
+  тёмный скроллбар feed-scroll.
+- ThemeContext.tsx (новый, hand-rolled ~60 строк по прецеденту NAVSTG-2):
+  контракт §5 — localStorage["cisstat-theme"] → prefers-color-scheme →
+  light; класс .dark на <html>; идемпотентный applyTheme (класс +
+  color-scheme + meta theme-color #FFFFFF/#0B0C10); кросс-таб
+  storage-событие; NO_FOUC_SCRIPT — блокирующий IIFE в <head> layout
+  до гидратации; layout.tsx: suppressHydrationWarning на <html>,
+  ThemeProvider оборачивает ProductHeader+AppShellProvider.
+- ProductHeader.tsx: переключатель Moon/Sun СПРАВА между «РУС / ENG» и
+  кабинетом (постановка), lucide size={14}, паттерн соседа
+  text-neutral-500 hover:text-neutral-900, aria-label по состоянию +
+  aria-pressed.
+
+### DKT-2 — калибровка каталога, контраст-аудит, исключения
+
+- Скрипт-оракул scripts/task_dkt2/contrast_audit.py (независимая
+  реализация) + jest-зеркало dark-catalog-contrast.test.ts: 48 роль-пар
+  каталога по значениям из globals.css (единственный источник), WCAG AA
+  (4.5 текст / 3.0 не-текст); со-локационный скан 3 691 className-строк
+  (33 цветовые пары фактического кода). Итог: 48/48 PASS в обеих
+  реализациях. Артефакты: docs/task_dkt2_contrast_audit_results.json.
+- Находка №1 (ловушка Варианта C): text-white — «текст на заливке»
+  (bg-brand ×349), инверсия white дала бы тёмный текст на индиго
+  (2.88:1 FAIL). Инвентарь: 103 plain + 7 hover: + 2 group-hover:,
+  text-white/NN = 0. Решение: токен --c-white-fg (#FFF в обеих темах) +
+  utility-ревизии .dark .text-white / hover / group-hover (механизм
+  §6.2, ноль правок компонентов). Пара bg-brand ↔ white-fg: 10.66/6.21.
+- Находка №2 (R-3): text-brand 159 инстансов (153 plain + 6 hover, 48
+  файлов; спека предполагала 157); компромисс #4A4ED9 как текст —
+  2.88–2.40:1 (FAIL для всех мелких текстов). Решение: brand-bright
+  (#8F94F5 в тёмной; 6.58:1 карточка / 5.89:1 brand-light) +
+  utility-ревизия .dark .text-brand (+ hover). dark:text-brand-bright
+  доступен для точечного применения (компиляция dark:-варианта
+  страхуется тестом).
+- Калибровка рампы: neutral-50→#1C1D23 … neutral-900→#F1F2F5; статусы:
+  поверхности-50 → тонированные тёмные (green #12251A, amber #2A2113,
+  red #2A1414, blue #131C2B, emerald #0E2318, violet #1D1730, sky
+  #12202E); тексты-600/700/800/900 → светлые статусные (green-700
+  #4ADE80 9.6:1, red-600 #F87171, red-700 #FCA5A5…); индикаторы-400/500
+  без ревизии (≥3:1 в тёмной). Светлые факты ниже AA (green-600 3.15,
+  amber-600 3.07, red-600 4.41, placeholder 2.52, индикаторы 1.67–2.43)
+  зафиксированы как инварианты светлой; тёмная везде лучше (детали —
+  docs/task_dkt2_dark_catalog_calibration.md §5).
+- Исключения «класс ≠ роль» (§6.2, инвентаризация): код-блок Model Card
+  (bg-neutral-950 не инвертируется; точечный dark:text-neutral-800 =
+  15.71:1 + dark:ring-1 — ring без изменения геометрии); шеврон
+  TsAnalysisModeling text-black на карточке → точечный dark:text-
+  neutral-900; black НЕ инвертируется (роль: текст/оверлеи на
+  нетокенизированных поверхностях — HomeFooter #CAD7F7 13.9:1, подложка
+  EventsLogDrawer); тени shadow-sm/lg/xl → utility-ревизии .dark с
+  rgb(0 0 0 / .6); фокус-ринги в токенах ≥3:1 без ревизии.
+- Аудит шапки (scripts/task_dkt2/logo_audit.py →
+  docs/task_dkt2_logo_audit.json): логотип 77.6% индиго + 21.8% белого;
+  белое содержимое на тёмной шапке 17.9:1 (PASS), индиго-поле 1.68:1
+  (граница слабая, читаемость на белом — факты для §10.4 тимлиду);
+  навигация 6.4–8.5:1; кабинет-круг 4.9:1.
+- Матрица страниц-представителей × обе темы (scripts/dkt_pages_matrix.mjs,
+  транзитивные деревья компонентов): home/navigator/upload/validation/
+  preprocessing/eda/modeling/forecasting/tasks — все поверхности и
+  текст-роли в каталоге, ни одного класса без пары аудита (отчёт §8).
+- CSS-бандл-смоук продового CSS standalone
+  (scripts/task_dkt2/css_bundle_smoke.mjs): 14/14 PASS — var-тройки,
+  .dark-ревизии, слэш-прозрачность rgb(var()/0.NN), dark:-вариант
+  :is(.dark *), точечные оверрайды в бандле.
+- Мутационная кампания провайдера (scripts/task_dkt2/mutation_theme.sh,
+  §8.6): M1 init→всегда system, M2 инверсия toggle, M3 инверсия условия
+  .dark, M4 снятие персиста, M5 снятие meta theme-color, M6 снятие
+  no-FOUC — все 6 KILLED на независимых оракулах.
+
+### Верификация
+
+- TDD: RED 59 тестов (5 новых сюит) → GREEN; полная регрессия
+  112 сюит / 1230 теста зелёные; 107 старых сюит / 1134 теста БЕЗ правок
+  (контрольный факт Варианта C, §3.3).
+- typecheck:all PASS; build:all обеих оболочек PASS.
+- Backend не затронут (0 файлов; нулевой дифф по построению).
+
+### Границы
+
+- Embedded: переменные и компоненты готовы, переключатель не монтируется
+  (открытый вопрос §10.2); body-фон #0B0C10, sonner theme prop, meta
+  theme-color на embedded — DKT-4; 42 файла фиксированных hex
+  (Recharts/волны/флоучарты/PNG-экспорт) — DKT-3 (handoff-список —
+  отчёт §10).
+
+Изменённые файлы: packages/ui/tailwind-preset.ts, packages/ui/globals.css,
+packages/ui/index.ts, apps/standalone/app/layout.tsx,
+apps/standalone/components/ProductHeader.tsx,
+packages/ui/components/ModelingWorkflowOverview.tsx (точечный dark:
+оверрайд код-блока §6.2), packages/ui/components/TsAnalysisModeling.tsx
+(точечный dark: оверрайд шеврона §6.2).
+
+Новые файлы: packages/ui/context/ThemeContext.tsx (провайдер),
+packages/ui/context/ThemeContext.test.tsx, packages/ui/tailwind-preset.test.ts
+(каталог-тест §8.1), packages/ui/preset-compile.test.ts (компиляция §8.2),
+packages/ui/dark-catalog-contrast.test.ts (jest-зеркало оракула),
+apps/standalone/components/ProductHeaderThemeToggle.test.tsx,
+scripts/task_dkt2/contrast_audit.py, scripts/task_dkt2/css_bundle_smoke.mjs,
+scripts/task_dkt2/logo_audit.py, scripts/task_dkt2/mutation_theme.sh,
+docs/task_dkt2_dark_catalog_calibration.md (отчёт),
+docs/task_dkt2_contrast_audit_results.json (сырые данные),
+docs/task_dkt2_logo_audit.json.

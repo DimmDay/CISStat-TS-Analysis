@@ -1,0 +1,21 @@
+{
+  "logo": "apps/standalone/public/logo_TS.png",
+  "size_px": [
+    1058,
+    1034
+  ],
+  "pixel_shares": {
+    "indigo": 0.7762,
+    "other": 0.0054,
+    "white": 0.2184
+  },
+  "indigo_avg_rgb": [
+    46,
+    49,
+    146
+  ],
+  "contrast_white_content_vs_dark_header": 17.9,
+  "contrast_white_content_vs_light_header": 1.0,
+  "contrast_indigo_field_vs_dark_header": 1.68,
+  "contrast_indigo_field_vs_light_header": 10.66
+}

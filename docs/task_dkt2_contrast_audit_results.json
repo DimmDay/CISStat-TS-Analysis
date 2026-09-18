@@ -1,0 +1,489 @@
+{
+  "task": "DKT-2 — контраст-аудит каталога тёмной темы",
+  "spec": "spec_dark_theme.md §6.1/§6.3, §7 DKT-2",
+  "sources": {
+    "globals_css": "packages/ui/globals.css"
+  },
+  "wcag": "AA: 4.5:1 текст; 3.0:1 крупный/не-текстовый",
+  "pairs_total": 48,
+  "pairs_failed": 0,
+  "colocations_scanned": 3691,
+  "colocation_pairs": {
+    "bg-brand + text-white": 47,
+    "bg-amber-50 + text-amber-800": 65,
+    "bg-neutral-50 + text-neutral-700": 14,
+    "bg-red-50 + text-red-700": 74,
+    "bg-green-50 + text-green-700": 58,
+    "bg-blue-50 + text-blue-700": 2,
+    "bg-neutral-50 + text-neutral-600": 89,
+    "bg-brand-light + text-neutral-500": 40,
+    "bg-brand-light + text-neutral-700": 18,
+    "bg-neutral-50 + text-neutral-500": 41,
+    "bg-brand-light + text-brand": 29,
+    "bg-amber-50 + text-amber-700": 25,
+    "bg-white + text-amber-800": 3,
+    "bg-white + text-neutral-700": 11,
+    "bg-brand-light + text-neutral-600": 8,
+    "bg-brand-light + text-neutral-800": 1,
+    "bg-white + text-brand": 2,
+    "bg-white + text-neutral-500": 6,
+    "bg-green-50 + text-green-800": 3,
+    "bg-blue-50 + text-blue-800": 1,
+    "bg-neutral-100 + text-neutral-700": 3,
+    "bg-white + text-neutral-800": 4,
+    "bg-amber-50 + text-amber-900": 1,
+    "bg-neutral-100 + text-neutral-600": 4,
+    "bg-white + text-neutral-600": 2,
+    "bg-brand + text-brand": 11,
+    "bg-blue-50 + text-blue-900": 4,
+    "bg-neutral-100 + text-neutral-400": 2,
+    "bg-red-50 + text-red-600": 1,
+    "bg-sky-50 + text-sky-950": 1,
+    "bg-violet-50 + text-violet-950": 1,
+    "bg-neutral-950 + text-neutral-100": 1,
+    "bg-red-50 + text-red-800": 1
+  },
+  "results": [
+    {
+      "pair": "white ↔ neutral-900",
+      "label": "карточка ↔ заголовки",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 17.93,
+      "dark_ratio": 15.99,
+      "ok": true
+    },
+    {
+      "pair": "white ↔ neutral-800",
+      "label": "карточка ↔ текст основной",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 15.13,
+      "dark_ratio": 14.2,
+      "ok": true
+    },
+    {
+      "pair": "white ↔ neutral-700",
+      "label": "карточка ↔ текст-1",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 10.37,
+      "dark_ratio": 11.16,
+      "ok": true
+    },
+    {
+      "pair": "white ↔ neutral-600",
+      "label": "карточка ↔ текст-2",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 7.81,
+      "dark_ratio": 9.03,
+      "ok": true
+    },
+    {
+      "pair": "white ↔ neutral-500",
+      "label": "карточка ↔ вторичный текст",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 4.74,
+      "dark_ratio": 6.62,
+      "ok": true
+    },
+    {
+      "pair": "white ↔ neutral-400",
+      "label": "карточка ↔ placeholder",
+      "mode": "dark",
+      "threshold": 3.0,
+      "light_ratio": 2.52,
+      "dark_ratio": 3.84,
+      "ok": true
+    },
+    {
+      "pair": "white ↔ neutral-300",
+      "label": "карточка ↔ декоративные стрелки",
+      "mode": "dark",
+      "threshold": 1.0,
+      "light_ratio": 1.48,
+      "dark_ratio": 1.68,
+      "ok": true
+    },
+    {
+      "pair": "#0B0C10 ↔ neutral-800",
+      "label": "страница(тёмная) ↔ текст основной",
+      "mode": "dark",
+      "threshold": 4.5,
+      "light_ratio": 1.29,
+      "dark_ratio": 15.51,
+      "ok": true
+    },
+    {
+      "pair": "#0B0C10 ↔ neutral-500",
+      "label": "страница(тёмная) ↔ вторичный текст",
+      "mode": "dark",
+      "threshold": 4.5,
+      "light_ratio": 4.12,
+      "dark_ratio": 7.23,
+      "ok": true
+    },
+    {
+      "pair": "brand ↔ white-fg",
+      "label": "bg-brand ↔ белый текст",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 10.66,
+      "dark_ratio": 6.21,
+      "ok": true
+    },
+    {
+      "pair": "white ↔ brand-bright",
+      "label": "карточка ↔ текст бренда (bright)",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 10.66,
+      "dark_ratio": 6.58,
+      "ok": true
+    },
+    {
+      "pair": "brand-light ↔ brand-bright",
+      "label": "шапка карточки ↔ текст бренда",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 8.9,
+      "dark_ratio": 5.89,
+      "ok": true
+    },
+    {
+      "pair": "brand-light ↔ neutral-500",
+      "label": "шапка карточки ↔ вторичный текст",
+      "mode": "dark",
+      "threshold": 4.5,
+      "light_ratio": 3.96,
+      "dark_ratio": 5.92,
+      "ok": true,
+      "light_baseline_fixed": 3.96
+    },
+    {
+      "pair": "brand-light ↔ neutral-600",
+      "label": "шапка карточки ↔ текст-2",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 6.52,
+      "dark_ratio": 8.08,
+      "ok": true
+    },
+    {
+      "pair": "brand-light ↔ neutral-700",
+      "label": "шапка карточки ↔ текст-1",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 8.66,
+      "dark_ratio": 9.99,
+      "ok": true
+    },
+    {
+      "pair": "brand-light ↔ neutral-800",
+      "label": "шапка карточки ↔ текст основной",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 12.63,
+      "dark_ratio": 12.71,
+      "ok": true
+    },
+    {
+      "pair": "neutral-950 ↔ neutral-800",
+      "label": "код-блок ↔ текст (после оверрайда)",
+      "mode": "dark",
+      "threshold": 4.5,
+      "light_ratio": 1.31,
+      "dark_ratio": 15.71,
+      "ok": true
+    },
+    {
+      "pair": "neutral-950 ↔ neutral-100",
+      "label": "код-блок светлый ↔ текст (инвариант)",
+      "mode": "baseline",
+      "threshold": 4.5,
+      "light_ratio": 18.16,
+      "dark_ratio": 1.3,
+      "ok": true,
+      "light_baseline_fixed": 18.16
+    },
+    {
+      "pair": "green-50 ↔ green-700",
+      "label": "PASS поверхность ↔ текст",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 4.79,
+      "dark_ratio": 9.23,
+      "ok": true
+    },
+    {
+      "pair": "green-50 ↔ green-800",
+      "label": "PASS поверхность ↔ текст усиленный",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 6.81,
+      "dark_ratio": 11.46,
+      "ok": true
+    },
+    {
+      "pair": "green-50 ↔ green-600",
+      "label": "PASS поверхность ↔ green-600",
+      "mode": "dark",
+      "threshold": 4.5,
+      "light_ratio": 3.15,
+      "dark_ratio": 8.37,
+      "ok": true,
+      "light_baseline_fixed": 3.15
+    },
+    {
+      "pair": "white ↔ green-700",
+      "label": "карточка ↔ PASS текст",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 5.02,
+      "dark_ratio": 10.27,
+      "ok": true
+    },
+    {
+      "pair": "amber-50 ↔ amber-700",
+      "label": "WARNING поверхность ↔ текст",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 4.84,
+      "dark_ratio": 9.49,
+      "ok": true
+    },
+    {
+      "pair": "amber-50 ↔ amber-800",
+      "label": "WARNING поверхность ↔ усиленный",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 6.84,
+      "dark_ratio": 12.72,
+      "ok": true
+    },
+    {
+      "pair": "amber-50 ↔ amber-600",
+      "label": "WARNING поверхность ↔ amber-600",
+      "mode": "dark",
+      "threshold": 4.5,
+      "light_ratio": 3.07,
+      "dark_ratio": 10.99,
+      "ok": true,
+      "light_baseline_fixed": 3.07
+    },
+    {
+      "pair": "amber-50 ↔ amber-900",
+      "label": "WARNING поверхность ↔ amber-900",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 8.75,
+      "dark_ratio": 14.23,
+      "ok": true
+    },
+    {
+      "pair": "red-50 ↔ red-700",
+      "label": "FAIL поверхность ↔ текст",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 5.91,
+      "dark_ratio": 9.15,
+      "ok": true
+    },
+    {
+      "pair": "red-50 ↔ red-600",
+      "label": "FAIL поверхность ↔ red-600",
+      "mode": "dark",
+      "threshold": 4.5,
+      "light_ratio": 4.41,
+      "dark_ratio": 6.28,
+      "ok": true,
+      "light_baseline_fixed": 4.41
+    },
+    {
+      "pair": "red-50 ↔ red-800",
+      "label": "FAIL поверхность ↔ усиленный",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 7.6,
+      "dark_ratio": 12.01,
+      "ok": true
+    },
+    {
+      "pair": "blue-50 ↔ blue-700",
+      "label": "INFO поверхность ↔ текст",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 6.16,
+      "dark_ratio": 9.48,
+      "ok": true
+    },
+    {
+      "pair": "blue-50 ↔ blue-900",
+      "label": "INFO поверхность ↔ blue-900",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 9.52,
+      "dark_ratio": 14.01,
+      "ok": true
+    },
+    {
+      "pair": "blue-50 ↔ blue-800",
+      "label": "INFO поверхность ↔ blue-800",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 8.01,
+      "dark_ratio": 12.03,
+      "ok": true
+    },
+    {
+      "pair": "emerald-50 ↔ emerald-600",
+      "label": "emerald поверхность ↔ текст",
+      "mode": "dark",
+      "threshold": 4.5,
+      "light_ratio": 3.58,
+      "dark_ratio": 8.59,
+      "ok": true,
+      "light_baseline_fixed": 3.58
+    },
+    {
+      "pair": "emerald-50 ↔ emerald-800",
+      "label": "emerald поверхность ↔ усиленный",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 7.29,
+      "dark_ratio": 10.83,
+      "ok": true
+    },
+    {
+      "pair": "violet-50 ↔ violet-950",
+      "label": "violet поверхность ↔ текст",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 13.89,
+      "dark_ratio": 9.34,
+      "ok": true
+    },
+    {
+      "pair": "sky-50 ↔ sky-800",
+      "label": "sky поверхность ↔ текст",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 7.09,
+      "dark_ratio": 9.9,
+      "ok": true
+    },
+    {
+      "pair": "sky-50 ↔ sky-950",
+      "label": "sky поверхность ↔ sky-950",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 13.02,
+      "dark_ratio": 12.44,
+      "ok": true
+    },
+    {
+      "pair": "#CAD7F7 ↔ black",
+      "label": "футер (проп-фон) ↔ text-black",
+      "mode": "dark",
+      "threshold": 4.5,
+      "light_ratio": 14.57,
+      "dark_ratio": 14.57,
+      "ok": true
+    },
+    {
+      "pair": "white ↔ green-500",
+      "label": "точки статусов green-500",
+      "mode": "dark",
+      "threshold": 3.0,
+      "light_ratio": 2.28,
+      "dark_ratio": 7.85,
+      "ok": true,
+      "light_baseline_fixed": 2.28
+    },
+    {
+      "pair": "white ↔ amber-400",
+      "label": "точки/прогресс amber-400",
+      "mode": "dark",
+      "threshold": 3.0,
+      "light_ratio": 1.67,
+      "dark_ratio": 10.72,
+      "ok": true,
+      "light_baseline_fixed": 1.67
+    },
+    {
+      "pair": "white ↔ cyan-500",
+      "label": "индикаторы cyan-500",
+      "mode": "dark",
+      "threshold": 3.0,
+      "light_ratio": 2.43,
+      "dark_ratio": 7.37,
+      "ok": true,
+      "light_baseline_fixed": 2.43
+    },
+    {
+      "pair": "neutral-50 ↔ neutral-600",
+      "label": "neutral-50 ↔ текст-2",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 7.49,
+      "dark_ratio": 8.48,
+      "ok": true
+    },
+    {
+      "pair": "neutral-50 ↔ neutral-500",
+      "label": "neutral-50 ↔ вторичный текст",
+      "mode": "dark",
+      "threshold": 4.5,
+      "light_ratio": 4.54,
+      "dark_ratio": 6.22,
+      "ok": true
+    },
+    {
+      "pair": "neutral-50 ↔ neutral-700",
+      "label": "neutral-50 ↔ текст-1",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 9.93,
+      "dark_ratio": 10.48,
+      "ok": true
+    },
+    {
+      "pair": "neutral-100 ↔ neutral-600",
+      "label": "neutral-100 ↔ текст-2",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 7.17,
+      "dark_ratio": 7.7,
+      "ok": true
+    },
+    {
+      "pair": "neutral-100 ↔ neutral-700",
+      "label": "neutral-100 ↔ текст-1",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 9.51,
+      "dark_ratio": 9.52,
+      "ok": true
+    },
+    {
+      "pair": "neutral-100 ↔ neutral-400",
+      "label": "neutral-100 ↔ placeholder",
+      "mode": "dark",
+      "threshold": 3.0,
+      "light_ratio": 2.31,
+      "dark_ratio": 3.28,
+      "ok": true
+    },
+    {
+      "pair": "white ↔ amber-800",
+      "label": "карточка ↔ amber-800 текст",
+      "mode": "aa",
+      "threshold": 4.5,
+      "light_ratio": 7.09,
+      "dark_ratio": 14.37,
+      "ok": true
+    }
+  ]
+}

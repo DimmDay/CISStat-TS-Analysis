@@ -19,10 +19,19 @@
 // только белый фон. ModuleNav под шапкой правится симметрично, чтобы
 // между шапкой, строкой бейджей и контентом не было разделителей.
 // Содержимое шапки (логотип, навигация, РУС/ENG, кабинет) не затронуто.
+//
+// Task DKT-1 (spec_dark_theme.md §4.6): переключатель темы СПРАВА, рядом
+// с «РУС / ENG» — между ним и кнопкой кабинета (непосредственное
+// соседство по постановке). Одна иконка, меняющаяся состоянием: Moon в
+// светлой теме («включить тёмную»), Sun в тёмной («включить светлую»);
+// lucide-react size={14}, паттерн соседа — text-neutral-500
+// hover:text-neutral-900 (в тёмной теме те же классы — их значения
+// токенизированы). Доступность: aria-label по состоянию, aria-pressed.
 
 import Link from "next/link";
 import Image from "next/image";
-import { User } from "lucide-react";
+import { Moon, Sun, User } from "lucide-react";
+import { useTheme } from "@cisstat/ui";
 
 const NAV_ITEMS = [
   { label: "Продукт", href: "/product" },
@@ -30,6 +39,23 @@ const NAV_ITEMS = [
   { label: "Тарифы", href: "/pricing" },
   { label: "Личный кабинет", href: "/dashboard" },
 ];
+
+function ThemeToggle() {
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === "dark";
+  const Icon = isDark ? Sun : Moon;
+  return (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      aria-label={isDark ? "Включить светлую тему" : "Включить тёмную тему"}
+      aria-pressed={isDark}
+      className="text-neutral-500 hover:text-neutral-900"
+    >
+      <Icon size={14} aria-hidden="true" />
+    </button>
+  );
+}
 
 export function ProductHeader() {
   return (
@@ -59,6 +85,7 @@ export function ProductHeader() {
         </div>
         <div className="flex items-center gap-5 text-[13px] text-neutral-600">
           <button type="button" className="text-neutral-500 hover:text-neutral-900">РУС / ENG</button>
+          <ThemeToggle />
           <button
             type="button"
             aria-label="Личный кабинет"

@@ -578,3 +578,20 @@ export type {
   ExpandableChartsState,
   ExpandableChartsActions,
 } from "./hooks/useExpandableChart";
+
+// ═══ Task DKT-1 — провайдер темы платформы (spec_dark_theme.md §4.3) ═══
+// Контракт темы §5: localStorage["cisstat-theme"], класс .dark на <html>,
+// инициализация localStorage → prefers-color-scheme → light. Обе оболочки
+// используют ОДИН ключ и ОДИН класс (общий packages/ui). NO_FOUC_SCRIPT —
+// блокирующий inline-скрипт в <head> layout до гидратации (§4.5).
+export {
+  ThemeProvider,
+  useTheme,
+  applyTheme,
+  resolveInitialTheme,
+  NO_FOUC_SCRIPT,
+  THEME_STORAGE_KEY,
+  THEME_DARK_CLASS,
+  THEME_META_COLOR,
+} from "./context/ThemeContext";
+export type { Theme, ThemeContextValue } from "./context/ThemeContext";
