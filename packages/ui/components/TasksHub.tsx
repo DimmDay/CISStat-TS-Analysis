@@ -14,6 +14,12 @@
 //
 // Рост задач (spec_tasks_ia.md §6): новая задача = запись в TASK_ROUTES
 // + плейсхолдер-маршрут. Сетка, меню и STAGES не меняются.
+//
+// v1.1 (spec_tasks_ia_addendum_v1_1.md §9.2): между шапкой и сеткой —
+// лента артефактов сессии (TaskArtifactRibbon): аналитик видит реально
+// вычисленные факты (датасет, Model Card, прогноз), а не шаг назад в
+// информативности после содержательных окон шести этапов. Лента рисует
+// только существующие артефакты; свежая сессия — ленты нет вовсе.
 
 import { useAppShell } from "../context/AppShellContext";
 import {
@@ -26,6 +32,7 @@ import {
   taskRecommendedHint,
 } from "../lib/task-stops";
 import { TaskCard } from "./TaskCard";
+import { TaskArtifactRibbon } from "./TaskArtifactRibbon";
 
 export function TasksHub() {
   const { stages } = useAppShell();
@@ -44,6 +51,12 @@ export function TasksHub() {
           задачи поверх пайплайна • сценарии • причины • решения • мониторинг
         </p>
       </div>
+
+      {/* ── Лента артефактов сессии (v1.1 §9.2) ──
+          Рисуется ТОЛЬКО из реально существующих артефактов; свежая
+          сессия — лента не рендерится вовсе (честная маркировка).
+          Чипы без ссылок: счётчики ссылок контракта §4 не меняются. */}
+      <TaskArtifactRibbon />
 
       {/* ── Сетка карточек задач: гейтинг по контракту входа ──
           Классы сетки идентичны Block B HomeCapabilities / Hero

@@ -212,3 +212,121 @@ init localStorage -> prefers-color-scheme -> light.
   архитектура §4, контракт §5, каталог значений §6, декомпозиция DKT-1..5
   §7, тест-стратегия §8, риски §9, открытые вопросы §10),
   worklog/worklog6.md (этот журнал).
+
+---
+
+## Task TSKIA-1..4 (2026-09-18) — Доработка модуля «Задачи»: реализация v1.1 хаба (лента артефактов + буллеты карточек + замыкание цепочки степперов)
+
+Синхронизация: main@3c034c5 (Task DKT-0), дерево чистое. Постановка тимлида:
+доработать модуль «Задачи» по docs/spec_tasks_ia.md и
+docs/spec_tasks_ia_addendum_v1_1.md; при сложности — декомпозировать и
+начать с первой подзадачи; фиксация — worklog7.md; по результатам — ZIP.
+Декомпозиция: roadmap §10 дополнения — v1 сделано, v1.1 предлагается =>
+поставлен и реализован v1.1 целиком (§9.2 + §9.3 + §9.4, критерии §13);
+v2 (первый вертикальный срез «Причины», §10.1) — НЕ затронут, отдельная задача.
+
+### Декомпозиция и статус
+
+- TSKIA-1 (§9.2) Лента артефактов сессии — ГОТОВО;
+- TSKIA-2 (§9.3) Содержательные буллеты карточек — ГОТОВО;
+- TSKIA-3 (§9.4) Замыкающая кнопка цепочки степперов — ГОТОВО;
+- TSKIA-4 Регрессия + worklog + ZIP — ГОТОВО (этот блок).
+
+### TSKIA-1 — лента артефактов (§9.2)
+
+- НОВЫЙ packages/ui/components/TaskArtifactRibbon.tsx: горизонтальная лента
+  compact-карточек между шапкой хаба и сеткой задач. Честная маркировка:
+  рисуются ТОЛЬКО существующие артефакты (артефакт <=> этап-владелец =
+  "done", тот же слой §4, контракт состояний НЕ расширяется); свежая
+  сессия — компонент возвращает null (ленты нет вовсе, не «пусто»).
+- Порядок чипов = порядок пайплайна: validated -> model_card -> forecast_run.
+- Наполнение — из уже посчитанных фактов: Датасет — activeDataset из
+  AppShellContext («{name} · {rows} набл.», без гидратации — факт
+  «загружен»); Model Card — точечный вызов fetchCardSummaries
+  (GET /v1/session/modeling/card): последняя карта по created_at,
+  при нескольких — «{name} × N»; отказ/пустой список — деградация к
+  факту «создана» (fail-soft, отмена эффектов через alive/cancelled —
+  без act-предупреждений); Прогноз — факт «построен» без похода за
+  деталями (состав чипа — вместе с v2 «Мониторинга», прямо по §9.2).
+- Чипы — переиспользование Metric (по образцу DatasetPassportPanel),
+  НЕ новый чип; ссылок внутри ленты нет — счётчики ссылок контракта §4
+  в TasksHub.test не изменились ни на единицу.
+- Интеграция: TasksHub.tsx — единственная вставка <TaskArtifactRibbon />
+  между шапкой и сеткой; публичный экспорт index.ts не расширялся
+  (лента — внутренняя композиция хаба, минимальная поверхность API).
+- Замечание по бэкенд-контракту: §9.2 ожидает от списка карт «метрику»,
+  фактически GET /card сводки метрики точности НЕ отдаёт
+  (routers/modeling_session.py::list_model_cards: card_id/model_id/
+  model_name/selection_kind/horizon/fingerprint/created_at). Чип честно
+  показывает имя/счётчик карт без выдуманной метрики; расширение сводки
+  — бэкенд-правка, запрещённая §7 исходного спека — отложено до v2.
+
+### TSKIA-2 — буллеты карточек (§9.3)
+
+- task-stops.ts: TaskRoute.outcomes?: string[] — 2–3 обещанных результата
+  на задачу, формулировки по продукту, не по механике («Вклад каждого
+  фактора в прогноз», «Сравнение сценариев на одном графике»; не
+  «использует SHAP»), все 4 записи реестра заполнены.
+- TaskCard.tsx: блок data-testid="task-outcomes" после строки описания,
+  в ДОПОЛНЕНИЕ к ней (строка v1 не заменена); компактный text-xs с
+  brand-маркерами; виден во ВСЕХ трёх состояниях — обещание задачи, не
+  гейтинг (гейтят только артефакты контракта входа).
+
+### TSKIA-3 — замыкание цепочки (§9.4)
+
+- TsAnalysisForecasting.tsx: StepperNextModuleButton label="Перейти к
+  задачам" href="/tasks" сразу после блока «Шаги этапа» (конец «степпера»
+  workspace), до card-handoff; кнопка «Обновить состояние» (mt-auto)
+  остаётся внизу колонки. Компонент StepperNextModuleButton НЕ изменён
+  (label/href — единственные входы, черта border-t встроена в обёртку):
+  прецедент целевой страницы-не-степпера — Моделирование -> Прогнозирование.
+
+### TDD (AGENTS.md: RED -> GREEN на каждую подзадачу)
+
+- TSKIA-1: НОВЫЙ TaskArtifactRibbon.test.tsx (10 кейсов: честная
+  маркировка/fresh-null/порядок/деградации/DNA Metric); RED подтверждён
+  (TS2307, только отсутствие модуля). GREEN 10/10. TasksHub.test.tsx:
+  ДОБАВЛЕНЫ только (а) инфраструктурные моки новой дочерней зависимости
+  (jest.mock ../lib/forecasting + activeDataset в фабрике контекста —
+  без правки ни одного существующего кейса §4) и (б) 3 новых кейса
+  ленты в конце файла. Требование §13 «не меняет ни один существующий
+  тест контракта состояний» соблюдено: все прежние кейсы TasksHub —
+  байт-в-байт.
+- TSKIA-2: task-stops.test.ts + describe outcomes (объём 2–3,
+  уникальность, отличимость от description); TaskCard.test.tsx +
+  describe буллетов (в дополнение к описанию, точное количество, все
+  состояния, компактность, back-compat отсутствия); RED подтверждён
+  (TS2339/TS2353 — поля outcomes нет). GREEN.
+- TSKIA-3: TsAnalysisForecasting.test.tsx + describe §9.4 (href=/tasks,
+  контракт классов StepperNextModuleButton, позиция после
+  forecasting-steps, внутри левой колонки); RED подтверждён (ровно 2
+  новых падения, 9 старых зелёные). GREEN 11/11.
+
+### Верификация (§13 — полная)
+
+- npx jest: 1157/1157 passed (полная регрессия монорепо; все сюиты
+  контракта §4 зелёные без правок).
+- npm run typecheck:all: embedded + standalone — без ошибок.
+- npm run build: сборка standalone успешна (маршруты /tasks и
+  /tasks/* на месте).
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md).
+
+### Границы
+
+- Контракт трёх состояний, реестр (4 записи, без category/
+  recommendedWith-расширений), ModuleNav, STAGES, бэкенд — не тронуты
+  (§9.5/§7). v2 (срез «Причины» XAI по §10.1, чип истории запусков,
+  состояние configurable) — следующий отдельный вертикальный срез.
+
+Изменённые/новые файлы (ZIP: download/task_tskia_tasks_hub_v11.zip):
+- НОВЫЕ: packages/ui/components/TaskArtifactRibbon.tsx,
+  packages/ui/components/TaskArtifactRibbon.test.tsx
+- ИЗМЕНЕНЫ: packages/ui/components/TasksHub.tsx (+лента),
+  packages/ui/components/TasksHub.test.tsx (моки+3 новых кейса),
+  packages/ui/lib/task-stops.ts (outcomes в типе и реестре),
+  packages/ui/lib/task-stops.test.ts (+describe outcomes),
+  packages/ui/components/TaskCard.tsx (буллеты),
+  packages/ui/components/TaskCard.test.tsx (+describe буллетов),
+  packages/ui/components/TsAnalysisForecasting.tsx (кнопка §9.4),
+  packages/ui/components/TsAnalysisForecasting.test.tsx (+describe §9.4),
+  worklog/worklog7.md (этот журнал).

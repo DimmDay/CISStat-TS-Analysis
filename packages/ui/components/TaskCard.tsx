@@ -100,6 +100,30 @@ export function TaskCard({
         <span className="mt-1 block text-sm text-neutral-500 leading-relaxed">
           {task.description}
         </span>
+        {task.outcomes && task.outcomes.length > 0 && (
+          // Буллеты обещанных результатов (v1.1 §9.3): 2–3 конкретных
+          // обещания В ДОПОЛНЕНИЕ к строке описания, по продукту, не по
+          // механике. Обещание задачи видно во ВСЕХ состояниях — это
+          // методологический контекст, а не гейтинг (гейтят только
+          // артефакты контракта входа).
+          <span
+            className="mt-2 block space-y-1"
+            data-testid="task-outcomes"
+          >
+            {task.outcomes.map((outcome) => (
+              <span
+                key={outcome}
+                className="flex items-start gap-1.5 text-xs text-neutral-600 leading-relaxed"
+              >
+                <span
+                  className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-brand/70"
+                  aria-hidden="true"
+                />
+                {outcome}
+              </span>
+            ))}
+          </span>
+        )}
         {!available && reason && (
           <span
             className={`mt-2 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${CHIP_BY_STATE[state]}`}

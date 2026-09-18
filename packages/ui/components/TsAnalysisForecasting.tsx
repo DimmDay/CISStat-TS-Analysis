@@ -21,6 +21,7 @@ import Link from "next/link";
 import { AlertTriangle, ChevronDown, ChevronUp, Loader2, Play, RefreshCw, Wand2 } from "lucide-react";
 import { Button } from "./Button";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
+import { StepperNextModuleButton } from "./StepperNextModuleButton";
 import { ForecastChart } from "./ForecastChart";
 import { ForecastAccuracyPanel } from "./ForecastAccuracyPanel";
 import { ForecastHistoryList } from "./ForecastHistoryList";
@@ -276,6 +277,17 @@ export function TsAnalysisForecasting() {
             ))}
           </ul>
         </div>
+
+        {/* ── Замыкание цепочки «Ведём исследователя за руку» (v1.1 §9.4) ──
+            Цепочка StepperNextModuleButton тянулась через все пять
+            степперов и обрывалась здесь (решение FORECAST-1). Теперь,
+            когда хаб /tasks существует, цепочка замыкается: та же
+            кнопка-приглашение стоит в конце шагов этапа и ведёт на
+            /tasks. Прецедент целевой страницы НЕ-степпера уже был —
+            Моделирование ведёт на Прогнозирование (workspace).
+            Компонент переиспользуется БЕЗ изменений: label/href —
+            единственные входы; черта border-t встроена в обёртку. */}
+        <StepperNextModuleButton label="Перейти к задачам" href="/tasks" />
 
         {selectedCard && (
           <div className="rounded border border-neutral-200 bg-white px-2.5 py-2 text-[10px]" data-testid="card-handoff">

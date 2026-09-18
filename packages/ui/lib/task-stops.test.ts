@@ -396,3 +396,38 @@ describe("taskRecommendedHint", () => {
     );
   });
 });
+
+// ── outcomes: содержательные буллеты карточек (v1.1, §9.3 дополнения) ──
+// Хаб v1 — единственная страница пайплайна из статичного текста (§9.1).
+// Карточка дополняется 2–3 буллетами конкретного ОБЕЩАННОГО результата
+// вместо (в дополнение к) одной строки описания. Формулировки — по
+// продукту, не по механике («Вклад каждого фактора в прогноз», а не
+// «использует SHAP»); содержательность формулировок проверяет ревью,
+// тесты фиксируют наличие/объём/уникальность как контракт реестра.
+
+describe("outcomes: product-level promise bullets (v1.1 §9.3)", () => {
+  it("every task declares 2-3 outcome bullets", () => {
+    TASK_ROUTES.forEach((t) => {
+      expect(t.outcomes).toBeDefined();
+      expect(t.outcomes!.length).toBeGreaterThanOrEqual(2);
+      expect(t.outcomes!.length).toBeLessThanOrEqual(3);
+    });
+  });
+
+  it("bullets are unique non-empty meaningful strings", () => {
+    TASK_ROUTES.forEach((t) => {
+      t.outcomes!.forEach((o) => {
+        expect(o.trim().length).toBeGreaterThanOrEqual(10);
+      });
+      expect(new Set(t.outcomes!).size).toBe(t.outcomes!.length);
+    });
+  });
+
+  it("bullets are distinct from the description line (added value, not repetition)", () => {
+    TASK_ROUTES.forEach((t) => {
+      t.outcomes!.forEach((o) => {
+        expect(o).not.toBe(t.description);
+      });
+    });
+  });
+});

@@ -22,6 +22,10 @@ const TASK: TaskRoute = {
   icon: Box,
   href: "/tasks/fixture",
   requires: ["model_card"],
+  outcomes: [
+    "Вклад каждого фактора в прогноз",
+    "Сравнение сценариев на одном графике",
+  ],
 };
 
 const CTA_STAGE: StagePointer = {
@@ -198,5 +202,71 @@ describe("TaskCard: blocked", () => {
     renderCard("blocked", "Начните с этапа Загрузка");
     expect(screen.queryByRole("link")).toBeNull();
     expect(screen.queryByText(/Перейти к этапу/)).toBeNull();
+  });
+});
+
+// ── Буллеты обещанных результатов (v1.1, §9.3 дополнения) ────────
+// Карточка дополняется 2–3 буллетами конкретного обещанного результата
+// В ДОПОЛНЕНИЕ к одной строке описания; формулировки — по продукту.
+// Буллеты — обещание задачи, видны во ВСЕХ трёх состояниях (это
+// методологический контекст, а не гейтинг).
+
+describe("TaskCard outcomes (v1.1 §9.3)", () => {
+  it("renders outcome bullets in addition to the description line", () => {
+    renderCard("available", null);
+    // Описание на месте (строка v1 не заменена, а дополнена).
+    expect(screen.getByText("описание фикстуры")).toBeInTheDocument();
+    // Оба буллета видны.
+    expect(
+      screen.getByText("Вклад каждого фактора в прогноз")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Сравнение сценариев на одном графике")
+    ).toBeInTheDocument();
+  });
+
+  it("renders exactly the declared number of bullets in a dedicated block", () => {
+    const { container } = renderCard("available", null);
+    const block = container.querySelector("[data-testid='task-outcomes']");
+    expect(block).not.toBeNull();
+    expect(block!.children).toHaveLength(TASK.outcomes!.length);
+  });
+
+  it("shows bullets in non-available states too (promise, not gating)", () => {
+    const awaiting = renderCard(
+      "awaiting",
+      "Станет доступна после этапа Моделирование"
+    );
+    expect(
+      screen.getByText("Вклад каждого фактора в прогноз")
+    ).toBeInTheDocument();
+    awaiting.unmount();
+
+    renderCard(
+      "blocked",
+      "Начните с этапа Загрузка — задачи работают поверх артефактов пайплайна"
+    );
+    expect(
+      screen.getByText("Сравнение сценариев на одном графике")
+    ).toBeInTheDocument();
+  });
+
+  it("bullets are visually compact (text-xs, below the text-sm description)", () => {
+    renderCard("available", null);
+    const bullet = screen.getByText("Вклад каждого фактора в прогноз");
+    expect(bullet.className).toContain("text-xs");
+  });
+
+  it("renders no bullet block when outcomes are absent (v1 fixture back-compat)", () => {
+    const { container } = render(
+      <TaskCard
+        task={{ ...TASK, outcomes: undefined }}
+        state="available"
+        reason={null}
+      />
+    );
+    expect(
+      container.querySelector("[data-testid='task-outcomes']")
+    ).toBeNull();
   });
 });

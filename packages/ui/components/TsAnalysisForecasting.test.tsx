@@ -218,3 +218,46 @@ describe("TsAnalysisForecasting -- готовый этап", () => {
     expect(screen.getByTestId("compare-btn")).toBeEnabled();
   });
 });
+
+// ── Замыкающая кнопка цепочки степперов (v1.1, §9.4 дополнения) ──
+// Цепочка StepperNextModuleButton («Ведём исследователя за руку»)
+// тянулась через все пять степперов и обрывалась на Прогнозировании
+// (решение FORECAST-1). Теперь, когда хаб /tasks существует, цепочка
+// замыкается: та же кнопка-приглашение в конце шагов этапа ведёт на
+// /tasks. Компонент StepperNextModuleButton НЕ изменяется — только
+// переиспользуется (label/href — единственные входы).
+
+describe("Замыкающая кнопка цепочки «Перейти к задачам» (v1.1 §9.4)", () => {
+  it("приглашение в конце шагов этапа ведёт на /tasks", async () => {
+    installFetch();
+    render(<TsAnalysisForecasting />);
+    await waitFor(() => expect(screen.getByTestId("forecasting-steps")).toBeInTheDocument());
+
+    const link = screen.getByRole("link", { name: /Перейти к задачам/ });
+    expect(link).toHaveAttribute("href", "/tasks");
+  });
+
+  it("переиспользует StepperNextModuleButton без изменения компонента (контракт классов)", async () => {
+    installFetch();
+    const { container } = render(<TsAnalysisForecasting />);
+    await waitFor(() => expect(screen.getByTestId("forecasting-steps")).toBeInTheDocument());
+
+    const link = screen.getByRole("link", { name: /Перейти к задачам/ });
+    // Стилевой контракт StepperNextModuleButton: пастельный фон,
+    // индиго при наведении, та же рамка степпер-кнопок.
+    expect(link.className).toContain("bg-brand-light/50");
+    expect(link.className).toContain("hover:bg-brand");
+    expect(link.className).toContain("hover:text-white");
+    expect(link.className).toContain("rounded-md");
+    // Светло-серая черта-разделитель на обёртке (переход к другому
+    // модулю, а не ещё одна остановка этапа).
+    const wrapper = link.parentElement;
+    expect(wrapper?.className).toContain("border-t");
+    expect(wrapper?.className).toContain("border-neutral-200");
+    // Кнопка стоит ПОСЛЕ списка шагов этапа (конец «степпера»).
+    const steps = screen.getByTestId("forecasting-steps");
+    expect(steps.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Кнопка остаётся в левой колонке этапа, рядом с шагами.
+    expect(container.querySelector("aside")?.contains(link)).toBe(true);
+  });
+});

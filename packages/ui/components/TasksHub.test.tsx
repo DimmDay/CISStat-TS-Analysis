@@ -16,6 +16,13 @@
 // Контракт ссылок: fresh-сессия — 0 задачных ссылок + 4 CTA на /upload;
 // после Моделирования — 2 задач + 2 CTA; полный пайплайн — 4 задач, CTA
 // и подсказок нет.
+//
+// v1.1 (spec_tasks_ia_addendum_v1_1.md §9.2): хаб дополнен лентой
+// артефактов (дочерний TaskArtifactRibbon). Контракт состояний §4
+// НЕ меняется: существующие кейсы ниже оставлены как были; добавлены
+// только (а) инфраструктурные моки новой дочерней зависимости
+// (fetchCardSummaries — чтобы дочерний эффект не делал реальный fetch
+// в jsdom) и (б) НОВЫЕ кейсы ленты в конце файла.
 
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
@@ -24,12 +31,24 @@ import { STAGE_DEFS, StageStatus } from "../lib/stages";
 
 // TasksHub читает сессию из AppShellContext (stages, гидратация
 // GET /v1/session/current) — мокаем на фиксированный сценарий.
+// activeDataset добавлен для НОВЫХ кейсов ленты (§9.2); в прежних
+// кейсах он null — поведение рендера карточек не меняется.
 let mockStages: Record<string, StageStatus> = {};
+let mockActiveDataset: { name: string; rows: number; sizeLabel: string } | null =
+  null;
 jest.mock("../context/AppShellContext", () => ({
   useAppShell: () => ({
     stages: mockStages,
+    activeDataset: mockActiveDataset,
     log: [],
   }),
+}));
+
+// Точечный поход ленты за списком Model Card — инфраструктурный мок
+// (в контракте §4 лента не участвует).
+const fetchCardSummaries = jest.fn();
+jest.mock("../lib/forecasting", () => ({
+  fetchCardSummaries: (...args: unknown[]) => fetchCardSummaries(...args),
 }));
 
 const stagesOf = (over: Record<string, StageStatus>) =>
@@ -44,6 +63,9 @@ const TASK_TITLES = [
 
 afterEach(() => {
   mockStages = {};
+  mockActiveDataset = null;
+  fetchCardSummaries.mockReset();
+  fetchCardSummaries.mockResolvedValue([]);
 });
 
 describe("TasksHub", () => {
@@ -180,5 +202,81 @@ describe("TasksHub", () => {
     const firstCard = container.querySelector("a");
     expect(firstCard?.className).toContain("rounded-xl");
     expect(firstCard?.className).toContain("border-brand/60");
+  });
+});
+
+// ── Лента артефактов сессии (v1.1, §9.2) — НОВЫЕ кейсы ──────────
+// Контракт состояний §4 выше не затронут: лента рендерится между
+// шапкой и сеткой, не содержит ссылок и не меняет ни одного счётчика
+// ссылок/CTA, защищённого прежними кейсами.
+
+describe("TasksHub: лента артефактов сессии (v1.1 §9.2)", () => {
+  it("fresh session: ленты нет вовсе — хаб не имитирует заполнение", () => {
+    mockStages = stagesOf({});
+    render(<TasksHub />);
+
+    expect(
+      screen.queryByRole("list", { name: /Артефакты сессии/ })
+    ).toBeNull();
+    // Поход за картами не выполняется без артефакта model_card.
+    expect(fetchCardSummaries).not.toHaveBeenCalled();
+  });
+
+  it("после Валидации: лента с чипом Датасета из activeDataset, карточки задач по-прежнему blocked/awaiting", () => {
+    mockStages = stagesOf({ validation: "done" });
+    mockActiveDataset = { name: "Month_Value_1.csv", rows: 240, sizeLabel: "12 КБ" };
+    render(<TasksHub />);
+
+    const ribbon = screen.getByRole("list", { name: /Артефакты сессии/ });
+    expect(ribbon.children).toHaveLength(1);
+    expect(
+      screen.getByText("Month_Value_1.csv · 240 набл.")
+    ).toBeInTheDocument();
+    // Контракт §4 не изменился: ни одна задача ещё не доступна.
+    expect(
+      screen.getAllByText(/Станет доступна после этапа/)
+    ).toHaveLength(4);
+  });
+
+  it("полный пайплайн: три чипа ленты, Model Card — из точечного похода за картами", async () => {
+    mockStages = stagesOf({
+      upload: "done",
+      validation: "done",
+      preprocessing: "done",
+      eda: "done",
+      modeling: "done",
+      forecasting: "done",
+    });
+    mockActiveDataset = { name: "retail.csv", rows: 730, sizeLabel: "40 КБ" };
+    fetchCardSummaries.mockResolvedValue([
+      {
+        card_id: "c-1",
+        model_id: "ets",
+        model_name: "ETS",
+        selection_kind: "tuned",
+        horizon: 6,
+        fingerprint: "a".repeat(64),
+        created_at: "2026-09-18T10:00:00+00:00",
+      },
+    ]);
+    render(<TasksHub />);
+
+    const ribbon = screen.getByRole("list", { name: /Артефакты сессии/ });
+    expect(ribbon.children).toHaveLength(3);
+    expect(screen.getByText("retail.csv · 730 набл.")).toBeInTheDocument();
+    await screen.findByText("ETS");
+    expect(screen.getByText("построен")).toBeInTheDocument();
+    // Все 4 задачи кликабельны (контракт §8 не изменился).
+    const hrefs = Array.from(
+      screen
+        .getByRole("list", { name: /Задачи на основе прогноза/ })
+        .querySelectorAll('a[href^="/tasks/"]')
+    ).map((a) => a.getAttribute("href"));
+    expect(hrefs).toEqual([
+      "/tasks/scenarios",
+      "/tasks/causes",
+      "/tasks/decisions",
+      "/tasks/monitoring",
+    ]);
   });
 });
