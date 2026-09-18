@@ -618,3 +618,462 @@ docs/task_dkt3_dkt4_hex_to_vars.md.
   deps 10 эффектов + снятие гейта feature_eng/scaling + 10 onApplied)
 - packages/ui/components/TsAnalysisPreprocessing.test.tsx (+4 кейса в
   новом describe «автообновление профилей после применения исправлений»)
+
+  ---
+
+## Task TSKV2-1 (2026-09-18) — v2, первый вертикальный срез «Причины» (XAI, паттерн C §11.2): бэкенд-эндпоинт + фронтенд страницы, полный TDD-цикл
+
+Синхронизация: main@e99cd1f (DKT-1 + DKT-2; TSKIA-1..4 уже в истории), дерево
+чистое (stash-остатки прошлой сессии подтверждены включёнными в 4157b6f и
+сброшены). Постановка тимлида: v2 — первый вертикальный срез «Причины»
+(XAI, паттерн C по §11.2), требует бэкенд-эндпоинта и полного TDD-цикла;
+ZIP в download; AGENTS.md.
+
+### Декомпозиция (§10 дополнения: v2 = срез «Причины» + чип истории запусков + configurable)
+
+- TSKV2-1 — вертикальный срез «Причины» (§10.1, паттерн C §11.2) — ЭТОТ СРЕЗ;
+- чип истории запусков (маленький бэкенд-эндпоинт списка запусков) — НЕ затронут,
+  отдельная задача v2 (в постановке тимлида срез ограничен «Причинами»);
+- прототип `configurable` на «Принятии решений» — НЕ затронут (v2, отдельный срез).
+
+### Проектирование (§10.1: «просмотр уже вычисленного», простейший контракт входа)
+
+Инвентаризация вычисленных фактов (программно, не по памяти):
+- Feature importance: `backtesting.py:650` — каждый fold бэктеста
+  tree-моделей (random_forest/xgboost/lightgbm/catboost — 4 адаптера,
+  model_impls) persist-ит `feature_importance` с oracle-привязкой
+  (`bind_feature_importance`, feature_plan.py:962: plan_id/matrix_hash/
+  fit_policy + importances[]). Данные УЖЕ вычислены и лежат в
+  `session.modeling_artifacts["backtests"][model_id]["folds"][i]`.
+- Model Card: `create_model_card` reserves `feature_importance: None`
+  (modeling_session.py:3255) — поле-заготовка, никогда не заполняется.
+  Артефакт бэктеста привязан к карте через training.backtest_run_id.
+- Granger: EDA считает по запросу аналитика (GET /dataset/eda-feature-selection,
+  session.py:808) и НЕ persist-ит в сессию — «уже вычисленного» артефакта нет.
+- SHAP/PDP: движком НЕ вычисляются нигде (grep: import shap — 0 файлов).
+- Ensemble-карты: fold-importances членов в ensemble_backtests, но честная
+  агрегация по членам — отдельное решение (прецедент честного отказа
+  ансамбля — test_forecast_rejects_ensemble_card_honestly).
+
+Следствие (честная маркировка §9.1): первый срез отдаёт БЕЗ пересчётов
+только fold-importance как доступный метод; Granger/SHAP/PDP — строки
+реестра методов со статусом not_computed и честной причиной (не
+фиктивные данные). Контракт входа `model_card` (§2 исходной спеки).
+
+### Решение: бэкенд
+
+- НОВЫЙ apps/api/routers/tasks_session.py — GET /causes (prefix
+  /v1/session/tasks, mounting в main.py рядом с modeling_session):
+  card_id опционален (дефолт — последняя карта по created_at, тот же
+  порядок, что TaskArtifactRibbon); нет карт — 409 с причиной (хаб
+  гейтит, прямой URL — честный отказ, прецедент 409 моделирования);
+  ensemble-карта — методы с not_computed/причиной, не 5xx.
+- Агрегация fold-importance: внутри каждого fold доля importance/sum
+  (сырые MDI разных fold несопоставимы по масштабу), средняя доля по
+  fold, сортировка по убыванию; per-fold сырые значения и matrix_hash —
+  в деталь фактора; provenance (run_id/plan_id) — в метод.
+- Ответ: {card, methods:[{method_id,title,status,reason?,factors?,...}]}.
+
+### Решение: фронтенд (паттерн C §11.2, строительные блоки таблицы §11.2)
+
+- НОВЫЙ packages/ui/components/TasksCauses.tsx: 3 колонки по образцу
+  AppliedTasksNavigator (aside w-60 методы → aside w-80 факторы →
+  section деталь); бейджи «Когда использовать»/«Что нужно для запуска»
+  (классы StaticHalfBadge NavigatorHero); правая колонка — «Панель
+  управления» (обязательный блок §11.2) с деталью фактора: BarChart
+  средних долей факторов (выбранный подсвечен, топ-12) в контейнере
+  h-[468px] под ExpandableChartPanel + ExpandableChartsProvider
+  (обязательные блоки §11.2), таблица per-fold под графиком; цвета
+  Recharts — var(--c-*) (урок DKT-3: новых hex-литералов не создавать).
+- НОВЫЙ packages/ui/lib/tasks.ts: типы 1:1 ответу бэкенда + fetchCauses
+  (sessionApiUrl, credentials include — прецедент forecasting.ts).
+- Гейтинг страницы: stages.modeling !== done → честное пустое состояние
+  с микро-CTA на /modeling (прецедент R5-CTA хаба) БЕЗ похода в сеть;
+  409 бэкенда → состояние с причиной.
+- НОВЫЙ apps/standalone/app/tasks/causes/page.tsx (замена плейсхолдера);
+  экспорт в packages/ui/index.ts.
+
+### Точки изменения и риски
+
+- main.py (включение роутера — 1 строка); guard-тесты существующих
+  эндпоинтов не задействуют /v1/session/tasks (проверено grep).
+- Риск 500 на вложенных артефактах: все чтения через .get-цепочки;
+  отсутствующий бэктест-артефакт карты → not_computed с причиной, не 500.
+- Риск гидратации: fetch только в useEffect с alive-флагом (прецедент
+  TaskArtifactRibbon); jsdom-тесты мокают lib/модуль.
+- Риск Recharts в jsdom: polyfills jest.setup.js (ResizeObserver/
+  IntersectionObserver) — прецеденты EdaCorrelationOverview.test.
+- Тест-план (TDD RED→GREEN): tests/api/test_tasks_causes.py (контракт
+  409/статусы/агрегация/ensemble/provenance/порядок сортировки);
+  TasksCauses.test.tsx (паттерн C: 3 колонки, бейджи, статусы методов,
+  деталь фактора, honest-состояния, 468px+ExpandableChartPanel).
+
+### TDD (AGENTS.md: RED -> GREEN, оба контура)
+
+- Бэкенд RED подтверждён ДО реализации: 9/9 падений ровно одного вида
+  (404 {"detail":"Not Found"} — маршрута /v1/session/tasks/causes нет).
+  НОВЫЙ tests/api/test_tasks_causes.py: контракт входа (409 без карт с
+  причиной про Model Card; 404 неизвестный card_id), реестр 4 методов
+  с честными статусами (fold_importance available, granger/shap/pdp
+  not_computed с непустой причиной и factors=null), агрегация
+  (сумма долей внутри КАЖДОГО fold = 1; сумма средних долей = 1;
+  сортировка по убыванию; per-factor fold_values отсортированы),
+  provenance (backtest_run_id/plan_id/n_folds=2, matrix_hash в деталях),
+  дефолт-карта = последняя по created_at + явный card_id,
+  классическая модель (ets) — not_computed с причиной «не вычисляет
+  важность», ensemble-карта — честный отказ агрегации (сеанс через
+  посев model_cards: полный HTTP-путь до ensemble требует tuning),
+  отсутствующий артефакт бэктеста — 200/not_computed, не 500.
+- GREEN: 9/9. Находка в процессе: повторный compare/evaluate
+  инвалидирует прежние model_cards (lineage-дисциплина
+  modeling_session.py:2941/2985) — тест «две карты» построен на
+  повторном POST /card под тем же selection (как в селекторе
+  прогнозирования), а не на новом сравнении.
+- Фронтенд RED подтверждён ДО реализации: TS2307 (отсутствие модулей
+  TasksCauses/lib/tasks — только и именно это). GREEN 8/8: заголовок +
+  бейджи; honest-empty без сети с CTA /modeling; loading до гидратации
+  без сети; паттерн C (4 метода, недоступные disabled+aria-disabled,
+  причина видна в списке), «Панель управления», окно h-[468px],
+  ExpandableChartPanel-кнопка; факторы с долями (aria-pressed,
+  переключение, .recharts-responsive-container — jsdom-прецедент
+  NavigatorChartPreview: внутренний SVG в jsdom не строится);
+  провенанс run/plan; недоступные методы не выбираются (клик без
+  эффекта); ошибка бэкенда — role="alert" с причиной сервера.
+
+### Верификация (полная регрессия)
+
+- npx jest: 114 сюит / 1261 теста — все зелёные (было 112/1230 после
+  TSKIA: +2 сюиты этого среза; старые без правок).
+- typecheck:all (embedded + standalone) — без ошибок.
+- npm run build: standalone успешна, маршрут /tasks/causes на месте.
+- Backend: полный pytest tests/ — 2346 passed / 9 failed / 3 errors /
+  24 skipped. Все 9+3 — ПРЕДСУЩЕСТВЕННЫЕ, точное множество Task 145:
+  нейро-группа не установлена (integration-paths deepar/lstm/nbeats/
+  nhits/tft fail-closed, v2-дескрипторы, neural capacity,
+  catalog_only-метрики) + 3 snapshot-ошибки test_preprocessing
+  (версии pandas/numpy venv против пинов). Ни одного падения от
+  правок среза (stash-прогон чистого HEAD e99cd1f воспроизвёл те же 17).
+- Окружение восстановлено до сертификационной эпохи после сброса
+  между сессиями: pandera/PyWavelets/holidays/missingno/openpyxl/
+  plotly/ruptures/prophet 1.4.0/arch/tbats/statsforecast 2.1.1;
+  statsmodels 0.14.5 -> 0.15.0 (пин requirements.txt) — это сняло
+  16 предсущественных падений forecasting-контура (parametric
+  simulation требовал API statsmodels>=0.15).
+
+### Границы
+
+- Реестр методов среза: fold_importance (уже вычислено, Task 127)
+  доступен; granger/shap/pdp — честные not_computed-строки (Granger
+  не persist-ится сессией, SHAP/PDP движок не вычисляет) — пересчётов
+  и синтетики нет (§10.1 «просмотр уже вычисленного»).
+- Ensemble-карты: честный отказ агрегации по членам — отдельное решение.
+- Чип истории запусков (v2) и прототип configurable («Принятие
+  решений») — НЕ затронуты, отдельные задачи v2.
+- Multi-карточный селектор на странице — v3 (дефолт = последняя карта,
+  явный card_id поддержан эндпоинтом и lib).
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); работа в ZIP.
+
+Изменённые/новые файлы (ZIP: download/task_tskv2_causes_slice.zip):
+- НОВЫЕ: apps/api/routers/tasks_session.py,
+  tests/api/test_tasks_causes.py,
+  packages/ui/lib/tasks.ts,
+  packages/ui/components/TasksCauses.tsx,
+  packages/ui/components/TasksCauses.test.tsx
+- ИЗМЕНЕНЫ: apps/api/main.py (+include_router /v1/session/tasks),
+  packages/ui/index.ts (+экспорт TasksCauses),
+  apps/standalone/app/tasks/causes/page.tsx (плейсхолдер -> срез),
+
+---
+
+## Task ID: PREPR-3 (2026-09-18) — Автообновление профилей остановок «Предобработки» после применения исправлений (единый datasetVersion)
+
+Синхронизация: main@e99cd1f (DKT-1 + DKT-2), рабочее дерево чистое до
+работы. Постановка тимлида: при наличии пропусков (и/или выбросов)
+блокируются остановки «Декомпозиция ряда», «Стабилизация дисперсии»,
+«Сглаживание ряда» и т.д. с плейсхолдером «В ряду N пропусков; сначала
+завершите остановку „Пропуски“»; после применения стратегии исправления
+в «Пропусках» остальные остановки об этом НЕ узнают — актуальное состояние
+модуля достигается только перезагрузкой страницы. Требуется автообновление
+после валидации каждой остановки. Воспроизвести, спроектировать,
+реализовать.
+
+### Репродукция (по коду, затем тестом)
+
+- Бэкенд честно гейтит применимость по СОСТОЯНИЮ датасета:
+  preprocessing_decomposition.py:94 / preprocessing_variance.py:64 /
+  preprocessing_smoothing.py:59 / preprocessing_stationarity.py:74 /
+  preprocessing_feature_engineering.py:34 возвращают
+  applicable=false + reason «В ряду N пропусков…» (декомпозиция при этом
+  status="skipped", status_reason="not_required" — routers/session.py:387).
+- Фронт: TsAnalysisPreprocessing кэширует профили 10 остановок в state;
+  profile-fetch useEffect зависят ТОЛЬКО от [activeFeature, xxxRefreshKey],
+  а onApplied мастера «Пропусков» бампил исключительно
+  setMissingRefreshKey → перезапрашивался ТОЛЬКО missing-профиль.
+  Профили остальных остановок оставались stale до ремонта компонента
+  (перезагрузка страницы).
+- Дополнительно: эффекты «Генерация признаков»/«Масштабирование» были
+  гейтированы activeCheckId (ленивая загрузка) — их статусы устаревали
+  даже БЕЗ посещения остановки (после визита до исправления).
+- RED-репродукция: 3 новых теста падают ровно на stale-бейджах
+  («STL выполнен…» не появляется; «Проверка пройдена, пропусков нет»
+  после чужого применения не наступает; статусы feature_eng/scaling на
+  монтировании отсутствуют).
+
+### Решение (одна точка изменения — родительский компонент)
+
+- Единый счётчик datasetVersion («версия состояния датасета модуля»):
+  контракт «применение исправления в ЛЮБОЙ остановке = мутация датасета =
+  инвалидация ВСЕХ профилей». Все 10 onApplied теперь бампят
+  setDatasetVersion (собственные xxxRefreshKey в onApplied больше не
+  нужны — собственный профиль остановки перезапрашивается тем же бампом).
+- datasetVersion добавлен в deps ВСЕХ 10 profile-fetch useEffect — после
+  каждого применения степпер/бейджи/метрики/Обзоры перезапрашиваются
+  автоматически (React 18 batching: один бамп = один ре-рендер = один
+  повторный fetch каждой остановки; гардируется ассертом
+  counts.decomposition === 2).
+- Снят ленивый гейт activeCheckId у feature_eng/scaling — контракт
+  унифицирован: «статусы всех 10 остановок всегда отражают текущий
+  датасет» (самый тяжёлый профиль — STL декомпозиции — и ранее считался
+  при монтировании; +2 запроса на монтирование в пределах принятого
+  компромисса «8 запросов при монтировании», комментарий к missing-эффекту).
+- Узкая зона инвалидации СОХРАНЕНА: смена режима остановки
+  (PUT preprocessing-check-modes) и кнопка «Пересчитать» бампят только
+  собственный xxxRefreshKey — датасет не мутируют, чужие профили не
+  инвалидируют (гард-тест: счётчик decomposition не растёт).
+
+### TDD (AGENTS.md: RED -> GREEN)
+
+- RED (подтверждён ДО правки компонента, ровно 3 падения): (1)
+  «after applying missing corrections the blocked decomposition stop
+  refreshes without a page reload» — полный сценарий постановки: мок
+  декомпозиции blocked (skipped + reason) до apply и done после; ассерты
+  бейджа «В ряду 2 пропусков…» → «STL выполнен, остаточная диагностика
+  пройдена», степпер done («Пройдено»), counts.decomposition === 2;
+  (2) симметрия «выбросы → пропуски» (after applying outliers
+  corrections the missing stop refreshes); (3) статусы feature_eng/
+  scaling загружаются на монтировании без визита остановки. Гард-тест
+  (4) «saving a stop's mode does not invalidate other stops' profiles»
+  зелёный уже в RED (фиксирует корректное существующее поведение).
+- GREEN: правки только TsAnalysisPreprocessing.tsx → 4/4 новых +
+  61/61 всего файла.
+
+### Верификация (полная регрессия)
+
+- Frontend: npx jest — 113 сюит / 1257 passed / 0 failed (полная
+  монорепо-регрессия; guard-тесты зелёные БЕЗ правок — arithmetics
+  baseline e99cd1f 113/1253, +4 новых).
+- npm run typecheck:all — 0 ошибок; npm run build:all — Compiled
+  successfully x2 (embedded + standalone).
+- Backend не затронут (0 файлов .py) — pytest-прогон не требуется
+  (прецедент frontend-only задач EDA-2/PREPR-1/VALID-2).
+- Мутационная кампания не проводилась (фронтовый diff 55 строк); критические
+  точки контракта прижаты тестами: снятие datasetVersion из deps любого
+  эффекта ловится тестом (1), гейт-регрессия — тестом (3), расширение
+  зоны инвалидации на смену режима — гардом (4).
+
+### Границы
+
+- DatasetPassportPanel (stage="exit") сознательно не инвалидируется
+  datasetVersion: паспорт — точка РУЧНОЙ фиксации («Зафиксировать»),
+  семантика подтверждённого снимка, а не автоматического профиля.
+- Кнопка «Пересчитать свойства после преобразования» для 6 остановок без
+  onClick (pre-existing) не тронута — вне мандата постановки.
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); работа в ZIP
+  download/task_prepr3_profile_auto_refresh.zip.
+
+Изменённые/новые файлы:
+- packages/ui/components/TsAnalysisPreprocessing.tsx (datasetVersion +
+  deps 10 эффектов + снятие гейта feature_eng/scaling + 10 onApplied)
+- packages/ui/components/TsAnalysisPreprocessing.test.tsx (+4 кейса в
+  новом describe «автообновление профилей после применения исправлений»)## Task TSKV2-1 (2026-09-18) — v2, первый вертикальный срез «Причины» (XAI, паттерн C §11.2): бэкенд-эндпоинт + фронтенд страницы, полный TDD-цикл
+
+Синхронизация: main@e99cd1f (DKT-1 + DKT-2; TSKIA-1..4 уже в истории), дерево
+чистое (stash-остатки прошлой сессии подтверждены включёнными в 4157b6f и
+сброшены). Постановка тимлида: v2 — первый вертикальный срез «Причины»
+(XAI, паттерн C по §11.2), требует бэкенд-эндпоинта и полного TDD-цикла;
+ZIP в download; AGENTS.md.
+
+### Декомпозиция (§10 дополнения: v2 = срез «Причины» + чип истории запусков + configurable)
+
+- TSKV2-1 — вертикальный срез «Причины» (§10.1, паттерн C §11.2) — ЭТОТ СРЕЗ;
+- чип истории запусков (маленький бэкенд-эндпоинт списка запусков) — НЕ затронут,
+  отдельная задача v2 (в постановке тимлида срез ограничен «Причинами»);
+- прототип `configurable` на «Принятии решений» — НЕ затронут (v2, отдельный срез).
+
+### Проектирование (§10.1: «просмотр уже вычисленного», простейший контракт входа)
+
+Инвентаризация вычисленных фактов (программно, не по памяти):
+- Feature importance: `backtesting.py:650` — каждый fold бэктеста
+  tree-моделей (random_forest/xgboost/lightgbm/catboost — 4 адаптера,
+  model_impls) persist-ит `feature_importance` с oracle-привязкой
+  (`bind_feature_importance`, feature_plan.py:962: plan_id/matrix_hash/
+  fit_policy + importances[]). Данные УЖЕ вычислены и лежат в
+  `session.modeling_artifacts["backtests"][model_id]["folds"][i]`.
+- Model Card: `create_model_card` reserves `feature_importance: None`
+  (modeling_session.py:3255) — поле-заготовка, никогда не заполняется.
+  Артефакт бэктеста привязан к карте через training.backtest_run_id.
+- Granger: EDA считает по запросу аналитика (GET /dataset/eda-feature-selection,
+  session.py:808) и НЕ persist-ит в сессию — «уже вычисленного» артефакта нет.
+- SHAP/PDP: движком НЕ вычисляются нигде (grep: import shap — 0 файлов).
+- Ensemble-карты: fold-importances членов в ensemble_backtests, но честная
+  агрегация по членам — отдельное решение (прецедент честного отказа
+  ансамбля — test_forecast_rejects_ensemble_card_honestly).
+
+Следствие (честная маркировка §9.1): первый срез отдаёт БЕЗ пересчётов
+только fold-importance как доступный метод; Granger/SHAP/PDP — строки
+реестра методов со статусом not_computed и честной причиной (не
+фиктивные данные). Контракт входа `model_card` (§2 исходной спеки).
+
+### Решение: бэкенд
+
+- НОВЫЙ apps/api/routers/tasks_session.py — GET /causes (prefix
+  /v1/session/tasks, mounting в main.py рядом с modeling_session):
+  card_id опционален (дефолт — последняя карта по created_at, тот же
+  порядок, что TaskArtifactRibbon); нет карт — 409 с причиной (хаб
+  гейтит, прямой URL — честный отказ, прецедент 409 моделирования);
+  ensemble-карта — методы с not_computed/причиной, не 5xx.
+- Агрегация fold-importance: внутри каждого fold доля importance/sum
+  (сырые MDI разных fold несопоставимы по масштабу), средняя доля по
+  fold, сортировка по убыванию; per-fold сырые значения и matrix_hash —
+  в деталь фактора; provenance (run_id/plan_id) — в метод.
+- Ответ: {card, methods:[{method_id,title,status,reason?,factors?,...}]}.
+
+### Решение: фронтенд (паттерн C §11.2, строительные блоки таблицы §11.2)
+
+- НОВЫЙ packages/ui/components/TasksCauses.tsx: 3 колонки по образцу
+  AppliedTasksNavigator (aside w-60 методы → aside w-80 факторы →
+  section деталь); бейджи «Когда использовать»/«Что нужно для запуска»
+  (классы StaticHalfBadge NavigatorHero); правая колонка — «Панель
+  управления» (обязательный блок §11.2) с деталью фактора: BarChart
+  средних долей факторов (выбранный подсвечен, топ-12) в контейнере
+  h-[468px] под ExpandableChartPanel + ExpandableChartsProvider
+  (обязательные блоки §11.2), таблица per-fold под графиком; цвета
+  Recharts — var(--c-*) (урок DKT-3: новых hex-литералов не создавать).
+- НОВЫЙ packages/ui/lib/tasks.ts: типы 1:1 ответу бэкенда + fetchCauses
+  (sessionApiUrl, credentials include — прецедент forecasting.ts).
+- Гейтинг страницы: stages.modeling !== done → честное пустое состояние
+  с микро-CTA на /modeling (прецедент R5-CTA хаба) БЕЗ похода в сеть;
+  409 бэкенда → состояние с причиной.
+- НОВЫЙ apps/standalone/app/tasks/causes/page.tsx (замена плейсхолдера);
+  экспорт в packages/ui/index.ts.
+
+### Точки изменения и риски
+
+- main.py (включение роутера — 1 строка); guard-тесты существующих
+  эндпоинтов не задействуют /v1/session/tasks (проверено grep).
+- Риск 500 на вложенных артефактах: все чтения через .get-цепочки;
+  отсутствующий бэктест-артефакт карты → not_computed с причиной, не 500.
+- Риск гидратации: fetch только в useEffect с alive-флагом (прецедент
+  TaskArtifactRibbon); jsdom-тесты мокают lib/модуль.
+- Риск Recharts в jsdom: polyfills jest.setup.js (ResizeObserver/
+  IntersectionObserver) — прецеденты EdaCorrelationOverview.test.
+- Тест-план (TDD RED→GREEN): tests/api/test_tasks_causes.py (контракт
+  409/статусы/агрегация/ensemble/provenance/порядок сортировки);
+  TasksCauses.test.tsx (паттерн C: 3 колонки, бейджи, статусы методов,
+  деталь фактора, honest-состояния, 468px+ExpandableChartPanel).
+
+### TDD (AGENTS.md: RED -> GREEN, оба контура)
+
+- Бэкенд RED подтверждён ДО реализации: 9/9 падений ровно одного вида
+  (404 {"detail":"Not Found"} — маршрута /v1/session/tasks/causes нет).
+  НОВЫЙ tests/api/test_tasks_causes.py: контракт входа (409 без карт с
+  причиной про Model Card; 404 неизвестный card_id), реестр 4 методов
+  с честными статусами (fold_importance available, granger/shap/pdp
+  not_computed с непустой причиной и factors=null), агрегация
+  (сумма долей внутри КАЖДОГО fold = 1; сумма средних долей = 1;
+  сортировка по убыванию; per-factor fold_values отсортированы),
+  provenance (backtest_run_id/plan_id/n_folds=2, matrix_hash в деталях),
+  дефолт-карта = последняя по created_at + явный card_id,
+  классическая модель (ets) — not_computed с причиной «не вычисляет
+  важность», ensemble-карта — честный отказ агрегации (сеанс через
+  посев model_cards: полный HTTP-путь до ensemble требует tuning),
+  отсутствующий артефакт бэктеста — 200/not_computed, не 500.
+- GREEN: 9/9. Находка в процессе: повторный compare/evaluate
+  инвалидирует прежние model_cards (lineage-дисциплина
+  modeling_session.py:2941/2985) — тест «две карты» построен на
+  повторном POST /card под тем же selection (как в селекторе
+  прогнозирования), а не на новом сравнении.
+- Фронтенд RED подтверждён ДО реализации: TS2307 (отсутствие модулей
+  TasksCauses/lib/tasks — только и именно это). GREEN 8/8: заголовок +
+  бейджи; honest-empty без сети с CTA /modeling; loading до гидратации
+  без сети; паттерн C (4 метода, недоступные disabled+aria-disabled,
+  причина видна в списке), «Панель управления», окно h-[468px],
+  ExpandableChartPanel-кнопка; факторы с долями (aria-pressed,
+  переключение, .recharts-responsive-container — jsdom-прецедент
+  NavigatorChartPreview: внутренний SVG в jsdom не строится);
+  провенанс run/plan; недоступные методы не выбираются (клик без
+  эффекта); ошибка бэкенда — role="alert" с причиной сервера.
+
+### Верификация (полная регрессия)
+
+- npx jest: 114 сюит / 1261 теста — все зелёные (было 112/1230 после
+  TSKIA: +2 сюиты этого среза; старые без правок).
+- typecheck:all (embedded + standalone) — без ошибок.
+- npm run build: standalone успешна, маршрут /tasks/causes на месте.
+- Backend: полный pytest tests/ — 2346 passed / 9 failed / 3 errors /
+  24 skipped. Все 9+3 — ПРЕДСУЩЕСТВЕННЫЕ, точное множество Task 145:
+  нейро-группа не установлена (integration-paths deepar/lstm/nbeats/
+  nhits/tft fail-closed, v2-дескрипторы, neural capacity,
+  catalog_only-метрики) + 3 snapshot-ошибки test_preprocessing
+  (версии pandas/numpy venv против пинов). Ни одного падения от
+  правок среза (stash-прогон чистого HEAD e99cd1f воспроизвёл те же 17).
+- Окружение восстановлено до сертификационной эпохи после сброса
+  между сессиями: pandera/PyWavelets/holidays/missingno/openpyxl/
+  plotly/ruptures/prophet 1.4.0/arch/tbats/statsforecast 2.1.1;
+  statsmodels 0.14.5 -> 0.15.0 (пин requirements.txt) — это сняло
+  16 предсущественных падений forecasting-контура (parametric
+  simulation требовал API statsmodels>=0.15).
+
+### Границы
+
+- Реестр методов среза: fold_importance (уже вычислено, Task 127)
+  доступен; granger/shap/pdp — честные not_computed-строки (Granger
+  не persist-ится сессией, SHAP/PDP движок не вычисляет) — пересчётов
+  и синтетики нет (§10.1 «просмотр уже вычисленного»).
+- Ensemble-карты: честный отказ агрегации по членам — отдельное решение.
+- Чип истории запусков (v2) и прототип configurable («Принятие
+  решений») — НЕ затронуты, отдельные задачи v2.
+- Multi-карточный селектор на странице — v3 (дефолт = последняя карта,
+  явный card_id поддержан эндпоинтом и lib).
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); работа в ZIP.
+
+Изменённые/новые файлы (ZIP: download/task_tskv2_causes_slice.zip):
+- НОВЫЕ: apps/api/routers/tasks_session.py,
+  tests/api/test_tasks_causes.py,
+  packages/ui/lib/tasks.ts,
+  packages/ui/components/TasksCauses.tsx,
+  packages/ui/components/TasksCauses.test.tsx
+- ИЗМЕНЕНЫ: apps/api/main.py (+include_router /v1/session/tasks),
+  packages/ui/index.ts (+экспорт TasksCauses),
+  apps/standalone/app/tasks/causes/page.tsx (плейсхолдер -> срез),
+  worklog/worklog7.md (этот журнал).
+
+### Ретаргет среза на 172be75 (2026-09-18, итерация 2)
+
+- Повод: на машине тимлида рабочая копия уже на 172be75 (PREPR-3; цепочка
+  e99cd1f → 1afb10b DKT-2R/3/4 → 172be75), а ZIP среза был собран от
+  e99cd1f и перезаписал packages/ui/index.ts версией без экспорта
+  ThemeToaster — typecheck standalone падал: TS2305 «@cisstat/ui has no
+  exported member ThemeToaster» (app/layout.tsx:4).
+- Действия: срез переналожен на 172be75 (без коммитов: reset → checkout
+  172be75 → восстановление файлов среза). index.ts слит: экспорт
+  TasksCauses (строка 276) соседствует с ThemeToaster (строка 603,
+  из 1afb10b). Бэкенд-файлы (tasks_session.py, main.py) и page.tsx
+  на 172be75 не менялись — применены как есть. worklog7.md — файл
+  172be75 + секция TSKV2-1 в конце.
+- Новая находка TDD-регрессии: heading-indigo-calibration.test.ts
+  (DKT-2R) — реестр text-[#1e3a8a] ожидал 9 инстансов в 4 файлах,
+  TasksCauses.tsx добавил 2 (hero-паттерн TasksHub: h1 + p). На базе
+  e99cd1f этого теста ещё не было — потому первая итерация была зелёной.
+  Тёмная ревизия класс-уровневая (тест «каждый класс имеет .dark-ревизию»
+  зелёный без правок), поэтому по контракту реестра обновлён инвентарь:
+  9→11 инстансов, 4→5 файлов (+TasksCauses.tsx), комментарий и шапка.
+- Верификация на 172be75: pytest tests/api/test_tasks_causes.py — 9/9;
+  jest TasksCauses — 8/8; jest ПОЛНЫЙ — 118 сюит / 1288 тестов, все
+  зелёные; typecheck:all (embedded + standalone) — без ошибок (TS2305
+  устранён); npm run build — успех, маршрут /tasks/causes на месте.
+- Полный бэкенд-pytest не перегонялся: бэкенд-файлы среза байт-в-байт
+  совпадают с верифицированной итерацией 1 (на e99cd1f: 2346 passed /
+  17 предсущественных), main.py на 172be75 не менялся.
+- ZIP (итерация 2): download/task_tskv2_causes_slice.zip — 10 файлов
+  (9 из итерации 1 + packages/ui/heading-indigo-calibration.test.ts).

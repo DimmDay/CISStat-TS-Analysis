@@ -1,8 +1,11 @@
 // apps/standalone/app/tasks/causes/page.tsx
-// Плейсхолдер-маршрут задачи хаба (spec_tasks_ia.md §7): содержимое
-// задачи — отдельный вертикальный срез, каркас поставляет хаб.
-import { ModulePlaceholder } from "@cisstat/ui";
+//
+// Вертикальный срез задачи «Причины» (XAI) — v2 первого среза задач
+// (spec_tasks_ia_addendum_v1_1.md §10/§10.1). Плейсхолдер §7 заменён
+// живой страницей паттерна C (§11.2): методы → факторы → деталь.
+// Сессия — AppShellProvider в layout.tsx (общая с хабом).
+import { TasksCauses } from "@cisstat/ui";
 
 export default function Page() {
-  return <ModulePlaceholder title="Причины" />;
+  return <TasksCauses />;
 }

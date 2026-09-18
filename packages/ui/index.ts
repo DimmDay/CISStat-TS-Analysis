@@ -269,6 +269,11 @@ export { ModulePlaceholder } from "./components/ModulePlaceholder";
 export { TasksHub } from "./components/TasksHub";
 export { TaskCard } from "./components/TaskCard";
 export type { TaskCardProps } from "./components/TaskCard";
+
+// Вертикальный срез задачи «Причины» (v2, XAI — spec_tasks_ia_addendum_v1_1.md
+// §10/§10.1): паттерн C §11.2 (методы → факторы → деталь), данные —
+// GET /v1/session/tasks/causes (apps/api/routers/tasks_session.py).
+export { TasksCauses } from "./components/TasksCauses";
 export {
   TASK_ROUTES,
   ARTIFACT_STAGE,

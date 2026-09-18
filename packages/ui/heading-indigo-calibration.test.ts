@@ -15,8 +15,10 @@
 //    DKT-2 §3).
 //
 // Инвентарь (программный скан, произвольные hex-классы текста): ровно
-// 9 инстансов text-[#1e3a8a] в 4 файлах — hero-заголовки (h1/h2) и
-// подзаголовки (p) home / navigator / tasks / platform-introduction.
+// 11 инстансов text-[#1e3a8a] в 5 файлах — hero-заголовки (h1/h2) и
+// подзаголовки (p) home / navigator / tasks / platform-introduction /
+// tasks-causes (TasksCauses добавлен срезом TSKV2-1, тот же hero-паттерн,
+// тёмная ревизия общая — класс-уровневая).
 // Это единственные произвольные цветовые классы платформы — тест
 // инвентаря запрещает появление новых без тёмной ревизии.
 //
@@ -38,10 +40,13 @@ const HERO_FILES = [
   "packages/ui/components/NavigatorHero.tsx",
   "packages/ui/components/TasksHub.tsx",
   "packages/ui/components/PlatformIntroduction.tsx",
+  "packages/ui/components/TasksCauses.tsx",
 ] as const;
 
 const HERO_CLASS = "text-[#1e3a8a]";
-const HERO_INSTANCES_TOTAL = 9; // 2 + 4 + 2 + 1
+const HERO_INSTANCES_TOTAL = 11; // 2 + 4 + 2 + 1 + 2 (TasksCauses — TSKV2-1,
+// hero-паттерн TasksHub: h1 + p-подзаголовок; тёмная ревизия класс-уровневая,
+// та же utility-ревизия §6.2 — отдельных правок не требует)
 
 // ── инфраструктура (те же примитивы, что в dark-catalog-contrast.test.ts) ──
 
@@ -139,7 +144,7 @@ describe("DKT-2R: инвентарь произвольных цветовых �
     expect(missing).toEqual([]);
   });
 
-  it("инвентарь hero-заголовков зафиксирован: 9 инстансов text-[#1e3a8a] в 4 файлах", () => {
+  it("инвентарь hero-заголовков зафиксирован: 11 инстансов text-[#1e3a8a] в 5 файлах", () => {
     const perFile = found.get(HERO_CLASS) ?? [];
     expect(perFile).toHaveLength(HERO_INSTANCES_TOTAL);
     for (const rel of HERO_FILES) {
