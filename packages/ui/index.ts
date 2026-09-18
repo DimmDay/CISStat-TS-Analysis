@@ -24,9 +24,11 @@ export { NavigatorWavesBackground } from "./components/NavigatorWavesBackground"
 // HomeFooter: футер главной страницы standalone (Task w/n, 2026-09-13).
 // Шаблон — футер главной страницы портала CISStat (структура 1:1 из
 // продового DOM; блок legal-дисклеймера под футером игнорируется).
-// Пока только на главной: фон параметризуется пропом backgroundColor
-// (на главной — #CAD7F7), текст чёрный, углы rounded-2xl по паттерну
-// фоновой коробки. Embedded не подключается.
+// Пока только на главной и /navigator: фон параметризуется пропом
+// backgroundColor, без пропа — тематический токен (светлая #CAD7F7,
+// DKT-5: тёмная ревизия #171D2C), текст чёрный (в тёмной — ревизия
+// neutral-900), углы rounded-2xl по паттерну фоновой коробки.
+// Embedded не подключается.
 export { HomeFooter } from "./components/HomeFooter";
 export {
   FOOTER_COLUMNS,

@@ -1251,3 +1251,63 @@ AppShellContext (deriveTaskGateState — бэкенд-контракт чест�
   эталонного контракта Валидации)
 - packages/ui/components/TasksHub.test.tsx, apps/standalone/app/tasks/
   page.test.tsx (стабы refreshSession в моках контекста)
+
+---
+
+## SYNC-BA1C645 (2026-09-18) — Синхронизация WIP DKT-5 с ba1c645; аудит затирания после TSKV2-1
+
+Контекст: срез «Причины» моего исполнения (CAUSES-1, WIP поверх 172be75,
+фронтенд на движке EDA) тимлид развил в TSKV2-1 (c56727d): выделенный
+бэкенд GET /v1/session/tasks/causes (tasks_session.py) + фронтенд с
+Recharts-лентой; следом PREPR-4 (ba1c645). Задача: синхронизировать
+локальное дерево до ba1c645 и проверить, не затирают ли мои WIP-файлы
+проделанную работу.
+
+### Вердикт аудита затирания
+
+Пять файлов моего WIP-наложения пересекались с TSKV2-1 и при применении
+ЗАТЁРЛИ бы коммитную работу — они сознательно ОТБРОШЕНЫ в пользу апстрима:
+
+1. packages/ui/components/TasksCauses.tsx — моя версия ходила в
+   eda-feature-selection; апстримная — в выделенный
+   /v1/session/tasks/causes, с токеной Recharts-лентой (DKT-3-урок).
+2. packages/ui/components/TasksCauses.test.tsx — коммитные тесты
+   контракта апстрима (3 колонки, статусы методов) заменили бы мои.
+3. packages/ui/index.ts — мой блок экспортов task-causes ссылался бы на
+   удалённую lib/task-causes.ts → сломал бы typecheck; экспорт
+   TasksCauses в апстриме уже есть.
+4. apps/standalone/app/tasks/causes/page.tsx — версии эквивалентны
+   (<TasksCauses />), взят апстримный файл с его JSDoc.
+5. worklog/worklog7.md — моя запись CAUSES-1 стёрла бы +635 строк
+   TSKV2-1/PREPR-4; взята апстримная версия, настоящая запись —
+   аддитивная.
+
+Также отброшены (сверхсетевые, дублируют TSKV2-1): packages/ui/lib/
+task-causes.ts (+тест), apps/standalone/app/tasks/causes/page.test.tsx.
+Бэкап отброшенного — scripts/causes1_wip_backup/ (вне репо).
+
+### Сохранённый WIP (не пересекается с апстримом — DKT-5/§10/футер)
+
+- Патч применён пофайлово (git apply --include) к 10 файлам: globals.css
+  (--c-footer-bg x2 + .dark .home-footer; :root-инвариант не тронут),
+  HomeFooter.tsx/.test.tsx (var-фон, тёмная ревизия #171D2C),
+  dark-catalog-contrast.test.ts, tailwind-preset.test.ts,
+  spec_dark_theme.md (§10 фиксация, §7 DKT-5), page.tsx/.test.tsx,
+  navigator/page.tsx/.test.tsx (подключение футера) — ВСЕ 10 не
+  изменялись ни в c56727d, ни в ba1c645.
+- index.ts — только хунок комментария HomeFooter (DKT-5-ревизия),
+  вручную, поверх апстримной версии.
+- Возвращены untracked: dkt5-footer-dark.test.tsx (12),
+  dkt5-open-questions.test.ts (11), scripts/task_dkt5/,
+  docs/task_dkt5_prod_dark_home.png.
+
+### Верификация на ba1c645 + WIP
+
+- Чистый ba1c645: jest 1295/1295 зелёные (контрольный прогон на stash).
+- Дерево ba1c645 + DKT-5 WIP: 121 сюита / 1319 теста зелёные — прирост
+  ровно +24 (23 dkt5-теста + 1 тест footer-пары в
+  dark-catalog-contrast), ни один из 1295 апстримных не потерян и не
+  красный → затирания НЕТ.
+- typecheck:all чисто; build:all успешно (embedded + standalone).
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); overlay в ZIP
+  download/task_dkt5_footer_overlay_ba1c645.zip.

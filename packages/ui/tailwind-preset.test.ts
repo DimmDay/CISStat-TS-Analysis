@@ -27,7 +27,8 @@ const globalsCss = readFileSync(GLOBALS_PATH, "utf8");
 
 // Нейтральная рампа: заняты ВСЕ шаги 50..950 + white + black.
 // black НЕ инвертируется (роль: текст/оверлеи на нетокенизированных
-// поверхностях — HomeFooter с проп-фоном #CAD7F7, подложка EventsLogDrawer).
+// поверхностях — подложка EventsLogDrawer; с DKT-5 футер HomeFooter
+// токенизирован --c-footer-bg и выведен из роли black).
 const NEUTRAL_STEPS = [
   "50", "100", "200", "300", "400", "500", "600", "700", "800", "900", "950",
 ] as const;

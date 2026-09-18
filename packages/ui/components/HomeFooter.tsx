@@ -26,8 +26,17 @@
 //   - hover:text-white → hover:underline (светлая тема);
 //   - decoration-white/30 → decoration-black/30.
 // Плюс требования главной страницы standalone: углы rounded-2xl по
-// паттерну фоновой коробки HomeWavesBackground; футер подключён только
-// на главной (apps/standalone/app/page.tsx), embedded не затронут.
+// паттерну фоновой коробки HomeWavesBackground; футер подключён на
+// главной и /navigator standalone, embedded не затронут.
+//
+// DKT-5 (2026-09-18, «футер тоже конвертируем в тёмную тему»): фон
+// токенизирован — без явного пропа инлайновый стиль ссылается на
+// rgb(var(--c-footer-bg)) (светлый #CAD7F7 / тёмный #171D2C, globals.css);
+// явный проп сохраняет контракт «фон — свой для каждой страницы» (точный
+// цвет в обеих темах). Текстовая ревизия тёмной темы — scoped-правилами
+// .dark .home-footer в globals.css (§6.2): классы text-black и альфы
+// остаются в компоненте, в тёмной теме принимают значения neutral-900.
+// Контроль: packages/ui/dkt5-footer-dark.test.tsx.
 //
 // Контент дата-дривен из lib/homeFooter.ts. Без "use client":
 // компонент полностью статичен, форма поиска — нативная (как в
@@ -41,20 +50,27 @@ import {
   FOOTER_SEARCH_LABEL,
   FOOTER_SEARCH_PLACEHOLDER,
   FOOTER_LEGAL_LINKS,
-  FOOTER_HOME_BACKGROUND_COLOR,
 } from "../lib/homeFooter";
 
 export function HomeFooter({
-  backgroundColor = FOOTER_HOME_BACKGROUND_COLOR,
+  backgroundColor,
 }: {
-  /** Фон футера — свой для каждой страницы; на главной — #CAD7F7. */
+  /** Фон футера — свой для каждой страницы (явный проп = точный цвет в
+   * обеих темах); без пропа — тематический токен (--c-footer-bg:
+   * на главной #CAD7F7 в светлой, тёмная ревизия #171D2C). */
   backgroundColor?: string;
 }) {
+  // DKT-5: без явного пропа фон следует теме через var(--c-footer-bg);
+  // светлый литерал #CAD7F7 живёт в globals.css :root и продублирован
+  // константой FOOTER_HOME_BACKGROUND_COLOR (кросс-чек в тест-сюите).
+  const resolvedBackground =
+    backgroundColor ?? "rgb(var(--c-footer-bg))";
+
   return (
     <footer
       aria-label="Подвал сайта"
-      className="rounded-2xl px-7 pt-4 text-black"
-      style={{ backgroundColor }}
+      className="home-footer rounded-2xl px-7 pt-4 text-black"
+      style={{ backgroundColor: resolvedBackground }}
     >
       <div className="grid grid-cols-4 gap-5">
         {FOOTER_COLUMNS.map((column) => (

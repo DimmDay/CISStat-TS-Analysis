@@ -13,8 +13,8 @@
 //     по прямой команде тимлида;
 //   - футер пока ТОЛЬКО на главной странице standalone (подключает
 //     apps/standalone/app/page.tsx; embedded не трогается);
-//   - фон футера — свой для каждой страницы; на главной — #CAD7F7
-//     (проп backgroundColor с дефолтом главной страницы);
+//   - фон футера — свой для каждой страницы (явный проп); без пропа —
+//     тематический токен var(--c-footer-bg) (светлая #CAD7F7 — DKT-5);
 //   - цвет текста — чёрный (text-black): тёмная тема шаблона
 //     (text-white/text-neutral-300) адаптирована в светлую;
 //   - углы сглажены ПО ПАТТЕРНУ ФОНА страницы — тот же токен
@@ -43,11 +43,15 @@ describe("HomeFooter", () => {
     expect(footer).toHaveAttribute("aria-label", "Подвал сайта");
   });
 
-  it("uses the main-page background color #CAD7F7 by default (inline style)", () => {
+  it("uses the themed footer token by default (var(--c-footer-bg) = #CAD7F7 in light)", () => {
     const { container } = render(<HomeFooter />);
     const footer = container.querySelector("footer")!;
-    // jsdom нормализует hex к rgb(...); #CAD7F7 === rgb(202, 215, 247)
-    expect(footer.style.backgroundColor).toBe("rgb(202, 215, 247)");
+    // DKT-5: без явного пропа фон следует теме через var(--c-footer-bg)
+    // (светлая #CAD7F7 / тёмная #171D2C, globals.css); jsdom не резолвит
+    // var() в CSSOM — проверяем строку атрибута style.
+    expect(footer.getAttribute("style") ?? "").toContain("var(--c-footer-bg)");
+    // светлое значение токена — байт-инвариант: константа == :root
+    // (кросс-чек декларации — в dkt5-footer-dark.test.tsx).
     expect(FOOTER_HOME_BACKGROUND_COLOR).toBe("#CAD7F7");
   });
 

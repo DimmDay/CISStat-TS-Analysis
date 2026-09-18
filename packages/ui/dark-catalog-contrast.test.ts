@@ -63,7 +63,9 @@ export function contrastRatio(a: string, b: string): number {
 }
 
 const PAGE_BG_DARK = "#0B0C10"; // фон страницы (каталог §6.1; body — DKT-4)
-const FOOTER_PROP_BG = "#CAD7F7"; // HomeFooter проп-фон (не токен; DKT-3 handoff)
+// HomeFooter: с DKT-5 фон токенизирован (--c-footer-bg: светлая #CAD7F7 /
+// тёмная #171D2C); текст в тёмной ревизируется в neutral-900
+// (scoped-правила .dark .home-footer в globals.css) — пары ниже.
 const WHITE_FG = "white-fg"; // текст на заливках (utility-ревизия §6.2)
 
 type PairMode = "aa" | "dark" | "baseline";
@@ -133,8 +135,9 @@ const PAIRS: Pair[] = [
   { bg: "sky-50", fg: "sky-800", darkThreshold: 4.5, mode: "aa" },
   { bg: "sky-50", fg: "sky-950", darkThreshold: 4.5, mode: "aa" },
 
-  // ── HomeFooter: проп-фон (не токен) ↔ text-black ──
-  { bg: FOOTER_PROP_BG, fg: "black", darkThreshold: 4.5, mode: "dark", note: "black НЕ инвертируется (проп-фон светлый в обеих темах до DKT-3)" },
+  // ── HomeFooter (DKT-5: тематический фон --c-footer-bg) ──
+  { bg: "footer-bg", fg: "black", darkThreshold: 4.5, mode: "baseline", lightRatio: 14.57, darkExempt: true, note: "светлая: чёрный текст на #CAD7F7 (факт-инвариант); в тёмной текст ревизируется в neutral-900 — пара ниже" },
+  { bg: "footer-bg", fg: "neutral-900", darkThreshold: 4.5, mode: "dark", note: "тёмная ревизия футера: .dark .home-footer .text-black → neutral-900 (#171D2C, 15.03:1)" },
 
   // ── Индикаторы (не-текстовые элементы ≥3:1 против карточки) ──
   { bg: "white", fg: "green-500", darkThreshold: 3.0, mode: "dark", lightRatio: 2.28, note: "точки статусов" },
@@ -168,7 +171,7 @@ describe("Контраст-аудит каталога: WCAG AA (DKT-2 орак�
 
   it("обе темы содержат полный набор токенов каталога", () => {
     const occupied = [
-      "white", "black", "white-fg",
+      "white", "black", "white-fg", "footer-bg",
       ...Array.from({ length: 11 }, (_, i) => `neutral-${[50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950][i]}`),
       "brand", "brand-light", "brand-bright",
     ];

@@ -54,9 +54,10 @@ describe("Standalone home page", () => {
 
     expect(footer?.tagName).toBe("FOOTER");
     expect(footer?.className).toContain("rounded-2xl");
-    // jsdom нормализует hex к rgb(...); #CAD7F7 === rgb(202, 215, 247)
-    expect((footer as HTMLElement)?.style.backgroundColor).toBe(
-      "rgb(202, 215, 247)",
+    // DKT-5: фон тематический — var(--c-footer-bg) (светлая #CAD7F7,
+    // тёмная #171D2C); jsdom не резолвит var() — атрибут style.
+    expect((footer as HTMLElement)?.getAttribute("style") ?? "").toContain(
+      "var(--c-footer-bg)",
     );
     // Футер — ПОСЛЕДНИЙ ребёнок потока: за ним только фон-absolute
     expect(content?.querySelector(":scope > footer")).toBe(footer);
