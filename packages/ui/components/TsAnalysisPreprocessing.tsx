@@ -501,6 +501,19 @@ export function TsAnalysisPreprocessing() {
   const [modeSaving, setModeSaving] = useState<string | null>(null);
   const [modeError, setModeError] = useState<{ checkId: string; message: string } | null>(null);
 
+  // ── Версия состояния датасета модуля (инвалидация всех профилей) ──
+  // Применение исправления в ЛЮБОЙ остановке (onApplied всех 10 мастеров)
+  // мутирует активный датасет сессии — после этого профили ВСЕХ остановок
+  // (их applicability-гейты зависят от пропусков/выбросов/регулярности,
+  // см. preprocessing_decomposition.py: «В ряду N пропусков; сначала
+  // завершите остановку „Пропуски“») становятся устаревшими. Единый
+  // счётчик в deps всех profile-fetch useEffect гарантирует, что после
+  // каждого применения степпер, бейджи, метрики и Обзоры автоматически
+  // перезапрашиваются — без перезагрузки страницы. Собственные
+  // xxxRefreshKey остаются точками РУЧНОГО пересчёта (смена режима,
+  // кнопка «Пересчитать») и чужие профили не инвалидируют.
+  const [datasetVersion, setDatasetVersion] = useState(0);
+
   // ── Остановка «Пропуски»: реальный статус вместо мока ──
   // Лёгкий собственный запрос профиля (тот же /dataset/missing-profile,
   // что использует и PreprocessingMissingOverview) -- нужен здесь отдельно,
@@ -543,7 +556,7 @@ export function TsAnalysisPreprocessing() {
       }
     })();
     return () => { active = false; };
-  }, [missingRefreshKey]);
+  }, [missingRefreshKey, datasetVersion]);
 
   // Режим и статус остановки «Пропуски» приходят напрямую с бэкенда
   // (единый источник истины -- та же политика auto/enabled/disabled, что
@@ -595,7 +608,7 @@ export function TsAnalysisPreprocessing() {
       }
     })();
     return () => { active = false; };
-  }, [outliersRefreshKey]);
+  }, [outliersRefreshKey, datasetVersion]);
 
   const outliersStatus: CheckStatus = outliersLoading
     ? "running"
@@ -642,7 +655,7 @@ export function TsAnalysisPreprocessing() {
       }
     })();
     return () => { active = false; };
-  }, [regularityRefreshKey]);
+  }, [regularityRefreshKey, datasetVersion]);
 
   const regularityStatus: CheckStatus = regularityLoading
     ? "running"
@@ -689,7 +702,7 @@ export function TsAnalysisPreprocessing() {
       } finally { if (active) setDecompositionLoading(false); }
     })();
     return () => { active = false; };
-  }, [activeFeature, decompositionRefreshKey]);
+  }, [activeFeature, decompositionRefreshKey, datasetVersion]);
 
   const decompositionStatus: CheckStatus = decompositionLoading
     ? "running"
@@ -728,7 +741,7 @@ export function TsAnalysisPreprocessing() {
       } finally { if (active) setVarianceLoading(false); }
     })();
     return () => { active = false; };
-  }, [activeFeature, varianceRefreshKey]);
+  }, [activeFeature, varianceRefreshKey, datasetVersion]);
 
   const varianceStatus: CheckStatus = varianceLoading ? "running" : varianceNoDataset ? "skipped" : varianceError ? "error" : varianceProfile ? varianceProfile.status : "pending";
 
@@ -759,7 +772,7 @@ export function TsAnalysisPreprocessing() {
       } finally { if (active) setSmoothingLoading(false); }
     })();
     return () => { active = false; };
-  }, [activeFeature, smoothingRefreshKey]);
+  }, [activeFeature, smoothingRefreshKey, datasetVersion]);
 
   const smoothingStatus: CheckStatus = smoothingLoading ? "running" : smoothingNoDataset ? "skipped" : smoothingError ? "error" : smoothingProfile ? smoothingProfile.status : "pending";
 
@@ -791,7 +804,7 @@ export function TsAnalysisPreprocessing() {
       } finally { if (active) setStationarityLoading(false); }
     })();
     return () => { active = false; };
-  }, [activeFeature, stationarityRefreshKey]);
+  }, [activeFeature, stationarityRefreshKey, datasetVersion]);
 
   const stationarityStatus: CheckStatus = stationarityLoading ? "running" : stationarityNoDataset ? "skipped" : stationarityError ? "error" : stationarityProfile ? stationarityProfile.status : "pending";
 
@@ -832,7 +845,7 @@ export function TsAnalysisPreprocessing() {
       } finally { if (active) setSpectralLoading(false); }
     })();
     return () => { active = false; };
-  }, [activeFeature, spectralRefreshKey, spectralParameters]);
+  }, [activeFeature, spectralRefreshKey, spectralParameters, datasetVersion]);
 
   const spectralStatus: CheckStatus = spectralLoading ? "running" : spectralNoDataset ? "skipped" : spectralError ? "error" : spectralProfile ? spectralProfile.status : "pending";
 
@@ -846,7 +859,6 @@ export function TsAnalysisPreprocessing() {
   useEffect(() => {
     let active = true;
     setFeatureGenerationError(null); setFeatureGenerationNoDataset(false);
-    if (activeCheckId !== "feature_eng") { setFeatureGenerationLoading(false); return () => { active = false; }; }
     if (!activeFeature) { setFeatureGenerationProfile(null); setFeatureGenerationLoading(false); return () => { active = false; }; }
     setFeatureGenerationLoading(true);
     void (async () => {
@@ -864,7 +876,7 @@ export function TsAnalysisPreprocessing() {
       } finally { if (active) setFeatureGenerationLoading(false); }
     })();
     return () => { active = false; };
-  }, [activeFeature, featureGenerationRefreshKey, activeCheckId]);
+  }, [activeFeature, featureGenerationRefreshKey, datasetVersion]);
 
   const featureGenerationStatus: CheckStatus = featureGenerationLoading ? "running" : featureGenerationNoDataset ? "skipped" : featureGenerationError ? "error" : featureGenerationProfile ? featureGenerationProfile.status : "pending";
 
@@ -878,7 +890,6 @@ export function TsAnalysisPreprocessing() {
   useEffect(() => {
     let active = true;
     setScalingError(null); setScalingNoDataset(false);
-    if (activeCheckId !== "scaling") { setScalingLoading(false); return () => { active = false; }; }
     if (!activeFeature) { setScalingProfile(null); setScalingLoading(false); return () => { active = false; }; }
     setScalingLoading(true);
     void (async () => {
@@ -896,7 +907,7 @@ export function TsAnalysisPreprocessing() {
       } finally { if (active) setScalingLoading(false); }
     })();
     return () => { active = false; };
-  }, [activeFeature, scalingRefreshKey, activeCheckId]);
+  }, [activeFeature, scalingRefreshKey, datasetVersion]);
 
   const scalingStatus: CheckStatus = scalingLoading ? "running" : scalingNoDataset ? "skipped" : scalingError ? "error" : scalingProfile ? scalingProfile.status : "pending";
 
@@ -1324,22 +1335,22 @@ export function TsAnalysisPreprocessing() {
           </p>
 
           {activeCheckId === "missing" && descriptionSection === "pipeline" ? (
-            <PreprocessingMissingPipeline onApplied={() => setMissingRefreshKey((k) => k + 1)} />
+            <PreprocessingMissingPipeline onApplied={() => setDatasetVersion((v) => v + 1)} />
           ) : activeCheckId === "missing" ? (
             <PreprocessingMissingOverview refreshKey={missingRefreshKey} />
           ) : activeCheckId === "outliers" && descriptionSection === "pipeline" ? (
-            <PreprocessingOutliersPipeline onApplied={() => setOutliersRefreshKey((k) => k + 1)} />
+            <PreprocessingOutliersPipeline onApplied={() => setDatasetVersion((v) => v + 1)} />
           ) : activeCheckId === "outliers" ? (
             <PreprocessingOutliersOverview refreshKey={outliersRefreshKey} column={activeFeature} />
           ) : activeCheckId === "regularity" && descriptionSection === "pipeline" ? (
-            <PreprocessingRegularityPipeline onApplied={() => setRegularityRefreshKey((k) => k + 1)} />
+            <PreprocessingRegularityPipeline onApplied={() => setDatasetVersion((v) => v + 1)} />
           ) : activeCheckId === "regularity" ? (
             <PreprocessingRegularityOverview refreshKey={regularityRefreshKey} />
           ) : activeCheckId === "decomposition" && descriptionSection === "pipeline" ? (
             <PreprocessingDecompositionPipeline
               column={activeFeature}
               profile={decompositionProfile?.profile ?? null}
-              onApplied={() => setDecompositionRefreshKey((k) => k + 1)}
+              onApplied={() => setDatasetVersion((v) => v + 1)}
             />
           ) : activeCheckId === "decomposition" ? (
             <PreprocessingDecompositionOverview
@@ -1352,7 +1363,7 @@ export function TsAnalysisPreprocessing() {
             <PreprocessingVariancePipeline
               column={activeFeature}
               recommendedMethod={varianceProfile?.profile.selected_method ?? null}
-              onApplied={() => setVarianceRefreshKey((k) => k + 1)}
+              onApplied={() => setDatasetVersion((v) => v + 1)}
             />
           ) : activeCheckId === "variance_stab" ? (
             <PreprocessingVarianceOverview
@@ -1365,7 +1376,7 @@ export function TsAnalysisPreprocessing() {
             <PreprocessingSmoothingPipeline
               column={activeFeature}
               recommendedMethod={smoothingProfile?.profile.selected_method ?? null}
-              onApplied={() => setSmoothingRefreshKey((k) => k + 1)}
+              onApplied={() => setDatasetVersion((v) => v + 1)}
             />
           ) : activeCheckId === "smoothing" ? (
             <PreprocessingSmoothingOverview
@@ -1379,7 +1390,7 @@ export function TsAnalysisPreprocessing() {
               column={activeFeature}
               recommendedMethod={stationarityProfile?.profile?.selected_method ?? null}
               seasonalPeriod={stationarityProfile?.profile?.seasonal_period ?? 12}
-              onApplied={() => setStationarityRefreshKey((k) => k + 1)}
+              onApplied={() => setDatasetVersion((v) => v + 1)}
             />
           ) : activeCheckId === "stationarity" ? (
             <PreprocessingStationarityOverview
@@ -1394,7 +1405,7 @@ export function TsAnalysisPreprocessing() {
               profile={spectralProfile?.profile ?? null}
               parameters={spectralParameters}
               onParametersChange={(changes) => setSpectralParameters((current) => ({ ...current, ...changes }))}
-              onApplied={() => setSpectralRefreshKey((key) => key + 1)}
+              onApplied={() => setDatasetVersion((v) => v + 1)}
             />
           ) : activeCheckId === "spectral" ? (
             <PreprocessingSpectralOverview
@@ -1408,7 +1419,7 @@ export function TsAnalysisPreprocessing() {
             <PreprocessingFeatureEngineeringPipeline
               column={activeFeature}
               profile={featureGenerationProfile?.profile ?? null}
-              onApplied={() => setFeatureGenerationRefreshKey((key) => key + 1)}
+              onApplied={() => setDatasetVersion((v) => v + 1)}
             />
           ) : activeCheckId === "feature_eng" ? (
             <PreprocessingFeatureEngineeringOverview
@@ -1421,7 +1432,7 @@ export function TsAnalysisPreprocessing() {
             <PreprocessingScalingPipeline
               targetColumn={activeFeature}
               profile={scalingProfile?.profile ?? null}
-              onApplied={() => setScalingRefreshKey((key) => key + 1)}
+              onApplied={() => setDatasetVersion((v) => v + 1)}
             />
           ) : activeCheckId === "scaling" ? (
             <PreprocessingScalingOverview

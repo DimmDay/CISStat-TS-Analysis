@@ -514,3 +514,107 @@ packages/ui/components/ForecastExportMenu.vars.test.ts,
 packages/ui/lib/chartVars.ts, scripts/task_dkt3/hex_to_var.py,
 docs/task_dkt2r_heading_calibration.md,
 docs/task_dkt3_dkt4_hex_to_vars.md.
+
+---
+
+## Task ID: PREPR-3 (2026-09-18) — Автообновление профилей остановок «Предобработки» после применения исправлений (единый datasetVersion)
+
+Синхронизация: main@e99cd1f (DKT-1 + DKT-2), рабочее дерево чистое до
+работы. Постановка тимлида: при наличии пропусков (и/или выбросов)
+блокируются остановки «Декомпозиция ряда», «Стабилизация дисперсии»,
+«Сглаживание ряда» и т.д. с плейсхолдером «В ряду N пропусков; сначала
+завершите остановку „Пропуски“»; после применения стратегии исправления
+в «Пропусках» остальные остановки об этом НЕ узнают — актуальное состояние
+модуля достигается только перезагрузкой страницы. Требуется автообновление
+после валидации каждой остановки. Воспроизвести, спроектировать,
+реализовать.
+
+### Репродукция (по коду, затем тестом)
+
+- Бэкенд честно гейтит применимость по СОСТОЯНИЮ датасета:
+  preprocessing_decomposition.py:94 / preprocessing_variance.py:64 /
+  preprocessing_smoothing.py:59 / preprocessing_stationarity.py:74 /
+  preprocessing_feature_engineering.py:34 возвращают
+  applicable=false + reason «В ряду N пропусков…» (декомпозиция при этом
+  status="skipped", status_reason="not_required" — routers/session.py:387).
+- Фронт: TsAnalysisPreprocessing кэширует профили 10 остановок в state;
+  profile-fetch useEffect зависят ТОЛЬКО от [activeFeature, xxxRefreshKey],
+  а onApplied мастера «Пропусков» бампил исключительно
+  setMissingRefreshKey → перезапрашивался ТОЛЬКО missing-профиль.
+  Профили остальных остановок оставались stale до ремонта компонента
+  (перезагрузка страницы).
+- Дополнительно: эффекты «Генерация признаков»/«Масштабирование» были
+  гейтированы activeCheckId (ленивая загрузка) — их статусы устаревали
+  даже БЕЗ посещения остановки (после визита до исправления).
+- RED-репродукция: 3 новых теста падают ровно на stale-бейджах
+  («STL выполнен…» не появляется; «Проверка пройдена, пропусков нет»
+  после чужого применения не наступает; статусы feature_eng/scaling на
+  монтировании отсутствуют).
+
+### Решение (одна точка изменения — родительский компонент)
+
+- Единый счётчик datasetVersion («версия состояния датасета модуля»):
+  контракт «применение исправления в ЛЮБОЙ остановке = мутация датасета =
+  инвалидация ВСЕХ профилей». Все 10 onApplied теперь бампят
+  setDatasetVersion (собственные xxxRefreshKey в onApplied больше не
+  нужны — собственный профиль остановки перезапрашивается тем же бампом).
+- datasetVersion добавлен в deps ВСЕХ 10 profile-fetch useEffect — после
+  каждого применения степпер/бейджи/метрики/Обзоры перезапрашиваются
+  автоматически (React 18 batching: один бамп = один ре-рендер = один
+  повторный fetch каждой остановки; гардируется ассертом
+  counts.decomposition === 2).
+- Снят ленивый гейт activeCheckId у feature_eng/scaling — контракт
+  унифицирован: «статусы всех 10 остановок всегда отражают текущий
+  датасет» (самый тяжёлый профиль — STL декомпозиции — и ранее считался
+  при монтировании; +2 запроса на монтирование в пределах принятого
+  компромисса «8 запросов при монтировании», комментарий к missing-эффекту).
+- Узкая зона инвалидации СОХРАНЕНА: смена режима остановки
+  (PUT preprocessing-check-modes) и кнопка «Пересчитать» бампят только
+  собственный xxxRefreshKey — датасет не мутируют, чужие профили не
+  инвалидируют (гард-тест: счётчик decomposition не растёт).
+
+### TDD (AGENTS.md: RED -> GREEN)
+
+- RED (подтверждён ДО правки компонента, ровно 3 падения): (1)
+  «after applying missing corrections the blocked decomposition stop
+  refreshes without a page reload» — полный сценарий постановки: мок
+  декомпозиции blocked (skipped + reason) до apply и done после; ассерты
+  бейджа «В ряду 2 пропусков…» → «STL выполнен, остаточная диагностика
+  пройдена», степпер done («Пройдено»), counts.decomposition === 2;
+  (2) симметрия «выбросы → пропуски» (after applying outliers
+  corrections the missing stop refreshes); (3) статусы feature_eng/
+  scaling загружаются на монтировании без визита остановки. Гард-тест
+  (4) «saving a stop's mode does not invalidate other stops' profiles»
+  зелёный уже в RED (фиксирует корректное существующее поведение).
+- GREEN: правки только TsAnalysisPreprocessing.tsx → 4/4 новых +
+  61/61 всего файла.
+
+### Верификация (полная регрессия)
+
+- Frontend: npx jest — 113 сюит / 1257 passed / 0 failed (полная
+  монорепо-регрессия; guard-тесты зелёные БЕЗ правок — arithmetics
+  baseline e99cd1f 113/1253, +4 новых).
+- npm run typecheck:all — 0 ошибок; npm run build:all — Compiled
+  successfully x2 (embedded + standalone).
+- Backend не затронут (0 файлов .py) — pytest-прогон не требуется
+  (прецедент frontend-only задач EDA-2/PREPR-1/VALID-2).
+- Мутационная кампания не проводилась (фронтовый diff 55 строк); критические
+  точки контракта прижаты тестами: снятие datasetVersion из deps любого
+  эффекта ловится тестом (1), гейт-регрессия — тестом (3), расширение
+  зоны инвалидации на смену режима — гардом (4).
+
+### Границы
+
+- DatasetPassportPanel (stage="exit") сознательно не инвалидируется
+  datasetVersion: паспорт — точка РУЧНОЙ фиксации («Зафиксировать»),
+  семантика подтверждённого снимка, а не автоматического профиля.
+- Кнопка «Пересчитать свойства после преобразования» для 6 остановок без
+  onClick (pre-existing) не тронута — вне мандата постановки.
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); работа в ZIP
+  download/task_prepr3_profile_auto_refresh.zip.
+
+Изменённые/новые файлы:
+- packages/ui/components/TsAnalysisPreprocessing.tsx (datasetVersion +
+  deps 10 эффектов + снятие гейта feature_eng/scaling + 10 onApplied)
+- packages/ui/components/TsAnalysisPreprocessing.test.tsx (+4 кейса в
+  новом describe «автообновление профилей после применения исправлений»)

@@ -1112,3 +1112,259 @@ describe("TsAnalysisPreprocessing — автозагрузка «Метрики 
     expect(screen.getByText(/Метрики и алгоритм: Выбросы/)).toBeInTheDocument();
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Автообновление профилей после применения исправлений (datasetVersion).
+//
+// ПРОБЛЕМА (репродукция из постановки): профиль остановки «Декомпозиция
+// ряда» вычисляется бэкендом с applicability-гейтом по состоянию датасета
+// (apps/api/preprocessing_decomposition.py: «В ряду N пропусков; сначала
+// завершите остановку "Пропуски"») — то же для «Стабилизации дисперсии»,
+// «Сглаживания», «Стационарности», «Спектра» и «Генерации признаков».
+// Родительский компонент кэширует профили в state, а onApplied мастера
+// «Пропусков» инвалидирует ТОЛЬКО missing-профиль. В результате после
+// применения исправления остановки-потребители продолжают показывать
+// устаревший плейсхолдер до перезагрузки страницы.
+//
+// КОНТРАКТ РЕШЕНИЯ: применение исправления в ЛЮБОЙ остановке (onApplied)
+// инвалидирует ВСЕ профили модуля (единый счётчик datasetVersion в deps
+// всех profile-fetch useEffect) — степпер, бейджи, метрики и Обзоры
+// обновляются автоматически, без перезагрузки страницы. Сохранение режима
+// остановки (PUT check-modes) мутации датасета не производит и профили
+// ДРУГИХ остановок не инвалидирует.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("TsAnalysisPreprocessing — автообновление профилей после применения исправлений", () => {
+  const BLOCKING_REASON = "В ряду 2 пропусков; сначала завершите остановку «Пропуски»";
+
+  const blockedDecomposition = {
+    mode: "auto",
+    status: "skipped",
+    status_reason: "not_required",
+    profile: {
+      ...DECOMPOSITION_PROFILE.profile,
+      applicable: false,
+      reason: BLOCKING_REASON,
+    },
+  };
+
+  const clearedMissingProfile = {
+    ...MISSING_PROFILE,
+    status: "done",
+    total_missing: 0,
+    rows_with_missing: 0,
+    rows_with_missing_pct: 0,
+    columns: [{ ...MISSING_PROFILE.columns[0], missing_count: 0, missing_pct: 0, missing_examples: [] }],
+  };
+
+  const clearedOutliersProfile = {
+    ...OUTLIERS_PROFILE,
+    status: "done",
+    total_outliers: 0,
+    outlier_rate_pct: 0,
+    affected_columns: [],
+    columns: [{ ...OUTLIERS_PROFILE.columns[0], outlier_count: 0, outlier_pct: 0, outlier_examples: [] }],
+  };
+
+  // Счётчик вызовов по URL-паттернам поверх общего роутера. Возвращает
+  // (fetch, counts) — counts мутирует по мере запросов и читается ассертами.
+  function countingFetch(counts: Record<string, number>): typeof fetch {
+    const inner = routeFetch();
+    return jest.fn((url: string, init?: RequestInit) => {
+      if (typeof url === "string") {
+        if (url.includes("missing-profile")) counts.missing = (counts.missing ?? 0) + 1;
+        if (url.includes("outlier-profile")) counts.outliers = (counts.outliers ?? 0) + 1;
+        if (url.includes("regularity-profile")) counts.regularity = (counts.regularity ?? 0) + 1;
+        if (url.includes("decomposition-profile")) counts.decomposition = (counts.decomposition ?? 0) + 1;
+        if (url.includes("variance-profile")) counts.variance = (counts.variance ?? 0) + 1;
+        if (url.includes("smoothing-profile")) counts.smoothing = (counts.smoothing ?? 0) + 1;
+        if (url.includes("stationarity-profile")) counts.stationarity = (counts.stationarity ?? 0) + 1;
+        if (url.includes("spectral-profile")) counts.spectral = (counts.spectral ?? 0) + 1;
+        if (url.includes("feature-generation-profile")) counts.featureGeneration = (counts.featureGeneration ?? 0) + 1;
+        if (url.includes("scaling-profile")) counts.scaling = (counts.scaling ?? 0) + 1;
+      }
+      return inner(url, init);
+    }) as unknown as typeof fetch;
+  }
+
+  it("after applying missing corrections the blocked decomposition stop refreshes without a page reload", async () => {
+    // Сценарий постановки: декомпозиция заблокирована пропусками; аналитик
+    // применяет исправление в «Пропусках» — остановка «Декомпозиция ряда»
+    // должна получить свежий профиль и зелёный статус БЕЗ перезагрузки.
+    const counts: Record<string, number> = {};
+    let applied = false;
+    global.fetch = jest.fn((url: string, init?: RequestInit) => {
+      if (typeof url === "string" && url.includes("/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            target_column: init?.method === "POST" ? JSON.parse(String(init.body)).column : "Price",
+            suggested_column: "Price",
+            available_columns: ["Price"],
+            has_dataset: true,
+          }),
+        });
+      }
+      if (typeof url === "string" && url.includes("missing-corrections") && init?.method === "POST") {
+        if (JSON.parse(String(init.body)).apply) applied = true;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            applied: Boolean(init.body && JSON.parse(String(init.body)).apply),
+            strategy: "median_mode", total_missing: 2, total_changed: 2,
+            total_still_missing: 0, rows_removed: 0, added_columns: [],
+            columns: [{ column: "Price", missing_count: 2, changed_count: 2, still_missing: 0, missing_examples: [1, 3], flag_column: null }],
+            profile: [{ ...MISSING_PROFILE.columns[0], missing_count: 0, missing_pct: 0, missing_examples: [] }],
+          }),
+        });
+      }
+      if (typeof url === "string" && url.includes("decomposition-profile")) {
+        counts.decomposition = (counts.decomposition ?? 0) + 1;
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(applied ? DECOMPOSITION_PROFILE : blockedDecomposition) });
+      }
+      if (typeof url === "string" && url.includes("missing-profile")) {
+        counts.missing = (counts.missing ?? 0) + 1;
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(applied ? clearedMissingProfile : MISSING_PROFILE) });
+      }
+      return (routeFetch() as unknown as (u: string, i?: RequestInit) => Promise<unknown>)(url, init);
+    }) as unknown as typeof fetch;
+
+    render(<TsAnalysisPreprocessing />);
+
+    // ДО применения: бейдж «Декомпозиции» в правой колонке показывает
+    // устаревающий плейсхолдер с причиной блокировки (статус skipped).
+    expect(await screen.findByText(BLOCKING_REASON)).toBeInTheDocument();
+
+    // Мастер «Пропусков»: предпросмотр → подтверждение → применение.
+    fireEvent.click(screen.getByRole("button", { name: "Исправить пропуски" }));
+    await screen.findByRole("checkbox", { name: "Выбрать колонку Price" });
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр изменений" }));
+    await screen.findByText("Исправлено значений: 2");
+    fireEvent.click(screen.getByRole("checkbox", { name: /Подтверждаю изменение активного датасета/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Применить исправления" }));
+
+    // ПОСЛЕ применения (без перезагрузки, без клика по «Декомпозиции»):
+    // 1) сама остановка «Пропуски» стала done;
+    await waitFor(() =>
+      expect(screen.getByText("Проверка пройдена, пропусков нет")).toBeInTheDocument(),
+    );
+    // 2) бейдж «Декомпозиции» обновился до done-статуса;
+    expect(await screen.findByText("STL выполнен, остаточная диагностика пройдена")).toBeInTheDocument();
+    expect(screen.queryByText(BLOCKING_REASON)).not.toBeInTheDocument();
+    // 3) иконка статуса в степпере — «Пройдено» (драйвер зелёной подсветки).
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Декомпозиция ряда/ })).toHaveAccessibleName(/Пройдено/),
+    );
+    // Профиль декомпозиции запрошен ровно дважды: монтирование + одна
+    // инвалидация применения (без двойного fetch и без бесконечного цикла).
+    expect(counts.decomposition).toBe(2);
+    expect(counts.missing).toBeGreaterThanOrEqual(2);
+  });
+
+  it("after applying outliers corrections the missing stop refreshes (symmetric invalidation)", async () => {
+    // Симметрия контракта: исправление в «Выбросах» тоже мутирует датасет —
+    // «Пропуски» обязаны пересчитать профиль (кэпирование может устранить
+    // пропуски-выбросы, удаление строк — изменить полноту).
+    let applied = false;
+    global.fetch = jest.fn((url: string, init?: RequestInit) => {
+      if (typeof url === "string" && url.includes("/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            target_column: init?.method === "POST" ? JSON.parse(String(init.body)).column : "Price",
+            suggested_column: "Price",
+            available_columns: ["Price"],
+            has_dataset: true,
+          }),
+        });
+      }
+      if (typeof url === "string" && url.includes("outlier-corrections") && init?.method === "POST") {
+        if (JSON.parse(String(init.body)).apply) applied = true;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            applied: Boolean(init.body && JSON.parse(String(init.body)).apply),
+            strategy: "cap", total_outliers: 1, total_changed: 1,
+            total_still_outliers: 0, rows_removed: 0, added_columns: [], used_residual: false,
+            columns: [{ column: "Price", outlier_count: 1, changed_count: 1, still_outliers: 0, outlier_examples: [3], flag_column: null, stats_before: null, stats_after: null }],
+            profile: [{ ...OUTLIERS_PROFILE.columns[0], outlier_count: 0, outlier_pct: 0, outlier_examples: [] }],
+          }),
+        });
+      }
+      if (typeof url === "string" && url.includes("missing-profile")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(applied ? clearedMissingProfile : MISSING_PROFILE) });
+      }
+      if (typeof url === "string" && url.includes("outlier-profile")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(applied ? clearedOutliersProfile : OUTLIERS_PROFILE) });
+      }
+      return (routeFetch() as unknown as (u: string, i?: RequestInit) => Promise<unknown>)(url, init);
+    }) as unknown as typeof fetch;
+
+    render(<TsAnalysisPreprocessing />);
+    // ДО применения: «Пропуски» — warning («Найдено 2 пропусков»).
+    await screen.findByText("Найдено 2 пропусков");
+
+    // Мастер «Выбросов»: открыть через степпер, предпросмотр, применение.
+    fireEvent.click((await screen.findAllByRole("button", { name: /Выбросы/ }))[0]);
+    fireEvent.click(await screen.findByRole("button", { name: "Исправить выбросы" }));
+    await screen.findByRole("checkbox", { name: "Выбрать колонку Price" });
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр изменений" }));
+    await screen.findByText("Исправлено значений: 1");
+    fireEvent.click(screen.getByRole("checkbox", { name: /Подтверждаю изменение активного датасета/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Применить исправления" }));
+
+    // ПОСЛЕ: «Пропуски» узнали об исправлении в «Выбросах» — стали done
+    // без перезагрузки страницы и без повторного визита остановки.
+    await waitFor(() =>
+      expect(screen.getByText("Проверка пройдена, пропусков нет")).toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Пропуски/ })).toHaveAccessibleName(/Пройдено/),
+    );
+  });
+
+  it("feature_eng and scaling statuses load at mount without visiting the stops (no lazy staleness)", async () => {
+    // Унификация контракта: статусы всех 10 остановок всегда отражают
+    // текущий датасет. Раньше «Генерация признаков»/«Масштабирование»
+    // оставались «Не запускалось» до первого визита — после применения
+    // исправлений их бейджи тоже устаревали.
+    const counts: Record<string, number> = {};
+    global.fetch = countingFetch(counts);
+    render(<TsAnalysisPreprocessing />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Генерация признаков/ })).toHaveAccessibleName(/Найдены проблемы/),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /Масштабирование/ })).toHaveAccessibleName(/Найдены проблемы/),
+    );
+    expect(counts.featureGeneration).toBeGreaterThanOrEqual(1);
+    expect(counts.scaling).toBeGreaterThanOrEqual(1);
+  });
+
+  it("saving a stop's mode does not invalidate other stops' profiles", async () => {
+    // Гард узкой зоны инвалидации: PUT preprocessing-check-modes меняет
+    // режим ОДНОЙ остановки — датасет не мутирует, чужие профили не
+    // перезапрашиваются (иначе каждое переключение режима вызывало бы
+    // лишнюю волну STL/FFT-пересчётов).
+    const counts: Record<string, number> = {};
+    global.fetch = countingFetch(counts);
+    render(<TsAnalysisPreprocessing />);
+
+    // Дожидаемся первичной загрузки профиля декомпозиции.
+    await waitFor(() => expect((counts.decomposition ?? 0)).toBeGreaterThanOrEqual(1));
+    const baseline = counts.decomposition;
+
+    fireEvent.change(await screen.findByRole("combobox", { name: "Режим проверки Пропуски" }), {
+      target: { value: "disabled" },
+    });
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining("/v1/session/dataset/preprocessing-check-modes"),
+        expect.objectContaining({ method: "PUT" }),
+      ),
+    );
+
+    // Профиль декомпозиции НЕ перезапрошен после смены режима «Пропусков».
+    expect(counts.decomposition).toBe(baseline);
+  });
+});
