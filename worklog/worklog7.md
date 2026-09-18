@@ -1311,3 +1311,96 @@ task-causes.ts (+тест), apps/standalone/app/tasks/causes/page.test.tsx.
 - typecheck:all чисто; build:all успешно (embedded + standalone).
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); overlay в ZIP
   download/task_dkt5_footer_overlay_ba1c645.zip.
+
+  ---
+
+  ## Task DKT-CERT (2026-09-18) — Независимая сертификация серии тёмной темы (по практике проекта)
+
+Синхронизация: main@6dacd2c (SYNC-BA1C645; цепочка DKT-0 → DKT-1+2 →
+DKT-2R+3+4 → TSKV2-1 → PREPR-4 → DKT-5 WIP). Постановка: спека
+spec_dark_theme.md §7 DKT-CERT — отдельным аудитором: контракт темы (§5),
+инвариант светлой темы (независимый CSS-оракул), контраст-аудит каталога,
+мутации провайдера, экспорт PNG, guard-тесты нетронутости светлой вёрстки.
+
+**Вердикт: PASSED WITH REMARKS.** Полный отчёт:
+docs/dktcert_certification_report.md.
+
+### Методика (практика TASK-144-CERT)
+
+- Независимые оракулы на СВОИХ эталонах: каноническая палитра Tailwind
+  v3.4, выписанная аудитором (66 токенов), спецификация §5/§6, своя
+  WCAG-реализация; ни одной fixture серии DKT.
+- Среда после сброса песочницы восстановлена: node_modules отсутствовал —
+  npm ci по lockfile; бэкенд-зависимости не требовались (DKT — фронт).
+- Репродукция: полный jest 1319/1319 (118 сюит, включая 31 тест DKT-5
+  WIP); typecheck:all — 0; build standalone — OK (17 страниц); бэкенд
+  серии 0-дифф на уровне git (DKT-коммиты не трогают apps/api, tests).
+
+### Независимый оракул — scripts/dktcert_audit_oracle.py, 81/81 CERT-GREEN
+
+- [1] Контракт §5 (21): ключ ровно cisstat-theme, light|dark, .dark на
+  <html>; порядок init проверен ПОЗИЦИЯМИ вхождений; strict-фильтр мусора;
+  персист; storage-событие с фильтром ключа; no-FOUC — IIFE с
+  статической интерполяцией констант контракта (сверены литералы);
+  монтирование (script в <head>, suppressHydrationWarning,
+  ThemeProvider); переключатель Moon/Sun, aria-pressed, aria-метки;
+  §10.5 next-themes отсутствует во всех package.json; §10.6 transition
+  в темо-контуре нет.
+- [2] Инвариант светлой (13): :root == независимая таблица (байт-в-байт,
+  66 токенов); нет необъяснённых токенов; имена .dark == :root 1:1;
+  исключения §6.2 (neutral-950, black не инвертируются; white-fg белый в
+  обеих); пресет darkMode class, 64 ссылки, формат строго
+  rgb(var(--c-*) / <alpha-value>); dangling-var нет; chart/status/wave
+  имена 1:1; color-scheme light/dark.
+- [3] Контраст-аудит (36, свой WCAG-движок): 26 тёмных пар AA (тексты
+  на карточке/странице/поверхности, brand-bright на 4 поверхностях,
+  white-fg на заливке brand, 7 статусных семейств на своих
+  поверхностях, футер), placeholder/плейсхолдер честно как AA-large;
+  факт-числа спеки подтверждены (brand-bright ≈ 7:1, футер ≈ 15:1);
+  сантити светлой — 7 пар.
+- [4] PNG-экспорт (7): порядок по позициям cloneNode → resolve →
+  serialize → canvas → #FFFFFF → drawImage; CHART_VARS_LIGHT — точное
+  зеркало СВЕТЛОГО :root (52 переменные, значение-в-значение);
+  RESOLVED_ATTRS fill/stroke/stop-color + style; работа на клоне;
+  fail-visible вне карты.
+- [5] Guards (4): dark:-оверрайды ровно 2 файла — документированные §6.2
+  (Model Card, шеврон); .dark-селекторы только в globals.css; DKT-коммиты
+  не трогают бэкенд; пресет не вводит новых имён классов (контрольный
+  факт Варианта C).
+
+### Мутационная кампания — scripts/dktcert_mutations.py, 5/5 KILLED
+
+- Pre-flight по R2 практики TASK-144-CERT: sha256 ThemeContext.tsx +
+  layout.tsx до цикла; защитные сюиты зелёные; аварийный останов при
+  pattern not found; sha256-верификация восстановления после КАЖДОЙ
+  мутации — сошлось.
+- M1 init→system KILLED; M2 инверсия toggle KILLED; M3 снятие no-FOUC
+  KILLED (гвард монтирования §4.4/§4.5); M4 подмена ключа — СНАЧАЛА
+  SURVIVED (находка R1), после усиления KILLED; M5 инверсия условия
+  .dark KILLED. Для SURVIVED-вердиктов предусмотрен контрольный полный
+  jest.
+
+### Находки
+
+- R1 (major → устранено в сертификации, RED→GREEN): подмена ключа
+  хранения (M4) не ловилась — substring-гвард toContain("cisstat-theme")
+  проходит на мутанте "cisstat-theme-mutated", а юнит-тесты тавтологичны
+  (пишут и читают через одну константу THEME_STORAGE_KEY). Усилен гвард
+  dkt5-open-questions.test.ts: пин точного присвоения
+  THEME_STORAGE_KEY = "cisstat-theme" с комментарием; повторная кампания
+  — 5/5 KILLED.
+- R2 (recommendation): контракты-константы пинить в source-гвардах
+  литералом присвоения, не подстановкой той же константы.
+- R3 (informational): DKT-5 WIP — прод-смоук Vercel↔Render после деплоя
+  тимлида вне объёма сертификации (аудит покрывает код репо; смоук —
+  паттерн PRE-0 после деплоя).
+- R4 (informational): dark:-инвентарь живой (2 файла) — новые исключения
+  §6.2 сопровождать allowlist-контролем оракула и каталогом.
+
+Изменённые/новые файлы (ZIP: download/task_dktcert_certification.zip):
+- НОВЫЕ: scripts/dktcert_audit_oracle.py (81 проверка),
+  scripts/dktcert_mutations.py (5 мутаций, pre-flight/restore),
+  docs/dktcert_certification_report.md (полный отчёт).
+- ИЗМЕНЕНЫ: packages/ui/dkt5-open-questions.test.ts (R1: пин точного
+  ключа §5), worklog/worklog7.md (этот журнал).
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); работа в ZIP.

@@ -88,8 +88,12 @@ describe("DKT-5 §10.5 (решено): провайдер — hand-rolled, бе�
     expect(Object.keys(deps)).not.toContain("next-themes");
   });
 
-  it("контракт темы §5 зафиксирован в провайдере (ключ cisstat-theme)", () => {
-    expect(THEME_CONTEXT).toContain("cisstat-theme");
+  it("контракт темы §5 зафиксирован в провайдере (ключ cisstat-theme, точное значение)", () => {
+    // DKT-CERT (мутация M4): substring "cisstat-theme" — слабый оракул,
+    // проходит и на мутанте "cisstat-theme-mutated"; юнит-тесты тавтологичны
+    // (пишут и читают через одну константу). Пиним присвоение точного
+    // значения ключа контракта.
+    expect(THEME_CONTEXT).toContain('THEME_STORAGE_KEY = "cisstat-theme"');
   });
 });
 
