@@ -158,7 +158,10 @@ describe("DKT-3: инвариант отсутствия фиксированн�
     const offenders: string[] = [];
     const hexRe = /["']#[0-9A-Fa-f]{6}["']/g;
     for (const file of files) {
-      const base = file.split("/").pop()!;
+      // Платформо-независимый basename: нормализация разделителей win32 →
+      // POSIX (на Windows walkTsx/join дают backslash, split("/") возвращал
+      // полный путь, белый список не срабатывал — ложный offender).
+      const base = file.replace(/\\/g, "/").split("/").pop()!;
       if (WHITELIST_FILES.has(base)) continue;
       const src = readFileSync(file, "utf8");
       // строки кода без // -комментариев: hex в комментариях не считается

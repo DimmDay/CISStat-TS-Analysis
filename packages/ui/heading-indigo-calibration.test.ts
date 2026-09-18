@@ -127,7 +127,11 @@ describe("DKT-2R: инвентарь произвольных цветовых �
       const src = readFileSync(file, "utf8");
       for (const m of src.matchAll(ARBITRARY_COLOR_RE)) {
         const cls = m[0];
-        const rel = file.slice(file.indexOf("packages") !== -1 ? file.indexOf("packages") : file.indexOf("apps"));
+        // Платформо-независимый rel: нормализация разделителей win32 →
+        // POSIX (на Windows slice оставлял backslash, endsWith с
+        // POSIX-путями HERO_FILES не срабатывал — ложный отказ инвентаря).
+        const posix = file.replace(/\\/g, "/");
+        const rel = posix.slice(posix.indexOf("packages") !== -1 ? posix.indexOf("packages") : posix.indexOf("apps"));
         if (!found.has(cls)) found.set(cls, []);
         found.get(cls)!.push(rel);
       }
