@@ -9,8 +9,14 @@
 //
 // Источник сессии — useAppShell().stages (гидратация GET
 // /v1/session/current в AppShellProvider): хаб ЖИВОЙ — состояния
-// пересчитываются по мере прохождения пайплайна аналитиком, без
-// дополнительного бэкенда.
+// пересчитываются по мере прохождения пайплайна аналитиком. PREPR-4:
+// провайдер живёт в layout.tsx и НЕ ремоунтится при клиентской
+// навигации, а гидратируется только при F5 и после upload — без явной
+// пересинхронизации при монтировании хаба карточки показывали
+// устаревший гейтинг (этапы, пройденные в других вкладках, не
+// отражались до перезагрузки страницы; та же природа бага, что чинил
+// PREPR-3 в «Предобработке»). Монтирование вкладки = refreshSession:
+// сервер — источник истины о stages (AppShellContext контракта).
 //
 // Рост задач (spec_tasks_ia.md §6): новая задача = запись в TASK_ROUTES
 // + плейсхолдер-маршрут. Сетка, меню и STAGES не меняются.
@@ -21,6 +27,7 @@
 // информативности после содержательных окон шести этапов. Лента рисует
 // только существующие артефакты; свежая сессия — ленты нет вовсе.
 
+import { useEffect } from "react";
 import { useAppShell } from "../context/AppShellContext";
 import {
   TASK_ROUTES,
@@ -35,10 +42,20 @@ import { TaskCard } from "./TaskCard";
 import { TaskArtifactRibbon } from "./TaskArtifactRibbon";
 
 export function TasksHub() {
-  const { stages } = useAppShell();
+  const { stages, refreshSession } = useAppShell();
   const safeStages = stages ?? {};
   const artifacts = artifactsFromStages(safeStages);
   const pipelineStarted = pipelineStartedFromStages(safeStages);
+
+  // PREPR-4: монтирование вкладки = пересинхронизация с сервером.
+  // Провайдер (layout) не ремоунтится при клиентской навигации — без
+  // этого эффекта stages приходят из контекста с момента F5/upload и
+  // карточки показывают устаревший гейтинг до перезагрузки страницы.
+  // refreshSession стабилен (useCallback) — эффект выполняется один раз
+  // на монтирование, без циклов.
+  useEffect(() => {
+    void refreshSession();
+  }, [refreshSession]);
 
   return (
     <div className="space-y-10">

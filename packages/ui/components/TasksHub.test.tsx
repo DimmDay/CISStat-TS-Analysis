@@ -36,11 +36,16 @@ import { STAGE_DEFS, StageStatus } from "../lib/stages";
 let mockStages: Record<string, StageStatus> = {};
 let mockActiveDataset: { name: string; rows: number; sizeLabel: string } | null =
   null;
+// PREPR-4: хаб при монтировании вызывает refreshSession() (пересинхронизация
+// stages с бэкендом). В моке контекста — стаб: существующие кейсы проверяют
+// рендер от ФИКСИРОВАННОГО stages, пересинхронизация не участвует.
+const mockRefreshSession = jest.fn();
 jest.mock("../context/AppShellContext", () => ({
   useAppShell: () => ({
     stages: mockStages,
     activeDataset: mockActiveDataset,
     log: [],
+    refreshSession: (...args: unknown[]) => mockRefreshSession(...args),
   }),
 }));
 
@@ -66,6 +71,7 @@ afterEach(() => {
   mockActiveDataset = null;
   fetchCardSummaries.mockReset();
   fetchCardSummaries.mockResolvedValue([]);
+  mockRefreshSession.mockReset();
 });
 
 describe("TasksHub", () => {

@@ -6,8 +6,14 @@
 // 3. Expandable description box: chevron, overlay, collapse
 
 import "@testing-library/jest-dom";
+import type { ReactElement } from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { TsAnalysisPreprocessing } from "./TsAnalysisPreprocessing";
+import { PreprocessingMissingOverview } from "./PreprocessingMissingOverview";
+import { PreprocessingOutliersOverview } from "./PreprocessingOutliersOverview";
+import { PreprocessingRegularityOverview } from "./PreprocessingRegularityOverview";
 
 const MISSING_PROFILE = {
   rule_source: "system",
@@ -1366,5 +1372,159 @@ describe("TsAnalysisPreprocessing — автообновление профил�
 
     // Профиль декомпозиции НЕ перезапрошен после смены режима «Пропусков».
     expect(counts.decomposition).toBe(baseline);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task PREPR-4 (аудит PREPR-3-класса на других вкладках): найдено, что
+// три self-fetch Обзора («Пропуски», «Выбросы», «Регулярность») после
+// PREPR-3 остались на мёртвых ключах — state missingRefreshKey/
+// outliersRefreshKey/regularityRefreshKey больше НИКТО не бампит
+// (onApplied бампит только datasetVersion), т.е. refreshKey этих Обзор
+// панелей заморожен на 0. Контракт PREPR-3 «применение исправления в
+// ЛЮБОЙ остановке = инвалидация ВСЕХ профилей» распространяется и на
+// Обзоры. Три слоя защиты:
+//   (1) компонентный контракт — refreshKey инвалидирует fetch Обзора;
+//   (2) исходник-гард — родитель передаёт ЖИВОЙ datasetVersion, а не
+//       замороженные xxxRefreshKey (прецедент гард-тестов исходника —
+//       ProductHeaderThemeToggle.test.tsx);
+//   (3) пользовательский оракул — Обзор остановки показывает актуальный
+//       профиль сразу после применения исправления в своей остановке.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("TsAnalysisPreprocessing — self-fetch Обзоры: живая инвалидация (PREPR-4)", () => {
+  const clearedMissingProfile = {
+    ...MISSING_PROFILE,
+    status: "done",
+    total_missing: 0,
+    rows_with_missing: 0,
+    rows_with_missing_pct: 0,
+    missing_rate_pct: 0,
+    columns: [{ ...MISSING_PROFILE.columns[0], missing_count: 0, missing_pct: 0, missing_examples: [] }],
+  };
+
+  it("each self-fetch overview refetches its profile when refreshKey changes (component contract)", async () => {
+    // Контракт компонента: изменение refreshKey = повторный fetch профиля.
+    // Мутант «удалить refreshKey из deps эффекта» ловится здесь.
+    global.fetch = routeFetch();
+
+    const cases: Array<{
+      name: string;
+      element: (key: number) => ReactElement;
+      urlPart: string;
+    }> = [
+      {
+        name: "missing",
+        element: (key) => <PreprocessingMissingOverview refreshKey={key} />,
+        urlPart: "missing-profile",
+      },
+      {
+        name: "outliers",
+        element: (key) => <PreprocessingOutliersOverview refreshKey={key} column="Price" />,
+        urlPart: "outlier-profile",
+      },
+      {
+        name: "regularity",
+        element: (key) => <PreprocessingRegularityOverview refreshKey={key} />,
+        urlPart: "regularity-profile",
+      },
+    ];
+
+    for (const testCase of cases) {
+      const fetchSpy = global.fetch as unknown as jest.Mock;
+      fetchSpy.mockClear();
+
+      const view = render(testCase.element(0));
+      await waitFor(() =>
+        expect(fetchSpy.mock.calls.some(([url]) => String(url).includes(testCase.urlPart))).toBe(true),
+      );
+      const firstCalls = fetchSpy.mock.calls.filter(([url]) => String(url).includes(testCase.urlPart)).length;
+      expect(firstCalls).toBeGreaterThanOrEqual(1);
+
+      fetchSpy.mockClear();
+      view.rerender(testCase.element(1));
+      await waitFor(() =>
+        expect(fetchSpy.mock.calls.some(([url]) => String(url).includes(testCase.urlPart))).toBe(true),
+      );
+      view.unmount();
+    }
+  });
+
+  it("parent passes a live composite key to the three self-fetch overviews (no frozen keys)", () => {
+    // Исходник-гард: PREPR-3 бампил только datasetVersion, а Обзоры
+    // оставались на собственных ключах, которые в применениях не бампились
+    // (замороженные данные). Родитель обязан передавать Обзорам СУММУ
+    // живых ключей: xxxRefreshKey + datasetVersion. Утверждение
+    // not.toContain с закрывающей скобкой запрещает и «заморозку»
+    // (refreshKey={xxxRefreshKey} без datasetVersion), и «замещение»
+    // (refreshKey={datasetVersion} без собственного ключа — сломало бы
+    // пересчёт Обзора после смены режима остановки).
+    const source = readFileSync(
+      resolve(process.cwd(), "packages/ui/components/TsAnalysisPreprocessing.tsx"),
+      "utf8"
+    );
+    expect(source).toContain("refreshKey={missingRefreshKey + datasetVersion}");
+    expect(source).toContain("refreshKey={outliersRefreshKey + datasetVersion}");
+    expect(source).toContain("refreshKey={regularityRefreshKey + datasetVersion}");
+    expect(source).not.toContain("refreshKey={missingRefreshKey}");
+    expect(source).not.toContain("refreshKey={outliersRefreshKey}");
+    expect(source).not.toContain("refreshKey={regularityRefreshKey}");
+    expect(source).not.toMatch(/refreshKey=\{\d+\}/);
+  });
+
+  it("overview shows the fresh profile right after applying corrections in its own stop (user-visible contract)", async () => {
+    // Пользовательский оракул: «Пропуски» активны по умолчанию — Обзор
+    // показывает 2 пропуска; аналитик применяет исправление в мастере,
+    // возвращается к Обзору — тот показывает 0 пропусков без перезагрузки.
+    let applied = false;
+    global.fetch = jest.fn((url: string, init?: RequestInit) => {
+      if (typeof url === "string" && url.includes("/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            target_column: init?.method === "POST" ? JSON.parse(String(init.body)).column : "Price",
+            suggested_column: "Price",
+            available_columns: ["Price"],
+            has_dataset: true,
+          }),
+        });
+      }
+      if (typeof url === "string" && url.includes("missing-corrections") && init?.method === "POST") {
+        if (JSON.parse(String(init.body)).apply) applied = true;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            applied: Boolean(init.body && JSON.parse(String(init.body)).apply),
+            strategy: "median_mode", total_missing: 2, total_changed: 2,
+            total_still_missing: 0, rows_removed: 0, added_columns: [],
+            columns: [{ column: "Price", missing_count: 2, changed_count: 2, still_missing: 0, missing_examples: [1, 3], flag_column: null }],
+            profile: [{ ...MISSING_PROFILE.columns[0], missing_count: 0, missing_pct: 0, missing_examples: [] }],
+          }),
+        });
+      }
+      if (typeof url === "string" && url.includes("missing-profile")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(applied ? clearedMissingProfile : MISSING_PROFILE) });
+      }
+      return (routeFetch() as unknown as (u: string, i?: RequestInit) => Promise<unknown>)(url, init);
+    }) as unknown as typeof fetch;
+
+    render(<TsAnalysisPreprocessing />);
+
+    // ДО применения: Обзор «Пропусков» — 2 пропуска (25.0%).
+    expect(await screen.findByText("Пропусков — 2 (25.0%)")).toBeInTheDocument();
+
+    // Мастер: предпросмотр → подтверждение → применение.
+    fireEvent.click(screen.getByRole("button", { name: "Исправить пропуски" }));
+    await screen.findByRole("checkbox", { name: "Выбрать колонку Price" });
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр изменений" }));
+    await screen.findByText("Исправлено значений: 2");
+    fireEvent.click(screen.getByRole("checkbox", { name: /Подтверждаю изменение активного датасета/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Применить исправления" }));
+
+    // Возврат к Обзору остановки (инвариант информативности: явный клик
+    // «Метрики и алгоритм» возвращает из пайплайна) — Обзор ремоунтится
+    // и обязан показать СВЕЖИЙ профиль: 0 пропусков.
+    fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
+    expect(await screen.findByText("Пропусков — 0 (0.0%)")).toBeInTheDocument();
+    expect(screen.queryByText("Пропусков — 2 (25.0%)")).not.toBeInTheDocument();
   });
 });

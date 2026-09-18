@@ -18,6 +18,8 @@
 
 import "@testing-library/jest-dom";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { TsAnalysisValidation } from "./TsAnalysisValidation";
 import { AppShellProvider } from "../context/AppShellContext";
 
@@ -1262,5 +1264,42 @@ describe("TsAnalysisValidation — автозагрузка «Метрики и 
     // Возврат к метрикам — явным кликом по кнопке «Метрики и алгоритм».
     fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
     expect(screen.getByText("Метрики и алгоритм — Типы данных")).toBeInTheDocument();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task PREPR-4 (аудит PREPR-3-класса на других вкладках). Валидация —
+// ЭТАЛОННАЯ реализация сквозной инвалидации: применения в пайплайнах и
+// сохранение правил (onRulesApplied) перезапускают runValidation, а
+// fetchValidation бампит validationVersion, который получает КАЖДЫЙ из
+// 8 self-fetch Обзор-компонентов. Исходник-гарды прижимают контракт
+// (прецедент гард-тестов исходника — ProductHeaderThemeToggle.test.tsx):
+// мутант «убрать бамп validationVersion» или «подменить живой ключ
+// константой» ловится здесь без длинной интеграционной кампании.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("TsAnalysisValidation — живая инвалидация Обзоров (PREPR-4, эталон контракта)", () => {
+  const SOURCE_PATH = resolve(process.cwd(), "packages/ui/components/TsAnalysisValidation.tsx");
+
+  it("every check overview receives the live validationVersion (no frozen keys)", () => {
+    const source = readFileSync(SOURCE_PATH, "utf8");
+    // 8 Обзор-компонентов (data_types использует матрицу из общего стейта,
+    // поэтому self-fetch Обзор-панелей ровно 8).
+    const liveKeys = source.match(/refreshKey=\{validationVersion\}/g) ?? [];
+    expect(liveKeys).toHaveLength(8);
+    expect(source).not.toMatch(/refreshKey=\{\d+\}/);
+  });
+
+  it("global validation bumps the version once per run (invalidation source)", () => {
+    const source = readFileSync(SOURCE_PATH, "utf8");
+    // Бамп ровно один: в fetchValidation после успешного ответа.
+    expect(source.match(/setValidationVersion\(\(current\) => current \+ 1\)/g)).toHaveLength(1);
+  });
+
+  it("correction masters and rules management rerun the global validation (onApplied/onRulesApplied)", () => {
+    const source = readFileSync(SOURCE_PATH, "utf8");
+    // 9 пайплайнов onApplied={runValidation} + 1 расширенный onApplied
+    // (data_types) + onRulesApplied={runValidation}.
+    expect(source.match(/onApplied=\{runValidation\}/g)).toHaveLength(9);
+    expect(source).toContain("onRulesApplied={runValidation}");
   });
 });

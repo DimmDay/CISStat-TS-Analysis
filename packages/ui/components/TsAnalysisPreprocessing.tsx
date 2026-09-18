@@ -510,8 +510,17 @@ export function TsAnalysisPreprocessing() {
   // счётчик в deps всех profile-fetch useEffect гарантирует, что после
   // каждого применения степпер, бейджи, метрики и Обзоры автоматически
   // перезапрашиваются — без перезагрузки страницы. Собственные
-  // xxxRefreshKey остаются точками РУЧНОГО пересчёта (смена режима,
-  // кнопка «Пересчитать») и чужие профили не инвалидируют.
+  // xxxRefreshKey остальных 7 остановок остаются точками РУЧНОГО
+  // пересчёта (смена режима, кнопка «Пересчитать») и чужие профили не
+  // инвалидируют. Self-fetch Обзор-панели трёх остановок («Пропуски»,
+  // «Выбросы», «Регулярность») получают СУММУ ключей
+  // xxxRefreshKey + datasetVersion (PREPR-4): PREPR-3 бампил только
+  // datasetVersion, а Обзоры оставались на собственных ключах, которые
+  // после PREPR-3 никто не бампил в применениях — данные Обзора
+  // замерзали до перезагрузки страницы (та же природа бага, что чинил
+  // PREPR-3). Сумма монотонно растёт от ЛЮБОГО источника инвалидации:
+  // применение (datasetVersion) обновляет все Обзоры, смена режима
+  // (собственный ключ) — только Обзор своей остановки.
   const [datasetVersion, setDatasetVersion] = useState(0);
 
   // ── Остановка «Пропуски»: реальный статус вместо мока ──
@@ -1337,15 +1346,15 @@ export function TsAnalysisPreprocessing() {
           {activeCheckId === "missing" && descriptionSection === "pipeline" ? (
             <PreprocessingMissingPipeline onApplied={() => setDatasetVersion((v) => v + 1)} />
           ) : activeCheckId === "missing" ? (
-            <PreprocessingMissingOverview refreshKey={missingRefreshKey} />
+            <PreprocessingMissingOverview refreshKey={missingRefreshKey + datasetVersion} />
           ) : activeCheckId === "outliers" && descriptionSection === "pipeline" ? (
             <PreprocessingOutliersPipeline onApplied={() => setDatasetVersion((v) => v + 1)} />
           ) : activeCheckId === "outliers" ? (
-            <PreprocessingOutliersOverview refreshKey={outliersRefreshKey} column={activeFeature} />
+            <PreprocessingOutliersOverview refreshKey={outliersRefreshKey + datasetVersion} column={activeFeature} />
           ) : activeCheckId === "regularity" && descriptionSection === "pipeline" ? (
             <PreprocessingRegularityPipeline onApplied={() => setDatasetVersion((v) => v + 1)} />
           ) : activeCheckId === "regularity" ? (
-            <PreprocessingRegularityOverview refreshKey={regularityRefreshKey} />
+            <PreprocessingRegularityOverview refreshKey={regularityRefreshKey + datasetVersion} />
           ) : activeCheckId === "decomposition" && descriptionSection === "pipeline" ? (
             <PreprocessingDecompositionPipeline
               column={activeFeature}

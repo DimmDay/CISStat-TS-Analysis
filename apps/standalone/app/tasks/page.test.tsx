@@ -11,10 +11,13 @@ import { STAGE_DEFS } from "@cisstat/ui/lib/stages";
 
 // Мок по алиасу @cisstat/ui -- moduleNameMapper сводит его к тому же
 // файлу packages/ui/context/AppShellContext, который импортирует TasksHub.
+// PREPR-4: хаб при монтировании вызывает refreshSession() — стаб, кейсы
+// проверяют рендер от фиксированного stages.
 jest.mock("@cisstat/ui/context/AppShellContext", () => ({
   useAppShell: () => ({
     stages: Object.fromEntries(STAGE_DEFS.map((s) => [s.key, "pending"])),
     log: [],
+    refreshSession: jest.fn(),
   }),
 }));
 
