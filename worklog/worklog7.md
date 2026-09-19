@@ -1404,3 +1404,49 @@ docs/dktcert_certification_report.md.
 - ИЗМЕНЕНЫ: packages/ui/dkt5-open-questions.test.ts (R1: пин точного
   ключа §5), worklog/worklog7.md (этот журнал).
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); работа в ZIP.
+
+---
+
+## Task EDU-1 (2026-09-19) — Микросервис «Обучение и база знаний», Шаг 1: страница-хаб + слой знаний (spec_education.md, Часть I)
+
+### Постановка
+
+Спроектировать архитектуру микросервиса «Обучение и база знаний» на базе spec_education.md, spec_progress.md и spec_progress_review_and_v4_addendum.md (с улучшениями по усмотрению); Шаг 1 — реализовать страницу «Обучение и база знаний» (второй бейдж первого ряда главной, HOME_ROUTES[1]) с Библиотекой для чтения и Словарём терминов. База знаний — будущий единый источник истины по методологии для всей платформы. UI/UX-паттерны платформы. ZIP в download, без commit/push (AGENTS.md).
+
+### Проектирование (точки изменения, риски)
+
+- Точки изменения: HOME_ROUTES[1].href (/docs → /education — бейдж вёл на 404 и дублировал «Документацию API»); ModuleNav.test.tsx (пин hrefs подменю); index.ts (экспорты); каталог DKT-2R (инвентарь hero-классов).
+- Ключевое решение: контент — в управляемом реестре слоя знаний (lib/knowledge), НЕ в компонентах: механическая гарантия «единого источника истины»; будущий backend (Этап 1 спеки) промотирует реестры без перенабора текстов.
+- Улучшение к спеке: тело статьи — типизированные блоки (paragraph/bullets/callout) вместо сырого body_md на фронте; сериализация в body_md 1:1 при миграции (paragraph → абзац, bullets → "- ", callout → "> ").
+- Словарь этапов KNOWLEDGE_STAGES — те же строки, что STAGES платформы (§1.1 спеки, инвариант-тест).
+- Порядок выдачи статей — по пайплайну (§13 спеки), контракт в слое, UI не может нарушить.
+- Панель чтения — правая выдвижная по EventsLogDrawer-паттерну, w-[40rem] (контракт UI-аддендума v4 §4.2), затемнение/крестик.
+- Draft-статья о прикладных модулях — честная маркировка (не публикуется: «не описывать несуществующий функционал», §7.1 спеки).
+- Embedded не тронут: маршрут standalone-only (паттерн /navigator, /tasks); хаб общий в @cisstat/ui.
+
+### TDD RED → GREEN
+
+- RED (4 сюиты): knowledge.test.ts (26 тестов: инварианты реестров, порядок пайплайна, фильтры, поиск, связи словаря), EducationKnowledgeBase.test.tsx (12: секции/aria-pressed, фильтр этапов, панель чтения — открытие/крестик/клик вне/из словаря, поиск + честное пустое состояние), home-stops.test.ts (3: бейдж → /education, уникальность маршрутов), page.test.tsx (2).
+- GREEN: lib/knowledge/{types,articles,glossary,knowledge}.ts; components/education/{EducationKnowledgeBase,LibrarySection,GlossarySection,LibraryArticleReader}.tsx; app/education/page.tsx; href-замена в home-stops.ts; экспорты index.ts.
+- Находка 1: вложенные ul/li связанных статей ломали подсчёт listitem сетки словаря (58 ≠ 25) — связанные статьи переведены на div+кнопки.
+- Находка 2: каталог DKT-2R считает вхождения класса В КОММЕНТАРИЯХ тоже (14 ≠ 13) — из комментария хаба убран литерал класса; каталог обновлён (13 инстансов / 6 файлов, +EducationKnowledgeBase).
+
+### Контент (реальный, не выдуманный)
+
+- Библиотека: 12 статей (11 published + 1 draft) по всем 6 этапам — факты из кода платформы: 10 критериев DAMA DMBOK, sanity-пороги Наставника (5×std, 30% строк), CUSUM/Chow/PELT (Task 76), 24 модели/8 семейств/4 уровня применимости, leak-safe/fold-local бэктест, 4 метода интервалов forecasting_contract.py (fail-closed), 6 метрик backtesting.py (primary rmse). Источники из §7.1 спеки (FPP3, Box-Jenkins, Tsay, TBATS/JASA, PELT/JASA, Tashman, MASE/IJF, M4/M5, DAMA DMBOK, statsmodels/pandas).
+- Словарь: 25 терминов (ACF/PACF … walk-forward) со связями к статьям Библиотеки (инвариант ссылок).
+
+### Верификация
+
+- Полная регрессия: jest 1362/1362 (125 сюит) — ЗЕЛЁНЫЙ (один flaky TsAnalysisPreprocessing при параллельной нагрузке — вне изоляции и в повторе зелёный, 64/64).
+- typecheck:all — 0 ошибок; build standalone — OK, /education в маршрутах (18 стат. страниц).
+- Прод-смоук (next start + браузер): главная → клик 2-го бейджа → /education 200; чтение статьи (панель, источники, callout); Словарь; поиск GARCH; светлая и тёмная темы — корректны.
+
+### Архитектурный документ
+
+- docs/education_knowledge_base_architecture.md: слои микросервиса, контракты с будущими этапами (ContextHelpButton/стеки по направлениям/RAGFlow/Q-ΔQ), риски и меры, дорожная карта Шагов 1–5+, манифест файлов.
+
+Изменённые/новые файлы (ZIP: download/task_edu1_education_knowledge_base.zip):
+- НОВЫЕ: packages/ui/lib/knowledge/{types,articles,glossary,knowledge,knowledge.test}.ts, packages/ui/components/education/{EducationKnowledgeBase,LibrarySection,GlossarySection,LibraryArticleReader}.tsx + EducationKnowledgeBase.test.tsx, apps/standalone/app/education/{page.tsx,page.test.tsx}, packages/ui/lib/home-stops.test.ts, docs/education_knowledge_base_architecture.md.
+- ИЗМЕНЕНЫ: packages/ui/lib/home-stops.ts (href /education), packages/ui/index.ts (экспорты), packages/ui/components/ModuleNav.test.tsx (hrefs подменю), packages/ui/heading-indigo-calibration.test.ts (каталог DKT-2R 13/6), worklog/worklog7.md (эта запись).
+- Коммит/пуш НЕ выполнялись (запрет AGENTS.md); работа в ZIP.

@@ -178,8 +178,11 @@ describe("ModuleNav", () => {
     render(<ModuleNav />);
     // role="menuitem" переопределяет неявную роль link —
     // ищем по menuitem, а не по link.
+    // Task EDU-1: «Обучение и база знаний» получает собственную страницу
+    // /education (второй бейдж первого ряда главной); «Документация API»
+    // остаётся на /docs — маршруты больше не дублируются.
     const menuItems = screen.getAllByRole("menuitem");
-    const expectedHrefs = ["/navigator", "/docs", "/research", "/pricing", "/docs"];
+    const expectedHrefs = ["/navigator", "/education", "/research", "/pricing", "/docs"];
     const actualHrefs = menuItems.map((mi) => mi.getAttribute("href"));
     expect(actualHrefs).toEqual(expectedHrefs);
   });

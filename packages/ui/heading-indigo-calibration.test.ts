@@ -41,10 +41,11 @@ const HERO_FILES = [
   "packages/ui/components/TasksHub.tsx",
   "packages/ui/components/PlatformIntroduction.tsx",
   "packages/ui/components/TasksCauses.tsx",
+  "packages/ui/components/education/EducationKnowledgeBase.tsx",
 ] as const;
 
 const HERO_CLASS = "text-[#1e3a8a]";
-const HERO_INSTANCES_TOTAL = 11; // 2 + 4 + 2 + 1 + 2 (TasksCauses — TSKV2-1,
+const HERO_INSTANCES_TOTAL = 13; // 2 + 4 + 2 + 1 + 2 + 2 (EducationKnowledgeBase — EDU-1:
 // hero-паттерн TasksHub: h1 + p-подзаголовок; тёмная ревизия класс-уровневая,
 // та же utility-ревизия §6.2 — отдельных правок не требует)
 

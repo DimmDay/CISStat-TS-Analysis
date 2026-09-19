@@ -272,6 +272,45 @@ export { TasksHub } from "./components/TasksHub";
 export { TaskCard } from "./components/TaskCard";
 export type { TaskCardProps } from "./components/TaskCard";
 
+// ── «Обучение и база знаний» (/education, Task EDU-1) ─────────────
+// spec_education.md, Часть I, Этап 1 роллаута: страница-хаб базы знаний
+// (второй бейдж первого ряда главной, HOME_ROUTES[1]) — Библиотека для
+// чтения + Словарь терминов. Слой знаний (lib/knowledge) — единый
+// источник истины по методологии: UI рендерит только реестры.
+export { EducationKnowledgeBase } from "./components/education/EducationKnowledgeBase";
+export { LibrarySection } from "./components/education/LibrarySection";
+export { GlossarySection } from "./components/education/GlossarySection";
+export { LibraryArticleReader } from "./components/education/LibraryArticleReader";
+export {
+  getAllArticles,
+  getPublishedArticles,
+  getArticleById,
+  getArticlesByStage,
+  getArticlesByDirection,
+  getGlossaryTerms,
+  getTermById,
+  searchKnowledge,
+  STAGE_ORDER_INDEX,
+} from "./lib/knowledge/knowledge";
+export {
+  KNOWLEDGE_STAGES,
+  STAGE_LABELS_RU,
+  STAGE_ICONS,
+  KNOWLEDGE_DIRECTIONS,
+  DIRECTION_LABELS_RU,
+} from "./lib/knowledge/types";
+export { KNOWLEDGE_ARTICLES } from "./lib/knowledge/articles";
+export { GLOSSARY_TERMS } from "./lib/knowledge/glossary";
+export type {
+  KnowledgeArticle,
+  KnowledgeArticleStatus,
+  KnowledgeBlock,
+  KnowledgeCitation,
+  KnowledgeDirection,
+  KnowledgeStageId,
+  GlossaryTerm,
+} from "./lib/knowledge/types";
+
 // Вертикальный срез задачи «Причины» (v2, XAI — spec_tasks_ia_addendum_v1_1.md
 // §10/§10.1): паттерн C §11.2 (методы → факторы → деталь), данные —
 // GET /v1/session/tasks/causes (apps/api/routers/tasks_session.py).
