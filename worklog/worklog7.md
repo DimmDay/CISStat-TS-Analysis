@@ -1450,3 +1450,28 @@ docs/dktcert_certification_report.md.
 - НОВЫЕ: packages/ui/lib/knowledge/{types,articles,glossary,knowledge,knowledge.test}.ts, packages/ui/components/education/{EducationKnowledgeBase,LibrarySection,GlossarySection,LibraryArticleReader}.tsx + EducationKnowledgeBase.test.tsx, apps/standalone/app/education/{page.tsx,page.test.tsx}, packages/ui/lib/home-stops.test.ts, docs/education_knowledge_base_architecture.md.
 - ИЗМЕНЕНЫ: packages/ui/lib/home-stops.ts (href /education), packages/ui/index.ts (экспорты), packages/ui/components/ModuleNav.test.tsx (hrefs подменю), packages/ui/heading-indigo-calibration.test.ts (каталог DKT-2R 13/6), worklog/worklog7.md (эта запись).
 - Коммит/пуш НЕ выполнялись (запрет AGENTS.md); работа в ZIP.
+
+---
+
+Task Edu-2: слой знаний + LearningTrackBuilder + третья секция хаба /education.
+
+1. Слой знаний (packages/ui/lib/knowledge/knowledge.ts, §2.2):
+
+DIRECTION_ORDER_INDEX — канонический порядок направлений;
+интерфейс LearningStack (directions / articles / terms);
+buildLearningStack(rawDirections) — объединение опубликованных статей множества направлений, дедуп по article_id, порядок строго по пайплайну (§13) независимо от порядка чекбоксов; термины стека — только связанные со статьями стека (related_article_ids), алфавитный порядок; пустой ввод → пустой стек (честность);
+getDirectionArticleCounts() — честные счётчики по всем 8 направлениям (volatility и multivariate честно получают 0).
+2. НОВЫЙ track.test.ts — 20 тестов контрактов §2.2/§13 на уровне слоя знаний: эквивалентность getArticlesByDirection, объединение без дублей, инвариант порядка пайплайна, независимость от порядка кликов, дедуп и нормализация направлений, термины «в пустоту» не выдаются, связность related_article_ids.
+
+3. НОВЫЙ LearningTrackBuilder.tsx — конструктор персональной траектории:
+
+чекбоксы всех 8 направлений (МНОЖЕСТВО, не радио) с честными счётчиками «N ст.» / «справка готовится» при нуле;
+кнопка «Построить траекторию» (disabled без выбора);
+стек группируется по этапам пайплайна (бейджи STAGE_ICONS, порядок §13);
+клик по статье → общий ридер хаба (onOpenArticle, паттерн EDU-1);
+секция «Термины траектории»; пустой результат → явное «По выбранным направлениям справка готовится» (no fabricated results). Контент не хардкодится — всё из слоя знаний.
+4. НОВЫЙ LearningTrackBuilder.test.tsx — 12 тестов: множественный выбор, построчные честные счётчики, группировка этапов в порядке §13, сверка объединения со слоем знаний, DOM-сравнение двух сборок при разном порядке кликов, интеграция с ридером.
+
+5. Интеграция EducationKnowledgeBase.tsx — третья секция «Траектория обучения» в переключателе пилли (aria-pressed, паттерн ModuleNav); статья из стека открывается в том же ридере, что и из Библиотеки.
+
+6. packages/ui/index.ts — публичные экспорты: LearningTrackBuilder, buildLearningStack, getDirectionArticleCounts, DIRECTION_ORDER_INDEX, type LearningStack.

@@ -14,8 +14,16 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { EducationKnowledgeBase } from "./EducationKnowledgeBase";
-import { getPublishedArticles, getGlossaryTerms } from "../../lib/knowledge/knowledge";
-import { STAGE_LABELS_RU } from "../../lib/knowledge/types";
+import {
+  buildLearningStack,
+  getPublishedArticles,
+  getGlossaryTerms,
+} from "../../lib/knowledge/knowledge";
+import {
+  DIRECTION_LABELS_RU,
+  KNOWLEDGE_DIRECTIONS,
+  STAGE_LABELS_RU,
+} from "../../lib/knowledge/types";
 
 const published = getPublishedArticles();
 const terms = getGlossaryTerms();
@@ -30,11 +38,13 @@ describe("EducationKnowledgeBase — шапка и навигация секци
     ).toBeInTheDocument();
   });
 
-  it("содержит переключатель двух секций: Библиотека и Словарь терминов", () => {
+  it("содержит переключатель трёх секций: Библиотека, Траектории обучения, Словарь терминов", () => {
     render(<EducationKnowledgeBase />);
     const libraryTab = screen.getByRole("button", { name: "Библиотека" });
+    const tracksTab = screen.getByRole("button", { name: "Траектории обучения" });
     const glossaryTab = screen.getByRole("button", { name: "Словарь терминов" });
     expect(libraryTab).toHaveAttribute("aria-pressed", "true"); // библиотека активна по умолчанию
+    expect(tracksTab).toHaveAttribute("aria-pressed", "false");
     expect(glossaryTab).toHaveAttribute("aria-pressed", "false");
   });
 
@@ -55,6 +65,50 @@ describe("EducationKnowledgeBase — шапка и навигация секци
     const dl = screen.getByRole("list", { name: "Словарь терминов базы знаний" });
     expect(within(dl).getAllByRole("listitem").length).toBe(terms.length);
     expect(screen.queryByRole("list", { name: "Библиотека статей" })).toBeNull();
+  });
+});
+
+describe("EducationKnowledgeBase — Траектории обучения (стеки по направлениям, Шаг 2)", () => {
+  it("переключение на Траектории: чекбоксы направлений рендерятся, библиотека скрыта", () => {
+    render(<EducationKnowledgeBase />);
+    fireEvent.click(screen.getByRole("button", { name: "Траектории обучения" }));
+    expect(screen.getByRole("button", { name: "Траектории обучения" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    // 8 направлений стартового набора спеки (§2.2) — по чекбоксу на каждое
+    const checkboxes = screen.getAllByRole("checkbox");
+    expect(checkboxes.length).toBe(KNOWLEDGE_DIRECTIONS.length);
+    expect(screen.queryByRole("list", { name: "Библиотека статей" })).toBeNull();
+  });
+
+  it("выбор направления в хабе собирает стек слоя знаний (порядок пайплайна)", () => {
+    render(<EducationKnowledgeBase />);
+    fireEvent.click(screen.getByRole("button", { name: "Траектории обучения" }));
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: DIRECTION_LABELS_RU.seasonality }),
+    );
+    const expected = buildLearningStack(["seasonality"]);
+    const list = screen.getByRole("list", { name: "Персональный стек статей" });
+    const items = within(list).getAllByRole("listitem");
+    expect(items.length).toBe(expected.articles.length);
+    expect(
+      within(items[0]).getByText(expected.articles[0].title),
+    ).toBeInTheDocument();
+  });
+
+  it("открытие статьи из траектории работает через общий ридер (единый канал)", () => {
+    render(<EducationKnowledgeBase />);
+    fireEvent.click(screen.getByRole("button", { name: "Траектории обучения" }));
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: DIRECTION_LABELS_RU.seasonality }),
+    );
+    const expected = buildLearningStack(["seasonality"]);
+    fireEvent.click(screen.getByText(expected.articles[0].title));
+    const reader = screen.getByRole("complementary", { name: "Чтение статьи" });
+    expect(
+      within(reader).getByRole("heading", { level: 2, name: expected.articles[0].title }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -155,5 +209,39 @@ describe("EducationKnowledgeBase — поиск по базе знаний", () 
     const input = screen.getByRole("textbox", { name: /поиск по базе знаний/i });
     fireEvent.change(input, { target: { value: "zzz-нет-совпадений-xyz" } });
     expect(screen.getByText(/ничего не найдено/i)).toBeInTheDocument();
+  });
+});
+describe("EducationKnowledgeBase — Траектория обучения (EDU-2, §2.2)", () => {
+  it("есть третья секция-пилли «Траектория обучения», по умолчанию неактивна", () => {
+    render(<EducationKnowledgeBase />);
+    const tracksTab = screen.getByRole("button", { name: "Траектория обучения" });
+    expect(tracksTab).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("переключение на Траекторию: чекбоксы направлений билдера, библиотека скрыта", () => {
+    render(<EducationKnowledgeBase />);
+    fireEvent.click(screen.getByRole("button", { name: "Траектория обучения" }));
+    expect(screen.getByRole("button", { name: "Траектория обучения" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getAllByRole("checkbox")).toHaveLength(KNOWLEDGE_DIRECTIONS.length);
+    expect(screen.queryByRole("list", { name: "Библиотека статей" })).toBeNull();
+  });
+
+  it("статья, открытая из траектории, читается в том же ридере хаба", () => {
+    render(<EducationKnowledgeBase />);
+    fireEvent.click(screen.getByRole("button", { name: "Траектория обучения" }));
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: DIRECTION_LABELS_RU.seasonality }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Построить персональный стек" }),
+    );
+    const article = buildLearningStack(["seasonality"]).articles[0];
+    fireEvent.click(screen.getByText(article.title));
+    expect(
+      screen.getByRole("complementary", { name: "Чтение статьи" }),
+    ).toBeInTheDocument();
   });
 });

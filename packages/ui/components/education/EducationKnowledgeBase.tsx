@@ -4,16 +4,25 @@
 //
 // Task EDU-1 — хаб страницы «Обучение и база знаний» (/education,
 // второй бейдж первого ряда главной, spec_education.md Часть I).
+// Task EDU-2 — секция «Траектория обучения»: конструктор персональных
+// обучающих стеков по направлениям (§2.2, spec_education.md).
 //
 // Композиция:
 //   - шапка хаба по паттерну HomeHero/TasksHub (text-center + hero-индиго
 //     из шкалы заголовков платформы; тёмная ревизия покрывается
 //     класс-уровневой utility-ревизией globals.css, DKT);
 //   - строка поиска по всей базе знаний (статьи + термины);
-//   - переключатель секций пилли (паттерн ModuleNav, aria-pressed);
+//   - переключатель секций пилли (паттерн ModuleNav, aria-pressed):
+//     Библиотека → Траектория обучения → Словарь терминов;
 //   - Библиотека: фильтр по этапам + сетка карточек статей;
+//   - Траектория обучения: чекбоксы направлений → персональный стек —
+//     состояние выбора и сборка стека ВНУТРИ LearningTrackBuilder
+//     (каноническое API слоя знаний: buildLearningStack, §2.2), хаб
+//     передаёт только onOpenArticle;
 //   - Словарь: алфавитный список терминов со связями к статьям;
-//   - панель чтения статьи (паттерн EventsLogDrawer, w-[40rem]).
+//   - панель чтения статьи (паттерн EventsLogDrawer, w-[40rem]) — общая
+//     для всех трёх секций: статья из стека читается так же, как из
+//     Библиотеки.
 //
 // КОНТЕНТ НЕ ХАРДКОДИТСЯ: весь текст приходит из слоя знаний
 // (lib/knowledge) — база знаний единый источник истины по методологии
@@ -29,9 +38,10 @@ import {
 } from "../../lib/knowledge/knowledge";
 import { LibrarySection, type StageFilter } from "./LibrarySection";
 import { GlossarySection } from "./GlossarySection";
+import { LearningTrackBuilder } from "./LearningTrackBuilder";
 import { LibraryArticleReader } from "./LibraryArticleReader";
 
-type Section = "library" | "glossary";
+type Section = "library" | "tracks" | "glossary";
 
 export function EducationKnowledgeBase() {
   const [section, setSection] = useState<Section>("library");
@@ -68,7 +78,8 @@ export function EducationKnowledgeBase() {
           Обучение и база знаний
         </h1>
         <p className="mt-3 text-lg text-[#1e3a8a]">
-          единый источник методологии платформы • библиотека • словарь терминов
+          единый источник методологии платформы • библиотека • траектории обучения •
+          словарь терминов
         </p>
       </div>
 
@@ -107,6 +118,18 @@ export function EducationKnowledgeBase() {
         </button>
         <button
           type="button"
+          onClick={() => setSection("tracks")}
+          aria-pressed={section === "tracks"}
+          className={
+            section === "tracks"
+              ? "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm bg-brand font-medium text-white transition-colors"
+              : "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm bg-neutral-100 text-neutral-700 hover:bg-neutral-200 hover:text-neutral-900 transition-colors"
+          }
+        >
+          Траектория обучения
+        </button>
+        <button
+          type="button"
           onClick={() => setSection("glossary")}
           aria-pressed={section === "glossary"}
           className={
@@ -127,6 +150,10 @@ export function EducationKnowledgeBase() {
           onStageFilterChange={setStageFilter}
           onOpenArticle={openArticleFromAnywhere}
         />
+      ) : section === "tracks" ? (
+        // Состояние выбора направлений и сборка стека — внутри билдера
+        // (buildLearningStack, §2.2). Хаб не дублирует слой знаний.
+        <LearningTrackBuilder onOpenArticle={openArticleFromAnywhere} />
       ) : (
         <GlossarySection
           terms={glossaryTerms}

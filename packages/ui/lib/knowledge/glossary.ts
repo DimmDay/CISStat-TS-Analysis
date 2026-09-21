@@ -74,6 +74,14 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     stage_ids: ["eda"],
   },
   {
+    term_id: "cointegration",
+    term: "Коинтеграция",
+    definition:
+      "Долгосрочная равновесная связь между нестационарными рядами: каждый по отдельности дрейфует, но их линейная комбинация стационарна. Для коинтегрированных систем предназначен VECM с механизмом коррекции ошибок; свидетельство коинтеграции на платформе — тест Йохансена (trace и max-eig, последовательный ранг) в fold-local режиме.",
+    related_article_ids: ["modeling-multivariate-var-vecm", "eda-stationarity"],
+    stage_ids: ["eda", "modeling"],
+  },
+  {
     term_id: "data-leakage",
     term: "Утечка данных (data leakage)",
     definition:
@@ -118,7 +126,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     term: "GARCH (семейство)",
     definition:
       "Модели условной гетероскедастичности: моделируют не уровень ряда, а его дисперсию, меняющуюся во времени. Применяются к волатильности финансовых рядов (доходности, цены с кластерами волатильности). Расширения — EGARCH, GJR — ловят асимметрию реакции на шоки.",
-    related_article_ids: ["modeling-catalog"],
+    related_article_ids: ["modeling-catalog", "modeling-volatility-garch"],
     stage_ids: ["modeling"],
   },
   {
@@ -152,6 +160,14 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       "Pruned Exact Linear Time — эффективный алгоритм точного поиска нескольких точек структурного сдвига в последовательности. Используется в EDA платформы (узел «Структурные сдвиги») и переиспользуется платформой для мониторинга собственных сигналов качества.",
     related_article_ids: ["eda-structural-breaks"],
     stage_ids: ["eda"],
+  },
+  {
+    term_id: "qlike",
+    term: "QLIKE",
+    definition:
+      "Логарифмическая потеря для сравнения прогнозов волатильности: сравнивает прогноз дисперсии с фактическим realized-прокси. Primary-метрика волатильного контракта платформы (вместе с RMSE и MAE); сравнение волатильных моделей идёт в отдельной когорте, отдельно от моделей уровня.",
+    related_article_ids: ["modeling-volatility-garch"],
+    stage_ids: ["modeling", "forecasting"],
   },
   {
     term_id: "regularity",
@@ -199,6 +215,14 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     definition:
       "Разбиение данных на обучающую и тестовую части строго по времени: тест — последний отрезок, который модель не видела. Случайное перемешивание для временных рядов запрещено — оно создаёт утечку и переоценивает качество.",
     related_article_ids: ["modeling-backtest"],
+    stage_ids: ["modeling"],
+  },
+  {
+    term_id: "var-vecm",
+    term: "VAR / VECM",
+    definition:
+      "Векторная авторегрессия — модель системы связанных рядов, где каждый объясняется историей всех; VECM добавляет механизм коррекции ошибок для коинтегрированных систем. На платформе: явная система эндогенных рядов (K ≥ 2) на общей регулярной сетке, пер-серийные метрики и диагностика устойчивости по companion-матрице.",
+    related_article_ids: ["modeling-multivariate-var-vecm", "modeling-catalog"],
     stage_ids: ["modeling"],
   },
   {

@@ -275,11 +275,14 @@ export type { TaskCardProps } from "./components/TaskCard";
 // ── «Обучение и база знаний» (/education, Task EDU-1) ─────────────
 // spec_education.md, Часть I, Этап 1 роллаута: страница-хаб базы знаний
 // (второй бейдж первого ряда главной, HOME_ROUTES[1]) — Библиотека для
-// чтения + Словарь терминов. Слой знаний (lib/knowledge) — единый
-// источник истины по методологии: UI рендерит только реестры.
+// чтения + Словарь терминов. Task EDU-2 (§2.2): третья секция —
+// Траектория обучения (LearningTrackBuilder, обучающие стеки по
+// направлениям). Слой знаний (lib/knowledge) — единый источник истины
+// по методологии: UI рендерит только реестры.
 export { EducationKnowledgeBase } from "./components/education/EducationKnowledgeBase";
 export { LibrarySection } from "./components/education/LibrarySection";
 export { GlossarySection } from "./components/education/GlossarySection";
+export { LearningTrackBuilder } from "./components/education/LearningTrackBuilder";
 export { LibraryArticleReader } from "./components/education/LibraryArticleReader";
 export {
   getAllArticles,
@@ -287,11 +290,15 @@ export {
   getArticleById,
   getArticlesByStage,
   getArticlesByDirection,
+  buildLearningStack,
+  getDirectionArticleCounts,
   getGlossaryTerms,
   getTermById,
   searchKnowledge,
   STAGE_ORDER_INDEX,
+  DIRECTION_ORDER_INDEX,
 } from "./lib/knowledge/knowledge";
+export type { LearningStack } from "./lib/knowledge/knowledge";
 export {
   KNOWLEDGE_STAGES,
   STAGE_LABELS_RU,

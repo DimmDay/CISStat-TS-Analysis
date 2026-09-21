@@ -89,6 +89,40 @@ export const DIRECTION_LABELS_RU: Record<KnowledgeDirection, string> = {
   methodology_validation: "Методология и валидация",
 };
 
+/** Короткие пояснения направлений — для подсказок чекбоксов (§2.2). */
+export const DIRECTION_DESCRIPTIONS_RU: Record<KnowledgeDirection, string> = {
+  seasonality:
+    "STL/MSTL, множественные сезонные периоды, сезонный naive, TBATS",
+  missing_outliers:
+    "Пропуски и дубликаты строк, выбросы: обнаружение и коррекции этапа Предобработки",
+  intervals: "Интервалы прогноза, доверительные и предиктивные границы",
+  volatility:
+    "Условная дисперсия, GARCH/EGARCH, кластеризация волатильности, QLIKE",
+  multivariate:
+    "VAR/VECM, коинтеграция, векторные OOF-точки и устойчивость системы",
+  trees_boosting: "LightGBM/XGBoost/CatBoost и их место в каталоге моделей",
+  neural: "Нейросетевые модели: ресурсы, контракты, применимость",
+  methodology_validation:
+    "Бэктест, утечки данных, честные метрики и методология платформы",
+};
+
+// ── Персональный обучающий стек (§2.2: LearningTrackBuilder) ────────
+
+/**
+ * Результат сборки персонального стека по выбранным направлениям.
+ * Контракты (§13): articles — без дублей, в порядке пайплайна, только
+ * published; missing_directions — выбранные направления, по которым
+ * опубликованных статей пока нет (честная маркировка «готовится»).
+ */
+export interface LearningStack {
+  /** Запрошенные направления — в порядке запроса пользователя. */
+  directions: readonly KnowledgeDirection[];
+  /** Статьи стека: dedupe + порядок stage_id пайплайна (§13). */
+  articles: readonly KnowledgeArticle[];
+  /** Направления запроса без опубликованных статей. */
+  missing_directions: readonly KnowledgeDirection[];
+}
+
 // ── Цитаты источников (§7.1: официальные/авторитетные) ──────────
 
 export interface KnowledgeCitation {
