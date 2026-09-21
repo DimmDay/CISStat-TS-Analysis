@@ -102,7 +102,10 @@ export function EducationKnowledgeBase() {
         </div>
       </div>
 
-      {/* ── Переключатель секций (пилли по паттерну ModuleNav) ── */}
+      {/* ── Переключатель секций (пилли; EDU-BADGE: пассив/ховер по
+           паттерну бейджа «Обучение и база знаний» на главной — RouteCard:
+           bg-brand-light/60 + рамка border-brand/60, ховер — углубление до
+           /90; активное состояние — прежнее сплошное индиго bg-brand) ── */}
       <div className="flex items-center justify-center gap-2 px-6">
         <button
           type="button"
@@ -111,7 +114,7 @@ export function EducationKnowledgeBase() {
           className={
             section === "library"
               ? "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm bg-brand font-medium text-white transition-colors"
-              : "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm bg-neutral-100 text-neutral-700 hover:bg-neutral-200 hover:text-neutral-900 transition-colors"
+              : "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm border border-brand/60 bg-brand-light/60 text-neutral-700 hover:border-brand/90 hover:bg-brand-light/90 hover:text-neutral-900 transition-colors"
           }
         >
           Библиотека
@@ -123,7 +126,7 @@ export function EducationKnowledgeBase() {
           className={
             section === "tracks"
               ? "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm bg-brand font-medium text-white transition-colors"
-              : "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm bg-neutral-100 text-neutral-700 hover:bg-neutral-200 hover:text-neutral-900 transition-colors"
+              : "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm border border-brand/60 bg-brand-light/60 text-neutral-700 hover:border-brand/90 hover:bg-brand-light/90 hover:text-neutral-900 transition-colors"
           }
         >
           Траектория обучения
@@ -135,7 +138,7 @@ export function EducationKnowledgeBase() {
           className={
             section === "glossary"
               ? "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm bg-brand font-medium text-white transition-colors"
-              : "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm bg-neutral-100 text-neutral-700 hover:bg-neutral-200 hover:text-neutral-900 transition-colors"
+              : "inline-flex h-9 items-center justify-center whitespace-nowrap rounded-full px-4 text-sm border border-brand/60 bg-brand-light/60 text-neutral-700 hover:border-brand/90 hover:bg-brand-light/90 hover:text-neutral-900 transition-colors"
           }
         >
           Словарь терминов

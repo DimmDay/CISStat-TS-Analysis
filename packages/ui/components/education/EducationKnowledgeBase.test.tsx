@@ -225,6 +225,57 @@ describe("EducationKnowledgeBase — поиск по базе знаний", () 
     expect(screen.getByText(/ничего не найдено/i)).toBeInTheDocument();
   });
 });
+describe("EducationKnowledgeBase — EDU-BADGE: фон пилли секций по паттерну RouteCard главной", () => {
+  // Постановка тимлида 2026-09-21: бейджи «Библиотека», «Траектория
+  // обучения», «Словарь терминов» — пассивный фон и ховер по паттерну
+  // бейджа «Обучение и база знаний» на главной (RouteCard):
+  //   пассив: bg-brand-light/60 + рамка border-brand/60;
+  //   ховер:  углубление до /90 (hover:bg-brand-light/90 + hover:border-brand/90).
+  // Активное состояние НЕ меняем: сплошное индиго bg-brand + text-white.
+
+  it("пассивные пилли: фон и рамка по паттерну RouteCard (bg-brand-light/60 + border-brand/60), не нейтральные и не брендовая заливка", () => {
+    render(<EducationKnowledgeBase />);
+    // «Библиотека» активна по умолчанию — пассивные проверяем на двух других
+    ["Траектория обучения", "Словарь терминов"].forEach((label) => {
+      const pill = screen.getByRole("button", { name: label });
+      expect(pill.className).toContain("bg-brand-light/60");
+      expect(pill.className).toContain("border-brand/60");
+      expect(pill.className).not.toContain("bg-neutral-100");
+      expect(pill.className).not.toContain("hover:bg-neutral-200");
+      expect(pill.className).not.toContain("bg-brand ");
+      expect(pill.className).not.toContain("text-white");
+    });
+  });
+
+  it("пассивные пилли на ховере: углубление фона и рамки до /90 — как у RouteCard", () => {
+    render(<EducationKnowledgeBase />);
+    ["Траектория обучения", "Словарь терминов"].forEach((label) => {
+      const pill = screen.getByRole("button", { name: label });
+      expect(pill.className).toContain("hover:bg-brand-light/90");
+      expect(pill.className).toContain("hover:border-brand/90");
+    });
+  });
+
+  it("активная пилли хранит индиго-заливку (bg-brand + text-white) без пассивного паттерна", () => {
+    render(<EducationKnowledgeBase />);
+    const active = screen.getByRole("button", { name: "Библиотека" });
+    expect(active.className).toContain("bg-brand ");
+    expect(active.className).toContain("text-white");
+    expect(active.className).not.toContain("bg-brand-light");
+  });
+
+  it("«Библиотека» после ухода с неё — тоже по паттерну RouteCard (пассив/ховер)", () => {
+    render(<EducationKnowledgeBase />);
+    fireEvent.click(screen.getByRole("button", { name: "Словарь терминов" }));
+    const lib = screen.getByRole("button", { name: "Библиотека" });
+    expect(lib.className).toContain("bg-brand-light/60");
+    expect(lib.className).toContain("border-brand/60");
+    expect(lib.className).toContain("hover:bg-brand-light/90");
+    expect(lib.className).toContain("hover:border-brand/90");
+    expect(lib.className).not.toContain("bg-brand ");
+  });
+});
+
 describe("EducationKnowledgeBase — Траектория обучения (EDU-2, §2.2)", () => {
   it("есть третья секция-пилли «Траектория обучения», по умолчанию неактивна", () => {
     render(<EducationKnowledgeBase />);

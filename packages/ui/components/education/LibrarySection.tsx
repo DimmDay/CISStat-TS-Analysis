@@ -25,9 +25,15 @@ const STAGE_FILTER_PILL =
   "inline-flex h-8 items-center justify-center whitespace-nowrap rounded-full px-3.5 text-[13px] transition-colors";
 
 function stageFilterClass(active: boolean) {
+  // EDU-BADGE (2026-09-21): пассивный фон/ховер/рамка — по паттерну бейджа
+  // «Обучение и база знаний» на главной (RouteCard): bg-brand-light/60 +
+  // border-brand/60, ховер — углубление до /90. Активное состояние НЕ
+  // меняем: сплошное индиго bg-brand + text-white. Токены brand/brand-light
+  // несут сертифицированные .dark-ревизии (DKT) — гловенс DKT-2R/DKT-3
+  // соблюдён без новых литералов.
   return active
     ? `${STAGE_FILTER_PILL} bg-brand font-medium text-white`
-    : `${STAGE_FILTER_PILL} bg-neutral-100 text-neutral-700 hover:bg-neutral-200 hover:text-neutral-900`;
+    : `${STAGE_FILTER_PILL} border border-brand/60 bg-brand-light/60 text-neutral-700 hover:border-brand/90 hover:bg-brand-light/90 hover:text-neutral-900`;
 }
 
 export function LibrarySection({
