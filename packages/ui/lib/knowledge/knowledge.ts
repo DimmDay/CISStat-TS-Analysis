@@ -27,6 +27,8 @@ import type {
 import { KNOWLEDGE_STAGES, KNOWLEDGE_DIRECTIONS } from "./types";
 import { KNOWLEDGE_ARTICLES } from "./articles";
 import { GLOSSARY_TERMS } from "./glossary";
+import { KNOWLEDGE_HELP_ENTRIES } from "./help";
+import type { KnowledgeHelpEntry, KnowledgeHelpFacet } from "./types";
 
 /** Порядок этапа в пайплайне (для сортировки выдачи, §13). */
 export const STAGE_ORDER_INDEX: Record<KnowledgeStageId, number> =
@@ -41,6 +43,36 @@ export const DIRECTION_ORDER_INDEX: Record<KnowledgeDirection, number> =
     KnowledgeDirection,
     number
   >;
+
+// ── Контекстная справка узлов (Шаг 3, ревизия 2026-09-22: §2.1) ─────
+
+/**
+ * Единая точка доступа окна «Описание» к реестру справки: секции
+ * «Метрики и алгоритм» (metrics), «Полный пайплайн» (pipeline) и
+ * «Справка» (module_help) модулей TsAnalysis*.tsx рендерят запись
+ * по ключу (stage_id, node_id, facet). Несуществующий ключ → null
+ * (no fabricated results — компонент честно сообщит, что справка
+ * готовится; покрытие гарантировано инвариант-тестами слоя).
+ *
+ * ЕДИНСТВЕННАЯ точка встраивания телеметрии «статья показана» для
+ * Q/ΔQ на уровне узлов (arch.док §5, Этап 5) — все показы секций
+ * окна «Описание» (включая автозагрузку при переходе на остановку)
+ * проходят через этот вызов.
+ */
+export function describeNode(
+  stageId: KnowledgeStageId,
+  nodeId: string | null,
+  facet: KnowledgeHelpFacet,
+): KnowledgeHelpEntry | null {
+  return (
+    KNOWLEDGE_HELP_ENTRIES.find(
+      (e) => e.stage_id === stageId && e.node_id === nodeId && e.facet === facet,
+    ) ?? null
+  );
+}
+
+/** Все записи реестра справки — для инвариант-тестов и будущих контуров (RAGFlow). */
+export { KNOWLEDGE_HELP_ENTRIES };
 
 /** Все статьи реестра (включая draft) — для админ-контекстов и тестов. */
 export function getAllArticles(): KnowledgeArticle[] {

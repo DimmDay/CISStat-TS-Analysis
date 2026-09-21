@@ -27,6 +27,7 @@ import { ForecastAccuracyPanel } from "./ForecastAccuracyPanel";
 import { ForecastHistoryList } from "./ForecastHistoryList";
 import { ForecastExportMenu } from "./ForecastExportMenu";
 import { useAppShell } from "../context/AppShellContext";
+import { describeNode } from "../lib/knowledge/knowledge";
 import {
   ALPHA_SOURCE_LABELS,
   CI_METHOD_LABELS,
@@ -39,23 +40,7 @@ import {
   generateForecast,
 } from "../lib/forecasting";
 
-const FORECASTING_DESCRIPTION = `Цель: построить реальный прогноз вперёд по выбранной Model Card -- финальный рефит на ВСЕЙ доступной истории с замороженными гиперпараметрами (после кросс-валидации модель переобучается на всех данных -- Hyndman & Athanasopoulos, FPP3, гл. 5.9).
 
-Метрики: точечный прогноз всегда из сертифицированного реестра исполнения; интервал -- методом по семейству модели (аналитический / параметрическая симуляция / нативный адаптер / эмпирический на OOF-остатках бэктеста). Каждая граница интервала инвертируется отдельно через нелинейную обратную трансформацию -- без схлопывания к медиане.
-
-Алгоритм backend: POST /v1/session/modeling/forecast -> final fit (полная история) -> MODEL_EXECUTION_REGISTRY.execute -> интервалы -> аномалии (detect_outlier_mask) -> ForecastRun в артефактах сессии с событием трассы forecast_generated.`;
-
-const FORECASTING_HELP = `Справка этапа «Прогнозирование»
-
-• Прогноз строится ТОЛЬКО по Model Card, созданной на вкладке «Моделирование»: модель, гиперпараметры и предобработка уже зафиксированы и верифицированы бэктестом. Прогноз не выбирает модель заново.
-
-• Горизонт по умолчанию -- тот же, что проверен бэктестом (training.horizon). Больший горизонт допустим: аналитические/симуляционные интервалы экстраполируют модельную структуру (мягкое предупреждение), а эмпирический интервал за проверенной границей честно переходит на квантиль последнего валидированного шага (консервативная оценка).
-
-• Уровень доверия: alpha=0.05 -> 95% интервал. Для нейро-моделей допустимы только 0.01/0.05/0.10 (сертифицированный whitelist адаптеров). Prophet/TBATS и модели на деревьях отдают нативные интервалы на фиксированном уровне адаптера (80%/90%) -- запрошенная alpha не подменяется другим методом, а дисклоужерится.
-
-• «Ожидаемая точность» -- это исторические метрики модели на бэктесте, а НЕ точность этого прогноза: у будущих точек нет фактов, ошибка станет известна только после наступления будущего.
-
-• Чувствительность показывает веер прогнозов на границах уже исследованного тюнингом пространства параметров -- за его пределами модель не проверена на ваших данных.`;
 
 const STEP_LABELS: Array<{ key: string; label: string }> = [
   { key: "generate", label: "Прогноз построен" },
@@ -227,7 +212,13 @@ export function TsAnalysisForecasting() {
         ? "no-card"
         : "ready";
 
-  const descriptionContent = descriptionSection === "help" ? FORECASTING_HELP : FORECASTING_DESCRIPTION;
+  // Описание этапа и «Справка» — из единого реестра справки (Шаг 3,
+  // ревизия 2026-09-22: describeNode по (stage_id, node_id, facet);
+  // паритет миграции застрахован фиксстурой help-parity.fixture.json, §13)
+  const descriptionContent =
+    descriptionSection === "help"
+      ? (describeNode("forecasting", null, "module_help")?.text ?? "")
+      : (describeNode("forecasting", null, "stage_overview")?.text ?? "");
 
   // ── Рендер ──
   return (

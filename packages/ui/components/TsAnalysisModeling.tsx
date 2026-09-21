@@ -45,6 +45,7 @@ import { useAppShell } from "../context/AppShellContext";
 import { getApiBase } from "../lib/apiClient";
 import { ModelingTraceabilityOverview } from "./ModelingTraceabilityOverview";
 import { ModelingWorkflowOverview } from "./ModelingWorkflowOverview";
+import { describeNode } from "../lib/knowledge/knowledge";
 
 // ── Константы ──────────────────────────────────────────────────
 
@@ -113,132 +114,8 @@ function formatErrorDetail(detail: unknown): string | null {
 
 // ── Справка по целям модуля «Моделирование» ────────────────────
 
-const MODELING_HELP = `Цели модуля "Моделирование"
 
-Моделирование — это одноразовый процесс выбора лучшей модели для данного временного ряда. Это НЕ прогнозирование: моделирование выбирает модель, прогнозирование генерирует прогнозы.
 
-Целевая колонка, профиль ряда и план валидации поступают из подтверждённого EDA hand-off и в этом модуле доступны только для чтения.
-
-Движок применимости (24 правила, 4 уровня):
-1. RECOMMENDED — модель подходит для данного профиля данных
-2. CONDITIONALLY_APPLICABLE — применима с оговорками
-3. NOT_RECOMMENDED — формально возможна, но результат вряд ли полезен (Task 144: модели с мягким порогом истории в окне [soft_min_observations, min_observations) запускаются с этим предупреждением)
-4. NOT_APPLICABLE — модель не может быть применена
-
-8 семейств моделей (24 модели):
-• Baselines (4) — Naive, Seasonal Naive, Drift, Mean
-• Эксп. сглаживание (3) — ETS, ETS Damped, Theta
-• ARIMA (2) — ARIMA/SARIMA, Auto-ARIMA
-• Многомерные (2) — VAR, VECM
-• Волатильность (2) — GARCH, EGARCH
-• Структурные (2) — Prophet, TBATS
-• Деревья и бустинг (4) — XGBoost, LightGBM, CatBoost, RF
-• Нейросетевые (5) — LSTM, DeepAR, TFT, N-BEATS, N-HiTS
-
-11-стадийный пайплайн:
-1. Определение задачи → 2. Структура данных → 3. Ограничения
-→ 4. Пул кандидатов → 5. Baseline → 6. Бэктест → 7. Тюнинг
-→ 8. Диагностика → 9. Сравнение → 10. Выбор модели → 11. Model Card
-
-Метрики ранжирования: MAE(0.35) + RMSE(0.25) + MAPE(0.20) + MASE(0.20). R² исключён из ранжирования.`;
-
-interface ModelingStageDescription {
-  content: string;
-}
-
-const MODELING_STAGE_DESCRIPTIONS: Record<string, ModelingStageDescription> = {
-  problem_definition: {
-    content: `Определение задачи
-
-Цель остановки — зафиксировать, что именно прогнозируется и на каком горизонте. Модуль читает целевую колонку и BacktestPlan из подтверждённого EDA hand-off; менять эти факты здесь нельзя.
-
-Вход: целевая колонка, временная ось, горизонт, стратегия и folds валидации.
-Результат: трассируемая постановка задачи, пригодная для единого сравнения моделей.
-Критерий завершения: checkpoint modeling_entry содержит согласованные цель и план валидации.`,
-  },
-  data_structure: {
-    content: `Структура данных
-
-Остановка проверяет финальные свойства ряда перед запуском моделей: объём истории, частоту, регулярность, сезонность, количество рядов и экзогенных признаков.
-
-Здесь отображается read-only срез финального паспорта EDA. Он определяет допустимые семейства моделей и необходимую fold-local предобработку.
-Критерий завершения: структура однозначно восстановлена из modeling_entry без локального переопределения.`,
-  },
-  constraint_mapping: {
-    content: `Ограничения
-
-Остановка переводит свойства ряда и ограничения среды в capability-контракт моделей. Жёсткие запреты отделяются от предупреждений и условий применимости.
-
-Вход: финальный паспорт, BacktestPlan и доступность production-dispatch.
-Результат: объяснимые статусы available, not_applicable, blocked или not_implemented для каждой стадии.
-Критерий завершения: каждое ограничение имеет источник и не подменяет фактический статус исполнения.`,
-  },
-  candidate_generation: {
-    content: `Пул кандидатов
-
-Движок применимости формирует воспроизводимый список моделей из полного методологического каталога. Для каждой модели отдельно показываются применимость к ряду и готовность production-исполнения.
-
-Вход: checkpoint modeling_entry и единая capability-матрица.
-Результат: каталог моделей, исполнимый shortlist и причины включения или блокировки.
-Критерий завершения: пул сохранён в сессии, а обязательные baseline-модели рассчитаны на согласованном горизонте.`,
-  },
-  baseline_estimation: {
-    content: `Baseline
-
-Остановка рассчитывает простые эталонные модели на том же горизонте, тех же folds и той же шкале, что будут использоваться для кандидатов.
-
-Baseline задаёт честную нижнюю границу качества. Сложная модель не проходит gate, если не подтверждает улучшение относительно сопоставимого OOF-прогноза.
-Критерий завершения: обязательные baseline имеют текущие backtest run и horizon-aligned метрики.`,
-  },
-  backtest: {
-    content: `Бэктест
-
-Остановка оценивает модели без нарушения временного порядка. Используется согласованный в EDA BacktestPlan; преобразования обучаются только на train-части каждого fold.
-
-Результат: фактические OOF-прогнозы, метрики MAE, RMSE, MAPE и MASE, сигнатуры параметров и предупреждения.
-Критерий завершения: все модели execution scope рассчитаны либо явно исключены с обоснованием.`,
-  },
-  tuning: {
-    content: `Тюнинг
-
-Остановка подбирает гиперпараметры только для моделей с capability tune, используя тот же BacktestPlan и fold-local preprocessing, что и основной бэктест.
-
-Можно принять параметры по умолчанию для всего ожидающего scope. Решение фиксируется атомарно и не теряется при обновлении пула кандидатов.
-Критерий завершения: каждая применимая модель имеет tuning result либо явный подтверждённый skip.`,
-  },
-  diagnostics: {
-    content: `Диагностика
-
-Остановка анализирует остатки актуального OOF-бэктеста выбранной версии модели. Проверяются автокорреляция, нормальность, ARCH-эффекты и статистика Durbin–Watson.
-
-Диагностика не добавляется скрытым весом к рейтингу: её статус показывается отдельным доказательством риска.
-Критерий завершения: для всех моделей текущего scope есть отчёт, связанный с актуальными backtest и parameter signature.`,
-  },
-  comparison: {
-    content: `Сравнение
-
-Остановка сопоставляет только модели одного проверенного OOF-cohort. Рейтинг строится по прогнозным метрикам, а применимость, диагностика и стабильность folds отображаются отдельными слоями решения.
-
-MASE сопровождается прозрачным train-only знаменателем; baseline gate использует фактически совмещённые OOF-точки одинакового горизонта.
-Критерий завершения: сформирован воспроизводимый ranking с полными сигнатурами входных артефактов.`,
-  },
-  selection: {
-    content: `Выбор модели
-
-Остановка фиксирует победителя на основании проверенного comparison. Single-кандидат определяется primary OOF loss; ensemble допускается только после фактической проверки прироста на совместимых OOF-прогнозах.
-
-Риски baseline gate, диагностики и selection bias требуют явного подтверждения, а не скрытого обхода.
-Критерий завершения: выбран один трассируемый вариант и сохранено обоснование решения.`,
-  },
-  model_card: {
-    content: `Model Card
-
-Финальная остановка собирает паспорт выбранной модели: назначение, данные, BacktestPlan, параметры, метрики, диагностику, ограничения и происхождение артефактов.
-
-Model Card не пересчитывает модель и не заменяет результаты предыдущих остановок. Он фиксирует их согласованную версию для передачи в прогнозирование.
-Критерий завершения: карточка создана из актуального selection и доступна как неизменяемый трассируемый артефакт.`,
-  },
-};
 
 type DescriptionSection =
   | "metrics"
@@ -685,13 +562,21 @@ export function TsAnalysisModeling() {
 
   const activeStage = PIPELINE_STAGES.find((stage) => stage.id === activeStageId)
     ?? PIPELINE_STAGES[0];
-  const activeStageDescription = MODELING_STAGE_DESCRIPTIONS[activeStageId]
-    ?? MODELING_STAGE_DESCRIPTIONS.problem_definition;
+  // Описание активной стадии графа — из единого реестра справки (Шаг 3,
+  // ревизия 2026-09-22: describeNode по (stage_id, node_id, facet); паритет
+  // миграции застрахован фиксстурой help-parity.fixture.json, §13)
+  const activeStageDescription =
+    describeNode("modeling", activeStageId, "stage_overview") ??
+    describeNode("modeling", "problem_definition", "stage_overview");
 
   // Контекстное описание: активная остановка → выбранная операция → возврат.
+  // Динамические описания кандидатов/операций вычисляются из фактов рантайма
+  // (не методологический контент — не мигрируют); статические тексты — из реестра.
   const descriptionContent = (() => {
-    if (descriptionSection === "help") return MODELING_HELP;
-    if (!descriptionSection) return activeStageDescription.content;
+    if (descriptionSection === "help") {
+      return describeNode("modeling", null, "module_help")?.text ?? null;
+    }
+    if (!descriptionSection) return activeStageDescription?.text ?? null;
     if (descriptionSection === "metrics") {
       if (activeCandidate) {
         return `Метрики и алгоритм: ${activeCandidate.model_name}\n\nСемейство: ${activeCandidate.family_id}\nУровень применимости: ${APPLICABILITY_LABEL[activeCandidate.level as ApplicabilityLevel]}\nСтатус исполнения: ${activeCandidate.available_actions.includes("backtest") ? "production backtest готов" : "только методологический каталог"}\n${activeCandidate.blocking_reason || ""}\n${activeCandidate.rule_id ? `Правило: ${activeCandidate.rule_id}` : ""}\n${activeCandidate.message}\n\nАлгоритм: движок применимости оценивает 24 правила (5 forbidden, 7 discouraged, 5 conditional, 7 preferred) и определяет наивысший уровень применимости модели для данного профиля данных. Статус исполнения формируется отдельно из реестра реальных backend-dispatch.`;
@@ -701,12 +586,12 @@ export function TsAnalysisModeling() {
     if (descriptionSection === "backtest") {
       return activeCandidate
         ? `Запуск бэктеста: ${activeCandidate.model_name}\n\nОперация рассчитывает фактические OOF-прогнозы на каноническом BacktestPlan из EDA. Предобработка обучается отдельно внутри train-части каждого fold; метрики возвращаются на исходной шкале.\n\nПовторный запуск заменит текущий backtest этой модели и потребует актуализировать зависящие от него диагностику, сравнение и выбор.`
-        : activeStageDescription.content;
+        : activeStageDescription?.text ?? null;
     }
     if (descriptionSection === "scope") {
       return activeCandidate
         ? `Execution scope: ${activeCandidate.model_name}\n\nИсключение разрешает продолжить сравнение без ещё не рассчитанной модели, но требует явной причины и подтверждения. Возврат модели в scope снова делает её бэктест обязательным.\n\nРешение сохраняется в сессии и остаётся видимым в трассе моделирования.`
-        : activeStageDescription.content;
+        : activeStageDescription?.text ?? null;
     }
     if (activeCandidate?.stage_capabilities) {
       const labels: Record<string, string> = Object.fromEntries(

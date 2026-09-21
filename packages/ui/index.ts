@@ -301,6 +301,7 @@ export {
   getGlossaryTerms,
   getTermById,
   searchKnowledge,
+  describeNode,
   STAGE_ORDER_INDEX,
   DIRECTION_ORDER_INDEX,
 } from "./lib/knowledge/knowledge";
@@ -314,6 +315,7 @@ export {
 } from "./lib/knowledge/types";
 export { KNOWLEDGE_ARTICLES } from "./lib/knowledge/articles";
 export { GLOSSARY_TERMS } from "./lib/knowledge/glossary";
+export { KNOWLEDGE_HELP_ENTRIES } from "./lib/knowledge/help";
 export type {
   KnowledgeArticle,
   KnowledgeArticleStatus,
@@ -322,6 +324,8 @@ export type {
   KnowledgeDirection,
   KnowledgeStageId,
   GlossaryTerm,
+  KnowledgeHelpEntry,
+  KnowledgeHelpFacet,
 } from "./lib/knowledge/types";
 
 // Вертикальный срез задачи «Причины» (v2, XAI — spec_tasks_ia_addendum_v1_1.md

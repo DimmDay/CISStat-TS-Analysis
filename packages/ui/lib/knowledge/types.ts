@@ -169,3 +169,37 @@ export interface GlossaryTerm {
   /** Этапы, где термин встречается в работе */
   stage_ids: readonly KnowledgeStageId[];
 }
+
+// ── Контекстная справка узлов (Шаг 3, ревизия 2026-09-22: §2.1) ─────
+//
+// Единый реестр справки — источник истины: секции окна «Описание»
+// модулей TsAnalysis*.tsx рендерят запись по (stage_id, node_id, facet)
+// через describeNode(...). Никаких строковых констант в компонентах и
+// никаких новых справочных поверхностей на узлах (без '?').
+
+/** Грань потребления справки: какая секция окна «Описание» рендерится. */
+export type KnowledgeHelpFacet =
+  | "metrics" // секция «Метрики и алгоритм» — на уровне узла
+  | "pipeline" // секция «Полный пайплайн»/мастер — на уровне узла
+  | "module_help" // кнопка «Справка» в заголовке модуля (node_id = null)
+  | "stage_overview"; // описание этапа/стадии по умолчанию (узел графа или весь этап)
+
+/**
+ * Запись реестра справки — вербатим-текст мигрированной константы.
+ * При промоушене в backend становится строкой KnowledgeArticle.body_md
+ * (модель spec_education.md §1: node_id/facet уже в контракте ревизии).
+ */
+export interface KnowledgeHelpEntry {
+  /** "validation.data_types.metrics", "eda.module.module_help", ... */
+  entry_id: string;
+  /** «где в пайплайне» — тот же словарь STAGES (§1.1) */
+  stage_id: KnowledgeStageId;
+  /** узел стадии (остановка степпера/стадия графа); null — уровень модуля/этапа */
+  node_id: string | null;
+  /** какая секция окна «Описание» потребляет запись */
+  facet: KnowledgeHelpFacet;
+  /** аудит происхождения: "TsAnalysisEDA.tsx::DESCRIPTIVE_METRICS_DESCRIPTION" */
+  superseded_constant: string;
+  /** текст справки — байт-в-байт перенесён из константы (паритет §13) */
+  text: string;
+}
