@@ -78,7 +78,10 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     term: "Коинтеграция",
     definition:
       "Долгосрочная равновесная связь между нестационарными рядами: каждый по отдельности дрейфует, но их линейная комбинация стационарна. Для коинтегрированных систем предназначен VECM с механизмом коррекции ошибок; свидетельство коинтеграции на платформе — тест Йохансена (trace и max-eig, последовательный ранг) в fold-local режиме.",
-    related_article_ids: ["modeling-multivariate-var-vecm", "eda-stationarity"],
+    // связность реестров: статья modeling-multivariate-var-vecm ещё
+    // готовится — ссылка появится вместе с публикацией статьи (no
+    // fabricated content); связь через eda-stationarity уже честная.
+    related_article_ids: ["eda-stationarity"],
     stage_ids: ["eda", "modeling"],
   },
   {
@@ -126,7 +129,9 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     term: "GARCH (семейство)",
     definition:
       "Модели условной гетероскедастичности: моделируют не уровень ряда, а его дисперсию, меняющуюся во времени. Применяются к волатильности финансовых рядов (доходности, цены с кластерами волатильности). Расширения — EGARCH, GJR — ловят асимметрию реакции на шоки.",
-    related_article_ids: ["modeling-catalog", "modeling-volatility-garch"],
+    // связность реестров: статья modeling-volatility-garch ещё готовится —
+    // каталог (modeling-catalog) уже покрывает GARCH-семейство.
+    related_article_ids: ["modeling-catalog"],
     stage_ids: ["modeling"],
   },
   {
@@ -166,7 +171,10 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     term: "QLIKE",
     definition:
       "Логарифмическая потеря для сравнения прогнозов волатильности: сравнивает прогноз дисперсии с фактическим realized-прокси. Primary-метрика волатильного контракта платформы (вместе с RMSE и MAE); сравнение волатильных моделей идёт в отдельной когорте, отдельно от моделей уровня.",
-    related_article_ids: ["modeling-volatility-garch"],
+    // связность реестров: профильная статья по волатильности ещё готовится —
+    // честный пустой список (паттерн «справка готовится»), ссылка «в пустоту»
+    // запрещена инвариантом связности.
+    related_article_ids: [],
     stage_ids: ["modeling", "forecasting"],
   },
   {
@@ -222,7 +230,9 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     term: "VAR / VECM",
     definition:
       "Векторная авторегрессия — модель системы связанных рядов, где каждый объясняется историей всех; VECM добавляет механизм коррекции ошибок для коинтегрированных систем. На платформе: явная система эндогенных рядов (K ≥ 2) на общей регулярной сетке, пер-серийные метрики и диагностика устойчивости по companion-матрице.",
-    related_article_ids: ["modeling-multivariate-var-vecm", "modeling-catalog"],
+    // связность реестров: статья modeling-multivariate-var-vecm ещё
+    // готовится — каталог (modeling-catalog) уже покрывает VAR/VECM.
+    related_article_ids: ["modeling-catalog"],
     stage_ids: ["modeling"],
   },
   {

@@ -38,10 +38,10 @@ describe("EducationKnowledgeBase — шапка и навигация секци
     ).toBeInTheDocument();
   });
 
-  it("содержит переключатель трёх секций: Библиотека, Траектории обучения, Словарь терминов", () => {
+  it("содержит переключатель трёх секций: Библиотека, Траектория обучения, Словарь терминов", () => {
     render(<EducationKnowledgeBase />);
     const libraryTab = screen.getByRole("button", { name: "Библиотека" });
-    const tracksTab = screen.getByRole("button", { name: "Траектории обучения" });
+    const tracksTab = screen.getByRole("button", { name: "Траектория обучения" });
     const glossaryTab = screen.getByRole("button", { name: "Словарь терминов" });
     expect(libraryTab).toHaveAttribute("aria-pressed", "true"); // библиотека активна по умолчанию
     expect(tracksTab).toHaveAttribute("aria-pressed", "false");
@@ -68,11 +68,15 @@ describe("EducationKnowledgeBase — шапка и навигация секци
   });
 });
 
-describe("EducationKnowledgeBase — Траектории обучения (стеки по направлениям, Шаг 2)", () => {
-  it("переключение на Траектории: чекбоксы направлений рендерятся, библиотека скрыта", () => {
+describe("EducationKnowledgeBase — Траектория обучения (стеки по направлениям, Шаг 2)", () => {
+  // Ярлык пилли и контракт построения стека — канонические из EDU-2:
+  // «Траектория обучения» + кнопка «Построить персональный стек» +
+  // поэтапные списки «Стек этапа «…»» (LearningTrackBuilder, §2.2).
+
+  it("переключение на Траекторию: чекбоксы направлений рендерятся, библиотека скрыта", () => {
     render(<EducationKnowledgeBase />);
-    fireEvent.click(screen.getByRole("button", { name: "Траектории обучения" }));
-    expect(screen.getByRole("button", { name: "Траектории обучения" })).toHaveAttribute(
+    fireEvent.click(screen.getByRole("button", { name: "Траектория обучения" }));
+    expect(screen.getByRole("button", { name: "Траектория обучения" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -84,13 +88,16 @@ describe("EducationKnowledgeBase — Траектории обучения (ст
 
   it("выбор направления в хабе собирает стек слоя знаний (порядок пайплайна)", () => {
     render(<EducationKnowledgeBase />);
-    fireEvent.click(screen.getByRole("button", { name: "Траектории обучения" }));
+    fireEvent.click(screen.getByRole("button", { name: "Траектория обучения" }));
     fireEvent.click(
       screen.getByRole("checkbox", { name: DIRECTION_LABELS_RU.seasonality }),
     );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Построить персональный стек" }),
+    );
     const expected = buildLearningStack(["seasonality"]);
-    const list = screen.getByRole("list", { name: "Персональный стек статей" });
-    const items = within(list).getAllByRole("listitem");
+    const lists = screen.getAllByRole("list", { name: /^Стек этапа «.+»$/ });
+    const items = lists.flatMap((list) => within(list).getAllByRole("listitem"));
     expect(items.length).toBe(expected.articles.length);
     expect(
       within(items[0]).getByText(expected.articles[0].title),
@@ -99,9 +106,12 @@ describe("EducationKnowledgeBase — Траектории обучения (ст
 
   it("открытие статьи из траектории работает через общий ридер (единый канал)", () => {
     render(<EducationKnowledgeBase />);
-    fireEvent.click(screen.getByRole("button", { name: "Траектории обучения" }));
+    fireEvent.click(screen.getByRole("button", { name: "Траектория обучения" }));
     fireEvent.click(
       screen.getByRole("checkbox", { name: DIRECTION_LABELS_RU.seasonality }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Построить персональный стек" }),
     );
     const expected = buildLearningStack(["seasonality"]);
     fireEvent.click(screen.getByText(expected.articles[0].title));

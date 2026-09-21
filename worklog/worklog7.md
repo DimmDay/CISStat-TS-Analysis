@@ -1453,7 +1453,7 @@ docs/dktcert_certification_report.md.
 
 ---
 
-Task Edu-2: слой знаний + LearningTrackBuilder + третья секция хаба /education.
+## Task Edu-2: слой знаний + LearningTrackBuilder + третья секция хаба /education.
 
 1. Слой знаний (packages/ui/lib/knowledge/knowledge.ts, §2.2):
 
