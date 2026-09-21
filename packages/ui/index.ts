@@ -21,6 +21,12 @@ export { HomeWavesBackground } from "./components/HomeWavesBackground";
 // платформой» /navigator (точный перенос авторского SVG 1600×3200),
 // только standalone — по паттерну главной страницы.
 export { NavigatorWavesBackground } from "./components/NavigatorWavesBackground";
+// EducationPageBackground: сплошная фоновая коробка страницы
+// «Обучение и база знаний» /education (#EFF6FD — токен --wave-home-2
+// палитры волн главной, светлый байт-точно #EFF6FD / тёмная ревизия
+// #17212C DKT-CERT; постановка тимлида 2026-09-21), только standalone —
+// по паттерну фоновой коробки главной (rounded-2xl, aria-hidden).
+export { EducationPageBackground } from "./components/EducationPageBackground";
 // HomeFooter: футер главной страницы standalone (Task w/n, 2026-09-13).
 // Шаблон — футер главной страницы портала CISStat (структура 1:1 из
 // продового DOM; блок legal-дисклеймера под футером игнорируется).

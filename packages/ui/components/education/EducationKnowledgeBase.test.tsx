@@ -69,11 +69,7 @@ describe("EducationKnowledgeBase — шапка и навигация секци
 });
 
 describe("EducationKnowledgeBase — Траектория обучения (стеки по направлениям, Шаг 2)", () => {
-  // Ярлык пилли и контракт построения стека — канонические из EDU-2:
-  // «Траектория обучения» + кнопка «Построить персональный стек» +
-  // поэтапные списки «Стек этапа «…»» (LearningTrackBuilder, §2.2).
-
-  it("переключение на Траекторию: чекбоксы направлений рендерятся, библиотека скрыта", () => {
+  it("переключение на Траектории: чекбоксы направлений рендерятся, библиотека скрыта", () => {
     render(<EducationKnowledgeBase />);
     fireEvent.click(screen.getByRole("button", { name: "Траектория обучения" }));
     expect(screen.getByRole("button", { name: "Траектория обучения" })).toHaveAttribute(
@@ -92,12 +88,19 @@ describe("EducationKnowledgeBase — Траектория обучения (ст
     fireEvent.click(
       screen.getByRole("checkbox", { name: DIRECTION_LABELS_RU.seasonality }),
     );
+    // Канонический флоу EDU-2 (§2.2): сборка стека — ЯВНАЯ кнопка билдера
+    // «Построить персональный стек», а не мгновенная реакция на чекбокс.
     fireEvent.click(
       screen.getByRole("button", { name: "Построить персональный стек" }),
     );
     const expected = buildLearningStack(["seasonality"]);
-    const lists = screen.getAllByRole("list", { name: /^Стек этапа «.+»$/ });
-    const items = lists.flatMap((list) => within(list).getAllByRole("listitem"));
+    // Стек рендерится списками ПО ЭТАПАМ (aria-label «Стек этапа «…»»)
+    // в порядке пайплайна; термины траектории — отдельный список. Скоуп
+    // статей — только списки этапов.
+    const stageLists = screen
+      .getAllByRole("list")
+      .filter((l) => (l.getAttribute("aria-label") ?? "").startsWith("Стек этапа"));
+    const items = stageLists.flatMap((l) => within(l).getAllByRole("listitem"));
     expect(items.length).toBe(expected.articles.length);
     expect(
       within(items[0]).getByText(expected.articles[0].title),
@@ -110,6 +113,7 @@ describe("EducationKnowledgeBase — Траектория обучения (ст
     fireEvent.click(
       screen.getByRole("checkbox", { name: DIRECTION_LABELS_RU.seasonality }),
     );
+    // Канонический флоу EDU-2: стек собирается явной кнопкой билдера.
     fireEvent.click(
       screen.getByRole("button", { name: "Построить персональный стек" }),
     );

@@ -1475,3 +1475,10 @@ getDirectionArticleCounts() — честные счётчики по всем 8 
 5. Интеграция EducationKnowledgeBase.tsx — третья секция «Траектория обучения» в переключателе пилли (aria-pressed, паттерн ModuleNav); статья из стека открывается в том же ридере, что и из Библиотеки.
 
 6. packages/ui/index.ts — публичные экспорты: LearningTrackBuilder, buildLearningStack, getDirectionArticleCounts, DIRECTION_ORDER_INDEX, type LearningStack.
+
+---
+
+## Task /education — фон и футер по паттерну главной:
+
+Новый компонент EducationPageBackground — сплошная коробка (rounded-2xl, aria-hidden, absolute inset-0). Цвет — токен --wave-home-2: светлый ровно #EFF6FD, тёмная ревизия #17212C из DKT-CERT — governance DKT-2/DKT-3 соблюдён без новых токенов
+Обёртка -mt-6 pt-6 (фон вплотную к меню, контент не сдвинут) + HomeFooter последним элементом — 1:1 с /navigator
