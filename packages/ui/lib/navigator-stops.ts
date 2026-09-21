@@ -163,6 +163,13 @@ export const NAVIGATOR_STOPS: NavigatorStop[] = [
       { id: "distribution", title: "Визуализация распределения", description: "Точечный график, гистограмма и KDE по выбранной числовой колонке" },
       { id: "formats", title: "Форматы и объём", description: ".csv, .xlsx, .xls, .json — drag-and-drop, до 50MB" },
       { id: "source", title: "Источник: файл или БД", description: "Загрузка файла или подключение к SQL-базе данных" },
+      // Task NAVDET-PASSPORT (2026-09-22): 10-й, ПОСЛЕДНИЙ пункт модуля
+      // «Загрузка» — фиксация первичного снимка свойств ряда (v1.0).
+      // Реальная логика: DatasetPassportPanel stage="start" →
+      // POST /dataset/passport/start → calculate_ts_passport → снимок в
+      // passport_history сессии; дальше снимок — точка отсчёта сравнений
+      // v1.1 (Валидация) → v1.2 (Предобработка) → v1.3 (EDA).
+      { id: "passport", title: "Паспорт свойств ряда", description: "Первичный снимок свойств ряда (v1.0) — точка отсчёта сравнений после Валидации и Предобработки" },
     ],
   },
   // 2. Валидация ───────────────────────────────────────────────

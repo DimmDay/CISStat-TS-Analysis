@@ -188,8 +188,10 @@ describe("TsAnalysisNavigator", () => {
       // (4-й item), «Техническая информация» (5-й item), «Превью 5+5
       // строк» (6-й item), «Визуализация распределения» (7-й item);
       // с Task NAVDET-4 (2026-09-17) — «Форматы и объём» (8-й item);
-      // с Task NAVDET-5 (2026-09-17) — «Источник: файл или БД» (9-й item).
-      // ИТОГ: все 9 пунктов остановки «Загрузка» имеют специализированный
+      // с Task NAVDET-5 (2026-09-17) — «Источник: файл или БД» (9-й item);
+      // с Task NAVDET-PASSPORT (2026-09-22) — «Паспорт свойств ряда»
+      // (10-й, последний item).
+      // ИТОГ: все 10 пунктов остановки «Загрузка» имеют специализированный
       // Обзор, поэтому проверка заглушки переносится на пункты ДРУГИХ
       // остановок: переключаемся на «ВАЛИДАЦИЯ» (первый пункт —
       // «Типы данных», специализированной визуализации нет).
@@ -843,6 +845,73 @@ describe("TsAnalysisNavigator", () => {
       activateSourceItem();
       expect(screen.getByText(/read_uploaded_file/i)).toBeInTheDocument();
       expect(screen.queryByText(/нет данных/i)).toBeNull();
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Task NAVDET-PASSPORT — 10-й, последний пункт остановки «Загрузка»:
+  // «Паспорт свойств ряда» (upload+passport) рендерит статичную
+  // блок-схему фиксации первичного снимка свойств ряда (v1.0):
+  // предусловия готовности, пайплайн расчёта (prepare_passport_series →
+  // series_fingerprint → calculate_ts_passport → append_passport_snapshot),
+  // группы свойств, роль в цепочке паспортов (v1.0 → v1.1 → v1.2 → v1.3),
+  // отказы. В «Этапы модуля» пункт идёт ПОСЛЕДНИМ (после «Источник: файл
+  // или БД») — контракт порядка страхуется ниже.
+  // ─────────────────────────────────────────────────────────────────────
+  describe("upload + passport: static infographic in Overview", () => {
+    function activatePassportItem() {
+      const card = screen.getByText("Паспорт свойств ряда");
+      fireEvent.click(card.closest("article")!);
+    }
+
+    it("renders the infographic heading when upload + passport is active", () => {
+      renderNavigator();
+      activatePassportItem();
+      // H3 «Обзор: Паспорт свойств ряда» — заголовок окна Обзор из
+      // TsAnalysisNavigator. Шапка инфографики тоже H3 «Паспорт свойств
+      // ряда». Поэтому минимум 2 совпадения (карточка средней колонки —
+      // H4, в этот счёт не попадает).
+      const headings = screen.getAllByRole("heading", {
+        level: 3,
+        name: /паспорт свойств ряда/i,
+      });
+      expect(headings.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("does NOT show the generic placeholder text for passport item", () => {
+      renderNavigator();
+      activatePassportItem();
+      // Заглушка «[ область графика/таблицы/блок-схемы для … ]» заменена
+      // статичной блок-схемой фиксации паспорта.
+      expect(screen.queryByText(/область графика\/таблицы\/блок-схемы/)).toBeNull();
+    });
+
+    it("renders the real pipeline (capture endpoint + calculation steps)", () => {
+      renderNavigator();
+      activatePassportItem();
+      // session.py::capture_dataset_passport + app/core/passport.py.
+      expect(screen.getAllByText(/dataset\/passport\/start/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText(/prepare_passport_series/i)).toBeInTheDocument();
+      expect(screen.getByText(/series_fingerprint/i)).toBeInTheDocument();
+      expect(screen.getByText(/calculate_ts_passport/i)).toBeInTheDocument();
+    });
+
+    it("renders the infographic WITHOUT activeDataset (works if dataset is deleted)", () => {
+      renderNavigator();
+      activatePassportItem();
+      expect(screen.getByText(/Рассчитать паспорт на загрузке/i)).toBeInTheDocument();
+      expect(screen.queryByText(/нет данных/i)).toBeNull();
+    });
+
+    it("keeps «Паспорт свойств ряда» as the LAST item of the upload stop", () => {
+      renderNavigator();
+      // Контракт порядка: после «Источник: файл или БД» (9-й) паспорт —
+      // 10-й (последний) пункт «Этапы модуля» остановки «Загрузка».
+      const uploadStop = NAVIGATOR_STOPS.find((s) => s.id === "upload")!;
+      expect(uploadStop.items).toHaveLength(10);
+      expect(uploadStop.items[9].id).toBe("passport");
+      expect(uploadStop.items[9].title).toBe("Паспорт свойств ряда");
+      expect(uploadStop.items[8].id).toBe("source");
     });
   });
 

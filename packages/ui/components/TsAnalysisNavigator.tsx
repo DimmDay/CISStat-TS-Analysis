@@ -102,6 +102,7 @@ import { NavigatorPreview55Preview } from "./NavigatorPreview55Preview";
 import { NavigatorDistributionPreview } from "./NavigatorDistributionPreview";
 import { NavigatorFormatsVolumePreview } from "./NavigatorFormatsVolumePreview";
 import { NavigatorSourceFileDbPreview } from "./NavigatorSourceFileDbPreview";
+import { NavigatorPassportPreview } from "./NavigatorPassportPreview";
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -436,6 +437,24 @@ export function TsAnalysisNavigator() {
               на странице «Загрузка» — заглушка, бэкенд готов. ВНЕ
               ЗАВИСИМОСТИ от датасета/сети.
 
+              Task NAVDET-PASSPORT (Паспорт свойств ряда): для пары
+              «Загрузка» + «Паспорт свойств ряда» (id="upload" +
+              id="passport", 10-й ПОСЛЕДНИЙ пункт модуля) рендерим СТАТИЧНУЮ
+              блок-схему фиксации первичного снимка свойств ряда (v1.0)
+              (NavigatorPassportPreview): готовность к расчёту (датасет,
+              признак, временная колонка, минимум 30 валидных точек),
+              пайплайн фиксации (prepare_passport_series →
+              series_fingerprint → calculate_ts_passport →
+              append_passport_snapshot), группы фиксируемых свойств
+              (статистика+частота; стационарность/тренд/корреляции;
+              Ljung-Box/STL/ACF; Jarque-Bera/Хёрст/FFT/периодограмма/
+              вейвлет), роль снимка (v1.0 → v1.1 → v1.2 → v1.3, контроль
+              порядка точек), отказы — на основе РЕАЛЬНОЙ логики
+              (DatasetPassportPanel stage="start" + capture_dataset_passport
+              в apps/api/routers/session.py + calculate_ts_passport в
+              app/core/passport.py + session_store.py). ВНЕ ЗАВИСИМОСТИ от
+              датасета/сети.
+
               Для остальных пунктов — текстовая заглушка (своя визуализация
               для каждого пункта в будущих задачах). */}
           {activeStopId === "upload" && activeItemId === "preview" ? (
@@ -456,6 +475,8 @@ export function TsAnalysisNavigator() {
             <NavigatorFormatsVolumePreview />
           ) : activeStopId === "upload" && activeItemId === "source" ? (
             <NavigatorSourceFileDbPreview />
+          ) : activeStopId === "upload" && activeItemId === "passport" ? (
+            <NavigatorPassportPreview />
           ) : (
             <div
               className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"
