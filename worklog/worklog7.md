@@ -1889,3 +1889,84 @@ chart → distribution → structure_confirm → quality_teaser → passport.
   5 файлов (NavigatorValidationDataTypesPreview.tsx/.test.tsx — 2 НОВЫХ,
   TsAnalysisNavigator.tsx/.test.tsx, worklog7.md), пути репозитория
   сохранены. Без commit/push (AGENTS.md).
+
+---
+
+## Task EDU-API-1 (2026-09-22) — Шаг 4 EDU: backend-промоушен слоя знаний, apps/api/knowledge/ (spec_education.md §1/§2.1/§2.2/§7.2; docs/education_knowledge_base_architecture.md §6 Шаг 4)
+
+Постановка тимлида: спроектировать и реализовать backend-промоушен слоя знаний — `apps/api/knowledge/`:
+`GET /v1/knowledge/articles?stage_id=&node_id=&facet=` → статья реестра или честный null («справка готовится»);
+`POST /v1/learning/track {directions}` → LearningStack. Промоушен без перенабора контента: 77 записей справки +
+12 статей + 25 терминов переносятся из TS-реестра в backend. ZIP в download, правила AGENTS.md, без commit/push.
+
+Проектирование (по AGENTS.md):
+- Источник истины контента — TS-реестры `packages/ui/lib/knowledge/` (articles/glossary/help) НЕ тронуты.
+  Backend получает механический артефакт промоушена `registry_data.json` (291 КБ): генератор+паритет-страж —
+  один jest-файл `scripts/promote_knowledge_registry.test.ts`; обычный прогон сверяет артефакт с TS байт-в-байт
+  (правка контента без перегенерации невозможна), `PROMOTE_KNOWLEDGE=1` — перегенерация.
+- Модель спеки §1 воспроизведена: `KnowledgeArticle` (article_id/stage_id/node_id/facet/directions/title/
+  body_md/sources/status/last_reviewed_at/superseded_constant) + `Citation`; назад-совместимые
+  промоушен-расширения summary/reading_minutes/body_blocks — контент хаба переносится 1:1 (§14 спеки
+  разрешает опциональность). Справка узлов промотируется в ту же модель: article_id=entry_id,
+  title=первая строка текста (механический вывод), body_md=вербатим, status=published.
+- Сериализация блоков→body_md (арх.док §3 п.1: paragraph→абзац, bullets→"- ", callout→"> ", join "\n\n")
+  реализована на ОБОИХ сторонах (TS-генератор и Python `blocks_to_body_md`); согласованность страхуется
+  кросс-проверкой pytest на всех 13 реальных статьях (jest пишет body_md, Python пересобирает из body_blocks).
+- Ключ (stage_id, node_id, facet) уникален и адресует ТОЛЬКО справку узлов; библиотечные статьи
+  (node_id=None, facet="library", несколько на этап) адресуются article_id и списком — ключевой режим
+  для них 422 (нашлось на GREEN-этапе: дубль ключа ('preprocessing', None, 'library')).
+- Режимы GET /v1/knowledge/articles: без node_id/facet → {"articles":[...]} — published-Библиотека в порядке
+  пайплайна (§13, stage_index → title), draft не публикуется; задан facet → статья по ключу или literal null
+  HTTP 200 (честный null §2.1; 422 зарезервирован за ошибками словаря/неполным ключом — различение
+  «валидный ключ без статьи» vs «незаконное значение»).
+- POST /v1/learning/track — семантика 1:1 с фронтовым buildLearningStack(): дедуп+нормализация направлений
+  к каноническому порядку, только published, без дублей, порядок строго по пайплайну, missing_directions —
+  честная маркировка направлений без published-статей, термины — только связанные со статьями стека.
+- GET /v1/knowledge/glossary?stage_id= — 28 терминов в порядке реестра (доб. эндпоинт: без него промоушен
+  словаря был бы мёртвым контентом).
+- Авторизация: эндпоинты ОТКРЫТЫ — §7.2 (образование вне тарифной сетки), пользовательских данных нет.
+
+Важное решение — фактический состав реестра: постановка называла «77 + 12 + 25» (состояние на момент Шага 1).
+Фактический TS-реестр — источник истины: 77 справка + 13 статей (12 published + 1 draft forecasting-applied-
+modules-draft) + 28 терминов (словарь пополнялся после Шага 1). Промоушен переносит реестр ЦЕЛИКОМ,
+счётчики зафиксированы жёстко в тестах обеих сторон (изменение состава = сознательная правка тестов).
+
+Точки изменения:
+- НОВЫЕ: apps/api/knowledge/__init__.py (пакет микросервиса), models.py (KnowledgeArticle/Citation/
+  GlossaryTerm/HelpEntry + blocks_to_body_md), registry.py (загрузка артефакта, immutable-индексы,
+  find_article/get_published_library/get_glossary/build_learning_stack), router.py (GET /v1/knowledge/articles,
+  GET /v1/knowledge/glossary, POST /v1/learning/track; Union-response, честный null), registry_data.json
+  (артефакт промоушена, генерируется), scripts/promote_knowledge_registry.test.ts (генератор+паритет+гарды
+  коллации и сериализации), tests/api/test_knowledge_api.py (41 тест).
+- ИЗМЕНЁННЫЕ: apps/api/main.py (include knowledge + learning роутеров, /v1/knowledge и /v1/learning);
+  worklog/worklog7.md (эта запись). Фронт не тронут (компоненты/слой знаний без изменений — регрессия обязана
+  остаться зелёной, что и подтвердилось).
+
+TDD:
+- RED: ModuleNotFoundError apps.api.knowledge — сюита создана до реализации.
+- GREEN: 41/41 tests/api/test_knowledge_api.py. По пути поймано и исправлено: неуникальность ключа
+  library-статей (индексация справки/библиотеки разведена), NameError Literal, канонический порядок
+  направлений в ожиданиях (seasonality(0)<intervals(2), volatility(3)<multivariate(4)).
+- Смоук живых вызовов (scripts/smoke_knowledge_api.py): все режимы — список этапа, ключ узла с вербатим-
+  body_md («Метрики и алгоритм: Корреляция (ACF/PACF)…»), честный null HTTP 200, module_help/stage_overview,
+  422 словаря и неполного ключа, глоссарий 28 + фильтр этапа, стек [seasonality,intervals]→5 статей,
+  [volatility]→0 статей + missing_directions, POST [bogus]→422, OpenAPI: 3 пути зарегистрированы.
+
+Верификация (регрессия + сборка):
+- jest ПОЛНАЯ: 1466/1466 (131 сюита апстрима + 1 новая промоушен-сюита, 4 теста) — зелёный.
+- pytest ПОЛНАЯ: 2387 passed, 9 failed + 3 errors — ТОЧНОЕ совпадение с задокументированным базлайном
+  апстрима (TASK-145: нейро-группа не установлена (requirements-neural) + 3 snapshot-ошибки test_preprocessing
+  на версиях venv). Промежуточно было 29 падений — причина: свежий контейнер со statsmodels 0.14.5 вместо
+  сертифицированной эпохи 0.15.0 (комментарий в apps/api/requirements.txt это прямо предсказывал для пути
+  parametric_simulation FORECAST-1a); после установки statsmodels==0.15.0 — базлайн 9+3. Вклад задачи в
+  базлайн — ноль падений, 41 новый тест зелёный.
+- typecheck:all — 0 ошибок (embedded + standalone); next build standalone — OK (статические маршруты).
+- Docker: apps/api/Dockerfile COPY apps/api/ — registry_data.json попадает в образ автоматически; runtime
+  без node — артефакт JSON, не TS.
+
+Риски/гарды: паритет TS⇄JSON — jest-страж при каждом прогоне; целостность Python-стороны — pytest
+(счётчики, уникальность ключей, links словаря→статьи, 1:1 stage_ids с session_store.STAGES — контракт §1.1);
+согласованность сериализаторов — кросс-проверка на реальных данных; коллация сортировки заголовков внутри
+этапа (Python codepoint vs localeCompare ru) — гард-тест в промоушен-сюите; Draft-статья не публикуется.
+
+Артефакт: ZIP_EDU-API-1_2026-09-22.zip в download (только файлы текущей задачи). Commit/push не выполнялись.

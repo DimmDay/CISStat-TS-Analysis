@@ -30,6 +30,7 @@ from apps.api.session_store import SessionConflictError
 
 from apps.api.routers import public, internal, models, session, diagnostics, diagnostics_internal, modeling_session
 from apps.api.routers import forecasting_session, tasks_session
+from apps.api.knowledge import router as knowledge_router_module
 
 app = FastAPI(
     title="CISStat TS Analysis API",
@@ -72,6 +73,12 @@ app.include_router(forecasting_session.router, prefix="/v1/session/modeling", ta
 # Задачи (v2, spec_tasks_ia_addendum_v1_1.md §10): вертикальные срезы задач
 # поверх артефактов пайплайна. Общая сессия/cookie; отдельный модуль роутера.
 app.include_router(tasks_session.router, prefix="/v1/session/tasks", tags=["tasks"])
+# Обучение и база знаний (Шаг 4 EDU, spec_education.md §2.1/§2.2/§7.2):
+# эндпоинты ОТКРЫТЫ (образование вне тарифной сетки, пользовательских
+# данных нет); контент -- артефакт промоушена apps/api/knowledge/
+# registry_data.json (паритет с TS-реестрами застрахован тестами).
+app.include_router(knowledge_router_module.router, prefix="/v1/knowledge", tags=["knowledge"])
+app.include_router(knowledge_router_module.learning_router, prefix="/v1/learning", tags=["learning"])
 
 
 @app.exception_handler(SessionConflictError)
