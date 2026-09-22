@@ -185,8 +185,8 @@ describe("TsAnalysisNavigator", () => {
 
     it("still shows generic placeholder for items WITHOUT specialized visuals (validation stop)", () => {
       renderNavigator();
-      // По умолчанию активен upload + preview (первый item) —
-      // для preview рендерится UploadAutoPreviewPipeline, не заглушка.
+      // По умолчанию активен upload + source (первый item) —
+      // для source рендерится NavigatorSourceFileDbPreview, не заглушка.
       // После задач 2026-08-30..2026-09-02 специализированный Обзор имеют
       // «Подтверждение автоопределения» (3-й item), «Teaser качества»
       // (4-й item), «Техническая информация» (5-й item), «Превью 5+5
@@ -197,9 +197,13 @@ describe("TsAnalysisNavigator", () => {
       // (10-й, последний item).
       // ИТОГ: все 10 пунктов остановки «Загрузка» имеют специализированный
       // Обзор, поэтому проверка заглушки переносится на пункты ДРУГИХ
-      // остановок: переключаемся на «ВАЛИДАЦИЯ» (первый пункт —
-      // «Типы данных», специализированной визуализации нет).
+      // остановок: переключаемся на «ВАЛИДАЦИЮ» (первый пункт —
+      // «Типы данных» — получил схему в Task NAVDET-DATATYPES 2026-09-22;
+      // заглушка осталась у «Форматов и шаблонов» — второй пункт).
       fireEvent.click(screen.getByRole("button", { name: "ВАЛИДАЦИЯ" }));
+      const col2 = getColumns()[1];
+      const card = within(col2).getByText("Форматы и шаблоны");
+      fireEvent.click(card.closest("article")!);
       expect(
         screen.getByText(/область графика\/таблицы\/блок-схемы/)
       ).toBeInTheDocument();
@@ -925,6 +929,85 @@ describe("TsAnalysisNavigator", () => {
       expect(uploadStop.items[9].id).toBe("passport");
       expect(uploadStop.items[9].title).toBe("Паспорт свойств ряда");
       expect(uploadStop.items[0].id).toBe("source");
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Task NAVDET-DATATYPES (2026-09-22) — окно «Обзор» остановки
+  // «Валидация», пункт «Типы данных» (validation+data_types) рендерит
+  // статичную блок-схему алгоритма проверки типов
+  // (NavigatorValidationDataTypesPreview) — по паттерну остальных
+  // остановок. Схема на основе РЕАЛЬНОЙ логики:
+  //   - validation/rule_resolver.py::resolve_validation_rules
+  //     (эталон: сессия type_schema > шаблон YAML > система);
+  //   - validation/engine.py::infer_system_type_schema (dtype +
+  //     приводимость + семантика названия), build_pandera_schema,
+  //     validate_dataframe (lazy=True → SchemaErrors → groupby),
+  //     _run_all_checks::_data_types (done/warning/pending, scope=dataset);
+  //   - фронт: «Мастер исправления типов» (type_schema override, coerce).
+  // ВНЕ ЗАВИСИМОСТИ от датасета/сети.
+  // ─────────────────────────────────────────────────────────────────────
+  describe("validation + data_types: static infographic in Overview", () => {
+    function activateDataTypesItem() {
+      // Клик по остановке «ВАЛИДАЦИЯ» сбрасывает активный пункт на
+      // первый (data_types, см. handleStopClick) — дополнительно кликаем
+      // карточку в средней колонке для явности контракта.
+      fireEvent.click(screen.getByRole("button", { name: "ВАЛИДАЦИЯ" }));
+      const col2 = getColumns()[1];
+      const card = within(col2).getByText("Типы данных");
+      fireEvent.click(card.closest("article")!);
+    }
+
+    it("renders the infographic heading when validation + data_types is active", () => {
+      renderNavigator();
+      activateDataTypesItem();
+      // H3 «Обзор: Типы данных» — заголовок окна Обзор из
+      // TsAnalysisNavigator. Шапка инфографики тоже H3 «Типы данных:
+      // Валидация». Поэтому минимум 2 совпадения (карточка средней
+      // колонки — H4, в этот счёт не попадает).
+      const headings = screen.getAllByRole("heading", {
+        level: 3,
+        name: /типы данных/i,
+      });
+      expect(headings.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("does NOT show the generic placeholder text for data_types item", () => {
+      renderNavigator();
+      activateDataTypesItem();
+      // Заглушка «[ область графика/таблицы/блок-схемы для … ]» заменена
+      // статичной блок-схемой алгоритма проверки типов.
+      expect(screen.queryByText(/область графика\/таблицы\/блок-схемы/)).toBeNull();
+    });
+
+    it("renders the real algorithm (resolver + system inference + pandera + aggregation)", () => {
+      renderNavigator();
+      activateDataTypesItem();
+      // resolve_validation_rules + infer_system_type_schema +
+      // build_pandera_schema — реальные функции бэкенда.
+      expect(screen.getAllByText(/resolve_validation_rules/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/infer_system_type_schema/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/build_pandera_schema/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("renders the infographic WITHOUT activeDataset (works if dataset is deleted)", () => {
+      renderNavigator();
+      activateDataTypesItem();
+      // «Мастер исправления типов» упоминается в двух блоках схемы
+      // (источник эталона «сессия» + финальный блок исправления) —
+      // getAllByText.
+      expect(screen.getAllByText(/Мастер исправления типов/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByText(/нет данных/i)).toBeNull();
+    });
+
+    it("keeps «Типы данных» as the FIRST item of the validation stop", () => {
+      renderNavigator();
+      // Контракт порядка: data_types — первый пункт остановки
+      // «Валидация» (CHECK_META в TsAnalysisValidation.tsx идёт в том же
+      // порядке; navigator-stops.ts зеркалит его).
+      const validationStop = NAVIGATOR_STOPS.find((s) => s.id === "validation")!;
+      expect(validationStop.items[0].id).toBe("data_types");
+      expect(validationStop.items[0].title).toBe("Типы данных");
     });
   });
 

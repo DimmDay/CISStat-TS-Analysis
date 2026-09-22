@@ -1795,3 +1795,97 @@ chart → distribution → structure_confirm → quality_teaser → passport.
 - ZIP: cisstat-fix-navigator-upload-stages-chronological-order.zip —
   navigator-stops.ts + TsAnalysisNavigator.test.tsx + worklog7.md, пути
   репозитория сохранены. Без commit/push (AGENTS.md).
+
+---
+
+## NAVDET-DATATYPES (2026-09-22) — /navigator#platform-navigation: блок-схема «Типы данных» остановки «Валидация» в окне «Обзор»
+
+### Контекст
+
+- Синхронизация: HEAD = 074c6d8 (NAVDET-ORDER — предыдущий ZIP поглощён
+  апстримом). Окружение снова сброшено (свежий clone на 6dacd2c);
+  win-path/EDU-правки сверены как поглощённые, mode-шум отключён.
+- Запрос тимлида: третья секция «Подробная навигация по платформе»,
+  остановка «Валидация», пункт «Типы данных» (первый) — спроектировать
+  и реализовать в окне «Обзор» блок-схему по паттерну страницы на основе
+  ДЕЙСТВУЮЩИХ алгоритмов кода.
+
+### Проектирование (эталон — реальный код)
+
+- validation/rule_resolver.py::resolve_validation_rules — эталон типов
+  из 3 источников с фиксированным приоритетом: сессия (type_schema,
+  «Мастер исправления типов», coerce) > шаблон YAML (default_rules /
+  fao_prices / macro) > система (авто-вывод);
+  CHECK_SECTIONS["data_types"] = "schema".
+- validation/engine.py::infer_system_type_schema — безопасный системный
+  эталон: if/elif по dtype (boolean → integer → float → datetime);
+  object-колонки — приводимость pd.to_numeric(errors="coerce") с
+  порогами: имя year/год ≥ 0.5 → integer; имена price/цена/value/
+  amount/volume/quantity/count/rate/percent/pct/share ≥ 0.5 →
+  integer|float (по дробности); числовость ≥ 0.9 → integer|float;
+  имя date/дата/time/время + парсинг ≥ 0.8 → datetime; fallback string.
+  Честность: смешанная Price=[10, 20, "ошибка"] остаётся числовой и
+  ловит ошибку; домены/диапазоны из наблюдаемых данных не выдумываются.
+- validation/engine.py::build_pandera_schema — dtype_map: integer→Int64,
+  float→Float64, string→String, boolean→Bool, datetime→DateTime;
+  nullable→Check.notna, min/max→in_range, allowed_values→isin,
+  unique→Check.unique, pattern→str_matches; Column(coerce=True);
+  DataFrameSchema(strict=False, coerce=True).
+- validation/engine.py::validate_dataframe — schema.validate(df,
+  lazy=True) → SchemaErrors → failure_cases.groupby("column") →
+  schema_errors_by_column (до 100 первых в детализацию).
+- validation/engine.py::_run_all_checks::_data_types — нет schema.columns
+  → pending; count=Σ; items=[{label: колонка, count}]; done(0)/warning(>0);
+  scope="dataset" (принципиально не скоупится до одной колонки).
+- apps/api/routers/session.py::get_dataset_validate — фронт-контракт
+  GET /v1/session/dataset/validate; фронт-исправление — «Мастер
+  исправления типов» (TsAnalysisValidation.tsx) → type_schema сессии.
+
+### Изменения
+
+- packages/ui/components/NavigatorValidationDataTypesPreview.tsx — НОВЫЙ:
+  статичная Tailwind/CSS-блок-схема (родственник TechInfo/Passport):
+  role="img" + aria-label, шапка «Типы данных: Валидация» + эндпоинт,
+  5 блоков (эталон 3 источника → системный вывод 5 дорожек + приводимость
+  → pandera dtype_map + проверки → прогон/сбор → статусы done/warning/
+  pending), финал — «Мастер исправления типов» + type_schema сессии.
+  ВНЕ ЗАВИСИМОСТИ от датасета/сети; DKT-3/DKT-2R соблюдены (токены
+  brand/brand-light, без quoted-hex и произвольных цветов).
+- packages/ui/components/TsAnalysisNavigator.tsx — импорт + ветка рендера
+  validation+data_types → NavigatorValidationDataTypesPreview; комментарий
+  Task NAVDET-DATATYPES в доксхеме окна «Обзор».
+- packages/ui/components/NavigatorValidationDataTypesPreview.test.tsx —
+  НОВЫЙ, 22 контракта (рендер без провайдера; H3; эндпоинт; приоритет
+  эталона; 5 dtype-дорожек; пороги 0.5/0.9/0.8; честность mixed-колонки;
+  pandera dtype_map/coerce/strict; проверки; lazy/failure_cases/groupby;
+  3 статуса; scope dataset; Мастер типов; стрелки; без empty-state; без
+  fetch/XHR; детерминированность; role=img).
+- packages/ui/components/TsAnalysisNavigator.test.tsx — describe
+  «validation + data_types» (5 тестов: заголовок ≥2 H3; без заглушки;
+  реальный алгоритм resolve/infer/build; без датасета; контракт
+  items[0]=data_types); тест «still shows generic placeholder» перенесён
+  с «Типов данных» (получила схему) на «Форматы и шаблоны» (2-й пункт
+  Валидации) — комментарий обновлён.
+
+### TDD
+
+- RED: NavigatorValidationDataTypesPreview.test.tsx — TS2307; describe в
+  TsAnalysisNavigator.test.tsx — 4 падения (заглушка вместо схемы).
+  Попутная шлифовка собственных контрактов: легитимные повторы терминов
+  («сессия», «Price», порог 0.5, «coerce», «Мастер исправления типов»)
+  переведены на getAllByText; build_pandera_schema добавлен ВИДИМЫМ кодом
+  в шапку блока (по паттерну «источник в шапке» TechInfo/Passport).
+- GREEN: оба файла 90/90.
+
+### Верификация
+
+- Полный suite: 132/132 suite, 1485/1485 тестов (к апстриму 074c6d8:
+  +1 suite, +23 теста; ноль регрессий).
+- typecheck:all — чисто; next build — успешно.
+
+### Deliverable
+
+- ZIP: cisstat-fix-navigator-validation-data-types-overview-diagram.zip —
+  5 файлов (NavigatorValidationDataTypesPreview.tsx/.test.tsx — 2 НОВЫХ,
+  TsAnalysisNavigator.tsx/.test.tsx, worklog7.md), пути репозитория
+  сохранены. Без commit/push (AGENTS.md).

@@ -103,6 +103,7 @@ import { NavigatorDistributionPreview } from "./NavigatorDistributionPreview";
 import { NavigatorFormatsVolumePreview } from "./NavigatorFormatsVolumePreview";
 import { NavigatorSourceFileDbPreview } from "./NavigatorSourceFileDbPreview";
 import { NavigatorPassportPreview } from "./NavigatorPassportPreview";
+import { NavigatorValidationDataTypesPreview } from "./NavigatorValidationDataTypesPreview";
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -455,6 +456,29 @@ export function TsAnalysisNavigator() {
               app/core/passport.py + session_store.py). ВНЕ ЗАВИСИМОСТИ от
               датасета/сети.
 
+              Task NAVDET-DATATYPES (Типы данных, Валидация): для пары
+              «Валидация» + «Типы данных» (id="validation" +
+              id="data_types", первый пункт остановки) рендерим СТАТИЧНУЮ
+              блок-схему алгоритма проверки типов
+              (NavigatorValidationDataTypesPreview): эталон типов — 3
+              источника по приоритету (сессия type_schema > шаблон YAML >
+              системный вывод), системный вывод infer_system_type_schema
+              (dtype-ветки boolean/integer/float/datetime/string +
+              приводимость object-колонок to_numeric с порогами
+              0.5/0.9/0.8; смешанная Price=[10,20,"ошибка"] остаётся
+              числовой и ловит ошибку), pandera-схема build_pandera_schema
+              (dtype_map Int64/Float64/String/Bool/DateTime, Check.notna/
+              in_range/isin/unique/str_matches, coerce=True, strict=False),
+              прогон schema.validate(lazy=True) → SchemaErrors →
+              failure_cases → schema_errors_by_column, агрегация
+              _data_types (done/warning/pending, scope=dataset),
+              исправление через «Мастер исправления типов» (type_schema
+              сессии) — на основе РЕАЛЬНОЙ логики (validation/
+              rule_resolver.py::resolve_validation_rules + validation/
+              engine.py + apps/api/routers/session.py::get_dataset_validate
+              → GET /v1/session/dataset/validate). ВНЕ ЗАВИСИМОСТИ от
+              датасета/сети.
+
               Для остальных пунктов — текстовая заглушка (своя визуализация
               для каждого пункта в будущих задачах). */}
           {activeStopId === "upload" && activeItemId === "preview" ? (
@@ -477,6 +501,8 @@ export function TsAnalysisNavigator() {
             <NavigatorSourceFileDbPreview />
           ) : activeStopId === "upload" && activeItemId === "passport" ? (
             <NavigatorPassportPreview />
+          ) : activeStopId === "validation" && activeItemId === "data_types" ? (
+            <NavigatorValidationDataTypesPreview />
           ) : (
             <div
               className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"
