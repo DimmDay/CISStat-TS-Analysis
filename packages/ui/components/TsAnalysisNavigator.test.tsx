@@ -197,12 +197,13 @@ describe("TsAnalysisNavigator", () => {
       // (10-й, последний item).
       // ИТОГ: все 10 пунктов остановки «Загрузка» имеют специализированный
       // Обзор, поэтому проверка заглушки переносится на пункты ДРУГИХ
-      // остановок: переключаемся на «ВАЛИДАЦИЮ» (первый пункт —
-      // «Типы данных» — получил схему в Task NAVDET-DATATYPES 2026-09-22;
-      // заглушка осталась у «Форматов и шаблонов» — второй пункт).
+      // остановок: переключаемся на «ВАЛИДАЦИЮ» (первые два пункта
+      // получили схемы: «Типы данных» — NAVDET-DATATYPES 2026-09-22,
+      // «Форматы и шаблоны» — NAVDET-FORMATS 2026-09-22; заглушка
+      // осталась у «Диапазонов значений» — третий пункт).
       fireEvent.click(screen.getByRole("button", { name: "ВАЛИДАЦИЯ" }));
       const col2 = getColumns()[1];
-      const card = within(col2).getByText("Форматы и шаблоны");
+      const card = within(col2).getByText("Диапазоны значений");
       fireEvent.click(card.closest("article")!);
       expect(
         screen.getByText(/область графика\/таблицы\/блок-схемы/)
@@ -1008,6 +1009,92 @@ describe("TsAnalysisNavigator", () => {
       const validationStop = NAVIGATOR_STOPS.find((s) => s.id === "validation")!;
       expect(validationStop.items[0].id).toBe("data_types");
       expect(validationStop.items[0].title).toBe("Типы данных");
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Task NAVDET-FORMATS (2026-09-22): остановка «Валидация», пункт
+  // «Форматы и шаблоны» (validation+formats) рендерит статичную
+  // блок-схему алгоритма проверки форматов
+  // (NavigatorValidationFormatsPreview) — по паттерну data_types.
+  // Схема на основе РЕАЛЬНОЙ логики:
+  //   - validation/rule_resolver.py::resolve_validation_rules
+  //     (_deep_merge(system, template) + overrides: сессия > шаблон
+  //     YAML (default_rules.yaml) > система; CHECK_SECTIONS["formats"]);
+  //   - validation/engine.py::_system_format_rules (шаблон по семантике
+  //     имени: email/phone/date/currency; DEFAULT_FORMAT_PATTERNS);
+  //   - format_invalid_mask (re.compile + fullmatch, пропуски не
+  //     нарушения), profile_formats (match_pct, invalid_examples,
+  //     threshold 95), validate_formats (строка на каждую matched
+  //     колонку), _run_all_checks::_formats (items/count, scope="column",
+  //     done/warning/pending);
+  //   - API: GET /v1/session/dataset/format-profile, POST /v1/session/
+  //     dataset/format-corrections (4 стратегии, regex из resolved
+  //     rules; apps/api/format_correction.py).
+  // ВНЕ ЗАВИСИМОСТИ от датасета/сети.
+  // ─────────────────────────────────────────────────────────────────────
+  describe("validation + formats: static infographic in Overview", () => {
+    function activateFormatsItem() {
+      // Клик по остановке «ВАЛИДАЦИЯ» сбрасывает активный пункт на
+      // первый (data_types) — дополнительно кликаем карточку «Форматы и
+      // шаблоны» в средней колонке для явности контракта.
+      fireEvent.click(screen.getByRole("button", { name: "ВАЛИДАЦИЯ" }));
+      const col2 = getColumns()[1];
+      const card = within(col2).getByText("Форматы и шаблоны");
+      fireEvent.click(card.closest("article")!);
+    }
+
+    it("renders the infographic heading when validation + formats is active", () => {
+      renderNavigator();
+      activateFormatsItem();
+      // H3 «Обзор: Форматы и шаблоны» — заголовок окна Обзор из
+      // TsAnalysisNavigator. Шапка инфографики тоже H3 «Форматы и
+      // шаблоны: Валидация». Поэтому минимум 2 совпадения (карточка
+      // средней колонки — H4, в этот счёт не попадает).
+      const headings = screen.getAllByRole("heading", {
+        level: 3,
+        name: /форматы и шаблоны/i,
+      });
+      expect(headings.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("does NOT show the generic placeholder text for formats item", () => {
+      renderNavigator();
+      activateFormatsItem();
+      // Заглушка «[ область графика/таблицы/блок-схемы для … ]» заменена
+      // статичной блок-схемой алгоритма проверки форматов.
+      expect(screen.queryByText(/область графика\/таблицы\/блок-схемы/)).toBeNull();
+    });
+
+    it("renders the real algorithm (resolver + name-semantics inference + invalid mask)", () => {
+      renderNavigator();
+      activateFormatsItem();
+      // resolve_validation_rules + _system_format_rules +
+      // format_invalid_mask — реальные функции бэкенда.
+      expect(screen.getAllByText(/resolve_validation_rules/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/_system_format_rules/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/format_invalid_mask/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("renders the correction master and the column scope (differs from data_types)", () => {
+      renderNavigator();
+      activateFormatsItem();
+      // «Мастер исправления форматов» упомянут в схеме; чек форматов
+      // скоупится до признака (scope="column") — в отличие от
+      // «Типов данных» (scope="dataset").
+      expect(screen.getAllByText(/Мастер исправления форматов/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/scope/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByText(/нет данных/i)).toBeNull();
+    });
+
+    it("keeps «Форматы и шаблоны» as the SECOND item of the validation stop", () => {
+      renderNavigator();
+      // Контракт порядка: formats — второй пункт остановки «Валидация»
+      // (CHECK_META в TsAnalysisValidation.tsx идёт в том же порядке;
+      // navigator-stops.ts зеркалит его).
+      const validationStop = NAVIGATOR_STOPS.find((s) => s.id === "validation")!;
+      expect(validationStop.items[1].id).toBe("formats");
+      expect(validationStop.items[1].title).toBe("Форматы и шаблоны");
     });
   });
 

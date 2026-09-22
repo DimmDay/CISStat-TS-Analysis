@@ -1970,3 +1970,124 @@ TDD:
 этапа (Python codepoint vs localeCompare ru) — гард-тест в промоушен-сюите; Draft-статья не публикуется.
 
 Артефакт: ZIP_EDU-API-1_2026-09-22.zip в download (только файлы текущей задачи). Commit/push не выполнялись.
+
+---
+
+## NAVDET-FORMATS (2026-09-22) — /navigator#platform-navigation: блок-схема «Форматы и шаблоны» остановки «Валидация» в окне «Обзор»
+
+### Контекст
+
+- Синхронизация до 63c3f0c (EDU-API-1): NAVDET-DATATYPES поглощён апстримом
+  байт-в-байт (917ae45); фикс PREPR-4-FLAKE (задача 8, ZIP
+  cisstat-fix-preprocessing-prepr4-fresh-overview-race.zip) в апстриме
+  отсутствует — восстановлен в working tree из бэкапа, запись
+  PREPR-4-FLAKE возвращена в worklog7.md (аддитивно).
+- Цель: остановка «Валидация» (id="validation"), второй пункт
+  «Форматы и шаблоны» (id="formats", description «Проверка текстовых
+  полей на соответствие маскам и шаблонам») — специализированная
+  статичная блок-схема в окне «Обзор» по паттерну страницы.
+
+### Проектирование по действующему коду (источники схемы)
+
+- validation/rule_resolver.py::resolve_validation_rules — эталон правил
+  форматов: _deep_merge(_deep_merge(system_rules, template_rules),
+  overrides) — приоритет сессия > шаблон YAML (rules/<template>.yaml,
+  по умолчанию default_rules.yaml; колонка → pattern + threshold) >
+  системный вывод; CHECK_SECTIONS["formats"]="formats";
+  sources: session/template/system/not_applicable.
+- validation/engine.py::_system_format_rules (из auto_generate_rules) —
+  только object/string-колонки; шаблон по семантике ИМЕНИ: email/e-mail →
+  email-шаблон (threshold 95), phone/телефон/mobile → телефон РФ (90),
+  date/дата → дата ISO YYYY-MM-DD (98), currency/валюта → код валюты
+  [A-Z]{3} (100); DEFAULT_FORMAT_PATTERNS (email/phone_ru/date_iso/
+  currency); колонке без семантики имени правило НЕ назначается
+  (правило не выводится из фактических значений — иначе каждое
+  наблюдаемое значение валидно по построению).
+- validation/engine.py::format_invalid_mask — re.compile (шаблон валиден
+  до прогона), str.fullmatch (совпадает ВСЁ значение, не подстрока),
+  series.notna() & ~mask — пропуски не считаются нарушениями.
+- validation/engine.py::profile_formats — threshold по умолчанию 95;
+  match_pct = доля прошедших; invalid_examples — до 5 уникальных;
+  пустая колонка (total_count=0) не делает проверку применимой.
+- validation/engine.py::validate_formats — строка на КАЖДУЮ matched
+  колонку даже с 0 нарушений (сигнал применимости); match_pct >=
+  threshold → Норма, иначе Отклонение.
+- validation/engine.py::_run_all_checks::_formats — items=[{label:
+  колонка, count: Нарушений}], count=Σ; _status: done(0)/warning(>0)/
+  pending(None); scope="column" — скоупится до выбранного признака
+  (не matched → pending, честный сигнал «правила нет»); отличие от
+  «Типов данных» (scope="dataset").
+- apps/api/routers/session.py::get_dataset_format_profile (GET
+  /v1/session/dataset/format-profile — профиль + rule_source) и
+  correct_dataset_formats (POST /v1/session/dataset/format-corrections —
+  preview/apply; regex всегда из resolved rules, не из клиента; preview
+  на копии, apply — атомарная подмена датасета).
+- apps/api/format_correction.py::preview_format_corrections — 4
+  стратегии: replace_null (нарушение → NA), smart_replace (медиана
+  валидных; email → unknown@example.com; телефон → +79990000000; дата →
+  NaT; валюта → USD), normalize (strip/lower/чистка мусора; неприменима
+  к числовым), flag (+ булева колонка <имя>_format_valid).
+
+### Изменения
+
+- packages/ui/components/NavigatorValidationFormatsPreview.tsx — НОВЫЙ:
+  статичная Tailwind/CSS-блок-схема (родственник
+  NavigatorValidationDataTypesPreview): role="img" + aria-label со всей
+  цепочкой, шапка «Форматы и шаблоны: Валидация» + эндпоинт чека,
+  5 блоков (эталон 3 источника + _deep_merge → системный вывод 4 дорожки
+  по семантике имени с порогами 95/90/98/100 → маска нарушений
+  re.compile/fullmatch/NaN-честность + профиль match_pct/threshold/
+  invalid_examples/Норма-Отклонение → прогон/сбор + scope="column" →
+  статусы done/warning/pending), финал — «Мастер исправления форматов»
+  (4 стратегии + smart-значения) и гарантии API (regex из resolved
+  rules, атомарность), подпись «второй из 10 критериев DAMA DMBOK».
+  ВНЕ ЗАВИСИМОСТИ от датасета/сети; DKT-3/DKT-2R соблюдены (токены
+  brand/brand-light, без quoted-hex и произвольных цветов).
+- packages/ui/components/TsAnalysisNavigator.tsx — импорт + ветка рендера
+  validation+formats → NavigatorValidationFormatsPreview; комментарий
+  Task NAVDET-FORMATS в доксхеме окна «Обзор».
+- packages/ui/components/NavigatorValidationFormatsPreview.test.tsx —
+  НОВЫЙ, 25 контрактов (рендер без провайдера; H3; 3 эндпоинта;
+  резолвер 3 источника; _deep_merge + default_rules.yaml; 4 дорожки
+  по имени; пороги 95/90/98/100; ISO/валютный шаблоны; маска
+  re.compile/fullmatch/NaN-честность; профиль match_pct/invalid_examples/
+  пустая колонка; Норма/Отклонение; применимость «даже с 0 нарушений»;
+  items+Σ+scope column/dataset; pending-честность; 3 статуса; мастер +
+  4 стратегии; <имя>_format_valid; smart-значения; regex не из клиента;
+  атомарность; честность без семантики имени; «второй из 10»;
+  role=img + aria-label; 4 стрелки; без fetch/XHR; без empty-state).
+- packages/ui/components/TsAnalysisNavigator.test.tsx — describe
+  «validation + formats» (5 тестов: заголовок ≥2 H3; без заглушки;
+  реальный алгоритм resolve/_system_format_rules/format_invalid_mask;
+  мастер + scope, без «нет данных»; контракт items[1]="formats");
+  тест «still shows generic placeholder» перенесён с «Форматов и
+  шаблонов» (получила схему) на «Диапазоны значений» (3-й пункт
+  Валидации) — комментарий обновлён.
+
+### TDD
+
+- RED: NavigatorValidationFormatsPreview.test.tsx — TS2307 (suite не
+  компилируется); describe в TsAnalysisNavigator.test.tsx — 4 падения
+  (заглушка вместо схемы; 5-й тест порядка items[1] зелёный — данные
+  уже в navigator-stops.ts).
+- GREEN: компонент + ветка рендера → 25/25 и 77/77. Шлифовка
+  собственных контрактов по паттерну образца: спецсимволы «[A-Z]{3}»
+  матчятся regex-ом (не точной строкой); стрелки ищутся
+  querySelectorAll по aria-label (вложенные роли внутри корневого
+  role="img" недоступны в ролевом дереве); fetch/XHR-заглушки
+  подставляются вручную (global.fetch может отсутствовать в jsdom —
+  spyOn на undefined падает).
+
+### Верификация
+
+- Полный suite: 134/134 suites, 1519/1519 тестов (к апстриму 63c3f0c:
+  +1 suite, +30 тестов = 25 компонентных + 5 интеграционных;
+  ноль регрессий).
+- typecheck:all — чисто; next build — успешно.
+
+### Deliverable
+
+- ZIP: cisstat-fix-navigator-validation-formats-overview-diagram.zip —
+  5 файлов (NavigatorValidationFormatsPreview.tsx/.test.tsx — 2 НОВЫХ,
+  TsAnalysisNavigator.tsx/.test.tsx, worklog7.md), пути репозитория
+  сохранены. Без commit/push (AGENTS.md).

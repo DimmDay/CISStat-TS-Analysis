@@ -104,6 +104,7 @@ import { NavigatorFormatsVolumePreview } from "./NavigatorFormatsVolumePreview";
 import { NavigatorSourceFileDbPreview } from "./NavigatorSourceFileDbPreview";
 import { NavigatorPassportPreview } from "./NavigatorPassportPreview";
 import { NavigatorValidationDataTypesPreview } from "./NavigatorValidationDataTypesPreview";
+import { NavigatorValidationFormatsPreview } from "./NavigatorValidationFormatsPreview";
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -479,6 +480,35 @@ export function TsAnalysisNavigator() {
               → GET /v1/session/dataset/validate). ВНЕ ЗАВИСИМОСТИ от
               датасета/сети.
 
+              Task NAVDET-FORMATS (Форматы и шаблоны, Валидация): для пары
+              «Валидация» + «Форматы и шаблоны» (id="validation" +
+              id="formats", второй пункт остановки) рендерим СТАТИЧНУЮ
+              блок-схему алгоритма проверки форматов
+              (NavigatorValidationFormatsPreview): эталон правил форматов —
+              3 источника по приоритету (сессия overrides > шаблон YAML
+              default_rules.yaml > системный вывод _deep_merge), системный
+              вывод _system_format_rules (только object/string-колонки;
+              шаблон по семантике имени: email 95 / телефон РФ 90 /
+              дата ISO YYYY-MM-DD 98 / код валюты [A-Z]{3} 100; колонке
+              без семантики имени правило не назначается), маска нарушений
+              format_invalid_mask (re.compile + str.fullmatch — совпадает
+              всё значение; пропуски не считаются нарушениями), профиль
+              profile_formats (match_pct, threshold 95, invalid_examples
+              до 5), прогон validate_formats (строка на каждую matched
+              колонку даже с 0 нарушений), агрегация _formats
+              (items=[{label: колонка, count}], scope="column" —
+              скоупится до признака, отличие от scope="dataset"
+              «Типов данных»; не matched → pending), статусы done/warning/
+              pending, исправление через «Мастер исправления форматов»
+              (GET /v1/session/dataset/format-profile, POST
+              /v1/session/dataset/format-corrections: 4 стратегии
+              replace_null/smart_replace/normalize/flag; regex всегда из
+              resolved rules сервера, не из клиента; apply — атомарная
+              подмена) — на основе РЕАЛЬНОЙ логики (validation/
+              rule_resolver.py + validation/engine.py +
+              apps/api/routers/session.py + apps/api/format_correction.py).
+              ВНЕ ЗАВИСИМОСТИ от датасета/сети.
+
               Для остальных пунктов — текстовая заглушка (своя визуализация
               для каждого пункта в будущих задачах). */}
           {activeStopId === "upload" && activeItemId === "preview" ? (
@@ -503,6 +533,8 @@ export function TsAnalysisNavigator() {
             <NavigatorPassportPreview />
           ) : activeStopId === "validation" && activeItemId === "data_types" ? (
             <NavigatorValidationDataTypesPreview />
+          ) : activeStopId === "validation" && activeItemId === "formats" ? (
+            <NavigatorValidationFormatsPreview />
           ) : (
             <div
               className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"
