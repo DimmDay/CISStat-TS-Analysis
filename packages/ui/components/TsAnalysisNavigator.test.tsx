@@ -66,8 +66,12 @@ describe("TsAnalysisNavigator", () => {
   it("renders all item titles of the active (upload) stop", () => {
     renderNavigator();
     const uploadStop = NAVIGATOR_STOPS.find((s) => s.id === "upload")!;
+    // Task NAVDET-ORDER: первый пункт (source) активен по умолчанию —
+    // его заголовок дублируется в H3 окна «Обзор». Ищем карточки только
+    // в средней колонке «Этапы модуля».
+    const col2 = getColumns()[1];
     uploadStop.items.forEach((item) => {
-      expect(screen.getByText(item.title)).toBeInTheDocument();
+      expect(within(col2).getByText(item.title)).toBeInTheDocument();
     });
   });
 
@@ -801,7 +805,12 @@ describe("TsAnalysisNavigator", () => {
   // ─────────────────────────────────────────────────────────────────────
   describe("upload + source: static infographic in Overview", () => {
     function activateSourceItem() {
-      const card = screen.getByText("Источник: файл или БД");
+      // Task NAVDET-ORDER: source — ПЕРВЫЙ пункт → его карточка активна
+      // по умолчанию, заголовок инфографики NavigatorSourceFileDbPreview
+      // (H3 «Источник: файл или БД») рендерится сразу. Ищем карточку
+      // ТОЛЬКО в средней колонке «Этапы модуля».
+      const col2 = getColumns()[1];
+      const card = within(col2).getByText("Источник: файл или БД");
       fireEvent.click(card.closest("article")!);
     }
 
@@ -855,8 +864,9 @@ describe("TsAnalysisNavigator", () => {
   // предусловия готовности, пайплайн расчёта (prepare_passport_series →
   // series_fingerprint → calculate_ts_passport → append_passport_snapshot),
   // группы свойств, роль в цепочке паспортов (v1.0 → v1.1 → v1.2 → v1.3),
-  // отказы. В «Этапы модуля» пункт идёт ПОСЛЕДНИМ (после «Источник: файл
-  // или БД») — контракт порядка страхуется ниже.
+  // отказы. В «Этапы модуля» пункт идёт ПОСЛЕДНИМ (хронология /upload:
+  // DatasetPassportPanel ниже всех остановок; «Источник: файл или БД» —
+  // первый пункт, см. Task NAVDET-ORDER) — контракт порядка страхуется ниже.
   // ─────────────────────────────────────────────────────────────────────
   describe("upload + passport: static infographic in Overview", () => {
     function activatePassportItem() {
@@ -905,13 +915,16 @@ describe("TsAnalysisNavigator", () => {
 
     it("keeps «Паспорт свойств ряда» as the LAST item of the upload stop", () => {
       renderNavigator();
-      // Контракт порядка: после «Источник: файл или БД» (9-й) паспорт —
-      // 10-й (последний) пункт «Этапы модуля» остановки «Загрузка».
+      // Контракт порядка: паспорт — 10-й (последний) пункт «Этапы
+      // модуля» остановки «Загрузка». С Task NAVDET-ORDER (2026-09-22)
+      // «Источник: файл или БД» — ПЕРВЫЙ пункт (хронология /upload:
+      // паспорт рендерится DatasetPassportPanel ниже всех остановок,
+      // источник — в верхней полосе до загрузки файла).
       const uploadStop = NAVIGATOR_STOPS.find((s) => s.id === "upload")!;
       expect(uploadStop.items).toHaveLength(10);
       expect(uploadStop.items[9].id).toBe("passport");
       expect(uploadStop.items[9].title).toBe("Паспорт свойств ряда");
-      expect(uploadStop.items[8].id).toBe("source");
+      expect(uploadStop.items[0].id).toBe("source");
     });
   });
 
@@ -977,6 +990,76 @@ describe("TsAnalysisNavigator", () => {
       } finally {
         global.fetch = originalFetch;
       }
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Task NAVDET-ORDER (2026-09-22) — хронологический порядок пунктов
+  // остановки «Загрузка» в средней колонке «Этапы модуля».
+  //
+  // Проблема: пункты накапливались по мере задач (NAVDET-4, NAVDET-5,
+  // NAVDET-PASSPORT) и шли НЕ в том порядке, в котором аналитик реально
+  // встречает их на странице /upload: «Источник: файл или БД» и
+  // «Форматы и объём» (верхняя полоса ДО загрузки файла) стояли 9-м и
+  // 8-м из 10, «Превью 5+5 строк» — после «Технической информации», и
+  // т.д.
+  //
+  // Эталон хронологии — фактический путь аналитика в TsAnalysisUpload.tsx:
+  //   1. Верхняя полоса «Источник данных»: переключатель Файл/БД → source
+  //   2. Та же полоса: dropzone с форматами и лимитом объёма → formats
+  //   3. Сразу после загрузки — автопайплайн бэкенда (детект кодировки,
+  //      парсинг, детект типов, классификация, пропуски, уникальные) →
+  //      preview («Автопревью и типы колонок»)
+  //   4. Остановка «Превью датасета», таб «Превью» по умолчанию
+  //      (первые/последние строки) → preview_5_5
+  //   5. Таб «Типы колонок» той же остановки (dtype/non-null/уникальные
+  //      в отдельной таблице) → tech_info
+  //   6. Остановка «График» → chart
+  //   7. Остановка «Распределение» → distribution
+  //   8. Остановка «Структура» (подтверждение автоопределения) →
+  //      structure_confirm
+  //   9. Остановка «Качество» (teaser — мостик к Валидации) →
+  //      quality_teaser
+  //   10. DatasetPassportPanel в самом низу страницы (после всех
+  //       остановок) → passport
+  //   Контракт NAVDET-PASSPORT «паспорт — 10-й, ПОСЛЕДНИЙ» сохраняется.
+  // ─────────────────────────────────────────────────────────────────────
+  describe("Task NAVDET-ORDER: chronological order of the upload stop items", () => {
+    // Хронология как на /upload: id пунктов в порядке их следования
+    // в колонке «Этапы модуля» (обоснование — см. комментарий выше).
+    const EXPECTED_CHRONOLOGY = [
+      "source",
+      "formats",
+      "preview",
+      "preview_5_5",
+      "tech_info",
+      "chart",
+      "distribution",
+      "structure_confirm",
+      "quality_teaser",
+      "passport",
+    ];
+
+    it("upload stop items follow the analyst's chronological path (data level)", () => {
+      const uploadStop = NAVIGATOR_STOPS.find((s) => s.id === "upload")!;
+      expect(uploadStop.items.map((it) => it.id)).toEqual(EXPECTED_CHRONOLOGY);
+    });
+
+    it("upload stop cards are rendered in chronological order (DOM level)", () => {
+      renderNavigator();
+      const col2 = getColumns()[1];
+      // Заголовки карточек пунктов (h4) в порядке документа — это и есть
+      // порядок, который видит аналитик в колонке «Этапы модуля».
+      const cardTitles = within(col2)
+        .getAllByRole("heading", { level: 4 })
+        .map((h) => h.textContent);
+      const uploadStop = NAVIGATOR_STOPS.find((s) => s.id === "upload")!;
+      expect(cardTitles).toEqual(uploadStop.items.map((it) => it.title));
+      // Явные якоря хронологии /upload: источник — первым, формат —
+      // вторым, паспорт (v1.0) — последним.
+      expect(cardTitles[0]).toBe("Источник: файл или БД");
+      expect(cardTitles[1]).toBe("Форматы и объём");
+      expect(cardTitles[9]).toBe("Паспорт свойств ряда");
     });
   });
 });

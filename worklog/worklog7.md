@@ -1713,3 +1713,85 @@ filemode-шум отключён core.filemode=false). Постановка ти
   (navigator-stops.ts, TsAnalysisNavigator.tsx/.test.tsx,
   NavigatorPassportPreview.tsx/.test.tsx — 2 НОВЫХ) + worklog7.md, пути
   репозитория сохранены. Без commit/push (AGENTS.md).
+
+---
+
+## NAVDET-ORDER (2026-09-22) — /navigator#platform-navigation: хронологический порядок пунктов «Этапы модуля» остановки «Загрузка»
+
+### Контекст
+
+- Синхронизация: HEAD = 20b29f2 (NAVDET-PASSPORT). Рабочее окружение было
+  сброшено (рефлог — свежий clone на 6dacd2c): локальные правки задач
+  FIX-WINPATH/EDU-BG/EDU-BADGE в апстриме уже поглощены (536c762, 81a0295,
+  b133c48 — сверено байт-в-байт по test-файлам FIX-WINPATH), mode-шум
+  контейнера отключён (core.fileMode=false), случайно потерянные
+  upload/page.tsx восстановлены через git restore.
+- Запрос тимлида: в секции 3 «Подробная навигация по платформе» колонка
+  «Загрузка» → колонка «Этапы модуля» — выставить все 10 стадий в
+  правильном ХРОНОЛОГИЧЕСКОМ порядке, как их видит аналитик на платформе.
+- Проблема: пункты накапливались по мере задач (NAVDET-4/5/PASSPORT) и
+  шли не в порядке реального пути аналитика: «Источник: файл или БД» —
+  9-м, «Форматы и объём» — 8-м, «Превью 5+5 строк» — после «Технической
+  информации» и т.д.
+
+### Проектирование (эталон хронологии — фактический /upload, TsAnalysisUpload.tsx)
+
+1. Верхняя полоса «Источник данных» ДО загрузки: переключатель
+   Файл/БД → source; dropzone с форматами/лимитом → formats.
+2. Сразу после загрузки — автопайплайн бэкенда (детект кодировки/типов,
+   классификация, пропуски, уникальные — UploadAutoPreviewPipeline) →
+   preview; остановка «Превью датасета»: таб «Превью» по умолчанию
+   (5+5 строк) → preview_5_5; таб «Типы колонок» → tech_info.
+3. Остановки степпера по порядку следования: График → chart,
+   Распределение → distribution, Структура → structure_confirm,
+   Качество (мостик к Валидации) → quality_teaser.
+4. DatasetPassportPanel ниже всего 3-колоночного блока → passport
+   (10-й, ПОСЛЕДНИЙ — контракт NAVDET-PASSPORT сохранён).
+
+Итоговый порядок: source → formats → preview → preview_5_5 → tech_info →
+chart → distribution → structure_confirm → quality_teaser → passport.
+
+### Изменения
+
+- packages/ui/lib/navigator-stops.ts: items остановки «upload»
+  переставлены в хронологический порядок (описания пунктов НЕ менялись);
+  добавлен комментарий-обоснование NAVDET-ORDER с привязкой к
+  TsAnalysisUpload.tsx; комментарий NAVDET-PASSPORT дополнен
+  подтверждением позиции (последняя стадия).
+- packages/ui/components/TsAnalysisNavigator.test.tsx:
+  (1) НОВЫЙ describe NAVDET-ORDER — 2 теста: data-level (последовательность
+  id items = хронологии) + DOM-level (заголовки h4 карточек в средней
+  колонке в порядке документа = хронологии; якоря: source первый,
+  formats второй, паспорт десятый).
+  (2) Тест NAVDET-PASSPORT «паспорт — последний»: items[8]="source" →
+  items[0]="source" (source теперь первый; контракт «паспорт 10-й» без
+  изменений).
+  (3) Скоуп-робастность: «renders all item titles...» и activateSourceItem
+  ищут карточку в пределах средней колонки (within(col2)) — с new
+  default items[0]=source заголовок инфографики источника рендерится
+  сразу и дублировал текст карточки на уровне screen.
+  (4) Комментарий passport-describe приведён к новой хронологии.
+- Поведенческий сайд-эффект (ожидаемый, соответствует паттерну «первый
+  пункт активен по умолчанию»): при открытии /navigator окно «Обзор»
+  теперь показывает блок-схему первого пункта («Источник: файл или БД»),
+  а не «Автопревью» — консистентно с новым порядком.
+
+### TDD
+
+- RED: новые 2 теста NAVDET-ORDER подтверждены падениями (2 failed,
+  65 passed); после перестановки — скоуп-фиксы (2) для тестов, чей
+  getByText стал многозначным из-за нового дефолтного пункта (не баг
+  продукта — уточнение скоупа запросов).
+- GREEN: TsAnalysisNavigator.test.tsx 67/67.
+
+### Верификация
+
+- Полный suite: 131/131 suite, 1462/1462 тестов — ноль регрессий
+  (+2 теста NAVDET-ORDER к апстриму 20b29f2).
+- typecheck:all — чисто; next build — успешно.
+
+### Deliverable
+
+- ZIP: cisstat-fix-navigator-upload-stages-chronological-order.zip —
+  navigator-stops.ts + TsAnalysisNavigator.test.tsx + worklog7.md, пути
+  репозитория сохранены. Без commit/push (AGENTS.md).
