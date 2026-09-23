@@ -72,7 +72,7 @@ function stepStatus(forecasts: ForecastRun[], active: ForecastRun | null, key: s
 const ALPHA_OPTIONS = [0.01, 0.05, 0.10];
 
 export function TsAnalysisForecasting() {
-  const { activeDataset, stages, addLogEntry } = useAppShell();
+  const { activeDataset, stages, addLogEntry, refreshSession } = useAppShell();
 
   const [cards, setCards] = useState<CardSummary[]>([]);
   const [cardsLoading, setCardsLoading] = useState(true);
@@ -120,6 +120,21 @@ export function TsAnalysisForecasting() {
   useEffect(() => {
     void refreshAll();
   }, [refreshAll]);
+
+  // FORECAST-GATE-1 (2026-09-23): монтирование вкладки = пересинхронизация
+  // stages с сервером (GET /v1/session/current), паттерн PREPR-4 (TasksHub).
+  // Провайдер AppShell (layout) НЕ ремоунтится при клиентской навигации:
+  // после завершения «Моделирования» (create_model_card ->
+  // set_stage("modeling","done") на бэкенде) и перехода «Перейти к
+  // прогнозированию» контекст отдавал устаревший stages["modeling"] с
+  // момента F5/upload — гейт no-modeling держал плейсхолдер «Завершите
+  // этап Моделирование» и disabled «Построить прогноз» до перезагрузки
+  // страницы. Сервер — источник истины о stages (контракт AppShellContext),
+  // refreshSession стабилен (useCallback) — эффект выполняется один раз
+  // на монтирование, без циклов.
+  useEffect(() => {
+    void refreshSession();
+  }, [refreshSession]);
 
   const activeForecast = useMemo(
     () => forecasts.find((run) => run.forecast_id === activeForecastId) ?? null,

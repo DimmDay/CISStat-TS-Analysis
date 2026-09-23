@@ -15,6 +15,9 @@ import type { CardSummary, ForecastRun } from "../lib/forecasting";
 let mockStages: Record<string, string> = {};
 let mockHasDataset = true;
 const mockLog: Array<{ level: string; message: string }> = [];
+// FORECAST-GATE-1: контролируемый стаб refreshSession (паттерн TasksHub):
+// тест пересинхронизации подменяет stages «как это сделал бы провайдер».
+const mockRefreshSession = jest.fn();
 jest.mock("../context/AppShellContext", () => ({
   useAppShell: () => ({
     activeDataset: mockHasDataset
@@ -23,7 +26,9 @@ jest.mock("../context/AppShellContext", () => ({
     stages: mockStages,
     lastActiveStage: null,
     sessionLoading: false,
-    refreshSession: jest.fn(),
+    // Стабильная ссылка (как useCallback-refreshSession в реальном
+    // провайдере): тест счётчика вызовов ловит и циклы по зависимости.
+    refreshSession: mockRefreshSession,
     log: mockLog,
     addLogEntry: jest.fn(),
     clearLog: jest.fn(),
@@ -93,6 +98,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   jest.restoreAllMocks();
+  mockRefreshSession.mockReset();
   delete (global as { fetch?: unknown }).fetch;
 });
 
@@ -123,12 +129,54 @@ describe("TsAnalysisForecasting -- честные гейты", () => {
   });
 });
 
+// ── Пересинхронизация stages при монтировании (FORECAST-GATE-1) ──
+// Сценарий тимлида: Model Card создана на «Моделировании»
+// (create_model_card -> set_stage("modeling","done") на бэкенде), затем
+// клиентская навигация на «Прогнозирование». Провайдер AppShell (layout)
+// НЕ ремоунтится — в контексте остаётся stages, снятый при F5/upload;
+// гейт no-modeling держал плейсхолдер и disabled «Построить прогноз»
+// до перезагрузки страницы. Паттерн фикса — PREPR-4 (TasksHub):
+// монтирование вкладки = refreshSession; сервер — источник истины о stages.
+describe("Пересинхронизация stages при монтировании (FORECAST-GATE-1)", () => {
+  it("после завершения Моделирования в другой вкладке гейт снимается без перезагрузки страницы", async () => {
+    // Контекст ещё держит устаревшую стадию (навигация без F5)...
+    mockStages = { upload: "done", modeling: "in_progress" };
+    // ...а сервер уже знает правду: modeling=done (семантика applySessionResponse).
+    mockRefreshSession.mockImplementation(async () => {
+      mockStages = { upload: "done", modeling: "done" };
+    });
+    installFetch(); // /card отдаёт CARD — Model Card существует
+    render(<TsAnalysisForecasting />);
+
+    // Пересинхронизация снимает гейт «Завершите этап Моделирование»...
+    await waitFor(() =>
+      expect(screen.queryByTestId("no-modeling-gate")).not.toBeInTheDocument(),
+    );
+    expect(mockRefreshSession).toHaveBeenCalled();
+    // ...и разблокирует «Построить прогноз» без F5.
+    await waitFor(() => expect(screen.getByTestId("generate-btn")).toBeEnabled());
+  });
+
+  it("refreshSession вызывается ровно один раз на монтирование (без циклов)", async () => {
+    mockStages = { upload: "done", modeling: "done" };
+    mockRefreshSession.mockResolvedValue(undefined);
+    installFetch();
+    render(<TsAnalysisForecasting />);
+    await waitFor(() => expect(screen.getByTestId("card-select")).toHaveValue("c-1"));
+    expect(mockRefreshSession).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("TsAnalysisForecasting -- готовый этап", () => {
   it("рендерит панель управления: селектор карты, горизонт по умолчанию из карты, alpha, кнопку", async () => {
     installFetch();
     render(<TsAnalysisForecasting />);
-    const select = await screen.findByTestId("card-select");
-    expect(select).toHaveValue("c-1");
+    // Ассерт по ЗНАЧЕНИЮ селектора, а не по факту существования элемента:
+    // панель управления рендерится до загрузки карт (value=""), поэтому
+    // findByTestId резолвится на первом кадре — в окружении Node 24/jest 30
+    // это стабильная гонка с загрузкой /card (предсуществующий флейк
+    // базлайна, не связанный с FORECAST-GATE-1).
+    await waitFor(() => expect(screen.getByTestId("card-select")).toHaveValue("c-1"));
     const horizon = screen.getByTestId("horizon-input") as HTMLInputElement;
     expect(horizon.value).toBe("2"); // дефолт -- training.horizon карты
     expect(screen.getByTestId("alpha-select")).toHaveValue("0.05");
