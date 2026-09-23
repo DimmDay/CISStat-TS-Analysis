@@ -1175,7 +1175,20 @@ export function TsAnalysisModeling() {
             Реальные данные -- backtestResults, накопленный компонентом
             при клике «Запустить бэктест» (справа). Не новый запрос к API.
             Показывается всегда (не только при statistics), т.к. не зависит
-            от пула кандидатов -- от факта хотя бы одного бэктеста. */}
+            от пула кандидатов -- от факта хотя бы одного бэктеста.
+
+            Гейт паспорта (регрессия 2026-09-23): пока modeling_context
+            не готов (паспорт «Для моделирования» не подтверждён на EDA —
+            context 409; либо hand-off зафиксирован, но пул заблокирован
+            ограничениями), бэктест невозможен: «Загрузить пул» disabled
+            (fetchCandidates), runBacktest отклоняет запуск. Пустое состояние
+            графика «Запустите бэктест хотя бы для одной модели...» в этом
+            состоянии указывало на невыполнимое действие и вводило аналитика
+            в заблуждение. Вместо него -- то же сообщение гейта, что и на
+            «context-unavailable» (левая колонка) и «modeling-context-gate»
+            (центр): modelingContextError || канонический fallback. Условие
+            гейта -- modelingContext?.ready === true, зеркально guard'ам
+            fetchCandidates и runBacktest. */}
         <div className="mt-4" data-testid="backtest-comparison-panel">
           {isApplicabilityBootstrapping ? (
             <>
@@ -1195,7 +1208,19 @@ export function TsAnalysisModeling() {
               <h3 className="mb-1 text-sm font-semibold text-neutral-800">
                 Сравнение бэктестов
               </h3>
-              <BacktestComparisonChart backtestResults={backtestResults} />
+              {modelingContext?.ready === true ? (
+                <BacktestComparisonChart backtestResults={backtestResults} />
+              ) : (
+                <div
+                  data-testid="backtest-comparison-gate"
+                  className="flex h-[180px] items-center justify-center rounded-lg border border-amber-200 bg-amber-50 px-4 text-center text-xs text-amber-800"
+                >
+                  {modelingContextError
+                    || (modelingContext === null
+                      ? "Подтвердите финальный паспорт «Для моделирования» на вкладке EDA."
+                      : "EDA hand-off зафиксирован, но пул моделей заблокирован ограничениями контекста.")}
+                </div>
+              )}
             </>
           )}
         </div>

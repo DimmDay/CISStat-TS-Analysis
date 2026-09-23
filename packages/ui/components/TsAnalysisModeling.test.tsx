@@ -11,7 +11,7 @@
 // 8. Обработка ошибок API
 // 9. activeDataset → обновление session-контекста
 
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { TsAnalysisModeling } from "./TsAnalysisModeling";
 import type { ActiveDataset } from "../context/AppShellContext";
@@ -1412,5 +1412,117 @@ describe("TsAnalysisModeling — приглашение «Перейти к пр
     expect(invite.className).toContain("px-3");
     expect(invite.className).toContain("py-2");
     expect(invite.className).toContain("text-sm");
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// 15. Гейт паспорта в окне «Сравнение бэктестов»
+//
+// Регрессия 2026-09-23: аналитик прошёл «Разведочный EDA», но не
+// подтвердил паспорт «Для моделирования» (нет checkpoint modeling_entry).
+// GET /v1/session/modeling/context отвечает 409, modelingContext = null,
+// и окно «Сравнение бэктестов» показывало пустое состояние графика —
+// «Запустите бэктест хотя бы для одной модели, чтобы увидеть сравнение».
+// Это вводило в заблуждение: бэктест невозможен (пул не загрузится без
+// паспорта), правильное действие — подтвердить паспорт на вкладке EDA.
+// ═══════════════════════════════════════════════════════════
+
+const PASSPORT_GATE_DETAIL = "Сначала подтвердите checkpoint modeling_entry на вкладке EDA";
+const baseGlobalFetch = global.fetch;
+
+describe("TsAnalysisModeling — гейт паспорта в окне «Сравнение бэктестов»", () => {
+  afterEach(() => {
+    // Возвращаем модульный wrapper (context → MOCK_MODELING_CONTEXT),
+    // чтобы другие сьюты не увидели 409-мок этой группы.
+    global.fetch = baseGlobalFetch;
+  });
+
+  function mockContextFailure(body: Record<string, unknown>, status = 409) {
+    // Модифицируем модульный wrapper: перехватываем ТОЛЬКО route контекста,
+    // остальное (target-column, candidates) делегируем базовому mock'у.
+    global.fetch = jest.fn(((url: string, options?: unknown) => {
+      if (typeof url === "string" && url.includes("/v1/session/modeling/context")) {
+        return Promise.resolve({ ok: false, status, json: () => Promise.resolve(body) });
+      }
+      return (baseGlobalFetch as (u: string, o?: unknown) => Promise<unknown>)(url, options);
+    }) as typeof fetch);
+  }
+
+  it("показывает гейт паспорта вместо плейсхолдера «Запустите бэктест», когда паспорт EDA не подтверждён (409)", async () => {
+    mockContextFailure({ detail: PASSPORT_GATE_DETAIL });
+
+    render(<TsAnalysisModeling />);
+
+    // Окно сравнения на месте, заголовок виден
+    await waitFor(() => {
+      expect(screen.getByTestId("backtest-comparison-panel")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("heading", { name: "Сравнение бэктестов" })
+    ).toBeInTheDocument();
+
+    // КЛЮЧЕВОЕ: вместо ложного «Запустите бэктест…» — сообщение гейта.
+    // Тот же текст виден и на context-unavailable (левая колонка), поэтому
+    // ассерт скоупим на окно сравнения.
+    const gate = screen.getByTestId("backtest-comparison-gate");
+    expect(within(gate).getByText(/Подтвердите checkpoint modeling_entry/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Запустите бэктест хотя бы для одной модели/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it("при 409 без detail в ответе не показывает ложный плейсхолдер (гейт повторяет текст соседних сурфейсов)", async () => {
+    // Бэкенд 409 всегда несёт detail («Сначала подтвердите checkpoint...»);
+    // деградация до «HTTP 409» возможна только при испорченном теле ответа.
+    // Контракт фикса: гейт показывает ТО ЖЕ выражение, что и соседние
+    // сурфейсы (modelingContextError || канонический fallback), и в любом
+    // случае не предлагает невыполнимый «Запустите бэктест».
+    mockContextFailure({ detail: null });
+
+    render(<TsAnalysisModeling />);
+
+    const gate = await screen.findByTestId("backtest-comparison-gate");
+    expect(gate).toHaveTextContent("HTTP 409");
+    expect(
+      screen.queryByText(/Запустите бэктест хотя бы для одной модели/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it("при ready=false (hand-off зафиксирован, пул заблокирован ограничениями) не предлагает запустить бэктест", async () => {
+    // Контекст есть, но пул моделей заблокирован ограничениями контекста:
+    // бэктест так же невозможен, как и без паспорта.
+    global.fetch = jest.fn(((url: string, options?: unknown) => {
+      if (typeof url === "string" && url.includes("/v1/session/modeling/context")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ ...MOCK_MODELING_CONTEXT, ready: false }),
+        });
+      }
+      return (baseGlobalFetch as (u: string, o?: unknown) => Promise<unknown>)(url, options);
+    }) as typeof fetch);
+
+    render(<TsAnalysisModeling />);
+
+    const gate = await screen.findByTestId("backtest-comparison-gate");
+    expect(
+      within(gate).getByText(/пул моделей заблокирован ограничениями контекста/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Запустите бэктест хотя бы для одной модели/i)
+    ).not.toBeInTheDocument();
+  });
+
+  it("при готовом контексте (ready=true) окно сравнения работает как раньше — без гейта", async () => {
+    // Базовый модульный wrapper: context → ready:true, пул загружается,
+    // baseline bootstrap отдаёт naive → график сравнения рендерится.
+    render(<TsAnalysisModeling />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("candidate-pool")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("heading", { name: "Сравнение бэктестов" })
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("backtest-comparison-gate")).not.toBeInTheDocument();
   });
 });
