@@ -197,13 +197,14 @@ describe("TsAnalysisNavigator", () => {
       // (10-й, последний item).
       // ИТОГ: все 10 пунктов остановки «Загрузка» имеют специализированный
       // Обзор, поэтому проверка заглушки переносится на пункты ДРУГИХ
-      // остановок: переключаемся на «ВАЛИДАЦИЮ» (первые два пункта
+      // остановок: переключаемся на «ВАЛИДАЦИЮ» (первые три пункта
       // получили схемы: «Типы данных» — NAVDET-DATATYPES 2026-09-22,
-      // «Форматы и шаблоны» — NAVDET-FORMATS 2026-09-22; заглушка
-      // осталась у «Диапазонов значений» — третий пункт).
+      // «Форматы и шаблоны» — NAVDET-FORMATS 2026-09-22,
+      // «Диапазоны значений» — NAVDET-RANGES 2026-09-22; заглушка
+      // осталась у «Логики и хронологии» — четвёртый пункт).
       fireEvent.click(screen.getByRole("button", { name: "ВАЛИДАЦИЯ" }));
       const col2 = getColumns()[1];
-      const card = within(col2).getByText("Диапазоны значений");
+      const card = within(col2).getByText("Логика и хронология");
       fireEvent.click(card.closest("article")!);
       expect(
         screen.getByText(/область графика\/таблицы\/блок-схемы/)
@@ -1095,6 +1096,93 @@ describe("TsAnalysisNavigator", () => {
       const validationStop = NAVIGATOR_STOPS.find((s) => s.id === "validation")!;
       expect(validationStop.items[1].id).toBe("formats");
       expect(validationStop.items[1].title).toBe("Форматы и шаблоны");
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Task NAVDET-RANGES (2026-09-22) — окно «Обзор» пункта «Диапазоны
+  // значений» (validation+ranges, третий пункт остановки) рендерит
+  // статичную блок-схему алгоритма проверки диапазонов:
+  //   - эталон min/max-правил: resolve_validation_rules (сессия >
+  //     шаблон YAML default_rules.yaml > системный вывод _deep_merge);
+  //   - системный вывод: auto_generate_rules — только числовые колонки,
+  //     правило по семантике имени (price ≥ 0, год 1900–2100,
+  //     процент 0–100); неизвестной семантике диапазон не назначается
+  //     из фактических min/max (честность);
+  //   - маска range_invalid_mask (ниже min / выше max, независимые
+  //     границы, пропуски отдельно) + профиль profile_ranges (полный,
+  //     включая 0 нарушений; actual_min/actual_max; invalid_examples);
+  //   - прогон validate_ranges (строки только для нарушающих колонок;
+  //     rule_bounds для каждой matched — сигнал применимости) и
+  //     агрегация _ranges (scope="column", pending-честность, статусы
+  //     done/warning/pending);
+  //   - API: GET /v1/session/dataset/range-profile, POST /v1/session/
+  //     dataset/range-corrections (5 стратегий clip/median/replace_null/
+  //     drop_rows/flag; apps/api/range_correction.py).
+  // ВНЕ ЗАВИСИМОСТИ от датасета/сети.
+  // ─────────────────────────────────────────────────────────────────────
+  describe("validation + ranges: static infographic in Overview", () => {
+    function activateRangesItem() {
+      // Клик по остановке «ВАЛИДАЦИЯ» сбрасывает активный пункт на
+      // первый (data_types) — дополнительно кликаем карточку «Диапазоны
+      // значений» в средней колонке для явности контракта.
+      fireEvent.click(screen.getByRole("button", { name: "ВАЛИДАЦИЯ" }));
+      const col2 = getColumns()[1];
+      const card = within(col2).getByText("Диапазоны значений");
+      fireEvent.click(card.closest("article")!);
+    }
+
+    it("renders the infographic heading when validation + ranges is active", () => {
+      renderNavigator();
+      activateRangesItem();
+      // H3 «Обзор: Диапазоны значений» — заголовок окна Обзор из
+      // TsAnalysisNavigator. Шапка инфографики тоже H3 «Диапазоны
+      // значений: Валидация». Поэтому минимум 2 совпадения (карточка
+      // средней колонки — H4, в этот счёт не попадает).
+      const headings = screen.getAllByRole("heading", {
+        level: 3,
+        name: /диапазоны значений/i,
+      });
+      expect(headings.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("does NOT show the generic placeholder text for ranges item", () => {
+      renderNavigator();
+      activateRangesItem();
+      // Заглушка «[ область графика/таблицы/блок-схемы для … ]» заменена
+      // статичной блок-схемой алгоритма проверки диапазонов.
+      expect(screen.queryByText(/область графика\/таблицы\/блок-схемы/)).toBeNull();
+    });
+
+    it("renders the real algorithm (resolver + name-semantics inference + invalid mask)", () => {
+      renderNavigator();
+      activateRangesItem();
+      // resolve_validation_rules + auto_generate_rules +
+      // range_invalid_mask — реальные функции бэкенда.
+      expect(screen.getAllByText(/resolve_validation_rules/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/auto_generate_rules/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/range_invalid_mask/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("renders the correction master and the column scope (differs from data_types)", () => {
+      renderNavigator();
+      activateRangesItem();
+      // «Мастер исправления диапазонов» упомянут в схеме; чек диапазонов
+      // скоупится до признака (scope="column") — в отличие от
+      // «Типов данных» (scope="dataset").
+      expect(screen.getAllByText(/Мастер исправления диапазонов/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/scope/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByText(/нет данных/i)).toBeNull();
+    });
+
+    it("keeps «Диапазоны значений» as the THIRD item of the validation stop", () => {
+      renderNavigator();
+      // Контракт порядка: ranges — третий пункт остановки «Валидация»
+      // (CHECK_META в TsAnalysisValidation.tsx идёт в том же порядке;
+      // navigator-stops.ts зеркалит его).
+      const validationStop = NAVIGATOR_STOPS.find((s) => s.id === "validation")!;
+      expect(validationStop.items[2].id).toBe("ranges");
+      expect(validationStop.items[2].title).toBe("Диапазоны значений");
     });
   });
 

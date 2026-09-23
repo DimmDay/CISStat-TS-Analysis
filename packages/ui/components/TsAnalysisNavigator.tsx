@@ -105,6 +105,7 @@ import { NavigatorSourceFileDbPreview } from "./NavigatorSourceFileDbPreview";
 import { NavigatorPassportPreview } from "./NavigatorPassportPreview";
 import { NavigatorValidationDataTypesPreview } from "./NavigatorValidationDataTypesPreview";
 import { NavigatorValidationFormatsPreview } from "./NavigatorValidationFormatsPreview";
+import { NavigatorValidationRangesPreview } from "./NavigatorValidationRangesPreview";
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -509,6 +510,36 @@ export function TsAnalysisNavigator() {
               apps/api/routers/session.py + apps/api/format_correction.py).
               ВНЕ ЗАВИСИМОСТИ от датасета/сети.
 
+              Task NAVDET-RANGES (Диапазоны значений, Валидация): для пары
+              «Валидация» + «Диапазоны значений» (id="validation" +
+              id="ranges", третий пункт остановки) рендерим СТАТИЧНУЮ
+              блок-схему алгоритма проверки диапазонов
+              (NavigatorValidationRangesPreview): эталон min/max-правил —
+              3 источника по приоритету (сессия overrides > шаблон YAML
+              default_rules.yaml > системный вывод _deep_merge),
+              системный вывод auto_generate_rules (только number-колонки;
+              границы по семантике имени: цена ≥ 0, разумный год
+              1900–2100, процент 0–100; неизвестной семантике диапазон не
+              назначается из фактических min/max — ложное прохождение),
+              маска нарушений range_invalid_mask (ниже min / выше max,
+              границы независимы, пропуски проверяются отдельно),
+              профиль profile_ranges (полный, включая 0 нарушений;
+              actual_min/actual_max; invalid_examples до 5), прогон
+              validate_ranges (строки только для нарушающих колонок,
+              правило «min ≤ x ≤ max», rule_bounds для каждой matched —
+              сигнал применимости), агрегация _ranges (items, scope=
+              "column" — скоупится до признака, отличие от scope=
+              "dataset" «Типов данных»; не matched → pending), статусы
+              done/warning/pending, исправление через «Мастер исправления
+              диапазонов» (GET /v1/session/dataset/range-profile, POST
+              /v1/session/dataset/range-corrections: 5 стратегий
+              clip/median/replace_null/drop_rows/flag; границы и маски
+              всегда из resolved rules сервера, не из клиента; apply —
+              атомарная подмена) — на основе РЕАЛЬНОЙ логики
+              (validation/rule_resolver.py + validation/engine.py +
+              apps/api/routers/session.py + apps/api/range_correction.py).
+              ВНЕ ЗАВИСИМОСТИ от датасета/сети.
+
               Для остальных пунктов — текстовая заглушка (своя визуализация
               для каждого пункта в будущих задачах). */}
           {activeStopId === "upload" && activeItemId === "preview" ? (
@@ -535,6 +566,8 @@ export function TsAnalysisNavigator() {
             <NavigatorValidationDataTypesPreview />
           ) : activeStopId === "validation" && activeItemId === "formats" ? (
             <NavigatorValidationFormatsPreview />
+          ) : activeStopId === "validation" && activeItemId === "ranges" ? (
+            <NavigatorValidationRangesPreview />
           ) : (
             <div
               className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"
