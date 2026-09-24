@@ -27,6 +27,15 @@
 // lucide-react size={14}, паттерн соседа — text-neutral-500
 // hover:text-neutral-900 (в тёмной теме те же классы — их значения
 // токенизированы). Доступность: aria-label по состоянию, aria-pressed.
+//
+// Задача «кегль бренда = высота логотипа»: логотип — бокс h-7 (28px,
+// object-contain заполняет по высоте). Кегль бренда поднят с text-[15px]
+// до text-[28px] — высота шрифта равна высоте логотипа. Увеличение
+// пропорциональное: шрифт (font-bold, Inter по наследованию) и цвет
+// (text-brand) не менялись. tracking-tight (-0.025em) — чуть уменьшенное
+// межбуквенное расстояние. leading-none — строковый бокс 28px: шапка по
+// вертикали остаётся обусловленной элементами h-7, текстовый блок равен
+// высоте логотипа.
 
 import Link from "next/link";
 import Image from "next/image";
@@ -73,7 +82,7 @@ export function ProductHeader() {
                 priority
               />
             </div>
-            <strong className="text-[15px] font-bold text-brand">CISStat TS Analysis</strong>
+            <strong className="text-[28px] leading-none font-bold tracking-tight text-brand">CISStat TS Analysis</strong>
           </div>
           <nav className="flex items-center gap-6 text-[13.5px]">
             {NAV_ITEMS.map((item) => (

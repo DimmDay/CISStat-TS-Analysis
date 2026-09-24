@@ -184,3 +184,66 @@ cisstat-progr1-certification.zip (docs/cert_progr1_trace_event_2026-09-23.md,
 scripts/progr1_cert_oracles.py, scripts/progr1_cert_mutations.py,
 scripts/progr1_cert_mutation_results.txt, worklog/worklog8.md). Без
 commit/push (AGENTS.md).
+
+---
+
+## Task ID: BRND-1 (2026-09-24) — Шапка standalone: кегль бренда «CISStat TS Analysis» = высоте логотипа
+
+### Постановка
+
+Логотип платформы имеет определённую высоту; за ним следует бренд
+«CISStat TS Analysis». Сделать высоту шрифта бренда равной высоте
+логотипа. Увеличение — пропорциональное, без смены самого шрифта и его
+цвета; чуть уменьшить межбуквенное расстояние. По результатам — ZIP в
+download. AGENTS.md соблюдены: проектирование → точки изменения → риски →
+TDD RED→GREEN → повторные тесты → сборка → ZIP → worklog; без commit/push.
+
+### Проектирование (точки изменения, риски)
+
+- Поиск по репо: связка «логотип → бренд» единственная —
+  apps/standalone/components/ProductHeader.tsx (шапка standalone,
+  прод ts-standalone.vercel.app). EmbeddedHome — h1 без логотипа;
+  ModuleNav логотипа не содержит; layout.tsx — favicon/metadata.
+- Фактура: логотип — apps/standalone/public/logo_TS.png 1058×1034
+  (почти квадрат), next/image fill + object-contain в боксе h-7 w-7 →
+  видимая высота логотипа = 28px (h-7 = 1.75rem @ 16px root). Бренд —
+  <strong> с text-[15px] font-bold text-brand.
+- Решение: text-[28px] — кегль = высоте логотипа; font-bold и text-brand
+  сохранены, семейство (Inter) по наследованию — пропорциональное
+  масштабирование, сам шрифт и цвет не менялись; tracking-tight
+  (-0.025em) — чуть уменьшенное межбуквенное расстояние; leading-none —
+  строковый бокс 28px: вертикаль шапки остаётся обусловленной элементами
+  h-7 (логотип, кнопка кабинета), текстовый блок равен логотипу.
+- Риски: (1) рост высоты шапки из-за line-height ~1.5 при кегле 28px —
+  закрыт leading-none; (2) тест, закрепляющий text-[15px], — обновлён в
+  RED-фазе; (3) JIT-генерация arbitrary-класса text-[28px] — content-scan
+  tailwind.config включает ./components/** (тест-гарант «Tailwind
+  production scan» зелёный), дополнительно верифицировано по факту сборки.
+
+### TDD
+
+RED: apps/standalone/components/ProductHeader.test.tsx — тест кегля
+обновлён (text-[28px], не text-[15px]) + 4 новых: равенство кегля высоте
+логотипа (сопоставление text-[28px] и h-7 бокса логотипа на одном
+рендере), гарант «шрифт и цвет не менялись» (font-bold + text-brand),
+tracking-tight, leading-none. Прогон: 4 failed / 5 passed — RED
+подтверждён; гарант-инвариант зелёный и на старом коде, как задумано.
+GREEN: apps/standalone/components/ProductHeader.tsx — className бренда:
+text-[15px] → «text-[28px] leading-none font-bold tracking-tight
+text-brand»; в шапке файла — комментарий задачи. Прогон: 9/9.
+
+### Верификация и сборка
+
+- Полный jest: 135 сьют / 1563 теста — все зелёные (включая
+  layout.test.tsx, рендерящий ProductHeader через корневой layout).
+- typecheck standalone (tsc --noEmit) — чисто.
+- next build (production, standalone) — успешно, 15 маршрутов; в
+  собранном CSS верифицировано: font-size:28px, letter-spacing:-.025em,
+  leading-none; text-[15px] в бандле отсутствует.
+
+### Deliverable
+
+ZIP: cisstat-brand-font-equals-logo.zip — 3 файла (пути репозитория
+сохранены): apps/standalone/components/ProductHeader.tsx (изменён),
+apps/standalone/components/ProductHeader.test.tsx (изменён),
+worklog/worklog8.md (изменён — эта запись). Без commit/push (AGENTS.md).

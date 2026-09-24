@@ -33,7 +33,53 @@ describe("ProductHeader", () => {
     expect(brandName.tagName).toBe("STRONG");
     expect(brandName).toHaveClass("font-bold");
     expect(brandName).not.toHaveClass("font-semibold");
-    expect(brandName).toHaveClass("text-[15px]");
+    expect(brandName).toHaveClass("text-[28px]");
+    expect(brandName).not.toHaveClass("text-[15px]");
+  });
+
+  it("brand font size equals the logo height (text-[28px] == h-7 == 28px)", () => {
+    render(<ProductHeader />);
+
+    const logo = screen.getByAltText("CISStat TS Analysis");
+    const brandName = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+
+    // Логотип рендерится в квадратном боксе h-7 w-7 (28px при базовых 16px),
+    // object-contain заполняет его по высоте — высота логотипа = 28px.
+    const logoBox = logo.closest("div.relative");
+    expect(logoBox).not.toBeNull();
+    expect(logoBox).toHaveClass("h-7");
+
+    // Высота шрифта бренда равна высоте логотипа: text-[28px] == h-7 (28px).
+    expect(brandName).toHaveClass("text-[28px]");
+  });
+
+  it("brand keeps its font identity and color (proportional scaling only)", () => {
+    render(<ProductHeader />);
+
+    const brandName = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+
+    // Увеличение пропорциональное: начертание и цвет не меняются.
+    expect(brandName).toHaveClass("font-bold");
+    expect(brandName).toHaveClass("text-brand");
+  });
+
+  it("brand letter-spacing is slightly reduced (tracking-tight)", () => {
+    render(<ProductHeader />);
+
+    const brandName = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+
+    // Чуть уменьшенное межбуквенное расстояние: tracking-tight (-0.025em).
+    expect(brandName).toHaveClass("tracking-tight");
+  });
+
+  it("brand line box matches the logo height (leading-none)", () => {
+    render(<ProductHeader />);
+
+    const brandName = screen.getByText("CISStat TS Analysis", { selector: "strong" });
+
+    // Строковый бокс 28px: шапка по вертикали остаётся обусловленной
+    // логотипом/кнопками h-7, текстовый блок равен высоте логотипа.
+    expect(brandName).toHaveClass("leading-none");
   });
 
   it("serves the logo from the standalone Next.js public directory", () => {
