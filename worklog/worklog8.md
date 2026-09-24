@@ -247,3 +247,79 @@ ZIP: cisstat-brand-font-equals-logo.zip — 3 файла (пути репози�
 сохранены): apps/standalone/components/ProductHeader.tsx (изменён),
 apps/standalone/components/ProductHeader.test.tsx (изменён),
 worklog/worklog8.md (изменён — эта запись). Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: BRND-2 (2026-09-24) — Шапка standalone: начертание бренда normal, починка теста, ссылка логотипа и бренда на главную
+
+### Постановка
+
+Синхронизация до c7d8344 (по прямому указанию тимлида; AGENTS.md разрешает
+sync/clone по указанию). Заменить шрифт «CISStat TS Analysis» на normal,
+починить тест apps/standalone/components/ProductHeader.test.tsx, поставить
+ссылку на главную https://ts-standalone.vercel.app/ при клике на логотип И
+на бренд. ZIP по результатам — в download. Без commit/push (AGENTS.md).
+
+### Синхронизация и фактура
+
+- main: 0a4252b → c7d8344. Новые коммиты: 626487e — BRND-1 (моя задача:
+  ProductHeader.tsx/.test.tsx, spec_progress.md, запись worklog8 — включена
+  тимлидом в коммит) и c7d8344 — правка тимлида font-bold → font-semibold
+  в компоненте и первом тесте.
+- Локальный незакоммиченный онбординг-запись worklog8 восстановлена после
+  ff-pull (на удалении её нет); локально устаревшие правки ProductHeader
+  (font-bold) отброшены в пользу состояния c7d8344.
+- Найденная поломка: на дереве c7d8344 сьют «brand keeps its font identity
+  and color» требует font-bold, а компонент после правки тимлида —
+  font-semibold → тест падает (подтверждено прогоном). Это и есть тест,
+  который поставлено починить.
+
+### Проектирование (точки изменения, риски)
+
+- Точка изменения та же: apps/standalone/components/ProductHeader.tsx +
+  его тест. Связка «логотип → бренд» в репо единственная (проверено в
+  BRND-1; layout.test.tsx брендовые классы не проверяет).
+- Решение: (1) font-normal вместо font-semibold — начертание normal;
+  <strong> сохранён как семантический акцент, визуальный вес задаёт
+  класс; кегль 28px, tracking-tight, leading-none, text-brand — без
+  изменений (постановка касается только начертания). (2) Логотип и бренд
+  обёрнуты в ОДНУ ссылку <a href="https://ts-standalone.vercel.app/">
+  — стандартный паттерн «лого ведёт на главную», покрывает оба клика
+  из постановки; геометрия flex items-center gap-2 перенесена с div на
+  <a> без изменений. Обычный <a> с явным URL (не next/link): адрес
+  внешний абсолютный по постановке, клиентская навигация не требуется.
+  aria-label «CISStat TS Analysis — на главную» — внятное имя ссылки и
+  устранение дублирования alt логотипа с текстом бренда для скринридера.
+- Риски: (1) сломанный тест-гарант на c7d8344 — обновлён под BRND-2;
+  (2) дублирование accessible name у ссылки — закрыто aria-label;
+  (3) потеря кликабельной зоны навигации — нет: обёртка не меняет
+  раскладку flex-строки шапки; (4) JIT font-normal — content-scan
+  включает components/**, верифицировано по собранному CSS.
+
+### TDD
+
+RED: ProductHeader.test.tsx — тест кегля переписан под normal
+(font-normal, не font-semibold/font-bold), гарант переименован в
+«brand keeps its color; weight is normal (BRND-2)», + 2 новых теста
+ссылки (логотип и бренд внутри одной <a> с href
+https://ts-standalone.vercel.app/; accessible name ссылки). Прогон:
+4 failed / 7 passed — RED подтверждён.
+GREEN: ProductHeader.tsx — font-semibold → font-normal; блок логотип+
+бренд обёрнут в <a>; комментарий задачи в шапке файла. Прогон: 11/11.
+
+### Верификация и сборка
+
+- Полный jest: 135 сьют / 1565 тестов — все зелёные.
+- typecheck standalone (tsc --noEmit) — чисто.
+- next build (production) — успешно, 18/18 страниц; в собранном CSS есть
+  font-weight:400 (font-normal), font-size:28px, letter-spacing:-.025em;
+  в prerender-HTML главной — href="https://ts-standalone.vercel.app/",
+  aria-label="CISStat TS Analysis — на главную",
+  класс "font-normal tracking-tight" у бренда.
+
+### Deliverable
+
+ZIP: cisstat-brand-normal-home-link.zip — 3 файла (пути репозитория
+сохранены): apps/standalone/components/ProductHeader.tsx (изменён),
+apps/standalone/components/ProductHeader.test.tsx (изменён),
+worklog/worklog8.md (изменён — эта запись). Без commit/push (AGENTS.md).

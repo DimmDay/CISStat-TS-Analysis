@@ -31,11 +31,22 @@
 // Задача «кегль бренда = высота логотипа»: логотип — бокс h-7 (28px,
 // object-contain заполняет по высоте). Кегль бренда поднят с text-[15px]
 // до text-[28px] — высота шрифта равна высоте логотипа. Увеличение
-// пропорциональное: шрифт (font-bold, Inter по наследованию) и цвет
-// (text-brand) не менялись. tracking-tight (-0.025em) — чуть уменьшенное
+// пропорциональное: шрифт (Inter по наследованию) и цвет (text-brand)
+// не менялись. tracking-tight (-0.025em) — чуть уменьшенное
 // межбуквенное расстояние. leading-none — строковый бокс 28px: шапка по
 // вертикали остаётся обусловленной элементами h-7, текстовый блок равен
 // высоте логотипа.
+//
+// BRND-2 (2026-09-24, следом за правкой тимлида font-bold→font-semibold
+// в c7d8344): (1) начертание бренда — normal (font-normal; <strong>
+// сохранён как семантический акцент, визуальный вес задаёт класс).
+// (2) Логотип и бренд обёрнуты в одну ссылку на главную standalone
+// https://ts-standalone.vercel.app/ — клик по любому из них ведёт на
+// главную. Ссылка — обычный <a> с явным URL по постановке (не next/link:
+// абсолютный внешний адрес, клиентская навигация не требуется);
+// aria-label даёт ссылке внятное имя и убирает дублирование alt логотипа
+// и текста бренда при чтении скринридером. Геометрия (flex items-center
+// gap-2) перенесена с прежнего div на <a> без изменений.
 
 import Link from "next/link";
 import Image from "next/image";
@@ -71,7 +82,11 @@ export function ProductHeader() {
     <div className="bg-white">
       <div className="max-w-[1600px] mx-auto px-6 flex items-center justify-between py-2.5">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
+          <a
+            href="https://ts-standalone.vercel.app/"
+            aria-label="CISStat TS Analysis — на главную"
+            className="flex items-center gap-2"
+          >
             <div className="relative h-7 w-7 shrink-0">
               <Image
                 src="/logo_TS.png"
@@ -82,8 +97,8 @@ export function ProductHeader() {
                 priority
               />
             </div>
-            <strong className="text-[28px] leading-none font-semibold tracking-tight text-brand">CISStat TS Analysis</strong>
-          </div>
+            <strong className="text-[28px] leading-none font-normal tracking-tight text-brand">CISStat TS Analysis</strong>
+          </a>
           <nav className="flex items-center gap-6 text-[13.5px]">
             {NAV_ITEMS.map((item) => (
               <Link key={item.href} href={item.href} className="text-neutral-600 hover:text-neutral-900">
