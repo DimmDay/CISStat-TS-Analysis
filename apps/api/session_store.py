@@ -59,6 +59,11 @@ import pandas as pd
 from fastapi import Request, Response
 
 from apps.api.model_readiness import MODELING_STAGE_IDS
+# PROGR-3: канонический TraceEvent (§4.1) -- только на границе чтения
+# трассы (read_pipeline_trace). Направление безопасно: trace_events не
+# импортирует session_store (KNOWN_STAGES локальна -- решение PROGR-1),
+# цикла нет; проверка равенства STAGES -- тестом, не импортом.
+from apps.api.trace_events import TraceEvent
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +80,9 @@ SESSION_TTL_SECONDS = 60 * 60 * 24 * 30  # 30 дней -- совпадает с 
 # ломающая изменение схемы сессии обязана поднять это число и обработать
 # предыдущую версию ЯВНО (см. docs/MIGRATION_ARCHITECTURE.md §1.1), а не
 # расширять эвристику «по отсутствию полей».
-SESSION_SCHEMA_VERSION = 1
+# PROGR-3: +2 (run_id, pipeline_trace -- слой 1 трассы §5, Task PROGR-3).
+# Обратная совместимость чтения полная: старые документы получают дефолты.
+SESSION_SCHEMA_VERSION = 2
 
 
 class SessionConflictError(RuntimeError):
@@ -104,6 +111,12 @@ def format_size_label(size_bytes: int) -> str:
 # Phase 6-P0. На уровне SessionStore достаточно, что stages -- это
 # dict[str, str] и любая структура ключей сохранится.
 STAGES = ["upload", "validation", "preprocessing", "eda", "modeling", "forecasting"]
+
+# Слой 1 трассы (spec_progress.md §5): «короткий буфер последних событий».
+# Верхняя граница защищает Redis-документ сессии от неконтролируемого
+# роста (в нём же живёт dataframe_json); вытеснение -- старейшие.
+# Зафиксировано тестом (test_max_pipeline_trace_events_constant_pinned).
+MAX_PIPELINE_TRACE_EVENTS = 1000
 
 StageStatus = str  # "pending" | "in_progress" | "done"
 PASSPORT_STAGES = ("start", "validation", "exit", "modeling_entry")
@@ -255,10 +268,79 @@ class AnalysisSession:
     modeling_artifacts: dict[str, Any] = field(default_factory=dict)
     # Подтверждённое аналитиком решение по недостаточной длине ряда.
     sufficiency_plan: dict[str, Any] = field(default_factory=dict)
+    # ── Слой 1 трассы «Прогресса» (§5, Task PROGR-3) ──
+    # run_id -- идентификатор ИССЛЕДОВАНИЯ (не session_id, §5): фиксируется
+    # при первой загрузке датасета (ensure_run_id на первом событии трассы
+    # при активном датасете); сбрасывается в set_dataset (новый датасет =
+    # новое исследование, §3.1). Формат "RUN-XXXXXXXX" -- читаемый,
+    # человекопроизносимый идентификатор для техподдержки (§5.3).
+    run_id: str = ""
+    # Внутрисессионный буфер stored-событий (каноническая форма to_dict(),
+    # 8+1 ключей). Пишет apps/api/trace_hook.py (§4.2) на успешных ответах;
+    # читается через read_pipeline_trace() -- граница нормализации старых
+    # 3-польных записей (риск-таблица plan_progress.md, Task PROGR-3).
+    pipeline_trace: list[dict[str, Any]] = field(default_factory=list)
     updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
     def touch(self) -> None:
         self.updated_at = datetime.now(timezone.utc).isoformat()
+
+    # ── Слой 1 трассы (§5, Task PROGR-3) ──────────────────────────
+
+    def ensure_run_id(self) -> str:
+        """Фиксирует run_id исследования при первом вызове (§5: генерируется
+        по факту первой загрузки датасета). Идемпотентен: повторные вызовы
+        возвращают тот же идентификатор. Вызывается хуком трассы перед
+        записью события при активном датасете -- первый трассируемый
+        эндпоинт сессии и есть загрузка (upload_completed)."""
+        if not self.run_id:
+            self.run_id = "RUN-" + uuid.uuid4().hex[:8].upper()
+        return self.run_id
+
+    def append_trace_event(self, event: TraceEvent) -> None:
+        """Дописывает событие в буфер слоя 1 (§5) в stored-форме to_dict().
+
+        R1 (сертификация PROGR-1-CERT): payload копируется ГЛУБОКО --
+        трасса-аудит не разделяет вложенные структуры с источником
+        (payload плоские и малые, цена копии незначима). Вытеснение при
+        превышении MAX_PIPELINE_TRACE_EVENTS -- старейшие записи.
+        """
+        stored = event.to_dict()
+        stored["payload"] = deepcopy(stored["payload"])
+        self.pipeline_trace.append(stored)
+        while len(self.pipeline_trace) > MAX_PIPELINE_TRACE_EVENTS:
+            self.pipeline_trace.pop(0)
+
+    def read_pipeline_trace(self) -> list[TraceEvent]:
+        """Граница чтения трассы слоя 1 (риск-таблица plan_progress.md,
+        Task PROGR-3): каждое stored-событие нормализуется через
+        TraceEvent.from_dict -- Redis-сессии со старыми 3-польными
+        записями мигрируют к канону §4.1 fail-closed к дефолтам.
+
+        Битая запись (чужая стадия, не-словарь) ПРОПУСКАЕТСЯ с warning,
+        а не роняет чтение: трасса -- вспомогательный журнал, одна
+        повреждённая запись не должна лишать панель «Прогресс»
+        остальных событий (та же философия деградации, что Task 143).
+        Неизвестный event_type сознательно сохраняется (R3, сертификация
+        PROGR-1-CERT: аудит важнее строгой схемы на чтении).
+        """
+        events: list[TraceEvent] = []
+        for item in self.pipeline_trace:
+            if not isinstance(item, dict):
+                logger.warning(
+                    "Session %s: не-словарная запись трассы пропущена",
+                    self.session_id,
+                )
+                continue
+            try:
+                events.append(TraceEvent.from_dict(item, run_id=self.run_id))
+            except (ValueError, KeyError, TypeError) as exc:
+                logger.warning(
+                    "Session %s: запись трассы пропущена при нормализации: %s",
+                    self.session_id,
+                    exc,
+                )
+        return events
 
     def set_dataset(self, dataset: DatasetInfo, dataframe: Optional[pd.DataFrame]) -> None:
         """Новый датасет -- сбрасывает прогресс по этапам (новый анализ).
@@ -289,6 +371,11 @@ class AnalysisSession:
         self.eda_validation_strategy = {}
         self.reset_modeling()
         self.sufficiency_plan = {}
+        # PROGR-3: новый датасет = новое исследование (§3.1): run_id и
+        # слой 1 трассы перезапускаются вместе с остальным прогрессом;
+        # новый run_id зафиксируется хуком на upload_completed загрузки.
+        self.run_id = ""
+        self.pipeline_trace = []
         self.touch()
 
     def set_target_column(self, column_name: str) -> None:
@@ -521,6 +608,9 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "modeling_pipeline": dict(session.modeling_pipeline),
         "modeling_artifacts": deepcopy(session.modeling_artifacts),
         "sufficiency_plan": dict(session.sufficiency_plan),
+        # PROGR-3: слой 1 трассы (§5) -- stored-события и run_id исследования
+        "run_id": session.run_id,
+        "pipeline_trace": deepcopy(session.pipeline_trace),
         "updated_at": session.updated_at,
     }
 
@@ -596,6 +686,14 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         },
         modeling_artifacts=deepcopy(d.get("modeling_artifacts", {})),
         sufficiency_plan=dict(d.get("sufficiency_plan", {})),
+        # PROGR-3: слой 1 трассы (§5). Не-словарные записи мусорного
+        # документа отбрасываются здесь (Task 143: мусор не роняет сессию);
+        # нормализация к канону -- на read_pipeline_trace().
+        run_id=str(d.get("run_id", "") or ""),
+        pipeline_trace=[
+            item for item in (d.get("pipeline_trace", []) or [])
+            if isinstance(item, dict)
+        ],
         updated_at=d.get("updated_at", datetime.now(timezone.utc).isoformat()),
     )
 

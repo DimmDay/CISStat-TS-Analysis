@@ -377,3 +377,114 @@ R-2 (Инфо): счётчики jest записи PROGR-2 арифметиче�
 R-3 (Инфо, среда): чек-лист R5 подтверждён и дополнен признаком «без API-манифеста — 54 ошибки коллекции tests/api».
 Вердикт
 PASSED WITH REMARKS. Реализация PROGR-2 соответствует канону spec_progress.md §2/§3/§12 п.2/§12 п.10 и плану; все заявления исполнителя воспроизведены; код задачи замечаний не имеет. Замечания — интеграционные/книгопроводные (F-1, F-2, R-2), кода не касаются. Блокеров для PROGR-3 нет.
+
+---
+
+## Task ID: PROGR-3 (2026-09-24) — Внутрисессионный слой трассы (§5 слой 1) + хук записи событий (§4.2)
+
+Синхронизация: main@b83120a (PROGR-2-CERT PASSED WITH REMARKS; commit/push запрещены AGENTS.md).
+
+### Среда (откат контейнера и восстановление)
+
+Контейнер между сессиями откатился к снапшоту: HEAD съехал с 0a4252b на 29d84a8, все
+незакоммиченные артефакты (включая deliverable предыдущей сессии и node_modules/python-зависимости)
+утрачены. Восстановлено до начала PROGR-3: переключение на b83120a (PROGR-2 интегрирован
+тимлидом: 4467fae реализация, 30b5cca FIX, b83120a сертификация); python-среда по чек-листу
+R5 (pandera, fakeredis, syrupy, httpx, PyWavelets, ruptures, prophet 1.4.0, statsforecast
+2.1.1, xgboost 2.1.3, lightgbm 4.5.0, catboost 1.2.8, statsmodels>=0.15.0); npm install.
+Реконструкция затронутых откатом файлов PROGR-2 (shared/pipeline_nodes/eda_checks.json —
+дословно по сохранённому содержимому; packages/ui/eda-checks-json.test.ts — по контракту
+«4/4» записи PROGR-2) подтверждена сертификацией F-1/F-2: файл вошёл в b83120a, тесты зелёные.
+
+### Постановка
+
+Третья задача plan_progress.md: слой 1 персистентности (§5) — AnalysisSession.pipeline_trace
+(внутрисессионный буфер, TTL = TTL сессии, без изменений архитектуры) + run_id (§5, не
+session_id); хук записи событий (§4.2) — таблица маршрутов путь→(stage, node_id, event_type),
+события на успешных ответах, profile_viewed троттлится (дефолт 5 мин, env-переменная);
+граница чтения трассы нормализует stored-события (риск-таблица: Redis-сессии со старыми
+3-польными записями). Приёмка: correction_applied/mode_changed/... на успешных ответах;
+profile_viewed троттлится; run_id фиксируется при первой загрузке. Адресуются замечания
+PROGR-1-CERT R1–R4.
+
+### Проектирование
+
+Интеграция — из двух вариантов §4.2 («FastAPI Depends или dispatch-middleware») выбран чистый
+ASGI-middleware: только он видит финальный response.status_code И тело ответа, а §4.1 требует
+payload из формы ответа (applied/strategy/total_changed — факты результата, не запроса).
+«Точечные включения в роутеры» из плана реализованы как точечный список маршрутов в таблице
+TRACE_ROUTES (40 записей): роутер-файлы не правятся вовсе, что дословно соответствует §4.2
+«не требует правки каждого из уже существующих роутов вручную»; отклонение от буквального
+прочтения плана зафиксировано здесь. Таблица fail-closed на импорте (_validate_table): невалидная
+пара (stage, event_type), неизвестный узел графа, дубликат маршрута, трассируемый forecasting
+или throttled не-profile_viewed — ImportError (паттерн pipeline_graph). Прогнозирование
+исключено: 4 call-site make_trace_event (PROGR-1) уже пишут канонические события в
+ForecastRun.trace — дубли в слой 1 не создаются, унификация — PROGR-5. Разбиение
+preview/apply — по applied В ОТВЕТЕ (все 20 correction-эндпоинтов возвращают applied: bool,
+проверено по схемам) — тело запроса хук не читает вовсе. payload — белый список ключей ответа
+(§4.1: факты, не сырой ответ; тяжёлые columns/profile отсечены). Throttle — per (event_type,
+node_id), окно из PROGRESS_PROFILE_VIEWED_THROTTLE_SECONDS на вызов, битое → 300, ≤0 → выключен.
+run_id — "RUN-XXXXXXXX" (uuid4.hex[:8].upper(), человекопроизносимый §5.3), ensure_run_id()
+идемпотентен, вызывается хуком при записи при активном датасете; set_dataset() сбрасывает
+run_id и pipeline_trace (новый датасет = новое исследование §3.1); первая трассируемая
+успешная загрузка и есть фиксация (Set-Cookie fallback в middleware — cookie ещё нет в запросе).
+Cap буфера MAX_PIPELINE_TRACE_EVENTS=1000, вытеснение старейших (§5 «короткий буфер» + защита
+Redis-документа). Рантайм-политика двухконтурная: контракт таблицы — fail-closed на импорте,
+IO-сбои хранилища — warning без поломки ответа (трасса вспомогательна). SESSION_SCHEMA_VERSION
+1→2 (+run_id, +pipeline_trace), чтение полнo совместимо. R1: глубокая копия payload в
+append_trace_event. R2: legacy-маркер приоритетнее явной stage — поведение зафиксировано
+тестом как осознанное решение. R3: event_type на чтении не валидируется (аудит), тестом.
+R4: живые дефолты TraceEvent покрыты тестом прямого конструирования.
+
+### TDD
+
+RED: tests/api/test_progress_trace_hook.py — ImportError подтверждён. GREEN:
+apps/api/trace_hook.py (TraceRouteSpec, TRACE_ROUTES 40, resolve_trace_route по сегментам,
+throttle_seconds_from_env, record_trace_event, TraceHookMiddleware, _validate_table),
+apps/api/session_store.py (+run_id, +pipeline_trace, ensure_run_id, append_trace_event,
+read_pipeline_trace, сериализация, сброс в set_dataset), apps/api/main.py (регистрация
+middleware ДО CORS — CORS остаётся внешним слоем). Итерации по своим падениям: (1) target-column
+живёт на /v1/session/target-column (роутер объявляет "/target-column" без /dataset) — таблица
+и тесты исправлены; (2) коллизия ключа payload с именованными параметрами фабрики (ответ
+паспорта содержит "stage") — **payload дал TypeError; payload присоединяется dataclasses.replace
+к базовому событию make_trace_event (гейт сохранён, факты не теряются); (3) ответ check-modes —
+ЭФФЕКТИВНЫЕ режимы, не частичная правка — тест проверяет факт ranges=enabled в эффективном
+словаре; (4) monkeypatch класса save требует self. Сьют: 40 тестов (таблица 6, резолвер 5,
+session_store 8, граница чтения 5, R4 1, интеграция 10, троттлинг 5).
+
+### Верификация (свои данные)
+
+- Оракулы (scripts/progr3_oracles.py, независимая перекодировка §4.1/§4.2/§5): 12/12 —
+  таблица против собственного справочника 40 маршрутов, валидность пар по реестру, свой
+  матчер шаблонов, белый список payload, preview/apply-семантика, фиксация run_id
+  (без датасета/первая загрузка/новый датасет), арифметика окна 5:00 + пер-узловость,
+  env-семантика, модель вытеснения cap, нормализация legacy→канон 8+1, порог успеха <400,
+  JSON-раундтрип stored-формы.
+- Мутационный прогон (scripts/progr3_mutations.py): 13/13 KILLED, 0 survived (потеря гейта
+  успеха, перевёрнутое окно, инверсия preview/apply, отказ фиксации run_id, потеря
+  Set-Cookie fallback, матчер без метода, payload-весь-ответ, подмена узла, невалидная пара
+  → ImportError import-гейта, R1-копия, вытеснение новых, падение на битой записи,
+  неидемпотентность run_id); sha256 обоих файлов после прогона совпадает.
+- Полный tests/api: 923 passed / 3 failed — три падения дословно повторяют средовой baseline
+  PROGR-2-CERT (modeling_workflow catalog-only, neural_capacity память хоста, models_candidates
+  unsupported-гейт); новых падений нет. Якорь схемы test_session_store сознательно переведён
+  на SESSION_SCHEMA_VERSION == 2 (с_comment PROGR-3); связка session_store + trace_events +
+  forecasting_session + pipeline_graph: 272 passed.
+- Потребители графов: test_pipeline_graph.py в связке зелёный — направление зависимостей
+  trace_hook → pipeline_graph → реестры циклов не создало (session_store импортирует
+  trace_events — безопасно: KNOWN_STAGES локальна, PROGR-1).
+
+### Deliverable
+
+ZIP: cisstat-progr3-trace-hook.zip — пути репозитория сохранены. НОВЫЕ:
+apps/api/trace_hook.py, tests/api/test_progress_trace_hook.py, scripts/progr3_oracles.py,
+scripts/progr3_mutations.py. ИЗМЕНЁННЫЕ: apps/api/session_store.py (слой 1: run_id,
+pipeline_trace, ensure/append/read, сериализация, сброс set_dataset, схема 1→2),
+apps/api/main.py (регистрация TraceHookMiddleware), tests/api/test_session_store.py (якорь
+схемы 2), plan_progress.md (статус §5), worklog/worklog8.md (эта запись). Роутеры не правились
+(§4.2, единая точка интеграции). Без commit/push (AGENTS.md).
+
+Границы задачи: чтение трассы наружу (эндпоинт панели) — PROGR-4; долговременный слой
+research_runs/trace_events, чекпоинты/пауза/restore и перенос run_id в Postgres — PROGR-5;
+трасса слоя 1 не содержит forecasting-событий (живут в ForecastRun.trace до унификации PROGR-5);
+passport_captured пишется хуком, но узлом графа паспорт не является (§2).

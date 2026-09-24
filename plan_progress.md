@@ -98,3 +98,13 @@ PROGR-8 — независимая ось (время/данные). Катег�
   (§12 п.2 — общий JSON читают TsAnalysisEDA.tsx и граф; вшитая копия EDA-id в .tsx удалена),
   `tests/api/test_pipeline_graph.py` (144 теста), оракулы 48/48, мутационный прогон 11/11 KILLED
   (scripts/progr2_oracles.py, scripts/progr2_mutations.py).
+- **PROGR-3 — РЕАЛИЗОВАНА (2026-09-24)**: `apps/api/trace_hook.py` (таблица 40 маршрутов
+  путь→(stage, node_id, event_type), fail-closed валидация на импорте, resolve, троттлинг
+  profile_viewed с env PROGRESS_PROFILE_VIEWED_THROTTLE_SECONDS, чистый ASGI-middleware),
+  `apps/api/session_store.py` (+run_id "RUN-XXXXXXXX", +pipeline_trace с cap 1000 и глубокой
+  копией payload R1, ensure/append/read, граница чтения нормализует legacy 3-поля, сброс в
+  set_dataset, схема 1→2), регистрация middleware в main.py. Замечания R1–R4 PROGR-1-CERT
+  адресованы (решения зафиксированы тестами). Прогнозирование хуком не дублируется
+  (ForecastRun.trace, унификация PROGR-5). Сьют 40 тестов, оракулы 12/12, мутации 13/13
+  KILLED (scripts/progr3_oracles.py, scripts/progr3_mutations.py). Роутеры не правились
+  (§4.2 «единая точка интеграции»; «точечные включения» = точечный список в таблице).

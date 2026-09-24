@@ -719,8 +719,11 @@ class TestSessionSchemaVersionAnchor:
     детерминированный якорь вместо эвристики «по отсутствию полей».
     """
 
-    def test_session_schema_version_is_integer_one_today(self):
-        assert SESSION_SCHEMA_VERSION == 1
+    def test_session_schema_version_is_integer_two_today(self):
+        # PROGR-3: 1 -> 2 (+run_id, +pipeline_trace -- слой 1 трассы §5,
+        # Task PROGR-3). Обратная совместимость чтения полная: старые
+        # Redis-документы получают дефолты (run_id="", pipeline_trace=[]).
+        assert SESSION_SCHEMA_VERSION == 2
 
     def test_serialized_document_carries_schema_version_stamp(self):
         session = AnalysisSession(session_id="schema-001")

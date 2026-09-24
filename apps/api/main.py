@@ -27,6 +27,9 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from apps.api.session_store import SessionConflictError
+# PROGR-3: хук трассы «Прогресса» -- единая точка интеграции §4.2
+# (таблица маршрутов путь -> (stage, node_id, event_type) внутри модуля).
+from apps.api.trace_hook import TraceHookMiddleware
 
 from apps.api.routers import public, internal, models, session, diagnostics, diagnostics_internal, modeling_session
 from apps.api.routers import forecasting_session, tasks_session
@@ -48,6 +51,12 @@ app = FastAPI(
 # ALLOWED_ORIGINS.
 _env_origins = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
 _default_dev_origins = ["http://localhost:3000", "http://localhost:3001"]
+
+# Хук трассы «Прогресса» (spec_progress.md §4.2, Task PROGR-3): события
+# пишутся на успешных ответах по таблице маршрутов apps/api/trace_hook.py.
+# Регистрация ДО CORS: последний add_middleware становится внешним, CORS
+# должен остаться самым внешним слоем (существующий контракт ответов 4xx).
+app.add_middleware(TraceHookMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
