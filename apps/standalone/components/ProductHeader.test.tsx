@@ -31,8 +31,8 @@ describe("ProductHeader", () => {
     const brandName = screen.getByText("CISStat TS Analysis", { selector: "strong" });
 
     expect(brandName.tagName).toBe("STRONG");
-    expect(brandName).toHaveClass("font-bold");
-    expect(brandName).not.toHaveClass("font-semibold");
+    expect(brandName).toHaveClass("font-semibold");
+    expect(brandName).not.toHaveClass("font-bold");
     expect(brandName).toHaveClass("text-[28px]");
     expect(brandName).not.toHaveClass("text-[15px]");
   });
