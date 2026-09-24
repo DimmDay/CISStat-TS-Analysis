@@ -488,3 +488,45 @@ apps/api/main.py (регистрация TraceHookMiddleware), tests/api/test_se
 research_runs/trace_events, чекпоинты/пауза/restore и перенос run_id в Postgres — PROGR-5;
 трасса слоя 1 не содержит forecasting-событий (живут в ForecastRun.trace до унификации PROGR-5);
 passport_captured пишется хуком, но узлом графа паспорт не является (§2).
+
+---
+
+## Task ID: PROGR-3-CERT (2026-09-24) — Независимая сертификация Task PROGR-3 (слой 1 трассы §5 + хук записи событий §4.2)
+
+Синхронизация: main@38f1cb9 (ff-pull с 4467fae; по указанию тимлида). Акт: scripts/audit_scripts/cert_progr3_trace_hook_2026-09-24.md.
+
+### Постановка
+
+Честная независимая сертификация задачи PROGR-3 из plan_progress.md, выполненной коллегой (commit 38f1cb9): воспроизведение заявлений исполнителя, кросс-верификация по живым роутерам/схемам/main.py, независимые оракул- и мутационные тесты на СВОИХ данных аудитора (свой мини-ASGI-стенд, свой FakeStore, свой сид). Методика — по прецедентам PROGR-1-CERT / PROGR-2-CERT; правила AGENTS.md (commit/push запрещены).
+
+### Воспроизведение заявлений исполнителя (8/8 ПОДТВЕРЖДЕНО)
+
+40/40 test_progress_trace_hook.py; с session_store 122/122; оракулы исполнителя 12/12; мутации исполнителя 13/13 KILLED (повторный прогон, файлы восстановлены); связка store+events+forecasting+graph 272 (=312 с хук-сьютом минус 40 — арифметика сходится); полный tests/api 923 passed / 3 failed — те же три средовых baseline PROGR-2-CERT (modeling_workflow catalog-only, neural_capacity память хоста, models_candidates unsupported-гейт), новых падений нет; якорь SESSION_SCHEMA_VERSION == 2 (test_session_store.py:726); F-1/F-2 сертификации PROGR-2-CERT интегрированы на main — eda-checks-json.test.ts + resolveJsonModule, EDA-сьюты jest 45/45. Среда по чек-листу R5 (statsmodels 0.15.0).
+
+### Кросс-верификация по живым исходникам (21/21, scripts/audit_scripts/progr3cert_crossverify.py)
+
+Ожидания читаются из живых файлов, не из хука: все 40 шаблонов таблицы разрешаются ровно в один живой маршрут с тем же методом (включая target-column БЕЗ /dataset и {stage} паспорта); пары (stage, event_type) валидны по живому STAGE_EVENT_TYPES+RUN_LEVEL; узлы известны графу; forecasting вне таблицы (все 4 изменяющих forecasting-эндпоинта); throttled только у profile_viewed и все GET-строки троттлируются; env-имя/дефолт 300 с §4.2; заявление «все 20 correction-эндпоинтов возвращают applied: bool» верифицировано по живым pydantic-схемам; §3.1 — хук не трогает session.stages; ни один роутер не изменён коммитом 38f1cb9; схема v2/cap 1000/STAGES-инвариант; TraceHookMiddleware в main.py ДО CORS; set_dataset сбрасывает run_id+trace; сериализация/чтение с фильтром мусора.
+
+### Оракулы аудитора на своих данных (12/12, scripts/audit_scripts/progr3cert_oracles.py)
+
+Своя кодировка, свой мини-ASGI-стенд с FakeStore, свои метки времени: A — статус-гейт через ЖИВОЙ middleware (200/204/399 пишутся, 400..503 нет — граница 399/400 на реальном ASGI-стеке); B — preview/apply identity-семантика `is False` (False→previewed; True/None/0/"false"/нет ключа→applied); C — payload-белый список (тяжёлое отсечено, отсутствующее опущено) + коллизия payload["stage"] паспорта снята replace-ом (TypeError невозможен, факты тела сохранены, event.stage="eda"); D — окно 299.5/300/300.5 (строгое <), naive-ts→UTC, битый ts→write, пер-узловость/пер-типовость; E — env 9 кейсов (нет→300, 0/-5→выкл, abc/5.5→300, " 600 "→600); F — run_id lifecycle (без датасета не фиксируется; RUN-[0-9A-F]{8}; идемпотентен; set_dataset→сброс, новый≠старый); G — cap (свои 8 событий при cap=5 → хвост [3..7]) + R1-копия глубока (мутация источника после append не меняет stored); H — свой legacy-корпус (маркер>stage R2, чужой event_type сохранён R3, skip-деградация, чтение не мутирует stored, run_id-фоллбек); I — документы v1→дефолты, v2 раундтрип точен, мусор фильтруется, v3-вперёд не падает; J — интеграция: первая загрузка через Set-Cookie fallback фиксирует run_id, троттлинг сквозь стенд, ответ клиенту не искажается, не-матчящий запрос молчит, неизвестная сессия — тихий пропуск; J2 — исключение хендлера пробивается наружу, трасса не засорена; K — матчер ({stage} непустой, метод строг, трейлинг-слэш/лишний сегмент→None, параллельные ветки regularity не путаются).
+
+### Мутационный прогон аудитора (scripts/audit_scripts/progr3cert_mutations.py)
+
+Дизъюнктный набор к 13 мутантам исполнителя: 12 мутантов × 3 детектора (сьют исполнителя, его оракулы, мои оракулы). Итог: 11/12 KILLED. Пять мутантов убиты всеми тремя детекторами (env-гейт, payload-присоединение, run_id set_dataset/сериализация, KeyError-обработка). Дыры сьюта исполнителя, закрытые только оракулами: CERT-M1 (граница ровно 400 — их неуспешные кейсы 404/409/422) и CERT-M5 (пустой сегмент {param}); дыры оракулов исполнителя, закрытые сьютом/моими: CERT-M2/M6/M7/M10. CERT-M12 (удаление import-гейта запрета forecasting) — SURVIVED 0/3, охарактеризован: на текущей таблице поведение не меняется (эквивалент), но защитная ветка контракта лишена теста-нарушения (аналог CERT-E01 PROGR-2-CERT); рекомендация — тест с пробной forecasting-строкой → ImportError.
+
+### Находки (полный акт: scripts/audit_scripts/cert_progr3_trace_hook_2026-09-24.md)
+
+- **F-1 (Low, тест-контур): import-гейт запрета forecasting не покрыт тестом-нарушением** (CERT-M12 survivor 0/3). Защитная ветка жива и корректна на текущей таблице; не покрыт сам гейт. Рекомендация: 5-строчный тест с пробной таблицей → ImportError. Не блокер.
+- **R-1 (Info):** общий payload-кортеж `_CORRECTION_PAYLOAD_KEYS` содержит «мёртвые» ключи для каждой из 20 correction-строк (convert-types 7/11, feature-generations 9/11) — опускаются рантаймом, §4.1 не нарушено, но таблица завышает ожидания о составе payload.
+- **R-2 (Info):** 19 изменяющих сессионных эндпоинтов без канонического типа §4.1 не трассируются (date-column, validation-rules, type-schema, stage/{stage}; modeling: compare, selection/evaluate, candidates, baselines, backtest/exclude, tuning/skip×2, jobs×3, diagnostics×2, feature-regressors) — по букве §4.1 (закрытый реестр); «решенческие» факты этих шагов в трассу слоя 1 не попадают; расширение реестра STAGE_EVENT_TYPES — задел PROGR-5+.
+- **R-3 (Info):** граница гейта (статус ровно 400) не покрыта сьютом исполнителя — ловится оракулами (их O11 + мой OR-A через живой middleware).
+- **R-4 (Info):** legacy-записи без event_id регенерируют id при каждом чтении (from_dict-дефолт); семантика стабильна, stored не мутируется; учесть при экспорте/чекпоинтах (PROGR-5): backfill id при записи либо детерминированный id.
+
+### Вердикт
+
+**PASSED WITH REMARKS.** Реализация PROGR-3 соответствует канону spec_progress.md §4.1/§4.2/§5 и плану: единая точка интеграции (ASGI-middleware, роутеры не тронуты), события только на успешных ответах, payload — факты ответа, preview/apply по applied в ответе, троттлинг profile_viewed (env, 300 с), run_id фиксируется при первой загрузке (Set-Cookie fallback), буфер 1000 с вытеснением старейших, глубокая копия payload (R1), нормализующая граница чтения (R2/R3 зафиксированы), схема 1→2 с обратной совместимостью, session.stages не тронут, forecasting не дублируется. Все заявления исполнителя воспроизведены; 21/21 кросс-верификация; 12/12 оракулов аудитора; мутации 11/12 (+1 охарактеризованный survivor). Находки F-1, R-1–R-4 не блокируют; блокеров для PROGR-4/PROGR-5 нет.
+
+### Deliverable
+
+ZIP: cisstat-progr3-cert-trace-hook.zip — пути репозитория сохранены. НОВЫЕ: scripts/audit_scripts/cert_progr3_trace_hook_2026-09-24.md (акт), scripts/audit_scripts/progr3cert_crossverify.py, scripts/audit_scripts/progr3cert_oracles.py, scripts/audit_scripts/progr3cert_mutations.py. ИЗМЕНЁННЫЕ: worklog/worklog8.md (эта запись). Без commit/push (AGENTS.md).
