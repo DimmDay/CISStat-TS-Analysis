@@ -92,5 +92,9 @@ PROGR-8 — независимая ось (время/данные). Катег�
 
 ## 5. Текущий статус
 
-- **PROGR-1 — в работе в этой сессии** (TDD RED→GREEN, см. worklog7.md).
-- PROGR-2..8 — ожидают постановки/очерёдности тимлида.
+- **PROGR-1 — РЕАЛИЗОВАНА** (42e7354; сертификация PROGR-1-CERT 1c81985 — PASSED WITH REMARKS, замечания R1–R4 адресуются в PROGR-3).
+- **PROGR-2 — РЕАЛИЗОВАНА (2026-09-24)**: `app/core/pipeline_graph.py` (STAGES/STAGE_NODES/46 узлов,
+  PipelineNodeState §3, свёртка §12 п.10, import-инварианты тестами), `shared/pipeline_nodes/eda_checks.json`
+  (§12 п.2 — общий JSON читают TsAnalysisEDA.tsx и граф; вшитая копия EDA-id в .tsx удалена),
+  `tests/api/test_pipeline_graph.py` (144 теста), оракулы 48/48, мутационный прогон 11/11 KILLED
+  (scripts/progr2_oracles.py, scripts/progr2_mutations.py).

@@ -75,6 +75,12 @@ import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { DatasetPassportPanel } from "./DatasetPassportPanel";
 import { describeNode } from "../lib/knowledge/knowledge";
+// ── Единый реестр остановок EDA (spec_progress.md §12 п.2, Task PROGR-2) ──
+// Источник id/label/description -- общий JSON, читаемый также
+// app/core/pipeline_graph.py (граф сервиса «Прогресс»). Вшитого списка
+// id в компоненте больше нет; рассинхрон ловится тестами
+// (tests/api/test_pipeline_graph.py, packages/ui/eda-checks-json.test.ts).
+import edaChecksJson from "../../../shared/pipeline_nodes/eda_checks.json";
 
 // ── Типы ──────────────────────────────────────────────────────
 
@@ -86,30 +92,26 @@ interface Check {
   description: string;
 }
 
-// ── 10 исследований EDA ──────────────────────────────────────
+interface EdaCheckDef {
+  id: string;
+  label: string;
+  description: string;
+}
 
-const CHECKS: Check[] = [
-  { id: "descriptive", label: "Описательные статистики", status: "pending", count: null,
-    description: "Mean, median, std, квартильный профиль, skewness и excess kurtosis по каждому числовому признаку текущего преобразованного датасета. Таблица и три переключаемые визуализации помогают оценить масштаб, вариативность, асимметрию и тяжесть хвостов перед дальнейшим EDA." },
-  { id: "correlation", label: "Корреляция (ACF/PACF)", status: "pending", count: null,
-    description: "Автокорреляционная и частная автокорреляционная функции с доверительными интервалами. Ключевой вход для идентификации ARIMA-порядков (p, q). Сезонные ACF/PACF при наличии сезонности." },
-  { id: "ih_analysis", label: "IH-анализ", status: "pending", count: null,
-    description: "Information-Entropy анализ факторов X относительно исследуемой цели Y: энтропия Шеннона, взаимная информация и нормированная мера R(Y|X). Работает с нелинейными связями, категориями, пропусками, лагами цели и комбинациями факторов; перестановочная проверка отделяет устойчивый сигнал от смещения дискретизации." },
-  { id: "seasonality", label: "Сезонность и периодичность", status: "pending", count: null,
-    description: "FFT и периодограмма равномерного преобразованного ряда после линейного detrend и окна Hann. Спектральные пики проверяются через ACF и фазовый профиль; поддерживаются несколько периодов и маркировка гармоник." },
-  { id: "stationarity", label: "Верификация стационарности", status: "pending", count: null,
-    description: "Финальная проверка полностью преобразованного ряда методами ADF, KPSS, Phillips–Perron и Zivot–Andrews. Скользящие среднее и стандартное отклонение помогают увидеть локальную устойчивость. Вывод подсказывает, можно ли рассматривать порядок интегрирования d=0 или следует вернуться к преобразованиям на шаге «Стационарность ряда» в Предобработке." },
-  { id: "distribution", label: "Распределение", status: "pending", count: null,
-    description: "Гистограмма, оценка плотности KDE, Q–Q график и эмпирическая F(x) сопоставляются с нормальным распределением с параметрами выбранного ряда. Shapiro–Wilk, Jarque–Bera и тест Лиллиефорса применяются с поправкой Холма. Вывод относится к форме текущего ряда; предположение модели о нормальности проверяется отдельно на её остатках." },
-  { id: "structural", label: "Структурные сдвиги", status: "pending", count: null,
-    description: "CUSUM проверяет общую стабильность параметров линейного тренда, PELT локализует несколько изменений уровня и наклона, а локальная Chow-диагностика и анализ чувствительности описывают найденные кандидаты. Результат помогает сравнить обучение на последнем режиме с моделью, допускающей изменение параметров." },
-  { id: "feature_select", label: "Отбор признаков", status: "pending", count: null,
-    description: "Многокритериальный shortlist числовых предикторов относительно выбранной цели Y: Pearson и Spearman измеряют одновременную связь, VIF выявляет мультиколлинеарность, а Granger X → Y проверяет добавочную опережающую предсказательность с FDR-коррекцией. Остановка не удаляет признаки автоматически." },
-  { id: "validation_strategy", label: "Стратегия валидации", status: "pending", count: null,
-    description: "Выбор схемы разбиения: expanding window / sliding window / single split. Визуализация train/test на графике. Задание горизонта прогноза. Проверка достаточности наблюдений в train." },
-  { id: "model_matrix", label: "Матрица моделей", status: "pending", count: null,
-    description: "Таблица применимости: модель → требование → статус ряда → вывод. ARIMA, SARIMA, Prophet, LSTM, VAR, XGBoost и др. Автоматическая фильтрация по свойствам ряда." },
-];
+// ── 10 исследований EDA ──────────────────────────────────────
+// id/label/description -- из общего JSON (§12 п.2), порядок объектов =
+// порядок остановок степпера. status/count -- рантайм-состояние
+// компонента, исходные значения -- pending/null (как до выноса).
+
+const EDA_CHECK_DEFS = edaChecksJson.nodes as EdaCheckDef[];
+
+const CHECKS: Check[] = EDA_CHECK_DEFS.map((def) => ({
+  id: def.id,
+  label: def.label,
+  description: def.description,
+  status: "pending" as CheckStatus,
+  count: null,
+}));
 
 // ── Справка по целям модуля «Разведочный EDA» ────────────────
 

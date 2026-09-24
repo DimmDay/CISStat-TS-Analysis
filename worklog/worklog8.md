@@ -323,3 +323,30 @@ ZIP: cisstat-brand-normal-home-link.zip — 3 файла (пути репози�
 сохранены): apps/standalone/components/ProductHeader.tsx (изменён),
 apps/standalone/components/ProductHeader.test.tsx (изменён),
 worklog/worklog8.md (изменён — эта запись). Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PROGR-2 (2026-09-24) — Граф пайплайна pipeline_graph.py + PipelineNodeState + свёртка статусов §12 п.10 + вынос EDA CHECKS в общий JSON §12 п.2
+Синхронизация: main@0a4252b (рабочее дерево с незакоммиченными правками текущей задачи; commit/push запрещены AGENTS.md).
+
+### Постановка
+Реализовать вторую задачу плана plan_progress.md: единый граф узлов 6 стадий (spec_progress.md §2), модель узла PipelineNodeState (§3), свёртка статусов в 3 визуальных состояния (§12 п.10), опциональный §12 п.2 плана — EDA CHECKS из TsAnalysisEDA.tsx в общий JSON (рекомендация «вынести сейчас», включена в объём по постановке тимлида). TDD RED→GREEN по AGENTS.md; проверка реализованного кода PROGR-1 (trace_events.py) как основания: KNOWN_STAGES отложила инвариант STAGES-равенства в тест PROGR-2 — инвариант включён в сьют.
+
+### Проектирование
+Направление зависимостей — по риск-таблице плана: pipeline_graph → реестры Python-модулей (идентичность объектов is, не копия), инвариант STAGES == session_store.STAGES == trace_events.KNOWN_STAGES — тестом, не взаимным импортом (защита от цикла при подключении хука трассы в PROGR-3). EDA-id — из общего JSON shared/pipeline_nodes/eda_checks.json (§12 п.2), чтение fail-closed на импорте: битый/неполный реестр не даёт графу стартовать с частичной картиной. Классификация стадий: проверочные (CheckStatus) upload/validation/preprocessing/eda — upload по факту UPLOAD-1 (done/warning/pending — подмножество CheckStatus, StageStatus не выразил бы warning); процессные (StageStatus) modeling/forecasting. mode (auto/enabled/disabled) — только Валидация/Предобработка (§3 «где применимо»). Свёртка §12 п.10: warning/error (где угодно) → attention; все done → passed; done+skipped (есть хотя бы один done) → passed; started-признак (running/in_progress/partial done) → attention; пусто/все pending или skipped → not_started. Извлечение CHECKS из .tsx — дословно (скрипт миграции scripts/progr2_extract_eda_checks.py): ни одна видимая строка фронтенда не изменилась.
+
+### TDD
+RED: tests/api/test_pipeline_graph.py — ModuleNotFoundError подтверждён. GREEN: app/core/pipeline_graph.py (STAGES/STAGE_NODES/TOTAL_NODE_COUNT/EDA_CHECK_DEFS/EDA_STAGE_IDS, iter_all_nodes, is_known_node, frozen PipelineNodeState с валидацией в post_init — в т.ч. при прямом конструировании, фабрика make_node_state — паттерн make_trace_event, fold_status_values/fold_stage_status). Итерации по своим падениям: (1) all-skipped сначала дал passed — исправлено: skipped не заменяет пройденность, без одного done стадия «не начата»; (2) мутационный анализ вскрыл дыру «вшитая копия вместо чтения JSON» и кейс warning-only — добавлены subprocess reload-тест подмены файла (sha256-верификация восстановления) и warning/error-only-кейсы. Сьют: 144 теста (граф 17, общий JSON 7+5 загрузчик, узел 26, фабрика 3, свёртка ~40 + параметризация 46 узлов и 2×10 позиций проблемы).
+
+### Верификация (свои данные)
+Оракулы (scripts/progr2_oracles.py, независимая кодировка §2/§3/§12): 48/48 — граф/идентичность реестров/модель узла/полная матрица свёртки/структура JSON.
+Мутационный прогон (scripts/progr2_mutations.py): 11/11 KILLED, 0 survived (precedence warning, границы skipped/пусто, потеря узла, копия вместо импорта, вшитая копия EDA, mode/счётчик-гейты, перестановка STAGES, частичная работа, дубликаты id); sha256 модуля после прогона совпадает.
+Потребители PROGR-1: test_trace_events.py + test_forecasting_session.py — 46/46.
+Полный tests/api: 883 passed / 3 failed — три падения дословно повторяют предсущественный средовой baseline PROGR-1-CERT (modeling_workflow catalog-only, neural_capacity память хоста, models_candidates unsupported-гейт); новых падений нет.
+Frontend: полная регрессия 136 сюит / 1563 теста — зелёные (EDA-сьют 41/41, новый packages/ui/eda-checks-json.test.ts 4/4); typecheck:all (embedded+standalone) чисто; next build standalone — успешно (JSON-импорт работает в webpack-сборке).
+Средовое восстановление контейнера: apps/api/requirements.txt + pandera/fakeredis/syrupy/httpx; statsmodels поднят 0.14.5→0.15.0 (падения 16 прогнозных E2E — средовые, чек-лист R5 PROGR-1-CERT).
+Deliverable
+ZIP: cisstat-progr2-pipeline-graph.zip — пути репозитория сохранены. НОВЫЕ: app/core/pipeline_graph.py, shared/pipeline_nodes/eda_checks.json, tests/api/test_pipeline_graph.py, packages/ui/eda-checks-json.test.ts, scripts/progr2_extract_eda_checks.py, scripts/progr2_oracles.py, scripts/progr2_mutations.py. ИЗМЕНЁННЫЕ: packages/ui/components/TsAnalysisEDA.tsx (вшитый CHECKS-литерал заменён импортом общего JSON — §12 п.2), jest.tsconfig.json (+resolveJsonModule), plan_progress.md (статус §5), worklog/worklog8.md (эта запись). Без commit/push (AGENTS.md).
+
+Границы задачи: session.stages не тронут (§3.1); forecasting-узлы в графе есть (категория A §11 — строится сразу), потребители статусов и UI-панель — PROGR-3/PROGR-4; frozenset-мутации статусов не допускаются снаружи (кортежи/фрозенсеты).
+
