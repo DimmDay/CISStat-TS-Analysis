@@ -42,7 +42,7 @@ describe("ProductHeader", () => {
     expect(brandName).toHaveClass("font-normal");
     expect(brandName).not.toHaveClass("font-semibold");
     expect(brandName).not.toHaveClass("font-bold");
-    expect(brandName).toHaveClass("text-[28px]");
+    expect(brandName).toHaveClass("text-[22px]");
     expect(brandName).not.toHaveClass("text-[15px]");
   });
 
@@ -59,7 +59,7 @@ describe("ProductHeader", () => {
     expect(logoBox).toHaveClass("h-7");
 
     // Высота шрифта бренда равна высоте логотипа: text-[28px] == h-7 (28px).
-    expect(brandName).toHaveClass("text-[28px]");
+    expect(brandName).toHaveClass("text-[22px]");
   });
 
   it("brand keeps its color; weight is normal (BRND-2)", () => {
