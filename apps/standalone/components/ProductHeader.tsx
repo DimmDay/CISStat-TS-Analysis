@@ -97,7 +97,7 @@ export function ProductHeader() {
                 priority
               />
             </div>
-            <strong className="text-[22px] leading-none font-normal tracking-tight text-brand">CISStat TS Analysis</strong>
+            <strong className="text-[20px] leading-none font-normal tracking-tight text-brand">CISStat TS Analysis</strong>
           </a>
           <nav className="flex items-center gap-6 text-[13.5px]">
             {NAV_ITEMS.map((item) => (
