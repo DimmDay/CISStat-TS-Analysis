@@ -878,3 +878,29 @@ ZIP: cisstat-progr5-cert-research-runs.zip — пути репозитория �
 ### Deliverable
 
 ZIP: cisstat-progr5-1-buttons-ddl.zip — пути репозитория сохранены. НОВЫЕ: packages/ui/components/ProgressCheckpointBar.tsx (+ProgressCheckpointBar.test.tsx), tests/api/test_research_runs_postgres.py (12 тестов, затвор CISSTAT_TEST_PG_DSN), scripts/audit_scripts/progr5fe_ddl_integration.py (ops-прогон DDL, 6 контуров). ИЗМЕНЁННЫЕ: packages/ui/components/ProgressDrawer.tsx (+полоса, +fetch детали запуска, +refresh-цикл), ProgressDrawer.test.tsx (+7), packages/ui/lib/progress.ts (+runStatusLabel/CheckpointInfo/lastCheckpointableEvent), packages/ui/lib/progress.test.ts (+9), packages/ui/index.ts (+экспорт бара). ИЗМЕНЁННЫЙ: worklog/worklog8.md (эта запись). Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PLAN-REVIEW-CHARTS (2026-09-26) — План устранения класса «графики Обзоров без явной подписки на refresh» во всех Обзорах и их остановках
+
+Синхронизация: main@cfa1213 (ff-clone; working tree чистый, код продукта не менялся). Правила AGENTS.md: без commit/push, ZIP в download.
+
+### Постановка
+
+Указание тимлида вслед за границей задачи OUTL-1: класс «графики без явной подписки на refresh» существует на других остановках (Пропуски: матрица/корреляция) — тест-паттерн it.each готов к переносу, требуется отдельная постановка на все Обзоры. Составить план устранения недоработки во всех Обзорах и их остановках; упаковать в plan_review_charts.md.
+
+### Работа (инвентаризация по живому коду @ cfa1213)
+
+Полный обход семейства Обзоров (ExpandableChartPanel-пользователи, *Overview.tsx, *Visualizations.tsx, hooks/useChartDetailData, точки fetch контейнеров TsAnalysisEDA/Preprocessing/Validation/Modeling) с классификацией по трём механизмам доставки данных графика: (A) profile-prop — подписка обеспечена deps контейнера; (B) self-fetch чарта — паттерн OUTL-1 (refreshKey проп + revision= в query); (C) кэш раскрытия useChartDetailData — fingerprint обязан включать мутацию датасета. Ключевые факты: «Пропуски» — 3 графика без подписки (missing-matrix/missing-correlation — константные URL вовсе, missing-distribution — только выбор колонок; файл не менялся с Task 54); «Выбросы» — эталон OUTL-1 (revision=, 4 графика); «Регулярность» — корректна с Task 72 (_r=); Decomposition/Spectral — useChartDetailData БЕЗ fingerprint (комментарий «fingerprint не нужен» написан до эпохи datasetVersion/PREPR-4 — инвалидация по apply не покрыта, ключ кэша переживает мутацию); EdaStructuralBreaks — fingerprint=datasetKey не меняется при in-place мутации, а detailCache — модуль-глобальный Map, переживает переходы между модулями; EdaDescriptive — самофетч с requestKey-гвардом (подписан), без cache-buster; Валидация/Моделирование — чисты (профиль-проп/action-driven, recharts в Обзорах нет). Детали, постановки по волнам, TDD, риски — plan_review_charts.md (репозиторий, корень, по прецеденту plan_progress.md).
+
+### Решение плана (кратко)
+
+- Волна 1 (P0): «Пропуски» — MissingMatrixChart/MissingCorrelationChart/MissingBoxplotChart принимают refreshKey, URL получают revision= (дословный перенос паттерна OUTL-1); тест-паттерн it.each + интеграционный инвариант переносятся в оба существующих сюита. Бэкенд не меняется.
+- Волна 2 (P1): слой C — invalidateChartDetailCache() из useChartDetailData + единый handleApplied контейнера «Предобработки» (bump datasetVersion + инвалидация кэша), fingerprint=String(refreshKey) для Decomposition/Spectral (контейнер передаёт сумму ключей); EdaStructuralBreaks закрывается глобальной инвалидацией без правки.
+- Волна 3 (P2, опционально): унификация _r=→revision=, cache-buster для EdaDescriptive, TasksCauses — отдельная постановка.
+- Статический гвард: ReviewChartsRefreshCoverage.test.ts по прецеденту ExpandableChartCoverage.test.ts — списки REVISION_SUBSCRIBED_CHART_SOURCES / PROFILE_PROP_OVERVIEWS / SELF_FETCH_GUARDED_OVERVIEWS, правило «новый Обзор классифицируется ровно в одном списке».
+- Риски: тесты — на «последнюю ревизию», не на число вызовов (loading-flash); refreshKey — монотонная сумма (тип не менять); правки только frontend, Python-регрессия не требуется.
+
+### Deliverable
+
+ZIP: cisstat-plan-review-charts.zip — пути репозитория сохранены. НОВЫЙ: plan_review_charts.md (план-постановка: инвентаризация 30 остановок, контракт инварианта, 3 волны, TDD, гвард, риски, порядок и приёмка). ИЗМЕНЁННЫЙ: worklog/worklog8.md (эта запись). Код продукта не менялся. Без commit/push (AGENTS.md).
