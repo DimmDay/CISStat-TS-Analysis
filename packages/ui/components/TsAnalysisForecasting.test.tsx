@@ -11,10 +11,10 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { TsAnalysisForecasting } from "./TsAnalysisForecasting";
 import type { CardSummary, ForecastRun } from "../lib/forecasting";
 
-// AppShell: stages/activeDataset/log -- фиксированный сценарий на тест.
+// AppShell: stages/activeDataset -- фиксированный сценарий на тест.
+// PROGR-4 (§6.1): log/addLogEntry/clearLog удалены из shell-контекста.
 let mockStages: Record<string, string> = {};
 let mockHasDataset = true;
-const mockLog: Array<{ level: string; message: string }> = [];
 // FORECAST-GATE-1: контролируемый стаб refreshSession (паттерн TasksHub):
 // тест пересинхронизации подменяет stages «как это сделал бы провайдер».
 const mockRefreshSession = jest.fn();
@@ -25,13 +25,11 @@ jest.mock("../context/AppShellContext", () => ({
       : null,
     stages: mockStages,
     lastActiveStage: null,
+    targetColumn: null,
     sessionLoading: false,
     // Стабильная ссылка (как useCallback-refreshSession в реальном
     // провайдере): тест счётчика вызовов ловит и циклы по зависимости.
     refreshSession: mockRefreshSession,
-    log: mockLog,
-    addLogEntry: jest.fn(),
-    clearLog: jest.fn(),
   }),
 }));
 

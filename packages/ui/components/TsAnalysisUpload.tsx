@@ -333,7 +333,9 @@ async function fetchStructureDetection(): Promise<StructureDetection | null> {
 // ──────────────────────────────────────────────────────────────────────
 
 export function TsAnalysisUpload() {
-  const { activeDataset, setActiveDataset, refreshSession, addLogEntry } = useAppShell();
+  // PROGR-4 (§6.1): addLogEntry удалён из shell-контекста -- факты загрузки
+  // пишет бэкенд-хук (upload_completed, §4.2); ошибки -- инлайн + тост ниже.
+  const { activeDataset, setActiveDataset, refreshSession } = useAppShell();
 
   // ── Источник данных (верхняя полоса, вне степпера) ──
   const [source, setSource] = useState<"file" | "db">("file");
@@ -619,12 +621,11 @@ export function TsAnalysisUpload() {
         const message = e instanceof Error ? e.message : "Неизвестная ошибка загрузки";
         setUploadError(message);
         toast.error(`Ошибка: ${message}`);
-        addLogEntry("ERROR", `Ошибка загрузки файла: ${message}`);
       } finally {
         setUploading(false);
       }
     },
-    [setActiveDataset, refreshSession, addLogEntry, fetchStats]
+    [setActiveDataset, refreshSession, fetchStats]
   );
 
   const onDrop = useCallback(
@@ -679,7 +680,6 @@ export function TsAnalysisUpload() {
     // ЗАМЕНИТЬ: PATCH /v1/internal/datasets/{id}/column-mapping -- эндпоинт
     // ещё не реализован на бэкенде. Пока -- локальное подтверждение.
     if (detection) setDetection({ ...detection });
-    addLogEntry("INFO", "Подтверждение структуры сохранено (пока только локально — см. TODO в коде)");
   };
 
   // ── Структурный класс (пункт 8) -- вычисляется из detection + columnsInfo ──

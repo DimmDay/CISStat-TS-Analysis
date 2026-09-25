@@ -14,7 +14,7 @@
 // одинаковые 155.2×35px).
 
 import "@testing-library/jest-dom";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { ModuleNav } from "./ModuleNav";
 
 // Мокаем usePathname — по умолчанию на /validation, чтобы не было
@@ -23,12 +23,19 @@ jest.mock("next/navigation", () => ({
   usePathname: () => "/validation",
 }));
 
-// ModuleNav показывает "Логи событий" — нужен log.
+// ModuleNav (PROGR-4): кнопка «Прогресс» рендерит ProgressDrawer, который
+// читает activeDataset/targetColumn из shell-контекста; лог удалён (§6.1).
 jest.mock("../context/AppShellContext", () => ({
-  useAppShell: () => ({ log: [] }),
+  useAppShell: () => ({ activeDataset: null, targetColumn: null }),
 }));
 
 const NAV_LABEL = /Навигация по модулям анализа/i;
+
+// Открытие панели «Прогресс» триггит fetch трассы — глушим сеть, чтобы
+// тесты кнопки не зависели от бэкенда (панель best-effort, §6.1).
+beforeEach(() => {
+  global.fetch = jest.fn().mockResolvedValue({ ok: false, json: () => Promise.resolve({}) }) as jest.Mock;
+});
 
 // Бейджи главного меню = ссылки с pill-формой внутри навигации.
 const getBadges = (container: HTMLElement) =>
@@ -209,12 +216,85 @@ describe("ModuleNav", () => {
     expect(trigger?.className).not.toContain("text-white");
   });
 
-  // ── Guard-тесты нетронутости остального ─────────────────────────
+  // ── Кнопка-триггер «Прогресс» (PROGR-4, аддендум §4.1) ──────────
 
-  it("guard: 'Логи событий' button is present and unchanged", () => {
+  it("кнопка «Прогресс» на месте слота справа, «Логи событий» удалены", () => {
     render(<ModuleNav />);
-    const btn = screen.getByRole("button", { name: /Логи событий/i });
+    const btn = screen.getByRole("button", { name: /Прогресс/i });
     expect(btn).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Логи событий/i })).toBeNull();
+  });
+
+  it("pill-форма по паттерну бейджей: rounded-full + h-9 + whitespace-nowrap", () => {
+    render(<ModuleNav />);
+    const btn = screen.getByRole("button", { name: /Прогресс/i });
+    expect(btn.className).toContain("rounded-full");
+    expect(btn.className).toContain("h-9");
+    expect(btn.className).toContain("whitespace-nowrap");
+  });
+
+  it("адаптив паддинга/шрифта как у модульных бейджей (px-3/[13px], lg: px-4/sm)", () => {
+    render(<ModuleNav />);
+    const btn = screen.getByRole("button", { name: /Прогресс/i });
+    expect(btn.className).toContain("px-3");
+    expect(btn.className).toContain("text-[13px]");
+    expect(btn.className).toContain("lg:px-4");
+    expect(btn.className).toContain("lg:text-sm");
+  });
+
+  it("неактивное состояние: bg-white + тонкая border-brand + text-brand (§4.1)", () => {
+    render(<ModuleNav />);
+    const btn = screen.getByRole("button", { name: /Прогресс/i });
+    expect(btn.className).toContain("bg-white");
+    expect(btn.className).toContain("border-brand");
+    expect(btn.className).toContain("text-brand");
+    // «Тонкая» = 1px: border-2 запрещён контрактом.
+    expect(btn.className).not.toContain("border-2");
+    // Сплошной заливки bg-brand (как отдельного токена) нет —
+    // hover:bg-brand-light не считается (границы слова).
+    expect(btn.className.match(/(?:^|\s)bg-brand(?:\s|$)/)).toBeNull();
+    expect(btn.className.match(/(?:^|\s)text-white(?:\s|$)/)).toBeNull();
+  });
+
+  it("активное состояние: bg-brand + text-white + font-semibold (§4.1, semibold ≠ font-medium)", () => {
+    render(<ModuleNav />);
+    const btn = screen.getByRole("button", { name: /Прогресс/i });
+    fireEvent.click(btn);
+    // Токены с границами слова: bg-brand ≠ bg-brand-light (hover).
+    expect(btn.className.match(/(?:^|\s)bg-brand(?:\s|$)/)).not.toBeNull();
+    expect(btn.className.match(/(?:^|\s)text-white(?:\s|$)/)).not.toBeNull();
+    expect(btn.className).toContain("font-semibold");
+    expect(btn.className).not.toContain("font-medium");
+  });
+
+  it("aria-expanded отражает состояние панели и aria-controls указывает на id панели", () => {
+    render(<ModuleNav />);
+    const btn = screen.getByRole("button", { name: /Прогресс/i });
+    expect(btn).toHaveAttribute("aria-expanded", "false");
+    expect(btn).toHaveAttribute("aria-controls", "progress-drawer");
+    fireEvent.click(btn);
+    expect(btn).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("focus-visible ring — тот же паттерн доступности, что у бейджей", () => {
+    render(<ModuleNav />);
+    const btn = screen.getByRole("button", { name: /Прогресс/i });
+    expect(btn.className).toContain("focus-visible");
+  });
+
+  it("кнопка — отдельная позиция вне ряда pill-бейджей модулей (§4.1)", () => {
+    const { container } = render(<ModuleNav />);
+    const btn = screen.getByRole("button", { name: /Прогресс/i });
+    const row = container.querySelector("[class*='grid-flow-col']");
+    expect(row?.contains(btn)).toBe(false);
+  });
+
+  it("повторный клик закрывает панель (toggle)", () => {
+    render(<ModuleNav />);
+    const btn = screen.getByRole("button", { name: /Прогресс/i });
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+    expect(btn).toHaveAttribute("aria-expanded", "false");
   });
 
   // ── Точечная правка: линия-подчёркивание под меню убрана ────────

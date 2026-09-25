@@ -13,11 +13,10 @@ jest.mock("@cisstat/ui/context/AppShellContext", () => ({
     activeDataset: null,
     stages: Object.fromEntries(STAGE_DEFS.map((s) => [s.key, "pending"])),
     lastActiveStage: null,
+    targetColumn: null,
     sessionLoading: false,
     refreshSession: jest.fn(),
-    log: [],
-    addLogEntry: jest.fn(),
-    clearLog: jest.fn(),
+    // PROGR-4 (§6.1): log/addLogEntry/clearLog удалены из shell-контекста.
   }),
 }));
 

@@ -4,7 +4,7 @@
 //
 // Глобальное состояние, нужное на ЛЮБОЙ странице:
 // - какой датасет сейчас активен + на каком этапе остановился пользователь
-// - лог событий (сквозной, накопительный)
+// - исследуемый признак (target_column) -- шапка панели «Прогресс» §6.1
 //
 // ИЗМЕНЕНИЕ (сессионная Home page, по решению тимлида): activeDataset
 // раньше был чисто клиентским useState, который обнулялся на F5. Теперь
@@ -15,17 +15,19 @@
 // ждать лишний round-trip), но сервер уже обновлён тем же вызовом
 // upload (см. upload_common.py) -- refreshSession() при необходимости
 // синхронизирует состояние заново.
+//
+// ИЗМЕНЕНИЕ (PROGR-4, spec_progress.md §6.1): клиентский лог
+// log/addLogEntry/clearLog УДАЛЁН, не остаётся вторым параллельным
+// логом -- его нишу заняла персистентная трасса (§4-§5, слой 1
+// PROGR-3, панель ProgressDrawer). Факты решений пишутся хуком на
+// бэкенде (§4.2: upload_completed и т.д. -- единая точка интеграции);
+// ошибки операций показываются инлайн/тостами своих вкладок. Добавлен
+// targetColumn из GET /v1/session/current (шапка панели §6.1: «поле
+// есть -- новых данных не требуется»).
 
 import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
 import { STAGE_DEFS, StageStatus } from "../lib/stages";
-
-export interface LogEntry {
-  id: number;
-  time: string;
-  level: "INFO" | "WARNING" | "ERROR";
-  message: string;
-}
 
 export interface ActiveDataset {
   datasetId?: string;
@@ -51,6 +53,7 @@ interface SessionCurrentResponse {
   dataset: { dataset_id: string; name: string; rows: number; columns: number; size_label: string } | null;
   stages: StagesMap;
   last_active_stage: string | null;
+  target_column: string | null;
   updated_at: string | null;
 }
 
@@ -59,11 +62,11 @@ interface AppShellContextValue {
   setActiveDataset: (dataset: ActiveDataset) => void;
   stages: StagesMap;
   lastActiveStage: string | null;
+  // Шапка панели «Прогресс» (§6.1). Опционально в контракте: часть
+  // тестов мокает контекст частично, отсутствие поля -- не ошибка.
+  targetColumn?: string | null;
   sessionLoading: boolean;
   refreshSession: () => Promise<void>;
-  log: LogEntry[];
-  addLogEntry: (level: LogEntry["level"], message: string) => void;
-  clearLog: () => void;
 }
 
 const AppShellContext = createContext<AppShellContextValue | null>(null);
@@ -72,15 +75,8 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   const [activeDataset, setActiveDatasetState] = useState<ActiveDataset | null>(null);
   const [stages, setStages] = useState<StagesMap>(EMPTY_STAGES);
   const [lastActiveStage, setLastActiveStage] = useState<string | null>(null);
+  const [targetColumn, setTargetColumn] = useState<string | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
-  const [log, setLog] = useState<LogEntry[]>([]);
-
-  const addLogEntry = useCallback((level: LogEntry["level"], message: string) => {
-    setLog((prev) => [
-      { id: prev.length, time: new Date().toLocaleTimeString("ru-RU"), level, message },
-      ...prev,
-    ]);
-  }, []);
 
   const applySessionResponse = useCallback((data: SessionCurrentResponse) => {
     if (data.has_active_dataset && data.dataset) {
@@ -95,6 +91,7 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
     }
     setStages(data.stages ?? EMPTY_STAGES);
     setLastActiveStage(data.last_active_stage ?? null);
+    setTargetColumn(data.target_column ?? null);
   }, []);
 
   const refreshSession = useCallback(async () => {
@@ -116,15 +113,12 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const setActiveDataset = useCallback(
-    (dataset: ActiveDataset) => {
-      setActiveDatasetState(dataset);
-      addLogEntry("INFO", `✅ Загружен файл: ${dataset.name}`);
-    },
-    [addLogEntry]
-  );
-
-  const clearLog = useCallback(() => setLog([]), []);
+  // Оптимистичное обновление сразу после успешного upload; факт
+  // upload_completed в трассу пишет бэкенд-хук (§4.2, PROGR-3), поэтому
+  // клиентская запись в лог больше не нужна (PROGR-4, §6.1).
+  const setActiveDataset = useCallback((dataset: ActiveDataset) => {
+    setActiveDatasetState(dataset);
+  }, []);
 
   return (
     <AppShellContext.Provider
@@ -133,11 +127,9 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
         setActiveDataset,
         stages,
         lastActiveStage,
+        targetColumn,
         sessionLoading,
         refreshSession,
-        log,
-        addLogEntry,
-        clearLog,
       }}
     >
       {children}

@@ -56,3 +56,12 @@ export function apiUrl(path: string): string {
 export function sessionApiUrl(path: string): string {
   return `${getApiBase()}/v1/session${path}`;
 }
+
+/**
+ * Namespace сервиса «Прогресс» (spec_progress.md §5: /v1/progress/*) --
+ * чтение трассы слоя 1 панелью (Task PROGR-4). Сессия та же cookie, что
+ * у /v1/session/*, поэтому база -- общая getApiBase().
+ */
+export function progressApiUrl(path: string): string {
+  return `${getApiBase()}/v1/progress${path}`;
+}

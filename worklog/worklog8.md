@@ -530,3 +530,43 @@ passport_captured пишется хуком, но узлом графа пасп
 ### Deliverable
 
 ZIP: cisstat-progr3-cert-trace-hook.zip — пути репозитория сохранены. НОВЫЕ: scripts/audit_scripts/cert_progr3_trace_hook_2026-09-24.md (акт), scripts/audit_scripts/progr3cert_crossverify.py, scripts/audit_scripts/progr3cert_oracles.py, scripts/audit_scripts/progr3cert_mutations.py. ИЗМЕНЁННЫЕ: worklog/worklog8.md (эта запись). Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PROGR-4 (2026-09-25) — UI-панель «Прогресс» + кнопка-триггер (аддендум §4.1–4.2)
+
+Синхронизация: main@47a33eb (ff-pull с 38f1cb9; в 47a33eb вошла интеграция PROGR-3-CERT — аудиторские скрипты и запись worklog8, локальные копии удалены как идентичные). Правила AGENTS.md: TDD RED→GREEN, без commit/push, ZIP в download.
+
+### Постановка
+
+Реализация Task PROGR-4 из plan_progress.md: правая выдвижная панель «Прогресс» (§6.1–6.2 spec_progress.md) + pill-кнопка-триггер по контракту аддендума §4.1–4.2; атомарное удаление EventsLogDrawer/AppShellContext.log (§6.1, риск-таблица плана); jest-сьюты зелёные, typecheck/build чисто.
+
+### Ключевые решения
+
+- **Чтение трассы слоя 1 (новый минимальный бэкенд).** PROGR-3 дала только запись, а шапке §6.1 нужен run_id («новое, см. §5») и «Начат N мин назад», §6.2 — хронологический список событий. Добавлен ровно один читающий эндпоинт GET /v1/progress/trace (namespace /v1/progress/* — канон §5; apps/api/routers/progress.py + регистрация в main.py): run_id (честный null без датасета), started_at (ts первого события — аналог created_at слоя 1), events (канон §4.1 через read_pipeline_trace — нормализация legacy на границе, решения R2/R3). Эндпоинт вне TRACE_ROUTES — ридер трассы сам не трассируется.
+- **Статусы узлов из фактов трассы (§4.1).** Слоя профильных опросов 46 узлов панель не делает (§4.2 разрешает опрашивать только видимые, но маппинг ~30 гетерогенных ответов — отдельная работа). Честный источник MVP: трасса. Терминальные события (upload_completed/correction_applied/backtest_run/tuning_trial_completed/model_selected/model_card_generated/forecast_*) → done; correction_previewed → warning («найдены проблемы»: preview показывается только при найденных нарушениях, решение не принято); profile_viewed → running. Последнее событие узла выигрывает. События уровня стадии (node_id=null) и неизвестные типы — мимо узлов (фантомов нет).
+- **Прогнозирование — из ForecastRun.trace (§3 дословно: статус «по факту наличия ForecastRun/конкретных trace_events»).** Слой 1 forecasting-событий не содержит (решение PROGR-3, унификация PROGR-5), поэтому панель досчитывает их из живого GET /v1/session/modeling/forecast (ForecastTraceEventSchema: legacy event_type/timestamp/payload → ts/stage/node_id=event_type).
+- **Свёртка §12 п.10** — точный TS-порт fold_status_values (pipeline_graph.py), застрахован зеркальной таблицей кейсов; карточка: bg-green-50 / bg-amber-50 / нейтральная, иконка StatusIcon как есть, текст «N/total, найдены проблемы | в работе | пройдено | не начато».
+- **Реестр узлов фронтенда** (packages/ui/lib/progress.ts, 46 узлов): 5 стадий текстовой копией, EDA — из общего JSON §12 п.2 (без дубля); sync-тест tests/api/test_progress_panel.py читает живой .ts (паттерн test_eda_tsx_imports_shared_json): 5 стадий дословно с STAGE_NODES, для eda — маркер импорта общего JSON (паритет JSON↔граф уже страхует сюит PROGR-2). Метки узлов — из CHECK_META/мета-степперов/PIPELINE_STAGES/общего JSON.
+- **Кнопка-триггер** — построчно по аддендуму §4.1: BADGE_BASE-геометрия (rounded-full, h-9, px-3/[13px] → lg:px-4/sm), неактивная bg-white+border border-brand (тонкая, без border-2)+text-brand; активная bg-brand+text-white+**font-semibold** (не font-medium — осознанное отличие §4.1); aria-expanded/aria-controls="progress-drawer", focus-visible ring, иконка Workflow в слоте ScrollText. Toggle-поведение (повторный клик закрывает).
+- **Атомарное удаление лога (§6.1):** EventsLogDrawer.tsx удалён; из AppShellContext удалены log/addLogEntry/clearLog (+LogEntry), добавлен targetColumn из GET /current (шапка §6.1: «поле есть — новых данных не требуется», optional в контракте для частичных моков); вызовы addLogEntry в TsAnalysisUpload (2) и TsAnalysisForecasting (5) убраны: факты решений — в бэкенд-трассе (§4.2/PROGR-1), ошибки — инлайн/тосты вкладок. Кнопки «Пауза»/«Сохранить точку»/«Наставник» — не в объёме PROGR-4 (PROGR-5/6; без бэкенда были бы мёртвыми).
+- **Контент панели монтируется с первого открытия** (hasOpened): закрытая панель не дублирует тексты стадий рядом с бейджами меню (и не гоняет fetch).
+
+### TDD и верификация
+
+- RED: 8 бэкенд-тестов падали (404/нет progress.ts), 29 фронтовых (TS2307/новый контракт) — все по правильным причинам.
+- GREEN: tests/api/test_progress_panel.py 9/9 (эндпоинт: пустая сессия, demo→upload_completed+run_id RUN-XXXXXXXX, нормализация legacy на чтении (R2: stage=forecasting; R3: event_type не валидируется), run_id=null без датасета, хронология, эндпоинт вне таблицы хука; sync реестра узлов ×3).
+- Jest полный: **140 сюит / 1637 тестов — зелёные** (было 135/1565 в PROGR-2-CERT; +4 новых сюиты, +eda-checks-json.test.ts из F-1 интеграции; обновлены guard-тесты ModuleNav и моки forecasting-тестов).
+- tests/api полный: **932 passed / 3 failed** — ровно средовой baseline PROGR-2/3-CERT (modeling_workflow catalog-only, neural_capacity память хоста, models_candidates unsupported-гейт), новых падений нет.
+- typecheck:all чисто (embedded+standalone), npm run build:all зелёный.
+
+### Находки/заметки (не блокеры)
+
+- N-1 (Info): краткая подпись карточки считает doneCount строго по done-узлам (образец §6.2 «3/10, найдены проблемы» воспроизводится при done+warning-сочетании; при только-previewed — честное «0/10, найдены проблемы»).
+- N-2 (Info): stage-level решения (mode_changed, target_column_changed) не влияют на свёртку стадии (§12 п.10 определён по узлам) — карточка стадии с такими событиями остаётся «не начато», события видны в трассе. Обсудить с тимлидом, нужен ли stage-уровень активности в своде.
+- N-3 (Info): в трассе слоя 1 passport_captured пишется на узел None (§2: паспорт — не узел); в трассе панели отображается без узла — корректно, но узловых статусов EDA паспорт не даёт.
+- N-4 (Info): переход по deep-link узла не закрывает панель (состояние в ModuleNav живёт поверх смены маршрутов); поведение совпадает с прежним EventsLogDrawer, вопрос UX — на будущее.
+
+### Deliverable
+
+ZIP: cisstat-progr4-progress-ui.zip — пути репозитория сохранены. НОВЫЕ: apps/api/routers/progress.py; packages/ui/lib/progress.ts (+progress.test.ts); packages/ui/components/ProgressDrawer.tsx, ProgressStageFlow.tsx, ProgressTraceLog.tsx (+*.test.tsx); tests/api/test_progress_panel.py. ИЗМЕНЁННЫЕ: apps/api/main.py; packages/ui/components/ModuleNav.tsx, TsAnalysisUpload.tsx, TsAnalysisForecasting.tsx (+forecasting.test.tsx), packages/ui/context/AppShellContext.tsx, packages/ui/index.ts, packages/ui/lib/apiClient.ts, apps/standalone/app/forecasting/page.test.tsx, packages/ui/components/ModuleNav.test.tsx. УДАЛЁННЫЕ: packages/ui/components/EventsLogDrawer.tsx. ИЗМЕНЁННЫЙ: worklog/worklog8.md (эта запись). Без commit/push (AGENTS.md).

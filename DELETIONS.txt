@@ -1,0 +1,4 @@
+PROGR-4 (2026-09-25) — УДАЛЯЕМЫЕ ФАЙЛЫ (§6.1 spec_progress.md, атомарно с подключением ProgressDrawer):
+  packages/ui/components/EventsLogDrawer.tsx  — удалён (пересоздавать не нужно; экспорт из packages/ui/index.ts снят, вызовы заменены на ProgressDrawer).
+
+Полный список новых/изменённых файлов — см. запись Task ID: PROGR-4 в worklog/worklog8.md внутри этого архива.

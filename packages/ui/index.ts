@@ -251,10 +251,15 @@ export type { StructuralClass, StructuralClassResult, PanelBalance } from "./lib
 export { default as tailwindPreset } from "./tailwind-preset";
 
 // Глобальный shell: активный датасет (гидрируется с сервера, см.
-// apps/api/session_store.py) + прогресс по этапам + лог событий.
+// apps/api/session_store.py) + прогресс по этапам. Клиентский лог
+// удалён в PROGR-4 (§6.1): его нишу заняла персистентная трасса
+// (слой 1 PROGR-3 + панель ProgressDrawer).
 export { AppShellProvider, useAppShell } from "./context/AppShellContext";
-export type { LogEntry, ActiveDataset } from "./context/AppShellContext";
-export { EventsLogDrawer } from "./components/EventsLogDrawer";
+export type { ActiveDataset } from "./context/AppShellContext";
+// Панель «Прогресс» (Task PROGR-4, spec_progress.md §6 + аддендум §4.1-4.2).
+export { ProgressDrawer } from "./components/ProgressDrawer";
+export { ProgressStageFlow } from "./components/ProgressStageFlow";
+export { ProgressTraceLog } from "./components/ProgressTraceLog";
 
 // Sessions-aware Home: общий "Рабочий стол" + embedded-онбординг.
 // Standalone-версия (с auth-веткой) живёт в apps/standalone/components --

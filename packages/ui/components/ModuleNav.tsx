@@ -8,7 +8,8 @@
 //
 // «О платформе» ведёт на «/» (Task 25). Hover-аккордеон с 5 ссылками
 // из HOME_ROUTES. JS-based hover (onMouseEnter/Leave).
-// Справа — "Логи событий".
+// Справа — кнопка-триггер «Прогресс» (PROGR-4, аддендум §4.1; заменила
+// «Логи событий» в том же слоте, EventsLogDrawer удалён §6.1).
 // Один общий компонент -- используется в standalone и embedded.
 //
 // Общий для embedded и standalone -- пути одинаковые в обоих приложениях.
@@ -42,9 +43,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useCallback } from "react";
-import { ChevronDown, ScrollText } from "lucide-react";
-import { useAppShell } from "../context/AppShellContext";
-import { EventsLogDrawer } from "./EventsLogDrawer";
+import { ChevronDown, Workflow } from "lucide-react";
+import { ProgressDrawer } from "./ProgressDrawer";
 import { HOME_ROUTES } from "../lib/home-stops";
 
 // ── Подменю «О платформе»: 5 из 6 HOME_ROUTES (без «Приступить к анализу») ──
@@ -82,12 +82,25 @@ const badgeClassName = (active: boolean) =>
     ? `${BADGE_BASE} bg-brand font-medium text-white`
     : `${BADGE_BASE} bg-neutral-100 text-neutral-700 hover:bg-neutral-200 hover:text-neutral-900`;
 
+// ── Кнопка-триггер «Прогресс» (PROGR-4, аддендум §4.1) ─────────────
+// Тот же слот справа, где была «Логи событий» (буквально заменяет её,
+// не добавляется рядом). Форма -- овал по общему паттерну бейджей
+// (BADGE_BASE): rounded-full, h-9, whitespace-nowrap, px-4/text-sm на
+// широких экранах, px-3/text-[13px] на узких. Неактивная: белый фон,
+// ТОНКАЯ (1px) фирменная рамка, индиго-текст. Активная: заливка
+// индиго, белый ПОЛУЖИРНЫЙ текст -- font-semibold, а не font-medium
+// активных модульных бейджей: осознанное отличие по прямому указанию
+// тимлида (аддендум §4.1), не ошибка копирования паттерна.
+// Доступность: aria-expanded/aria-controls на id панели, focus-visible
+// ring. Иконка -- Workflow (тот же слот, что был ScrollText).
+
+const PROGRESS_TRIGGER_BASE = `${BADGE_BASE} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1`;
+
 // ── Компонент ──────────────────────────────────────────────────
 
 export function ModuleNav() {
   const pathname = usePathname();
-  const { log } = useAppShell();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [progressOpen, setProgressOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // «О платформе» активна, если pathname === "/" ИЛИ pathname совпадает
@@ -186,22 +199,22 @@ export function ModuleNav() {
 
           <button
             type="button"
-            onClick={() => setDrawerOpen(true)}
-            className="relative shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded text-sm text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 transition-colors"
-            aria-label="Логи событий"
+            onClick={() => setProgressOpen((previous) => !previous)}
+            aria-expanded={progressOpen}
+            aria-controls="progress-drawer"
+            className={
+              progressOpen
+                ? `${PROGRESS_TRIGGER_BASE} bg-brand font-semibold text-white`
+                : `${PROGRESS_TRIGGER_BASE} bg-white border border-brand text-brand hover:bg-brand-light/40`
+            }
           >
-            <ScrollText size={14} aria-hidden="true" />
-            <span className="hidden sm:inline">Логи событий</span>
-            {log.length > 0 && (
-              <span className="rounded-full bg-brand text-white text-[9px] px-1.5 py-0.5 leading-none">
-                {log.length}
-              </span>
-            )}
+            <Workflow size={14} aria-hidden="true" />
+            <span className="hidden sm:inline">Прогресс</span>
           </button>
         </div>
       </nav>
 
-      <EventsLogDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <ProgressDrawer open={progressOpen} onClose={() => setProgressOpen(false)} />
     </>
   );
 }

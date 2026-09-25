@@ -1,0 +1,165 @@
+// packages/ui/components/ProgressDrawer.test.tsx
+//
+// Тесты контейнера правой панели «Прогресс» (Task PROGR-4, spec_progress.md
+// §6.1-§6.2 + аддендум §4.2): механика -- прямой повтор архитектуры
+// EventsLogDrawer (затемнение bg-black/20 закрывает по клику, крестик,
+// translate-x транзишн), ширина -- ровно 2×w-80 = w-[40rem] (§4.2),
+// шапка -- датасет/признак/дата/run_id/"Начат N мин назад" (§6.1),
+// данные трассы -- GET /v1/progress/trace (слой 1 PROGR-3) + слияние
+// ForecastRun.trace (§3), "Развернуть трассу" -- переключатель §6.2.
+
+import "@testing-library/jest-dom";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { ProgressDrawer } from "./ProgressDrawer";
+
+jest.mock("../context/AppShellContext", () => ({
+  useAppShell: () => ({
+    activeDataset: { name: "fao_prices.csv", rows: 120, sizeLabel: "12 КБ" },
+    targetColumn: "Price",
+  }),
+}));
+
+const TRACE_RESPONSE = {
+  run_id: "RUN-AB12CD34",
+  started_at: "2026-09-25T09:00:00+00:00",
+  events: [
+    {
+      event_id: "e-1",
+      run_id: "RUN-AB12CD34",
+      ts: "2026-09-25T09:00:00+00:00",
+      stage: "upload",
+      node_id: "structure_confirmed",
+      event_type: "upload_completed",
+      payload: { name: "fao_prices.csv", rows: 120, columns: 5 },
+      actor: "user",
+      timestamp: "2026-09-25T09:00:00+00:00",
+    },
+  ],
+};
+
+function mockFetch(trace = TRACE_RESPONSE, forecasts: unknown = { forecasts: [] }) {
+  global.fetch = jest.fn((url: string) => {
+    if (String(url).includes("/v1/progress/trace")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(trace) });
+    }
+    if (String(url).includes("/forecast")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(forecasts) });
+    }
+    return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
+  }) as jest.Mock;
+}
+
+describe("ProgressDrawer", () => {
+  beforeEach(() => {
+    mockFetch();
+  });
+
+  it("панель — aside с aria-controls-целью id='progress-drawer' и aria-label", () => {
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    const panel = screen.getByLabelText("Прогресс исследования");
+    expect(panel.tagName).toBe("ASIDE");
+    expect(panel).toHaveAttribute("id", "progress-drawer");
+  });
+
+  it("ширина панели w-[40rem] (аддендум §4.2: ровно 2×w-80)", () => {
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    const panel = screen.getByLabelText("Прогресс исследования");
+    expect(panel.className).toContain("w-[40rem]");
+  });
+
+  it("открытая панель сдвинута в экран (translate-x-0), фиксирована справа", () => {
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    const panel = screen.getByLabelText("Прогресс исследования");
+    expect(panel.className).toContain("translate-x-0");
+    expect(panel.className).toContain("fixed");
+    expect(panel.className).toContain("right-0");
+  });
+
+  it("закрытая панель сдвинута за экран (translate-x-full), но в DOM", () => {
+    render(<ProgressDrawer open={false} onClose={jest.fn()} />);
+    const panel = screen.getByLabelText("Прогресс исследования");
+    expect(panel.className).toContain("translate-x-full");
+    expect(panel.className).not.toContain("translate-x-0");
+  });
+
+  it("затемнение фона bg-black/20 закрывает панель по клику вне неё (§6.1)", () => {
+    const onClose = jest.fn();
+    const { container } = render(<ProgressDrawer open onClose={onClose} />);
+    const backdrop = container.querySelector(".bg-black\\/20");
+    expect(backdrop).not.toBeNull();
+    fireEvent.click(backdrop as HTMLElement);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("при закрытой панели затемнения нет", () => {
+    const { container } = render(<ProgressDrawer open={false} onClose={jest.fn()} />);
+    expect(container.querySelector(".bg-black\\/20")).toBeNull();
+  });
+
+  it("крестик в шапке закрывает панель (aria-label='Закрыть', §6.1)", () => {
+    const onClose = jest.fn();
+    render(<ProgressDrawer open onClose={onClose} />);
+    fireEvent.click(screen.getByRole("button", { name: "Закрыть" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("шапка §6.1: датасет, признак, run_id", async () => {
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText(/fao_prices\.csv/)).toBeInTheDocument());
+    expect(screen.getByText(/Price/)).toBeInTheDocument();
+    expect(screen.getByText("RUN-AB12CD34")).toBeInTheDocument();
+  });
+
+  it("шапка: «Начат N мин назад» считается от started_at слоя 1", async () => {
+    // 12.5 минут + floor => устойчиво к миллисекундному дрейфу прогона.
+    const started = new Date(Date.now() - 12.5 * 60 * 1000).toISOString();
+    mockFetch({ ...TRACE_RESPONSE, started_at: started });
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText(/Начат 12 мин назад/)).toBeInTheDocument());
+  });
+
+  it("без run_id (сессия без датасета) шапка показывает прочерк, не пустоту", async () => {
+    mockFetch({ run_id: null, started_at: null, events: [] });
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText("—")).toBeInTheDocument());
+  });
+
+  it("данные трассы запрашиваются при открытии панели", async () => {
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => {
+      const calls = (global.fetch as jest.Mock).mock.calls.map((c) => String(c[0]));
+      expect(calls.some((u) => u.includes("/v1/progress/trace"))).toBe(true);
+      expect(calls.some((u) => u.includes("/modeling/forecast"))).toBe(true);
+    });
+  });
+
+  it("при закрытой панели fetch не выполняется", () => {
+    render(<ProgressDrawer open={false} onClose={jest.fn()} />);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it("«Развернуть трассу ▾» переключает видимость лога (aria-expanded, §6.2)", async () => {
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText("RUN-AB12CD34")).toBeInTheDocument());
+    const toggle = screen.getByRole("button", { name: /Развернуть трассу/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("log")).toBeNull();
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("log")).toBeInTheDocument();
+  });
+
+  it("пустая трасса: блок-схема рендерится, в шапке прочерки", async () => {
+    mockFetch({ run_id: null, started_at: null, events: [] });
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    // Все стадии без событий -- «не начато» на каждой карточке.
+    await waitFor(() => expect(screen.getAllByText("не начато").length).toBeGreaterThan(0));
+  });
+
+  it("сбой сети не роняет панель (best-effort, как хук PROGR-3)", async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error("network down")) as jest.Mock;
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getAllByText("не начато").length).toBeGreaterThan(0));
+    expect(screen.getByLabelText("Прогресс исследования")).toBeInTheDocument();
+  });
+});

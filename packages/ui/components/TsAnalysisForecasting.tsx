@@ -72,7 +72,10 @@ function stepStatus(forecasts: ForecastRun[], active: ForecastRun | null, key: s
 const ALPHA_OPTIONS = [0.01, 0.05, 0.10];
 
 export function TsAnalysisForecasting() {
-  const { activeDataset, stages, addLogEntry, refreshSession } = useAppShell();
+  // PROGR-4 (§6.1): addLogEntry удалён -- факты построения/сравнения/
+  // экспорта прогнозов пишутся в трассу бэкендом (ForecastRun.trace,
+  // make_trace_event, PROGR-1; унификация с панелью -- PROGR-5).
+  const { activeDataset, stages, refreshSession } = useAppShell();
 
   const [cards, setCards] = useState<CardSummary[]>([]);
   const [cardsLoading, setCardsLoading] = useState(true);
@@ -153,21 +156,16 @@ export function TsAnalysisForecasting() {
         horizon: horizon ?? null,
         alpha,
       });
-      addLogEntry(
-        "INFO",
-        `Прогноз построен: ${run.model_name}, горизонт ${run.horizon}, интервал ${Math.round((1 - run.alpha_effective) * 100)}% (${run.ci_method})`,
-      );
       setForecasts((previous) => [...previous, run]);
       setActiveForecastId(run.forecast_id);
       setDescriptionSection("main");
     } catch (exc) {
       const message = exc instanceof Error ? exc.message : "Ошибка построения прогноза";
       setError(message);
-      addLogEntry("ERROR", `Прогноз не построен: ${message}`);
     } finally {
       setBusy(null);
     }
-  }, [selectedCardId, horizon, alpha, addLogEntry]);
+  }, [selectedCardId, horizon, alpha]);
 
   const runCompare = useCallback(async () => {
     if (selectedForCompare.length < 2) return;
@@ -179,13 +177,12 @@ export function TsAnalysisForecasting() {
         previous.map((run) => compared.find((item) => item.forecast_id === run.forecast_id) ?? run),
       );
       setComparison(compared);
-      addLogEntry("INFO", `Сравнение прогнозов: ${compared.map((run) => run.model_name).join(" · ")}`);
     } catch (exc) {
       setError(exc instanceof Error ? exc.message : "Ошибка сравнения");
     } finally {
       setBusy(null);
     }
-  }, [selectedForCompare, addLogEntry]);
+  }, [selectedForCompare]);
 
   const runSensitivity = useCallback(async () => {
     if (!activeForecast) return;
@@ -196,16 +193,12 @@ export function TsAnalysisForecasting() {
       setForecasts((previous) =>
         previous.map((run) => (run.forecast_id === updated.forecast_id ? updated : run)),
       );
-      addLogEntry(
-        "INFO",
-        `Веер чувствительности: ${updated.sensitivity?.combos.length ?? 0} комбинаций по осям ${(updated.sensitivity?.varied_axes ?? []).join(", ")}`,
-      );
     } catch (exc) {
       setError(exc instanceof Error ? exc.message : "Ошибка расчёта чувствительности");
     } finally {
       setBusy(null);
     }
-  }, [activeForecast, addLogEntry]);
+  }, [activeForecast]);
 
   const toggleCompare = useCallback((forecastId: string) => {
     setSelectedForCompare((previous) =>
@@ -617,8 +610,7 @@ export function TsAnalysisForecasting() {
             <ForecastExportMenu
               forecastId={activeForecast?.forecast_id ?? null}
               chartContainerId="forecast-chart-export-anchor"
-              onExported={(format) => {
-                addLogEntry("INFO", `Экспорт прогноза: ${format.toUpperCase()}`);
+              onExported={() => {
                 void refreshAll();
               }}
             />

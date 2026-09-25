@@ -33,6 +33,8 @@ from apps.api.trace_hook import TraceHookMiddleware
 
 from apps.api.routers import public, internal, models, session, diagnostics, diagnostics_internal, modeling_session
 from apps.api.routers import forecasting_session, tasks_session
+# PROGR-4: чтение трассы слоя 1 для панели «Прогресс» (§5 слой 1, §6.1-§6.2).
+from apps.api.routers import progress
 from apps.api.knowledge import router as knowledge_router_module
 
 app = FastAPI(
@@ -82,6 +84,9 @@ app.include_router(forecasting_session.router, prefix="/v1/session/modeling", ta
 # Задачи (v2, spec_tasks_ia_addendum_v1_1.md §10): вертикальные срезы задач
 # поверх артефактов пайплайна. Общая сессия/cookie; отдельный модуль роутера.
 app.include_router(tasks_session.router, prefix="/v1/session/tasks", tags=["tasks"])
+# PROGR-4: namespace /v1/progress/* -- канон spec_progress.md §5;
+# читающий ридер трассы сам не трассируется (вне TRACE_ROUTES).
+app.include_router(progress.router, prefix="/v1/progress", tags=["progress"])
 # Обучение и база знаний (Шаг 4 EDU, spec_education.md §2.1/§2.2/§7.2):
 # эндпоинты ОТКРЫТЫ (образование вне тарифной сетки, пользовательских
 # данных нет); контент -- артефакт промоушена apps/api/knowledge/
