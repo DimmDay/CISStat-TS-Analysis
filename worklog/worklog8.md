@@ -797,3 +797,43 @@ apps/api/Dockerfile копирует в образ ТОЛЬКО каталоги
 ### Deliverable
 
 ZIP: cisstat-deploy1-render-shared-registry.zip — пути репозитория сохранены. ИЗМЕНЁННЫЙ: apps/api/Dockerfile (+COPY shared/ §12 п.2, +build-гвард pipeline_graph). НОВЫЕ: tests/api/test_docker_image_layout.py (регресс-инвариант состава образа, 4 теста), scripts/audit_scripts/deployfix_simulate_image.py (доказательство root cause), scripts/audit_scripts/deployfix_verify_guard.py (верификация гварда). Восстановлены из stash (OUTL-1-CERT, не изменялись): scripts/audit_scripts/cert_outl1_outlier_line_2026-09-25.md, outl1cert_oracles.py, outl1cert_oracles.test.tsx, outl1cert_mutations.py, outl1cert_crossverify.py, scripts/cert_outl1_live_probe.py. ИЗМЕНЁННЫЙ: worklog/worklog8.md (запись OUTL-1-CERT восстановлена + эта запись). Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PROGR-5-CERT (2026-09-25) — Независимая сертификация Task PROGR-5 (долговременный слой research_runs/trace_events §5 слой 2, Postgres §12 п.1 + чекпоинты/пауза/restore)
+
+Синхронизация: main@b9a16ca (исполнение PROGR-5 — 4c5486a; b9a16ca — DEPLOY-1 тимлида, включён в проверку). Правила AGENTS.md: без commit/push, ZIP в download.
+Акт: scripts/audit_scripts/cert_progr5_research_runs_2026-09-25.md.
+
+### Постановка
+
+Честная сертификация PROGR-5 по прецедентам PROGR-2/3/4-CERT, OUTL-1-CERT: воспроизведение заявлений исполнителя, кросс-верификация по живым исходникам, независимые оракул- и мутационные тесты на СВОИХ данных аудитора (корпус seed 20250925, progr5cert_revenue.csv 40×3 с NaN-зазором; фикстуры исполнителя не используются).
+
+### Воспроизведение заявлений исполнителя (10/10 ПОДТВЕРЖДЕНО)
+
+test_research_runs.py 60/60 (счётчик совпал); полный tests/api 1000/3 на b9a16ca = 996 (заявлено) + 4 DEPLOY-1, 3 падения — ровно средовой baseline, новых нет; jest 142/1674 = 140/1645 + OUTL-1 (хронология сходится); typecheck:all чисто; RED «59 по ImportError» правдоподобен (файл теста импортирует модуль, которого до реализации не было); модели/контракт хранилища/фабрика/зеркало — дословно §5/§5.1; унификация Прогнозирования подтверждена диффом; оба заявленных отклонения воспроизведены и изолированы (CSV вместо Parquet — pyarrow недоступен; file-SHA-256 вместо series_fingerprint — когортная сверка Моделирования цела: backtesting.py/modeling_workflow.py не тронуты).
+
+### Оракулы аудитора на своих данных (40/40 PASS)
+
+A (6): R1-изоляция payload; R4-backfill со стабильностью id; append-only порядок (12 событий); supersede (keep цел, paused/completed/чужие не тронуты); set_run_status ValueError+last_active_at; list_runs сортировка/фильтр. B (6): фантом без run_id НЕ создан; первый запуск с fingerprint/именем своего датасета; target_column_changed ставит/снимает; last_active_at+«последний известный»; forecasting attach run_id; best-effort при падающем store. C (6): fingerprint == независимый SHA-256 своих байт; round-trip; демо builtin_demo БЕЗ копии; CSV-снимок round-trip своего df; prune по keep-списку при подменённом mtime; битая мета → None. D (16, HTTP на реальном стеке): upload→запуск с SHA-256; detail events_total/?limit-последние-N; машина статусов 200/409/404 + run_paused стадии последнего события; чекпоинт 201+снимок/404 фантом/409 completed/чужая сессия без снимка; restore 404/409(completed)/409(нет файла)/happy path (новый cookie, ТОТ ЖЕ run_id, мой датасет, target, засев, run_resumed{restored:true} в обоих слоях, перелинковка); supersede старой сессии; run переживает cookie (D9); cap засева 1005→1000 (D10); N-2 (node_id=None, session.stages не тронут); N-4 (нет close_panel/open_panel/navigate/redirect); 503-контур+404 насквозь; demo-fingerprint; target не из колонок не применяется (D15); чужой сессии зеркала нет (D16). E (6, без сервера): MIGRATION_STATEMENTS == 0001_research_runs.sql текст в текст; DDL-структура (PK/FK CASCADE/UNIQUE(run_id,event_id)/индексы); фабрика по env + ленивость + RuntimeError; _ts round-trip/naive→UTC/битый ts; иммутабельность моделей; stage_for_run_level_event.
+
+### Мутационный прогон аудитора (20/20 KILLED; у исполнителя мутационного прогона не было)
+
+M1 supersede no-op; M2 supersede трогает keep; M3 target не фиксируется; M4 фантом; M5 R4 удалён; M6 md5 вместо sha256; M7 prune отключён; M8 стадия всегда upload; M9/M10 машина статусов; M11/M12 чекпоинт-гейты; M13 restore completed; M14 restore без файла; M15 target без колонки; M16 засев без cap; M17 restored=true снят; M18 без перелинковки; M19 503 проглочен; M20 зеркало в чужую сессию. Детекторы — ТОЛЬКО оракулы аудитора. Методология: побайтовое восстановление с верификацией, purge __pycache__, PYTHONDONTWRITEBYTECODE, сдвиг mtime (уроки OUTL-1-CERT применены сразу); два дефекта собственного раннера (потеря __name__ в декораторе; ложный «пустая база»-гард) пойманы ДО зачётного прогона; baseline 20/20 PASS на нетронутых исходниках.
+
+### Находки (полный акт: scripts/audit_scripts/cert_progr5_research_runs_2026-09-25.md)
+
+- CERT-N-1 (Info, следствие §5.3): run_id — bearer-возможность: знающий run_id может паузить/ресторить/чекпоинтить чужой запуск (аутентификации нет — §10; §5.3 дословно «если предъявленный run_id валиден»). Для MVP корректно; ownership-модель — к PROGR-8/auth; честность зеркала чужой сессии подтверждена (D16).
+- CERT-N-2 (Info): Postgres get_event — O(n) полный список с фильтром в Python; на объёмах одной платформы приемлемо, при росте — WHERE event_id в SQL.
+- CERT-N-3 (Info): при заполненном cap засева run_resumed вытесняет старейшее событие слоя 1 (контракт буфера PROGR-3; полная история в слое 2, events_total честен) — зафиксировано D10.
+- CERT-N-4 (Info): двойной commit в Postgres-операциях (context-manager + явный) — безвреден, на сбой rollback; шум, не дефект.
+- CERT-R-1 (Low): _ext_of сохраняет неизвестные расширения как .csv — для известных форматов корректно, для будущих (parquet) возможно расхождение суффикса и содержимого.
+- Среда (не находка кода): Postgres-интеграционный прогон невозможен в обеих средах (нет сервера/драйвера); компенсации — текстовая сверка DDL (сошлась), структурные проверки, ленивый импорт, фабрика; поведенческий прогон — на on-prem (ops: apps/api/migrations/0001_research_runs.sql).
+
+### Вердикт
+
+**PASSED WITH REMARKS.** 40/40 оракулов, 20/20 KILLED, 10/10 воспроизведений, оба отклонения обоснованы и изолированы, приёмка плана «run_id переживает cookie» подтверждена независимо. Блокеров нет.
+
+### Deliverable
+
+ZIP: cisstat-progr5-cert-research-runs.zip — пути репозитория сохранены. НОВЫЕ: scripts/audit_scripts/cert_progr5_research_runs_2026-09-25.md (акт), scripts/audit_scripts/progr5cert_oracles.py, scripts/audit_scripts/progr5cert_mutations.py. ИЗМЕНЁННЫЕ: worklog/worklog8.md (восстановленная запись OUTL-1-CERT + эта запись). Код продукта не менялся. Без commit/push (AGENTS.md).
