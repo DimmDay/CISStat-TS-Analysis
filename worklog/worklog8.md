@@ -837,3 +837,44 @@ M1 supersede no-op; M2 supersede трогает keep; M3 target не фикси�
 ### Deliverable
 
 ZIP: cisstat-progr5-cert-research-runs.zip — пути репозитория сохранены. НОВЫЕ: scripts/audit_scripts/cert_progr5_research_runs_2026-09-25.md (акт), scripts/audit_scripts/progr5cert_oracles.py, scripts/audit_scripts/progr5cert_mutations.py. ИЗМЕНЁННЫЕ: worklog/worklog8.md (восстановленная запись OUTL-1-CERT + эта запись). Код продукта не менялся. Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PROGR-5.1 (2026-09-25) — Подключение кнопок панели «Пауза»/«Сохранить точку» на фронтенде (бэкенд PROGR-5) + интеграционный прогон DDL на on-prem Postgres
+
+Синхронизация: main@b9a16ca (ff-pull с 38f1cb9; в промежутке вошли PROGR-3-CERT e0c7350 — локальные копии аудиторских скриптов удалены как идентичные, 47a33eb, PROGR-4 8a20ba3, OUTL-1 4ed649f, PROGR-4-CERT 925aa1c, PROGR-5 4c5486a, DEPLOY-1 b9a16ca). Правила AGENTS.md: TDD RED→GREEN, без commit/push, ZIP в download.
+
+### Постановка
+
+Указание тимлида вслед за N-7 PROGR-5 («применение снимков/откат к точке + кнопки панели — фронтенд»): подключить кнопки панели «Пауза»/«Сохранить точку» к готовому бэкенд-контракту PROGR-5 (§5.1–§5.2) в правой панели «Прогресс» (§6.2–§6.3); выполнить интеграционный прогон DDL долговременного слоя (apps/api/migrations/0001_research_runs.sql, §12 п.1) на on-prem Postgres — в среде PROGR-5 Postgres-сервера/драйвера не было, прогон был явно отложен на ops-контур.
+
+### Ключевые решения
+
+- **ProgressCheckpointBar.tsx (новый, §6.3)** — полоса действий панели: бейдж статуса запуска («В работе»/«На паузе»/«Завершён»/«Брошен» — 4 канонических статуса §5, неизвестный статус возвращается как есть, без маскировки), кнопка «Пауза» → POST /v1/progress/runs/{run_id}/pause, в статусе paused — «Продолжить» → POST .../resume; кнопка «Сохранить точку» (§5.1) раскрывает inline-форму с опциональным комментарием и POST .../checkpoints {event_id, label}. Кнопка «Наставник» сознательно НЕ рендерится — её бэкенд отдельная задача PROGR-6 (решение PROGR-4 «мёртвых кнопок нет» продолжено).
+- **Якорь чекпоинта — «текущий момент» исследования.** lastCheckpointableEvent(events) (lib/progress.ts) — последнее в хронологии событие с непустым event_id: события без идентификатора (слитые ForecastRun.trace — legacy 3-польный контракт без event_id) для якоря непригодны, бэкенд отклонил бы ссылку 404 — прогнозируемый отказ отсекается на фронтенде disabled-состоянием («Нечего фиксировать» — title честной причины).
+- **Гейт действий по статусу.** runAcceptsActions: только active/paused; completed/abandoned — disabled (пауза не из active — гарантированный 409 §5.2, чекпоинт недоступен §5.1); неизвестный статус (деталь запуска недоступна: 503 слоя/404/сеть) — тоже disabled: бэкенд гарантированно откажет, «гарантированный отказ не кликается». Отказ любого действия — inline role="alert" с detail бэкенда (409/503/404/сеть), панель не роняется (best-effort, паттерн панели PROGR-4).
+- **Данные полосы — из слоя 2, обновление — через refresh-цикл.** ProgressDrawer при известном run_id (из слоя 1) запрашивает GET /v1/progress/runs/{run_id} (status + checkpoints; best-effort: недоступно — кнопки disabled, панель жива). После успешного действия — перечитывание трассы слоя 1 (run_paused/run_resumed/checkpoint_saved зеркалятся в неё, PROGR-5) и детали запуска слоя 2 (refreshCounter). Без run_id полоса не рендерится вовсе — действиям запуска неоткуда взяться (панель честно показывает прочерки шапки).
+- **N-2 (находка PROGR-4) сохранён:** run-level события (checkpoint_saved/run_paused/run_resumed, node_id=null) не попадают в deriveNodeStatuses — узловых статусов не создают, своды стадий не трогают (тесты: до/после — равенство). **N-4 сохранён:** компонент не содержит семантик закрытия/навигации (запрещённый набор проверен тестом по DOM); об успехе родитель узнаёт только через onChanged() — панель остаётся открытой, данные обновляются (тест сквозной: после «Паузы» aside с translate-x-0, onClose не вызван, refetch слоя 1 выполнен).
+- **Интеграционный прогон DDL (scripts/audit_scripts/progr5fe_ddl_integration.py, 6 контуров).** [1] применение DDL-файла на живом сервере (psql -f-эквивалент: весь файл простым протоколом); [2] контроль объектов — 3 таблицы + 3 индекса §12 п.1; [3] идемпотентность — повторный прогон не меняет схему; [4] эквивалентность источников — MIGRATION_STATEMENTS (авто-миграция первого коннекта) дают то же множество объектов, что файл; [5] поведенческий контракт PostgresResearchRunStore на живой БД — раундтрип запуска, paused, события (JSONB/юникод/N-2 node_id=None), дубль отсечён, чекпоинт; [6] DDL-гарантии сервера — UNIQUE (run_id, event_id) (UniqueViolation на сырой дубль-вставке) и FK ON DELETE CASCADE. Цель — реальный PostgreSQL 16.2: в песочнице без root поднят эфемерный сервер pgserver (PyPI-бинари PostgreSQL, unix-сокет) — НЕ эмуляция, применяется и проверяется тот же DDL; на on-prem запуск: --dsn 'postgresql://user:pass@host:5432/db'.
+- **Постоянный регресс on-prem (tests/api/test_research_runs_postgres.py, 12 тестов).** Затвор средой CISSTAT_TEST_PG_DSN: без него модуль skip (CI/базлайн без Postgres не меняются), с ним — полный интеграционный прогон: DDL-файл/идемпотентность/эквивалентность источников, поведенческий контракт хранилища, серверные гарантии UNIQUE/CASCADE и REST-смоук сквозь TestClient с CISSTAT_RUNS_BACKEND=postgres: demo-загрузка создаёт запуск в Postgres (проверка прямым SQL), «Пауза» → status=paused и run_paused в таблице, «Сохранить точку» → строка run_checkpoints с has_snapshot=true (снимок сессии запуска), «Продолжить» → active, чекпоинт виден в детали запуска; двойная пауза — 409 из живого статуса БД.
+
+### TDD и верификация
+
+- RED: 30 новых фронтовых тестов падали по правильным причинам — сьют бара не компилировался (TS2307: нет ProgressCheckpointBar; TS2305: нет runStatusLabel/CheckpointInfo в lib), 6 новых drawer-тестов — полоса/кнопки не рендерятся (компонента нет), lib-дополнения — отсутствующие экспорты.
+- GREEN: три целевых сюита **69/69** (bar 14, lib 24+9, drawer 15+7). Находка GREEN-цикла: исходный вариант допускал клик при неизвестном статусе — исправлено на disabled с комментарием (см. выше).
+- Jest полный: **142 сюиты / 1690 тестов — зелёные** (апстрим-базлайн b9a16ca 141/1660 воспроизведён + 30 новых).
+- tests/api полный: **1012 passed / 3 failed** — ровно средовой baseline PROGR-2/3/4/5 (modeling_workflow catalog-only, neural_capacity память хоста, models_candidates unsupported-гейт); из 1012 — 4 теста docker-layout DEPLOY-1 (апстрим) и 12 новых Postgres-интеграционных (прогон с CISSTAT_TEST_PG_DSN на живом PostgreSQL 16.2; без DSN — skip, базлайн 1000/3 сохраняется).
+- Интеграционный прогон DDL: **6/6 PASS** (PostgreSQL 16.2, pgserver-бинари; все контуры [1]–[6] PASS).
+- typecheck:all чисто (embedded+standalone); npm run build:all зелёный.
+- Среда: установлены requirements (корень + apps/api/requirements.txt — в свежем venv отсутствие prophet/statsforecast роняло import-гейт реестра моделей «Реестр готовности моделей расходится с production backtest dispatch»; вопрос среды, не кода), psycopg 3.3.6 + pgserver 0.1.4 (для Postgres-контура).
+
+### Находки/заметки (не блокеры)
+
+- N-1 (Info): размещение полосы — единым блоком под шапкой (бейдж + «Пауза»/«Продолжить» + «Сохранить точку»), а не [Пауза] в строке заголовка эскиза §6.2: единый компонент §6.3 («Кнопки „Пауза“/„Сохранить точку“/„Наставник“») cohesion-нее, деталь вёрстки; семантика §5.1–§5.2 и состав кнопок соблюдены.
+- N-2 (Info): подтверждение чекпоинта и список сохранённых точек рендерятся в полосе (label + время + «снимок данных»); полная карта чекпоинтов на трассе (маркеры на событиях) — UX-задел beyond-MVP, не требовался планом.
+- N-3 (Info): pgserver-сервер в песочнице живёт, пока жив процесс-холдер; для повторных прогонов тестов — фоновый холдер или --dsn на внешний сервер; ops-скрипт самодостаточен в обоих режимах.
+- N-4-подтверждение: бэкенд-контракт PROGR-5 (ответы без семантик управления панелью) не потребовал НИ ОДНОЙ правки бэкенда — подключение чисто фронтовое, продакт-код Python не менялся.
+
+### Deliverable
+
+ZIP: cisstat-progr5-1-buttons-ddl.zip — пути репозитория сохранены. НОВЫЕ: packages/ui/components/ProgressCheckpointBar.tsx (+ProgressCheckpointBar.test.tsx), tests/api/test_research_runs_postgres.py (12 тестов, затвор CISSTAT_TEST_PG_DSN), scripts/audit_scripts/progr5fe_ddl_integration.py (ops-прогон DDL, 6 контуров). ИЗМЕНЁННЫЕ: packages/ui/components/ProgressDrawer.tsx (+полоса, +fetch детали запуска, +refresh-цикл), ProgressDrawer.test.tsx (+7), packages/ui/lib/progress.ts (+runStatusLabel/CheckpointInfo/lastCheckpointableEvent), packages/ui/lib/progress.test.ts (+9), packages/ui/index.ts (+экспорт бара). ИЗМЕНЁННЫЙ: worklog/worklog8.md (эта запись). Без commit/push (AGENTS.md).

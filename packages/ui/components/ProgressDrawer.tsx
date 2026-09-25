@@ -16,23 +16,30 @@
 // рендер), run_id («новое, см. §5») и «Начат N мин назад» (в слое 1 --
 // ts первого события; research_runs.created_at придёт с PROGR-5).
 //
+// PROGR-5.1: под шапкой -- полоса действий ProgressCheckpointBar (§6.3:
+// «Пауза»/«Сохранить точку»; «Наставник» -- PROGR-6, мёртвых кнопок нет).
+// Статус запуска и чекпоинты -- GET /v1/progress/runs/{run_id} (слой 2,
+// PROGR-5), запрашивается при известном run_id (best-effort: 404/503 --
+// кнопки disabled, панель жива). После успешного действия -- обновление
+// трассы слоя 1 (run-level событие зеркалится в неё) и детали запуска.
+// N-4: действия панель НЕ закрывают (состояние панели -- во фронтенде).
+//
 // Данные: GET /v1/progress/trace (слой 1, apps/api/routers/progress.py)
 // + GET /v1/session/modeling/forecast (события ForecastRun.trace, §3) --
 // слияние и хронологическая сортировка в lib/progress.ts. Запросы
 // best-effort (паттерн хука PROGR-3): сбой сети не роняет панель.
-//
-// Кнопки «Пауза»/«Сохранить точку»/«Наставник» (§6.2) -- не в объёме
-// PROGR-4: пауза/чекпоинты -- PROGR-5, Наставник -- PROGR-6 (§6.3,
-// план_progress.md); без бэкенда они были бы мёртвыми элементами.
 
 import { useCallback, useEffect, useState } from "react";
 import { useAppShell } from "../context/AppShellContext";
 import { progressApiUrl, sessionApiUrl } from "../lib/apiClient";
 import {
   collectForecastTraceEvents,
+  lastCheckpointableEvent,
   sortEventsChronologically,
+  type CheckpointInfo,
   type TraceEventInfo,
 } from "../lib/progress";
+import { ProgressCheckpointBar } from "./ProgressCheckpointBar";
 import { ProgressStageFlow } from "./ProgressStageFlow";
 import { ProgressTraceLog } from "./ProgressTraceLog";
 
@@ -43,12 +50,20 @@ interface ProgressTraceState {
   events: TraceEventInfo[];
 }
 
+interface RunDetailState {
+  /** Статус запуска слоя 2 (§5); null -- деталь недоступна (503/404/сеть). */
+  status: string | null;
+  checkpoints: CheckpointInfo[];
+}
+
 const EMPTY_TRACE: ProgressTraceState = {
   loading: false,
   runId: null,
   startedAt: null,
   events: [],
 };
+
+const RUN_DETAIL_UNAVAILABLE: RunDetailState = { status: null, checkpoints: [] };
 
 function startedAgoLabel(startedAt: string | null): string {
   if (!startedAt) return "";
@@ -62,7 +77,11 @@ function startedAgoLabel(startedAt: string | null): string {
 export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { activeDataset, targetColumn } = useAppShell();
   const [trace, setTrace] = useState<ProgressTraceState>(EMPTY_TRACE);
+  const [runDetail, setRunDetail] = useState<RunDetailState | null>(null);
   const [traceExpanded, setTraceExpanded] = useState(false);
+  // Инкремент после успешного действия полосы: перечитывает трассу слоя 1
+  // (run-level событие зеркалится в неё) и деталь запуска слоя 2.
+  const [refreshCounter, setRefreshCounter] = useState(0);
   // Контент монтируется с первого открытия и остаётся (плавное
   // закрывание, как у EventsLogDrawer); на никогда не открывавшейся
   // панели содержимого нет -- закрытая панель не дублирует тексты
@@ -101,6 +120,32 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
           startedAt: traceData?.started_at ?? null,
           events: sortEventsChronologically([...layer1, ...forecastEvents]),
         });
+
+        // Слой 2 (PROGR-5): статус запуска + чекпоинты для полосы действий
+        // (§6.3). run_id известен из слоя 1; деталь недоступна (503/404/сеть)
+        // -- кнопки честно disabled (best-effort, панель не роняем).
+        const runId: string | null = traceData?.run_id ?? null;
+        if (runId) {
+          try {
+            const runResp = await fetch(progressApiUrl(`/runs/${runId}`), {
+              credentials: "include",
+            });
+            const runData = runResp.ok ? await runResp.json() : null;
+            if (cancelled) return;
+            setRunDetail(
+              runData
+                ? {
+                    status: runData.status ?? null,
+                    checkpoints: runData.checkpoints ?? [],
+                  }
+                : RUN_DETAIL_UNAVAILABLE,
+            );
+          } catch {
+            if (!cancelled) setRunDetail(RUN_DETAIL_UNAVAILABLE);
+          }
+        } else if (!cancelled) {
+          setRunDetail(null);
+        }
       } catch {
         // Бэкенд недоступен -- панель остаётся с пустой трассой и
         // прочерками шапки (best-effort, §4.2: трасса вспомогательна).
@@ -112,10 +157,12 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, refreshCounter]);
 
   const handleBackdropClick = useCallback(() => onClose(), [onClose]);
   const handleToggleTrace = useCallback(() => setTraceExpanded((v) => !v), []);
+  // N-4: действие полосы обновляет ДАННЫЕ (панель не закрывается).
+  const handleBarChanged = useCallback(() => setRefreshCounter((c) => c + 1), []);
 
   return (
     <>
@@ -129,7 +176,7 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
         aria-label="Прогресс исследования"
         className={`fixed top-0 right-0 h-full w-[40rem] max-w-full bg-white shadow-xl z-50 transform transition-transform duration-200 ${
           open ? "translate-x-0" : "translate-x-full"
-        }`}
+        } flex flex-col`}
       >
         {!hasOpened ? null : (
           <>
@@ -156,7 +203,19 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
           </p>
         </div>
 
-        <div className="overflow-y-auto h-[calc(100%-96px)] feed-scroll">
+        {/* Полоса действий (§6.3): «Пауза»/«Сохранить точку»; без запуска
+            не рендерится -- действиям запуска неоткуда взяться. */}
+        {trace.runId && (
+          <ProgressCheckpointBar
+            runId={trace.runId}
+            status={runDetail?.status ?? null}
+            lastEvent={lastCheckpointableEvent(trace.events)}
+            checkpoints={runDetail?.checkpoints ?? []}
+            onChanged={handleBarChanged}
+          />
+        )}
+
+        <div className="overflow-y-auto flex-1 min-h-0 feed-scroll">
           <ProgressStageFlow events={trace.events} />
 
           <div className="px-4 pb-2">

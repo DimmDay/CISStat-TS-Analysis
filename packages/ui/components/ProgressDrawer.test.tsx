@@ -163,3 +163,121 @@ describe("ProgressDrawer", () => {
     expect(screen.getByLabelText("Прогресс исследования")).toBeInTheDocument();
   });
 });
+
+// ── PROGR-5.1: полоса действий «Пауза»/«Сохранить точку» (§5.1-§5.2, §6.3) ──
+
+const RUN_DETAIL = {
+  run_id: "RUN-AB12CD34",
+  session_id: "s-1",
+  dataset_fingerprint: "fp",
+  dataset_name: "fao_prices.csv",
+  target_column: "Price",
+  created_at: "2026-09-25T09:00:00+00:00",
+  last_active_at: "2026-09-25T09:05:00+00:00",
+  status: "active",
+  events: [],
+  checkpoints: [],
+  events_total: 0,
+};
+
+function mockFetchWithRunDetail(
+  trace = TRACE_RESPONSE,
+  runDetail: unknown | null = RUN_DETAIL,
+  pauseResponse: unknown = { run_id: "RUN-AB12CD34", status: "paused", event: {} },
+) {
+  global.fetch = jest.fn((url: string, init?: RequestInit) => {
+    const urlStr = String(url);
+    if (urlStr.includes("/v1/progress/trace")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(trace) });
+    }
+    if (urlStr.includes("/forecast")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ forecasts: [] }) });
+    }
+    if (urlStr.includes("/v1/progress/runs/RUN-AB12CD34") && !init?.method) {
+      if (runDetail === null) {
+        return Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve({}) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(runDetail) });
+    }
+    if (urlStr.includes("/pause") && init?.method === "POST") {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(pauseResponse) });
+    }
+    return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+  }) as jest.Mock;
+}
+
+describe("ProgressDrawer + ProgressCheckpointBar (PROGR-5.1, §6.3)", () => {
+  beforeEach(() => {
+    mockFetchWithRunDetail();
+  });
+
+  it("при известном run_id запрашивается деталь запуска слоя 2 (статус/чекпоинты)", async () => {
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => {
+      const calls = (global.fetch as jest.Mock).mock.calls.map((c) => String(c[0]));
+      expect(calls.some((u) => u.includes("/v1/progress/runs/RUN-AB12CD34"))).toBe(true);
+    });
+  });
+
+  it("полоса действий рендерится: бейдж статуса и кнопки «Пауза»/«Сохранить точку»", async () => {
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText("В работе")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Пауза" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /Сохранить точку/ })).toBeEnabled();
+  });
+
+  it("без run_id полоса действий не рендерится (действиям запуска неоткуда взяться)", async () => {
+    mockFetchWithRunDetail({ run_id: null, started_at: null, events: [] });
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText("—")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Пауза" })).toBeNull();
+  });
+
+  it("N-4: успешная «Пауза» НЕ закрывает панель (панель живёт во фронтенде) и обновляет данные", async () => {
+    const onClose = jest.fn();
+    render(<ProgressDrawer open onClose={onClose} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Пауза" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Пауза" }));
+    await waitFor(() => {
+      const calls = (global.fetch as jest.Mock).mock.calls.map((c) => String(c[0]));
+      // refetch трассы слоя 1 после действия (run_paused зеркалится в слой 1)
+      expect(calls.filter((u) => u.includes("/v1/progress/trace")).length).toBe(2);
+    });
+    // Панель всё ещё открыта, крестик не нажат
+    const panel = screen.getByLabelText("Прогресс исследования");
+    expect(panel.className).toContain("translate-x-0");
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("отказ слоя 2 (503): панель не падает, кнопки полосы disabled (best-effort)", async () => {
+    mockFetchWithRunDetail(TRACE_RESPONSE, null);
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText(/RUN-AB12CD34/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Пауза" })).toBeDisabled());
+    expect(screen.getByLabelText("Прогресс исследования")).toBeInTheDocument();
+  });
+
+  it("отказ 404 (запуск не найден): панель не падает, действия disabled", async () => {
+    mockFetchWithRunDetail(TRACE_RESPONSE, null);
+    global.fetch = jest.fn((url: string, init?: RequestInit) => {
+      const urlStr = String(url);
+      if (urlStr.includes("/v1/progress/trace")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(TRACE_RESPONSE) });
+      }
+      if (urlStr.includes("/forecast")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({ forecasts: [] }) });
+      }
+      return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+    }) as jest.Mock;
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText(/RUN-AB12CD34/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Пауза" })).toBeDisabled());
+  });
+
+  it("статус paused из слоя 2: бейдж «На паузе» и кнопка «Продолжить»", async () => {
+    mockFetchWithRunDetail(TRACE_RESPONSE, { ...RUN_DETAIL, status: "paused" });
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText("На паузе")).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Продолжить" })).toBeEnabled();
+  });
+});

@@ -22,6 +22,8 @@ import {
   stageSummary,
   collectForecastTraceEvents,
   sortEventsChronologically,
+  runStatusLabel,
+  lastCheckpointableEvent,
   type TraceEventInfo,
 } from "./progress";
 
@@ -238,6 +240,70 @@ describe("collectForecastTraceEvents (слияние ForecastRun.trace, §3)", (
       {},
     ]);
     expect(events).toEqual([]);
+  });
+});
+
+describe("runStatusLabel (бейдж статуса запуска, §5/§5.2)", () => {
+  it("четыре канонических статуса §5 имеют человекочитаемые метки", () => {
+    expect(runStatusLabel("active")).toBe("В работе");
+    expect(runStatusLabel("paused")).toBe("На паузе");
+    expect(runStatusLabel("completed")).toBe("Завершён");
+    expect(runStatusLabel("abandoned")).toBe("Брошен");
+  });
+
+  it("неизвестный статус возвращается как есть (честный текст, не маскировка)", () => {
+    expect(runStatusLabel("future_status")).toBe("future_status");
+    expect(runStatusLabel("")).toBe("");
+  });
+});
+
+describe("lastCheckpointableEvent (якорь чекпоинта, §5.1)", () => {
+  it("берёт ПОСЛЕДНЕЕ в хронологии событие с непустым event_id", () => {
+    const first = ev({ event_id: "e-1", ts: "2026-09-25T10:00:00+00:00" });
+    const middle = ev({ event_id: "e-2", ts: "2026-09-25T10:01:00+00:00", event_type: "profile_viewed" });
+    const last = ev({ event_id: "e-3", ts: "2026-09-25T10:02:00+00:00" });
+    expect(lastCheckpointableEvent([first, middle, last])).toBe(last);
+  });
+
+  it("события без event_id (legacy/ForecastRun.trace) пропускаются, но не блокируют более ранние", () => {
+    const anchored = ev({ event_id: "e-1", ts: "2026-09-25T10:00:00+00:00" });
+    const forecast = ev({ event_id: undefined, ts: "2026-09-25T10:05:00+00:00", stage: "forecasting", node_id: "forecast_generated", event_type: "forecast_generated" });
+    expect(lastCheckpointableEvent([anchored, forecast])).toBe(anchored);
+  });
+
+  it("нет ни одного события с event_id -- null (чекпоинт не к чему привязать)", () => {
+    expect(lastCheckpointableEvent([])).toBeNull();
+    expect(lastCheckpointableEvent([ev({ event_id: undefined })])).toBeNull();
+  });
+});
+
+describe("N-2 (находка PROGR-4): run-level события не влияют на свод стадии", () => {
+  it("run_paused/run_resumed/checkpoint_saved (node_id=null) не создают узловых статусов", () => {
+    const before = deriveNodeStatuses([
+      ev({ event_id: "e-1", stage: "validation", node_id: "formats", event_type: "correction_applied" }),
+    ]);
+    const after = deriveNodeStatuses([
+      ev({ event_id: "e-1", stage: "validation", node_id: "formats", event_type: "correction_applied" }),
+      // run-level события PROGR-5: stage -- последняя активная стадия запуска,
+      // но node_id=null (§4.1 «session (любая стадия)")
+      ev({ event_id: "e-2", ts: "2026-09-25T10:01:00+00:00", stage: "validation", node_id: null, event_type: "checkpoint_saved", payload: { checkpoint_id: "cp-1" } }),
+      ev({ event_id: "e-3", ts: "2026-09-25T10:02:00+00:00", stage: "validation", node_id: null, event_type: "run_paused" }),
+      ev({ event_id: "e-4", ts: "2026-09-25T10:03:00+00:00", stage: "validation", node_id: null, event_type: "run_resumed" }),
+    ]);
+    expect(after).toEqual(before);
+    expect(Object.keys(after)).toEqual(["validation/formats"]);
+  });
+
+  it("свод стадии до и после run-level событий одинаков (фантомов нет)", () => {
+    const base = [
+      ev({ event_id: "e-1", stage: "eda", node_id: "descriptive_stats", event_type: "profile_viewed" }),
+    ];
+    const runLevel = [
+      ev({ event_id: "e-2", ts: "2026-09-25T10:05:00+00:00", stage: "eda", node_id: null, event_type: "checkpoint_saved", payload: { label: "x" } }),
+    ];
+    const before = stageSummary("eda", deriveNodeStatuses(base));
+    const after = stageSummary("eda", deriveNodeStatuses([...base, ...runLevel]));
+    expect(after).toEqual(before);
   });
 });
 

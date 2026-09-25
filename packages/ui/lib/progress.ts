@@ -248,6 +248,47 @@ export function stageSummary(stage: string, statuses: Record<string, string>): S
   };
 }
 
+// ── Чекпоинты и статусы запуска (Task PROGR-5.1, §5-§5.2) ───────────────
+
+// Статусы research_runs (§5: active/paused/completed/abandoned) --
+// человекочитаемые метки бейджа полосы действий. Неизвестный статус
+// возвращается как есть (честный текст, не маскировка).
+const RUN_STATUS_LABELS: Record<string, string> = {
+  active: "В работе",
+  paused: "На паузе",
+  completed: "Завершён",
+  abandoned: "Брошен",
+};
+
+export function runStatusLabel(status: string): string {
+  return RUN_STATUS_LABELS[status] ?? status;
+}
+
+/** Чекпоинт слоя 2 (§5.1): именованная ссылка на событие трассы
+ * (паттерн PassportCheckpoint), ровно как отдаёт GET /v1/progress/runs/{id}. */
+export interface CheckpointInfo {
+  checkpoint_id: string;
+  run_id: string;
+  event_id: string;
+  label: string;
+  has_snapshot: boolean;
+  created_at: string;
+}
+
+/** Последнее в хронологии событие с непустым event_id -- кандидат на якорь
+ * нового чекпоинта («текущий момент» исследования). События без event_id
+ * (legacy-трасса, слитые события ForecastRun.trace -- legacy 3-польный
+ * контракт) пропускаются: чекпоинт -- ссылка на ИДЕНТИФИЦИРОВАННОЕ событие,
+ * бэкенд отклонил бы ссылку без id (404). */
+export function lastCheckpointableEvent(events: TraceEventInfo[]): TraceEventInfo | null {
+  const chronological = sortEventsChronologically(events);
+  for (let i = chronological.length - 1; i >= 0; i -= 1) {
+    const event = chronological[i];
+    if (event.event_id) return event;
+  }
+  return null;
+}
+
 // ── Слияние ForecastRun.trace (§3: прогнозирование по факту трассы) ──
 
 export interface ForecastRunLike {

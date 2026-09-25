@@ -258,6 +258,7 @@ export { AppShellProvider, useAppShell } from "./context/AppShellContext";
 export type { ActiveDataset } from "./context/AppShellContext";
 // Панель «Прогресс» (Task PROGR-4, spec_progress.md §6 + аддендум §4.1-4.2).
 export { ProgressDrawer } from "./components/ProgressDrawer";
+export { ProgressCheckpointBar } from "./components/ProgressCheckpointBar";
 export { ProgressStageFlow } from "./components/ProgressStageFlow";
 export { ProgressTraceLog } from "./components/ProgressTraceLog";
 
