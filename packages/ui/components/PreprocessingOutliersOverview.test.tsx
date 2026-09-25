@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 import { PreprocessingOutliersOverview } from "./PreprocessingOutliersOverview";
 
@@ -106,5 +106,59 @@ describe("PreprocessingOutliersOverview", () => {
     expect(await screen.findByText(/Признак:/)).toBeInTheDocument();
     expect(screen.getByText("Price")).toBeInTheDocument();
     expect(screen.queryByRole("table", { name: "Выбросы по числовым колонкам" })).not.toBeInTheDocument();
+  });
+
+  // ── Дефект «график выбросов не изменился после кэпирования» (2026-09-25) ──
+  // Инвариант согласованности: счётчик (профиль) и графики Обзора подписаны
+  // на ОДИН сигнал обновления (refreshKey = outliersRefreshKey + datasetVersion).
+  // Применение исправления при смонтированном Обзоре (медленный apply на проде:
+  // пользователь вернулся к графику до коммита POST, datasetVersion пришёл
+  // ПОСЛЕ монтирования) обязано перезапросить И профиль (счётчик), И ряд
+  // линейного графика — иначе UI противоречит сам себе: счётчик «выбросов — 0»,
+  // а график показывает старый ряд с выбросами. Ревизия передаётся в URL
+  // (cache-buster), чтобы исключить и устаревший HTTP-кэш.
+  it("refetches the line series together with the profile when refreshKey changes while mounted", async () => {
+    const fetchMock = jest.fn((url: unknown) => {
+      const u = String(url);
+      if (u.includes("/dataset/outlier-profile")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(PROFILE) });
+      }
+      if (u.includes("/dataset/outlier-line")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            points: [{ x: 0, y: 1 }, { x: 1, y: 2 }],
+            sampled: false, sampling_method: null, original_count: 2,
+          }),
+        });
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${u}`));
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { rerender } = render(<PreprocessingOutliersOverview refreshKey={0} column="value" />);
+    await screen.findByRole("table", { name: "Выбросы по числовым колонкам" });
+    fireEvent.click(screen.getByRole("tab", { name: "Линейный" }));
+    const lineUrls = () => fetchMock.mock.calls.map(([u]) => String(u)).filter((u) => u.includes("/dataset/outlier-line"));
+    await waitFor(() => expect(lineUrls().length).toBe(1));
+
+    rerender(<PreprocessingOutliersOverview refreshKey={1} column="value" />);
+
+    // Профиль перезапросился (счётчик обновился) — гардирует сценарий:
+    // это поведение уже есть, оно обязано остаться.
+    await waitFor(() => {
+      const profileCalls = fetchMock.mock.calls.filter(([u]) => String(u).includes("/dataset/outlier-profile")).length;
+      expect(profileCalls).toBe(2);
+    });
+    // Ряд линейного графика перезапросился вместе с профилем: последний
+    // вызов ряда несёт НОВУЮ ревизию (cache-buster). Точное число вызовов
+    // не фиксируется: существующий «loading-flash» профиля перемонтирует
+    // графики и даёт дополнительный (отбрасываемый active-guard-ом) запрос —
+    // контракт о последнем состоянии, не о числе попыток.
+    await waitFor(() => {
+      const calls = lineUrls();
+      expect(calls.length).toBeGreaterThanOrEqual(2);
+      expect(calls[calls.length - 1]).toContain("revision=1");
+    });
   });
 });

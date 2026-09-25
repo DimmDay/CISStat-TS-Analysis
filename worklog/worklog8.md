@@ -570,3 +570,47 @@ ZIP: cisstat-progr3-cert-trace-hook.zip — пути репозитория со
 ### Deliverable
 
 ZIP: cisstat-progr4-progress-ui.zip — пути репозитория сохранены. НОВЫЕ: apps/api/routers/progress.py; packages/ui/lib/progress.ts (+progress.test.ts); packages/ui/components/ProgressDrawer.tsx, ProgressStageFlow.tsx, ProgressTraceLog.tsx (+*.test.tsx); tests/api/test_progress_panel.py. ИЗМЕНЁННЫЕ: apps/api/main.py; packages/ui/components/ModuleNav.tsx, TsAnalysisUpload.tsx, TsAnalysisForecasting.tsx (+forecasting.test.tsx), packages/ui/context/AppShellContext.tsx, packages/ui/index.ts, packages/ui/lib/apiClient.ts, apps/standalone/app/forecasting/page.test.tsx, packages/ui/components/ModuleNav.test.tsx. УДАЛЁННЫЕ: packages/ui/components/EventsLogDrawer.tsx. ИЗМЕНЁННЫЙ: worklog/worklog8.md (эта запись). Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: OUTL-1 (2026-09-25) — Остановка «Выбросы»: границы метода на «Линейном» графике (верифицируемость кэпирования) + ревизионный refresh графиков Обзора
+
+Синхронизация: main@47a33eb (working tree с незакоммиченными правками текущей задачи; commit/push запрещены AGENTS.md).
+
+### Постановка
+
+Воспроизвести и прокомментировать дефект тимлида: демо-датасет forecast_monitor_synthetic_n150.csv → «Предобработка → Выбросы», линейный график показывает 4 выброса, счётчик под графиком «выбросов — 4»; мастер (IQR + кэпирование) → apply; возврат на линейный график — «сам график не изменился», счётчик «выбросов — 0». При необходимости исправить. ZIP в download, AGENTS.md.
+
+### Воспроизведение и диагноз (контрольные замеры ДО правки)
+
+1. **Бэкенд-проба** (scripts/probe_outliers_line_stale.py: TestClient + дословный порт генератора демо-датасета из demoDatasets.ts — mulberry32 + Box-Muller, seed 20260916; структурный контракт сошёлся — IQR находит ровно 4 выброса): POST /dataset/outlier-corrections (cap, apply=true) атомарно обновляет сессию; GET /dataset/outlier-line ПОСЛЕ apply отдаёт ИСПРАВЛЕННЫЙ ряд — 4 точки изменены (260.12→245.84, 261.77→245.84, 267.53→245.84, 58.45→76.56). Бэкенд корректен: stale-данные на сервере исключены.
+2. **E2E в браузере** (прод-сборка standalone + локальный API; полный сценарий: загрузка демо → Выбросы → Линейный → мастер → предпросмотр → подтверждение → apply → «Метрики и алгоритм» → Линейный): график перерисовывается новыми данными (ось Y 0–280 → 0–260, путь ряда изменился), счётчик 0. Классический stale-график (не-рефетч/HTTP-кэш) стандартным потоком НЕ воспроизводится.
+3. **Корень симптома**: кэпирование прижимает выбросы К границе IQR, а не удаляет их — 4 точки ложатся ровно на границу (245.84/76.56), которая сама далека от типичных значений ряда: шипы остаются визуально доминирующими, «на глаз» график неотличим от исходного, хотя данные изменились. Счётчик «0» честен (значения НА границе методом IQR не обнаруживаются). Дефект — **информативность визуализации**: «Линейный» — единственное из четырёх представлений Обзора, не показывающее границы метода (гистограмма показывает их с Task 65), поэтому результат исправления невозможно верифицировать глазами; ожидание «кэпировал — шипы ушли» против факта «кэпировал — шипы прижаты к границе» не получает визуального объяснения.
+
+### Решение
+
+1. Backend: GET /dataset/outlier-line принимает method (+param_low/param_high по образцу гистограммы, дефолт iqr, неизвестный метод — 422) и отдаёт bounds = method_bounds(series, method, param) — ЕДИНСТВЕННЫЙ источник формулы, переиспользование без дублирования; DatasetOutlierLineResponse +bounds (Optional).
+2. Frontend: OutlierLineChart рисует границы горизонтальными ReferenceLine по оси значений (тот же пунктир var(--status-error), что у гистограммы) + подсказка с числами и семантикой «после кэпирования бывшие выбросы лежат на границе — за пунктиром точек нет»; Overview прокидывает method.
+3. **Защитный инвариант согласованности** (класс дефекта из постановки): все 4 графика Обзора подписаны на ТЕМ же сигнал обновления, что профиль/счётчик (refreshKey = outliersRefreshKey + datasetVersion) — ревизия включена в query как cache-buster (revision). До правки свежесть графиков держалась на случайном побочном эффекте («loading-flash» профиля перемонтировал их); контракт теперь явный: «счётчик обновился ⟹ графики перезапросились», закрыто окно рассинхрона в любом потоке (медленный apply на проде, промежуточные HTTP-слои).
+
+### TDD (RED → GREEN)
+
+Backend (+4, tests/api/test_dataset_outlier_correction.py): bounds линейного графика == bounds гистограммы на том же ряде; дефолт iqr без явного метода; неизвестный метод 422; после cap нет точек за границами и max ряда == upper (прижатые НА границе). RED: KeyError 'bounds'. GREEN: 7/7 файла.
+Frontend: PreprocessingOutliersVisualizations.test.tsx +7 (it.each по 4 графикам: изменение refreshKey при смонтированном графике → перезапрос с revision в URL; границы-пунктир: подсказка с числами; method в URL ряда; нет подсказки при bounds=null); PreprocessingOutliersOverview.test.tsx +1 интеграционный (смонтированный Обзор: bump refreshKey → профиль перезапросился И последний вызов ряда несёт новую ревизию; точное число вызовов ряда не фиксируется — существующий loading-flash даёт дополнительный, отбрасываемый active-guard-ом запрос). RED: TS2322 (method/refreshKey отсутствовали в пропсах) + падения контрактов. GREEN: 22/22 двух сьютов.
+
+### Верификация
+
+- Полная бэкенд-регрессия: 2602 passed / 9 failed — все 9 воспроизведены на чистом baseline 47a33eb прогоном через git stash (без правок задачи): 3 задокументированных средовых (modeling_workflow catalog-only, neural_capacity память хоста, models_candidates unsupported-гейт) + 6 отсутствия нейро-группы (torch/neuralforecast; дизайн допускает хосты без неё, чек-лист R5). Новых падений нет.
+- Полный jest: 136 сьют / 1577 тестов — все зелёные (+8 к baseline 47a33eb: 1569 = 1565 PROGR-3-CERT + 4 eda-checks-json).
+- typecheck:all (embedded + standalone) — чисто; next build standalone — успешно.
+- E2E-верификация фикса (браузер, полный сценарий): до кэпирования — 2 пунктирные границы, шипы ЗА ними (267.53 > 245.84; 58.45 < 76.56); после apply — шипы лежат НА границах, за пунктиром точек нет; счётчики всех поверхностей (шапка Обзора, Metric-карточки под графиком, степпер, правая панель «Проверка пройдена») сходятся в 0.
+
+### Deliverable
+
+ZIP: cisstat-outl1-outlier-line-bounds-refresh.zip — пути репозитория сохранены. ИЗМЕНЁННЫЕ: apps/api/schemas.py, apps/api/routers/session.py, tests/api/test_dataset_outlier_correction.py, packages/ui/components/PreprocessingOutliersVisualizations.tsx, packages/ui/components/PreprocessingOutliersVisualizations.test.tsx, packages/ui/components/PreprocessingOutliersOverview.tsx, packages/ui/components/PreprocessingOutliersOverview.test.tsx, worklog/worklog8.md. НОВЫЕ: scripts/probe_outliers_line_stale.py (проба воспроизведения). Без commit/push (AGENTS.md).
+
+### Границы задачи
+
+- Тот же класс «графики Обзора без явной подписки на refresh» существует на других остановках (Пропуски: матрица/корреляция/boxplot, Регулярность, …) — ревизионный паттерн применён точечно к «Выбросам»; распространение на все Обзоры — отдельная постановка (механика идентична, тест-паттерн it.each готов к переносу).
+- «Плотность» не получила границы метода (вне постановки; линейный график — поверхность из отчёта).
+- Уточнение диагностики: «счётчик под графиком» — Metric-карточки под центральным блоком (TsAnalysisPreprocessing, «Строк/Числовых колонок/Выбросов/Затронуто колонок»); шапка Обзора «Выбросов всего — N» и степпер-бейдж читают тот же профиль.

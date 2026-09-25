@@ -238,10 +238,10 @@ function PreprocessingOutliersOverviewInner({
           </table>
         </div>
       )}
-      {activeView === "line" && <ExpandableChartPanel chartId="outliers-line" title="Ряд с границами выбросов"><OutlierLineChart column={column} /></ExpandableChartPanel>}
-      {activeView === "histogram" && <ExpandableChartPanel chartId="outliers-histogram" title="Гистограмма с границами"><OutlierHistogramChart column={column} method={method} /></ExpandableChartPanel>}
-      {activeView === "density" && <ExpandableChartPanel chartId="outliers-density" title="Плотность с границами"><OutlierDensityChart column={column} /></ExpandableChartPanel>}
-      {activeView === "boxplot" && <ExpandableChartPanel chartId="outliers-boxplot" title="Boxplot выбросов"><OutlierBoxplotChart column={column} method={method} /></ExpandableChartPanel>}
+      {activeView === "line" && <ExpandableChartPanel chartId="outliers-line" title="Ряд с границами выбросов"><OutlierLineChart column={column} method={method} refreshKey={refreshKey} /></ExpandableChartPanel>}
+      {activeView === "histogram" && <ExpandableChartPanel chartId="outliers-histogram" title="Гистограмма с границами"><OutlierHistogramChart column={column} method={method} refreshKey={refreshKey} /></ExpandableChartPanel>}
+      {activeView === "density" && <ExpandableChartPanel chartId="outliers-density" title="Плотность с границами"><OutlierDensityChart column={column} refreshKey={refreshKey} /></ExpandableChartPanel>}
+      {activeView === "boxplot" && <ExpandableChartPanel chartId="outliers-boxplot" title="Boxplot выбросов"><OutlierBoxplotChart column={column} method={method} refreshKey={refreshKey} /></ExpandableChartPanel>}
     </section>
   );
 }

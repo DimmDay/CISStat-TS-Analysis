@@ -238,6 +238,64 @@ def test_outlier_line_returns_scatter_points():
     assert len(body["points"]) == 21
 
 
+# ── Границы метода на «Линейном» графике (дефект 2026-09-25: «график не
+# изменился после кэпирования») ──
+# Кэпирование прижимает выбросы К границе IQR, а не удаляет их: на линейном
+# графике без границ метода результат исправления невозможно верифицировать
+# глазами (шипы остаются заметными, счётчик при этом честно показывает 0 --
+# прижатые значения лежат НА границе и методом IQR больше не обнаруживаются).
+# Линейный график обязан показывать те же границы, что уже показывает
+# гистограмма (method_bounds на том же ряде), -- тогда «0 выбросов» читается
+# с графика: нет точек за пунктиром, прижатые значения сидят на нём.
+
+
+def test_outlier_line_reports_method_bounds():
+    _upload(_df_with_outlier())
+    line = client.get("/v1/session/dataset/outlier-line", params={"column": "Price", "method": "iqr"})
+    assert line.status_code == 200, line.text
+    body = line.json()
+    assert body["bounds"] is not None
+    # Границы линейного графика совпадают с границами гистограммы на том же ряде.
+    histogram = client.get("/v1/session/dataset/outlier-histogram", params={"column": "Price", "method": "iqr"})
+    assert body["bounds"] == histogram.json()["bounds"]
+    # Выброс (1000) лежит ЗА верхней границей -- до исправления это видно.
+    assert body["bounds"]["upper"] < 1000.0
+    assert max(p["y"] for p in body["points"]) > body["bounds"]["upper"]
+
+
+def test_outlier_line_without_explicit_method_defaults_to_iqr():
+    _upload(_df_with_outlier())
+    default = client.get("/v1/session/dataset/outlier-line", params={"column": "Price"})
+    explicit = client.get("/v1/session/dataset/outlier-line", params={"column": "Price", "method": "iqr"})
+    assert default.status_code == 200, default.text
+    assert default.json()["bounds"] == explicit.json()["bounds"]
+
+
+def test_outlier_line_unknown_method_returns_422():
+    _upload(_df_with_outlier())
+    assert client.get("/v1/session/dataset/outlier-line", params={"column": "Price", "method": "nope"}).status_code == 422
+
+
+def test_outlier_line_bounds_after_cap_show_capped_points_on_fence():
+    _upload(_df_with_outlier())
+    applied = client.post(
+        "/v1/session/dataset/outlier-corrections",
+        json={"columns": ["Price"], "strategy": "cap", "method": "iqr", "apply": True},
+    )
+    assert applied.status_code == 200, applied.text
+
+    line = client.get("/v1/session/dataset/outlier-line", params={"column": "Price", "method": "iqr"})
+    body = line.json()
+    assert body["bounds"] is not None
+    upper = body["bounds"]["upper"]
+    lower = body["bounds"]["lower"]
+    # После кэпирования нет точек ЗА границами: бывшие выбросы лежат НА границе.
+    assert all(p["y"] <= upper + 1e-9 for p in body["points"])
+    assert all(p["y"] >= lower - 1e-9 for p in body["points"])
+    # И максимум ряда совпадает с верхней границей (кэпирование прижало к ней).
+    assert max(p["y"] for p in body["points"]) == pytest.approx(upper)
+
+
 def test_outlier_histogram_reports_bins_and_bounds():
     _upload(_df_with_outlier())
     response = client.get("/v1/session/dataset/outlier-histogram", params={"column": "Price", "method": "iqr"})

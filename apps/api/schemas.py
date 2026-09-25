@@ -2174,10 +2174,18 @@ class DatasetOutlierLineResponse(BaseModel):
     «Выбросы» -- прямое переиспользование build_scatter_series
     (apps/api/chart_data.py), тот же контракт, что и у графика
     распределения на вкладке «Загрузка» (гарантирует сохранение
-    глобальных min/max и IQR-выбросов при LTTB-сэмплинге)."""
+    глобальных min/max и IQR-выбросов при LTTB-сэмплинге).
+
+    bounds -- границы метода обнаружения в единицах исходной величины
+    (method_bounds, тот же источник, что у гистограммы): линейный график
+    рисует их горизонтальными линиями, чтобы результат исправления был
+    верифицируем глазами -- после кэпирования прижатые значения лежат НА
+    границе, за пунктиром точек нет (дефект 2026-09-25 «график не
+    изменился после кэпирования»)."""
     points: List[OutlierScatterPointOut] = Field(default_factory=list)
     sampled: bool = False
     sampling_method: Optional[str] = None
+    bounds: Optional[OutlierBoundsOut] = None
     original_count: int = 0
 
 

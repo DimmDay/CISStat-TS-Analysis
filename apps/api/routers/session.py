@@ -1865,12 +1865,27 @@ def correct_dataset_outliers(
 
 
 @router.get("/dataset/outlier-line", response_model=DatasetOutlierLineResponse)
-def get_dataset_outlier_line(column: str, request: Request, response: Response):
+def get_dataset_outlier_line(
+    column: str,
+    request: Request,
+    response: Response,
+    method: str = "iqr",
+    param_low: Optional[float] = None,
+    param_high: Optional[float] = None,
+):
     """«Линейный» график вкладки визуализаций остановки «Выбросы» --
     переиспользует build_scatter_series (apps/api/chart_data.py, тот же
     контракт, что и график распределения на вкладке «Загрузка»): точки
     по позиции строки, с гарантированным сохранением глобальных
-    min/max и IQR-выбросов при LTTB-сэмплинге больших датасетов."""
+    min/max и IQR-выбросов при LTTB-сэмплинге больших датасетов.
+
+    bounds -- границы метода (method_bounds, тот же источник, что у
+    гистограммы) в единицах исходной величины: фронтенд рисует их
+    горизонтальными линиями. Дефект 2026-09-25 («график не изменился
+    после кэпирования»): кэпирование прижимает выбросы К границе, а не
+    удаляет их -- без границ на графике результат исправления
+    визуально не отличим от исходного ряда, хотя счётчик уже честно
+    показывает 0 (прижатые значения лежат НА границе)."""
     session_id = get_or_create_session_id(request, response)
     session = get_session_store().get_or_create(session_id)
     if session.dataframe is None:
@@ -1879,8 +1894,14 @@ def get_dataset_outlier_line(column: str, request: Request, response: Response):
         raise HTTPException(status_code=422, detail=f"Колонка '{column}' отсутствует в датасете")
     if not pd.api.types.is_numeric_dtype(session.dataframe[column]):
         raise HTTPException(status_code=422, detail=f"Колонка '{column}' не числовая")
-    result = build_scatter_series(session.dataframe[column].dropna())
-    return DatasetOutlierLineResponse(**result)
+    if method not in {"iqr", "zscore", "mad", "percentile"}:
+        raise HTTPException(status_code=422, detail=f"Неизвестный метод: {method}")
+
+    series = session.dataframe[column]
+    param = (param_low, param_high) if method == "percentile" and param_low is not None and param_high is not None else None
+    result = build_scatter_series(series.dropna())
+    bounds = method_bounds(series, method, param)
+    return DatasetOutlierLineResponse(**result, bounds=OutlierBoundsOut(**bounds) if bounds else None)
 
 
 @router.get("/dataset/outlier-histogram", response_model=DatasetOutlierHistogramResponse)

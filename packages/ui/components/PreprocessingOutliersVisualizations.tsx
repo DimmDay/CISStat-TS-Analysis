@@ -10,6 +10,16 @@
 // (packages/ui/components/DistributionCharts.tsx). Палитра и разметка
 // карточки взяты оттуда же (BRAND #2E3192 -- официальный цвет
 // Статкомитета СНГ), а не придуманы заново.
+//
+// Дефект «график выбросов не изменился после кэпирования» (2026-09-25):
+// все четыре графика принимают refreshKey -- ТЕМ же сигнал обновления,
+// что перезапрашивает профиль/счётчик Обзора (outliersRefreshKey +
+// datasetVersion: apply исправления, смена режима, новый датасет).
+// Ревизия включается в query как `revision` (cache-buster): при медленном
+// apply на проде пользователь может вернуться к графику до коммита POST --
+// запрос ряда уходит ДО применения, а после повышения refreshKey график
+// был бы смонтирован со старым рядом навсегда (счётчик при этом показывает
+// уже 0). Неизвестный query-параметр FastAPI игнорирует -- бэкенд не меняется.
 
 import { useEffect, useState } from "react";
 import {
@@ -86,11 +96,15 @@ interface LineResponse {
   sampled: boolean;
   sampling_method: string | null;
   original_count: number;
+  // Дефект 2026-09-25: границы метода (тот же method_bounds, что уже
+  // отдаёт гистограмма) -- результат кэпирования верифицируем глазами:
+  // прижатые значения лежат НА границе, за пунктиром точек нет.
+  bounds: { lower: number; upper: number } | null;
 }
 
-export function OutlierLineChart({ column }: { column: string | null }) {
+export function OutlierLineChart({ column, method = "iqr", refreshKey = 0 }: { column: string | null; method?: string; refreshKey?: number }) {
   const { data, loading, error } = useOutlierChartFetch<LineResponse>(
-    column ? `/dataset/outlier-line?column=${encodeURIComponent(column)}` : null
+    column ? `/dataset/outlier-line?column=${encodeURIComponent(column)}&method=${method}&revision=${refreshKey}` : null
   );
   if (!column) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Выберите числовой признак.</div>;
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
@@ -104,9 +118,24 @@ export function OutlierLineChart({ column }: { column: string | null }) {
           <XAxis type="number" dataKey="x" tick={AXIS_TICK_STYLE} tickFormatter={fmt} name="Позиция" />
           <YAxis type="number" dataKey="y" tick={AXIS_TICK_STYLE} tickFormatter={fmt} width={48} />
           <Tooltip formatter={(value: number) => fmt(value)} labelFormatter={() => ""} />
+          {/* Границы метода -- горизонтальные линии по оси значений (тот же
+              пунктир, что у гистограммы): после кэпирования бывшие выбросы
+              сидят НА границе, за ней точек нет -- «0 выбросов» читается
+              с графика. */}
+          {data.bounds && (
+            <>
+              <ReferenceLine y={data.bounds.lower} stroke="var(--status-error)" strokeDasharray="4 3" />
+              <ReferenceLine y={data.bounds.upper} stroke="var(--status-error)" strokeDasharray="4 3" />
+            </>
+          )}
           <Line type="linear" dataKey="y" stroke={BRAND} strokeWidth={1.5} dot={false} isAnimationActive={false} />
         </LineChart>
       </ChartFrame>
+      {data.bounds && (
+        <p className="mt-1.5 text-[11px] text-neutral-500">
+          Границы метода (пунктир): {fmt(data.bounds.lower)} … {fmt(data.bounds.upper)}. После кэпирования бывшие выбросы лежат на границе — за пунктиром точек нет.
+        </p>
+      )}
       {data.sampled && (
         <p className="mt-1.5 text-[11px] text-neutral-500">
           Показано {data.points.length} из {data.original_count} точек (сэмплинг LTTB, экстремумы и выбросы сохранены).
@@ -123,9 +152,9 @@ interface HistogramResponse {
   bounds: { lower: number; upper: number } | null;
 }
 
-export function OutlierHistogramChart({ column, method }: { column: string | null; method: string }) {
+export function OutlierHistogramChart({ column, method, refreshKey = 0 }: { column: string | null; method: string; refreshKey?: number }) {
   const { data, loading, error } = useOutlierChartFetch<HistogramResponse>(
-    column ? `/dataset/outlier-histogram?column=${encodeURIComponent(column)}&method=${method}` : null
+    column ? `/dataset/outlier-histogram?column=${encodeURIComponent(column)}&method=${method}&revision=${refreshKey}` : null
   );
   if (!column) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Выберите числовой признак.</div>;
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
@@ -170,9 +199,9 @@ interface DensityResponse {
   points: { x: number; y: number }[] | null;
 }
 
-export function OutlierDensityChart({ column }: { column: string | null }) {
+export function OutlierDensityChart({ column, refreshKey = 0 }: { column: string | null; refreshKey?: number }) {
   const { data, loading, error } = useOutlierChartFetch<DensityResponse>(
-    column ? `/dataset/outlier-density?column=${encodeURIComponent(column)}` : null
+    column ? `/dataset/outlier-density?column=${encodeURIComponent(column)}&revision=${refreshKey}` : null
   );
   if (!column) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Выберите числовой признак.</div>;
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
@@ -228,9 +257,9 @@ function BoxAndWhiskers({ label, group, color, domainMin, domainMax }: {
   );
 }
 
-export function OutlierBoxplotChart({ column, method }: { column: string | null; method: string }) {
+export function OutlierBoxplotChart({ column, method, refreshKey = 0 }: { column: string | null; method: string; refreshKey?: number }) {
   const { data, loading, error } = useOutlierChartFetch<BoxplotResponse>(
-    column ? `/dataset/outlier-boxplot?column=${encodeURIComponent(column)}&method=${method}` : null
+    column ? `/dataset/outlier-boxplot?column=${encodeURIComponent(column)}&method=${method}&revision=${refreshKey}` : null
   );
   if (!column) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Выберите числовой признак.</div>;
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
