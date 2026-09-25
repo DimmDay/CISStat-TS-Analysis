@@ -31,6 +31,7 @@ import pandas as pd
 from fastapi import HTTPException, Request, Response, UploadFile
 
 from apps.api.schemas import ColumnInfoOut, QualityTeaserOut, UploadResponse
+from apps.api.research_runs import get_dataset_file_store
 from apps.api.session_store import DatasetInfo, format_size_label, get_or_create_session_id, get_session_store
 from app.data.file_loader import read_uploaded_file
 
@@ -142,6 +143,26 @@ async def handle_upload(file: UploadFile, request: Request, response: Response) 
         session_id = get_or_create_session_id(request, response)
         store = get_session_store()
         session = store.get_or_create(session_id)
+        # PROGR-5 (§12 п.3): байты исходного файла -- в файловый слой по
+        # dataset_fingerprint, иначе restore (§5.3) останется "только
+        # метаданные". Best-effort: сбой диска не роняет загрузку.
+        try:
+            fingerprint = get_dataset_file_store().save_upload(
+                contents,
+                file.filename or "dataset.csv",
+                rows=len(df),
+                columns=len(df.columns),
+                size_label=size_label,
+            )
+        except Exception:
+            import logging
+
+            logging.getLogger(__name__).warning(
+                "Upload: исходный файл не сохранён в файловый слой "
+                "(restore для него будет невозможен)",
+                exc_info=True,
+            )
+            fingerprint = ""
         session.set_dataset(
             DatasetInfo(
                 dataset_id=dataset_id,
@@ -149,6 +170,7 @@ async def handle_upload(file: UploadFile, request: Request, response: Response) 
                 rows=len(df),
                 columns=len(df.columns),
                 size_label=size_label,
+                dataset_fingerprint=fingerprint,
             ),
             df,
         )

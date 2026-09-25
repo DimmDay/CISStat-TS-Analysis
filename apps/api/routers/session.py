@@ -12,6 +12,7 @@ standalone-фронтенду, включая неавторизованного
 apps/standalone/components/StandaloneHome.tsx) для sessions-aware
 логики "рабочий стол vs онбординг/маркетинг".
 """
+import logging
 import math
 import re
 from pathlib import Path
@@ -238,6 +239,7 @@ from apps.api.preprocessing_smoothing import (
     build_smoothing_profile,
     preview_smoothing_transformation,
 )
+from apps.api.research_runs import get_dataset_file_store
 from apps.api.sufficiency_plan import preview_sufficiency_plan
 from apps.api.text_quality_correction import preview_text_quality_corrections
 from apps.api.type_conversion import preview_type_conversions
@@ -251,6 +253,8 @@ from apps.api.session_store import (
     get_session_store,
 )
 from apps.api.upload_common import _compute_column_info, _compute_parse_warnings, _compute_quality_teaser
+
+logger = logging.getLogger(__name__)
 
 
 def _sufficiency_plan_is_current(
@@ -504,13 +508,34 @@ def load_demo_dataset(request: Request, response: Response):
     store = get_session_store()
     session = store.get_or_create(session_id)
 
+    demo_name = "demo_sales.csv (демо-датасет)"
+    demo_size_label = format_size_label(DEMO_DATASET_PATH.stat().st_size)
+    # PROGR-5 (§12 п.3): демо регистрируется в файловом слое как
+    # builtin_demo (файл встроен в приложение, restore перечитывает его
+    # без копии). Best-effort: сбой диска не роняет демо-загрузку.
+    try:
+        fingerprint = get_dataset_file_store().register_demo(
+            DEMO_DATASET_PATH,
+            name=demo_name,
+            rows=len(df),
+            columns=len(df.columns),
+            size_label=demo_size_label,
+        )
+    except Exception:
+        logger.warning(
+            "Demo: регистрация в файловом слое не удалась (restore невозможен)",
+            exc_info=True,
+        )
+        fingerprint = ""
+
     session.set_dataset(
         DatasetInfo(
             dataset_id="demo-sales",
-            name="demo_sales.csv (демо-датасет)",
+            name=demo_name,
             rows=len(df),
             columns=len(df.columns),
-            size_label=format_size_label(DEMO_DATASET_PATH.stat().st_size),
+            size_label=demo_size_label,
+            dataset_fingerprint=fingerprint,
         ),
         df,
     )

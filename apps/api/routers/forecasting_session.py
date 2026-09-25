@@ -51,6 +51,7 @@ from apps.api.schemas import (
     ForecastListResponse,
     ForecastRunResponse,
 )
+from apps.api.research_runs import record_run_event
 from apps.api.trace_events import make_trace_event
 from apps.api.routers.modeling_session import (
     _action_context,
@@ -180,6 +181,11 @@ def _append_event(session, run: dict[str, Any], event) -> None:
         # §10.5: экспорт -- естественное терминальное действие этапа
         # (derived-статус из данных, как tuning в Моделировании).
         session.stages["forecasting"] = "done"
+    # PROGR-5 -- унификация хранения (решение PROGR-3: forecasting-события
+    # живут в ForecastRun.trace; слой 2 research_runs/trace_events -- их
+    # единственная долговременная копия, run_id берётся из сессии).
+    # Best-effort: сбой долговременного слоя не роняет прогнозирование.
+    record_run_event(session, event)
 
 
 def _expected_accuracy(card: dict[str, Any]) -> dict[str, Any]:

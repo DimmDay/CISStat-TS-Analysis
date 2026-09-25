@@ -132,6 +132,10 @@ class DatasetInfo:
     rows: int
     columns: int
     size_label: str
+    # PROGR-5 (§12 п.3): SHA-256 байт исходного файла -- ключ файлового
+    # слоя data/uploads/ для restore (§5.3). Пусто у старых сессий и
+    # источников без файла; вычисляется при загрузке/демо.
+    dataset_fingerprint: str = ""
 
 
 @dataclass

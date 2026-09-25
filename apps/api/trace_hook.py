@@ -59,6 +59,7 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.pipeline_graph import is_known_node
+from apps.api.research_runs import record_run_event
 from apps.api.session_store import (
     SESSION_COOKIE_NAME,
     AnalysisSession,
@@ -545,6 +546,11 @@ class TraceHookMiddleware:
             event = record_trace_event(session, spec, response_body=body)
             if event is not None:
                 store.save(session)
+                # PROGR-5 (§5 слой 2): зеркало события в долговременный
+                # слой research_runs/trace_events -- В ДОПОЛНЕНИЕ к
+                # внутрисессионному буферу, не вместо него. Best-effort
+                # (своя деградация внутри record_run_event).
+                record_run_event(session, event)
         except Exception:  # pragma: no cover - защитный контур рантайма
             logger.warning(
                 "Trace hook: событие %s %s не записано (сбой хранилища)",
