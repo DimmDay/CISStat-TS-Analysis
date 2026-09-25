@@ -754,3 +754,46 @@ scripts/audit_scripts/progr4cert_fold_fixture.json, scripts/audit_scripts/progr4
 ### Deliverable
 
 ZIP: cisstat-progr5-research-runs.zip — пути репозитория сохранены. НОВЫЕ: apps/api/research_runs.py; apps/api/migrations/0001_research_runs.sql; tests/api/test_research_runs.py. ИЗМЕНЁННЫЕ: apps/api/routers/progress.py (5 эндпоинтов runs-namespace); apps/api/trace_hook.py (+зеркало слоя 2); apps/api/routers/forecasting_session.py (+унификация слоя 2); apps/api/session_store.py (DatasetInfo+dataset_fingerprint); apps/api/upload_common.py (+файловый слой загрузки); apps/api/routers/session.py (demo: fingerprint+регистрация файла); .gitignore (data/uploads/, data/checkpoints/). ИЗМЕНЁННЫЙ: worklog/worklog8.md (эта запись). Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: DEPLOY-1 (2026-09-25) — Hotfix деплоя render.com: ImportError «Общий реестр EDA не найден» — каталог shared/ не попадал в Docker-образ apps/api (§12 п.2)
+
+Синхронизация: main@4c5486a (ff-pull с 925aa1c; попутно из stash восстановлены артефакты и запись OUTL-1-CERT, выстроены хронологически перед PROGR-5). Правила AGENTS.md: TDD RED→GREEN, без commit/push, ZIP в download.
+
+### Постановка
+
+Передеплой render.com (следствие рекомендации OUTL-1-CERT: «Manual Deploy последнего main») падает: `ImportError: Общий реестр EDA не найден: /app/shared/pipeline_nodes/eda_checks.json (§12 п.2); файл обязателен для старта графа пайплайна` → `Exited with status 1` → «No open ports detected», сервис недоступен. Найти причину, исправить, дать контроль.
+
+### Root cause (доказан симуляцией сборки образа)
+
+apps/api/Dockerfile копирует в образ ТОЛЬКО каталоги, найденные статическим AST-разбором импортов бэкенда (app/, validation/, src/, apps/api/, rules/; комментарий в Dockerfile: «проверено статическим AST-разбором»). Общий реестр EDA — файл-ДАННЫЕ, а не импорт: app/core/pipeline_graph.py читает shared/pipeline_nodes/eda_checks.json НА ИМПОРТЕ модуля (fail-closed, `EDA_CHECK_DEFS = _load_eda_check_defs()` — строка 128, §12 п.2). AST-разбор data-файл не видит → каталога shared/ в образе НИКОГДА не было. Зависимость появилась в PROGR-2 (4467fae, 2026-09-24): любой образ, собранный из кода ≥ PROGR-2, умирает на старте; живой контейнер на render.com был собран из кода СТАРШЕ PROGR-2 (live-проба OUTL-1-CERT: OpenAPI без bounds, без /v1/progress), поэтому баг был латентным до передеплоя. Цепочка старта: CMD `uvicorn apps.api.main:app` → main.py:32 (TraceHookMiddleware) → trace_hook.py:61 (`from app.core.pipeline_graph import is_known_node`) → pipeline_graph.py:128 (module-level загрузка JSON) → FileNotFoundError → ImportError → exit 1.
+
+Эмпирика (scripts/audit_scripts/deployfix_simulate_image.py): сборка образа имитируется без docker — парсинг COPY-строк Dockerfile, копирование в tmp (WORKDIR /app), слой `RUN touch apps/__init__.py`, стартовый контракт uvicorn `from apps.api.main import app` в subprocess с чистым PYTHONPATH: [A] образ ДО фикса (без shared/) — exit 1, stderr дословно содержит ошибку render.com (маркер «Общий реестр EDA не найден» + путь реестра); [B] +shared/ — exit 0, IMPORT_OK.
+
+### TDD
+
+- RED: tests/api/test_docker_image_layout.py (4 теста, НЕ требуют docker): (1) статический — «shared» обязан быть среди COPY-источников Dockerfile; (2) реестр существует/парсится/stage='eda'/nodes непусты/без дубликатов id; (3) динамический — имитация образа ПО исправленному Dockerfile стартует (импорт apps.api.main зелёный); (4) имитация БЕЗ shared/ воспроизводит инцидент дословно — защита fail-closed контракта §12 п.2 от ослабления загрузчика до тихой деградации (граф «Прогресса» не должен стартовать с частичной картиной стадий). RED подтверждён: (1) и (3) падали по правильной причине («shared» отсутствует в COPY), (4) проходил уже до фикса (документирует инцидент).
+- GREEN: фикс apps/api/Dockerfile — `COPY shared/ ./shared/` с комментарием о классе бага (data-файлы невидимы AST-разбору) + build-гвард `RUN python -c "from app.core.pipeline_graph import EDA_STAGE_IDS; print(...)"`, поставленный ПОСЛЕ слоя `RUN touch apps/__init__.py` (гвард импортирует apps.api.*). Философия Dockerfile соблюдена: падать на СБОРКЕ с явной ошибкой, а не мёртвым контейнером в проде (прецедент rules/modeling.yaml в том же файле). 4/4 зелёные.
+- Верификация гварда (scripts/audit_scripts/deployfix_verify_guard.py): код RUN-гварда парсится ИЗ Dockerfile (не дублируется); [A] без shared/ — сборка падает на гварде с искомой ошибкой (инцидент класса DEPLOY-1 отныне ловится на этапе docker build); [B] с shared/ — «pipeline graph OK, EDA nodes from shared JSON: 10».
+- Смежные сюиты: tests/api/test_pipeline_graph.py + test_progress_panel.py + test_progress_trace_hook.py + test_research_runs.py + новый файл — 257 passed. Код продукта Python не менялся (только Dockerfile + новый тест), регресса быть не может по построению; прогон подтверждает.
+
+### Латентные баги того же класса (проверены, ответ отрицательный)
+
+- data/ для файлового слоя PROGR-5 (§12 п.3/п.4) в образ НЕ копируется — и НЕ НУЖНО: DatasetFileStore создаёт каталоги лениво `mkdir(parents=True, exist_ok=True)` (research_runs.py:778/815/873, neural_contract.py:710). Эфемерность /app/data в контейнере — честный 409 restore после редеплоя по §5.3 (дизайн MVP, persistence вне объёма).
+- config/, docs/, packages/ бэкендом на импорте не читаются: полный стартовый импорт apps.api.main в имитации проходит на {app, validation, src, apps/api, rules, shared} — это исчерпывающий стартовый контракт.
+
+### Операционная инструкция тимлиду
+
+1. Применить ZIP (единственный изменённый файл — apps/api/Dockerfile) либо вручную добавить в него два блока (COPY shared/ + гвард) — они помечены «DEPLOY-1» в комментариях. 2. Manual Deploy на render.com. 3. Контроль сборки: в логе должна появиться строка «pipeline graph OK, EDA nodes from shared JSON: 10» — её отсутствие на сборке без падения означает, что деплоится не этот Dockerfile (dockerfilePath: ./apps/api/Dockerfile, dockerContext: . по render.yaml). 4. Контроль рантайма после деплоя: `python3 scripts/cert_outl1_live_probe.py` — шаг 3 обязан показать bounds в ответе /outlier-line (замыкает контроль OUTL-1-CERT: замечание «счётчик 0, график не меняется» было стейл-деплоем, код правилен; после успешного деплоя границы метода и ревизионный refresh станут видны пользователю).
+
+### Находки
+
+- N-1 (Info): корневой Dockerfile (Streamlit, порт 8501) — ДРУГОЙ деплой, не затронут: у него `COPY . .` и shared/ попадает в образ.
+- N-2 (Info): .dockerignore корня репозитория (`*.md`, exports/, reports/, ...) shared/ не исключает — виноватых масок нет, зависимость просто не была перечислена.
+- R-1 (Low, осознанно): парсер теста поддерживает только канонизированные строки `COPY <dir>/ ./<dir>/`; при расширении Dockerfile новым синтаксисом (COPY --from, одиночные файлы) тест (1) упадёт и заставит расширить парсер осознанно — цена защиты от «тихих» пропусков.
+- R-2 (Info, рекомендация из OUTL-1-CERT остаётся в силе): маркер версии (git sha) в /health — drift деплоя и принадлежность образа коммиту проверялись бы одной командой; в объём данной задачи не входил.
+
+### Deliverable
+
+ZIP: cisstat-deploy1-render-shared-registry.zip — пути репозитория сохранены. ИЗМЕНЁННЫЙ: apps/api/Dockerfile (+COPY shared/ §12 п.2, +build-гвард pipeline_graph). НОВЫЕ: tests/api/test_docker_image_layout.py (регресс-инвариант состава образа, 4 теста), scripts/audit_scripts/deployfix_simulate_image.py (доказательство root cause), scripts/audit_scripts/deployfix_verify_guard.py (верификация гварда). Восстановлены из stash (OUTL-1-CERT, не изменялись): scripts/audit_scripts/cert_outl1_outlier_line_2026-09-25.md, outl1cert_oracles.py, outl1cert_oracles.test.tsx, outl1cert_mutations.py, outl1cert_crossverify.py, scripts/cert_outl1_live_probe.py. ИЗМЕНЁННЫЙ: worklog/worklog8.md (запись OUTL-1-CERT восстановлена + эта запись). Без commit/push (AGENTS.md).

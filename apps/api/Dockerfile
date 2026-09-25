@@ -59,8 +59,24 @@ COPY apps/api/ ./apps/api/
 # моделирования не найдена: rules/modeling.yaml» при первом вызове
 # /v1/internal/models/candidates (после upload'а датасета).
 COPY rules/ ./rules/
+# shared/ -- каталог ОБЩИХ (frontend<->backend) реестров узлов графа.
+# app/core/pipeline_graph.py читает shared/pipeline_nodes/eda_checks.json
+# НА ИМПОРТЕ модуля (fail-closed, §12 п.2). Это файл-ДАННЫЕ: статический
+# AST-разбор импортов, которым выбирались каталоги выше, его не видит,
+# поэтому зависимость была латентной с PROGR-2 (4467fae) и вскрылась на
+# передеплое render.com 2026-09-25 (инцидент DEPLOY-1): образ собирался,
+# но uvicorn умирал на старте с ImportError «Общий реестр EDA не найден».
+COPY shared/ ./shared/
 
 RUN touch apps/__init__.py
+
+# DEPLOY-1: гвард §12 п.2 -- реестр обязан читаться НА ЭТАПЕ СБОРКИ, а не
+# в runtime (та же философия, что проверка rules/modeling.yaml ниже):
+# импорт app.core.pipeline_graph выполняет fail-closed загрузку JSON и
+# структурные проверки реестра; без shared/ сборка здесь упадёт с явной
+# ошибкой вместо тихого мёртвого контейнера в проде.
+RUN python -c "from app.core.pipeline_graph import EDA_STAGE_IDS; \
+               print('pipeline graph OK, EDA nodes from shared JSON:', len(EDA_STAGE_IDS))"
 
 # Защита от регрессии: если на этапе сборки catalog/spec-файлы
 # отсутствуют или битые -- образ не должен собраться (раньше баг
