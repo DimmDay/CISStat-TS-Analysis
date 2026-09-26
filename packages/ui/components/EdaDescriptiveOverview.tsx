@@ -120,8 +120,15 @@ function EdaDescriptiveOverviewInner({
     setDistributionError(null);
     void (async () => {
       try {
+        // Волна 3 plan_review_charts.md (Task RCH-3): канон OUTL-1 -- ревизия
+        // включается в query как cache-buster. Эффект и так перезапускается
+        // requestKey-гвардом, но теоретический HTTP-кэш промежуточных слоёв
+        // мог отдать устаревший payload при повторном запросе с той же парой
+        // column+refreshKey; revision=${requestKey} делает URL чистой функцией
+        // ключа эффекта: любое его изменение (refreshKey, фича) меняет и URL.
+        // Неизвестный query-параметр FastAPI игнорирует -- бэкенд не меняется.
         const response = await fetch(
-          sessionApiUrl(`/dataset/distribution?column=${encodeURIComponent(activeFeature)}`),
+          sessionApiUrl(`/dataset/distribution?column=${encodeURIComponent(activeFeature)}&revision=${requestKey}`),
           { credentials: "include" },
         );
         if (!response.ok) throw new Error(await responseDetail(response));

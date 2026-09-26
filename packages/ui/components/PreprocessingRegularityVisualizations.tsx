@@ -7,6 +7,18 @@
 // (GET /dataset/preprocessing/regularity-intervals|timeline,
 // apps/api/routers/session.py). Палитра -- та же, что и у остальных
 // визуализаций «Предобработки» (BRAND #2E3192, DistributionCharts.tsx).
+//
+// Дефект-класс OUTL-1 «график без явной подписки на refresh» (волна 3
+// plan_review_charts.md, Task RCH-3): оба графика принимают refreshKey --
+// ТЕМ же сигнал обновления, что перезапрашивает профиль/счётчик Обзора
+// (regularityRefreshKey + datasetVersion: apply исправления, смена режима,
+// новый датасет). Ревизия включается в query как `revision` (cache-buster):
+// при медленном apply пользователь может вернуться к графику до коммита
+// POST -- запрос уходит ДО применения, и без ревизии в URL смонтированный
+// график остался бы на старом ряде навсегда. Подписка существовала с Task 72,
+// но с legacy-параметром `_r=` -- волна 3 канонизировала ЕДИНЫЙ параметр
+// `revision=` по всей кодовой базе (эталон OUTL-1). Неизвестный query-параметр
+// FastAPI игнорирует -- бэкенд не меняется.
 
 import { useEffect, useState } from "react";
 import {
@@ -91,7 +103,7 @@ interface IntervalsResponse {
 
 export function RegularityIntervalsChart({ refreshKey = 0 }: { refreshKey?: number }) {
   const { data, loading, error } = useRegularityChartFetch<IntervalsResponse>(
-    `/dataset/preprocessing/regularity-intervals?_r=${refreshKey}`
+    `/dataset/preprocessing/regularity-intervals?revision=${refreshKey}`
   );
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
   if (!data || data.bins.length === 0) return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Недостаточно данных для гистограммы интервалов.</div>;
@@ -145,7 +157,7 @@ interface TimelineResponse {
 
 export function RegularityTimelineChart({ refreshKey = 0 }: { refreshKey?: number }) {
   const { data, loading, error } = useRegularityChartFetch<TimelineResponse>(
-    `/dataset/preprocessing/regularity-timeline?_r=${refreshKey}`
+    `/dataset/preprocessing/regularity-timeline?revision=${refreshKey}`
   );
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
   if (!data || data.events.length === 0) {

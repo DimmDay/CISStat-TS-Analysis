@@ -29,6 +29,17 @@
 // Цвета Recharts — токеные: обёртка text-brand + fill="currentColor"
 // (новых hex-литералов не создаём — урок DKT-3; var()-токены живут в
 // обеих темах, DKT-2).
+//
+// Дефект-класс OUTL-1 «self-fetch без явной подписки на refresh» (волна 3
+// plan_review_charts.md, Task RCH-3): компонент ходил в сеть ОДИН раз по
+// modelingDone (deps [modelingDone, sessionLoading]) -- сигнал обновления
+// не входил ни в deps, ни в URL, и смонтированный срез не перезапрашивался
+// никогда. Контракт механики B (эталон OUTL-1): refreshKey-проп входит в
+// deps эффекта, ревизия уходит в query fetchCauses каноническим
+// cache-buster-ом (revision=<refreshKey>; неизвестный query-параметр
+// FastAPI игнорирует -- бэкенд не меняется). Сигнал прокидывается
+// контейнером страницы (сегодня страница монтирует с дефолтом 0 --
+// точка подписки готова к появлению счётчика мутаций сессии).
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -138,7 +149,7 @@ function RadioDot({ active }: { active: boolean }) {
 
 const pct = (share: number) => `${(share * 100).toFixed(1)}%`;
 
-export function TasksCauses() {
+export function TasksCauses({ refreshKey = 0 }: { refreshKey?: number }) {
   const { stages, sessionLoading } = useAppShell();
   const safeStages = stages ?? {};
   const modelingDone = safeStages.modeling === "done";
@@ -151,7 +162,9 @@ export function TasksCauses() {
     if (!modelingDone || sessionLoading) return;
     let alive = true;
     setLoading(true);
-    fetchCauses()
+    // Волна 3 plan_review_charts.md (Task RCH-3): ревизия -- канонический
+    // cache-buster класса OUTL-1 (см. шапку); строится в query API-хелпером.
+    fetchCauses(undefined, refreshKey)
       .then((resp) => {
         if (!alive) return;
         setData(resp);
@@ -168,7 +181,7 @@ export function TasksCauses() {
     return () => {
       alive = false;
     };
-  }, [modelingDone, sessionLoading]);
+  }, [modelingDone, sessionLoading, refreshKey]);
 
   const methods = data?.methods ?? [];
   const firstAvailable = useMemo(

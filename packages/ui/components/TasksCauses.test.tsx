@@ -249,4 +249,47 @@ describe("TasksCauses (v2, паттерн C)", () => {
     expect(alert).toHaveTextContent("Model Card не найдена");
     expect(screen.queryByTestId("causes-methods")).not.toBeInTheDocument();
   });
+
+  // ── Волна 3 plan_review_charts.md (Task RCH-3): механика B класса OUTL-1
+  // «self-fetch без явной подписки на refresh» для среза «Причины» хаба
+  // «Задачи». Раньше компонент ходил в сеть ОДИН раз по modelingDone
+  // (deps [modelingDone, sessionLoading]) -- сигнал обновления не входил ни
+  // в deps, ни в URL. Контракт волны: refreshKey-проп входит в deps эффекта,
+  // ревизия уходит в query fetchCauses каноническим cache-buster-ом
+  // (revision=<refreshKey>; до волны fetchCauses вызывался вовсе без
+  // аргументов). Сигнал прокидывается контейнером страницы; сегодня страница
+  // /tasks/causes монтируется с дефолтом 0 -- точка подписки готова к
+  // появлению счётчика мутаций сессии (одна строка на странице).
+  describe("refetch on refreshKey (revision cache-buster, wave 3)", () => {
+    it("первый поход в сеть несёт revision=<refreshKey> (по умолчанию 0)", async () => {
+      renderAvailable();
+      await screen.findByTestId("causes-methods");
+
+      expect(fetchCauses).toHaveBeenCalledWith(undefined, 0);
+    });
+
+    it("смена refreshKey перезапрашивает данные без смены стадии (последний вызов)", async () => {
+      const utils = renderAvailable();
+      await screen.findByTestId("causes-methods");
+      fetchCauses.mockClear();
+
+      utils.rerender(<TasksCauses refreshKey={2} />);
+      await screen.findByTestId("causes-methods");
+
+      expect(fetchCauses).toHaveBeenCalledWith(undefined, 2);
+    });
+
+    it("rerender без смены refreshKey не даёт лишнего похода в сеть (дисциплина deps)", async () => {
+      const utils = renderAvailable();
+      await screen.findByTestId("causes-methods");
+      fetchCauses.mockClear();
+
+      utils.rerender(<TasksCauses />);
+
+      // Эффект перезапускается ТОЛЬКО сменой [modelingDone, sessionLoading,
+      // refreshKey]; лишние сущности в deps (derived-массивы methods/factors
+      // с новой ссылкой на каждый рендер) дали бы повторный вызов прямо здесь.
+      expect(fetchCauses).not.toHaveBeenCalled();
+    });
+  });
 });

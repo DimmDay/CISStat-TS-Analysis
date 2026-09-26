@@ -17,12 +17,14 @@
 // перезапросились». Бэкенд не меняется: неизвестный query-параметр FastAPI
 // игнорирует.
 //
-// Четыре списка (факты верифицированы по живому коду @ 564cd95):
+// Пять списков (факты верифицированы по живому коду @ befdfcf):
 //
 //  1. REVISION_SUBSCRIBED_CHART_SOURCES (3 файла) — чарт-источники с собственной
 //     загрузкой данных (механизм B): каждый export function …Chart обязан
 //     принимать refreshKey и включать ревизию в query. Ожидаемое число графиков
 //     зафиксировано — появление нового чарта без подписки уронит тест.
+//     С волны 3 (RCH-3) канон ЕДИН: `revision=${refreshKey}` — legacy-параметр
+//     `_r=` (Task 72) запрещён явным негативом.
 //  2. PROFILE_PROP_OVERVIEWS (18 файлов) — Обзоры, чьи графики рендерят данные
 //     из profile-пропа контейнера (механизм A): подписка обеспечена deps
 //     профильного запроса контейнера. Прямой self-fetch сессионного API
@@ -31,12 +33,18 @@
 //     его инвариант (fingerprint мутации датасета) — волна 2 плана, прямой
 //     self-fetch им также запрещён.
 //  3. SELF_FETCH_GUARDED_OVERVIEWS (1 файл) — Обзоры с легитимным self-fetch
-//     графика, подписанным на refreshKey через requestKey-гвард.
+//     графика, подписанным на refreshKey через requestKey-гвард; с волны 3
+//     URL обязан нести canonical cache-buster `revision=${requestKey}`
+//     (URL — чистая функция ключа эффекта).
 //  4. PROFILE_SELF_FETCH_OVERVIEWS (11 файлов) — Обзоры, самостоятельно
 //     запрашивающие СВОЙ профиль с deps [refreshKey] (Пропуски/Выбросы/
 //     Регулярность «Предобработки», вся «Валидация»): собственных fetch-ей
 //     ДАННЫХ графиков не имеют (таблицы/прогресс-бары; чарты получают
 //     refreshKey прокидыванием). Проверяем и самофетч, и подписку.
+//  5. REVISION_SUBSCRIBED_SELF_FETCH_SOURCES — источники self-fetch ВНЕ
+//     семейства Обзоров (FAMILY_RE, в инвентарь п.6 не входят), того же
+//     класса OUTL-1: самофетч хаба «Задачи» (волна 3). Классифицируются
+//     здесь явно; контракт тот же — refreshKey в deps, ревизия в query.
 
 import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
@@ -46,8 +54,18 @@ const REVISION_SUBSCRIBED_CHART_SOURCES = [
   { file: "PreprocessingMissingVisualizations.tsx", charts: 3 },
   // Эталон OUTL-1 (4ed649f): Линейный/Гистограмма/Плотность/Boxplot
   { file: "PreprocessingOutliersVisualizations.tsx", charts: 4 },
-  // Подписаны с Task 72 (_r= — функционально тот же cache-buster)
+  // Подписаны с Task 72; волна 3 (RCH-3): канонический revision=
+  // (до волны — legacy `_r=`, выведен из обращения негативом ниже)
   { file: "PreprocessingRegularityVisualizations.tsx", charts: 2 },
+] as const;
+
+// Список 5 (см. шапку): self-fetch вне семейства Обзоров (не Overview/
+// Visualizations — в инвентарь списков 1–4 и п.6 НЕ входит).
+const REVISION_SUBSCRIBED_SELF_FETCH_SOURCES = [
+  // Волна 3 plan_review_charts.md: срез «Причины» хаба «Задачи» —
+  // самофетч /tasks/causes по modelingDone; механика B (refreshKey-проп,
+  // revision в query fetchCauses).
+  { file: "TasksCauses.tsx", lib: "../lib/tasks.ts" },
 ] as const;
 
 const PROFILE_PROP_OVERVIEWS = [
@@ -127,8 +145,13 @@ describe("ReviewChartsRefreshCoverage: гвард подписки график�
         if (!chunk.body.includes("refreshKey")) {
           missing.push("принимает refreshKey");
         }
-        if (!/(revision|_r)=\$\{refreshKey/.test(chunk.body)) {
-          missing.push("включает ревизию (revision|_r)=${refreshKey} в query");
+        // Волна 3 (RCH-3): канон один — revision=${refreshKey}; legacy _r=
+        // (Task 72) запрещён явным негативом, чтобы унификация не откатилась.
+        if (!/revision=\$\{refreshKey/.test(chunk.body)) {
+          missing.push("включает каноническую ревизию revision=${refreshKey} в query");
+        }
+        if (/_r=\$\{refreshKey/.test(chunk.body)) {
+          missing.push("несёт legacy-параметр _r=${refreshKey} — только canonical revision=");
         }
         expect(`${fileName}/${chunk.name}: ${missing.join(", ")}`).toBe(`${fileName}/${chunk.name}: `);
       }
@@ -144,12 +167,28 @@ describe("ReviewChartsRefreshCoverage: гвард подписки график�
   );
 
   it.each(SELF_FETCH_GUARDED_OVERVIEWS)(
-    "self-fetch графика подписан на refreshKey через requestKey-гвард: %s",
+    "self-fetch графика подписан на refreshKey через requestKey-гвард с canonical revision=: %s",
     (fileName) => {
       const source = readFileSync(join(__dirname, fileName), "utf8");
       expect(source).toContain("sessionApiUrl(");
       expect(source).toContain("refreshKey");
       expect(source).toContain("requestKey");
+      // Волна 3 (RCH-3): URL — чистая функция ключа эффекта — ревизия
+      // включается в query (revision=${requestKey}) против HTTP-кэша.
+      expect(source).toMatch(/revision=\$\{requestKey/);
+    }
+  );
+
+  it.each(REVISION_SUBSCRIBED_SELF_FETCH_SOURCES.map((item) => [item.file, item.lib] as const))(
+    "self-fetch вне семейства Обзоров подписан на refreshKey с canonical revision=: %s",
+    (fileName, libPath) => {
+      const source = readFileSync(join(__dirname, fileName), "utf8");
+      expect(source).toContain("refreshKey");
+      expect(source).toContain("fetchCauses(");
+      // Ревизия строится в query API-хелпером (lib): единственное место,
+      // где URL /tasks/causes обрастает cache-buster-ом.
+      const libSource = readFileSync(join(__dirname, libPath), "utf8");
+      expect(libSource).toContain("revision");
     }
   );
 

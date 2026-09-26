@@ -55,9 +55,17 @@ export interface TasksCausesResponse {
   methods: CausesMethod[];
 }
 
-export async function fetchCauses(cardId?: string): Promise<TasksCausesResponse> {
-  const query = cardId ? `?card_id=${encodeURIComponent(cardId)}` : "";
-  const resp = await fetch(`${sessionApiUrl("/tasks/causes")}${query}`, {
+export async function fetchCauses(cardId?: string, revision?: number): Promise<TasksCausesResponse> {
+  // Волна 3 plan_review_charts.md (Task RCH-3): revision -- канонический
+  // cache-buster класса OUTL-1 «self-fetch без явной подписки на refresh»:
+  // ревизия включается в query, чтобы повторный запрос после смены сигнала
+  // не мог быть обслужен устаревшим HTTP-кэшем промежуточных слоёв.
+  // Неизвестный query-параметр FastAPI игнорирует -- бэкенд не меняется.
+  const params = new URLSearchParams();
+  if (cardId) params.set("card_id", cardId);
+  if (revision !== undefined) params.set("revision", String(revision));
+  const query = params.toString();
+  const resp = await fetch(`${sessionApiUrl("/tasks/causes")}${query ? `?${query}` : ""}`, {
     credentials: "include",
   });
   if (!resp.ok) {

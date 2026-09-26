@@ -215,6 +215,37 @@ TDD волны 2:
 - Правило переноса: новый Обзор/чарт обязан быть классифицирован ровно в одном списке — при переносе
   правится одна строка гварда (дословно как в прецеденте).
 
+### Волна 3 (P2, hardening) — ВЫПОЛНЕНА (Task RCH-3, 2026-09-26, по решению тимлида; в объём включён TasksCauses)
+
+1. Унификация cache-buster: `PreprocessingRegularityVisualizations.tsx` — оба URL
+   `?_r=${refreshKey}` → `` `?revision=${refreshKey}` `` (канон OUTL-1 — единственный параметр
+   ревизии в кодовой базе); эпиграф-комментарий дополнен (подписка с Task 72, канонизация —
+   волна 3, причина ревизии в query).
+2. `EdaDescriptiveOverview.tsx`: в URL self-fetch добавлено `&revision=${requestKey}`-слагаемое —
+   эффект уже перезапускался requestKey-гвардом; cache-buster делает URL чистой функцией ключа
+   эффекта (любое изменение refreshKey/фичи меняет и URL) и закрывает теоретический HTTP-кэш
+   промежуточных слоёв.
+3. `TasksCauses.tsx` (включён тимлидом в волну вместо отдельной постановки; не Обзор —
+   механика B): проп `refreshKey?: number` (дефолт 0) входит в deps эффекта
+   `[modelingDone, sessionLoading, refreshKey]`; `fetchCauses(undefined, refreshKey)`;
+   `packages/ui/lib/tasks.ts::fetchCauses(cardId?, revision?)` строит `revision=` в query
+   (URLSearchParams). Граница (зафиксирована): в приложении нет счётчика мутаций сессии,
+   видимого странице /tasks/causes — точка подписки готова, прокидывание сигнала — одна
+   строка страницы при появлении счётчика; сегодня страница монтирует с дефолтом 0
+   (поведение монтирования не изменилось, URL обрёл канонический cache-buster).
+4. Гвард `ReviewChartsRefreshCoverage.test.ts` ужесточён: канон-регэксп `revision=${refreshKey}`
+   (вместо `(revision|_r)`), явный негатив на legacy `_r=${refreshKey`; список 3 (self-fetch
+   guarded) обязан нести `revision=${requestKey}`; новый список 5 `REVISION_SUBSCRIBED_SELF_FETCH_SOURCES`
+   (вне FAMILY_RE, в инвентарь 33 файлов не входит) — TasksCauses.tsx + lib/tasks.ts.
+
+TDD волны 3 (факт): RED подтверждён по правильным причинам — TS2322 (нет пропа refreshKey у
+TasksCauses, компиляционный RED прецедента OUTL-1/RCH-1/RCH-2); behavioral RED: отсутствие
+`revision=` в URL Регулярности/EdaDescriptive (было `_r=1` / без ревизии вовсе), 3 падения
+гарда (канон+legacy-бан, revision=${requestKey}, список 5). GREEN: 4 целевых сюита — 61 тест;
+смежные (RegularityOverview, TsAnalysisEDA, TasksHub, heading-indigo-calibration,
+ExpandableChartCoverage) — 6 сюитов / 118 тестов. Бэкенд НЕ менялся (ревизия — неизвестный
+query-параметр, FastAPI игнорирует; прецедент OUTL-1).
+
 ---
 
 ## 4. Риски и границы
@@ -236,10 +267,11 @@ TDD волны 2:
 
 1. Синхронизация `main@cfa1213` (выполнена), рабочая ветка — рабочее дерево (commit/push запрещены).
 2. **Гвард вперёд**: ReviewChartsRefreshCoverage.test.ts со списками по состоянию ДО волн — RED
-   по Missing (документирует дефект), GREEN по остальным спискам.
-3. **Волна 1** (Пропуски): RED (перенос it.each + инвариант) → GREEN (2 product-файла) → прогон.
-4. **Волна 2** (detail-кэш): RED (hook-тесты) → GREEN (hook + контейнер + 2 Обзора) → прогон.
-5. **Волна 3** — по решению тимлида (каждый пункт самостоятелен).
+   по Missing (документирует дефект), GREEN по остальным спискам. — ВЫПОЛНЕНО (RCH-1)
+3. **Волна 1** (Пропуски): RED (перенос it.each + инвариант) → GREEN (2 product-файла) → прогон. — ВЫПОЛНЕНА (RCH-1, 84dc8e4)
+4. **Волна 2** (detail-кэш): RED (hook-тесты) → GREEN (hook + контейнер + 2 Обзора) → прогон. — ВЫПОЛНЕНА (RCH-2, befdfcf)
+5. **Волна 3** (hardening + TasksCauses): RED (поведенческие + компиляционный) → GREEN
+   (2 URL Регулярности, URL EdaDescriptive, TasksCauses + lib/tasks.ts + гвард) → прогон. — ВЫПОЛНЕНА (RCH-3)
 6. Верификация каждой волны: `npx jest <целевые сюиты>` → полный `npx jest` (базлайн 142 сюита /
    1690+ тестов + новые), `npm run typecheck:all` (embedded+standalone), `npm run build:all`.
 7. E2E-контроль (по образцу OUTL-1): демо-датасет → «Пропуски» → Обзор (Матрица/Корреляция) →
@@ -248,4 +280,5 @@ TDD волны 2:
    отдельные ZIP с изменёнными/новыми файлами), запись в worklog8.md. Без commit/push (AGENTS.md).
 
 **Оценка объёма**: волна 1 — 2 product + 2 test файла + гвард; волна 2 — 4 product (hook, контейнер,
-2 Обзора) + 2 test файла; суммарно ~10 файлов, бэкенд не затрагивается.
+2 Обзора) + 2 test файла; волна 3 — 4 product (2 URL Регулярности, URL EdaDescriptive,
+TasksCauses + lib/tasks.ts) + 3 test файла + гвард; суммарно ~13 файлов, бэкенд не затрагивается.
