@@ -17,12 +17,16 @@
 // ts первого события; research_runs.created_at придёт с PROGR-5).
 //
 // PROGR-5.1: под шапкой -- полоса действий ProgressCheckpointBar (§6.3:
-// «Пауза»/«Сохранить точку»; «Наставник» -- PROGR-6, мёртвых кнопок нет).
-// Статус запуска и чекпоинты -- GET /v1/progress/runs/{run_id} (слой 2,
-// PROGR-5), запрашивается при известном run_id (best-effort: 404/503 --
-// кнопки disabled, панель жива). После успешного действия -- обновление
+// «Пауза»/«Сохранить точку»/«Наставник» (PROGR-6)); статусы запуска и
+// чекпоинты -- GET /v1/progress/runs/{run_id} (слой 2, PROGR-5),
+// запрашивается при известном run_id (best-effort: 404/503 -- кнопки
+// disabled, панель жива). После успешного действия -- обновление
 // трассы слоя 1 (run-level событие зеркалится в неё) и детали запуска.
 // N-4: действия панель НЕ закрывают (состояние панели -- во фронтенде).
+//
+// PROGR-6: кнопка «Наставник →» в полосе (слот §6.2) открывает секцию
+// MentorPanel (§7.1 «Следующий шаг» + history-предупреждения §7.2);
+// секция живёт ВНУТРИ панели, закрытия не инициирует (N-4).
 //
 // Данные: GET /v1/progress/trace (слой 1, apps/api/routers/progress.py)
 // + GET /v1/session/modeling/forecast (события ForecastRun.trace, §3) --
@@ -40,6 +44,7 @@ import {
   type TraceEventInfo,
 } from "../lib/progress";
 import { ProgressCheckpointBar } from "./ProgressCheckpointBar";
+import { MentorPanel } from "./MentorPanel";
 import { ProgressStageFlow } from "./ProgressStageFlow";
 import { ProgressTraceLog } from "./ProgressTraceLog";
 
@@ -79,6 +84,8 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
   const [trace, setTrace] = useState<ProgressTraceState>(EMPTY_TRACE);
   const [runDetail, setRunDetail] = useState<RunDetailState | null>(null);
   const [traceExpanded, setTraceExpanded] = useState(false);
+  // PROGR-6: секция «Наставник» открыта (тоглер -- кнопка полосы §6.2).
+  const [mentorOpen, setMentorOpen] = useState(false);
   // Инкремент после успешного действия полосы: перечитывает трассу слоя 1
   // (run-level событие зеркалится в неё) и деталь запуска слоя 2.
   const [refreshCounter, setRefreshCounter] = useState(0);
@@ -163,6 +170,8 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
   const handleToggleTrace = useCallback(() => setTraceExpanded((v) => !v), []);
   // N-4: действие полосы обновляет ДАННЫЕ (панель не закрывается).
   const handleBarChanged = useCallback(() => setRefreshCounter((c) => c + 1), []);
+  // N-4: «Наставник» открывает/закрывает секцию, панель не трогает.
+  const handleToggleMentor = useCallback(() => setMentorOpen((v) => !v), []);
 
   return (
     <>
@@ -203,8 +212,9 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
           </p>
         </div>
 
-        {/* Полоса действий (§6.3): «Пауза»/«Сохранить точку»; без запуска
-            не рендерится -- действиям запуска неоткуда взяться. */}
+        {/* Полоса действий (§6.3): «Пауза»/«Сохранить точку»/«Наставник →»
+            (PROGR-6, слот §6.2); без запуска не рендерится -- действиям
+            запуска неоткуда взяться. */}
         {trace.runId && (
           <ProgressCheckpointBar
             runId={trace.runId}
@@ -212,8 +222,13 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
             lastEvent={lastCheckpointableEvent(trace.events)}
             checkpoints={runDetail?.checkpoints ?? []}
             onChanged={handleBarChanged}
+            mentorOpen={mentorOpen}
+            onToggleMentor={handleToggleMentor}
           />
         )}
+
+        {/* Секция «Наставник» (§6.2/§7.1) -- внутри панели, N-4. */}
+        {trace.runId && mentorOpen && <MentorPanel runId={trace.runId} />}
 
         <div className="overflow-y-auto flex-1 min-h-0 feed-scroll">
           <ProgressStageFlow events={trace.events} />

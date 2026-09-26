@@ -281,3 +281,75 @@ describe("ProgressDrawer + ProgressCheckpointBar (PROGR-5.1, §6.3)", () => {
     expect(screen.getByRole("button", { name: "Продолжить" })).toBeEnabled();
   });
 });
+
+// ── PROGR-6: секция «Наставник» (§6.2 макет «[Наставник →]», §7.1) ────
+
+const NEXT_STEP_RESPONSE = {
+  run_id: "RUN-AB12CD34",
+  run_status: "active",
+  last_active_stage: "upload",
+  phase_text: "Исследование на этапе «Загрузка».",
+  summary: {
+    stage: "upload",
+    total_nodes: 1,
+    done_count: 1,
+    warning_nodes: 0,
+    nodes: [{ node_id: "structure_confirmed", status: "done" }],
+  },
+  recommendation: null,
+  history_warnings: [],
+};
+
+describe("ProgressDrawer + MentorPanel (PROGR-6, §6.2/§7.1)", () => {
+  beforeEach(() => {
+    mockFetchWithRunDetail();
+    const originalFetch = global.fetch as jest.Mock;
+    global.fetch = jest.fn((url: string, init?: RequestInit) => {
+      const urlStr = String(url);
+      if (urlStr.includes("/mentor/next-step")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(NEXT_STEP_RESPONSE) });
+      }
+      return originalFetch(url, init);
+    }) as jest.Mock;
+  });
+
+  it("кнопка «Наставник →» в полосе открывает секцию Наставника внутри панели", async () => {
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Наставник →" })).toBeEnabled());
+    expect(screen.queryByLabelText("Наставник")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Наставник →" }));
+    const mentor = screen.getByLabelText("Наставник");
+    expect(mentor).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/Критичных подсказок нет/)).toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Наставник →" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
+  it("N-4: открытие «Наставника» не закрывает панель «Прогресс»", async () => {
+    const onClose = jest.fn();
+    render(<ProgressDrawer open onClose={onClose} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Наставник →" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Наставник →" }));
+    await waitFor(() => expect(screen.getByLabelText("Наставник")).toBeInTheDocument());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Прогресс исследования").className).toContain("translate-x-0");
+  });
+
+  it("повторный клик «Наставник →» закрывает секцию (тогглер)", async () => {
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Наставник →" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Наставник →" }));
+    await waitFor(() => expect(screen.getByLabelText("Наставник")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Наставник →" }));
+    expect(screen.queryByLabelText("Наставник")).toBeNull();
+  });
+
+  it("без run_id ни полосы, ни секции «Наставник» нет", async () => {
+    mockFetchWithRunDetail({ run_id: null, started_at: null, events: [] });
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText("—")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: "Наставник →" })).toBeNull();
+  });
+});

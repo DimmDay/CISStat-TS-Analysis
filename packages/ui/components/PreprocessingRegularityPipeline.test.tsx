@@ -50,6 +50,8 @@ describe("PreprocessingRegularityPipeline", () => {
     (global.fetch as jest.Mock)
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(PROFILE_RESPONSE) })
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(CORRECTION_RESPONSE) })
+      // PROGR-6: после preview фоном идёт POST /v1/progress/mentor/sanity-check
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ warnings: [] }) })
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ ...CORRECTION_RESPONSE, applied: true }) });
     const onApplied = jest.fn();
     render(<PreprocessingRegularityPipeline onApplied={onApplied} />);
@@ -81,5 +83,91 @@ describe("PreprocessingRegularityPipeline", () => {
     });
     render(<PreprocessingRegularityPipeline onApplied={jest.fn()} />);
     expect(await screen.findByText(/мастер недоступен/)).toBeInTheDocument();
+  });
+});
+
+// ── PROGR-6 (§7.2): sanity-предупреждения Наставника в Мастере ────────
+
+describe("PreprocessingRegularityPipeline + Наставник (PROGR-6)", () => {
+  // Свежий fetch на каждый тест -- иначе mock.calls копятся между тестами.
+  beforeEach(() => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(PROFILE_RESPONSE) });
+  });
+
+  function sanityCalls(): unknown[][] {
+    return (global.fetch as unknown as jest.Mock).mock.calls.filter((call: unknown[]) =>
+      String(call[0]).includes("/v1/progress/mentor/sanity-check"),
+    );
+  }
+
+  it("после preview отправляет CorrectionOutcomeSummary (violations/rows из ответа, без статистик)", async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(PROFILE_RESPONSE) }) as unknown as typeof fetch;
+    (global.fetch as unknown as jest.Mock)
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(PROFILE_RESPONSE) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(CORRECTION_RESPONSE) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ warnings: [] }) });
+    render(<PreprocessingRegularityPipeline onApplied={jest.fn()} />);
+
+    await screen.findByRole("combobox", { name: "Стратегия исправления регулярности" });
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр изменений" }));
+    await waitFor(() => expect(sanityCalls()).toHaveLength(1));
+
+    const [url, init] = sanityCalls()[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toEqual({
+      stage: "preprocessing",
+      node_id: "regularity",
+      strategy: "interpolate",
+      method: null,
+      affected_count_before: 1,
+      changed_count: 1, // 1 - 0: разность violations before/after
+      still_affected_count: 0,
+      rows_before: 11,
+      rows_after: 12,
+      stats_before: null, // статистик нет -- over_aggressive честно молчит
+      stats_after: null,
+    });
+  });
+
+  it("предупреждение рендерится НАД кнопкой применения и НЕ блокирует её (§12 п.8)", async () => {
+    (global.fetch as unknown as jest.Mock)
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(PROFILE_RESPONSE) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(CORRECTION_RESPONSE) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            warnings: [
+              {
+                rule_id: "excessive_data_loss",
+                severity: "warning",
+                message: "Стратегия удалит 40% строк датасета.",
+                suggested_action: "Проверьте порог.",
+              },
+            ],
+          }),
+      });
+    render(<PreprocessingRegularityPipeline onApplied={jest.fn()} />);
+
+    await screen.findByRole("combobox", { name: "Стратегия исправления регулярности" });
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр изменений" }));
+    expect(await screen.findByText("Стратегия удалит 40% строк датасета.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Подтверждаю изменение активного датасета/i }));
+    expect(screen.getByRole("button", { name: "Применить исправления" })).toBeEnabled();
+  });
+
+  it("сбой sanity-check не роняет Мастер (best-effort)", async () => {
+    (global.fetch as unknown as jest.Mock)
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(PROFILE_RESPONSE) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(CORRECTION_RESPONSE) })
+      .mockResolvedValueOnce({ ok: false, status: 503, json: () => Promise.resolve({}) });
+    render(<PreprocessingRegularityPipeline onApplied={jest.fn()} />);
+
+    await screen.findByRole("combobox", { name: "Стратегия исправления регулярности" });
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр изменений" }));
+    expect(await screen.findByText("Нарушений: 1 → 0")).toBeInTheDocument();
+    await waitFor(() => expect(sanityCalls()).toHaveLength(1));
+    expect(
+      screen.queryByRole("alert", { name: "Предупреждения Наставника" }),
+    ).not.toBeInTheDocument();
   });
 });

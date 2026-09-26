@@ -251,4 +251,32 @@ describe("ProgressCheckpointBar", () => {
     expect(html).not.toContain("close_panel");
     expect(html).not.toContain("navigate");
   });
+
+  // ── PROGR-6: кнопка «Наставник →» (§6.2 макет: слот справа) ─────────
+
+  it("PROGR-6: кнопка «Наставник →» рендерится, aria-expanded=false по умолчанию", () => {
+    renderBar();
+    const mentor = screen.getByRole("button", { name: "Наставник →" });
+    expect(mentor).toBeInTheDocument();
+    expect(mentor).toHaveAttribute("aria-expanded", "false");
+    expect(mentor).toHaveAttribute("aria-controls", "mentor-panel");
+  });
+
+  it("PROGR-6: клик «Наставник →» вызывает onToggleMentor, панель не закрывается (N-4)", () => {
+    const onToggleMentor = jest.fn();
+    renderBar({ onToggleMentor });
+    fireEvent.click(screen.getByRole("button", { name: "Наставник →" }));
+    expect(onToggleMentor).toHaveBeenCalledTimes(1);
+    // N-4: никакой семантики закрытия -- onChanged не дёргается.
+    expect(screen.getByRole("group")).toBeInTheDocument();
+  });
+
+  it("PROGR-6: aria-expanded=true при открытой секции; клик тогглер вызывает колбэк", () => {
+    const onToggleMentor = jest.fn();
+    renderBar({ mentorOpen: true, onToggleMentor });
+    const mentor = screen.getByRole("button", { name: "Наставник →" });
+    expect(mentor).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(mentor);
+    expect(onToggleMentor).toHaveBeenCalledTimes(1);
+  });
 });

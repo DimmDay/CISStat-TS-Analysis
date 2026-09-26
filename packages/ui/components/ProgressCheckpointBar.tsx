@@ -17,16 +17,20 @@
 //                                якорь -- последнее событие с event_id
 //                                («текущий момент»), label опционален
 //
-// Кнопка «Наставник» (§6.2/§6.3) -- сознательно НЕ рендерится: её бэкенд --
-// отдельная задача PROGR-6 (plan_progress.md); мёртвых кнопок в панели нет
-// (решение PROGR-4, здесь продолжено).
+// PROGR-6: кнопка «Наставник →» (§6.2 макет -- справа в полосе: слот,
+// зарезервированный в PROGR-5.1) открывает панель Наставника
+// (MentorPanel, §7.1 «Следующий шаг»). Кнопка -- ТОГГЛЕР состояния
+// aria-expanded/aria-controls (контракт pill §4.1 аддендума); сама
+// панель рендерится родителем (ProgressDrawer). Бэкенд Наставника --
+// GET .../mentor/next-step (PROGR-6), из полосы запросов нет.
 //
 // N-2 (находка PROGR-4): run-level события (run_paused/run_resumed/
 // checkpoint_saved, node_id=null) компонентом никуда не кладутся -- статусы
 // узлов считаются в lib/progress.ts только по узловым событиям, своды
 // стадий не затрагиваются. N-4: никаких семантик закрытия/навигации --
 // об успехе родитель (ProgressDrawer) узнаёт только через onChanged()
-// (обновление данных), панель не закрывается.
+// (обновление данных), панель не закрывается; «Наставник» тоже только
+// открывает секцию, не закрывая панель.
 //
 // Ошибки (409/404/503/сеть) -- inline role="alert" (best-effort, паттерн
 // панели PROGR-4: сбой сети/слоя 2 не роняет панель).
@@ -50,6 +54,11 @@ interface ProgressCheckpointBarProps {
   /** Уведомление родителя об успешном действии: обновить трассу слоя 1
    * (run-level событие зеркалится в неё) и деталь запуска слоя 2. */
   onChanged: () => void;
+  /** PROGR-6: секция Наставника открыта (aria-expanded, §6.2 макет
+   * «[Наставник →]» -- слот справа в полосе). */
+  mentorOpen?: boolean;
+  /** Переключить секцию Наставника (рендерится родителем). */
+  onToggleMentor?: () => void;
 }
 
 /** Действия имеют смысл только для живого запуска (§5.1/§5.2: pause --
@@ -72,6 +81,8 @@ export function ProgressCheckpointBar({
   lastEvent,
   checkpoints,
   onChanged,
+  mentorOpen = false,
+  onToggleMentor,
 }: ProgressCheckpointBarProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -188,6 +199,23 @@ export function ProgressCheckpointBar({
           className="rounded-full border border-brand px-3 py-1 text-xs font-medium text-brand hover:bg-brand/5 disabled:cursor-not-allowed disabled:border-neutral-200 disabled:text-neutral-400"
         >
           Сохранить точку
+        </button>
+
+        {/* §6.2 макет: «[Наставник →]» -- слот справа в полосе действий;
+            третий элемент триады §6.3, рендерится всегда; открытая секция
+            живёт в родителе (ProgressDrawer). */}
+        <button
+          type="button"
+          onClick={() => onToggleMentor?.()}
+          aria-expanded={mentorOpen}
+          aria-controls="mentor-panel"
+          className={`ml-auto rounded-full border px-3 py-1 text-xs font-medium hover:bg-brand/5 ${
+            mentorOpen
+              ? "border-brand bg-brand text-white"
+              : "border-brand text-brand"
+          }`}
+        >
+          Наставник →
         </button>
       </div>
 

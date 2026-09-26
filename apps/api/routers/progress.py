@@ -33,6 +33,29 @@ make_trace_event (тот же fail-closed гейт реестра) -- и в сл
 N-2 (находка PROGR-4): stage-level события (node_id=None) нигде не
 превращаются в узловые факты; N-4: ответы не содержат семантики
 закрытия панели (состояние панели -- во фронтенде).
+
+PROGR-6 -- Наставник v1 (spec_progress.md §7, правило-движок без LLM):
+
+  GET  /v1/progress/runs/{run_id}/mentor/next-step
+       -- §7.1 «Следующий шаг»: статусы узлов запуска выводятся из
+          фактов трассы слоя 2 (зеркало фронтенд-логики PROGR-4),
+          прогоняются через отсортированный по (priority, rule_id)
+          список on_demand-правил, возвращается ПЕРВОЕ сработавшее
+          (одна рекомендация за раз) + текст пояснения текущей фазы
+          (шаблон по последнему активному stage) + краткая сводка
+          уже полученных выводов узлов той же стадии; здесь же
+          on_demand_with_history-правило «мечется» (§7.2: требует
+          истории trace_events, вызывается при открытии Наставника,
+          предупреждение показывается в панели, не инлайн в Мастере).
+  POST /v1/progress/mentor/sanity-check
+       -- §7.2: прогон preview-исхода Мастера (клиент строит
+          CorrectionOutcomeSummary из уже полученного preview-ответа --
+          переупаковка полей, не новые вычисления) через ВСЕ
+          on_correction_result-правила; возвращается ВЕСЬ список
+          сработавших предупреждений. Чистое вычисление над телом
+          запроса: долговременный слой не нужен (в отличие от
+          run-scoped эндпоинтов -- без _durable_ops). Неизвестная пара
+          (stage, node_id) -- fail-closed 422 (паттерн make_node_state).
 """
 from __future__ import annotations
 
@@ -49,6 +72,16 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from app.data.file_loader import read_uploaded_file
+from app.core.mentor_rules import (
+    CorrectionOutcomeSummary,
+    derive_node_statuses,
+    evaluate_history_warnings,
+    evaluate_next_step,
+    evaluate_sanity,
+    phase_text,
+    stage_node_summary,
+)
+from app.core.pipeline_graph import is_known_node
 from apps.api.research_runs import (
     ResearchCheckpoint,
     ResearchRun,
@@ -489,6 +522,194 @@ def restore_run(request: Request, response: Response, run_id: str) -> RestoreRes
         last_active_stage=session.last_active_stage,
         events_restored=len(seeded),
         events_total=events_total,
+    )
+
+
+# ── PROGR-6: Наставник v1 (spec_progress.md §7, правило-движок) ───────
+
+
+class SanityWarningOut(BaseModel):
+    """Предупреждение §7.2 (канон SanityWarning движка)."""
+
+    rule_id: str
+    severity: str
+    message: str
+    suggested_action: Optional[str] = None
+
+
+class MentorRecommendationOut(BaseModel):
+    """Одна рекомендация §7.1 (первое сработавшее on_demand-правило)."""
+
+    rule_id: str
+    stage: str
+    message: str
+    recommended_action: Optional[str] = None
+
+
+class MentorNodeFactOut(BaseModel):
+    """Факт узла сводки стадии: id + статус (человекочитаемые метки --
+    на фронте, NODE_LABELS §6.2)."""
+
+    node_id: str
+    status: str
+
+
+class MentorPhaseSummaryOut(BaseModel):
+    """Краткая сводка уже полученных выводов узлов стадии (§7.1):
+    агрегация фактов трассы -- не новая аналитика, а пересказ."""
+
+    stage: str
+    total_nodes: int
+    done_count: int
+    warning_nodes: int
+    nodes: List[MentorNodeFactOut] = Field(default_factory=list)
+
+
+class MentorNextStepResponse(BaseModel):
+    """Ответ «Следующий шаг» (§7.1) + история-предупреждения §7.2.
+
+    N-4: в ответе нет семантики закрытия/навигации панели -- открыть
+    «Наставник», перейти по deep-link или закрыть панель решает
+    фронтенд; recommended_action -- строка «stage.node_id», переход
+    по ней -- ответственность рендера."""
+
+    run_id: str
+    run_status: str
+    last_active_stage: str
+    phase_text: str
+    summary: MentorPhaseSummaryOut
+    recommendation: Optional[MentorRecommendationOut] = None
+    history_warnings: List[SanityWarningOut] = Field(default_factory=list)
+
+
+class CorrectionOutcomeSummaryIn(BaseModel):
+    """Тело sanity-check: нормализованная проекция preview-ответа
+    Мастера (§7.2 -- «маппинг тривиален, разный набор полей у
+    Missing/Outliers/Regularity сводится к общим именам на клиенте
+    перед отправкой»)."""
+
+    stage: str
+    node_id: str
+    strategy: str = ""
+    method: Optional[str] = None
+    affected_count_before: int = 0
+    changed_count: int = 0
+    still_affected_count: int = 0
+    rows_before: int = 0
+    rows_after: int = 0
+    stats_before: Optional[Dict[str, Optional[float]]] = None
+    stats_after: Optional[Dict[str, Optional[float]]] = None
+
+
+class SanityCheckResponse(BaseModel):
+    """§7.2: ВЕСЬ список сработавших предупреждений (проблемы
+    независимы и не взаимоисключающи), порядок -- реестр правил."""
+
+    warnings: List[SanityWarningOut] = Field(default_factory=list)
+
+
+@router.get("/runs/{run_id}/mentor/next-step", response_model=MentorNextStepResponse)
+@_durable_ops
+def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
+    """«Следующий шаг» (§7.1): одна рекомендация по трассе слоя 2.
+
+    Статусы узлов выводятся из фактов trace_events запуска
+    (derive_node_statuses -- зеркало фронтенд-логики PROGR-4; N-2:
+    run-level события не создают узловых фактов). 503 -- долговременный
+    слой недоступен (рекомендация по неполной истории выдавала бы
+    уверенный совет на неполных данных)."""
+    store = _require_store()
+    run = _require_run(run_id)
+    events = store.list_events(run_id)
+    statuses = derive_node_statuses(events)
+    recommendation = evaluate_next_step(statuses)
+    history_warnings = evaluate_history_warnings(events)
+
+    last_stage = "upload"
+    if events:
+        tail_stage = events[-1].stage
+        if tail_stage in KNOWN_STAGES:
+            last_stage = tail_stage
+
+    return MentorNextStepResponse(
+        run_id=run_id,
+        run_status=run.status,
+        last_active_stage=last_stage,
+        phase_text=phase_text(last_stage),
+        summary=MentorPhaseSummaryOut(**stage_node_summary(last_stage, statuses)),
+        recommendation=(
+            MentorRecommendationOut(
+                rule_id=recommendation.rule_id,
+                stage=recommendation.stage,
+                message=recommendation.message,
+                recommended_action=recommendation.recommended_action,
+            )
+            if recommendation is not None
+            else None
+        ),
+        history_warnings=[
+            SanityWarningOut(
+                rule_id=warning.rule_id,
+                severity=warning.severity,
+                message=warning.message,
+                suggested_action=warning.suggested_action,
+            )
+            for warning in history_warnings
+        ],
+    )
+
+
+@router.post("/mentor/sanity-check", response_model=SanityCheckResponse)
+def run_mentor_sanity_check(payload: CorrectionOutcomeSummaryIn) -> SanityCheckResponse:
+    """Sanity-проверка preview-исхода Мастера (§7.2): ВЕСЬ список
+    сработавших предупреждений над нормализованным исходом.
+
+    Проверка встраивается в шаг «Предпросмотр» ДО применения
+    (preview=true, §7.2) -- аналитик видит предупреждение прежде, чем
+    нажмёт «Применить исправления»; не блокирует действие (§12 п.8).
+    Чистое вычисление: без долговременного слоя (POST умышленно, тело
+    несёт данные; результат зависит только от тела запроса)."""
+    if payload.stage not in KNOWN_STAGES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Неизвестная стадия: {payload.stage!r}; известные: {list(KNOWN_STAGES)}",
+        )
+    if not is_known_node(payload.stage, payload.node_id):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Неизвестный узел {payload.node_id!r} стадии "
+                f"{payload.stage!r} (§2 -- фантомных узлов нет)"
+            ),
+        )
+    outcome = CorrectionOutcomeSummary(
+        stage=payload.stage,
+        node_id=payload.node_id,
+        strategy=payload.strategy,
+        method=payload.method,
+        affected_count_before=payload.affected_count_before,
+        changed_count=payload.changed_count,
+        still_affected_count=payload.still_affected_count,
+        rows_before=payload.rows_before,
+        rows_after=payload.rows_after,
+        stats_before=(
+            dict(payload.stats_before) if payload.stats_before is not None else None
+        ),
+        stats_after=(
+            dict(payload.stats_after) if payload.stats_after is not None else None
+        ),
+    )
+    warnings = evaluate_sanity(outcome)
+    return SanityCheckResponse(
+        warnings=[
+            SanityWarningOut(
+                rule_id=warning.rule_id,
+                severity=warning.severity,
+                message=warning.message,
+                suggested_action=warning.suggested_action,
+            )
+            for warning in warnings
+        ]
     )
 
 

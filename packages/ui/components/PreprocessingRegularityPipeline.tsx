@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
+import {
+  buildCorrectionOutcomeSummary,
+  fetchSanityWarnings,
+  type SanityWarningInfo,
+} from "../lib/mentor";
+import { MentorInlineWarning } from "./MentorInlineWarning";
 import type { RegularityProfile, RegularityProfileResponse } from "./PreprocessingRegularityOverview";
 
 type Strategy = "sort" | "interpolate" | "ffill" | "bfill" | "asfreq" | "fictitious_zero" | "flag";
@@ -51,6 +57,9 @@ export function PreprocessingRegularityPipeline({ onApplied }: { onApplied: () =
   const [busy, setBusy] = useState<"load" | "preview" | "apply" | null>("load");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // PROGR-6 (§7.2): предупреждения Наставника над «Применить исправления»
+  // (best-effort -- Мастер работает и без Наставника, §12 п.8).
+  const [mentorWarnings, setMentorWarnings] = useState<SanityWarningInfo[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -76,6 +85,7 @@ export function PreprocessingRegularityPipeline({ onApplied }: { onApplied: () =
     setConfirmed(false);
     setSuccess(null);
     setError(null);
+    setMentorWarnings([]);
   };
 
   const requestCorrection = async (apply: boolean) => {
@@ -100,7 +110,26 @@ export function PreprocessingRegularityPipeline({ onApplied }: { onApplied: () =
       if (apply) {
         setProfile(data.profile);
         setSuccess("Изменения применены, профиль пересчитан");
+        setMentorWarnings([]);
         onApplied();
+      } else {
+        // PROGR-6 (§7.2): сводка preview к общим именам. У Регулярности
+        // нет total_changed: изменившиеся нарушения -- разность
+        // violations_before/after; строки -- из самого ответа; статистик
+        // нет -- over_aggressive честно молчит (нет данных, нет выдумки).
+        void fetchSanityWarnings(
+          buildCorrectionOutcomeSummary({
+            stage: "preprocessing",
+            nodeId: "regularity",
+            strategy: data.strategy,
+            method: null,
+            affectedBefore: data.total_violations_before,
+            changed: Math.max(0, data.total_violations_before - data.total_violations_after),
+            stillAffected: data.total_violations_after,
+            rowsBefore: data.rows_before,
+            rowsAfter: data.rows_after,
+          }),
+        ).then(setMentorWarnings);
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Не удалось исправить регулярность");
@@ -202,6 +231,9 @@ export function PreprocessingRegularityPipeline({ onApplied }: { onApplied: () =
               />
               Подтверждаю изменение активного датасета
             </label>
+            {/* PROGR-6 (§7.2/§12 п.8): предупреждение ДО apply, над кнопкой;
+                кнопку НЕ блокирует. */}
+            {preview && <MentorInlineWarning warnings={mentorWarnings} />}
             <button
               type="button"
               disabled={!preview || !confirmed || busy !== null}

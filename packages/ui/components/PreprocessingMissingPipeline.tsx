@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
+import {
+  buildCorrectionOutcomeSummary,
+  fetchSanityWarnings,
+  worstStdStats,
+  type SanityWarningInfo,
+} from "../lib/mentor";
+import { MentorInlineWarning } from "./MentorInlineWarning";
 import type { MissingProfileItem, MissingProfileResponse } from "./PreprocessingMissingOverview";
 
 type Strategy = "drop_rows" | "median_mode" | "mean_mode" | "constant" | "interpolate" | "flag";
@@ -96,6 +103,10 @@ export function PreprocessingMissingPipeline({ onApplied }: { onApplied: () => v
   const [busy, setBusy] = useState<"load" | "preview" | "apply" | null>("load");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // PROGR-6 (§7.2): предупреждения Наставника над «Применить исправления».
+  // Запрос -- после preview (ДО apply, §7.2); сбой -- пустой список,
+  // Мастер работает и без Наставника (best-effort, §12 п.8).
+  const [mentorWarnings, setMentorWarnings] = useState<SanityWarningInfo[]>([]);
   const hasApplicableColumns = (profile?.columns.length ?? 0) > 0;
   const noMissingValues = hasApplicableColumns && profile!.total_missing === 0;
 
@@ -130,6 +141,7 @@ export function PreprocessingMissingPipeline({ onApplied }: { onApplied: () => v
     setConfirmed(false);
     setSuccess(null);
     setError(null);
+    setMentorWarnings([]);
   };
 
   const requestCorrection = async (apply: boolean) => {
@@ -155,7 +167,31 @@ export function PreprocessingMissingPipeline({ onApplied }: { onApplied: () => v
         } : current);
         setSelected(data.profile.filter((item) => item.missing_count > 0).map((item) => item.column));
         setSuccess("Изменения применены, профиль пересчитан");
+        setMentorWarnings([]);
         onApplied();
+      } else {
+        // PROGR-6 (§7.2): Наставник читает те же уже вычисленные числа
+        // preview-ответа (переупаковка, не новая аналитика) и предупреждает
+        // ДО подтверждения. rows_before -- из профиля остановки (§7.2:
+        // сводится к общим именам на клиенте); статистики -- «худшая»
+        // колонка по падению std (для over_aggressive).
+        const rowsBefore = profile?.total_rows ?? 0;
+        const stats = worstStdStats(data.columns);
+        void fetchSanityWarnings(
+          buildCorrectionOutcomeSummary({
+            stage: "preprocessing",
+            nodeId: "missing",
+            strategy: data.strategy,
+            method: null,
+            affectedBefore: data.total_missing,
+            changed: data.total_changed,
+            stillAffected: data.total_still_missing,
+            rowsBefore,
+            rowsAfter: rowsBefore - data.rows_removed,
+            statsBefore: stats?.statsBefore ?? null,
+            statsAfter: stats?.statsAfter ?? null,
+          }),
+        ).then(setMentorWarnings);
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Не удалось исправить пропуски");
@@ -311,6 +347,9 @@ export function PreprocessingMissingPipeline({ onApplied }: { onApplied: () => v
             />
             Подтверждаю изменение активного датасета
           </label>
+          {/* PROGR-6 (§7.2/§12 п.8): предупреждение ДО apply, над кнопкой;
+              кнопку НЕ блокирует -- «Продолжить всё равно» внутри баннера. */}
+          {preview && <MentorInlineWarning warnings={mentorWarnings} />}
           <button
             type="button"
             disabled={!preview || !confirmed || busy !== null}

@@ -62,7 +62,8 @@ describe("PreprocessingOutliersPipeline", () => {
   });
 
   it("previews and applies only after confirmation", async () => {
-    mockFetchSequence(PROFILE, ALL_COLUMNS, PREVIEW, { ...PREVIEW, applied: true });
+    // PROGR-6: после preview фоном идёт POST /v1/progress/mentor/sanity-check
+    mockFetchSequence(PROFILE, ALL_COLUMNS, PREVIEW, { warnings: [] }, { ...PREVIEW, applied: true });
     const onApplied = jest.fn();
     render(<PreprocessingOutliersPipeline onApplied={onApplied} />);
 
@@ -84,7 +85,7 @@ describe("PreprocessingOutliersPipeline", () => {
   });
 
   it("shows the before/after impact forecast in the preview step", async () => {
-    mockFetchSequence(PROFILE, ALL_COLUMNS, PREVIEW);
+    mockFetchSequence(PROFILE, ALL_COLUMNS, PREVIEW, { warnings: [] });
     render(<PreprocessingOutliersPipeline onApplied={jest.fn()} />);
 
     await screen.findByText("Price");
@@ -93,5 +94,72 @@ describe("PreprocessingOutliersPipeline", () => {
     expect(await screen.findByText("Прогноз влияния на статистики")).toBeInTheDocument();
     expect(screen.getByText("10 → 10")).toBeInTheDocument(); // медиана не меняется
     expect(screen.getByText(/216,3 → 3,4/)).toBeInTheDocument(); // std резко падает
+  });
+});
+
+// ── PROGR-6 (§7.2): sanity-предупреждения Наставника в Мастере ────────
+
+describe("PreprocessingOutliersPipeline + Наставник (PROGR-6)", () => {
+  beforeEach(() => {
+    // Свежий fetch на каждый тест -- иначе mock.calls копятся между тестами.
+    mockFetchSequence(PROFILE, ALL_COLUMNS);
+  });
+
+  function sanityCalls(): unknown[][] {
+    return (global.fetch as unknown as jest.Mock).mock.calls.filter((call: unknown[]) =>
+      String(call[0]).includes("/v1/progress/mentor/sanity-check"),
+    );
+  }
+
+  it("после preview отправляет CorrectionOutcomeSummary с method и «худшей» колонкой статистик", async () => {
+    mockFetchSequence(PROFILE, ALL_COLUMNS, PREVIEW, { warnings: [] });
+    render(<PreprocessingOutliersPipeline onApplied={jest.fn()} />);
+
+    await screen.findByText("Price");
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр изменений" }));
+    await waitFor(() => expect(sanityCalls()).toHaveLength(1));
+
+    const [url, init] = sanityCalls()[0] as [string, RequestInit];
+    expect(url).toContain("/v1/progress/mentor/sanity-check");
+    expect(JSON.parse(String(init.body))).toEqual({
+      stage: "preprocessing",
+      node_id: "outliers",
+      strategy: "cap",
+      method: "iqr",
+      affected_count_before: 1,
+      changed_count: 1,
+      still_affected_count: 0,
+      rows_before: 21, // PROFILE.total_rows
+      rows_after: 21, // 21 - rows_removed(0)
+      stats_before: { mean: 57, median: 10, std: 216.3 },
+      stats_after: { mean: 11, median: 10, std: 3.4 },
+    });
+  });
+
+  it("предупреждение рендерится НАД кнопкой применения и НЕ блокирует её (§12 п.8)", async () => {
+    mockFetchSequence(
+      PROFILE,
+      ALL_COLUMNS,
+      PREVIEW,
+      {
+        warnings: [
+          {
+            rule_id: "over_aggressive",
+            severity: "warning",
+            message: "После исправления стандартное отклонение упало более чем в 5 раз.",
+            suggested_action: null,
+          },
+        ],
+      },
+    );
+    render(<PreprocessingOutliersPipeline onApplied={jest.fn()} />);
+
+    await screen.findByText("Price");
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр изменений" }));
+    expect(
+      await screen.findByText("После исправления стандартное отклонение упало более чем в 5 раз."),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("checkbox", { name: /Подтверждаю изменение активного датасета/i }));
+    expect(screen.getByRole("button", { name: "Применить исправления" })).toBeEnabled();
   });
 });

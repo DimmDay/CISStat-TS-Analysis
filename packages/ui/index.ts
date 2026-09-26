@@ -261,6 +261,10 @@ export { ProgressDrawer } from "./components/ProgressDrawer";
 export { ProgressCheckpointBar } from "./components/ProgressCheckpointBar";
 export { ProgressStageFlow } from "./components/ProgressStageFlow";
 export { ProgressTraceLog } from "./components/ProgressTraceLog";
+// Наставник v1 (Task PROGR-6, spec_progress.md §7): панель «Следующий шаг»
+// внутри «Прогресса» + инлайн-баннер предупреждений в Мастерах (§12 п.8).
+export { MentorPanel } from "./components/MentorPanel";
+export { MentorInlineWarning } from "./components/MentorInlineWarning";
 
 // Sessions-aware Home: общий "Рабочий стол" + embedded-онбординг.
 // Standalone-версия (с auth-веткой) живёт в apps/standalone/components --

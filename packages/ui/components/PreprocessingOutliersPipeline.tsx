@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
+import {
+  buildCorrectionOutcomeSummary,
+  fetchSanityWarnings,
+  worstStdStats,
+  type SanityWarningInfo,
+} from "../lib/mentor";
+import { MentorInlineWarning } from "./MentorInlineWarning";
 import type { OutlierProfileItem, OutlierProfileResponse } from "./PreprocessingOutliersOverview";
 
 type Method = "iqr" | "zscore" | "mad" | "percentile";
@@ -91,6 +98,9 @@ export function PreprocessingOutliersPipeline({ onApplied }: { onApplied: () => 
   const [strategy, setStrategy] = useState<Strategy>("cap");
   const [useResidual, setUseResidual] = useState(false);
   const [dateColumn, setDateColumn] = useState("");
+  // PROGR-6 (§7.2): предупреждения Наставника над «Применить исправления»
+  // (best-effort -- Мастер работает и без Наставника, §12 п.8).
+  const [mentorWarnings, setMentorWarnings] = useState<SanityWarningInfo[]>([]);
   const [preview, setPreview] = useState<CorrectionResponse | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState<"load" | "preview" | "apply" | null>("load");
@@ -135,6 +145,7 @@ export function PreprocessingOutliersPipeline({ onApplied }: { onApplied: () => 
     setConfirmed(false);
     setSuccess(null);
     setError(null);
+    setMentorWarnings([]);
   };
 
   const parsedParam = (): number | [number, number] => {
@@ -177,7 +188,29 @@ export function PreprocessingOutliersPipeline({ onApplied }: { onApplied: () => 
         } : current);
         setSelected(data.profile.filter((item) => item.outlier_count > 0).map((item) => item.column));
         setSuccess("Изменения применены, профиль пересчитан");
+        setMentorWarnings([]);
         onApplied();
+      } else {
+        // PROGR-6 (§7.2): те же уже вычисленные числа preview-ответа
+        // сводятся к общим именам на клиенте; статистики -- «худшая»
+        // колонка по падению std (over_aggressive); rows -- из профиля.
+        const rowsBefore = profile?.total_rows ?? 0;
+        const stats = worstStdStats(data.columns);
+        void fetchSanityWarnings(
+          buildCorrectionOutcomeSummary({
+            stage: "preprocessing",
+            nodeId: "outliers",
+            strategy: data.strategy,
+            method: data.method,
+            affectedBefore: data.total_outliers,
+            changed: data.total_changed,
+            stillAffected: data.total_still_outliers,
+            rowsBefore,
+            rowsAfter: rowsBefore - data.rows_removed,
+            statsBefore: stats?.statsBefore ?? null,
+            statsAfter: stats?.statsAfter ?? null,
+          }),
+        ).then(setMentorWarnings);
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Не удалось исправить выбросы");
@@ -379,6 +412,9 @@ export function PreprocessingOutliersPipeline({ onApplied }: { onApplied: () => 
             />
             Подтверждаю изменение активного датасета
           </label>
+          {/* PROGR-6 (§7.2/§12 п.8): предупреждение ДО apply, над кнопкой;
+              кнопку НЕ блокирует -- «Продолжить всё равно» внутри баннера. */}
+          {preview && <MentorInlineWarning warnings={mentorWarnings} />}
           <button
             type="button"
             disabled={!preview || !confirmed || busy !== null}
