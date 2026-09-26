@@ -56,6 +56,22 @@ PROGR-6 -- Наставник v1 (spec_progress.md §7, правило-движ�
           запроса: долговременный слой не нужен (в отличие от
           run-scoped эндпоинтов -- без _durable_ops). Неизвестная пара
           (stage, node_id) -- fail-closed 422 (паттерн make_node_state).
+
+PROGR-7 -- отчёт для пользователя (spec_progress.md §5.4):
+
+  GET  /v1/progress/runs/{run_id}/report?format=md|html
+       -- линейный отчёт из trace_events слоя 2: по каждому пройденному
+          узлу -- что нашли, что исправили, чем кончилось (факты из
+          payload §4.1). Терминология НЕ изобретается заново: методология
+          остановок -- тексты «Метрики и алгоритм» ВЕРБАТИМ из единого
+          промотированного реестра знаний (apps/api/knowledge,
+          EDU-API-1); метки стадий -- stage_labels_ru того же реестра.
+          Прогнозирование -- по ссылке на
+          GET /v1/session/modeling/forecast/{id}/export.json (§5.4:
+          сериализация не дублируется). Движок -- app/core/run_report.py
+          (чистый модуль без HTTP). Ридер трассы сам не трассируется;
+          слой 2 недоступен -- честный 503 (отчёт по неполной истории
+          выдавал бы неполные факты за полные, паттерн PROGR-5/PROGR-6).
 """
 from __future__ import annotations
 
@@ -82,6 +98,7 @@ from app.core.mentor_rules import (
     stage_node_summary,
 )
 from app.core.pipeline_graph import is_known_node
+from app.core.run_report import build_report_model, render_html, render_markdown
 from apps.api.research_runs import (
     ResearchCheckpoint,
     ResearchRun,
@@ -656,6 +673,51 @@ def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
             )
             for warning in history_warnings
         ],
+    )
+
+
+# ── PROGR-7: отчёт для пользователя (spec_progress.md §5.4) ──────────
+
+# Форматы plan_progress.md (md|html): pdf -- не контракт этой задачи,
+# неизвестный формат -- честный 422 (fail-closed, паттерн sanity-check).
+_REPORT_MEDIA_TYPES: dict[str, str] = {
+    "md": "text/markdown; charset=utf-8",
+    "html": "text/html; charset=utf-8",
+}
+
+
+@router.get("/runs/{run_id}/report")
+@_durable_ops
+def get_run_report(
+    run_id: str,
+    report_format: str = Query(
+        default="md", alias="format", pattern="^(md|html)$"
+    ),
+) -> Response:
+    """Линейный отчёт из trace_events слоя 2 (§5.4): по каждому
+    пройденному узлу -- что нашли, что исправили, чем кончилось.
+    Методология -- тексты «Метрики и алгоритм» вербатим из реестра
+    знаний; Прогнозирование -- ссылкой на export.json, без дублирования
+    сериализации. 503 -- долговременный слой недоступен (отчёт по
+    неполной истории выдавал бы неполные факты за полные); ответ --
+    документ (Response), не pydantic-модель: формат и есть контракт."""
+    store = _require_store()
+    run = _require_run(run_id)
+    events = store.list_events(run_id)
+    model = build_report_model(
+        run.to_dict(), [event.to_dict() for event in events]
+    )
+    media_type = _REPORT_MEDIA_TYPES[report_format]
+    if report_format == "html":
+        content = render_html(model)
+        filename = f"report-{run_id}.html"
+    else:
+        content = render_markdown(model)
+        filename = f"report-{run_id}.md"
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
     )
 
 

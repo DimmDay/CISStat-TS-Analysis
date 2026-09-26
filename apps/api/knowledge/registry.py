@@ -211,6 +211,13 @@ class KnowledgeRegistry:
             return None
         return self._key_index.get((stage_id, node_id, facet))
 
+    def stage_label(self, stage_id: str) -> str:
+        """RU-метка этапа пайплайна (stage_labels_ru артефакта промоушена,
+        PROGR-7 §5.4): единая терминология с фронтовым knowledge.ts
+        (STAGE_LABELS_RU) -- отчёт не изобретает названия этапов заново.
+        Неизвестный этап -- честный id (no fabricated results)."""
+        return self._stage_labels_ru.get(stage_id, stage_id)
+
     def get_published_library(
         self, stage_id: Optional[str] = None
     ) -> list[KnowledgeArticle]:
