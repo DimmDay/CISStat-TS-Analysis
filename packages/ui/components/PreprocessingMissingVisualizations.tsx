@@ -1,5 +1,21 @@
 "use client";
 
+// packages/ui/components/PreprocessingMissingVisualizations.tsx
+//
+// Графики Обзора остановки «Пропуски» (GET /dataset/missing-matrix |
+// missing-correlation | missing-distribution, apps/api/routers/session.py).
+//
+// Дефект класса OUTL-1 «графики без явной подписки на refresh» (волна 1
+// plan_review_charts.md, 2026-09-26): все три графика принимают refreshKey --
+// ТЕМ же сигналом обновления, что перезапрашивает профиль/счётчик Обзора
+// (missingRefreshKey + datasetVersion: apply исправления, смена режима,
+// новый датасет). Ревизия включается в query как `revision` (cache-buster):
+// при медленном apply на проде пользователь может вернуться к вкладке
+// «Матрица»/«Корреляция»/«Boxplot» до коммита POST -- запрос уходит ДО
+// применения, а после повышения refreshKey график был бы смонтирован со
+// старыми данными навсегда (счётчик при этом уже обновился). Неизвестный
+// query-параметр FastAPI игнорирует -- бэкенд не меняется.
+
 import { useEffect, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
 import type { MissingProfileItem } from "./PreprocessingMissingOverview";
@@ -76,8 +92,8 @@ function shareColor(share: number): string {
   return `rgb(${mix.join(",")})`;
 }
 
-export function MissingMatrixChart() {
-  const { data, loading, error } = useJsonFetch<MatrixResponse>("/dataset/missing-matrix");
+export function MissingMatrixChart({ refreshKey = 0 }: { refreshKey?: number }) {
+  const { data, loading, error } = useJsonFetch<MatrixResponse>(`/dataset/missing-matrix?revision=${refreshKey}`);
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
   if (!data || data.bins.length === 0) {
     return <div className="flex min-h-0 flex-1 items-center justify-center text-sm text-neutral-500">Нет данных для матрицы пропусков.</div>;
@@ -134,8 +150,8 @@ function correlationColor(value: number | null): string {
   return `rgb(${g},${g},255)`;
 }
 
-export function MissingCorrelationChart() {
-  const { data, loading, error } = useJsonFetch<CorrelationResponse>("/dataset/missing-correlation");
+export function MissingCorrelationChart({ refreshKey = 0 }: { refreshKey?: number }) {
+  const { data, loading, error } = useJsonFetch<CorrelationResponse>(`/dataset/missing-correlation?revision=${refreshKey}`);
   if (loading || error) return <ChartStatus loading={loading} error={error} />;
   if (!data || data.columns.length < 2) {
     return (
@@ -220,14 +236,14 @@ function BoxAndWhiskers({ label, group, color, domainMin, domainMax }: {
   );
 }
 
-export function MissingBoxplotChart({ columns }: { columns: MissingProfileItem[] }) {
+export function MissingBoxplotChart({ columns, refreshKey = 0 }: { columns: MissingProfileItem[]; refreshKey?: number }) {
   const numericColumns = columns.filter((c) => c.semantic === "numeric").map((c) => c.column);
   const [valueColumn, setValueColumn] = useState(numericColumns[0] ?? "");
   const [indicatorColumn, setIndicatorColumn] = useState(columns.find((c) => c.column !== numericColumns[0])?.column ?? "");
   const otherColumns = columns.map((c) => c.column).filter((c) => c !== valueColumn);
 
   const path = valueColumn && indicatorColumn
-    ? `/dataset/missing-distribution?value_column=${encodeURIComponent(valueColumn)}&indicator_column=${encodeURIComponent(indicatorColumn)}`
+    ? `/dataset/missing-distribution?value_column=${encodeURIComponent(valueColumn)}&indicator_column=${encodeURIComponent(indicatorColumn)}&revision=${refreshKey}`
     : null;
   const { data, loading, error } = useJsonFetch<DistributionResponse>(path);
 

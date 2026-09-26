@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 import { PreprocessingMissingOverview } from "./PreprocessingMissingOverview";
 
@@ -143,5 +143,61 @@ describe("PreprocessingMissingOverview", () => {
 
     expect(await screen.findByText(/Каждый столбец матрицы/)).toBeInTheDocument();
     expect(screen.queryByRole("table", { name: "Матрица пропусков по колонкам" })).not.toBeInTheDocument();
+  });
+
+  // ── Класс OUTL-1 «графики без явной подписки на refresh» (волна 1
+  // plan_review_charts.md): инвариант согласованности — счётчик (профиль) и
+  // графики Обзора подписаны на ОДИН сигнал обновления (refreshKey =
+  // missingRefreshKey + datasetVersion). Применение исправления при
+  // смонтированном Обзоре (медленный apply на проде: пользователь вернулся
+  // к вкладке до коммита POST, datasetVersion пришёл ПОСЛЕ монтирования)
+  // обязано перезапросить И профиль, И данные графиков — иначе UI противоречит
+  // сам себе. Ревизия передаётся в URL (cache-buster), чтобы исключить и
+  // устаревший HTTP-кэш.
+  it("refetches the matrix chart together with the profile when refreshKey changes while mounted", async () => {
+    const fetchMock = jest.fn((url: unknown) => {
+      const u = String(url);
+      if (u.includes("/dataset/missing-profile")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(PROFILE) });
+      }
+      if (u.includes("/dataset/missing-matrix")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            columns: ["Price"],
+            bins: [{ bin_index: 0, row_start: 0, row_end: 3, row_count: 4, missing_share: { Price: 0.5 } }],
+            rows_per_bin: 4,
+            total_rows: 4,
+          }),
+        });
+      }
+      return Promise.reject(new Error(`unexpected fetch: ${u}`));
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { rerender } = render(<PreprocessingMissingOverview refreshKey={0} />);
+    await screen.findByRole("table", { name: "Матрица пропусков по колонкам" });
+    fireEvent.click(screen.getByRole("tab", { name: "Матрица" }));
+    const matrixUrls = () => fetchMock.mock.calls.map(([u]) => String(u)).filter((u) => u.includes("/dataset/missing-matrix"));
+    await waitFor(() => expect(matrixUrls().length).toBe(1));
+
+    rerender(<PreprocessingMissingOverview refreshKey={1} />);
+
+    // Профиль перезапросился (счётчик обновился) — гардирует сценарий:
+    // это поведение уже есть, оно обязано остаться.
+    await waitFor(() => {
+      const profileCalls = fetchMock.mock.calls.filter(([u]) => String(u).includes("/dataset/missing-profile")).length;
+      expect(profileCalls).toBe(2);
+    });
+    // Матрица перезапросилась вместе с профилем: последний вызов несёт НОВУЮ
+    // ревизию (cache-buster). Точное число вызовов не фиксируется: существующий
+    // «loading-flash» профиля перемонтирует графики и даёт дополнительный
+    // (отбрасываемый active-guard-ом) запрос — контракт о последнем состоянии,
+    // не о числе попыток (прецедент OUTL-1).
+    await waitFor(() => {
+      const calls = matrixUrls();
+      expect(calls.length).toBeGreaterThanOrEqual(2);
+      expect(calls[calls.length - 1]).toContain("revision=1");
+    });
   });
 });

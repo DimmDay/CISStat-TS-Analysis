@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 import { MissingMatrixChart, MissingCorrelationChart, MissingBoxplotChart } from "./PreprocessingMissingVisualizations";
 
@@ -97,5 +97,76 @@ describe("MissingBoxplotChart", () => {
       expect.stringContaining("value_column=Price&indicator_column=Region"),
       expect.anything()
     );
+  });
+});
+
+// ── Класс OUTL-1 «графики без явной подписки на refresh» (волна 1
+// plan_review_charts.md): контракт всех трёх графиков Обзора «Пропуски» --
+// изменение refreshKey (сигнал «данные сессии обновились» -- ТЕМ же сигналом
+// перезапрашивается профиль/счётчик Обзора: missingRefreshKey + datasetVersion)
+// обязано перезапросить данные графика; ревизия передаётся в query (revision)
+// как cache-buster. Без этого UI противоречит сам себе: счётчик пропусков
+// обнулился после apply, а смонтированные Матрица/Корреляция/Boxplot навсегда
+// показывают картину ДО применения (запрос ушёл до коммита медленного apply
+// и больше не повторяется). Неизвестный query-параметр FastAPI игнорирует --
+// бэкенд не меняется.
+describe("Missing charts refetch on refreshKey (revision cache-buster)", () => {
+  const BOXPLOT_COLUMNS = [
+    { column: "Price", dtype: "float64", semantic: "numeric" as const, total_count: 4, missing_count: 0, non_missing_count: 4, missing_pct: 0, recommended_strategy: "none" as const, missing_examples: [] },
+    { column: "Region", dtype: "object", semantic: "categorical" as const, total_count: 4, missing_count: 2, non_missing_count: 2, missing_pct: 50, recommended_strategy: "median_mode" as const, missing_examples: [2, 3] },
+  ];
+
+  // Надмножество полей всех трёх ответов: каждый чарт рендерит своё
+  // нейтральное пустое состояние (ранние return-ы) -- этого достаточно для
+  // контракта о ПОВТОРНЫХ запросах, содержимое отрисовки покрыто сюитами выше.
+  const CHART_FIXTURE = {
+    columns: [],
+    bins: [],
+    rows_per_bin: 0,
+    total_rows: 0,
+    matrix: [],
+    value_column: "Price",
+    indicator_column: "Region",
+    with_missing: null,
+    without_missing: null,
+  };
+
+  const cases: Array<{
+    name: string;
+    path: string;
+    element: (refreshKey: number) => React.ReactElement;
+  }> = [
+    {
+      name: "MissingMatrixChart",
+      path: "/dataset/missing-matrix",
+      element: (refreshKey) => <MissingMatrixChart refreshKey={refreshKey} />,
+    },
+    {
+      name: "MissingCorrelationChart",
+      path: "/dataset/missing-correlation",
+      element: (refreshKey) => <MissingCorrelationChart refreshKey={refreshKey} />,
+    },
+    {
+      name: "MissingBoxplotChart",
+      path: "/dataset/missing-distribution",
+      element: (refreshKey) => <MissingBoxplotChart columns={BOXPLOT_COLUMNS} refreshKey={refreshKey} />,
+    },
+  ];
+
+  it.each(cases)("$name refetches with a new revision when refreshKey changes", async ({ path, element }) => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(CHART_FIXTURE) });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { rerender } = render(element(0));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(String(fetchMock.mock.calls[0][0])).toContain(path);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("revision=0");
+
+    rerender(element(2));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    const secondUrl = String(fetchMock.mock.calls[1][0]);
+    expect(secondUrl).toContain(path);
+    expect(secondUrl).toContain("revision=2");
   });
 });

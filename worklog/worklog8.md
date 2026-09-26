@@ -938,3 +938,40 @@ tests/api: 1046 passed / 3 failed — те же три средовых baseline
 ### Deliverable
 
 ZIP: cisstat-progr6-mentor-v1.zip — пути репозитория сохранены. НОВЫЕ: app/core/mentor_rules.py, rules/mentor.yaml, tests/api/test_mentor_rules.py, packages/ui/lib/mentor.ts, packages/ui/lib/mentor.test.ts, packages/ui/components/MentorPanel.tsx/.test.tsx, MentorInlineWarning.tsx/.test.tsx. ИЗМЕНЁННЫЕ: apps/api/routers/progress.py, packages/ui/index.ts, ProgressCheckpointBar.tsx/.test.tsx, ProgressDrawer.tsx/.test.tsx, PreprocessingMissingPipeline.tsx/.test.tsx, PreprocessingOutliersPipeline.tsx/.test.tsx, PreprocessingRegularityPipeline.tsx/.test.tsx, worklog/worklog8.md (эта запись). Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: RCH-1 (2026-09-26) — Волна 1 plan_review_charts.md: остановка «Пропуски» — ревизионный refresh трёх графиков Обзора + статический гвард подписки
+
+Синхронизация: main@564cd95 (ff-reset с cfa1213; в промежутке upstream вошли PLAN-REVIEW-CHARTS 1e00ab1 и PROGR-6 564cd95 — Наставник v1, на волну 1 не влияет: PROGR-6 трогает Мастеров остановок, не Обзоры). Правила AGENTS.md: TDD RED→GREEN, без commit/push, ZIP в download.
+
+### Постановка
+
+Реализовать волну 1 (P0) plan_review_charts.md: устранить класс OUTL-1 «графики без явной подписки на refresh» на остановке «Пропуски» — MissingMatrixChart/MissingCorrelationChart (константные URL без параметров вовсе) и MissingBoxplotChart (URL зависит только от ручного выбора колонок) не перезапрашиваются при смонтированном Обзоре после apply исправления/смены режима, тогда как профиль/счётчик перезапрашиваются (refreshKey = missingRefreshKey + datasetVersion). Плюс обязательная часть волны: статический гвард подписки (прецедент ExpandableChartCoverage.test.ts).
+
+### TDD (RED → GREEN)
+
+- RED подтверждён по правильным причинам, триада: (1) гвард ReviewChartsRefreshCoverage — «MissingMatrixChart: принимает refreshKey, включает ревизию (revision|_r)=${refreshKey} в query» (Outliers/Regularity списков — зелёные с первого прогона, дефект изолирован Missing); (2) PreprocessingMissingVisualizations.test.tsx — TS2322 «Property 'refreshKey' does not exist» (компиляционный RED, прецедент OUTL-1); (3) PreprocessingMissingOverview.test.tsx — интеграционный инвариант: профиль перезапросился (2 вызова), а /dataset/missing-matrix остался на 1 вызове (waitFor-timeout) — дефект воспроизведён на смонтированном Обзоре дословно как в отчёте OUTL-1.
+- GREEN: PreprocessingMissingVisualizations.tsx — три сигнатуры принимают `refreshKey = 0`, ревизия в query: `/dataset/missing-matrix?revision=…`, `/dataset/missing-correlation?revision=…`, `/dataset/missing-distribution?…&revision=…` (в хвост существующих value_column/indicator_column); эпиграф-комментарий класса дефекта по образцу OUTL-1 (сценарий медленного apply, «неизвестный query-параметр FastAPI игнорирует»). PreprocessingMissingOverview.tsx — refreshKey прокинут во все три чарта. Бэкенд НЕ менялся.
+- Тест-паттерн OUTL-1 перенесён дословно: it.each по трём чартам (render refreshKey=0 → fetch#1 с revision=0; rerender refreshKey=2 → fetch#2 с revision=2) + интеграционный инвариант «счётчик обновился ⟹ матрица перезапросилась» (контракт о последнем состоянии, не о числе попыток — loading-flash/active-guard).
+
+### Статический гвард (новый файл, списки — единственный источник правды)
+
+packages/ui/components/ReviewChartsRefreshCoverage.test.ts: REVISION_SUBSCRIBED_CHART_SOURCES (Missing 3 / Outliers 4 / Regularity 2 — каждый export function …Chart обязан принимать refreshKey и включать ревизию в query, число чартов зафиксировано), PROFILE_PROP_OVERVIEWS (18: 7 Preprocessing + 9 EDA вкл. StructuralBreaks + 2 Modeling — negative-guard: sessionApiUrl( запрещён, данные только с profile-пропом), SELF_FETCH_GUARDED_OVERVIEWS (EdaDescriptive: requestKey-гвард с refreshKey в ключе), PROFILE_SELF_FETCH_OVERVIEWS (11: Обзоры Пропусков/Выбросов/Регулярности + вся «Валидация» — самофетч СВОЕГО профиля с deps [refreshKey], собственных fetch-ей данных графиков нет). Инвентарная проверка: объединение списков == 33 файла семейства (Overview|Visualizations, без тестов), без дублей — новый Обзор обязан быть классифицирован ровно в одном списке.
+
+### Верификация
+
+- RED→GREEN целевых сюит: 3 сюита / 51 тест — зелёные (was: RED триада выше).
+- Полный jest: **146 сюит / 1764 теста — все зелёные** (базлайн PROGR-6 145/1726 + 1 гвард-сюита + 38 тестов: it.each 3 + инвариант 1 + гвард 34).
+- typecheck:all (embedded + standalone) — чисто; npm run build:all — оба приложения ✓ Compiled successfully.
+- Бэкенд-проба (scripts/probe_missing_charts_revision.py, python3.13, PROBE OK 4/4): [1] /v1/session/dataset/missing-matrix и missing-correlation — 200 c ?revision=5, payload байт-в-байт совпадает с ответом без параметра; [1] missing-distribution — 200 c &revision=2 (ревизия в хвосте value_column/indicator_column), payload идентичен; [2] после apply (drop_rows) payload матрицы изменился — свежесть данных на сервере подтверждена (как в OUTL-1: источник симптома — только фронтенд). Датасет пробы — детерминированный CSV с зазорами в обеих колонках (mulberry32 seed 20260916, приём probe_outliers_line_stale.py; встроенный sales_demo.csv пропусков не содержит — проверено). Побочный traceback psycopg в пробе — best-effort слой 2 PROGR-5 честно деградирует без Postgres (дизайн), на результат не влияет.
+- Расхождения с планом: нет по существу; уточнение классификации гварда против текста плана §3 — «Валидация» отнесена к PROFILE_SELF_FETCH_OVERVIEWS (Обзоры самофетчат СВОЙ профиль с deps [refreshKey] — честнее negative-guard'а «без fetch»), Modeling Traceability/Workflow — в PROFILE_PROP_OVERVIEWS (workflow POST-ы — не self-fetch данных графиков сессионного API); EdaStructuralBreaks — в PROFILE_PROP_OVERVIEWS с пометкой «слой C — волна 2».
+
+### Находки/заметки (не блокеры)
+
+- N-1 (Info): MissingBoxplotChart сохраняет ручной выбор колонок в state при смонтированной вкладке — после apply выбор не сбрасывается (R-1 плана, поведение выбора вне класса refresh, не трогалось).
+- N-2 (Info): ревизия стандартизирована как `revision=`; `_r=` Регулярности остаётся (функционально эквивалентен, унификация — волна 3 по решению тимлида); гвард принимает оба.
+
+### Deliverable
+
+ZIP: cisstat-rch1-missing-charts-refresh.zip — пути репозитория сохранены. ИЗМЕНЁННЫЕ: packages/ui/components/PreprocessingMissingVisualizations.tsx (+refreshKey/revision, +эпиграф), packages/ui/components/PreprocessingMissingOverview.tsx (+прокидывание refreshKey), PreprocessingMissingVisualizations.test.tsx (+it.each×3), PreprocessingMissingOverview.test.tsx (+инвариант). НОВЫЕ: packages/ui/components/ReviewChartsRefreshCoverage.test.ts (гвард, 34 теста), scripts/probe_missing_charts_revision.py (бэкенд-проба). ИЗМЕНЁННЫЙ: worklog/worklog8.md (эта запись). Бэкенд/схемы не менялись. Без commit/push (AGENTS.md).

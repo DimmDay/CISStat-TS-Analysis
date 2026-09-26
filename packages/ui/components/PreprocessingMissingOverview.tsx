@@ -227,9 +227,9 @@ function PreprocessingMissingOverviewInner({ refreshKey = 0 }: { refreshKey?: nu
           </table>
         </div>
       )}
-      {activeView === "matrix" && <ExpandableChartPanel chartId="missing-matrix" title="Матрица пропусков"><MissingMatrixChart /></ExpandableChartPanel>}
-      {activeView === "correlation" && <ExpandableChartPanel chartId="missing-correlation" title="Корреляция пропусков"><MissingCorrelationChart /></ExpandableChartPanel>}
-      {activeView === "boxplot" && <ExpandableChartPanel chartId="missing-boxplot" title="Boxplot пропусков"><MissingBoxplotChart columns={profile.columns} /></ExpandableChartPanel>}
+      {activeView === "matrix" && <ExpandableChartPanel chartId="missing-matrix" title="Матрица пропусков"><MissingMatrixChart refreshKey={refreshKey} /></ExpandableChartPanel>}
+      {activeView === "correlation" && <ExpandableChartPanel chartId="missing-correlation" title="Корреляция пропусков"><MissingCorrelationChart refreshKey={refreshKey} /></ExpandableChartPanel>}
+      {activeView === "boxplot" && <ExpandableChartPanel chartId="missing-boxplot" title="Boxplot пропусков"><MissingBoxplotChart columns={profile.columns} refreshKey={refreshKey} /></ExpandableChartPanel>}
     </section>
   );
 }
