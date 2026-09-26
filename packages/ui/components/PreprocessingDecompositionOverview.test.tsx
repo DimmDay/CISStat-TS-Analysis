@@ -201,4 +201,51 @@ describe("PreprocessingDecompositionOverview: дозагрузка detail_level 
     expect(probe).toHaveTextContent('"observed":10');
     expect(probe).not.toHaveTextContent('"mode"');
   });
+
+  // Волна 2 plan_review_charts.md (RCH-2): интеграционный инвариант слоя C —
+  // «счётчик обновился ⟹ раскрытие перезапросилось». Применение исправления
+  // в любой остановке мутирует датасет (refreshKey = сумма ключей контейнера
+  // растёт), при этом params раскрытия (column) не меняются — без
+  // fingerprint в ключе кэша второе раскрытие отдало бы payload ДО мутации
+  // (stale expanded, класс OUTL-1 в слое C). Контракт о СВЕЖИХ данных
+  // второго раскрытия, не о числе вызовов.
+  it("после apply (refreshKey изменился) раскрытие перезапрашивает expanded и показывает свежий payload", async () => {
+    const staleDetail: PreprocessingDecompositionProfile = {
+      ...PROFILE,
+      n_points: 240,
+      points: [{ x: "2024-01-01T00:00:00", observed: 40.5, trend: 9, seasonal: 1.2, resid: -0.2 }],
+    };
+    const freshDetail: PreprocessingDecompositionProfile = {
+      ...PROFILE,
+      n_points: 240,
+      points: [{ x: "2024-01-01T00:00:00", observed: 43.5, trend: 9, seasonal: 1.2, resid: -0.2 }],
+    };
+    let calls = 0;
+    const fetchMock = jest.fn(() => {
+      calls += 1;
+      return Promise.resolve({ ok: true, status: 200, json: async () => envelope(calls === 1 ? staleDetail : freshDetail) });
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const view = render(
+      <PreprocessingDecompositionOverview profile={PROFILE} loading={false} error={null} noDataset={false} refreshKey={0} />,
+    );
+
+    // первое раскрытие (до apply): дозапрос expanded, stale-payload в графике
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(await screen.findByTestId("recharts-data-line")).toHaveTextContent('"observed":40.5');
+    fireEvent.click(screen.getByRole("button", { name: "Свернуть график" }));
+
+    // apply мастера «Предобработки» → refreshKey 0 → 1 (params не менялись)
+    view.rerender(
+      <PreprocessingDecompositionOverview profile={PROFILE} loading={false} error={null} noDataset={false} refreshKey={1} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+
+    // второе раскрытие обязано уйти в сеть (новый fingerprint кэша) и
+    // показать СВЕЖИЙ payload, а не stale-запись до мутации
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(await screen.findByTestId("recharts-data-line")).toHaveTextContent('"observed":43.5');
+    expect(screen.getByTestId("recharts-data-line")).not.toHaveTextContent('"observed":40.5');
+  });
 });

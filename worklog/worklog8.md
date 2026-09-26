@@ -996,3 +996,42 @@ N-1: семантика «мечется» — реализация дослов
 
 ### Вердикт
 PASSED WITH REMARKS (N-1…N-4 не блокируют). Приёмка plan_progress.md подтверждена по всем четырём критериям: одно срабатывание §7.1 по priority; весь список §7.2; предупреждение в Предпросмотре ДО apply без блокировки кнопки (§12 п.8); пороги не хардкод (§12 п.7).
+
+---
+
+## Task ID: RCH-2 (2026-09-26) — Волна 2 plan_review_charts.md: слой C — кэш раскрытия, подписанный на мутацию датасета (invalidateChartDetailCache + fingerprint Декомпозиции/Спектрального)
+
+Синхронизация: main@92407a4 (ff-reset с 564cd95; в промежутке upstream вошли RCH-1 84dc8e4 — Волна 1, применённая тимлидом, локальные правки совпали байт-в-байт, и PROGR-6-CERT 92407a4 — независимая сертификация Наставника v1, Обзоры не трогает). Правила AGENTS.md: TDD RED→GREEN, без commit/push, ZIP в download.
+
+### Постановка
+
+Реализовать волну 2 (P1) plan_review_charts.md — тот же класс OUTL-1 «график не подписан на сигнал обновления» в слое C (кэш раскрытия useChartDetailData, Task 97.3): Decomposition/Spectral передавали useChartDetailData БЕЗ fingerprint (комментарий «fingerprint не нужен» написан до эпохи datasetVersion/PREPR-4) — ключ кэша (profileKey, fingerprint, params) переживал apply (column/параметры раскрытия не меняются применением) → раскрытие после apply отдавало stale expanded-payload; EdaStructuralBreaks держит fingerprint=datasetKey, НЕ меняющийся при in-place мутации, а detailCache — модуль-глобальный Map, переживает переходы между модулями. Контракт волны: fingerprint Обзора обязан включать версию мутации датасета (refreshKey = собственный ключ остановки + datasetVersion), плюс ГЛОБАЛЬНАЯ инвалидация кэша в единственной точке истины — обработчике apply «Предобработки».
+
+### TDD (RED → GREEN)
+
+- RED подтверждён по правильным причинам, ровно критерии плана: (1) useChartDetailData.test.tsx — TS2305 «no exported member 'invalidateChartDetailCache'» (отсутствие экспорта — TS-ошибка); (2) TsAnalysisPreprocessing.test.tsx — TS2769 (jest.spyOn не может шпионить отсутствующий экспорт namespace-модуля); (3) PreprocessingDecompositionOverview.test.tsx + PreprocessingSpectralOverview.test.tsx — TS2322×4 «Property 'refreshKey' does not exist» (компиляционный RED, прецедент OUTL-1/RCH-1).
+- GREEN: hook — публичный экспорт invalidateChartDetailCache() (detailCache.clear(); __clearChartDetailCacheForTests — делегат, эпиграф «единственная точка истины — обработчик apply»); контейнер — единый handleApplied (bump datasetVersion + invalidateChartDetailCache()), все 10 инлайн-строк onApplied={() => setDatasetVersion((v) => v + 1)} заменены (единственный оставшийся сеттер — внутри handleApplied); Decomposition/Spectral — проп refreshKey?: number, fingerprint: String(refreshKey) (в URL не попадает — только ключ кэша, §6.3.5), устаревшие комментарии «fingerprint не нужен…» заменены канонической формулировкой инварианта; контейнер передаёт суммы decompositionRefreshKey + datasetVersion / spectralRefreshKey + datasetVersion (та же формула, что у Пропусков/Выбросов/Регулярности). EdaStructuralBreaksOverview — БЕЗ функциональных правок, решение зафиксировано комментарием (fingerprint=datasetKey сохраняется, stale-кэш между модулями закрывает глобальная инвалидация). Бэкенд НЕ менялся (fingerprint в URL не входит).
+
+### Тест-паттерн (5 новых тестов)
+
+- useChartDetailData.test.tsx +2: (a) «тот же params, другой fingerprint между сеансами раскрытия — кэш не отдаёт старое» (механизм-лок межремоунтной смены fingerprint — сценарий возврата на остановку, ранее не покрытый; существующий тест «смена fingerprint» покрывал только rerender одного экземпляра); (b) «после invalidateChartDetailCache() следующее раскрытие уходит в сеть, а не в кэш».
+- TsAnalysisPreprocessing.test.tsx +1: шпион на экспорте хука (namespace-import + jest.spyOn — вызовы контейнера поздне-связанные через module.exports): ДО apply — инвали­даций нет; apply мастера «Пропусков» (предпросмотр → подтверждение → применение) — ровно ОДНА инвалидация (единственная точка истины, apply мутирует датасет один раз).
+- Обзорные интеграционные инварианты +1/+1 (Декомпозиция «Компоненты» / Спектральный CWT): первое раскрытие — expanded-дозапрос, stale-маркер в графике; схлопывание → rerender refreshKey 0→1 (params НЕ менялись) → второе раскрытие обязано уйти в сеть (новый fingerprint) и показать СВЕЖИЙ payload (43.5/44,25), а не stale-запись (40.5/42,75). Уточнение против буквы плана (зафиксировано в plan_review_charts.md): дефект «кэш отдал бы старое» воспроизводится на уровне ОБЗОРОВ (хук механизм поддерживал и так), поэтому (a) в hook-сюите — механизм-лок, а честный RED дефекта — TS2322 Обзоров.
+
+### Верификация
+
+- RED→GREEN целевых сюит: 4 сюита / 96 тестов — зелёные (was: RED-триада выше).
+- Гвард и смежные (раскрытие не тронуто): ReviewChartsRefreshCoverage (списки не менялись — Decomposition/Spectral остаются в PROFILE_PROP_OVERVIEWS): прямого sessionApiUrl (в исходнике нет, fingerprint идёт через хук) + ExpandableChartCoverage + ExpandableChartsProvider + EdaStructuralBreaksOverview — 4 сюита / 102 теста зелёные.
+- Полный jest: **146 сюит / 1769 тестов — все зелёные** (базлайн RCH-1 146/1764 + 5 новых).
+- typecheck:all (embedded + standalone) — чисто; npm run build:all — оба приложения ✓ Compiled successfully.
+- E2E-проба бэкенда не требуется (R-5 плана): fingerprint в URL не попадает, сеть/контракты не менялись; пользовательский сценарий «apply → раскрытие → свежий payload» покрыт интеграционными оракулами Обзоров и контейнерным шпионом.
+
+### Находки/заметки (не блокеры)
+
+- N-1 (Info): после волны 2 у Обзоров слоя C двойная защита (defense in depth): fingerprint=String(refreshKey) различает состояния датасета в ключе кэша даже при мимо-инвалидации (например, прямой прокидке refreshKey без handleApplied), глобальная инвалидация закрывает EdaStructuralBreaks и все будущие useChartDetailData-потребители без fingerprint.
+- N-2 (Info): refreshKey Обзоров слоя C по умолчанию 0 (проп опционален) — прямые рендеры в тестах без пропа дают fingerprint "0" вместо прежнего "" (одноразовый промах кэша после деплоя — приемлемо, данные перезапросятся).
+- N-3 (Info): шпион jest.spyOn(namespace, "invalidateChartDetailCache") перехватывает вызовы контейнера только из-за ts-jest/CommonJS позднего связывания (useChartDetailData_1.invalidateChartDetailCache(...)); при переходе проекта на чистый ESM шпион потребует jest.mock — зафиксировано в комментарии теста.
+
+### Deliverable
+
+ZIP: cisstat-rch2-detail-cache-invalidate.zip — пути репозитория сохранены. ИЗМЕНЁННЫЕ (product): packages/ui/hooks/useChartDetailData.ts (+invalidateChartDetailCache, делегат, эпиграф), packages/ui/components/TsAnalysisPreprocessing.tsx (+handleApplied, 10× onApplied, +refreshKey-суммы в Decomposition/Spectral), PreprocessingDecompositionOverview.tsx (+refreshKey, +fingerprint, канонический комментарий), PreprocessingSpectralOverview.tsx (аналогично), EdaStructuralBreaksOverview.tsx (только комментарий-решение). ИЗМЕНЁННЫЕ (тесты): useChartDetailData.test.tsx (+2), TsAnalysisPreprocessing.test.tsx (+1, шпион), PreprocessingDecompositionOverview.test.tsx (+1, инвариант), PreprocessingSpectralOverview.test.tsx (+1, инвариант). ИЗМЕНЁННЫЕ (док): plan_review_charts.md (статусы исполнения волн), worklog/worklog8.md (эта запись). Бэкенд/схемы не менялись. Без commit/push (AGENTS.md).

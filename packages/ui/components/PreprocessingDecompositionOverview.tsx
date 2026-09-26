@@ -50,6 +50,11 @@ interface Props {
   loading: boolean;
   error: string | null;
   noDataset: boolean;
+  /** Волна 2 plan_review_charts.md (RCH-2): сумма decompositionRefreshKey +
+   * datasetVersion контейнера — ТЕМ же сигналом обновления, что профиль
+   * остановки (инвариант OUTL-1). В URL не попадает: fingerprint — только
+   * компонент ключа кэша раскрытия (§6.3.5), бэкенд не меняется. */
+  refreshKey?: number;
 }
 
 type View = "components" | "seasonal" | "acf" | "diagnostics";
@@ -148,13 +153,19 @@ export function PreprocessingDecompositionOverview(props: Props) {
   );
 }
 
-function PreprocessingDecompositionOverviewInner({ profile, loading, error, noDataset }: Props) {
+function PreprocessingDecompositionOverviewInner({ profile, loading, error, noDataset, refreshKey = 0 }: Props) {
   const [view, setView] = useState<View>("components");
   const { expandedChartId } = useExpandableChartState();
   // Task 97.3 (§6.3): дозагрузка expanded только для панели «Компоненты» —
   // единственной с плотным рядом точек. Хук до ранних return'ов.
-  // fingerprint не нужен: контейнер «Предобработки» инвалидирует профиль
-  // по смене target-колонки (column входит в params и в ключ кэша).
+  // Волна 2 plan_review_charts.md (RCH-2): fingerprint = String(refreshKey) —
+  // ключ кэша раскрытия обязан включать версию мутации датасета: применение
+  // исправления в любой остановке НЕ меняет column/params (бывший
+  // комментарий «fingerprint не нужен: контейнер инвалидирует профиль по
+  // смене target-колонки» написан ДО эпохи datasetVersion/PREPR-4 — ключ
+  // кэша переживал apply, раскрытие отдавало stale expanded-payload).
+  // Плюс глобальная инвалидация: handleApplied контейнера вызывает
+  // invalidateChartDetailCache() в единственной точке истины (apply).
   // Регресс 97.4b: эндпоинт возвращает конверт статуса
   // PreprocessingDecompositionProfileResponse {mode, status, profile} —
   // разворачиваем .profile, иначе график получает конверт вместо профиля
@@ -163,6 +174,7 @@ function PreprocessingDecompositionOverviewInner({ profile, loading, error, noDa
     path: "/dataset/preprocessing/decomposition-profile",
     profileKey: "decomposition-components",
     params: { column: profile?.column },
+    fingerprint: String(refreshKey),
     enabled: expandedChartId === "decomposition-components",
   });
   if (loading) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Выполняется робастная STL-декомпозиция…</div>;

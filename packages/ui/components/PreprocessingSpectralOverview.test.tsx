@@ -215,4 +215,58 @@ describe("PreprocessingSpectralOverview: дозагрузка detail_level (Task
     expect(screen.getAllByTitle((_, element) => (element?.getAttribute("title") ?? "").includes("мощность")).length).toBeGreaterThan(0);
     errorSpy.mockRestore();
   });
+
+  // Волна 2 plan_review_charts.md (RCH-2): интеграционный инвариант слоя C —
+  // «счётчик обновился ⟹ раскрытие перезапросилось». params раскрытия CWT
+  // (column/параметры) не меняются от apply — без fingerprint в ключе кэша
+  // второе раскрытие отдало бы payload ДО мутации (stale expanded, класс
+  // OUTL-1 в слое C). Контракт о СВЕЖИХ данных второго раскрытия.
+  it("после apply (refreshKey изменился) раскрытие CWT перезапрашивает expanded и показывает свежий payload", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const staleDetail: PreprocessingSpectralProfile = {
+      ...SPECTRAL_PROFILE,
+      wavelet: [
+        { x: "2010-01-01T00:00:00", index: 0, period: 12, power: 42.75, normalized_power: 0.9, edge_affected: true },
+        { x: "2015-01-01T00:00:00", index: 60, period: 12, power: 5, normalized_power: 1, edge_affected: false },
+      ],
+    };
+    const freshDetail: PreprocessingSpectralProfile = {
+      ...SPECTRAL_PROFILE,
+      wavelet: [
+        { x: "2010-01-01T00:00:00", index: 0, period: 12, power: 44.25, normalized_power: 0.9, edge_affected: true },
+        { x: "2015-01-01T00:00:00", index: 60, period: 12, power: 5, normalized_power: 1, edge_affected: false },
+      ],
+    };
+    let calls = 0;
+    const fetchMock = jest.fn(() => {
+      calls += 1;
+      return Promise.resolve({ ok: true, status: 200, json: async () => envelope(calls === 1 ? staleDetail : freshDetail) });
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const view = render(
+      <PreprocessingSpectralOverview profile={SPECTRAL_PROFILE} loading={false} error={null} noDataset={false} refreshKey={0} />,
+    );
+
+    // первое раскрытие CWT (до apply): stale-ячейка 42,75 в скалограмме
+    fireEvent.click(screen.getByRole("tab", { name: "CWT" }));
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await screen.findByTitle((_, element) => (element?.getAttribute("title") ?? "").includes("42,75"));
+    fireEvent.click(screen.getByRole("button", { name: "Свернуть график" }));
+
+    // apply мастера «Предобработки» → refreshKey 0 → 1 (params не менялись)
+    view.rerender(
+      <PreprocessingSpectralOverview profile={SPECTRAL_PROFILE} loading={false} error={null} noDataset={false} refreshKey={1} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Развернуть график до размера окна Обзора" }));
+
+    // второе раскрытие обязано уйти в сеть (новый fingerprint кэша) и
+    // показать СВЕЖИЙ payload (44,25), а не stale-запись (42,75)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await screen.findByTitle((_, element) => (element?.getAttribute("title") ?? "").includes("44,25"));
+    expect(
+      screen.queryByTitle((_, element) => (element?.getAttribute("title") ?? "").includes("42,75")),
+    ).not.toBeInTheDocument();
+    errorSpy.mockRestore();
+  });
 });

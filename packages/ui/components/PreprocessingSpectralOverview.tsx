@@ -105,6 +105,11 @@ interface Props {
   /** Параметры compact-запроса контейнера — expanded обязан считать тот же
    * профиль (методология совпадает, §6.4). Не заданы — запрос по умолчанию. */
   parameters?: SpectralParameters | null;
+  /** Волна 2 plan_review_charts.md (RCH-2): сумма spectralRefreshKey +
+   * datasetVersion контейнера — ТЕМ же сигналом обновления, что профиль
+   * остановки (инвариант OUTL-1). В URL не попадает: fingerprint — только
+   * компонент ключа кэша раскрытия (§6.3.5), бэкенд не меняется. */
+  refreshKey?: number;
 }
 
 export function PreprocessingSpectralOverview(props: Props) {
@@ -115,13 +120,19 @@ export function PreprocessingSpectralOverview(props: Props) {
   );
 }
 
-function PreprocessingSpectralOverviewInner({ profile, loading, error, noDataset, parameters }: Props) {
+function PreprocessingSpectralOverviewInner({ profile, loading, error, noDataset, parameters, refreshKey = 0 }: Props) {
   const [view, setView] = useState<View>("global");
   const { expandedChartId } = useExpandableChartState();
   // Task 97.3 (§6.3): дозагрузка expanded только для CWT-скалограммы —
   // самой плотной визуализации пилота. Хук до ранних return'ов.
-  // fingerprint не нужен: контейнер «Предобработки» инвалидирует профиль
-  // по смене target-колонки/параметров (всё входит в ключ кэша).
+  // Волна 2 plan_review_charts.md (RCH-2): fingerprint = String(refreshKey) —
+  // ключ кэша раскрытия обязан включать версию мутации датасета: параметры
+  // покрывают ручной пересчёт, но НЕ применение исправления в другой
+  // остановке (бывший комментарий «fingerprint не нужен: всё входит в ключ
+  // кэша» написан ДО эпохи datasetVersion/PREPR-4 — ключ кэша переживал
+  // apply, раскрытие отдавало stale expanded-payload). Плюс глобальная
+  // инвалидация: handleApplied контейнера вызывает
+  // invalidateChartDetailCache() в единственной точке истины (apply).
   // Регресс 97.4b: эндпоинт возвращает конверт статуса
   // PreprocessingSpectralProfileResponse {mode, status, profile} —
   // разворачиваем .profile, иначе WaveletView читает envelope.wavelet
@@ -136,6 +147,7 @@ function PreprocessingSpectralOverviewInner({ profile, loading, error, noDataset
       wavelet_scales: parameters?.waveletScales,
       welch_segment_length: parameters?.welchSegmentLength ?? null,
     },
+    fingerprint: String(refreshKey),
     enabled: expandedChartId === "spectral-wavelet",
   });
   if (loading) return <div role="status" className="flex h-[468px] items-center justify-center rounded-lg bg-brand-light text-sm text-neutral-500">Строим FFT, Welch и CWT…</div>;

@@ -25,6 +25,9 @@ import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { StepperNextModuleButton } from "./StepperNextModuleButton";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
+// Волна 2 plan_review_charts.md (RCH-2): инвалидация модуль-глобального
+// кэша раскрытия графиков в единственной точке истины — обработчике apply.
+import { invalidateChartDetailCache } from "../hooks/useChartDetailData";
 import { PreprocessingMissingOverview, type MissingProfileResponse } from "./PreprocessingMissingOverview";
 import { PreprocessingMissingPipeline } from "./PreprocessingMissingPipeline";
 import { PreprocessingOutliersOverview, type OutlierProfileResponse } from "./PreprocessingOutliersOverview";
@@ -200,6 +203,21 @@ export function TsAnalysisPreprocessing() {
   // применение (datasetVersion) обновляет все Обзоры, смена режима
   // (собственный ключ) — только Обзор своей остановки.
   const [datasetVersion, setDatasetVersion] = useState(0);
+
+  // ── Волна 2 plan_review_charts.md (RCH-2): единый обработчик apply ──
+  // Все 10 мастеров получают ОДИН обработчик: bump datasetVersion
+  // (перезапрос профилей, PREPR-4) + invalidateChartDetailCache() —
+  // очистка модуль-глобального кэша раскрытия useChartDetailData. Ключ
+  // кэша (profileKey, fingerprint, params) не видит мутацию датасета
+  // (column/параметры раскрытия от apply не меняются) и переживает
+  // ремоунты/переходы между модулями — без очистки раскрытый график
+  // Обзора отдавал бы payload ДО мутации (класс OUTL-1 в слое C).
+  // Глобальная инвалидация закрывает и EdaStructuralBreaksOverview
+  // (fingerprint=datasetKey не меняется при in-place мутации).
+  const handleApplied = () => {
+    setDatasetVersion((v) => v + 1);
+    invalidateChartDetailCache();
+  };
 
   // ── Остановка «Пропуски»: реальный статус вместо мока ──
   // Лёгкий собственный запрос профиля (тот же /dataset/missing-profile,
@@ -1000,22 +1018,22 @@ export function TsAnalysisPreprocessing() {
           </p>
 
           {activeCheckId === "missing" && descriptionSection === "pipeline" ? (
-            <PreprocessingMissingPipeline onApplied={() => setDatasetVersion((v) => v + 1)} />
+            <PreprocessingMissingPipeline onApplied={handleApplied} />
           ) : activeCheckId === "missing" ? (
             <PreprocessingMissingOverview refreshKey={missingRefreshKey + datasetVersion} />
           ) : activeCheckId === "outliers" && descriptionSection === "pipeline" ? (
-            <PreprocessingOutliersPipeline onApplied={() => setDatasetVersion((v) => v + 1)} />
+            <PreprocessingOutliersPipeline onApplied={handleApplied} />
           ) : activeCheckId === "outliers" ? (
             <PreprocessingOutliersOverview refreshKey={outliersRefreshKey + datasetVersion} column={activeFeature} />
           ) : activeCheckId === "regularity" && descriptionSection === "pipeline" ? (
-            <PreprocessingRegularityPipeline onApplied={() => setDatasetVersion((v) => v + 1)} />
+            <PreprocessingRegularityPipeline onApplied={handleApplied} />
           ) : activeCheckId === "regularity" ? (
             <PreprocessingRegularityOverview refreshKey={regularityRefreshKey + datasetVersion} />
           ) : activeCheckId === "decomposition" && descriptionSection === "pipeline" ? (
             <PreprocessingDecompositionPipeline
               column={activeFeature}
               profile={decompositionProfile?.profile ?? null}
-              onApplied={() => setDatasetVersion((v) => v + 1)}
+              onApplied={handleApplied}
             />
           ) : activeCheckId === "decomposition" ? (
             <PreprocessingDecompositionOverview
@@ -1023,12 +1041,13 @@ export function TsAnalysisPreprocessing() {
               loading={decompositionLoading}
               error={decompositionError}
               noDataset={decompositionNoDataset}
+              refreshKey={decompositionRefreshKey + datasetVersion}
             />
           ) : activeCheckId === "variance_stab" && descriptionSection === "pipeline" ? (
             <PreprocessingVariancePipeline
               column={activeFeature}
               recommendedMethod={varianceProfile?.profile.selected_method ?? null}
-              onApplied={() => setDatasetVersion((v) => v + 1)}
+              onApplied={handleApplied}
             />
           ) : activeCheckId === "variance_stab" ? (
             <PreprocessingVarianceOverview
@@ -1041,7 +1060,7 @@ export function TsAnalysisPreprocessing() {
             <PreprocessingSmoothingPipeline
               column={activeFeature}
               recommendedMethod={smoothingProfile?.profile.selected_method ?? null}
-              onApplied={() => setDatasetVersion((v) => v + 1)}
+              onApplied={handleApplied}
             />
           ) : activeCheckId === "smoothing" ? (
             <PreprocessingSmoothingOverview
@@ -1055,7 +1074,7 @@ export function TsAnalysisPreprocessing() {
               column={activeFeature}
               recommendedMethod={stationarityProfile?.profile?.selected_method ?? null}
               seasonalPeriod={stationarityProfile?.profile?.seasonal_period ?? 12}
-              onApplied={() => setDatasetVersion((v) => v + 1)}
+              onApplied={handleApplied}
             />
           ) : activeCheckId === "stationarity" ? (
             <PreprocessingStationarityOverview
@@ -1070,7 +1089,7 @@ export function TsAnalysisPreprocessing() {
               profile={spectralProfile?.profile ?? null}
               parameters={spectralParameters}
               onParametersChange={(changes) => setSpectralParameters((current) => ({ ...current, ...changes }))}
-              onApplied={() => setDatasetVersion((v) => v + 1)}
+              onApplied={handleApplied}
             />
           ) : activeCheckId === "spectral" ? (
             <PreprocessingSpectralOverview
@@ -1079,12 +1098,13 @@ export function TsAnalysisPreprocessing() {
               error={spectralError}
               noDataset={spectralNoDataset}
               parameters={spectralParameters}
+              refreshKey={spectralRefreshKey + datasetVersion}
             />
           ) : activeCheckId === "feature_eng" && descriptionSection === "pipeline" ? (
             <PreprocessingFeatureEngineeringPipeline
               column={activeFeature}
               profile={featureGenerationProfile?.profile ?? null}
-              onApplied={() => setDatasetVersion((v) => v + 1)}
+              onApplied={handleApplied}
             />
           ) : activeCheckId === "feature_eng" ? (
             <PreprocessingFeatureEngineeringOverview
@@ -1097,7 +1117,7 @@ export function TsAnalysisPreprocessing() {
             <PreprocessingScalingPipeline
               targetColumn={activeFeature}
               profile={scalingProfile?.profile ?? null}
-              onApplied={() => setDatasetVersion((v) => v + 1)}
+              onApplied={handleApplied}
             />
           ) : activeCheckId === "scaling" ? (
             <PreprocessingScalingOverview

@@ -9,6 +9,7 @@ import { renderHook, waitFor, act } from "@testing-library/react";
 import {
   MAX_CHART_DETAIL_CACHE_ENTRIES,
   useChartDetailData,
+  invalidateChartDetailCache,
   __clearChartDetailCacheForTests,
 } from "./useChartDetailData";
 
@@ -112,6 +113,53 @@ describe("useChartDetailData", () => {
     rerender({ fingerprint: "ds-2" });
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
     expect(result.current.data).toBeNull(); // старый payload другого датасета не показывается
+  });
+
+  // Волна 2 plan_review_charts.md (RCH-2): тот же params + другой fingerprint
+  // между сеансами раскрытия (Обзор ремоунтится при возврате на остановку).
+  // Ключ кэша обязан различаться — иначе второе раскрытие отдало бы payload
+  // ДО мутации датасета (stale expanded, класс OUTL-1 в слое C).
+  it("волна 2 (RCH-2): тот же params, другой fingerprint между сеансами раскрытия — кэш не отдаёт старое", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(jsonResponse(PAYLOAD_A));
+    const first = renderHook(
+      ({ fingerprint }: { fingerprint: string }) =>
+        useChartDetailData<Payload>({ ...BASE_OPTIONS, enabled: true, fingerprint }),
+      { initialProps: { fingerprint: "0" } },
+    );
+    await waitFor(() => expect(first.result.current.data).toEqual(PAYLOAD_A));
+    first.unmount();
+
+    // применён мастер — refreshKey вырос ("1"); params не менялись
+    (global.fetch as jest.Mock).mockClear();
+    (global.fetch as jest.Mock).mockResolvedValue(jsonResponse(PAYLOAD_B));
+    const second = renderHook(
+      ({ fingerprint }: { fingerprint: string }) =>
+        useChartDetailData<Payload>({ ...BASE_OPTIONS, enabled: true, fingerprint }),
+      { initialProps: { fingerprint: "1" } },
+    );
+    await waitFor(() => expect(second.result.current.data).toEqual(PAYLOAD_B));
+    // перезапрос из сети: запись fingerprint="1" в кэше отсутствует
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  // Волна 2 plan_review_charts.md (RCH-2): глобальная инвалидация —
+  // единственная точка истины, обработчик apply «Предобработки». После
+  // invalidateChartDetailCache() следующее раскрытие обязано уйти в сеть,
+  // а не отдать payload из модуль-глобального кэша (он переживает
+  // ремоунты, переходы между остановками и модулями).
+  it("волна 2 (RCH-2): после invalidateChartDetailCache() следующее раскрытие уходит в сеть, а не в кэш", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(jsonResponse(PAYLOAD_A));
+    const first = renderHook(() => useChartDetailData<Payload>({ ...BASE_OPTIONS, enabled: true }));
+    await waitFor(() => expect(first.result.current.data).toEqual(PAYLOAD_A));
+    first.unmount();
+
+    act(() => { invalidateChartDetailCache(); });
+
+    (global.fetch as jest.Mock).mockClear();
+    (global.fetch as jest.Mock).mockResolvedValue(jsonResponse(PAYLOAD_B));
+    const second = renderHook(() => useChartDetailData<Payload>({ ...BASE_OPTIONS, enabled: true }));
+    await waitFor(() => expect(second.result.current.data).toEqual(PAYLOAD_B));
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
   it("смена параметров профиля — новый запрос (методология должна совпадать с compact)", async () => {

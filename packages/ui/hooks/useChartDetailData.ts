@@ -68,8 +68,21 @@ export const MAX_CHART_DETAIL_CACHE_ENTRIES = 40;
 
 const detailCache = new Map<string, unknown>();
 
-export function __clearChartDetailCacheForTests(): void {
+// Волна 2 plan_review_charts.md (RCH-2): публичная точка инвалидации кэша
+// раскрытия. Единственная точка истины — обработчик apply «Предобработки»
+// (TsAnalysisPreprocessing.handleApplied): применение исправления мутирует
+// активный датасет, а ключ кэша (profileKey, fingerprint, params) сам по
+// себе мутацию не видит (column/параметры раскрытия от apply не меняются)
+// и переживает ремоунты и переходы между модулями (EdaStructuralBreaks) —
+// без очистки раскрытие отдавало бы payload ДО мутации (класс OUTL-1 в
+// слое C). После инвалидации следующее раскрытие уходит в сеть.
+export function invalidateChartDetailCache(): void {
   detailCache.clear();
+}
+
+/** Тестовая изоляция модуль-глобального кэша — делегат публичной инвалидации. */
+export function __clearChartDetailCacheForTests(): void {
+  invalidateChartDetailCache();
 }
 
 function buildCacheKey(

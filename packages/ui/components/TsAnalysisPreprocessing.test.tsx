@@ -14,6 +14,8 @@ import { TsAnalysisPreprocessing } from "./TsAnalysisPreprocessing";
 import { PreprocessingMissingOverview } from "./PreprocessingMissingOverview";
 import { PreprocessingOutliersOverview } from "./PreprocessingOutliersOverview";
 import { PreprocessingRegularityOverview } from "./PreprocessingRegularityOverview";
+// Волна 2 plan_review_charts.md (RCH-2): шпион на экспорте хука кэша раскрытия
+import * as chartDetailDataModule from "../hooks/useChartDetailData";
 
 const MISSING_PROFILE = {
   rule_source: "system",
@@ -1526,5 +1528,87 @@ describe("TsAnalysisPreprocessing — self-fetch Обзоры: живая инв
     fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
     expect(await screen.findByText("Пропусков — 0 (0.0%)")).toBeInTheDocument();
     expect(screen.queryByText("Пропусков — 2 (25.0%)")).not.toBeInTheDocument();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Волна 2 plan_review_charts.md (RCH-2): слой C — кэш раскрытия графиков
+// (useChartDetailData, Task 97.3), подписанный на мутацию датасета.
+// Модуль-глобальный detailCache переживает применённые исправления: ключ
+// (profileKey, fingerprint, params) для Обзоров, чей fingerprint не включает
+// версию мутации, не меняется от apply — раскрытие отдавало payload ДО
+// мутации (класс OUTL-1 в слое C). Контракт: применение исправления ЛЮБЫМ
+// мастером идёт через ЕДИНЫЙ handleApplied, который бампит datasetVersion
+// (PREPR-4) И вызывает invalidateChartDetailCache() — единственная точка
+// истины инвалидации кэша раскрытия. Глобальная инвалидация закрывает и
+// EdaStructuralBreaksOverview, чей fingerprint=datasetKey не меняется при
+// in-place мутации, а кэш переживает переходы между модулями.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("TsAnalysisPreprocessing — инвалидация кэша раскрытия при применении исправления (волна 2 plan_review_charts.md)", () => {
+  const clearedMissingProfile = {
+    ...MISSING_PROFILE,
+    status: "done",
+    total_missing: 0,
+    rows_with_missing: 0,
+    rows_with_missing_pct: 0,
+    missing_rate_pct: 0,
+    columns: [{ ...MISSING_PROFILE.columns[0], missing_count: 0, missing_pct: 0, missing_examples: [] }],
+  };
+
+  it("apply мастера вызывает invalidateChartDetailCache — единственная точка истины инвалидации (шпион на экспорте хука)", async () => {
+    // Шпион на namespace-экспорте перехватывает вызовы контейнера благодаря
+    // позднему связыванию ts-jest/CommonJS (useChartDetailData_1.invalidateChartDetailCache(...));
+    // при переходе на чистый ESM здесь потребуется jest.mock вместо spyOn.
+    const invalidateSpy = jest.spyOn(chartDetailDataModule, "invalidateChartDetailCache");
+    let applied = false;
+    global.fetch = jest.fn((url: string, init?: RequestInit) => {
+      if (typeof url === "string" && url.includes("/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            target_column: init?.method === "POST" ? JSON.parse(String(init.body)).column : "Price",
+            suggested_column: "Price",
+            available_columns: ["Price"],
+            has_dataset: true,
+          }),
+        });
+      }
+      if (typeof url === "string" && url.includes("missing-corrections") && init?.method === "POST") {
+        if (JSON.parse(String(init.body)).apply) applied = true;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            applied: Boolean(init.body && JSON.parse(String(init.body)).apply),
+            strategy: "median_mode", total_missing: 2, total_changed: 2,
+            total_still_missing: 0, rows_removed: 0, added_columns: [],
+            columns: [{ column: "Price", missing_count: 2, changed_count: 2, still_missing: 0, missing_examples: [1, 3], flag_column: null }],
+            profile: [{ ...MISSING_PROFILE.columns[0], missing_count: 0, missing_pct: 0, missing_examples: [] }],
+          }),
+        });
+      }
+      if (typeof url === "string" && url.includes("missing-profile")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(applied ? clearedMissingProfile : MISSING_PROFILE) });
+      }
+      return (routeFetch() as unknown as (u: string, i?: RequestInit) => Promise<unknown>)(url, init);
+    }) as unknown as typeof fetch;
+
+    render(<TsAnalysisPreprocessing />);
+
+    // ДО применения — инвалидации кэша раскрытия нет: точка истины одна,
+    // обработчик apply (смена режима/пересчёт профиля мутацией не являются)
+    expect(await screen.findByText("Найдено 2 пропусков")).toBeInTheDocument();
+    expect(invalidateSpy).not.toHaveBeenCalled();
+
+    // Мастер «Пропусков»: предпросмотр → подтверждение → применение.
+    fireEvent.click(screen.getByRole("button", { name: "Исправить пропуски" }));
+    await screen.findByRole("checkbox", { name: "Выбрать колонку Price" });
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр изменений" }));
+    await screen.findByText("Исправлено значений: 2");
+    fireEvent.click(screen.getByRole("checkbox", { name: /Подтверждаю изменение активного датасета/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Применить исправления" }));
+
+    // ПОСЛЕ применения: ровно одна инвалидация (apply мутирует датасет один раз)
+    await screen.findByText("Проверка пройдена, пропусков нет");
+    expect(invalidateSpy).toHaveBeenCalledTimes(1);
   });
 });

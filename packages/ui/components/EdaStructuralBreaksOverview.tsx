@@ -126,6 +126,12 @@ function EdaStructuralBreaksOverviewInner({ profile, loading, error, noDataset, 
   const { expandedChartId } = useExpandableChartState();
   // Task 97.3 (§6.3): дозагрузка expanded для плотных панелей. Хуки до
   // ранних return'ов (правила хуков); при свёрнутых панелях network нет.
+  // Волна 2 plan_review_charts.md (RCH-2): fingerprint=datasetKey СОХРАНЯЕТСЯ
+  // без правки — в EDA мутаций датасета нет; stale-кэш между модулями
+  // (datasetKey не меняется при in-place мутации apply в «Предобработке»,
+  // а detailCache — модуль-глобальный Map, переживает переходы) закрывает
+  // ГЛОБАЛЬНАЯ инвалидация: handleApplied контейнера «Предобработки»
+  // вызывает invalidateChartDetailCache() — единственная точка истины.
   const regimesDetail = useChartDetailData<EdaStructuralBreaksResponse>({
     path: "/dataset/eda-structural-breaks",
     profileKey: "structural-regimes",
