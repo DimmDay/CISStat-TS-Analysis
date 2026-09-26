@@ -1102,3 +1102,25 @@ N-4 (Info): fetchCauses переведён на URLSearchParams — card_id ко
 ### Deliverable
 
 ZIP: cisstat-progr7-user-report.zip — пути репозитория сохранены. НОВЫЕ: app/core/run_report.py; tests/api/test_run_report.py. ИЗМЕНЁННЫЕ: apps/api/routers/progress.py (+эндпоинт report §5.4); apps/api/knowledge/registry.py (+публичный stage_label); worklog/worklog8.md (эта запись). Бэкенд-слой знаний/фронтенд/схемы не менялись. Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PROGR-7-CERT (2026-09-27) — Независимая сертификация Task PROGR-7 (отчёт §5.4) — PASSED
+Синхронизация: main@0c7ec6b (коммит PROGR-7). Сертификатор независим от исполнителя: продукт-файлы задачи не менялись, commit/push не выполнялись (AGENTS.md), рабочее дерево чистое после всех прогонов.
+
+### Методика
+Изучены spec_progress.md §5.4/§4.1/§5, аддендум v4 (Часть 5), plan_progress.md (строка PROGR-7), дифф 0c7ec6b (app/core/run_report.py 670 строк — движок без HTTP; apps/api/routers/progress.py +эндпоинт; apps/api/knowledge/registry.py +7 строк аддитивно; tests/api/test_run_report.py 61 тест). Контроль на СОБСТВЕННЫХ данных сертификатора — сценарии не копировались из коллегиального тест-файла.
+
+### Верификация
+- Базлайн воспроизведён ТОЧНО: tests/api/test_run_report.py 61/61; полный tests/api/ 1110 passed / 1 skipped (после установки полного requirements: statsmodels 0.15.0, pandera, PyWavelets, ruptures, prophet, statsforecast, arch, torch-cpu + neuralforecast 3.2.2; и изоляции DATABASE_URL песочницы через CISSTAT_RUNS_BACKEND=memory). До установки — 22 средовых падения смежных сьютов (нейро-гейты/симуляция/структурные сдвиги), подтверждает находки PROGR-2/3-CERT, к PROGR-7 отношения не имеет.
+- Oracle-тесты (scripts/cert7_oracles.py): 70/70 PASSED на своих данных — метео-ряд 120 точек (сид 20260926), свои XSS-инъекции (<script>alert("cert7"), инъекция в run_id/forecast_id/label), свои нечитаемые ts, своя неизвестная стадия, E2E живого сеанса (upload→паспорта→бэктесты naive/ets→compare→selection→Model Card→прогноз→реальный GET export.json→отчёт md/html). Ключевые оракулы: методология == body_md реестра байт-в-байт; метка == заголовок без префикса; хронология внутри узла с нечитаемыми в конец (стабильность, зеркально фронтенду); N-2 без фантомных узлов; forecasting-узел из типа; ссылка export.json == реальному forecast_id сеанса (GET 200); счётчики коррекций только из payload; честные строки аудита; канонический порядок STAGES + защитный хвост; 404/422 pdf/503-гейт/media-type/Content-Disposition; ридер не трассируется; изоляция слоя 2 (событие только слоя 1 в отчёт не попадает); пустой запуск честен. В ходе калибровки оракулов три первичных «падения» — ошибки самих оракулов (хронология гарантирована внутри узла, run_id 12 символов, подстрока «train 100 / test 20»), не дефекты реализации; после исправления — все 70 зелёные.
+- Мутационные тесты (scripts/cert7_mutations.py): 16/16 KILLED, kill-rate 100%, каждый мутант убит ОБОИМИ контролями (коллегиальный сьют + оракулы сертификатора). Мутанты: reversed(STAGES); нечитаемые ts→0.0; sort reverse; body_md[:80]; префикс метки не срезан; href→export.csv; escape(fact.text) убран (XSS); node_id or STAGES[0] (фантомные узлы N-2); вывод forecasting-узла из типа убран; счётчики коррекций отключены; пометка предпросмотра убрана; строка аудита→пустая; events_total−1; pattern допускает pdf (fail-open 422); md→text/plain; хвостовая секция отброшена. Тестовый контур задач не имеет заметных дыр на периметре §5.4.
+
+### Находки (не блокеры)
+- R-1 (Info, средовое): базлайн требует полного requirements + нейро-группы и изоляции DATABASE_URL среды; воспроизводит observation исполнителя.
+- R-2 (Info): фронтенд-базлайн jest в этой сессии не гонялся (node_modules отсутствуют); компенсирующий контроль — дифф коммита без фронтенд-файлов, аддитивность registry.py, бэкенд-сьюты слоя знаний зелёные (58 passed/1 skipped), паритет-тесты help.test.ts/promote_knowledge_registry.test.ts существуют в репозитории.
+- R-3 (Info): подтверждена R-1 исполнителя — отчёт без пагинации, приемлемо для §12 п.1.
+- R-4 (Info): events_total — число событий слоя 2 (не строк факта), консистентно md/html/мета — зафиксировано оракулами.
+
+### Вердикт
+PASSED. Артефакты: scripts/cert7_oracles.py (70 оракулов, standalone), scripts/cert7_mutations.py (16 мутантов, автооткат), CERT_REPORT_PROGR-7.md (полный отчёт), ZIP в download. Без commit/push (AGENTS.md).

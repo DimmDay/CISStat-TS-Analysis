@@ -22,6 +22,13 @@
 // это правильное место для полифилов, см.
 // https://jestjs.io/docs/configuration#setupfilesafterenv-array
 
+// NB: фиксация таймзоны тестов (process.env.TZ = "UTC") живёт в
+// jest.config.js, НЕ здесь: jest-runtime даёт тестам и setup-файлам КОПИЮ
+// process.env (createProcessObject) -- запись отсюда не меняет реальное
+// окружение воркера, и V8/ICU продолжают резолвить таймзону хоста. Конфиг
+// же исполняется в главном процессе ДО форка воркеров -- они наследуют
+// реальный TZ=UTC (Task FIX: PROGR-5.1, 2026-09-26).
+
 require("@testing-library/jest-dom");
 
 class ResizeObserverStub {
