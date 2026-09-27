@@ -15,16 +15,23 @@
 //   ┌─Пропуски──⚠─┐    Обзор: Пропуски        описание
 //   ├─Выбросы───⚠─┤    [график]               ▼ Метрики
 //   └─────────────┘    [Строк][Проп][Выбр]    ▼ Пайплайн
-//                                                [Пересчитать]
+//                                                [Метрики и алгоритм]
+//                                                [Открыть мастер]
+// (PROGR-9-FOCUS: кнопок «Пересчитать…» в панели больше нет —
+//  профили обновляются только автоматически: apply мастера, смена
+//  режима/признака/параметров, возврат во вкладку/окно.)
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { Button } from "./Button";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { StepperNextModuleButton } from "./StepperNextModuleButton";
 import { sessionApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
+// PROGR-9-FOCUS: автоперезапрос профилей при возврате во вкладку/окно —
+// закрывает сценарий «вторая вкладка» (общая cookie-сессия) и ретрай
+// после сбоя GET; делает ручные кнопки пересчёта полностью избыточными.
+import { useWindowFocusRefetch } from "../hooks/useWindowFocusRefetch";
 // Волна 2 plan_review_charts.md (RCH-2): инвалидация модуль-глобального
 // кэша раскрытия графиков в единственной точке истины — обработчике apply.
 import { invalidateChartDetailCache } from "../hooks/useChartDetailData";
@@ -191,9 +198,10 @@ export function TsAnalysisPreprocessing() {
   // счётчик в deps всех profile-fetch useEffect гарантирует, что после
   // каждого применения степпер, бейджи, метрики и Обзоры автоматически
   // перезапрашиваются — без перезагрузки страницы. Собственные
-  // xxxRefreshKey остальных 7 остановок остаются точками РУЧНОГО
-  // пересчёта (смена режима, кнопка «Пересчитать») и чужие профили не
-  // инвалидируют. Self-fetch Обзор-панели трёх остановок («Пропуски»,
+  // xxxRefreshKey остальных 7 остановок остаются точками ручной
+  // инвалидации (смена режима проверки); с PROGR-9-FOCUS они бампятся
+  // ещё и автоматическим перезапросом при возврате во вкладку/окно
+  // (refetchAllProfiles ниже). Self-fetch Обзор-панели трёх остановок («Пропуски»,
   // «Выбросы», «Регулярность») получают СУММУ ключей
   // xxxRefreshKey + datasetVersion (PREPR-4): PREPR-3 бампил только
   // datasetVersion, а Обзоры оставались на собственных ключах, которые
@@ -615,6 +623,38 @@ export function TsAnalysisPreprocessing() {
   }, [activeFeature, scalingRefreshKey, datasetVersion]);
 
   const scalingStatus: CheckStatus = scalingLoading ? "running" : scalingNoDataset ? "skipped" : scalingError ? "error" : scalingProfile ? scalingProfile.status : "pending";
+
+  // ── PROGR-9-FOCUS: автоперезапрос ВСЕХ профилей при возврате во вкладку/окно ──
+  // Сценарий «вторая вкладка»: сессия живёт в общей cookie-сессии
+  // (cisstat_session_id), поэтому мутация датасета в соседней вкладке
+  // (upload, apply мастера) не видна открытой — её профили молча
+  // устаревают, и ни datasetVersion, ни собственные refreshKey об этом
+  // узнать не могут (чисто клиентские счётчики). Возврат в окно (focus)
+  // или во вкладку (visibilitychange→visible) бампит ВСЕ десять
+  // xxxRefreshKey: перезапускаются эффекты профилей всех остановок и
+  // self-fetch Обзоры (сумма xxxRefreshKey + datasetVersion растёт от
+  // бампа любого слагаемого), а invalidateChartDetailCache() чистит кэш
+  // раскрытия графиков, чей ключ не видит чужую мутацию датасета
+  // (RCH-2/OUTL-1 — та же природа, что и у apply). Дедупликация пары
+  // событий одной нормализации окна — внутри хука (minIntervalMs 750).
+  // Вместе с datasetVersion-каскадом (apply мастера) и автоинвалидацией
+  // смены режима/признака/параметров это делает пересчёт полностью
+  // автоматическим — ручные кнопки «Пересчитать…» удалены у всех
+  // остановок (100% однородность UX, см. рендер Панели управления).
+  const refetchAllProfiles = useCallback(() => {
+    setMissingRefreshKey((k) => k + 1);
+    setOutliersRefreshKey((k) => k + 1);
+    setRegularityRefreshKey((k) => k + 1);
+    setDecompositionRefreshKey((k) => k + 1);
+    setVarianceRefreshKey((k) => k + 1);
+    setSmoothingRefreshKey((k) => k + 1);
+    setStationarityRefreshKey((k) => k + 1);
+    setSpectralRefreshKey((k) => k + 1);
+    setFeatureGenerationRefreshKey((k) => k + 1);
+    setScalingRefreshKey((k) => k + 1);
+    invalidateChartDetailCache();
+  }, []);
+  useWindowFocusRefetch(refetchAllProfiles);
 
   // Итоговый список проверок -- статика для ещё не реализованных
   // остановок, реальные данные для «Пропусков», «Выбросов» и «Регулярности».
@@ -1475,18 +1515,18 @@ export function TsAnalysisPreprocessing() {
                 {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : check.id === "variance_stab" ? "Настроить трансформацию" : check.id === "smoothing" ? "Настроить сглаживание" : check.id === "stationarity" ? "Обеспечить стационарность" : check.id === "spectral" ? "Зафиксировать периоды" : check.id === "feature_eng" ? "Сгенерировать признаки" : check.id === "scaling" ? "Настроить масштабирование" : "Полный пайплайн"}
               </button>
 
-              {/* PROGR-9: кнопка пересчёта — только у остановок с реальным
-                  обработчиком (ручной fallback: чужая мутация датасета мимо
-                  открытой вкладки — общая cookie-сессия, ретрай после сбоя
-                  GET). У остальных шести остановок onClick был undefined —
-                  «мёртвые» кнопки (pre-existing) введены пользователя в
-                  заблуждение и удалены: автопересчёт после изменений
-                  аналитика (apply мастера, смена режима/признака/параметров)
-                  покрывает ВСЕ остановки единообразно через datasetVersion
-                  в deps эффектов, поэтому кнопка без обработчика не нужна. */}
-              {(check.id === "stationarity" || check.id === "spectral" || check.id === "feature_eng" || check.id === "scaling") && (
-                <Button onClick={check.id === "stationarity" ? () => setStationarityRefreshKey((key) => key + 1) : check.id === "spectral" ? () => setSpectralRefreshKey((key) => key + 1) : check.id === "feature_eng" ? () => setFeatureGenerationRefreshKey((key) => key + 1) : check.id === "scaling" ? () => setScalingRefreshKey((key) => key + 1) : undefined}>{check.id === "spectral" ? "Пересчитать спектральный профиль" : check.id === "feature_eng" ? "Пересчитать профиль признаков" : check.id === "scaling" ? "Пересчитать профиль масштабов" : `Пересчитать свойства после преобразования (${check.label.toLowerCase()})`}</Button>
-              )}
+              {/* PROGR-9-FOCUS: кнопки «Пересчитать…» удалены у ВСЕХ десяти
+                  остановок — пересчёт полностью автоматический: apply любого
+                  мастера (datasetVersion-каскад), смена режима проверки
+                  (PUT + бамп собственного ключа), смена исследуемого признака
+                  и параметров спектра (deps эффектов), возврат во вкладку/окно
+                  (useWindowFocusRefetch → refetchAllProfiles: бамп всех
+                  ключей + очистка кэша раскрытия графиков). Последние
+                  сценарии ручной кнопки — «вторая вкладка» (общая
+                  cookie-сессия) и ретрай после сбоя GET — закрыты
+                  автоперезапросом по фокусу/видимости. 100% однородность:
+                  у остановок нет кнопок, чьё поведение отличается от
+                  ожиданий пользователя на других остановках. */}
             </article>
           ))}
         </div>

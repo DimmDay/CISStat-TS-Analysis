@@ -1628,26 +1628,40 @@ describe("TsAnalysisPreprocessing — инвалидация кэша раскр
   });
 });
 
-describe("TsAnalysisPreprocessing — кнопки пересчёта Панели управления (PROGR-9)", () => {
-  // Шесть остановок с onClick=undefined (pre-existing мёртвые кнопки):
-  // по решению тимлида удаляются — кнопка без обработчика обманывает
-  // ожидания (клик не даёт ни запроса, ни реакции).
-  const DEAD_BUTTON_NAMES = [
+describe("TsAnalysisPreprocessing — автоперезапрос при возврате во вкладку/окно (PROGR-9-FOCUS)", () => {
+  // PROGR-9-FOCUS: последний сценарий, где 4 оставленные в PROGR-9-FIX
+  // кнопки были оправданы — «вторая вкладка» (общая cookie-сессия:
+  // мутация датасета в соседней вкладке не видна открытой) и ретрай
+  // после сбоя GET. Автоперезапрос по window focus / document
+  // visibilitychange→visible закрывает оба сценария, поэтому кнопки
+  // пересчёта удалены У ВСЕХ десяти остановок — 100% однородность:
+  // профили обновляются только автоматически (монтирование, apply
+  // мастера, смена режима/признака/параметров, возврат во вкладку/окно).
+  const ALL_RECALC_BUTTON_NAMES = [
     "Пересчитать свойства после преобразования (пропуски)",
     "Пересчитать свойства после преобразования (выбросы)",
     "Пересчитать свойства после преобразования (регулярность ряда)",
     "Пересчитать свойства после преобразования (декомпозиция ряда)",
     "Пересчитать свойства после преобразования (стабилизация дисперсии)",
     "Пересчитать свойства после преобразования (сглаживание ряда)",
-  ];
-  // Четыре остановки с реальным обработчиком остаются: ручной fallback
-  // (чужая мутация датасета мимо вкладки, ретрай после сбоя GET).
-  const LIVE_BUTTON_NAMES = [
     "Пересчитать свойства после преобразования (стационарность ряда)",
     "Пересчитать спектральный профиль",
     "Пересчитать профиль признаков",
     "Пересчитать профиль масштабов",
   ];
+
+  function setVisibilityState(state: "visible" | "hidden") {
+    // jsdom: visibilityState — геттер на Document.prototype; собственное
+    // свойство переопределяет его (восстановление не требуется: каждый
+    // тест -- отдельный jsdom-документ, дефолт jsdom -- "visible").
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: state });
+  }
+  function fireVisibilityChange() {
+    fireEvent(document, new Event("visibilitychange"));
+  }
+  function fireWindowFocus() {
+    fireEvent(window, new Event("focus"));
+  }
 
   function countingFetch(counts: Record<string, number>): typeof fetch {
     const inner = routeFetch();
@@ -1668,19 +1682,52 @@ describe("TsAnalysisPreprocessing — кнопки пересчёта Панел
     }) as unknown as typeof fetch;
   }
 
-  it("не рендерит мёртвые кнопки пересчёта у шести остановок без обработчика (однородность UX)", () => {
+  it("не рендерит кнопки пересчёта ни у одной из 10 остановок (100% однородность: автопересчёт везде)", () => {
     // Панель управления рендерит все 10 карточек остановок одновременно,
-    // поэтому наличие/отсутствие кнопок проверяется без переключения.
+    // поэтому отсутствие кнопок проверяется без переключения. Кнопка
+    // пересчёта устарела концептуально: фокус/видимость окна закрывают
+    // «чужую мутацию» и ретрай после сбоя GET (тесты ниже), apply мастера
+    // закрывает изменения аналитика (тест ниже).
     render(<TsAnalysisPreprocessing />);
-    DEAD_BUTTON_NAMES.forEach((name) => {
+    ALL_RECALC_BUTTON_NAMES.forEach((name) => {
       expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
-    });
-    LIVE_BUTTON_NAMES.forEach((name) => {
-      expect(screen.getByRole("button", { name })).toBeInTheDocument();
     });
   });
 
-  it("рабочая кнопка пересчёта остаётся ручным fallback: клик перезапрашивает профиль своей остановки", async () => {
+  it("при возврате во вкладку (visibilitychange → visible) профили ВСЕХ остановок перезапрашиваются автоматически", async () => {
+    // Сценарий «вторая вкладка»: сессия живёт в общей cookie-сессии,
+    // мутация датасета в соседней вкладке не видна открытой. Возврат во
+    // вкладку обязан перезапросить профили всех десяти остановок БЕЗ
+    // каких-либо кнопок.
+    setVisibilityState("visible");
+    const counts: Record<string, number> = {};
+    global.fetch = countingFetch(counts);
+    render(<TsAnalysisPreprocessing />);
+    await screen.findByText("Найдено 2 пропусков");
+    const before = { ...counts };
+
+    fireVisibilityChange();
+
+    // Props-driven Обзоры (и их родительские эффекты): ровно +1 каждый.
+    await waitFor(() => expect(counts.stationarity).toBe((before.stationarity ?? 0) + 1));
+    await waitFor(() => expect(counts.spectral).toBe((before.spectral ?? 0) + 1));
+    await waitFor(() => expect(counts.featureGeneration).toBe((before.featureGeneration ?? 0) + 1));
+    await waitFor(() => expect(counts.scaling).toBe((before.scaling ?? 0) + 1));
+    await waitFor(() => expect(counts.decomposition).toBe((before.decomposition ?? 0) + 1));
+    await waitFor(() => expect(counts.variance).toBe((before.variance ?? 0) + 1));
+    await waitFor(() => expect(counts.smoothing).toBe((before.smoothing ?? 0) + 1));
+    // Самозапрашивающий Обзор смонтирован ТОЛЬКО у активной остановки
+    // («Пропуски» по умолчанию): его сумма missingRefreshKey + datasetVersion
+    // растёт от бампа ключа → родительский эффект +1 И Обзор +1 = +2.
+    // Обзоры «Выбросов»/«Регулярности» не смонтированы (центральное поле
+    // показывает Обзор активной остановки) — их профили перезапрашивает
+    // родительский эффект: +1.
+    await waitFor(() => expect(counts.missing).toBe((before.missing ?? 0) + 2));
+    await waitFor(() => expect(counts.outliers).toBe((before.outliers ?? 0) + 1));
+    await waitFor(() => expect(counts.regularity).toBe((before.regularity ?? 0) + 1));
+  });
+
+  it("при возврате фокуса в окно (window focus) профили перезапрашиваются автоматически (ретрай после сбоя GET)", async () => {
     const counts: Record<string, number> = {};
     global.fetch = countingFetch(counts);
     render(<TsAnalysisPreprocessing />);
@@ -1688,11 +1735,34 @@ describe("TsAnalysisPreprocessing — кнопки пересчёта Панел
     const stationarityBefore = counts.stationarity ?? 0;
     const scalingBefore = counts.scaling ?? 0;
 
-    fireEvent.click(screen.getByRole("button", { name: "Пересчитать свойства после преобразования (стационарность ряда)" }));
-    await waitFor(() => expect(counts.stationarity).toBe(stationarityBefore + 1));
+    fireWindowFocus();
 
-    fireEvent.click(screen.getByRole("button", { name: "Пересчитать профиль масштабов" }));
+    await waitFor(() => expect(counts.stationarity).toBe(stationarityBefore + 1));
     await waitFor(() => expect(counts.scaling).toBe(scalingBefore + 1));
+  });
+
+  it("пара событий visibilitychange+focus одной нормализации даёт РОВНО одну волну перезапроса (дедупликация)", async () => {
+    // Возврат во вкладку в браузерах порождает пару событий
+    // (visibilitychange, затем focus) — без дедупликации это была бы
+    // двойная волна GET на каждую нормализацию окна.
+    setVisibilityState("visible");
+    const counts: Record<string, number> = {};
+    global.fetch = countingFetch(counts);
+    render(<TsAnalysisPreprocessing />);
+    await screen.findByText("Найдено 2 пропусков");
+    const stationarityBefore = counts.stationarity ?? 0;
+    const missingBefore = counts.missing ?? 0;
+
+    fireVisibilityChange();
+    fireWindowFocus(); // синхронно сразу за visibilitychange — то же «мгновение»
+
+    // Первая волна завершается...
+    await waitFor(() => expect(counts.missing).toBe(missingBefore + 2));
+    await waitFor(() => expect(counts.stationarity).toBe(stationarityBefore + 1));
+    // ...и ВТОРОЙ волны нет: ни один счётчик не вырос ещё раз
+    // (без дедупликации было бы +2/+4).
+    expect(counts.stationarity).toBe(stationarityBefore + 1);
+    expect(counts.missing).toBe(missingBefore + 2);
   });
 
   it("после внесения изменений аналитиком (apply мастера) профили четырёх живых остановок пересчитываются автоматически — кнопка не требуется", async () => {
