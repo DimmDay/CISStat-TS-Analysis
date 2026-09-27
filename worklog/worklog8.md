@@ -1165,3 +1165,99 @@ PASSED. Артефакты: scripts/cert7_oracles.py (70 оракулов, stand
 ### Deliverable
 
 ZIP: cisstat-progr8-admin-offline.zip — пути репозитория сохранены. НОВЫЕ: app/core/admin_analytics.py; packages/ui/lib/admin.ts; packages/ui/components/AdminProgressDashboard.tsx (+.test.tsx); apps/embedded/app/admin/progress/page.tsx; tests/api/test_admin_analytics.py; tests/api/test_admin_progress_api.py. ИЗМЕНЁННЫЕ: apps/api/research_runs.py (+MentorObservation, +DDL, +2 метода store); apps/api/migrations/0001_research_runs.sql (дубль DDL); apps/api/auth.py (+require_admin_role); apps/api/trace_hook.py (dotted-path, +metrics.mape); apps/api/routers/progress.py (+/admin/*, запись наблюдений); packages/ui/index.ts (+экспорт); worklog/worklog8.md (эта запись). Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PROGR-8-CERT (2026-09-27) — Независимая сертификация Task PROGR-8 (Admin-панель §10 + офлайн-потребители §9) — PASSED WITH REMARKS
+
+Синхронизация: main@326fc21 (коммит PROGR-8 исполнителя). Сертификатор независим
+от исполнителя: продукт-файлы задачи не менялись, commit/push не выполнялись
+(AGENTS.md), рабочее дерево чистое после всех прогонов (только артефакты
+сертификатора). Полный отчёт — CERT_REPORT_PROGR-8.md.
+
+### Методология
+
+Честная независимая сертификация по прецедентам PROGR-1…7-CERT: воспроизведение
+заявлений исполнителя, кросс-верификация §9/§10/§5/§4.1/§12 п.8 по живым исходникам,
+независимые оракул- и мутационные тесты на СВОИХ данных сертификатора (свой
+детерминированный корпус с инъекцией now; свой E2E через демо-сеанс по HTTP;
+фикстуры исполнителя не использовались).
+
+### Воспроизведение заявлений
+
+- test_admin_analytics.py + test_admin_progress_api.py — 51/51.
+- Полный tests/api: 3 средовых baseline (modeling_workflow/neural_capacity/
+  models_candidates — известный набор с PROGR-1) + 16 в test_forecasting_session,
+  воспроизведённые бит-в-байт на родителе 5b7c1cd (worktree) — средовой дрейф,
+  регрессий ноль.
+- Полный jest: 147 сюит / 1785 тестов — все зелёные; typecheck:all чисто.
+
+### Независимые оракулы — 89/89 PASSED (scripts/cert8_oracles.py, scripts/cert8_oracles_store_api.py)
+
+O1–O6 движок (35): границы/окно периода §10 (обе границы включительны, будущий
+created_at вне, нечитаемый — all-time); время по стадиям с асимметрией
+mean(12.33)≠median(10) как анти-мутационный контроль; счёт problem-узлов ПО
+ЗАПУСКАМ + last-event-wins + фантом-гейт; точные проекции журнала §7.1/§7.2
+(чужой obs_kind не смешивается; без node_id — по правилу да, по узлу нет);
+частоты Прогнозирования §9 со строкованием чисел; банк кейсов §9 — последний
+backtest финален (40→8 кандидат, 5→50 нет), без/нечитаемый mape — нет
+доказательства, границы == включительны, sanity чужих run_id не текут,
+сортировка mape asc + run_id.
+O7–O12 слой 2/хук/REST/E2E (54): fail-closed MentorObservation (3 ValueError);
+roundtrip 8 полей; DDL-синхронность MIGRATION_STATEMENTS ↔ migrations/0001
+(9 колонок, типы дословно, UNIQUE — разбором обоих источников); dotted-хук
+(metrics.mape→плоский mape, пропуски честные, mape=null сохраняется, РЕАЛЬНАЯ
+строка backtest несёт metrics.mape — сверено с BacktestResponse.metrics
+schemas.py); REST 401/403×2/422(нет заголовка)/500/200, границы days/top,
+gt=0 mape, админ-ридеры не трассируются, пустой корпус — честные нули;
+E2E: демо-сеанс → run_id → sanity-наблюдение с cookie-контекстом → best-effort
+(сбой журнала — 200) → next-step по подсеянному model_selected (реальный
+record_run_event) → admin/overview + case-bank по HTTP с полной evidence.
+
+### Мутационный прогон — 25/25 KILLED, 0 SURVIVED (scripts/cert8_mutations.py)
+
+Два независимых контроля на мутант: коллегиальный сьют (51) + оракулы
+сертификатора (89). Убиты обоими: 18; ТОЛЬКО оракулами сертификатора: 7
+(M4 mean≠медиана на асимметрии; M12 граница mape; M14 атрибуция sanity
+своему run_id; M16 сортировка кандидатов; M17 fail-closed obs_kind;
+M18 roundtrip node_id; M19 копийность списка журнала) — собственный контроль
+добавил реальную убийственную силу. Покрыты: окно/границы периода, измеримость
+стадий, mean/median, сортировки, warning-статусы, top_limit, чистота проекций,
+пропуск пустых payload, финальный backtest, пороги, коэрция mape, fail-closed
+слоя 2, dotted-хук и whitelist backtest, запись наблюдений обоих видов,
+инверсия роли ADMIN (M24), честный total_completed.
+
+### Находки
+
+- F-1 (Low, не блокирует): select_case_bank_candidates принимает mape=NaN как
+  доказательство (float('nan') > порога == False) → кандидат с NaN и
+  нестабильная сортировка на уровне движка (O6.12 — фиксация фактического
+  поведения). В проде недостижимо: HTTP отсекает NaN (Starlette JSONResponse
+  allow_nan=False), JSONB NaN не хранит. Риск — для будущих офлайн-потребителей
+  §9 с произвольными экспортами. Рекомендация: math.isfinite(mape) у
+  float(raw_mape) — однострочно, в любую следующую задачу.
+- R-1 (Info): без X-API-Key админ-эндпоинты дают 422 (контракт FastAPI
+  Header(...)), панель показывает «Сервис недоступен», а не «неверный ключ» —
+  косметика UX.
+- R-2 (Info): runs_by_status при прямом dict-входе с не-каноническим статусом
+  добавит лишний ключ (через слой 2 невозможно — ResearchRun валидирует);
+  канонические 4 ключа присутствуют всегда.
+- R-3 (Info): criteria эхо отдаёт целые пороги как float (Dict[str, float]);
+  панель не рендерит. Нит.
+
+### Вердикт
+
+PASSED WITH REMARKS. Реализация соответствует spec_progress.md §9/§10 дословно
+(авторизация по идентичности — роль, не capability; период только к счётчикам
+запусков; суммаризация LLM вне сервиса; «no fabricated results»; best-effort
+§12 п.8; N-2 фантом-гейт; телеметрия НЕ в trace_events). Все заявления
+исполнителя воспроизведены. F-1/R-1–R-3 не блокируют. PROGR-8 — последняя
+задача декомпозиции plan_progress.md: план работ «Прогресс» выполнен полностью.
+
+### Deliverable
+
+ZIP: cisstat-progr8-cert-audit.zip — пути репозитория сохранены. НОВЫЕ:
+scripts/cert8_oracles.py (35 оракулов), scripts/cert8_oracles_store_api.py
+(54 оракула), scripts/cert8_mutations.py (25 мутантов, автооткат),
+CERT_REPORT_PROGR-8.md (полный отчёт), worklog/worklog8.md (эта запись).
+Без commit/push (AGENTS.md).
