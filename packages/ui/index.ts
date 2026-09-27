@@ -265,6 +265,11 @@ export { ProgressTraceLog } from "./components/ProgressTraceLog";
 // внутри «Прогресса» + инлайн-баннер предупреждений в Мастерах (§12 п.8).
 export { MentorPanel } from "./components/MentorPanel";
 export { MentorInlineWarning } from "./components/MentorInlineWarning";
+// Admin-панель мониторинга (Task PROGR-8, spec_progress.md §10 + §9):
+// агрегаты по корпусу + банк кейсов. §10 дословно: админ заходит ДРУГИМ
+// ПУТЁМ -- API-ключ с ролью ADMIN (X-API-Key), не cookie-сессия
+// аналитика; компонент самостоятелен (без AppShellProvider).
+export { AdminProgressDashboard } from "./components/AdminProgressDashboard";
 
 // Sessions-aware Home: общий "Рабочий стол" + embedded-онбординг.
 // Standalone-версия (с auth-веткой) живёт в apps/standalone/components --

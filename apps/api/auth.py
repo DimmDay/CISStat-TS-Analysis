@@ -85,3 +85,23 @@ def require_capability(capability_name: str):
 # проверка подлинности ключа, без проверки конкретной возможности.
 def require_api_key(principal: AuthenticatedPrincipal = Depends(get_current_principal)) -> str:
     return principal.principal_id
+
+
+def require_admin_role(
+    principal: AuthenticatedPrincipal = Depends(get_current_principal),
+) -> AuthenticatedPrincipal:
+    """Admin-эндпоинты микросервиса «Прогресс» (spec_progress.md §10,
+    Task PROGR-8): «должны требовать API-ключ с ролью ADMIN, а не cookie
+    -- админ заходит другим путём, чем обычный аналитик».
+
+    НЕ новая система прав: та же ролевая модель (Role + фабрика
+    зависимостей -- паттерн require_capability). Проверяется РОЛЬ, а не
+    capability: доступ к админке определяется ИДЕНТИЧНОСТЬЮ (кто вы),
+    не тарифом -- полные capabilities internal_analyst админку не
+    открывают."""
+    if principal.role != Role.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Требуется роль ADMIN (API-ключ администратора платформы)",
+        )
+    return principal

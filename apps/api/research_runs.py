@@ -74,6 +74,19 @@ N-4 (находка PROGR-4): ответы эндпоинтов этого сл�
 команд управления панелью (открыть/закрыть/перейти) -- панель «Прогресс»
 и deep-link узлов живут во фронтенде (PROGR-4), бэкенд отдаёт только
 факты.
+
+PROGR-8 (spec_progress.md §10 + §9) добавляет в долговременный слой
+ЖУРНАЛ НАБЛЮДЕНИЙ НАСТАВНИКА (append-only, таблица
+mentor_observations): частота срабатывания правил «Следующий шаг»
+(§7.1) и sanity-предупреждений (§7.2) по правилу/узлу НИГДЕ не
+персистилась -- sanity-check чистое вычисление над телом запроса,
+next-step вычисление над трассой; а агрегатам §10 нужен корпус.
+Почему НЕ trace_events: трасса -- канон §4.1, события РЕШЕНИЙ
+аналитика; служебные события телеметрии Наставника не имеют ни
+шаблона в отчёте §5.4 (неизвестный тип стал бы «строкой аудита»), ни
+узлового факта -- это было бы загрязнение пользовательских артефактов.
+Журнал -- независимый append-only поток (без FK на research_runs:
+телеметрия переживает удаление запуска; агрегаты частот корпусные).
 """
 from __future__ import annotations
 
@@ -200,6 +213,71 @@ class DatasetSource:
     meta: dict[str, Any]
 
 
+# Виды наблюдений журнала Наставника (PROGR-8, §10):
+#   sanity_warning -- сработавшее предупреждение §7.2 (одно наблюдение
+#                    на КАЖДОЕ сработавшее правило, их список §7.2);
+#   next_step     -- ВЫДАННАЯ рекомендация §7.1 (частота выдач --
+#                    «какие рекомендации даются чаще всего», §10 дословно).
+MENTOR_OBSERVATION_KINDS = ("sanity_warning", "next_step")
+
+
+@dataclass(frozen=True)
+class MentorObservation:
+    """Наблюдение журнала Наставника (PROGR-8): факт СРАБАТЫВАНИЯ
+    правила, без текстов сообщений (они рендерятся движком правил --
+    журнал несёт только идентификацию для агрегатов §10).
+
+    Fail-closed (паттерн ResearchRun.__post_init__): неизвестный вид,
+    пустые run_id/rule_id -- ValueError на конструировании, опечатка
+    не должна молча исчезнуть из журнала.
+    """
+
+    obs_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    run_id: str = ""
+    ts: str = field(default_factory=_now_iso)
+    obs_kind: str = "sanity_warning"
+    rule_id: str = ""
+    stage: str = ""
+    node_id: Optional[str] = None
+    severity: str = ""
+
+    def __post_init__(self) -> None:
+        if self.obs_kind not in MENTOR_OBSERVATION_KINDS:
+            raise ValueError(
+                f"Неизвестный вид наблюдения: {self.obs_kind!r}; "
+                f"известные: {list(MENTOR_OBSERVATION_KINDS)}"
+            )
+        if not self.run_id:
+            raise ValueError("Наблюдение журнала требует run_id (§5: событие без исследования не существует)")
+        if not self.rule_id:
+            raise ValueError("Наблюдение журнала требует rule_id")
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "obs_id": self.obs_id,
+            "run_id": self.run_id,
+            "ts": self.ts,
+            "obs_kind": self.obs_kind,
+            "rule_id": self.rule_id,
+            "stage": self.stage,
+            "node_id": self.node_id,
+            "severity": self.severity,
+        }
+
+    @classmethod
+    def from_dict(cls, raw: dict[str, Any]) -> "MentorObservation":
+        return cls(
+            obs_id=str(raw.get("obs_id") or uuid.uuid4()),
+            run_id=str(raw.get("run_id") or ""),
+            ts=str(raw.get("ts") or _now_iso()),
+            obs_kind=str(raw.get("obs_kind") or "sanity_warning"),
+            rule_id=str(raw.get("rule_id") or ""),
+            stage=str(raw.get("stage") or ""),
+            node_id=raw.get("node_id"),
+            severity=str(raw.get("severity") or ""),
+        )
+
+
 # ── Миграция схемы (план: «миграции схемы») ──────────────────────────
 
 # Идемпотентный DDL (§12 п.1): research_runs -- PK run_id; trace_events --
@@ -246,6 +324,23 @@ MIGRATION_STATEMENTS: tuple[str, ...] = (
     "CREATE INDEX IF NOT EXISTS idx_trace_events_run_seq ON trace_events (run_id, seq)",
     "CREATE INDEX IF NOT EXISTS idx_research_runs_session ON research_runs (session_id)",
     "CREATE INDEX IF NOT EXISTS idx_research_runs_status ON research_runs (status)",
+    # PROGR-8 (§10): журнал наблюдений Наставника. БЕЗ FK на research_runs:
+    # телеметрия переживает удаление запуска, агрегаты частот корпусные.
+    """
+    CREATE TABLE IF NOT EXISTS mentor_observations (
+        seq BIGSERIAL PRIMARY KEY,
+        obs_id TEXT NOT NULL UNIQUE,
+        run_id TEXT NOT NULL,
+        ts TIMESTAMPTZ NOT NULL DEFAULT now(),
+        obs_kind TEXT NOT NULL,
+        rule_id TEXT NOT NULL,
+        stage TEXT NOT NULL DEFAULT '',
+        node_id TEXT,
+        severity TEXT NOT NULL DEFAULT ''
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_mentor_observations_run ON mentor_observations (run_id, seq)",
+    "CREATE INDEX IF NOT EXISTS idx_mentor_observations_rule ON mentor_observations (obs_kind, rule_id)",
 )
 
 
@@ -306,6 +401,17 @@ class ResearchRunStore:
     def list_checkpoints(self, run_id: str) -> list[ResearchCheckpoint]:  # pragma: no cover
         raise NotImplementedError
 
+    # -- журнал наблюдений Наставника (PROGR-8, §10) --
+
+    def append_mentor_observation(self, obs: MentorObservation) -> None:  # pragma: no cover
+        raise NotImplementedError
+
+    def list_mentor_observations(self) -> list[MentorObservation]:  # pragma: no cover
+        """Весь журнал (по всем запускам): агрегаты §10 -- корпусные,
+        объёмы одной платформы (§12 п.1) приемлемы для полного чтения
+        (тот же паттерн «журнал целиком», что R-1 отчёта PROGR-7)."""
+        raise NotImplementedError
+
 
 def _ts_to_db(value: str) -> datetime:
     """ISO-строка канона §4.1 -> datetime для TIMESTAMPTZ. Битое значение
@@ -334,6 +440,7 @@ class MemoryResearchRunStore(ResearchRunStore):
         self._runs: dict[str, ResearchRun] = {}
         self._events: dict[str, list[TraceEvent]] = {}
         self._checkpoints: dict[str, list[ResearchCheckpoint]] = {}
+        self._observations: list[MentorObservation] = []
         self._lock = threading.Lock()
 
     def upsert_run(self, run: ResearchRun) -> None:
@@ -404,6 +511,20 @@ class MemoryResearchRunStore(ResearchRunStore):
     def list_checkpoints(self, run_id: str) -> list[ResearchCheckpoint]:
         with self._lock:
             return list(self._checkpoints.get(run_id, ()))
+
+    # -- журнал наблюдений Наставника (PROGR-8, §10) --
+
+    def append_mentor_observation(self, obs: MentorObservation) -> None:
+        # MentorObservation заморожена и не содержит вложенных мутабельных
+        # структур -- хранится как есть (контракт копий R1 касается
+        # payload-словарей, которых здесь нет).
+        with self._lock:
+            self._observations.append(obs)
+
+    def list_mentor_observations(self) -> list[MentorObservation]:
+        with self._lock:
+            # Порядок дописывания (append-only), как у trace_events.
+            return list(self._observations)
 
 
 class PostgresResearchRunStore(ResearchRunStore):
@@ -616,6 +737,46 @@ class PostgresResearchRunStore(ResearchRunStore):
                 label=str(row[3] or ""),
                 has_snapshot=bool(row[4]),
                 created_at=_ts_from_db(row[5]),
+            )
+            for row in rows
+        ]
+
+    # -- журнал наблюдений Наставника (PROGR-8, §10) --
+
+    def append_mentor_observation(self, obs: MentorObservation) -> None:
+        obs_id = obs.obs_id or str(uuid.uuid4())
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO mentor_observations
+                    (obs_id, run_id, ts, obs_kind, rule_id, stage, node_id, severity)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (obs_id) DO NOTHING
+                """,
+                (
+                    obs_id, obs.run_id, _ts_to_db(obs.ts), obs.obs_kind,
+                    obs.rule_id, obs.stage, obs.node_id, obs.severity,
+                ),
+            )
+            conn.commit()
+
+    def list_mentor_observations(self) -> list[MentorObservation]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT obs_id, run_id, ts, obs_kind, rule_id, stage, "
+                "node_id, severity FROM mentor_observations ORDER BY seq",
+            )
+            rows = cur.fetchall()
+        return [
+            MentorObservation(
+                obs_id=str(row[0]),
+                run_id=str(row[1]),
+                ts=_ts_from_db(row[2]),
+                obs_kind=str(row[3]),
+                rule_id=str(row[4]),
+                stage=str(row[5] or ""),
+                node_id=row[6],
+                severity=str(row[7] or ""),
             )
             for row in rows
         ]

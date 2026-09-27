@@ -72,6 +72,35 @@ PROGR-7 -- отчёт для пользователя (spec_progress.md §5.4):
           (чистый модуль без HTTP). Ридер трассы сам не трассируется;
           слой 2 недоступен -- честный 503 (отчёт по неполной истории
           выдавал бы неполные факты за полные, паттерн PROGR-5/PROGR-6).
+
+PROGR-8 -- Admin-панель (§10) + офлайн-потребители (§9), категория D:
+
+  GET /v1/progress/admin/overview?days=&top=
+       -- агрегаты §10 по корпусу (запуски по статусам за период, время
+          по стадиям, топ warning/error-узлов, частоты правил §7.1,
+          частоты sanity §7.2 по правилу/узлу, предпочтения
+          Прогнозирования §9). Движок -- app/core/admin_analytics.py
+          (чистый, без HTTP). Пустой корпус -- честные нули
+          («старт -- по накоплении данных, не гейтится кодом»).
+  GET /v1/progress/admin/case-bank/candidates
+       -- отбор кандидатов банка кейсов (§9): алгоритмическая эвристика
+          (completed + финальный бэктест-скор + малое число warning-узлов
+          + малое число sanity-предупреждений); суммаризация трассы в
+          кейс -- офлайн-джоба ВНЕ сервиса (§9 дословно).
+
+  Авторизация §10 дословно: API-ключ с ролью ADMIN, НЕ cookie-сессия
+  аналитика (require_admin_role -- та же ролевая модель Role,
+  фабрика зависимостей -- паттерн require_capability). Админ-эндпоинты
+  не в TRACE_ROUTES (ридеры не трассируются).
+
+  Источник частот §10 -- журнал наблюдений Наставника
+  (research_runs.MentorObservation, append-only слой 2):
+    * sanity-check записывает сработавшие предупреждения (run-контекст
+      из cookie-сессии -- фронтенд шлёт credentials: include, тело
+      запроса НЕ меняется); best-effort: сбой журнала не ломает ответ
+      (предупреждения вспомогательны, §12 п.8);
+    * next-step записывает ВЫДАННУЮ рекомендацию (частота выдач --
+      «какие рекомендации даются чаще всего», §10 дословно).
 """
 from __future__ import annotations
 
@@ -84,10 +113,14 @@ from io import BytesIO
 from typing import Any, Callable, Dict, List, Optional
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 
 from app.data.file_loader import read_uploaded_file
+from app.core.admin_analytics import (
+    build_admin_overview,
+    select_case_bank_candidates,
+)
 from app.core.mentor_rules import (
     CorrectionOutcomeSummary,
     derive_node_statuses,
@@ -99,7 +132,9 @@ from app.core.mentor_rules import (
 )
 from app.core.pipeline_graph import is_known_node
 from app.core.run_report import build_report_model, render_html, render_markdown
+from apps.api.auth import require_admin_role
 from apps.api.research_runs import (
+    MentorObservation,
     ResearchCheckpoint,
     ResearchRun,
     get_dataset_file_store,
@@ -625,6 +660,30 @@ class SanityCheckResponse(BaseModel):
     warnings: List[SanityWarningOut] = Field(default_factory=list)
 
 
+def _record_next_step_observation(run_id: str, recommendation: Any) -> None:
+    """PROGR-8: факт ВЫДАЧИ рекомендации §7.1 -- в журнал наблюдений
+    (частота выдач -- «какие рекомендации даются чаще всего», §10).
+    Best-effort (паттерн record_run_event/_mirror_to_layer1): сбой
+    журнала не ломает ответ -- рекомендация вспомогательна."""
+    if recommendation is None:
+        return
+    try:
+        get_research_run_store().append_mentor_observation(
+            MentorObservation(
+                run_id=run_id,
+                obs_kind="next_step",
+                rule_id=recommendation.rule_id,
+                stage=recommendation.stage,
+                node_id=None,
+                severity="",
+            )
+        )
+    except Exception:
+        logger.warning(
+            "Progress: наблюдение next-step не записано в журнал", exc_info=True
+        )
+
+
 @router.get("/runs/{run_id}/mentor/next-step", response_model=MentorNextStepResponse)
 @_durable_ops
 def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
@@ -641,6 +700,7 @@ def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
     statuses = derive_node_statuses(events)
     recommendation = evaluate_next_step(statuses)
     history_warnings = evaluate_history_warnings(events)
+    _record_next_step_observation(run_id, recommendation)
 
     last_stage = "upload"
     if events:
@@ -721,8 +781,49 @@ def get_run_report(
     )
 
 
+def _record_sanity_observations(
+    request: Request,
+    outcome: CorrectionOutcomeSummaryIn,
+    warnings: List[SanityWarningOut],
+) -> None:
+    """PROGR-8: сработавшие предупреждения §7.2 -- в журнал наблюдений
+    (частота по правилу/узлу §10). Run-контекст -- из cookie-сессии:
+    фронтенд шлёт sanity-check с credentials: include, ТЕЛО ЗАПРОСА
+    не меняется (обратная совместимость контракта §7.2). Нет cookie /
+    сессии / run_id -- записей нет (предупреждение вне исследования
+    не существует для корпуса). Best-effort: сбой журнала НЕ ломает
+    ответ -- предупреждения вспомогательны (§12 п.8)."""
+    if not warnings:
+        return
+    try:
+        session_id = request.cookies.get(SESSION_COOKIE_NAME)
+        if not session_id:
+            return
+        session = get_session_store().get(session_id)
+        if session is None or not session.run_id:
+            return
+        store = get_research_run_store()
+        for warning in warnings:
+            store.append_mentor_observation(
+                MentorObservation(
+                    run_id=session.run_id,
+                    obs_kind="sanity_warning",
+                    rule_id=warning.rule_id,
+                    stage=outcome.stage,
+                    node_id=outcome.node_id,
+                    severity=warning.severity,
+                )
+            )
+    except Exception:
+        logger.warning(
+            "Progress: sanity-наблюдения не записаны в журнал", exc_info=True
+        )
+
+
 @router.post("/mentor/sanity-check", response_model=SanityCheckResponse)
-def run_mentor_sanity_check(payload: CorrectionOutcomeSummaryIn) -> SanityCheckResponse:
+def run_mentor_sanity_check(
+    payload: CorrectionOutcomeSummaryIn, request: Request
+) -> SanityCheckResponse:
     """Sanity-проверка preview-исхода Мастера (§7.2): ВЕСЬ список
     сработавших предупреждений над нормализованным исходом.
 
@@ -762,7 +863,7 @@ def run_mentor_sanity_check(payload: CorrectionOutcomeSummaryIn) -> SanityCheckR
         ),
     )
     warnings = evaluate_sanity(outcome)
-    return SanityCheckResponse(
+    result = SanityCheckResponse(
         warnings=[
             SanityWarningOut(
                 rule_id=warning.rule_id,
@@ -772,6 +873,183 @@ def run_mentor_sanity_check(payload: CorrectionOutcomeSummaryIn) -> SanityCheckR
             )
             for warning in warnings
         ]
+    )
+    _record_sanity_observations(request, payload, result.warnings)
+    return result
+
+
+# ── PROGR-8: Admin-панель (§10) + офлайн-потребители (§9) ────────────
+
+# Схемы ответов -- зеркало моделей движка app/core/admin_analytics.py
+# (движок чистый, без HTTP; сериализация -- ответственность роутера,
+# паттерн run_report.py PROGR-7).
+
+
+class StageSpanStatOut(BaseModel):
+    """Время по стадии (агрегат по запускам, минуты)."""
+
+    stage: str
+    runs_with_stage: int
+    mean_minutes: float
+    median_minutes: float
+
+
+class NodeProblemOut(BaseModel):
+    """Узел с финальным статусом warning/error по запускам."""
+
+    stage: str
+    node_id: str
+    status: str
+    count: int
+
+
+class RuleFrequencyOut(BaseModel):
+    """Частота правила (§7.1 next_step / §7.2 по правилу)."""
+
+    rule_id: str
+    stage: str
+    count: int
+
+
+class SanityNodeFrequencyOut(BaseModel):
+    """Частота sanity-предупреждений §7.2 по узлу."""
+
+    stage: str
+    node_id: str
+    count: int
+
+
+class ValueFrequencyOut(BaseModel):
+    """Частота значения (model_id / horizon / alpha, §9)."""
+
+    value: str
+    count: int
+
+
+class AdminOverviewResponse(BaseModel):
+    """Агрегаты §10 по корпусу. Пустой корпус -- честные нули
+    (старт -- по накоплении данных, не гейтится кодом)."""
+
+    generated_at: str
+    period_days: int
+    runs_total_all_time: int
+    runs_total_in_period: int
+    runs_by_status: Dict[str, int] = Field(default_factory=dict)
+    stage_time: List[StageSpanStatOut] = Field(default_factory=list)
+    top_problem_nodes: List[NodeProblemOut] = Field(default_factory=list)
+    next_step_frequency: List[RuleFrequencyOut] = Field(default_factory=list)
+    sanity_by_rule: List[RuleFrequencyOut] = Field(default_factory=list)
+    sanity_by_node: List[SanityNodeFrequencyOut] = Field(default_factory=list)
+    forecasting_model_frequency: List[ValueFrequencyOut] = Field(default_factory=list)
+    forecasting_horizon_frequency: List[ValueFrequencyOut] = Field(default_factory=list)
+    forecasting_alpha_frequency: List[ValueFrequencyOut] = Field(default_factory=list)
+
+
+class CaseBankCandidateOut(BaseModel):
+    """Кандидат банка кейсов (§9): run_id + доказательства отбора."""
+
+    run_id: str
+    status: str
+    dataset_name: str
+    created_at: str
+    backtest_mape: float
+    warning_nodes: int
+    sanity_warnings: int
+
+
+class CaseBankResponse(BaseModel):
+    """Отбор кандидатов §9 + эхо-порогов (прозрачность для панели) +
+    total_completed -- сколько завершённых запусков рассматривалось."""
+
+    candidates: List[CaseBankCandidateOut] = Field(default_factory=list)
+    total_completed: int = 0
+    criteria: Dict[str, float] = Field(default_factory=dict)
+
+
+@router.get("/admin/overview", response_model=AdminOverviewResponse)
+@_durable_ops
+def get_admin_overview(
+    principal: Any = Depends(require_admin_role),
+    days: int = Query(default=30, ge=1, le=730, alias="days"),
+    top: int = Query(default=10, ge=1, le=50, alias="top"),
+) -> AdminOverviewResponse:
+    """Агрегаты §10 по корпусу (research_runs/trace_events + журнал
+    наблюдений Наставника), БЕЗ раскрытия содержимого датасетов
+    пользователей. Слой 2 недоступен -- честный 503 (агрегаты по
+    неполному корпусу выдавали бы неполную картину за полную,
+    паттерн PROGR-5/6/7)."""
+    store = _require_store()
+    runs = store.list_runs()
+    events_by_run = {run.run_id: store.list_events(run.run_id) for run in runs}
+    observations = [
+        obs.to_dict() for obs in store.list_mentor_observations()
+    ]
+    model = build_admin_overview(
+        [run.to_dict() for run in runs],
+        events_by_run,
+        observations,
+        period_days=days,
+        top_limit=top,
+    )
+    return AdminOverviewResponse(
+        generated_at=model.generated_at,
+        period_days=model.period_days,
+        runs_total_all_time=model.runs_total_all_time,
+        runs_total_in_period=model.runs_total_in_period,
+        runs_by_status=model.runs_by_status,
+        stage_time=[item.to_dict() for item in model.stage_time],
+        top_problem_nodes=[item.to_dict() for item in model.top_problem_nodes],
+        next_step_frequency=[item.to_dict() for item in model.next_step_frequency],
+        sanity_by_rule=[item.to_dict() for item in model.sanity_by_rule],
+        sanity_by_node=[item.to_dict() for item in model.sanity_by_node],
+        forecasting_model_frequency=[
+            item.to_dict() for item in model.forecasting_model_frequency
+        ],
+        forecasting_horizon_frequency=[
+            item.to_dict() for item in model.forecasting_horizon_frequency
+        ],
+        forecasting_alpha_frequency=[
+            item.to_dict() for item in model.forecasting_alpha_frequency
+        ],
+    )
+
+
+@router.get("/admin/case-bank/candidates", response_model=CaseBankResponse)
+@_durable_ops
+def get_case_bank_candidates(
+    principal: Any = Depends(require_admin_role),
+    max_backtest_mape: float = Query(default=30.0, gt=0),
+    max_warning_nodes: int = Query(default=2, ge=0),
+    max_sanity_warnings: int = Query(default=2, ge=0),
+) -> CaseBankResponse:
+    """Отбор кандидатов банка кейсов (§9): алгоритмическая эвристика
+    над корпусом; отобранные run_id идут в офлайн-процесс суммаризации
+    трассы (LLM-джоба вне сервиса, §9 дословно). MAPE lower-is-better:
+    порог -- максимум (честная инверсия «скор выше порога» §9)."""
+    store = _require_store()
+    runs = store.list_runs()
+    events_by_run = {run.run_id: store.list_events(run.run_id) for run in runs}
+    observations = [
+        obs.to_dict() for obs in store.list_mentor_observations()
+    ]
+    candidates = select_case_bank_candidates(
+        [run.to_dict() for run in runs],
+        events_by_run,
+        observations,
+        max_backtest_mape=max_backtest_mape,
+        max_warning_nodes=max_warning_nodes,
+        max_sanity_warnings=max_sanity_warnings,
+    )
+    return CaseBankResponse(
+        candidates=[item.to_dict() for item in candidates],
+        total_completed=sum(
+            1 for run in runs if run.status == "completed"
+        ),
+        criteria={
+            "max_backtest_mape": max_backtest_mape,
+            "max_warning_nodes": max_warning_nodes,
+            "max_sanity_warnings": max_sanity_warnings,
+        },
     )
 
 

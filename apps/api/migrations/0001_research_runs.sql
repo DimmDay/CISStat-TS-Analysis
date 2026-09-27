@@ -43,3 +43,23 @@ CREATE TABLE IF NOT EXISTS run_checkpoints (
 CREATE INDEX IF NOT EXISTS idx_trace_events_run_seq ON trace_events (run_id, seq);
 CREATE INDEX IF NOT EXISTS idx_research_runs_session ON research_runs (session_id);
 CREATE INDEX IF NOT EXISTS idx_research_runs_status ON research_runs (status);
+
+-- PROGR-8 (spec_progress.md §10): журнал наблюдений Наставника.
+-- Append-only телеметрия срабатываний правил §7.1 (next_step) и
+-- §7.2 (sanity_warning) для агрегатов Admin-панели. БЕЗ FK на
+-- research_runs: телеметрия переживает удаление запуска, агрегаты
+-- частот корпусные (дубль MIGRATION_STATEMENTS research_runs.py).
+CREATE TABLE IF NOT EXISTS mentor_observations (
+    seq BIGSERIAL PRIMARY KEY,
+    obs_id TEXT NOT NULL UNIQUE,
+    run_id TEXT NOT NULL,
+    ts TIMESTAMPTZ NOT NULL DEFAULT now(),
+    obs_kind TEXT NOT NULL,
+    rule_id TEXT NOT NULL,
+    stage TEXT NOT NULL DEFAULT '',
+    node_id TEXT,
+    severity TEXT NOT NULL DEFAULT ''
+);
+
+CREATE INDEX IF NOT EXISTS idx_mentor_observations_run ON mentor_observations (run_id, seq);
+CREATE INDEX IF NOT EXISTS idx_mentor_observations_rule ON mentor_observations (obs_kind, rule_id);

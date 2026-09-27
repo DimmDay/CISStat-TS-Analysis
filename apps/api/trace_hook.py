@@ -304,7 +304,10 @@ TRACE_ROUTES: tuple[TraceRouteSpec, ...] = (
     TraceRouteSpec(
         "POST", "/v1/session/modeling/backtest", "modeling", "backtest",
         "backtest_run",
-        payload_keys=("model_id", "model_name", "family_id", "n_train", "n_test"),
+        # PROGR-8 (§9): metrics.mape -- скор финального бэктеста в
+        # корпусе (доказательство эвристики банка кейсов); dotted-ключ
+        # хранится в payload плоским "mape" (см. _extract_payload).
+        payload_keys=("model_id", "model_name", "family_id", "n_train", "n_test", "metrics.mape"),
     ),
     TraceRouteSpec(
         "POST", "/v1/session/modeling/tune", "modeling", "tuning",
@@ -396,10 +399,31 @@ def resolve_trace_route(method: str, path: str) -> TraceRouteSpec | None:
 def _extract_payload(spec: TraceRouteSpec, body: dict[str, Any]) -> dict[str, Any]:
     """Белый список ключей тела ответа (§4.1: payload -- факты, не сырой
     ответ). Отсутствующие ключи опускаются; значения JSON-совместимы по
-    построению (пришли из JSON-ответа)."""
+    построению (пришли из JSON-ответа).
+
+    PROGR-8 (аддитивно): ключ с точкой ("metrics.mape") -- ДОТ-путь во
+    вложенный объект тела (скор финального бэктеста живёт в
+    BacktestResponse.metrics); в payload сохраняется ПОД ПОСЛЕДНИМ
+    сегментом -- корпус хранит факты плоскими ключами (§4.1). Плоские
+    ключи работают как прежде; промежуточные уровни отсутствуют/не
+    словарь -- ключ честно опускается."""
     if not spec.payload_keys or not isinstance(body, dict):
         return {}
-    return {key: body[key] for key in spec.payload_keys if key in body}
+    payload: dict[str, Any] = {}
+    for key in spec.payload_keys:
+        if "." in key:
+            node: Any = body
+            found = True
+            for segment in key.split("."):
+                if not isinstance(node, dict) or segment not in node:
+                    found = False
+                    break
+                node = node[segment]
+            if found:
+                payload[key.rsplit(".", 1)[-1]] = node
+        elif key in body:
+            payload[key] = body[key]
+    return payload
 
 
 def _throttled(session: AnalysisSession, spec: TraceRouteSpec, now: datetime) -> bool:
