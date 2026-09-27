@@ -1526,8 +1526,23 @@ describe("TsAnalysisPreprocessing — self-fetch Обзоры: живая инв
     // «Метрики и алгоритм» возвращает из пайплайна) — Обзор ремоунтится
     // и обязан показать СВЕЖИЙ профиль: 0 пропусков.
     fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
-    expect(await screen.findByText("Пропусков — 0 (0.0%)")).toBeInTheDocument();
-    expect(screen.queryByText("Пропусков — 2 (25.0%)")).not.toBeInTheDocument();
+    // Атомарный waitFor вместо «findByText + отдельный assert»: оба
+    // fireEvent выше идут синхронно, а apply-POST разрешается ПОЗЖЕ
+    // (микротаски) -- onApplied() -> bump datasetVersion приходит, когда
+    // Обзор УЖЕ показал первый «Пропусков — 0»; перезапуск эффекта
+    // [refreshKey] в PreprocessingMissingOverview делает setLoading(true)
+    // и свапает поддерево («Загрузка…» -> контент), поэтому узел,
+    // найденный findByText, детачится до ассерта, и jest-dom на медленных
+    // машинах отдавал «element could not be found in the document»
+    // (полл findByText попадал в транзиентное окно между двумя рендерами
+    // с одинаковым свежим текстом). waitFor переопросит DOM: если полл
+    // угодил в транзиент -- следующий найдёт финальный узел; оба ассерта
+    // в одном колбэке атомарны (Component contract PREPR-4 не ослаблен:
+    // свежий «0» присутствует, старый «2» отсутствует).
+    await waitFor(() => {
+      expect(screen.getByText("Пропусков — 0 (0.0%)")).toBeInTheDocument();
+      expect(screen.queryByText("Пропусков — 2 (25.0%)")).not.toBeInTheDocument();
+    });
   });
 });
 
