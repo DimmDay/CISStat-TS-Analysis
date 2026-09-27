@@ -1475,7 +1475,18 @@ export function TsAnalysisPreprocessing() {
                 {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : check.id === "variance_stab" ? "Настроить трансформацию" : check.id === "smoothing" ? "Настроить сглаживание" : check.id === "stationarity" ? "Обеспечить стационарность" : check.id === "spectral" ? "Зафиксировать периоды" : check.id === "feature_eng" ? "Сгенерировать признаки" : check.id === "scaling" ? "Настроить масштабирование" : "Полный пайплайн"}
               </button>
 
-              <Button onClick={check.id === "stationarity" ? () => setStationarityRefreshKey((key) => key + 1) : check.id === "spectral" ? () => setSpectralRefreshKey((key) => key + 1) : check.id === "feature_eng" ? () => setFeatureGenerationRefreshKey((key) => key + 1) : check.id === "scaling" ? () => setScalingRefreshKey((key) => key + 1) : undefined}>{check.id === "spectral" ? "Пересчитать спектральный профиль" : check.id === "feature_eng" ? "Пересчитать профиль признаков" : check.id === "scaling" ? "Пересчитать профиль масштабов" : `Пересчитать свойства после преобразования (${check.label.toLowerCase()})`}</Button>
+              {/* PROGR-9: кнопка пересчёта — только у остановок с реальным
+                  обработчиком (ручной fallback: чужая мутация датасета мимо
+                  открытой вкладки — общая cookie-сессия, ретрай после сбоя
+                  GET). У остальных шести остановок onClick был undefined —
+                  «мёртвые» кнопки (pre-existing) введены пользователя в
+                  заблуждение и удалены: автопересчёт после изменений
+                  аналитика (apply мастера, смена режима/признака/параметров)
+                  покрывает ВСЕ остановки единообразно через datasetVersion
+                  в deps эффектов, поэтому кнопка без обработчика не нужна. */}
+              {(check.id === "stationarity" || check.id === "spectral" || check.id === "feature_eng" || check.id === "scaling") && (
+                <Button onClick={check.id === "stationarity" ? () => setStationarityRefreshKey((key) => key + 1) : check.id === "spectral" ? () => setSpectralRefreshKey((key) => key + 1) : check.id === "feature_eng" ? () => setFeatureGenerationRefreshKey((key) => key + 1) : check.id === "scaling" ? () => setScalingRefreshKey((key) => key + 1) : undefined}>{check.id === "spectral" ? "Пересчитать спектральный профиль" : check.id === "feature_eng" ? "Пересчитать профиль признаков" : check.id === "scaling" ? "Пересчитать профиль масштабов" : `Пересчитать свойства после преобразования (${check.label.toLowerCase()})`}</Button>
+              )}
             </article>
           ))}
         </div>

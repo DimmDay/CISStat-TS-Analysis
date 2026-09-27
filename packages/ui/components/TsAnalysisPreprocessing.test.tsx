@@ -1627,3 +1627,130 @@ describe("TsAnalysisPreprocessing — инвалидация кэша раскр
     expect(invalidateSpy).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("TsAnalysisPreprocessing — кнопки пересчёта Панели управления (PROGR-9)", () => {
+  // Шесть остановок с onClick=undefined (pre-existing мёртвые кнопки):
+  // по решению тимлида удаляются — кнопка без обработчика обманывает
+  // ожидания (клик не даёт ни запроса, ни реакции).
+  const DEAD_BUTTON_NAMES = [
+    "Пересчитать свойства после преобразования (пропуски)",
+    "Пересчитать свойства после преобразования (выбросы)",
+    "Пересчитать свойства после преобразования (регулярность ряда)",
+    "Пересчитать свойства после преобразования (декомпозиция ряда)",
+    "Пересчитать свойства после преобразования (стабилизация дисперсии)",
+    "Пересчитать свойства после преобразования (сглаживание ряда)",
+  ];
+  // Четыре остановки с реальным обработчиком остаются: ручной fallback
+  // (чужая мутация датасета мимо вкладки, ретрай после сбоя GET).
+  const LIVE_BUTTON_NAMES = [
+    "Пересчитать свойства после преобразования (стационарность ряда)",
+    "Пересчитать спектральный профиль",
+    "Пересчитать профиль признаков",
+    "Пересчитать профиль масштабов",
+  ];
+
+  function countingFetch(counts: Record<string, number>): typeof fetch {
+    const inner = routeFetch();
+    return jest.fn((url: string, init?: RequestInit) => {
+      if (typeof url === "string") {
+        if (url.includes("missing-profile")) counts.missing = (counts.missing ?? 0) + 1;
+        if (url.includes("outlier-profile")) counts.outliers = (counts.outliers ?? 0) + 1;
+        if (url.includes("regularity-profile")) counts.regularity = (counts.regularity ?? 0) + 1;
+        if (url.includes("decomposition-profile")) counts.decomposition = (counts.decomposition ?? 0) + 1;
+        if (url.includes("variance-profile")) counts.variance = (counts.variance ?? 0) + 1;
+        if (url.includes("smoothing-profile")) counts.smoothing = (counts.smoothing ?? 0) + 1;
+        if (url.includes("stationarity-profile")) counts.stationarity = (counts.stationarity ?? 0) + 1;
+        if (url.includes("spectral-profile")) counts.spectral = (counts.spectral ?? 0) + 1;
+        if (url.includes("feature-generation-profile")) counts.featureGeneration = (counts.featureGeneration ?? 0) + 1;
+        if (url.includes("scaling-profile")) counts.scaling = (counts.scaling ?? 0) + 1;
+      }
+      return inner(url, init);
+    }) as unknown as typeof fetch;
+  }
+
+  it("не рендерит мёртвые кнопки пересчёта у шести остановок без обработчика (однородность UX)", () => {
+    // Панель управления рендерит все 10 карточек остановок одновременно,
+    // поэтому наличие/отсутствие кнопок проверяется без переключения.
+    render(<TsAnalysisPreprocessing />);
+    DEAD_BUTTON_NAMES.forEach((name) => {
+      expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    });
+    LIVE_BUTTON_NAMES.forEach((name) => {
+      expect(screen.getByRole("button", { name })).toBeInTheDocument();
+    });
+  });
+
+  it("рабочая кнопка пересчёта остаётся ручным fallback: клик перезапрашивает профиль своей остановки", async () => {
+    const counts: Record<string, number> = {};
+    global.fetch = countingFetch(counts);
+    render(<TsAnalysisPreprocessing />);
+    await screen.findByText("Найдено 2 пропусков");
+    const stationarityBefore = counts.stationarity ?? 0;
+    const scalingBefore = counts.scaling ?? 0;
+
+    fireEvent.click(screen.getByRole("button", { name: "Пересчитать свойства после преобразования (стационарность ряда)" }));
+    await waitFor(() => expect(counts.stationarity).toBe(stationarityBefore + 1));
+
+    fireEvent.click(screen.getByRole("button", { name: "Пересчитать профиль масштабов" }));
+    await waitFor(() => expect(counts.scaling).toBe(scalingBefore + 1));
+  });
+
+  it("после внесения изменений аналитиком (apply мастера) профили четырёх живых остановок пересчитываются автоматически — кнопка не требуется", async () => {
+    // Ответ на вопрос постановки: автопересчёт после изменений уже покрывает
+    // все остановки (datasetVersion в deps всех эффектов). Применяем
+    // исправление пропусков и фиксируем: профили «Стационарности»,
+    // «Спектрального», «Генерации признаков» и «Масштабирования»
+    // перезапрашиваются БЕЗ нажатия их кнопок пересчёта.
+    const counts: Record<string, number> = {};
+    let applied = false;
+    global.fetch = jest.fn((url: string, init?: RequestInit) => {
+      if (typeof url === "string" && url.includes("/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            target_column: init?.method === "POST" ? JSON.parse(String(init.body)).column : "Price",
+            suggested_column: "Price",
+            available_columns: ["Price"],
+            has_dataset: true,
+          }),
+        });
+      }
+      if (typeof url === "string" && url.includes("missing-corrections") && init?.method === "POST") {
+        if (JSON.parse(String(init.body)).apply) applied = true;
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            applied: Boolean(init.body && JSON.parse(String(init.body)).apply),
+            strategy: "median_mode", total_missing: 2, total_changed: 2,
+            total_still_missing: 0, rows_removed: 0, added_columns: [],
+            columns: [{ column: "Price", missing_count: 2, changed_count: 2, still_missing: 0, missing_examples: [1, 3], flag_column: null }],
+            profile: [{ ...MISSING_PROFILE.columns[0], missing_count: 0, missing_pct: 0, missing_examples: [] }],
+          }),
+        });
+      }
+      if (typeof url === "string" && url.includes("missing-profile")) {
+        counts.missing = (counts.missing ?? 0) + 1;
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(applied ? { ...MISSING_PROFILE, status: "done", total_missing: 0 } : MISSING_PROFILE) });
+      }
+      return countingFetch(counts)(url, init);
+    }) as unknown as typeof fetch;
+
+    render(<TsAnalysisPreprocessing />);
+    await screen.findByText("Найдено 2 пропусков");
+
+    const before = { ...counts };
+    fireEvent.click(screen.getByRole("button", { name: "Исправить пропуски" }));
+    await screen.findByRole("checkbox", { name: "Выбрать колонку Price" });
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр изменений" }));
+    await screen.findByText("Исправлено значений: 2");
+    fireEvent.click(screen.getByRole("checkbox", { name: /Подтверждаю изменение активного датасета/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Применить исправления" }));
+    await screen.findByText("Проверка пройдена, пропусков нет");
+
+    // Ни одной кнопки пересчёта не нажато — профили обновились сами.
+    await waitFor(() => expect(counts.stationarity).toBe((before.stationarity ?? 0) + 1));
+    await waitFor(() => expect(counts.spectral).toBe((before.spectral ?? 0) + 1));
+    await waitFor(() => expect(counts.featureGeneration).toBe((before.featureGeneration ?? 0) + 1));
+    await waitFor(() => expect(counts.scaling).toBe((before.scaling ?? 0) + 1));
+  });
+});
