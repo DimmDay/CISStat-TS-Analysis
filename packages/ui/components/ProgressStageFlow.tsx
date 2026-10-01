@@ -2,7 +2,7 @@
 
 // packages/ui/components/ProgressStageFlow.tsx
 //
-// Блок-схема 6 стадий «Прогресса» (Task PROGR-4, spec_progress.md §6.2):
+// Блок-схема 6 стадий «Прогресс» (Task PROGR-4, spec_progress.md §6.2):
 // карточки стадий с лёгким цветным фоном по свёртке §12 п.10
 // (bg-green-50 «пройдено» / bg-amber-50 «в работе или есть замечания» /
 // нейтральный «не начато» -- то же семантическое сопоставление цветов,
@@ -12,23 +12,28 @@
 //
 // Разворачивание стадии -- список узлов с их статусом; клик по узлу --
 // deep-link на вкладку стадии (§6.2: «не дублирует UI остановки внутри
-// панели»), поэтому узел -- ссылка, а не кнопка. Статусы узлов выводятся
-// из фактов трассы (§4.1) -- см. lib/progress.ts; схема сеткой колонок,
-// а не в ряд: 40rem-панель («или колонкой, если панель узкая -- деталь
-// адаптива», §6.2).
+// панели»), поэтому узел -- ссылка, а не кнопка.
+//
+// PROGR-10 (Расхождение №1): компонент РЕНДЕРИТ готовое состояние
+// (props {statuses, stages} -- ответ /trace), не вычисляет: вывод
+// статусов и свёртка §12 п.10 -- единый движок бэкенда
+// (app/core/node_status.py). Стадия, отсутствующая в ответе (сеть/
+// старый бэкенд), честно «не начато» из реестра узлов, без подстановки
+// фейковых фактов. Схема сеткой колонок, а не в ряд: 40rem-панель
+// («или колонкой, если панель узкая -- деталь адаптива», §6.2).
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { STAGE_DEFS } from "../lib/stages";
 import {
+  FOLD_NOT_STARTED,
   PROGRESS_STAGE_NODES,
-  deriveNodeStatuses,
   nodeLabel,
-  stageSummary,
+  stageStateText,
   type FoldVisualState,
-  type TraceEventInfo,
+  type StageStateInfo,
 } from "../lib/progress";
 
 // Свёртка карточки -> иконка StatusIcon (§6.2: «иконкой статуса,
@@ -59,14 +64,31 @@ const FOLD_BG: Record<FoldVisualState, string> = {
   not_started: "bg-white",
 };
 
-export function ProgressStageFlow({ events }: { events: TraceEventInfo[] }) {
-  const statuses = useMemo(() => deriveNodeStatuses(events), [events]);
+export interface ProgressStageFlowProps {
+  /** Готовая карта статусов узлов "stage/node_id" (node_statuses ответа
+   * /trace; единый движок app/core/node_status.py). */
+  statuses: Record<string, string>;
+  /** Готовые свёртки стадий §12 п.10 + счётчики (stages ответа /trace). */
+  stages: StageStateInfo[];
+}
+
+export function ProgressStageFlow({ statuses, stages }: ProgressStageFlowProps) {
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
 
   return (
     <div className="grid grid-cols-2 gap-2 px-4 py-3">
       {STAGE_DEFS.map(({ key, label, href }) => {
-        const summary = stageSummary(key, statuses);
+        // Стадия, отсутствующая в ответе (сеть/старый бэкенд) -- честное
+        // «не начато» из реестра узлов, не выдуманное состояние.
+        const state: StageStateInfo =
+          stages.find((s) => s.stage === key) ?? {
+            stage: key,
+            fold: FOLD_NOT_STARTED,
+            done_count: 0,
+            warning_nodes: 0,
+            total_nodes: (PROGRESS_STAGE_NODES[key] ?? []).length,
+          };
+        const summaryText = stageStateText(state);
         const expanded = expandedStage === key;
         return (
           <div key={key} className="min-w-0">
@@ -75,10 +97,10 @@ export function ProgressStageFlow({ events }: { events: TraceEventInfo[] }) {
               onClick={() => setExpandedStage(expanded ? null : key)}
               aria-expanded={expanded}
               aria-label={`Стадия ${label}`}
-              className={`w-full rounded-lg border border-neutral-200 p-2.5 text-left transition-colors hover:border-neutral-300 ${FOLD_BG[summary.fold]}`}
+              className={`w-full rounded-lg border border-neutral-200 p-2.5 text-left transition-colors hover:border-neutral-300 ${FOLD_BG[state.fold]}`}
             >
               <div className="flex items-center gap-1.5">
-                <StatusIcon status={FOLD_ICON[summary.fold]} size={16} />
+                <StatusIcon status={FOLD_ICON[state.fold]} size={16} />
                 <span className="truncate text-sm font-medium text-neutral-800">{label}</span>
                 <ChevronDown
                   size={14}
@@ -86,7 +108,7 @@ export function ProgressStageFlow({ events }: { events: TraceEventInfo[] }) {
                   className={`ml-auto shrink-0 text-neutral-400 transition-transform ${expanded ? "rotate-180" : ""}`}
                 />
               </div>
-              <p className="mt-1 text-xs text-neutral-600">{summary.text}</p>
+              <p className="mt-1 text-xs text-neutral-600">{summaryText}</p>
             </button>
 
             {expanded && (

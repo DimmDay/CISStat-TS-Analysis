@@ -28,19 +28,22 @@
 // MentorPanel (§7.1 «Следующий шаг» + history-предупреждения §7.2);
 // секция живёт ВНУТРИ панели, закрытия не инициирует (N-4).
 //
-// Данные: GET /v1/progress/trace (слой 1, apps/api/routers/progress.py)
-// + GET /v1/session/modeling/forecast (события ForecastRun.trace, §3) --
-// слияние и хронологическая сортировка в lib/progress.ts. Запросы
-// best-effort (паттерн хука PROGR-3): сбой сети не роняет панель.
+// Данные: ОДИН запрос GET /v1/progress/trace (PROGR-10, Расхождение
+// №1) -- сервер сам сливает слой 1 с ForecastRun.trace, сортирует
+// хронологически и отдаёт ГОТОВОЕ состояние (events + node_statuses +
+// stages единого движка app/core/node_status.py); второй опрос
+// /v1/session/modeling/forecast и клиентское слияние/вычисление
+// удалены. Деталь запуска полосы действий (§6.3) -- независимый
+// запрос GET /v1/progress/runs/{run_id}. Запросы best-effort (паттерн
+// хука PROGR-3): сбой сети не роняет панель.
 
 import { useCallback, useEffect, useState } from "react";
 import { useAppShell } from "../context/AppShellContext";
-import { progressApiUrl, sessionApiUrl } from "../lib/apiClient";
+import { progressApiUrl } from "../lib/apiClient";
 import {
-  collectForecastTraceEvents,
   lastCheckpointableEvent,
-  sortEventsChronologically,
   type CheckpointInfo,
+  type StageStateInfo,
   type TraceEventInfo,
 } from "../lib/progress";
 import { ProgressCheckpointBar } from "./ProgressCheckpointBar";
@@ -53,6 +56,10 @@ interface ProgressTraceState {
   runId: string | null;
   startedAt: string | null;
   events: TraceEventInfo[];
+  /** Готовые статусы узлов из /trace (PROGR-10); {} -- ответ не пришёл. */
+  statuses: Record<string, string>;
+  /** Готовые свёртки стадий из /trace (PROGR-10); [] -- ответ не пришёл. */
+  stages: StageStateInfo[];
 }
 
 interface RunDetailState {
@@ -66,6 +73,8 @@ const EMPTY_TRACE: ProgressTraceState = {
   runId: null,
   startedAt: null,
   events: [],
+  statuses: {},
+  stages: [],
 };
 
 const RUN_DETAIL_UNAVAILABLE: RunDetailState = { status: null, checkpoints: [] };
@@ -110,22 +119,25 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
     const load = async (): Promise<void> => {
       setTrace((previous) => ({ ...previous, loading: true }));
       try {
-        // Слой 1 (§5) + события Прогнозирования (§3: ForecastRun.trace --
-        // унификация хранения в PROGR-5); оба запроса независимы.
-        const [traceResp, forecastResp] = await Promise.all([
-          fetch(progressApiUrl("/trace"), { credentials: "include" }),
-          fetch(sessionApiUrl("/modeling/forecast"), { credentials: "include" }),
-        ]);
+        // ОДИН запрос трассы (PROGR-10): сервер сам сливает слой 1 с
+        // ForecastRun.trace и отдаёт готовое состояние -- панель больше
+        // не опрашивает /v1/session/modeling/forecast и не вычисляет
+        // статусы/свёртки сама (минус один запрос и клиентское слияние).
+        const traceResp = await fetch(progressApiUrl("/trace"), {
+          credentials: "include",
+        });
         const traceData = traceResp.ok ? await traceResp.json() : null;
-        const forecastData = forecastResp.ok ? await forecastResp.json() : null;
         if (cancelled) return;
-        const layer1: TraceEventInfo[] = traceData?.events ?? [];
-        const forecastEvents = collectForecastTraceEvents(forecastData?.forecasts ?? []);
+        // Поля node_statuses/stages аддитивны (N-3): ответ старого
+        // бэкенда честно деградирует к пустому состоянию, стадии
+        // рендерятся «не начато» из реестра узлов.
         setTrace({
           loading: false,
           runId: traceData?.run_id ?? null,
           startedAt: traceData?.started_at ?? null,
-          events: sortEventsChronologically([...layer1, ...forecastEvents]),
+          events: traceData?.events ?? [],
+          statuses: traceData?.node_statuses ?? {},
+          stages: traceData?.stages ?? [],
         });
 
         // Слой 2 (PROGR-5): статус запуска + чекпоинты для полосы действий
@@ -231,7 +243,7 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
         {trace.runId && mentorOpen && <MentorPanel runId={trace.runId} />}
 
         <div className="overflow-y-auto flex-1 min-h-0 feed-scroll">
-          <ProgressStageFlow events={trace.events} />
+          <ProgressStageFlow statuses={trace.statuses} stages={trace.stages} />
 
           <div className="px-4 pb-2">
             <button

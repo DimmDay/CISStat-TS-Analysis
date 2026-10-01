@@ -29,7 +29,9 @@ GET /v1/progress/runs/{run_id}/report?format=md|html рендерит trace_even
     превращаются в узловые блоки -- им отдельный блок «Решения уровня
     этапа». Исключение -- контракт PROGR-1: forecasting-события слоя 2
     хранят node_id=None, узел выводится из типа события (4 канонических
-    типа == узлы графа §2, зеркало derive_node_statuses).
+    типа == узлы графа §2) -- публичным resolve_node_id единого движка
+    app/core/node_status.py (Расхождение №1, PROGR-10: своего зеркала
+    в модуле больше нет).
   * Хронология -- стабильная сортировка по ts, нечитаемые -- в конец
     (зеркало sortEventsChronologically packages/ui/lib/progress.ts).
   * HTML -- самодостаточный документ: ВСЕ динамические значения
@@ -43,7 +45,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from app.core.pipeline_graph import FORECASTING_STAGE_IDS, STAGES
+from app.core.node_status import resolve_node_id
+from app.core.pipeline_graph import STAGES
 from apps.api.knowledge.registry import KnowledgeRegistry, load_registry
 
 # ── Терминология из реестра знаний (единый источник, §5.4) ───────────
@@ -446,15 +449,6 @@ class RunReportModel:
     stages: tuple[ReportStage, ...]
 
 
-def _forecasting_node_of(event: dict) -> Optional[str]:
-    """Контракт PROGR-1: forecasting-события слоя 2 хранят node_id=None --
-    узел выводится из типа события (зеркало derive_node_statuses)."""
-    event_type = str(event.get("event_type") or "")
-    if event_type in FORECASTING_STAGE_IDS:
-        return event_type
-    return None
-
-
 def build_report_model(
     run_meta: dict[str, Any], events: list[dict[str, Any]]
 ) -> RunReportModel:
@@ -475,9 +469,9 @@ def build_report_model(
         stage = str(event.get("stage") or "")
         if stage not in stage_order:
             stage_order.append(stage)
-        node_id = event.get("node_id")
-        if not node_id and stage == "forecasting":
-            node_id = _forecasting_node_of(event)
+        # Вывод узла -- единый движок (контракт PROGR-1 внутри resolve_node_id:
+        # forecasting node_id=None -> event_type; явный node_id приоритетен).
+        node_id = resolve_node_id(event)
         text, links = fact_line(event)
         fact = ReportFact(ts=format_ts(event.get("ts")), text=text, links=links)
         if node_id:

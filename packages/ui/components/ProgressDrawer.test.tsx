@@ -5,8 +5,8 @@
 // EventsLogDrawer (затемнение bg-black/20 закрывает по клику, крестик,
 // translate-x транзишн), ширина -- ровно 2×w-80 = w-[40rem] (§4.2),
 // шапка -- датасет/признак/дата/run_id/"Начат N мин назад" (§6.1),
-// данные трассы -- GET /v1/progress/trace (слой 1 PROGR-3) + слияние
-// ForecastRun.trace (§3), "Развернуть трассу" -- переключатель §6.2.
+// данные -- ОДИН запрос GET /v1/progress/trace с готовым состоянием
+// (PROGR-10, Расхождение №1), "Развернуть трассу" -- переключатель §6.2.
 
 import "@testing-library/jest-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -35,15 +35,30 @@ const TRACE_RESPONSE = {
       timestamp: "2026-09-25T09:00:00+00:00",
     },
   ],
+  // Готовое состояние (PROGR-10): статусы/свёртки считает бэкенд.
+  node_statuses: { "upload/structure_confirmed": "done" } as Record<string, string>,
+  stages: [
+    {
+      stage: "upload",
+      fold: "passed",
+      done_count: 1,
+      warning_nodes: 0,
+      total_nodes: 1,
+    },
+    {
+      stage: "validation",
+      fold: "not_started",
+      done_count: 0,
+      warning_nodes: 0,
+      total_nodes: 10,
+    },
+  ],
 };
 
-function mockFetch(trace = TRACE_RESPONSE, forecasts: unknown = { forecasts: [] }) {
+function mockFetch(trace = TRACE_RESPONSE) {
   global.fetch = jest.fn((url: string) => {
     if (String(url).includes("/v1/progress/trace")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(trace) });
-    }
-    if (String(url).includes("/forecast")) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve(forecasts) });
     }
     return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
   }) as jest.Mock;
@@ -119,7 +134,7 @@ describe("ProgressDrawer", () => {
   });
 
   it("без run_id (сессия без датасета) шапка показывает прочерк, не пустоту", async () => {
-    mockFetch({ run_id: null, started_at: null, events: [] });
+    mockFetch({ run_id: null, started_at: null, events: [], node_statuses: {}, stages: [] });
     render(<ProgressDrawer open onClose={jest.fn()} />);
     await waitFor(() => expect(screen.getByText("—")).toBeInTheDocument());
   });
@@ -129,8 +144,22 @@ describe("ProgressDrawer", () => {
     await waitFor(() => {
       const calls = (global.fetch as jest.Mock).mock.calls.map((c) => String(c[0]));
       expect(calls.some((u) => u.includes("/v1/progress/trace"))).toBe(true);
-      expect(calls.some((u) => u.includes("/modeling/forecast"))).toBe(true);
     });
+  });
+
+  it("PROGR-10: ОДИН запрос трассы -- /modeling/forecast не опрашивается", async () => {
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText("RUN-AB12CD34")).toBeInTheDocument());
+    const calls = (global.fetch as jest.Mock).mock.calls.map((c) => String(c[0]));
+    expect(calls.filter((u) => u.includes("/v1/progress/trace")).length).toBe(1);
+    expect(calls.some((u) => u.includes("/modeling/forecast"))).toBe(false);
+  });
+
+  it("готовое состояние из /trace рендерится как есть (вычисление на бэкенде)", async () => {
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByText("1/1, пройдено")).toBeInTheDocument(),
+    );
   });
 
   it("при закрытой панели fetch не выполняется", () => {
@@ -150,7 +179,7 @@ describe("ProgressDrawer", () => {
   });
 
   it("пустая трасса: блок-схема рендерится, в шапке прочерки", async () => {
-    mockFetch({ run_id: null, started_at: null, events: [] });
+    mockFetch({ run_id: null, started_at: null, events: [], node_statuses: {}, stages: [] });
     render(<ProgressDrawer open onClose={jest.fn()} />);
     // Все стадии без событий -- «не начато» на каждой карточке.
     await waitFor(() => expect(screen.getAllByText("не начато").length).toBeGreaterThan(0));
@@ -190,9 +219,6 @@ function mockFetchWithRunDetail(
     if (urlStr.includes("/v1/progress/trace")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(trace) });
     }
-    if (urlStr.includes("/forecast")) {
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({ forecasts: [] }) });
-    }
     if (urlStr.includes("/v1/progress/runs/RUN-AB12CD34") && !init?.method) {
       if (runDetail === null) {
         return Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve({}) });
@@ -227,7 +253,7 @@ describe("ProgressDrawer + ProgressCheckpointBar (PROGR-5.1, §6.3)", () => {
   });
 
   it("без run_id полоса действий не рендерится (действиям запуска неоткуда взяться)", async () => {
-    mockFetchWithRunDetail({ run_id: null, started_at: null, events: [] });
+    mockFetchWithRunDetail({ run_id: null, started_at: null, events: [], node_statuses: {}, stages: [] });
     render(<ProgressDrawer open onClose={jest.fn()} />);
     await waitFor(() => expect(screen.getByText("—")).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Пауза" })).toBeNull();
@@ -263,9 +289,6 @@ describe("ProgressDrawer + ProgressCheckpointBar (PROGR-5.1, §6.3)", () => {
       const urlStr = String(url);
       if (urlStr.includes("/v1/progress/trace")) {
         return Promise.resolve({ ok: true, json: () => Promise.resolve(TRACE_RESPONSE) });
-      }
-      if (urlStr.includes("/forecast")) {
-        return Promise.resolve({ ok: true, json: () => Promise.resolve({ forecasts: [] }) });
       }
       return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
     }) as jest.Mock;
@@ -347,7 +370,7 @@ describe("ProgressDrawer + MentorPanel (PROGR-6, §6.2/§7.1)", () => {
   });
 
   it("без run_id ни полосы, ни секции «Наставник» нет", async () => {
-    mockFetchWithRunDetail({ run_id: null, started_at: null, events: [] });
+    mockFetchWithRunDetail({ run_id: null, started_at: null, events: [], node_statuses: {}, stages: [] });
     render(<ProgressDrawer open onClose={jest.fn()} />);
     await waitFor(() => expect(screen.getByText("—")).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Наставник →" })).toBeNull();

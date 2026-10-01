@@ -101,6 +101,32 @@ PROGR-8 -- Admin-панель (§10) + офлайн-потребители (§9)
       (предупреждения вспомогательны, §12 п.8);
     * next-step записывает ВЫДАННУЮ рекомендацию (частота выдач --
       «какие рекомендации даются чаще всего», §10 дословно).
+
+PROGR-10 -- Расхождение №1 (progress_ts_analysis.md vs реализация):
+
+  Единый движок статусов -- app/core/node_status.py (чистый модуль:
+  карта EVENT_NODE_STATUS + event_to_dict + resolve_node_id +
+  derive_node_statuses + derive_stage_states); один и тот же вывод
+  статуса из фактов решений у всех трёх потребителей -- панель,
+  Наставник, admin-аналитика (N опросов и клиентское вычисление
+  убраны). «Живой опрос profile-эндпоинтов» (§3/§4.2 дизайн-документа)
+  сознательно НЕ реализуется; цена -- статус с точностью до последнего
+  засеянного события (принята тимлидом: для навигационной панели
+  приемлемо).
+
+  GET /v1/progress/trace расширен АДДИТИВНО: панель -- потребитель
+  ГОТОВОГО состояния. Сервер сам сливает слой 1 с ForecastRun.trace
+  (артефакты session.modeling_artifacts["forecasts"] -- тот же
+  источник, что /v1/session/modeling/forecast), канонизирует 3-польную
+  запись (ts=timestamp, stage="forecasting", node_id=event_type, чужие
+  типы fail-safe пропуск), сортирует хронологически и отдаёт вместе с
+  node_statuses (единый движок) и stages (свёртки §12 п.10 + счётчики).
+  run_id/event_id у канонизируемых событий НЕ выдумываются: события
+  артефакта не становятся якорями чекпоинтов (семантика §5.1 прежняя).
+  Второй опрос панели (/v1/session/modeling/forecast) и клиентское
+  слияние удалены; started_at -- по-прежнему ts первого события слоя 1
+  (§6.1 без изменений); 503 долговременного слоя панель не гасит
+  (ридер трассы -- сессионный, без durable-зависимости).
 """
 from __future__ import annotations
 
@@ -123,15 +149,24 @@ from app.core.admin_analytics import (
 )
 from app.core.mentor_rules import (
     CorrectionOutcomeSummary,
-    derive_node_statuses,
     evaluate_history_warnings,
     evaluate_next_step,
     evaluate_sanity,
     phase_text,
     stage_node_summary,
 )
-from app.core.pipeline_graph import is_known_node
-from app.core.run_report import build_report_model, render_html, render_markdown
+from app.core.node_status import (
+    derive_node_statuses,
+    derive_stage_states,
+    event_to_dict,
+)
+from app.core.pipeline_graph import FORECASTING_STAGE_IDS, is_known_node
+from app.core.run_report import (
+    build_report_model,
+    render_html,
+    render_markdown,
+    sort_events_chronologically,
+)
 from apps.api.auth import require_admin_role
 from apps.api.research_runs import (
     MentorObservation,
@@ -158,32 +193,108 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+class StageStateOut(BaseModel):
+    """Готовая свёртка стадии для карточки блок-схемы §6.2 (PROGR-10):
+    fold -- каноническая fold_status_values (§12 п.10) из единого
+    движка; счётчики -- чтобы фронтенд собирал подпись из готовых
+    чисел, не пересчитывая узлы (текст -- UI-ответственность)."""
+
+    stage: str
+    fold: str
+    done_count: int
+    warning_nodes: int
+    total_nodes: int
+
+
 class ProgressTraceResponse(BaseModel):
     """Снимок внутрисессионного слоя трассы (§5 слой 1) для шапки и
     «Развернуть трассу» панели «Прогресс» (§6.1-§6.2).
 
     events -- канонические 8-польные dict (to_dict §4.1, включая
-    legacy-алиас timestamp); chronology -- порядок дописывания (старые
-    раньше новых), сортировка/фильтры -- ответственность рендера.
+    legacy-алиас timestamp); порядок -- хронологический (серверное
+    слияние слоя 1 с ForecastRun.trace, PROGR-10), фильтры --
+    ответственность рендера.
+
+    PROGR-10 (Расхождение №1): node_statuses -- статусы узлов из
+    ЕДИНОГО движка (app/core/node_status.py); stages -- свёртки §12 п.10
+    + счётчики (готовое состояние карточек). Фронтенд рендерит, не
+    вычисляет; поля аддитивны -- старые потребители (шапка/трасса)
+    совместимы (N-3).
     """
 
     run_id: Optional[str] = None
     started_at: Optional[str] = None
     events: List[Dict[str, Any]] = Field(default_factory=list)
+    node_statuses: Dict[str, str] = Field(default_factory=dict)
+    stages: List[StageStateOut] = Field(default_factory=list)
+
+
+def _canonical_forecast_trace_events(
+    forecasts: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """Канонизация ForecastRun.trace к виду §4.1 (PROGR-10): тот же
+    источник, что /v1/session/modeling/forecast (артефакты сессии), но
+    на стороне СЕРВЕРА -- панель не делает второй опрос и не сливает
+    трассы сама.
+
+    Stored-запись артефакта -- канонический dict (event.to_dict в
+    _append_event forecasting_session) либо legacy 3-поля
+    (event_type/timestamp/payload -- историческая популяция): ts = ts |
+    timestamp, stage = "forecasting", node_id = event_type (4
+    канонических типа == узлы графа §2); чужие типы -- fail-safe
+    пропуск (семантика прежнего collectForecastTraceEvents).
+
+    run_id/event_id НЕ выдумываются и НЕ пробрасываются: события
+    артефакта -- не якоря чекпоинтов (§5.1 -- ссылка на
+    ИДЕНТИФИЦИРОВАННОЕ событие трассы решения), семантика прежняя.
+    """
+    events: List[Dict[str, Any]] = []
+    for run in (forecasts or {}).values():
+        trace = (run or {}).get("trace_events") or []
+        for raw in trace:
+            if not isinstance(raw, dict):
+                continue
+            event_type = str(raw.get("event_type") or "")
+            if event_type not in FORECASTING_STAGE_IDS:
+                continue  # чужие типы fail-safe пропуск (панель PROGR-4)
+            events.append(
+                {
+                    "ts": str(raw.get("ts") or raw.get("timestamp") or ""),
+                    "stage": "forecasting",
+                    "node_id": event_type,
+                    "event_type": event_type,
+                    "payload": dict(raw.get("payload") or {}),
+                }
+            )
+    return events
 
 
 @router.get("/trace", response_model=ProgressTraceResponse)
 def get_progress_trace(request: Request, response: Response) -> ProgressTraceResponse:
-    """Трасса слоя 1 текущей сессии: run_id, ts первого события и список
-    событий в порядке дописывания. Пустая сессия -- run_id/started_at
-    null и events=[] (панель показывает честные прочерки, §6.1)."""
+    """Готовое состояние для панели «Прогресс» (§5 слой 1 + PROGR-10):
+    run_id, ts первого события СЛОЯ 1 (шапка §6.1 без изменений),
+    слитые сервером события (слой 1 + ForecastRun.trace, хронология),
+    node_statuses/stages единого движка. Пустая сессия -- run_id/
+    started_at null, events=[] и честные «не начато» (§6.1)."""
     session_id = get_or_create_session_id(request, response)
     session = get_session_store().get_or_create(session_id)
-    events = session.read_pipeline_trace()
+    layer1 = session.read_pipeline_trace()
+    merged = [event_to_dict(event) for event in layer1]
+    merged += _canonical_forecast_trace_events(
+        session.modeling_artifacts.get("forecasts") or {}
+    )
+    # Хронология §6.2 (старые раньше новых), нечитаемые ts -- в конец,
+    # stable (та же семантика, что у отчёта §5.4 и прежнего фронтенда).
+    merged = sort_events_chronologically(merged)
+    statuses = derive_node_statuses(merged)
     return ProgressTraceResponse(
         run_id=session.run_id or None,
-        started_at=events[0].ts if events else None,
-        events=[event.to_dict() for event in events],
+        started_at=layer1[0].ts if layer1 else None,
+        events=merged,
+        node_statuses=statuses,
+        stages=[
+            StageStateOut(**state) for state in derive_stage_states(statuses)
+        ],
     )
 
 
@@ -690,8 +801,9 @@ def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
     """«Следующий шаг» (§7.1): одна рекомендация по трассе слоя 2.
 
     Статусы узлов выводятся из фактов trace_events запуска
-    (derive_node_statuses -- зеркало фронтенд-логики PROGR-4; N-2:
-    run-level события не создают узловых фактов). 503 -- долговременный
+    (derive_node_statuses -- единый движок app/core/node_status.py,
+    Расхождение №1 PROGR-10; N-2: run-level события не создают
+    узловых фактов). 503 -- долговременный
     слой недоступен (рекомендация по неполной истории выдавала бы
     уверенный совет на неполных данных)."""
     store = _require_store()
@@ -1051,6 +1163,3 @@ def get_case_bank_candidates(
             "max_sanity_warnings": max_sanity_warnings,
         },
     )
-
-
-

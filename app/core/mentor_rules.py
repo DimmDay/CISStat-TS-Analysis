@@ -38,9 +38,11 @@ Task PROGR-6). Наставник решает ДВЕ разных по прир
     PROGR-3), опечатка не доходит до рантайма.
 
 Направление зависимостей (риск-таблица plan_progress.md): правила -- чистые
-функции над переданными данными; модуль читает только граф пайплайна
-(app/core/pipeline_graph.py) и канон события (apps/api/trace_events.py),
-хранилища сессий/запусков сюда НЕ импортируются -- данные приносит роутер.
+функции над переданными данными; модуль читает граф пайплайна
+(app/core/pipeline_graph.py) и публичный API единого движка статусов
+(app/core/node_status.py, Расхождение №1 PROGR-10 -- движок «тип события ->
+статус узла» живёт ТАМ, не здесь), хранилища сессий/запусков сюда НЕ
+импортируются -- данные приносит роутер.
 """
 from __future__ import annotations
 
@@ -52,7 +54,8 @@ from typing import Any, Callable, Mapping
 
 import yaml
 
-from app.core.pipeline_graph import STAGE_NODES, is_known_node
+from app.core.node_status import event_to_dict
+from app.core.pipeline_graph import STAGE_NODES
 
 # ── Конфигурация порогов (§12 п.7) ───────────────────────────────────
 
@@ -295,15 +298,6 @@ _THRASHING_TEXT = (
 )
 
 
-def _event_dict(event: Any) -> dict[str, Any] | None:
-    """Нормализация события (TraceEvent канона §4.1 либо уже dict)."""
-    if hasattr(event, "to_dict"):
-        return event.to_dict()
-    if isinstance(event, dict):
-        return event
-    return None
-
-
 def _parse_event_ts(raw: Any) -> datetime | None:
     """ISO-ts события; naive -- UTC (паттерн trace_hook._throttled);
     нечитаемое -- None (деградация: событие вне окна, не 500)."""
@@ -340,7 +334,7 @@ def rule_thrashing(
     strategies: list[str] = []
     has_apply = False
     for event in events:
-        data = _event_dict(event)
+        data = event_to_dict(event)
         if data is None:
             continue
         if data.get("event_type") == "correction_applied":
@@ -624,62 +618,10 @@ def evaluate_history_warnings(
     return warnings
 
 
-# ── Статусы узлов из фактов трассы (зеркало фронтенда PROGR-4) ───────
-
-# Терминальное событие решения -> done; correction_previewed -> warning
-# (preview показывается только при найденных нарушениях -- решение ещё
-# не принято); profile_viewed -> running (узел исследуется). События
-# уровня стадии (node_id=null: mode_changed, target_column_changed,
-# passport_captured, run_*) -- не про узел, в статусы не попадают (N-2).
-_EVENT_STATUS_MAP: dict[str, str] = {
-    "upload_completed": "done",
-    "correction_applied": "done",
-    "correction_previewed": "warning",
-    "profile_viewed": "running",
-    "backtest_run": "done",
-    "tuning_trial_completed": "done",
-    "model_selected": "done",
-    "model_card_generated": "done",
-    "forecast_generated": "done",
-    "forecast_compared": "done",
-    "forecast_sensitivity_computed": "done",
-    "forecast_exported": "done",
-}
-
-# События слоя 2 этапа Прогнозирования хранят node_id=None (исторический
-# контракт PROGR-1: make_trace_event по умолчанию); узел выводится из
-# типа события -- 4 канонических типа §4.1 совпадают с узлами графа §2.
-_FORECASTING_NODES: frozenset[str] = frozenset(STAGE_NODES["forecasting"])
-
-
-def derive_node_statuses(events: list[Any]) -> dict[str, str]:
-    """Статусы узлов по последнему событию каждого узла (хронология
-    входа сохраняется: позднее событие перезаписывает раннее --
-    previewed -> applied = done). Ключ -- "stage/node_id" (id сознательно
-    пересекаются между стадиями). События без node_id, без известного
-    маппинга или вне графа честно пропускаются: фантомных узлов не
-    возникает (зеркало deriveNodeStatuses packages/ui/lib/progress.ts)."""
-    statuses: dict[str, str] = {}
-    for event in events:
-        data = _event_dict(event)
-        if data is None:
-            continue
-        status = _EVENT_STATUS_MAP.get(str(data.get("event_type") or ""))
-        if status is None:
-            continue
-        stage = str(data.get("stage") or "")
-        node_id = data.get("node_id")
-        if not node_id and stage == "forecasting":
-            event_type = str(data.get("event_type") or "")
-            if event_type in _FORECASTING_NODES:
-                node_id = event_type
-        if not node_id:
-            continue
-        node_id = str(node_id)
-        if not is_known_node(stage, node_id):
-            continue
-        statuses[f"{stage}/{node_id}"] = status
-    return statuses
+# ── Краткая сводка стадии для ответа next-step (§7.1) ────────────────
+# Движок статусов (derive_node_statuses) с PROGR-10 живёт в
+# app/core/node_status.py (единый движок трёх потребителей); здесь
+# осталась только агрегация готовых статусов по узлам стадии.
 
 
 def stage_node_summary(stage: str, statuses: Mapping[str, str]) -> dict[str, Any]:

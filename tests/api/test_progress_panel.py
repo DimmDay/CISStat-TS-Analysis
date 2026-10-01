@@ -20,6 +20,15 @@ test_eda_tsx_imports_shared_json (§12 п.2) и CERTIFIED_IDS-тестов:
 рантайма у Python/TS нет -- копия связывается тестом, читающим живой
 исходник .ts (regex, без транскрипиляции), как это уже сделано для
 eda-checks.json и TsAnalysisEDA.tsx.
+
+Контур 1.1 (Task PROGR-10, Расхождение №1): /trace отдаёт панели
+ГОТОВОЕ состояние -- events (серверное слияние слой 1 +
+ForecastRun.trace, хронология), node_statuses (единый движок
+app/core/node_status.py) и stages (свёртки §12 п.10 + счётчики);
+панель больше не делает второй опрос /v1/session/modeling/forecast и
+не вычисляет статусы сама. Прогнозные события сеются прямой инъекцией
+в modeling_artifacts (артефакт сессии) -- слияние/канонизация/деривация
+проверяются на детерминированных данных (N-1).
 """
 from __future__ import annotations
 
@@ -180,6 +189,187 @@ class TestProgressTraceEndpoint:
         events = resp.json()["events"]
         types = [e["event_type"] for e in events]
         assert types.index("upload_completed") < types.index("profile_viewed")
+
+
+# ── Контур 1.1: готовое состояние панели (PROGR-10, Расхождение №1) ──
+
+
+def _seed_forecast_artifact(session, entries: list[dict]) -> None:
+    """Прямая инъекция прогнозных событий в артефакт сессии (N-1):
+    та же структура, что живут в session.modeling_artifacts["forecasts"]
+    после _append_event forecasting_session (event.to_dict) или legacy
+    3-поля (историческая популяция ForecastRun.trace)."""
+    forecasts = session.modeling_artifacts.setdefault("forecasts", {})
+    forecasts["f-test"] = {"forecast_id": "f-test", "trace_events": entries}
+
+
+class TestProgressTraceReadyState:
+    def test_trace_exposes_node_statuses_and_stage_states(self, client: TestClient):
+        """/trace отдаёт готовое состояние: node_statuses из единого
+        движка и ВСЕ 6 стадий в порядке §2 (счётчики из графа, пустая
+        трасса -- честные «не начато»)."""
+        from app.core.pipeline_graph import STAGES, STAGE_NODES
+
+        resp = client.get("/v1/progress/trace")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["node_statuses"] == {}
+        assert [s["stage"] for s in data["stages"]] == list(STAGES)
+        assert all(s["fold"] == "not_started" for s in data["stages"])
+        assert [s["total_nodes"] for s in data["stages"]] == [
+            len(STAGE_NODES[stage]) for stage in STAGES
+        ]
+
+    def test_upload_decision_seeds_ready_state(self, client: TestClient):
+        """Демо-загрузка -- факт решения: upload/structure_confirmed
+        done в node_statuses, карточка Загрузки -- passed 1/1, остальные
+        стадии не тронуты."""
+        client.post("/v1/session/demo")
+        data = client.get("/v1/progress/trace").json()
+        assert data["node_statuses"]["upload/structure_confirmed"] == "done"
+        upload = next(s for s in data["stages"] if s["stage"] == "upload")
+        assert upload == {
+            "stage": "upload",
+            "fold": "passed",
+            "done_count": 1,
+            "warning_nodes": 0,
+            "total_nodes": 1,
+        }
+        modeling = next(s for s in data["stages"] if s["stage"] == "modeling")
+        assert modeling["fold"] == "not_started"
+
+    def test_forecast_artifact_merged_and_canonized_server_side(
+        self, client: TestClient
+    ):
+        """Слой 1 + ForecastRun.trace сливает СЕРВЕР: канонизация
+        (ts=timestamp, stage/node_id=out of event_type), хронология,
+        готовые статусы прогнозных узлов. Каноническая и legacy-записи
+        артефакта дают одинаковый результат."""
+        client.post("/v1/session/demo")
+        store = get_session_store()
+        session_id = client.cookies.get("cisstat_session_id")
+        session = store.get(session_id)
+        _seed_forecast_artifact(
+            session,
+            [
+                # Stored-форма (event.to_dict): ts + legacy-алиас timestamp.
+                {
+                    "event_id": "art-1",
+                    "run_id": "",
+                    "ts": "2026-01-01T12:00:00+00:00",
+                    "timestamp": "2026-01-01T12:00:00+00:00",
+                    "stage": "forecasting",
+                    "node_id": None,
+                    "event_type": "forecast_generated",
+                    "payload": {"model_id": "arima"},
+                    "actor": "user",
+                },
+                # Legacy 3-поля: только timestamp.
+                {
+                    "event_type": "forecast_exported",
+                    "timestamp": "2026-01-01T13:00:00+00:00",
+                    "payload": {"fmt": "csv"},
+                },
+            ],
+        )
+        store.save(session)
+
+        data = client.get("/v1/progress/trace").json()
+        forecast_events = [
+            e for e in data["events"] if e["event_type"].startswith("forecast_")
+        ]
+        assert [e["event_type"] for e in forecast_events] == [
+            "forecast_generated", "forecast_exported",
+        ]
+        assert forecast_events[0]["ts"] == "2026-01-01T12:00:00+00:00"
+        assert forecast_events[0]["stage"] == "forecasting"
+        assert forecast_events[0]["node_id"] == "forecast_generated"
+        assert forecast_events[0]["payload"] == {"model_id": "arima"}
+        # Хронология: merge отсортирован, а не склеен блоками
+        # (upload ~now -- позже дат 2026-01-01... seed стабилен: теперь
+        # проверяем порядок двух прогнозных между собой + позицию.
+        types = [e["event_type"] for e in data["events"]]
+        assert types.index("forecast_generated") < types.index("forecast_exported")
+        # Готовые статусы единого движка.
+        assert data["node_statuses"]["forecasting/forecast_generated"] == "done"
+        assert data["node_statuses"]["forecasting/forecast_exported"] == "done"
+        forecasting = next(
+            s for s in data["stages"] if s["stage"] == "forecasting"
+        )
+        assert forecasting["fold"] == "attention"
+        assert forecasting["done_count"] == 2
+        assert forecasting["total_nodes"] == 4
+
+    def test_artifact_events_are_not_checkpoint_anchors(self, client: TestClient):
+        """run_id/event_id НЕ выдумываются: канонизируемые события
+        артефакта без event_id -- не якоря чекпоинтов (семантика §5.1
+        прежняя; лента контракта: events без event_id пропускаются
+        выборкой якоря на фронте)."""
+        client.post("/v1/session/demo")
+        store = get_session_store()
+        session_id = client.cookies.get("cisstat_session_id")
+        session = store.get(session_id)
+        _seed_forecast_artifact(
+            session,
+            [{
+                "event_type": "forecast_generated",
+                "timestamp": "2026-01-01T12:00:00+00:00",
+                "payload": {},
+            }],
+        )
+        store.save(session)
+
+        data = client.get("/v1/progress/trace").json()
+        forecast_events = [
+            e for e in data["events"] if e["event_type"] == "forecast_generated"
+        ]
+        assert len(forecast_events) == 1
+        assert "event_id" not in forecast_events[0]
+        assert "run_id" not in forecast_events[0]
+
+    def test_forecast_foreign_types_skipped_fail_safe(self, client: TestClient):
+        """Чужие типы и мусорные записи артефакта fail-safe пропускаются:
+        фантомных узлов и 500 нет (семантика прежнего слияния панели)."""
+        client.post("/v1/session/demo")
+        store = get_session_store()
+        session_id = client.cookies.get("cisstat_session_id")
+        session = store.get(session_id)
+        _seed_forecast_artifact(
+            session,
+            [
+                {"event_type": "custom_event", "timestamp": "2026-01-01T12:00:00+00:00"},
+                "мусорная-запись",
+                {"event_type": "forecast_compared"},  # без ts -- честная пустая строка
+            ],
+        )
+        store.save(session)
+
+        data = client.get("/v1/progress/trace").json()
+        types = [e["event_type"] for e in data["events"]]
+        assert "custom_event" not in types
+        assert "forecast_compared" in types  # канонический тип пропущен не был
+        # Пропуск чужого типа не задел соседнюю запись: узел выведен.
+        assert data["node_statuses"]["forecasting/forecast_compared"] == "done"
+
+    def test_layer1_reader_does_not_need_durable_layer(self, client: TestClient):
+        """Ридер трассы -- сессионный: /trace не трогает слой 2 --
+        его 503 панель не гасит (кнопки полосы disabled -- прежняя
+        семантика PROGR-5.1); статус/чекпоинты -- отдельный запрос."""
+        from apps.api import research_runs
+
+        client.post("/v1/session/demo")
+        # Слой 2 недоступен (fail-closed синглтон -- та же механика,
+        # что в тестах PROGR-5/6), но /trace обязан ответить 200.
+        original = research_runs.get_research_run_store
+        research_runs.get_research_run_store = lambda: (_ for _ in ()).throw(
+            RuntimeError("durable layer down")
+        )
+        try:
+            resp = client.get("/v1/progress/trace")
+            assert resp.status_code == 200
+            assert resp.json()["node_statuses"]["upload/structure_confirmed"] == "done"
+        finally:
+            research_runs.get_research_run_store = original
 
 
 # ── Контур 2: синхронизация реестра узлов фронтенда с графом ─────────

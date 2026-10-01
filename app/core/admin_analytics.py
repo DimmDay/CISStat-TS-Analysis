@@ -17,8 +17,9 @@ spec_progress.md §10 + §9, категория D). ЧИСТЫЙ модуль б
     между двумя точками); нечитаемые ts пропускаются (деградация,
     паттерн mentor_rules._parse_event_ts), не распределяются;
   * топ узлов с финальным статусом warning/error -- статусы выводятся
-    derive_node_statuses (зеркало PROGR-6/фронтенда; фантомных узлов
-    нет: is_known_node гейт);
+    derive_node_statuses из ЕДИНОГО движка app/core/node_status.py
+    (Расхождение №1, PROGR-10: один движок для панели/Наставника/admin;
+    фантомных узлов нет: is_known_node гейт);
   * частота срабатывания правил «Следующий шаг» (§7.1) -- по журналу
     наблюдений (obs_kind="next_step": ВЫДАННЫЕ рекомендации);
   * частота sanity-предупреждений (§7.2) ПО ПРАВИЛУ И ПО УЗЛУ --
@@ -52,7 +53,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Mapping, Optional
 
-from app.core.mentor_rules import _event_dict, derive_node_statuses
+from app.core.node_status import derive_node_statuses, event_to_dict
 
 # Канонические статусы запусков (§5) -- ключи runs_by_status всегда
 # присутствуют (ноль -- честное отсутствие, стабильный контракт ответа).
@@ -226,7 +227,7 @@ def _stage_time(
         run_id = str(run.get("run_id") or "")
         by_stage: dict[str, list[datetime]] = {}
         for event in events_by_run.get(run_id, ()):
-            data = _event_dict(event)
+            data = event_to_dict(event)
             if data is None:
                 continue
             ts = _parse_ts(data.get("ts"))
@@ -340,7 +341,7 @@ def _forecast_frequencies(
     def _frequency(events: list[dict[str, Any]], key: str) -> list[ValueFrequency]:
         counts: dict[str, int] = {}
         for event in events:
-            data = _event_dict(event)
+            data = event_to_dict(event)
             if data is None or data.get("event_type") != "forecast_generated":
                 continue
             raw = (data.get("payload") or {}).get(key)
@@ -446,7 +447,7 @@ def select_case_bank_candidates(
                 data
                 for data in reversed(
                     [item for item in (  # хронология дописывания
-                        _event_dict(event) for event in events
+                        event_to_dict(event) for event in events
                     ) if item is not None]
                 )
                 if data.get("event_type") == "backtest_run"

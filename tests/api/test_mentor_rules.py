@@ -21,11 +21,10 @@
      каноническое правило regularity_before_decomposition; базовые
      правила Моделирования (Этап 2 §11) и Прогнозирования
      (forecast_not_compared_before_export).
-  5. derive_node_statuses: статусы узлов из фактов трассы слоя 2
-     (зеркало фронтенд-логики PROGR-4); N-2 (run-level события с
-     node_id=None не создают узловых фактов); forecasting-события слоя 2
-     хранят node_id=None (контракт PROGR-1) -- узел выводится из типа
-     события (4 канонических типа == узлы графа §2); фантомных узлов нет.
+  5. derive_node_statuses: С PROGR-10 (Расхождение №1) движок живёт в
+     app/core/node_status.py -- тесты переехали в
+     tests/api/test_node_status_engine.py (единый движок трёх
+     потребителей); здесь -- только правила Наставника.
   6. REST: GET /v1/progress/runs/{run_id}/mentor/next-step (слой 2:
      404 неизвестный запуск, 503 -- долговременный слой недоступен,
      N-4 -- в ответе нет семантики управления панелью);
@@ -429,94 +428,11 @@ class TestNextStepRules:
             assert isinstance(rule.priority, int)
 
 
-# ── Контур 5: derive_node_statuses (зеркало фронтенда PROGR-4) ───────
-
-
-class TestDeriveNodeStatuses:
-    def test_terminal_and_preview_and_profile_mapping(self):
-        events = [
-            {
-                "ts": _ts(30), "stage": "upload", "node_id": "structure_confirmed",
-                "event_type": "upload_completed", "payload": {},
-            },
-            {
-                "ts": _ts(20), "stage": "preprocessing", "node_id": "missing",
-                "event_type": "correction_previewed", "payload": {},
-            },
-            {
-                "ts": _ts(10), "stage": "eda", "node_id": "descriptive",
-                "event_type": "profile_viewed", "payload": {},
-            },
-        ]
-        statuses = mentor_rules.derive_node_statuses(events)
-        assert statuses["upload/structure_confirmed"] == "done"
-        assert statuses["preprocessing/missing"] == "warning"
-        assert statuses["eda/descriptive"] == "running"
-
-    def test_last_event_wins(self):
-        events = [
-            {
-                "ts": _ts(30), "stage": "preprocessing", "node_id": "missing",
-                "event_type": "correction_previewed", "payload": {},
-            },
-            {
-                "ts": _ts(20), "stage": "preprocessing", "node_id": "missing",
-                "event_type": "correction_applied", "payload": {},
-            },
-        ]
-        assert mentor_rules.derive_node_statuses(events)["preprocessing/missing"] == "done"
-
-    def test_run_level_events_skipped_n2(self):
-        """N-2 (PROGR-4): run-level события (node_id=None) не создают
-        узловых фактов и не трогают своды стадий."""
-        events = [
-            {
-                "ts": _ts(5), "stage": "preprocessing", "node_id": None,
-                "event_type": "run_paused", "payload": {},
-            },
-            {
-                "ts": _ts(4), "stage": "eda", "node_id": None,
-                "event_type": "passport_captured", "payload": {},
-            },
-        ]
-        assert mentor_rules.derive_node_statuses(events) == {}
-
-    def test_forecasting_node_derived_from_event_type(self):
-        """Слой 2 хранит forecasting-события с node_id=None (PROGR-1):
-        узел выводится из типа -- 4 канонических типа == узлы графа."""
-        events = [
-            {
-                "ts": _ts(5), "stage": "forecasting", "node_id": None,
-                "event_type": "forecast_generated", "payload": {},
-            },
-        ]
-        assert (
-            mentor_rules.derive_node_statuses(events)["forecasting/forecast_generated"]
-            == "done"
-        )
-
-    def test_unknown_nodes_skipped_no_phantoms(self):
-        events = [
-            {
-                "ts": _ts(5), "stage": "preprocessing", "node_id": "nonexistent",
-                "event_type": "correction_applied", "payload": {},
-            },
-            {
-                "ts": _ts(5), "stage": "forecasting", "node_id": None,
-                "event_type": "unknown_event", "payload": {},
-            },
-        ]
-        assert mentor_rules.derive_node_statuses(events) == {}
-
-    def test_trace_event_objects_accepted(self):
-        event = make_trace_event(
-            "correction_applied", stage="preprocessing", node_id="missing",
-            run_id="RUN-AAA00001",
-        )
-        assert (
-            mentor_rules.derive_node_statuses([event])["preprocessing/missing"]
-            == "done"
-        )
+# ── Контур 5: derive_node_statuses -- переехал в PROGR-10 ────────────
+# Тесты движка статусов живут в tests/api/test_node_status_engine.py
+# (Расхождение №1: единый движок app/core/node_status.py для панели,
+# Наставника и admin-аналитики; копий быть не должно -- см. там же
+# контур «владение").
 
 
 # ── Контур 6: REST-эндпоинты Наставника ──────────────────────────────

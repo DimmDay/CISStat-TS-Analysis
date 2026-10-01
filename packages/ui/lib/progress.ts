@@ -1,7 +1,8 @@
 // packages/ui/lib/progress.ts
 //
 // Данные блок-схемы и трассы панели «Прогресс» (Task PROGR-4,
-// spec_progress.md §2-§4, §6.2, §12 п.10).
+// spec_progress.md §2-§4, §6.2, §12 п.10; Расхождение №1 -- Task
+// PROGR-10).
 //
 // РЕЕСТР УЗЛОВ. Источник истины -- app/core/pipeline_graph.py::STAGE_NODES
 // (46 узлов, 6 стадий). Общего рантайма Python/TS у платформы нет
@@ -11,28 +12,27 @@
 // CERTIFIED_IDS). Менять id независимо от графа нельзя -- sync-тест
 // упадёт первым.
 //
-// СТАТУСЫ УЗЛОВ (§3). Словарь статуса зависит от стадии: CheckStatus
-// (StatusIcon.tsx) для проверочных upload/validation/preprocessing/eda,
-// StageStatus (stages.ts) для процессных modeling/forecasting. Из трассы
-// (§4.1 -- журнал решений, не статистика) выводятся только факты:
-//   * терминальное событие решения -> done (применено/построено);
-//   * correction_previewed -> warning («найдены проблемы»: preview
-//     показывается ТОЛЬКО при найденных нарушениях -- решение ещё не
-//     принято);
-//   * profile_viewed -> running (узел исследуется);
-//   * события уровня стадии (node_id=null: mode_changed,
-//     target_column_changed, passport_captured) -- не про узел, в
-//     статусы не попадают.
-// Свёртка в 3 визуальных состояния карточки -- точный порт
-// fold_status_values бэкенда (§12 п.10), застрахован зеркальной
-// таблицей кейсов в progress.test.ts.
+// СТАТУСЫ УЗЛОВ (§3) -- ГОТОВОЕ СОСТОЯНИЕ ОТ БЭКЕНДА (PROGR-10,
+// Расхождение №1). Вывод статуса из фактов решений живёт НА БЭКЕНДЕ --
+// единый движок app/core/node_status.py для трёх потребителей (панель,
+// Наставник, admin-аналитика); GET /v1/progress/trace отдаёт
+// node_statuses (карта "stage/node_id" -> статус) и stages (свёртка
+// §12 п.10 + счётчики). Фронтенд рендерит, не вычисляет: до PROGR-10
+// здесь жила локальная копия движка (карта «тип события -> статус»,
+// деривация статусов, порт свёртки, слияние прогнозной трассы и
+// свод стадии) -- расползание с бэкендом было тихим по построению.
+//
+// ОСТАВШИЕСЯ КОНТРАКТЫ: FOLD_*-константы и FoldVisualState -- контракт
+// значений fold ответа; stageStateText -- сборка человекочитаемой
+// подписи карточки §6.2 из ГОТОВЫХ счётчиков (текст -- UI-
+// ответственность, вычисление -- бэкенд).
 //
 // ПРОГНОЗИРОВАНИЕ. Слой 1 (PROGR-3) forecasting-событий не содержит
-// (they живут в ForecastRun.trace -- унификация хранения PROGR-5),
-// поэтому панель досчитывает их из живого GET /v1/session/modeling/
-// forecast (§3: статус Прогнозирования -- «по факту наличия ForecastRun/
-// конкретных trace_events»); node_id = event_type -- 4 канонических
-// типа §4.1 совпадают с узлами графа.
+// (они живут в ForecastRun.trace -- унификация хранения PROGR-5):
+// СЕРВЕР сам сливает их с слоем 1 в /trace (канонизация 3-польной
+// записи, хронологическая сортировка) -- второй опрос панелью
+// /v1/session/modeling/forecast и клиентское слияние удалены
+// (минус один запрос и минус одна гонка).
 
 import edaChecksJson from "../../../shared/pipeline_nodes/eda_checks.json";
 import { STAGE_DEFS } from "./stages";
@@ -143,109 +143,38 @@ export interface TraceEventInfo {
   actor?: string;
 }
 
-// ── Вывод статусов узлов из фактов трассы (§4.1) ────────────────────
+// ── Готовое состояние панели (PROGR-10, зеркало StageStateOut) ──────
 
-// Терминальные события решения/результата -> done. Для forecasting
-// node_id == event_type (4 канонических типа §4.1 == узлы графа §2).
-const PROGRESS_EVENT_STATUS: Record<string, string> = {
-  upload_completed: "done",
-  correction_applied: "done",
-  correction_previewed: "warning",
-  profile_viewed: "running",
-  backtest_run: "done",
-  tuning_trial_completed: "done",
-  model_selected: "done",
-  model_card_generated: "done",
-  forecast_generated: "done",
-  forecast_compared: "done",
-  forecast_sensitivity_computed: "done",
-  forecast_exported: "done",
-};
-
-/** Статус каждого узла по последнему его событию (хронология входа
- * сохраняется: позднее событие перезаписывает раннее -- previewed ->
- * applied = done). Ключ -- "stage/node_id" (id сознательно пересекаются
- * между стадиями: regularity/stationarity). События без node_id, без
- * известного маппинга или вне графа честно пропускаются: фантомных
- * узлов не возникает. */
-export function deriveNodeStatuses(events: TraceEventInfo[]): Record<string, string> {
-  const statuses: Record<string, string> = {};
-  for (const event of events) {
-    if (!event.node_id) continue;
-    const status = PROGRESS_EVENT_STATUS[event.event_type];
-    if (!status) continue;
-    if (!isKnownNode(event.stage, event.node_id)) continue;
-    statuses[`${event.stage}/${event.node_id}`] = status;
-  }
-  return statuses;
-}
-
-// ── Свёртка §12 п.10 (точный порт fold_status_values) ───────────────
-
+// Значения fold -- КОНТРАКТ ответа /trace (каноническая свёртка
+// §12 п.10 вычисляется бэкендом, fold_status_values); константы
+// остаются для типизации и FOLD_BG-мэппинга рендера.
 export const FOLD_PASSED = "passed";
 export const FOLD_ATTENTION = "attention";
 export const FOLD_NOT_STARTED = "not_started";
 
 export type FoldVisualState = "passed" | "attention" | "not_started";
 
-const KNOWN_NODE_STATUSES: ReadonlySet<string> = new Set([
-  // CheckStatus (StatusIcon.tsx)
-  "done", "warning", "pending", "skipped", "running", "error",
-  // StageStatus (stages.ts)
-  "in_progress",
-]);
-
-const STARTED_BEYOND_DONE: ReadonlySet<string> = new Set(["running", "in_progress"]);
-
-export function foldNodeStatuses(statuses: string[]): FoldVisualState {
-  if (statuses.length === 0) return FOLD_NOT_STARTED;
-  for (const status of statuses) {
-    if (!KNOWN_NODE_STATUSES.has(status)) {
-      throw new Error(
-        `Неизвестный статус узла: ${status}; известные: done/warning/pending/skipped/running/error/in_progress`,
-      );
-    }
-  }
-  if (statuses.some((s) => s === "warning" || s === "error")) return FOLD_ATTENTION;
-  if (statuses.every((s) => s === "done")) return FOLD_PASSED;
-  if (
-    statuses.some((s) => s === "done") &&
-    statuses.every((s) => s === "done" || s === "skipped")
-  ) {
-    // skipped агрегатно не мешает пройденности, но не заменяет её.
-    return FOLD_PASSED;
-  }
-  if (statuses.some((s) => s === "done" || STARTED_BEYOND_DONE.has(s))) {
-    return FOLD_ATTENTION;
-  }
-  return FOLD_NOT_STARTED;
-}
-
-// ── Свод по стадии: свёртка + краткая подпись карточки (§6.2) ───────
-
-export interface StageSummary {
+/** Зеркало StageStateOut (apps/api/routers/progress.py): готовая
+ * свёртка стадии + счётчики единого движка. */
+export interface StageStateInfo {
+  stage: string;
   fold: FoldVisualState;
-  /** «1/10, найдены проблемы» / «1/11, в работе» / «1/1, пройдено» / «не начато» */
-  text: string;
-  doneCount: number;
-  total: number;
+  done_count: number;
+  warning_nodes: number;
+  total_nodes: number;
 }
 
-export function stageSummary(stage: string, statuses: Record<string, string>): StageSummary {
-  const nodes = PROGRESS_STAGE_NODES[stage] ?? [];
-  const nodeStatuses = nodes.map((n) => statuses[`${stage}/${n}`] ?? "pending");
-  const doneCount = nodeStatuses.filter((s) => s === "done").length;
-  const total = nodes.length;
-  const fold = foldNodeStatuses(nodeStatuses);
-  if (fold === FOLD_NOT_STARTED) return { fold, text: "не начато", doneCount, total };
-  if (fold === FOLD_PASSED) return { fold, text: `${doneCount}/${total}, пройдено`, doneCount, total };
-  const hasWarning = nodeStatuses.some((s) => s === "warning" || s === "error");
-  return {
-    fold,
-    text: `${doneCount}/${total}, ${hasWarning ? "найдены проблемы" : "в работе"}`,
-    doneCount,
-    total,
-  };
+/** Подпись карточки стадии §6.2 из ГОТОВЫХ счётчиков ответа: «1/10,
+ * найдены проблемы» / «1/11, в работе» / «1/1, пройдено» / «не начато».
+ * Текст -- UI-ответственность; вычисление fold/счётчиков -- бэкенд. */
+export function stageStateText(stage: StageStateInfo): string {
+  if (stage.fold === FOLD_NOT_STARTED) return "не начато";
+  if (stage.fold === FOLD_PASSED) {
+    return `${stage.done_count}/${stage.total_nodes}, пройдено`;
+  }
+  return `${stage.done_count}/${stage.total_nodes}, ${
+    stage.warning_nodes > 0 ? "найдены проблемы" : "в работе"
+  }`;
 }
 
 // ── Чекпоинты и статусы запуска (Task PROGR-5.1, §5-§5.2) ───────────────
@@ -277,9 +206,9 @@ export interface CheckpointInfo {
 
 /** Последнее в хронологии событие с непустым event_id -- кандидат на якорь
  * нового чекпоинта («текущий момент» исследования). События без event_id
- * (legacy-трасса, слитые события ForecastRun.trace -- legacy 3-польный
- * контракт) пропускаются: чекпоинт -- ссылка на ИДЕНТИФИЦИРОВАННОЕ событие,
- * бэкенд отклонил бы ссылку без id (404). */
+ * (legacy-трасса, канонизируемые события ForecastRun.trace -- сервер не
+ * выдумывает идентификаторы) пропускаются: чекпоинт -- ссылка на
+ * ИДЕНТИФИЦИРОВАННОЕ событие, бэкенд отклонил бы ссылку без id (404). */
 export function lastCheckpointableEvent(events: TraceEventInfo[]): TraceEventInfo | null {
   const chronological = sortEventsChronologically(events);
   for (let i = chronological.length - 1; i >= 0; i -= 1) {
@@ -289,40 +218,10 @@ export function lastCheckpointableEvent(events: TraceEventInfo[]): TraceEventInf
   return null;
 }
 
-// ── Слияние ForecastRun.trace (§3: прогнозирование по факту трассы) ──
-
-export interface ForecastRunLike {
-  forecast_id?: string;
-  trace_events?: ReadonlyArray<{
-    event_type: string;
-    timestamp: string;
-    payload?: Record<string, unknown>;
-  }>;
-}
-
-/** Legacy 3-польный формат (event_type/timestamp/payload -- контракт
- * ForecastTraceEventSchema) -> канон §4.1 на фронтенде: ts = timestamp,
- * stage = "forecasting", node_id = event_type (4 типа совпадают с
- * узлами графа). Чужие типы пропускаются (fail-safe). */
-export function collectForecastTraceEvents(forecasts: ReadonlyArray<ForecastRunLike>): TraceEventInfo[] {
-  const events: TraceEventInfo[] = [];
-  for (const run of forecasts ?? []) {
-    for (const raw of run?.trace_events ?? []) {
-      if (!isKnownNode("forecasting", raw.event_type)) continue;
-      events.push({
-        event_type: raw.event_type,
-        ts: raw.timestamp,
-        stage: "forecasting",
-        node_id: raw.event_type,
-        payload: raw.payload ?? {},
-      });
-    }
-  }
-  return events;
-}
-
 /** Хронологический порядок §6.2 (старые раньше новых); события с
- * нечитаемым ts -- в конец, взаимный порядок сохраняется. */
+ * нечитаемым ts -- в конец, взаимный порядок сохраняется. Ответ /trace
+ * уже отсортирован сервером (PROGR-10); функция остаётся для
+ * независимых источников (полоса действий) и как контракт порядка. */
 export function sortEventsChronologically(events: TraceEventInfo[]): TraceEventInfo[] {
   const time = (ts: string): number => {
     const parsed = new Date(ts).getTime();
