@@ -31,6 +31,14 @@
      POST /v1/progress/mentor/sanity-check -- чистое вычисление над
      телом запроса (без долговременного слоя; fail-closed 422 на
      неизвестную пару (stage, node_id) -- паттерн make_node_state).
+  7. §8 контракт рендера текстов (PROGR-12, Расхождение №3):
+     MentorTextRenderer -- Protocol, зафиксированный В КОДЕ (раньше --
+     только упоминание в докстринге); дефолт FormatMentorTextRenderer
+     (.format() шаблона, без сети); evaluate_* рендерят ЧЕРЕЗ renderer
+     ПОСЛЕ вычисления факта (renderer не вызывается, если правило не
+     сработало -- LLM никогда не решает); подключение LLM позже =
+     добавление реализации Protocol, не ввод интерфейса; fail-closed
+     валидация шаблонов на импорте расширена на ВСЕ триггеры.
 """
 from __future__ import annotations
 
@@ -44,6 +52,10 @@ from fastapi.testclient import TestClient
 from app.core import mentor_rules
 from app.core.mentor_rules import (
     CorrectionOutcomeSummary,
+    FormatMentorTextRenderer,
+    MentorRule,
+    MentorTextRenderer,
+    TRIGGER_ON_CORRECTION_RESULT,
     evaluate_history_warnings,
     evaluate_next_step,
     evaluate_sanity,
@@ -609,3 +621,273 @@ class TestSanityCheckEndpoint:
         )
         assert response.status_code == 200
         assert response.json()["warnings"] == []
+
+
+# ── Контур 7: §8 -- контракт рендера текстов (MentorTextRenderer) ────
+
+
+class _RecordingRenderer:
+    """Stub-реализация Protocol §8: фиксирует вызовы render(rule,
+    context), возвращает фиксированный текст -- проверяет, что сообщения
+    ДОХОДЯТ до потребителя именно через renderer, а не мимо него."""
+
+    def __init__(self, text: str = "РЕНДЕР-СТАБ") -> None:
+        self.text = text
+        self.calls: list[tuple[str, dict]] = []
+
+    def render(self, rule: MentorRule, context: dict) -> str:  # type: ignore[override]
+        self.calls.append((rule.rule_id, dict(context)))
+        return self.text
+
+
+class TestMentorTextRendererContract:
+    # -- сам контракт (Protocol в коде, не на бумаге) --
+
+    def test_protocol_runtime_checkable_and_default_conforms(self):
+        """Дефолтная реализация структурно удовлетворяет Protocol §8."""
+        assert isinstance(
+            mentor_rules.DEFAULT_TEXT_RENDERER, MentorTextRenderer
+        )
+
+    def test_duck_typed_renderer_satisfies_protocol_structurally(self):
+        """Protocol СТРУКТУРНЫЙ: любая реализация render(rule, context)
+        -> str годится -- подключение LLM позже = добавление реализации
+        (LLMMentorTextRenderer), НЕ ввод интерфейса (Расхождение №3)."""
+
+        class _LLMStub:  # номинально НЕ наследник -- только по форме
+            def render(self, rule: MentorRule, context: dict) -> str:
+                return "llm"
+
+        assert isinstance(_LLMStub(), MentorTextRenderer)
+
+    # -- семантика дефолтной реализации (спека §8: «просто .format()
+    #    шаблона, без сети/модели») --
+
+    def _probe_rule(self, template: str) -> MentorRule:
+        return MentorRule(
+            rule_id="probe",
+            stage="preprocessing",
+            trigger=TRIGGER_ON_CORRECTION_RESULT,
+            priority=99,
+            explanation_template=template,
+        )
+
+    def test_default_renderer_formats_template_with_context(self):
+        text = mentor_rules.DEFAULT_TEXT_RENDERER.render(
+            self._probe_rule("Доля {removed_share:.0%} строк; в {times} раз."),
+            {"removed_share": 0.4, "times": 5},
+        )
+        assert text == "Доля 40% строк; в 5 раз."
+
+    def test_default_renderer_static_template_ignores_extra_context(self):
+        """Статичный шаблон + богатый контекст (агрегированные факты для
+        будущего LLM) -- лишние ключи .format() игнорирует."""
+        text = mentor_rules.DEFAULT_TEXT_RENDERER.render(
+            self._probe_rule("Статичный текст."), {"anything": 1}
+        )
+        assert text == "Статичный текст."
+
+    def test_default_renderer_missing_param_is_strict_key_error(self):
+        """Строгий .format(): пропущенный параметр шаблона -- KeyError
+        (ловится тестами на пары шаблон/контекст), не тихая деградация."""
+        with pytest.raises(KeyError):
+            mentor_rules.DEFAULT_TEXT_RENDERER.render(
+                self._probe_rule("Нужен {times}."), {}
+            )
+
+    # -- evaluate_* рендерят ЧЕРЕЗ renderer (§7.1 и §7.2 одинаково) --
+
+    def test_next_step_message_rendered_through_protocol(self):
+        """§7.1: сообщение рекомендации -- результат renderer.render;
+        контекст несёт агрегированные факты (статусы узлов), виденные
+        правилом."""
+        renderer = _RecordingRenderer()
+        statuses = {"preprocessing/regularity": "warning"}
+        recommendation = evaluate_next_step(statuses, renderer=renderer)
+        assert recommendation is not None
+        assert recommendation.message == "РЕНДЕР-СТАБ"
+        assert [c[0] for c in renderer.calls] == [
+            "regularity_before_decomposition"
+        ]
+        assert renderer.calls[0][1]["statuses"] == statuses
+
+    def test_sanity_message_rendered_through_protocol(self):
+        """§7.2: message -- от renderer; severity/suggested_action -- из
+        факта правила (renderer НЕ решает, есть ли ошибка); контекст
+        несёт параметры шаблона ({times}/{removed_share})."""
+        renderer = _RecordingRenderer()
+        outcome = _outcome(
+            strategy="drop_rows",
+            affected_count_before=50,
+            changed_count=0,
+            still_affected_count=50,
+            rows_before=100,
+            rows_after=30,
+            stats_before={"mean": 10.0, "std": 5.0},
+            stats_after={"mean": 10.0, "std": 0.5},
+        )
+        warnings = evaluate_sanity(outcome, renderer=renderer)
+        assert {w.rule_id for w in warnings} == {
+            "no_effect",
+            "over_aggressive",
+            "excessive_data_loss",
+        }
+        assert all(w.message == "РЕНДЕР-СТАБ" for w in warnings)
+        by_rule = {c[0]: c[1] for c in renderer.calls}
+        assert by_rule["over_aggressive"]["times"] == 5
+        assert abs(by_rule["excessive_data_loss"]["removed_share"] - 0.7) < 1e-9
+        severity_by_rule = {w.rule_id: w.severity for w in warnings}
+        assert severity_by_rule == {
+            "no_effect": "warning",
+            "over_aggressive": "warning",
+            "excessive_data_loss": "warning",
+        }
+        assert all(w.suggested_action for w in warnings)
+
+    def test_history_message_rendered_through_protocol(self):
+        """on_demand_with_history: thrashing тоже рендерится через
+        Protocol (§8: «применимо одинаково и к §7.2»)."""
+        renderer = _RecordingRenderer()
+        fresh = _ts(1)
+        events = [
+            make_trace_event(
+                "correction_previewed", stage="preprocessing", node_id="missing",
+                run_id="RUN-AAA00001", strategy=strategy, ts=fresh,
+            )
+            for strategy in ("median_mode", "mean_mode", "flag")
+        ]
+        warnings = evaluate_history_warnings(events, renderer=renderer)
+        assert len(warnings) == 1
+        assert warnings[0].message == "РЕНДЕР-СТАБ"
+        assert warnings[0].severity == "info"
+        assert [c[0] for c in renderer.calls] == ["thrashing_detected"]
+        assert renderer.calls[0][1]["strategies"] == [
+            "median_mode",
+            "mean_mode",
+            "flag",
+        ]
+
+    def test_renderer_not_called_when_no_rule_fires(self):
+        """Порядок «сначала правило, потом текст» (спека education §4.2):
+        renderer не вызывается, если НИ ОДНО правило не сработало --
+        LLM никогда не решает, есть ли ошибка (регресс-тест границы)."""
+        renderer = _RecordingRenderer()
+        assert evaluate_next_step({}, renderer=renderer) is None
+        assert evaluate_sanity(_outcome(), renderer=renderer) == []
+        assert evaluate_history_warnings([], renderer=renderer) == []
+        assert renderer.calls == []
+
+    def test_default_rendering_matches_legacy_texts_byte_for_byte(self):
+        """Дефолтный рендер даёт те же тексты, что инлайн-производство
+        до рефактора: формулировки §7.2/§7.1 не изменились (совместимость
+        с UI и сертификационными оракулами PROGR-6)."""
+        warnings = evaluate_sanity(
+            _outcome(
+                stats_before={"mean": 10.0, "std": 5.0},
+                stats_after={"mean": 10.0, "std": 0.5},
+            )
+        )
+        over = next(w for w in warnings if w.rule_id == "over_aggressive")
+        assert "в 5 раз" in over.message
+        loss = evaluate_sanity(
+            _outcome(
+                strategy="drop_rows",
+                affected_count_before=50,
+                changed_count=0,
+                rows_before=100,
+                rows_after=30,
+            )
+        )
+        excessive = next(w for w in loss if w.rule_id == "excessive_data_loss")
+        assert "70%" in excessive.message
+        recommendation = evaluate_next_step({"preprocessing/regularity": "warning"})
+        assert recommendation is not None
+        assert "STL-декомпозиция" in recommendation.message
+
+    def test_rendered_messages_leave_no_leftover_placeholders(self):
+        """Все сработавшие правила всех триггеров: в отрендеренных
+        сообщениях не остаётся подстановок {name} -- пары
+        шаблон/контекст согласованы (страховка строгого .format())."""
+        import re
+
+        leftover = re.compile(r"\{[a-zA-Z_][a-zA-Z_0-9]*")
+        scenarios: list[list] = [
+            [
+                w.message
+                for w in evaluate_sanity(
+                    _outcome(
+                        strategy="drop_rows",
+                        affected_count_before=50,
+                        changed_count=0,
+                        rows_before=100,
+                        rows_after=30,
+                        stats_before={"mean": 10.0, "std": 5.0},
+                        stats_after={"mean": 10.0, "std": 0.5},
+                    )
+                )
+            ],
+            [
+                w.message
+                for w in evaluate_history_warnings(
+                    [
+                        make_trace_event(
+                            "correction_previewed",
+                            stage="preprocessing",
+                            node_id="missing",
+                            run_id="RUN-AAA00001",
+                            strategy=strategy,
+                            ts=_ts(1),
+                        )
+                        for strategy in ("median_mode", "mean_mode", "flag")
+                    ]
+                )
+            ],
+            [
+                r.message
+                for r in (
+                    evaluate_next_step({"preprocessing/regularity": "warning"}),
+                    evaluate_next_step({"preprocessing/missing": "warning"}),
+                    evaluate_next_step({"modeling/selection": "done"}),
+                    evaluate_next_step({"forecasting/forecast_generated": "done"}),
+                )
+                if r is not None
+            ],
+        ]
+        messages = [m for group in scenarios for m in group]
+        assert messages, "ожидались сработавшие правила"
+        for message in messages:
+            assert leftover.search(message) is None, message
+
+    # -- fail-closed: шаблоны валидируются на импорте (§8 => все триггеры) --
+
+    def test_broken_template_placeholder_is_import_error_fail_closed(self):
+        """Битая подстановка в шаблоне (опечатка) -- ImportError на
+        импорте реестра, не ValueError в рантайме (паттерн TRACE_ROUTES)."""
+        broken = self._probe_rule("Битый шаблон {times")
+        with pytest.raises(ImportError):
+            mentor_rules.validate_explanation_template(broken)
+
+    def test_every_registry_rule_has_renderable_template(self):
+        """§8: рендер применим одинаково к §7.1 и §7.2 => шаблон обязателен
+        для ВСЕХ триггеров (fail-closed ослабленное исключение для
+        on_correction_result снято)."""
+        for rule in (
+            *mentor_rules.NEXT_STEP_RULES,
+            *mentor_rules.SANITY_RULES,
+            *mentor_rules.HISTORY_RULES,
+        ):
+            assert rule.explanation_template, rule.rule_id
+            mentor_rules.validate_explanation_template(rule)  # не бросает
+
+    def test_conditions_of_correction_rules_return_pre_render_fact(self):
+        """Условия §7.2/истории возвращают факт срабатывания (контекст
+        рендера), а не готовый текст: текст -- зона ответственности
+        renderer (§8), факт -- зона правила."""
+        fact = mentor_rules.rule_no_effect(
+            _outcome(affected_count_before=5, changed_count=0)
+        )
+        assert fact is not None
+        assert fact.severity == "warning"
+        assert fact.suggested_action
+        assert isinstance(fact.context, dict)
+        assert mentor_rules.rule_no_effect(_outcome()) is None

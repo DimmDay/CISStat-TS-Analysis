@@ -21,10 +21,17 @@ Task PROGR-6). Наставник решает ДВЕ разных по прир
 
 Принципы, унаследованные от спецификации и precedent-задач:
 
-  * LLM НЕ участвует: единственная точка расширения -- MentorTextRenderer
-    (§8, не реализуется), дефолт -- тексты шаблонов как есть. Правила
-    возвращают уже вычисленный факт; LLM когда-нибудь будет только
-    ПЕРЕФОРМУЛИРОВЫВАТЬ его.
+  * LLM НЕ участвует: единственная точка расширения -- MentorTextRenderer,
+    с PROGR-12 (Расхождение №3) зафиксированный В КОДЕ как Protocol (§8),
+    а не только на бумаге: дефолтная реализация FormatMentorTextRenderer
+    -- просто .format() шаблона, без сети/модели. Условия правил
+    возвращают ФАКТ срабатывания (MentorRuleFact: параметры шаблона +
+    severity/suggested_action), текст рендерится движком ЧЕРЕЗ renderer
+    ПОСЛЕ факта; подключение LLM позже = добавление реализации Protocol
+    (LLMMentorTextRenderer за фиче-флагом, §8), НЕ ввод интерфейса;
+    renderer не вызывается, если правило не сработало (LLM никогда
+    не решает, есть ли ошибка). Правила возвращают уже вычисленный
+    факт; LLM когда-нибудь будет только ПЕРЕФОРМУЛИРОВЫВАТЬ его.
   * «Не новая аналитика, а пересказ уже посчитанного»: правила §7.2 читают
     stats_before/stats_after/changed_count/rows_removed -- те же числа,
     что Мастер уже показал в «Прогнозе влияния на статистики».
@@ -47,10 +54,11 @@ Task PROGR-6). Наставник решает ДВЕ разных по прир
 from __future__ import annotations
 
 import json
+import string
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Protocol, runtime_checkable
 
 import yaml
 
@@ -142,12 +150,17 @@ class MentorRule:
       * on_demand: (statuses: Mapping[str, str]) -> bool --
         статусы узлов графа по ключу "stage/node_id";
       * on_correction_result: (outcome: CorrectionOutcomeSummary)
-        -> SanityWarning | None;
-      * on_demand_with_history: (events: list) -> SanityWarning | None --
-        недавние события трассы запуска (dict или TraceEvent).
+        -> MentorRuleFact | None -- факт срабатывания, БЕЗ текста
+        (текст рендерится движком через MentorTextRenderer, §8);
+      * on_demand_with_history: (events: list, *, now: datetime | None)
+        -> MentorRuleFact | None -- недавние события трассы запуска
+        (dict или TraceEvent).
 
     recommended_action -- deep-link «stage.node_id» (§7.1) или None
     (осознанно без deep-link -- «как решать», а не «куда идти»).
+    explanation_template -- параметризованный текст (канон §7);
+    с PROGR-12 обязателен для ВСЕХ триггеров: рендер §8 применим
+    одинаково к §7.1 и §7.2, валидация fail-closed на импорте.
     """
 
     rule_id: str
@@ -201,6 +214,52 @@ class MentorRecommendation:
     recommended_action: str | None = None
 
 
+@dataclass(frozen=True)
+class MentorRuleFact:
+    """Вычисленный условием ФАКТ срабатывания правила -- без текста
+    (§8: рендер -- отдельная ответственность Protocol). context --
+    параметры шаблона + агрегированные факты, виденные условием (статусы
+    узлов, исход коррекции, стратегии в окне; сырые данные ряда сюда
+    НЕ попадают -- принцип §8 «LLM -- рендерер, не источник истины»);
+    severity/suggested_action -- постоянные правила, движок переносит
+    их в собираемое SanityWarning. §7.1-условия по-прежнему возвращают
+    bool (канон §7: "(nodes) -> bool")."""
+
+    context: dict[str, Any] = field(default_factory=dict)
+    severity: str = SEVERITY_WARNING
+    suggested_action: str | None = None
+
+
+@runtime_checkable
+class MentorTextRenderer(Protocol):
+    """Единственная точка, где мог бы появиться LLM: ПЕРЕФОРМУЛИРОВКА
+    уже вычисленного правило-движком факта (rule_id + параметры шаблона),
+    НЕ вычисление самого факта/рекомендации/предупреждения. Дефолтная
+    реализация -- просто .format() шаблона, без сети/модели. Применимо
+    одинаково и к §7.1 (следующий шаг), и к §7.2 (sanity-предупреждения).
+    (§8 spec_progress.md дословно; с PROGR-12 контракт зафиксирован
+    в КОДЕ, а не только в докстринге -- Расхождение №3.)"""
+
+    def render(self, rule: MentorRule, context: dict[str, Any]) -> str: ...
+
+
+class FormatMentorTextRenderer:
+    """Дефолтная реализация §8: просто .format() шаблона правила
+    переданными параметрами, без сети/модели. Богатый контекст (лишние
+    ключи -- агрегированные факты для будущего LLM) .format() игнорирует;
+    пропущенный параметр шаблона -- KeyError (пары шаблон/контекст
+    страхуют тесты движка и fail-closed валидация на импорте)."""
+
+    def render(self, rule: MentorRule, context: dict[str, Any]) -> str:
+        return rule.explanation_template.format(**context)
+
+
+# Дефолтный рендерер процесса; evaluate_* принимают renderer параметром
+# -- подключение LLM позже = передача LLMMentorTextRenderer(MentorTextRenderer)
+# за фиче-флагом (§8), правка движка и точек вызова не требуется.
+DEFAULT_TEXT_RENDERER: MentorTextRenderer = FormatMentorTextRenderer()
+
+
 # ── Правила §7.2 (on_correction_result) ──────────────────────────────
 
 _NO_EFFECT_TEXT = "Выбранная стратегия не изменила ни одного значения."
@@ -209,27 +268,21 @@ _NO_EFFECT_ACTION = (
 )
 
 
-def rule_no_effect(outcome: CorrectionOutcomeSummary) -> SanityWarning | None:
+def rule_no_effect(outcome: CorrectionOutcomeSummary) -> MentorRuleFact | None:
     """Стратегия выбрана, но по факту ничего не изменила -- типичный
     признак: порог/метод слишком мягкий, либо выборка слишком мала
-    (§7.2 дословно)."""
+    (§7.2 дословно). Возвращает ФАКТ срабатывания (§8): текст рендерится
+    движком через MentorTextRenderer из шаблона правила."""
     if outcome.affected_count_before > 0 and outcome.changed_count == 0:
-        return SanityWarning(
-            rule_id="no_effect",
+        return MentorRuleFact(
+            context={
+                "affected_count_before": outcome.affected_count_before,
+                "changed_count": outcome.changed_count,
+            },
             severity=SEVERITY_WARNING,
-            message=_NO_EFFECT_TEXT,
             suggested_action=_NO_EFFECT_ACTION,
         )
     return None
-
-
-def _over_aggressive_text(factor: float) -> str:
-    times = max(round(1 / factor), 1) if factor > 0 else 0
-    return (
-        "После исправления стандартное отклонение упало более чем "
-        f"в {times} раз — возможно, стратегия слишком агрессивна "
-        "для этой доли данных."
-    )
 
 
 _OVER_AGGRESSIVE_ACTION = (
@@ -238,12 +291,14 @@ _OVER_AGGRESSIVE_ACTION = (
 )
 
 
-def rule_over_aggressive(outcome: CorrectionOutcomeSummary) -> SanityWarning | None:
+def rule_over_aggressive(outcome: CorrectionOutcomeSummary) -> MentorRuleFact | None:
     """Стандартное отклонение после исправления схлопнулось намного
     сильнее, чем можно объяснить долей затронутых значений -- признак
     переглаживания/слишком грубой стратегии (напр. замена медианой
     большой доли выборки) (§7.2 дословно). Порог -- из конфига
-    (std_collapse_factor, стартово 0.2 == «более чем в 5 раз»)."""
+    (std_collapse_factor, стартово 0.2 == «более чем в 5 раз»). ФАКТ
+    без текста (§8): шаблон правила с подстановкой {times} рендерится
+    движком через MentorTextRenderer."""
     if not (outcome.stats_before and outcome.stats_after):
         return None
     std_before = outcome.stats_before.get("std")
@@ -251,10 +306,14 @@ def rule_over_aggressive(outcome: CorrectionOutcomeSummary) -> SanityWarning | N
     if std_before and std_after is not None:
         factor = _threshold("sanity", "over_aggressive", "std_collapse_factor")
         if std_after < std_before * factor:
-            return SanityWarning(
-                rule_id="over_aggressive",
+            times = max(round(1 / factor), 1) if factor > 0 else 0
+            return MentorRuleFact(
+                context={
+                    "times": times,
+                    "std_before": std_before,
+                    "std_after": std_after,
+                },
                 severity=SEVERITY_WARNING,
-                message=_over_aggressive_text(factor),
                 suggested_action=_OVER_AGGRESSIVE_ACTION,
             )
     return None
@@ -266,11 +325,12 @@ _EXCESSIVE_LOSS_ACTION = (
 )
 
 
-def rule_excessive_data_loss(outcome: CorrectionOutcomeSummary) -> SanityWarning | None:
+def rule_excessive_data_loss(outcome: CorrectionOutcomeSummary) -> MentorRuleFact | None:
     """drop_rows/ресемплирование удалило значительную долю датасета --
     типичный признак слишком узкого порога или ошибочно выбранной
     колонки (§7.2 дословно). Порог -- из конфига (max_removed_share,
-    стартово 0.3)."""
+    стартово 0.3). ФАКТ без текста (§8): шаблон с подстановкой
+    {removed_share} рендерится движком через MentorTextRenderer."""
     if outcome.rows_before == 0:
         return None
     max_share = _threshold("sanity", "excessive_data_loss", "max_removed_share")
@@ -279,10 +339,13 @@ def rule_excessive_data_loss(outcome: CorrectionOutcomeSummary) -> SanityWarning
     # max_share -- тишина»; одно деление целых даёт точный boundary.
     removed_share = (outcome.rows_before - outcome.rows_after) / outcome.rows_before
     if outcome.strategy == "drop_rows" and removed_share > max_share:
-        return SanityWarning(
-            rule_id="excessive_data_loss",
+        return MentorRuleFact(
+            context={
+                "removed_share": removed_share,
+                "rows_before": outcome.rows_before,
+                "rows_after": outcome.rows_after,
+            },
             severity=SEVERITY_WARNING,
-            message=f"Стратегия удалит {removed_share:.0%} строк датасета.",
             suggested_action=_EXCESSIVE_LOSS_ACTION,
         )
     return None
@@ -314,7 +377,7 @@ def _parse_event_ts(raw: Any) -> datetime | None:
 
 def rule_thrashing(
     events: list[Any], *, now: datetime | None = None
-) -> SanityWarning | None:
+) -> MentorRuleFact | None:
     """«Мечется» (§7.2): один и тот же узел за короткое окно многократно
     исправляется чередующимися стратегиями без итогового применения --
     паттерн «аналитик пробует всё подряд». Требует истории trace_events
@@ -325,6 +388,9 @@ def rule_thrashing(
     (distinct_strategies, стартово 3) -- из конфига §12 п.7. Применённая
     коррекция (correction_applied в окне) снимает предупреждение:
     выбор сделан. События с нечитаемым ts в окно не попадают.
+    ФАКТ без текста (§8): статичный шаблон правила рендерится движком
+    через MentorTextRenderer; контекст несёт агрегированные факты окна
+    (список стратегий -- для будущего LLM-рендера).
     """
     cfg = MENTOR_CONFIG["history"]["thrashing"]
     window_minutes = float(cfg["window_minutes"])
@@ -351,10 +417,13 @@ def rule_thrashing(
         if isinstance(strategy, str) and strategy and strategy not in strategies:
             strategies.append(strategy)
     if len(strategies) >= distinct_needed and not has_apply:
-        return SanityWarning(
-            rule_id="thrashing_detected",
+        return MentorRuleFact(
+            context={
+                "strategies": list(strategies),
+                "window_minutes": window_minutes,
+                "distinct_strategies": distinct_needed,
+            },
             severity=SEVERITY_INFO,
-            message=_THRASHING_TEXT,
             suggested_action=None,
         )
     return None
@@ -526,17 +595,24 @@ NEXT_STEP_RULES: tuple[MentorRule, ...] = (
 
 def evaluate_next_step(
     statuses: Mapping[str, str],
+    *,
+    renderer: MentorTextRenderer | None = None,
 ) -> MentorRecommendation | None:
     """§7.1: прогон состояния графа через отсортированный по (priority,
     rule_id) список on_demand-правил, первое сработавшее -- ОДНА
-    рекомендация за раз (не весь список, §7.1 дословно)."""
+    рекомендация за раз (не весь список, §7.1 дословно). Текст --
+    renderer.render ПОСЛЕ факта (§8); контекст несёт агрегированные
+    факты (статусы узлов). renderer=None -- дефолтный
+    FormatMentorTextRenderer; подключение LLM -- передачей реализации
+    Protocol, без правки движка."""
+    text_renderer = renderer or DEFAULT_TEXT_RENDERER
     for rule in sorted(NEXT_STEP_RULES, key=lambda item: (item.priority, item.rule_id)):
         condition = rule.condition
         if condition is not None and condition(statuses):
             return MentorRecommendation(
                 rule_id=rule.rule_id,
                 stage=rule.stage,
-                message=rule.explanation_template,
+                message=text_renderer.render(rule, {"statuses": dict(statuses)}),
                 recommended_action=rule.recommended_action,
             )
     return None
@@ -559,7 +635,11 @@ SANITY_RULES: tuple[MentorRule, ...] = (
         stage="preprocessing",
         trigger=TRIGGER_ON_CORRECTION_RESULT,
         priority=20,
-        explanation_template="",
+        explanation_template=(
+            "После исправления стандартное отклонение упало более чем "
+            "в {times} раз — возможно, стратегия слишком агрессивна "
+            "для этой доли данных."
+        ),
         recommended_action=None,
         condition=rule_over_aggressive,
     ),
@@ -568,7 +648,7 @@ SANITY_RULES: tuple[MentorRule, ...] = (
         stage="preprocessing",
         trigger=TRIGGER_ON_CORRECTION_RESULT,
         priority=30,
-        explanation_template="",
+        explanation_template="Стратегия удалит {removed_share:.0%} строк датасета.",
         recommended_action=None,
         condition=rule_excessive_data_loss,
     ),
@@ -587,34 +667,62 @@ HISTORY_RULES: tuple[MentorRule, ...] = (
 )
 
 
-def evaluate_sanity(outcome: CorrectionOutcomeSummary) -> list[SanityWarning]:
+def evaluate_sanity(
+    outcome: CorrectionOutcomeSummary,
+    *,
+    renderer: MentorTextRenderer | None = None,
+) -> list[SanityWarning]:
     """§7.2: прогон через ВСЕ on_correction_result-правила (в отличие от
     §7.1 возвращается весь список -- разные проблемы независимы и не
-    взаимоисключающи). Порядок -- реестр SANITY_RULES (стабилен для UI)."""
+    взаимоисключающи). Порядок -- реестр SANITY_RULES (стабилен для UI).
+    Текст предупреждения -- renderer.render ПОСЛЕ факта (§8): условие
+    возвращает MentorRuleFact (severity/suggested_action/параметры
+    шаблона), message собирает движок ЧЕРЕЗ Protocol; renderer не
+    вызывается для не сработавших правил."""
+    text_renderer = renderer or DEFAULT_TEXT_RENDERER
     warnings: list[SanityWarning] = []
     for rule in SANITY_RULES:
         condition = rule.condition
         if condition is None:
             continue
-        warning = condition(outcome)
-        if warning is not None:
-            warnings.append(warning)
+        fact = condition(outcome)
+        if fact is not None:
+            warnings.append(
+                SanityWarning(
+                    rule_id=rule.rule_id,
+                    severity=fact.severity,
+                    message=text_renderer.render(rule, fact.context),
+                    suggested_action=fact.suggested_action,
+                )
+            )
     return warnings
 
 
 def evaluate_history_warnings(
-    events: list[Any], *, now: datetime | None = None
+    events: list[Any],
+    *,
+    now: datetime | None = None,
+    renderer: MentorTextRenderer | None = None,
 ) -> list[SanityWarning]:
     """on_demand_with_history-правила: при открытии Наставника (не на
-    каждый preview) по последним событиям запуска (§7.2 дословно)."""
+    каждый preview) по последним событиям запуска (§7.2 дословно).
+    Текст -- renderer.render ПОСЛЕ факта (§8), как в evaluate_sanity."""
+    text_renderer = renderer or DEFAULT_TEXT_RENDERER
     warnings: list[SanityWarning] = []
     for rule in HISTORY_RULES:
         condition = rule.condition
         if condition is None:
             continue
-        warning = condition(events, now=now) if now else condition(events)
-        if warning is not None:
-            warnings.append(warning)
+        fact = condition(events, now=now) if now else condition(events)
+        if fact is not None:
+            warnings.append(
+                SanityWarning(
+                    rule_id=rule.rule_id,
+                    severity=fact.severity,
+                    message=text_renderer.render(rule, fact.context),
+                    suggested_action=fact.suggested_action,
+                )
+            )
     return warnings
 
 
@@ -690,6 +798,21 @@ def phase_text(stage: str) -> str:
     return PHASE_TEXT_TEMPLATES.get(stage, _PHASE_TEXT_FALLBACK)
 
 
+def validate_explanation_template(rule: MentorRule) -> None:
+    """Fail-closed валидация шаблона объяснения (§8, PROGR-12): шаблон
+    обязателен для ВСЕХ триггеров -- рендер применим одинаково к §7.1
+    и §7.2; битая подстановка (незакрытая {) -- ImportError на импорте,
+    паттерн TRACE_ROUTES PROGR-3: опечатка не доходит до рантайма."""
+    if not rule.explanation_template:
+        raise ImportError(f"Правило {rule.rule_id!r} без explanation_template")
+    try:
+        list(string.Formatter().parse(rule.explanation_template))
+    except ValueError as exc:
+        raise ImportError(
+            f"Правило {rule.rule_id!r}: битый шаблон объяснения ({exc})"
+        ) from exc
+
+
 # ── Fail-closed самопроверка реестра на импорте ──────────────────────
 
 # (паттерн TRACE_ROUTES PROGR-3: невалидное правило -- ImportError на
@@ -709,7 +832,7 @@ for _rule in (*NEXT_STEP_RULES, *SANITY_RULES, *HISTORY_RULES):
             f"on_demand-правило {_rule.rule_id!r} без condition -- "
             "ошибка таблицы правил Наставника"
         )
-    if not _rule.explanation_template and _rule.trigger != TRIGGER_ON_CORRECTION_RESULT:
-        raise ImportError(
-            f"Правило {_rule.rule_id!r} без explanation_template"
-        )
+    # §8 (PROGR-12): шаблон обязателен для ВСЕХ триггеров + битая
+    # подстановка -- ImportError (раньше исключение делалось для
+    # on_correction_result; рендер теперь един для §7.1/§7.2).
+    validate_explanation_template(_rule)
