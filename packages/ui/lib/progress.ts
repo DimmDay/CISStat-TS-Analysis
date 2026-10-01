@@ -164,6 +164,60 @@ export interface StageStateInfo {
   total_nodes: number;
 }
 
+// ── Полное состояние узла §3 (PROGR-11, зеркало NodeStateOut) ─────
+
+/** Зеркало NodeStateOut (apps/api/routers/progress.py) / PipelineNodeState
+ * (app/core/pipeline_graph.py §3): полный узел панели. До PROGR-11 поля
+ * status_reason/mode/summary_count/last_touched_at объявлялись в
+ * датаклассе, но до UI не доезжали (/trace отдавал только статус из
+ * событий) -- расхождение закрыто: бэкенд (единый движок
+ * app/core/node_status.py::derive_pipeline_node_states) отдаёт ГОТОВЫЕ
+ * поля, фронтенд рендерит, не вычисляет. */
+export interface NodeStateInfo {
+  stage: string;
+  node_id: string;
+  status: string;
+  /** Человекочитаемая причина статуса (факт последнего события решения). */
+  status_reason: string | null;
+  /** Эффективный режим проверки (auto/enabled/disabled) -- только
+   * Валидация/Предобработка; вне них null. */
+  mode: string | null;
+  /** ts последнего события узла. */
+  last_touched_at: string | null;
+  /** Число правого бейджа узла (§3, напр. total_missing); факта нет -- null. */
+  summary_count: number | null;
+}
+
+/** Ключ узла -- тот же формат, что у node_statuses ответа /trace. */
+export function nodeStateKey(stage: string, nodeId: string): string {
+  return `${stage}/${nodeId}`;
+}
+
+/** Карта "stage/node_id" -> полное состояние (для рендера по узлам).
+ * Пустой/отсутствующий ответ -- пустая карта: старый бэкенд деградирует
+ * к прежнему рендеру (N-3, аддитивность). */
+export function nodeStateMap(
+  nodes: NodeStateInfo[],
+): Record<string, NodeStateInfo> {
+  const map: Record<string, NodeStateInfo> = {};
+  for (const node of nodes) {
+    map[nodeStateKey(node.stage, node.node_id)] = node;
+  }
+  return map;
+}
+
+// Метки режимов проверки §3 (текст -- UI-ответственность; значения --
+// контракт NODE_MODE_VALUES бэкенда). Неизвестное значение -- как есть.
+const NODE_MODE_LABELS: Record<string, string> = {
+  auto: "авто",
+  enabled: "вкл",
+  disabled: "выкл",
+};
+
+export function nodeModeLabel(mode: string): string {
+  return NODE_MODE_LABELS[mode] ?? mode;
+}
+
 /** Подпись карточки стадии §6.2 из ГОТОВЫХ счётчиков ответа: «1/10,
  * найдены проблемы» / «1/11, в работе» / «1/1, пройдено» / «не начато».
  * Текст -- UI-ответственность; вычисление fold/счётчиков -- бэкенд. */

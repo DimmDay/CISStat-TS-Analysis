@@ -157,6 +157,7 @@ from app.core.mentor_rules import (
 )
 from app.core.node_status import (
     derive_node_statuses,
+    derive_pipeline_node_states,
     derive_stage_states,
     event_to_dict,
 )
@@ -206,6 +207,30 @@ class StageStateOut(BaseModel):
     total_nodes: int
 
 
+class NodeStateOut(BaseModel):
+    """Полное состояние узла §3 (PROGR-11) -- зеркало PipelineNodeState
+    (app/core/pipeline_graph.py): статус канонического движка + поля,
+    прежде не доходившие до панели (расхождение постановки: mode/
+    summary_count/status_reason объявлены в датаклассе, но /trace
+    отдавал только статус из событий).
+
+    status_reason -- шаблон факта последнего события решения узла;
+    mode -- эффективный режим сессии (auto/enabled/disabled, только
+    Валидация/Предобработка, тот же контракт, что у степперов);
+    last_touched_at -- ts последнего события узла; summary_count --
+    число правого бейджа узла из payload последнего корректировочного
+    события (тот же whitelist фактов §4.1; опроса profile-эндпоинтов
+    нет -- та же принятая цена расхождения №1, что у статуса)."""
+
+    stage: str
+    node_id: str
+    status: str
+    status_reason: Optional[str] = None
+    mode: Optional[str] = None
+    last_touched_at: Optional[str] = None
+    summary_count: Optional[int] = None
+
+
 class ProgressTraceResponse(BaseModel):
     """Снимок внутрисессионного слоя трассы (§5 слой 1) для шапки и
     «Развернуть трассу» панели «Прогресс» (§6.1-§6.2).
@@ -220,6 +245,9 @@ class ProgressTraceResponse(BaseModel):
     + счётчики (готовое состояние карточек). Фронтенд рендерит, не
     вычисляет; поля аддитивны -- старые потребители (шапка/трасса)
     совместимы (N-3).
+
+    PROGR-11: nodes -- полные состояния узлов §3 (все узлы графа в
+    порядке §2); аддитивно к node_statuses/stages (N-3).
     """
 
     run_id: Optional[str] = None
@@ -227,6 +255,7 @@ class ProgressTraceResponse(BaseModel):
     events: List[Dict[str, Any]] = Field(default_factory=list)
     node_statuses: Dict[str, str] = Field(default_factory=dict)
     stages: List[StageStateOut] = Field(default_factory=list)
+    nodes: List[NodeStateOut] = Field(default_factory=list)
 
 
 def _canonical_forecast_trace_events(
@@ -287,6 +316,16 @@ def get_progress_trace(request: Request, response: Response) -> ProgressTraceRes
     # stable (та же семантика, что у отчёта §5.4 и прежнего фронтенда).
     merged = sort_events_chronologically(merged)
     statuses = derive_node_statuses(merged)
+    # PROGR-11: полные состояния узлов §3; mode -- эффективные check-
+    # modes СЕССИИ (те же словари, что читают степперы) -- прямое
+    # чтение полей сессии, не опрос profile-эндпоинтов.
+    node_states = derive_pipeline_node_states(
+        merged,
+        {
+            "validation": session.validation_check_modes,
+            "preprocessing": session.preprocessing_check_modes,
+        },
+    )
     return ProgressTraceResponse(
         run_id=session.run_id or None,
         started_at=layer1[0].ts if layer1 else None,
@@ -295,6 +334,7 @@ def get_progress_trace(request: Request, response: Response) -> ProgressTraceRes
         stages=[
             StageStateOut(**state) for state in derive_stage_states(statuses)
         ],
+        nodes=[NodeStateOut(**state) for state in node_states],
     )
 
 

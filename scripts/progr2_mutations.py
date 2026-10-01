@@ -34,7 +34,7 @@ MUTANTS: list[tuple[str, str, str]] = [
     ("MUT-06", "§12 п.2: eda id вшитой копией вместо чтения JSON",
      'EDA_CHECK_DEFS: tuple[dict[str, str], ...] = _load_eda_check_defs()'),
     ("MUT-07", "§3: mode допустим на любой стадии",
-     '            if self.stage not in _MODE_STAGES:'),
+     '            if self.stage not in MODE_STAGES:'),
     ("MUT-08", "§3: отрицательный summary_count проходит",
      '        if self.summary_count is not None and self.summary_count < 0:'),
     ("MUT-09", "§2: STAGES переставлены (eda <-> modeling)",
@@ -81,7 +81,7 @@ MUTATION_PATCHES: dict[str, tuple[str, str]] = {
         '{"id": "model_matrix", "label": "Матрица моделей", "description": "d"})',
     ),
     "MUT-07": (
-        '            if self.stage not in _MODE_STAGES:',
+        '            if self.stage not in MODE_STAGES:',
         '            if False:',
     ),
     "MUT-08": (

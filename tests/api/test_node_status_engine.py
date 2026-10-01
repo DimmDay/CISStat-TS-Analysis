@@ -36,6 +36,7 @@ from app.core import node_status
 from app.core.node_status import (
     EVENT_NODE_STATUS,
     derive_node_statuses,
+    derive_pipeline_node_states,
     derive_stage_states,
     event_to_dict,
     resolve_node_id,
@@ -383,6 +384,276 @@ class TestEngineOwnership:
         assert "stageSummary" not in source
 
 
+# ── Контур 7: полное состояние узла §3 (PROGR-11) ────────────────────
+#
+# РАСХОЖДЕНИЕ (постановка PROGR-11): поля §3 mode/summary_count/
+# status_reason объявлены в PipelineNodeState (pipeline_graph.py), но в
+# рендер панели попадает только статус, выведенный из событий; бейджи-
+# числа и mode до UI не доезжают. Решение -- канонический движок
+# дополняется чистой функцией derive_pipeline_node_states: ВСЕ узлы
+# графа в порядке §2 с полным набором полей §3; статус -- тот же
+# канонический derive_node_statuses (вторая реализации статуса
+# запрещена), остальные поля -- из ТЕХ ЖЕ засеянных фактов решений
+# (trace_events) + эффективные check-modes сессии (Валидация/
+# Предобработка -- то же состояние, что показывают степперы;
+# опроса profile-эндпоинтов по-прежнему нет).
+
+
+class TestPipelineNodeStates:
+    def test_reason_map_covers_exactly_the_status_map(self):
+        """Шаблоны status_reason -- ровно для тех же 12 узловых типов,
+        что и карта статусов: reason и статус всегда описывают ОДНО и
+        то же последнее событие узла (рассинхрон невозможен по
+        построению)."""
+        assert set(node_status.EVENT_NODE_REASON) == set(EVENT_NODE_STATUS)
+
+    def test_empty_events_return_all_graph_nodes_in_s2_order(self):
+        """Пустая трасса -- ВСЕ 46 узлов графа в каноническом порядке §2,
+        честные «не начато» (pending) без выдуманных фактов."""
+        from app.core.pipeline_graph import STAGES, STAGE_NODES
+
+        states = derive_pipeline_node_states([])
+        assert [s["stage"] for s in states] == [
+            stage for stage in STAGES for _ in STAGE_NODES[stage]
+        ]
+        assert [s["node_id"] for s in states] == [
+            node_id for stage in STAGES for node_id in STAGE_NODES[stage]
+        ]
+        assert all(s["status"] == "pending" for s in states)
+        assert all(s["status_reason"] is None for s in states)
+        assert all(s["last_touched_at"] is None for s in states)
+        assert all(s["summary_count"] is None for s in states)
+
+    def test_node_dict_carries_exactly_the_s3_fields(self):
+        """Контракт §3: ровно 7 полей PipelineNodeState -- ничего лишнего
+        (зеркало датакласса, не новая модель)."""
+        states = derive_pipeline_node_states([])
+        assert all(
+            set(s) == {
+                "stage", "node_id", "status", "status_reason",
+                "mode", "last_touched_at", "summary_count",
+            }
+            for s in states
+        )
+
+    def test_correction_facts_fill_reason_count_and_ts(self):
+        """correction_applied -- факт решения: статус done (канонический
+        движок), reason по шаблону, summary_count из payload
+        (total_missing -- то же число, что в правом бейдже узла, §3),
+        last_touched_at -- ts события."""
+        events = [
+            _event(
+                "preprocessing", "missing", "correction_applied",
+                ts="2026-09-29T10:05:00+00:00",
+                applied=True, strategy="mean", total_missing=12,
+            ),
+        ]
+        by_key = {
+            (s["stage"], s["node_id"]): s
+            for s in derive_pipeline_node_states(events)
+        }
+        node = by_key[("preprocessing", "missing")]
+        assert node["status"] == "done"
+        assert node["status_reason"] == node_status.EVENT_NODE_REASON["correction_applied"]
+        assert node["summary_count"] == 12
+        assert node["last_touched_at"] == "2026-09-29T10:05:00+00:00"
+
+    def test_count_key_priority_problem_counts_first(self):
+        """Приоритет ключей бейджа: проблемные счётчики (total_missing/
+        total_outliers/total_violations/total_invalid) старше
+        результатов коррекции (rows_removed/total_changed)."""
+        events = [
+            _event(
+                "validation", "consistency", "correction_applied",
+                total_changed=7, total_violations=3,
+            ),
+        ]
+        by_key = {
+            (s["stage"], s["node_id"]): s
+            for s in derive_pipeline_node_states(events)
+        }
+        assert by_key[("validation", "consistency")]["summary_count"] == 3
+
+    def test_last_event_wins_for_reason_count_and_ts(self):
+        """Хронология: позднее событие перезаписывает раннее
+        (previewed -> applied = done + причина applied); счётчик -- от
+        последнего события с числом, не от первого."""
+        events = [
+            _event(
+                "preprocessing", "outliers", "correction_previewed",
+                ts="2026-09-29T10:01:00+00:00", total_outliers=5,
+            ),
+            _event(
+                "preprocessing", "outliers", "correction_applied",
+                ts="2026-09-29T10:02:00+00:00", total_outliers=0, rows_removed=2,
+            ),
+        ]
+        by_key = {
+            (s["stage"], s["node_id"]): s
+            for s in derive_pipeline_node_states(events)
+        }
+        node = by_key[("preprocessing", "outliers")]
+        assert node["status"] == "done"
+        assert node["status_reason"] == node_status.EVENT_NODE_REASON["correction_applied"]
+        # total_outliers (проблемный счётчик) старше rows_removed даже
+        # внутри одного payload.
+        assert node["summary_count"] == 0
+        assert node["last_touched_at"] == "2026-09-29T10:02:00+00:00"
+
+    def test_profile_viewed_reason_and_running(self):
+        """Просмотренный без коррекции узел -- running (принятая цена
+        расхождения №1) с честной причиной."""
+        events = [
+            _event("eda", "correlation", "profile_viewed",
+                   ts="2026-09-29T10:03:00+00:00"),
+        ]
+        by_key = {
+            (s["stage"], s["node_id"]): s
+            for s in derive_pipeline_node_states(events)
+        }
+        node = by_key[("eda", "correlation")]
+        assert node["status"] == "running"
+        assert node["status_reason"] == node_status.EVENT_NODE_REASON["profile_viewed"]
+        assert node["summary_count"] is None  # profile_viewed чисел не несёт
+        assert node["last_touched_at"] == "2026-09-29T10:03:00+00:00"
+
+    def test_upload_completed_has_no_summary_count(self):
+        """payload upload_completed (name/rows/columns/size_label) не
+        содержит ключей бейджа -- summary_count честно None, бейдж
+        не выдумывается."""
+        events = [
+            _event("upload", "structure_confirmed", "upload_completed",
+                   rows=120, columns=7),
+        ]
+        by_key = {
+            (s["stage"], s["node_id"]): s
+            for s in derive_pipeline_node_states(events)
+        }
+        node = by_key[("upload", "structure_confirmed")]
+        assert node["status"] == "done"
+        assert node["summary_count"] is None
+        assert node["last_touched_at"] is not None
+
+    def test_mode_effective_for_validation_and_preprocessing_only(self):
+        """mode (§3: auto/enabled/disabled) -- только Валидация/
+        Предобработка; отсутствующее значение -- эффективное «auto»
+        (тот же контракт, что у степперов), остальные стадии -- None."""
+        check_modes = {"validation": {"formats": "disabled"}}
+        by_key = {
+            (s["stage"], s["node_id"]): s
+            for s in derive_pipeline_node_states([], check_modes)
+        }
+        assert by_key[("validation", "formats")]["mode"] == "disabled"
+        assert by_key[("validation", "data_types")]["mode"] == "auto"
+        assert by_key[("preprocessing", "missing")]["mode"] == "auto"
+        assert by_key[("upload", "structure_confirmed")]["mode"] is None
+        assert by_key[("eda", "correlation")]["mode"] is None
+        assert by_key[("modeling", "backtest")]["mode"] is None
+        assert by_key[("forecasting", "forecast_generated")]["mode"] is None
+
+    def test_mode_invalid_value_failsafe_to_auto(self):
+        """Битое значение mode в хранилище -- fail-safe «auto» (тот же
+        контракт, что _effective_*_check_modes степперов), не мусор в UI."""
+        check_modes = {"preprocessing": {"missing": "turbo"}}
+        by_key = {
+            (s["stage"], s["node_id"]): s
+            for s in derive_pipeline_node_states([], check_modes)
+        }
+        assert by_key[("preprocessing", "missing")]["mode"] == "auto"
+
+    def test_mode_none_when_check_modes_not_provided(self):
+        """check_modes не передан -- mode None (движок не выдумывает
+        данные, которых нет); роутер всегда передаёт сессионные словари."""
+        states = derive_pipeline_node_states([])
+        assert all(s["mode"] is None for s in states)
+
+    def test_stage_level_and_phantom_events_do_not_touch_details(self):
+        """N-2: события без узла (mode_changed/target_column_changed) и
+        фантомные пары вне графа не создают деталей; mode_changed -- 
+        событие уровня стадии, mode узлов приходит из состояния сессии."""
+        events = [
+            _event("validation", None, "mode_changed", modes={"formats": "disabled"}),
+            _event("validation", "phantom", "correction_applied", total_missing=1),
+            _event("nowhere", "missing", "correction_applied"),
+        ]
+        states = derive_pipeline_node_states(events)
+        assert all(s["last_touched_at"] is None for s in states)
+        assert all(s["summary_count"] is None for s in states)
+        assert all(s["status"] == "pending" for s in states)
+
+    def test_non_integer_counts_are_skipped_failsafe(self):
+        """Мусор в счётчике (строка/bool/отрицательное) -- не бейдж:
+        ключ пропускается, других ключей payload это не касается."""
+        events = [
+            _event(
+                "preprocessing", "missing", "correction_applied",
+                total_missing="много", total_changed=True, rows_removed=-1,
+                total_outliers=4,
+            ),
+        ]
+        by_key = {
+            (s["stage"], s["node_id"]): s
+            for s in derive_pipeline_node_states(events)
+        }
+        assert by_key[("preprocessing", "missing")]["summary_count"] == 4
+
+    def test_last_touched_at_skips_unreadable_ts(self):
+        """Нечитаемый ts события не затирает последний валидный
+        last_touched_at (fail-safe хронологии)."""
+        events = [
+            _event("eda", "seasonality", "profile_viewed",
+                   ts="2026-09-29T10:07:00+00:00"),
+            _event("eda", "seasonality", "profile_viewed", ts=""),
+        ]
+        by_key = {
+            (s["stage"], s["node_id"]): s
+            for s in derive_pipeline_node_states(events)
+        }
+        assert by_key[("eda", "seasonality")]["last_touched_at"] == (
+            "2026-09-29T10:07:00+00:00"
+        )
+
+    def test_trace_event_objects_and_dicts_mixed(self):
+        """Смешанные представления легальны (слой 1 -- TraceEvent,
+        слой 2 -- stored-словари), как в derive_node_statuses."""
+        obj = make_trace_event(
+            "correction_applied", stage="preprocessing",
+            node_id="missing", run_id="RUN-AAA00002",
+        )
+        events = [_event("preprocessing", "missing", "correction_previewed"), obj]
+        by_key = {
+            (s["stage"], s["node_id"]): s
+            for s in derive_pipeline_node_states(events)
+        }
+        node = by_key[("preprocessing", "missing")]
+        assert node["status"] == "done"
+        assert node["status_reason"] == node_status.EVENT_NODE_REASON["correction_applied"]
+
+    def test_status_matches_canonical_engine_everywhere(self):
+        """Статусы полного состояния == канонический derive_node_statuses
+        на тех же событиях (вторая реализация статуса запрещена)."""
+        from app.core.pipeline_graph import STAGES, STAGE_NODES
+
+        events = [
+            _event("validation", "formats", "correction_previewed"),
+            _event("preprocessing", "missing", "correction_applied"),
+            _event("eda", "correlation", "profile_viewed"),
+            _event("forecasting", None, "forecast_generated"),
+        ]
+        statuses = derive_node_statuses(events)
+        states = derive_pipeline_node_states(events)
+        for state in states:
+            expected = statuses.get(f"{state['stage']}/{state['node_id']}", "pending")
+            assert state["status"] == expected
+        # И полнота: все узлы графа присутствуют.
+        assert len(states) == sum(len(nodes) for nodes in STAGE_NODES.values())
+        assert {(s["stage"], s["node_id"]) for s in states} == {
+            (stage, node_id)
+            for stage in STAGES
+            for node_id in STAGE_NODES[stage]
+        }
+
+
 # ── Публичный API модуля (реэкспорт для потребителей) ────────────────
 
 
@@ -395,5 +666,6 @@ def test_public_api_surface():
         "resolve_node_id",
         "derive_node_statuses",
         "derive_stage_states",
+        "derive_pipeline_node_states",
     ):
         assert hasattr(node_status, name), f"Нет публичного {name}"

@@ -55,7 +55,9 @@ const TRACE_RESPONSE = {
   ],
 };
 
-function mockFetch(trace = TRACE_RESPONSE) {
+// Тип параметра -- не вывод из литерала TRACE_RESPONSE: тесты PROGR-11
+// передают расширенный ответ (nodes), поле аддитивно.
+function mockFetch(trace: Record<string, unknown> = TRACE_RESPONSE) {
   global.fetch = jest.fn((url: string) => {
     if (String(url).includes("/v1/progress/trace")) {
       return Promise.resolve({ ok: true, json: () => Promise.resolve(trace) });
@@ -160,6 +162,29 @@ describe("ProgressDrawer", () => {
     await waitFor(() =>
       expect(screen.getByText("1/1, пройдено")).toBeInTheDocument(),
     );
+  });
+
+  it("PROGR-11: nodes из /trace доходят до блок-схемы (бейдж/mode/причина)", async () => {
+    mockFetch({
+      ...TRACE_RESPONSE,
+      nodes: [
+        {
+          stage: "validation",
+          node_id: "formats",
+          status: "done",
+          status_reason: "Коррекция применена",
+          mode: "disabled",
+          last_touched_at: "2026-09-25T09:01:00+00:00",
+          summary_count: 7,
+        },
+      ],
+    });
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByText("RUN-AB12CD34")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: /Стадия Валидация/ }));
+    expect(screen.getByTestId("node-badge-validation-formats").textContent).toBe("7");
+    expect(screen.getByTestId("node-mode-validation-formats").textContent).toBe("выкл");
+    expect(screen.getByText("Коррекция применена")).toBeInTheDocument();
   });
 
   it("при закрытой панели fetch не выполняется", () => {

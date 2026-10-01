@@ -21,6 +21,11 @@
 // старый бэкенд), честно «не начато» из реестра узлов, без подстановки
 // фейковых фактов. Схема сеткой колонок, а не в ряд: 40rem-панель
 // («или колонкой, если панель узкая -- деталь адаптива», §6.2).
+//
+// PROGR-11: полный узел §3 -- props.nodes (зеркала PipelineNodeState)
+// доставляют бейдж-число (summary_count), режим проверки (mode --
+// авто/вкл/выкл) и причину статуса (status_reason второй строкой);
+// поля аддитивны -- старый бэкенд без nodes рендерится как прежде.
 
 import { useState } from "react";
 import Link from "next/link";
@@ -31,8 +36,12 @@ import {
   FOLD_NOT_STARTED,
   PROGRESS_STAGE_NODES,
   nodeLabel,
+  nodeModeLabel,
+  nodeStateKey,
+  nodeStateMap,
   stageStateText,
   type FoldVisualState,
+  type NodeStateInfo,
   type StageStateInfo,
 } from "../lib/progress";
 
@@ -70,10 +79,17 @@ export interface ProgressStageFlowProps {
   statuses: Record<string, string>;
   /** Готовые свёртки стадий §12 п.10 + счётчики (stages ответа /trace). */
   stages: StageStateInfo[];
+  /** Полные состояния узлов §3 (nodes ответа /trace, PROGR-11):
+   * бейдж-число, режим проверки, причина статуса. Аддитивно: старый
+   * бэкенд без nodes -- рендер как прежде (N-3). */
+  nodes?: NodeStateInfo[];
 }
 
-export function ProgressStageFlow({ statuses, stages }: ProgressStageFlowProps) {
+export function ProgressStageFlow({ statuses, stages, nodes }: ProgressStageFlowProps) {
   const [expandedStage, setExpandedStage] = useState<string | null>(null);
+  // Полные состояния узлов §3 -- карта для рендера по узлам; ответ без
+  // nodes (старый бэкенд) -- пустая карта, рендер как прежде.
+  const nodeStates = nodeStateMap(nodes ?? []);
 
   return (
     <div className="grid grid-cols-2 gap-2 px-4 py-3">
@@ -113,20 +129,49 @@ export function ProgressStageFlow({ statuses, stages }: ProgressStageFlowProps) 
 
             {expanded && (
               <ul className="mt-1 divide-y divide-neutral-100 rounded-lg border border-neutral-200 bg-white">
-                {(PROGRESS_STAGE_NODES[key] ?? []).map((nodeId) => (
-                  <li key={nodeId}>
-                    <Link
-                      href={href}
-                      className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50"
-                    >
-                      <StatusIcon
-                        status={NODE_ICON[statuses[`${key}/${nodeId}`] ?? "pending"] ?? "pending"}
-                        size={14}
-                      />
-                      <span className="truncate">{nodeLabel(key, nodeId)}</span>
-                    </Link>
-                  </li>
-                ))}
+                {(PROGRESS_STAGE_NODES[key] ?? []).map((nodeId) => {
+                  // Полное состояние узла §3 (PROGR-11); без фактов --
+                  // прежний рендер: иконка статуса + метка.
+                  const nodeState = nodeStates[nodeStateKey(key, nodeId)];
+                  return (
+                    <li key={nodeId}>
+                      <Link
+                        href={href}
+                        className="block px-2.5 py-1.5 text-xs text-neutral-700 hover:bg-neutral-50"
+                      >
+                        <span className="flex items-center gap-2">
+                          <StatusIcon
+                            status={NODE_ICON[statuses[`${key}/${nodeId}`] ?? "pending"] ?? "pending"}
+                            size={14}
+                          />
+                          <span className="min-w-0 flex-1 truncate">{nodeLabel(key, nodeId)}</span>
+                          {nodeState?.mode != null && (
+                            <span
+                              data-testid={`node-mode-${key}-${nodeId}`}
+                              className="shrink-0 rounded-full border border-neutral-200 px-1.5 py-px text-[10px] leading-none text-neutral-500"
+                            >
+                              {nodeModeLabel(nodeState.mode)}
+                            </span>
+                          )}
+                          {nodeState?.summary_count != null && (
+                            <span
+                              data-testid={`node-badge-${key}-${nodeId}`}
+                              title={nodeState.status_reason ?? undefined}
+                              className="shrink-0 rounded bg-neutral-100 px-1.5 py-px text-[10px] leading-none tabular-nums text-neutral-700"
+                            >
+                              {nodeState.summary_count}
+                            </span>
+                          )}
+                        </span>
+                        {nodeState?.status_reason != null && (
+                          <span className="mt-0.5 block pl-[22px] text-[11px] leading-tight text-neutral-500">
+                            {nodeState.status_reason}
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

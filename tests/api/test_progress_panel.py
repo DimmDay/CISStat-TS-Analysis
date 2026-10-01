@@ -372,6 +372,114 @@ class TestProgressTraceReadyState:
             research_runs.get_research_run_store = original
 
 
+# ── Контур 1.2: полное состояние узлов §3 в /trace (PROGR-11) ────────
+#
+# РАСХОЖДЕНИЕ (постановка PROGR-11): поля §3 mode/summary_count/
+# status_reason объявлены в PipelineNodeState, но до UI не доезжали --
+# /trace отдавал только node_statuses (Dict[str, str]) из событий.
+# Решение -- аддитивное поле nodes (список зеркал PipelineNodeState,
+# ВСЕ узлы графа в порядке §2); node_statuses/stages остаются (N-3),
+# старые потребители совместимы.
+
+
+class TestProgressTraceNodeStates:
+    def test_empty_session_nodes_all_graph_fields_s3(self, client: TestClient):
+        """Пустая сессия: nodes -- ВСЕ узлы графа в порядке §2 с полным
+        набором полей §3; mode -- эффективный «auto» для Валидации/
+        Предобработки (тот же контракт, что у степперов), None для
+        остальных стадий; фактов нет -- pending без выдуманных чисел."""
+        from app.core.pipeline_graph import STAGES, STAGE_NODES
+
+        resp = client.get("/v1/progress/trace")
+        assert resp.status_code == 200
+        nodes = resp.json()["nodes"]
+        assert [
+            (n["stage"], n["node_id"]) for n in nodes
+        ] == [
+            (stage, node_id)
+            for stage in STAGES
+            for node_id in STAGE_NODES[stage]
+        ]
+        assert all(
+            set(n) == {
+                "stage", "node_id", "status", "status_reason",
+                "mode", "last_touched_at", "summary_count",
+            }
+            for n in nodes
+        )
+        assert all(n["status"] == "pending" for n in nodes)
+        modes = {(n["stage"], n["mode"]) for n in nodes}
+        assert ("validation", "auto") in modes
+        assert ("preprocessing", "auto") in modes
+        assert ("eda", None) in modes
+        assert ("modeling", None) in modes
+        assert ("forecasting", None) in modes
+
+    def test_upload_decision_fills_reason_and_ts(self, client: TestClient):
+        """Демо-загрузка -- узел structure_confirmed: done + причина +
+        last_touched_at; бейдж-число честно отсутствует (payload
+        upload_completed не несёт ключей бейджа)."""
+        client.post("/v1/session/demo")
+        data = client.get("/v1/progress/trace").json()
+        node = next(
+            n for n in data["nodes"]
+            if n["stage"] == "upload" and n["node_id"] == "structure_confirmed"
+        )
+        assert node["status"] == "done"
+        assert node["status_reason"] == "Датасет загружен, структура подтверждена"
+        assert node["last_touched_at"] is not None
+        assert node["summary_count"] is None
+
+    def test_correction_facts_reach_nodes(self, client: TestClient):
+        """Факты коррекции из слоя 1 доходят до nodes: summary_count из
+        payload (total_missing -- то же число, что в правом бейдже узла,
+        §3), причина применённой коррекции, статус done."""
+        client.post("/v1/session/demo")
+        store = get_session_store()
+        session_id = client.cookies.get("cisstat_session_id")
+        session = store.get(session_id)
+        session.append_trace_event(
+            make_trace_event(
+                "correction_applied", stage="preprocessing",
+                node_id="missing", run_id=session.run_id,
+                applied=True, strategy="mean",
+                total_missing=12, total_changed=12,
+            )
+        )
+        store.save(session)
+
+        data = client.get("/v1/progress/trace").json()
+        node = next(
+            n for n in data["nodes"]
+            if n["stage"] == "preprocessing" and n["node_id"] == "missing"
+        )
+        assert node["status"] == "done"
+        assert node["status_reason"] == "Коррекция применена"
+        assert node["summary_count"] == 12
+        # node_statuses/stages остались (N-3, аддитивность).
+        assert data["node_statuses"]["preprocessing/missing"] == "done"
+
+    def test_session_check_modes_reach_nodes(self, client: TestClient):
+        """mode узла -- эффективное состояние check-modes СЕССИИ (то же,
+        что показывают степперы): сохранённое значение доезжает до nodes,
+        соседние узлы -- «auto». Опроса profile-эндпоинтов нет (цена
+        расхождения №1 сохраняется)."""
+        client.post("/v1/session/demo")
+        store = get_session_store()
+        session_id = client.cookies.get("cisstat_session_id")
+        session = store.get(session_id)
+        session.validation_check_modes = {"formats": "disabled"}
+        session.preprocessing_check_modes = {"missing": "enabled"}
+        store.save(session)
+
+        data = client.get("/v1/progress/trace").json()
+        by_key = {(n["stage"], n["node_id"]): n for n in data["nodes"]}
+        assert by_key[("validation", "formats")]["mode"] == "disabled"
+        assert by_key[("validation", "data_types")]["mode"] == "auto"
+        assert by_key[("preprocessing", "missing")]["mode"] == "enabled"
+        assert by_key[("preprocessing", "outliers")]["mode"] == "auto"
+
+
 # ── Контур 2: синхронизация реестра узлов фронтенда с графом ─────────
 
 _TS_PROGRESS_LIB = (

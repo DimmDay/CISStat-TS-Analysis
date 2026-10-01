@@ -19,11 +19,14 @@
 import {
   PROGRESS_STAGE_NODES,
   nodeLabel,
+  nodeModeLabel,
+  nodeStateMap,
   stageStateText,
   stageLabel,
   sortEventsChronologically,
   runStatusLabel,
   lastCheckpointableEvent,
+  type NodeStateInfo,
   type StageStateInfo,
   type TraceEventInfo,
 } from "./progress";
@@ -47,6 +50,46 @@ const stage = (overrides: Partial<StageStateInfo>): StageStateInfo => ({
   warning_nodes: 0,
   total_nodes: 10,
   ...overrides,
+});
+
+const node = (overrides: Partial<NodeStateInfo>): NodeStateInfo => ({
+  stage: "preprocessing",
+  node_id: "missing",
+  status: "done",
+  status_reason: null,
+  mode: null,
+  last_touched_at: null,
+  summary_count: null,
+  ...overrides,
+});
+
+
+describe("nodeStateMap (полные состояния узлов §3, PROGR-11)", () => {
+  it("группирует список nodes по ключу stage/node_id", () => {
+    const map = nodeStateMap([
+      node({ stage: "preprocessing", node_id: "missing", summary_count: 12 }),
+      node({ stage: "validation", node_id: "formats", mode: "disabled" }),
+    ]);
+    expect(map["preprocessing/missing"].summary_count).toBe(12);
+    expect(map["validation/formats"].mode).toBe("disabled");
+    expect(map["eda/correlation"]).toBeUndefined();
+  });
+
+  it("пустой/отсутствующий ответ -- пустая карта (старый бэкенд, N-3)", () => {
+    expect(nodeStateMap([])).toEqual({});
+  });
+});
+
+describe("nodeModeLabel (метка режима проверки §3, PROGR-11)", () => {
+  it("канонические значения -- человекочитаемые метки", () => {
+    expect(nodeModeLabel("auto")).toBe("авто");
+    expect(nodeModeLabel("enabled")).toBe("вкл");
+    expect(nodeModeLabel("disabled")).toBe("выкл");
+  });
+
+  it("неизвестное значение возвращается как есть (честный текст)", () => {
+    expect(nodeModeLabel("future_mode")).toBe("future_mode");
+  });
 });
 
 describe("PROGRESS_STAGE_NODES (реестр узлов, sync с графом бэкенда)", () => {

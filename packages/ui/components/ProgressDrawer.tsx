@@ -43,6 +43,7 @@ import { progressApiUrl } from "../lib/apiClient";
 import {
   lastCheckpointableEvent,
   type CheckpointInfo,
+  type NodeStateInfo,
   type StageStateInfo,
   type TraceEventInfo,
 } from "../lib/progress";
@@ -60,6 +61,9 @@ interface ProgressTraceState {
   statuses: Record<string, string>;
   /** Готовые свёртки стадий из /trace (PROGR-10); [] -- ответ не пришёл. */
   stages: StageStateInfo[];
+  /** Полные состояния узлов §3 из /trace (PROGR-11); [] -- ответ не
+   * пришёл / старый бэкенд (рендер как прежде, N-3). */
+  nodes: NodeStateInfo[];
 }
 
 interface RunDetailState {
@@ -75,6 +79,7 @@ const EMPTY_TRACE: ProgressTraceState = {
   events: [],
   statuses: {},
   stages: [],
+  nodes: [],
 };
 
 const RUN_DETAIL_UNAVAILABLE: RunDetailState = { status: null, checkpoints: [] };
@@ -130,7 +135,8 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
         if (cancelled) return;
         // Поля node_statuses/stages аддитивны (N-3): ответ старого
         // бэкенда честно деградирует к пустому состоянию, стадии
-        // рендерятся «не начато» из реестра узлов.
+        // рендерятся «не начато» из реестра узлов. nodes -- полный
+        // узел §3 (PROGR-11), тоже аддитивно.
         setTrace({
           loading: false,
           runId: traceData?.run_id ?? null,
@@ -138,6 +144,7 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
           events: traceData?.events ?? [],
           statuses: traceData?.node_statuses ?? {},
           stages: traceData?.stages ?? [],
+          nodes: traceData?.nodes ?? [],
         });
 
         // Слой 2 (PROGR-5): статус запуска + чекпоинты для полосы действий
@@ -243,7 +250,11 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
         {trace.runId && mentorOpen && <MentorPanel runId={trace.runId} />}
 
         <div className="overflow-y-auto flex-1 min-h-0 feed-scroll">
-          <ProgressStageFlow statuses={trace.statuses} stages={trace.stages} />
+          <ProgressStageFlow
+            statuses={trace.statuses}
+            stages={trace.stages}
+            nodes={trace.nodes}
+          />
 
           <div className="px-4 pb-2">
             <button

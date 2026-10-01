@@ -39,6 +39,8 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from app.core.pipeline_graph import (
+    MODE_STAGES,
+    NODE_MODE_VALUES,
     STAGES,
     STAGE_NODES,
     fold_status_values,
@@ -66,6 +68,61 @@ EVENT_NODE_STATUS: dict[str, str] = {
     "forecast_sensitivity_computed": "done",
     "forecast_exported": "done",
 }
+
+# ── PROGR-11: полный узел §3 -- reason/count/mode из ТЕХ ЖЕ фактов ────
+#
+# Расхождение постановки: поля §3 mode/summary_count/status_reason
+# объявлены в PipelineNodeState (pipeline_graph.py), но до рендера
+# панели не доезжали (/trace отдавал только статус из событий).
+# Решение -- derive_pipeline_node_states (ниже): полный узел §3,
+# статус -- тот же канонический движок (вторая реализация запрещена),
+# остальные поля -- из тех же засеянных фактов решений (trace_events)
+# и эффективных check-modes сессии. Опроса profile-эндпоинтов
+# по-прежнему НЕТ (решение расхождения №1 сохраняется): бейдж-число --
+# из payload корректировочных событий (тот же whitelist хука, §4.1
+# «факты результата, не сырой ответ»), mode -- состояние сессии, то же,
+# что показывают степперы (_effective_*_check_modes).
+
+# Человекочитаемая причина статуса по типу последнего события решения.
+# Ключи == EVENT_NODE_STATUS по построению (тест страхует): reason и
+# статус всегда описывают ОДНО и то же последнее событие узла.
+# Тексты -- факты, не советы (советы -- зона Наставника §7).
+EVENT_NODE_REASON: dict[str, str] = {
+    "upload_completed": "Датасет загружен, структура подтверждена",
+    "correction_applied": "Коррекция применена",
+    "correction_previewed": "Найдены нарушения: предпросмотр коррекции",
+    "profile_viewed": "Проверка просмотрена аналитиком",
+    "backtest_run": "Бэктест выполнен",
+    "tuning_trial_completed": "Подбор параметров выполнен",
+    "model_selected": "Модель выбрана",
+    "model_card_generated": "Model Card сформирована",
+    "forecast_generated": "Прогноз построен",
+    "forecast_compared": "Сравнение прогнозов выполнено",
+    "forecast_sensitivity_computed": "Анализ чувствительности выполнен",
+    "forecast_exported": "Прогноз экспортирован",
+}
+
+# Ключи payload -- кандидаты в правый бейдж узла (§3 summary_count:
+# «то же число, что в правом бейдже узла, напр. total_missing»).
+# Приоритет -- проблемные счётчики (число проблем узла, как в бейдже
+# степпера: total_missing/total_outliers/total_violations/total_invalid),
+# затем результаты коррекции (rows_removed/total_changed). Список
+# согласован с _CORRECTION_PAYLOAD_KEYS хука (whitelist §4.1) --
+# новых ключей здесь не изобретается.
+NODE_SUMMARY_COUNT_KEYS: tuple[str, ...] = (
+    "total_missing",
+    "total_outliers",
+    "total_violations",
+    "total_invalid",
+    "rows_removed",
+    "total_changed",
+)
+
+# Эффективные режимы проверок (Валидация/Предобработка §3): отсутствие
+# значения -- «auto» (backward-compatible контракт степперов,
+# routers/session.py::_effective_*_check_modes); битое значение --
+# fail-safe «auto», не мусор в UI.
+EFFECTIVE_NODE_MODE_DEFAULT = "auto"
 
 
 def event_to_dict(event: Any) -> dict[str, Any] | None:
@@ -154,4 +211,127 @@ def derive_stage_states(statuses: Mapping[str, str]) -> list[dict[str, Any]]:
                 "total_nodes": len(node_statuses),
             }
         )
+    return states
+
+
+# ── PROGR-11: полный узел §3 (PipelineNodeState) для панели ──────────
+
+
+def _clean_summary_count(value: Any) -> int | None:
+    """Валидация кандидата в бейдж: только неотрицательное целое
+    (bool -- не число: subclass int, «True» в бейдже -- мусор). Мусор
+    (строка/float-дробь/отрицательное) -- None, ключ пропускается
+    (fail-safe), бейдж не выдумывается."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    if value < 0:
+        return None
+    return value
+
+
+def _effective_node_mode(
+    check_modes: Mapping[str, Mapping[str, Any]] | None,
+    stage: str,
+    node_id: str,
+) -> str | None:
+    """Эффективный mode узла (§3: auto/enabled/disabled). Данные --
+    сессионные словари check-modes (тот же источник, что у степперов);
+    отсутствующее значение -- «auto», неизвестное -- fail-safe «auto»
+    (контракт routers/session.py::_effective_*_check_modes). Стадиям
+    вне Валидации/Предобработки mode неприменим -- None. check_modes
+    не передан -- None: движок не выдумывает данные, которых нет."""
+    if check_modes is None:
+        return None
+    if stage not in MODE_STAGES:
+        return None
+    raw = check_modes.get(stage) or {}
+    value = raw.get(node_id)
+    if isinstance(value, str) and value in NODE_MODE_VALUES:
+        return value
+    return EFFECTIVE_NODE_MODE_DEFAULT
+
+
+def derive_pipeline_node_states(
+    events: list[Any],
+    check_modes: Mapping[str, Mapping[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Полное состояние узла §3 -- зеркало PipelineNodeState
+    (pipeline_graph.py): ВСЕ узлы графа в каноническом порядке §2,
+    каждый -- словарь ровно 7 полей датакласса.
+
+    status -- канонический движок derive_node_statuses (вторая
+    реализация статуса запрещена: расхождение №1 PROGR-10 закрыто
+    одним движком, здесь только потребление);
+    status_reason -- шаблон EVENT_NODE_REASON последнего события
+    решения узла (ключи карты == EVENT_NODE_STATUS: reason и статус
+    всегда об одном событии);
+    summary_count -- число правого бейджа узла (§3): первый по
+    приоритету ключ NODE_SUMMARY_COUNT_KEYS из payload последнего
+    события узла (тот же whitelist фактов, что у хука -- новых ключей
+    не изобретается);
+    last_touched_at -- ts последнего события узла (нечитаемый ts не
+    затирает последний валидный);
+    mode -- эффективный режим сессии (Валидация/Предобработка), см.
+    _effective_node_mode.
+
+    Гейты деривации -- те же, что у канонического движка (N-2 фантомы,
+    события уровня стадии без узла, мусор -- честный пропуск). Опроса
+    profile-эндпоинтов НЕТ: бейдж/причина -- с точностью до последнего
+    засеянного факта, та же принятая цена, что у статуса.
+
+    Ввод событий НЕ валидируется (трасса -- журнал, R3 PROGR-1-CERT);
+    вход не мутируется; функция чистая (без HTTP и хранилищ) --
+    check_modes приносит роутер.
+    """
+    statuses = derive_node_statuses(events)
+
+    details: dict[str, dict[str, Any]] = {}
+    for event in events:
+        data = event_to_dict(event)
+        if data is None:
+            continue
+        stage = str(data.get("stage") or "")
+        node_id = resolve_node_id(data)
+        if not node_id or not is_known_node(stage, node_id):
+            continue
+        key = f"{stage}/{node_id}"
+        detail = details.setdefault(
+            key,
+            {"status_reason": None, "summary_count": None, "last_touched_at": None},
+        )
+        event_type = str(data.get("event_type") or "")
+        # last_touched_at -- любое событие узла с читаемым ts.
+        ts = data.get("ts")
+        if isinstance(ts, str) and ts:
+            detail["last_touched_at"] = ts
+        # reason/count -- только события решения (последнее wins).
+        if event_type in EVENT_NODE_STATUS:
+            detail["status_reason"] = EVENT_NODE_REASON[event_type]
+            payload = data.get("payload")
+            if isinstance(payload, Mapping):
+                for count_key in NODE_SUMMARY_COUNT_KEYS:
+                    cleaned = _clean_summary_count(payload.get(count_key))
+                    if cleaned is not None:
+                        detail["summary_count"] = cleaned
+                        break
+
+    states: list[dict[str, Any]] = []
+    for stage in STAGES:
+        for node_id in STAGE_NODES[stage]:
+            key = f"{stage}/{node_id}"
+            detail = details.get(
+                key,
+                {"status_reason": None, "summary_count": None, "last_touched_at": None},
+            )
+            states.append(
+                {
+                    "stage": stage,
+                    "node_id": node_id,
+                    "status": statuses.get(key, "pending"),
+                    "status_reason": detail["status_reason"],
+                    "mode": _effective_node_mode(check_modes, stage, node_id),
+                    "last_touched_at": detail["last_touched_at"],
+                    "summary_count": detail["summary_count"],
+                }
+            )
     return states

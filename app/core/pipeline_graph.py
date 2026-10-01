@@ -190,7 +190,10 @@ PROCESS_STATUS_STAGES: tuple[str, ...] = ("modeling", "forecasting")
 # mode -- auto/enabled/disabled, где применимо (§3: Валидация/Предобработка).
 NODE_MODE_VALUES: tuple[str, ...] = ("auto", "enabled", "disabled")
 
-_MODE_STAGES: frozenset[str] = frozenset({"validation", "preprocessing"})
+# Стадии, узлам которых применим mode (§3): публичное имя -- канонический
+# владелец классификации стадий этот модуль; потребители (node_status,
+# PROGR-11) импортируют его, не держат свою копию пары.
+MODE_STAGES: frozenset[str] = frozenset({"validation", "preprocessing"})
 _STATUS_BY_STAGE: dict[str, frozenset[str]] = {
     stage: frozenset(CHECK_STATUS_VALUES) for stage in CHECK_STATUS_STAGES
 } | {
@@ -235,10 +238,10 @@ class PipelineNodeState:
                 f"{self.stage!r}; допустимые: {sorted(allowed)}"
             )
         if self.mode is not None:
-            if self.stage not in _MODE_STAGES:
+            if self.stage not in MODE_STAGES:
                 raise ValueError(
                     f"mode применим только к стадиям "
-                    f"{list(_MODE_STAGES)}, не к {self.stage!r}"
+                    f"{list(MODE_STAGES)}, не к {self.stage!r}"
                 )
             if self.mode not in NODE_MODE_VALUES:
                 raise ValueError(
