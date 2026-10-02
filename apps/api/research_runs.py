@@ -104,7 +104,7 @@ from typing import Any, Iterable, Optional
 
 import pandas as pd
 
-from apps.api.trace_events import KNOWN_STAGES, TraceEvent
+from apps.api.trace_events import TraceEvent
 
 logger = logging.getLogger(__name__)
 
@@ -1085,10 +1085,29 @@ def reset_dataset_file_store_for_testing() -> None:
 def stage_for_run_level_event(store: ResearchRunStore, run_id: str) -> str:
     """Стадия для run-level события (run_paused/run_resumed/
     checkpoint_saved -- валидны на ЛЮБОЙ стадии, §4.1): стадия последнего
-    события запуска, при пустой трассе -- 'upload' (происхождение запуска)."""
-    events = store.list_events(run_id)
-    if events:
-        stage = events[-1].stage
-        if stage in KNOWN_STAGES:
-            return stage
-    return "upload"
+    ФАКТА РЕШЕНИЯ запуска, при пустой трассе / только stage-level
+    событиях -- 'upload' (происхождение запуска).
+
+    PROGR-13-C (осознанная граница PROGR-13-B): прежняя версия брала
+    хвост трассы (events[-1].stage) -- stage-level события
+    (target_column_changed сеется авто-POST хука useTargetColumn на
+    вкладке «Загрузка» со stage="validation", passport_captured,
+    mode_changed, run_*) уводили штамп run-события на стадию, куда
+    аналитик не заходил: «Пауза» после загрузки попадала в корпус
+    слоя 2 как пауза НА ВАЛИДАЦИИ (тот же корень, что у дефекта 2
+    Наставника, исправленного derive_last_active_stage в B1). Вывод
+    -- единый движок (derive_last_decision_stage, гейт по ТИПУ факта
+    через resolve_event_status -- единственную точку решения «узловой
+    ли это факт», PROGR-13-A4; certified контракт E6 PROGR-5-CERT
+    сохранён: backtest_run без узла -> "modeling").
+
+    Импорт движка ЛЕНИВЫЙ (внутри функции): верхнеуровневый
+    import app.core.node_status здесь создаёт цикл
+    research_runs -> node_status -> pipeline_graph ->
+    routers.session -> research_runs (подтверждён эмпирически в
+    задаче; прецедент разрыва цикла ленивым импортом в модуле --
+    modeling_session.py, forecasting_session.py). На момент вызова
+    (обработка запроса) все модули графа уже загружены."""
+    from app.core.node_status import derive_last_decision_stage
+
+    return derive_last_decision_stage(store.list_events(run_id))

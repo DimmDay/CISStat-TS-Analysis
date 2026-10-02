@@ -1530,3 +1530,53 @@ ZIP: cisstat-progr13-a-upload-stops-full-registry.zip -- пути репозит
 НОВЫЕ: shared/pipeline_nodes/upload_stops.json; tests/api/test_progress_progr13a.py (25 тестов).
 ИЗМЕНЕНЫ: app/core/pipeline_graph.py, app/core/node_status.py, app/core/run_report.py, apps/api/trace_hook.py, apps/api/trace_events.py, apps/api/routers/progress.py, packages/ui/lib/progress.ts, packages/ui/components/TsAnalysisUpload.tsx, packages/ui/components/DatasetPassportPanel.tsx, spec_progress.md, scripts/progr13_repro_defects.py (из PROGR-13-REPRO -- дополнен шагами A5), tests/api/test_pipeline_graph.py, tests/api/test_node_status_engine.py, tests/api/test_trace_events.py, tests/api/test_progress_trace_hook.py, tests/api/test_progress_panel.py, tests/api/test_run_report.py, tests/api/test_progress_progr13b.py (1 фикстура карточки), packages/ui/lib/progress.test.ts, worklog/worklog8.md (эта запись; восстановлена запись PROGR-13-REPRO, отсутствовавшая в каноническом файле после коммита 7cb4535).
 Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PROGR-13-C (2026-10-02) — Граница PROGR-13-B: стадия run-level событий (run_paused/run_resumed/checkpoint_saved) -- из фактов решения единого движка, не из хвоста трассы
+База: main@f607ccc (PROGR-13-A принят в main; синхронизация: все рабочие изменения A в f607ccc совпали байт-в-байт; локальный worklog8.md -- суперсет, сохранена запись PROGR-13-REPRO, отсутствующая в каноническом файле upstream). Правила AGENTS.md соблюдены: commit/push НЕ выполнялись; TDD RED->GREEN; сборка проверена.
+
+### Постановка (тимлид)
+
+Граница stage_for_run_level_event (research_runs.py) -- осознанная граница PROGR-13-B («всё ещё stamps run_paused/resumed/checkpoint по хвосту трассы; правка требует импорта движка в research_runs -> цикл»). Реализовать.
+
+### Корень (проверка по коду @f607ccc)
+
+stage_for_run_level_event (research_runs.py:1085) брала events[-1].stage: последними событиями трассы регулярно становятся события УРОВНЯ СТАДИИ (node_id=None) -- target_column_changed сеется авто-POST хука useTargetColumn на вкладке «Загрузка» со stage="validation", passport_captured -- фиксация снимка, mode_changed/run_* -- служебные. «Пауза» после загрузки датасета попадала в корпус слоя 2 как пауза НА СТАДИИ ВАЛИДАЦИИ -- ложь о маршруте аналитика; тот же корень, что у дефекта 2 Наставника (исправлен B1 derive_last_active_stage), но у атрибуции run-событий. Расхождение видно и в тесте: после B1 фаза Наставника -- "upload", а штамп run_paused -- "validation" (два вывода стадии расходились).
+
+ЦИКЛ (подтверждён эмпирически): research_runs -> node_status -> pipeline_graph -> routers.session -> research_runs (routers.session импортирует get_dataset_file_store). Верхнеуровневый импорт движка в research_runs при порядке «research_runs первым» валит импорт. Разрыв -- ЛЕНИВЫЙ импорт внутри функции: прецедент модуля modeling_session.py:697/forecasting_session.py:620; на момент вызова (обработка запроса) граф уже загружен.
+
+### Реализация
+
+app/core/node_status.py: НОВАЯ чистая функция derive_last_decision_stage(events, *, default="upload") рядом с derive_last_active_stage: стадия последнего ФАКТА РЕШЕНИЯ по ТИПУ события. Гейт -- resolve_event_status (ЕДИНСТВЕННАЯ точка решения «узловой ли это факт»: карта EVENT_NODE_STATUS либо payload-статус из PAYLOAD_STATUS_EVENT_TYPES, PROGR-13-A4); известность стадии -- ключи STAGE_NODES графа (import-инвариант test_pipeline_graph страхует равенство с KNOWN_STAGES -- НОВОГО импорта apps.api в app.core не заводится). Отличие от гейта Наставника СОЗНАТЕЛЬНОЕ: атрибутируется СТАДИЯ, узел не требуется -- фантомного узла тут возникнуть не может; certified контракт E6 (PROGR-5-CERT) сохранён дословно: backtest_run с node_id=None -> "modeling" (на реальных корпусах факты хука всегда несут узлы -- гейты совпадают; расходятся только на синтетике «факт без узла», где E6 требует считать факт). Хронология дописывания: позднее событие выигрывает; пустая трасса / только stage-level -- честный fallback "upload"; факт с неизвестной стадией штамп не уводит (журнал R3: мусор хранится, но стадию атрибутировать не может); run_* -- не факты, серию пауза/возобновление/чекпоинт стадия «не держит».
+
+apps/api/research_runs.py: stage_for_run_level_event -- публичный контракт и сигнатура НЕ изменены (оракул E6 зовёт rr.stage_for_run_level_event(store, run_id)); хвостовая эвристика заменена выводом движка: derive_last_decision_stage(store.list_events(run_id)) с ленивым импортом (докстринг фиксирует корень, цикл и прецедент разрыва). Импорт KNOWN_STAGES из trace_events стал ненужным (гейт стадии переехал в движок к ключам STAGE_NODES) -- убран из строки импорта (TraceEvent остаётся; перепроверено: ре-экспорта KNOWN_STAGES из research_runs никто не читает).
+
+Потребители (apps/api/routers/progress.py) не менялись: pause/resume/checkpoints продолжают зоввать stage_for_run_level_event -- штампы исправлены на границе. run_report не менялся: строки run-событий §5.4 рендерятся БЕЗ стадии события (проверено), расхождений нет. restore (§5.3) не менялся: B1-контракт derive_last_active_stage для session.last_active_stage И run_resumed сохранён (на реальных корпусах совпадает с новым гейтом; расхождение только на «факте без узла» -- задокументировано в докстринге движка).
+
+### TDD
+
+RED: tests/api/test_progress_progr13c.py (НОВЫЙ, 18 тестов). На @f607ccc падали 15 с диагностированными сообщениями: чистый движок -- 10 через ожидаемый ImportError (derive_last_decision_stage ещё нет); публичный контракт -- «assert 'validation' == 'upload'» (хвост stage-level target_column_changed уводит штамп); HTTP-интеграция -- run_paused/run_resumed/checkpoint_saved штампуются "validation" в сценарии demo -> авто-POST /target-column -> действие (корпус слоя 2 хранит паузу на Валидации, куда аналитик не заходил); консистентность -- «assert 'upload' == 'validation'» (фаза Наставника и штамп run-события расходились). 3 теста предсуществующе ЗЕЛЁНЫЕ и остаются guard-контрактами GREEN: обе половины certified E6 (пустая трасса -> upload; backtest_run без узла -> modeling) и last-fact-wins (факт, дописанный между паузой и возобновлением, двигает штамп).
+GREEN: 18/18. Контракты: fallback upload (пустая/только stage-level/только мусорные стадии); хвост stage-level не двигает штамп (канонический сценарий дефекта); последний факт выигрывает (в т.ч. forecasting node_id=None слоя 2 и payload-статусный upload_stop_status); факт с неизвестной стадией пропускается; run_* не держат стадию; legacy node_id корпуса не блокирует атрибуцию (гейт по типу -- нормализация ортогональна); E6 дословно на новой реализации; HTTP run_paused/run_resumed/checkpoint_saved -- по последнему факту; единство с фазой Наставника на реальном корпусе.
+
+### Верификация
+
+pytest tests/api/: 1281 passed (ровно 1263 базы A + 18 новых), 1 skipped; падения -- ТОЛЬКО 19 предсуществующих средовых (test_forecasting_session x16, test_modeling_workflow, test_models_backtest_neural_capacity, test_models_candidates: statsmodels 0.14.5/psycopg) -- воспроизведены 1:1 на ЧИСТОМ f607ccc через git stash -u (оба прогона 19 failed на тех же файлах). Миграций контрактов не потребовалось: ни один тест сьюта не пинил хвостовую семантику stage_for_run_level_event (проверено grep'ом: стадийных assert на run-события в tests/api нет, прямой зов функции только в оракуле).
+Jest (packages/ui): 148 сюит / 1781 тестов -- все зелёные (фронтенд задачей не затронут; запуск из КОРНЯ репо -- из packages/ui jest подхватывает не тот конфиг и падает на парсинге TS, fixturная ошибка окружения).
+typecheck:all (embedded+standalone) -- чисто.
+Сертификат PROGR-5-CERT (датированное свидетельство, не трогалось): полный прогон оракулов 39/40 PASS; E6 (контракт ИЗМЕНЁННОЙ функции) -- PASS на новой реализации. E1 (MIGRATION_STATEMENTS == 0001_research_runs.sql текст в текст) -- FAIL, предсуществующий: воспроизведён 1:1 на чистом f607ccc (докстринговый/комментарийный дрейф файла миграции; pytest-инвариант того же равенства в test_research_runs.py -- зелёный, в сьют-базу оракул не входит; к задаче не относится).
+Мутационный скрипт M8 (progr5cert_mutations.py) -- якорь на СТАРЫЙ текст хвостовой эвристики ("events = store.list_events... if events: stage = events[-1].stage"): после C якорь устарел, полный мутационный прогон stopped assert'ом "old-фрагмент не найден". Скрипт -- датированное свидетельство приёмки PROGR-5 (2026-09-25), не трогался; свежая мутационная защита контракта -- RED-тесты C (ImportError/текстовые диагностики) + guard-половины E6.
+
+### Осознанные границы
+
+- Гейт атрибуции run-событий -- по ТИПУ факта (без is_known_node): синтетический «факт без узла» двигает штамп (E6), но не фазу Наставника. На реальных корпусах (факты хука всегда с узлами, forecasting выводит узел из типа) гейты совпадают -- контракт единства зафиксирован тестом test_run_level_stamp_agrees_with_mentor_phase. Дальнейшая унификация (одна функция) возможна только вместе с пересмотром сертифицированного E6 -- сознательно не делалась.
+- restore (§5.3) продолжает B1-гейт (derive_last_active_stage) для session.last_active_stage И run_resumed: основная роль restore -- фаза восстановленной сессии; расхождение с новым гейтом -- та же синтетика «факт без узла».
+- Спецификация: spec_progress.md §5.2 дополнен абзацем об атрибуции стадии run-level событий (последний факт решения, не хвост; fallback upload). progress_ts_analysis.md не трогался (исторический дизайн-документ).
+- Исторические оракулы/сертификаты (scripts/audit_scripts/*) не трогались -- датированные свидетельства приёмок (E1-дрейф и устаревший якорь M8 зафиксированы здесь).
+
+### Deliverable
+
+ZIP: cisstat-progr13-c-run-level-stage-facts.zip -- пути репозитория сохранены.
+НОВЫЕ: tests/api/test_progress_progr13c.py (18 тестов).
+ИЗМЕНЕНЫ: app/core/node_status.py (derive_last_decision_stage), apps/api/research_runs.py (stage_for_run_level_event через движок, ленивый импорт; убран неиспользуемый KNOWN_STAGES), spec_progress.md (§5.2), worklog/worklog8.md (эта запись).
+Без commit/push (AGENTS.md).

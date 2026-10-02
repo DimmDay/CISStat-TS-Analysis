@@ -363,6 +363,56 @@ def derive_last_active_stage(events: list[Any], *, default: str = "upload") -> s
     return last_stage if last_stage is not None else default
 
 
+def derive_last_decision_stage(events: list[Any], *, default: str = "upload") -> str:
+    """Стадия последнего ФАКТА РЕШЕНИЯ (по ТИПУ события) -- штамп
+    run-событий run_paused/run_resumed/checkpoint_saved (§4.1: типы
+    валидны на ЛЮБОЙ стадии; PROGR-13-C -- осознанная граница PROGR-13-B).
+
+    Корень (тот же, что у дефекта 2 Наставника, исправленного B1):
+    stage_for_run_level_event брала хвост трассы (events[-1].stage) --
+    последними событиями регулярно становятся события УРОВНЯ СТАДИИ
+    (node_id=None): target_column_changed сеется авто-POST хука
+    useTargetColumn на вкладке «Загрузка» со stage="validation",
+    passport_captured -- фиксация снимка, mode_changed/run_* --
+    служебные. «Пауза» после загрузки датасета попадала в корпус слоя 2
+    как пауза НА СТАДИИ ВАЛИДАЦИИ -- ложь о маршруте аналитика.
+
+    Отличие гейта от derive_last_active_stage (Наставник): здесь гейт
+    ПО ТИПУ факта (resolve_event_status -- ЕДИНСТВЕННАЯ точка решения
+    «узловой ли это факт», PROGR-13-A4) БЕЗ требования узла --
+    атрибутируется СТАДИЯ, а не узел, фантомного узла тут возникнуть не
+    может. Сертифицированный контракт E6 (PROGR-5-CERT) сохранён
+    дословно: backtest_run с node_id=None -> "modeling". Факт с
+    неизвестной стадией штамп не уводит (журнал -- R3: мусор хранится,
+    но стадию атрибутировать не может); known-stages гейт -- ключи
+    STAGE_NODES графа (import-инвариант test_pipeline_graph страхует
+    равенство с apps.api.trace_events.KNOWN_STAGES -- новый импорт
+    apps.api в app.core не заводится).
+
+    Вход -- хронология дописывания (позднее событие выигрывает); пустая
+    трасса / только stage-level события -- честный default "upload"
+    (происхождение запуска). Функция чистая (без HTTP/хранилищ), ввод
+    не валидируется и не мутируется -- стиль модуля. На реальных
+    корпусах совпадает с derive_last_active_stage (все факты хука несут
+    узлы); расходятся они только на синтетике «факт без узла», где
+    контракт E6 требует считать факт.
+    """
+    last_stage: str | None = None
+    for event in events:
+        data = event_to_dict(event)
+        if data is None:
+            continue
+        # гейт -- единственная точка решения «узловой ли это факт»
+        # (PROGR-13-A4): карта EVENT_NODE_STATUS либо payload-статус.
+        if resolve_event_status(data) is None:
+            continue
+        stage = str(data.get("stage") or "")
+        if stage not in STAGE_NODES:
+            continue
+        last_stage = stage
+    return last_stage if last_stage is not None else default
+
+
 # ── PROGR-11: полный узел §3 (PipelineNodeState) для панели ──────────
 
 
