@@ -1580,3 +1580,37 @@ ZIP: cisstat-progr13-c-run-level-stage-facts.zip -- пути репозитор�
 НОВЫЕ: tests/api/test_progress_progr13c.py (18 тестов).
 ИЗМЕНЕНЫ: app/core/node_status.py (derive_last_decision_stage), apps/api/research_runs.py (stage_for_run_level_event через движок, ленивый импорт; убран неиспользуемый KNOWN_STAGES), spec_progress.md (§5.2), worklog/worklog8.md (эта запись).
 Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PROGR-13-CERT (2026-10-02) — Независимая сертификация PROGR-13-A + PROGR-13-B — PASSED WITH REMARKS
+База: main@f607ccc (7cb4535 = B, f607ccc = A). Правила AGENTS.md соблюдены: commit/push НЕ выполнялись; рабочее дерево после сертификации чистое (мутационная сеть с бэкапом/восстановлением). Сертификатор вне цепочки реализации; проверка БЕЗ опоры на тесты разработчика.
+
+### Постановка (тимлид)
+Синхронизироваться до f607ccc. Изучить постановки PROGR-13-A/B в worklog8.md и их реализацию в коде. Провести честную сертификацию, в том числе мутационные и оракул-тесты на своих данных. ZIP новых/изменённых файлов -- в открытый контейнер сессии.
+
+### Контуры проверки и результаты
+
+1. Код vs постановки: A1--A5 и B1--B3 подтверждены по живому коду (детали -- docs/progr13cert_certification_report.md §2): derive_last_active_stage с гейтом узловых фактов (B1), 4 литеральные паспортные точки (B2), LEGACY_NODE_IDS в resolve_node_id (B3), общий JSON 5 остановок + fail-closed ядро загрузчика (A1), upload_completed->overview / POST /date-column->structure (A3), PAYLOAD_STATUS_EVENT_TYPES + POST /v1/progress/upload-stops all-or-nothing с зеркалом слоя 2 (A4), метки отчёта §5.4 из общего реестра (A5).
+2. Целевые сьюты: test_progress_progr13a (25) + test_progress_progr13b (19) + test_progress_defects_progr13 (8) -- 52 passed.
+3. Полный pytest tests/api/: 1282 passed / 1 skipped / 0 failed (единственный skip -- PG-интеграция без CISSTAT_TEST_PG_DSN). В полной среде (arch, prophet, tbats, statsforecast, torch+neuralforecast, statsmodels 0.15.0, psycopg, sqlalchemy) «19 средовых» из записи A -- зелёные; счётчики 1263+19=1282 сходятся.
+4. RED-верификация TDD (git worktree на базах): на 7cb4535 A-контракты падают РОВНО 5/8, 3 B-контракта зелёные -- дословное совпадение с claim; на 2d2d05c B-файл (коммитнутая версия) -- 17 failed / 2 passed ([exit-eda] -- совпадение со старой строкой, test_mentor_phase_for_legacy_corpus_run -- guard; см. R-3 об учёте «16+2+1»).
+5. Оракулы на СВОИХ данных (scripts/progr13cert_oracles.py, NEW): 64/64 PASS. Property-based нормализация legacy (идемпотентность 500, fuzz 500 без фантомов, все 50 id насквозь, история слоя 2 сохранена), движок (whitelist 11 видов мусора, last-wins 200 хронологий, «панель == модулю» 200 снапшотов, фантом-фри 120 шумовых), фаза Наставника (инвариант 150 хронологий), HTTP-контракт /upload-stops (all-or-nothing с проверкой НУЛЯ записей, зеркало слоя 2, run_id pinning, 400 без датасета, last-wins с /date-column), отчёт §5.4 (30 комбинаций остановка x статус, без выдуманных фактов), таблица хука, fail-closed загрузчика (5 видов порчи).
+6. Мутационный прогон (scripts/progr13cert_mutations.py, NEW): 23 мутанта -- 20 KILLED / 2 SURVIVED / 1 контроль SURVIVED (по ожиданию). Все рецидивы дефектов 1 и 2, снятая нормализация legacy (функция и вызов-сайт), cross-stage перезапись, снятый whitelist payload, выпавшие structure_confirmed/payload-типы, лживая причина, 5 снятых fail-closed проверок /upload-stops, мисаттрибуция паспортов, /date-column->overview, обрезка реестра, снятый fail-closed дубликатов, сырые id в отчёте -- УБИТЫ тестами.
+7. Live-репродукция scripts/progr13_repro_defects.py: ДЕФЕКТ 1 ИСПРАВЛЕН (5 остановок, «Панель == модулю: True», fold=attention 3/5), ДЕФЕКТ 2 закрыт (оба варианта -- этап «Загрузка»).
+8. Jest: 148 сюит / 1781 тестов -- все зелёные (совпадает с claim). typecheck:all -- exit 0; build:all -- оба приложения Compiled successfully.
+
+### Находки (не блокеры)
+R-1 (Minor, покрытие): мутант M-B1-2 выжил -- снятие гейта resolve_event_status в derive_last_active_stage (узловое событие с НЕразрешимым статусом -- неизвестный тип при известном node_id / мусорный payload -- двигает фазу) не ловится pytest. Не эквивалентный мутант; прод-риск мал (статусы валидируются сервером). Рекомендация: прямой кейс в test_progress_progr13b отдельным тикетом.
+R-2 (Minor, покрытие): мутант M-A5-2 выжил -- подмена честной строки _structure_confirmed_line при отсутствующей date_column на выдуманный unknown_column не ловится pytest (контракт покрыт только оракулом E3 сертификатора, вне сьюта). Рекомендация: тест в test_run_report.py.
+R-3 (Info, учёт): на 2d2d05c коммитнутый B-файл даёт 17 failed / 2 passed против claim «16 содержательных + 2 совпадения + 1 guard»; расхождение в 1 тест объяснимо миграцией фикстуры карточки в A (RED-версия файла не коммитилась). Суть RED-claim подтверждена; на 7cb4535 -- дословные 5/5.
+R-4 (Info, среда): «19 средовых» -- артефакт неполной среды (без arch/prophet/tbats/statsforecast/neural; statsmodels 0.14.5); в полной среде 0 failed, счётчики сходятся.
+R-5 (Info, граница, перенесена из B): stage_for_run_level_event (research_runs.py) штампует run-level стадии по хвосту трассы -- осознанная граница компактной B, кандидат на отдельную задачу.
+
+ВЕРДИКТ: PROGR-13-A -- PASSED; PROGR-13-B -- PASSED; совместный вердикт -- PASSED WITH REMARKS (R-1, R-2 -- малые дыры pytest-покрытия, найденные мутационно; код и контракты соответствуют постановкам).
+
+### Deliverable
+ZIP: cisstat-progr13cert-certification.zip -- пути репозитория сохранены.
+НОВЫЕ: scripts/progr13cert_oracles.py (64 оракула); scripts/progr13cert_mutations.py (23 мутанта); docs/progr13cert_certification_report.md (полный отчёт).
+ИЗМЕНЕНЫ: worklog/worklog8.md (эта запись).
+Без commit/push (AGENTS.md).
