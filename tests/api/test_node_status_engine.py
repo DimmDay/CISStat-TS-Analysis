@@ -73,11 +73,15 @@ def _event(
 
 
 class TestEventNodeStatusMap:
-    def test_map_covers_exactly_12_canonical_types(self):
-        """Карта -- ровно 12 узловых типов §4.1: перенос из mentor_rules
-        дословно, ни потерь, ни пополнений мимо реестра."""
+    def test_map_covers_exactly_13_canonical_types(self):
+        """Карта -- ровно 13 узловых типов §4.1 (PROGR-13-A3:
+        + structure_confirmed -- факт подтверждения структуры аналитиком;
+        отчёты остановок upload_stop_status -- ОТДЕЛЬНЫЙ реестр
+        payload-статусов PAYLOAD_STATUS_EVENT_TYPES, статус из payload,
+        карте «тип -> один статус» не подвластен)."""
         assert set(EVENT_NODE_STATUS) == {
             "upload_completed",
+            "structure_confirmed",
             "correction_applied",
             "correction_previewed",
             "profile_viewed",
@@ -91,6 +95,14 @@ class TestEventNodeStatusMap:
             "forecast_exported",
         }
 
+    def test_payload_status_registry_is_upload_stop_report(self):
+        """PROGR-13-A4: payload-статусные типы -- ровно отчёт остановок
+        модуля «Загрузка»; статус валидируется CHECK_STATUS_VALUES в
+        resolve_event_status."""
+        from app.core.node_status import PAYLOAD_STATUS_EVENT_TYPES
+
+        assert PAYLOAD_STATUS_EVENT_TYPES == frozenset({"upload_stop_status"})
+
     def test_terminal_decision_events_map_to_done(self):
         terminal = [
             event_type
@@ -98,7 +110,7 @@ class TestEventNodeStatusMap:
             if event_type != "correction_previewed"
             and event_type != "profile_viewed"
         ]
-        assert len(terminal) == 10
+        assert len(terminal) == 11
         assert all(EVENT_NODE_STATUS[event_type] == "done" for event_type in terminal)
 
     def test_correction_previewed_maps_to_warning(self):
@@ -340,7 +352,11 @@ class TestDeriveStageStates:
         assert states["eda"]["warning_nodes"] == 0
 
     def test_all_done_stage_folds_to_passed(self):
-        statuses = {"upload/structure": "done"}
+        from app.core.pipeline_graph import STAGE_NODES
+
+        statuses = {
+            f"upload/{node_id}": "done" for node_id in STAGE_NODES["upload"]
+        }
         states = {state["stage"]: state for state in derive_stage_states(statuses)}
         assert states["upload"]["fold"] == "passed"
 
@@ -401,14 +417,19 @@ class TestEngineOwnership:
 
 class TestPipelineNodeStates:
     def test_reason_map_covers_exactly_the_status_map(self):
-        """Шаблоны status_reason -- ровно для тех же 12 узловых типов,
-        что и карта статусов: reason и статус всегда описывают ОДНО и
-        то же последнее событие узла (рассинхрон невозможен по
-        построению)."""
-        assert set(node_status.EVENT_NODE_REASON) == set(EVENT_NODE_STATUS)
+        """Шаблоны status_reason -- ровно для тех же узловых типов, что
+        и карта статусов ПЛЮС payload-статусные типы (PROGR-13-A4:
+        upload_stop_status -- тоже узловой факт решения, причина общая):
+        reason и статус всегда описывают ОДНО и то же последнее событие
+        узла (рассинхрон невозможен по построению)."""
+        from app.core.node_status import PAYLOAD_STATUS_EVENT_TYPES
+
+        assert set(node_status.EVENT_NODE_REASON) == (
+            set(EVENT_NODE_STATUS) | set(PAYLOAD_STATUS_EVENT_TYPES)
+        )
 
     def test_empty_events_return_all_graph_nodes_in_s2_order(self):
-        """Пустая трасса -- ВСЕ 46 узлов графа в каноническом порядке §2,
+        """Пустая трасса -- ВСЕ 50 узлов графа в каноническом порядке §2,
         честные «не начато» (pending) без выдуманных фактов."""
         from app.core.pipeline_graph import STAGES, STAGE_NODES
 
@@ -520,16 +541,17 @@ class TestPipelineNodeStates:
     def test_upload_completed_has_no_summary_count(self):
         """payload upload_completed (name/rows/columns/size_label) не
         содержит ключей бейджа -- summary_count честно None, бейдж
-        не выдумывается."""
+        не выдумывается. PROGR-13-A3: факт чтения файла -- узел overview
+        (подтверждение структуры -- отдельное событие)."""
         events = [
-            _event("upload", "structure", "upload_completed",
+            _event("upload", "overview", "upload_completed",
                    rows=120, columns=7),
         ]
         by_key = {
             (s["stage"], s["node_id"]): s
             for s in derive_pipeline_node_states(events)
         }
-        node = by_key[("upload", "structure")]
+        node = by_key[("upload", "overview")]
         assert node["status"] == "done"
         assert node["summary_count"] is None
         assert node["last_touched_at"] is not None

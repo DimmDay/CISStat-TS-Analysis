@@ -12,11 +12,16 @@
     shared/pipeline_nodes/eda_checks.json -- его читают и
     packages/ui/components/TsAnalysisEDA.tsx, и этот модуль; вшитой
     копии id в Python больше нет;
-  * Загрузка -- линейный флоу без CHECKS-массива: единственный узел
-    structure (§2; PROGR-13-B: канонический id выровнен с id остановки
-    «Структура» реестра модуля TsAnalysisUpload.tsx::STOPS; историческое
-    имя structure_confirmed нормализуется на границе чтения движка --
-    LEGACY_NODE_IDS в node_status.py, корпус слоя 2 историю сохраняет);
+  * реестр остановок «Загрузки» -- ТОТ ЖЕ паттерн (§12 п.2, PROGR-13-A1):
+    общий JSON shared/pipeline_nodes/upload_stops.json читают и
+    packages/ui/components/TsAnalysisUpload.tsx (STOPS), и этот модуль.
+    Дефект 1а PROGR-13: спека §2 «Загрузка -- нет CHECKS-массива»
+    устарела -- степпер с реальными статусами существует (5 остановок),
+    и панель «Прогресс» обязана агрегировать ТОТ ЖЕ реестр. Канонический
+    id узла structure (PROGR-13-B: выровнен с остановкой «Структура»);
+    историческое имя structure_confirmed нормализуется на границе чтения
+    движка -- LEGACY_NODE_IDS в node_status.py, корпус слоя 2 историю
+    сохраняет (A2);
   * Прогнозирование -- артефакт-ориентированный этап: узлы графа = 4
     типа события ForecastRun (spec_forecasting2.md §5.9, §2 таблица);
   * STAGES -- локальная константа, обязанная совпадать с
@@ -60,15 +65,6 @@ STAGES: tuple[str, ...] = (
     "upload", "validation", "preprocessing", "eda", "modeling", "forecasting",
 )
 
-# Единственный узел линейного флоу Загрузки (§2: структура ->
-# target_column/date_column -> декомпозиция-бейджи; CHECKS-массива нет).
-# PROGR-13-B: id выровнен с остановкой «Структура» модуля
-# TsAnalysisUpload.tsx::STOPS (прежнее имя structure_confirmed --
-# legacy: нормализация на границе чтения, LEGACY_NODE_IDS
-# в app/core/node_status.py; исторический корпус слоя 2 сохраняет
-# историю запусков).
-UPLOAD_STAGE_IDS: tuple[str, ...] = ("structure",)
-
 # Узлы Прогнозирования -- 4 типа события ForecastRun (§2 таблица,
 # дословно spec_forecasting2.md §5.9).
 FORECASTING_STAGE_IDS: tuple[str, ...] = (
@@ -76,40 +72,44 @@ FORECASTING_STAGE_IDS: tuple[str, ...] = (
     "forecast_sensitivity_computed", "forecast_exported",
 )
 
-# ── §12 п.2: общий JSON реестра EDA ───────────────────────────────
+# ── §12 п.2: общие JSON реестров (EDA + Загрузка, PROGR-13-A1) ─────
 
 _EDA_JSON_PATH = (
     Path(__file__).resolve().parents[2]
     / "shared" / "pipeline_nodes" / "eda_checks.json"
 )
+_UPLOAD_JSON_PATH = (
+    Path(__file__).resolve().parents[2]
+    / "shared" / "pipeline_nodes" / "upload_stops.json"
+)
 
 
-def _load_eda_check_defs(path: Path | None = None) -> tuple[dict[str, str], ...]:
-    """Чтение общего JSON реестра EDA (fail-closed на старте модуля).
+def _load_pipeline_node_defs(
+    path: Path, *, expected_stage: str, registry_name: str
+) -> tuple[dict[str, str], ...]:
+    """Общее ядро чтения общего JSON реестра узлов (§12 п.2;
+    PROGR-13-A1 -- тот же паттерн для Загрузки).
 
-    path -- переопределение для тестов загрузчика; по умолчанию модульный
-    путь _EDA_JSON_PATH. Отсутствие файла, битый JSON, пропуск
-    обязательного ключа или дубликат id -- ошибка импорта, а не тихий
-    деградировавший реестр: граф «Прогресса» не должен стартовать с
-    частичной картиной стадий.
+    Отсутствие файла, битый JSON, пропуск обязательного ключа или
+    дубликат id -- ошибка импорта, а не тихий деградировавший реестр:
+    граф «Прогресса» не должен стартовать с частичной картиной стадий.
     """
-    path = path or _EDA_JSON_PATH
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:  # pragma: no cover - защитная ветка
         raise ImportError(
-            f"Общий реестр EDA не найден: {path} (§12 п.2); "
+            f"Общий реестр {registry_name} не найден: {path} (§12 п.2); "
             "файл обязателен для старта графа пайплайна"
         ) from exc
     except json.JSONDecodeError as exc:
         raise ImportError(
-            f"Общий реестр EDA не парсится: {path}: {exc}"
+            f"Общий реестр {registry_name} не парсится: {path}: {exc}"
         ) from exc
     declared_stage = str(raw.get("stage") or "")
-    if declared_stage != "eda":
+    if declared_stage != expected_stage:
         raise ImportError(
             f"Реестр {path} объявляет stage={declared_stage!r}, "
-            "ожидалось 'eda'"
+            f"ожидалось {expected_stage!r}"
         )
     nodes_raw = raw.get("nodes")
     if not isinstance(nodes_raw, list) or not nodes_raw:
@@ -124,13 +124,39 @@ def _load_eda_check_defs(path: Path | None = None) -> tuple[dict[str, str], ...]
         description = str(entry.get("description") or "").strip()
         if not node_id or not label or not description:
             raise ImportError(
-                f"Запись реестра EDA без id/label/description: {entry!r}"
+                f"Запись реестра {registry_name} без id/label/description: "
+                f"{entry!r}"
             )
         if node_id in seen:
-            raise ImportError(f"Дубликат id узла EDA в реестре: {node_id!r}")
+            raise ImportError(
+                f"Дубликат id узла {registry_name} в реестре: {node_id!r}"
+            )
         seen.add(node_id)
         defs.append({"id": node_id, "label": label, "description": description})
     return tuple(defs)
+
+
+def _load_eda_check_defs(path: Path | None = None) -> tuple[dict[str, str], ...]:
+    """Чтение общего JSON реестра EDA (fail-closed на старте модуля).
+
+    path -- переопределение для тестов загрузчика; по умолчанию модульный
+    путь _EDA_JSON_PATH. Контракт ошибок -- у общего ядра
+    _load_pipeline_node_defs (PROGR-13-A1: тот же паттерн у Загрузки).
+    """
+    return _load_pipeline_node_defs(
+        path or _EDA_JSON_PATH, expected_stage="eda", registry_name="EDA"
+    )
+
+
+def _load_upload_stop_defs(path: Path | None = None) -> tuple[dict[str, str], ...]:
+    """Чтение общего JSON реестра остановок «Загрузки» (PROGR-13-A1,
+    §12 п.2 -- тот же паттерн, что у EDA): fail-closed на старте модуля,
+    path -- переопределение для тестов загрузчика."""
+    return _load_pipeline_node_defs(
+        path or _UPLOAD_JSON_PATH,
+        expected_stage="upload",
+        registry_name="Загрузки",
+    )
 
 
 EDA_CHECK_DEFS: tuple[dict[str, str], ...] = _load_eda_check_defs()
@@ -139,11 +165,19 @@ EDA_CHECK_DEFS: tuple[dict[str, str], ...] = _load_eda_check_defs()
 # застрахована тестами (test_eda_tsx_imports_shared_json и др.).
 EDA_STAGE_IDS: tuple[str, ...] = tuple(d["id"] for d in EDA_CHECK_DEFS)
 
+# Остановки «Загрузки» -- из общего JSON (PROGR-13-A1, §12 п.2);
+# синхронизация с TsAnalysisUpload.tsx::STOPS застрахована тестами
+# (test_upload_tsx_imports_shared_json и др.).
+UPLOAD_STOP_DEFS: tuple[dict[str, str], ...] = _load_upload_stop_defs()
+
+UPLOAD_STAGE_IDS: tuple[str, ...] = tuple(d["id"] for d in UPLOAD_STOP_DEFS)
+
 STAGE_NODES: dict[str, tuple[str, ...]] = {
+    # Общий JSON §12 п.2 (PROGR-13-A1) -- единственный источник id EDA
+    # и остановок Загрузки (см. докстринг модуля).
     "upload": UPLOAD_STAGE_IDS,
     "validation": VALIDATION_STAGE_IDS,
     "preprocessing": PREPROCESSING_CHECK_IDS,
-    # Общий JSON §12 п.2 -- единственный источник id EDA (см. докстринг).
     "eda": EDA_STAGE_IDS,
     "modeling": MODELING_STAGE_IDS,
     "forecasting": FORECASTING_STAGE_IDS,

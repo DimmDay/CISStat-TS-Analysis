@@ -109,6 +109,13 @@ export interface DatasetPassportPanelProps {
   targetColumn?: string | null;
   suggestedDateColumn?: string | null;
   historyResetNotice?: string | null;
+  /** PROGR-13-A5 (N-3, опционально): вызывается ПОСЛЕ успешного
+   * POST /date-column (подтверждение структуры аналитиком). Модуль
+   * «Загрузка» использует его для ре-поста фактов остановок: бэкенд
+   * пишет свой факт structure_confirmed, и панель «Прогресс» обязана
+   * остаться зеркалом фактических статусов модуля (хронология
+   * единого движка: последнее событие узла выигрывает). */
+  onDateColumnConfirmed?: () => void;
 }
 
 const STAGE_TEXT: Record<PassportStage, { title: string; short: string; action: string }> = {
@@ -365,6 +372,7 @@ export function DatasetPassportPanel({
   targetColumn = null,
   suggestedDateColumn = null,
   historyResetNotice = null,
+  onDateColumnConfirmed,
 }: DatasetPassportPanelProps) {
   const [status, setStatus] = useState<DatasetPassportStatus | null>(null);
   const [dateConfig, setDateConfig] = useState<DateColumnResponse | null>(null);
@@ -482,6 +490,10 @@ export function DatasetPassportPanel({
         const nextDate: DateColumnResponse = await dateResponse.json();
         setDateConfig(nextDate);
         dateHistoryWasReset = nextDate.passport_history_reset;
+        // PROGR-13-A5: факт подтверждения даты состоялся -- подписчик
+        // (модуль «Загрузка») переотчитывает статусы остановок. Вызов
+        // ПОСЛЕ успеха, до паспорта: порядок фактов трассы честный.
+        onDateColumnConfirmed?.();
         if (nextDate.passport_history_reset && stage !== "start") {
           setNotice("Временная колонка изменена; цепочка паспортов сброшена. Сначала зафиксируйте новый паспорт на вкладке «Загрузка».");
           await load();

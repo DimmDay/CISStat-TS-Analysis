@@ -46,7 +46,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from app.core.node_status import resolve_node_id
-from app.core.pipeline_graph import STAGES
+from app.core.pipeline_graph import STAGES, UPLOAD_STOP_DEFS
 from apps.api.knowledge.registry import KnowledgeRegistry, load_registry
 
 # ── Терминология из реестра знаний (единый источник, §5.4) ───────────
@@ -67,13 +67,18 @@ _METRICS_LABEL_PREFIX = "Метрики и алгоритм: "
 
 # Узлы без статей справки в реестре: Загрузка (справка не писалась --
 # события несут факты) и 4 типа событий Прогнозирования (справка этапа --
-# модульная). Значения синхронны NODE_LABELS packages/ui/lib/progress.ts.
+# модульная). Метки Загрузки -- из ОБЩЕГО реестра остановок
+# (upload_stops.json §12 п.2 через UPLOAD_STOP_DEFS, PROGR-13-A5 --
+# единый источник с модулем и графиком; вшитой копии меток больше нет);
+# значения синхронны NODE_LABELS packages/ui/lib/progress.ts (там метки
+# тоже из общего JSON).
 FALLBACK_NODE_LABELS: dict[tuple[str, str], str] = {
     # PROGR-13-B: канонический id узла Загрузки -- "structure" (выровнен
     # с остановкой модуля); legacy "structure_confirmed" нормализуется
     # на границе resolve_node_id -- отчёт старых запусков получает ту же
-    # метку, история не теряется.
-    ("upload", "structure"): "Структура данных",
+    # метку, история не теряется. Прямая метка по legacy id -- честный
+    # сырой фоллбек (node_id как есть), зафиксировано тестом.
+    **{( "upload", d["id"]): d["label"] for d in UPLOAD_STOP_DEFS},
     ("forecasting", "forecast_generated"): "Прогноз построен",
     ("forecasting", "forecast_compared"): "Сравнение прогнозов",
     ("forecasting", "forecast_sensitivity_computed"): "Анализ чувствительности",
@@ -232,6 +237,42 @@ def _upload_line(payload: dict) -> str:
     return f"Загружен датасет{name_part}{detail}."
 
 
+_STOP_STATUS_LABELS: dict[str, str] = {
+    "done": "выполнена",
+    "warning": "есть замечания",
+    "pending": "ожидает",
+    "skipped": "пропущена",
+    "running": "в работе",
+    "error": "ошибка",
+}
+
+
+def _structure_confirmed_line(payload: dict) -> str:
+    """PROGR-13-A3/A5: факт подтверждения структуры аналитиком
+    (POST /date-column, остановка «Структура»): колонка -- ИЗ PAYLOAD
+    (форма ответа DateColumnResponse), отсутствующая -- честная строка
+    без выдуманных фактов."""
+    column = payload.get("date_column")
+    if column:
+        return f"Подтверждена временная колонка «{column}»."
+    return "Подтверждена структура данных (временная колонка)."
+
+
+def _upload_stop_status_line(event: dict) -> str:
+    """PROGR-13-A4/A5: факт отчёта остановки модулем «Загрузка»
+    (upload_stop_status): метка остановки -- из общего реестра
+    (node_label), статус -- человеческой формулировкой CheckStatus
+    (неизвестное значение -- как есть, честный аудит)."""
+    payload = event.get("payload")
+    if not isinstance(payload, dict):
+        payload = {}
+    status = str(payload.get("status") or "")
+    status_label = _STOP_STATUS_LABELS.get(status, status or "неизвестен")
+    node_id = str(event.get("node_id") or "")
+    stop_label = node_label("upload", node_id) if node_id else node_id
+    return f"Статус остановки «{stop_label}» отчитан модулем: {status_label}."
+
+
 def fact_line(event: dict) -> tuple[str, tuple[tuple[str, str], ...]]:
     """Факт события -- человекочитаемая строка (+ ссылки, если есть).
     Шаблоны пишут терминологию платформы (стратегия/метод/счётчики --
@@ -245,6 +286,15 @@ def fact_line(event: dict) -> tuple[str, tuple[tuple[str, str], ...]]:
 
     if event_type == "upload_completed":
         return _upload_line(payload), links
+
+    # PROGR-13-A3/A5: факты остановок «Загрузки» -- та же гранулярность,
+    # что у панели (дефект 1 PROGR-13: в отчёте была одна строка на
+    # всю Загрузку).
+    if event_type == "structure_confirmed":
+        return _structure_confirmed_line(payload), links
+
+    if event_type == "upload_stop_status":
+        return _upload_stop_status_line(event), links
 
     if event_type in ("correction_applied", "correction_previewed"):
         return _correction_line(event_type, payload), links

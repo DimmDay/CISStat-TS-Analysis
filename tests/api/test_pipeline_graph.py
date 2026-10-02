@@ -5,7 +5,7 @@
 """Граф пайплайна исследования -- источник истины сервиса «Прогресс».
 
 Канон (spec_progress.md):
-  §2      -- STAGES (6 стадий), STAGE_NODES (46 узлов): Python-реестры
+  §2      -- STAGES (6 стадий), STAGE_NODES (50 узлов): Python-реестры
              (Валидация/Предобработка/Моделирование) импортируются напрямую
              («не дублирует, а ссылается»), EDA -- из общего JSON §12 п.2;
   §3      -- PipelineNodeState: CheckStatus для проверочных стадий,
@@ -133,12 +133,16 @@ class TestGraphStructure:
         json_ids = tuple(node["id"] for node in raw["nodes"])
         assert EDA_STAGE_IDS == json_ids == EXPECTED_EDA_IDS
 
-    def test_upload_single_node_structure(self):
-        # PROGR-13-B: канонический id узла Загрузки -- "structure"
-        # (выровнен с остановкой модуля TsAnalysisUpload.tsx::STOPS);
-        # legacy "structure_confirmed" корпуса слоя 2 нормализуется
-        # на границе чтения (LEGACY_NODE_IDS, node_status.py).
-        assert STAGE_NODES["upload"] == ("structure",)
+    def test_upload_five_stops_from_shared_json(self):
+        # PROGR-13-A1: реестр остановок «Загрузки» -- из общего JSON
+        # §12 п.2 (тот же файл, что читает модуль TsAnalysisUpload.tsx::
+        # STOPS); спека §2 «нет CHECKS-массива» устарела (дефект 1а
+        # PROGR-13). Канонический id structure (PROGR-13-B); legacy
+        # "structure_confirmed" корпуса слоя 2 нормализуется на границе
+        # чтения (LEGACY_NODE_IDS, node_status.py).
+        assert STAGE_NODES["upload"] == (
+            "overview", "chart", "distribution", "structure", "quality",
+        )
 
     def test_forecasting_four_event_type_nodes(self):
         assert STAGE_NODES["forecasting"] == EXPECTED_FORECASTING_IDS
@@ -146,7 +150,7 @@ class TestGraphStructure:
     def test_node_counts_per_stage(self):
         counts = {stage: len(nodes) for stage, nodes in STAGE_NODES.items()}
         assert counts == {
-            "upload": 1,
+            "upload": 5,
             "validation": 10,
             "preprocessing": 10,
             "eda": 10,
@@ -154,8 +158,8 @@ class TestGraphStructure:
             "forecasting": 4,
         }
 
-    def test_total_node_count_is_46(self):
-        assert TOTAL_NODE_COUNT == sum(len(n) for n in STAGE_NODES.values()) == 46
+    def test_total_node_count_is_50(self):
+        assert TOTAL_NODE_COUNT == sum(len(n) for n in STAGE_NODES.values()) == 50
 
     def test_node_ids_unique_within_stage(self):
         for stage, nodes in STAGE_NODES.items():
@@ -165,7 +169,7 @@ class TestGraphStructure:
         # Идентичность узла -- пара (stage, node_id): "regularity" и
         # "stationarity" сознательно существуют в двух стадиях (свои
         # проверки Валидации/Предобработки/EDA). Глобальная уникальность
-        # НЕ требуется -- иначе 46 узлов не сходится.
+        # НЕ требуется -- иначе 50 узлов не сходится.
         assert "regularity" in STAGE_NODES["validation"]
         assert "regularity" in STAGE_NODES["preprocessing"]
         assert "stationarity" in STAGE_NODES["preprocessing"]
@@ -173,7 +177,7 @@ class TestGraphStructure:
 
     def test_iter_all_nodes_covers_every_stage_node_pair(self):
         pairs = list(iter_all_nodes())
-        assert len(pairs) == 46
+        assert len(pairs) == 50
         assert set(pairs) == {
             (stage, node_id)
             for stage, nodes in STAGE_NODES.items()
@@ -337,7 +341,7 @@ class TestPipelineNodeState:
             node.status = "warning"  # type: ignore[misc]
 
     @pytest.mark.parametrize("stage,node_id", list(iter_all_nodes()))
-    def test_every_of_46_nodes_constructible_with_pending(self, stage, node_id):
+    def test_every_of_50_nodes_constructible_with_pending(self, stage, node_id):
         node = make_node_state(stage, node_id)
         assert (node.stage, node.node_id) == (stage, node_id)
         assert node.status == "pending"

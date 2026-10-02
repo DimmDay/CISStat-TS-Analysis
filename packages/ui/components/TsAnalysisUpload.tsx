@@ -54,7 +54,7 @@
 //    columns_info (см. buildDetectionFromColumns ниже), не настоящий
 //    бэкенд-детектор (см. TODO там же).
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -91,6 +91,9 @@ import { DecompositionBadges, type DecompositionData } from "./DecompositionBadg
 import { DecompositionSeriesChart, type DecompositionSeriesData } from "./DecompositionSeriesChart";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { StructuralClassSchema } from "./StructuralClassSchema";
+// PROGR-13-A1 (§12 п.2): общий реестр остановок «Загрузки» -- тот же
+// файл, что читают граф бэкенда и зеркало панели (см. комментарий у STOPS).
+import uploadStopsJson from "../../../shared/pipeline_nodes/upload_stops.json";
 import { useAppShell } from "../context/AppShellContext";
 import { apiUrl, sessionApiUrl } from "../lib/apiClient";
 import { classifyStructure, type PanelBalance, type StructuralClassResult } from "../lib/structuralClass";
@@ -177,38 +180,20 @@ interface Stop {
   description: string;
 }
 
-const STOPS: Stop[] = [
-  {
-    id: "overview",
-    label: "Превью датасета",
-    description:
-      "Проверка, что файл прочитан правильно: предпросмотр строк, типы колонок, объём. Если при чтении что-то пошло не так технически (кодировка, сдвинутый заголовок) — флаг появится здесь же.",
-  },
-  {
-    id: "chart",
-    label: "График",
-    description:
-      "Линейный график исследуемого признака по реальной временной оси — первый визуальный взгляд на форму ряда до статистики. Ниже — бейджи декомпозиции (Тренд/Сезонность/Цикличность/Остаток) как индикатор уровня шума в данных на старте анализа.",
-  },
-  {
-    id: "distribution",
-    label: "Распределение",
-    description:
-      "Форма распределения выбранного числового признака: точечный график, гистограмма, KDE и описательные статистики (mean/median/std/skew/kurtosis/Q1/Q3/IQR) — ориентир для выбора семейства моделей позже.",
-  },
-  {
-    id: "structure",
-    label: "Структура",
-    description:
-      "Подтверждение автоопределения даты, группирующей колонки и частоты ряда, и итоговый структурный класс данных — от него зависит, какие проверки и модели будут актуальны дальше по пайплайну.",
-  },
-  {
-    id: "quality",
-    label: "Качество",
-    description:
-      "Только счётчики проблем (пропуски/выбросы/дубликаты) — анонс перехода к «Валидации», не содержательный анализ. Полный разбор — в следующем модуле.",
-  },
-];
+// PROGR-13-A1 (§12 п.2, паттерн eda_checks.json): реестр остановок --
+// ОБЩИЙ JSON (single source): его же читает граф бэкенда
+// (app/core/pipeline_graph.py::UPLOAD_STAGE_IDS) и зеркало панели
+// (packages/ui/lib/progress.ts). Вшитой копии в компоненте больше нет:
+// дефект 1а PROGR-13 (панель «Прогресс» показывала 1 остановку из 5)
+// стал возможен именно из-за независимых списков. Порядок объектов =
+// порядок остановок степпера.
+const STOPS: Stop[] = (
+  uploadStopsJson.nodes as ReadonlyArray<{
+    id: StopId;
+    label: string;
+    description: string;
+  }>
+).map((stop) => ({ ...stop }));
 
 const FREQ_OPTIONS = [
   "H — почасовая",
@@ -748,6 +733,49 @@ export function TsAnalysisUpload() {
   const doneCount = STOPS.filter((s) => stopStatus[s.id] === "done").length;
   const progressPct = Math.round((doneCount / STOPS.length) * 100);
   const activeStopDef = STOPS.find((s) => s.id === activeStop)!;
+
+  // ── PROGR-13-A5: отчёт фактов остановок в панель «Прогресс» (дефект 1) ──
+  // Модуль вычислил stopStatus из СВОИХ данных (§7.2-прецедент: клиент
+  // строит сводку, бэкенд не переопрашивает profile-эндпоинты) -- отчи-
+  // тываем POST /v1/progress/upload-stops: единый движок бэкенда сделает
+  // эти факты статусами панели. Идентичность снапшота -- строка: эффект
+  // срабатывает только при РЕАЛЬНОМ изменении статусов, не каждый рендер.
+  const lastReportedStopsRef = useRef<string>("");
+  const postStops = useCallback((stops: Record<StopId, CheckStatus>) => {
+    fetch(sessionApiUrl("/v1/progress/upload-stops"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ stops }),
+    }).catch(() => {
+      // Отчёт фактов -- вспомогательный контур (§12 п.8): сбой не ломает
+      // модуль; следующее изменение stopStatus повторит отчёт.
+      lastReportedStopsRef.current = "";
+    });
+  }, []);
+
+  const stopsSnapshot = useMemo(() => JSON.stringify(stopStatus), [stopStatus]);
+
+  useEffect(() => {
+    // Не отчитываем «все pending»: модуль без загрузки ещё не существует
+    // как источник фактов (бэкенд отвечает 400 без датасета).
+    if (!isUploaded) return;
+    if (stopsSnapshot === lastReportedStopsRef.current) return;
+    lastReportedStopsRef.current = stopsSnapshot;
+    postStops(JSON.parse(stopsSnapshot) as Record<StopId, CheckStatus>);
+  }, [isUploaded, postStops, stopsSnapshot]);
+
+  // Ре-пост ПОСЛЕ подтверждения структуры: бэкенд пишет свой факт
+  // structure_confirmed (узел structure -> done), но модуль может всё ещё
+  // показывать warning (confidence<70) -- панель обязана остаться зеркалом
+  // модуля: хронология решает (последнее событие узла выигрывает в
+  // едином движке node_status).
+  const reportUploadStopsNow = useCallback(() => {
+    if (!isUploaded) return;
+    lastReportedStopsRef.current = ""; // принудительный ре-пост текущего снапшота
+    postStops(stopStatus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isUploaded, postStops, stopStatus]);
   const selectedStats = stats?.find((s) => s.name === selectedFeature) ?? null;
 
   return (
@@ -1439,6 +1467,7 @@ export function TsAnalysisUpload() {
             stage="start"
             targetColumn={selectedFeature}
             suggestedDateColumn={confidentDateCol}
+            onDateColumnConfirmed={reportUploadStopsNow}
             historyResetNotice={passportResetNotice
               ? `Смена исследуемого признака «${passportResetNotice.previousColumn}» → «${passportResetNotice.newColumn}» сбросила цепочку паспортов.`
               : null}

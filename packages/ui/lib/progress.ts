@@ -5,12 +5,13 @@
 // PROGR-10).
 //
 // РЕЕСТР УЗЛОВ. Источник истины -- app/core/pipeline_graph.py::STAGE_NODES
-// (46 узлов, 6 стадий). Общего рантайма Python/TS у платформы нет
-// (§12 п.2 решён общим JSON только для EDA), поэтому здесь -- копия id,
-// связанная sync-тестом tests/api/test_progress_panel.py (читает живой
-// исходник этого файла, паттерн test_eda_tsx_imports_shared_json /
-// CERTIFIED_IDS). Менять id независимо от графа нельзя -- sync-тест
-// упадёт первым.
+// (50 узлов, 6 стадий). Общего рантайма Python/TS у платформы нет
+// (§12 п.2 решён общим JSON для EDA и -- с PROGR-13-A1 -- для остановок
+// «Загрузки»: id stage upload живут здесь текстово, sync-тест
+// tests/api/test_progress_panel.py читает живой исходник этого файла,
+// паттерн test_eda_tsx_imports_shared_json / CERTIFIED_IDS; метки
+// остановок -- из того же общего JSON, копии строк нет). Менять id
+// независимо от графа нельзя -- sync-тест упадёт первым.
 //
 // СТАТУСЫ УЗЛОВ (§3) -- ГОТОВОЕ СОСТОЯНИЕ ОТ БЭКЕНДА (PROGR-10,
 // Расхождение №1). Вывод статуса из фактов решений живёт НА БЭКЕНДЕ --
@@ -35,6 +36,7 @@
 // (минус один запрос и минус одна гонка).
 
 import edaChecksJson from "../../../shared/pipeline_nodes/eda_checks.json";
+import uploadStopsJson from "../../../shared/pipeline_nodes/upload_stops.json";
 import { STAGE_DEFS } from "./stages";
 
 // ── §2: стадии и узлы (копия графа, sync-тест страхует) ─────────────
@@ -42,10 +44,14 @@ import { STAGE_DEFS } from "./stages";
 export const PROGRESS_STAGE_NODES: Record<string, readonly string[]> = {
   // Ключи в кавычках -- формат страхован sync-тестом (regex-парсер
   // живого исходника; не реорганизовывать без теста).
-  // PROGR-13-B: канонический id узла Загрузки -- "structure" (выровнен
-  // с остановкой модуля TsAnalysisUpload); legacy "structure_confirmed"
-  // старого корпуса нормализуется на бэкенде (LEGACY_NODE_IDS).
-  "upload": ["structure"],
+  // PROGR-13-A1: 5 остановок -- тот же реестр, что у модуля
+  // TsAnalysisUpload и графа бэкенда (общий JSON upload_stops.json);
+  // порядок = порядок объектов JSON = порядок остановок степпера.
+  // PROGR-13-B: legacy "structure_confirmed" старого корпуса
+  // нормализуется на бэкенде (LEGACY_NODE_IDS).
+  "upload": [
+    "overview", "chart", "distribution", "structure", "quality",
+  ],
   "validation": [
     "data_types", "formats", "ranges", "consistency", "uniqueness",
     "inclusion", "referential", "text_quality", "regularity", "sufficiency",
@@ -70,11 +76,17 @@ export const PROGRESS_STAGE_NODES: Record<string, readonly string[]> = {
 // ── Человекочитаемые метки узлов (раскрытие стадии, §6.2) ───────────
 // Валидация/Предобработка -- те же подписи, что у степперов вкладок
 // (TsAnalysisValidation.tsx CHECK_META / TsAnalysisPreprocessing.tsx);
-// EDA -- label из общего JSON; Моделирование -- PIPELINE_STAGES из
-// modeling.ts; Загрузка/Прогнозирование -- формулировки §2/§4.1.
+// EDA и Загрузка -- label из общего JSON; Моделирование --
+// PIPELINE_STAGES из modeling.ts; Прогнозирование -- формулировки §4.1.
 
 const NODE_LABELS: Record<string, Record<string, string>> = {
-  upload: { structure: "Структура данных" },
+  // PROGR-13-A5: метки остановок «Загрузки» -- из общего JSON §12 п.2
+  // (тот же источник, что у STOPS модуля и графа бэкенда).
+  upload: Object.fromEntries(
+    (uploadStopsJson.nodes as ReadonlyArray<{ id: string; label: string }>).map(
+      (n) => [n.id, n.label],
+    ),
+  ),
   validation: {
     data_types: "Типы данных",
     formats: "Форматы и шаблоны",

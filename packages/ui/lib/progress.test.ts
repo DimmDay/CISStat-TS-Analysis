@@ -99,9 +99,9 @@ describe("PROGRESS_STAGE_NODES (реестр узлов, sync с графом б
     ]);
   });
 
-  it("суммарно 46 узлов (1+10+10+10+11+4)", () => {
+  it("суммарно 50 узлов (5+10+10+10+11+4) -- PROGR-13-A1: Загрузка 5 остановок", () => {
     const counts = Object.values(PROGRESS_STAGE_NODES).map((n) => n.length);
-    expect(counts).toEqual([1, 10, 10, 10, 11, 4]);
+    expect(counts).toEqual([5, 10, 10, 10, 11, 4]);
   });
 
   it("у каждого узла есть непустая человекочитаемая метка", () => {

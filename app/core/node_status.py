@@ -39,6 +39,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from app.core.pipeline_graph import (
+    CHECK_STATUS_VALUES,
     MODE_STAGES,
     NODE_MODE_VALUES,
     STAGES,
@@ -54,8 +55,15 @@ from app.core.pipeline_graph import (
 # не принято); profile_viewed -> running (узел исследуется). События
 # уровня стадии (node_id=null: mode_changed, target_column_changed,
 # passport_captured, run_*) -- не про узел, в статусы не попадают (N-2).
+#
+# PROGR-13-A3: upload_completed -- факт ЧТЕНИЯ ФАЙЛА (узел overview,
+# «Превью датасета»); факт подтверждения структуры аналитиком -- ОТДЕЛЬ-
+# НОЕ событие structure_confirmed (POST /date-column, узел structure).
+# До A3 upload_completed красил structure в done (дефект 1б: зелёная
+# «Структура» против жёлтого модуля при confidence<70).
 EVENT_NODE_STATUS: dict[str, str] = {
     "upload_completed": "done",
+    "structure_confirmed": "done",
     "correction_applied": "done",
     "correction_previewed": "warning",
     "profile_viewed": "running",
@@ -88,7 +96,12 @@ EVENT_NODE_STATUS: dict[str, str] = {
 # статус всегда описывают ОДНО и то же последнее событие узла.
 # Тексты -- факты, не советы (советы -- зона Наставника §7).
 EVENT_NODE_REASON: dict[str, str] = {
-    "upload_completed": "Датасет загружен, структура подтверждена",
+    # PROGR-13-A3: честный факт -- файл прочитан, превью доступно
+    # (подтверждение структуры -- отдельное событие structure_confirmed;
+    # прежний текст «структура подтверждена» был ложью при
+    # upload_completed -- дефект 1б PROGR-13).
+    "upload_completed": "Датасет загружен, превью доступно",
+    "structure_confirmed": "Временная колонка подтверждена аналитиком",
     "correction_applied": "Коррекция применена",
     "correction_previewed": "Найдены нарушения: предпросмотр коррекции",
     "profile_viewed": "Проверка просмотрена аналитиком",
@@ -100,6 +113,10 @@ EVENT_NODE_REASON: dict[str, str] = {
     "forecast_compared": "Сравнение прогнозов выполнено",
     "forecast_sensitivity_computed": "Анализ чувствительности выполнен",
     "forecast_exported": "Прогноз экспортирован",
+    # PROGR-13-A4: отчёт фактов остановок модулем «Загрузка». Статус
+    # события -- из payload (см. PAYLOAD_STATUS_EVENT_TYPES ниже),
+    # причина -- общая (конкретика -- статус узла рядом).
+    "upload_stop_status": "Статус остановки отчитан модулем «Загрузка»",
 }
 
 # Ключи payload -- кандидаты в правый бейдж узла (§3 summary_count:
@@ -117,6 +134,25 @@ NODE_SUMMARY_COUNT_KEYS: tuple[str, ...] = (
     "rows_removed",
     "total_changed",
 )
+
+# ── PROGR-13-A4: статус события из payload (факты, отчитанные клиентом) ──
+#
+# Прецедент §7.2 (CorrectionOutcomeSummary): фронтенд строит сводку ИЗ
+# УЖЕ ПОЛУЧЕННЫХ данных и отчитывает её бэкенду. Модуль «Загрузка»
+# вычисляет stopStatus каждой остановки из ответов загрузки/детекции
+# (TsAnalysisUpload.tsx::stopStatus) и отчитывает карту POST
+# /v1/progress/upload-stops (PROGR-13-A5) -- панель «Прогресс» обязана
+# показывать ТЕ ЖЕ статусы, что и модуль (дефект 1 PROGR-13).
+#
+# Для таких типов статус НЕ выводится из EVENT_NODE_STATUS (карта
+# «тип -> один статус» не выразила бы per-узловую вариативность):
+# статус несёт PAYLOAD (ключ "status"), валидируется белым списком
+# CHECK_STATUS_VALUES -- мусор (нечитаемый/чужой словарь) честно
+# пропускается движком (трасса -- журнал, R3 PROGR-1-CERT: событие
+# хранится, но фантомного статуса не создаёт). Реестр расширяется при
+# появлении новых клиентских фактов; гейт (stage, event_type)
+# make_trace_event прежний (STAGE_EVENT_TYPES trace_events.py).
+PAYLOAD_STATUS_EVENT_TYPES: frozenset[str] = frozenset({"upload_stop_status"})
 
 # Эффективные режимы проверок (Валидация/Предобработка §3): отсутствие
 # значения -- «auto» (backward-compatible контракт степперов,
@@ -203,6 +239,22 @@ def resolve_node_id(data: Mapping[str, Any]) -> str | None:
     return normalize_legacy_node_id(stage, str(node_id))
 
 
+def resolve_event_status(data: Mapping[str, Any]) -> str | None:
+    """Статус узла из события (PROGR-13-A4): тип из EVENT_NODE_STATUS --
+    каноническая карта; тип из PAYLOAD_STATUS_EVENT_TYPES -- статус из
+    payload["status"], валидированный CHECK_STATUS_VALUES (мусор -- None,
+    событие пропускается движками честно, фантомных статусов нет).
+    Прочие типы -- None (не узловые факты)."""
+    event_type = str(data.get("event_type") or "")
+    if event_type in PAYLOAD_STATUS_EVENT_TYPES:
+        payload = data.get("payload")
+        raw = payload.get("status") if isinstance(payload, Mapping) else None
+        if isinstance(raw, str) and raw in CHECK_STATUS_VALUES:
+            return raw
+        return None
+    return EVENT_NODE_STATUS.get(event_type)
+
+
 def derive_node_statuses(events: list[Any]) -> dict[str, str]:
     """ЕДИНЫЙ движок: статус каждого узла -- по последнему его событию
     (хронология входа сохраняется: позднее событие перезаписывает
@@ -217,7 +269,7 @@ def derive_node_statuses(events: list[Any]) -> dict[str, str]:
         data = event_to_dict(event)
         if data is None:
             continue
-        status = EVENT_NODE_STATUS.get(str(data.get("event_type") or ""))
+        status = resolve_event_status(data)
         if status is None:
             continue
         stage = str(data.get("stage") or "")
@@ -277,13 +329,14 @@ def derive_last_active_stage(events: list[Any], *, default: str = "upload") -> s
     stage="eda"). Наставник называл стадию, куда аналитик не заходил.
 
     Правило: фазу двигают ТОЛЬКО узловые факты решения -- события,
-    чей тип входит в EVENT_NODE_STATUS и чей узел выводится
-    (resolve_node_id, с нормализацией legacy id корпуса B3) и известен
-    графу (is_known_node -- тот же гейт, что у derive_node_statuses:
-    фантомных стадий не возникает). Stage-level события (mode_changed,
-    target_column_changed, passport_captured, run_*) фазу НЕ двигают:
-    target_column_changed мульти-страничен, паспорт -- фиксация снимка,
-    а не переход на вкладку.
+    чей статус выводится (resolve_event_status: карта EVENT_NODE_STATUS
+    либо payload-статус из PAYLOAD_STATUS_EVENT_TYPES, PROGR-13-A4) и
+    чей узел выводится (resolve_node_id, с нормализацией legacy id
+    корпуса B3) и известен графу (is_known_node -- тот же гейт, что у
+    derive_node_statuses: фантомных стадий не возникает). Stage-level
+    события (mode_changed, target_column_changed, passport_captured,
+    run_*) фазу НЕ двигают: target_column_changed мульти-страничен,
+    паспорт -- фиксация снимка, а не переход на вкладку.
 
     Вход -- хронология дописывания (тот же контракт, что у
     derive_node_statuses: позднее событие выигрывает); пустая трасса /
@@ -298,9 +351,10 @@ def derive_last_active_stage(events: list[Any], *, default: str = "upload") -> s
         data = event_to_dict(event)
         if data is None:
             continue
-        event_type = str(data.get("event_type") or "")
-        if event_type not in EVENT_NODE_STATUS:
-            continue  # события уровня стадии фазу не двигают (N-2)
+        # события уровня стадии фазу не двигают (N-2); статус решает
+        # resolve_event_status (карта + payload-статусы, PROGR-13-A4).
+        if resolve_event_status(data) is None:
+            continue
         stage = str(data.get("stage") or "")
         node_id = resolve_node_id(data)
         if not node_id or not is_known_node(stage, node_id):
@@ -400,7 +454,12 @@ def derive_pipeline_node_states(
         if isinstance(ts, str) and ts:
             detail["last_touched_at"] = ts
         # reason/count -- только события решения (последнее wins).
-        if event_type in EVENT_NODE_STATUS:
+        # PROGR-13-A4: payload-статусные типы (upload_stop_status) -- тоже
+        # узловые факты решения; причина -- их ключ в EVENT_NODE_REASON.
+        if (
+            event_type in EVENT_NODE_STATUS
+            or event_type in PAYLOAD_STATUS_EVENT_TYPES
+        ):
             detail["status_reason"] = EVENT_NODE_REASON[event_type]
             payload = data.get("payload")
             if isinstance(payload, Mapping):

@@ -372,9 +372,11 @@ def test_restore_phase_from_node_facts_not_stage_level_tail():
 def test_panel_keeps_history_for_legacy_layer1_corpus():
     """Слой 1 старой сессии (stored-словари с node_id
     "structure_confirmed"): /trace обязан показать узел "structure"
-    done -- карточка «Загрузка» зелёная 1/1, фантомного ключа нет.
+    done -- факт старого запуска сохранён, фантомного ключа нет.
     Без нормализации панель показывала бы «не начато» -- потеря
-    истории запуска."""
+    истории запуска. PROGR-13-A: реестр Загрузки -- 5 остановок,
+    карточка честно «в работе» 1/5 (легенда-факт -- один из пяти
+    узлов), суть теста -- СОХРАННОСТЬ истории -- не меняется."""
     response = client.post("/v1/session/demo")
     assert response.status_code == 200, response.text
     session_id = client.cookies.get(SESSION_COOKIE_NAME)
@@ -396,5 +398,6 @@ def test_panel_keeps_history_for_legacy_layer1_corpus():
     upload_card = next(
         s for s in trace["stages"] if s["stage"] == "upload"
     )
-    assert upload_card["fold"] == "passed"
+    assert upload_card["fold"] == "attention"
     assert upload_card["done_count"] == 1
+    assert upload_card["total_nodes"] == 5

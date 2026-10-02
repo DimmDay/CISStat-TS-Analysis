@@ -155,17 +155,18 @@ class TestNodeTerminology:
 
     def test_label_fallback_upload_forecasting(self):
         """Узлы без статей справки (Загрузка; 4 типа событий
-        Прогнозирования) -- локальные метки, синхронные с
-        packages/ui/lib/progress.ts::NODE_LABELS. PROGR-13-B:
-        канонический id узла Загрузки -- "structure"; legacy
-        "structure_confirmed" нормализуется в resolve_node_id,
-        поэтому отчёт старых запусков получает ту же метку."""
+        Прогнозирования) -- локальные метки. PROGR-13-A5: метки
+        Загрузки -- из ОБЩЕГО реестра остановок (upload_stops.json §12 п.2
+        через UPLOAD_STOP_DEFS, единый источник с модулем TsAnalysisUpload
+        и зеркалом progress.ts; метка остановки -- «Структура»);
+        PROGR-13-B: legacy "structure_confirmed" нормализуется в
+        resolve_node_id, поэтому отчёт старых запусков получает ту же
+        метку."""
         from app.core import run_report
 
-        assert (
-            run_report.node_label("upload", "structure")
-            == "Структура данных"
-        )
+        assert run_report.node_label("upload", "structure") == "Структура"
+        assert run_report.node_label("upload", "overview") == "Превью датасета"
+        assert run_report.node_label("upload", "quality") == "Качество"
         # legacy id корпуса слоя 2 нормализуется ДО метки (в
         # resolve_node_id модели отчёта): прямая метка по legacy id --
         # честный сырой фоллбек, не выдуманная метка
@@ -680,7 +681,9 @@ class TestMarkdownRender:
         assert "## Валидация" in md
         assert "## Моделирование" in md
         assert "## Прогнозирование" in md
-        assert "### Структура данных" in md
+        # PROGR-13-A5: метка остановки -- из общего реестра (модуль:
+        # «Структура»), не старая «Структура данных»
+        assert "### Структура" in md
         assert "### Типы данных" in md
         assert "### Бэктест" in md
         assert "### Прогноз построен" in md

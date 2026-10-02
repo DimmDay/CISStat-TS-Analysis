@@ -45,7 +45,7 @@
 
 | Вкладка | Существующий реестр | Кол-во узлов сейчас |
 |---|---|---|
-| Загрузка | нет CHECKS-массива — линейный флоу (структура → `target_column`/`date_column` → декомпозиция-бейджи) | 1 узел `upload.structure_confirmed` |
+| Загрузка | **PROGR-13-A (2026-10-02): степпер с реальными статусами существует** — общий реестр остановок `shared/pipeline_nodes/upload_stops.json` (§12 п.2, паттерн EDA; исходная формулировка «нет CHECKS-массива» устарела) — читают `TsAnalysisUpload.tsx :: STOPS`, граф и зеркало панели | 5 (`overview`, `chart`, `distribution`, `structure` — канонический id после PROGR-13-B; историческое `structure_confirmed` нормализуется на границе чтения, `LEGACY_NODE_IDS`, история корпуса слоя 2 сохраняется — `upload_stop_status` отчитывается модулем через `POST /v1/progress/upload-stops`, §4.1/§4.2) |
 | Валидация | `validation/rule_resolver.py::CHECK_IDS` | 10 (`data_types`, `formats`, `ranges`, `consistency`, `uniqueness`, `inclusion`, `referential`, `text_quality`, `regularity`, `sufficiency`) |
 | Предобработка | `apps/api/routers/session.py::PREPROCESSING_CHECK_IDS` | 10 (`missing`, `outliers`, `regularity`, `decomposition`, `variance_stab`, `smoothing`, `stationarity`, `spectral`, `feature_eng`, `scaling`) — **без `"passport"`**, узел убран (см. шапку документа) |
 | Разведочный EDA | `TsAnalysisEDA.tsx :: CHECKS` (id) | 10 (`descriptive`, `correlation`, `ih_analysis`, `seasonality`, `stationarity`, `distribution`, `structural`, `feature_select`, `validation_strategy`, `model_matrix`) — **без `"passport"`**, тот же узел убран синхронно |
@@ -74,7 +74,9 @@ from apps.api.model_readiness import MODELING_STAGE_IDS
 STAGES = ("upload", "validation", "preprocessing", "eda", "modeling", "forecasting")
 
 STAGE_NODES: dict[str, tuple[str, ...]] = {
-    "upload": ("structure_confirmed",),
+    "upload": (  # PROGR-13-A: из общего JSON upload_stops.json (§12 п.2)
+        "overview", "chart", "distribution", "structure", "quality",
+    ),
     "validation": VALIDATION_STAGE_IDS,
     "preprocessing": PREPROCESSING_CHECK_IDS,
     "eda": (  # см. предупреждение в докстринге модуля
@@ -148,11 +150,14 @@ class TraceEvent:
 
 | Stage | `event_type` (примеры) | Источник |
 |---|---|---|
+| upload | `upload_completed` (узел `overview` — факт чтения файла; PROGR-13-A: подтверждение структуры — отдельное событие `structure_confirmed` на `POST /v1/session/date-column`), `structure_confirmed`, `upload_stop_status` (статус остановки — в payload, whitelist `CHECK_STATUS_VALUES`; отчёт модуля `POST /v1/progress/upload-stops`, прецедент §7.2), `passport_captured` (точка `start`, PROGR-13-B2) | PROGR-13-A/B (2026-10-02) |
 | validation/preprocessing | `mode_changed`, `correction_previewed`, `correction_applied`, `target_column_changed` | `progress_ts_analysis.md` (унаследовано) |
 | eda | `profile_viewed` (троттлится, см. §4.2), `passport_captured` | `progress_ts_analysis.md` (унаследовано) |
-| modeling | `backtest_run`, `tuning_trial_completed`, `model_selected`, `model_card_generated` | новое, по факту существующих эндпоинтов `apps/api/routers/modeling_session.py` |
+| modeling | `backtest_run`, `tuning_trial_completed`, `model_selected`, `model_card_generated`, `passport_captured` (точка `modeling_entry`, PROGR-13-B2) | новое, по факту существующих эндпоинтов `apps/api/routers/modeling_session.py` |
 | forecasting | `forecast_generated`, `forecast_compared`, `forecast_sensitivity_computed`, `forecast_exported` | `spec_forecasting2.md §5.9`, дословно |
 | session (любая стадия) | `run_paused`, `run_resumed`, `checkpoint_saved` | `progress_ts_analysis.md` (унаследовано), см. §5.1–5.2 |
+
+**PROGR-13-A (2026-10-02) — доверенные факты с фронтенда.** Отчёт остановок `upload_stop_status` — прецедент §7.2 («CorrectionOutcomeSummary строит клиент»): модуль «Загрузка» вычисляет `stopStatus` из уже полученных ответов и отчитывает снапшот; статус несёт `payload["status"]`, валидируется белым списком `CHECK_STATUS_VALUES` (мусор честно пропускается движком — фантомных статусов нет). Эндпоинт fail-closed: неизвестный узел / недопустимый статус / неполная карта — 422 до первой записи (all-or-nothing); без датасета — 400.
 
 ### 4.2 Откуда берутся события — не полинг, а хук на запись
 

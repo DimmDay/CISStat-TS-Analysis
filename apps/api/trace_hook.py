@@ -127,20 +127,32 @@ _CORRECTION_PAYLOAD_KEYS = (
 )
 
 TRACE_ROUTES: tuple[TraceRouteSpec, ...] = (
-    # ── Загрузка (§4.1: upload_completed; узел structure §2,
-    # PROGR-13-B: прежний structure_confirmed -- legacy, нормализуется
-    # на границе чтения движка, LEGACY_NODE_IDS node_status.py) ──
-    # payload -- форма UploadResponse (name/rows/columns/size_label).
+    # ── Загрузка (§4.1: upload_completed; PROGR-13-A3: узел overview --
+    # upload_completed -- факт ЧТЕНИЯ ФАЙЛА (превью доступно), не факт
+    # подтверждения структуры (дефект 1б PROGR-13: зелёная «Структура»
+    # противоречила жёлтому модулю при confidence<70). Подтверждение
+    # структуры аналитиком -- отдельное действие: POST /date-column ->
+    # узел structure, событие structure_confirmed -- строка ниже.)
+    # payload -- форма UploadResponse (name/rows/columns/size_label). ──
     TraceRouteSpec(
-        "POST", "/v1/internal/upload", "upload", "structure",
+        "POST", "/v1/internal/upload", "upload", "overview",
         "upload_completed", payload_keys=("name", "rows", "columns", "size_label"),
     ),
     TraceRouteSpec(
-        "POST", "/v1/public/upload", "upload", "structure",
+        "POST", "/v1/public/upload", "upload", "overview",
         "upload_completed", payload_keys=("name", "rows", "columns", "size_label"),
     ),
-    TraceRouteSpec("POST", "/v1/session/demo", "upload", "structure",
+    TraceRouteSpec("POST", "/v1/session/demo", "upload", "overview",
                    "upload_completed"),
+    # PROGR-13-A3: подтверждение структуры аналитиком (остановка
+    # «Структура» модуля «Загрузка»): факт решения -- колонка из ТЕЛА
+    # ОТВЕТА DateColumnResponse (payload_keys -- форма ответа, §4.1).
+    # До A3 эндпоинт сознательно не трассировался (fail-closed: тип не
+    # изобретался -- тип structure_confirmed вводится этой задачей).
+    TraceRouteSpec(
+        "POST", "/v1/session/date-column", "upload", "structure",
+        "structure_confirmed", payload_keys=("date_column",),
+    ),
     # ── Валидация: корректировки проверок (correction_applied/previewed) ──
     TraceRouteSpec(
         "POST", "/v1/session/dataset/format-corrections", "validation",

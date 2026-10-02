@@ -162,7 +162,12 @@ from app.core.node_status import (
     derive_stage_states,
     event_to_dict,
 )
-from app.core.pipeline_graph import FORECASTING_STAGE_IDS, is_known_node
+from app.core.pipeline_graph import (
+    CHECK_STATUS_VALUES,
+    FORECASTING_STAGE_IDS,
+    STAGE_NODES,
+    is_known_node,
+)
 from app.core.run_report import (
     build_report_model,
     render_html,
@@ -176,6 +181,7 @@ from apps.api.research_runs import (
     ResearchRun,
     get_dataset_file_store,
     get_research_run_store,
+    record_run_event,
     stage_for_run_level_event,
 )
 from apps.api.session_store import (
@@ -337,6 +343,111 @@ def get_progress_trace(request: Request, response: Response) -> ProgressTraceRes
         ],
         nodes=[NodeStateOut(**state) for state in node_states],
     )
+
+
+# ── PROGR-13-A4: отчёт фактов остановок «Загрузки» (дефект 1) ─────────
+
+
+class UploadStopsReportIn(BaseModel):
+    """Тело отчёта модуля «Загрузка» (§7.2-прецедент: клиент строит
+    сводку из уже полученных данных -- TsAnalysisUpload.tsx::stopStatus
+    вычислен из ответов загрузки/детекции, бэкенд НЕ опрашивает
+    profile-эндпоинты повторно).
+
+    stops -- ПОЛНАЯ карта остановок реестра (id -> CheckStatus):
+    снапшот состояния модуля, не дельта; партиальные отчёты --
+    клиентский баг и fail-closed 422 (чёрные дыры в фактах стадии
+    недопустимы: панель обязана совпадать с модулем целиком)."""
+
+    stops: Dict[str, str]
+
+
+class UploadStopsReportResponse(BaseModel):
+    """Эхо приёмки: сколько фактов записано + run_id запуска, в который
+    они легли (слой 2 -- тот же механизм зеркала, что у хука §5)."""
+
+    run_id: Optional[str] = None
+    reported: int
+
+
+@router.post("/upload-stops", response_model=UploadStopsReportResponse)
+def report_upload_stops(
+    payload: UploadStopsReportIn, request: Request, response: Response
+) -> UploadStopsReportResponse:
+    """Отчёт статусов остановок «Загрузки» от её модуля (PROGR-13-A4,
+    закрытие дефекта 1 PROGR-13: панель «Прогресс» показывает 1/5
+    остановок и зелёную «Структуру» против жёлтого модуля).
+
+    Факты пишутся СОБЫТИЯМИ трассы (upload_stop_status, payload.status
+    из CHECK_STATUS_VALUES -- единый движок node_status читает их через
+    resolve_event_status), в слой 1 И зеркалом в слой 2 -- тот же
+    двухслойный механизм, что у хука трассы (§5). Валидация fail-closed
+    (паттерн sanity-check §7.2): неизвестный узел / недопустимый статус
+    / неполная карта -- 422 ДО первой записи (all-or-nothing, чёрных
+    дыр в фактах стадии нет). Аналитик без датасета -- 400 (факты
+    остановок без исследования не существуют)."""
+    stops = payload.stops
+    if not stops:
+        raise HTTPException(
+            status_code=422,
+            detail="Карта остановок пуста -- отчёт фактов без фактов",
+        )
+    known_ids = STAGE_NODES["upload"]
+    unknown = sorted(set(stops) - set(known_ids))
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Неизвестные остановки «Загрузки»: {unknown}; "
+                f"известные: {list(known_ids)} (§2 -- фантомных узлов нет)"
+            ),
+        )
+    invalid = sorted(
+        node_id
+        for node_id, status in stops.items()
+        if status not in CHECK_STATUS_VALUES
+    )
+    if invalid:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Недопустимый статус остановок: {invalid}; "
+                f"допустимые: {list(CHECK_STATUS_VALUES)} (CheckStatus §3)"
+            ),
+        )
+    missing = [node_id for node_id in known_ids if node_id not in stops]
+    if missing:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Карта неполна (нет остановок: {missing}) -- отчёт "
+                f"обязан быть снапшотом ВСЕХ остановок реестра"
+            ),
+        )
+
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataset is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Сначала загрузите датасет -- остановки «Загрузки» без данных не существуют",
+        )
+    session.ensure_run_id()
+    for node_id in known_ids:
+        event = make_trace_event(
+            "upload_stop_status",
+            stage="upload",
+            node_id=node_id,
+            run_id=session.run_id,
+            status=stops[node_id],
+        )
+        session.append_trace_event(event)
+        # §5 слой 2: зеркало фактов остановок в research_runs -- тот же
+        # best-effort механизм, что у хука (record_run_event).
+        record_run_event(session, event)
+    store.save(session)
+    return UploadStopsReportResponse(run_id=session.run_id, reported=len(known_ids))
 
 
 # ── PROGR-5: долговременный слой (§5 слой 2) ─────────────────────────

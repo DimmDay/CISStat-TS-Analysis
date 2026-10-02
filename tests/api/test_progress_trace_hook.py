@@ -113,6 +113,8 @@ def test_route_table_covers_documented_endpoints():
     assert ("POST", "/v1/internal/upload") in keys
     assert ("POST", "/v1/public/upload") in keys
     assert ("POST", "/v1/session/demo") in keys
+    # PROGR-13-A3: подтверждение структуры аналитиком (POST /date-column)
+    assert ("POST", "/v1/session/date-column") in keys
     # Корректировки Валидации (8 + sufficiency + convert-types)
     for path in (
         "/v1/session/dataset/format-corrections",
@@ -173,8 +175,9 @@ def test_route_table_covers_documented_endpoints():
     ):
         assert ("POST", path) in keys, path
     # PROGR-13-B2: динамическая строка passport/{stage} развёрнута в
-    # 4 литеральных (точка -> стадия): 40 - 1 + 4 = 43
-    assert len(TRACE_ROUTES) == 43
+    # 4 литеральных (точка -> стадия): 40 - 1 + 4 = 43;
+    # PROGR-13-A3: + POST /v1/session/date-column (structure_confirmed) = 44
+    assert len(TRACE_ROUTES) == 44
 
 
 def test_route_table_pairs_pass_trace_event_gate():
@@ -257,9 +260,18 @@ def test_resolve_matches_method_path_and_node():
     assert spec is not None
     assert (spec.stage, spec.node_id, spec.event_type) == (
         "upload",
-        "structure",
+        "overview",
         "upload_completed",
     )
+    # PROGR-13-A3: подтверждение структуры -- отдельный маршрут/факт
+    spec = resolve_trace_route("POST", "/v1/session/date-column")
+    assert spec is not None
+    assert (spec.stage, spec.node_id, spec.event_type) == (
+        "upload",
+        "structure",
+        "structure_confirmed",
+    )
+    assert spec.payload_keys == ("date_column",)
 
 
 def test_resolve_passport_param_path():
@@ -307,7 +319,6 @@ def test_resolve_unmapped_endpoints_return_none():
     from apps.api.trace_hook import resolve_trace_route
 
     assert resolve_trace_route("PUT", "/v1/session/dataset/validation-rules") is None
-    assert resolve_trace_route("POST", "/v1/session/date-column") is None
     assert resolve_trace_route("POST", "/v1/session/stage/eda") is None
     assert resolve_trace_route("POST", "/v1/session/modeling/forecast") is None
 
@@ -528,7 +539,7 @@ def test_first_upload_fixes_run_id_and_writes_upload_completed():
     stored = session.pipeline_trace[-1]
     assert stored["event_type"] == "upload_completed"
     assert stored["stage"] == "upload"
-    assert stored["node_id"] == "structure"
+    assert stored["node_id"] == "overview"
     assert stored["run_id"] == session.run_id
 
 

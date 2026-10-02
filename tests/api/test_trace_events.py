@@ -128,8 +128,12 @@ class TestStageEventRegistry:
         # validation->validation, exit->eda, modeling_entry->modeling);
         # реестр расширен типом на upload/validation/modeling (паттерн
         # «сторонние этапы -- расширением реестра, не обходом гейта»).
+        # PROGR-13-A3/A4: Загрузка + structure_confirmed (подтверждение
+        # структуры аналитиком, POST /date-column) и upload_stop_status
+        # (отчёт фактов остановок модулем, статус -- в payload).
         assert STAGE_EVENT_TYPES["upload"] == {
             "upload_completed", "passport_captured",
+            "structure_confirmed", "upload_stop_status",
         }
         assert STAGE_EVENT_TYPES["validation"] == {
             "mode_changed", "correction_previewed",

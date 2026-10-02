@@ -69,6 +69,16 @@ _STAGE_EVENT_TYPES: dict[str, set[str]] = {
         # PROGR-13-B2: паспорт start фиксируется на вкладке «Загрузка» --
         # тип паспортной точки валиден на её стадии (см. примечание ниже).
         "passport_captured",
+        # PROGR-13-A3: подтверждение структуры аналитиком
+        # (POST /date-column, остановка «Структура» модуля) -- факт
+        # решения, не сырой ответ (payload -- date_column из тела ответа).
+        "structure_confirmed",
+        # PROGR-13-A4: отчёт фактов остановок модулем «Загрузка»
+        # (POST /v1/progress/upload-stops; прецедент §7.2 -- клиент строит
+        # сводку из уже полученных данных). Статус остановки -- В PAYLOAD
+        # (ключ "status", whitelist CHECK_STATUS_VALUES); движок
+        # node_status читает его оттуда (PAYLOAD_STATUS_EVENT_TYPES).
+        "upload_stop_status",
     },
     "validation": {
         # spec_progress.md §4.1 (унаследовано из progress_ts_analysis.md).
