@@ -108,10 +108,42 @@ const okDistributionResponse = {
   kde: Array.from({ length: 5 }, (_, i) => ({ x: 10 + i * 20, y: 0.01 * (i + 1) })),
 };
 
+// Ответ GET /dataset/structure-detection по умолчанию (см. ветку ниже):
+// date уверенно детектирована, группирующей колонки нет -- легитимный
+// "(нет)" с confidence 0% (односерийный/однорядный датасет).
+const defaultStructureDetection = {
+  date_col: { selected: "date", confidence: 95, candidates: [{ name: "date", score: 0.95 }, { name: "value", score: 0.0 }] },
+  entity_col: { selected: "(нет)", confidence: 0, candidates: [{ name: "date", score: 0.0 }, { name: "value", score: 0.0 }] },
+};
+
+// Сценарий структуры для PROGR-14-A: выбранные значения и raw confidence
+// авто-детекта (confidence -- статическая оценка бэкенда, НЕ
+// пересчитывается при ручном onChange, 2026-08-14).
+interface DetectionScenario {
+  dateCol: { selected: string; confidence: number };
+  entityCol: { selected: string; confidence: number };
+}
+
+function detectionPayload(scenario: DetectionScenario) {
+  return {
+    date_col: {
+      selected: scenario.dateCol.selected,
+      confidence: scenario.dateCol.confidence,
+      candidates: scenario.dateCol.selected.startsWith("(") ? [] : [{ name: scenario.dateCol.selected, score: scenario.dateCol.confidence / 100 }],
+    },
+    entity_col: {
+      selected: scenario.entityCol.selected,
+      confidence: scenario.entityCol.confidence,
+      candidates: scenario.entityCol.selected.startsWith("(") ? [] : [{ name: scenario.entityCol.selected, score: scenario.entityCol.confidence / 100 }],
+    },
+  };
+}
+
 // AppShellProvider гидрируется с /v1/session/current при монтировании,
 // а после успешного upload компонент сам запрашивает /dataset/stats --
 // мокаем обе ручки; конкретные тесты переопределяют /upload под свой сценарий.
-function mockFetchSequence(uploadResult: unknown, uploadOk = true) {
+// detectionOverride (PROGR-14-A) -- свой сценарий structure-detection.
+function mockFetchSequence(uploadResult: unknown, uploadOk = true, detectionOverride?: DetectionScenario) {
   global.fetch = jest.fn((url: string) => {
     if (typeof url === "string" && url.includes("/session/current")) {
       return Promise.resolve({
@@ -148,11 +180,7 @@ function mockFetchSequence(uploadResult: unknown, uploadOk = true) {
       // на клиенте: date-колонка "date" (datetime dtype в okUploadResponse).
       return Promise.resolve({
         ok: true,
-        json: () =>
-          Promise.resolve({
-            date_col: { selected: "date", confidence: 95, candidates: [{ name: "date", score: 0.95 }, { name: "value", score: 0.0 }] },
-            entity_col: { selected: "(нет)", confidence: 0, candidates: [{ name: "date", score: 0.0 }, { name: "value", score: 0.0 }] },
-          }),
+        json: () => Promise.resolve(detectionOverride ? detectionPayload(detectionOverride) : defaultStructureDetection),
       });
     }
     if (typeof url === "string" && url.includes("/dataset/stats")) {
@@ -1190,8 +1218,9 @@ function mockApplicableDecompositionFetch() {
 //
 // Статусы при стандартном моке okUploadResponse: «Превью датасета» --
 // done и активна по умолчанию, «График»/«Распределение» -- done,
-// «Структура» -- warning (entity confidence 0 < 70), «Качество» --
-// warning (cols_with_missing = 1).
+// «Структура» -- done (PROGR-14-A: «(нет)» группирующей колонки --
+// уверенный факт решения «колонки нет», а не сомнительная догадка
+// с confidence 0%), «Качество» -- warning (cols_with_missing = 1).
 
 async function renderUploaded(uploadResult: unknown = okUploadResponse) {
   mockFetchSequence(uploadResult);
@@ -1209,8 +1238,8 @@ describe("TsAnalysisUpload — зелёная подсветка пройден�
     await renderUploaded();
 
     // Снимаем активность с дефолтной остановки «Превью датасета» (done):
-    // кликаем на «Качество» (warning).
-    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    // кликаем на «Структуру» (done, PROGR-14-A: «(нет)» -- уверенный факт).
+    fireEvent.click(screen.getByRole("button", { name: /^Структура/ }));
 
     // Пройденная остановка (зелёная галочка) -> светло-зелёная кнопка
     // с зелёным текстом (эталон Моделирования: bg-green-50/green-200/green-800).
@@ -1220,7 +1249,7 @@ describe("TsAnalysisUpload — зелёная подсветка пройден�
     expect(doneButton).not.toHaveClass("bg-white");
 
     // Не пройденная (warning) и не активная остановка -> БЕЗ окраски.
-    const warningButton = screen.getByRole("button", { name: /^Структура/ });
+    const warningButton = screen.getByRole("button", { name: /^Качество/ });
     expect(warningButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
     expect(warningButton).not.toHaveClass("bg-green-50");
     expect(warningButton).not.toHaveClass("border-green-200");
@@ -1241,9 +1270,9 @@ describe("TsAnalysisUpload — зелёная подсветка пройден�
   it("leaves a non-active warning stop uncolored while done stops are highlighted", async () => {
     await renderUploaded();
 
-    // Дефолтное состояние: «Структура» -- warning (не активна) -> белая;
+    // Дефолтное состояние: «Качество» -- warning (не активна) -> белая;
     // контраст: «Распределение» (done, не активна) -- зелёная.
-    const warningButton = screen.getByRole("button", { name: /^Структура/ });
+    const warningButton = screen.getByRole("button", { name: /^Качество/ });
     expect(warningButton).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
     expect(warningButton).not.toHaveClass("bg-green-50");
     expect(warningButton).not.toHaveClass("border-green-200");
@@ -1281,5 +1310,106 @@ describe("TsAnalysisUpload — зелёная подсветка пройден�
     expect(pendingButton).not.toHaveClass("bg-green-50");
     expect(pendingButton).not.toHaveClass("border-green-200");
     expect(pendingButton).not.toHaveClass("text-green-800");
+  });
+});
+
+// ── PROGR-14-A: статус «Структуры» -- из факта решения, не raw confidence ──
+//
+// Дефект (замечание тимлида): entity confidence = 0% для легитимного
+// «(нет)» группирующей колонки у однорядного датасета -- зелёным
+// остановке не быть никогда. Формула остановки читала raw confidence
+// авто-детекта как «уверенность в выборе», но «(нет)»/«(не
+// использовать)» -- РЕШАЮЩИЕ выборы («колонки нет»): у автодетекта здесь
+// нечему быть «неуверенным», 0% описывает отсутствие скоринга, а не
+// сомнение. Контракт: решение по колонке уверенное <=> выбран явный
+// маркер отсутствия ЛИБО raw confidence >= 70 (последний сохраняет смысл
+// честного предупреждения о сомнительном угадывании КОНКРЕТНОЙ колонки).
+//
+// Классы кнопок степпера: done -> bg-green-50/border-green-200/text-green-800,
+// warning -> bg-white/border-neutral-200/text-neutral-800; активная
+// остановка всегда индиго (приоритет активной ветки) -- поэтому статус
+// утверждается с ЧУЖОЙ активной остановкой («Качество»).
+describe("TsAnalysisUpload — PROGR-14-A: статус «Структуры» из факта решения, не raw confidence", () => {
+  async function renderStructureStop(detection: DetectionScenario) {
+    mockFetchSequence(okUploadResponse, true, detection);
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    await waitFor(() => expect(screen.getByText("Превью датасета")).toBeInTheDocument());
+    // Открываем остановку и ждём прихода detection (карточка с селекторами)
+    // -- до этого «Структура» честно pending, классы ещё не устоялись.
+    fireEvent.click(screen.getByText("Структура"));
+    await waitFor(() => expect(screen.getByText("Группирующая колонка")).toBeInTheDocument());
+  }
+
+  it("«(нет)» у группирующей колонки однорядного датасета -- уверенный факт: остановка done (дефект замечания тимлида)", async () => {
+    await renderStructureStop({
+      dateCol: { selected: "date", confidence: 95 },
+      entityCol: { selected: "(нет)", confidence: 0 },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+
+    const button = screen.getByRole("button", { name: /^Структура/ });
+    expect(button).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
+    expect(button).not.toHaveClass("bg-brand");
+    expect(button).not.toHaveClass("bg-white");
+  });
+
+  it("«(не использовать)» у даты + «(нет)» у группирующей (оба 0%) -- оба решения явные: done", async () => {
+    await renderStructureStop({
+      dateCol: { selected: "(не использовать)", confidence: 0 },
+      entityCol: { selected: "(нет)", confidence: 0 },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+
+    const button = screen.getByRole("button", { name: /^Структура/ });
+    expect(button).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
+    expect(button).not.toHaveClass("bg-white");
+  });
+
+  it("ручной выбор «(нет)» на остановке переводит статус в done при низком raw confidence авто-детекта", async () => {
+    await renderStructureStop({
+      dateCol: { selected: "date", confidence: 95 },
+      entityCol: { selected: "Country", confidence: 25 },
+    });
+
+    // Решение пользователя -- факт; raw confidence авто-детекта при
+    // onChange НЕ пересчитывается (2026-08-14), статус -- из решения.
+    fireEvent.change(screen.getByDisplayValue("Country"), { target: { value: "(нет)" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    const button = screen.getByRole("button", { name: /^Структура/ });
+    expect(button).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
+    expect(button).not.toHaveClass("bg-white");
+  });
+
+  it("guard: сомнительное угадывание КОНКРЕТНОЙ колонки (confidence<70) честно остаётся warning", async () => {
+    await renderStructureStop({
+      dateCol: { selected: "Year", confidence: 40 },
+      entityCol: { selected: "(нет)", confidence: 0 },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    const button = screen.getByRole("button", { name: /^Структура/ });
+    expect(button).toHaveClass("bg-white", "border-neutral-200", "text-neutral-800");
+    expect(button).not.toHaveClass("bg-green-50");
+    expect(button).not.toHaveClass("border-green-200");
+    expect(button).not.toHaveClass("text-green-800");
+  });
+
+  it("guard: уверенные конкретные выборы обеих колонок -- done (прежнее поведение сохранено)", async () => {
+    await renderStructureStop({
+      dateCol: { selected: "date", confidence: 95 },
+      entityCol: { selected: "Country", confidence: 85 },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
+    const button = screen.getByRole("button", { name: /^Структура/ });
+    expect(button).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
   });
 });

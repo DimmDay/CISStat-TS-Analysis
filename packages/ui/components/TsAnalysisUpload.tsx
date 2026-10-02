@@ -215,6 +215,32 @@ function confidenceColor(pct: number): string {
   return "bg-red-100 text-red-700";
 }
 
+// PROGR-14-A: явные выборы-маркеры отсутствия колонки -- «(нет)» у
+// группирующей, «(не использовать)» у даты. Это РЕШАЮЩИЕ состояния выбора
+// («колонки нет»), а не сомнительные догадки: у авто-детекта здесь нечему
+// быть «неуверенным», и raw confidence 0% описывает отсутствие скоринга,
+// а не сомнение (бэкенд отдаёт 0%, когда колонки такого рода в датасете
+// нет -- см. apps/api/routers/session.py::get_structure_detection).
+const EXPLICIT_NONE_CHOICES: ReadonlySet<string> = new Set(["(нет)", "(не использовать)"]);
+
+function isExplicitNoneChoice(selected: string): boolean {
+  return EXPLICIT_NONE_CHOICES.has(selected);
+}
+
+/**
+ * PROGR-14-A: решение «Структуры» по одной колонке -- уверенное, если
+ * выбран явный маркер отсутствия (см. EXPLICIT_NONE_CHOICES) ЛИБО raw
+ * confidence авто-детекта >= 70 (порог прежний). Статус выводится из
+ * ФАКТА РЕШЕНИЯ, а не из сырой оценки: raw confidence сохраняет ровно
+ * один смысл -- честно ПРЕДУПРЕДИТЬ о сомнительном угадывании
+ * КОНКРЕТНОЙ колонки (прецедент гейта confidentDateCol 2026-08-14:
+ * «доверяем осознанному выбору, confidence -- только для предупреждения
+ * о низком авто-детекте»).
+ */
+function isStructureDecisionConfident(col: { selected: string; confidence: number }): boolean {
+  return isExplicitNoneChoice(col.selected) || col.confidence >= 70;
+}
+
 function formatNum(n: number): string {
   return n.toLocaleString("ru-RU").replace(/,/g, " ");
 }
@@ -722,7 +748,21 @@ export function TsAnalysisUpload() {
     overview: !isUploaded ? "pending" : (uploadData?.parse_warnings.length ?? 0) > 0 ? "warning" : "done",
     chart: !isUploaded ? "pending" : !detection || detection.dateCol.confidence < 70 ? "warning" : "done",
     distribution: !isUploaded ? "pending" : numericCols.length === 0 ? "pending" : "done",
-    structure: !detection ? "pending" : detection.dateCol.confidence < 70 || detection.entityCol.confidence < 70 ? "warning" : "done",
+    // PROGR-14-A: «Структура» -- из ФАКТА РЕШЕНИЯ по каждой колонке, не
+    // из raw confidence. Прежняя формула (confidence<70 || confidence<70)
+    // делала остановку вечно-жёлтой для легитимного «(нет)» группирующей
+    // колонки у однорядного/односерийного датасета (entity confidence
+    // = 0% -- замечение тимлида): явный выбор «(нет)»/«(не использовать)»
+    // -- уверенное решение, предупреждение остаётся только для
+    // сомнительного угадывания конкретной колонки
+    // (см. isStructureDecisionConfident). Бейдж 0% на самой остановке
+    // остаётся честным показом оценки авто-детекта.
+    structure:
+      !detection
+        ? "pending"
+        : isStructureDecisionConfident(detection.dateCol) && isStructureDecisionConfident(detection.entityCol)
+        ? "done"
+        : "warning",
     quality:
       !uploadData?.quality
         ? "pending"
