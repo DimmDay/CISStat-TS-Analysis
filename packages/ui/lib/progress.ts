@@ -42,7 +42,10 @@ import { STAGE_DEFS } from "./stages";
 export const PROGRESS_STAGE_NODES: Record<string, readonly string[]> = {
   // Ключи в кавычках -- формат страхован sync-тестом (regex-парсер
   // живого исходника; не реорганизовывать без теста).
-  "upload": ["structure_confirmed"],
+  // PROGR-13-B: канонический id узла Загрузки -- "structure" (выровнен
+  // с остановкой модуля TsAnalysisUpload); legacy "structure_confirmed"
+  // старого корпуса нормализуется на бэкенде (LEGACY_NODE_IDS).
+  "upload": ["structure"],
   "validation": [
     "data_types", "formats", "ranges", "consistency", "uniqueness",
     "inclusion", "referential", "text_quality", "regularity", "sufficiency",
@@ -71,7 +74,7 @@ export const PROGRESS_STAGE_NODES: Record<string, readonly string[]> = {
 // modeling.ts; Загрузка/Прогнозирование -- формулировки §2/§4.1.
 
 const NODE_LABELS: Record<string, Record<string, string>> = {
-  upload: { structure_confirmed: "Структура данных" },
+  upload: { structure: "Структура данных" },
   validation: {
     data_types: "Типы данных",
     formats: "Форматы и шаблоны",

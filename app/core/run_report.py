@@ -69,7 +69,11 @@ _METRICS_LABEL_PREFIX = "Метрики и алгоритм: "
 # события несут факты) и 4 типа событий Прогнозирования (справка этапа --
 # модульная). Значения синхронны NODE_LABELS packages/ui/lib/progress.ts.
 FALLBACK_NODE_LABELS: dict[tuple[str, str], str] = {
-    ("upload", "structure_confirmed"): "Структура данных",
+    # PROGR-13-B: канонический id узла Загрузки -- "structure" (выровнен
+    # с остановкой модуля); legacy "structure_confirmed" нормализуется
+    # на границе resolve_node_id -- отчёт старых запусков получает ту же
+    # метку, история не теряется.
+    ("upload", "structure"): "Структура данных",
     ("forecasting", "forecast_generated"): "Прогноз построен",
     ("forecasting", "forecast_compared"): "Сравнение прогнозов",
     ("forecasting", "forecast_sensitivity_computed"): "Анализ чувствительности",

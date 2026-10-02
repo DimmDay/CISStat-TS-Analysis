@@ -1435,3 +1435,42 @@ N-4 (Info): роутер/фронтенд/оракулы не тронуты -- 
 ### Deliverable
 ZIP: cisstat-progr12-mentor-text-renderer-protocol.zip -- пути репозитория сохранены.
 ИЗМЕНЁННЫЕ: app/core/mentor_rules.py (+MentorTextRenderer Protocol §8, +FormatMentorTextRenderer, +DEFAULT_TEXT_RENDERER, +MentorRuleFact, +validate_explanation_template; условия §7.2/истории -> факты без текста; шаблоны {times}/{removed_share:.0%} -- в реестр правил; evaluate_* -- рендер через renderer после факта; fail-closed валидация шаблонов на все триггеры; докстринги модуля/MentorRule); tests/api/test_mentor_rules.py (+Контур 7 -- 13 тестов, шапка Контуров); worklog/worklog8.md (эта запись). Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PROGR-13-B (2026-10-02) — Компактное backend-исправление дефекта 2 «Прогресса» + исключение главного риска плана (нормализация legacy node_id корпуса слоя 2)
+
+База: main@2d2d05c. Правила AGENTS.md соблюдены: commit/push НЕ выполнялись; TDD RED→GREEN→миграции контрактов; сборка проверена.
+
+Постановка (тимлид): Реализовать в коде PROGR-13-B (компактная). Исключить главный риск: без нормализации старого node_id в Postgres-корпусе панель и admin-аналитика теряют историю запусков. Выложить ZIP в открытый контейнер сессии.
+
+### B1 (фаза Наставника по УЗЛОВЫМ фактам):
+
+app/core/node_status.py: НОВАЯ чистая функция derive_last_active_stage(events, default="upload") — стадия последнего узлового факта решения (event_type in EVENT_NODE_STATUS + resolve_node_id + is_known_node, тот же гейт, что у derive_node_statuses). Stage-level события (node_id=None: target_column_changed/passport_captured/mode_changed/run_*) фазу НЕ двигают (target_column_changed мульти-страничен: сеется авто-POST хука useTargetColumn на вкладке «Загрузка»; паспорт — фиксация снимка, не переход на вкладку).
+apps/api/routers/progress.py::get_mentor_next_step: вместо events[-1].stage — derive_last_active_stage(events). Дефект 2 закрыт: «Идёт этап "Валидация"» без захода на Валидацию воспроизводится больше нельзя (скрипт scripts/progr13_repro_defects.py: last_active_stage='upload' в ОБОИХ вариантах сценария, phase_text — «Загрузка»).
+apps/api/routers/progress.py::restore (§5.3): session.last_active_stage и стадия run_resumed — тоже derive_last_active_stage(seeded) (тот же корень дефекта: хвост трассы из stage-level событий делал «Валидацию» текущим этапом после восстановления на другом устройстве).
+B2 (мисаттрибуция паспортов):
+
+apps/api/trace_hook.py: динамическая строка passport/{stage} (всё — eda) развёрнута в 4 ЛИТЕРАЛЬНЫХ: start→upload (точка фиксируется на вкладке «Загрузка»), validation→validation, exit→eda, modeling_entry→modeling; payload_keys прежние (stage/snapshot_id/fingerprint — точка остаётся фактом payload). Неизвестная точка — ни одной строки таблицы → событие не пишется (fail-closed; эндпоинт сам 404 по PASSPORT_STAGES). Таблица 40 → 43 строк (контракт-тест обновлён).
+apps/api/trace_events.py: реестр STAGE_EVENT_TYPES расширен passport_captured на upload/validation/modeling (паттерн модуля «сторонние этапы — расширением реестра, а не обходом гейта»); eda — без изменений. _validate_table (fail-closed на импорте) проходит.
+B3 (ГЛАВНЫЙ РИСК ПЛАНА — корпус слоя 2):
+
+app/core/pipeline_graph.py: UPLOAD_STAGE_IDS = ("structure",) — канонический id узла Загрузки выровнен с id остановки «Структура» реестра модуля TsAnalysisUpload.tsx::STOPS (прежний structure_confirmed становится legacy-идентификатором).
+app/core/node_status.py: LEGACY_NODE_IDS = {"upload": {"structure_confirmed": "structure"}} + normalize_legacy_node_id(stage, node_id) (идемпотентность, ограничение своей стадией, unknown — как есть, фантомов нет — дальше гейт is_known_node); нормализация вшита в resolve_node_id — ЕДИНСТВЕННУЮ точку вывода узла, поэтому все потребители наследуют её: панель /trace (node_statuses/stages/nodes), Наставник (статусы+фаза), admin-аналитика (top_problem_nodes/банк кейсов), отчёт §5.4 (run_report импортирует resolve_node_id). Трасса — журнал (R3 PROGR-1-CERT): записи Postgres-корпуса НЕ переписываются, нормализация только на чтении; без неё is_known_node-гейт молча отбрасывал бы узловые факты старых запусков (панель — «Загрузка: не начато», потеря истории у Наставника/admin).
+app/core/run_report.py: FALLBACK_NODE_LABELS["upload","structure"]="Структура данных" (метка старых запусков — та же через нормализацию в модели отчёта; прямая метка по legacy id — честный сырой фоллбек, зафиксировано тестом).
+packages/ui/lib/progress.ts: зеркало PROGRESS_STAGE_NODES["upload"]=["structure"] + NODE_LABELS.upload.structure (sync-структура jest-теста сохранена: счётчики [1,10,10,10,11,4]).
+
+### TDD:
+RED: tests/api/test_progress_progr13b.py (НОВЫЙ, 19 тестов): B1 — stage-level события не двигают фазу, последний узловой факт выигрывает, forecasting-вывод из event_type, fallback upload, legacy-строка корпуса считается узловым фактом; B3 — контракт normalize_legacy_node_id (идемпотентность/стадия/unknown/None), derive_node_statuses нормализует legacy-строку БЕЗ фантомного ключа, admin-аналитика (build_admin_overview) видит legacy-корпус без фантомов; B2 — параметризованная таблица точка→стадия (4) + fail-closed на неизвестной точке + регистрация типа на новых стадиях; API — фаза Наставника на legacy-корпусе (upload, затем modeling после нового факта), панель на legacy-слое-1 (upload/structure done, карточка passed, фантома нет), restore — фаза по узловым фактам. Все 16 содержательных падали на @2d2d05c с диагностичными сообщениями (2 — совпадения по стадии exit/validation, 1 — регрессионный guard mentor-legacy).
+GREEN: реализация выше; 19/19.
+Миграции контрактов (структурный переезд фиксур, не ослабление): test_pipeline_graph (3), test_node_status_engine (4), test_trace_events (1), test_progress_trace_hook (6), test_run_report (2), test_progress_panel (4).
+Итог pytest tests/api/: 1228 passed; падения — ТОЛЬКО (а) 19 предсуществующих средовых (forecasting_session/modeling_workflow/models_*; воспроизводятся 1:1 на чистом 2d2d05c через git worktree — к задаче не относятся), (б) 5 RED-контрактов PROGR-13-A в test_progress_defects_progr13.py — оставлены RED сознательно, их GREEN = задача A. Три B-контракта того файла — GREEN (дефект 2 закрыт полностью).
+Jest: 148 сюит / 1781 теста — все зелёные (фикстуры с raw node_id="structure_confirmed" — легальные legacy-события журнала). typecheck:all (embedded+standalone) — чисто.
+Скрипт live-репродукции scripts/progr13_repro_defects.py: ДЕФЕКТ 2 ИСПРАВЛЕН (оба варианта сценария — этап «Загрузка»); дефект 1 ожидаемо остаётся (1/5 остановок — зона PROGR-13-A).
+
+### Осознанные границы (не входящие в компактную B):
+
+stage_for_run_level_event (research_runs.py:1091) всё ещё stamps run_paused/resumed/checkpoint по хвосту трассы; правка требует импорта движка в research_runs → цикл. Кандидат на отдельную задачу.
+upload_completed по-прежнему красит узел structure в done (дефект 1б) и граф Загрузки — 1 остановка (дефект 1а): это PROGR-13-A (A1–A5).
+Спек-документы (spec_progress.md §2/§4.1, progress_ts_analysis.md) не переписывались — документационная часть A; код самодокументирован комментариями PROGR-13-B.
+Исторические оракулы/сертификаты не трогались — датированные свидетельства приёмок.

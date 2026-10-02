@@ -301,7 +301,7 @@ class TestDeriveStageStates:
         from app.core.pipeline_graph import STAGE_NODES
 
         statuses = {
-            "upload/structure_confirmed": "done",
+            "upload/structure": "done",
             "validation/data_types": "done",
             "validation/formats": "warning",
             "preprocessing/missing": "running",
@@ -340,7 +340,7 @@ class TestDeriveStageStates:
         assert states["eda"]["warning_nodes"] == 0
 
     def test_all_done_stage_folds_to_passed(self):
-        statuses = {"upload/structure_confirmed": "done"}
+        statuses = {"upload/structure": "done"}
         states = {state["stage"]: state for state in derive_stage_states(statuses)}
         assert states["upload"]["fold"] == "passed"
 
@@ -522,14 +522,14 @@ class TestPipelineNodeStates:
         содержит ключей бейджа -- summary_count честно None, бейдж
         не выдумывается."""
         events = [
-            _event("upload", "structure_confirmed", "upload_completed",
+            _event("upload", "structure", "upload_completed",
                    rows=120, columns=7),
         ]
         by_key = {
             (s["stage"], s["node_id"]): s
             for s in derive_pipeline_node_states(events)
         }
-        node = by_key[("upload", "structure_confirmed")]
+        node = by_key[("upload", "structure")]
         assert node["status"] == "done"
         assert node["summary_count"] is None
         assert node["last_touched_at"] is not None
@@ -546,7 +546,7 @@ class TestPipelineNodeStates:
         assert by_key[("validation", "formats")]["mode"] == "disabled"
         assert by_key[("validation", "data_types")]["mode"] == "auto"
         assert by_key[("preprocessing", "missing")]["mode"] == "auto"
-        assert by_key[("upload", "structure_confirmed")]["mode"] is None
+        assert by_key[("upload", "structure")]["mode"] is None
         assert by_key[("eda", "correlation")]["mode"] is None
         assert by_key[("modeling", "backtest")]["mode"] is None
         assert by_key[("forecasting", "forecast_generated")]["mode"] is None

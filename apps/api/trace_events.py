@@ -66,11 +66,16 @@ _STAGE_EVENT_TYPES: dict[str, set[str]] = {
     "upload": {
         # §6.1: перенос addLogEntry успешной загрузки в TraceEvent.
         "upload_completed",
+        # PROGR-13-B2: паспорт start фиксируется на вкладке «Загрузка» --
+        # тип паспортной точки валиден на её стадии (см. примечание ниже).
+        "passport_captured",
     },
     "validation": {
         # spec_progress.md §4.1 (унаследовано из progress_ts_analysis.md).
         "mode_changed", "correction_previewed",
         "correction_applied", "target_column_changed",
+        # PROGR-13-B2: паспортная точка validation (см. примечание ниже).
+        "passport_captured",
     },
     # Предобработка разделяет набор Валидации (те же действия аналитика
     # на своей остановке), таблица §4.1 объединяет обе стадии.
@@ -86,6 +91,13 @@ _STAGE_EVENT_TYPES: dict[str, set[str]] = {
         # По факту существующих эндпоинтов routers/modeling_session.py.
         "backtest_run", "tuning_trial_completed",
         "model_selected", "model_card_generated",
+        # PROGR-13-B2: паспорт modeling_entry -- контроль входа в
+        # Моделирование. Паспорт -- сквозной факт (точка задаёт стадию
+        # события, TRACE_ROUTES PROGR-13-B2): расширение реестра -- тот
+        # же паттерн «сторонние этапы регистрируются расширением
+        # реестра, а не обходом гейта»; спецификация §4.1 дополняется
+        # задачей PROGR-13-A (документация).
+        "passport_captured",
     },
     "forecasting": set(FORECAST_EVENT_TYPES),
 }

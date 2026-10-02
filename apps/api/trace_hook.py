@@ -127,17 +127,19 @@ _CORRECTION_PAYLOAD_KEYS = (
 )
 
 TRACE_ROUTES: tuple[TraceRouteSpec, ...] = (
-    # ── Загрузка (§4.1: upload_completed; узел structure_confirmed §2) ──
+    # ── Загрузка (§4.1: upload_completed; узел structure §2,
+    # PROGR-13-B: прежний structure_confirmed -- legacy, нормализуется
+    # на границе чтения движка, LEGACY_NODE_IDS node_status.py) ──
     # payload -- форма UploadResponse (name/rows/columns/size_label).
     TraceRouteSpec(
-        "POST", "/v1/internal/upload", "upload", "structure_confirmed",
+        "POST", "/v1/internal/upload", "upload", "structure",
         "upload_completed", payload_keys=("name", "rows", "columns", "size_label"),
     ),
     TraceRouteSpec(
-        "POST", "/v1/public/upload", "upload", "structure_confirmed",
+        "POST", "/v1/public/upload", "upload", "structure",
         "upload_completed", payload_keys=("name", "rows", "columns", "size_label"),
     ),
-    TraceRouteSpec("POST", "/v1/session/demo", "upload", "structure_confirmed",
+    TraceRouteSpec("POST", "/v1/session/demo", "upload", "structure",
                    "upload_completed"),
     # ── Валидация: корректировки проверок (correction_applied/previewed) ──
     TraceRouteSpec(
@@ -256,9 +258,30 @@ TRACE_ROUTES: tuple[TraceRouteSpec, ...] = (
         "PUT", "/v1/session/dataset/preprocessing-check-modes",
         "preprocessing", None, "mode_changed", payload_keys=("modes",),
     ),
-    # ── EDA: паспорт (§4.1; паспорт -- НЕ узел графа, node_id=None §2) ──
+    # ── Паспорт (§4.1; паспорт -- НЕ узел графа, node_id=None §2).
+    # PROGR-13-B2: точка паспорта -- значение параметра пути -- маппится
+    # на стадию события: start фиксируется на вкладке «Загрузка»
+    # (мисаттрибуция «всё -- eda» двигала фазу Наставника и искажала
+    # трассу/отчёт §5.4); modeling_entry -- вход в Моделирование.
+    # Неизвестная точка -- ни одной строки таблицы -> событие не пишется
+    # (fail-closed; сам эндпоинт отвечает 404 по PASSPORT_STAGES).
+    # Реестр STAGE_EVENT_TYPES (trace_events.py) расширен типом на
+    # upload/validation/modeling (паттерн «сторонние этапы -- расширением
+    # реестра, не обходом гейта»).
     TraceRouteSpec(
-        "POST", "/v1/session/dataset/passport/{stage}", "eda", None,
+        "POST", "/v1/session/dataset/passport/start", "upload", None,
+        "passport_captured", payload_keys=("stage", "snapshot_id", "fingerprint"),
+    ),
+    TraceRouteSpec(
+        "POST", "/v1/session/dataset/passport/validation", "validation", None,
+        "passport_captured", payload_keys=("stage", "snapshot_id", "fingerprint"),
+    ),
+    TraceRouteSpec(
+        "POST", "/v1/session/dataset/passport/exit", "eda", None,
+        "passport_captured", payload_keys=("stage", "snapshot_id", "fingerprint"),
+    ),
+    TraceRouteSpec(
+        "POST", "/v1/session/dataset/passport/modeling_entry", "modeling", None,
         "passport_captured", payload_keys=("stage", "snapshot_id", "fingerprint"),
     ),
     # ── EDA: исследовательские GET -> profile_viewed (троттлинг §4.2).

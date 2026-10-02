@@ -156,12 +156,22 @@ class TestNodeTerminology:
     def test_label_fallback_upload_forecasting(self):
         """Узлы без статей справки (Загрузка; 4 типа событий
         Прогнозирования) -- локальные метки, синхронные с
-        packages/ui/lib/progress.ts::NODE_LABELS."""
+        packages/ui/lib/progress.ts::NODE_LABELS. PROGR-13-B:
+        канонический id узла Загрузки -- "structure"; legacy
+        "structure_confirmed" нормализуется в resolve_node_id,
+        поэтому отчёт старых запусков получает ту же метку."""
         from app.core import run_report
 
         assert (
-            run_report.node_label("upload", "structure_confirmed")
+            run_report.node_label("upload", "structure")
             == "Структура данных"
+        )
+        # legacy id корпуса слоя 2 нормализуется ДО метки (в
+        # resolve_node_id модели отчёта): прямая метка по legacy id --
+        # честный сырой фоллбек, не выдуманная метка
+        assert (
+            run_report.node_label("upload", "structure_confirmed")
+            == "structure_confirmed"
         )
         assert (
             run_report.node_label("forecasting", "forecast_generated")
@@ -216,7 +226,7 @@ class TestNodeTerminology:
         results, паттерн реестра знаний)."""
         from app.core import run_report
 
-        assert run_report.node_methodology("upload", "structure_confirmed") is None
+        assert run_report.node_methodology("upload", "structure") is None
         assert run_report.node_methodology("validation", "nonexistent") is None
 
     def test_stage_methodology_forecasting_module_overview(self):

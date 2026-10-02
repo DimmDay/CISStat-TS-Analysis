@@ -80,8 +80,9 @@ class TestProgressTraceEndpoint:
 
     def test_events_returned_after_hook_writes(self, client: TestClient):
         """События, записанные хуком (PROGR-3), читаются эндпоинтом:
-        demo-загрузка -> upload_completed на узле structure_confirmed;
-        run_id зафиксирован (формат RUN-XXXXXXXX §5); started_at -- ts
+        demo-загрузка -> upload_completed на узле structure (PROGR-13-B:
+        канонический id, выровнен с остановкой модуля); run_id
+        зафиксирован (формат RUN-XXXXXXXX §5); started_at -- ts
         первого события (аналог created_at слоя 1 для шапки §6.1)."""
         demo = client.post("/v1/session/demo")
         assert demo.status_code == 200
@@ -104,7 +105,7 @@ class TestProgressTraceEndpoint:
         ):
             assert key in event
         assert event["stage"] == "upload"
-        assert event["node_id"] == "structure_confirmed"
+        assert event["node_id"] == "structure"
         assert event["run_id"] == data["run_id"]
         assert event["ts"] == event["timestamp"]
         # payload -- факты ответа (§4.1); у /v1/session/demo строка таблицы
@@ -221,12 +222,12 @@ class TestProgressTraceReadyState:
         ]
 
     def test_upload_decision_seeds_ready_state(self, client: TestClient):
-        """Демо-загрузка -- факт решения: upload/structure_confirmed
-        done в node_statuses, карточка Загрузки -- passed 1/1, остальные
+        """Демо-загрузка -- факт решения: upload/structure done в
+        node_statuses, карточка Загрузки -- passed 1/1, остальные
         стадии не тронуты."""
         client.post("/v1/session/demo")
         data = client.get("/v1/progress/trace").json()
-        assert data["node_statuses"]["upload/structure_confirmed"] == "done"
+        assert data["node_statuses"]["upload/structure"] == "done"
         upload = next(s for s in data["stages"] if s["stage"] == "upload")
         assert upload == {
             "stage": "upload",
@@ -367,7 +368,7 @@ class TestProgressTraceReadyState:
         try:
             resp = client.get("/v1/progress/trace")
             assert resp.status_code == 200
-            assert resp.json()["node_statuses"]["upload/structure_confirmed"] == "done"
+            assert resp.json()["node_statuses"]["upload/structure"] == "done"
         finally:
             research_runs.get_research_run_store = original
 
@@ -416,14 +417,14 @@ class TestProgressTraceNodeStates:
         assert ("forecasting", None) in modes
 
     def test_upload_decision_fills_reason_and_ts(self, client: TestClient):
-        """Демо-загрузка -- узел structure_confirmed: done + причина +
+        """Демо-загрузка -- узел structure: done + причина +
         last_touched_at; бейдж-число честно отсутствует (payload
         upload_completed не несёт ключей бейджа)."""
         client.post("/v1/session/demo")
         data = client.get("/v1/progress/trace").json()
         node = next(
             n for n in data["nodes"]
-            if n["stage"] == "upload" and n["node_id"] == "structure_confirmed"
+            if n["stage"] == "upload" and n["node_id"] == "structure"
         )
         assert node["status"] == "done"
         assert node["status_reason"] == "Датасет загружен, структура подтверждена"

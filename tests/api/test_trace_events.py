@@ -123,10 +123,18 @@ class TestStageEventRegistry:
         }
 
     def test_registry_per_spec_table(self):
-        assert STAGE_EVENT_TYPES["upload"] == {"upload_completed"}
+        # PROGR-13-B2: паспорт -- сквозной факт, точка задаёт стадию
+        # события (TRACE_ROUTES маппит start->upload,
+        # validation->validation, exit->eda, modeling_entry->modeling);
+        # реестр расширен типом на upload/validation/modeling (паттерн
+        # «сторонние этапы -- расширением реестра, не обходом гейта»).
+        assert STAGE_EVENT_TYPES["upload"] == {
+            "upload_completed", "passport_captured",
+        }
         assert STAGE_EVENT_TYPES["validation"] == {
             "mode_changed", "correction_previewed",
             "correction_applied", "target_column_changed",
+            "passport_captured",
         }
         assert STAGE_EVENT_TYPES["preprocessing"] == {
             "mode_changed", "correction_previewed",
@@ -136,6 +144,7 @@ class TestStageEventRegistry:
         assert STAGE_EVENT_TYPES["modeling"] == {
             "backtest_run", "tuning_trial_completed",
             "model_selected", "model_card_generated",
+            "passport_captured",
         }
 
     def test_run_level_events_valid_on_any_stage(self):

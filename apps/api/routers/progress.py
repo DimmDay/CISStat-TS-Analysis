@@ -156,6 +156,7 @@ from app.core.mentor_rules import (
     stage_node_summary,
 )
 from app.core.node_status import (
+    derive_last_active_stage,
     derive_node_statuses,
     derive_pipeline_node_states,
     derive_stage_states,
@@ -677,7 +678,12 @@ def restore_run(request: Request, response: Response, run_id: str) -> RestoreRes
     session.pipeline_trace = [dict(event.to_dict()) for event in seeded]
     if run.target_column and run.target_column in df.columns:
         session.set_target_column(run.target_column)
-    last_stage = seeded[-1].stage if seeded and seeded[-1].stage in KNOWN_STAGES else "upload"
+    # PROGR-13-B1: фаза восстановленной сессии -- стадия последнего
+    # УЗЛОВОГО факта (единый движок derive_last_active_stage), не хвост
+    # трассы: иначе target_column_changed (сеется авто-POST хука на
+    # вкладке «Загрузка») делал «Валидацию» текущим этапом и после
+    # restore (тот же корень дефекта 2, что у Наставника).
+    last_stage = derive_last_active_stage(seeded)
     session.last_active_stage = last_stage
 
     session_store = get_session_store()
@@ -854,11 +860,12 @@ def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
     history_warnings = evaluate_history_warnings(events)
     _record_next_step_observation(run_id, recommendation)
 
-    last_stage = "upload"
-    if events:
-        tail_stage = events[-1].stage
-        if tail_stage in KNOWN_STAGES:
-            last_stage = tail_stage
+    # PROGR-13-B1: фаза -- стадия последнего УЗЛОВОГО факта решения
+    # (единый движок derive_last_active_stage), не хвост трассы:
+    # stage-level события (target_column_changed мульти-страничен,
+    # passport_captured -- фиксация снимка, run_*) фазу не двигают.
+    # Дефект 2: «Идёт этап «Валидация»» без захода на Валидацию.
+    last_stage = derive_last_active_stage(events)
 
     return MentorNextStepResponse(
         run_id=run_id,

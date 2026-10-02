@@ -125,6 +125,47 @@ NODE_SUMMARY_COUNT_KEYS: tuple[str, ...] = (
 EFFECTIVE_NODE_MODE_DEFAULT = "auto"
 
 
+# ── PROGR-13-B3: нормализация legacy node_id на границе чтения ────────
+#
+# Исторический корпус слоя 2 (Postgres, research_runs.trace_events)
+# хранит node_id, записанные ПРОШЛЫМИ версиями реестров графа. После
+# переименования узла Загрузки structure_confirmed -> structure
+# (PROGR-13-B: выравнивание с id остановки «Структура» реестра модуля
+# TsAnalysisUpload.tsx::STOPS) старые строки корпуса остаются легаль-
+# ными журнальными фактами: трасса -- журнал (R3 PROGR-1-CERT), записи
+# НЕ переписываются, нормализация происходит ТОЛЬКО на границе чтения.
+#
+# БЕЗ неё is_known_node-гейт единого движка (панель /trace, Наставник,
+# admin-аналитика, отчёт §5.4 -- все через derive_node_statuses /
+# derive_last_active_stage / run_report.resolve_node_id) молча отбрасы-
+# вал бы узловые факты старых запусков: панель показывала бы «Загрузка:
+# не начато», admin-аналитика теряла бы узловую историю. Формат:
+# {stage: {legacy_node_id: canonical_node_id}}; маппинг ограничен
+# СВОЕЙ стадией (cross-stage перезапись запрещена). Новые записи пишут
+# только канонические id (гейт _validate_table таблицы хука) -- карта
+# пополняется при КАЖДОМ переименовании узла графа.
+LEGACY_NODE_IDS: dict[str, dict[str, str]] = {
+    "upload": {"structure_confirmed": "structure"},
+}
+
+
+def normalize_legacy_node_id(stage: str, node_id: str | None) -> str | None:
+    """Нормализация legacy node_id к каноническому id графа (PROGR-13-B3,
+    паттерн R3: нормализация на границе чтения, журнал не переписывается).
+
+    legacy-значение своей стадии -> канонический id; канонический
+    проходит насквозь (идемпотентность -- корпус уже нормализованный
+    легитимен); неизвестное -- как есть (дальнейший is_known_node-гейт
+    движка решает, фантомов не возникает); None -- None; чужая стадия --
+    маппинга нет, значение не переписывается.
+    """
+    if node_id is None:
+        return None
+    mapping = LEGACY_NODE_IDS.get(stage)
+    canonical = mapping.get(str(node_id)) if mapping else None
+    return canonical if canonical else str(node_id)
+
+
 def event_to_dict(event: Any) -> dict[str, Any] | None:
     """Публичная нормализация события канона §4.1: TraceEvent (любой
     объект с to_dict) -> канонический 8-польный dict (+ legacy-алиас
@@ -146,14 +187,20 @@ def resolve_node_id(data: Mapping[str, Any]) -> str | None:
     явный node_id приоритетен; forecasting-события слоя 2 хранят
     node_id=None -- узел выводится из типа события (4 канонических типа
     §4.1 совпадают с узлами графа §2). Пара вне этих правил -- None:
-    событие уровня стадии не создаёт узловых фактов (N-2)."""
+    событие уровня стадии не создаёт узловых фактов (N-2).
+
+    PROGR-13-B3: явный node_id проходит нормализацию legacy id корпуса
+    (normalize_legacy_node_id) -- исторические строки слоя 2 считаются
+    движком под каноническим id, история запусков не теряется."""
     stage = str(data.get("stage") or "")
     node_id = data.get("node_id")
     if not node_id and stage == "forecasting":
         event_type = str(data.get("event_type") or "")
         if event_type in STAGE_NODES["forecasting"]:
             node_id = event_type
-    return str(node_id) if node_id else None
+    if not node_id:
+        return None
+    return normalize_legacy_node_id(stage, str(node_id))
 
 
 def derive_node_statuses(events: list[Any]) -> dict[str, str]:
@@ -212,6 +259,54 @@ def derive_stage_states(statuses: Mapping[str, str]) -> list[dict[str, Any]]:
             }
         )
     return states
+
+
+# ── PROGR-13-B1: фаза Наставника -- по УЗЛОВЫМ фактам ────────────────
+
+
+def derive_last_active_stage(events: list[Any], *, default: str = "upload") -> str:
+    """Стадия последнего УЗЛОВОГО факта решения -- last_active_stage
+    Наставника (§7.1; исправление дефекта 2 PROGR-13-B1).
+
+    Дефект @2d2d05c: get_mentor_next_step выводил фазу из events[-1].stage.
+    Последними событиями трассы регулярно становятся события УРОВНЯ
+    СТАДИИ (node_id=None), сеемые действиями на ДРУГИХ вкладках:
+    авто-POST /target-column хука useTargetColumn пишет
+    target_column_changed со stage="validation" (сам хук -- часть
+    вкладки «Загрузка»), паспорт start -- passport_captured (сеялся
+    stage="eda"). Наставник называл стадию, куда аналитик не заходил.
+
+    Правило: фазу двигают ТОЛЬКО узловые факты решения -- события,
+    чей тип входит в EVENT_NODE_STATUS и чей узел выводится
+    (resolve_node_id, с нормализацией legacy id корпуса B3) и известен
+    графу (is_known_node -- тот же гейт, что у derive_node_statuses:
+    фантомных стадий не возникает). Stage-level события (mode_changed,
+    target_column_changed, passport_captured, run_*) фазу НЕ двигают:
+    target_column_changed мульти-страничен, паспорт -- фиксация снимка,
+    а не переход на вкладку.
+
+    Вход -- хронология дописывания (тот же контракт, что у
+    derive_node_statuses: позднее событие выигрывает); пустая трасса /
+    только stage-level события -- честный default "upload" (происхождение
+    запуска), не выдуманная стадия. Функция чистая (без HTTP/хранилищ),
+    ввод не валидируется и не мутируется -- тот же стиль, что у всего
+    модуля; profile_viewed -- узловой факт (узел исследуется -- аналитик
+    на этой стадии работает), потому фазу двигает.
+    """
+    last_stage: str | None = None
+    for event in events:
+        data = event_to_dict(event)
+        if data is None:
+            continue
+        event_type = str(data.get("event_type") or "")
+        if event_type not in EVENT_NODE_STATUS:
+            continue  # события уровня стадии фазу не двигают (N-2)
+        stage = str(data.get("stage") or "")
+        node_id = resolve_node_id(data)
+        if not node_id or not is_known_node(stage, node_id):
+            continue
+        last_stage = stage
+    return last_stage if last_stage is not None else default
 
 
 # ── PROGR-11: полный узел §3 (PipelineNodeState) для панели ──────────

@@ -133,8 +133,12 @@ class TestGraphStructure:
         json_ids = tuple(node["id"] for node in raw["nodes"])
         assert EDA_STAGE_IDS == json_ids == EXPECTED_EDA_IDS
 
-    def test_upload_single_node_structure_confirmed(self):
-        assert STAGE_NODES["upload"] == ("structure_confirmed",)
+    def test_upload_single_node_structure(self):
+        # PROGR-13-B: канонический id узла Загрузки -- "structure"
+        # (выровнен с остановкой модуля TsAnalysisUpload.tsx::STOPS);
+        # legacy "structure_confirmed" корпуса слоя 2 нормализуется
+        # на границе чтения (LEGACY_NODE_IDS, node_status.py).
+        assert STAGE_NODES["upload"] == ("structure",)
 
     def test_forecasting_four_event_type_nodes(self):
         assert STAGE_NODES["forecasting"] == EXPECTED_FORECASTING_IDS
@@ -413,7 +417,7 @@ class TestMakeNodeState:
 
     def test_factory_fail_closed_message_lists_known_values(self):
         with pytest.raises(ValueError) as excinfo:
-            make_node_state("upload", "structure_confirmed", status="in_progress")
+            make_node_state("upload", "structure", status="in_progress")
         assert "done" in str(excinfo.value)  # известные значения в сообщении
 
     def test_direct_dataclass_construction_validated_too(self):
@@ -552,6 +556,6 @@ class TestFoldStageStatus:
 
     def test_upload_stage_warning_visible(self):
         # UPLOAD-1: загрузка использует done/warning/pending -- warning
-        # узла structure_confirmed обязан быть видимым в свёртке.
-        nodes = [make_node_state("upload", "structure_confirmed", status="warning")]
+        # узла structure обязан быть видимым в свёртке.
+        nodes = [make_node_state("upload", "structure", status="warning")]
         assert fold_stage_status(nodes) == NODE_FOLD_ATTENTION

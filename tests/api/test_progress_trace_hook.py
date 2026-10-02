@@ -146,8 +146,12 @@ def test_route_table_covers_documented_endpoints():
     ):
         assert ("POST", path) in keys, path
     assert ("PUT", "/v1/session/dataset/preprocessing-check-modes") in keys
-    # EDA: паспорт + 9 исследовательских GET (descriptive без эндпоинта)
-    assert ("POST", "/v1/session/dataset/passport/{stage}") in keys
+    # EDA/Загрузка/Валидация/Моделирование: паспорт ПО ТОЧКАМ
+    # (PROGR-13-B2: значение параметра пути маппится на стадию события;
+    # неизвестная точка -- fail-closed, строки в таблице нет) +
+    # 9 исследовательских GET (descriptive без эндпоинта)
+    for point in ("start", "validation", "exit", "modeling_entry"):
+        assert ("POST", f"/v1/session/dataset/passport/{point}") in keys, point
     for path in (
         "/v1/session/dataset/eda-correlation",
         "/v1/session/dataset/eda-ih",
@@ -168,7 +172,9 @@ def test_route_table_covers_documented_endpoints():
         "/v1/session/modeling/card",
     ):
         assert ("POST", path) in keys, path
-    assert len(TRACE_ROUTES) == 40
+    # PROGR-13-B2: динамическая строка passport/{stage} развёрнута в
+    # 4 литеральных (точка -> стадия): 40 - 1 + 4 = 43
+    assert len(TRACE_ROUTES) == 43
 
 
 def test_route_table_pairs_pass_trace_event_gate():
@@ -251,23 +257,34 @@ def test_resolve_matches_method_path_and_node():
     assert spec is not None
     assert (spec.stage, spec.node_id, spec.event_type) == (
         "upload",
-        "structure_confirmed",
+        "structure",
         "upload_completed",
     )
 
 
 def test_resolve_passport_param_path():
+    """PROGR-13-B2: точка паспорта (значение параметра пути) задаёт
+    стадию события; неизвестная точка -- ни одной строки (fail-closed,
+    эндпоинт отвечает 404 по PASSPORT_STAGES)."""
     from apps.api.trace_hook import resolve_trace_route
 
-    spec = resolve_trace_route(
-        "POST", "/v1/session/dataset/passport/modeling_entry"
-    )
-    assert spec is not None
-    assert (spec.stage, spec.node_id, spec.event_type) == (
-        "eda",
-        None,
-        "passport_captured",
-    )
+    expected = {
+        "start": "upload",
+        "validation": "validation",
+        "exit": "eda",
+        "modeling_entry": "modeling",
+    }
+    for point, stage in expected.items():
+        spec = resolve_trace_route(
+            "POST", f"/v1/session/dataset/passport/{point}"
+        )
+        assert spec is not None, point
+        assert (spec.stage, spec.node_id, spec.event_type) == (
+            stage, None, "passport_captured",
+        )
+    assert resolve_trace_route(
+        "POST", "/v1/session/dataset/passport/unknown_point"
+    ) is None
 
 
 def test_resolve_method_mismatch_returns_none():
@@ -511,7 +528,7 @@ def test_first_upload_fixes_run_id_and_writes_upload_completed():
     stored = session.pipeline_trace[-1]
     assert stored["event_type"] == "upload_completed"
     assert stored["stage"] == "upload"
-    assert stored["node_id"] == "structure_confirmed"
+    assert stored["node_id"] == "structure"
     assert stored["run_id"] == session.run_id
 
 
@@ -764,7 +781,9 @@ def test_passport_captured_event_on_capture():
         pytest.skip(f"passport start требует больших предусловий: {response.text}")
     stored = _last_stored()
     assert stored["event_type"] == "passport_captured"
-    assert stored["stage"] == "eda"
+    # PROGR-13-B2: паспорт start фиксируется на вкладке «Загрузка» --
+    # стадия события upload (мисаттрибуция eda устранена)
+    assert stored["stage"] == "upload"
     assert stored["node_id"] is None  # паспорт -- не узел графа (§2)
     assert stored["payload"]["stage"] == "start"
     assert stored["payload"]["snapshot_id"]

@@ -13,7 +13,10 @@
     packages/ui/components/TsAnalysisEDA.tsx, и этот модуль; вшитой
     копии id в Python больше нет;
   * Загрузка -- линейный флоу без CHECKS-массива: единственный узел
-    structure_confirmed (§2);
+    structure (§2; PROGR-13-B: канонический id выровнен с id остановки
+    «Структура» реестра модуля TsAnalysisUpload.tsx::STOPS; историческое
+    имя structure_confirmed нормализуется на границе чтения движка --
+    LEGACY_NODE_IDS в node_status.py, корпус слоя 2 историю сохраняет);
   * Прогнозирование -- артефакт-ориентированный этап: узлы графа = 4
     типа события ForecastRun (spec_forecasting2.md §5.9, §2 таблица);
   * STAGES -- локальная константа, обязанная совпадать с
@@ -59,7 +62,12 @@ STAGES: tuple[str, ...] = (
 
 # Единственный узел линейного флоу Загрузки (§2: структура ->
 # target_column/date_column -> декомпозиция-бейджи; CHECKS-массива нет).
-UPLOAD_STAGE_IDS: tuple[str, ...] = ("structure_confirmed",)
+# PROGR-13-B: id выровнен с остановкой «Структура» модуля
+# TsAnalysisUpload.tsx::STOPS (прежнее имя structure_confirmed --
+# legacy: нормализация на границе чтения, LEGACY_NODE_IDS
+# в app/core/node_status.py; исторический корпус слоя 2 сохраняет
+# историю запусков).
+UPLOAD_STAGE_IDS: tuple[str, ...] = ("structure",)
 
 # Узлы Прогнозирования -- 4 типа события ForecastRun (§2 таблица,
 # дословно spec_forecasting2.md §5.9).
@@ -176,7 +184,7 @@ PROCESS_STATUS_VALUES: tuple[str, ...] = ("pending", "in_progress", "done")
 
 # Проверочные стадии: каждый узел содержательно про отдельную
 # проверку/коррекцию данных с исходом pass/fail/needs-attention (§3).
-# Загрузка отнесена сюда по факту UI (UPLOAD-1): узел structure_confirmed
+# Загрузка отнесена сюда по факту UI (UPLOAD-1): узел structure
 # использует done/warning/pending -- подмножество CheckStatus; словарь
 # StageStatus не выразил бы warning-состояние.
 CHECK_STATUS_STAGES: tuple[str, ...] = (
