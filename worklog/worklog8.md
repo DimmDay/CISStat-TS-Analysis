@@ -1657,3 +1657,30 @@ GREEN: файл 37/37 (5 новых + 32 предсуществующих). По
 ZIP: cisstat-progr14-a-structure-decision-status.zip -- пути репозитория сохранены.
 ИЗМЕНЕНЫ: packages/ui/components/TsAnalysisUpload.tsx (EXPLICIT_NONE_CHOICES/isExplicitNoneChoice/isStructureDecisionConfident + формула structure), packages/ui/components/TsAnalysisUpload.test.tsx (describe PROGR-14-A: 5 тестов; mockFetchSequence +detectionOverride; миграции матрицы подсветки), worklog/worklog8.md (эта запись).
 Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PROGR-15-A (2026-10-06) — Отчёт остановок «Загрузки» доходит до бэкенда: URL через progressApiUrl + проверка res.ok (причина Г-1 расследования PROGR-15-REPRO)
+База: main@aff4d81 (PROGR-14-A принят в main; рабочее дерево до задачи чистое). Правила AGENTS.md соблюдены: commit/push НЕ выполнялись; TDD RED->GREEN; сборка проверена. Расследование сценария тимлида (демо forecast_monitor_synthetic_n150: модуль 4 зелёных + жёлтое «Качество», панель «Прогресс» -- только «Превью»+«Структура», Наставник требует «подтвердить структуру») -- предыдущей read-only задачей; причины Г-1/Г-2 подтверждены тимлидом, настоящая задача закрывает Г-1.
+
+### Корень (подтверждён по коду @aff4d81, симптом A расследования)
+postStops (TsAnalysisUpload.tsx:785) строил URL через sessionApiUrl("/v1/progress/upload-stops"), но sessionApiUrl добавляет префикс /v1/session САМ (apiClient.ts:56-58) -- фактический путь /v1/session/v1/progress/upload-stops, гарантированный 404 на любом окружении (бэкенд-маршрут: apps/api/main.py:89 prefix="/v1/progress" + routers/progress.py:373 @router.post("/upload-stops")). fetch резолвится и с HTTP-ошибкой: res.ok не проверялся, .catch ловил только сеть -- отчёт «успешно» не доходил до единого движка НИ РАЗУ. Панель «Прогресс» жила на одних бэкенд-фактах (upload_completed -> «Превью», structure_confirmed -> «Структура»); модульные статусы 5 остановок терялись молча -- наблюдаемое расхождение «модуль 4 зелёных + жёлтый, панель 2 зелёных». Правильный хелпер progressApiUrl существовал (apiClient.ts:65-67) и НЕ использовался ни одним вызовом. Аудит grep по packages/: дефект изолирован одной строкой; по apps/ -- нарушений нет. Почему тесты не ловили: ноль URL-ассертов на upload-stops; мок-помощник TsAnalysisUpload.test.tsx матчит fetch по подстроке "/upload", под которую попадает и "upload-stops" -- мусорный URL обслуживался моком как легитимный; live-repro PROGR-13-A постит прямой URL бэкенда, минуя фронт.
+
+### Реализация
+packages/ui/components/TsAnalysisUpload.tsx:
+
+postStops: fetch(progressApiUrl("/upload-stops")) -- единственный содержательный фикс; импорт хелпера добавлен (строка 98).
+Харденинг res.ok: при !ok маркер lastReportedStopsRef сбрасывается -- HTTP-неудача проходит тем же контуром повтора, что и сетевая (.catch), семантика «вспомогательного контура §12 п.8» сохранена (без алертов и таймеров).
+Комментарий блока PROGR-13-A5 дополнен фиксацией URL-контракта и корня дефекта.
+Панель, бэкенд, формула stopStatus (PROGR-14-A), контракт POST /v1/progress/upload-stops (PROGR-13-A4 корректен) -- НЕ тронуты.
+
+### TDD
+RED: describe «PROGR-15-A: URL-контракт отчёта остановок в „Прогресс“» в TsAnalysisUpload.test.tsx (2 теста) + НОВЫЙ packages/ui/lib/apiUrlPrefixGuard.test.ts (скан-инвариант класса: ни один вызов apiUrl/sessionApiUrl/progressApiUrl во всём фронтенд-коде packages/+apps/ не содержит "/v1" в аргументе -- двойной префикс ловится на CI, паттерн TRACE_ROUTES PROGR-3 «опечатка не доходит до рантайма»). Дискриминирующий диагностикул RED: Expected "http://localhost:8000/v1/progress/upload-stops", Received "http://localhost:8000/v1/session/v1/progress/upload-stops" -- дефект воспроизведён литерально в обоих URL-ассертах; guard падал с единственным нарушителем TsAnalysisUpload.tsx. Честная квалификация: тест 2 («HTTP-неудача не блокирует последующие отчёты») -- КОНТРАКТ, не дискриминатор: повтор при изменении снапшота работает и на старом коде (ref выставляется до поста, следующий снапшот отличается строкой) -- RED-часть у него только URL-ассерт. Сброс ref при !ok в текущей архитектуре эффектов наблюдаемо инертен (эффект перезапускается только сменой снапшота, которая сама инвалидирует сравнение) -- принят как симметрия с .catch и документирование контракта, без ложного claim «фикс ретраев».
+Дизамбигуация мока: mockFetchSequence -- 4-й параметр stopsOkSequence (сценарии приёма отчёта: каждый вызов берёт следующее значение, последнее повторяется) + ветка "upload-stops" ДО ветки "/upload" (коллизия подстрок, маскировавшая дефект, снята и закомментирована).
+GREEN: файл 40/40 (37 предсуществующих + 2 новых + guard-файл отдельной сюитой). Полный Jest: 149 сюит / 1789 тестов -- все зелёные (1786 базы + 3 новых: 2 контракта + guard). typecheck:all -- чисто; build:all -- оба приложения Compiled successfully.
+
+### Осознанные границы
+Г-2 (Наставник) -- ОТДЕЛЬНАЯ задача PROGR-15-B: статический шаблон PHASE_TEXT_TEMPLATES["upload"] (app/core/mentor_rules.py:762-766, phase_text(stage) без фактов) противоречит summary того же ответа next-step (structure=done); план согласован (phase_text(stage, statuses=None), ветвление по узлу upload/structure), в эту задачу не входил.
+Повтор неудачного отчёта -- по следующему изменению stopStatus / reportUploadStopsNow (как и до фикса): периодический таймер ретраев сознательно не вводился (вспомогательный контур, §12 п.8).
+Guard-скан -- статический (regex по исходникам): ловит вложение "/v1" в АРГУМЕНТ хелперов; конкатенации обходными путями не ловит (риск принят: единственный прецедент класса -- именно буквальный аргумент).
+scripts/progr13_repro_defects.py и оракулы PROGR-13-CERT -- датированные свидетельства, не трогались.

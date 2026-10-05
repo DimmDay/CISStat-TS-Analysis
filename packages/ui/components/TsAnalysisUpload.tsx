@@ -95,7 +95,7 @@ import { StructuralClassSchema } from "./StructuralClassSchema";
 // файл, что читают граф бэкенда и зеркало панели (см. комментарий у STOPS).
 import uploadStopsJson from "../../../shared/pipeline_nodes/upload_stops.json";
 import { useAppShell } from "../context/AppShellContext";
-import { apiUrl, sessionApiUrl } from "../lib/apiClient";
+import { apiUrl, progressApiUrl, sessionApiUrl } from "../lib/apiClient";
 import { classifyStructure, type PanelBalance, type StructuralClassResult } from "../lib/structuralClass";
 import { useTargetColumn } from "../hooks/useTargetColumn";
 import { DatasetPassportPanel } from "./DatasetPassportPanel";
@@ -780,18 +780,33 @@ export function TsAnalysisUpload() {
   // тываем POST /v1/progress/upload-stops: единый движок бэкенда сделает
   // эти факты статусами панели. Идентичность снапшота -- строка: эффект
   // срабатывает только при РЕАЛЬНОМ изменении статусов, не каждый рендер.
+  //
+  // PROGR-15-A: URL строится хелпером progressApiUrl ("/upload-stops"),
+  // НЕ sessionApiUrl -- тот добавляет префикс /v1/session сам, и вложен-
+  // ный "/v1/..." давал /v1/session/v1/progress/upload-stops: гарантиро-
+  // ванный 404, отчёт не доходил до единого движка НИ РАЗУ (панель
+  // «Прогресс» жила на одних бэкенд-фактах upload_completed /
+  // structure_confirmed; модульные статусы 5 остановок терялись молча).
+  // HTTP-неудача теперь проходит тем же контуром повтора, что и сетевая:
+  // res.ok проверяется, при !ok маркер отчёта сбрасывается -- следующее
+  // изменение stopStatus повторит отправление (вспомогательный контур,
+  // без алертов и таймеров).
   const lastReportedStopsRef = useRef<string>("");
   const postStops = useCallback((stops: Record<StopId, CheckStatus>) => {
-    fetch(sessionApiUrl("/v1/progress/upload-stops"), {
+    fetch(progressApiUrl("/upload-stops"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
       body: JSON.stringify({ stops }),
-    }).catch(() => {
-      // Отчёт фактов -- вспомогательный контур (§12 п.8): сбой не ломает
-      // модуль; следующее изменение stopStatus повторит отчёт.
-      lastReportedStopsRef.current = "";
-    });
+    })
+      .then((res) => {
+        if (!res.ok) lastReportedStopsRef.current = "";
+      })
+      .catch(() => {
+        // Отчёт фактов -- вспомогательный контур (§12 п.8): сбой не ломает
+        // модуль; следующее изменение stopStatus повторит отчёт.
+        lastReportedStopsRef.current = "";
+      });
   }, []);
 
   const stopsSnapshot = useMemo(() => JSON.stringify(stopStatus), [stopStatus]);

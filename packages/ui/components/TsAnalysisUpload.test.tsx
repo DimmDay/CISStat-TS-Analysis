@@ -11,6 +11,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { TsAnalysisUpload } from "./TsAnalysisUpload";
 import { AppShellProvider } from "../context/AppShellContext";
+import { progressApiUrl } from "../lib/apiClient";
 import { toast } from "sonner";
 
 jest.mock("sonner", () => ({
@@ -143,7 +144,18 @@ function detectionPayload(scenario: DetectionScenario) {
 // а после успешного upload компонент сам запрашивает /dataset/stats --
 // мокаем обе ручки; конкретные тесты переопределяют /upload под свой сценарий.
 // detectionOverride (PROGR-14-A) -- свой сценарий structure-detection.
-function mockFetchSequence(uploadResult: unknown, uploadOk = true, detectionOverride?: DetectionScenario) {
+// stopsOkSequence (PROGR-15-A) -- сценарии приёма POST отчёта остановок:
+// каждый вызов берёт следующее значение, последнее повторяется (пустой
+// список/не задан -- всегда ok). Ветка "upload-stops" объявлена ДО ветки
+// "/upload": подстрока "/upload" ловит и "upload-stops", и именно эта
+// коллизия маскировала URL-дефект PROGR-15-A (мок обслуживал мусорный URL).
+function mockFetchSequence(
+  uploadResult: unknown,
+  uploadOk = true,
+  detectionOverride?: DetectionScenario,
+  stopsOkSequence?: boolean[],
+) {
+  let stopsCallsMade = 0;
   global.fetch = jest.fn((url: string) => {
     if (typeof url === "string" && url.includes("/session/current")) {
       return Promise.resolve({
@@ -193,6 +205,13 @@ function mockFetchSequence(uploadResult: unknown, uploadOk = true, detectionOver
       // В тестовых моках нет реальной группирующей колонки -- фиксируем
       // ответ явно, чтобы не зависеть от generic-фолбэка ниже.
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ balanced: false, n_entities: 0, n_distinct_date_sets: 0 }) });
+    }
+    if (typeof url === "string" && url.includes("upload-stops")) {
+      const ok = stopsOkSequence && stopsOkSequence.length > 0
+        ? stopsOkSequence[Math.min(stopsCallsMade, stopsOkSequence.length - 1)]
+        : true;
+      stopsCallsMade += 1;
+      return Promise.resolve({ ok, json: () => Promise.resolve({ reported: 5, run_id: null }) });
     }
     if (typeof url === "string" && url.includes("/upload")) {
       return Promise.resolve({ ok: uploadOk, json: () => Promise.resolve(uploadResult) });
@@ -1411,5 +1430,90 @@ describe("TsAnalysisUpload — PROGR-14-A: статус «Структуры» �
     fireEvent.click(screen.getByRole("button", { name: /^Качество/ }));
     const button = screen.getByRole("button", { name: /^Структура/ });
     expect(button).toHaveClass("bg-green-50", "border-green-200", "text-green-800");
+  });
+});
+
+// ── PROGR-15-A: отчёт остановок «Загрузки» доходит до бэкенда ──────────
+//
+// Дефект (расследование PROGR-15-REPRO, причина Г-1 подтверждена
+// read-only проверками): postStops строил URL через
+// sessionApiUrl("/v1/progress/upload-stops"), но sessionApiUrl добавляет
+// префикс /v1/session САМ -- итоговый путь был
+// /v1/session/v1/progress/upload-stops, гарантированный 404 на любом
+// окружении. fetch резолвится и с HTTP-ошибкой: res.ok не проверялся,
+// .catch ловил только сеть -- отчёт «успешно» не доходил до единого
+// движка ни разу. Панель «Прогресс» оставалась с одними бэкенд-фактами
+// (upload_completed/structure_confirmed): сценарий тимлида -- в модуле
+// 4 зелёных остановки + жёлтое «Качество», на панели только «Превью» и
+// «Структура».
+//
+// Почему тесты не ловили: ни одного URL-ассерта на upload-stops; мок-
+// помощник матчит fetch по подстроке "/upload", под которую попадает и
+// "upload-stops" -- мусорный URL обслуживался моком как легитимный
+// (коллизия снята веткой "upload-stops" до ветки "/upload").
+describe("TsAnalysisUpload — PROGR-15-A: URL-контракт отчёта остановок в «Прогресс»", () => {
+  function stopsCalls(): Array<[string, RequestInit?]> {
+    return (global.fetch as jest.Mock).mock.calls.filter(
+      ([url]: unknown[]) => typeof url === "string" && url.includes("upload-stops"),
+    ) as Array<[string, RequestInit?]>;
+  }
+
+  function renderAndUpload() {
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["a,b\n1,2"], "test.csv", { type: "text/csv" })]);
+    return waitFor(() => expect(screen.getByText("Превью датасета")).toBeInTheDocument());
+  }
+
+  it("отчёт уходит ровно на progressApiUrl(\"/upload-stops\") -- без двойного префикса /v1/session", async () => {
+    mockFetchSequence(okUploadResponse);
+    await renderAndUpload();
+
+    await waitFor(() => expect(stopsCalls().length).toBeGreaterThan(0));
+
+    for (const [url] of stopsCalls()) {
+      expect(url).toBe(progressApiUrl("/upload-stops"));
+      expect(url).not.toContain("/v1/session/");
+    }
+  });
+
+  it("HTTP-неудача отчёта (!ok) не блокирует последующие: смена решения структуры репортит новый снапшот", async () => {
+    // Первый отчёт принят с ошибкой (ok:false), дальнейшие -- успехом.
+    // Сценарий структуры warning: сомнительное угадывание Country (25%).
+    mockFetchSequence(
+      okUploadResponse,
+      true,
+      {
+        dateCol: { selected: "date", confidence: 95 },
+        entityCol: { selected: "Country", confidence: 25 },
+      },
+      [false, true],
+    );
+    await renderAndUpload();
+
+    // Штатные отчёты загрузки идут до user-действия (pending/warning-
+    // снапшоты); первое отправление -- неудачное (ok:false).
+    await waitFor(() => expect(stopsCalls().length).toBeGreaterThanOrEqual(1));
+
+    // Открываем остановку «Структура» и меняем решение пользователя:
+    // warning -> done -- новый снапшот, контур обязан повторить отчёт
+    // несмотря на неудачу первого отправления.
+    fireEvent.click(screen.getByText("Структура"));
+    await waitFor(() => expect(screen.getByText("Группирующая колонка")).toBeInTheDocument());
+    fireEvent.change(screen.getByDisplayValue("Country"), { target: { value: "(нет)" } });
+
+    // Последний отчёт -- уже новый снапшот (structure=done в теле POST),
+    // причём по правильному URL: неудача не «заморозила» контур.
+    await waitFor(() => {
+      const last = stopsCalls()[stopsCalls().length - 1];
+      expect(String(last?.[1]?.body ?? "")).toContain('"structure":"done"');
+    });
+    expect(stopsCalls().length).toBeGreaterThanOrEqual(2);
+    for (const [url] of stopsCalls()) {
+      expect(url).toBe(progressApiUrl("/upload-stops"));
+    }
   });
 });
