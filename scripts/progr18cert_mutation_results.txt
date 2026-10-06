@@ -1,0 +1,35 @@
+PROGR-18-CERT: протокол мутационного тестирования (свои мутанты)
+Каналы: repo == целевые тесты репозитория, oracle == оракулы сертификатора (progr18cert_oracles.py)
+
+[BM-A] SURVIVED -- порядок валидаций инвертирован: 400-гейт датасета ПЕРЕД fail-closed 422 (комбинированное условие «без датасета + битая карта» отвечает 400 вместо 422)
+    .....................................                                    [100%] | ============================= 289 passed in 5.97s ==============================
+[BM-B] KILLED (repo+oracle) -- unknown-study gate снят (фантомное исследование принимается)
+    FAIL: C7: fail-closed x5 c ДЕТАЛЯМИ (фантом/warning-легальный/мусор/неполная/пустая) -- 422, ноль записей :: AssertionError: ({'descriptive': 'done', 'correlation': 'done', 'seasonality': 'done', 'stationarity': 'done', 'distribution': 'done', 'structural': 'd
+[BM-C] KILLED (repo+oracle) -- invalid-status gate снят (чужой статус доходит до трассы)
+    FAIL: C7: fail-closed x5 c ДЕТАЛЯМИ (фантом/warning-легальный/мусор/неполная/пустая) -- 422, ноль записей :: AssertionError: ({'descriptive': 'warning', 'correlation': 'done', 'seasonality': 'done', 'stationarity': 'done', 'distribution': 'done', 'structural':
+[BM-D] KILLED (oracle) -- empty-map gate снят (гипотеза: ВыЖИВАЕТ на тестах репозитория -- missing-гейт даёт тот же 422; убивается только ДЕТАЛЬЮ C7)
+    FAIL: C7: fail-closed x5 c ДЕТАЛЯМИ (фантом/warning-легальный/мусор/неполная/пустая) -- 422, ноль записей :: AssertionError: ('пуста', "Карта неполна (нет исследований: ['descriptive', 'correlation', 'ih_analysis', 'seasonality', 'stationarity', 'distribution'
+[BM-E] KILLED (repo+oracle) -- 400-гейт инвертирован (С датасетом 400, без -- пропуск)
+    FAIL: C1: POST /v1/progress/eda-checks (6 done / 4 pending): 200, reported==10, run_id RUN-* :: AssertionError: {"detail":"Инвертированный гейт (мутант)"} ; FAIL: C2: слой 1: 10 событий eda_check_status, payload.status == карте, stage=eda, run_id :: AssertionE
+[BM-F] KILLED (repo+oracle) -- зеркало слоя 2 (record_run_event) удалено
+    FAIL: C3: слой 2 (зеркало research_runs): 10 событий :: AssertionError: 0
+[BM-G] KILLED (repo+oracle) -- stage события подменён: eda -> preprocessing (узлы Предобработки красятся фактами EDA)
+    FAIL: C1: POST /v1/progress/eda-checks (6 done / 4 pending): 200, reported==10, run_id RUN-* :: ValueError: Неизвестный тип события трассы: 'eda_check_status' для стадии 'preprocessing'; известные: ['checkpoint_saved', 'correction_applied', 'correction_preview
+[BM-H] KILLED (oracle) -- store.save удалён (гипотеза: ВыЖИВАЕТ на тестах репозитория -- memory-бэкенд ненаблюдаем; убивается только C12 через fakeredis)
+    FAIL: C12: персистентность через сериализацию (fakeredis): 10 событий переживают перечитывание store :: AssertionError: в сериализованном документе 0 событий отчёта EDA (ожидалось 10) -- save() не записал документ
+[BM-I] SURVIVED -- reported=len(known_ids) -> len(checks) (гипотеза: ЭКВИВАЛЕНТНЫЙ -- после fail-closed карта всегда полна)
+    .....................................                                    [100%] | ============================= 289 passed in 5.82s ==============================
+[BM-J] KILLED (repo+oracle) -- тип удалён из PAYLOAD_STATUS_EVENT_TYPES (статусы EDA не выводятся)
+    FAIL: C4: панель == модулю: node_statuses[eda/*] == карта (все 10) :: AssertionError: ('descriptive', None) ; FAIL: C5: свёртка 6/4: attention, warning_nodes==0 (warning в словаре EDA нет) :: AssertionError: {'stage': 'eda', 'fold': 'attention', 'done_count': 
+[BM-K] KILLED (oracle) -- EVENT_NODE_REASON подменён на терминологию Предобработки («проверка», модуль не тот -- решение тимлида о терминологии нарушено)
+    FAIL: D3: терминология status_reason узла: «Статус исследования отчитан модулем «EDA»» :: AssertionError: Статус проверки отчитан модулем «Предобработка»
+[BM-L] KILLED (repo+oracle) -- тип удалён из _STAGE_EVENT_TYPES['eda'] (make_trace_event fail-closed)
+    FAIL: C1: POST /v1/progress/eda-checks (6 done / 4 pending): 200, reported==10, run_id RUN-* :: ValueError: Неизвестный тип события трассы: 'eda_check_status' для стадии 'eda'; известные: ['checkpoint_saved', 'passport_captured', 'profile_viewed', 'run_paused'
+[BM-M] KILLED (repo+oracle) -- _EDA_STATUS_LABELS: формулировки просмотра done<->pending инвертированы
+    FAIL: D1: отчёт §5.4: 6 строк «просмотрен» + 4 «не просмотрен», метки реестра, модуль «EDA» назван, без сырых id и фоллбеков :: AssertionError: не 6 строк просмотра
+[BM-N] KILLED (repo+oracle) -- ветка fact_line удалена (строка-фоллбек «Событие трассы»)
+    FAIL: D1: отчёт §5.4: 6 строк «просмотрен» + 4 «не просмотрен», метки реестра, модуль «EDA» назван, без сырых id и фоллбеков :: AssertionError: фоллбек-строка в отчёте
+[BM-O] KILLED (repo+oracle) -- реестр EDA усечён до 9 исследований (последний выпадает)
+        raise ImportError( ; ImportError: Неизвестный узел графа в таблице трассы ('GET', '/v1/session/dataset/eda-model-matrix'): eda/model_matrix
+
+===== СВОДКА: всего 15 | KILLED 13 | SURVIVED 2 ['BM-A', 'BM-I'] =====

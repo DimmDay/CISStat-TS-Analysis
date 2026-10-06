@@ -1,0 +1,17 @@
+PROGR-18-CERT: протокол мутационного тестирования фронтенда (свои мутанты)
+Компонент: packages/ui/components/TsAnalysisEDA.tsx; канал: jest TsAnalysisEDA.test.tsx
+
+[FM-A] KILLED -- снапшот инвертирован: !viewed.has -> viewed-done <-> pending поменяны местами (в журнал уходит ANTISNAPSHOT)
+    at Object.<anonymous> (packages/ui/components/TsAnalysisEDA.test.tsx:1502:52) | Test Suites: 1 failed, 1 total | Tests:       5 failed, 42 passed, 47 total | Snapshots:   0 total | Time:        9.48 s | Ran all test suites matching TsAnalysisEDA.test.tsx.
+[FM-B] KILLED -- критерий просмотра ослаблен до «любой непустой статус» (running/error/skipped считают просмотренными)
+    at Object.<anonymous> (packages/ui/components/TsAnalysisEDA.test.tsx:1501:23) | Test Suites: 1 failed, 1 total | Tests:       1 failed, 46 passed, 47 total | Snapshots:   0 total | Time:        9.373 s | Ran all test suites matching TsAnalysisEDA.test.tsx.
+[FM-C] SURVIVED -- seed-фильтр ослаблен: в просмотренные засеивается всё, кроме pending (warning/error узлы /trace стали бы «просмотренными»)
+[FM-D] SURVIVED -- сброс маркера при !ok снят (гипотеза: ВыЖИВАЕТ -- повтор в существующем тесте происходит по ИЗМЕНЕНИЮ снапшота, не по сбросу)
+[FM-E] SURVIVED -- сброс вселенной при смене датасета удалён (старые просмотры протекают в новую вселенную фактов; seed сливается с чужим множеством)
+[FM-F] KILLED -- дедупликация против seed-якоря снята (после перемонтирования без новых просмотров отчёт Уходит повторно -- seed-снапшот != пустой маркер)
+    at Timeout.task [as _onTimeout] (node_modules/jsdom/lib/jsdom/browser/Window.js:579:19) | Test Suites: 1 failed, 1 total | Tests:       1 failed, 46 passed, 47 total | Snapshots:   0 total | Time:        10.129 s | Ran all test suites matching TsAnalysisEDA.test.tsx.
+[FM-G] SURVIVED -- credentials: "include" удалён из POST (контракт сессии)
+[FM-H] KILLED -- activeDataset-гейт снят из снапшота (гипотеза: ВыЖИВАЕТ -- size>0 вторично страхует пустую вселенную)
+    at Object.<anonymous> (packages/ui/components/TsAnalysisEDA.test.tsx:1437:23) | Test Suites: 1 failed, 1 total | Tests:       1 failed, 46 passed, 47 total | Snapshots:   0 total | Time:        9.212 s | Ran all test suites matching TsAnalysisEDA.test.tsx.
+
+===== СВОДКА: всего 8 | KILLED 4 | SURVIVED 4 ['FM-C', 'FM-D', 'FM-E', 'FM-G'] =====
