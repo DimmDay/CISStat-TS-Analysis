@@ -11,11 +11,25 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { TsAnalysisPreprocessing } from "./TsAnalysisPreprocessing";
+// PROGR-17: рендер описываемых ниже тестов отчёта фактов в «Прогресс» --
+// в реальном провайдере (гидратация activeDataset из /session/current).
+import { AppShellProvider } from "../context/AppShellContext";
 import { PreprocessingMissingOverview } from "./PreprocessingMissingOverview";
 import { PreprocessingOutliersOverview } from "./PreprocessingOutliersOverview";
 import { PreprocessingRegularityOverview } from "./PreprocessingRegularityOverview";
 // Волна 2 plan_review_charts.md (RCH-2): шпион на экспорте хука кэша раскрытия
 import * as chartDetailDataModule from "../hooks/useChartDetailData";
+
+// PROGR-17: компонент отчитывает факты этапов в «Прогресс» и читает
+// activeDataset из AppShell (гейт «без датасета отчёта нет») -- все
+// рендеры идут через провайдер, как в TsAnalysisValidation.test.tsx.
+function renderPreprocessing() {
+  return render(
+    <AppShellProvider>
+      <TsAnalysisPreprocessing />
+    </AppShellProvider>,
+  );
+}
 
 const MISSING_PROFILE = {
   rule_source: "system",
@@ -281,12 +295,12 @@ describe("TsAnalysisPreprocessing", () => {
   });
 
   it("renders the module title", () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     expect(screen.getByText("Preprocessing")).toBeInTheDocument();
   });
 
   it("renders 10 preprocessing steps and keeps the passport outside the stepper", () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     const stepLabels = [
       "Пропуски", "Выбросы", "Регулярность ряда", "Декомпозиция ряда",
       "Стабилизация дисперсии", "Сглаживание ряда", "Стационарность ряда",
@@ -301,7 +315,7 @@ describe("TsAnalysisPreprocessing", () => {
   });
 
   it("uses the shared target selector instead of mock ticker columns", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" });
     await waitFor(() => expect(selector).toHaveValue("Price"));
@@ -321,13 +335,13 @@ describe("TsAnalysisPreprocessing", () => {
   // ── Кнопка «Справка» ──
 
   it("renders the 'Справка' button in the header", () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     const helpButton = screen.getByRole("button", { name: /Справка/i });
     expect(helpButton).toBeInTheDocument();
   });
 
   it("clicking 'Справка' shows help content in the central text area", () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     const helpButton = screen.getByRole("button", { name: /Справка/i });
 
     // До клика — автозагруженные метрики активной остановки «Пропуски»
@@ -346,7 +360,7 @@ describe("TsAnalysisPreprocessing", () => {
   });
 
   it("clicking 'Справка' returns to the active stop's metrics on second click (PREPR-2)", () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     const helpButton = screen.getByRole("button", { name: /Справка/i });
 
     // Первый клик — показываем справку
@@ -363,25 +377,25 @@ describe("TsAnalysisPreprocessing", () => {
   // ── Expandable Description Box ──
 
   it("description area has a minimum height (collapsed)", () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     expect(screen.getByText("Описание")).toBeInTheDocument();
   });
 
   it("expand chevron is not visible when no content is loaded (no overflow)", () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     // В начальном состоянии (плейсхолдер) нет overflow → нет chevron
     const expandBtn = screen.queryByTestId("desc-expand-btn");
     expect(expandBtn).toBeNull();
   });
 
   it("collapse chevron is not visible when description is not expanded", () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     const collapseBtn = screen.queryByTestId("desc-collapse-btn");
     expect(collapseBtn).toBeNull();
   });
 
   it("collapse chevron appears inside description after expanding", () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     // Сначала chevron нет
     expect(screen.queryByTestId("desc-collapse-btn")).toBeNull();
 
@@ -408,7 +422,7 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
   });
 
   it("shows the real missing-values overview by default (missing is the first step)", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     expect(await screen.findByRole("table", { name: "Матрица пропусков по колонкам" })).toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining("/v1/session/dataset/missing-profile"),
@@ -417,14 +431,14 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
   });
 
   it("reflects issues_found status in the stepper and the right-column badge", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     await screen.findByRole("table", { name: "Матрица пропусков по колонкам" });
     expect(screen.getByText("Найдено 2 пропусков")).toBeInTheDocument();
   });
 
   it("shows the skipped status when no dataset is active", async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 404, json: () => Promise.resolve({ detail: "no dataset" }) });
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     const matches = await screen.findAllByText("Нет активного датасета");
     expect(matches.length).toBeGreaterThanOrEqual(1); // «Пропуски» и «Выбросы» -- оба реальных стопа, оба 404
   });
@@ -435,7 +449,7 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
       put: { modes: { missing: "disabled" } },
     });
 
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     const select = await screen.findByRole("combobox", { name: "Режим проверки Пропуски" });
     fireEvent.change(select, { target: { value: "disabled" } });
 
@@ -451,7 +465,7 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
       missing: { ...MISSING_PROFILE, mode: "disabled", status: "skipped", status_reason: "disabled" },
       regularity: { ...REGULARITY_PROFILE, status: "pending" },
     });
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     await screen.findByText("Отключено");
     // 10 преобразующих остановок всего, но «Пропуски» (skipped) исключены из знаменателя
     // Декомпозиция и спектральный профиль могут ещё выполняться или уже
@@ -462,12 +476,12 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
   });
 
   it("shows a 'Панель управления' header above the right-hand column", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     expect(await screen.findByRole("heading", { name: "Панель управления" })).toBeInTheDocument();
   });
 
   it("shows the real Цель/Метрики/Алгоритм backend description for 'Метрики и алгоритм'", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     await screen.findByRole("table", { name: "Матрица пропусков по колонкам" });
     fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
 
@@ -477,7 +491,7 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
   });
 
   it("shows step-by-step wizard instructions for 'Исправить пропуски'", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     await screen.findByRole("table", { name: "Матрица пропусков по колонкам" });
     fireEvent.click(screen.getByRole("button", { name: "Исправить пропуски" }));
 
@@ -528,7 +542,7 @@ describe("TsAnalysisPreprocessing — остановка «Пропуски»", 
       return Promise.resolve({ ok: true, json: () => Promise.resolve(applied ? clearedProfile : MISSING_PROFILE) });
     }) as unknown as typeof fetch;
 
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     await screen.findByRole("table", { name: "Матрица пропусков по колонкам" });
 
     fireEvent.click(screen.getByRole("button", { name: "Исправить пропуски" }));
@@ -555,26 +569,26 @@ describe("TsAnalysisPreprocessing — остановка «Выбросы»", ()
   });
 
   it("switching to 'Выбросы' shows the real outliers overview", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Выбросы"));
     expect(await screen.findByRole("table", { name: "Выбросы по числовым колонкам" })).toBeInTheDocument();
   });
 
   it("reflects warning status and count in the right-column badge", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Выбросы"));
     await screen.findByRole("table", { name: "Выбросы по числовым колонкам" });
     expect(screen.getByText("Найдено 1 выбросов")).toBeInTheDocument();
   });
 
   it("shows a mode selector for outliers independent from missing's mode", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Выбросы"));
     expect(await screen.findByRole("combobox", { name: "Режим проверки Выбросы" })).toBeInTheDocument();
   });
 
   it("shows the real Цель/Метрики/Алгоритм backend description including the decomposition-only position", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Выбросы"));
     await screen.findByRole("table", { name: "Выбросы по числовым колонкам" });
     fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
@@ -585,7 +599,7 @@ describe("TsAnalysisPreprocessing — остановка «Выбросы»", ()
   });
 
   it("shows step-by-step wizard instructions mentioning the residual-detection option", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Выбросы"));
     await screen.findByRole("table", { name: "Выбросы по числовым колонкам" });
     fireEvent.click(screen.getByRole("button", { name: "Исправить выбросы" }));
@@ -595,7 +609,7 @@ describe("TsAnalysisPreprocessing — остановка «Выбросы»", ()
   });
 
   it("opens the outliers wizard region when 'Исправить выбросы' is clicked", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Выбросы"));
     await screen.findByRole("table", { name: "Выбросы по числовым колонкам" });
     fireEvent.click(screen.getByRole("button", { name: "Исправить выбросы" }));
@@ -618,26 +632,26 @@ describe("TsAnalysisPreprocessing — остановка «Регулярнос�
   });
 
   it("switching to 'Регулярность ряда' shows the real regularity overview", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Регулярность ряда"));
     expect(await screen.findByRole("table", { name: "Регулярность по группам" })).toBeInTheDocument();
   });
 
   it("reflects warning status and count in the right-column badge", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Регулярность ряда"));
     await screen.findByRole("table", { name: "Регулярность по группам" });
     expect(screen.getByText("Найдено 1 нарушений регулярности")).toBeInTheDocument();
   });
 
   it("shows a mode selector for regularity independent from other stops", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Регулярность ряда"));
     expect(await screen.findByRole("combobox", { name: "Режим проверки Регулярность ряда" })).toBeInTheDocument();
   });
 
   it("shows the real Цель/Метрики/Алгоритм backend description including the methodology assessment", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Регулярность ряда"));
     await screen.findByRole("table", { name: "Регулярность по группам" });
     fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
@@ -648,7 +662,7 @@ describe("TsAnalysisPreprocessing — остановка «Регулярнос�
   });
 
   it("shows step-by-step wizard instructions when 'Исправить регулярность' is clicked", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Регулярность ряда"));
     await screen.findByRole("table", { name: "Регулярность по группам" });
     fireEvent.click(screen.getByRole("button", { name: "Исправить регулярность" }));
@@ -662,7 +676,7 @@ describe("TsAnalysisPreprocessing — остановка «Декомпозиц�
   beforeEach(() => { global.fetch = routeFetch(); });
 
   it("shows the real STL overview and mode selector", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Декомпозиция ряда"));
 
     expect(await screen.findByRole("tablist", { name: "Графики декомпозиции" })).toBeInTheDocument();
@@ -671,7 +685,7 @@ describe("TsAnalysisPreprocessing — остановка «Декомпозиц�
   });
 
   it("opens the decomposition wizard and explains leakage", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Декомпозиция ряда"));
     await screen.findByRole("tablist", { name: "Графики декомпозиции" });
     fireEvent.click(screen.getByRole("button", { name: "Настроить декомпозицию" }));
@@ -681,7 +695,7 @@ describe("TsAnalysisPreprocessing — остановка «Декомпозиц�
   });
 
   it("describes why the pseudo-cycle and variance percentages are rejected", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Декомпозиция ряда"));
     await screen.findByRole("tablist", { name: "Графики декомпозиции" });
     fireEvent.click(screen.getAllByRole("button", { name: "Метрики и алгоритм" })[0]);
@@ -695,7 +709,7 @@ describe("TsAnalysisPreprocessing — остановка «Стабилизац�
   beforeEach(() => { global.fetch = routeFetch(); });
 
   it("shows the comparative overview, real status and mode selector", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Стабилизация дисперсии"));
     expect(await screen.findByRole("tablist", { name: "Графики стабилизации дисперсии" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Режим проверки Стабилизация дисперсии" })).toBeInTheDocument();
@@ -703,7 +717,7 @@ describe("TsAnalysisPreprocessing — остановка «Стабилизац�
   });
 
   it("opens the transformation wizard and documents the removed hidden shift", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Стабилизация дисперсии"));
     await screen.findByRole("tablist", { name: "Графики стабилизации дисперсии" });
     fireEvent.click(screen.getByRole("button", { name: "Настроить трансформацию" }));
@@ -717,7 +731,7 @@ describe("TsAnalysisPreprocessing — остановка «Сглаживани�
   beforeEach(() => { global.fetch = routeFetch(); });
 
   it("shows the visual overview, real status and mode selector", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Сглаживание ряда"));
     expect(await screen.findByRole("tablist", { name: "Графики сглаживания ряда" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Режим проверки Сглаживание ряда" })).toBeInTheDocument();
@@ -725,7 +739,7 @@ describe("TsAnalysisPreprocessing — остановка «Сглаживани�
   });
 
   it("opens the wizard and documents corrected causal methodology", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Сглаживание ряда"));
     await screen.findByRole("tablist", { name: "Графики сглаживания ряда" });
     fireEvent.click(screen.getByRole("button", { name: "Настроить сглаживание" }));
@@ -740,7 +754,7 @@ describe("TsAnalysisPreprocessing — остановка «Стационарн�
   beforeEach(() => { global.fetch = routeFetch(); });
 
   it("shows the five-view overview, real warning and mode selector", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Стационарность ряда"));
     expect(await screen.findByRole("tablist", { name: "Графики стационарности ряда" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Режим проверки Стационарность ряда" })).toBeInTheDocument();
@@ -748,7 +762,7 @@ describe("TsAnalysisPreprocessing — остановка «Стационарн�
   });
 
   it("opens the stationarity wizard and documents corrected legacy methodology", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Стационарность ряда"));
     await screen.findByRole("tablist", { name: "Графики стационарности ряда" });
     fireEvent.click(screen.getByRole("button", { name: "Обеспечить стационарность" }));
@@ -763,7 +777,7 @@ describe("TsAnalysisPreprocessing — остановка «Спектральн�
   beforeEach(() => { global.fetch = routeFetch(); });
 
   it("shows five spectral views, confirmed-period status and mode selector", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Спектральный анализ"));
     expect(await screen.findByRole("tablist", { name: "Представления спектрального анализа" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Режим проверки Спектральный анализ" })).toBeInTheDocument();
@@ -771,7 +785,7 @@ describe("TsAnalysisPreprocessing — остановка «Спектральн�
   });
 
   it("opens period-selection wizard and documents legacy corrections", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Спектральный анализ"));
     await screen.findByRole("tablist", { name: "Представления спектрального анализа" });
     fireEvent.click(screen.getByRole("button", { name: "Зафиксировать периоды" }));
@@ -786,7 +800,7 @@ describe("TsAnalysisPreprocessing — остановка «Генерация п
   beforeEach(() => { global.fetch = routeFetch(); });
 
   it("shows five feature views, actionable status and mode selector", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Генерация признаков"));
     expect(await screen.findByRole("tablist", { name: "Представления генерации признаков" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Режим проверки Генерация признаков" })).toBeInTheDocument();
@@ -795,7 +809,7 @@ describe("TsAnalysisPreprocessing — остановка «Генерация п
   });
 
   it("opens the wizard and documents corrected legacy methodology", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Генерация признаков"));
     await screen.findByRole("tablist", { name: "Представления генерации признаков" });
     fireEvent.click(screen.getByRole("button", { name: "Сгенерировать признаки" }));
@@ -810,7 +824,7 @@ describe("TsAnalysisPreprocessing — остановка «Масштабиро�
   beforeEach(() => { global.fetch = routeFetch(); });
 
   it("shows five scaling views, recipe status and mode selector", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Масштабирование"));
     expect(await screen.findByRole("tablist", { name: "Представления масштабирования" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Режим проверки Масштабирование" })).toBeInTheDocument();
@@ -818,7 +832,7 @@ describe("TsAnalysisPreprocessing — остановка «Масштабиро�
   });
 
   it("opens the recipe wizard and documents leakage correction", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     fireEvent.click(screen.getByText("Масштабирование"));
     await screen.findByRole("tablist", { name: "Представления масштабирования" });
     fireEvent.click(screen.getByRole("button", { name: "Настроить масштабирование" }));
@@ -839,7 +853,7 @@ describe("TsAnalysisPreprocessing — приглашение «Перейти к
     // та же механика, что на «Загрузке» и «Валидации» -- внизу степпера
     // кнопка-приглашение, отделённая светло-серой полосой, со ссылкой
     // на следующий модуль пайплайна (Предобработка -> EDA).
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     // Последняя остановка степпера «Предобработки» -- «Масштабирование».
     // Имя доступное = текст шага + aria-label svg-иконки статуса, поэтому
@@ -899,7 +913,7 @@ describe("TsAnalysisPreprocessing — приглашение «Перейти к
 describe("TsAnalysisPreprocessing — зелёная подсветка пройденных остановок степпера (паттерн Моделирования)", () => {
   it("colors a passed (done) stop light-green and keeps non-active pending stops uncolored", async () => {
     global.fetch = routeFetch();
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     // Сигнал готовности: «Регулярность ряда» загружена на монтировании и
     // получила статус done (зелёная галочка, aria-label «Пройдено»).
@@ -929,7 +943,7 @@ describe("TsAnalysisPreprocessing — зелёная подсветка прой
 
   it("keeps the indigo active styling for an active stop even when it is done (active branch priority, as in Modeling)", async () => {
     global.fetch = routeFetch();
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     // «Регулярность ряда» на монтировании становится done; клик по ней не
     // перезапрашивает профиль (зависимости useEffect не включают
@@ -951,7 +965,7 @@ describe("TsAnalysisPreprocessing — зелёная подсветка прой
     // running (initial loading=true), профильные остановки без активации и
     // признака — pending.
     global.fetch = jest.fn(() => new Promise<Response>(() => {})) as unknown as typeof fetch;
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     fireEvent.click(screen.getByRole("button", { name: /Масштабирование/ }));
 
@@ -967,7 +981,7 @@ describe("TsAnalysisPreprocessing — зелёная подсветка прой
 
   it("leaves the warning stop uncolored", async () => {
     global.fetch = routeFetch();
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     // Дефолтный профиль «Пропусков» — warning (найдены пропуски).
     await waitFor(() => {
@@ -988,7 +1002,7 @@ describe("TsAnalysisPreprocessing — зелёная подсветка прой
     global.fetch = routeFetch({
       regularity: { ...REGULARITY_PROFILE, status: "skipped" },
     });
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /Регулярность ряда/ }))
@@ -1023,7 +1037,7 @@ describe("TsAnalysisPreprocessing — автозагрузка «Метрики 
     // Дефолтный профиль «Пропусков» — warning (найдены пропуски): инвариант
     // действует вне зависимости от статуса — «Описание» сразу показывает
     // метрики первой активной остановки.
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     expect(await screen.findByText(/Метрики и алгоритм: Пропуски/)).toBeInTheDocument();
     expect(screen.getByText(/Алгоритм backend/)).toBeInTheDocument();
@@ -1046,7 +1060,7 @@ describe("TsAnalysisPreprocessing — автозагрузка «Метрики 
     global.fetch = routeFetch({
       outliers: { ...OUTLIERS_PROFILE, status: "pending" },
     });
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     // Клик по другой остановке степпера («Выбросы», pending)
     fireEvent.click((await screen.findAllByRole("button", { name: /Выбросы/ }))[0]);
@@ -1068,7 +1082,7 @@ describe("TsAnalysisPreprocessing — автозагрузка «Метрики 
     // Дефолтный профиль «Регулярности ряда» — done («Проверка пройдена»):
     // клик по пройденной остановке автозагружает метрики так же, как для
     // warning/pending — статус не влияет на инвариант.
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     fireEvent.click((await screen.findAllByRole("button", { name: /Регулярность ряда/ }))[0]);
 
@@ -1079,7 +1093,7 @@ describe("TsAnalysisPreprocessing — автозагрузка «Метрики 
   });
 
   it("closing the Help toggle returns to the active stop's metrics (not the placeholder)", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     fireEvent.click(screen.getByRole("button", { name: "Справка" }));
     expect(screen.getAllByText(/Цели модуля/i).length).toBeGreaterThanOrEqual(1);
@@ -1090,7 +1104,7 @@ describe("TsAnalysisPreprocessing — автозагрузка «Метрики 
   });
 
   it("explicit pipeline click still wins over the invariant until the user switches back", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     // Гард: автозагрузка не ломает явный пользовательский выбор мастера.
     fireEvent.click(await screen.findByRole("button", { name: "Исправить пропуски" }));
@@ -1103,7 +1117,7 @@ describe("TsAnalysisPreprocessing — автозагрузка «Метрики 
   });
 
   it("clicking the already-active stop keeps an open Help section (former semantics preserved)", async () => {
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     // Открываем Справку
     fireEvent.click(await screen.findByRole("button", { name: "Справка" }));
@@ -1236,7 +1250,7 @@ describe("TsAnalysisPreprocessing — автообновление профил�
       return (routeFetch() as unknown as (u: string, i?: RequestInit) => Promise<unknown>)(url, init);
     }) as unknown as typeof fetch;
 
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     // ДО применения: бейдж «Декомпозиции» в правой колонке показывает
     // устаревающий плейсхолдер с причиной блокировки (статус skipped).
@@ -1307,7 +1321,7 @@ describe("TsAnalysisPreprocessing — автообновление профил�
       return (routeFetch() as unknown as (u: string, i?: RequestInit) => Promise<unknown>)(url, init);
     }) as unknown as typeof fetch;
 
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     // ДО применения: «Пропуски» — warning («Найдено 2 пропусков»).
     await screen.findByText("Найдено 2 пропусков");
 
@@ -1337,7 +1351,7 @@ describe("TsAnalysisPreprocessing — автообновление профил�
     // исправлений их бейджи тоже устаревали.
     const counts: Record<string, number> = {};
     global.fetch = countingFetch(counts);
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /Генерация признаков/ })).toHaveAccessibleName(/Найдены проблемы/),
@@ -1356,7 +1370,7 @@ describe("TsAnalysisPreprocessing — автообновление профил�
     // лишнюю волну STL/FFT-пересчётов).
     const counts: Record<string, number> = {};
     global.fetch = countingFetch(counts);
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     // Дожидаемся первичной загрузки профиля декомпозиции.
     await waitFor(() => expect((counts.decomposition ?? 0)).toBeGreaterThanOrEqual(1));
@@ -1509,7 +1523,7 @@ describe("TsAnalysisPreprocessing — self-fetch Обзоры: живая инв
       return (routeFetch() as unknown as (u: string, i?: RequestInit) => Promise<unknown>)(url, init);
     }) as unknown as typeof fetch;
 
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     // ДО применения: Обзор «Пропусков» — 2 пропуска (25.0%).
     expect(await screen.findByText("Пропусков — 2 (25.0%)")).toBeInTheDocument();
@@ -1607,7 +1621,7 @@ describe("TsAnalysisPreprocessing — инвалидация кэша раскр
       return (routeFetch() as unknown as (u: string, i?: RequestInit) => Promise<unknown>)(url, init);
     }) as unknown as typeof fetch;
 
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
 
     // ДО применения — инвалидации кэша раскрытия нет: точка истины одна,
     // обработчик apply (смена режима/пересчёт профиля мутацией не являются)
@@ -1688,7 +1702,7 @@ describe("TsAnalysisPreprocessing — автоперезапрос при воз
     // пересчёта устарела концептуально: фокус/видимость окна закрывают
     // «чужую мутацию» и ретрай после сбоя GET (тесты ниже), apply мастера
     // закрывает изменения аналитика (тест ниже).
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     ALL_RECALC_BUTTON_NAMES.forEach((name) => {
       expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
     });
@@ -1702,7 +1716,7 @@ describe("TsAnalysisPreprocessing — автоперезапрос при воз
     setVisibilityState("visible");
     const counts: Record<string, number> = {};
     global.fetch = countingFetch(counts);
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     await screen.findByText("Найдено 2 пропусков");
     const before = { ...counts };
 
@@ -1730,7 +1744,7 @@ describe("TsAnalysisPreprocessing — автоперезапрос при воз
   it("при возврате фокуса в окно (window focus) профили перезапрашиваются автоматически (ретрай после сбоя GET)", async () => {
     const counts: Record<string, number> = {};
     global.fetch = countingFetch(counts);
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     await screen.findByText("Найдено 2 пропусков");
     const stationarityBefore = counts.stationarity ?? 0;
     const scalingBefore = counts.scaling ?? 0;
@@ -1748,7 +1762,7 @@ describe("TsAnalysisPreprocessing — автоперезапрос при воз
     setVisibilityState("visible");
     const counts: Record<string, number> = {};
     global.fetch = countingFetch(counts);
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     await screen.findByText("Найдено 2 пропусков");
     const stationarityBefore = counts.stationarity ?? 0;
     const missingBefore = counts.missing ?? 0;
@@ -1805,7 +1819,7 @@ describe("TsAnalysisPreprocessing — автоперезапрос при воз
       return countingFetch(counts)(url, init);
     }) as unknown as typeof fetch;
 
-    render(<TsAnalysisPreprocessing />);
+    renderPreprocessing();
     await screen.findByText("Найдено 2 пропусков");
 
     const before = { ...counts };
@@ -1822,5 +1836,227 @@ describe("TsAnalysisPreprocessing — автоперезапрос при воз
     await waitFor(() => expect(counts.spectral).toBe((before.spectral ?? 0) + 1));
     await waitFor(() => expect(counts.featureGeneration).toBe((before.featureGeneration ?? 0) + 1));
     await waitFor(() => expect(counts.scaling).toBe((before.scaling ?? 0) + 1));
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task PROGR-17 (spec_progress_v1.1.md §2, категория B): отчёт фактов
+// этапов модулем «Предобработка» в панель «Прогресс» -- зеркало
+// PROGR-16-A буквально. Профили остановок автозаполняют степпер
+// (PROGR-9-FOCUS), но факт-контур стадии preprocessing не имел носителя
+// результатов: клиент строит сводку из УЖЕ ПОЛУЧЕННЫХ ответов
+// profile-эндпоинтов и отчитывает снапшот POST
+// /v1/progress/preprocessing-checks через progressApiUrl (НЕ
+// sessionApiUrl -- тот добавляет префикс /v1/session сам, вложенный
+// "/v1/..." давал бы гарантированный 404, урок PROGR-15-A).
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface RecordedPost {
+  url: string;
+  body: { checks?: Record<string, string> } | null;
+}
+
+// Порядок реестра PREPROCESSING_CHECK_IDS (apps/api/routers/session.py)
+// -- тот же снапшот, что требует all-or-nothing контракт бэкенда.
+const PREPROCESSING_CHECK_IDS_ARR = [
+  "missing", "outliers", "regularity", "decomposition", "variance_stab",
+  "smoothing", "stationarity", "spectral", "feature_eng", "scaling",
+] as const;
+
+function mockProgressReportPreprocessing(
+  options: {
+    hasDataset?: boolean;
+    postStatuses?: number[];
+    missingProfile?: () => unknown;
+    onPutModes?: () => void;
+  } = {},
+): { postCalls: RecordedPost[] } {
+  const { hasDataset = true, postStatuses = [], missingProfile, onPutModes } = options;
+  const postCalls: RecordedPost[] = [];
+  let postIndex = 0;
+  global.fetch = jest.fn((url: string, init?: RequestInit) => {
+    if (typeof url === "string" && url.includes("/session/current")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(hasDataset ? {
+          has_active_dataset: true,
+          dataset: { dataset_id: "d1", name: "monitor.csv", rows: 3, columns: 1, size_label: "1 KB" },
+          stages: {},
+          last_active_stage: null,
+          target_column: null,
+          updated_at: null,
+        } : {
+          has_active_dataset: false,
+          dataset: null,
+          stages: {},
+          last_active_stage: null,
+          target_column: null,
+          updated_at: null,
+        }),
+      });
+    }
+    if (typeof url === "string" && url.includes("/target-column")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          target_column: init?.method === "POST" ? JSON.parse(String(init.body)).column : null,
+          suggested_column: "Price",
+          available_columns: ["Year", "Price", "Volume"],
+          has_dataset: true,
+        }),
+      });
+    }
+    if (typeof url === "string" && url.includes("preprocessing-check-modes")) {
+      if (init?.method === "PUT" && onPutModes) onPutModes();
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ modes: {} }) });
+    }
+    if (typeof url === "string" && url.includes("missing-profile")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve(missingProfile ? missingProfile() : MISSING_PROFILE),
+      });
+    }
+    if (typeof url === "string" && url.includes("outlier-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(OUTLIERS_PROFILE) });
+    }
+    if (typeof url === "string" && url.includes("regularity-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(REGULARITY_PROFILE) });
+    }
+    if (typeof url === "string" && url.includes("decomposition-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(DECOMPOSITION_PROFILE) });
+    }
+    if (typeof url === "string" && url.includes("variance-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(VARIANCE_PROFILE) });
+    }
+    if (typeof url === "string" && url.includes("smoothing-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(SMOOTHING_PROFILE) });
+    }
+    if (typeof url === "string" && url.includes("stationarity-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(STATIONARITY_PROFILE) });
+    }
+    if (typeof url === "string" && url.includes("spectral-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(SPECTRAL_PROFILE) });
+    }
+    if (typeof url === "string" && url.includes("feature-generation-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(FEATURE_GENERATION_PROFILE) });
+    }
+    if (typeof url === "string" && url.includes("scaling-profile")) {
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(SCALING_PROFILE) });
+    }
+    if (typeof url === "string" && url.includes("/progress/preprocessing-checks")) {
+      let body: { checks?: Record<string, string> } | null = null;
+      try {
+        body = JSON.parse(String(init?.body ?? "null"));
+      } catch {
+        body = null;
+      }
+      postCalls.push({ url, body });
+      const ok = postIndex < postStatuses.length
+        ? postStatuses[postIndex] === 200
+        : true;
+      postIndex += 1;
+      return Promise.resolve({
+        ok,
+        status: ok ? 200 : 500,
+        json: () => Promise.resolve({ run_id: "RUN-1", reported: 10 }),
+      });
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+  }) as unknown as typeof fetch;
+  return { postCalls };
+}
+
+describe("TsAnalysisPreprocessing — PROGR-17: URL-контракт отчёта этапов в «Прогресс»", () => {
+  // Рендер -- через модульный renderPreprocessing() (AppShellProvider).
+
+  // Снапшот, который обязана отчитать связка статусов мок-профилей выше.
+  const EXPECTED_SNAPSHOT: Record<string, string> = {
+    missing: "warning",
+    outliers: "warning",
+    regularity: "done",
+    decomposition: "done",
+    variance_stab: "warning",
+    smoothing: "warning",
+    stationarity: "warning",
+    spectral: "done",
+    feature_eng: "warning",
+    scaling: "warning",
+  };
+  expect(new Set(Object.keys(EXPECTED_SNAPSHOT))).toEqual(
+    new Set(PREPROCESSING_CHECK_IDS_ARR),
+  );
+
+  it("reports the full check snapshot to progressApiUrl('/preprocessing-checks') once profiles settle", async () => {
+    const { postCalls } = mockProgressReportPreprocessing();
+
+    renderPreprocessing();
+    // Профили осели (степпер показывает реальные статусы) -- снапшот
+    // отчитан ровно один раз (строковая идентичность дедуплицирует).
+    await waitFor(() => expect(postCalls).toHaveLength(1));
+
+    // URL-контракт: хелпер progressApiUrl ("/preprocessing-checks"),
+    // НЕ sessionApiUrl -- двойной префикс /v1/session/v1/... ловится
+    // здесь (дискриминатор дефекта PROGR-15-REPRO Г-1).
+    expect(postCalls[0].url).toBe(
+      "http://localhost:8000/v1/progress/preprocessing-checks",
+    );
+
+    // Снапшот ВСЕХ 10 остановок реестра (all-or-nothing контракт
+    // бэкенда), статусы -- те, что показывает степпер.
+    expect(postCalls[0].body?.checks).toEqual(EXPECTED_SNAPSHOT);
+
+    // Осевший снапшот стабилен -- дедупликация не даёт повторов.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(postCalls).toHaveLength(1);
+  });
+
+  it("does not report without an active dataset (facts of checks without research do not exist)", async () => {
+    const { postCalls } = mockProgressReportPreprocessing({ hasDataset: false });
+
+    renderPreprocessing();
+    // Без датасета профили не приходят (модуль не существует как источник
+    // фактов) -- отчёта нет, despite осевшие «skipped»-иконки 404-контура.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(postCalls).toHaveLength(0);
+  });
+
+  it("re-reports the NEW snapshot after an HTTP failure (res.ok checked, ref reset)", async () => {
+    // Первый отчёт -- 500 (ok:false); смена режима «Пропусков» на
+    // «Отключена» меняет картину статусов (missing: warning -> skipped) --
+    // новый снапшот, контур обязан повторить отчёт (семантика PROGR-15-A:
+    // сброс маркера при !ok симметричен .catch; повтор -- по следующему
+    // изменению снапшота, без таймеров).
+    const disabledMissing = () => ({
+      ...MISSING_PROFILE,
+      mode: "disabled",
+      status: "skipped",
+      status_reason: "disabled",
+    });
+    let modeChanged = false;
+    const { postCalls } = mockProgressReportPreprocessing({
+      postStatuses: [500],
+      missingProfile: () => (modeChanged ? disabledMissing() : MISSING_PROFILE),
+      onPutModes: () => {
+        modeChanged = true;
+      },
+    });
+
+    renderPreprocessing();
+    await waitFor(() => expect(postCalls).toHaveLength(1));
+    expect(postCalls[0].body?.checks?.missing).toBe("warning");
+
+    // Смена режима -- новое осевшее состояние -- отчёт ОБЯЗАН уйти:
+    // HTTP-неудача первого не «заморозила» контур.
+    fireEvent.change(
+      await screen.findByRole("combobox", { name: "Режим проверки Пропуски" }),
+      { target: { value: "disabled" } },
+    );
+    await waitFor(() => expect(postCalls).toHaveLength(2));
+    expect(postCalls[1].body?.checks?.missing).toBe("skipped");
+    for (const call of postCalls) {
+      expect(call.url).toBe(
+        "http://localhost:8000/v1/progress/preprocessing-checks",
+      );
+    }
   });
 });

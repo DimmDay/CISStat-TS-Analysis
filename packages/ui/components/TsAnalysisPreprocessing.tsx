@@ -26,7 +26,8 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { StepperNextModuleButton } from "./StepperNextModuleButton";
-import { sessionApiUrl } from "../lib/apiClient";
+import { sessionApiUrl, progressApiUrl } from "../lib/apiClient";
+import { useAppShell } from "../context/AppShellContext";
 import { useTargetColumn } from "../hooks/useTargetColumn";
 // PROGR-9-FOCUS: автоперезапрос профилей при возврате во вкладку/окно —
 // закрывает сценарий «вторая вкладка» (общая cookie-сессия) и ретрай
@@ -127,26 +128,6 @@ const CHECKS: Check[] = [
 // из TsAnalysisValidation.tsx (Цель / Метрики / Алгоритм backend /
 // опциональный смысловой блок; отдельная константа для мастера).
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 type PreprocessingCheckMode = "auto" | "enabled" | "disabled";
 
 // ── Компонент ─────────────────────────────────────────────────
@@ -178,6 +159,11 @@ export function TsAnalysisPreprocessing() {
     setColumn: setActiveFeature,
     passportResetNotice,
   } = useTargetColumn(undefined);
+
+  // PROGR-17: гейт отчёта фактов (ниже) -- активный датасет сессии:
+  // без исследования отчёта НЕТ (зеркало 400-гейта бэкенда), смена
+  // имени датасета -- новая вселенная фактов (сброс маркера).
+  const { activeDataset } = useAppShell();
 
   // ── Режимы остановок (Task 47, применено к «Предобработке») ──
   // «Авто» / «Включена» / «Отключена» -- сохраняются в сессии через
@@ -671,6 +657,86 @@ export function TsAnalysisPreprocessing() {
     if (check.id === "scaling") return { ...check, status: scalingStatus, count: scalingProfile?.profile?.saved_recipe?.columns.length ?? 0 };
     return check;
   }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile, decompositionStatus, decompositionProfile, varianceStatus, varianceProfile, smoothingStatus, smoothingProfile, stationarityStatus, stationarityProfile, spectralStatus, spectralProfile, featureGenerationStatus, featureGenerationProfile, scalingStatus, scalingProfile]);
+
+  // ── PROGR-17: отчёт фактов этапов в панель «Прогресс» (зеркало
+  // PROGR-16-A, spec_progress_v1.1.md §2 категория B) ──
+  // Степпер автозаполняется профилями остановок (PROGR-9-FOCUS), но
+  // факт-контур стадии preprocessing не имел носителя результатов:
+  // панель показывала «не начато» при цветном модуле. Модуль строит
+  // снапшот из УЖЕ ПОЛУЧЕННЫХ ответов profile-эндпоинтов (§7.2-прецедент:
+  // клиент строит сводку из уже полученных данных) и отчитывает POST
+  // /v1/progress/preprocessing-checks: единый движок бэкенда сделает
+  // эти факты статусами панели («панель == модулю»).
+  //
+  // Гейт отчёта (зеркало семантики Валидации «до первого запуска
+  // отчёта НЕТ»):
+  //  * activeDataset -- факты этапов без исследования не существуют
+  //    (зеркало 400-гейта бэкенда): без датасета профили приходят
+  //    404-контуром (все «skipped»), но это осевший снапшот БЕЗ
+  //    исследования -- отчёта нет;
+  //  * !anyRunning && !anyPending -- отчёт только ПОЛНОСТЬЮ ОСЕВШЕГО
+  //    снапшота (в Валидации отчёт -- по завершённому ответу, не
+  //    сетевому транзиту). Транзитные «running» авто-перезапросов
+  //    (PROGR-9-FOCUS: фокус окна/вкладки) и стартовый «pending» 7
+  //    целевых остановок (они не начинают вычисления без
+  //    исследуемого признака -- activeFeature приходит асинхронно) --
+  //    не факты; репортить каждый транзит значило бы засорять трассу
+  //    десятками событий на каждое открытие вкладки. Осознанная
+  //    граница: датасет БЕЗ единой числовой колонки (вырожденный для
+  //    платформы) оставляет целевые остановки в «pending» навсегда --
+  //    отчёта нет (useTargetColumn авто-фиксирует рекомендацию при
+  //    наличии хоть одной числовой колонки).
+  // Строковая идентичность снапшота дедуплицирует: фокус-рефетч с
+  // НЕИЗМЕННОЙ картиной статусов не репортится повторно.
+  //
+  // URL-контракт (урок PROGR-15-A): URL строится хелпером progressApiUrl
+  // ("/preprocessing-checks"), НЕ sessionApiUrl -- тот добавляет префикс
+  // /v1/session сам, вложенный "/v1/..." дал бы гарантированный 404, и
+  // отчёт не доходил бы до единого движка НИ РАЗУ.
+  // HTTP-неудача проходит тем же контуром повтора, что и сетевая:
+  // res.ok проверяется, при !ok маркер отчёта сбрасывается -- следующий
+  // снапшот повторит отправление (вспомогательный контур §12 п.8,
+  // без алертов и таймеров).
+  const lastReportedChecksRef = useRef<string>("");
+  // Порядок эффектов ВАЖЕН: сброс маркера объявлен ДО эффекта отчёта --
+  // в коммите, где гидратируется activeDataset (null -> имя), сброс
+  // выполняется первым и не затирает маркер уже сделанного отчёта
+  // (иначе дедупликация слепа и каждый фокус-рефетч репортит заново).
+  useEffect(() => {
+    lastReportedChecksRef.current = "";
+  }, [activeDataset?.name]);
+  const postChecks = useCallback((reported: Record<string, CheckStatus>) => {
+    fetch(progressApiUrl("/preprocessing-checks"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ checks: reported }),
+    })
+      .then((res) => {
+        if (!res.ok) lastReportedChecksRef.current = "";
+      })
+      .catch(() => {
+        // Отчёт фактов -- вспомогательный контур (§12 п.8): сбой не ломает
+        // модуль; следующее изменение снапшота повторит отчёт.
+        lastReportedChecksRef.current = "";
+      });
+  }, []);
+
+  // Снапшот статусов -- ровно то, что показывает степпер (все 10
+  // остановок реестра PREPROCESSING_CHECK_IDS, статусы -- как на экране).
+  const checksReportSnapshot: string | null =
+    activeDataset
+      && !checks.some((check) => check.status === "running")
+      && !checks.some((check) => check.status === "pending")
+      ? JSON.stringify(Object.fromEntries(checks.map((c) => [c.id, c.status])))
+      : null;
+
+  useEffect(() => {
+    if (!checksReportSnapshot) return;
+    if (checksReportSnapshot === lastReportedChecksRef.current) return;
+    lastReportedChecksRef.current = checksReportSnapshot;
+    postChecks(JSON.parse(checksReportSnapshot) as Record<string, CheckStatus>);
+  }, [checksReportSnapshot, postChecks]);
 
   // Сворачиваем при смене секции
   useEffect(() => {

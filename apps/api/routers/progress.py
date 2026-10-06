@@ -566,6 +566,125 @@ def report_validation_checks(
     )
 
 
+# ── PROGR-17: отчёт фактов этапов «Предобработки» (spec_progress_
+#    v1.1.md §2, категория B -- зеркало /validation-checks PROGR-16-A
+#    буквально) ─────────────────────────────────────────────────────────
+
+
+class PreprocessingChecksReportIn(BaseModel):
+    """Тело отчёта модуля «Предобработка» (зеркало
+    ValidationChecksReportIn, прецедент §7.2/PROGR-13-A4: клиент строит
+    сводку из УЖЕ ПОЛУЧЕННЫХ ответов profile-эндпоинтов -- бэкенд не
+    переопрашивает их; статус выводится только из засеянных фактов --
+    решение Расхождения №1 сохраняется).
+
+    checks -- ПОЛНАЯ карта остановок реестра PREPROCESSING_CHECK_IDS
+    (id -> CheckStatus): снапшот состояния степпера после вычислений,
+    не дельта; партиальные отчёты -- клиентский баг и fail-closed 422
+    (чёрные дыры в фактах стадии недопустимы: панель обязана совпадать
+    с модулем целиком)."""
+
+    checks: Dict[str, str]
+
+
+class PreprocessingChecksReportResponse(BaseModel):
+    """Эхо приёмки: сколько фактов записано + run_id запуска, в который
+    они легли (слой 2 -- тот же механизм зеркала, что у хука §5)."""
+
+    run_id: Optional[str] = None
+    reported: int
+
+
+@router.post(
+    "/preprocessing-checks",
+    response_model=PreprocessingChecksReportResponse,
+)
+def report_preprocessing_checks(
+    payload: PreprocessingChecksReportIn, request: Request, response: Response
+) -> PreprocessingChecksReportResponse:
+    """Отчёт статусов этапов «Предобработки» от её модуля (PROGR-17,
+    spec_progress_v1.1.md §2 категория B -- зеркало /validation-checks
+    PROGR-16-A буквально: автозаполнение степпера профилями остановок
+    не оставляло следа в факт-контуре стадии preprocessing -- панель
+    показывала «не начато» при цветном модуле; тот же класс «нет
+    носителя факта прохождения», что закрыт для Валидации).
+
+    Факты пишутся СОБЫТИЯМИ трассы (preprocessing_check_status,
+    payload.status из CHECK_STATUS_VALUES -- единый движок node_status
+    читает их через resolve_event_status), в слой 1 И зеркалом в слой 2
+    -- тот же двухслойный механизм, что у хука §5 и отчётов
+    /upload-stops (PROGR-13-A4) и /validation-checks (PROGR-16-A).
+    Валидация fail-closed (паттерн sanity-check §7.2): неизвестная
+    остановка / недопустимый статус / неполная карта -- 422 ДО первой
+    записи (all-or-nothing, чёрных дыр в фактах стадии нет). Аналитик
+    без датасета -- 400 (факты этапов без исследования не
+    существуют)."""
+    checks = payload.checks
+    if not checks:
+        raise HTTPException(
+            status_code=422,
+            detail="Карта этапов пуста -- отчёт фактов без фактов",
+        )
+    known_ids = STAGE_NODES["preprocessing"]
+    unknown = sorted(set(checks) - set(known_ids))
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Неизвестные остановки «Предобработки»: {unknown}; "
+                f"известные: {list(known_ids)} (§2 -- фантомных узлов нет)"
+            ),
+        )
+    invalid = sorted(
+        node_id
+        for node_id, status in checks.items()
+        if status not in CHECK_STATUS_VALUES
+    )
+    if invalid:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Недопустимый статус этапов: {invalid}; "
+                f"допустимые: {list(CHECK_STATUS_VALUES)} (CheckStatus §3)"
+            ),
+        )
+    missing = [node_id for node_id in known_ids if node_id not in checks]
+    if missing:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Карта неполна (нет этапов: {missing}) -- отчёт "
+                f"обязан быть снапшотом ВСЕХ остановок реестра"
+            ),
+        )
+
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataset is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Сначала загрузите датасет -- этапы «Предобработки» без данных не существуют",
+        )
+    session.ensure_run_id()
+    for node_id in known_ids:
+        event = make_trace_event(
+            "preprocessing_check_status",
+            stage="preprocessing",
+            node_id=node_id,
+            run_id=session.run_id,
+            status=checks[node_id],
+        )
+        session.append_trace_event(event)
+        # §5 слой 2: зеркало фактов этапов в research_runs -- тот же
+        # best-effort механизм, что у хука (record_run_event).
+        record_run_event(session, event)
+    store.save(session)
+    return PreprocessingChecksReportResponse(
+        run_id=session.run_id, reported=len(known_ids)
+    )
+
+
 # ── PROGR-5: долговременный слой (§5 слой 2) ─────────────────────────
 
 

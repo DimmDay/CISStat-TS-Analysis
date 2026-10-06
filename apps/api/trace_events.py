@@ -102,6 +102,18 @@ _STAGE_EVENT_TYPES: dict[str, set[str]] = {
     "preprocessing": {
         "mode_changed", "correction_previewed",
         "correction_applied", "target_column_changed",
+        # PROGR-17 (spec_progress_v1.1.md §2, категория B): отчёт фактов
+        # этапов модулем «Предобработка» (POST /v1/progress/preprocessing-
+        # checks; зеркало /validation-checks PROGR-16-A буквально, тот же
+        # паттерн §7.2 -- клиент строит сводку из уже полученных ответов
+        # profile-эндпоинтов). Статус этапа -- В PAYLOAD (ключ "status",
+        # whitelist CHECK_STATUS_VALUES); движок node_status читает его
+        # оттуда (PAYLOAD_STATUS_EVENT_TYPES). Закрытие родственной зоны
+        # дефекта PROGR-16-REPRO: у Предобработки, как и у Валидации до
+        # PROGR-16-A, автозаполнение степпера не имело носителя в
+        # факт-контуре стадии -- панель показывала «не начато» при
+        # цветном модуле.
+        "preprocessing_check_status",
     },
     "eda": {
         "profile_viewed",    # троттлинг §4.2 (дефолт 5 мин на узел)

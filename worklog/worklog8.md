@@ -1746,3 +1746,46 @@ ZIP: cisstat-progr16-a-validation-checks-report.zip -- пути репозито
 НОВЫЕ: tests/api/test_progress_progr16.py.
 ИЗМЕНЕНЫ: apps/api/trace_events.py, app/core/node_status.py, apps/api/routers/progress.py, app/core/run_report.py, packages/ui/components/TsAnalysisValidation.tsx, packages/ui/components/TsAnalysisValidation.test.tsx, tests/api/test_node_status_engine.py (миграция контракта), tests/api/test_trace_events.py (миграция контракта), spec_progress.md (§4.1), worklog/worklog8.md (эта запись).
 Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PROGR-17 (2026-10-06) — Отчёт фактов этапов модулем «Предобработка»: POST /v1/progress/preprocessing-checks + тип preprocessing_check_status (зеркало PROGR-16-A; spec_progress_v1.1.md §2, категория B)
+База: main@3ace7d2 (spec_progress_v1.1.md принят в main; рабочее дерево до задачи чистое, HEAD detached на 3ace7d2). Правила AGENTS.md соблюдены: commit/push НЕ выполнялись; TDD RED→GREEN; мутационные пробы; typecheck+build проверены. Постановка — сводный план задач spec_progress_v1.1.md §6: «PROGR-17, категория B: preprocessing_check_status, backend+frontend, по образцу PROGR-16-A».
+
+### Корень (зафиксирован v1.1 §2)
+PROGR-16-A закрыл класс «нет носителя факта прохождения» только для Валидации. Для Предобработки та же дыра: степпер автозаполняется профилями 10 остановок (missing/outliers/regularity/decomposition/variance_stab/smoothing/stationarity/spectral/feature_eng/scaling == PREPROCESSING_CHECK_IDS), но факт-контур стадии preprocessing не имел носителя результатов — панель показывала «не начато» при цветном модуле (тот же класс «отсутствующего носителя факта», родственная зона PROGR-16-REPRO).
+
+### Реализация
+apps/api/trace_events.py: тип preprocessing_check_status в _STAGE_EVENT_TYPES["preprocessing"] (гейт make_trace_event; комментарий — корень и паттерн).
+app/core/node_status.py: preprocessing_check_status в PAYLOAD_STATUS_EVENT_TYPES (статус из payload["status"], whitelist CHECK_STATUS_VALUES — тот же механизм, что upload_stop_status/validation_check_status) + EVENT_NODE_REASON («Статус проверки отчитан модулем «Предобработка»»).
+apps/api/routers/progress.py: POST /v1/progress/preprocessing-checks (PreprocessingChecksReportIn.checks: Dict[str,str] → PreprocessingChecksReportResponse{run_id, reported}) — зеркало report_validation_checks буквально: fail-closed 422 (пустая карта / неизвестная остановка вне STAGE_NODES["preprocessing"] / статус вне CHECK_STATUS_VALUES / неполная карта — ДО первой записи, all-or-nothing), 400 без датасета, ensure_run_id, события stage="preprocessing" по узлам PREPROCESSING_CHECK_IDS в слой 1 (append_trace_event) + зеркало слоя 2 (record_run_event, best-effort), save.
+app/core/run_report.py: _preprocessing_check_status_line — человекочитаемая строка факта отчёта §5.4, метка остановки из реестра справки (node_label("preprocessing", ...); все 10 остановок имеют статьи «Метрики и алгоритм» — проверено по registry_data.json), статус словами CheckStatus; ветка в fact_line. Модуль назван ЯВНО («отчитан модулем «Предобработка»»): строка Валидации не тронута (существующий контракт не сужается), в журнале отчёта строки однозначно различимы.
+packages/ui/components/TsAnalysisPreprocessing.tsx: useAppShell() (activeDataset; оба приложения рендерят модуль под AppShellProvider — embedded/standalone layout, проверено); postChecks (fetch(progressApiUrl("/preprocessing-checks"), POST, credentials) — URL-контракт PROGR-15-A; res.ok проверяется, при !ok маркер сбрасывается — симметрия .catch, повтор по следующему снапшоту, §12 п.8); checksReportSnapshot — JSON снапшот статусов РОВНО как показывает степпер; гейт = activeDataset && ни одной «running» && ни одной «pending»; эффект отчёта по смене снапшота (строковая идентичность, последний wins); сброс маркера по activeDataset?.name (новая вселенная фактов).
+ГЕЙТЫ ОТЧЁТА (отличие от Валидации — автозаполнение степпера вместо явного «Запустить»): (а) activeDataset — факты этапов без исследования не существуют (зеркало 400-гейта; 404-контур профилей даёт осевшие «skipped» БЕЗ исследования — не отчёт); (б) только ПОЛНОСТЬЮ осевший снапшот (ни running, ни pending): транзит авто-перезапросов PROGR-9-FOCUS (фокус окна/вкладки) и стартовый pending 7 целевых остановок (не начинают вычисления без activeFeature) — не факты; (в) строковая идентичность дедуплицирует фокус-рефетчи с неизменной картиной; (г) порядок эффектов ВАЖЕН: сброс маркера объявлен ДО эффекта отчёта — в коммите гидратации activeDataset сброс выполняется первым и не затирает маркер уже сделанного отчёта (иначе дедупликация слепа навсегда).
+
+### TDD
+RED: НОВЫЙ tests/api/test_progress_progr17.py (8 тестов, зеркало test_progress_progr16: движок — payload-статус с whitelist-мусором None, узловой факт + фаза Наставника → preprocessing; эндпоинт — полный контракт end-to-end слой1+слой2+/trace+fold attention (6 done/3 warning/1 skipped), fail-closed all-or-nothing 4 вида x 422, 400 без датасета, посев run_id на первом отчёте, last-wins при повторном отчёте; отчёт §5.4 — метки «Пропуски»/«Выбросы» из реестра). На @3ace7d2 падали РОВНО 8: движок — resolve_event_status None (типа нет), эндпоинт — 404, отчёт — строка-фоллбек «Событие трассы».
+
+RED frontend: НОВЫЙ describe PROGR-17 в TsAnalysisPreprocessing.test.tsx (3 теста) + хелпер mockProgressReportPreprocessing (маршрутизация 10 профилей + /session/current + /progress/preprocessing-checks с записью URL+body; все 68 прежних render(...) переведены на модульный renderPreprocessing() c AppShellProvider — компонент теперь читает useAppShell). Дискриминаторы URL («Expected http://localhost:8000/v1/progress/preprocessing-checks») — на старом коде ноль вызовов (2 упавших); guard «без датасета не отчитывать» зелёный ДО кода (контракт-инвариант).
+
+Итерация GREEN (находка теста, зафиксированная в коде): первый вариант гейта «!anyRunning» ловил промежуточный снапшот (3 dataset-wide остановки осели, 7 целевых ещё «pending» — их эффекты ждут activeFeature) и репортил его; тест «ровно 1 POST с полным снапшотом» это поймал ДО попадания в трассу — гейт усилен до полного оседания (ни running, ни pending).
+
+GREEN: test_progress_progr17 8/8; TsAnalysisPreprocessing.test.tsx 73/73 (68 прежних + 3 новых + 1 guard); связанный контур (node_status_engine, progress_panel, trace_hook, progr13a/b/c, defects_progr13, mentor_rules, run_report, admin_progress_api, pipeline_graph, research_runs, progr16, progr17) — 552 passed.
+
+Миграции контрактов (следствие расширения реестров, не ослабление): test_node_status_engine (PAYLOAD_STATUS_EVENT_TYPES == {upload_stop_status, validation_check_status, preprocessing_check_status}) + test_trace_events::test_registry_per_spec_table (строка preprocessing + preprocessing_check_status).
+
+### Верификация
+Полный tests/api — 1311 passed / 1 skipped / 19 failed; ВСЕ 19 воспроизведены 1:1 на ЧИСТОМ 3ace7d2 (git stash — упреждающе при отладке jest-конфига) и совпадают со средовым набором PROGR-16-A: forecasting_session x16, modeling_workflow (catalog-only-гейт), models_backtest_neural_capacity (память хоста), models_candidates (unsupported-model гейт) — к задаче не относятся.
+
+Jest полный: 149 сюит / 1795 тестов — все зелёные (1792 базы + 3 новых). typecheck:all — чисто; build:all — оба приложения Compiled successfully.
+
+Мутационные пробы (каждая — правка → прогон → откат): M-1 снят гейт неполной карты (all-or-nothing) — пойман test_...fail_closed_all_or_nothing (KeyError на партиальной карте в assert слоя 1); M-2 удалено зеркало record_run_event — пойман test..._full_contract (слой 2 пуст); M-4 URL через sessionApiUrl (двойной префикс) — пойманы 2 дискриминатора describe PROGR-17; M-5 снят гейт activeDataset — НЕ пойман (замаскирован pending-гейтом: без датасета activeFeature не приходит, целевые остановки остаются «pending», снапшот не оседает). Вывод по M-5: гейт activeDataset — оборонительный слой (зеркало 400-гейта бэкенда, защита экзотического stale-target-края), первичный контур — оседание снапшота, финальный арбитр — 400; осознанная избыточность, оставлен намеренно.
+
+### Осознанные границы
+Датасет БЕЗ единой числовой колонки (вырожденный для платформы): целевые остановки остаются «pending» навсегда — отчёта нет (useTargetColumn авто-фиксирует рекомендацию при наличии хоть одной числовой колонки). Зафиксировано в коде и spec_progress.md §4.1.
+
+Транзитные состояния («running»/стартовый «pending») в трассу не попадают — панель показывает последний ОСЕВШИЙ снапшот (та же семантика, что у Валидации во время перезапуска).
+
+EDA (eda_check_status) — следующая задача PROGR-18 по v1.1 §2 (переиспользование этого паттерна); методологический вопрос семантики статуса EDA поставлен в v1.1 и не решается здесь.
+
+Панель/Наставник/admin-аналитика/отчёт — потребители БЕЗ изменений кода (единый движок); trace_hook не тронут (клиентский отчёт, не маршруты сессии).

@@ -290,6 +290,30 @@ def _validation_check_status_line(event: dict) -> str:
     return f"Статус проверки «{check_label}» отчитан модулем: {status_label}."
 
 
+def _preprocessing_check_status_line(event: dict) -> str:
+    """PROGR-17 (spec_progress_v1.1.md §2, категория B): факт отчёта
+    этапа модулем «Предобработка» (preprocessing_check_status, POST
+    /v1/progress/preprocessing-checks) -- зеркало _validation_check_
+    status_line: та же гранулярность, что у панели -- метка остановки
+    из реестра справки (node_label; все 10 остановок Предобработки
+    имеют статьи «Метрики и алгоритм»), статус -- человеческой
+    формулировкой CheckStatus (неизвестное значение -- как есть,
+    честный аудит). Модуль назван ЯВНО: в журнале отчёта строка
+    однозначно отличается от строки «Валидации» (существующий контракт
+    которой не сужается -- метка модуля там опущена)."""
+    payload = event.get("payload")
+    if not isinstance(payload, dict):
+        payload = {}
+    status = str(payload.get("status") or "")
+    status_label = _STOP_STATUS_LABELS.get(status, status or "неизвестен")
+    node_id = str(event.get("node_id") or "")
+    check_label = node_label("preprocessing", node_id) if node_id else node_id
+    return (
+        f"Статус проверки «{check_label}» отчитан модулем "
+        f"«Предобработка»: {status_label}."
+    )
+
+
 def fact_line(event: dict) -> tuple[str, tuple[tuple[str, str], ...]]:
     """Факт события -- человекочитаемая строка (+ ссылки, если есть).
     Шаблоны пишут терминологию платформы (стратегия/метод/счётчики --
@@ -318,6 +342,12 @@ def fact_line(event: dict) -> tuple[str, tuple[tuple[str, str], ...]]:
     # цветном модуле).
     if event_type == "validation_check_status":
         return _validation_check_status_line(event), links
+
+    # PROGR-17: факты этапов «Предобработки» -- зеркало PROGR-16-A
+    # (spec_progress_v1.1.md §2, категория B): та же гранулярность, что
+    # у панели.
+    if event_type == "preprocessing_check_status":
+        return _preprocessing_check_status_line(event), links
 
     if event_type in ("correction_applied", "correction_previewed"):
         return _correction_line(event_type, payload), links

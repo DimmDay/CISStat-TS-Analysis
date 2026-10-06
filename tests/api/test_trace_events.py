@@ -134,6 +134,9 @@ class TestStageEventRegistry:
         # PROGR-16-A: Валидация + validation_check_status (отчёт фактов
         # проверок модулем, статус -- в payload; закрытие дефекта
         # PROGR-16-REPRO «Валидация. Не начато»).
+        # PROGR-17: Предобработка + preprocessing_check_status (зеркало
+        # PROGR-16-A, spec_progress_v1.1.md §2 категория B -- отчёт
+        # фактов этапов модулем, статус -- в payload).
         assert STAGE_EVENT_TYPES["upload"] == {
             "upload_completed", "passport_captured",
             "structure_confirmed", "upload_stop_status",
@@ -146,6 +149,7 @@ class TestStageEventRegistry:
         assert STAGE_EVENT_TYPES["preprocessing"] == {
             "mode_changed", "correction_previewed",
             "correction_applied", "target_column_changed",
+            "preprocessing_check_status",
         }
         assert STAGE_EVENT_TYPES["eda"] == {"profile_viewed", "passport_captured"}
         assert STAGE_EVENT_TYPES["modeling"] == {

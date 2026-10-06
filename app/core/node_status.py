@@ -121,6 +121,10 @@ EVENT_NODE_REASON: dict[str, str] = {
     # паттерн, что upload_stop_status: причина общая, конкретика --
     # статус узла рядом.
     "validation_check_status": "Статус проверки отчитан модулем «Валидация»",
+    # PROGR-17: отчёт фактов этапов модулем «Предобработка» -- зеркало
+    # PROGR-16-A (spec_progress_v1.1.md §2, категория B): причина
+    # общая, конкретика -- статус узла рядом.
+    "preprocessing_check_status": "Статус проверки отчитан модулем «Предобработка»",
 }
 
 # Ключи payload -- кандидаты в правый бейдж узла (§3 summary_count:
@@ -161,8 +165,18 @@ NODE_SUMMARY_COUNT_KEYS: tuple[str, ...] = (
 # модулем «Валидация» (POST /v1/progress/validation-checks, тот же
 # паттерн §7.2, что upload_stop_status): закрытие дефекта
 # PROGR-16-REPRO (панель «Валидация. Не начато» при цветном модуле).
+#
+# PROGR-17: preprocessing_check_status -- зеркало PROGR-16-A для
+# «Предобработки» (POST /v1/progress/preprocessing-checks,
+# spec_progress_v1.1.md §2, категория B): тот же класс «нет носителя
+# факта прохождения» -- автозаполнение степпера профилями не оставляло
+# следа в факт-контуре стадии preprocessing.
 PAYLOAD_STATUS_EVENT_TYPES: frozenset[str] = frozenset(
-    {"upload_stop_status", "validation_check_status"}
+    {
+        "upload_stop_status",
+        "validation_check_status",
+        "preprocessing_check_status",
+    }
 )
 
 # Эффективные режимы проверок (Валидация/Предобработка §3): отсутствие
