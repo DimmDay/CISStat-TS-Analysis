@@ -131,6 +131,9 @@ class TestStageEventRegistry:
         # PROGR-13-A3/A4: Загрузка + structure_confirmed (подтверждение
         # структуры аналитиком, POST /date-column) и upload_stop_status
         # (отчёт фактов остановок модулем, статус -- в payload).
+        # PROGR-16-A: Валидация + validation_check_status (отчёт фактов
+        # проверок модулем, статус -- в payload; закрытие дефекта
+        # PROGR-16-REPRO «Валидация. Не начато»).
         assert STAGE_EVENT_TYPES["upload"] == {
             "upload_completed", "passport_captured",
             "structure_confirmed", "upload_stop_status",
@@ -138,7 +141,7 @@ class TestStageEventRegistry:
         assert STAGE_EVENT_TYPES["validation"] == {
             "mode_changed", "correction_previewed",
             "correction_applied", "target_column_changed",
-            "passport_captured",
+            "passport_captured", "validation_check_status",
         }
         assert STAGE_EVENT_TYPES["preprocessing"] == {
             "mode_changed", "correction_previewed",

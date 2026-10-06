@@ -1709,3 +1709,40 @@ RED: tests/api/test_mentor_rules.py -- НОВЫЕ TestPhaseTextUploadFacts (10 u
 «upload/structure» -- канонический ключ; legacy «structure_confirmed» нормализуется на границе чтения движка (PROGR-13-B3) -- копии ключей в phase_text не заводились (владение: единственный движок).
 Мутационная защита: RED-ассерты целевые (просьба «подтвердите структуру»/«подтвердите целевой» как подстроки case-insensitive) -- подмена вариантов текста или снятие ветвления ловится сьютом; отдельный мутационный прогон не заказывался.
 scripts/progr13_repro_defects.py и оракулы PROGR-13-CERT -- датированные свидетельства, не трогались.
+
+---
+
+## Task ID: PROGR-16-A (2026-10-06) — Отчёт фактов проверок модулем «Валидация»: POST /v1/progress/validation-checks + тип validation_check_status (закрытие дефекта PROGR-16-REPRO «Валидация. Не начато»); граница задачи -- только validation
+База: main@c164e95 (PROGR-15-B принят в main; рабочее дерево до задачи чистое). Правила AGENTS.md соблюдены: commit/push НЕ выполнялись; TDD RED->GREEN->миграции контрактов; typecheck+build проверены. Квалификация тимлида: класс дефекта подтверждён («отсутствующий носитель факта»), инвариант «панель == модулю» применим, трасса -- дополнительный слой; граница -- validation, preprocessing, РЕАЛИЗАЦИЯ -- только для Валидации (Предобработка -- родственная зона, отдельная задача).
+
+### Корень (подтверждён расследованием PROGR-16-REPRO @c164e95)
+«Запустить валидацию» (TsAnalysisValidation.tsx -> GET /dataset/validate) вычисляла статусы 10 проверок, но факт-контур стадии validation не имел носителя результатов запуска: (1) GET /dataset/validate не в TRACE_ROUTES; (2) клиентский отчёт не существовал; (3) типа события не было в реестре §4.1. Панель /trace (единственный источник -- факты трассы, решение Расхождения №1) честно выводила все узлы validation/* pending -> fold not_started -> «Валидация. не начато» при цветном модуле.
+
+### Реализация
+apps/api/trace_events.py: тип validation_check_status в _STAGE_EVENT_TYPES["validation"] (гейт make_trace_event; комментарий -- корень дефекта и паттерн).
+app/core/node_status.py: validation_check_status в PAYLOAD_STATUS_EVENT_TYPES (статус из payload["status"], whitelist CHECK_STATUS_VALUES -- тот же механизм, что upload_stop_status) + EVENT_NODE_REASON («Статус проверки отчитан модулем «Валидация»»).
+apps/api/routers/progress.py: POST /v1/progress/validation-checks (ValidationChecksReportIn.checks: Dict[str,str] -> ValidationChecksReportResponse{run_id, reported}) -- зеркало report_upload_stops: fail-closed 422 (пустая карта / неизвестная проверка вне STAGE_NODES["validation"] / статус вне CHECK_STATUS_VALUES / неполная карта -- ДО первой записи, all-or-nothing), 400 без датасета, ensure_run_id, события stage="validation" по узлам CHECK_IDS в слой 1 (append_trace_event) + зеркало слоя 2 (record_run_event, best-effort), save.
+app/core/run_report.py: _validation_check_status_line -- человекочитаемая строка факта отчёта §5.4, метка проверки из реестра справки (node_label("validation", ...)), статус словами CheckStatus; ветка в fact_line (та же гранулярность, что у панели).
+packages/ui/components/TsAnalysisValidation.tsx: postChecks (fetch(progressApiUrl("/validation-checks"), POST, credentials) -- URL-контракт PROGR-15-A: хелпер progressApiUrl, НЕ sessionApiUrl; res.ok проверяется, при !ok маркер сбрасывается -- симметрия .catch, повтор по следующему снапшоту, §12 п.8); checksReportSnapshot -- JSON снапшот статусов РОВНО как показывает степпер (displayedStatus: pending+needs_rule -> warning), только при validationHasRun && checksData (до первого запуска отчёта НЕТ -- модуль не существует как источник фактов); эффект отчёта по смене снапшота (идентичность -- строка, последний wins); сброс маркера при смене датасета (новая вселенная фактов -- повторный запуск с идентичной картиной обязан репортиться).
+spec_progress.md: §4.1 строка validation/preprocessing + примечание PROGR-16-A (носитель факта, контракт эндпоинта, граница задачи).
+
+### TDD
+RED: НОВЫЙ tests/api/test_progress_progr16.py (8 тестов: движок -- payload-статус с whitelist-мусором None, узловой факт + фаза Наставника -> validation; эндпоинт -- полный контракт end-to-end слой1+слой2+/trace+fold attention, fail-closed all-or-nothing 4 вида x 422, 400 без датасета, посев run_id на первом отчёте, last-wins при повторном отчёте; отчёт §5.4 -- метки из реестра). На @c164e95 падали РОВНО 8: движок -- resolve_event_status None (типа нет), эндпоинт -- 404, отчёт -- нет строки. НОВЫЙ describe PROGR-16-A в TsAnalysisValidation.test.tsx (3 теста) + хелпер mockProgressReportValidation (маршрут /validation-checks с записью URL+body): URL-дискриминатор «Expected http://localhost:8000/v1/progress/validation-checks» -- на старом коде ноль вызовов; guard «до запуска не отчитывать» зелёный ДО кода (контракт-инвариант). Падение 2/2 дискриминаторов подтверждено прогоном.
+GREEN: test_progress_progr16 8/8; связанный контур (node_status_engine, progress_panel, trace_hook, progr13a/b/c, defects_progr13, mentor_rules, run_report, admin_progress_api, pipeline_graph, research_runs) -- 544 passed.
+Миграции контрактов (следствие расширения реестров, не ослабление): test_node_status_engine (PAYLOAD_STATUS_EVENT_TYPES == {upload_stop_status, validation_check_status}) + test_trace_events::test_registry_per_spec_table (строка validation + validation_check_status).
+Верификация: полный tests/api -- 1303 passed / 1 skipped / 19 failed; ВСЕ 19 воспроизведены 1:1 на ЧИСТОМ c164e95 через git stash (средовые, свежий контейнер: forecasting_session x16, modeling_workflow, models_backtest_neural_capacity память, models_candidates; известны по PROGR-15-B, там же зафиксирован их средовый характер; дополнительно установлен ruptures -- его отсутствие давало средовый провал eda_structural_breaks, на базе -- тот же). Jest полный: 149 сюит / 1792 теста -- все зелёные (1789 базы + 3 новых). typecheck:all -- чисто; build:all -- оба приложения Compiled successfully.
+
+### Осознанные границы
+Предобработка: та же дыра класса (запуск preprocess-вычислений не является фактом), СОЗНАТЕЛЬНО вне границы -- отдельная задача.
+Семантика повтора: сброс маркера при !ok симметричен .catch; сам по себе он НЕ инициирует повтор -- эффект перезапускается сменой снапшота (задокументированная семантика PROGR-15-A; тест «повтор» построен на смене картины статусов, без таймеров).
+До первого запуска отчёта нет: модуль без вычислений -- не источник фактов (не путать с «все pending после запуска» -- такой снапшот отчитывается честно).
+Отчёт -- снапшот displayedStatus (вид пользователя), не сырых статусов ответа: инвариант «панель == модулю» определён по НАБЛЮДАЕМОМУ.
+Фаза Наставника после запуска валидации -- «validation» (validation_check_status -- узловой факт): ожидаемое следствие контракта B1, тестом закреплено.
+Панель/Наставник/admin-аналитика/отчёт -- потребители БЕЗ изменений кода (единый движок); trace_hook не тронут (клиентский отчёт, не маршруты сессии).
+Установка зависимостей в контейнер (pywt/pandera/arch/statsforecast/tbats/prophet/psycopg2-binary/sqlalchemy/ruptures) -- средовое, код репозитория не касается.
+
+### Deliverable
+ZIP: cisstat-progr16-a-validation-checks-report.zip -- пути репозитория сохранены.
+НОВЫЕ: tests/api/test_progress_progr16.py.
+ИЗМЕНЕНЫ: apps/api/trace_events.py, app/core/node_status.py, apps/api/routers/progress.py, app/core/run_report.py, packages/ui/components/TsAnalysisValidation.tsx, packages/ui/components/TsAnalysisValidation.test.tsx, tests/api/test_node_status_engine.py (миграция контракта), tests/api/test_trace_events.py (миграция контракта), spec_progress.md (§4.1), worklog/worklog8.md (эта запись).
+Без commit/push (AGENTS.md).

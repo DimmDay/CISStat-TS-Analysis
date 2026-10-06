@@ -1303,3 +1303,176 @@ describe("TsAnalysisValidation — живая инвалидация Обзор�
     expect(source).toContain("onRulesApplied={runValidation}");
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task PROGR-16-A: отчёт фактов проверок модулем «Валидация» в панель
+// «Прогресс» (дефект PROGR-16-REPRO: «Запустить валидацию» посчитала
+// статусы остановок, а «Прогресс» показывал «Валидация. Не начато» --
+// факт-контур стадии validation не имел носителя результатов запуска).
+// Прецедент -- PROGR-13-A5/PROGR-15-A (postStops модуля «Загрузка»):
+// клиент строит сводку из УЖЕ ПОЛУЧЕННОГО ответа /dataset/validate и
+// отчитывает снапшот POST /v1/progress/validation-checks через
+// progressApiUrl (НЕ sessionApiUrl -- тот добавляет префикс /v1/session
+// сам, вложенный "/v1/..." давал гарантированный 404).
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface RecordedPost {
+  url: string;
+  body: { checks?: Record<string, string> } | null;
+}
+
+function mockProgressReportValidation(
+  validateResponse: (url?: string) => Promise<unknown>,
+  postChecksStatuses: number[] = [],
+): { postCalls: RecordedPost[] } {
+  const postCalls: RecordedPost[] = [];
+  let postIndex = 0;
+  global.fetch = jest.fn((url: string, options?: RequestInit) => {
+    if (url.includes("/session/current")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          has_active_dataset: true,
+          dataset: { dataset_id: "d1", name: "types.csv", rows: 3, columns: 1, size_label: "1 KB" },
+          stages: {},
+          last_active_stage: null,
+        }),
+      });
+    }
+    if (url.includes("/target-column")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ target_column: null, suggested_column: null, available_columns: [], has_dataset: true }),
+      });
+    }
+    if (url.includes("/dataset/range-profile")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ rule_source: "not_applicable", columns: [] }),
+      });
+    }
+    if (url.includes("/dataset/consistency-profile")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ rule_source: "not_applicable", rules: [] }),
+      });
+    }
+    if (url.includes("/dataset/inclusion-profile")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ rule_source: "not_applicable", columns: [] }),
+      });
+    }
+    if (url.includes("/dataset/referential-profile")) return validateResponse(url);
+    if (url.includes("/dataset/regularity-profile")) return validateResponse(url);
+    if (url.includes("/dataset/sufficiency-profile")) return validateResponse(url);
+    if (url.includes("/dataset/validate")) return validateResponse(url);
+    if (url.includes("/validation-checks")) {
+      let body: { checks?: Record<string, string> } | null = null;
+      try {
+        body = JSON.parse(String(options?.body ?? "null"));
+      } catch {
+        body = null;
+      }
+      postCalls.push({ url, body });
+      const ok = postIndex < postChecksStatuses.length
+        ? postChecksStatuses[postIndex] === 200
+        : true;
+      postIndex += 1;
+      return Promise.resolve({
+        ok,
+        status: ok ? 200 : 500,
+        json: () => Promise.resolve({ run_id: "RUN-1", reported: 10 }),
+      });
+    }
+    return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
+  }) as unknown as typeof fetch;
+  return { postCalls };
+}
+
+describe("TsAnalysisValidation — PROGR-16-A: URL-контракт отчёта проверок в «Прогресс»", () => {
+  function allDoneValidateResponse() {
+    return () => Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        ...validationResponse("done", "schema", 0),
+        checks: Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, {
+          status: "done", count: 0, items: [], scope: "dataset", rule_source: "system",
+        }])),
+      }),
+    });
+  }
+
+  it("reports the full check snapshot to progressApiUrl('/validation-checks') after a run", async () => {
+    const { postCalls } = mockProgressReportValidation(allDoneValidateResponse());
+
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    expect(await screen.findAllByText("Проверка пройдена")).toHaveLength(10);
+
+    // URL-контракт: хелпер progressApiUrl ("/validation-checks"), НЕ
+    // sessionApiUrl -- двойной префикс /v1/session/v1/... ловится здесь
+    // (дискриминатор дефекта PROGR-15-REPRO Г-1, применённый к отчёту).
+    await waitFor(() => expect(postCalls).toHaveLength(1));
+    expect(postCalls[0].url).toBe("http://localhost:8000/v1/progress/validation-checks");
+
+    // Снапшот ВСЕХ 10 проверок реестра (all-or-nothing контракт бэкенда),
+    // статусы -- те, что показывает модуль.
+    expect(postCalls[0].body?.checks).toEqual(
+      Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, "done"])),
+    );
+  });
+
+  it("does not report before the first validation run (module is not yet a source of facts)", async () => {
+    const { postCalls } = mockProgressReportValidation(allDoneValidateResponse());
+
+    renderValidation();
+    await screen.findByRole("button", { name: "Запустить валидацию" });
+
+    // Датасет активен, но запуск ещё не был: отчёта нет.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(postCalls).toHaveLength(0);
+  });
+
+  it("re-reports the NEW snapshot after an HTTP failure (res.ok checked, ref reset)", async () => {
+    // Первый отчёт -- 500 (ok:false); второй запуск валидации меняет
+    // картину статусов (formats: done -> warning) -- новый снапшот,
+    // контур обязан повторить отчёт (семантика PROGR-15-A: сброс маркера
+    // при !ok симметричен .catch; повтор -- по следующему изменению
+    // снапшота, без таймеров).
+    let secondRun = false;
+    const { postCalls } = mockProgressReportValidation(() => {
+      const formats = secondRun ? "warning" : "done";
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          ...validationResponse("done", "schema", 0),
+          checks: Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, {
+            status: id === "formats" ? formats : "done",
+            count: 0, items: [], scope: "dataset", rule_source: "system",
+          }])),
+        }),
+      });
+    }, [500, 200]);
+
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    expect(await screen.findAllByText("Проверка пройдена")).toHaveLength(10);
+    await waitFor(() => expect(postCalls).toHaveLength(1));
+    expect(postCalls[0].body?.checks?.formats).toBe("done");
+
+    // Повторный запуск с изменившейся картиной -- отчёт ОБЯЗАН уйти:
+    // HTTP-неудача первого не «заморозила» контур.
+    secondRun = true;
+    fireEvent.click(screen.getByRole("button", { name: "Запустить валидацию" }));
+    await waitFor(() => expect(postCalls).toHaveLength(2));
+    expect(postCalls[1].body?.checks?.formats).toBe("warning");
+    for (const call of postCalls) {
+      expect(call.url).toBe("http://localhost:8000/v1/progress/validation-checks");
+    }
+  });
+});

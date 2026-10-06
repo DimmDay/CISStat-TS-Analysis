@@ -273,6 +273,23 @@ def _upload_stop_status_line(event: dict) -> str:
     return f"Статус остановки «{stop_label}» отчитан модулем: {status_label}."
 
 
+def _validation_check_status_line(event: dict) -> str:
+    """PROGR-16-A: факт отчёта проверки модулем «Валидация»
+    (validation_check_status, POST /v1/progress/validation-checks):
+    та же гранулярность, что у панели (дефект PROGR-16-REPRO) -- метка
+    проверки из реестра справки (node_label), статус -- человеческой
+    формулировкой CheckStatus (неизвестное значение -- как есть,
+    честный аудит)."""
+    payload = event.get("payload")
+    if not isinstance(payload, dict):
+        payload = {}
+    status = str(payload.get("status") or "")
+    status_label = _STOP_STATUS_LABELS.get(status, status or "неизвестен")
+    node_id = str(event.get("node_id") or "")
+    check_label = node_label("validation", node_id) if node_id else node_id
+    return f"Статус проверки «{check_label}» отчитан модулем: {status_label}."
+
+
 def fact_line(event: dict) -> tuple[str, tuple[tuple[str, str], ...]]:
     """Факт события -- человекочитаемая строка (+ ссылки, если есть).
     Шаблоны пишут терминологию платформы (стратегия/метод/счётчики --
@@ -295,6 +312,12 @@ def fact_line(event: dict) -> tuple[str, tuple[tuple[str, str], ...]]:
 
     if event_type == "upload_stop_status":
         return _upload_stop_status_line(event), links
+
+    # PROGR-16-A: факты проверок «Валидации» -- та же гранулярность,
+    # что у панели (дефект PROGR-16-REPRO: «Валидация. Не начато» при
+    # цветном модуле).
+    if event_type == "validation_check_status":
+        return _validation_check_status_line(event), links
 
     if event_type in ("correction_applied", "correction_previewed"):
         return _correction_line(event_type, payload), links

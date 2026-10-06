@@ -51,7 +51,7 @@ import { ValidationRegularityPipeline } from "./ValidationRegularityPipeline";
 import { ValidationSufficiencyOverview } from "./ValidationSufficiencyOverview";
 import { ValidationSufficiencyPipeline } from "./ValidationSufficiencyPipeline";
 import { useAppShell } from "../context/AppShellContext";
-import { sessionApiUrl } from "../lib/apiClient";
+import { sessionApiUrl, progressApiUrl } from "../lib/apiClient";
 import { DatasetPassportPanel } from "./DatasetPassportPanel";
 import { useTargetColumn } from "../hooks/useTargetColumn";
 import { describeNode } from "../lib/knowledge/knowledge";
@@ -259,6 +259,11 @@ export function TsAnalysisValidation() {
     setModeSaving(null);
     setModeError(null);
     setChecksLoading(false);
+    // PROGR-16-A: новый датасет -- новая вселенная фактов: маркер
+    // отчёта сбрасывается, чтобы повторный запуск с ИДЕНТИЧНОЙ картиной
+    // статусов не был пропущен как «уже отчитано» (факты принадлежат
+    // прежнему исследованию).
+    lastReportedChecksRef.current = "";
     return () => {
       validationRequestId.current += 1;
     };
@@ -383,6 +388,58 @@ export function TsAnalysisValidation() {
   const handleRulesClick = () => {
     setDescriptionSection((prev) => prev === "rules" ? "metrics" : "rules");
   };
+
+  // ── PROGR-16-A: отчёт фактов проверок в панель «Прогресс» (дефект
+  // PROGR-16-REPRO) ──
+  // Модуль вычислил статусы проверок из СВОЕГО ответа /dataset/validate
+  // (§7.2-прецедент: клиент строит сводку из уже полученных данных) --
+  // отчитываем POST /v1/progress/validation-checks: единый движок
+  // бэкенда сделает эти факты статусами панели («панель == модулю»).
+  // До первого запуска отчёта НЕТ: модуль без вычислений ещё не
+  // существует как источник фактов (все статусы -- «не вычислялись»,
+  // а не «проверка не начата»).
+  //
+  // URL-контракт (урок PROGR-15-A): URL строится хелпером progressApiUrl
+  // ("/validation-checks"), НЕ sessionApiUrl -- тот добавляет префикс
+  // /v1/session сам, вложенный "/v1/..." дал бы гарантированный 404, и
+  // отчёт не доходил бы до единого движка НИ РАЗУ.
+  // HTTP-неудача проходит тем же контуром повтора, что и сетевая:
+  // res.ok проверяется, при !ok маркер отчёта сбрасывается -- следующий
+  // снапшот повторит отправление (вспомогательный контур §12 п.8,
+  // без алертов и таймеров).
+  const lastReportedChecksRef = useRef<string>("");
+  const postChecks = useCallback((checks: Record<string, CheckStatus>) => {
+    fetch(progressApiUrl("/validation-checks"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ checks }),
+    })
+      .then((res) => {
+        if (!res.ok) lastReportedChecksRef.current = "";
+      })
+      .catch(() => {
+        // Отчёт фактов -- вспомогательный контур (§12 п.8): сбой не ломает
+        // модуль; следующее изменение снапшота повторит отчёт.
+        lastReportedChecksRef.current = "";
+      });
+  }, []);
+
+  // Снапшот статусов -- ровно то, что показывает степпер
+  // (displayedStatus: pending+needs_rule -- warning, как на экране).
+  const checksReportSnapshot: string | null =
+    validationHasRun && checksData
+      ? JSON.stringify(
+          Object.fromEntries(CHECKS.map((c) => [c.id, displayedStatus(c)])),
+        )
+      : null;
+
+  useEffect(() => {
+    if (!checksReportSnapshot) return;
+    if (checksReportSnapshot === lastReportedChecksRef.current) return;
+    lastReportedChecksRef.current = checksReportSnapshot;
+    postChecks(JSON.parse(checksReportSnapshot) as Record<string, CheckStatus>);
+  }, [checksReportSnapshot, postChecks]);
 
   // ── Overflow detection для expandable description ──
   useEffect(() => {

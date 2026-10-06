@@ -86,6 +86,16 @@ _STAGE_EVENT_TYPES: dict[str, set[str]] = {
         "correction_applied", "target_column_changed",
         # PROGR-13-B2: паспортная точка validation (см. примечание ниже).
         "passport_captured",
+        # PROGR-16-A: отчёт фактов проверок модулем «Валидация»
+        # (POST /v1/progress/validation-checks; прецедент §7.2 -- клиент
+        # строит сводку из уже полученных данных, тот же паттерн, что
+        # upload_stop_status PROGR-13-A4). Статус проверки -- В PAYLOAD
+        # (ключ "status", whitelist CHECK_STATUS_VALUES); движок
+        # node_status читает его оттуда (PAYLOAD_STATUS_EVENT_TYPES).
+        # Закрытие дефекта PROGR-16-REPRO: запуск валидации был «слепой
+        # зоной» факт-контура -- панель показывала «Валидация. Не начато»
+        # при цветном модуле.
+        "validation_check_status",
     },
     # Предобработка разделяет набор Валидации (те же действия аналитика
     # на своей остановке), таблица §4.1 объединяет обе стадии.

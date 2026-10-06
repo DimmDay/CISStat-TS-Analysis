@@ -151,13 +151,15 @@ class TraceEvent:
 | Stage | `event_type` (примеры) | Источник |
 |---|---|---|
 | upload | `upload_completed` (узел `overview` — факт чтения файла; PROGR-13-A: подтверждение структуры — отдельное событие `structure_confirmed` на `POST /v1/session/date-column`), `structure_confirmed`, `upload_stop_status` (статус остановки — в payload, whitelist `CHECK_STATUS_VALUES`; отчёт модуля `POST /v1/progress/upload-stops`, прецедент §7.2), `passport_captured` (точка `start`, PROGR-13-B2) | PROGR-13-A/B (2026-10-02) |
-| validation/preprocessing | `mode_changed`, `correction_previewed`, `correction_applied`, `target_column_changed` | `progress_ts_analysis.md` (унаследовано) |
+| validation / preprocessing | `mode_changed`, `correction_previewed`, `correction_applied`, `target_column_changed`; **PROGR-16-A (2026-10-06): `validation_check_status` (только validation)** — отчёт фактов проверок модулем «Валидация», статус в payload (прецедент `upload_stop_status`) | `progress_ts_analysis.md` (унаследовано) + PROGR-16-A |
 | eda | `profile_viewed` (троттлится, см. §4.2), `passport_captured` | `progress_ts_analysis.md` (унаследовано) |
 | modeling | `backtest_run`, `tuning_trial_completed`, `model_selected`, `model_card_generated`, `passport_captured` (точка `modeling_entry`, PROGR-13-B2) | новое, по факту существующих эндпоинтов `apps/api/routers/modeling_session.py` |
 | forecasting | `forecast_generated`, `forecast_compared`, `forecast_sensitivity_computed`, `forecast_exported` | `spec_forecasting2.md §5.9`, дословно |
 | session (любая стадия) | `run_paused`, `run_resumed`, `checkpoint_saved` | `progress_ts_analysis.md` (унаследовано), см. §5.1–5.2 |
 
 **PROGR-13-A (2026-10-02) — доверенные факты с фронтенда.** Отчёт остановок `upload_stop_status` — прецедент §7.2 («CorrectionOutcomeSummary строит клиент»): модуль «Загрузка» вычисляет `stopStatus` из уже полученных ответов и отчитывает снапшот; статус несёт `payload["status"]`, валидируется белым списком `CHECK_STATUS_VALUES` (мусор честно пропускается движком — фантомных статусов нет). Эндпоинт fail-closed: неизвестный узел / недопустимый статус / неполная карта — 422 до первой записи (all-or-nothing); без датасета — 400.
+
+**PROGR-16-A (2026-10-06) — доверенные факты с фронтенда: Валидация.** Отчёт проверок `validation_check_status` (закрытие дефекта PROGR-16-REPRO: запуск валидации вычислял статусы всех 10 проверок, но факт-контур стадии не имел носителя результатов запуска — GET `/dataset/validate` не трассировался, клиентского отчёта и типа события не существовало; панель показывала «Валидация. Не начато» при цветном модуле). Тот же паттерн §7.2/PROGR-13-A4: модуль «Валидация» строит снапшот из УЖЕ полученного ответа `/dataset/validate` и отчитывает POST `/v1/progress/validation-checks` (URL — `progressApiUrl`, урок PROGR-15-A); до первого запуска отчёта нет. Статус в `payload["status"]` (whitelist `CHECK_STATUS_VALUES`); fail-closed all-or-nothing — неизвестная проверка / недопустимый статус / неполная карта — 422 до первой записи; без датасета — 400. Граница задачи: только `validation`; Предобработка — родственная зона того же класса (запускается отдельной задачей).
 
 ### 4.2 Откуда берутся события — не полинг, а хук на запись
 

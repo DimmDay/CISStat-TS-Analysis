@@ -117,6 +117,10 @@ EVENT_NODE_REASON: dict[str, str] = {
     # события -- из payload (см. PAYLOAD_STATUS_EVENT_TYPES ниже),
     # причина -- общая (конкретика -- статус узла рядом).
     "upload_stop_status": "Статус остановки отчитан модулем «Загрузка»",
+    # PROGR-16-A: отчёт фактов проверок модулем «Валидация» -- тот же
+    # паттерн, что upload_stop_status: причина общая, конкретика --
+    # статус узла рядом.
+    "validation_check_status": "Статус проверки отчитан модулем «Валидация»",
 }
 
 # Ключи payload -- кандидаты в правый бейдж узла (§3 summary_count:
@@ -152,7 +156,14 @@ NODE_SUMMARY_COUNT_KEYS: tuple[str, ...] = (
 # хранится, но фантомного статуса не создаёт). Реестр расширяется при
 # появлении новых клиентских фактов; гейт (stage, event_type)
 # make_trace_event прежний (STAGE_EVENT_TYPES trace_events.py).
-PAYLOAD_STATUS_EVENT_TYPES: frozenset[str] = frozenset({"upload_stop_status"})
+#
+# PROGR-16-A: validation_check_status -- отчёт статусов проверок
+# модулем «Валидация» (POST /v1/progress/validation-checks, тот же
+# паттерн §7.2, что upload_stop_status): закрытие дефекта
+# PROGR-16-REPRO (панель «Валидация. Не начато» при цветном модуле).
+PAYLOAD_STATUS_EVENT_TYPES: frozenset[str] = frozenset(
+    {"upload_stop_status", "validation_check_status"}
+)
 
 # Эффективные режимы проверок (Валидация/Предобработка §3): отсутствие
 # значения -- «auto» (backward-compatible контракт степперов,
