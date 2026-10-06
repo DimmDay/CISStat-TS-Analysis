@@ -1475,4 +1475,75 @@ describe("TsAnalysisValidation — PROGR-16-A: URL-контракт отчёта
       expect(call.url).toBe("http://localhost:8000/v1/progress/validation-checks");
     }
   });
+
+  it("re-reports the IDENTICAL snapshot after an HTTP failure (marker reset is the only cause of the retry)", async () => {
+    // R-2 (сертификация PROGR-16-A, отчёт §4): предыдущий тест строит
+    // повтор через ИЗМЕНЁННЫЙ снапшот -- мутант «снять сброс маркера
+    // при !ok» (M-F2) выживает, повтор обеспечивает изменение статусов.
+    // Здесь повтор строится при ИДЕНТИЧНОЙ картине статусов: сброс
+    // маркера при !ok -- ЕДИНСТВЕННАЯ причина повтора. Контур:
+    // запуск 1 -- POST 500; запуск 2 -- неудача самого /dataset/validate
+    // (catch обнуляет checksData -- снапшот -> null); запуск 3 -- та же
+    // картина статусов: снапшот возвращается к той же строке (dep
+    // null -> строка), эффект обязан повторить отчёт. Мутант молча
+    // теряет отчёт -- теперь это ловится jest-каналом, а не только
+    // статическим оракулом E3 сертификатора.
+    let validateRun = 0;
+    const { postCalls } = mockProgressReportValidation((url?: string) => {
+      if (url?.includes("/dataset/validate")) {
+        validateRun += 1;
+        if (validateRun === 2) {
+          // Неудача САМОГО запуска валидации: catch -> checksData null,
+          // снапшот -> null; картина статусов при этом НЕ менялась.
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            json: () => Promise.resolve({ detail: "transient" }),
+          });
+        }
+      }
+      // Запуски 1 и 3: ИДЕНТИЧНАЯ картина -- все 10 проверок done.
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          ...validationResponse("done", "schema", 0),
+          checks: Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, {
+            status: "done", count: 0, items: [], scope: "dataset", rule_source: "system",
+          }])),
+        }),
+      });
+    }, [500, 200]);
+
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+
+    // Запуск 1: POST 500 -- ветка !ok обязана сбросить маркер отчёта.
+    fireEvent.click(runButton);
+    expect(await screen.findAllByText("Проверка пройдена")).toHaveLength(10);
+    await waitFor(() => expect(postCalls).toHaveLength(1));
+
+    // Запуск 2: неудача /dataset/validate -- снапшот обнулился, отчёта
+    // нет (отправлять нечего), статусы НЕ менялись.
+    fireEvent.click(screen.getByRole("button", { name: "Запустить валидацию" }));
+    expect(await screen.findAllByText("Ошибка выполнения")).toHaveLength(10);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(postCalls).toHaveLength(1);
+
+    // Запуск 3: та же картина статусов -- снапшот null -> ИДЕНТИЧНАЯ
+    // строка; повтор обязан произойти ТОЛЬКО из-за сброса маркера при
+    // !ok: между POST не было ни одного изменения статусов.
+    fireEvent.click(screen.getByRole("button", { name: "Запустить валидацию" }));
+    expect(await screen.findAllByText("Проверка пройдена")).toHaveLength(10);
+    await waitFor(() => expect(postCalls).toHaveLength(2));
+
+    // Тело повтора -- та же ИДЕНТИЧНАЯ картина статусов.
+    expect(postCalls[1].body?.checks).toEqual(postCalls[0].body?.checks);
+    expect(postCalls[1].body?.checks).toEqual(
+      Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, "done"])),
+    );
+    for (const call of postCalls) {
+      expect(call.url).toBe("http://localhost:8000/v1/progress/validation-checks");
+    }
+  });
 });
