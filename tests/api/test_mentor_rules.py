@@ -966,12 +966,29 @@ class TestPhaseTextUploadFacts:
         text = phase_text("upload", {"upload/structure": "done"}, ["мусор", 42, None])
         assert "подтверждена" in text
 
-    def test_other_stages_ignore_statuses_and_events(self):
+    def test_other_stages_condition_on_facts_not_static(self):
+        """МИГРАЦИЯ КОНТРАКТА (PROGR-19, spec_progress_v1.1.md §3,
+        категория C): в PROGR-15-B остальные стадии игнорировали
+        статусы/события -- это признано дефектом (статический шаблон
+        противоречил summary того же ответа next-step). Теперь каждая
+        стадия обусловлена СВОИМИ фактами (реестр правил), а без фактов
+        (пустые статусы/события) -- прежний статический шаблон.
+        Чужие факты (upload-статусы) текст не меняют."""
         for stage in ("validation", "preprocessing", "eda", "modeling", "forecasting"):
-            conditioned = phase_text(
-                stage, {"upload/structure": "done"}, [_target_changed_event()]
-            )
-            assert conditioned == phase_text(stage), stage
+            no_facts = phase_text(stage, {}, [])
+            assert no_facts == phase_text(stage), stage
+            own = {
+                "validation": _fact_statuses(stage, done_ids=("data_types",)),
+                "preprocessing": _fact_statuses(stage, done_ids=("missing",)),
+                "eda": _fact_statuses(stage, done_ids=("correlation",)),
+                "modeling": _fact_statuses(stage, done_ids=("backtest",)),
+                "forecasting": _fact_statuses(stage, done_ids=("forecast_generated",)),
+            }[stage]
+            with_facts = phase_text(stage, own, [])
+            assert with_facts != no_facts, stage
+            # чужие (upload) статусы этой стадии не касаются
+            alien = _fact_statuses("upload", done_ids=("structure",))
+            assert phase_text(stage, alien) == no_facts, stage
 
     def test_unknown_stage_fallback_unchanged(self):
         assert phase_text("no-such-stage", {"upload/structure": "done"}) == phase_text("no-such-stage")
@@ -1037,6 +1054,305 @@ class TestMentorNextStepPhaseFacts:
         assert "подтверждена" in data["phase_text"]
 
     def test_run_without_facts_keeps_static_text(self, client: TestClient):
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
+        assert data["phase_text"] == mentor_rules.PHASE_TEXT_TEMPLATES["upload"]
+
+
+# ── PROGR-19 (spec_progress_v1.1.md §3, категория C): текст фазы -- из декларативного реестра правил для ВСЕХ 6 стадий ──
+#
+# Корень (v1.1 §3): PROGR-15-B сделал phase_text факт-обусловленным
+# только для upload (ручное if/elif); остальные пять стадий получали
+# статический шаблон, противоречащий summary того же ответа next-step
+# (то же «самопротиворечие одного JSON», не найденное вживую, потому
+# что PROGR-15-REPRO тестировал именно Загрузку). Решение v1.1: не
+# тиражировать if/elif пятью копиями, а обобщить контракт --
+# декларативная таблица STAGE_PHASE_TEXT_RULES, первое совпавшее
+# правило -- текст, ни одно -- статический PHASE_TEXT_TEMPLATES[stage]
+# (обратная совместимость вызова без аргументов -- дословно). Условия
+# читают уже посчитанный stage_node_summary (ноль нового I/O);
+# upload-логика переносится в реестр как частный случай, не второй
+# механизм. Минимальный набор v1.1 -- хотя бы один факт-обусловленный
+# вариант на каждую стадию.
+
+_PHASE_RULE_STAGES = ("validation", "preprocessing", "eda", "modeling", "forecasting")
+
+
+def _fact_statuses(stage: str, done_ids, warn_ids=()) -> dict[str, str]:
+    """Статусы узлов стадии из фактов (тот же вид, что у движка)."""
+    from app.core.pipeline_graph import STAGE_NODES
+
+    out: dict[str, str] = {}
+    for node_id in STAGE_NODES[stage]:
+        if node_id in done_ids:
+            out[f"{stage}/{node_id}"] = "done"
+        elif node_id in warn_ids:
+            out[f"{stage}/{node_id}"] = "warning"
+    return out
+
+
+def _fact_event(stage: str, node_id: str, status: str = "done", run_id: str = "RUN-AAA00001"):
+    """Узловой факт стадии как событие трассы: payload-статусы для
+    проверочных стадий, карта EVENT_NODE_STATUS -- для процессных
+    (modeling/forecasting), тот же вид, что сеют модули."""
+    if stage == "upload":
+        return make_trace_event(
+            "upload_stop_status", stage=stage, node_id=node_id,
+            run_id=run_id, status=status,
+        )
+    if stage == "modeling":
+        event_type = {
+            "backtest": "backtest_run",
+            "tuning": "tuning_trial_completed",
+            "selection": "model_selected",
+            "model_card": "model_card_generated",
+        }[node_id]
+        return make_trace_event(
+            event_type, stage=stage, node_id=node_id, run_id=run_id,
+        )
+    if stage == "forecasting":
+        # id узла == тип события (§2: узлы Прогнозирования -- 4 типа
+        # события ForecastRun).
+        return make_trace_event(
+            node_id, stage=stage, node_id=node_id, run_id=run_id,
+        )
+    return make_trace_event(
+        f"{stage}_check_status", stage=stage, node_id=node_id,
+        run_id=run_id, status=status,
+    )
+
+
+class TestStagePhaseTextRulesRegistry:
+    def test_registry_covers_all_six_stages_in_graph_order(self):
+        """Ключи реестра -- ровно стадии графа, в каноническом порядке
+        (паттерн инварианта STAGE_NODES: рассинхрон невозможен тихо)."""
+        from app.core.pipeline_graph import STAGES
+
+        assert tuple(mentor_rules.STAGE_PHASE_TEXT_RULES.keys()) == STAGES
+
+    def test_every_stage_has_at_least_one_rule(self):
+        """Критерий приёмки v1.1: каждая стадия получает хотя бы один
+        факт-обусловленный вариант (сейчас -- только upload)."""
+        for stage in _PHASE_RULE_STAGES:
+            assert mentor_rules.STAGE_PHASE_TEXT_RULES[stage], stage
+
+    def test_rules_are_condition_plus_template(self):
+        for stage, rules in mentor_rules.STAGE_PHASE_TEXT_RULES.items():
+            for rule in rules:
+                assert callable(rule.condition), stage
+                assert isinstance(rule.template, str) and rule.template, stage
+
+    def test_templates_render_from_summary_fields(self):
+        """Шаблоны рендерятся из полей сводки стадии (те же, что уже в
+        ответе next-step); поле nodes (список) в текст не подставляется."""
+        stub = {
+            "stage": "x", "total_nodes": 10, "done_count": 3,
+            "warning_nodes": 1, "nodes": [{"node_id": "n", "status": "done"}],
+        }
+        for stage, rules in mentor_rules.STAGE_PHASE_TEXT_RULES.items():
+            for rule in rules:
+                text = rule.template.format(**stub)
+                assert text.strip(), stage
+
+    def test_validator_rejects_template_outside_summary_fields(self, monkeypatch):
+        """Гейт полей шаблона -- несущая защита (мутант M-8): снятие гейта
+        пропустило бы подстановку списка nodes (repr словарей) в
+        человекочитаемый текст панели; валидатор обязан ловить это на
+        импорте, а не рантайм ответа next-step."""
+        bad = mentor_rules.PhaseTextRule(mentor_rules._some_done, "узлы: {nodes}")
+        monkeypatch.setattr(
+            mentor_rules, "STAGE_PHASE_TEXT_RULES",
+            {**mentor_rules.STAGE_PHASE_TEXT_RULES, "validation": (bad,)},
+        )
+        with pytest.raises(ImportError):
+            mentor_rules._validate_stage_phase_text_rules()
+
+    def test_validator_rejects_signature_drift(self, monkeypatch):
+        """Дрейф сигнатуры условий (condition без events) -- ImportError
+        на импорте, не TypeError в рантайме ответа next-step."""
+        broken = mentor_rules.PhaseTextRule(lambda summary: True, "текст")
+        monkeypatch.setattr(
+            mentor_rules, "STAGE_PHASE_TEXT_RULES",
+            {**mentor_rules.STAGE_PHASE_TEXT_RULES, "eda": (broken,)},
+        )
+        with pytest.raises(ImportError):
+            mentor_rules._validate_stage_phase_text_rules()
+
+    def test_legacy_call_is_verbatim_static_for_all_six_stages(self):
+        """Обратная совместимость дословно (то же требование, что
+        PROGR-15-B): вызов без аргументов -- прежний статический шаблон."""
+        for stage in mentor_rules.STAGE_PHASE_TEXT_RULES:
+            assert phase_text(stage) == mentor_rules.PHASE_TEXT_TEMPLATES[stage], stage
+            assert phase_text(stage, None) == mentor_rules.PHASE_TEXT_TEMPLATES[stage], stage
+
+
+class TestPhaseTextFactsAllStages:
+    def test_validation_done_with_problems(self):
+        statuses = _fact_statuses(
+            "validation", done_ids=("data_types", "formats", "ranges"),
+            warn_ids=("consistency",),
+        )
+        text = phase_text("validation", statuses)
+        assert "3 из 10" in text
+        assert "найдены проблемы" in text
+
+    def test_validation_done_without_problems(self):
+        statuses = _fact_statuses("validation", done_ids=("data_types", "formats"))
+        text = phase_text("validation", statuses)
+        assert "2 из 10" in text
+        assert "найдены проблемы" not in text
+
+    def test_validation_without_facts_keeps_static_template(self):
+        text = phase_text("validation", {})
+        assert text == mentor_rules.PHASE_TEXT_TEMPLATES["validation"]
+
+    def test_preprocessing_done_count(self):
+        statuses = _fact_statuses(
+            "preprocessing", done_ids=("missing", "outliers", "regularity", "smoothing"),
+        )
+        text = phase_text("preprocessing", statuses)
+        assert "4 из 10" in text
+        assert "обработано" in text
+
+    def test_preprocessing_without_facts_keeps_static_template(self):
+        assert phase_text("preprocessing", {}) == mentor_rules.PHASE_TEXT_TEMPLATES["preprocessing"]
+
+    def test_eda_viewed_count(self):
+        """Семантика EDA (решение тимлида PROGR-18): done -- «аналитик
+        открыл и просмотрел результат», формулировка -- про ПРОСМОТР."""
+        statuses = _fact_statuses("eda", done_ids=("correlation", "seasonality", "stationarity"))
+        text = phase_text("eda", statuses)
+        assert "3 из 10" in text
+        assert "просмотрено" in text
+
+    def test_eda_without_facts_keeps_static_template(self):
+        assert phase_text("eda", {}) == mentor_rules.PHASE_TEXT_TEMPLATES["eda"]
+
+    def test_modeling_backtest_ran(self):
+        statuses = _fact_statuses("modeling", done_ids=("backtest", "selection"))
+        text = phase_text("modeling", statuses)
+        assert "бэктест" in text.lower()
+        assert "2 из 11" in text
+
+    def test_modeling_facts_without_backtest(self):
+        statuses = _fact_statuses("modeling", done_ids=("selection",))
+        text = phase_text("modeling", statuses)
+        assert "не запускался" in text
+        assert "бэктест" not in text.lower() or "backtest не запускался" in text
+
+    def test_modeling_without_facts_keeps_static_template(self):
+        assert phase_text("modeling", {}) == mentor_rules.PHASE_TEXT_TEMPLATES["modeling"]
+
+    def test_forecasting_generated(self):
+        statuses = _fact_statuses("forecasting", done_ids=("forecast_generated", "forecast_compared"))
+        text = phase_text("forecasting", statuses)
+        assert "прогноз построен" in text  # статический «построение» -- не дискриминатор
+        assert "2 из 4" in text
+
+    def test_forecasting_facts_without_generated(self):
+        statuses = _fact_statuses("forecasting", done_ids=("forecast_compared",))
+        text = phase_text("forecasting", statuses)
+        assert "не строился" in text
+
+    def test_forecasting_without_facts_keeps_static_template(self):
+        assert phase_text("forecasting", {}) == mentor_rules.PHASE_TEXT_TEMPLATES["forecasting"]
+
+    def test_first_matched_rule_wins(self):
+        """Порядок приоритета: правило с проблемами впереди счётчика --
+        при done>0 и warning>0 побеждает ПЕРВОЕ правило реестра."""
+        statuses = _fact_statuses(
+            "validation", done_ids=("data_types",), warn_ids=("ranges",),
+        )
+        text = phase_text("validation", statuses)
+        assert "найдены проблемы" in text
+
+    def test_upload_rules_behave_as_before_transfer(self):
+        """Перенос upload-логики в реестр -- тот же контракт частного
+        случая (TestPhaseTextUploadFacts покрывает подробно; здесь --
+        привязка реестра к прежним текстам)."""
+        assert phase_text("upload", {"upload/structure": "done"}) == (
+            "Исследование на этапе «Загрузка»: структура данных подтверждена. "
+            "Подтвердите целевой признак, чтобы пошли проверки качества."
+        )
+        assert phase_text(
+            "upload", {"upload/structure": "done"}, [_target_changed_event()],
+        ) == mentor_rules._UPLOAD_STRUCTURE_DONE_BOTH
+
+    def test_cross_stage_facts_do_not_leak(self):
+        """Статусы чужой стадии не меняют текст этой (сводка стадии
+        читает только свои узлы; upload-правила -- только свои события)."""
+        alien = _fact_statuses("validation", done_ids=("data_types", "formats"))
+        assert phase_text("upload", alien) == mentor_rules.PHASE_TEXT_TEMPLATES["upload"]
+        assert phase_text("eda", alien) == mentor_rules.PHASE_TEXT_TEMPLATES["eda"]
+
+    def test_junk_events_do_not_crash_any_stage(self):
+        """Мусор вместо событий -- пропуск (event_to_dict), не 500, для
+        всех стадий и правил реестра."""
+        for stage in mentor_rules.STAGE_PHASE_TEXT_RULES:
+            text = phase_text(stage, {}, ["мусор", 42, None, {"event_type": 7}])
+            assert text == mentor_rules.PHASE_TEXT_TEMPLATES[stage], stage
+
+    def test_unknown_stage_fallback_unchanged(self):
+        assert phase_text("no-such-stage", {"validation/data_types": "done"}) == phase_text("no-such-stage")
+
+
+class TestMentorNextStepPhaseFactsAllStages:
+    """PROGR-19, контур REST: phase_text ответа next-step обусловлен
+    фактами трассы для всех стадий (не только upload); сводка summary
+    того же ответа и текст фазы перестают противоречить друг другу."""
+
+    def test_validation_check_facts_condition_phase_text(self, client: TestClient):
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(store, "RUN-AAA00001", _fact_event("validation", "data_types", "done"))
+        _seed_event(store, "RUN-AAA00001", _fact_event("validation", "ranges", "warning"))
+        data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
+        assert data["last_active_stage"] == "validation"
+        assert data["summary"]["stage"] == "validation"
+        assert "1 из 10" in data["phase_text"]
+        assert "найдены проблемы" in data["phase_text"]
+
+    def test_eda_viewed_facts_condition_phase_text(self, client: TestClient):
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(store, "RUN-AAA00001", _fact_event("eda", "correlation", "done"))
+        _seed_event(store, "RUN-AAA00001", _fact_event("eda", "seasonality", "done"))
+        data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
+        assert data["last_active_stage"] == "eda"
+        assert "2 из 10" in data["phase_text"]
+        assert "просмотрено" in data["phase_text"]
+
+    def test_modeling_backtest_fact_conditions_phase_text(self, client: TestClient):
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(store, "RUN-AAA00001", _fact_event("modeling", "backtest"))
+        data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
+        assert data["last_active_stage"] == "modeling"
+        assert "бэктест" in data["phase_text"].lower()
+        assert "1 из 11" in data["phase_text"]
+
+    def test_forecasting_generated_fact_conditions_phase_text(self, client: TestClient):
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(store, "RUN-AAA00001", _fact_event("forecasting", "forecast_generated"))
+        data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
+        assert data["last_active_stage"] == "forecasting"
+        assert "прогноз построен" in data["phase_text"]
+
+    def test_run_without_facts_keeps_static_text(self, client: TestClient):
+        """Регресс: пустая трасса -- статические шаблоны на любой
+        стадии (фаза без фактов не превращается в утверждение)."""
         from apps.api import research_runs
 
         store = research_runs.get_research_run_store()

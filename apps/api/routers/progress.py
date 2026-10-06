@@ -1351,11 +1351,12 @@ def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
         run_id=run_id,
         run_status=run.status,
         last_active_stage=last_stage,
-        # PROGR-15-B: текст фазы обусловлен теми же фактами трассы, что и
-        # summary ниже (узел upload/structure из statuses, выбор цели --
-        # target_column_changed из events): «подтвердите структуру» при
-        # structure=done в summary одного ответа -- самопротиворечие
-        # закрыто. Статусы и события уже вычислены выше -- ноль
+        # PROGR-19 (v1.1 §3, категория C): текст фазы обусловлен теми же
+        # фактами трассы, что и summary ниже, для ВСЕХ 6 стадий --
+        # декларативный реестр STAGE_PHASE_TEXT_RULES в mentor_rules
+        # (upload -- частный случай, перенос if/elif PROGR-15-B): текст и
+        # сводка одного ответа перестают противоречить друг другу на
+        # любой стадии. Статусы и события уже вычислены выше -- ноль
         # дополнительного I/O; контракт ответа прежний (phase_text: str).
         phase_text=phase_text(last_stage, statuses=statuses, events=events),
         summary=MentorPhaseSummaryOut(**stage_node_summary(last_stage, statuses)),

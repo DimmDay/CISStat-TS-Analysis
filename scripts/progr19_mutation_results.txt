@@ -1,0 +1,45 @@
+# PROGR-19 — протокол мутационных проб (2026-10-06)
+
+База: main@9ce93c2 + незакоммиченная реализация PROGR-19 (AGENTS.md: commit/push запрещены).
+Скрипт: /home/z/my-project/scripts/progr19_mutation_check.sh (restore через backup-копию).
+Набор: tests/api/test_mentor_rules.py (98 тестов: 68 базовых + 30 новых/мигрированных PROGR-19).
+
+## Находка протокола v1 (честная фиксация)
+
+Первая версия скрипта использовала `git checkout -- <файл>` для отката мутаций.
+Так как реализация задачи НЕ закоммичена (правило AGENTS.md), первый же откат
+стёр реализацию: пробы M-2..M-8 v1 шли по pristine 9ce93c2, их результаты
+невалидны. Протокол пересобран на restore через backup-копию
+(scripts/mentor_rules.py.impl_backup); контроль идентичности после проб — diff.
+Урок: для незакоммиченного рабочего дерева единственный корректный
+restore — копия, не git.
+
+## Пробы v2 (каждая: правка → прогон → откат → верификация восстановления)
+
+| Мутант | Правка | Ожидание | Результат |
+|---|---|---|---|
+| M-1 | перестановка правил validation (счётчик вперёд «проблем») | ловится тестом приоритета | KILLED — 3 failed (test_first_matched_rule_wins и др.) |
+| M-2 | опечатка плейсхолдера {done_cout} | ImportError на импорте | KILLED — «шаблон подставляет поля вне сводки: ['done_cout']» |
+| M-3 | ключ реестра "forecast" вместо "forecasting" | ImportError (инвариант STAGES) | KILLED — «Ключи ... расходятся со STAGES» |
+| M-4 | стадия preprocessing без правил | ImportError (критерий v1.1) | KILLED — «Стадия 'preprocessing' без факт-обусловленных правил» |
+| M-5 | инверсия _some_done (>= 0) | ловится статическими шаблонами без фактов | KILLED — 8 failed (4× без фактов + REST) |
+| M-6 | phase_text передаёт statuses вместо сводки | ловится факт-тестами всех стадий | KILLED — 22 failed |
+| M-7 | fallback возвращает "" | ловится legacy-verbatim тестами | KILLED — 14 failed |
+| M-8 | снят гейт полей шаблона + шаблон {nodes} | ловится тестом валидатора | v1: SURVIVED → закрыт тестом test_validator_rejects_template_outside_summary_fields; v2: KILLED — 1 failed |
+
+## Итог: 8/8 KILLED (M-8 — после усиления набора в ходе задачи)
+
+Находка M-8: гейт полей шаблона был несущей защитой БЕЗ тестовой страховки —
+снятый гейт пропускал подстановку списка nodes (repr словарей) в
+человекочитаемый текст панели, и ни один тест этого не ловил. Закрыто
+тестом валидатора (прямой вызов _validate_stage_phase_text_rules на
+мутантном реестре, monkeypatch) + сопутствующий тест дрейфа сигнатуры
+условий (test_validator_rejects_signature_drift). Паттерн — TDD-инверсия
+PROGR-17-CERT-R1R4: RED на своём мутанте, GREEN на чистом коде.
+
+## Контроль
+
+До проб: 96 passed. После усиления: 98 passed. После проб: файл идентичен
+бэкапу (diff), 98 passed. Полный tests/api: 1349 passed / 19 failed — все 19
+совпадают со средовым базлайном 1:1 (forecasting_session ×16, modeling_workflow,
+models_backtest_neural_capacity, models_candidates), ноль новых регрессий.
