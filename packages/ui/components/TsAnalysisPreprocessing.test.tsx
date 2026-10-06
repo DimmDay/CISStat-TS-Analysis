@@ -1869,14 +1869,25 @@ function mockProgressReportPreprocessing(
     postStatuses?: number[];
     missingProfile?: () => unknown;
     onPutModes?: () => void;
+    // PROGR-17-CERT (R3): управляемый момент гидратации -- гонка
+    // «быстрые профили / медленный /session/current»: /session/current
+    // разрешается только после вызова releaseSession() тестом.
+    deferSession?: () => Promise<void>;
   } = {},
-): { postCalls: RecordedPost[] } {
-  const { hasDataset = true, postStatuses = [], missingProfile, onPutModes } = options;
+): { postCalls: RecordedPost[]; profileCounts: Record<string, number> } {
+  const { hasDataset = true, postStatuses = [], missingProfile, onPutModes, deferSession } = options;
   const postCalls: RecordedPost[] = [];
+  // PROGR-17-CERT (R1-R3): счётчик GET профилей -- детерминированный
+  // сигнал «волна перезапроса осела» (без sleep-угадайки: тест ждёт
+  // +1 по каждой остановке, и только затем считает POSTы).
+  const profileCounts: Record<string, number> = {};
+  const bump = (key: string) => {
+    profileCounts[key] = (profileCounts[key] ?? 0) + 1;
+  };
   let postIndex = 0;
   global.fetch = jest.fn((url: string, init?: RequestInit) => {
     if (typeof url === "string" && url.includes("/session/current")) {
-      return Promise.resolve({
+      const respond = () => Promise.resolve({
         ok: true,
         json: () => Promise.resolve(hasDataset ? {
           has_active_dataset: true,
@@ -1894,6 +1905,8 @@ function mockProgressReportPreprocessing(
           updated_at: null,
         }),
       });
+      // deferSession -- гидратация ждёт релиза тестом (гонка R3).
+      return deferSession ? deferSession().then(respond) : respond();
     }
     if (typeof url === "string" && url.includes("/target-column")) {
       return Promise.resolve({
@@ -1911,36 +1924,46 @@ function mockProgressReportPreprocessing(
       return Promise.resolve({ ok: true, json: () => Promise.resolve({ modes: {} }) });
     }
     if (typeof url === "string" && url.includes("missing-profile")) {
+      bump("missing");
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve(missingProfile ? missingProfile() : MISSING_PROFILE),
       });
     }
     if (typeof url === "string" && url.includes("outlier-profile")) {
+      bump("outliers");
       return Promise.resolve({ ok: true, json: () => Promise.resolve(OUTLIERS_PROFILE) });
     }
     if (typeof url === "string" && url.includes("regularity-profile")) {
+      bump("regularity");
       return Promise.resolve({ ok: true, json: () => Promise.resolve(REGULARITY_PROFILE) });
     }
     if (typeof url === "string" && url.includes("decomposition-profile")) {
+      bump("decomposition");
       return Promise.resolve({ ok: true, json: () => Promise.resolve(DECOMPOSITION_PROFILE) });
     }
     if (typeof url === "string" && url.includes("variance-profile")) {
+      bump("variance");
       return Promise.resolve({ ok: true, json: () => Promise.resolve(VARIANCE_PROFILE) });
     }
     if (typeof url === "string" && url.includes("smoothing-profile")) {
+      bump("smoothing");
       return Promise.resolve({ ok: true, json: () => Promise.resolve(SMOOTHING_PROFILE) });
     }
     if (typeof url === "string" && url.includes("stationarity-profile")) {
+      bump("stationarity");
       return Promise.resolve({ ok: true, json: () => Promise.resolve(STATIONARITY_PROFILE) });
     }
     if (typeof url === "string" && url.includes("spectral-profile")) {
+      bump("spectral");
       return Promise.resolve({ ok: true, json: () => Promise.resolve(SPECTRAL_PROFILE) });
     }
     if (typeof url === "string" && url.includes("feature-generation-profile")) {
+      bump("featureGeneration");
       return Promise.resolve({ ok: true, json: () => Promise.resolve(FEATURE_GENERATION_PROFILE) });
     }
     if (typeof url === "string" && url.includes("scaling-profile")) {
+      bump("scaling");
       return Promise.resolve({ ok: true, json: () => Promise.resolve(SCALING_PROFILE) });
     }
     if (typeof url === "string" && url.includes("/progress/preprocessing-checks")) {
@@ -1963,7 +1986,7 @@ function mockProgressReportPreprocessing(
     }
     return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
   }) as unknown as typeof fetch;
-  return { postCalls };
+  return { postCalls, profileCounts };
 }
 
 describe("TsAnalysisPreprocessing — PROGR-17: URL-контракт отчёта этапов в «Прогресс»", () => {
@@ -2058,5 +2081,154 @@ describe("TsAnalysisPreprocessing — PROGR-17: URL-контракт отчёт�
         "http://localhost:8000/v1/progress/preprocessing-checks",
       );
     }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROGR-17-CERT: закрытие находок R1–R3 акта независимой сертификации
+// (docs/cert_progr17_preprocessing_checks_2026-10-06.md §7 -- дыры покрытия
+// ВСПОМОГАТЕЛЬНЫХ контуров отчёта, мутанты FM-T/FM-U/FM-W/FM-V выжили).
+// Каждый тест ниже зелёный на чистом коде и убойный для своего мутанта:
+//   R1 (FM-T):  POST -> 500 -> фокус-рефетч -> ТА ЖЕ картина -> 2-й POST
+//               (сброс маркера при !ok наблюдается БЕЗ изменения снапшота);
+//   R2 (FM-U/FM-W): фокус-волна -> осели та же картина -> POST по-прежнему 1
+//               (дедупликация строковой идентичностью; регрессия «10 дублей
+//               фактов в трассе на волну» ловится здесь);
+//   R3 (FM-V):  поведенческий тест гонки «быстрые профили / медленный
+//               /session/current»: в коммите гидратации activeDataset сброс
+//               маркера обязан выполниться ДО отчёта -- иначе отчёт фиксирует
+//               маркер, сброс его затирает, и первая волна фокуса репортит
+//               дубликат (обоснование порядка эффектов из комментария кода).
+// Волна перезапроса детерминирована счётчиком GET профилей (profileCounts):
+// тест ждёт +1 по КАЖДОЙ остановке (missing +2: родительский эффект и
+// self-fetch Обзор активной остановки) и только затем считает POSTы.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("TsAnalysisPreprocessing — PROGR-17-CERT: закрытие находок R1–R3 (повтор после неудачи, дедупликация, порядок эффектов)", () => {
+  // Тот же снапшот связки статусов мок-профилей, что в describe PROGR-17
+  // выше (моки общие, картина одинаковая).
+  const EXPECTED_SNAPSHOT: Record<string, string> = {
+    missing: "warning",
+    outliers: "warning",
+    regularity: "done",
+    decomposition: "done",
+    variance_stab: "warning",
+    smoothing: "warning",
+    stationarity: "warning",
+    spectral: "done",
+    feature_eng: "warning",
+    scaling: "warning",
+  };
+
+  // Прирост GET-счётчиков одной волны перезапроса (refetchAllProfiles
+  // бампит все 10 refreshKey; Обзор «Пропусков» -- активная остановка --
+  // добирает свой self-fetch).
+  const WAVE_INCREMENTS: Record<string, number> = {
+    missing: 2,
+    outliers: 1,
+    regularity: 1,
+    decomposition: 1,
+    variance: 1,
+    smoothing: 1,
+    stationarity: 1,
+    spectral: 1,
+    featureGeneration: 1,
+    scaling: 1,
+  };
+
+  function fireFocus() {
+    fireEvent(window, new Event("focus"));
+  }
+
+  async function waitForWaveSettled(
+    profileCounts: Record<string, number>,
+    before: Record<string, number>,
+  ) {
+    await waitFor(() => {
+      for (const [key, increment] of Object.entries(WAVE_INCREMENTS)) {
+        expect(profileCounts[key] ?? 0).toBeGreaterThanOrEqual(
+          (before[key] ?? 0) + increment,
+        );
+      }
+    });
+  }
+
+  it("R1: re-reports the SAME picture after an HTTP failure via focus refetch (res.ok reset, marker cleared on !ok)", async () => {
+    const { postCalls, profileCounts } = mockProgressReportPreprocessing({
+      postStatuses: [500],
+    });
+
+    renderPreprocessing();
+    await waitFor(() => expect(postCalls).toHaveLength(1));
+    expect(postCalls[0].body?.checks).toEqual(EXPECTED_SNAPSHOT);
+    // 500 обработан (!ok -> маркер сброшен) до волны.
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    // Фокус-волна, картина НЕ изменилась: сброс маркера при !ok --
+    // единственная причина, по которой повтор обязан уйти.
+    const before = { ...profileCounts };
+    fireFocus();
+    await waitForWaveSettled(profileCounts, before);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(postCalls).toHaveLength(2);
+    expect(postCalls[1].body?.checks).toEqual(EXPECTED_SNAPSHOT);
+    for (const call of postCalls) {
+      expect(call.url).toBe(
+        "http://localhost:8000/v1/progress/preprocessing-checks",
+      );
+    }
+  });
+
+  it("R2: keeps exactly ONE POST through a focus refetch wave with the unchanged picture (dedup by string identity)", async () => {
+    const { postCalls, profileCounts } = mockProgressReportPreprocessing();
+
+    renderPreprocessing();
+    await waitFor(() => expect(postCalls).toHaveLength(1));
+    const before = { ...profileCounts };
+
+    // Волна фокус-рефетча с НЕизменной картиной: строковая идентичность
+    // снапшота дедуплицирует -- дубликатов фактов в трассе нет.
+    fireFocus();
+    await waitForWaveSettled(profileCounts, before);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(postCalls).toHaveLength(1);
+    expect(postCalls[0].body?.checks).toEqual(EXPECTED_SNAPSHOT);
+  });
+
+  it("R3: dedup survives the hydration race 'fast profiles / slow /session/current' (reset effect declared BEFORE report effect)", async () => {
+    // Гонка из обоснования порядка эффектов (комментарий кода): профили
+    // осели, пока /session/current ещё в полёте. Гидратация activeDataset
+    // (null -> имя) -- коммит, где сброс маркера и отчёт стартуют в одном
+    // проходе эффектов; порядок обязан быть «сброс ДО отчёта».
+    let releaseSession!: () => void;
+    const sessionGate = new Promise<void>((resolve) => {
+      releaseSession = resolve;
+    });
+    const { postCalls, profileCounts } = mockProgressReportPreprocessing({
+      deferSession: () => sessionGate,
+    });
+
+    renderPreprocessing();
+    // Профили осели ДО гидратации: осевший снапшот БЕЗ исследования не
+    // репортится (activeDataset-гейт -- зеркало 400-гейта бэкенда).
+    await waitForWaveSettled(profileCounts, {});
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(postCalls).toHaveLength(0);
+
+    // Гидратация: оба эффекта (сброс и отчёт) меняются в одном коммите --
+    // отчёт уходит ровно один раз.
+    releaseSession();
+    await waitFor(() => expect(postCalls).toHaveLength(1));
+    expect(postCalls[0].body?.checks).toEqual(EXPECTED_SNAPSHOT);
+
+    // Фокус-волна с НЕизменной картиной: затёртый маркер == дубликат
+    // фактов на каждую волну. Порядок «сброс ДО отчёта» держит отчёт на 1.
+    const before = { ...profileCounts };
+    fireFocus();
+    await waitForWaveSettled(profileCounts, before);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(postCalls).toHaveLength(1);
   });
 });

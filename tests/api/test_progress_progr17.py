@@ -355,3 +355,64 @@ def test_report_renders_preprocessing_check_facts_with_registry_labels():
         "Статус проверки «Выбросы» отчитан модулем «Предобработка»: "
         "есть замечания." in md
     )
+
+
+# ── Пр-4 (закрытие находки R4 сертификации PROGR-17): персистентность ──
+
+
+def test_preprocessing_checks_report_persists_through_store_save(monkeypatch):
+    """Находка R4 акта PROGR-17-CERT (мутант BM-H: снятие store.save
+    выжило в memory-бэкенде): save() -- носитель персистентности отчёта,
+    контракт SessionStore «после мутации -- обязательно save()»
+    (apps/api/upload_common.py). В memory-бэкенде save() ненаблюдаем
+    (ссылка на session живёт в процессе, мутации видимы по алиасингу),
+    поэтому проверка идёт через НАСТОЯЩУЮ границу сериализации:
+    RedisSessionStore на fakeredis (паттерн test_session_store.py).
+    Отчёт обязан пережить перечитывание из store: 10 событий слоя 1 и
+    seeded run_id -- в сериализованном документе, а не только в памяти
+    процесса; снятие store.save оставляет документ в состоянии НА момент
+    upload -- без событий отчёта (RED на мутанте)."""
+    fakeredis = pytest.importorskip("fakeredis")
+    from apps.api import session_store as session_store_module
+    from apps.api.session_store import RedisSessionStore
+
+    fake_server = fakeredis.FakeServer()
+    store = RedisSessionStore(
+        client=fakeredis.FakeStrictRedis(server=fake_server), ttl_seconds=3600
+    )
+    # Эндпоинт берёт store через get_session_store() -- singleton модуля;
+    # подменяем его на Redis-бэкенд (monkeypatch откатит после теста).
+    monkeypatch.setattr(session_store_module, "_store", store)
+
+    _upload()
+    reported = client.post(
+        "/v1/progress/preprocessing-checks",
+        json={"checks": _full_checks_map("done")},
+    )
+    assert reported.status_code == 200, reported.text
+    run_id = reported.json()["run_id"]
+    assert run_id.startswith("RUN-")
+
+    # ПЕРЕзачитать из store -- json.dumps -> redis -> json.loads:
+    # объект НЕ тот, что мутировал эндпоинт (свежая десериализация).
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    reread = store.get(session_id)
+    assert reread is not None, (
+        "сессия отсутствует в store после отчёта -- save() не записал "
+        "документ (персистентность отчёта нарушена)"
+    )
+    persisted = [
+        event
+        for event in reread.pipeline_trace
+        if event["event_type"] == "preprocessing_check_status"
+    ]
+    assert len(persisted) == 10, (
+        "в сериализованном документе нет 10 событий отчёта -- изменения "
+        "сессии не пережили границу сериализации (BM-H: store.save снят)"
+    )
+    by_node = {event["node_id"]: event for event in persisted}
+    for check_id in EXPECTED_CHECK_IDS:
+        assert by_node[check_id]["payload"]["status"] == "done"
+        assert by_node[check_id]["stage"] == "preprocessing"
+    # Seeded run_id тоже обязан пережить перечитывание.
+    assert reread.run_id == run_id

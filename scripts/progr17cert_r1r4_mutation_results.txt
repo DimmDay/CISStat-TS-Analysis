@@ -1,0 +1,42 @@
+[FM-P] KILLED -- progressApiUrl -> sessionApiUrl
+      ✕ reports the full check snapshot to progressApiUrl('/preprocessing-checks') once profiles settle (1018 ms)
+      ✕ re-reports the NEW snapshot after an HTTP failure (res.ok checked, ref reset) (1019 ms)
+      ✕ R1: re-reports the SAME picture after an HTTP failure via focus refetch (res.ok reset, marker cleared on !ok) (1018 ms)
+      ✕ R2: keeps exactly ONE POST through a focus refetch wave with the unchanged picture (dedup by string identity) (1019 ms)
+[FM-Q] KILLED -- pending-гейт снят
+      ✕ reports the full check snapshot to progressApiUrl('/preprocessing-checks') once profiles settle (39 ms)
+      ✕ re-reports the NEW snapshot after an HTTP failure (res.ok checked, ref reset) (56 ms)
+      ✕ R1: re-reports the SAME picture after an HTTP failure via focus refetch (res.ok reset, marker cleared on !ok) (25 ms)
+      ✕ R2: keeps exactly ONE POST through a focus refetch wave with the unchanged picture (dedup by string identity) (92 ms)
+[FM-R] KILLED -- running-гейт снят
+      ✕ reports the full check snapshot to progressApiUrl('/preprocessing-checks') once profiles settle (1019 ms)
+      ✕ re-reports the NEW snapshot after an HTTP failure (res.ok checked, ref reset) (1018 ms)
+      ✕ R1: re-reports the SAME picture after an HTTP failure via focus refetch (res.ok reset, marker cleared on !ok) (1018 ms)
+      ✕ R2: keeps exactly ONE POST through a focus refetch wave with the unchanged picture (dedup by string identity) (1019 ms)
+[FM-S] KILLED -- activeDataset-гейт снят (вне объёма R1-R4: маскировка)
+      ✕ R3: dedup survives the hydration race 'fast profiles / slow /session/current' (reset effect declared BEFORE report effect) (68 ms)
+[FM-T] KILLED -- res.ok-проверка снята (R1)
+      ✕ R1: re-reports the SAME picture after an HTTP failure via focus refetch (res.ok reset, marker cleared on !ok) (115 ms)
+[FM-U] KILLED -- дедупликация снята (R2)
+      ✕ R2: keeps exactly ONE POST through a focus refetch wave with the unchanged picture (dedup by string identity) (85 ms)
+      ✕ R3: dedup survives the hydration race 'fast profiles / slow /session/current' (reset effect declared BEFORE report effect) (176 ms)
+[FM-V] KILLED -- порядок эффектов инвертирован (R3)
+      ✕ R3: dedup survives the hydration race 'fast profiles / slow /session/current' (reset effect declared BEFORE report effect) (174 ms)
+[FM-W] KILLED -- маркер не фиксируется до отправки (R2)
+      ✕ R2: keeps exactly ONE POST through a focus refetch wave with the unchanged picture (dedup by string identity) (83 ms)
+      ✕ R3: dedup survives the hydration race 'fast profiles / slow /session/current' (reset effect declared BEFORE report effect) (185 ms)
+[BM-H] KILLED -- store.save удалён (R4)
+      FAILED tests/api/test_progress_progr17.py::test_preprocessing_checks_report_persists_through_store_save
+
+===== СВОДКА =====
+[FM-P] KILLED (ожидалось KILLED) OK -- progressApiUrl -> sessionApiUrl
+[FM-Q] KILLED (ожидалось KILLED) OK -- pending-гейт снят
+[FM-R] KILLED (ожидалось KILLED) OK -- running-гейт снят
+[FM-S] KILLED (ожидалось KILLED) OK -- activeDataset-гейт снят (вне объёма R1-R4: маскировка)
+[FM-T] KILLED (ожидалось KILLED) OK -- res.ok-проверка снята (R1)
+[FM-U] KILLED (ожидалось KILLED) OK -- дедупликация снята (R2)
+[FM-V] KILLED (ожидалось KILLED) OK -- порядок эффектов инвертирован (R3)
+[FM-W] KILLED (ожидалось KILLED) OK -- маркер не фиксируется до отправки (R2)
+[BM-H] KILLED (ожидалось KILLED) OK -- store.save удалён (R4)
+
+ИТОГ: ВСЕ ОЖИДАНИЯ СХОДЯТСЯ
