@@ -118,6 +118,20 @@ _STAGE_EVENT_TYPES: dict[str, set[str]] = {
     "eda": {
         "profile_viewed",    # троттлинг §4.2 (дефолт 5 мин на узел)
         "passport_captured",
+        # PROGR-18 (spec_progress_v1.1.md §2, категория B): отчёт фактов
+        # просмотров исследований модулем «EDA» (POST /v1/progress/
+        # eda-checks; зеркало /preprocessing-checks PROGR-17 / /validation-
+        # checks PROGR-16-A, тот же паттерн §7.2 -- клиент строит сводку
+        # из уже полученных данных). Статус исследования -- В PAYLOAD
+        # (ключ "status"); движок node_status читает его оттуда
+        # (PAYLOAD_STATUS_EVENT_TYPES). Решение тимлида по семантике
+        # (v1.1 §2): статус done/pending по факту «аналитик открыл и
+        # просмотрел результат», warning НЕ вводить (EDA -- анализ, а не
+        # проверка качества: ложная тревога там, где нет критерия ошибки);
+        # словарь отчёта {"done", "pending"} enforced эндпоинтом. Закрытие
+        # последней дыры класса «нет носителя факта прохождения»: узлы EDA
+        # не достигали done от самого модуля (profile_viewed -- running).
+        "eda_check_status",
     },
     "modeling": {
         # По факту существующих эндпоинтов routers/modeling_session.py.

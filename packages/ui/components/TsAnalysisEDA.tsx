@@ -17,7 +17,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { sessionApiUrl } from "../lib/apiClient";
+import { sessionApiUrl, progressApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
 import { useAppShell } from "../context/AppShellContext";
 import { Button } from "./Button";
@@ -943,6 +943,152 @@ export function TsAnalysisEDA() {
       ? { ...check, status: modelMatrixStatus, count: modelMatrixProfile?.summary.blocked ?? null }
       : check,
   ), [correlationStatus, descriptiveStatus, distributionStatus, featureSelectionProfile, featureSelectionStatus, ihStatus, insufficientColumns, modelMatrixProfile?.summary.blocked, modelMatrixStatus, seasonalityProfile?.confirmed_periods, seasonalityStatus, stationarityStatus, structuralProfile?.supported_count, structuralStatus, validationStrategyStatus]);
+
+  // ── PROGR-18: отчёт фактов просмотров исследований в панель
+  // «Прогресс» (зеркало PROGR-16-A/17, spec_progress_v1.1.md §2,
+  // категория B) ──
+  // Узлы EDA не достигали done от самого модуля (profile_viewed --
+  // running): факт-контур стадии не имел носителя прохождения. Решение
+  // тимлида по семантике (v1.1 §2): статус done/pending по факту
+  // «аналитик открыл и просмотрел результат», warning НЕ вводить (EDA
+  // -- анализ, а не проверка качества: ложная тревога там, где нет
+  // критерия ошибки). Исследование считается просмотренным, когда оно
+  // активно И его результат показан модулем (статус исследования
+  // done/warning -- найденные особенности результата НЕ мешают факту
+  // просмотра; running/error/skipped результата не показывают). Множество
+  // просмотренных монотонно в пределах датасета (увиденный результат
+  // не «развидеть»); смена датасета -- новая вселенная фактов.
+  //
+  // Отчёт -- снапшот ВСЕХ 10 исследований общего реестра
+  // (eda_checks.json §12 п.2): viewed -> done, остальные -- pending
+  // (all-or-nothing контракт бэкенда), POST /v1/progress/eda-checks.
+  // URL-контракт (урок PROGR-15-A): progressApiUrl, НЕ sessionApiUrl.
+  // HTTP-неудача -- тем же контуром повтора, что в PROGR-16-A/17:
+  // res.ok проверяется, при !ok маркер сбрасывается -- следующий
+  // снапшот повторит отправление (вспомогательный контур §12 п.8,
+  // без алертов и таймеров).
+  //
+  // ЯКОРЬ В ЖУРНАЛЕ (отличие от зеркала, осознанное): вкладки платформы
+  // -- роуты Next.js, модуль размонтируется при каждом переключении;
+  // кумулятивное множество просмотренных НЕ выводится заново из ответов
+  // (в отличие от детерминированных статусов Валидации/Предобработки).
+  // Без якоря первый же снапшот после перемонтирования/перезагрузки
+  // (descriptive-only) ПЕРЕЗАПИСАЛ бы факты назад (last-wins): панель
+  // и Наставник занижали бы прогресс, журнал -- регрессировал. Поэтому
+  // при монтировании одноразовый GET /v1/progress/trace (§7.2-прецедент:
+  // клиент строит сводку из уже полученных данных -- тут уже
+  // ПОСЧИТАННЫЕ состояния узлов, не опрос profile-эндпоинтов, решение
+  // Расхождения №1 не трогается) даёт seed done-узлов eda/*, маркер
+  // отчёта инициализируется seed-снапшотом -- отчёт происходит только
+  // по НОВОМУ просмотру; дедупликация переживает перемонтирование.
+  // Seed best-effort (§12 п.8): сбой /trace -- пустой якорь, отчёт
+  // идёт с чистого множества (тот же backend, что принимает отчёт).
+  const buildEdaChecksSnapshot = (viewed: Set<string>): string =>
+    JSON.stringify(
+      Object.fromEntries(
+        CHECKS.map((check) => [check.id, viewed.has(check.id) ? "done" : "pending"]),
+      ),
+    );
+  const [edaViewedIds, setEdaViewedIds] = useState<Set<string>>(new Set());
+  const [edaSeedReady, setEdaSeedReady] = useState(false);
+  const edaSeedReadyRef = useRef(false);
+  const lastReportedEdaChecksRef = useRef<string>("");
+  // Порядок эффектов ВАЖЕН (урок PROGR-17): сброс -- ДО seed-эффекта и
+  // эффекта отчёта; в коммите смены датасета сброс выполняется первым.
+  // Ключ вселенной фактов -- datasetKey (datasetId ?? name):
+  // datasetId меняется даже при повторной загрузке файла с тем же именем.
+  useEffect(() => {
+    edaSeedReadyRef.current = false;
+    setEdaViewedIds(new Set());
+    setEdaSeedReady(false);
+    lastReportedEdaChecksRef.current = "";
+  }, [datasetKey]);
+  useEffect(() => {
+    if (!datasetKey) {
+      edaSeedReadyRef.current = true;
+      setEdaSeedReady(true);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const knownIds = new Set(CHECKS.map((check) => check.id));
+      const seedViewed = new Set<string>();
+      try {
+        const response = await fetch(progressApiUrl("/trace"), { credentials: "include" });
+        if (response.ok) {
+          const data = await response.json();
+          const statuses = data?.node_statuses;
+          if (statuses && typeof statuses === "object") {
+            for (const [key, status] of Object.entries(statuses as Record<string, unknown>)) {
+              if (!key.startsWith("eda/")) continue;
+              const nodeId = key.slice("eda/".length);
+              if (status === "done" && knownIds.has(nodeId)) seedViewed.add(nodeId);
+            }
+          }
+        }
+      } catch {
+        // Seed best-effort (§12 п.8): сбой якоря -- пустое множество,
+        // отчёт пойдёт с чистого листа; контур фактов не ломается.
+      }
+      if (cancelled) return;
+      edaSeedReadyRef.current = true;
+      setEdaViewedIds((prev) => {
+        const merged = new Set(prev);
+        seedViewed.forEach((id) => merged.add(id));
+        return merged;
+      });
+      lastReportedEdaChecksRef.current = buildEdaChecksSnapshot(seedViewed);
+      setEdaSeedReady(true);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasetKey]);
+  const postEdaChecks = useCallback((reported: Record<string, string>) => {
+    fetch(progressApiUrl("/eda-checks"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ checks: reported }),
+    })
+      .then((res) => {
+        if (!res.ok) lastReportedEdaChecksRef.current = "";
+      })
+      .catch(() => {
+        // Отчёт фактов -- вспомогательный контур (§12 п.8): сбой не ломает
+        // модуль; следующее изменение снапшота повторит отчёт.
+        lastReportedEdaChecksRef.current = "";
+      });
+  }, []);
+  // Факт просмотра: активное исследование с ПОКАЗАННЫМ результатом
+  // (done/warning). edaSeedReadyRef-гейт отсекает устаревшие статусы
+  // предыдущей вселенной в коммите смены датасета (сброс объявлен
+  // раньше и синхронно опускает ref -- факта просмотра в мёртвой
+  // вселенной не возникает). Запись идемпотентна (множество).
+  useEffect(() => {
+    if (!edaSeedReadyRef.current) return;
+    const activeStatus = checks.find((check) => check.id === activeCheckId)?.status;
+    if (activeStatus !== "done" && activeStatus !== "warning") return;
+    setEdaViewedIds((prev) => {
+      if (prev.has(activeCheckId)) return prev;
+      const next = new Set(prev);
+      next.add(activeCheckId);
+      return next;
+    });
+  }, [checks, activeCheckId, edaSeedReady]);
+  // Снапшот -- до первого показанного результата отчёта НЕТ (модуль
+  // без просмотренных результатов -- не источник фактов; зеркало
+  // семантики Валидации «до первого запуска отчёта нет»), после seed --
+  // только расхождение с якорем (новый просмотр).
+  const edaChecksReportSnapshot: string | null =
+    activeDataset && edaSeedReady && edaViewedIds.size > 0
+      ? buildEdaChecksSnapshot(edaViewedIds)
+      : null;
+  useEffect(() => {
+    if (!edaChecksReportSnapshot) return;
+    if (edaChecksReportSnapshot === lastReportedEdaChecksRef.current) return;
+    lastReportedEdaChecksRef.current = edaChecksReportSnapshot;
+    postEdaChecks(JSON.parse(edaChecksReportSnapshot) as Record<string, string>);
+  }, [edaChecksReportSnapshot, postEdaChecks]);
 
   // Сворачиваем при смене секции
   useEffect(() => {

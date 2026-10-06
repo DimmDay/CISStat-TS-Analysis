@@ -314,6 +314,40 @@ def _preprocessing_check_status_line(event: dict) -> str:
     )
 
 
+# Формулировки статуса отчёта EDA (PROGR-18): факт ПРОСМОТРА
+# исследования, не исход проверки (EDA -- анализ, pass/fail-семантики
+# нет; решение тимлида: done/pending по факту «аналитик открыл и
+# просмотрел результат», warning не вводить). Неизвестное значение --
+# как есть (честный аудит, тот же принцип, что у _STOP_STATUS_LABELS).
+_EDA_STATUS_LABELS: dict[str, str] = {
+    "done": "результат просмотрен аналитиком",
+    "pending": "ещё не просмотрен аналитиком",
+}
+
+
+def _eda_check_status_line(event: dict) -> str:
+    """PROGR-18 (spec_progress_v1.1.md §2, категория B): факт отчёта
+    просмотра исследования модулем «EDA» (eda_check_status, POST
+    /v1/progress/eda-checks) -- зеркало _preprocessing_check_status_
+    line: та же гранулярность, что у панели -- метка исследования из
+    реестра справки (node_label; все 10 исследований EDA имеют статьи
+    «Метрики и алгоритм»). Терминология -- факта ПРОСМОТРА (решение
+    тимлида: EDA -- анализ, не проверка качества), модуль назван ЯВНО:
+    в журнале отчёта строка однозначно отличается от строк
+    «Валидации»/«Предобработки»."""
+    payload = event.get("payload")
+    if not isinstance(payload, dict):
+        payload = {}
+    status = str(payload.get("status") or "")
+    status_label = _EDA_STATUS_LABELS.get(status, status or "неизвестен")
+    node_id = str(event.get("node_id") or "")
+    check_label = node_label("eda", node_id) if node_id else node_id
+    return (
+        f"Статус исследования «{check_label}» отчитан модулем "
+        f"«EDA»: {status_label}."
+    )
+
+
 def fact_line(event: dict) -> tuple[str, tuple[tuple[str, str], ...]]:
     """Факт события -- человекочитаемая строка (+ ссылки, если есть).
     Шаблоны пишут терминологию платформы (стратегия/метод/счётчики --
@@ -348,6 +382,12 @@ def fact_line(event: dict) -> tuple[str, tuple[tuple[str, str], ...]]:
     # у панели.
     if event_type == "preprocessing_check_status":
         return _preprocessing_check_status_line(event), links
+
+    # PROGR-18: факты просмотров исследований «EDA» -- зеркало
+    # PROGR-16-A/17 (spec_progress_v1.1.md §2, категория B): та же
+    # гранулярность, что у панели.
+    if event_type == "eda_check_status":
+        return _eda_check_status_line(event), links
 
     if event_type in ("correction_applied", "correction_previewed"):
         return _correction_line(event_type, payload), links

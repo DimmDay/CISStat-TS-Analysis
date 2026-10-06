@@ -685,6 +685,140 @@ def report_preprocessing_checks(
     )
 
 
+# ── PROGR-18: отчёт фактов просмотров исследований «EDA»
+#    (spec_progress_v1.1.md §2, категория B -- зеркало
+#    /preprocessing-checks PROGR-17 / /validation-checks PROGR-16-A) ────
+
+# Словарь ИМЕННО отчёта EDA (решение тимлида, spec_progress_v1.1.md
+# §2): статус done/pending по факту «аналитик открыл и просмотрел
+# результат»; warning НЕ вводить -- EDA не проверка качества, а анализ,
+# критерия ошибки у исследования нет (warning был бы ложной тревогой).
+# Отчёт -- факт ПРОСМОТРА, не исход анализа: найденные исследованиями
+# особенности (нестационарность, сдвиги, блокировки моделей) остаются
+# в модуле, панель отражает прохождение аналитиком. Fail-closed:
+# эндпоинт enforced словарь -- чужой статус (даже легальный CheckStatus
+# «warning») не доходит до трассы.
+EDA_CHECK_STATUS_VALUES: tuple[str, ...] = ("done", "pending")
+
+
+class EdaChecksReportIn(BaseModel):
+    """Тело отчёта модуля «EDA» (зеркало PreprocessingChecksReportIn,
+    прецедент §7.2/PROGR-13-A4: клиент строит сводку из УЖЕ ПОЛУЧЕННЫХ
+    ответов profile-эндпоинтов -- бэкенд не переопрашивает их; статус
+    выводится только из засеянных фактов -- решение Расхождения №1
+    сохраняется).
+
+    checks -- ПОЛНАЯ карта исследований реестра EDA_STAGE_IDS
+    (id -> "done"|"pending"): снапшот множества просмотренных
+    исследований, не дельта; партиальные отчёты -- клиентский баг и
+    fail-closed 422 (чёрные дыры в фактах стадии недопустимы: панель
+    обязана совпадать с модулем целиком)."""
+
+    checks: Dict[str, str]
+
+
+class EdaChecksReportResponse(BaseModel):
+    """Эхо приёмки: сколько фактов записано + run_id запуска, в который
+    они легли (слой 2 -- тот же механизм зеркала, что у хука §5)."""
+
+    run_id: Optional[str] = None
+    reported: int
+
+
+@router.post("/eda-checks", response_model=EdaChecksReportResponse)
+def report_eda_checks(
+    payload: EdaChecksReportIn, request: Request, response: Response
+) -> EdaChecksReportResponse:
+    """Отчёт фактов просмотров исследований «EDA» от её модуля (PROGR-18,
+    spec_progress_v1.1.md §2 категория B -- зеркало /preprocessing-checks
+    PROGR-17 / /validation-checks PROGR-16-A: у стадии eda не было
+    носителя факта прохождения -- узлы EDA не достигали done от самого
+    модуля (profile_viewed -- running), панель показывала «не начато» /
+    «в работе» при просмотренных аналитиком исследованиях; последний
+    незакрытый класс «нет носителя факта» из v1.1 §2).
+
+    Семантика статуса -- РЕШЕНИЕ ТИМЛИДА (v1.1 §2): done/pending по
+    факту «аналитик открыл и просмотрел результат», warning НЕ вводить
+    (ложная тревога там, где нет критерия ошибки). Факты пишутся
+    СОБЫТИЯМИ трассы (eda_check_status, payload.status из
+    EDA_CHECK_STATUS_VALUES -- единый движок node_status читает их через
+    resolve_event_status), в слой 1 И зеркалом в слой 2 -- тот же
+    двухслойный механизм, что у хука §5 и отчётов /upload-stops (A4),
+    /validation-checks (16-A), /preprocessing-checks (17). Валидация
+    fail-closed (паттерн sanity-check §7.2): неизвестное исследование /
+    статус вне словаря отчёта EDA / неполная карта -- 422 ДО первой
+    записи (all-or-nothing, чёрных дыр в фактах стадии нет). Аналитик
+    без датасета -- 400 (факты просмотров без исследования не
+    существуют)."""
+    checks = payload.checks
+    if not checks:
+        raise HTTPException(
+            status_code=422,
+            detail="Карта исследований пуста -- отчёт фактов без фактов",
+        )
+    known_ids = STAGE_NODES["eda"]
+    unknown = sorted(set(checks) - set(known_ids))
+    if unknown:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Неизвестные исследования «EDA»: {unknown}; "
+                f"известные: {list(known_ids)} (§2 -- фантомных узлов нет)"
+            ),
+        )
+    invalid = sorted(
+        node_id
+        for node_id, status in checks.items()
+        if status not in EDA_CHECK_STATUS_VALUES
+    )
+    if invalid:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Недопустимый статус исследований: {invalid}; "
+                f"словарь отчёта EDA: {list(EDA_CHECK_STATUS_VALUES)} -- "
+                "статус по факту «аналитик открыл и просмотрел результат», "
+                "warning не вводится (решение тимлида, v1.1 §2: EDA -- "
+                "анализ, критерия ошибки нет)"
+            ),
+        )
+    missing = [node_id for node_id in known_ids if node_id not in checks]
+    if missing:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Карта неполна (нет исследований: {missing}) -- отчёт "
+                f"обязан быть снапшотом ВСЕХ исследований реестра"
+            ),
+        )
+
+    session_id = get_or_create_session_id(request, response)
+    store = get_session_store()
+    session = store.get_or_create(session_id)
+    if session.dataset is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Сначала загрузите датасет -- исследования «EDA» без данных не существуют",
+        )
+    session.ensure_run_id()
+    for node_id in known_ids:
+        event = make_trace_event(
+            "eda_check_status",
+            stage="eda",
+            node_id=node_id,
+            run_id=session.run_id,
+            status=checks[node_id],
+        )
+        session.append_trace_event(event)
+        # §5 слой 2: зеркало фактов просмотров в research_runs -- тот же
+        # best-effort механизм, что у хука (record_run_event).
+        record_run_event(session, event)
+    store.save(session)
+    return EdaChecksReportResponse(
+        run_id=session.run_id, reported=len(known_ids)
+    )
+
+
 # ── PROGR-5: долговременный слой (§5 слой 2) ─────────────────────────
 
 

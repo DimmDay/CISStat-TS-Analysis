@@ -125,6 +125,13 @@ EVENT_NODE_REASON: dict[str, str] = {
     # PROGR-16-A (spec_progress_v1.1.md §2, категория B): причина
     # общая, конкретика -- статус узла рядом.
     "preprocessing_check_status": "Статус проверки отчитан модулем «Предобработка»",
+    # PROGR-18: отчёт фактов просмотров исследований модулем «EDA» --
+    # зеркало PROGR-16-A/17 (spec_progress_v1.1.md §2, категория B):
+    # причина общая, конкретика -- статус узла рядом. Терминология --
+    # ИССЛЕДОВАНИЕ, не проверка (EDA -- анализ, pass/fail-семантики нет;
+    # решение тимлида: done/pending по факту «аналитик открыл и
+    # просмотрел результат», warning не вводить).
+    "eda_check_status": "Статус исследования отчитан модулем «EDA»",
 }
 
 # Ключи payload -- кандидаты в правый бейдж узла (§3 summary_count:
@@ -171,11 +178,20 @@ NODE_SUMMARY_COUNT_KEYS: tuple[str, ...] = (
 # spec_progress_v1.1.md §2, категория B): тот же класс «нет носителя
 # факта прохождения» -- автозаполнение степпера профилями не оставляло
 # следа в факт-контуре стадии preprocessing.
+#
+# PROGR-18: eda_check_status -- зеркало PROGR-16-A/17 для «EDA»
+# (POST /v1/progress/eda-checks, spec_progress_v1.1.md §2, категория
+# B): тот же класс «нет носителя факта прохождения» -- узлы EDA не
+# достигали done от самого модуля (profile_viewed -- running). Статус
+# -- факт просмотра исследования (решение тимлида: done/pending,
+# warning не вводить); словарь отчёта EDA enforced эндпоинтом, движок
+# остаётся общим (whitelist CHECK_STATUS_VALUES).
 PAYLOAD_STATUS_EVENT_TYPES: frozenset[str] = frozenset(
     {
         "upload_stop_status",
         "validation_check_status",
         "preprocessing_check_status",
+        "eda_check_status",
     }
 )
 

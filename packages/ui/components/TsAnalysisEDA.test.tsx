@@ -1265,3 +1265,240 @@ describe("TsAnalysisEDA — автозагрузка «Метрики и алг�
     expect(screen.getByText(/Метрики и алгоритм: IH-анализ/)).toBeInTheDocument();
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Task PROGR-18 (spec_progress_v1.1.md §2, категория B): отчёт фактов
+// просмотров исследований модулю «Прогресс» -- зеркало PROGR-16-A/17
+// (тот же паттерн §7.2 -- клиент строит сводку из уже полученных данных),
+// с РЕШЕНИЕМ ТИМЛИДА по семантике: статус `done`/`pending` по факту
+// «аналитик открыл и просмотрел результат», `warning` не вводить (EDA --
+// анализ, а не проверка качества: ложная тревога там, где нет критерия
+// ошибки). Отчёт -- POST /v1/progress/eda-checks через progressApiUrl
+// (НЕ sessionApiUrl -- урок PROGR-15-A).
+//
+// «Просмотрено» = исследование активно И его результат показан модулем
+// (статус исследования done/warning -- найденные особенности результата
+// НЕ мешают факту просмотра). running/error/skipped результата не
+// показывают -- факт просмотра не возникает. Множество просмотренных
+// монотонно в пределах датасета (увиденный результат не «развидеть»).
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface RecordedEdaPost {
+  url: string;
+  body: { checks?: Record<string, string> } | null;
+}
+
+// Порядок реестра EDA (shared/pipeline_nodes/eda_checks.json §12 п.2) --
+// тот же снапшот, что требует all-or-nothing контракт бэкенда.
+const EDA_CHECK_IDS_ARR = [
+  "descriptive", "correlation", "ih_analysis", "seasonality",
+  "stationarity", "distribution", "structural", "feature_select",
+  "validation_strategy", "model_matrix",
+] as const;
+
+function mockProgressReportEda(
+  options: {
+    seedNodeStatuses?: Record<string, string>;
+    hasDataset?: boolean;
+    postStatuses?: number[];
+    correlationFails?: boolean;
+  } = {},
+): { postCalls: RecordedEdaPost[] } {
+  const { seedNodeStatuses = {}, hasDataset = true, postStatuses = [], correlationFails } = options;
+  const postCalls: RecordedEdaPost[] = [];
+  let postIndex = 0;
+  global.fetch = jest.fn((url: string, init?: RequestInit) => {
+    // Seed-якорь отчёта: уже посчитанные состояния узлов /trace
+    // (§7.2-прецедент «клиент строит сводку из уже полученных данных»).
+    if (typeof url === "string" && url.includes("/progress/trace")) {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          run_id: "RUN-1",
+          node_statuses: seedNodeStatuses,
+        }),
+      });
+    }
+    if (typeof url === "string" && url.includes("/progress/eda-checks")) {
+      let body: { checks?: Record<string, string> } | null = null;
+      try {
+        body = JSON.parse(String(init?.body ?? "null"));
+      } catch {
+        body = null;
+      }
+      postCalls.push({ url, body });
+      const ok = postIndex < postStatuses.length
+        ? postStatuses[postIndex] === 200
+        : true;
+      postIndex += 1;
+      return Promise.resolve({
+        ok,
+        status: ok ? 200 : 500,
+        json: () => Promise.resolve({ run_id: "RUN-1", reported: 10 }),
+      });
+    }
+    if (!hasDataset && typeof url === "string" && url.includes("/target-column")) {
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({
+          target_column: init?.method === "POST" ? JSON.parse(String(init.body)).column : null,
+          suggested_column: null,
+          available_columns: [],
+          has_dataset: false,
+        }),
+      });
+    }
+    if (correlationFails && typeof url === "string" && url.includes("/dataset/eda-correlation")) {
+      return Promise.resolve({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ detail: "Сбой корреляции" }),
+      });
+    }
+    return routeFetch(url, init);
+  }) as unknown as typeof fetch;
+  return { postCalls };
+}
+
+describe("TsAnalysisEDA — PROGR-18: URL-контракт отчёта просмотров в «Прогресс»", () => {
+  beforeEach(() => {
+    mockActiveDataset = { datasetId: "d1", name: "monitor.csv", rows: 4, sizeLabel: "1 KB" };
+  });
+
+  it("reports the viewed-studies snapshot to progressApiUrl('/eda-checks') once the first result is displayed", async () => {
+    const { postCalls } = mockProgressReportEda();
+
+    render(<TsAnalysisEDA />);
+    // Первое показанное исследование («Описательные статистики» --
+    // активное по умолчанию) -- снапшот отчитан ровно один раз.
+    await waitFor(() => expect(postCalls).toHaveLength(1));
+
+    // URL-контракт: хелпер progressApiUrl ("/eda-checks"), НЕ
+    // sessionApiUrl -- двойной префикс /v1/session/v1/... ловится здесь
+    // (дискриминатор дефекта PROGR-15-REPRO Г-1).
+    expect(postCalls[0].url).toBe(
+      "http://localhost:8000/v1/progress/eda-checks",
+    );
+
+    // Снапшот ВСЕХ 10 исследований реестра (all-or-nothing контракт
+    // бэкенда); словарь отчёта -- {"done", "pending"} (решение тимлида:
+    // warning не вводить).
+    expect(new Set(Object.keys(postCalls[0].body?.checks ?? {}))).toEqual(
+      new Set(EDA_CHECK_IDS_ARR),
+    );
+    expect(postCalls[0].body?.checks).toEqual({
+      descriptive: "done",
+      correlation: "pending",
+      ih_analysis: "pending",
+      seasonality: "pending",
+      stationarity: "pending",
+      distribution: "pending",
+      structural: "pending",
+      feature_select: "pending",
+      validation_strategy: "pending",
+      model_matrix: "pending",
+    });
+
+    // Снапшот стабилен -- дедупликация не даёт повторов.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(postCalls).toHaveLength(1);
+  });
+
+  it("appends the newly viewed study to the monotone snapshot (second report)", async () => {
+    const { postCalls } = mockProgressReportEda();
+
+    render(<TsAnalysisEDA />);
+    await waitFor(() => expect(postCalls).toHaveLength(1));
+
+    // Аналитик открывает «Корреляцию» -- результат показан -- новый
+    // снапшот с растущим (монотонным) множеством просмотренных.
+    fireEvent.click(screen.getByRole("button", { name: /^Корреляция \(ACF\/PACF\)/ }));
+    await screen.findByRole("img", { name: "График ACF для Price" });
+
+    await waitFor(() => expect(postCalls).toHaveLength(2));
+    expect(postCalls[1].body?.checks?.descriptive).toBe("done");
+    expect(postCalls[1].body?.checks?.correlation).toBe("done");
+    expect(postCalls[1].body?.checks?.ih_analysis).toBe("pending");
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(postCalls).toHaveLength(2);
+  });
+
+  it("does not report without an active dataset (facts of views without research do not exist)", async () => {
+    mockActiveDataset = null;
+    const { postCalls } = mockProgressReportEda({ hasDataset: false });
+
+    render(<TsAnalysisEDA />);
+    // Без датасета отчёта нет (зеркало 400-гейта бэкенда): факты
+    // просмотров без исследования не существуют -- контракт-инвариант.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(postCalls).toHaveLength(0);
+  });
+
+  it("re-reports the NEW snapshot after an HTTP failure (res.ok checked, ref reset)", async () => {
+    // Первый отчёт -- 500 (ok:false); открытие «Корреляции» меняет
+    // снапшот -- контур обязан повторить отчёт (семантика PROGR-15-A:
+    // сброс маркера при !ok симметричен .catch; повтор -- по следующему
+    // изменению снапшота, без таймеров).
+    const { postCalls } = mockProgressReportEda({ postStatuses: [500] });
+
+    render(<TsAnalysisEDA />);
+    await waitFor(() => expect(postCalls).toHaveLength(1));
+
+    fireEvent.click(screen.getByRole("button", { name: /^Корреляция \(ACF\/PACF\)/ }));
+    await screen.findByRole("img", { name: "График ACF для Price" });
+
+    await waitFor(() => expect(postCalls).toHaveLength(2));
+    expect(postCalls[1].body?.checks?.correlation).toBe("done");
+  });
+
+  it("anchors the viewed set from /trace: previously reported studies stay done after a remount (no fact regression)", async () => {
+    // Журнал уже содержит отчёты прошлой сессии (correlation и
+    // seasonality -- done). После перемонтирования (смена вкладки --
+    // роут Next.js -- или перезагрузка страницы) клиентское множество
+    // терялось бы: descriptive-only снапшот ПЕРЕЗАПИСАЛ бы факты назад
+    // (last-wins). Якорь -- seed из /trace: маркер отчёта инициализируется
+    // уже посчитанными done-узлами, отчёт происходит только по НОВОМУ
+    // просмотру; регрессии фактов нет.
+    const { postCalls } = mockProgressReportEda({
+      seedNodeStatuses: {
+        "eda/correlation": "done",
+        "eda/seasonality": "done",
+      },
+    });
+
+    render(<TsAnalysisEDA />);
+    await waitFor(() => expect(postCalls).toHaveLength(1));
+
+    // Ровно один отчёт -- и в нём якорные done СОХРАНЕНЫ (не перезаписаны
+    // pending'ом descriptive-only снапшота).
+    expect(postCalls[0].body?.checks?.correlation).toBe("done");
+    expect(postCalls[0].body?.checks?.seasonality).toBe("done");
+    expect(postCalls[0].body?.checks?.descriptive).toBe("done");
+    expect(postCalls[0].body?.checks?.ih_analysis).toBe("pending");
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(postCalls).toHaveLength(1);
+  });
+
+  it("does not count a study with a failed fetch as viewed (no displayed result -- no fact)", async () => {
+    // «Открыл» без «просмотрел результат»: запрос корреляции упал --
+    // результата нет, факт просмотра не возникает, снапшот не растёт
+    // (решение тимлида: статус по факту просмотра РЕЗУЛЬТАТА).
+    const { postCalls } = mockProgressReportEda({ correlationFails: true });
+
+    render(<TsAnalysisEDA />);
+    await waitFor(() => expect(postCalls).toHaveLength(1));
+
+    fireEvent.click(screen.getByRole("button", { name: /^Корреляция \(ACF\/PACF\)/ }));
+    // Ошибка отображается в двух областях (баннер секции + алерт) -- both.
+    const alerts = await screen.findAllByRole("alert");
+    expect(alerts.some((alert) => alert.textContent?.includes("Сбой корреляции"))).toBe(true);
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(postCalls).toHaveLength(1);
+    expect(postCalls[0].body?.checks?.correlation).toBe("pending");
+  });
+});

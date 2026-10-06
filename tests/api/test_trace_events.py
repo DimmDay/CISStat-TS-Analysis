@@ -137,6 +137,10 @@ class TestStageEventRegistry:
         # PROGR-17: Предобработка + preprocessing_check_status (зеркало
         # PROGR-16-A, spec_progress_v1.1.md §2 категория B -- отчёт
         # фактов этапов модулем, статус -- в payload).
+        # PROGR-18: EDA + eda_check_status (зеркало PROGR-16-A/17, §2
+        # категория B -- отчёт фактов просмотров исследований модулем,
+        # статус -- в payload; словарь отчёта {"done", "pending"} --
+        # решение тимлида, enforced эндпоинтом).
         assert STAGE_EVENT_TYPES["upload"] == {
             "upload_completed", "passport_captured",
             "structure_confirmed", "upload_stop_status",
@@ -151,7 +155,9 @@ class TestStageEventRegistry:
             "correction_applied", "target_column_changed",
             "preprocessing_check_status",
         }
-        assert STAGE_EVENT_TYPES["eda"] == {"profile_viewed", "passport_captured"}
+        assert STAGE_EVENT_TYPES["eda"] == {
+            "profile_viewed", "passport_captured", "eda_check_status",
+        }
         assert STAGE_EVENT_TYPES["modeling"] == {
             "backtest_run", "tuning_trial_completed",
             "model_selected", "model_card_generated",

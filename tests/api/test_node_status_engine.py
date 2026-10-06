@@ -96,10 +96,12 @@ class TestEventNodeStatusMap:
         }
 
     def test_payload_status_registry_is_upload_stop_report(self):
-        """PROGR-13-A4 + PROGR-16-A + PROGR-17: payload-статусные типы --
-        отчёты остановок «Загрузки», проверок «Валидации» и этапов
-        «Предобработки» (клиентские снапшоты §7.2); статус валидируется
-        CHECK_STATUS_VALUES в resolve_event_status."""
+        """PROGR-13-A4 + PROGR-16-A + PROGR-17 + PROGR-18: payload-
+        статусные типы -- отчёты остановок «Загрузки», проверок
+        «Валидации», этапов «Предобработки» и просмотров исследований
+        EDA (клиентские снапшоты §7.2); статус валидируется
+        CHECK_STATUS_VALUES в resolve_event_status (словарь ИМЕННО
+        отчёта EDA -- {"done", "pending"} -- enforced эндпоинтом)."""
         from app.core.node_status import PAYLOAD_STATUS_EVENT_TYPES
 
         assert PAYLOAD_STATUS_EVENT_TYPES == frozenset(
@@ -107,6 +109,7 @@ class TestEventNodeStatusMap:
                 "upload_stop_status",
                 "validation_check_status",
                 "preprocessing_check_status",
+                "eda_check_status",
             }
         )
 
