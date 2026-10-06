@@ -58,7 +58,7 @@ import string
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Callable, Mapping, Protocol, runtime_checkable
+from typing import Any, Callable, Iterable, Mapping, Protocol, runtime_checkable
 
 import yaml
 
@@ -791,11 +791,78 @@ _PHASE_TEXT_FALLBACK = (
     "чтобы увидеть блок-схему стадий и трассу решений."
 )
 
+# ── PROGR-15-B: факт-обусловленный текст фазы «Загрузка» ──────────────
+#
+# Статический шаблон upload противоречил трассе: просил «подтвердите
+# структуру данных» при уже записанном факте решения (upload/structure
+# = done) -- самопротиворечие одного ответа next-step (summary того же
+# JSON показывает structure=done; сценарий тимлида PROGR-15-REPRO,
+# причина Г-2). Ветвление -- по тем же фактам единого движка, что читает
+# summary: статусы узлов (те же derive_node_statuses) и событие
+# target_column_changed. Остальные стадии не обусловливаются: их
+# описательные шаблоны («Идёт этап…») фактам не противоречат.
+_UPLOAD_STRUCTURE_DONE_BOTH = (
+    "Исследование на этапе «Загрузка»: структура данных подтверждена, "
+    "целевой признак выбран -- проверки качества ждут на этапе «Валидация»."
+)
+_UPLOAD_STRUCTURE_DONE_TARGET_PENDING = (
+    "Исследование на этапе «Загрузка»: структура данных подтверждена. "
+    "Подтвердите целевой признак, чтобы пошли проверки качества."
+)
+_UPLOAD_STRUCTURE_PENDING_TARGET_DONE = (
+    "Исследование на этапе «Загрузка»: целевой признак выбран. "
+    "Подтвердите структуру данных, чтобы пошли проверки качества."
+)
 
-def phase_text(stage: str) -> str:
+
+def _target_confirmed(events: Iterable[Any]) -> bool:
+    """Факт выбора целевого признака из событий запуска (PROGR-15-B).
+    Источник истины тот же, что у метаданных ResearchRun.target_column
+    (research_runs.py): target_column_changed с НЕПУСТЫМ
+    payload.target_column -- выбор; пустой -- сброс выбора, фактом не
+    является. Мусор/чужие типы -- пропуск (event_to_dict, деградация
+    «событие мимо фактов», не 500)."""
+    for event in events:
+        data = event_to_dict(event)
+        if data is None:
+            continue
+        if str(data.get("event_type") or "") != "target_column_changed":
+            continue
+        payload = data.get("payload")
+        if isinstance(payload, Mapping) and payload.get("target_column"):
+            return True
+    return False
+
+
+def phase_text(
+    stage: str,
+    statuses: Mapping[str, str] | None = None,
+    events: Iterable[Any] | None = None,
+) -> str:
     """Текст пояснения текущей фазы (§7.1). Неизвестная стадия -- честный
-    нейтральный текст (fail-safe), не пустая строка."""
-    return PHASE_TEXT_TEMPLATES.get(stage, _PHASE_TEXT_FALLBACK)
+    нейтральный текст (fail-safe), не пустая строка.
+
+    PROGR-15-B: для стадии upload текст обусловлен ФАКТАМИ решения, если
+    они переданы: узел upload/structure -- из статусов единого движка
+    (те же, что читает summary ответа next-step), выбор целевого
+    признака -- из событий target_column_changed. Вызов по-старому (без
+    аргументов) возвращает дословно статический шаблон. Консервативные
+    трактовки неполного контекста: события без статусов -- структура
+    считается неподтверждённой (просьба остаётся); статусы без событий --
+    цель невыбранной: неизвестный факт не превращается в утверждение."""
+    if stage != "upload":
+        return PHASE_TEXT_TEMPLATES.get(stage, _PHASE_TEXT_FALLBACK)
+    if statuses is None and events is None:
+        return PHASE_TEXT_TEMPLATES["upload"]
+    structure_done = (statuses or {}).get("upload/structure") == "done"
+    target_done = _target_confirmed(events or ())
+    if structure_done and target_done:
+        return _UPLOAD_STRUCTURE_DONE_BOTH
+    if structure_done:
+        return _UPLOAD_STRUCTURE_DONE_TARGET_PENDING
+    if target_done:
+        return _UPLOAD_STRUCTURE_PENDING_TARGET_DONE
+    return PHASE_TEXT_TEMPLATES["upload"]
 
 
 def validate_explanation_template(rule: MentorRule) -> None:

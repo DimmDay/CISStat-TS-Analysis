@@ -45,6 +45,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -60,6 +61,7 @@ from app.core.mentor_rules import (
     evaluate_next_step,
     evaluate_sanity,
     load_mentor_config,
+    phase_text,
 )
 from apps.api.trace_events import make_trace_event
 
@@ -891,3 +893,153 @@ class TestMentorTextRendererContract:
         assert fact.suggested_action
         assert isinstance(fact.context, dict)
         assert mentor_rules.rule_no_effect(_outcome()) is None
+
+
+# ── PROGR-15-B: текст фазы «Загрузки» -- из фактов решения, не статический шаблон ──
+#
+# Дефект (расследование PROGR-15-REPRO, причина Г-2, подтверждена
+# тимлидом): PHASE_TEXT_TEMPLATES["upload"] -- жёсткая строка
+# «подтвердите структуру данных и целевой признак», phase_text(stage)
+# фактов не читает -- в сценарии тимлида Наставник требовал подтвердить
+# УЖЕ подтверждённую структуру: факт upload/structure=done лежит в той
+# же трассе, а summary того же ответа next-step показывает structure=done
+# (JSON противоречит сам себе в одном payload).
+#
+# Контракт: phase_text(stage, statuses=None, events=None). Вызовы
+# по-старому (без аргументов) -- дословно прежний шаблон; для upload
+# текст ветвится по фактам решения: узел upload/structure -- из статусов
+# единого движка (те же, что читает summary ответа), выбор целевого
+# признака -- событие target_column_changed с НЕПУСТЫМ payload-колонкой
+# (та же семантика, что у метаданных запуска research_runs: пустой --
+# сброс, не выбор). Остальные стадии не обусловливаются: их описательные
+# шаблоны фактам не противоречат. Фронт-контракт не меняется:
+# phase_text в ответе next-step -- по-прежнему строка.
+
+
+def _target_changed_event(run_id: str = "RUN-AAA00001", column: str = "value"):
+    return make_trace_event(
+        "target_column_changed", stage="validation", node_id=None,
+        run_id=run_id, target_column=column,
+    )
+
+
+class TestPhaseTextUploadFacts:
+    def test_legacy_call_is_verbatim_static_template(self):
+        """Обратная совместимость: вызов по-старому -- прежний текст."""
+        assert phase_text("upload") == mentor_rules.PHASE_TEXT_TEMPLATES["upload"]
+        assert phase_text("upload", None) == mentor_rules.PHASE_TEXT_TEMPLATES["upload"]
+
+    def test_structure_done_silences_structure_request(self):
+        text = phase_text("upload", {"upload/structure": "done"})
+        assert "подтвердите структуру" not in text.lower()
+        assert "подтверждена" in text
+
+    def test_structure_not_done_keeps_requesting_structure(self):
+        text = phase_text("upload", {"upload/structure": "warning"})
+        assert "подтвердите структуру" in text.lower()
+
+    def test_structure_done_without_target_fact_requests_target_only(self):
+        text = phase_text("upload", {"upload/structure": "done"}, [])
+        assert "подтвердите структуру" not in text.lower()
+        assert "подтвердите" in text.lower()  # просьба осталась -- про цель
+        assert "целевой признак" in text
+
+    def test_target_fact_silences_all_requests_when_structure_done(self):
+        text = phase_text("upload", {"upload/structure": "done"}, [_target_changed_event()])
+        assert "подтвердите" not in text.lower()
+        assert "подтверждена" in text
+
+    def test_target_fact_without_structure_requests_structure_only(self):
+        text = phase_text("upload", {}, [_target_changed_event()])
+        assert "подтвердите структуру" in text.lower()
+        assert "подтвердите целевой" not in text.lower()
+
+    def test_empty_target_payload_is_reset_not_choice(self):
+        """Семантика метаданных запуска (research_runs): пустой
+        target_column в payload -- сброс выбора, фактом не является."""
+        empty = _target_changed_event(run_id="RUN-BBB00002", column="")
+        text = phase_text("upload", {"upload/structure": "done"}, [empty])
+        assert "подтвердите" in text.lower()
+
+    def test_junk_events_are_skipped_not_crash(self):
+        """Мусор вместо событий -- пропуск (event_to_dict), не 500."""
+        text = phase_text("upload", {"upload/structure": "done"}, ["мусор", 42, None])
+        assert "подтверждена" in text
+
+    def test_other_stages_ignore_statuses_and_events(self):
+        for stage in ("validation", "preprocessing", "eda", "modeling", "forecasting"):
+            conditioned = phase_text(
+                stage, {"upload/structure": "done"}, [_target_changed_event()]
+            )
+            assert conditioned == phase_text(stage), stage
+
+    def test_unknown_stage_fallback_unchanged(self):
+        assert phase_text("no-such-stage", {"upload/structure": "done"}) == phase_text("no-such-stage")
+
+
+class TestMentorNextStepPhaseFacts:
+    """PROGR-15-B, контур REST: phase_text ответа next-step обусловлен
+    теми же фактами трассы запуска, что и summary того же ответа
+    (structure=done в summary при просьбе «подтвердите структуру» в
+    phase_text -- самопротиворечие одного JSON, закрыто)."""
+
+    def test_structure_stop_fact_done_silences_request(self, client: TestClient):
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(
+            store, "RUN-AAA00001",
+            make_trace_event(
+                "upload_stop_status", stage="upload", node_id="structure",
+                run_id="RUN-AAA00001", status="done",
+            ),
+        )
+        response = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["last_active_stage"] == "upload"
+        assert data["summary"]["stage"] == "upload"
+        assert "подтвердите структуру" not in data["phase_text"].lower()
+
+    def test_structure_confirmed_fact_silences_request(self, client: TestClient):
+        """Второй источник того же факта: POST /date-column ->
+        structure_confirmed (PROGR-13-A3), узел structure."""
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(
+            store, "RUN-AAA00001",
+            make_trace_event(
+                "structure_confirmed", stage="upload", node_id="structure",
+                run_id="RUN-AAA00001",
+            ),
+        )
+        data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
+        assert "подтвердите структуру" not in data["phase_text"].lower()
+
+    def test_target_fact_with_structure_silences_all_requests(self, client: TestClient):
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        _seed_event(
+            store, "RUN-AAA00001",
+            make_trace_event(
+                "upload_stop_status", stage="upload", node_id="structure",
+                run_id="RUN-AAA00001", status="done",
+            ),
+        )
+        _seed_event(store, "RUN-AAA00001", _target_changed_event())
+        data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
+        assert "подтвердите" not in data["phase_text"].lower()
+        assert "подтверждена" in data["phase_text"]
+
+    def test_run_without_facts_keeps_static_text(self, client: TestClient):
+        from apps.api import research_runs
+
+        store = research_runs.get_research_run_store()
+        _seed_run(store)
+        data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
+        assert data["phase_text"] == mentor_rules.PHASE_TEXT_TEMPLATES["upload"]
