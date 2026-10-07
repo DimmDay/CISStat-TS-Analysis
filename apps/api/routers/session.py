@@ -16,11 +16,22 @@ import logging
 import math
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import pandas as pd
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 
+# PROGR-24-ORIGIN-A (spec_status_original_series.md): реестр происхождения
+# колонок и каноническая область гейтов качества -- единая точка регистрации
+# (хелпер до/после apply) и область профилей «Пропусков»/«Выбросов»/
+# «Регулярности» и проверок «Валидации».
+from apps.api.column_origin import (
+    canonical_columns,
+    derived_columns_in_frame,
+    operation_added_columns,
+    register_derived_columns,
+    scope_frame,
+)
 from apps.api.chart_data import MAX_ZOOM_POINTS, build_histogram, build_kde, build_scatter_series, build_timeseries_points
 from apps.api.decomposition_data import build_decomposition, build_decomposition_series
 from apps.api.eda_correlation import build_eda_correlation
@@ -90,6 +101,8 @@ from apps.api.schemas import (
     DatasetPassportStatusResponse,
     DatasetMissingMatrixResponse,
     DatasetMissingProfileResponse,
+    DerivedMissingSummaryOut,
+    DerivedOutlierSummaryOut,
     DatasetPreprocessingCheckModesRequest,
     DatasetPreprocessingCheckModesResponse,
     DatasetPreprocessingDecompositionProfileResponse,
@@ -331,6 +344,56 @@ def _effective_preprocessing_check_modes(session: AnalysisSession) -> dict[str, 
         )
         for check_id in PREPROCESSING_CHECK_IDS
     }
+
+
+# ── PROGR-24-ORIGIN-A (spec_status_original_series.md): каноническая
+# область профилей качества и информационный канал производных ──────────
+# Гейты (пропуски/выбросы/регулярность/валидация) считают по
+# canonical_columns(session) -- исходному ряду; по производным колонкам
+# профиль считается ОТДЕЛЬНО и отдаётся полем derived_summary, ВНЕ статуса
+# и вне свёртки «любой warning окрашивает стадию».
+
+
+def _derived_missing_summary(
+    df: pd.DataFrame, derived_names: list[str]
+) -> Optional[DerivedMissingSummaryOut]:
+    """Информационный профиль пропусков производных колонок (вне статуса).
+
+    None = производных колонок в датафрейме нет -- поле отсутствует и в
+    старых клиентах не требует обработки (обратная совместимость)."""
+    if not derived_names:
+        return None
+    profiles = profile_missing(scope_frame(df, derived_names))
+    return DerivedMissingSummaryOut(
+        total_columns=len(derived_names),
+        total_missing=sum(item["missing_count"] for item in profiles),
+        affected_columns=[item["column"] for item in profiles if item["missing_count"] > 0],
+        columns=[MissingProfileItemOut(**item) for item in profiles],
+    )
+
+
+def _derived_outlier_summary(
+    df: pd.DataFrame,
+    derived_names: list[str],
+    method: str = "iqr",
+    param: Any = None,
+) -> Optional[DerivedOutlierSummaryOut]:
+    """Информационный профиль выбросов производных колонок (вне статуса).
+
+    method/param -- те же, что у основного профиля ответа, чтобы канал был
+    сопоставим с ним по шкале (всплески разностного ряда -- другой
+    статистический вопрос, но счёт в тех же единицах профиля)."""
+    if not derived_names:
+        return None
+    profiles = profile_outliers(scope_frame(df, derived_names), method=method, param=param)
+    summary = outliers_summary(profiles, total_rows=len(df))
+    return DerivedOutlierSummaryOut(
+        total_columns=len(derived_names),
+        total_numeric_columns=summary["total_numeric_columns"],
+        total_outliers=summary["total_outliers"],
+        affected_columns=list(summary["affected_columns"]),
+        columns=[OutlierProfileItemOut(**item) for item in profiles],
+    )
 
 
 def _preprocessing_missing_status(
@@ -1272,13 +1335,37 @@ def get_dataset_validate(request: Request, response: Response, column: str | Non
     df = session.dataframe
     if column is not None and column not in df.columns:
         raise HTTPException(status_code=404, detail=f"Колонка '{column}' отсутствует в датасете")
+    # PROGR-24-ORIGIN-A (spec_status_original_series.md): проверки качества
+    # применяются к каноническому исходному ряду. Явный запрос per-column
+    # проверки на производной колонке -- методологическая подмена понятий
+    # (выброс/пропуск на разностном ряде -- другой статистический вопрос),
+    # честная 422 вместо молчаливой проверки не той величины.
+    if column is not None and str(column) in session.derived_columns:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Колонка '{column}' -- производная (остановка "
+                f"'{session.derived_columns[str(column)].get('stage', '?')}'); "
+                "проверки качества применяются к исходному ряду "
+                "(spec_status_original_series.md)"
+            ),
+        )
 
     rules, rule_sources = _session_validation_rules(session)
-    result = validate_dataframe(df, rules, target_column=column)
+    # Каноническая область: остановка ниже по течению не может менять статус
+    # остановки выше. Правила, ссылающиеся на отсутствующие в области
+    # колонки, движком валидации пропускаются без ошибки (engine.py).
+    scope_df = scope_frame(df, canonical_columns(session))
+    result = validate_dataframe(scope_df, rules, target_column=column)
 
     # Общий запуск остаётся dataset-wide для остальных критериев, но
     # достаточность по смыслу относится к активному прогнозируемому ряду.
     # Явный query column имеет приоритет, иначе используется выбор сессии.
+    # PROGR-24-ORIGIN-A (исключение, документировано): sufficiency считается
+    # по ПОЛНОМУ датафрейму -- это проверка готовности к моделированию о
+    # ВЫБРАННОМ target (target может легитимно быть производной колонкой),
+    # а не гейт качества канонического ряда; спека §«Что нужно решить» п.2:
+    # в моделировании производные колонки -- законные кандидаты.
     sufficiency_target = column or session.target_column
     current_sufficiency = profile_sufficiency(
         df, rules, target_column=sufficiency_target,
@@ -1493,6 +1580,7 @@ def correct_dataset_formats(
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
     rules, _rule_sources = _session_validation_rules(session)
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, raw_results = preview_format_corrections(
             session.dataframe, rules, payload.columns, payload.strategy
@@ -1503,6 +1591,14 @@ def correct_dataset_formats(
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A: флаг-колонки _format_valid -- производные
+        # (гейты качества не возвращаются на флаги своей же остановки).
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="validation",
+            source=f"format_correction:{payload.strategy}:{','.join(payload.columns)}",
+        )
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
             session.dataset.columns = len(corrected_df.columns)
@@ -1554,6 +1650,7 @@ def correct_dataset_ranges(
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
     rules, _rule_sources = _session_validation_rules(session)
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, raw_results, rows_removed = preview_range_corrections(
             session.dataframe, rules, payload.columns, payload.strategy
@@ -1564,6 +1661,13 @@ def correct_dataset_ranges(
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A: флаг-колонки _range_flag -- производные.
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="validation",
+            source=f"range_correction:{payload.strategy}:{','.join(payload.columns)}",
+        )
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
             session.dataset.columns = len(corrected_df.columns)
@@ -1599,7 +1703,11 @@ def get_dataset_missing_profile(request: Request, response: Response):
     if session.dataframe is None:
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
-    df = session.dataframe
+    # PROGR-24-ORIGIN-A: гейт качества применяется к каноническому исходному
+    # ряду; производные колонки (разности/сглаживание/флаги) не возвращают
+    # свои пропуски на эту остановку -- их профиль честен, но вне статуса.
+    derived_names = derived_columns_in_frame(session)
+    df = scope_frame(session.dataframe, canonical_columns(session))
     summary = missing_summary(df)
     columns = profile_missing(df)
     histogram = missing_per_row_histogram(df)
@@ -1621,6 +1729,7 @@ def get_dataset_missing_profile(request: Request, response: Response):
         empty_rows=summary["empty_rows"],
         columns=[MissingProfileItemOut(**item) for item in columns],
         row_histogram=[MissingRowHistogramItemOut(**item) for item in histogram],
+        derived_summary=_derived_missing_summary(session.dataframe, derived_names),
     )
 
 
@@ -1740,21 +1849,38 @@ def correct_dataset_missing(
     if session.dataframe is None:
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, raw_results, rows_removed = preview_missing_corrections(
             session.dataframe, payload.columns, payload.strategy
         )
-        next_profile = profile_missing(corrected_df)
     except (ValueError, TypeError) as ex:
         raise HTTPException(status_code=422, detail=str(ex)) from ex
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A: флаг-колонки остановки «Пропуски» -- производные
+        # (та же логика, что и у флагов «Выбросов»); кэп-стратегии без новых
+        # колонок не пишут в реестр ничего.
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="missing",
+            source=f"missing_correction:{payload.strategy}:{','.join(payload.columns)}",
+        )
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
             session.dataset.columns = len(corrected_df.columns)
         session.touch()
         store.save(session)
+
+    # PROGR-24-ORIGIN-A: профиль после операции -- в канонической области
+    # (флаг-колонки операции в него не возвращаются); производные -- в
+    # derived_summary, вне статуса.
+    operation_added = operation_added_columns(before_columns, corrected_df)
+    derived_after = sorted(set(session.derived_columns) | set(operation_added))
+    scope_after = [name for name in corrected_df.columns if str(name) not in set(derived_after)]
+    next_profile = profile_missing(scope_frame(corrected_df, scope_after))
 
     return DatasetMissingCorrectionResponse(
         applied=payload.apply,
@@ -1766,6 +1892,7 @@ def correct_dataset_missing(
         added_columns=[item["flag_column"] for item in raw_results if item["flag_column"]],
         columns=[MissingCorrectionResultOut(**item) for item in raw_results],
         profile=[MissingProfileItemOut(**item) for item in next_profile],
+        derived_summary=_derived_missing_summary(corrected_df, derived_after),
     )
 
 
@@ -1798,7 +1925,14 @@ def get_dataset_outlier_profile(
         raise HTTPException(status_code=422, detail=f"Неизвестный метод: {method}")
 
     param = (param_low, param_high) if method == "percentile" and param_low is not None and param_high is not None else None
-    df = session.dataframe
+    # PROGR-24-ORIGIN-A: гейт применяется к каноническому исходному ряду.
+    # Всплески на производных колонках (разности после «Стационарности»,
+    # флаг-колонки) отвечают на другой статистический вопрос и не окрашивают
+    # остановку «Выбросы» исходного ряда (класс C5 ROGR-22-REPRO-G345 --
+    # «жёлтая карточка навсегда» -- устраняется причиной). Их профиль
+    # считается отдельно и отдаётся полем derived_summary, ВНЕ статуса.
+    derived_names = derived_columns_in_frame(session)
+    df = scope_frame(session.dataframe, canonical_columns(session))
     columns = profile_outliers(df, method=method, param=param)
     summary = outliers_summary(columns, total_rows=len(df))
     mode = _effective_preprocessing_check_modes(session)["outliers"]
@@ -1817,6 +1951,9 @@ def get_dataset_outlier_profile(
         outlier_rate_pct=summary["outlier_rate_pct"],
         affected_columns=summary["affected_columns"],
         columns=[OutlierProfileItemOut(**item) for item in columns],
+        derived_summary=_derived_outlier_summary(
+            session.dataframe, derived_names, method=method, param=param
+        ),
     )
 
 
@@ -1858,16 +1995,27 @@ def correct_dataset_outliers(
             raise HTTPException(status_code=422, detail=str(ex)) from ex
         masks_override = {payload.columns[0]: mask}
 
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, raw_results, rows_removed = preview_outlier_corrections(
             session.dataframe, payload.columns, payload.strategy, payload.method, payload.param, masks_override
         )
-        next_profile = profile_outliers(corrected_df, method=payload.method, param=payload.param)
     except (ValueError, TypeError) as ex:
         raise HTTPException(status_code=422, detail=str(ex)) from ex
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A (Р6): флаг-колонки самой остановки «Выбросы» --
+        # производные по построению; без регистрации они возвращались бы в
+        # профиль следующего пересчёта (петля «+4 выброса от флаг-колонки»
+        # PROGR-22-REPRO). Кэп/медиана/удаление строк колонок не добавляют --
+        # хелпер сверяет списки и в этом случае не пишет ничего.
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="outliers",
+            source=f"outlier_correction:{payload.strategy}:{','.join(payload.columns)}",
+        )
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
             session.dataset.columns = len(corrected_df.columns)
@@ -1875,18 +2023,29 @@ def correct_dataset_outliers(
         store.save(session)
 
     # G345-фикс (PROGR-23): честный исход операции в КАРТОЧНОЙ шкале --
-    # профиль по ВСЕМ числовым колонкам фиксированным методом карточки
-    # (iqr-1.5, param=None -> дефолт; фронт запрашивает карточку только
-    # им), НЕ шкалой мастера из запроса: ответ несёт статус остановки и
-    # счётчик выбросов ПОСЛЕ операции (для apply -- факт по исправленным
-    # данным, для preview -- гипотеза по копии). Носители честного
-    # баннера мастера (Г4) и payload-статуса correction_applied в трассе
-    # (класс C5 G345: частичная коррекция честно оставляет warning).
-    card_profile = profile_outliers(corrected_df, method="iqr", param=None)
+    # профиль фиксированным методом карточки (iqr-1.5, param=None -> дефолт;
+    # фронт запрашивает карточку только им), НЕ шкалой мастера из запроса.
+    # PROGR-24-ORIGIN-A: карточная шкала считается по канонической области
+    # ПОСЛЕ операции (для apply -- факт, для preview -- гипотеза по копии):
+    # флаг-колонки самой операции учтены как производные уже здесь, чтобы
+    # preview и apply сошлись в одной шкале.
+    operation_added = operation_added_columns(before_columns, corrected_df)
+    derived_after = sorted(set(session.derived_columns) | set(operation_added))
+    card_scope = [name for name in corrected_df.columns if str(name) not in set(derived_after)]
+    card_profile = profile_outliers(
+        scope_frame(corrected_df, card_scope), method="iqr", param=None
+    )
     card_summary = outliers_summary(card_profile, total_rows=len(corrected_df))
     card_mode = _effective_preprocessing_check_modes(session)["outliers"]
     card_status, _ = _preprocessing_outliers_status(
         card_mode, card_summary["total_numeric_columns"], card_summary["total_outliers"]
+    )
+
+    # Профиль мастера после операции -- тоже в канонической области
+    # (производные не предлагаются заново), шкала мастера сохранена.
+    master_scope = card_scope
+    next_profile = profile_outliers(
+        scope_frame(corrected_df, master_scope), method=payload.method, param=payload.param
     )
 
     return DatasetOutlierCorrectionResponse(
@@ -1903,6 +2062,9 @@ def correct_dataset_outliers(
         profile=[OutlierProfileItemOut(**item) for item in next_profile],
         status=card_status,
         total_outliers_after=card_summary["total_outliers"],
+        derived_summary=_derived_outlier_summary(
+            corrected_df, derived_after, method=payload.method, param=payload.param
+        ),
     )
 
 
@@ -2063,6 +2225,7 @@ def correct_dataset_inclusion(
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
     rules, _rule_sources = _session_validation_rules(session)
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, raw_results, rows_removed = preview_inclusion_corrections(
             session.dataframe, rules, payload.columns, payload.strategy
@@ -2073,6 +2236,13 @@ def correct_dataset_inclusion(
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A: флаг-колонки _inclusion_valid -- производные.
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="validation",
+            source=f"inclusion_correction:{payload.strategy}:{','.join(payload.columns)}",
+        )
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
             session.dataset.columns = len(corrected_df.columns)
@@ -2132,6 +2302,7 @@ def correct_dataset_referential(
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
     rules, _rule_sources = _session_validation_rules(session)
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, raw_results, rows_removed = preview_referential_corrections(
             session.dataframe, rules, payload.rule_indices, payload.strategy
@@ -2142,6 +2313,13 @@ def correct_dataset_referential(
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A: флаг-колонки _ref_valid -- производные.
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="validation",
+            source=f"referential_correction:{payload.strategy}",
+        )
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
             session.dataset.columns = len(corrected_df.columns)
@@ -2200,6 +2378,7 @@ def correct_dataset_text_quality(
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
     rules, _rule_sources = _session_validation_rules(session)
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, raw_results, rows_removed = preview_text_quality_corrections(
             session.dataframe, rules, payload.columns, payload.strategy
@@ -2210,6 +2389,13 @@ def correct_dataset_text_quality(
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A: флаг-колонки _text_valid -- производные.
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="validation",
+            source=f"text_quality_correction:{payload.strategy}:{','.join(payload.columns)}",
+        )
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
             session.dataset.columns = len(corrected_df.columns)
@@ -2240,8 +2426,12 @@ def get_dataset_regularity_profile(request: Request, response: Response):
     if session.dataframe is None:
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
+    # PROGR-24-ORIGIN-A: гейт качества -- по канонической области.
+    # Производные колонки не участвуют в автодетекции оси/сущности.
     rules, rule_sources = _session_validation_rules(session)
-    profile = profile_regularity(session.dataframe, rules)
+    profile = profile_regularity(
+        scope_frame(session.dataframe, canonical_columns(session)), rules
+    )
     return DatasetRegularityProfileResponse(
         rule_source=(
             rule_sources.get("regularity", "not_applicable")
@@ -2268,6 +2458,7 @@ def correct_dataset_regularity(
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
     rules, _rule_sources = _session_validation_rules(session)
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, summary = preview_regularity_correction(
             session.dataframe, rules, payload.strategy, payload.frequency
@@ -2277,6 +2468,14 @@ def correct_dataset_regularity(
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A: ресемплинг может добавлять производные колонки
+        # временной сетки -- регистрируем разностью списков (no-op без новых).
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="validation",
+            source=f"regularity_correction:{payload.strategy}",
+        )
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
             session.dataset.columns = len(corrected_df.columns)
@@ -2304,7 +2503,10 @@ def get_dataset_preprocessing_regularity_profile(request: Request, response: Res
     if session.dataframe is None:
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
-    profile = profile_regularity(session.dataframe, rules=None)
+    # PROGR-24-ORIGIN-A: каноническая область (см. /dataset/regularity-profile).
+    profile = profile_regularity(
+        scope_frame(session.dataframe, canonical_columns(session)), rules=None
+    )
     mode = _effective_preprocessing_check_modes(session)["regularity"]
     status, status_reason = _preprocessing_regularity_status(
         mode, profile["applicable"], profile["total_violations"]
@@ -2371,6 +2573,7 @@ def correct_dataset_preprocessing_regularity(
     if session.dataframe is None:
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, summary = preview_regularity_correction(
             session.dataframe, rules=None, strategy=payload.strategy, frequency=payload.frequency
@@ -2380,6 +2583,13 @@ def correct_dataset_preprocessing_regularity(
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A: остановка «Регулярность» «Предобработки».
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="regularity",
+            source=f"preprocessing_regularity_correction:{payload.strategy}",
+        )
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
             session.dataset.columns = len(corrected_df.columns)
@@ -2452,6 +2662,7 @@ def create_dataset_preprocessing_decomposition_outputs(
     session = store.get_or_create(session_id)
     if session.dataframe is None:
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, summary = preview_decomposition_outputs(
             session.dataframe,
@@ -2465,6 +2676,14 @@ def create_dataset_preprocessing_decomposition_outputs(
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A: компоненты STL (trend/seasonal/resid) --
+        # производные колонки остановки «Декомпозиция».
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="decomposition",
+            source=f"decomposition:{payload.column}:period={payload.period}",
+        )
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
             session.dataset.columns = len(corrected_df.columns)
@@ -2523,6 +2742,7 @@ def create_dataset_preprocessing_variance_transformation(
     session = store.get_or_create(session_id)
     if session.dataframe is None:
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, summary = preview_variance_transformation(
             session.dataframe, payload.column, payload.method, payload.lambda_value,
@@ -2532,6 +2752,14 @@ def create_dataset_preprocessing_variance_transformation(
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A: преобразованный ряд (log/Box-Cox/...) --
+        # производная колонка остановки «Стабилизация дисперсии».
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="variance_stab",
+            source=f"variance:{payload.method}:{payload.column}",
+        )
         session.preprocessing_transformations[summary["output_column"]] = dict(summary["metadata"])
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
@@ -2608,6 +2836,7 @@ def create_dataset_preprocessing_smoothing_transformation(
     session = store.get_or_create(session_id)
     if session.dataframe is None:
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, summary = preview_smoothing_transformation(
             session.dataframe,
@@ -2624,6 +2853,14 @@ def create_dataset_preprocessing_smoothing_transformation(
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A: сглаженный ряд -- производная колонка
+        # остановки «Сглаживание».
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="smoothing",
+            source=f"smoothing:{payload.method}:{payload.column}",
+        )
         session.preprocessing_transformations[summary["output_column"]] = dict(summary["metadata"])
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
@@ -2689,6 +2926,7 @@ def create_dataset_preprocessing_stationarity_transformation(
     session = store.get_or_create(session_id)
     if session.dataframe is None:
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, summary = preview_stationarity_transformation(
             session.dataframe, payload.column, payload.method,
@@ -2700,6 +2938,17 @@ def create_dataset_preprocessing_stationarity_transformation(
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A: разностный/детрендированный ряд -- производная
+        # колонка остановки «Стационарность» (ядро класса C5 G345: её
+        # всплески больше не возвращаются на остановку «Выбросы»). Раньше
+        # регистрация происходила неявно через preprocessing_transformations,
+        # который не участвовал в области профилей.
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="stationarity",
+            source=f"stationarity:{payload.method}:{payload.column}",
+        )
         session.preprocessing_transformations[summary["output_column"]] = dict(summary["metadata"])
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
@@ -2848,6 +3097,7 @@ def create_dataset_preprocessing_feature_generation(
         raise HTTPException(status_code=422, detail=f"Колонка '{payload.column}' отсутствует в датасете")
     if not pd.api.types.is_numeric_dtype(session.dataframe[payload.column]):
         raise HTTPException(status_code=422, detail=f"Колонка '{payload.column}' не числовая")
+    before_columns = list(session.dataframe.columns)
     try:
         featured_df, summary = preview_feature_generation(
             session.dataframe,
@@ -2866,6 +3116,15 @@ def create_dataset_preprocessing_feature_generation(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if payload.apply:
         session.dataframe = featured_df
+        # PROGR-24-ORIGIN-A: лаги/rolling/Fourier/calendar -- производные
+        # колонки остановки «Генерация признаков» (там их законное место,
+        # спека §«Что нужно решить» п.2; в гейты качества они не возвращаются).
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="feature_eng",
+            source=f"feature_generation:{payload.column}",
+        )
         session.preprocessing_feature_generation = dict(summary["metadata"])
         if session.dataset is not None:
             session.dataset.rows = len(featured_df)
@@ -2996,6 +3255,7 @@ def save_dataset_sufficiency_plan(
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
     rules, _rule_sources = _session_validation_rules(session)
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, summary = preview_sufficiency_plan(
             session.dataframe,
@@ -3008,6 +3268,14 @@ def save_dataset_sufficiency_plan(
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A: план достаточности (ограничение/маркировка)
+        # может материализовать флаг-колонки -- регистрируем разностью.
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="validation",
+            source=f"sufficiency_plan:{payload.strategy}",
+        )
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
             session.dataset.columns = len(corrected_df.columns)
@@ -3077,6 +3345,7 @@ def correct_dataset_consistency(
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
     rules, _rule_sources = _session_validation_rules(session)
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, raw_results, rows_removed = preview_consistency_corrections(
             session.dataframe, rules, payload.rule_indices, payload.strategy
@@ -3087,6 +3356,13 @@ def correct_dataset_consistency(
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A: флаг-колонки правил консистентности -- производные.
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="validation",
+            source=f"consistency_correction:{payload.strategy}",
+        )
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
             session.dataset.columns = len(corrected_df.columns)
@@ -3142,6 +3418,7 @@ def correct_dataset_uniqueness(
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
     rules, _rule_sources = _session_validation_rules(session)
+    before_columns = list(session.dataframe.columns)
     try:
         corrected_df, summary = preview_uniqueness_correction(
             session.dataframe, rules, payload.strategy
@@ -3152,6 +3429,13 @@ def correct_dataset_uniqueness(
 
     if payload.apply:
         session.dataframe = corrected_df
+        # PROGR-24-ORIGIN-A: флаг-колонка дубликатов -- производная.
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="validation",
+            source=f"uniqueness_correction:{payload.strategy}",
+        )
         if session.dataset is not None:
             session.dataset.rows = len(corrected_df)
             session.dataset.columns = len(corrected_df.columns)
@@ -3618,6 +3902,7 @@ def convert_dataset_types(
     if session.dataframe is None:
         raise HTTPException(status_code=404, detail="В сессии нет активного датасета")
 
+    before_columns = list(session.dataframe.columns)
     try:
         converted_df, raw_results = preview_type_conversions(
             session.dataframe,
@@ -3638,6 +3923,15 @@ def convert_dataset_types(
     target_column_reset = False
     if payload.apply:
         session.dataframe = converted_df
+        # PROGR-24-ORIGIN-A: конвертация типов меняет dtype на месте,
+        # колонок не добавляет -- хелпер сверит списки и будет no-op;
+        # вызов оставлен для единообразия единой точки регистрации.
+        register_derived_columns(
+            session,
+            before_columns=before_columns,
+            stage="validation",
+            source="convert_types",
+        )
         session.type_schema.update({
             item.column: item.target_type for item in payload.conversions
         })

@@ -82,7 +82,12 @@ SESSION_TTL_SECONDS = 60 * 60 * 24 * 30  # 30 дней -- совпадает с 
 # расширять эвристику «по отсутствию полей».
 # PROGR-3: +2 (run_id, pipeline_trace -- слой 1 трассы §5, Task PROGR-3).
 # Обратная совместимость чтения полная: старые документы получают дефолты.
-SESSION_SCHEMA_VERSION = 2
+# v3 (PROGR-24-ORIGIN-A, spec_status_original_series.md): + derived_columns --
+# реестр происхождения колонок {имя: {stage, source, created_at}}. Область
+# гейтов качества -- канонические исходные колонки; старые документы без
+# поля читаются с пустым реестром = все колонки исходные (обратная
+# совместимость, спека §Реализация п.3).
+SESSION_SCHEMA_VERSION = 3
 
 
 class SessionConflictError(RuntimeError):
@@ -240,6 +245,19 @@ class AnalysisSession:
     # предобработки. Ключ — имя созданной колонки; значение содержит
     # source/method/lambda и версионируется вместе с сессией.
     preprocessing_transformations: dict[str, dict[str, Any]] = field(default_factory=dict)
+    # Реестр происхождения колонок (PROGR-24-ORIGIN-A,
+    # spec_status_original_series.md): {имя: {stage, source, created_at}}.
+    # Заполняется ЕДИНСТВЕННОЙ точкой -- apps/api/column_origin.py::
+    # register_derived_columns (сравнение колонок до/после apply, колонки
+    # НЕ угадываются по суффиксу); вызывается во всех apply-эндпоинтах,
+    # добавляющих колонки. Область гейтов качества (пропуски/выбросы/
+    # регулярность/валидация) -- колонки датафрейма МИНУС этот реестр
+    # (canonical_columns); профиль по производным -- отдельно, вне статуса.
+    # Append-only: запись о колонке, удалённой мимо реестра, безвредна
+    # (область пересекается с фактическими колонками датафрейма).
+    # Новый датасет сбрасывает реестр (set_dataset): новый анализ -- все
+    # колонки нового файла исходные.
+    derived_columns: dict[str, dict[str, Any]] = field(default_factory=dict)
     # Подтверждённые периоды из аналитической остановки «Спектральный
     # анализ». Это не transformation: DataFrame не меняется, решение
     # служит явным входом следующей остановки генерации признаков.
@@ -368,6 +386,9 @@ class AnalysisSession:
         self.validation_check_modes = {}
         self.preprocessing_check_modes = {}
         self.preprocessing_transformations = {}
+        # PROGR-24-ORIGIN-A: новый датасет = новый анализ -- производных
+        # колонок у нового файла ещё нет, реестр происхождения пуст.
+        self.derived_columns = {}
         self.preprocessing_spectral_selection = {}
         self.preprocessing_feature_generation = {}
         self.preprocessing_scaling_recipe = {}
@@ -602,6 +623,8 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "validation_check_modes": dict(session.validation_check_modes),
         "preprocessing_check_modes": dict(session.preprocessing_check_modes),
         "preprocessing_transformations": dict(session.preprocessing_transformations),
+        # PROGR-24-ORIGIN-A: реестр происхождения колонок (v3 схемы)
+        "derived_columns": deepcopy(session.derived_columns),
         "preprocessing_spectral_selection": dict(session.preprocessing_spectral_selection),
         "preprocessing_feature_generation": dict(session.preprocessing_feature_generation),
         "preprocessing_scaling_recipe": dict(session.preprocessing_scaling_recipe),
@@ -675,6 +698,16 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         validation_check_modes=dict(d.get("validation_check_modes", {})),
         preprocessing_check_modes=dict(d.get("preprocessing_check_modes", {})),
         preprocessing_transformations=dict(d.get("preprocessing_transformations", {})),
+        # PROGR-24-ORIGIN-A: {} для старых записей -- все колонки исходные.
+        # Мусорные записи (не-словарные значения / не-строковые ключи)
+        # отбрасываются, не роняя сессию (философия деградации Task 143):
+        # реестр -- факультативные метаданные, его потеря лишь временно
+        # делает колонку «исходной», а не ломает гейты.
+        derived_columns={
+            str(name): dict(entry)
+            for name, entry in (d.get("derived_columns", {}) or {}).items()
+            if isinstance(entry, dict)
+        },
         preprocessing_spectral_selection=dict(d.get("preprocessing_spectral_selection", {})),
         preprocessing_feature_generation=dict(d.get("preprocessing_feature_generation", {})),
         preprocessing_scaling_recipe=dict(d.get("preprocessing_scaling_recipe", {})),

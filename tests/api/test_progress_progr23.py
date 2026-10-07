@@ -229,10 +229,15 @@ class TestOutlierProfileGetSeedsFacts:
             "актуальную картину узлу принёс apply, а не пересчёт"
 
     def test_lie_window_closed_after_stationarity_apply(self):
-        """Ядро Г5: после stationarity-apply (производная колонка несёт
-        выбросы) живой пересчёт карточки сеет warning -- Прогресс больше
-        НЕ показывает done в окне «выбросы появились -> следующая
-        коррекция»."""
+        """Ядро Г5: после stationarity-apply живой пересчёт карточки сеет
+        факт -- Прогресс согласован с карточкой.
+
+        PROGR-24-ORIGIN-A (spec_status_original_series.md): семантика
+        ЭВОЛЮЦИОНИРОВАЛА ПО ПРИЧИНЕ -- производные колонки вышли из области
+        гейтов качества, поэтому карточка после stationarity-apply больше НЕ
+        желтеет вовсе (это был симптом класса C5), согласованность
+        card == trace сохранена. Информационный канал derived_summary несёт
+        всплески производной колонки вне статуса."""
         _upload(client, _g345_frame())
         client.post("/v1/session/date-column", json={"column": "date"})
         missing = client.get("/v1/session/dataset/missing-profile").json()
@@ -256,11 +261,16 @@ class TestOutlierProfileGetSeedsFacts:
         ).status_code == 200
 
         card2 = _card(client)
-        assert card2["status"] == "warning", "предусловие G345: карточка жёлтая"
+        assert card2["status"] == "done", (
+            "PROGR-24: причина устранена -- всплески производной колонки не "
+            "красят остановку «Выбросы» исходного ряда"
+        )
+        assert card2["derived_summary"]["total_outliers"] == 4, (
+            "всплески производной колонки честны в информационном канале"
+        )
         node = _trace_node(client, "preprocessing", "outliers")
-        assert node["status"] == "warning", (
-            "«окно лжи» закрыто: Прогресс показывает warning по факту "
-            "пересчёта карточки, а не done от прошлой коррекции"
+        assert node["status"] == card2["status"], (
+            "согласованность card == trace сохранена (причина, не только трассировка)"
         )
         assert node["summary_count"] == card2["total_outliers"], \
             "бейдж узла -- то же число, что карточка (§3)"
@@ -329,7 +339,11 @@ class TestApplyCarriesCardScaleOutcome:
 
     def test_full_g345_flow_final_card_equals_trace(self):
         """Полный поток G345 (загрузка -> пропуски -> выбросы №1 ->
-        стационарность -> частичная фиксация C5): финал card == trace."""
+        стационарность -> частичная фиксация C5): финал card == trace.
+
+        PROGR-24-ORIGIN-A: частичная фиксация теперь оставляет ЗЕЛЁНУЮ
+        карточку (причина жёлтой -- выбросы производной колонки -- вышла из
+        области карточки), инвариант card == trace сохранён."""
         _upload(client, _g345_frame())
         client.post("/v1/session/date-column", json={"column": "date"})
         missing = client.get("/v1/session/dataset/missing-profile").json()
@@ -356,14 +370,20 @@ class TestApplyCarriesCardScaleOutcome:
             json={"columns": ["value"], "strategy": "cap", "method": "iqr",
                   "param": 1.5, "apply": True},
         ).json()
-        assert apply2["status"] == "warning"
-        assert apply2["total_outliers_after"] > 0
+        assert apply2["status"] == "done", (
+            "PROGR-24: после частичной фиксации карточная шкала -- done "
+            "(производные всплески вне статуса)"
+        )
+        assert apply2["total_outliers_after"] == 0
+        assert apply2["derived_summary"]["total_outliers"] == 4, (
+            "информационный канал сохраняет всплески производной колонки"
+        )
 
         card_final = _card(client)
         node = _trace_node(client, "preprocessing", "outliers")
-        assert card_final["status"] == "warning"
+        assert card_final["status"] == "done"
         assert node["status"] == card_final["status"], \
-            "финальное расхождение «жёлтая карточка / зелёный Прогресс» устранено"
+            "финальное согласование card == trace -- теперь на ЗЕЛЁНОЙ карточке"
 
 
 # ── Контур 2b: движок -- override с фолбэком (unit) ──────────────────

@@ -2026,6 +2026,11 @@ class DatasetMissingProfileResponse(BaseModel):
     empty_rows: int
     columns: List[MissingProfileItemOut] = Field(default_factory=list)
     row_histogram: List[MissingRowHistogramItemOut] = Field(default_factory=list)
+    # PROGR-24-ORIGIN-A (spec_status_original_series.md): информационный
+    # профиль по производным колонкам -- ВНЕ статуса и вне свёртки.
+    # None = производных колонок в датафрейме нет (ответ обратной
+    # совместимости).
+    derived_summary: Optional["DerivedMissingSummaryOut"] = None
 
 
 class DatasetMissingCorrectionRequest(BaseModel):
@@ -2065,7 +2070,10 @@ class DatasetMissingCorrectionResponse(BaseModel):
     rows_removed: int = 0
     added_columns: List[str] = Field(default_factory=list)
     columns: List[MissingCorrectionResultOut]
+    # Профиль ПОСЛЕ операции в канонической области (PROGR-24-ORIGIN-A):
+    # флаг-колонки самой операции производные и в профиль не попадают.
     profile: List[MissingProfileItemOut]
+    derived_summary: Optional["DerivedMissingSummaryOut"] = None
 
 
 class DatasetPreprocessingCheckModesRequest(BaseModel):
@@ -2129,6 +2137,41 @@ class OutlierProfileItemOut(BaseModel):
     insufficient_sample: bool = False
 
 
+class DerivedMissingSummaryOut(BaseModel):
+    """Информационный профиль по производным колонкам -- ВНЕ статуса
+    (spec_status_original_series.md, задача A). Гейты качества применяются
+    к каноническому исходному ряду; производные колонки (разности,
+    сглаживание, флаги) не возвращают свои пропуски на остановку.
+    Поле -- носитель будущей нейтральной плашки мастера (задача B)."""
+
+    total_columns: int
+    total_missing: int
+    affected_columns: List[str] = Field(default_factory=list)
+    columns: List[MissingProfileItemOut] = Field(default_factory=list)
+
+
+class DerivedOutlierSummaryOut(BaseModel):
+    """Информационный профиль по производным колонкам -- ВНЕ статуса
+    (spec_status_original_series.md, задача A). Всплески разностного ряда
+    отвечают на другой статистический вопрос («аномально ли ПРИРАЩЕНИЕ?») и
+    не окрашивают остановку «Выбросы» исходного ряда; канал -- носитель
+    нейтральной плашки «На производных колонках: N всплесков» (задача B)
+    и правила Наставника derived_spikes (задача C)."""
+
+    total_columns: int
+    total_numeric_columns: int
+    total_outliers: int
+    affected_columns: List[str] = Field(default_factory=list)
+    columns: List[OutlierProfileItemOut] = Field(default_factory=list)
+
+
+# PROGR-24-ORIGIN-A: DatasetMissingProfileResponse/DatasetMissingCorrectionResponse
+# объявлены РАНЬШЕ Derived-классов и ссылаются на них по имени (forward ref) --
+# после определения обоих классов схемы пересобираются явно.
+DatasetMissingProfileResponse.model_rebuild()
+DatasetMissingCorrectionResponse.model_rebuild()
+
+
 class DatasetOutlierProfileResponse(BaseModel):
     rule_source: Literal["system", "not_applicable"]
     mode: Literal["auto", "enabled", "disabled"] = "auto"
@@ -2141,6 +2184,9 @@ class DatasetOutlierProfileResponse(BaseModel):
     outlier_rate_pct: Optional[float] = None
     affected_columns: List[str] = Field(default_factory=list)
     columns: List[OutlierProfileItemOut] = Field(default_factory=list)
+    # PROGR-24-ORIGIN-A: профиль по производным колонкам -- ВНЕ статуса
+    # (информационный канал). None = производных колонок нет.
+    derived_summary: Optional[DerivedOutlierSummaryOut] = None
 
 
 class DatasetOutlierCorrectionRequest(BaseModel):
@@ -2248,6 +2294,9 @@ class DatasetOutlierCorrectionResponse(BaseModel):
     # correction_applied в трассе (класс C5 G345 -- last-wins).
     status: Optional[Literal["done", "warning", "pending", "skipped"]] = None
     total_outliers_after: Optional[int] = None
+    # PROGR-24-ORIGIN-A: информационный профиль производных колонок ПОСЛЕ
+    # операции (тем же методом, что и основной профиль ответа), вне статуса.
+    derived_summary: Optional[DerivedOutlierSummaryOut] = None
 
 
 class InclusionInvalidValueOut(BaseModel):

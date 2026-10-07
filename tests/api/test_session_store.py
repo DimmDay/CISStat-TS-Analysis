@@ -719,11 +719,14 @@ class TestSessionSchemaVersionAnchor:
     детерминированный якорь вместо эвристики «по отсутствию полей».
     """
 
-    def test_session_schema_version_is_integer_two_today(self):
+    def test_session_schema_version_is_integer_three_today(self):
         # PROGR-3: 1 -> 2 (+run_id, +pipeline_trace -- слой 1 трассы §5,
         # Task PROGR-3). Обратная совместимость чтения полная: старые
         # Redis-документы получают дефолты (run_id="", pipeline_trace=[]).
-        assert SESSION_SCHEMA_VERSION == 2
+        # PROGR-24-ORIGIN-A: 2 -> 3 (+derived_columns -- реестр происхождения
+        # колонок, spec_status_original_series.md). Старые документы без поля
+        # читаются с пустым реестром = все колонки исходные.
+        assert SESSION_SCHEMA_VERSION == 3
 
     def test_serialized_document_carries_schema_version_stamp(self):
         session = AnalysisSession(session_id="schema-001")
