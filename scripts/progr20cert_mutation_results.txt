@@ -1,0 +1,69 @@
+PROGR-20-CERT: мутационный прогон аудитора (СВОИ мутанты AM-1..AM-8)
+Каналы: T = tests/api/test_progress_trace_hook.py + test_trace_events.py (73);
+        O = scripts/progr20cert_oracles.py (16 оракулов на своих данных)
+База: ed26476
+
+AM-1: KILLED (ожидалось KILLED -- сошлось); restore=ok
+  мутант: AM-1 method-swap P0: POST->GET on candidates row -- middleware stops seeing live POST
+  обоснование: Method discipline of allowlist (v1.1 does not specify methods -- table is the only carrier)
+  канал T: exit=1
+    убитые тесты: tests/api/test_progress_trace_hook.py::test_progr20_route_table_rows_present, tests/api/test_progress_trace_hook.py::test_progr20_candidates_event_written_end_to_end
+  канал O: exit=1
+    убитые оракулы: scripts/progr20cert_oracles.py::test_a2_event_payload_mirrors_my_own_response, scripts/progr20cert_oracles.py::test_b1_all_nine_rows_resolve_with_exact_triple, scripts/progr20cert_oracles.py::test_b2_method_gate_is_strict, scripts/progr20cert_oracles.py::test_b5_acceptance_v11_para7_both_p0_and_count_53, scripts/progr20cert_oracles.py::test_d1_full_modeling_flow_leaves_facts_in_live_trace, scripts/progr20cert_oracles.py::test_d2_layer2_mirror_receives_modeling_facts, ...
+
+AM-2: KILLED (ожидалось KILLED -- сошлось); restore=ok
+  мутант: AM-2 flatten to FIRST segment: rsplit->split -- dotted keys stored under 'statistics'/'recommended_single'
+  обоснование: Storage semantics of last-segment (pattern metrics.mape PROGR-8) -- payload contract
+  канал T: exit=1
+    убитые тесты: tests/api/test_progress_trace_hook.py::test_progr20_payload_dotted_keys_flatten, tests/api/test_progress_trace_hook.py::test_progr20_candidates_event_written_end_to_end, tests/api/test_progress_trace_hook.py::test_progr20_diagnostics_compare_selection_events_end_to_end, tests/api/test_progress_trace_hook.py::test_progr20_job_start_and_cancel_events_end_to_end
+  канал O: exit=1
+    убитые оракулы: scripts/progr20cert_oracles.py::test_a2_event_payload_mirrors_my_own_response, scripts/progr20cert_oracles.py::test_c1_dotted_keys_flatten_to_last_segment_only, scripts/progr20cert_oracles.py::test_c2_heavy_arrays_and_missing_levels_omitted_honestly, scripts/progr20cert_oracles.py::test_c3_jobs_start_total_steps_from_my_request, scripts/progr20cert_oracles.py::test_d1_full_modeling_flow_leaves_facts_in_live_trace, scripts/progr20cert_oracles.py::test_d2_layer2_mirror_receives_modeling_facts, ...
+
+AM-3: KILLED (ожидалось KILLED -- сошлось); restore=ok
+  мутант: AM-3 valid-type substitution: models_compared->backtest_run (registry type, gate passes, no ImportError)
+  обоснование: Validator does not distinguish nodes/types within a stage -- only exact table asserts
+  канал T: exit=1
+    убитые тесты: tests/api/test_progress_trace_hook.py::test_progr20_route_table_rows_present, tests/api/test_progress_trace_hook.py::test_progr20_diagnostics_compare_selection_events_end_to_end
+  канал O: exit=1
+    убитые оракулы: scripts/progr20cert_oracles.py::test_b1_all_nine_rows_resolve_with_exact_triple, scripts/progr20cert_oracles.py::test_d1_full_modeling_flow_leaves_facts_in_live_trace
+
+AM-4: KILLED (ожидалось KILLED -- сошлось); restore=ok
+  мутант: AM-4 {job_id}-template degeneration: /jobs/{job_id}/cancel -> /jobs/cancel
+  обоснование: Template mechanism on LIVE parametrized path (P2 cancel -- audit decision)
+  канал T: exit=1
+    убитые тесты: tests/api/test_progress_trace_hook.py::test_progr20_route_table_rows_present, tests/api/test_progress_trace_hook.py::test_progr20_payload_dotted_keys_flatten, tests/api/test_progress_trace_hook.py::test_progr20_job_start_and_cancel_events_end_to_end
+  канал O: exit=1
+    убитые оракулы: scripts/progr20cert_oracles.py::test_b1_all_nine_rows_resolve_with_exact_triple, scripts/progr20cert_oracles.py::test_b3_job_id_template_semantics, scripts/progr20cert_oracles.py::test_c2_heavy_arrays_and_missing_levels_omitted_honestly, scripts/progr20cert_oracles.py::test_d1_full_modeling_flow_leaves_facts_in_live_trace
+
+AM-5: KILLED (ожидалось KILLED -- сошлось); restore=ok
+  мутант: AM-5 registry superset drift: +phantom_modeling_type in modeling -- gap in superset-assert
+  обоснование: test_progr20_registry_accepts_new_event_types asserts >= (not ==): second line of defense -- contract test
+  канал T: exit=1
+    убитые тесты: tests/api/test_trace_events.py::TestStageEventRegistry::test_registry_per_spec_table
+  канал O: exit=0
+
+AM-6: KILLED (ожидалось KILLED -- сошлось); restore=ok
+  мутант: AM-6 middleware status-gate loosening: >=400 -> >=500 -- 4xx would become facts
+  обоснование: Trace -- journal of decisions, not error log (§4.2); sole gate of middleware
+  канал T: exit=1
+    убитые тесты: tests/api/test_progress_trace_hook.py::test_unsuccessful_responses_not_traced
+  канал O: exit=1
+    убитые оракулы: scripts/progr20cert_oracles.py::test_d3_unsuccessful_and_unmatched_calls_leave_no_facts
+
+AM-7: KILLED (ожидалось KILLED -- сошлось); restore=ok
+  мутант: AM-7 run_id attribution drop: run_id=session.run_id -> run_id='' -- fact without research
+  обоснование: §5: run_id is fixed by the fact of the record, mirror of layer 2 is keyed by research
+  канал T: exit=1
+    убитые тесты: tests/api/test_progress_trace_hook.py::test_first_upload_fixes_run_id_and_writes_upload_completed, tests/api/test_progress_trace_hook.py::test_correction_applied_written_on_successful_response, tests/api/test_progress_trace_hook.py::test_progr20_candidates_event_written_end_to_end
+  канал O: exit=1
+    убитые оракулы: scripts/progr20cert_oracles.py::test_d1_full_modeling_flow_leaves_facts_in_live_trace
+
+AM-8: SURVIVED (ожидалось SURVIVED -- сошлось); restore=ok
+  мутант: AM-8 persistence boundary: removal of store.save(session) in _record
+  обоснование: Expected SURVIVED: memory-store returns object by reference (aliasing) -- class BM-H/R4 PROGR-17-CERT; persistence of layer 1 through Redis boundary on hook-path has no test
+  канал T: exit=0
+  канал O: exit=0
+
+Финальный контроль после снятия всех мутантов: T = exit=0; O = exit=0
+Байт-контроль восстановления: ok
+Итог: 7 KILLED / 1 SURVIVED из 8
