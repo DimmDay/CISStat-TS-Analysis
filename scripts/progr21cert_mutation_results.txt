@@ -1,0 +1,12 @@
+CM-1: KILLED (каналы: repo+oracle); repo: RED [========================= 1 failed, 54 passed in 4.34s =========================]; oracle: RED [ИТОГО: 16 PASS / 7 FAIL из 23]
+CM-2: KILLED (каналы: repo+oracle); repo: RED [========================= 1 failed, 46 passed in 4.51s =========================]; oracle: RED [ИТОГО: 10 PASS / 13 FAIL из 23]
+CM-3: KILLED (каналы: repo+oracle); repo: RED [========================= 1 failed, 46 passed in 4.31s =========================]; oracle: RED [ИТОГО: 15 PASS / 8 FAIL из 23]
+CM-4: KILLED (каналы: repo+oracle); repo: RED [========================= 1 failed, 53 passed in 4.36s =========================]; oracle: RED [ИТОГО: 22 PASS / 1 FAIL из 23]
+CM-5: KILLED (каналы: repo+oracle); repo: RED [========================= 1 failed, 52 passed in 4.41s =========================]; oracle: RED [ИТОГО: 22 PASS / 1 FAIL из 23]
+CM-6: KILLED (каналы: repo+oracle); repo: RED [========================= 1 failed, 55 passed in 4.36s =========================]; oracle: RED [ИТОГО: 22 PASS / 1 FAIL из 23]
+CM-7: KILLED (каналы: repo+oracle); repo: RED [========================= 1 failed, 46 passed in 4.64s =========================]; oracle: RED [ИТОГО: 11 PASS / 12 FAIL из 23]
+CM-8: KILLED (каналы: repo+oracle); repo: RED [========================= 1 failed, 46 passed in 4.36s =========================]; oracle: RED [ИТОГО: 11 PASS / 12 FAIL из 23]
+CM-9: KILLED (каналы: repo+oracle); repo: RED [========================= 1 failed, 41 passed in 4.27s =========================]; oracle: RED [ИТОГО: 22 PASS / 1 FAIL из 23]
+CM-10: KILLED (каналы: repo+oracle); repo: RED [========================= 1 failed, 48 passed in 4.33s =========================]; oracle: RED [ИТОГО: 20 PASS / 3 FAIL из 23]
+
+ИТОГО: 10/10 KILLED
