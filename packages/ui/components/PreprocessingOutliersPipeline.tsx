@@ -55,6 +55,52 @@ interface CorrectionResponse {
     stats_after: ColumnStats | null;
   }>;
   profile: OutlierProfileItem[];
+  // G345-фикс (PROGR-23): честный исход операции в КАРТОЧНОЙ шкале
+  // (фиксированный iqr-1.5, как у карточки остановки) -- носители
+  // честного баннера (Г4): статус остановки и счётчик выбросов ПОСЛЕ
+  // операции; в старых ответах API поля нет (Optional).
+  status?: "done" | "warning" | "pending" | "skipped" | null;
+  total_outliers_after?: number | null;
+}
+
+// ── G345-фикс (PROGR-23, Г4): честный баннер apply ──────────────────
+// Баннер собирается из ФАКТОВ ответа (прецедент §7.2: сводка -- из уже
+// полученных данных), а не безусловного «применено, профиль
+// пересчитан»: что именно изменилось (значения/строки/флаг-колонки;
+// стратегия flag значения не трогает), что осталось по методу мастера
+// (still) и что видно карточной шкале после операции (status/
+// total_outliers_after -- класс C5: снятый чекбокс колонки с выбросами
+// оставлял зелёный баннер при жёлтой карточке). Тон -- warn, если
+// баннер не может утверждать, что данные исправлены.
+interface ApplyOutcome {
+  text: string;
+  tone: "ok" | "warn";
+}
+
+function buildApplyOutcome(data: CorrectionResponse): ApplyOutcome {
+  const changedParts: string[] = [];
+  if (data.total_changed > 0) changedParts.push(`Изменено значений: ${data.total_changed}`);
+  if (data.rows_removed > 0) changedParts.push(`Удалено строк: ${data.rows_removed}`);
+  const addedFlags = data.added_columns.length > 0;
+  let text: string;
+  if (changedParts.length > 0) {
+    text = changedParts.join(", ");
+  } else if (addedFlags) {
+    text = `Значения не изменены, добавлены флаг-колонки: ${data.added_columns.join(", ")}`;
+  } else {
+    text = "Изменений нет: выбранные колонки не содержат выбросов методом мастера";
+  }
+  const notes: string[] = [];
+  if (data.total_still_outliers > 0) {
+    notes.push(`по методу мастера осталось выбросов: ${data.total_still_outliers}`);
+  }
+  if (data.status === "warning" && typeof data.total_outliers_after === "number") {
+    notes.push(`в датасете остались выбросы по профилю карточки: ${data.total_outliers_after}`);
+  }
+  if (notes.length > 0) text += `; ${notes.join("; ")}`;
+  const tone: "ok" | "warn" =
+    changedParts.length > 0 && notes.length === 0 ? "ok" : "warn";
+  return { text, tone };
 }
 
 // ── Прогноз влияния на статистики (перенос app.py "Прогноз влияния на
@@ -105,7 +151,9 @@ export function PreprocessingOutliersPipeline({ onApplied }: { onApplied: () => 
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState<"load" | "preview" | "apply" | null>("load");
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  // G345-фикс (PROGR-23): баннер -- {text, tone} из фактов apply-ответа,
+  // не безусловная строка успеха.
+  const [success, setSuccess] = useState<ApplyOutcome | null>(null);
 
   const hasApplicableColumns = (profile?.columns.length ?? 0) > 0;
   const noOutliers = hasApplicableColumns && profile!.total_outliers === 0;
@@ -187,7 +235,9 @@ export function PreprocessingOutliersPipeline({ onApplied }: { onApplied: () => 
           total_outliers: data.profile.reduce((sum, item) => sum + item.outlier_count, 0),
         } : current);
         setSelected(data.profile.filter((item) => item.outlier_count > 0).map((item) => item.column));
-        setSuccess("Изменения применены, профиль пересчитан");
+        // G345-фикс (PROGR-23, Г4): честный баннер из фактов ответа
+        // вместо безусловного «Изменения применены, профиль пересчитан».
+        setSuccess(buildApplyOutcome(data));
         setMentorWarnings([]);
         onApplied();
       } else {
@@ -426,7 +476,16 @@ export function PreprocessingOutliersPipeline({ onApplied }: { onApplied: () => 
         </div>
       </div>
       {error && <p role="alert" className="mt-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-      {success && <p role="status" className="mt-3 rounded bg-green-50 px-3 py-2 text-sm text-green-700">{success}</p>}
+      {success && (
+        <p
+          role="status"
+          className={`mt-3 rounded px-3 py-2 text-sm ${
+            success.tone === "warn" ? "bg-amber-50 text-amber-800" : "bg-green-50 text-green-700"
+          }`}
+        >
+          {success.text}
+        </p>
+      )}
     </section>
   );
 }

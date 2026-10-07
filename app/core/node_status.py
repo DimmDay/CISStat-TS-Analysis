@@ -132,6 +132,10 @@ EVENT_NODE_REASON: dict[str, str] = {
     # решение тимлида: done/pending по факту «аналитик открыл и
     # просмотрел результат», warning не вводить).
     "eda_check_status": "Статус исследования отчитан модулем «EDA»",
+    # G345-фикс (PROGR-23): живой пересчёт карточки «Выбросы» -- факт
+    # диагностики («какие выбросы в данных сейчас»), не решение;
+    # конкретика -- сам статус узла рядом.
+    "outliers_profile_status": "Живой профиль выбросов пересчитан",
 }
 
 # Ключи payload -- кандидаты в правый бейдж узла (§3 summary_count:
@@ -143,6 +147,12 @@ EVENT_NODE_REASON: dict[str, str] = {
 # новых ключей здесь не изобретается.
 NODE_SUMMARY_COUNT_KEYS: tuple[str, ...] = (
     "total_missing",
+    # G345-фикс (PROGR-23): пост-коррекционный счётчик КАРТОЧНОЙ шкалы
+    # (iqr-1.5) старше докастрового found мастера (total_outliers) --
+    # бейдж узла показывает то же число, что карточка после коррекции
+    # (Д4 G345: счётчик трейса был несопоставим с карточкой ни до, ни
+    # после).
+    "total_outliers_after",
     "total_outliers",
     "total_violations",
     "total_invalid",
@@ -192,7 +202,32 @@ PAYLOAD_STATUS_EVENT_TYPES: frozenset[str] = frozenset(
         "validation_check_status",
         "preprocessing_check_status",
         "eda_check_status",
+        # G345-фикс (PROGR-23): живые GET-пересчёты карточки «Выбросы»
+        # (GET /dataset/outlier-profile через таблицу TRACE_ROUTES, с
+        # dedupe) сеют payload-статус из тела ответа (whitelist
+        # CHECK_STATUS_VALUES): закрытие «окна лжи» PROGR-22-REPRO/Г5 --
+        # появление выбросов в данных (напр., производная колонка
+        # стационарности) видно в трассе по факту пересчёта карточки,
+        # а не только по следующим коррекциям.
+        "outliers_profile_status",
     }
+)
+
+# ── G345-фикс (PROGR-23): payload-статус С ПРИОРИТЕТОМ над картой ────
+#
+# Отличие от PAYLOAD_STATUS_EVENT_TYPES: там статус несёт ТОЛЬКО payload
+# (карты типа нет вовсе); здесь -- «override с фолбэком»: событие БЕЗ
+# валидированного payload.status сохраняет прежний статус из
+# EVENT_NODE_STATUS (обратная совместимость всего существующего корпуса
+# коррекций: их ответы поля status не имеют). Первый носитель --
+# correction_applied: apply выбросов отчитывает в ответе карточную
+# шкалу (фиксированный iqr-1.5, как у карточки остановки) ПОСЛЕ
+# коррекции -- частичная коррекция (класс C5 G345: снятый чекбокс
+# колонки с выбросами) честно оставляет узлу warning вместо
+# безусловного done карты (семантика last-wins: последний факт
+# описывает реальный исход, а не факт «кнопка нажата»).
+PAYLOAD_STATUS_OVERRIDE_EVENT_TYPES: frozenset[str] = frozenset(
+    {"correction_applied"}
 )
 
 # Эффективные режимы проверок (Валидация/Предобработка §3): отсутствие
@@ -399,11 +434,14 @@ def resolve_node_id(data: Mapping[str, Any]) -> str | None:
 
 
 def resolve_event_status(data: Mapping[str, Any]) -> str | None:
-    """Статус узла из события (PROGR-13-A4): тип из EVENT_NODE_STATUS --
-    каноническая карта; тип из PAYLOAD_STATUS_EVENT_TYPES -- статус из
-    payload["status"], валидированный CHECK_STATUS_VALUES (мусор -- None,
-    событие пропускается движками честно, фантомных статусов нет).
-    Прочие типы -- None (не узловые факты)."""
+    """Статус узла из события (PROGR-13-A4): тип из PAYLOAD_STATUS_EVENT_TYPES --
+    payload-only: статус из payload["status"], валидированный
+    CHECK_STATUS_VALUES (мусор -- None, событие пропускается движками
+    честно, фантомных статусов нет). Тип из
+    PAYLOAD_STATUS_OVERRIDE_EVENT_TYPES (G345-фикс, PROGR-23) --
+    валидированный payload.status ПРИОРИТЕТЕН карте, мусор/отсутствие --
+    фолбэк на EVENT_NODE_STATUS (обратная совместимость корпуса событий
+    без поля status). Прочие типы -- карта EVENT_NODE_STATUS."""
     event_type = str(data.get("event_type") or "")
     if event_type in PAYLOAD_STATUS_EVENT_TYPES:
         payload = data.get("payload")
@@ -411,6 +449,12 @@ def resolve_event_status(data: Mapping[str, Any]) -> str | None:
         if isinstance(raw, str) and raw in CHECK_STATUS_VALUES:
             return raw
         return None
+    if event_type in PAYLOAD_STATUS_OVERRIDE_EVENT_TYPES:
+        payload = data.get("payload")
+        raw = payload.get("status") if isinstance(payload, Mapping) else None
+        if isinstance(raw, str) and raw in CHECK_STATUS_VALUES:
+            return raw
+        # мусор/отсутствие -- фолбэк на карту (не фантомный статус)
     return EVENT_NODE_STATUS.get(event_type)
 
 

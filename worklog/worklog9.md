@@ -35,3 +35,50 @@
 
 ### Артефакты (без правок кода репозитория)
 НОВЫЕ: scripts/progr_h345_cap_iqr.py (протокол отработки: полный сценарий + матрица C0–C5 + доказательство Д1 + вердикты), scripts/progr_h345_cap_iqr_results.txt (полный протокол прогона). ВОССТАНОВЛЕНЫ из deliverable прошлой задачи в рабочее дерево: scripts/progr_repro_api_scenario.py, progr_repro_variations.py, progr_repro_chronology.py, progr_repro_offline_probe.py. Датасет: scripts/repro_data/forecast_monitor_synthetic_n150.csv. Deliverable: ZIP cisstat-progr22-g345-cap-iqr.zip — выложен в download. Без commit/push (AGENTS.md). Fix-предложения по-прежнему НЕ выдаются — до подтверждения причины тимлидом.
+
+---
+
+## Task ID: PROGR-23-FIX-G345 (2026-10-07) — Исправления по ROGR-22-REPRO-G345: трассировка GET-пересчётов / честный баннер / семантика last-wins
+
+База: main@16e0981 (sync --hard от чистого дерева; онбординг-запись прошлой сессии [7f49e92] сохранена в конец файла). Правила AGENTS.md соблюдены: commit/push НЕ выполнялись; TDD (RED → GREEN → регрессия); typecheck обоих воркспейсов; ZIP в download только файлами текущей задачи. Постановка тимлида: «Ключевой итог расследования для решения: расхождение "жёлтая карточка / зелёный Прогресс" при (iqr, cap) воспроизводится в классе C5 (снят чекбокс колонки с выбросами) + системное "окно лжи" у любого потока. Спроектируй и реализуй исправления (трассировка GET-пересчётов / честный баннер / семантика last-wins)».
+
+### Проектирование (точки изменения, риски)
+
+Три фикса закрывают три верифицированных слагаемых расхождения, не трогая принятые архитектурные решения (решение Расхождения №1 — «живой опрос profile-эндпоинтов не реализуется» — сохранено: появляются только НОВЫЕ ЗАСЕЯННЫЕ факты, движок статуса един, вторых реализаций нет):
+
+- **Фикс 1 (окно лжи, Г5/Ф2)**: живой пересчёт карточки «Выбросы» (GET /dataset/outlier-profile) становится носителем факта трассы — payload-статусный тип `outliers_profile_status` (паттерн upload_stop_status PROGR-13-A4: статус в payload из тела ОТВЕТА, whitelist CHECK_STATUS_VALUES), строка в таблице TRACE_ROUTES с новым флагом `dedupe`. Риск «трасса утонет в фокус-рефетчах» (PROGR-9-FOCUS перезапрашивает карточку при каждом фокусе окна) закрыт dedupe: событие пишется только при ИЗМЕНЕНИИ производной картины узла (status + summary_count), сравнение — через канонический движок (см. находку ниже).
+- **Фикс 2 (честный баннер, Г4/Ф3)**: ответ outlier-corrections дополняется честным исходом в КАРТОЧНОЙ шкале (фиксированный iqr-1.5 — метод карточки, фронт запрашивает карточку только им): `status` + `total_outliers_after` (после операции; для preview — гипотеза по копии, для apply — факт). Баннер мастера собирается из фактов ответа (прецедент §7.2): что изменено (значения/строки/флаг-колонки — flag значения не трогает), что осталось по методу мастера (still), что видно карточке; тон warn, если исправленности утверждать нельзя.
+- **Фикс 3 (last-wins, класс C5)**: apply несёт карточную шкалу в payload события correction_applied (ключи `status`/`total_outliers_after` добавлены в _CORRECTION_PAYLOAD_KEYS — остальные correction-эндпоинты полей не имеют, ключ опускается — обратная совместимость); движок получает реестр `PAYLOAD_STATUS_OVERRIDE_EVENT_TYPES = {correction_applied}` — «override с фолбэком»: валидированный payload.status приоритетен карте, мусор/отсутствие — фолбэк EVENT_NODE_STATUS (весь существующий корпус коррекций остаётся done). Бейдж: `total_outliers_after` вставлен в NODE_SUMMARY_COUNT_KEYS выше `total_outliers` — бейдж = пост-коррекционный карточный счётчик, не found мастера (Д4).
+
+### Ключевая находка реализации (dedupe)
+
+Наивное сравнение «с последним событием того же типа» НЕ работает: между двумя пересчётами карточки ложится correction_applied (безусловный done карты) — сценарий Г5 warning → apply#1(done) → пересчёт warning был бы ложно дедуплицирован («картина не изменилась» против устаревшего profile-события). Решение: `_node_picture_unchanged` сравнивает (status, summary_count) узла ДО и ПОСЛЕ пробного добытия — оба раза через `derive_pipeline_node_states` (канонический движок, вторая реализация деривации запрещена PROGR-10); fail-open к факту (нет предыдущего события/узла/полезной нагрузки — пишем). Цена — два O(n)-прохода чистого движка на GET, незначима на фоне самого пересчёта профиля.
+
+### Изменённые файлы
+
+- `app/core/node_status.py` — +outliers_profile_status в PAYLOAD_STATUS_EVENT_TYPES; новый реестр PAYLOAD_STATUS_OVERRIDE_EVENT_TYPES + логика override-с-фолбэком в resolve_event_status; NODE_SUMMARY_COUNT_KEYS += total_outliers_after (приоритет над total_outliers); EVENT_NODE_REASON += «Живой профиль выбросов пересчитан».
+- `apps/api/trace_events.py` — реестр стадии preprocessing += outliers_profile_status (расширение реестра, не обход гейта).
+- `apps/api/trace_hook.py` — TraceRouteSpec += dedupe; _validate_table: гейт «dedupe требует непустой payload_keys»; строка GET /v1/session/dataset/outlier-profile → (preprocessing, outliers, outliers_profile_status, dedupe=True) [53→54]; _CORRECTION_PAYLOAD_KEYS += status/total_outliers_after; _node_picture/_node_picture_unchanged + вызов в record_trace_event.
+- `apps/api/schemas.py` — DatasetOutlierCorrectionResponse += status/total_outliers_after (Optional — обратная совместимость схемы).
+- `apps/api/routers/session.py` — correct_dataset_outliers: карточная шкала после операции (profile_outliers(corrected_df, method="iqr") + outliers_summary + _preprocessing_outliers_status с эффективным mode) → в ответ.
+- `packages/ui/components/PreprocessingOutliersPipeline.tsx` — CorrectionResponse += status?/total_outliers_after?; buildApplyOutcome (факты → текст+тон); success-состояние {text, tone}; рендер warn-тона янтарным.
+- Тесты: НОВЫЙ tests/api/test_progress_progr23.py (18 контрактов: таблица+dedupe, сеяние фактов, окно лжи на полном потоке G345, карточная шкала в ответе и payload, override-семантика движка, last-wins C5, приоритет бейджа); обновлены пины: test_node_status_engine (реестр payload-статусов), test_trace_events (таблица реестра), test_progress_trace_hook (54 строки, +GET-строка).
+- Протокол: scripts/progr23_fix_verification.py (+ .txt) — тот же сценарий Г345 (C0/C5) на исправленном коде, детерминированный аналог n150-датасета (без шума, без обращения к внешнему CSV).
+
+### TDD и регрессия
+
+- RED: 18/21 новых API-тестов падали на отсутствии контрактов (3 — на прежнем поведении фолбэка); фронт: 4 новых баннерных теста падали.
+- GREEN: все новые тесты зелёные; находка dedupe поймана тестом в GREEN-фазе и оформлена отдельным контрактом (test_dedupe_is_picture_based_not_event_based) + сценарий test_lie_window_closed_after_stationarity_apply.
+- Регрессия: tests/api — 1417 passed / 3 failed (те же 3, что на ДО правок: среда без опциональной neural-группы — test_modeling_workflow/test_models_backtest_neural_capacity/test_models_candidates; проверено git stash: падают на чистом 16e0981); tests вне api — 1675 passed / 6 failed (те же neural-интеграционные, пре-существующие); jest — 1811/1811 (полный прогон); typecheck:all (embedded+standalone) — чисто.
+
+### Результат (протокол progr23_fix_verification.txt)
+
+- C0 контроль (k=1.5, все колонки): окно закрыто; финал card=done == trace=done, бейдж 0; apply отчитал карточную шкалу status=done/after=0.
+- C5 класс (производная колонка снята с чекбокса): окно закрыто (после stationarity-apply пересчёт карточки сеет warning, бейдж 4); apply found=0/changed=0, но честно отчитал status=warning/after=4; ФИНАЛ card=warning == trace=warning (бейдж 4) — РАСХОЖДЕНИЕ УСТРАНЕНО; баннер мастера — «Изменений нет…; в датасете остались выбросы по профилю карточки: 4» (янтарный).
+
+### Осознанные границы (вне задачи, требуют отдельного решения тимлида)
+
+- Д1 (кэп действует на всю колонку; «Исправлено» — счётчик маски мастера, не фактические изменения) не тронуто: честный баннер показывает факт ответа (changed), но число мастеру лгёт по-прежнему.
+- Д2 (бессрочный цикл мастера при k<1.5) не тронуто; после фикса самопротиворечие «исправлено N / осталось N» становится видимым в баннере и трассе.
+- Окно лжи закрыто для карточки «Выбросы» (воспроизведённый дефект); остальные карточки (missing, regularity, …) расширяются той же строкой таблицы + типом при решении тимлида.
+- Уровни вне API-измерения Г345 (гонка клиентского перезапроса, multi-worker render.com) — вне этого вердикта.

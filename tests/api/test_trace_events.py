@@ -154,6 +154,11 @@ class TestStageEventRegistry:
             "mode_changed", "correction_previewed",
             "correction_applied", "target_column_changed",
             "preprocessing_check_status",
+            # G345-фикс (PROGR-23): живые GET-пересчёты карточки
+            # «Выбросы» сеют payload-статус outliers_profile_status
+            # (таблица TRACE_ROUTES, dedupe) -- закрытие «окна лжи»
+            # PROGR-22-REPRO (карточка warning при трейсе done).
+            "outliers_profile_status",
         }
         assert STAGE_EVENT_TYPES["eda"] == {
             "profile_viewed", "passport_captured", "eda_check_status",

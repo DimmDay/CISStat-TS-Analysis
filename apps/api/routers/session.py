@@ -1874,6 +1874,21 @@ def correct_dataset_outliers(
         session.touch()
         store.save(session)
 
+    # G345-фикс (PROGR-23): честный исход операции в КАРТОЧНОЙ шкале --
+    # профиль по ВСЕМ числовым колонкам фиксированным методом карточки
+    # (iqr-1.5, param=None -> дефолт; фронт запрашивает карточку только
+    # им), НЕ шкалой мастера из запроса: ответ несёт статус остановки и
+    # счётчик выбросов ПОСЛЕ операции (для apply -- факт по исправленным
+    # данным, для preview -- гипотеза по копии). Носители честного
+    # баннера мастера (Г4) и payload-статуса correction_applied в трассе
+    # (класс C5 G345: частичная коррекция честно оставляет warning).
+    card_profile = profile_outliers(corrected_df, method="iqr", param=None)
+    card_summary = outliers_summary(card_profile, total_rows=len(corrected_df))
+    card_mode = _effective_preprocessing_check_modes(session)["outliers"]
+    card_status, _ = _preprocessing_outliers_status(
+        card_mode, card_summary["total_numeric_columns"], card_summary["total_outliers"]
+    )
+
     return DatasetOutlierCorrectionResponse(
         applied=payload.apply,
         strategy=payload.strategy,
@@ -1886,6 +1901,8 @@ def correct_dataset_outliers(
         added_columns=[item["flag_column"] for item in raw_results if item["flag_column"]],
         columns=[OutlierCorrectionResultOut(**item) for item in raw_results],
         profile=[OutlierProfileItemOut(**item) for item in next_profile],
+        status=card_status,
+        total_outliers_after=card_summary["total_outliers"],
     )
 
 

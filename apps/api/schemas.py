@@ -2237,6 +2237,17 @@ class DatasetOutlierCorrectionResponse(BaseModel):
     added_columns: List[str] = Field(default_factory=list)
     columns: List[OutlierCorrectionResultOut]
     profile: List[OutlierProfileItemOut]
+    # G345-фикс (PROGR-23): честный исход операции в КАРТОЧНОЙ шкале
+    # (фиксированный iqr-1.5 -- метод карточки остановки, фронт
+    # TsAnalysisPreprocessing.tsx запрашивает карточку только им):
+    # status -- статус остановки «Выбросы» ПОСЛЕ операции (для preview --
+    # по копии, гипотетический; для apply -- по исправленным данным),
+    # total_outliers_after -- число выбросов по карточной шкале после
+    # операции. Носители честного баннера мастера (Г4: «профиль
+    # пересчитан» при оставшихся выбросах) и payload-статуса
+    # correction_applied в трассе (класс C5 G345 -- last-wins).
+    status: Optional[Literal["done", "warning", "pending", "skipped"]] = None
+    total_outliers_after: Optional[int] = None
 
 
 class InclusionInvalidValueOut(BaseModel):

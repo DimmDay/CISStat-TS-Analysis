@@ -178,8 +178,12 @@ def test_route_table_covers_documented_endpoints():
     # 4 литеральных (точка -> стадия): 40 - 1 + 4 = 43;
     # PROGR-13-A3: + POST /v1/session/date-column (structure_confirmed) = 44;
     # PROGR-20 (v1.1 §1, категория A): + 9 строк Моделирования
-    # (P0 ×2, P1 ×3, P2 ×4) = 53 (детально -- секция 9 ниже).
-    assert len(TRACE_ROUTES) == 53
+    # (P0 ×2, P1 ×3, P2 ×4) = 53 (детально -- секция 9 ниже);
+    # G345-фикс (PROGR-23): + GET /v1/session/dataset/outlier-profile
+    # (живой пересчёт карточки «Выбросы», outliers_profile_status,
+    # dedupe) = 54.
+    assert len(TRACE_ROUTES) == 54
+    assert ("GET", "/v1/session/dataset/outlier-profile") in keys
 
 
 def test_route_table_pairs_pass_trace_event_gate():
@@ -894,11 +898,13 @@ def test_progr20_route_table_rows_present():
         assert spec.throttled is False, path  # троттлинг -- только EDA
 
 
-def test_progr20_route_table_count_53():
-    """44 (PROGR-3..13) + 9 строк PROGR-20 (P0 ×2, P1 ×3, P2 ×4) = 53."""
+def test_progr20_route_table_count_54():
+    """44 (PROGR-3..13) + 9 строк PROGR-20 (P0 ×2, P1 ×3, P2 ×4) = 53;
+    G345-фикс (PROGR-23): + 1 строка GET /dataset/outlier-profile = 54.
+    (Имя теста сохраняет историю счётчика: 53 -> 54.)"""
     from apps.api.trace_hook import TRACE_ROUTES
 
-    assert len(TRACE_ROUTES) == 53
+    assert len(TRACE_ROUTES) == 54
 
 
 def test_progr20_conscious_exclusions_stay_untraced():

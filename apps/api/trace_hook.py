@@ -59,6 +59,7 @@ from starlette.requests import Request
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from app.core.pipeline_graph import is_known_node
+from app.core.node_status import derive_pipeline_node_states
 from apps.api.research_runs import record_run_event
 from apps.api.session_store import (
     SESSION_COOKIE_NAME,
@@ -105,7 +106,12 @@ class TraceRouteSpec:
     correction-эндпоинты возвращают applied: bool, проверено по схемам);
     payload_keys -- белый список ключей ТЕЛА ОТВЕТА для payload (§4.1:
     факты о решении, не сырой ответ; отсутствующие ключи опускаются);
-    throttled -- троттлинг на (event_type, node_id) за окно.
+    throttled -- троттлинг на (event_type, node_id) за окно;
+    dedupe (G345-фикс, PROGR-23) -- событие пишется только при
+    ИЗМЕНЕНИИ payload относительно ПОСЛЕДНЕГО stored-события того же
+    (event_type, node_id): живые GET-пересчёты карточек видны в трассе
+    по факту изменения картины, а повторные пересчёты с неизменной
+    картиной (фокус-рефетчи PROGR-9-FOCUS) шумом не становятся.
     """
 
     method: str
@@ -116,6 +122,7 @@ class TraceRouteSpec:
     preview_type: str | None = None
     payload_keys: tuple[str, ...] = ()
     throttled: bool = False
+    dedupe: bool = False
 
 
 # Корректировки/преобразования: факты результата (§4.1 -- «тот же уровень
@@ -123,6 +130,16 @@ class TraceRouteSpec:
 _CORRECTION_PAYLOAD_KEYS = (
     "applied", "strategy", "method", "total_changed", "rows_removed",
     "total_violations", "total_invalid", "total_missing", "total_outliers",
+    # G345-фикс (PROGR-23): честный исход apply в КАРТОЧНОЙ шкале
+    # (фиксированный iqr-1.5, как у карточки остановки): статус остановки
+    # и счётчик выбросов ПОСЛЕ коррекции. Поле есть ТОЛЬКО у ответа
+    # outlier-corrections -- остальные correction-эндпоинты его не
+    # возвращают, ключ честно опускается (обратная совместимость).
+    # Движок читает payload.status через PAYLOAD_STATUS_OVERRIDE_EVENT_TYPES
+    # (частичная коррекция -- класс C5 G345 -- честно оставляет warning,
+    # а не безусловный done), а total_outliers_after -- как бейдж узла
+    # (приоритет в NODE_SUMMARY_COUNT_KEYS).
+    "total_outliers_after", "status",
     "invalid_policy", "target_column_reset",
 )
 
@@ -225,6 +242,21 @@ TRACE_ROUTES: tuple[TraceRouteSpec, ...] = (
         "POST", "/v1/session/dataset/outlier-corrections", "preprocessing",
         "outliers", "correction_applied", "correction_previewed",
         _CORRECTION_PAYLOAD_KEYS,
+    ),
+    # G345-фикс (PROGR-23): живой GET-пересчёт карточки «Выбросы» --
+    # payload-статусный тип (паттерн upload_stop_status, §4.1): статус
+    # остановки -- в payload тела ОТВЕТА (валится CHECK_STATUS_VALUES).
+    # dedupe: событие пишется только при изменении картины
+    # (status/total_outliers/method/mode) -- фокус-рефетчи (PROGR-9-FOCUS)
+    # и повторные открытия мастера не затапливают трассу. Закрытие
+    # «окна лжи» Г5 PROGR-22-REPRO: появление выбросов в данных
+    # (напр., производная колонка стационарности) видно в трассе по
+    # факту пересчёта карточки, не дожидаясь следующей коррекции.
+    TraceRouteSpec(
+        "GET", "/v1/session/dataset/outlier-profile", "preprocessing",
+        "outliers", "outliers_profile_status",
+        payload_keys=("status", "total_outliers", "method", "mode"),
+        dedupe=True,
     ),
     TraceRouteSpec(
         "POST", "/v1/session/dataset/preprocessing/regularity-corrections",
@@ -472,6 +504,11 @@ def _validate_table(routes: tuple[TraceRouteSpec, ...]) -> None:
             raise ImportError(
                 f"throttled=True допустим только для profile_viewed: {key}"
             )
+        if spec.dedupe and not spec.payload_keys:
+            raise ImportError(
+                f"dedupe=True требует непустой payload_keys -- не с чем "
+                f"сравнивать: {key}"
+            )
         if spec.stage == "forecasting":
             raise ImportError(
                 f"Прогнозирование не трассируется хуком (события уже пишет "
@@ -571,6 +608,57 @@ def _throttled(session: AnalysisSession, spec: TraceRouteSpec, now: datetime) ->
     return (now - latest).total_seconds() < window
 
 
+def _node_picture(events: list[Any], key: str) -> tuple[str, int | None] | None:
+    """Картина узла на панели (status, summary_count) -- ТОЛЬКО через
+    канонический движок (вторая реализация деривации запрещена,
+    PROGR-10)."""
+    for state in derive_pipeline_node_states(events):
+        if f"{state['stage']}/{state['node_id']}" == key:
+            return (state["status"], state["summary_count"])
+    return None
+
+
+def _node_picture_unchanged(
+    session: AnalysisSession,
+    stage: str,
+    node_id: str | None,
+    event_type: str,
+    payload: dict[str, Any],
+) -> bool:
+    """G345-фикс (PROGR-23): True, если событие НЕ меняет картину узла
+    на панели (status + summary_count) -- повторные пересчёты с
+    неизменной картиной не пишутся (dedupe).
+
+    Сравнение ПРОТИВ ПРОИЗВОДНОГО состояния узла, а не против последнего
+    события того же типа: между двумя пересчётами карточки может лечь
+    correction_applied («done» безусловного исхода) -- наивное сравнение
+    с прошлым profile-событием пропустило бы честный warning после
+    изменения данных (ровно этот случай поймался сценарием Г5:
+    warning -> apply#1(done) -> пересчёт warning). Пробный добытий --
+    через канонический движок на копии хвоста трассы; трасса ограничена
+    MAX_PIPELINE_TRACE_EVENTS, движок чистый O(n) -- цена незначима на
+    фоне самого пересчёта профиля. Payload пуст / узел неизвестен --
+    «изменилось» (fail-open к факту, не к тишине); event_type --
+    РЕЗОЛВНУТЫЙ (после preview-подстановки)."""
+    if not payload or node_id is None:
+        return False
+    key = f"{stage}/{node_id}"
+    trial = {
+        "event_id": "dedupe-trial",
+        "run_id": "",
+        "ts": "1970-01-01T00:00:00+00:00",
+        "stage": stage,
+        "node_id": node_id,
+        "event_type": event_type,
+        "payload": dict(payload),
+        "actor": "user",
+        "timestamp": "1970-01-01T00:00:00+00:00",
+    }
+    before = _node_picture(session.pipeline_trace, key)
+    after = _node_picture([*session.pipeline_trace, trial], key)
+    return before is not None and before == after
+
+
 def record_trace_event(
     session: AnalysisSession,
     spec: TraceRouteSpec,
@@ -579,7 +667,9 @@ def record_trace_event(
     now: datetime | None = None,
 ) -> Any:
     """Формирует и дописывает событие трассы слоя 1 (§5) по строке
-    таблицы. Возвращает TraceEvent либо None (троттлинг).
+    таблицы. Возвращает TraceEvent либо None (троттлинг / dedupe:
+    G345-фикс -- картина payload не изменилась с прошлого события
+    этого типа на узле).
 
     run_id фиксируется при первой записи при активном датасете (§5:
     «генерируется по факту первой загрузки датасета» -- первый
@@ -596,6 +686,10 @@ def record_trace_event(
     ):
         event_type = spec.preview_type
     payload = _extract_payload(spec, response_body)
+    if spec.dedupe and _node_picture_unchanged(
+        session, spec.stage, spec.node_id, event_type, payload
+    ):
+        return None
     if session.dataset is not None:
         session.ensure_run_id()
     # Гейт (stage, event_type) -- через make_trace_event (fail-closed,

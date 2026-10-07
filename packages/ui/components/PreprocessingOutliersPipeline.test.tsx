@@ -20,6 +20,7 @@ const PREVIEW = {
   applied: false, strategy: "cap", method: "iqr", used_residual: false,
   total_outliers: 1, total_changed: 1, total_still_outliers: 0,
   rows_removed: 0, added_columns: [],
+  status: "done", total_outliers_after: 0,
   columns: [{
     column: "Price", outlier_count: 1, changed_count: 1, still_outliers: 0, outlier_examples: [20], flag_column: null,
     stats_before: { mean: 57, median: 10, std: 216.3 },
@@ -161,5 +162,85 @@ describe("PreprocessingOutliersPipeline + Наставник (PROGR-6)", () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("checkbox", { name: /Подтверждаю изменение активного датасета/i }));
     expect(screen.getByRole("button", { name: "Применить исправления" })).toBeEnabled();
+  });
+});
+
+// ── G345-фикс (PROGR-23): честный баннер мастера (Г4) ─────────────────
+
+describe("PreprocessingOutliersPipeline + честный баннер (G345-фикс)", () => {
+  beforeEach(() => {
+    mockFetchSequence(PROFILE, ALL_COLUMNS);
+  });
+
+  async function applyCorrection(applyResponse: Record<string, unknown>) {
+    mockFetchSequence(PROFILE, ALL_COLUMNS, PREVIEW, { warnings: [] }, applyResponse);
+    const onApplied = jest.fn();
+    render(<PreprocessingOutliersPipeline onApplied={onApplied} />);
+    await screen.findByText("Price");
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр изменений" }));
+    await screen.findByText("Найдено выбросов: 1");
+    fireEvent.click(screen.getByRole("checkbox", { name: /Подтверждаю изменение активного датасета/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Применить исправления" }));
+    await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
+  }
+
+  it("полная коррекция: зелёный баннер с числом изменённых значений", async () => {
+    await applyCorrection({
+      ...PREVIEW,
+      applied: true,
+      total_changed: 1,
+      total_still_outliers: 0,
+      status: "done",
+      total_outliers_after: 0,
+    });
+    // роль "status" у мастера не одна (зелёный бокс «выбросов нет») --
+    // баннер ищем по тексту, классы проверяем на нём же.
+    const banner = await screen.findByText(/Изменено значений: 1/);
+    expect(banner).toHaveClass("bg-green-50");
+  });
+
+  it("класс C5 (ничего не исправлено, карточка жёлтая): янтарный баннер с фактами, а не «профиль пересчитан»", async () => {
+    await applyCorrection({
+      ...PREVIEW,
+      applied: true,
+      total_outliers: 0,
+      total_changed: 0,
+      total_still_outliers: 0,
+      status: "warning",
+      total_outliers_after: 4,
+    });
+    const banner = await screen.findByText(/Изменений нет: выбранные колонки не содержат выбросов методом мастера/);
+    expect(banner).toHaveTextContent("в датасете остались выбросы по профилю карточки: 4");
+    expect(banner).toHaveClass("bg-amber-50");
+  });
+
+  it("частичная коррекция (still>0): баннер называет остаток по методу мастера", async () => {
+    await applyCorrection({
+      ...PREVIEW,
+      applied: true,
+      total_changed: 4,
+      total_still_outliers: 4,
+      status: "warning",
+      total_outliers_after: 4,
+    });
+    const banner = await screen.findByText(/Изменено значений: 4/);
+    expect(banner).toHaveTextContent("по методу мастера осталось выбросов: 4");
+    expect(banner).toHaveTextContent("в датасете остались выбросы по профилю карточки: 4");
+    expect(banner).toHaveClass("bg-amber-50");
+  });
+
+  it("стратегия flag: значения не изменены, но добавлены флаг-колонки -- баннер честно различает", async () => {
+    await applyCorrection({
+      ...PREVIEW,
+      applied: true,
+      strategy: "flag",
+      total_changed: 0,
+      total_still_outliers: 0,
+      added_columns: ["value_outlier_flag"],
+      status: "warning",
+      total_outliers_after: 4,
+    });
+    const banner = await screen.findByText(/Значения не изменены, добавлены флаг-колонки: value_outlier_flag/);
+    expect(banner).toHaveClass("bg-amber-50");
   });
 });

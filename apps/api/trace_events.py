@@ -114,6 +114,15 @@ _STAGE_EVENT_TYPES: dict[str, set[str]] = {
         # факт-контуре стадии -- панель показывала «не начато» при
         # цветном модуле.
         "preprocessing_check_status",
+        # G345-фикс (PROGR-23): живые GET-пересчёты карточки «Выбросы»
+        # (GET /dataset/outlier-profile, строка таблицы TRACE_ROUTES с
+        # dedupe) сеют payload-статус outliers_profile_status из тела
+        # ответа (whitelist CHECK_STATUS_VALUES, движок --
+        # PAYLOAD_STATUS_EVENT_TYPES). Закрытие «окна лжи»
+        # PROGR-22-REPRO/Г5 (карточка warning при трейсе done после
+        # появления выбросов в данных): факт живой диагностики --
+        # тоже факт трассы.
+        "outliers_profile_status",
     },
     "eda": {
         "profile_viewed",    # троттлинг §4.2 (дефолт 5 мин на узел)
