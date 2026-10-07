@@ -319,7 +319,7 @@ def test_validation_checks_last_wins_on_rereport():
     assert trace["node_statuses"].get("validation/formats") == "warning"
 
 
-# ── П-3: потребители -- отчёт §5.4 без изменений контракта ───────────
+# ── П-3: потребители -- отчёт §5.4 без изменения контракта ───────────
 
 
 def test_report_renders_validation_check_facts_with_registry_labels():
@@ -348,3 +348,135 @@ def test_report_renders_validation_check_facts_with_registry_labels():
         "Статус проверки «Форматы и шаблоны» отчитан модулем: "
         "есть замечания." in md
     )
+
+
+# ── PROGR-16-A-R3R7: закрытие находок сертификации PROGR-16-A-CERT ───
+#
+# Находки R-3/R-4/R-5 (отчёт сертификации PROGR-16-A-CERT): малые дыры
+# pytest-покрытия контура отчёта фактов «Валидации». Реализация
+# корректна -- задача ТОЛЬКО тестовая (паттерн PROGR-17-CERT-R1R4 и
+# R-2): RED верифицируется на мутантах сертификации (каждый новый
+# тест обязан убить своего мутанта), GREEN -- на чистом коде.
+
+
+def test_phantom_validation_nodes_never_reach_panel():
+    """R-3 (фантомные validation-узлы): журнал -- легальный корпус
+    мусора (R3 PROGR-1-CERT), поэтому фантомное событие
+    validation_check_status (неизвестный node_id при ВАЛИДНОМ
+    payload-статусе) обязано быть пропущено гейтом is_known_node
+    единого движка: в node_statuses панели фантомного ключа нет,
+    nodes[] содержит ровно узлы реестра. Эндпоинтный fail-closed (422
+    на «phantom_check») покрыт П-2; здесь -- ЕДИНСТВЕННАЯ линия обороны
+    движка, до которой мусор доходит только через прямую дописку
+    журнала (старые версии реестров, ручные правки корпуса слоя 2)."""
+    _upload()
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    session = get_session_store().get(session_id)
+    assert session is not None
+    # Фантом пишется МИМО отчётного эндпоинта (тот fail-closed 422 --
+    # П-2); прямая дописка журнала имитирует легальный мусор корпуса.
+    session.pipeline_trace.append(
+        _event(
+            "validation", "phantom_check", "validation_check_status",
+            _iso(1), {"status": "done"},
+        )
+    )
+    get_session_store().save(session)
+
+    # Панель: фантомного статуса нет; nodes[] -- ровно реестр стадии.
+    trace = _trace()
+    assert "validation/phantom_check" not in trace["node_statuses"]
+    panel_validation_nodes = [
+        node["node_id"] for node in trace["nodes"]
+        if node["stage"] == "validation"
+    ]
+    assert panel_validation_nodes == list(EXPECTED_CHECK_IDS)
+
+    # Юнит-контур того же гейта: движок молчит по фантомам даже при
+    # валидном payload-статусе, известные узлы не задеты.
+    statuses = derive_node_statuses(
+        [
+            _event(
+                "validation", "phantom_check", "validation_check_status",
+                _iso(2), {"status": "warning"},
+            ),
+            _event(
+                "validation", "formats", "validation_check_status",
+                _iso(3), {"status": "warning"},
+            ),
+        ]
+    )
+    assert "validation/phantom_check" not in statuses
+    assert statuses["validation/formats"] == "warning"
+
+
+def test_validation_report_sets_node_reason_on_panel():
+    """R-4 (причина узла): после отчёта фактов панель обязана
+    показывать человекочитаемую причину статуса validation-узлов --
+    шаблон EVENT_NODE_REASON для validation_check_status («Статус
+    проверки отчитан модулем «Валидация»»), а статус узла -- статус из
+    отчёта (reason и статус описывают ОДНО и то же последнее событие
+    узла -- инвариант карты причин). П-2 проверял только
+    node_statuses/stages; канон nodes[] §3 (PROGR-11) для отчёта
+    «Валидации» не был покрыт."""
+    _upload()
+    checks = _full_checks_map("done")
+    checks["formats"] = "warning"
+    reported = client.post(
+        "/v1/progress/validation-checks", json={"checks": checks}
+    )
+    assert reported.status_code == 200, reported.text
+
+    reason = "Статус проверки отчитан модулем «Валидация»"
+    trace = _trace()
+    validation_nodes = [
+        node for node in trace["nodes"] if node["stage"] == "validation"
+    ]
+    assert len(validation_nodes) == 10
+    for node in validation_nodes:
+        assert node["status_reason"] == reason, node["node_id"]
+        assert node["status"] == checks[node["node_id"]], node["node_id"]
+
+
+def test_shuffled_client_map_is_written_in_registry_order():
+    """R-5 (перетасованная карта клиента): JSON-объект не упорядочен --
+    ключи карты отчёта могут прийти в ЛЮБОМ порядке; факты обязаны
+    записаться в каноническом порядке реестра (бэкенд итерирует
+    known_ids, а не payload -- §6.2-хронология детерминирована) с
+    точным соответствием статусу каждого узла. Существующие тесты
+    отчитывают карту в порядке реестра -- перестановка не была
+    покрыта."""
+    _upload()
+    shuffled = {
+        check_id: ("done" if i % 2 == 0 else "warning")
+        for i, check_id in enumerate(reversed(EXPECTED_CHECK_IDS))
+    }
+    # Порядок действительно иной (страж осмысленности теста).
+    assert list(shuffled) == list(reversed(EXPECTED_CHECK_IDS))
+    assert list(shuffled) != list(EXPECTED_CHECK_IDS)
+
+    reported = client.post(
+        "/v1/progress/validation-checks", json={"checks": shuffled}
+    )
+    assert reported.status_code == 200, reported.text
+    assert reported.json()["reported"] == 10
+
+    # Слой 1: события -- в каноническом порядке реестра, статусы --
+    # точно из перетасованной карты (соответствие не перепутано).
+    session_id = client.cookies.get(SESSION_COOKIE_NAME)
+    session = get_session_store().get(session_id)
+    assert session is not None
+    layer1 = [
+        event for event in session.pipeline_trace
+        if event["event_type"] == "validation_check_status"
+    ]
+    assert [event["node_id"] for event in layer1] == list(
+        EXPECTED_CHECK_IDS
+    )
+    for event in layer1:
+        assert event["payload"]["status"] == shuffled[event["node_id"]]
+
+    # Панель == модулю и на перетасованной карте.
+    trace = _trace()
+    for check_id, status in shuffled.items():
+        assert trace["node_statuses"].get(f"validation/{check_id}") == status

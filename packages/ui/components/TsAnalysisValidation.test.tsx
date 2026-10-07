@@ -21,7 +21,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { TsAnalysisValidation } from "./TsAnalysisValidation";
-import { AppShellProvider } from "../context/AppShellContext";
+import { AppShellProvider, useAppShell } from "../context/AppShellContext";
 
 const EXPECTED_CHECK_IDS_ARR = [
   "data_types", "formats", "ranges", "consistency", "uniqueness",
@@ -1324,16 +1324,24 @@ interface RecordedPost {
 function mockProgressReportValidation(
   validateResponse: (url?: string) => Promise<unknown>,
   postChecksStatuses: number[] = [],
+  // R-7 (сертификация PROGR-16-A-CERT): имя датасета сессии -- строка
+  // ИЛИ геттер (оценивается на КАЖДЫЙ вызов /session/current -- так
+  // тест смены датасета подменяет вселенную между гидратациями).
+  sessionDatasetName: string | (() => string) = "types.csv",
 ): { postCalls: RecordedPost[] } {
   const postCalls: RecordedPost[] = [];
   let postIndex = 0;
   global.fetch = jest.fn((url: string, options?: RequestInit) => {
     if (url.includes("/session/current")) {
+      const datasetName =
+        typeof sessionDatasetName === "function"
+          ? sessionDatasetName()
+          : sessionDatasetName;
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
           has_active_dataset: true,
-          dataset: { dataset_id: "d1", name: "types.csv", rows: 3, columns: 1, size_label: "1 KB" },
+          dataset: { dataset_id: "d1", name: datasetName, rows: 3, columns: 1, size_label: "1 KB" },
           stages: {},
           last_active_stage: null,
         }),
@@ -1388,6 +1396,26 @@ function mockProgressReportValidation(
     return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
   }) as unknown as typeof fetch;
   return { postCalls };
+}
+
+// R-7 (сертификация PROGR-16-A-CERT): проба смены датасета -- читает
+// setActiveDataset из контекста (тот же механизм, что оптимистичное
+// обновление после upload) и меняет activeDataset БЕЗ перемонтирования
+// дерева: эффект сброса маркера живёт ВНУТРИ смонтированного модуля
+// «Валидация» -- remount создал бы пустой ref и тест ничего бы не
+// проверял.
+function DatasetSwitchButton({ name }: { name: string }) {
+  const { setActiveDataset } = useAppShell();
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        setActiveDataset({ datasetId: "d2", name, rows: 3, sizeLabel: "1 KB" })
+      }
+    >
+      switch-dataset
+    </button>
+  );
 }
 
 describe("TsAnalysisValidation — PROGR-16-A: URL-контракт отчёта проверок в «Прогресс»", () => {
@@ -1538,6 +1566,99 @@ describe("TsAnalysisValidation — PROGR-16-A: URL-контракт отчёта
     await waitFor(() => expect(postCalls).toHaveLength(2));
 
     // Тело повтора -- та же ИДЕНТИЧНАЯ картина статусов.
+    expect(postCalls[1].body?.checks).toEqual(postCalls[0].body?.checks);
+    expect(postCalls[1].body?.checks).toEqual(
+      Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, "done"])),
+    );
+    for (const call of postCalls) {
+      expect(call.url).toBe("http://localhost:8000/v1/progress/validation-checks");
+    }
+  });
+
+  it("reports a pending 'needs_rule' check as warning (the status the stepper shows)", async () => {
+    // R-6 (сертификация PROGR-16-A-CERT): снапшот отчёта -- ровно то,
+    // что показывает степпер (displayedStatus): pending+needs_rule
+    // уходит в отчёт как warning («Настроить»). Мутант «отчитывать
+    // сырой check.status» отправил бы «pending» -- статус легален в
+    // CheckStatus, бэкенд принял бы факт, панель показала бы
+    // «не начато» там, где модуль требует настройки (расхождение
+    // «панель != модулю» -- тот же класс дефекта PROGR-16-REPRO).
+    const { postCalls } = mockProgressReportValidation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          ...validationResponse("done", "schema", 0),
+          checks: Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, {
+            status: id === "formats" ? "pending" : "done",
+            status_reason: id === "formats" ? "needs_rule" : null,
+            count: 0, items: [], scope: "dataset", rule_source: "system",
+          }])),
+        }),
+      }),
+    );
+
+    renderValidation();
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+
+    // Степпер: formats -- «Настроить», остальные 9 -- «Проверка пройдена».
+    expect((await screen.findAllByText("Проверка пройдена"))).toHaveLength(9);
+    expect((await screen.findAllByText("Настроить")).length).toBeGreaterThan(0);
+
+    // Тело отчёта -- warning для needs_rule-проверки (не сырой pending).
+    await waitFor(() => expect(postCalls).toHaveLength(1));
+    expect(postCalls[0].body?.checks?.formats).toBe("warning");
+    expect(postCalls[0].body?.checks).toEqual(
+      Object.fromEntries(
+        EXPECTED_CHECK_IDS_ARR.map((id) => [id, id === "formats" ? "warning" : "done"]),
+      ),
+    );
+    expect(postCalls[0].url).toBe("http://localhost:8000/v1/progress/validation-checks");
+  });
+
+  it("re-reports after a DATASET CHANGE even when the status picture is identical (marker reset is the only cause of the retry)", async () => {
+    // R-7 (сертификация PROGR-16-A-CERT): новый датасет -- новая
+    // вселенная фактов. Маркер отчёта обязан сбрасываться при смене
+    // activeDataset (эффект [activeDataset?.name]), иначе ИДЕНТИЧНАЯ
+    // картина статусов второго исследования была бы молча пропущена
+    // дедупликацией как «уже отчитано» -- факты второго датасета
+    // навсегда потеряны для панели. Дизайн кейса -- тот же принцип
+    // единственной причины, что у R-2: картина статусов обоих запусков
+    // ИДЕНТИЧНА (все 10 done), смена датасета -- ЕДИНСТВЕННАЯ причина
+    // повтора; мутант «снять lastReportedChecksRef.current = ""» в
+    // эффекте смены датасета молча теряет второй отчёт.
+    const { postCalls } = mockProgressReportValidation(allDoneValidateResponse());
+
+    render(
+      <AppShellProvider>
+        <TsAnalysisValidation />
+        <DatasetSwitchButton name="b.csv" />
+      </AppShellProvider>
+    );
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+
+    // Датасет types.csv: запуск -- отчёт №1 (все 10 done).
+    fireEvent.click(runButton);
+    expect(await screen.findAllByText("Проверка пройдена")).toHaveLength(10);
+    await waitFor(() => expect(postCalls).toHaveLength(1));
+
+    // Смена датасета БЕЗ перемонтирования: модуль сбрасывает состояние
+    // (validationHasRun -> false, checksData -> null) и МАРКЕР отчёта.
+    fireEvent.click(screen.getByRole("button", { name: "switch-dataset" }));
+
+    // Датасет b.csv: запуск с той же ИДЕНТИЧНОЙ картиной -- отчёт №2
+    // обязан уйти: маркер был сброшен сменой датасета, снапшот-строка
+    // идентична первой (dep null -> та же строка запускает эффект).
+    const runButtonB = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButtonB).toBeEnabled());
+    fireEvent.click(runButtonB);
+    expect(await screen.findAllByText("Проверка пройдена")).toHaveLength(10);
+    await waitFor(() => expect(postCalls).toHaveLength(2));
+
+    // Тело повтора -- та же картина статусов: факты принадлежат УЖЕ
+    // новому датасету (маркер-дедупликация не должна была их съесть).
     expect(postCalls[1].body?.checks).toEqual(postCalls[0].body?.checks);
     expect(postCalls[1].body?.checks).toEqual(
       Object.fromEntries(EXPECTED_CHECK_IDS_ARR.map((id) => [id, "done"])),
