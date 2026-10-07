@@ -144,6 +144,33 @@ _STAGE_EVENT_TYPES: dict[str, set[str]] = {
         # реестра, а не обходом гейта»; спецификация §4.1 дополняется
         # задачей PROGR-13-A (документация).
         "passport_captured",
+        # PROGR-20 (spec_progress_v1.1.md §1, категория A): плановое
+        # расширение allowlist Моделирования -- факты, которые раньше
+        # не оставляли следа в трассе вовсе:
+        #   candidates_generated -- формирование пула кандидатов
+        #     applicability-движком modeling.yaml («факт, который
+        #     система формирует автоматически на основе системных
+        #     правил» -- прямой пример из контрольной формулировки);
+        #   selection_evaluated -- трассируемая оценка выбора
+        #     (рекомендация + проверка ансамбля OOF), класс
+        #     model_selected;
+        #   models_compared -- факт сравнения моделей (решение
+        #     аналитика, P1);
+        #   diagnostics_run -- запуск/обеспечение диагностики, пара
+        #     к backtest_run (P1; один тип на /diagnostics и
+        #     /diagnostics/ensure -- один класс факта);
+        #   tuning_skipped -- осознанный аудируемый выбор «оставить
+        #     defaults» (P2; НЕ дублирует tuning_trial_completed --
+        #     тот пишется только реальным тюнингом /tune);
+        #   tuning_job_started / tuning_job_cancelled -- старт/отмена
+        #     долгого job-контура тюнинга (P2): до расширения job-путь
+        #     не оставлял факта в трассе вовсе (tuning_trial_completed
+        #     на нём не возникает), отмена -- явное решение аналитика.
+        #     jobs/{id}/step сознательно НЕ трассируется (механические
+        #     единицы работы -- прогресс-лог, не журнал решений §1).
+        "candidates_generated", "selection_evaluated", "models_compared",
+        "diagnostics_run", "tuning_skipped",
+        "tuning_job_started", "tuning_job_cancelled",
     },
     "forecasting": set(FORECAST_EVENT_TYPES),
 }

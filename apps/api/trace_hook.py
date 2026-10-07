@@ -357,6 +357,85 @@ TRACE_ROUTES: tuple[TraceRouteSpec, ...] = (
         "POST", "/v1/session/modeling/card", "modeling", "model_card",
         "model_card_generated", payload_keys=("model_card_id", "card_id", "model_id"),
     ),
+    # ── Моделирование: PROGR-20 (spec_progress_v1.1.md §1, категория A) ──
+    # Плановое расширение allowlist по приоритетам v1.1 §1 (P0 обязательно,
+    # P1/P2 -- решение тимлида). payload -- факты результата (§4.1):
+    # dotted-ключи -- ДОТ-пути в форму ответа, хранятся под последним
+    # сегментом (паттерн metrics.mape).
+    # P0: candidates -- факт системного правила (applicability-движок
+    # modeling.yaml): статистика пула из CandidatesResponse.statistics,
+    # НЕ сырой каталог (тяжёлые массивы candidates/catalog не проходят).
+    TraceRouteSpec(
+        "POST", "/v1/session/modeling/candidates", "modeling",
+        "candidate_generation", "candidates_generated",
+        payload_keys=(
+            "spec_version",
+            "statistics.runnable_candidates",
+            "statistics.catalog_only_candidates",
+            "statistics.blocked_candidates",
+        ),
+    ),
+    # P0: оценка выбора (рекомендация + проверка ансамбля OOF) -- класс
+    # model_selected; факт -- рекомендованная одиночная модель и вердикт
+    # ансамбля (recommended/not_eligible/tested_no_gain).
+    TraceRouteSpec(
+        "POST", "/v1/session/modeling/selection/evaluate", "modeling",
+        "selection", "selection_evaluated",
+        payload_keys=(
+            "selection_analysis_id", "cohort_id",
+            "recommended_single.model_id", "ensemble.status",
+        ),
+    ),
+    # P1: факт сравнения моделей -- содержательное решение аналитика.
+    TraceRouteSpec(
+        "POST", "/v1/session/modeling/compare", "modeling", "comparison",
+        "models_compared",
+        payload_keys=("comparison_id", "cohort_id", "objective"),
+    ),
+    # P1: диагностика -- пара к backtest_run; один тип на оба эндпоинта
+    # (один класс факта), payload различает прямой запуск (model_id/
+    # params_source/backtest_run_id) и обеспечение скоупа (списки
+    # calculated/reused -- переиспользование диагностики честно видно).
+    TraceRouteSpec(
+        "POST", "/v1/session/modeling/diagnostics", "modeling",
+        "diagnostics", "diagnostics_run",
+        payload_keys=("model_id", "params_source", "backtest_run_id"),
+    ),
+    TraceRouteSpec(
+        "POST", "/v1/session/modeling/diagnostics/ensure", "modeling",
+        "diagnostics", "diagnostics_run",
+        payload_keys=("calculated_model_ids", "reused_model_ids"),
+    ),
+    # P2 (решение тимлида): осознанный аудируемый выбор «оставить
+    # defaults» -- НЕ дублирует tuning_trial_completed (тот пишется
+    # только реальным тюнингом /tune); skip-pending несёт список
+    # затронутых моделей и статус (skipped/unchanged).
+    TraceRouteSpec(
+        "POST", "/v1/session/modeling/tuning/skip", "modeling", "tuning",
+        "tuning_skipped", payload_keys=("model_id",),
+    ),
+    TraceRouteSpec(
+        "POST", "/v1/session/modeling/tuning/skip-pending", "modeling",
+        "tuning", "tuning_skipped",
+        payload_keys=("model_ids", "status"),
+    ),
+    # P2 (решение тимлида): до расширения job-контур не оставлял факта
+    # в трассе вовсе (tuning_trial_completed на job-пути не возникает) --
+    # старт долгого тюнинга единственный носитель факта запуска; отмена
+    # -- явное решение аналитика остановить тюнинг (класс run_paused).
+    # jobs/{job_id}/step СОЗНАТЕЛЬНО НЕ трассируется: механические
+    # единицы работы -- прогресс-лог, не журнал решений (§1, §4.2);
+    # исключение зафиксировано тестом test_progr20_conscious_exclusions.
+    TraceRouteSpec(
+        "POST", "/v1/session/modeling/jobs/start", "modeling", "tuning",
+        "tuning_job_started",
+        payload_keys=("operation", "model_id", "status", "progress.total_steps"),
+    ),
+    TraceRouteSpec(
+        "POST", "/v1/session/modeling/jobs/{job_id}/cancel", "modeling",
+        "tuning", "tuning_job_cancelled",
+        payload_keys=("model_id", "status", "cancellation.reason"),
+    ),
 )
 
 

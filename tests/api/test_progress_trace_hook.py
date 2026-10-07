@@ -176,8 +176,10 @@ def test_route_table_covers_documented_endpoints():
         assert ("POST", path) in keys, path
     # PROGR-13-B2: динамическая строка passport/{stage} развёрнута в
     # 4 литеральных (точка -> стадия): 40 - 1 + 4 = 43;
-    # PROGR-13-A3: + POST /v1/session/date-column (structure_confirmed) = 44
-    assert len(TRACE_ROUTES) == 44
+    # PROGR-13-A3: + POST /v1/session/date-column (structure_confirmed) = 44;
+    # PROGR-20 (v1.1 §1, категория A): + 9 строк Моделирования
+    # (P0 ×2, P1 ×3, P2 ×4) = 53 (детально -- секция 9 ниже).
+    assert len(TRACE_ROUTES) == 53
 
 
 def test_route_table_pairs_pass_trace_event_gate():
@@ -798,3 +800,451 @@ def test_passport_captured_event_on_capture():
     assert stored["node_id"] is None  # паспорт -- не узел графа (§2)
     assert stored["payload"]["stage"] == "start"
     assert stored["payload"]["snapshot_id"]
+
+
+# ── 9. PROGR-20: расширение таблицы Моделированием (v1.1 §1, кат. A) ──
+#
+# spec_progress_v1.1.md §1 (категория A): fail-closed allowlist дополнен
+# мутирующими эндпоинтами Моделирования по приоритетам:
+#   P0 (обязательно) -- candidates (факт системного правила
+#     applicability-движка modeling.yaml -- «факт, который система
+#     формирует автоматически») и selection/evaluate (оценка выбора --
+#     класс model_selected);
+#   P1 (решение тимлида: ДА -- содержательные факты: сравнение моделей
+#     и запуск диагностики -- пара к backtest_run) -- compare,
+#     diagnostics ×2;
+#   P2 (решение тимлида: skip-пара и job-старт/отмена -- ДА,
+#     step -- НЕТ) -- tuning/skip ×2 (осознанный аудируемый выбор
+#     «оставить defaults» -- НЕ дублирует tuning_trial_completed: тот
+#     пишется только реальным тюнингом /tune), jobs/start (единственный
+#     носитель факта тюнинг-запуска в job-контуре: tuning_trial_completed
+#     на job-пути не возникает никогда), jobs/{id}/cancel (явное решение
+#     аналитика остановить тюнинг -- класс run_paused).
+#   НЕ включены (осознанные исключения, v1.1 §1): validation-rules,
+#     type-schema (конфигурационные правки ДО запуска проверки, не факт
+#     прохождения исследования); jobs/{id}/step (механические единицы
+#     работы -- прогресс-лог, не журнал решений §1/§4.2); baselines,
+#     backtest/exclude, feature-regressors, tuning/start, tuning/step --
+#     вне таблицы приоритетов v1.1 (кандидаты следующего расширения).
+
+_PROGR20_ROWS: tuple[tuple[str, str, str, str, str], ...] = (
+    # (метод, путь, узел, event_type, приоритет)
+    ("POST", "/v1/session/modeling/candidates", "candidate_generation",
+     "candidates_generated", "P0"),
+    ("POST", "/v1/session/modeling/selection/evaluate", "selection",
+     "selection_evaluated", "P0"),
+    ("POST", "/v1/session/modeling/compare", "comparison",
+     "models_compared", "P1"),
+    ("POST", "/v1/session/modeling/diagnostics", "diagnostics",
+     "diagnostics_run", "P1"),
+    ("POST", "/v1/session/modeling/diagnostics/ensure", "diagnostics",
+     "diagnostics_run", "P1"),
+    ("POST", "/v1/session/modeling/tuning/skip", "tuning",
+     "tuning_skipped", "P2"),
+    ("POST", "/v1/session/modeling/tuning/skip-pending", "tuning",
+     "tuning_skipped", "P2"),
+    ("POST", "/v1/session/modeling/jobs/start", "tuning",
+     "tuning_job_started", "P2"),
+    ("POST", "/v1/session/modeling/jobs/{job_id}/cancel", "tuning",
+     "tuning_job_cancelled", "P2"),
+)
+
+_PROGR20_PAYLOAD_KEYS: dict[str, tuple[str, ...]] = {
+    # §4.1: payload -- факты результата (форма ответа), не сырой ответ;
+    # dotted-ключ -- ДОТ-путь во вложенный объект, хранится под последним
+    # сегментом (паттерн metrics.mape PROGR-8).
+    "/v1/session/modeling/candidates": (
+        "spec_version",
+        "statistics.runnable_candidates",
+        "statistics.catalog_only_candidates",
+        "statistics.blocked_candidates",
+    ),
+    "/v1/session/modeling/selection/evaluate": (
+        "selection_analysis_id", "cohort_id",
+        "recommended_single.model_id", "ensemble.status",
+    ),
+    "/v1/session/modeling/compare": ("comparison_id", "cohort_id", "objective"),
+    "/v1/session/modeling/diagnostics": ("model_id", "params_source", "backtest_run_id"),
+    "/v1/session/modeling/diagnostics/ensure": (
+        "calculated_model_ids", "reused_model_ids",
+    ),
+    "/v1/session/modeling/tuning/skip": ("model_id",),
+    "/v1/session/modeling/tuning/skip-pending": ("model_ids", "status"),
+    "/v1/session/modeling/jobs/start": (
+        "operation", "model_id", "status", "progress.total_steps",
+    ),
+    "/v1/session/modeling/jobs/{job_id}/cancel": (
+        "model_id", "status", "cancellation.reason",
+    ),
+}
+
+
+def test_progr20_route_table_rows_present():
+    from apps.api.trace_hook import TRACE_ROUTES
+
+    specs = {(s.method, s.path_template): s for s in TRACE_ROUTES}
+    for method, path, node, event_type, priority in _PROGR20_ROWS:
+        spec = specs.get((method, path))
+        assert spec is not None, (priority, path)
+        assert (spec.stage, spec.node_id, spec.event_type) == (
+            "modeling", node, event_type,
+        ), (priority, path)
+        assert spec.payload_keys == _PROGR20_PAYLOAD_KEYS[path], path
+        assert spec.preview_type is None, path  # preview-семантики нет
+        assert spec.throttled is False, path  # троттлинг -- только EDA
+
+
+def test_progr20_route_table_count_53():
+    """44 (PROGR-3..13) + 9 строк PROGR-20 (P0 ×2, P1 ×3, P2 ×4) = 53."""
+    from apps.api.trace_hook import TRACE_ROUTES
+
+    assert len(TRACE_ROUTES) == 53
+
+
+def test_progr20_conscious_exclusions_stay_untraced():
+    """Осознанные исключения (v1.1 §1 + работа с границами задачи):
+    конфигурационные правки и служебный прогресс НЕ становятся фактами."""
+    from apps.api.trace_hook import resolve_trace_route
+
+    # «Не включать» (v1.1 §1): конфигурация ДО проверки -- не факт
+    # прохождения исследования.
+    assert resolve_trace_route(
+        "PUT", "/v1/session/dataset/validation-rules"
+    ) is None
+    assert resolve_trace_route(
+        "PUT", "/v1/session/dataset/type-schema"
+    ) is None
+    # jobs/{id}/step -- механические единицы работы долгого job-контура:
+    # трасса -- журнал решений и переходов, а не прогресс-лог (§1, §4.2).
+    assert resolve_trace_route(
+        "POST", "/v1/session/modeling/jobs/any-job/step"
+    ) is None
+    # Вне таблицы приоритетов v1.1 -- остаются вне allowlist до отдельного
+    # решения (кандидаты следующего расширения).
+    assert resolve_trace_route(
+        "POST", "/v1/session/modeling/baselines"
+    ) is None
+    assert resolve_trace_route(
+        "POST", "/v1/session/modeling/backtest/exclude"
+    ) is None
+    assert resolve_trace_route(
+        "PUT", "/v1/session/modeling/feature-regressors"
+    ) is None
+    assert resolve_trace_route(
+        "POST", "/v1/session/modeling/tuning/start"
+    ) is None
+    assert resolve_trace_route(
+        "POST", "/v1/session/modeling/tuning/step"
+    ) is None
+
+
+def test_progr20_registry_accepts_new_event_types():
+    """Реестр STAGE_EVENT_TYPES расширен теми же 7 типами (fail-closed
+    гейт (stage, event_type) пропускает каждую строку таблицы)."""
+    from apps.api.trace_events import STAGE_EVENT_TYPES
+
+    modeling = STAGE_EVENT_TYPES["modeling"]
+    for _, _, _, event_type, _ in _PROGR20_ROWS:
+        assert event_type in modeling, event_type
+        make_trace_event(event_type, stage="modeling", run_id="RUN-PROGR20")
+    # Ровно 7 новых типов, существующие не сужены (критерий v1.1 §7).
+    assert modeling >= {
+        "candidates_generated", "selection_evaluated", "models_compared",
+        "diagnostics_run", "tuning_skipped",
+        "tuning_job_started", "tuning_job_cancelled",
+    }
+
+
+def test_progr20_payload_dotted_keys_flatten():
+    """§4.1: payload -- факты результата, не сырой ответ: dotted-ключи
+    извлекают вложенную статистику пула кандидатов и вердикт ансамбля,
+    тяжёлые массивы (candidates/catalog/ranking/diagnostics) не проходят."""
+    from apps.api.trace_hook import TRACE_ROUTES, _extract_payload
+
+    def spec_for(path: str) -> Any:
+        match = [s for s in TRACE_ROUTES if s.path_template == path]
+        assert match, path
+        return match[0]
+
+    candidates_body = {
+        "candidates": [{"model_id": "ets"}],
+        "catalog": [{"model_id": "ets"}, {"model_id": "arima"}],
+        "statistics": {
+            "runnable_candidates": 3,
+            "catalog_only_candidates": 21,
+            "blocked_candidates": 2,
+        },
+        "spec_version": "test-spec-v1",
+    }
+    payload = _extract_payload(
+        spec_for("/v1/session/modeling/candidates"), candidates_body
+    )
+    assert payload == {
+        "runnable_candidates": 3,
+        "catalog_only_candidates": 21,
+        "blocked_candidates": 2,
+        "spec_version": "test-spec-v1",
+    }
+
+    selection_body = {
+        "selection_analysis_id": "selection-abc123",
+        "cohort_id": "cohort-1",
+        "recommended_single": {"model_id": "ets", "primary_loss": 1.5},
+        "ensemble": {"status": "not_eligible", "member_ids": ["a", "b"]},
+        "baseline_comparisons": {"ets": {"relative_improvement": 0.0}},
+    }
+    payload = _extract_payload(
+        spec_for("/v1/session/modeling/selection/evaluate"), selection_body
+    )
+    assert payload == {
+        "selection_analysis_id": "selection-abc123",
+        "cohort_id": "cohort-1",
+        "model_id": "ets",
+        "status": "not_eligible",
+    }
+
+    ensure_body = {
+        "model_ids": ["naive", "ets"],
+        "calculated_model_ids": [],
+        "reused_model_ids": ["naive", "ets"],
+        "diagnostics": {"naive": {}, "ets": {}},
+    }
+    payload = _extract_payload(
+        spec_for("/v1/session/modeling/diagnostics/ensure"), ensure_body
+    )
+    assert payload == {
+        "calculated_model_ids": [],
+        "reused_model_ids": ["naive", "ets"],
+    }
+
+    job_start_body = {
+        "job_id": "J1",
+        "operation": "tuning",
+        "model_id": "ets",
+        "status": "in_progress",
+        "progress": {"phase": "trials", "completed_steps": 0, "total_steps": 2},
+    }
+    payload = _extract_payload(
+        spec_for("/v1/session/modeling/jobs/start"), job_start_body
+    )
+    assert payload == {
+        "operation": "tuning", "model_id": "ets",
+        "status": "in_progress", "total_steps": 2,
+    }
+
+    cancel_body = {
+        "job_id": "J1", "model_id": "ets", "status": "cancelled",
+        "cancellation": {"reason": "Остановлено аналитиком",
+                         "cancelled_at": "2026-10-07T00:00:00+00:00"},
+    }
+    payload = _extract_payload(
+        spec_for("/v1/session/modeling/jobs/{job_id}/cancel"), cancel_body
+    )
+    assert payload == {
+        "model_id": "ets", "status": "cancelled",
+        "reason": "Остановлено аналитиком",
+    }
+
+
+# ── 10. PROGR-20: e2e -- события Моделирования в живой трассе ────────
+
+
+def _modeling_ready(client_: TestClient) -> None:
+    """Минимальные предусловия контура Моделирования (зеркало _prepare
+    tests/api/test_modeling_workflow.py): датасет с датой и целью,
+    паспорт и modeling_entry."""
+    frame = pd.DataFrame(
+        {
+            "date": pd.date_range("2018-01-01", periods=96, freq="MS").astype(str),
+            "value": [
+                100 + 0.4 * i + 7 * ((i % 12) - 5.5) / 5.5 for i in range(96)
+            ],
+        }
+    )
+    _upload(client_, frame.to_csv(index=False))
+    assert client_.post("/v1/session/target-column", json={"column": "value"}).status_code == 200
+    assert client_.post("/v1/session/date-column", json={"column": "date"}).status_code == 200
+    assert client_.post("/v1/session/dataset/passport/start").status_code == 200
+    assert client_.post("/v1/session/dataset/passport/modeling_entry").status_code == 200
+
+
+def test_progr20_candidates_event_written_end_to_end():
+    """P0-приёмка (v1.1 §1): факт системного правила -- формирование пула
+    кандидатов applicability-движком -- оставляет след в трассе."""
+    _modeling_ready(client)
+    response = client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "expanding", "horizon": 2, "n_splits": 2},
+    )
+    assert response.status_code == 200, response.text
+    stored = _last_stored()
+    assert stored["event_type"] == "candidates_generated"
+    assert stored["stage"] == "modeling"
+    assert stored["node_id"] == "candidate_generation"
+    assert stored["run_id"] == _session().run_id
+    payload = stored["payload"]
+    # Статистика пула -- форма ответа (факты результата), не сырой каталог.
+    assert "spec_version" in payload
+    assert isinstance(payload["runnable_candidates"], int)
+    assert payload["runnable_candidates"] >= 0
+    assert isinstance(payload["catalog_only_candidates"], int)
+    assert isinstance(payload["blocked_candidates"], int)
+    assert "catalog" not in payload
+    assert "candidates" not in payload
+
+
+def test_progr20_diagnostics_compare_selection_events_end_to_end():
+    """P0 selection/evaluate + P1 diagnostics ×2/compare: содержательные
+    факты контура Моделирования пишутся на успешных ответах."""
+    _modeling_ready(client)
+    for model_id in ("naive", "ets"):
+        backtest = client.post(
+            "/v1/session/modeling/backtest", json={"model_id": model_id}
+        )
+        assert backtest.status_code == 200, backtest.text
+        diagnostics = client.post(
+            "/v1/session/modeling/diagnostics", json={"model_id": model_id}
+        )
+        assert diagnostics.status_code == 200, diagnostics.text
+    ensure = client.post(
+        "/v1/session/modeling/diagnostics/ensure",
+        json={"model_ids": ["naive", "ets"]},
+    )
+    assert ensure.status_code == 200, ensure.text
+    comparison = client.post("/v1/session/modeling/compare", json={})
+    assert comparison.status_code == 200, comparison.text
+    evaluation = client.post(
+        "/v1/session/modeling/selection/evaluate", json={"min_oof_points": 4}
+    )
+    assert evaluation.status_code == 200, evaluation.text
+
+    events = _trace_events()
+
+    diagnostics_events = [
+        e for e in events if e["event_type"] == "diagnostics_run"
+    ]
+    assert diagnostics_events, "diagnostics_run не записан"
+    ensure_payload = diagnostics_events[-1]["payload"]
+    assert (diagnostics_events[-1]["stage"], diagnostics_events[-1]["node_id"]) == (
+        "modeling", "diagnostics",
+    )
+    union = set(ensure_payload["calculated_model_ids"]) | set(
+        ensure_payload["reused_model_ids"]
+    )
+    assert {"naive", "ets"} <= union
+    direct = [
+        e for e in diagnostics_events
+        if e["payload"].get("model_id") == "ets" and "backtest_run_id" in e["payload"]
+    ]
+    assert direct, "diagnostics_run прямого запуска не записан"
+    assert direct[-1]["payload"]["params_source"] in ("model_default", "tuning")
+    assert direct[-1]["payload"]["backtest_run_id"]
+
+    compare_events = [e for e in events if e["event_type"] == "models_compared"]
+    assert compare_events, "models_compared не записан"
+    assert (compare_events[-1]["stage"], compare_events[-1]["node_id"]) == (
+        "modeling", "comparison",
+    )
+    assert compare_events[-1]["payload"]["comparison_id"]
+    assert compare_events[-1]["payload"]["cohort_id"]
+    assert compare_events[-1]["payload"]["objective"] == "level_forecast"
+
+    selection_events = [
+        e for e in events if e["event_type"] == "selection_evaluated"
+    ]
+    assert selection_events, "selection_evaluated не записан"
+    sel = selection_events[-1]
+    assert (sel["stage"], sel["node_id"]) == ("modeling", "selection")
+    assert sel["payload"]["selection_analysis_id"].startswith("selection-")
+    assert sel["payload"]["cohort_id"]
+    assert sel["payload"]["model_id"]
+    assert sel["payload"]["status"] in ("recommended", "not_eligible", "tested_no_gain")
+
+
+def test_progr20_tuning_skip_event_written_end_to_end():
+    """P2 (решение тимлида: включить): осознанный аудируемый выбор
+    «оставить defaults» -- факт решения, не дубликат тюнинга."""
+    _modeling_ready(client)
+    candidates = client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "expanding", "horizon": 2, "n_splits": 2},
+    )
+    assert candidates.status_code == 200, candidates.text
+    assert client.post("/v1/session/modeling/baselines").status_code == 200
+    assert client.post(
+        "/v1/session/modeling/backtest", json={"model_id": "naive"}
+    ).status_code == 200
+    assert client.post(
+        "/v1/session/modeling/backtest", json={"model_id": "ets"}
+    ).status_code == 200
+    scope = client.get("/v1/session/modeling/state").json()["artifacts"][
+        "execution_scope"
+    ]
+    for model_id in scope["pending_backtest_model_ids"]:
+        excluded = client.post(
+            "/v1/session/modeling/backtest/exclude",
+            json={
+                "model_id": model_id,
+                "decision": "exclude",
+                "reason": "Не входит в проверку",
+                "acknowledge": True,
+            },
+        )
+        assert excluded.status_code == 200, excluded.text
+
+    response = client.post(
+        "/v1/session/modeling/tuning/skip",
+        json={
+            "model_id": "ets",
+            "reason": "Оставить параметры по умолчанию",
+            "acknowledge": True,
+        },
+    )
+    assert response.status_code == 200, response.text
+    stored = _last_stored()
+    assert stored["event_type"] == "tuning_skipped"
+    assert (stored["stage"], stored["node_id"]) == ("modeling", "tuning")
+    assert stored["payload"]["model_id"] == "ets"
+
+
+def test_progr20_job_start_and_cancel_events_end_to_end():
+    """P2 (решение тимлида: старт включить как единственный носитель
+    факта тюнинг-запуска в job-контуре, отмену -- как явное решение;
+    step остаётся вне трассы -- прогресс-лог)."""
+    _modeling_ready(client)
+    candidates = client.post(
+        "/v1/session/modeling/candidates",
+        json={"strategy": "sliding", "horizon": 2, "n_splits": 2,
+              "gap": 1, "train_window": 40},
+    )
+    assert candidates.status_code == 200, candidates.text
+    started = client.post(
+        "/v1/session/modeling/jobs/start",
+        json={"operation": "tuning", "model_id": "ets", "max_trials": 2,
+              "metric": "rmse", "random_state": 42},
+    )
+    assert started.status_code == 200, started.text
+    job_id = started.json()["job_id"]
+
+    start_events = [
+        e for e in _trace_events() if e["event_type"] == "tuning_job_started"
+    ]
+    assert start_events, "tuning_job_started не записан"
+    start = start_events[-1]
+    assert (start["stage"], start["node_id"]) == ("modeling", "tuning")
+    assert start["payload"]["operation"] == "tuning"
+    assert start["payload"]["model_id"] == "ets"
+    assert start["payload"]["status"] == "in_progress"
+    assert start["payload"]["total_steps"] == 2
+
+    cancelled = client.post(
+        f"/v1/session/modeling/jobs/{job_id}/cancel",
+        json={"reason": "Остановлено аналитиком"},
+    )
+    assert cancelled.status_code == 200, cancelled.text
+    stored = _last_stored()
+    assert stored["event_type"] == "tuning_job_cancelled"
+    assert (stored["stage"], stored["node_id"]) == ("modeling", "tuning")
+    assert stored["payload"]["model_id"] == "ets"
+    assert stored["payload"]["status"] == "cancelled"
+    assert stored["payload"]["reason"] == "Остановлено аналитиком"

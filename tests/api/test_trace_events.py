@@ -162,6 +162,13 @@ class TestStageEventRegistry:
             "backtest_run", "tuning_trial_completed",
             "model_selected", "model_card_generated",
             "passport_captured",
+            # PROGR-20 (spec_progress_v1.1.md §1, категория A): плановое
+            # расширение allowlist Моделирования -- факты формирования
+            # кандидатов, оценки выбора, сравнения, диагностики, пропуска
+            # тюнинга и старта/отмены долгого job-контура.
+            "candidates_generated", "selection_evaluated",
+            "models_compared", "diagnostics_run", "tuning_skipped",
+            "tuning_job_started", "tuning_job_cancelled",
         }
 
     def test_run_level_events_valid_on_any_stage(self):

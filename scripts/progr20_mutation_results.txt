@@ -1,0 +1,9 @@
+M-1 path-rename candidates: KILLED (падений: 3)
+M-2 node-swap candidates->selection: KILLED (падений: 2)
+M-3 typo event_type (ImportError): KILLED (падений: 1)
+M-4 payload dotted-key removed: KILLED (падений: 3)
+M-5 registry type removed (ImportError): KILLED (падений: 1)
+M-6 forbidden step route added: KILLED (падений: 3)
+
+Финальный контроль: диффы пусты, рабочее дерево соответствует реализационной версии.
+======================= 73 passed, 19 warnings in 10.66s =======================
