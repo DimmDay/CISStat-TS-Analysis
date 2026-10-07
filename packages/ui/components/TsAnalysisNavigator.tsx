@@ -106,6 +106,7 @@ import { NavigatorPassportPreview } from "./NavigatorPassportPreview";
 import { NavigatorValidationDataTypesPreview } from "./NavigatorValidationDataTypesPreview";
 import { NavigatorValidationFormatsPreview } from "./NavigatorValidationFormatsPreview";
 import { NavigatorValidationRangesPreview } from "./NavigatorValidationRangesPreview";
+import { NavigatorValidationConsistencyPreview } from "./NavigatorValidationConsistencyPreview";
 
 // ── Компонент ─────────────────────────────────────────────────
 
@@ -540,6 +541,45 @@ export function TsAnalysisNavigator() {
               apps/api/routers/session.py + apps/api/range_correction.py).
               ВНЕ ЗАВИСИМОСТИ от датасета/сети.
 
+              Task NAVDET-CONSISTENCY (Логика и хронология, Валидация):
+              для пары «Валидация» + «Логика и хронология» (id="validation"
+              + id="consistency", четвёртый пункт остановки) рендерим
+              СТАТИЧНУЮ блок-схему алгоритма проверки согласованности
+              (NavigatorValidationConsistencyPreview): эталон
+              consistency-правил — 3 источника по приоритету (сессия
+              overrides > шаблон YAML default_rules.yaml > системный вывод
+              _deep_merge), системный вывод auto_generate_rules (при
+              наличии date/time-колонки — ОДНО правило «Хронологический
+              порядок», type="chronology", первая date-колонка), диспетчер
+              _evaluate_consistency_rule по rule_type (chronology:
+              группы, shift(1), реверс values < previous, маска на ОБЕ
+              строки пары, пары с пропусками не сравниваются; comparison:
+              ровно 2 колонки, оператор из 6, condition-парсер БЕЗ eval();
+              предметные: negative_price / positive_prices /
+              profit_revenue / energy_subsystem / steps_distance /
+              speed_fuel / temp_precip), единая оценка
+              evaluate_consistency_rules (единый источник масок для общей
+              проверки, обзора и исправлений; изоляция ошибок — «Ошибка
+              правила: …» не роняет проверку; applicability_message для
+              неприменимых), профиль profile_consistency (включая pass и
+              неприменимость), прогон validate_consistency (строки только
+              для применимых правил, «⚠️ Нарушено»/«✅ Соблюдено»),
+              агрегация _consistency (items, count = Σ, scope="dataset" —
+              ПРИНЦИПИАЛЬНО не скоупится до одной колонки: межколоночные
+              правила и ось времени, отличие от scope="column" ranges/
+              formats; pending при отсутствии применимых правил), статусы
+              done/warning/pending, исправление через «Мастер исправления
+              логики и хронологии» (GET /v1/session/dataset/
+              consistency-profile, POST /v1/session/dataset/
+              consistency-corrections: 4 стратегии sort_chronology
+              [только для chronology]/drop_rows/replace_null/flag;
+              правила и маски всегда из resolved rules сервера, не из
+              клиента; preview на глубокой копии, apply — атомарная
+              подмена) — на основе РЕАЛЬНОЙ логики (validation/
+              rule_resolver.py + validation/engine.py + apps/api/routers/
+              session.py + apps/api/consistency_correction.py). ВНЕ
+              ЗАВИСИМОСТИ от датасета/сети.
+
               Для остальных пунктов — текстовая заглушка (своя визуализация
               для каждого пункта в будущих задачах). */}
           {activeStopId === "upload" && activeItemId === "preview" ? (
@@ -568,6 +608,8 @@ export function TsAnalysisNavigator() {
             <NavigatorValidationFormatsPreview />
           ) : activeStopId === "validation" && activeItemId === "ranges" ? (
             <NavigatorValidationRangesPreview />
+          ) : activeStopId === "validation" && activeItemId === "consistency" ? (
+            <NavigatorValidationConsistencyPreview />
           ) : (
             <div
               className="bg-brand-light rounded-lg h-[280px] flex items-center justify-center text-sm text-neutral-500 border border-brand/10"

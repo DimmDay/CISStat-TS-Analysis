@@ -197,14 +197,15 @@ describe("TsAnalysisNavigator", () => {
       // (10-й, последний item).
       // ИТОГ: все 10 пунктов остановки «Загрузка» имеют специализированный
       // Обзор, поэтому проверка заглушки переносится на пункты ДРУГИХ
-      // остановок: переключаемся на «ВАЛИДАЦИЮ» (первые три пункта
+      // остановок: переключаемся на «ВАЛИДАЦИЮ» (первые ЧЕТЫРЕ пункта
       // получили схемы: «Типы данных» — NAVDET-DATATYPES 2026-09-22,
       // «Форматы и шаблоны» — NAVDET-FORMATS 2026-09-22,
-      // «Диапазоны значений» — NAVDET-RANGES 2026-09-22; заглушка
-      // осталась у «Логики и хронологии» — четвёртый пункт).
+      // «Диапазоны значений» — NAVDET-RANGES 2026-09-22,
+      // «Логика и хронология» — NAVDET-CONSISTENCY 2026-10-08; заглушка
+      // осталась у «Уникальности» — пятый пункт).
       fireEvent.click(screen.getByRole("button", { name: "ВАЛИДАЦИЯ" }));
       const col2 = getColumns()[1];
-      const card = within(col2).getByText("Логика и хронология");
+      const card = within(col2).getByText("Уникальность");
       fireEvent.click(card.closest("article")!);
       expect(
         screen.getByText(/область графика\/таблицы\/блок-схемы/)
@@ -1183,6 +1184,97 @@ describe("TsAnalysisNavigator", () => {
       const validationStop = NAVIGATOR_STOPS.find((s) => s.id === "validation")!;
       expect(validationStop.items[2].id).toBe("ranges");
       expect(validationStop.items[2].title).toBe("Диапазоны значений");
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Task NAVDET-CONSISTENCY (2026-10-08) — окно «Обзор» пункта «Логика
+  // и хронология» (validation+consistency, четвёртый пункт остановки)
+  // рендерит статичную блок-схему алгоритма проверки согласованности:
+  //   - эталон consistency-правил: resolve_validation_rules (сессия >
+  //     шаблон YAML default_rules.yaml > системный вывод _deep_merge);
+  //   - системный вывод: auto_generate_rules — при наличии date/time-
+  //     колонки ОДНО правило «Хронологический порядок» (type="chronology");
+  //   - диспетчер _evaluate_consistency_rule по rule_type: chronology
+  //     (группы, shift(1), реверс, маска на обе строки пары), comparison
+  //     (2 колонки, 6 операторов, condition без eval()), предметные
+  //     (negative_price / profit_revenue / steps_distance / temp_precip…);
+  //   - единая оценка evaluate_consistency_rules (единый источник масок,
+  //     изоляция ошибок «Ошибка правила: …», applicability_message) +
+  //     профиль profile_consistency (включая pass и неприменимость);
+  //   - прогон validate_consistency (строки только для применимых
+  //     правил) и агрегация _consistency (items, count = Σ, scope=
+  //     "dataset" — ПРИНЦИПИАЛЬНО не скоупится до колонки, отличие от
+  //     ranges/formats; pending-честность; статусы done/warning/pending);
+  //   - API: GET /v1/session/dataset/consistency-profile, POST
+  //     /v1/session/dataset/consistency-corrections (4 стратегии
+  //     sort_chronology/drop_rows/replace_null/flag;
+  //     apps/api/consistency_correction.py).
+  // ВНЕ ЗАВИСИМОСТИ от датасета/сети.
+  // ─────────────────────────────────────────────────────────────────────
+  describe("validation + consistency: static infographic in Overview", () => {
+    function activateConsistencyItem() {
+      // Клик по остановке «ВАЛИДАЦИЯ» сбрасывает активный пункт на
+      // первый (data_types) — дополнительно кликаем карточку «Логика и
+      // хронология» в средней колонке для явности контракта.
+      fireEvent.click(screen.getByRole("button", { name: "ВАЛИДАЦИЯ" }));
+      const col2 = getColumns()[1];
+      const card = within(col2).getByText("Логика и хронология");
+      fireEvent.click(card.closest("article")!);
+    }
+
+    it("renders the infographic heading when validation + consistency is active", () => {
+      renderNavigator();
+      activateConsistencyItem();
+      // H3 «Обзор: Логика и хронология» — заголовок окна Обзор из
+      // TsAnalysisNavigator. Шапка инфографики тоже H3 «Логика и
+      // хронология: Валидация». Поэтому минимум 2 совпадения (карточка
+      // средней колонки — H4, в этот счёт не попадает).
+      const headings = screen.getAllByRole("heading", {
+        level: 3,
+        name: /логика и хронология/i,
+      });
+      expect(headings.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("does NOT show the generic placeholder text for consistency item", () => {
+      renderNavigator();
+      activateConsistencyItem();
+      // Заглушка «[ область графика/таблицы/блок-схемы для … ]» заменена
+      // статичной блок-схемой алгоритма проверки согласованности.
+      expect(screen.queryByText(/область графика\/таблицы\/блок-схемы/)).toBeNull();
+    });
+
+    it("renders the real algorithm (resolver + unified evaluation + chronology inference)", () => {
+      renderNavigator();
+      activateConsistencyItem();
+      // resolve_validation_rules + evaluate_consistency_rules +
+      // auto_generate_rules — реальные функции бэкенда.
+      expect(screen.getAllByText(/resolve_validation_rules/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/evaluate_consistency_rules/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/auto_generate_rules/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("renders the correction master and the dataset scope (differs from ranges/formats)", () => {
+      renderNavigator();
+      activateConsistencyItem();
+      // «Мастер исправления логики и хронологии» упомянут в схеме; чек
+      // согласованности scope="dataset" — ПРИНЦИПИАЛЬНО не скоупится до
+      // одной колонки, в отличие от ranges/formats (scope="column").
+      expect(screen.getAllByText(/Мастер исправления логики и хронологии/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/scope="dataset"/).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/не скоупится/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryByText(/нет данных/i)).toBeNull();
+    });
+
+    it("keeps «Логика и хронология» as the FOURTH item of the validation stop", () => {
+      renderNavigator();
+      // Контракт порядка: consistency — четвёртый пункт остановки
+      // «Валидация» (CHECK_META в TsAnalysisValidation.tsx идёт в том же
+      // порядке; navigator-stops.ts зеркалит его).
+      const validationStop = NAVIGATOR_STOPS.find((s) => s.id === "validation")!;
+      expect(validationStop.items[3].id).toBe("consistency");
+      expect(validationStop.items[3].title).toBe("Логика и хронология");
     });
   });
 
