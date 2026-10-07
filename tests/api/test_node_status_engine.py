@@ -25,6 +25,10 @@ mentor_rules + фронтенд-порт progress.ts) плюс зеркало fo
      деривация.
   6. Владение: копий движка больше нет (mentor_rules/progress.ts/
      run_report) -- расползание ловится тестом, а не код-ревью.
+  7. PROGR-21 (v1.1 §5, категория E): mode_changed/target_column_changed
+     -- источники reason (НЕ статуса) полного узла §3: атрибуция по
+     payload, снятие устаревшего reason при auto/сбросе, гейты статуса
+     и фаз незатронуты.
 """
 from __future__ import annotations
 
@@ -684,6 +688,277 @@ class TestPipelineNodeStates:
             for stage in STAGES
             for node_id in STAGE_NODES[stage]
         }
+
+
+# ── PROGR-21: reason-источники уровня стадии (v1.1 §5, категория E) ──
+
+
+class TestProgr21StageLevelReasons:
+    """mode_changed/target_column_changed -- узловые по смыслу решения
+    аналитика, сеемые с node_id=None (N-2): узел не меняет цвет статуса,
+    но получает актуальный status_reason («Режим: включена вручную»,
+    «Целевой признак: Price»). Атрибуция -- по payload события; статус,
+    фаза Наставника (B1), штамп run-событий (C), ts/бейдж -- незатронуты."""
+
+    def _by_key(self, events):
+        return {
+            (s["stage"], s["node_id"]): s
+            for s in derive_pipeline_node_states(events)
+        }
+
+    def test_mode_changed_disabled_sets_reason_without_status(self):
+        """payload.modes -- ПОЛНАЯ карта эффективных режимов (тело ОТВЕТА
+        PUT, §4.1 whitelist): reason получают только узлы с активным
+        override; авто-узлы той же карты -- без reason (шум недопустим);
+        статус/ts/бейдж -- прежние (N-2)."""
+        events = [
+            _event(
+                "validation", None, "mode_changed",
+                modes={"data_types": "auto", "formats": "disabled",
+                       "ranges": "auto", "sufficiency": "auto"},
+            ),
+        ]
+        by_key = self._by_key(events)
+        node = by_key[("validation", "formats")]
+        assert node["status_reason"] == "Режим: отключена"
+        assert node["status"] == "pending"
+        assert node["last_touched_at"] is None
+        assert node["summary_count"] is None
+        assert by_key[("validation", "data_types")]["status_reason"] is None
+        assert by_key[("validation", "ranges")]["status_reason"] is None
+
+    def test_mode_changed_enabled_spec_example_text(self):
+        """Текст примера v1.1 дословно: «Режим: включена вручную»."""
+        events = [
+            _event("validation", None, "mode_changed", modes={"ranges": "enabled"}),
+        ]
+        by_key = self._by_key(events)
+        assert by_key[("validation", "ranges")]["status_reason"] == (
+            "Режим: включена вручную"
+        )
+
+    def test_mode_changed_preprocessing_attribution(self):
+        """Атрибуция -- узлам СВОЕЙ стадии: mode_changed preprocessing не
+        подсвечивает узлы Валидации (и наоборот)."""
+        events = [
+            _event(
+                "preprocessing", None, "mode_changed",
+                modes={"missing": "disabled", "outliers": "enabled"},
+            ),
+            _event("validation", None, "mode_changed", modes={"formats": "enabled"}),
+        ]
+        by_key = self._by_key(events)
+        assert by_key[("preprocessing", "missing")]["status_reason"] == (
+            "Режим: отключена"
+        )
+        assert by_key[("preprocessing", "outliers")]["status_reason"] == (
+            "Режим: включена вручную"
+        )
+        assert by_key[("validation", "formats")]["status_reason"] == (
+            "Режим: включена вручную"
+        )
+        # чужая стадия не задета
+        assert by_key[("validation", "ranges")]["status_reason"] is None
+        assert by_key[("preprocessing", "scaling")]["status_reason"] is None
+
+    def test_mode_changed_skips_phantom_nodes_and_garbage_values(self):
+        """Фантомная пара/мусорное значение режима -- не факт: узел
+        пропускается, валидные соседи по карте атрибутируются (трасса --
+        журнал, R3)."""
+        events = [
+            _event(
+                "validation", None, "mode_changed",
+                modes={"phantom_check": "disabled", "formats": "turbo",
+                       "ranges": "enabled"},
+            ),
+        ]
+        by_key = self._by_key(events)
+        assert by_key[("validation", "ranges")]["status_reason"] == (
+            "Режим: включена вручную"
+        )
+        assert all(
+            s["status_reason"] is None
+            for (stage, node_id), s in by_key.items()
+            if (stage, node_id) != ("validation", "ranges")
+        )
+
+    def test_mode_changed_non_dict_modes_is_skipped(self):
+        """Мусор вместо карты режимов -- деградация «событие мимо
+        фактов», не 500 и не выдуманный reason."""
+        events = [
+            _event("validation", None, "mode_changed", modes="всё вручную"),
+        ]
+        by_key = self._by_key(events)
+        assert all(s["status_reason"] is None for s in by_key.values())
+
+    def test_mode_changed_auto_clears_stale_mode_reason(self):
+        """Возврат в auto (PUT трактует auto как снятие override) делает
+        прежний «Режим: …» ложью: карточка mode=авто (живое состояние
+        сессии) не должна противоречить reason -- устаревший mode-reason
+        снимается."""
+        events = [
+            _event("validation", None, "mode_changed", modes={"formats": "disabled"}),
+            _event("validation", None, "mode_changed", modes={"formats": "auto"}),
+        ]
+        by_key = self._by_key(events)
+        assert by_key[("validation", "formats")]["status_reason"] is None
+        assert by_key[("validation", "formats")]["status"] == "pending"
+
+    def test_mode_changed_auto_keeps_decision_reason(self):
+        """Снятие затрагивает ТОЛЬКО mode-reason: reason последнего
+        узлового решения (correction_applied) не трогается."""
+        events = [
+            _event("validation", "formats", "correction_applied", ts=_ts(1)),
+            _event("validation", None, "mode_changed", modes={"formats": "auto"}),
+        ]
+        by_key = self._by_key(events)
+        assert by_key[("validation", "formats")]["status_reason"] == (
+            node_status.EVENT_NODE_REASON["correction_applied"]
+        )
+
+    def test_later_decision_reason_wins_over_mode_reason(self):
+        """Хронология (last wins -- тот же контракт, что у статусов):
+        mode-reason после решения узла перезаписывает его; авто-возврат
+        после решения НЕ снимает decision-reason (тег происхождения
+        сброшен решением)."""
+        events = [
+            _event("validation", "formats", "correction_applied", ts=_ts(1)),
+            _event("validation", None, "mode_changed", modes={"formats": "enabled"}),
+        ]
+        by_key = self._by_key(events)
+        assert by_key[("validation", "formats")]["status_reason"] == "Режим: включена вручную"
+
+        events = [
+            _event("validation", None, "mode_changed", modes={"formats": "enabled"}),
+            _event("validation", "formats", "correction_applied", ts=_ts(2)),
+            _event("validation", None, "mode_changed", modes={"formats": "auto"}),
+        ]
+        by_key = self._by_key(events)
+        assert by_key[("validation", "formats")]["status_reason"] == (
+            node_status.EVENT_NODE_REASON["correction_applied"]
+        )
+
+    def test_target_column_changed_sets_reason_on_sufficiency(self):
+        """Непустая цель -- выбор (канон PROGR-15-B): носитель --
+        validation/sufficiency (единственная проверка, чья семантика
+        определена целью); текст примера v1.1 дословно; статус узла не
+        меняется; остальные узлы -- без reason."""
+        events = [
+            _event("validation", None, "target_column_changed",
+                   target_column="Price"),
+        ]
+        by_key = self._by_key(events)
+        node = by_key[("validation", "sufficiency")]
+        assert node["status_reason"] == "Целевой признак: Price"
+        assert node["status"] == "pending"
+        assert node["last_touched_at"] is None
+        assert by_key[("validation", "formats")]["status_reason"] is None
+        assert by_key[("upload", "overview")]["status_reason"] is None
+
+    def test_target_column_changed_empty_is_reset_not_fact(self):
+        """Пустой target_column -- сброс выбора, фактом не является
+        (канон _target_confirmed PROGR-15-B); сброс снимает прежний
+        target-reason, не трогая решения узла."""
+        chosen = [
+            _event("validation", None, "target_column_changed",
+                   target_column="Price", ts=_ts(1)),
+        ]
+        by_key = self._by_key(chosen)
+        assert by_key[("validation", "sufficiency")]["status_reason"] == (
+            "Целевой признак: Price"
+        )
+
+        reset = [
+            _event("validation", None, "target_column_changed",
+                   target_column="Price", ts=_ts(1)),
+            _event("validation", None, "target_column_changed",
+                   target_column="", ts=_ts(2)),
+        ]
+        by_key = self._by_key(reset)
+        assert by_key[("validation", "sufficiency")]["status_reason"] is None
+
+        keeps_decision = [
+            _event("validation", "sufficiency", "correction_applied", ts=_ts(1)),
+            _event("validation", None, "target_column_changed",
+                   target_column="", ts=_ts(2)),
+        ]
+        by_key = self._by_key(keeps_decision)
+        assert by_key[("validation", "sufficiency")]["status_reason"] == (
+            node_status.EVENT_NODE_REASON["correction_applied"]
+        )
+
+    def test_target_column_changed_garbage_payload_skipped(self):
+        """Мусорный payload (не словарь / не строка) -- деградация «мимо
+        фактов», без 500 и без выдуманного reason."""
+        events = [
+            _event("validation", None, "target_column_changed",
+                   target_column=None),
+            _event("validation", None, "target_column_changed",
+                   target_column=17),
+            _event("validation", None, "target_column_changed"),
+        ]
+        by_key = self._by_key(events)
+        assert all(s["status_reason"] is None for s in by_key.values())
+
+    def test_stage_level_reason_on_other_stages_is_ignored(self):
+        """target_column_changed вне стадии-носителя (корпус слоя 2 мог
+        записать чужую stage) -- reason не выдумывается (fail-safe)."""
+        events = [
+            _event("upload", None, "target_column_changed",
+                   target_column="Price"),
+        ]
+        by_key = self._by_key(events)
+        assert all(s["status_reason"] is None for s in by_key.values())
+
+    def test_output_fields_exactly_seven_with_stage_reasons(self):
+        """Расширение не ломает контракт §3: ровно 7 полей, внутренние
+        теги деривации не утекают в выход."""
+        events = [
+            _event("validation", None, "mode_changed", modes={"formats": "disabled"}),
+            _event("validation", None, "target_column_changed",
+                   target_column="Price"),
+        ]
+        states = derive_pipeline_node_states(events)
+        assert all(
+            set(s) == {
+                "stage", "node_id", "status", "status_reason",
+                "mode", "last_touched_at", "summary_count",
+            }
+            for s in states
+        )
+
+    def test_status_engine_and_phase_gates_untouched(self):
+        """«Не status» дословно: статусы == канонический движок;
+        mode_changed/target_column_changed не двигают фазу Наставника
+        (B1) и штамп run-событий (C) -- гейты resolve_event_status не
+        расширены."""
+        from app.core.node_status import (
+            derive_last_active_stage,
+            derive_last_decision_stage,
+        )
+
+        events = [
+            _event("validation", "formats", "correction_applied", ts=_ts(1)),
+            _event("validation", None, "mode_changed", modes={"formats": "disabled"}),
+            _event("validation", None, "target_column_changed",
+                   target_column="Price"),
+        ]
+        statuses = derive_node_statuses(events)
+        states = derive_pipeline_node_states(events)
+        for state in states:
+            expected = statuses.get(
+                f"{state['stage']}/{state['node_id']}", "pending"
+            )
+            assert state["status"] == expected
+        assert derive_last_active_stage(events) == "validation"  # узловой факт
+        # только stage-level -- фаза честно default, штамп не двигается
+        stage_only = [
+            _event("validation", None, "mode_changed", modes={"formats": "disabled"}),
+            _event("validation", None, "target_column_changed",
+                   target_column="Price"),
+        ]
+        assert derive_last_active_stage(stage_only) == "upload"
+        assert derive_last_decision_stage(stage_only) == "upload"
 
 
 # ── Публичный API модуля (реэкспорт для потребителей) ────────────────

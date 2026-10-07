@@ -202,6 +202,124 @@ PAYLOAD_STATUS_EVENT_TYPES: frozenset[str] = frozenset(
 EFFECTIVE_NODE_MODE_DEFAULT = "auto"
 
 
+# ── PROGR-21: reason-источники уровня стадии (v1.1 §5, категория E) ───
+#
+# mode_changed/target_column_changed -- узловые ПО СМЫСЛУ решения
+# аналитика (смена режима проверки конкретной остановки, выбор целевого
+# признака), сеемые с node_id=None (N-2): до PROGR-21 они не
+# подсвечивались на карточке узла -- только плоский лог «Развернуть
+# трассу». Решение v1.1: стать источником reason (НЕ статуса) полного
+# узла §3 -- узел не меняет цвет статуса, но получает актуальный
+# status_reason («Режим: включена вручную», «Целевой признак: Price»).
+#
+# Почему ОТДЕЛЬНЫЙ механизм, а не EVENT_NODE_REASON: карта reason --
+# ровно для узловых типов статуса (ключи == EVENT_NODE_STATUS |
+# PAYLOAD_STATUS_EVENT_TYPES, тест страхует) и описывает СТАТИЧЕСКИМ
+# текстом то же событие, что дало статус; reason и статус всегда про
+# одно событие узла. Здесь событие уровня стадии статуса не даёт
+# (гейты движка незатронуты: статус, фаза Наставника B1, штамп run-
+# событий C, свод стадии), а reason несёт payload: mode_changed --
+# ПОЛНАЯ карта эффективных режимов из тела ОТВЕТА PUT (whitelist
+# payload_keys=("modes",) хука), target_column_changed -- выбранную
+# колонку. Атрибуция узла(ов) -- по payload, fail-safe (трасса --
+# журнал, R3: мусор/фантомы честно пропускаются).
+STAGE_LEVEL_REASON_EVENT_TYPES: frozenset[str] = frozenset(
+    {"mode_changed", "target_column_changed"}
+)
+
+# Человекочитаемые метки АКТИВНОГО override для reason. «auto» --
+# НЕ текст, а снятие: PUT трактует auto как удаление явного override
+# (routers/session.py), живое mode-поле карточки уже показывает
+# «авто» из состояния сессии -- reason не должен ему противоречить.
+NODE_MODE_REASON_LABELS: dict[str, str] = {
+    "enabled": "включена вручную",
+    "disabled": "отключена",
+}
+
+# Носитель reason от target_column_changed (решение реализации, v1.1 §5
+# «выбор целевого признака»): sufficiency -- единственная проверка
+# Валидации, чья семантика определена целью («достаточность по смыслу
+# относится к активному прогнозируемому ряду», routers/session.py).
+# Само событие мульти-странично (авто-POST хука useTargetColumn
+# возможен с любой вкладки, канон B1/C), потому атрибуция «Загрузке»
+# была бы ложью при срабатывании с другой вкладки, а узла «целевой
+# признак» в реестре остановок Загрузки нет; пара (validation,
+# sufficiency) -- честный носитель факта «достаточность проверяется
+# для этой цели». Расхождение с буквой v1.1 зафиксировано в worklog8
+# (PROGR-21) -- на утверждении тимлида.
+TARGET_REASON_STAGE_NODE: tuple[str, str] = ("validation", "sufficiency")
+
+# Внутренние теги происхождения reason (книжка деталей деривации; в
+# выход §3 НЕ попадают -- тест «ровно 7 полей» страхует). mode/target-
+# reason снимаемы: возврат узла в auto и пустой target_column (сброс
+# выбора, канон PROGR-15-B «пустой -- не факт») делают прежний текст
+# ложью; тег позволяет снять ТОЛЬКО свой reason -- reason последнего
+# узлового решения (correction_applied и др.) неснимаем stage-level
+# событием никогда.
+_REASON_TAG_MODE = "mode"
+_REASON_TAG_TARGET = "target"
+
+
+def _empty_detail() -> dict[str, Any]:
+    """Свежая книжка деталей узла (публичные поля §3 + внутренний тег
+    происхождения reason; тег в выход не попадает)."""
+    return {
+        "status_reason": None,
+        "summary_count": None,
+        "last_touched_at": None,
+        "_reason_tag": None,
+    }
+
+
+def _stage_level_reason_updates(
+    stage: str, data: Mapping[str, Any]
+) -> tuple[dict[str, str], set[str]]:
+    """Атрибуция reason-источника уровня стадии по payload (PROGR-21):
+    (reasons -- {node_id: текст}, resets -- узлы, чей СВОЙ reason этого
+    же класса снимается). Мусор/фантомы/не-факты честно пропускаются.
+
+    mode_changed: reason -- узлам с активным override (enabled/disabled);
+    полный карта-ответ PUT с auto-значениями шумом не становится
+    (принцип PROGR-20 P2: шум обесценивает канал); auto в карте --
+    снятие устаревшего mode-reason. target_column_changed: непустая
+    цель -- выбор (текст примера v1.1 дословно), пустая -- сброс выбора,
+    фактом не является (канон _target_confirmed PROGR-15-B)."""
+    event_type = str(data.get("event_type") or "")
+    payload = data.get("payload")
+    if not isinstance(payload, Mapping):
+        return {}, set()
+    if event_type == "mode_changed":
+        modes = payload.get("modes")
+        if not isinstance(modes, Mapping):
+            return {}, set()
+        reasons: dict[str, str] = {}
+        resets: set[str] = set()
+        for node_key, mode_value in modes.items():
+            node_id = str(node_key)
+            if not is_known_node(stage, node_id):
+                continue
+            if not isinstance(mode_value, str):
+                continue
+            if mode_value in NODE_MODE_REASON_LABELS:
+                reasons[node_id] = (
+                    f"Режим: {NODE_MODE_REASON_LABELS[mode_value]}"
+                )
+            elif mode_value == "auto":
+                resets.add(node_id)
+        return reasons, resets
+    if event_type == "target_column_changed":
+        target_stage, target_node = TARGET_REASON_STAGE_NODE
+        if stage != target_stage or target_node not in STAGE_NODES[target_stage]:
+            return {}, set()
+        target = payload.get("target_column")
+        if isinstance(target, str) and target:
+            return {target_node: f"Целевой признак: {target}"}, set()
+        # пустой/мусорный target: пустая строка -- сброс (снимаем свой
+        # reason), прочий мусор -- не факт вовсе
+        return {}, {target_node} if target == "" else set()
+    return {}, set()
+
+
 # ── PROGR-13-B3: нормализация legacy node_id на границе чтения ────────
 #
 # Исторический корпус слоя 2 (Postgres, research_runs.trace_events)
@@ -504,7 +622,12 @@ def derive_pipeline_node_states(
     одним движком, здесь только потребление);
     status_reason -- шаблон EVENT_NODE_REASON последнего события
     решения узла (ключи карты == EVENT_NODE_STATUS: reason и статус
-    всегда об одном событии);
+    всегда об одном событии); PROGR-21 (v1.1 §5, категория E): плюс
+    reason-источники уровня стадии -- mode_changed/target_column_changed
+    (node_id=None) подсвечивают payload-атрибутированные узлы
+    («Режим: включена вручную», «Целевой признак: Price»), НЕ меняя
+    статус/ts/бейдж и гейты фаз; устаревший mode/target-reason
+    снимается возвратом в auto / сбросом цели (тег происхождения);
     summary_count -- число правого бейджа узла (§3): первый по
     приоритету ключ NODE_SUMMARY_COUNT_KEYS из payload последнего
     события узла (тот же whitelist фактов, что у хука -- новых ключей
@@ -532,14 +655,32 @@ def derive_pipeline_node_states(
             continue
         stage = str(data.get("stage") or "")
         node_id = resolve_node_id(data)
+        event_type = str(data.get("event_type") or "")
+        # PROGR-21: reason-источники уровня стадии (node_id=None) -- узел
+        # (узлы) несёт payload; статус/ts/бейдж не трогаются (гейты
+        # движка прежние, N-2). Снятие -- только reason СВОЕГО класса
+        # (тег происхождения), reason решения узла неснимаем.
+        if node_id is None and event_type in STAGE_LEVEL_REASON_EVENT_TYPES:
+            reasons, resets = _stage_level_reason_updates(stage, data)
+            tag = (
+                _REASON_TAG_MODE
+                if event_type == "mode_changed"
+                else _REASON_TAG_TARGET
+            )
+            for reason_node, reason_text in reasons.items():
+                detail = details.setdefault(f"{stage}/{reason_node}", _empty_detail())
+                detail["status_reason"] = reason_text
+                detail["_reason_tag"] = tag
+            for reset_node in resets:
+                detail = details.get(f"{stage}/{reset_node}")
+                if detail is not None and detail["_reason_tag"] == tag:
+                    detail["status_reason"] = None
+                    detail["_reason_tag"] = None
+            continue
         if not node_id or not is_known_node(stage, node_id):
             continue
         key = f"{stage}/{node_id}"
-        detail = details.setdefault(
-            key,
-            {"status_reason": None, "summary_count": None, "last_touched_at": None},
-        )
-        event_type = str(data.get("event_type") or "")
+        detail = details.setdefault(key, _empty_detail())
         # last_touched_at -- любое событие узла с читаемым ts.
         ts = data.get("ts")
         if isinstance(ts, str) and ts:
@@ -552,6 +693,7 @@ def derive_pipeline_node_states(
             or event_type in PAYLOAD_STATUS_EVENT_TYPES
         ):
             detail["status_reason"] = EVENT_NODE_REASON[event_type]
+            detail["_reason_tag"] = None
             payload = data.get("payload")
             if isinstance(payload, Mapping):
                 for count_key in NODE_SUMMARY_COUNT_KEYS:
@@ -564,10 +706,7 @@ def derive_pipeline_node_states(
     for stage in STAGES:
         for node_id in STAGE_NODES[stage]:
             key = f"{stage}/{node_id}"
-            detail = details.get(
-                key,
-                {"status_reason": None, "summary_count": None, "last_touched_at": None},
-            )
+            detail = details.get(key, _empty_detail())
             states.append(
                 {
                     "stage": stage,

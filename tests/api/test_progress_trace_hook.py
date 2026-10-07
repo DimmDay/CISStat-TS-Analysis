@@ -1248,3 +1248,84 @@ def test_progr20_job_start_and_cancel_events_end_to_end():
     assert stored["payload"]["model_id"] == "ets"
     assert stored["payload"]["status"] == "cancelled"
     assert stored["payload"]["reason"] == "Остановлено аналитиком"
+
+
+# ── 11. PROGR-21: reason-источники уровня стадии в живой панели ───────
+
+
+def _node_states(resp_json: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
+    """Карта (stage, node_id) -> полный узел §3 ответа /trace."""
+    return {(n["stage"], n["node_id"]): n for n in resp_json["nodes"]}
+
+
+def test_progr21_mode_changed_reason_visible_in_trace():
+    """e2e PROGR-21: PUT режимов проверки оставляет событие, /trace
+    подсвечивает reason на карточке узла с активным override; цвет
+    статуса (pending) не меняется; авто-узлы -- без reason."""
+    _upload(client, _series_frame().to_csv(index=False))
+    put = client.put(
+        "/v1/session/dataset/validation-check-modes",
+        json={"modes": {"formats": "disabled"}},
+    )
+    assert put.status_code == 200, put.text
+
+    stored = _last_stored()
+    assert stored["event_type"] == "mode_changed"
+    assert stored["stage"] == "validation"
+    assert stored["node_id"] is None
+    # payload -- форма ответа: полная карта эффективных режимов
+    assert stored["payload"]["modes"]["formats"] == "disabled"
+
+    trace = client.get("/v1/progress/trace")
+    assert trace.status_code == 200, trace.text
+    nodes = _node_states(trace.json())
+    formats = nodes[("validation", "formats")]
+    assert formats["status_reason"] == "Режим: отключена"
+    assert formats["status"] == "pending"
+    # авто-узлы той же карты -- без reason
+    assert nodes[("validation", "data_types")]["status_reason"] is None
+    assert nodes[("validation", "ranges")]["status_reason"] is None
+
+
+def test_progr21_target_column_changed_reason_visible_in_trace():
+    """e2e PROGR-21: выбор цели оставляет событие, /trace подсвечивает
+    «Целевой признак: …» на карточке sufficiency; статус не меняется."""
+    _upload(client, _series_frame().to_csv(index=False))
+    chosen = client.post("/v1/session/target-column", json={"column": "Price"})
+    assert chosen.status_code == 200, chosen.text
+
+    stored = _last_stored()
+    assert stored["event_type"] == "target_column_changed"
+    assert stored["stage"] == "validation"
+    assert stored["node_id"] is None
+    assert stored["payload"]["target_column"] == "Price"
+
+    trace = client.get("/v1/progress/trace")
+    assert trace.status_code == 200, trace.text
+    nodes = _node_states(trace.json())
+    sufficiency = nodes[("validation", "sufficiency")]
+    assert sufficiency["status_reason"] == "Целевой признак: Price"
+    assert sufficiency["status"] == "pending"
+    assert nodes[("validation", "formats")]["status_reason"] is None
+
+
+def test_progr21_auto_return_clears_stale_reason_in_trace():
+    """e2e PROGR-21: возврат узла в auto снимает устаревший «Режим: …»
+    с карточки (панель не противоречит живому состоянию сессии)."""
+    _upload(client, _series_frame().to_csv(index=False))
+    first = client.put(
+        "/v1/session/dataset/validation-check-modes",
+        json={"modes": {"formats": "disabled"}},
+    )
+    assert first.status_code == 200, first.text
+    back = client.put(
+        "/v1/session/dataset/validation-check-modes",
+        json={"modes": {"formats": "auto"}},
+    )
+    assert back.status_code == 200, back.text
+
+    trace = client.get("/v1/progress/trace")
+    assert trace.status_code == 200, trace.text
+    nodes = _node_states(trace.json())
+    assert nodes[("validation", "formats")]["status_reason"] is None
+    assert nodes[("validation", "formats")]["status"] == "pending"
