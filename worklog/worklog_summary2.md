@@ -282,7 +282,7 @@ TsAnalysisForecasting.tsx — 3-колоночный лейаут:
 
 **Данные**: ТОЛЬКО реальные ряды платформы (10 рядов): golden value + 2 ковариаты, демо FC-MON-2, 5 регионов энергии, retail, finance close.
 
-**Критерий**: мягкий гейт живёт в [soft, 100), поэтому оценивается СРЕДНЯЯ относительная деградация по оставшейся части окна: n*(gamma) = min n0: mean_{n' in [n0,96]} D(n') <= gamma И max_{s,n'} d_s(n') <= 1.5.
+**Критерий**: мягкий гейт живёт в (soft, 100), поэтому оценивается СРЕДНЯЯ относительная деградация по оставшейся части окна: n*(gamma) = min n0: mean_{n' in [n0,96]} D(n') <= gamma И max_{s,n'} d_s(n') <= 1.5.
 
 **Результат**: отгружено 60/60 (округление ВНИЗ до кратного 10). Смещение стартовых значений: tree_ml 40 → 60 (+50%), tbats 50 → 60 (+20%).
 
@@ -611,3 +611,291 @@ TsAnalysisForecasting.tsx — 3-колоночный лейаут:
 ---
 
 *Примечание: сама эта версия `worklog_summary2.md` — результат отдельной документационной задачи (саммаризация `worklog6.md`/`worklog7.md`, Tasks EDA-2/FORECAST-1/IA-1/NAVBG/FC-MON/NAVSTG/TASK-145/DKT-0..4/TSKIA/TSKV2-1/PREPR-3..4/EDU-1..EDU-API-1/NAVDET-*, 2026-09-14…09-22, без потери истории и смысла), кода не затрагивает.*
+
+# CISStat TS Analysis — Саммари выполненных работ (продолжение)
+
+*Составлено на основе `worklog6.md` (Tasks EDA-2/FORECAST-1/IA-1/NAVBG/FC-MON/NAVSTG, 2026-09-14…09-17), `worklog7.md` (Tasks TASK-145/DKT-0..4/TSKIA/TSKV2-1/PREPR-3..4/EDU-1..EDU-API-1/NAVDET-*, 2026-09-17…09-22) и `worklog8.md` (Tasks PROGR-1..6/BRND-1..2/OUTL-1/DEPLOY-1/RCH-1..2, 2026-09-23…09-26). Обновлено 2026-09-26. Продолжение `worklog_summary.md` (Tasks 1–143 + FORECAST-1/MODEL-1/IA-1).*
+
+---
+
+## 1. Общая картина
+
+Продолжение развития платформы CISStat TS Analysis. Ключевые достижения этого среза:
+
+1. **Микросервис «Прогресс»** — полная реализация spec_progress.md: канонический TraceEvent (PROGR-1), граф пайплайна с PipelineNodeState и свёрткой статусов (PROGR-2), внутрисессионный слой трассы с ASGI-middleware хуком записи (PROGR-3), UI-панель «Прогресс» с кнопкой-триггером (PROGR-4), долговременный слой research_runs/trace_events на Postgres с чекпоинтами/паузой/restore (PROGR-5), подключение кнопок «Пауза»/«Сохранить точку» + интеграционный прогон DDL (PROGR-5.1), Наставник v1 с правило-движком без LLM (PROGR-6). Все задачи прошли независимую сертификацию с вердиктом PASSED WITH REMARKS.
+
+2. **Бренд standalone** — выравнивание высоты шрифта бренда с высотой логотипа (BRND-1: text-[28px] leading-none tracking-tight), изменение начертания на normal + ссылка логотипа и бренда на главную (BRND-2).
+
+3. **Выбросы: верифицируемость кэпирования** — OUTL-1: границы метода на линейном графике (ReferenceLine с пунктиром), ревизионный refresh графиков Обзора (revision= в query), защитный инвариант согласованности (refreshKey = outliersRefreshKey + datasetVersion).
+
+4. **Hotfix деплоя render.com** — DEPLOY-1: каталог shared/ не попадал в Docker-образ apps/api (data-файлы невидимы AST-разбору), добавлен COPY shared/ + build-гвард pipeline_graph.
+
+5. **Графики Обзоров: ревизионный refresh** — PLAN-REVIEW-CHARTS (план устранения класса «графики без явной подписки на refresh»), RCH-1 (волна 1: остановка «Пропуски» — 3 графика + статический гвард подписки), RCH-2 (волна 2: слой C — кэш раскрытия, подписанный на мутацию датасета).
+
+6. **Консультация по СУБД** — обоснование выбора PostgreSQL, физическое размещение (принцип «СУБД следует за API»), порядок миграции (сразу на корпоративный сервер или временный облачный Postgres).
+
+Работа шла параллельными треками:
+
+1. **Прогресс** — микросервис «Прогресс» (PROGR-1..6 + PROGR-5.1) с независимыми сертификациями.
+2. **Бренд** — выравнивание кегля и начертания (BRND-1..2).
+3. **Выбросы** — верифицируемость кэпирования (OUTL-1).
+4. **Деплой** — hotfix Docker-образа (DEPLOY-1).
+5. **Графики** — ревизионный refresh (PLAN-REVIEW-CHARTS, RCH-1..2).
+
+---
+
+## 2. Микросервис «Прогресс» (Tasks PROGR-1..6, PROGR-5.1)
+
+Полная реализация spec_progress.md v3 + spec_progress_review_and_v4_addendum.md. Декомпозиция плана: PROGR-1 → PROGR-2 → PROGR-3 → PROGR-4 → PROGR-5 → PROGR-6 → PROGR-7 → PROGR-8.
+
+### Task PROGR-1 — Сведение канонического TraceEvent (§4.1)
+
+**Постановка**: свести apps/api/trace_events.py с каноническим TraceEvent spec_progress.md §4.1.
+
+**Ключевые решения**:
+- Канонические 8 полей с дефолтами (event_type/payload порядок сохранён)
+- Property timestamp→ts (legacy-алиас для обратной совместимости с pydantic ForecastTraceEventSchema)
+- KNOWN_STAGES — локальная константа (равенство session_store.STAGES — import-инвариант теста PROGR-2)
+- RUN_LEVEL_EVENT_TYPES — отдельная строка «любая стадия» (не растворены в стадиях)
+- make_trace_event(*, stage="forecasting", node_id, run_id, actor, **payload) с fail-closed гейтом на пару (stage, event_type)
+- normalize_trace_event_dict — нормализация legacy 3-польных stored-событий (idempotent pass-through канона, без мутации входа)
+- to_dict() отдаёт 8 канонических ключей + legacy-алиас timestamp; pydantic фильтрует лишние ключи, контракт ответа не меняется
+
+**TDD**: RED (24 теста) → GREEN (24/24). Полный tests/api: 739 passed / 3 failed (средовой baseline).
+
+**Сертификация PROGR-1-CERT**: PASSED WITH REMARKS. 37/37 оракулов, 20/21 мутаций KILLED (+1 ожидаемый эквивалентный выживший). Находки R1–R4 не блокируют, адресуются в PROGR-3.
+
+### Task PROGR-2 — Граф пайплайна + PipelineNodeState + свёртка §12 п.10 + EDA JSON §12 п.2
+
+**Постановка**: единый граф узлов 6 стадий, модель узла PipelineNodeState, свёртка статусов в 3 визуальных состояния, вынос EDA CHECKS из TsAnalysisEDA.tsx в общий JSON.
+
+**Ключевые решения**:
+- app/core/pipeline_graph.py: STAGES/STAGE_NODES/TOTAL_NODE_COUNT/EDA_CHECK_DEFS/EDA_STAGE_IDS
+- Направление зависимостей: pipeline_graph → реестры Python-модулей (идентичность объектов is, не копия)
+- Инвариант STAGES == session_store.STAGES == trace_events.KNOWN_STAGES — тестом, не взаимным импортом
+- EDA-id из общего JSON shared/pipeline_nodes/eda_checks.json (§12 п.2), чтение fail-closed на импорте
+- Классификация стадий: проверочные (CheckStatus) upload/validation/preprocessing/eda; процессные (StageStatus) modeling/forecasting
+- Свёртка §12 п.10: warning/error → attention; все done → passed; done+skipped → passed; started → attention; пусто/pending/skipped → not_started
+- Извлечение CHECKS из .tsx — дословно (скрипт миграции): ни одна видимая строка фронтенда не изменилась
+
+**TDD**: RED (ModuleNotFoundError) → GREEN (144 теста). Полный tests/api: 883 passed / 3 failed.
+
+**Сертификация PROGR-2-CERT**: PASSED WITH REMARKS. 27/27 кросс-верификация, 30/30 оракулов, 12/12 мутаций KILLED. Находки F-1/F-2/R-2/R-3 — интеграционные/книгопроводные, кода не касаются.
+
+### Task PROGR-3 — Внутрисессионный слой трассы (§5 слой 1) + хук записи событий (§4.2)
+
+**Постановка**: слой 1 персистентности (AnalysisSession.pipeline_trace + run_id) + хук записи событий (таблица маршрутов путь→(stage, node_id, event_type), события на успешных ответах, profile_viewed троттлится).
+
+**Ключевые решения**:
+- Чистый ASGI-middleware (не FastAPI Depends): видит финальный response.status_code И тело ответа
+- TRACE_ROUTES (40 записей): роутер-файлы не правятся вовсе (единая точка интеграции)
+- Таблица fail-closed на импорте (_validate_table): невалидная пара, неизвестный узел, дубликат, forecasting, throttled не-profile_viewed → ImportError
+- Прогнозирование исключено: 4 call-site make_trace_event уже пишут в ForecastRun.trace (унификация — PROGR-5)
+- Разбиение preview/apply — по applied В ОТВЕТЕ (все 20 correction-эндпоинтов возвращают applied: bool)
+- payload — белый список ключей ответа (тяжёлые columns/profile отсечены)
+- Throttle — per (event_type, node_id), окно из env (дефолт 300с), битое → 300, ≤0 → выключен
+- run_id — "RUN-XXXXXXXX" (uuid4.hex[:8].upper()), ensure_run_id() идемпотентен, set_dataset() сбрасывает run_id и pipeline_trace
+- Cap буфера MAX_PIPELINE_TRACE_EVENTS=1000, вытеснение старейших
+- SESSION_SCHEMA_VERSION 1→2 (+run_id, +pipeline_trace), чтение полностью совместимо
+- R1: глубокая копия payload в append_trace_event
+- R2: legacy-маркер приоритетнее явной stage — поведение зафиксировано тестом
+- R3: event_type на чтении не валидируется (аудит)
+- R4: живые дефолты TraceEvent покрыты тестом прямого конструирования
+
+**TDD**: RED (ImportError) → GREEN (40 тестов). Полный tests/api: 923 passed / 3 failed.
+
+**Сертификация PROGR-3-CERT**: PASSED WITH REMARKS. 21/21 кросс-верификация, 12/12 оракулов, 11/12 мутаций KILLED (+1 охарактеризованный survivor). Находки F-1/R-1–R-4 не блокируют.
+
+### Task PROGR-4 — UI-панель «Прогресс» + кнопка-триггер (аддендум §4.1–4.2)
+
+**Постановка**: правая выдвижная панель «Прогресс» (§6.1–6.2) + pill-кнопка-триггер по контракту аддендума §4.1–4.2; атомарное удаление EventsLogDrawer/AppShellContext.log (§6.1).
+
+**Ключевые решения**:
+- Чтение трассы слоя 1: GET /v1/progress/trace (namespace /v1/progress/* — канон §5): run_id, started_at (ts первого события), events (канон §4.1 через read_pipeline_trace)
+- Статусы узлов из фактов трассы: терминальные события → done; correction_previewed → warning; profile_viewed → running; последнее событие узла выигрывает
+- Прогнозирование — из ForecastRun.trace (слой 1 forecasting-событий не содержит, панель досчитывает из GET /v1/session/modeling/forecast)
+- Свёртка §12 п.10 — точный TS-порт fold_status_values (pipeline_graph.py)
+- Реестр узлов фронтенда (46 узлов): 5 стадий текстовой копией, EDA — из общего JSON §12 п.2
+- Кнопка-триггер: BADGE_BASE-геометрия, неактивная bg-white+border border-brand+text-brand; активная bg-brand+text-white+font-semibold; aria-expanded/aria-controls="progress-drawer"
+- Атомарное удаление лога (§6.1): EventsLogDrawer.tsx удалён; из AppShellContext удалены log/addLogEntry/clearLog; добавлен targetColumn из GET /current
+- Контент панели монтируется с первого открытия (hasOpened)
+
+**TDD**: RED (8 бэкенд + 29 фронтовых) → GREEN (9/9 бэкенд). Jest: 140 сюит / 1637 тестов. tests/api: 932 passed / 3 failed.
+
+**Сертификация PROGR-4-CERT**: PASSED WITH REMARKS. 82/84 кросс-верификация, 52/52 оракулов, 17/17 мутаций KILLED. Находка F-1 (EventsLogDrawer.tsx НЕ удалён) — целостность артефакта, закрывается однострочным git rm.
+
+### Task PROGR-5 — Долговременный слой: research_runs/trace_events (Postgres §12 п.1) + чекпоинты/пауза/restore
+
+**Постановка**: слой 2 персистентности (research_runs/trace_events на Postgres) + чекпоинты (§5.1) + пауза (§5.2) + restore (§5.3).
+
+**Ключевые решения**:
+- apps/api/research_runs.py: ResearchRun (run_id PK, session_id, dataset_fingerprint, status active/paused/completed/abandoned) + ResearchCheckpoint (ссылка на событие event_id + label)
+- MemoryResearchRunStore (default dev/tests) + PostgresResearchRunStore (ленивый коннект, идемпотентный DDL)
+- Фабрика get_research_run_store по env (CISSTAT_RUNS_BACKEND=memory/postgres)
+- Зеркало §5: record_run_event(session, event) — best-effort; при первом событии создаётся ResearchRun; предыдущие активные запуски сессии → abandoned
+- Унификация Прогнозирования: _append_event forecasting_session.py дополнена best-effort вызовом (ForecastRun.trace остаётся слоем 1, слой 2 получает его события)
+- REST /v1/progress/runs/{run_id}[...]: GET /runs/{run_id}, POST /pause, POST /resume, POST /checkpoints
+- Restore (§5.3): GET /runs/{run_id}/restore — 404/409/новый cookie+тот же run_id/засев трассы слоя 1 из слоя 2 (хвост ≤ cap 1000)/target_column/last_active_stage/session.stages не пишется/run перелинковывается на новую сессию
+- Файловый слой DatasetFileStore: data/uploads/{sha256}{ext} + {sha256}.meta.json; демо — builtin_demo без копии; снимки чекпоинтов CSV последних 5 на запуск
+- dataset_fingerprint = SHA-256 байт файла (серия_fingerprint определён на ряде с датой, которого при загрузке нет)
+- 503-контур: сбой долговременного слоя — честный 503 (декоратор _durable_ops)
+- N-2/N-4 сохранены: stage-level события не превращаются в узловые факты; ответы не содержат семантики управления панелью
+
+**TDD**: RED (59 тестов) → GREEN (60/60). tests/api: 996 passed / 3 failed. Jest: 140 сюит / 1645 тестов.
+
+**Сертификация PROGR-5-CERT**: PASSED WITH REMARKS. 10/10 воспроизведений, 40/40 оракулов, 20/20 мутаций KILLED. Находки CERT-N-1–N-4/R-1 не блокируют.
+
+### Task PROGR-5.1 — Подключение кнопок панели «Пауза»/«Сохранить точку» + интеграционный прогон DDL
+
+**Постановка**: подключить кнопки панели «Пауза»/«Сохранить точку» к бэкенд-контракту PROGR-5; выполнить интеграционный прогон DDL на on-prem Postgres.
+
+**Ключевые решения**:
+- ProgressCheckpointBar.tsx: бейдж статуса запуска, кнопка «Пауза»/«Продолжить», кнопка «Сохранить точку» (inline-форма с комментарием)
+- Якорь чекпоинта — «текущий момент» исследования: lastCheckpointableEvent(events) — последнее событие с непустым event_id
+- Гейт действий по статусу: runAcceptsActions — только active/paused; completed/abandoned — disabled
+- Данные полосы — из слоя 2, обновление через refresh-цикл
+- N-2/N-4 сохранены
+- Интеграционный прогон DDL (6 контуров): применение DDL-файла, контроль объектов, идемпотентность, эквивалентность источников, поведенческий контракт, DDL-гарантии сервера
+- Постоянный регресс on-prem (tests/api/test_research_runs_postgres.py, 12 тестов): затвор CISSTAT_TEST_PG_DSN
+
+**TDD**: RED (30 фронтовых) → GREEN (69/69). Jest: 142 сюиты / 1690 тестов. tests/api: 1012 passed / 3 failed. Интеграционный прогон DDL: 6/6 PASS.
+
+### Task PROGR-6 — Наставник v1: §7.1 «Следующий шаг» + §7.2 sanity-правила
+
+**Постановка**: Наставник v1 — правило-движок без LLM: §7.1 «Следующий шаг» (on_demand, ОДНА рекомендация по priority), §7.2 sanity-правила (on_correction_result, ВЕСЬ список), третье триггер-семейство on_demand_with_history («мечется» по истории trace_events). Пороги — rules/mentor.yaml (§12 п.7).
+
+**Ключевые решения**:
+- app/core/mentor_rules.py: SANITY_RULES (no_effect, over_aggressive, excessive_data_loss), HISTORY_RULES (thrashing_detected: окно 10 мин, ≥3 разных стратегий preview без correction_applied), NEXT_STEP_RULES (8 on_demand-правил)
+- evaluate_next_step — первое сработавшее по (priority, rule_id)
+- evaluate_sanity — весь список в порядке реестра
+- derive_node_statuses — зеркало фронтенд-логики PROGR-4
+- rules/mentor.yaml: sanity.over_aggressive.std_collapse_factor=0.2, sanity.excessive_data_loss.max_removed_share=0.3, history.thrashing.window_minutes=10/distinct_strategies=3
+- Находка TDD: float-граница 1−70/100=0.3000…04 рвала правило «ровно 30% — тишина»; доля считается как (before−after)/before
+- REST: GET /v1/progress/runs/{run_id}/mentor/next-step, POST /v1/progress/mentor/sanity-check
+- Frontend: lib/mentor.ts (buildCorrectionOutcomeSummary, worstStdStats, fetchSanityWarnings/fetchMentorNextStep — best-effort), MentorInlineWarning.tsx (amber-баннер role="alert"), MentorPanel.tsx (секция внутри «Прогресса»)
+- Подключение кнопки: ProgressCheckpointBar — «Наставник →» справа
+- Мастера (§11 Этап 2.1 — Пропуски/Выбросы/Регулярность): запрос после preview ДО apply; сброс предупреждений на invalidatePreview/apply
+
+**TDD**: RED → GREEN (46 тестов бэкенд). tests/api: 1046 passed / 3 failed. Jest: 145 сьютов / 1726 тестов.
+
+**Сертификация PROGR-6-CERT**: PASSED WITH REMARKS. 6/6 оракулов бэкенд + 9/9 фронтенд, 25/26 мутаций бэкенд + 4/5 фронтенд KILLED. Находки N-1–N-4 не блокируют.
+
+---
+
+## 3. Бренд standalone (Tasks BRND-1, BRND-2)
+
+### Task BRND-1 — Кегль бренда = высоте логотипа
+
+**Постановка**: сделать высоту шрифта бренда равной высоте логотипа (28px). Увеличение пропорциональное, без смены шрифта и цвета; уменьшить межбуквенное расстояние.
+
+**Решение**: text-[15px] → text-[28px] leading-none tracking-tight (-0.025em). font-bold и text-brand сохранены.
+
+**TDD**: RED (4 failed / 5 passed) → GREEN (9/9). Jest: 135 сюит / 1563 теста.
+
+### Task BRND-2 — Начертание бренда normal + ссылка на главную
+
+**Постановка**: заменить шрифт на normal, починить тест, поставить ссылку на главную при клике на логотип И бренд.
+
+**Решение**: font-semibold → font-normal; логотип и бренд обёрнуты в ОДНУ ссылку <a href="https://ts-standalone.vercel.app/"> с aria-label «CISStat TS Analysis — на главную».
+
+**TDD**: RED (4 failed / 7 passed) → GREEN (11/11). Jest: 135 сюит / 1565 тестов.
+
+---
+
+## 4. Остановка «Выбросы»: верифицируемость кэпирования (Task OUTL-1)
+
+**Постановка**: воспроизвести и прокомментировать дефект: после кэпирования линейный график «не изменился», счётчик «выбросов — 0».
+
+**Диагноз**: корень симптома — кэпирование прижимает выбросы К границе IQR, а не удаляет их; шипы остаются визуально доминирующими. Дефект — информативность визуализации: «Линейный» — единственное из четырёх представлений Обзора, не показывающее границы метода.
+
+**Решение**:
+1. Backend: GET /dataset/outlier-line принимает method и отдаёт bounds = method_bounds(series, method, param) — ЕДИНСТВЕННЫЙ источник формулы
+2. Frontend: OutlierLineChart рисует границы горизонтальными ReferenceLine + подсказка с числами и семантикой «после кэпирования бывшие выбросы лежат на границе»
+3. Защитный инвариант согласованности: все 4 графика Обзора подписаны на ТЕМ же сигнал обновления (refreshKey = outliersRefreshKey + datasetVersion); ревизия включена в query как cache-buster (revision)
+
+**TDD**: RED (KeyError 'bounds' + TS2322) → GREEN (7/7 бэкенд, 22/22 фронтенд). Полный jest: 136 сюит / 1577 тестов.
+
+---
+
+## 5. Hotfix деплоя render.com (Task DEPLOY-1)
+
+**Постановка**: передеплой render.com падает с ImportError «Общий реестр EDA не найден: /app/shared/pipeline_nodes/eda_checks.json».
+
+**Root cause**: apps/api/Dockerfile копирует в образ ТОЛЬКО каталоги, найденные статическим AST-разбором импортов; shared/ — файл-ДАННЫЕ, AST-разбор его не видит. Зависимость появилась в PROGR-2.
+
+**Решение**:
+- Фикс apps/api/Dockerfile: `COPY shared/ ./shared/` с комментарием о классе бага
+- Build-гвард: `RUN python -c "from app.core.pipeline_graph import EDA_STAGE_IDS; print(...)"` ПОСЛЕ слоя `RUN touch apps/__init__.py`
+- Философия Dockerfile: падать на СБОРКЕ с явной ошибкой, а не мёртвым контейнером в проде
+
+**TDD**: RED (тесты docker-layout) → GREEN (4/4). Смежные сюиты: 257 passed.
+
+---
+
+## 6. Графики Обзоров: ревизионный refresh (Tasks PLAN-REVIEW-CHARTS, RCH-1, RCH-2)
+
+### Task PLAN-REVIEW-CHARTS — План устранения класса «графики без явной подписки на refresh»
+
+**Постановка**: составить план устранения недоработки во всех Обзорах и их остановках.
+
+**Инвентаризация**: полный обход семейства Обзоров с классификацией по трём механизмам доставки данных графика:
+- (A) profile-prop — подписка обеспечена deps контейнера
+- (B) self-fetch чарта — паттерн OUTL-1 (refreshKey проп + revision= в query)
+- (C) кэш раскрытия useChartDetailData — fingerprint обязан включать мутацию датасета
+
+**Решение плана**:
+- Волна 1 (P0): «Пропуски» — MissingMatrixChart/MissingCorrelationChart/MissingBoxplotChart принимают refreshKey, URL получают revision=
+- Волна 2 (P1): слой C — invalidateChartDetailCache() + единый handleApplied контейнера «Предобработки», fingerprint=String(refreshKey) для Decomposition/Spectral
+- Волна 3 (P2, опционально): унификация _r=→revision=, cache-buster для EdaDescriptive
+- Статический гвард: ReviewChartsRefreshCoverage.test.ts — списки REVISION_SUBSCRIBED_CHART_SOURCES / PROFILE_PROP_OVERVIEWS / SELF_FETCH_GUARDED_OVERVIEWS
+
+### Task RCH-1 — Волна 1: остановка «Пропуски»
+
+**Постановка**: устранить класс OUTL-1 на остановке «Пропуски» + статический гвард подписки.
+
+**Решение**:
+- PreprocessingMissingVisualizations.tsx: три сигнатуры принимают refreshKey, ревизия в query
+- PreprocessingMissingOverview.tsx: refreshKey прокинут во все три чарта
+- Тест-паттерн OUTL-1 перенесён дословно: it.each по трём чартам + интеграционный инвариант
+- Статический гвард: ReviewChartsRefreshCoverage.test.ts (34 теста)
+
+**TDD**: RED (триада) → GREEN (51 тест). Полный jest: 146 сюит / 1764 теста.
+
+### Task RCH-2 — Волна 2: слой C — кэш раскрытия
+
+**Постановка**: кэш раскрытия useChartDetailData, подписанный на мутацию датасета (invalidateChartDetailCache + fingerprint Декомпозиции/Спектрального).
+
+*(Детали в worklog8.md)*
+
+---
+
+## 7. Консультация по СУБД слоя знаний (2026-09-23)
+
+**Вопросы тимлида**: (1) верно ли, что следующий логичный шаг — проектирование реляционной СУБД; (2) где она будет расположена физически; (3) разворачивать сразу на корпоративном сервере или позже можно перенести.
+
+**Ответы**:
+1. Да, следующий шаг — проектирование реляционной схемы данных и внедрение PostgreSQL (рекомендация spec_progress §12 п.1). Состав сущностей: knowledge_articles, glossary_terms, help-записи, learning_stack, research_runs, trace_events, телеметрия Q/ΔQ, админ-поля.
+2. Физически — принцип «СУБД следует за API»: БД живёт в одной зоне с API. Целевое состояние — корпоративный сервер: Postgres на той же Linux-VM, что и API.
+3. Порядок: если миграция близка — поднимать Postgres сразу на корпоративном сервере; если сроки неопределённы — временный управляемый облачный Postgres рядом с Render. Перенос дёшев: pg_dump/pg_restore или логическая репликация. Запреты: SQLite на диске Render, схема «руками» без миграций, проброс 5432 в интернет.
+
+---
+
+## 8. Сквозные инженерные практики (продолжение)
+
+Закреплено в Tasks PROGR-1..6/BRND-1..2/OUTL-1/DEPLOY-1/RCH-1..2 (worklog8.md):
+
+- **Микросервис «Прогресс» как сквозной трек** — 6 задач + 1 промежуточная (PROGR-5.1) + 6 независимых сертификаций; каждая задача — полный TDD-цикл, каждая сертификация — оракулы на своих данных + мутационный прогон.
+- **Единая точка интеграции** — ASGI-middleware (PROGR-3): роутер-файлы не правятся вовсе, таблица TRACE_ROUTES fail-closed на импорте.
+- **Зеркало «в дополнение, не вместо»** — слой 2 (PROGR-5) дополняет слой 1, не заменяет; run_id переживает cookie (ключевая приёмка плана).
+- **Fail-closed на всех уровнях** — импорт (pipeline_graph, trace_hook, mentor_rules), фабрика (get_research_run_store), REST (422 на неизвестную пару), Dockerfile (build-гвард).
+- **N-2/N-4 как сквозные инварианты** — stage-level события не превращаются в узловые факты; ответы не содержат семантики управления панелью; сохранены от PROGR-4 через PROGR-5/PROGR-6.
+- **Бэкенд-проба как верификация** — OUTL-1/RCH-1: scripts/probe_*.py подтверждают, что источник симптома — только фронтенд, бэкенд корректен.
+- **Статический гвард как единственный источник правды** — ReviewChartsRefreshCoverage.test.ts (RCH-1): списки классификации Обзоров, правило «новый Обзор классифицируется ровно в одном списке».
+- **Бренд как единая связка** — BRND-1/BRND-2: логотип + бренд в одном <Link>, кегль = высоте логотипа, начертание normal, ссылка на главную.
+- **Hotfix деплоя с регресс-инвариантом** — DEPLOY-1: tests/api/test_docker_image_layout.py (4 теста) защищает от повторения класса бага «data-файлы невидимы AST-разбору».
+- **Интеграционный прогон DDL на on-prem** — PROGR-5.1: scripts/audit_scripts/progr5fe_ddl_integration.py (6 контуров) + tests/api/test_research_runs_postgres.py (12 тестов, затвор CISSTAT_TEST_PG_DSN).
+- **Независимая сертификация — не формальность** — все 6 задач PROGR-* прошли сертификацию с вердиктом PASSED WITH REMARKS; находки R-*/N-* не блокируют, но зафиксированы для будущих задач.
+
+---
+
+*Примечание: сама эта версия `worklog_summary2.md` — результат отдельной документационной задачи (саммаризация `worklog6.md`/`worklog7.md`/`worklog8.md`, Tasks EDA-2/FORECAST-1/IA-1/NAVBG/FC-MON/NAVSTG/TASK-145/DKT-0..4/TSKIA/TSKV2-1/PREPR-3..4/EDU-1..EDU-API-1/NAVDET-*/PROGR-1..6/BRND-1..2/OUTL-1/DEPLOY-1/RCH-1..2, 2026-09-14…09-26, без потери истории и смысла), кода не затрагивает.*
