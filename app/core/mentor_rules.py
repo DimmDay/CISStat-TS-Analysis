@@ -18,6 +18,13 @@ Task PROGR-6). Наставник решает ДВЕ разных по прир
     вызывается при открытии Наставника (не на каждый preview -- дорого
     гонять историю на каждый клик), предупреждение показывается в панели,
     а не инлайн в Мастере.
+  * Четвёртый вид триггера on_demand_with_session (PROGR-24-ORIGIN-C,
+    spec_status_original_series.md, задача C) -- правило derived_spikes:
+    требует фактов СЕССИИ (производная область датафрейма), а не трассы;
+    факты приносит роутер (хранилища сюда НЕ импортируются), совет
+    severity=info сливается в history_warnings ответа next-step -- в
+    трассу НЕ попадает (разведение §3.2 spec_progress.md: советы -- не
+    факты).
 
 Принципы, унаследованные от спецификации и precedent-задач:
 
@@ -133,9 +140,16 @@ def _threshold(section: str, rule: str, key: str) -> float:
 TRIGGER_ON_DEMAND = "on_demand"
 TRIGGER_ON_CORRECTION_RESULT = "on_correction_result"
 TRIGGER_ON_DEMAND_WITH_HISTORY = "on_demand_with_history"
+# PROGR-24-ORIGIN-C: факты СЕССИИ (производная область), приносит роутер.
+TRIGGER_ON_DEMAND_WITH_SESSION = "on_demand_with_session"
 
 KNOWN_TRIGGERS: frozenset[str] = frozenset(
-    {TRIGGER_ON_DEMAND, TRIGGER_ON_CORRECTION_RESULT, TRIGGER_ON_DEMAND_WITH_HISTORY}
+    {
+        TRIGGER_ON_DEMAND,
+        TRIGGER_ON_CORRECTION_RESULT,
+        TRIGGER_ON_DEMAND_WITH_HISTORY,
+        TRIGGER_ON_DEMAND_WITH_SESSION,
+    }
 )
 
 SEVERITY_INFO = "info"
@@ -726,6 +740,117 @@ def evaluate_history_warnings(
     return warnings
 
 
+# ── PROGR-24-ORIGIN-C: правило derived_spikes (on_demand_with_session) ──
+#
+# spec_status_original_series.md, задача C: всплески на производных
+# колонках (разности стационарности, сглаживание, флаги коррекций) -- не
+# выбросы исходного ряда. Гейты качества применяются ОДИН РАЗ к
+# каноническому ряду (задача A, apps/api/column_origin.py), карточка
+# «Выбросов» производные всплески не красит; аналитику, который их
+# увидел (группировка мастера задачи B, derived_summary), нужен СОВЕТ по
+# терминологии -- тот же род, что «мечется»: advice, а не факт, поэтому
+# в трассу он НЕ попадает (разведение §3.2 spec_progress.md дословно).
+#
+# Четвёртый вид триггера on_demand_with_session: правило требует фактов
+# СЕССИИ (производная область датафрейма), а не одного preview-ответа и
+# не истории трассы. Принцип направления зависимостей прежний: правила --
+# чистые функции над переданными данными, хранилища сюда НЕ
+# импортируются -- факты приносит роутер. Носитель факта -- та же
+# каноническая функция профиля производных, что питает derived_summary
+# задачи A (пересказ уже посчитанного, шкала карточки iqr-1.5); при
+# вызове Наставника профиль пересчитывается над производной областью
+# той же функцией -- числа совпадают с плашкой мастера при неизменных
+# данных (детерминированная функция того же кадра).
+#
+# «> 0» в условии -- presence-проверка (канон rule_no_effect:
+# «affected > 0 and changed == 0» -- логическое условие, не калибруемая
+# константа), порог в rules/mentor.yaml не вводится.
+#
+# Канал показа: результат evaluate_session_advice роутер сливает в
+# history_warnings ответа next-step (панель Наставника -- «по запросу»);
+# контракт ответа не меняется, фронтенд рендерит сообщение как есть. В
+# журнал наблюдений совет НЕ пишется -- консистентно с
+# history-предупреждениями (частота открытий панели не телеметрия
+# решений).
+
+_DERIVED_SPIKES_TEXT = (
+    "На производных колонках обнаружено всплесков: {total_outliers}. "
+    "Это не выбросы исходного ряда: всплеск производной колонки "
+    "(разность, сглаживание, флаг) отвечает на другой статистический "
+    "вопрос -- «аномально ли приращение?» -- и не обрабатывается "
+    "остановкой «Выбросы». Два методологически чистых пути: (а) если "
+    "всплеск неожидан -- вернитесь к диагностике ИСХОДНОГО ряда другим "
+    "методом: обнаружение на остатке STL-декомпозиции доступно в "
+    "мастере остановки «Выбросы»; (б) если это структурный сдвиг -- "
+    "охарактеризуйте его, не удаляя: исследование EDA «Структурные "
+    "сдвиги» (CUSUM/Chow/PELT) и, при необходимости, интервенционная "
+    "dummy-переменная (подход Box–Tiao) в модель как экзогенный "
+    "регрессор."
+)
+
+
+def rule_derived_spikes(session_facts: Mapping[str, Any] | None) -> MentorRuleFact | None:
+    """Всплески на производных колонках -- совет о терминологии, не
+    тревога (spec_status_original_series.md, задача C; severity=info --
+    задано спекой). Факты приносит роутер: проекция профиля производной
+    области (total_outliers -- та же каноническая шкала, что у
+    derived_summary). Срабатывает ТОЛЬКО на факте «всплески есть»
+    (целое > 0); мусор/чужие типы/ноль -- тишина (деградация «совета
+    нет», не 500; неизвестный факт не превращается в утверждение).
+    suggested_action осознанно None -- у правила два пути (а/б), выбор
+    за аналитиком; это «как решать», а не «куда идти» (канон «мечется»)."""
+    total = (session_facts or {}).get("total_outliers")
+    if isinstance(total, bool) or not isinstance(total, int) or total <= 0:
+        return None
+    return MentorRuleFact(
+        context={"total_outliers": total},
+        severity=SEVERITY_INFO,
+        suggested_action=None,
+    )
+
+
+SESSION_ADVICE_RULES: tuple[MentorRule, ...] = (
+    MentorRule(
+        rule_id="derived_spikes",
+        stage="preprocessing",
+        trigger=TRIGGER_ON_DEMAND_WITH_SESSION,
+        priority=10,
+        explanation_template=_DERIVED_SPIKES_TEXT,
+        recommended_action=None,  # осознанно без deep-link (два пути спеки)
+        condition=rule_derived_spikes,
+    ),
+)
+
+
+def evaluate_session_advice(
+    session_facts: Mapping[str, Any] | None,
+    *,
+    renderer: MentorTextRenderer | None = None,
+) -> list[SanityWarning]:
+    """on_demand_with_session-правила: при открытии Наставника по фактам
+    сессии, принесённым роутером (паттерн evaluate_history_warnings).
+    session_facts=None -- сессия недоступна/производных нет: пустой
+    список, не ошибка. Текст -- renderer.render ПОСЛЕ факта (§8);
+    renderer не вызывается, если правило не сработало."""
+    text_renderer = renderer or DEFAULT_TEXT_RENDERER
+    warnings: list[SanityWarning] = []
+    for rule in SESSION_ADVICE_RULES:
+        condition = rule.condition
+        if condition is None:
+            continue
+        fact = condition(session_facts)
+        if fact is not None:
+            warnings.append(
+                SanityWarning(
+                    rule_id=rule.rule_id,
+                    severity=fact.severity,
+                    message=text_renderer.render(rule, fact.context),
+                    suggested_action=fact.suggested_action,
+                )
+            )
+    return warnings
+
+
 # ── Краткая сводка стадии для ответа next-step (§7.1) ────────────────
 # Движок статусов (derive_node_statuses) с PROGR-10 живёт в
 # app/core/node_status.py (единый движок трёх потребителей); здесь
@@ -1136,7 +1261,7 @@ def validate_explanation_template(rule: MentorRule) -> None:
 # импорте модуля, опечатка не доходит до рантайма).
 
 _seen_rule_ids: set[str] = set()
-for _rule in (*NEXT_STEP_RULES, *SANITY_RULES, *HISTORY_RULES):
+for _rule in (*NEXT_STEP_RULES, *SANITY_RULES, *HISTORY_RULES, *SESSION_ADVICE_RULES):
     if _rule.rule_id in _seen_rule_ids:
         raise ImportError(f"Дубликат rule_id в реестре Наставника: {_rule.rule_id!r}")
     _seen_rule_ids.add(_rule.rule_id)
@@ -1144,7 +1269,7 @@ for _rule in (*NEXT_STEP_RULES, *SANITY_RULES, *HISTORY_RULES):
         raise ImportError(
             f"Правило {_rule.rule_id!r}: неизвестный trigger {_rule.trigger!r}"
         )
-    if _rule.trigger == TRIGGER_ON_DEMAND and _rule.condition is None:
+    if _rule.trigger in (TRIGGER_ON_DEMAND, TRIGGER_ON_DEMAND_WITH_SESSION) and _rule.condition is None:
         raise ImportError(
             f"on_demand-правило {_rule.rule_id!r} без condition -- "
             "ошибка таблицы правил Наставника"

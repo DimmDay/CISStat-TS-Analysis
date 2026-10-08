@@ -1,0 +1,9 @@
+M-1 path-A text distorted (STL removed): KILLED (падений: 1)
+M-2 severity info->warning: KILLED (падений: 3)
+M-3 fires on zero (<=0 -> <0): KILLED (падений: 3)
+M-4 router merge removed: KILLED (падений: 1)
+M-5 facts over full frame (scope lost): KILLED (падений: 2)
+M-6 context count hardcoded 0: KILLED (падений: 3)
+
+Финальный контроль: диффы пусты, рабочее дерево соответствует реализационной версии.
+======================= 113 passed, 46 warnings in 6.33s =======================

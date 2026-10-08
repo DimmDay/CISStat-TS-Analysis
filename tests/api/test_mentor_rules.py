@@ -1359,3 +1359,339 @@ class TestMentorNextStepPhaseFactsAllStages:
         _seed_run(store)
         data = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step").json()
         assert data["phase_text"] == mentor_rules.PHASE_TEXT_TEMPLATES["upload"]
+
+
+# ── PROGR-24-ORIGIN-C: правило Наставника derived_spikes ─────────────
+#
+# spec_status_original_series.md, задача C: всплески на производных
+# колонках (разности стационарности, сглаживание, флаги) -- не выбросы
+# исходного ряда; гейты качества применяются один раз к каноническому
+# ряду (задача A), а аналитику нужен СОВЕТ по терминологии §3.2 (не
+# факт!) -- только по запросу, severity=info, с двумя методологически
+# чистыми путями: (а) residual-based обнаружение на исходном ряду
+# (остаток STL-декомпозиции в мастере «Выбросов»), (б) EDA «Структурные
+# сдвиги» + интервенционная dummy-переменная (Box–Tiao). В трассу совет
+# не попадает (разведение §3.2 дословно).
+#
+# Триггер on_demand_with_session -- четвёртый вид: правило требует
+# фактов СЕССИИ (derived-область), а не одного preview-ответа и не
+# истории трассы; данные приносит роутер (правила -- чистые функции,
+# хранилища в движок не импортируются). Носитель факта -- та же
+# каноническая функция профиля производных, что питает derived_summary
+# задачи A (пересказ уже посчитанного, шкала карточки iqr-1.5). Канал
+# показа -- history_warnings ответа next-step (панель Наставника --
+# «по запросу»; контракт ответа не меняется, фронтенд рендерит как
+# есть). В журнал наблюдений совет НЕ пишется (консистентно с
+# history-предупреждениями; частота открытий панели не телеметрия
+# решений).
+
+
+def _derived_facts(total_outliers: int) -> dict[str, Any]:
+    return {
+        "total_outliers": total_outliers,
+        "total_columns": 1,
+        "total_numeric_columns": 1,
+        "affected_columns": ["value_detrended"],
+    }
+
+
+class TestDerivedSpikesSessionAdvice:
+    def test_fires_on_derived_spikes_with_info_severity(self):
+        fact = mentor_rules.rule_derived_spikes(_derived_facts(4))
+        assert fact is not None
+        assert fact.severity == "info", "совет по терминологии, не тревога"
+        assert fact.suggested_action is None, "«как решать», а не «куда идти»"
+        assert fact.context["total_outliers"] == 4
+
+    def test_silent_on_zero_spikes(self):
+        assert mentor_rules.rule_derived_spikes(_derived_facts(0)) is None
+
+    def test_silent_on_garbage_facts(self):
+        """Мусор/чужие типы -- пропуск (деградация «совета нет»), не 500."""
+        for facts in (None, {}, {"total_outliers": "4"},
+                      {"total_outliers": True}, {"total_outliers": -3},
+                      {"total_outliers": 2.5}, {"total_outliers": None}):
+            assert mentor_rules.rule_derived_spikes(facts) is None, facts
+
+    def test_rule_registered_in_session_advice_registry(self):
+        rule = {r.rule_id: r for r in mentor_rules.SESSION_ADVICE_RULES}
+        assert "derived_spikes" in rule
+        derived = rule["derived_spikes"]
+        assert derived.trigger == mentor_rules.TRIGGER_ON_DEMAND_WITH_SESSION
+        assert derived.stage == "preprocessing"
+        assert derived.recommended_action is None
+
+    def test_new_trigger_is_known(self):
+        assert mentor_rules.TRIGGER_ON_DEMAND_WITH_SESSION in mentor_rules.KNOWN_TRIGGERS
+
+    def test_template_carries_both_spec_paths(self):
+        """Два пути спеки дословно в шаблоне: (а) STL-остаток на исходном
+        ряду в мастере «Выбросов», (б) EDA «Структурные сдвиги» +
+        интервенционная dummy Box–Tiao."""
+        template = next(
+            r.explanation_template
+            for r in mentor_rules.SESSION_ADVICE_RULES
+            if r.rule_id == "derived_spikes"
+        )
+        assert "STL" in template
+        assert "«Выбросы»" in template
+        assert "«Структурные сдвиги»" in template
+        assert "Box–Tiao" in template
+        assert "{total_outliers}" in template
+
+    def test_evaluate_session_advice_none_facts_empty_list(self):
+        assert mentor_rules.evaluate_session_advice(None) == []
+
+    def test_evaluate_session_advice_renders_message_with_count(self):
+        warnings = mentor_rules.evaluate_session_advice(_derived_facts(4))
+        assert len(warnings) == 1
+        assert warnings[0].rule_id == "derived_spikes"
+        assert warnings[0].severity == "info"
+        assert "4" in warnings[0].message
+
+    def test_evaluate_session_advice_renderer_called_only_when_fired(self):
+        """§8: renderer не вызывается, если правило не сработало."""
+        calls: list[tuple[str, dict]] = []
+
+        class _Spy:
+            def render(self, rule, context):
+                calls.append((rule.rule_id, dict(context)))
+                return "рендер"
+
+        assert mentor_rules.evaluate_session_advice(_derived_facts(0), renderer=_Spy()) == []
+        assert calls == []
+        assert mentor_rules.evaluate_session_advice(_derived_facts(2), renderer=_Spy())[0].message == "рендер"
+        assert calls and calls[0][0] == "derived_spikes"
+
+    def test_session_advice_rules_covered_by_import_validation(self):
+        """Fail-closed самопроверка импорта покрывает четвёртый реестр
+        (шаблон обязателен для ВСЕХ триггеров)."""
+        for rule in mentor_rules.SESSION_ADVICE_RULES:
+            assert rule.explanation_template
+            mentor_rules.validate_explanation_template(rule)  # не бросает
+
+
+# ── e2e: derived_spikes в ответе next-step ────────────────────────────
+
+def _g345_like_frame() -> Any:
+    """Детерминированный кадр класса C5 (тренд + сезон M=12, 4 выброса,
+    3 пропуска): после стационарности производная колонка несёт всплески
+    на позициях скачков -- тот же сценарий PROGR-22-REPRO."""
+    import numpy as np
+    import pandas as pd
+
+    t = np.arange(150, dtype=float)
+    value = 120 + 0.55 * t + 18 * np.sin(2.0 * np.pi * (t + 2) / 12.0)
+    value[25] += 110
+    value[70] += 105
+    value[105] += 95
+    value[130] -= 135
+    frame = pd.DataFrame(
+        {
+            "date": pd.date_range("2013-01-01", periods=150, freq="MS").strftime("%Y-%m-%d"),
+            "value": np.round(value, 2),
+        }
+    )
+    frame.loc[[45, 87, 122], "value"] = np.nan
+    return frame
+
+
+def _clean_frame() -> Any:
+    """Ряд без выбросов и пропусков: плавный тренд + мягкая сезонность --
+    первая разность гладкая и ограниченная (без скачков), IQR-заборы
+    никого не флагают: производная есть, всплесков нет. (Строго
+    константный ряд не годится: вырожденная нулевая дисперсия даёт NaN
+    в статистиках профиля стационарности -- платформа честно не может
+    посчитать acf константы.)"""
+    import numpy as np
+    import pandas as pd
+
+    t = np.arange(150, dtype=float)
+    value = 100 + 0.5 * t + 5 * np.sin(2.0 * np.pi * t / 12.0)
+    return pd.DataFrame(
+        {
+            "date": pd.date_range("2013-01-01", periods=150, freq="MS").strftime("%Y-%m-%d"),
+            "value": np.round(value, 2),
+        }
+    )
+
+
+def _upload_frame(client_: TestClient, frame: Any) -> None:
+    import io
+
+    response = client_.post(
+        "/v1/internal/upload",
+        files={"file": ("frame.csv", io.BytesIO(frame.to_csv(index=False).encode()), "text/csv")},
+    )
+    assert response.status_code == 200, response.text
+
+
+def _stationarity_apply(client_: TestClient, column: str = "value") -> None:
+    """Честный UI-поток: остановка «Пропуски» (гейт стационарности),
+    затем preview → apply стационарности (кнопка disabled без preview)."""
+    missing = client_.get("/v1/session/dataset/missing-profile").json()
+    cols = [x["column"] for x in missing["columns"] if x.get("missing_count")]
+    if cols:
+        response = client_.post(
+            "/v1/session/dataset/missing-corrections",
+            json={"columns": cols, "strategy": "interpolate", "apply": True},
+        )
+        assert response.status_code == 200, response.text
+    profile = client_.get(
+        f"/v1/session/dataset/preprocessing/stationarity-profile?column={column}"
+    ).json()
+    method = profile["profile"].get("selected_method") or "first_difference"
+    response = client_.post(
+        "/v1/session/dataset/preprocessing/stationarity-transformations",
+        json={"column": column, "method": method, "apply": True, "confirm_non_causal": True},
+    )
+    assert response.status_code == 200, response.text
+
+
+def _seed_run_with_session(client_: TestClient, run_id: str = "RUN-AAA00001") -> None:
+    """Запуск слоя 2, связанный с РЕАЛЬНОЙ cookie-сессией клиента
+    (run.session_id -- последний известный, research_runs)."""
+    from apps.api import research_runs
+    from apps.api.session_store import SESSION_COOKIE_NAME
+
+    session_id = client_.cookies.get(SESSION_COOKIE_NAME)
+    assert session_id, "у тестового клиента нет cookie сессии"
+    research_runs.get_research_run_store().upsert_run(
+        research_runs.ResearchRun(
+            run_id=run_id,
+            session_id=session_id,
+            dataset_fingerprint="f" * 64,
+            dataset_name="frame.csv",
+            created_at=_now_iso(),
+            last_active_at=_now_iso(),
+        )
+    )
+
+
+class TestMentorDerivedSpikesEndpoint:
+    def test_derived_spikes_warning_in_next_step_response(self, client: TestClient):
+        """Полный поток: загрузка → стационарность (производная колонка со
+        всплесками) → next-step содержит совет derived_spikes (info), и
+        число всплесков в совете -- то же, что derived_summary профиля
+        (та же каноническая функция, шкала карточки)."""
+        _upload_frame(client, _g345_like_frame())
+        _stationarity_apply(client)
+        _seed_run_with_session(client)
+
+        profile = client.get("/v1/session/dataset/outlier-profile?method=iqr").json()
+        derived_total = (profile.get("derived_summary") or {}).get("total_outliers")
+        assert derived_total and derived_total > 0, "в производной колонке должны быть всплески"
+
+        response = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step")
+        assert response.status_code == 200
+        warnings = {
+            w["rule_id"]: w for w in response.json()["history_warnings"]
+        }
+        assert "derived_spikes" in warnings
+        advice = warnings["derived_spikes"]
+        assert advice["severity"] == "info"
+        assert advice["suggested_action"] is None
+        assert str(derived_total) in advice["message"], advice["message"]
+
+    def test_silent_without_derived_columns(self, client: TestClient):
+        """Датасет без применений -- производных нет, совета нет
+        (Наставник не объясняет то, чего нет)."""
+        _upload_frame(client, _g345_like_frame())
+        _seed_run_with_session(client)
+        response = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step")
+        assert response.status_code == 200
+        rule_ids = [w["rule_id"] for w in response.json()["history_warnings"]]
+        assert "derived_spikes" not in rule_ids
+
+    def test_silent_when_derived_columns_have_no_spikes(self, client: TestClient):
+        """Производные есть, всплесков нет (константная разность
+        линейного тренда) -- совет не срабатывает: ноль нового шума."""
+        _upload_frame(client, _clean_frame())
+        _stationarity_apply(client)
+        _seed_run_with_session(client)
+        from apps.api.session_store import SESSION_COOKIE_NAME, get_session_store
+
+        session = get_session_store().get(client.cookies.get(SESSION_COOKIE_NAME))
+        assert session is not None and session.derived_columns, "производная должна быть зарегистрирована"
+        response = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step")
+        assert response.status_code == 200
+        rule_ids = [w["rule_id"] for w in response.json()["history_warnings"]]
+        assert "derived_spikes" not in rule_ids
+
+    def test_silent_when_session_of_run_is_gone(self, client: TestClient):
+        """run.session_id указывает на несуществующую сессию (истёкшая
+        cookie, другой слой) -- best-effort деградация: ответ валиден,
+        совета нет, НЕ 500."""
+        from apps.api import research_runs
+
+        _upload_frame(client, _g345_like_frame())
+        _stationarity_apply(client)
+        store = research_runs.get_research_run_store()
+        store.upsert_run(
+            research_runs.ResearchRun(
+                run_id="RUN-AAA00001",
+                session_id="ghost-session",
+                dataset_fingerprint="f" * 64,
+                dataset_name="frame.csv",
+                created_at=_now_iso(),
+                last_active_at=_now_iso(),
+            )
+        )
+        response = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step")
+        assert response.status_code == 200
+        rule_ids = [w["rule_id"] for w in response.json()["history_warnings"]]
+        assert "derived_spikes" not in rule_ids
+
+
+class TestDerivedSpikesFactsScope:
+    def test_facts_scoped_to_derived_area_only(self):
+        """Носитель факта -- ПРОИЗВОДНАЯ область (задача A): всплески
+        канонического ряда НЕ должны попадать в facts (иначе Наставник
+        советовал бы терминологию производных про обычные выбросы
+        исходного ряда). Каноническая колонка со всплесками + чистая
+        производная -- факты молчат (total_outliers == 0)."""
+        import numpy as np
+        import pandas as pd
+
+        from apps.api.column_origin import register_derived_columns
+        from apps.api.routers.progress import _derived_spikes_facts
+        from apps.api.session_store import (
+            AnalysisSession,
+            DatasetInfo,
+            get_session_store,
+        )
+
+        t = np.arange(150, dtype=float)
+        value = 120 + 0.55 * t + 18 * np.sin(2.0 * np.pi * (t + 2) / 12.0)
+        value[[25, 70, 105, 130]] += [110, 105, 95, -135]  # всплески КАНОНА
+        clean = 5 * np.sin(2.0 * np.pi * t / 12.0)  # гладкая производная
+        df = pd.DataFrame({"value": np.round(value, 2), "clean": np.round(clean, 2)})
+
+        session = AnalysisSession(session_id="scope-probe")
+        session.set_dataset(
+            DatasetInfo(
+                dataset_id="d1",
+                name="frame.csv",
+                rows=len(df),
+                columns=2,
+                size_label="1 КБ",
+                dataset_fingerprint="f" * 64,
+            ),
+            df,
+        )
+        register_derived_columns(
+            session, before_columns=["value"], stage="stationarity", source="probe"
+        )
+        get_session_store().save(session)
+
+        from apps.api import research_runs
+
+        run = research_runs.ResearchRun(
+            run_id="RUN-SCOPE001", session_id="scope-probe"
+        )
+        facts = _derived_spikes_facts(run)
+        assert facts is not None, "производная область есть -- факты обязаны прийти"
+        assert facts["total_outliers"] == 0, (
+            "всплески канонического ряда не должны попадать в совет "
+            "о производных (скоуп задачи A)"
+        )

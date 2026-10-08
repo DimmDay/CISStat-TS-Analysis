@@ -152,6 +152,7 @@ from app.core.mentor_rules import (
     evaluate_history_warnings,
     evaluate_next_step,
     evaluate_sanity,
+    evaluate_session_advice,
     phase_text,
     stage_node_summary,
 )
@@ -195,6 +196,8 @@ from apps.api.session_store import (
     get_session_store,
 )
 from apps.api.trace_events import KNOWN_STAGES, make_trace_event
+from apps.api.column_origin import derived_columns_in_frame, scope_frame
+from app.preprocessing.outliers import outliers_summary, profile_outliers
 
 logger = logging.getLogger(__name__)
 
@@ -1324,6 +1327,49 @@ def _record_next_step_observation(run_id: str, recommendation: Any) -> None:
         )
 
 
+def _derived_spikes_facts(run: ResearchRun) -> dict[str, Any] | None:
+    """PROGR-24-ORIGIN-C: факты для правила Наставника derived_spikes --
+    проекция профиля ПРОИЗВОДНОЙ области датафрейма сессии запуска.
+
+    Носитель -- та же каноническая функция профиля (profile_outliers,
+    шкала карточки iqr-1.5), что питает derived_summary задачи A:
+    «пересказ уже посчитанного», числа совпадают с плашкой мастера
+    (spec_status_original_series.md, задачи A/B/C). Правила Наставника --
+    чистые функции: хранилища сюда не импортируются, данные приносит
+    роутер (канон модуля mentor_rules). Best-effort (паттерн
+    _record_next_step_observation/_mirror_to_layer1): сессия истекла,
+    датасет не активен, производных нет, слой 1 недоступен, мусорные
+    метаданные -- None (совета нет), НЕ 500: совет вспомогателен
+    (§12 п.8), ядро next-step (статусы/рекомендация слоя 2) от сессии
+    не зависит."""
+    try:
+        if not run.session_id:
+            return None
+        session = get_session_store().get(run.session_id)
+        if session is None or session.dataframe is None:
+            return None
+        derived_names = derived_columns_in_frame(session)
+        if not derived_names:
+            return None
+        profiles = profile_outliers(
+            scope_frame(session.dataframe, derived_names), method="iqr", param=None
+        )
+        summary = outliers_summary(profiles, total_rows=len(session.dataframe))
+        return {
+            "total_outliers": int(summary["total_outliers"]),
+            "total_columns": len(derived_names),
+            "total_numeric_columns": int(summary["total_numeric_columns"]),
+            "affected_columns": list(summary["affected_columns"]),
+        }
+    except Exception:
+        logger.warning(
+            "Progress: факты производных всплесков недоступны, совет "
+            "derived_spikes не выдаётся",
+            exc_info=True,
+        )
+        return None
+
+
 @router.get("/runs/{run_id}/mentor/next-step", response_model=MentorNextStepResponse)
 @_durable_ops
 def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
@@ -1340,7 +1386,14 @@ def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
     events = store.list_events(run_id)
     statuses = derive_node_statuses(events)
     recommendation = evaluate_next_step(statuses)
-    history_warnings = evaluate_history_warnings(events)
+    history_warnings = [
+        *evaluate_history_warnings(events),
+        # PROGR-24-ORIGIN-C: совет derived_spikes (on_demand_with_session,
+        # severity=info) -- тот же канал панели «по запросу»; контракт
+        # ответа прежний, в трассу/журнал наблюдений совет не попадает
+        # (советы -- не факты, §3.2; консистентно с history-предупреждениями).
+        *evaluate_session_advice(_derived_spikes_facts(run)),
+    ]
     _record_next_step_observation(run_id, recommendation)
 
     # PROGR-13-B1: фаза -- стадия последнего УЗЛОВОГО факта решения
