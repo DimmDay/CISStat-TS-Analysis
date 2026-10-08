@@ -1,0 +1,6 @@
+RED-протокол PROGR-24-B-CERT: оракул Progr24BCertOracles.test.tsx на РОДИТЕЛЬСКИХ исходниках 606d635 (до задачи B)
+Дата: 2026-10-08 08:08 UTC; база сертификации: 23c5068 (задача B = 8c06802)
+
+  ● Test suite failed to run
+    [96mpackages/ui/components/Progr24BCertOracles.test.tsx[0m:[93m5[0m:[93m41[0m - [91merror[0m[90m TS2305: [0mModule '"./PreprocessingOutliersOverview"' has no exported member 'spikesLabel'.
+Tests:       0 total
