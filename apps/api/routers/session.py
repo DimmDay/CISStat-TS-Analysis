@@ -265,6 +265,12 @@ from apps.api.session_store import (
     get_or_create_session_id,
     get_session_store,
 )
+from apps.api.target_column_rule import (
+    USER_SOURCE,
+    auto_fix_and_seed,
+    numeric_columns as _get_numeric_columns,
+    suggest_target_column,
+)
 from apps.api.upload_common import _compute_column_info, _compute_parse_warnings, _compute_quality_teaser
 
 logger = logging.getLogger(__name__)
@@ -544,6 +550,7 @@ def _to_response(session: AnalysisSession) -> SessionStateResponse:
         stages=session.stages,
         last_active_stage=session.last_active_stage,
         target_column=session.target_column,
+        target_column_source=session.target_column_source,
         date_column=session.date_column,
         updated_at=session.updated_at,
     )
@@ -602,6 +609,13 @@ def load_demo_dataset(request: Request, response: Response):
         ),
         df,
     )
+    # PROGR-25-A (правка R2 акта): то же правило авто-фиксации, что и
+    # при upload -- единая точка target_column_rule.auto_fix_and_seed.
+    # Встроенный sales_demo.csv имеет ДВЕ числовые (sales, profit) --
+    # честная неоднозначность: фиксации и события нет, селектор остаётся
+    # путём выбора; датасет с единственной числовой фиксируется как
+    # source="auto".
+    auto_fix_and_seed(session)
     # КОНТРАКТ SessionStore: мутация -- обязательно save().
     store.save(session)
     return _to_response(session)
@@ -3939,6 +3953,9 @@ def convert_dataset_types(
             converted_df[session.target_column]
         ):
             session.target_column = None
+            # PROGR-25-A: источник выбора сбрасывается вместе с целью --
+            # иначе устаревший "auto" указывал бы на несуществующий выбор.
+            session.target_column_source = None
             session.reset_passports()
             session.sufficiency_plan = {}
             target_column_reset = True
@@ -3963,41 +3980,14 @@ def convert_dataset_types(
 # ────────────────────────────────────────────────────────────────────
 
 
-def _get_numeric_columns(df: pd.DataFrame) -> list[str]:
-    """Возвращает имена числовых колонок DataFrame.
-
-    Целевая (target) колонка для TS-прогноза обязана быть числовой --
-    прогнозировать категориальную величину baseline-модели не умеют.
-    Сюда попадают int*, float* и bool (pandas treat bool как numeric).
-    """
-    return [str(c) for c in df.select_dtypes(include="number").columns]
-
-
-_DATE_LIKE_KEYWORDS = ("date", "дата", "year", "год", "period", "период")
-
-
-def _suggest_target_column(numeric_columns: list[str]) -> str | None:
-    """Эвристический дефолт для target_column: первая числовая колонка,
-    ИСКЛЮЧАЯ похожие на дату/год по имени -- те же ключевые слова, что
-    уже используются для автодетекта date_col в validation/engine.py
-    (_run_all_checks::_uniqueness, validate_sufficiency) -- единая
-    эвристика, не две разные копипасты.
-
-    Год/дата технически числовые (int64), но семантически это ИНДЕКС
-    временной оси, а не аналитическая величина -- плохой дефолт для
-    target_column (см. пример: FAO price dataset, колонки Country/Year/
-    Price -- наивная 'первая числовая' выбрала бы Year, а не Price).
-
-    Если ВСЕ числовые колонки похожи на дату (редкий случай) -- честно
-    возвращаем первую как есть, лучше чем None.
-    """
-    if not numeric_columns:
-        return None
-    non_date_like = [
-        c for c in numeric_columns
-        if not any(kw in c.lower() for kw in _DATE_LIKE_KEYWORDS)
-    ]
-    return non_date_like[0] if non_date_like else numeric_columns[0]
+# PROGR-25-A: правило исследуемого признака (кандидаты, рекомендация,
+# авто-фиксация + посев события) вынесено в ЕДИНУЮ точку --
+# apps/api/target_column_rule.py (прецедент column_origin.py,
+# PROGR-24-ORIGIN-A). Примитив _get_numeric_columns доступен ниже по
+# алиасу-импорту (точки вызова без изменений); _suggest_target_column и
+# _DATE_LIKE_KEYWORDS сняты: имя-исключение date-подобных заменено
+# факт-вычетами (session.date_column + реестр производных, правка R4
+# акта сертификации: канон PROGR-24 -- не по суффиксу).
 
 
 @router.get("/target-column", response_model=TargetColumnResponse)
@@ -4027,7 +4017,8 @@ def get_target_column(request: Request, response: Response):
     numeric_columns = _get_numeric_columns(session.dataframe)
     return TargetColumnResponse(
         target_column=session.target_column,
-        suggested_column=_suggest_target_column(numeric_columns),
+        target_column_source=session.target_column_source,
+        suggested_column=suggest_target_column(session),
         available_columns=numeric_columns,
         has_dataset=True,
     )
@@ -4091,6 +4082,8 @@ def set_target_column(
 
     passport_history_reset = bool(session.passport_history) and column != session.target_column
     session.set_target_column(column)
+    # PROGR-25-A: ручной выбор -- источник "user" (last-wins после авто).
+    session.target_column_source = USER_SOURCE
     session.sufficiency_plan = {}
     # КОНТРАКТ SessionStore: мутация -- обязательно save().
     store.save(session)
@@ -4098,7 +4091,8 @@ def set_target_column(
     numeric_columns = _get_numeric_columns(df)
     return TargetColumnResponse(
         target_column=session.target_column,
-        suggested_column=_suggest_target_column(numeric_columns),
+        target_column_source=session.target_column_source,
+        suggested_column=suggest_target_column(session),
         available_columns=numeric_columns,
         has_dataset=True,
         passport_history_reset=passport_history_reset,

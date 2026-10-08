@@ -210,6 +210,13 @@ class AnalysisSession:
     # Phase 0.5: имя выбранной числовой колонки для прогнозирования.
     # None = пользователь ещё не выбрал target → backtest fallback на синтетику.
     target_column: Optional[str] = None
+    # PROGR-25-A: происхождение выбора исследуемого признака
+    # (spec_progress_target_column.md §4-A). None -- старый корпус
+    # (событие/выбор без source) -- потребители читают как "user";
+    # "auto" -- авто-фиксация при загрузке (target_column_rule);
+    # "user" -- ручной выбор маршрута POST /target-column. Сбрасывается
+    # вместе с target_column (set_dataset, convert-types reset).
+    target_column_source: Optional[str] = None
     # Общая дата-колонка для всех time-series операций сессии. Паспортная
     # история сбрасывается при её смене так же, как при смене target.
     date_column: Optional[str] = None
@@ -377,6 +384,10 @@ class AnalysisSession:
         self.stages["upload"] = "done"
         self.last_active_stage = "upload"
         self.target_column = None
+        # PROGR-25-A: источник выбора сбрасывается вместе с целью --
+        # новый датасет = новый анализ; авто-фиксация применит правило
+        # к новому фрейму в точке загрузки.
+        self.target_column_source = None
         self.date_column = None
         self.passport_history = []
         self.passport_checkpoints = []

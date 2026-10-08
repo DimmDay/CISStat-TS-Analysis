@@ -269,6 +269,12 @@ class ProgressTraceResponse(BaseModel):
     node_statuses: Dict[str, str] = Field(default_factory=dict)
     stages: List[StageStateOut] = Field(default_factory=list)
     nodes: List[NodeStateOut] = Field(default_factory=list)
+    # PROGR-25-A (контракты A, spec_progress_target_column.md §4-A):
+    # носитель актуального признака для шапки панели (задача B читает
+    # отсюда -- один источник с трассой, без устаревшего контекста
+    # /current). Аддитивные Optional-поля; None -- признака нет.
+    target_column: Optional[str] = None
+    target_column_source: Optional[str] = None
 
 
 def _canonical_forecast_trace_events(
@@ -348,6 +354,10 @@ def get_progress_trace(request: Request, response: Response) -> ProgressTraceRes
             StageStateOut(**state) for state in derive_stage_states(statuses)
         ],
         nodes=[NodeStateOut(**state) for state in node_states],
+        # PROGR-25-A: актуальный признак и происхождение -- прямое
+        # чтение полей сессии (тот же снимок, что видит трасса).
+        target_column=session.target_column,
+        target_column_source=session.target_column_source,
     )
 
 

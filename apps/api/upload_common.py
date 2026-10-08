@@ -33,6 +33,7 @@ from fastapi import HTTPException, Request, Response, UploadFile
 from apps.api.schemas import ColumnInfoOut, QualityTeaserOut, UploadResponse
 from apps.api.research_runs import get_dataset_file_store
 from apps.api.session_store import DatasetInfo, format_size_label, get_or_create_session_id, get_session_store
+from apps.api.target_column_rule import auto_fix_and_seed
 from app.data.file_loader import read_uploaded_file
 
 
@@ -174,6 +175,12 @@ async def handle_upload(file: UploadFile, request: Request, response: Response) 
             ),
             df,
         )
+        # PROGR-25-A: авто-фиксация исследуемого признака при ровно одном
+        # кандидате (spec_progress_target_column.md §4-A) -- единая точка
+        # target_column_rule; событие target_column_changed(source="auto")
+        # сеется программно в точке фиксации (не фиктивный POST).
+        # Неоднозначность (2+ кандидатов) -- честное «не выбран».
+        auto_fix_and_seed(session)
         # КОНТРАКТ SessionStore: после мутации -- обязательно save().
         # В Memory save() -- no-op (алиасинг), но без него Redis-бэкенд
         # потеряет изменения при следующем get().

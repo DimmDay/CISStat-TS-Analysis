@@ -2758,6 +2758,10 @@ class SessionStateResponse(BaseModel):
     stages: Dict[str, str]
     last_active_stage: Optional[str] = None
     target_column: Optional[str] = None
+    # PROGR-25-A: происхождение выбора (spec_progress_target_column.md
+    # §4-A): "auto" -- авто-фиксация при загрузке; "user" -- ручной выбор;
+    # None -- старый корпус (без source), читается как "user". Аддитивно.
+    target_column_source: Optional[str] = None
     date_column: Optional[str] = None
     updated_at: Optional[str] = None
 
@@ -2775,17 +2779,23 @@ class TargetColumnResponse(BaseModel):
     available_columns нужен UI для отрисовки селектора. Содержит ТОЛЬКО
     числовые колонки -- target для TS-прогноза должен быть числовым.
 
-    suggested_column -- эвристический дефолт для UI, когда target_column
-    ещё не выбран пользователем (свежий датасет): первая числовая колонка,
-    ИСКЛЮЧАЯ похожие на дату/год по имени (см. _suggest_target_column).
-    Раньше каждая вкладка (Загрузка/Валидация) считала свой дефолт
-    независимо (просто первая числовая колонка без исключений) -- отсюда
-    несогласованность между вкладками и выбор 'Year' вместо 'Price' на
-    датасетах вида FAO (Country, Year, Price, ...). Единая эвристика на
-    бэкенде -- единственный источник истины для ВСЕХ фронтендов.
-    None только если available_columns пуст (нет числовых колонок вообще).
+    suggested_column -- рекомендация для UI, когда target_column ещё не
+    выбран: первый кандидат единого правила исследуемого признака
+    (apps/api/target_column_rule.py, PROGR-25-A): числовые минус
+    session.date_column и реестр производных (канон PROGR-24), ранжирование
+    не вводится (§6 спеки). Раньше каждая вкладка (Загрузка/Валидация)
+    считала свой дефолт независимо -- отсюда несогласованность между
+    вкладками и выбор 'Year' вместо 'Price' на датасетах вида FAO
+    (Country, Year, Price, ...). Единая эвристика на бэкенде --
+    единственный источник истины для ВСЕХ фронтендов. None только если
+    кандидатов нет (нет числовых колонок либо все -- дата-ось/производные).
+
+    target_column_source (PROGR-25-A, аддитивно): "auto" -- зафиксирован
+    автоматически при загрузке; "user" -- ручной выбор; None -- старый
+    корпус (читается как "user").
     """
     target_column: Optional[str] = None
+    target_column_source: Optional[str] = None
     suggested_column: Optional[str] = None
     available_columns: List[str] = Field(
         default_factory=list,

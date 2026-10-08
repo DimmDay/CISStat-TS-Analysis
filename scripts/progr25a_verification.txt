@@ -1,0 +1,79 @@
+# PROGR-25-A — протокол проверок (TDD RED→GREEN→регрессия)
+# Задача: авто-фиксация исследуемого признака на бэкенде (spec_progress_target_column.md §4-A)
+# База: main@3bd6044. Дата: 2026-10-08. Правила AGENTS.md: commit/push не выполнялись.
+
+## 1. RED (до реализации) — tests/api/test_progress_progr25a.py
+
+Команда: python -m pytest tests/api/test_progress_progr25a.py -v
+Результат: 15 failed, 1 passed.
+
+RED-падения (ожидаемые):
+- O1/O1b: KeyError 'target_column_source' (+ target_column=None вместо авто-фиксации)
+- O2/O11: события target_column_changed нет (0 == 1 / IndexError)
+- O3/O12: KeyError 'target_column_source'
+- reupload-пин: target=None вместо авто-фиксации нового фрейма
+- O4b/O5: KeyError 'target_column_source'
+- O6/O9: AttributeError 'AnalysisSession' has no attribute 'target_column_source'
+- O7/O8: ModuleNotFoundError 'apps.api.target_column_rule'
+- O10: KeyError 'target_column_source'
+passed (guard, зелёный до реализации — семантика legacy от регресса):
+- O5b: payload события ручного маршрута без source
+
+## 2. GREEN (после реализации) — tests/api/test_progress_progr25a.py
+
+Команда: python -m pytest tests/api/test_progress_progr25a.py -v
+Результат: 16 passed in 4.15s. Все оракулы O1–O12 зелёные.
+
+Факты оракулов:
+- upload n150-подобного CSV (date,value) → /current: target_column=value,
+  target_column_source="auto"; GET /target-column зеркалит оба поля
+- событие target_column_changed: stage="validation", node_id=None,
+  payload ровно {target_column: "value", source: "auto"}, run_id общий
+  с upload_completed (первая запись трассы фиксирует run_id, §5)
+- две числовые (date,value,price) → фиксации/события нет (честная неоднозначность)
+- [year,value] без зарегистрированной даты → два кандидата, фиксации нет;
+  рекомендация = первый кандидат (year) — имя-исключение снято (R4)
+- demo-эндпоинт применяет то же правило: встроенный sales_demo.csv
+  (две числовые: sales, profit) → честное «не выбран»; ручной выбор после demo → user
+- ручной выбор после авто → source="user" (last-wins); событие ручного
+  маршрута — payload без source (legacy-семантика)
+- юнит: реестр производных исключается; производноподобная ИСХОДНАЯ
+  (вне реестра) остаётся кандидатом; session.date_column исключается
+  даже без date-подобного имени; прямой set_target_column (путь restore)
+  не сеет событие и не ставит source
+- convert-types (value → string) → target_column=None И source=None
+
+## 3. Правки существующих тестов (спека-обусловленные, документированы в worklog9)
+
+- tests/api/test_target_column.py::TestTargetColumnResetOnReupload —
+  observable-итог re-upload: сброс + авто-фиксация нового фрейма / честная
+  неоднозначность при 2+; класс TestSuggestedColumnHeuristic переписан по R4
+  (FAO-кейс: Year — кандидат, рекомендация = первый кандидат, фиксации нет;
+  + новый тест registered_date_column_restores_unambiguous_case)
+- tests/api/test_internal_backtest.py — синтетический fallback теперь
+  тестируется на датасете с ДВУМЯ числовыми (честная неоднозначность);
+  CSV_TWO_NUMERIC добавлен
+
+## 4. Полный регресс
+
+Команда: python -m pytest tests/api/ tests/integration/ -q
+Результат: 1482 passed, 3 failed, 1 skipped (194.97s).
+
+3 failed — ПРЕДСУЩЕСТВУЮЩИЕ на чистом 3bd6044 (подтверждено: git stash →
+прогон на pristine-дереве → те же 3 failed → stash pop):
+- tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+  (ожидается "панель" в detail, фактически "Production backtest для модели
+  'deepar' не реализован; фиктивные метрики запрещены")
+- tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+  (ожидается 503 через capacity-guard, фактически 422 "не реализован";
+  тест не загружает датасет — к target_column отношения не имеет)
+- tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics
+  (ожидается "заблокирована матрицей применимости", фактически "не реализован")
+Требуют отдельного решения тимлида (вне зоны PROGR-25-A; тесты не касаются
+target_column / загрузки датасета).
+
+## 5. Окружение
+
+psycopg отсутствует — слой 2 (research_runs) деградирует штатно
+(warning «не отражено в долговременном слое», ядро живо) — известная
+особенность песочницы, прецедент PROGR-1/PROGR-25-SPEC-CERT; на оракулы не влияет.

@@ -226,7 +226,11 @@ TRACE_ROUTES: tuple[TraceRouteSpec, ...] = (
     # target_column_changed -- решение по цели, не по проверке датасета).
     TraceRouteSpec(
         "POST", "/v1/session/target-column", "validation", None,
-        "target_column_changed", payload_keys=("target_column",),
+        # PROGR-25-A: payload_keys += "source" -- происхождение выбора
+        # (спека §4-A). Ответ маршрута ключа source не несёт: события
+        # ручного маршрута остаются legacy {target_column} -- читаются
+        # как "user" (обратная совместимость со старым корпусом).
+        "target_column_changed", payload_keys=("target_column", "source"),
     ),
     TraceRouteSpec(
         "PUT", "/v1/session/dataset/validation-check-modes", "validation",

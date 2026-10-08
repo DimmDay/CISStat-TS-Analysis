@@ -164,18 +164,25 @@ class TestTargetColumnSet:
 
 
 class TestTargetColumnResetOnReupload:
-    """Контракт: set_dataset должен сбрасывать target_column в None.
+    """Контракт: set_dataset сбрасывает target_column в None (новый
+    датасет может не содержать старую колонку — устаревшее имя
+    небезопасно, приведёт к 404 в backtest).
 
-    Причина: новый датасет может не содержать старую колонку —
-    оставлять target_column устаревшим небезопасно (приведёт к 404 в backtest).
+    PROGR-25-A (spec_progress_target_column.md §4-A): observable-итог
+    re-upload изменён — сразу после сброса правило авто-фиксации
+    (target_column_rule.auto_fix_and_seed) фиксирует признак нового
+    фрейма при ровно одном кандидате с source="auto"; при 2+
+    кандидатах — честное «не выбран». Безопасность контракта сохранена:
+    авто-фиксация выбирает ТОЛЬКО из числовых колонок нового фрейма.
     """
 
-    def test_reupload_clears_target_column(self):
+    def test_reupload_autofixes_single_numeric_of_new_dataset(self):
         _upload_csv(CSV_WITH_NUMERIC)
         client.post("/v1/session/target-column", json={"column": "value"})
         assert client.get("/v1/session/target-column").json()["target_column"] == "value"
 
-        # Загружаем ДРУГОЙ датасет (без колонки value)
+        # Загружаем ДРУГОЙ датасет (без колонки value) -- одна числовая:
+        # сброс + авто-фиксация новой цели (PROGR-25-A)
         other_csv = (
             "ts,price\n"
             "2023-01-01,100\n"
@@ -184,26 +191,49 @@ class TestTargetColumnResetOnReupload:
         )
         _upload_csv(other_csv, "other.csv")
 
-        # target_column должен сброситься
         resp = client.get("/v1/session/target-column")
         assert resp.status_code == 200
-        assert resp.json()["target_column"] is None
+        data = resp.json()
+        assert data["target_column"] == "price"
+        assert data["target_column_source"] == "auto"
 
-    def test_reupload_with_same_column_name_also_resets(self):
-        """Даже если новый датасет содержит колонку с тем же именем —
-        target_column сбрасывается (новый датасет = новый анализ).
-        """
+    def test_reupload_with_two_numerics_honest_ambiguity(self):
+        """Даже если новый датасет содержит ту же колонку value --
+        сброс + правило заново: одна числовая → авто-фиксация (PROGR-25-A);
+        две и более → честное «не выбран» (фиксации нет)."""
         _upload_csv(CSV_WITH_NUMERIC)
         client.post("/v1/session/target-column", json={"column": "value"})
 
-        # Загружаем датасет с той же колонкой value, но другим содержимым
+        # Две числовые: value,price -- фиксации нет (честная неоднозначность)
+        two_numeric_csv = (
+            "date,value,price\n"
+            "2023-01-01,10.5,100\n"
+            "2023-01-02,20.1,200\n"
+            "2023-01-03,30.2,300\n"
+        )
+        _upload_csv(two_numeric_csv, "another.csv")
+
+        resp = client.get("/v1/session/target-column")
+        data = resp.json()
+        assert data["target_column"] is None
+        assert data["target_column_source"] is None
+
+    def test_reupload_single_numeric_autofixes_value_again(self):
+        """PROGR-25-A: re-upload с той же единственной числовой --
+        авто-фиксация применяется заново (новый датасет = новый анализ)."""
+        _upload_csv(CSV_WITH_NUMERIC)
+        client.post("/v1/session/target-column", json={"column": "value"})
+
         _upload_csv(CSV_WITH_NUMERIC, "another.csv")
 
         resp = client.get("/v1/session/target-column")
-        assert resp.json()["target_column"] is None
+        data = resp.json()
+        assert data["target_column"] == "value"
+        assert data["target_column_source"] == "auto"
 
     def test_set_target_after_reupload_works(self):
-        """После re-upload можно установить target_column заново."""
+        """После re-upload можно установить target_column заново
+        (ручной выбор -- source=user, last-wins после авто)."""
         _upload_csv(CSV_WITH_NUMERIC)
         client.post("/v1/session/target-column", json={"column": "value"})
 
@@ -213,7 +243,9 @@ class TestTargetColumnResetOnReupload:
         # Устанавливаем уже для нового датасета
         resp = client.post("/v1/session/target-column", json={"column": "price"})
         assert resp.status_code == 200
-        assert resp.json()["target_column"] == "price"
+        data = resp.json()
+        assert data["target_column"] == "price"
+        assert data["target_column_source"] == "user"
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -281,9 +313,18 @@ class TestTargetColumnCookiePersistence:
 
 
 class TestSuggestedColumnHeuristic:
-    def test_suggests_price_not_year_for_fao_style_dataset(self):
-        """Ровно кейс, из-за которого завели эту эвристику: колонки
-        Country/Year/Price -- наивная 'первая числовая' выбрала бы Year."""
+    """PROGR-25-A: рекомендация = первый кандидат единого правила
+    (target_column_rule): числовые минус session.date_column и реестр
+    производных. Имя-исключение date-подобных СНЯТО (правка R4 акта
+    сертификации: канон PROGR-24 -- не по суффиксу); семантика даты
+    определяется фактом session.date_column.
+    """
+
+    def test_fao_style_year_is_candidate_no_silent_fixation(self):
+        """Бывший кейс эвристики: Country/Year/Price. По R4 имя-исключение
+        снято: Year -- полноценный кандидат, рекомендация = первый
+        кандидат (Year); ДВЕ числовые → честная неоднозначность:
+        тихой фиксации нет (target_column=None, source=None)."""
         df = pd.DataFrame({
             "Country": ["RU", "US", "DE"],
             "Year": [2020, 2021, 2022],
@@ -296,11 +337,39 @@ class TestSuggestedColumnHeuristic:
 
         resp = client.get("/v1/session/target-column")
         assert resp.status_code == 200
-        assert resp.json()["suggested_column"] == "Price"
+        data = resp.json()
+        assert data["suggested_column"] == "Year"
+        assert data["target_column"] is None
+        assert data["target_column_source"] is None
+
+    def test_registered_date_column_restores_unambiguous_case(self):
+        """R4 в положительную сторону: [Country,Year,Price] + факт
+        session.date_column=Year (через POST /date-column) → единственный
+        кандидат Price → авто-фиксация возможна ТОЛЬКО в точке загрузки;
+        после загрузки фиксация не выполняется (точки -- upload+demo),
+        но рекомендация сужается на Price."""
+        df = pd.DataFrame({
+            "Country": ["RU", "US", "DE"],
+            "Year": [2020, 2021, 2022],
+            "Price": [65.9, 30.7, 85.3],
+        })
+        buf = io.BytesIO()
+        df.to_csv(buf, index=False)
+        buf.seek(0)
+        client.post("/v1/internal/upload", files={"file": ("data.csv", buf, "text/csv")})
+        assert client.get("/v1/session/current").json()["target_column"] is None
+
+        resp = client.post("/v1/session/date-column", json={"column": "Year"})
+        assert resp.status_code == 200, resp.text
+
+        body = client.get("/v1/session/target-column").json()
+        assert body["suggested_column"] == "Price"
+        assert body["target_column"] is None  # фиксация -- только upload/demo (§4-A)
 
     def test_suggested_column_does_not_mutate_actual_target_column(self):
-        """suggested_column -- подсказка для UI, не побочный эффект.
-        target_column остаётся None, пока фронт явно не POST-нет выбор."""
+        """suggested_column -- подсказка для UI, не побочный эффект:
+        при честной неоднозначности target_column остаётся None
+        (источники фиксации -- только upload/demo, §4-A)."""
         df = pd.DataFrame({"Year": [2020, 2021], "Price": [10.0, 20.0]})
         buf = io.BytesIO()
         df.to_csv(buf, index=False)
@@ -309,16 +378,18 @@ class TestSuggestedColumnHeuristic:
 
         resp = client.get("/v1/session/target-column")
         body = resp.json()
-        assert body["suggested_column"] == "Price"
-        assert body["target_column"] is None  # НЕ выбран автоматически на бэкенде
+        assert body["suggested_column"] == "Year"
+        assert body["target_column"] is None  # 2 кандидата -- честная неоднозначность
+        assert body["target_column_source"] is None
 
     def test_suggested_column_null_when_no_dataset(self):
         resp = client.get("/v1/session/target-column")
         assert resp.json()["suggested_column"] is None
 
     def test_suggested_column_falls_back_to_first_when_all_columns_date_like(self):
-        """Редкий случай: ВСЕ числовые колонки похожи на дату/год --
-        честно возвращаем первую как есть, а не None."""
+        """Все числовые похожи на дату/год по имени, date_column не
+        зарегистрирована: это ДВА кандидата -- рекомендация = первый
+        кандидат (Year), фиксации нет (честная неоднозначность)."""
         df = pd.DataFrame({"Year": [2020, 2021], "Period": [1, 2], "label": ["a", "b"]})
         buf = io.BytesIO()
         df.to_csv(buf, index=False)
@@ -326,7 +397,9 @@ class TestSuggestedColumnHeuristic:
         client.post("/v1/internal/upload", files={"file": ("data.csv", buf, "text/csv")})
 
         resp = client.get("/v1/session/target-column")
-        assert resp.json()["suggested_column"] == "Year"
+        data = resp.json()
+        assert data["suggested_column"] == "Year"
+        assert data["target_column"] is None
 
     def test_suggested_column_present_in_post_response_too(self):
         df = pd.DataFrame({"Year": [2020, 2021], "Price": [10.0, 20.0]})
@@ -335,9 +408,10 @@ class TestSuggestedColumnHeuristic:
         buf.seek(0)
         client.post("/v1/internal/upload", files={"file": ("data.csv", buf, "text/csv")})
 
-        resp = client.post("/v1/session/target-column", json={"column": "Year"})
-        # Пользователь ЯВНО выбрал Year (нетипично, но валидно) -- suggested_column
-        # всё равно честно показывает Price как рекомендацию, не подстраивается
-        # под фактический выбор.
-        assert resp.json()["target_column"] == "Year"
-        assert resp.json()["suggested_column"] == "Price"
+        resp = client.post("/v1/session/target-column", json={"column": "Price"})
+        # Пользователь ЯВНО выбрал Price (второй кандидат) -- рекомендация
+        # НЕ подстраивается под фактический выбор: первый кандидат (Year).
+        data = resp.json()
+        assert data["target_column"] == "Price"
+        assert data["target_column_source"] == "user"
+        assert data["suggested_column"] == "Year"

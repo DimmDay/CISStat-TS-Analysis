@@ -45,6 +45,17 @@ CSV_WITH_NUMERIC = (
     "2023-01-10,100.2,B\n"
 )
 
+# PROGR-25-A: две числовые -- авто-фиксация не срабатывает (честная
+# неоднозначность, target_column остаётся None) -- датасет для тестов
+# синтетического fallback (когда цель НЕ выбрана).
+CSV_TWO_NUMERIC = (
+    "date,value,price\n"
+    "2023-01-01,10.5,100\n"
+    "2023-01-02,20.1,200\n"
+    "2023-01-03,30.2,300\n"
+    "2023-01-04,40.7,400\n"
+)
+
 
 def _upload_and_set_target(csv: str = CSV_WITH_NUMERIC, target: str = "value"):
     """Загрузить датасет и установить target_column. Вернуть resp set."""
@@ -124,13 +135,19 @@ class TestInternalBacktestUsesRealSeries:
         assert data["n_test"] == 3
 
     def test_data_source_synthetic_when_no_target(self):
-        """Без target_column → data_source='synthetic' (fallback на старое поведение)."""
-        # Загружаем датасет, но НЕ устанавливаем target_column
-        file = io.BytesIO(CSV_WITH_NUMERIC.encode("utf-8"))
+        """Без target_column → data_source='synthetic' (fallback).
+
+        PROGR-25-A: цель не выбрана возможна только при честной
+        неоднозначности (2+ кандидатов -- spec_progress_target_column.md
+        §4-A); датасет с одной числовой теперь авто-фиксируется
+        (data_source='session', см. соседний тест)."""
+        # Загружаем датасет с ДВУМЯ числовыми -- авто-фиксация не срабатывает
+        file = io.BytesIO(CSV_TWO_NUMERIC.encode("utf-8"))
         client.post(
             "/v1/internal/upload",
             files={"file": ("test.csv", file, "text/csv")},
         )
+        assert client.get("/v1/session/current").json()["target_column"] is None
         resp = client.post(
             "/v1/internal/models/backtest",
             json={
@@ -176,12 +193,14 @@ class TestInternalBacktestUsesRealSeries:
         assert real_resp.status_code == 200
         real_mae = real_resp.json()["metrics"]["mae"]
 
-        # Без target_column → синтетика
-        file = io.BytesIO(CSV_WITH_NUMERIC.encode("utf-8"))
+        # Без target_column → синтетика: датасет с двумя числовыми
+        # (честная неоднозначность -- PROGR-25-A), цель не фиксируется
+        file = io.BytesIO(CSV_TWO_NUMERIC.encode("utf-8"))
         client.post(
             "/v1/internal/upload",
             files={"file": ("test2.csv", file, "text/csv")},
         )
+        assert client.get("/v1/session/current").json()["target_column"] is None
         synth_resp = client.post(
             "/v1/internal/models/backtest",
             json={
