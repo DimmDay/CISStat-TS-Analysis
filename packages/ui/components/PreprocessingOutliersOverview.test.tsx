@@ -162,3 +162,65 @@ describe("PreprocessingOutliersOverview", () => {
     });
   });
 });
+
+// ── spec_status_original_series.md, задача B (PROGR-24-ORIGIN-B):
+//    нейтральная плашка Обзора о всплесках на производных колонках ──────
+// Спека §«Что показывать вместо статуса» п.1: «На производных колонках:
+// 4 всплеска (информативно, статус не меняет)». Плашка НЕ окрашивает
+// остановку (нейтральный фон, не amber/red) и живёт в шапке Обзора --
+// видна во всех вкладках-представлениях. Данные -- derived_summary
+// (задача A), вне статуса.
+
+const DERIVED_SUMMARY = {
+  total_columns: 1,
+  total_numeric_columns: 1,
+  total_outliers: 4,
+  affected_columns: ["value_detrended"],
+  columns: [
+    {
+      column: "value_detrended", sample_size: 150, outlier_count: 4, outlier_pct: 2.7,
+      recommended_method: "iqr", bounds: { lower: -51.83, upper: 50.61 },
+      outlier_examples: [25, 70, 105, 130], insufficient_sample: false,
+    },
+  ],
+};
+
+describe("PreprocessingOutliersOverview + нейтральная плашка производных (PROGR-24-ORIGIN-B)", () => {
+  it("показывает плашку с плюрализацией всплесков и именами колонок; фон нейтральный, в шапке Обзора", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ ...PROFILE, derived_summary: DERIVED_SUMMARY }),
+    });
+    render(<PreprocessingOutliersOverview refreshKey={1} />);
+    await screen.findByRole("table", { name: "Выбросы по числовым колонкам" });
+
+    const banner = screen.getByRole("note");
+    expect(banner).toHaveTextContent("На производных колонках: 4 всплеска (информативно, статус не меняет)");
+    expect(banner).toHaveTextContent("value_detrended");
+    // Нейтральность: серый фон, НЕ янтарный/красный (не окрашивает остановку).
+    expect(banner).toHaveClass("bg-neutral-50");
+    expect(banner.className).not.toContain("bg-amber-50");
+    expect(banner.className).not.toContain("bg-red-50");
+    // Плашка живёт в шапке Обзора (блок с border-b) -- видна во всех вкладках.
+    expect(banner.parentElement?.className).toContain("border-b border-neutral-100");
+  });
+
+  it("плашки нет для старого API без derived_summary и при нулевых всплесках", async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(PROFILE) });
+    const { rerender } = render(<PreprocessingOutliersOverview refreshKey={1} />);
+    await screen.findByRole("table", { name: "Выбросы по числовым колонкам" });
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+
+    // Новый мок ДО rerender: смена refreshKey перезапрашивает профиль.
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        ...PROFILE,
+        derived_summary: { ...DERIVED_SUMMARY, total_outliers: 0, affected_columns: [], columns: [{ ...DERIVED_SUMMARY.columns[0], outlier_count: 0, outlier_pct: 0, outlier_examples: [] }] },
+      }),
+    });
+    rerender(<PreprocessingOutliersOverview refreshKey={2} />);
+    await screen.findByRole("table", { name: "Выбросы по числовым колонкам" });
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+  });
+});

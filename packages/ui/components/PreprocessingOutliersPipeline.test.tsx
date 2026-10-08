@@ -244,3 +244,141 @@ describe("PreprocessingOutliersPipeline + честный баннер (G345-фи
     expect(banner).toHaveClass("bg-amber-50");
   });
 });
+
+// ── spec_status_original_series.md, задача B (PROGR-24-ORIGIN-B):
+//    группировка чекбоксов мастера «Исходные» / «Производные» ───────────
+// Спека §«Что показывать вместо статуса» п.2: чекбоксы делятся на
+// «Исходные» (выбраны по умолчанию) и «Производные» (свёрнуты, по
+// умолчанию не предлагаются, с пояснением). Данные -- derived_summary
+// из профиля и ответов коррекций (задача A).
+
+const DERIVED_SUMMARY = {
+  total_columns: 2,
+  total_numeric_columns: 2,
+  total_outliers: 4,
+  affected_columns: ["value_detrended"],
+  columns: [
+    {
+      column: "value_detrended", sample_size: 150, outlier_count: 4, outlier_pct: 2.7,
+      recommended_method: "iqr", bounds: { lower: -51.83, upper: 50.61 },
+      outlier_examples: [25, 70, 105, 130], insufficient_sample: false,
+    },
+    {
+      column: "value_smoothed", sample_size: 150, outlier_count: 0, outlier_pct: 0,
+      recommended_method: "iqr", bounds: { lower: -40, upper: 40 },
+      outlier_examples: [], insufficient_sample: false,
+    },
+  ],
+};
+
+const PROFILE_DERIVED = { ...PROFILE, derived_summary: DERIVED_SUMMARY };
+
+describe("PreprocessingOutliersPipeline + группировка Исходные/Производные (PROGR-24-ORIGIN-B)", () => {
+  beforeEach(() => {
+    mockFetchSequence(PROFILE_DERIVED, ALL_COLUMNS);
+  });
+
+  it("исходные предзаполнены, производные свёрнуты и НЕ предложены по умолчанию, с пояснением", async () => {
+    render(<PreprocessingOutliersPipeline onApplied={jest.fn()} />);
+
+    expect(await screen.findByRole("checkbox", { name: "Выбрать колонку Price" })).toBeChecked();
+    expect(screen.getByText("Исходные")).toBeInTheDocument();
+
+    // Группа производных -- <details>, свёрнутый по умолчанию.
+    const summary = screen.getByText(/Производные \(2\)/);
+    const group = summary.closest("details");
+    expect(group).not.toBeNull();
+    expect(group).not.toHaveAttribute("open");
+
+    // Чекбоксы производных существуют, но НЕ предзаполнены, даже при всплесках.
+    const derivedCheckbox = screen.getByRole("checkbox", { name: "Выбрать колонку value_detrended" });
+    expect(derivedCheckbox).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Выбрать колонку value_smoothed" })).not.toBeChecked();
+
+    // Пояснение методологии внутри группы.
+    expect(group).toHaveTextContent(/другой статистический вопрос/);
+  });
+
+  it("у производных счётчик «всплесков» (терминология спеки), раскрывается по клику", async () => {
+    render(<PreprocessingOutliersPipeline onApplied={jest.fn()} />);
+    await screen.findByRole("checkbox", { name: "Выбрать колонку Price" });
+
+    fireEvent.click(screen.getByText(/Производные \(2\)/));
+    expect(screen.getByText("всплесков: 4")).toBeInTheDocument();
+    expect(screen.getByText("всплесков: 0")).toBeInTheDocument();
+  });
+
+  it("осознанно отмеченная производная колонка уходит в запрос коррекции", async () => {
+    mockFetchSequence(PROFILE_DERIVED, ALL_COLUMNS, PREVIEW, { warnings: [] });
+    render(<PreprocessingOutliersPipeline onApplied={jest.fn()} />);
+
+    await screen.findByRole("checkbox", { name: "Выбрать колонку Price" });
+    fireEvent.click(screen.getByText(/Производные \(2\)/));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Выбрать колонку value_detrended" }));
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр изменений" }));
+    await screen.findByText("Найдено выбросов: 1");
+
+    const correctionCalls = (global.fetch as unknown as jest.Mock).mock.calls.filter((call: unknown[]) =>
+      String(call[0]).includes("/dataset/outlier-corrections"),
+    );
+    expect(correctionCalls).toHaveLength(1);
+    const [, init] = correctionCalls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body)).columns).toEqual(["Price", "value_detrended"]);
+  });
+
+  it("старый API без derived_summary: группы производных нет (обратная совместимость)", async () => {
+    mockFetchSequence(PROFILE, ALL_COLUMNS);
+    render(<PreprocessingOutliersPipeline onApplied={jest.fn()} />);
+
+    await screen.findByRole("checkbox", { name: "Выбрать колонку Price" });
+    expect(screen.queryByText(/Производные \(/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Исходные")).not.toBeInTheDocument();
+  });
+
+  it("после apply группа производных обновляется из ответа: флаг-колонка появляется ТОЛЬКО свёрнутой и неснятой (петля PROGR-22 не возвращается)", async () => {
+    const APPLY_RESPONSE = {
+      ...PREVIEW,
+      applied: true,
+      total_changed: 1,
+      total_still_outliers: 0,
+      status: "done",
+      total_outliers_after: 0,
+      // Операция добавила флаг-колонку: она приходит в derived_summary
+      // apply-ответа (задача A) и обязана появиться в свёрнутой группе
+      // производных, а НЕ в исходных чекбоксах и НЕ предзаполненной.
+      derived_summary: {
+        total_columns: 3,
+        total_numeric_columns: 3,
+        total_outliers: 8,
+        affected_columns: ["value_detrended", "value_outlier_flag"],
+        columns: [
+          ...DERIVED_SUMMARY.columns,
+          {
+            column: "value_outlier_flag", sample_size: 150, outlier_count: 4, outlier_pct: 2.7,
+            recommended_method: "iqr", bounds: { lower: -0.5, upper: 0.5 },
+            outlier_examples: [25, 70, 105, 130], insufficient_sample: false,
+          },
+        ],
+      },
+    };
+    mockFetchSequence(PROFILE_DERIVED, ALL_COLUMNS, PREVIEW, { warnings: [] }, APPLY_RESPONSE);
+    const onApplied = jest.fn();
+    render(<PreprocessingOutliersPipeline onApplied={onApplied} />);
+
+    await screen.findByRole("checkbox", { name: "Выбрать колонку Price" });
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр изменений" }));
+    await screen.findByText("Найдено выбросов: 1");
+    fireEvent.click(screen.getByRole("checkbox", { name: /Подтверждаю изменение активного датасета/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Применить исправления" }));
+    await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
+
+    // Флаг-колонка из apply-ответа видна в группе производных...
+    const flagCheckbox = await screen.findByRole("checkbox", { name: "Выбрать колонку value_outlier_flag" });
+    // ...НЕ предзаполнена («+4 от самой флаг-колонки» невозможно по построению)...
+    expect(flagCheckbox).not.toBeChecked();
+    // value_detrended (4 всплеска) и value_outlier_flag (4 всплеска).
+    expect(screen.getAllByText("всплесков: 4")).toHaveLength(2);
+    // ...а исходные чекбоксы перезаполняются только каноническим профилем.
+    expect(screen.getByRole("checkbox", { name: "Выбрать колонку Price" })).not.toBeChecked();
+  });
+});

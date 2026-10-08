@@ -38,3 +38,30 @@ describe("PreprocessingStationarityPipeline", () => {
     expect(screen.getByText(/переоценить только на train/i)).toBeInTheDocument();
   });
 });
+
+// ── spec_status_original_series.md, задача B (PROGR-24-ORIGIN-B):
+//    информационная заметка предпросмотра мастера «Стационарности» ──────
+// Спека §«Что показывать вместо статуса» п.3: «Скачки в преобразованном
+// ряду могут быть структурным сдвигом, не удаляйте их. Проверьте
+// исследование EDA „Структурные сдвиги"». Заметка -- поддержка, не гейт:
+// нейтральный инфо-фон (bg-blue-50, устоявшийся паттерн), не warning.
+
+describe("PreprocessingStationarityPipeline + заметка о структурном сдвиге (PROGR-24-ORIGIN-B)", () => {
+  it("заметка появляется в предпросмотре (и только в нём), тон инфо", async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(RESPONSE) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ ...RESPONSE, applied: true }) });
+    render(<PreprocessingStationarityPipeline column="Price" recommendedMethod="first_difference" seasonalPeriod={12} onApplied={jest.fn()} />);
+
+    // До предпросмотра заметки нет.
+    expect(screen.queryByText(/структурным сдвигом/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Предпросмотр преобразования" }));
+    const note = await screen.findByText(/Скачки в преобразованном ряду могут быть структурным сдвигом/);
+    expect(note).toHaveTextContent("Структурные сдвиги");
+    // Инфо-тон: голубой фон, НЕ warning-янтарный и НЕ error-красный.
+    expect(note).toHaveClass("bg-blue-50");
+    expect(note.className).not.toContain("bg-amber-50");
+    expect(note.className).not.toContain("bg-red-50");
+  });
+});

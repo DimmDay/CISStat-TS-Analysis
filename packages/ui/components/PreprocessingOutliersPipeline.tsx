@@ -9,7 +9,7 @@ import {
   type SanityWarningInfo,
 } from "../lib/mentor";
 import { MentorInlineWarning } from "./MentorInlineWarning";
-import type { OutlierProfileItem, OutlierProfileResponse } from "./PreprocessingOutliersOverview";
+import type { DerivedOutlierSummary, OutlierProfileItem, OutlierProfileResponse } from "./PreprocessingOutliersOverview";
 
 type Method = "iqr" | "zscore" | "mad" | "percentile";
 type Strategy = "drop_rows" | "cap" | "median" | "flag";
@@ -55,6 +55,10 @@ interface CorrectionResponse {
     stats_after: ColumnStats | null;
   }>;
   profile: OutlierProfileItem[];
+  // spec_status_original_series.md, задача A: информационный профиль по
+  // производным колонкам -- ВНЕ статуса (Optional: в старых ответах поля
+  // нет). Носитель обновления группы «Производные» мастера (задача B).
+  derived_summary?: DerivedOutlierSummary | null;
   // G345-фикс (PROGR-23): честный исход операции в КАРТОЧНОЙ шкале
   // (фиксированный iqr-1.5, как у карточки остановки) -- носители
   // честного баннера (Г4): статус остановки и счётчик выбросов ПОСЛЕ
@@ -157,6 +161,10 @@ export function PreprocessingOutliersPipeline({ onApplied }: { onApplied: () => 
 
   const hasApplicableColumns = (profile?.columns.length ?? 0) > 0;
   const noOutliers = hasApplicableColumns && profile!.total_outliers === 0;
+  // spec_status_original_series.md, задача B: производные колонки для
+  // группы «Производные» -- из derived_summary профиля (задача A);
+  // null/старый API/нет колонок -- группа не рендерится.
+  const derivedGroup: DerivedOutlierSummary | null = profile?.derived_summary ?? null;
   const dateColumnCandidates = allColumns.filter((c) => !selected.includes(c));
   const residualAvailable = selected.length === 1 && dateColumnCandidates.length > 0;
 
@@ -177,6 +185,10 @@ export function PreprocessingOutliersPipeline({ onApplied }: { onApplied: () => 
         // (allColumns ещё пуст), а второй -- enabled, что делает тест на
         // «сразу доступно при одной выбранной колонке» гонкой.
         setProfile(data);
+        // Предзаполнение -- ТОЛЬКО канонические колонки с выбросами
+        // (spec_status_original_series.md): производные НЕ предлагаются
+        // по умолчанию -- их выбор всегда осознанное действие в группе
+        // «Производные»; всплески на них -- другой статистический вопрос.
         setSelected(data.columns.filter((item) => item.outlier_count > 0).map((item) => item.column));
         if (allCols) setAllColumns(allCols.columns.map((c) => c.column));
       } catch (caught) {
@@ -233,6 +245,12 @@ export function PreprocessingOutliersPipeline({ onApplied }: { onApplied: () => 
           ...current,
           columns: data.profile,
           total_outliers: data.profile.reduce((sum, item) => sum + item.outlier_count, 0),
+          // Задача B: группа «Производные» обновляется из apply-ответа --
+          // флаг-колонки, добавленные операцией, появляются ТОЛЬКО в
+          // свёрнутой группе производных и НЕ предзаполняются (петля
+          // «+N от самой флаг-колонки» PROGR-22-REPRO невозможна по
+          // построению; предзаполнение остаётся каноническим).
+          derived_summary: data.derived_summary ?? null,
         } : current);
         setSelected(data.profile.filter((item) => item.outlier_count > 0).map((item) => item.column));
         // G345-фикс (PROGR-23, Г4): честный баннер из фактов ответа
@@ -292,6 +310,12 @@ export function PreprocessingOutliersPipeline({ onApplied }: { onApplied: () => 
                 <p className="font-medium">В датасете нет числовых колонок.</p>
               </div>
             )}
+            {/* Подпись «Исходные» осмысленна только рядом с группой
+                «Производные»: без производных список один и подпись --
+                шум. */}
+            {derivedGroup && derivedGroup.columns.length > 0 && profile && profile.columns.length > 0 && (
+              <p className="text-xs font-medium text-neutral-500">Исходные</p>
+            )}
             {profile?.columns.map((item) => (
               <label key={item.column} className="block rounded bg-neutral-50 p-2 text-sm text-neutral-700">
                 <span className="flex items-center gap-2">
@@ -315,6 +339,45 @@ export function PreprocessingOutliersPipeline({ onApplied }: { onApplied: () => 
                 )}
               </label>
             ))}
+            {/* spec_status_original_series.md, задача B (п.2): группа
+                «Производные» -- свёрнута, по умолчанию НЕ предлагается,
+                с пояснением. Выбор производной -- осознанное действие;
+                счётчик в терминологии спеки -- «всплесков» (другой
+                статистический вопрос, не «выбросов»). */}
+            {derivedGroup && derivedGroup.columns.length > 0 && (
+              <details className="rounded border border-neutral-200 bg-neutral-50">
+                <summary className="cursor-pointer select-none px-2 py-1.5 text-xs font-medium text-neutral-700">
+                  Производные ({derivedGroup.columns.length}) — не предлагаются по умолчанию
+                </summary>
+                <div className="space-y-1 px-2 pb-2">
+                  <p className="text-[11px] text-neutral-500">
+                    Колонки, порождённые более поздними остановками (стационарность, сглаживание, декомпозиция, флаги).
+                    Всплески на них — другой статистический вопрос (аномалия приращения, а не значения): их чистка
+                    стирает структурный сдвиг. Отмечайте осознанно.
+                  </p>
+                  {derivedGroup.columns.map((item) => (
+                    <label key={item.column} className="block rounded bg-white p-2 text-sm text-neutral-700">
+                      <span className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selected.includes(item.column)}
+                          onChange={() => {
+                            invalidatePreview();
+                            setSelected((current) => current.includes(item.column)
+                              ? current.filter((c) => c !== item.column)
+                              : [...current, item.column]);
+                          }}
+                          aria-label={`Выбрать колонку ${item.column}`}
+                          className="accent-brand"
+                        />
+                        <span className="font-medium">{item.column}</span>
+                        <span className="ml-auto text-xs">всплесков: {item.outlier_count}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </details>
+            )}
           </div>
         </div>
 

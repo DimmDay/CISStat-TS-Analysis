@@ -41,6 +41,33 @@ export interface OutlierProfileResponse {
   outlier_rate_pct: number | null;
   affected_columns: string[];
   columns: OutlierProfileItem[];
+  // spec_status_original_series.md, задача A (PROGR-24-ORIGIN-A):
+  // информационный профиль по производным колонкам -- ВНЕ статуса.
+  // Носитель нейтральной плашки Обзора (задача B). None = производных
+  // нет или старый API -- канал просто не рендерится.
+  derived_summary?: DerivedOutlierSummary | null;
+}
+
+// spec_status_original_series.md, задача A: зеркало бэкенд-схемы
+// DerivedOutlierSummaryOut (apps/api/schemas.py). Всплески разностного
+// ряда отвечают на другой статистический вопрос («аномально ли
+// ПРИРАЩЕНИЕ?») и не окрашивают остановку «Выбросы» исходного ряда.
+export interface DerivedOutlierSummary {
+  total_columns: number;
+  total_numeric_columns: number;
+  total_outliers: number;
+  affected_columns: string[];
+  columns: OutlierProfileItem[];
+}
+
+// Русская плюрализация для плашки спеки: 1 всплеск / 2–4 всплеска /
+// 5+ всплесков (с исключениями 11–14).
+export function spikesLabel(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${n} всплеск`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${n} всплеска`;
+  return `${n} всплесков`;
 }
 
 const METHOD_LABEL: Record<OutlierProfileItem["recommended_method"], string> = {
@@ -170,6 +197,19 @@ function PreprocessingOutliersOverviewInner({
             <span>Затронутые колонки — {profile.affected_columns.join(", ")}</span>
           )}
         </div>
+        {/* spec_status_original_series.md, задача B (п.1): нейтральная
+            плашка о всплесках на производных колонках. Информативно,
+            статус НЕ меняет: серый фон (не amber/red), вне свёртки
+            «любой warning окрашивает стадию» (§12 п.10) -- окрашивание
+            остановки делает сервер по канонической области (задача A).
+            Живёт в шапке Обзора -- видна во всех вкладках-представлениях. */}
+        {profile.derived_summary && profile.derived_summary.total_outliers > 0 && (
+          <p role="note" className="mt-2 rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-xs text-neutral-600">
+            На производных колонках: {spikesLabel(profile.derived_summary.total_outliers)} (информативно, статус не меняет)
+            {profile.derived_summary.affected_columns.length > 0 &&
+              ` — колонки: ${profile.derived_summary.affected_columns.join(", ")}`}
+          </p>
+        )}
         <div role="tablist" aria-label="Представления проверки выбросов" className="mt-3 flex flex-wrap gap-2">
           {TABS.map((tab) => (
             <button
