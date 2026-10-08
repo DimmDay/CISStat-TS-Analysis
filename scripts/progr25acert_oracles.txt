@@ -1,0 +1,71 @@
+====================================================================================================
+ОРКУЛЫ НЕЗАВИСИМОЙ СЕРТИФИКАЦИИ PROGR-25-A-CERT -- задача A (spec_progress_target_column.md §4-A)
+Свой датасет: energy_hourly.csv (336 часовых точек; ts/load; варианты v2 price, v3 year, v4 load_detrended, v6 без числовых)
+====================================================================================================
+── A. Юнит-контракты target_column_rule (свои сценарии) ──
+    [PASS] A1 numeric_columns: int/float числовые; bool/строки/даты нет (докстрингу о bool -- находка F2)
+    [PASS] A2 приманка-исходная load_detrended -- кандидат (не по суффиксу)
+    [PASS] A3 колонка реестра исключена из кандидатов
+    [PASS] A3b ghost-запись реестра безвредна
+    [PASS] A4 date_column-факт исключён (имя hour_idx не date-подобное)
+    [PASS] A5 suggest = первый кандидат по порядку фрейма
+    [PASS] A5b пустой список кандидатов -> recommend None
+    [PASS] A6 dataframe=None -> кандидатов нет без исключений
+    [PASS] A7 авто-фиксация возвращает load, source=auto
+    [PASS] A7b событие: payload ровно {target_column, source: auto}
+    [PASS] A7c событие: stage=validation, node_id=None, actor=system
+    [PASS] A7d run_id зафиксирован и общий у события
+    [PASS] A8 два кандидата -> None, target/source не тронуты, трасса не росла
+    [PASS] A9 ноль кандидатов -> None (фиксации/события нет)
+    [PASS] A10 restore-путь: set_target_column без события и без source
+    [PASS] A11 повторный вызов сеет второе событие (документирующий якорь)
+    [PASS] A12 событие stage=validation не двигает last_active_stage
+── B. Живой API на своём датасете (energy_hourly) ──
+    [PASS] B1 upload v1 -> /current: target=load, source=auto
+    [PASS] B2 GET /target-column зеркалит и рекомендует load
+    [PASS] B3 ровно одно событие; хронология фиксация -> upload_completed
+    [PASS] B3b payload/stage/node_id/actor/run_id события
+    [FAIL] B4 носитель задачи B: /trace target_column/source наверху
+    [PASS] B5 v2 (2 числовых): фиксации/события/носителя нет
+    [PASS] B5b рекомендация -- первый кандидат по порядку (load)
+    [PASS] B6 v3 [year, load]: фиксации нет, событие отсутствует (R4)
+    [PASS] B6b рекомендация = year (первый кандидат; имя-исключение снято)
+    [PASS] B7 факт date_column=year -> рекомендация load
+    [PASS] B7b авто-фиксации вне точек загрузки нет (осознанная граница)
+    [PASS] B8 v4 приманка load_detrended: 2 кандидата, фиксации нет
+    [PASS] B8b рекомендация load (порядок фрейма; суффикс не решает)
+    [PASS] B9 demo: sales_demo (2 числовых) -- честное «не выбран»
+    [PASS] B9b /trace носитель demo: None/None; ключ source в ответе demo
+    [PASS] B9c demo одночислового CSV (R2): target=load, source=auto
+    [FAIL] B9c событие авто на demo-пути; носитель /trace согласован
+    [PASS] B10 demo -> ручной выбор sales: source=user
+    [PASS] B10b payload ручного события без ключа source (legacy-канал)
+    [PASS] B11 ручной поверх авто: source=user, 2 события в порядке auto->manual
+    [PASS] B12 re-pick той же колонки: passport_history_reset=False, source=user
+    [PASS] B13 convert load->string: target и source сброшены
+    [PASS] B13b носитель /trace согласован после сброса
+    [PASS] B14 re-upload: ровно одно событие авто (канон PROGR-3)
+    [PASS] B15 v1(авто) -> v2(2 числовых): честное «не выбран»
+    [PASS] B16 0 числовых: фиксации нет, suggested=None, available=[]
+    [FAIL] B17 /current == /trace == /target-column (auto/None/user)
+    [PASS] B18 SessionStateResponse/TargetColumnResponse: source Optional=None
+    [PASS] B18b ProgressTraceResponse: target_column/source Optional=None
+    [PASS] B19 payload_keys target-column-маршрута содержит source
+    [PASS] B20 GET-чтения не создают событий и не меняют состояние
+── C. Сквозные инварианты и совместимость ──
+    [PASS] C1 legacy-документ: target жив, source=None (читается как user)
+    [PASS] C2 узлы трассы сохраняют исходную форму (аддитивность в /trace)
+    [PASS] C3 derived_columns и target_column переживают roundtrip
+    [PASS] C4 жизненный цикл: авто (source=auto) -> ручное (без source)
+    [PASS] C5 ручная фиксация нечисловой отклонена (422/400), цель не установлена
+    [PASS] C6 SESSION_SCHEMA_VERSION == 3 (аддитивность без миграции)
+── D. Персистентность target_column_source (контракт store) ──
+    [FAIL] D1 source переживает to_dict/from_dict  <-- ДЕФЕКТ F1: ключ 'target_column_source' в документе отсутствует
+    [FAIL] D2 source переживает Redis save/get  <-- ДЕФЕКТ F1: production-путь теряет origin
+    [PASS] D3 target/реестр/run_id в том же документе сохранены (изоляция дефекта новым полем)
+
+====================================================================================================
+ИТОГ ОРАКУЛОВ: 52/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1)
+НЕОЖИДАННЫЕ FAIL: ['B4 носитель задачи B: /trace target_column/source наверху', 'B9c событие авто на demo-пути; носитель /trace согласован', 'B17 /current == /trace == /target-column (auto/None/user)']
+====================================================================================================
+AGENTS.md: локальное измерение, commit/push НЕ выполнялись.

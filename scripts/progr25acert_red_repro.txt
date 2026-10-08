@@ -1,0 +1,36 @@
+# PROGR-25-A-CERT: RED-воспроизведение оракулов разработчика на родительском 3bd6044 (git worktree, независимый прогон аудитора)
+# Команда: python -m pytest tests/api/test_progress_progr25a.py -v (в worktree 3bd6044, тест-файл из 13c693c)
+# Ожидание по протоколу разработчика (progr25a_verification.txt §1): 15 failed, 1 passed
+
+tests/api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o1_current_reports_target_and_source_auto FAILED [  6%]
+tests/api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o1b_target_column_endpoint_reports_source_auto FAILED [ 12%]
+tests/api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o2_seeds_target_column_changed_event FAILED [ 18%]
+tests/api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o11_payload_is_exactly_target_and_source FAILED [ 25%]
+tests/api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o3_two_numerics_honest_ambiguity FAILED [ 31%]
+tests/api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o12_year_value_without_registered_date_is_ambiguous FAILED [ 37%]
+tests/api/test_progress_progr25a.py::TestAutoFixOnUpload::test_reupload_autofixes_new_dataset FAILED [ 43%]
+tests/api/test_progress_progr25a.py::TestDemoEndpointRule::test_o4_demo_builtin_sales_demo_is_ambiguous_guard FAILED [ 50%]
+tests/api/test_progress_progr25a.py::TestDemoEndpointRule::test_o4b_manual_fix_after_demo_works FAILED [ 56%]
+tests/api/test_progress_progr25a.py::TestManualAfterAuto::test_o5_manual_after_auto_is_user FAILED [ 62%]
+tests/api/test_progress_progr25a.py::TestManualAfterAuto::test_o5b_manual_event_payload_has_no_source_legacy_semantics PASSED [ 68%]
+tests/api/test_progress_progr25a.py::TestTargetColumnRuleUnit::test_o6_source_defaults_to_none_legacy FAILED [ 75%]
+tests/api/test_progress_progr25a.py::TestTargetColumnRuleUnit::test_o7_derived_registry_excluded_original_derived_like_kept FAILED [ 81%]
+tests/api/test_progress_progr25a.py::TestTargetColumnRuleUnit::test_o8_date_column_excluded_even_without_date_like_name FAILED [ 87%]
+tests/api/test_progress_progr25a.py::TestTargetColumnRuleUnit::test_o9_direct_set_target_column_does_not_fixate FAILED [ 93%]
+tests/api/test_progress_progr25a.py::TestConvertTypesResetsSource::test_o10_type_conversion_reset_clears_source FAILED [100%]
+FAILED tests/api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o1_current_reports_target_and_source_auto - AssertionError: assert None == 'value'
+FAILED tests/api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o1b_target_column_endpoint_reports_source_auto - AssertionError: assert None == 'value'
+FAILED tests/api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o2_seeds_target_column_changed_event - AssertionError: ожидалось ровно одно событие, есть: 0
+FAILED tests/api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o11_payload_is_exactly_target_and_source - IndexError: list index out of range
+FAILED tests/api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o3_two_numerics_honest_ambiguity - KeyError: 'target_column_source'
+FAILED tests/api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o12_year_value_without_registered_date_is_ambiguous - KeyError: 'target_column_source'
+FAILED tests/api/test_progress_progr25a.py::TestAutoFixOnUpload::test_reupload_autofixes_new_dataset - AssertionError: assert None == 'price'
+FAILED tests/api/test_progress_progr25a.py::TestDemoEndpointRule::test_o4_demo_builtin_sales_demo_is_ambiguous_guard - KeyError: 'target_column_source'
+FAILED tests/api/test_progress_progr25a.py::TestDemoEndpointRule::test_o4b_manual_fix_after_demo_works - KeyError: 'target_column_source'
+FAILED tests/api/test_progress_progr25a.py::TestManualAfterAuto::test_o5_manual_after_auto_is_user - KeyError: 'target_column_source'
+FAILED tests/api/test_progress_progr25a.py::TestTargetColumnRuleUnit::test_o6_source_defaults_to_none_legacy - AttributeError: 'AnalysisSession' object has no attribute 'target_column_source'
+FAILED tests/api/test_progress_progr25a.py::TestTargetColumnRuleUnit::test_o7_derived_registry_excluded_original_derived_like_kept - ModuleNotFoundError: No module named 'apps.api.target_column_rule'
+FAILED tests/api/test_progress_progr25a.py::TestTargetColumnRuleUnit::test_o8_date_column_excluded_even_without_date_like_name - ModuleNotFoundError: No module named 'apps.api.target_column_rule'
+FAILED tests/api/test_progress_progr25a.py::TestTargetColumnRuleUnit::test_o9_direct_set_target_column_does_not_fixate - AttributeError: 'AnalysisSession' object has no attribute 'target_column_source'
+FAILED tests/api/test_progress_progr25a.py::TestConvertTypesResetsSource::test_o10_type_conversion_reset_clears_source - KeyError: 'target_column_source'
+========================= 15 failed, 1 passed in 4.09s =========================

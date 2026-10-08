@@ -1,0 +1,15 @@
+# PROGR-25-A-CERT: независимый полный регресс аудитора
+# Среда песочницы аудитора до прогона требовала установки: PyWavelets, pandera,
+# fakeredis/httpx (уже были), prophet/statsforecast/arch/ruptures (гейт реестра
+# моделей), statsmodels 0.14.5 -> 0.15.0 (пол requirements.txt; ниже 0.15 — 16
+# падений test_forecasting_session на параметрической симуляции — НЕ связаны с
+# задачей). DATABASE_URL песочницы на слой прогнозов не влияет (psycopg
+# отсутствует, record_run_event — best-effort warning).
+# Команда: python -m pytest tests/api/ tests/integration/ -q --tb=no
+# Результат: 1482 passed, 3 failed, 1 skipped (195.79s) — СОВПАДЕНИЕ 1:1
+# с протоколом разработчика (progr25a_verification.txt §4) и его набором failed:
+FAILED tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+FAILED tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+FAILED tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics
+# (три средовых падения задокументированы разработчиком как предсуществующие на
+# чистом 3bd6044; тесты не загружают датасет и не касаются target_column)

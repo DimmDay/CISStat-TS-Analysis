@@ -1,0 +1,199 @@
+================================================================================
+МУТАЦИОННЫЙ ПРОГОН PROGR-25-A-CERT -- задача A (spec_progress_target_column.md §4-A)
+Независимая сертификация аудитора: 15 СВОИХ мутантов (TM-1..TM-15) + контроль
+харнесса TM-0 (no-op обязан выжить). Каналы: repo (адресные тесты, fail-fast) +
+oracle (57 оракулов на своём датасете energy_hourly; exit != 0 == убит).
+Прогон партиями из-за лимита времени процесса: партия 1 = TM-0..TM-5,
+партия 2 = TM-6..TM-10, партия 3 = TM-11..TM-15; перед каждой партией --
+свежий backup с md5, после каждой -- побайтовое восстановление с md5-контролем
+(все md5 сошлись; git status apps/ чист после прогона).
+СВОДНЫЙ ИТОГ: 13/15 убиты ОБОИМИ каналами; TM-11/TM-12/TM-15 пережили только
+repo-канал и убиты оракулом (гэпы прикрытия repo-тестов -- находки акта R4);
+контроль харнесса TM-0 выжил в обоих каналах (харнесс достоверен).
+================================================================================
+
+########## ПАРТИЯ 1: TM-0..TM-5 ##########
+backup apps/api/target_column_rule.py: md5=663c9317fb229669e6919ed5cd705501
+
+── TM-0: КОНТРОЛЬ харнесса: no-op мутант обязан ВЫЖИТЬ в обоих каналах
+    файл: apps/api/target_column_rule.py (ожидание: survive)
+    repo   : SURVIVED (====================== 170 passed, 170 warnings in 10.98s ======================)
+    oracle : SURVIVED (ОРАКУЛОВ: 55/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: OK-CONTROL
+
+── TM-1: снят вычет реестра производных -- производная становится кандидатом (R4)
+    файл: apps/api/target_column_rule.py (ожидание: kill)
+    repo   : KILLED   (========================= 1 failed, 12 passed in 3.58s =========================)
+    oracle : KILLED   (ОРАКУЛОВ: 54/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED
+
+── TM-2: снят вычет session.date_column -- дата-ось становится кандидатом (R4)
+    файл: apps/api/target_column_rule.py (ожидание: kill)
+    repo   : KILLED   (========================= 1 failed, 13 passed in 3.57s =========================)
+    oracle : KILLED   (ОРАКУЛОВ: 52/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED
+
+── TM-3: фиксация при 2+ кандидатах -- честная неоднозначность сломана
+    файл: apps/api/target_column_rule.py (ожидание: kill)
+    repo   : KILLED   (========================= 1 failed, 4 passed in 3.50s ==========================)
+    oracle : KILLED   (ОРАКУЛОВ: 44/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED
+
+── TM-4: посев события удалён -- фиксация без трассы (план М5)
+    файл: apps/api/target_column_rule.py (ожидание: kill)
+    repo   : KILLED   (========================= 1 failed, 2 passed in 3.51s ==========================)
+    oracle : KILLED   (ОРАКУЛОВ: 45/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED
+
+── TM-5: инверсия origin сессии auto->user при авто-фиксации
+    файл: apps/api/target_column_rule.py (ожидание: kill)
+    repo   : KILLED   (============================== 1 failed in 3.73s ===============================)
+    oracle : KILLED   (ОРАКУЛОВ: 47/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED
+
+Восстановление оригиналов:
+    apps/api/target_column_rule.py: md5=663c9317fb229669e6919ed5cd705501
+
+====================================================================================================
+  TM-0: repo=SURVIVED oracle=SURVIVED -- КОНТРОЛЬ харнесса: no-op мутант обязан ВЫЖИТЬ в обоих каналах
+  TM-1: repo=KILLED   oracle=KILLED   -- снят вычет реестра производных -- производная становится кандидатом (R4)
+  TM-2: repo=KILLED   oracle=KILLED   -- снят вычет session.date_column -- дата-ось становится кандидатом (R4)
+  TM-3: repo=KILLED   oracle=KILLED   -- фиксация при 2+ кандидатах -- честная неоднозначность сломана
+  TM-4: repo=KILLED   oracle=KILLED   -- посев события удалён -- фиксация без трассы (план М5)
+  TM-5: repo=KILLED   oracle=KILLED   -- инверсия origin сессии auto->user при авто-фиксации
+
+Контроль харнесса TM-0: OK -- no-op выжил в обоих каналах
+
+ИТОГ: 5/5 мутантов убиты ОБОИМИ каналами
+====================================================================================================
+AGENTS.md: локальное измерение, commit/push НЕ выполнялись.
+
+########## ПАРТИЯ 2: TM-6..TM-10 ##########
+backup apps/api/routers/session.py: md5=05c97caa5d1532012374f4a0e033d8a4
+backup apps/api/target_column_rule.py: md5=663c9317fb229669e6919ed5cd705501
+backup apps/api/upload_common.py: md5=6e782b0ca067dd1ea34da0eebc295333
+
+── TM-6: инверсия source в payload события auto->user (трасса врёт)
+    файл: apps/api/target_column_rule.py (ожидание: kill)
+    repo   : KILLED   (========================= 1 failed, 2 passed in 3.69s ==========================)
+    oracle : KILLED   (ОРАКУЛОВ: 49/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED
+
+── TM-7: рекомендация -- последний кандидат вместо первого (порядок сломан)
+    файл: apps/api/target_column_rule.py (ожидание: kill)
+    repo   : KILLED   (========================= 1 failed, 5 passed in 3.49s ==========================)
+    oracle : KILLED   (ОРАКУЛОВ: 51/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED
+
+── TM-8: numeric_columns отдаёт ВСЕ колонки -- авто-фиксация нечисловой
+    файл: apps/api/target_column_rule.py (ожидание: kill)
+    repo   : KILLED   (============================== 1 failed in 3.40s ===============================)
+    oracle : KILLED   (ОРАКУЛОВ: 26/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED
+
+── TM-9: ручной маршрут не ставит source=user -- last-wins сломан
+    файл: apps/api/routers/session.py (ожидание: kill)
+    repo   : KILLED   (========================= 1 failed, 8 passed in 3.54s ==========================)
+    oracle : KILLED   (ОРАКУЛОВ: 51/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED
+
+── TM-10: точка фиксации upload снята -- Г1 возвращается
+    файл: apps/api/upload_common.py (ожидание: kill)
+    repo   : KILLED   (============================== 1 failed in 3.48s ===============================)
+    oracle : KILLED   (ОРАКУЛОВ: 44/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED
+
+Восстановление оригиналов:
+    apps/api/routers/session.py: md5=05c97caa5d1532012374f4a0e033d8a4
+    apps/api/target_column_rule.py: md5=663c9317fb229669e6919ed5cd705501
+    apps/api/upload_common.py: md5=6e782b0ca067dd1ea34da0eebc295333
+
+====================================================================================================
+  TM-6: repo=KILLED   oracle=KILLED   -- инверсия source в payload события auto->user (трасса врёт)
+  TM-7: repo=KILLED   oracle=KILLED   -- рекомендация -- последний кандидат вместо первого (порядок сломан)
+  TM-8: repo=KILLED   oracle=KILLED   -- numeric_columns отдаёт ВСЕ колонки -- авто-фиксация нечисловой
+  TM-9: repo=KILLED   oracle=KILLED   -- ручной маршрут не ставит source=user -- last-wins сломан
+  TM-10: repo=KILLED   oracle=KILLED   -- точка фиксации upload снята -- Г1 возвращается
+
+ИТОГ: 5/5 мутантов убиты ОБОИМИ каналами
+====================================================================================================
+AGENTS.md: локальное измерение, commit/push НЕ выполнялись.
+
+########## ПАРТИЯ 3: TM-11..TM-15 ##########
+backup apps/api/routers/progress.py: md5=7107a5c629337ab041e93643f878c001
+backup apps/api/routers/session.py: md5=05c97caa5d1532012374f4a0e033d8a4
+backup apps/api/session_store.py: md5=ef9ca258ed9286b1b648e0e6f235df04
+backup apps/api/trace_hook.py: md5=f64d74e740481838719453f1c2e87452
+
+── TM-11: точка фиксации demo снята (R2 нарушен)
+    файл: apps/api/routers/session.py (ожидание: kill)
+    repo   : SURVIVED (====================== 170 passed, 170 warnings in 10.71s ======================)
+    oracle : KILLED   (ОРАКУЛОВ: 53/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: SURVIVED
+
+── TM-12: канал source в payload_keys снят -- готовность канала потеряна
+    файл: apps/api/trace_hook.py (ожидание: kill)
+    repo   : SURVIVED (====================== 170 passed, 170 warnings in 10.66s ======================)
+    oracle : KILLED   (ОРАКУЛОВ: 54/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: SURVIVED
+
+── TM-13: set_dataset не сбрасывает source -- устаревший origin перетекает
+    файл: apps/api/session_store.py (ожидание: kill)
+    repo   : KILLED   (========================= 1 failed, 25 passed in 3.73s =========================)
+    oracle : KILLED   (ОРАКУЛОВ: 54/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED
+
+── TM-14: convert-types не сбрасывает source -- устаревший auto у пустой цели
+    файл: apps/api/routers/session.py (ожидание: kill)
+    repo   : KILLED   (========================= 1 failed, 15 passed in 3.54s =========================)
+    oracle : KILLED   (ОРАКУЛОВ: 53/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED
+
+── TM-15: носитель задачи B в /trace отрезан (всегда None)
+    файл: apps/api/routers/progress.py (ожидание: kill)
+    repo   : SURVIVED (====================== 170 passed, 170 warnings in 10.64s ======================)
+    oracle : KILLED   (ОРАКУЛОВ: 52/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: SURVIVED
+
+Восстановление оригиналов:
+    apps/api/routers/progress.py: md5=7107a5c629337ab041e93643f878c001
+    apps/api/routers/session.py: md5=05c97caa5d1532012374f4a0e033d8a4
+    apps/api/session_store.py: md5=ef9ca258ed9286b1b648e0e6f235df04
+    apps/api/trace_hook.py: md5=f64d74e740481838719453f1c2e87452
+
+====================================================================================================
+  TM-11: repo=SURVIVED oracle=KILLED   -- точка фиксации demo снята (R2 нарушен)
+  TM-12: repo=SURVIVED oracle=KILLED   -- канал source в payload_keys снят -- готовность канала потеряна
+  TM-13: repo=KILLED   oracle=KILLED   -- set_dataset не сбрасывает source -- устаревший origin перетекает
+  TM-14: repo=KILLED   oracle=KILLED   -- convert-types не сбрасывает source -- устаревший auto у пустой цели
+  TM-15: repo=SURVIVED oracle=KILLED   -- носитель задачи B в /trace отрезан (всегда None)
+
+ИТОГ: 2/5 мутантов убиты ОБОИМИ каналами; переживших: 3
+====================================================================================================
+AGENTS.md: локальное измерение, commit/push НЕ выполнялись.
+
+================================================================================
+СВОДКА ПО ВСЕМ МУТАНТАМ (объединение партий):
+  TM-0  : repo=SURVIVED oracle=SURVIVED -- контроль харнесса (no-op) OK
+  TM-1  : repo=KILLED   oracle=KILLED   -- снят вычет реестра производных
+  TM-2  : repo=KILLED   oracle=KILLED   -- снят вычет session.date_column
+  TM-3  : repo=KILLED   oracle=KILLED   -- фиксация при 2+ кандидатах
+  TM-4  : repo=KILLED   oracle=KILLED   -- посев события удалён
+  TM-5  : repo=KILLED   oracle=KILLED   -- инверсия origin сессии
+  TM-6  : repo=KILLED   oracle=KILLED   -- инверсия source в payload
+  TM-7  : repo=KILLED   oracle=KILLED   -- рекомендация последнего кандидата
+  TM-8  : repo=KILLED   oracle=KILLED   -- numeric_columns = все колонки
+  TM-9  : repo=KILLED   oracle=KILLED   -- ручной маршрут без source=user
+  TM-10 : repo=KILLED   oracle=KILLED   -- точка фиксации upload снята
+  TM-11 : repo=SURVIVED oracle=KILLED   -- точка фиксации demo снята (R4)
+  TM-12 : repo=SURVIVED oracle=KILLED   -- payload_keys без source
+  TM-13 : repo=KILLED   oracle=KILLED   -- set_dataset без сброса source
+  TM-14 : repo=KILLED   oracle=KILLED   -- convert-types без сброса source
+  TM-15 : repo=SURVIVED oracle=KILLED   -- носитель /trace отрезан
+
+ИТОГ: 13/15 мутантов убиты ОБОИМИ каналами; 3 пережили repo-канал, но убиты
+оракулом аудитора (TM-11 demo-точка, TM-12 payload_keys, TM-15 носитель /trace
+-- дыры прикрытия repo-тестов, устраняются в задаче D; реализация NOT затронута).
+Контроль харнесса TM-0: no-op выжил в обоих каналах -- прогон достоверен.
+AGENTS.md: локальное измерение, commit/push НЕ выполнялись.
+================================================================================
