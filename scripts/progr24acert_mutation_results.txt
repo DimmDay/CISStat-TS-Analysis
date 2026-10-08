@@ -1,0 +1,109 @@
+====================================================================================================
+МУТАЦИОННЫЙ ПРОГОН PROGR-24-CERT -- задача A (spec_status_original_series.md)
+Мутантов: 13; каналы: repo (адресные тесты) + oracle (38 оракулов, свой датасет)
+====================================================================================================
+backup apps/api/column_origin.py: md5=e40e946531f1b98cc0933924e44feb64
+backup apps/api/routers/session.py: md5=e3dd69c8aef0073c265c47a4600e5cc1
+backup apps/api/session_store.py: md5=d18bfb53fb70c28324138412dfb979db
+
+── CM-1: canonical_columns игнорирует реестр -- производные возвращаются в гейты
+    файл: apps/api/column_origin.py
+    repo   : KILLED   (=================== 1 failed, 8 passed, 14 warnings in 5.12s ===================)
+    oracle : KILLED   (ИТОГ ОРАКУЛОВ: 34/38 GREEN)
+    ВЕРДИКТ: KILLED
+
+── CM-2: derived_columns_in_frame отдаёт сырой реестр без пересечения с датафреймом (ghost-утечка)
+    файл: apps/api/column_origin.py
+    repo   : KILLED   (=================== 1 failed, 9 passed, 14 warnings in 5.08s ===================)
+    oracle : KILLED   (ИТОГ ОРАКУЛОВ: 37/38 GREEN)
+    ВЕРДИКТ: KILLED
+
+── CM-3: register_derived_columns регистрирует ВСЕ колонки, а не разность до/после
+    файл: apps/api/column_origin.py
+    repo   : KILLED   (========================= 1 failed, 1 passed in 3.66s ==========================)
+    oracle : KILLED   (ИТОГ ОРАКУЛОВ: ?/?)
+    ВЕРДИКТ: KILLED
+
+── CM-4: метаданные {stage, source, created_at} не записываются
+    файл: apps/api/column_origin.py
+    repo   : KILLED   (========================= 1 failed, 1 passed in 3.72s ==========================)
+    oracle : KILLED   (ИТОГ ОРАКУЛОВ: ?/?)
+    ВЕРДИКТ: KILLED
+
+── CM-5: хелпер всегда отчитывается пустым списком добавленных колонок
+    файл: apps/api/column_origin.py
+    repo   : KILLED   (========================= 1 failed, 1 passed in 3.67s ==========================)
+    oracle : KILLED   (ИТОГ ОРАКУЛОВ: 35/38 GREEN)
+    ВЕРДИКТ: KILLED
+
+── CM-6: scope_frame игнорирует список колонок -- профили всегда по полному датафрейму
+    файл: apps/api/column_origin.py
+    repo   : KILLED   (================== 1 failed, 16 passed, 14 warnings in 5.33s ===================)
+    oracle : KILLED   (ИТОГ ОРАКУЛОВ: 31/38 GREEN)
+    ВЕРДИКТ: KILLED
+
+── CM-7: operation_added_columns всегда пуст -- флаг-колонки операции возвращаются в карточную шкалу preview
+    файл: apps/api/column_origin.py
+    repo   : KILLED   (================== 1 failed, 21 passed, 14 warnings in 5.69s ===================)
+    oracle : KILLED   (ИТОГ ОРАКУЛОВ: 36/38 GREEN)
+    ВЕРДИКТ: KILLED
+
+── CM-8: scope_columns инвертирован -- канонической объявляется производная область
+    файл: apps/api/column_origin.py
+    repo   : KILLED   (========================= 1 failed, 3 passed in 3.41s ==========================)
+    oracle : KILLED   (ИТОГ ОРАКУЛОВ: ?/?)
+    ВЕРДИКТ: KILLED
+
+── CM-9: guard мусорных записей реестра снят при чтении документа (деградация Task 143)
+    файл: apps/api/session_store.py
+    repo   : KILLED   (================== 1 failed, 14 passed, 14 warnings in 5.17s ===================)
+    oracle : KILLED   (ИТОГ ОРАКУЛОВ: 37/38 GREEN)
+    ВЕРДИКТ: KILLED
+
+── CM-10: set_dataset НЕ сбрасывает реестр -- происхождение перетекает в новый анализ
+    файл: apps/api/session_store.py
+    repo   : KILLED   (================== 1 failed, 15 passed, 14 warnings in 5.29s ===================)
+    oracle : KILLED   (ИТОГ ОРАКУЛОВ: 37/38 GREEN)
+    ВЕРДИКТ: KILLED
+
+── CM-11: версия схемы сессии не поднята (спека §Реализация п.3)
+    файл: apps/api/session_store.py
+    repo   : KILLED   (================== 1 failed, 12 passed, 14 warnings in 5.04s ===================)
+    oracle : KILLED   (ИТОГ ОРАКУЛОВ: 37/38 GREEN)
+    ВЕРДИКТ: KILLED
+
+── CM-12: информационный канал derived_summary пропусков отрезан (всегда None)
+    файл: apps/api/routers/session.py
+    repo   : KILLED   (================== 1 failed, 23 passed, 14 warnings in 5.99s ===================)
+    oracle : KILLED   (ИТОГ ОРАКУЛОВ: 37/38 GREEN)
+    ВЕРДИКТ: KILLED
+
+── CM-13: методологический guard 422 на per-column проверку производной колонки снят
+    файл: apps/api/routers/session.py
+    repo   : KILLED   (================== 1 failed, 28 passed, 15 warnings in 6.96s ===================)
+    oracle : KILLED   (ИТОГ ОРАКУЛОВ: 37/38 GREEN)
+    ВЕРДИКТ: KILLED
+
+Восстановление оригиналов:
+    apps/api/column_origin.py: md5=e40e946531f1b98cc0933924e44feb64
+    apps/api/routers/session.py: md5=e3dd69c8aef0073c265c47a4600e5cc1
+    apps/api/session_store.py: md5=d18bfb53fb70c28324138412dfb979db
+
+====================================================================================================
+  CM-1: repo=KILLED   oracle=KILLED   -- canonical_columns игнорирует реестр -- производные возвращаются в гейты
+  CM-2: repo=KILLED   oracle=KILLED   -- derived_columns_in_frame отдаёт сырой реестр без пересечения с датафреймом (ghost-утечка)
+  CM-3: repo=KILLED   oracle=KILLED   -- register_derived_columns регистрирует ВСЕ колонки, а не разность до/после
+  CM-4: repo=KILLED   oracle=KILLED   -- метаданные {stage, source, created_at} не записываются
+  CM-5: repo=KILLED   oracle=KILLED   -- хелпер всегда отчитывается пустым списком добавленных колонок
+  CM-6: repo=KILLED   oracle=KILLED   -- scope_frame игнорирует список колонок -- профили всегда по полному датафрейму
+  CM-7: repo=KILLED   oracle=KILLED   -- operation_added_columns всегда пуст -- флаг-колонки операции возвращаются в карточную шкалу preview
+  CM-8: repo=KILLED   oracle=KILLED   -- scope_columns инвертирован -- канонической объявляется производная область
+  CM-9: repo=KILLED   oracle=KILLED   -- guard мусорных записей реестра снят при чтении документа (деградация Task 143)
+  CM-10: repo=KILLED   oracle=KILLED   -- set_dataset НЕ сбрасывает реестр -- происхождение перетекает в новый анализ
+  CM-11: repo=KILLED   oracle=KILLED   -- версия схемы сессии не поднята (спека §Реализация п.3)
+  CM-12: repo=KILLED   oracle=KILLED   -- информационный канал derived_summary пропусков отрезан (всегда None)
+  CM-13: repo=KILLED   oracle=KILLED   -- методологический guard 422 на per-column проверку производной колонки снят
+
+ИТОГ: 13/13 мутантов убиты ОБОИМИ каналами
+====================================================================================================
+AGENTS.md: локальное измерение, commit/push НЕ выполнялись.
