@@ -40,6 +40,7 @@ from __future__ import annotations
 
 import pandas as pd
 
+from apps.api.research_runs import record_run_event
 from apps.api.session_store import AnalysisSession
 from apps.api.trace_events import make_trace_event
 
@@ -91,6 +92,18 @@ def auto_fix_and_seed(session: AnalysisSession) -> str | None:
     Возвращает имя зафиксированной колонки либо None (фиксации и
     события нет). Вызывающий ОБЯЗАН вызвать store.save(session) --
     контракт SessionStore.
+
+    PROGR-25-C (баг тимлида, репро scripts/progr25c_repro_bug.py):
+    событие зеркалится в слой 2 (record_run_event -- тот же
+    двухслойный механизм, что у хука trace_hook.py:789 и отчётов
+    фактов progress.py:461-465, прецедент PROGR-13-A4/16-A). Без
+    зеркала событие жилло только в слое 1: Наставник (next-step читает
+    слой 2, store.list_events) не видел авто-фиксации и просил
+    «Подтвердите целевой признак...» при уже зафиксированном признаке;
+    run.target_column не заполнялся (research_runs.py:869-871) --
+    restore авто-сессий терял признак. Зеркало best-effort (своя
+    деградация внутри), хронология слоя 2 -- канон R3: фиксация
+    раньше upload_completed.
     """
     candidates = target_column_candidates(session)
     if len(candidates) != 1:
@@ -100,15 +113,15 @@ def auto_fix_and_seed(session: AnalysisSession) -> str | None:
     session.target_column_source = AUTO_SOURCE
     if session.dataset is not None:
         session.ensure_run_id()
-    session.append_trace_event(
-        make_trace_event(
-            "target_column_changed",
-            stage="validation",
-            node_id=None,
-            run_id=session.run_id,
-            actor="system",
-            target_column=column,
-            source=AUTO_SOURCE,
-        )
+    event = make_trace_event(
+        "target_column_changed",
+        stage="validation",
+        node_id=None,
+        run_id=session.run_id,
+        actor="system",
+        target_column=column,
+        source=AUTO_SOURCE,
     )
+    session.append_trace_event(event)
+    record_run_event(session, event)
     return column

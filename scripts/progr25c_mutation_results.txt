@@ -1,0 +1,11 @@
+PROGR-25-C мутационные пробы (свои мутанты; канал -- адресные
+repo-тесты задачи; контроль MC-0 no-op обязан выжить).
+
+  MC-0: no-op контроль харнесса (обязан выжить) -> SURVIVED
+  MC-1: правило auto удалено из реестра -> KILLED
+  MC-2: пометка (авто) в reason снята -> KILLED
+  MC-3: инверсия source auto<->user в _target_origin -> KILLED
+  MC-4: зеркало слоя 2 удалено из auto_fix_and_seed -> KILLED
+  MC-5: факт target_column потерян в подстановке шаблона -> KILLED
+
+ИТОГ: 5/5 мутантов KILLED; контроль MC-0: SURVIVED

@@ -348,7 +348,14 @@ def _stage_level_reason_updates(
             return {}, set()
         target = payload.get("target_column")
         if isinstance(target, str) and target:
-            return {target_node: f"Целевой признак: {target}"}, set()
+            # PROGR-25-C (spec_progress_target_column.md §4-C):
+            # происхождение выбора -- из payload события (контракт
+            # PROGR-25-A: авто-фиксация сеет source="auto"; отсутствие
+            # поля -- legacy-корпус, трактуется как user, прежний текст;
+            # мусор в source -- не auto, честность маркировки).
+            source = payload.get("source")
+            mark = " (авто)" if source == "auto" else ""
+            return {target_node: f"Целевой признак: {target}{mark}"}, set()
         # пустой/мусорный target: пустая строка -- сброс (снимаем свой
         # reason), прочий мусор -- не факт вовсе
         return {}, {target_node} if target == "" else set()

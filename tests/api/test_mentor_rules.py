@@ -1147,10 +1147,18 @@ class TestStagePhaseTextRulesRegistry:
 
     def test_templates_render_from_summary_fields(self):
         """Шаблоны рендерятся из полей сводки стадии (те же, что уже в
-        ответе next-step); поле nodes (список) в текст не подставляется."""
+        ответе next-step); поле nodes (список) в текст не подставляется.
+        PROGR-25-C (спека §4-C: «Исследуемый признак выбран
+        автоматически: value»): плюс факт из событий запуска
+        target_column -- подстановка строится в phase_text
+        (_phase_event_text_facts), auto-шаблон достижим только при
+        совпавшем условии, гарантирующем факт; в харнесс факт подаётся
+        явно (spec-обусловленная правка харнесса, реестр-инварианты
+        PROGR-19 не тронуты)."""
         stub = {
             "stage": "x", "total_nodes": 10, "done_count": 3,
             "warning_nodes": 1, "nodes": [{"node_id": "n", "status": "done"}],
+            "target_column": "value",
         }
         for stage, rules in mentor_rules.STAGE_PHASE_TEXT_RULES.items():
             for rule in rules:
@@ -1695,3 +1703,106 @@ class TestDerivedSpikesFactsScope:
             "всплески канонического ряда не должны попадать в совет "
             "о производных (скоуп задачи A)"
         )
+
+
+# ── PROGR-25-C: phase_text «Загрузки» учитывает происхождение выбора ──
+
+
+def _auto_target_event(run_id: str = "RUN-CCC00003", column: str = "value"):
+    """Событие авто-фиксации (канон задачи A: payload {target_column,
+    source:"auto"}, stage="validation", node_id=None)."""
+    return make_trace_event(
+        "target_column_changed", stage="validation", node_id=None,
+        run_id=run_id, target_column=column, source="auto",
+    )
+
+
+def _user_target_event(run_id: str = "RUN-CCC00003", column: str = "value"):
+    """Явный ручной выбор с source="user" (контракт POST /target-column
+    после PROGR-25-A)."""
+    return make_trace_event(
+        "target_column_changed", stage="validation", node_id=None,
+        run_id=run_id, target_column=column, source="user",
+    )
+
+
+class TestPhaseTextUploadOrigin:
+    """spec_progress_target_column.md §4-C: phase_text «Загрузки» при
+    source=auto -- «Исследуемый признак выбран автоматически: value»
+    (без просьбы выбрать); при user -- прежний текст; при отсутствии
+    признака -- просьба выбрать (как сейчас). Способность достоверна в
+    живом контуре только вместе с зеркалом сеемого события в слой 2
+    (PROGR-25-C, баг тимлида) -- API-оракул в test_progress_progr25c.py.
+    Нюанс R3: событие авто-фиксации несёт stage="validation"
+    (атрибуция маршрута, не вкладки) -- правила не опираются на вкладку
+    возникновения."""
+
+    _STRUCT_DONE = {"upload/structure": "done"}
+
+    def test_auto_source_names_column_without_request(self):
+        """RED: авто-выбор -- текст называет колонку, просьб нет."""
+        text = phase_text("upload", self._STRUCT_DONE, [_auto_target_event()])
+        assert "выбран автоматически" in text
+        assert "value" in text
+        assert "подтвердите" not in text.lower()
+
+    def test_user_source_keeps_previous_text(self):
+        """RED: явный user -- прежний текст BOTH без пометки авто."""
+        text = phase_text("upload", self._STRUCT_DONE, [_user_target_event()])
+        assert (
+            "структура данных подтверждена, целевой признак выбран" in text
+        )
+        assert "автоматически" not in text
+        assert "подтвердите" not in text.lower()
+
+    def test_legacy_event_without_source_keeps_previous_text(self):
+        """Guard (регресс PROGR-15-B без правок): событие без source
+        (ручной маршрут до PROGR-25-A) -- прежний текст."""
+        text = phase_text(
+            "upload", self._STRUCT_DONE, [_target_changed_event()]
+        )
+        assert (
+            "структура данных подтверждена, целевой признак выбран" in text
+        )
+        assert "автоматически" not in text
+
+    def test_no_target_fact_keeps_request(self):
+        """Guard: признака нет -- просьба выбрать (как сейчас)."""
+        text = phase_text("upload", self._STRUCT_DONE, [])
+        assert "Подтвердите целевой признак" in text
+
+    def test_last_wins_auto_then_user(self):
+        """Last-wins: ручной выбор после авто -- прежний текст."""
+        text = phase_text(
+            "upload", self._STRUCT_DONE,
+            [_auto_target_event(), _user_target_event(column="price")],
+        )
+        assert (
+            "структура данных подтверждена, целевой признак выбран" in text
+        )
+        assert "автоматически" not in text
+
+    def test_last_wins_user_then_auto(self):
+        """Last-wins: авто после ручного -- текст авто с колонкой."""
+        text = phase_text(
+            "upload", self._STRUCT_DONE,
+            [_user_target_event(column="price"), _auto_target_event()],
+        )
+        assert "выбран автоматически" in text
+        assert "value" in text
+
+    def test_auto_without_structure_still_requests_structure(self):
+        """Нюанс R3-атрибуции: авто-событие не создаёт ложного
+        «структура подтверждена» -- структура не подтверждена, просьба
+        о структуре честна (правило auto требует СТРУКТУРУ тоже)."""
+        text = phase_text("upload", {}, [_auto_target_event()])
+        assert "подтвердите структуру" in text.lower()
+        assert "подтвердите целевой" not in text.lower()
+
+    def test_junk_events_do_not_break_auto_rule(self):
+        """Мусор среди событий -- пропуск (event_to_dict), правило живо."""
+        text = phase_text(
+            "upload", self._STRUCT_DONE,
+            ["мусор", 42, None, _auto_target_event()],
+        )
+        assert "выбран автоматически" in text

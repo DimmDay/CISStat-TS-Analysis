@@ -952,6 +952,11 @@ _PHASE_TEXT_FALLBACK = (
 # отдельная растущая работа по категории B spec_progress.md §11, не
 # часть этой задачи.
 
+_UPLOAD_STRUCTURE_DONE_TARGET_AUTO = (
+    "Исследование на этапе «Загрузка»: исследуемый признак выбран "
+    "автоматически: {target_column} -- проверки качества ждут на "
+    "этапе «Валидация»."
+)
 _UPLOAD_STRUCTURE_DONE_BOTH = (
     "Исследование на этапе «Загрузка»: структура данных подтверждена, "
     "целевой признак выбран -- проверки качества ждут на этапе «Валидация»."
@@ -1045,6 +1050,11 @@ def _summary_node_status(summary: Mapping[str, Any], node_id: str) -> str:
     return "pending"
 
 
+_TARGET_SOURCE_AUTO = "auto"  # канон PROGR-25-A (target_column_rule.AUTO_SOURCE;
+# литерал, а не импорт: app/core -- листовой модуль, зависимости
+# направлены apps/api -> app/core, обратные запрещены).
+
+
 def _target_confirmed(events: Iterable[Any]) -> bool:
     """Факт выбора целевого признака из событий запуска (PROGR-15-B).
     Источник истины тот же, что у метаданных ResearchRun.target_column
@@ -1064,7 +1074,42 @@ def _target_confirmed(events: Iterable[Any]) -> bool:
     return False
 
 
+def _target_origin(events: Iterable[Any]) -> str:
+    """Происхождение последнего выбора целевого признака (PROGR-25-C,
+    spec_progress_target_column.md §4-C): last-wins -- source из payload
+    последнего события target_column_changed с НЕПУСТОЙ колонкой;
+    "auto" -- авто-фиксация (задача A сеет source="auto"), "user" --
+    ручной выбор ИЛИ legacy-событие без поля (контракт PROGR-25-A:
+    отсутствие source трактуется как user). Мусор/чужие типы --
+    пропуск (event_to_dict, деградация «событие мимо фактов», не 500)."""
+    origin = "user"
+    for event in events:
+        data = event_to_dict(event)
+        if data is None:
+            continue
+        if str(data.get("event_type") or "") != "target_column_changed":
+            continue
+        payload = data.get("payload")
+        if isinstance(payload, Mapping) and payload.get("target_column"):
+            origin = (
+                "auto" if payload.get("source") == _TARGET_SOURCE_AUTO else "user"
+            )
+    return origin
+
+
 # ── Условия правил (чистые функции над сводкой+событиями) ────────────
+
+def _upload_structure_and_target_auto(summary, events) -> bool:
+    """PROGR-25-C: структура подтверждена + признак зафиксирован
+    АВТОМАТИЧЕСКИ (source="auto", last-wins) -- Наставник не просит
+    выбрать: просьба при уже зафиксированном признаке -- баг тимлида
+    (постановка 2026-10-08, репро scripts/progr25c_repro_bug.py)."""
+    return (
+        _summary_node_status(summary, "structure") == "done"
+        and _target_confirmed(events)
+        and _target_origin(events) == _TARGET_SOURCE_AUTO
+    )
+
 
 def _upload_structure_and_target_done(summary, events) -> bool:
     return (
@@ -1103,8 +1148,14 @@ def _forecast_generated(summary, events) -> bool:
 
 STAGE_PHASE_TEXT_RULES: dict[str, tuple[PhaseTextRule, ...]] = {
     # Upload -- частный случай, перенесён из if/elif PROGR-15-B
-    # дословно (тексты и приоритет прежние).
+    # дословно (тексты и приоритет прежние); PROGR-25-C: правило авто
+    # ПЕРЕД общим BOTH -- происхождение выбора различает тексты (при
+    # source="auto" просьбы нет вовсе, текст называет колонку).
     "upload": (
+        PhaseTextRule(
+            _upload_structure_and_target_auto,
+            _UPLOAD_STRUCTURE_DONE_TARGET_AUTO,
+        ),
         PhaseTextRule(_upload_structure_and_target_done, _UPLOAD_STRUCTURE_DONE_BOTH),
         PhaseTextRule(_upload_structure_done, _UPLOAD_STRUCTURE_DONE_TARGET_PENDING),
         PhaseTextRule(_upload_target_done, _UPLOAD_STRUCTURE_PENDING_TARGET_DONE),
@@ -1130,10 +1181,34 @@ STAGE_PHASE_TEXT_RULES: dict[str, tuple[PhaseTextRule, ...]] = {
 }
 
 # Поля сводки, допустимые в шаблонах (nodes -- список словарей, в текст
-# не подставляется).
+# не подставляется). PROGR-25-C: плюс факт из событий запуска
+# target_column -- колонка последнего выбора (last-wins); подстановка
+# строится в phase_text из событий (см. _phase_event_text_facts),
+# достижима шаблоном auto-правила только при совпавшем условии,
+# гарантирующем факт.
 _PHASE_TEMPLATE_FIELDS: frozenset[str] = frozenset(
-    {"stage", "total_nodes", "done_count", "warning_nodes"}
+    {"stage", "total_nodes", "done_count", "warning_nodes", "target_column"}
 )
+
+
+def _phase_event_text_facts(events: tuple[Any, ...]) -> dict[str, str]:
+    """Факты для подстановки в шаблоны правил фазы из событий запуска
+    (PROGR-25-C): target_column -- колонка последнего выбора (last-wins,
+    та же семантика, что _target_origin/_target_confirmed). Пустой dict
+    -- факта нет: шаблоны без этого поля не ломаются; auto-шаблон
+    достижим только при совпавшем условии, которое гарантирует
+    непустую колонку последнего выбора."""
+    column = ""
+    for event in events:
+        data = event_to_dict(event)
+        if data is None:
+            continue
+        if str(data.get("event_type") or "") != "target_column_changed":
+            continue
+        payload = data.get("payload")
+        if isinstance(payload, Mapping) and payload.get("target_column"):
+            column = str(payload.get("target_column"))
+    return {"target_column": column} if column else {}
 
 
 def _validate_stage_phase_text_rules() -> None:
@@ -1236,7 +1311,12 @@ def phase_text(
     rule_events = tuple(events) if events is not None else ()
     for rule in STAGE_PHASE_TEXT_RULES.get(stage, ()):
         if rule.condition(summary, rule_events):
-            return rule.template.format(**summary)
+            # PROGR-25-C: плюс факты из событий ({target_column} --
+            # колонка последнего выбора); сводка приоритетна, ключей не
+            # пересекает (target_column в сводке не существует).
+            return rule.template.format(
+                **summary, **_phase_event_text_facts(rule_events)
+            )
     return PHASE_TEXT_TEMPLATES.get(stage, _PHASE_TEXT_FALLBACK)
 
 

@@ -1,0 +1,22 @@
+E     - Целевой признак: value (авто)
+E     ?                       -------
+E     + Целевой признак: value
+_______ TestProgr25CStageLevelReasonOrigin.test_last_wins_user_then_auto _______
+tests/api/test_node_status_engine.py:1053: in test_last_wins_user_then_auto
+    assert node["status_reason"] == "Целевой признак: value (авто)"
+E   AssertionError: assert 'Целевой признак: value' == 'Целевой приз... value (авто)'
+E     
+E     - Целевой признак: value (авто)
+E     ?                       -------
+E     + Целевой признак: value
+=========================== short test summary info ============================
+FAILED tests/api/test_progress_progr25c.py::TestMentorSeesAutoFixation::test_bug_scenario_mentor_does_not_request_target
+FAILED tests/api/test_progress_progr25c.py::TestMentorSeesAutoFixation::test_seeded_event_reaches_layer2
+FAILED tests/api/test_progress_progr25c.py::TestMentorSeesAutoFixation::test_run_target_column_set_for_restore
+FAILED tests/api/test_progress_progr25c.py::TestSufficiencyReasonOriginApi::test_trace_nodes_show_auto_mark
+FAILED tests/api/test_mentor_rules.py::TestPhaseTextUploadOrigin::test_auto_source_names_column_without_request
+FAILED tests/api/test_mentor_rules.py::TestPhaseTextUploadOrigin::test_last_wins_user_then_auto
+FAILED tests/api/test_mentor_rules.py::TestPhaseTextUploadOrigin::test_junk_events_do_not_break_auto_rule
+FAILED tests/api/test_node_status_engine.py::TestProgr25CStageLevelReasonOrigin::test_auto_source_marks_reason
+FAILED tests/api/test_node_status_engine.py::TestProgr25CStageLevelReasonOrigin::test_last_wins_user_then_auto
+========================= 9 failed, 14 passed in 4.48s =========================

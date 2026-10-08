@@ -979,3 +979,97 @@ def test_public_api_surface():
         "derive_pipeline_node_states",
     ):
         assert hasattr(node_status, name), f"Нет публичного {name}"
+
+
+# ── PROGR-25-C: reason учитывает происхождение выбора (source) ───────
+
+
+class TestProgr25CStageLevelReasonOrigin:
+    """spec_progress_target_column.md §4-C: status_reason носителя
+    (validation, sufficiency) различает происхождение выбора --
+    source="auto" в payload события даёт «Целевой признак: value (авто)»;
+    source="user" ИЛИ отсутствие поля (legacy-корпус, контракт
+    PROGR-25-A «отсутствие source трактуется как user») -- прежний текст
+    без пометки. Last-wins -- тот же механизм последовательных
+    обновлений reason, что у статусов (движок читает события по порядку)."""
+
+    def _by_key(self, events):
+        return {
+            (s["stage"], s["node_id"]): s
+            for s in derive_pipeline_node_states(events)
+        }
+
+    def test_auto_source_marks_reason(self):
+        """RED: событие авто-фиксации (задача A сеет source="auto") --
+        пометка «(авто)» в reason; статус узла не меняется (N-2)."""
+        events = [
+            _event("validation", None, "target_column_changed",
+                   target_column="value", source="auto"),
+        ]
+        node = self._by_key(events)[("validation", "sufficiency")]
+        assert node["status_reason"] == "Целевой признак: value (авто)"
+        assert node["status"] == "pending"
+
+    def test_user_source_no_mark(self):
+        """RED: явный source="user" (ручной выбор) -- прежний текст."""
+        events = [
+            _event("validation", None, "target_column_changed",
+                   target_column="value", source="user"),
+        ]
+        node = self._by_key(events)[("validation", "sufficiency")]
+        assert node["status_reason"] == "Целевой признак: value"
+
+    def test_legacy_payload_without_source_no_mark(self):
+        """Guard (регресс PROGR-21/17 без правок): события без source --
+        прежний текст (легаси-семантика user)."""
+        events = [
+            _event("validation", None, "target_column_changed",
+                   target_column="Price"),
+        ]
+        node = self._by_key(events)[("validation", "sufficiency")]
+        assert node["status_reason"] == "Целевой признак: Price"
+
+    def test_last_wins_auto_then_user(self):
+        """Last-wins: ручной выбор после авто -- пометки нет."""
+        events = [
+            _event("validation", None, "target_column_changed",
+                   target_column="value", source="auto", ts=_ts(1)),
+            _event("validation", None, "target_column_changed",
+                   target_column="price", source="user", ts=_ts(2)),
+        ]
+        node = self._by_key(events)[("validation", "sufficiency")]
+        assert node["status_reason"] == "Целевой признак: price"
+
+    def test_last_wins_user_then_auto(self):
+        """Last-wins: авто после ручного (re-upload нового датасета --
+        единая точка правила сеет заново) -- пометка возвращается."""
+        events = [
+            _event("validation", None, "target_column_changed",
+                   target_column="price", source="user", ts=_ts(1)),
+            _event("validation", None, "target_column_changed",
+                   target_column="value", source="auto", ts=_ts(2)),
+        ]
+        node = self._by_key(events)[("validation", "sufficiency")]
+        assert node["status_reason"] == "Целевой признак: value (авто)"
+
+    def test_garbage_source_is_not_auto(self):
+        """Мусор в source -- не auto: пометка только по факту payload
+        (честность маркировки; контракт A -- значения None/"auto"/"user")."""
+        events = [
+            _event("validation", None, "target_column_changed",
+                   target_column="value", source={"faked": "auto"}),
+        ]
+        node = self._by_key(events)[("validation", "sufficiency")]
+        assert node["status_reason"] == "Целевой признак: value"
+
+    def test_reset_still_clears_auto_reason(self):
+        """Сброс выбора (пустой target) снимает и auto-reason -- прежний
+        контракт PROGR-21 не расширен, тег происхождения прежний."""
+        events = [
+            _event("validation", None, "target_column_changed",
+                   target_column="value", source="auto", ts=_ts(1)),
+            _event("validation", None, "target_column_changed",
+                   target_column="", ts=_ts(2)),
+        ]
+        node = self._by_key(events)[("validation", "sufficiency")]
+        assert node["status_reason"] is None

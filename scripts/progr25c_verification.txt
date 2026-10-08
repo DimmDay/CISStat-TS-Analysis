@@ -1,0 +1,44 @@
+========================================================================
+ПРОТОКОЛ ВЕРИФИКАЦИИ PROGR-25-C (spec_progress_target_column.md §4-C)
+========================================================================
+  [C1] PASS -- phase_text: source=auto -- «исследуемый признак выбран автоматически: value», просьб нет
+  [C2] PASS -- phase_text: source=user -- прежний текст BOTH без пометки
+  [C3] PASS -- phase_text: legacy-событие без source -- прежний текст (регресс PROGR-15-B)
+  [C4] PASS -- phase_text: признака нет -- просьба выбрать (как сейчас)
+  [C5] PASS -- phase_text: last-wins auto->user -- прежний текст
+  [C6] PASS -- phase_text: last-wins user->auto -- текст авто
+  [C7] PASS -- phase_text: авто без структуры -- просьба о структуре честна (R3-нюанс)
+  [C8] PASS -- phase_text: мусор среди событий не ломает правило
+  [R1] PASS -- reason: source=auto -- «Целевой признак: value (авто)», статус не меняется
+  [R2] PASS -- reason: source=user -- прежний текст
+  [R3] PASS -- reason: legacy-событие без source -- прежний текст (регресс PROGR-21)
+  [R4] PASS -- reason: last-wins auto->user
+  [R5] PASS -- reason: last-wins user->auto
+  [R6] PASS -- reason: мусор в source -- не auto (честность маркировки)
+  [R7] PASS -- reason: сброс выбора снимает и auto-reason
+  [A1] PASS -- API: ГЛАВНЫЙ оракул -- баг тимлида: Наставник не просит подтвердить авто-признак
+  [A2] PASS -- API: зеркало -- событие авто-фиксации в слое 2 до upload_completed (канон R3)
+  [A3] PASS -- API: run.target_column заполнен (restore-хилинг, без повторной фиксации)
+  [A4] PASS -- API: ручной выбор после авто -- last-wins, прежний текст
+  [A5] PASS -- API: две числовые -- Наставник честно просит (негативная ветка)
+  [A6] PASS -- API: reason носителя в /trace -- «Целевой признак: value (авто)»
+  [A7] PASS -- API: reason при ручном выборе -- без пометки
+  [A8] PASS -- API: demo (две числовые) -- честная просьба, событий фиксации нет
+  [G1] PASS -- регресс PROGR-15-B: факт цели + структура -- BOTH-текст без просьб
+  [G2] PASS -- регресс PROGR-15-B: структура без цели -- просьба только о цели
+  [G3] PASS -- регресс PROGR-21: reason носителя на событии без payload.source
+  [G4] PASS -- регресс PROGR-21: пустой target -- сброс, reason снят
+
+  pytest: exit=0; см. вывод выше
+
+  Статические пины:
+  [S1] PASS -- порядок реестра upload: ['_upload_structure_and_target_auto', '_upload_structure_and_target_done', '_upload_structure_done', '_upload_target_done']
+  [S2] PASS -- _PHASE_TEMPLATE_FIELDS: target_column разрешён, nodes запрещён
+  [S3] PASS -- node_status: пометка только по source=='auto'
+  [S4] PASS -- target_column_rule: зеркало record_run_event присутствует
+  [S5] PASS -- mentor_rules: _target_origin дефолт -- user (легаси)
+  [S6] PASS -- scripts/progr25c_repro_bug.py: репро бага с дословным текстом
+
+========================================================================
+ИТОГ: OK -- 27/27 именованных контрактов PASSED, 6/6 статических пинов PASS
+========================================================================
