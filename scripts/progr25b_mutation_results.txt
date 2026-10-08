@@ -1,0 +1,14 @@
+=== МУТАНТ M-B1: возврат тихого авто-POST в хук (мутант R1) ===
+Tests:       6 failed, 42 passed, 48 total
+Snapshots:   0 total
+
+=== МУТАНТ M-B2: шапка игнорирует /trace (всегда контекст) ===
+Tests:       7 failed, 31 passed, 38 total
+Snapshots:   0 total
+
+=== Финальный контроль: чистое дерево ===
+cad3ba004983e674657536e6da52e645  packages/ui/hooks/useTargetColumn.ts
+9b2ce26b74a829b0fd3eacdec9950959  packages/ui/components/ProgressDrawer.tsx
+OK
+Tests:       86 passed, 86 total
+Snapshots:   0 total

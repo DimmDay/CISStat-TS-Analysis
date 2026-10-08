@@ -537,7 +537,15 @@ describe("TsAnalysisUpload", () => {
   // Регрессия на реальный баг: FAO-датасет (Country/Year/Price) показывал
   // Year в селекторе вместо Price при возврате на вкладку.
 
-  it("auto-selects suggested_column (not first-in-dataframe) when target_column is not yet set, and shows the auto-selected hint", async () => {
+  // PROGR-25-B (правка R1 акта, spec_progress_target_column.md §4-B):
+  // тихий авто-POST хука СНЯТ ПОЛНОСТЬЮ -- авто-фиксация признака стала
+  // исключительной компетенцией бэкенда (PROGR-25-A: при загрузке, ровно
+  // один кандидат). Рекомендация (suggested_column) остаётся
+  // ОТОБРАЖАЕМОЙ в селекторе; фиксация -- только ручной выбор
+  // (POST setColumn). История FAO-регрессии (Year vs Price) сохранена
+  // в комментарии выше: сегодня «рекомендует Price» -- честная
+  // рекомендация бэкенда, отображаемая без персистенции.
+  it("displays suggested_column in the selector without persisting when target_column is not set (PROGR-25-B: авто-POST снят, R1)", async () => {
     const targetColumnCalls: string[] = [];
     global.fetch = jest.fn((url: string, init?: RequestInit) => {
       if (typeof url === "string" && url.includes("/session/current")) {
@@ -549,14 +557,15 @@ describe("TsAnalysisUpload", () => {
       if (typeof url === "string" && url.includes("/target-column")) {
         targetColumnCalls.push(init?.method ?? "GET");
         if (init?.method === "POST") {
-          // Сервер подтверждает: suggested_column ("Price") зафиксирован как target_column
+          // Сервер ответит, если POST придёт -- тест обязан это поймать:
+          // тихой фиксации быть не должно.
           return Promise.resolve({
             ok: true,
             json: () => Promise.resolve({ target_column: "Price", suggested_column: "Price", available_columns: ["Year", "Price"], has_dataset: true }),
           });
         }
-        // GET: ровно баговый кейс -- Year идёт первым в датафрейме, но
-        // suggested_column честно рекомендует Price (исключая date/year-имена)
+        // GET: неоднозначный случай -- target не зафиксирован (две
+        // числовых), рекомендация бэкенда: Price.
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ target_column: null, suggested_column: "Price", available_columns: ["Year", "Price"], has_dataset: true }),
@@ -586,11 +595,71 @@ describe("TsAnalysisUpload", () => {
     dropFiles(screen.getByTestId("dropzone-input"), [new File(["Year,Price\n2020,65.9"], "fao.csv", { type: "text/csv" })]);
 
     await waitFor(() => {
-      // НЕ Year (первая числовая по порядку) -- Price (suggested_column)
+      // Рекомендация бэкенда отображается в селекторе (НЕ Year --
+      // первая числовая по порядку датафрейма, а Price --
+      // suggested_column), но НЕ персистится.
       expect(screen.getByDisplayValue("Price")).toBeInTheDocument();
     });
+    // Тихой фиксации нет: монтирование вкладки и рефетч после загрузки
+    // выполняют только GET -- НИ ОДНОГО POST (R1). Число GET не пиним:
+    // хук фетчит при маунте + после upload-рефетча (оба легитимны).
+    expect(targetColumnCalls.length).toBeGreaterThan(0);
+    expect(targetColumnCalls).not.toContain("POST");
+    // Бейдж «выбрано автоматически» НЕ показан: ничего не зафиксировано
+    // (в отличие от старого авто-POST); отображение -- рекомендация.
+    expect(screen.queryByTestId("auto-selected-hint")).toBeNull();
+  });
+
+  it("shows the backend auto-fix origin badge when the backend reports source=auto (PROGR-25-A/B)", async () => {
+    // Бэкенд авто-фиксировал признак при загрузке (ровно один кандидат):
+    // GET возвращает target с source="auto" -- бейдж «выбрано
+    // автоматически» честно отражает ФАКТ бэкенда, а не действие хука.
+    global.fetch = jest.fn((url: string) => {
+      if (typeof url === "string" && url.includes("/session/current")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ has_active_dataset: false, dataset: null, stages: {}, last_active_stage: null, updated_at: null }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/target-column")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              target_column: "value",
+              target_column_source: "auto",
+              suggested_column: "value",
+              available_columns: ["value"],
+              has_dataset: true,
+            }),
+        });
+      }
+      if (typeof url === "string" && url.includes("/upload")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ...okUploadResponse,
+              columns_info: [
+                { name: "value", dtype: "float64", type_icon: "numeric", non_null: 10, nulls: 0, unique: 10 },
+              ],
+            }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    }) as unknown as typeof fetch;
+
+    render(
+      <AppShellProvider>
+        <TsAnalysisUpload />
+      </AppShellProvider>
+    );
+    dropFiles(screen.getByTestId("dropzone-input"), [new File(["value\n1"], "n150.csv", { type: "text/csv" })]);
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("value")).toBeInTheDocument();
+    });
     expect(screen.getByTestId("auto-selected-hint")).toBeInTheDocument();
-    expect(targetColumnCalls).toContain("POST"); // авто-выбор реально ПЕРСИСТИТСЯ, не только отображается
   });
 
   it("shows a warning toast when a previously selected column is reset by uploading a new dataset", async () => {

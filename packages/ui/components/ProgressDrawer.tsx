@@ -36,8 +36,22 @@
 // удалены. Деталь запуска полосы действий (§6.3) -- независимый
 // запрос GET /v1/progress/runs/{run_id}. Запросы best-effort (паттерн
 // хука PROGR-3): сбой сети не роняет панель.
+//
+// ПРОГР-25-B (spec_progress_target_column.md §4-B): признак в шапке
+// читается из ТОГО ЖЕ ответа /trace (поля target_column/
+// target_column_source введены задачей ПРОГР-25-A) -- один источник
+// с трассой, fetch-эффект уже перечитывает /trace на КАЖДОЕ открытие,
+// поэтому шапка всегда актуальна (закрывает Г2 -- устаревший контекст
+// /current, гидратируемый однократно). Три состояния: «value (авто)» /
+// «value» / «не выбран — выбрать» (ссылка на селектор /upload, панель
+// закрывается); прочерк «—» -- только при отсутствии датасета.
+// Аддитивная деградация (N-3): на ответе старого бэкенда без полей
+// (undefined) / при сбое сети -- прежнее поведение (контекст /current,
+// «—»). Пометка «(авто)» -- честный факт source="auto" из бэкенда
+// (ПРОГР-25-A); source=null/другое -- ручной выбор без пометки.
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useAppShell } from "../context/AppShellContext";
 import { progressApiUrl } from "../lib/apiClient";
 import {
@@ -64,6 +78,14 @@ interface ProgressTraceState {
   /** Полные состояния узлов §3 из /trace (PROGR-11); [] -- ответ не
    * пришёл / старый бэкенд (рендер как прежде, N-3). */
   nodes: NodeStateInfo[];
+  /** Исследуемый признак из /trace (ПРОГР-25-B, поле задачи A).
+   * undefined -- поля нет в ответе (старый бэкенд) / ответ не пришёл:
+   * шапка честно деградирует к прежнему источнику (контекст /current).
+   * null -- бэкенд нового поколения подтвердил: признак не выбран. */
+  targetColumn: string | null | undefined;
+  /** Происхождение фиксации из /trace: "auto" | "user" | null | undefined
+   * (семантика как у targetColumn -- см. ПРОГР-25-A/B). */
+  targetColumnSource: string | null | undefined;
 }
 
 interface RunDetailState {
@@ -80,6 +102,8 @@ const EMPTY_TRACE: ProgressTraceState = {
   statuses: {},
   stages: [],
   nodes: [],
+  targetColumn: undefined,
+  targetColumnSource: undefined,
 };
 
 const RUN_DETAIL_UNAVAILABLE: RunDetailState = { status: null, checkpoints: [] };
@@ -145,6 +169,11 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
           statuses: traceData?.node_statuses ?? {},
           stages: traceData?.stages ?? [],
           nodes: traceData?.nodes ?? [],
+          // ПРОГР-25-B: признак из того же ответа, что и трасса -- без
+          // подмены дефолтами: отсутствующее поле (старый бэкенд/сбой)
+          // остаётся undefined и деградирует к контексту в шапке.
+          targetColumn: traceData?.target_column,
+          targetColumnSource: traceData?.target_column_source,
         });
 
         // Слой 2 (PROGR-5): статус запуска + чекпоинты для полосы действий
@@ -192,6 +221,23 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
   // N-4: «Наставник» открывает/закрывает секцию, панель не трогает.
   const handleToggleMentor = useCallback(() => setMentorOpen((v) => !v), []);
 
+  // ── Признак в шапке (PROGR-25-B) ────────────────────────────────
+  // Источник -- /trace (тот же ответ, что у трассы); контекст /current --
+  // только аддитивная деградация (поле отсутствует: старый бэкенд /
+  // сбой сети -- прежнее поведение N-3). Прочерк «—» -- только при
+  // отсутствии датасета (§4-B): при загруженном датасете панель обязана
+  // показать либо признак, либо честное «не выбран» со ссылкой.
+  const targetDisplay = (() => {
+    if (!activeDataset) return { kind: "dash" as const };
+    if (trace.targetColumn === undefined) {
+      return targetColumn
+        ? { kind: "value" as const, value: targetColumn, source: undefined }
+        : { kind: "dash" as const };
+    }
+    if (trace.targetColumn === null) return { kind: "missing" as const };
+    return { kind: "value" as const, value: trace.targetColumn, source: trace.targetColumnSource };
+  })();
+
   return (
     <>
       {/* Затемнение фона -- закрывает панель по клику вне неё (§6.1 дословно) */}
@@ -221,7 +267,27 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
 
         <div className="border-b border-neutral-100 px-4 py-2 text-sm text-neutral-600">
           <p>
-            Датасет: {activeDataset?.name ?? "—"} · Признак: {targetColumn ?? "—"}
+            Датасет: {activeDataset?.name ?? "—"} · Признак:{" "}
+            <span data-testid="progress-target-column">
+              {targetDisplay.kind === "dash" && "—"}
+              {targetDisplay.kind === "missing" && "не выбран"}
+              {targetDisplay.kind === "value" &&
+                `${targetDisplay.value}${targetDisplay.source === "auto" ? " (авто)" : ""}`}
+            </span>
+            {targetDisplay.kind === "missing" && (
+              <>
+                {" — "}
+                {/* Селектор исследуемого признака -- на «Загрузке»;
+                    переход закрывает панель, чтобы селектор был виден. */}
+                <Link
+                  href="/upload"
+                  onClick={onClose}
+                  className="text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+                >
+                  выбрать
+                </Link>
+              </>
+            )}
             {openedDate && <span> · {openedDate}</span>}
           </p>
           <p className="mt-0.5 text-xs text-neutral-500">

@@ -600,6 +600,10 @@ export interface TargetColumnRequest {
 
 export interface TargetColumnResponse {
   target_column: string | null;
+  // PROGR-25-A (аддитивно): происхождение фиксации -- "auto"
+  // (авто-фиксация бэкенда при загрузке) | "user" (ручной выбор);
+  // undefined -- старый бэкенд/старый корпус (читается как "user").
+  target_column_source?: string | null;
   suggested_column: string | null;
   available_columns: string[];
   has_dataset: boolean;

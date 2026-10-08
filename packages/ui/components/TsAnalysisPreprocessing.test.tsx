@@ -236,13 +236,18 @@ const SCALING_PROFILE = {
 function routeFetch(overrides: { missing?: unknown; outliers?: unknown; regularity?: unknown; decomposition?: unknown; variance?: unknown; smoothing?: unknown; stationarity?: unknown; spectral?: unknown; featureGeneration?: unknown; scaling?: unknown; put?: unknown } = {}) {
   return jest.fn((url: string, init?: RequestInit) => {
     if (typeof url === "string" && url.includes("/target-column")) {
+      // PROGR-25-B (R1): авто-POST хука снят -- мок моделирует контракт
+      // POST-A: признак УЖЕ зафиксирован в сессии ("Price"), GET
+      // возвращает его как есть; POST -- ручной выбор пользователя.
+      // Раньше GET отдавал null, а фиксацию выполнял сам хук.
       const selected = init?.method === "POST"
         ? JSON.parse(String(init.body)).column
-        : null;
+        : "Price";
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
           target_column: selected,
+          target_column_source: "user",
           suggested_column: "Price",
           available_columns: ["Year", "Price", "Volume"],
           has_dataset: true,
@@ -1909,10 +1914,16 @@ function mockProgressReportPreprocessing(
       return deferSession ? deferSession().then(respond) : respond();
     }
     if (typeof url === "string" && url.includes("/target-column")) {
+      // PROGR-25-B (R1): авто-POST хука снят -- мок моделирует контракт
+      // POST-A: признак УЖЕ зафиксирован ("Price"), GET возвращает его
+      // как есть. Раньше GET отдавал null, а фиксацию выполнял сам хук:
+      // целевые остановки не вычисляются без признака -- отчёт фактов
+      // (PROGR-17) не сходился бы в снапшот.
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve({
-          target_column: init?.method === "POST" ? JSON.parse(String(init.body)).column : null,
+          target_column: init?.method === "POST" ? JSON.parse(String(init.body)).column : "Price",
+          target_column_source: "user",
           suggested_column: "Price",
           available_columns: ["Year", "Price", "Volume"],
           has_dataset: true,

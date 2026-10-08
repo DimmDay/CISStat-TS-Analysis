@@ -287,14 +287,19 @@ function routeFetch(input: RequestInfo | URL, init?: RequestInit) {
     });
   }
   if (url.includes("/target-column")) {
+    // PROGR-25-B (R1): авто-POST хука снят -- мок моделирует контракт
+    // POST-A: признак УЖЕ зафиксирован в сессии (здесь -- "Price"),
+    // GET возвращает его как есть; POST -- ручной выбор пользователя.
+    // Раньше GET отдавал null, а фиксацию выполнял сам хук.
     const selected = init?.method === "POST"
       ? JSON.parse(String(init.body)).column
-      : null;
+      : "Price";
     return Promise.resolve({
       ok: true,
       status: 200,
       json: () => Promise.resolve({
         target_column: selected,
+        target_column_source: "user",
         suggested_column: "Price",
         available_columns: ["Year", "Price", "Volume"],
         has_dataset: true,

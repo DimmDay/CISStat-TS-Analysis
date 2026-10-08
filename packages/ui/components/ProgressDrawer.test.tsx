@@ -12,11 +12,19 @@ import "@testing-library/jest-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ProgressDrawer } from "./ProgressDrawer";
 
+// Мутабельное состояние контекста: тесты PROGR-25-B переопределяют
+// activeDataset/targetColumn по ходу (шапка честно деградирует/переключает
+// состояния). Имя с префиксом mock -- требование hoisting jest.mock.
+const mockAppShellState: {
+  activeDataset: { name: string; rows: number; sizeLabel: string } | null;
+  targetColumn: string | null;
+} = {
+  activeDataset: { name: "fao_prices.csv", rows: 120, sizeLabel: "12 КБ" },
+  targetColumn: "Price",
+};
+
 jest.mock("../context/AppShellContext", () => ({
-  useAppShell: () => ({
-    activeDataset: { name: "fao_prices.csv", rows: 120, sizeLabel: "12 КБ" },
-    targetColumn: "Price",
-  }),
+  useAppShell: () => mockAppShellState,
 }));
 
 const TRACE_RESPONSE = {
@@ -69,6 +77,16 @@ function mockFetch(trace: Record<string, unknown> = TRACE_RESPONSE) {
 describe("ProgressDrawer", () => {
   beforeEach(() => {
     mockFetch();
+    // Дефолт контекста -- как до PROGR-25-B (шапка деградирует к нему
+    // только на ответах старого бэкенда без аддитивных полей).
+    mockAppShellState.activeDataset = { name: "fao_prices.csv", rows: 120, sizeLabel: "12 КБ" };
+    mockAppShellState.targetColumn = "Price";
+  });
+
+  afterEach(() => {
+    // Мутации состояний тестов PROGR-25-B не протекают между тестами.
+    mockAppShellState.activeDataset = { name: "fao_prices.csv", rows: 120, sizeLabel: "12 КБ" };
+    mockAppShellState.targetColumn = "Price";
   });
 
   it("панель — aside с aria-controls-целью id='progress-drawer' и aria-label", () => {
@@ -399,5 +417,110 @@ describe("ProgressDrawer + MentorPanel (PROGR-6, §6.2/§7.1)", () => {
     render(<ProgressDrawer open onClose={jest.fn()} />);
     await waitFor(() => expect(screen.getByText("—")).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Наставник →" })).toBeNull();
+  });
+});
+
+// ── PROGR-25-B: шапка панели «Прогресс» -- актуальный признак из /trace ──
+// spec_progress_target_column.md §4-B: шапка берёт target_column из ТОГО
+// ЖЕ ответа, что и трасса (GET /v1/progress/trace; поля введены задачей
+// PROGR-25-A) -- один источник, без зависимости от устаревшего контекста
+// /current (гидратируется однократно при монтировании провайдера -- Ф3).
+// Три состояния: «value (авто)» / «value» / «не выбран — выбрать» (ссылка
+// на селектор); прочерк «—» -- только при отсутствии датасета.
+describe("ProgressDrawer шапка: признак из /trace (PROGR-25-B)", () => {
+  beforeEach(() => {
+    // Мутации контекста тестом «датасета нет» не протекают в соседние.
+    mockAppShellState.activeDataset = { name: "fao_prices.csv", rows: 120, sizeLabel: "12 КБ" };
+    mockAppShellState.targetColumn = "Price";
+  });
+
+  afterEach(() => {
+    mockAppShellState.activeDataset = { name: "fao_prices.csv", rows: 120, sizeLabel: "12 КБ" };
+    mockAppShellState.targetColumn = "Price";
+  });
+
+  it("source=auto из /trace -- «Признак: value (авто)»", async () => {
+    mockFetch({ ...TRACE_RESPONSE, target_column: "value", target_column_source: "auto" });
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("progress-target-column")).toHaveTextContent("value (авто)"));
+    // Контекст мог бы показывать устаревший "Price" -- /trace приоритетен.
+    expect(screen.getByTestId("progress-target-column")).not.toHaveTextContent("Price");
+  });
+
+  it("source=user из /trace -- без пометки «(авто)»", async () => {
+    mockFetch({ ...TRACE_RESPONSE, target_column: "value", target_column_source: "user" });
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("progress-target-column")).toHaveTextContent("value"));
+    expect(screen.getByTestId("progress-target-column").textContent).toBe("value");
+  });
+
+  it("источник без поля source (ручной выбор старого корпуса) -- без пометки", async () => {
+    mockFetch({ ...TRACE_RESPONSE, target_column: "value" });
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("progress-target-column").textContent).toBe("value"));
+  });
+
+  it("датасет есть, признака нет -- «не выбран» и ссылка «выбрать» на селектор (/upload)", async () => {
+    mockFetch({ ...TRACE_RESPONSE, target_column: null, target_column_source: null });
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("progress-target-column")).toHaveTextContent("не выбран"));
+    const link = screen.getByRole("link", { name: "выбрать" });
+    expect(link).toHaveAttribute("href", "/upload");
+  });
+
+  it("клик «выбрать» закрывает панель (селектор виден на вкладке)", async () => {
+    mockFetch({ ...TRACE_RESPONSE, target_column: null, target_column_source: null });
+    const onClose = jest.fn();
+    render(<ProgressDrawer open onClose={onClose} />);
+    await waitFor(() => expect(screen.getByRole("link", { name: "выбрать" })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("link", { name: "выбрать" }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("датасета нет -- «—» в признаке, ссылки нет (даже при target_column=null из /trace)", async () => {
+    mockAppShellState.activeDataset = null;
+    mockAppShellState.targetColumn = null;
+    mockFetch({ ...TRACE_RESPONSE, target_column: null, target_column_source: null });
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("progress-target-column").textContent).toBe("—"));
+    expect(screen.queryByRole("link", { name: "выбрать" })).toBeNull();
+  });
+
+  it("смена признака на другой вкладке + повторное открытие панели -- новое значение без перезагрузки страницы", async () => {
+    mockFetch({ ...TRACE_RESPONSE, target_column: "value", target_column_source: "auto" });
+    const { rerender } = render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("progress-target-column")).toHaveTextContent("value (авто)"));
+
+    // Вкладка сменила признак (POST /target-column) -- ответ /trace теперь другой.
+    mockFetch({ ...TRACE_RESPONSE, target_column: "price2", target_column_source: "user" });
+    rerender(<ProgressDrawer open={false} onClose={jest.fn()} />);
+    rerender(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("progress-target-column").textContent).toBe("price2"));
+  });
+
+  it("ответ старого бэкенда без аддитивных полей -- деградация к контексту (N-3), не «не выбран»", async () => {
+    // TRACE_RESPONSE без target_column/target_column_source -- поле
+    // undefined: честно показываем прежнее поведение (контекст), а не
+    // ложное «не выбран».
+    render(<ProgressDrawer open onClose={jest.fn()} />);
+    await waitFor(() => expect(screen.getByTestId("progress-target-column")).toHaveTextContent("Price"));
+    expect(screen.getByTestId("progress-target-column").textContent).toBe("Price");
+  });
+
+  it("новый бэкенд при загруженном датасете НЕ показывает прочерк «—» в признаке ни в одном состоянии", async () => {
+    // Приёмка §4-B: «шапка не показывает "—" при загруженном датасете».
+    for (const t of [
+      { target_column: "value", target_column_source: "auto" },
+      { target_column: "value", target_column_source: "user" },
+      { target_column: null, target_column_source: null },
+    ]) {
+      mockFetch({ ...TRACE_RESPONSE, ...t });
+      const { unmount } = render(<ProgressDrawer open onClose={jest.fn()} />);
+      await waitFor(() => {
+        const text = screen.getByTestId("progress-target-column").textContent ?? "";
+        expect(text === "value (авто)" || text === "value" || text.startsWith("не выбран")).toBe(true);
+      });
+      unmount();
+    }
   });
 });

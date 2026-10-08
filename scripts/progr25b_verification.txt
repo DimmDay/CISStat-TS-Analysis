@@ -1,0 +1,38 @@
+========================================================================
+PROGR-25-B верификация: шапка «Прогресс» из /trace + снятие авто-POST (R1)
+========================================================================
+
+Test Suites: 5 passed, 5 total
+Tests:       209 passed, 209 total
+Snapshots:   0 total
+Time:        22.473 s
+Ran all test suites matching packages/ui/hooks/useTargetColumn.test.tsx|packages/ui/components/ProgressDrawer.test.tsx|packages/ui/components/TsAnalysisUpload.test.tsx|packages/ui/components/TsAnalysisEDA.test.tsx|packages/ui/components/TsAnalysisPreprocessing.test.tsx.
+[PASS] B1: хук: монтирование НЕ выполняет авто-POST при одной числовой и рекомендации (R1)
+[PASS] B2: хук: монтирование НЕ выполняет авто-POST при нескольких числовых (R1)
+[PASS] B3: хук: wasAutoSelected -- честный факт source=auto; ручной setColumn гасит
+[PASS] B4: хук: ответ без target_column_source (старый корпус) -- не авто
+[PASS] B5: хук: уведомление о сбросе живёт без авто-POST -- newColumn = рекомендация
+[PASS] B6: хук: уведомление о сбросе без рекомендации -- newColumn: null
+[PASS] B7: хук: повторные монтирования/рефетчи -- только GET (ни одного POST)
+[PASS] B8: шапка: source=auto из /trace -- «value (авто)», контекст не приоритетен
+[PASS] B9: шапка: source=user из /trace -- без пометки «(авто)»
+[PASS] B10: шапка: source=null (ручной выбор старого корпуса) -- без пометки
+[PASS] B11: шапка: датасет есть, признака нет -- «не выбран» + ссылка «выбрать» на /upload
+[PASS] B12: шапка: клик «выбрать» закрывает панель
+[PASS] B13: шапка: датасета нет -- «—», ссылки нет
+[PASS] B14: шапка: смена признака на другой вкладке + повторное открытие -- новое значение (Г2 закрыта)
+[PASS] B15: шапка: старый бэкенд без аддитивных полей -- деградация к контексту (N-3), не «не выбран»
+[PASS] B16: шапка: при загруженном датасете «—» в признаке нет ни в одном состоянии
+[PASS] B17: upload: рекомендация отображается в селекторе без персистенции; ни одного POST (R1)
+[PASS] B18: upload: бейдж «выбрано автоматически» -- из факта source=auto бэкенда
+[PASS] INV1: upload: toast сброса признака сохранён (текст честен: «рекомендация») -- адаптация, не регресс
+------------------------------------------------------------------------
+[PASS] S1: хук: ref autoSelectInFlight и функция fetchAndMaybeAutoSelect удалены
+[PASS] S2: хук: wasAutoSelected = (target_column_source === "auto")
+[PASS] S3: шапка: target_column/target_column_source читаются из ответа /trace
+[PASS] S4: шапка: «—» только при отсутствии датасета (гейт activeDataset)
+[PASS] S5: шапка: ссылка «выбрать» -> /upload с закрытием панели
+[PASS] S6: upload: селектор = selectedFeature ?? suggestedColumn ?? numericCols[0]
+------------------------------------------------------------------------
+ИТОГ: 25/25 контрактов/пинов зелёные
+Все контракты задачи PROGR-25-B подтверждены на финальном коде.

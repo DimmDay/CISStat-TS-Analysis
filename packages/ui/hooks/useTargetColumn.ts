@@ -21,14 +21,19 @@
 // (TsAnalysisModeling.tsx пока не трогаем -- её собственная реализация
 // уже стабильна и протестирована).
 //
-// Дефолт при пустом target_column: suggested_column с бэкенда (эвристика
-// "первая числовая, исключая date/year-похожие имена", см.
-// apps/api/routers/session.py::_suggest_target_column) АВТОМАТИЧЕСКИ
-// POST-ится как реальный target_column при первом маунте потребителя,
-// если сессия ещё ни разу не имела target_column -- иначе Моделирование
-// продолжало бы показывать "не выбрано" даже после того, как Upload
-// "визуально" показал Price (без auto-POST это осталось бы только
-// локальным отображением, не меняющим состояние сессии).
+// ПРОГР-25-B (спека spec_progress_target_column.md §4-B, правка R1 акта
+// сертификации): тихий авто-POST рекомендации СНЯТ ПОЛНОСТЬЮ.
+// Авто-фиксация исследуемого признака -- исключительная компетенция
+// бэкенда (ПРОГР-25-A: при загрузке датасета, ровно один кандидат).
+// Хук только ЧИТАЕТ состояние (GET) и отображает его:
+//   - suggested_column остаётся ОТОБРАЖАЕМОЙ рекомендацией селектора
+//     (никогда не персистится хуком);
+//   - фиксация -- только ручной выбор setColumn (POST, источник user);
+//   - wasAutoSelected -- честное происхождение из ФАКТА бэкенда
+//     (target_column_source === "auto"); ответ старого бэкенда без поля
+//     читается как "не авто";
+//   - монтирование любой вкладки с хуком НЕ создаёт
+//     target_column_changed -- ни при одной, ни при нескольких числовых.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sessionApiUrl } from "../lib/apiClient";
@@ -36,7 +41,10 @@ import type { TargetColumnResponse } from "../lib/modeling";
 
 export interface ColumnResetNotice {
   previousColumn: string;
-  newColumn: string;
+  /** Рекомендация бэкенда (suggested_column) на момент сброса или null,
+   * если рекомендации нет. НЕ фиксированное значение: с снятием
+   * авто-POST (ПРОГР-25-B) фиксация -- только ручной выбор. */
+  newColumn: string | null;
 }
 
 export interface UseTargetColumnResult {
@@ -46,15 +54,19 @@ export interface UseTargetColumnResult {
   hasDataset: boolean;
   loading: boolean;
   error: string | null;
-  /** true, пока в текущем сеансе значение было выбрано автоматически
-   * (suggested_column), а не явным действием пользователя -- для
-   * инлайн-подсказки "выбрано автоматически" у селектора. Сбрасывается
-   * в false, как только пользователь делает осознанный выбор через
-   * setColumn(). */
+  /** true, когда в сессии значение зафиксировано АВТОМАТИЧЕСКИ -- честный
+ * факт происхождения из ответа бэкенда (target_column_source === "auto",
+ * ПРОГР-25-A), а не действие этого хука (авто-POST снят, ПРОГР-25-B).
+ * Для инлайн-подсказки "выбрано автоматически" у селектора. Сбрасывается
+ * в false при ручном выборе setColumn() и на ответах старого бэкенда
+ * без поля source (undefined -- происхождение неизвестно). */
   wasAutoSelected: boolean;
   /** Заполняется, когда РАНЕЕ выбранная (не пустая) колонка перестала
    * существовать в сессии между двумя фетчами ЭТОГО хука (типичная
    * причина -- загружен новый датасет с другим набором колонок).
+   * newColumn -- РЕКОМЕНДАЦИЯ бэкенда (suggested_column) или null, если
+   * рекомендаций нет: с снятием авто-POST (ПРОГР-25-B) хук ничего не
+   * фиксирует сам, поэтому поле означает "предложено", а не "выбрано".
    * Отличается от обычного "выбор ещё не сделан" (там previousColumn
    * никогда не был непустым) -- используется потребителем для toast,
    * а не только инлайн-бейджа. Читается один раз потребителем и должно
@@ -84,17 +96,11 @@ export function useTargetColumn(datasetKey: string | null | undefined): UseTarge
   const [columnResetNotice, setColumnResetNotice] = useState<ColumnResetNotice | null>(null);
   const [passportResetNotice, setPassportResetNotice] = useState<ColumnResetNotice | null>(null);
 
-  // Защита от двойного авто-POST при конкурентных маунтах/эффектах
-  // (StrictMode double-effect в dev, или Upload+Validation монтируются
-  // одновременно в редком сценарии) -- ref, не state, чтобы не триггерить
-  // лишний рендер и не создавать гонку между проверкой и записью.
-  const autoSelectInFlight = useRef(false);
-
   // Последнее НЕПУСТОЕ значение target_column, увиденное ЭТИМ инстансом
   // хука -- сигнал для различения "первый выбор в сессии" (previousColumn
   // никогда не было -- без уведомления) от "датасет сменился, старая
-  // колонка пропала" (previousColumn было -- toast+инлайн, см. Upload/
-  // Validation). Не переживает полную перезагрузку страницы (это ОК --
+  // колонка пропала" (previousColumn было -- toast+инлайн, см. Upload).
+  // Не переживает полную перезагрузку страницы (это ОК --
   // best-effort уведомление в рамках текущего визита на вкладку).
   const lastKnownColumn = useRef<string | null>(null);
   const hasFetchedOnce = useRef(false);
@@ -104,12 +110,15 @@ export function useTargetColumn(datasetKey: string | null | undefined): UseTarge
     setSuggestedColumn(data.suggested_column);
     setAvailableColumns(data.available_columns);
     setHasDataset(data.has_dataset);
+    // ПРОГР-25-B: "авто" -- честный факт происхождения из ОТВЕТА бэкенда
+    // (ПРОГР-25-A), а не действие хука; undefined (старый бэкенд) -- не авто.
+    setWasAutoSelected(data.target_column_source === "auto");
     if (data.target_column !== null) {
       lastKnownColumn.current = data.target_column;
     }
   }, []);
 
-  const fetchAndMaybeAutoSelect = useCallback(async () => {
+  const fetchTargetColumn = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -130,36 +139,20 @@ export function useTargetColumn(datasetKey: string | null | undefined): UseTarge
       const previousColumn = lastKnownColumn.current;
       hasFetchedOnce.current = true;
 
-      // Автовыбор: target_column ещё не установлен в сессии, но есть
-      // разумный дефолт -- фиксируем его как РЕАЛЬНЫЙ target_column
-      // (POST), не просто отображаем. Иначе синхронизация между
-      // вкладками не работает: другая вкладка (например, Моделирование)
-      // читает то же /target-column и увидит null, пока кто-то явно не
-      // выберет колонку.
-      if (data.target_column === null && data.suggested_column !== null && !autoSelectInFlight.current) {
-        autoSelectInFlight.current = true;
-        try {
-          const postRes = await fetch(sessionApiUrl("/target-column"), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ column: data.suggested_column }),
-          });
-          if (postRes.ok) {
-            const postData: TargetColumnResponse = await postRes.json();
-            applyResponse(postData);
-            setWasAutoSelected(true);
-            if (isReset && previousColumn && postData.target_column) {
-              setColumnResetNotice({ previousColumn, newColumn: postData.target_column });
-            }
-            return;
-          }
-        } finally {
-          autoSelectInFlight.current = false;
-        }
-      }
-
+      // ПРОГР-25-B (R1): авто-ПОСТ СНЯТ. Хук ничего не фиксирует --
+      // только отображает ответ бэкенда: рекомендация (suggested_column)
+      // остаётся отображаемой подсказкой селектора, фиксация -- только
+      // ручной setColumn. Синхронизацию между вкладками обеспечивает
+      // сам бэкенд: авто-фиксация при загрузке (ПРОГР-25-A) и общее
+      // состояние сессии -- у всех вкладок один источник.
       applyResponse(data);
+
+      // Уведомление о сбросе теперь живёт в общем пути фетча (раньше --
+      // в ветке авто-ПОСТА): "ранее непустой target стал null". newColumn
+      // -- РЕКОМЕНДАЦИЯ (не фиксация!); потребитель строит честный текст.
+      if (isReset && previousColumn) {
+        setColumnResetNotice({ previousColumn, newColumn: data.suggested_column });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Не удалось получить исследуемый признак");
     } finally {
@@ -197,7 +190,7 @@ export function useTargetColumn(datasetKey: string | null | undefined): UseTarge
   );
 
   useEffect(() => {
-    fetchAndMaybeAutoSelect();
+    void fetchTargetColumn();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetKey]);
 
@@ -213,6 +206,6 @@ export function useTargetColumn(datasetKey: string | null | undefined): UseTarge
     dismissColumnResetNotice: () => setColumnResetNotice(null),
     passportResetNotice,
     setColumn,
-    refetch: fetchAndMaybeAutoSelect,
+    refetch: fetchTargetColumn,
   };
 }

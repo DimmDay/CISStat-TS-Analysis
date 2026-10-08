@@ -379,6 +379,7 @@ export function TsAnalysisUpload() {
   // для Country/Year/Price это был Year, не Price). См. packages/ui/hooks/useTargetColumn.ts.
   const {
     targetColumn: selectedFeature,
+    suggestedColumn,
     wasAutoSelected,
     columnResetNotice,
     dismissColumnResetNotice,
@@ -394,10 +395,15 @@ export function TsAnalysisUpload() {
   // инлайн-бейдж). columnResetNotice приходит из useTargetColumn, когда
   // РАНЕЕ выбранная колонка (например Price) отсутствует в новом
   // датасете -- backend сам сбрасывает target_column при set_dataset().
+  // ПРОГР-25-B: авто-ПОСТ снят -- хук ничего не фиксирует, поэтому
+  // newColumn в уведомлении -- РЕКОМЕНДАЦИЯ бэкенда (suggested_column)
+  // или null; текст честно различает «рекомендация» и «выберите».
   useEffect(() => {
     if (columnResetNotice) {
       toast.warning(
-        `Признак «${columnResetNotice.previousColumn}» недоступен в новом датасете — выбран «${columnResetNotice.newColumn}»`
+        columnResetNotice.newColumn
+          ? `Признак «${columnResetNotice.previousColumn}» недоступен в новом датасете — рекомендация: «${columnResetNotice.newColumn}»`
+          : `Признак «${columnResetNotice.previousColumn}» недоступен в новом датасете — выберите новый признак`,
       );
       dismissColumnResetNotice();
     }
@@ -558,9 +564,11 @@ export function TsAnalysisUpload() {
         if (data.columns_info) {
           fetchStructureDetection().then((d) => setDetection(d));
           // Больше НЕ выбираем "первую числовую" вручную (это и было
-          // причиной бага -- откатывалось на Year вместо Price). Сервер
-          // уже сбросил target_column при этой загрузке (upload_common.py::set_dataset)
-          // -- рефетчим, useTargetColumn сам применит suggested_column-эвристику и запишет её.
+          // причиной бага -- откатывалось на Year вместо Price).
+          // ПРОГР-25-A: бэкенд сам авто-фиксирует признак при загрузке
+          // (ровно один кандидат) -- рефетчим, чтобы селектор/бейджи
+          // показали актуальное состояние; при неоднозначности остаётся
+          // честное «не выбран» с отображаемой рекомендацией.
           refetchTargetColumn();
         }
         fetchStats();
@@ -997,8 +1005,13 @@ export function TsAnalysisUpload() {
             {numericCols.length > 0 && (
               <div>
                 <label className="text-[11px] text-neutral-500 block mb-1">Исследуемый признак:</label>
+                {/* PROGR-25-B: при незафиксированном признаке селектор
+                    показывает РЕКОМЕНДАЦИЮ бэкенда (suggested_column --
+                    первый кандидат единого правила), а не просто первую
+                    числовую датафрейма; отображение не персистится --
+                    фиксация только явным выбором в списке. */}
                 <select
-                  value={selectedFeature ?? numericCols[0]}
+                  value={selectedFeature ?? suggestedColumn ?? numericCols[0]}
                   onChange={(e) => setSelectedFeature(e.target.value)}
                   className="w-full rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
                 >
