@@ -1,0 +1,33 @@
+PROGR-25-B-CERT: GREEN-прогон СВОИХ оракулов аудитора на d703407
+Дата: 2026-10-09; база d703407 (origin/main); канал oracle = 3 сюита progr25bcert*
+
+PASS packages/ui/components/progr25bcert_ProgressDrawer.test.tsx
+    ✓ CERT-D1: source=auto -> «load (авто)» -- пометка происхождения честная (61 ms)
+    ✓ CERT-D2: source=user -> «load» БЕЗ пометки (ручной выбор не выдаётся за авто) (49 ms)
+    ✓ CERT-D3: поле source отсутствует (legacy-ответ) -> «load» без пометки (59 ms)
+    ✓ CERT-D4: датасет есть, признака нет -> «не выбран» + ссылка «выбрать», клик закрывает панель (241 ms)
+    ✓ CERT-D5: датасета нет -> «—» (прочерк только в этом классе), даже при значении в трассе (71 ms)
+    ✓ CERT-D6: источник шапки -- /trace: контекст говорит temp, трасса load -> показан load (авто) (13 ms)
+    ✓ CERT-D7: смена признака на другой вкладке + переоткрытие -> новое значение без перезагрузки (22 ms)
+    ✓ CERT-D8: N-3: ответ старого бэкенда без полей -> честная деградация к контексту (temp без пометки) (9 ms)
+    ✓ CERT-D9: N-3: legacy-ответ + контекст пуст + датасет есть -> «—» (прежнее поведение сохранено) (8 ms)
+    ✓ CERT-D10: инвариант: при датасете прочерк «—» недостижим ни в одном состоянии трассы (50 ms)
+    ✓ CERT-D11: null трассы строже контекста: контекст temp, трасса null -> «не выбран» (9 ms)
+PASS packages/ui/hooks/progr25bcert_useTargetColumn.test.tsx
+    ✓ CERT-H1: маунт в однозначном классе НЕ POST-ит (target null, рекомендация load, одна числовая) (56 ms)
+    ✓ CERT-H2: маунт в неоднозначном классе НЕ POST-ит (target null, рекомендации нет, 3 числовых) (53 ms)
+    ✓ CERT-H3: wasAutoSelected -- честный факт source ответа (auto -> true; user/undefined -> false) (160 ms)
+    ✓ CERT-H4: фиксация только ручная -- setColumn POST-ит {column} и гасит wasAutoSelected (54 ms)
+    ✓ CERT-H5: сброс (load -> null) несёт РЕКОМЕНДАЦИЮ suggested_column, без POST-ов (53 ms)
+    ✓ CERT-H6: сброс без рекомендации -- newColumn=null (честное «выберите сами») (52 ms)
+    ✓ CERT-H7: самый первый фетч с null -- не сброс (notice нет) (52 ms)
+    ✓ CERT-H8: смена datasetKey и повторный маунт -- только GET-ы (хук никогда не POST-ит сам) (108 ms)
+    ✓ CERT-H9: сетевой сбой -- честная ошибка, без POST, состояние не роняет потребителя (54 ms)
+PASS packages/ui/components/progr25bcert_TsAnalysisUpload.test.tsx
+    ✓ CERT-U1/U2: рекомендация load отображается (НЕ первая числовая price) и не персистится -- ни одного POST (66 ms)
+    ✓ CERT-U3: бейдж «Выбрано автоматически» -- честный факт source: есть при auto, нет при user (25 ms)
+    ✓ CERT-U3b: тот же сценарий при source=user -- бейджа нет (21 ms)
+    ✓ CERT-U4: сброс после нового датасета -- честный toast с РЕКОМЕНДАЦИЕЙ, не с «выбран» (26 ms)
+    ✓ CERT-U5: фиксация только ручная: выбор price в селекторе -> POST {column:price}, бейджа нет (47 ms)
+Test Suites: 3 passed, 3 total
+Tests:       25 passed, 25 total

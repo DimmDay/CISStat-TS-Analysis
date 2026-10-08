@@ -1,0 +1,61 @@
+База md5 (4 продовых файла): 386b4586ab7a6de9ef9b60fb2a201a9a  -
+
+=== Шаг 1. Бэкап d703407 ===
+cad3ba004983e674657536e6da52e645  packages/ui/hooks/useTargetColumn.ts
+9b2ce26b74a829b0fd3eacdec9950959  packages/ui/components/ProgressDrawer.tsx
+f57e71ba4d37d42be2cbf7cb5bb1f4eb  packages/ui/lib/modeling.ts
+abda42d10e294b5338d067b9de2abefe  packages/ui/components/TsAnalysisUpload.tsx
+
+=== Шаг 2. Откат к 13c693c (до задачи B) ===
+ad93c3a37db91f01497021829801043c  packages/ui/hooks/useTargetColumn.ts
+b5b9a89165150c37eb04849b54103cfe  packages/ui/components/ProgressDrawer.tsx
+e4c47d5c420fc051f3ea2edbb2979e1a  packages/ui/lib/modeling.ts
+d4d95b409f919e81dc486ed0512daa78  packages/ui/components/TsAnalysisUpload.tsx
+
+=== Шаг 3. Прогон СВОИХ оракулов на дo-B коде (ожидание: RED) ===
+    ✕ CERT-D1: source=auto -> «load (авто)» -- пометка происхождения честная (1051 ms)
+    ✕ CERT-D2: source=user -> «load» БЕЗ пометки (ручной выбор не выдаётся за авто) (1012 ms)
+    ✕ CERT-D3: поле source отсутствует (legacy-ответ) -> «load» без пометки (1010 ms)
+    ✕ CERT-D4: датасет есть, признака нет -> «не выбран» + ссылка «выбрать», клик закрывает панель (1010 ms)
+    ✕ CERT-D5: датасета нет -> «—» (прочерк только в этом классе), даже при значении в трассе (1008 ms)
+    ✕ CERT-D6: источник шапки -- /trace: контекст говорит temp, трасса load -> показан load (авто) (1009 ms)
+    ✕ CERT-D7: смена признака на другой вкладке + переоткрытие -> новое значение без перезагрузки (1008 ms)
+    ✕ CERT-D8: N-3: ответ старого бэкенда без полей -> честная деградация к контексту (temp без пометки) (1007 ms)
+    ✕ CERT-D9: N-3: legacy-ответ + контекст пуст + датасет есть -> «—» (прежнее поведение сохранено) (1009 ms)
+    ✕ CERT-D10: инвариант: при датасете прочерк «—» недостижим ни в одном состоянии трассы (1008 ms)
+    ✕ CERT-D11: null трассы строже контекста: контекст temp, трасса null -> «не выбран» (1008 ms)
+              [0m✕[0m
+              [0m✕[0m
+              [0m✕[0m
+              [0m✕[0m
+              [0m✕[0m
+              [0m✕[0m
+              [0m✕[0m
+              [0m✕[0m
+              [0m✕[0m
+              [0m✕[0m
+              [0m✕[0m
+    ✕ CERT-U1/U2: рекомендация load отображается (НЕ первая числовая price) и не персистится -- ни одного POST (112 ms)
+    ✕ CERT-U3: бейдж «Выбрано автоматически» -- честный факт source: есть при auto, нет при user (27 ms)
+    ✓ CERT-U3b: тот же сценарий при source=user -- бейджа нет (21 ms)
+    ✕ CERT-U4: сброс после нового датасета -- честный toast с РЕКОМЕНДАЦИЕЙ, не с «выбран» (1011 ms)
+    ✕ CERT-U5: фиксация только ручная: выбор price в селекторе -> POST {column:price}, бейджа нет (40 ms)
+    ✕ CERT-H1: маунт в однозначном классе НЕ POST-ит (target null, рекомендация load, одна числовая) (56 ms)
+    ✓ CERT-H2: маунт в неоднозначном классе НЕ POST-ит (target null, рекомендации нет, 3 числовых) (54 ms)
+    ✕ CERT-H3: wasAutoSelected -- честный факт source ответа (auto -> true; user/undefined -> false) (54 ms)
+    ✕ CERT-H4: фиксация только ручная -- setColumn POST-ит {column} и гасит wasAutoSelected (53 ms)
+    ✕ CERT-H5: сброс (load -> null) несёт РЕКОМЕНДАЦИЮ suggested_column, без POST-ов (56 ms)
+    ✕ CERT-H6: сброс без рекомендации -- newColumn=null (честное «выберите сами») (53 ms)
+    ✓ CERT-H7: самый первый фетч с null -- не сброс (notice нет) (52 ms)
+    ✓ CERT-H8: смена datasetKey и повторный маунт -- только GET-ы (хук никогда не POST-ит сам) (106 ms)
+    ✓ CERT-H9: сетевой сбой -- честная ошибка, без POST, состояние не роняет потребителя (54 ms)
+Test Suites: 3 failed, 3 total
+Tests:       20 failed, 5 passed, 25 total
+
+=== Шаг 4. Восстановление d703407 ===
+md5 после восстановления: 386b4586ab7a6de9ef9b60fb2a201a9a  -
+RESTORE OK: побайтовое совпадение
+
+=== Шаг 5. Контроль: свои оракулы на d703407 (ожидание: GREEN 25/25) ===
+Test Suites: 3 passed, 3 total
+Tests:       25 passed, 25 total
