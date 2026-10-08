@@ -625,6 +625,12 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         "stages": dict(session.stages),
         "last_active_stage": session.last_active_stage,
         "target_column": session.target_column,
+        # PROGR-25-A/F1 (сертификация, docs/cert_progr25a_2026-10-08.md §7):
+        # происхождение выбора обязано переживать персистенцию -- иначе
+        # production-путь Redis (Upstash/render.com) на каждом save→get
+        # терял источник: авто-выбор читался как legacy None («user»),
+        # шапка задачи B не показывала «(авто)».
+        "target_column_source": session.target_column_source,
         "date_column": session.date_column,
         "passport_history": [asdict(item) for item in session.passport_history],
         "passport_checkpoints": [asdict(item) for item in session.passport_checkpoints],
@@ -694,6 +700,9 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         stages=dict(d.get("stages", {})),
         last_active_stage=d.get("last_active_stage"),
         target_column=d.get("target_column"),  # None для старых записей
+        # PROGR-25-A/F1: None для старых документов без поля (backcompat
+        # rolling-deploy; легаси-семантика: потребители читают None как «user»).
+        target_column_source=d.get("target_column_source"),
         date_column=d.get("date_column"),
         passport_history=[
             _passport_snapshot_from_dict(item)

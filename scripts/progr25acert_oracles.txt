@@ -25,7 +25,7 @@
     [PASS] B2 GET /target-column зеркалит и рекомендует load
     [PASS] B3 ровно одно событие; хронология фиксация -> upload_completed
     [PASS] B3b payload/stage/node_id/actor/run_id события
-    [FAIL] B4 носитель задачи B: /trace target_column/source наверху
+    [PASS] B4 носитель задачи B: /trace target_column/source наверху
     [PASS] B5 v2 (2 числовых): фиксации/события/носителя нет
     [PASS] B5b рекомендация -- первый кандидат по порядку (load)
     [PASS] B6 v3 [year, load]: фиксации нет, событие отсутствует (R4)
@@ -37,7 +37,7 @@
     [PASS] B9 demo: sales_demo (2 числовых) -- честное «не выбран»
     [PASS] B9b /trace носитель demo: None/None; ключ source в ответе demo
     [PASS] B9c demo одночислового CSV (R2): target=load, source=auto
-    [FAIL] B9c событие авто на demo-пути; носитель /trace согласован
+    [PASS] B9c событие авто на demo-пути; носитель /trace согласован
     [PASS] B10 demo -> ручной выбор sales: source=user
     [PASS] B10b payload ручного события без ключа source (legacy-канал)
     [PASS] B11 ручной поверх авто: source=user, 2 события в порядке auto->manual
@@ -47,7 +47,7 @@
     [PASS] B14 re-upload: ровно одно событие авто (канон PROGR-3)
     [PASS] B15 v1(авто) -> v2(2 числовых): честное «не выбран»
     [PASS] B16 0 числовых: фиксации нет, suggested=None, available=[]
-    [FAIL] B17 /current == /trace == /target-column (auto/None/user)
+    [PASS] B17 /current == /trace == /target-column (auto/None/user)
     [PASS] B18 SessionStateResponse/TargetColumnResponse: source Optional=None
     [PASS] B18b ProgressTraceResponse: target_column/source Optional=None
     [PASS] B19 payload_keys target-column-маршрута содержит source
@@ -65,7 +65,6 @@
     [PASS] D3 target/реестр/run_id в том же документе сохранены (изоляция дефекта новым полем)
 
 ====================================================================================================
-ИТОГ ОРАКУЛОВ: 52/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1)
-НЕОЖИДАННЫЕ FAIL: ['B4 носитель задачи B: /trace target_column/source наверху', 'B9c событие авто на demo-пути; носитель /trace согласован', 'B17 /current == /trace == /target-column (auto/None/user)']
+ИТОГ ОРАКУЛОВ: 55/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1)
 ====================================================================================================
 AGENTS.md: локальное измерение, commit/push НЕ выполнялись.

@@ -1,0 +1,51 @@
+====================================================================================================
+МУТАЦИОННЫЙ ПРОГОН ИСПРАВЛЕНИЯ F1 -- сериализация target_column_source (session_store.py)
+Мутантов в прогоне: 5 из 5 (каналы: repo ['tests/api/test_session_store.py'] + oracle 57 [критерий: ИТОГ ОРАКУЛОВ: 57/57 PASS])
+====================================================================================================
+backup apps/api/session_store.py: md5=f3b45163d6016c3baa73b8dee1e7ab59
+
+── MF-0: КОНТРОЛЬ харнесса: no-op мутант обязан ВЫЖИТЬ в обоих каналах
+    файл: apps/api/session_store.py (ожидание: survive)
+    repo   : SURVIVED (============================== 87 passed in 1.58s ==============================)
+    oracle : SURVIVED (ОРАКУЛОВ: 57/57 PASS (expected-FAIL: [] -- доказательства находки F1))
+    ВЕРДИКТ: OK-CONTROL
+
+── MF-1: ключ удалён из session_to_dict -- документ снова теряет origin
+    файл: apps/api/session_store.py (ожидание: both)
+    repo   : KILLED   (========================= 1 failed, 21 passed in 0.99s =========================)
+    oracle : KILLED   (ОРАКУЛОВ: 55/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED-BOTH
+
+── MF-2: восстановление удалено из session_from_dict -- roundtrip теряет
+    файл: apps/api/session_store.py (ожидание: both)
+    repo   : KILLED   (========================= 1 failed, 21 passed in 0.97s =========================)
+    oracle : KILLED   (ОРАКУЛОВ: 55/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED-BOTH
+
+── MF-3: from_dict жёстко кодирует "auto" -- убит repo (user-ветка roundtrip) И oracle (C1: legacy-документ обязан читаться source=None)
+    файл: apps/api/session_store.py (ожидание: both)
+    repo   : KILLED   (========================= 1 failed, 21 passed in 0.97s =========================)
+    oracle : KILLED   (ОРАКУЛОВ: 56/57 PASS (expected-FAIL: [] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED-BOTH
+
+── MF-4: to_dict пишет чужое значение (date_column) -- документ врёт
+    файл: apps/api/session_store.py (ожидание: both)
+    repo   : KILLED   (========================= 1 failed, 21 passed in 0.95s =========================)
+    oracle : KILLED   (ОРАКУЛОВ: 55/57 PASS (expected-FAIL: ['D1 source переживает to_dict/from_dict', 'D2 source переживает Redis save/get'] -- доказательства находки F1))
+    ВЕРДИКТ: KILLED-BOTH
+
+Восстановление оригиналов:
+    apps/api/session_store.py: md5=f3b45163d6016c3baa73b8dee1e7ab59
+
+====================================================================================================
+  MF-0: repo=SURVIVED oracle=SURVIVED -- КОНТРОЛЬ харнесса: no-op мутант обязан ВЫЖИТЬ в обоих каналах
+  MF-1: repo=KILLED   oracle=KILLED   -- ключ удалён из session_to_dict -- документ снова теряет origin
+  MF-2: repo=KILLED   oracle=KILLED   -- восстановление удалено из session_from_dict -- roundtrip теряет
+  MF-3: repo=KILLED   oracle=KILLED   -- from_dict жёстко кодирует "auto" -- убит repo (user-ветка roundtrip) И oracle (C1: legacy-документ обязан читаться source=None)
+  MF-4: repo=KILLED   oracle=KILLED   -- to_dict пишет чужое значение (date_column) -- документ врёт
+
+Контроль харнесса MF-0: OK -- no-op выжил в обоих каналах
+
+ИТОГ: 4/4 мутантов-целей убиты ожидаемыми каналами
+====================================================================================================
+AGENTS.md: локальное измерение, commit/push НЕ выполнялись.

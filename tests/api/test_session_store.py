@@ -367,6 +367,79 @@ class _SessionStoreContract:
         assert session.storage_revision == 0
         assert session.session_id == "legacy-024"
 
+    # ── 5b. target_column_source (PROGR-25-A, фикс F1 сертификации) ──
+
+    def test_target_column_source_survives_roundtrip_serialization(
+        self, sample_dataset_info, sample_dataframe
+    ):
+        """PROGR-25-A/F1: source обязан переживать JSON-сериализацию.
+
+        Сертификация PROGR-25-A (находка F1,
+        docs/cert_progr25a_2026-10-08.md §7, оракулы D1/D2): ключ
+        отсутствовал в session_to_dict и не восстанавливался в
+        session_from_dict -- production-путь RedisSessionStore
+        (Upstash/render.com) терял происхождение на каждом save→get:
+        авто-выбор читался как legacy None («user»), приёмка A в
+        production не выполнялась после roundtrip, шапка задачи B
+        не показывала «(авто)». В Memory-бэкенде дефект не проявлялся
+        (алиасинг по ссылке) -- поэтому контракт проверяется ЯВНОЙ
+        сериализацией для ОБЕИХ реализаций store.
+        """
+        from apps.api.session_store import session_to_dict, session_from_dict
+
+        sid = "tcs-roundtrip-031"
+        session = self.store.get_or_create(sid)
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        session.set_target_column("value")
+        # production ставит "auto" в точках загрузки (target_column_rule)
+        # и "user" на ручном маршруте; здесь -- прямая мутация поля:
+        # проверяется контракт сериализации, не правила задачи A.
+        session.target_column_source = "auto"
+        self.store.save(session)
+
+        # production-путь: save() → session_to_dict → json → get() → session_from_dict
+        d = session_to_dict(self.store.get(sid))
+        # Ключ обязан присутствовать в документе ЯВНО (не «отсутствует == None»):
+        # фронтенд задачи B различает null (явно не задан) и undefined
+        # (старый бэкенд) -- honesty контракта держится на явности ключа.
+        assert "target_column_source" in d
+        assert d["target_column_source"] == "auto"
+        restored = session_from_dict(d)
+        assert restored.target_column == "value"
+        assert restored.target_column_source == "auto"
+
+        # Ручной канал задачи A: source="user" тоже обязан переживать roundtrip
+        # (убивает мутанта, жёстко кодирующего "auto" при десериализации).
+        session.target_column_source = "user"
+        self.store.save(session)
+        restored_user = session_from_dict(session_to_dict(self.store.get(sid)))
+        assert restored_user.target_column_source == "user"
+
+    def test_target_column_source_backcompat_legacy_dict_without_field(self):
+        """Старые сессии в Redis (без target_column_source -- до фикса F1)
+        десериализуются с source=None, а не падают (rolling-deploy).
+
+        Легаси-семантика: потребители читают None как «user»
+        (докстринг AnalysisSession). Аддитивное поле: SESSION_SCHEMA_VERSION
+        не поднимается (прецедент PROGR-24 -- подъём только для структурных
+        полей схемы).
+        """
+        from apps.api.session_store import session_from_dict
+
+        legacy_dict = {
+            "session_id": "legacy-tcs-032",
+            "dataset": None,
+            "dataframe_json": None,
+            "stages": {"upload": "pending"},
+            "last_active_stage": None,
+            "updated_at": "2026-01-01T00:00:00+00:00",
+            # НЕТ поля "target_column_source" -- документ до фикса F1
+        }
+        session = session_from_dict(legacy_dict)
+        assert session.target_column_source is None
+        assert session.target_column is None
+        assert session.session_id == "legacy-tcs-032"
+
     # ── 6. type_schema (Task 36) ──
 
     def test_type_schema_defaults_to_empty_and_persists(self, sample_dataset_info, sample_dataframe):
@@ -571,6 +644,31 @@ class TestRedisSessionStore(_SessionStoreContract):
 
         persisted = self.store.get(sid)
         assert persisted.modeling_artifacts["tuning"]["ets"]["tuning_id"] == "tune-new"
+
+    def test_saved_redis_document_carries_target_column_source(
+        self, sample_dataset_info, sample_dataframe
+    ):
+        """PROGR-25-A/F1: пин уровня СЫРОГО документа Redis.
+
+        Аналог якоря session_schema_version (Task 143): production-путь
+        обязан писать ключ target_column_source в JSON-документ ключа
+        (Upstash/render.com), а get() -- восстанавливать его.
+        Сертификация F1: оракул D2 ловил потерю именно на этом пути.
+        """
+        import json as _json
+
+        sid = "tcs-raw-033"
+        session = self.store.get_or_create(sid)
+        session.set_dataset(sample_dataset_info, sample_dataframe)
+        session.set_target_column("value")
+        session.target_column_source = "auto"
+        self.store.save(session)
+
+        raw = _json.loads(self.store._client.get(self.store._key(sid)))
+        assert raw["target_column_source"] == "auto"
+
+        # Обратный путь того же production-цикла: get() восстанавливает источник
+        assert self.store.get(sid).target_column_source == "auto"
 
 
 # ────────────────────────────────────────────────────────────────────
