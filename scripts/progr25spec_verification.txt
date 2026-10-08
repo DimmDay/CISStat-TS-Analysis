@@ -1,0 +1,36 @@
+== PROGR-25-SPEC-CERT: runtime-верификация spec_progress_target_column.md ==
+
+== 1. Ф4: демо forecast_monitor_synthetic_n150 ==
+  [PASS] колонки == [date, value] -- ['date', 'value']
+  [PASS] числовых колонок ровно одна (value) -- ['value']
+  [PASS] 150 строк; 3 пропуска в value @ {45,87,122}; 4 выброса @ {25,70,105,130}
+
+== 2. Г1: сразу после загрузки (API-уровень, без хука) ==
+  [PASS] POST /v1/internal/upload == 200 -- 200
+  [PASS] Г1 подтверждена: /current.target_column is None сразу после загрузки -- None
+  [PASS] датасет при этом активен (has_active_dataset=True)
+  [PASS] события target_column_changed в трассе НЕТ -- ['upload_completed']
+  [PASS] upload_completed присутствует (сценарий корректен)
+  [PASS] КОНТРАКТ B: /trace НЕ содержит target_column/target_column_source (поля только добавятся)
+
+== 3. Ф1: однозначный случай — suggestion и авто-POST хука ==
+  [PASS] GET /target-column: suggested_column == 'value' (однозначный случай) -- 'value'
+  [PASS] GET /target-column: available_columns == ['value'] -- ['value']
+  [PASS] КОНТРАКТ A: в ответе НЕТ target_column_source (аддитивное поле)
+  [PASS] POST /target-column {'column':'value'} == 200
+  [PASS] Г2 (бэкенд-часть): после авто-POST /current.target_column == 'value' — шапка обязана показывать признак, «—» устаревание контекста -- 'value'
+  [PASS] событие target_column_changed появилось в трассе -- 1
+  [PASS] атрибуция маршрута: stage='validation', node_id=None (TRACE_ROUTES:225-229) -- stage=validation, node_id=None
+  [PASS] КОНТРАКТ A: payload события — ровно {'target_column'}, поля source НЕТ (аддитивность) -- ['target_column']
+
+== 4. §2.2: неоднозначный случай (2+ числовых) — сегодняшний тихий выбор ==
+  [PASS] upload двухколоночного файла == 200
+  [PASS] после новой загрузки target_column сброшен (set_dataset, upload_common.py:166 → session_store.py)
+  [PASS] РАСХОЖДЕНИЕ: в неоднозначном случае suggested_column НЕ пуст ('value' — первая не-date-подобная), спека же требует «тихого выбора нет» — хук сегодня авто-POSTит эту рекомендацию (useTargetColumn.ts:139), подзадачи на снятие авто-POST в плане нет -- 'value'
+
+== 5. Эвристика suggestion: date-подобные по имени ==
+  [PASS] upload (year,value) == 200
+  [PASS] suggested_column == 'value' (year исключён по имени) -- 'value'
+  [PASS] замечание спеке: 'year' исключён ПО ИМЕНИ; фактическая session.date_column и реестр производных в кандидатах сегодня НЕ вычитаются (_get_numeric_columns — все числовые) -- статическая верификация session.py:3966-4000
+
+== ИТОГ: 23/23 PASS ==
