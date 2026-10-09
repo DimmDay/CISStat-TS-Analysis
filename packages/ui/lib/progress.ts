@@ -156,6 +156,33 @@ export interface TraceEventInfo {
   event_type: string;
   payload: Record<string, unknown>;
   actor?: string;
+  // ── AUDIT-S: аддитивный envelope v2 (v0.2-AUDIT-S §12); absent = v1 ──
+  /** Версия схемы записи: 2 -- событие произведено под контрактом v2;
+   * отсутствует у v1-корпуса (честное unknown, не выдумывается). */
+  schema_version?: number;
+  /** Уровень доказательности: server_result | client_observation |
+   * user_decision | operational (дефолтный actor его не подменяет). */
+  evidence_level?: string;
+  /** Commit sequence ledger (назначит store в AUDIT-6A); absent --
+   * стабильный store-order. */
+  sequence?: number;
+  /** Идемпотентность операции/доставки (AUDIT-6B). */
+  operation_id?: string;
+  /** Request/trigger, вызвавший событие (удостоверение user_decision). */
+  causation_id?: string;
+  /** Контекст расчёта (AUDIT-C). */
+  context_id?: string;
+  /** Ссылка на результат: result_id/artifact/hash. */
+  result_ref?: Record<string, unknown>;
+  /** Методика: algorithm/rule_id/rule_version/code_revision. */
+  method?: Record<string, unknown>;
+  /** Честное время (F16/P23): quality degraded/substituted -- ts не
+   * подменён, raw_ts сохранён, observed_at -- время наблюдения/записи. */
+  time_quality?: {
+    observed_at?: string;
+    raw_ts?: string;
+    quality?: string;
+  };
 }
 
 // ── Готовое состояние панели (PROGR-10, зеркало StageStateOut) ──────
@@ -275,13 +302,23 @@ export interface CheckpointInfo {
 
 /** Последнее в хронологии событие с непустым event_id -- кандидат на якорь
  * нового чекпоинта («текущий момент» исследования). События без event_id
- * (legacy-трасса, канонизируемые события ForecastRun.trace -- сервер не
- * выдумывает идентификаторы) пропускаются: чекпоинт -- ссылка на
- * ИДЕНТИФИЦИРОВАННОЕ событие, бэкенд отклонил бы ссылку без id (404). */
+ * (legacy-трасса) и forecasting-события артефактов (AUDIT-S: несут
+ * стабильный id, но в слое 2 не лежат -- хук-таблица forecasting-маршруты
+ * запрещает; POST /checkpoints отверг бы ссылку) пропускаются: чекпоинт --
+ * ссылка на ИДЕНТИФИЦИРОВАННОЕ событие решения. */
 export function lastCheckpointableEvent(events: TraceEventInfo[]): TraceEventInfo | null {
   const chronological = sortEventsChronologically(events);
   for (let i = chronological.length - 1; i >= 0; i -= 1) {
     const event = chronological[i];
+    // §5.1: якорь -- ИДЕНТИФИЦИРОВАННОЕ событие трассы РЕШЕНИЯ слоя 1.
+    // AUDIT-S: артефактные forecasting-события теперь несут стабильный
+    // event_id (F11 исправлен), но якорями быть не могут: они не лежат
+    // в слое 2 (хук-таблица запрещает forecasting-маршруты), POST
+    // /checkpoints отверг бы их. Раньше защита была в ОТСУТСТВИИ event_id
+    // (адаптер отбрасывал идентичность, F11); теперь -- stage-фильтр:
+    // forecasting-события в /trace приходят только из артефактов
+    // (слой 1 forecasting-событий не содержит, PROGR-5).
+    if (event.stage === "forecasting") continue;
     if (event.event_id) return event;
   }
   return null;

@@ -3594,11 +3594,26 @@ class ForecastPointSchema(BaseModel):
 
 
 class ForecastTraceEventSchema(BaseModel):
-    """Событие трассы этапа (контракт apps/api/trace_events.py)."""
+    """Событие трассы этапа (контракт apps/api/trace_events.py).
+
+    AUDIT-S: аддитивные Optional-поля envelope v2
+    (docs/progress_audit_contract.md v0.2-AUDIT-S §12) -- без них
+    pydantic-фильтрация молча съедала бы новые поля (риск карточки
+    plan_progress_audit.md §5: «проверять фактический JSON»); v1-события
+    читаются как прежде (все поля None)."""
 
     event_type: str
     timestamp: str
     payload: Dict[str, Any] = Field(default_factory=dict)
+    schema_version: Optional[int] = None
+    evidence_level: Optional[str] = None
+    sequence: Optional[int] = None
+    operation_id: Optional[str] = None
+    causation_id: Optional[str] = None
+    context_id: Optional[str] = None
+    result_ref: Optional[Dict[str, Any]] = None
+    method: Optional[Dict[str, Any]] = None
+    time_quality: Optional[Dict[str, Any]] = None
 
 
 class ForecastRunResponse(BaseModel):

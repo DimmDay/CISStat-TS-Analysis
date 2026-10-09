@@ -173,7 +173,6 @@ from app.core.run_report import (
     build_report_model,
     render_html,
     render_markdown,
-    sort_events_chronologically,
 )
 from apps.api.auth import require_admin_role
 from apps.api.research_runs import (
@@ -195,7 +194,12 @@ from apps.api.session_store import (
     get_or_create_session_id,
     get_session_store,
 )
-from apps.api.trace_events import KNOWN_STAGES, make_trace_event
+from apps.api.trace_events import (
+    KNOWN_STAGES,
+    canonicalize_stored_event,
+    make_trace_event,
+    merge_canonical_events,
+)
 from apps.api.column_origin import derived_columns_in_frame, scope_frame
 from app.preprocessing.outliers import outliers_summary, profile_outliers
 
@@ -292,9 +296,14 @@ def _canonical_forecast_trace_events(
     канонических типа == узлы графа §2); чужие типы -- fail-safe
     пропуск (семантика прежнего collectForecastTraceEvents).
 
-    run_id/event_id НЕ выдумываются и НЕ пробрасываются: события
-    артефакта -- не якоря чекпоинтов (§5.1 -- ссылка на
-    ИДЕНТИФИЦИРОВАННОЕ событие трассы решения), семантика прежняя.
+    AUDIT-S (F11/P17): имеющиеся event_id/run_id/actor СОХРАНЯЮТСЯ
+    (раньше -- отбрасывались); событие без id получает СТАБИЛЬНЫЙ
+    derive_stable_event_id (детерминированный -- повторное чтение даёт
+    тот же id, новые id не генерируются); envelope v2 проходит чтение.
+    run_id НЕ выдумывается: у legacy-артефактов идентичности запуска
+    нет, у канонических -- своя. События артефакта -- не якоря
+    чекпоинтов (§5.1 -- ссылка на ИДЕНТИФИЦИРОВАННОЕ событие трассы
+    решения), семантика прежняя.
     """
     events: List[Dict[str, Any]] = []
     for run in (forecasts or {}).values():
@@ -305,15 +314,9 @@ def _canonical_forecast_trace_events(
             event_type = str(raw.get("event_type") or "")
             if event_type not in FORECASTING_STAGE_IDS:
                 continue  # чужие типы fail-safe пропуск (панель PROGR-4)
-            events.append(
-                {
-                    "ts": str(raw.get("ts") or raw.get("timestamp") or ""),
-                    "stage": "forecasting",
-                    "node_id": event_type,
-                    "event_type": event_type,
-                    "payload": dict(raw.get("payload") or {}),
-                }
-            )
+            canonical = canonicalize_stored_event(raw)
+            if canonical is not None:
+                events.append(canonical)
     return events
 
 
@@ -331,9 +334,13 @@ def get_progress_trace(request: Request, response: Response) -> ProgressTraceRes
     merged += _canonical_forecast_trace_events(
         session.modeling_artifacts.get("forecasts") or {}
     )
-    # Хронология §6.2 (старые раньше новых), нечитаемые ts -- в конец,
-    # stable (та же семантика, что у отчёта §5.4 и прежнего фронтенда).
-    merged = sort_events_chronologically(merged)
+    # AUDIT-S: единое чтение канонического порядка (контракт §3.3) --
+    # merge_canonical_events: dedupe строго по ОДНОМУ event_id (зеркало
+    # слоя 1 в артефакте -- один факт, не два) + канонический порядок
+    # (хронология §6.2: старые раньше новых, нечитаемые ts -- в конец,
+    # stable; ветка sequence -- когда он есть у ВСЕХ, назначит store
+    # AUDIT-6A). Хронология §6.2 для v1-корпуса -- прежняя.
+    merged = merge_canonical_events(merged)
     statuses = derive_node_statuses(merged)
     # PROGR-11: полные состояния узлов §3; mode -- эффективные check-
     # modes СЕССИИ (те же словари, что читают степперы) -- прямое

@@ -306,11 +306,19 @@ class TestProgressTraceReadyState:
         assert forecasting["done_count"] == 2
         assert forecasting["total_nodes"] == 4
 
-    def test_artifact_events_are_not_checkpoint_anchors(self, client: TestClient):
-        """run_id/event_id НЕ выдумываются: канонизируемые события
-        артефакта без event_id -- не якоря чекпоинтов (семантика §5.1
-        прежняя; лента контракта: events без event_id пропускаются
-        выборкой якоря на фронте)."""
+    def test_artifact_events_carry_stable_identity_not_anchors(self, client: TestClient):
+        """AUDIT-S (versioned-обновление оракула PROGR-10; F11/P17
+        исправлен): канонизируемые события артефакта НЕСУТ идентичность --
+        сохранённую (канонический stored-dict) или стабильную производную
+        (legacy без id, I1: повторное чтение -- тот же id); новые id при
+        каждом чтении не генерируются.
+
+        Защищаемая семантика §5.1 НЕ изменилась: события артефакта -- не
+        якоря чекпоинтов. Механизм защиты другой: forecasting-события не
+        лежат в слое 2 (хук-таблица forecasting-маршруты запрещает --
+        _validate_table), POST /checkpoints отверг бы ссылку, а
+        фронтовый lastCheckpointableEvent отсеивает их по stage
+        (packages/ui/lib/progress.test.ts, кейс AUDIT-S)."""
         client.post("/v1/session/demo")
         store = get_session_store()
         session_id = client.cookies.get("cisstat_session_id")
@@ -325,13 +333,23 @@ class TestProgressTraceReadyState:
         )
         store.save(session)
 
-        data = client.get("/v1/progress/trace").json()
-        forecast_events = [
-            e for e in data["events"] if e["event_type"] == "forecast_generated"
+        first = client.get("/v1/progress/trace").json()
+        again = client.get("/v1/progress/trace").json()
+        first_events = [
+            e for e in first["events"] if e["event_type"] == "forecast_generated"
         ]
-        assert len(forecast_events) == 1
-        assert "event_id" not in forecast_events[0]
-        assert "run_id" not in forecast_events[0]
+        again_events = [
+            e for e in again["events"] if e["event_type"] == "forecast_generated"
+        ]
+        assert len(first_events) == 1
+        # Идентичность есть и СТАБИЛЬНА между чтениями (I1) --
+        # раньше (дефект F11/P17) event_id отсутствовал вовсе.
+        assert first_events[0]["event_id"] == again_events[0]["event_id"]
+        assert len(first_events[0]["event_id"]) >= 32
+        # run_id не выдумывается (у legacy-артефакта его нет)
+        assert "run_id" not in first_events[0] or not first_events[0]["run_id"]
+        # Отображаемая семантика прежняя: узел выводится из типа
+        assert first_events[0]["node_id"] == "forecast_generated"
 
     def test_forecast_foreign_types_skipped_fail_safe(self, client: TestClient):
         """Чужие типы и мусорные записи артефакта fail-safe пропускаются:

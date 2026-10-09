@@ -169,12 +169,21 @@ describe("lastCheckpointableEvent (якорь чекпоинта, §5.1)", () =>
     expect(lastCheckpointableEvent([first, middle, last])).toBe(last);
   });
 
-  it("события без event_id (legacy/канонизируемые ForecastRun.trace) не становятся якорями (§5.1 прежняя)", () => {
+  it("события без event_id (legacy) не становятся якорями (§5.1)", () => {
     const anchored = ev({ event_id: "e-1", ts: "2026-09-25T10:00:00+00:00" });
-    // Сервер не выдумывает run_id/event_id канонизируемым событиям
-    // артефакта (PROGR-10) -- приходят без идентификаторов.
     const forecast = ev({ event_id: undefined, ts: "2026-09-25T10:05:00+00:00", stage: "forecasting", node_id: "forecast_generated", event_type: "forecast_generated" });
     expect(lastCheckpointableEvent([anchored, forecast])).toBe(anchored);
+  });
+
+  it("AUDIT-S: forecasting-событие артефакта СО стабильным event_id не становится якорем (F11 исправлен -- защита перенесена на stage-фильтр: слой 2 forecasting не содержит, POST /checkpoints отверг бы ссылку)", () => {
+    const anchored = ev({ event_id: "e-1", ts: "2026-09-25T10:00:00+00:00" });
+    // После AUDIT-S артефактные события НЕсут идентичность
+    // (сохранённую/стабильную) -- прежняя защита «нет event_id» больше
+    // не работает, якорь отсеивается по stage (слой 1 forecasting-
+    // событий не содержит, PROGR-5).
+    const forecast = ev({ event_id: "stable-derived", ts: "2026-09-25T10:05:00+00:00", stage: "forecasting", node_id: "forecast_generated", event_type: "forecast_generated" });
+    expect(lastCheckpointableEvent([anchored, forecast])).toBe(anchored);
+    expect(lastCheckpointableEvent([forecast])).toBeNull();
   });
 
   it("нет ни одного события с event_id -- null (чекпоинт не к чему привязать)", () => {

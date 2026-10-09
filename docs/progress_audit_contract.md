@@ -1,10 +1,10 @@
 # docs/progress_audit_contract.md — контракт «Прогресса» как документирующего контура
 
-Редакция: **v0.1-AUDIT-0** (первая редакция; задача AUDIT-0 plan_progress_audit.md §4).
-Дата: 2026-10-09. База: `main@6a83924`.
+Редакция: **v0.2-AUDIT-S** (v0.1-AUDIT-0 + аддендум §12 задачи AUDIT-S, plan_progress_audit.md §5).
+Дата: 2026-10-09. База: v0.1 — `main@6a83924`; v0.2 — `main@deaed93` (AUDIT-0 принят).
 Полномочия: `spec_progress_audit.md` §5–9 (исследовательский аудит, PROGR-AUDIT-1), `plan_progress_audit.md`
 §4 (карточка AUDIT-0) + разделы «Донастройка плана» (рецензия тимлида). Все последующие задачи
-плана (AUDIT-S/C/6A/5B/1a/4/2A/2B/3/8/7A/7B/6B/6C/CERT) ссылаются на ЭТУ редакцию контракта;
+плана (AUDIT-C/6A/5B/1a/4/2A/2B/3/8/7A/7B/6B/6C/CERT) ссылаются на ЭТУ редакцию контракта;
 изменение решения — новая редакция с журнальной фиксацией, не тихая правка.
 
 Статус решений: пункты, помеченные **УТВЕРЖДЕНО-AUDIT-0**, зафиксированы настоящим документом и
@@ -329,3 +329,97 @@ UI-карты сохраняются как client observation с версиям
 | `packages/ui/components/prograudit0_h27_seed_failure_regresses.test.tsx` | НОВЫЙ | наблюдательный пин H27 |
 | `packages/ui/components/prograudit0_h28_viewed_transfer.test.tsx` | НОВЫЙ | наблюдательный пин H28 |
 | `worklog/worklog9.md` | ИЗМЕНЁН | запись PROGR-AUDIT-0 |
+
+## 12. Аддендум v0.2-AUDIT-S — схема событий, идентичность и время — **УТВЕРЖДЕНО-AUDIT-S**
+
+Задача AUDIT-S (plan_progress_audit.md §5) реализована на базе `main@deaed93`; настоящий аддендум
+конкретизирует §3.2/§3.3/§4/§5.3 до уровня проверяемых правил. Точки: `apps/api/trace_events.py`
+(envelope/реестры/helpers), `apps/api/routers/progress.py` (адаптер прогнозов, merge /trace),
+`apps/api/research_runs.py` (граница записи stores), `apps/api/schemas.py`
+(ForecastTraceEventSchema), `packages/ui/lib/progress.ts` (TraceEventInfo, якорный селектор).
+
+### 12.1. Идентичность (I1; F11/P17) — УТВЕРЖДЕНО
+
+- Явный `event_id` всегда приоритетен: канонические stored-события несут свой id во всех слоях/чтениях.
+- Legacy без id (3-польная популяция ForecastRun.trace) получает **стабильный производный id**:
+  `uuid5` фиксированного namespace (`…/progress/trace-identity-v1`) от канонического содержимого
+  `{run_id, ts, stage, node_id, event_type, payload(sort_keys)}` — правило закреплено в
+  `trace_events.derive_stable_event_id`; повторное чтение возвращает тот же id, новые id при каждом
+  чтении не генерируются (раньше — uuid4 на каждое чтение, нарушение I1).
+- Два независимых действия, байт-идентичных по содержимому и ts до микросекунды, иной идентичности
+  в legacy не имеют и считаются одним фактом; ЯВНО разные id никогда не склеиваются.
+- Адаптер прогнозов (`canonicalize_stored_event`) сохраняет имеющиеся event_id/run_id/actor и
+  передаёт envelope; run_id НЕ выдумывается (у legacy-артефактов его нет).
+
+### 12.2. Уровни доказательности (§4) — полная таблица — УТВЕРЖДЕНО
+
+`resolve_evidence_level(event_type, payload)`: payload-aware override → реестр типа; неизвестный
+тип → None (честное unknown). Default actor НЕ участвует в выводе уровня.
+
+| Уровень | Типы |
+|---|---|
+| `server_result` | upload_completed, correction_previewed, correction_applied, target_column_changed(source=auto), backtest_run, tuning_trial_completed, model_card_generated, candidates_generated, selection_evaluated, diagnostics_run, tuning_job_started, forecast_generated/compared/sensitivity_computed/exported |
+| `client_observation` | upload_stop_status, validation_check_status, preprocessing_check_status, outliers_profile_status, eda_check_status |
+| `user_decision` | structure_confirmed, mode_changed, target_column_changed (иначе), model_selected, models_compared, tuning_skipped, tuning_job_cancelled |
+| `operational` | passport_captured, profile_viewed (hook-факт просмотра), run_paused, run_resumed, checkpoint_saved |
+
+### 12.3. Обязательность envelope v2 per-уровень (таблица AUDIT-S) — УТВЕРЖДЕНО
+
+Базис для всех уровней: `schema_version` + `evidence_level`. Далее:
+
+| Уровень | Обязательные сверх базиса | Смысл |
+|---|---|---|
+| `server_result` | operation_id, result_ref, method | воспроизводимость расчёта |
+| `client_observation` | operation_id | связность отчёта клиента |
+| `user_decision` | operation_id, causation_id | удостоверение trigger'а |
+| `operational` | operation_id | связность служебного контура |
+
+`context_id` (AUDIT-C) и `sequence` (AUDIT-6A) — Optional у всех уровней на этой редакции.
+Правила формы: «незаполняемое поле отсутствует» (to_dict включает только заполненные);
+v1-события сериализуются байт-в-байт как прежде (8 полей + legacy-алиас timestamp);
+`validate_envelope` — проверяемая функция обязательности (v1 — не нарушение, переход
+«читатели раньше писателей» §7). Мусорные envelope-значения на границе чтения отбрасываются
+(деградация, не 500); валидно типизированное неизвестное значение проходит (журнал, не реестр).
+
+### 12.4. Честное время (F16/P23) — УТВЕРЖДЕНО
+
+- Нечитаемый НЕпустой ts не подменяется никогда: envelope
+  `time_quality={raw_ts, quality, observed_at}`.
+- `quality="degraded"` — значение сохранено как есть (граница чтения normalize; Memory-store,
+  хранящий raw); `quality="substituted"` — store заменяет значение строки записанным сейчас
+  (Postgres TIMESTAMPTZ), observed_at=время записи; отсутствие поля — время читаемо/отсутствует
+  (пустой ts — честное отсутствие, не «испорченное»).
+- **Граница реализации**: Postgres-строка слоя 2 остаётся v1 до аддитивной миграции AUDIT-6A —
+  маркировка производится на границе записи (объект события), durable-хранение маркировки в строке —
+  задача AUDIT-6A (миграция `0002`, `0001` не переписывается). `_ts_to_db` сохраняет контракт строки.
+- Исходный корпус не переписывается задним числом (§3.7, §7).
+
+### 12.5. Единое чтение канонического порядка (§3.3) — УТВЕРЖДЕНО
+
+- Единственная точка слияния/упорядочения корпуса для /trace: `trace_events.merge_canonical_events`
+  = dedupe строго по ОДНОМУ event_id (первый источник приоритетен — слой 1) + `canonical_event_order`.
+- Ветка sequence включается ТОЛЬКО когда sequence есть у ВСЕХ событий корпуса (назначит ledger-store
+  в AUDIT-6A); частичный sequence корпус не переупорядочивает; legacy-корпус — стабильная
+  хронология ts (нечитаемые/пустые — в конец с сохранением store-порядка; неизвестное время не
+  переупорядочивает).
+- `sort_events_chronologically` отчёта сохранён до AUDIT-5B (миграция потребителя отчёта — её
+  периметр); смешение «append в одном месте, ts в другом» для /trace устранено.
+
+### 12.6. Якоря чекпоинтов (§5.1) — семантика сохранена, механизм защиты обновлён — УТВЕРЖДЕНО
+
+Оракул `test_artifact_events_are_not_checkpoint_anchors` пинил ОТСУТСТВИЕ event_id у артефактных
+событий — то есть сам дефект F11. После исправления артефактные forecasting-события НЕсут
+стабильную идентичность, но якорями быть не могут: слой 2 forecasting-событий не содержит
+(хук-таблица forecasting-маршруты запрещает — `_validate_table`), POST /checkpoints отверг бы
+ссылку, фронтовый `lastCheckpointableEvent` отсеивает их по stage (прецедент PROGR-5: слой 1
+forecasting-событий не содержит). Оракул обновлён как **versioned-обновление** (Донастройка_2 п.3)
+с доказательством сохранённой семантики: test_progress_panel (новый контракт: стабильный id +
+повторное чтение) + progress.test.ts (кейс «forecasting с id — не якорь»).
+
+### 12.7. Принятие envelope продюсерами — УТВЕРЖДЕНО
+
+`stamp_envelope(event, **поля)` — единственная точка принятия v2 продюсером: любое непустое поле
+переводит запись в v2 (schema_version=2 автоматически, evidence_level — из реестра); незнакомое
+поле — ValueError (fail-closed у продюсера, в отличие от терпимой границы чтения). Продюсеры
+переходят на v2 задачами AUDIT-C (context), AUDIT-6A (sequence), AUDIT-6B (operation/receipt),
+AUDIT-7A (method) — до их поставок новые события остаются v1-формы, что честно и совместимо.

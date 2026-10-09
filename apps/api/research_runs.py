@@ -104,7 +104,7 @@ from typing import Any, Iterable, Optional
 
 import pandas as pd
 
-from apps.api.trace_events import TraceEvent
+from apps.api.trace_events import TraceEvent, mark_honest_time
 
 logger = logging.getLogger(__name__)
 
@@ -484,6 +484,11 @@ class MemoryResearchRunStore(ResearchRunStore):
             # R4 (PROGR-3-CERT): backfill id при записи -- повторное чтение
             # не перегенерирует идентификатор.
             event = replace(event, event_id=str(uuid.uuid4()))
+        # AUDIT-S (F16/P23): честная маркировка времени на границе записи.
+        # Memory сохраняет raw ts КАК ЕСТЬ -- нечитаемое время маркируется
+        # degraded (никакой подмены); idempotent, валидные события не
+        # трогает.
+        event = mark_honest_time(event, substituted=False)
         # R1: payload копируется ГЛУБОКО -- stored не разделяет вложенные
         # структуры с источником.
         event = replace(event, payload=deepcopy(event.payload))
@@ -658,6 +663,12 @@ class PostgresResearchRunStore(ResearchRunStore):
     # -- события --
 
     def append_event(self, run_id: str, event: TraceEvent) -> None:
+        # AUDIT-S (F16/P23): Postgres ЗАМЕНЯЕТ нечитаемый ts значением
+        # «записано сейчас» (_ts_to_db строит значение TIMESTAMPTZ-строки)
+        # -- замена честно маркируется substituted ДО записи (raw_ts
+        # сохранён в envelope; durable-хранение маркировки в строке --
+        # миграция AUDIT-6A). Idempotent, валидные события не трогает.
+        event = mark_honest_time(event, substituted=True)
         event_id = event.event_id or str(uuid.uuid4())
         payload = json.dumps(event.payload, default=str, ensure_ascii=False)
         with self._connect() as conn, conn.cursor() as cur:
