@@ -1,0 +1,141 @@
+OK CM-0   SURVIVED           pred:SURVIVED
+OK CM-1   KILLED-BOTH        pred:KILLED-BOTH
+OK CM-2   KILLED-BOTH        pred:KILLED-BOTH
+OK CM-3   KILLED-BOTH        pred:KILLED-BOTH
+OK CM-4   KILLED-ORACLE-ONLY pred:KILLED-ORACLE-ONLY
+OK CM-5   KILLED-ORACLE-ONLY pred:KILLED-ORACLE-ONLY
+OK CM-6   KILLED-BOTH        pred:KILLED-BOTH
+OK CM-7   KILLED-BOTH        pred:KILLED-BOTH
+OK CM-8   KILLED-BOTH        pred:KILLED-BOTH
+OK CM-9   KILLED-BOTH        pred:KILLED-BOTH
+OK CM-10  KILLED-BOTH        pred:KILLED-BOTH
+OK CM-11  KILLED-BOTH        pred:KILLED-BOTH
+OK CM-12  KILLED-BOTH        pred:KILLED-BOTH
+OK CM-13  KILLED-BOTH        pred:KILLED-BOTH
+OK CM-14  KILLED-BOTH        pred:KILLED-BOTH
+!! CM-15  KILLED-REPO-ONLY   pred:KILLED-BOTH
+OK CM-16  KILLED-BOTH        pred:KILLED-BOTH
+OK CM-17  KILLED-ORACLE-ONLY pred:KILLED-ORACLE-ONLY
+========================================================================
+OK CM-0   SURVIVED           (предсказано: SURVIVED)
+        repo: SURVIVED —  | ============================== 84 passed in 2.99s ==============================
+        oracle: SURVIVED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        no-op контроль харнесса
+
+OK CM-1   KILLED-BOTH        (предсказано: KILLED-BOTH)
+        repo: KILLED — !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ========================= 1 failed, 19 passed in 2.89s =========================
+        oracle: KILLED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        target_column_changed: auto более не server_result
+
+OK CM-2   KILLED-BOTH        (предсказано: KILLED-BOTH)
+        repo: KILLED — !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ========================= 1 failed, 22 passed in 2.92s =========================
+        oracle: KILLED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        to_dict включает НЕзаполненные envelope-поля (v1-форма сломана)
+
+OK CM-3   KILLED-BOTH        (предсказано: KILLED-BOTH)
+        repo: KILLED — !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ========================= 1 failed, 30 passed in 3.02s =========================
+        oracle: KILLED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        мусорные envelope-значения проходят границу чтения
+
+OK CM-4   KILLED-ORACLE-ONLY (предсказано: KILLED-ORACLE-ONLY)
+        repo: SURVIVED —  | ============================== 84 passed in 3.04s ==============================
+        oracle: KILLED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        bool-подмена int пропущена (repo-мусор-тест без bool-кейса)
+
+OK CM-5   KILLED-ORACLE-ONLY (предсказано: KILLED-ORACLE-ONLY)
+        repo: SURVIVED —  | ============================== 84 passed in 3.06s ==============================
+        oracle: KILLED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        method исключён из обязательных server_result (repo пинит только causation_id)
+
+OK CM-6   KILLED-BOTH        (предсказано: KILLED-BOTH)
+        repo: KILLED — !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ========================= 1 failed, 14 passed in 3.06s =========================
+        oracle: KILLED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        mark_honest_time вырожден (no-op)
+
+OK CM-7   KILLED-BOTH        (предсказано: KILLED-BOTH)
+        repo: KILLED — !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ========================= 1 failed, 10 passed in 2.92s =========================
+        oracle: KILLED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        normalize не маркирует нечитаемый ts (F16/P17 граница чтения)
+
+OK CM-8   KILLED-BOTH        (предсказано: KILLED-BOTH)
+        repo: KILLED — !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ========================= 1 failed, 35 passed in 2.97s =========================
+        oracle: KILLED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        частичная sequence переупорядочивает корпус (запрещено §3.3)
+
+OK CM-9   KILLED-BOTH        (предсказано: KILLED-BOTH)
+        repo: KILLED — !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ========================= 1 failed, 32 passed in 2.99s =========================
+        oracle: KILLED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        нечитаемые ts в НАЧАЛО (инверсия хвоста)
+
+OK CM-10  KILLED-BOTH        (предсказано: KILLED-BOTH)
+        repo: KILLED — !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ========================= 1 failed, 7 passed in 2.84s ==========================
+        oracle: KILLED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        dedupe по (тип, ts) вместо event_id — независимые факты склеиваются
+
+OK CM-11  KILLED-BOTH        (предсказано: KILLED-BOTH)
+        repo: KILLED — !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ========================= 1 failed, 4 passed in 2.80s ==========================
+        oracle: KILLED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        адаптер отбрасывает ЯВНЫЙ id (регрессия P17)
+
+OK CM-12  KILLED-BOTH        (предсказано: KILLED-BOTH)
+        repo: KILLED — !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ========================= 1 failed, 25 passed in 2.90s =========================
+        oracle: KILLED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        stamp_envelope принимает незнакомые поля
+
+OK CM-13  KILLED-BOTH        (предсказано: KILLED-BOTH)
+        repo: KILLED — Time:        2.503 s | Ran all test suites matching packages/ui/lib/progress.test.ts.
+        oracle: KILLED — Time:        2.417 s, estimated 3 s | Ran all test suites matching packages/ui/lib/prograuditscert_anchor_oracle.test.ts.
+        TS: forecasting-событие с id снова якорь (регрессия §12.6)
+
+OK CM-14  KILLED-BOTH        (предсказано: KILLED-BOTH)
+        repo: KILLED — !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ========================= 1 failed, 14 passed in 2.81s =========================
+        oracle: KILLED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        Memory-store пишет без честной маркировки времени
+
+!! CM-15  KILLED-REPO-ONLY   (предсказано: KILLED-BOTH)
+        repo: KILLED — !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ========================= 1 failed, 39 passed in 2.87s =========================
+        oracle: SURVIVED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        ForecastTraceEventSchema без envelope (риск карточки §5)
+
+OK CM-16  KILLED-BOTH        (предсказано: KILLED-BOTH)
+        repo: KILLED — !!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!! | ========================= 1 failed, 2 passed in 2.87s ==========================
+        oracle: KILLED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        payload исключён из материала стабильного id
+
+OK CM-17  KILLED-ORACLE-ONLY (предсказано: KILLED-ORACLE-ONLY)
+        repo: SURVIVED —  | ============================== 84 passed in 2.95s ==============================
+        oracle: KILLED — INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK" | WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+        приоритет ВТОРОГО источника при merge (repo не различает выжившую копию)
+========================================================================
+ИТОГ: 18 мутантов | KILLED-BOTH: 13 | KILLED-ORACLE-ONLY: 3 | KILLED-REPO-ONLY: 1 | SURVIVED: 1
+ПРЕДРЕГИСТРАЦИЯ: РАСХОЖДЕНИЯ: 1
+
+================================================================================
+ЭВОЛЮЦИЯ ОРАКУЛА (открытая фиксация, прецедент PROGR-24-C-CERT R4)
+================================================================================
+Предрегистрация CM-15 (KILLED-BOTH) НЕ СБЫЛАСЬ в первом прогоне:
+фактический исход — KILLED-REPO-ONLY. Причина: исходный набор оракулов
+аудитора не содержал пробы ForecastTraceEventSchema (риск карточки §5
+«pydantic-фильтрация скрывает новые поля» на forecasting-UI-носителе);
+/trace-оракул P5 проходит через ProgressTraceResponse и на снятие полей
+Forecast-схемы не реагирует. Repo-канал убил мутанта своим
+test_forecast_schema_accepts_envelope_additively.
+
+Мера: набор усилен оракулом V6 (ForecastTraceEventSchema на СВОИХ
+значениях: stamped forecast_exported + operation_id op-certs-w-9 +
+result_ref wind.csv/sha256:wind; v1 — поля None; model_dump несёт
+envelope). Повторный полный прогон оракулов на 4cd68be: 41/41 PASS
+(38 KILLER + 3 GUARD); повторный RED на deaed93: EXPECTED_RED полное
+совпадение (38 упали / 3 зелёные).
+
+CM-15 ПОВТОРНЫЙ прогон усиленным набором:
+  repo:   KILLED (pytest tests/api/test_progress_audit_s.py — падение)
+  oracle: KILLED (python3 scripts/prograuditscert_oracles.py --cert — V6)
+  восстановление: побайтовое, md5 сошёлся.
+Итог CM-15: KILLED-BOTH. Пересчитанный итог кампании: 18 мутантов |
+KILLED-BOTH: 14 | KILLED-ORACLE-ONLY: 3 (CM-4, CM-5, CM-17 — предсказанные
+repo-гэпы) | SURVIVED: 1 (CM-0 no-op контроль). Переживших оба канала —
+НОЛЬ. Полный перегон всех 18 мутантов после усиления не требовался:
+V6 добавляет ТРЕТИЙ независимый канал другим мутантам, не ослабляя ни
+одного зафиксированного исхода (оракульный канал CM-1..CM-17 в первом
+прогоне уже был зелёным на мутантах и красным на убитых).

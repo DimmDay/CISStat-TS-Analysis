@@ -1,0 +1,78 @@
+INFO:numexpr.utils:NumExpr defaulting to 2 threads.
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using orjson library for writing JSON byte strings
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:107]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[109:121]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[123:131]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[135:3157]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+========================================================================
+PROGR-AUDIT-S-CERT: оракулы на СВОИХ данных — режим red
+========================================================================
+  ✅ P1   [GUARD ] PASS
+  ❌ P2   [KILLER] FAIL: KeyError: 'event_id'
+  ❌ P3   [KILLER] FAIL: AssertionError: event_id отсутствует (F11 не исправлен)
+  ❌ P4   [KILLER] FAIL: KeyError: 'event_id'
+  ❌ P5   [KILLER] FAIL: TypeError: TraceEvent.__init__() got an unexpected keyword argument 'schema_version'
+  ✅ P6   [GUARD ] PASS
+  ❌ I1   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ I2   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ I3   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ I4   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ A1   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ A2   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ M1   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ M2   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ M3   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ M4   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ M5   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ M6   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ M7   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ M8   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ E1   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ E2   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ E3   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ E4   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ E5   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ E6   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ T1   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ T2   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ T3   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ T4   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ T5   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ T6   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ V1   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ V2   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ V3   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ V4   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ❌ V5   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+  ✅ S1   [GUARD ] PASS
+  ❌ S2   [KILLER] FAIL: AssertionError: 
+  ❌ S3   [KILLER] FAIL: AssertionError: 
+  ❌ V6   [KILLER] FAIL: ImportError: новые API AUDIT-S отсутствуют: cannot import name 'ENVELOPE_FIELDS' from 'apps.api.trace_events' (/home/z/my-project/wt-deaed93/apps/api/trace_events.py)
+------------------------------------------------------------------------
+ИТОГО: 3/41 PASS (KILLER: 38, GUARD: 3)
+------------------------------------------------------------------------
+EXPECTED_RED: полное совпадение (38 KILLER упали, 3 GUARD зелёные)

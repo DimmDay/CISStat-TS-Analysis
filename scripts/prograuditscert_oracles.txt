@@ -1,0 +1,80 @@
+INFO:numexpr.utils:NumExpr defaulting to 2 threads.
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using orjson library for writing JSON byte strings
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:107]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[109:121]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[123:131]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[135:3157]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+WARNING:apps.api.research_runs:Research runs: нечитаемый ts '2026-03-15 08:30 wind' -- подставлен текущий момент
+========================================================================
+PROGR-AUDIT-S-CERT: оракулы на СВОИХ данных — режим cert
+========================================================================
+  ✅ P1   [GUARD ] PASS
+  ✅ P2   [KILLER] PASS
+  ✅ P3   [KILLER] PASS
+  ✅ P4   [KILLER] PASS
+  ✅ P5   [KILLER] PASS
+  ✅ P6   [GUARD ] PASS
+  ✅ I1   [KILLER] PASS
+  ✅ I2   [KILLER] PASS
+  ✅ I3   [KILLER] PASS
+  ✅ I4   [KILLER] PASS
+  ✅ A1   [KILLER] PASS
+  ✅ A2   [KILLER] PASS
+  ✅ M1   [KILLER] PASS
+  ✅ M2   [KILLER] PASS
+  ✅ M3   [KILLER] PASS
+  ✅ M4   [KILLER] PASS
+  ✅ M5   [KILLER] PASS
+  ✅ M6   [KILLER] PASS
+  ✅ M7   [KILLER] PASS
+  ✅ M8   [KILLER] PASS
+  ✅ E1   [KILLER] PASS
+  ✅ E2   [KILLER] PASS
+  ✅ E3   [KILLER] PASS
+  ✅ E4   [KILLER] PASS
+  ✅ E5   [KILLER] PASS
+  ✅ E6   [KILLER] PASS
+  ✅ T1   [KILLER] PASS
+  ✅ T2   [KILLER] PASS
+  ✅ T3   [KILLER] PASS
+  ✅ T4   [KILLER] PASS
+  ✅ T5   [KILLER] PASS
+  ✅ T6   [KILLER] PASS
+  ✅ V1   [KILLER] PASS
+  ✅ V2   [KILLER] PASS
+  ✅ V3   [KILLER] PASS
+  ✅ V4   [KILLER] PASS
+  ✅ V5   [KILLER] PASS
+  ✅ S1   [GUARD ] PASS
+  ✅ S2   [KILLER] PASS
+  ✅ S3   [KILLER] PASS
+  ✅ V6   [KILLER] PASS
+------------------------------------------------------------------------
+ИТОГО: 41/41 PASS (KILLER: 38, GUARD: 3)
+ВЕРДИКТ ОРАКУЛОВ: ALL GREEN
