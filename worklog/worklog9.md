@@ -644,3 +644,31 @@ F-D1 (НАБЛЮДЕНИЕ): ценность D подтверждена мут�
 PASSED. Поставка задачи D подтверждена независимо, на своих данных: сквозной сценарий пинит согласованность трёх носителей и Наставника с канонами A/C (payload ТОЧНО, атрибуция, run_id общий, хронология R3 в обоих слоях); негативный сценарий — честное «не выбран» → просьба → user без «(авто)»; repo-пины TB-8/TM-11/12/15 реально закрывают гэпы прежних сертификаций (мутационное доказательство); генератор n150 детерминирован и соответствует Ф4; мутационная живучесть — нулевая выживаемость при полностью подтвердившейся предрегистрации; регресс 1:1 с базами. Противоречий «код vs журнал» не обнаружено. Спецификация spec_progress_target_column.md реализована и сертифицирована полностью: «Признак: value (авто)» достижим сразу после загрузки, честная неоднозначность ведёт к селектору, происхождение различается на всех носителях.
 
 Deliverable: ZIP cisstat-progr25d-certification.zip → открытый upload-контейнер сессии: docs/cert_progr25d_2026-10-09.md, scripts/progr25dcert_oracles.py, scripts/progr25dcert_oracles.txt, scripts/progr25dcert_mutations.py, scripts/progr25dcert_mutation_results.txt, scripts/progr25dcert_regress.py, scripts/progr25dcert_regress.txt, packages/ui/components/progr25dcert_toast_oracle.test.tsx, worklog/worklog9.md. Без commit/push (AGENTS.md).
+
+---
+
+## Task ID: PROGR-AUDIT-1 (2026-10-09) — Исследовательский аудит фактов «Прогресса» перед архитектурой документирования и логирования
+
+База: main@c8818de89721e1331ae782451a6ef1255b8229e6 (клонирована по прямому указанию тимлида). Изучены AGENTS.md, worklog_summary2.md, текущий worklog9.md, plan_progress.md, spec_progress_v1.1.md, spec_progress_target_column.md, plan_progress_target_column.md и относящиеся к контуру разделы spec_progress.md; поставщики API/UI, канон, два слоя, редьюсер, Наставник, restore, отчёт, дополнительные потребители. Повторное упоминание spec_progress_target_column.md трактовано как один источник.
+
+### Метод и наблюдения
+
+Первым разделом spec_progress_audit.md дана краткая хронология наблюдаемого поведения; история разработки отделена от собственных экспериментов. Факты, интерпретации и гипотезы разделены. Для H01…H30 указаны минимальные read-only проверки, критерии подтверждения/опровержения и статус исполнения.
+
+Автономный scripts/progress_audit_readonly.py вызывает реальные session/progress routers, handle_upload и TraceHookMiddleware в одноразовом локальном FastAPI-стенде. POST и fault injection только на синтетических данных/Memory/fakeredis, без внешних соединений и изменения продукта. Python 3.12.14, pandas 2.3.3, statsmodels 0.15.0. Полный apps.api.main не импортировался из-за readiness-gate Modeling dispatch в облегчённой среде; gate не отключали. Это компонентная интеграция, не production/браузерная E2E-сертификация.
+
+Результаты: 25/25 OBSERVED, 0 PROBE_ERROR. Положительно подтверждены общий event_id авто-выбора в слоях, auto/system, честная неоднозначность, разделение рекомендации и выбора, 422 неполной карты до записи. Новые расхождения: reset цели после конвертации оставляет старые run/mentor/reason; restore теряет session.source и сочетает raw-данные с историческим done; карты не привязаны к run/revision (задержанный отчёт A принимается B); EDA profile_viewed регрессирует done → running; cap=1000 меняет ранний статус/start; нет атомарности двух слоёв/метаданных; разные порядки редьюсера дают контрпример; статусы, details и происхождение фактов не всегда согласованы. Отдельно подтверждены недедуп повторов, разные контракты Memory/SQL, потеря identity forecasting-адаптером, методически слабые общие correction status/reason, suppression смены метода outlier и timestamp-fallback.
+
+### Проверки и ограничения
+
+Существующие tests/api/test_trace_events.py + test_node_status_engine.py: 92 passed (5.23s). Хеши 521 tracked-файла apps/app/packages/shared/rules совпали до/после; код продукта не менялся. Наблюдение дефекта не означает корректность поведения и не является acceptance-тестом на сохранение дефекта.
+
+Production Postgres/Redis, Vercel/Render, живой браузер и полный регресс не проверялись. Действительный backend/персистентность Render, частота потерь/гонок и UI retry/seed/revision-сценарии остаются гипотезами с предложенными проверками. Build продукта не заявляется: поставка документальная. Ранее открытые PROGR-23 кэп/счётчик и stale-производные не объявлены новыми находками и не исправлялись.
+
+### Результат и следующие задачи
+
+spec_progress_audit.md: методическая матрица допустимых утверждений, установленные факты F01…F17, проверенные и открытые гипотезы, аддитивный versioned-контракт события, context/revision/result provenance, target-reset reducer, historical validity, единый порядок и watermark, idempotent reports, durable receipt/outbox, отдельные операционные логи. План AUDIT-1…AUDIT-8 содержит точки изменений и RED→GREEN критерии.
+
+Исправления продукта сознательно не внесены: согласовать контракты schema/context/restore/delivery перед реализацией, не отменять молча принятые решения raw restore, EDA=просмотр и best-effort. Улучшения оформлены спецификацией, история журнала сохранена.
+
+Поставка: spec_progress_audit.md; scripts/progress_audit_readonly.py; scripts/progress_audit_readonly_results.json; scripts/progress_audit_checks.txt; worklog/worklog9.md. ZIP cisstat-progress-audit.zip содержит только эти новые/изменённые файлы. Commit/push не выполнялись; HEAD c8818de.

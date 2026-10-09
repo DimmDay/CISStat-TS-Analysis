@@ -1,0 +1,39 @@
+PROGR-AUDIT-1 — verification record, 2026-10-09 UTC
+Baseline: c8818de89721e1331ae782451a6ef1255b8229e6
+Fixture: actual session/progress routers + upload_common + TraceHookMiddleware.
+Stores: process-local Memory / fakeredis; temporary dataset files.
+Production connections: false. Product code modifications: none.
+
+Command executed from repository root:
+PYTHONPATH=/workspace/scratch/1e71cf0e34de/audit-runtime python scripts/progress_audit_readonly.py --output scripts/progress_audit_readonly_results.json
+Result: 25 OBSERVED, 0 PROBE_ERROR, exit 0.
+Observation assertions record existing behavior, including defects.
+JSON holds per-probe evidence and run metadata.
+Tracked product source hashes before/after: 521, unchanged.
+
+Command executed from repository root:
+PYTHONPATH=/workspace/scratch/1e71cf0e34de/audit-runtime python -m pytest tests/api/test_trace_events.py tests/api/test_node_status_engine.py -q --disable-warnings
+Collected: 92 items. Result: 92 passed in 5.23s, exit 0.
+
+LIMITS:
+Full apps.api.main import blocked in this lightweight environment by:
+RuntimeError: Реестр готовности моделей расходится с production backtest dispatch
+The product readiness gate was not disabled or changed.
+No full server, live browser, Vercel/Render, live PostgreSQL/Redis,
+production persistence, complete regression or product build certification.
+P08/P09/P10 inject local faults; P12 is an ordering counterexample;
+P20 SQL inspected, not executed on live PostgreSQL.
+P24/P25 controlled API timelines, not production race frequency.
+P21 intentionally logs the documented local backend fallback error.
+P25 statsmodels ACF FutureWarning does not change the assertion outcome.
+
+Runtime versions:
+fastapi==0.143.0
+starlette==0.52.1
+pandas==2.3.3 (imported runtime; obsolete distribution metadata excluded)
+statsmodels==0.15.0
+pytest==9.1.1
+fakeredis==2.39.0
+redis==8.1.0
+httpx==0.28.1
+pydantic==2.14.0
