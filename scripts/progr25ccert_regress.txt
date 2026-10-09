@@ -1,0 +1,64 @@
+================================================================================
+ПОЛНЫЙ РЕГРЕСС PROGR-25-C-CERT — база 45e500d (HEAD; объект аудита — коммит
+задачи C d703407). Окружение: свежий контейнер, лёгкая группа зависимостей
+(рецепт PROGR-25-A-CERT: requirements.txt + requirements-dev.txt +
+apps/api/requirements.txt; statsmodels 0.15.0; PyWavelets/pandera/prophet/
+statsforecast/arch/ruptures). Neural-группа НЕ установлена — её fail-closed
+гейты дают задокументированный средовой класс падений.
+================================================================================
+
+── Часть 1: tests/api ----------------------------------------------------------
+python -m pytest -q tests/api
+1510 passed / 3 failed / 1 skipped (204.66s)
+
+Падения (все — neural-registry fail-closed, средовой класс базлайна
+PROGR-25-A-CERT/PROGR-25-C, пути задачи C не затрагивают):
+  tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+      (assert 422 == 503: реестр fail-closed раньше capacity-гейта — «Production
+       backtest для модели 'lstm' не реализован; фиктивные метрики запрещены»)
+  tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics
+      (аналогичный fail-closed реестра: deepar)
+  tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+      (fail-closed реестра: deepar, сообщение без слова «панель»)
+
+── Часть 2: tests/unit + tests/legacy_wrappers + верхнеуровневые tests/test_*.py
+python -m pytest -q tests/unit tests/legacy_wrappers tests/test_catalog.py
+  tests/test_consistency_masks.py tests/test_modeling_spec.py
+  tests/test_no_false_positives.py tests/test_pipeline_bug.py
+  tests/test_validation.py
+1675 passed / 6 failed / 24 skipped (136.59s)
+
+Падения (все — fail-closed гейты neural-реестра в лёгком окружении):
+  tests/unit/test_deepar_integration_paths.py::test_deepar_registry_requires_related_series_fail_closed
+  tests/unit/test_lstm_integration_paths.py::test_lstm_registry_rejects_wrong_objective_and_features_fail_closed
+  tests/unit/test_nbeats_integration_paths.py::test_nbeats_registry_rejects_wrong_objective_and_features_fail_closed
+  tests/unit/test_nhits_integration_paths.py::test_nhits_registry_rejects_wrong_objective_and_features_fail_closed
+  tests/unit/test_tft_integration_paths.py::test_tft_registry_rejects_wrong_objective_and_features_fail_closed
+  tests/unit/test_model_execution_contract.py::test_candidates_publish_v2_descriptors_only_for_executable_models
+
+── Часть 3: tests/integration --------------------------------------------------
+пуст (0 тестов в песочнице) — как в записях PROGR-25-A-CERT/PROGR-25-C.
+
+── Сверка с базлайном ----------------------------------------------------------
+Структурный аргумент (сильнее stash-сверки): рабочее дерево ТОЖДЕСТВЕННО
+HEAD 45e500d по всем tracked-файлам (git diff HEAD --stat пуст; git diff
+d703407..45e500d = только артефакты фронтенд-сертификации B-CERT, продового
+бэкенд-кода не содержит). Артефакты сертификации — untracked файлы в
+scripts/ и docs/, pytest-коллекцией tests/ не собираются. Следовательно
+прогон ВЫПОЛНЕН на чистой базе задачи: любой сбой — средовой по построению.
+
+Агрегат: 3185 passed / 9 failed / 25 skipped; все 9 падений — один
+документированный средовой класс (neural-registry fail-closed, лёгкое
+окружение). НОЛЬ новых падений, ноль «исцелений», правок существующих
+тестов НЕТ. Корневые test_*.py репозитория (test_engine.py и пр.) —
+модульные скрипты, не pytest-коллекция (в протоколе PROGR-25-C
+«корневые test_*.py» = верхнеуровневые tests/test_*.py — включены выше).
+
+Фронтенд вне периметра: git diff пуст по packages/ (задача C бэкендовая,
+сертификация кода не меняла) — jest/typecheck структурно не изменились
+(базлайн B-CERT: 155 сюит / 1904 зелёных).
+
+Адресный контроль задачи C: 23/23 (TestPhaseTextUploadOrigin +
+TestProgr25CStageLevelReasonOrigin + test_progress_progr25c.py).
+
+AGENTS.md: локальное измерение, commit/push НЕ выполнялись.
