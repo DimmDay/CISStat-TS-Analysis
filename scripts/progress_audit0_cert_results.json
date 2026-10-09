@@ -1,0 +1,170 @@
+{
+  "task_id": "PROGR-AUDIT-0-CERT",
+  "title": "Независимая сертификация задачи AUDIT-0 (базовый протокол и проектные решения) -- оракулы на своих данных, мутанты на своих мутантах",
+  "date": "2026-10-09T17:20:59.540222+00:00",
+  "baseline_under_certification": "deaed93f4c358bdf1b1e6f8815e77dce7b2c5135",
+  "certifier_environment": {
+    "python": "3.12.14",
+    "pandas": "2.3.3",
+    "statsmodels": "0.15.0",
+    "prophet": "1.4.0",
+    "statsforecast": "2.1.1",
+    "arch": "8.0.0",
+    "ruptures": "1.1.10",
+    "pywavelets": "1.8.0",
+    "pandera": "0.34.1",
+    "heavy_non_neural": "xgboost 2.1.3 / lightgbm 4.5.0 / catboost 1.2.8 (для гейта Modeling dispatch)",
+    "node": "v24.21.0",
+    "node_modules": "npm ci",
+    "test_postgres": "отсутствует (открытый пункт Донастройка_2 п.1 -- не входит в периметр AUDIT-0)"
+  },
+  "scope": {
+    "artifacts": [
+      "docs/progress_audit_contract.md (v0.1-AUDIT-0)",
+      "scripts/progress_audit0_repro.py + progress_audit0_repro_results.json",
+      "scripts/progress_audit0_baseline_control.json",
+      "packages/ui/components/prograudit0_h26_no_auto_retry.test.tsx",
+      "packages/ui/components/prograudit0_h27_seed_failure_regresses.test.tsx",
+      "packages/ui/components/prograudit0_h28_viewed_transfer.test.tsx",
+      "worklog/worklog9.md (запись PROGR-AUDIT-0)"
+    ],
+    "out_of_scope": [
+      "продуктовый код (не изменялся поставкой -- проверено оракулом C20)",
+      "H29/H30 (эксплуатационные, без доступа к deployment -- честно НЕ ПРОВЕРЕНО)",
+      "live-Postgres приёмки AUDIT-6A/6B"
+    ]
+  },
+  "oracles_own_data": {
+    "OR-A": {
+      "description": "независимое репро базы P01-P25 на данных сертификатора (третья точка данных: date,pressure / date,pressure,wind, 2026-03, i*0.9/i*0.55, RUN-CERT0)",
+      "counts": { "observed": 25, "probe_errors": 0 },
+      "verdict": "база аудита воспроизводится на независимых данных -- подтверждено"
+    },
+    "jest_pins": { "H26-H28": "3/3 сюит зелёные -- наблюдения воспроизводятся на живом коде" }
+  },
+  "oracle_campaign": {
+    "total": 44,
+    "green": 42,
+    "findings": [
+      {
+        "id": "R1",
+        "severity": "remark",
+        "claim": "контракт §8 (F02): «пустая ветка :358-360» (node_status.py)",
+        "fact": "ветка сброса reason фактически на :359-361 (комментарии :359-360, return :361); заявленный диапазон включает :358 -- return НЕпустой ветки -- и не покрывает :361",
+        "impact": "семантика решения верна и не оспаривается; неточный указатель строки унаследован из рецензии плана (Часть 1) и перенесён в контракт без сверки",
+        "recommendation": "в редакции v0.2 контракта (горячая дорожка PROGR-AUDIT-H1 или журнальная фиксация) исправить на :359-361; правка -- versioned-обновление контракта, не тихая (Донастройка_2 п.3)"
+      },
+      {
+        "id": "R2",
+        "severity": "remark",
+        "claim": "контракт §8 (F17): «derive-функция рядом со статической картой (node_status.py:69)»",
+        "fact": "статическая карта EVENT_NODE_STATUS начинается на :64 (строка :69 -- элемент карты \"profile_viewed\")",
+        "impact": "семантика (точка -- derive-функция рядом со статической картой, не сама карта) верна; указатель смещён на 5 строк, также унаследован из рецензии плана (Часть 2)",
+        "recommendation": "в редакции v0.2 исправить на node_status.py:64; при реализации F17 точку внедрения уточнять по фактическому коду"
+      }
+    ],
+    "control_all_ok": false
+  },
+  "mutation_campaign": {
+    "principle": "мутанты поставки (контракт/протокол/пины) обязаны быть убиты оракулами сертификатора; выживший мутант -- дыра сертификации",
+    "mutants_applied": 14,
+    "mutants_killed": 14,
+    "mutants_survived": 0,
+    "kill_matrix": [
+      { "id": "M01", "title": "Payload сброса подменён на Option B (пустой target в changed)",
+        "pattern": "`{target_column: null, reset_reason: str, source: \"system\"|\"auto\", before_target: str|null}`",
+        "replacement": "`{target_column: \"\", reset_reason: str, source: \"system\"|\"auto\", before_target: str|null}`",
+        "killer": "E01", "applied": true, "killed": true,
+        "killer_result": [{ "id": "e01_cleared_contract", "ok": false }] },
+      { "id": "M02", "title": "Происхождение после сброса подменено на user",
+        "pattern": "**unknown/пусто (None), НЕ «user»**", "replacement": "**«user»**",
+        "killer": "E01", "applied": true, "killed": true,
+        "killer_result": [{ "id": "e01_cleared_contract", "ok": false }] },
+      { "id": "M03", "title": "Носитель типа подменён на стадию preprocessing",
+        "pattern": "`_STAGE_EVENT_TYPES[\"validation\"]`", "replacement": "`_STAGE_EVENT_TYPES[\"preprocessing\"]`",
+        "killer": "E01", "applied": true, "killed": true,
+        "killer_result": [{ "id": "e01_cleared_contract", "ok": false }] },
+      { "id": "M04", "title": "Точка посева convert-types сдвинута на чужие строки",
+        "pattern": "(`:3952-3961`)", "replacement": "(`:3940-3949`)",
+        "killer": "C02", "applied": true, "killed": true,
+        "killer_result": [{ "id": "c02_seed_point_convert_types", "ok": false }] },
+      { "id": "M05", "title": "Константа SESSION_SCHEMA_VERSION в контракте искажена",
+        "pattern": "SESSION_SCHEMA_VERSION` (сейчас 3)", "replacement": "SESSION_SCHEMA_VERSION` (сейчас 4)",
+        "killer": "C08", "applied": true, "killed": true,
+        "killer_result": [{ "id": "c08_session_constants", "ok": false }] },
+      { "id": "M06", "title": "Число полей PipelineNodeState искажено (7 -> 9)",
+        "pattern": "PipelineNodeState` (7 полей §3)", "replacement": "PipelineNodeState` (9 полей §3)",
+        "killer": "E02", "applied": true, "killed": true,
+        "killer_result": [{ "id": "e02_envelope_v2", "ok": false }] },
+      { "id": "M11", "title": "eda_check_status изъят из уровня client_observation",
+        "pattern": "`validation_check_status`, `preprocessing_check_status`, `eda_check_status`, `upload_stop_status`, `outliers_profile_status`",
+        "replacement": "`validation_check_status`, `preprocessing_check_status`, `upload_stop_status`, `outliers_profile_status`",
+        "killer": "E08", "applied": true, "killed": true,
+        "killer_result": [{ "id": "e08_evidence_levels", "ok": false }] },
+      { "id": "M12", "title": "Пункт идемпотентности (7) изъят из §3.6",
+        "pattern": "(7) в заявленном required-режиме тихий fallback в Memory недопустим", "replacement": "",
+        "killer": "E06", "applied": true, "killed": true,
+        "killer_result": [{ "id": "e06_delivery", "ok": false }] },
+      { "id": "M13", "title": "Run-метаданные при сбросе подменены (source=user фабрикуется)",
+        "pattern": "`target_column=None, target_column_source=None`", "replacement": "`target_column=None, target_column_source=\"user\"`",
+        "killer": "E01", "applied": true, "killed": true,
+        "killer_result": [{ "id": "e01_cleared_contract", "ok": false }] },
+      { "id": "M07", "title": "Счётчик протокола репро искажён (25 -> 24)", "file": "repro_json",
+        "ops": [["counts", { "observed": 24, "probe_errors": 0 }]],
+        "killer": "D01", "applied": true, "killed": true,
+        "killer_result": [{ "id": "d01_repro_protocol", "ok": false }] },
+      { "id": "M08", "title": "Свои данные подменены данными автора аудита", "file": "repro_json",
+        "ops": [["data_substitution.columns_single", "date,rain"], ["data_substitution.columns_multi", "date,rain,snow"]],
+        "killer": "D03", "applied": true, "killed": true,
+        "killer_result": [{ "id": "d03_own_data_recorded", "ok": false }] },
+      { "id": "M14", "title": "База протокола подменена на базу аудита", "file": "repro_json",
+        "ops": [["baseline", "c8818de89721e1331ae782451a6ef1255b8229e6"]],
+        "killer": "D07", "applied": true, "killed": true,
+        "killer_result": [{ "id": "d07_protocols_baseline", "ok": false }] },
+      { "id": "M09", "title": "Пин H26 перевёрнут (ожидание двух POST)",
+        "file": "packages/ui/components/prograudit0_h26_no_auto_retry.test.tsx",
+        "pattern": "expect(traceGets).toBe(1);", "replacement": "expect(traceGets).toBe(2);",
+        "applied": true, "killed": true, "killer": "jest-reality",
+        "jest_tail": "Tests: 1 failed, 1 total ... zz_cert_mutant_m09_prograudit0_h26_no_auto_retry.test.tsx" },
+      { "id": "M10", "title": "Пин H27 перевёрнут (регресс done -> pending объявлен корректным)",
+        "file": "packages/ui/components/prograudit0_h27_seed_failure_regresses.test.tsx",
+        "pattern": "expect(edaPosts[1][\"correlation\"]).toBe(\"pending\");", "replacement": "expect(edaPosts[1][\"correlation\"]).toBe(\"done\");",
+        "applied": true, "killed": true, "killer": "jest-reality",
+        "jest_tail": "Tests: 1 failed, 1 total ... zz_cert_mutant_m10_prograudit0_h27_seed_failure_regresses.test.tsx" }
+    ],
+    "control_entry": {
+      "id": "CONTROL", "title": "Оригинал поставки без мутаций", "killed": null,
+      "control_green": false, "killer": "-",
+      "note": ["c04_empty_target_branch", "c05_static_map_line"]
+    }
+  },
+  "regression_verification": {
+    "core_pytest": { "command": "pytest tests/api/test_trace_events.py tests/api/test_node_status_engine.py -q", "result": "92 passed -- 1:1 с заявлением поставки" },
+    "pins_jest": { "result": "3 сюита / 3 теста -- зелёные" },
+    "full_jest": { "command": "npx jest --runInBand", "result": "160 сюит / 1911 тестов -- все зелёные, 1:1 с заявлением поставки (160/1911)" },
+    "full_pytest": {
+      "command": "pytest tests/api tests/integration -q",
+      "result": "1522 passed / 3 failed / 1 skipped (окружение сертификатора)",
+      "implementer_claim": "1506 passed / 19 failed / 1 skipped",
+      "interpretation": "файлы падений -- документированный средовый класс нейро-fail-closed (test_modeling_workflow, test_models_backtest_neural_capacity, test_models_candidates); 15 параметрических падений test_forecasting_session из среды исполнителя в среде сертификатора НЕ воспроизвелись (дельта в пользу прохождения); НОЛЬ падений вне документированного класса, ноль новых падений; продуктовый код поставкой не затрагивался (оракул C20)"
+    }
+  },
+  "agents_md_compliance": {
+    "commit_push": "не выполнялись сертификатором (AGENTS.md)",
+    "product_code_changes": "нет -- только НОВЫЕ файлы сертификации + работа в worklog9",
+    "zip": "только файлы текущей задачи"
+  },
+  "verdict": "PASSED WITH REMARKS",
+  "verdict_rationale": [
+    "база P01-P25 воспроизведена сертификатором независимо на третьей точке данных (25/25 OBSERVED)",
+    "пины H26-H28 воспроизводятся на живом коде (3/3), их заявления совпадают с контрактом §2",
+    "контракт v0.1-AUDIT-0: факт-утверждения подтверждаются живым кодом (42/44 оракула); решения плана §4 и обеих Донастроек покрыты полностью (OR-E)",
+    "кампания мутантов 14/14 убитых -- оракулы обладают разрешающей способностью, дыр сертификации не обнаружено",
+    "регрессионные заявления поставки подтверждены (92; 3/3; 160/1911; полный pytest -- без новых падений)"
+  ],
+  "open_points_for_team_lead": [
+    "R1/R2 (неточные указатели строк в контракте §8) -- исправить в редакции v0.2 versioned-обновлением",
+    "тестовый PostgreSQL и H29/H30 -- остаются открытыми (вне периметра AUDIT-0, зафиксировано в контракте §1/§10)",
+    "горячая дорожка PROGR-AUDIT-H1 -- следующий шаг по плану (периметр §8 контракта)"
+  ]
+}

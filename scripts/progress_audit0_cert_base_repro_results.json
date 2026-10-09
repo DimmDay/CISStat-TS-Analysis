@@ -1,0 +1,340 @@
+{
+  "baseline": "deaed93f4c358bdf1b1e6f8815e77dce7b2c5135",
+  "time_utc": "2026-10-09T16:58:29.869568+00:00",
+  "python": "3.12.14",
+  "task": "AUDIT-0-CERT (сертификация AUDIT-0, oracle OR-A): независимое повторение P01-P25 на данных сертификатора",
+  "data_substitution": {
+    "columns_single": "date,pressure",
+    "columns_multi": "date,pressure,wind",
+    "rows": 20,
+    "dates": "2026-03-01..2026-03-20",
+    "values": "pressure=i*0.9, wind=i*0.55",
+    "run_id": "RUN-CERT0",
+    "forecast_id": "FC-CERT0",
+    "ts_base": "2026-03-15T09:30:00+00:00",
+    "distinct_from": "audit author (rain/snow, 2026-01) and AUDIT-0 implementer (temp/humidity, 2026-02)"
+  },
+  "fixture": "original audit tool reused via importlib unchanged: actual session/progress routers + handle_upload + TraceHookMiddleware; not apps.api.main",
+  "production_connections": false,
+  "product_sources_unchanged": true,
+  "source_files_hashed": 524,
+  "observations": [
+    {
+      "id": "P01",
+      "title": "CERT own-data: single numeric target, same auto fact in both layers (pressure)",
+      "result": "OBSERVED",
+      "evidence": {
+        "target": "pressure",
+        "source": "auto",
+        "layers_same_event_id": true,
+        "order": ["target_column_changed", "upload_completed"],
+        "mentor": "Исследование на этапе «Загрузка»: исследуемый признак выбран автоматически: pressure -- проверки качества ждут на этапе «Валидация»."
+      }
+    },
+    {
+      "id": "P02",
+      "title": "CERT own-data: recommendation is not selection (pressure/wind)",
+      "result": "OBSERVED",
+      "evidence": {
+        "before": {
+          "target_column": null,
+          "target_column_source": null,
+          "suggested_column": "pressure",
+          "available_columns": ["pressure", "wind"],
+          "has_dataset": true,
+          "passport_history_reset": false
+        },
+        "manual_event_payload": { "target_column": "wind" }
+      }
+    },
+    {
+      "id": "P03",
+      "title": "CERT own-data: type conversion resets session target, not durable/mentor fact",
+      "result": "OBSERVED",
+      "evidence": {
+        "session_target": null,
+        "run_target": "pressure",
+        "historical_mentor_upload_text": "Исследование на этапе «Загрузка»: исследуемый признак выбран автоматически: pressure -- проверки качества ждут на этапе «Валидация».",
+        "sufficiency_reason": "Целевой признак: pressure (авто)",
+        "reset_event": {
+          "event_id": "23975818-31e5-4017-a011-a58fc9ea4033",
+          "run_id": "RUN-09CADD74",
+          "ts": "2026-10-09T16:58:28.998180+00:00",
+          "stage": "validation",
+          "node_id": "data_types",
+          "event_type": "correction_applied",
+          "payload": {
+            "applied": true,
+            "total_invalid": 0,
+            "invalid_policy": "reject",
+            "target_column_reset": true
+          },
+          "actor": "user",
+          "timestamp": "2026-10-09T16:58:28.998180+00:00"
+        }
+      }
+    },
+    {
+      "id": "P04",
+      "title": "CERT own-data: restore preserves auto event, drops target_column_source",
+      "result": "OBSERVED",
+      "evidence": {
+        "session_target": "pressure",
+        "session_source": null,
+        "auto_fact_in_trace": true
+      }
+    },
+    {
+      "id": "P05",
+      "title": "CERT own-data: restore reloads raw values while old correction stays done",
+      "result": "OBSERVED",
+      "evidence": {
+        "dtype_before_restore": "string",
+        "dtype_after_restore": "float64",
+        "resurrected_target": "pressure",
+        "historical_data_types_status": "done"
+      }
+    },
+    {
+      "id": "P06",
+      "title": "CERT: full status maps validate form but accept uncomputed client claims",
+      "result": "OBSERVED",
+      "evidence": {
+        "invalid_report": 422,
+        "all_done_without_validate": 200,
+        "actor": "user",
+        "payload": { "status": "done" }
+      }
+    },
+    {
+      "id": "P07",
+      "title": "CERT: identical status report creates new facts on every POST",
+      "result": "OBSERVED",
+      "evidence": {
+        "identical_posts": 2,
+        "new_events": 20,
+        "dedupe": "client component lifetime only"
+      }
+    },
+    {
+      "id": "P08",
+      "title": "CERT: report mirrors all ten facts before failed Redis save",
+      "result": "OBSERVED",
+      "evidence": {
+        "HTTP": 500,
+        "durable_facts_added": 10,
+        "layer1_data_types": "absent"
+      }
+    },
+    {
+      "id": "P09",
+      "title": "CERT: hook loss on Redis save failure is invisible in successful response",
+      "result": "OBSERVED",
+      "evidence": {
+        "profile_HTTP": 200,
+        "new_durable_events": 0,
+        "loss_marker_in_response": false
+      }
+    },
+    {
+      "id": "P10",
+      "title": "CERT: durable append failure changes run metadata without writing event (own run_id)",
+      "result": "OBSERVED",
+      "evidence": {
+        "run_target": "pressure",
+        "durable_events": 0,
+        "exception_to_caller": false
+      }
+    },
+    {
+      "id": "P11",
+      "title": "CERT: layer1 cap erases derived status and shifts displayed start",
+      "result": "OBSERVED",
+      "evidence": {
+        "layer1_events": 1000,
+        "layer2_events": 1003,
+        "layer1_upload": "pending",
+        "layer2_upload": "done",
+        "started_at_before": "2026-10-09T16:58:29.573886+00:00",
+        "started_at_after": "2026-03-15T09:00:01+00:00",
+        "run_created_at": "2026-10-09T16:58:29.573912+00:00"
+      }
+    },
+    {
+      "id": "P12",
+      "title": "CERT: panel timestamp sort and durable append order select different last facts",
+      "result": "OBSERVED",
+      "evidence": {
+        "append_order_status": "done",
+        "timestamp_sort_status": "warning",
+        "production_clock_skew_observed": false
+      }
+    },
+    {
+      "id": "P13",
+      "title": "CERT: seven new Modeling event types do not project a status",
+      "result": "OBSERVED",
+      "evidence": {
+        "projection": {
+          "candidates_generated": null,
+          "selection_evaluated": null,
+          "models_compared": null,
+          "diagnostics_run": null,
+          "tuning_skipped": null,
+          "tuning_job_started": null,
+          "tuning_job_cancelled": null
+        },
+        "candidate_generation_default": "pending"
+      }
+    },
+    {
+      "id": "P14",
+      "title": "CERT: clean preview implies found violations; no-op apply implies done",
+      "result": "OBSERVED",
+      "evidence": {
+        "zero_problem_preview": {
+          "stage": "preprocessing",
+          "node_id": "missing",
+          "status": "warning",
+          "status_reason": "Найдены нарушения: предпросмотр коррекции",
+          "mode": null,
+          "last_touched_at": "2026-03-15T09:30:00+00:00",
+          "summary_count": 0
+        },
+        "no_change_apply_status": "done",
+        "scope": "projection contract"
+      }
+    },
+    {
+      "id": "P15",
+      "title": "CERT: invalid payload status ignored for status, updates reason and badge",
+      "result": "OBSERVED",
+      "evidence": {
+        "node": {
+          "stage": "preprocessing",
+          "node_id": "missing",
+          "status": "done",
+          "status_reason": "Статус проверки отчитан модулем «Предобработка»",
+          "mode": null,
+          "last_touched_at": "2026-03-15T09:30:00+00:00",
+          "summary_count": 99
+        },
+        "invalid_status_rejected_by_HTTP_report": true
+      }
+    },
+    {
+      "id": "P16",
+      "title": "CERT: status-only client snapshot preserves stale diagnostic count",
+      "result": "OBSERVED",
+      "evidence": {
+        "node": {
+          "stage": "preprocessing",
+          "node_id": "outliers",
+          "status": "done",
+          "status_reason": "Статус проверки отчитан модулем «Предобработка»",
+          "mode": null,
+          "last_touched_at": "2026-03-15T09:30:00+00:00",
+          "summary_count": 4
+        },
+        "count_observed_in_latest_snapshot": false
+      }
+    },
+    {
+      "id": "P17",
+      "title": "CERT: forecast canonicalization drops existing identity and actor (own ids)",
+      "result": "OBSERVED",
+      "evidence": {
+        "keys_retained": ["event_type", "node_id", "payload", "stage", "ts"],
+        "same_fact_merge_count": 2,
+        "scope": "reader contract; default restore does not reload forecast artifacts"
+      }
+    },
+    {
+      "id": "P18",
+      "title": "CERT: report target line omits explicit auto source",
+      "result": "OBSERVED",
+      "evidence": {
+        "auto_line": "Установлен исследуемый признак: pressure.",
+        "candidates_line": "Событие трассы: candidates_generated."
+      }
+    },
+    {
+      "id": "P19",
+      "title": "CERT: outlier dedupe compares status/count, loses same-picture method change",
+      "result": "OBSERVED",
+      "evidence": {
+        "old_method": "iqr",
+        "new_method": "zscore",
+        "event_added": false,
+        "projection_same": true
+      }
+    },
+    {
+      "id": "P20",
+      "title": "CERT: same event_id appended twice in Memory backend",
+      "result": "OBSERVED",
+      "evidence": {
+        "memory_count": 2,
+        "postgres_contract": "ON CONFLICT (run_id,event_id) DO NOTHING",
+        "live_postgres_tested": false
+      }
+    },
+    {
+      "id": "P21",
+      "title": "CERT: explicit postgres without DATABASE_URL silently becomes Memory",
+      "result": "OBSERVED",
+      "evidence": {
+        "configured": "postgres",
+        "actual": "MemoryResearchRunStore",
+        "error_to_caller": false
+      }
+    },
+    {
+      "id": "P22",
+      "title": "CERT: ASGI response ends before hook recording begins",
+      "result": "OBSERVED",
+      "evidence": {
+        "timeline": ["final_body_sent", "record"],
+        "live_network_race_measured": false
+      }
+    },
+    {
+      "id": "P23",
+      "title": "CERT: timestamp conversion substitutes current time for invalid raw ts",
+      "result": "OBSERVED",
+      "evidence": {
+        "input": "cert-invalid-timestamp",
+        "output": "2026-10-09T16:58:29.685639+00:00",
+        "scope": "Postgres conversion function"
+      }
+    },
+    {
+      "id": "P24",
+      "title": "CERT: old unbound status report is accepted against a new run",
+      "result": "OBSERVED",
+      "evidence": {
+        "old_run": "RUN-45EC049D",
+        "current_run": "RUN-F7484546",
+        "unbound_old_report_HTTP": 200,
+        "facts_added_to_new_run": 10,
+        "scope": "controlled delayed-report timeline, no live browser race"
+      }
+    },
+    {
+      "id": "P25",
+      "title": "CERT: EDA profile reopening can replace done with running (pressure)",
+      "result": "OBSERVED",
+      "evidence": {
+        "before": "done",
+        "after": "running",
+        "HTTP": 200,
+        "last_event": "profile_viewed",
+        "scope": "controlled revisit after prior status report, no browser execution"
+      }
+    }
+  ],
+  "counts": {
+    "observed": 25,
+    "probe_errors": 0
+  }
+}

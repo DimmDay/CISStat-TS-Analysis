@@ -1,0 +1,651 @@
+{
+  "baseline": "deaed93f4c358bdf1b1e6f8815e77dce7b2c5135",
+  "time_utc": "2026-10-09T17:11:52.584726+00:00",
+  "python": "3.12.14",
+  "task": "AUDIT-0-CERT: оракулы OR-C/OR-D/OR-E + кампания мутантов (мутанты на своих мутантах, оракулы на своих данных)",
+  "control_run": {
+    "all_ok": false,
+    "failed_ids": [
+      "c04_empty_target_branch",
+      "c05_static_map_line"
+    ],
+    "checks_total": 44,
+    "results": [
+      {
+        "oracle": "C",
+        "id": "c01_registry_validation_block",
+        "ok": true,
+        "detail": {
+          "target_column_changed_in_validation": true,
+          "target_column_cleared_not_registered_yet": true
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c02_seed_point_convert_types",
+        "ok": true,
+        "detail": {
+          "claimed_range": [3952, 3961],
+          "branch_in_range": true
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c03_merge_dict_restore_run",
+        "ok": true,
+        "detail": {
+          "claimed_range": [1194, 1203],
+          "merge_dict_in_range": true
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c04_empty_target_branch",
+        "ok": false,
+        "detail": {
+          "claimed_range": [358, 360],
+          "empty_branch_in_range": false
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c05_static_map_line",
+        "ok": false,
+        "detail": {
+          "claimed_line": 69,
+          "line": "\"profile_viewed\": \"running\",",
+          "ok": false
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c06_mentor_triple",
+        "ok": true,
+        "detail": {
+          "_target_confirmed": true,
+          "_target_origin": true,
+          "_phase_event_text_facts": true
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c07_mentor_fallback_text",
+        "ok": true,
+        "detail": {}
+      },
+      {
+        "oracle": "C",
+        "id": "c08_session_constants",
+        "ok": true,
+        "detail": {
+          "schema_version_code": "3",
+          "schema_version_contract": "3",
+          "cap_1000": true
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c09_trace_event_canon",
+        "ok": true,
+        "detail": {
+          "missing_fields": [],
+          "timestamp_alias": true
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c10_correction_payload_keys",
+        "ok": true,
+        "detail": {
+          "keys_def_line": 130,
+          "tuple_end_line": 144,
+          "reset_key_in_tuple": true
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c11_stage_nodes",
+        "ok": true,
+        "detail": {
+          "validation_nodes": 10
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c12_modeling_types_no_status",
+        "ok": true,
+        "detail": {
+          "candidates_generated": null,
+          "selection_evaluated": null,
+          "models_compared": null,
+          "diagnostics_run": null,
+          "tuning_skipped": null,
+          "tuning_job_started": null,
+          "tuning_job_cancelled": null
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c13_event_types_exist",
+        "ok": true,
+        "detail": {
+          "missing": []
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c14_eda_reset_keyed_dataset",
+        "ok": true,
+        "detail": {
+          "range": "1000-1005",
+          "ok": true
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c15_eda_report_effect",
+        "ok": true,
+        "detail": {
+          "range": "1046-1091",
+          "marker_reset_on_error": true
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c16_validation_twin_effect",
+        "ok": true,
+        "detail": {
+          "range": "410-442",
+          "ok": true
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c17_target_column_422",
+        "ok": true,
+        "detail": {
+          "handler_found": true,
+          "422_in_handler": true
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c18_status_whitelist",
+        "ok": true,
+        "detail": {
+          "progress_whitelist": true,
+          "node_payload_status": true
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c19_seed_stage_validation",
+        "ok": true,
+        "detail": {
+          "auto_fix_and_seed": true
+        }
+      },
+      {
+        "oracle": "C",
+        "id": "c20_product_code_untouched",
+        "ok": true,
+        "detail": {
+          "diff_c8818de_6a83924_empty": true,
+          "added": [
+            "docs/progress_audit_contract.md",
+            "packages/ui/components/prograudit0_h26_no_auto_retry.test.tsx",
+            "packages/ui/components/prograudit0_h27_seed_failure_regresses.test.tsx",
+            "packages/ui/components/prograudit0_h28_viewed_transfer.test.tsx",
+            "scripts/progress_audit0_baseline_control.json",
+            "scripts/progress_audit0_repro.py",
+            "scripts/progress_audit0_repro_results.json"
+          ],
+          "modified": [
+            "worklog/worklog9.md"
+          ]
+        }
+      },
+      {
+        "oracle": "D",
+        "id": "d01_repro_protocol",
+        "ok": true,
+        "detail": {
+          "counts": {
+            "observed": 25,
+            "probe_errors": 0
+          },
+          "ids_complete": true
+        }
+      },
+      {
+        "oracle": "D",
+        "id": "d02_control_protocol",
+        "ok": true,
+        "detail": {
+          "counts": {
+            "observed": 25,
+            "probe_errors": 0
+          },
+          "original_tool_meta": true,
+          "no_substitution_field": true
+        }
+      },
+      {
+        "oracle": "D",
+        "id": "d03_own_data_recorded",
+        "ok": true,
+        "detail": {
+          "substitution": {
+            "columns_single": "date,temp",
+            "columns_multi": "date,temp,humidity",
+            "rows": 20,
+            "dates": "2026-02-01..2026-02-20",
+            "values": "temp=i*1.8, humidity=i*0.35",
+            "original_tool_data": "date,rain[,snow], 2026-01-xx, i*2.5/i*0.7"
+          }
+        }
+      },
+      {
+        "oracle": "D",
+        "id": "d04_audit_tool_unmodified",
+        "ok": true,
+        "detail": {
+          "git_status": "clean",
+          "blob_matches_worktree": true,
+          "repro_reuses_tool_via_importlib": true
+        }
+      },
+      {
+        "oracle": "D",
+        "id": "d05_repro_constants_match_protocol",
+        "ok": true,
+        "detail": {
+          "script_headers": [
+            "date,temp",
+            "date,temp,humidity"
+          ],
+          "protocol_values": "temp=i*1.8, humidity=i*0.35"
+        }
+      },
+      {
+        "oracle": "D",
+        "id": "d06_pins_observation_headers",
+        "ok": true,
+        "detail": {
+          "H26": true,
+          "H27": true,
+          "H28": true
+        }
+      },
+      {
+        "oracle": "D",
+        "id": "d07_protocols_baseline",
+        "ok": true,
+        "detail": {
+          "repro_json": {
+            "baseline": "6a839242",
+            "python": "3.12.14"
+          },
+          "control_json": {
+            "baseline": "6a839242",
+            "python": "3.12.14"
+          }
+        }
+      },
+      {
+        "oracle": "D",
+        "id": "d08_cert_repro_protocol",
+        "ok": true,
+        "detail": {
+          "counts": {
+            "observed": 25,
+            "probe_errors": 0
+          },
+          "columns": [
+            "date,pressure",
+            "date,pressure,wind"
+          ]
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e01_cleared_contract",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "section": "§3.1"
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e02_envelope_v2",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "section": "§3.2"
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e03_order",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "section": "§3.3"
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e04_context",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "section": "§3.4"
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e05_validity",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "section": "§3.5"
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e06_delivery",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "section": "§3.6"
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e07_legacy",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "section": "§3.7"
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e08_evidence_levels",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "section": "§4"
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e09_dto_examples",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "section": "§5"
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e10_invariants",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "section": "§6"
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e11_transition",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "section": "§7"
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e12_hot_track",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "section": "§8"
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e13_org_decisions",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "section": "§9"
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e14_open_items",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "section": "§10"
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e15_base_and_env",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "section": "§1"
+        }
+      },
+      {
+        "oracle": "E",
+        "id": "e16_hypotheses_status",
+        "ok": true,
+        "detail": {
+          "missing": [],
+          "unverified_count": 2
+        }
+      }
+    ]
+  },
+  "kill_matrix": [
+    {
+      "id": "CONTROL",
+      "title": "Оригинал поставки без мутаций",
+      "killed": null,
+      "control_green": false,
+      "killer": "-",
+      "note": [
+        "c04_empty_target_branch",
+        "c05_static_map_line"
+      ]
+    },
+    {
+      "id": "M01",
+      "title": "Payload сброса подменён на Option B (пустой target в changed)",
+      "pattern": "`{target_column: null, reset_reason: str, source: \"system\"|\"auto\", before_target: str|null}`",
+      "replacement": "`{target_column: \"\", reset_reason: str, source: \"system\"|\"auto\", before_target: str|null}`",
+      "killer": "E01",
+      "applied": true,
+      "killed": true,
+      "killer_result": [
+        { "id": "e01_cleared_contract", "ok": false }
+      ]
+    },
+    {
+      "id": "M02",
+      "title": "Происхождение после сброса подменено на user",
+      "pattern": "**unknown/пусто (None), НЕ «user»**",
+      "replacement": "**«user»**",
+      "killer": "E01",
+      "applied": true,
+      "killed": true,
+      "killer_result": [
+        { "id": "e01_cleared_contract", "ok": false }
+      ]
+    },
+    {
+      "id": "M03",
+      "title": "Носитель типа подменён на стадию preprocessing",
+      "pattern": "`_STAGE_EVENT_TYPES[\"validation\"]`",
+      "replacement": "`_STAGE_EVENT_TYPES[\"preprocessing\"]`",
+      "killer": "E01",
+      "applied": true,
+      "killed": true,
+      "killer_result": [
+        { "id": "e01_cleared_contract", "ok": false }
+      ]
+    },
+    {
+      "id": "M04",
+      "title": "Точка посева convert-types сдвинута на чужие строки",
+      "pattern": "(`:3952-3961`)",
+      "replacement": "(`:3940-3949`)",
+      "killer": "C02",
+      "applied": true,
+      "killed": true,
+      "killer_result": [
+        { "id": "c02_seed_point_convert_types", "ok": false }
+      ]
+    },
+    {
+      "id": "M05",
+      "title": "Константа SESSION_SCHEMA_VERSION в контракте искажена",
+      "pattern": "SESSION_SCHEMA_VERSION` (сейчас 3)",
+      "replacement": "SESSION_SCHEMA_VERSION` (сейчас 4)",
+      "killer": "C08",
+      "applied": true,
+      "killed": true,
+      "killer_result": [
+        { "id": "c08_session_constants", "ok": false }
+      ]
+    },
+    {
+      "id": "M06",
+      "title": "Число полей PipelineNodeState искажено (7 -> 9)",
+      "pattern": "PipelineNodeState` (7 полей §3)",
+      "replacement": "PipelineNodeState` (9 полей §3)",
+      "killer": "E02",
+      "applied": true,
+      "killed": true,
+      "killer_result": [
+        { "id": "e02_envelope_v2", "ok": false }
+      ]
+    },
+    {
+      "id": "M11",
+      "title": "eda_check_status изъят из уровня client_observation",
+      "pattern": "`validation_check_status`, `preprocessing_check_status`, `eda_check_status`, `upload_stop_status`, `outliers_profile_status`",
+      "replacement": "`validation_check_status`, `preprocessing_check_status`, `upload_stop_status`, `outliers_profile_status`",
+      "killer": "E08",
+      "applied": true,
+      "killed": true,
+      "killer_result": [
+        { "id": "e08_evidence_levels", "ok": false }
+      ]
+    },
+    {
+      "id": "M12",
+      "title": "Пункт идемпотентности (7) изъят из §3.6",
+      "pattern": "(7) в заявленном required-режиме тихий fallback в Memory недопустим",
+      "replacement": "",
+      "killer": "E06",
+      "applied": true,
+      "killed": true,
+      "killer_result": [
+        { "id": "e06_delivery", "ok": false }
+      ]
+    },
+    {
+      "id": "M13",
+      "title": "Run-метаданные при сбросе подменены (source=user фабрикуется)",
+      "pattern": "`target_column=None, target_column_source=None`",
+      "replacement": "`target_column=None, target_column_source=\"user\"`",
+      "killer": "E01",
+      "applied": true,
+      "killed": true,
+      "killer_result": [
+        { "id": "e01_cleared_contract", "ok": false }
+      ]
+    },
+    {
+      "id": "M07",
+      "title": "Счётчик протокола репро искажён (25 -> 24)",
+      "file": "repro_json",
+      "ops": [
+        ["counts", { "observed": 24, "probe_errors": 0 }]
+      ],
+      "killer": "D01",
+      "applied": true,
+      "killed": true,
+      "killer_result": [
+        { "id": "d01_repro_protocol", "ok": false }
+      ]
+    },
+    {
+      "id": "M08",
+      "title": "Свои данные подменены данными автора аудита",
+      "file": "repro_json",
+      "ops": [
+        ["data_substitution.columns_single", "date,rain"],
+        ["data_substitution.columns_multi", "date,rain,snow"]
+      ],
+      "killer": "D03",
+      "applied": true,
+      "killed": true,
+      "killer_result": [
+        { "id": "d03_own_data_recorded", "ok": false }
+      ]
+    },
+    {
+      "id": "M14",
+      "title": "База протокола подменена на базу аудита",
+      "file": "repro_json",
+      "ops": [
+        ["baseline", "c8818de89721e1331ae782451a6ef1255b8229e6"]
+      ],
+      "killer": "D07",
+      "applied": true,
+      "killed": true,
+      "killer_result": [
+        { "id": "d07_protocols_baseline", "ok": false }
+      ]
+    },
+    {
+      "id": "M09",
+      "title": "Пин H26 перевёрнут (ожидание двух POST)",
+      "file": "/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/prograudit0_h26_no_auto_retry.test.tsx",
+      "pattern": "expect(traceGets).toBe(1);",
+      "replacement": "expect(traceGets).toBe(2);",
+      "applied": true,
+      "killed": true,
+      "killer": "jest-reality",
+      "jest_tail": "failed, 1 total\nTests:       1 failed, 1 total\nSnapshots:   0 total\nTime:        2.409 s\nRan all test suites matching packages/ui/components/zz_cert_mutant_m09_prograudit0_h26_no_auto_retry.test.tsx.\n"
+    },
+    {
+      "id": "M10",
+      "title": "Пин H27 перевёрнут (регресс done -> pending объявлен корректным)",
+      "file": "/home/z/my-project/CISStat-TS-Analysis/packages/ui/components/prograudit0_h27_seed_failure_regresses.test.tsx",
+      "pattern": "expect(edaPosts[1][\"correlation\"]).toBe(\"pending\");",
+      "replacement": "expect(edaPosts[1][\"correlation\"]).toBe(\"done\");",
+      "applied": true,
+      "killed": true,
+      "killer": "jest-reality",
+      "jest_tail": " total\nTests:       1 failed, 1 total\nSnapshots:   0 total\nTime:        2.504 s\nRan all test suites matching packages/ui/components/zz_cert_mutant_m10_prograudit0_h27_seed_failure_regresses.test.tsx.\n"
+    }
+  ],
+  "counts": {
+    "oracles_total": 44,
+    "oracles_green": 42,
+    "mutants_applied": 14,
+    "mutants_killed": 14,
+    "mutants_survived": 0
+  },
+  "product_sources_unchanged": true,
+  "duration_seconds": 8.6
+}
