@@ -1,0 +1,43 @@
+==============================================================================
+МУТАЦИОННАЯ ПРОВЕРКА PROGR-25-D (сквозной сценарий: матрица M1-M5)
+Образец: PROGR-19/20/21 (backup/restore, побайтовый md5-контроль).
+Каналы: backend (pytest: integration + пины D + адресные A/C),
+        frontend (jest: useTargetColumn + пин TB-8).
+База: 45e500d; партия 1..6 из 6
+==============================================================================
+
+── Мутант M0 [backend]: КОНТРОЛЬ харнесса: no-op -- обязан ВЫЖИТЬ (харнесс достоверен)
+    канал (backend): SURVIVED -- ============================== 36 passed in 4.39s ==============================
+
+── Мутант M1 [backend]: снят вычет session.date_column -- дата-ось становится кандидатом
+    канал (backend): KILLED -- ========================= 2 failed, 34 passed in 4.46s =========================
+    убит оракулами: api/test_progress_progr25d.py::TestFactDeductionsOwnData::test_m1_date_column_fact_deduction; api/test_progress_progr25a.py::TestTargetColumnRuleUnit::test_o8_date_column_excluded_even_without_date_like_name
+
+── Мутант M2 [backend]: снят вычет реестра производных -- derived_columns_in_frame игнорируется
+    канал (backend): KILLED -- ========================= 2 failed, 34 passed in 4.37s =========================
+    убит оракулами: api/test_progress_progr25d.py::TestFactDeductionsOwnData::test_m2_registry_deduction_decides_not_name; api/test_progress_progr25a.py::TestTargetColumnRuleUnit::test_o7_derived_registry_excluded_original_derived_like_kept
+
+── Мутант M3 [backend]: инверсия source auto<->user: авто-фиксация выдаётся за ручную
+    канал (backend): KILLED -- ======================== 17 failed, 19 passed in 4.49s =========================
+    убит оракулами: integration/test_progress_target_column_e2e.py::TestScenarioDemoN150EndToEnd::test_d1_full_scenario_consistency; api/test_progress_progr25d.py::TestDemoPointPin::test_demo_single_numeric_autofixes_source_auto; api/test_progress_progr25d.py::TestTraceCarrierPin::test_trace_carries_session_facts_before_and_after_upload; api/test_progress_progr25d.py::TestFactDeductionsOwnData::test_m1_date_column_fact_deduction; api/test_progress_progr25d.py::TestFactDeductionsOwnData::test_m2_registry_deduction_decides_not_name; api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o1_current_reports_target_and_source_auto
+
+── Мутант M4 [frontend]: возврат тихого авто-POST хука (анти-R1): фиксация рекомендации при target=null
+    канал (frontend): KILLED -- Test Suites: 2 failed, 2 total
+    убит оракулами: рекомендация есть -- точный текст «— рекомендация: «Region»» (убивает TB-8); монтирование НЕ выполняет авто-POST: одна числовая, есть рекомендация (R1, однозначный класс); монтирование НЕ выполняет авто-POST: несколько числовых (R1, неоднозначный класс); columnResetNotice живёт без авто-POST: был Price, стал null -- newColumn = рекомендация; повторное монтирование с другим datasetKey -- тоже без POST (каждая вкладка)
+
+── Мутант M5 [backend]: посев события удалён (слои 1+2): фиксация без трассы
+    канал (backend): KILLED -- ======================== 11 failed, 25 passed in 4.62s =========================
+    убит оракулами: integration/test_progress_target_column_e2e.py::TestScenarioDemoN150EndToEnd::test_d1_full_scenario_consistency; api/test_progress_progr25d.py::TestDemoPointPin::test_demo_single_numeric_autofixes_source_auto; api/test_progress_progr25d.py::TestFactDeductionsOwnData::test_m2_registry_deduction_decides_not_name; api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o2_seeds_target_column_changed_event; api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o11_payload_is_exactly_target_and_source; api/test_progress_progr25a.py::TestAutoFixOnUpload::test_reupload_autofixes_new_dataset
+
+Восстановление: все файлы побайтово восстановлены (md5 сошёлся).
+
+──────────────────────────────────────────────────────────────────────────────
+  M0: КОНТРОЛЬ харнесса: no-op -- обязан ВЫЖИТЬ (харнесс достоверен) -> SURVIVED
+  M1: снят вычет session.date_column -- дата-ось становится кандидатом -> KILLED
+  M2: снят вычет реестра производных -- derived_columns_in_frame игнорируется -> KILLED
+  M3: инверсия source auto<->user: авто-фиксация выдаётся за ручную -> KILLED
+  M4: возврат тихого авто-POST хука (анти-R1): фиксация рекомендации при target=null -> KILLED
+  M5: посев события удалён (слои 1+2): фиксация без трассы -> KILLED
+
+ИТОГ: 5/5 мутантов KILLED своим оракулом; контроль M0: SURVIVED
+──────────────────────────────────────────────────────────────────────────────
