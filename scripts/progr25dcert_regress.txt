@@ -1,0 +1,100 @@
+==============================================================================
+СЕРТИФИКАЦИЯ PROGR-25-D-CERT -- ПОЛНЫЙ РЕГРЕСС (реальные прогоны)
+База: 6873227; рабочее дерево тождественно HEAD по tracked-файлам
+(git diff пуст: ДА); артефакты аудита untracked:
+    ?? packages/ui/components/progr25dcert_toast_oracle.test.tsx
+    ?? scripts/progr25dcert_mutation_results.txt
+    ?? scripts/progr25dcert_mutations.py
+    ?? scripts/progr25dcert_oracles.py
+    ?? scripts/progr25dcert_oracles.txt
+    ?? scripts/progr25dcert_regress.py
+==============================================================================
+
+== 1. Новые сюиты задачи D (integration e2e + пины D) ==
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 12 passed, 1 warning in 2.87s =========================
+
+== 2. Адресные pre-D сюиты (repo-канал DO; 9 файлов, 400 тестов) ==
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+====================== 400 passed, 208 warnings in 10.71s ======================
+
+== 3. Полный tests/api + tests/integration ==
+    (min_dt >= pd.Timedelta(weeks=1)))  # pyrefly:ignore[unsupported-operation]
+
+tests/api/test_feature_regressors_api.py: 2 warnings
+tests/api/test_modeling_workflow.py: 7 warnings
+tests/api/test_models_backtest_real.py: 2 warnings
+  /home/z/my-project/cisstat-ts-analysis/.venv/lib/python3.12/site-packages/prophet/forecaster.py:1223: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    daily_disable = ((last - first < pd.Timedelta(days=2)) or
+
+tests/api/test_feature_regressors_api.py: 2 warnings
+tests/api/test_modeling_workflow.py: 7 warnings
+tests/api/test_models_backtest_real.py: 2 warnings
+  /home/z/my-project/cisstat-ts-analysis/.venv/lib/python3.12/site-packages/prophet/forecaster.py:1224: DeprecationWarning: The 'generic' unit for NumPy timedelta is deprecated, and will raise an error in the future. This includes implicit conversion of bare integers (e.g. `+ 1`). Please use a specific unit instead.
+    (min_dt >= pd.Timedelta(days=1)))  # pyrefly:ignore[unsupported-operation]
+
+tests/api/test_models_backtest_real.py: 7 warnings
+tests/api/test_tune.py: 6 warnings
+  /home/z/my-project/cisstat-ts-analysis/.venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/mlemodel.py:679: EstimationWarning: Non-stationary starting autoregressive parameters found. Using zeros as starting parameters.
+    start_params = self.start_params
+
+tests/api/test_models_backtest_real.py: 13 warnings
+tests/api/test_tune.py: 36 warnings
+  /home/z/my-project/cisstat-ts-analysis/.venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/mlemodel.py:737: ConvergenceWarning: Maximum Likelihood optimization failed to converge. Check mle_retvals
+    mlefit = super().fit(
+
+tests/api/test_tune.py: 44 warnings
+  /home/z/my-project/cisstat-ts-analysis/.venv/lib/python3.12/site-packages/statsmodels/tsa/statespace/sarimax.py:989: EstimationWarning: Too few observations to estimate starting parameters for ARMA and trend. All parameters except for variances will be set to zeros.
+    params_variance) = self._conditional_sum_squares(
+
+tests/api/test_tune_real_models.py::TestPhase1DEtsRealGrid::test_ets_grid_runs_real_statsmodels
+tests/api/test_tune_real_models.py::TestPhase1DEtsRealGrid::test_ets_grid_runs_real_statsmodels
+tests/api/test_tune_real_models.py::TestPhase1DEtsRealGrid::test_ets_grid_runs_real_statsmodels
+  /home/z/my-project/cisstat-ts-analysis/.venv/lib/python3.12/site-packages/statsmodels/tsa/holtwinters/model.py:1065: ConvergenceWarning: Optimization failed to converge. Check mle_retvals.
+    res = self._optimize_parameters(res, use_brute, method, minimize_kwargs)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/api/test_modeling_workflow.py::test_workflow_rejects_catalog_only_model_instead_of_fabricating_metrics
+FAILED tests/api/test_models_backtest_neural_capacity.py::test_backtest_lstm_503_with_honest_message_on_insufficient_memory
+FAILED tests/api/test_models_candidates.py::TestBacktestNaive::test_unsupported_model_never_returns_penalty_metrics
+===== 3 failed, 1522 passed, 1 skipped, 5412 warnings in 195.90s (0:03:15) =====
+
+== 4. tests/unit + tests/legacy_wrappers + верхнеуровневые tests/test_*.py ==
+=========================== short test summary info ============================
+FAILED tests/unit/test_deepar_integration_paths.py::test_deepar_registry_requires_related_series_fail_closed
+FAILED tests/unit/test_lstm_integration_paths.py::test_lstm_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_model_execution_contract.py::test_candidates_publish_v2_descriptors_only_for_executable_models
+FAILED tests/unit/test_nbeats_integration_paths.py::test_nbeats_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_nhits_integration_paths.py::test_nhits_registry_rejects_wrong_objective_and_features_fail_closed
+FAILED tests/unit/test_tft_integration_paths.py::test_tft_registry_rejects_wrong_objective_and_features_fail_closed
+===== 6 failed, 1675 passed, 24 skipped, 655 warnings in 134.55s (0:02:14) =====
+
+== 5. Фронт полный (jest монорепо; включает пин TB-8 задачи D и
+   фронт-оракул сертификата -- свои данные AirTemp/Pressure) ==
+Test Suites: 157 passed, 157 total
+Tests:       1908 passed, 1908 total
+Snapshots:   0 total
+Time:        68.067 s
+Ran all test suites.
+
+== 6. Сверка с базами ==
+  tests/api+integration: 1522 passed / 3 failed / 1 skipped
+    базлайн C-CERT (d703407, то же окружение): 1510/3/1 --
+    дельта passed ровно +12 (9 пинов D + 3 интеграционных),
+    набор failed идентичен средовому классу C-CERT (нейро-fail-closed:
+    modeling_workflow contract / neural_capacity 503 / models_candidates)
+  unit+legacy+top: 1675 passed / 6 failed / 24 skipped -- 1:1 базлайн C-CERT
+  фронт: 157 сюит / 1908 тестов, ВСЕ зелёные --
+    базлайн B-CERT 155/1904 + пин TB-8 задачи D (+1 сюита/+2 теста)
+    + фронт-оракул сертификации (+1 сюита/+2 теста); новых падений нет
+  (окружение: лёгкая группа по рецепту A-/C-CERT, statsmodels 0.15.0 --
+   параметрическая симуляция test_forecasting_session зелёная, поэтому
+   3 failed вместо 19 разработчика; класс совпадает, см. R3 акта)
+
+──────────────────────────────────────────────────────────────────────────────
+ИТОГ РЕГРЕССА: ноль новых падений, ноль «исцелений», дельты объяснены
+новыми тестами задачи D и фронт-оракулом сертификации.
+──────────────────────────────────────────────────────────────────────────────

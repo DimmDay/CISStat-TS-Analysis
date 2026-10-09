@@ -1,0 +1,127 @@
+==============================================================================
+СЕРТИФИКАЦИЯ PROGR-25-D-CERT -- СВОИ МУТАНТЫ DC-0..DC-7 (батч 1..4 из 8)
+База: 6873227.
+Каналы: repo-DO (pre-D repo: адресные сюиты a55caed), repo-D (НОВЫЕ
+сюиты задачи D), oracle (свои оракулы на своих данных).
+Предрегистрация EXPECTED зафиксирована в скрипте ДО прогона.
+==============================================================================
+
+── Мутант DC-0: КОНТРОЛЬ харнесса: no-op -- обязан ВЫЖИТЬ (харнесс достоверен)
+    repo-DO : SURVIVED -- ====================== 400 passed, 208 warnings in 10.27s ======================
+    repo-D  : SURVIVED -- ======================== 12 passed, 1 warning in 2.61s =========================
+    oracle  : SURVIVED -- ИТОГ: 23/23 PASS -- все оракулы зелёные
+
+── Мутант DC-1: атрибуция маршрута сломана: node_id="validation" вместо None (канон)
+    repo-DO : KILLED   -- ================= 3 failed, 397 passed, 208 warnings in 10.37s =================
+             убит: api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o2_seeds_target_column_changed_event; api/test_progress_progr25c.py::TestMentorSeesAutoFixation::test_seeded_event_reaches_layer2; api/test_progress_progr25c.py::TestSufficiencyReasonOriginApi::test_trace_nodes_show_auto_mark
+    repo-D  : KILLED   -- =================== 1 failed, 11 passed, 1 warning in 2.66s ====================
+             убит: integration/test_progress_target_column_e2e.py::TestScenarioDemoN150EndToEnd::test_d1_full_scenario_consistency
+    oracle  : KILLED   -- ИТОГ: 22/23 PASS; FAIL: 1
+             убит: E3
+
+── Мутант DC-2: событие вне запуска: ensure_run_id() снят -- фиксация без run_id (§5)
+    repo-DO : KILLED   -- ================= 3 failed, 397 passed, 208 warnings in 10.78s =================
+             убит: api/test_progress_progr25c.py::TestMentorSeesAutoFixation::test_bug_scenario_mentor_does_not_request_target; api/test_progress_progr25c.py::TestMentorSeesAutoFixation::test_seeded_event_reaches_layer2; api/test_progress_progr25c.py::TestMentorSeesAutoFixation::test_run_target_column_set_for_restore
+    repo-D  : KILLED   -- =================== 1 failed, 11 passed, 1 warning in 2.73s ====================
+             убит: integration/test_progress_target_column_e2e.py::TestScenarioDemoN150EndToEnd::test_d1_full_scenario_consistency
+    oracle  : KILLED   -- ИТОГ: 21/23 PASS; FAIL: 2
+             убит: E6; M1
+
+── Мутант DC-3: переименование ключа канона A в посеве: payload {target_column, origin}
+    repo-DO : KILLED   -- ================= 8 failed, 392 passed, 208 warnings in 10.31s =================
+             убит: api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o2_seeds_target_column_changed_event; api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o11_payload_is_exactly_target_and_source; api/test_progress_progr25a.py::TestAutoFixOnUpload::test_reupload_autofixes_new_dataset; api/test_progress_progr25a.py::TestManualAfterAuto::test_o5b_manual_event_payload_has_no_source_legacy_semantics; api/test_progress_progr25a.py::TestTargetColumnRuleUnit::test_o7_derived_registry_excluded_original_derived_like_kept; api/test_progress_progr25c.py::TestMentorSeesAutoFixation::test_bug_scenario_mentor_does_not_request_target
+    repo-D  : KILLED   -- ==================== 3 failed, 9 passed, 1 warning in 2.66s ====================
+             убит: integration/test_progress_target_column_e2e.py::TestScenarioDemoN150EndToEnd::test_d1_full_scenario_consistency; api/test_progress_progr25d.py::TestDemoPointPin::test_demo_single_numeric_autofixes_source_auto; api/test_progress_progr25d.py::TestFactDeductionsOwnData::test_m2_registry_deduction_decides_not_name
+    oracle  : KILLED   -- ИТОГ: 18/23 PASS; FAIL: 5
+             убит: E3; E6; M1; D1; U3
+
+Восстановление: все файлы побайтово восстановлены (md5 сошёлся).
+
+──────────────────────────────────────────────────────────────────────────────
+  DC-0 / repo-DO : SURVIVED
+  DC-0 / repo-D  : SURVIVED
+  DC-0 / oracle  : SURVIVED
+  DC-1 / repo-DO : KILLED  [убит: api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o2_seeds_target_column_changed_event; api/test_progress_progr25c.py::TestMentorSeesAutoFixation::test_seeded_event_reaches_layer2; api/test_progress_progr25c.py::TestSufficiencyReasonOriginApi::test_trace_nodes_show_auto_mark]
+  DC-1 / repo-D  : KILLED  [убит: integration/test_progress_target_column_e2e.py::TestScenarioDemoN150EndToEnd::test_d1_full_scenario_consistency]
+  DC-1 / oracle  : KILLED  [убит: E3]
+  DC-2 / repo-DO : KILLED  [убит: api/test_progress_progr25c.py::TestMentorSeesAutoFixation::test_bug_scenario_mentor_does_not_request_target; api/test_progress_progr25c.py::TestMentorSeesAutoFixation::test_seeded_event_reaches_layer2; api/test_progress_progr25c.py::TestMentorSeesAutoFixation::test_run_target_column_set_for_restore]
+  DC-2 / repo-D  : KILLED  [убит: integration/test_progress_target_column_e2e.py::TestScenarioDemoN150EndToEnd::test_d1_full_scenario_consistency]
+  DC-2 / oracle  : KILLED  [убит: E6; M1]
+  DC-3 / repo-DO : KILLED  [убит: api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o2_seeds_target_column_changed_event; api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o11_payload_is_exactly_target_and_source; api/test_progress_progr25a.py::TestAutoFixOnUpload::test_reupload_autofixes_new_dataset; api/test_progress_progr25a.py::TestManualAfterAuto::test_o5b_manual_event_payload_has_no_source_legacy_semantics; api/test_progress_progr25a.py::TestTargetColumnRuleUnit::test_o7_derived_registry_excluded_original_derived_like_kept; api/test_progress_progr25c.py::TestMentorSeesAutoFixation::test_bug_scenario_mentor_does_not_request_target]
+  DC-3 / repo-D  : KILLED  [убит: integration/test_progress_target_column_e2e.py::TestScenarioDemoN150EndToEnd::test_d1_full_scenario_consistency; api/test_progress_progr25d.py::TestDemoPointPin::test_demo_single_numeric_autofixes_source_auto; api/test_progress_progr25d.py::TestFactDeductionsOwnData::test_m2_registry_deduction_decides_not_name]
+  DC-3 / oracle  : KILLED  [убит: E3; E6; M1; D1; U3]
+
+ИТОГ батча: 3 kill-мутантов убиты ОБОИМИ независимыми каналами (repo-D + oracle); переживших оба канала -- 0 (по батчу)
+Предрегистрация EXPECTED: подтверждена полностью (расхождений нет)
+──────────────────────────────────────────────────────────────────────────────
+==============================================================================
+СЕРТИФИКАЦИЯ PROGR-25-D-CERT -- СВОИ МУТАНТЫ DC-0..DC-7 (батч 5..7 из 8)
+База: 6873227.
+Каналы: repo-DO (pre-D repo: адресные сюиты a55caed), repo-D (НОВЫЕ
+сюиты задачи D), oracle (свои оракулы на своих данных).
+Предрегистрация EXPECTED зафиксирована в скрипте ДО прогона.
+==============================================================================
+
+── Мутант DC-4: носитель шапки /trace оторван от факта: source всегда None (гэп TM-15)
+    repo-DO : SURVIVED -- ====================== 400 passed, 208 warnings in 10.19s ======================
+    repo-D  : KILLED   -- ==================== 3 failed, 9 passed, 1 warning in 2.79s ====================
+             убит: integration/test_progress_target_column_e2e.py::TestScenarioDemoN150EndToEnd::test_d1_full_scenario_consistency; integration/test_progress_target_column_e2e.py::TestScenarioTwoNumericNegative::test_d2_ambiguity_then_manual_user; api/test_progress_progr25d.py::TestTraceCarrierPin::test_trace_carries_session_facts_before_and_after_upload
+    oracle  : KILLED   -- ИТОГ: 20/23 PASS; FAIL: 3
+             убит: E2; E8; M3
+
+── Мутант DC-5: demo-точка выпала из исполнителей правила (анти-R2, гэп TM-11)
+    repo-DO : SURVIVED -- ====================== 400 passed, 208 warnings in 10.37s ======================
+    repo-D  : KILLED   -- =================== 1 failed, 11 passed, 1 warning in 2.77s ====================
+             убит: api/test_progress_progr25d.py::TestDemoPointPin::test_demo_single_numeric_autofixes_source_auto
+    oracle  : KILLED   -- ИТОГ: 22/23 PASS; FAIL: 1
+             убит: D1
+
+── Мутант DC-6: тихое угадывание: фиксация первого кандидата при 2+ (анти-§6)
+    repo-DO : KILLED   -- ================ 11 failed, 389 passed, 204 warnings in 10.32s =================
+             убит: api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o3_two_numerics_honest_ambiguity; api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o12_year_value_without_registered_date_is_ambiguous; api/test_progress_progr25a.py::TestDemoEndpointRule::test_o4_demo_builtin_sales_demo_is_ambiguous_guard; api/test_progress_progr25a.py::TestTargetColumnRuleUnit::test_o7_derived_registry_excluded_original_derived_like_kept; api/test_progress_progr25c.py::TestMentorSeesAutoFixation::test_two_numerics_mentor_still_requests_target; api/test_progress_progr25c.py::TestDemoPathUnchanged::test_builtin_demo_ambiguous_honest_request
+    repo-D  : KILLED   -- ==================== 5 failed, 7 passed, 1 warning in 2.64s ====================
+             убит: integration/test_progress_target_column_e2e.py::TestScenarioTwoNumericNegative::test_d2_ambiguity_then_manual_user; api/test_progress_progr25d.py::TestDemoPointPin::test_demo_two_numeric_honest_ambiguity_guard; api/test_progress_progr25d.py::TestFactDeductionsOwnData::test_m1_without_deduction_would_be_ambiguous; api/test_progress_progr25d.py::TestFactDeductionsOwnData::test_m2_registry_deduction_decides_not_name; api/test_progress_progr25d.py::TestFactDeductionsOwnData::test_m2_derived_like_name_outside_registry_stays_candidate
+    oracle  : KILLED   -- ИТОГ: 17/23 PASS; FAIL: 6
+             убит: M2; M3; D2; U2; U3; U4
+
+Восстановление: все файлы побайтово восстановлены (md5 сошёлся).
+
+──────────────────────────────────────────────────────────────────────────────
+  DC-4 / repo-DO : SURVIVED
+  DC-4 / repo-D  : KILLED  [убит: integration/test_progress_target_column_e2e.py::TestScenarioDemoN150EndToEnd::test_d1_full_scenario_consistency; integration/test_progress_target_column_e2e.py::TestScenarioTwoNumericNegative::test_d2_ambiguity_then_manual_user; api/test_progress_progr25d.py::TestTraceCarrierPin::test_trace_carries_session_facts_before_and_after_upload]
+  DC-4 / oracle  : KILLED  [убит: E2; E8; M3]
+  DC-5 / repo-DO : SURVIVED
+  DC-5 / repo-D  : KILLED  [убит: api/test_progress_progr25d.py::TestDemoPointPin::test_demo_single_numeric_autofixes_source_auto]
+  DC-5 / oracle  : KILLED  [убит: D1]
+  DC-6 / repo-DO : KILLED  [убит: api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o3_two_numerics_honest_ambiguity; api/test_progress_progr25a.py::TestAutoFixOnUpload::test_o12_year_value_without_registered_date_is_ambiguous; api/test_progress_progr25a.py::TestDemoEndpointRule::test_o4_demo_builtin_sales_demo_is_ambiguous_guard; api/test_progress_progr25a.py::TestTargetColumnRuleUnit::test_o7_derived_registry_excluded_original_derived_like_kept; api/test_progress_progr25c.py::TestMentorSeesAutoFixation::test_two_numerics_mentor_still_requests_target; api/test_progress_progr25c.py::TestDemoPathUnchanged::test_builtin_demo_ambiguous_honest_request]
+  DC-6 / repo-D  : KILLED  [убит: integration/test_progress_target_column_e2e.py::TestScenarioTwoNumericNegative::test_d2_ambiguity_then_manual_user; api/test_progress_progr25d.py::TestDemoPointPin::test_demo_two_numeric_honest_ambiguity_guard; api/test_progress_progr25d.py::TestFactDeductionsOwnData::test_m1_without_deduction_would_be_ambiguous; api/test_progress_progr25d.py::TestFactDeductionsOwnData::test_m2_registry_deduction_decides_not_name; api/test_progress_progr25d.py::TestFactDeductionsOwnData::test_m2_derived_like_name_outside_registry_stays_candidate]
+  DC-6 / oracle  : KILLED  [убит: M2; M3; D2; U2; U3; U4]
+
+ИТОГ батча: 3 kill-мутантов убиты ОБОИМИ независимыми каналами (repo-D + oracle); переживших оба канала -- 0 (по батчу)
+Предрегистрация EXPECTED: подтверждена полностью (расхождений нет)
+──────────────────────────────────────────────────────────────────────────────
+==============================================================================
+СЕРТИФИКАЦИЯ PROGR-25-D-CERT -- СВОИ МУТАНТЫ DC-0..DC-7 (батч 8..8 из 8)
+База: 6873227.
+Каналы: repo-DO (pre-D repo: адресные сюиты a55caed), repo-D (НОВЫЕ
+сюиты задачи D), oracle (свои оракулы на своих данных).
+Предрегистрация EXPECTED зафиксирована в скрипте ДО прогона.
+==============================================================================
+
+── Мутант DC-7: нечестная рекомендационная ветка toast, префикс сохранён (класс TB-8)
+    repo-DO : SURVIVED -- Test Suites: 2 passed, 2 total
+    repo-D  : KILLED   -- Test Suites: 1 failed, 1 total
+             убит: рекомендация есть -- точный текст «— рекомендация: «Region»» (убивает TB-8)
+    oracle  : KILLED   -- Test Suites: 1 failed, 1 total
+             убит: рекомендация есть -- точный текст «— рекомендация: «Pressure»»
+
+Восстановление: все файлы побайтово восстановлены (md5 сошёлся).
+
+──────────────────────────────────────────────────────────────────────────────
+  DC-7 / repo-DO : SURVIVED
+  DC-7 / repo-D  : KILLED  [убит: рекомендация есть -- точный текст «— рекомендация: «Region»» (убивает TB-8)]
+  DC-7 / oracle  : KILLED  [убит: рекомендация есть -- точный текст «— рекомендация: «Pressure»»]
+
+ИТОГ батча: 1 kill-мутантов убиты ОБОИМИ независимыми каналами (repo-D + oracle); переживших оба канала -- 0 (по батчу)
+Предрегистрация EXPECTED: подтверждена полностью (расхождений нет)
+──────────────────────────────────────────────────────────────────────────────
