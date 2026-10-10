@@ -18,6 +18,12 @@
 //
 // Справка по стандартам DQ раскрывается в центральном текстовом окне
 // при нажатии кнопки «Справка» в заголовке модуля.
+//
+// VALFIX-1 (2026-10-10): жёлтая (warning) остановка степпера -> кнопка
+// «Исправить...» этой остановки в «Панели управления» мигает тонкой
+// рамкой бренда (animate-fix-border-blink, токен border-brand: индиго
+// в светлой теме, яркий голубой в тёмной; подробнее — комментарий у
+// кнопки, keyframes — в tailwind-preset.ts).
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Settings, ChevronDown, ChevronUp } from "lucide-react";
@@ -1032,12 +1038,32 @@ export function TsAnalysisValidation() {
               </button>
 
               {/* Для реализованных остановок открываются специализированные мастера. */}
+              {/* VALFIX-1: жёлтая остановка (displayedStatus warning --
+                  канон «жёлтого» статуса компонента: иконка amber в
+                  степпере, бейдж «Настроить» у pending+needs_rule) --
+                  у кнопки «Исправить...» появляется тонкая рамка (1px)
+                  и плавно мигает со средней скоростью (1.5s ease-in-out;
+                  keyframes fix-border-blink в пресете: полный цвет <->
+                  прозрачный). Цвет рамки -- ТОКЕН бренда (контракт DKT-1
+                  «имена классов не меняются -- меняются значения»):
+                  светлая тема -- фирменный индиго #2E3192, тёмная --
+                  яркий голубой #4A4ED9 (bg-brand кнопки «Метрики и
+                  алгоритм» в тёмной ревизии). Рамка геометрически есть
+                  у ВСЕХ кнопок (border-transparent у не-жёлтых):
+                  появление/исчезновение не сдвигает макет. При
+                  prefers-reduced-motion мигание отключается, рамка
+                  остаётся статичной. Мигание безусловно по активной
+                  остановке: правило привязано к статусу остановки. */}
               <button
                 onClick={() => handleDescriptionClick(check, "pipeline")}
-                className={`w-full mb-3 rounded px-3 py-2 text-sm text-left font-medium transition-colors ${
+                className={`w-full mb-3 rounded border px-3 py-2 text-sm text-left font-medium transition-colors ${
                   check.id === activeCheckId && descriptionSection === "pipeline"
                     ? "bg-brand text-white"
                     : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
+                } ${
+                  displayedStatus(check) === "warning"
+                    ? "border-brand animate-fix-border-blink motion-reduce:animate-none"
+                    : "border-transparent"
                 }`}
               >
                 {check.id === "data_types"

@@ -106,11 +106,27 @@ const preset: Partial<Config> = {
           from: { transform: "translateX(-50%)" },
           to: { transform: "translateX(0)" },
         },
+        // Мигание тонкой рамки кнопки «Исправить...» (правая колонка
+        // «Панель управления» модуля «Валидация», задача VALFIX-1):
+        // жёлтая (warning) остановка степпера -> рамка её кнопки плавно
+        // мигает. Цвет — ТОКЕН бренда без theme-ветвления (контракт
+        // DKT-1 «имена классов не меняются — меняются значения»):
+        // var(--c-brand) подменяется ревизией .dark из globals.css —
+        // светлая #2E3192 (фирменный индиго), тёмная #4A4ED9 (bg-brand —
+        // заливка кнопки «Метрики и алгоритм» в тёмной теме). Полное
+        // исчезновение рамки на 50% = «рамка появляется и гаснет»;
+        // 1.5s ease-in-out — плавно, средняя скорость (шкала: быстрое
+        // <=0.8s, медленное >=2.5s; мягкий пульс pulse-dot — 1.8s).
+        "fix-border-blink": {
+          "0%, 100%": { borderColor: "rgb(var(--c-brand) / 1)" },
+          "50%": { borderColor: "rgb(var(--c-brand) / 0)" },
+        },
       },
       animation: {
         "pulse-dot": "pulse-dot 1.8s ease-in-out infinite",
         marquee: "marquee 90s linear infinite",
         "marquee-reverse": "marqueeReverse 90s linear infinite",
+        "fix-border-blink": "fix-border-blink 1.5s ease-in-out infinite",
       },
     },
   },

@@ -1668,3 +1668,122 @@ describe("TsAnalysisValidation — PROGR-16-A: URL-контракт отчёта
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VALFIX-1 (2026-10-10): мигание рамки кнопки «Исправить...» у жёлтых
+// остановок степпера в правой колонке «Панель управления».
+//
+// Спецификация тимлида: если остановка степпера имеет статус «жёлтый»,
+// кнопка «Исправить...» этой остановки мерцает — появляется тонкая рамка
+// кнопки и плавно мигает со средней скоростью; цвет рамки: светлая тема —
+// фирменный индиго, тёмная — яркий голубой (как кнопка «Метрики и алгоритм»).
+//
+// Проектные решения (полная запись — worklog9, VALFIX-1):
+//   * «жёлтый» = displayedStatus(check) === "warning" — канон жёлтой
+//     остановки этого компонента (иконка amber-600 AlertTriangle в
+//     степпере; pending+needs_rule «Настроить» отображается в warning);
+//   * рамка — тонкая (1px), класс border-brand: токен бренда, светлая
+//     ревизия #2E3192 (фирменный индиго), тёмная #4A4ED9 (bg-brand —
+//     заливка кнопки «Метрики и алгоритм» в тёмной теме) — контракт
+//     DKT-1 «имена классов не меняются — меняются значения»;
+//   * анимация — animate-fix-border-blink (keyframes в пресете:
+//     полный цвет var(--c-brand) <-> прозрачный, 1.5s ease-in-out
+//     infinite — плавно, средняя скорость);
+//   * ВСЕ кнопки «Исправить...» несут border 1px: у не-жёлтых он
+//     transparent — рамка «появляется» без сдвига макета (геометрия
+//     всех кнопок одинакова и не меняется со статусом);
+//   * motion-reduce:animate-none — при prefers-reduced-motion рамка
+//     остаётся статичной (доступность, WCAG 2.2.2);
+//   * мигание безусловно по активной остановке: правило привязано к
+//     статусу остановки, не к тому, открыта ли она сейчас.
+describe("TsAnalysisValidation — мигание рамки «Исправить...» у жёлтых остановок (VALFIX-1)", () => {
+  const FIX_LABELS: Record<string, string> = {
+    data_types: "Исправить типы данных",
+    formats: "Исправить форматы и шаблоны",
+    ranges: "Исправить диапазоны значений",
+    consistency: "Исправить логику и хронологию",
+    uniqueness: "Исправить уникальность",
+    inclusion: "Исправить принадлежность к набору",
+    referential: "Исправить ссылочную целостность",
+    text_quality: "Исправить целостность текста",
+    regularity: "Исправить равномерность шага",
+    sufficiency: "Настроить план анализа",
+  };
+
+  async function runValidationAndWait(marker: RegExp | string) {
+    const runButton = await screen.findByRole("button", { name: "Запустить валидацию" });
+    await waitFor(() => expect(runButton).toBeEnabled());
+    fireEvent.click(runButton);
+    if (typeof marker === "string") {
+      expect((await screen.findAllByText(marker)).length).toBeGreaterThan(0);
+    } else {
+      expect((await screen.findAllByText(marker)).length).toBeGreaterThan(0);
+    }
+  }
+
+  it("жёлтая (warning) остановка: у кнопки «Исправить...» тонкая бренд-рамка и класс плавного мигания", async () => {
+    mockValidationChecks({ data_types: { status: "warning" }, regularity: { status: "done" } });
+    renderValidation();
+    await runValidationAndWait(/^Найдены проблемы/);
+
+    const warningFix = screen.getByRole("button", { name: FIX_LABELS.data_types });
+    expect(warningFix).toHaveClass("border", "border-brand", "animate-fix-border-blink", "motion-reduce:animate-none");
+    expect(warningFix).not.toHaveClass("border-transparent");
+
+    // done-остановка: рамка геометрически есть, но прозрачна; анимации нет.
+    const doneFix = screen.getByRole("button", { name: FIX_LABELS.regularity });
+    expect(doneFix).toHaveClass("border", "border-transparent");
+    expect(doneFix).not.toHaveClass("animate-fix-border-blink");
+    expect(doneFix).not.toHaveClass("border-brand");
+  });
+
+  it("все кнопки «Исправить...» резервируют рамку 1px независимо от статуса (макет не сдвигается)", async () => {
+    mockValidationChecks({
+      data_types: { status: "warning" },
+      formats: { status: "pending", status_reason: "needs_rule" },
+      ranges: { status: "done" },
+      sufficiency: { status: "skipped", status_reason: "disabled" },
+      uniqueness: { status: "done" },
+    });
+    renderValidation();
+    await runValidationAndWait(/^Найдены проблемы/);
+
+    for (const label of Object.values(FIX_LABELS)) {
+      expect(screen.getByRole("button", { name: label })).toHaveClass("border");
+    }
+  });
+
+  it("pending+needs_rule («Настроить» — тоже жёлтая остановка) мигает", async () => {
+    mockValidationChecks({ formats: { status: "pending", status_reason: "needs_rule" } });
+    renderValidation();
+    await runValidationAndWait("Настроить");
+
+    const needsRuleFix = screen.getByRole("button", { name: FIX_LABELS.formats });
+    expect(needsRuleFix).toHaveClass("border-brand", "animate-fix-border-blink", "motion-reduce:animate-none");
+  });
+
+  it("skipped-остановка не мигает никогда", async () => {
+    mockValidationChecks({ sufficiency: { status: "skipped", status_reason: "disabled" } });
+    renderValidation();
+    await runValidationAndWait("Отключено");
+
+    const skippedFix = screen.getByRole("button", { name: FIX_LABELS.sufficiency });
+    expect(skippedFix).not.toHaveClass("animate-fix-border-blink");
+    expect(skippedFix).not.toHaveClass("border-brand");
+    expect(skippedFix).toHaveClass("border-transparent");
+  });
+
+  it("мигание не зависит от активной остановки: жёлтая мигает и когда открыта другая", async () => {
+    mockValidationChecks({ data_types: { status: "warning" }, uniqueness: { status: "done" } });
+    renderValidation();
+    await runValidationAndWait(/^Найдены проблемы/);
+
+    // Активной по умолчанию является «Типы данных»; переключаемся на
+    // другую остановку -- жёлтая «Исправить типы данных» обязана
+    // продолжать мигать (правило привязано к статусу остановки).
+    fireEvent.click(screen.getByRole("button", { name: /^Уникальность/ }));
+
+    const warningFix = screen.getByRole("button", { name: FIX_LABELS.data_types });
+    expect(warningFix).toHaveClass("border-brand", "animate-fix-border-blink", "motion-reduce:animate-none");
+  });
+});
