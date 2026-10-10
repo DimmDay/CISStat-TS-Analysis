@@ -54,6 +54,12 @@ interface SessionCurrentResponse {
   stages: StagesMap;
   last_active_stage: string | null;
   target_column: string | null;
+  // AUDIT-C (контракт docs/progress_audit_contract.md §3.4/§14): серверный
+  // контекст расчёта и ревизия данных. Контекст вычисляет ТОЛЬКО сервер
+  // (фронт не создаёт догадками и не ведёт счётчик версий, план §6 GREEN);
+  // absence -- старый бэкенд или нет активного датасета.
+  context_id?: string | null;
+  data_revision?: number | null;
   updated_at: string | null;
 }
 
@@ -65,6 +71,11 @@ interface AppShellContextValue {
   // Шапка панели «Прогресс» (§6.1). Опционально в контракте: часть
   // тестов мокает контекст частично, отсутствие поля -- не ошибка.
   targetColumn?: string | null;
+  // AUDIT-C: серверный контекст расчёта (устойчивый между чтениями) и
+  // ревизия данных -- ключи контекста для будущих keyed-кэшей
+  // потребителей (AUDIT-3/2B); гидрируются только с сервера.
+  contextId?: string | null;
+  dataRevision?: number | null;
   sessionLoading: boolean;
   refreshSession: () => Promise<void>;
 }
@@ -76,6 +87,10 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
   const [stages, setStages] = useState<StagesMap>(EMPTY_STAGES);
   const [lastActiveStage, setLastActiveStage] = useState<string | null>(null);
   const [targetColumn, setTargetColumn] = useState<string | null>(null);
+  // AUDIT-C: гидратация серверного контекста расчёта (источник истины --
+  // /current; клиентский стейт -- только кэш для рендера).
+  const [contextId, setContextId] = useState<string | null>(null);
+  const [dataRevision, setDataRevision] = useState<number | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
 
   const applySessionResponse = useCallback((data: SessionCurrentResponse) => {
@@ -92,6 +107,8 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
     setStages(data.stages ?? EMPTY_STAGES);
     setLastActiveStage(data.last_active_stage ?? null);
     setTargetColumn(data.target_column ?? null);
+    setContextId(data.context_id ?? null);
+    setDataRevision(typeof data.data_revision === "number" ? data.data_revision : null);
   }, []);
 
   const refreshSession = useCallback(async () => {
@@ -128,6 +145,8 @@ export function AppShellProvider({ children }: { children: ReactNode }) {
         stages,
         lastActiveStage,
         targetColumn,
+        contextId,
+        dataRevision,
         sessionLoading,
         refreshSession,
       }}

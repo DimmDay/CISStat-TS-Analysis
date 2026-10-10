@@ -66,7 +66,7 @@ from apps.api.session_store import (
     AnalysisSession,
     get_session_store,
 )
-from apps.api.trace_events import make_trace_event
+from apps.api.trace_events import make_trace_event, stamp_envelope
 
 logger = logging.getLogger(__name__)
 
@@ -709,6 +709,14 @@ def record_trace_event(
         run_id=session.run_id,
     )
     event = replace(base, payload=payload) if payload else base
+    # AUDIT-C (контракт §12.7: продюсеры переходят на v2 задачей AUDIT-C --
+    # context): событие несёт СЕРВЕРНЫЙ контекст расчёта момента
+    # сеяния (run-scoped; сессия прочитана после применения мутации
+    # запроса -- контекст расчёта, на котором вычислен ответ). None
+    # (нет датасета/запуска) -- честное отсутствие, stamp_envelope
+    # возвращает событие в v1-форме (переход «читатели раньше
+    # писателей», контракт §7; полная обязательность v2 -- AUDIT-6B).
+    event = stamp_envelope(event, context_id=session.current_context_id())
     session.append_trace_event(event)
     return event
 

@@ -255,7 +255,7 @@ from apps.api.preprocessing_smoothing import (
 from apps.api.research_runs import get_dataset_file_store, record_run_event
 from apps.api.sufficiency_plan import preview_sufficiency_plan
 from apps.api.text_quality_correction import preview_text_quality_corrections
-from apps.api.trace_events import make_trace_event
+from apps.api.trace_events import make_trace_event, stamp_envelope
 from apps.api.type_conversion import preview_type_conversions
 from apps.api.uniqueness_correction import preview_uniqueness_correction
 from apps.api.session_store import (
@@ -553,6 +553,11 @@ def _to_response(session: AnalysisSession) -> SessionStateResponse:
         target_column=session.target_column,
         target_column_source=session.target_column_source,
         date_column=session.date_column,
+        # AUDIT-C: серверный контекст расчёта и ревизия данных -- клиент
+        # читает, не вычисляет (план §6 GREEN: «API отдаёт устойчивый
+        # контекст, UI его получает»).
+        context_id=session.current_context_id(),
+        data_revision=session.data_revision,
         updated_at=session.updated_at,
     )
 
@@ -1605,7 +1610,10 @@ def correct_dataset_formats(
         raise HTTPException(status_code=422, detail=str(ex)) from ex
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="validation:format_corrections")
         # PROGR-24-ORIGIN-A: флаг-колонки _format_valid -- производные
         # (гейты качества не возвращаются на флаги своей же остановки).
         register_derived_columns(
@@ -1675,7 +1683,10 @@ def correct_dataset_ranges(
         raise HTTPException(status_code=422, detail=str(ex)) from ex
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="validation:range_corrections")
         # PROGR-24-ORIGIN-A: флаг-колонки _range_flag -- производные.
         register_derived_columns(
             session,
@@ -1873,7 +1884,10 @@ def correct_dataset_missing(
         raise HTTPException(status_code=422, detail=str(ex)) from ex
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="validation:missing_corrections")
         # PROGR-24-ORIGIN-A: флаг-колонки остановки «Пропуски» -- производные
         # (та же логика, что и у флагов «Выбросов»); кэп-стратегии без новых
         # колонок не пишут в реестр ничего.
@@ -2019,7 +2033,10 @@ def correct_dataset_outliers(
         raise HTTPException(status_code=422, detail=str(ex)) from ex
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="validation:outlier_corrections")
         # PROGR-24-ORIGIN-A (Р6): флаг-колонки самой остановки «Выбросы» --
         # производные по построению; без регистрации они возвращались бы в
         # профиль следующего пересчёта (петля «+4 выброса от флаг-колонки»
@@ -2250,7 +2267,10 @@ def correct_dataset_inclusion(
         raise HTTPException(status_code=422, detail=str(ex)) from ex
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="validation:inclusion_corrections")
         # PROGR-24-ORIGIN-A: флаг-колонки _inclusion_valid -- производные.
         register_derived_columns(
             session,
@@ -2327,7 +2347,10 @@ def correct_dataset_referential(
         raise HTTPException(status_code=422, detail=str(ex)) from ex
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="validation:referential_corrections")
         # PROGR-24-ORIGIN-A: флаг-колонки _ref_valid -- производные.
         register_derived_columns(
             session,
@@ -2403,7 +2426,10 @@ def correct_dataset_text_quality(
         raise HTTPException(status_code=422, detail=str(ex)) from ex
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="validation:text_quality_corrections")
         # PROGR-24-ORIGIN-A: флаг-колонки _text_valid -- производные.
         register_derived_columns(
             session,
@@ -2482,7 +2508,10 @@ def correct_dataset_regularity(
         raise HTTPException(status_code=422, detail=str(ex)) from ex
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="validation:regularity_corrections")
         # PROGR-24-ORIGIN-A: ресемплинг может добавлять производные колонки
         # временной сетки -- регистрируем разностью списков (no-op без новых).
         register_derived_columns(
@@ -2597,7 +2626,10 @@ def correct_dataset_preprocessing_regularity(
         raise HTTPException(status_code=422, detail=str(ex)) from ex
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="preprocessing:regularity_correction")
         # PROGR-24-ORIGIN-A: остановка «Регулярность» «Предобработки».
         register_derived_columns(
             session,
@@ -2690,7 +2722,10 @@ def create_dataset_preprocessing_decomposition_outputs(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="preprocessing:decomposition")
         # PROGR-24-ORIGIN-A: компоненты STL (trend/seasonal/resid) --
         # производные колонки остановки «Декомпозиция».
         register_derived_columns(
@@ -2766,7 +2801,10 @@ def create_dataset_preprocessing_variance_transformation(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="preprocessing:variance_transformation")
         # PROGR-24-ORIGIN-A: преобразованный ряд (log/Box-Cox/...) --
         # производная колонка остановки «Стабилизация дисперсии».
         register_derived_columns(
@@ -2867,7 +2905,10 @@ def create_dataset_preprocessing_smoothing_transformation(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="preprocessing:smoothing")
         # PROGR-24-ORIGIN-A: сглаженный ряд -- производная колонка
         # остановки «Сглаживание».
         register_derived_columns(
@@ -2952,7 +2993,10 @@ def create_dataset_preprocessing_stationarity_transformation(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="preprocessing:stationarity_transformation")
         # PROGR-24-ORIGIN-A: разностный/детрендированный ряд -- производная
         # колонка остановки «Стационарность» (ядро класса C5 G345: её
         # всплески больше не возвращаются на остановку «Выбросы»). Раньше
@@ -3130,7 +3174,10 @@ def create_dataset_preprocessing_feature_generation(
     except (ValueError, TypeError, FloatingPointError, OverflowError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     if payload.apply:
-        session.dataframe = featured_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(featured_df, reason="preprocessing:feature_generation")
         # PROGR-24-ORIGIN-A: лаги/rolling/Fourier/calendar -- производные
         # колонки остановки «Генерация признаков» (там их законное место,
         # спека §«Что нужно решить» п.2; в гейты качества они не возвращаются).
@@ -3282,7 +3329,10 @@ def save_dataset_sufficiency_plan(
         raise HTTPException(status_code=422, detail=str(ex)) from ex
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="validation:sufficiency_plan")
         # PROGR-24-ORIGIN-A: план достаточности (ограничение/маркировка)
         # может материализовать флаг-колонки -- регистрируем разностью.
         register_derived_columns(
@@ -3370,7 +3420,10 @@ def correct_dataset_consistency(
         raise HTTPException(status_code=422, detail=str(ex)) from ex
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="validation:consistency_corrections")
         # PROGR-24-ORIGIN-A: флаг-колонки правил консистентности -- производные.
         register_derived_columns(
             session,
@@ -3443,7 +3496,10 @@ def correct_dataset_uniqueness(
         raise HTTPException(status_code=422, detail=str(ex)) from ex
 
     if payload.apply:
-        session.dataframe = corrected_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(corrected_df, reason="validation:uniqueness_corrections")
         # PROGR-24-ORIGIN-A: флаг-колонка дубликатов -- производная.
         register_derived_columns(
             session,
@@ -3937,7 +3993,10 @@ def convert_dataset_types(
 
     target_column_reset = False
     if payload.apply:
-        session.dataframe = converted_df
+        # AUDIT-C: единая точка замены DataFrame -- ревизия данных
+        # повышается ТОЛЬКО при фактическом изменении контента
+        # (no-op apply не выдаётся за изменённые данные, план §6 п.2).
+        session.set_dataframe(converted_df, reason="validation:convert_types")
         # PROGR-24-ORIGIN-A: конвертация типов меняет dtype на месте,
         # колонок не добавляет -- хелпер сверит списки и будет no-op;
         # вызов оставлен для единообразия единой точки регистрации.
@@ -3993,6 +4052,14 @@ def convert_dataset_types(
                 reset_reason="type_conversion",
                 source="system",
                 before_target=before_target,
+            )
+            # AUDIT-C (контракт §12.7): событие несёт серверный контекст
+            # расчёта момента сброса (ensure_run_id выше -- контекст
+            # определён; после сброса target-компонент пуст -- честное
+            # «цели нет» в компонентах). None -- v1-форма (переход
+            # «читатели раньше писателей», контракт §7).
+            cleared = stamp_envelope(
+                cleared, context_id=session.current_context_id()
             )
             session.append_trace_event(cleared)
             record_run_event(session, cleared)

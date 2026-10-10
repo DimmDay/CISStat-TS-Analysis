@@ -49,7 +49,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Iterator
+from typing import Any, Iterable, Iterator, Mapping
 
 # Python-реестры узлов -- импорт напрямую (§2). Порядок импортов:
 # платформенные реестры, не наоборот (риск-таблица plan_progress.md:
@@ -342,6 +342,157 @@ _KNOWN_NODE_STATUSES: frozenset[str] = frozenset(
 _STARTED_BEYOND_DONE: frozenset[str] = frozenset(
     {"running", "in_progress"}
 )
+
+
+# ── AUDIT-C: реестр dependency scopes узлов (один реестр) ─────────
+
+# Канонические scope-компоненты контекста расчёта (контракт
+# docs/progress_audit_contract.md §3.4 -- УТВЕРЖДЕНО-AUDIT-0 (форма)):
+#   data     -- контент данных (fingerprint файла + ревизия данных);
+#   target   -- исследуемый признак;
+#   temporal -- временная колонка/структура ряда.
+# Имена совпадают с apps/api/data_context.py::SCOPE_* (единственный
+# производитель компонентов); направленный импорт невозможен
+# (data_context -> session_store, а этот модуль импортирует
+# routers.session -- цикл), равенство страхует import-инвариант теста
+# (паттерн STAGES).
+CONTEXT_SCOPES: tuple[str, ...] = ("data", "target", "temporal")
+
+# База стадии -- что инвалидирует ЛЮБОЙ узел стадии. Матрица на реальной
+# семантике узлов (риск карточки AUDIT-C: «нельзя инвалидировать все узлы
+# на любую настройку ЛИБО сохранять target-dependent done при смене
+# цели»):
+#   upload -- остановки чтения файла/картинки данных: data; узлы
+#             render'а исследуемого признака -- +target; структура
+#             (подтверждение даты) -- +temporal; график ведёт ряд по
+#             временной оси -- все три;
+#   validation -- проверки колонок/формы данных: data; регулярность
+#             ряда -- +temporal; достаточность -- про ряд цели (+target).
+#             Смена цели НЕ инвалидирует проверки типов/форматов/диапазонов:
+#             данные не менялись (честная применимость сохраняется);
+#   preprocessing -- преобразования ряда/фрейма: base все три; фреймовые
+#             коррекции (пропуски/выбросы) и конфигурация масштабирования --
+#             data-only (от цели не зависят), регулярность -- +temporal;
+#   eda/modeling/forecasting -- исследования/решения/артефакты вычисляются
+#             для ряда цели на временной оси текущих данных: все три
+#             (совпадает с существующим централизованным инвалидированием:
+#             set_target_column/set_date_column -> reset_passports ->
+#             reset_modeling).
+_STAGE_SCOPE_BASE: dict[str, frozenset[str]] = {
+    "upload": frozenset({"data"}),
+    "validation": frozenset({"data"}),
+    "preprocessing": frozenset({"data", "target", "temporal"}),
+    "eda": frozenset({"data", "target", "temporal"}),
+    "modeling": frozenset({"data", "target", "temporal"}),
+    "forecasting": frozenset({"data", "target", "temporal"}),
+}
+
+# Исключения узлов от базы стадии (создание fail-closed: исключение должно
+# ссылаться на существующий узел своей стадии -- страхуется сборкой
+# реестра ниже + тестом полноты).
+_NODE_SCOPE_OVERRIDES: dict[str, dict[str, frozenset[str]]] = {
+    "upload": {
+        # График ведёт исследуемый признак по реальной временной оси.
+        "chart": frozenset({"data", "target", "temporal"}),
+        # Распределение выбранного числового признака (без временной оси).
+        "distribution": frozenset({"data", "target"}),
+        # Структура -- подтверждение даты/частоты: от цели не зависит.
+        "structure": frozenset({"data", "temporal"}),
+    },
+    "validation": {
+        # Регулярность -- про временной индекс ряда.
+        "regularity": frozenset({"data", "temporal"}),
+        # Достаточность -- про ряд цели (длина/частота для прогноза).
+        "sufficiency": frozenset({"data", "target", "temporal"}),
+    },
+    "preprocessing": {
+        # Фреймовые коррекции: контент колонок, от цели/даты не зависят.
+        "missing": frozenset({"data"}),
+        "outliers": frozenset({"data"}),
+        # Регулярность -- про временной индекс.
+        "regularity": frozenset({"data", "temporal"}),
+        # Рецепт масштабирования -- конфигурация фрейма (fold-local fit
+        # по X-колонкам), от цели не зависит.
+        "scaling": frozenset({"data"}),
+    },
+}
+
+# ПОЛНЫЙ реестр (stage -> node -> scopes): материализуется ОДИН раз,
+# полнота страхуется тестом (каждая пара (stage, node) из STAGE_NODES
+# имеет запись, сирот нет).
+NODE_DEPENDENCY_SCOPES: dict[str, dict[str, frozenset[str]]] = {
+    stage: {
+        node_id: _NODE_SCOPE_OVERRIDES.get(stage, {}).get(node_id, base)
+        for node_id in STAGE_NODES[stage]
+    }
+    for stage, base in _STAGE_SCOPE_BASE.items()
+}
+
+
+def node_dependency_scopes(stage: str, node_id: str) -> frozenset[str]:
+    """Зависимости узла от компонент контекста (AUDIT-C, контракт §3.4:
+    «dependency scopes узлов -- ОДИН реестр»; спека §8.2: «список
+    зависимостей выводить из реестра узлов, а не разбрасывать reset по
+    компонентам»).
+
+    Fail-closed: неизвестная пара -- ValueError (опечатка не должна
+    молча вернуть «нет зависимостей» = ложную вечную current)."""
+    if stage not in STAGE_NODES:
+        raise ValueError(
+            f"Неизвестная стадия узла: {stage!r}; известные: {list(STAGES)}"
+        )
+    if node_id not in STAGE_NODES[stage]:
+        raise ValueError(
+            f"Неизвестный узел {node_id!r} стадии {stage!r}; "
+            f"известные: {list(STAGE_NODES[stage])}"
+        )
+    return NODE_DEPENDENCY_SCOPES[stage][node_id]
+
+
+# Вердикты применимости захваченного контекста к текущим данным
+# (контракт §3.5: historical vs validity; план §8: «историческое
+# достижение отдельно от validity»).
+VALIDITY_CURRENT = "current"
+VALIDITY_STALE = "stale"
+VALIDITY_UNKNOWN = "unknown"
+
+
+def node_context_validity(
+    stage: str,
+    node_id: str,
+    captured: Mapping[str, Any] | None,
+    current: Mapping[str, Any],
+) -> str:
+    """Применимость результата, захваченного в captured-контексте, к
+    текущим данным узла (централизованная функция инвалидирования,
+    план §6 п.6; фундамент I6 для AUDIT-3/5B/8).
+
+    Правила:
+      * captured отсутствует/нечитаем -- «unknown» (честная неполнота:
+        старый факт без известного контекста НЕ выдаётся за current,
+        план §8 AUDIT-5B);
+      * у captured нет значения хотя бы одного нужного узлу scope --
+        «unknown» (частичный контекст не может удостоверить current);
+      * все нужные scope совпали -- «current»;
+      * иначе -- «stale».
+
+    Смена ТОЛЬКО цели оставляет data-only узел current (риск карточки:
+    «нельзя инвалидировать все узлы на любую настройку»), а
+    target-dependent узел -- stale («не сохранять target-dependent done
+    при смене цели»). Исторические события при этом не стираются --
+    verdict применимости, не удаление фактов.
+    """
+    scopes = node_dependency_scopes(stage, node_id)
+    if not isinstance(captured, Mapping):
+        return VALIDITY_UNKNOWN
+    for scope in scopes:
+        if scope not in captured:
+            return VALIDITY_UNKNOWN
+        if scope not in current:
+            return VALIDITY_UNKNOWN
+        if captured[scope] != current[scope]:
+            return VALIDITY_STALE
+    return VALIDITY_CURRENT
 
 
 def fold_status_values(statuses: Iterable[str]) -> str:

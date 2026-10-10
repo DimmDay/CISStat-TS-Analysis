@@ -42,7 +42,7 @@ import pandas as pd
 
 from apps.api.research_runs import record_run_event
 from apps.api.session_store import AnalysisSession
-from apps.api.trace_events import make_trace_event
+from apps.api.trace_events import make_trace_event, stamp_envelope
 
 AUTO_SOURCE = "auto"
 USER_SOURCE = "user"
@@ -122,6 +122,11 @@ def auto_fix_and_seed(session: AnalysisSession) -> str | None:
         target_column=column,
         source=AUTO_SOURCE,
     )
+    # AUDIT-C (контракт §12.7): событие несёт серверный контекст расчёта
+    # момента фиксации (ensure_run_id уже выполнен -- контекст
+    # определён). Смена цели меняет target-компонент контекста; None
+    # (нет датасета) -- v1-форма (переход «читатели раньше писателей»).
+    event = stamp_envelope(event, context_id=session.current_context_id())
     session.append_trace_event(event)
     record_run_event(session, event)
     return column

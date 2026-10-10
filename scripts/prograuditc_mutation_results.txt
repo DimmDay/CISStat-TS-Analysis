@@ -1,0 +1,47 @@
+Протокол мутационных проб PROGR-AUDIT-C (задача AUDIT-C)
+Дата: 2026-10-10. База: main@d54b648 + изменения задачи (см. worklog9).
+
+Команда:
+  python3 scripts/prograuditc_mutations.py
+
+Канал: СВОИ acceptance-тесты tests/api/test_progress_audit_c.py (32).
+Контроль достоверности харнесса: базлайн без мутаций 32 passed (M0
+прогоняется перед каждым раундом; restore побайтовый, md5-контроль всех
+6 целевых файлов после каждого мутанта и в finally -- урок PROGR-19).
+Коллекшн-ошибка/SyntaxError мутанта считается KILLED (урок харнесса H1).
+
+M0-контроль (no-op-комментарий): SURVIVED -- харнесс достоверен.
+
+Kill-мутанты (точки реализации AUDIT-C -> ловушка):
+  MC1  data_context: digest всегда заглушка        -> KILLED (failed=1)
+       (no-op-детекция слепа; тест no-op ревизии)
+  MC2  session_store: no-op-детекция инвертирована -> KILLED (failed=1)
+       (применённая коррекция не повышает ревизию)
+  MC3  session_store: bump ревизии снят            -> KILLED (failed=1)
+  MC4  data_context: run-scoping снят из материала -> KILLED (failed=1)
+       (повторная загрузка даёт тот же контекст -- RED карточки)
+  MC5  data_context: data-компонент не видит ревизию -> KILLED (failed=1)
+       (старая ревизия выдаётся за current -- I3/F04)
+  MC6  data_context: context_id -> uuid4           -> KILLED (failed=1)
+       (устойчивость между чтениями падает)
+  MC7  trace_hook: stamping контекста снят         -> KILLED (failed=1)
+  MC8  target_column_rule: stamping auto-события снят -> KILLED (failed=1)
+  MC9  pipeline_graph: EDA теряет target-scope     -> KILLED (failed=1)
+       (target-dependent «переживает» смену цели -- риск карточки)
+  MC10 pipeline_graph: validity инвертирована      -> KILLED (failed=1)
+       («результат старой ревизии остаётся историческим» сломан)
+  MC11 session_store: сериализация data_revision снята -> KILLED (failed=1)
+  MC12 session_store: set_dataset не сбрасывает ревизию -> KILLED (failed=1)
+       (после усиления теста: ревизия прежнего анализа не наследуется)
+
+Итог: 12/12 KILLED, 0 выживших; M0 SURVIVED.
+Находка харнесса (доработка acceptance-оракула, не правка под мутанта):
+первая редакция test_upload_starts_revision_zero_and_new_upload_resets не
+поднимала ревизию между загрузками (MC12 -- ложный выживший); тест
+усилен подъемом ревизии коррекцией первого анализа (честный путь:
+«новая загрузка сбрасывает ПОДНЯТУЮ ревизию»). Фикстура поправлена на
+CSV_WITH_MISSING: коррекция без пропусков -- честный no-op (ревизию не
+поднимает), что и подтверждено отдельным тестом no-op.
+
+Восстановление: md5 всех целевых файлов == базлайну после финального
+restore (проверено в finally харнесса).

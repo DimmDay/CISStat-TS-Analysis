@@ -2763,6 +2763,15 @@ class SessionStateResponse(BaseModel):
     # None -- старый корпус (без source), читается как "user". Аддитивно.
     target_column_source: Optional[str] = None
     date_column: Optional[str] = None
+    # AUDIT-C (контракт docs/progress_audit_contract.md §3.4/§14):
+    # серверный контекст расчёта -- вычисляется сервером от run_id +
+    # компонентов (fingerprint+ревизия данных/target/date); фронт контекст
+    # не создаёт догадками и счётчик версий не поставляет (план §6 GREEN).
+    # None -- нет активного датасета или запуск не зафиксирован.
+    context_id: Optional[str] = None
+    # Число применённых мутаций контента данных с момента загрузки
+    # (no-op не учитывается). Аддитивно; 0 -- начальная/неизвестная.
+    data_revision: int = 0
     updated_at: Optional[str] = None
 
 

@@ -429,7 +429,7 @@ AUDIT-7A (method) — до их поставок новые события ос�
 
 ## 13. Аддендум v0.3-H1 — горячая дорожка F02/F17 реализована (PROGR-AUDIT-H1) — **УТВЕРЖДЕНО-H1**
 
-Versioned-обновление (Донастройка_2 п.3): фиксировает реализацию дорожки и уточнения
+Versioned-обновление (Донастройка_2 п.3): фиксирует реализацию дорожки и уточнения
 R1/R2 акта docs/cert_prograudits_2026-10-10.md (PROGR-AUDIT-0-CERT); решения §3.1/§8 не меняются.
 
 ### 13.1. Уточнения указателей (R1/R2 — внесены в §8 с маркерами)
@@ -491,3 +491,104 @@ e2e, редьюсер reason, тройка Наставника, run-метад�
 закономерно покраснели бы при прогоне ПОСЛЕ фикса (спека §9); исходный JSON-протокол не
 переписан; перевод P03/P25 в «исправлено» зафиксирован в worklog9. Периметр-запреты §8
 соблюдены: restore (F03), H26–H28, envelope-поля, доставка — не тронуты.
+
+## 14. Аддендум v0.4-C — данные, ревизии и контекст расчёта (PROGR-AUDIT-C) — **УТВЕРЖДЕНО-C**
+
+Versioned-обновление (Донастройка_2 п.3): конкретизирует §3.4/§3.5/I3 до уровня проверяемых
+правил задачи AUDIT-C (plan_progress_audit.md §6). База: `main@d54b648`. Решения
+§3.1/§3.4/§12 не меняются — фиксация реализации и уточнение семантики.
+
+### 14.1. Серверный контекст расчёта — компоненты и context_id — УТВЕРЖДЕНО
+
+Единая точка — `apps/api/data_context.py` (без импортов из apps/api: направление
+session_store → data_context, циклы исключены; паттерн target_column_rule/column_origin):
+
+1. **Компоненты контекста** (`context_components`): `data = "{fingerprint}#{data_revision}"`,
+   `target = имя цели или ""`, `temporal = имя даты или ""`. Отсутствие выбора честно (""),
+   не выдумывается (план §1).
+2. **context_id** (`compute_context_id`): `"ctx-" + uuid5(fixed-namespace, material).hex[:16]`,
+   материал = `{v:1, run_id, components}` (sort_keys). **Run-scoping** — УТВЕРЖДЕНО: контекст
+   привязан к ЗАПУСКУ; повторная загрузка того же файла = новый запуск = НОВЫЙ контекст
+   (RED «тот же filename после повторной загрузки различается»; семантика set_dataset
+   «новый датасет = новый анализ»). Restored-сессия (тот же run + те же компоненты) получает
+   ТОТ ЖЕ id — продолжение исследования (§5.3); детерминизм uuid5 — повторное вычисление
+   на том же состоянии возвращает тот же id (устойчивость между чтениями /current).
+3. **Никакого клиентского контекста**: API не принимает context_id/data_revision от клиента;
+   `/current` отдаёт вычисленные сервером значения (гидратация UI —
+   `packages/ui/context/AppShellContext.tsx::contextId/dataRevision`) — «запретить подмену
+   версии собственным счётчиком фронтенда» (план §6 GREEN).
+
+### 14.2. Ревизии данных — УТВЕРЖДЕНО
+
+- `AnalysisSession.data_revision` (0 при загрузке) + `data_digest` (контент-дайджест
+  `compute_data_digest`: форма+колонки+`hash_pandas_object` с фиксированным ключом —
+  детерминирован между процессами).
+- **Единая точка замены DataFrame** — `AnalysisSession.set_dataframe(df, reason)`; все 18
+  точек применения коррекций/преобразований `routers/session.py` переведены (централизованное
+  повышение контекста, план §6 п.6). Ревизия +1 ТОЛЬКО при фактическом изменении контента;
+  **no-op apply не выдаётся за изменённые данные** (RED «preview не меняет её» — preview
+  в точку не доходит вовсе). Недоступность дайджеста (сбой вычисления → "") трактуется
+  БЕЗОПАСНО — как изменение (устаревший результат за current дороже лишней инвалидации,
+  спека §8.2). `set_dataframe` возвращает ФАКТ изменения.
+- Сериализация: `data_revision`/`data_digest` в session_to_dict/from_dict; старые документы —
+  0/"" (честная начальная/неизвестная, план §6 п.5). Аддитивные Optional — SESSION_SCHEMA_VERSION
+  не поднимается (прецедент PROGR-24-ORIGIN-A/F1).
+
+### 14.3. Dependency scopes — один реестр — УТВЕРЖДЕНО
+
+`app/core/pipeline_graph.py::NODE_DEPENDENCY_SCOPES` (stage → node → frozenset), канон
+`CONTEXT_SCOPES = ("data", "target", "temporal")`; полнота — fail-closed (каждая пара
+STAGE_NODES имеет запись, сирот нет; `node_dependency_scopes` на неизвестной паре — ValueError).
+Матрица: upload — data (chart +target+temporal, distribution +target, structure +temporal);
+validation — data (regularity +temporal, sufficiency +target+temporal); preprocessing — data+
+target+temporal (missing/outliers/scaling — data-only, regularity +temporal);
+eda/modeling/forecasting — data+target+temporal. Имена scope-ключей совпадают с
+`data_context.SCOPE_*` — равенство страхует тест (направленный импорт невозможен, паттерн STAGES).
+
+### 14.4. Применимость (validity) — централизованная функция — УТВЕРЖДЕНО
+
+`pipeline_graph.node_context_validity(stage, node_id, captured, current)` →
+`current | stale | unknown`: captured отсутствует/нечитаем/неполон (нет нужного узлу scope) —
+**unknown** (старый факт без известного контекста НЕ выдаётся за current, план §8);
+все нужные scope совпали — current; иначе — stale. Смена ТОЛЬКО цели оставляет data-only узел
+current и делает target-dependent узел stale (риск карточки: «нельзя инвалидировать все узлы
+на любую настройку ЛИБО сохранять target-dependent done при смене цели»). Verdict —
+применимость, НЕ удаление фактов: исторические события не стираются (план §6 п.6; замена
+interim-механизмов — AUDIT-3/5B).
+
+### 14.5. Envelope-штампование context_id продюсерами (§12.7) — УТВЕРЖДЕНО
+
+- `trace_hook.record_trace_event` — ВСЕ route-hook события несут context_id момента сеяния
+  (сессия прочитана после применения мутации запроса = контекст расчёта ответа);
+- `target_column_rule.auto_fix_and_seed` — auto-выбор;
+- `session.py::convert-types` — cleared (контекст момента сброса: target-компонент уже пуст,
+  ревизия конвертации применена — честная привязка к состоянию расчёта);
+- прочие программные продюсеры (forecasting, run-level progress.py, паспорта) остаются v1
+  до своих задач (AUDIT-7A/6B) — «читатели раньше писателей» §7.
+- **Форма перехода**: штамп любого поля = v2 (stamp_envelope, schema_version=2 +
+  evidence_level); частичный v2 (context без operation_id/causation_id) — ЛЕГАЛЬНАЯ
+  промежуточная форма перехода; полная обязательность таблицы §12.3 включается задачей
+  AUDIT-6B (strict context-write). Граница: durable-хранение envelope слоя 2 (Postgres-строка)
+  и run-метаданных ревизии — аддитивная миграция AUDIT-6A (тот же паттерн, что time_quality
+  §12.4); Memory-слой 2 несёт envelope полностью.
+
+### 14.6. Приёмка и границы
+
+Acceptance: `tests/api/test_progress_audit_c.py` (32: ревизии/no-op/preview, идентичность
+контекста и no-op выбора, unit data_context, штампование трёх продюсеров + I3-не-перепривязка,
+полнота/семантика реестра scopes + fail-closed + validity-матрица, сериализация/legacy-дефолты/
+CAS-конфликт без ложного обновления, API-экспозиция). Jest-оракул гидратации:
+`packages/ui/context/AppShellContext.test.tsx` (гидратация с сервера; отсутствие полей —
+честный null). Мутационные пробы: `scripts/prograuditc_mutations.py` — M0 SURVIVED,
+12/12 KILLED, 0 выживших (`scripts/prograuditc_mutation_results.txt`); находка харнесса —
+усиление теста сброса ревизии (MC12), не правка под мутанта. Контрольные suites:
+test_session_store/test_target_column/test_pipeline_graph — зелёные; полный регресс —
+1621 passed / 3 failed (документированный средовой нейро-fail-closed класс 1:1 базлайна H1) /
+1 skipped; jest 162/1919 (базлайн 161/1916 + 1/3 — оракул задачи); typecheck:all чисто.
+
+Границы (осознанные, вне задачи): result context (параметры методов/правил) — AUDIT-4/7A;
+UI keyed-кэши просмотров по contextId/dataRevision — AUDIT-3/2B; разделение
+historical/current в проекциях — AUDIT-5B/8; cross-run применимость restore — AUDIT-8;
+durable-хранение контекста слоя 2 — AUDIT-6A; required-доставка/receipt — AUDIT-6B.
+Инструмент аудита `progress_audit_readonly.py` не тронут (его наблюдения P-серии —
+доказательство базы).

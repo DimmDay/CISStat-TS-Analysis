@@ -58,6 +58,11 @@ from typing import Any, Optional
 import pandas as pd
 from fastapi import Request, Response
 
+from apps.api.data_context import (
+    compute_context_id,
+    compute_data_digest,
+    context_components,
+)
 from apps.api.model_readiness import MODELING_STAGE_IDS
 # PROGR-3: канонический TraceEvent (§4.1) -- только на границе чтения
 # трассы (read_pipeline_trace). Направление безопасно: trace_events не
@@ -217,6 +222,19 @@ class AnalysisSession:
     # "user" -- ручной выбор маршрута POST /target-column. Сбрасывается
     # вместе с target_column (set_dataset, convert-types reset).
     target_column_source: Optional[str] = None
+    # ── AUDIT-C: ревизии данных и серверный контекст расчёта ──
+    # data_revision -- число ПРИМЕНЁННЫХ мутаций контента DataFrame с
+    # момента загрузки датасета (set_dataset -> 0; set_dataframe в реальной
+    # точке применения -> +1 ТОЛЬКО при фактическом изменении контента --
+    # «no-op не выдаётся за изменённые данные», план §6 п.2). Preview/чтения
+    # ревизию не трогают. Серверное поле: фронт счётчик версий не
+    # поставляет (план §6 GREEN).
+    data_revision: int = 0
+    # Дайджест контента текущего DataFrame (compute_data_digest): основа
+    # честной no-op-детекции единой точки set_dataframe; «» -- недоступен
+    # (сбой вычисления) либо данных нет. Сериализуется -- восстановленная
+    # сессия сравнивает контент без пересчёта до следующей замены фрейма.
+    data_digest: str = ""
     # Общая дата-колонка для всех time-series операций сессии. Паспортная
     # история сбрасывается при её смене так же, как при смене target.
     date_column: Optional[str] = None
@@ -380,6 +398,11 @@ class AnalysisSession:
         """
         self.dataset = dataset
         self.dataframe = dataframe
+        # AUDIT-C: новая загрузка -- новая ревизия данных (0) и свой
+        # дайджест контента; контекст запуска пересчитывается от новых
+        # компонентов (новый датасет = новый анализ, план §6 п.2).
+        self.data_revision = 0
+        self.data_digest = compute_data_digest(dataframe)
         self.stages = {s: "pending" for s in STAGES}
         self.stages["upload"] = "done"
         self.last_active_stage = "upload"
@@ -537,6 +560,67 @@ class AnalysisSession:
             self.last_active_stage = stage
         self.touch()
 
+    # ── AUDIT-C: ревизии данных и серверный контекст расчёта ────────
+
+    def set_dataframe(self, df: Optional[pd.DataFrame], *, reason: str = "") -> bool:
+        """ЕДИНАЯ ТОЧКА замены DataFrame (централизованное повышение
+        контекста данных, план §6 п.6: «повысить контекст и инвалидировать
+        зависимые результаты централизованно»).
+
+        Ревизия повышается ТОЛЬКО при фактическом изменении контента
+        (дайджест до/после): no-op apply не выдаётся за изменённые данные
+        (план §6 п.2), preview/чтения сюда не доходят. Недоступность
+        дайджеста (compute_data_digest вернул "") трактуется БЕЗОПАСНО --
+        как изменение (устаревший результат, выданный за current, дороже
+        лишней инвалидации, спека §8.2).
+
+        Возвращает ФАКТ изменения (True -- data_revision повышен):
+        вызывающий код и тесты различают мутацию и no-op. Исторические
+        события/события трассы НЕ стираются (инвалидирование -- задача
+        проекций AUDIT-5B/3 по реестру зависимостей pipeline_graph).
+        """
+        if df is None:
+            changed = self.dataframe is not None
+        else:
+            new_digest = compute_data_digest(df)
+            changed = (
+                self.dataframe is None
+                or not new_digest  # дайджест недоступен -- безопасная сторона
+                or new_digest != self.data_digest
+            )
+        self.dataframe = df
+        if changed:
+            self.data_revision += 1
+            self.data_digest = compute_data_digest(df) if df is not None else ""
+            self.touch()
+        return changed
+
+    def current_context_components(self) -> Optional[dict[str, str]]:
+        """Scope-компоненты контекста расчёта текущего состояния (AUDIT-C,
+        реестр зависимостей pipeline_graph); None -- активного датасета
+        нет (контекст существует только у исследования, §5)."""
+        if self.dataset is None:
+            return None
+        return context_components(
+            dataset_fingerprint=self.dataset.dataset_fingerprint,
+            data_revision=self.data_revision,
+            target_column=self.target_column,
+            date_column=self.date_column,
+        )
+
+    def current_context_id(self) -> Optional[str]:
+        """Серверный context_id текущего контекста расчёта (AUDIT-C,
+        контракт §3.4): вычисляется от run_id + компонентов; None -- нет
+        датасета или запуск ещё не зафиксирован (честное отсутствие,
+        «незаполняемое поле отсутствует»). Смена цели/даты/данных меняет
+        компоненты -- контекст пересчитывается той же функцией."""
+        if self.dataset is None or not self.run_id:
+            return None
+        return compute_context_id(
+            run_id=self.run_id,
+            components=self.current_context_components() or {},
+        )
+
 
 # ────────────────────────────────────────────────────────────────────
 # Serialization helpers (shared by Memory → JSON → Redis path)
@@ -631,6 +715,11 @@ def session_to_dict(session: AnalysisSession) -> dict[str, Any]:
         # терял источник: авто-выбор читался как legacy None («user»),
         # шапка задачи B не показывала «(авто)».
         "target_column_source": session.target_column_source,
+        # AUDIT-C: ревизия данных и дайджест контента -- основа серверного
+        # контекста расчёта; переживают персистенцию (восстановленная
+        # сессия сравнивает контент без пересчёта до следующей замены).
+        "data_revision": session.data_revision,
+        "data_digest": session.data_digest,
         "date_column": session.date_column,
         "passport_history": [asdict(item) for item in session.passport_history],
         "passport_checkpoints": [asdict(item) for item in session.passport_checkpoints],
@@ -703,6 +792,11 @@ def session_from_dict(d: dict[str, Any]) -> AnalysisSession:
         # PROGR-25-A/F1: None для старых документов без поля (backcompat
         # rolling-deploy; легаси-семантика: потребители читают None как «user»).
         target_column_source=d.get("target_column_source"),
+        # AUDIT-C: 0/"" для старых документов без полей (план §6 п.5:
+        # «читать старые сессии с unknown-метаданными»); ревизия 0 -- честное
+        # «ревизия неизвестна/начальная», не выдуманная.
+        data_revision=int(d.get("data_revision", 0) or 0),
+        data_digest=str(d.get("data_digest", "") or ""),
         date_column=d.get("date_column"),
         passport_history=[
             _passport_snapshot_from_dict(item)
