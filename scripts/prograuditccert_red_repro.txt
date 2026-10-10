@@ -1,0 +1,192 @@
+INFO:numexpr.utils:NumExpr defaulting to 2 threads.
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using orjson library for writing JSON byte strings
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:107]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[109:121]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[123:131]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[135:3043]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:107]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[109:121]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[123:131]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[135:3043]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:105]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[107:119]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[121:129]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[133:3036]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:107]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[109:121]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[123:131]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[135:3043]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:107]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[109:121]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[123:131]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[135:3043]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:105]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[107:119]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[121:129]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[133:3036]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:107]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[109:121]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[123:131]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[135:3043]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:107]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[109:121]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[123:131]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[135:3043]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/target-column "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/convert-types "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+========================================================================
+PROGR-AUDIT-C-CERT: оракулы на СВОИХ данных — режим red
+========================================================================
+  ❌ P1   [KILLER] FAIL: AssertionError: context_id не серверная строка ctx-*: None
+  ❌ P2   [KILLER] FAIL: KeyError: 'context_id'
+  ❌ P3   [KILLER] FAIL: KeyError: 'data_revision'
+  ❌ P4   [KILLER] FAIL: KeyError: 'context_id'
+  ❌ P5   [KILLER] FAIL: KeyError: 'context_id'
+  ❌ P6   [KILLER] FAIL: KeyError: 'context_id'
+  ✅ G1   [GUARD ] PASS
+  ✅ G2   [GUARD ] PASS
+  ✅ G3   [GUARD ] PASS
+  ❌ D1   [KILLER] FAIL: ModuleNotFoundError: No module named 'apps.api.data_context'
+  ❌ D2   [KILLER] FAIL: ModuleNotFoundError: No module named 'apps.api.data_context'
+  ❌ D3   [KILLER] FAIL: ModuleNotFoundError: No module named 'apps.api.data_context'
+  ❌ D4   [KILLER] FAIL: ModuleNotFoundError: No module named 'apps.api.data_context'
+  ❌ R1   [KILLER] FAIL: AttributeError: 'AnalysisSession' object has no attribute 'data_revision'
+  ❌ R2   [KILLER] FAIL: AttributeError: 'AnalysisSession' object has no attribute 'set_dataframe'
+  ❌ R3   [KILLER] FAIL: AttributeError: module 'apps.api.session_store' has no attribute 'compute_data_digest'
+  ❌ R4   [KILLER] FAIL: AttributeError: 'AnalysisSession' object has no attribute 'set_dataframe'
+  ❌ S1   [KILLER] FAIL: ImportError: cannot import name 'CONTEXT_SCOPES' from 'app.core.pipeline_graph' (/home/z/my-project/certc_red_wt/app/core/pipeline_graph.py)
+  ❌ S2   [KILLER] FAIL: ImportError: cannot import name 'node_dependency_scopes' from 'app.core.pipeline_graph' (/home/z/my-project/certc_red_wt/app/core/pipeline_graph.py)
+  ❌ S3   [KILLER] FAIL: ImportError: cannot import name 'VALIDITY_CURRENT' from 'app.core.pipeline_graph' (/home/z/my-project/certc_red_wt/app/core/pipeline_graph.py)
+  ❌ S4   [KILLER] FAIL: ModuleNotFoundError: No module named 'apps.api.data_context'
+  ❌ C1   [KILLER] FAIL: ModuleNotFoundError: No module named 'apps.api.data_context'
+  ❌ C2   [KILLER] FAIL: ModuleNotFoundError: No module named 'apps.api.data_context'
+  ❌ C3   [KILLER] FAIL: ModuleNotFoundError: No module named 'apps.api.data_context'
+  ❌ C4   [KILLER] FAIL: ModuleNotFoundError: No module named 'apps.api.data_context'
+  ❌ E1   [KILLER] FAIL: AttributeError: 'AnalysisSession' object has no attribute 'current_context_id'
+  ❌ E2   [KILLER] FAIL: KeyError: 'context_id'
+  ❌ E3   [KILLER] FAIL: KeyError: 'context_id'
+  ❌ E4   [KILLER] FAIL: AttributeError: 'AnalysisSession' object has no attribute 'current_context_id'
+  ❌ E5   [KILLER] FAIL: AttributeError: 'AnalysisSession' object has no attribute 'current_context_id'
+  ❌ A1   [KILLER] FAIL: AttributeError: 'AnalysisSession' object has no attribute 'set_dataframe'
+  ❌ A2   [KILLER] FAIL: AttributeError: 'AnalysisSession' object has no attribute 'data_revision'
+  ❌ A3   [KILLER] FAIL: AttributeError: 'AnalysisSession' object has no attribute 'set_dataframe'
+  ❌ A4   [KILLER] FAIL: AttributeError: 'AnalysisSession' object has no attribute 'set_dataframe'
+  ✅ X1   [GUARD ] PASS
+  ❌ X2   [KILLER] FAIL: AssertionError: нет гидратации contextId
+  ❌ X3   [KILLER] FAIL: AssertionError: tests/api/test_progress_audit_c.py отсутствует (не задеплоен коммит задачи)
+------------------------------------------------------------------------
+ИТОГО: 4/37 PASS (KILLER: 33, GUARD: 4)
+------------------------------------------------------------------------
+EXPECTED_RED: полное совпадение (33 KILLER упали, 4 GUARD зелёные)
+    [96mpackages/ui/context/prograuditccert_context_oracle.test.tsx[0m:[93m38[0m:[93m11[0m - [91merror[0m[90m TS2339: [0mProperty 'contextId' does not exist on type 'AppShellContextValue'.
+    [96mpackages/ui/context/prograuditccert_context_oracle.test.tsx[0m:[93m38[0m:[93m22[0m - [91merror[0m[90m TS2339: [0mProperty 'dataRevision' does not exist on type 'AppShellContextValue'.
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+
+── TS-оракул (пакет ui) на d54b648 ─────────────────────────────────────
+Файл оракула скопирован в worktree (packages/ui/context/
+prograuditccert_context_oracle.test.tsx); node_modules скопирован (symlink
+запрещён ФС). Результат: Test Suites: 1 failed — ts-jest ТИП-ошибка
+TS2339: Property 'contextId'/'dataRevision' does not exist on type
+'AppShellContextValue' (контракта гидратации нет ДО AUDIT-C) — честный
+KILLER на уровне типов. GUARD-часть TS (targetColumn/refreshSession)
+тип-валидна и в родителе (проверено фактом компиляции до 38-й строки).

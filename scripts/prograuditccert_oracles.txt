@@ -1,0 +1,225 @@
+INFO:numexpr.utils:NumExpr defaulting to 2 threads.
+DEBUG:clickhouse_connect.driver.ctypes:Successfully imported ClickHouse Connect C data optimizations
+DEBUG:clickhouse_connect.json_impl:Using orjson library for writing JSON byte strings
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:107]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[109:121]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[123:131]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[135:3043]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:107]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[109:121]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[123:131]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[135:3043]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:107]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[109:121]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[123:131]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[135:3043]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:105]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[107:119]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[121:129]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[133:3036]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/missing-corrections "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/missing-corrections "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:107]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[109:121]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[123:131]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[135:3043]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/target-column "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/target-column "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/target-column "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:107]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[109:121]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[123:131]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[135:3043]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/target-column "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:105]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[107:119]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[121:129]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[133:3036]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/missing-corrections "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:107]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[109:121]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[123:131]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[135:3043]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:107]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[109:121]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[123:131]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[135:3043]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/target-column "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/session/dataset/convert-types "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/session/current "HTTP/1.1 200 OK"
+========================================================================
+PROGR-AUDIT-C-CERT: оракулы на СВОИХ данных — режим cert
+========================================================================
+  ✅ P1   [KILLER] PASS
+  ✅ P2   [KILLER] PASS
+  ✅ P3   [KILLER] PASS
+  ✅ P4   [KILLER] PASS
+  ✅ P5   [KILLER] PASS
+  ✅ P6   [KILLER] PASS
+  ✅ G1   [GUARD ] PASS
+  ✅ G2   [GUARD ] PASS
+  ✅ G3   [GUARD ] PASS
+  ✅ D1   [KILLER] PASS
+  ✅ D2   [KILLER] PASS
+  ✅ D3   [KILLER] PASS
+  ✅ D4   [KILLER] PASS
+  ✅ R1   [KILLER] PASS
+  ✅ R2   [KILLER] PASS
+  ✅ R3   [KILLER] PASS
+  ✅ R4   [KILLER] PASS
+  ✅ S1   [KILLER] PASS
+  ✅ S2   [KILLER] PASS
+  ✅ S3   [KILLER] PASS
+  ✅ S4   [KILLER] PASS
+  ✅ C1   [KILLER] PASS
+  ✅ C2   [KILLER] PASS
+  ✅ C3   [KILLER] PASS
+  ✅ C4   [KILLER] PASS
+  ✅ E1   [KILLER] PASS
+  ✅ E2   [KILLER] PASS
+  ✅ E3   [KILLER] PASS
+  ✅ E4   [KILLER] PASS
+  ✅ E5   [KILLER] PASS
+  ✅ A1   [KILLER] PASS
+  ✅ A2   [KILLER] PASS
+  ✅ A3   [KILLER] PASS
+  ✅ A4   [KILLER] PASS
+  ✅ X1   [GUARD ] PASS
+  ✅ X2   [KILLER] PASS
+  ✅ X3   [KILLER] PASS
+------------------------------------------------------------------------
+ИТОГО: 37/37 PASS (KILLER: 33, GUARD: 4)
+ВЕРДИКТ ОРАКУЛОВ: ALL GREEN

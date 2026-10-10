@@ -1,0 +1,61 @@
+M0 (базлайн без мутаций): repo GREEN + oracle GREEN — харнесс достоверен
+M0: SURVIVED (предсказание SURVIVED ✓)
+CM1: KILLED-ORACLE-ONLY (предсказание KILLED-ORACLE-ONLY ✓)
+CM2: KILLED-ORACLE-ONLY (предсказание KILLED-ORACLE-ONLY ✓)
+CM3: KILLED-ORACLE-ONLY (предсказание KILLED-ORACLE-ONLY ✓)
+CM4: KILLED-ORACLE-ONLY (предсказание KILLED-ORACLE-ONLY ✓)
+CM5: KILLED-BOTH (предсказание KILLED-ORACLE-ONLY ✗)
+CM6: KILLED-BOTH (предсказание KILLED-BOTH ✓)
+CM7: KILLED-BOTH (предсказание KILLED-BOTH ✓)
+CM8: KILLED-BOTH (предсказание KILLED-BOTH ✓)
+CM9: KILLED-BOTH (предсказание KILLED-ORACLE-ONLY ✗)
+CM10: KILLED-BOTH (предсказание KILLED-BOTH ✓)
+CM11: KILLED-BOTH (предсказание KILLED-BOTH ✓)
+CM12: KILLED-BOTH (предсказание KILLED-BOTH ✓)
+CM13: KILLED-BOTH (предсказание KILLED-BOTH ✓)
+
+Итог мутационных проб PROGR-AUDIT-C-CERT:
+  M0: SURVIVED | repo: ============================== 32 passed in 3.66s ==============================; oracle: ИТОГО: 37/37 PASS (KILLER: 33, GUARD: 4)
+  CM1: KILLED-ORACLE-ONLY | repo: ============================== 32 passed in 3.50s ==============================; oracle: ИТОГО: 35/37 PASS (KILLER: 33, GUARD: 4)
+  CM2: KILLED-ORACLE-ONLY | repo: ============================== 32 passed in 3.58s ==============================; oracle: ИТОГО: 35/37 PASS (KILLER: 33, GUARD: 4)
+  CM3: KILLED-ORACLE-ONLY | repo: ============================== 32 passed in 3.55s ==============================; oracle: ИТОГО: 36/37 PASS (KILLER: 33, GUARD: 4)
+  CM4: KILLED-ORACLE-ONLY | repo: ============================== 32 passed in 3.56s ==============================; oracle: ИТОГО: 36/37 PASS (KILLER: 33, GUARD: 4)
+  CM5: KILLED-BOTH | repo: ========================= 1 failed, 31 passed in 3.75s =========================; oracle: ИТОГО: 35/37 PASS (KILLER: 33, GUARD: 4)
+  CM6: KILLED-BOTH | repo: ========================= 1 failed, 31 passed in 3.67s =========================; oracle: ИТОГО: 34/37 PASS (KILLER: 33, GUARD: 4)
+  CM7: KILLED-BOTH | repo: ========================= 2 failed, 30 passed in 3.61s =========================; oracle: ИТОГО: 36/37 PASS (KILLER: 33, GUARD: 4)
+  CM8: KILLED-BOTH | repo: ========================= 6 failed, 26 passed in 3.60s =========================; oracle: ИТОГО: 31/37 PASS (KILLER: 33, GUARD: 4)
+  CM9: KILLED-BOTH | repo: ========================= 1 failed, 31 passed in 3.55s =========================; oracle: ИТОГО: 35/37 PASS (KILLER: 33, GUARD: 4)
+  CM10: KILLED-BOTH | repo: ========================= 1 failed, 31 passed in 3.56s =========================; oracle: ИТОГО: 36/37 PASS (KILLER: 33, GUARD: 4)
+  CM11: KILLED-BOTH | repo: ========================= 1 failed, 31 passed in 3.93s =========================; oracle: ИТОГО: 36/37 PASS (KILLER: 33, GUARD: 4)
+  CM12: KILLED-BOTH | repo: ========================= 1 failed, 31 passed in 3.71s =========================; oracle: ИТОГО: 36/37 PASS (KILLER: 33, GUARD: 4)
+  CM13: KILLED-BOTH | repo: rc=1; oracle: rc=1
+
+Kill-мутантов: 13/13; выживших: 0 ; oracle-only: 4 ['CM1', 'CM2', 'CM3', 'CM4']; repo-only: 0 []
+
+── Эволюция оракула (открытая фиксация, прецедент PROGR-24-C-CERT R4) ───
+
+1) ДО прогона мутантов (эволюция при отладке СВОИХ оракулов, не под
+   мутантов): (a) P6 переписан — первая редакция требовала у
+   upload_completed контекст ПОСЛЕ коррекции; честное поведение —
+   событие держит контекст СВОЕГО момента сеяния (I3), проверка
+   переписана на пару «историческое не перепривязано / событие после
+   коррекции несёт актуальный»; (b) E2 исправлен — pipeline_trace
+   хранит dict, а не TraceEvent (AttributeError первой редакции);
+   (c) E4 переписан — validate_envelope на partial-v2 честно называет
+   ещё-не-заполненные обязательные поля уровня (это аудит-линза, не
+   запрет формы перехода §14.5); легальность формы проверяется
+   принятием на границе (normalize сохраняет штамп); (d) R1 усилен
+   пином свежести дайджеста, R3 усилен симуляцией недоступного
+   ПРЕДЫДУЩЕГО дайджеста (обе правки ДО прогона, полный перегон
+   37/37 GREEN после каждой).
+2) Предсказания каналов: 11/13 совпали; 2 расхождения (CM5, CM9) —
+   в БОЛЕЕ СИЛЬНУЮ сторону repo, чем предсказано: CM5 (несвежий
+   дайджест) убит repo-тестом no-op ревизии (stale-дайджест делает
+   повторный apply «изменением», ревизия 2 != 1); CM9 (реестр без
+   overrides) убит repo-спотчеком «upload.structure == {data,
+   temporal}» (structure — override-узел). Направление обоих —
+   консервативное (двухканальность подтверждена, ложной уверенности
+   нет).
+3) M0-контроль: SURVIVED в обоих каналах (repo 32 passed, oracle
+   37/37) — харнесс достоверен. Восстановление: побайтовое, md5
+   каждого файла совпал с базлайном после КАЖДОГО мутанта и в финале.
