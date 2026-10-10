@@ -252,9 +252,10 @@ from apps.api.preprocessing_smoothing import (
     build_smoothing_profile,
     preview_smoothing_transformation,
 )
-from apps.api.research_runs import get_dataset_file_store
+from apps.api.research_runs import get_dataset_file_store, record_run_event
 from apps.api.sufficiency_plan import preview_sufficiency_plan
 from apps.api.text_quality_correction import preview_text_quality_corrections
+from apps.api.trace_events import make_trace_event
 from apps.api.type_conversion import preview_type_conversions
 from apps.api.uniqueness_correction import preview_uniqueness_correction
 from apps.api.session_store import (
@@ -3952,6 +3953,27 @@ def convert_dataset_types(
         if session.target_column is not None and not pd.api.types.is_numeric_dtype(
             converted_df[session.target_column]
         ):
+            # PROGR-AUDIT-H1 (горячая дорожка F02, контракт
+            # docs/progress_audit_contract.md §3.1): сброс цели --
+            # первоклассный факт ВЫДЕЛЕННЫМ типом target_column_cleared,
+            # а не только флаг target_column_reset в payload
+            # correction_applied узла data_types (который подсистема
+            # цели не читает -- F02/P03: run-метаданные и Наставник
+            # утверждали выбор, которого больше нет).
+            # Payload §3.1 п.3: {target_column: null, reset_reason,
+            # source, before_target}; source="system" -- решение
+            # принимается кодом точки (нечисловая колонка не может быть
+            # целью), before_target сохраняет прежний выбор для аудита.
+            # Двухслойность (канон R3, образец auto_fix_and_seed
+            # PROGR-25-C): слой 1 (append_trace_event) + зеркало слоя 2
+            # (record_run_event -- общий event_id, run.target_column=None
+            # той же точкой); хронология «сброс -> исход коррекции»:
+            # correction_applied хука приходит после ответа.
+            # Регистрация ТИПА не ждала AUDIT-S (оговорка-разблокировка
+            # Донастройки Части 1); событие -- v1-форма (envelope-поля --
+            # задачи AUDIT-C/6A/6B/7A, контракт §7 «читатели раньше
+            # писателей»).
+            before_target = session.target_column
             session.target_column = None
             # PROGR-25-A: источник выбора сбрасывается вместе с целью --
             # иначе устаревший "auto" указывал бы на несуществующий выбор.
@@ -3959,6 +3981,21 @@ def convert_dataset_types(
             session.reset_passports()
             session.sufficiency_plan = {}
             target_column_reset = True
+            if session.dataset is not None:
+                session.ensure_run_id()
+            cleared = make_trace_event(
+                "target_column_cleared",
+                stage="validation",
+                node_id=None,
+                run_id=session.run_id,
+                actor="system",
+                target_column=None,
+                reset_reason="type_conversion",
+                source="system",
+                before_target=before_target,
+            )
+            session.append_trace_event(cleared)
+            record_run_event(session, cleared)
         session.touch()
         store.save(session)
 

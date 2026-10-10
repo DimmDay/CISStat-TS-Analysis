@@ -1,0 +1,13 @@
+
+=== ИТОГИ МУТАЦИОННЫХ ПРОБ PROGR-AUDIT-H1 ===
+M0-noop    SURVIVED           failed=0
+MH1        KILLED             failed=1
+MH2        KILLED             failed=1
+MH3        KILLED             failed=1
+MH4        KILLED             failed=1
+MH5        KILLED             failed=1
+MH6        KILLED             failed=1
+MH7        KILLED             failed=1
+MH8        KILLED             failed=1
+MH9        KILLED             failed=1
+выживших kill-мутантов: 0

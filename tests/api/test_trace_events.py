@@ -148,6 +148,13 @@ class TestStageEventRegistry:
         assert STAGE_EVENT_TYPES["validation"] == {
             "mode_changed", "correction_previewed",
             "correction_applied", "target_column_changed",
+            # PROGR-AUDIT-H1 (горячая дорожка F02, контракт
+            # docs/progress_audit_contract.md §3.1 -- УТВЕРЖДЕНО-AUDIT-0):
+            # выделенный канонический тип СБРОСА цели (первоклассное
+            # событие вместо «пустого target в changed»); посев -- только
+            # серверный продюсер в convert-types, TRACE_ROUTES не
+            # расширялись.
+            "target_column_cleared",
             "passport_captured", "validation_check_status",
         }
         assert STAGE_EVENT_TYPES["preprocessing"] == {

@@ -259,7 +259,12 @@ EFFECTIVE_NODE_MODE_DEFAULT = "auto"
 # колонку. Атрибуция узла(ов) -- по payload, fail-safe (трасса --
 # журнал, R3: мусор/фантомы честно пропускаются).
 STAGE_LEVEL_REASON_EVENT_TYPES: frozenset[str] = frozenset(
-    {"mode_changed", "target_column_changed"}
+    {"mode_changed", "target_column_changed",
+     # PROGR-AUDIT-H1 (F02): сброс цели -- тоже reason-источник уровня
+     # стадии: снимает reason СВОЕГО класса (Целевой признак) узла-
+     # носителя validation/sufficiency -- тот же эффект, что пустой
+     # target в target_column_changed (канон PROGR-15-B).
+     "target_column_cleared"}
 )
 
 # Человекочитаемые метки АКТИВНОГО override для reason. «auto» --
@@ -318,7 +323,9 @@ def _stage_level_reason_updates(
     (принцип PROGR-20 P2: шум обесценивает канал); auto в карте --
     снятие устаревшего mode-reason. target_column_changed: непустая
     цель -- выбор (текст примера v1.1 дословно), пустая -- сброс выбора,
-    фактом не является (канон _target_confirmed PROGR-15-B)."""
+    фактом не является (канон _target_confirmed PROGR-15-B);
+    target_column_cleared (PROGR-AUDIT-H1, F02) -- выделенный сброс:
+    тот же эффект, что пустой target (снятие reason своего класса)."""
     event_type = str(data.get("event_type") or "")
     payload = data.get("payload")
     if not isinstance(payload, Mapping):
@@ -359,6 +366,17 @@ def _stage_level_reason_updates(
         # пустой/мусорный target: пустая строка -- сброс (снимаем свой
         # reason), прочий мусор -- не факт вовсе
         return {}, {target_node} if target == "" else set()
+    if event_type == "target_column_cleared":
+        # PROGR-AUDIT-H1 (горячая дорожка F02, контракт §3.1 п.7):
+        # выделенный тип сброса -- тот же эффект, что пустой target в
+        # target_column_changed (ветка выше): снимаем reason СВОЕГО
+        # класса (тег target) узла-носителя; текста не ставим. Мусор в
+        # payload -- деградация (щит выше уже отсёк не-Mapping); сама
+        # регистрация типа -- факт сброса, payload не читается.
+        target_stage, target_node = TARGET_REASON_STAGE_NODE
+        if stage != target_stage or target_node not in STAGE_NODES[target_stage]:
+            return {}, set()
+        return {}, {target_node}
     return {}, set()
 
 
@@ -487,6 +505,23 @@ def derive_node_statuses(events: list[Any]) -> dict[str, str]:
         if not node_id:
             continue
         if not is_known_node(stage, node_id):
+            continue
+        # PROGR-AUDIT-H1 (F17, interim до AUDIT-3 -- Донастройка плана
+        # Часть 2): монотонность ТОЛЬКО для profile_viewed, ТОЛЬКО в
+        # редьюсере: повторный GET профиля (running) не понижает узел,
+        # уже достигший состояния честнее running (done/warning/error/
+        # skipped) -- P25 «повторный GET EDA отменяет done».
+        # running устанавливается только из pending/отсутствия;
+        # re-view running -- идемпотентно. Легитимный путь переоткрытия
+        # сохранён: eda_check_status (PAYLOAD_STATUS) ставит pending
+        # после коррекции, как и прежде. НЕ глобальная монотонность
+        # (сделала бы H28 неисправимым молча). Точка -- derive-функция
+        # рядом со статической картой EVENT_NODE_STATUS, не сама карта;
+        # при AUDIT-3 заменяется контекст-ключевой монотонностью.
+        if (
+            str(data.get("event_type") or "") == "profile_viewed"
+            and statuses.get(f"{stage}/{node_id}") not in (None, "pending")
+        ):
             continue
         statuses[f"{stage}/{node_id}"] = status
     return statuses

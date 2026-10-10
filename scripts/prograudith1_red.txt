@@ -1,0 +1,16 @@
+FAILED tests/api/test_progress_audit_h1.py::TestRegistryAndFactory::test_cleared_registered_on_validation_stage
+FAILED tests/api/test_progress_audit_h1.py::TestRegistryAndFactory::test_cleared_resolves_server_result
+FAILED tests/api/test_progress_audit_h1.py::TestF17ProfileViewedMonotonicity::test_profile_viewed_does_not_lower_done
+FAILED tests/api/test_progress_audit_h1.py::TestF17ProfileViewedMonotonicity::test_profile_viewed_does_not_lower_warning_or_error
+FAILED tests/api/test_progress_audit_h1.py::TestReasonReducerCleared::test_cleared_resets_target_reason
+FAILED tests/api/test_progress_audit_h1.py::TestReasonReducerCleared::test_choice_after_cleared_sets_reason_again
+FAILED tests/api/test_progress_audit_h1.py::TestMentorTripleResetAware::test_confirmed_cleared_by_reset
+FAILED tests/api/test_progress_audit_h1.py::TestMentorTripleResetAware::test_origin_after_reset_is_unknown_not_user
+FAILED tests/api/test_progress_audit_h1.py::TestMentorTripleResetAware::test_phase_facts_cleared_removes_column
+FAILED tests/api/test_progress_audit_h1.py::TestMentorTripleResetAware::test_phase_text_falls_back_to_request_after_reset
+FAILED tests/api/test_progress_audit_h1.py::TestMentorTripleResetAware::test_phase_text_choice_after_reset_is_honest
+FAILED tests/api/test_progress_audit_h1.py::TestRunMetadataCleared::test_record_run_event_cleared_nulls_run_target
+FAILED tests/api/test_progress_audit_h1.py::TestP03EndToEnd::test_full_scenario_cleared_event_and_honest_consumers
+FAILED tests/api/test_progress_audit_h1.py::TestClearedNegativeGuards::test_reset_without_target_no_event
+FAILED tests/api/test_progress_audit_h1.py::TestF17EndToEnd::test_profile_refetch_keeps_done
+======================== 15 failed, 11 passed in 3.19s =========================

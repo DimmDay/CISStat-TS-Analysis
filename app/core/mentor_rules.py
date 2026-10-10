@@ -1061,33 +1061,55 @@ def _target_confirmed(events: Iterable[Any]) -> bool:
     (research_runs.py): target_column_changed с НЕПУСТЫМ
     payload.target_column -- выбор; пустой -- сброс выбора, фактом не
     является. Мусор/чужие типы -- пропуск (event_to_dict, деградация
-    «событие мимо фактов», не 500)."""
+    «событие мимо фактов», не 500).
+
+    PROGR-AUDIT-H1 (F02, контракт §3.1 п.7): reset-aware -- выделенный
+    тип target_column_cleared снимает подтверждение (last-wins по
+    хронологии: выбор после сброса подтверждает заново). Раньше
+    Наставник утверждал выбор, которого больше нет (P03)."""
+    confirmed = False
     for event in events:
         data = event_to_dict(event)
         if data is None:
             continue
-        if str(data.get("event_type") or "") != "target_column_changed":
+        event_type = str(data.get("event_type") or "")
+        if event_type == "target_column_cleared":
+            confirmed = False
+            continue
+        if event_type != "target_column_changed":
             continue
         payload = data.get("payload")
         if isinstance(payload, Mapping) and payload.get("target_column"):
-            return True
-    return False
+            confirmed = True
+    return confirmed
 
 
-def _target_origin(events: Iterable[Any]) -> str:
+def _target_origin(events: Iterable[Any]) -> str | None:
     """Происхождение последнего выбора целевого признака (PROGR-25-C,
     spec_progress_target_column.md §4-C): last-wins -- source из payload
     последнего события target_column_changed с НЕПУСТОЙ колонкой;
     "auto" -- авто-фиксация (задача A сеет source="auto"), "user" --
     ручной выбор ИЛИ legacy-событие без поля (контракт PROGR-25-A:
     отсутствие source трактуется как user). Мусор/чужие типы --
-    пропуск (event_to_dict, деградация «событие мимо фактов», не 500)."""
-    origin = "user"
+    пропуск (event_to_dict, деградация «событие мимо фактов», не 500).
+
+    PROGR-AUDIT-H1 (F02, контракт §3.1 п.4): reset-aware -- после
+    target_column_cleared происхождение = None (unknown), НЕ "user":
+    сброс не фабрикует человеческий выбор, которого не было; дефолт
+    "user" легитимен ТОЛЬКО для отсутствия поля у legacy-ВЫБОРА.
+    Пустой корпус -- тоже None: выбора не было, origin неизвестен
+    (потребитель -- auto-правило, требующее _target_confirmed==True,
+    -- поведение прежнее)."""
+    origin: str | None = None
     for event in events:
         data = event_to_dict(event)
         if data is None:
             continue
-        if str(data.get("event_type") or "") != "target_column_changed":
+        event_type = str(data.get("event_type") or "")
+        if event_type == "target_column_cleared":
+            origin = None
+            continue
+        if event_type != "target_column_changed":
             continue
         payload = data.get("payload")
         if isinstance(payload, Mapping) and payload.get("target_column"):
@@ -1197,13 +1219,21 @@ def _phase_event_text_facts(events: tuple[Any, ...]) -> dict[str, str]:
     та же семантика, что _target_origin/_target_confirmed). Пустой dict
     -- факта нет: шаблоны без этого поля не ломаются; auto-шаблон
     достижим только при совпавшем условии, которое гарантирует
-    непустую колонку последнего выбора."""
+    непустую колонку последнего выбора.
+
+    PROGR-AUDIT-H1 (F02): reset-aware -- target_column_cleared снимает
+    факт колонки (текст не называет сброшенную цель; fallback-шаблон
+    просьбы поля target_column не содержит)."""
     column = ""
     for event in events:
         data = event_to_dict(event)
         if data is None:
             continue
-        if str(data.get("event_type") or "") != "target_column_changed":
+        event_type = str(data.get("event_type") or "")
+        if event_type == "target_column_cleared":
+            column = ""
+            continue
+        if event_type != "target_column_changed":
             continue
         payload = data.get("payload")
         if isinstance(payload, Mapping) and payload.get("target_column"):

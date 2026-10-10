@@ -116,6 +116,23 @@ _STAGE_EVENT_TYPES: dict[str, set[str]] = {
         # spec_progress.md §4.1 (унаследовано из progress_ts_analysis.md).
         "mode_changed", "correction_previewed",
         "correction_applied", "target_column_changed",
+        # PROGR-AUDIT-H1 (горячая дорожка F02, контракт
+        # docs/progress_audit_contract.md §3.1 -- УТВЕРЖДЕНО-AUDIT-0):
+        # выделенный канонический тип СБРОСА цели -- первоклассное
+        # событие вместо «пустого target в target_column_changed»
+        # (сигнал сброса уходил вне канала цели: флаг
+        # target_column_reset=true путешествовал в payload
+        # correction_applied узла data_types, который подсистема цели
+        # не читает -- F02/P03). Носитель выбора -- та же пара
+        # (stage=validation, node_id=None). Посев ТОЛЬКО серверным
+        # продюсером в точке решения (POST /target-column остаётся
+        # маршрутом ВЫБОРА с 422 на пустой -- маршруты не объединены);
+        # whitelisting кодом, TRACE_ROUTES не трогаются. Payload:
+        # {target_column: null, reset_reason, source: "system"|"auto",
+        # before_target}; мусор в полях -- деградация, не 500.
+        # Регистрация ТИПА не ждёт AUDIT-S (оговорка-разблокировка
+        # Донастройки Части 1).
+        "target_column_cleared",
         # PROGR-13-B2: паспортная точка validation (см. примечание ниже).
         "passport_captured",
         # PROGR-16-A: отчёт фактов проверок модулем «Валидация»
@@ -262,6 +279,12 @@ EVIDENCE_LEVEL_BY_EVENT_TYPE: dict[str, str] = {
     "correction_previewed": "server_result",
     "correction_applied": "server_result",
     "target_column_changed": "user_decision",  # source=auto -- см. override
+    # PROGR-AUDIT-H1 (F02): сброс -- серверное решение кода точки
+    # конвертации (нечисловая колонка не может быть целью; POST-маршрута
+    # сброса нет -- контракт §3.1 п.5), поэтому server_result, а не
+    # user_decision: дефолтный actor и apply-клик пользователя не делают
+    # сброс осознанным человеческим решением О СБРОСЕ.
+    "target_column_cleared": "server_result",
     "validation_check_status": "client_observation",
     "preprocessing_check_status": "client_observation",
     "outliers_profile_status": "client_observation",

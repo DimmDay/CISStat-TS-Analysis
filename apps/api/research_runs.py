@@ -880,6 +880,17 @@ def record_run_event(session: Any, event: TraceEvent) -> None:
         if event.event_type == "target_column_changed":
             raw_target = event.payload.get("target_column")
             run = replace(run, target_column=str(raw_target) if raw_target else None)
+        elif event.event_type == "target_column_cleared":
+            # PROGR-AUDIT-H1 (горячая дорожка F02, контракт
+            # docs/progress_audit_contract.md §3.1 п.6): сброс цели
+            # обнуляет run.target_column ТОЙ ЖЕ точкой (раньше
+            # run-метаданные не обновлялись вовсе -- половина P03:
+            # restore/потребители слоя 2 утверждали выбор, которого
+            # больше нет). Тип события сам есть факт сброса;
+            # target_column_source в run-метаданных не существует
+            # (происхождение -- уровень сессии, там сброс в
+            # convert-types).
+            run = replace(run, target_column=None)
         run = replace(run, last_active_at=_now_iso())
         store.upsert_run(run)
         store.append_event(run_id, event)
