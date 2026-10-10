@@ -2243,3 +2243,172 @@ describe("TsAnalysisPreprocessing — PROGR-17-CERT: закрытие наход
     expect(postCalls).toHaveLength(1);
   });
 });
+
+// PREPR-VALFIX (2026-10-10): мигание рамки кнопки «Исправить/Настроить/
+// Обеспечить...» у жёлтых остановок степпера в правой колонке «Панель
+// управления» — перенос паттерна VALFIX-1 из «Валидации» в «Предобработку».
+//
+// Спецификация тимлида: если остановка степпера имеет статус «жёлтый»
+// (warning), кнопка «Исправить/Настроить/Обеспечить...» этой остановки
+// мерцает — появляется тонкая рамка кнопки и плавно мигает со средней
+// скоростью; цвет рамки: светлая тема — фирменный индиго, тёмная — яркий
+// голубой (как кнопка «Метрики и алгоритм»). Правило — для ВСЕХ остановок
+// степпера (постановка «Исправить/Настроить/Обеспечить...» перечисляет
+// семейство кнопок, не три конкретные остановки).
+//
+// Проектные решения (полная запись — worklog9, PREPR-VALFIX):
+//   * «жёлтый» = check.status === "warning" — канон жёлтой остановки
+//     ЭТОГО компонента: ровно это значение красит иконку AlertTriangle
+//     в text-amber-600 (StatusIcon) в степпере и статус-сообщения карточек
+//     (text-amber-700). В «Предобработке» нет displayedStatus/needs_rule —
+//     pending здесь всегда серый (Circle, neutral-400), в отличие от
+//     «Валидации»;
+//   * рамка — тонкая (1px), класс border-brand: ТОКЕН бренда без
+//     theme-ветвления (контракт DKT-1 «имена классов не меняются —
+//     меняются значения»): светлая ревизия #2E3192 (фирменный индиго),
+//     тёмная #4A4ED9 (= bg-brand активной кнопки «Метрики и алгоритм»
+//     в тёмной ревизии). Кейфреймы fix-border-blink уже в общем пресете
+//     (VALFIX-1, f95e2f1) — пресет НЕ меняется, потребление новое;
+//   * анимация — animate-fix-border-blink (1.5s ease-in-out infinite —
+//     плавно, средняя скорость; полный цвет var(--c-brand) <-> прозрачный);
+//   * ВСЕ кнопки семейства несут border 1px: у не-жёлтых он transparent —
+//     рамка «появляется» без сдвига макета (геометрия всех кнопок
+//     одинакова и не меняется со статусом);
+//   * motion-reduce:animate-none — при prefers-reduced-motion рамка
+//     остаётся статичной (доступность, WCAG 2.2.2);
+//   * мигание безусловно по активной остановке: правило привязано к
+//     статусу остановки, не к тому, открыта ли она сейчас.
+describe("TsAnalysisPreprocessing — мигание рамки «Исправить/Настроить/Обеспечить...» у жёлтых остановок (PREPR-VALFIX)", () => {
+  const FIX_LABELS: Record<string, string> = {
+    missing: "Исправить пропуски",
+    outliers: "Исправить выбросы",
+    regularity: "Исправить регулярность",
+    decomposition: "Настроить декомпозицию",
+    variance_stab: "Настроить трансформацию",
+    smoothing: "Настроить сглаживание",
+    stationarity: "Обеспечить стационарность",
+    spectral: "Зафиксировать периоды",
+    feature_eng: "Сгенерировать признаки",
+    scaling: "Настроить масштабирование",
+  };
+
+  it("жёлтая (warning) остановка: у кнопки тонкая бренд-рамка и класс плавного мигания; done-остановка — прозрачная рамка без анимации", async () => {
+    global.fetch = routeFetch();
+    renderPreprocessing();
+
+    // Сигнал готовности: профили осели — «Пропуски» (warning, дефолтный
+    // MISSING_PROFILE) показывает жёлтую иконку «Найдены проблемы».
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Пропуски/ }))
+        .toHaveAccessibleName(/Найдены проблемы/);
+    });
+
+    // warning-остановка: рамка бренд-цвета + плавное мигание + reduced-motion.
+    const warningFix = screen.getByRole("button", { name: FIX_LABELS.missing });
+    expect(warningFix).toHaveClass("border", "border-brand", "animate-fix-border-blink", "motion-reduce:animate-none");
+    expect(warningFix).not.toHaveClass("border-transparent");
+
+    // done-остановка (дефолтный REGULARITY_PROFILE): рамка геометрически
+    // есть, но прозрачна; анимации нет.
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Регулярность ряда/ }))
+        .toHaveAccessibleName(/Пройдено/);
+    });
+    const doneFix = screen.getByRole("button", { name: FIX_LABELS.regularity });
+    expect(doneFix).toHaveClass("border", "border-transparent");
+    expect(doneFix).not.toHaveClass("animate-fix-border-blink");
+    expect(doneFix).not.toHaveClass("border-brand");
+  });
+
+  it("кнопки семейства ВСЕХ десяти остановок резервируют рамку 1px независимо от статуса (макет не сдвигается)", async () => {
+    global.fetch = routeFetch();
+    renderPreprocessing();
+
+    // Ждём оседания профилей всех целевых остановок (последняя волна —
+    // после гидратации activeFeature «Price»).
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Масштабирование/ }))
+        .toHaveAccessibleName(/Найдены проблемы/);
+    });
+
+    for (const label of Object.values(FIX_LABELS)) {
+      expect(screen.getByRole("button", { name: label })).toHaveClass("border");
+    }
+  });
+
+  it("skipped-остановка не мигает никогда", async () => {
+    // Оверрайд статуса профиля регулярности на skipped («Не требуется»).
+    global.fetch = routeFetch({
+      regularity: { ...REGULARITY_PROFILE, status: "skipped" },
+    });
+    renderPreprocessing();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Регулярность ряда/ }))
+        .toHaveAccessibleName(/Не требуется/);
+    });
+
+    const skippedFix = screen.getByRole("button", { name: FIX_LABELS.regularity });
+    expect(skippedFix).not.toHaveClass("animate-fix-border-blink");
+    expect(skippedFix).not.toHaveClass("border-brand");
+    expect(skippedFix).toHaveClass("border-transparent");
+  });
+
+  it("мигание не зависит от активной остановки: жёлтая мигает и когда открыта другая, и когда открыта сама", async () => {
+    global.fetch = routeFetch();
+    renderPreprocessing();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Пропуски/ }))
+        .toHaveAccessibleName(/Найдены проблемы/);
+    });
+
+    // Активной по умолчанию является «Пропуски»; переключаемся на другую
+    // остановку -- жёлтая «Исправить пропуски» обязана продолжать мигать
+    // (правило привязано к статусу остановки, не к активной).
+    fireEvent.click(screen.getByRole("button", { name: /Масштабирование/ }));
+    const warningFix = screen.getByRole("button", { name: FIX_LABELS.missing });
+    expect(warningFix).toHaveClass("border-brand", "animate-fix-border-blink", "motion-reduce:animate-none");
+
+    // Обратный случай: активируем саму жёлтую остановку её кнопкой
+    // семейства (откроется мастер, кнопка станет bg-brand) -- мигание
+    // сохраняется: заливка растворяет рамку своего цвета, классы не
+    // снимаются (безусловность по активной остановке).
+    fireEvent.click(warningFix);
+    expect(screen.getByRole("button", { name: FIX_LABELS.missing })).toHaveClass(
+      "bg-brand",
+      "border-brand",
+      "animate-fix-border-blink",
+      "motion-reduce:animate-none",
+    );
+  });
+
+  it("дефолтная картина маршрутизатора: ровно 7 жёлтых остановок мигают одновременно, 3 done — нет", async () => {
+    global.fetch = routeFetch();
+    renderPreprocessing();
+
+    // Оседание обеих волн профилей: прямых (Пропуски/Выбросы) и целевых
+    // (после гидратации признака — включая «Масштабирование»).
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Выбросы/ }))
+        .toHaveAccessibleName(/Найдены проблемы/);
+      expect(screen.getByRole("button", { name: /Масштабирование/ }))
+        .toHaveAccessibleName(/Найдены проблемы/);
+    });
+
+    const WARNING_IDS = ["missing", "outliers", "variance_stab", "smoothing", "stationarity", "feature_eng", "scaling"];
+    const DONE_IDS = ["regularity", "decomposition", "spectral"];
+
+    for (const id of WARNING_IDS) {
+      const fix = screen.getByRole("button", { name: FIX_LABELS[id] });
+      expect(fix).toHaveClass("border-brand", "animate-fix-border-blink", "motion-reduce:animate-none");
+      expect(fix).not.toHaveClass("border-transparent");
+    }
+    for (const id of DONE_IDS) {
+      const fix = screen.getByRole("button", { name: FIX_LABELS[id] });
+      expect(fix).toHaveClass("border-transparent");
+      expect(fix).not.toHaveClass("animate-fix-border-blink");
+      expect(fix).not.toHaveClass("border-brand");
+    }
+  });
+});

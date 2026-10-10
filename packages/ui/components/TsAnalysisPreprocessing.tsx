@@ -20,6 +20,12 @@
 // (PROGR-9-FOCUS: кнопок «Пересчитать…» в панели больше нет —
 //  профили обновляются только автоматически: apply мастера, смена
 //  режима/признака/параметров, возврат во вкладку/окно.)
+//
+// PREPR-VALFIX (2026-10-10): жёлтая (warning) остановка степпера -> кнопка
+// «Исправить/Настроить/Обеспечить...» этой остановки в «Панели управления»
+// мигает тонкой (1px) рамкой бренда (плавное появление/гасание, 1.5s
+// ease-in-out — средняя скорость; keyframes fix-border-blink общего
+// пресета из VALFIX-1). Перенос паттерна VALFIX-1 из «Валидации».
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -1571,12 +1577,37 @@ export function TsAnalysisPreprocessing() {
               </button>
 
               {/* Для реализованных остановок открывается специализированный мастер. */}
+              {/* PREPR-VALFIX: жёлтая остановка (check.status === "warning" --
+                  канон «жёлтого» статуса ИМЕННО этого компонента: ровно это
+                  значение красит иконку AlertTriangle в text-amber-600 в
+                  степпере и amber-статус-сообщения карточек; в отличие от
+                  «Валидации» displayedStatus/needs_rule здесь нет -- pending
+                  всегда серый) -- у кнопки семейства «Исправить/Настроить/
+                  Обеспечить...» появляется тонкая рамка (1px) и плавно мигает
+                  со средней скоростью (1.5s ease-in-out; keyframes
+                  fix-border-blink в общем пресете -- VALFIX-1, f95e2f1:
+                  полный цвет <-> прозрачный). Цвет рамки -- ТОКЕН бренда
+                  (контракт DKT-1 «имена классов не меняются -- меняются
+                  значения»): светлая тема -- фирменный индиго #2E3192,
+                  тёмная -- яркий голубой #4A4ED9 (bg-brand кнопки «Метрики
+                  и алгоритм» в тёмной ревизии). Правило -- для ВСЕХ 10
+                  остановок (постановка перечисляет семейство кнопок, не три
+                  конкретные; имя кнопки разное -- статус один). Рамка
+                  геометрически есть у ВСЕХ кнопок (border-transparent у
+                  не-жёлтых): появление/исчезновение не сдвигает макет.
+                  При prefers-reduced-motion мигание отключается, рамка
+                  остаётся статичной. Мигание безусловно по активной
+                  остановке: правило привязано к статусу остановки. */}
               <button
                 onClick={() => handleDescriptionClick(check, "pipeline")}
-                className={`w-full mb-3 rounded px-3 py-2 text-sm text-left font-medium transition-colors ${
+                className={`w-full mb-3 rounded border px-3 py-2 text-sm text-left font-medium transition-colors ${
                   check.id === activeCheckId && descriptionSection === "pipeline"
                     ? "bg-brand text-white"
                     : "bg-brand-light hover:bg-brand-light/80 text-neutral-800"
+                } ${
+                  check.status === "warning"
+                    ? "border-brand animate-fix-border-blink motion-reduce:animate-none"
+                    : "border-transparent"
                 }`}
               >
                 {check.id === "missing" ? "Исправить пропуски" : check.id === "outliers" ? "Исправить выбросы" : check.id === "regularity" ? "Исправить регулярность" : check.id === "decomposition" ? "Настроить декомпозицию" : check.id === "variance_stab" ? "Настроить трансформацию" : check.id === "smoothing" ? "Настроить сглаживание" : check.id === "stationarity" ? "Обеспечить стационарность" : check.id === "spectral" ? "Зафиксировать периоды" : check.id === "feature_eng" ? "Сгенерировать признаки" : check.id === "scaling" ? "Настроить масштабирование" : "Полный пайплайн"}
