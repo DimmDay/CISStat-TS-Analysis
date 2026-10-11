@@ -1,0 +1,134 @@
+=== Оракулы сертификации AUDIT-6A (свои данные сертификатора) ===
+FP — отпечаток тела батча (свои payload, кириллица)
+  [PASS] FP1 тот же корпус → тот же отпечаток
+  [PASS] FP2 другой payload → другой отпечаток
+  [PASS] FP3 другой run_id → другой отпечаток
+  [PASS] FP4 контекст входит в материал отпечатка
+  [PASS] FP5 префикс sha256: и hex-длина 64
+  [PASS] FP6 отпечаток детерминирован межпроцессно
+ATOM-M — атомарность, Memory (отказ на последнем/первом, receipt, retry)
+  [PASS] ATOM1 отказ на последнем событии поднят
+  [PASS] ATOM2 после отказа ноль событий
+  [PASS] ATOM3 метаданные прежние после отказа
+  [PASS] ATOM4 receipt отказавшего батча НЕ зарегистрирован
+  [PASS] ATOM5 retry после отказа принят
+  [PASS] ATOM6 retry ровно одна копия каждого события
+  [PASS] ATOM7 отказ на первом: метаданные байт-в-байт прежние
+SEQ-M — sequence per run: чередование, независимость запусков
+  [PASS] SEQ1 непрерывный префикс 1..5 при чередовании
+  [PASS] SEQ2 sequence независима per run (второй запуск с 1)
+  [PASS] SEQ3 конкурентные батчи: непрерывный 1..40 без дублей/дыр
+RCP-M — receipt: безключевой, два ключа, retry после дописанных
+  [PASS] RCP1 безключевой батч возвращает receipt с пустым ключом
+  [PASS] RCP2 безключевой: get_commit_receipt вернёт None
+  [PASS] RCP3 два РАЗНЫХ ключа на одно тело — оба приняты независимо
+  [PASS] RCP4 retry старого ключа возвращает СТАРЫЙ watermark и ТЕ ЖЕ accepted-ids
+  [PASS] RCP5 retry старого ключа НЕ дописывает события
+  [PASS] RCP6 форма receipt: run/context/ids/watermark/created_at
+  [PASS] RCP7 get_commit_receipt возвращает сохранённый
+  [PASS] RCP8 accepted-ids — принятые (дедуплицированные не входят)
+  [PASS] RCP9 прочитанный receipt частичного батча: accepted = принятые
+CAS-M — expected context: привязка/совпадение/отключение/stale
+  [PASS] M1 stored NULL + expected → первичная привязка принята
+  [PASS] M2 совпадающий контекст принимается
+  [PASS] M3 stale-контекст отклонён (CommitConflictError)
+  [PASS] M4 после CAS-отказа ноль новых событий от производителя
+  [PASS] M5 ключ пережил CAS-отказ: retry с исправленным контекстом принят
+  [PASS] M6 expected=None отключает CAS (advisory)
+  [PASS] M7 предусловие: run существует с контекстом NULL
+  [PASS] M8 stored NULL + существующий run → первичная привязка, не конфликт
+COA-M — COALESCE-слияние аддитивных полей run
+  [PASS] M1 None-батч не стирает context/revision/digest
+  [PASS] M1b receipt None-батча несёт слитый контекст
+  [PASS] M2 digest обновлён, контекст сохранён
+  [PASS] M3 target_column записан напрямую
+  [PASS] M4 target_column=None сбрасывает цель (не COALESCE)
+PAR-M — паритет: дедуп append, глубокие копии, envelope durable
+  [PASS] M1 дедуп append (run_id, event_id) — ровно один факт
+  [PASS] M2 глубокие копии: мутация прочитанного не портит stored
+  [PASS] M3 envelope v2 переживает запись/чтение
+ATOM-P — атомарность, живой PG (отказ на последнем, rollback)
+  [PASS] ATOMP1 отказ на последнем событии поднят (живой PG)
+  [PASS] ATOMP2 rollback: ноль событий в таблице
+  [PASS] ATOMP3 rollback: run-метаданные не записаны
+  [PASS] ATOMP4 receipt после отката отсутствует
+SEQ-P — живой PG: непрерывность, legacy-first порядок, уникальность
+  [PASS] SEQP1 живой PG: непрерывный 1..6 при чередовании
+  [PASS] SEQP2 legacy-first: NULL-строки раньше новых commit_seq
+  [PASS] SEQP3 новые события после legacy начинаются с commit_seq=1
+  [PASS] SEQP4 legacy-строки честно sequence=None
+RCP-P — живой PG: retry старого ключа, conflict без записи
+  [PASS] RCPG1 тот же ключ + другое тело → IdempotencyConflictError
+  [PASS] RCPG2 конфликт БЕЗ записи (корпус не вырос)
+  [PASS] RCPG3 retry возвращает прежний receipt (watermark равен)
+  [PASS] RCPG4 retry не дублирует
+  [PASS] RCPG5 receipt durable: читается новым коннектом/объектом
+  [PASS] RCPG6 accepted-ids — принятые (дедуплицированные не входят)
+  [PASS] RCPG7 прочитанный из строки receipt: accepted = принятые
+CAS-PG — expected context: привязка/совпадение/отключение/stale
+  [PASS] PG1 stored NULL + expected → первичная привязка принята
+  [PASS] PG2 совпадающий контекст принимается
+  [PASS] PG3 stale-контекст отклонён (CommitConflictError)
+  [PASS] PG4 после CAS-отказа ноль новых событий от производителя
+  [PASS] PG5 ключ пережил CAS-отказ: retry с исправленным контекстом принят
+  [PASS] PG6 expected=None отключает CAS (advisory)
+  [PASS] PG7 предусловие: run существует с контекстом NULL
+  [PASS] PG8 stored NULL + существующий run → первичная привязка, не конфликт
+COA-PG — COALESCE-слияние аддитивных полей run
+  [PASS] PG1 None-батч не стирает context/revision/digest
+  [PASS] PG1b receipt None-батча несёт слитый контекст
+  [PASS] PG2 digest обновлён, контекст сохранён
+  [PASS] PG3 target_column записан напрямую
+  [PASS] PG4 target_column=None сбрасывает цель (не COALESCE)
+PAR-PG — паритет: дедуп append, глубокие копии, envelope durable
+  [PASS] PG1 дедуп append (run_id, event_id) — ровно один факт
+  [PASS] PG2 глубокие копии: мутация прочитанного не портит stored
+  [PASS] PG3 envelope v2 переживает запись/чтение
+MIG — миграция 0002: файл DDL == python-утверждения, legacy-корпус
+  [PASS] MIG1 файл 0002 == MIGRATION_STATEMENTS_0002 (нормализованно)
+  [PASS] MIG2 каталог MIGRATION_FILES содержит 0001+0002
+  [PASS] MIG3 legacy-корпус читаем после файла 0002
+  [PASS] MIG4 legacy sequence честно None
+  [PASS] MIG5 батч+receipt на мигрированном корпусе (watermark с 1)
+E2E — свой CSV: карта остановок = один batch, содержательный ключ map:
+DEBUG:app.data.file_loader:clickhouse-connect not installed — ClickHouse support disabled
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:114]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[116:128]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[130:138]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[142:1376]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+  [PASS] E2E0 свой CSV загружен через живой API
+INFO:httpx:HTTP Request: POST http://testserver/v1/progress/upload-stops "HTTP/1.1 200 OK"
+  [PASS] E2E1 upload-stops 200
+  [PASS] E2E2 карта узлов — один batch: непрерывный sequence-префикс
+  [PASS] E2E3 содержательный ключ map:{run_id}:{fp[:40]} восстанавливается своим пересчётом
+INFO:httpx:HTTP Request: POST http://testserver/v1/progress/upload-stops "HTTP/1.1 200 OK"
+  [PASS] E2E4 повтор карты: 200
+  [PASS] E2E5 новая поставка карты честно даёт новые наблюдения (P07)
+  [PASS] E2E6 слой 1 симметрично вырос на новую поставку
+  [PASS] E2E7 store-retry того же батча: прежний receipt, ноль дубликатов
+=== ИТОГ ОРАКУЛОВ: 85/85 PASS ===
+INFO:pgserver:exiting 21350 remaining pids=[21350]
+INFO:pgserver:cleaning last handle for server: /tmp/cisstat6acert-pg-mwcgnmwx
+INFO:pgserver:Running commandline:
+['/home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/pg_ctl', '-D', '/tmp/cisstat6acert-pg-mwcgnmwx', '-w', 'stop']
+with kwargs: `{'user': None}`
+INFO:pgserver:Successful postgres command ['/home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/pg_ctl', '-D', '/tmp/cisstat6acert-pg-mwcgnmwx', '-w', 'stop'] with kwargs: `{'user': None}`
+stdout:
+waiting for server to shut down.... done
+server stopped
+
+---
+stderr:
+
+---
+
+EXIT=0

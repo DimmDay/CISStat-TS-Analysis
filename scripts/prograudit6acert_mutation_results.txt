@@ -1,0 +1,26 @@
+=== Мутационная кампания сертификации AUDIT-6A (свои мутанты CM) ===
+Живой PG канала repo: postgresql://postgres:@/postgres?host=/tmp/cisstat6acert-mutpg-qcm0wngo
+[CM-0] no-op контроль (оба канала обязаны быть зелёными)...
+[CM-0] SURVIVED в обоих каналах — харнесс достоверен
+[CM-1] KILLED-ORACLE-ONLY: fingerprint: payload исключён из материала отпечатка
+[CM-2] KILLED-ORACLE-ONLY: Memory CAS: stored NULL трактуется как конфликт (привязка сломана)
+[CM-3] KILLED-BOTH: Memory append_event: дедуп корпуса снят (advisory I8/P20)
+[CM-4] KILLED-ORACLE-ONLY: PG commit_event_batch: commit_seq от MAX(seq) BIGSERIAL
+[CM-5] KILLED-BOTH: PG list_events: legacy-first порядок снят (NULLS LAST)
+[CM-6] KILLED-ORACLE-ONLY: PG receipt: accepted_event_ids = все id батча вместо принятых
+[CM-7] KILLED-ORACLE-ONLY: Memory receipt.context_id из батча вместо слитого run
+[CM-8] KILLED-BOTH: PG upsert run: data_digest без COALESCE (None-батч стирает)
+[CM-9] KILLED-BOTH: Memory идемпотентность: short-circuit снят (retry перезаписывает receipt)
+
+=== ИТОГ ===
+  CM-0   SURVIVED (контроль)    no-op
+  CM-1   KILLED-ORACLE-ONLY     fingerprint: payload исключён из материала отпечатка
+  CM-2   KILLED-ORACLE-ONLY     Memory CAS: stored NULL трактуется как конфликт (привязка сломана)
+  CM-3   KILLED-BOTH            Memory append_event: дедуп корпуса снят (advisory I8/P20)
+  CM-4   KILLED-ORACLE-ONLY     PG commit_event_batch: commit_seq от MAX(seq) BIGSERIAL
+  CM-5   KILLED-BOTH            PG list_events: legacy-first порядок снят (NULLS LAST)
+  CM-6   KILLED-ORACLE-ONLY     PG receipt: accepted_event_ids = все id батча вместо принятых
+  CM-7   KILLED-ORACLE-ONLY     Memory receipt.context_id из батча вместо слитого run
+  CM-8   KILLED-BOTH            PG upsert run: data_digest без COALESCE (None-батч стирает)
+  CM-9   KILLED-BOTH            Memory идемпотентность: short-circuit снят (retry перезаписывает receipt)
+=== Убито 9/9 kill-мутантов; выживших: нет; пропущено: нет ===

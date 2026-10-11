@@ -1,0 +1,12 @@
+=== Оракулы сертификации AUDIT-6A (свои данные сертификатора) ===
+FP — отпечаток тела батча (свои payload, кириллица)
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/wt-6a-red2/scripts/prograudit6acert_oracles.py", line 833, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/home/z/my-project/CISStat-TS-Analysis/wt-6a-red2/scripts/prograudit6acert_oracles.py", line 807, in main
+    grp_fp()
+  File "/home/z/my-project/CISStat-TS-Analysis/wt-6a-red2/scripts/prograudit6acert_oracles.py", line 160, in grp_fp
+    from apps.api.research_runs import batch_body_fingerprint
+ImportError: cannot import name 'batch_body_fingerprint' from 'apps.api.research_runs' (/home/z/my-project/CISStat-TS-Analysis/wt-6a-red2/apps/api/research_runs.py)
+EXIT=1
