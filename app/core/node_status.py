@@ -44,6 +44,7 @@ from app.core.pipeline_graph import (
     NODE_MODE_VALUES,
     STAGES,
     STAGE_NODES,
+    event_context_validity,
     fold_status_values,
     is_known_node,
 )
@@ -301,13 +302,31 @@ _REASON_TAG_TARGET = "target"
 
 
 def _empty_detail() -> dict[str, Any]:
-    """Свежая книжка деталей узла (публичные поля §3 + внутренний тег
-    происхождения reason; тег в выход не попадает)."""
+    """Свежая книжка деталей узла (публичные поля §3 + внутренние теги
+    происхождения; теги в выход §3 НЕ попадают -- тест «ровно 7 полей»
+    страхует).
+
+    AUDIT-5B (I10, план §8 «Каждое поле reason/count ссылается на свой
+    source_event»): книжка несёт происхождение КАЖДОГО поля --
+    _reason_tag (класс reason-источника, прежний), плюс ссылки на
+    породившие события и envelope статусного факта:
+      _status_src/--_ctx/--_level -- event_id/context_id/evidence_level
+        события, установившего ТЕКУЩИЙ статус (validity/evidence узла);
+      _reason_src -- событие текста reason (решение узла либо
+        stage-level-источник, PROGR-21);
+      _count_src -- событие числа бейджа (может быть старе решения:
+        событие без счётчика счётчик не стирает).
+    """
     return {
         "status_reason": None,
         "summary_count": None,
         "last_touched_at": None,
         "_reason_tag": None,
+        "_status_src": None,
+        "_reason_src": None,
+        "_count_src": None,
+        "_status_ctx": None,
+        "_status_level": None,
     }
 
 
@@ -483,29 +502,166 @@ def resolve_event_status(data: Mapping[str, Any]) -> str | None:
     return EVENT_NODE_STATUS.get(event_type)
 
 
-def derive_node_statuses(events: list[Any]) -> dict[str, str]:
-    """ЕДИНЫЙ движок: статус каждого узла -- по последнему его событию
-    (хронология входа сохраняется: позднее событие перезаписывает
-    раннее -- previewed -> applied = done). Ключ -- "stage/node_id"
-    (id сознательно пересекаются между стадиями: regularity/stationarity).
+class NodeStateFold:
+    """Инкрементальная форма ЕДИНОГО редьюсера (AUDIT-5B, план §8:
+    «Один редьюсер и один канонический порядок для панели, Наставника и
+    отчёта»).
 
-    События без узла (N-2), без известного маппинга или вне графа
-    честно пропускаются: фантомных узлов не возникает (is_known_node
-    гейт -- тот же, что у make_node_state §3)."""
-    statuses: dict[str, str] = {}
-    for event in events:
+    Батч-функции derive_node_statuses/derive_pipeline_node_states --
+    развёртка одного шага apply() по корпусу; проекция
+    (apps/api/progress_projection.py) использует ТУЖЕ свёртку
+    инкрементально: checkpoint-состояние (export_state) + хвост
+    событий по watermark, без повторного прогона префикса. Второй
+    реализации семантики нет и быть не должно (прецедент свёртки
+    §12 п.10) -- эквивалентность «replay == snapshot + tail» страхуют
+    оракулы tests/api/test_progress_audit_5b.py.
+
+    apply() -- точная копия тел двух проходов батч-версии (статусы +
+    детали узлов, PROGR-11/13-A4/21/H1) в один проход: порядок
+    обработки событий не меняется, last-wins семантика прежняя.
+    ЕДИНСТВЕННОЕ изменение семантики против базы a2dcbee -- 5B/I10:
+    payload-статусное событие с НЕВАЛИДНЫМ payload (нет status вне
+    CHECK_STATUS_VALUES) больше не меняет детали узла (reason/счётчик)
+    -- фиксируется диагностической аномалией fold (anomaly_count),
+    last_touched_at остаётся фактом касания (событие в журнале было).
+    """
+
+    def __init__(self) -> None:
+        self._statuses: dict[str, str] = {}
+        self._details: dict[str, dict[str, Any]] = {}
+        self._anomalies = 0
+
+    # -- чтение состояния --
+
+    @property
+    def statuses(self) -> dict[str, str]:
+        """Карта "stage/node_id" -> статус (канонический движок)."""
+        return self._statuses
+
+    @property
+    def anomaly_count(self) -> int:
+        """Диагностические аномалии корпуса: валидные по типу, но
+        невалидные по payload статусные события (I10: не меняют детали,
+        но честно посчитаны)."""
+        return self._anomalies
+
+    def detail(self, key: str) -> dict[str, Any]:
+        """Книжка деталей узла (для проекции; мутабельная -- копировать
+        при выводе наружу)."""
+        return self._details.get(key, _empty_detail())
+
+    # -- checkpoint-состояние (сериализация проекции, AUDIT-5B PR-2) --
+
+    def export_state(self) -> dict[str, Any]:
+        """Снимок свёртки для checkpoint-состояния проекции: всё
+        JSON-сериализуемо (строки/числа/None)."""
+        return {
+            "statuses": dict(self._statuses),
+            "details": {
+                key: dict(book) for key, book in self._details.items()
+            },
+            "anomalies": self._anomalies,
+        }
+
+    def restore_state(self, state: Mapping[str, Any]) -> None:
+        """Восстановление снимка (из ProjectionSnapshot.from_dict):
+        мусор -- честные дефолты (состояние проекции -- наш формат)."""
+        statuses = state.get("statuses")
+        self._statuses = (
+            {str(k): str(v) for k, v in statuses.items()}
+            if isinstance(statuses, Mapping)
+            else {}
+        )
+        details = state.get("details")
+        self._details = (
+            {str(k): dict(book) for k, book in details.items()}
+            if isinstance(details, Mapping)
+            else {}
+        )
+        try:
+            self._anomalies = max(0, int(state.get("anomalies") or 0))
+        except (TypeError, ValueError):
+            self._anomalies = 0
+
+    # -- один шаг свёртки --
+
+    def apply(self, event: Any) -> None:
+        """Прогон ОДНОГО события через редьюсер (см. докстринг класса:
+        точная копия батч-проходов + 5B/I10 детали невалидных payload)."""
         data = event_to_dict(event)
         if data is None:
-            continue
-        status = resolve_event_status(data)
-        if status is None:
-            continue
+            return
         stage = str(data.get("stage") or "")
         node_id = resolve_node_id(data)
-        if not node_id:
-            continue
-        if not is_known_node(stage, node_id):
-            continue
+        event_type = str(data.get("event_type") or "")
+        status = resolve_event_status(data)
+
+        # ── PROGR-21: reason-источники уровня стадии (node_id=None) ──
+        # узел (узлы) несёт payload; статус/ts/бейдж не трогаются
+        # (гейты движка прежние, N-2). Снятие -- только reason СВОЕГО
+        # класса (тег происхождения), reason решения узла неснимаем.
+        if node_id is None and event_type in STAGE_LEVEL_REASON_EVENT_TYPES:
+            reasons, resets = _stage_level_reason_updates(stage, data)
+            tag = (
+                _REASON_TAG_MODE
+                if event_type == "mode_changed"
+                else _REASON_TAG_TARGET
+            )
+            for reason_node, reason_text in reasons.items():
+                detail = self._details.setdefault(
+                    f"{stage}/{reason_node}", _empty_detail()
+                )
+                detail["status_reason"] = reason_text
+                detail["_reason_tag"] = tag
+                detail["_reason_src"] = _event_ref(data)
+            for reset_node in resets:
+                detail = self._details.get(f"{stage}/{reset_node}")
+                if detail is not None and detail["_reason_tag"] == tag:
+                    detail["status_reason"] = None
+                    detail["_reason_tag"] = None
+                    detail["_reason_src"] = None
+            return
+
+        if not node_id or not is_known_node(stage, node_id):
+            return
+        key = f"{stage}/{node_id}"
+        detail = self._details.setdefault(key, _empty_detail())
+
+        # ── детали узла (проход PROGR-11) ──
+        # last_touched_at -- любое событие узла с читаемым ts.
+        ts = data.get("ts")
+        if isinstance(ts, str) and ts:
+            detail["last_touched_at"] = ts
+        # reason/count -- только события решения (последнее wins).
+        # PROGR-13-A4: payload-статусные типы -- тоже узловые факты
+        # решения. AUDIT-5B (I10/часть F10, план §8 «Payload невалидного
+        # события не меняет детали»): payload-статусный тип с невалидным
+        # payload (статус не извлёкся) деталями НЕ становится -- он
+        # диагностическая аномалия; reason/счётчик/ссылки не тронуты.
+        if (
+            event_type in EVENT_NODE_STATUS
+            or event_type in PAYLOAD_STATUS_EVENT_TYPES
+        ):
+            if event_type in PAYLOAD_STATUS_EVENT_TYPES and status is None:
+                self._anomalies += 1
+            else:
+                detail["status_reason"] = EVENT_NODE_REASON[event_type]
+                detail["_reason_tag"] = None
+                event_ref = _event_ref(data)
+                detail["_reason_src"] = event_ref
+                detail["_count_src"] = None
+                payload = data.get("payload")
+                if isinstance(payload, Mapping):
+                    for count_key in NODE_SUMMARY_COUNT_KEYS:
+                        cleaned = _clean_summary_count(payload.get(count_key))
+                        if cleaned is not None:
+                            detail["summary_count"] = cleaned
+                            detail["_count_src"] = event_ref
+                            break
+
+        # ── статус узла (проход канонического движка) ──
+        if status is None:
+            return
         # PROGR-AUDIT-H1 (F17, interim до AUDIT-3 -- Донастройка плана
         # Часть 2): монотонность ТОЛЬКО для profile_viewed, ТОЛЬКО в
         # редьюсере: повторный GET профиля (running) не понижает узел,
@@ -519,12 +675,123 @@ def derive_node_statuses(events: list[Any]) -> dict[str, str]:
         # рядом со статической картой EVENT_NODE_STATUS, не сама карта;
         # при AUDIT-3 заменяется контекст-ключевой монотонностью.
         if (
-            str(data.get("event_type") or "") == "profile_viewed"
-            and statuses.get(f"{stage}/{node_id}") not in (None, "pending")
+            event_type == "profile_viewed"
+            and self._statuses.get(key) not in (None, "pending")
         ):
-            continue
-        statuses[f"{stage}/{node_id}"] = status
-    return statuses
+            return
+        self._statuses[key] = status
+        detail["_status_src"] = _event_ref(data)
+        context_id = data.get("context_id")
+        detail["_status_ctx"] = (
+            context_id if isinstance(context_id, str) and context_id else None
+        )
+        evidence = data.get("evidence_level")
+        detail["_status_level"] = (
+            evidence if isinstance(evidence, str) and evidence else None
+        )
+
+    # -- сборка полных состояний узла §3 --
+
+    def _base_states(self, check_modes: Mapping[str, Mapping[str, Any]] | None):
+        for stage in STAGES:
+            for node_id in STAGE_NODES[stage]:
+                key = f"{stage}/{node_id}"
+                yield (
+                    key,
+                    stage,
+                    node_id,
+                    self._details.get(key, _empty_detail()),
+                    _effective_node_mode(check_modes, stage, node_id),
+                )
+
+    def node_states(
+        self, check_modes: Mapping[str, Mapping[str, Any]] | None = None
+    ) -> list[dict[str, Any]]:
+        """Полное состояние узла §3 -- ровно 7 полей датакласса
+        PipelineNodeState (публичный контракт derive_pipeline_node_states,
+        тест «ровно 7 полей» страхует)."""
+        return [
+            {
+                "stage": stage,
+                "node_id": node_id,
+                "status": self._statuses.get(key, "pending"),
+                "status_reason": detail["status_reason"],
+                "mode": mode,
+                "last_touched_at": detail["last_touched_at"],
+                "summary_count": detail["summary_count"],
+            }
+            for key, stage, node_id, detail, mode in self._base_states(
+                check_modes
+            )
+        ]
+
+    def node_states_with_evidence(
+        self,
+        check_modes: Mapping[str, Mapping[str, Any]] | None = None,
+        run_context_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Полное состояние узла §3 + доказательства проекции (AUDIT-5B,
+        инвариант I10 и план §8): source-ссылки reason/count, envelope
+        статусного факта, validity (контекст события vs контекст
+        запуска; event_context_validity -- централизованная функция),
+        mode_source (PR-6: session-данные помечены отдельно от
+        event-derived). Аддитивно к node_states() -- 7 полей прежние."""
+        states: list[dict[str, Any]] = []
+        for key, stage, node_id, detail, mode in self._base_states(
+            check_modes
+        ):
+            has_status_fact = detail["_status_src"] is not None
+            states.append(
+                {
+                    "stage": stage,
+                    "node_id": node_id,
+                    "status": self._statuses.get(key, "pending"),
+                    "status_reason": detail["status_reason"],
+                    "mode": mode,
+                    "last_touched_at": detail["last_touched_at"],
+                    "summary_count": detail["summary_count"],
+                    "source_event_id": detail["_status_src"],
+                    "reason_source_event_id": detail["_reason_src"],
+                    "count_source_event_id": detail["_count_src"],
+                    "evidence_level": detail["_status_level"],
+                    "validity": (
+                        event_context_validity(
+                            detail["_status_ctx"], run_context_id
+                        )
+                        if has_status_fact
+                        else None
+                    ),
+                    "mode_source": "session" if mode is not None else None,
+                }
+            )
+        return states
+
+
+def _event_ref(data: Mapping[str, Any]) -> str | None:
+    """event_id события как источник деталей (I10); пустой/не-строка --
+    None (legacy-корпус без идентичности честно не ссылается)."""
+    event_id = data.get("event_id")
+    if isinstance(event_id, str) and event_id:
+        return event_id
+    return None
+
+
+def derive_node_statuses(events: list[Any]) -> dict[str, str]:
+    """ЕДИНЫЙ движок: статус каждого узла -- по последнему его событию
+    (хронология входа сохраняется: позднее событие перезаписывает
+    раннее -- previewed -> applied = done). Ключ -- "stage/node_id"
+    (id сознательно пересекаются между стадиями: regularity/stationarity).
+
+    События без узла (N-2), без известного маппинга или вне графа
+    честно пропускаются: фантомных узлов не возникает (is_known_node
+    гейт -- тот же, что у make_node_state §3).
+
+    AUDIT-5B: развёртка инкрементального NodeStateFold по корпусу --
+    одна семантика для батч- и watermark-чтения."""
+    fold = NodeStateFold()
+    for event in events:
+        fold.apply(event)
+    return dict(fold.statuses)
 
 
 def derive_stage_states(statuses: Mapping[str, str]) -> list[dict[str, Any]]:
@@ -703,9 +970,9 @@ def derive_pipeline_node_states(
     (pipeline_graph.py): ВСЕ узлы графа в каноническом порядке §2,
     каждый -- словарь ровно 7 полей датакласса.
 
-    status -- канонический движок derive_node_statuses (вторая
-    реализация статуса запрещена: расхождение №1 PROGR-10 закрыто
-    одним движком, здесь только потребление);
+    status -- канонический движок NodeStateFold (вторая реализация
+    статуса запрещена: расхождение №1 PROGR-10 закрыто одним движком,
+    здесь только потребление);
     status_reason -- шаблон EVENT_NODE_REASON последнего события
     решения узла (ключи карты == EVENT_NODE_STATUS: reason и статус
     всегда об одном событии); PROGR-21 (v1.1 §5, категория E): плюс
@@ -728,80 +995,20 @@ def derive_pipeline_node_states(
     profile-эндпоинтов НЕТ: бейдж/причина -- с точностью до последнего
     засеянного факта, та же принятая цена, что у статуса.
 
+    AUDIT-5B: развёртка NodeStateFold по корпусу (одна семантика для
+    батч- и watermark-чтения; доказательства происхождения полей --
+    node_states_with_evidence того же fold, проекция
+    apps/api/progress_projection.py). Единственное семантическое
+    изменение против базы a2dcbee -- I10: payload-статусное событие с
+    невалидным payload больше не ставит reason узла (диагностическая
+    аномалия fold, план §8 «Payload невалидного события не меняет
+    детали»).
+
     Ввод событий НЕ валидируется (трасса -- журнал, R3 PROGR-1-CERT);
     вход не мутируется; функция чистая (без HTTP и хранилищ) --
     check_modes приносит роутер.
     """
-    statuses = derive_node_statuses(events)
-
-    details: dict[str, dict[str, Any]] = {}
+    fold = NodeStateFold()
     for event in events:
-        data = event_to_dict(event)
-        if data is None:
-            continue
-        stage = str(data.get("stage") or "")
-        node_id = resolve_node_id(data)
-        event_type = str(data.get("event_type") or "")
-        # PROGR-21: reason-источники уровня стадии (node_id=None) -- узел
-        # (узлы) несёт payload; статус/ts/бейдж не трогаются (гейты
-        # движка прежние, N-2). Снятие -- только reason СВОЕГО класса
-        # (тег происхождения), reason решения узла неснимаем.
-        if node_id is None and event_type in STAGE_LEVEL_REASON_EVENT_TYPES:
-            reasons, resets = _stage_level_reason_updates(stage, data)
-            tag = (
-                _REASON_TAG_MODE
-                if event_type == "mode_changed"
-                else _REASON_TAG_TARGET
-            )
-            for reason_node, reason_text in reasons.items():
-                detail = details.setdefault(f"{stage}/{reason_node}", _empty_detail())
-                detail["status_reason"] = reason_text
-                detail["_reason_tag"] = tag
-            for reset_node in resets:
-                detail = details.get(f"{stage}/{reset_node}")
-                if detail is not None and detail["_reason_tag"] == tag:
-                    detail["status_reason"] = None
-                    detail["_reason_tag"] = None
-            continue
-        if not node_id or not is_known_node(stage, node_id):
-            continue
-        key = f"{stage}/{node_id}"
-        detail = details.setdefault(key, _empty_detail())
-        # last_touched_at -- любое событие узла с читаемым ts.
-        ts = data.get("ts")
-        if isinstance(ts, str) and ts:
-            detail["last_touched_at"] = ts
-        # reason/count -- только события решения (последнее wins).
-        # PROGR-13-A4: payload-статусные типы (upload_stop_status) -- тоже
-        # узловые факты решения; причина -- их ключ в EVENT_NODE_REASON.
-        if (
-            event_type in EVENT_NODE_STATUS
-            or event_type in PAYLOAD_STATUS_EVENT_TYPES
-        ):
-            detail["status_reason"] = EVENT_NODE_REASON[event_type]
-            detail["_reason_tag"] = None
-            payload = data.get("payload")
-            if isinstance(payload, Mapping):
-                for count_key in NODE_SUMMARY_COUNT_KEYS:
-                    cleaned = _clean_summary_count(payload.get(count_key))
-                    if cleaned is not None:
-                        detail["summary_count"] = cleaned
-                        break
-
-    states: list[dict[str, Any]] = []
-    for stage in STAGES:
-        for node_id in STAGE_NODES[stage]:
-            key = f"{stage}/{node_id}"
-            detail = details.get(key, _empty_detail())
-            states.append(
-                {
-                    "stage": stage,
-                    "node_id": node_id,
-                    "status": statuses.get(key, "pending"),
-                    "status_reason": detail["status_reason"],
-                    "mode": _effective_node_mode(check_modes, stage, node_id),
-                    "last_touched_at": detail["last_touched_at"],
-                    "summary_count": detail["summary_count"],
-                }
-            )
-    return states
+        fold.apply(event)
+    return fold.node_states(check_modes)

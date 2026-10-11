@@ -47,12 +47,17 @@ import pytest
 from fastapi.testclient import TestClient
 
 from apps.api.main import app
-from apps.api.research_runs import ResearchRun
+from apps.api.research_runs import (
+    MemoryResearchRunStore,
+    ResearchRun,
+    get_research_run_store,
+)
 from apps.api.session_store import (
     SESSION_COOKIE_NAME,
     get_session_store,
     reset_session_store_for_testing,
 )
+from apps.api.trace_events import TraceEvent
 
 client = TestClient(app)
 
@@ -370,13 +375,23 @@ def test_restore_phase_from_node_facts_not_stage_level_tail():
 
 
 def test_panel_keeps_history_for_legacy_layer1_corpus():
-    """Слой 1 старой сессии (stored-словари с node_id
-    "structure_confirmed"): /trace обязан показать узел "structure"
-    done -- факт старого запуска сохранён, фантомного ключа нет.
-    Без нормализации панель показывала бы «не начато» -- потеря
-    истории запуска. PROGR-13-A: реестр Загрузки -- 5 остановок,
-    карточка честно «в работе» 1/5 (легенда-факт -- один из пяти
-    узлов), суть теста -- СОХРАННОСТЬ истории -- не меняется."""
+    """Старый корпус (stored-события с node_id "structure_confirmed"):
+    /trace обязан показать узел "structure" done -- факт старого запуска
+    сохранён, фантомного ключа нет. Без нормализации панель показывала
+    бы «не начато» -- потеря истории запуска. PROGR-13-A: реестр
+    Загрузки -- 5 остановок, карточка честно «в работе» 1/5 (легенда-факт
+    -- один из пяти узлов), суть теста -- СОХРАННОСТЬ истории -- не
+    меняется.
+
+    Versioned-обновление (AUDIT-5B, план §20.2 п.6, с доказательством
+    сохранённой legacy-ветки): до 5B /trace читал только слой 1, поэтому
+    legacy-корпус моделировался переписыванием сессионного буфера. С 5B
+    панель читает ПОЛНЫЙ ledger слоя 2 (авторитетная запись), и старая
+    сессия -- это старый корпус в ОБОИХ слоях (оба писались старым
+    кодом): layer-1 переписывается как прежде, слой 2 пересеивается тем
+    же legacy-событием. Нормализация legacy id на границе чтения
+    (LEGACY_NODE_IDS) работает на обоих путях -- проекция полного
+    ledger показывает upload/structure done (legacy-ветка жива)."""
     response = client.post("/v1/session/demo")
     assert response.status_code == 200, response.text
     session_id = client.cookies.get(SESSION_COOKIE_NAME)
@@ -385,13 +400,25 @@ def test_panel_keeps_history_for_legacy_layer1_corpus():
     store = get_session_store()
     session = store.get(session_id)
     assert session is not None
+    assert session.run_id
     # имитация старого корпуса: переписываем stored-словари на legacy id
+    legacy_events = []
     for item in session.pipeline_trace:
         if item.get("event_type") == "upload_completed":
             item["node_id"] = "structure_confirmed"
+        legacy_events.append(dict(item))
     store.save(session)
+    # слой 2: та же старая популяция (durable-корпус, писанный старым кодом)
+    run_store = get_research_run_store()
+    assert isinstance(run_store, MemoryResearchRunStore)
+    run_store._events[session.run_id] = [
+        TraceEvent.from_dict(item) for item in legacy_events
+    ]
+    run_store._sequences[session.run_id] = len(legacy_events)
 
     trace = client.get("/v1/progress/trace").json()
+    # AUDIT-5B: панель -- проекция ПОЛНОГО ledger (приоритет слоя 2)
+    assert trace["projection_source"] == "ledger"
     statuses = trace["node_statuses"]
     assert statuses.get("upload/structure") == "done"
     assert "upload/structure_confirmed" not in statuses

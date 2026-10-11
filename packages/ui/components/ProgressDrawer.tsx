@@ -86,6 +86,16 @@ interface ProgressTraceState {
   /** Происхождение фиксации из /trace: "auto" | "user" | null | undefined
    * (семантика как у targetColumn -- см. ПРОГР-25-A/B). */
   targetColumnSource: string | null | undefined;
+  // ── AUDIT-5B: полная проекция и watermark (аддитивно, N-3) ──
+  /** Позиция истории (число фактов канонического корпуса); undefined --
+   * поле не передано (старый бэкенд). */
+  watermark?: number;
+  /** Источник проекции: "ledger" | "session_tail" | "session"; undefined
+   * -- старый бэкенд. */
+  projectionSource?: string;
+  /** False -- слой 2 недоступен/запуск не найден: панель видит только
+   * хвост сессии; шапка честно предупреждает о неполной истории (PR-8). */
+  projectionComplete?: boolean;
 }
 
 interface RunDetailState {
@@ -160,7 +170,9 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
         // Поля node_statuses/stages аддитивны (N-3): ответ старого
         // бэкенда честно деградирует к пустому состоянию, стадии
         // рендерятся «не начато» из реестра узлов. nodes -- полный
-        // узел §3 (PROGR-11), тоже аддитивно.
+        // узел §3 (PROGR-11), тоже аддитивно. AUDIT-5B: watermark/
+        // projection_complete -- позиция и полнота проекции (undefined
+        // у старого бэкенда -- метка неполной истории не рендерится).
         setTrace({
           loading: false,
           runId: traceData?.run_id ?? null,
@@ -169,6 +181,9 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
           statuses: traceData?.node_statuses ?? {},
           stages: traceData?.stages ?? [],
           nodes: traceData?.nodes ?? [],
+          watermark: traceData?.watermark,
+          projectionSource: traceData?.projection_source,
+          projectionComplete: traceData?.projection_complete,
           // ПРОГР-25-B: признак из того же ответа, что и трасса -- без
           // подмены дефолтами: отсутствующее поле (старый бэкенд/сбой)
           // остаётся undefined и деградирует к контексту в шапке.
@@ -294,6 +309,16 @@ export function ProgressDrawer({ open, onClose }: { open: boolean; onClose: () =
             Запуск:{" "}
             <span className="font-mono">{trace.runId ?? "—"}</span>
             {trace.startedAt && <span> · {startedAgoLabel(trace.startedAt)}</span>}
+            {/* AUDIT-5B (PR-8): проекция из хвоста сессии (слой 2 недоступен /
+                запуск не найден) -- честное предупреждение, хвост не выдаётся
+                за полную историю. undefined (старый бэкенд) -- прежний рендер. */}
+            {trace.projectionComplete === false && (
+              <span className="text-amber-600">
+                {" "}
+                · история неполна: долговременный слой недоступен, показан
+                хвост текущей сессии
+              </span>
+            )}
           </p>
         </div>
 

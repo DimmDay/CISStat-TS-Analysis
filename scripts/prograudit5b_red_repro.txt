@@ -1,0 +1,8 @@
+[R1] P11: панель теряет ранний статус на корпусе >1000: RED-CONFIRMED (панель на хвосте: upload/overview=None)
+[R2] P11: started_at из хвоста; watermark отсутствует: RED-CONFIRMED (started_at='2026-01-01T12:50:00+00:00' -- ts хвоста, не run.created_at)
+[R3] I10: невалидный payload меняет детали узла: RED-CONFIRMED (невалидное событие меняет детали: status_reason='Статус проверки отчитан модулем «Валидация»')
+[R4] I10: узлы не несут validity: RED-CONFIRMED (validity=None -- факт чужого контекста неотличим от current)
+[R5] P12: отчёт сортирует по ts, не по каноническому порядку: RED-CONFIRMED (отчёт отсортировал по ts (snow раньше rain), канонический порядок корпуса (append/store) нарушен)
+
+RED-подтверждено: 5/5
+EXIT=0

@@ -228,6 +228,23 @@ export interface NodeStateInfo {
   last_touched_at: string | null;
   /** Число правого бейджа узла (§3, напр. total_missing); факта нет -- null. */
   summary_count: number | null;
+  // ── AUDIT-5B: доказательства проекции (I10) и применимость (аддитивно;
+  // absent/undefined -- старый бэкенд, рендер как прежде N-3) ──
+  /** Событие текущего статуса (I10); null -- статусного факта нет. */
+  source_event_id?: string | null;
+  /** Событие текста причины (может быть stage-level-источником). */
+  reason_source_event_id?: string | null;
+  /** Событие числа бейджа (может быть старе решения). */
+  count_source_event_id?: string | null;
+  /** Уровень доказательности статусного факта (envelope v2); null --
+   * legacy-корпус (честное отсутствие). */
+  evidence_level?: string | null;
+  /** Применимость фактa к текущему контексту запуска:
+   * current | stale | unknown; null -- статусного факта нет. */
+  validity?: string | null;
+  /** Источник режима: "session" -- из состояния сессии (помечено отдельно
+   * от event-derived данных, PR-6); absent -- поле не передано. */
+  mode_source?: string | null;
 }
 
 /** Ключ узла -- тот же формат, что у node_statuses ответа /trace. */

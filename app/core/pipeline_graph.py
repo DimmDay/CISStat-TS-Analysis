@@ -495,6 +495,43 @@ def node_context_validity(
     return VALIDITY_CURRENT
 
 
+def event_context_validity(
+    event_context_id: str | None,
+    current_context_id: str | None,
+) -> str:
+    """Применимость ФАКТА СОБЫТИЯ (envelope context_id, AUDIT-S/C) к
+    текущему контексту запуска -- уровень context_id (AUDIT-5B, план §8:
+    «Старый факт без известного контекста остаётся historical/unknown,
+    а не автоматически current»).
+
+    Гранулярность сознательно ГРУБЕЕ node_context_validity: у события
+    есть только идентификатор контекста, компоненты scope на событии не
+    хранятся (context_id -- серверный uuid5 от компонентов, data_context.
+    compute_context_id -- сверка по нему честна и детерминирована).
+
+    Правила:
+      * у события нет context_id (legacy-корпус, §3.7) -- «unknown»;
+      * у запуска нет текущего context_id -- «unknown» (нечем сверить);
+      * идентификаторы совпали -- «current»;
+      * иначе -- «stale» (факт другого контекста, историческое
+        достижение, не текущая применимость).
+
+    Вернувшиеся значения -- те же константы VALIDITY_*, что у
+    node_context_validity; исторические события при этом не стираются --
+    verdict применимости, не удаление фактов (I4).
+    """
+    if (
+        not isinstance(event_context_id, str)
+        or not event_context_id
+        or not isinstance(current_context_id, str)
+        or not current_context_id
+    ):
+        return VALIDITY_UNKNOWN
+    if event_context_id == current_context_id:
+        return VALIDITY_CURRENT
+    return VALIDITY_STALE
+
+
 def fold_status_values(statuses: Iterable[str]) -> str:
     """Свёртка статусов узлов стадии в одно из трёх визуальных состояний
     (§3, точная таблица -- §12 п.10).

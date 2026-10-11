@@ -597,15 +597,30 @@ class RunReportModel:
 
 
 def build_report_model(
-    run_meta: dict[str, Any], events: list[dict[str, Any]]
+    run_meta: dict[str, Any],
+    events: list[dict[str, Any]],
+    *,
+    canonical_order: bool = False,
 ) -> RunReportModel:
     """Сборка модели отчёта из меты запуска (ResearchRun.to_dict) и
     stored-событий (TraceEvent.to_dict). Секции -- в каноническом порядке
     STAGES (этапы без событий опускаются); узлы -- в порядке первого
     касания; события неизвестной стадии -- в защитную хвостовую секцию
     (прямой TraceEvent в хранилище не проходит гейт make_trace_event,
-    но и не должен обваливать отчёт)."""
-    ordered = sort_events_chronologically(events)
+    но и не должен обваливать отчёт).
+
+    AUDIT-5B (P12/F08, план §8 «Один canonical order для панели,
+    Наставника и отчёта»): canonical_order=True -- вход уже в
+    каноническом порядке корпуса (дедуп по event_id + позиция ledger;
+    продиктован проекцией apps/api/progress_projection.py) и НЕ
+    пересортировывается: ts-сортировка корпуса с sequence -- второй
+    порядок того же корпуса (контрпример P12), запрещена. По умолчанию
+    False -- прежнее поведение прямых вызовов (стабильная
+    хронология ts)."""
+    if canonical_order:
+        ordered = list(events)
+    else:
+        ordered = sort_events_chronologically(events)
 
     stage_order: list[str] = []
     node_order: dict[str, list[str]] = {}

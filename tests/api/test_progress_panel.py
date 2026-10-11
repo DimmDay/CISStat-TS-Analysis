@@ -428,9 +428,21 @@ class TestProgressTraceNodeStates:
             set(n) == {
                 "stage", "node_id", "status", "status_reason",
                 "mode", "last_touched_at", "summary_count",
+                # AUDIT-5B (I10/PR-4/PR-6): доказательства проекции и
+                # применимость -- аддитивный контракт узла панели.
+                # Versioned-обновление пина «ровно 7 полей» (план §20.2
+                # п.6): поля доказательств -- часть контракта /trace 5B;
+                # фронтенд рендерит их опционально (N-3 -- старый
+                # бэкенд без полей остаётся совместимым).
+                "source_event_id", "reason_source_event_id",
+                "count_source_event_id", "evidence_level", "validity",
+                "mode_source",
             }
             for n in nodes
         )
+        # доказательства пустой сессии: фактов нет -- честные None
+        assert all(n["source_event_id"] is None for n in nodes)
+        assert all(n["validity"] is None for n in nodes)
         assert all(n["status"] == "pending" for n in nodes)
         modes = {(n["stage"], n["mode"]) for n in nodes}
         assert ("validation", "auto") in modes

@@ -201,6 +201,11 @@ from apps.api.trace_events import (
     make_trace_event,
     merge_canonical_events,
 )
+from apps.api.progress_projection import (
+    ProjectionPendingError,
+    build_projection,
+    canonical_corpus,
+)
 from apps.api.column_origin import derived_columns_in_frame, scope_frame
 from app.preprocessing.outliers import outliers_summary, profile_outliers
 
@@ -238,7 +243,16 @@ class NodeStateOut(BaseModel):
     last_touched_at -- ts последнего события узла; summary_count --
     число правого бейджа узла из payload последнего корректировочного
     события (тот же whitelist фактов §4.1; опроса profile-эндпоинтов
-    нет -- та же принятая цена расхождения №1, что у статуса)."""
+    нет -- та же принятая цена расхождения №1, что у статуса).
+
+    AUDIT-5B (I10/PR-4/PR-6, аддитивно): source_event_id -- событие
+    текущего статуса; reason_source_event_id/count_source_event_id --
+    события reason/числа (могут быть разными решениями); evidence_level
+    -- уровень доказательности статусного факта (envelope v2; None --
+    legacy, честное отсутствие); validity -- применимость фактa к
+    текущему контексту запуска (current/stale/unknown, уровень
+    context_id; None -- статусного факта нет); mode_source="session" --
+    режим пришёл из состояния сессии, а не из событий (PR-6)."""
 
     stage: str
     node_id: str
@@ -247,25 +261,49 @@ class NodeStateOut(BaseModel):
     mode: Optional[str] = None
     last_touched_at: Optional[str] = None
     summary_count: Optional[int] = None
+    # AUDIT-5B: доказательства проекции (I10) и применимость (PR-4)
+    source_event_id: Optional[str] = None
+    reason_source_event_id: Optional[str] = None
+    count_source_event_id: Optional[str] = None
+    evidence_level: Optional[str] = None
+    validity: Optional[str] = None
+    mode_source: Optional[str] = None
 
 
 class ProgressTraceResponse(BaseModel):
-    """Снимок внутрисессионного слоя трассы (§5 слой 1) для шапки и
-    «Развернуть трассу» панели «Прогресс» (§6.1-§6.2).
+    """Снимок ПОЛНОЙ проекции «Прогресса» для шапки и «Развернуть трассу»
+    панели (AUDIT-5B; ранее -- внутрисессионный слой §5 слой 1).
+
+    Источник проекции -- ПОЛНЫЙ ledger слоя 2 (+ слой 1 и артефакты
+    Прогнозирования с дедупликацией по event_id): cap=1000 ограничивает
+    ТОЛЬКО отображаемый список events, не накопленные состояния (I9/
+    P11/F06 -- ранний прогресс и честное начало больше не теряются).
 
     events -- канонические 8-польные dict (to_dict §4.1, включая
-    legacy-алиас timestamp); порядок -- хронологический (серверное
-    слияние слоя 1 с ForecastRun.trace, PROGR-10), фильтры --
-    ответственность рендера.
+    legacy-алиас timestamp); порядок -- ЕДИНЫЙ канонический (§3.3);
+    events_total -- полный размер корпуса (watermark); отображаемый
+    список -- последние MAX_PIPELINE_TRACE_EVENTS фактов.
 
-    PROGR-10 (Расхождение №1): node_statuses -- статусы узлов из
-    ЕДИНОГО движка (app/core/node_status.py); stages -- свёртки §12 п.10
-    + счётчики (готовое состояние карточек). Фронтенд рендерит, не
-    вычисляет; поля аддитивны -- старые потребители (шапка/трасса)
-    совместимы (N-3).
+    node_statuses -- статусы узлов ЕДИНОГО редьюсера
+    (app/core/node_status.py); stages -- свёртки §12 п.10 + счётчики;
+    nodes -- полные состояния узлов §3 + доказательства (I10/PR-4/PR-6).
+    Фронтенд рендерит, не вычисляет; поля аддитивны (N-3).
 
-    PROGR-11: nodes -- полные состояния узлов §3 (все узлы графа в
-    порядке §2); аддитивно к node_statuses/stages (N-3).
+    AUDIT-5B, новые поля:
+      watermark -- позиция истории (число фактов канонического корпуса);
+      events_total -- полный размер корпуса (= watermark);
+      projection_source -- "ledger" (полный корпус слоя 2) |
+        "session_tail" (слой 2 недоступен/запуск не найден: состояние
+        по хвосту сессии, ЧЕСТНО помечено неполным) | "session"
+        (запуска ещё нет);
+      projection_complete -- False у session_tail (хвост не выдаётся за
+        полную историю, PR-8);
+      started_at -- run.created_at слоя 2 (P11/PR-3); у session_tail --
+        None (ts хвоста началом не выдаётся);
+      context_id -- текущий контекст расчёта запуска (AUDIT-C); у узлов
+        nodes.validity -- применимость фактов против него (PR-4);
+      anomalies -- диагностические аномалии корпуса (невалидные
+        payload статусных событий, I10).
     """
 
     run_id: Optional[str] = None
@@ -280,6 +318,13 @@ class ProgressTraceResponse(BaseModel):
     # /current). Аддитивные Optional-поля; None -- признака нет.
     target_column: Optional[str] = None
     target_column_source: Optional[str] = None
+    # AUDIT-5B: полная проекция и watermark (аддитивно)
+    watermark: int = 0
+    events_total: int = 0
+    projection_source: str = "session"
+    projection_complete: bool = True
+    context_id: Optional[str] = None
+    anomalies: int = 0
 
 
 def _canonical_forecast_trace_events(
@@ -322,48 +367,121 @@ def _canonical_forecast_trace_events(
 
 
 @router.get("/trace", response_model=ProgressTraceResponse)
-def get_progress_trace(request: Request, response: Response) -> ProgressTraceResponse:
-    """Готовое состояние для панели «Прогресс» (§5 слой 1 + PROGR-10):
-    run_id, ts первого события СЛОЯ 1 (шапка §6.1 без изменений),
-    слитые сервером события (слой 1 + ForecastRun.trace, хронология),
-    node_statuses/stages единого движка. Пустая сессия -- run_id/
-    started_at null, events=[] и честные «не начато» (§6.1)."""
+def get_progress_trace(
+    request: Request,
+    response: Response,
+    after_watermark: Optional[int] = Query(default=None, ge=0),
+) -> ProgressTraceResponse:
+    """Готовое состояние панели «Прогресс» -- ПОЛНАЯ согласованная
+    проекция (AUDIT-5B, план §8): run_id, started_at (run.created_at
+    слоя 2, P11), слитые события (ledger + слой 1 + артефакты
+    Прогнозирования; дедуп по event_id; ЕДИНЫЙ канонический порядок),
+    node_statuses/stages/nodes ЕДИНОГО редьюсера -- те же, что у
+    Наставника и отчёта (одна версия истории). Пустая сессия -- run_id/
+    started_at null, events=[] и честные «не начато» (§6.1).
+
+    Read-after-watermark (план §8 п.7): after_watermark задаёт
+    минимальную позицию истории; корпус не дошёл -- честное
+    projection_pending (409), snapshot не отдаётся."""
     session_id = get_or_create_session_id(request, response)
     session = get_session_store().get_or_create(session_id)
-    layer1 = session.read_pipeline_trace()
-    merged = [event_to_dict(event) for event in layer1]
-    merged += _canonical_forecast_trace_events(
+    artifacts = _canonical_forecast_trace_events(
         session.modeling_artifacts.get("forecasts") or {}
     )
-    # AUDIT-S: единое чтение канонического порядка (контракт §3.3) --
-    # merge_canonical_events: dedupe строго по ОДНОМУ event_id (зеркало
-    # слоя 1 в артефакте -- один факт, не два) + канонический порядок
-    # (хронология §6.2: старые раньше новых, нечитаемые ts -- в конец,
-    # stable; ветка sequence -- когда он есть у ВСЕХ, назначит store
-    # AUDIT-6A). Хронология §6.2 для v1-корпуса -- прежняя.
-    merged = merge_canonical_events(merged)
-    statuses = derive_node_statuses(merged)
-    # PROGR-11: полные состояния узлов §3; mode -- эффективные check-
-    # modes СЕССИИ (те же словари, что читают степперы) -- прямое
-    # чтение полей сессии, не опрос profile-эндпоинтов.
-    node_states = derive_pipeline_node_states(
-        merged,
-        {
+    run_id = session.run_id or None
+
+    projection_source = "session"
+    projection_complete = True
+    run_meta: Optional[dict] = None
+    ledger: Optional[list] = None
+    if run_id:
+        # Слой 2 -- авторитетный источник полной истории. Недоступность
+        # хранилища/запуска -- ЧЕСТНАЯ деградация на хвост сессии
+        # (PR-8, план §8 «Не выдавать несогласованные snapshots за одну
+        # позицию истории»): панель -- advisory-потребитель (§3.6),
+        # 503 здесь не вводим, но хвост помечается неполным.
+        try:
+            store = get_research_run_store()
+            run = store.get_run(run_id)
+        except Exception:
+            logger.warning(
+                "Progress: слой 2 недоступен для проекции (%s)", run_id,
+                exc_info=True,
+            )
+            run = None
+        if run is not None:
+            try:
+                ledger = [
+                    event.to_dict() for event in store.list_events(run_id)
+                ]
+            except Exception:
+                logger.warning(
+                    "Progress: события слоя 2 недоступны (%s)", run_id,
+                    exc_info=True,
+                )
+                ledger = None
+        if ledger is not None:
+            run_meta = run.to_dict()
+            projection_source = "ledger"
+        else:
+            projection_source = "session_tail"
+            projection_complete = False
+
+    layer1 = [event_to_dict(event) for event in session.read_pipeline_trace()]
+    if projection_source == "ledger":
+        # Приоритет идентичности: ledger (durable envelope/sequence) ->
+        # слой 1 (свежие, ещё не зеркалированные, P15) -> артефакты.
+        corpus = canonical_corpus(ledger, layer1, artifacts)
+    else:
+        corpus = canonical_corpus(layer1, artifacts)
+
+    # Read-after-watermark: позиция корпуса не достигнута -- честное
+    # projection_pending (не частичный snapshot, PR-7).
+    if after_watermark is not None and len(corpus) < after_watermark:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"projection_pending: позиция корпуса {len(corpus)} не "
+                f"достигла запрошенной {after_watermark}"
+            ),
+        )
+
+    snapshot = build_projection(
+        corpus,
+        run_meta=run_meta,
+        check_modes={
             "validation": session.validation_check_modes,
             "preprocessing": session.preprocessing_check_modes,
         },
+        corpus_complete=projection_complete,
     )
+    # PROGR-25-A: актуальный признак и происхождение -- прямое
+    # чтение полей сессии (тот же снимок, что видит трасса).
+    if projection_source == "ledger":
+        # P11/PR-3: начало исследования -- run.created_at слоя 2.
+        started_at = snapshot.started_at
+    elif projection_source == "session_tail":
+        # PR-8: ts уцелевшего хвоста началом не выдаётся -- None.
+        started_at = None
+    else:  # "session": запуска ещё нет, слой 1 -- вся известная история
+        started_at = layer1[0].get("ts") if layer1 else None
     return ProgressTraceResponse(
         run_id=session.run_id or None,
-        started_at=layer1[0].ts if layer1 else None,
-        events=merged,
-        node_statuses=statuses,
+        started_at=started_at,
+        # I9: cap ограничивает ТОЛЬКО отображаемый список; состояния --
+        # из полного корпуса.
+        events=snapshot.display_events(MAX_PIPELINE_TRACE_EVENTS),
+        node_statuses=snapshot.node_statuses,
         stages=[
-            StageStateOut(**state) for state in derive_stage_states(statuses)
+            StageStateOut(**state) for state in snapshot.stage_states
         ],
-        nodes=[NodeStateOut(**state) for state in node_states],
-        # PROGR-25-A: актуальный признак и происхождение -- прямое
-        # чтение полей сессии (тот же снимок, что видит трасса).
+        nodes=[NodeStateOut(**state) for state in snapshot.node_states],
+        watermark=snapshot.watermark,
+        events_total=snapshot.watermark,
+        projection_source=projection_source,
+        projection_complete=snapshot.complete,
+        context_id=snapshot.context_id,
+        anomalies=snapshot.anomalies,
         target_column=session.target_column,
         target_column_source=session.target_column_source,
     )
@@ -1297,7 +1415,11 @@ class MentorNextStepResponse(BaseModel):
     N-4: в ответе нет семантики закрытия/навигации панели -- открыть
     «Наставник», перейти по deep-link или закрыть панель решает
     фронтенд; recommended_action -- строка «stage.node_id», переход
-    по ней -- ответственность рендера."""
+    по ней -- ответственность рендера.
+
+    AUDIT-5B (аддитивно): watermark/events_total -- позиция полной
+    проекции, на которой вычислены статусы и совет (та же версия
+    истории, что у панели и отчёта)."""
 
     run_id: str
     run_status: str
@@ -1306,6 +1428,8 @@ class MentorNextStepResponse(BaseModel):
     summary: MentorPhaseSummaryOut
     recommendation: Optional[MentorRecommendationOut] = None
     history_warnings: List[SanityWarningOut] = Field(default_factory=list)
+    watermark: int = 0
+    events_total: int = 0
 
 
 class CorrectionOutcomeSummaryIn(BaseModel):
@@ -1415,7 +1539,12 @@ def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
     store = _require_store()
     run = _require_run(run_id)
     events = store.list_events(run_id)
-    statuses = derive_node_statuses(events)
+    # AUDIT-5B: статусы -- ЕДИНАЯ проекция полного ledger (тот же
+    # редьюсер/порядок, что у панели и отчёта; одинаковый snapshot для
+    # потребителей плана §8). Ответ аддитивно несёт позицию истории.
+    corpus = canonical_corpus([event.to_dict() for event in events])
+    projection = build_projection(corpus, run_meta=run.to_dict())
+    statuses = projection.node_statuses
     recommendation = evaluate_next_step(statuses)
     history_warnings = [
         *evaluate_history_warnings(events),
@@ -1438,6 +1567,10 @@ def get_mentor_next_step(run_id: str) -> MentorNextStepResponse:
         run_id=run_id,
         run_status=run.status,
         last_active_stage=last_stage,
+        # AUDIT-5B: позиция истории, на которой вычислен совет (аддитивно;
+        # read-after-watermark контракта projection).
+        watermark=projection.watermark,
+        events_total=projection.watermark,
         # PROGR-19 (v1.1 §3, категория C): текст фазы обусловлен теми же
         # фактами трассы, что и summary ниже, для ВСЕХ 6 стадий --
         # декларативный реестр STAGE_PHASE_TEXT_RULES в mentor_rules
@@ -1497,8 +1630,12 @@ def get_run_report(
     store = _require_store()
     run = _require_run(run_id)
     events = store.list_events(run_id)
+    # AUDIT-5B (P12/F08): отчёт -- потребитель ЕДИНОЙ версии истории:
+    # канонический порядок корпуса (дедуп по event_id + §3.3), как у
+    # панели и Наставника, а не своя ts-сортировка.
+    corpus = canonical_corpus([event.to_dict() for event in events])
     model = build_report_model(
-        run.to_dict(), [event.to_dict() for event in events]
+        run.to_dict(), corpus, canonical_order=True
     )
     media_type = _REPORT_MEDIA_TYPES[report_format]
     if report_format == "html":

@@ -634,3 +634,92 @@ Versioned-обновление (Донастройка_2 п.3): конкрети
 ### 15.6. Границы (осознанные, вне задачи)
 
 Redis и изменение DataFrame — вне транзакции (план §7 «Граница»); P09/контур доставки (outbox, восстановление операций, fail-closed required) — AUDIT-6B; полная обязательность v2-envelope (strict context-write) — AUDIT-6B; полная проекция/watermark-чтение потребителями — AUDIT-5B (здесь — только позиция ledger и receipt); binding/идемпотентность карт на уровне API — AUDIT-2A; live PostgreSQL на Render/Vercel — вне периметра.
+
+## 16. Аддендум v0.6-5B — полная согласованная проекция и watermark (PROGR-AUDIT-5B) — **УТВЕРЖДЕНО-5B**
+
+База: main@a2dcbee. Точки: `app/core/node_status.py`, `apps/api/progress_projection.py` (НОВЫЙ),
+`apps/api/routers/progress.py`, `app/core/run_report.py`; UI `packages/ui/lib/progress.ts`,
+`packages/ui/components/ProgressDrawer.tsx`. Закрывает F06/F08/F11 (P11/P12/P17), инварианты
+I9/I10; фундамент 0→S→C→6A использован: проекция читает последовательный ledger, канонический
+порядок §3.3 и run-метаданные контекста (§15).
+
+### 16.1. Единая проекция и единый редьюсер — УТВЕРЖДЕНО
+
+- Источник панели «Прогресс» — ПОЛНЫЙ ledger слоя 2 (+ слой 1: свежие, ещё не зеркалированные
+  события P15; + артефакты Прогнозирования; дедуп строго по event_id, приоритет идентичности
+  ledger → слой 1 → артефакты). cap=1000 ограничивает ТОЛЬКО отображаемый список
+  (`ProgressTraceResponse.events`), не накопленные состояния (I9/P11/F06).
+- Один редьюсер — `app/core/node_status.py::NodeStateFold`: батч-функции
+  `derive_node_statuses`/`derive_pipeline_node_states` — развёртка того же `apply()` по корпусу;
+  вторая реализации семантики не заведена (прецедент свёртки §12 п.10). Наставник и отчёт —
+  потребители той же проекции (`build_projection`/`canonical_corpus`); отчёт с
+  `canonical_order=True` не пересортировывает канонический корпус ts-сортировкой (P12/F08).
+- `started_at` панели — `run.created_at` слоя 2, НЕ ts первого события уцелевшего хвоста (P11).
+  У session_tail — None (честное неизвестное); у run-less сессии — прежняя семантика слоя 1.
+
+### 16.2. Snapshot, watermark, read-after-watermark — УТВЕРЖДЕНО
+
+- `ProjectionSnapshot` хранит: run_id, context, started_at, watermark (позиция истории — число
+  фактов канонического корпуса), last_sequence, полный корпус (позиция), состояния узлов/стадий,
+  счётчик диагностических аномалий, флаг полноты. Сериализуем (`to_dict`/`from_dict`) —
+  checkpoint проекции (состояние fold внутри).
+- `advance_projection(base, tail)` — checkpoint + tail (план §8): состояние fold восстанавливается
+  и достраивается хвостом БЕЗ повторного прогона префикса; инвариант «replay полного ledger ==
+  snapshot + tail» доказан оракулами (расщепления корпуса в 5 позициях, restart через from_dict,
+  нагрузочный корпус 1500 событий > 2 капов). Подключение персистентного кэша снапшотов к
+  эндпоинтам — AUDIT-6B; полное чтение на каждый GET — контрольный эталон (план §8 «Риск»).
+- Read-after-watermark (план §8 п.7): `min_watermark` в build/advance — `ProjectionPendingError`,
+  если корпус не дошёл до позиции; HTTP-форма — `GET /v1/progress/trace?after_watermark=N` → 409
+  `projection_pending` (честный отказ от частичного snapshot). Onboarding: append-only ledger
+  монотонен; pending означает смену/сброс хранилища или ошибку consumer'а.
+
+### 16.3. Доказательства полей (I10), validity (PR-4), источники (PR-6) — УТВЕРЖДЕНО
+
+- Узел проекции (аддитивно к 7-польному §3): `source_event_id` (событие статуса),
+  `reason_source_event_id` / `count_source_event_id` (события reason/числа — могут быть разными
+  решениями), `evidence_level` (envelope статусного факта; None — legacy, честное отсутствие),
+  `validity` (применимость фактa: current/stale/unknown; None — статусного факта нет),
+  `mode_source="session"` (режим из состояния сессии — помечен отдельно от event-derived).
+- `pipeline_graph.event_context_validity(event_ctx, run_ctx)` — централизованная функция
+  применимости на уровне context_id (грубее scope-сверки `node_context_validity`: у события есть
+  только идентификатор контекста; компоненты — уровень AUDIT-8): нет контекста события/запуска —
+  unknown, совпал — current, иначе — stale. Исторические факты не стираются (I4).
+- Payload невалидного статусного события (тип из PAYLOAD_STATUS_EVENT_TYPES, payload.status вне
+  CHECK_STATUS_VALUES) больше НЕ меняет детали узла (reason/счётчик — часть F10, в объёме
+  карточки §8 «Payload невалидного события не меняет детали») и учитывается диагностической
+  аномалией проекции (`anomalies` в /trace); last_touched_at остаётся (касание — факт журнала).
+  Семантическое изменение против v0.5: у payload-статусных типов невалидный payload более не
+  порождает reason без статуса.
+
+### 16.4. Честная деградация (PR-8) и приёмка — УТВЕРЖДЕНО
+
+- Слой 2 недоступен / запуск не найден при известном run_id: панель строит проекцию из хвоста
+  сессии и ЧЕСТНО помечает ответ `projection_source="session_tail"`, `projection_complete=false`,
+  `started_at=null` (хвост не выдаётся за полную историю; UI — предупреждение «история неполна»
+  в шапке, N-3 для старого бэкенда). 503 на /trace не вводится — панель advisory-потребитель
+  (§3.6); run-scoped чтения (Наставник/отчёт/деталь) сохраняют свои 503.
+- Приёмка (план §8 GREEN): одна и та же committed история даёт одинаковые состояния независимо
+  от лимита, clocks и выбранного store — оракул `tests/api/test_progress_audit_5b.py` 20/20 на
+  Memory И на живом PostgreSQL (pgserver; изоляция уникальными run_id — урок F-6A2);
+  postgres-сюита 6A 17/17 без регресса. Адресный прогресс-контур (25 файлов плана) — 832+1665
+  passed; полный `tests/` — 3549 passed / 3 errors (документированный snapshot-класс) / 18
+  skipped; jest 163 suites / 1934 tests, tsc — без новых ошибок (TS2882 globals.css — средовой,
+  воспроизведён на чистой базе).
+- Versioned-обновления тестов (план §20.2 п.6): пин «ровно 7 полей» /trace-узлов
+  (test_progress_panel.py) — расширен до 13-полевого контракта 5B с фиксацией аддитивности
+  (N-3); legacy-корпус PROGR-13-B3 (test_progress_progr13b.py) — старая популяция моделируется
+  в ОБОИХ слоях (обе записи писались старым кодом), нормализация legacy id проверяется на
+  новом ledger-пути чтения; legacy-ветка сохранена и доказана.
+- RED-протокол: `scripts/prograudit5b_red_repro.py` (+ .txt) — 5/5 RED-CONFIRMED на базе
+  (P11-хвост/started_at, невалидный payload меняет детали, отсутствие validity, ts-порядок
+  отчёта); pytest-оракул на базе — 20/20 FAILED (11 ImportError контрактных API + 9
+  поведенческих).
+
+### 16.5. Границы (осознанные, вне задачи)
+
+Персистентный кэш снапшотов проекции и его инвалидация — AUDIT-6B (вместе с outbox/доставкой);
+scope-уровень validity (сверка компонентов, а не context_id) — AUDIT-8 (raw restore/историческая
+применимость); seed EDA из проекции с watermark и контекст-ключевая монотонность — AUDIT-3;
+контекст/идемпотентность API-карт (strict v2-write, binding) — AUDIT-2A; Наставник не читает
+артефакты сессии (run-scoped контракт) — расхождение корпусов панель/Наставник на несмиррованных
+P15-событиях остаётся честной границей доставки, watermark в ответах делает её наблюдаемой.
