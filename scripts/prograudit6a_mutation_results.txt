@@ -1,0 +1,13 @@
+=== AUDIT-6A мутационные пробы (оракул: test_progress_audit_6a.py) ===
+[M0] no-op контроль: оракул на немутнированном коде...
+[M0] SURVIVED (харнесс достоверен)
+[M1] KILLED: Memory: батч без дедупа внутри (дубль события получает новый seq)
+[M2] KILLED: Memory: CAS-контекст отключён (stale пишется)
+[M3] KILLED: Memory: receipt не проверяет тело (тот же ключ + другое тело молча принят)
+[M4] KILLED: Memory: sequence не назначается (корпус без позиции ledger)
+[M5] KILLED: Memory: run-метаданные НЕ обновляются той же операцией (анатом P10)
+[M6] KILLED: Postgres: receipt-конфликт отключён (тот же ключ + другое тело принят)
+[M7] KILLED: Postgres: CAS stale-context отключён
+[M8] KILLED: Postgres: сериализация по run убрана (MAX без FOR UPDATE -- гонка порядка)
+[M9] KILLED: Postgres: дедуп против корпуса отключён (retry дублирует)
+=== ИТОГ: убито 9/9, выживших: нет, пропущено: нет ===

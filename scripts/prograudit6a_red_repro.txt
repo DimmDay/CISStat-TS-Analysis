@@ -1,0 +1,38 @@
+PG URI: postgresql://postgres:@/postgres?host=/tmp/cisstat6a-pg-nmRg
+=== AUDIT-6A RED-repro (база 9a3ed2b) 2026-10-11T10:09:47.638324+00:00 ===
+[RED] R1 P20 Memory-dedup: повтор event_id дал 2 факта (Postgres-контракт в Memory нарушен)
+Research runs: событие target_column_changed не отражено в долговременном слое
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py", line 896, in record_run_event
+    store.append_event(run_id, event)
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit6a_red_repro.py", line 106, in failing
+    raise RuntimeError("injected append failure")
+RuntimeError: injected append failure
+[RED] R2 P10 metadata-without-event: target_column обновлён ('sales') при нуле событий -- раздельные записи
+[RED] R3 P08 partial-map: карта оставила 5/10 частичных фактов (нет атомарного батча)
+[RED] R4 sequence[memory]: sequence не назначена (порядок корпуса без авторитетной позиции ledger)
+[FIXED-ALREADY] R5 envelope[memory]: envelope сохранён
+[RED] R4 sequence[postgres]: sequence не назначена (порядок корпуса без авторитетной позиции ledger)
+[RED] R5 envelope[postgres]: v2-envelope потерян при записи/чтении (context_id=None)
+=== ИТОГ: RED=6, FIXED-ALREADY=1, SKIPPED=0 ===
+============================= test session starts ==============================
+collected 0 items / 1 error
+
+==================================== ERRORS ====================================
+_____________ ERROR collecting tests/api/test_progress_audit_6a.py _____________
+ImportError while importing test module '/home/z/my-project/CISStat-TS-Analysis/tests/api/test_progress_audit_6a.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+../../.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/api/test_progress_audit_6a.py:49: in <module>
+    from apps.api.research_runs import (
+E   ImportError: cannot import name 'CommitConflictError' from 'apps.api.research_runs' (/home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py)
+=========================== short test summary info ============================
+ERROR tests/api/test_progress_audit_6a.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+=============================== 1 error in 3.79s ===============================
+ERROR tests/api/test_progress_audit_6a.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+=============================== 1 error in 3.87s ===============================

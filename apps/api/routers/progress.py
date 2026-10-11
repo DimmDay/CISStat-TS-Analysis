@@ -182,6 +182,7 @@ from apps.api.research_runs import (
     get_dataset_file_store,
     get_research_run_store,
     record_run_event,
+    record_run_event_batch,
     stage_for_run_level_event,
 )
 from apps.api.session_store import (
@@ -457,6 +458,7 @@ def report_upload_stops(
             detail="Сначала загрузите датасет -- остановки «Загрузки» без данных не существуют",
         )
     session.ensure_run_id()
+    events = []
     for node_id in known_ids:
         event = make_trace_event(
             "upload_stop_status",
@@ -466,10 +468,13 @@ def report_upload_stops(
             status=stops[node_id],
         )
         session.append_trace_event(event)
-        # §5 слой 2: зеркало фактов остановок в research_runs -- тот же
-        # best-effort механизм, что у хука (record_run_event).
-        record_run_event(session, event)
+        events.append(event)
     store.save(session)
+    # §5 слой 2 -- AUDIT-6A: зеркало ПОЛНОЙ карты остановок -- ОДИН
+    # атомарный батч (план §7 п.2: «полная карта десяти узлов -- один
+    # batch, не десять независимых commit»); best-effort механизм тот
+    # же (сбой не ломает ответ, частичных фактов в слое 2 нет -- P08).
+    record_run_event_batch(session, events)
     return UploadStopsReportResponse(run_id=session.run_id, reported=len(known_ids))
 
 
@@ -571,6 +576,7 @@ def report_validation_checks(
             detail="Сначала загрузите датасет -- проверки «Валидации» без данных не существуют",
         )
     session.ensure_run_id()
+    events = []
     for node_id in known_ids:
         event = make_trace_event(
             "validation_check_status",
@@ -580,10 +586,12 @@ def report_validation_checks(
             status=checks[node_id],
         )
         session.append_trace_event(event)
-        # §5 слой 2: зеркало фактов проверок в research_runs -- тот же
-        # best-effort механизм, что у хука (record_run_event).
-        record_run_event(session, event)
+        events.append(event)
     store.save(session)
+    # §5 слой 2 -- AUDIT-6A: зеркало ПОЛНОЙ карты проверок -- ОДИН
+    # атомарный батч (план §7 п.2; сбой слоя 2 не оставляет частичных
+    # фактов -- P08, ответ эндпоинта честен).
+    record_run_event_batch(session, events)
     return ValidationChecksReportResponse(
         run_id=session.run_id, reported=len(known_ids)
     )
@@ -690,6 +698,7 @@ def report_preprocessing_checks(
             detail="Сначала загрузите датасет -- этапы «Предобработки» без данных не существуют",
         )
     session.ensure_run_id()
+    events = []
     for node_id in known_ids:
         event = make_trace_event(
             "preprocessing_check_status",
@@ -699,10 +708,12 @@ def report_preprocessing_checks(
             status=checks[node_id],
         )
         session.append_trace_event(event)
-        # §5 слой 2: зеркало фактов этапов в research_runs -- тот же
-        # best-effort механизм, что у хука (record_run_event).
-        record_run_event(session, event)
+        events.append(event)
     store.save(session)
+    # §5 слой 2 -- AUDIT-6A: зеркало ПОЛНОЙ карты этапов -- ОДИН
+    # атомарный батч (план §7 п.2; сбой слоя 2 не оставляет частичных
+    # фактов -- P08, ответ эндпоинта честен).
+    record_run_event_batch(session, events)
     return PreprocessingChecksReportResponse(
         run_id=session.run_id, reported=len(known_ids)
     )
@@ -824,6 +835,7 @@ def report_eda_checks(
             detail="Сначала загрузите датасет -- исследования «EDA» без данных не существуют",
         )
     session.ensure_run_id()
+    events = []
     for node_id in known_ids:
         event = make_trace_event(
             "eda_check_status",
@@ -833,10 +845,12 @@ def report_eda_checks(
             status=checks[node_id],
         )
         session.append_trace_event(event)
-        # §5 слой 2: зеркало фактов просмотров в research_runs -- тот же
-        # best-effort механизм, что у хука (record_run_event).
-        record_run_event(session, event)
+        events.append(event)
     store.save(session)
+    # §5 слой 2 -- AUDIT-6A: зеркало ПОЛНОЙ карты просмотров -- ОДИН
+    # атомарный батч (план §7 п.2; сбой слоя 2 не оставляет частичных
+    # фактов -- P08, ответ эндпоинта честен).
+    record_run_event_batch(session, events)
     return EdaChecksReportResponse(
         run_id=session.run_id, reported=len(known_ids)
     )

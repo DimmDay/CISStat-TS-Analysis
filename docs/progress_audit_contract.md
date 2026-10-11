@@ -592,3 +592,45 @@ historical/current в проекциях — AUDIT-5B/8; cross-run примен�
 durable-хранение контекста слоя 2 — AUDIT-6A; required-доставка/receipt — AUDIT-6B.
 Инструмент аудита `progress_audit_readonly.py` не тронут (его наблюдения P-серии —
 доказательство базы).
+## 15. Аддендум v0.5-6A — атомарный ledger и одинаковые хранилища (PROGR-AUDIT-6A) — **УТВЕРЖДЕНО-6A**
+
+Versioned-обновление (Донастройка_2 п.3): конкретизирует §3.3 (sequence), §3.6 (идемпотентность/receipt), I8 (parity) до уровня проверяемых правил задачи AUDIT-6A (plan_progress_audit.md §7). База: `main@9a3ed2b`. Решения §3.3/§3.6/§12/§14 не меняются — фиксация реализации и уточнение семантики.
+
+### 15.1. commit_event_batch — единая транзакция ledger — УТВЕРЖДЕНО
+
+Единая точка — `apps/api/research_runs.py::commit_event_batch` (контракт `ResearchRunStore`; реализации Memory/Postgres проходят ОДНИ параметризованные тесты `tests/api/test_progress_audit_6a.py`):
+
+1. **Состав транзакции**: CAS-проверка expected context → обновление run-метаданных → запись батча событий → регистрация idempotency key и receipt. Падение на середине батча — полный откат: НОЛЬ событий и ПРЕЖНИЕ метаданные (P08/P10/F05 закрыты; «All-or-nothing» теперь фактическая транзакция, а не валидация входа).
+2. **CAS expected context**: ожидаемый контекст = хранимый контекст запуска на момент ЧТЕНИЯ продюсером (оптимистичная проверка). stored NULL — первичная привязка (нечего сравнивать); несовпадение — `CommitConflictError` ДО первой записи (I3, «stale context отклонён до commit»). Легитимный сдвиг контекста (коррекция) проходит: продюсер читал stored-контекст до мутации, батч несёт НОВЫЙ контекст в run-метаданных.
+3. **Полная карта узлов — один batch**: migrated producer четырёх карт статусов (`upload-stops`/`validation-checks`/`preprocessing-checks`/`eda-checks` в `apps/api/routers/progress.py`) пишет через `record_run_event_batch` — один батч, не десять независимых commit (план §7 п.2).
+4. **Граница**: Redis и изменение DataFrame в транзакцию НЕ входят; P09 и контур доставки (outbox/повторы/health) — AUDIT-6B, здесь не закрыты.
+
+### 15.2. Sequence — транзакционная позиция ledger — УТВЕРЖДЕНО
+
+- `commit_seq` (колонка миграции `0002`, envelope-поле `sequence` события) назначается store'ом ВНУТРИ транзакции с сериализацией по run: Postgres — `INSERT shell + SELECT ... FOR UPDATE` на строку запуска; Memory — тот же замок, что и весь батч. Конкурентные батчи одного run дают непрерывный префикс 1..N без дублей и дыр (RED плана: «два concurrent batch имеют один порядок»).
+- BIGSERIAL (столбец `seq` 0001) остаётся физическим порядком дописывания и НЕ принимается за committed-order (план §7 п.3). Чтение канонического порядка `list_events`: legacy-строки (commit_seq NULL) — стабильный исходный store-order, затем новые по commit_seq (legacy-first; переупорядочивания исторического корпуса нет, §3.7).
+- Дедуп (run_id, event_id) — контракт ОБОИХ хранилищ (P20/H20/F07 закрыты): Postgres `ON CONFLICT DO NOTHING`, Memory — явная проверка (плюс дедуп внутри батча — первый occurrence, I1). `append_event` (advisory-интерфейс одиночных записей) дедуплицирует и назначает sequence по тем же правилам.
+
+### 15.3. Receipt и идемпотентность — УТВЕРЖДЕНО
+
+- `CommitReceipt`: idempotency key, run/context, принятые event ids, committed watermark, created_at; таблица `run_commit_receipts` (FK ON DELETE CASCADE — receipts живут вместе с запуском). Чтение потерянного receipt — `get_commit_receipt`.
+- Повтор того же ключа/тела возвращает ПРЕЖНИЙ receipt без записи (retry после потерянного ответа не дублирует); тот же ключ с другим телом — `IdempotencyConflictError` БЕЗ записи (план §7 п.4). Тело — `batch_body_fingerprint` (sha256 канонического материала событий; контекст/метаданные run в тело дедупликации не входят — они вычисляются свежими при каждом зеркале).
+- Ключи migrated producers содержательные: `event:{run_id}:{event_id}` (зеркало одиночных событий) и `map:{run_id}:{отпечаток тела}` (карты). Повтор ОДНОЙ поставки карты не дублирует факты; НОВАЯ поставка (новые event_id) честно даёт новые наблюдения — семантика P07 сохранена до AUDIT-2A (binding/идемпотентность карт — её периметр).
+
+### 15.4. Migrated producers и advisory-остаток — УТВЕРЖДЕНО
+
+- **Migrated** (план §7 п.6): `record_run_event` (зеркало хука/сброса цели/Прогнозирования) и `record_run_event_batch` (четыре карты статусов) — через `commit_event_batch`; run-метаданные и события одной транзакцией.
+- **Advisory до своей миграции** (явно): прямые `store.append_event`/`set_run_status` в pause/resume/checkpoint/restore (`routers/progress.py`) — их миграция в периметре AUDIT-6B; контракт не менялся.
+- Durable run-метаданные (граница AUDIT-C §14.5 закрыта): `research_runs.context_id/data_revision/data_digest` (колонки 0002; COALESCE-слияние при upsert — батч без новых значений не стирает прежние; паритет `_merge_run_additive` в Memory). Durable envelope v2 слоя 2: `trace_events.schema_version/evidence_level/operation_id/causation_id/context_id/result_ref/method/time_quality` (NULL у legacy — честное отсутствие, §3.7).
+
+### 15.5. Миграция и приёмка
+
+- `apps/api/migrations/0002_audit6a_atomic_ledger.sql` — АДДИТИВНАЯ, `0001` не переписывается (план §7); применима к старому корпусу: legacy-строки читаемы (sequence честно None), новые события получают sequence с 1, уникальность позиции ledger — частичный уникальный индекс сервера. Эквивалентность источников DDL (файлы 0001+0002 vs `MIGRATION_STATEMENTS`) — на живом сервере.
+- Приёмка (план §7 GREEN): DB rollback атомарен на живом PG; одинаковые contract-тесты Memory и Postgres (паритет I8); миграция применима к старому корпусу. **Live PostgreSQL выполнен** (Донастройка_2 п.1 закрыта): pgserver (переносимые бинарники PostgreSQL) в песочнице + `scripts/prograudit6a_pg_runner.sh` (тот же контракт `CISSTAT_TEST_PG_DSN`, что у CI); 38/38 parity-оракулов и 115/115 полного контура на живой БД.
+- Приёмка REST/сессий: адресный прогресс-контур 951 passed; полный регресс 3314 passed с дельтой к базлайну 1:1 (9 failed + 3 error — документированный средовой класс: нейро-группа отсутствует в песочнице + snapshot-ERROR; воспроизведены на чистой 9a3ed2b через stash-прогон).
+- Versioned-обновления тестов (план §20.2 п.6): `test_mirrored_event_matches_layer1_payload` (снятие store-назначенного sequence + пин штамповки), `test_mirror_failure_does_not_break_endpoint` (шов отказа — commit_event_batch), `test_migration_statements_cover_all_tables`/`test_migration_statements_match_ddl_file_result` (каталог 0001+0002, таблица receipts).
+- Мутационные пробы: `scripts/prograudit6a_mutations.py` — M0 no-op SURVIVED (харнесс достоверен), 9/9 kill-мутантов убиты (дедуп, CAS, fingerprint-конфликт, sequence, run-метаданные, FOR UPDATE-сериализация — оба хранилища), 0 выживших (`scripts/prograudit6a_mutation_results.txt`).
+
+### 15.6. Границы (осознанные, вне задачи)
+
+Redis и изменение DataFrame — вне транзакции (план §7 «Граница»); P09/контур доставки (outbox, восстановление операций, fail-closed required) — AUDIT-6B; полная обязательность v2-envelope (strict context-write) — AUDIT-6B; полная проекция/watermark-чтение потребителями — AUDIT-5B (здесь — только позиция ledger и receipt); binding/идемпотентность карт на уровне API — AUDIT-2A; live PostgreSQL на Render/Vercel — вне периметра.

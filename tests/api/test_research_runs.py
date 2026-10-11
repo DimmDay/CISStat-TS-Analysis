@@ -407,14 +407,25 @@ class TestStoreFactory:
         from apps.api import research_runs
 
         ddl = "\n".join(research_runs.MIGRATION_STATEMENTS)
-        for table in ("research_runs", "trace_events", "run_checkpoints"):
+        for table in (
+            "research_runs", "trace_events", "run_checkpoints",
+            "run_commit_receipts",  # AUDIT-6A: receipts атомарных батчей
+        ):
             assert f"CREATE TABLE IF NOT EXISTS {table}" in ddl
         # События -- append-only с внешним ключом на запуск (§5).
         assert "REFERENCES research_runs(run_id)" in ddl
-        # Миграция доступна как SQL-файл для ops (план: «миграции схемы»).
-        sql_file = Path(research_runs.__file__).parent / "migrations" / "0001_research_runs.sql"
-        assert sql_file.exists()
-        assert "research_runs" in sql_file.read_text(encoding="utf-8")
+        # AUDIT-6A: каталог -- 0001 (не переписывается) + 0002 (аддитивно),
+        # каждый -- SQL-файл для ops (план §7).
+        migrations_dir = Path(research_runs.__file__).parent / "migrations"
+        for name in ("0001_research_runs.sql", "0002_audit6a_atomic_ledger.sql"):
+            sql_file = migrations_dir / name
+            assert sql_file.exists(), name
+            assert "research_runs" in sql_file.read_text(encoding="utf-8")
+        # Эквивалентность заявленной разбивки каталога: сумма групп ==
+        # полный MIGRATION_STATEMENTS.
+        assert sum(len(stmts) for _, stmts in research_runs.MIGRATION_FILES) == len(
+            research_runs.MIGRATION_STATEMENTS
+        )
 
 
 # ── Контур 5: зеркало долговременного слоя ───────────────────────────
@@ -443,7 +454,16 @@ class TestMirrorFromHook:
         assert events[0].run_id == run.run_id
 
     def test_mirrored_event_matches_layer1_payload(self, client: TestClient):
-        """Слой 2 -- В ДОПОЛНЕНИЕ к слою 1 (§5): то же событие, те же факты."""
+        """Слой 2 -- В ДОПОЛНЕНИЕ к слою 1 (§5): то же событие, те же факты.
+
+        Versioned-обновление (AUDIT-6A, план §20.2 п.6): ledger-хранилище
+        назначает каждому принятому событию позицию commit sequence
+        (контракт §3.3 -- УТВЕРЖДЕНО-AUDIT-0), поэтому слой 2 содержит
+        envelope.sequence, а слой 1 -- нет (это НЕ дефект зеркала:
+        позиция ledger -- метаданные ХРАНЕНИЯ слоя 2). Доказательство
+        сохранённой legacy-ветки: словари совпадают ПОСЛЕ снятия
+        store-назначенного sequence -- те же 8 канонических полей +
+        тот же envelope; отдельный пин -- факт штамповки sequence."""
         client.post("/v1/session/demo")
         session_store = get_session_store()
         session = session_store.get(client.cookies.get(SESSION_COOKIE_NAME))
@@ -454,7 +474,19 @@ class TestMirrorFromHook:
         store = research_runs.get_research_run_store()
         layer2 = store.list_events(session.run_id)
         assert len(layer2) == len(layer1) >= 1
-        assert layer2[-1].to_dict() == layer1[-1].to_dict()
+
+        def _without_ledger_sequence(event_dict):
+            return {
+                key: value
+                for key, value in event_dict.items()
+                if key != "sequence"  # store-назначенная позиция ledger
+            }
+
+        assert _without_ledger_sequence(layer2[-1].to_dict()) == (
+            _without_ledger_sequence(layer1[-1].to_dict())
+        )
+        # Новый контракт AUDIT-6A: слой 2 несёт монотонную позицию ledger.
+        assert isinstance(layer2[-1].sequence, int) and layer2[-1].sequence >= 1
 
     def test_target_column_changed_updates_run(self, client: TestClient):
         client.post("/v1/session/demo")
@@ -483,14 +515,18 @@ class TestMirrorFromHook:
 
     def test_mirror_failure_does_not_break_endpoint(self, client: TestClient, monkeypatch):
         """Best-effort (контур рантайма хука, §4.2): сбой долговременного
-        слоя не ломает успешный ответ эндпоинта."""
+        слоя не ломает успешный ответ эндпоинта.
+
+        Versioned-обновление (AUDIT-6A): точка отказа -- commit_event_batch
+        (единая транзакция записи зеркала; прежний шов upsert_run более
+        не является самостоятельной записью -- план §7 п.1)."""
         from apps.api import research_runs
 
         def _boom(*args, **kwargs):
             raise RuntimeError("postgres down")
 
         monkeypatch.setattr(
-            research_runs.ResearchRunStore, "upsert_run", _boom
+            research_runs.MemoryResearchRunStore, "commit_event_batch", _boom
         )
         resp = client.post("/v1/session/demo")
         assert resp.status_code == 200

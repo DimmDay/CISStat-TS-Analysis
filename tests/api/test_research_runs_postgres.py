@@ -30,6 +30,7 @@ Postgres-сервере + прогон DDL (apps/api/migrations/0001_research_ru
 from __future__ import annotations
 
 import os
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -69,6 +70,12 @@ from apps.api.session_store import (
 )
 from apps.api.trace_events import make_trace_event
 
+MIGRATIONS_FILES = (
+    # Каталог миграций (AUDIT-6A): 0001 -- базовая схема (НЕ переписывается),
+    # 0002 -- атомарный ledger (аддитивно; план §7).
+    "0001_research_runs.sql",
+    "0002_audit6a_atomic_ledger.sql",
+)
 MIGRATIONS_FILE = (
     Path(__file__).resolve().parents[2]
     / "apps"
@@ -76,26 +83,44 @@ MIGRATIONS_FILE = (
     / "migrations"
     / "0001_research_runs.sql"
 )
+MIGRATIONS_FILE_0002 = (
+    Path(__file__).resolve().parents[2]
+    / "apps"
+    / "api"
+    / "migrations"
+    / "0002_audit6a_atomic_ledger.sql"
+)
 
-EXPECTED_TABLES = {"research_runs", "trace_events", "run_checkpoints"}
+EXPECTED_TABLES = {
+    "research_runs", "trace_events", "run_checkpoints", "run_commit_receipts",
+}
 EXPECTED_INDEXES = {
     "idx_trace_events_run_seq",
     "idx_research_runs_session",
     "idx_research_runs_status",
+    # AUDIT-6A: позиция ledger + receipts.
+    "uq_trace_events_run_commit_seq",
+    "idx_trace_events_run_commit_seq",
+    "idx_run_commit_receipts_run",
 }
 
 DROP_SCHEMA_SQL = """
+DROP TABLE IF EXISTS run_commit_receipts CASCADE;
 DROP TABLE IF EXISTS run_checkpoints CASCADE;
 DROP TABLE IF EXISTS trace_events CASCADE;
 DROP TABLE IF EXISTS research_runs CASCADE;
+DROP TABLE IF EXISTS mentor_observations CASCADE;
 """
 
 
 def _apply_sql_file(conn) -> None:
-    """Прогон DDL-ФАЙЛА ops-контуром: простой протокол (без параметров)
-    исполняет весь файл целиком -- ровно как psql -f."""
+    """Прогон DDL-ФАЙЛОВ ops-контуром: простой протокол (без параметров)
+    исполняет весь каталог целиком -- ровно как psql -f 0001... -f 0002...
+    (AUDIT-6A: каталог аддитивен, 0001 не переписывается -- план §7)."""
     with conn.cursor() as cur:
-        cur.execute(MIGRATIONS_FILE.read_text(encoding="utf-8"))
+        for name in MIGRATIONS_FILES:
+            path = MIGRATIONS_FILE.parent / name
+            cur.execute(path.read_text(encoding="utf-8"))
     conn.commit()
 
 
@@ -145,7 +170,9 @@ def store() -> PostgresResearchRunStore:
     return PostgresResearchRunStore(dsn=DSN)
 
 
-def _seed_run(run_id: str = "RUN-PGTEST01", session_id: str = "sess-pg") -> ResearchRun:
+def _seed_run(
+    run_id: str = "RUN-PGTEST01", session_id: str = "sess-pg", **kwargs
+) -> ResearchRun:
     return ResearchRun(
         run_id=run_id,
         session_id=session_id,
@@ -154,6 +181,7 @@ def _seed_run(run_id: str = "RUN-PGTEST01", session_id: str = "sess-pg") -> Rese
         target_column=None,
         created_at=_now_iso(),
         last_active_at=_now_iso(),
+        **kwargs,
     )
 
 
@@ -177,7 +205,15 @@ class TestDdlFile:
     def test_migration_statements_match_ddl_file_result(self, pg_conn):
         """Авто-миграция первого коннекта (MIGRATION_STATEMENTS) и SQL-файл
         ops-контура приводят к одному множеству объектов: рассинхронизация
-        источников ловится на живом сервере, а не только сравнением текстов."""
+        источников ловится на живом сервере, а не только сравнением текстов.
+
+        Versioned-обновление (AUDIT-6A): каталог -- 0001 + 0002 (аддитивно,
+        0001 не переписывается -- план §7); MIGRATION_STATEMENTS == 0001+0002."""
+        file_sql = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in (MIGRATIONS_FILE, MIGRATIONS_FILE_0002)
+        )
+        assert "run_commit_receipts" in file_sql
         file_tables, file_indexes = _schema_objects(pg_conn)
         with pg_conn.cursor() as cur:
             cur.execute(DROP_SCHEMA_SQL)
@@ -337,6 +373,198 @@ class TestPostgresStoreBehavior:
                     "'upload', NULL, 'upload_completed')"
                 )
             pg_conn.commit()
+
+    def test_unique_commit_seq_enforced_by_server(self, pg_conn):
+        """AUDIT-6A: уникальность позиции ledger (run_id, commit_seq) --
+        гарантия сервера (частичный уникальный индекс по НЕ-NULL позициям;
+        legacy-строки с NULL не участвуют)."""
+        with pg_conn.cursor() as cur:
+            cur.execute("INSERT INTO research_runs (run_id) VALUES ('RUN-SEQUNIQ')")
+            cur.execute(
+                "INSERT INTO trace_events (event_id, run_id, ts, stage, event_type, "
+                "commit_seq) VALUES ('s1', 'RUN-SEQUNIQ', now(), 'upload', "
+                "'upload_completed', 1)"
+            )
+        pg_conn.commit()
+        with pytest.raises(psycopg.errors.UniqueViolation):
+            with pg_conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO trace_events (event_id, run_id, ts, stage, "
+                    "event_type, commit_seq) VALUES ('s2', 'RUN-SEQUNIQ', now(), "
+                    "'upload', 'upload_completed', 1)"
+                )
+            pg_conn.commit()
+        # Откат ожидаемого нарушения: последующие проверки -- вне
+        # абортированной транзакции (паттерн «базовая пара зафиксирована»).
+        pg_conn.rollback()
+        # NULL-позиции (legacy) -- не конкурируют.
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO trace_events (event_id, run_id, ts, stage, "
+                "event_type) VALUES ('legacy-1', 'RUN-SEQUNIQ', now(), 'upload', "
+                "'upload_completed')"
+            )
+        pg_conn.commit()
+
+
+# ── Контур 4-6A: атомарный ledger на живой БД (AUDIT-6A) ──────────────
+
+
+class TestAudit6ABatchLive:
+    """Атомарный ledger (план §7) на ЖИВОМ Postgres: rollback атомарен,
+    receipt идемпотентен, watermark непрерывен, конкурентные батчи
+    сериализованы (Донастройка_2 п.1: mock-SQL не замена)."""
+
+    def _store(self) -> PostgresResearchRunStore:
+        return PostgresResearchRunStore(dsn=DSN)
+
+    def _events(self, run_id: str, count: int, tag: str) -> tuple:
+        from apps.api.research_runs import batch_body_fingerprint
+
+        events = tuple(
+            make_trace_event(
+                "upload_stop_status", stage="upload",
+                node_id="structure_confirmed", run_id=run_id,
+                tag=tag, idx=i,
+            )
+            for i in range(count)
+        )
+        return events
+
+    def test_batch_commit_receipt_and_watermark(self, store):
+        from apps.api.research_runs import CommitEventBatch, batch_body_fingerprint
+
+        run = _seed_run("RUN-BATCH6A")
+        store.upsert_run(run)
+        events = self._events(run.run_id, 3, "a")
+        receipt = store.commit_event_batch(
+            CommitEventBatch(
+                run=run, events=events, idempotency_key="op-live-1",
+                body_fingerprint=batch_body_fingerprint(run.run_id, events),
+            )
+        )
+        assert receipt.committed_watermark == 3
+        assert len(receipt.accepted_event_ids) == 3
+        # Строки несут транзакционную позицию ledger.
+        with psycopg.connect(DSN) as conn:
+            seqs = [
+                r[0]
+                for r in conn.execute(
+                    "SELECT commit_seq FROM trace_events WHERE run_id = %s "
+                    "ORDER BY commit_seq",
+                    (run.run_id,),
+                ).fetchall()
+            ]
+        assert seqs == [1, 2, 3]
+        # Receipt читается отдельным API (потерянный ответ).
+        assert store.get_commit_receipt("op-live-1") == receipt
+
+    def test_retry_same_key_no_duplicates(self, store):
+        from apps.api.research_runs import (
+            CommitConflictError,
+            CommitEventBatch,
+            IdempotencyConflictError,
+            batch_body_fingerprint,
+        )
+
+        run = _seed_run("RUN-RETRY6A", context_id="ctx-base")
+        store.upsert_run(run)
+        events = self._events(run.run_id, 2, "a")
+        batch = CommitEventBatch(
+            run=run, events=events, idempotency_key="op-live-2",
+            body_fingerprint=batch_body_fingerprint(run.run_id, events),
+        )
+        first = store.commit_event_batch(batch)
+        second = store.commit_event_batch(batch)  # потерянный receipt
+        assert second == first
+        assert len(store.list_events(run.run_id)) == 2
+        # Тот же ключ, другое тело -- конфликт без записи.
+        other = self._events(run.run_id, 1, "other")
+        with pytest.raises(IdempotencyConflictError):
+            store.commit_event_batch(
+                CommitEventBatch(
+                    run=run, events=other, idempotency_key="op-live-2",
+                    body_fingerprint=batch_body_fingerprint(run.run_id, other),
+                )
+            )
+        assert len(store.list_events(run.run_id)) == 2
+        # Stale context -- конфликт ДО записи (I3).
+        with pytest.raises(CommitConflictError):
+            store.commit_event_batch(
+                CommitEventBatch(
+                    run=run, events=self._events(run.run_id, 1, "stale"),
+                    expected_context_id="ctx-stale",
+                )
+            )
+        assert len(store.list_events(run.run_id)) == 2
+
+    def test_mid_batch_failure_atomic_rollback(self, store, monkeypatch):
+        """Падение на середине батча -- ROLLBACK живой транзакции: ноль
+        событий, прежние метаданные (P08/P10 на настоящей БД)."""
+        from apps.api import research_runs as rr
+
+        run = _seed_run("RUN-ATOM6A")
+        store.upsert_run(run)
+        events = self._events(run.run_id, 3, "a")
+        original = rr.PostgresResearchRunStore._prepare_stored_event
+        calls = {"n": 0}
+
+        def failing(self, event, seq):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                raise RuntimeError("injected")
+            return original(self, event, seq)
+
+        monkeypatch.setattr(
+            rr.PostgresResearchRunStore, "_prepare_stored_event", failing
+        )
+        with pytest.raises(RuntimeError, match="injected"):
+            store.commit_event_batch(
+                rr.CommitEventBatch(
+                    run=replace(run, target_column="sales"), events=events
+                )
+            )
+        # Ноль событий + прежние метаданные (rollback атомарен).
+        assert store.list_events(run.run_id) == []
+        assert store.get_run(run.run_id).target_column is None
+        # Повтор (транзиентный отказ прошёл) -- полный батч с 1.
+        receipt = store.commit_event_batch(
+            rr.CommitEventBatch(run=run, events=events)
+        )
+        assert receipt.committed_watermark == 3
+
+    def test_concurrent_batches_contiguous_sequence(self, store):
+        """Два конкурентных батча одного запуска -- непрерывный префикс
+        1..N без дублей и дыр (сериализация по run: FOR UPDATE)."""
+        from concurrent.futures import ThreadPoolExecutor
+
+        from apps.api.research_runs import CommitEventBatch, batch_body_fingerprint
+
+        run = _seed_run("RUN-CONC6A")
+        store.upsert_run(run)
+
+        def commit(tag: str):
+            events = self._events(run.run_id, 5, tag)
+            return store.commit_event_batch(
+                CommitEventBatch(
+                    run=run, events=events, idempotency_key=f"conc-{tag}",
+                    body_fingerprint=batch_body_fingerprint(run.run_id, events),
+                )
+            )
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            receipts = list(pool.map(commit, ("A", "B")))
+        with psycopg.connect(DSN) as conn:
+            seqs = [
+                r[0]
+                for r in conn.execute(
+                    "SELECT commit_seq FROM trace_events WHERE run_id = %s",
+                    (run.run_id,),
+                ).fetchall()
+            ]
+        assert sorted(seqs) == list(range(1, 11))
+        assert len({r.committed_watermark for r in receipts}) == 2
+        assert max(r.committed_watermark for r in receipts) == 10
 
 
 # ── Контур 6: REST-смоук на Postgres-бэкенде ──────────────────────────

@@ -87,6 +87,44 @@ next-step вычисление над трассой; а агрегатам §10
 узлового факта -- это было бы загрязнение пользовательских артефактов.
 Журнал -- независимый append-only поток (без FK на research_runs:
 телеметрия переживает удаление запуска; агрегаты частот корпусные).
+
+AUDIT-6A (plan_progress_audit.md §7; контракт
+progress_audit_contract.md v0.5-6A) -- атомарный ledger и одинаковые
+store-контракты:
+
+  * `commit_event_batch` -- ЕДИНАЯ транзакция хранилища: CAS-проверка
+    expected context (контекст запуска, прочитанный продюсером;
+    stored-контекст NULL -- первичная привязка), обновление
+    run-метаданных, запись батча событий, регистрация idempotency key
+    и receipt. Падение на середине батча -- ROLLBACK: ноль событий и
+    прежние метаданные (P08/P10/F05 закрыты);
+  * sequence (commit_seq) назначается ТРАНЗАКЦИОННО с сериализацией по
+    run (Postgres: SELECT ... FOR UPDATE на строку запуска; Memory: тот
+    же замок, что и весь батч): два конкурентных батча дают непрерывный
+    префикс 1..N без дублей и дыр. BIGSERIAL не принимается за
+    committed-order (план §7 п.3, контракт §3.3);
+  * receipt (idempotency key, run/context, принятые event ids, committed
+    watermark): повтор того же ключа/тела возвращает ПРЕЖНИЙ receipt
+    (retry после потерянного ответа не дублирует); тот же ключ с другим
+    телом -- конфликт БЕЗ записи (IdempotencyConflictError);
+  * parity (I8/P20/F07): Memory реализует тот же контракт дедупа
+    (run_id, event_id), порядка, глубоких копий и batch-отказа, что
+    Postgres; оба проходят ОДНИ контрактные тесты
+    (tests/api/test_progress_audit_6a.py);
+  * durable envelope слоя 2 и run-метаданных ревизии (граница AUDIT-C,
+    контракт §14.5): v2-envelope события и context/data_revision/
+    data_digest запуска переживают запись/чтение Postgres-строки
+    (миграция 0002_audit6a_atomic_ledger.sql, аддитивно, `0001` не
+    переписывается; legacy-строки -- честное отсутствие/None);
+  * migrated producers: record_run_event (зеркало хука/сброса/
+    Прогнозирования) и record_run_event_batch (четыре карты статусов
+    Прогресса) пишут через commit_event_batch; остальные писатели слоя 2
+    (pause/resume/checkpoint/restore) ЯВНО остаются advisory до своей
+    миграции (AUDIT-6B) -- план §7 п.6.
+
+Граница (план §7 «Граница»): Redis и изменение DataFrame в транзакцию
+НЕ входят; P09 и контур доставки (outbox/повторы/health) -- AUDIT-6B,
+здесь не объявляются устранёнными.
 """
 from __future__ import annotations
 
@@ -124,7 +162,14 @@ def _now_iso() -> str:
 class ResearchRun:
     """Запуск исследования (§5): постоянный идентификатор, переживающий
     cookie-сессию. Иммутабельная запись -- обновления через replace()
-    + upsert_run (тот же стиль, что замороженные TraceEvent)."""
+    + upsert_run (тот же стиль, что замороженные TraceEvent).
+
+    AUDIT-6A (граница AUDIT-C, контракт §14.5): аддитивные Optional
+    метаданные ревизии/контекста запуска с durable-хранением в Postgres
+    (миграция 0002). None -- честное отсутствие (старый корпус, §3.7);
+    upsert сливает их (COALESCE-семантика), не стирая. Аддитивные
+    Optional -- без подъёма версий (прецедент PROGR-24-ORIGIN-A/F1).
+    """
 
     run_id: str
     session_id: str = ""
@@ -134,6 +179,10 @@ class ResearchRun:
     created_at: str = field(default_factory=_now_iso)
     last_active_at: str = field(default_factory=_now_iso)
     status: str = "active"
+    # ── AUDIT-6A: аддитивные метаданные ревизии/контекста (None = нет) ──
+    context_id: Optional[str] = None    # текущий контекст расчёта запуска
+    data_revision: Optional[int] = None  # ревизия данных на момент зеркала
+    data_digest: Optional[str] = None   # дайджест контента (compute_data_digest)
 
     def __post_init__(self) -> None:
         if self.status not in RUN_STATUSES:
@@ -143,7 +192,7 @@ class ResearchRun:
             )
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "run_id": self.run_id,
             "session_id": self.session_id,
             "dataset_fingerprint": self.dataset_fingerprint,
@@ -153,6 +202,15 @@ class ResearchRun:
             "last_active_at": self.last_active_at,
             "status": self.status,
         }
+        # «Незаполняемое поле отсутствует» (стиль envelope §12.3):
+        # аддитивные метаданные старых записей не фабрикуются.
+        if self.context_id is not None:
+            result["context_id"] = self.context_id
+        if self.data_revision is not None:
+            result["data_revision"] = self.data_revision
+        if self.data_digest is not None:
+            result["data_digest"] = self.data_digest
+        return result
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "ResearchRun":
@@ -165,6 +223,22 @@ class ResearchRun:
             created_at=str(raw.get("created_at") or _now_iso()),
             last_active_at=str(raw.get("last_active_at") or _now_iso()),
             status=str(raw.get("status") or "active"),
+            # AUDIT-6A: аддитивные поля; мусорные типы -> честное отсутствие
+            # (щит C-CERT: деградация, не 500).
+            context_id=(
+                str(raw["context_id"]) if isinstance(raw.get("context_id"), str)
+                else None
+            ),
+            data_revision=(
+                int(raw["data_revision"])
+                if isinstance(raw.get("data_revision"), int)
+                and not isinstance(raw.get("data_revision"), bool)
+                else None
+            ),
+            data_digest=(
+                str(raw["data_digest"]) if isinstance(raw.get("data_digest"), str)
+                else None
+            ),
         )
 
 
@@ -278,13 +352,127 @@ class MentorObservation:
         )
 
 
+# ── AUDIT-6A: контракт атомарного ledger (план §7) ───────────────────
+
+
+class CommitConflictError(RuntimeError):
+    """Stale context: ожидаемый продюсером контекст запуска не совпал с
+    хранимым на момент commit (CAS) -- отказ ДО первой записи (план §7
+    RED: «stale context отклонён до commit»; I3)."""
+
+
+class IdempotencyConflictError(RuntimeError):
+    """Тот же idempotency key с ДРУГИМ телом -- конфликт без записи
+    (план §7 п.4)."""
+
+
+@dataclass(frozen=True)
+class CommitReceipt:
+    """Receipt атомарного батча (план §7 п.4): идемпотентность и
+    документирование фиксации. Повтор того же ключа/тела возвращает
+    ПРЕЖНИЙ receipt; accepted_event_ids -- фактически принятые (не
+    дедуплицированные) события, committed_watermark -- последняя
+    назначенная позиция ledger запуска."""
+
+    idempotency_key: str
+    run_id: str
+    context_id: Optional[str]
+    accepted_event_ids: tuple[str, ...]
+    committed_watermark: int
+    created_at: str = field(default_factory=_now_iso)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "idempotency_key": self.idempotency_key,
+            "run_id": self.run_id,
+            "context_id": self.context_id,
+            "accepted_event_ids": list(self.accepted_event_ids),
+            "committed_watermark": self.committed_watermark,
+            "created_at": self.created_at,
+        }
+
+    @classmethod
+    def from_dict(cls, raw: dict[str, Any]) -> "CommitReceipt":
+        return cls(
+            idempotency_key=str(raw.get("idempotency_key") or ""),
+            run_id=str(raw.get("run_id") or ""),
+            context_id=raw.get("context_id") if isinstance(raw.get("context_id"), str) else None,
+            accepted_event_ids=tuple(
+                str(item) for item in (raw.get("accepted_event_ids") or ())
+            ),
+            committed_watermark=int(raw.get("committed_watermark") or 0),
+            created_at=str(raw.get("created_at") or _now_iso()),
+        )
+
+
+@dataclass(frozen=True)
+class CommitEventBatch:
+    """Батч атомарного commit (план §7 п.1): обновление run + запись
+    событий + регистрация key/receipt -- ОДНА транзакция хранилища.
+    Полная карта десяти узлов -- один батч, не десять независимых commit.
+
+    expected_context_id -- CAS: контекст запуска, ПРОЧИТАННЫЙ продюсером
+    до формирования батча. None -- проверка отключена (advisory-путь без
+    контекста); stored NULL -- первичная привязка (нечего сравнивать);
+    несовпадение -- CommitConflictError без записи.
+    """
+
+    run: ResearchRun                      # полная актуальная мета (upsert той же транзакцией)
+    events: tuple[TraceEvent, ...]
+    expected_context_id: Optional[str] = None
+    idempotency_key: Optional[str] = None  # None -- батч без receipt (advisory)
+    body_fingerprint: Optional[str] = None  # отпечаток тела для детекции «ключ + другое тело»
+
+
+def batch_body_fingerprint(
+    run_id: str,
+    events: Iterable[TraceEvent],
+    *,
+    context_id: Optional[str] = None,
+) -> str:
+    """Детерминированный отпечаток тела батча: sha256 канонического
+    материала (run_id, контекст, события с payload sort_keys). Повтор
+    ТОГО ЖЕ тела даёт тот же отпечаток -- база сравнения «тот же ключ с
+    другим телом -- конфликт без записи» (план §7 п.4); содержательно
+    выводимые ключи продюсеров (map:/event:) наследуют ту же
+    детерминированность."""
+    material = json.dumps(
+        {
+            "v": 1,
+            "run_id": str(run_id),
+            "context_id": context_id,
+            "events": [
+                {
+                    "event_id": event.event_id,
+                    "event_type": event.event_type,
+                    "stage": event.stage,
+                    "node_id": event.node_id,
+                    "ts": event.ts,
+                    "actor": event.actor,
+                    "payload": event.payload,
+                }
+                for event in events
+            ],
+        },
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        default=str,
+    )
+    return "sha256:" + hashlib.sha256(material.encode("utf-8")).hexdigest()
+
+
 # ── Миграция схемы (план: «миграции схемы») ──────────────────────────
 
 # Идемпотентный DDL (§12 п.1): research_runs -- PK run_id; trace_events --
 # append-only (seq BIGSERIAL -- порядок дописывания, уникальность
 # (run_id, event_id) страхует повторную запись); run_checkpoints --
 # ссылки на события. Postgres-специфичные типы (TIMESTAMPTZ/JSONB/BIGSERIAL).
-MIGRATION_STATEMENTS: tuple[str, ...] = (
+#
+# Каталог миграций: MIGRATION_STATEMENTS = 0001 + 0002 (аддитивно,
+# существующий 0001 не переписывается -- план §7; контракт §7 «читатели
+# раньше писателей»). Файлы-дубли для ops: apps/api/migrations/.
+MIGRATION_STATEMENTS_0001: tuple[str, ...] = (
     """
     CREATE TABLE IF NOT EXISTS research_runs (
         run_id TEXT PRIMARY KEY,
@@ -343,6 +531,55 @@ MIGRATION_STATEMENTS: tuple[str, ...] = (
     "CREATE INDEX IF NOT EXISTS idx_mentor_observations_rule ON mentor_observations (obs_kind, rule_id)",
 )
 
+# AUDIT-6A (план §7): атомарный ledger -- аддитивная миграция 0002.
+#   * run-метаданные контекста/ревизии + durable envelope v2 слоя 2
+#     (граница AUDIT-C, контракт §14.5); NULL -- честное отсутствие
+#     старого корпуса (§3.7);
+#   * commit_seq -- авторитетная позиция ledger: назначается store'ом
+#     ТРАНЗАКЦИОННО с сериализацией по run, НЕ BIGSERIAL (план §7 п.3);
+#   * run_commit_receipts -- receipts атомарных батчей (план §7 п.4).
+MIGRATION_STATEMENTS_0002: tuple[str, ...] = (
+    "ALTER TABLE research_runs ADD COLUMN IF NOT EXISTS context_id TEXT",
+    "ALTER TABLE research_runs ADD COLUMN IF NOT EXISTS data_revision BIGINT",
+    "ALTER TABLE research_runs ADD COLUMN IF NOT EXISTS data_digest TEXT",
+    "ALTER TABLE trace_events ADD COLUMN IF NOT EXISTS commit_seq BIGINT",
+    "ALTER TABLE trace_events ADD COLUMN IF NOT EXISTS schema_version INTEGER",
+    "ALTER TABLE trace_events ADD COLUMN IF NOT EXISTS evidence_level TEXT",
+    "ALTER TABLE trace_events ADD COLUMN IF NOT EXISTS operation_id TEXT",
+    "ALTER TABLE trace_events ADD COLUMN IF NOT EXISTS causation_id TEXT",
+    "ALTER TABLE trace_events ADD COLUMN IF NOT EXISTS context_id TEXT",
+    "ALTER TABLE trace_events ADD COLUMN IF NOT EXISTS result_ref JSONB",
+    "ALTER TABLE trace_events ADD COLUMN IF NOT EXISTS method JSONB",
+    "ALTER TABLE trace_events ADD COLUMN IF NOT EXISTS time_quality JSONB",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_trace_events_run_commit_seq "
+    "ON trace_events (run_id, commit_seq) WHERE commit_seq IS NOT NULL",
+    "CREATE INDEX IF NOT EXISTS idx_trace_events_run_commit_seq "
+    "ON trace_events (run_id, commit_seq NULLS FIRST, seq)",
+    """
+    CREATE TABLE IF NOT EXISTS run_commit_receipts (
+        idempotency_key TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL REFERENCES research_runs(run_id) ON DELETE CASCADE,
+        context_id TEXT,
+        body_fingerprint TEXT NOT NULL DEFAULT '',
+        accepted_event_ids JSONB NOT NULL DEFAULT '[]'::jsonb,
+        committed_watermark BIGINT NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
+    "CREATE INDEX IF NOT EXISTS idx_run_commit_receipts_run ON run_commit_receipts (run_id)",
+)
+
+MIGRATION_STATEMENTS: tuple[str, ...] = (
+    MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
+)
+
+# Каталог файлов-дублей ops-контура (эквивалентность источников DDL
+# страхуется тестами; паттерн PROGR-5.1).
+MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("0001_research_runs.sql", MIGRATION_STATEMENTS_0001),
+    ("0002_audit6a_atomic_ledger.sql", MIGRATION_STATEMENTS_0002),
+)
+
 
 def run_migrations(conn: Any) -> int:
     """Прогоняет MIGRATION_STATEMENTS через открытое psycopg-соединение.
@@ -368,7 +605,11 @@ class ResearchRunStore:
       * не валидировать (stage, event_type) повторно -- гейт
         make_trace_event (§4.1) уже отработал у источника; на границе
         чтения события восстанавливаются через TraceEvent.from_dict
-        (нормализация legacy -- решения R2/R3 PROGR-3-CERT).
+        (нормализация legacy -- решения R2/R3 PROGR-3-CERT);
+      * дедуплицировать события по (run_id, event_id) (I8/P20/F07: тот
+        же контракт дедупа у Memory и Postgres);
+      * назначать каждому принятому событию монотонную позицию ledger
+        sequence в пределах запуска (контракт §3.3, AUDIT-6A).
     """
 
     def upsert_run(self, run: ResearchRun) -> None:  # pragma: no cover - контракт
@@ -399,6 +640,20 @@ class ResearchRunStore:
         raise NotImplementedError
 
     def list_checkpoints(self, run_id: str) -> list[ResearchCheckpoint]:  # pragma: no cover
+        raise NotImplementedError
+
+    # -- AUDIT-6A: атомарный ledger (план §7) --
+
+    def commit_event_batch(self, batch: CommitEventBatch) -> CommitReceipt:  # pragma: no cover
+        """Атомарный commit батча (план §7 п.1): CAS-проверка expected
+        context, обновление run, запись событий, регистрация key/receipt
+        -- одна транзакция хранилища. Падение на середине -- ноль
+        событий и прежние метаданные (P08/P10)."""
+        raise NotImplementedError
+
+    def get_commit_receipt(self, idempotency_key: str) -> Optional[CommitReceipt]:  # pragma: no cover
+        """Receipt по ключу (получение потерянного ответа); None --
+        ключа нет."""
         raise NotImplementedError
 
     # -- журнал наблюдений Наставника (PROGR-8, §10) --
@@ -432,9 +687,34 @@ def _ts_from_db(value: Any) -> str:
     return str(value or "")
 
 
+def _merge_run_additive(new: ResearchRun, existing: ResearchRun) -> ResearchRun:
+    """COALESCE-семантика аддитивных полей run (AUDIT-6A, контракт
+    §14.5): батч без новых значений НЕ стирает прежние метаданные
+    контекста/ревизии (паритет SQL-миграции: COALESCE(EXCLUDED.x,
+    stored.x)). Целевые поля (target_column и пр.) не затрагиваются:
+    None там -- осознанное значение (сброс цели)."""
+    return replace(
+        new,
+        context_id=new.context_id if new.context_id is not None else existing.context_id,
+        data_revision=(
+            new.data_revision if new.data_revision is not None
+            else existing.data_revision
+        ),
+        data_digest=(
+            new.data_digest if new.data_digest is not None else existing.data_digest
+        ),
+    )
+
+
 class MemoryResearchRunStore(ResearchRunStore):
     """In-memory реализация (default dev/tests). Глубокие копии payload
-    на записи и чтении -- тот же контракт изоляции, что R1 слоя 1."""
+    на записи и чтении -- тот же контракт изоляции, что R1 слоя 1.
+
+    AUDIT-6A: паритет контракта с Postgres (I8/P20/F07) -- дедуп
+    (run_id, event_id), sequence per run, атомарный
+    commit_event_batch (тот же замок, что и весь батч: отказ на
+    середине оставляет ноль событий и прежние метаданные).
+    """
 
     def __init__(self) -> None:
         self._runs: dict[str, ResearchRun] = {}
@@ -442,9 +722,17 @@ class MemoryResearchRunStore(ResearchRunStore):
         self._checkpoints: dict[str, list[ResearchCheckpoint]] = {}
         self._observations: list[MentorObservation] = []
         self._lock = threading.Lock()
+        # AUDIT-6A: авторитетная позиция ledger per run + receipts.
+        self._sequences: dict[str, int] = {}
+        self._receipts: dict[str, tuple[CommitReceipt, str]] = {}
 
     def upsert_run(self, run: ResearchRun) -> None:
         with self._lock:
+            existing = self._runs.get(run.run_id)
+            # COALESCE-семантика аддитивных полей (паритет SQL-миграции):
+            # upsert без новых значений не стирает контекст/ревизию.
+            if existing is not None:
+                run = _merge_run_additive(run, existing)
             self._runs[run.run_id] = run
 
     def get_run(self, run_id: str) -> Optional[ResearchRun]:
@@ -479,21 +767,30 @@ class MemoryResearchRunStore(ResearchRunStore):
                         run, status="abandoned", last_active_at=_now_iso()
                     )
 
+    # -- AUDIT-6A: шов подготовки события (точка инъекции отказов
+    #    тестами; дублирует Postgres._prepare_stored_event по имени) --
+
+    def _prepare_stored_event(self, event: TraceEvent, sequence: int) -> TraceEvent:
+        """Подготовка события к хранению: честная маркировка времени
+        (AUDIT-S, F16/P23), глубокая копия payload (R1) и штамп позиции
+        ledger sequence."""
+        event = mark_honest_time(event, substituted=False)
+        return replace(event, payload=deepcopy(event.payload), sequence=sequence)
+
     def append_event(self, run_id: str, event: TraceEvent) -> None:
-        if not event.event_id:
+        with self._lock:
             # R4 (PROGR-3-CERT): backfill id при записи -- повторное чтение
             # не перегенерирует идентификатор.
-            event = replace(event, event_id=str(uuid.uuid4()))
-        # AUDIT-S (F16/P23): честная маркировка времени на границе записи.
-        # Memory сохраняет raw ts КАК ЕСТЬ -- нечитаемое время маркируется
-        # degraded (никакой подмены); idempotent, валидные события не
-        # трогает.
-        event = mark_honest_time(event, substituted=False)
-        # R1: payload копируется ГЛУБОКО -- stored не разделяет вложенные
-        # структуры с источником.
-        event = replace(event, payload=deepcopy(event.payload))
-        with self._lock:
+            if not event.event_id:
+                event = replace(event, event_id=str(uuid.uuid4()))
+            # AUDIT-6A (I8/P20/F07): дедуп по (run_id, event_id) -- тот же
+            # контракт, что Postgres ON CONFLICT DO NOTHING.
+            if any(item.event_id == event.event_id for item in self._events.get(run_id, ())):
+                return
+            sequence = self._sequences.get(run_id, 0) + 1
+            event = self._prepare_stored_event(event, sequence)
             self._events.setdefault(run_id, []).append(event)
+            self._sequences[run_id] = sequence
 
     def list_events(self, run_id: str) -> list[TraceEvent]:
         with self._lock:
@@ -506,7 +803,7 @@ class MemoryResearchRunStore(ResearchRunStore):
         with self._lock:
             for event in self._events.get(run_id, ()):
                 if event.event_id == event_id:
-                    return event
+                    return replace(event, payload=deepcopy(event.payload))
         return None
 
     def add_checkpoint(self, run_id: str, checkpoint: ResearchCheckpoint) -> None:
@@ -516,6 +813,86 @@ class MemoryResearchRunStore(ResearchRunStore):
     def list_checkpoints(self, run_id: str) -> list[ResearchCheckpoint]:
         with self._lock:
             return list(self._checkpoints.get(run_id, ()))
+
+    # -- AUDIT-6A: атомарный ledger (план §7) --
+
+    def commit_event_batch(self, batch: CommitEventBatch) -> CommitReceipt:
+        """Атомарный commit (паритет Postgres): тот же замок покрывает
+        CAS-контекст, запись событий, обновление run и регистрацию
+        receipt -- падение на середине оставляет ноль событий и прежние
+        метаданные; конкурентные батчи сериализуются (непрерывный
+        префикс 1..N)."""
+        run_id = batch.run.run_id
+        fingerprint = batch.body_fingerprint or batch_body_fingerprint(
+            run_id, batch.events, context_id=batch.run.context_id
+        )
+        with self._lock:
+            # 1. Идемпотентность: повтор ключа -> прежний receipt без записи;
+            #    тот же ключ с другим телом -- конфликт без записи (план §7 п.4).
+            if batch.idempotency_key:
+                stored = self._receipts.get(batch.idempotency_key)
+                if stored is not None:
+                    receipt, stored_fingerprint = stored
+                    if stored_fingerprint != fingerprint:
+                        raise IdempotencyConflictError(
+                            f"Idempotency key {batch.idempotency_key!r} уже использован "
+                            "с другим телом батча"
+                        )
+                    return receipt
+            # 2. CAS-контекст: stored NULL -- первичная привязка;
+            #    несовпадение -- CommitConflictError ДО записи (I3).
+            current = self._runs.get(run_id)
+            if batch.expected_context_id is not None and current is not None:
+                stored_context = current.context_id
+                if stored_context is not None and stored_context != batch.expected_context_id:
+                    raise CommitConflictError(
+                        f"Stale context: ожидаемый контекст {batch.expected_context_id!r}, "
+                        f"хранимый -- {stored_context!r} (run {run_id})"
+                    )
+            # 3. Дедуп внутри батча (первый occurrence -- I1) и против корпуса.
+            existing_ids = {item.event_id for item in self._events.get(run_id, ())}
+            seen: set[str] = set()
+            prepared: list[TraceEvent] = []
+            accepted: list[str] = []
+            sequence = self._sequences.get(run_id, 0)
+            for event in batch.events:
+                if not event.event_id:
+                    event = replace(event, event_id=str(uuid.uuid4()))
+                if event.run_id != run_id:
+                    # Событие батча принадлежит запуску батча (паритет
+                    # Postgres-ветки: честная привязка, §5).
+                    event = replace(event, run_id=run_id)
+                if event.event_id in seen or event.event_id in existing_ids:
+                    continue
+                seen.add(event.event_id)
+                sequence += 1
+                prepared.append(self._prepare_stored_event(event, sequence))
+                accepted.append(event.event_id)
+            # 4. Run-метаданные -- той же операцией (COALESCE аддитивных).
+            merged_run = (
+                _merge_run_additive(batch.run, current)
+                if current is not None
+                else batch.run
+            )
+            self._runs[run_id] = merged_run
+            # 5. Запись событий + вода́ ledger.
+            self._events.setdefault(run_id, []).extend(prepared)
+            self._sequences[run_id] = sequence
+            receipt = CommitReceipt(
+                idempotency_key=batch.idempotency_key or "",
+                run_id=run_id,
+                context_id=merged_run.context_id,
+                accepted_event_ids=tuple(accepted),
+                committed_watermark=sequence,
+            )
+            if batch.idempotency_key:
+                self._receipts[batch.idempotency_key] = (receipt, fingerprint)
+            return receipt
+
+    def get_commit_receipt(self, idempotency_key: str) -> Optional[CommitReceipt]:
+        with self._lock:
+            stored = self._receipts.get(idempotency_key)
+            return stored[0] if stored else None
 
     # -- журнал наблюдений Наставника (PROGR-8, §10) --
 
@@ -574,48 +951,62 @@ class PostgresResearchRunStore(ResearchRunStore):
 
     # -- runs --
 
+    # Колонки SELECT/UPSERT runs (AUDIT-6A: аддитивные метаданные
+    # контекста/ревизии -- durable с миграцией 0002, граница AUDIT-C).
+    _RUN_COLUMNS = (
+        "run_id, session_id, dataset_fingerprint, dataset_name, "
+        "target_column, created_at, last_active_at, status, "
+        "context_id, data_revision, data_digest"
+    )
+
+    # COALESCE аддитивных полей (паритет _merge_run_additive Memory):
+    # upsert без новых значений не стирает контекст/ревизию; целевые
+    # поля (target_column и пр.) пишутся напрямую -- None там
+    # осознанное значение (сброс цели).
+    _UPSERT_RUN_SQL = """
+        INSERT INTO research_runs
+            (run_id, session_id, dataset_fingerprint, dataset_name,
+             target_column, created_at, last_active_at, status,
+             context_id, data_revision, data_digest)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (run_id) DO UPDATE SET
+            session_id = EXCLUDED.session_id,
+            dataset_fingerprint = EXCLUDED.dataset_fingerprint,
+            dataset_name = EXCLUDED.dataset_name,
+            target_column = EXCLUDED.target_column,
+            created_at = EXCLUDED.created_at,
+            last_active_at = EXCLUDED.last_active_at,
+            status = EXCLUDED.status,
+            context_id = COALESCE(EXCLUDED.context_id, research_runs.context_id),
+            data_revision = COALESCE(EXCLUDED.data_revision, research_runs.data_revision),
+            data_digest = COALESCE(EXCLUDED.data_digest, research_runs.data_digest)
+    """
+
+    @staticmethod
+    def _run_params(run: ResearchRun) -> tuple[Any, ...]:
+        return (
+            run.run_id, run.session_id, run.dataset_fingerprint,
+            run.dataset_name, run.target_column,
+            _ts_to_db(run.created_at), _ts_to_db(run.last_active_at),
+            run.status, run.context_id, run.data_revision, run.data_digest,
+        )
+
     def upsert_run(self, run: ResearchRun) -> None:
         with self._connect() as conn, conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO research_runs
-                    (run_id, session_id, dataset_fingerprint, dataset_name,
-                     target_column, created_at, last_active_at, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (run_id) DO UPDATE SET
-                    session_id = EXCLUDED.session_id,
-                    dataset_fingerprint = EXCLUDED.dataset_fingerprint,
-                    dataset_name = EXCLUDED.dataset_name,
-                    target_column = EXCLUDED.target_column,
-                    created_at = EXCLUDED.created_at,
-                    last_active_at = EXCLUDED.last_active_at,
-                    status = EXCLUDED.status
-                """,
-                (
-                    run.run_id, run.session_id, run.dataset_fingerprint,
-                    run.dataset_name, run.target_column,
-                    _ts_to_db(run.created_at), _ts_to_db(run.last_active_at),
-                    run.status,
-                ),
-            )
+            cur.execute(self._UPSERT_RUN_SQL, self._run_params(run))
             conn.commit()
 
     def get_run(self, run_id: str) -> Optional[ResearchRun]:
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
-                "SELECT run_id, session_id, dataset_fingerprint, dataset_name, "
-                "target_column, created_at, last_active_at, status "
-                "FROM research_runs WHERE run_id = %s",
+                f"SELECT {self._RUN_COLUMNS} FROM research_runs WHERE run_id = %s",
                 (run_id,),
             )
             row = cur.fetchone()
         return self._run_from_row(row) if row else None
 
     def list_runs(self, session_id: Optional[str] = None) -> list[ResearchRun]:
-        query = (
-            "SELECT run_id, session_id, dataset_fingerprint, dataset_name, "
-            "target_column, created_at, last_active_at, status FROM research_runs"
-        )
+        query = f"SELECT {self._RUN_COLUMNS} FROM research_runs"
         params: tuple[Any, ...] = ()
         if session_id is not None:
             query += " WHERE session_id = %s"
@@ -658,30 +1049,92 @@ class PostgresResearchRunStore(ResearchRunStore):
             created_at=_ts_from_db(row[5]),
             last_active_at=_ts_from_db(row[6]),
             status=str(row[7] or "active"),
+            # AUDIT-6A: аддитивные метаданные (NULL legacy -- честное отсутствие).
+            context_id=row[8] if row[8] is None else str(row[8]),
+            data_revision=row[9] if row[9] is None else int(row[9]),
+            data_digest=row[10] if row[10] is None else str(row[10]),
         )
 
     # -- события --
 
-    def append_event(self, run_id: str, event: TraceEvent) -> None:
+    # Колонки durable envelope v2 (AUDIT-6A: граница AUD-C §14.5 --
+    # v2-envelope переживает строку; до миграции 0002 Postgres терял его,
+    # Memory -- нет: нарушение I8). NULL у legacy-строк -- честное
+    # отсутствие (§3.7).
+    _EVENT_COLUMNS = (
+        "event_id, run_id, ts, stage, node_id, event_type, payload::text, actor, "
+        "commit_seq, schema_version, evidence_level, operation_id, causation_id, "
+        "context_id, result_ref::text, method::text, time_quality::text"
+    )
+
+    def _prepare_stored_event(self, event: TraceEvent, sequence: int) -> tuple[Any, ...]:
+        """Подготовка строки события (шов инъекции отказов тестами;
+        имя совпадает с Memory для общего контракта): честная маркировка
+        времени (AUDIT-S) + сериализация envelope v2 + позиция ledger."""
         # AUDIT-S (F16/P23): Postgres ЗАМЕНЯЕТ нечитаемый ts значением
         # «записано сейчас» (_ts_to_db строит значение TIMESTAMPTZ-строки)
-        # -- замена честно маркируется substituted ДО записи (raw_ts
-        # сохранён в envelope; durable-хранение маркировки в строке --
-        # миграция AUDIT-6A). Idempotent, валидные события не трогает.
+        # -- замена честно маркируется substituted ДО записи; с 0002
+        # маркировка durable в колонке time_quality. Idempotent, валидные
+        # события не трогает.
         event = mark_honest_time(event, substituted=True)
-        event_id = event.event_id or str(uuid.uuid4())
         payload = json.dumps(event.payload, default=str, ensure_ascii=False)
+        envelope = (
+            event.schema_version, event.evidence_level, event.operation_id,
+            event.causation_id, event.context_id,
+            json.dumps(event.result_ref, default=str, ensure_ascii=False)
+            if event.result_ref is not None else None,
+            json.dumps(event.method, default=str, ensure_ascii=False)
+            if event.method is not None else None,
+            json.dumps(event.time_quality, default=str, ensure_ascii=False)
+            if event.time_quality is not None else None,
+        )
+        return (
+            event.event_id, event.run_id or "", _ts_to_db(event.ts), event.stage,
+            event.node_id, event.event_type, payload, event.actor,
+            sequence, *envelope,
+        )
+
+    _INSERT_EVENT_SQL = """
+        INSERT INTO trace_events
+            (event_id, run_id, ts, stage, node_id, event_type, payload, actor,
+             commit_seq, schema_version, evidence_level, operation_id,
+             causation_id, context_id, result_ref, method, time_quality)
+        VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s, %s, %s, %s, %s,
+                %s::jsonb, %s::jsonb, %s::jsonb)
+        ON CONFLICT (run_id, event_id) DO NOTHING
+    """
+
+    def append_event(self, run_id: str, event: TraceEvent) -> None:
+        """Одиночная запись (advisory-писатели до их миграции, план §7
+        п.6): дедуп (run_id, event_id) + транзакционная sequence с
+        сериализацией по run (FOR UPDATE на строку запуска)."""
+        if not event.event_id:
+            # R4 (PROGR-3-CERT): backfill id при записи.
+            event = replace(event, event_id=str(uuid.uuid4()))
         with self._connect() as conn, conn.cursor() as cur:
+            # Сериализация по run: конкурентные append/батчи одного запуска
+            # ждут блокировки строки -- непрерывный префикс commit_seq
+            # (план §7 п.3: BIGSERIAL сам по себе committed-order не
+            # удостоверяет).
             cur.execute(
-                """
-                INSERT INTO trace_events
-                    (event_id, run_id, ts, stage, node_id, event_type, payload, actor)
-                VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s)
-                ON CONFLICT (run_id, event_id) DO NOTHING
-                """,
-                (
-                    event_id, run_id, _ts_to_db(event.ts), event.stage,
-                    event.node_id, event.event_type, payload, event.actor,
+                "INSERT INTO research_runs (run_id) VALUES (%s) "
+                "ON CONFLICT (run_id) DO NOTHING",
+                (run_id,),
+            )
+            cur.execute(
+                "SELECT run_id FROM research_runs WHERE run_id = %s FOR UPDATE",
+                (run_id,),
+            )
+            cur.execute(
+                "SELECT COALESCE(MAX(commit_seq), 0) FROM trace_events "
+                "WHERE run_id = %s",
+                (run_id,),
+            )
+            sequence = int(cur.fetchone()[0] or 0) + 1
+            cur.execute(
+                self._INSERT_EVENT_SQL,
+                self._prepare_stored_event(
+                    replace(event, run_id=run_id), sequence
                 ),
             )
             conn.commit()
@@ -689,9 +1142,13 @@ class PostgresResearchRunStore(ResearchRunStore):
     def list_events(self, run_id: str) -> list[TraceEvent]:
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
-                "SELECT event_id, run_id, ts, stage, node_id, event_type, "
-                "payload::text, actor FROM trace_events WHERE run_id = %s "
-                "ORDER BY seq",
+                f"SELECT {self._EVENT_COLUMNS} FROM trace_events "
+                f"WHERE run_id = %s "
+                # Единое чтение канонического порядка (контракт §3.3):
+                # legacy-строки (commit_seq NULL) -- стабильный исходный
+                # store-order по seq 0001; новые -- по commit_seq.
+                "ORDER BY (commit_seq IS NOT NULL), "
+                "CASE WHEN commit_seq IS NOT NULL THEN commit_seq ELSE seq END",
                 (run_id,),
             )
             rows = cur.fetchall()
@@ -705,6 +1162,15 @@ class PostgresResearchRunStore(ResearchRunStore):
                 event_type=str(row[5]),
                 payload=json.loads(row[6] or "{}"),
                 actor=str(row[7] or "user"),
+                sequence=row[8] if row[8] is None else int(row[8]),
+                schema_version=row[9] if row[9] is None else int(row[9]),
+                evidence_level=row[10] if row[10] is None else str(row[10]),
+                operation_id=row[11] if row[11] is None else str(row[11]),
+                causation_id=row[12] if row[12] is None else str(row[12]),
+                context_id=row[13] if row[13] is None else str(row[13]),
+                result_ref=json.loads(row[14]) if row[14] else None,
+                method=json.loads(row[15]) if row[15] else None,
+                time_quality=json.loads(row[16]) if row[16] else None,
             )
             for row in rows
         ]
@@ -712,6 +1178,157 @@ class PostgresResearchRunStore(ResearchRunStore):
     def get_event(self, run_id: str, event_id: str) -> Optional[TraceEvent]:
         events = [event for event in self.list_events(run_id) if event.event_id == event_id]
         return events[0] if events else None
+
+    # -- AUDIT-6A: атомарный ledger (план §7) --
+
+    _RECEIPT_COLUMNS = (
+        "idempotency_key, run_id, context_id, body_fingerprint, "
+        "accepted_event_ids::text, committed_watermark, created_at"
+    )
+
+    @staticmethod
+    def _receipt_from_row(row: tuple[Any, ...]) -> CommitReceipt:
+        return CommitReceipt(
+            idempotency_key=str(row[0]),
+            run_id=str(row[1]),
+            context_id=row[2] if row[2] is None else str(row[2]),
+            accepted_event_ids=tuple(json.loads(row[4] or "[]")),
+            committed_watermark=int(row[5] or 0),
+            created_at=_ts_from_db(row[6]),
+        )
+
+    def commit_event_batch(self, batch: CommitEventBatch) -> CommitReceipt:
+        """Атомарный commit батча (план §7 п.1) -- ОДНА DB-транзакция:
+        1) idempotency: повтор ключа -> прежний receipt (или конфликт
+        без записи при другом теле); 2) сериализация по run: INSERT
+        shell + SELECT ... FOR UPDATE на строку запуска -- конкурентные
+        батчи того же run ждут друг друга (непрерывный префикс
+        commit_seq); 3) CAS expected context ДО записей (I3); 4) дедуп
+        внутри батча/против корпуса + транзакционные commit_seq; 5)
+        upsert run-метаданных (COALESCE аддитивных); 6) INSERT receipt.
+        Любой сбой в середине -- откат контекст-менеджером соединения:
+        ноль событий, прежние метаданные (P08/P10)."""
+        run_id = batch.run.run_id
+        fingerprint = batch.body_fingerprint or batch_body_fingerprint(
+            run_id, batch.events, context_id=batch.run.context_id
+        )
+        with self._connect() as conn, conn.cursor() as cur:
+            if batch.idempotency_key:
+                cur.execute(
+                    f"SELECT {self._RECEIPT_COLUMNS} FROM run_commit_receipts "
+                    "WHERE idempotency_key = %s FOR UPDATE",
+                    (batch.idempotency_key,),
+                )
+                row = cur.fetchone()
+                if row is not None:
+                    if str(row[3]) != fingerprint:
+                        raise IdempotencyConflictError(
+                            f"Idempotency key {batch.idempotency_key!r} уже "
+                            "использован с другим телом батча"
+                        )
+                    return self._receipt_from_row(row)
+
+            # Сериализация по run: shell-вставка гарантирует строку (и
+            # её замок) даже для первого батча запуска; конкурентная
+            # вставка того же run блокируется до фиксации первой.
+            cur.execute(
+                "INSERT INTO research_runs (run_id) VALUES (%s) "
+                "ON CONFLICT (run_id) DO NOTHING",
+                (run_id,),
+            )
+            cur.execute(
+                "SELECT context_id FROM research_runs WHERE run_id = %s FOR UPDATE",
+                (run_id,),
+            )
+            stored_context = cur.fetchone()[0]
+
+            # CAS expected context: stored NULL -- первичная привязка;
+            # несовпадение -- отказ ДО записей (rollback, ноль событий).
+            if (
+                batch.expected_context_id is not None
+                and stored_context is not None
+                and str(stored_context) != batch.expected_context_id
+            ):
+                raise CommitConflictError(
+                    f"Stale context: ожидаемый контекст "
+                    f"{batch.expected_context_id!r}, хранимый -- "
+                    f"{stored_context!r} (run {run_id})"
+                )
+
+            cur.execute(
+                "SELECT COALESCE(MAX(commit_seq), 0) FROM trace_events "
+                "WHERE run_id = %s",
+                (run_id,),
+            )
+            sequence = int(cur.fetchone()[0] or 0)
+            existing_ids: set[str] = set()
+            if batch.events:
+                cur.execute(
+                    "SELECT event_id FROM trace_events WHERE run_id = %s "
+                    "AND event_id = ANY(%s)",
+                    (run_id, [event.event_id for event in batch.events]),
+                )
+                existing_ids = {str(row[0]) for row in cur.fetchall()}
+
+            accepted: list[str] = []
+            seen: set[str] = set()
+            for event in batch.events:
+                if not event.event_id:
+                    event = replace(event, event_id=str(uuid.uuid4()))
+                if event.run_id != run_id:
+                    # Событие батча принадлежит запуску батча (честная
+                    # привязка, §5: событие без/с чужим run_id не
+                    # «перепрыгивает» в другой запуск).
+                    event = replace(event, run_id=run_id)
+                if event.event_id in seen or event.event_id in existing_ids:
+                    continue  # дедуп внутри батча (первый occurrence) и против корпуса
+                seen.add(event.event_id)
+                sequence += 1
+                cur.execute(
+                    self._INSERT_EVENT_SQL,
+                    self._prepare_stored_event(event, sequence),
+                )
+                accepted.append(event.event_id)
+
+            cur.execute(self._UPSERT_RUN_SQL, self._run_params(batch.run))
+            merged_context = (
+                batch.run.context_id
+                if batch.run.context_id is not None
+                else (str(stored_context) if stored_context is not None else None)
+            )
+            receipt = CommitReceipt(
+                idempotency_key=batch.idempotency_key or "",
+                run_id=run_id,
+                context_id=merged_context,
+                accepted_event_ids=tuple(accepted),
+                committed_watermark=sequence,
+            )
+            if batch.idempotency_key:
+                cur.execute(
+                    """
+                    INSERT INTO run_commit_receipts
+                        (idempotency_key, run_id, context_id, body_fingerprint,
+                         accepted_event_ids, committed_watermark, created_at)
+                    VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s)
+                    """,
+                    (
+                        batch.idempotency_key, run_id, merged_context,
+                        fingerprint, json.dumps(list(accepted)), sequence,
+                        _ts_to_db(receipt.created_at),
+                    ),
+                )
+            conn.commit()
+            return receipt
+
+    def get_commit_receipt(self, idempotency_key: str) -> Optional[CommitReceipt]:
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                f"SELECT {self._RECEIPT_COLUMNS} FROM run_commit_receipts "
+                "WHERE idempotency_key = %s",
+                (idempotency_key,),
+            )
+            row = cur.fetchone()
+        return self._receipt_from_row(row) if row else None
 
     # -- чекпоинты --
 
@@ -841,10 +1458,74 @@ def reset_research_run_store_for_testing() -> None:
 # ── Зеркало слоя 1 -> слой 2 (§5: «в дополнение, не вместо») ─────────
 
 
+def _session_context(session: Any) -> tuple[Optional[str], Optional[int], Optional[str]]:
+    """(context_id, data_revision, data_digest) сессии (AUDIT-C): сервер
+    вычисляет context_id (фронт контекст не создаёт); нет данных/запуска
+    -- честное отсутствие (None, None, None). Ленивый импорт data_context
+    -- тот же паттерн разрыва циклов, что node_status ниже (data_context
+    сам без импортов из apps/api, но единый стиль импорта по вызову)."""
+    dataset = getattr(session, "dataset", None)
+    run_id = getattr(session, "run_id", "") or ""
+    if dataset is None or not run_id:
+        return None, None, None
+    from apps.api.data_context import compute_context_id, context_components
+
+    revision = getattr(session, "data_revision", 0) or 0
+    try:
+        revision = int(revision)
+    except (TypeError, ValueError):  # pragma: no cover - мусор -> честный ноль
+        revision = 0
+    components = context_components(
+        dataset_fingerprint=getattr(dataset, "dataset_fingerprint", "") or "",
+        data_revision=revision,
+        target_column=getattr(session, "target_column", None),
+        date_column=getattr(session, "date_column", None),
+    )
+    context_id = compute_context_id(run_id=run_id, components=components)
+    digest = getattr(session, "data_digest", "") or None
+    return context_id, revision, digest
+
+
+def _mirror_run_base(
+    store: ResearchRunStore, session: Any, run_id: str
+) -> tuple[ResearchRun, Optional[str]]:
+    """База run-метаданных зеркала: создание запуска (supersede прежних
+    активных, §3.1) либо перелинковка session_id («последний известный»,
+    §5). Возвращает (run, expected_context) -- CAS-контекст равен
+    ХРАНИМОМУ контексту на момент чтения продюсером (оптимистичная
+    проверка, план §7: «проверка expected context»)."""
+    existing = store.get_run(run_id)
+    if existing is None:
+        # Новый запуск: предыдущие АКТИВНЫЕ запуски этой сессии --
+        # abandoned (новый датасет = новое исследование, §3.1/§5.2).
+        store.supersede_active_runs(session.session_id, keep_run_id=run_id)
+        dataset = getattr(session, "dataset", None)
+        run = ResearchRun(
+            run_id=run_id,
+            session_id=session.session_id,
+            dataset_fingerprint=getattr(dataset, "dataset_fingerprint", "") or "",
+            dataset_name=getattr(dataset, "name", "") or "",
+        )
+        expected_context = None
+    else:
+        # session_id -- «последний известный» (§5): запускается
+        # перелинковка при restore/продолжении на новом устройстве.
+        run = replace(existing, session_id=session.session_id)
+        expected_context = existing.context_id
+    return run, expected_context
+
+
 def record_run_event(session: Any, event: TraceEvent) -> None:
     """Отражает событие трассы в долговременный слой. Best-effort: любой
     сбой -- warning и возврат (трасса вспомогательна по отношению к
     основной операции, §4.2; успешный ответ эндпоинта не ломается).
+
+    AUDIT-6A: запись идёт через commit_event_batch -- обновление
+    run-метаданных и событие фиксируются ОДНОЙ транзакцией хранилища
+    (P08/P10/F05: раздельный upsert_run+append_event устранён; «падение
+    записи оставляет прежние метаданные и ноль событий»). Ключ
+    идемпотентности содержательный: повтор ТОГО ЖЕ события (тот же
+    event_id) возвращает прежний receipt без повторной записи.
 
     События без run_id пропускаются честно: запуск существует только
     вместе с исследованием (§5 -- run_id по факту первой загрузки).
@@ -861,22 +1542,7 @@ def record_run_event(session: Any, event: TraceEvent) -> None:
         if not event.run_id:
             event = replace(event, run_id=run_id)
         store = get_research_run_store()
-        dataset = getattr(session, "dataset", None)
-        existing = store.get_run(run_id)
-        if existing is None:
-            # Новый запуск: предыдущие АКТИВНЫЕ запуски этой сессии --
-            # abandoned (новый датасет = новое исследование, §3.1/§5.2).
-            store.supersede_active_runs(session.session_id, keep_run_id=run_id)
-            run = ResearchRun(
-                run_id=run_id,
-                session_id=session.session_id,
-                dataset_fingerprint=getattr(dataset, "dataset_fingerprint", "") or "",
-                dataset_name=getattr(dataset, "name", "") or "",
-            )
-        else:
-            # session_id -- «последний известный» (§5): запускается
-            # перелинковка при restore/продолжении на новом устройстве.
-            run = replace(existing, session_id=session.session_id)
+        run, expected_context = _mirror_run_base(store, session, run_id)
         if event.event_type == "target_column_changed":
             raw_target = event.payload.get("target_column")
             run = replace(run, target_column=str(raw_target) if raw_target else None)
@@ -891,15 +1557,105 @@ def record_run_event(session: Any, event: TraceEvent) -> None:
             # (происхождение -- уровень сессии, там сброс в
             # convert-types).
             run = replace(run, target_column=None)
-        run = replace(run, last_active_at=_now_iso())
-        store.upsert_run(run)
-        store.append_event(run_id, event)
+        # AUDIT-6A (граница AUDIT-C §14.5): durable метаданные контекста
+        # запуска. Штамп envelope события приоритетен (контекст момента
+        # сеяния, I3); иначе -- серверный контекст сессии.
+        context_id, revision, digest = _session_context(session)
+        if event.context_id:
+            context_id = event.context_id
+        run = replace(
+            run,
+            context_id=context_id,
+            data_revision=revision,
+            data_digest=digest,
+            last_active_at=_now_iso(),
+        )
+        store.commit_event_batch(
+            CommitEventBatch(
+                run=run,
+                events=(event,),
+                expected_context_id=expected_context,
+                idempotency_key=f"event:{run_id}:{event.event_id}",
+                # Отпечаток -- только тело события (контекст/метаданные
+                # run вычисляются свежими при каждом зеркале и не
+                # дедуплицируются receipt'ом): retry ТОГО ЖЕ события
+                # после сдвига контекста возвращает прежний receipt.
+                body_fingerprint=batch_body_fingerprint(run_id, (event,)),
+            )
+        )
     except Exception:
         logger.warning(
             "Research runs: событие %s не отражено в долговременном слое",
             getattr(event, "event_type", "?"),
             exc_info=True,
         )
+
+
+def record_run_event_batch(
+    session: Any,
+    events: Iterable[TraceEvent],
+    *,
+    expected_context_id: Optional[str] = None,
+) -> Optional[CommitReceipt]:
+    """Атомарное зеркало БАТЧА фактов (AUDIT-6A, план §7 п.2: «полная
+    карта десяти узлов -- один batch, не десять независимых commit»):
+    migrated producer четырёх карт статусов Прогресса
+    (upload-stops/validation-checks/preprocessing-checks/eda-checks).
+
+    Best-effort (тот же контракт, что record_run_event): сбой слоя 2 не
+    ломает успешный ответ эндпоинта; при отказе слой 2 остаётся БЕЗ
+    частичных фактов батча (P08). Ключ идемпотентности содержательный
+    («map:<run_id>:<отпечаток тела>»): повтор ТОГО ЖЕ батча (потерянный
+    receipt) не дублирует факты; НОВАЯ поставка карты (новые event_id)
+    честно даёт новые наблюдения (P07-семантика сохранена до AUDIT-2A).
+
+    expected_context_id: явный CAS-контекст продюсера; по умолчанию --
+    хранимый контекст на момент чтения (через _mirror_run_base).
+    Возвращает receipt (или None при сбое/пустом батче/отсутствии
+    запуска) -- носитель для required-контура AUDIT-6B.
+    """
+    events = tuple(events)
+    if not events:
+        return None
+    try:
+        run_id = events[0].run_id or getattr(session, "run_id", "") or ""
+        if not run_id:
+            return None
+        events = tuple(
+            event if event.run_id else replace(event, run_id=run_id)
+            for event in events
+        )
+        store = get_research_run_store()
+        run, read_context = _mirror_run_base(store, session, run_id)
+        if expected_context_id is None:
+            expected_context_id = read_context
+        # Durable метаданные контекста/ревизии запуска (AUDIT-C граница).
+        context_id, revision, digest = _session_context(session)
+        run = replace(
+            run,
+            context_id=context_id,
+            data_revision=revision,
+            data_digest=digest,
+            last_active_at=_now_iso(),
+        )
+        fingerprint = batch_body_fingerprint(run_id, events)
+        receipt = store.commit_event_batch(
+            CommitEventBatch(
+                run=run,
+                events=events,
+                expected_context_id=expected_context_id,
+                idempotency_key=f"map:{run_id}:{fingerprint[:40]}",
+                body_fingerprint=fingerprint,
+            )
+        )
+        return receipt
+    except Exception:
+        logger.warning(
+            "Research runs: батч из %d событий не отражён в долговременном слое",
+            len(events),
+            exc_info=True,
+        )
+        return None
 
 
 # ── Файловый слой (§12 п.3 uploads + §12 п.4 снимки чекпоинтов) ──────

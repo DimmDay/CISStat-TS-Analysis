@@ -410,7 +410,7 @@ npm run build:all
 
 | Направление §9 аудита | Карточки этого плана |
 |---|---|
-| AUDIT-1 target/source | AUDIT-S/C/5B → AUDIT-1 |
+| AUDIT-1 target/source | AUDIT-S/C/5B → AUDIT-1a |
 | AUDIT-2 binding/idempotency | AUDIT-6A → AUDIT-2A → AUDIT-2B |
 | AUDIT-3 EDA/revision | AUDIT-C/5B/2B → AUDIT-3 |
 | AUDIT-4 outcome/details | AUDIT-4, identity/result-контракт AUDIT-S/C |
