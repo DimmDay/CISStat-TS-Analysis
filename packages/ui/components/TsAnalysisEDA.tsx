@@ -19,6 +19,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { sessionApiUrl, progressApiUrl } from "../lib/apiClient";
 import { useTargetColumn } from "../hooks/useTargetColumn";
+import { useProgressMapDelivery } from "../hooks/useProgressMapDelivery";
 import { useAppShell } from "../context/AppShellContext";
 import { Button } from "./Button";
 import { StepperNextModuleButton } from "./StepperNextModuleButton";
@@ -991,17 +992,21 @@ export function TsAnalysisEDA() {
     );
   const [edaViewedIds, setEdaViewedIds] = useState<Set<string>>(new Set());
   const [edaSeedReady, setEdaSeedReady] = useState(false);
+  // AUDIT-2B: EDA-якорь -- снапшот, уже известный как записанный
+  // (seed /trace при монтировании/смене датасета). Был ref-маркер
+  // PROGR-18; в едином механизме якорь передаётся хуку (anchorSnapshot)
+  // -- идентичный снапшот не доставляется повторно.
+  const [edaSeedAnchor, setEdaSeedAnchor] = useState<string | null>(null);
   const edaSeedReadyRef = useRef(false);
-  const lastReportedEdaChecksRef = useRef<string>("");
   // Порядок эффектов ВАЖЕН (урок PROGR-17): сброс -- ДО seed-эффекта и
-  // эффекта отчёта; в коммите смены датасета сброс выполняется первым.
+  // эффекта просмотра; в коммите смены датасета сброс выполняется первым.
   // Ключ вселенной фактов -- datasetKey (datasetId ?? name):
   // datasetId меняется даже при повторной загрузке файла с тем же именем.
   useEffect(() => {
     edaSeedReadyRef.current = false;
     setEdaViewedIds(new Set());
     setEdaSeedReady(false);
-    lastReportedEdaChecksRef.current = "";
+    setEdaSeedAnchor(null);
   }, [datasetKey]);
   useEffect(() => {
     if (!datasetKey) {
@@ -1037,28 +1042,12 @@ export function TsAnalysisEDA() {
         seedViewed.forEach((id) => merged.add(id));
         return merged;
       });
-      lastReportedEdaChecksRef.current = buildEdaChecksSnapshot(seedViewed);
+      setEdaSeedAnchor(buildEdaChecksSnapshot(seedViewed));
       setEdaSeedReady(true);
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasetKey]);
-  const postEdaChecks = useCallback((reported: Record<string, string>) => {
-    fetch(progressApiUrl("/eda-checks"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ checks: reported }),
-    })
-      .then((res) => {
-        if (!res.ok) lastReportedEdaChecksRef.current = "";
-      })
-      .catch(() => {
-        // Отчёт фактов -- вспомогательный контур (§12 п.8): сбой не ломает
-        // модуль; следующее изменение снапшота повторит отчёт.
-        lastReportedEdaChecksRef.current = "";
-      });
-  }, []);
   // Факт просмотра: активное исследование с ПОКАЗАННЫМ результатом
   // (done/warning). edaSeedReadyRef-гейт отсекает устаревшие статусы
   // предыдущей вселенной в коммите смены датасета (сброс объявлен
@@ -1083,12 +1072,33 @@ export function TsAnalysisEDA() {
     activeDataset && edaSeedReady && edaViewedIds.size > 0
       ? buildEdaChecksSnapshot(edaViewedIds)
       : null;
-  useEffect(() => {
-    if (!edaChecksReportSnapshot) return;
-    if (edaChecksReportSnapshot === lastReportedEdaChecksRef.current) return;
-    lastReportedEdaChecksRef.current = edaChecksReportSnapshot;
-    postEdaChecks(JSON.parse(edaChecksReportSnapshot) as Record<string, string>);
-  }, [edaChecksReportSnapshot, postEdaChecks]);
+  // ── AUDIT-2B: доставка карты просмотров в панель «Прогресс» ──
+  // ЕДИНЫЙ механизм useProgressMapDelivery (план plan_progress_audit.md
+  // §12, контракт docs/progress_audit_contract.md аддендум §20) --
+  // замена прежней связки «ref-маркер + один fetch» (PROGR-18):
+  // v2-конверт AUDIT-2A с биндингом к наблюдаемому контексту
+  // GET /v1/progress/trace (I3), идемпотентность по report_id (P07),
+  // delivered -- только после receipt, retry с backoff (H26), дедуп по
+  // (run, context, снапшот), изоляция поздних ответов. Якорь seed'а
+  // (edaSeedAnchor) передаётся как anchorSnapshot -- идентичный якорю
+  // снапшот не доставляется (прежняя семантика seed-маркера сохранена:
+  // отчёт только по НОВОМУ просмотру). Статус доставки --
+  // вспомогательный контур (§12 п.8): сбой не ломает модуль.
+  const edaChecksReportMap = useMemo<Record<string, string> | null>(
+    () => (edaChecksReportSnapshot ? (JSON.parse(edaChecksReportSnapshot) as Record<string, string>) : null),
+    [edaChecksReportSnapshot],
+  );
+  useProgressMapDelivery({
+    endpoint: "/eda-checks",
+    bodyKey: "checks",
+    map: edaChecksReportMap,
+    anchorSnapshot: edaSeedAnchor,
+    // Ключ вселенной фактов = datasetKey (datasetId ?? name) -- прежний
+    // ключ сброса маркера (PROGR-18): смена датасета -- повторная
+    // доставка даже при идентичной картине просмотров (легаси-фолбэк,
+    // где дедуп-ключ (run, context) недоступен; план §12 п.4).
+    universeKey: datasetKey ?? null,
+  });
 
   // Сворачиваем при смене секции
   useEffect(() => {

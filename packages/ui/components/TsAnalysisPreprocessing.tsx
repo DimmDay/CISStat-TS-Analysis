@@ -32,7 +32,8 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { Metric } from "./Metric";
 import { StatusIcon, type CheckStatus } from "./StatusIcon";
 import { StepperNextModuleButton } from "./StepperNextModuleButton";
-import { sessionApiUrl, progressApiUrl } from "../lib/apiClient";
+import { sessionApiUrl } from "../lib/apiClient";
+import { useProgressMapDelivery } from "../hooks/useProgressMapDelivery";
 import { useAppShell } from "../context/AppShellContext";
 import { useTargetColumn } from "../hooks/useTargetColumn";
 // PROGR-9-FOCUS: автоперезапрос профилей при возврате во вкладку/окно —
@@ -664,71 +665,40 @@ export function TsAnalysisPreprocessing() {
     return check;
   }), [missingStatus, missingProfile, outliersStatus, outliersProfile, regularityStatus, regularityProfile, decompositionStatus, decompositionProfile, varianceStatus, varianceProfile, smoothingStatus, smoothingProfile, stationarityStatus, stationarityProfile, spectralStatus, spectralProfile, featureGenerationStatus, featureGenerationProfile, scalingStatus, scalingProfile]);
 
-  // ── PROGR-17: отчёт фактов этапов в панель «Прогресс» (зеркало
-  // PROGR-16-A, spec_progress_v1.1.md §2 категория B) ──
+  // ── AUDIT-2B: доставка карты этапов в панель «Прогресс» ──
+  // ЕДИНЫЙ механизм useProgressMapDelivery (план plan_progress_audit.md
+  // §12, контракт docs/progress_audit_contract.md аддендум §20) --
+  // замена прежней связки «ref-маркер + сброс + один fetch» (PROGR-17).
   // Степпер автозаполняется профилями остановок (PROGR-9-FOCUS), но
   // факт-контур стадии preprocessing не имел носителя результатов:
   // панель показывала «не начато» при цветном модуле. Модуль строит
-  // снапшот из УЖЕ ПОЛУЧЕННЫХ ответов profile-эндпоинтов (§7.2-прецедент:
-  // клиент строит сводку из уже полученных данных) и отчитывает POST
-  // /v1/progress/preprocessing-checks: единый движок бэкенда сделает
-  // эти факты статусами панели («панель == модулю»).
+  // снапшот из УЖЕ ПОЛУЧЕННЫХ ответов profile-эндпоинтов (§7.2-прецедент)
+  // -- механизм доставляет POST /v1/progress/preprocessing-checks:
+  // единый движок бэкенда сделает эти факты статусами панели
+  // («панель == модулю»).
   //
-  // Гейт отчёта (зеркало семантики Валидации «до первого запуска
-  // отчёта НЕТ»):
+  // Гейт отчёта прежний (зеркало семантики Валидации «до первого
+  // запуска отчёта НЕТ»):
   //  * activeDataset -- факты этапов без исследования не существуют
   //    (зеркало 400-гейта бэкенда): без датасета профили приходят
   //    404-контуром (все «skipped»), но это осевший снапшот БЕЗ
   //    исследования -- отчёта нет;
   //  * !anyRunning && !anyPending -- отчёт только ПОЛНОСТЬЮ ОСЕВШЕГО
-  //    снапшота (в Валидации отчёт -- по завершённому ответу, не
-  //    сетевому транзиту). Транзитные «running» авто-перезапросов
-  //    (PROGR-9-FOCUS: фокус окна/вкладки) и стартовый «pending» 7
-  //    целевых остановок (они не начинают вычисления без
-  //    исследуемого признака -- activeFeature приходит асинхронно) --
-  //    не факты; репортить каждый транзит значило бы засорять трассу
-  //    десятками событий на каждое открытие вкладки. Осознанная
-  //    граница: датасет БЕЗ единой числовой колонки (вырожденный для
-  //    платформы) оставляет целевые остановки в «pending» навсегда --
-  //    отчёта нет (бэкенд авто-фиксирует признак при загрузке при ровно
-  //    одном кандидате, PROGR-25-A; авто-POST хука снят PROGR-25-B,
-  //    при нескольких кандидатах остановки ждут ручного выбора).
-  // Строковая идентичность снапшота дедуплицирует: фокус-рефетч с
-  // НЕИЗМЕННОЙ картиной статусов не репортится повторно.
+  //    снапшота. Транзитные «running» авто-перезапросов (PROGR-9-FOCUS)
+  //    и стартовый «pending» 7 целевых остановок -- не факты; репортить
+  //    каждый транзит значило бы засорять трассу десятками событий на
+  //    каждое открытие вкладки. Осознанная граница: датасет БЕЗ единой
+  //    числовой колонки оставляет целевые остановки в «pending» навсегда
+  //    -- отчёта нет (авто-фиксация признака -- PROGR-25-A, при нескольких
+  //    кандидатах остановки ждут ручного выбора).
   //
-  // URL-контракт (урок PROGR-15-A): URL строится хелпером progressApiUrl
-  // ("/preprocessing-checks"), НЕ sessionApiUrl -- тот добавляет префикс
-  // /v1/session сам, вложенный "/v1/..." дал бы гарантированный 404, и
-  // отчёт не доходил бы до единого движка НИ РАЗУ.
-  // HTTP-неудача проходит тем же контуром повтора, что и сетевая:
-  // res.ok проверяется, при !ok маркер отчёта сбрасывается -- следующий
-  // снапшот повторит отправление (вспомогательный контур §12 п.8,
-  // без алертов и таймеров).
-  const lastReportedChecksRef = useRef<string>("");
-  // Порядок эффектов ВАЖЕН: сброс маркера объявлен ДО эффекта отчёта --
-  // в коммите, где гидратируется activeDataset (null -> имя), сброс
-  // выполняется первым и не затирает маркер уже сделанного отчёта
-  // (иначе дедупликация слепа и каждый фокус-рефетч репортит заново).
-  useEffect(() => {
-    lastReportedChecksRef.current = "";
-  }, [activeDataset?.name]);
-  const postChecks = useCallback((reported: Record<string, CheckStatus>) => {
-    fetch(progressApiUrl("/preprocessing-checks"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ checks: reported }),
-    })
-      .then((res) => {
-        if (!res.ok) lastReportedChecksRef.current = "";
-      })
-      .catch(() => {
-        // Отчёт фактов -- вспомогательный контур (§12 п.8): сбой не ломает
-        // модуль; следующее изменение снапшота повторит отчёт.
-        lastReportedChecksRef.current = "";
-      });
-  }, []);
-
+  // v2-конверт AUDIT-2A (биндинг I3, report_id-идемпотентность P07,
+  // delivered только после receipt, retry с backoff -- H26, дедуп по
+  // (run, context, снапшот) -- повторная загрузка одноимённого файла в
+  // новом run доставляется заново: прежний маркер-сброс по имени
+  // датасета заменён переходом вселенной map→null→map и перезапросом
+  // биндинга). Статус доставки -- вспомогательный контур (§12 п.8):
+  // сбой не ломает модуль.
   // Снапшот статусов -- ровно то, что показывает степпер (все 10
   // остановок реестра PREPROCESSING_CHECK_IDS, статусы -- как на экране).
   const checksReportSnapshot: string | null =
@@ -737,13 +707,21 @@ export function TsAnalysisPreprocessing() {
       && !checks.some((check) => check.status === "pending")
       ? JSON.stringify(Object.fromEntries(checks.map((c) => [c.id, c.status])))
       : null;
-
-  useEffect(() => {
-    if (!checksReportSnapshot) return;
-    if (checksReportSnapshot === lastReportedChecksRef.current) return;
-    lastReportedChecksRef.current = checksReportSnapshot;
-    postChecks(JSON.parse(checksReportSnapshot) as Record<string, CheckStatus>);
-  }, [checksReportSnapshot, postChecks]);
+  const checksReportMap = useMemo<Record<string, CheckStatus> | null>(
+    () => (checksReportSnapshot ? (JSON.parse(checksReportSnapshot) as Record<string, CheckStatus>) : null),
+    [checksReportSnapshot],
+  );
+  useProgressMapDelivery({
+    endpoint: "/preprocessing-checks",
+    bodyKey: "checks",
+    map: checksReportMap,
+    // Ключ вселенной фактов: имя датасета -- прежний ключ сброса
+    // маркера (PROGR-17, эффект [activeDataset?.name]): смена датасета
+    // -- повторная доставка даже при идентичной картине статусов
+    // (легаси-фолбэк, где дедуп-ключ (run, context) недоступен; план
+    // §12 п.4).
+    universeKey: activeDataset?.name ?? null,
+  });
 
   // Сворачиваем при смене секции
   useEffect(() => {

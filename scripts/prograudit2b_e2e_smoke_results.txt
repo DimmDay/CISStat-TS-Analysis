@@ -1,0 +1,43 @@
+INFO:numexpr.utils:NumExpr defaulting to 2 threads.
+DEBUG:app.data.file_loader:sqlalchemy not installed — PostgreSQL support disabled
+DEBUG:app.data.file_loader:clickhouse-connect not installed — ClickHouse support disabled
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:127]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[129:141]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[143:151]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[155:3475]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/progress/eda-checks "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/progress/eda-checks "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/progress/eda-checks "HTTP/1.1 409 Conflict"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: POST http://testserver/v1/progress/eda-checks "HTTP/1.1 200 OK"
+PASS  upload 200
+PASS  trace 200
+PASS  биндинг несёт run_id+context_id
+PASS  v2 POST 200
+PASS  mode=v2
+PASS  receipt присутствует
+PASS  report_id отражён
+PASS  deduplicated=false при первой поставке
+PASS  retry 200
+PASS  deduplicated=true при повторе
+PASS  прежний receipt (идемпотентность P07)
+PASS  чужой run 409
+PASS  detail=stale_run
+PASS  легаси POST 200
+PASS  mode=legacy
+
+Итого: 15/15

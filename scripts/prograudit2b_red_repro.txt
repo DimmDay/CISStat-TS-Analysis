@@ -1,0 +1,49 @@
+AUDIT-2B RED-протокол (честный, база main@9e8edde = PROGR-AUDIT-4-CERT)
+========================================================================
+
+Форма RED для НОВОГО файла -- suites-failed-to-run (прецедент AUDIT-2A:
+2 ImportError единого механизма из 22 оракулов). Оракул-файл
+packages/ui/hooks/useProgressMapDelivery.test.tsx (18 тестов) не
+компилировался на базе, т.к. модуль useProgressMapDelivery не существовал:
+
+    FAIL packages/ui/hooks/useProgressMapDelivery.test.tsx
+      ● Test suite failed to run
+
+        packages/ui/hooks/useProgressMapDelivery.test.tsx:34:40 - error TS2307:
+        Cannot find module './useProgressMapDelivery' or its corresponding type
+        declarations.
+
+        34 import { useProgressMapDelivery } from "./useProgressMapDelivery";
+
+    Test Suites: 1 failed, 1 total
+    Tests:       0 total
+
+Таким образом, ВСЕ 18 оракулов §12 RED были красными одновременно
+(ImportError им предшествует):
+  * v2-конверт (schema_version=2 + run_id + context_id + report_id) --
+    не существовал ни в какой форме (лениг-связки «ref-маркер + один fetch»
+    POST-или без конверта);
+  * H26 (отказ при неизменном снапшоте повторяется ограниченным retry
+    с тем же report_id) -- механизм retry отсутствовал, отказ оставался
+    без повтора (пин AUDIT-0 prograudit0_h26_no_auto_retry.test.tsx
+    фиксировал дефект как наблюдение);
+  * delivered только после receipt -- статусных машин не существовало,
+    маркер ставился оптимистично ДО ответа (PROGR-13-A5/16-A/17/18);
+  * изоляция поздних ответов (поздний A после B) -- ref-сбросы старых
+    контуров могли затирать состояние новой вселенной;
+  * дедуп по (run, context, snapshot), не по имени файла -- дедуп был
+    по строке снапшота без привязки к запуску;
+  * 409 stale -> refresh + одна повторная поставка -- контура не было
+    (HTTP-неудача только сбрасывала маркер);
+  * unmount/offline-границы -- не определялись.
+
+Поведенческие пины старого поведения (наблюдательные, AUDIT-0):
+  * packages/ui/components/prograudit0_h26_no_auto_retry.test.tsx --
+    «один POST после 500; без изменения snapshot повторов нет» --
+    зелёный на базе (пин дефекта H26), противоречит цели AUDIT-2B;
+    обновлён как versioned-обновление (контракт §20.7) после GREEN.
+  * packages/ui/components/prograudit0_h28_viewed_transfer.test.tsx --
+    пин переноса viewed через смену цели (H28, AUDIT-3); счётчик
+    GET /trace обновлён (+1 биндинг поставки) как versioned-обновление.
+
+GREEN (после реализации): 18/18 -- см. журнал PROGR-AUDIT-2B.

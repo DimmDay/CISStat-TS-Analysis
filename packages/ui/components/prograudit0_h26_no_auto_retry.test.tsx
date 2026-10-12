@@ -1,16 +1,27 @@
 // packages/ui/components/prograudit0_h26_no_auto_retry.test.tsx
 //
 // AUDIT-0 (plan_progress_audit.md §4, действие 2) -- НАБЛЮДЕНИЕ H26.
-// Гипотеза: при неизменном snapshot один отказ доставки UI останется без
-// автоматического повтора (основание: ref сбрасывается, зависимости
-// effect не меняются -- TsAnalysisEDA.tsx:1046-1091, тот же контур
-// TsAnalysisValidation.tsx:410-442).
+// Исходная гипотеза: при неизменном snapshot один отказ доставки UI
+// останется без автоматического повтора (основание: ref сбрасывается,
+// зависимости effect не меняются -- TsAnalysisEDA.tsx, тот же контур
+// TsAnalysisValidation.tsx). Наблюдение ПОДТВЕРЖДЕНО в AUDIT-0 и
+// поставлено на закрытие задачей AUDIT-2B (план §12: «ошибка требует
+// ограниченного повтора -- H26»).
 //
-// ⚠️ Это наблюдательный пин ТЕКУЩЕГО (дефектного) поведения -- НЕ
-// acceptance-тест. После AUDIT-2B (восстановимая доставка: report_id,
-// ограниченный retry с backoff) файл обязан быть заменён/обновлён как
-// versioned-обновление контракта (Донастройка_2 п.3), не как правка под
-// реализацию. Мокирует только свои URL; реальная сеть недоступна в jest.
+// VERSIONED-ОБНОВЛЕНИЕ (AUDIT-2B, контракт docs/progress_audit_contract.md
+// §20.7): H26 ЗАКРЫТ штатным механизмом доставки useProgressMapDelivery.
+// Пин дефектного поведения заменён пином нового контракта:
+//   * сетевой отказ/5xx при неизменном снапшоте повторяется ОГРАНИЧЕННЫМ
+//     retry с backoff (500мс/1с/2с -- 4 попытки) с ТЕМ ЖЕ report_id и тем
+//     же payload (идемпотентность P07, сервер AUDIT-2A дедуплицирует);
+//   * исчерпание retry -- честный undelivered, НИКАКОГО ложного delivered
+//     (receipt-гейт §20.4);
+//   * повтор не бесконечен: после исчерпания новых POST нет, пока не
+//     изменится снапшот -- смена снапшота возобновляет контур с НОВЫМ
+//     report_id (новое клиентское наблюдение).
+// Счётчик GET /trace: seed (#1) + биндинг поставки (#2, AUDIT-2B I3 --
+// тот же источник, что проверяет сервер). Мокирует только свои URL;
+// реальная сеть недоступна в jest.
 
 import "@testing-library/jest-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -33,6 +44,7 @@ const ALL_IDS = [
 ];
 
 const edaPosts: Record<string, string>[] = [];
+const edaReportIds: string[] = [];
 let traceGets = 0;
 
 function jsonOk(body: unknown) {
@@ -47,10 +59,14 @@ function makeRouter(opts: { traceStatus: number; traceNodeStatuses: Record<strin
       if (opts.traceStatus !== 200) {
         return Promise.resolve({ ok: false, status: opts.traceStatus, json: () => Promise.resolve({}) });
       }
-      return jsonOk({ run_id: "RUN-H26", node_statuses: opts.traceNodeStatuses, events: [] });
+      // AUDIT-2B: биндинг требует run_id И context_id (v2-режим AUDIT-2A).
+      return jsonOk({ run_id: "RUN-H26", context_id: "ctx-h26h26h26h26h26", node_statuses: opts.traceNodeStatuses, events: [] });
     }
     if (url.includes("/v1/progress/eda-checks")) {
-      edaPosts.push(JSON.parse(String(init?.body)).checks as Record<string, string>);
+      const body = JSON.parse(String(init?.body));
+      edaPosts.push(body.checks as Record<string, string>);
+      edaReportIds.push(String(body.report_id ?? ""));
+      // Все попытки -- 5xx (сервер недоступен): retry исчерпывает лимит.
       return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) });
     }
     if (url.includes("/target-column")) {
@@ -89,35 +105,55 @@ function makeRouter(opts: { traceStatus: number; traceNodeStatuses: Record<strin
   };
 }
 
-describe("AUDIT-0 H26 (наблюдение): отказ доставки без изменения snapshot не повторяется", () => {
+describe("AUDIT-0 H26 (versioned AUDIT-2B): отказ доставки повторяется ограниченным retry (H26 закрыт)", () => {
   beforeEach(() => {
     edaPosts.length = 0;
+    edaReportIds.length = 0;
     traceGets = 0;
     mockActiveDataset = { datasetId: "D-AUDIT0-H26", name: "h26.csv", rows: 40, sizeLabel: "1 KB" };
     global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) =>
       makeRouter({ traceStatus: 200, traceNodeStatuses: {} })(input, init)) as jest.Mock;
   });
 
-  it("H26: один POST после 500; без изменения snapshot повторов нет; смена snapshot возобновляет контур", async () => {
+  it("H26 закрыт: 500 при неизменном снапшоте -- retry с тем же report_id (4 попытки), исчерпание без ложного delivered, смена снапшота возобновляет контур", async () => {
     render(<TsAnalysisEDA />);
 
-    // Seed /trace 200 c пустыми node_statuses -> viewed={descriptive}
-    // (активная остановка, статус done по stats) -> POST #1 -> 500.
+    // Seed /trace (GET #1) -> viewed={descriptive} (активная, done по
+    // stats) -> поставка: биндинг /trace (GET #2, v2) -> POST #1 -> 500.
     await waitFor(() => expect(edaPosts.length).toBe(1), { timeout: 4000 });
     expect(edaPosts[0]["descriptive"]).toBe("done");
     expect(edaPosts[0]["correlation"]).toBe("pending");
+    const firstReportId = edaReportIds[0];
+    expect(firstReportId).not.toBe("");
 
-    // Без изменения snapshot: несколько макро/микро-тактов -- повторов НЕТ.
-    await new Promise((r) => setTimeout(r, 120));
-    expect(edaPosts.length).toBe(1);
-
-    // Смена snapshot (просмотр второй остановки): контур возобновляется --
-    // маркер был сброшен неудачей, отчёт повторяется с НОВЫМ снапшотом.
-    fireEvent.click(screen.getByRole("button", { name: /Корреляция \(ACF\/PACF\)/ }));
+    // Retry с backoff при НЕИЗМЕННОМ снапшоте: тот же report_id, то же
+    // тело (P07) -- дефект H26 («повторов нет») закрыт.
     await waitFor(() => expect(edaPosts.length).toBe(2), { timeout: 4000 });
-    expect(edaPosts[1]["descriptive"]).toBe("done");
-    expect(edaPosts[1]["correlation"]).toBe("done");
-    // Seed /trace за весь сценарий -- один (перезапусков seed нет).
-    expect(traceGets).toBe(1);
-  });
+    expect(edaReportIds[1]).toBe(firstReportId);
+    expect(edaPosts[1]).toEqual(edaPosts[0]);
+
+    // Исчерпание лимита: 1 первичная + 3 retry = 4 попытки...
+    await waitFor(() => expect(edaPosts.length).toBe(4), { timeout: 8000 });
+    for (let i = 0; i < 4; i += 1) {
+      expect(edaReportIds[i]).toBe(firstReportId);
+      expect(edaPosts[i]).toEqual(edaPosts[0]);
+    }
+
+    // ...после чего повтор НЕ бесконечен: макро-такт тишины -- новых
+    // POST нет (undelivered, никакого ложного delivered).
+    await new Promise((r) => setTimeout(r, 2600));
+    expect(edaPosts.length).toBe(4);
+
+    // Смена снапшота (просмотр второй остановки) возобновляет контур:
+    // НОВАЯ поставка с НОВЫМ report_id (новое клиентское наблюдение).
+    fireEvent.click(screen.getByRole("button", { name: /Корреляция \(ACF\/PACF\)/ }));
+    await waitFor(() => expect(edaPosts.length).toBe(5), { timeout: 4000 });
+    expect(edaPosts[4]["descriptive"]).toBe("done");
+    expect(edaPosts[4]["correlation"]).toBe("done");
+    expect(edaReportIds[4]).not.toBe(firstReportId);
+
+    // GET /trace за сценарий: seed + биндинг первой поставки (биндинг
+    // кэширован на вселенную; retry/новые поставки его не повторяют).
+    expect(traceGets).toBe(2);
+  }, 20000); // backoff-сценарий (500мс+1с+2с) + такт тишины -- дольше jest-дефолта
 });

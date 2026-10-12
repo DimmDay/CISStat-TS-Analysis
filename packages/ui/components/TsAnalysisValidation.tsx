@@ -25,7 +25,7 @@
 // в светлой теме, яркий голубой в тёмной; подробнее — комментарий у
 // кнопки, keyframes — в tailwind-preset.ts).
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Settings, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "./Button";
 import { Metric } from "./Metric";
@@ -57,7 +57,8 @@ import { ValidationRegularityPipeline } from "./ValidationRegularityPipeline";
 import { ValidationSufficiencyOverview } from "./ValidationSufficiencyOverview";
 import { ValidationSufficiencyPipeline } from "./ValidationSufficiencyPipeline";
 import { useAppShell } from "../context/AppShellContext";
-import { sessionApiUrl, progressApiUrl } from "../lib/apiClient";
+import { sessionApiUrl } from "../lib/apiClient";
+import { useProgressMapDelivery } from "../hooks/useProgressMapDelivery";
 import { DatasetPassportPanel } from "./DatasetPassportPanel";
 import { useTargetColumn } from "../hooks/useTargetColumn";
 import { describeNode } from "../lib/knowledge/knowledge";
@@ -265,11 +266,12 @@ export function TsAnalysisValidation() {
     setModeSaving(null);
     setModeError(null);
     setChecksLoading(false);
-    // PROGR-16-A: новый датасет -- новая вселенная фактов: маркер
-    // отчёта сбрасывается, чтобы повторный запуск с ИДЕНТИЧНОЙ картиной
-    // статусов не был пропущен как «уже отчитано» (факты принадлежат
-    // прежнему исследованию).
-    lastReportedChecksRef.current = "";
+    // AUDIT-2B: новый датасет -- новая вселенная фактов. Прежний сброс
+    // маркера отчёта (PROGR-16-A) заменён переходом вселенной карты
+    // map→null→map в едином механизме: checksData сброшен ниже по
+    // эффекту -- снапшот становится null, биндинг перезапрашивается
+    // (новый run), повторный запуск с ИДЕНТИЧНОЙ картиной статусов
+    // доставляется заново как новое наблюдение.
     return () => {
       validationRequestId.current += 1;
     };
@@ -395,42 +397,24 @@ export function TsAnalysisValidation() {
     setDescriptionSection((prev) => prev === "rules" ? "metrics" : "rules");
   };
 
-  // ── PROGR-16-A: отчёт фактов проверок в панель «Прогресс» (дефект
-  // PROGR-16-REPRO) ──
-  // Модуль вычислил статусы проверок из СВОЕГО ответа /dataset/validate
-  // (§7.2-прецедент: клиент строит сводку из уже полученных данных) --
-  // отчитываем POST /v1/progress/validation-checks: единый движок
-  // бэкенда сделает эти факты статусами панели («панель == модулю»).
-  // До первого запуска отчёта НЕТ: модуль без вычислений ещё не
-  // существует как источник фактов (все статусы -- «не вычислялись»,
-  // а не «проверка не начата»).
-  //
-  // URL-контракт (урок PROGR-15-A): URL строится хелпером progressApiUrl
-  // ("/validation-checks"), НЕ sessionApiUrl -- тот добавляет префикс
-  // /v1/session сам, вложенный "/v1/..." дал бы гарантированный 404, и
-  // отчёт не доходил бы до единого движка НИ РАЗУ.
-  // HTTP-неудача проходит тем же контуром повтора, что и сетевая:
-  // res.ok проверяется, при !ok маркер отчёта сбрасывается -- следующий
-  // снапшот повторит отправление (вспомогательный контур §12 п.8,
-  // без алертов и таймеров).
-  const lastReportedChecksRef = useRef<string>("");
-  const postChecks = useCallback((checks: Record<string, CheckStatus>) => {
-    fetch(progressApiUrl("/validation-checks"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ checks }),
-    })
-      .then((res) => {
-        if (!res.ok) lastReportedChecksRef.current = "";
-      })
-      .catch(() => {
-        // Отчёт фактов -- вспомогательный контур (§12 п.8): сбой не ломает
-        // модуль; следующее изменение снапшота повторит отчёт.
-        lastReportedChecksRef.current = "";
-      });
-  }, []);
-
+  // ── AUDIT-2B: доставка карты проверок в панель «Прогресс» ──
+  // ЕДИНЫЙ механизм useProgressMapDelivery (план plan_progress_audit.md
+  // §12, контракт docs/progress_audit_contract.md аддендум §20) --
+  // замена прежней связки «ref-маркер + один fetch» (PROGR-16-A,
+  // дефект PROGR-16-REPRO). Модуль вычислил статусы проверок из СВОЕГО
+  // ответа /dataset/validate (§7.2-прецедент: клиент строит сводку из
+  // уже полученных данных) -- механизм доставляет POST
+  // /v1/progress/validation-checks: единый движок бэкенда сделает эти
+  // факты статусами панели («панель == модулю»).
+  // v2-конверт AUDIT-2A с биндингом к наблюдаемому контексту
+  // GET /v1/progress/trace (I3), идемпотентность по report_id (P07),
+  // delivered -- только после receipt, ограниченный retry с backoff
+  // (H26 закрыт штатным механизмом), дедуп по (run, context, снапшот),
+  // изоляция поздних ответов. Гейт отчёта прежний: до первого запуска
+  // отчёта НЕТ (checksReportSnapshot null) -- модуль без вычислений
+  // ещё не существует как источник фактов (все статусы -- «не
+  // вычислялись», а не «проверка не начата»). Статус доставки --
+  // вспомогательный контур (§12 п.8): сбой не ломает модуль.
   // Снапшот статусов -- ровно то, что показывает степпер
   // (displayedStatus: pending+needs_rule -- warning, как на экране).
   const checksReportSnapshot: string | null =
@@ -439,13 +423,21 @@ export function TsAnalysisValidation() {
           Object.fromEntries(CHECKS.map((c) => [c.id, displayedStatus(c)])),
         )
       : null;
-
-  useEffect(() => {
-    if (!checksReportSnapshot) return;
-    if (checksReportSnapshot === lastReportedChecksRef.current) return;
-    lastReportedChecksRef.current = checksReportSnapshot;
-    postChecks(JSON.parse(checksReportSnapshot) as Record<string, CheckStatus>);
-  }, [checksReportSnapshot, postChecks]);
+  const checksReportMap = useMemo<Record<string, CheckStatus> | null>(
+    () => (checksReportSnapshot ? (JSON.parse(checksReportSnapshot) as Record<string, CheckStatus>) : null),
+    [checksReportSnapshot],
+  );
+  useProgressMapDelivery({
+    endpoint: "/validation-checks",
+    bodyKey: "checks",
+    map: checksReportMap,
+    // Ключ вселенной фактов: имя датасета -- прежний ключ сброса
+    // маркера (PROGR-16-A, эффект [activeDataset?.name]; пин R-7
+    // сертификации PROGR-16-A-CERT): смена датасета -- повторная
+    // доставка даже при ИДЕНТИЧНОЙ картине статусов (легаси-фолбэк,
+    // где дедуп-ключ (run, context) недоступен; план §12 п.4).
+    universeKey: activeDataset?.name ?? null,
+  });
 
   // ── Overflow detection для expandable description ──
   useEffect(() => {

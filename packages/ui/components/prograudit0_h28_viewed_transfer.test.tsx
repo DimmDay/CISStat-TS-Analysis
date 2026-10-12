@@ -3,14 +3,19 @@
 // AUDIT-0 (plan_progress_audit.md §4, действие 2) -- НАБЛЮДЕНИЕ H28.
 // Гипотеза: при смене цели (или in-place коррекции) UI переносит
 // EDA-просмотры прежних данных. Основание: сброс вселенной фактов keyed
-// ТОЛЬКО по datasetKey (TsAnalysisEDA.tsx:1000-1005, :1045 -- deps
-// [datasetKey]); target/revision в ключе не участвуют.
+// ТОЛЬКО по datasetKey (TsAnalysisEDA.tsx -- deps [datasetKey]);
+// target/revision в ключе не участвуют.
 //
-// ⚠️ Это наблюдательный пин ТЕКУЩЕГО (дефектного) поведения -- НЕ
-// acceptance-тест. После AUDIT-3 (контекст цели/ревизии в keyed-сбросе)
-// файл обязан быть заменён/обновлён как versioned-обновление контракта
-// (Донастройка_2 п.3). Мокирует только свои URL; реальная сеть в jest
-// недоступна.
+// VERSIONED-ОБНОВЛЕНИЕ (AUDIT-2B, контракт §20.7): семантика пина
+// (viewed переносится через смену цели при неизменном datasetKey;
+// повторного seed нет; карта несёт просмотры обеих вселенных) СОХРАНЕНА.
+// Обновлены только счётчики GET /trace: единый механизм доставки
+// useProgressMapDelivery (план plan_progress_audit.md §12) привязывает
+// поставку к наблюдаемому контексту GET /v1/progress/trace (I3, тот же
+// источник, что проверяет сервер) -- +1 GET на поставку (биндинг
+// кэшируется на вселенную). Контекст цели/ревизии в keyed-сбросе --
+// по-прежнему AUDIT-3 (наблюдение остаётся открытым для AUDIT-3).
+// Мокирует только свои URL; реальная сеть в jest недоступна.
 
 import "@testing-library/jest-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -91,10 +96,11 @@ describe("AUDIT-0 H28 (наблюдение): смена цели при том 
   it("H28: viewed переносится через смену цели; повторного seed нет", async () => {
     render(<TsAnalysisEDA />);
 
-    // Seed (один GET /trace) -> descriptive (активная, done) -> POST #1.
+    // Seed (GET /trace #1) -> descriptive (активная, done) -> POST #1:
+    // поставка запрашивает биндинг (GET /trace #2, AUDIT-2B I3).
     await waitFor(() => expect(edaPosts.length).toBe(1), { timeout: 4000 });
     expect(edaPosts[0]["descriptive"]).toBe("done");
-    expect(traceGets).toBe(1);
+    expect(traceGets).toBe(2);
 
     // Смена цели Price -> Volume при НЕИЗМЕННОМ datasetId (datasetKey
     // константeн) -- POST /target-column, перезагрузка данных признака.
@@ -102,9 +108,11 @@ describe("AUDIT-0 H28 (наблюдение): смена цели при том 
     fireEvent.change(selector, { target: { value: "Volume" } });
     await waitFor(() => expect(selector).toHaveValue("Volume"), { timeout: 4000 });
 
-    // Reset-эффект keyed по datasetKey НЕ сработал: повторного seed нет.
+    // Reset-эффект keyed по datasetKey НЕ сработал: повторного seed нет
+    // (GET /trace -- по-прежнему 2: seed + биндинг единственной поставки;
+    // смена цели -- не новая вселенная доставки).
     await new Promise((r) => setTimeout(r, 150));
-    expect(traceGets).toBe(1);
+    expect(traceGets).toBe(2);
     expect(edaPosts.length).toBe(1);
 
     // Просмотр второй остановки уже В НОВОМ целевом контексте -> POST #2:
