@@ -112,6 +112,8 @@ class TraceRouteSpec:
     (event_type, node_id): живые GET-пересчёты карточек видны в трассе
     по факту изменения картины, а повторные пересчёты с неизменной
     картиной (фокус-рефетчи PROGR-9-FOCUS) шумом не становятся.
+    AUDIT-4 (P19): ключ результата -- картина И параметры (method/mode,
+    DEDUPE_PARAM_KEYS): смена метода при той же картине -- новый факт.
     """
 
     method: str
@@ -141,6 +143,17 @@ _CORRECTION_PAYLOAD_KEYS = (
     # (приоритет в NODE_SUMMARY_COUNT_KEYS).
     "total_outliers_after", "status",
     "invalid_policy", "target_column_reset",
+    # AUDIT-4 (план §10: «нарушения до/после»): факты результата --
+    # состояние ПОСЛЕ операции (still_*/after-ключи) и пары до/после
+    # регулярности/уникальности; редьюсер исхода (node_status,
+    # resolve_correction_outcome) выводит из них честный outcome
+    # (changed/no_change/violations/clean/unknown), бейдж «после
+    # операции» и честные reason-тексты (частично/не устранила).
+    # Отсутствующие ключи опускаются (обратная совместимость).
+    "total_still_invalid", "total_still_missing", "total_still_outliers",
+    "still_duplicate_rows", "rows_changed", "duplicate_rows",
+    "total_violations_before", "total_violations_after",
+    "rows_added", "rows_dropped",
 )
 
 TRACE_ROUTES: tuple[TraceRouteSpec, ...] = (
@@ -581,6 +594,32 @@ def _extract_payload(spec: TraceRouteSpec, body: dict[str, Any]) -> dict[str, An
     return payload
 
 
+# ── AUDIT-4 (P19/F13): параметры результата в dedupe ─────────────────
+#
+# Картина узла (status + summary_count) -- НЕ весь ключ результата:
+# два выполненных метода с одинаковой картиной (iqr -> zscore, H19) --
+# разные научные действия. DEDUPE_PARAM_KEYS -- параметры результата,
+# сравниваемые с последним stored-событием того же (event_type,
+# node_id): смена параметров при той же картине -- факт создаётся;
+# focus-refetch того же результата (те же параметры, та же картина) --
+# нет (план §10 п.6).
+DEDUPE_PARAM_KEYS: tuple[str, ...] = ("method", "mode")
+
+
+def _event_params(item: Any) -> tuple[Any, ...] | None:
+    """Параметры результата события для dedupe (AUDIT-4/P19): пара
+    (method, mode) payload; нестроковые значения честно None. Событие
+    без словарного payload -- None (легаси-корпус: сравнение параметров
+    не выполняется, картинный dedupe прежний)."""
+    payload = item.get("payload") if isinstance(item, dict) else None
+    if not isinstance(payload, dict):
+        return None
+    return tuple(
+        payload.get(key) if isinstance(payload.get(key), str) else None
+        for key in DEDUPE_PARAM_KEYS
+    )
+
+
 def _throttled(session: AnalysisSession, spec: TraceRouteSpec, now: datetime) -> bool:
     """Не чаще 1 раза на узел за окно (§4.2): последний profile_viewed
     ЭТОГО узла ищется в stored-трассе слоя 1. Запись с нечитаемым ts не
@@ -643,8 +682,35 @@ def _node_picture_unchanged(
     MAX_PIPELINE_TRACE_EVENTS, движок чистый O(n) -- цена незначима на
     фоне самого пересчёта профиля. Payload пуст / узел неизвестен --
     «изменилось» (fail-open к факту, не к тишине); event_type --
-    РЕЗОЛВНУТЫЙ (после preview-подстановки)."""
+    РЕЗОЛВНУТЫЙ (после preview-подстановки).
+
+    AUDIT-4 (P19/F13, план §10 п.6): картина -- не весь ключ результата.
+    Параметры выполненного расчёта (DEDUPE_PARAM_KEYS) сравниваются с
+    последним stored-событием ТОГО ЖЕ (event_type, node_id): смена
+    метода/режима при той же status/count-картине -- другой выполненный
+    метод -- факт создаётся; focus-refetch того же результата новым
+    научным действием не становится. Легаси-событие без параметров
+    сравнения не даёт (первое новое событие с параметрами пишется,
+    дальше прежняя семантика)."""
     if not payload or node_id is None:
+        return False
+    trial_params = _event_params({"payload": payload})
+    last_params: tuple[Any, ...] | None = None
+    for item in reversed(session.pipeline_trace):
+        if not isinstance(item, dict):
+            continue
+        if (
+            item.get("event_type") != event_type
+            or item.get("node_id") != node_id
+        ):
+            continue
+        last_params = _event_params(item)
+        break
+    if (
+        last_params is not None
+        and trial_params is not None
+        and trial_params != last_params
+    ):
         return False
     key = f"{stage}/{node_id}"
     trial = {

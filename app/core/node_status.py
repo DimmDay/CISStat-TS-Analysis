@@ -160,6 +160,20 @@ NODE_SUMMARY_COUNT_KEYS: tuple[str, ...] = (
     "total_invalid",
     "rows_removed",
     "total_changed",
+    # AUDIT-4: факты результата коррекций (план §10 «нарушения
+    # до/после») -- дополняют приоритет, не меняя относительный
+    # порядок прежних ключей; для САМИХ коррекций бейдж выбирается
+    # исход-осознанно (_correction_summary_count), эта плоская карта --
+    # путь прочих решающих событий и unknown-исходов.
+    "total_still_missing",
+    "total_still_outliers",
+    "total_still_invalid",
+    "still_duplicate_rows",
+    "total_violations_after",
+    "total_violations_before",
+    "duplicate_rows",
+    "rows_changed",
+    "rows_dropped",
 )
 
 # ── PROGR-13-A4: статус события из payload (факты, отчитанные клиентом) ──
@@ -231,6 +245,75 @@ PAYLOAD_STATUS_EVENT_TYPES: frozenset[str] = frozenset(
 PAYLOAD_STATUS_OVERRIDE_EVENT_TYPES: frozenset[str] = frozenset(
     {"correction_applied"}
 )
+
+# ── AUDIT-4 (план §10): исход коррекции -- ЕДИНАЯ проекция фактов ────
+#
+# F10/P14–P16 (спека §4.2 п.1, §5, §6.1): тип события (ОПЕРАЦИЯ) и
+# исход операции смешаны -- общая карта давала correction_previewed →
+# warning («Найдены нарушения» даже на чистых данных, H14) и
+# correction_applied → done (no-op удостоверял устранение без
+# доказательства). Разделение: операция -- тип события, исход
+# (outcome) выводится ЕДИНСТВЕННОЙ функцией из фактов результата
+# payload (whitelist хука §4.1, «нарушения до/после» плана §10):
+#
+#   violations -- preview нашёл нарушения;  clean -- preview на чистых
+#   данных;  changed -- apply изменил данные;  no_change -- apply с
+#   сообщённым нулевым изменением;  unknown -- фактов результата нет
+#   (legacy-корпус/мусор/маршруты без фактов) -- честная маркировка,
+#   никаких утверждений о качестве (граница плана §10 «неизвестный
+#   outcome маркировать честно»).
+#
+# Специальный исход выбросов (карточная шкала, класс C5 G345 --
+# PAYLOAD_STATUS_OVERRIDE_EVENT_TYPES) СОХРАНЁН (план §10 п.3):
+# валидный payload.status приоритетен выводу из outcome -- частичная
+# коррекция выбросов остаётся warning, унификации в безусловный done
+# нет (пины PROGR-23).
+CORRECTION_OUTCOME_EVENT_TYPES: frozenset[str] = frozenset(
+    {"correction_applied", "correction_previewed"}
+)
+
+# Факты результата по группам (каждый -- валидируемый счётчик,
+# тот же щит, что _clean_summary_count: только неотрицательное целое):
+CORRECTION_CHANGED_KEYS: tuple[str, ...] = (
+    # объём выполненного -- прямые отчёты маршрутов
+    "total_changed", "rows_removed", "rows_changed", "rows_dropped",
+    "rows_added",
+)
+CORRECTION_REMAINING_KEYS: tuple[str, ...] = (
+    # состояние ПОСЛЕ операции (карточная шкала выбросов первенствует
+    # -- pinned G345: бейдж == число карточки)
+    "total_outliers_after", "total_still_outliers", "total_still_missing",
+    "total_still_invalid", "still_duplicate_rows", "total_violations_after",
+)
+CORRECTION_VIOLATIONS_KEYS: tuple[str, ...] = (
+    # диагностика ДО операции (превью/частичное устранение)
+    "total_missing", "total_outliers", "total_violations", "total_invalid",
+    "duplicate_rows", "total_violations_before",
+)
+
+# Честные reason-тексты по исходу. Канонические тексты карты
+# (EVENT_NODE_REASON) сохранены для доказуемых исходов (violations-
+# preview и changed-apply рендерят ровно прежние строки -- корпус,
+# отчёт и пины текстов согласованы); новые тексты -- только для
+# исходов, которые прежняя карта смешивала с качеством результата.
+_CORRECTION_REASON_BY_OUTCOME: dict[tuple[str, str], str] = {
+    ("correction_previewed", "violations"):
+        "Найдены нарушения: предпросмотр коррекции",
+    ("correction_previewed", "clean"):
+        "Нарушений не найдено: предпросмотр коррекции",
+    ("correction_previewed", "unknown"):
+        "Предпросмотр коррекции выполнен",
+    ("correction_applied", "changed"):
+        "Коррекция применена",
+    ("correction_applied", "partial"):
+        "Коррекция применена частично: нарушения остались",
+    ("correction_applied", "no_change"):
+        "Коррекция не изменила данные",
+    ("correction_applied", "no_change_remaining"):
+        "Коррекция не устранила нарушения",
+    ("correction_applied", "unknown"):
+        "Коррекция выполнена: исход не подтверждён",
+}
 
 # Эффективные режимы проверок (Валидация/Предобработка §3): отсутствие
 # значения -- «auto» (backward-compatible контракт степперов,
@@ -315,8 +398,11 @@ def _empty_detail() -> dict[str, Any]:
         события, установившего ТЕКУЩИЙ статус (validity/evidence узла);
       _reason_src -- событие текста reason (решение узла либо
         stage-level-источник, PROGR-21);
-      _count_src -- событие числа бейджа (может быть старе решения:
-        событие без счётчика счётчик не стирает).
+      _count_src -- событие числа бейджа (AUDIT-4/P16: счётчик следует
+        за reason-событием -- событие без фактов счётчика ОЧИЩАЕТ
+        бейдж: цифра прежней диагностики не становится результатом
+        нового решения; может быть старе решения только у событий вне
+        решающей ветки).
     """
     return {
         "status_reason": None,
@@ -328,6 +414,10 @@ def _empty_detail() -> dict[str, Any]:
         "_count_src": None,
         "_status_ctx": None,
         "_status_level": None,
+        # AUDIT-4: исход последней коррекции узла (violations/clean/
+        # changed/no_change/unknown) -- только evidence-вид (I10-стиль);
+        # в 7-польном §3-контракте не участвует.
+        "_outcome": None,
     }
 
 
@@ -510,6 +600,130 @@ def resolve_event_status(data: Mapping[str, Any]) -> str | None:
     return EVENT_NODE_STATUS.get(event_type)
 
 
+# ── AUDIT-4: вывод исхода, честного reason и бейджа коррекций ─────────
+
+
+def _correction_fact(payload: Any, keys: tuple[str, ...]) -> int | None:
+    """Первый валидный счётчик из группы ключей payload (AUDIT-4): тот
+    же щит, что _clean_summary_count -- только неотрицательное целое
+    (bool/строка/дробь/отрицательное -- не факт, ключ пропускается).
+    Payload не словарь -- фактов нет."""
+    if not isinstance(payload, Mapping):
+        return None
+    for key in keys:
+        cleaned = _clean_summary_count(payload.get(key))
+        if cleaned is not None:
+            return cleaned
+    return None
+
+
+def resolve_correction_outcome(data: Mapping[str, Any]) -> str:
+    """Исход коррекции (AUDIT-4, план §10 п.1) -- ЕДИНСТВЕННАЯ проекция
+    фактов результата payload в словарь исходов: violations/clean
+    (preview), changed/no_change (apply), unknown (фактов нет).
+
+    Правила вывода (порядок значим):
+      * preview -- по диагностике ДО (violations-факты): >0 --
+        violations, ==0 -- clean; фактов нет -- unknown (старый корпус
+        без счётчиков не выдумывает «Найдены нарушения» -- H14);
+      * apply -- по прямым отчётам объёма выполненного (changed-факты):
+        любой >0 -- changed, все сообщённые ==0 -- no_change;
+      * fallback apply (прямых фактов нет): пара до/после
+        (regularity sort -- строки не менялись, нарушения устранены):
+        remaining != before -- changed, == -- no_change;
+      * половина пары (только before -- convert-types total_invalid)
+        или пусто -- unknown: исход не выводится, честная маркировка.
+
+    Событие не мутируется; функция чистая; мусор payload -- unknown
+    (трасса -- журнал, R3: событие хранится, фантомных исходов нет).
+    Для не-коррекционных типов возвращается unknown (функция о
+    качестве результата, не о классификации типа).
+    """
+    event_type = str(data.get("event_type") or "")
+    payload = data.get("payload")
+    changed = _correction_fact(payload, CORRECTION_CHANGED_KEYS)
+    before = _correction_fact(payload, CORRECTION_VIOLATIONS_KEYS)
+    remaining = _correction_fact(payload, CORRECTION_REMAINING_KEYS)
+    if event_type == "correction_previewed":
+        if before is not None:
+            return "violations" if before > 0 else "clean"
+        return "unknown"
+    if changed is not None:
+        return "changed" if changed > 0 else "no_change"
+    if before is not None and remaining is not None:
+        return "changed" if remaining != before else "no_change"
+    return "unknown"
+
+
+def correction_reason(
+    event_type: str, outcome: str, remaining: int | None
+) -> str:
+    """Reason узла по исходу коррекции (AUDIT-4): факты, не советы.
+    remaining>0 -- факт «нарушения остались ПОСЛЕ операции» (из ответа
+    маршрута); различает «применена частично» (changed) и «не
+    устранила» (no_change). Канонические тексты сохранены для
+    доказуемых исходов; unknown-тексты никаких претензий на качество
+    не утверждают."""
+    if event_type == "correction_applied" and outcome == "changed":
+        if remaining is not None and remaining > 0:
+            return _CORRECTION_REASON_BY_OUTCOME[
+                ("correction_applied", "partial")
+            ]
+        return _CORRECTION_REASON_BY_OUTCOME[("correction_applied", "changed")]
+    if event_type == "correction_applied" and outcome == "no_change":
+        if remaining is not None and remaining > 0:
+            return _CORRECTION_REASON_BY_OUTCOME[
+                ("correction_applied", "no_change_remaining")
+            ]
+        return _CORRECTION_REASON_BY_OUTCOME[
+            ("correction_applied", "no_change")
+        ]
+    return _CORRECTION_REASON_BY_OUTCOME.get(
+        (event_type, outcome),
+        EVENT_NODE_REASON.get(event_type, "Решение зафиксировано"),
+    )
+
+
+def _correction_summary_count(payload: Any, outcome: str) -> int | None:
+    """Бейдж узла из фактов результата ТОГО ЖЕ события (AUDIT-4, P16):
+    apply -- состояние ПОСЛЕ операции (remaining-факты; затем
+    диагностика до; затем объём выполненного), preview -- найденные
+    нарушения (гипотетические after-превью бейджем не становятся),
+    unknown -- прежний плоский приоритет NODE_SUMMARY_COUNT_KEYS (пин
+    PROGR-11: мусор в одном счётчике не касается других ключей)."""
+    if outcome in ("violations", "clean"):
+        return _correction_fact(payload, CORRECTION_VIOLATIONS_KEYS)
+    if outcome in ("changed", "no_change"):
+        remaining = _correction_fact(payload, CORRECTION_REMAINING_KEYS)
+        if remaining is not None:
+            return remaining
+        before = _correction_fact(payload, CORRECTION_VIOLATIONS_KEYS)
+        if before is not None:
+            return before
+        return _correction_fact(payload, CORRECTION_CHANGED_KEYS)
+    if isinstance(payload, Mapping):
+        for count_key in NODE_SUMMARY_COUNT_KEYS:
+            cleaned = _clean_summary_count(payload.get(count_key))
+            if cleaned is not None:
+                return cleaned
+    return None
+
+
+def _override_status_field_invalid(data: Mapping[str, Any]) -> bool:
+    """P15 (AUDIT-4/H15): статус-поле override-типа ПРИСУТСТВУЕТ, но
+    вне словаря статусов -- schema-нарушение продюсера (ответы несут
+    Literal; мусор возможен только в повреждённой/синтетической
+    трассе). None/отсутствие поля -- легаси-ветка (фолбэк на карту,
+    пин PROGR-23), не нарушение."""
+    payload = data.get("payload")
+    if not isinstance(payload, Mapping) or "status" not in payload:
+        return False
+    raw = payload.get("status")
+    if raw is None:
+        return False
+    return not (isinstance(raw, str) and raw in CHECK_STATUS_VALUES)
+
+
 class NodeStateFold:
     """Инкрементальная форма ЕДИНОГО редьюсера (AUDIT-5B, план §8:
     «Один редьюсер и один канонический порядок для панели, Наставника и
@@ -527,11 +741,20 @@ class NodeStateFold:
     apply() -- точная копия тел двух проходов батч-версии (статусы +
     детали узлов, PROGR-11/13-A4/21/H1) в один проход: порядок
     обработки событий не меняется, last-wins семантика прежняя.
-    ЕДИНСТВЕННОЕ изменение семантики против базы a2dcbee -- 5B/I10:
-    payload-статусное событие с НЕВАЛИДНЫМ payload (нет status вне
-    CHECK_STATUS_VALUES) больше не меняет детали узла (reason/счётчик)
-    -- фиксируется диагностической аномалией fold (anomaly_count),
-    last_touched_at остаётся фактом касания (событие в журнале было).
+    Семантические изменения против базы 02ac7ff:
+    * 5B/I10: payload-статусное событие с НЕВАЛИДНЫМ payload (нет
+      status вне CHECK_STATUS_VALUES) больше не меняет детали узла
+      (reason/счётчик) -- диагностическая аномалия fold (anomaly_count),
+      last_touched_at остаётся фактом касания;
+    * AUDIT-4 (план §10, F10/P14–P16): исход коррекции (outcome) --
+      ЕДИНАЯ проекция фактов результата (resolve_correction_outcome);
+      статус/reason/бейдж -- из исхода, не из типа операции (clean-
+      preview не кричит «Найдены нарушения», no-op apply не удостоверяет
+      устранение, частичное -- честный warning с бейджем «после
+      операции»); счётчик следует за reason-событием (P16: событие без
+      фактов счётчика очищает бейдж); override-событие с мусорным
+      status-полем -- аномалия вне decision details (P15);
+      special-исход выбросов (карточная шкала) сохранён.
     """
 
     def __init__(self) -> None:
@@ -642,23 +865,58 @@ class NodeStateFold:
             detail["last_touched_at"] = ts
         # reason/count -- только события решения (последнее wins).
         # PROGR-13-A4: payload-статусные типы -- тоже узловые факты
-        # решения. AUDIT-5B (I10/часть F10, план §8 «Payload невалидного
-        # события не меняет детали»): payload-статусный тип с невалидным
-        # payload (статус не извлёкся) деталями НЕ становится -- он
-        # диагностическая аномалия; reason/счётчик/ссылки не тронуты.
+        # решения. AUDIT-5B (I10/часть F10): payload-статусный тип с
+        # невалидным payload деталями НЕ становится -- диагностическая
+        # аномалия. AUDIT-4 (P15/H15): override-тип с ПРИСУТСТВУЮЩИМ,
+        # но невалидным status-полем -- schema-нарушение: целиком вне
+        # decision details (касание -- факт журнала, остаётся).
         if (
             event_type in EVENT_NODE_STATUS
             or event_type in PAYLOAD_STATUS_EVENT_TYPES
         ):
             if event_type in PAYLOAD_STATUS_EVENT_TYPES and status is None:
                 self._anomalies += 1
+                return
+            if (
+                event_type in PAYLOAD_STATUS_OVERRIDE_EVENT_TYPES
+                and _override_status_field_invalid(data)
+            ):
+                self._anomalies += 1
+                return
+            event_ref = _event_ref(data)
+            payload = data.get("payload")
+            if event_type in CORRECTION_OUTCOME_EVENT_TYPES:
+                # AUDIT-4 (план §10): исход -- ЕДИНАЯ проекция фактов
+                # результата; reason по исходу (канон для доказуемых,
+                # честная маркировка для clean/no_change/unknown);
+                # бейдж -- из фактов ТОГО ЖЕ события (P16: без фактов
+                # счётчика бейдж ОЧИЩАЕТСЯ -- цифра прежней диагностики
+                # не наследуется как собственный результат).
+                outcome = resolve_correction_outcome(data)
+                remaining = _correction_fact(
+                    payload, CORRECTION_REMAINING_KEYS
+                )
+                detail["status_reason"] = correction_reason(
+                    event_type, outcome, remaining
+                )
+                detail["_reason_tag"] = None
+                detail["_reason_src"] = event_ref
+                detail["_outcome"] = outcome
+                count = _correction_summary_count(payload, outcome)
+                detail["summary_count"] = count
+                detail["_count_src"] = (
+                    event_ref if count is not None else None
+                )
             else:
                 detail["status_reason"] = EVENT_NODE_REASON[event_type]
                 detail["_reason_tag"] = None
-                event_ref = _event_ref(data)
                 detail["_reason_src"] = event_ref
+                detail["_outcome"] = None
+                # AUDIT-4 (P16, единое правило свежести): счётчик
+                # следует за reason-событием -- без фактов счётчика в
+                # ЭТОМ событии бейдж честно очищается.
+                detail["summary_count"] = None
                 detail["_count_src"] = None
-                payload = data.get("payload")
                 if isinstance(payload, Mapping):
                     for count_key in NODE_SUMMARY_COUNT_KEYS:
                         cleaned = _clean_summary_count(payload.get(count_key))
@@ -668,6 +926,47 @@ class NodeStateFold:
                             break
 
         # ── статус узла (проход канонического движка) ──
+        # AUDIT-4 (план §10): для коррекций статус -- из ИСХОДА, не из
+        # типа операции: валидная карточная шкала выбросов приоритетна
+        # (класс C5 сохранён); clean/no_change/unknown статус НЕ
+        # утверждают (None -- узел сохраняет прежнее состояние,
+        # честное отсутствие претензии на качество результата);
+        # changed при remaining>0 (частичное устранение) и no_change при
+        # remaining>0 (нарушения остались) -- честный warning.
+        # ВАЖНО: override-приоритетен только ВАЛИДНЫЙ payload.status;
+        # map-фолбэк resolve_event_status (легаси-корпус без поля
+        # status, пин PROGR-23) исходом не является -- карта
+        # «тип → done» и есть тот смешанный стиль, который AUDIT-4
+        # разделяет.
+        if event_type in CORRECTION_OUTCOME_EVENT_TYPES:
+            payload_status = data.get("payload")
+            payload_status = (
+                payload_status.get("status")
+                if isinstance(payload_status, Mapping)
+                else None
+            )
+            override_valid = event_type in PAYLOAD_STATUS_OVERRIDE_EVENT_TYPES and (
+                isinstance(payload_status, str)
+                and payload_status in CHECK_STATUS_VALUES
+            )
+            if not override_valid:
+                outcome = detail.get("_outcome")
+                remaining = _correction_fact(
+                    data.get("payload"), CORRECTION_REMAINING_KEYS
+                )
+                remaining_positive = remaining is not None and remaining > 0
+                if outcome == "violations" or (
+                    remaining_positive
+                ):
+                    # нарушения есть (preview) либо остались после
+                    # операции (частичное устранение / не устранила)
+                    status = "warning"
+                elif outcome == "changed":
+                    status = "done"
+                else:
+                    # clean/no_change (без remaining)/unknown -- статус
+                    # не утверждается
+                    status = None
         if status is None:
             return
         # PROGR-AUDIT-H1 (F17, interim до AUDIT-3 -- Донастройка плана
@@ -761,6 +1060,9 @@ class NodeStateFold:
                     "source_event_id": detail["_status_src"],
                     "reason_source_event_id": detail["_reason_src"],
                     "count_source_event_id": detail["_count_src"],
+                    # AUDIT-4: исход последней коррекции узла (I10-стиль;
+                    # аддитивно: None -- коррекций не было/старый корпус).
+                    "outcome": detail.get("_outcome"),
                     "evidence_level": detail["_status_level"],
                     "validity": (
                         event_context_validity(
@@ -1006,11 +1308,12 @@ def derive_pipeline_node_states(
     AUDIT-5B: развёртка NodeStateFold по корпусу (одна семантика для
     батч- и watermark-чтения; доказательства происхождения полей --
     node_states_with_evidence того же fold, проекция
-    apps/api/progress_projection.py). Единственное семантическое
-    изменение против базы a2dcbee -- I10: payload-статусное событие с
-    невалидным payload больше не ставит reason узла (диагностическая
-    аномалия fold, план §8 «Payload невалидного события не меняет
-    детали»).
+    apps/api/progress_projection.py). Семантические изменения против
+    базы 02ac7ff -- I10 (payload невалидного события не меняет детали)
+    и AUDIT-4 (план §10): исход коррекции -- единая проекция фактов
+    результата; статус/reason/бейдж коррекций -- из исхода, счётчик
+    следует за reason-событием (P16), невалидный status -- аномалия
+    (P15), special-исход выбросов сохранён.
 
     Ввод событий НЕ валидируется (трасса -- журнал, R3 PROGR-1-CERT);
     вход не мутируется; функция чистая (без HTTP и хранилищ) --

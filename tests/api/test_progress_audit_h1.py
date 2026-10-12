@@ -248,10 +248,16 @@ class TestF17ProfileViewedMonotonicity:
     def test_other_event_types_unaffected(self):
         """Монотонность НЕ глобальная: прочие пары перезаписываются
         (previewed -> applied = done; pending-отчёт ПОСЛЕ done --
-        легитимное переоткрытие eda-checks, H27-пин)."""
+        легитимное переоткрытие eda-checks, H27-пин).
+
+        Versioned AUDIT-4: correction-события несут факты результата --
+        голые события без фактов честно unknown (статус не утверждают)."""
         events = [
-            _node_event("correction_previewed", "validation", "formats"),
-            _node_event("correction_applied", "validation", "formats"),
+            _node_event("correction_previewed", "validation", "formats",
+                        total_violations=3),
+            _node_event("correction_applied", "validation", "formats",
+                        total_violations=3, total_changed=3,
+                        total_still_invalid=0),
         ]
         assert derive_node_statuses(events)["validation/formats"] == "done"
         events = [

@@ -495,6 +495,9 @@ class TestMentorNextStepEndpoint:
             make_trace_event(
                 "correction_previewed", stage="preprocessing",
                 node_id="regularity", run_id="RUN-AAA00001", strategy="resample",
+                # Versioned AUDIT-4: факт диагностики (нарушения до) --
+                # голый preview статуса не утверждает.
+                total_violations=2,
             ),
         )
         response = client.get("/v1/progress/runs/RUN-AAA00001/mentor/next-step")

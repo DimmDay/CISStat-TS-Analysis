@@ -800,3 +800,92 @@ singleton-правила), не восстанавливается — парн�
 - Границы (вне задачи): raw restore-семантика и historical/validity — AUDIT-8; шаблоны фактов
   отчёта (P18/auto-метка) — AUDIT-7B; payload/source ручного маршрута остаётся legacy
   {target_column} (PROGR-25-A, читается как user) — изменение формы корпуса не входило.
+
+## 18. Аддендум v0.8-4A — outcome и детали коррекции (PROGR-AUDIT-4) — **УТВЕРЖДЕНО-4A**
+
+Versioned-обновление: план `plan_progress_audit.md` §10, задача AUDIT-4 (предшественники
+AUDIT-C/5B/1A закрыты; база `main@02ac7ff`). Решения §4.1/§12 не меняются — разделяются:
+тип события остаётся носителем ОПЕРАЦИИ, качество результата выводится отдельно.
+
+### 18.1. Единый вывод исхода коррекции (outcome) — УТВЕРЖДЕНО
+
+`app/core/node_status.py` — ЕДИНСТВЕННАЯ проекция фактов результата payload в словарь
+исходов плана §10: `resolve_correction_outcome(data)` → `violations` / `clean` (preview),
+`changed` / `no_change` (apply), `unknown` (фактов нет). Правила:
+
+- preview — по диагностике ДО (`CORRECTION_VIOLATIONS_KEYS`): >0 — violations, ==0 — clean,
+  фактов нет — unknown (легаси-корпус не фабрикует «Найдены нарушения», H14);
+- apply — по прямым отчётам объёма выполненного (`CORRECTION_CHANGED_KEYS`): любой >0 —
+  changed, все сообщённые ==0 — no_change;
+- fallback apply (прямых фактов нет) — пара до/после (`total_violations_before/after`,
+  regularity sort): remaining != before — changed, == — no_change; половина пары
+  (convert-types `total_invalid`) — unknown;
+- щит счётчиков — тот же, что `_clean_summary_count` (bool/строка/отрицательное — не факт).
+
+`correction_reason(event_type, outcome, remaining)`: канонические тексты карты сохранены
+для доказуемых исходов (violations-preview и changed-apply рендерят прежние строки);
+новые честные тексты — «Нарушений не найдено: предпросмотр коррекции», «Коррекция
+применена частично: нарушения остались», «Коррекция не изменила данные», «Коррекция не
+устранила нарушения» (remaining>0), «Коррекция выполнена: исход не подтверждён» (unknown).
+
+### 18.2. Честная проекция статуса/reason/бейджа — УТВЕРЖДЕНО
+
+NodeStateFold (единственный редьюсер):
+
+- статус коррекций — из ИСХОДА, не из типа операции: violations → warning; changed при
+  remaining>0 (частичное устранение) → warning; changed иначе → done; no_change при
+  remaining>0 → warning; clean/no_change-прочее/unknown → статус НЕ утверждается (узел
+  сохраняет прежнее состояние). Специальный исход выбросов сохранён (§18.3);
+- reason и бейдж — из фактов ТОГО ЖЕ события (P16/H16): событие решения без фактов
+  счётчика ОЧИЩАЕТ бейдж (цифра прежней диагностики не становится результатом нового
+  решения; `_count_src` = None согласованно). Бейдж apply — состояние ПОСЛЕ операции
+  (remaining-ключи, карточная шкала выбросов первенствует — пины G345); бейдж preview —
+  найденные нарушения (гипотетические after-превью бейджем не становятся); unknown —
+  прежний плоский приоритет `NODE_SUMMARY_COUNT_KEYS` (расширен фактами до/после);
+- P15/H15: override-событие с ПРИСУТСТВУЮЩИМ, но невалидным `status`-полем —
+  schema-нарушение: целиком вне decision details (статус/reason/счётчик не тронуты,
+  касание остаётся), диагностическая аномалия fold (anomaly_count). `status: null` /
+  отсутствие поля — легаси-ветка (фолбэк на карту, пин PROGR-23 сохранён);
+  `resolve_event_status` НЕ менялся (словарная проекция для гейтов фаз Наставника);
+- доказательства: `node_states_with_evidence` аддитивно несёт `outcome` узла (I10-стиль;
+  7-польный контракт §3 не менялся).
+
+### 18.3. Специальные исходы и параметры результата — УТВЕРЖДЕНО
+
+- карточная шкала выбросов (класс C5 G345): валидный `payload.status` приоритетен выводу
+  из outcome — частичная коррекция остаётся warning, унификации в безусловный done нет;
+  map-фолбэк (`correction_applied` без поля status) исходом НЕ считается — карта
+  «тип → done» и есть разделяемый AUDIT-4 стиль;
+- P19/F13: dedupe (`_node_picture_unchanged`) сравнивает картину И параметры результата
+  (`DEDUPE_PARAM_KEYS = ("method", "mode")`) против последнего stored-события того же
+  (event_type, node_id): смена метода/режима при той же status/count-картине — другой
+  выполненный метод, факт создаётся (H19); focus-refetch того же результата — нет;
+  легаси-события без параметров сравнения не дают (самозаживление);
+- whitelist хука `_CORRECTION_PAYLOAD_KEYS` расширен фактами «нарушения до/после»:
+  `total_still_invalid/missing/outliers`, `still_duplicate_rows`, `rows_changed`,
+  `duplicate_rows`, `total_violations_before/after`, `rows_added/rows_dropped` —
+  отсутствующие ключи опускаются (обратная совместимость корпуса).
+
+### 18.4. Приёмка и границы
+
+- RED-протокол: `scripts/prograudit4_red_protocol.txt` — 39 FAILED / 8 PASSED на базе
+  02ac7ff (16 ImportError outcome/reason API; честные статусы P14; свежесть P16;
+  аномалии P15; evidence-outcome; whitelist; P19-метод; панель e2e). 8 PASSED — пины уже
+  корректного поведения (C5-override, легаси-фолбэк, fail-safe счётчиков, dedupe).
+  Оракул `tests/api/test_progress_audit_4.py` — 48/48 GREEN.
+- Регресс: адресные suite'ы (node_status_engine/progr23/trace_hook/panel/5b/1a/6a/C/S/H1/
+  mentor/admin_progress/admin_analytics/…) — без падений; versioned-обновления пинов
+  (план §20.2 п.6): engine ×8, H1 ×1, mentor ×1, admin_progress ×1, admin_analytics ×5 —
+  голым синтетическим correction-событиям добавлены факты результата (интент пинов
+  сохранён: last-wins, смешанные представления, коллизии стадий, mode-reason,
+  case-bank/top-problem корпуса). tests/api+integration — 1730 passed / 19 failed /
+  18 skipped, все 19 — документированный средовой класс (production dispatch моделей:
+  forecasting_session ×16, modeling_workflow, backtest_neural_capacity, models_candidates;
+  плюс мусорный DATABASE_URL=file:… в среде sandbox искажал слой 2 — прогон с очищенным
+  окружением) — дельта к базлайну 0. Сборка: импорт `apps.api.main` OK, py_compile OK.
+  Хранилища/миграции не тронуты (postgres-сюита вне дельты). Jest/tsc не требовались —
+  UI не менялся (новые reason-тексты рендерятся существующим полем status_reason, N-3).
+- Границы (вне задачи): отложенная математика PROGR-23 (карточная шкала) не исправлялась;
+  шаблоны фактов отчёта (P18) — AUDIT-7B; обязательность v2-envelope и контекстные гейты
+  коррекций — AUDIT-2A/6B; результат-идентичность durable-уровня (result_id в ledger) —
+  AUDIT-6B/7A.

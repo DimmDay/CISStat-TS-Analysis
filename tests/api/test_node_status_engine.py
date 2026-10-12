@@ -225,14 +225,25 @@ class TestDeriveNodeStatuses:
     def test_last_event_wins(self):
         """Хронология входа сохраняется: позднее событие перезаписывает
         раннее (previewed -> applied = done; обратный порядок --
-        деградация до warning)."""
+        деградация до warning).
+
+        Versioned AUDIT-4 (план §20.2 п.6): события несут факты
+        результата (нарушения до/после) -- исход разделяет операцию и
+        качество (голое событие без фактов -- честный unknown, не
+        done/warning)."""
         applied_first = [
-            _event("preprocessing", "missing", "correction_previewed", _ts(10)),
-            _event("preprocessing", "missing", "correction_applied", _ts(20)),
+            _event("preprocessing", "missing", "correction_previewed",
+                   _ts(10), total_missing=7),
+            _event("preprocessing", "missing", "correction_applied",
+                   _ts(20), total_missing=7, total_changed=7,
+                   total_still_missing=0),
         ]
         previewed_last = [
-            _event("preprocessing", "missing", "correction_applied", _ts(10)),
-            _event("preprocessing", "missing", "correction_previewed", _ts(20)),
+            _event("preprocessing", "missing", "correction_applied",
+                   _ts(10), total_missing=7, total_changed=7,
+                   total_still_missing=0),
+            _event("preprocessing", "missing", "correction_previewed",
+                   _ts(20), total_missing=7),
         ]
         assert derive_node_statuses(applied_first)["preprocessing/missing"] == "done"
         assert derive_node_statuses(previewed_last)["preprocessing/missing"] == "warning"
@@ -269,13 +280,19 @@ class TestDeriveNodeStatuses:
     def test_mixed_representations_accepted(self):
         """Слой 1 отдаёт TraceEvent, слой 2 -- stored-словари; движок
         принимает смешанные представления в одном списке (нормализация
-        на границе движка, не у каждого потребителя)."""
+        на границе движка, не у каждого потребителя).
+
+        Versioned AUDIT-4: событие несёт факты результата -- голый
+        apply без фактов честно unknown (статус не утверждается)."""
         events = [
             make_trace_event(
                 "correction_applied",
                 stage="preprocessing",
                 node_id="missing",
                 run_id="RUN-AAA00001",
+                total_missing=4,
+                total_changed=4,
+                total_still_missing=0,
             ),
             _event("modeling", "backtest", "backtest_run", _ts(5)),
         ]
@@ -286,10 +303,15 @@ class TestDeriveNodeStatuses:
     def test_regularity_collision_between_stages(self):
         """Ключ -- "stage/node_id": regularity Валидации и Предобработки
         -- разные узлы с независимыми статусами (id сознательно
-        пересекаются между стадиями)."""
+        пересекаются между стадиями).
+
+        Versioned AUDIT-4: факты результата в payload (пара до/после
+        регулярности -- changed; диагностика превью -- violations)."""
         events = [
-            _event("validation", "regularity", "correction_applied", _ts(10)),
-            _event("preprocessing", "regularity", "correction_previewed", _ts(20)),
+            _event("validation", "regularity", "correction_applied", _ts(10),
+                   total_violations_before=3, total_violations_after=0),
+            _event("preprocessing", "regularity", "correction_previewed",
+                   _ts(20), total_violations_before=2),
         ]
         statuses = derive_node_statuses(events)
         assert statuses["validation/regularity"] == "done"
@@ -478,12 +500,17 @@ class TestPipelineNodeStates:
         """correction_applied -- факт решения: статус done (канонический
         движок), reason по шаблону, summary_count из payload
         (total_missing -- то же число, что в правом бейдже узла, §3),
-        last_touched_at -- ts события."""
+        last_touched_at -- ts события.
+
+        Versioned AUDIT-4 (план §20.2 п.6): payload дополнен фактом
+        объёма выполненного (total_changed) -- без фактов результата
+        apply честно unknown (статус не утверждается)."""
         events = [
             _event(
                 "preprocessing", "missing", "correction_applied",
                 ts="2026-09-29T10:05:00+00:00",
                 applied=True, strategy="mean", total_missing=12,
+                total_changed=12,
             ),
         ]
         by_key = {
@@ -654,12 +681,20 @@ class TestPipelineNodeStates:
 
     def test_trace_event_objects_and_dicts_mixed(self):
         """Смешанные представления легальны (слой 1 -- TraceEvent,
-        слой 2 -- stored-словари), как в derive_node_statuses."""
+        слой 2 -- stored-словари), как в derive_node_statuses.
+
+        Versioned AUDIT-4: факты результата в payload обоих событий
+        (превью -- диагностика, apply -- объём выполненного)."""
         obj = make_trace_event(
             "correction_applied", stage="preprocessing",
             node_id="missing", run_id="RUN-AAA00002",
+            total_missing=6, total_changed=6, total_still_missing=0,
         )
-        events = [_event("preprocessing", "missing", "correction_previewed"), obj]
+        events = [
+            _event("preprocessing", "missing", "correction_previewed",
+                   total_missing=6),
+            obj,
+        ]
         by_key = {
             (s["stage"], s["node_id"]): s
             for s in derive_pipeline_node_states(events)
@@ -809,9 +844,14 @@ class TestProgr21StageLevelReasons:
 
     def test_mode_changed_auto_keeps_decision_reason(self):
         """Снятие затрагивает ТОЛЬКО mode-reason: reason последнего
-        узлового решения (correction_applied) не трогается."""
+        узлового решения (correction_applied) не трогается.
+
+        Versioned AUDIT-4: событие решения несёт факты результата
+        (голый apply -- честный unknown, reason без претензий)."""
         events = [
-            _event("validation", "formats", "correction_applied", ts=_ts(1)),
+            _event("validation", "formats", "correction_applied", ts=_ts(1),
+                   total_violations=4, total_changed=4,
+                   total_still_invalid=0),
             _event("validation", None, "mode_changed", modes={"formats": "auto"}),
         ]
         by_key = self._by_key(events)
@@ -823,9 +863,12 @@ class TestProgr21StageLevelReasons:
         """Хронология (last wins -- тот же контракт, что у статусов):
         mode-reason после решения узла перезаписывает его; авто-возврат
         после решения НЕ снимает decision-reason (тег происхождения
-        сброшен решением)."""
+        сброшен решением). Versioned AUDIT-4: факты результата в
+        payload решений."""
         events = [
-            _event("validation", "formats", "correction_applied", ts=_ts(1)),
+            _event("validation", "formats", "correction_applied", ts=_ts(1),
+                   total_violations=4, total_changed=4,
+                   total_still_invalid=0),
             _event("validation", None, "mode_changed", modes={"formats": "enabled"}),
         ]
         by_key = self._by_key(events)
@@ -833,7 +876,9 @@ class TestProgr21StageLevelReasons:
 
         events = [
             _event("validation", None, "mode_changed", modes={"formats": "enabled"}),
-            _event("validation", "formats", "correction_applied", ts=_ts(2)),
+            _event("validation", "formats", "correction_applied", ts=_ts(2),
+                   total_violations=4, total_changed=4,
+                   total_still_invalid=0),
             _event("validation", None, "mode_changed", modes={"formats": "auto"}),
         ]
         by_key = self._by_key(events)
@@ -881,7 +926,9 @@ class TestProgr21StageLevelReasons:
         assert by_key[("validation", "sufficiency")]["status_reason"] is None
 
         keeps_decision = [
-            _event("validation", "sufficiency", "correction_applied", ts=_ts(1)),
+            _event("validation", "sufficiency", "correction_applied",
+                   ts=_ts(1), total_violations=3, total_changed=3,
+                   total_still_invalid=0),
             _event("validation", None, "target_column_changed",
                    target_column="", ts=_ts(2)),
         ]

@@ -114,6 +114,9 @@ def _populate_run(
 
 
 def _previewed_event(run_id: str, node_id: str = "missing") -> Any:
+    # Versioned AUDIT-4 (план §20.2 п.6): событие несёт факты
+    # диагностики (как реальный hook-payload) -- голый preview без
+    # фактов результата честно unknown и статуса не утверждает.
     return make_trace_event(
         "correction_previewed",
         stage="preprocessing",
@@ -122,6 +125,7 @@ def _previewed_event(run_id: str, node_id: str = "missing") -> Any:
         ts=_ts_ago(days=1.0),
         strategy="interpolate",
         total_changed=0,
+        total_missing=5,
     )
 
 

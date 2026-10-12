@@ -283,12 +283,16 @@ class TestTopProblemNodes:
             _event(
                 "correction_previewed", run_id="RUN-A", stage="preprocessing",
                 node_id="missing", ts=_iso(4.0),
+                # Versioned AUDIT-4: факт диагностики -- голый preview
+                # статуса не утверждает.
+                payload={"total_missing": 5},
             ),
         ]
         events_b = [
             _event(
                 "correction_previewed", run_id="RUN-B", stage="preprocessing",
                 node_id="missing", ts=_iso(2.0),
+                payload={"total_missing": 5},
             ),
         ]
         runs = [_run("RUN-A"), _run("RUN-B")]
@@ -304,13 +308,18 @@ class TestTopProblemNodes:
     def test_done_nodes_not_counted_and_fantoms_skipped(self):
         events = [
             # previewed -> applied: финальный статус done -- не проблема.
+            # Versioned AUDIT-4: факты результата в payload (иначе
+            # события честно unknown и семантика перезаписи мертва).
             _event(
                 "correction_previewed", run_id="RUN-A", stage="preprocessing",
                 node_id="missing", ts=_iso(4.0),
+                payload={"total_missing": 5},
             ),
             _event(
                 "correction_applied", run_id="RUN-A", stage="preprocessing",
                 node_id="missing", ts=_iso(4.0 - 1.0 / 1440.0),
+                payload={"total_missing": 5, "total_changed": 5,
+                         "total_still_missing": 0},
             ),
             # Фантомный узел (нет в графе §2) -- честно пропущен.
             _event(
@@ -328,6 +337,7 @@ class TestTopProblemNodes:
             _event(
                 "correction_previewed", run_id="RUN-A", stage="preprocessing",
                 node_id=node, ts=_iso(4.0),
+                payload={"total_missing": 5},  # Versioned AUDIT-4
             )
             for node in ("missing", "outliers", "regularity")
         ]
@@ -514,7 +524,8 @@ class TestCaseBankCandidates:
             "RUN-A", 12.5,
             extra_events=[
                 _event("correction_previewed", run_id="RUN-A",
-                       stage="preprocessing", node_id=node, ts=_iso(3.0))
+                       stage="preprocessing", node_id=node, ts=_iso(3.0),
+                       payload={"total_missing": 5})  # Versioned AUDIT-4
                 for node in ("missing", "outliers", "regularity")
             ],
         )
@@ -527,7 +538,8 @@ class TestCaseBankCandidates:
             "RUN-A", 12.5,
             extra_events=[
                 _event("correction_previewed", run_id="RUN-A",
-                       stage="preprocessing", node_id="missing", ts=_iso(3.0)),
+                       stage="preprocessing", node_id="missing", ts=_iso(3.0),
+                       payload={"total_missing": 5}),  # Versioned AUDIT-4
             ],
         )
         candidates = select_case_bank_candidates(
