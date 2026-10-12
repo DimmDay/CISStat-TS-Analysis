@@ -1,0 +1,14 @@
+CM-0 [no-op контроль харнесса]: oracle=EXIT=0 repo========================= 36 passed, 2 warnings in 2.98s ======================== -> SURVIVED (харнесс достоверен)
+CM-1 [фабрика origin: мусорный source читается user]: oracle=EXIT=1 repo==================== 1 failed, 35 passed, 2 warnings in 3.20s =================== -> KILLED-BOTH
+CM-2 [legacy-контракт сломан: отсутствие source -> unknown]: oracle=EXIT=1 repo==================== 6 failed, 30 passed, 2 warnings in 3.27s =================== -> KILLED-BOTH
+CM-3 [выделенный сброс не сбрасывает пару]: oracle=EXIT=1 repo==================== 9 failed, 27 passed, 2 warnings in 3.28s =================== -> KILLED-BOTH
+CM-4 [legacy-форма пустого target не сброс]: oracle=EXIT=1 repo==================== 1 failed, 35 passed, 2 warnings in 3.32s =================== -> KILLED-BOTH
+CM-5 [фабрика цели из мусорного payload]: oracle=EXIT=1 repo==================== 2 failed, 34 passed, 2 warnings in 3.20s =================== -> KILLED-BOTH
+CM-6 [resolved-щит снят: шум стирает хранимую пару]: oracle=EXIT=1 repo==================== 1 failed, 35 passed, 2 warnings in 3.13s =================== -> KILLED-BOTH
+CM-7 [COALESCE-стиль: сброс пары не стирает источник в PG]: oracle=EXIT=1 repo========================= 36 passed, 2 warnings in 3.15s ======================== -> KILLED-ORACLE-ONLY
+CM-8 [авторитет ledger снят: restore верит устаревшим метаданным]: oracle=EXIT=1 repo==================== 2 failed, 34 passed, 2 warnings in 3.27s =================== -> KILLED-BOTH
+CM-9 [применимость цели к raw снята (нечисловая восстанавливается)]: oracle=EXIT=1 repo========================= 36 passed, 2 warnings in 3.22s ======================== -> KILLED-ORACLE-ONLY
+CM-10 [origin пары не пишется в сессию (F03-остаток)]: oracle=EXIT=1 repo==================== 3 failed, 33 passed, 1 warning in 3.29s ==================== -> KILLED-BOTH
+CM-11 [инверсия reason-марки «(авто)»]: oracle=EXIT=1 repo========================= 36 passed, 2 warnings in 2.97s ======================== -> KILLED-ORACLE-ONLY
+CM-12 [фаз-факты: unknown-origin выбор теряет колонку текста]: oracle=EXIT=1 repo========================= 36 passed, 2 warnings in 3.02s ======================== -> KILLED-ORACLE-ONLY
+ИТОГО: 12 KILLED / 0 SURVIVED (мутантов 12); контроль CM-0: SURVIVED

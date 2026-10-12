@@ -1,0 +1,69 @@
+========================================================================
+PROGR-AUDIT-1A-CERT: СВОИ оракулы на СВОИХ данных
+========================================================================
+  ok   CLR1 полный сброс: сессия+run+ровно один cleared+payload
+  ok   CLR2 после сброса Наставник НЕ утверждает выбор и просит подтвердить
+  ok   CLR3 reason своего класса снят (пустая строка)
+  ok   CLR4 preview (apply=False) не сбрасывает
+  ok   CLR5 пустой POST /target-column — 422, сброс через выбор невозможен
+  ok   CLR6 заголовок отчёта после сброса не называет цель
+  ok   CYC1 auto->reset->manual (свой двухканальный корпус)
+  ok   CYC2 manual->reset: пара очищена, выбор сохранён исторически
+  ok   CYC3 кириллический корпус: полный сброс пары честен
+  ok   MEN1 _target_confirmed совпадает с редьюсером (свой корпус)
+  ok   MEN2 _target_origin совпадает с редьюсером (свой корпус)
+  ok   MEN3 _phase_event_text_facts совпадает с редьюсером
+  ok   MEN4 мусорный source: _target_origin=None (различитель unknown)
+  FAIL MEN5 мусорный source: факт колонки сохранён в тексте: выбор с unknown-origin потерял факт колонки: {}
+  ok   NRK1 auto-выбор: reason несёт марку «(авто)»
+  ok   NRK2 manual-выбор: марки нет
+  ok   NRM1 normalize auto->auto
+  ok   NRM2 normalize user->user
+  ok   NRM3 normalize None->user (legacy-контракт PROGR-25-A)
+  ok   NRM4 normalize ''->user (эквивалент отсутствия)
+  ok   NRM5 normalize мусор 'bot'->None (unknown, не фабрика user)
+  ok   NRM6 normalize мусор 123->None
+  ok   NRM7 normalize 'AUTO' (регистр) ->None (канон чувствителен)
+  ok   NRM8 normalize ' user' (пробел) ->None
+  ok   PG1 паритет record_run_event: пара durable (auto)
+  ok   PG2 прямая запись пары: None стирает прежний auto (НЕ COALESCE)
+  ok   PG3 legacy-строка (NULL source) читается честным отсутствием
+  ok   PG4 файл 0003 == MIGRATION_STATEMENTS_0003 (нормализующий разбор)
+  ok   PG5 каталог MIGRATION_FILES: 0001+0002+0003
+  ok   PG6 legacy-корпус (0001+0002) + файл 0003 -> колонка NULL, читаем
+  ok   PG7 повторное применение файла 0003 — no-op (идемпотентность)
+  ok   PG8 Memory/PG паритет полного mirror-потока (choice+cleared)
+  ok   RED1 выбор непустым строковым target (своё значение 'soy')
+  ok   RED10 TraceEvent и dict формы дают одно состояние
+  ok   RED11 мусорный корпус деградирует честно (не 500)
+  ok   RED12 source_event_id = последний ФАКТ (выбор после шума)
+  ok   RED13 cleared затем пустая строка — оба сбросы, last = строка
+  ok   RED14 кириллический target — полноценный факт (чувствительность)
+  ok   RED2 выбор без source -> user (своё 'maize')
+  ok   RED3 мусорный source -> origin None, target сохранён (I10-стиль)
+  ok   RED4 cleared сбрасывает ПАРУ (target+origin) на своих payload
+  ok   RED5 пустая строка target = legacy-сброс (канон PROGR-15-B)
+  ok   RED6 мусорный target 123 после выбора — состояние не тронул
+  ok   RED7 пустой корпус — unresolved (не «сброс»)
+  ok   RED8 шум (чужие типы) не сбрасывает состояние
+  ok   RED9 last-wins по ДАННОМУ порядку (свои значения, оба порядка)
+  ok   RST1 auto-restore: пара во всех точках, второго выбора нет
+  ok   RST2 reset->restore: без воскрешения и без авто-пере-выбора
+  ok   RST3 demo->manual->restore: origin=user восстанавливается
+  ok   RST4 ledger авторитетен: stale-метаданные не воскрешают сброс
+  ok   RST5 legacy-корпус без фактов цели: fallback метаданных, origin=None
+  ok   RST6 ghost-цель (отсутствует в raw) — пара пуста
+  ok   RST7 НЕчисловая ПРИСУТСТВУЮЩАЯ цель (строковая city) — пара пуста
+  ok   RST8 два числовых — честная неоднозначность после restore
+  ok   RST9 шапка /trace восстановленной сессии — та же пара
+  ok   RUN1 changed auto -> пара (soy, auto)
+  ok   RUN2 manual без source -> (maize, user)
+  ok   RUN3 cleared -> (None, None) — парная очистка
+  ok   RUN4 мусор после выбора — метаданные не тронуты (не «123»)
+  ok   RUN5 пустая строка — сброс пары (паритет run-метаданных)
+  ok   RUN6 round-trip to_dict/from_dict: auto/user/None
+  ok   RUN7 from_dict мусор -> None (щит, не фабрика str)
+  ok   RUN8 to_dict всегда несёт ключ пары (форма контракта §17.2)
+------------------------------------------------------------------------
+ИТОГО: 62 PASS / 1 FAIL (всего 63)
+  FAIL: MEN5 мусорный source: факт колонки сохранён в тексте: выбор с unknown-origin потерял факт колонки: {}

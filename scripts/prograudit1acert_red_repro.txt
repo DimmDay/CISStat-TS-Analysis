@@ -1,0 +1,122 @@
+========================================================================
+PROGR-AUDIT-1A-CERT: СВОИ оракулы на СВОИХ данных
+========================================================================
+  FAIL CLR1 полный сброс: сессия+run+ровно один cleared+payload: UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  ok   CLR2 после сброса Наставник НЕ утверждает выбор и просит подтвердить
+  ok   CLR3 reason своего класса снят (пустая строка)
+  ok   CLR4 preview (apply=False) не сбрасывает
+  ok   CLR5 пустой POST /target-column — 422, сброс через выбор невозможен
+  ok   CLR6 заголовок отчёта после сброса не называет цель
+  FAIL CYC1 auto->reset->manual (свой двухканальный корпус): UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  ok   CYC2 manual->reset: пара очищена, выбор сохранён исторически
+  FAIL CYC3 кириллический корпус: полный сброс пары честен: UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL MEN1 _target_confirmed совпадает с редьюсером (свой корпус): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL MEN2 _target_origin совпадает с редьюсером (свой корпус): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL MEN3 _phase_event_text_facts совпадает с редьюсером: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL MEN4 мусорный source: _target_origin=None (различитель unknown): мусорный source читается Наставником как известный
+  ok   MEN5 мусорный source: факт колонки сохранён в тексте
+  ok   NRK1 auto-выбор: reason несёт марку «(авто)»
+  ok   NRK2 manual-выбор: марки нет
+  FAIL NRM1 normalize auto->auto: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL NRM2 normalize user->user: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL NRM3 normalize None->user (legacy-контракт PROGR-25-A): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL NRM4 normalize ''->user (эквивалент отсутствия): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL NRM5 normalize мусор 'bot'->None (unknown, не фабрика user): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL NRM6 normalize мусор 123->None: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL NRM7 normalize 'AUTO' (регистр) ->None (канон чувствителен): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL NRM8 normalize ' user' (пробел) ->None: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL PG1 паритет record_run_event: пара durable (auto): UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL PG2 прямая запись пары: None стирает прежний auto (НЕ COALESCE): UNEXPECTED TypeError("ResearchRun.__init__() got an unexpected keyword argument 'target_column_source'")
+  FAIL PG3 legacy-строка (NULL source) читается честным отсутствием: UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL PG4 файл 0003 == MIGRATION_STATEMENTS_0003 (нормализующий разбор): UNEXPECTED FileNotFoundError(2, 'No such file or directory')
+  FAIL PG5 каталог MIGRATION_FILES: 0001+0002+0003: каталог миграций нечестен: ['0001_research_runs.sql', '0002_audit6a_atomic_ledger.sql']
+  FAIL PG6 legacy-корпус (0001+0002) + файл 0003 -> колонка NULL, читаем: UNEXPECTED FileNotFoundError(2, 'No such file or directory')
+  FAIL PG7 повторное применение файла 0003 — no-op (идемпотентность): UNEXPECTED FileNotFoundError(2, 'No such file or directory')
+  FAIL PG8 Memory/PG паритет полного mirror-потока (choice+cleared): UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL RED1 выбор непустым строковым target (своё значение 'soy'): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL RED10 TraceEvent и dict формы дают одно состояние: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL RED11 мусорный корпус деградирует честно (не 500): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL RED12 source_event_id = последний ФАКТ (выбор после шума): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL RED13 cleared затем пустая строка — оба сбросы, last = строка: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL RED14 кириллический target — полноценный факт (чувствительность): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL RED2 выбор без source -> user (своё 'maize'): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL RED3 мусорный source -> origin None, target сохранён (I10-стиль): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL RED4 cleared сбрасывает ПАРУ (target+origin) на своих payload: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL RED5 пустая строка target = legacy-сброс (канон PROGR-15-B): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL RED6 мусорный target 123 после выбора — состояние не тронул: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL RED7 пустой корпус — unresolved (не «сброс»): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL RED8 шум (чужие типы) не сбрасывает состояние: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL RED9 last-wins по ДАННОМУ порядку (свои значения, оба порядка): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL RST1 auto-restore: пара во всех точках, второго выбора нет: UNEXPECTED KeyError('target_column_source')
+  FAIL RST2 reset->restore: без воскрешения и без авто-пере-выбора: UNEXPECTED KeyError('target_column_source')
+  FAIL RST3 demo->manual->restore: origin=user восстанавливается: UNEXPECTED KeyError('target_column_source')
+  FAIL RST4 ledger авторитетен: stale-метаданные не воскрешают сброс: устаревшие метаданные воскрешают сброшенную цель
+  FAIL RST5 legacy-корпус без фактов цели: fallback метаданных, origin=None: UNEXPECTED KeyError('target_column_source')
+  FAIL RST6 ghost-цель (отсутствует в raw) — пара пуста: неприменимая цель восстановлена
+  FAIL RST7 НЕчисловая ПРИСУТСТВУЮЩАЯ цель (строковая city) — пара пуста: нечисловая цель восстановлена: soy
+  FAIL RST8 два числовых — честная неоднозначность после restore: UNEXPECTED KeyError('target_column_source')
+  FAIL RST9 шапка /trace восстановленной сессии — та же пара: шапка трассы расходится с парой restore
+  FAIL RUN1 changed auto -> пара (soy, auto): UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL RUN2 manual без source -> (maize, user): UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL RUN3 cleared -> (None, None) — парная очистка: UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL RUN4 мусор после выбора — метаданные не тронуты (не «123»): мусор изменил метаданные: 123
+  FAIL RUN5 пустая строка — сброс пары (паритет run-метаданных): UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL RUN6 round-trip to_dict/from_dict: auto/user/None: UNEXPECTED TypeError("ResearchRun.__init__() got an unexpected keyword argument 'target_column_source'")
+  FAIL RUN7 from_dict мусор -> None (щит, не фабрика str): UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL RUN8 to_dict всегда несёт ключ пары (форма контракта §17.2): целевая пара отсутствует в словаре (None-сброс неотличим)
+------------------------------------------------------------------------
+ИТОГО: 9 PASS / 54 FAIL (всего 63)
+  FAIL: CLR1 полный сброс: сессия+run+ровно один cleared+payload: UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL: CYC1 auto->reset->manual (свой двухканальный корпус): UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL: CYC3 кириллический корпус: полный сброс пары честен: UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL: MEN1 _target_confirmed совпадает с редьюсером (свой корпус): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: MEN2 _target_origin совпадает с редьюсером (свой корпус): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: MEN3 _phase_event_text_facts совпадает с редьюсером: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: MEN4 мусорный source: _target_origin=None (различитель unknown): мусорный source читается Наставником как известный
+  FAIL: NRM1 normalize auto->auto: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: NRM2 normalize user->user: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: NRM3 normalize None->user (legacy-контракт PROGR-25-A): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: NRM4 normalize ''->user (эквивалент отсутствия): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: NRM5 normalize мусор 'bot'->None (unknown, не фабрика user): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: NRM6 normalize мусор 123->None: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: NRM7 normalize 'AUTO' (регистр) ->None (канон чувствителен): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: NRM8 normalize ' user' (пробел) ->None: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: PG1 паритет record_run_event: пара durable (auto): UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL: PG2 прямая запись пары: None стирает прежний auto (НЕ COALESCE): UNEXPECTED TypeError("ResearchRun.__init__() got an unexpected keyword argument 'target_column_source'")
+  FAIL: PG3 legacy-строка (NULL source) читается честным отсутствием: UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL: PG4 файл 0003 == MIGRATION_STATEMENTS_0003 (нормализующий разбор): UNEXPECTED FileNotFoundError(2, 'No such file or directory')
+  FAIL: PG5 каталог MIGRATION_FILES: 0001+0002+0003: каталог миграций нечестен: ['0001_research_runs.sql', '0002_audit6a_atomic_ledger.sql']
+  FAIL: PG6 legacy-корпус (0001+0002) + файл 0003 -> колонка NULL, читаем: UNEXPECTED FileNotFoundError(2, 'No such file or directory')
+  FAIL: PG7 повторное применение файла 0003 — no-op (идемпотентность): UNEXPECTED FileNotFoundError(2, 'No such file or directory')
+  FAIL: PG8 Memory/PG паритет полного mirror-потока (choice+cleared): UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL: RED1 выбор непустым строковым target (своё значение 'soy'): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: RED10 TraceEvent и dict формы дают одно состояние: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: RED11 мусорный корпус деградирует честно (не 500): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: RED12 source_event_id = последний ФАКТ (выбор после шума): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: RED13 cleared затем пустая строка — оба сбросы, last = строка: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: RED14 кириллический target — полноценный факт (чувствительность): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: RED2 выбор без source -> user (своё 'maize'): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: RED3 мусорный source -> origin None, target сохранён (I10-стиль): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: RED4 cleared сбрасывает ПАРУ (target+origin) на своих payload: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: RED5 пустая строка target = legacy-сброс (канон PROGR-15-B): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: RED6 мусорный target 123 после выбора — состояние не тронул: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: RED7 пустой корпус — unresolved (не «сброс»): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: RED8 шум (чужие типы) не сбрасывает состояние: UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: RED9 last-wins по ДАННОМУ порядку (свои значения, оба порядка): UNEXPECTED ModuleNotFoundError("No module named 'app.core.effective_target'")
+  FAIL: RST1 auto-restore: пара во всех точках, второго выбора нет: UNEXPECTED KeyError('target_column_source')
+  FAIL: RST2 reset->restore: без воскрешения и без авто-пере-выбора: UNEXPECTED KeyError('target_column_source')
+  FAIL: RST3 demo->manual->restore: origin=user восстанавливается: UNEXPECTED KeyError('target_column_source')
+  FAIL: RST4 ledger авторитетен: stale-метаданные не воскрешают сброс: устаревшие метаданные воскрешают сброшенную цель
+  FAIL: RST5 legacy-корпус без фактов цели: fallback метаданных, origin=None: UNEXPECTED KeyError('target_column_source')
+  FAIL: RST6 ghost-цель (отсутствует в raw) — пара пуста: неприменимая цель восстановлена
+  FAIL: RST7 НЕчисловая ПРИСУТСТВУЮЩАЯ цель (строковая city) — пара пуста: нечисловая цель восстановлена: soy
+  FAIL: RST8 два числовых — честная неоднозначность после restore: UNEXPECTED KeyError('target_column_source')
+  FAIL: RST9 шапка /trace восстановленной сессии — та же пара: шапка трассы расходится с парой restore
+  FAIL: RUN1 changed auto -> пара (soy, auto): UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL: RUN2 manual без source -> (maize, user): UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL: RUN3 cleared -> (None, None) — парная очистка: UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL: RUN4 мусор после выбора — метаданные не тронуты (не «123»): мусор изменил метаданные: 123
+  FAIL: RUN5 пустая строка — сброс пары (паритет run-метаданных): UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL: RUN6 round-trip to_dict/from_dict: auto/user/None: UNEXPECTED TypeError("ResearchRun.__init__() got an unexpected keyword argument 'target_column_source'")
+  FAIL: RUN7 from_dict мусор -> None (щит, не фабрика str): UNEXPECTED AttributeError("'ResearchRun' object has no attribute 'target_column_source'")
+  FAIL: RUN8 to_dict всегда несёт ключ пары (форма контракта §17.2): целевая пара отсутствует в словаре (None-сброс неотличим)
