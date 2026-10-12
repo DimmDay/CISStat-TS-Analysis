@@ -1,0 +1,36 @@
+Протокол мутационной кампании PROGR-AUDIT-2A-CERT (скрипт scripts/prograudit2acert_mutations.py)
+Каналы: oracle = scripts/prograudit2acert_oracles.py (61 оракул, EXIT=0 -> SURVIVED); repo = tests/api/test_progress_audit_2a.py (22 теста, 0 failed -> SURVIVED).
+Кампания проведена тремя порциями (--only) для устойчивости к таймаутам песочницы; вердикты каждой порции воспроизведены дважды (полное совпадение).
+
+CM-0 [no-op контроль харнесса]: oracle=EXIT=0 repo=============================== 22 passed in 4.52s ============================== -> SURVIVED (харнесс достоверен)
+CM-1 [чужой schema_version принят без 422 (молчаливая деградация)]: oracle=EXIT=1 repo========================== 1 failed, 21 passed in 4.64s ========================= -> KILLED-BOTH
+CM-2 [пустой run_id принят: отчёт без запуска]: oracle=EXIT=1 repo========================== 1 failed, 21 passed in 4.41s ========================= -> KILLED-BOTH
+CM-3 [фантомная ссылка принята (реестр не щитится)]: oracle=EXIT=1 repo========================== 1 failed, 21 passed in 4.63s ========================= -> KILLED-BOTH
+CM-4 [I3 снят: результат чужого контекста прикладывается]: oracle=EXIT=1 repo========================== 1 failed, 21 passed in 4.60s ========================= -> KILLED-BOTH
+CM-5 [stale_run снят: старое тело принимается новым запуском (P24)]: oracle=EXIT=1 repo========================== 2 failed, 20 passed in 4.47s ========================= -> KILLED-BOTH
+CM-6 [гейт сравнивает с телом клиента (самосравнение, не durable)]: oracle=EXIT=1 repo========================== 1 failed, 21 passed in 4.43s ========================= -> KILLED-BOTH
+CM-7 [stale_context снят: отчёт прошлого контекста принимается]: oracle=EXIT=1 repo========================== 1 failed, 21 passed in 4.78s ========================= -> KILLED-BOTH
+md5 apps/api/progress_maps.py: 6fb7b282d12bfd9eabfc123db20d885a vs HEAD 6fb7b282d12bfd9eabfc123db20d885a -> MATCH
+md5 apps/api/routers/progress.py: 076f5f873b1cbee710787f8678f0090e vs HEAD 076f5f873b1cbee710787f8678f0090e -> MATCH
+ИТОГО: 7 KILLED / 1 SURVIVED / 8 всего
+
+CM-8 [fp игнорирует тело карты: конфликт тел не детектируется (P07)]: oracle=EXIT=1 repo========================== 2 failed, 20 passed in 4.69s ========================= -> KILLED-BOTH
+CM-9 [report_id исключён из ключа: разные поставки коллапсируют]: oracle=EXIT=1 repo========================== 6 failed, 16 passed in 4.62s ========================= -> KILLED-BOTH
+CM-10 [дедуп-флаг инвертирован: приёмка объявляется повтором]: oracle=EXIT=1 repo========================== 8 failed, 14 passed in 4.54s ========================= -> KILLED-BOTH
+CM-11 [I10: клиентское наблюдение выдаётся за серверный расчёт]: oracle=EXIT=1 repo========================== 5 failed, 17 passed in 4.78s ========================= -> KILLED-BOTH
+CM-12 [operation_id потерян: поставка не связана с событиями]: oracle=EXIT=1 repo========================== 5 failed, 17 passed in 4.79s ========================= -> KILLED-BOTH
+CM-13 [result_ref не пишется в envelope узлов]: oracle=EXIT=1 repo========================== 1 failed, 21 passed in 4.70s ========================= -> KILLED-BOTH
+CM-14 [легаси-ответ маркирован v2 без receipt (ложная честность)]: oracle=EXIT=1 repo========================== 3 failed, 19 passed in 4.41s ========================= -> KILLED-BOTH
+md5 apps/api/progress_maps.py: 6fb7b282d12bfd9eabfc123db20d885a vs HEAD 6fb7b282d12bfd9eabfc123db20d885a -> MATCH
+md5 apps/api/routers/progress.py: 076f5f873b1cbee710787f8678f0090e vs HEAD 076f5f873b1cbee710787f8678f0090e -> MATCH
+ИТОГО: 7 KILLED / 0 SURVIVED / 7 всего
+
+CM-15 [легаси-события штампуются v2 (граница байт-в-байт нарушена)]: oracle=EXIT=1 repo=============================== 22 passed in 4.36s ============================== -> KILLED-ORACLE-ONLY
+CM-16 [дедуп пишет слой 1 снова (повтор удваивает факты, P07)]: oracle=EXIT=1 repo========================== 5 failed, 17 passed in 4.46s ========================= -> KILLED-BOTH
+CM-17 [сбой слоя 1 проглочен: 200 при несохранённой копии (§19.4)]: oracle=EXIT=1 repo=============================== 22 passed in 4.59s ============================== -> KILLED-ORACLE-ONLY
+CM-18 [wiring: карта валидации пишется чужим типом события]: oracle=EXIT=1 repo========================== 9 failed, 13 passed in 7.67s ========================= -> KILLED-BOTH
+CM-19 [дедуп отчитывается |реестром| (новые факты «есть», их нет)]: oracle=EXIT=1 repo=============================== 22 passed in 4.73s ============================== -> KILLED-ORACLE-ONLY
+CM-20 [context_id потерян в envelope (привязка к контексту не пишется)]: oracle=EXIT=1 repo========================== 1 failed, 21 passed in 4.53s ========================= -> KILLED-BOTH
+md5 apps/api/progress_maps.py: 6fb7b282d12bfd9eabfc123db20d885a vs HEAD 6fb7b282d12bfd9eabfc123db20d885a -> MATCH
+md5 apps/api/routers/progress.py: 076f5f873b1cbee710787f8678f0090e vs HEAD 076f5f873b1cbee710787f8678f0090e -> MATCH
+ИТОГО: 6 KILLED / 0 SURVIVED / 6 всего
