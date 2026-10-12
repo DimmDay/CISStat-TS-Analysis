@@ -30,7 +30,8 @@ make_trace_event (routers/forecasting_session.py, PROGR-1) уже пишут
 Отказоустойчивость -- двухконтурная:
   * КОНТРАКТ таблицы -- fail-closed: невалидная пара (stage, event_type),
     неизвестный узел графа, дубликат маршрута, трассируемый forecasting
-    или троттлируемый не-profile_viewed -- ImportError на импорте модуля
+    или троттлируемый не профильный тип (profile_viewed/profile_requested,
+    AUDIT-3) -- ImportError на импорте модуля
     (паттерн pipeline_graph.py), опечатка не доходит до рантайма;
   * РАНТАЙМ -- best-effort: сбой чтения/сохранения сессии (Redis и т.п.)
     логируется warning-ом и НЕ ломает успешный ответ эндпоинта
@@ -70,14 +71,15 @@ from apps.api.trace_events import make_trace_event, stamp_envelope
 
 logger = logging.getLogger(__name__)
 
-# ── Троттлинг profile_viewed (§4.2: дефолт 5 минут, env-переменная) ──
+# ── Троттлинг профильных GET (§4.2: дефолт 5 минут, env-переменная) ──
 
 ENV_THROTTLE_SECONDS = "PROGRESS_PROFILE_VIEWED_THROTTLE_SECONDS"
 DEFAULT_THROTTLE_SECONDS = 300  # 5 минут -- §4.2
 
 
 def throttle_seconds_from_env() -> int:
-    """Окно троттлинга profile_viewed в секундах (на вызов, не на импорт:
+    """Окно троттлинга профильных GET (profile_requested с AUDIT-3,
+    profile_viewed -- легаси) в секундах (на вызов, не на импорт:
     env может меняться между запросами в dev/тестах). Битое значение --
     дефолт 300 с warning; отрицательное -- 0 (троттлинг выключен)."""
     raw = os.environ.get(ENV_THROTTLE_SECONDS, "")
@@ -345,44 +347,46 @@ TRACE_ROUTES: tuple[TraceRouteSpec, ...] = (
         "POST", "/v1/session/dataset/passport/modeling_entry", "modeling", None,
         "passport_captured", payload_keys=("stage", "snapshot_id", "fingerprint"),
     ),
-    # ── EDA: исследовательские GET -> profile_viewed (троттлинг §4.2).
-    # descriptive -- без backend-эндпоинта (клиентская остановка) -- в
-    # таблице отсутствует честно.
+    # ── EDA: исследовательские GET -> profile_requested (AUDIT-3:
+    # GET -- ЗАПРОС/вычисление профиля, не просмотр; событие показа
+    # результата приходит от UI -- eda_check_status карты просмотров).
+    # Троттлинг §4.2 сохранён. descriptive -- без backend-эндпоинта
+    # (клиентская остановка) -- в таблице отсутствует честно.
     TraceRouteSpec(
         "GET", "/v1/session/dataset/eda-correlation", "eda", "correlation",
-        "profile_viewed", throttled=True,
+        "profile_requested", throttled=True,
     ),
     TraceRouteSpec(
         "GET", "/v1/session/dataset/eda-ih", "eda", "ih_analysis",
-        "profile_viewed", throttled=True,
+        "profile_requested", throttled=True,
     ),
     TraceRouteSpec(
         "GET", "/v1/session/dataset/eda-seasonality", "eda", "seasonality",
-        "profile_viewed", throttled=True,
+        "profile_requested", throttled=True,
     ),
     TraceRouteSpec(
         "GET", "/v1/session/dataset/eda-stationarity", "eda", "stationarity",
-        "profile_viewed", throttled=True,
+        "profile_requested", throttled=True,
     ),
     TraceRouteSpec(
         "GET", "/v1/session/dataset/eda-distribution", "eda", "distribution",
-        "profile_viewed", throttled=True,
+        "profile_requested", throttled=True,
     ),
     TraceRouteSpec(
         "GET", "/v1/session/dataset/eda-structural-breaks", "eda", "structural",
-        "profile_viewed", throttled=True,
+        "profile_requested", throttled=True,
     ),
     TraceRouteSpec(
         "GET", "/v1/session/dataset/eda-feature-selection", "eda",
-        "feature_select", "profile_viewed", throttled=True,
+        "feature_select", "profile_requested", throttled=True,
     ),
     TraceRouteSpec(
         "GET", "/v1/session/dataset/eda-validation-strategy", "eda",
-        "validation_strategy", "profile_viewed", throttled=True,
+        "validation_strategy", "profile_requested", throttled=True,
     ),
     TraceRouteSpec(
         "GET", "/v1/session/dataset/eda-model-matrix", "eda", "model_matrix",
-        "profile_viewed", throttled=True,
+        "profile_requested", throttled=True,
     ),
     # ── Моделирование: 4 типа событий §4.1 по факту эндпоинтов ──
     TraceRouteSpec(
@@ -517,9 +521,16 @@ def _validate_table(routes: tuple[TraceRouteSpec, ...]) -> None:
                 f"Неизвестный узел графа в таблице трассы {key}: "
                 f"{spec.stage}/{spec.node_id}"
             )
-        if spec.throttled and spec.event_type != "profile_viewed":
+        # AUDIT-3: троттлинг §4.2 -- для обоих типов запроса профиля
+        # (profile_requested -- сеется хуком с AUDIT-3; profile_viewed --
+        # легаси-чтение, хуком больше не сеется).
+        if spec.throttled and spec.event_type not in (
+            "profile_viewed",
+            "profile_requested",
+        ):
             raise ImportError(
-                f"throttled=True допустим только для profile_viewed: {key}"
+                "throttled=True допустим только для profile_viewed/"
+                "profile_requested: " + key
             )
         if spec.dedupe and not spec.payload_keys:
             raise ImportError(
@@ -621,9 +632,10 @@ def _event_params(item: Any) -> tuple[Any, ...] | None:
 
 
 def _throttled(session: AnalysisSession, spec: TraceRouteSpec, now: datetime) -> bool:
-    """Не чаще 1 раза на узел за окно (§4.2): последний profile_viewed
-    ЭТОГО узла ищется в stored-трассе слоя 1. Запись с нечитаемым ts не
-    участвует в окне (деградация к «можно писать»)."""
+    """Не чаще 1 раза на узел за окно (§4.2): последний профильный GET
+    ЭТОГО узла (по spec.event_type: profile_requested с AUDIT-3) ищется
+    в stored-трассе слоя 1. Запись с нечитаемым ts не участвует в окне
+    (деградация к «можно писать»)."""
     window = throttle_seconds_from_env()
     if window <= 0:
         return False

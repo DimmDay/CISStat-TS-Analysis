@@ -78,9 +78,11 @@ def _event(
 
 class TestEventNodeStatusMap:
     def test_map_covers_exactly_13_canonical_types(self):
-        """Карта -- ровно 13 узловых типов §4.1 (PROGR-13-A3:
+        """Карта -- ровно 14 узловых типов §4.1 (PROGR-13-A3:
         + structure_confirmed -- факт подтверждения структуры аналитиком;
-        отчёты остановок upload_stop_status -- ОТДЕЛЬНЫЙ реестр
+        Versioned AUDIT-3: + profile_requested -- GET-запрос профиля
+        (запрос/вычисление, не просмотр); profile_viewed -- легаси-чтение.
+        Отчёты остановок upload_stop_status -- ОТДЕЛЬНЫЙ реестр
         payload-статусов PAYLOAD_STATUS_EVENT_TYPES, статус из payload,
         карте «тип -> один статус» не подвластен)."""
         assert set(EVENT_NODE_STATUS) == {
@@ -88,6 +90,7 @@ class TestEventNodeStatusMap:
             "structure_confirmed",
             "correction_applied",
             "correction_previewed",
+            "profile_requested",
             "profile_viewed",
             "backtest_run",
             "tuning_trial_completed",
@@ -121,11 +124,13 @@ class TestEventNodeStatusMap:
         )
 
     def test_terminal_decision_events_map_to_done(self):
+        # Versioned AUDIT-3: + profile_requested (running, как
+        # profile_viewed -- оба не терминальные решения).
         terminal = [
             event_type
             for event_type, status in EVENT_NODE_STATUS.items()
             if event_type != "correction_previewed"
-            and event_type != "profile_viewed"
+            and event_type not in ("profile_viewed", "profile_requested")
         ]
         assert len(terminal) == 11
         assert all(EVENT_NODE_STATUS[event_type] == "done" for event_type in terminal)
@@ -137,8 +142,12 @@ class TestEventNodeStatusMap:
 
     def test_profile_viewed_maps_to_running(self):
         """Просмотр профиля -- узел исследуется: running (принятая цена
-        расхождения: без коррекции узел останется running)."""
+        расхождения: без коррекции узел останется running).
+        Versioned AUDIT-3: profile_requested (GET-запрос) -- тот же
+        running; семантика «запрос != просмотр» -- в контекст-ключевой
+        монотонности редьюсера (AUDIT-3) и картах модулей."""
         assert EVENT_NODE_STATUS["profile_viewed"] == "running"
+        assert EVENT_NODE_STATUS["profile_requested"] == "running"
 
 
 class TestMapTypesAreReallyEmitted:

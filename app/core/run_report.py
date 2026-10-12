@@ -412,6 +412,11 @@ def fact_line(event: dict) -> tuple[str, tuple[tuple[str, str], ...]]:
     if event_type == "profile_viewed":
         return "Профиль остановки открыт (диагностика просмотрена).", links
 
+    # AUDIT-3: GET -- запрос/вычисление профиля, не просмотр; факт
+    # показа результата -- от модуля (eda_check_status).
+    if event_type == "profile_requested":
+        return "Профиль запрошен (GET-запрос вычисления; показ результата фиксируется модулем).", links
+
     if event_type == "passport_captured":
         parts: list[str] = []
         if payload.get("stage"):

@@ -1,16 +1,21 @@
 // packages/ui/components/prograudit0_h27_seed_failure_regresses.test.tsx
 //
-// AUDIT-0 (plan_progress_audit.md §4, действие 2) -- НАБЛЮДЕНИЕ H27.
-// Гипотеза: отказ EDA seed может понизить уже просмотренные исследования.
-// Основание: неуспешный GET /trace даёт пустой seed-set (best-effort,
-// TsAnalysisEDA.tsx:1006-1045), следующая полная карта содержит pending
-// для ранее done-проверок; бэкенд last-wins записывает регресс.
+// AUDIT-0 (план §4) -- НАБЛЮДЕНИЕ H27, VERSIONED-ОБНОВЛЕНИЕ AUDIT-3.
 //
-// ⚠️ Это наблюдательный пин ТЕКУЩЕГО (дефектного) поведения -- НЕ
-// acceptance-тест. После AUDIT-3 (устойчивый seed/монотонность в своём
-// контексте) файл обязан быть заменён/обновлён как versioned-обновление
-// контракта (Донастройка_2 п.3). Мокирует только свои URL; реальная сеть
-// в jest недоступна.
+// Было (пин дефекта, до AUDIT-3): отказ EDA seed давал пустой seed-set
+// (best-effort), следующая полная карта несла pending для ранее
+// done-проверок, бэкенд last-wins записывал регресс.
+//
+// Стало (пин контракта AUDIT-3, план §13 «Если seed не получен, не
+// отправлять разрушительную пустую карту поверх known history» +
+// неретракт рутинного pending в редьюсере):
+//   * отказ seed (GET /trace 500) УДЕРЖИВАЕТ отчёт -- разрушительная
+//     все-pending карта не отправляется;
+//   * каждый новый просмотр -- ретрай seed'а;
+//   * восстановление seed'а -- отчёт объединённым снапшотом (seed +
+//     локальные просмотры), прежние done не понижаются.
+//
+// Мокирует только свои URL; реальная сеть в jest недоступна.
 
 import "@testing-library/jest-dom";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -85,13 +90,13 @@ function makeRouter(opts: { traceStatus: number; seededDone: string[] }) {
   };
 }
 
-describe("AUDIT-0 H27 (наблюдение): отказ seed понижает уже просмотренные исследования", () => {
+describe("AUDIT-0 H27 (versioned AUDIT-3): отказ seed не понижает просмотренные исследования", () => {
   beforeEach(() => {
     edaPosts.length = 0;
     mockActiveDataset = { datasetId: "D-AUDIT0-H27", name: "h27.csv", rows: 40, sizeLabel: "1 KB" };
   });
 
-  it("H27: карта после сорвавшегося seed содержит pending для ранее done-проверок", async () => {
+  it("H27: отказ seed удерживает отчёт; восстановление -- объединённый снапшот без понижений", async () => {
     // ── Фаза 1: seed 200 c прошлыми фактами descriptive+correlation.
     global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) =>
       makeRouter({ traceStatus: 200, seededDone: ["descriptive", "correlation"] })(input, init)) as jest.Mock;
@@ -113,21 +118,47 @@ describe("AUDIT-0 H27 (наблюдение): отказ seed понижает �
     expect(edaPosts[0]["correlation"]).toBe("done");
     expect(edaPosts[0]["seasonality"]).toBe("done");
 
-    // ── Фаза 2: перемонтирование; seed /trace -- 500 (best-effort даёт
-    // пустое множество). Активная descriptive (done по stats) становится
-    // единственным «просмотренным» -> POST #2.
+    // ── Фаза 2: перемонтирование; seed /trace -- 500. Активная
+    // descriptive просмотрена локально, но seed не получен -- отчёт
+    // УДЕРЖИВАЕТСЯ: разрушительной все-pending карты НЕТ (контракт
+    // AUDIT-3; раньше здесь уходил POST #2 с pending для done-узлов).
     view.unmount();
     global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) =>
       makeRouter({ traceStatus: 500, seededDone: [] })(input, init)) as jest.Mock;
     render(<TsAnalysisEDA />);
-    await waitFor(() => expect(edaPosts.length).toBe(2), { timeout: 4000 });
+    await waitFor(() => expect(
+      screen.queryAllByRole("button", { name: /Сезонность и периодичность/ }).length,
+    ).toBeGreaterThan(0), { timeout: 4000 });
+    await new Promise((r) => setTimeout(r, 250));
+    expect(edaPosts.length).toBe(1);
 
-    // Наблюдение H27: отправленная карта понижает correlation и
-    // seasonality (были done в фазе 1 / в seed) до pending. Бэкенд
-    // last-wins (PAYLOAD_STATUS) записал бы регресс -- P25 подтверждает
-    // запись running на живом контуре.
-    expect(edaPosts[1]["descriptive"]).toBe("done");
-    expect(edaPosts[1]["correlation"]).toBe("pending");
-    expect(edaPosts[1]["seasonality"]).toBe("pending");
+    // Новый просмотр -- ретрай seed'а (опять 500) -- по-прежнему held.
+    fireEvent.click(screen.getByRole("button", { name: /Корреляция \(ACF\/PACF\)/ }));
+    await new Promise((r) => setTimeout(r, 250));
+    expect(edaPosts.length).toBe(1);
+
+    // ── Фаза 3: seed восстановился (200, полная история фазы 1).
+    // Объединённый снапшот (seed + локальные просмотры) == записанной
+    // картине (фаза 1 доложила descriptive+correlation+seasonality;
+    // корреляция локально просмотрена в фазе 2) -- дельта якоря
+    // содержит ТОЛЬКО новые просмотры, понижений pending->done нет.
+    global.fetch = jest.fn((input: RequestInfo | URL, init?: RequestInit) =>
+      makeRouter({ traceStatus: 200, seededDone: ["descriptive", "correlation", "seasonality"] })(input, init)) as jest.Mock;
+    view.unmount();
+    render(<TsAnalysisEDA />);
+    await waitFor(() => expect(
+      screen.queryAllByRole("button", { name: /Сезонность и периодичность/ }).length,
+    ).toBeGreaterThan(0), { timeout: 4000 });
+    await new Promise((r) => setTimeout(r, 250));
+    // Объединённый снапшот == якорю (всё уже записано фазой 1) --
+    // новой поставки нет.
+    expect(edaPosts.length).toBe(1);
+    // Ни одной разрушительной карты за весь сценарий: понижений
+    // «было done -> стало pending» не существует.
+    for (const post of edaPosts) {
+      expect(post["descriptive"]).toBe("done");
+      expect(post["correlation"]).toBe("done");
+      expect(post["seasonality"]).toBe("done");
+    }
   });
 });

@@ -68,6 +68,11 @@ EVENT_NODE_STATUS: dict[str, str] = {
     "structure_confirmed": "done",
     "correction_applied": "done",
     "correction_previewed": "warning",
+    # AUDIT-3 (план §13, Р1): profile_requested -- GET-запрос/вычисление
+    # профиля (сеется хуком, троттлинг §4.2); running -- «узел
+    # исследуется», НЕ «просмотрен» (показ результата -- eda_check_status
+    # от модуля). profile_viewed -- легаси-тип чтения (тот же статус).
+    "profile_requested": "running",
     "profile_viewed": "running",
     "backtest_run": "done",
     "tuning_trial_completed": "done",
@@ -78,6 +83,15 @@ EVENT_NODE_STATUS: dict[str, str] = {
     "forecast_sensitivity_computed": "done",
     "forecast_exported": "done",
 }
+
+# AUDIT-3 (план §13): типы-ЗАПРОСЫ профиля (running, не «просмотрено»).
+# profile_requested -- сеется хуком трассы с AUDIT-3; profile_viewed --
+# легаси-тип (до AUDIT-3 сеялся хуком, корпус не переписывается).
+# Контекст-ключевая монотонность редьюсера покрывает оба (запрос в
+# СВОЁМ контексте не понижает состояние честнее running).
+PROFILE_REQUEST_EVENT_TYPES: frozenset[str] = frozenset(
+    {"profile_requested", "profile_viewed"}
+)
 
 # ── PROGR-11: полный узел §3 -- reason/count/mode из ТЕХ ЖЕ фактов ────
 #
@@ -106,6 +120,8 @@ EVENT_NODE_REASON: dict[str, str] = {
     "structure_confirmed": "Временная колонка подтверждена аналитиком",
     "correction_applied": "Коррекция применена",
     "correction_previewed": "Найдены нарушения: предпросмотр коррекции",
+    # AUDIT-3: честная формулировка запроса (не «просмотрена»).
+    "profile_requested": "Профиль запрошен (GET-запрос вычисления; показ результата -- от модуля)",
     "profile_viewed": "Проверка просмотрена аналитиком",
     "backtest_run": "Бэктест выполнен",
     "tuning_trial_completed": "Подбор параметров выполнен",
@@ -969,23 +985,56 @@ class NodeStateFold:
                     status = None
         if status is None:
             return
-        # PROGR-AUDIT-H1 (F17, interim до AUDIT-3 -- Донастройка плана
-        # Часть 2): монотонность ТОЛЬКО для profile_viewed, ТОЛЬКО в
-        # редьюсере: повторный GET профиля (running) не понижает узел,
-        # уже достигший состояния честнее running (done/warning/error/
-        # skipped) -- P25 «повторный GET EDA отменяет done».
-        # running устанавливается только из pending/отсутствия;
-        # re-view running -- идемпотентно. Легитимный путь переоткрытия
-        # сохранён: eda_check_status (PAYLOAD_STATUS) ставит pending
-        # после коррекции, как и прежде. НЕ глобальная монотонность
-        # (сделала бы H28 неисправимым молча). Точка -- derive-функция
-        # рядом со статической картой EVENT_NODE_STATUS, не сама карта;
-        # при AUDIT-3 заменяется контекст-ключевой монотонностью.
-        if (
-            event_type == "profile_viewed"
-            and self._statuses.get(key) not in (None, "pending")
-        ):
-            return
+        # ── AUDIT-3 (план §13, P25/F17/H27/H28): контекст-ключевая
+        # монотонность -- замена interim-монотонности H1 (та была
+        # ГЛОБАЛЬНОЙ и запланирована к замене Донастройкой плана
+        # Часть 2). Правила:
+        #
+        #   1. Смена контекста утверждается ТОЛЬКО когда контексты ОБОИХ
+        #      событий (и хранимого статусного, и нового) известны и
+        #      различны; неизвестные контексты (легаси-события без
+        #      envelope) смену НЕ утверждают -- защита done сохраняется
+        #      (unknown != смена; честная деградация легаси-корпуса).
+        #   2. В СВОЁМ контексте (P25/F17): запрос профиля
+        #      (profile_requested/profile_viewed -> running) не понижает
+        #      узел, уже достигший состояния честнее running
+        #      (done/warning/error/skipped); повторный запрос running
+        #      -- идемпотентен.
+        #   3. В СВОЁМ контексте (H27/Р3): рутинный pending ПОЛНОЙ карты
+        #      eda_check_status не retract-ит просмотренный done (срыв
+        #      seed'а клиента не стирает историю; просмотренный результат
+        #      не «развидеть»). Явный retract -- ОТДЕЛЬНЫЙ контракт,
+        #      здесь не реализуется. Понижения running -> pending не
+        #      касаются (честная семантика «не просмотрено»).
+        #   4. СМЕНА контекста (оба известны, различны) -- новая
+        #      применимость (H28): last-wins честен (running/pending
+        #      нового контекста переоткрывают узел; исторический done
+        #      остаётся в ledger с validity=stale -- I4).
+        # НЕ глобальная монотонность (сделала бы H28 неисправимым молча);
+        # периметр п.3 -- ТОЛЬКО eda_check_status (карты Валидации/
+        # Предобработки сохраняют last-wins: детерминированные статусы
+        # профильных ответов вне периметра AUDIT-3).
+        event_ctx = data.get("context_id")
+        event_ctx = event_ctx if isinstance(event_ctx, str) and event_ctx else None
+        slot_ctx = detail.get("_status_ctx")
+        slot_ctx = slot_ctx if isinstance(slot_ctx, str) and slot_ctx else None
+        context_unchanged = (
+            slot_ctx is None or event_ctx is None or slot_ctx == event_ctx
+        )
+        current_status = self._statuses.get(key)
+        if context_unchanged:
+            if (
+                event_type in PROFILE_REQUEST_EVENT_TYPES
+                and status == "running"
+                and current_status not in (None, "pending", "running")
+            ):
+                return
+            if (
+                event_type == "eda_check_status"
+                and status == "pending"
+                and current_status == "done"
+            ):
+                return
         self._statuses[key] = status
         detail["_status_src"] = _event_ref(data)
         context_id = data.get("context_id")

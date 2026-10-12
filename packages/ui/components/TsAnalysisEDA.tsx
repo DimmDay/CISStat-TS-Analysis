@@ -993,66 +993,125 @@ export function TsAnalysisEDA() {
   const [edaViewedIds, setEdaViewedIds] = useState<Set<string>>(new Set());
   const [edaSeedReady, setEdaSeedReady] = useState(false);
   // AUDIT-2B: EDA-якорь -- снапшот, уже известный как записанный
-  // (seed /trace при монтировании/смене датасета). Был ref-маркер
+  // (seed /trace при монтировании/смене контекста). Был ref-маркер
   // PROGR-18; в едином механизме якорь передаётся хуку (anchorSnapshot)
   // -- идентичный снапшот не доставляется повторно.
+  // AUDIT-3 (H27): при НЕсостоявшемся seed'е якорь остаётся null --
+  // подмена якоря все-pending снапшотом породила бы разрушительную
+  // карту поверх known history.
   const [edaSeedAnchor, setEdaSeedAnchor] = useState<string | null>(null);
   const edaSeedReadyRef = useRef(false);
+  // AUDIT-3 (H27, план §13 «Если seed не получен, не отправлять
+  // разрушительную пустую карту поверх known history»): seed не получен
+  // (отказ /trace ИЛИ проекция неполна) -- отчёт УДЕРЖИВАЕТСЯ до
+  // успешного seed'а; ретрай -- по новому просмотру (момент, когда
+  // отчёт становится нужен).
+  const [edaSeedFailed, setEdaSeedFailed] = useState(false);
+  const edaSeedFailedRef = useRef(false);
+  const [edaSeedRetryTick, setEdaSeedRetryTick] = useState(0);
   // Порядок эффектов ВАЖЕН (урок PROGR-17): сброс -- ДО seed-эффекта и
-  // эффекта просмотра; в коммите смены датасета сброс выполняется первым.
-  // Ключ вселенной фактов -- datasetKey (datasetId ?? name):
-  // datasetId меняется даже при повторной загрузке файла с тем же именем.
+  // эффекта просмотра; в коммите смены вселенной сброс выполняется
+  // первым. Ключ вселенной фактов (AUDIT-3/H28) -- датасет + ЦЕЛЬ:
+  // серверный context_id = f(run, data#revision, target, temporal)
+  // (data_context.context_components) -- смена цели при том же датасете
+  // сдвигает контекст расчёта; просмотры прежнего контекста новой
+  // применимости не наследуют (монотонность -- ВНУТРИ контекста,
+  // план §13 п.4; бэкенд-сторона -- контекст-ключевая монотонность
+  // редьюсера + неретракт рутинного pending).
   useEffect(() => {
     edaSeedReadyRef.current = false;
+    edaSeedFailedRef.current = false;
     setEdaViewedIds(new Set());
     setEdaSeedReady(false);
     setEdaSeedAnchor(null);
-  }, [datasetKey]);
+    setEdaSeedFailed(false);
+  }, [datasetKey, activeFeature]);
   useEffect(() => {
     if (!datasetKey) {
       edaSeedReadyRef.current = true;
+      edaSeedFailedRef.current = false;
       setEdaSeedReady(true);
+      setEdaSeedFailed(false);
       return;
     }
+    // Контекст включает цель -- seed ждёт её разрешения (запрос на
+    // неразрешённой цели дал бы ложную вселенную и лишний сброс).
+    // hasDataset-гейт закрывает гонку первого коммита монтирования
+    // (loading ещё false, а fetch цели уже стартовал): seed -- один,
+    // после разрешения цели. targetError -- ход (сбой цели не должен
+    // удерживать отчёт бессрочно).
+    if (datasetKey && !hasDataset && !targetError) return;
+    if (targetLoading) return;
     let cancelled = false;
     void (async () => {
       const knownIds = new Set(CHECKS.map((check) => check.id));
       const seedViewed = new Set<string>();
+      let seedOk = false;
       try {
         const response = await fetch(progressApiUrl("/trace"), { credentials: "include" });
         if (response.ok) {
           const data = await response.json();
-          const statuses = data?.node_statuses;
-          if (statuses && typeof statuses === "object") {
-            for (const [key, status] of Object.entries(statuses as Record<string, unknown>)) {
-              if (!key.startsWith("eda/")) continue;
-              const nodeId = key.slice("eda/".length);
-              if (status === "done" && knownIds.has(nodeId)) seedViewed.add(nodeId);
+          // AUDIT-3 (план §13): seed -- ТОЛЬКО из ПОЛНОЙ проекции.
+          // Деградация session_tail (projection_complete=false: слой 2
+          // недоступен при существующем запуске) историю не выдаёт --
+          // seed не получен, отчёт удерживается. Пустая fresh-сессия
+          // (projection_source="session", complete=true) -- bootstrap
+          // отчёта работает.
+          if (data?.projection_complete !== false) {
+            // 13-полевой контракт узлов (AUDIT-5B): validity --
+            // применимость фактa статуса к текущему контексту запуска.
+            // Сеются ТОЛЬКО current-факты: stale (устаревшее) и unknown
+            // (легаси-факт без контекста) не воскрешаются просмотрами
+            // нового контекста (H28: «непросмотренное и устаревшее
+            // различаются»). Старый бэкенд (поля nodes нет) -- прежний
+            // плоский node_statuses (все done, без фильтра).
+            const nodeStates = Array.isArray(data?.nodes) ? data.nodes : null;
+            if (nodeStates) {
+              for (const state of nodeStates) {
+                if (!state || typeof state !== "object") continue;
+                if (state.stage !== "eda") continue;
+                if (state.status !== "done" || !knownIds.has(state.node_id)) continue;
+                if (state.validity !== undefined && state.validity !== "current") continue;
+                seedViewed.add(String(state.node_id));
+              }
+            } else {
+              const statuses = data?.node_statuses;
+              if (statuses && typeof statuses === "object") {
+                for (const [key, status] of Object.entries(statuses as Record<string, unknown>)) {
+                  if (!key.startsWith("eda/")) continue;
+                  const nodeId = key.slice("eda/".length);
+                  if (status === "done" && knownIds.has(nodeId)) seedViewed.add(nodeId);
+                }
+              }
             }
+            seedOk = true;
           }
         }
       } catch {
-        // Seed best-effort (§12 п.8): сбой якоря -- пустое множество,
-        // отчёт пойдёт с чистого листа; контур фактов не ломается.
+        // Seed не получен (сеть/отказ): отчёт удерживается до успешного
+        // ретрая -- разрушительная карта недопустима (H27).
       }
       if (cancelled) return;
       edaSeedReadyRef.current = true;
+      edaSeedFailedRef.current = !seedOk;
       setEdaViewedIds((prev) => {
         const merged = new Set(prev);
         seedViewed.forEach((id) => merged.add(id));
         return merged;
       });
-      setEdaSeedAnchor(buildEdaChecksSnapshot(seedViewed));
       setEdaSeedReady(true);
+      setEdaSeedFailed(!seedOk);
+      // Якорь -- ТОЛЬКО при состоявшемся seed'е (H27).
+      setEdaSeedAnchor(seedOk ? buildEdaChecksSnapshot(seedViewed) : null);
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [datasetKey]);
+  }, [datasetKey, activeFeature, targetLoading, hasDataset, targetError, edaSeedRetryTick]);
   // Факт просмотра: активное исследование с ПОКАЗАННЫМ результатом
   // (done/warning). edaSeedReadyRef-гейт отсекает устаревшие статусы
-  // предыдущей вселенной в коммите смены датасета (сброс объявлен
-  // раньше и синхронно опускает ref -- факта просмотра в мёртвой
-  // вселенной не возникает). Запись идемпотентна (множество).
+  // предыдущей вселенной в коммите смены (сброс объявлен раньше и
+  // синхронно опускает ref -- факта просмотра в мёртвой вселенной не
+  // возникает). Запись идемпотентна (множество).
   useEffect(() => {
     if (!edaSeedReadyRef.current) return;
     const activeStatus = checks.find((check) => check.id === activeCheckId)?.status;
@@ -1064,12 +1123,23 @@ export function TsAnalysisEDA() {
       return next;
     });
   }, [checks, activeCheckId, edaSeedReady]);
+  // AUDIT-3 (H27): каждый НОВЫЙ просмотр при несостоявшемся seed'е --
+  // ретрай seed'а (успех -- отчёт уходит объединённым снапшотом,
+  // неудача -- отчёт остаётся удержанным; при отсутствии новых
+  // просмотров отчёт и не нужен).
+  const edaViewedCount = edaViewedIds.size;
+  useEffect(() => {
+    if (edaSeedFailedRef.current && edaViewedCount > 0) {
+      setEdaSeedRetryTick((tick) => tick + 1);
+    }
+  }, [edaViewedCount]);
   // Снапшот -- до первого показанного результата отчёта НЕТ (модуль
   // без просмотренных результатов -- не источник фактов; зеркало
-  // семантики Валидации «до первого запуска отчёта нет»), после seed --
-  // только расхождение с якорем (новый просмотр).
+  // семантики Валидации «до первого запуска отчёта нет»), после
+  // успешного seed'а -- только расхождение с якорем (новый просмотр);
+  // при несостоявшемся seed'е отчёт УДЕРЖИВАЕТСЯ (H27).
   const edaChecksReportSnapshot: string | null =
-    activeDataset && edaSeedReady && edaViewedIds.size > 0
+    activeDataset && edaSeedReady && !edaSeedFailed && edaViewedIds.size > 0
       ? buildEdaChecksSnapshot(edaViewedIds)
       : null;
   // ── AUDIT-2B: доставка карты просмотров в панель «Прогресс» ──
@@ -1093,11 +1163,12 @@ export function TsAnalysisEDA() {
     bodyKey: "checks",
     map: edaChecksReportMap,
     anchorSnapshot: edaSeedAnchor,
-    // Ключ вселенной фактов = datasetKey (datasetId ?? name) -- прежний
-    // ключ сброса маркера (PROGR-18): смена датасета -- повторная
-    // доставка даже при идентичной картине просмотров (легаси-фолбэк,
-    // где дедуп-ключ (run, context) недоступен; план §12 п.4).
-    universeKey: datasetKey ?? null,
+    // Ключ вселенной фактов (AUDIT-3/H28) = датасет + ЦЕЛЬ: смена цели
+    // при том же датасете -- новая вселенная доставки (свежий биндинг
+    // контекста I3; дедуп прежней вселенной не подавляет новую, в
+    // легаси-фолбэке план §12 п.4). datasetId меняется и при повторной
+    // загрузке файла с тем же именем (datasetKey, PROGR-18).
+    universeKey: datasetKey ? `${datasetKey}\u0000${activeFeature ?? ""}` : null,
   });
 
   // Сворачиваем при смене секции

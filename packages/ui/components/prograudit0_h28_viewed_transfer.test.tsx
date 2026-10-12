@@ -1,20 +1,23 @@
 // packages/ui/components/prograudit0_h28_viewed_transfer.test.tsx
 //
-// AUDIT-0 (plan_progress_audit.md §4, действие 2) -- НАБЛЮДЕНИЕ H28.
-// Гипотеза: при смене цели (или in-place коррекции) UI переносит
-// EDA-просмотры прежних данных. Основание: сброс вселенной фактов keyed
-// ТОЛЬКО по datasetKey (TsAnalysisEDA.tsx -- deps [datasetKey]);
-// target/revision в ключе не участвуют.
+// AUDIT-0 (plan_progress_audit.md §4, действие 2) -- НАБЛЮДЕНИЕ H28,
+// VERSIONED-ОБНОВЛЕНИЕ AUDIT-3.
 //
-// VERSIONED-ОБНОВЛЕНИЕ (AUDIT-2B, контракт §20.7): семантика пина
-// (viewed переносится через смену цели при неизменном datasetKey;
-// повторного seed нет; карта несёт просмотры обеих вселенных) СОХРАНЕНА.
-// Обновлены только счётчики GET /trace: единый механизм доставки
-// useProgressMapDelivery (план plan_progress_audit.md §12) привязывает
-// поставку к наблюдаемому контексту GET /v1/progress/trace (I3, тот же
-// источник, что проверяет сервер) -- +1 GET на поставку (биндинг
-// кэшируется на вселенную). Контекст цели/ревизии в keyed-сбросе --
-// по-прежнему AUDIT-3 (наблюдение остаётся открытым для AUDIT-3).
+// Было (пин дефекта, до AUDIT-3): сброс вселенной фактов keyed ТОЛЬКО
+// по datasetKey (deps [datasetKey]); target/revision в ключе не
+// участвовали -- при смене цели при неизменном datasetId просмотры
+// прежней целевой вселенной переносились в карту новой (H28).
+//
+// Стало (пин контракта AUDIT-3, план §13: «EDA достижения объединяются
+// монотонно ВНУТРИ своего контекста; новая цель/ревизия не наследует
+// current-viewed от старой»):
+//   * ключ вселенной фактов = датасет + ЦЕЛЬ (context_id =
+//     f(run, data#revision, target, temporal) -- смена цели сдвигает
+//     контекст расчёта);
+//   * смена цели -- сброс множества просмотров + re-seed полной
+//     проекции (GET /trace);
+//   * карта нового контекста НЕ переносит просмотры прежней цели.
+//
 // Мокирует только свои URL; реальная сеть в jest недоступна.
 
 import "@testing-library/jest-dom";
@@ -44,7 +47,7 @@ function makeRouter() {
     const url = String(input);
     if (url.includes("/v1/progress/trace")) {
       traceGets += 1;
-      return jsonOk({ run_id: "RUN-H28", node_statuses: {}, events: [] });
+      return jsonOk({ run_id: "RUN-H28", context_id: "ctx-h280000000001", node_statuses: {}, events: [], projection_complete: true });
     }
     if (url.includes("/v1/progress/eda-checks")) {
       edaPosts.push(JSON.parse(String(init?.body)).checks as Record<string, string>);
@@ -78,13 +81,13 @@ function makeRouter() {
       });
     }
     if (url.includes("/dataset/eda-correlation")) {
-      return jsonOk({ column: "Price", applicable: true, reason: null, n_observations: 80, missing_count: 0, requested_max_lags: 40, max_lag: 20, alpha: 0.05, order_source: "time_column", order_column: "Date", order_warning: null, frequency: "D", acf: [{ lag: 0, value: 1, confidence_lower: -0.2, confidence_upper: 0.2, significant: false }, { lag: 1, value: 0.7, confidence_lower: -0.2, confidence_upper: 0.2, significant: true }], pacf: [{ lag: 0, value: 1, confidence_lower: -0.2, confidence_upper: 0.2, significant: false }, { lag: 1, value: 0.65, confidence_lower: -0.2, confidence_upper: 0.2, significant: true }], significant_acf_lags: [1], significant_pacf_lags: [1], ljung_box_lag: 10, ljung_box_pvalue: 0.002, is_white_noise: false, suggested_p: 1, suggested_q: 1 });
+      return jsonOk({ column: "Volume", applicable: true, reason: null, n_observations: 80, missing_count: 0, requested_max_lags: 40, max_lag: 20, alpha: 0.05, order_source: "time_column", order_column: "Date", order_warning: null, frequency: "D", acf: [{ lag: 0, value: 1, confidence_lower: -0.2, confidence_upper: 0.2, significant: false }, { lag: 1, value: 0.7, confidence_lower: -0.2, confidence_upper: 0.2, significant: true }], pacf: [{ lag: 0, value: 1, confidence_lower: -0.2, confidence_upper: 0.2, significant: false }, { lag: 1, value: 0.65, confidence_lower: -0.2, confidence_upper: 0.2, significant: true }], significant_acf_lags: [1], significant_pacf_lags: [1], ljung_box_lag: 10, ljung_box_pvalue: 0.002, is_white_noise: false, suggested_p: 1, suggested_q: 1 });
     }
     return new Promise(() => {});
   };
 }
 
-describe("AUDIT-0 H28 (наблюдение): смена цели при том же datasetKey переносит просмотры", () => {
+describe("AUDIT-0 H28 (versioned AUDIT-3): смена цели -- новая вселенная фактов EDA", () => {
   beforeEach(() => {
     edaPosts.length = 0;
     traceGets = 0;
@@ -93,34 +96,38 @@ describe("AUDIT-0 H28 (наблюдение): смена цели при том 
       makeRouter()(input, init)) as jest.Mock;
   });
 
-  it("H28: viewed переносится через смену цели; повторного seed нет", async () => {
+  it("H28: просмотры прежней цели не переносятся в карту новой (сброс + re-seed)", async () => {
     render(<TsAnalysisEDA />);
 
-    // Seed (GET /trace #1) -> descriptive (активная, done) -> POST #1:
-    // поставка запрашивает биндинг (GET /trace #2, AUDIT-2B I3).
+    // Seed (GET /trace) -> descriptive (активная, done) -> POST #1:
+    // поставка запрашивает биндинг (GET /trace, AUDIT-2B I3).
+    const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" }, { timeout: 4000 });
     await waitFor(() => expect(edaPosts.length).toBe(1), { timeout: 4000 });
     expect(edaPosts[0]["descriptive"]).toBe("done");
-    expect(traceGets).toBe(2);
+    expect(edaPosts[0]["correlation"]).toBe("pending");
+
+    // Просмотр корреляции в контексте цели Price -> POST #2.
+    fireEvent.click(screen.getByRole("button", { name: /Корреляция \(ACF\/PACF\)/ }));
+    await waitFor(() => expect(edaPosts.length).toBe(2), { timeout: 4000 });
+    expect(edaPosts[1]["correlation"]).toBe("done");
 
     // Смена цели Price -> Volume при НЕИЗМЕННОМ datasetId (datasetKey
-    // константeн) -- POST /target-column, перезагрузка данных признака.
-    const selector = await screen.findByRole("combobox", { name: "Исследуемый признак:" });
+    // константен) -- POST /target-column.
     fireEvent.change(selector, { target: { value: "Volume" } });
     await waitFor(() => expect(selector).toHaveValue("Volume"), { timeout: 4000 });
 
-    // Reset-эффект keyed по datasetKey НЕ сработал: повторного seed нет
-    // (GET /trace -- по-прежнему 2: seed + биндинг единственной поставки;
-    // смена цели -- не новая вселенная доставки).
-    await new Promise((r) => setTimeout(r, 150));
-    expect(traceGets).toBe(2);
-    expect(edaPosts.length).toBe(1);
+    // Контракт AUDIT-3: смена цели -- НОВАЯ вселенная фактов -- сброс
+    // множества просмотров + re-seed полной проекции (GET /trace #3+).
+    await waitFor(() => {
+      expect(traceGets).toBeGreaterThanOrEqual(3);
+    }, { timeout: 4000 });
 
-    // Просмотр второй остановки уже В НОВОМ целевом контексте -> POST #2:
-    // карта несёт descriptive=done из ПРЕЖНЕЙ вселенной (просмотр
-    // перенесён) + correlation=done новой.
-    fireEvent.click(screen.getByRole("button", { name: /Корреляция \(ACF\/PACF\)/ }));
-    await waitFor(() => expect(edaPosts.length).toBe(2), { timeout: 4000 });
-    expect(edaPosts[1]["descriptive"]).toBe("done");
-    expect(edaPosts[1]["correlation"]).toBe("done");
+    // Активная correlation показана и в новом контексте -- честный
+    // НОВЫЙ просмотр -> POST #3. Карта нового контекста НЕ переносит
+    // просмотры прежней цели: correlation -- новый просмотр (done),
+    // descriptive просмотрена ТОЛЬКО в прежней вселенной (pending).
+    await waitFor(() => expect(edaPosts.length).toBe(3), { timeout: 4000 });
+    expect(edaPosts[2]["correlation"]).toBe("done");
+    expect(edaPosts[2]["descriptive"]).toBe("pending");
   });
 });

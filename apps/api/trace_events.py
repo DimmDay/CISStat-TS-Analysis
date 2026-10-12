@@ -174,7 +174,15 @@ _STAGE_EVENT_TYPES: dict[str, set[str]] = {
         "outliers_profile_status",
     },
     "eda": {
-        "profile_viewed",    # троттлинг §4.2 (дефолт 5 мин на узел)
+        # AUDIT-3 (план §13, Р1): GET означает ЗАПРОС/ВЫЧИСЛЕНИЕ профиля,
+        # не просмотр («ни один GET сам по себе не удостоверяет просмотр
+        # человеком»). Носитель запроса -- profile_requested (сеется хуком
+        # трассы, троттлинг §4.2 сохранён); событие ПОКАЗА результата
+        # приходит от UI -- eda_check_status (карта просмотров, РЕШЕНИЕ
+        # ТИМЛИДА v1.1 §2). profile_viewed остаётся легаси-типом ЧТЕНИЯ
+        # (корпус не переписывается, §3.7); хук его больше не сеет.
+        "profile_requested",
+        "profile_viewed",    # легаси-чтение (до AUDIT-3 -- сеялся хуком); троттлинг §4.2 (дефолт 5 мин на узел)
         "passport_captured",
         # PROGR-18 (spec_progress_v1.1.md §2, категория B): отчёт фактов
         # просмотров исследований модулем «EDA» (POST /v1/progress/
@@ -289,6 +297,9 @@ EVIDENCE_LEVEL_BY_EVENT_TYPE: dict[str, str] = {
     "preprocessing_check_status": "client_observation",
     "outliers_profile_status": "client_observation",
     # eda
+    # AUDIT-3: GET-запрос профиля -- авто-факт middleware (operational);
+    # показ результата -- client_observation модуля (eda_check_status).
+    "profile_requested": "operational",
     "profile_viewed": "operational",
     "eda_check_status": "client_observation",
     # modeling

@@ -6,9 +6,10 @@
   * события correction_applied/mode_changed/... пишутся на УСПЕШНЫХ
     ответах (response.status_code < 400), таблицей маршрутов
     apps/api/trace_hook.py, без правки тел роутеров;
-  * profile_viewed троттлится (дефолт 5 минут, env-переменная
+  * профильный GET троттлится (дефолт 5 минут, env-переменная
     PROGRESS_PROFILE_VIEWED_THROTTLE_SECONDS) -- не чаще 1 раза на узел
-    за окно;
+    за окно; с AUDIT-3 тип GET-события EDA -- profile_requested
+    (запрос, не просмотр);
   * run_id фиксируется при первой загрузке (AnalysisSession.ensure_run_id,
     сброс в set_dataset -- новый датасет = новое исследование §3.1);
   * граница чтения трассы нормализует stored-события через
@@ -234,12 +235,15 @@ def test_route_table_templates_unique():
 
 
 def test_route_table_throttled_only_profile_viewed():
+    """Versioned AUDIT-3 (план §13): GET EDA сеет profile_requested
+    (запрос, не просмотр); троттлинг §4.2 сохранён -- throttled=True
+    допустим для обоих профильных типов."""
     from apps.api.trace_hook import TRACE_ROUTES
 
     throttled = [spec for spec in TRACE_ROUTES if spec.throttled]
     assert len(throttled) == 9  # 9 исследовательских GET EDA
     for spec in throttled:
-        assert spec.event_type == "profile_viewed"
+        assert spec.event_type == "profile_requested"
         assert spec.method == "GET"
 
 
@@ -703,7 +707,7 @@ def test_trace_isolation_from_store_failures(monkeypatch):
     assert response.status_code == 200, response.text
 
 
-# ── 7. Троттлинг profile_viewed (§4.2) ───────────────────────────────
+# ── 7. Троттлинг профильных GET (§4.2; с AUDIT-3 тип -- profile_requested) ──
 
 
 def _eda_correlation_ok() -> None:
@@ -715,13 +719,14 @@ def _eda_correlation_ok() -> None:
 
 
 def test_profile_viewed_throttled_within_window():
+    """Versioned AUDIT-3: тип GET-события EDA -- profile_requested."""
     frame = _series_frame()
     _upload(client, frame.to_csv(index=False))
     _eda_correlation_ok()
     _eda_correlation_ok()
     _eda_correlation_ok()
     viewed = [
-        e for e in _trace_events() if e["event_type"] == "profile_viewed"
+        e for e in _trace_events() if e["event_type"] == "profile_requested"
     ]
     assert len(viewed) == 1  # три запроса -- одно событие
     assert viewed[0]["stage"] == "eda"
@@ -738,7 +743,7 @@ def test_profile_viewed_throttle_is_per_node():
     )
     if other.status_code == 200:  # параметризация сезонности может отличаться
         viewed = [
-            e for e in _trace_events() if e["event_type"] == "profile_viewed"
+            e for e in _trace_events() if e["event_type"] == "profile_requested"
         ]
         assert len(viewed) == 2
         assert {e["node_id"] for e in viewed} == {"correlation", "seasonality"}
@@ -748,17 +753,17 @@ def test_profile_viewed_window_expiry():
     frame = _series_frame()
     _upload(client, frame.to_csv(index=False))
     _eda_correlation_ok()
-    # Сдвигаем ts последнего profile_viewed за окно (дефолт 5 мин)
+    # Сдвигаем ts последнего профильного GET за окно (дефолт 5 мин)
     stored = _trace_events()
     old_ts = (
         datetime.now(timezone.utc) - timedelta(minutes=6)
     ).isoformat()
     for event in reversed(stored):
-        if event["event_type"] == "profile_viewed":
+        if event["event_type"] == "profile_requested":
             event["ts"] = old_ts
             break
     _eda_correlation_ok()
-    viewed = [e for e in stored if e["event_type"] == "profile_viewed"]
+    viewed = [e for e in stored if e["event_type"] == "profile_requested"]
     assert len(viewed) == 2
 
 
@@ -769,7 +774,7 @@ def test_profile_viewed_env_override_disables_throttle(monkeypatch):
     _eda_correlation_ok()
     _eda_correlation_ok()
     viewed = [
-        e for e in _trace_events() if e["event_type"] == "profile_viewed"
+        e for e in _trace_events() if e["event_type"] == "profile_requested"
     ]
     assert len(viewed) == 2
 

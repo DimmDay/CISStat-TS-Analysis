@@ -141,6 +141,10 @@ class TestStageEventRegistry:
         # категория B -- отчёт фактов просмотров исследований модулем,
         # статус -- в payload; словарь отчёта {"done", "pending"} --
         # решение тимлида, enforced эндпоинтом).
+        # AUDIT-3 (план §13, Р1): EDA + profile_requested -- GET-запрос/
+        # вычисление профиля (хук, троттлинг §4.2); profile_viewed --
+        # легаси-тип чтения (корпус не переписывается, §3.7); событие
+        # ПОКАЗА результата -- eda_check_status от модуля.
         assert STAGE_EVENT_TYPES["upload"] == {
             "upload_completed", "passport_captured",
             "structure_confirmed", "upload_stop_status",
@@ -168,7 +172,10 @@ class TestStageEventRegistry:
             "outliers_profile_status",
         }
         assert STAGE_EVENT_TYPES["eda"] == {
-            "profile_viewed", "passport_captured", "eda_check_status",
+            # AUDIT-3: + profile_requested (GET-запрос профиля);
+            # profile_viewed -- легаси-чтение.
+            "profile_requested", "profile_viewed", "passport_captured",
+            "eda_check_status",
         }
         assert STAGE_EVENT_TYPES["modeling"] == {
             "backtest_run", "tuning_trial_completed",

@@ -1,0 +1,38 @@
+=== AUDIT-3 RED-протокол (база = HEAD 4289a83, до реализации) ===
+Дата: 2026-10-12T17:41:59Z
+База: 4289a8354a1c75275f09f8b55c1f0aae9bb7d142 (main)
+
+[1] Backend oracle: tests/api/test_progress_audit_3.py (НОВЫЙ файл, env -u DATABASE_URL, CISSTAT_RUNS_BACKEND=memory)
+    assert "запрошен" in text.lower()
+E   AssertionError: assert 'запрошен' in '# отчёт об исследовании run-audit301\n\n- датасет: —\n- исследуемый признак: —\n- статус запуска: в работе\n- начат: ...ются диагностикой остатков и временной валидацией.\n\n- 2026-10-13 09:00:01 utc — событие трассы: profile_requested.\n'
+E    +  where '# отчёт об исследовании run-audit301\n\n- датасет: —\n- исследуемый признак: —\n- статус запуска: в работе\n- начат: ...ются диагностикой остатков и временной валидацией.\n\n- 2026-10-13 09:00:01 utc — событие трассы: profile_requested.\n' = <built-in method lower of str object at 0x85b6ec0>()
+E    +    where <built-in method lower of str object at 0x85b6ec0> = '# Отчёт об исследовании RUN-AUDIT301\n\n- Датасет: —\n- Исследуемый признак: —\n- Статус запуска: в работе\n- Начат: ...ются диагностикой остатков и временной валидацией.\n\n- 2026-10-13 09:00:01 UTC — Событие трассы: profile_requested.\n'.lower
+=========================== short test summary info ============================
+FAILED tests/api/test_progress_audit_3.py::test_profile_requested_registered_on_eda_stage
+FAILED tests/api/test_progress_audit_3.py::test_profile_requested_resolves_running
+FAILED tests/api/test_progress_audit_3.py::test_profile_requested_evidence_operational
+FAILED tests/api/test_progress_audit_3.py::test_get_from_pending_sets_running_same_context
+FAILED tests/api/test_progress_audit_3.py::test_context_shift_get_refreshes_applicability_h28
+FAILED tests/api/test_progress_audit_3.py::test_h27_routine_pending_does_not_retract_done_same_context
+FAILED tests/api/test_progress_audit_3.py::test_legacy_done_protected_from_stamped_pending
+FAILED tests/api/test_progress_audit_3.py::test_upgrade_paths_unaffected - As...
+FAILED tests/api/test_progress_audit_3.py::test_e2e_get_seeds_profile_requested_not_viewed
+FAILED tests/api/test_progress_audit_3.py::test_e2e_done_map_then_get_keeps_done
+FAILED tests/api/test_progress_audit_3.py::test_e2e_h27_pending_card_does_not_retract_done_v2
+FAILED tests/api/test_progress_audit_3.py::test_e2e_h27_pending_card_does_not_retract_done_legacy
+FAILED tests/api/test_progress_audit_3.py::test_e2e_throttle_profile_requested
+FAILED tests/api/test_progress_audit_3.py::test_report_template_profile_requested
+======================== 14 failed, 11 passed in 4.45s =========================
+
+[2] UI oracle: packages/ui/components/prograudit3_eda_seed_freshness.test.tsx (НОВЫЙ файл)
+    ✕ S1: сеются только context-применимые (current) done-факты; stale/unknown не воскрешаются (4370 ms)
+    ✕ S2: отказ seed удерживает отчёт; новый просмотр ретраит seed (308 ms)
+    ✕ S3: деградация проекции (session_tail) удерживает отчёт (294 ms)
+    ✕ S4: смена цели при том же datasetId -- новая вселенная: просмотры не переносятся (4415 ms)
+    ✓ S5: якорь переживает seed без новых просмотров (контроль PROGR-18) (288 ms)
+  ● AUDIT-3: EDA seed из полной проекции, свежесть и вселенная по цели › S1: сеются только context-применимые (current) done-факты; stale/unknown не воскрешаются
+  ● AUDIT-3: EDA seed из полной проекции, свежесть и вселенная по цели › S2: отказ seed удерживает отчёт; новый просмотр ретраит seed
+  ● AUDIT-3: EDA seed из полной проекции, свежесть и вселенная по цели › S3: деградация проекции (session_tail) удерживает отчёт
+  ● AUDIT-3: EDA seed из полной проекции, свежесть и вселенная по цели › S4: смена цели при том же datasetId -- новая вселенная: просмотры не переносятся
+Test Suites: 1 failed, 1 total
+Tests:       4 failed, 1 passed, 5 total

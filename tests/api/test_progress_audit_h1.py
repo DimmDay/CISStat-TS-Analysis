@@ -247,11 +247,17 @@ class TestF17ProfileViewedMonotonicity:
 
     def test_other_event_types_unaffected(self):
         """Монотонность НЕ глобальная: прочие пары перезаписываются
-        (previewed -> applied = done; pending-отчёт ПОСЛЕ done --
-        легитимное переоткрытие eda-checks, H27-пин).
+        (previewed -> applied = done).
 
         Versioned AUDIT-4: correction-события несут факты результата --
-        голые события без фактов честно unknown (статус не утверждают)."""
+        голые события без фактов честно unknown (статус не утверждают).
+        Versioned AUDIT-3 (план §13, H27): рутинный pending карты
+        eda_check_status в СВОЁМ контексте больше НЕ retract-ит
+        просмотренный done (легаси-события без контекста смену контекста
+        не утверждают) -- прежний ассерт «pending после done» был пином
+        дефекта H27; переоткрытие EDA после коррекции теперь живёт в
+        СМЕНЕ контекста (оба известны и различны -- last-wins честен,
+        см. оракул AUDIT-3 test_context_shift_pending_reopens_h28)."""
         events = [
             _node_event("correction_previewed", "validation", "formats",
                         total_violations=3),
@@ -260,11 +266,21 @@ class TestF17ProfileViewedMonotonicity:
                         total_still_invalid=0),
         ]
         assert derive_node_statuses(events)["validation/formats"] == "done"
+        # H27-защита: рутинный pending не retract-ит done (тот же
+        # контекст -- легаси-события без context_id).
         events = [
             _node_event("eda_check_status", "eda", "correlation", status="done"),
             _node_event("eda_check_status", "eda", "correlation", status="pending"),
         ]
-        assert derive_node_statuses(events)["eda/correlation"] == "pending"
+        assert derive_node_statuses(events)["eda/correlation"] == "done"
+        # Контроль периметра: карты Валидации сохраняют last-wins.
+        events = [
+            _node_event("validation_check_status", "validation", "ranges",
+                        status="done"),
+            _node_event("validation_check_status", "validation", "ranges",
+                        status="pending"),
+        ]
+        assert derive_node_statuses(events)["validation/ranges"] == "pending"
 
 
 # ── Сброс reason узла (тот же эффект, что пустая ветка) ──────────────
