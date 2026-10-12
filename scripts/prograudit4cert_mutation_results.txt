@@ -1,0 +1,17 @@
+CM-0 [no-op контроль харнесса]: oracle=EXIT=0 repo=============================== 48 passed in 2.77s ============================== -> SURVIVED (харнесс достоверен)
+CM-1 [инверсия preview: чистые данные объявляются нарушениями]: oracle=EXIT=1 repo========================== 6 failed, 42 passed in 2.99s ========================= -> KILLED-BOTH
+CM-2 [легаси-фабрика «Найдены нарушения» без фактов (H14)]: oracle=EXIT=1 repo========================== 2 failed, 46 passed in 2.99s ========================= -> KILLED-BOTH
+CM-3 [no_change недостижим: нулевой apply становится changed]: oracle=EXIT=1 repo========================== 3 failed, 45 passed in 2.86s ========================= -> KILLED-BOTH
+CM-4 [fallback-пара до/после инвертирована]: oracle=EXIT=1 repo========================== 2 failed, 46 passed in 2.85s ========================= -> KILLED-BOTH
+CM-5 [половина пары (total_invalid) выдаёт исход вместо unknown]: oracle=EXIT=1 repo========================== 1 failed, 47 passed in 2.85s ========================= -> KILLED-BOTH
+CM-6 [частичность скрыта в reason: «применена частично» -> канон]: oracle=EXIT=1 repo========================== 1 failed, 47 passed in 2.93s ========================= -> KILLED-BOTH
+CM-7 [бейдж apply -- диагностика ДО (устаревшая цифра)]: oracle=EXIT=1 repo========================== 4 failed, 44 passed in 2.97s ========================= -> KILLED-BOTH
+CM-8 [P16 снят: без фактов счётчика наследуется прежняя цифра]: oracle=EXIT=1 repo========================== 1 failed, 47 passed in 2.94s ========================= -> KILLED-BOTH
+CM-9 [P15 снят: мусорный status течёт в детали узла]: oracle=EXIT=1 repo========================== 2 failed, 46 passed in 2.96s ========================= -> KILLED-BOTH
+CM-10 [no-op apply удостоверяет устранение (done-фабрика, H14)]: oracle=EXIT=1 repo=============================== 48 passed in 2.84s ============================== -> KILLED-ORACLE-ONLY
+CM-11 [unknown-apply утверждает done (исход не подтверждён)]: oracle=EXIT=1 repo========================== 4 failed, 44 passed in 3.01s ========================= -> KILLED-BOTH
+CM-12 [P19 снят: смена метода подавляется dedupe (H19)]: oracle=EXIT=1 repo========================== 1 failed, 47 passed in 2.83s ========================= -> KILLED-BOTH
+CM-13 [whitelist без «нарушений до/после»: факты не доходят до payload]: oracle=EXIT=1 repo========================== 1 failed, 47 passed in 2.85s ========================= -> KILLED-BOTH
+md5 app/core/node_status.py: 59bd8b8c2b15cd639ff376ab420e3ca3 vs HEAD 59bd8b8c2b15cd639ff376ab420e3ca3 -> MATCH
+md5 apps/api/trace_hook.py: fd5449773829eebe8b4dd2606bf8a657 vs HEAD fd5449773829eebe8b4dd2606bf8a657 -> MATCH
+ИТОГО: 13 KILLED / 1 SURVIVED / 14 всего

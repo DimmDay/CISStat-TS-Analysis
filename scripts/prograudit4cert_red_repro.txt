@@ -1,0 +1,52 @@
+  FAIL DQ1: P19: смена метода при равной картине -- два факта, получено ['iqr']
+  ok   DQ2
+  ok   DQ3
+  FAIL DQ4: UNEXPECTED ImportError("cannot import name 'DEDUPE_PARAM_KEYS' from 'apps.api.trace_hook' (/home/z/my-project/wt_02ac7ff/apps/api/trace_hook.py)")
+  FAIL DQ5: смена mode при равной картине -- не dedupe (новый факт)
+  FAIL DQ6: самозаживление: легаси-stored (параметры (None, None)) + новое событие С параметрами при той же картине -- параметры различимы -- первый факт ПИШЕТСЯ (сравнение не подавляет)
+  FAIL EVD1: UNEXPECTED KeyError('outcome')
+  FAIL EVD2: UNEXPECTED KeyError('outcome')
+  FAIL EVD3: UNEXPECTED KeyError('outcome')
+  FAIL FLD1: clean preview НЕ красит узел (статус не утверждается, P14)
+  FAIL FLD10: P15: нестроковый status -- schema-нарушение (аномалия)
+  ok   FLD11
+  FAIL FLD12: бейдж -- remaining-факт (0), мусорный ключ пропущен
+  FAIL FLD13: no_change-прочее (remaining=0) статус НЕ утверждает -- узел сохраняет прежний warning (не done)
+  ok   FLD2
+  FAIL FLD3: no-op apply при remaining>0 -- warning, не done (H14)
+  FAIL FLD4: частичное устранение (changed при remaining>0) -- честный warning
+  FAIL FLD5: бейдж -- remaining=0 (состояние после), НЕ диагностика до
+  FAIL FLD6: unknown-apply статус НЕ утверждает -- узел остаётся pending
+  FAIL FLD7: P16: новое решение без фактов счётчика НЕ наследует цифру прежней диагностики -- бейдж очищен
+  ok   FLD8
+  FAIL FLD9: P15: невалидный status-факт -- диагностическая аномалия
+  FAIL OUT1: UNEXPECTED ImportError("cannot import name 'resolve_correction_outcome' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL OUT10: UNEXPECTED ImportError("cannot import name 'resolve_correction_outcome' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL OUT11: UNEXPECTED ImportError("cannot import name 'resolve_correction_outcome' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL OUT2: UNEXPECTED ImportError("cannot import name 'resolve_correction_outcome' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL OUT3: UNEXPECTED ImportError("cannot import name 'resolve_correction_outcome' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL OUT4: UNEXPECTED ImportError("cannot import name 'resolve_correction_outcome' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL OUT5: UNEXPECTED ImportError("cannot import name 'resolve_correction_outcome' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL OUT6: UNEXPECTED ImportError("cannot import name 'resolve_correction_outcome' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL OUT7: UNEXPECTED ImportError("cannot import name 'resolve_correction_outcome' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL OUT8: UNEXPECTED ImportError("cannot import name 'resolve_correction_outcome' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL OUT9: UNEXPECTED ImportError("cannot import name 'resolve_correction_outcome' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL PNL1: e2e: чистый preview не красит узел (P14)
+  FAIL PNL2: e2e: changed=0 при remaining>0 -- warning (не done)
+  FAIL PNL3: e2e: бейдж -- состояние после (0), не диагностика до (5)
+  FAIL PNL4: e2e: повторный no-op не удостоверяет «применение» (H14)
+  FAIL PNL5: e2e: transform без фактов результата -- статус не утверждается
+  FAIL PNL6: e2e: remaining(3)>0 после коррекции -- честный warning (не done)
+  ok   PNL7
+  FAIL PNL8: честный warning узла виден в карточке стадии (attention, warning_nodes=1)
+  ok   PRJ1
+  FAIL PRJ2: UNEXPECTED KeyError('outcome')
+  FAIL RSN1: UNEXPECTED ImportError("cannot import name 'correction_reason' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL RSN2: UNEXPECTED ImportError("cannot import name 'correction_reason' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL RSN3: UNEXPECTED ImportError("cannot import name 'correction_reason' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL RSN4: UNEXPECTED ImportError("cannot import name 'correction_reason' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL RSN5: UNEXPECTED ImportError("cannot import name 'correction_reason' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  FAIL RSN6: UNEXPECTED ImportError("cannot import name 'correction_reason' from 'app.core.node_status' (/home/z/my-project/wt_02ac7ff/app/core/node_status.py)")
+  ok   RSN7
+
+ИТОГО (база 02ac7ff): 42 FAIL / 8 PASS -- EXIT=1
