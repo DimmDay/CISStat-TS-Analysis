@@ -1709,6 +1709,62 @@ def record_run_event_batch(
         return None
 
 
+def commit_map_report(
+    session: Any,
+    *,
+    events: tuple[TraceEvent, ...],
+    run_id: str,
+    expected_context_id: Optional[str],
+    idempotency_key: str,
+    body_fingerprint: str,
+) -> CommitReceipt:
+    """СТРОГОЕ зеркало v2-отчёта карты статусов (AUDIT-2A, план §11;
+    контракт docs/progress_audit_contract.md аддендум v0.9-2A §19).
+
+    Отличия от best-effort record_run_event_batch:
+
+      * БЕЗ bare-except -- конфликты возвращаются вызывающему
+        исключениями и превращаются эндпоинтом в 409 (план §11 GREEN:
+        «422 формы и 409 stale/conflict дают ноль изменений»):
+          - CommitConflictError -- сдвиг контекста между чтением гейта
+            и commit (CAS expected_context_id, I3; конкурентная гонка);
+          - IdempotencyConflictError -- тот же ключ с ДРУГИМ телом
+            (щит P07: «прежний ключ с другим телом» -- конфликт без
+            записи);
+      * идемпотентность СОДЕРЖАТЕЛЬНАЯ и стабильная: ключ
+        report:{run_id}:{report_id}, отпечаток -- ТЕЛО отчёта клиента
+        (report_body_fingerprint), а не сгенерированные события:
+        повтор той же поставки возвращает прежний receipt БЕЗ записи
+        новых событий (P07), в отличие от легаси map:-ключа, чей
+        отпечаток зависит от свежих event_id (P07-семантика легаси
+        сохранена СОЗНАТЕЛЬНО -- план §20.2 п.4).
+
+    Run-метаданные (контекст/ревизия/дайджест сессии) обновляются той
+    же транзакцией store'а, что и события (паритет AUDIT-6A); CAS
+    expected_context_id передаётся ГЕЙТОМ эндпоинта (durable
+    run.context_id, тот же источник, что GET /trace -- контракт §19.2).
+    """
+    store = get_research_run_store()
+    run, _read_context = _mirror_run_base(store, session, run_id)
+    context_id, revision, digest = _session_context(session)
+    run = replace(
+        run,
+        context_id=context_id,
+        data_revision=revision,
+        data_digest=digest,
+        last_active_at=_now_iso(),
+    )
+    return store.commit_event_batch(
+        CommitEventBatch(
+            run=run,
+            events=events,
+            expected_context_id=expected_context_id,
+            idempotency_key=idempotency_key,
+            body_fingerprint=body_fingerprint,
+        )
+    )
+
+
 # ── Файловый слой (§12 п.3 uploads + §12 п.4 снимки чекпоинтов) ──────
 
 

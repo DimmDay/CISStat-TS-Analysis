@@ -1,0 +1,53 @@
+RED-протокол PROGR-AUDIT-2A (план plan_progress_audit.md §11)
+База: main@3322e4a (origin/main, HEAD = PROGR-AUDIT-1A-CERT); commit/push НЕ выполнялись (AGENTS.md).
+Команда: python -m pytest tests/api/test_progress_audit_2a.py -q --disable-warnings
+Окружение: Python 3.12.15 (venv), pandas/statsforecast/arch/ruptures/pandera/prophet -- полная группа (readiness-гейт Modeling dispatch пройден: apps.api.main импортируется).
+Дата: 2026-10-12
+
+Итог: 20 FAILED / 2 PASSED
+
+Классы RED:
+- 2 ImportError: cannot import name 'progress_maps' from 'apps.api' -- единого механизма v2-конверта не существует (TestSharedModule).
+- 9 KeyError 'mode'/'deduplicated'/assert receipt -- v2-конверт не принимается, ответы карт не несут mode/receipt (TestV2Acceptance, TestFourEndpointsSharedMechanism, TestLegacyMode).
+- 5 AssertionError 200!=409 -- контекстные гейты отсутствуют: повтор отчёта после новой загрузки/смены цели принимается в новый контекст, старый run_id не отклоняется, тот же ключ с другим телом не конфликтует, result_refs чужого контекста не проверяются (P24/P07/F04).
+- 4 AssertionError envelope -- события карт пишутся v1-формой без schema_version/evidence_level/operation_id/context_id (I10-доказательность не выражена).
+
+2 PASSED -- пины УЖЕ корректного поведения (остаются зелёными после GREEN):
+- test_eda_vocabulary_enforced_in_v2 -- словарь EDA enforced 422 (форма-гейт существовал);
+- test_v2_requires_dataset_400 -- гейт 'без датасета -- 400' существовал.
+
+Вывод: все RED -- честные дефекты периметра AUDIT-2A (контекст/идемпотентность/envelope), НЕ средовые.
+
+────────────────────────────────────────────────────────────────────
+GREEN/приёмка (та же команда после реализации):
+
+Итог oracle: 22 passed / 0 failed (4.19s) -- все классы RED закрыты,
+2 пина уже-корректного поведения остались зелёными.
+
+Адресный регресс (env -u DATABASE_URL -u REDIS_URL CISSTAT_RUNS_BACKEND=memory;
+в песочнице мусорный DATABASE_URL=file:... выбирает Postgres-backend без
+psycopg -- документированный средовой класс, дельта к базлайну 0):
+- четыр карты/панель/хук/семена (defects_progr13, 13a/b/c, 16, 17, 18,
+  panel, trace_hook, 23, 25a/c/d): 223 passed / 1 failed-средовой
+  (panel::test_events_returned_after_hook_writes -- только без очистки
+  env; с очисткой 19 passed);
+- audit-оракулы + потребители (6a, 5b, 1a, 4, C, S, H1, mentor_rules,
+  admin_progress, admin_analytics): 396 passed / 17 skipped / 0 failed;
+- полный tests/api + tests/integration: 1752 passed / 19 failed / 18
+  skipped -- все 19 идентичны базлайну 3322e4a (контроль на чистом
+  worktree 3322e4a: те же 4 файла, те же 19 failed / 89 passed):
+  production dispatch моделей вне контура «Прогресса»
+  (forecasting_session x16, modeling_workflow,
+  backtest_neural_capacity, models_candidates). ДЕЛЬТА К БАЗЛАЙНУ = 0.
+
+Сборка: импорт apps.api.main OK; py_compile (progress_maps.py,
+routers/progress.py, research_runs.py) OK. UI/Jest не требовались --
+front не менялся (аддитивные поля ответов; v2-конверт --AUDIT-2B).
+
+Инцидент доставки (честная фиксация): попытка stash-контроля базлайна
+вскрыла СТАРЫЙ stash "audit1a-local-artifacts" (предыдущая сессия);
+конфликт worklog9/контракта разрешён в пользу HEAD (проверено:
+HEAD -- строгое надмножество stash, 200 добавлений / 0 удалений --
+stash дублировал уже закоммиченный AUDIT-1a); stash сохранён
+(stash@{0}), продукты задачи не пострадали. Базлайн-контроль повторён
+БЕЗопасно через git worktree.

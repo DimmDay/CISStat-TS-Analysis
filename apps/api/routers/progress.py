@@ -181,8 +181,6 @@ from apps.api.research_runs import (
     ResearchRun,
     get_dataset_file_store,
     get_research_run_store,
-    record_run_event,
-    record_run_event_batch,
     stage_for_run_level_event,
 )
 from apps.api.session_store import (
@@ -200,6 +198,10 @@ from apps.api.trace_events import (
     canonicalize_stored_event,
     make_trace_event,
     merge_canonical_events,
+)
+from apps.api.progress_maps import (
+    MapSpec,
+    accept_map_report,
 )
 from apps.api.progress_projection import (
     ProjectionPendingError,
@@ -503,17 +505,69 @@ class UploadStopsReportIn(BaseModel):
     stops -- ПОЛНАЯ карта остановок реестра (id -> CheckStatus):
     снапшот состояния модуля, не дельта; партиальные отчёты --
     клиентский баг и fail-closed 422 (чёрные дыры в фактах стадии
-    недопустимы: панель обязана совпадать с модулем целиком)."""
+    недопустимы: панель обязана совпадать с модулем целиком).
+
+    AUDIT-2A (контракт v0.9-2A §19): аддитивный v2-конверт --
+    schema_version=2 + run_id + context_id + report_id (+ result_refs);
+    строгий режим: контекстные гейты (409 stale_run/stale_context до
+    записи), идемпотентность по report_id (повтор -- прежний receipt),
+    события штампуются client_observation. Отсутствие schema_version --
+    легаси-режим (преждний контракт; P24 для old-write пути НЕ закрыт,
+    compatibility mode плана §20.2 п.4)."""
 
     stops: Dict[str, str]
+    schema_version: Optional[int] = None
+    run_id: Optional[str] = None
+    context_id: Optional[str] = None
+    report_id: Optional[str] = None
+    result_refs: Optional[Dict[str, str]] = None
 
 
 class UploadStopsReportResponse(BaseModel):
     """Эхо приёмки: сколько фактов записано + run_id запуска, в который
-    они легли (слой 2 -- тот же механизм зеркала, что у хука §5)."""
+    они легли (слой 2 -- тот же механизм зеркала, что у хука §5).
+
+    AUDIT-2A: аддитивные поля приёмки -- mode ("legacy"|"v2"), а для v2
+    также report_id/context_id/deduplicated и receipt (идемпотентность
+    поставки, контракт §19.4)."""
 
     run_id: Optional[str] = None
     reported: int
+    mode: str = "legacy"
+    report_id: Optional[str] = None
+    context_id: Optional[str] = None
+    deduplicated: bool = False
+    receipt: Optional[Dict[str, Any]] = None
+
+
+# AUDIT-2A: параметры ЧЕТЫРЁХ карт в едином механизме
+# apps/api/progress_maps.py (accept_map_report): один контур записи,
+# один механизм контекстных гейтов и идемпотентности (план §11:
+# «четыре endpoint contract tests на общем механизме").
+UPLOAD_STOPS_MAP_SPEC = MapSpec(
+    stage="upload",
+    event_type="upload_stop_status",
+    registry=STAGE_NODES["upload"],
+    no_dataset_subject="остановки «Загрузки»",
+)
+VALIDATION_CHECKS_MAP_SPEC = MapSpec(
+    stage="validation",
+    event_type="validation_check_status",
+    registry=STAGE_NODES["validation"],
+    no_dataset_subject="проверки «Валидации»",
+)
+PREPROCESSING_CHECKS_MAP_SPEC = MapSpec(
+    stage="preprocessing",
+    event_type="preprocessing_check_status",
+    registry=STAGE_NODES["preprocessing"],
+    no_dataset_subject="этапы «Предобработки»",
+)
+EDA_CHECKS_MAP_SPEC = MapSpec(
+    stage="eda",
+    event_type="eda_check_status",
+    registry=STAGE_NODES["eda"],
+    no_dataset_subject="исследования «EDA»",
+)
 
 
 @router.post("/upload-stops", response_model=UploadStopsReportResponse)
@@ -571,33 +625,18 @@ def report_upload_stops(
             ),
         )
 
-    session_id = get_or_create_session_id(request, response)
-    store = get_session_store()
-    session = store.get_or_create(session_id)
-    if session.dataset is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Сначала загрузите датасет -- остановки «Загрузки» без данных не существуют",
-        )
-    session.ensure_run_id()
-    events = []
-    for node_id in known_ids:
-        event = make_trace_event(
-            "upload_stop_status",
-            stage="upload",
-            node_id=node_id,
-            run_id=session.run_id,
-            status=stops[node_id],
-        )
-        session.append_trace_event(event)
-        events.append(event)
-    store.save(session)
-    # §5 слой 2 -- AUDIT-6A: зеркало ПОЛНОЙ карты остановок -- ОДИН
-    # атомарный батч (план §7 п.2: «полная карта десяти узлов -- один
-    # batch, не десять независимых commit»); best-effort механизм тот
-    # же (сбой не ломает ответ, частичных фактов в слое 2 нет -- P08).
-    record_run_event_batch(session, events)
-    return UploadStopsReportResponse(run_id=session.run_id, reported=len(known_ids))
+    # AUDIT-2A: запись -- через ЕДИНЫЙ механизм progress_maps.py
+    # (легаси-режим: прежний контур байт-в-байт; v2: контекстные гейты
+    # 409 + идемпотентность по report_id + строгий commit слоя 2; см.
+    # докстринг accept_map_report и контракт §19).
+    outcome = accept_map_report(
+        request=request,
+        response=response,
+        spec=UPLOAD_STOPS_MAP_SPEC,
+        map_values=stops,
+        body=payload,
+    )
+    return UploadStopsReportResponse(**outcome.response_fields())
 
 
 # ── PROGR-16-A: отчёт фактов проверок «Валидации» (дефект
@@ -614,17 +653,31 @@ class ValidationChecksReportIn(BaseModel):
     checks -- ПОЛНАЯ карта проверок реестра CHECK_IDS (id -> CheckStatus):
     снапшот состояния модуля после запуска, не дельта; партиальные
     отчёты -- клиентский баг и fail-closed 422 (чёрные дыры в фактах
-    стадии недопустимы: панель обязана совпадать с модулем целиком)."""
+    стадии недопустимы: панель обязана совпадать с модулем целиком).
+
+    AUDIT-2A: аддитивный v2-конверт -- см. UploadStopsReportIn
+    (контракт v0.9-2A §19; отсутствие schema_version -- легаси)."""
 
     checks: Dict[str, str]
+    schema_version: Optional[int] = None
+    run_id: Optional[str] = None
+    context_id: Optional[str] = None
+    report_id: Optional[str] = None
+    result_refs: Optional[Dict[str, str]] = None
 
 
 class ValidationChecksReportResponse(BaseModel):
     """Эхо приёмки: сколько фактов записано + run_id запуска, в который
-    они легли (слой 2 -- тот же механизм зеркала, что у хука §5)."""
+    они легли (слой 2 -- тот же механизм зеркала, что у хука §5).
+    AUDIT-2A: аддитивные поля приёмки -- см. UploadStopsReportResponse."""
 
     run_id: Optional[str] = None
     reported: int
+    mode: str = "legacy"
+    report_id: Optional[str] = None
+    context_id: Optional[str] = None
+    deduplicated: bool = False
+    receipt: Optional[Dict[str, Any]] = None
 
 
 @router.post(
@@ -689,34 +742,16 @@ def report_validation_checks(
             ),
         )
 
-    session_id = get_or_create_session_id(request, response)
-    store = get_session_store()
-    session = store.get_or_create(session_id)
-    if session.dataset is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Сначала загрузите датасет -- проверки «Валидации» без данных не существуют",
-        )
-    session.ensure_run_id()
-    events = []
-    for node_id in known_ids:
-        event = make_trace_event(
-            "validation_check_status",
-            stage="validation",
-            node_id=node_id,
-            run_id=session.run_id,
-            status=checks[node_id],
-        )
-        session.append_trace_event(event)
-        events.append(event)
-    store.save(session)
-    # §5 слой 2 -- AUDIT-6A: зеркало ПОЛНОЙ карты проверок -- ОДИН
-    # атомарный батч (план §7 п.2; сбой слоя 2 не оставляет частичных
-    # фактов -- P08, ответ эндпоинта честен).
-    record_run_event_batch(session, events)
-    return ValidationChecksReportResponse(
-        run_id=session.run_id, reported=len(known_ids)
+    # AUDIT-2A: запись -- через ЕДИНЫЙ механизм progress_maps.py
+    # (легаси/v2; см. докстринг accept_map_report и контракт §19).
+    outcome = accept_map_report(
+        request=request,
+        response=response,
+        spec=VALIDATION_CHECKS_MAP_SPEC,
+        map_values=checks,
+        body=payload,
     )
+    return ValidationChecksReportResponse(**outcome.response_fields())
 
 
 # ── PROGR-17: отчёт фактов этапов «Предобработки» (spec_progress_
@@ -735,17 +770,31 @@ class PreprocessingChecksReportIn(BaseModel):
     (id -> CheckStatus): снапшот состояния степпера после вычислений,
     не дельта; партиальные отчёты -- клиентский баг и fail-closed 422
     (чёрные дыры в фактах стадии недопустимы: панель обязана совпадать
-    с модулем целиком)."""
+    с модулем целиком).
+
+    AUDIT-2A: аддитивный v2-конверт -- см. UploadStopsReportIn
+    (контракт v0.9-2A §19; отсутствие schema_version -- легаси)."""
 
     checks: Dict[str, str]
+    schema_version: Optional[int] = None
+    run_id: Optional[str] = None
+    context_id: Optional[str] = None
+    report_id: Optional[str] = None
+    result_refs: Optional[Dict[str, str]] = None
 
 
 class PreprocessingChecksReportResponse(BaseModel):
     """Эхо приёмки: сколько фактов записано + run_id запуска, в который
-    они легли (слой 2 -- тот же механизм зеркала, что у хука §5)."""
+    они легли (слой 2 -- тот же механизм зеркала, что у хука §5).
+    AUDIT-2A: аддитивные поля приёмки -- см. UploadStopsReportResponse."""
 
     run_id: Optional[str] = None
     reported: int
+    mode: str = "legacy"
+    report_id: Optional[str] = None
+    context_id: Optional[str] = None
+    deduplicated: bool = False
+    receipt: Optional[Dict[str, Any]] = None
 
 
 @router.post(
@@ -811,34 +860,16 @@ def report_preprocessing_checks(
             ),
         )
 
-    session_id = get_or_create_session_id(request, response)
-    store = get_session_store()
-    session = store.get_or_create(session_id)
-    if session.dataset is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Сначала загрузите датасет -- этапы «Предобработки» без данных не существуют",
-        )
-    session.ensure_run_id()
-    events = []
-    for node_id in known_ids:
-        event = make_trace_event(
-            "preprocessing_check_status",
-            stage="preprocessing",
-            node_id=node_id,
-            run_id=session.run_id,
-            status=checks[node_id],
-        )
-        session.append_trace_event(event)
-        events.append(event)
-    store.save(session)
-    # §5 слой 2 -- AUDIT-6A: зеркало ПОЛНОЙ карты этапов -- ОДИН
-    # атомарный батч (план §7 п.2; сбой слоя 2 не оставляет частичных
-    # фактов -- P08, ответ эндпоинта честен).
-    record_run_event_batch(session, events)
-    return PreprocessingChecksReportResponse(
-        run_id=session.run_id, reported=len(known_ids)
+    # AUDIT-2A: запись -- через ЕДИНЫЙ механизм progress_maps.py
+    # (легаси/v2; см. докстринг accept_map_report и контракт §19).
+    outcome = accept_map_report(
+        request=request,
+        response=response,
+        spec=PREPROCESSING_CHECKS_MAP_SPEC,
+        map_values=checks,
+        body=payload,
     )
+    return PreprocessingChecksReportResponse(**outcome.response_fields())
 
 
 # ── PROGR-18: отчёт фактов просмотров исследований «EDA»
@@ -868,17 +899,32 @@ class EdaChecksReportIn(BaseModel):
     (id -> "done"|"pending"): снапшот множества просмотренных
     исследований, не дельта; партиальные отчёты -- клиентский баг и
     fail-closed 422 (чёрные дыры в фактах стадии недопустимы: панель
-    обязана совпадать с модулем целиком)."""
+    обязана совпадать с модулем целиком).
+
+    AUDIT-2A: аддитивный v2-конверт -- см. UploadStopsReportIn
+    (контракт v0.9-2A §19; отсутствие schema_version -- легаси;
+    словарь EDA enforced и в строгом режиме)."""
 
     checks: Dict[str, str]
+    schema_version: Optional[int] = None
+    run_id: Optional[str] = None
+    context_id: Optional[str] = None
+    report_id: Optional[str] = None
+    result_refs: Optional[Dict[str, str]] = None
 
 
 class EdaChecksReportResponse(BaseModel):
     """Эхо приёмки: сколько фактов записано + run_id запуска, в который
-    они легли (слой 2 -- тот же механизм зеркала, что у хука §5)."""
+    они легли (слой 2 -- тот же механизм зеркала, что у хука §5).
+    AUDIT-2A: аддитивные поля приёмки -- см. UploadStopsReportResponse."""
 
     run_id: Optional[str] = None
     reported: int
+    mode: str = "legacy"
+    report_id: Optional[str] = None
+    context_id: Optional[str] = None
+    deduplicated: bool = False
+    receipt: Optional[Dict[str, Any]] = None
 
 
 @router.post("/eda-checks", response_model=EdaChecksReportResponse)
@@ -948,34 +994,16 @@ def report_eda_checks(
             ),
         )
 
-    session_id = get_or_create_session_id(request, response)
-    store = get_session_store()
-    session = store.get_or_create(session_id)
-    if session.dataset is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Сначала загрузите датасет -- исследования «EDA» без данных не существуют",
-        )
-    session.ensure_run_id()
-    events = []
-    for node_id in known_ids:
-        event = make_trace_event(
-            "eda_check_status",
-            stage="eda",
-            node_id=node_id,
-            run_id=session.run_id,
-            status=checks[node_id],
-        )
-        session.append_trace_event(event)
-        events.append(event)
-    store.save(session)
-    # §5 слой 2 -- AUDIT-6A: зеркало ПОЛНОЙ карты просмотров -- ОДИН
-    # атомарный батч (план §7 п.2; сбой слоя 2 не оставляет частичных
-    # фактов -- P08, ответ эндпоинта честен).
-    record_run_event_batch(session, events)
-    return EdaChecksReportResponse(
-        run_id=session.run_id, reported=len(known_ids)
+    # AUDIT-2A: запись -- через ЕДИНЫЙ механизм progress_maps.py
+    # (легаси/v2; см. докстринг accept_map_report и контракт §19).
+    outcome = accept_map_report(
+        request=request,
+        response=response,
+        spec=EDA_CHECKS_MAP_SPEC,
+        map_values=checks,
+        body=payload,
     )
+    return EdaChecksReportResponse(**outcome.response_fields())
 
 
 # ── PROGR-5: долговременный слой (§5 слой 2) ─────────────────────────
