@@ -1,0 +1,22 @@
+PROGR-AUDIT-2B-CERT — мутационная кампания СВОИХ мутантов (16 kill-мутантов + CM-0 контроль)
+Цель: packages/ui/hooks/useProgressMapDelivery.ts; md5 оригинала: cd43adeb102a5bb5358f8e145d0001c0
+Каналы: oracle = prograudit2bcert_useProgressMapDelivery.test.tsx (31), repo = useProgressMapDelivery.test.tsx (18)
+CM-0: SURVIVED (контроль: харнесс достоверен) — КОНТРОЛЬ no-op: комментарий не меняет поведение
+CM-1: KILLED-BOTH — receipt-гейт снят: delivered на любом 200 (§20.3)
+CM-2: KILLED-BOTH — retry с НОВЫМ report_id (ломает P07-идемпотентность клиента)
+CM-3: KILLED-BOTH — исчерпание retry снято: повтор бесконечен (§20.2)
+CM-4: KILLED-BOTH — постоянные ошибки (400/404/422/conflict) уходят в retry (§20.2)
+CM-5: KILLED-ORACLE-ONLY (repo-канал слеп) — легаси-режим ретраится (§20.5: серверный легаси без идемпотентности)
+CM-6: KILLED-BOTH — 409 перевооружается бесконечно: нет стопа после повторного 409 (§20.5)
+CM-7: KILLED-ORACLE-ONLY (repo-канал слеп) — дедуп-ключ без run_id: тот же снапшот в новом run подавлен (§12 п.4)
+CM-8: KILLED-ORACLE-ONLY (repo-канал слеп) — дедуп снят: записанный (run, context, snapshot) доставляется повторно
+CM-9: KILLED-BOTH — изоляция stale снята целиком (все 4 сайта сравнения): поздний ответ устаревшей поставки меняет состояние (§20.5)
+CM-10: KILLED-BOTH — EDA-якорь игнорируется: записанный снапшот доставляется повторно
+CM-11: KILLED-BOTH — unmount не абортирует in-flight и не снимает таймеры (§20.6)
+CM-12: KILLED-ORACLE-ONLY (repo-канал слеп) — канонизация без сортировки ключей: дедуп зависит от порядка построения
+CM-13: KILLED-BOTH — 409 без refresh биндинга: повторная поставка не запускается (§12 п.5)
+CM-14: KILLED-BOTH — redeliver() не очищает дедуп: принудительный ре-пост подавлен
+CM-15: KILLED-ORACLE-ONLY (repo-канал слеп) — null-карта не замещает висящую поставку (нет abort, §12 п.3)
+CM-16: KILLED-BOTH — инверсия v2-флага: конверт уходит по легаси-форме и наоборот (§20.1)
+md5 после кампании: cd43adeb102a5bb5358f8e145d0001c0 (== оригинал)
+ИТОГО: kill-мутантов убито 16/16 (KILLED-BOTH 11, KILLED-ORACLE-ONLY 5, KILLED-REPO-ONLY 0), SURVIVED (без контроля) 0, контроль CM-0: SURVIVED

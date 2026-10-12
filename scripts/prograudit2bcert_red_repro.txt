@@ -1,0 +1,51 @@
+PROGR-AUDIT-2B-CERT — RED-воспроизведение СВОИХ оракулов на базовой ревизии 9e8edde
+Дата: 2026-10-12. Сертификатор: независимый раунд. Метод: git worktree 9e8edde
+(/home/z/my-project/cisstat-base9e8), node_modules — жёсткие ссылки на основное
+дерево (cp -al; изменение среды исключено — общий inode-пул), свой оракул-файл
+скопирован в worktree как untracked-артефакт.
+
+1) СВОИ оракулы (prograudit2bcert_useProgressMapDelivery.test.tsx, 31 оракул — финальная редакция после эволюции харнесса: +D5/D6)
+   на базе 9e8edde:
+
+   Test Suites: 1 failed, 1 total
+   Tests:       0 total
+   ● Test suite failed to run
+     packages/ui/hooks/prograudit2bcert_useProgressMapDelivery.test.tsx:37:40 -
+     error TS2307: Cannot find module './useProgressMapDelivery' or its
+     corresponding type declarations.
+
+   Форма RED для НОВОГО файла — suites-failed-to-run (прецедент AUDIT-2A:
+   2 ImportError; AUDIT-2B исполнителя: TS2307). Все 31 оракул §20 RED
+   ОДНОВРЕМЕННО — модуль ЕДИНОГО механизма не существовал на базе.
+
+2) Оракул ИСПОЛНИТЕЛЯ (useProgressMapDelivery.test.tsx, 18 оракулов) на базе
+   9e8edde — та же форма:
+
+   Test Suites: 1 failed, 1 total
+   ● ... error TS2307: Cannot find module './useProgressMapDelivery' ...
+
+   (копия файла исполнителя в worktree: packages/ui/hooks/useProgressMapDelivery.executor.test.tsx)
+
+3) Проверка «пины дефекта были зелёными на базе» (заявление журнала PROGR-AUDIT-2B):
+   СТАРЫЙ пин AUDIT-0 (prograudit0_h26_no_auto_retry.test.tsx в редакции базы
+   9e8edde — пин дефекта H26 «один POST после 500; повторов нет») на базе:
+
+   Test Suites: 1 passed, 1 total
+   Tests:       1 passed, 1 total
+
+   Зелёный на базе как пин ДЕФЕКТА — подтверждено 1:1.
+
+4) Кросс-проверка обоснованности versioned-обновления: СТАРЫЙ пин дефекта
+   (редакция 9e8edde) на HEAD 7d642c5:
+
+   Test Suites: 1 failed, 1 total
+   Tests:       1 failed, 1 total
+   (packages/ui/components/prograudit0_h26_OLDPIN_crosscheck.test.tsx:121 —
+   ожидание «одного POST» против нового контрактного поведения retry)
+
+   Старый пин НЕСОВМЕСТИМ с новым контрактом — versioned-обновление (план
+   §20.2 п.6) обосновано; на HEAD пин заменён пином нового контракта.
+   Временный кросс-файл удалён после проверки (продукт не менялся).
+
+Итог: RED обеих сторон воспроизведён на 9e8edde 1:1 с формой журнала
+исполнителя; пины дефекта — зелёные на базе, несовместимы с HEAD.

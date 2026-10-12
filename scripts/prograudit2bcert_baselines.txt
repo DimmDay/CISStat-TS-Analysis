@@ -1,0 +1,38 @@
+PROGR-AUDIT-2B-CERT — независимая верификация базлайнов исполнителя (HEAD 7d642c5)
+Дата: 2026-10-12. Среда: npm ci — 517 пакетов; node v24.21.0; python 3.12.15 (venv),
+R6-рецепт доведения: PyWavelets/pandera/ruptures/arch/statsforecast/prophet/tbats/
+psycopg установлен (pgserver в песочнице недоступен из pip — postgres-канал вне дельты
+задачи, UI-only периметр; документированный средовой класс).
+
+1) Оракул механизма исполнителя (useProgressMapDelivery.test.tsx): 18/18 PASSED.
+1a) Оракулы сертификатора (prograudit2bcert_useProgressMapDelivery.test.tsx):
+    31/31 PASSED на HEAD (финальная редакция; эволюция харнесса открыто
+    зафиксирована в акте §6: F5-сценарий нереалистичен — исправлен; +D5/D6 —
+    путь подавления дедупа, вскрытый мутационной кампанией CM-7/CM-8).
+2) Адресные продюсеры + пины: TsAnalysisUpload/Validation/Preprocessing/EDA.test.tsx
+   + prograudit0_h26 + prograudit0_h28 + progr25bcert_TsAnalysisUpload —
+   7 сюит / 233 теста — все зелёные.
+3) Полный jest (npx jest, все 165 обнаруженных сюит): 165 passed / 1981 tests / 0 failed.
+   Сверка с журналом (162 сюиты / 1944 теста): журнал считал контур
+   «packages/ui + apps/standalone» — из 164 трекенных тест-файлов HEAD вне контура
+   ровно 2: scripts/audit_scripts/progr4cert_oracles.test.ts и
+   scripts/promote_knowledge_registry.test.ts (проверено: 2 сюиты / 8 тестов) →
+   164 - 2 = 162 сюиты; 1952 - 8 = 1944 теста — АРИФМЕТИКА ЗАМКНУЛАСЬ 1:1.
+   Мой прогон +1 сюита/+29 тестов = файл оракулов сертификатора (untracked).
+4) tsc --noEmit: apps/standalone — чисто (EXIT=0); apps/embedded — чисто (EXIT=0)
+   (npm run typecheck --workspace=..., оба воркспейса).
+5) Python-адресные сюиты контура «Прогресс» (21 файл: audit_2a/1a/4/5b/6a/c/s/h1 +
+   defects_progr13 + panel + progr13a/13b/13c/16/17/18/23/25a/25c/25d + trace_hook):
+   470 passed / 17 skipped / 0 failed — 1:1 с журналом (env -u DATABASE_URL).
+6) Импорт apps.api.main — OK (после установки prophet/tbats/arch/statsforecast —
+   как в журнале исполнителя).
+7) e2e-смоук живого ASGI-контура scripts/prograudit2b_e2e_smoke.py — 15/15 PASS
+   (upload/trace-биндинг, v2+receipt, deduplicated=true на повторе, прежний receipt,
+   чужой run 409 stale_run, легаси 200 mode=legacy).
+8) RED-воспроизведение на базе 9e8edde — см. scripts/prograudit2bcert_red_repro.txt:
+   свои 29 оракулов — suites-failed-to-run (TS2307), оракул исполнителя — та же форма;
+   СТАРЫЙ пин H26 (редакция базы) на базе — зелёный (пин дефекта), на HEAD — красный
+   (versioned-обновление обосновано).
+
+Дельта к базлайну: 0. Продуктовые файлы не изменялись (контроль md5 — см. протокол
+мутационной кампании).
