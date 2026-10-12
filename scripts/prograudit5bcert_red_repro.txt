@@ -1,0 +1,13 @@
+=== RED-воспроизведение СВОИХ оракулов сертификации 5B на базе a2dcbee ===
+База: git-worktree a2dcbee (коммит PROGR-AUDIT-6A-CERT, до реализации AUDIT-5B).
+Свои оракулы: scripts/prograudit5bcert_oracles.py (копия в worktree; sys.path -> base).
+Ожидание (§3 акта): контрактные API задачи на базе отсутствуют целиком -- все
+оракулы честно RED-как-коллекция (ImportError), ложно-зелёных нет.
+
+INFO:numexpr.utils:NumExpr defaulting to 2 threads.
+DEBUG:app.data.file_loader:clickhouse-connect not installed — ClickHouse support disabled
+Traceback (most recent call last):
+  File "/home/z/my-project/worktrees/a2dcbee-5bcert/scripts/prograudit5bcert_oracles.py", line 84, in <module>
+    from app.core.node_status import (  # noqa: E402
+ImportError: cannot import name 'NodeStateFold' from 'app.core.node_status' (/home/z/my-project/worktrees/a2dcbee-5bcert/app/core/node_status.py)
+EXIT=1

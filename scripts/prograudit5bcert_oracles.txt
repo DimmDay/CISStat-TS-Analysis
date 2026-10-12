@@ -1,0 +1,175 @@
+INFO:numexpr.utils:NumExpr defaulting to 2 threads.
+DEBUG:app.data.file_loader:clickhouse-connect not installed — ClickHouse support disabled
+=== Оракулы сертификации AUDIT-5B: СВОИ данные сертификатора ===
+[CC-1] PASS: дедуп строго по event_id; независимые события живы
+[CC-2] PASS: первый источник приоритетен при любом порядке
+[CC-3] PASS: канонический порядок: sequence побеждает ts
+[CC-4] PASS: частичный sequence не переупорядочивает корпус
+[CC-5] PASS: мусор честно пропущен; смешанные представления легальны
+[CC-6] PASS: watermark == число фактов, не строк
+[UR-1] PASS: инкрементальный fold == батч-развёрткам (смешанный корпус)
+[UR-2] PASS: derive-функции делегируют fold (нет второй реализации)
+[UR-3] PASS: last-wins + H1-монотонность profile_viewed
+[UR-4] PASS: стадийный fold: 6 стадий канонического порядка, warning
+[SN-1] PASS: форма снапшота; events_total; I9 display cap
+[SN-2] PASS: to_dict JSON-безопасен; from_dict восстанавливает всё
+[SN-3] PASS: restart через from_dict не теряет ранние статусы
+[SN-4] PASS: мусор from_dict -- честные дефолты
+[SN-5] PASS: last_sequence: max int; bool не позиция; legacy None
+[EQ-1] PASS: replay == snapshot+tail на моих расщеплениях
+[EQ-2] PASS: эквивалентность через JSON-checkpoint restart
+[EQ-3] PASS: advance выравнивает сместившийся run-контекст
+[EQ-4] PASS: tail из TraceEvent == tail из dicts
+[EQ-5] PASS: watermark advance -- позиция base + хвост
+[WM-1] PASS: build: min_watermark недостижим -- ProjectionPendingError
+[WM-2] PASS: advance: pending не портит checkpoint; retry честен
+[WM-3] PASS: текст pending честно называет обе позиции
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace?after_watermark=10 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace?after_watermark=100 "HTTP/1.1 409 Conflict"
+[WM-4] PASS: HTTP-форма: 200 на позиции / 409 projection_pending
+[ST-1] PASS: started_at == run.created_at, не ts хвоста (P11)
+[ST-2] PASS: run-less: started_at None (хвост начало не выдумывает)
+[ST-3] PASS: мусор run_meta -- честные None
+[ST-4] PASS: session_tail: started_at None, complete False
+[VAL-1] PASS: таблица истинности event_context_validity
+[VAL-2] PASS: validity current/stale/unknown/None по узлам
+[VAL-3] PASS: исторический факт не стёрт (I4), помечен stale
+[VAL-4] PASS: смещение контекста запуска пересчитывает validity
+[EV-1] PASS: source-ссылки status/reason/count -- разные решения
+[EV-2] PASS: невалидный payload: детали не тронуты, аномалия, касание
+[EV-3] PASS: evidence_level из envelope; легаси -- честное None
+[EV-4] PASS: mode_source=session против event-derived (PR-6)
+[EV-5] PASS: контракт 13 полей узла; батч -- 7 полей
+[RP-1] PASS: отчёт canonical_order=True не пересортирует (P12)
+[RP-2] PASS: default-вызов отчёта хранит прежнюю ts-сортировку
+[RP-3] PASS: равные ts -- стабильный порядок входа
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/runs/RUN-C5B-RP4/report "HTTP/1.1 200 OK"
+[RP-4] PASS: API-отчёт читает корпус в каноническом порядке
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+[API-1] PASS: P11 на живом API: 1050, ранний статус, started_at, watermark
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace?after_watermark=40 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace?after_watermark=41 "HTTP/1.1 409 Conflict"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace?after_watermark=0 "HTTP/1.1 200 OK"
+[API-2] PASS: after_watermark: 200/409/0 контракт
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+[API-3] PASS: session_tail: честная деградация без 503 (PR-8)
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+[API-4] PASS: пустая сессия: честные «не начато» (§6.1)
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/runs/RUN-C5B-API5/mentor/next-step "HTTP/1.1 200 OK"
+[API-5] PASS: Наставник на той же проекции; watermark совпадает
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+[API-6] PASS: P17: зеркала слоя 1 не удваивают факты
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+[API-7] PASS: anomalies в /trace; доказательства не тронуты
+INFO:pgserver:no PG_VERSION file found within /home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg. Initializing pgdata
+INFO:pgserver:Running commandline:
+['/home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/initdb', '-D', '/home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg', '--auth=trust', '--auth-local=trust', '--encoding=utf8', '-U', 'postgres']
+with kwargs: `{'user': None}`
+INFO:pgserver:Successful postgres command ['/home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/initdb', '-D', '/home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg', '--auth=trust', '--auth-local=trust', '--encoding=utf8', '-U', 'postgres'] with kwargs: `{'user': None}`
+stdout:
+The files belonging to this database system will be owned by user "z".
+This user must also own the server process.
+
+The database cluster will be initialized with this locale configuration:
+  provider:    libc
+  LC_COLLATE:  C
+  LC_CTYPE:    C.UTF-8
+  LC_MESSAGES: C
+  LC_MONETARY: C
+  LC_NUMERIC:  C
+  LC_TIME:     C
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+fixing permissions on existing directory /home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg ... ok
+creating subdirectories ... ok
+selecting dynamic shared memory implementation ... posix
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting default time zone ... Etc/UTC
+creating configuration files ... ok
+running bootstrap script ... ok
+performing post-bootstrap initialization ... ok
+syncing data to disk ... ok
+
+Success. You can now start the database server using:
+
+    /home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/pg_ctl -D /home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg -l logfile start
+
+
+---
+stderr:
+
+---
+
+INFO:pgserver:no postmaster.pid file found in /home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg
+INFO:pgserver:Using socket path: /home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg
+INFO:pgserver:running pg_ctl... pg_ctl_args=['-w', '-o', '-h ""', '-o', '-k /home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg', '-l', '/home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg/log', 'start']
+INFO:pgserver:Running commandline:
+['/home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/pg_ctl', '-D', '/home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg', '-w', '-o', '-h ""', '-o', '-k /home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg', '-l', '/home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg/log', 'start']
+with kwargs: `{'user': None, 'timeout': 10}`
+INFO:pgserver:Successful postgres command ['/home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/pg_ctl', '-D', '/home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg', '-w', '-o', '-h ""', '-o', '-k /home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg', '-l', '/home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg/log', 'start'] with kwargs: `{'user': None, 'timeout': 10}`
+stdout:
+waiting for server to start.... done
+server started
+
+---
+stderr:
+
+---
+
+INFO:pgserver:waiting for postmaster info to show a running process
+INFO:pgserver:running... checking if ready pinfo=PostmasterInfo(pid=3396, pgdata=/home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg, start_time=2026-10-12 07:06:38, hostname=None port=5432, socket_dir=/home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg status=ready, process=psutil.Process(pid=3396, name='postgres', status='sleeping'))
+INFO:pgserver:Now asserting server is running self._postmaster_info=PostmasterInfo(pid=3396, pgdata=/home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg, start_time=2026-10-12 07:06:38, hostname=None port=5432, socket_dir=/home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg status=ready, process=psutil.Process(pid=3396, name='postgres', status='sleeping'))
+Живой PG оракулов: postgresql://postgres:@/postgres?host=/home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (25 утверждений)
+[PG-1] PASS: committed история PG == памяти (store-независимость)
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (25 утверждений)
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+[PG-2] PASS: /trace на PG-бэкенде == Memory (приёмка §8)
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (25 утверждений)
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+[PG-3] PASS: на живом store session_tail не срабатывает ложно
+
+=== ИТОГ ===
+=== 51/51 PASS, 0 FAIL ===
+INFO:pgserver:exiting 3353 remaining pids=[3353]
+INFO:pgserver:cleaning last handle for server: /home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg
+INFO:pgserver:Running commandline:
+['/home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/pg_ctl', '-D', '/home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg', '-w', 'stop']
+with kwargs: `{'user': None}`
+INFO:pgserver:Successful postgres command ['/home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/pg_ctl', '-D', '/home/z/my-project/CISStat-TS-Analysis/.c5bcert-pg', '-w', 'stop'] with kwargs: `{'user': None}`
+stdout:
+waiting for server to shut down.... done
+server stopped
+
+---
+stderr:
+
+---
+

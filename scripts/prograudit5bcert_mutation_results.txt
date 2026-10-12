@@ -1,0 +1,35 @@
+=== Мутационная кампания сертификации AUDIT-5B (свои мутанты CM) ===
+[CM-0] no-op контроль (оба канала обязаны быть зелёными)...
+[CM-0] SURVIVED в обоих каналах — харнесс достоверен
+[CM-1] KILLED-BOTH: canonical_corpus: слияние/дедуп сняты (конкатенация)
+[CM-2] KILLED-ORACLE-ONLY: canonical_corpus: приоритет идентичности инвертирован
+[CM-3] KILLED-BOTH: build_projection: read-after-watermark снят
+[CM-4] KILLED-BOTH: advance_projection: хвост не применён к состоянию fold
+[CM-5] KILLED-ORACLE-ONLY: advance_projection: min-позиция по base, хвост не учтён
+[CM-6] KILLED-ORACLE-ONLY: _max_sequence: bool принят за позицию ledger
+[CM-7] KILLED-ORACLE-ONLY: started_at из ts первого события хвоста (P11 возвращён)
+[CM-8] KILLED-BOTH: fold.apply: I10 снят (невалидный payload меняет детали)
+[CM-9] KILLED-BOTH: evidence: validity всегда current (PR-4 снят)
+[CM-10] KILLED-BOTH: restore_state: статусы checkpoint не восстанавливаются
+[CM-11] KILLED-BOTH: build_report_model: canonical_order игнорируется (P12)
+[CM-12] KILLED-BOTH: /trace: after_watermark 409 снят (PR-7)
+[CM-13] KILLED-BOTH: /trace: session_tail помечен полной историей (PR-8 снят)
+[CM-14] KILLED-BOTH: display_events: cap не ограничивает список (I9 снят)
+
+=== ИТОГ ===
+  CM-0   SURVIVED (контроль)    no-op
+  CM-1   KILLED-BOTH            canonical_corpus: слияние/дедуп сняты (конкатенация)
+  CM-2   KILLED-ORACLE-ONLY     canonical_corpus: приоритет идентичности инвертирован
+  CM-3   KILLED-BOTH            build_projection: read-after-watermark снят
+  CM-4   KILLED-BOTH            advance_projection: хвост не применён к состоянию fold
+  CM-5   KILLED-ORACLE-ONLY     advance_projection: min-позиция по base, хвост не учтён
+  CM-6   KILLED-ORACLE-ONLY     _max_sequence: bool принят за позицию ledger
+  CM-7   KILLED-ORACLE-ONLY     started_at из ts первого события хвоста (P11 возвращён)
+  CM-8   KILLED-BOTH            fold.apply: I10 снят (невалидный payload меняет детали)
+  CM-9   KILLED-BOTH            evidence: validity всегда current (PR-4 снят)
+  CM-10  KILLED-BOTH            restore_state: статусы checkpoint не восстанавливаются
+  CM-11  KILLED-BOTH            build_report_model: canonical_order игнорируется (P12)
+  CM-12  KILLED-BOTH            /trace: after_watermark 409 снят (PR-7)
+  CM-13  KILLED-BOTH            /trace: session_tail помечен полной историей (PR-8 снят)
+  CM-14  KILLED-BOTH            display_events: cap не ограничивает список (I9 снят)
+=== Убито 14/14 kill-мутантов; выживших: нет; пропущено: нет ===
