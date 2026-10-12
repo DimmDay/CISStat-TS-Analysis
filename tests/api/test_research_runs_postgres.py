@@ -73,8 +73,10 @@ from apps.api.trace_events import make_trace_event
 MIGRATIONS_FILES = (
     # Каталог миграций (AUDIT-6A): 0001 -- базовая схема (НЕ переписывается),
     # 0002 -- атомарный ledger (аддитивно; план §7).
+    # AUDIT-1A: 0003 -- происхождение цели (аддитивно; план §9).
     "0001_research_runs.sql",
     "0002_audit6a_atomic_ledger.sql",
+    "0003_audit1a_target_source.sql",
 )
 MIGRATIONS_FILE = (
     Path(__file__).resolve().parents[2]
@@ -89,6 +91,13 @@ MIGRATIONS_FILE_0002 = (
     / "api"
     / "migrations"
     / "0002_audit6a_atomic_ledger.sql"
+)
+MIGRATIONS_FILE_0003 = (
+    Path(__file__).resolve().parents[2]
+    / "apps"
+    / "api"
+    / "migrations"
+    / "0003_audit1a_target_source.sql"
 )
 
 EXPECTED_TABLES = {
@@ -208,12 +217,15 @@ class TestDdlFile:
         источников ловится на живом сервере, а не только сравнением текстов.
 
         Versioned-обновление (AUDIT-6A): каталог -- 0001 + 0002 (аддитивно,
-        0001 не переписывается -- план §7); MIGRATION_STATEMENTS == 0001+0002."""
+        0001 не переписывается -- план §7). Versioned-обновление (AUDIT-1A):
+        каталог -- 0001+0002+0003 (происхождение цели, аддитивно -- план §9);
+        MIGRATION_STATEMENTS == 0001+0002+0003."""
         file_sql = "\n".join(
             path.read_text(encoding="utf-8")
-            for path in (MIGRATIONS_FILE, MIGRATIONS_FILE_0002)
+            for path in (MIGRATIONS_FILE, MIGRATIONS_FILE_0002, MIGRATIONS_FILE_0003)
         )
         assert "run_commit_receipts" in file_sql
+        assert "target_column_source" in file_sql
         file_tables, file_indexes = _schema_objects(pg_conn)
         with pg_conn.cursor() as cur:
             cur.execute(DROP_SCHEMA_SQL)
@@ -247,6 +259,40 @@ class TestPostgresStoreBehavior:
             - datetime.fromisoformat(run.created_at)
         ).total_seconds() < 1.0
         assert loaded.status == "active"
+
+    def test_target_pair_roundtrip_and_reset(self, pg_conn, store):
+        """AUDIT-1A (миграция 0003, план §9): пара (target, origin) --
+        durable на живом PostgreSQL. "auto"/"user" сохраняются; None --
+        осознанное значение пары (сброс) пишется напрямую (не
+        COALESCE): прямой upsert с None стирает прежний origin.
+        Legacy-строка (NULL) читается честным отсутствием."""
+        # auto-выбор durable.
+        from dataclasses import replace as dc_replace
+
+        run = dc_replace(
+            _seed_run(), target_column="rain", target_column_source="auto",
+        )
+        store.upsert_run(run)
+        loaded = store.get_run(run.run_id)
+        assert loaded.target_column == "rain"
+        assert loaded.target_column_source == "auto"
+
+        # Прямая запись None -- сброс пары (parity Memory/SQL).
+        from dataclasses import replace as dc_replace
+
+        store.upsert_run(
+            dc_replace(loaded, target_column=None, target_column_source=None)
+        )
+        reset = store.get_run(run.run_id)
+        assert reset.target_column is None
+        assert reset.target_column_source is None
+
+        # Legacy-строка без пары -- честное отсутствие.
+        legacy = _seed_run(run_id="RUN-PGLEGACY01")
+        store.upsert_run(legacy)
+        loaded_legacy = store.get_run(legacy.run_id)
+        assert loaded_legacy.target_column is None
+        assert loaded_legacy.target_column_source is None
 
     def test_events_order_payload_and_unicode(self, pg_conn, store):
         run = _seed_run()

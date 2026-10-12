@@ -38,6 +38,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
+from app.core.effective_target import normalize_target_origin
 from app.core.pipeline_graph import (
     CHECK_STATUS_VALUES,
     MODE_STAGES,
@@ -379,8 +380,15 @@ def _stage_level_reason_updates(
             # PROGR-25-A: авто-фиксация сеет source="auto"; отсутствие
             # поля -- legacy-корпус, трактуется как user, прежний текст;
             # мусор в source -- не auto, честность маркировки).
+            # PROGR-AUDIT-1A (контракт v0.7-1A): нормализация источника
+            # -- ЕДИНАЯ (normalize_target_origin effective_target
+            # редьюсера); "(авто)" ставится только канону "auto".
             source = payload.get("source")
-            mark = " (авто)" if source == "auto" else ""
+            mark = (
+                " (авто)"
+                if normalize_target_origin(source) == "auto"
+                else ""
+            )
             return {target_node: f"Целевой признак: {target}{mark}"}, set()
         # пустой/мусорный target: пустая строка -- сброс (снимаем свой
         # reason), прочий мусор -- не факт вовсе

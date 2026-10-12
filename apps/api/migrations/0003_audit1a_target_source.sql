@@ -1,0 +1,26 @@
+-- apps/api/migrations/0003_audit1a_target_source.sql
+-- Task AUDIT-1A (plan_progress_audit.md §9): сброс и восстановление
+-- цели/происхождения. АДДИТИВНАЯ миграция -- существующие 0001/0002
+-- НЕ переписываются (план §7; контракт §7 «читатели раньше писателей»:
+-- legacy-корпус остаётся читаемым, новая колонка -- честное отсутствие
+-- (NULL) для старых строк).
+--
+-- Канонический источник истины: apps/api/research_runs.py
+-- ::MIGRATION_STATEMENTS (run_migrations(conn) исполняет те же
+-- утверждения автоматически на первом коннекте; файл -- дубль для
+-- ops-контура, рассинхронизация -- находка, сравнение в тестах).
+--
+-- Состав:
+--   target_column_source -- происхождение цели, ВТОРАЯ половина
+--   СОГЛАСОВАННОЙ пары target/source run-метаданных (план §9: restore
+--   восстанавливает согласованную пару; F03/P04 -- restore терял
+--   session.target_column_source, origin не существовал на уровне
+--   запуска). Значения: "auto" | "user" | NULL. NULL -- честное
+--   отсутствие: сброс цели (target_column_cleared), повреждённое
+--   происхождение (не фабрикуется в "user" -- спека §8.2, контракт
+--   §3.7), legacy-строка до миграции. Нормализация значений -- единый
+--   effective_target редьюсер (app/core/effective_target.py); колонка
+--   пишется НАПРЯМУЮ (не COALESCE) -- None осознанное значение пары,
+--   parity target_column.
+
+ALTER TABLE research_runs ADD COLUMN IF NOT EXISTS target_column_source TEXT;

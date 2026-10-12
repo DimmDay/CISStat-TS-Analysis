@@ -207,6 +207,10 @@ from apps.api.progress_projection import (
     canonical_corpus,
 )
 from apps.api.column_origin import derived_columns_in_frame, scope_frame
+# PROGR-AUDIT-1A: примитив числовых колонок ЕДИНОГО правила цели
+# (singleton target_column_rule; restore не тащит собственный pandas-
+# чек -- вторую реализацию числовой проверки запрещено заводить).
+from apps.api.target_column_rule import numeric_columns
 from app.preprocessing.outliers import outliers_summary, profile_outliers
 
 logger = logging.getLogger(__name__)
@@ -1031,6 +1035,10 @@ class RestoreResponse(BaseModel):
     status: str
     dataset: Dict[str, Any]
     target_column: Optional[str] = None
+    # PROGR-AUDIT-1A (F03/P04, контракт v0.7-1A): происхождение
+    # восстановленной цели -- вторая половина согласованной пары.
+    # None -- честное отсутствие (сброс/legacy/повреждение).
+    target_column_source: Optional[str] = None
     last_active_stage: Optional[str] = None
     events_restored: int
     events_total: int
@@ -1311,8 +1319,38 @@ def restore_run(request: Request, response: Response, run_id: str) -> RestoreRes
     events_total = len(events)
     seeded = events[-MAX_PIPELINE_TRACE_EVENTS:]
     session.pipeline_trace = [dict(event.to_dict()) for event in seeded]
-    if run.target_column and run.target_column in df.columns:
-        session.set_target_column(run.target_column)
+    # PROGR-AUDIT-1A (F03/P04, план §9, контракт v0.7-1A): цель
+    # восстанавливается СОГЛАСОВАННОЙ ПАРОЙ (target, origin) из ЕДИНОГО
+    # effective_target редьюсера над ПОЛНЫМ ledger (spec §8.2:
+    # происхождение -- из согласованных метаданных либо choice/reset
+    # редьюсера; ledger авторитетен -- «не вернуть reset-цель из
+    # устаревших метаданных»). Порядок -- каноническое чтение ledger
+    # (§3.3), редьюсер порядок не меняет. Legacy-корпус без фактов цели
+    # в ledger -- fallback на согласованные метаданные (origin из
+    # метаданных или честное отсутствие). Повреждённое происхождение
+    # (мусорный source) редьюсер читает как unknown -- не «user» (спека
+    # §8.2: не выдавать за подтверждённого человека). Повторный
+    # авто-выбор НЕ выполняется (спека §8.2: не замена восстановлению;
+    # план §9: singleton-правило сохраняется, второго события выбора
+    # нет). Цель, неприменимая к raw-данным (отсутствует/нечисловая),
+    # не восстанавливается -- парная origin тоже (согласованность
+    # пары); raw-семантика и historical/validity -- AUDIT-8.
+    from app.core.effective_target import effective_target
+
+    eff = effective_target(events)
+    if eff.resolved:
+        restore_target, restore_origin = eff.target, eff.origin
+    else:
+        restore_target, restore_origin = run.target_column, run.target_column_source
+    if (
+        restore_target
+        and restore_target in df.columns
+        and restore_target in numeric_columns(df)
+    ):
+        session.set_target_column(restore_target)
+        session.target_column_source = restore_origin
+    # Не применимая цель не фабрикует выбор: сессия остаётся без пары,
+    # история run не тронута, повторного авто-выбора нет.
     # PROGR-13-B1: фаза восстановленной сессии -- стадия последнего
     # УЗЛОВОГО факта (единый движок derive_last_active_stage), не хвост
     # трассы: иначе target_column_changed (сеется авто-POST хука на
@@ -1363,6 +1401,7 @@ def restore_run(request: Request, response: Response, run_id: str) -> RestoreRes
             "size_label": session.dataset.size_label,
         },
         target_column=session.target_column,
+        target_column_source=session.target_column_source,
         last_active_stage=session.last_active_stage,
         events_restored=len(seeded),
         events_total=events_total,

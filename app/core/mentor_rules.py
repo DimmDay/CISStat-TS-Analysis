@@ -69,6 +69,7 @@ from typing import Any, Callable, Iterable, Mapping, Protocol, runtime_checkable
 
 import yaml
 
+from app.core.effective_target import effective_target
 from app.core.node_status import event_to_dict
 from app.core.pipeline_graph import STAGES, STAGE_NODES
 
@@ -1050,73 +1051,44 @@ def _summary_node_status(summary: Mapping[str, Any], node_id: str) -> str:
     return "pending"
 
 
-_TARGET_SOURCE_AUTO = "auto"  # канон PROGR-25-A (target_column_rule.AUTO_SOURCE;
-# литерал, а не импорт: app/core -- листовой модуль, зависимости
-# направлены apps/api -> app/core, обратные запрещены).
+_TARGET_SOURCE_AUTO = "auto"  # канон PROGR-25-A (TARGET_ORIGIN_AUTO единого
+# effective_target редьюсера, PROGR-AUDIT-1A; литерал-алиас сохранён
+# для условия auto-правила ниже: app/core -- листовой модуль,
+# зависимости направлены apps/api -> app/core, обратные запрещены).
 
 
 def _target_confirmed(events: Iterable[Any]) -> bool:
     """Факт выбора целевого признака из событий запуска (PROGR-15-B).
-    Источник истины тот же, что у метаданных ResearchRun.target_column
-    (research_runs.py): target_column_changed с НЕПУСТЫМ
-    payload.target_column -- выбор; пустой -- сброс выбора, фактом не
-    является. Мусор/чужие типы -- пропуск (event_to_dict, деградация
-    «событие мимо фактов», не 500).
 
-    PROGR-AUDIT-H1 (F02, контракт §3.1 п.7): reset-aware -- выделенный
-    тип target_column_cleared снимает подтверждение (last-wins по
-    хронологии: выбор после сброса подтверждает заново). Раньше
-    Наставник утверждал выбор, которого больше нет (P03)."""
-    confirmed = False
-    for event in events:
-        data = event_to_dict(event)
-        if data is None:
-            continue
-        event_type = str(data.get("event_type") or "")
-        if event_type == "target_column_cleared":
-            confirmed = False
-            continue
-        if event_type != "target_column_changed":
-            continue
-        payload = data.get("payload")
-        if isinstance(payload, Mapping) and payload.get("target_column"):
-            confirmed = True
-    return confirmed
+    PROGR-AUDIT-1A (план §9 п.2, контракт v0.7-1A): потребитель ЕДИНОГО
+    effective-target редьюсера (app/core/effective_target.py) -- своя
+    реализация семантики choice/reset снята. Раньше (до H1 -- без
+    reset-aware; H1 -- свой проход) функция обходила корпус сама;
+    мусорный нестроковый target фабриковал выбор (truthy-проверка), а
+    legacy-форма пустого target в changed (канон PROGR-15-B «пустой --
+    сброс выбора») пропускалась, расходясь с run-метаданными и
+    reason-веткой node_status. Теперь семантика одна (правила редьюсера
+    -- в его докстринге): выбор -- непустой строковый target; сброс --
+    target_column_cleared ИЛИ пустая строка legacy-формы; мусор -- не
+    факт."""
+    return effective_target(events).target is not None
 
 
 def _target_origin(events: Iterable[Any]) -> str | None:
     """Происхождение последнего выбора целевого признака (PROGR-25-C,
-    spec_progress_target_column.md §4-C): last-wins -- source из payload
-    последнего события target_column_changed с НЕПУСТОЙ колонкой;
-    "auto" -- авто-фиксация (задача A сеет source="auto"), "user" --
-    ручной выбор ИЛИ legacy-событие без поля (контракт PROGR-25-A:
-    отсутствие source трактуется как user). Мусор/чужие типы --
-    пропуск (event_to_dict, деградация «событие мимо фактов», не 500).
+    spec_progress_target_column.md §4-C): "auto" -- авто-фиксация,
+    "user" -- ручной выбор ИЛИ legacy-событие без поля (контракт
+    PROGR-25-A: отсутствие source трактуется как user).
 
-    PROGR-AUDIT-H1 (F02, контракт §3.1 п.4): reset-aware -- после
-    target_column_cleared происхождение = None (unknown), НЕ "user":
-    сброс не фабрикует человеческий выбор, которого не было; дефолт
-    "user" легитимен ТОЛЬКО для отсутствия поля у legacy-ВЫБОРА.
-    Пустой корпус -- тоже None: выбора не было, origin неизвестен
-    (потребитель -- auto-правило, требующее _target_confirmed==True,
-    -- поведение прежнее)."""
-    origin: str | None = None
-    for event in events:
-        data = event_to_dict(event)
-        if data is None:
-            continue
-        event_type = str(data.get("event_type") or "")
-        if event_type == "target_column_cleared":
-            origin = None
-            continue
-        if event_type != "target_column_changed":
-            continue
-        payload = data.get("payload")
-        if isinstance(payload, Mapping) and payload.get("target_column"):
-            origin = (
-                "auto" if payload.get("source") == _TARGET_SOURCE_AUTO else "user"
-            )
-    return origin
+    PROGR-AUDIT-1A (план §9 п.2, контракт v0.7-1A): потребитель ЕДИНОГО
+    effective-target редьюсера. Уточнение семантики против собственной
+    реализации H1: мусорный (не auto/user/пустой) source теперь
+    unknown (None), а не «user» -- повреждённая история не выдаётся за
+    подтверждённого человека (спека §8.2, контракт §3.7). Пустой корпус
+    -- None: выбора не было, origin неизвестен (потребитель --
+    auto-правило, требующее _target_confirmed==True, -- поведение
+    прежнее)."""
+    return effective_target(events).origin
 
 
 # ── Условия правил (чистые функции над сводкой+событиями) ────────────
@@ -1221,24 +1193,12 @@ def _phase_event_text_facts(events: tuple[Any, ...]) -> dict[str, str]:
     достижим только при совпавшем условии, которое гарантирует
     непустую колонку последнего выбора.
 
-    PROGR-AUDIT-H1 (F02): reset-aware -- target_column_cleared снимает
-    факт колонки (текст не называет сброшенную цель; fallback-шаблон
-    просьбы поля target_column не содержит)."""
-    column = ""
-    for event in events:
-        data = event_to_dict(event)
-        if data is None:
-            continue
-        event_type = str(data.get("event_type") or "")
-        if event_type == "target_column_cleared":
-            column = ""
-            continue
-        if event_type != "target_column_changed":
-            continue
-        payload = data.get("payload")
-        if isinstance(payload, Mapping) and payload.get("target_column"):
-            column = str(payload.get("target_column"))
-    return {"target_column": column} if column else {}
+    PROGR-AUDIT-1A (план §9 п.2, контракт v0.7-1A): потребитель ЕДИНОГО
+    effective-target редьюсера -- свой проход снят; семантика (cleared
+    снимает факт колонки; мусор не фабрикует текст) -- правила
+    редьюсера."""
+    eff = effective_target(events)
+    return {"target_column": eff.target} if eff.target else {}
 
 
 def _validate_stage_phase_text_rules() -> None:

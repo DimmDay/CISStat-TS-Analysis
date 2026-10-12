@@ -723,3 +723,80 @@ scope-уровень validity (сверка компонентов, а не cont
 контекст/идемпотентность API-карт (strict v2-write, binding) — AUDIT-2A; Наставник не читает
 артефакты сессии (run-scoped контракт) — расхождение корпусов панель/Наставник на несмиррованных
 P15-событиях остаётся честной границей доставки, watermark в ответах делает её наблюдаемой.
+
+## 17. Аддендум v0.7-1A — сброс и восстановление цели/происхождения (PROGR-AUDIT-1A) — **УТВЕРЖДЕНО-1A**
+
+Versioned-обновление: план `plan_progress_audit.md` §9, задача AUDIT-1a (предшественники
+AUDIT-C/5B закрыты; база `main@09e312f`). Решения §3.1/§3.7 не меняются — реализуются.
+
+### 17.1. Единый effective-target reducer — УТВЕРЖДЕНО
+
+`app/core/effective_target.py` (НОВЫЙ, лист app/core) — ЕДИНСТВЕННАЯ реализация правил
+choice/reset (план §9 п.2 «один reducer для session/run metadata, reason, Наставника и
+документа»). Правила:
+
+- `target_column_changed` с непустым строковым target — ВЫБОР:
+  `origin = normalize_target_origin(payload.source)`;
+- `target_column_changed` с пустой строкой — СБРОС (legacy-форма, канон PROGR-15-B; паритет
+  run-метаданных и reason-ветки node_status; в current-корпусе недостижима — POST отклоняет
+  пустой, граница PROGR-25-C);
+- нестроковый/мусорный target — НЕ ФАКТ (R3; метаданные потребителей не трогаются; до задачи
+  record_run_event фабриковал `"123"` из мусора, Наставник — выбор из truthy);
+- `target_column_cleared` — СБРОС (payload не требуется; origin после сброса None, НЕ "user" —
+  §3.1 п.4);
+- прочие события — пропуск. Last-wins по ДАННОМУ порядку (канонический порядок — ответственность
+  вызывающего, §3.3; редьюсер не сортирует сам — P12).
+
+`normalize_target_origin`: "auto"|"user" — канон; отсутствие/пустота — "user" (legacy-контракт
+PROGR-25-A у ВЫБОРА); прочее — None (unknown; спека §8.2 «повреждённую историю не выдавать за
+подтверждённого человека»; до задачи мусорный source читался как "user" — фабрика).
+
+Доказательство (I10-стиль 5B): `EffectiveTarget{target, origin, source_event_id}` +
+`resolved` — различение «фактов нет» (corpus без фактов цели; потребители с хранимым состоянием
+его НЕ трогают) и «сброс» (очистить) — на этом держится честный инкрементальный mirror.
+
+Потребители (мигрированы, вторых реализаций семантики нет): тройка Наставника
+(`_target_confirmed`/`_target_origin`/`_phase_event_text_facts` — делегирование), reason-марка
+узла (node_status: normalize_target_origin), run-метаданные (record_run_event — инкрементальный
+mirror по одному событию через `effective_target((event,))`), restore (replay полного ledger),
+документ — через run-метаданные (durable проекция тех же правил; шаблоны фактов — AUDIT-7B).
+
+### 17.2. Run-метаданные: согласованная пара target/source — УТВЕРЖДЕНО
+
+`ResearchRun.target_column_source: Optional[str]` (аддитивно, миграция **0003**
+`ALTER TABLE research_runs ADD COLUMN IF NOT EXISTS target_column_source TEXT`; файл-дубль
+`apps/api/migrations/0003_audit1a_target_source.sql`; каталог MIGRATION_STATEMENTS/MIGRATION_FILES
+расширен). Значения "auto"|"user"|None; None — честное отсутствие (сброс/повреждение/legacy-строка),
+НЕ фабрикуется. Поле ЦЕЛЕВОЙ ПАРЫ: пишется НАПРЯМУЮ (не COALESCE — parity target_column; None
+осознанное значение), в `_merge_run_additive` не входит. Memory/Postgres — один контракт
+(round-trip на живом pgserver: 18/18).
+
+### 17.3. Restore: согласованная пара без повторного авто-выбора — УТВЕРЖДЕНО
+
+`restore_run` (F03/P04): цель восстанавливается ПАРОЙ (target, origin) из ЕДИНОГО редьюсера над
+ПОЛНЫМ ledger (spec §8.2 «из согласованных метаданных либо choice/reset reducer'а»; ledger
+авторитетен — устаревшие метаданные не воскрешают сброшенную цель). Legacy-корпус без фактов
+цели в ledger — fallback на метаданные (origin из метаданных либо честное отсутствие). Цель,
+неприменимая к raw-данным (отсутствует/нечисловая по ЕДИНОМУ примитиву `numeric_columns`
+singleton-правила), не восстанавливается — парная origin тоже. Повторный авто-выбор НЕ
+выполняется (спека §8.2; второго события выбора нет; singleton-правило и исключение
+зарегистрированных производных сохранены). `RestoreResponse.target_column_source` — аддитивно
+(N-3: старый клиент поле игнорирует). Raw-семантика/historical-validity — AUDIT-8.
+
+### 17.4. Приёмка и границы
+
+- RED-протокол: `scripts/prograudit1a_red_protocol.txt` — 32 FAILED / 4 PASSED на базе
+  (14 ImportError редьюсера + 5 AttributeError origin + restore-группа KeyError/поведение);
+  4 PASSED — регресс-пины уже работающего поведения. Оракул `tests/api/test_progress_audit_1a.py`
+  — 36/36 GREEN (редьюсер/Наставник/run-метаданные/сброс-согласованность/restore-пара/полный
+  цикл auto→reset→manual/derived).
+- Регресс: адресные suite'ы (25a/25c/25d/H1/target_column/research_runs/trace_events/
+  node_status/mentor/panel/5b/6a/C/S/trace_hook/session_store/run_report/13a-c/16/17/18/23 +
+  integration target-column e2e) — без падений; postgres-сюита 18/18 (pgserver, включая новый
+  round-trip пары); tests/api+integration — 1682 passed / 19 failed / 18 skipped, все 19
+  воспроизводятся на чистой базе 09e312f stash-прогоном (окружение sandbox: production dispatch
+  моделей вне контура «Прогресса») — дельта к базлайну 0. Сборка: импорт `apps.api.main` OK,
+  py_compile OK, миграция 0003 идемпотентна на живой БД (26 утверждений, повторный прогон no-op).
+- Границы (вне задачи): raw restore-семантика и historical/validity — AUDIT-8; шаблоны фактов
+  отчёта (P18/auto-метка) — AUDIT-7B; payload/source ручного маршрута остаётся legacy
+  {target_column} (PROGR-25-A, читается как user) — изменение формы корпуса не входило.

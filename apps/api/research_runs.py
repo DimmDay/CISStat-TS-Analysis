@@ -142,6 +142,7 @@ from typing import Any, Iterable, Optional
 
 import pandas as pd
 
+from app.core.effective_target import effective_target
 from apps.api.trace_events import TraceEvent, mark_honest_time
 
 logger = logging.getLogger(__name__)
@@ -176,6 +177,15 @@ class ResearchRun:
     dataset_fingerprint: str = ""
     dataset_name: str = ""
     target_column: Optional[str] = None
+    # PROGR-AUDIT-1A (план §9, F03/P04): происхождение цели -- ВТОРАЯ
+    # половина СОГЛАСОВАННОЙ пары target/source. Нормализация -- единый
+    # effective_target редьюсер (app/core/effective_target.py): "auto" |
+    # "user" | None (None -- честное отсутствие: сброс, повреждённое
+    # происхождение, legacy-строка до миграции 0003; НЕ фабрикуется в
+    # "user"). Аддитивное Optional -- без подъёма версий (прецедент
+    # PROGR-24-ORIGIN-A/F1); None -- осознанное значение пары, поэтому
+    # поле пишется НАПРЯМУЮ (не COALESCE) -- parity target_column.
+    target_column_source: Optional[str] = None
     created_at: str = field(default_factory=_now_iso)
     last_active_at: str = field(default_factory=_now_iso)
     status: str = "active"
@@ -198,6 +208,11 @@ class ResearchRun:
             "dataset_fingerprint": self.dataset_fingerprint,
             "dataset_name": self.dataset_name,
             "target_column": self.target_column,
+            # PROGR-AUDIT-1A: вторая половина пары цели -- всегда в
+            # словаре (None -- осознанное значение, parity target_column;
+            # не «незаполняемое поле отсутствует» -- это не контекстные
+            # метаданные 6A, а целевая пара).
+            "target_column_source": self.target_column_source,
             "created_at": self.created_at,
             "last_active_at": self.last_active_at,
             "status": self.status,
@@ -220,6 +235,13 @@ class ResearchRun:
             dataset_fingerprint=str(raw.get("dataset_fingerprint") or ""),
             dataset_name=str(raw.get("dataset_name") or ""),
             target_column=raw.get("target_column"),
+            # PROGR-AUDIT-1A: пара цели; мусорные типы -> честное
+            # отсутствие (щит C-CERT).
+            target_column_source=(
+                str(raw["target_column_source"])
+                if isinstance(raw.get("target_column_source"), str)
+                else None
+            ),
             created_at=str(raw.get("created_at") or _now_iso()),
             last_active_at=str(raw.get("last_active_at") or _now_iso()),
             status=str(raw.get("status") or "active"),
@@ -569,8 +591,21 @@ MIGRATION_STATEMENTS_0002: tuple[str, ...] = (
     "CREATE INDEX IF NOT EXISTS idx_run_commit_receipts_run ON run_commit_receipts (run_id)",
 )
 
+# AUDIT-1A (план §9): происхождение цели -- аддитивная миграция 0003.
+#   target_column_source -- вторая половина согласованной пары
+#   target/source run-метаданных (F03/P04: restore терял origin; origin
+#   не существовал на уровне запуска). NULL -- честное отсутствие:
+#   сброс, повреждённое происхождение, legacy-строка (§3.7; не
+#   фабрикуется в "user"). Пишется напрямую (None осознанное значение
+#   пары), parity target_column. Файл-дубль ops-контура:
+#   apps/api/migrations/0003_audit1a_target_source.sql.
+MIGRATION_STATEMENTS_0003: tuple[str, ...] = (
+    "ALTER TABLE research_runs ADD COLUMN IF NOT EXISTS target_column_source TEXT",
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
+    + MIGRATION_STATEMENTS_0003
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -578,6 +613,7 @@ MIGRATION_STATEMENTS: tuple[str, ...] = (
 MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("0001_research_runs.sql", MIGRATION_STATEMENTS_0001),
     ("0002_audit6a_atomic_ledger.sql", MIGRATION_STATEMENTS_0002),
+    ("0003_audit1a_target_source.sql", MIGRATION_STATEMENTS_0003),
 )
 
 
@@ -953,27 +989,31 @@ class PostgresResearchRunStore(ResearchRunStore):
 
     # Колонки SELECT/UPSERT runs (AUDIT-6A: аддитивные метаданные
     # контекста/ревизии -- durable с миграцией 0002, граница AUDIT-C).
+    # target_column_source -- миграция 0003 (AUDIT-1A): вторая половина
+    # пары цели; NULL -- честное отсутствие (сброс/повреждение/legacy).
     _RUN_COLUMNS = (
         "run_id, session_id, dataset_fingerprint, dataset_name, "
         "target_column, created_at, last_active_at, status, "
-        "context_id, data_revision, data_digest"
+        "context_id, data_revision, data_digest, target_column_source"
     )
 
     # COALESCE аддитивных полей (паритет _merge_run_additive Memory):
     # upsert без новых значений не стирает контекст/ревизию; целевые
     # поля (target_column и пр.) пишутся напрямую -- None там
-    # осознанное значение (сброс цели).
+    # осознанное значение (сброс цели). target_column_source -- та же
+    # целевая пара (AUDIT-1A): прямая запись, не COALESCE.
     _UPSERT_RUN_SQL = """
         INSERT INTO research_runs
             (run_id, session_id, dataset_fingerprint, dataset_name,
              target_column, created_at, last_active_at, status,
-             context_id, data_revision, data_digest)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+             context_id, data_revision, data_digest, target_column_source)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (run_id) DO UPDATE SET
             session_id = EXCLUDED.session_id,
             dataset_fingerprint = EXCLUDED.dataset_fingerprint,
             dataset_name = EXCLUDED.dataset_name,
             target_column = EXCLUDED.target_column,
+            target_column_source = EXCLUDED.target_column_source,
             created_at = EXCLUDED.created_at,
             last_active_at = EXCLUDED.last_active_at,
             status = EXCLUDED.status,
@@ -989,6 +1029,7 @@ class PostgresResearchRunStore(ResearchRunStore):
             run.dataset_name, run.target_column,
             _ts_to_db(run.created_at), _ts_to_db(run.last_active_at),
             run.status, run.context_id, run.data_revision, run.data_digest,
+            run.target_column_source,
         )
 
     def upsert_run(self, run: ResearchRun) -> None:
@@ -1046,6 +1087,11 @@ class PostgresResearchRunStore(ResearchRunStore):
             dataset_fingerprint=str(row[2] or ""),
             dataset_name=str(row[3] or ""),
             target_column=row[4],
+            # AUDIT-1A (миграция 0003): вторая половина пары цели;
+            # NULL legacy -- честное отсутствие (щит C-CERT).
+            target_column_source=(
+                row[11] if row[11] is None else str(row[11])
+            ),
             created_at=_ts_from_db(row[5]),
             last_active_at=_ts_from_db(row[6]),
             status=str(row[7] or "active"),
@@ -1543,20 +1589,25 @@ def record_run_event(session: Any, event: TraceEvent) -> None:
             event = replace(event, run_id=run_id)
         store = get_research_run_store()
         run, expected_context = _mirror_run_base(store, session, run_id)
-        if event.event_type == "target_column_changed":
-            raw_target = event.payload.get("target_column")
-            run = replace(run, target_column=str(raw_target) if raw_target else None)
-        elif event.event_type == "target_column_cleared":
-            # PROGR-AUDIT-H1 (горячая дорожка F02, контракт
-            # docs/progress_audit_contract.md §3.1 п.6): сброс цели
-            # обнуляет run.target_column ТОЙ ЖЕ точкой (раньше
-            # run-метаданные не обновлялись вовсе -- половина P03:
-            # restore/потребители слоя 2 утверждали выбор, которого
-            # больше нет). Тип события сам есть факт сброса;
-            # target_column_source в run-метаданных не существует
-            # (происхождение -- уровень сессии, там сброс в
-            # convert-types).
-            run = replace(run, target_column=None)
+        if event.event_type in ("target_column_changed", "target_column_cleared"):
+            # PROGR-AUDIT-1A (план §9 п.2, контракт v0.7-1A): нормализация
+            # пары (target, origin) -- ЕДИНЫЙ effective_target редьюсер
+            # (app/core/effective_target.py), своя реализация снята.
+            # Раньше: str(raw_target) if raw_target else None -- мусорный
+            # нестроковый payload фабриковал цель ("123"), origin в
+            # run-метаданных не существовал (F03). Семантика редьюсера:
+            # выбор -- непустой строковый target; сброс -- cleared или
+            # пустая строка legacy-формы (канон PROGR-15-B); мусор -- не
+            # факт (метаданные не трогаются). resolved различает «событие
+            # без факта цели» (не трогать хранимое) от «факта сброса»
+            # (очистить) -- честный инкрементальный mirror.
+            state = effective_target((event,))
+            if state.resolved:
+                run = replace(
+                    run,
+                    target_column=state.target,
+                    target_column_source=state.origin,
+                )
         # AUDIT-6A (граница AUDIT-C §14.5): durable метаданные контекста
         # запуска. Штамп envelope события приоритетен (контекст момента
         # сеяния, I3); иначе -- серверный контекст сессии.
