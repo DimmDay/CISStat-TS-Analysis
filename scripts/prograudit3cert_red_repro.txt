@@ -1,0 +1,46 @@
+=== PROGR-AUDIT-3-CERT: RED-воспроизведение СВОИХ оракулов на RED-базе 4289a83 ===
+Дата: 2026-10-13T06:41:41Z
+Объект аудита: реализация AUDIT-3 на 493e5b6; RED-база исполнителя: 4289a83 (HEAD = коммит PROGR-AUDIT-2B-CERT, до AUDIT-3)
+Метод: git worktree /home/z/my-project/c3cert-base @4289a83 + жёсткие ссылки node_modules (cp -al; прецедент 2B-CERT); оракулы сертификатора скопированы в worktree без изменений
+
+[1] Backend oracle: scripts/prograudit3cert_oracles.py -- 19 FAIL / 16 PASS (EXIT=1)
+    Форма RED: пооракульная (тип profile_requested на базе неизвестен: реестр/карта статуса/reason/шаблон отчёта отсутствуют;
+    H27-неретракт и легаси-границы контекстов отсутствуют -- last-wins ретрактит done; хук сеет profile_viewed)
+    FAIL-оракулы:
+      FAIL rg1_registry_request_and_legacy_types — AssertionError: 
+      FAIL rg2_evidence_levels — AssertionError: 
+      FAIL rg3_status_map_and_profile_types — KeyError: 'profile_requested'
+      FAIL rg4_reason_honesty — KeyError: 'profile_requested'
+      FAIL rg5_hook_routes_nine_get_requested — AssertionError: TraceRouteSpec(method='GET', path_template='/v1/session/dataset/eda-correlation', stage='eda', node_id='correlation', event_type='profile_viewed', preview_type=None, payload_keys=(), throttled=True, dedupe=False)
+      FAIL rg6_hook_never_seeds_viewed — AssertionError: 
+      FAIL rg8_report_template_honesty — AssertionError: 
+      FAIL cm3_get_from_pending_sets_running — AssertionError: 
+      FAIL cm5_h27_pending_map_does_not_retract_done — AssertionError: 
+      FAIL cm7_h28_get_in_new_context_reopens — AssertionError: 
+      FAIL cm10_legacy_done_vs_stamped_pending — AssertionError: 
+      FAIL cm12_stamped_done_vs_legacy_pending — AssertionError: 
+      FAIL cm16_i10_protected_event_touch_honest — AssertionError: 
+      FAIL cm17_chronology_mixed_universes — AssertionError: 
+      FAIL e1_get_seeds_profile_requested_ih — AssertionError: 
+      FAIL e2_done_then_get_keeps_done_distribution — AssertionError: 
+      FAIL e3_h27_full_pending_map_v2_keeps_done — AssertionError: 
+      FAIL e5_throttle_window_own_nodes — AssertionError: 
+      FAIL e6_report_renders_request_honestly — AssertionError: 
+    PASS-контролы (обязаны быть зелёными на базе -- семантика базы): rg7 (env-троттлинг), cm1/cm2/cm4 (unknown-тип игнорируется/interim H1), cm6/cm8/cm9 (last-wins базы), cm11/cm13 (легаси-границы/interim), cm14/cm15 (периметр/честность понижений), cm18 (фантомы), vl1/vl2/vl3 (5B-validity базы), e4 (H28 через last-wins без защиты)
+
+[2] UI oracle: packages/ui/components/prograudit3cert_eda_seed_freshness.test.tsx -- 5 FAIL / 1 PASS (EXIT=1)
+    Форма RED: поведенческая (компонент на базе существует: seed из плоской карты без validity/полноты, best-effort якорь при отказе, сброс/seed только по datasetKey, разрушительная карта при отказе seed)
+          ✕ C1: сеются только current-done; stale/unknown не воскрешаются; расхождение якоря -- честная немедленная доставка (4161 ms)
+          ✕ C2: отказ seed удерживает; клик-ретрай при отказе снова удерживает; восстановление -- объединённый снапшот (371 ms)
+          ✕ C3: деградация проекции (session_tail, тело с done-фактами) удерживает отчёт и после клик-ретрая (804 ms)
+          ✕ C4: H28 -- смена цели Flow->Stock при том же datasetId: новая вселенная, просмотры не переносятся (4176 ms)
+          ✕ C5: якорь переживает успешный seed (нет повторной поставки); новый просмотр доставляется с сеяным done (358 ms)
+          ✓ C6: легаси-фолбэк (плоский node_statuses) + гейт гонки первого seed'а (ровно seed+биндинг /trace) (64 ms)
+
+    Ключевые формы:
+        ● PROGR-AUDIT-3-CERT: EDA seed/full projection, удержание, вселенная по цели › C2: отказ seed удерживает; клик-ретрай при отказе снова удерживает; восстановление -- объединённый снапшот
+      
+          expect(received).toBe(expected) // Object.is equality
+      
+
+ИТОГО RED: 24 оракула сертификатора красны на 4289a83 (backend 19 + UI 5), 17 контролов зелёны -- RED честный, не общий сбой харнесса (харнесс один и тот же: на HEAD 35/35 и 6/6 GREEN).

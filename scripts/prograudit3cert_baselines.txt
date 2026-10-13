@@ -1,0 +1,36 @@
+PROGR-AUDIT-3-CERT — независимая верификация базлайнов и полный регресс (HEAD 493e5b6, объект аудита не изменялся)
+Дата: 2026-10-13; среда: python 3.12.15 (/home/z/.venv), node v24.21.0, jest 30.4.1; песочница: prophet 1.4.0 / statsforecast 2.1.1 / arch / ruptures / pandera / PyWavelets / statsmodels / pgserver + psycopg установлены; requirements-neural (lstm/nbeats/nhits/tft/deepar) НЕ установлены (документированный средовой класс «без neural-группы»).
+
+[1] Базлайны исполнителя на HEAD (воспроизведение 1:1 с журналом PROGR-AUDIT-3)
+  * tests/api/test_progress_audit_3.py: 25 passed / 0 failed (журнал: 25/25) — 1:1
+  * packages/ui/components/prograudit3_eda_seed_freshness.test.tsx: 5 passed / 0 failed (журнал: 5/5) — 1:1
+
+[2] Оракулы сертификатора на HEAD (GREEN до RED-раунда)
+  * scripts/prograudit3cert_oracles.py: 35/35 PASS, EXIT 0 (протокол prograudit3cert_oracles_results.txt)
+  * packages/ui/components/prograudit3cert_eda_seed_freshness.test.tsx: 7/7 (C1–C7; после волны 2 эволюции — сценарий C7)
+
+[3] Адресный python-контур «Прогресса» + потребители (30 файлов: 3/2a/1a/4/5b/6a/C/S/H1, defects_progr13/13a/13b/13c/16/17/18/23/25a/25c/25d, panel, trace_hook, node_status_engine, mentor_rules, run_report, trace_events, admin_progress_api, admin_analytics, research_runs, session_store; env -u DATABASE_URL CISSTAT_RUNS_BACKEND=memory)
+  * 967 passed / 17 skipped / 0 failed (журнал AUDIT-3: 967/17/0) — 1:1
+
+[4] Полный tests/api
+  * наивный прогон (исключены только 4 model_* файла): 18 failed / 1729 passed / 18 skipped — ВСЕ 18 воспроизводятся на НЕИЗМЕНЁННОМ HEAD (продукт md5 == HEAD побайтово после кампании; git status чист) => средовой класс песочницы, не дельта сертификации; состав: test_forecasting_session.py ×16, test_models_backtest_neural_capacity.py ×1, test_models_candidates.py ×1 (первопричина — KeyError 'forecast_id': создание прогноза недоступно без neural-группы/полного modeling-runtime — документированный класс «production dispatch нейромоделей без neural-группы»)
+  * с исключением средовых файлов (7: model_execution, modeling_workflow, modeling_tuning, modeling_selection, forecasting_session, models_backtest_neural_capacity, models_candidates): 1685 passed / 0 failed / 18 skipped (журнал AUDIT-3: 1685/0/18 при исключении «4 файлов средового модельного класса») — АРИФМЕТИКА ЗАМКНУЛАСЬ 1:1
+
+[5] tests/integration: 3 passed / 0 failed (журнал: 3) — 1:1
+
+[6] Полный jest
+  * финальные прогоны (после укрепления харнесса сертификатора): 167 сюит / 1995 тестов / 0 failed — ДВА ПРОГОНА ПОДРЯД
+  * арифметика с журналом: 1995 = 1988 (журнал AUDIT-3) + 7 (мой cert-файл) — ЗАМКНУЛАСЬ по тестам
+  * расхождение счётчика сюит: 167 = 166 (без моего файла) vs журнальные 165 — +1 к журналу при точной схожести тестов; зафиксировано честно (влияния на вердикт нет)
+  * класс флака (до укрепления, 3 прогона из 6 с единичным падением): UI-оракулы EDA под параллельной нагрузкой полного прогона — у исполнителя S4 waitForPosts(3) получил 2 поста за окно 4000 мс (prograudit3_eda_seed_freshness.test.tsx), у сертификатора — аналогичное окно; в изоляции обе сюиты стабильны; продукт не менялся. Харнесс СЕРТИФИКАТОРА укреплён (окна 9000 мс) — после укрепления 2/2 полных прогона зелёные. Файл исполнителя НЕ тронут (вне периметра сертификации) — рекомендация F-3C2.
+
+[7] Сборка/типизация
+  * tsc --noEmit apps/embedded: EXIT 0
+  * tsc --noEmit apps/standalone: EXIT 0 (средовой класс TS2882 globals.css из журнала в этой песочнице не воспроизводится — среда полна)
+  * импорт apps.api.main: OK (env -u DATABASE_URL, CISSTAT_RUNS_BACKEND=memory)
+
+[8] Целостность продукта после всех раундов
+  * app/core/node_status.py md5 a7fc85ebb32b7fb4ae01e3193c95d212 == HEAD
+  * packages/ui/components/TsAnalysisEDA.tsx md5 414dd421e669c4f3d85c4bb86a490760 == HEAD
+  * git status: только untracked артефакты аудита; commit/push отсутствуют (AGENTS.md)
+  * инцидент протокола (честная фиксация): сбой сессии посреди фазы B кампании оставил мутанта U в рабочем дереве — восстановлено байт-в-байт из бэкапа кампании (md5 414dd421… == HEAD), фаза B перезапущена целиком

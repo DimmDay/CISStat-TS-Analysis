@@ -1,0 +1,42 @@
+=== PROGR-AUDIT-3-CERT: оракулы сертификатора на СВОИХ данных ===
+Объект: реализация AUDIT-3 (HEAD 493e5b6b133d)
+Дата: 2026-10-13T07:40:27+00:00
+Корпус: узлы ih_analysis/distribution/structural/stationarity/seasonality/model_matrix + validation/uniqueness; контексты c3c-1111-aaaaaaaa/c3c-2222-bbbbbbbb; RUN-C3CERT
+
+PASS rg1_registry_request_and_legacy_types
+PASS rg2_evidence_levels
+PASS rg3_status_map_and_profile_types
+PASS rg4_reason_honesty
+PASS rg5_hook_routes_nine_get_requested
+PASS rg6_hook_never_seeds_viewed
+PASS rg7_throttle_env_semantics
+PASS rg8_report_template_honesty
+PASS cm1_p25_get_keeps_done_and_idempotent
+PASS cm2_legacy_viewed_keeps_done_same_context
+PASS cm3_get_from_pending_sets_running
+PASS cm4_warning_error_skipped_protected
+PASS cm5_h27_pending_map_does_not_retract_done
+PASS cm6_h27_honesty_running_to_pending_allowed
+PASS cm7_h28_get_in_new_context_reopens
+PASS cm8_h28_pending_in_new_context_reopens
+PASS cm9_h28_done_upgrade_updates_source
+PASS cm10_legacy_done_vs_stamped_pending
+PASS cm11_legacy_done_vs_stamped_get
+PASS cm12_stamped_done_vs_legacy_pending
+PASS cm13_legacy_corpus_interim_h1_kept
+PASS cm14_perimeter_validation_keeps_last_wins
+PASS cm15_h27_protection_only_for_done
+PASS cm16_i10_protected_event_touch_honest
+PASS cm17_chronology_mixed_universes
+PASS cm18_phantom_events_ignored
+PASS vl1_current_after_context_shift
+PASS vl2_legacy_fact_unknown_validity
+PASS vl3_done_kept_after_get_stays_current
+PASS e1_get_seeds_profile_requested_ih
+PASS e2_done_then_get_keeps_done_distribution
+PASS e3_h27_full_pending_map_v2_keeps_done
+PASS e4_h28_target_shift_validity_and_reopen
+PASS e5_throttle_window_own_nodes
+PASS e6_report_renders_request_honestly
+
+ИТОГО: 35/35 PASS, 0 FAIL; EXIT 0

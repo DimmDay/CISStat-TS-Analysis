@@ -1,0 +1,36 @@
+PROGR-AUDIT-3-CERT — мутационная кампания СВОИХ мутантов (фаза: A)
+Цель A: app/core/node_status.py; md5: a7fc85ebb32b7fb4ae01e3193c95d212
+Цель B: packages/ui/components/TsAnalysisEDA.tsx; md5: 414dd421e669c4f3d85c4bb86a490760
+Фаза A каналы: oracle = prograudit3cert_oracles.py (35), repo = test_progress_audit_3.py (25)
+Фаза B каналы: oracle = prograudit3cert_eda_seed_freshness.test.tsx (6), repo = prograudit3_eda_seed_freshness.test.tsx (5), один вызов jest
+(фазы выполнялись раздельно: A, затем B; между ними -- волна 2 эволюции UI-оракулов: сценарий C7 -- убийца SURVIVED-мутанта U7 первой волны; инцидент: сбой сессии посреди фазы B оставил мутанта в рабочем дереве -- восстановлено байт-в-байт из бэкапа кампании, md5 == HEAD)
+
+── Фаза A: node_status.py ──
+B0: SURVIVED (контроль: харнесс достоверен) — КОНТРОЛЬ no-op: комментарий не меняет поведение
+B1: KILLED-BOTH — контекст-гейт снят: защита ГЛОБАЛЬНАЯ (регресс к interim H1 -- H28 не reopen, §21.2)
+B2: KILLED-BOTH — unknown-контекст ХРАНИМОГО факта утверждает смену: легаси-done ретрактится stamped-картой (§21.2)
+B3: KILLED-ORACLE-ONLY (repo-канал слеп) — unknown-контекст НОВОГО события утверждает смену: stamped-done ретрактится легаси-картой (§21.2)
+B4: KILLED-BOTH — H27-неретракт снят: рутинный pending стирает просмотренный done (§21.3)
+B5: KILLED-BOTH — периметр H27 расширен на все *_status: карты Валидации теряют last-wins (§21.3)
+B6: KILLED-BOTH — profile_viewed выпал из защищённых типов: легаси-GET понижает done (§21.2)
+B7: KILLED-BOTH — карта статуса: запрос -- done вместо running (ложное «просмотрено», §21.1)
+B8: KILLED-BOTH — защита только done: warning/error/skipped понижаются GET-ом (§21.2)
+B9: KILLED-BOTH — инверсия равенства контекстов: в СВОЁМ контексте last-wins, на смене -- защита (§21.2)
+
+── Фаза B: TsAnalysisEDA.tsx ──
+U0: SURVIVED (контроль: харнесс достоверен) — КОНТРОЛЬ no-op: комментарий не меняет поведение
+U1: KILLED-BOTH — seedOk при !response.ok: отказ /trace считается состоявшимся seed (§21.4)
+U2: KILLED-BOTH — гейт projection_complete снят: session_tail выдаётся за полную историю (§21.4)
+U3: KILLED-BOTH — validity-фильтр снят: stale/unknown воскрешаются просмотрами (H28, §21.4)
+U4: KILLED-BOTH — удержание снято: разрушительная карта уходит при несостоявшемся seed (H27, §21.4)
+U5: KILLED-ORACLE-ONLY (repo-канал слеп) — ретрай seed по новому просмотру снят: удержание навсегда (§21.4)
+U6: KILLED-BOTH — сброс множества просмотров без цели: H28-перенос прежней вселенной (§21.5)
+U7: KILLED-ORACLE-ONLY (repo-канал слеп) — universeKey без цели: дедуп/биндинг прежней вселенной (I3, §21.5)
+U8: KILLED-ORACLE-ONLY (repo-канал слеп) — гейт гонки первого seed снят: преждевременный seed до разрешения цели (§21.5)
+U9: KILLED-BOTH — seed-фильтр инвертирован: сеются НЕ-done факты (§21.4)
+
+md5 цели A после кампании: a7fc85ebb32b7fb4ae01e3193c95d212
+md5 цели B после кампании: 414dd421e669c4f3d85c4bb86a490760
+ИТОГО: kill-мутантов убито 9/9 (KILLED-BOTH 6, KILLED-ORACLE-ONLY 3, KILLED-REPO-ONLY 0), SURVIVED 0; контроли B0/U0: HARNESS-FAIL/SURVIVED
+
+СВОДКА ПО ОБЕИМ ФАЗАМ: kill-мутантов 18/18 убиты (KILLED-BOTH 14: B1/B2/B4/B5/B6/B7/B8/B9/U1/U2/U3/U4/U6/U9; KILLED-ORACLE-ONLY 4: B3, U5, U7, U8 -- repo-канал слеп, находки F-3C1), SURVIVED 0; контроли B0/U0 SURVIVED; md5 целей после кампании == HEAD побайтово.
