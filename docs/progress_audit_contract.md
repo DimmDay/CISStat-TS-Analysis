@@ -1737,3 +1737,141 @@ required-режим хранилища (P21/F14) — AUDIT-6C; live PostgreSQL �
 вне периметра; H29/H30 (эксплуатация) — вне задачи; Redis-доставка не
 используется как носитель обязательств (п.4). Сертификация AUDIT-6B — независимым
 раундом.
+
+## 26. Аддендум v1.6-6C — backend, health и операционные логи (PROGR-AUDIT-6C) — **УТВЕРЖДЕНО-6C**
+
+База: main@8b309eb (коммит PROGR-AUDIT-6B). План §18; spec §7/§8.3/§8.4,
+F14/F15, P21/P22, H29/H30; Донастройка_2 п.2 (импортируемость apps.api.main).
+
+### 26.1. Режимы хранения required/advisory — УТВЕРЖДЕНО (п.1)
+
+`CISSTAT_STORAGE_MODE` = `required` | `advisory` (default). Неизвестное
+значение — fail fast (RuntimeError на фабрике: опечатка не может тихо означать
+advisory). При явном Postgres (CISSTAT_RUNS_BACKEND=postgres либо DATABASE_URL):
+
+- **required**: неверная конфигурация / отсутствие драйвера / несовместимая
+  миграция / недоступная БД (startup readiness-probe) — fail-closed
+  RuntimeError; тихий Memory fallback ЗАПРЕЩЁН (P21/F14: «required не
+  деградирует незаметно»). Startup API (lifespan) в required вызывает фабрики
+  ДО обслуживания — ошибка роняет старт (оркестратор видит неработающий
+  контейнер вместо тихой Memory-подмены; философия DEPLOY-1).
+- **advisory** (dev): fallback в Memory допустим, но НЕ тихий: фабрика
+  фиксирует configured/effective/degraded + безопасную причину
+  (apps/api/storage_diagnostics.py: record_backend_selected /
+  record_backend_fallback; snapshot содержит fallback_events); error-лог без
+  DSN/секрета. CISSTAT_RUNS_BACKEND=memory при заданном DATABASE_URL —
+  ВЫБРАННЫЙ memory (документированный приоритет), observable как
+  configured=memory, degraded=False.
+- Readiness-probe фабрики выполняется ТОЛЬКО в required: advisory сохраняет
+  сертифицированный ленивый контракт конструирования Postgres (пин
+  test_database_url_selects_postgres_lazily); недоступность БД в advisory
+  наблюдаема через /health/ops readiness. Симметричный контракт — для Redis
+  (SessionStore) при REDIS_URL/CISSTAT_SESSION_BACKEND=redis.
+- Состояние фабрик — операционное (в процессе, не durable-факты): после
+  рестарта решение пересматривается; научные факты оно не заменяет.
+
+### 26.2. Драйвер, сборка, деградация Modeling dispatch — УТВЕРЖДЕНО (п.2)
+
+- `psycopg[binary]>=3.1.0` объявлен в apps/api/requirements.txt (раньше
+  драйвер НЕ был объявлен — F14/H29: production-долговечность держалась на
+  недоказанной установке). Ленивый импорт сохранён (dev без БД не требует).
+- Dockerfile: build-проверка `import psycopg` + ПОЛНЫЙ импорт
+  `apps.api.main` с проверкой маршрутов /health и /health/ops («Build
+  проверяет нужный драйвер и полный API startup»). Проверки исполнимости
+  каждой модели на сборке (DEPLOY-1-гейт) не тронуты.
+- **Деградация Modeling dispatch** (Донастройка_2 п.2): import-time
+  RuntimeError «Реестр готовности моделей расходится…» заменён паритетом
+  dispatch<->реестра ПО СТРОИТЕЛЬСТВУ: записи dispatch, снятые критерием
+  доступности реестра (find_spec), не регистрируются — в облегчённой среде
+  import apps.api.main работает, деградация честна (candidates помечает
+  blocked; state несёт dropped_by_registry). Fail-closed перенесён в точку
+  исполнения: models_dispatch_state() (dynamic check missing/unexpected) в
+  начале _run_backtest_with_series — дрейф даёт 503 с честным состоянием,
+  фиктивные метрики невозможны (свойство прежнего RuntimeError сохранено).
+  Versioned-обновление пина: import-time raise → execution-time 503 (план
+  §20.2.6; оракулы дефектов не переписывались).
+
+### 26.3. Health: liveness / operational — УТВЕРЖДЕНО (п.3)
+
+- `GET /health` — liveness, тело {"status": "ok"} СОХРАНЕНО (Render
+  healthCheckPath; пин теста); от состояния БД не зависит.
+- `GET /health/ops` — operational diagnostics: status ok|degraded;
+  generated_at; storage_mode; runs_backend/session_backend
+  {configured, effective, degraded, reason}; fallback_events; readiness
+  (runs/session — probe_store по требованию, peek-семантика: health НЕ
+  инициализирует фабрики); delivery {backlog по состояниям,
+  oldest_pending_age_seconds, projection_lag}; worker (статус из 26.5);
+  models_dispatch (из 26.2).
+- **projection lag** — определение: committed-обязательства проекции слоя 1,
+  ещё не доставленные в навигационный слой = pending + failed outbox (дельта
+  ledger↔проекция, N фактов; водяной знак самой проекции — AUDIT-5B).
+- **Граница секретов**: /health/ops НЕ выдаёт URL БД, tokens, сырые exception
+  payload'ы. Причины в health — safe_health_error (только класс исключения:
+  сообщения psycopg/redis содержат голые hostname даже вне URL-схемы);
+  содержательная диагностика — в operational-логи (safe_error: URL/DSN
+  целиком, password=/token=/Bearer — редакция, клип 300).
+- degraded = degraded любого backend ИЛИ readiness не ok ИЛИ
+  worker consecutive_errors>0 ИЛИ models_dispatch not ready.
+
+### 26.4. Операционные логи — УТВЕРЖДЕНО (п.4)
+
+- Отказ advisory-зеркала хука (P22/P09): лог несёт producer-маркер
+  trace_hook_mirror + advisory-ссылку v1.5-6B §25.1 (гарантия не заявляется),
+  event_id/run_id/session_id (что доступно на шаге отказа), маршрут и
+  безопасную причину; сырой traceback в лог не попадает.
+- Отказ задачи доставки (worker 6B): лог несёт operation_id, run_id, kind,
+  номер попытки и безопасную причину (exc_info заменён на safe_error).
+- Отказ фабрики (advisory fallback): лог несёт компонент, configured/effective
+  и безопасную причину.
+- Научные факты НЕ заменяются логами: advisory-путь остаётся честно
+  best-effort, потерянный факт не «восстанавливается» записью журнала;
+  sampling на обязательные факты не распространяется (spec §8.4).
+
+### 26.5. In-process worker восстановления — УТВЕРЖДЕНО (п.5; остаток 6B)
+
+apps/api/delivery_worker.py: DeliveryWorker (daemon-thread) + идемпотентный
+singleton (start_delivery_worker/stop_delivery_worker/
+delivery_worker_status/reset_delivery_worker_for_testing). Авто-старт в
+lifespan; env: CISSTAT_DELIVERY_WORKER_ENABLED («0» — выключен; default вкл),
+CISSTAT_DELIVERY_WORKER_INTERVAL (сек; default 60; «0» — выключен; <5 — клип
+к 5; мусор — дефолт + warning). Тот же код восстановления, что runner 6B
+(run_delivery_recovery + sweep_orphaned_checkpoints); первый цикл — сразу
+после старта (crash-recovery не ждёт интервала). Устойчивость: сбой цикла
+растит consecutive_errors (последний — safe_error в status), успешный цикл
+сбрасывает; поток продолжается по расписанию. Ручной runner 6B сохраняется
+(контролируемое восстановление после deploy — п.7 §17).
+
+### 26.6. Приёмка, H29/H30, границы — УТВЕРЖДЕНО
+
+Оракул tests/api/test_progress_audit_6c.py (42 теста, 9 классов; протокол
+scripts/prograudit6c_red_protocol.txt — на базе 8b309eb: 37 FAIL / 1 PASS-контрол
+[liveness /health] / 4 skip). GREEN: Memory 38/38; живой PostgreSQL (pgserver,
+scripts/prograudit6c_pg_runner.sh) 42/42 — required-режим на живой БД, probe,
+backlog age (паритет), worker на живом PG (план §18 GREEN «фактическая
+долговечность наблюдаема»); FK-гейт миграции 0005 честно отражён в тестах
+(обязательство ссылается на существующий run). Сборка: py_compile + полный
+импорт apps.api.main (Docker-эквивалент команды) + смоук /health/ops через
+lifespan + смоук fail-closed startup (required + недоступная БД → RuntimeError
+до обслуживания). Регресс: полный tests/api — 1915 passed / 19 failed
+(ДЕЛЬТА К БАЗЛАЙНУ 0, имена 1:1 с протоколом 6B: forecasting_session ×16,
+modeling_workflow, models_candidates, models_backtest_neural_capacity —
+средовой класс отсутствующей neural-группы); tests/integration+unit — 1563
+passed / 10 failed + 3 errors (ДЕЛЬТА 0, идентично чистой базе); адресные
+серии (docker_image_layout, research_runs+postgres, session_store,
+trace_hook, internal_backtest/candidates; аудит-серия 0-S-C-6A-6B-2A-5B-1A-
+3-4-7A-7B-8-H1; PROGR-13/16/17/18/23/25a/c/d + panel + mentor + report +
+admin) — без регресса.
+
+**H29/H30** (доступ к deployment-логам/БД Render, живая браузерная гонка
+P22) — read-only доступ в этой сессии НЕ предоставлен; остаются НЕЗАКРЫТЫМИ
+operational acceptance-пунктами (без «production certified»): проверка —
+отдельно, при предоставленном доступе (перечень данных — план §18 п.5).
+Выкат на Render/Vercel в разрешение реализовать задачу не входит.
+
+Границы (вне задачи): перечисленные advisory-пути (хук-зеркало, легаси-карты,
+коррекции DataFrame, Наставник) остаются advisory — их миграция в required —
+отдельные решения; retention/sampling-политики логов — операционные решения
+эксплуатации; пул соединений Postgres — зрелая оптимизация; health-проба
+Redis создаёт отдельное коротко-таймаутное соединение (пул прикладных
+операций не переиспользует). Сертификация AUDIT-6C — независимым раундом;
+следующая по нарезке плана — AUDIT-CERT (§19).

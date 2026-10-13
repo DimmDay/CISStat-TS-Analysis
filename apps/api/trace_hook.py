@@ -68,6 +68,9 @@ from apps.api.session_store import (
     get_session_store,
 )
 from apps.api.trace_events import make_trace_event, stamp_envelope
+# AUDIT-6C: безопасная причина отказа в operational-логах (без DSN/
+# секретов); модуль без импортов apps/api -- цикла нет.
+from apps.api.storage_diagnostics import safe_error
 
 logger = logging.getLogger(__name__)
 
@@ -866,6 +869,12 @@ class TraceHookMiddleware:
         status = status_holder.get("status")
         if status is None or status >= 400:
             return
+        # AUDIT-6C (план §18 п.4): идентификаторы связываются ДО защитного
+        # контура -- отказ на любом шаге логируется с event/run/session
+        # ids (что доступно) и БЕЗОПАСНОЙ причиной (safe_error: без DSN/
+        # секретов); сырой traceback в operational-лог не попадает.
+        event = None
+        session_id: str | None = None
         try:
             session_id = self._resolve_session_id(scope, response_headers)
             if not session_id:
@@ -891,10 +900,22 @@ class TraceHookMiddleware:
                 # и не заявляется; послеответная доставка остаётся
                 # честно best-effort.
                 record_run_event(session, event)
-        except Exception:  # pragma: no cover - защитный контур рантайма
+        except Exception as exc:  # pragma: no cover - защитный контур рантайма
+            # Operational-лог (AUDIT-6C §18 п.4): producer/kind-маркер,
+            # доступные идентификаторы (event/run/session), маршрут и
+            # безопасная причина. Научный факт при отказе НЕ заменяется
+            # логом: advisory-зеркало остаётся честно best-effort
+            # (v1.5-6B §25.1), потерянный факт не «восстанавливается»
+            # записью в журнале.
             logger.warning(
-                "Trace hook: событие %s %s не записано (сбой хранилища)",
-                spec.method, spec.path_template, exc_info=True,
+                "Trace hook: событие %s %s не записано "
+                "(producer=trace_hook_mirror, advisory по v1.5-6B §25.1; "
+                "event_id=%s run_id=%s session_id=%s; причина=%s)",
+                spec.method, spec.path_template,
+                getattr(event, "event_id", None),
+                getattr(event, "run_id", None),
+                session_id,
+                safe_error(exc),
             )
 
     @staticmethod

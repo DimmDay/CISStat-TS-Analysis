@@ -69,6 +69,16 @@ from apps.api.model_readiness import MODELING_STAGE_IDS
 # импортирует session_store (KNOWN_STAGES локальна -- решение PROGR-1),
 # цикла нет; проверка равенства STAGES -- тестом, не импортом.
 from apps.api.trace_events import TraceEvent
+# AUDIT-6C: режимы хранения (required/advisory), safe_error и операционный
+# snapshot фабрик (п.1/п.4 карточки §18).
+from apps.api.storage_diagnostics import (
+    COMPONENT_SESSION,
+    get_storage_mode,
+    record_backend_fallback,
+    record_backend_selected,
+    safe_error,
+    safe_health_error,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -892,6 +902,15 @@ class SessionStore(ABC):
         """Удалить сессию. Вернуть True если существовала, False иначе."""
         ...
 
+    # -- AUDIT-6C: readiness-проба (план §18 п.3) --
+
+    def readiness_probe(self) -> dict[str, Any]:  # pragma: no cover - контракт
+        """Дешёвая проба готовности хранилища сессий (по требованию из
+        /health/ops). Не-abstract: сторонние фейки наследуют дефолт.
+        Memory -- тривиально ok; Redis -- ping с коротким таймаутом.
+        Причина отказа -- safe_error (без URL/пароля)."""
+        return {"ok": True, "backend": "unknown"}
+
 
 # ────────────────────────────────────────────────────────────────────
 # MemorySessionStore
@@ -907,6 +926,10 @@ class MemorySessionStore(SessionStore):
 
     def __init__(self) -> None:
         self._sessions: dict[str, AnalysisSession] = {}
+
+    def readiness_probe(self) -> dict[str, Any]:
+        """AUDIT-6C: in-memory cache готов всегда (процесс жив)."""
+        return {"ok": True, "backend": "memory"}
 
     def get(self, session_id: str) -> Optional[AnalysisSession]:
         return self._sessions.get(session_id)
@@ -969,14 +992,23 @@ class RedisSessionStore(SessionStore):
 
     KEY_PREFIX = "cisstat:session:"
 
-    def __init__(self, client: Any, ttl_seconds: int = SESSION_TTL_SECONDS) -> None:
+    def __init__(
+        self,
+        client: Any,
+        ttl_seconds: int = SESSION_TTL_SECONDS,
+        url: Optional[str] = None,
+    ) -> None:
         """
         Args:
             client: redis.Redis ИЛИ fakeredis.FakeStrictRedis (для тестов).
             ttl_seconds: TTL на ключ сессии. Обновляется при каждом save().
+            url: AUDIT-6C -- исходный REDIS_URL (для readiness-пробы с
+                коротким таймаутом; опционально -- без него проба через
+                client.ping()).
         """
         self._client = client
         self._ttl = ttl_seconds
+        self._url = url
 
     @staticmethod
     def from_env() -> "RedisSessionStore":
@@ -997,7 +1029,48 @@ class RedisSessionStore(SessionStore):
                 "Set it to your Redis/Upstash connection string."
             )
         client = redis.Redis.from_url(url, decode_responses=True)
-        return RedisSessionStore(client=client)
+        return RedisSessionStore(client=client, url=url)
+
+    # -- AUDIT-6C: readiness-проба (план §18 п.3) --
+
+    # Проба с ограниченным connect timeout: /health/ops не должен висеть
+    # на недоступном Redis (TCP-таймаут по умолчанию -- минуты).
+    _PROBE_CONNECT_TIMEOUT_SECONDS = 3
+    _PROBE_SOCKET_TIMEOUT_SECONDS = 5
+
+    def readiness_probe(self) -> dict[str, Any]:
+        """Честная готовность Redis: PING. При наличии исходного URL
+        проба делает ОТДЕЛЬНОЕ коротко-таймаутное соединение (health не
+        переиспользует пул прикладных операций и не висит на недоступном
+        хосте). Причина отказа -- safe_error (без URL/пароля)."""
+        import time as _time
+
+        start = _time.monotonic()
+        try:
+            if self._url:
+                import redis as _redis
+
+                probe_client = _redis.Redis.from_url(
+                    self._url,
+                    decode_responses=True,
+                    socket_connect_timeout=self._PROBE_CONNECT_TIMEOUT_SECONDS,
+                    socket_timeout=self._PROBE_SOCKET_TIMEOUT_SECONDS,
+                )
+                probe_client.ping()
+            else:
+                self._client.ping()
+            return {
+                "ok": True,
+                "backend": "redis",
+                "latency_ms": round((_time.monotonic() - start) * 1000, 2),
+            }
+        except Exception as exc:
+            return {
+                "ok": False,
+                "backend": "redis",
+                "latency_ms": round((_time.monotonic() - start) * 1000, 2),
+                "error": safe_health_error(exc),
+            }
 
     def _key(self, session_id: str) -> str:
         return f"{self.KEY_PREFIX}{session_id}"
@@ -1102,6 +1175,15 @@ def get_session_store() -> SessionStore:
       - Если задан REDIS_URL или CISSTAT_SESSION_BACKEND=redis → RedisSessionStore
       - Иначе → MemorySessionStore (default для dev и тестов)
 
+    РЕЖИМЫ ХРАНЕНИЯ (AUDIT-6C, план §18 п.1; симметрично
+    get_research_run_store; CISSTAT_STORAGE_MODE):
+      - ``required``: Redis с неверной конфигурацией / недоступной БД
+        (startup probe) -- fail-closed RuntimeError, тихий Memory
+        fallback ЗАПРЕЩЁН;
+      - ``advisory`` (default): fallback в Memory допустим, но НЕ тихий
+        -- фиксируется configured/effective/degraded + безопасная
+        причина; состояние видно в /health/ops.
+
     Один раз созданный экземпляр переиспользуется во всех последующих
     вызовах (для Redis -- чтобы не открывать пул коннектов на каждый
     запрос). Тесты могут сбросить singleton через reset_session_store_for_testing().
@@ -1110,22 +1192,63 @@ def get_session_store() -> SessionStore:
     if _store is not None:
         return _store
 
+    mode = get_storage_mode()
     backend_explicit = os.environ.get("CISSTAT_SESSION_BACKEND", "").lower()
     redis_url = os.environ.get("REDIS_URL", "")
 
     if redis_url or backend_explicit == "redis":
+        # AUDIT-6C: выбор backend фиксируется ДО попытки (симметрично
+        # get_research_run_store) -- отказ инициализации виден в snapshot.
+        record_backend_selected(COMPONENT_SESSION, "redis", "initializing")
         try:
-            _store = RedisSessionStore.from_env()
+            candidate = RedisSessionStore.from_env()
+            if mode == "required":
+                # Fail-closed (P21/F14): недоступный Redis при required
+                # останавливает, а не подменяет durable cache памятью.
+                probe = candidate.readiness_probe()
+                if not probe.get("ok"):
+                    reason = probe.get("error") or "readiness probe failed"
+                    raise RuntimeError(
+                        "SessionStore: Redis backend required, "
+                        f"но недоступен (fail-closed, P21/F14): {reason}"
+                    )
+            _store = candidate
+            record_backend_selected(COMPONENT_SESSION, "redis", "redis")
             logger.info("SessionStore: RedisSessionStore initialized (REDIS_URL set)")
         except Exception as e:
+            reason = safe_error(e)
+            if mode == "required":
+                record_backend_selected(
+                    COMPONENT_SESSION, "redis", "unavailable",
+                    reason=reason, degraded=True,
+                )
+                raise RuntimeError(
+                    "SessionStore: Redis backend required, "
+                    f"но инициализация не удалась (fail-closed, P21/F14): "
+                    f"{reason}"
+                ) from e
             # Fallback на Memory если Redis недоступен на старте --
-            # лучше работать в degraded-режиме, чем упасть целиком.
-            # Логируем, чтобы было видно в мониторинге.
-            logger.error("SessionStore: Redis init failed (%s), falling back to Memory", e)
+            # допустим ТОЛЬКО в advisory-режиме и только с ЯВНЫМ
+            # effective backend (AUDIT-6C: «тихий» запрещён и здесь).
+            logger.error(
+                "SessionStore: Redis init failed (%s), ЯВНАЯ деградация "
+                "в Memory (advisory mode; состояние в /health/ops)", reason,
+            )
+            record_backend_fallback(
+                COMPONENT_SESSION, "redis", reason, effective="memory"
+            )
             _store = MemorySessionStore()
     else:
         _store = MemorySessionStore()
+        record_backend_selected(COMPONENT_SESSION, "auto", "memory")
 
+    return _store
+
+
+def peek_session_store() -> Optional[SessionStore]:
+    """Чтение singleton БЕЗ инициализации (AUDIT-6C, симметрично
+    peek_research_run_store): /health/ops не провоцирует создание
+    хранилища фактом запроса health. None -- ещё не вызывалась."""
     return _store
 
 

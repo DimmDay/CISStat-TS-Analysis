@@ -1,0 +1,101 @@
+PROGR-AUDIT-6C -- RED-протокол (честный RED на базе main@8b309eb)
+====================================================================
+
+База: origin/main = 8b309eb (коммит PROGR-AUDIT-6B), рабочее дерево
+чистое, код AUDIT-6C отсутствует (storage_diagnostics.py /
+delivery_worker.py не существуют; фабрики get_research_run_store /
+get_session_store деградируют в Memory тихо при любой ошибке
+инициализации Postgres/Redis (P21/F14); /health -- {"status": "ok"}
+без operational-диагностики; worker восстановления -- только внешний
+runner-скрипт 6B; models.py поднимает import-time RuntimeError
+«Реестр готовности моделей расходится» в облегчённой среде (spec §3.2,
+Донастройка_2 п.2); operational-логи фабрик/хука не несут ids и не
+редактируют секреты).
+
+Команда RED:
+  env -u DATABASE_URL -u REDIS_URL python -m pytest \
+    tests/api/test_progress_audit_6c.py -q --disable-warnings
+
+Результат RED: 37 failed / 1 passed / 4 skipped (pgserver-половина
+паритета без CISSTAT_TEST_PG_DSN -- честный skip; план §18 GREEN
+живой-Postgres проверки закрываются прогоном
+scripts/prograudit6c_pg_runner.sh после реализации).
+
+1 passed на базе -- пин УЖЕ существовавшего честного поведения
+(liveness /health возвращает ровно {"status": "ok"} -- совместимость
+Render healthCheckPath), он и остаётся зелёным после реализации
+(liveness не зависит от состояния БД).
+
+Полный перечень RED-падений оракула (37):
+
+tests/api/test_progress_audit_6c.py::TestStorageMode::test_required_constructor_failure_is_fail_closed
+tests/api/test_progress_audit_6c.py::TestStorageMode::test_required_unreachable_db_fails_closed
+tests/api/test_progress_audit_6c.py::TestStorageMode::test_required_missing_driver_fails_closed
+tests/api/test_progress_audit_6c.py::TestStorageMode::test_required_incompatible_migration_fails_closed
+tests/api/test_progress_audit_6c.py::TestStorageMode::test_advisory_postgres_failure_degrades_explicitly
+tests/api/test_progress_audit_6c.py::TestStorageMode::test_explicit_memory_is_visible_not_silent
+tests/api/test_progress_audit_6c.py::TestStorageMode::test_auto_without_config_is_memory
+tests/api/test_progress_audit_6c.py::TestStorageMode::test_invalid_storage_mode_fails_fast
+tests/api/test_progress_audit_6c.py::TestStorageMode::test_factory_fallback_log_has_no_secrets
+tests/api/test_progress_audit_6c.py::TestSessionStoreMode::test_required_redis_failure_fails_closed
+tests/api/test_progress_audit_6c.py::TestSessionStoreMode::test_advisory_redis_failure_degrades_explicitly
+tests/api/test_progress_audit_6c.py::TestSessionStoreMode::test_memory_default_is_not_degraded
+tests/api/test_progress_audit_6c.py::TestSafeError::test_redacts_urls_passwords_tokens
+tests/api/test_progress_audit_6c.py::TestSafeError::test_clips_length
+tests/api/test_progress_audit_6c.py::TestSafeError::test_non_exception_input
+tests/api/test_progress_audit_6c.py::TestReadinessProbe::test_memory_run_store_probe_ok
+tests/api/test_progress_audit_6c.py::TestReadinessProbe::test_memory_session_probe_ok
+tests/api/test_progress_audit_6c.py::TestReadinessProbe::test_postgres_probe_failure_is_safe
+tests/api/test_progress_audit_6c.py::TestReadinessProbe::test_backlog_age_seconds_memory
+tests/api/test_progress_audit_6c.py::TestOpsHealthEndpoint::test_ops_health_shape
+tests/api/test_progress_audit_6c.py::TestOpsHealthEndpoint::test_ops_health_no_secrets
+tests/api/test_progress_audit_6c.py::TestOpsHealthEndpoint::test_ops_health_reports_degraded_after_fallback
+tests/api/test_progress_audit_6c.py::TestOpsHealthEndpoint::test_ops_health_backlog_and_projection_lag_visible
+tests/api/test_progress_audit_6c.py::TestDeliveryWorker::test_run_once_delivers_pending_task
+tests/api/test_progress_audit_6c.py::TestDeliveryWorker::test_run_once_twice_idempotent
+tests/api/test_progress_audit_6c.py::TestDeliveryWorker::test_error_resilience_and_recovery
+tests/api/test_progress_audit_6c.py::TestDeliveryWorker::test_env_disable
+tests/api/test_progress_audit_6c.py::TestDeliveryWorker::test_env_interval_clamped
+tests/api/test_progress_audit_6c.py::TestDeliveryWorker::test_singleton_idempotent_and_stop
+tests/api/test_progress_audit_6c.py::TestDeliveryWorker::test_lifespan_starts_and_stops_worker
+tests/api/test_progress_audit_6c.py::TestDeliveryWorker::test_worker_in_ops_health
+tests/api/test_progress_audit_6c.py::TestModelsDispatchDegradation::test_full_env_dispatch_ready
+tests/api/test_progress_audit_6c.py::TestModelsDispatchDegradation::test_light_env_reload_imports_and_degrades_honestly
+tests/api/test_progress_audit_6c.py::TestModelsDispatchDegradation::test_execution_gate_fail_closed_on_divergence
+tests/api/test_progress_audit_6c.py::TestModelsDispatchDegradation::test_dispatch_state_in_ops_health
+tests/api/test_progress_audit_6c.py::TestOperationalLogs::test_hook_mirror_failure_log_carries_ids_and_safe_reason
+tests/api/test_progress_audit_6c.py::TestOperationalLogs::test_advisory_marker_in_hook_log
+
+Классы RED (сопоставление с планом §18):
+
+- TestStorageMode / TestSessionStoreMode (12) -- п.1 карточки: fail-closed
+  required-режима (неверная конфигурация, недоступная БД, отсутствие
+  драйвера, несовместимая миграция), advisory-деградация только с ЯВНЫМ
+  effective backend (configured/effective/degraded/безопасная причина),
+  invalid mode -> fail fast, operational-лог фабрики без секретов.
+- TestSafeError (3) -- п.4: безопасная причина отказа (редакция DSN/
+  паролей/tokens, клип длины).
+- TestReadinessProbe (5) -- п.3: storage readiness (Memory/Postgres,
+  живой PG -- skip до pgserver-прогона), backlog age (паритет Memory,
+  живой PG).
+- TestOpsHealthEndpoint (5) -- п.3: /health/ops (backend, readiness,
+  backlog/lag, degraded mode, worker, models dispatch), отсутствие
+  URL/секретов, liveness /health не тронут.
+- TestDeliveryWorker (8) -- остаток AUDIT-6B («in-process авто-старт и
+  health -- AUDIT-6C»): run_once доставка/идемпотентность, устойчивость
+  к сбоям, env-выключатели, singleton, lifespan API.
+- TestModelsDispatchDegradation (4) -- п.2 карточки + Донастройка_2 п.2:
+  импортируемость apps.api.main в облегчённой среде (reload с
+  отсутствующими heavy-зависимостями не падает), честная деградация
+  dispatch, fail-closed 503 в точке исполнения, state в health.
+- TestOperationalLogs (2) -- п.4: лог отказа advisory-зеркала несёт
+  event_id/run_id/session_id + безопасную причину + маркер advisory
+  (P22/P09), без сырого трейса.
+- TestPostgresParity (3, skip без DSN) -- живой PG: required-режим,
+  probe, worker (закрывается pgserver-прогоном).
+
+Ожидаемая причина каждого RED -- отсутствие реализации (ImportError
+storage_diagnostics/delivery_worker, AttributeError отсутствующих
+методов/эндпоинтов, тихий Memory fallback фабрик, import-time
+RuntimeError models.py). Протокол сохранён как доказательство базы;
+assertions пинов дефектов (spec §9) не переписывались.

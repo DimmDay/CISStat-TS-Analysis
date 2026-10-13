@@ -49,6 +49,8 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, Optional
 
+from apps.api.storage_diagnostics import safe_error  # AUDIT-6C
+
 logger = logging.getLogger(__name__)
 
 # ── Реестр producers (п.1: явный перечень гарантий) ──────────────────
@@ -400,6 +402,13 @@ class DeliveryOutbox:
     def backlog(self) -> dict[str, int]:  # pragma: no cover
         raise NotImplementedError
 
+    def backlog_age_seconds(self, now: str) -> Optional[float]:  # pragma: no cover
+        """AUDIT-6C (план §18 п.3): возраст старейшего pending-
+        обязательства доставки (секунды) -- delivery backlog age для
+        /health/ops. None -- pending нет ЛИБО backend не даёт возраст
+        (честное неизвестное, не ноль)."""
+        return None
+
 
 class MemoryDeliveryOutbox(DeliveryOutbox):
     """Memory-реализация (паритет Postgres: дедуп по operation_id,
@@ -493,6 +502,23 @@ class MemoryDeliveryOutbox(DeliveryOutbox):
         for task in tasks:
             counts[task.state] = counts.get(task.state, 0) + 1
         return counts
+
+    def backlog_age_seconds(self, now: str) -> Optional[float]:
+        """AUDIT-6C: возраст старейшего pending-обязательства (сек)."""
+        moment = _parse_iso_or_none(now)
+        if moment is None:
+            return None
+        with self._lock:
+            created = [
+                task.created_at
+                for task in self._tasks.values()
+                if task.state == STATE_PENDING and task.created_at
+            ]
+        parsed = [t for t in (_parse_iso_or_none(c) for c in created) if t]
+        if not parsed:
+            return None
+        oldest = min(parsed)
+        return max(0.0, (moment - oldest).total_seconds())
 
 
 class PostgresDeliveryOutbox(DeliveryOutbox):
@@ -612,6 +638,44 @@ class PostgresDeliveryOutbox(DeliveryOutbox):
             counts[str(state)] = int(count or 0)
         return counts
 
+    def backlog_age_seconds(self, now: str) -> Optional[float]:
+        """AUDIT-6C: возраст старейшего pending-обязательства (сек);
+        паритет Memory (тот же контракт health)."""
+        moment = _parse_iso_or_none(now)
+        if moment is None:
+            return None
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute(
+                f"SELECT MIN(created_at) FROM {OUTBOX_TABLE} "
+                "WHERE state = %s",
+                (STATE_PENDING,),
+            )
+            row = cur.fetchone()
+        oldest = row[0] if row else None
+        if oldest is None:
+            return None
+        if isinstance(oldest, str):
+            oldest = _parse_iso_or_none(oldest)
+        if oldest is None:
+            return None
+        if oldest.tzinfo is None:
+            oldest = oldest.replace(tzinfo=timezone.utc)
+        return max(0.0, (moment - oldest).total_seconds())
+
+
+def _parse_iso_or_none(value: Any) -> Optional[datetime]:
+    """ISO-строка -> aware-UTC datetime либо None (нечитаемое значение --
+    честное «возраст неизвестен», не ноль и не падение)."""
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
 
 def _ts_to_db(value: str) -> Any:
     """ISO-строка -> datetime для psycopg (тот же контракт, что
@@ -698,10 +762,15 @@ def run_delivery_recovery(
                 next_attempt_at=next_at, at=now_iso,
             )
             summary["failed"] += 1
+            # AUDIT-6C (план §18 п.4): operational-лог несёт operation/run/
+            # kind ids, номер попытки и БЕЗОПАСНУЮ причину отказа
+            # (safe_error: без DSN/секрета); сырой traceback в лог не
+            # попадает (может содержать соединительные данные).
             logger.warning(
-                "Delivery outbox: задача %s (%s) не доставлена -- попытка %s/%s",
-                task.operation_id, task.kind,
-                task.attempts + 1, task.max_attempts, exc_info=True,
+                "Delivery outbox: задача %s (run %s, kind %s) не доставлена "
+                "-- попытка %s/%s: %s",
+                task.operation_id, task.run_id, task.kind,
+                task.attempts + 1, task.max_attempts, safe_error(exc),
             )
             continue
         run_store.delivery_outbox.mark_delivered(

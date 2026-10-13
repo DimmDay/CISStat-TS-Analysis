@@ -42,3 +42,13 @@ plotly>=5.18.0                # apps/api/routers/models.py, schemas.py
 # формально не нужна -- но добавлена в requirements, чтобы при деплое
 # на Render с REDIS_URL=rediss://... библиотека была доступна.
 redis>=5.0.0                  # apps/api/session_store.py RedisSessionStore
+
+# AUDIT-6C (план §18 п.2; контракт v1.6-6C §26.2): драйвер Postgres
+# (psycopg v3) -- durable-бэкенд долговременного слоя «Прогресса»
+# (ResearchRunStore/DeliveryOutbox, миграции 0001-0005). Раньше драйвер
+# НЕ был объявлен: образ Render собирался без него, и production
+# долговечность держалась на недоказанной установке драйвера (F14/H29:
+# «в просмотренных API requirements нет прямого psycopg»). Ленивый
+# импорт сохранён (dev без БД не требует драйвера), но в requirements
+# он объявлен ЯВНО, а сборка Dockerfile проверяет импорт (см. Dockerfile).
+psycopg[binary]>=3.1.0        # apps/api/research_runs.py PostgresResearchRunStore

@@ -359,8 +359,62 @@ _register_neural_dispatch(
     runtime_available=neuralforecast_runtime_available(),
 )
 
-if frozenset(_BACKTEST_IMPLEMENTATIONS) != PRODUCTION_BACKTEST_MODEL_IDS:
-    raise RuntimeError("Реестр готовности моделей расходится с production backtest dispatch")
+# AUDIT-6C (план §18 п.2; Донастройка_2 п.2; контракт v1.6-6C §26.2):
+# паритет dispatch <-> реестра готовности ПО СТРОИТЕЛЬСТВУ. Раньше здесь
+# стоял import-time `raise RuntimeError("Реестр готовности моделей
+# расходится...")`: в облегчённой среде (heavy-зависимости не установлены)
+# model_impls импортируются честно (ленивые тяжёлые импорты), а реестр
+# фильтрует их по find_spec -- множества расходились и apps.api.main не
+# импортировался ВООБЩЕ (spec_progress_audit.md §3.2; блокировало
+# интеграционную приёмку AUDIT-CERT).
+#
+# Решение: записи dispatch, которые реестр считает недоступными, НЕ
+# регистрируются (тот же find_spec-критерий) -> множества согласованы по
+# построению, деградация честна (candidates честно помечает blocked).
+# Fail-closed перенесён в ТОЧКУ ИСПОЛНЕНИЯ: проверка состояния dispatch
+# в начале _run_backtest_with_series (503, без фиктивных метрик).
+# DEPLOY-1-философия «упасть на сборке, а не тихим мёртвым контейнером»
+# сохранена: Dockerfile проверяет исполнимость КАЖДОЙ модели на этапе
+# сборки (и добавленный AUDIT-6C полный импорт apps.api.main) --
+# production-гейт на сборке не тронут.
+_RAW_BACKTEST_IMPLEMENTATIONS = dict(_BACKTEST_IMPLEMENTATIONS)
+
+_REGISTRY_UNAVAILABLE_BACKTEST: tuple[str, ...] = tuple(sorted(
+    model_id
+    for model_id in _RAW_BACKTEST_IMPLEMENTATIONS
+    if model_id not in PRODUCTION_BACKTEST_MODEL_IDS
+))
+for _unavailable_model_id in _REGISTRY_UNAVAILABLE_BACKTEST:
+    # Честная деградация: реестр считает модель недоступной (нет
+    # зависимостей) -- dispatch-записи быть не должно.
+    _BACKTEST_IMPLEMENTATIONS.pop(_unavailable_model_id, None)
+
+
+def models_dispatch_state() -> dict[str, Any]:
+    """Операционное состояние dispatch (план §18 п.3: health показывает
+    degraded mode):
+
+    - ready: dispatch покрывает production-реестр и не содержит лишнего;
+    - missing: реестр считает модель доступной, а dispatch-записи нет
+      (реальный дрейф -- исполнение fail-closed);
+    - dropped_by_registry: записи dispatch, снятые по критерию
+      доступности реестра (честная деградация облегчённой среды);
+    - unexpected: записи dispatch вне production-реестра (дрейф).
+    """
+    missing = sorted(
+        set(PRODUCTION_BACKTEST_MODEL_IDS) - set(_BACKTEST_IMPLEMENTATIONS)
+    )
+    unexpected = sorted(
+        set(_BACKTEST_IMPLEMENTATIONS) - set(PRODUCTION_BACKTEST_MODEL_IDS)
+    )
+    return {
+        "ready": not missing and not unexpected,
+        "missing": missing,
+        "unexpected": unexpected,
+        "dropped_by_registry": list(_REGISTRY_UNAVAILABLE_BACKTEST),
+        "production_model_count": len(PRODUCTION_BACKTEST_MODEL_IDS),
+        "dispatch_model_count": len(_BACKTEST_IMPLEMENTATIONS),
+    }
 
 
 MAX_TRIALS: int = 64
@@ -589,6 +643,23 @@ def _run_backtest_with_series(
     seasonal_period: int,
 ) -> tuple[BacktestMetrics, float]:
     start = time.monotonic()
+    # AUDIT-6C: fail-closed dispatch-гейт В ТОЧКЕ ИСПОЛНЕНИЯ (план §18
+    # п.2; Донастройка_2 п.2). Раньше проверка была только import-time:
+    # в облегчённой среде она убивала весь импорт apps.api.main, а при
+    # runtime-дрейфе (запись исчезла после импорта) не срабатывала вовсе.
+    # Теперь дрейф -> 503 с честным состоянием, фиктивные метрики
+    # невозможны (то же свойство прежнего RuntimeError -- сохранено).
+    dispatch = models_dispatch_state()
+    if not dispatch["ready"]:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Реестр готовности моделей расходится с production "
+                f"backtest dispatch (missing={dispatch['missing']}, "
+                f"unexpected={dispatch['unexpected']}); исполнение "
+                "заблокировано (fail-closed, AUDIT-6C)"
+            ),
+        )
     if model_id not in PRODUCTION_BACKTEST_MODEL_IDS:
         raise HTTPException(
             status_code=422,

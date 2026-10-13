@@ -133,6 +133,7 @@ import json
 import logging
 import os
 import threading
+import time
 import uuid
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
@@ -152,6 +153,17 @@ from apps.api.delivery_outbox import (  # AUDIT-6B: durable outbox (таблиц
     outbox_row_params,
 )
 from apps.api.trace_events import TraceEvent, mark_honest_time
+# AUDIT-6C: режимы хранения (required/advisory), safe_error и операционный
+# snapshot фабрик (п.1/п.4 карточки §18; модуль без импортов apps/api --
+# циклов нет).
+from apps.api.storage_diagnostics import (
+    COMPONENT_RUNS,
+    get_storage_mode,
+    record_backend_fallback,
+    record_backend_selected,
+    safe_error,
+    safe_health_error,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -817,6 +829,18 @@ class ResearchRunStore:
         В транзакции commit_event_batch."""  # pragma: no cover - контракт
         raise NotImplementedError
 
+    # -- AUDIT-6C: readiness-проба (план §18 п.3) --
+
+    def readiness_probe(self) -> dict[str, Any]:  # pragma: no cover - контракт
+        """Дешёвая проба готовности хранилища (по требованию из
+        /health/ops; вызывается ТОЛЬКО по требованию, не на прикладных
+        путях). Форма: {ok: bool, backend: str, error?: safe_reason,
+        latency_ms: float}. Memory -- тривиально ok; Postgres -- SELECT 1
+        + проверка таблицы outbox (несовместимая/недокатанная миграция
+        даёт честный ok=False). Проба без side-эффектов: не выполняет
+        миграции и не пишет факты."""
+        return {"ok": True, "backend": "unknown"}
+
     # -- журнал наблюдений Наставника (PROGR-8, §10) --
 
     def append_mentor_observation(self, obs: MentorObservation) -> None:  # pragma: no cover
@@ -1081,6 +1105,10 @@ class MemoryResearchRunStore(ResearchRunStore):
         """AUDIT-6B: durable outbox (в рамках процесса; контракт тот же)."""
         return self._outbox
 
+    def readiness_probe(self) -> dict[str, Any]:
+        """AUDIT-6C: in-memory store готов всегда (процесс жив)."""
+        return {"ok": True, "backend": "memory"}
+
     def append_mentor_observation(self, obs: MentorObservation) -> None:
         # MentorObservation заморожена и не содержит вложенных мутабельных
         # структур -- хранится как есть (контракт копий R1 касается
@@ -1136,6 +1164,43 @@ class PostgresResearchRunStore(ResearchRunStore):
                     )
                     self._schema_ready = True
         return conn
+
+    # -- AUDIT-6C: readiness-проба (план §18 п.3) --
+
+    # Проба с ограниченным connect timeout: /health/ops не должен висеть
+    # на недоступной БД (TCP-таймаут по умолчанию -- минуты).
+    _PROBE_CONNECT_TIMEOUT_SECONDS = 3
+
+    def readiness_probe(self) -> dict[str, Any]:
+        """Честная готовность Postgres: SELECT 1 + чтение таблицы outbox.
+        Без side-эффектов (отдельное autocommit-соединение; миграции
+        probe НЕ выполняет -- их статус виден через ok=False при
+        отсутствии объектов схемы). Причина отказа -- safe_error
+        (без DSN/секрета)."""
+        import psycopg
+
+        start = time.monotonic()
+        try:
+            with psycopg.connect(
+                self._dsn,
+                autocommit=True,
+                connect_timeout=self._PROBE_CONNECT_TIMEOUT_SECONDS,
+            ) as conn, conn.cursor() as cur:
+                cur.execute("SELECT 1")
+                cur.execute(f"SELECT COUNT(*) FROM {OUTBOX_TABLE}")
+                cur.fetchone()
+            return {
+                "ok": True,
+                "backend": "postgres",
+                "latency_ms": round((time.monotonic() - start) * 1000, 2),
+            }
+        except Exception as exc:
+            return {
+                "ok": False,
+                "backend": "postgres",
+                "latency_ms": round((time.monotonic() - start) * 1000, 2),
+                "error": safe_health_error(exc),
+            }
 
     # -- runs --
 
@@ -1668,33 +1733,98 @@ def get_research_run_store() -> ResearchRunStore:
     """Возвращает singleton хранилища запусков.
 
     ВЫБОР БЭКЕНДА (симметрично get_session_store):
-      - CISSTAT_RUNS_BACKEND=memory -> Memory (приоритет над DATABASE_URL);
-      - CISSTAT_RUNS_BACKEND=postgres или DATABASE_URL задан -> Postgres
-        (ленивый коннект; сбой конструктора -> деградация в Memory с
-        error-логом, тот же философия, что у Redis-фолбэка SessionStore);
-      - иначе -> Memory.
+      - CISSTAT_RUNS_BACKEND=memory -> Memory (приоритет над DATABASE_URL;
+        это ВЫБРАННЫЙ backend, observable в snapshot как configured=memory);
+      - CISSTAT_RUNS_BACKEND=postgres или DATABASE_URL задан -> Postgres;
+      - иначе -> Memory (configured=auto).
+
+    РЕЖИМЫ ХРАНЕНИЯ (AUDIT-6C, план §18 п.1; P21/F14 -- CISSTAT_STORAGE_MODE):
+
+      - ``required``: explicit Postgres с неверной конфигурацией /
+        отсутствующим драйвером / несовместимой миграцией / недоступной
+        БД (startup readiness-probe) -- fail-closed RuntimeError, ТИХИЙ
+        Memory fallback ЗАПРЕЩЁН («required не деградирует незаметно»).
+      - ``advisory`` (default, dev): fallback в Memory допустим, но НЕ
+        тихий: фиксируется configured/effective/degraded + безопасная
+        причина (record_backend_fallback), error-лог без DSN/секрета;
+        состояние видно в /health/ops.
+
+    Проверка готовности (readiness_probe) выполняется ТОЛЬКО в required
+    режиме: advisory сохраняет сертифицированный ленивый контракт
+    (конструирование Postgres-бэкенда не открывает соединение -- пин
+    test_research_runs.py::test_database_url_selects_postgres_lazily);
+    недоступность БД в advisory наблюдаема через /health/ops readiness.
     """
     global _store
     if _store is not None:
         return _store
 
+    mode = get_storage_mode()
     backend_explicit = os.environ.get("CISSTAT_RUNS_BACKEND", "").lower()
     database_url = os.environ.get("DATABASE_URL", "")
 
     if backend_explicit == "memory":
         _store = MemoryResearchRunStore()
+        record_backend_selected(COMPONENT_RUNS, "memory", "memory")
     elif backend_explicit == "postgres" or database_url:
+        # AUDIT-6C: выбор backend фиксируется ДО попытки -- отказ
+        # инициализации виден в snapshot как configured=postgres
+        # (в required -- effective=unavailable; в advisory деградация
+        # перезапишет состояние с effective=memory).
+        record_backend_selected(COMPONENT_RUNS, "postgres", "initializing")
         try:
-            _store = PostgresResearchRunStore.from_env()
+            candidate = PostgresResearchRunStore.from_env()
+            if mode == "required":
+                # P21/F14 fail-closed: поднимаем соединение заранее --
+                # неверная конфигурация/драйвер/миграция/недоступная БД
+                # должны быть видны немедленно, а не на первом запросе.
+                probe = candidate.readiness_probe()
+                if not probe.get("ok"):
+                    reason = probe.get("error") or "readiness probe failed"
+                    raise RuntimeError(
+                        "ResearchRunStore: Postgres backend required, "
+                        f"но недоступен (fail-closed, P21/F14): {reason}"
+                    )
+            _store = candidate
+            record_backend_selected(COMPONENT_RUNS, "postgres", "postgres")
             logger.info("ResearchRunStore: Postgres backend selected")
         except Exception as e:
+            reason = safe_error(e)
+            if mode == "required":
+                # Тихий Memory fallback в required-режиме запрещён
+                # (план §18 п.1): ошибка конфигурации/драйвера/миграции
+                # должна остановить запуск/запрос, а не подменить
+                # долговечность памятью процесса.
+                record_backend_selected(
+                    COMPONENT_RUNS, "postgres", "unavailable",
+                    reason=reason, degraded=True,
+                )
+                raise RuntimeError(
+                    "ResearchRunStore: Postgres backend required, "
+                    f"но инициализация не удалась (fail-closed, P21/F14): "
+                    f"{reason}"
+                ) from e
             logger.error(
-                "ResearchRunStore: Postgres init failed (%s), falling back to Memory", e
+                "ResearchRunStore: Postgres init failed (%s), "
+                "ЯВНАЯ деградация в Memory (advisory mode; состояние в "
+                "/health/ops)", reason,
+            )
+            record_backend_fallback(
+                COMPONENT_RUNS, "postgres", reason, effective="memory"
             )
             _store = MemoryResearchRunStore()
     else:
         _store = MemoryResearchRunStore()
+        record_backend_selected(COMPONENT_RUNS, "auto", "memory")
 
+    return _store
+
+
+def peek_research_run_store() -> Optional[ResearchRunStore]:
+    """Чтение singleton БЕЗ инициализации (AUDIT-6C): /health/ops
+    диагностика не должна провоцировать создание хранилища (и его
+    readiness-пробу в required-режиме) самим фактом запроса health.
+    None -- фабрика ещё не вызывалась (честное not_initialized)."""
     return _store
 
 

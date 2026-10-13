@@ -19,6 +19,7 @@ apps/api рядом с app.py в том же репозитории, а не в 
 """
 import logging
 import os
+from contextlib import asynccontextmanager
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -36,12 +37,46 @@ from apps.api.routers import forecasting_session, tasks_session
 # PROGR-4: чтение трассы слоя 1 для панели «Прогресс» (§5 слой 1, §6.1-§6.2).
 from apps.api.routers import progress
 from apps.api.knowledge import router as knowledge_router_module
+# AUDIT-6C (план §18): режимы хранения, in-process worker доставки,
+# operational-диагностика /health/ops.
+from apps.api.storage_diagnostics import get_storage_mode
+from apps.api import delivery_worker
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI):
+    """Startup/shutdown API (AUDIT-6C):
+
+    - required-режим хранения: фабрики вызываются ДО начала обслуживания
+      -- неверная конфигурация/драйвер/миграция/недоступная БД роняют
+      старт (fail-closed P21/F14; uvicorn завершается, оркестратор видит
+      неработающий контейнер вместо тихой Memory-подмены);
+    - in-process worker доставки (остаток AUDIT-6B): авто-старт по env
+      (CISSTAT_DELIVERY_WORKER_ENABLED/INTERVAL); shutdown останавливает.
+    """
+    if get_storage_mode() == "required":
+        # Фабрика сама fail-closed в required-режиме (startup readiness-
+        # probe). Memory-режим (auto) не трогаем: ленивое создание без
+        # side-эффектов -- прежний контракт dev/тестов.
+        from apps.api.research_runs import get_research_run_store
+        from apps.api.session_store import get_session_store as _get_ss
+
+        get_research_run_store()
+        _get_ss()
+        logger.info("Startup: required-режим хранения -- фабрики проверены")
+    delivery_worker.start_delivery_worker()
+    try:
+        yield
+    finally:
+        delivery_worker.stop_delivery_worker()
+
 
 app = FastAPI(
     title="CISStat TS Analysis API",
     version="1.0.0",
     description="API для анализа временных рядов: паспорт свойств, "
                  "валидация, предобработка, признаки.",
+    lifespan=_lifespan,
 )
 
 # CORS origins -- через переменную окружения ALLOWED_ORIGINS (список через
@@ -113,3 +148,36 @@ async def session_conflict_handler(
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/health/ops")
+def health_ops():
+    """Operational diagnostics (AUDIT-6C, план §18 п.3; контракт
+    v1.6-6C §26.3): backend (configured/effective), storage readiness,
+    delivery backlog/возраст, projection lag, degraded mode, worker
+    доставки, состояние Modeling dispatch.
+
+    Границы контракта: НЕ выдаёт URL БД, tokens и сырые exception
+    payload'ы (safe_error); liveness -- отдельный /health (Render
+    healthCheckPath): его тело и скорость не зависят от состояния БД.
+    Диагностика НЕ инициализирует фабрики (peek-семантика: не
+    инициализированное хранилище -- честное not_initialized, а не
+    скрытая инициализация фактом запроса health)."""
+    from apps.api.research_runs import peek_research_run_store
+    from apps.api.session_store import peek_session_store
+    from apps.api.storage_diagnostics import build_ops_health
+
+    try:
+        from apps.api.routers.models import models_dispatch_state
+
+        models_state = models_dispatch_state()
+    except Exception:  # pragma: no cover - диагностика не роняет health
+        models_state = {"ready": False, "missing": ["<state unavailable>"]}
+
+    snapshot = build_ops_health(
+        run_store=peek_research_run_store(),
+        session_store=peek_session_store(),
+        worker_status=delivery_worker.delivery_worker_status(),
+        models_dispatch=models_state,
+    )
+    return JSONResponse(status_code=200, content=snapshot)

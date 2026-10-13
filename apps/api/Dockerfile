@@ -42,6 +42,7 @@ RUN pip install --no-cache-dir -r apps/api/requirements.txt \
     && pip install --no-cache-dir 'torch>=2.1,<3' --index-url https://download.pytorch.org/whl/cpu \
     && pip install --no-cache-dir -r apps/api/requirements-neural.txt \
     && python -c "import redis; print('redis OK:', redis.__version__)" \
+    && python -c "import psycopg; print('psycopg OK:', psycopg.__version__)" \
     && python -c "import fastapi, pandas, pydantic; print('core deps OK')" \
     && python -c "import neuralforecast, torch; print('neural OK:', neuralforecast.__version__, torch.__version__)"
 
@@ -164,7 +165,11 @@ RUN python -c "from src.catalog.modeling_spec_loader import ModelingSpec; \
                   related_series=related, params={'lstm_hidden_size': 8, 'input_size': 8}, random_state=42); \
                   assert len(payload['forecast']) == 2 and payload['intervals']['method'] == 'neural_quantile_outputs'; \
                   assert payload['n_series'] == 5 and payload['panel_ids'][0] == 'series_0'; \
-                  print('DeepAR executable OK')"
+                  print('DeepAR executable OK')" \
+    && python -c "import psycopg; from apps.api.main import app; \
+                  routes = {getattr(r, 'path', '') for r in app.routes}; \
+                  assert '/health' in routes and '/health/ops' in routes; \
+                  print('psycopg + full API startup OK (AUDIT-6C):', psycopg.__version__)"
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000

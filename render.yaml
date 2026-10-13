@@ -14,6 +14,19 @@
 # Vercel-домен standalone; если добавите embedded — через запятую):
 #   ALLOWED_ORIGINS = https://ts-standalone.vercel.app
 #
+# AUDIT-6C (план §18; контракт v1.6-6C §26.2/§26.6; сверка deploy-contract
+# 2026-10-13): blueprint НЕ задаёт DATABASE_URL/REDIS_URL/CISSTAT_* —
+# фактический контур Render (free-тир, healthCheckPath /health) без них
+# честно работает в advisory-режиме на Memory (effective backend виден в
+# /health/ops; H29 — незакрытый operational acceptance-пункт). Перевод
+# на durable-контур — вручную в Dashboard (не в blueprint, чтобы не
+# форсировать секреты в репозиторий):
+#   DATABASE_URL = <Postgres Render internal connection string>
+#   CISSTAT_STORAGE_MODE = required   # fail-closed: без БД сервис не стартует
+#   REDIS_URL = <Redis/Upstash URL>   # опционально: durable cache слоя 1
+# Драйвер psycopg объявлен в apps/api/requirements.txt (раньше не был —
+# F14/H29) и проверяется сборкой Dockerfile вместе с полным импортом API.
+#
 # Затем на Vercel (Project Settings -> Environment Variables) для
 # apps/standalone пропишите:
 #   API_URL = https://<имя-сервиса>.onrender.com
