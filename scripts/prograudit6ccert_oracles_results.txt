@@ -1,0 +1,231 @@
+DEBUG:app.data.file_loader:clickhouse-connect not installed — ClickHouse support disabled
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/health/ops "HTTP/1.1 200 OK"
+ERROR:apps.api.session_store:SessionStore: Redis init failed (REDIS_URL env var is required for RedisSessionStore. Set it to your Redis/Upstash connection string.), ЯВНАЯ деградация в Memory (advisory mode; состояние в /health/ops)
+INFO:apps.api.session_store:SessionStore: RedisSessionStore initialized (REDIS_URL set)
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/health/ops "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/health "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/health/ops "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/health/ops "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:123]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[125:137]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[139:147]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[151:3387]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.progress_maps:Progress maps: слой 1 не сохранён после durable-фиксации report:RUN-756A4F86:cert6c-report-77 -- receipt существует, повтор той же поставки вернёт его дедуплицированно; обязательство доставки остаётся в outbox (worker восстановит проекцию)
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/progress_maps.py", line 530, in accept_map_report
+    store.save(session)
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit6ccert_oracles.py", line 267, in failing_save
+    raise RuntimeError(
+RuntimeError: injected cert6c cache outage (postgresql://cert6c_svc:Qx7vLp%21@pg-cert6c.internal.east:5433/cisstat_cert6c)
+INFO:httpx:HTTP Request: POST http://testserver/v1/progress/eda-checks "HTTP/1.1 500 Internal Server Error"
+INFO:apps.api.delivery_worker:Delivery worker: delivery due=1 delivered=1 session_absent=0 failed=0
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:123]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[125:137]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[139:147]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[151:3387]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.progress_maps:Progress maps: слой 1 не сохранён после durable-фиксации report:RUN-7CE3B4F9:cert6c-report-78 -- receipt существует, повтор той же поставки вернёт его дедуплицированно; обязательство доставки остаётся в outbox (worker восстановит проекцию)
+Traceback (most recent call last):
+  File "/home/z/my-project/CISStat-TS-Analysis/apps/api/progress_maps.py", line 530, in accept_map_report
+    store.save(session)
+  File "/home/z/my-project/CISStat-TS-Analysis/scripts/prograudit6ccert_oracles.py", line 267, in failing_save
+    raise RuntimeError(
+RuntimeError: injected cert6c cache outage (postgresql://cert6c_svc:Qx7vLp%21@pg-cert6c.internal.east:5433/cisstat_cert6c)
+INFO:httpx:HTTP Request: POST http://testserver/v1/progress/eda-checks "HTTP/1.1 500 Internal Server Error"
+INFO:apps.api.delivery_worker:Delivery worker: delivery due=1 delivered=1 session_absent=0 failed=0
+INFO:apps.api.delivery_worker:Delivery worker: delivery due=0 delivered=0 session_absent=0 failed=0
+WARNING:apps.api.delivery_worker:Delivery worker: цикл не выполнен (pg down <redacted-url> CERT-SEC-42) -- продолжаю по расписанию
+INFO:apps.api.delivery_worker:Delivery worker: delivery due=0 delivered=0 session_absent=0 failed=0
+INFO:apps.api.delivery_worker:Delivery worker: отключён CISSTAT_DELIVERY_WORKER_ENABLED
+WARNING:apps.api.delivery_worker:CISSTAT_DELIVERY_WORKER_INTERVAL='seventy' не целое число -- используется дефолт 60 c
+INFO:apps.api.delivery_worker:Delivery worker: delivery due=0 delivered=0 session_absent=0 failed=0
+INFO:apps.api.delivery_worker:Delivery worker: запущен (interval=3600s)
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:apps.api.delivery_worker:Delivery worker: delivery due=0 delivered=0 session_absent=0 failed=0
+INFO:apps.api.delivery_worker:Delivery worker: запущен (interval=3600s)
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/health/ops "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/health/ops "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+DEBUG:python_multipart.multipart:Calling on_part_begin with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[36:55]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[57:123]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_header_field with data[125:137]
+DEBUG:python_multipart.multipart:Calling on_header_value with data[139:147]
+DEBUG:python_multipart.multipart:Calling on_header_end with no data
+DEBUG:python_multipart.multipart:Calling on_headers_finished with no data
+DEBUG:python_multipart.multipart:Calling on_part_data with data[151:3387]
+DEBUG:python_multipart.multipart:Calling on_part_end with no data
+DEBUG:python_multipart.multipart:Calling on_end with no data
+INFO:httpx:HTTP Request: POST http://testserver/v1/internal/upload "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/v1/progress/trace "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+WARNING:apps.api.trace_hook:Trace hook: событие POST /v1/session/target-column не записано (producer=trace_hook_mirror, advisory по v1.5-6B §25.1; event_id=6b3ee477-4471-4633-b6df-584b56fd89a4 run_id=RUN-D7FAFD7D session_id=21cef56a146449439e64c0c75ec8c165; причина=layer2 down for <redacted-url> CERT-SEC-42)
+WARNING:apps.api.delivery_outbox:Delivery outbox: задача op-cert6c-log-1 (run RUN-CERT6C-A, kind layer1_mirror) не доставлена -- попытка 1/5: redis gone <redacted-url>
+WARNING:apps.api.delivery_outbox:Delivery outbox: задача op-cert6c-log-1 (run RUN-CERT6C-A, kind layer1_mirror) не доставлена -- попытка 2/5: redis gone <redacted-url>
+WARNING:apps.api.delivery_outbox:Delivery outbox: задача op-cert6c-log-1 (run RUN-CERT6C-A, kind layer1_mirror) не доставлена -- попытка 3/5: redis gone <redacted-url>
+WARNING:apps.api.delivery_outbox:Delivery outbox: задача op-cert6c-log-1 (run RUN-CERT6C-A, kind layer1_mirror) не доставлена -- попытка 4/5: redis gone <redacted-url>
+WARNING:apps.api.delivery_outbox:Delivery outbox: задача op-cert6c-log-1 (run RUN-CERT6C-A, kind layer1_mirror) не доставлена -- попытка 5/5: redis gone <redacted-url>
+ERROR:apps.api.research_runs:ResearchRunStore: Postgres init failed (DATABASE_URL env var is required for PostgresResearchRunStore. Set it to your Postgres connection string.), ЯВНАЯ деградация в Memory (advisory mode; состояние в /health/ops)
+INFO:pgserver:no PG_VERSION file found within /tmp/cisstat6ccert-pg-1p8iu_bq. Initializing pgdata
+INFO:pgserver:Running commandline:
+['/home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/initdb', '-D', '/tmp/cisstat6ccert-pg-1p8iu_bq', '--auth=trust', '--auth-local=trust', '--encoding=utf8', '-U', 'postgres']
+with kwargs: `{'user': None}`
+INFO:pgserver:Successful postgres command ['/home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/initdb', '-D', '/tmp/cisstat6ccert-pg-1p8iu_bq', '--auth=trust', '--auth-local=trust', '--encoding=utf8', '-U', 'postgres'] with kwargs: `{'user': None}`
+stdout:
+The files belonging to this database system will be owned by user "z".
+This user must also own the server process.
+
+The database cluster will be initialized with this locale configuration:
+  provider:    libc
+  LC_COLLATE:  C
+  LC_CTYPE:    C.UTF-8
+  LC_MESSAGES: C
+  LC_MONETARY: C
+  LC_NUMERIC:  C
+  LC_TIME:     C
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+fixing permissions on existing directory /tmp/cisstat6ccert-pg-1p8iu_bq ... ok
+creating subdirectories ... ok
+selecting dynamic shared memory implementation ... posix
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting default time zone ... Etc/UTC
+creating configuration files ... ok
+running bootstrap script ... ok
+performing post-bootstrap initialization ... ok
+syncing data to disk ... ok
+
+Success. You can now start the database server using:
+
+    /home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/pg_ctl -D /tmp/cisstat6ccert-pg-1p8iu_bq -l logfile start
+
+
+---
+stderr:
+
+---
+
+INFO:pgserver:no postmaster.pid file found in /tmp/cisstat6ccert-pg-1p8iu_bq
+INFO:pgserver:Using socket path: /tmp/cisstat6ccert-pg-1p8iu_bq
+INFO:pgserver:running pg_ctl... pg_ctl_args=['-w', '-o', '-h ""', '-o', '-k /tmp/cisstat6ccert-pg-1p8iu_bq', '-l', '/tmp/cisstat6ccert-pg-1p8iu_bq/log', 'start']
+INFO:pgserver:Running commandline:
+['/home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/pg_ctl', '-D', '/tmp/cisstat6ccert-pg-1p8iu_bq', '-w', '-o', '-h ""', '-o', '-k /tmp/cisstat6ccert-pg-1p8iu_bq', '-l', '/tmp/cisstat6ccert-pg-1p8iu_bq/log', 'start']
+with kwargs: `{'user': None, 'timeout': 10}`
+INFO:pgserver:Successful postgres command ['/home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/pg_ctl', '-D', '/tmp/cisstat6ccert-pg-1p8iu_bq', '-w', '-o', '-h ""', '-o', '-k /tmp/cisstat6ccert-pg-1p8iu_bq', '-l', '/tmp/cisstat6ccert-pg-1p8iu_bq/log', 'start'] with kwargs: `{'user': None, 'timeout': 10}`
+stdout:
+waiting for server to start.... done
+server started
+
+---
+stderr:
+
+---
+
+INFO:pgserver:waiting for postmaster info to show a running process
+INFO:pgserver:running... checking if ready pinfo=PostmasterInfo(pid=16184, pgdata=/tmp/cisstat6ccert-pg-1p8iu_bq, start_time=2026-10-13 13:21:32, hostname=None port=5432, socket_dir=/tmp/cisstat6ccert-pg-1p8iu_bq status=ready, process=psutil.Process(pid=16184, name='postgres', status='sleeping'))
+INFO:pgserver:Now asserting server is running self._postmaster_info=PostmasterInfo(pid=16184, pgdata=/tmp/cisstat6ccert-pg-1p8iu_bq, start_time=2026-10-13 13:21:32, hostname=None port=5432, socket_dir=/tmp/cisstat6ccert-pg-1p8iu_bq status=ready, process=psutil.Process(pid=16184, name='postgres', status='sleeping'))
+INFO:apps.api.research_runs:ResearchRunStore: Postgres backend selected
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (32 утверждений)
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (32 утверждений)
+INFO:apps.api.research_runs:Research runs: схема Postgres готова (32 утверждений)
+INFO:apps.api.delivery_worker:Delivery worker: delivery due=1 delivered=1 session_absent=0 failed=0
+==========================================================================
+PROGR-AUDIT-6C-CERT: оракулы сертификатора (свои данные)
+Итог: 45 PASS / 0 FAIL из 45
+[PASS] G6CC-MODE-1 required + реальная ошибка конфигурации -> fail-closed -- RuntimeError, singleton не создан, configured=postgres/unavailable
+[PASS] G6CC-MODE-2 required + недостижимая БД (TEST-NET-3) -> fail-closed -- RuntimeError по реальному probe (3s timeout), Memory не подменён
+[PASS] G6CC-MODE-3 advisory + реальная ошибка конфигурации Postgres -> ЯВНАЯ деградация -- Memory + degraded=True + fallback_events; лог без DSN
+[PASS] G6CC-MODE-3b advisory + недоступная БД: ленивый Postgres выбран, недоступность видна в /health/ops -- Postgres выбран лениво; readiness.runs ok=False + класс ошибки в health
+[PASS] G6CC-MODE-4 explicit memory observable (не silent-fallback) -- configured=memory, degraded=False, событий fallback нет
+[PASS] G6CC-MODE-5 auto без конфигурации -> честный memory -- configured=auto, effective=memory, degraded=False
+[PASS] G6CC-MODE-6 опечатка в режиме хранения -> fail fast -- RuntimeError на get_storage_mode и на фабрике
+[PASS] G6CC-MODE-7 Redis required: реальная ошибка конфигурации -> fail-closed -- RuntimeError, singleton не создан, configured=redis/unavailable
+[PASS] G6CC-MODE-8 Redis advisory: реальная ошибка конфигурации -> ЯВНАЯ деградация -- Memory + configured=redis/degraded=True, причина без секрета
+[PASS] G6CC-MODE-8b Redis advisory + недоступный PING: Redis выбран лениво, readiness видна в /health/ops -- Redis выбран лениво; readiness.session ok=False в health
+[PASS] G6CC-MODE-9 Redis required: недоступный PING -> fail-closed -- RuntimeError по реальному PING, Memory не подменён
+[PASS] G6CC-SAFE-1 DSN/URL целиком редактируются -- 3 схемы редактированы, содержательная часть сохранена
+[PASS] G6CC-SAFE-2 password=/token=/Bearer редактируются -- значения секретов редактированы, ключи сохранены
+[PASS] G6CC-SAFE-3 клип 300 и схлопывание переносов -- клип 300 + '...'; переносы схлопнуты (одна строка)
+[PASS] G6CC-SAFE-4 None/пустой BaseException/не-исключение -- None->unknown error; пустой->класс; не-исключение->str
+[PASS] G6CC-SAFE-5 safe_health_error -- только класс исключения -- класс + отсылка в логи; ни DSN, ни голого токена (строгий уровень)
+[PASS] G6CC-PROBE-1 probe_store: Memory ok / None -> not_initialized -- ok=True с latency; честное not_initialized
+[PASS] G6CC-PROBE-2 probe_store: врун и бросок -- защитный контур -- ok=False + безопасная причина на трёх формах вранья
+[PASS] G6CC-PROBE-3 backlog_age_seconds: СВОИ обязательства на Memory -- возраст ~90с наблюдаем; после доставки -- честный None (90.0s)
+[PASS] G6CC-OPS-1 liveness /health: тело сохранено, не зависит от БД -- ровно {'status': 'ok'} при недоступной БД
+[PASS] G6CC-OPS-2 peek-семантика: GET /health/ops НЕ инициализирует фабрики -- not_initialized честно; singleton'ы пусты после запроса
+[PASS] G6CC-OPS-3 форма /health/ops и отсутствие секретов при деградации -- все секции §26.3; degraded=True; секретов в теле нет
+[PASS] G6CC-OPS-4 degraded-агрегация: worker errors и dispatch -- ok-базлайн; degraded по worker/dispatch; ok=None не деградирует
+[PASS] G6CC-OPS-5 backlog/возраст/projection lag по СВОИМ обязательствам -- backlog 2/1/1; lag=pending+failed=3; возраст старейшего ~120с
+[PASS] G6CC-WORKER-1 run_once доставляет СВОЁ pending-обязательство -- cert6c-report-77: pending -> delivered, слой 1 восстановлен
+[PASS] G6CC-WORKER-2 повторный run_once идемпотентен -- первый доставляет, второй -- due=0/delivered=0
+[PASS] G6CC-WORKER-3 устойчивость: сбой цикла растит consecutive_errors, успех сбрасывает -- 1 -> безопасный last_error -> успех сбрасывает в 0/None
+[PASS] G6CC-WORKER-4 env-выключатели: ENABLED и INTERVAL (клип/мусор) -- 0/false/NO выкл; 0->None; 3->5; мусор->дефолт+warning
+[PASS] G6CC-WORKER-5 singleton идемпотентен, stop останавливает -- тот же экземпляр; после stop running=False
+[PASS] G6CC-WORKER-6 lifespan: авто-старт и остановка worker'а -- TestClient lifespan: running True внутри, False после выхода
+[PASS] G6CC-WORKER-7 статус worker'а виден в /health/ops -- worker-секция /health/ops несёт наблюдаемые поля
+[PASS] G6CC-DISPATCH-1 полная среда: dispatch ready, множества согласованы -- ready; production=19, dispatch=19
+[PASS] G6CC-DISPATCH-2 лёгкая среда в СВЕЖЕМ интерпретаторе: импорт apps.api.main работает -- импорт OK, /health+/health/ops есть, честно dropped: ['prophet', 'tbats']
+[PASS] G6CC-DISPATCH-3 runtime-дрейф theta -> 503 fail-closed В ТОЧКЕ ИСПОЛНЕНИЯ -- state not ready + 'theta' in missing; исполнение -> 503
+[PASS] G6CC-DISPATCH-4 состояние dispatch видно в /health/ops -- models_dispatch.ready=True + missing/unexpected/dropped в health
+[PASS] G6CC-LOGS-1 отказ зеркала хука: ids + advisory-маркер + безопасная причина -- event/run/session ids + producer/advisory + safe reason, одна строка
+[PASS] G6CC-LOGS-2 отказ задачи доставки: operation/run/kind + попытка + safe reason -- бюджет 5 попыток по честному backoff -> state=failed; каждый отказ в логе с operation/run/kind/попыткой; между попытками задача не due
+[PASS] G6CC-LOGS-3 отказ фабрики advisory: компонент/configured/effective в логе -- компонент и оба backend'а в логе; DSN/пароля нет
+[PASS] G6CC-DECL-1 requirements.txt объявляет psycopg[binary]>=3.1.0 -- psycopg[binary]>=3.1.0 + пометка AUDIT-6C присутствуют
+[PASS] G6CC-DECL-2 Dockerfile проверяет драйвер и полный API startup -- 3 build-гейта Dockerfile на месте
+[PASS] G6CC-DECL-3 Docker-эквивалент команды выполняется ЗДЕСЬ и сейчас -- psycopg + full API startup OK: 3.3.6
+[PASS] G6CC-PG-1 required на ЖИВОЙ БД: фабрика выбирает настоящий Postgres -- живой Postgres выбран fail-closed-путём с реальным probe
+[PASS] G6CC-PG-2 probe живой БД ok с латентностью; НЕ-мигрированная БД честно ok=False -- ok=False на пустой схеме -> ok=True после миграций (2.45ms)
+[PASS] G6CC-PG-3 backlog age: паритет Memory и живого Postgres -- возраст ~60с и честный None на ОБОИХ backend'ах
+[PASS] G6CC-PG-4 worker доставляет СВОЁ обязательство на живом PG -- RUN-CERT6C-PG: pending -> delivered, событие 9d77b99c-93c2-4732-a18e-20b5b0d6fa8e в слое 1
+==========================================================================
+INFO:pgserver:exiting 16120 remaining pids=[16120]
+INFO:pgserver:cleaning last handle for server: /tmp/cisstat6ccert-pg-1p8iu_bq
+INFO:pgserver:Running commandline:
+['/home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/pg_ctl', '-D', '/tmp/cisstat6ccert-pg-1p8iu_bq', '-w', 'stop']
+with kwargs: `{'user': None}`
+INFO:pgserver:Successful postgres command ['/home/z/.venv/lib/python3.12/site-packages/pgserver/pginstall/bin/pg_ctl', '-D', '/tmp/cisstat6ccert-pg-1p8iu_bq', '-w', 'stop'] with kwargs: `{'user': None}`
+stdout:
+waiting for server to shut down.... done
+server stopped
+
+---
+stderr:
+
+---
+

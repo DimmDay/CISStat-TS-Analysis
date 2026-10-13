@@ -1,0 +1,76 @@
+PROGR-AUDIT-6C-CERT -- RED-протокол сертификации (оракулы сертификатора на базе 8b309eb)
+==================================================================
+
+База: origin/main@8b309eb (git worktree, коммит PROGR-AUDIT-6B); код AUDIT-6C отсутствует:
+storage_diagnostics.py / delivery_worker.py не существуют; фабрики деградируют в Memory тихо (P21/F14);
+/health/ops нет; in-process worker нет; models_dispatch_state нет; requirements без psycopg (F14/H29).
+
+Команда RED (в worktree базы):
+  env -u DATABASE_URL -u REDIS_URL PYTHONPATH=. python scripts/prograudit6ccert_oracles.py
+
+Результат RED: 2 PASS / 43 FAIL из 45.
+
+2 PASS -- пины УЖЕ честного поведения базы (они остаются зелёными и на HEAD):
+  G6CC-OPS-1  liveness /health == {'status': 'ok'} (совместимость Render healthCheckPath);
+  G6CC-LOGS-3 advisory fallback при РЕАЛЬНОЙ ошибке конфигурации уже логировался с причиной
+            без DSN (spec H21 'Error-лог есть'; 6C добавил структуру record_backend_fallback).
+
+Ключевые RED-контракты (43 FAIL; все новые требования v1.6-6C §26 красные на базе):
+  MODE-1/2/6/7/9  -- fail-closed required (P21/F14) отсутствует: фабрики молча деградируют;
+  MODE-3b/8b      -- недоступность БД в advisory не наблюдаема (/health/ops нет);
+  SAFE-1..5       -- safe_error/safe_health_error отсутствуют (сырые исключения в логах);
+  PROBE-1..3      -- readiness_probe/backlog_age_seconds не существуют;
+  OPS-2..5        -- /health/ops, peek-семантика, degraded-агрегация, projection lag отсутствуют;
+  WORKER-1..7     -- in-process worker восстановления отсутствует (только внешний runner 6B);
+  DISPATCH-1..4   -- models_dispatch_state нет; лёгкая среда УБИВАЕТ импорт apps.api.main
+                    (import-time RuntimeError -- именно дефект Донастройка_2 п.2; ASSERT:
+                    'импорт apps.api.main в лёгкой среде обязан работать');
+  LOGS-1/2        -- operational-логи хука/доставки без safe_error;
+  DECL-1/2/3      -- requirements без psycopg, Dockerfile без build-гейтов, Docker-эквивалент
+                    падает: '/health/ops' нет в маршрутах;
+  PG-1..4         -- живой PG: required fail-closed пути, probe, backlog age, worker -- отсутствуют.
+
+Полный список падений (43):
+[FAIL] G6CC-MODE-1 required + реальная ошибка конфигурации -> fail-closed | ERROR ImportError: cannot import name 'storage_diagnostics' from 'apps.api' (/home/z/my-project/6ccert-red-base/apps/a
+[FAIL] G6CC-MODE-2 required + недостижимая БД (TEST-NET-3) -> fail-closed | ASSERT: недостижимая БД в required обязан уронить фабрику
+[FAIL] G6CC-MODE-3 advisory + реальная ошибка конфигурации Postgres -> ЯВНАЯ деградация | ERROR ImportError: cannot import name 'storage_diagnostics' from 'apps.api' (/home/z/my-p
+[FAIL] G6CC-MODE-3b advisory + недоступная БД: ленивый Postgres выбран, недоступность видна в /health/ops | ERROR KeyError: 'readiness'
+[FAIL] G6CC-MODE-4 explicit memory observable (не silent-fallback) | ERROR ImportError: cannot import name 'storage_diagnostics' from 'apps.api' (/home/z/my-project/6ccert-red-base/apps/api/__init__.py)
+[FAIL] G6CC-MODE-5 auto без конфигурации -> честный memory | ERROR ImportError: cannot import name 'storage_diagnostics' from 'apps.api' (/home/z/my-project/6ccert-red-base/apps/api/__init__.py)
+[FAIL] G6CC-MODE-6 опечатка в режиме хранения -> fail fast | ERROR ImportError: cannot import name 'storage_diagnostics' from 'apps.api' (/home/z/my-project/6ccert-red-base/apps/api/__init__.py)
+[FAIL] G6CC-MODE-7 Redis required: реальная ошибка конфигурации -> fail-closed | ERROR ImportError: cannot import name 'storage_diagnostics' from 'apps.api' (/home/z/my-project/6ccert-red-base/a
+[FAIL] G6CC-MODE-8 Redis advisory: реальная ошибка конфигурации -> ЯВНАЯ деградация | ERROR ImportError: cannot import name 'storage_diagnostics' from 'apps.api' (/home/z/my-proje
+[FAIL] G6CC-MODE-8b Redis advisory + недоступный PING: Redis выбран лениво, readiness видна в /health/ops | ERROR KeyError: 'readiness'
+[FAIL] G6CC-MODE-9 Redis required: недоступный PING -> fail-closed | ASSERT: недоступный Redis в required обязан уронить фабрику
+[FAIL] G6CC-SAFE-1 DSN/URL целиком редактируются | ERROR ModuleNotFoundError: No module named 'apps.api.storage_diagnostics'
+[FAIL] G6CC-SAFE-2 password=/token=/Bearer редактируются | ERROR ModuleNotFoundError: No module named 'apps.api.storage_diagnostics'
+[FAIL] G6CC-SAFE-3 клип 300 и схлопывание переносов | ERROR ModuleNotFoundError: No module named 'apps.api.storage_diagnostics'
+[FAIL] G6CC-SAFE-4 None/пустой BaseException/не-исключение | ERROR ModuleNotFoundError: No module named 'apps.api.storage_diagnostics'
+[FAIL] G6CC-SAFE-5 safe_health_error | только класс исключения -- ERROR ModuleNotFoundError: No module named 'apps.api.storage_diagnostics'
+[FAIL] G6CC-PROBE-1 probe_store: Memory ok / None -> not_initialized | ERROR ModuleNotFoundError: No module named 'apps.api.storage_diagnostics'
+[FAIL] G6CC-PROBE-2 probe_store: врун и бросок | защитный контур -- ERROR ModuleNotFoundError: No module named 'apps.api.storage_diagnostics'
+[FAIL] G6CC-PROBE-3 backlog_age_seconds: СВОИ обязательства на Memory | ERROR AttributeError: 'MemoryDeliveryOutbox' object has no attribute 'backlog_age_seconds'
+[FAIL] G6CC-OPS-2 peek-семантика: GET /health/ops НЕ инициализирует фабрики | ASSERT: {"detail":"Not Found"}
+[FAIL] G6CC-OPS-3 форма /health/ops и отсутствие секретов при деградации | ERROR ImportError: cannot import name 'storage_diagnostics' from 'apps.api' (/home/z/my-project/6ccert-red-b
+[FAIL] G6CC-OPS-4 degraded-агрегация: worker errors и dispatch | ERROR ModuleNotFoundError: No module named 'apps.api.storage_diagnostics'
+[FAIL] G6CC-OPS-5 backlog/возраст/projection lag по СВОИМ обязательствам | ERROR ModuleNotFoundError: No module named 'apps.api.storage_diagnostics'
+[FAIL] G6CC-WORKER-1 run_once доставляет СВОЁ pending-обязательство | ERROR ImportError: cannot import name 'delivery_worker' from 'apps.api' (/home/z/my-project/6ccert-red-base/apps/api/__init
+[FAIL] G6CC-WORKER-2 повторный run_once идемпотентен | ERROR ImportError: cannot import name 'delivery_worker' from 'apps.api' (/home/z/my-project/6ccert-red-base/apps/api/__init__.py)
+[FAIL] G6CC-WORKER-3 устойчивость: сбой цикла растит consecutive_errors, успех сбрасывает | ERROR ModuleNotFoundError: No module named 'apps.api.delivery_worker'
+[FAIL] G6CC-WORKER-4 env-выключатели: ENABLED и INTERVAL (клип/мусор) | ERROR ModuleNotFoundError: No module named 'apps.api.delivery_worker'
+[FAIL] G6CC-WORKER-5 singleton идемпотентен, stop останавливает | ERROR ModuleNotFoundError: No module named 'apps.api.delivery_worker'
+[FAIL] G6CC-WORKER-6 lifespan: авто-старт и остановка worker'а | ERROR ModuleNotFoundError: No module named 'apps.api.delivery_worker'
+[FAIL] G6CC-WORKER-7 статус worker'а виден в /health/ops | ERROR KeyError: 'worker'
+[FAIL] G6CC-DISPATCH-1 полная среда: dispatch ready, множества согласованы | ERROR ImportError: cannot import name 'models_dispatch_state' from 'apps.api.routers.models' (/home/z/my-project
+[FAIL] G6CC-DISPATCH-2 лёгкая среда в СВЕЖЕМ интерпретаторе: импорт apps.api.main работает | ASSERT: импорт apps.api.main в лёгкой среде обязан раб
+[FAIL] G6CC-DISPATCH-3 runtime-дрейф theta -> 503 fail-closed В ТОЧКЕ ИСПОЛНЕНИЯ | ERROR AttributeError: module 'apps.api.routers.models' has no attribute 'models_dispatch_state'
+[FAIL] G6CC-DISPATCH-4 состояние dispatch видно в /health/ops | ERROR KeyError: 'models_dispatch'
+[FAIL] G6CC-LOGS-1 отказ зеркала хука: ids + advisory-маркер + безопасная причина | ASSERT: Trace hook: событие POST /v1/session/target-column не записано (сбой
+[FAIL] G6CC-LOGS-2 отказ задачи доставки: operation/run/kind + попытка + safe reason | ASSERT: Delivery outbox: задача op-cert6c-log-1 (layer1_mirror) не доставлена -- попы
+[FAIL] G6CC-DECL-1 requirements.txt объявляет psycopg[binary]>=3.1.0 | ASSERT: драйвер обязан быть объявлен (F14/H29)
+[FAIL] G6CC-DECL-2 Dockerfile проверяет драйвер и полный API startup | ASSERT: build-проверка драйвера обязательна
+[FAIL] G6CC-DECL-3 Docker-эквивалент команды выполняется ЗДЕСЬ и сейчас | ASSERT: Docker-эквивалент обязан проходить
+[FAIL] G6CC-PG-1 required на ЖИВОЙ БД: фабрика выбирает настоящий Postgres | ERROR ImportError: cannot import name 'storage_diagnostics' from 'apps.api' (/home/z/my-project/6ccert-red-bas
+[FAIL] G6CC-PG-2 probe живой БД ok с латентностью; НЕ-мигрированная БД честно ok=False | ERROR AttributeError: 'PostgresResearchRunStore' object has no attribute 'readiness_prob
+[FAIL] G6CC-PG-3 backlog age: паритет Memory и живого Postgres | ERROR AttributeError: 'MemoryDeliveryOutbox' object has no attribute 'backlog_age_seconds'
+[FAIL] G6CC-PG-4 worker доставляет СВОЁ обязательство на живом PG | ERROR ImportError: cannot import name 'delivery_worker' from 'apps.api' (/home/z/my-project/6ccert-red-base/apps/api/_

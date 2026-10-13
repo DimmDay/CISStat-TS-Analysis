@@ -1,0 +1,110 @@
+PROGR-AUDIT-6C-CERT -- протокол мутационной кампании СВОИХ мутантов (CM6CC-1..19)
+==========================================================================================
+
+База: origin/main@9f4dc69 (HEAD = коммит PROGR-AUDIT-6C). Дисциплина прецедентов 7A/7B-CERT:
+sha256-якоря файлов до кампании; побайтовое восстановление после КАЖДОГО мутанта
+(backup + cmp-эквивалент, контроль sha256 в finally); RESTORE-CHECK после каждого среза --
+все 9 файлов восстановлены байт-в-байт; контрольный прогон каналов без мутантов зелёный:
+  CONTROL O: exit=0 -- оракулы сертификатора 45/45 PASS (--no-pg: 41 PASS + 4 honest SKIP живого PG);
+  CONTROL R: exit=0 -- repo-сюиты 225 passed / 19 skipped (6c+session_store+research_runs+6b+docker_layout).
+
+Каналы kill'а:
+  O -- СВОИ оракулы (scripts/prograudit6ccert_oracles.py --no-pg); KILL = exit != 0;
+  R -- repo-канал pytest (test_progress_audit_6c/test_session_store/test_research_runs/
+      test_progress_audit_6b/test_docker_image_layout); KILL = exit != 0 (-x на первом падении).
+
+ИТОГ: 19/19 KILLED, ALIVE 0. O-канал убил 19/19; R-канал убил 15/19.
+4 мутанта убиты ТОЛЬКО СВОИМИ оракулами (в repo-сюитах исполнителя контракта на эти точки нет):
+  CM6CC-9  (degraded-агрегация учитывает worker consecutive_errors) -> G6CC-OPS-4;
+  CM6CC-10 (projection_lag несёт failed_obligations)                -> G6CC-OPS-5;
+  CM6CC-15 (/health/ops с peek-семантикой, не инициализирует фабрики) -> G6CC-OPS-2;
+  CM6CC-19 (psycopg[binary]>=3.1.0 объявлен в requirements.txt)      -> G6CC-DECL-1.
+
+Срез 1 [0:10]:
+SHA-якоря до кампании:
+  65f068a6282d9a5a  /home/z/my-project/CISStat-TS-Analysis/apps/api/delivery_outbox.py
+  050a0f2d7c40bf73  /home/z/my-project/CISStat-TS-Analysis/apps/api/delivery_worker.py
+  1d7965913aa4ded5  /home/z/my-project/CISStat-TS-Analysis/apps/api/main.py
+  53a52f2f41e046b9  /home/z/my-project/CISStat-TS-Analysis/apps/api/requirements.txt
+  25abe73cf1d0cf07  /home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py
+  25225ea626e905e3  /home/z/my-project/CISStat-TS-Analysis/apps/api/routers/models.py
+  3cb05d2d624f0b0f  /home/z/my-project/CISStat-TS-Analysis/apps/api/session_store.py
+  8bd4d011347b48ba  /home/z/my-project/CISStat-TS-Analysis/apps/api/storage_diagnostics.py
+  7d46b9d3bd562c8f  /home/z/my-project/CISStat-TS-Analysis/apps/api/trace_hook.py
+CONTROL O (без мутантов): exit=0 Итог: 45 PASS / 0 FAIL из 45
+CONTROL R (без мутантов): exit=0 ....................                                                     [ 77%] | tests/api/test_progress_audit_6b.py ....s.s.s.s.s.s.s.s.s.s.s.s.s....... [ 92%] | .............ss                                                          [ 98%] | tests/api/test_docker_image_layout.py ....                               [100%] |  | ======================= 225 passed, 19 skipped in 9.78s ========================
+[KILLED] CM6CC-1 storage-mode-fail-fast-removed: O=KILL R=KILL
+[KILLED] CM6CC-2 runs-required-fail-closed-removed: O=KILL R=KILL
+[KILLED] CM6CC-3 runs-required-probe-gate-removed: O=KILL R=KILL
+[KILLED] CM6CC-18 session-required-fail-closed-removed: O=KILL R=KILL
+[KILLED] CM6CC-4 fallback-events-dropped: O=KILL R=KILL
+[KILLED] CM6CC-5 safe-error-url-redaction-removed: O=KILL R=KILL
+[KILLED] CM6CC-6 safe-error-kv-redaction-removed: O=KILL R=KILL
+[KILLED] CM6CC-7 safe-error-clip-removed: O=KILL R=KILL
+[KILLED] CM6CC-8 health-error-full-message: O=KILL R=KILL
+[KILLED] CM6CC-9 degraded-ignores-worker-errors: O=KILL R=pass
+RESTORE-CHECK:
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/delivery_outbox.py (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/delivery_worker.py (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/main.py (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/requirements.txt (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/routers/models.py (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/session_store.py (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/storage_diagnostics.py (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/trace_hook.py (байт-в-байт)
+==============================================================================
+Итог среза [0:10] кампании: 10 мутантов; KILLED 10 (O-канал убил 10, R-канал убил 9); ALIVE 0; SKIP 0
+[KILLED] CM6CC-1 storage-mode-fail-fast-removed (O=KILL R=KILL) -- Итог: 44 PASS / 1 FAIL из 45 ;; [FAIL] G6CC-MODE-6 опечатка в режиме хранения -> fail fast -- ASSERT: неизвестный режим обязан fail fast
+[KILLED] CM6CC-2 runs-required-fail-closed-removed (O=KILL R=KILL) -- Итог: 43 PASS / 2 FAIL из 45 ;; [FAIL] G6CC-MODE-1 required + реальная ошибка конфигурации -> fail-closed -- ASSERT: required + нет URL обязан fail-clos ;; [FAIL] G6CC-MODE-2 required + недостижимая БД (TEST-NET-3) -> fa
+[KILLED] CM6CC-3 runs-required-probe-gate-removed (O=KILL R=KILL) -- Итог: 44 PASS / 1 FAIL из 45 ;; [FAIL] G6CC-MODE-2 required + недостижимая БД (TEST-NET-3) -> fail-closed -- ASSERT: недостижимая БД в required обязан у
+[KILLED] CM6CC-18 session-required-fail-closed-removed (O=KILL R=KILL) -- Итог: 43 PASS / 2 FAIL из 45 ;; [FAIL] G6CC-MODE-7 Redis required: реальная ошибка конфигурации -> fail-closed -- ASSERT: required Redis без URL обязан  ;; [FAIL] G6CC-MODE-9 Redis required: недоступный PING -> fail-clos
+[KILLED] CM6CC-4 fallback-events-dropped (O=KILL R=KILL) -- Итог: 43 PASS / 2 FAIL из 45 ;; [FAIL] G6CC-MODE-3 advisory + реальная ошибка конфигурации Postgres -> ЯВНАЯ деградация -- ASSERT: событие fallback зафи ;; [FAIL] G6CC-MODE-8 Redis advisory: реальная ошибка конфигурации 
+[KILLED] CM6CC-5 safe-error-url-redaction-removed (O=KILL R=KILL) -- Итог: 39 PASS / 6 FAIL из 45 ;; [FAIL] G6CC-SAFE-1 DSN/URL целиком редактируются -- ASSERT: connect: postgresql://cert6c_svc:Qx7vLp%21@pg-cert6c.interna ;; [FAIL] G6CC-PROBE-2 probe_store: врун и бросок -- защитный конту
+[KILLED] CM6CC-6 safe-error-kv-redaction-removed (O=KILL R=KILL) -- Итог: 43 PASS / 2 FAIL из 45 ;; [FAIL] G6CC-SAFE-2 password=/token=/Bearer редактируются -- ASSERT: auth failed: password=CERT-SEC-42 token=t0ken-6cc-77 ;; [FAIL] G6CC-OPS-3 форма /health/ops и отсутствие секретов при де
+[KILLED] CM6CC-7 safe-error-clip-removed (O=KILL R=KILL) -- Итог: 44 PASS / 1 FAIL из 45 ;; [FAIL] G6CC-SAFE-3 клип 300 и схлопывание переносов -- ASSERT: 2879
+[KILLED] CM6CC-8 health-error-full-message (O=KILL R=KILL) -- Итог: 42 PASS / 3 FAIL из 45 ;; [FAIL] G6CC-MODE-3b advisory + недоступная БД: ленивый Postgres выбран, недоступность видна в /health/ops -- ASSERT: {'o ;; [FAIL] G6CC-SAFE-5 safe_health_error -- только класс исключения 
+[KILLED] CM6CC-9 degraded-ignores-worker-errors (O=KILL R=pass) -- Итог: 44 PASS / 1 FAIL из 45 ;; [FAIL] G6CC-OPS-4 degraded-агрегация: worker errors и dispatch -- ASSERT: ok
+
+Срез 2 [10:19]:
+SHA-якоря до кампании:
+  65f068a6282d9a5a  /home/z/my-project/CISStat-TS-Analysis/apps/api/delivery_outbox.py
+  050a0f2d7c40bf73  /home/z/my-project/CISStat-TS-Analysis/apps/api/delivery_worker.py
+  1d7965913aa4ded5  /home/z/my-project/CISStat-TS-Analysis/apps/api/main.py
+  53a52f2f41e046b9  /home/z/my-project/CISStat-TS-Analysis/apps/api/requirements.txt
+  25abe73cf1d0cf07  /home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py
+  25225ea626e905e3  /home/z/my-project/CISStat-TS-Analysis/apps/api/routers/models.py
+  3cb05d2d624f0b0f  /home/z/my-project/CISStat-TS-Analysis/apps/api/session_store.py
+  8bd4d011347b48ba  /home/z/my-project/CISStat-TS-Analysis/apps/api/storage_diagnostics.py
+  7d46b9d3bd562c8f  /home/z/my-project/CISStat-TS-Analysis/apps/api/trace_hook.py
+CONTROL пропущен (--no-control; базлайн проверен ранее)
+[KILLED] CM6CC-10 projection-lag-loses-failed: O=KILL R=pass
+[KILLED] CM6CC-11 memory-backlog-age-none: O=KILL R=KILL
+[KILLED] CM6CC-15 health-ops-initializes-factories: O=KILL R=pass
+[KILLED] CM6CC-12 worker-env-disable-inverted: O=KILL R=KILL
+[KILLED] CM6CC-13 worker-interval-clamp-removed: O=KILL R=KILL
+[KILLED] CM6CC-14 worker-consecutive-errors-never-reset: O=KILL R=KILL
+[KILLED] CM6CC-16 dispatch-execution-gate-removed: O=KILL R=KILL
+[KILLED] CM6CC-17 hook-log-ids-dropped: O=KILL R=KILL
+[KILLED] CM6CC-19 requirements-psycopg-deleted: O=KILL R=pass
+RESTORE-CHECK:
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/delivery_outbox.py (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/delivery_worker.py (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/main.py (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/requirements.txt (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/research_runs.py (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/routers/models.py (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/session_store.py (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/storage_diagnostics.py (байт-в-байт)
+  OK  /home/z/my-project/CISStat-TS-Analysis/apps/api/trace_hook.py (байт-в-байт)
+==============================================================================
+Итог среза [10:19] кампании: 9 мутантов; KILLED 9 (O-канал убил 9, R-канал убил 6); ALIVE 0; SKIP 0
+[KILLED] CM6CC-10 projection-lag-loses-failed (O=KILL R=pass) -- Итог: 44 PASS / 1 FAIL из 45 ;; [FAIL] G6CC-OPS-5 backlog/возраст/projection lag по СВОИМ обязательствам -- ASSERT: {'pending_obligations': 2, 'failed_o
+[KILLED] CM6CC-11 memory-backlog-age-none (O=KILL R=KILL) -- Итог: 43 PASS / 2 FAIL из 45 ;; [FAIL] G6CC-PROBE-3 backlog_age_seconds: СВОИ обязательства на Memory -- ASSERT: None ;; [FAIL] G6CC-OPS-5 backlog/возраст/projection lag по СВОИМ обязательствам -- ASSERT: None
+[KILLED] CM6CC-15 health-ops-initializes-factories (O=KILL R=pass) -- Итог: 43 PASS / 2 FAIL из 45 ;; [FAIL] G6CC-OPS-2 peek-семантика: GET /health/ops НЕ инициализирует фабрики -- ASSERT: {'status': 'ok', 'generated_at':  ;; [FAIL] G6CC-OPS-3 форма /health/ops и отсутствие секретов при де
+[KILLED] CM6CC-12 worker-env-disable-inverted (O=KILL R=KILL) -- Итог: 43 PASS / 2 FAIL из 45 ;; [FAIL] G6CC-WORKER-4 env-выключатели: ENABLED и INTERVAL (клип/мусор) -- ASSERT:  ;; [FAIL] G6CC-WORKER-6 lifespan: авто-старт и остановка worker'а -- ASSERT: {'enabled': False, 'running':
+[KILLED] CM6CC-13 worker-interval-clamp-removed (O=KILL R=KILL) -- Итог: 44 PASS / 1 FAIL из 45 ;; [FAIL] G6CC-WORKER-4 env-выключатели: ENABLED и INTERVAL (клип/мусор) -- ASSERT: 
+[KILLED] CM6CC-14 worker-consecutive-errors-never-reset (O=KILL R=KILL) -- Итог: 44 PASS / 1 FAIL из 45 ;; [FAIL] G6CC-WORKER-3 устойчивость: сбой цикла растит consecutive_errors, успех сбрасывает -- ASSERT: {'enabled': True, '
+[KILLED] CM6CC-16 dispatch-execution-gate-removed (O=KILL R=KILL) -- Итог: 44 PASS / 1 FAIL из 45 ;; [FAIL] G6CC-DISPATCH-3 runtime-дрейф theta -> 503 fail-closed В ТОЧКЕ ИСПОЛНЕНИЯ -- ASSERT: 500
+[KILLED] CM6CC-17 hook-log-ids-dropped (O=KILL R=KILL) -- Итог: 44 PASS / 1 FAIL из 45 ;; [FAIL] G6CC-LOGS-1 отказ зеркала хука: ids + advisory-маркер + безопасная причина -- ASSERT: Trace hook: событие POST /v
+[KILLED] CM6CC-19 requirements-psycopg-deleted (O=KILL R=pass) -- Итог: 44 PASS / 1 FAIL из 45 ;; [FAIL] G6CC-DECL-1 requirements.txt объявляет psycopg[binary]>=3.1.0 -- ASSERT: драйвер обязан быть объявлен (F14/H29)
