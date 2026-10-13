@@ -276,9 +276,50 @@ export function ProgressCheckpointBar({
                 {formatCheckpointTime(checkpoint.created_at)}
               </time>
               {checkpoint.has_snapshot && " · снимок данных"}
+              {/* PROGR-AUDIT-8 (контракт v1.2-8A §22): metadata СОЗДАНИЯ
+                  снимка -- к какому контексту он относится и на какой
+                  позиции durable-истории создан. undefined (старый бэкенд,
+                  N-3) / честное отсутствие -- не рендерится, не выдумывается.
+                  Ссылка на event_id -- именованный якорь, НЕ «DataFrame в
+                  момент того события». */}
+              {checkpoint.has_snapshot && checkpoint.context_id && (
+                <>
+                  {" · "}
+                  <span data-testid="checkpoint-context" className="font-mono">
+                    контекст {checkpoint.context_id}
+                  </span>
+                </>
+              )}
+              {checkpoint.has_snapshot && typeof checkpoint.watermark === "number" && (
+                <>
+                  {" · "}
+                  <span data-testid="checkpoint-watermark">
+                    позиция {checkpoint.watermark}
+                  </span>
+                </>
+              )}
+              {checkpoint.has_snapshot && typeof checkpoint.data_revision === "number" && (
+                <>
+                  {" · "}
+                  <span data-testid="checkpoint-data-revision">
+                    ревизия {checkpoint.data_revision}
+                  </span>
+                </>
+              )}
             </li>
           ))}
         </ul>
+      )}
+
+      {/* PROGR-AUDIT-8: honest-пометка -- raw restore (восстановление
+          загружает ИСХОДНЫЙ файл, §5.3) снимки чекпоинтов НЕ применяет;
+          full snapshot replay -- отдельный контракт. Рендерится при
+          наличии снимков: без снимков «не применять» нечего. */}
+      {checkpoints.some((checkpoint) => checkpoint.has_snapshot) && (
+        <p data-testid="checkpoint-restore-note" className="mt-1 text-xs text-neutral-500">
+          Восстановление запуска (raw) снимки чекпоинтов не применяет;
+          промежуточные состояния данных не восстанавливаются (§5.3).
+        </p>
       )}
     </div>
   );

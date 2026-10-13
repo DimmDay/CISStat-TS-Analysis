@@ -1027,6 +1027,15 @@ class CheckpointOut(BaseModel):
     label: str
     has_snapshot: bool
     created_at: str
+    # PROGR-AUDIT-8 (план §14, контракт v1.2-8A §22): metadata СОЗДАНИЯ
+    # снимка -- потребитель видит, к какому контексту относится снимок
+    # и на какой позиции durable-истории он создан; ссылка на event_id
+    # -- именованный якорь, НЕ «DataFrame в момент того события».
+    # None -- легаси-чекпоинт/нет снимка (честное отсутствие, N-3:
+    # поля аддитивны, старый корпус не фабрикует).
+    context_id: Optional[str] = None
+    data_revision: Optional[int] = None
+    watermark: Optional[int] = None
 
 
 class RunDetailResponse(ResearchRunOut):
@@ -1057,7 +1066,30 @@ class CheckpointCreatedResponse(BaseModel):
 class RestoreResponse(BaseModel):
     """Факты восстановления (§5.3). Сознательно БЕЗ семантики
     управления панелью (N-4): открыть/закрыть/перейти -- решение
-    фронтенда, deep-link узла панель не закрывает."""
+    фронтенда, deep-link узла панель не закрывает.
+
+    PROGR-AUDIT-8 (план §14, контракт v1.2-8A §22): restore ЯВНО
+    сообщает режим и новые ревизии (аддитивно, N-3):
+      mode            -- "raw": восстановление загружает ИСХОДНЫЙ файл
+                         (§12 п.3), промежуточные состояния DataFrame
+                         НЕ восстанавливаются (§5.3); снимки чекпоинтов
+                         НЕ применяются (full snapshot replay --
+                         отдельный контракт, сознательно не здесь);
+      data_revision   -- ревизия данных восстановленной сессии (raw --
+                         0: мутаций контента ещё не было);
+      context_id      -- серверный context_id нового контекста расчёта
+                         (детерминизм I3: тот же состав -- тот же id;
+                         restore без мутаций продолжает прежний);
+      context_changed -- True -- новый контекст отличается от прежнего
+                         хранимого (run.context_id до restore):
+                         исторические факты остаются видимыми, но их
+                         применимость -- stale/unknown (I4); новый
+                         применимый расчёт появляется только с новым
+                         результатом нового контекста. False -- контекст
+                         продолжается (не было мутаций, пара цели та
+                         же) либо прежний контекст неизвестен (легаси:
+                         сравнивать не с чем -- честное отсутствие).
+    """
 
     run_id: str
     status: str
@@ -1070,6 +1102,10 @@ class RestoreResponse(BaseModel):
     last_active_stage: Optional[str] = None
     events_restored: int
     events_total: int
+    mode: str = "raw"
+    data_revision: int = 0
+    context_id: Optional[str] = None
+    context_changed: bool = False
 
 
 def _require_run(run_id: str) -> ResearchRun:
@@ -1209,7 +1245,17 @@ def create_checkpoint(
     (паттерн PassportCheckpoint). Событие обязано существовать в ЭТОМ
     запуске -- ссылки на чужие/фантомные события отклоняются (404).
     Данные: снимок DataFrame сессии запуска (§12 п.4, CSV; последние 5
-    на запуск -- prune по списку из хранилища, не по mtime)."""
+    на запуск -- prune по списку из хранилища, не по mtime).
+
+    PROGR-AUDIT-8 (план §14, контракт v1.2-8A §22): снимок связывается
+    с РЕАЛЬНЫМ current контекстом и watermark'ом ЕГО СОЗДАНИЯ
+    (checkpoint.context_id/data_revision/watermark). Ссылка на
+    произвольное старое event_id НЕ означает «DataFrame в момент того
+    события» -- metadata фиксируют момент создания; watermark --
+    позиция durable-истории (ledger слоя 2) ДО факта checkpoint_saved
+    (не cap слоя 1: после restore с усечённым засевом -- полная
+    позиция). Чужая сессия -- ссылка без снимка и без контекстных
+    метаданных (честное отсутствие)."""
     store = _require_store()
     run = _require_run(run_id)
     if run.status in ("completed", "abandoned"):
@@ -1223,14 +1269,30 @@ def create_checkpoint(
             status_code=404,
             detail=f"Событие {payload.event_id} не найдено в запуске {run_id}",
         )
+    # PROGR-AUDIT-8 (план §14, контракт v1.2-8A §22): чекпоинт связывает
+    # снимок с РЕАЛЬНЫМ current контекстом и watermark'ом ЕГО СОЗДАНИЯ.
+    # Ссылка на произвольное старое event_id НЕ означает «DataFrame в
+    # момент того события» -- снимок берётся из ТЕКУЩЕГО состояния
+    # сессии, поэтому metadata фиксируют момент создания, а не момент
+    # якорного события (RED-карточка: чекпоинт с ранним event_id после
+    # поздней коррекции).
+    #
+    # Watermark -- позиция durable-истории запуска (число фактов ledger
+    # слоя 2) на момент создания, ДО факта checkpoint_saved; свежие
+    # события слоя 1, ещё не зеркалированные (P15), в неё не входят --
+    # позиция привязана к durable-корпусу (не cap слоя 1: restore после
+    # усечённого засева имеет ПОЛНУЮ позицию ledger).
+    checkpoint_watermark = len(store.list_events(run_id))
     checkpoint = ResearchCheckpoint(
         checkpoint_id=str(uuid4()),
         run_id=run_id,
         event_id=payload.event_id,
         label=payload.label,
+        watermark=checkpoint_watermark,
     )
     # Снимок данных (§12 п.4) -- только из сессии ЭТОГО запуска: чужая
-    # сессия честно создаёт ссылку без снимка.
+    # сессия честно создаёт ссылку без снимка. Контекстные метаданные --
+    # только у снимка своей сессии (чужой контекст не выдумывается).
     session_id = get_or_create_session_id(request, response)
     calling_session = get_session_store().get(session_id)
     if (
@@ -1238,6 +1300,11 @@ def create_checkpoint(
         and calling_session.run_id == run_id
         and calling_session.dataframe is not None
     ):
+        checkpoint = replace(
+            checkpoint,
+            context_id=calling_session.current_context_id(),
+            data_revision=getattr(calling_session, "data_revision", None),
+        )
         try:
             if get_dataset_file_store().save_checkpoint_snapshot(
                 run_id, checkpoint.checkpoint_id, calling_session.dataframe
@@ -1396,6 +1463,22 @@ def restore_run(request: Request, response: Response, run_id: str) -> RestoreRes
         "run_resumed", stage=last_stage, node_id=None, run_id=run_id,
         restored=True,
     )
+    # PROGR-AUDIT-8 (план §14, контракт v1.2-8A §22): raw restore --
+    # НОВЫЙ вычислительный вход (raw-файл, ревизия 0); run-метаданные
+    # контекста обновляются на контекст ВОССТАНОВЛЕННОЙ сессии, чтобы
+    # проекция (validity против run.context_id, PR-4) не использовала
+    # СТАРУЮ current-validity для raw входа (P05/H05: прежний done
+    # оставался «current» против старого контекста). История run
+    # продолжается (append-only), cookie меняется; детерминизм I3:
+    # restore без мутаций и с той же парой цели даёт ТОТ ЖЕ context_id
+    # (история продолжается без смены применимости). Легитимный сдвиг
+    # контекста CAS-гейты продюсеров проходят штатно (паттерн коррекций
+    # AUDIT-6A: продюсер читает ХРАНИМЫЙ контекст на момент чтения --
+    # уже новый).
+    new_context_id = session.current_context_id()
+    context_changed = (
+        run.context_id is not None and new_context_id != run.context_id
+    )
     store.upsert_run(
         ResearchRun(
             **{
@@ -1403,6 +1486,12 @@ def restore_run(request: Request, response: Response, run_id: str) -> RestoreRes
                 "session_id": new_session_id,
                 "status": "active",
                 "last_active_at": resumed.ts,
+                # AUDIT-8: новые метаданные контекста/ревизии raw-входа.
+                # None (контекст невычислим) -- COALESCE upsert'а хранит
+                # прежнее значение (безопасная деградация).
+                "context_id": new_context_id,
+                "data_revision": session.data_revision,
+                "data_digest": session.data_digest or None,
             }
         )
     )
@@ -1433,6 +1522,12 @@ def restore_run(request: Request, response: Response, run_id: str) -> RestoreRes
         last_active_stage=session.last_active_stage,
         events_restored=len(seeded),
         events_total=events_total,
+        # PROGR-AUDIT-8: raw-режим и новые ревизии -- честные факты
+        # восстановления (план §14 п.1).
+        mode="raw",
+        data_revision=session.data_revision,
+        context_id=new_context_id,
+        context_changed=context_changed,
     )
 
 

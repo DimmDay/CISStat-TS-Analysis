@@ -1,0 +1,24 @@
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_restore_reports_mode_raw_and_new_revisions FAILED [  6%]
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_restore_unmutated_run_continues_same_context FAILED [ 13%]
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_run_metadata_follows_restored_context FAILED [ 20%]
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_p05_old_done_stale_new_input_current FAILED [ 26%]
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_cleared_target_before_restore_context_honest PASSED [ 33%]
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_manual_choice_before_restore_reflected_in_context PASSED [ 40%]
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_restore_new_cookie_no_new_choice PASSED [ 46%]
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_missing_raw_file_409 PASSED [ 53%]
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_raw_file_bytes_unchanged_after_restore PASSED [ 60%]
+tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_restore_history_preserved_append_only PASSED [ 66%]
+tests/api/test_progress_audit_8.py::TestCheckpointMetadata::test_checkpoint_records_creation_context_and_watermark FAILED [ 73%]
+tests/api/test_progress_audit_8.py::TestCheckpointMetadata::test_checkpoint_early_event_after_late_correction FAILED [ 80%]
+tests/api/test_progress_audit_8.py::TestCheckpointMetadata::test_checkpoint_foreign_session_snapshot_absent_honest FAILED [ 86%]
+tests/api/test_progress_audit_8.py::TestCheckpointMetadata::test_run_detail_includes_checkpoint_metadata FAILED [ 93%]
+tests/api/test_progress_audit_8.py::TestCheckpointMetadata::test_checkpoint_watermark_is_full_history_after_cap_restore FAILED [100%]
+FAILED tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_restore_reports_mode_raw_and_new_revisions - KeyError: 'mode'
+FAILED tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_restore_unmutated_run_continues_same_context - KeyError: 'mode'
+FAILED tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_run_metadata_follows_restored_context - AssertionError: assert 'ctx-4d78503fe0645b1f' == 'ctx-9b88a56d8013581e'
+FAILED tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_p05_old_done_stale_new_input_current - KeyError: 'context_id'
+FAILED tests/api/test_progress_audit_8.py::TestCheckpointMetadata::test_checkpoint_records_creation_context_and_watermark - KeyError: 'context_id'
+FAILED tests/api/test_progress_audit_8.py::TestCheckpointMetadata::test_checkpoint_early_event_after_late_correction - KeyError: 'context_id'
+FAILED tests/api/test_progress_audit_8.py::TestCheckpointMetadata::test_checkpoint_foreign_session_snapshot_absent_honest - KeyError: 'context_id'
+FAILED tests/api/test_progress_audit_8.py::TestCheckpointMetadata::test_run_detail_includes_checkpoint_metadata - KeyError: 'context_id'
+FAILED tests/api/test_progress_audit_8.py::TestCheckpointMetadata::test_checkpoint_watermark_is_full_history_after_cap_restore - KeyError: 'watermark'

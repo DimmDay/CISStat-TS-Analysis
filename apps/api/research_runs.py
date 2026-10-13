@@ -278,9 +278,30 @@ class ResearchCheckpoint:
     label: str = ""
     has_snapshot: bool = False
     created_at: str = field(default_factory=_now_iso)
+    # PROGR-AUDIT-8 (план §14, контракт аддендум v1.2-8A §22): metadata
+    # СОЗДАНИЯ снимка. Снимок -- DataFrame вызывающей сессии НА МОМЕНТ
+    # создания; ссылка на event_id -- именованный якорь, он НЕ означает
+    # «DataFrame в момент того события». Поэтому чекпоинт честно несёт:
+    #   context_id    -- реальный current контекст расчёта сессии в
+    #                    момент создания (I3; None -- снимка нет / сессия
+    #                    чужая / контекст невычислим -- честное
+    #                    отсутствие, не выдумка);
+    #   data_revision -- ревизия данных сессии в момент создания;
+    #   watermark     -- позиция durable-истории запуска (число фактов
+    #                    ledger слоя 2) на момент создания, ДО факта
+    #                    checkpoint_saved; свежие события слоя 1, ещё не
+    #                    зеркалированные (P15), в неё не входят --
+    #                    позиция привязана к durable-корпусу, не к
+    #                    волатильному хвосту.
+    # Аддитивные Optional (прецедент AUDIT-6A/1A): None -- «незаполняемое
+    # поле отсутствует» (легаси-чекпоинты до миграции 0004 читаются, не
+    # фабрикуют); upsert/read контракты обоих хранилищ паритетны (I8).
+    context_id: Optional[str] = None
+    data_revision: Optional[int] = None
+    watermark: Optional[int] = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "checkpoint_id": self.checkpoint_id,
             "run_id": self.run_id,
             "event_id": self.event_id,
@@ -288,9 +309,28 @@ class ResearchCheckpoint:
             "has_snapshot": self.has_snapshot,
             "created_at": self.created_at,
         }
+        # «Незаполняемое поле отсутствует» (стиль ResearchRun.to_dict):
+        # легаси-чекпоинты без метаданных не фабрикуют поля.
+        if self.context_id is not None:
+            result["context_id"] = self.context_id
+        if self.data_revision is not None:
+            result["data_revision"] = self.data_revision
+        if self.watermark is not None:
+            result["watermark"] = self.watermark
+        return result
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "ResearchCheckpoint":
+        def _optional_int(value: Any) -> Optional[int]:
+            # Мусорные типы -> честное отсутствие (щит C-CERT: деградация,
+            # не 500); bool -- не ревизия (subclass int).
+            if (
+                isinstance(value, int)
+                and not isinstance(value, bool)
+            ):
+                return value
+            return None
+
         return cls(
             checkpoint_id=str(raw["checkpoint_id"]),
             run_id=str(raw["run_id"]),
@@ -298,6 +338,13 @@ class ResearchCheckpoint:
             label=str(raw.get("label") or ""),
             has_snapshot=bool(raw.get("has_snapshot") or False),
             created_at=str(raw.get("created_at") or _now_iso()),
+            context_id=(
+                str(raw["context_id"])
+                if isinstance(raw.get("context_id"), str) and raw.get("context_id")
+                else None
+            ),
+            data_revision=_optional_int(raw.get("data_revision")),
+            watermark=_optional_int(raw.get("watermark")),
         )
 
 
@@ -603,9 +650,25 @@ MIGRATION_STATEMENTS_0003: tuple[str, ...] = (
     "ALTER TABLE research_runs ADD COLUMN IF NOT EXISTS target_column_source TEXT",
 )
 
+# AUDIT-8 (план §14): metadata создания снимка чекпоинта -- аддитивная
+# миграция 0004. Чекпоинт связывает снимок с РЕАЛЬНЫМ current контекстом
+# и watermark'ом ЕГО СОЗДАНИЯ (ссылка на event_id -- именованный якорь,
+# НЕ «DataFrame в момент того события», контракт аддендум v1.2-8A §22):
+#   context_id    -- контекст расчёта сессии в момент создания (I3);
+#   data_revision -- ревизия данных сессии в момент создания;
+#   watermark     -- позиция durable-истории запуска на момент создания
+#                    (до факта checkpoint_saved).
+# NULL -- честное отсутствие (легаси-чекпоинты до миграции, §3.7;
+# чекпоинты без снимка не фабрикуют контекстные метаданные).
+MIGRATION_STATEMENTS_0004: tuple[str, ...] = (
+    "ALTER TABLE run_checkpoints ADD COLUMN IF NOT EXISTS context_id TEXT",
+    "ALTER TABLE run_checkpoints ADD COLUMN IF NOT EXISTS data_revision BIGINT",
+    "ALTER TABLE run_checkpoints ADD COLUMN IF NOT EXISTS watermark BIGINT",
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
-    + MIGRATION_STATEMENTS_0003
+    + MIGRATION_STATEMENTS_0003 + MIGRATION_STATEMENTS_0004
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -614,6 +677,7 @@ MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("0001_research_runs.sql", MIGRATION_STATEMENTS_0001),
     ("0002_audit6a_atomic_ledger.sql", MIGRATION_STATEMENTS_0002),
     ("0003_audit1a_target_source.sql", MIGRATION_STATEMENTS_0003),
+    ("0004_audit8_checkpoint_metadata.sql", MIGRATION_STATEMENTS_0004),
 )
 
 
@@ -1383,14 +1447,17 @@ class PostgresResearchRunStore(ResearchRunStore):
             cur.execute(
                 """
                 INSERT INTO run_checkpoints
-                    (checkpoint_id, run_id, event_id, label, has_snapshot, created_at)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                    (checkpoint_id, run_id, event_id, label, has_snapshot, created_at,
+                     context_id, data_revision, watermark)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (checkpoint_id) DO NOTHING
                 """,
                 (
                     checkpoint.checkpoint_id, run_id, checkpoint.event_id,
                     checkpoint.label, checkpoint.has_snapshot,
                     _ts_to_db(checkpoint.created_at),
+                    checkpoint.context_id, checkpoint.data_revision,
+                    checkpoint.watermark,
                 ),
             )
             conn.commit()
@@ -1399,7 +1466,8 @@ class PostgresResearchRunStore(ResearchRunStore):
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
                 "SELECT checkpoint_id, run_id, event_id, label, has_snapshot, "
-                "created_at FROM run_checkpoints WHERE run_id = %s ORDER BY created_at, checkpoint_id",
+                "created_at, context_id, data_revision, watermark "
+                "FROM run_checkpoints WHERE run_id = %s ORDER BY created_at, checkpoint_id",
                 (run_id,),
             )
             rows = cur.fetchall()
@@ -1411,6 +1479,15 @@ class PostgresResearchRunStore(ResearchRunStore):
                 label=str(row[3] or ""),
                 has_snapshot=bool(row[4]),
                 created_at=_ts_from_db(row[5]),
+                # Мусорные типы -> честное отсутствие (паритет
+                # ResearchCheckpoint.from_dict, щит C-CERT).
+                context_id=(str(row[6]) if row[6] else None),
+                data_revision=(
+                    int(row[7]) if row[7] is not None else None
+                ),
+                watermark=(
+                    int(row[8]) if row[8] is not None else None
+                ),
             )
             for row in rows
         ]

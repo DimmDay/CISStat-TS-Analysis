@@ -358,11 +358,17 @@ class TestPostgresStoreBehavior:
             run_id=run.run_id,
         )
         store.append_event(run.run_id, event)
+        # PROGR-AUDIT-8 (план §14, контракт v1.2-8A §22): metadata
+        # СОЗДАНИЯ снимка -- паритет I8 обоих хранилищ (миграция 0004).
         checkpoint = ResearchCheckpoint(
             checkpoint_id="cp-pg-1",
             run_id=run.run_id,
             event_id=event.event_id,
             label="Перед агрессивным сглаживанием",
+            has_snapshot=True,
+            context_id="ctx-roundtrip01",
+            data_revision=2,
+            watermark=7,
         )
         store.add_checkpoint(run.run_id, checkpoint)
         loaded = store.list_checkpoints(run.run_id)
@@ -370,7 +376,35 @@ class TestPostgresStoreBehavior:
         assert loaded[0].checkpoint_id == "cp-pg-1"
         assert loaded[0].event_id == event.event_id
         assert loaded[0].label == "Перед агрессивным сглаживанием"
-        assert loaded[0].has_snapshot is False
+        assert loaded[0].has_snapshot is True
+        # AUDIT-8: metadata создания на живом PG (roundtrip, I8).
+        assert loaded[0].context_id == "ctx-roundtrip01"
+        assert loaded[0].data_revision == 2
+        assert loaded[0].watermark == 7
+
+    def test_checkpoints_legacy_row_without_metadata(self, pg_conn, store):
+        """Легаси-строка до миграции 0004 (NULL в новых колонках):
+        читается с честным отсутствием, не 500 (§3.7, щит C-CERT)."""
+        run = _seed_run("RUN-PGLEG01")
+        store.upsert_run(run)
+        event = make_trace_event(
+            "upload_completed", stage="upload", node_id="structure_confirmed",
+            run_id=run.run_id,
+        )
+        store.append_event(run.run_id, event)
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO run_checkpoints (checkpoint_id, run_id, event_id, label) "
+                "VALUES ('cp-legacy-1', %s, %s, 'легаси')",
+                (run.run_id, event.event_id),
+            )
+        pg_conn.commit()
+        loaded = store.list_checkpoints(run.run_id)
+        assert len(loaded) == 1
+        assert loaded[0].checkpoint_id == "cp-legacy-1"
+        assert loaded[0].context_id is None
+        assert loaded[0].data_revision is None
+        assert loaded[0].watermark is None
 
     def test_foreign_key_cascade(self, pg_conn):
         """DDL-гарантия §12 п.1: события/чекпоинты не переживают запуск

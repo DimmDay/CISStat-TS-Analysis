@@ -315,6 +315,18 @@ export interface CheckpointInfo {
   label: string;
   has_snapshot: boolean;
   created_at: string;
+  /** PROGR-AUDIT-8 (контракт v1.2-8A §22): metadata СОЗДАНИЯ снимка --
+   * реальный контекст расчёта сессии в момент создания. undefined --
+   * поле не передано (старый бэкенд N-3) / снимка нет (честное
+   * отсутствие). Ссылка на event_id -- именованный якорь, НЕ «DataFrame
+   * в момент того события». */
+  context_id?: string | null;
+  /** Ревизия данных сессии в момент создания снимка (undefined -- N-3 /
+   * честное отсутствие). */
+  data_revision?: number | null;
+  /** Позиция durable-истории запуска (ledger слоя 2) на момент создания,
+   * до факта checkpoint_saved (undefined -- N-3 / легаси-чекпоинт). */
+  watermark?: number | null;
 }
 
 /** Последнее в хронологии событие с непустым event_id -- кандидат на якорь
