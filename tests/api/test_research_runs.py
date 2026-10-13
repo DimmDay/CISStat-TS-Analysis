@@ -410,14 +410,21 @@ class TestStoreFactory:
         for table in (
             "research_runs", "trace_events", "run_checkpoints",
             "run_commit_receipts",  # AUDIT-6A: receipts атомарных батчей
+            # AUDIT-6B: durable outbox обязательств доставки (план §17 п.4).
+            "progress_delivery_outbox",
         ):
             assert f"CREATE TABLE IF NOT EXISTS {table}" in ddl
         # События -- append-only с внешним ключом на запуск (§5).
         assert "REFERENCES research_runs(run_id)" in ddl
         # AUDIT-6A: каталог -- 0001 (не переписывается) + 0002 (аддитивно),
-        # каждый -- SQL-файл для ops (план §7).
+        # каждый -- SQL-файл для ops (план §7). Versioned-обновление
+        # (AUDIT-6B): 0005 -- outbox доставки (план §17 п.4, аддитивно).
         migrations_dir = Path(research_runs.__file__).parent / "migrations"
-        for name in ("0001_research_runs.sql", "0002_audit6a_atomic_ledger.sql"):
+        for name in (
+            "0001_research_runs.sql",
+            "0002_audit6a_atomic_ledger.sql",
+            "0005_audit6b_delivery_outbox.sql",
+        ):
             sql_file = migrations_dir / name
             assert sql_file.exists(), name
             assert "research_runs" in sql_file.read_text(encoding="utf-8")

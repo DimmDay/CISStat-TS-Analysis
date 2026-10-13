@@ -74,9 +74,11 @@ MIGRATIONS_FILES = (
     # Каталог миграций (AUDIT-6A): 0001 -- базовая схема (НЕ переписывается),
     # 0002 -- атомарный ledger (аддитивно; план §7).
     # AUDIT-1A: 0003 -- происхождение цели (аддитивно; план §9).
+    # AUDIT-6B: 0005 -- durable outbox доставки (аддитивно; план §17 п.4).
     "0001_research_runs.sql",
     "0002_audit6a_atomic_ledger.sql",
     "0003_audit1a_target_source.sql",
+    "0005_audit6b_delivery_outbox.sql",
 )
 MIGRATIONS_FILE = (
     Path(__file__).resolve().parents[2]
@@ -99,9 +101,18 @@ MIGRATIONS_FILE_0003 = (
     / "migrations"
     / "0003_audit1a_target_source.sql"
 )
+MIGRATIONS_FILE_0005 = (
+    Path(__file__).resolve().parents[2]
+    / "apps"
+    / "api"
+    / "migrations"
+    / "0005_audit6b_delivery_outbox.sql"
+)
 
 EXPECTED_TABLES = {
     "research_runs", "trace_events", "run_checkpoints", "run_commit_receipts",
+    # AUDIT-6B: durable outbox обязательств доставки (план §17 п.4).
+    "progress_delivery_outbox",
 }
 EXPECTED_INDEXES = {
     "idx_trace_events_run_seq",
@@ -111,9 +122,13 @@ EXPECTED_INDEXES = {
     "uq_trace_events_run_commit_seq",
     "idx_trace_events_run_commit_seq",
     "idx_run_commit_receipts_run",
+    # AUDIT-6B: outbox доставки (due-выборка worker'а + реестр запуска).
+    "idx_progress_delivery_outbox_due",
+    "idx_progress_delivery_outbox_run",
 }
 
 DROP_SCHEMA_SQL = """
+DROP TABLE IF EXISTS progress_delivery_outbox CASCADE;
 DROP TABLE IF EXISTS run_commit_receipts CASCADE;
 DROP TABLE IF EXISTS run_checkpoints CASCADE;
 DROP TABLE IF EXISTS trace_events CASCADE;
@@ -219,13 +234,17 @@ class TestDdlFile:
         Versioned-обновление (AUDIT-6A): каталог -- 0001 + 0002 (аддитивно,
         0001 не переписывается -- план §7). Versioned-обновление (AUDIT-1A):
         каталог -- 0001+0002+0003 (происхождение цели, аддитивно -- план §9);
-        MIGRATION_STATEMENTS == 0001+0002+0003."""
+        MIGRATION_STATEMENTS == 0001+0002+0003. Versioned-обновление
+        (AUDIT-6B): каталог -- 0001+0002+0003+0005 (durable outbox
+        доставки, аддитивно -- план §17 п.4)."""
         file_sql = "\n".join(
             path.read_text(encoding="utf-8")
-            for path in (MIGRATIONS_FILE, MIGRATIONS_FILE_0002, MIGRATIONS_FILE_0003)
+            for path in (MIGRATIONS_FILE, MIGRATIONS_FILE_0002, MIGRATIONS_FILE_0003,
+                         MIGRATIONS_FILE_0005)
         )
         assert "run_commit_receipts" in file_sql
         assert "target_column_source" in file_sql
+        assert "progress_delivery_outbox" in file_sql
         file_tables, file_indexes = _schema_objects(pg_conn)
         with pg_conn.cursor() as cur:
             cur.execute(DROP_SCHEMA_SQL)

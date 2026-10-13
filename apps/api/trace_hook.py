@@ -882,6 +882,14 @@ class TraceHookMiddleware:
                 # слой research_runs/trace_events -- В ДОПОЛНЕНИЕ к
                 # внутрисессионному буферу, не вместо него. Best-effort
                 # (своя деградация внутри record_run_event).
+                #
+                # AUDIT-6B (план §17 п.1/п.8; контракт v1.5-6B §25.1):
+                # этот путь -- ЯВНО ADVISORY (ADVISORY_PRODUCERS
+                # ["trace_hook_mirror"] в delivery_outbox.py): запись
+                # происходит ПОСЛЕ отправки ответа (P22), гарантия
+                # «операция документирована» на него НЕ распространяется
+                # и не заявляется; послеответная доставка остаётся
+                # честно best-effort.
                 record_run_event(session, event)
         except Exception:  # pragma: no cover - защитный контур рантайма
             logger.warning(

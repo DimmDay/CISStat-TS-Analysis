@@ -75,6 +75,13 @@ from apps.api.trace_events import TraceEvent, make_trace_event, stamp_envelope
 
 logger = logging.getLogger("apps.api.progress_maps")
 
+
+def _now_iso() -> str:
+    """Момент операции (UTC ISO) -- маркировка доставки обязательства."""
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat()
+
 # Редакция конверта карт (контракт §19.1): поддерживается ТОЛЬКО 2.
 # Явное чужое значение (1/3/...) -- 422: legacy-писатели шлют тело БЕЗ
 # поля (отсутствие поля -- честный признак легаси-режима), а не нулём/1.
@@ -457,6 +464,20 @@ def accept_map_report(
     )
     idempotency_key = f"report:{run_id}:{envelope.report_id}"
 
+    # AUDIT-6B (план §17 п.2/п.4): обязательство доставки проекции слоя 1
+    # регистрируется ТОЙ ЖЕ транзакцией commit'а (Redis -- восстанавливаемая
+    # проекция; отказ cache не отменяет committed событие; worker доставляет
+    # по operation_id = report_id).
+    from apps.api.delivery_outbox import layer1_mirror_task
+
+    delivery_task = layer1_mirror_task(
+        session_id=session_id,
+        run_id=run_id,
+        events=events,
+        operation_id=envelope.report_id,
+        idempotency_key=idempotency_key,
+    )
+
     # ── V-3/V-6: строгий commit слоя 2 ПЕРЕД слоем 1 ──
     # Дедуп (тот же ключ + то же тело) возвращает ПРЕЖНИЙ receipt --
     # события, построенные выше, не записываются ни в один слой.
@@ -476,6 +497,7 @@ def accept_map_report(
             expected_context_id=server_context,
             idempotency_key=idempotency_key,
             body_fingerprint=fingerprint,
+            delivery_task=delivery_task,
         )
     except IdempotencyConflictError:
         raise HTTPException(
@@ -506,11 +528,20 @@ def accept_map_report(
             session.append_trace_event(event)
         try:
             store.save(session)
+            # Синхронная доставка исполнена -- обязательство закрывается
+            # немедленно (worker остаётся для потерянных ответов/crash'а).
+            from apps.api.research_runs import get_research_run_store
+
+            get_research_run_store().delivery_outbox.mark_delivered(
+                delivery_task.operation_id, delivered_at=_now_iso()
+            )
         except Exception:
             logger.warning(
                 "Progress maps: слой 1 не сохранён после durable-"
                 "фиксации %s -- receipt существует, повтор той же "
-                "поставки вернёт его дедуплицированно",
+                "поставки вернёт его дедуплицированно; обязательство "
+                "доставки остаётся в outbox (worker восстановит "
+                "проекцию)",
                 idempotency_key,
                 exc_info=True,
             )
@@ -519,8 +550,11 @@ def accept_map_report(
                 detail=(
                     "Долговременный слой зафиксировал отчёт (receipt "
                     "выдан), локальная копия сессии не сохранена -- "
-                    "повторите доставку с тем же report_id (повтор "
-                    "вернёт receipt без новых фактов)"
+                    "состояние доставки: committed_projection_pending; "
+                    f"operation_id: {envelope.report_id}; watermark: "
+                    f"{receipt.committed_watermark}; повтор доставки с "
+                    "тем же report_id вернёт receipt без новых фактов, "
+                    "проекцию восстановит recovery worker"
                 ),
             )
 

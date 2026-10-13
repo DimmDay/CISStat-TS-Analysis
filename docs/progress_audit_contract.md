@@ -1626,3 +1626,114 @@ AUDIT-7A) — OK. Versioned-обновление пина AUDIT-5B:
 пользовательского действия capture, кнопка; не автоматический — проверка
 зафиксирована, текст отчёта правдив); гарантированная доставка — AUDIT-6B;
 сертификация AUDIT-7B — независимым раундом.
+
+## 25. Аддендум v1.5-6B — восстановимая доставка и операции (PROGR-AUDIT-6B) — **УТВЕРЖДЕНО-6B**
+
+Versioned-обновление: конкретизирует §3.6 (required/advisory, идемпотентность) до уровня
+проверяемых правил задачи AUDIT-6B (plan_progress_audit.md §17 п.1–п.8). База:
+`main@56f431c`. Решения §3.3/§3.6/§15/§19 не меняются — фиксация реализации
+и уточнение семантики. Носители: `apps/api/delivery_outbox.py` (НОВЫЙ),
+`apps/api/research_runs.py` (ИЗМЕНЁН), `apps/api/progress_maps.py` (ИЗМЕНЁН),
+`apps/api/routers/progress.py` (ИЗМЕНЁН), `apps/api/trace_hook.py` (маркер
+advisory), миграция `0005_audit6b_delivery_outbox.sql` (НОВАЯ, аддитивная).
+
+### 25.1. Реестр producers: required/advisory — УТВЕРЖДЕНО (п.1)
+
+`REQUIRED_PRODUCERS` (гарантия «операция документирована»): `progress_maps_v2`
+(строгие v2-карты, ключ `report:{run_id}:{report_id}`), `runs.pause`,
+`runs.resume`, `runs.checkpoint`, `runs.restore` (ключ `event:{run_id}:{event_id}`).
+`ADVISORY_PRODUCERS` (гарантия НЕ заявляется): `trace_hook_mirror` (зеркало хука
+ПОСЛЕ ответа — P09/P22, честно best-effort по п.8 карточки; маркер в коде
+`trace_hook.py`), `progress_maps_legacy` (compatibility mode §19.5),
+`corrections_dataframe` (мутации DataFrame коррекций — unmigrated: документирование
+через хук, при отказе слоя 2 состояние `executed_documentation_pending`, фиктивный
+rollback не сообщается; миграция — отдельное решение), `mentor_observations`.
+Пересечение множеств запрещено; `DELIVERY_KINDS = {layer1_mirror}` — реестр видов
+задач физически ограничен проекцией (retry доставляет факт/проекцию, НЕ повторяет
+научную операцию — п.5).
+
+### 25.2. Durable outbox в транзакции commit'а — УТВЕРЖДЕНО (п.3/п.4)
+
+`CommitEventBatch` расширен аддитивно: `checkpoints` (ссылки на артефакты) и
+`delivery_task` (обязательство `DeliveryTask`). Оба регистрируются ТОЙ ЖЕ
+транзакцией `commit_event_batch` (Memory — под тем же замком; Postgres — то же
+соединение, таблица `progress_delivery_outbox` миграции 0005, FK ON DELETE
+CASCADE). Crash ДО commit — нет ни фактов, ни обязательства (атомарность);
+ПОСЛЕ — обязательство переживает потерю процесса/cache (план §17 п.4: очередь в
+памяти и недоказанная долговечность Redis недостаточны). Дедуп commit (тот же
+ключ) НЕ дублирует обязательство; ключ commit'а привязывается к обязательству при
+регистрации (`bind_idempotency_key`) — связь с receipt для п.8. Паритет
+Memory/Postgres — одни параметризованные контракты (I8). Состояния обязательства:
+`pending`/`delivered`/`failed`.
+
+### 25.3. Required-протокол карты и run-level операций — УТВЕРЖДЕНО (п.2/п.3)
+
+Карта v2: ledger фиксируется ДО durable receipt (§19.4 сохранён); слой 1 (Redis) —
+восстанавливаемая проекция: обязательство доставки слоя 1 регистрируется той же
+транзакцией (operation_id = report_id); отказ cache НЕ отменяет committed событие —
+500 честно называет `committed_projection_pending`, operation_id и watermark;
+worker доставляет проекцию из факта. Run-level операции паузы/возобновления/
+чекпоинта/restore мигрированы из advisory-пар (`set_run_status`/`upsert_run`/
+`add_checkpoint` + `append_event`) в атомарный батч: seam P08/P10 между двумя
+записями устранён (CAS expected_context_id — хранимый контекст момента чтения;
+легитимный сдвиг контекста restore проходит по паттерну коррекций 6A).
+Чекпоинт: снимок готовится ДО фиксации (staged-артефакт); ссылка + событие +
+обязательство — одной транзакцией.
+
+### 25.4. Worker восстановления и staged cleanup — УТВЕРЖДЕНО (п.5/п.7)
+
+`run_delivery_recovery(store)` — один контролируемый проход: due-обязательства
+доставляются по operation_id (kind `layer1_mirror`: дедуп по event_id в слое 1 —
+двойной прогон даёт одну копию; сессия отсутствует в cache —
+`session_absent`: факт остаётся в ledger, полная реконструкция слоя 1 — путь
+restore_run); неудача — `mark_failed` с экспоненциальным backoff (30s·2^(n−1),
+кэп 1ч) и бюджетом попыток (default 5) → `failed`. Неизвестный kind — отказ без
+изобретения операции. `sweep_orphaned_checkpoints` — staged cleanup внешних
+артефактов (п.7): DB-транзакция НЕ делает файловую запись атомарной — упавший
+commit чекпоинта оставляет файл без ссылки; sweep удаляет сирот (повторный запуск
+— no-op). Служебный runner: `scripts/prograudit6b_recovery_runner.py`
+(`--once`/`--interval SEC`, `--skip-delivery`/`--skip-sweep`); in-process
+авто-старт worker'а и health-интеграция — периметр AUDIT-6C.
+
+### 25.5. Delivery-эндпоинты и состояния операций — УТВЕРЖДЕНО (п.6/п.8)
+
+`GET /v1/progress/runs/{run_id}/delivery` — обязательства запуска + счётчики по
+состояниям (backlog delivery; health-интеграция — AUDIT-6C).
+`GET /v1/progress/runs/{run_id}/delivery/{operation_id}` — read-after-write (п.8):
+`classify_operation(receipt, task, mutation_applied)` различает `not_executed`
+(до хранилища не дошло), `executed_documentation_pending` (мутация исполнена,
+документирование не зафиксировано — класс advisory-коррекций; фиктивный rollback
+не сообщается), `committed_projection_pending` (receipt есть, проекция ждёт),
+`delivered`, `failed` (бюджет исчерпан — независимо от receipt). Receipt содержит
+watermark: read-your-write позиции ledger подтверждается /trace (events_total ≥
+watermark). Неизвестная операция — 200 `not_executed` (честный ответ), неизвестный
+запуск — 404 (факт).
+
+### 25.6. Приёмка, versioned-обновления пинов, границы — УТВЕРЖДЕНО
+
+Оракул `tests/api/test_progress_audit_6b.py` (51 тест, 9 классов; протокол
+`scripts/prograudit6b_red_protocol.txt` — 34 FAIL / 2 PASS-контрола / 15 skip на
+базе 56f431c). GREEN: Memory 36/36; живой PostgreSQL (`pgserver`,
+`scripts/prograudit6b_pg_runner.sh`) 51/51 — fault-tests (crash до/после commit,
+отказ cache, worker дважды, restart-выживание обязательства и receipt новым
+экземпляром store) выполнены на настоящем PostgreSQL (план §17 GREEN). Регресс:
+полный tests/api — 1877 passed / 19 failed (документированный средовой класс
+AUDIT-7A: forecasting_session ×16, modeling_workflow, models_candidates,
+models_backtest_neural_capacity; ДЕЛЬТА К БАЗЛАЙНУ 0); tests/integration+unit —
+1563 passed / 10 failed + 3 errors, идентично чистой базе (ДЕЛЬТА 0); адресная
+серия контура (research_runs, 6A, 2A, panel, trace_hook, 1A, 3, 4, 5B, 7A, 7B, 8,
+C, S, H1) — без регресса. py_compile + import apps.api.main (env -u DATABASE_URL)
+— OK. Versioned-обновления пинов: `test_research_runs.py::
+test_migration_statements_cover_all_tables` (таблица outbox + файл 0005) и
+`test_research_runs_postgres.py` (каталог файлов/EXPECTED_TABLES/EXPECTED_INDEXES/
+DROP_SCHEMA_SQL/файловая эквивалентность — 0005); суть пинов (каталог миграций ==
+сумма файлов, объекты схемы) сохранена, оракулы дефектов не переписывались.
+
+Границы (вне задачи): хук-зеркало остаётся advisory (P09/P22 — честный остаток по
+п.8, гарантия на него НЕ распространяется); коррекции DataFrame — unmigrated
+(executed_documentation_pending честно документирован, миграция — отдельное
+решение); in-process авто-старт worker'а, health/backlog/lag, fail-closed
+required-режим хранилища (P21/F14) — AUDIT-6C; live PostgreSQL на Render/Vercel —
+вне периметра; H29/H30 (эксплуатация) — вне задачи; Redis-доставка не
+используется как носитель обязательств (п.4). Сертификация AUDIT-6B — независимым
+раундом.

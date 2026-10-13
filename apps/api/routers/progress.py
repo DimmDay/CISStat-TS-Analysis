@@ -135,6 +135,7 @@ import os
 import re
 import functools
 from dataclasses import replace
+from datetime import datetime, timezone
 from io import BytesIO
 from typing import Any, Callable, Dict, List, Optional
 from uuid import uuid4
@@ -175,10 +176,20 @@ from app.core.run_report import (
     render_markdown,
 )
 from apps.api.auth import require_admin_role
+from apps.api.delivery_outbox import (  # AUDIT-6B: восстановимая доставка
+    DeliveryTask,
+    STATE_DELIVERED,
+    STATE_PENDING,
+    STATE_FAILED,
+    classify_operation,
+    layer1_mirror_task,
+)
 from apps.api.research_runs import (
+    CommitEventBatch,
     MentorObservation,
     ResearchCheckpoint,
     ResearchRun,
+    batch_body_fingerprint,
     get_dataset_file_store,
     get_research_run_store,
     stage_for_run_level_event,
@@ -1144,6 +1155,78 @@ def _require_store():
         raise HTTPException(status_code=503, detail="Долговременный слой недоступен") from exc
 
 
+def _run_level_delivery_task(
+    request: Request, response: Response, run_id: str, event
+) -> Optional[DeliveryTask]:
+    """AUDIT-6B (план §17 п.1/п.2): обязательство доставки run-level факта
+    в слой 1 ВЫЗЫВАЮЩЕЙ сессии (required-путь runs.*). Чужая сессия слой 1
+    не получает -- задача не создаётся (проекция той сессии не про этот
+    запуск; тот же критерий, что _mirror_to_layer1)."""
+    try:
+        session_id = get_or_create_session_id(request, response)
+        session = get_session_store().get(session_id)
+        if session is None or session.run_id != run_id:
+            return None
+        return layer1_mirror_task(
+            session_id=session_id,
+            run_id=run_id,
+            events=[event],
+            operation_id=event.event_id,
+            idempotency_key=f"event:{run_id}:{event.event_id}",
+        )
+    except Exception:  # pragma: no cover - защитный контур рантайма
+        logger.warning(
+            "Progress: задача доставки run-level события не создана", exc_info=True
+        )
+        return None
+
+
+def _commit_run_level(
+    store,
+    run: ResearchRun,
+    event,
+    task: Optional[DeliveryTask],
+    *,
+    checkpoints: tuple[ResearchCheckpoint, ...] = (),
+) -> None:
+    """AUDIT-6B: атомарная фиксация run-level операции -- обновление
+    run-метаданных + событие (+ ссылки на артефакты) + обязательство
+    доставки ОДНОЙ транзакцией (миграция из advisory-пары
+    set_run_status/upsert_run + append_event / add_checkpoint +
+    append_event: seam P08/P10 между двумя записями устранён; план
+    §17 п.3/п.4). CAS expected_context_id -- хранимый контекст на
+    момент чтения."""
+    store.commit_event_batch(
+        CommitEventBatch(
+            run=run,
+            events=(event,),
+            expected_context_id=run.context_id,
+            idempotency_key=f"event:{run.run_id}:{event.event_id}",
+            body_fingerprint=batch_body_fingerprint(run.run_id, (event,)),
+            checkpoints=checkpoints,
+            delivery_task=task,
+        )
+    )
+
+
+def _mark_delivered_safe(store, task: Optional[DeliveryTask]) -> None:
+    """Закрытие обязательства после успешного синхронного зеркала слоя 1
+    (cache жив). Best-effort: сбой маркировки не ломает ответ -- worker
+    доставит повторно идемпотентно."""
+    if task is None:
+        return
+    try:
+        store.delivery_outbox.mark_delivered(
+            task.operation_id,
+            delivered_at=datetime.now(timezone.utc).isoformat(),
+        )
+    except Exception:  # pragma: no cover - защитный контур рантайма
+        logger.warning(
+            "Progress: обязательство %s не закрыто после синхронного зеркала",
+            task.operation_id, exc_info=True,
+        )
+
+
 def _mirror_to_layer1(request: Request, response: Response, run_id: str, event) -> None:
     """Дописывает run-level событие в слой 1 ВЫЗЫВАЮЩЕЙ сессии, когда
     эта сессия принадлежит запуску (панель видит «Пауза»/«Сохранить
@@ -1191,7 +1274,13 @@ def get_run_detail(
 def pause_run(request: Request, response: Response, run_id: str) -> RunEventResponse:
     """Пауза (§5.2): явная фиксация run.status="paused" -- отличает
     «аналитик отошёл» от брошенного запуска. Идемпотентности нет: двойная
-    пауза -- ошибка клиента (409), не тихий повтор."""
+    пауза -- ошибка клиента (409), не тихий повтор.
+
+    AUDIT-6B (план §17 п.3/п.4, required-путь runs.pause): статус +
+    событие + обязательство доставки слоя 1 -- ОДНОЙ транзакцией
+    (advisory-пара set_run_status+append_event устранена: seam P08/P10
+    между двумя записями больше не существует). Синхронное зеркало слоя 1
+    закрывает обязательство; отказ cache оставляет его worker'у (п.2)."""
     store = _require_store()
     run = _require_run(run_id)
     if run.status != "active":
@@ -1203,9 +1292,12 @@ def pause_run(request: Request, response: Response, run_id: str) -> RunEventResp
         "run_paused", stage=stage_for_run_level_event(store, run_id),
         node_id=None, run_id=run_id,
     )
-    store.set_run_status(run_id, "paused")
-    store.append_event(run_id, event)
+    task = _run_level_delivery_task(request, response, run_id, event)
+    _commit_run_level(
+        store, replace(run, status="paused", last_active_at=event.ts), event, task
+    )
     _mirror_to_layer1(request, response, run_id, event)
+    _mark_delivered_safe(store, task)
     return RunEventResponse(
         run_id=run_id, status="paused", event=event.to_dict()
     )
@@ -1215,7 +1307,9 @@ def pause_run(request: Request, response: Response, run_id: str) -> RunEventResp
 @_durable_ops
 def resume_run(request: Request, response: Response, run_id: str) -> RunEventResponse:
     """Возврат к работе (§5.2): status -> active + run_resumed (§4.1:
-    run-level тип, валиден на любой стадии)."""
+    run-level тип, валиден на любой стадии).
+
+    AUDIT-6B: атомарный батч + обязательство доставки (см. pause_run)."""
     store = _require_store()
     run = _require_run(run_id)
     if run.status != "paused":
@@ -1227,9 +1321,12 @@ def resume_run(request: Request, response: Response, run_id: str) -> RunEventRes
         "run_resumed", stage=stage_for_run_level_event(store, run_id),
         node_id=None, run_id=run_id,
     )
-    store.set_run_status(run_id, "active")
-    store.append_event(run_id, event)
+    task = _run_level_delivery_task(request, response, run_id, event)
+    _commit_run_level(
+        store, replace(run, status="active", last_active_at=event.ts), event, task
+    )
     _mirror_to_layer1(request, response, run_id, event)
+    _mark_delivered_safe(store, task)
     return RunEventResponse(run_id=run_id, status="active", event=event.to_dict())
 
 
@@ -1312,13 +1409,6 @@ def create_checkpoint(
                 checkpoint = replace(checkpoint, has_snapshot=True)
         except Exception:  # pragma: no cover - защитный контур диска
             logger.warning("Checkpoint: снимок данных не сохранён", exc_info=True)
-    store.add_checkpoint(run_id, checkpoint)
-    # §12 п.4: последние 5 снимков на запуск.
-    try:
-        keep = [checkpoint.checkpoint_id for checkpoint in store.list_checkpoints(run_id)][-5:]
-        get_dataset_file_store().prune_checkpoints(run_id, keep=keep)
-    except Exception:  # pragma: no cover - защитный контур диска
-        logger.warning("Checkpoint: prune снимков не удался", exc_info=True)
     event = make_trace_event(
         "checkpoint_saved", stage=stage_for_run_level_event(store, run_id),
         node_id=None, run_id=run_id,
@@ -1326,8 +1416,28 @@ def create_checkpoint(
         event_id=payload.event_id,
         label=payload.label,
     )
-    store.append_event(run_id, event)
+    # AUDIT-6B (план §17 п.3, required-путь runs.checkpoint): артефакт
+    # подготовлен ДО фиксации (staged); ссылка на него + операционное
+    # состояние + событие -- ОДНОЙ транзакцией (расширение батча
+    # checkpoints): упавший commit регистрирует НИЧЕГО; staged-файл без
+    # ссылки честно остаётся на диске (DB-транзакция не делает файловую
+    # запись атомарной) и убирается sweep_orphaned_checkpoints (п.7).
+    task = _run_level_delivery_task(request, response, run_id, event)
+    _commit_run_level(
+        store,
+        replace(run, last_active_at=event.ts),
+        event,
+        task,
+        checkpoints=(checkpoint,),
+    )
     _mirror_to_layer1(request, response, run_id, event)
+    _mark_delivered_safe(store, task)
+    # §12 п.4: последние 5 снимков на запуск.
+    try:
+        keep = [checkpoint.checkpoint_id for checkpoint in store.list_checkpoints(run_id)][-5:]
+        get_dataset_file_store().prune_checkpoints(run_id, keep=keep)
+    except Exception:  # pragma: no cover - защитный контур диска
+        logger.warning("Checkpoint: prune снимков не удался", exc_info=True)
     return CheckpointCreatedResponse(
         checkpoint=CheckpointOut(**checkpoint.to_dict()), event=event.to_dict()
     )
@@ -1479,25 +1589,42 @@ def restore_run(request: Request, response: Response, run_id: str) -> RestoreRes
     context_changed = (
         run.context_id is not None and new_context_id != run.context_id
     )
-    store.upsert_run(
-        ResearchRun(
-            **{
-                **run.to_dict(),
-                "session_id": new_session_id,
-                "status": "active",
-                "last_active_at": resumed.ts,
+    # AUDIT-6B (план §17 п.3/п.4, required-путь runs.restore): run-
+    # метаданные (новый контекст raw-входа) + run_resumed + обязательство
+    # доставки слоя 1 -- ОДНОЙ транзакцией (upsert_run+append_event-пара
+    # устранена); commit ПЕРЕД сохранением сессии: отказ cache оставляет
+    # обязательство worker'у, факт уже в ledger (п.2).
+    task = layer1_mirror_task(
+        session_id=new_session_id,
+        run_id=run_id,
+        events=[resumed],
+        operation_id=resumed.event_id,
+        idempotency_key=f"event:{run_id}:{resumed.event_id}",
+    )
+    store.commit_event_batch(
+        CommitEventBatch(
+            run=replace(
+                run,
+                session_id=new_session_id,
+                status="active",
+                last_active_at=resumed.ts,
                 # AUDIT-8: новые метаданные контекста/ревизии raw-входа.
                 # None (контекст невычислим) -- COALESCE upsert'а хранит
                 # прежнее значение (безопасная деградация).
-                "context_id": new_context_id,
-                "data_revision": session.data_revision,
-                "data_digest": session.data_digest or None,
-            }
+                context_id=new_context_id,
+                data_revision=session.data_revision,
+                data_digest=session.data_digest or None,
+            ),
+            events=(resumed,),
+            expected_context_id=run.context_id,
+            idempotency_key=f"event:{run_id}:{resumed.event_id}",
+            body_fingerprint=batch_body_fingerprint(run_id, (resumed,)),
+            delivery_task=task,
         )
     )
-    store.append_event(run_id, resumed)
     session.append_trace_event(resumed)
     session_store.save(session)
+    _mark_delivered_safe(store, task)
 
     is_production = bool(os.environ.get("ALLOWED_ORIGINS"))
     response.set_cookie(
@@ -1528,6 +1655,123 @@ def restore_run(request: Request, response: Response, run_id: str) -> RestoreRes
         data_revision=session.data_revision,
         context_id=new_context_id,
         context_changed=context_changed,
+    )
+
+
+# ── AUDIT-6B: восстановимая доставка -- статусы операций (план §17
+#    п.6/п.8; read-after-write: receipt + watermark либо честное
+#    ожидающее) ─────────────────────────────────────────────────────────
+
+
+class DeliveryTaskOut(BaseModel):
+    """Обязательство доставки (контракт v1.5-6B §25.2): проекция слоя 1
+    по уже committed фактам; payload наружу не выдаётся (в нём копии
+    событий -- читаются через /trace и /runs/{run_id})."""
+
+    operation_id: str
+    idempotency_key: str
+    kind: str
+    state: str
+    attempts: int
+    max_attempts: int
+    next_attempt_at: Optional[str] = None
+    last_error: Optional[str] = None
+    created_at: str
+    updated_at: str
+    delivered_at: Optional[str] = None
+
+
+class DeliveryListResponse(BaseModel):
+    """Обязательства запуска + счётчики по состояниям (для наблюдаемости
+    backlog'а delivery; интеграция с health -- AUDIT-6C)."""
+
+    run_id: str
+    tasks: List[DeliveryTaskOut]
+    counts_by_state: Dict[str, int]
+
+
+class DeliveryStatusResponse(BaseModel):
+    """Состояние ОДНОЙ операции (п.6: not_executed /
+    executed_documentation_pending / committed_projection_pending /
+    delivered / failed -- фиктивный rollback не сообщается; п.8:
+    read-after-write -- receipt с watermark либо ожидающее)."""
+
+    operation_id: str
+    run_id: str
+    state: str
+    delivery_state: Optional[str] = None
+    receipt: Optional[Dict[str, Any]] = None
+    attempts: int = 0
+    max_attempts: int = 0
+    last_error: Optional[str] = None
+
+
+@router.get("/runs/{run_id}/delivery", response_model=DeliveryListResponse)
+@_durable_ops
+def list_run_delivery(run_id: str) -> DeliveryListResponse:
+    """Обязательства доставки запуска (AUDIT-6B): pending -- проекция
+    слоя 1 ждёт worker'а; delivered -- доставлено; failed -- бюджет
+    попыток исчерпан (факт в ledger остаётся авторитетным)."""
+    store = _require_store()
+    _require_run(run_id)
+    tasks = store.delivery_outbox.list_by_run(run_id)
+    counts: Dict[str, int] = {}
+    for task in tasks:
+        counts[task.state] = counts.get(task.state, 0) + 1
+    return DeliveryListResponse(
+        run_id=run_id,
+        tasks=[
+            DeliveryTaskOut(
+                operation_id=task.operation_id,
+                idempotency_key=task.idempotency_key,
+                kind=task.kind,
+                state=task.state,
+                attempts=task.attempts,
+                max_attempts=task.max_attempts,
+                next_attempt_at=task.next_attempt_at,
+                last_error=task.last_error,
+                created_at=task.created_at,
+                updated_at=task.updated_at,
+                delivered_at=task.delivered_at,
+            )
+            for task in tasks
+        ],
+        counts_by_state=counts,
+    )
+
+
+@router.get(
+    "/runs/{run_id}/delivery/{operation_id}",
+    response_model=DeliveryStatusResponse,
+)
+@_durable_ops
+def get_operation_delivery(run_id: str, operation_id: str) -> DeliveryStatusResponse:
+    """Read-after-write по operation_id (план §17 п.8): либо состояние с
+    receipt/watermark, либо честное ожидающее. Ключи required-путей --
+    event:{run_id}:{op} и report:{run_id}:{op}; неизвестная операция --
+    не_executed (операция до хранилища не дошла), не 500."""
+    store = _require_store()
+    _require_run(run_id)
+    task = store.delivery_outbox.get_task(operation_id)
+    receipt = None
+    if task is not None and task.idempotency_key:
+        receipt = store.get_commit_receipt(task.idempotency_key)
+    if receipt is None:
+        for key_pattern in (f"event:{run_id}:{operation_id}",
+                            f"report:{run_id}:{operation_id}"):
+            receipt = store.get_commit_receipt(key_pattern)
+            if receipt is not None:
+                break
+    state = classify_operation(receipt, task)
+    return DeliveryStatusResponse(
+        operation_id=operation_id,
+        run_id=run_id,
+        state=state,
+        delivery_state=(task.state if task is not None else None),
+        receipt=(receipt.to_dict() if receipt is not None else None),
+        attempts=(task.attempts if task is not None else 0),
+        max_attempts=(task.max_attempts if task is not None else 0),
+        last_error=(task.last_error if task is not None else None),
     )
 
 

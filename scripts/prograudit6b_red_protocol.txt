@@ -1,0 +1,86 @@
+PROGR-AUDIT-6B -- RED-протокол (честный RED на базе main@56f431c)
+====================================================================
+
+База: origin/main = 56f431c (коммит PROGR-AUDIT-7B), рабочее дерево
+чистое, код AUDIT-6B отсутствует (apps/api/delivery_outbox.py не
+существует; commit_event_batch без checkpoints/delivery_task;
+pause/resume/checkpoint/restore -- advisory-пары раздельных записей;
+outbox/миграции 0005 нет; delivery-эндпоинтов нет).
+
+Команда RED:
+  python -m pytest tests/api/test_progress_audit_6b.py -q --disable-warnings
+
+Результат RED: 34 failed / 2 passed / 15 skipped (pgserver-половина
+паритета без CISSTAT_TEST_PG_DSN -- честный skip; план §17 GREEN
+«живые fault tests» закрыты отдельно прогоном
+scripts/prograudit6b_pg_runner.sh после реализации -- 51 passed).
+
+2 passed на базе -- пины УЖЕ существовавшего честного поведения
+(404 неизвестного запуска в delivery-эндпоинте -- факты 404 контура
+PROGR-5; контекстная изоляция POST /pause 409-гейта), они и остаются
+зелёными после реализации (контракт сохранён).
+
+Полный перечень RED-падений оракула (34):
+
+test_progress_audit_6b.py::TestProducerRegistry::test_required_producers_enumerated
+test_progress_audit_6b.py::TestProducerRegistry::test_advisory_producers_enumerated
+test_progress_audit_6b.py::TestProducerRegistry::test_delivery_kinds_bounded_to_projection
+test_progress_audit_6b.py::TestOutboxContract::test_store_exposes_outbox[memory]
+test_progress_audit_6b.py::TestOutboxContract::test_register_and_get_roundtrip[memory]
+test_progress_audit_6b.py::TestOutboxContract::test_get_task_unknown_none[memory]
+test_progress_audit_6b.py::TestOutboxContract::test_list_due_ordering_and_filters[memory]
+test_progress_audit_6b.py::TestOutboxContract::test_mark_failed_increments_and_expires_to_failed[memory]
+test_progress_audit_6b.py::TestOutboxContract::test_backlog_counts_by_state[memory]
+test_progress_audit_6b.py::TestOutboxContract::test_list_by_run_scoped[memory]
+test_progress_audit_6b.py::TestOutboxContract::test_mark_missing_task_is_safe[memory]
+test_progress_audit_6b.py::TestAtomicObligation::test_mid_batch_failure_leaves_no_obligation[memory]
+test_progress_audit_6b.py::TestAtomicObligation::test_commit_registers_obligation_atomically[memory]
+test_progress_audit_6b.py::TestAtomicObligation::test_dedup_commit_does_not_duplicate_obligation[memory]
+test_progress_audit_6b.py::TestAtomicObligation::test_checkpoints_register_in_batch_transaction[memory]
+test_progress_audit_6b.py::TestAtomicObligation::test_checkpoint_batch_failure_registers_nothing[memory]
+test_progress_audit_6b.py::TestMapDeliveryRecovery::test_cache_failure_keeps_committed_event_and_worker_recovers
+test_progress_audit_6b.py::TestMapDeliveryRecovery::test_worker_twice_is_idempotent
+test_progress_audit_6b.py::TestMapDeliveryRecovery::test_worker_does_not_run_scientific_operations
+test_progress_audit_6b.py::TestRunLevelOpsRequired::test_pause_atomic_and_required_delivery
+test_progress_audit_6b.py::TestRunLevelOpsRequired::test_pause_mid_batch_failure_is_honest_not_executed
+test_progress_audit_6b.py::TestRunLevelOpsRequired::test_resume_required_delivery
+test_progress_audit_6b.py::TestRunLevelOpsRequired::test_restore_atomic_with_delivery_task
+test_progress_audit_6b.py::TestCheckpointStagedArtifact::test_checkpoint_success_registers_artifact_atomically
+test_progress_audit_6b.py::TestCheckpointStagedArtifact::test_commit_failure_leaves_staged_file_and_sweep_cleans
+test_progress_audit_6b.py::TestDeliveryEndpoint::test_unknown_operation_is_not_executed
+test_progress_audit_6b.py::TestDeliveryEndpoint::test_states_pending_delivered_and_receipt_watermark
+test_progress_audit_6b.py::TestDeliveryEndpoint::test_failed_state_visible
+test_progress_audit_6b.py::TestDeliveryEndpoint::test_delivery_list_per_run
+test_progress_audit_6b.py::TestOperationClassifier::test_not_executed
+test_progress_audit_6b.py::TestOperationClassifier::test_committed_projection_pending
+test_progress_audit_6b.py::TestOperationClassifier::test_delivered
+test_progress_audit_6b.py::TestOperationClassifier::test_failed
+test_progress_audit_6b.py::TestOperationClassifier::test_executed_documentation_pending
+
+Классы RED (сопоставление с планом §17):
+
+  R1  TestProducerRegistry (3)          -- п.1: реестра required/advisory нет
+  R2  TestOutboxContract (7)            -- п.4: outbox-контракта store нет
+  R3  TestAtomicObligation (5)          -- п.3/п.4: обязательство и чекпоинты
+                                           вне транзакции commit'а
+  R4  TestMapDeliveryRecovery (3)       -- п.2/п.5: отказ cache без
+                                           восстановимой доставки; worker
+  R5  TestRunLevelOpsRequired (4)       -- P08/P10: seam раздельных записей
+                                           pause/resume/restore жив
+  R6  TestCheckpointStagedArtifact (2)  -- п.3/п.7: артефакт вне атомарной
+                                           регистрации; staged cleanup нет
+  R7  TestDeliveryEndpoint (4)          -- п.6/п.8: статусы/read-after-write
+                                           не наблюдаются
+  R8  TestOperationClassifier (5)       -- п.6: таксономии состояний нет
+  (TestPostgresRestartSurvival -- skip на RED-прогоне: без DSN; на живом
+   PG после реализации -- passed, restart-выживание подтверждено)
+
+GREEN (после реализации):
+  - Memory: 36 passed / 15 skipped (pgserver-половина) за ~3с;
+  - живой PostgreSQL (scripts/prograudit6b_pg_runner.sh, pgserver):
+    51 passed (параметризованный паритет + restart-выживание);
+  - versioned-обновления пинов: test_research_runs.py
+    (test_migration_statements_cover_all_tables: таблица outbox + файл
+    0005), test_research_runs_postgres.py (MIGRATIONS_FILES/EXPECTED_TABLES/
+    EXPECTED_INDEXES/DROP_SCHEMA_SQL/файловая эквивалентность: 0005);
+    суть пинов (каталог миграций == сумма файлов) сохранена.

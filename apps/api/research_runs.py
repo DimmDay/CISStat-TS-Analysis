@@ -143,6 +143,14 @@ from typing import Any, Iterable, Optional
 import pandas as pd
 
 from app.core.effective_target import effective_target
+from apps.api.delivery_outbox import (  # AUDIT-6B: durable outbox (таблица 0005)
+    OUTBOX_INSERT_SQL,
+    OUTBOX_TABLE,
+    MemoryDeliveryOutbox,
+    PostgresDeliveryOutbox,
+    bind_idempotency_key,
+    outbox_row_params,
+)
 from apps.api.trace_events import TraceEvent, mark_honest_time
 
 logger = logging.getLogger(__name__)
@@ -484,6 +492,15 @@ class CommitEventBatch:
     до формирования батча. None -- проверка отключена (advisory-путь без
     контекста); stored NULL -- первичная привязка (нечего сравнивать);
     несовпадение -- CommitConflictError без записи.
+
+    AUDIT-6B (план §17 п.3/п.4):
+      * checkpoints -- ссылки на артефакты, регистрируются ТОЙ ЖЕ
+        транзакцией (снимок готовится ДО commit'а -- staged-артефакт;
+        упавший commit оставляет файл без ссылки, cleanup -- sweep);
+      * delivery_task -- обязательство доставки проекции (durable
+        outbox, миграция 0005), регистрируется той же транзакцией:
+        crash до commit -- нет ни фактов, ни обязательства; после --
+        обязательство переживает потерю процесса/cache.
     """
 
     run: ResearchRun                      # полная актуальная мета (upsert той же транзакцией)
@@ -491,6 +508,8 @@ class CommitEventBatch:
     expected_context_id: Optional[str] = None
     idempotency_key: Optional[str] = None  # None -- батч без receipt (advisory)
     body_fingerprint: Optional[str] = None  # отпечаток тела для детекции «ключ + другое тело»
+    checkpoints: tuple["ResearchCheckpoint", ...] = ()  # AUDIT-6B: артефакты той же транзакцией
+    delivery_task: Optional[Any] = None   # AUDIT-6B: DeliveryTask (durable outbox)
 
 
 def batch_body_fingerprint(
@@ -666,9 +685,41 @@ MIGRATION_STATEMENTS_0004: tuple[str, ...] = (
     "ALTER TABLE run_checkpoints ADD COLUMN IF NOT EXISTS watermark BIGINT",
 )
 
+# AUDIT-6B (план §17): восстановимая доставка -- аддитивная миграция 0005.
+#   progress_delivery_outbox -- durable outbox/обязательство доставки
+#   проекции (п.4 карточки: outbox в том же устойчивом хранилище, что
+#   ledger; недоказанная долговечность Redis/очередь процесса
+#   недостаточны). Регистрируется В транзакции commit_event_batch;
+#   FK ON DELETE CASCADE -- обязательство живёт вместе с запуском.
+#   state: pending/delivered/failed; индекс due-выборки worker'а.
+MIGRATION_STATEMENTS_0005: tuple[str, ...] = (
+    f"""
+    CREATE TABLE IF NOT EXISTS {OUTBOX_TABLE} (
+        operation_id TEXT PRIMARY KEY,
+        idempotency_key TEXT NOT NULL DEFAULT '',
+        run_id TEXT NOT NULL REFERENCES research_runs(run_id) ON DELETE CASCADE,
+        kind TEXT NOT NULL DEFAULT 'layer1_mirror',
+        payload JSONB NOT NULL DEFAULT '{{}}'::jsonb,
+        state TEXT NOT NULL DEFAULT 'pending',
+        attempts INTEGER NOT NULL DEFAULT 0,
+        max_attempts INTEGER NOT NULL DEFAULT 5,
+        next_attempt_at TIMESTAMPTZ,
+        last_error TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        delivered_at TIMESTAMPTZ
+    )
+    """,
+    f"CREATE INDEX IF NOT EXISTS idx_progress_delivery_outbox_due "
+    f"ON {OUTBOX_TABLE} (state, next_attempt_at)",
+    f"CREATE INDEX IF NOT EXISTS idx_progress_delivery_outbox_run "
+    f"ON {OUTBOX_TABLE} (run_id)",
+)
+
 MIGRATION_STATEMENTS: tuple[str, ...] = (
     MIGRATION_STATEMENTS_0001 + MIGRATION_STATEMENTS_0002
     + MIGRATION_STATEMENTS_0003 + MIGRATION_STATEMENTS_0004
+    + MIGRATION_STATEMENTS_0005
 )
 
 # Каталог файлов-дублей ops-контура (эквивалентность источников DDL
@@ -678,6 +729,7 @@ MIGRATION_FILES: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("0002_audit6a_atomic_ledger.sql", MIGRATION_STATEMENTS_0002),
     ("0003_audit1a_target_source.sql", MIGRATION_STATEMENTS_0003),
     ("0004_audit8_checkpoint_metadata.sql", MIGRATION_STATEMENTS_0004),
+    ("0005_audit6b_delivery_outbox.sql", MIGRATION_STATEMENTS_0005),
 )
 
 
@@ -756,6 +808,15 @@ class ResearchRunStore:
         ключа нет."""
         raise NotImplementedError
 
+    # -- AUDIT-6B: восстановимая доставка (план §17) --
+
+    @property
+    def delivery_outbox(self) -> Any:
+        """Durable outbox обязательств доставки (план §17 п.4): то же
+        устойчивое хранилище, что ledger; обязательство регистрируется
+        В транзакции commit_event_batch."""  # pragma: no cover - контракт
+        raise NotImplementedError
+
     # -- журнал наблюдений Наставника (PROGR-8, §10) --
 
     def append_mentor_observation(self, obs: MentorObservation) -> None:  # pragma: no cover
@@ -825,6 +886,9 @@ class MemoryResearchRunStore(ResearchRunStore):
         # AUDIT-6A: авторитетная позиция ledger per run + receipts.
         self._sequences: dict[str, int] = {}
         self._receipts: dict[str, tuple[CommitReceipt, str]] = {}
+        # AUDIT-6B: durable outbox обязательств доставки (в рамках
+        # процесса; паритет контракта с Postgres -- I8).
+        self._outbox = MemoryDeliveryOutbox()
 
     def upsert_run(self, run: ResearchRun) -> None:
         with self._lock:
@@ -978,6 +1042,24 @@ class MemoryResearchRunStore(ResearchRunStore):
             # 5. Запись событий + вода́ ledger.
             self._events.setdefault(run_id, []).extend(prepared)
             self._sequences[run_id] = sequence
+            # 5a. AUDIT-6B: ссылки на артефакты -- той же транзакцией
+            #     (тот же замок; дедуп по checkpoint_id -- ON CONFLICT-паритет).
+            if batch.checkpoints:
+                stored_cps = self._checkpoints.setdefault(run_id, [])
+                known_cps = {cp.checkpoint_id for cp in stored_cps}
+                for checkpoint in batch.checkpoints:
+                    if checkpoint.checkpoint_id in known_cps:
+                        continue
+                    stored_cps.append(checkpoint)
+                    known_cps.add(checkpoint.checkpoint_id)
+            # 5b. AUDIT-6B: обязательство доставки -- той же транзакцией
+            #     (crash до этой точки не оставляет ни фактов, ни
+            #     обязательства; дедуп по operation_id; ключ commit'а
+            #     привязывается при регистрации -- связь с receipt, п.8).
+            if batch.delivery_task is not None:
+                self._outbox.register(
+                    bind_idempotency_key(batch.delivery_task, batch.idempotency_key or "")
+                )
             receipt = CommitReceipt(
                 idempotency_key=batch.idempotency_key or "",
                 run_id=run_id,
@@ -994,7 +1076,10 @@ class MemoryResearchRunStore(ResearchRunStore):
             stored = self._receipts.get(idempotency_key)
             return stored[0] if stored else None
 
-    # -- журнал наблюдений Наставника (PROGR-8, §10) --
+    @property
+    def delivery_outbox(self) -> MemoryDeliveryOutbox:
+        """AUDIT-6B: durable outbox (в рамках процесса; контракт тот же)."""
+        return self._outbox
 
     def append_mentor_observation(self, obs: MentorObservation) -> None:
         # MentorObservation заморожена и не содержит вложенных мутабельных
@@ -1024,6 +1109,9 @@ class PostgresResearchRunStore(ResearchRunStore):
         self._dsn = dsn
         self._schema_ready = False
         self._lock = threading.Lock()
+        # AUDIT-6B: durable outbox в ТОМ ЖЕ устойчивом хранилище
+        # (таблица progress_delivery_outbox, миграция 0005).
+        self._outbox = PostgresDeliveryOutbox(dsn=dsn)
 
     @staticmethod
     def from_env() -> "PostgresResearchRunStore":
@@ -1427,6 +1515,38 @@ class PostgresResearchRunStore(ResearchRunStore):
                         _ts_to_db(receipt.created_at),
                     ),
                 )
+            # 7. AUDIT-6B: ссылки на артефакты -- той же транзакцией
+            # (ON CONFLICT DO NOTHING -- паритет add_checkpoint).
+            for checkpoint in batch.checkpoints:
+                cur.execute(
+                    """
+                    INSERT INTO run_checkpoints
+                        (checkpoint_id, run_id, event_id, label, has_snapshot, created_at,
+                         context_id, data_revision, watermark)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (checkpoint_id) DO NOTHING
+                    """,
+                    (
+                        checkpoint.checkpoint_id, run_id, checkpoint.event_id,
+                        checkpoint.label, checkpoint.has_snapshot,
+                        _ts_to_db(checkpoint.created_at),
+                        checkpoint.context_id, checkpoint.data_revision,
+                        checkpoint.watermark,
+                    ),
+                )
+            # 8. AUDIT-6B: обязательство доставки -- той же транзакцией
+            # (durable outbox, миграция 0005; crash до этой точки --
+            # откат всего: нет ни фактов, ни обязательства; ключ
+            # commit'а привязывается при регистрации -- связь с receipt).
+            if batch.delivery_task is not None:
+                cur.execute(
+                    OUTBOX_INSERT_SQL,
+                    outbox_row_params(
+                        bind_idempotency_key(
+                            batch.delivery_task, batch.idempotency_key or ""
+                        )
+                    ),
+                )
             conn.commit()
             return receipt
 
@@ -1439,6 +1559,12 @@ class PostgresResearchRunStore(ResearchRunStore):
             )
             row = cur.fetchone()
         return self._receipt_from_row(row) if row else None
+
+    @property
+    def delivery_outbox(self) -> PostgresDeliveryOutbox:
+        """AUDIT-6B: durable outbox -- та же БД, что ledger (миграция
+        0005); restart-выживание обеспечивается хранилищем."""
+        return self._outbox
 
     # -- чекпоинты --
 
@@ -1794,6 +1920,7 @@ def commit_map_report(
     expected_context_id: Optional[str],
     idempotency_key: str,
     body_fingerprint: str,
+    delivery_task: Optional[Any] = None,
 ) -> CommitReceipt:
     """СТРОГОЕ зеркало v2-отчёта карты статусов (AUDIT-2A, план §11;
     контракт docs/progress_audit_contract.md аддендум v0.9-2A §19).
@@ -1820,6 +1947,11 @@ def commit_map_report(
     же транзакцией store'а, что и события (паритет AUDIT-6A); CAS
     expected_context_id передаётся ГЕЙТОМ эндпоинта (durable
     run.context_id, тот же источник, что GET /trace -- контракт §19.2).
+
+    AUDIT-6B (план §17 п.2/п.4): delivery_task -- обязательство доставки
+    проекции слоя 1, регистрируется ТОЙ ЖЕ транзакцией (Redis --
+    восстанавливаемая проекция; отказ cache не отменяет committed
+    событие; worker доставляет по operation_id).
     """
     store = get_research_run_store()
     run, _read_context = _mirror_run_base(store, session, run_id)
@@ -1838,6 +1970,7 @@ def commit_map_report(
             expected_context_id=expected_context_id,
             idempotency_key=idempotency_key,
             body_fingerprint=body_fingerprint,
+            delivery_task=delivery_task,
         )
     )
 
@@ -2025,6 +2158,24 @@ class DatasetFileStore:
                 path.unlink(missing_ok=True)
                 removed.append(checkpoint_id)
         return removed
+
+    def checkpoint_snapshot_files(self, run_id: str) -> list[Path]:
+        """AUDIT-6B (план §17 п.7): список файлов снимков запуска --
+        basis сверки «файл ↔ ссылка в ledger» для staged cleanup
+        (DB-транзакция не делает файловую запись атомарной)."""
+        directory = self._checkpoints_dir(run_id)
+        if not directory.exists():
+            return []
+        return sorted(directory.glob("*.csv"))
+
+    def remove_checkpoint_snapshot(self, run_id: str, checkpoint_id: str) -> bool:
+        """AUDIT-6B: точечное удаление снимка (staged cleanup осиротевших
+        артефактов); True -- файл был и удалён."""
+        path = self._checkpoints_dir(run_id) / f"{checkpoint_id}.csv"
+        if not path.exists():
+            return False
+        path.unlink(missing_ok=True)
+        return True
 
 
 _file_store: Optional[DatasetFileStore] = None
