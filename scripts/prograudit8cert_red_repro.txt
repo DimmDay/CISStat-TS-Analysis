@@ -1,0 +1,73 @@
+PROGR-AUDIT-8-CERT: RED-протокол сертификатора (база 493e5b6)
+Метод: git worktree 493e5b6 (чистая база AUDIT-8); node_modules жёсткими
+ссылками (cp -al, общий inode-пул -- среда не менялась); оракулы
+исполнителя (тесты/test_progress_audit_8.py, UI
+prograudit8_checkpoint_metadata.test.tsx) скопированы в worktree как
+untracked -- форма RED на новой файловой паре, прецедент 2A/2B-CERT.
+
+── 1. СВОИ оракулы (scripts/prograudit8cert_oracles.py) на базе ──────
+ИТОГО: 6 PASS / 13 FAIL из 19
+
+  FAIL CHK-1 ... KeyError('watermark')
+  FAIL CHK-2 ... KeyError('context_id')
+  FAIL CHK-3 ... KeyError('context_id')
+  FAIL CHK-4 ... KeyError('watermark')
+  FAIL CHK-5 ... KeyError('context_id')
+  FAIL CHK-6 ... KeyError('context_id')
+  FAIL CTX-1 ... AssertionError('ctx-2591756733bb5884')
+        (run.context_id после restore остался старым -- дефект H05)
+  FAIL CTX-2 ... KeyError('context_changed')
+  FAIL CTX-2b ... KeyError('context_id')
+  FAIL CTX-3 ... KeyError('context_id')
+  FAIL DTO-1 ... KeyError('context_id')
+  FAIL RAW-1 ... KeyError('mode')
+  FAIL RAW-2 ... KeyError('mode')
+
+  PASS-контролы (контракты, существовавшие ДО AUDIT-8; форма честного
+  контраста RED/GREEN, зеркально исполнителю -- у них 6 из 15):
+  ok   ENV-1 (свои корпуса live), ND-1 (SHA-256), ND-2 (append-only),
+  ok   ND-3 (restore не сеет выбор, v0.7-1A), ND-4 (409 отсутствующего
+  ok   raw), RAW-3 (привязка run к новой сессии и историческая пара
+  ok   цели -- контракт v0.7-1A)
+
+── 2. Оракулы исполнителя на базе ────────────────────────────────────
+tests/api/test_progress_audit_8.py:  9 failed / 6 passed
+  FAILED TestRestoreRawSemantics::test_restore_reports_mode_raw_and_new_revisions
+  FAILED TestRestoreRawSemantics::test_restore_unmutated_run_continues_same_context
+  FAILED TestRestoreRawSemantics::test_run_metadata_follows_restored_context
+  FAILED TestRestoreRawSemantics::test_p05_old_done_stale_new_input_current
+  FAILED TestRestoreRawSemantics::test_cleared_target_before_restore_context_honest  (PASS)
+  FAILED ... (контролы PASS: manual_choice / new_cookie_no_new_choice /
+  missing_raw_409 / raw_file_unchanged / history_preserved)
+  FAILED TestCheckpointMetadata::test_checkpoint_records_creation_context_and_watermark
+  FAILED TestCheckpointMetadata::test_checkpoint_early_event_after_late_correction
+  FAILED TestCheckpointMetadata::test_checkpoint_foreign_session_snapshot_absent_honest
+  FAILED TestCheckpointMetadata::test_run_detail_includes_checkpoint_metadata
+  FAILED TestCheckpointMetadata::test_checkpoint_watermark_is_full_history_after_cap_restore
+Совпадение с RED-протоколом исполнителя (scripts/prograudit8_red_protocol.txt):
+9 FAILED / 6 PASSED -- ВОСПРОИЗВЕДЁН 1:1.
+
+── 3. UI-оракулы на базе ─────────────────────────────────────────────
+Обе сюиты (сертификатора prograudit8cert_checkpoint_metadata.test.tsx и
+исполнителя prograudit8_checkpoint_metadata.test.tsx) -- RED формой
+"suites failed to run": TS2353 "Object literal may only specify known
+properties, and 'context_id' does not exist in type 'Partial<CheckpointInfo>'"
+(поля metadata не существовали в lib/progress.ts на базе) -- все 6+4
+сценария RED ОДНОВРЕМЕННО (форма RED для нового файла -- прецедент
+2A/2B-CERT).
+
+── 4. Базлайн-репродукция полных tests/api на базе (моя среда) ───────
+env -u DATABASE_URL pytest tests/api (в worktree + копия нового теста
+исполнителя):  12 failed / 1796 passed / 18 skipped за 196s
+  = 9 RED тестов исполнителя (ожидаются на базе) + 3 средовых отказа
+    класса production dispatch моделей (modeling_workflow,
+    models_backtest_neural_capacity, models_candidates)
+На HEAD 2353e65 той же средой: 3 failed / 1805 passed / 18 skipped.
+Арифметика: 1796 + 9 = 1805 -- дельта HEAD-база РОВНО 9 RED->GREEN;
+средовые 3 совпадают на обеих сторонах (ДЕЛЬТА К БАЗЛАЙНУ 0).
+Расхождение с журналом исполнителя (19 failed) объясняется средой
+песочниц: семья та же (production dispatch моделей), в моей среде
+воспроизводится подмножество из 3 (forecasting_session x16 в моей
+среде зелёные -- зависимости моделей полны); класс документирован
+исполнителем AUDIT-8 как средовой, утверждение «ДЕЛЬТА К БАЗЛАЙНУ 0»
+верифицировано в пределах моей среды.

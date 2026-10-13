@@ -1650,3 +1650,45 @@ F-3C1 (РЕКОМЕНДАЦИЯ): repo-канал слеп к 4 классам �
 PASSED. Реализация AUDIT-3 честна на всех проверенных формах фактов и отказов: GET — запрос (не показ) с троттлингом; контекст-ключевая монотонность закрывает P25 в своём контексте и H28 на смене (unknown ≠ смена в обе стороны, I10 сохранён); H27-неретракт с честным периметром; seed из полной проекции current-only с удержанием/ретраем/восстановлением; вселенная «датасет + цель» с делением дедупа и гейтом гонки. RED обеих сторон воспроизведён (24 своих оракула красны на 4289a83, 17 контролов честны); базлайны 1:1; 35/35 + 7/7 оракулов; 18/18 мутантов убиты (14 обоими каналами, 4 — оракулом сертификата, F-3C1), контроли выжили. Противоречий «код vs контракт v1.1-3A §21» нет.
 
 Deliverable: ZIP cisstat-prograudit3-certification.zip → открытый контейнер сессии (download + upload): docs/cert_prograudit3_2026-10-13.md, scripts/prograudit3cert_oracles.py (+ results .txt), scripts/prograudit3cert_red_repro.txt, scripts/prograudit3cert_mutations.py (+ _mutation_results.txt), scripts/prograudit3cert_baselines.txt, packages/ui/components/prograudit3cert_eda_seed_freshness.test.tsx, worklog/worklog9.md. Без commit/push (AGENTS.md). Следующие по нарезке плана — AUDIT-8 (raw restore и checkpoint metadata) и/или перенос пинов F-* в repo-сюиты.
+
+---
+
+## Task ID: PROGR-AUDIT-8-CERT (2026-10-13) — Независимая сертификация задачи AUDIT-8 (raw restore и checkpoint metadata) — мутанты на своих мутантах, оракулы на своих данных
+
+База: main@2353e65 (origin/main; HEAD = коммит PROGR-AUDIT-8; синхронизация по прямому указанию тимлида; commit/push НЕ выполнялись — правила AGENTS.md соблюдены). Постановка: «Синхронизируйся до 2353e65. Изучи spec_progress_audit.md и plan_progress_audit.md, а также текущий код по основным файлам контура "Прогресс", записи в журнале worklog9.md. Следующая задача: честно сертифицируй PROGR-AUDIT-8 — raw restore и checkpoint metadata. Спроектируй и реализуй данную Сертификацию. Используй мутантов на своих мутантах, оракулов на своих данных. Следуй правилам AGENTS.md. По завершении работы ВЫЗОВИ открытый контейнер сессии DOWNLOAD/UPLOAD и выложи туда zip новых/обновленных файлов для скачивания». Акт: docs/cert_prograudit8_2026-10-13.md. Вердикт: PASSED.
+
+### Сверка реализации с кодовой базой
+
+Все точки карточки §14 плана и контракта v1.2-8A §22 на месте: RestoreResponse mode="raw"/data_revision=0/context_id/context_changed (I3-детерминизм, легаси — честное False); run-метаданные после restore следуют raw-входу (upsert перезаписывает context_id/revision/digest — дефект H05 закрыт; CAS-сдвиг легитимен); create_checkpoint — watermark = позиция durable-истории ДО факта checkpoint_saved (не cap слоя 1, свежие незеркалированные P15 не входят), контекстные metadata — только у снимка своей сессии (гейт владения), чужая — ссылка без снимка/метаданных; CheckpointOut/UI ProgressCheckpointBar — контекст/позиция/ревизия + honest-пометка «restore не применяет» (N-3, без фабрикации легаси-полей); from_dict щиты C-CERT; миграция 0004 + файл-дубль; PG 9-колоночный контракт. Граница наблюдаемости: аддендум и код в одном коммите 2353e65 — порядок «спецификация до кода» вне-коммитно не реконструируется.
+
+### Независимая верификация базлайнов (1:1 с журналом)
+
+Оракул исполнителя 15/15; UI-оракулы исполнителя 4+17=21; pgserver-канал (live PostgreSQL, паттерн 6A) 19/19; адресный контур «Прогресса» 31 файл — 982 passed / 17 skipped / 0 failed; полный tests/api — 1805/3/18 (все 3 — средовой класс production dispatch моделей; репродукция базы 493e5b6 той же средой: 1796/12/18, где 12 = 9 RED исполнителя + те же 3 средовых → ДЕЛЬТА К БАЗЛАЙНУ 0, дельта HEAD−база ровно 9 RED→GREEN; расхождение с журналом (19 failed) — среда песочниц, forecasting_session ×16 в этой среде зелёные); полный jest — финальные прогоны 168 сюит / 1998 тестов / 0 failed (167 трекенных + 1 мой файл; 1992 + 6 моих — АРИФМЕТИКА 1:1; первый после мутаций прогон дал 1 невоспроизводимый флаки под нагрузкой, два повторных — зелёные); typecheck:all EXIT=0; import apps.api.main OK.
+
+### RED-протокол (база 493e5b6, worktree + жёсткие ссылки node_modules)
+
+Протокол scripts/prograudit8cert_red_repro.txt: СВОИ оракулы на базе — 13 FAIL / 6 PASS-контролов (KeyError mode/context_id/watermark + живой дефект H05 «run.context_id остался старым»; контролы — контракты до AUDIT-8: SHA-256, append-only, «не сеет выбор», 409, привязка run); оракулы исполнителя на базе — 9 FAILED / 6 PASSED — ВОСПРОИЗВЕДЕНЫ 1:1 с их протоколом; UI обеих сторон — suites-failed-to-run TS2353 (поля metadata не существовали). Полный tests/api на базе — арифметика дельты §2.
+
+### Оракулы на СВОИХ данных — scripts/prograudit8cert_oracles.py: 21/21 PASS (+UI 6/6)
+
+Корпус дизъюнктен исполнителю: сенсорный CSV day/sensor_a/sensor_b 14 суток 2024-03 (выброс 900 → своя вторая мутация outlier-cap, класс отличный от convert), нагрузочный ts/load 9 суток 2024-07; report_id c8-rep-*, метки cert8-*, cap-корпус 1002. Свои наблюдательные методы: инъекция легаси-строки чекпоинта в store + чтение через API; двойной restore с SHA-256; rename uploads_dir; два клиента (чужой запуск С активным датасетом — CHK-7); unit-контракт сериализации from_dict/to_dict (CHK-8); CTX-2b — пер-выбор цели: restore продолжает контекст (context_changed=False, I3), старая карта честно stale (форма, отсутствующая у исполнителя). Группы ENV/RAW(3)/CTX(4)/CHK(8)/DTO/ND(4). UI-оракул packages/ui/components/prograudit8cert_checkpoint_metadata.test.tsx (U1–U6: полный снимок, легаси N-3, без снимков, каждый СВОЙ контекст/позиция, watermark=0/ревизия=0 валидны, metadata без снимка гейтируются has_snapshot).
+
+### Мутационная кампания СВОИХ мутантов — scripts/prograudit8cert_mutations.py: 16/16 KILLED, 0 SURVIVED; контроль выжил
+
+Дизъюнкт классов от 6A/5B/1A/4/2A/2B: честность restore (mode/ревизии/context_changed), run-метаданные P05/H05, watermark позиции (off-by-one/включение самофакта/PG-чтение в ноль), владение снимком (гейт чужого запуска), щит сериализации bool→None, UI-рендер §22.4 (пометка/гейты/перепутанные поля/легаси-фабрикация). Каналы: oracle+repo (backend), pg (CM-12, live pgserver: watermark==7), ui (CM-13..16: мой оракул + 2 сюиты исполнителя). Грануляция: 9 KILLED-BOTH (CM-1..6, 8..10), 2 KILLED-ORACLE-ONLY (CM-7 атрибуция чужого снимка, CM-11 щит сериализации — repo слеп → рекомендация F-8C1), 1 KILLED-PG-ONLY (CM-12), 4 KILLED-UI-ONLY (CM-13..16). Дисциплина: единственный якорь, md5 после каждого мутанта и в finally — продуктовые файлы побайтово восстановлены (git diff пуст). Эволюция кампании (открыто): волна 1 — CM-7/CM-11 SURVIVED (cookieless-чужой не достигает пути снимка; from_dict вне e2e-путей) → +CHK-7/CHK-8 → волна 2 16/16 (прецедент 2B-CERT D5/D6).
+
+### Эволюция оракулов сертификатора (открытая фиксация)
+
+Только харнесс, ноль дефектов продукта: забытый http=c в CHK-1/2/4 (чекпоинт уходил от чужой cookieless-сессии); RAW-2 — неверное абсолютное ожидание числа upload-фактов → относительный tail-assert; CTX-2/3 первой редакции — концептуальный дефект сценария: outlier-cap не меняет пару цели → после raw restore контекст ЗАКОННО совпадает (I3) и validity current ЧЕСТНА → сценарий переведён на сброс цели + добавлен CTX-2b; CHK-7 — сравнение watermark с post-factum длиной ledger → фиксация ожидания ДО факта. Продукт ни разу не менялся.
+
+### Находки (акт §7)
+
+F-8C1 (РЕКОМЕНДАЦИЯ): repo-канал исполнителя слеп к CM-7 (атрибуция снимка чужого запуска) и CM-11 (щит сериализации) — перенос пинов в repo-сюиты (прецеденты F-6A1/F-1A1/F-4C1/F-2A1/F-2B1). R1: путь сбоя сохранения снимка — replace(metadata) до попытки записи: metadata без has_snapshot; API честен, UI гейтует по has_snapshot (оракул U6 фиксирует; наблюдение о конструкции, не дефект). R2: пин CTX-2b против регрессии «context_changed как единственного сигнала stale». R3: границы совпадают с §22.6 (snapshot replay — отдельный контракт; P24 old-write — решение тимлида; AUDIT-7B/6B/6C — вне периметра).
+
+### Полный регресс (сверка с базами)
+
+Полный jest 168/1998/0; typecheck:all EXIT=0; полный tests/api 1805/3/18 + база 1796/12/18 (дельта ровно 9, средовые совпадают); адресный контур 982/17/0; pg 19/19; оракулы 21/21 + 6/6; RED обеих сторон воспроизведён; кампания 16/16 + контроль. Продуктовые файлы md5 == HEAD; артефакты untracked (6 файлов + настоящая запись).
+
+### Результат (вердикт акта §10)
+
+PASSED: противоречий «код vs контракт v1.2-8A §22» нет; raw восстановление честно обозначено и не использует старую current-validity; чекпоинт несёт metadata СОЗДАНИЯ (не якоря); владение снимком гейтуется; легаси читается с честным отсутствием; восстановление неразрушимо. Deliverable: ZIP cisstat-prograudit8-certification.zip → открытый контейнер сессии (download + upload): docs/cert_prograudit8_2026-10-13.md, scripts/prograudit8cert_oracles.py (+_oracles_results.txt), scripts/prograudit8cert_red_repro.txt, scripts/prograudit8cert_mutations.py (+_mutation_results.txt), packages/ui/components/prograudit8cert_checkpoint_metadata.test.tsx, worklog/worklog9.md. Без commit/push (AGENTS.md). Следующие по нарезке плана — AUDIT-7A (матрица Modeling) и/или перенос пинов F-8C1 в repo-сюиты.

@@ -1,0 +1,97 @@
+  [CM-0] oracle: SURVIVED (4s) exit=0
+  [CM-0] repo: SURVIVED (7s) 0 failed
+  => CM-0 SURVIVED
+
+  [CM-1] oracle: KILLED (4s) exit=1
+  [CM-1] repo: KILLED (7s) pi/test_progress_audit_8.py::TestRestoreRawSemantics::test_restore_reports_mode_raw_and_new_revisions
+FAILED tests/api/test_progress_audit_8.py::TestRestoreRawS
+  => CM-1 KILLED
+
+  [CM-2] oracle: KILLED (4s) exit=1
+  [CM-2] repo: KILLED (7s) FAILED tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_restore_reports_mode_raw_and_new_revisions
+=================== 1 failed, 14 passed, 2 w
+  => CM-2 KILLED
+
+  [CM-3] oracle: KILLED (4s) exit=1
+  [CM-3] repo: KILLED (7s) FAILED tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_restore_reports_mode_raw_and_new_revisions
+=================== 1 failed, 14 passed, 2 w
+  => CM-3 KILLED
+
+  [CM-4] oracle: KILLED (3s) exit=1
+  [CM-4] repo: KILLED (6s) AILED tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_run_metadata_follows_restored_context
+FAILED tests/api/test_progress_audit_8.py::TestRes
+  => CM-4 KILLED
+
+  [CM-5] oracle: KILLED (3s) exit=1
+  [CM-5] repo: KILLED (6s) FAILED tests/api/test_progress_audit_8.py::TestRestoreRawSemantics::test_run_metadata_follows_restored_context
+=================== 1 failed, 14 passed, 2 warnin
+  => CM-5 KILLED
+
+  [CM-6] oracle: KILLED (4s) exit=1
+  [CM-6] repo: KILLED (7s) s_audit_8.py::TestCheckpointMetadata::test_checkpoint_foreign_session_snapshot_absent_honest
+FAILED tests/api/test_progress_audit_8.py::TestCheckpointMetadata::
+  => CM-6 KILLED
+
+  [CM-7] oracle: KILLED (4s) exit=1
+  [CM-7] repo: SURVIVED (7s) 0 failed
+  => CM-7 KILLED
+
+  [CM-8] oracle: KILLED (4s) exit=1
+  [CM-8] repo: KILLED (7s) sts/api/test_progress_audit_8.py::TestCheckpointMetadata::test_checkpoint_early_event_after_late_correction
+FAILED tests/api/test_progress_audit_8.py::TestCheck
+  => CM-8 KILLED
+
+  [CM-9] oracle: KILLED (4s) exit=1
+  [CM-9] repo: KILLED (7s) FAILED tests/api/test_progress_audit_8.py::TestCheckpointMetadata::test_checkpoint_early_event_after_late_correction
+=================== 1 failed, 14 passed, 2 
+  => CM-9 KILLED
+
+  [CM-10] oracle: KILLED (3s) exit=1
+  [CM-10] repo: KILLED (7s) st_progress_audit_8.py::TestCheckpointMetadata::test_run_detail_includes_checkpoint_metadata
+FAILED tests/api/test_progress_audit_8.py::TestCheckpointMetadata::
+  => CM-10 KILLED
+
+  [CM-11] oracle: KILLED (4s) exit=1
+  [CM-11] repo: SURVIVED (7s) 0 failed
+  => CM-11 KILLED
+
+  [CM-12] pg: KILLED (8s) FAILED tests/api/test_research_runs_postgres.py::TestPostgresStoreBehavior::test_checkpoints_roundtrip
+========================= 1 failed, 18 passed in 3.45s ==
+  => CM-12 KILLED
+
+  [CM-13] ui: KILLED (5s) Test Suites: 2 failed, 1 passed, 3 total
+Tests:       3 failed, 24 passed, 27 total
+  => CM-13 KILLED
+
+  [CM-14] ui: KILLED (4s) Test Suites: 1 failed, 2 passed, 3 total
+Tests:       1 failed, 26 passed, 27 total
+  => CM-14 KILLED
+
+  [CM-15] ui: KILLED (4s) Test Suites: 2 failed, 1 passed, 3 total
+Tests:       4 failed, 23 passed, 27 total
+  => CM-15 KILLED
+
+  [CM-16] ui: KILLED (5s) Test Suites: 2 failed, 1 passed, 3 total
+Tests:       2 failed, 25 passed, 27 total
+  => CM-16 KILLED
+
+========================================================================
+ИТОГО: 16/17 KILLED, 1 SURVIVED
+  CM-0 [SURVIVED] no-op контроль харнесса :: oracle=SURVIVED, repo=SURVIVED
+  CM-1 [KILLED] §22.1 restore лжёт о режиме (raw назван full) :: oracle=KILLED, repo=KILLED
+  CM-2 [KILLED] §22.1 в ответе устаревшая ревизия run, не raw :: oracle=KILLED, repo=KILLED
+  CM-3 [KILLED] §22.1 честность context_changed снята :: oracle=KILLED, repo=KILLED
+  CM-4 [KILLED] §22.2 P05/H05: run-метаданные держат СТАРЫЙ контекст :: oracle=KILLED, repo=KILLED
+  CM-5 [KILLED] §22.2 run-метаданные держат старую ревизию :: oracle=KILLED, repo=KILLED
+  CM-6 [KILLED] §22.3 позиция включает сам факт checkpoint_saved (off-by-one) :: oracle=KILLED, repo=KILLED
+  CM-7 [KILLED] §22.3 чужая сессия атрибутирует свой снимок/контекст запуску :: oracle=KILLED, repo=SURVIVED
+  CM-8 [KILLED] §22.3 контекст снимка подавлен (честное отсутствие нарушено) :: oracle=KILLED, repo=KILLED
+  CM-9 [KILLED] §22.3 ревизия снимка фабрикуется нулём (raw) :: oracle=KILLED, repo=KILLED
+  CM-10 [KILLED] §22.4 DTO теряет позицию durable-истории :: oracle=KILLED, repo=KILLED
+  CM-11 [KILLED] §3.7 щит C-CERT снят: bool принимается за ревизию/позицию :: oracle=KILLED, repo=SURVIVED
+  CM-12 [KILLED] I8 PG-чтение: позиция заменяется нулём :: pg=KILLED
+  CM-13 [KILLED] §22.4 honest-пометка рендерится без снимков :: ui=KILLED
+  CM-14 [KILLED] §22.4 контекст показывается у чекпоинта без снимка :: ui=KILLED
+  CM-15 [KILLED] §22.4 позиция и ревизия перепутаны :: ui=KILLED
+  CM-16 [KILLED] §22.4 N-3 снят: легаси-поле рендерится фабрикацией :: ui=KILLED
+md5-контроль: все файлы побайтово восстановлены
