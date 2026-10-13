@@ -43,6 +43,7 @@ plan_progress_audit.md §17; контракт docs/progress_audit_contract.md
 from __future__ import annotations
 
 import json
+from contextlib import contextmanager
 import logging
 import threading
 from dataclasses import dataclass, field, replace
@@ -414,9 +415,22 @@ class MemoryDeliveryOutbox(DeliveryOutbox):
     """Memory-реализация (паритет Postgres: дедуп по operation_id,
     глубокие копии, тот же контракт list_due/mark_*/backlog)."""
 
-    def __init__(self) -> None:
-        self._lock = threading.Lock()
+    def __init__(self, *, lock=None) -> None:
+        # A run store supplies its RLock so readers cannot observe an
+        # outbox task before the corresponding ledger batch is published.
+        self._lock = lock if lock is not None else threading.RLock()
         self._tasks: dict[str, DeliveryTask] = {}
+
+    @contextmanager
+    def transaction(self):
+        """Rollback registration even if the registration seam fails after writing."""
+        with self._lock:
+            previous = self._tasks.copy()
+            try:
+                yield
+            except BaseException:
+                self._tasks = previous
+                raise
 
     def register(self, task: DeliveryTask) -> None:
         with self._lock:

@@ -1,0 +1,28 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis
+configfile: pytest.ini
+plugins: typeguard-4.6.0, platformdirs-4.13.0, anyio-4.15.1
+collected 8 items
+
+tests/api/test_progress_audit_cert_store.py .sFFss.s                     [100%]
+
+=================================== FAILURES ===================================
+________ test_outbox_failure_rolls_back_all_four_surfaces[memory-False] ________
+tests/api/test_progress_audit_cert_store.py:75: in test_outbox_failure_rolls_back_all_four_surfaces
+    assert store.get_run(batch.run.run_id).target_column == "flow"
+E   AssertionError: assert 'stock' == 'flow'
+E     
+E     - flow
+E     + stock
+________ test_outbox_failure_rolls_back_all_four_surfaces[memory-True] _________
+tests/api/test_progress_audit_cert_store.py:75: in test_outbox_failure_rolls_back_all_four_surfaces
+    assert store.get_run(batch.run.run_id).target_column == "flow"
+E   AssertionError: assert 'stock' == 'flow'
+E     
+E     - flow
+E     + stock
+=========================== short test summary info ============================
+FAILED tests/api/test_progress_audit_cert_store.py::test_outbox_failure_rolls_back_all_four_surfaces[memory-False]
+FAILED tests/api/test_progress_audit_cert_store.py::test_outbox_failure_rolls_back_all_four_surfaces[memory-True]
+==================== 2 failed, 2 passed, 4 skipped in 0.27s ====================

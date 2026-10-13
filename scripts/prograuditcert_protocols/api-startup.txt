@@ -1,0 +1,7 @@
+DEBUG:app.data.file_loader:sqlalchemy not installed — PostgreSQL support disabled
+DEBUG:app.data.file_loader:clickhouse-connect not installed — ClickHouse support disabled
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/health "HTTP/1.1 200 OK"
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:httpx:HTTP Request: GET http://testserver/health/ops "HTTP/1.1 200 OK"
+FULL API IMPORT + HEALTH OK; psycopg 3.3.6

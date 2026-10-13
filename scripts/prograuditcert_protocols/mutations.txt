@@ -1,0 +1,9 @@
+MC1-reset-reducer: KILLED by behavioral oracle
+MC2-context-guard: KILLED by behavioral oracle
+MC3-report-id-dedup: KILLED by behavioral oracle
+MC4-forecast-identity: KILLED by behavioral oracle
+MC5-full-projection: KILLED by behavioral oracle
+MC6-receipt-handling: KILLED by behavioral oracle
+MC7-EDA-protection: KILLED by behavioral oracle
+MC8-outbox-rollback: KILLED by behavioral oracle
+RESTORE: True; KILLED 8/8

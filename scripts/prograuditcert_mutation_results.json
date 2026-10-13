@@ -1,0 +1,167 @@
+{
+  "base": "2a4cd6cf3cca02e09c9746a5bc7d3ca7b9a1d1b3",
+  "sha256": {
+    "app/core/effective_target.py": "1a7ca3673476eae377335df77e8085f0a1ea9d3a05fd5fd17924dfa301fa889a",
+    "apps/api/progress_maps.py": "a9ef3cc4d5822f757650b1fe9f7ab2fc1bcc2e2977a0a6032935978c245c0a54",
+    "apps/api/research_runs.py": "6d591b32f8f45a70a616a774c1d6d7d07e8e2250c4031f34f25e317ac0a5e187",
+    "apps/api/routers/progress.py": "28010da4a12263ba1be1957e84ec052ab12f2b9969225215c915eb067dc145f7",
+    "packages/ui/hooks/useProgressMapDelivery.ts": "55e4caf7f882cf0c6fa65299190f8bff9b926ebbd63fb8fef903d7b8c8898ad9",
+    "app/core/node_status.py": "8563679c558f829085fd551e4bb31de59b9c92ef07301a45f069c74eca5a0e74",
+    "apps/api/delivery_outbox.py": "acda561581308b2e89cd1e3a2bc49ea3f4955b6362ad4be7464f7ef5f9d8639b"
+  },
+  "controls": {
+    "tests/integration/test_progress_audit_cert.py": {
+      "exit": 0,
+      "failures": [],
+      "errors": 0,
+      "tail": "============================= test session starts ==============================\nplatform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0\nrootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis\nconfigfile: pytest.ini\nplugins: typeguard-4.6.0, platformdirs-4.13.0, anyio-4.15.1\ncollected 19 items\n\ntests/integration/test_progress_audit_cert.py ...................        [100%]\n\n- generated xml file: /workspace/scratch/1e71cf0e34de/auditcert-mutations-1hx03gaa/pytest.xml -\n======================= 19 passed, 25 warnings in 5.24s ========================\n"
+    },
+    "packages/ui/hooks/prograuditcert_delivery.test.tsx": {
+      "exit": 0,
+      "failures": [],
+      "errors": 0,
+      "tail": "npm warn Unknown env config \"http-proxy\". This will stop working in the next major version of npm.\nTest Suites: 1 passed, 1 total\nTests:       3 passed, 3 total\nSnapshots:   0 total\nTime:        3.153 s\nRan all test suites matching packages/ui/hooks/prograuditcert_delivery.test.tsx.\nTest results written to: ../auditcert-mutations-1hx03gaa/jest.json\n"
+    },
+    "tests/api/test_progress_audit_cert_store.py": {
+      "exit": 0,
+      "failures": [],
+      "errors": 0,
+      "tail": "============================= test session starts ==============================\nplatform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0\nrootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis\nconfigfile: pytest.ini\nplugins: typeguard-4.6.0, platformdirs-4.13.0, anyio-4.15.1\ncollected 8 items\n\ntests/api/test_progress_audit_cert_store.py .s..ss.s                     [100%]\n\n- generated xml file: /workspace/scratch/1e71cf0e34de/auditcert-mutations-1hx03gaa/pytest.xml -\n========================= 4 passed, 4 skipped in 0.44s =========================\n"
+    }
+  },
+  "mutations": [
+    {
+      "name": "MC1-reset-reducer",
+      "path": "app/core/effective_target.py",
+      "oracle": "test_auto_convert_reset_restore_manual_consumers",
+      "killed": true,
+      "exit": 1,
+      "failures": [
+        "test_auto_convert_reset_restore_manual_consumers"
+      ],
+      "errors": 0,
+      "tail": "============================= test session starts ==============================\nplatform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0\nrootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis\nconfigfile: pytest.ini\nplugins: typeguard-4.6.0, platformdirs-4.13.0, anyio-4.15.1\ncollected 19 items\n\ntests/integration/test_progress_audit_cert.py ...F...............        [100%]\n\n=================================== FAILURES ===================================\n_______________ test_auto_convert_reset_restore_manual_consumers _______________\ntests/integration/test_progress_audit_cert.py:138: in test_auto_convert_reset_restore_manual_consumers\n    assert rr.get_research_run_store().get_run(run_id).target_column is None\nE   AssertionError: assert 'flow' is None\nE    +  where 'flow' = ResearchRun(run_id='RUN-34BE86D4', session_id='7e80329c68994cf2b1005d53ce22a754', dataset_fingerprint='a40aa762b72fa82...47cf2faa9d735b47', data_revision=1, data_digest='df1-0abf7ad67ba898b8651a406e966ac0b56d5abb9913f591af316c9a79744709cd').target_column\nE    +    where ResearchRun(run_id='RUN-34BE86D4', session_id='7e80329c68994cf2b1005d53ce22a754', dataset_fingerprint='a40aa762b72fa82...47cf2faa9d735b47', data_revision=1, data_digest='df1-0abf7ad67ba898b8651a406e966ac0b56d5abb9913f591af316c9a79744709cd') = get_run('RUN-34BE86D4')\nE    +      where get_run = <apps.api.research_runs.MemoryResearchRunStore object at 0x7ff2351379e0>.get_run\nE    +        where <apps.api.research_runs.MemoryResearchRunStore object at 0x7ff2351379e0> = <function get_research_run_store at 0x7ff2354b8b80>()\nE    +          where <function get_research_run_store at 0x7ff2354b8b80> = rr.get_research_run_store\n- generated xml file: /workspace/scratch/1e71cf0e34de/auditcert-mutations-1hx03gaa/pytest.xml -\n=========================== short test summary info ============================\nFAILED tests/integration/test_progress_audit_cert.py::test_auto_convert_reset_restore_manual_consumers\n================== 1 failed, 18 passed, 25 warnings in 3.71s ===================\n"
+    },
+    {
+      "name": "MC2-context-guard",
+      "path": "apps/api/progress_maps.py",
+      "oracle": "test_four_maps_form_stale_run_context_duplicate_and_conflict",
+      "killed": true,
+      "exit": 1,
+      "failures": [
+        "test_four_maps_form_stale_run_context_duplicate_and_conflict[upload]",
+        "test_four_maps_form_stale_run_context_duplicate_and_conflict[validation]",
+        "test_four_maps_form_stale_run_context_duplicate_and_conflict[preprocessing]",
+        "test_four_maps_form_stale_run_context_duplicate_and_conflict[eda]"
+      ],
+      "errors": 0,
+      "tail": " 2, 'run_id': 'RUN-D960E911', 'context_id': 'ctx-5fbc2afc63c75dcd', ...}, 'preprocessing')\nE    +      where {'checks': {'missing': 'pending', 'outliers': 'pending', 'regularity': 'pending', 'decomposition': 'pending', ...}, 'schema_version': 2, 'run_id': 'RUN-D960E911', 'context_id': 'ctx-5fbc2afc63c75dcd', ...} = dict({'checks': {'missing': 'pending', 'outliers': 'pending', 'regularity': 'pending', 'decomposition': 'pending', ...}, 'schema_version': 2, 'run_id': 'RUN-D960E911', 'context_id': 'ctx-5fbc2afc63c75dcd', ...}, report_id='cert-old-context')\n______ test_four_maps_form_stale_run_context_duplicate_and_conflict[eda] _______\ntests/integration/test_progress_audit_cert.py:179: in test_four_maps_form_stale_run_context_duplicate_and_conflict\n    assert report(http, dict(body, report_id=\"cert-old-context\"), stage).status_code == 409\nE   AssertionError: assert 200 == 409\nE    +  where 200 = <Response [200 OK]>.status_code\nE    +    where <Response [200 OK]> = report(<starlette.testclient.TestClient object at 0x7fae5f2c7020>, {'checks': {'descriptive': 'pending', 'correlation': 'pending', 'ih_analysis': 'pending', 'seasonality': 'pending', ...}, 'schema_version': 2, 'run_id': 'RUN-4DBDE01B', 'context_id': 'ctx-e45dbfb19a4a58f7', ...}, 'eda')\nE    +      where {'checks': {'descriptive': 'pending', 'correlation': 'pending', 'ih_analysis': 'pending', 'seasonality': 'pending', ...}, 'schema_version': 2, 'run_id': 'RUN-4DBDE01B', 'context_id': 'ctx-e45dbfb19a4a58f7', ...} = dict({'checks': {'descriptive': 'pending', 'correlation': 'pending', 'ih_analysis': 'pending', 'seasonality': 'pending', ...}, 'schema_version': 2, 'run_id': 'RUN-4DBDE01B', 'context_id': 'ctx-e45dbfb19a4a58f7', ...}, report_id='cert-old-context')\n- generated xml file: /workspace/scratch/1e71cf0e34de/auditcert-mutations-1hx03gaa/pytest.xml -\n=========================== short test summary info ============================\nFAILED tests/integration/test_progress_audit_cert.py::test_four_maps_form_stale_run_context_duplicate_and_conflict[upload]\nFAILED tests/integration/test_progress_audit_cert.py::test_four_maps_form_stale_run_context_duplicate_and_conflict[validation]\nFAILED tests/integration/test_progress_audit_cert.py::test_four_maps_form_stale_run_context_duplicate_and_conflict[preprocessing]\nFAILED tests/integration/test_progress_audit_cert.py::test_four_maps_form_stale_run_context_duplicate_and_conflict[eda]\n================== 4 failed, 15 passed, 25 warnings in 4.24s ===================\n"
+    },
+    {
+      "name": "MC3-report-id-dedup",
+      "path": "apps/api/research_runs.py",
+      "oracle": "test_four_maps_form_stale_run_context_duplicate_and_conflict",
+      "killed": true,
+      "exit": 1,
+      "failures": [
+        "test_four_maps_form_stale_run_context_duplicate_and_conflict[upload]",
+        "test_four_maps_form_stale_run_context_duplicate_and_conflict[validation]",
+        "test_four_maps_form_stale_run_context_duplicate_and_conflict[preprocessing]",
+        "test_four_maps_form_stale_run_context_duplicate_and_conflict[eda]",
+        "test_cache_failure_lost_receipt_retry_recovery_one_effect"
+      ],
+      "errors": 0,
+      "tail": "_dict()\nE   AssertionError: assert (200 == 200 and {'idempotency...6', ...], ...} == {'idempotency...e', ...], ...}\nE    +  where 200 = <Response [200 OK]>.status_code\nE     \nE     Omitting 3 identical items, use -vv to show\nE     Differing items:\nE     {'created_at': '2026-10-13T14:15:58.421029+00:00'} != {'created_at': '2026-10-13T14:15:58.416452+00:00'}\nE     {'accepted_event_ids': ['0dc24eb8-22c9-40d9-ab99-c291ab154411', '4652e839-4905-4332-aab6-2551c15a7f12', '1fb982a4-91c4...cbf-7f69-485e-90fb-f4fcfa3425f3', '653b36ad-f560-45ed-ba53-cc101d90b695', 'e3fe56ba-3458-421f-8f61-c3c0562153c6', ...]} != {'accepted_event_ids': ['54e11eb1-3cea-4de0-8eac-76da8a0dc3b1', '68d81ec5-7b8a-4a11-91de-bbdc2312137d', 'b6b26154-f047...eed-8599-4b00-80d3-7a013c0a138d', '5ec29c97-56b8...\nE     \nE     ...Full output truncated (3 lines hidden), use '-vv' to show)\n------------------------------ Captured log call -------------------------------\nWARNING  apps.api.progress_maps:progress_maps.py:539 Progress maps: слой 1 не сохранён после durable-фиксации report:RUN-90D2F8F1:cert-lost-response -- receipt существует, повтор той же поставки вернёт его дедуплицированно; обязательство доставки остаётся в outbox (worker восстановит проекцию)\nTraceback (most recent call last):\n  File \"/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis/apps/api/progress_maps.py\", line 530, in accept_map_report\n    store.save(session)\n  File \"/workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis/tests/integration/test_progress_audit_cert.py\", line 198, in unavailable\n    raise RuntimeError(\"cert-cache-unavailable\")\nRuntimeError: cert-cache-unavailable\n- generated xml file: /workspace/scratch/1e71cf0e34de/auditcert-mutations-1hx03gaa/pytest.xml -\n=========================== short test summary info ============================\nFAILED tests/integration/test_progress_audit_cert.py::test_four_maps_form_stale_run_context_duplicate_and_conflict[upload]\nFAILED tests/integration/test_progress_audit_cert.py::test_four_maps_form_stale_run_context_duplicate_and_conflict[validation]\nFAILED tests/integration/test_progress_audit_cert.py::test_four_maps_form_stale_run_context_duplicate_and_conflict[preprocessing]\nFAILED tests/integration/test_progress_audit_cert.py::test_four_maps_form_stale_run_context_duplicate_and_conflict[eda]\nFAILED tests/integration/test_progress_audit_cert.py::test_cache_failure_lost_receipt_retry_recovery_one_effect\n================== 5 failed, 14 passed, 25 warnings in 3.35s ===================\n"
+    },
+    {
+      "name": "MC4-forecast-identity",
+      "path": "apps/api/routers/progress.py",
+      "oracle": "test_forecast_merge_preserves_id_actor_and_independent_equal_actions",
+      "killed": true,
+      "exit": 1,
+      "failures": [
+        "test_full_projection_reverse_equal_clocks_forecast_identity",
+        "test_forecast_merge_preserves_id_actor_and_independent_equal_actions"
+      ],
+      "errors": 0,
+      "tail": "============================= test session starts ==============================\nplatform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0\nrootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis\nconfigfile: pytest.ini\nplugins: typeguard-4.6.0, platformdirs-4.13.0, anyio-4.15.1\ncollected 19 items\n\ntests/integration/test_progress_audit_cert.py ..........FF.......        [100%]\n\n=================================== FAILURES ===================================\n_________ test_full_projection_reverse_equal_clocks_forecast_identity __________\ntests/integration/test_progress_audit_cert.py:258: in test_full_projection_reverse_equal_clocks_forecast_identity\n    assert result[\"watermark\"] == size and len(result[\"events\"]) == 1000\nE   assert (1013 == 1012)\n_____ test_forecast_merge_preserves_id_actor_and_independent_equal_actions _____\ntests/integration/test_progress_audit_cert.py:279: in test_forecast_merge_preserves_id_actor_and_independent_equal_actions\n    assert [e[\"event_id\"] for e in actual] == [first.event_id, second.event_id]\nE   AssertionError: assert ['115efab5-d0...bfecd29e80c9'] == ['115efab5-d0...fcf370f9564e']\nE     \nE     Left contains 2 more items, first extra item: '18a0bdc7-05bc-4ecb-a128-bc98432793a6'\nE     Use -v to get more diff\n- generated xml file: /workspace/scratch/1e71cf0e34de/auditcert-mutations-1hx03gaa/pytest.xml -\n=========================== short test summary info ============================\nFAILED tests/integration/test_progress_audit_cert.py::test_full_projection_reverse_equal_clocks_forecast_identity\nFAILED tests/integration/test_progress_audit_cert.py::test_forecast_merge_preserves_id_actor_and_independent_equal_actions\n================== 2 failed, 17 passed, 25 warnings in 3.51s ===================\n"
+    },
+    {
+      "name": "MC5-full-projection",
+      "path": "apps/api/routers/progress.py",
+      "oracle": "test_full_projection_reverse_equal_clocks_forecast_identity",
+      "killed": true,
+      "exit": 1,
+      "failures": [
+        "test_full_projection_reverse_equal_clocks_forecast_identity"
+      ],
+      "errors": 0,
+      "tail": "============================= test session starts ==============================\nplatform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0\nrootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis\nconfigfile: pytest.ini\nplugins: typeguard-4.6.0, platformdirs-4.13.0, anyio-4.15.1\ncollected 19 items\n\ntests/integration/test_progress_audit_cert.py ..........F........        [100%]\n\n=================================== FAILURES ===================================\n_________ test_full_projection_reverse_equal_clocks_forecast_identity __________\ntests/integration/test_progress_audit_cert.py:258: in test_full_projection_reverse_equal_clocks_forecast_identity\n    assert result[\"watermark\"] == size and len(result[\"events\"]) == 1000\nE   assert (1001 == 1012)\n- generated xml file: /workspace/scratch/1e71cf0e34de/auditcert-mutations-1hx03gaa/pytest.xml -\n=========================== short test summary info ============================\nFAILED tests/integration/test_progress_audit_cert.py::test_full_projection_reverse_equal_clocks_forecast_identity\n================== 1 failed, 18 passed, 25 warnings in 3.58s ===================\n"
+    },
+    {
+      "name": "MC6-receipt-handling",
+      "path": "packages/ui/hooks/useProgressMapDelivery.ts",
+      "oracle": "CERT receipt: 200 without receipt never claims durable delivery",
+      "killed": true,
+      "exit": 1,
+      "failures": [
+        "CERT receipt: 200 without receipt never claims durable delivery"
+      ],
+      "errors": 0,
+      "tail": "npm warn Unknown env config \"http-proxy\". This will stop working in the next major version of npm.\nFAIL packages/ui/hooks/prograuditcert_delivery.test.tsx\n  ● CERT receipt: 200 without receipt never claims durable delivery\n\n    expect(received).toBe(expected) // Object.is equality\n\n    Expected: \"accepted_legacy\"\n    Received: \"delivered\"\n\n    Ignored nodes: comments, script, style\n    \u001b[36m<html>\u001b[39m\n      \u001b[36m<head />\u001b[39m\n      \u001b[36m<body>\u001b[39m\n        \u001b[36m<div />\u001b[39m\n      \u001b[36m</body>\u001b[39m\n    \u001b[36m</html>\u001b[39m\n\n      12 |     : response({ mode: \"v2\", reported: 2 })) as jest.Mock;\n      13 |   const { result } = renderHook(() => useProgressMapDelivery({ endpoint: \"/validation-checks\", bodyKey: \"checks\", map }));\n    > 14 |   await waitFor(() => expect(result.current.status).toBe(\"accepted_legacy\"));\n         |                                                     ^\n      15 |   expect(result.current.delivered).toBe(false);\n      16 | });\n      17 |\n\n      at packages/ui/hooks/prograuditcert_delivery.test.tsx:14:53\n      at runWithExpensiveErrorDiagnosticsDisabled (node_modules/@testing-library/dom/dist/config.js:47:12)\n      at checkCallback (node_modules/@testing-library/dom/dist/wait-for.js:124:77)\n      at checkRealTimersCallback (node_modules/@testing-library/dom/dist/wait-for.js:118:16)\n      at Timeout.task [as _onTimeout] (node_modules/jsdom/lib/jsdom/browser/Window.js:579:19)\n\nTest Suites: 1 failed, 1 total\nTests:       1 failed, 2 passed, 3 total\nSnapshots:   0 total\nTime:        3.975 s\nRan all test suites matching packages/ui/hooks/prograuditcert_delivery.test.tsx.\nTest results written to: ../auditcert-mutations-1hx03gaa/jest.json\n"
+    },
+    {
+      "name": "MC7-EDA-protection",
+      "path": "app/core/node_status.py",
+      "oracle": "test_eda_get_remount_pending_seed_failure_and_new_context",
+      "killed": true,
+      "exit": 1,
+      "failures": [
+        "test_eda_get_remount_pending_seed_failure_and_new_context"
+      ],
+      "errors": 0,
+      "tail": "============================= test session starts ==============================\nplatform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0\nrootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis\nconfigfile: pytest.ini\nplugins: typeguard-4.6.0, platformdirs-4.13.0, anyio-4.15.1\ncollected 19 items\n\ntests/integration/test_progress_audit_cert.py .........F.........        [100%]\n\n=================================== FAILURES ===================================\n__________ test_eda_get_remount_pending_seed_failure_and_new_context ___________\ntests/integration/test_progress_audit_cert.py:231: in test_eda_get_remount_pending_seed_failure_and_new_context\n    assert node(trace(http), \"eda\", \"correlation\")[\"status\"] == \"done\"\nE   AssertionError: assert 'running' == 'done'\nE     \nE     - done\nE     + running\n- generated xml file: /workspace/scratch/1e71cf0e34de/auditcert-mutations-1hx03gaa/pytest.xml -\n=========================== short test summary info ============================\nFAILED tests/integration/test_progress_audit_cert.py::test_eda_get_remount_pending_seed_failure_and_new_context\n================== 1 failed, 18 passed, 24 warnings in 3.94s ===================\n"
+    },
+    {
+      "name": "MC8-outbox-rollback",
+      "path": "apps/api/delivery_outbox.py",
+      "oracle": "test_outbox_failure_rolls_back_all_four_surfaces[memory-True]",
+      "killed": true,
+      "exit": 1,
+      "failures": [
+        "test_outbox_failure_rolls_back_all_four_surfaces[memory-True]"
+      ],
+      "errors": 0,
+      "tail": "pi/test_progress_audit_cert_store.py .s.Fss.s                     [100%]\n\n=================================== FAILURES ===================================\n________ test_outbox_failure_rolls_back_all_four_surfaces[memory-True] _________\ntests/api/test_progress_audit_cert_store.py:80: in test_outbox_failure_rolls_back_all_four_surfaces\n    assert store.delivery_outbox.get_task(batch.delivery_task.operation_id) is None\nE   AssertionError: assert DeliveryTask(operation_id='cert-op-c8b2f1a5fc0b495899b1c305bc81e619', idempotency_key='cert-key-9948759d789440d28367a0...=None, created_at='2026-10-13T14:16:19.862991+00:00', updated_at='2026-10-13T14:16:19.863020+00:00', delivered_at=None) is None\nE    +  where DeliveryTask(operation_id='cert-op-c8b2f1a5fc0b495899b1c305bc81e619', idempotency_key='cert-key-9948759d789440d28367a0...=None, created_at='2026-10-13T14:16:19.862991+00:00', updated_at='2026-10-13T14:16:19.863020+00:00', delivered_at=None) = get_task('cert-op-c8b2f1a5fc0b495899b1c305bc81e619')\nE    +    where get_task = <apps.api.delivery_outbox.MemoryDeliveryOutbox object at 0x7f2d6c12e8d0>.get_task\nE    +      where <apps.api.delivery_outbox.MemoryDeliveryOutbox object at 0x7f2d6c12e8d0> = <apps.api.research_runs.MemoryResearchRunStore object at 0x7f2d6c12d790>.delivery_outbox\nE    +    and   'cert-op-c8b2f1a5fc0b495899b1c305bc81e619' = DeliveryTask(operation_id='cert-op-c8b2f1a5fc0b495899b1c305bc81e619', idempotency_key='', run_id='CERT-0348e81a5f454fc...=None, created_at='2026-10-13T14:16:19.862991+00:00', updated_at='2026-10-13T14:16:19.863020+00:00', delivered_at=None).operation_id\nE    +      where DeliveryTask(operation_id='cert-op-c8b2f1a5fc0b495899b1c305bc81e619', idempotency_key='', run_id='CERT-0348e81a5f454fc...=None, created_at='2026-10-13T14:16:19.862991+00:00', updated_at='2026-10-13T14:16:19.863020+00:00', delivered_at=None) = CommitEventBatch(run=ResearchRun(run_id='CERT-0348e81a5f454fcd95ee85083b97ad87', session_id='cert-session', dataset_fi...None, created_at='2026-10-13T14:16:19.862991+00:00', updated_at='2026-10-13T14:16:19.863020+00:00', delivered_at=None)).delivery_task\n- generated xml file: /workspace/scratch/1e71cf0e34de/auditcert-mutations-1hx03gaa/pytest.xml -\n=========================== short test summary info ============================\nFAILED tests/api/test_progress_audit_cert_store.py::test_outbox_failure_rolls_back_all_four_surfaces[memory-True]\n==================== 1 failed, 3 passed, 4 skipped in 0.26s ====================\n"
+    }
+  ],
+  "restored": {
+    "app/core/effective_target.py": true,
+    "apps/api/progress_maps.py": true,
+    "apps/api/research_runs.py": true,
+    "apps/api/routers/progress.py": true,
+    "packages/ui/hooks/useProgressMapDelivery.ts": true,
+    "app/core/node_status.py": true,
+    "apps/api/delivery_outbox.py": true
+  },
+  "postcontrols": {
+    "tests/integration/test_progress_audit_cert.py": {
+      "exit": 0,
+      "failures": [],
+      "errors": 0,
+      "tail": "============================= test session starts ==============================\nplatform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0\nrootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis\nconfigfile: pytest.ini\nplugins: typeguard-4.6.0, platformdirs-4.13.0, anyio-4.15.1\ncollected 19 items\n\ntests/integration/test_progress_audit_cert.py ...................        [100%]\n\n- generated xml file: /workspace/scratch/1e71cf0e34de/auditcert-mutations-1hx03gaa/pytest.xml -\n======================= 19 passed, 25 warnings in 3.48s ========================\n"
+    },
+    "packages/ui/hooks/prograuditcert_delivery.test.tsx": {
+      "exit": 0,
+      "failures": [],
+      "errors": 0,
+      "tail": "npm warn Unknown env config \"http-proxy\". This will stop working in the next major version of npm.\nTest Suites: 1 passed, 1 total\nTests:       3 passed, 3 total\nSnapshots:   0 total\nTime:        2.337 s, estimated 4 s\nRan all test suites matching packages/ui/hooks/prograuditcert_delivery.test.tsx.\nTest results written to: ../auditcert-mutations-1hx03gaa/jest.json\n"
+    },
+    "tests/api/test_progress_audit_cert_store.py": {
+      "exit": 0,
+      "failures": [],
+      "errors": 0,
+      "tail": "============================= test session starts ==============================\nplatform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0\nrootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis\nconfigfile: pytest.ini\nplugins: typeguard-4.6.0, platformdirs-4.13.0, anyio-4.15.1\ncollected 8 items\n\ntests/api/test_progress_audit_cert_store.py .s..ss.s                     [100%]\n\n- generated xml file: /workspace/scratch/1e71cf0e34de/auditcert-mutations-1hx03gaa/pytest.xml -\n========================= 4 passed, 4 skipped in 0.24s =========================\n"
+    }
+  }
+}

@@ -1,0 +1,1 @@
+Local PostgreSQL unavailable: run this runner as a non-root user with access to the workspace. It does not create OS accounts or alter ancestor permissions.

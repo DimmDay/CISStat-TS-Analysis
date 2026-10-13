@@ -906,13 +906,13 @@ class MemoryResearchRunStore(ResearchRunStore):
         self._events: dict[str, list[TraceEvent]] = {}
         self._checkpoints: dict[str, list[ResearchCheckpoint]] = {}
         self._observations: list[MentorObservation] = []
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         # AUDIT-6A: авторитетная позиция ledger per run + receipts.
         self._sequences: dict[str, int] = {}
         self._receipts: dict[str, tuple[CommitReceipt, str]] = {}
         # AUDIT-6B: durable outbox обязательств доставки (в рамках
         # процесса; паритет контракта с Postgres -- I8).
-        self._outbox = MemoryDeliveryOutbox()
+        self._outbox = MemoryDeliveryOutbox(lock=self._lock)
 
     def upsert_run(self, run: ResearchRun) -> None:
         with self._lock:
@@ -1062,28 +1062,16 @@ class MemoryResearchRunStore(ResearchRunStore):
                 if current is not None
                 else batch.run
             )
-            self._runs[run_id] = merged_run
-            # 5. Запись событий + вода́ ledger.
-            self._events.setdefault(run_id, []).extend(prepared)
-            self._sequences[run_id] = sequence
-            # 5a. AUDIT-6B: ссылки на артефакты -- той же транзакцией
-            #     (тот же замок; дедуп по checkpoint_id -- ON CONFLICT-паритет).
-            if batch.checkpoints:
-                stored_cps = self._checkpoints.setdefault(run_id, [])
-                known_cps = {cp.checkpoint_id for cp in stored_cps}
-                for checkpoint in batch.checkpoints:
-                    if checkpoint.checkpoint_id in known_cps:
-                        continue
-                    stored_cps.append(checkpoint)
+            # AUDIT-CERT: stage all fallible preparation before publication.
+            # Previously an outbox registration failure left run/events/
+            # checkpoints committed without a receipt (unlike PostgreSQL).
+            staged_events = [*self._events.get(run_id, ()), *prepared]
+            staged_cps = list(self._checkpoints.get(run_id, ()))
+            known_cps = {cp.checkpoint_id for cp in staged_cps}
+            for checkpoint in batch.checkpoints:
+                if checkpoint.checkpoint_id not in known_cps:
+                    staged_cps.append(checkpoint)
                     known_cps.add(checkpoint.checkpoint_id)
-            # 5b. AUDIT-6B: обязательство доставки -- той же транзакцией
-            #     (crash до этой точки не оставляет ни фактов, ни
-            #     обязательства; дедуп по operation_id; ключ commit'а
-            #     привязывается при регистрации -- связь с receipt, п.8).
-            if batch.delivery_task is not None:
-                self._outbox.register(
-                    bind_idempotency_key(batch.delivery_task, batch.idempotency_key or "")
-                )
             receipt = CommitReceipt(
                 idempotency_key=batch.idempotency_key or "",
                 run_id=run_id,
@@ -1091,8 +1079,20 @@ class MemoryResearchRunStore(ResearchRunStore):
                 accepted_event_ids=tuple(accepted),
                 committed_watermark=sequence,
             )
-            if batch.idempotency_key:
-                self._receipts[batch.idempotency_key] = (receipt, fingerprint)
+            # Shared RLock makes outbox and ledger invisible until the
+            # commit finishes. Failed registration also restores its tasks.
+            with self._outbox.transaction():
+                if batch.delivery_task is not None:
+                    self._outbox.register(
+                        bind_idempotency_key(batch.delivery_task, batch.idempotency_key or "")
+                    )
+                self._runs[run_id] = merged_run
+                self._events[run_id] = staged_events
+                self._sequences[run_id] = sequence
+                if batch.checkpoints:
+                    self._checkpoints[run_id] = staged_cps
+                if batch.idempotency_key:
+                    self._receipts[batch.idempotency_key] = (receipt, fingerprint)
             return receipt
 
     def get_commit_receipt(self, idempotency_key: str) -> Optional[CommitReceipt]:

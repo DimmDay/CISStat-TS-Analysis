@@ -1875,3 +1875,28 @@ operational acceptance-пунктами (без «production certified»): пр�
 Redis создаёт отдельное коротко-таймаутное соединение (пул прикладных
 операций не переиспользует). Сертификация AUDIT-6C — независимым раундом;
 следующая по нарезке плана — AUDIT-CERT (§19).
+
+
+## 27. AUDIT-CERT — сквозные оракулы и граница текущей приёмки
+
+Дата: 2026-10-13; база 2a4cd6c. Реестр доказательств:
+`docs/progress_audit_cert_coverage.md`; акт:
+`docs/cert_prograuditcert_2026-10-13.md`; машинный протокол:
+`scripts/prograuditcert_protocol.json`.
+
+Контракт v1.6-6C не меняется. Приёмка выявила F-CERT-01:
+Memory commit_event_batch публиковал run/events/checkpoints до отказа
+outbox.register. Исправлено без изменения DTO: подготовка batch до
+публикации, общий RLock Memory store/outbox, rollback регистрации task
+(в том числе отказ после записи). Memory остаётся хранилищем в процессе,
+не становится долговечным после restart. PostgreSQL-код не изменён.
+
+Новые локальные оракулы: 23 Python passed / 4 live-PG skipped, 3 React
+passed; семь обязательных мутаций §19 и дополнительная rollback — 8/8
+обнаружены поведенческими assertions с побайтовым восстановлением.
+Полный регресс — прежние 99 failed + 3 errors, новых отрицательных ids
+нет; Jest 2008 passed. Typecheck и API import/health PASS. Свежий PG,
+Next/Docker build и H29/H30 остаются OPEN. Это поставка проверочного
+контура, а не объявление полной/production сертификации. Прежние live-PG
+сертификации не подменяют свежий прогон. Required/advisory и legacy
+границы §25–26 сохранены.

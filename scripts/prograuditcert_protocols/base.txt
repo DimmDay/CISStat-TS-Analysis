@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0
+rootdir: /workspace/scratch/1e71cf0e34de/CISStat-TS-Analysis
+configfile: pytest.ini
+plugins: typeguard-4.6.0, anyio-4.15.1
+collected 175 items
+
+tests/api/test_trace_events.py ........................                  [ 13%]
+tests/api/test_node_status_engine.py ................................... [ 33%]
+.................................                                        [ 52%]
+tests/api/test_progress_audit_1a.py .................................... [ 73%]
+                                                                         [ 73%]
+tests/api/test_progress_audit_2a.py ......................               [ 85%]
+tests/api/test_progress_audit_3.py .........................             [100%]
+
+======================= 175 passed, 13 warnings in 4.99s =======================
